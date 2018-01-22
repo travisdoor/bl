@@ -50,3 +50,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+*build/
+.ycm_extra_conf.py
+*bin/
