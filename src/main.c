@@ -1,77 +1,33 @@
 #include <stdio.h>
-#include <string.h>
-
-enum delimiter
-{
-  NONE      = 0,
-  SPACE     = ' ',
-  LB        = '{',
-  RB        = '}',
-  LBF       = '(',
-  RBF       = ')',
-  COMMA     = ',',
-  SEMICOLON = ';'
-};
+#include <stdlib.h>
+#include "parser.h"
 
 int main(int argc, char *argv[])
 {
-  char src[] = " int   main( ) { return 0; }";
-  char *curr = &src[0];
-  char *prev = &src[0];
-  char buf[256];
-  enum delimiter dcurr = NONE;
+  if (argc < 2)
+    return 1;
 
-  printf("src: '%s'\n", src);
-  while (*curr != '\0')
-  {
-    switch (*curr) {
-      case SPACE:
-        /*puts("> space"); */
-        dcurr = SPACE;
-        break;
-      case LB:
-        /*puts("> {"); */
-        dcurr = LB;
-        break;
-      case RB:
-        /*puts("> }"); */
-        dcurr = RB;
-        break;
-      case LBF:
-        /*puts("> ("); */
-        dcurr = LBF;
-        break;
-      case RBF:
-        /*puts("> )"); */
-        dcurr = RBF;
-        break;
-      case COMMA:
-        /*puts("> ,"); */
-        dcurr = COMMA;
-        break;
-      case SEMICOLON:
-        /*puts("> ;");*/
-        dcurr = SEMICOLON;
-        break;
-      default:
-        /*puts("none");*/
-        dcurr = NONE;
-        break; 
-    }
+  printf ("Parsing: %s\n", argv[1]);
 
-    if (dcurr != NONE) {
-      size_t l = curr - prev;
-      if (l > 0) {
-        memcpy(&buf[0], prev, l);
-        buf[l] = '\0';
-        puts(buf);
-      }
-      prev = curr + 1;
-    }
+  FILE *f = fopen(argv[1], "rb");
+  fseek(f, 0, SEEK_END);
+  long fsize = ftell(f);
+  fseek(f, 0, SEEK_SET); 
+  char *src = malloc(fsize + 1);
+  fread(src, fsize, 1, f);
+  fclose(f);
 
-    curr++;
+  type_t type;
+  data_u data;
+  char *iter = src;
+  while(parse(&iter, &type, &data)) {
+    if (type == DELIMITER)
+      printf("parsed: %s:%c\n", "DELIMITER", (char) data.delimiter);
+    else
+      printf("parsed: %s:%s\n", "TOKEN", data.token);
   }
-  printf ("\n");
+
+  free(src);
 
   return 0;
 }
