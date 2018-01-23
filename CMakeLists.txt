@@ -5,7 +5,7 @@ set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
-set(SOURCE_FILES src/main.c src/parser.c src/parser.h)
+set(SOURCE_FILES src/main.c src/lexer.c src/lexer.h)
 
 add_executable(bl ${SOURCE_FILES})
 

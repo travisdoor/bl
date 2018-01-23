@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdbool.h>
-#include "parser.h"
+#include "lexer.h"
 
 static const char *dstr[COUNT] = {
   " ", // space
