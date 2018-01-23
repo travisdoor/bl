@@ -17,16 +17,18 @@ int main(int argc, char *argv[])
   fread(src, fsize, 1, f);
   fclose(f);
 
-  type_t type;
+  data_type_e type;
   data_u data;
   char *iter = src;
+
+  // test
+  char out[100000];
+  out[0] = '\0';
+
   while(parse(&iter, &type, &data)) {
-    if (type == DELIMITER)
-      printf("parsed: %s:%c\n", "DELIMITER", (char) data.delimiter);
-    else
-      printf("parsed: %s:%s\n", "TOKEN", data.token);
   }
 
+  printf("out: \n%s", out);
   free(src);
 
   return 0;
