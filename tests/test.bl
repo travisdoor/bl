@@ -1,4 +1,6 @@
 // hello this is comment line
 
 int main() {
+  int a = 666;
+  return a;
 }

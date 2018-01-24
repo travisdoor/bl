@@ -14,17 +14,11 @@ target_include_directories(bl PRIVATE src)
 
 find_package(BObject 1.0 REQUIRED)
 target_link_libraries(bl bobject)
-#message(STATUS "lib ${BOBJECT_LIBRARIES}")
-#message(STATUS "include ${BOBJECT_INCLUDE_DIRS}")
-#target_include_directories(bl PRIVATE ${BOBJECT_INCLUDE_DIRS})
-#target_link_libraries(bl ${BOBJECT_LIBRARY})
-
-
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces")
 endif()
