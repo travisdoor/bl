@@ -82,6 +82,14 @@ bl_lexer_new(void)
   return bo_new(Lexer, &p);
 }
 
+/*
+ * operator +-/*
+ * string
+ * number 0123456789
+ * symbol
+ * block {}
+ */
+
 void
 bl_lexer_process_str(char    *str,
                      BArray  *tokens,
@@ -89,18 +97,8 @@ bl_lexer_process_str(char    *str,
 {
   char seq[1024] = {0};
   size_t i = 0;
-  bool comment = false;
-
   for (char *curr = str; *curr != '\0'; curr++) {
-    if (comment && cmatchset(*curr, "\n")) {
-      comment = false;
-      continue;
-    } else if (strncmp(curr, "//", 2) == 0) {
-      comment = true;
-      continue;
-    } if (comment) {
-      continue;
-    } else if (cmatchset(*curr, " \n")) {
+    if (cmatchset(*curr, " \n")) {
       if (i != 0) {
         push_token(tokens, cnt_buf, "symbol", 0, seq);
         i = 0;
