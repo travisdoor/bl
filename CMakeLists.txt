@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.1.0)
+project(bl VERSION 0.1.0 LANGUAGES C)
 
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -11,6 +11,15 @@ add_executable(bl ${SOURCE_FILES})
 
 target_include_directories(bl PUBLIC include)
 target_include_directories(bl PRIVATE src)
+
+find_package(BObject 1.0 REQUIRED)
+target_link_libraries(bl bobject)
+#message(STATUS "lib ${BOBJECT_LIBRARIES}")
+#message(STATUS "include ${BOBJECT_INCLUDE_DIRS}")
+#target_include_directories(bl PRIVATE ${BOBJECT_INCLUDE_DIRS})
+#target_link_libraries(bl ${BOBJECT_LIBRARY})
+
+
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
