@@ -93,17 +93,18 @@ static bool
 parse_scope(Lexer   *lexer,
             BString *out)
 {
-  bl_lexer_scan(lexer);
-  bl_token_t *tok = bl_lexer_tok(lexer);
-  printf("T: %s %.*s\n", bl_sym_strings[tok->sym], (int) tok->len, tok->content.as_string);
+  while (bl_lexer_scan(lexer)) {
+    bl_token_t *tok = bl_lexer_tok(lexer);
+    printf("T: %s %.*s\n", bl_sym_strings[tok->sym], (int) tok->len, tok->content.as_string);
 
-  switch (tok->sym) {
-    case BL_SYM_IDENT:
-      bo_string_appendn(out, tok->content.as_string, tok->len);
-      if (parse_decl(lexer, out)) break; 
-    default:
-      fprintf(stderr, "invalid token: type expected\n");
-      return false;
+    switch (tok->sym) {
+      case BL_SYM_IDENT:
+        bo_string_appendn(out, tok->content.as_string, tok->len);
+        if (parse_decl(lexer, out)) break; 
+      default:
+        fprintf(stderr, "invalid token: type expected\n");
+        return false;
+    }
   }
   return true;
 }
@@ -142,6 +143,12 @@ int main(int argc, char *argv[])
   bl_token_t *tok;
   if (parse_scope(lexer, out_src))
     printf("\nOUT:\n%s\n", bo_string_get(out_src));
+
+  f = fopen("out.c", "w");
+  if (f == NULL)
+    return 2;
+  fprintf(f, "%s\n", bo_string_get(out_src));
+  fclose(f);
 
   bo_unref(lexer);
   bo_unref(out_src);

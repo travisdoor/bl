@@ -1,3 +1,17 @@
 // hello this is comment line
 
-int a 666;
+int a = 666;
+
+float flt = 12;
+
+// this is my double declaration
+// and multi-line comment
+double dbl = 245823;
+
+// my own char
+char my_wery_own_char = 32;
+
+void main()
+{
+  a = 200;
+}
