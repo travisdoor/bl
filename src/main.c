@@ -27,19 +27,14 @@ int main(int argc, char *argv[])
   src[fsize] = '\0';
 
   printf ("Source: \n%s\n\n", src);
+  bl_lexer_init(lexer, src);
+  bl_token_t *tok;
+  while (bl_lexer_scan(lexer)) {
+    tok = bl_lexer_tok(lexer);
 
-  BArray *tokens = bo_array_new(sizeof(bl_token));
-  BArray *cnt_buf = bo_array_new_bo(bo_typeof(BString), true);
-  bl_lexer_process_str(src, tokens, cnt_buf);
-
-  bl_token token;
-  for (size_t i = 0; i < bo_array_size(tokens); ++i) {
-    token = bo_array_at(tokens, i, bl_token);
-    printf("token: %s:%s\n", token.symbol, token.content != NULL ? bo_string_get(token.content) : "-");
+    printf("T: %s %.*s\n", bl_sym_strings[tok->sym], (int) tok->len, tok->content.as_string);
   }
 
-  bo_unref(tokens);
-  bo_unref(cnt_buf);
   bo_unref(lexer);
   return 0;
 }

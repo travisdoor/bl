@@ -2,5 +2,8 @@
 
 int main() {
   int a = 666;
+  string s = "test string";
+  a4b value = 1256;
+
   return a;
 }
