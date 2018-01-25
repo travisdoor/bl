@@ -81,18 +81,26 @@ static int
 scan_ident(Lexer *self,
            char  *c)
 {
+  size_t len = 2;
+  if (strncmp(c, "if", len) == 0) {
+    self->offset += len;
+    return self->tok.sym = BL_SYM_IF;
+  }
+
+  len = 2;
+  if (strncmp(c, "else", len) == 0) {
+    self->offset += len;
+    return self->tok.sym = BL_SYM_ELSE;
+  }
+
+  len = 5;
   if (strncmp(c, "return", 5) == 0) {
     self->offset += 5;
     return self->tok.sym = BL_SYM_RET;
   }
 
-  if (strncmp(c, "int", 3) == 0) {
-    self->offset += 3;
-    return self->tok.sym = BL_SYM_INT;
-  }
-
   self->tok.content.as_string = c;
-  size_t len = 0;
+  len = 0;
   while (is_intend_c(*c)) {
     c = nextc(self);
     len++;

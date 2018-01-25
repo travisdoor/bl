@@ -9,8 +9,9 @@ BO_BEGIN_DECLS
   sm(IDENT, "identifier") \
   sm(STRING, "string") \
   sm(NUM, "number") \
-  sm(INT, "int") \
   sm(RET, "return") \
+  sm(IF, "if") \
+  sm(ELSE, "else") \
   sm(LBLOCK, "{") \
   sm(RBLOCK, "}") \
   sm(LPAREN, "(") \
