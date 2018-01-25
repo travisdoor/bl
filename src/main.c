@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "lexer.h"
 
+#define error(m, ...) \
+  { fprintf(stderr, m, ##__VA_ARGS__); abort(); }
+
 static Lexer *lexer;
 
 int main(int argc, char *argv[])
@@ -31,6 +34,13 @@ int main(int argc, char *argv[])
   bl_token_t *tok;
   while (bl_lexer_scan(lexer)) {
     tok = bl_lexer_tok(lexer);
+
+    switch (tok->sym) {
+    case BL_SYM_IDENT:
+      break;
+    default:
+      error("syntax error");
+    }
 
     printf("T: %s %.*s\n", bl_sym_strings[tok->sym], (int) tok->len, tok->content.as_string);
   }
