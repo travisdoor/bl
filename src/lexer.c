@@ -1,3 +1,31 @@
+//*****************************************************************************
+// bl
+//
+// File:   lexer.c
+// Author: Martin Dorazil
+// Date:   26.1.18
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//*****************************************************************************
+
 #include <stdio.h>
 #include <string.h>
 #include "lexer.h"
@@ -12,192 +40,175 @@
 #define is_number_c(c) \
   ((c) >= '0' && (c) <= '9')
 
-/* class Lexer constructor params */
-bo_decl_params_begin(Lexer)
-  /* constructor params */
-bo_end();
-
-/* class Lexer object members */
-bo_decl_members_begin(Lexer, BObject)
-  /* members */
-  char      *stream;
-  size_t     offset;
-  bl_token_t tok;
-bo_end();
-
-bo_impl_type(Lexer, BObject);
-
-void
-LexerKlass_init(LexerKlass *klass)
-{
-}
-
-void
-Lexer_ctor(Lexer *self, LexerParams *p)
-{
-  /* constructor */
-}
-
-void
-Lexer_dtor(Lexer *self)
-{
-}
-
-bo_copy_result
-Lexer_copy(Lexer *self, Lexer *other)
-{
-  return BO_NO_COPY;
-}
-/* class Lexer end */
-
-static inline char *
-nextc(Lexer *self)
-{
-  return &self->stream[self->offset++];
-}
-
-static inline char *
-prevc(Lexer *self)
-{
-  return &self->stream[--self->offset];
-}
-
 static int
-scan_string(Lexer *self,
-            char   term)
+scan_string(char  **iter,
+            char    term,
+            BArray *out)
 {
-  self->tok.content.as_string = nextc(self);
+  bl_token_t tok;
+  tok.content.as_string = *iter;
 
   size_t len = 1;
-  while (*(nextc(self)) != term) {
+  while (**iter != term) {
+    if (**iter == '\0')
+      return 0;
+    (*iter)++;
     len++;
   }
 
-  self->tok.len = len;
+  tok.len = len;
+  tok.sym = BL_SYM_STRING;
+
+  bo_array_push_back(out, tok);
   return 1;
 }
 
 static int
-scan_ident(Lexer *self,
-           char  *c)
+ignore_till(char **iter,
+            char   term)
 {
-  size_t len = 2;
-  if (strncmp(c, "if", len) == 0) {
-    self->offset += len;
-    return self->tok.sym = BL_SYM_IF;
+  while (**iter != term) {
+    if (**iter == '\0')
+      return 0;
+    (*iter)++;
   }
-
-  len = 2;
-  if (strncmp(c, "else", len) == 0) {
-    self->offset += len;
-    return self->tok.sym = BL_SYM_ELSE;
-  }
-
-  len = 5;
-  if (strncmp(c, "return", 5) == 0) {
-    self->offset += 5;
-    return self->tok.sym = BL_SYM_RET;
-  }
-
-  self->tok.content.as_string = c;
-  len = 0;
-  while (is_intend_c(*c)) {
-    c = nextc(self);
-    len++;
-  }
-
-  prevc(self);
-  self->tok.len = len;
-  self->tok.sym = BL_SYM_IDENT;
-  return self->tok.sym;
+  return 1;
 }
 
 static int
-scan_number(Lexer *self,
-            char  *c)
+scan_ident(char  **iter,
+           BArray *out)
 {
-  if (!is_number_c(*c))
+  bl_token_t tok;
+  size_t len = 2;
+  tok.content.as_string = *iter;
+
+  if (strncmp(*iter, "if", len) == 0) {
+    *iter += len;
+    tok.sym = BL_SYM_IF;
+    bo_array_push_back(out, tok);
+    return 1;
+  }
+
+  len = 4;
+  if (strncmp(*iter, "else", len) == 0) {
+    *iter += len;
+    tok.sym = BL_SYM_IF;
+    bo_array_push_back(out, tok);
+    return 1;
+  }
+
+  len = 5;
+  if (strncmp(*iter, "return", len) == 0) {
+    *iter += len;
+    tok.sym = BL_SYM_RET;
+    bo_array_push_back(out, tok);
+    return 1;
+  }
+
+  len = 0;
+  while (is_intend_c(**iter)) {
+    (*iter)++;
+    len++;
+  }
+
+  (*iter)--;
+  tok.len = len;
+  tok.sym = BL_SYM_IDENT;
+
+  bo_array_push_back(out, tok);
+  return 1;
+}
+
+static int
+scan_number(char  **iter,
+            BArray *out)
+{
+  if (!is_number_c(**iter))
     return 0;
 
   int n = 0;
-  do {
-    n = n * 10 + *c - '0';
-    c = nextc(self);
-  } while (is_number_c(*c));
-  prevc(self);
+  bl_token_t tok;
 
-  self->tok.sym = BL_SYM_NUM;
-  self->tok.content.as_int = n;
-  return self->tok.sym;
-}
+  while (true) {
+    n = n * 10 + (**iter) - '0';
+    if (is_number_c(*(*iter+1)))
+      (*iter)++;
+    else
+      break;
+  }
 
-static inline void
-reset_tok(Lexer *self)
-{
-  memset(&self->tok, 0, sizeof(bl_token_t));
+  tok.sym = BL_SYM_NUM;
+  tok.content.as_int = n;
+  
+  bo_array_push_back(out, tok);
+  return 1;
 }
 
 /* public */
-Lexer *
-bl_lexer_new(void)
-{
-  return bo_new(Lexer, NULL);
-}
-
-void
-bl_lexer_init(Lexer *self,
-              char  *stream)
-{
-  self->stream = stream;
-}
-
-bl_token_t *
-bl_lexer_tok(Lexer *self)
-{
-  return &self->tok;
-}
-
 int
-bl_lexer_scan(Lexer *self)
+bl_lexer_scan(BString *in,
+              BArray  *out)
 {
-  char *c;
-skip:
-  reset_tok(self);
-  switch (*(c = nextc(self))) {
-  case '\0':
-    return self->tok.sym = BL_SYM_EOF;
-  case ' ':
-  case '\n':
-  case '\t':
-    goto skip;
-  case '{':
-    return self->tok.sym = BL_SYM_LBLOCK;
-  case '}':
-    return self->tok.sym = BL_SYM_RBLOCK;
-  case '(':
-    return self->tok.sym = BL_SYM_LPAREN;
-  case ')':
-    return self->tok.sym = BL_SYM_RPAREN;
-  case '=':
-    return self->tok.sym = BL_SYM_ASIGN;
-  case ';':
-    return self->tok.sym = BL_SYM_SEMICOLON;
-  case '"':
-    scan_string(self, '"');
-    return self->tok.sym = BL_SYM_STRING;
-  case '/':
-    switch (*(c = nextc(self))) {
-    case '/':
-      scan_string(self, '\n');
-      self->tok.sym = BL_SYM_LINE_COMMENT;
-      goto skip;
-    }
-    return self->tok.sym = BL_SYM_SLASH;
-  default:
-    if (scan_number(self, c))
-      return self->tok.sym;
+  bl_token_t tok = {
+    .sym = BL_SYM_EOF,
+    .len = 0
+  };
 
-    return scan_ident(self, c);
+  for (char *iter = (char *)bo_string_get(in); *iter != '\0'; iter++) {
+    switch (*iter) {
+      case ' ':
+      case '\n':
+      case '\t':
+        continue;
+      case '{':
+        tok.sym = BL_SYM_LBLOCK;
+        bo_array_push_back(out, tok);
+        continue;
+      case '}':
+        tok.sym = BL_SYM_RBLOCK;
+        bo_array_push_back(out, tok);
+        continue;
+      case '(':
+        tok.sym = BL_SYM_LPAREN;
+        bo_array_push_back(out, tok);
+        continue;
+      case ')':
+        tok.sym = BL_SYM_RPAREN;
+        bo_array_push_back(out, tok);
+        continue;
+      case '=':
+        tok.sym = BL_SYM_ASIGN;
+        bo_array_push_back(out, tok);
+        continue;
+      case ';':
+        tok.sym = BL_SYM_SEMICOLON;
+        bo_array_push_back(out, tok);
+        continue;
+      case '"':
+        scan_string(&iter, '"', out);
+        continue;
+      case '/':
+        switch (*(iter + 1)) {
+        case '/':
+          ignore_till(&iter, '\n');
+          continue;
+        default:
+          tok.sym = BL_SYM_SLASH;
+          bo_array_push_back(out, tok);
+          continue;
+        }
+      default:
+        if (scan_number(&iter, out))
+          continue;
+
+        if (scan_ident(&iter, out))
+          continue;
+
+        puts("error");
+        return 0;
+    }
   }
+  return 1;
 }
 

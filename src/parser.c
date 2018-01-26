@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer.h
+// File:   parser.c
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,16 +26,64 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
+#include <stdio.h>
+#include "parser.h"
 #include "token.h"
 
-#ifndef LEXER_H_2F7YITOG
-#define LEXER_H_2F7YITOG
+typedef enum _ptype {
+  BL_PT_BODY,
+  BL_PT_SCOPE,
+  BL_PT_METHOD
+} ptype_e;
+
+typedef struct _pnode {
+  struct _pnode **next;
+  size_t          count;
+  ptype_e         type;
+} pnode_t;
+
+static int
+parse_type(BArray  *tokens,
+           size_t  *i)
+{
+  bl_token_t *tok = &bo_array_at(tokens, *i, bl_token_t);
+
+  switch (tok->sym) {
+    case BL_SYM_LPAREN:
+      if (parse_method(tokens, &i)) break;
+    default:
+      puts("error: identifier expected");
+      return 0;
+  }
+
+  return 1;
+}
+
+static int
+parse_gscope(BArray  *tokens)
+{
+  size_t c = bo_array_size(tokens);
+  for (size_t i = 0; i < c; ++i) {
+    bl_token_t *tok = &bo_array_at(tokens, i, bl_token_t);
+
+    switch (tok->sym) {
+      case BL_SYM_IDENT:
+        if (parse_type(tokens, &i)) break;
+      default:
+        puts("error: identifier expected");
+        return 0;
+    }
+  }
+  return 1;
+}
+
+/* public */
 
 int
-bl_lexer_scan(BString *in,
-              BArray  *out);
+bl_parser_parse(BArray *tokens)
+{
+  if (bo_array_size(tokens) == 0)
+    return 0;
 
-
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+  return parse_gscope(tokens);
+}

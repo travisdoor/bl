@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer.h
+// File:   parser.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,16 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
-#include "token.h"
+#ifndef BL_PARSER_H
+#define BL_PARSER_H
 
-#ifndef LEXER_H_2F7YITOG
-#define LEXER_H_2F7YITOG
+#include <bobject/containers/array.h>
 
 int
-bl_lexer_scan(BString *in,
-              BArray  *out);
+bl_parser_parse(BArray *tokens);
 
-
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+#endif //BL_PARSER_H
