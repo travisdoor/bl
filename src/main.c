@@ -32,9 +32,32 @@
 #include <bobject/containers/string.h>
 #include "lexer.h"
 #include "parser.h"
+#include "evaluator.h"
 
 #define error(m, ...) \
   { fprintf(stderr, m, ##__VA_ARGS__); abort(); }
+
+void log_tokens(BArray *tokens)
+{
+  // log lexer output
+  size_t c = bo_array_size(tokens);
+  bl_token_t *tok;
+  for (size_t i = 0; i < c; i++) {
+     tok = &bo_array_at(tokens, i, bl_token_t);
+
+    switch (tok->sym) {
+    case BL_SYM_STRING:
+    case BL_SYM_IDENT:
+      printf("T: %s:%.*s\n", bl_sym_strings[tok->sym], (int)tok->len, tok->content.as_string);
+      break;
+    case BL_SYM_NUM:
+      printf("T: %s:%d\n", bl_sym_strings[tok->sym], tok->content.as_int);
+      break;
+    default:
+      printf("T: %s\n", bl_sym_strings[tok->sym]);
+    }
+  }
+}
 
 void log_parsed(Pnode *node, int lpad)
 {
@@ -70,16 +93,16 @@ void log_parsed(Pnode *node, int lpad)
 
   size_t c = bo_array_size(node->nodes);
   Pnode *child;
+  lpad++;
   for (size_t i = 0; i < c; i++) {
     child = bo_array_at(node->nodes, i, Pnode *);
-    log_parsed(child, lpad++);
+    log_parsed(child, lpad);
   }
 }
 
 int main(int argc, char *argv[])
 {
   BString *in_src;
-  BString *out_src;
 
   if (argc < 2)
     return 1;
@@ -97,47 +120,36 @@ int main(int argc, char *argv[])
   fread((char *)bo_string_get(in_src), fsize, 1, f);
   fclose(f);
 
-  out_src = bo_string_new(1024);
-  bo_string_append(out_src,
-    "/* This is biscuit generated source, do not modify. */\n\n#include <stdio.h>\n\n");
-
   printf ("Source: \n%s\n\n", bo_string_get(in_src));
 
   puts("parsing...");
   BArray *tokens = bo_array_new(sizeof(bl_token_t));
   if (bl_lexer_scan(in_src, tokens)) {
-
     puts("lexer output:");
-    // log lexer output
-    size_t c = bo_array_size(tokens);
-    bl_token_t *tok;
-    for (size_t i = 0; i < c; i++) {
-       tok = &bo_array_at(tokens, i, bl_token_t);
-
-      switch (tok->sym) {
-      case BL_SYM_STRING:
-      case BL_SYM_IDENT:
-        printf("T: %s:%.*s\n", bl_sym_strings[tok->sym], (int)tok->len, tok->content.as_string);
-        break;
-      case BL_SYM_NUM:
-        printf("T: %s:%d\n", bl_sym_strings[tok->sym], tok->content.as_int);
-        break;
-      default:
-        printf("T: %s\n", bl_sym_strings[tok->sym]);
-      }
-    }
+    log_tokens(tokens);
 
     Pnode *program = bl_parser_parse(tokens);
-
     // log parser output
     puts("parser output:");
     log_parsed(program, 0);
 
+    if (program) {
+      BString *out_src = bl_evaluator_evaluate(program);
+
+      printf("\ngenerated source: \n%s", bo_string_get(out_src));
+
+      FILE *fo = fopen("main.c", "w");
+      if (fo == NULL)
+        return 3;
+      fwrite((char *)bo_string_get(out_src), bo_string_len(out_src), 1, f);
+      fclose(f);
+
+      bo_unref(out_src);
+    }
+
     bo_unref(program);
   }
 
-
   bo_unref(in_src);
-  bo_unref(out_src);
   return 0;
 }

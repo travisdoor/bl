@@ -52,7 +52,7 @@ static Pnode *
 parse_decl(BArray *tokens,
            size_t *i);
 
-static Pnode *
+Pnode *
 parse_decl(BArray *tokens,
            size_t *i)
 {
@@ -82,7 +82,7 @@ parse_decl(BArray *tokens,
   return pnode;
 }
 
-static Pnode *
+Pnode *
 parse_scope(BArray *tokens,
             size_t *i)
 {
@@ -117,7 +117,7 @@ parse_scope(BArray *tokens,
   return pnode;
 }
 
-static Pnode *
+Pnode *
 parse_method(BArray *tokens,
              size_t *i)
 {
@@ -159,7 +159,7 @@ parse_method(BArray *tokens,
   error("expected scope");
 }
 
-static Pnode *
+Pnode *
 parse_gscope(BArray *tokens)
 {
   Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);

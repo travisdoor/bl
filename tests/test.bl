@@ -8,6 +8,8 @@ int im_int;
 
 char my_method123()
 {
+  int i;
+  char c;
 }
 
 int main() {
