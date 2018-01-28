@@ -26,6 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <bobject/containers/hash.h>
 #include "src_context.h"
 
 /* SrcContext constructor parameters */
@@ -44,9 +45,10 @@ SrcContextKlass_init(SrcContextKlass *klass)
 void
 SrcContext_ctor(SrcContext *self, SrcContextParams *p)
 {
-  self->includes = bo_string_new(256);
-  self->fdecl    = bo_string_new(256);
-  self->impl     = bo_string_new(1024);
+  self->includes    = bo_string_new(256);
+  self->fdecl       = bo_string_new(256);
+  self->impl        = bo_string_new(1024);
+  self->ext_mapping = bo_htbl_new(sizeof(bl_token_t *), 1024);
 }
 
 /* SrcContext destructor */
@@ -56,6 +58,7 @@ SrcContext_dtor(SrcContext *self)
   bo_unref(self->includes);
   bo_unref(self->fdecl);
   bo_unref(self->impl);
+  bo_unref(self->ext_mapping);
 }
 
 /* SrcContext copy constructor */
@@ -70,5 +73,32 @@ SrcContext *
 bl_src_context_new(void)
 {
   return bo_new(SrcContext, NULL);
+}
+
+
+const bl_token_t *
+bl_src_context_getem(SrcContext       *self,
+                     const bl_token_t *name)
+{
+  uint32_t hash = bo_hash_from_strn(name->content.as_string, name->len);
+  bo_iterator_t found = bo_htbl_find(self->ext_mapping, hash);
+  bo_iterator_t end = bo_htbl_end(self->ext_mapping);
+  if (bo_iterator_equal(&found, &end))
+    return NULL;
+
+  return bo_htbl_iter_peek_value(self->ext_mapping, &found, const bl_token_t *);
+}
+
+bool 
+bl_src_context_addem(SrcContext       *self,
+                     const bl_token_t *key,
+                     const bl_token_t *value)
+{
+  uint32_t hash = bo_hash_from_strn(key->content.as_string, key->len);
+  if (bo_htbl_has_key(self->ext_mapping, hash))
+    return false;
+
+  bo_htbl_insert(self->ext_mapping, hash, value);
+  return true;
 }
 

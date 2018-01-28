@@ -38,10 +38,14 @@
   sm(RET, "return") \
   sm(IF, "if") \
   sm(ELSE, "else") \
+  sm(EXTERN, "extern") \
   sm(LBLOCK, "{") \
   sm(RBLOCK, "}") \
+  sm(LBRACKET, "[") \
+  sm(RBRACKET, "]") \
   sm(LPAREN, "(") \
   sm(RPAREN, ")") \
+  sm(COMMA, ",") \
   sm(SEMICOLON, ";") \
   sm(ASIGN, "=") \
   sm(SLASH, "/") \

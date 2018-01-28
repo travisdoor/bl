@@ -39,25 +39,39 @@
     abort(); \
   }
 
+#define SCOPE_PAD 2
+
 static const char *header = "/* Biscuit generated source code, do not modify. */\n\n";
 static const char *gprefix = "_bl_";
 
 /* decl */
 static void
 eval_scope(SrcContext *cnt,
-           Pnode      *node);
+           Pnode      *node,
+           int         pad);
 
 static void
 eval_gscope(SrcContext *cnt,
             Pnode      *node);
 
 static void
+eval_attribute(SrcContext *cnt,
+               Pnode      *node);
+
+static void
 eval_decl(SrcContext *cnt,
-          Pnode      *node);
+          Pnode      *node,
+          int         pad);
 
 static void
 eval_method(SrcContext *cnt,
-            Pnode      *node);
+            Pnode      *node,
+            int         pad);
+
+static void
+eval_call(SrcContext *cnt,
+          Pnode      *node,
+          int         pad);
 
 static BString *
 create_src(SrcContext *cnt);
@@ -85,12 +99,30 @@ create_src(SrcContext *cnt)
 }
 
 void
+eval_attribute(SrcContext *cnt,
+               Pnode      *node)
+{
+  bl_pt_attribute *a = &node->content.as_attribute;
+  bl_pt_method    *m = NULL;
+
+  Pnode *child = bo_array_at(node->nodes, 0, Pnode *);
+  // TODO: implement assert
+  if (!child || child->type != BL_PT_METHOD)
+    abort();
+
+  m = &child->content.as_method;
+  bl_src_context_addem(cnt, m->name, a->entry_point);
+}
+
+void
 eval_decl(SrcContext *cnt,
-          Pnode      *node)
+          Pnode      *node,
+          int         pad)
 {
   // TODO: validate type
   char buf[1024];
   sprintf(buf, bl_snipp_var_decl,
+    pad, "",
     node->content.as_decl.type->len,
     node->content.as_decl.type->content.as_string, 
     "",
@@ -102,14 +134,51 @@ eval_decl(SrcContext *cnt,
 }
 
 void
-eval_method(SrcContext *cnt,
-            Pnode      *node)
+eval_call(SrcContext *cnt,
+          Pnode      *node,
+          int         pad)
 {
   // TODO: validate type
-  bl_pt_method *m = &node->content.as_method;
   char buf[1024];
+  bl_pt_call *c = &node->content.as_call;
+
+  // external reference
+  const bl_token_t *name = bl_src_context_getem(cnt, c->name); 
+  if (name == NULL)
+    error("undeclared function call");
+
+  // declaration
+  sprintf(buf, bl_snipp_method_call,
+    pad, "",
+    "",
+    name->len,
+    name->content.as_string, 
+    c->param1->len,
+    c->param1->content.as_string
+  );
+  bo_string_append(cnt->impl, &buf[0]);
+}
+
+
+void
+eval_method(SrcContext *cnt,
+            Pnode      *node,
+            int         pad)
+{
+  // TODO: validate type
+  char buf[1024];
+  bl_pt_method *m = &node->content.as_method;
+
+  // external reference
+  if (m->modif && m->modif->sym == BL_SYM_EXTERN) {
+    return;
+  }
+
+  bl_src_context_addem(cnt, m->name, m->name);
+
   // declaration
   sprintf(buf, bl_snipp_method_decl,
+    0, "",
     m->ret->len,
     m->ret->content.as_string, 
     gprefix,
@@ -120,6 +189,7 @@ eval_method(SrcContext *cnt,
 
   // implementation
   sprintf(buf, bl_snipp_method_impl,
+    0, "",
     m->ret->len,
     m->ret->content.as_string, 
     gprefix,
@@ -127,7 +197,7 @@ eval_method(SrcContext *cnt,
     m->name->content.as_string
   );
   bo_string_append(cnt->impl, &buf[0]);
-  eval_scope(cnt, bo_array_at(node->nodes, 0, Pnode *));
+  eval_scope(cnt, bo_array_at(node->nodes, 0, Pnode *), pad);
   bo_string_append(cnt->impl, "}\n\n");
 
   // detect main method
@@ -143,23 +213,28 @@ eval_method(SrcContext *cnt,
 
 void
 eval_scope(SrcContext *cnt,
-           Pnode      *node)
+           Pnode      *node,
+           int         pad)
 {
   Pnode *child = NULL;
+  pad+=SCOPE_PAD;
   size_t c = bo_array_size(node->nodes);
   for (size_t i = 0; i < c; i++) {
     child = bo_array_at(node->nodes, i, Pnode *);
 
     switch (child->type) {
       case BL_PT_DECL:
-        eval_decl(cnt, child);
+        eval_decl(cnt, child, pad);
         break;
       case BL_PT_METHOD:
-        eval_method(cnt, child);
+        eval_method(cnt, child, pad);
+        break;
+      case BL_PT_CALL:
+        eval_call(cnt, child, pad);
         break;
       default:
         // TODO: handle error
-        break;
+        abort();
     }
   }
 }
@@ -176,14 +251,17 @@ eval_gscope(SrcContext *cnt,
 
     switch (child->type) {
       case BL_PT_DECL:
-        eval_decl(cnt, child);
+        eval_decl(cnt, child, 0);
         break;
       case BL_PT_METHOD:
-        eval_method(cnt, child);
+        eval_method(cnt, child, 0);
+        break;
+      case BL_PT_ATTRIBUTE:
+        eval_attribute(cnt, child);
         break;
       default:
         // TODO: handle error
-        break;
+        abort();
     }
   }
 }

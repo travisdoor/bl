@@ -1,18 +1,13 @@
+// this is testing script
 
+["stdio.h", "printf"]
+extern void print();
 
+["stdio.h", "puts"]
+extern void print2();
 
-// hello this is comment line
-
-int im_int;
-  double im_double125;
-
-char my_method123()
-{
-  int i;
-  char c;
-}
-
-int main() {
-  // this is float
-  float im_float;
+// main function
+void main() {
+  print("hello world");
+  print2("hello world");
 }

@@ -32,16 +32,20 @@
 static const char *bl_snipp_inclh =
   "#include <%s>\n";
 
-// static %type %prefix%name;
+// %type %prefix%name;
 static const char *bl_snipp_var_decl =
-  "%.*s %s%.*s;\n";
+  "%*s%.*s %s%.*s;\n";
 
-// static %type %prefix%name(void);
+// %type %prefix%name(void);
 static const char *bl_snipp_method_decl =
-  "%.*s %s%.*s(void);\n";
+  "%*s%.*s %s%.*s(void);\n";
 
 static const char *bl_snipp_method_impl =
-  "%.*s %s%.*s(void) {\n";
+  "%*s%.*s %s%.*s(void) {\n";
+
+// [spaces][name] ([param]); 
+static const char *bl_snipp_method_call =
+  "%*s%s%.*s(\"%.*s\\n\");\n";
 
 // c main method 
 static const char *bl_snipp_main =

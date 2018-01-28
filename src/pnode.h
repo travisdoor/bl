@@ -37,18 +37,31 @@ typedef enum _bl_ptype {
   BL_PT_GSCOPE,
   BL_PT_SCOPE,
   BL_PT_METHOD,
+  BL_PT_CALL,
   BL_PT_DECL,
+  BL_PT_ATTRIBUTE
 } bl_ptype_e;
 
 typedef struct _bl_pt_method {
   bl_token_t *ret;
   bl_token_t *name;
+  bl_token_t *modif;
 } bl_pt_method;
+
+typedef struct _bl_pt_call {
+  bl_token_t *name;
+  bl_token_t *param1; // TODO: implement more params
+} bl_pt_call;
 
 typedef struct _bl_pt_decl {
   bl_token_t *type;
   bl_token_t *name;
 } bl_pt_decl;
+
+typedef struct _bl_pt_attribute {
+  bl_token_t *header;
+  bl_token_t *entry_point;
+} bl_pt_attribute;
 
 /* class Pnode declaration */
 bo_decl_type_begin(Pnode, BObject)
@@ -61,8 +74,10 @@ bo_decl_members_begin(Pnode, BObject)
   BArray    *nodes;
   bl_ptype_e type;
   union _content {
-    bl_pt_method as_method;
-    bl_pt_decl   as_decl;
+    bl_pt_method    as_method;
+    bl_pt_call      as_call;
+    bl_pt_decl      as_decl;
+    bl_pt_attribute as_attribute;
   } content;
 bo_end();
 

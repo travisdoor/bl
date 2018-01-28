@@ -42,6 +42,10 @@ parse_method(BArray *tokens,
              size_t *i);
 
 static Pnode *
+parse_call(BArray *tokens,
+           size_t *i);
+
+static Pnode *
 parse_scope(BArray *tokens,
             size_t *i);
 
@@ -51,6 +55,10 @@ parse_gscope(BArray *tokens);
 static Pnode *
 parse_decl(BArray *tokens,
            size_t *i);
+
+static Pnode *
+parse_attribute(BArray *tokens,
+                size_t *i);
 
 Pnode *
 parse_decl(BArray *tokens,
@@ -74,7 +82,7 @@ parse_decl(BArray *tokens,
   if (tok->sym != BL_SYM_SEMICOLON)
     error("missing semicolon");
 
-  (*i) += 2;
+  (*i) += 3;
 
   Pnode *pnode = bl_pnode_new(BL_PT_DECL);
   pnode->content.as_decl.type = type;
@@ -87,33 +95,32 @@ parse_scope(BArray *tokens,
             size_t *i)
 {
   Pnode *pnode = bl_pnode_new(BL_PT_SCOPE);
-  Pnode *child;
+  Pnode *child = NULL;
 
-  bl_token_t *tok = &bo_array_at(tokens, (*i), bl_token_t);
+  size_t _i = *i;
+  bl_token_t *tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_LBLOCK)
     return NULL;
 
   size_t c = bo_array_size(tokens);
-  while (true) {
-    tok = &bo_array_at(tokens, (*i), bl_token_t);
+  while (_i < c) {
+    tok = &bo_array_at(tokens, _i, bl_token_t);
     if (tok->sym == BL_SYM_RBLOCK)
       break;
 
-    child = parse_method(tokens, i);
-    if (!child) child = parse_decl(tokens, i);
+    child = parse_call(tokens, &_i);
+    if (!child) child = parse_method(tokens, &_i);
+    if (!child) child = parse_decl(tokens, &_i);
 
     if (child) {
       bo_array_push_back(pnode->nodes, child);
       continue;
     }
 
-    (*i)++;
-    if (*i == c) {
-      bo_unref(pnode);
-      error("missing block end '}'");
-    }
+    error("expected call, method or declaration");
   }
 
+  (*i) = ++_i;
   return pnode;
 }
 
@@ -124,27 +131,52 @@ parse_method(BArray *tokens,
   bl_token_t *tok;
   bl_token_t *ret;
   bl_token_t *name;
+  bl_token_t *modif = NULL;
 
-  tok = &bo_array_at(tokens, (*i), bl_token_t);
+  size_t _i = (*i);
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym == BL_SYM_EXTERN) {
+    /* extern method declaration */
+    modif = tok;
+  } else {
+    --_i;
+  }
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_IDENT)
     return NULL;
   ret = tok;
 
-  tok = &bo_array_at(tokens, (*i)+1, bl_token_t);
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_IDENT)
     return NULL;
   name = tok;
 
-  tok = &bo_array_at(tokens, (*i)+2, bl_token_t);
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_LPAREN)
     return NULL;
 
   // remove when params will be implemented
-  tok = &bo_array_at(tokens, (*i)+3, bl_token_t);
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_RPAREN)
     return NULL;
 
-  (*i) += 4;
+  if (modif && modif->sym == BL_SYM_EXTERN) {
+    tok = &bo_array_at(tokens, _i++, bl_token_t);
+    if (tok->sym != BL_SYM_SEMICOLON)
+      return NULL;
+
+    (*i) = _i;
+
+    Pnode *pnode = bl_pnode_new(BL_PT_METHOD);
+    pnode->content.as_method.ret   = ret;
+    pnode->content.as_method.name  = name;
+    pnode->content.as_method.modif = modif;
+    return pnode;
+  }
+
+  (*i) = _i;
 
   Pnode *child = parse_scope(tokens, i);
   if (child) {
@@ -160,14 +192,107 @@ parse_method(BArray *tokens,
 }
 
 Pnode *
+parse_call(BArray *tokens,
+           size_t *i)
+{
+  bl_token_t *tok;
+  bl_token_t *name;
+  bl_token_t *param;
+
+  size_t _i = (*i);
+
+  // name
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_IDENT) 
+    return NULL;
+  name = tok;
+
+  // (
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_LPAREN)
+    return NULL;
+
+  // param
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_STRING)
+    return NULL;
+  param = tok;
+
+  // )
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_RPAREN)
+    return NULL;
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_SEMICOLON)
+    error("missing semicolon");
+
+  (*i) = _i;
+
+  Pnode *pnode = bl_pnode_new(BL_PT_CALL);
+  pnode->content.as_call.name = name;
+  pnode->content.as_call.param1 = param;
+  return pnode;
+}
+
+Pnode *
+parse_attribute(BArray *tokens,
+                size_t *i)
+{
+  /* TODO: simple implementation, improvement needed */
+  bl_token_t *tok;
+  bl_token_t *header;
+  bl_token_t *entry_point;
+  size_t _i = (*i);
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_LBRACKET)
+    return NULL;
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_STRING)
+    return NULL;
+  header = tok;
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_COMMA)
+    return NULL;
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_STRING)
+    return NULL;
+  entry_point = tok;
+
+  tok = &bo_array_at(tokens, _i++, bl_token_t);
+  if (tok->sym != BL_SYM_RBRACKET)
+    return NULL;
+
+  (*i) = _i;
+
+  Pnode *child = parse_method(tokens, i);
+  if (child) {
+    Pnode *pnode = bl_pnode_new(BL_PT_ATTRIBUTE);
+    pnode->content.as_attribute.header      = header;
+    pnode->content.as_attribute.entry_point = entry_point;
+
+    bo_array_push_back(pnode->nodes, child);
+    return pnode;
+  }
+
+  error("expected scope");
+}
+
+Pnode *
 parse_gscope(BArray *tokens)
 {
   Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);
   Pnode *child = NULL;
 
   size_t c = bo_array_size(tokens);
-  for (size_t i = 0; i < c; ++i) {
-    child = parse_method(tokens, &i);
+  size_t i = 0;
+  while (i < c) {
+    child = parse_attribute(tokens, &i);
+    if (!child) child = parse_method(tokens, &i);
     if (!child) child = parse_decl(tokens, &i);
 
     if (child) {

@@ -30,7 +30,9 @@
 #define BISCUIT_SRC_CONTEXT_H
 
 #include <bobject/bobject.h>
+#include <bobject/containers/htbl.h>
 #include <bobject/containers/string.h>
+#include "token.h"
 
 /* class declaration */
 bo_decl_type_begin(SrcContext, BObject)
@@ -39,13 +41,23 @@ bo_end();
 
 /* SrcContext members */
 bo_decl_members_begin(SrcContext, BObject)
-  BString *includes;
-  BString *fdecl;
-  BString *impl;
+  BString    *includes;
+  BString    *fdecl;
+  BString    *impl;
+  BHashTable *ext_mapping;
 bo_end();
 
 SrcContext *
 bl_src_context_new(void);
+
+const bl_token_t *
+bl_src_context_getem(SrcContext *self,
+                     const bl_token_t *name);
+
+bool 
+bl_src_context_addem(SrcContext       *self,
+                     const bl_token_t *key,
+                     const bl_token_t *value);
 
 #endif /* end of include guard: BISCUIT_SRC_CONTEXT_H */
 

@@ -1,5 +1,3 @@
 #!/usr/bin/env bash
-
-../bin/bl test.bl
-cp ../bin/bl/main.c .
+./bl test.bl
 clang -o test main.c

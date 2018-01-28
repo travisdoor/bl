@@ -46,9 +46,10 @@ scan_string(char  **iter,
             BArray *out)
 {
   bl_token_t tok;
+  (*iter)++;
   tok.content.as_string = *iter;
 
-  size_t len = 1;
+  size_t len = 0;
   while (**iter != term) {
     if (**iter == '\0')
       return 0;
@@ -102,6 +103,14 @@ scan_ident(char  **iter,
   if (strncmp(*iter, "return", len) == 0) {
     *iter += len;
     tok.sym = BL_SYM_RET;
+    bo_array_push_back(out, tok);
+    return 1;
+  }
+
+  len = 6;
+  if (strncmp(*iter, "extern", len) == 0) {
+    *iter += len;
+    tok.sym = BL_SYM_EXTERN;
     bo_array_push_back(out, tok);
     return 1;
   }
@@ -169,12 +178,24 @@ bl_lexer_scan(BString *in,
         tok.sym = BL_SYM_RBLOCK;
         bo_array_push_back(out, tok);
         continue;
+      case '[':
+        tok.sym = BL_SYM_LBRACKET;
+        bo_array_push_back(out, tok);
+        continue;
+      case ']':
+        tok.sym = BL_SYM_RBRACKET;
+        bo_array_push_back(out, tok);
+        continue;
       case '(':
         tok.sym = BL_SYM_LPAREN;
         bo_array_push_back(out, tok);
         continue;
       case ')':
         tok.sym = BL_SYM_RPAREN;
+        bo_array_push_back(out, tok);
+        continue;
+      case ',':
+        tok.sym = BL_SYM_COMMA;
         bo_array_push_back(out, tok);
         continue;
       case '=':
