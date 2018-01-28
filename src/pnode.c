@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   parser.h
+// File:   pnode.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   26/01/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,48 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_PARSER_H
-#define BL_PARSER_H
-
-#include <bobject/containers/array.h>
 #include "pnode.h"
 
-Pnode *
-bl_parser_parse(BArray *tokens);
+/* class Pnode */
+bo_decl_params_begin(Pnode)
+  bl_ptype_e type;
+bo_end();
 
-#endif //BL_PARSER_H
+bo_impl_type(Pnode, BObject);
+
+void
+PnodeKlass_init(PnodeKlass *klass)
+{
+}
+
+void
+Pnode_ctor(Pnode *self, PnodeParams *p)
+{
+  /* constructor */
+  self->nodes = bo_array_new_bo(bo_typeof(Pnode), true);
+  self->type  = p->type;
+}
+
+void
+Pnode_dtor(Pnode *self)
+{
+  bo_unref(self->nodes);
+}
+
+bo_copy_result
+Pnode_copy(Pnode *self, Pnode *other)
+{
+  return BO_NO_COPY;
+}
+/* class Pnode end */
+
+Pnode *
+bl_pnode_new(bl_ptype_e type)
+{
+  PnodeParams params = {
+    .type = type
+  };
+
+  return bo_new(Pnode, &params);
+}
+

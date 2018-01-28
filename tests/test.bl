@@ -1,5 +1,16 @@
+
+
+
 // hello this is comment line
 
+int im_int;
+  double im_double125;
+
+char my_method123()
+{
+}
+
 int main() {
-  return 0;
+  // this is float
+  float im_float;
 }

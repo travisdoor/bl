@@ -27,63 +27,168 @@
 //*****************************************************************************
 
 #include <stdio.h>
+#include <assert.h>
 #include "parser.h"
 #include "token.h"
 
-typedef enum _ptype {
-  BL_PT_BODY,
-  BL_PT_SCOPE,
-  BL_PT_METHOD
-} ptype_e;
-
-typedef struct _pnode {
-  struct _pnode **next;
-  size_t          count;
-  ptype_e         type;
-} pnode_t;
-
-static int
-parse_type(BArray  *tokens,
-           size_t  *i)
-{
-  bl_token_t *tok = &bo_array_at(tokens, *i, bl_token_t);
-
-  switch (tok->sym) {
-    case BL_SYM_LPAREN:
-      if (parse_method(tokens, &i)) break;
-    default:
-      puts("error: identifier expected");
-      return 0;
+#define error(msg) \
+  { \
+    fprintf(stderr, "%s\n", (msg)); \
+    abort(); \
   }
 
-  return 1;
+static Pnode *
+parse_method(BArray *tokens,
+             size_t *i);
+
+static Pnode *
+parse_scope(BArray *tokens,
+            size_t *i);
+
+static Pnode *
+parse_gscope(BArray *tokens);
+
+static Pnode *
+parse_decl(BArray *tokens,
+           size_t *i);
+
+static Pnode *
+parse_decl(BArray *tokens,
+           size_t *i)
+{
+  bl_token_t *tok;
+  bl_token_t *type;
+  bl_token_t *name;
+
+  tok = &bo_array_at(tokens, (*i), bl_token_t);
+  if (tok->sym != BL_SYM_IDENT)
+    return NULL;
+  type = tok;
+
+  tok = &bo_array_at(tokens, (*i)+1, bl_token_t);
+  if (tok->sym != BL_SYM_IDENT)
+    return NULL;
+  name = tok;
+
+  tok = &bo_array_at(tokens, (*i)+2, bl_token_t);
+  if (tok->sym != BL_SYM_SEMICOLON)
+    error("missing semicolon");
+
+  (*i) += 2;
+
+  Pnode *pnode = bl_pnode_new(BL_PT_DECL);
+  pnode->content.as_decl.type = type;
+  pnode->content.as_decl.name = name;
+  return pnode;
 }
 
-static int
-parse_gscope(BArray  *tokens)
+static Pnode *
+parse_scope(BArray *tokens,
+            size_t *i)
 {
-  size_t c = bo_array_size(tokens);
-  for (size_t i = 0; i < c; ++i) {
-    bl_token_t *tok = &bo_array_at(tokens, i, bl_token_t);
+  Pnode *pnode = bl_pnode_new(BL_PT_SCOPE);
+  Pnode *child;
 
-    switch (tok->sym) {
-      case BL_SYM_IDENT:
-        if (parse_type(tokens, &i)) break;
-      default:
-        puts("error: identifier expected");
-        return 0;
+  bl_token_t *tok = &bo_array_at(tokens, (*i), bl_token_t);
+  if (tok->sym != BL_SYM_LBLOCK)
+    return NULL;
+
+  size_t c = bo_array_size(tokens);
+  while (true) {
+    tok = &bo_array_at(tokens, (*i), bl_token_t);
+    if (tok->sym == BL_SYM_RBLOCK)
+      break;
+
+    child = parse_method(tokens, i);
+    if (!child) child = parse_decl(tokens, i);
+
+    if (child) {
+      bo_array_push_back(pnode->nodes, child);
+      continue;
+    }
+
+    (*i)++;
+    if (*i == c) {
+      bo_unref(pnode);
+      error("missing block end '}'");
     }
   }
-  return 1;
+
+  return pnode;
+}
+
+static Pnode *
+parse_method(BArray *tokens,
+             size_t *i)
+{
+  bl_token_t *tok;
+  bl_token_t *ret;
+  bl_token_t *name;
+
+  tok = &bo_array_at(tokens, (*i), bl_token_t);
+  if (tok->sym != BL_SYM_IDENT)
+    return NULL;
+  ret = tok;
+
+  tok = &bo_array_at(tokens, (*i)+1, bl_token_t);
+  if (tok->sym != BL_SYM_IDENT)
+    return NULL;
+  name = tok;
+
+  tok = &bo_array_at(tokens, (*i)+2, bl_token_t);
+  if (tok->sym != BL_SYM_LPAREN)
+    return NULL;
+
+  // remove when params will be implemented
+  tok = &bo_array_at(tokens, (*i)+3, bl_token_t);
+  if (tok->sym != BL_SYM_RPAREN)
+    return NULL;
+
+  (*i) += 4;
+
+  Pnode *child = parse_scope(tokens, i);
+  if (child) {
+    Pnode *pnode = bl_pnode_new(BL_PT_METHOD);
+    pnode->content.as_method.ret  = ret;
+    pnode->content.as_method.name = name;
+
+    bo_array_push_back(pnode->nodes, child);
+    return pnode;
+  }
+
+  error("expected scope");
+}
+
+static Pnode *
+parse_gscope(BArray *tokens)
+{
+  Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);
+  Pnode *child = NULL;
+
+  size_t c = bo_array_size(tokens);
+  for (size_t i = 0; i < c; ++i) {
+    child = parse_method(tokens, &i);
+    if (!child) child = parse_decl(tokens, &i);
+
+    if (child) {
+      bo_array_push_back(pnode->nodes, child);
+      continue;
+    }
+
+    bo_unref(pnode);
+    error("expected method");
+  }
+  return pnode;
 }
 
 /* public */
 
-int
+Pnode *
 bl_parser_parse(BArray *tokens)
 {
   if (bo_array_size(tokens) == 0)
     return 0;
 
+  /* parse global scope of the source */
   return parse_gscope(tokens);
 }

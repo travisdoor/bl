@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   parser.h
+// File:   pnode.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   26/01/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,47 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_PARSER_H
-#define BL_PARSER_H
+#ifndef BL_PNODE_H
+#define BL_PNODE_H
 
+#include <bobject/bobject.h>
 #include <bobject/containers/array.h>
-#include "pnode.h"
+#include "token.h"
+
+typedef enum _bl_ptype {
+  BL_PT_GSCOPE,
+  BL_PT_SCOPE,
+  BL_PT_METHOD,
+  BL_PT_DECL,
+} bl_ptype_e;
+
+typedef struct _bl_pt_method {
+  bl_token_t *ret;
+  bl_token_t *name;
+} bl_pt_method;
+
+typedef struct _bl_pt_decl {
+  bl_token_t *type;
+  bl_token_t *name;
+} bl_pt_decl;
+
+/* class Pnode declaration */
+bo_decl_type_begin(Pnode, BObject)
+  /* virtuals */
+bo_end();
+
+/* class Pnode object members */
+bo_decl_members_begin(Pnode, BObject)
+  /* members */
+  BArray    *nodes;
+  bl_ptype_e type;
+  union _content {
+    bl_pt_method as_method;
+    bl_pt_decl   as_decl;
+  } content;
+bo_end();
 
 Pnode *
-bl_parser_parse(BArray *tokens);
+bl_pnode_new(bl_ptype_e type);
 
-#endif //BL_PARSER_H
+#endif //BL_PNODE_H

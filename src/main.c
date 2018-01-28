@@ -36,6 +36,46 @@
 #define error(m, ...) \
   { fprintf(stderr, m, ##__VA_ARGS__); abort(); }
 
+void log_parsed(Pnode *node, int lpad)
+{
+  switch (node->type) {
+    case BL_PT_GSCOPE:
+      printf("%.*s[gscope]\n", lpad, "  ");
+      break;
+    case BL_PT_SCOPE:
+      printf("%.*s[scope]\n", lpad, "  ");
+      break;
+    case BL_PT_METHOD:
+      printf("%.*s[method] %.*s %.*s\n", lpad, "  ",
+             (int) node->content.as_method.ret->len,
+             node->content.as_method.ret->content.as_string,
+             (int) node->content.as_method.name->len,
+             node->content.as_method.name->content.as_string
+      );
+      break;
+    case BL_PT_DECL:
+      printf("%.*s[decl] %.*s %.*s\n", lpad, "  ",
+             (int) node->content.as_decl.type->len,
+             node->content.as_decl.type->content.as_string,
+             (int) node->content.as_decl.name->len,
+             node->content.as_decl.name->content.as_string
+      );
+      break;
+    default:
+      abort();
+  }
+
+  if (node->nodes == NULL)
+    return;
+
+  size_t c = bo_array_size(node->nodes);
+  Pnode *child;
+  for (size_t i = 0; i < c; i++) {
+    child = bo_array_at(node->nodes, i, Pnode *);
+    log_parsed(child, lpad++);
+  }
+}
+
 int main(int argc, char *argv[])
 {
   BString *in_src;
@@ -63,12 +103,16 @@ int main(int argc, char *argv[])
 
   printf ("Source: \n%s\n\n", bo_string_get(in_src));
 
+  puts("parsing...");
   BArray *tokens = bo_array_new(sizeof(bl_token_t));
   if (bl_lexer_scan(in_src, tokens)) {
+
+    puts("lexer output:");
+    // log lexer output
     size_t c = bo_array_size(tokens);
     bl_token_t *tok;
     for (size_t i = 0; i < c; i++) {
-      tok = &bo_array_at(tokens, i, bl_token_t);
+       tok = &bo_array_at(tokens, i, bl_token_t);
 
       switch (tok->sym) {
       case BL_SYM_STRING:
@@ -83,7 +127,13 @@ int main(int argc, char *argv[])
       }
     }
 
-    bl_parser_parse(tokens);
+    Pnode *program = bl_parser_parse(tokens);
+
+    // log parser output
+    puts("parser output:");
+    log_parsed(program, 0);
+
+    bo_unref(program);
   }
 
 
