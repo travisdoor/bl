@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "lexer.h"
+#include "bldebug.h"
 
 /* class Lexer */
 #define is_intend_c(c) \
@@ -226,8 +227,7 @@ bl_lexer_scan(BString *in,
         if (scan_ident(&iter, out))
           continue;
 
-        puts("error");
-        return 0;
+        bl_parse_error("unknown character\n");
     }
   }
   return 1;

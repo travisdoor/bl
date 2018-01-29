@@ -32,12 +32,7 @@
 #include "src_context.h"
 #include "token.h"
 #include "snippets.h"
-
-#define error(msg) \
-  { \
-    fprintf(stderr, "%s\n", (msg)); \
-    abort(); \
-  }
+#include "bldebug.h"
 
 #define SCOPE_PAD 2
 
@@ -144,8 +139,7 @@ eval_call(SrcContext *cnt,
 
   // external reference
   const bl_token_t *name = bl_src_context_getem(cnt, c->name); 
-  if (name == NULL)
-    error("undeclared function call");
+  bl_assert(name, "undeclared function call");
 
   // declaration
   sprintf(buf, bl_snipp_method_call,
@@ -176,12 +170,16 @@ eval_method(SrcContext *cnt,
 
   bl_src_context_addem(cnt, m->name, m->name);
 
+  bool is_main = strncmp(m->name->content.as_string, "main", m->name->len) == 0;
+  const char *prefix = is_main ? gprefix : "";
+  
+
   // declaration
   sprintf(buf, bl_snipp_method_decl,
     0, "",
     m->ret->len,
     m->ret->content.as_string, 
-    gprefix,
+    prefix,
     m->name->len,
     m->name->content.as_string
   );
@@ -192,7 +190,7 @@ eval_method(SrcContext *cnt,
     0, "",
     m->ret->len,
     m->ret->content.as_string, 
-    gprefix,
+    prefix,
     m->name->len,
     m->name->content.as_string
   );
@@ -203,7 +201,7 @@ eval_method(SrcContext *cnt,
   // detect main method
   if (strncmp(m->name->content.as_string, "main", m->name->len) == 0) {
     sprintf(buf, bl_snipp_main,
-      gprefix,
+      prefix,
       m->name->len,
       m->name->content.as_string
     );
@@ -233,8 +231,7 @@ eval_scope(SrcContext *cnt,
         eval_call(cnt, child, pad);
         break;
       default:
-        // TODO: handle error
-        abort();
+        bl_parse_error("unknown node");
     }
   }
 }
@@ -260,8 +257,7 @@ eval_gscope(SrcContext *cnt,
         eval_attribute(cnt, child);
         break;
       default:
-        // TODO: handle error
-        abort();
+        bl_parse_error("unknown node");
     }
   }
 }
@@ -274,7 +270,7 @@ bl_evaluator_evaluate(Pnode *node)
   SrcContext *cnt = bl_src_context_new();
 
   if (node->type != BL_PT_GSCOPE)
-    error("invalid node, expected global scope");
+    bl_parse_error("invalid node, expected global scope");
 
   eval_gscope(cnt, node);
 

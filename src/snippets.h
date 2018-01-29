@@ -45,7 +45,7 @@ static const char *bl_snipp_method_impl =
 
 // [spaces][name] ([param]); 
 static const char *bl_snipp_method_call =
-  "%*s%s%.*s(\"%.*s\\n\");\n";
+  "%*s%s%.*s(\"%.*s\");\n";
 
 // c main method 
 static const char *bl_snipp_main =

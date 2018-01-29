@@ -30,12 +30,8 @@
 #include <assert.h>
 #include "parser.h"
 #include "token.h"
+#include "bldebug.h"
 
-#define error(msg) \
-  { \
-    fprintf(stderr, "%s\n", (msg)); \
-    abort(); \
-  }
 
 static Pnode *
 parse_method(BArray *tokens,
@@ -80,7 +76,7 @@ parse_decl(BArray *tokens,
 
   tok = &bo_array_at(tokens, (*i)+2, bl_token_t);
   if (tok->sym != BL_SYM_SEMICOLON)
-    error("missing semicolon");
+    bl_parse_error("missing semicolon\n");
 
   (*i) += 3;
 
@@ -117,7 +113,7 @@ parse_scope(BArray *tokens,
       continue;
     }
 
-    error("expected call, method or declaration");
+    bl_parse_error("expected call, method or declaration\n");
   }
 
   (*i) = ++_i;
@@ -188,7 +184,7 @@ parse_method(BArray *tokens,
     return pnode;
   }
 
-  error("expected scope");
+  bl_parse_error("expected scope\n");
 }
 
 Pnode *
@@ -225,7 +221,7 @@ parse_call(BArray *tokens,
 
   tok = &bo_array_at(tokens, _i++, bl_token_t);
   if (tok->sym != BL_SYM_SEMICOLON)
-    error("missing semicolon");
+    bl_parse_error("missing semicolon\n");
 
   (*i) = _i;
 
@@ -279,7 +275,7 @@ parse_attribute(BArray *tokens,
     return pnode;
   }
 
-  error("expected scope");
+  bl_parse_error("expected scope\n");
 }
 
 Pnode *
@@ -301,7 +297,7 @@ parse_gscope(BArray *tokens)
     }
 
     bo_unref(pnode);
-    error("expected method");
+    bl_parse_error("expected attribute, method or declaration\n");
   }
   return pnode;
 }
