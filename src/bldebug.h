@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer.h
+// File:   bldebug.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,14 +26,34 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include "tokens.h"
+#ifndef BLDEBUG_H_VYI9AXGT
+#define BLDEBUG_H_VYI9AXGT
 
-#ifndef LEXER_H_2F7YITOG
-#define LEXER_H_2F7YITOG
+#include <stdlib.h>
+#include <stdio.h>
 
-Tokens *
-bl_lexer_scan(BString *in);
+#define bl_assert(expr, format, ...) \
+    if ((expr) == 0) { \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        abort(); \
+    }
 
+#define bl_abort(format, ...) \
+    { \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        abort(); \
+    }
 
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+#define bl_parse_error(format, ...) \
+    { \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        abort(); \
+    }
+
+#define bl_parse_warning(format, ...) \
+    { \
+        fprintf(stdout, format, ##__VA_ARGS__); \
+    }
+
+#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
+

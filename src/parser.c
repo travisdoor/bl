@@ -33,94 +33,79 @@
 #include "bldebug.h"
 
 static Pnode *
-parse_gscope(BArray *tokens);
+parse_gscope(Tokens *tokens);
 
 static Pnode *
-parse_exp(BArray *tokens,
-          size_t *i);
+parse_decl(Tokens *tokens);
 
 static Pnode *
-parse_decl(BArray *tokens,
-           size_t *i);
+parse_exp(Tokens *tokens);
+
+static Pnode *
+parse_type(Tokens *tokens);
+
+static Pnode *
+parse_id(Tokens *tokens);
+
 
 Pnode *
-parse_decl(BArray *tokens,
-           size_t *i)
+parse_exp(Tokens *tokens)
 {
-  bl_token_t *tok = NULL;
-  size_t _i = *i;
 
-  Pnode *exp = parse_exp(tokens, &_i);
-  if (!exp)
-    return NULL;
+}
 
-  tok = &bo_array_at(tokens, _i++, bl_token_t);
-  if (tok->sym != BL_SYM_SEMICOLON) {
-    bl_parse_error("missing semicolon\n");
+Pnode *
+parse_type(Tokens *tokens)
+{
+  Pnode *type = bl_pnode_new(BL_PT_TYPE);
+  type->tok = bl_tokens_consume(tokens);
+  return type;
+}
+
+Pnode *
+parse_id(Tokens *tokens)
+{
+  Pnode *id = bl_pnode_new(BL_PT_ID);
+  id->tok = bl_tokens_consume(tokens);
+  return id;
+}
+
+Pnode *
+parse_decl(Tokens *tokens)
+{
+  Pnode *decl = NULL;
+  // type
+  if (bl_tokens_peek(tokens)->sym == BL_SYM_IDENT) {
+    // identifier
+    if (bl_tokens_peek_2nd(tokens)->sym == BL_SYM_IDENT) {
+      switch (bl_tokens_peek_nth(tokens, 3)->sym) {
+      case BL_SYM_SEMICOLON:
+        puts("declaration");
+
+        decl = bl_pnode_new(BL_PT_DECL);
+        Pnode *type = parse_type(tokens);
+        Pnode *id = parse_id(tokens);
+        bo_array_push_back(decl->nodes, type);
+        bo_array_push_back(decl->nodes, id);
+        return decl;
+      case BL_SYM_ASIGN:
+        puts("declaration with assignment");
+        break;
+      default:
+        bl_parse_error("unexpected token\n");
+      }
+    }
   }
-
-  (*i) = _i;
-
-  Pnode *decl = bl_pnode_new(BL_PT_DECL);
-  Pnode *sm = bl_pnode_new(BL_PT_SEMICLON);
-
-  bo_array_push_back(decl->nodes, exp);
-  bo_array_push_back(decl->nodes, sm);
   return decl;
 }
 
 Pnode *
-parse_exp(BArray *tokens,
-          size_t *i)
-{
-  bl_token_t *tok = NULL;
-  bl_token_t *ttype = NULL;
-  bl_token_t *tname = NULL;
-  size_t _i = *i;
-
-  tok = &bo_array_at(tokens, _i++, bl_token_t);
-  if (tok->sym != BL_SYM_IDENT)
-    return NULL;
-  ttype = tok;
-
-  tok = &bo_array_at(tokens, _i++, bl_token_t);
-  if (tok->sym != BL_SYM_IDENT)
-    return NULL;
-  tname = tok;
-
-  Pnode *exp = bl_pnode_new(BL_PT_EXP);
-  Pnode *type = bl_pnode_new(BL_PT_TYPE);
-  Pnode *name = bl_pnode_new(BL_PT_NAME);
-
-  type->tok = ttype;
-  name->tok = tname;
-
-  bo_array_push_back(exp->nodes, type);
-  bo_array_push_back(exp->nodes, name);
-
-  (*i) = _i;
-
-  return exp;
-}
-
-Pnode *
-parse_gscope(BArray *tokens)
+parse_gscope(Tokens *tokens)
 {
   Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);
-  Pnode *child = NULL;
-
-  size_t c = bo_array_size(tokens);
-  size_t i = 0;
-  while (i < c) {
-    child = parse_decl(tokens, &i);
-
-    if (child) {
-      bo_array_push_back(pnode->nodes, child);
-      continue;
-    }
-
-    bo_unref(pnode);
-    bl_parse_error("expected attribute, method or declaration\n");
+  Pnode *decl = parse_decl(tokens);
+  if (decl) {
+    bo_array_push_back(pnode->nodes, decl);
   }
   return pnode;
 }
@@ -128,11 +113,8 @@ parse_gscope(BArray *tokens)
 /* public */
 
 Pnode *
-bl_parser_parse(BArray *tokens)
+bl_parser_parse(Tokens *tokens)
 {
-  if (bo_array_size(tokens) == 0)
-    return 0;
-
   /* parse global scope of the source */
   return parse_gscope(tokens);
 }

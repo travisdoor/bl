@@ -31,8 +31,9 @@
 
 #include <bobject/containers/array.h>
 #include "pnode.h"
+#include "tokens.h"
 
 Pnode *
-bl_parser_parse(BArray *tokens);
+bl_parser_parse(Tokens *tokens);
 
 #endif //BL_PARSER_H

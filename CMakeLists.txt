@@ -17,7 +17,7 @@ set(SOURCE_FILES
   src/src_context.h 
   src/src_context.c 
   src/pnode.h 
-  src/pnode.c)
+  src/pnode.c src/tokens.h src/tokens.c)
 
 add_executable(bl ${SOURCE_FILES})
 

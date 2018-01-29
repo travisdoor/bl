@@ -36,18 +36,13 @@
 
 #define ENABLE_LOG 1
 
-#define error(m, ...) \
-  { fprintf(stderr, m, ##__VA_ARGS__); abort(); }
-
 #if ENABLE_LOG
-void log_tokens(BArray *tokens)
+void log_tokens(Tokens *tokens)
 {
   // log lexer output
-  size_t c = bo_array_size(tokens);
   bl_token_t *tok;
-  for (size_t i = 0; i < c; i++) {
-     tok = &bo_array_at(tokens, i, bl_token_t);
-
+  size_t i = 0;
+  while ((tok = bl_tokens_consume(tokens))) {
     switch (tok->sym) {
     case BL_SYM_STRING:
     case BL_SYM_IDENT:
@@ -59,7 +54,9 @@ void log_tokens(BArray *tokens)
     default:
       printf("T[%zu]: %s\n", i, bl_sym_strings[tok->sym]);
     }
+    i++;
   }
+  bl_tokens_resert_iter(tokens);
 }
 
 void log_parsed(Pnode *node, int lpad)
@@ -80,8 +77,8 @@ void log_parsed(Pnode *node, int lpad)
     case BL_PT_TYPE:
       printf("%*s[type]\n", lpad, "");
       break;
-    case BL_PT_NAME:
-      printf("%*s[name]\n", lpad, "");
+    case BL_PT_ID:
+      printf("%*s[ident]\n", lpad, "");
       break;
     default:
       abort();
@@ -125,21 +122,21 @@ int main(int argc, char *argv[])
 #endif
 
   puts("parsing...");
-  BArray *tokens = bo_array_new(sizeof(bl_token_t));
-  if (bl_lexer_scan(in_src, tokens)) {
+  Tokens *tokens = NULL;
+  if ((tokens = bl_lexer_scan(in_src))) {
 #if ENABLE_LOG
     puts("lexer output:");
     log_tokens(tokens);
 #endif
 
     Pnode *program = bl_parser_parse(tokens);
-#if ENABLE_LOG
-    // log parser output
-    puts("parser output:");
-    log_parsed(program, 0);
-#endif
 
-    if (!program) {
+    if (program) {
+#if ENABLE_LOG
+      // log parser output
+      puts("parser output:");
+      log_parsed(program, 0);
+#endif
       BString *out_src = bl_evaluator_evaluate(program);
 
 #if ENABLE_LOG
@@ -158,6 +155,7 @@ int main(int argc, char *argv[])
     bo_unref(program);
   }
 
+  bo_unref(tokens);
   bo_unref(in_src);
   return 0;
 }

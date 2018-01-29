@@ -38,7 +38,7 @@ typedef enum _bl_ptype {
   BL_PT_DECL,
   BL_PT_EXP,
   BL_PT_TYPE,
-  BL_PT_NAME,
+  BL_PT_ID,
   BL_PT_SEMICLON
 } bl_ptype_e;
 

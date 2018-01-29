@@ -44,7 +44,7 @@
 static int
 scan_string(char  **iter,
             char    term,
-            BArray *out)
+            Tokens *out)
 {
   bl_token_t tok;
   (*iter)++;
@@ -61,7 +61,7 @@ scan_string(char  **iter,
   tok.len = len;
   tok.sym = BL_SYM_STRING;
 
-  bo_array_push_back(out, tok);
+  bl_tokens_push(out, &tok);
   return 1;
 }
 
@@ -79,7 +79,7 @@ ignore_till(char **iter,
 
 static int
 scan_ident(char  **iter,
-           BArray *out)
+           Tokens *out)
 {
   bl_token_t tok;
   size_t len = 2;
@@ -88,7 +88,7 @@ scan_ident(char  **iter,
   if (strncmp(*iter, "if", len) == 0) {
     *iter += len;
     tok.sym = BL_SYM_IF;
-    bo_array_push_back(out, tok);
+    bl_tokens_push(out, &tok);
     return 1;
   }
 
@@ -96,7 +96,7 @@ scan_ident(char  **iter,
   if (strncmp(*iter, "else", len) == 0) {
     *iter += len;
     tok.sym = BL_SYM_IF;
-    bo_array_push_back(out, tok);
+    bl_tokens_push(out, &tok);
     return 1;
   }
 
@@ -104,7 +104,7 @@ scan_ident(char  **iter,
   if (strncmp(*iter, "return", len) == 0) {
     *iter += len;
     tok.sym = BL_SYM_RET;
-    bo_array_push_back(out, tok);
+    bl_tokens_push(out, &tok);
     return 1;
   }
 
@@ -112,7 +112,7 @@ scan_ident(char  **iter,
   if (strncmp(*iter, "extern", len) == 0) {
     *iter += len;
     tok.sym = BL_SYM_EXTERN;
-    bo_array_push_back(out, tok);
+    bl_tokens_push(out, &tok);
     return 1;
   }
 
@@ -126,13 +126,13 @@ scan_ident(char  **iter,
   tok.len = len;
   tok.sym = BL_SYM_IDENT;
 
-  bo_array_push_back(out, tok);
+  bl_tokens_push(out, &tok);
   return 1;
 }
 
 static int
 scan_number(char  **iter,
-            BArray *out)
+            Tokens *out)
 {
   if (!is_number_c(**iter))
     return 0;
@@ -151,15 +151,16 @@ scan_number(char  **iter,
   tok.sym = BL_SYM_NUM;
   tok.content.as_int = n;
   
-  bo_array_push_back(out, tok);
+  bl_tokens_push(out, &tok);
   return 1;
 }
 
 /* public */
-int
-bl_lexer_scan(BString *in,
-              BArray  *out)
+Tokens *
+bl_lexer_scan(BString *in)
 {
+  Tokens *ret = bl_tokens_new(in);
+
   bl_token_t tok = {
     .sym = BL_SYM_EOF,
     .len = 0
@@ -173,42 +174,42 @@ bl_lexer_scan(BString *in,
         continue;
       case '{':
         tok.sym = BL_SYM_LBLOCK;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case '}':
         tok.sym = BL_SYM_RBLOCK;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case '[':
         tok.sym = BL_SYM_LBRACKET;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case ']':
         tok.sym = BL_SYM_RBRACKET;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case '(':
         tok.sym = BL_SYM_LPAREN;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case ')':
         tok.sym = BL_SYM_RPAREN;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case ',':
         tok.sym = BL_SYM_COMMA;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case '=':
         tok.sym = BL_SYM_ASIGN;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case ';':
         tok.sym = BL_SYM_SEMICOLON;
-        bo_array_push_back(out, tok);
+        bl_tokens_push(ret, &tok);
         continue;
       case '"':
-        scan_string(&iter, '"', out);
+        scan_string(&iter, '"', ret);
         continue;
       case '/':
         switch (*(iter + 1)) {
@@ -217,19 +218,19 @@ bl_lexer_scan(BString *in,
           continue;
         default:
           tok.sym = BL_SYM_SLASH;
-          bo_array_push_back(out, tok);
+          bl_tokens_push(ret, &tok);
           continue;
         }
       default:
-        if (scan_number(&iter, out))
+        if (scan_number(&iter, ret))
           continue;
 
-        if (scan_ident(&iter, out))
+        if (scan_ident(&iter, ret))
           continue;
 
         bl_parse_error("unknown character\n");
     }
   }
-  return 1;
+  return ret;
 }
 
