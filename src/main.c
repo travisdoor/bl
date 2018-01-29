@@ -34,7 +34,7 @@
 #include "parser.h"
 #include "evaluator.h"
 
-#define ENABLE_LOG 0
+#define ENABLE_LOG 1
 
 #define error(m, ...) \
   { fprintf(stderr, m, ##__VA_ARGS__); abort(); }
@@ -66,42 +66,22 @@ void log_parsed(Pnode *node, int lpad)
 {
   switch (node->type) {
     case BL_PT_GSCOPE:
-      printf("%.*s[gscope]\n", lpad, "  ");
+      printf("%*s[gscope]\n", lpad, "");
       break;
-    case BL_PT_SCOPE:
-      printf("%*s[scope]\n", lpad, "  ");
-      break;
-    case BL_PT_METHOD:
-      printf("%*s[method] %.*s %.*s\n", lpad, "  ",
-             (int) node->content.as_method.ret->len,
-             node->content.as_method.ret->content.as_string,
-             (int) node->content.as_method.name->len,
-             node->content.as_method.name->content.as_string
-      );
+    case BL_PT_EXP:
+      printf("%*s[exp]\n", lpad, "");
       break;
     case BL_PT_DECL:
-      printf("%*s[decl] %.*s %.*s\n", lpad, "  ",
-             (int) node->content.as_decl.type->len,
-             node->content.as_decl.type->content.as_string,
-             (int) node->content.as_decl.name->len,
-             node->content.as_decl.name->content.as_string
-      );
+      printf("%*s[decl]\n", lpad, "");
       break;
-    case BL_PT_ATTRIBUTE:
-      printf("%*s[attribute] %.*s %.*s\n", lpad, "  ",
-             (int) node->content.as_attribute.header->len,
-             node->content.as_attribute.header->content.as_string,
-             (int) node->content.as_attribute.entry_point->len,
-             node->content.as_attribute.entry_point->content.as_string
-      );
+    case BL_PT_SEMICLON:
+      printf("%*s[sm]\n", lpad, "");
       break;
-    case BL_PT_CALL:
-      printf("%*s[call] %.*s %.*s\n", lpad, "  ",
-             (int) node->content.as_call.name->len,
-             node->content.as_call.name->content.as_string,
-             (int) node->content.as_call.param1->len,
-             node->content.as_call.param1->content.as_string
-      );
+    case BL_PT_TYPE:
+      printf("%*s[type]\n", lpad, "");
+      break;
+    case BL_PT_NAME:
+      printf("%*s[name]\n", lpad, "");
       break;
     default:
       abort();
@@ -159,7 +139,7 @@ int main(int argc, char *argv[])
     log_parsed(program, 0);
 #endif
 
-    if (program) {
+    if (!program) {
       BString *out_src = bl_evaluator_evaluate(program);
 
 #if ENABLE_LOG

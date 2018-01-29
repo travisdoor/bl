@@ -1,21 +1,3 @@
 // this is testing script
 
-["stdio.h", "printf"]
-extern void print();
-
-["stdio.h", "puts"]
-extern void print2();
-
-void method() {
-  int i;
-}
-
-void test_method_next() {
-  char c;
-}
-
-// main function
-void main() {
-  print("hello world\n");
-  print2("hello world\n");
-}
+int i;
