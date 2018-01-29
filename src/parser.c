@@ -87,6 +87,11 @@ parse_decl(Tokens *tokens)
 Pnode *
 maybe_decl(Tokens *tokens)
 {
+  if (bl_tokens_peek(tokens)->sym == BL_SYM_IDENT &&
+      bl_tokens_peek_2nd(tokens)->sym == BL_SYM_IDENT) {
+
+  }
+
   // type
   if (bl_tokens_peek(tokens)->sym == BL_SYM_IDENT) {
     // identifier
