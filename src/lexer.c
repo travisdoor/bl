@@ -231,6 +231,8 @@ bl_lexer_scan(BString *in)
         bl_parse_error("unknown character\n");
     }
   }
+  tok.sym = BL_SYM_EOF;
+  bl_tokens_push(ret, &tok);
   return ret;
 }
 

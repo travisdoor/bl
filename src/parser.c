@@ -54,7 +54,7 @@ parse_decl(Tokens *tokens);
 Pnode *
 parse_exp(Tokens *tokens)
 {
-
+  return NULL;
 }
 
 Pnode *
@@ -91,8 +91,12 @@ maybe_decl(Tokens *tokens)
   if (bl_tokens_peek(tokens)->sym == BL_SYM_IDENT) {
     // identifier
     if (bl_tokens_peek_2nd(tokens)->sym == BL_SYM_IDENT) {
-      if (bl_tokens_peek_nth(tokens, 3)->sym) {
-        return parse_decl(tokens);
+      if (bl_tokens_peek_nth(tokens, 3)->sym == BL_SYM_SEMICOLON ||
+        bl_tokens_peek_nth(tokens, 3)->sym == BL_SYM_ASIGN) {
+        Pnode *decl = parse_decl(tokens);
+        if (bl_tokens_consume(tokens)->sym != BL_SYM_SEMICOLON)
+          bl_parse_error("missing semicolon\n");
+        return decl;
       }
     }
   }
