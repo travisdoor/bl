@@ -36,7 +36,7 @@ static Pnode *
 parse_gscope(Tokens *tokens);
 
 static Pnode *
-parse_decl(Tokens *tokens);
+maybe_decl(Tokens *tokens);
 
 static Pnode *
 parse_exp(Tokens *tokens);
@@ -46,6 +46,9 @@ parse_type(Tokens *tokens);
 
 static Pnode *
 parse_id(Tokens *tokens);
+
+static Pnode *
+parse_decl(Tokens *tokens);
 
 
 Pnode *
@@ -73,37 +76,34 @@ parse_id(Tokens *tokens)
 Pnode *
 parse_decl(Tokens *tokens)
 {
-  Pnode *decl = NULL;
+  Pnode *decl = bl_pnode_new(BL_PT_DECL);
+  Pnode *type = parse_type(tokens);
+  Pnode *id = parse_id(tokens);
+  bo_array_push_back(decl->nodes, type);
+  bo_array_push_back(decl->nodes, id);
+  return decl;
+}
+
+Pnode *
+maybe_decl(Tokens *tokens)
+{
   // type
   if (bl_tokens_peek(tokens)->sym == BL_SYM_IDENT) {
     // identifier
     if (bl_tokens_peek_2nd(tokens)->sym == BL_SYM_IDENT) {
-      switch (bl_tokens_peek_nth(tokens, 3)->sym) {
-      case BL_SYM_SEMICOLON:
-        puts("declaration");
-
-        decl = bl_pnode_new(BL_PT_DECL);
-        Pnode *type = parse_type(tokens);
-        Pnode *id = parse_id(tokens);
-        bo_array_push_back(decl->nodes, type);
-        bo_array_push_back(decl->nodes, id);
-        return decl;
-      case BL_SYM_ASIGN:
-        puts("declaration with assignment");
-        break;
-      default:
-        bl_parse_error("unexpected token\n");
+      if (bl_tokens_peek_nth(tokens, 3)->sym) {
+        return parse_decl(tokens);
       }
     }
   }
-  return decl;
+  return NULL;
 }
 
 Pnode *
 parse_gscope(Tokens *tokens)
 {
   Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);
-  Pnode *decl = parse_decl(tokens);
+  Pnode *decl = maybe_decl(tokens);
   if (decl) {
     bo_array_push_back(pnode->nodes, decl);
   }

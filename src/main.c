@@ -89,7 +89,7 @@ void log_parsed(Pnode *node, int lpad)
 
   size_t c = bo_array_size(node->nodes);
   Pnode *child;
-  lpad++;
+  lpad+=2;
   for (size_t i = 0; i < c; i++) {
     child = bo_array_at(node->nodes, i, Pnode *);
     log_parsed(child, lpad);
