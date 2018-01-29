@@ -123,6 +123,35 @@ bl_tokens_consume(Tokens *self)
   return NULL;
 }
 
+bool
+bl_tokens_current_is(Tokens  *self,
+                     bl_sym_e sym)
+{
+  return (&bo_array_at(self->buf, self->iter, bl_token_t))->sym == sym;
+}
+
+bool
+bl_tokens_next_is(Tokens  *self,
+                  bl_sym_e sym)
+{
+  return (&bo_array_at(self->buf, self->iter+1, bl_token_t))->sym == sym;
+}
+
+bool
+bl_tokens_current_is_not(Tokens  *self,
+                         bl_sym_e sym)
+{
+  return (&bo_array_at(self->buf, self->iter, bl_token_t))->sym != sym;
+}
+
+bool
+bl_tokens_next_is_not(Tokens  *self,
+                      bl_sym_e sym)
+{
+  return (&bo_array_at(self->buf, self->iter+1, bl_token_t))->sym != sym;
+}
+
+
 void
 bl_tokens_resert_iter(Tokens *self)
 {

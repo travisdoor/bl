@@ -57,6 +57,22 @@ bl_tokens_peek_nth(Tokens *self,
 bl_token_t *
 bl_tokens_consume(Tokens *self);
 
+bool
+bl_tokens_current_is(Tokens  *self,
+                     bl_sym_e sym);
+
+bool
+bl_tokens_next_is(Tokens  *self,
+                  bl_sym_e sym);
+
+bool
+bl_tokens_current_is_not(Tokens  *self,
+                         bl_sym_e sym);
+
+bool
+bl_tokens_next_is_not(Tokens  *self,
+                      bl_sym_e sym);
+
 void
 bl_tokens_resert_iter(Tokens *self);
 
