@@ -32,11 +32,13 @@
 typedef enum _bl_err_msg
 {
   BL_ERR_UNEXPECTED_SYMBOL,
+  BL_ERR_MISSING_SEMICOLON,
   BL_ERR_COUNT
 } bl_err_msg;
 
 static const char *bl_err_strings[BL_ERR_COUNT] = {
-  "unexpected symbol"
+  "unexpected symbol",
+  "missing semicolon"
 };
 
 #endif /* end of include guard: ERRORS_H_IEWPB1RX */

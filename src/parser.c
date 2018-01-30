@@ -181,7 +181,7 @@ parse_decl(Tokens *tokens)
   }
 
   if (decl && bl_tokens_consume(tokens)->sym != BL_SYM_SEMICOLON)
-    bl_parse_error("missing semicolon\n");
+    parse_error(tokens, BL_ERR_MISSING_SEMICOLON);
 
   return decl;
 }

@@ -1,7 +1,7 @@
 // this is testing script
 
 int my_int2 = 10;
-float my_float;
+float my_float
 
 void main() {
 }
@@ -15,5 +15,4 @@ int method(char c,
 {
   int local_int;
   int local_int = 666;
-;
 }
