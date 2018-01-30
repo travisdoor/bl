@@ -41,20 +41,48 @@
 #define is_number_c(c) \
   ((c) >= '0' && (c) <= '9')
 
+#define token(s, c) \
+  { \
+    tok.sym  = (s); \
+    tok.line = ((c).line); \
+    tok.col  = ((c).col); \
+    bl_tokens_push(out, &tok); \
+  }
+
+typedef struct _context {
+  char *iter;
+  int line;
+  int col;
+} context;
+
+static void
+init_context(context *cnt,
+             char    *begin)
+{
+  cnt->col  = 1;
+  cnt->line = 1;
+  cnt->iter = begin; 
+}
+
 static int
-scan_string(char  **iter,
-            char    term,
-            Tokens *out)
+scan_string(context *cnt,
+            char     term,
+            Tokens  *out)
 {
   bl_token_t tok;
-  (*iter)++;
-  tok.content.as_string = *iter;
+  cnt->iter++;
+  cnt->col++;
+
+  tok.line = cnt->line;
+  tok.col = cnt->col;
+  tok.content.as_string = cnt->iter;
 
   size_t len = 0;
-  while (**iter != term) {
-    if (**iter == '\0')
+  while (*cnt->iter != term) {
+    if (*cnt->iter == '\0')
       return 0;
-    (*iter)++;
+    cnt->iter++;
+    cnt->col++;
     len++;
   }
 
@@ -66,85 +94,98 @@ scan_string(char  **iter,
 }
 
 static int
-ignore_till(char **iter,
-            char   term)
+ignore_till(context *cnt,
+            char     term)
 {
-  while (**iter != term) {
-    if (**iter == '\0')
+  while (*cnt->iter != term) {
+    if (*cnt->iter == '\n') {
+      cnt->col = 1;
+      cnt->line++;
+    }
+    if (*cnt->iter == '\0')
       return 0;
-    (*iter)++;
+    cnt->iter++;
+    cnt->col++;
+  }
+
+  if (term == '\n') {
+    cnt->col = 1;
+    cnt->line++;
   }
   return 1;
 }
 
 static int
-scan_ident(char  **iter,
-           Tokens *out)
+scan_ident(context *cnt,
+           Tokens  *out)
 {
   bl_token_t tok;
   size_t len = 2;
-  tok.content.as_string = *iter;
+  tok.content.as_string = cnt->iter;
 
-  if (strncmp(*iter, "if", len) == 0) {
-    *iter += len;
-    tok.sym = BL_SYM_IF;
-    bl_tokens_push(out, &tok);
+  if (strncmp(cnt->iter, "if", len) == 0) {
+    token(BL_SYM_IF, *cnt);
+    cnt->iter += len;
+    cnt->col += len;
     return 1;
   }
 
   len = 4;
-  if (strncmp(*iter, "else", len) == 0) {
-    *iter += len;
-    tok.sym = BL_SYM_IF;
-    bl_tokens_push(out, &tok);
+  if (strncmp(cnt->iter, "else", len) == 0) {
+    token(BL_SYM_ELSE, *cnt);
+    cnt->iter += len;
+    cnt->col += len;
     return 1;
   }
 
   len = 5;
-  if (strncmp(*iter, "return", len) == 0) {
-    *iter += len;
-    tok.sym = BL_SYM_RET;
-    bl_tokens_push(out, &tok);
+  if (strncmp(cnt->iter, "return", len) == 0) {
+    token(BL_SYM_RET, *cnt);
+    cnt->iter += len;
+    cnt->col += len;
     return 1;
   }
 
   len = 6;
-  if (strncmp(*iter, "extern", len) == 0) {
-    *iter += len;
-    tok.sym = BL_SYM_EXTERN;
-    bl_tokens_push(out, &tok);
+  if (strncmp(cnt->iter, "extern", len) == 0) {
+    token(BL_SYM_EXTERN, *cnt);
+    cnt->iter += len;
+    cnt->col += len;
     return 1;
   }
 
   len = 0;
-  while (is_intend_c(**iter)) {
-    (*iter)++;
+  while (is_intend_c(*cnt->iter)) {
+    (cnt->iter)++;
     len++;
   }
 
-  (*iter)--;
   tok.len = len;
-  tok.sym = BL_SYM_IDENT;
+  token(BL_SYM_IDENT, *cnt);
 
-  bl_tokens_push(out, &tok);
+  cnt->iter--;
+  cnt->col += len;
   return 1;
 }
 
 static int
-scan_number(char  **iter,
-            Tokens *out)
+scan_number(context *cnt,
+            Tokens  *out)
 {
-  if (!is_number_c(**iter))
+  if (!is_number_c(*cnt->iter))
     return 0;
 
   int n = 0;
   bl_token_t tok;
+  tok.col  = cnt->col;
+  tok.line = cnt->line;
 
   while (true) {
-    n = n * 10 + (**iter) - '0';
-    if (is_number_c(*(*iter+1)))
-      (*iter)++;
-    else
+    n = n * 10 + (*cnt->iter) - '0';
+    cnt->col++;
+    if (is_number_c(*(cnt->iter+1))) {
+      cnt->iter++;
+    } else
       break;
   }
 
@@ -159,80 +200,89 @@ scan_number(char  **iter,
 Tokens *
 bl_lexer_scan(BString *in)
 {
-  Tokens *ret = bl_tokens_new(in);
+  Tokens *out = bl_tokens_new(in);
 
   bl_token_t tok = {
-    .sym = BL_SYM_EOF,
-    .len = 0
+    .sym  = BL_SYM_EOF,
+    .len  = 0,
+    .line = 0,
+    .col  = 0
   };
 
-  for (char *iter = (char *)bo_string_get(in); *iter != '\0'; iter++) {
-    switch (*iter) {
-      case ' ':
+  context cnt;
+
+  for (init_context(&cnt, (char *)bo_string_get(in));
+       *cnt.iter != '\0'; cnt.iter++) {
+    switch (*cnt.iter) {
       case '\n':
+        cnt.line++;
+        cnt.col = 1;
+        continue;
+      case ' ':
       case '\t':
+        cnt.col++;
         continue;
       case '{':
-        tok.sym = BL_SYM_LBLOCK;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_LBLOCK, cnt);
+        cnt.col++;
         continue;
       case '}':
-        tok.sym = BL_SYM_RBLOCK;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_RBLOCK, cnt);
+        cnt.col++;
         continue;
       case '[':
-        tok.sym = BL_SYM_LBRACKET;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_LBRACKET, cnt);
+        cnt.col++;
         continue;
       case ']':
-        tok.sym = BL_SYM_RBRACKET;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_RBRACKET, cnt);
+        cnt.col++;
         continue;
       case '(':
-        tok.sym = BL_SYM_LPAREN;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_LPAREN, cnt);
+        cnt.col++;
         continue;
       case ')':
-        tok.sym = BL_SYM_RPAREN;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_RPAREN, cnt);
+        cnt.col++;
         continue;
       case ',':
-        tok.sym = BL_SYM_COMMA;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_COMMA, cnt);
+        cnt.col++;
         continue;
       case '=':
-        tok.sym = BL_SYM_ASIGN;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_ASIGN, cnt);
+        cnt.col++;
         continue;
       case ';':
-        tok.sym = BL_SYM_SEMICOLON;
-        bl_tokens_push(ret, &tok);
+        token(BL_SYM_SEMICOLON, cnt);
+        cnt.col++;
         continue;
       case '"':
-        scan_string(&iter, '"', ret);
+        scan_string(&cnt, '"', out);
         continue;
       case '/':
-        switch (*(iter + 1)) {
+        switch (*(cnt.iter + 1)) {
         case '/':
-          ignore_till(&iter, '\n');
+          ignore_till(&cnt, '\n');
           continue;
         default:
-          tok.sym = BL_SYM_SLASH;
-          bl_tokens_push(ret, &tok);
+          token(BL_SYM_SLASH, cnt);
+          cnt.col++;
           continue;
         }
       default:
-        if (scan_number(&iter, ret))
+        if (scan_number(&cnt, out))
           continue;
 
-        if (scan_ident(&iter, ret))
+        if (scan_ident(&cnt, out))
           continue;
 
         bl_parse_error("unknown character\n");
     }
   }
   tok.sym = BL_SYM_EOF;
-  bl_tokens_push(ret, &tok);
-  return ret;
+  bl_tokens_push(out, &tok);
+  return out;
 }
 

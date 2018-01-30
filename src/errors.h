@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   token.h
+// File:   errors.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,60 +26,17 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_H
-#define BL_TOKEN_H
+#ifndef ERRORS_H_IEWPB1RX
+#define ERRORS_H_IEWPB1RX
 
-#include <stdio.h>
+typedef enum _bl_err_msg
+{
+  BL_ERR_UNEXPECTED_SYMBOL,
+  BL_ERR_COUNT
+} bl_err_msg;
 
-#define SYMBOLS \
-  sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(NUM, "number") \
-  sm(RET, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(SLASH, "/") \
-
-typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  SYMBOLS
-#undef sm
-} bl_sym_e;
-
-static char *bl_sym_strings[] = {
-#define sm(tok, str) str,
-  SYMBOLS
-#undef sm
+static const char *bl_err_strings[BL_ERR_COUNT] = {
+  "unexpected symbol"
 };
 
-#undef SYMBOLS
-
-typedef struct
-{
-  bl_sym_e sym;
-  size_t len;
-  int line;
-  int col;
-  union content_u {
-    const char *as_string;
-    double      as_double;
-    int         as_int;
-  } content;
-} bl_token_t;
-
-#endif //BL_TOKEN_H
+#endif /* end of include guard: ERRORS_H_IEWPB1RX */

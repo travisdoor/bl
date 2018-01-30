@@ -35,19 +35,19 @@
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
         fprintf(stderr, format, ##__VA_ARGS__); \
-        abort(); \
+        exit(0); \
     }
 
-#define bl_abort(format, ...) \
+#define bl_exit(format, ...) \
     { \
         fprintf(stderr, format, ##__VA_ARGS__); \
-        abort(); \
+        exit(0); \
     }
 
 #define bl_parse_error(format, ...) \
     { \
         fprintf(stderr, format, ##__VA_ARGS__); \
-        abort(); \
+        exit(0); \
     }
 
 #define bl_parse_warning(format, ...) \

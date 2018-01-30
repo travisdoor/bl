@@ -34,7 +34,7 @@
 #include "parser.h"
 #include "evaluator.h"
 
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 
 #if ENABLE_LOG
 void log_tokens(Tokens *tokens)
@@ -46,13 +46,16 @@ void log_tokens(Tokens *tokens)
     switch (tok->sym) {
     case BL_SYM_STRING:
     case BL_SYM_IDENT:
-      printf("T[%zu]: %s:%.*s\n", i, bl_sym_strings[tok->sym], (int)tok->len, tok->content.as_string);
+      printf("T[%zu %d:%d]: %s:%.*s\n", i, tok->line, tok->col,
+          bl_sym_strings[tok->sym], (int)tok->len, tok->content.as_string);
       break;
     case BL_SYM_NUM:
-      printf("T[%zu]: %s:%d\n", i, bl_sym_strings[tok->sym], tok->content.as_int);
+      printf("T[%zu %d:%d]: %s:%d\n", i, tok->line, tok->col,
+          bl_sym_strings[tok->sym], tok->content.as_int);
       break;
     default:
-      printf("T[%zu]: %s\n", i, bl_sym_strings[tok->sym]);
+      printf("T[%zu %d:%d]: %s\n", i, tok->line, tok->col,
+          bl_sym_strings[tok->sym]);
     }
     i++;
   }
@@ -82,6 +85,15 @@ void log_parsed(Pnode *node, int lpad)
       break;
     case BL_PT_FUNC:
       printf("%*s[func]\n", lpad, "");
+      break;
+    case BL_PT_ARGS:
+      printf("%*s[args]\n", lpad, "");
+      break;
+    case BL_PT_ARG:
+      printf("%*s[arg]\n", lpad, "");
+      break;
+    case BL_PT_SCOPE:
+      printf("%*s[scope]\n", lpad, "");
       break;
     default:
       abort();

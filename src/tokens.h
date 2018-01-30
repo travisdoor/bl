@@ -87,4 +87,7 @@ bl_tokens_set_marker(Tokens *self);
 void
 bl_tokens_back_to_marker(Tokens *self);
 
+const char *
+bl_tokens_get_src(Tokens *self);
+
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

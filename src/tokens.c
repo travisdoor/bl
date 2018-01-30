@@ -159,14 +159,14 @@ bl_tokens_is_seq(Tokens *self,
                  ...)
 {
   bool ret     = true;
-  size_t i     = self->iter;
   size_t c     = bo_array_size(self->buf);
   bl_sym_e sym = BL_SYM_EOF;
+  cnt         += self->iter;
 
   va_list valist;
   va_start(valist, cnt);
 
-  for (i = 0; i < cnt && i < c; i++) {
+  for (size_t i = self->iter; i < cnt && i < c; i++) {
     sym = va_arg(valist, bl_sym_e);
     if ((&bo_array_at(self->buf, i, bl_token_t))->sym != sym) {
       ret = false;
@@ -196,3 +196,8 @@ bl_tokens_resert_iter(Tokens *self)
   self->iter = 0;
 }
 
+const char *
+bl_tokens_get_src(Tokens *self)
+{
+  return bo_string_get(self->src);
+}

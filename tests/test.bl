@@ -3,3 +3,17 @@
 int my_int2 = 10;
 float my_float;
 
+void main() {
+}
+
+void test(int i, int b) {
+}
+
+int method(char c, 
+           string s, 
+           string s2)
+{
+  int local_int;
+  int local_int = 666;
+;
+}

@@ -26,14 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#ifndef LEXER_H_HFL8RYQ5
+#define LEXER_H_HFL8RYQ5
+
 #include <bobject/containers/string.h>
 #include "tokens.h"
-
-#ifndef LEXER_H_2F7YITOG
-#define LEXER_H_2F7YITOG
 
 Tokens *
 bl_lexer_scan(BString *in);
 
-
 #endif /* end of include guard: LEXER_H_2F7YITOG */
+
