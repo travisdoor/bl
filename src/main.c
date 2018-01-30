@@ -71,14 +71,17 @@ void log_parsed(Pnode *node, int lpad)
     case BL_PT_DECL:
       printf("%*s[decl]\n", lpad, "");
       break;
-    case BL_PT_SEMICLON:
-      printf("%*s[sm]\n", lpad, "");
+    case BL_PT_END:
+      printf("%*s[end]\n", lpad, "");
       break;
     case BL_PT_TYPE:
       printf("%*s[type]\n", lpad, "");
       break;
     case BL_PT_ID:
       printf("%*s[ident]\n", lpad, "");
+      break;
+    case BL_PT_FUNC:
+      printf("%*s[func]\n", lpad, "");
       break;
     default:
       abort();

@@ -30,7 +30,8 @@
 
 /* class Pnode */
 bo_decl_params_begin(Pnode)
-  bl_ptype_e type;
+  bl_ptype_e  type;
+  bl_token_t *token;
 bo_end();
 
 bo_impl_type(Pnode, BObject);
@@ -46,6 +47,7 @@ Pnode_ctor(Pnode *self, PnodeParams *p)
   /* constructor */
   self->nodes = bo_array_new_bo(bo_typeof(Pnode), true);
   self->type  = p->type;
+  self->tok   = p->token;
 }
 
 void
@@ -62,12 +64,34 @@ Pnode_copy(Pnode *self, Pnode *other)
 /* class Pnode end */
 
 Pnode *
-bl_pnode_new(bl_ptype_e type)
+bl_pnode_new(bl_ptype_e  type,
+             bl_token_t *token)
 {
   PnodeParams params = {
-    .type = type
+    .type  = type,
+    .token = token
   };
 
   return bo_new(Pnode, &params);
+}
+
+Pnode *
+bl_pnode_new_child(Pnode      *self,
+                   bl_ptype_e  type,
+                   bl_token_t *token)
+{
+  Pnode *child = bl_pnode_new(type, token);
+  bo_array_push_back(self->nodes, child);
+  return child;
+}
+
+bool
+bl_pnode_push(Pnode *self,
+              Pnode *child)
+{
+  if (!child)
+    return false;
+  bo_array_push_back(self->nodes, child);
+  return true;
 }
 

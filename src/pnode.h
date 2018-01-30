@@ -36,10 +36,11 @@
 typedef enum _bl_ptype {
   BL_PT_GSCOPE,
   BL_PT_DECL,
+  BL_PT_FUNC,
   BL_PT_EXP,
   BL_PT_TYPE,
   BL_PT_ID,
-  BL_PT_SEMICLON
+  BL_PT_END
 } bl_ptype_e;
 
 /* class Pnode declaration */
@@ -56,6 +57,16 @@ bo_decl_members_begin(Pnode, BObject)
 bo_end();
 
 Pnode *
-bl_pnode_new(bl_ptype_e type);
+bl_pnode_new(bl_ptype_e  type,
+             bl_token_t *token);
+
+Pnode *
+bl_pnode_new_child(Pnode      *self,
+                   bl_ptype_e  type,
+                   bl_token_t *token);
+
+bool
+bl_pnode_push(Pnode *self,
+              Pnode *child);
 
 #endif //BL_PNODE_H

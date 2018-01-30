@@ -27,118 +27,87 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include <assert.h>
 #include "parser.h"
 #include "token.h"
 #include "bldebug.h"
 
-static Pnode *
-parse_gscope(Tokens *tokens);
+// EXP
+// BL_SYM_IDENT, BL_SYM_IDENT
+// EXP, BL_SYM_EQUALS, BL_SYM_NUMBER
 
-static Pnode *
-parse_type(Tokens *tokens);
+// DECL
+// EXP, BL_SYM_SEMICOLON
 
-static Pnode *
-parse_ident(Tokens *tokens);
+
+
+/* forward decl */
 
 static Pnode *
 parse_decl(Tokens *tokens);
 
 static Pnode *
-parse_number(Tokens *tokens);
+parse_exp(Tokens *tokens);
 
 static Pnode *
-maybe_type(Tokens *tokens);
+parse_gscope(Tokens *tokens);
 
 /* impl */
-
 Pnode *
-parse_number(Tokens *tokens)
+parse_exp(Tokens *tokens)
 {
-  Pnode *num = bl_pnode_new(BL_PT_EXP);
-  num->tok = bl_tokens_consume(tokens);
-  return num;
-}
-
-Pnode *
-parse_type(Tokens *tokens)
-{
-  Pnode *type = bl_pnode_new(BL_PT_TYPE);
-  type->tok = bl_tokens_consume(tokens);
-  return type;
-}
-
-Pnode *
-parse_ident(Tokens *tokens)
-{
-  Pnode *ident = bl_pnode_new(BL_PT_ID);
-  ident->tok = bl_tokens_consume(tokens);
-  return ident;
+  Pnode *exp = NULL;
+  if (bl_tokens_peek(tokens)->sym == BL_SYM_NUM) {
+    exp = bl_pnode_new(BL_PT_EXP, bl_tokens_consume(tokens));
+  }
+  return exp;
 }
 
 Pnode *
 parse_decl(Tokens *tokens)
 {
-  Pnode *decl = bl_pnode_new(BL_PT_DECL);
-  Pnode *child = parse_type(tokens);
-  bo_array_push_back(decl->nodes, child);
-  child = parse_ident(tokens);
-  bo_array_push_back(decl->nodes, child);
+  Pnode *decl = NULL;
+  if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
+    switch (bl_tokens_peek_nth(tokens, 3)->sym) {
+      case BL_SYM_ASIGN:
+        decl = bl_pnode_new(BL_PT_DECL, NULL);
+        bl_pnode_new_child(decl, BL_PT_TYPE, bl_tokens_consume(tokens));
+        bl_pnode_new_child(decl, BL_PT_ID, bl_tokens_consume(tokens));
 
-  if (bl_tokens_current_is(tokens, BL_SYM_ASIGN)) {
-    bl_tokens_consume(tokens);
-    child = parse_number(tokens);
-    bo_array_push_back(decl->nodes, child);
+        // eat =
+        bl_tokens_consume(tokens);
+        Pnode *exp = parse_exp(tokens);
+        if (!exp)
+          bl_parse_error("expected expression\n");
+        bl_pnode_push(decl, exp);
+        break;
+      case BL_SYM_LPAREN:
+        // parse function
+        break;
+      default:
+        decl = bl_pnode_new(BL_PT_DECL, NULL);
+        bl_pnode_new_child(decl, BL_PT_TYPE, bl_tokens_consume(tokens));
+        bl_pnode_new_child(decl, BL_PT_ID, bl_tokens_consume(tokens));
+        break;
+    }
   }
+
+  if (bl_tokens_consume(tokens)->sym != BL_SYM_SEMICOLON)
+    bl_parse_error("missing semicolon\n");
 
   return decl;
 }
 
 Pnode *
-maybe_type(Tokens *tokens)
-{
-  Pnode *child = NULL;
-  if (bl_tokens_next_is(tokens, BL_SYM_IDENT)) {
-    switch (bl_tokens_peek_nth(tokens, 3)->sym) {
-      case BL_SYM_LPAREN:
-        break;
-      case BL_SYM_ASIGN:
-      case BL_SYM_SEMICOLON:
-        child = parse_decl(tokens);
-        if (bl_tokens_consume(tokens)->sym != BL_SYM_SEMICOLON)
-          bl_parse_error("missing semicolon\n");
-        break;
-      default:
-        bl_parse_error("missing semicolon\n");
-    }
-  } 
-
-  return child;
-}
-
-Pnode *
 parse_gscope(Tokens *tokens)
 {
-  Pnode *pnode = bl_pnode_new(BL_PT_GSCOPE);
-  Pnode *child = NULL;
+  Pnode *gscope = bl_pnode_new(BL_PT_GSCOPE, NULL);
 
-  while (bl_tokens_next_is_not(tokens, BL_SYM_EOF)) {
-    switch (bl_tokens_peek(tokens)->sym) {
-      case BL_SYM_IDENT:
-        child = maybe_type(tokens);
-        break;
-      default:
-        bl_parse_error("expected type");
-    }
-
-    if (child) {
-      bo_array_push_back(pnode->nodes, child);
-    } else {
-      bl_parse_error("expected typename\n");
+  while (bl_tokens_current_is_not(tokens, BL_SYM_EOF)) {
+    if (!bl_pnode_push(gscope, parse_decl(tokens))) {
+      bl_parse_error("expected declaration\n");
     }
   }
-
-  return pnode;
+  return gscope;
 }
 
 /* public */

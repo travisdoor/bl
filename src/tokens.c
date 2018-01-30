@@ -27,6 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
+#include <stdarg.h>
 #include "tokens.h"
 #include "bldebug.h"
 
@@ -44,6 +45,7 @@ bo_decl_members_begin(Tokens, BObject)
   BString *src;
   BArray  *buf;
   size_t   iter;
+  size_t   marker;
 bo_end();
 
 bo_impl_type(Tokens, BObject);
@@ -151,6 +153,42 @@ bl_tokens_next_is_not(Tokens  *self,
   return (&bo_array_at(self->buf, self->iter+1, bl_token_t))->sym != sym;
 }
 
+bool
+bl_tokens_is_seq(Tokens *self,
+                 int     cnt,
+                 ...)
+{
+  bool ret     = true;
+  size_t i     = self->iter;
+  size_t c     = bo_array_size(self->buf);
+  bl_sym_e sym = BL_SYM_EOF;
+
+  va_list valist;
+  va_start(valist, cnt);
+
+  for (i = 0; i < cnt && i < c; i++) {
+    sym = va_arg(valist, bl_sym_e);
+    if ((&bo_array_at(self->buf, i, bl_token_t))->sym != sym) {
+      ret = false;
+      break;
+    }
+  }
+
+  va_end(valist);
+  return ret;
+}
+
+void
+bl_tokens_set_marker(Tokens *self)
+{
+  self->marker = self->iter;
+}
+
+void
+bl_tokens_back_to_marker(Tokens *self)
+{
+  self->iter = self->marker;
+}
 
 void
 bl_tokens_resert_iter(Tokens *self)

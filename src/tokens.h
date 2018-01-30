@@ -73,7 +73,18 @@ bool
 bl_tokens_next_is_not(Tokens  *self,
                       bl_sym_e sym);
 
+bool
+bl_tokens_is_seq(Tokens *self,
+                 int     cnt,
+                 ...);
+
 void
 bl_tokens_resert_iter(Tokens *self);
+
+void
+bl_tokens_set_marker(Tokens *self);
+
+void
+bl_tokens_back_to_marker(Tokens *self);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

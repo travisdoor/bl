@@ -1,4 +1,5 @@
 // this is testing script
 
-int my_int = 11;
-int my_int2;
+int my_int2 = 10;
+float my_float;
+
