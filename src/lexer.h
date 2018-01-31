@@ -31,9 +31,10 @@
 
 #include <bobject/containers/string.h>
 #include "tokens.h"
+#include "unit.h"
 
-Tokens *
-bl_lexer_scan(BString *in);
+bool
+bl_lexer_scan(Unit *unit);
 
 #endif /* end of include guard: LEXER_H_2F7YITOG */
 

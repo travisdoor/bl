@@ -31,10 +31,24 @@
 
 #include <bobject/bobject.h>
 #include "errors.h"
+#include "tokens.h"
+#include "pnode.h"
 
 /* class Unit declaration */
 bo_decl_type_begin(Unit, BObject)
   /* virtuals */
+bo_end();
+
+/* class Unit object members */
+bo_decl_members_begin(Unit, BObject)
+  /* members */
+  BString *filepath;
+  BString *src;
+  Tokens  *tokens;
+  Pnode   *proot;
+
+  /* error */
+  bl_err   last_err;
 bo_end();
 
 Unit *

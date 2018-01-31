@@ -28,8 +28,6 @@
 
 #include <bobject/containers/string.h>
 #include "unit.h"
-#include "tokens.h"
-#include "pnode.h"
 
 #define return_with_error(e) \
   { \
@@ -40,18 +38,6 @@
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
-bo_end();
-
-/* class Unit object members */
-bo_decl_members_begin(Unit, BObject)
-  /* members */
-  BString *filepath;
-  BString *src;
-  Tokens  *tokens;
-  Pnode   *proot;
-
-  /* error */
-  bl_err   last_err;
 bo_end();
 
 bo_impl_type(Unit, BObject);

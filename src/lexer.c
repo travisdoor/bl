@@ -46,18 +46,18 @@
     tok.sym  = (s); \
     tok.line = ((c).line); \
     tok.col  = ((c).col); \
-    bl_tokens_push(out, &tok); \
+    bl_tokens_push(unit->tokens, &tok); \
   }
 
-typedef struct _context {
+typedef struct _cursor {
   char *iter;
   int line;
   int col;
-} context;
+} cursor;
 
 static void
-init_context(context *cnt,
-             char    *begin)
+init_cursor(cursor *cnt,
+            char *begin)
 {
   cnt->col  = 1;
   cnt->line = 1;
@@ -65,7 +65,7 @@ init_context(context *cnt,
 }
 
 static int
-scan_string(context *cnt,
+scan_string(cursor *cnt,
             char     term,
             Tokens  *out)
 {
@@ -94,7 +94,7 @@ scan_string(context *cnt,
 }
 
 static int
-ignore_till(context *cnt,
+ignore_till(cursor *cnt,
             char     term)
 {
   while (*cnt->iter != term) {
@@ -116,7 +116,7 @@ ignore_till(context *cnt,
 }
 
 static int
-scan_ident(context *cnt,
+scan_ident(cursor *cnt,
            Tokens  *out)
 {
   bl_token_t tok;
@@ -169,7 +169,7 @@ scan_ident(context *cnt,
 }
 
 static int
-scan_number(context *cnt,
+scan_number(cursor *cnt,
             Tokens  *out)
 {
   if (!is_number_c(*cnt->iter))
@@ -197,10 +197,10 @@ scan_number(context *cnt,
 }
 
 /* public */
-Tokens *
-bl_lexer_scan(BString *in)
+bool
+bl_lexer_scan(Unit *unit)
 {
-  Tokens *out = bl_tokens_new(in);
+  unit->tokens = bl_tokens_new(in);
 
   bl_token_t tok = {
     .sym  = BL_SYM_EOF,
@@ -209,9 +209,8 @@ bl_lexer_scan(BString *in)
     .col  = 0
   };
 
-  context cnt;
-
-  for (init_context(&cnt, (char *)bo_string_get(in));
+  cursor cnt;
+  for (init_cursor(&cnt, (char *) bo_string_get(unit->src));
        *cnt.iter != '\0'; cnt.iter++) {
     switch (*cnt.iter) {
       case '\n':
@@ -259,7 +258,7 @@ bl_lexer_scan(BString *in)
         cnt.col++;
         continue;
       case '"':
-        scan_string(&cnt, '"', out);
+        scan_string(&cnt, '"', unit);
         continue;
       case '/':
         switch (*(cnt.iter + 1)) {
@@ -272,17 +271,17 @@ bl_lexer_scan(BString *in)
           continue;
         }
       default:
-        if (scan_number(&cnt, out))
+        if (scan_number(&cnt, unit))
           continue;
 
-        if (scan_ident(&cnt, out))
+        if (scan_ident(&cnt, unit))
           continue;
 
         bl_parse_error("unknown character\n");
     }
   }
   tok.sym = BL_SYM_EOF;
-  bl_tokens_push(out, &tok);
-  return out;
+  bl_tokens_push(unit->tokens, &tok);
+  return true;
 }
 
