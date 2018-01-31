@@ -28,13 +28,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <bobject/containers/string.h>
 #include "lexer.h"
 #include "parser.h"
-#include "evaluator.h"
+#include "unit.h"
 
-#define ENABLE_LOG 0
+#define ENABLE_LOG 1
 
 #if ENABLE_LOG
 void log_tokens(Tokens *tokens)
@@ -121,6 +119,12 @@ int main(int argc, char *argv[])
 
   printf ("Input file: %s\n", argv[1]);
 
+  // TEST: compilation unit
+  Unit *unit = bl_unit_new(argv[1]);
+  bl_unit_compile(unit);
+  bo_unref(unit);
+  // TEST: compilation unit
+
   FILE *f = fopen(argv[1], "r");
   if (f == NULL)
     return 2;
@@ -152,7 +156,7 @@ int main(int argc, char *argv[])
       puts("parser output:");
       log_parsed(program, 0);
 #endif
-      BString *out_src = bl_evaluator_evaluate(program);
+      BString *out_src = NULL;
 
 #if ENABLE_LOG
       printf("\ngenerated source: \n%s", bo_string_get(out_src));

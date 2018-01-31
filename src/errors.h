@@ -29,14 +29,21 @@
 #ifndef ERRORS_H_IEWPB1RX
 #define ERRORS_H_IEWPB1RX
 
-typedef enum _bl_err_msg
+typedef enum _bl_err
 {
+  BL_ERR_NO_ERROR = 0,
+  BL_ERR_FILE_NOT_FOUND,
+  BL_ERR_INVALID_SOURCE,
+
   BL_ERR_UNEXPECTED_SYMBOL,
   BL_ERR_MISSING_SEMICOLON,
   BL_ERR_COUNT
-} bl_err_msg;
+} bl_err;
 
 static const char *bl_err_strings[BL_ERR_COUNT] = {
+  "no error",
+  "file not found",
+  "invalid source file",
   "unexpected symbol",
   "missing semicolon"
 };

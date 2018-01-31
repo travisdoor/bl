@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   evaluator.h
+// File:   unit.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,13 +26,24 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef EVALUATOR_H_ZJOUGYJ5
-#define EVALUATOR_H_ZJOUGYJ5
+#ifndef UNIT_H_FC53HXPA
+#define UNIT_H_FC53HXPA
 
-#include "pnode.h"
-#include <bobject/containers/string.h>
+#include <bobject/bobject.h>
+#include "errors.h"
 
-BString *
-bl_evaluator_evaluate(Pnode *node);
+/* class Unit declaration */
+bo_decl_type_begin(Unit, BObject)
+  /* virtuals */
+bo_end();
 
-#endif /* end of include guard: EVALUATOR_H_ZJOUGYJ5 */
+Unit *
+bl_unit_new(const char *filepath);
+
+bool
+bl_unit_compile(Unit *self);
+
+bl_err
+bl_unit_last_error(Unit *self);
+
+#endif /* end of include guard: UNIT_H_FC53HXPA */

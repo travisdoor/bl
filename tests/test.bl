@@ -9,8 +9,8 @@ void main() {
 void test(int i, int b) {
 }
 
-int method(char c, 
-           string s, 
+int method(char c,
+           string s,
            string s2)
 {
   int local_int;

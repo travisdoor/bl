@@ -6,14 +6,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(SOURCE_FILES 
-  src/main.c 
-  src/lexer.c 
+  src/main.c
+  src/bldebug.h
+  src/errors.h
+  src/lexer.c
   src/lexer.h 
-  src/token.h 
+  src/token.h
+        src/unit.c
+  src/unit.h 
   src/parser.h 
   src/parser.c 
-  src/evaluator.h 
-  src/evaluator.c 
   src/src_context.h 
   src/src_context.c 
   src/pnode.h 

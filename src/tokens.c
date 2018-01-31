@@ -125,6 +125,23 @@ bl_tokens_consume(Tokens *self)
   return NULL;
 }
 
+bl_token_t *
+bl_tokens_consume_if(Tokens  *self,
+                     bl_sym_e sym)
+{
+  bl_token_t *tok;
+  if (self->iter < bo_array_size(self->buf)) {
+    tok = &bo_array_at(self->buf, self->iter, bl_token_t);
+    if (tok->sym == sym) {
+      self->iter++;
+      return tok;
+    }
+  }
+
+  return NULL;
+
+}
+
 bool
 bl_tokens_current_is(Tokens  *self,
                      bl_sym_e sym)

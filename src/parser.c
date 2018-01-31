@@ -58,12 +58,12 @@ parse_scope(Tokens *tokens);
 
 static void
 parse_error(Tokens    *tokens,
-            bl_err_msg e);
+            bl_err e);
 
 /* impl */
 void
 parse_error(Tokens    *tokens,
-            bl_err_msg e)
+            bl_err e)
 {
   bl_token_t *tok = bl_tokens_peek(tokens);
   fprintf(stderr, "error: %d:%d %s\n", tok->line, tok->col, bl_err_strings[e]);
@@ -180,7 +180,7 @@ parse_decl(Tokens *tokens)
     }
   }
 
-  if (decl && bl_tokens_consume(tokens)->sym != BL_SYM_SEMICOLON)
+  if (decl && bl_tokens_consume_if(tokens, BL_SYM_SEMICOLON) == NULL)
     parse_error(tokens, BL_ERR_MISSING_SEMICOLON);
 
   return decl;
