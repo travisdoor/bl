@@ -1,0 +1,4 @@
+- type checking in parser
+- name collision checking in parser
+- better error handling in parser
+- basic export to single C file

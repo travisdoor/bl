@@ -32,7 +32,7 @@
 #include "parser.h"
 #include "unit.h"
 
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 
 #if ENABLE_LOG
 void log_tokens(Tokens *tokens)
@@ -112,69 +112,15 @@ void log_parsed(Pnode *node, int lpad)
 
 int main(int argc, char *argv[])
 {
-  BString *in_src;
-
   if (argc < 2)
     return 1;
 
   printf ("Input file: %s\n", argv[1]);
 
-  // TEST: compilation unit
   Unit *unit = bl_unit_new(argv[1]);
-  bl_unit_compile(unit);
-  bo_unref(unit);
-  // TEST: compilation unit
-
-  FILE *f = fopen(argv[1], "r");
-  if (f == NULL)
-    return 2;
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  fseek(f, 0, SEEK_SET);
-
-  in_src = bo_string_new(fsize);
-  fread((char *)bo_string_get(in_src), fsize, 1, f);
-  fclose(f);
-
-#if ENABLE_LOG
-  printf ("Source: \n%s\n\n", bo_string_get(in_src));
-#endif
-
-  puts("parsing...");
-  Tokens *tokens = NULL;
-  if ((tokens = bl_lexer_scan(in_src))) {
-#if ENABLE_LOG
-    puts("lexer output:");
-    log_tokens(tokens);
-#endif
-
-    Pnode *program = bl_parser_parse(tokens);
-
-    if (program) {
-#if ENABLE_LOG
-      // log parser output
-      puts("parser output:");
-      log_parsed(program, 0);
-#endif
-      BString *out_src = NULL;
-
-#if ENABLE_LOG
-      printf("\ngenerated source: \n%s", bo_string_get(out_src));
-#endif
-
-      FILE *fo = fopen("main.c", "w");
-      if (fo == NULL)
-        return 3;
-      fwrite((char *)bo_string_get(out_src), bo_string_len(out_src), 1, f);
-      fclose(f);
-
-      bo_unref(out_src);
-    }
-
-    bo_unref(program);
+  if (!bl_unit_compile(unit)) {
+    puts("error");
   }
-
-  bo_unref(tokens);
-  bo_unref(in_src);
+  bo_unref(unit);
   return 0;
 }
