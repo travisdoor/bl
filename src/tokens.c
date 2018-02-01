@@ -44,6 +44,7 @@ bo_decl_members_begin(Tokens, BObject)
   /* members */
   BString *src;
   BArray  *buf;
+  BArray  *strings;
   size_t   iter;
   size_t   marker;
 bo_end();
@@ -61,6 +62,7 @@ Tokens_ctor(Tokens *self, TokensParams *p)
   /* constructor */
   self->src = bo_ref(p->src);
   self->buf = bo_array_new(sizeof(bl_token_t));
+  self->strings = bo_array_new(sizeof(char *));
 }
 
 void
@@ -68,6 +70,13 @@ Tokens_dtor(Tokens *self)
 {
   bo_unref(self->buf);
   bo_unref(self->src);
+
+  size_t c = bo_array_size(self->strings);
+  for (size_t i = 0; i < c; i++) {
+    free(bo_array_at(self->strings, i, char *));
+  }
+
+  bo_unref(self->strings);
 }
 
 bo_copy_result
@@ -91,6 +100,13 @@ void
 bl_tokens_push(Tokens *self, bl_token_t *t)
 {
   bo_array_push_back(self->buf, *t); 
+}
+
+void
+bl_tokens_cache_str(Tokens *self, 
+                    char *str)
+{
+  bo_array_push_back(self->strings, str); 
 }
 
 bl_token_t *

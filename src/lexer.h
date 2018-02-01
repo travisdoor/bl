@@ -33,7 +33,7 @@
 #include "tokens.h"
 #include "unit.h"
 
-bool
+Tokens *
 bl_lexer_scan(Unit *unit);
 
 #endif /* end of include guard: LEXER_H_2F7YITOG */

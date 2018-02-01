@@ -27,9 +27,7 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include <stdlib.h>
 #include "lexer.h"
-#include "parser.h"
 #include "unit.h"
 
 #define ENABLE_LOG 0
@@ -60,54 +58,6 @@ void log_tokens(Tokens *tokens)
   bl_tokens_resert_iter(tokens);
 }
 
-void log_parsed(Pnode *node, int lpad)
-{
-  switch (node->type) {
-    case BL_PT_GSCOPE:
-      printf("%*s[gscope]\n", lpad, "");
-      break;
-    case BL_PT_EXP:
-      printf("%*s[exp]\n", lpad, "");
-      break;
-    case BL_PT_DECL:
-      printf("%*s[decl]\n", lpad, "");
-      break;
-    case BL_PT_END:
-      printf("%*s[end]\n", lpad, "");
-      break;
-    case BL_PT_TYPE:
-      printf("%*s[type]\n", lpad, "");
-      break;
-    case BL_PT_ID:
-      printf("%*s[ident]\n", lpad, "");
-      break;
-    case BL_PT_FUNC:
-      printf("%*s[func]\n", lpad, "");
-      break;
-    case BL_PT_ARGS:
-      printf("%*s[args]\n", lpad, "");
-      break;
-    case BL_PT_ARG:
-      printf("%*s[arg]\n", lpad, "");
-      break;
-    case BL_PT_SCOPE:
-      printf("%*s[scope]\n", lpad, "");
-      break;
-    default:
-      abort();
-  }
-
-  if (node->nodes == NULL)
-    return;
-
-  size_t c = bo_array_size(node->nodes);
-  Pnode *child;
-  lpad+=2;
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, Pnode *);
-    log_parsed(child, lpad);
-  }
-}
 #endif
 
 int main(int argc, char *argv[])
@@ -115,12 +65,10 @@ int main(int argc, char *argv[])
   if (argc < 2)
     return 1;
 
-  printf ("Input file: %s\n", argv[1]);
+//  printf ("Input file: %s\n", argv[1]);
 
   Unit *unit = bl_unit_new(argv[1]);
-  if (!bl_unit_compile(unit)) {
-    puts("error");
-  }
+  bl_unit_compile(unit);
   bo_unref(unit);
   return 0;
 }

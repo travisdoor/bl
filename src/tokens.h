@@ -44,6 +44,10 @@ bl_tokens_new(BString *src);
 void
 bl_tokens_push(Tokens *self, bl_token_t *t);
 
+void
+bl_tokens_cache_str(Tokens *self, 
+                    char *str);
+
 bl_token_t *
 bl_tokens_peek(Tokens *self);
 

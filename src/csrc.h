@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   token.h
+// File:   csrc.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   31/01/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,59 +26,43 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_H
-#define BL_TOKEN_H
+#ifndef BL_CSRC_H
+#define BL_CSRC_H
 
-#include <stdio.h>
+#include <bobject/bobject.h>
+#include <bobject/containers/string.h>
 
-#define SYMBOLS \
-  sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(NUM, "number") \
-  sm(RET, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(SLASH, "/") \
-
-typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  SYMBOLS
-#undef sm
-} bl_sym_e;
-
-static char *bl_sym_strings[] = {
-#define sm(tok, str) str,
-  SYMBOLS
-#undef sm
-};
-
-#undef SYMBOLS
-
-typedef struct
+typedef enum _bl_csrc_impl_layers
 {
-  bl_sym_e sym;
-  int line;
-  int col;
-  union content_u {
-    const char *as_string;
-    double      as_double;
-    int         as_int;
-  } content;
-} bl_token_t;
+  BL_CSRC_IMPL_LAYER_INCLUDE = 0,
+  BL_CSRC_IMPL_LAYER_TYPEDEF,
+  BL_CSRC_IMPL_LAYER_DVAR,
+  BL_CSRC_IMPL_LAYER_IVAR,
+  BL_CSRC_IMPL_LAYER_DFUNC,
+  BL_CSRC_IMPL_LAYER_IFUNC,
+  BL_CSRC_IMPL_LAYER_COUNT
+} bl_csrc_impl_layers;
 
-#endif //BL_TOKEN_H
+/* class CSrc declaration */
+bo_decl_type_begin(CSrc, BObject)
+  /* virtuals */
+bo_end();
+
+/* class CSrc object members */
+bo_decl_members_begin(CSrc, BObject)
+  /* members */
+  BString *impl[BL_CSRC_IMPL_LAYER_COUNT];
+bo_end();
+
+CSrc *
+bl_csrc_new(void);
+
+BString *
+bl_csrc_get_impl(CSrc *self);
+
+void
+bl_csrc_merge(CSrc *self,
+              CSrc *other,
+              bl_csrc_impl_layers layer);
+
+#endif //BL_CSRC_H

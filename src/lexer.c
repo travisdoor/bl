@@ -46,7 +46,7 @@
     tok.sym  = (s); \
     tok.line = ((c).line); \
     tok.col  = ((c).col); \
-    bl_tokens_push(unit->tokens, &tok); \
+    bl_tokens_push(tokens, &tok); \
   }
 
 typedef struct _cursor {
@@ -56,135 +56,149 @@ typedef struct _cursor {
 } cursor;
 
 static void
-init_cursor(cursor *cnt,
+init_cursor(cursor *cur,
             char *begin)
 {
-  cnt->col  = 1;
-  cnt->line = 1;
-  cnt->iter = begin; 
+  cur->col  = 1;
+  cur->line = 1;
+  cur->iter = begin;
 }
 
 static int
-scan_string(cursor *cnt,
+scan_string(cursor *cur,
             char     term,
-            Tokens  *out)
+            Tokens  *tokens)
 {
   bl_token_t tok;
-  cnt->iter++;
-  cnt->col++;
+  cur->iter++;
+  cur->col++;
 
-  tok.line = cnt->line;
-  tok.col = cnt->col;
-  tok.content.as_string = cnt->iter;
+  tok.line = cur->line;
+  tok.col = cur->col;
+  char *str = cur->iter;
 
   size_t len = 0;
-  while (*cnt->iter != term) {
-    if (*cnt->iter == '\0')
+  while (*cur->iter != term) {
+    if (*cur->iter == '\0')
       return 0;
-    cnt->iter++;
-    cnt->col++;
+    cur->iter++;
+    cur->col++;
     len++;
   }
 
-  tok.len = len;
+  str = strndup(str, len);
+  tok.content.as_string = str;
   tok.sym = BL_SYM_STRING;
 
-  bl_tokens_push(out, &tok);
+  bl_tokens_cache_str(tokens, str);
+  bl_tokens_push(tokens, &tok);
   return 1;
 }
 
 static int
-ignore_till(cursor *cnt,
+ignore_till(cursor *cur,
             char     term)
 {
-  while (*cnt->iter != term) {
-    if (*cnt->iter == '\n') {
-      cnt->col = 1;
-      cnt->line++;
+  while (*cur->iter != term) {
+    if (*cur->iter == '\n') {
+      cur->col = 1;
+      cur->line++;
     }
-    if (*cnt->iter == '\0')
+    if (*cur->iter == '\0')
       return 0;
-    cnt->iter++;
-    cnt->col++;
+    cur->iter++;
+    cur->col++;
   }
 
   if (term == '\n') {
-    cnt->col = 1;
-    cnt->line++;
+    cur->col = 1;
+    cur->line++;
   }
   return 1;
 }
 
 static int
-scan_ident(cursor *cnt,
-           Tokens  *out)
+scan_ident(cursor *cur,
+           Tokens  *tokens)
 {
   bl_token_t tok;
   size_t len = 2;
-  tok.content.as_string = cnt->iter;
 
-  if (strncmp(cnt->iter, "if", len) == 0) {
-    token(BL_SYM_IF, *cnt);
-    cnt->iter += len;
-    cnt->col += len;
+  if (strncmp(cur->iter, "if", len) == 0) {
+    token(BL_SYM_IF, *cur);
+    cur->iter += len;
+    cur->col += len;
     return 1;
   }
 
   len = 4;
-  if (strncmp(cnt->iter, "else", len) == 0) {
-    token(BL_SYM_ELSE, *cnt);
-    cnt->iter += len;
-    cnt->col += len;
+  if (strncmp(cur->iter, "else", len) == 0) {
+    token(BL_SYM_ELSE, *cur);
+    cur->iter += len;
+    cur->col += len;
     return 1;
   }
 
   len = 5;
-  if (strncmp(cnt->iter, "return", len) == 0) {
-    token(BL_SYM_RET, *cnt);
-    cnt->iter += len;
-    cnt->col += len;
+  if (strncmp(cur->iter, "return", len) == 0) {
+    token(BL_SYM_RET, *cur);
+    cur->iter += len;
+    cur->col += len;
     return 1;
   }
 
   len = 6;
-  if (strncmp(cnt->iter, "extern", len) == 0) {
-    token(BL_SYM_EXTERN, *cnt);
-    cnt->iter += len;
-    cnt->col += len;
+  if (strncmp(cur->iter, "extern", len) == 0) {
+    token(BL_SYM_EXTERN, *cur);
+    cur->iter += len;
+    cur->col += len;
     return 1;
   }
 
+  len = 9;
+  if (strncmp(cur->iter, "namespace", len) == 0) {
+    token(BL_SYM_NAMESPACE, *cur);
+    cur->iter += len;
+    cur->col += len;
+    return 1;
+  }
+
+  char *str = cur->iter;
   len = 0;
-  while (is_intend_c(*cnt->iter)) {
-    (cnt->iter)++;
+  while (is_intend_c(*cur->iter)) {
+    (cur->iter)++;
     len++;
   }
 
-  tok.len = len;
-  token(BL_SYM_IDENT, *cnt);
+  str = strndup(str, len);
+  tok.content.as_string = str;
+  tok.sym = BL_SYM_IDENT;
 
-  cnt->iter--;
-  cnt->col += len;
+  bl_tokens_cache_str(tokens, str);
+  bl_tokens_push(tokens, &tok);
+
+  cur->iter--;
+  cur->col += len;
   return 1;
 }
 
 static int
-scan_number(cursor *cnt,
-            Tokens  *out)
+scan_number(cursor *cur,
+            Tokens  *tokens)
 {
-  if (!is_number_c(*cnt->iter))
+  if (!is_number_c(*cur->iter))
     return 0;
 
   int n = 0;
   bl_token_t tok;
-  tok.col  = cnt->col;
-  tok.line = cnt->line;
+  tok.col  = cur->col;
+  tok.line = cur->line;
 
   while (true) {
-    n = n * 10 + (*cnt->iter) - '0';
-    cnt->col++;
-    if (is_number_c(*(cnt->iter+1))) {
-      cnt->iter++;
+    n = n * 10 + (*cur->iter) - '0';
+    cur->col++;
+    if (is_number_c(*(cur->iter+1))) {
+      cur->iter++;
     } else
       break;
   }
@@ -192,96 +206,95 @@ scan_number(cursor *cnt,
   tok.sym = BL_SYM_NUM;
   tok.content.as_int = n;
   
-  bl_tokens_push(out, &tok);
+  bl_tokens_push(tokens, &tok);
   return 1;
 }
 
 /* public */
-bool
+Tokens *
 bl_lexer_scan(Unit *unit)
 {
-  unit->tokens = bl_tokens_new(in);
+  Tokens *tokens = bl_tokens_new(unit->src);
 
   bl_token_t tok = {
     .sym  = BL_SYM_EOF,
-    .len  = 0,
     .line = 0,
     .col  = 0
   };
 
-  cursor cnt;
-  for (init_cursor(&cnt, (char *) bo_string_get(unit->src));
-       *cnt.iter != '\0'; cnt.iter++) {
-    switch (*cnt.iter) {
+  cursor cur;
+  for (init_cursor(&cur, (char *) bo_string_get(unit->src));
+       *cur.iter != '\0'; cur.iter++) {
+    switch (*cur.iter) {
       case '\n':
-        cnt.line++;
-        cnt.col = 1;
+        cur.line++;
+        cur.col = 1;
         continue;
       case ' ':
       case '\t':
-        cnt.col++;
+        cur.col++;
         continue;
       case '{':
-        token(BL_SYM_LBLOCK, cnt);
-        cnt.col++;
+        token(BL_SYM_LBLOCK, cur);
+        cur.col++;
         continue;
       case '}':
-        token(BL_SYM_RBLOCK, cnt);
-        cnt.col++;
+        token(BL_SYM_RBLOCK, cur);
+        cur.col++;
         continue;
       case '[':
-        token(BL_SYM_LBRACKET, cnt);
-        cnt.col++;
+        token(BL_SYM_LBRACKET, cur);
+        cur.col++;
         continue;
       case ']':
-        token(BL_SYM_RBRACKET, cnt);
-        cnt.col++;
+        token(BL_SYM_RBRACKET, cur);
+        cur.col++;
         continue;
       case '(':
-        token(BL_SYM_LPAREN, cnt);
-        cnt.col++;
+        token(BL_SYM_LPAREN, cur);
+        cur.col++;
         continue;
       case ')':
-        token(BL_SYM_RPAREN, cnt);
-        cnt.col++;
+        token(BL_SYM_RPAREN, cur);
+        cur.col++;
         continue;
       case ',':
-        token(BL_SYM_COMMA, cnt);
-        cnt.col++;
+        token(BL_SYM_COMMA, cur);
+        cur.col++;
         continue;
       case '=':
-        token(BL_SYM_ASIGN, cnt);
-        cnt.col++;
+        token(BL_SYM_ASIGN, cur);
+        cur.col++;
         continue;
       case ';':
-        token(BL_SYM_SEMICOLON, cnt);
-        cnt.col++;
+        token(BL_SYM_SEMICOLON, cur);
+        cur.col++;
         continue;
       case '"':
-        scan_string(&cnt, '"', unit);
+        scan_string(&cur, '"', tokens);
         continue;
       case '/':
-        switch (*(cnt.iter + 1)) {
+        switch (*(cur.iter + 1)) {
         case '/':
-          ignore_till(&cnt, '\n');
+          ignore_till(&cur, '\n');
           continue;
         default:
-          token(BL_SYM_SLASH, cnt);
-          cnt.col++;
+          token(BL_SYM_SLASH, cur);
+          cur.col++;
           continue;
         }
       default:
-        if (scan_number(&cnt, unit))
+        if (scan_number(&cur, tokens))
           continue;
 
-        if (scan_ident(&cnt, unit))
+        if (scan_ident(&cur, tokens))
           continue;
 
-        bl_parse_error("unknown character\n");
+        bl_error_at(bo_string_get(unit->filepath), cur.line, cur.col, "unknown character");
     }
   }
   tok.sym = BL_SYM_EOF;
-  bl_tokens_push(unit->tokens, &tok);
-  return true;
+  bl_tokens_push(tokens, &tok);
+  return tokens;
 }
 

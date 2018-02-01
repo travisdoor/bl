@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl  
 //
-// File:   errors.h
+// File:   type_table.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   01/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,26 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef ERRORS_H_IEWPB1RX
-#define ERRORS_H_IEWPB1RX
+#ifndef BISCUIT_TYPE_TABLE_H
+#define BISCUIT_TYPE_TABLE_H
 
-typedef enum _bl_err
-{
-  BL_ERR_NO_ERROR = 0,
-  BL_ERR_FILE_NOT_FOUND,
-  BL_ERR_INVALID_SOURCE,
+#include <bobject/bobject.h>
 
-  BL_ERR_UNEXPECTED_SYMBOL,
-  BL_ERR_MISSING_SEMICOLON,
-  BL_ERR_COUNT
-} bl_err;
+/* class declaration */
+bo_decl_type_begin(TypeTable, BObject)
+  /* virtuals */
+bo_end();
 
-static const char *bl_err_strings[BL_ERR_COUNT] = {
-  "no error",
-  "file not found",
-  "invalid source file",
-  "unexpected symbol",
-  "missing semicolon"
-};
+TypeTable *
+bl_type_table_new(void);
 
-#endif /* end of include guard: ERRORS_H_IEWPB1RX */
+#endif /* end of include guard: BISCUIT_TYPE_TABLE_H */
+

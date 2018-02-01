@@ -80,6 +80,8 @@ bl_pnode_new_child(Pnode      *self,
                    bl_ptype_e  type,
                    bl_token_t *token)
 {
+  if (token == NULL) 
+    return NULL;
   Pnode *child = bl_pnode_new(type, token);
   bo_array_push_back(self->nodes, child);
   return child;

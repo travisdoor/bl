@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   token.h
+// File:   type_table.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   01/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,59 +26,50 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_H
-#define BL_TOKEN_H
+#include "type_table.h"
 
-#include <stdio.h>
+/* TypeTable members */
+bo_decl_members_begin(TypeTable, BObject)
+bo_end();
 
-#define SYMBOLS \
-  sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(NUM, "number") \
-  sm(RET, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(SLASH, "/") \
+/* TypeTable constructor parameters */
+bo_decl_params_begin(TypeTable)
+bo_end();
 
-typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  SYMBOLS
-#undef sm
-} bl_sym_e;
+bo_impl_type(TypeTable, BObject);
 
-static char *bl_sym_strings[] = {
-#define sm(tok, str) str,
-  SYMBOLS
-#undef sm
-};
-
-#undef SYMBOLS
-
-typedef struct
+/* TypeTable class init */
+void
+TypeTableKlass_init(TypeTableKlass *klass)
 {
-  bl_sym_e sym;
-  int line;
-  int col;
-  union content_u {
-    const char *as_string;
-    double      as_double;
-    int         as_int;
-  } content;
-} bl_token_t;
+}
 
-#endif //BL_TOKEN_H
+/* TypeTable constructor */
+void
+TypeTable_ctor(TypeTable *self, TypeTableParams *p)
+{
+}
+
+/* TypeTable destructor */
+void
+TypeTable_dtor(TypeTable *self)
+{
+}
+
+/* TypeTable copy constructor */
+bo_copy_result
+TypeTable_copy(TypeTable *self, TypeTable *other)
+{
+  return BO_NO_COPY;
+}
+
+/* public */
+TypeTable *
+bl_type_table_new(void)
+{
+  TypeTableParams p = {
+  };
+  
+  return bo_new(TypeTable, &p);
+}
+

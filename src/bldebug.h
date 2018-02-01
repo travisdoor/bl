@@ -32,27 +32,31 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
         fprintf(stderr, format, ##__VA_ARGS__); \
-        exit(0); \
+        abort(); \
     }
 
 #define bl_exit(format, ...) \
     { \
         fprintf(stderr, format, ##__VA_ARGS__); \
+        exit(1); \
+    }
+
+#define bl_error_at(file, line, column, msg) \
+    { \
+        fprintf(stderr, ANSI_COLOR_RED "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
         exit(0); \
     }
 
-#define bl_parse_error(format, ...) \
+#define bl_warning_at(file, line, column, format, ...) \
     { \
-        fprintf(stderr, format, ##__VA_ARGS__); \
-        exit(0); \
-    }
-
-#define bl_parse_warning(format, ...) \
-    { \
-        fprintf(stdout, format, ##__VA_ARGS__); \
+        fprintf(stdout, ANSI_COLOR_YELLOW "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
     }
 
 #endif /* end of include guard: BLDEBUG_H_VYI9AXGT */

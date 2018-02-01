@@ -30,9 +30,7 @@
 #define UNIT_H_FC53HXPA
 
 #include <bobject/bobject.h>
-#include "errors.h"
-#include "tokens.h"
-#include "pnode.h"
+#include <bobject/containers/string.h>
 
 /* class Unit declaration */
 bo_decl_type_begin(Unit, BObject)
@@ -44,20 +42,12 @@ bo_decl_members_begin(Unit, BObject)
   /* members */
   BString *filepath;
   BString *src;
-  Tokens  *tokens;
-  Pnode   *proot;
-
-  /* error */
-  bl_err   last_err;
 bo_end();
 
 Unit *
 bl_unit_new(const char *filepath);
 
-bool
+void
 bl_unit_compile(Unit *self);
-
-bl_err
-bl_unit_last_error(Unit *self);
 
 #endif /* end of include guard: UNIT_H_FC53HXPA */

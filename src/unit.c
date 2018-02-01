@@ -26,14 +26,73 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
 #include "unit.h"
+#include "tokens.h"
+#include "lexer.h"
+#include "parser.h"
+#include "bldebug.h"
+#include "cgen.h"
 
-#define return_with_error(e) \
-  { \
-    self->last_err = e; \
-    return false;  \
+void log_parsed(Pnode *node, int lpad)
+{
+  switch (node->type) {
+    case BL_PT_GSCOPE:
+      printf("%*s[gscope]\n", lpad, "");
+      break;
+    case BL_PT_EXP:
+      printf("%*s[exp]\n", lpad, "");
+      break;
+    case BL_PT_DECL:
+      printf("%*s[decl]\n", lpad, "");
+      break;
+    case BL_PT_END:
+      printf("%*s[end]\n", lpad, "");
+      break;
+    case BL_PT_TYPE:
+      printf("%*s[type]\n", lpad, "");
+      break;
+    case BL_PT_ID:
+      printf("%*s[ident]\n", lpad, "");
+      break;
+    case BL_PT_FUNC:
+      printf("%*s[func]\n", lpad, "");
+      break;
+    case BL_PT_ARGS:
+      printf("%*s[args]\n", lpad, "");
+      break;
+    case BL_PT_ARG:
+      printf("%*s[arg]\n", lpad, "");
+      break;
+    case BL_PT_SCOPE:
+      printf("%*s[scope]\n", lpad, "");
+      break;
+    case BL_PT_NSCOPE:
+      printf("%*s[nscope]\n", lpad, "");
+      break;
+    case BL_PT_NAMESPACE:
+      printf("%*s[namespace]\n", lpad, "");
+      break;
+    case BL_PT_CALL:
+      printf("%*s[call]\n", lpad, "");
+      break;
+    case BL_PT_ASGN:
+      printf("%*s[asign]\n", lpad, "");
+      break;
+    default:
+      printf("%*s[UNKNOWN]\n", lpad, "");
   }
+
+  if (node->nodes == NULL)
+    return;
+
+  size_t c = bo_array_size(node->nodes);
+  Pnode *child;
+  lpad+=2;
+  for (size_t i = 0; i < c; i++) {
+    child = bo_array_at(node->nodes, i, Pnode *);
+    log_parsed(child, lpad);
+  }
+}
 
 /* class Unit */
 bo_decl_params_begin(Unit)
@@ -68,18 +127,18 @@ Unit_copy(Unit *self, Unit *other)
 }
 /* class Unit end */
 
-static bool
+static void
 load_file(Unit *self)
 {
   FILE *f = fopen(bo_string_get(self->filepath), "r");
   if (f == NULL)
-    return_with_error(BL_ERR_FILE_NOT_FOUND)
+    bl_exit("file %s not found\n", bo_string_get(self->filepath));
 
   fseek(f, 0, SEEK_END);
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    return_with_error(BL_ERR_INVALID_SOURCE);
+    bl_exit("invalid source in file %s\n", bo_string_get(self->filepath));
   }
 
   fseek(f, 0, SEEK_SET);
@@ -87,32 +146,35 @@ load_file(Unit *self)
   self->src = bo_string_new(fsize);
   fread((char *)bo_string_get(self->src), fsize, 1, f);
   fclose(f);
-
-  return true;
 }
 
 /* public */
 Unit *
 bl_unit_new(const char *filepath)
 {
-  return bo_new(Unit, NULL);
+  UnitParams params = {
+    .filepath = filepath
+  };
+  return bo_new(Unit, &params);
 }
 
-bool
+void
 bl_unit_compile(Unit *self)
 {
-  if (!load_file(self))
-    return false;
+  load_file(self);
 
-  // pass to lexer
-  // pass to parser
-  // generate C source
-  return true;
-}
+  Tokens *tokens = bl_lexer_scan(self);
+  Pnode *root = bl_parser_scan(self, tokens);
+  /*log_parsed(root, 0);*/
 
-bl_err
-bl_unit_last_error(Unit *self)
-{
-  return self->last_err;
+  CSrc *csrc = bl_cgen_generate(self, root);
+  BString *impl = bl_csrc_get_impl(csrc);
+
+  printf("%s\n", bo_string_get(impl));
+
+  bo_unref(impl);
+  bo_unref(csrc);
+  bo_unref(root);
+  bo_unref(tokens);
 }
 

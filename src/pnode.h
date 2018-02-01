@@ -35,9 +35,13 @@
 
 typedef enum _bl_ptype {
   BL_PT_GSCOPE,
+  BL_PT_NSCOPE,
   BL_PT_SCOPE,
   BL_PT_DECL,
   BL_PT_FUNC,
+  BL_PT_CALL,
+  BL_PT_ASGN,
+  BL_PT_NAMESPACE,
   BL_PT_EXP,
   BL_PT_TYPE,
   BL_PT_ID,
