@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
+#include "symbol_table.h"
 
 /* class Unit declaration */
 bo_decl_type_begin(Unit, BObject)
@@ -40,8 +41,9 @@ bo_end();
 /* class Unit object members */
 bo_decl_members_begin(Unit, BObject)
   /* members */
-  BString *filepath;
-  BString *src;
+  BString     *filepath;
+  BString     *src;
+  SymbolTable *sym_tbl;
 bo_end();
 
 Unit *

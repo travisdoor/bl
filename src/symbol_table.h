@@ -1,7 +1,7 @@
 //*****************************************************************************
-// bl 
+// bl  
 //
-// File:   type_table.c
+// File:   symbol_table.h
 // Author: Martin Dorazil
 // Date:   01/02/2018
 //
@@ -26,50 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "type_table.h"
+#ifndef BISCUIT_SYMBOL_TABLE_H
+#define BISCUIT_SYMBOL_TABLE_H
 
-/* TypeTable members */
-bo_decl_members_begin(TypeTable, BObject)
+#include <bobject/bobject.h>
+
+/* class declaration */
+bo_decl_type_begin(SymbolTable, BObject)
+  /* virtuals */
 bo_end();
 
-/* TypeTable constructor parameters */
-bo_decl_params_begin(TypeTable)
-bo_end();
+SymbolTable *
+bl_symbol_table_new(void);
 
-bo_impl_type(TypeTable, BObject);
-
-/* TypeTable class init */
-void
-TypeTableKlass_init(TypeTableKlass *klass)
-{
-}
-
-/* TypeTable constructor */
-void
-TypeTable_ctor(TypeTable *self, TypeTableParams *p)
-{
-}
-
-/* TypeTable destructor */
-void
-TypeTable_dtor(TypeTable *self)
-{
-}
-
-/* TypeTable copy constructor */
-bo_copy_result
-TypeTable_copy(TypeTable *self, TypeTable *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-TypeTable *
-bl_type_table_new(void)
-{
-  TypeTableParams p = {
-  };
-  
-  return bo_new(TypeTable, &p);
-}
+#endif /* end of include guard: BISCUIT_SYMBOL_TABLE_H */
 

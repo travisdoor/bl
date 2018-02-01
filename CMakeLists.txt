@@ -13,8 +13,8 @@ set(SOURCE_FILES
   src/token.h
   src/unit.c
   src/unit.h 
-  src/type_table.c
-  src/type_table.h 
+  src/symbol_table.c
+  src/symbol_table.h 
   src/parser.h 
   src/parser.c 
   src/pnode.h 

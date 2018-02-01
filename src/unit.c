@@ -111,6 +111,7 @@ Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
   self->filepath = bo_string_new_str(p->filepath);
+  self->sym_tbl = bl_symbol_table_new();
 }
 
 void
