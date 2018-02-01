@@ -35,6 +35,6 @@
 
 CSrc *
 bl_cgen_generate(Unit *unit,
-                 Pnode *pnode);
+                 PNode *pnode);
 
 #endif //BL_CGEN_H

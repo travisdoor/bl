@@ -26,10 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <bobject/containers/htbl.h>
+#include <bobject/containers/hash.h>
 #include "symbol_table.h"
+#include "bldebug.h"
 
 /* SymbolTable members */
 bo_decl_members_begin(SymbolTable, BObject)
+  BHashTable *symbols;
 bo_end();
 
 /* SymbolTable constructor parameters */
@@ -48,12 +52,14 @@ SymbolTableKlass_init(SymbolTableKlass *klass)
 void
 SymbolTable_ctor(SymbolTable *self, SymbolTableParams *p)
 {
+  self->symbols = bo_htbl_new_bo(bo_typeof(PNode), false, 512);
 }
 
 /* SymbolTable destructor */
 void
 SymbolTable_dtor(SymbolTable *self)
 {
+  bo_unref(self->symbols);
 }
 
 /* SymbolTable copy constructor */
@@ -67,9 +73,46 @@ SymbolTable_copy(SymbolTable *self, SymbolTable *other)
 SymbolTable *
 bl_symbol_table_new(void)
 {
-  SymbolTableParams p = {
-  };
-  
-  return bo_new(SymbolTable, &p);
+  return bo_new(SymbolTable, NULL);
+}
+
+bool
+bl_symbol_table_geristrate(SymbolTable *self,
+                           PNode       *node)
+{
+  const char *id = node->tok->content.as_string;
+  uint64_t hash = bo_hash_from_str(id);
+  if (bo_htbl_has_key(self->symbols, hash))
+    return false;
+
+  bo_htbl_insert(self->symbols, hash, node);
+  return true;
+}
+
+PNode *
+bl_symbol_table_get(SymbolTable *self,
+                    const char  *id)
+{
+  uint64_t hash = bo_hash_from_str(id);
+  bo_iterator_t found = bo_htbl_find(self->symbols, hash); 
+  bo_iterator_t end = bo_htbl_end(self->symbols);
+  if (bo_iterator_equal(&found, &end))
+    return NULL;
+
+  return bo_htbl_iter_peek_value(self->symbols, &found, PNode *);
+}
+
+void
+bl_symbol_table_print(SymbolTable *self,
+                      FILE        *out)
+{
+  bo_iterator_t iter = bo_htbl_begin(self->symbols); 
+  bo_iterator_t end = bo_htbl_end(self->symbols);
+  PNode *node = NULL;
+  while (!bo_iterator_equal(&iter, &end)) {
+    node = bo_htbl_iter_peek_value(self->symbols, &iter, PNode *); 
+    fprintf(out, "symbol %s\n", node->tok->content.as_string);
+    bo_htbl_iter_next(self->symbols, &iter);
+  }
 }
 

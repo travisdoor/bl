@@ -34,58 +34,58 @@
 
 /* forward decl */
 
-static Pnode *
+static PNode *
 parse_decl(Unit *unit,
            Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_func(Unit *unit,
            Tokens *tokens);
-static Pnode *
+static PNode *
 parse_return(Unit *unit,
              Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_call(Unit *unit,
            Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_call_args(Unit *unit,
                 Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_call_arg(Unit *unit,
                Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_func_args(Unit *unit,
                 Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_func_arg(Unit *unit,
                Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_exp(Unit *unit,
           Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_assignment(Unit *unit,
                  Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_gscope(Unit *unit,
              Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_namespace(Unit *unit,
                 Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_scope(Unit *unit,
             Tokens *tokens);
 
-static Pnode *
+static PNode *
 parse_nscope(Unit *unit,
              Tokens *tokens);
 
@@ -104,29 +104,29 @@ parse_error(Unit *unit,
   bl_error_at(bo_string_get(unit->filepath), tok->line, tok->col, msg);
 }
 
-Pnode *
+PNode *
 parse_exp(Unit *unit,
           Tokens *tokens)
 {
-  Pnode *exp = NULL;
+  PNode *exp = NULL;
   if (bl_tokens_peek(tokens)->sym == BL_SYM_NUM) {
     exp = bl_pnode_new(BL_PT_EXP, bl_tokens_consume(tokens));
   }
   return exp;
 }
 
-Pnode *
+PNode *
 parse_assignment(Unit *unit,
                  Tokens *tokens)
 {
-  Pnode *assign = NULL;
+  PNode *assign = NULL;
   if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_ASIGN)) {
     assign = bl_pnode_new(BL_PT_ASGN, NULL);
     bl_pnode_new_child(assign, BL_PT_ID, bl_tokens_consume(tokens));
     // eat =
     bl_tokens_consume(tokens);
 
-    Pnode *exp = parse_exp(unit, tokens);
+    PNode *exp = parse_exp(unit, tokens);
     if (!exp)
       parse_error(unit, tokens, "expected expression");
     bl_pnode_push(assign, exp);
@@ -137,11 +137,11 @@ parse_assignment(Unit *unit,
   return assign; 
 }
 
-Pnode *
+PNode *
 parse_call(Unit *unit,
            Tokens *tokens)
 {
-  Pnode *call = NULL;
+  PNode *call = NULL;
   if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     call = bl_pnode_new(BL_PT_CALL, NULL);
     bl_pnode_new_child(call, BL_PT_ID, bl_tokens_consume(tokens));
@@ -154,11 +154,11 @@ parse_call(Unit *unit,
   return call;
 }
 
-Pnode *
+PNode *
 parse_call_args(Unit *unit,
                 Tokens *tokens)
 {
-  Pnode *args = bl_pnode_new(BL_PT_ARGS, NULL);
+  PNode *args = bl_pnode_new(BL_PT_ARGS, NULL);
   // eat (
   bl_tokens_consume(tokens);
 
@@ -188,11 +188,11 @@ parse_call_args(Unit *unit,
   return args;
 }
 
-Pnode *
+PNode *
 parse_call_arg(Unit *unit,
                Tokens *tokens)
 {
-  Pnode *arg = NULL;
+  PNode *arg = NULL;
   if (bl_tokens_current_is(tokens, BL_SYM_IDENT)) {
     arg = bl_pnode_new(BL_PT_ARG, NULL);
     bl_pnode_new_child(arg, BL_PT_ID, bl_tokens_consume(tokens));
@@ -202,11 +202,11 @@ parse_call_arg(Unit *unit,
   return arg;
 }
 
-Pnode *
+PNode *
 parse_func_arg(Unit *unit,
                Tokens *tokens)
 {
-  Pnode *arg = NULL;
+  PNode *arg = NULL;
   if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
     arg = bl_pnode_new(BL_PT_ARG, NULL);
     bl_pnode_new_child(arg, BL_PT_TYPE, bl_tokens_consume(tokens));
@@ -217,11 +217,11 @@ parse_func_arg(Unit *unit,
   return arg;
 }
 
-Pnode *
+PNode *
 parse_func_args(Unit *unit,
                 Tokens *tokens)
 {
-  Pnode *args = bl_pnode_new(BL_PT_ARGS, NULL);
+  PNode *args = bl_pnode_new(BL_PT_ARGS, NULL);
   // eat (
   bl_tokens_consume(tokens);
 
@@ -250,15 +250,15 @@ parse_func_args(Unit *unit,
   return args;
 }
 
-Pnode *
+PNode *
 parse_return(Unit *unit,
              Tokens *tokens)
 {
   // eat 'return'
   bl_tokens_consume(tokens);
-  Pnode *ret = bl_pnode_new(BL_PT_RET, NULL);
+  PNode *ret = bl_pnode_new(BL_PT_RET, NULL);
 
-  Pnode *exp = parse_exp(unit, tokens);
+  PNode *exp = parse_exp(unit, tokens);
   if (exp)
     bl_pnode_push(ret, exp);
 
@@ -268,11 +268,11 @@ parse_return(Unit *unit,
   return ret;  
 }
 
-Pnode *
+PNode *
 parse_func(Unit *unit,
            Tokens *tokens)
 {
-  Pnode *func = NULL;
+  PNode *func = NULL;
   if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
     switch (bl_tokens_peek_nth(tokens, 3)->sym) {
       case BL_SYM_LPAREN:
@@ -296,11 +296,11 @@ parse_func(Unit *unit,
   return func;
 }
 
-Pnode *
+PNode *
 parse_decl(Unit *unit,
            Tokens *tokens)
 {
-  Pnode *decl = NULL;
+  PNode *decl = NULL;
   if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
     switch (bl_tokens_peek_nth(tokens, 3)->sym) {
       case BL_SYM_ASIGN:
@@ -310,7 +310,7 @@ parse_decl(Unit *unit,
 
         // eat =
         bl_tokens_consume(tokens);
-        Pnode *exp = parse_exp(unit, tokens);
+        PNode *exp = parse_exp(unit, tokens);
         if (!exp)
           parse_error(unit, tokens, "expected expression");
         bl_pnode_push(decl, exp);
@@ -331,14 +331,15 @@ parse_decl(Unit *unit,
   return decl;
 }
 
-Pnode *
+PNode *
 parse_namespace(Unit *unit,
                 Tokens *tokens)
 {
-  Pnode *namespace = NULL;
+  PNode *namespace = NULL;
   if (bl_tokens_current_is(tokens, BL_SYM_NAMESPACE)) {
     namespace = bl_pnode_new(BL_PT_NAMESPACE, bl_tokens_consume(tokens));
-    if (!bl_pnode_new_child(namespace, BL_PT_ID, bl_tokens_consume_if(tokens, BL_SYM_IDENT)))
+    bl_token_t *name = bl_tokens_consume_if(tokens, BL_SYM_IDENT);
+    if (!bl_pnode_new_child(namespace, BL_PT_ID, name))
       parse_error(unit, tokens, "expected namespace name");
 
     bl_pnode_push(namespace, parse_nscope(unit, tokens));
@@ -347,11 +348,11 @@ parse_namespace(Unit *unit,
   return namespace;
 }
 
-Pnode *
+PNode *
 parse_scope(Unit *unit,
             Tokens *tokens)
 {
-  Pnode *scope = bl_pnode_new(BL_PT_SCOPE, NULL);
+  PNode *scope = bl_pnode_new(BL_PT_SCOPE, NULL);
   // eat {
   bl_tokens_consume(tokens);
   while (bl_tokens_current_is_not(tokens, BL_SYM_RBLOCK)) {
@@ -372,11 +373,11 @@ parse_scope(Unit *unit,
   return scope;
 }
 
-Pnode *
+PNode *
 parse_nscope(Unit *unit,
              Tokens *tokens)
 {
-  Pnode *nscope = bl_pnode_new(BL_PT_NSCOPE, NULL);
+  PNode *nscope = bl_pnode_new(BL_PT_NSCOPE, NULL);
   // eat {
   bl_tokens_consume(tokens);
   while (bl_tokens_current_is_not(tokens, BL_SYM_RBLOCK)) {
@@ -395,11 +396,11 @@ parse_nscope(Unit *unit,
   return nscope;
 }
 
-Pnode *
+PNode *
 parse_gscope(Unit *unit,
              Tokens *tokens)
 {
-  Pnode *gscope = bl_pnode_new(BL_PT_GSCOPE, NULL);
+  PNode *gscope = bl_pnode_new(BL_PT_GSCOPE, NULL);
 
   while (bl_tokens_current_is_not(tokens, BL_SYM_EOF)) {
     if (!bl_pnode_push(gscope, parse_namespace(unit, tokens)) &&
@@ -413,7 +414,7 @@ parse_gscope(Unit *unit,
 
 /* public */
 
-Pnode *
+PNode *
 bl_parser_scan(Unit *unit,
                Tokens *tokens)
 {

@@ -28,68 +28,68 @@
 
 #include "pnode.h"
 
-/* class Pnode */
-bo_decl_params_begin(Pnode)
+/* class PNode */
+bo_decl_params_begin(PNode)
   bl_ptype_e  type;
   bl_token_t *token;
 bo_end();
 
-bo_impl_type(Pnode, BObject);
+bo_impl_type(PNode, BObject);
 
 void
-PnodeKlass_init(PnodeKlass *klass)
+PNodeKlass_init(PNodeKlass *klass)
 {
 }
 
 void
-Pnode_ctor(Pnode *self, PnodeParams *p)
+PNode_ctor(PNode *self, PNodeParams *p)
 {
   /* constructor */
-  self->nodes = bo_array_new_bo(bo_typeof(Pnode), true);
+  self->nodes = bo_array_new_bo(bo_typeof(PNode), true);
   self->type  = p->type;
   self->tok   = p->token;
 }
 
 void
-Pnode_dtor(Pnode *self)
+PNode_dtor(PNode *self)
 {
   bo_unref(self->nodes);
 }
 
 bo_copy_result
-Pnode_copy(Pnode *self, Pnode *other)
+PNode_copy(PNode *self, PNode *other)
 {
   return BO_NO_COPY;
 }
-/* class Pnode end */
+/* class PNode end */
 
-Pnode *
+PNode *
 bl_pnode_new(bl_ptype_e  type,
              bl_token_t *token)
 {
-  PnodeParams params = {
+  PNodeParams params = {
     .type  = type,
     .token = token
   };
 
-  return bo_new(Pnode, &params);
+  return bo_new(PNode, &params);
 }
 
-Pnode *
-bl_pnode_new_child(Pnode      *self,
+PNode *
+bl_pnode_new_child(PNode      *self,
                    bl_ptype_e  type,
                    bl_token_t *token)
 {
   if (token == NULL) 
     return NULL;
-  Pnode *child = bl_pnode_new(type, token);
+  PNode *child = bl_pnode_new(type, token);
   bo_array_push_back(self->nodes, child);
   return child;
 }
 
 bool
-bl_pnode_push(Pnode *self,
-              Pnode *child)
+bl_pnode_push(PNode *self,
+              PNode *child)
 {
   if (!child)
     return false;

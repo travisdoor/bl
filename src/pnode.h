@@ -51,30 +51,30 @@ typedef enum _bl_ptype {
   BL_PT_END
 } bl_ptype_e;
 
-/* class Pnode declaration */
-bo_decl_type_begin(Pnode, BObject)
+/* class PNode declaration */
+bo_decl_type_begin(PNode, BObject)
   /* virtuals */
 bo_end();
 
-/* class Pnode object members */
-bo_decl_members_begin(Pnode, BObject)
+/* class PNode object members */
+bo_decl_members_begin(PNode, BObject)
   /* members */
   BArray     *nodes;
   bl_ptype_e  type;
   bl_token_t *tok;
 bo_end();
 
-Pnode *
+PNode *
 bl_pnode_new(bl_ptype_e  type,
              bl_token_t *token);
 
-Pnode *
-bl_pnode_new_child(Pnode      *self,
+PNode *
+bl_pnode_new_child(PNode      *self,
                    bl_ptype_e  type,
                    bl_token_t *token);
 
 bool
-bl_pnode_push(Pnode *self,
-              Pnode *child);
+bl_pnode_push(PNode *self,
+              PNode *child);
 
 #endif //BL_PNODE_H

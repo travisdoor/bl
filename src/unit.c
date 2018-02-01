@@ -33,7 +33,7 @@
 #include "bldebug.h"
 #include "cgen.h"
 
-void log_parsed(Pnode *node, int lpad)
+void log_parsed(PNode *node, int lpad)
 {
   switch (node->type) {
     case BL_PT_GSCOPE:
@@ -52,7 +52,7 @@ void log_parsed(Pnode *node, int lpad)
       printf("%*s[type]\n", lpad, "");
       break;
     case BL_PT_ID:
-      printf("%*s[ident]\n", lpad, "");
+      printf("%*s[ident] %s\n", lpad, "", node->tok->content.as_string);
       break;
     case BL_PT_FUNC:
       printf("%*s[func]\n", lpad, "");
@@ -78,6 +78,9 @@ void log_parsed(Pnode *node, int lpad)
     case BL_PT_ASGN:
       printf("%*s[asign]\n", lpad, "");
       break;
+    case BL_PT_RET:
+      printf("%*s[return]\n", lpad, "");
+      break;
     default:
       printf("%*s[UNKNOWN]\n", lpad, "");
   }
@@ -86,10 +89,10 @@ void log_parsed(Pnode *node, int lpad)
     return;
 
   size_t c = bo_array_size(node->nodes);
-  Pnode *child;
+  PNode *child;
   lpad+=2;
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, Pnode *);
+    child = bo_array_at(node->nodes, i, PNode *);
     log_parsed(child, lpad);
   }
 }
@@ -112,11 +115,13 @@ Unit_ctor(Unit *self, UnitParams *p)
   /* constructor */
   self->filepath = bo_string_new_str(p->filepath);
   self->sym_tbl = bl_symbol_table_new();
+  self->sym_tbl = bl_symbol_table_new();
 }
 
 void
 Unit_dtor(Unit *self)
 {
+  bo_unref(self->sym_tbl);
   bo_unref(self->filepath);
   bo_unref(self->src);
 }
@@ -165,8 +170,9 @@ bl_unit_compile(Unit *self)
   load_file(self);
 
   Tokens *tokens = bl_lexer_scan(self);
-  Pnode *root = bl_parser_scan(self, tokens);
+  PNode *root = bl_parser_scan(self, tokens);
   /*log_parsed(root, 0);*/
+  /*bl_symbol_table_print(self->sym_tbl, stdout);*/
 
   CSrc *csrc = bl_cgen_generate(self, root);
   BString *impl = bl_csrc_get_impl(csrc);

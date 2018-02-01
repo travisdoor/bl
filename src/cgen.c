@@ -38,7 +38,7 @@ static const char *header_defaults =
 
 static void
 gen_decl(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          bool is_local,
@@ -46,79 +46,79 @@ gen_decl(Unit *unit,
 
 static void
 gen_gscope(Unit *unit,
-           Pnode *pnode,
+           PNode *pnode,
            CSrc *src);
 
 static void
 gen_nscope(Unit *unit,
-           Pnode *pnode,
+           PNode *pnode,
            CSrc *src,
            int nesting);
 
 static CSrc *
 gen_scope(Unit *unit,
-          Pnode *pnode,
+          PNode *pnode,
           int nesting);
 
 static void  
 gen_ret(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         int nesting);
 
 static void
 gen_func(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          const char *prefix);
 
 static void
 gen_call(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          const char *prefix);
 
 static void
 gen_fargs(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          bl_csrc_impl_layers l);
 
 static void
 gen_farg(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         bl_csrc_impl_layers l);
 
 static void
 gen_args(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          bl_csrc_impl_layers l);
 
 static void
 gen_arg(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         bl_csrc_impl_layers l);
 
 /* impl */
 void
 gen_decl(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          bool is_local,
          const char *prefix)
 {
-  Pnode *type = bo_array_at(pnode->nodes, 0, Pnode *);
-  Pnode *ident = bo_array_at(pnode->nodes, 1, Pnode *);
-  Pnode *exp = NULL;
+  PNode *type = bo_array_at(pnode->nodes, 0, PNode *);
+  PNode *ident = bo_array_at(pnode->nodes, 1, PNode *);
+  PNode *exp = NULL;
 
   if (bo_array_size(pnode->nodes) == 3)
-    exp = bo_array_at(pnode->nodes, 2, Pnode *);
+    exp = bo_array_at(pnode->nodes, 2, PNode *);
 
   char buf[256];
 
@@ -169,13 +169,13 @@ gen_decl(Unit *unit,
 
 void  
 gen_ret(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         int nesting)
 {
-  Pnode *exp = NULL;
+  PNode *exp = NULL;
   if (bo_array_size(pnode->nodes) == 1)
-    exp = bo_array_at(pnode->nodes, 0, Pnode *);
+    exp = bo_array_at(pnode->nodes, 0, PNode *);
 
   char buf[256];
   
@@ -199,15 +199,15 @@ gen_ret(Unit *unit,
 
 void
 gen_func(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          const char *prefix)
 {
-  Pnode *type = bo_array_at(pnode->nodes, 0, Pnode *);
-  Pnode *ident = bo_array_at(pnode->nodes, 1, Pnode *);
-  Pnode *args = bo_array_at(pnode->nodes, 2, Pnode *);
-  Pnode *scope = bo_array_at(pnode->nodes, 3, Pnode *);
+  PNode *type = bo_array_at(pnode->nodes, 0, PNode *);
+  PNode *ident = bo_array_at(pnode->nodes, 1, PNode *);
+  PNode *args = bo_array_at(pnode->nodes, 2, PNode *);
+  PNode *scope = bo_array_at(pnode->nodes, 3, PNode *);
   char buf[256];
 
   sprintf(buf,
@@ -240,13 +240,13 @@ gen_func(Unit *unit,
 
 void
 gen_call(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          int nesting,
          const char *prefix)
 {
-  Pnode *ident = bo_array_at(pnode->nodes, 0, Pnode *);
-  Pnode *args = bo_array_at(pnode->nodes, 1, Pnode *);
+  PNode *ident = bo_array_at(pnode->nodes, 0, PNode *);
+  PNode *args = bo_array_at(pnode->nodes, 1, PNode *);
 
   char buf[256];
 
@@ -264,14 +264,14 @@ gen_call(Unit *unit,
 
 void
 gen_fargs(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          bl_csrc_impl_layers l)
 {
   size_t c = bo_array_size(pnode->nodes);
-  Pnode *child = NULL;
+  PNode *child = NULL;
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(pnode->nodes, i, Pnode *);
+    child = bo_array_at(pnode->nodes, i, PNode *);
     gen_farg(unit, child, src, l);
 
     if (i + 1 < c)
@@ -281,14 +281,14 @@ gen_fargs(Unit *unit,
 
 void
 gen_farg(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         bl_csrc_impl_layers l)
 {
   char buf[256];
-  Pnode *ident = NULL;
+  PNode *ident = NULL;
 
-  ident = bo_array_at(pnode->nodes, 0, Pnode *);
+  ident = bo_array_at(pnode->nodes, 0, PNode *);
 
   sprintf(buf,
           "%s",
@@ -299,7 +299,7 @@ gen_farg(Unit *unit,
 
 void
 gen_args(Unit *unit,
-         Pnode *pnode,
+         PNode *pnode,
          CSrc *src,
          bl_csrc_impl_layers l)
 {
@@ -307,9 +307,9 @@ gen_args(Unit *unit,
   if (c == 0)
     bo_string_append(src->impl[l], "void");
 
-  Pnode *child = NULL;
+  PNode *child = NULL;
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(pnode->nodes, i, Pnode *);
+    child = bo_array_at(pnode->nodes, i, PNode *);
     gen_arg(unit, child, src, l);
 
     if (i + 1 < c)
@@ -319,16 +319,16 @@ gen_args(Unit *unit,
 
 void
 gen_arg(Unit *unit,
-        Pnode *pnode,
+        PNode *pnode,
         CSrc *src,
         bl_csrc_impl_layers l)
 {
   char buf[256];
-  Pnode *type = NULL;
-  Pnode *ident = NULL;
+  PNode *type = NULL;
+  PNode *ident = NULL;
 
-  type = bo_array_at(pnode->nodes, 0, Pnode *);
-  ident = bo_array_at(pnode->nodes, 1, Pnode *);
+  type = bo_array_at(pnode->nodes, 0, PNode *);
+  ident = bo_array_at(pnode->nodes, 1, PNode *);
 
   sprintf(buf,
           "%s %s",
@@ -340,15 +340,15 @@ gen_arg(Unit *unit,
 
 CSrc *
 gen_scope(Unit *unit,
-          Pnode *pnode,
+          PNode *pnode,
           int nesting)
 {
   CSrc *scope_src = bl_csrc_new();
   nesting += 2;
   size_t c = bo_array_size(pnode->nodes);
-  Pnode *child = NULL;
+  PNode *child = NULL;
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(pnode->nodes, i, Pnode *);
+    child = bo_array_at(pnode->nodes, i, PNode *);
     switch (child->type) {
       case BL_PT_DECL:
         gen_decl(unit, child, scope_src, nesting, true, "");
@@ -369,19 +369,19 @@ gen_scope(Unit *unit,
 
 void
 gen_nscope(Unit *unit,
-           Pnode *pnode,
+           PNode *pnode,
            CSrc *src,
            int nesting)
 {
 
-  Pnode *ident = bo_array_at(pnode->nodes, 0, Pnode*);
-  Pnode *nscope = bo_array_at(pnode->nodes, 1, Pnode*);
+  PNode *ident = bo_array_at(pnode->nodes, 0, PNode*);
+  PNode *nscope = bo_array_at(pnode->nodes, 1, PNode*);
   const char *prefix = ident->tok->content.as_string;
 
-  Pnode *child = NULL;
+  PNode *child = NULL;
   size_t c = bo_array_size(nscope->nodes);
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(nscope->nodes, i, Pnode *);
+    child = bo_array_at(nscope->nodes, i, PNode *);
     switch (child->type) {
       case BL_PT_DECL:
         gen_decl(unit, child, src, nesting, false, prefix);
@@ -398,16 +398,16 @@ gen_nscope(Unit *unit,
 
 void
 gen_gscope(Unit *unit,
-           Pnode *pnode,
+           PNode *pnode,
            CSrc *src)
 {
   bo_string_append(src->impl[BL_CSRC_IMPL_LAYER_INCLUDE], header_comment);
   bo_string_append(src->impl[BL_CSRC_IMPL_LAYER_INCLUDE], header_defaults);
 
   size_t c = bo_array_size(pnode->nodes);
-  Pnode *child = NULL;
+  PNode *child = NULL;
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(pnode->nodes, i, Pnode *);
+    child = bo_array_at(pnode->nodes, i, PNode *);
     switch (child->type) {
       case BL_PT_NAMESPACE:
         gen_nscope(unit, child, src, 0);
@@ -427,7 +427,7 @@ gen_gscope(Unit *unit,
 
 CSrc *
 bl_cgen_generate(Unit *unit,
-                 Pnode *pnode)
+                 PNode *pnode)
 {
   bl_assert(pnode->type == BL_PT_GSCOPE, "expected global scope\n");
   CSrc *csrc = bl_csrc_new();

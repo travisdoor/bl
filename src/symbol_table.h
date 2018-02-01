@@ -30,6 +30,7 @@
 #define BISCUIT_SYMBOL_TABLE_H
 
 #include <bobject/bobject.h>
+#include "pnode.h"
 
 /* class declaration */
 bo_decl_type_begin(SymbolTable, BObject)
@@ -38,6 +39,18 @@ bo_end();
 
 SymbolTable *
 bl_symbol_table_new(void);
+
+bool
+bl_symbol_table_geristrate(SymbolTable *self,
+                           PNode       *node);
+
+PNode *
+bl_symbol_table_get(SymbolTable *self,
+                    const char  *id);
+                           
+void
+bl_symbol_table_print(SymbolTable *self,
+                      FILE        *out);
 
 #endif /* end of include guard: BISCUIT_SYMBOL_TABLE_H */
 

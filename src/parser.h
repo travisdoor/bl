@@ -34,7 +34,7 @@
 #include "tokens.h"
 #include "unit.h"
 
-Pnode *
+PNode *
 bl_parser_scan(Unit   *unit,
                Tokens *tokens);
 
