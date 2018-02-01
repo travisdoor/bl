@@ -60,6 +60,12 @@ gen_scope(Unit *unit,
           Pnode *pnode,
           int nesting);
 
+static void  
+gen_ret(Unit *unit,
+        Pnode *pnode,
+        CSrc *src,
+        int nesting);
+
 static void
 gen_func(Unit *unit,
          Pnode *pnode,
@@ -159,6 +165,36 @@ gen_decl(Unit *unit,
       bo_string_append(src->impl[BL_CSRC_IMPL_LAYER_IVAR], &buf[0]);
     }
   }
+}
+
+void  
+gen_ret(Unit *unit,
+        Pnode *pnode,
+        CSrc *src,
+        int nesting)
+{
+  Pnode *exp = NULL;
+  if (bo_array_size(pnode->nodes) == 1)
+    exp = bo_array_at(pnode->nodes, 0, Pnode *);
+
+  char buf[256];
+  
+  if (exp) {
+    sprintf(buf,
+            "%*s%s %d;\n",
+            nesting,
+            "",
+            "return",
+            exp->tok->content.as_int);
+
+  } else {
+    sprintf(buf,
+            "%*s%s;\n",
+            nesting,
+            "",
+            "return");
+  }
+  bo_string_append(src->impl[BL_CSRC_IMPL_LAYER_IFUNC], &buf[0]);
 }
 
 void
@@ -319,6 +355,9 @@ gen_scope(Unit *unit,
         break;
       case BL_PT_CALL:
         gen_call(unit, child, scope_src, nesting, "");
+        break;
+      case BL_PT_RET:
+        gen_ret(unit, child, scope_src, nesting);
         break;
       default:
         /* TODO: handle error */

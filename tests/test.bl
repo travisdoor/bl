@@ -1,5 +1,8 @@
 // this is testing script
 
+//[C(header="stdio.h", cname="int")]
+//extern struct int {}
+
 namespace biscuit 
 {
   int number0 = 0;
@@ -8,6 +11,7 @@ namespace biscuit
   int main(char arg) {
     // this is my local int
     int my_local_int = 1024;
+    return 10;
   }
 
   void test_function(int a, int b, int c){
@@ -23,6 +27,7 @@ namespace biscuit
     i = 0;
 
     number0 = 10;
+    return;
   }
 }
 

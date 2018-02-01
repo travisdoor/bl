@@ -41,6 +41,7 @@ typedef enum _bl_ptype {
   BL_PT_FUNC,
   BL_PT_CALL,
   BL_PT_ASGN,
+  BL_PT_RET,
   BL_PT_NAMESPACE,
   BL_PT_EXP,
   BL_PT_TYPE,

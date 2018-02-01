@@ -41,6 +41,9 @@ parse_decl(Unit *unit,
 static Pnode *
 parse_func(Unit *unit,
            Tokens *tokens);
+static Pnode *
+parse_return(Unit *unit,
+             Tokens *tokens);
 
 static Pnode *
 parse_call(Unit *unit,
@@ -248,6 +251,24 @@ parse_func_args(Unit *unit,
 }
 
 Pnode *
+parse_return(Unit *unit,
+             Tokens *tokens)
+{
+  // eat 'return'
+  bl_tokens_consume(tokens);
+  Pnode *ret = bl_pnode_new(BL_PT_RET, NULL);
+
+  Pnode *exp = parse_exp(unit, tokens);
+  if (exp)
+    bl_pnode_push(ret, exp);
+
+  if (bl_tokens_consume(tokens) == NULL)
+    parse_error(unit, tokens, "missing semicolon");
+
+  return ret;  
+}
+
+Pnode *
 parse_func(Unit *unit,
            Tokens *tokens)
 {
@@ -339,6 +360,7 @@ parse_scope(Unit *unit,
     }
     if (bl_pnode_push(scope, parse_decl(unit, tokens)) ||
         bl_pnode_push(scope, parse_assignment(unit, tokens)) ||
+        bl_pnode_push(scope, parse_return(unit, tokens)) ||
         bl_pnode_push(scope, parse_call(unit, tokens)))
       continue;
     else

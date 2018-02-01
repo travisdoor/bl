@@ -1,11 +1,10 @@
-- assignment to expression
-- function call
 - main method
 - expressions (assignment, method call)
 
 - type checking in parser
 - name collision checking in parser
 - better error handling in parser
+- anything after return in current function scope can be ignored
 
 Data types:
   bool
