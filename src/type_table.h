@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl  
 //
-// File:   evaluator.h
+// File:   type_table.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   01/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,13 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef EVALUATOR_H_ZJOUGYJ5
-#define EVALUATOR_H_ZJOUGYJ5
+#ifndef BISCUIT_TYPE_TABLE_H
+#define BISCUIT_TYPE_TABLE_H
 
-#include "pnode.h"
-#include <bobject/containers/string.h>
+#include <bobject/bobject.h>
 
-BString *
-bl_evaluator_evaluate(Pnode *node);
+/* class declaration */
+bo_decl_type_begin(TypeTable, BObject)
+  /* virtuals */
+bo_end();
 
-#endif /* end of include guard: EVALUATOR_H_ZJOUGYJ5 */
+TypeTable *
+bl_type_table_new(void);
+
+#endif /* end of include guard: BISCUIT_TYPE_TABLE_H */
+

@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   snippets.h
+// File:   csrc.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   31/01/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,43 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef SNIPPETS_H_CE4ZVWQN
-#define SNIPPETS_H_CE4ZVWQN
+#ifndef BL_CSRC_H
+#define BL_CSRC_H
 
-static const char *bl_snipp_inclh =
-  "#include <%s>\n";
+#include <bobject/bobject.h>
+#include <bobject/containers/string.h>
 
-// %type %prefix%name;
-static const char *bl_snipp_var_decl =
-  "%*s%.*s %s%.*s;\n";
+typedef enum _bl_csrc_impl_layers
+{
+  BL_CSRC_IMPL_LAYER_INCLUDE = 0,
+  BL_CSRC_IMPL_LAYER_TYPEDEF,
+  BL_CSRC_IMPL_LAYER_DVAR,
+  BL_CSRC_IMPL_LAYER_IVAR,
+  BL_CSRC_IMPL_LAYER_DFUNC,
+  BL_CSRC_IMPL_LAYER_IFUNC,
+  BL_CSRC_IMPL_LAYER_COUNT
+} bl_csrc_impl_layers;
 
-// %type %prefix%name(void);
-static const char *bl_snipp_method_decl =
-  "%*s%.*s %s%.*s(void);\n";
+/* class CSrc declaration */
+bo_decl_type_begin(CSrc, BObject)
+  /* virtuals */
+bo_end();
 
-static const char *bl_snipp_method_impl =
-  "%*s%.*s %s%.*s(void) {\n";
+/* class CSrc object members */
+bo_decl_members_begin(CSrc, BObject)
+  /* members */
+  BString *impl[BL_CSRC_IMPL_LAYER_COUNT];
+bo_end();
 
-// [spaces][name] ([param]); 
-static const char *bl_snipp_method_call =
-  "%*s%s%.*s(\"%.*s\");\n";
+CSrc *
+bl_csrc_new(void);
 
-// c main method 
-static const char *bl_snipp_main =
-  "int main (int argc, char **argv) {\n  %s%.*s(); \n  return 0; \n}\n";
+BString *
+bl_csrc_get_impl(CSrc *self);
 
-#endif /* end of include guard: SNIPPETS_H_CE4ZVWQN */
+void
+bl_csrc_merge(CSrc *self,
+              CSrc *other,
+              bl_csrc_impl_layers layer);
+
+#endif //BL_CSRC_H

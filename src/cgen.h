@@ -1,11 +1,11 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   src_context.h
+// File:   cgen.h
 // Author: Martin Dorazil
-// Date:   28/01/2018
+// Date:   31/01/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,38 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_SRC_CONTEXT_H
-#define BISCUIT_SRC_CONTEXT_H
+#ifndef BL_CGEN_H
+#define BL_CGEN_H
 
-#include <bobject/bobject.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/string.h>
-#include "token.h"
+#include "unit.h"
+#include "pnode.h"
+#include "csrc.h"
 
-/* class declaration */
-bo_decl_type_begin(SrcContext, BObject)
-  /* virtuals */
-bo_end();
+CSrc *
+bl_cgen_generate(Unit *unit,
+                 Pnode *pnode);
 
-/* SrcContext members */
-bo_decl_members_begin(SrcContext, BObject)
-  BString    *includes;
-  BString    *fdecl;
-  BString    *impl;
-  BHashTable *ext_mapping;
-bo_end();
-
-SrcContext *
-bl_src_context_new(void);
-
-const bl_token_t *
-bl_src_context_getem(SrcContext *self,
-                     const bl_token_t *name);
-
-bool 
-bl_src_context_addem(SrcContext       *self,
-                     const bl_token_t *key,
-                     const bl_token_t *value);
-
-#endif /* end of include guard: BISCUIT_SRC_CONTEXT_H */
-
+#endif //BL_CGEN_H

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   token.h
+// File:   unit.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,59 +26,28 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_H
-#define BL_TOKEN_H
+#ifndef UNIT_H_FC53HXPA
+#define UNIT_H_FC53HXPA
 
-#include <stdio.h>
+#include <bobject/bobject.h>
+#include <bobject/containers/string.h>
 
-#define SYMBOLS \
-  sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(NUM, "number") \
-  sm(RET, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(SLASH, "/") \
+/* class Unit declaration */
+bo_decl_type_begin(Unit, BObject)
+  /* virtuals */
+bo_end();
 
-typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  SYMBOLS
-#undef sm
-} bl_sym_e;
+/* class Unit object members */
+bo_decl_members_begin(Unit, BObject)
+  /* members */
+  BString *filepath;
+  BString *src;
+bo_end();
 
-static char *bl_sym_strings[] = {
-#define sm(tok, str) str,
-  SYMBOLS
-#undef sm
-};
+Unit *
+bl_unit_new(const char *filepath);
 
-#undef SYMBOLS
+void
+bl_unit_compile(Unit *self);
 
-typedef struct
-{
-  bl_sym_e sym;
-  int line;
-  int col;
-  union content_u {
-    const char *as_string;
-    double      as_double;
-    int         as_int;
-  } content;
-} bl_token_t;
-
-#endif //BL_TOKEN_H
+#endif /* end of include guard: UNIT_H_FC53HXPA */

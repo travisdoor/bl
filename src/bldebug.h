@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   token.h
+// File:   bldebug.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,59 +26,38 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_H
-#define BL_TOKEN_H
+#ifndef BLDEBUG_H_VYI9AXGT
+#define BLDEBUG_H_VYI9AXGT
 
+#include <stdlib.h>
 #include <stdio.h>
 
-#define SYMBOLS \
-  sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(NUM, "number") \
-  sm(RET, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(SLASH, "/") \
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
-typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  SYMBOLS
-#undef sm
-} bl_sym_e;
+#define bl_assert(expr, format, ...) \
+    if ((expr) == 0) { \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        abort(); \
+    }
 
-static char *bl_sym_strings[] = {
-#define sm(tok, str) str,
-  SYMBOLS
-#undef sm
-};
+#define bl_exit(format, ...) \
+    { \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        exit(1); \
+    }
 
-#undef SYMBOLS
+#define bl_error_at(file, line, column, msg) \
+    { \
+        fprintf(stderr, ANSI_COLOR_RED "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
+        exit(0); \
+    }
 
-typedef struct
-{
-  bl_sym_e sym;
-  int line;
-  int col;
-  union content_u {
-    const char *as_string;
-    double      as_double;
-    int         as_int;
-  } content;
-} bl_token_t;
+#define bl_warning_at(file, line, column, format, ...) \
+    { \
+        fprintf(stdout, ANSI_COLOR_YELLOW "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
+    }
 
-#endif //BL_TOKEN_H
+#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
+

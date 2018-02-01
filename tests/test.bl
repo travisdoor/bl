@@ -1,21 +1,28 @@
 // this is testing script
 
-["stdio.h", "printf"]
-extern void print();
+namespace biscuit 
+{
+  int number0 = 0;
+  int number;
 
-["stdio.h", "puts"]
-extern void print2();
+  int main(char arg) {
+    // this is my local int
+    int my_local_int = 1024;
+  }
 
-void method() {
-  int i;
+  void test_function(int a, int b, int c){
+    double d = 15;
+  }
+
+  void test_function2(int a, int b, int c){
+    double d = 64;
+  }
+
+  void test_function3(int a, int b, int c){
+    int i;
+    i = 0;
+
+    number0 = 10;
+  }
 }
 
-void test_method_next() {
-  char c;
-}
-
-// main function
-void main() {
-  print("hello world\n");
-  print2("hello world\n");
-}

@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer.h
+// File:   tokens.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   29.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,15 +26,76 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LEXER_H_HFL8RYQ5
-#define LEXER_H_HFL8RYQ5
+#ifndef TOKENS_H_Z3NM7BJC
+#define TOKENS_H_Z3NM7BJC
 
+#include <bobject/bobject.h>
 #include <bobject/containers/string.h>
-#include "tokens.h"
-#include "unit.h"
+#include "token.h"
+
+/* class Tokens declaration */
+bo_decl_type_begin(Tokens, BObject)
+  /* virtuals */
+bo_end();
 
 Tokens *
-bl_lexer_scan(Unit *unit);
+bl_tokens_new(BString *src);
 
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+void
+bl_tokens_push(Tokens *self, bl_token_t *t);
 
+void
+bl_tokens_cache_str(Tokens *self, 
+                    char *str);
+
+bl_token_t *
+bl_tokens_peek(Tokens *self);
+
+bl_token_t *
+bl_tokens_peek_2nd(Tokens *self);
+
+bl_token_t *
+bl_tokens_peek_nth(Tokens *self,
+                   size_t  n);
+
+bl_token_t *
+bl_tokens_consume(Tokens *self);
+
+bl_token_t *
+bl_tokens_consume_if(Tokens  *self,
+                     bl_sym_e sym);
+
+bool
+bl_tokens_current_is(Tokens  *self,
+                     bl_sym_e sym);
+
+bool
+bl_tokens_next_is(Tokens  *self,
+                  bl_sym_e sym);
+
+bool
+bl_tokens_current_is_not(Tokens  *self,
+                         bl_sym_e sym);
+
+bool
+bl_tokens_next_is_not(Tokens  *self,
+                      bl_sym_e sym);
+
+bool
+bl_tokens_is_seq(Tokens *self,
+                 int     cnt,
+                 ...);
+
+void
+bl_tokens_resert_iter(Tokens *self);
+
+void
+bl_tokens_set_marker(Tokens *self);
+
+void
+bl_tokens_back_to_marker(Tokens *self);
+
+const char *
+bl_tokens_get_src(Tokens *self);
+
+#endif /* end of include guard: TOKENS_H_Z3NM7BJC */
