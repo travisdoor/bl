@@ -36,51 +36,6 @@
 void log_parsed(PNode *node, int lpad)
 {
   switch (node->type) {
-    case BL_PT_GSCOPE:
-      printf("%*s[gscope]\n", lpad, "");
-      break;
-    case BL_PT_EXP:
-      printf("%*s[exp]\n", lpad, "");
-      break;
-    case BL_PT_DECL:
-      printf("%*s[decl]\n", lpad, "");
-      break;
-    case BL_PT_END:
-      printf("%*s[end]\n", lpad, "");
-      break;
-    case BL_PT_TYPE:
-      printf("%*s[type]\n", lpad, "");
-      break;
-    case BL_PT_ID:
-      printf("%*s[ident] %s\n", lpad, "", node->tok->content.as_string);
-      break;
-    case BL_PT_FUNC:
-      printf("%*s[func]\n", lpad, "");
-      break;
-    case BL_PT_ARGS:
-      printf("%*s[args]\n", lpad, "");
-      break;
-    case BL_PT_ARG:
-      printf("%*s[arg]\n", lpad, "");
-      break;
-    case BL_PT_SCOPE:
-      printf("%*s[scope]\n", lpad, "");
-      break;
-    case BL_PT_NSCOPE:
-      printf("%*s[nscope]\n", lpad, "");
-      break;
-    case BL_PT_NAMESPACE:
-      printf("%*s[namespace]\n", lpad, "");
-      break;
-    case BL_PT_CALL:
-      printf("%*s[call]\n", lpad, "");
-      break;
-    case BL_PT_ASGN:
-      printf("%*s[asign]\n", lpad, "");
-      break;
-    case BL_PT_RET:
-      printf("%*s[return]\n", lpad, "");
-      break;
     default:
       printf("%*s[UNKNOWN]\n", lpad, "");
   }

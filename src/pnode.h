@@ -34,21 +34,7 @@
 #include "token.h"
 
 typedef enum _bl_ptype {
-  BL_PT_GSCOPE,
-  BL_PT_NSCOPE,
-  BL_PT_SCOPE,
-  BL_PT_DECL,
-  BL_PT_FUNC,
-  BL_PT_CALL,
-  BL_PT_ASGN,
-  BL_PT_RET,
-  BL_PT_NAMESPACE,
-  BL_PT_EXP,
-  BL_PT_TYPE,
-  BL_PT_ID,
-  BL_PT_ARG,
-  BL_PT_ARGS,
-  BL_PT_END
+  BL_PT_UNKNOWN,
 } bl_ptype_e;
 
 /* class PNode declaration */
@@ -78,3 +64,4 @@ bl_pnode_push(PNode *self,
               PNode *child);
 
 #endif //BL_PNODE_H
+
