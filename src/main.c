@@ -35,8 +35,6 @@
 
 #define ENABLE_LOG 0
 
-Pipeline *pipeline;
-
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -51,7 +49,7 @@ int main(int argc, char *argv[])
   }
 
   /* init pipeline */
-  pipeline = bl_pipeline_new();
+  Pipeline *pipeline = bl_pipeline_new();
   Stage *lexer = (Stage *)bl_lexer_new(); 
 
   bl_pipeline_add_stage(pipeline, lexer);
