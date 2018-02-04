@@ -30,38 +30,19 @@
 #include "unit.h"
 #include "bldebug.h"
 
-/*void log_parsed(PNode *node, int lpad)*/
-/*{*/
-  /*switch (node->type) {*/
-    /*default:*/
-      /*printf("%*s[UNKNOWN]\n", lpad, "");*/
-  /*}*/
-
-  /*if (node->nodes == NULL)*/
-    /*return;*/
-
-  /*size_t c = bo_array_size(node->nodes);*/
-  /*PNode *child;*/
-  /*lpad+=2;*/
-  /*for (size_t i = 0; i < c; i++) {*/
-    /*child = bo_array_at(node->nodes, i, PNode *);*/
-    /*log_parsed(child, lpad);*/
-  /*}*/
-/*}*/
-
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
 bo_end();
 
 /* class Unit object members */
-bo_decl_members_begin(Unit, BObject)
+bo_decl_members_begin(Unit, Actor)
   /* members */
   BString *filepath;
   BString *src;
 bo_end();
 
-bo_impl_type(Unit, BObject);
+bo_impl_type(Unit, Actor);
 
 void
 UnitKlass_init(UnitKlass *klass)
@@ -72,6 +53,7 @@ void
 Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
+  bo_parent_ctor(Actor, p);
   self->filepath = bo_string_new_str(p->filepath);
 }
 

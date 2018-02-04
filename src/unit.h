@@ -30,9 +30,10 @@
 #define UNIT_H_FC53HXPA
 
 #include <bobject/bobject.h>
+#include "pipeline/actor.h"
 
 /* class Unit declaration */
-bo_decl_type_begin(Unit, BObject)
+bo_decl_type_begin(Unit, Actor)
   /* virtuals */
 bo_end();
 

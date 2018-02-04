@@ -31,20 +31,16 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
-#include "unit.h"
+#include "pipeline/stage.h"
 #include "token.h"
 
 /* class declaration */
-bo_decl_type_begin(Lexer, BObject)
+bo_decl_type_begin(Lexer, Stage)
   /* virtuals */
 bo_end();
 
 Lexer *
-bl_lexer_new();
-
-bool
-bl_lexer_scan(Lexer *self, 
-              BString *src);
+bl_lexer_new(void);
 
 bl_token_t *
 bl_lexer_peek(Lexer *self);

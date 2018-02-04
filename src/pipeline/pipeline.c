@@ -32,6 +32,7 @@
 
 #define EXPECTED_STAGE_COUNT 8
 #define MAX_DOMAIN_COUNT 4
+#define STARTING_DOMAIN 0
 
 /* Pipeline members */
 bo_decl_members_begin(Pipeline, BObject)
@@ -81,6 +82,7 @@ run_domain(Pipeline *self,
            Actor    *actor,
            int       domain)
 {
+  /* in case actor has been already ran */
   if (actor->state != BL_ACTOR_STATE_PENDING)
     return;
 
@@ -90,6 +92,7 @@ run_domain(Pipeline *self,
     Stage *stage = NULL;
     for (int i = 0; i < cs; i++) {
       stage = bo_array_at(self->stages[domain], i, Stage *);
+      /* IDEA: state can be managed inside every stage */
       if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
         actor->state = BL_ACTOR_STATE_FAILED;
         return;
@@ -119,7 +122,7 @@ void
 bl_pipeline_run(Pipeline *self,
                 Actor    *actor)
 {
-  run_domain(self, actor, 0);
+  run_domain(self, actor, STARTING_DOMAIN);
 }
 
 void

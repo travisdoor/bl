@@ -17,6 +17,8 @@ set(SOURCE_FILES
   src/bldebug.h
   src/lexer.c
   src/lexer.h 
+  src/module.c
+  src/module.h 
   src/token.h
   src/token.c
   src/unit.c

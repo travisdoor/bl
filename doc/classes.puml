@@ -1,0 +1,59 @@
+@startuml
+enum bl_actor_state_e {
+  BL_ACTOR_STATE_PENDING
+  BL_ACTOR_STATE_FINISHED
+  BL_ACTOR_STATE_FAILED
+}
+
+enum bl_stage_domain_e {
+  BL_STAGE_DOMAIN_MODULE
+  BL_STAGE_DOMAIN_UNIT
+}
+
+class Actor {
+  + bl_actor_state_e state()
+  + int last_error()
+}
+
+class Pipeline {
+  + void add_stage(Stage *stage)
+  + bool run(Actor *actor)
+}
+
+class Stage {
+  + Stage(int domain)
+  {abstract} + bool run(Actor actor)
+  - int domain
+}
+
+class Module {
+}
+
+class Unit {
+  - BString *src
+}
+
+class Lexer {
+}
+
+class Parser {
+}
+
+class Analyzer {
+}
+
+Stage <|-- Lexer
+Stage <|-- Parser 
+Stage <|-- Analyzer  
+Stage <|-- LlvmBackend 
+
+Pipeline o-- Stage: - stages
+
+Module ..> Unit: have n >
+
+Actor <|-- Module
+Actor <|-- Unit
+Actor *-- bl_actor_state_e: - state
+Actor *-- Actor: - actors 
+
+@enduml

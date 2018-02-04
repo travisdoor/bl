@@ -29,13 +29,20 @@
 #include <stdio.h>
 #include "lexer.h"
 #include "unit.h"
+#include "pipeline/pipeline.h"
 
 #define ENABLE_LOG 0
+
+Pipeline *pipeline;
 
 int main(int argc, char *argv[])
 {
   if (argc < 2)
     return 1;
+
+  pipeline = bl_pipeline_new();
+
+  bo_unref(pipeline);
 
   return 0;
 }
