@@ -56,5 +56,8 @@ bl_actor_new(void);
 bl_actor_state_e
 bl_actor_state(Actor *self);
 
+void
+bl_actor_add(Actor *self, Actor *child);
+
 #endif /* end of include guard: BISCUIT_ACTOR_H */
 

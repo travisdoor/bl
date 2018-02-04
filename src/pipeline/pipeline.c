@@ -68,6 +68,8 @@ Pipeline_dtor(Pipeline *self)
   for (int i = 0; i < MAX_DOMAIN_COUNT; i++) {
     bo_unref(self->stages[i]);
   }
+
+  puts("pipeline destroyed");
 }
 
 /* Pipeline copy constructor */
@@ -77,14 +79,14 @@ Pipeline_copy(Pipeline *self, Pipeline *other)
   return BO_NO_COPY;
 }
 
-static void 
+static bool 
 run_domain(Pipeline *self,
            Actor    *actor,
            int       domain)
 {
   /* in case actor has been already ran */
   if (actor->state != BL_ACTOR_STATE_PENDING)
-    return;
+    return false;
 
   const size_t c = bo_array_size(actor->actors);
   if (c == 0) {
@@ -95,20 +97,24 @@ run_domain(Pipeline *self,
       /* IDEA: state can be managed inside every stage */
       if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
         actor->state = BL_ACTOR_STATE_FAILED;
-        return;
+        return false;
       }
 
       actor->state = BL_ACTOR_STATE_FINISHED;
     }
 
-    /* run all in this domain */
-    return;
+    return true;
   } 
 
   /* not leaf */
   for (int i = 0; i < c; i++) {
-    run_domain(self, bo_array_at(actor->actors, i, Actor *), domain+1);
+    if (!run_domain(self, bo_array_at(actor->actors, i, Actor *), domain+1)) {
+        actor->state = BL_ACTOR_STATE_FAILED;
+        return false;
+    }
   }
+
+  return true;
 }
 
 /* public */
@@ -118,11 +124,11 @@ bl_pipeline_new(void)
   return bo_new(Pipeline, NULL);
 }
 
-void
+bool 
 bl_pipeline_run(Pipeline *self,
                 Actor    *actor)
 {
-  run_domain(self, actor, STARTING_DOMAIN);
+  return run_domain(self, actor, STARTING_DOMAIN);
 }
 
 void
@@ -131,6 +137,6 @@ bl_pipeline_add_stage(Pipeline *self,
 {
   const int domain = bo_vtbl(stage, Stage)->domain(stage);
   bl_assert(domain < MAX_DOMAIN_COUNT, "cannot add domain %i, maximum is %i\n", domain, MAX_DOMAIN_COUNT);
-  bo_array_push_back(self->stages[domain], *stage);
+  bo_array_push_back(self->stages[domain], stage);
 }
 

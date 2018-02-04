@@ -35,17 +35,28 @@
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
 
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
-        fprintf(stderr, format, ##__VA_ARGS__); \
+        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
         abort(); \
     }
 
 #define bl_abort(format, ...) \
     { \
-        fprintf(stderr, format, ##__VA_ARGS__); \
+        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
         abort(); \
+    }
+
+#define bl_error(format, ...) \
+    { \
+        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
+    }
+
+#define bl_log(format, ...) \
+    { \
+        fprintf(stderr, ANSI_COLOR_GREEN format ANSI_COLOR_RESET, ##__VA_ARGS__); \
     }
 /*
 #define bl_error_at(file, line, column, msg) \

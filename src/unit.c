@@ -30,6 +30,9 @@
 #include "unit.h"
 #include "bldebug.h"
 
+static void
+load_file(Unit *self);
+
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
@@ -55,6 +58,9 @@ Unit_ctor(Unit *self, UnitParams *p)
   /* constructor */
   bo_parent_ctor(Actor, p);
   self->filepath = bo_string_new_str(p->filepath);
+
+  /* HACK remove when load file stage will be added */
+  load_file(self);
 }
 
 void
@@ -62,6 +68,7 @@ Unit_dtor(Unit *self)
 {
   bo_unref(self->filepath);
   bo_unref(self->src);
+  puts("unit destroyed");
 }
 
 bo_copy_result
@@ -71,7 +78,7 @@ Unit_copy(Unit *self, Unit *other)
 }
 /* class Unit end */
 
-static void
+void
 load_file(Unit *self)
 {
   FILE *f = fopen(bo_string_get(self->filepath), "r");

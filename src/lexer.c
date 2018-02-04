@@ -113,6 +113,7 @@ void
 Lexer_dtor(Lexer *self)
 {
   bo_unref(self->tokens);
+  puts("lexer destroyed");
 }
 
 /* Lexer copy constructor */
@@ -215,11 +216,13 @@ run(Lexer *self,
           continue;
 
         /* notify error */
+        bl_error("* lexing failed on symbol %c\n", cur.iter[0]);
         return false;
     }
   }
   tok.sym = BL_SYM_EOF;
   bo_array_push_back(self->tokens, tok);
+  bl_log("* lexing done\n");
   return true;
 }
 
@@ -328,6 +331,9 @@ scan_ident(Lexer *self,
     (cur->iter)++;
     tok.len++;
   }
+
+  if (tok.len == 0)
+    return 0;
 
 
   bo_array_push_back(self->tokens, tok);

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   pipeline.h
+// File:   module.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,28 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_PIPELINE_H
-#define BISCUIT_PIPELINE_H
+#ifndef BL_MODULE_H
+#define BL_MODULE_H
 
 #include <bobject/bobject.h>
 #include "pipeline/actor.h"
-#include "pipeline/stage.h"
 
 /* class declaration */
-bo_decl_type_begin(Pipeline, BObject)
+bo_decl_type_begin(Module, Actor)
   /* virtuals */
 bo_end();
 
-Pipeline *
-bl_pipeline_new(void);
+Module *
+bl_module_new(void);
 
-bool
-bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
-
-void
-bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
-
-#endif /* end of include guard: BISCUIT_PIPELINE_H */
+#endif /* end of include guard: BL_MODULE_H */
 

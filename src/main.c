@@ -29,7 +29,9 @@
 #include <stdio.h>
 #include "lexer.h"
 #include "unit.h"
+#include "module.h"
 #include "pipeline/pipeline.h"
+#include "bldebug.h"
 
 #define ENABLE_LOG 0
 
@@ -40,8 +42,27 @@ int main(int argc, char *argv[])
   if (argc < 2)
     return 1;
 
-  pipeline = bl_pipeline_new();
+  /* init actors */
+  Actor *module = (Actor *)bl_module_new();
 
+  for (int i = 1; i < argc; i++) {
+    Actor *unit = (Actor *)bl_unit_new(argv[i]);
+    bl_actor_add(module, unit);
+  }
+
+  /* init pipeline */
+  pipeline = bl_pipeline_new();
+  Stage *lexer = (Stage *)bl_lexer_new(); 
+
+  bl_pipeline_add_stage(pipeline, lexer);
+  
+  bl_log("pipeline start\n");
+  if (!bl_pipeline_run(pipeline, module)) {
+    bl_error("pipeline run failed\n");
+  } else 
+    bl_log("pipeline finished without errors\n");
+
+  bo_unref(module);
   bo_unref(pipeline);
 
   return 0;

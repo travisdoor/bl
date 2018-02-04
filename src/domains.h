@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   pipeline.h
+// File:   domains.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,28 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_PIPELINE_H
-#define BISCUIT_PIPELINE_H
+#ifndef BISCUIT_DOMAINS_H
+#define BISCUIT_DOMAINS_H
 
-#include <bobject/bobject.h>
-#include "pipeline/actor.h"
-#include "pipeline/stage.h"
+typedef enum _bl_domain_e
+{
+  BL_DOMAIN_MODULE = 0,
+  BL_DOMAIN_UNIT   = 1,
+} bl_domain_e;
 
-/* class declaration */
-bo_decl_type_begin(Pipeline, BObject)
-  /* virtuals */
-bo_end();
-
-Pipeline *
-bl_pipeline_new(void);
-
-bool
-bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
-
-void
-bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
-
-#endif /* end of include guard: BISCUIT_PIPELINE_H */
+#endif /* end of include guard: BISCUIT_DOMAINS_H */
 

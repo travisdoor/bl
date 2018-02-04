@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   pipeline.h
+// File:   module.c
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,28 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_PIPELINE_H
-#define BISCUIT_PIPELINE_H
+#include <stdio.h>
+#include "module.h"
 
-#include <bobject/bobject.h>
-#include "pipeline/actor.h"
-#include "pipeline/stage.h"
-
-/* class declaration */
-bo_decl_type_begin(Pipeline, BObject)
-  /* virtuals */
+/* Module members */
+bo_decl_members_begin(Module, Actor)
 bo_end();
 
-Pipeline *
-bl_pipeline_new(void);
+/* Module constructor parameters */
+bo_decl_params_begin(Module)
+bo_end();
 
-bool
-bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
+bo_impl_type(Module, Actor);
 
+/* Module class init */
 void
-bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
+ModuleKlass_init(ModuleKlass *klass)
+{
+}
 
-#endif /* end of include guard: BISCUIT_PIPELINE_H */
+/* Module constructor */
+void
+Module_ctor(Module *self, ModuleParams *p)
+{
+  bo_parent_ctor(Actor, p);
+}
+
+/* Module destructor */
+void
+Module_dtor(Module *self)
+{
+  puts("module destroyed");
+}
+
+/* Module copy constructor */
+bo_copy_result
+Module_copy(Module *self, Module *other)
+{
+  return BO_NO_COPY;
+}
+
+/* public */
+Module *
+bl_module_new(void)
+{
+  ModuleParams p = {
+  };
+  
+  return bo_new(Module, &p);
+}
 
