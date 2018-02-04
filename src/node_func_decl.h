@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   tokens.h
+// File:   node_func_decl.h
 // Author: Martin Dorazil
-// Date:   29.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,21 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef TOKENS_H_Z3NM7BJC
-#define TOKENS_H_Z3NM7BJC
+#ifndef BISCUIT_NODE_FUNC_DECL_H
+#define BISCUIT_NODE_FUNC_DECL_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "token.h"
+#include "node.h"
 
-/* class Tokens declaration */
-bo_decl_type_begin(Tokens, BObject)
+/* class declaration */
+bo_decl_type_begin(NodeFuncDecl, Node)
   /* virtuals */
 bo_end();
 
-Tokens *
-bl_tokens_new(BString *src);
+NodeFuncDecl *
+bl_node_func_decl_new(const char *generated_from,
+                      int         line,
+                      int         col);
 
-void
-bl_tokens_push(Tokens *self, bl_token_t *t);
+#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
 
-void
-bl_tokens_cache_str(Tokens *self, 
-                    char *str);
-
-bl_token_t *
-bl_tokens_peek(Tokens *self);
-
-bl_token_t *
-bl_tokens_peek_2nd(Tokens *self);
-
-bl_token_t *
-bl_tokens_peek_nth(Tokens *self,
-                   size_t  n);
-
-bl_token_t *
-bl_tokens_consume(Tokens *self);
-
-bl_token_t *
-bl_tokens_consume_if(Tokens  *self,
-                     bl_sym_e sym);
-
-bool
-bl_tokens_current_is(Tokens  *self,
-                     bl_sym_e sym);
-
-bool
-bl_tokens_next_is(Tokens  *self,
-                  bl_sym_e sym);
-
-bool
-bl_tokens_current_is_not(Tokens  *self,
-                         bl_sym_e sym);
-
-bool
-bl_tokens_next_is_not(Tokens  *self,
-                      bl_sym_e sym);
-
-bool
-bl_tokens_is_seq(Tokens *self,
-                 int     cnt,
-                 ...);
-
-void
-bl_tokens_resert_iter(Tokens *self);
-
-void
-bl_tokens_set_marker(Tokens *self);
-
-void
-bl_tokens_back_to_marker(Tokens *self);
-
-const char *
-bl_tokens_get_src(Tokens *self);
-
-#endif /* end of include guard: TOKENS_H_Z3NM7BJC */

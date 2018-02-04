@@ -11,14 +11,17 @@ set(SOURCE_FILES
   src/lexer.c
   src/lexer.h 
   src/token.h
+  src/token.c
   src/unit.c
   src/unit.h 
-  src/symbol_table.c
-  src/symbol_table.h 
   src/parser.h 
   src/parser.c 
-  src/pnode.h 
-  src/pnode.c src/tokens.h src/tokens.c src/cgen.h src/cgen.c src/csrc.h src/csrc.c)
+  src/node.h 
+  src/node.c 
+  src/node_func_decl.h 
+  src/node_func_decl.c 
+  src/error.h 
+  )
 
 add_executable(bl ${SOURCE_FILES})
 

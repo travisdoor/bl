@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   csrc.h
+// File:   node.c
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   02/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,43 +26,37 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_CSRC_H
-#define BL_CSRC_H
+#include "node.h"
+#include "bldebug.h"
 
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
+bo_impl_type(Node, BObject);
 
-typedef enum _bl_csrc_impl_layers
-{
-  BL_CSRC_IMPL_LAYER_INCLUDE = 0,
-  BL_CSRC_IMPL_LAYER_TYPEDEF,
-  BL_CSRC_IMPL_LAYER_DVAR,
-  BL_CSRC_IMPL_LAYER_IVAR,
-  BL_CSRC_IMPL_LAYER_DFUNC,
-  BL_CSRC_IMPL_LAYER_IFUNC,
-  BL_CSRC_IMPL_LAYER_COUNT
-} bl_csrc_impl_layers;
-
-/* class CSrc declaration */
-bo_decl_type_begin(CSrc, BObject)
-  /* virtuals */
-bo_end();
-
-/* class CSrc object members */
-bo_decl_members_begin(CSrc, BObject)
-  /* members */
-  BString *impl[BL_CSRC_IMPL_LAYER_COUNT];
-bo_end();
-
-CSrc *
-bl_csrc_new(void);
-
-BString *
-bl_csrc_get_impl(CSrc *self);
-
+/* Node class init */
 void
-bl_csrc_merge(CSrc *self,
-              CSrc *other,
-              bl_csrc_impl_layers layer);
+NodeKlass_init(NodeKlass *klass)
+{
+}
 
-#endif //BL_CSRC_H
+/* Node constructor */
+void
+Node_ctor(Node *self, NodeParams *p)
+{
+  self->type = p->type;
+  self->generated_from = p->generated_from;
+  self->line = p->line;
+  self->col = p->col;
+}
+
+/* Node destructor */
+void
+Node_dtor(Node *self)
+{
+}
+
+/* Node copy constructor */
+bo_copy_result
+Node_copy(Node *self, Node *other)
+{
+  return BO_NO_COPY;
+}
+

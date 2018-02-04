@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   cgen.h
+// File:   error.h
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   26.1.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,9 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_CGEN_H
-#define BL_CGEN_H
+#ifndef ERROR_H_J9YKGQWM
+#define ERROR_H_J9YKGQWM
 
-#include "unit.h"
-#include "pnode.h"
-#include "csrc.h"
+typedef void(*bl_notify_f)(const char *file, const char *src, int line, int col, const char *msg);
 
-CSrc *
-bl_cgen_generate(Unit *unit,
-                 PNode *pnode);
-
-#endif //BL_CGEN_H
+#endif /* end of include guard: ERROR_H_J9YKGQWM */

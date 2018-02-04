@@ -30,20 +30,10 @@
 #define UNIT_H_FC53HXPA
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "symbol_table.h"
 
 /* class Unit declaration */
 bo_decl_type_begin(Unit, BObject)
   /* virtuals */
-bo_end();
-
-/* class Unit object members */
-bo_decl_members_begin(Unit, BObject)
-  /* members */
-  BString     *filepath;
-  BString     *src;
-  SymbolTable *sym_tbl;
 bo_end();
 
 Unit *
@@ -51,5 +41,11 @@ bl_unit_new(const char *filepath);
 
 void
 bl_unit_compile(Unit *self);
+
+const char*
+bl_unit_src_file(Unit *self);
+
+const char*
+bl_unit_src(Unit *self);
 
 #endif /* end of include guard: UNIT_H_FC53HXPA */

@@ -26,35 +26,43 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <bobject/containers/string.h>
 #include "unit.h"
-#include "tokens.h"
 #include "lexer.h"
 #include "parser.h"
 #include "bldebug.h"
-#include "cgen.h"
 
-void log_parsed(PNode *node, int lpad)
-{
-  switch (node->type) {
-    default:
-      printf("%*s[UNKNOWN]\n", lpad, "");
-  }
+/*void log_parsed(PNode *node, int lpad)*/
+/*{*/
+  /*switch (node->type) {*/
+    /*default:*/
+      /*printf("%*s[UNKNOWN]\n", lpad, "");*/
+  /*}*/
 
-  if (node->nodes == NULL)
-    return;
+  /*if (node->nodes == NULL)*/
+    /*return;*/
 
-  size_t c = bo_array_size(node->nodes);
-  PNode *child;
-  lpad+=2;
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, PNode *);
-    log_parsed(child, lpad);
-  }
-}
+  /*size_t c = bo_array_size(node->nodes);*/
+  /*PNode *child;*/
+  /*lpad+=2;*/
+  /*for (size_t i = 0; i < c; i++) {*/
+    /*child = bo_array_at(node->nodes, i, PNode *);*/
+    /*log_parsed(child, lpad);*/
+  /*}*/
+/*}*/
 
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
+bo_end();
+
+/* class Unit object members */
+bo_decl_members_begin(Unit, BObject)
+  /* members */
+  Lexer   *lexer;
+  Parser  *parser;
+  BString *filepath;
+  BString *src;
 bo_end();
 
 bo_impl_type(Unit, BObject);
@@ -69,14 +77,14 @@ Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
   self->filepath = bo_string_new_str(p->filepath);
-  self->sym_tbl = bl_symbol_table_new();
-  self->sym_tbl = bl_symbol_table_new();
+  self->lexer = bl_lexer_new();
+  self->parser= bl_parser_new(self->lexer);
 }
 
 void
 Unit_dtor(Unit *self)
 {
-  bo_unref(self->sym_tbl);
+  bo_unref(self->lexer);
   bo_unref(self->filepath);
   bo_unref(self->src);
 }
@@ -124,19 +132,20 @@ bl_unit_compile(Unit *self)
 {
   load_file(self);
 
-  Tokens *tokens = bl_lexer_scan(self);
-  PNode *root = bl_parser_scan(self, tokens);
+  bl_lexer_scan(self->lexer, self->src);
+  bl_parser_scan(self->parser);
   /*log_parsed(root, 0);*/
   /*bl_symbol_table_print(self->sym_tbl, stdout);*/
-
-  CSrc *csrc = bl_cgen_generate(self, root);
-  BString *impl = bl_csrc_get_impl(csrc);
-
-  printf("%s\n", bo_string_get(impl));
-
-  bo_unref(impl);
-  bo_unref(csrc);
-  bo_unref(root);
-  bo_unref(tokens);
 }
 
+const char*
+bl_unit_src_file(Unit *self)
+{
+  return bo_string_get(self->filepath);
+}
+
+const char*
+bl_unit_src(Unit *self)
+{
+  return bo_string_get(self->src);
+}

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// Biscuit Engine
 //
 // File:   parser.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,20 +26,60 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
 #include "parser.h"
-#include "token.h"
-#include "bldebug.h"
 
-/* forward decl */
-/* impl */
-/* public */
+/* Parser members */
+bo_decl_members_begin(Parser, BObject)
+  Lexer *lexer;
+bo_end();
 
-PNode *
-bl_parser_scan(Unit *unit,
-               Tokens *tokens)
+/* Parser constructor parameters */
+bo_decl_params_begin(Parser)
+  Lexer *lexer;
+bo_end();
+
+bo_impl_type(Parser, BObject);
+
+/* Parser class init */
+void
+ParserKlass_init(ParserKlass *klass)
 {
-  /* parse global scope of the source */
-  return NULL;
+}
+
+/* Parser constructor */
+void
+Parser_ctor(Parser *self, ParserParams *p)
+{
+  self->lexer = bo_ref(p->lexer);
+}
+
+/* Parser destructor */
+void
+Parser_dtor(Parser *self)
+{
+  bo_unref(self->lexer);
+}
+
+/* Parser copy constructor */
+bo_copy_result
+Parser_copy(Parser *self, Parser *other)
+{
+  return BO_NO_COPY;
+}
+
+/* public */
+Parser *
+bl_parser_new(Lexer *lexer)
+{
+  ParserParams p = {
+    .lexer = lexer 
+  };
+  
+  return bo_new(Parser, &p);
+}
+
+/* public */
+void
+bl_parser_scan(Parser *self)
+{
 }

@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   pnode.h
+// File:   token.c
 // Author: Martin Dorazil
-// Date:   26/01/2018
+// Date:   26.1.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,42 +26,21 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_PNODE_H
-#define BL_PNODE_H
-
-#include <bobject/bobject.h>
-#include <bobject/containers/array.h>
 #include "token.h"
 
-typedef enum _bl_ptype {
-  BL_PT_UNKNOWN,
-} bl_ptype_e;
-
-/* class PNode declaration */
-bo_decl_type_begin(PNode, BObject)
-  /* virtuals */
-bo_end();
-
-/* class PNode object members */
-bo_decl_members_begin(PNode, BObject)
-  /* members */
-  BArray     *nodes;
-  bl_ptype_e  type;
-  bl_token_t *tok;
-bo_end();
-
-PNode *
-bl_pnode_new(bl_ptype_e  type,
-             bl_token_t *token);
-
-PNode *
-bl_pnode_new_child(PNode      *self,
-                   bl_ptype_e  type,
-                   bl_token_t *token);
-
-bool
-bl_pnode_push(PNode *self,
-              PNode *child);
-
-#endif //BL_PNODE_H
-
+void
+bl_token_init(bl_token_t *token,
+              bl_sym_e    symbol,
+              int         line,
+              int         col,
+              int         len,
+              const char *src_loc)
+{
+  (*token) = (bl_token_t) {
+    .sym = symbol,
+    .line = line,
+    .col = col, 
+    .len = len,
+    .src_loc = src_loc
+  };
+}

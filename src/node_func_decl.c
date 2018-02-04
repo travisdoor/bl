@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   cgen.c
+// File:   node_func_decl.c
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   03/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,57 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "cgen.h"
-#include "bldebug.h"
-#include "token.h"
+#include "node_func_decl.h"
 
-#define GLOBAL_PREFIX "g"
+/* NodeFuncDecl members */
+bo_decl_members_begin(NodeFuncDecl, Node)
+bo_end();
 
-static const char *header_comment = "/* Biscuit generated file, do not modify. */\n";
-static const char *header_defaults = 
-  "#include <stdlib.h>\n#include <bobject/bobject.h>\n#include <bobject/containers/string.h>\n";
+/* NodeFuncDecl constructor parameters */
+bo_decl_params_with_base_begin(NodeFuncDecl, Node)
+bo_end();
 
-CSrc *
-bl_cgen_generate(Unit *unit,
-                 PNode *pnode)
+bo_impl_type(NodeFuncDecl, Node);
+
+/* NodeFuncDecl class init */
+void
+NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
 {
-  CSrc *csrc = bl_csrc_new();
-  return csrc;
 }
+
+/* NodeFuncDecl constructor */
+void
+NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
+{
+  bo_parent_ctor(Node, p);
+}
+
+/* NodeFuncDecl destructor */
+void
+NodeFuncDecl_dtor(NodeFuncDecl *self)
+{
+}
+
+/* NodeFuncDecl copy constructor */
+bo_copy_result
+NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
+{
+  return BO_NO_COPY;
+}
+
+/* public */
+NodeFuncDecl *
+bl_node_func_decl_new(const char *generated_from,
+                      int         line,
+                      int         col)
+{
+  NodeFuncDeclParams p = {
+    .base.type = BL_NODE_FUNCDECL,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col
+  };
+  
+  return bo_new(NodeFuncDecl, &p);
+}
+

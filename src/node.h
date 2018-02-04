@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl  
+// bl 
 //
-// File:   symbol_table.h
+// File:   node.h
 // Author: Martin Dorazil
-// Date:   01/02/2018
+// Date:   02/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,48 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_SYMBOL_TABLE_H
-#define BISCUIT_SYMBOL_TABLE_H
+#ifndef BISCUIT_NODE_H
+#define BISCUIT_NODE_H
 
 #include <bobject/bobject.h>
-#include "pnode.h"
+
+#define NTYPES\
+  nt(FUNCDECL, "func_decl") \
+
+typedef enum {
+#define nt(tok, str) BL_NODE_##tok,
+  NTYPES 
+#undef nt
+} bl_node_e;
+
+static char *bl_node_strings[] = {
+#define nt(tok, str) str,
+  NTYPES 
+#undef nt
+};
+
+#undef SYMBOLS
 
 /* class declaration */
-bo_decl_type_begin(SymbolTable, BObject)
+bo_decl_type_begin(Node, BObject)
   /* virtuals */
 bo_end();
 
-SymbolTable *
-bl_symbol_table_new(void);
+/* Node constructor parameters */
+bo_decl_params_begin(Node)
+  bl_node_e type;
+  const char *generated_from;
+  int line;
+  int col;
+bo_end();
 
-bool
-bl_symbol_table_geristrate(SymbolTable *self,
-                           PNode       *node);
+/* Node members */
+bo_decl_members_begin(Node, BObject)
+  bl_node_e type;
+  const char *generated_from;
+  int line;
+  int col;
+bo_end();
 
-PNode *
-bl_symbol_table_get(SymbolTable *self,
-                    const char  *id);
-                           
-void
-bl_symbol_table_print(SymbolTable *self,
-                      FILE        *out);
-
-#endif /* end of include guard: BISCUIT_SYMBOL_TABLE_H */
+#endif /* end of include guard: BISCUIT_NODE_H */
 
