@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   lexer.h
+// File:   stage.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,72 +26,39 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LEXER_H_HFL8RYQ5
-#define LEXER_H_HFL8RYQ5
+#include "stage.h"
 
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "unit.h"
-#include "token.h"
-
-/* class declaration */
-bo_decl_type_begin(Lexer, BObject)
-  /* virtuals */
+/* Stage constructor parameters */
+bo_decl_params_begin(Stage)
 bo_end();
 
-Lexer *
-bl_lexer_new();
+bo_impl_type(Stage, BObject);
 
-bool
-bl_lexer_scan(Lexer *self, 
-              BString *src);
-
-bl_token_t *
-bl_lexer_peek(Lexer *self);
-
-bl_token_t *
-bl_lexer_peek_2nd(Lexer *self);
-
-bl_token_t *
-bl_lexer_peek_nth(Lexer *self,
-                   size_t  n);
-
-bl_token_t *
-bl_lexer_consume(Lexer *self);
-
-bl_token_t *
-bl_lexer_consume_if(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_current_is(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_next_is(Lexer  *self,
-                  bl_sym_e sym);
-
-bool
-bl_lexer_current_is_not(Lexer  *self,
-                         bl_sym_e sym);
-
-bool
-bl_lexer_next_is_not(Lexer  *self,
-                      bl_sym_e sym);
-
-bool
-bl_lexer_is_seq(Lexer *self,
-                 int     cnt,
-                 ...);
-
+/* Stage class init */
 void
-bl_lexer_resert_iter(Lexer *self);
+StageKlass_init(StageKlass *klass)
+{
+  bo_vtbl_cl(klass, Stage)->domain = NULL;
+  bo_vtbl_cl(klass, Stage)->run = NULL;
+}
 
+/* Stage constructor */
 void
-bl_lexer_set_marker(Lexer *self);
+Stage_ctor(Stage *self, StageParams *p)
+{
+}
 
+/* Stage destructor */
 void
-bl_lexer_back_to_marker(Lexer *self);
+Stage_dtor(Stage *self)
+{
+}
 
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+/* Stage copy constructor */
+bo_copy_result
+Stage_copy(Stage *self, Stage *other)
+{
+  return BO_NO_COPY;
+}
+
 

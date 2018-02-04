@@ -55,12 +55,10 @@ bo_decl_members_begin(Lexer, BObject)
   BArray  *tokens;
   size_t   iter;
   size_t   marker;
-  bl_notify_f notif;
 bo_end();
 
 /* Lexer constructor parameters */
 bo_decl_params_begin(Lexer)
-  bl_notify_f notif;
 bo_end();
 
 bo_impl_type(Lexer, BObject);
@@ -76,7 +74,6 @@ void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
   self->tokens = bo_array_new(sizeof(bl_token_t));
-  self->notif = p->notif;
 }
 
 /* Lexer destructor */
@@ -228,10 +225,9 @@ scan_number(Lexer *self,
 
 /* public */
 Lexer *
-bl_lexer_new(bl_notify_f notif)
+bl_lexer_new()
 {
   LexerParams p = {
-    .notif = notif
   };
   
   return bo_new(Lexer, &p);
@@ -330,7 +326,7 @@ bl_lexer_scan(Lexer *self,
         if (scan_ident(self, &cur))
           continue;
 
-        self->notif("", cur.iter, cur.line, cur.col, "unknown character"); 
+        /* notify error */
         return false;
     }
   }

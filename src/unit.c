@@ -28,8 +28,6 @@
 
 #include <bobject/containers/string.h>
 #include "unit.h"
-#include "lexer.h"
-#include "parser.h"
 #include "bldebug.h"
 
 /*void log_parsed(PNode *node, int lpad)*/
@@ -59,8 +57,6 @@ bo_end();
 /* class Unit object members */
 bo_decl_members_begin(Unit, BObject)
   /* members */
-  Lexer   *lexer;
-  Parser  *parser;
   BString *filepath;
   BString *src;
 bo_end();
@@ -77,14 +73,11 @@ Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
   self->filepath = bo_string_new_str(p->filepath);
-  self->lexer = bl_lexer_new();
-  self->parser= bl_parser_new(self->lexer);
 }
 
 void
 Unit_dtor(Unit *self)
 {
-  bo_unref(self->lexer);
   bo_unref(self->filepath);
   bo_unref(self->src);
 }
@@ -101,13 +94,13 @@ load_file(Unit *self)
 {
   FILE *f = fopen(bo_string_get(self->filepath), "r");
   if (f == NULL)
-    bl_exit("file %s not found\n", bo_string_get(self->filepath));
+    bl_abort("file %s not found\n", bo_string_get(self->filepath));
 
   fseek(f, 0, SEEK_END);
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_exit("invalid source in file %s\n", bo_string_get(self->filepath));
+    bl_abort("invalid source in file %s\n", bo_string_get(self->filepath));
   }
 
   fseek(f, 0, SEEK_SET);
@@ -125,17 +118,6 @@ bl_unit_new(const char *filepath)
     .filepath = filepath
   };
   return bo_new(Unit, &params);
-}
-
-void
-bl_unit_compile(Unit *self)
-{
-  load_file(self);
-
-  bl_lexer_scan(self->lexer, self->src);
-  bl_parser_scan(self->parser);
-  /*log_parsed(root, 0);*/
-  /*bl_symbol_table_print(self->sym_tbl, stdout);*/
 }
 
 const char*

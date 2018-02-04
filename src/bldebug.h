@@ -42,12 +42,12 @@
         abort(); \
     }
 
-#define bl_exit(format, ...) \
+#define bl_abort(format, ...) \
     { \
         fprintf(stderr, format, ##__VA_ARGS__); \
-        exit(1); \
+        abort(); \
     }
-
+/*
 #define bl_error_at(file, line, column, msg) \
     { \
         fprintf(stderr, ANSI_COLOR_RED "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
@@ -58,6 +58,7 @@
     { \
         fprintf(stdout, ANSI_COLOR_YELLOW "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
     }
+    */
 
 #endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
 

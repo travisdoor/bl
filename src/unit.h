@@ -39,9 +39,6 @@ bo_end();
 Unit *
 bl_unit_new(const char *filepath);
 
-void
-bl_unit_compile(Unit *self);
-
 const char*
 bl_unit_src_file(Unit *self);
 

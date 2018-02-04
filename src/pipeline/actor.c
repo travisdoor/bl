@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   error.h
+// File:   actor.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,9 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef ERROR_H_J9YKGQWM
-#define ERROR_H_J9YKGQWM
+#include "pipeline/actor.h"
+#include "bldebug.h"
 
-typedef void(*bl_notify_f)(const char *file, const char *src, int line, int col, const char *msg);
+/* Actor constructor parameters */
+bo_decl_params_begin(Actor)
+bo_end();
 
-#endif /* end of include guard: ERROR_H_J9YKGQWM */
+bo_impl_type(Actor, BObject);
+
+/* Actor class init */
+void
+ActorKlass_init(ActorKlass *klass)
+{
+}
+
+/* Actor constructor */
+void
+Actor_ctor(Actor *self, ActorParams *p)
+{
+  self->state = BL_ACTOR_STATE_PENDING;
+  self->actors = bo_array_new_bo(bo_typeof(Actor), true);
+}
+
+/* Actor destructor */
+void
+Actor_dtor(Actor *self)
+{
+  bo_unref(self->actors);
+}
+
+/* Actor copy constructor */
+bo_copy_result
+Actor_copy(Actor *self, Actor *other)
+{
+  return BO_NO_COPY;
+}
+
+/* public */
+Actor *
+bl_actor_new(void)
+{
+  return bo_new(Actor, NULL);
+}
+
+bl_actor_state_e
+bl_actor_state(Actor *self)
+{
+  bl_assert(bo_is_typeof(self, Actor), "invalid actor");
+  return self->state;
+}

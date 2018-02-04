@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer.h
+// File:   actor.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,72 +26,35 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LEXER_H_HFL8RYQ5
-#define LEXER_H_HFL8RYQ5
+#ifndef BISCUIT_ACTOR_H
+#define BISCUIT_ACTOR_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "unit.h"
-#include "token.h"
+#include <bobject/containers/array.h>
+
+typedef enum _bl_actor_state_e
+{
+  BL_ACTOR_STATE_PENDING,
+  BL_ACTOR_STATE_FINISHED,
+  BL_ACTOR_STATE_FAILED
+} bl_actor_state_e;
 
 /* class declaration */
-bo_decl_type_begin(Lexer, BObject)
+bo_decl_type_begin(Actor, BObject)
   /* virtuals */
 bo_end();
 
-Lexer *
-bl_lexer_new();
+/* Actor members */
+bo_decl_members_begin(Actor, BObject)
+  bl_actor_state_e state;
+  BArray *actors;
+bo_end();
 
-bool
-bl_lexer_scan(Lexer *self, 
-              BString *src);
+Actor *
+bl_actor_new(void);
 
-bl_token_t *
-bl_lexer_peek(Lexer *self);
+bl_actor_state_e
+bl_actor_state(Actor *self);
 
-bl_token_t *
-bl_lexer_peek_2nd(Lexer *self);
-
-bl_token_t *
-bl_lexer_peek_nth(Lexer *self,
-                   size_t  n);
-
-bl_token_t *
-bl_lexer_consume(Lexer *self);
-
-bl_token_t *
-bl_lexer_consume_if(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_current_is(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_next_is(Lexer  *self,
-                  bl_sym_e sym);
-
-bool
-bl_lexer_current_is_not(Lexer  *self,
-                         bl_sym_e sym);
-
-bool
-bl_lexer_next_is_not(Lexer  *self,
-                      bl_sym_e sym);
-
-bool
-bl_lexer_is_seq(Lexer *self,
-                 int     cnt,
-                 ...);
-
-void
-bl_lexer_resert_iter(Lexer *self);
-
-void
-bl_lexer_set_marker(Lexer *self);
-
-void
-bl_lexer_back_to_marker(Lexer *self);
-
-#endif /* end of include guard: LEXER_H_2F7YITOG */
+#endif /* end of include guard: BISCUIT_ACTOR_H */
 

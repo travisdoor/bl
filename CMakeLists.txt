@@ -6,6 +6,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(SOURCE_FILES 
+  src/pipeline/stage.h 
+  src/pipeline/stage.c
+  src/pipeline/actor.h 
+  src/pipeline/actor.c
+  src/pipeline/pipeline.h 
+  src/pipeline/pipeline.c
+  src/node.c 
   src/main.c
   src/bldebug.h
   src/lexer.c
@@ -20,7 +27,6 @@ set(SOURCE_FILES
   src/node.c 
   src/node_func_decl.h 
   src/node_func_decl.c 
-  src/error.h 
   )
 
 add_executable(bl ${SOURCE_FILES})
