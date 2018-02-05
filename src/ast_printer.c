@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   ast_printer.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,39 +26,30 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
+#include <stdio.h>
+#include "ast_printer.h"
 #include "unit.h"
+#include "domains.h"
 #include "bldebug.h"
-#include "ast.h"
-
-static Node *
-parse_global_stmt(Parser *self, 
-                  Unit *unit);
-static Node *
-parse_func_decl(Parser *self, 
-                Unit *unit);
+#include "bldebug.h"
 
 static bool
-run(Parser *self,
-    Unit   *unit);
+run(AstPrinter *self,
+    Unit       *unit);
 
 static int
-domain(Parser *self);
+domain(AstPrinter *self);
 
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* AstPrinter constructor parameters */
+bo_decl_params_begin(AstPrinter)
+  FILE *out_stream;
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
+bo_impl_type(AstPrinter, Stage);
 
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
+/* AstPrinter class init */
 void
-ParserKlass_init(ParserKlass *klass)
+AstPrinterKlass_init(AstPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
@@ -66,66 +57,76 @@ ParserKlass_init(ParserKlass *klass)
     = (int (*)(Stage*)) domain;
 }
 
-/* Parser constructor */
+/* AstPrinter constructor */
 void
-Parser_ctor(Parser *self, ParserParams *p)
+AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
 {
+  bo_parent_ctor(Stage, p);
+  self->out_stream = p->out_stream;
 }
 
-/* Parser destructor */
+/* AstPrinter destructor */
 void
-Parser_dtor(Parser *self)
+AstPrinter_dtor(AstPrinter *self)
 {
+  puts("ast_printer destroyed");
 }
 
-/* Parser copy constructor */
+/* AstPrinter copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+AstPrinter_copy(AstPrinter *self, AstPrinter *other)
 {
   return BO_NO_COPY;
 }
 
-Node *
-parse_global_stmt(Parser *self, 
-                  Unit *unit)
+static void 
+print_node(AstPrinter *self,
+           Node *node,
+           int pad)
 {
-  NodeGlobalStmt *gstmt = bl_node_global_stmt_new(bo_string_get(unit->src), 1, 0);
-  return (Node *)gstmt;
-}
+  BString *s = bo_vtbl(node, Node)->to_string(node);
+  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%s\n" ANSI_COLOR_RESET, bo_string_get(s));
+  bo_unref(s);
 
-Node *
-parse_func_decl(Parser *self, 
-                Unit *unit)
-{ 
-  return NULL;
+  if (node->nodes == NULL)
+    return;
+
+  size_t c = bo_array_size(node->nodes);
+  Node *child;
+  pad+=2;
+  for (size_t i = 0; i < c; i++) {
+    child = bo_array_at(node->nodes, i, Node *);
+    print_node(self, child, pad);
+  }
 }
 
 bool
-run(Parser *self,
-    Unit   *unit)
+run(AstPrinter *self,
+    Unit       *unit)
 {
-  if (unit->tokens == NULL) {
-    bl_actor_error((Actor *)unit, "no tokens found for unit");
+  if (unit->ast == NULL) {
+    bl_actor_error((Actor *)unit, "cannot find AST tree in module");
     return false;
   }
 
-  bo_unref(unit->ast);
-  unit->ast = parse_global_stmt(self, unit);
-  bl_log("* parsing done\n");
+  print_node(self, unit->ast, 0); 
   return true;
 }
 
 int
-domain(Parser *self)
+domain(AstPrinter *self)
 {
   return BL_DOMAIN_UNIT;
 }
 
 /* public */
-Parser *
-bl_parser_new(void)
+AstPrinter *
+bl_ast_printer_new(FILE *out_stream)
 {
-  return bo_new(Parser, NULL);
+  AstPrinterParams p = {
+    .out_stream = out_stream
+  };
+
+  return bo_new(AstPrinter, &p);
 }
 
-/* public */

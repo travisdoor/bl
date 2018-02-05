@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node.h
+// File:   node_global_stmt.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#ifndef BISCUIT_NODE_GLOBAL_STMT_H
+#define BISCUIT_NODE_GLOBAL_STMT_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
-
-#define NTYPES\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_statement") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  NTYPES 
-#undef nt
-} bl_node_e;
-
-static char *bl_node_strings[] = {
-#define nt(tok, str) str,
-  NTYPES 
-#undef nt
-};
-
-#undef SYMBOLS
+#include "node.h"
+#include "token.h"
 
 /* class declaration */
-bo_decl_type_begin(Node, BObject)
+bo_decl_type_begin(NodeGlobalStmt, Node)
   /* virtuals */
-  BString *(*to_string)(Node *);
 bo_end();
 
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
+NodeGlobalStmt *
+bl_node_global_stmt_new(const char *generated_from,
+                        int         line,
+                        int         col);
 
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  BArray *nodes;
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
-
-#endif /* end of include guard: BISCUIT_NODE_H */
+#endif /* end of include guard: BISCUIT_NODE_GLOBAL_STMT_H */
 

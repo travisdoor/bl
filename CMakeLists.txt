@@ -22,6 +22,8 @@ set(SOURCE_FILES
   src/tokens.h 
   src/file_loader.c
   src/file_loader.h 
+  src/ast_printer.c
+  src/ast_printer.h 
   src/module.h 
   src/domains.h 
   src/token.h
@@ -34,6 +36,8 @@ set(SOURCE_FILES
   src/node.c 
   src/node_func_decl.h 
   src/node_func_decl.c 
+  src/node_global_stmt.h 
+  src/node_global_stmt.c 
   )
 
 add_executable(bl ${SOURCE_FILES})

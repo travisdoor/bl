@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node.h
+// File:   ast_printer.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,24 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#ifndef AST_PRINTER_H_PDNQRKMS
+#define AST_PRINTER_H_PDNQRKMS
 
+#include <stdio.h>
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
-
-#define NTYPES\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_statement") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  NTYPES 
-#undef nt
-} bl_node_e;
-
-static char *bl_node_strings[] = {
-#define nt(tok, str) str,
-  NTYPES 
-#undef nt
-};
-
-#undef SYMBOLS
+#include "pipeline/stage.h"
 
 /* class declaration */
-bo_decl_type_begin(Node, BObject)
+bo_decl_type_begin(AstPrinter, Stage)
   /* virtuals */
-  BString *(*to_string)(Node *);
 bo_end();
 
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
+/* AstPrinter members */
+bo_decl_members_begin(AstPrinter, Stage)
+  FILE *out_stream;
 bo_end();
 
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  BArray *nodes;
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
+AstPrinter *
+bl_ast_printer_new(FILE *out_stream);
 
-#endif /* end of include guard: BISCUIT_NODE_H */
-
+#endif /* end of include guard: AST_PRINTER_H_PDNQRKMS */

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.c
+// File:   node_global_stmt.c
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -26,90 +26,74 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include "node_func_decl.h"
+#include <bobject/containers/array.h>
+#include "node_global_stmt.h"
 
 static BString *
-to_string(NodeFuncDecl *self);
+to_string(NodeGlobalStmt *self);
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *name;
+/* NodeGlobalStmt members */
+bo_decl_members_begin(NodeGlobalStmt, Node)
 bo_end();
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *name;
+/* NodeGlobalStmt constructor parameters */
+bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
 bo_end();
 
-bo_impl_type(NodeFuncDecl, Node);
+bo_impl_type(NodeGlobalStmt, Node);
 
-/* NodeFuncDecl class init */
+/* NodeGlobalStmt class init */
 void
-NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
+NodeGlobalStmtKlass_init(NodeGlobalStmtKlass *klass)
 {
   bo_vtbl_cl(klass, Node)->to_string 
     = (BString *(*)(Node*)) to_string;
 }
 
-/* NodeFuncDecl constructor */
+/* NodeGlobalStmt constructor */
 void
-NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
+NodeGlobalStmt_ctor(NodeGlobalStmt *self, NodeGlobalStmtParams *p)
 {
   bo_parent_ctor(Node, p);
-  self->type = p->type;
-  self->name = p->name;
 }
 
-/* NodeFuncDecl destructor */
+/* NodeGlobalStmt destructor */
 void
-NodeFuncDecl_dtor(NodeFuncDecl *self)
+NodeGlobalStmt_dtor(NodeGlobalStmt *self)
 {
-  bo_unref(self->type);
-  bo_unref(self->name);
 }
 
-/* NodeFuncDecl copy constructor */
+/* NodeGlobalStmt copy constructor */
 bo_copy_result
-NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
+NodeGlobalStmt_copy(NodeGlobalStmt *self, NodeGlobalStmt *other)
 {
   return BO_NO_COPY;
 }
 
 BString *
-to_string(NodeFuncDecl *self)
+to_string(NodeGlobalStmt *self)
 {
   BString *ret = bo_string_new(128);
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->type);
-  bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->name);
   bo_string_append(ret, ">");
   return ret;
 }
 
 /* public */
 
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *name,
-                      const char *generated_from,
-                      int         line,
-                      int         col)
+NodeGlobalStmt *
+bl_node_global_stmt_new(const char *generated_from,
+                        int         line,
+                        int         col)
 {
-  NodeFuncDeclParams p = {
-    .base.type = BL_NODE_FUNC_DECL,
+  NodeGlobalStmtParams p = {
+    .base.type = BL_NODE_GLOBAL_STMT,
     .base.generated_from = generated_from, 
     .base.line = line, 
     .base.col = col,
-    .type = type,
-    .name = name
   };
   
-  return bo_new(NodeFuncDecl, &p);
+  return bo_new(NodeGlobalStmt, &p);
 }
 

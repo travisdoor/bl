@@ -43,9 +43,13 @@ bo_end();
 /* class Unit object members */
 bo_decl_members_begin(Unit, Actor)
   /* members */
+  /* source file name with path */
   BString *filepath;
+  /* source data */
   BString *src;
+  /* output of lexer */
   Tokens  *tokens;
+  /* abstract syntax tree as output of parser */
   Node    *ast;
 bo_end();
 

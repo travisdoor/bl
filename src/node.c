@@ -52,6 +52,7 @@ Node_ctor(Node *self, NodeParams *p)
 void
 Node_dtor(Node *self)
 {
+  bo_unref(self->nodes);
 }
 
 /* Node copy constructor */
