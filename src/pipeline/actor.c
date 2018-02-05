@@ -26,6 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <string.h>
 #include "pipeline/actor.h"
 #include "bldebug.h"
 
@@ -47,6 +48,7 @@ Actor_ctor(Actor *self, ActorParams *p)
 {
   self->state = BL_ACTOR_STATE_PENDING;
   self->actors = bo_array_new_bo(bo_typeof(Actor), true);
+  self->error[0] = '\0';
 }
 
 /* Actor destructor */
@@ -54,6 +56,7 @@ void
 Actor_dtor(Actor *self)
 {
   bo_unref(self->actors);
+  bo_unref(self->error);
 }
 
 /* Actor copy constructor */
@@ -80,5 +83,30 @@ void
 bl_actor_add(Actor *self, Actor *child)
 {
   bo_array_push_back(self->actors, child);
+}
+
+void
+bl_actor_error(Actor *self,
+               const char *format,
+               ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(self->error, BL_ACTOR_MAX_ERROR_LEN, format, args);
+  va_end(args);
+}
+
+const char *
+bl_actor_get_error(Actor *self)
+{
+  if (strlen(&self->error[0]) == 0)
+    return NULL;
+  return &self->error[0];
+}
+
+void
+bl_actor_error_reser(Actor *self)
+{
+  self->error[0] = '\0';
 }
 

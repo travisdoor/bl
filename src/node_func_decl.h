@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "node.h"
+#include "token.h"
 
 /* class declaration */
 bo_decl_type_begin(NodeFuncDecl, Node)
@@ -38,7 +39,9 @@ bo_decl_type_begin(NodeFuncDecl, Node)
 bo_end();
 
 NodeFuncDecl *
-bl_node_func_decl_new(const char *generated_from,
+bl_node_func_decl_new(BString    *type,
+                      BString    *name,
+                      const char *generated_from,
                       int         line,
                       int         col);
 

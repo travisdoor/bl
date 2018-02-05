@@ -42,52 +42,5 @@ bo_end();
 Lexer *
 bl_lexer_new(void);
 
-bl_token_t *
-bl_lexer_peek(Lexer *self);
-
-bl_token_t *
-bl_lexer_peek_2nd(Lexer *self);
-
-bl_token_t *
-bl_lexer_peek_nth(Lexer *self,
-                   size_t  n);
-
-bl_token_t *
-bl_lexer_consume(Lexer *self);
-
-bl_token_t *
-bl_lexer_consume_if(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_current_is(Lexer  *self,
-                     bl_sym_e sym);
-
-bool
-bl_lexer_next_is(Lexer  *self,
-                  bl_sym_e sym);
-
-bool
-bl_lexer_current_is_not(Lexer  *self,
-                         bl_sym_e sym);
-
-bool
-bl_lexer_next_is_not(Lexer  *self,
-                      bl_sym_e sym);
-
-bool
-bl_lexer_is_seq(Lexer *self,
-                 int     cnt,
-                 ...);
-
-void
-bl_lexer_resert_iter(Lexer *self);
-
-void
-bl_lexer_set_marker(Lexer *self);
-
-void
-bl_lexer_back_to_marker(Lexer *self);
-
 #endif /* end of include guard: LEXER_H_2F7YITOG */
 

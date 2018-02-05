@@ -35,6 +35,7 @@ bo_impl_type(Node, BObject);
 void
 NodeKlass_init(NodeKlass *klass)
 {
+  bo_vtbl_cl(klass, Node)->to_string = NULL;
 }
 
 /* Node constructor */

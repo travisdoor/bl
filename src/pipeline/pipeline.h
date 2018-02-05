@@ -49,5 +49,8 @@ void
 bl_pipeline_add_stage(Pipeline *self,
                       Stage    *stage);
 
+Actor *
+bl_pipeline_get_failed(Pipeline *self);
+
 #endif /* end of include guard: BISCUIT_PIPELINE_H */
 

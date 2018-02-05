@@ -31,6 +31,9 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/array.h>
+#include <bobject/containers/string.h>
+
+#define BL_ACTOR_MAX_ERROR_LEN 1024
 
 typedef enum _bl_actor_state_e
 {
@@ -48,6 +51,7 @@ bo_end();
 bo_decl_members_begin(Actor, BObject)
   bl_actor_state_e state;
   BArray *actors;
+  char error[BL_ACTOR_MAX_ERROR_LEN];
 bo_end();
 
 Actor *
@@ -58,6 +62,17 @@ bl_actor_state(Actor *self);
 
 void
 bl_actor_add(Actor *self, Actor *child);
+
+const char *
+bl_actor_get_error(Actor *self);
+
+void
+bl_actor_error(Actor *self,
+               const char *format,
+               ...);
+
+void
+bl_actor_error_reser(Actor *self);
 
 #endif /* end of include guard: BISCUIT_ACTOR_H */
 

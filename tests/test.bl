@@ -1,8 +1,5 @@
 // this is testing script
 
-//[C(header="stdio.h", cname="int")]
-//extern struct int {}
-
 int sum(int a, int b) {
   // return a + b;
 }

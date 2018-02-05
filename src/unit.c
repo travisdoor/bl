@@ -26,23 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
 #include "unit.h"
 #include "bldebug.h"
-
-static void
-load_file(Unit *self);
 
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
-bo_end();
-
-/* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
-  /* members */
-  BString *filepath;
-  BString *src;
 bo_end();
 
 bo_impl_type(Unit, Actor);
@@ -58,9 +47,6 @@ Unit_ctor(Unit *self, UnitParams *p)
   /* constructor */
   bo_parent_ctor(Actor, p);
   self->filepath = bo_string_new_str(p->filepath);
-
-  /* HACK remove when load file stage will be added */
-  load_file(self);
 }
 
 void
@@ -68,6 +54,8 @@ Unit_dtor(Unit *self)
 {
   bo_unref(self->filepath);
   bo_unref(self->src);
+  bo_unref(self->tokens);
+  bo_unref(self->ast);
   puts("unit destroyed");
 }
 
@@ -77,27 +65,6 @@ Unit_copy(Unit *self, Unit *other)
   return BO_NO_COPY;
 }
 /* class Unit end */
-
-void
-load_file(Unit *self)
-{
-  FILE *f = fopen(bo_string_get(self->filepath), "r");
-  if (f == NULL)
-    bl_abort("file %s not found\n", bo_string_get(self->filepath));
-
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  if (fsize == 0) {
-    fclose(f);
-    bl_abort("invalid source in file %s\n", bo_string_get(self->filepath));
-  }
-
-  fseek(f, 0, SEEK_SET);
-
-  self->src = bo_string_new(fsize);
-  fread((char *)bo_string_get(self->src), fsize, 1, f);
-  fclose(f);
-}
 
 /* public */
 Unit *
@@ -120,3 +87,4 @@ bl_unit_src(Unit *self)
 {
   return bo_string_get(self->src);
 }
+

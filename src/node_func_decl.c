@@ -26,14 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <bobject/containers/string.h>
 #include "node_func_decl.h"
+
+static BString *
+to_string(NodeFuncDecl *self);
 
 /* NodeFuncDecl members */
 bo_decl_members_begin(NodeFuncDecl, Node)
+  BString *type;
+  BString *name;
 bo_end();
 
 /* NodeFuncDecl constructor parameters */
 bo_decl_params_with_base_begin(NodeFuncDecl, Node)
+  BString *type;
+  BString *name;
 bo_end();
 
 bo_impl_type(NodeFuncDecl, Node);
@@ -42,6 +50,8 @@ bo_impl_type(NodeFuncDecl, Node);
 void
 NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
 {
+  bo_vtbl_cl(klass, Node)->to_string 
+    = (BString *(*)(Node*)) to_string;
 }
 
 /* NodeFuncDecl constructor */
@@ -49,12 +59,16 @@ void
 NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
 {
   bo_parent_ctor(Node, p);
+  self->type = p->type;
+  self->name = p->name;
 }
 
 /* NodeFuncDecl destructor */
 void
 NodeFuncDecl_dtor(NodeFuncDecl *self)
 {
+  bo_unref(self->type);
+  bo_unref(self->name);
 }
 
 /* NodeFuncDecl copy constructor */
@@ -64,9 +78,26 @@ NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
   return BO_NO_COPY;
 }
 
+BString *
+to_string(NodeFuncDecl *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, " ");
+  bo_string_append_str(ret, self->type);
+  bo_string_append(ret, " ");
+  bo_string_append_str(ret, self->name);
+  bo_string_append(ret, ">");
+  return ret;
+}
+
 /* public */
+
 NodeFuncDecl *
-bl_node_func_decl_new(const char *generated_from,
+bl_node_func_decl_new(BString    *type,
+                      BString    *name,
+                      const char *generated_from,
                       int         line,
                       int         col)
 {
@@ -74,7 +105,9 @@ bl_node_func_decl_new(const char *generated_from,
     .base.type = BL_NODE_FUNCDECL,
     .base.generated_from = generated_from, 
     .base.line = line, 
-    .base.col = col
+    .base.col = col,
+    .type = type,
+    .name = name
   };
   
   return bo_new(NodeFuncDecl, &p);

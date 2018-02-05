@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   parser.c
+// File:   tokens.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   29.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,69 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#ifndef TOKENS_H_Z3NM7BJC
+#define TOKENS_H_Z3NM7BJC
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+#include <bobject/bobject.h>
+#include <bobject/containers/string.h>
+#include "token.h"
 
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* class Tokens declaration */
+bo_decl_type_begin(Tokens, BObject)
+  /* virtuals */
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
+Tokens *
+bl_tokens_new(void);
 
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
 void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
+bl_tokens_push(Tokens *self, bl_token_t *t);
 
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
-{
-}
+bl_token_t *
+bl_tokens_peek(Tokens *self);
 
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
+bl_token_t *
+bl_tokens_peek_2nd(Tokens *self);
 
-/* Parser copy constructor */
-bo_copy_result
-Parser_copy(Parser *self, Parser *other)
-{
-  return BO_NO_COPY;
-}
+bl_token_t *
+bl_tokens_peek_nth(Tokens *self,
+                   size_t  n);
+
+bl_token_t *
+bl_tokens_consume(Tokens *self);
+
+bl_token_t *
+bl_tokens_consume_if(Tokens  *self,
+                     bl_sym_e sym);
 
 bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
+bl_tokens_current_is(Tokens  *self,
+                     bl_sym_e sym);
 
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
+bool
+bl_tokens_next_is(Tokens  *self,
+                  bl_sym_e sym);
 
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
+bool
+bl_tokens_current_is_not(Tokens  *self,
+                         bl_sym_e sym);
 
-/* public */
+bool
+bl_tokens_next_is_not(Tokens  *self,
+                      bl_sym_e sym);
+
+bool
+bl_tokens_is_seq(Tokens *self,
+                 int     cnt,
+                 ...);
+
+void
+bl_tokens_resert_iter(Tokens *self);
+
+void
+bl_tokens_set_marker(Tokens *self);
+
+void
+bl_tokens_back_to_marker(Tokens *self);
+
+#endif /* end of include guard: TOKENS_H_Z3NM7BJC */

@@ -28,12 +28,12 @@
 
 #include <stdio.h>
 #include "lexer.h"
+#include "parser.h"
 #include "unit.h"
 #include "module.h"
+#include "file_loader.h"
 #include "pipeline/pipeline.h"
 #include "bldebug.h"
-
-#define ENABLE_LOG 0
 
 int main(int argc, char *argv[])
 {
@@ -50,12 +50,18 @@ int main(int argc, char *argv[])
 
   /* init pipeline */
   Pipeline *pipeline = bl_pipeline_new();
+  Stage *file_loader = (Stage *)bl_file_loader_new(); 
   Stage *lexer = (Stage *)bl_lexer_new(); 
+  Stage *parser = (Stage *)bl_parser_new(); 
 
+  bl_pipeline_add_stage(pipeline, file_loader);
   bl_pipeline_add_stage(pipeline, lexer);
+  bl_pipeline_add_stage(pipeline, parser);
   
   bl_log("pipeline start\n");
   if (!bl_pipeline_run(pipeline, module)) {
+    Actor *failed = bl_pipeline_get_failed(pipeline);
+    bl_error("%s\n", bl_actor_get_error(failed));
     bl_error("pipeline run failed\n");
   } else 
     bl_log("pipeline finished without errors\n");

@@ -18,7 +18,12 @@ set(SOURCE_FILES
   src/lexer.c
   src/lexer.h 
   src/module.c
+  src/tokens.c
+  src/tokens.h 
+  src/file_loader.c
+  src/file_loader.h 
   src/module.h 
+  src/domains.h 
   src/token.h
   src/token.c
   src/unit.c

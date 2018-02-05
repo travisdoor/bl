@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   file_loader.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#ifndef FILE_LOADER_H_PDNQRKMS
+#define FILE_LOADER_H_PDNQRKMS
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+#include <bobject/bobject.h>
+#include "pipeline/stage.h"
 
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* class declaration */
+bo_decl_type_begin(FileLoader, Stage)
+  /* virtuals */
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+/* FileLoader members */
+bo_decl_members_begin(FileLoader, Stage)
 bo_end();
 
-bo_impl_type(Parser, Stage);
+FileLoader *
+bl_file_loader_new(void);
 
-/* Parser class init */
-void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
-
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
-{
-}
-
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
-
-/* Parser copy constructor */
-bo_copy_result
-Parser_copy(Parser *self, Parser *other)
-{
-  return BO_NO_COPY;
-}
-
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
-
-/* public */
+#endif /* end of include guard: FILE_LOADER_H_PDNQRKMS */

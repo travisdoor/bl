@@ -21,9 +21,8 @@ class Pipeline {
 }
 
 class Stage {
-  + Stage(int domain)
   {abstract} + bool run(Actor actor)
-  - int domain
+  {abstract} + int domain()
 }
 
 class Module {

@@ -37,6 +37,7 @@
 /* Pipeline members */
 bo_decl_members_begin(Pipeline, BObject)
   BArray *stages[MAX_DOMAIN_COUNT];
+  Actor *failed;
 bo_end();
 
 /* Pipeline constructor parameters */
@@ -97,6 +98,7 @@ run_domain(Pipeline *self,
       /* IDEA: state can be managed inside every stage */
       if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
         actor->state = BL_ACTOR_STATE_FAILED;
+        self->failed = actor;
         return false;
       }
 
@@ -140,3 +142,8 @@ bl_pipeline_add_stage(Pipeline *self,
   bo_array_push_back(self->stages[domain], stage);
 }
 
+Actor *
+bl_pipeline_get_failed(Pipeline *self)
+{
+  return self->failed;
+}

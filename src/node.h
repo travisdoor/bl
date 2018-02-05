@@ -30,6 +30,7 @@
 #define BISCUIT_NODE_H
 
 #include <bobject/bobject.h>
+#include <bobject/containers/string.h>
 
 #define NTYPES\
   nt(FUNCDECL, "func_decl") \
@@ -51,6 +52,7 @@ static char *bl_node_strings[] = {
 /* class declaration */
 bo_decl_type_begin(Node, BObject)
   /* virtuals */
+  BString *(*to_string)(Node *);
 bo_end();
 
 /* Node constructor parameters */

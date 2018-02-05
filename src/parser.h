@@ -30,20 +30,16 @@
 #define BISCUIT_PARSER_H
 
 #include <bobject/bobject.h>
+#include "pipeline/stage.h"
 #include "node.h"
-#include "lexer.h"
-
 
 /* class declaration */
-bo_decl_type_begin(Parser, BObject)
+bo_decl_type_begin(Parser, Stage)
   /* virtuals */
 bo_end();
 
 Parser *
-bl_parser_new(Lexer *lexer);
-
-void 
-bl_parser_scan(Parser *self);
+bl_parser_new(void);
 
 #endif /* end of include guard: BISCUIT_PARSER_H */
 

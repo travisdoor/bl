@@ -34,6 +34,7 @@
 #include "bldebug.h"
 #include "unit.h"
 #include "domains.h"
+#include "tokens.h"
 
 /* class Lexer */
 #define is_intend_c(c) \
@@ -59,29 +60,30 @@ run(Lexer *self,
 static int
 domain(Lexer *self);
 
-static int
+static bool 
 scan_string(Lexer  *self,
+            Unit   *unit,
             char    term,
             cursor_t *cur);
 
-static int
+static bool 
 ignore_till(Lexer *self,
+            Unit   *unit,
             char   term,
             cursor_t *cur);
 
-static int
+static bool 
 scan_ident(Lexer *self,
+           Unit   *unit,
            cursor_t *cur);
 
-static int
+static bool 
 scan_number(Lexer *self,
+            Unit   *unit,
             cursor_t *cur);
 
 /* Lexer members */
 bo_decl_members_begin(Lexer, Stage)
-  BArray  *tokens;
-  size_t   iter;
-  size_t   marker;
 bo_end();
 
 /* Lexer constructor parameters */
@@ -105,14 +107,12 @@ void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
   bo_parent_ctor(Actor, p);
-  self->tokens = bo_array_new(sizeof(bl_token_t));
 }
 
 /* Lexer destructor */
 void
 Lexer_dtor(Lexer *self)
 {
-  bo_unref(self->tokens);
   puts("lexer destroyed");
 }
 
@@ -127,6 +127,9 @@ bool
 run(Lexer *self,
     Unit  *unit)
 {
+  bo_unref(unit->tokens);
+  unit->tokens = bl_tokens_new();
+
   bl_token_t tok = {
     .sym  = BL_SYM_EOF,
     .line = 0,
@@ -134,7 +137,7 @@ run(Lexer *self,
   };
 
   cursor_t cur = {
-    .iter = (char *)bl_unit_src(unit),
+    .iter = (char *)bo_string_get(unit->src),
     .line = 0,
     .col = 0
   };
@@ -151,77 +154,77 @@ run(Lexer *self,
         continue;
       case '{':
         bl_token_init(&tok ,BL_SYM_LBLOCK, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '}':
         bl_token_init(&tok ,BL_SYM_RBLOCK, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '[':
         bl_token_init(&tok ,BL_SYM_LBRACKET, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ']':
         bl_token_init(&tok ,BL_SYM_RBRACKET, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '(':
         bl_token_init(&tok ,BL_SYM_LPAREN, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ')':
         bl_token_init(&tok ,BL_SYM_RPAREN, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ',':
         bl_token_init(&tok ,BL_SYM_COMMA, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '=':
         bl_token_init(&tok ,BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ';':
         bl_token_init(&tok ,BL_SYM_SEMICOLON, cur.line, cur.col, 1, cur.iter);
-        bo_array_push_back(self->tokens, tok);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '"':
-        scan_string(self, '"', &cur);
+        scan_string(self, unit, '"', &cur);
         continue;
       case '/':
         switch (*(cur.iter + 1)) {
         case '/':
-          ignore_till(self, '\n', &cur);
+          ignore_till(self, unit, '\n', &cur);
           continue;
         default:
           bl_token_init(&tok ,BL_SYM_SLASH, cur.line, cur.col, 1, cur.iter);
-          bo_array_push_back(self->tokens, tok);
+          bl_tokens_push(unit->tokens, &tok);
           cur.col++;
           continue;
         }
       default:
-        if (scan_number(self, &cur))
+        if (scan_number(self, unit, &cur))
           continue;
 
-        if (scan_ident(self, &cur))
+        if (scan_ident(self, unit, &cur))
           continue;
 
         /* notify error */
-        bl_error("* lexing failed on symbol %c\n", cur.iter[0]);
+        bl_actor_error((Actor *)unit, "invalid character %c", cur.iter[0]); 
         return false;
     }
   }
   tok.sym = BL_SYM_EOF;
-  bo_array_push_back(self->tokens, tok);
+  bl_tokens_push(unit->tokens, &tok);
   bl_log("* lexing done\n");
   return true;
 }
@@ -232,8 +235,9 @@ domain(Lexer *self)
   return BL_DOMAIN_UNIT;
 }
 
-int
+bool
 scan_string(Lexer  *self,
+            Unit   *unit,
             char    term,
             cursor_t *cur)
 {
@@ -246,18 +250,19 @@ scan_string(Lexer  *self,
 
   while (*cur->iter != term) {
     if (*cur->iter == '\0')
-      return 0;
+      return false;
     cur->iter++;
     cur->col++;
     tok.len++;
   }
 
-  bo_array_push_back(self->tokens, tok);
-  return 1;
+  bl_tokens_push(unit->tokens, &tok);
+  return true;
 }
 
-int
+bool
 ignore_till(Lexer *self,
+            Unit   *unit,
             char   term,
             cursor_t *cur)
 {
@@ -267,7 +272,7 @@ ignore_till(Lexer *self,
       cur->line++;
     }
     if (*cur->iter == '\0')
-      return 0;
+      return false;
     cur->iter++;
     cur->col++;
   }
@@ -276,11 +281,12 @@ ignore_till(Lexer *self,
     cur->col = 1;
     cur->line++;
   }
-  return 1;
+  return true;
 }
 
-int
+bool
 scan_ident(Lexer *self,
+           Unit   *unit,
            cursor_t *cur)
 {
   bl_token_t tok;
@@ -290,7 +296,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_IF, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
-    return 1;
+    return true;
   }
 
   len = 4;
@@ -298,7 +304,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_ELSE, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
-    return 1;
+    return true;
   }
 
   len = 5;
@@ -306,7 +312,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_RETURN, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
-    return 1;
+    return true;
   }
 
   len = 6;
@@ -314,7 +320,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_EXTERN, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
-    return 1;
+    return true;
   }
 
   len = 9;
@@ -322,7 +328,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_NAMESPACE, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
-    return 1;
+    return true;
   }
 
   bl_token_init(&tok, BL_SYM_IDENT, cur->line, cur->col, 0, cur->iter);
@@ -333,21 +339,21 @@ scan_ident(Lexer *self,
   }
 
   if (tok.len == 0)
-    return 0;
+    return false;
 
-
-  bo_array_push_back(self->tokens, tok);
+  bl_tokens_push(unit->tokens, &tok);
   cur->iter--;
   cur->col += len;
-  return 1;
+  return true;
 }
 
-int
+bool
 scan_number(Lexer *self,
+            Unit   *unit,
             cursor_t *cur)
 {
   if (!is_number_c(*cur->iter))
-    return 0;
+    return false;
 
   int n = 0;
   bl_token_t tok;
@@ -364,137 +370,14 @@ scan_number(Lexer *self,
   }
 
   tok.content.as_int = n;
-  bo_array_push_back(self->tokens, tok);
-  return 1;
+  bl_tokens_push(unit->tokens, &tok);
+  return true;
 }
 
 /* public */
 Lexer *
-bl_lexer_new()
+bl_lexer_new(void)
 {
-  LexerParams p = {
-  };
-  
-  return bo_new(Lexer, &p);
-}
-
-bl_token_t *
-bl_lexer_peek(Lexer *self)
-{
-  return bl_lexer_peek_nth(self, 1);
-}
-
-bl_token_t *
-bl_lexer_peek_2nd(Lexer *self)
-{
-  return bl_lexer_peek_nth(self, 2);
-}
-
-bl_token_t *
-bl_lexer_peek_nth(Lexer *self,
-                   size_t  n)
-{
-  const size_t i = self->iter + n - 1;
-  if (i < bo_array_size(self->tokens))
-    return &bo_array_at(self->tokens, i, bl_token_t);
-
-  return NULL;
-}
-
-bl_token_t *
-bl_lexer_consume(Lexer *self)
-{
-  if (self->iter < bo_array_size(self->tokens))
-    return &bo_array_at(self->tokens, self->iter++, bl_token_t);
-
-  return NULL;
-}
-
-bl_token_t *
-bl_lexer_consume_if(Lexer  *self,
-                     bl_sym_e sym)
-{
-  bl_token_t *tok;
-  if (self->iter < bo_array_size(self->tokens)) {
-    tok = &bo_array_at(self->tokens, self->iter, bl_token_t);
-    if (tok->sym == sym) {
-      self->iter++;
-      return tok;
-    }
-  }
-
-  return NULL;
-
-}
-
-bool
-bl_lexer_current_is(Lexer  *self,
-                     bl_sym_e sym)
-{
-  return (&bo_array_at(self->tokens, self->iter, bl_token_t))->sym == sym;
-}
-
-bool
-bl_lexer_next_is(Lexer  *self,
-                  bl_sym_e sym)
-{
-  return (&bo_array_at(self->tokens, self->iter+1, bl_token_t))->sym == sym;
-}
-
-bool
-bl_lexer_current_is_not(Lexer  *self,
-                         bl_sym_e sym)
-{
-  return (&bo_array_at(self->tokens, self->iter, bl_token_t))->sym != sym;
-}
-
-bool
-bl_lexer_next_is_not(Lexer  *self,
-                      bl_sym_e sym)
-{
-  return (&bo_array_at(self->tokens, self->iter+1, bl_token_t))->sym != sym;
-}
-
-bool
-bl_lexer_is_seq(Lexer *self,
-                 int     cnt,
-                 ...)
-{
-  bool ret     = true;
-  size_t c     = bo_array_size(self->tokens);
-  bl_sym_e sym = BL_SYM_EOF;
-  cnt         += self->iter;
-
-  va_list valist;
-  va_start(valist, cnt);
-
-  for (size_t i = self->iter; i < cnt && i < c; i++) {
-    sym = va_arg(valist, bl_sym_e);
-    if ((&bo_array_at(self->tokens, i, bl_token_t))->sym != sym) {
-      ret = false;
-      break;
-    }
-  }
-
-  va_end(valist);
-  return ret;
-}
-
-void
-bl_lexer_set_marker(Lexer *self)
-{
-  self->marker = self->iter;
-}
-
-void
-bl_lexer_back_to_marker(Lexer *self)
-{
-  self->iter = self->marker;
-}
-
-void
-bl_lexer_resert_iter(Lexer *self)
-{
-  self->iter = 0;
+  return bo_new(Lexer, NULL);
 }
 
