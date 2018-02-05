@@ -12,7 +12,6 @@ set(SOURCE_FILES
   src/pipeline/actor.c
   src/pipeline/pipeline.h 
   src/pipeline/pipeline.c
-  src/node.c 
   src/main.c
   src/bldebug.h
   src/lexer.c
@@ -34,6 +33,8 @@ set(SOURCE_FILES
   src/parser.c 
   src/node.h 
   src/node.c 
+  src/node_param_var_decl.h 
+  src/node_param_var_decl.c 
   src/node_func_decl.h 
   src/node_func_decl.c 
   src/node_global_stmt.h 

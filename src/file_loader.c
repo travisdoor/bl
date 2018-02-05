@@ -67,7 +67,6 @@ FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
 void
 FileLoader_dtor(FileLoader *self)
 {
-  puts("file_loader destroyed");
 }
 
 /* FileLoader copy constructor */

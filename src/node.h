@@ -35,7 +35,8 @@
 
 #define NTYPES\
   nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_statement") \
+  nt(GLOBAL_STMT, "global_stmt") \
+  nt(PARAM_VAR_DECL, "param_var_decl") \
 
 typedef enum {
 #define nt(tok, str) BL_NODE_##tok,
@@ -73,6 +74,10 @@ bo_decl_members_begin(Node, BObject)
   int line;
   int col;
 bo_end();
+
+bool
+bl_node_add_child(Node *self,
+                  Node *child);
 
 #endif /* end of include guard: BISCUIT_NODE_H */
 

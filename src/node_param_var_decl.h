@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.h
+// File:   node_param_var_decl.h
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -26,24 +26,24 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_FUNC_DECL_H
-#define BISCUIT_NODE_FUNC_DECL_H
+#ifndef BISCUIT_NODE_PARAM_VAR_DECL_H
+#define BISCUIT_NODE_PARAM_VAR_DECL_H
 
 #include <bobject/bobject.h>
 #include "node.h"
 #include "token.h"
 
 /* class declaration */
-bo_decl_type_begin(NodeFuncDecl, Node)
+bo_decl_type_begin(NodeParamVarDecl, Node)
   /* virtuals */
 bo_end();
 
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *ident,
-                      const char *generated_from,
-                      int         line,
-                      int         col);
+NodeParamVarDecl *
+bl_node_param_var_decl_new(BString *type,
+                           BString *ident,
+                           const char *generated_from,
+                           int         line,
+                           int         col);
 
-#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
+#endif /* end of include guard: BISCUIT_NODE_PARAM_VAR_DECL_H */
 

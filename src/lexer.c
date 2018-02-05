@@ -113,7 +113,6 @@ Lexer_ctor(Lexer *self, LexerParams *p)
 void
 Lexer_dtor(Lexer *self)
 {
-  puts("lexer destroyed");
 }
 
 /* Lexer copy constructor */

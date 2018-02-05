@@ -69,8 +69,6 @@ Pipeline_dtor(Pipeline *self)
   for (int i = 0; i < MAX_DOMAIN_COUNT; i++) {
     bo_unref(self->stages[i]);
   }
-
-  puts("pipeline destroyed");
 }
 
 /* Pipeline copy constructor */

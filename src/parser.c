@@ -26,18 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <setjmp.h>
 #include "parser.h"
 #include "domains.h"
 #include "unit.h"
 #include "bldebug.h"
 #include "ast.h"
 
+#define parse_error(format, ...) \
+  { \
+    bl_actor_error((Actor *)unit, (format), ##__VA_ARGS__); \
+    longjmp(jmp_error, 1); \
+  } 
+
 static Node *
 parse_global_stmt(Parser *self, 
-                  Unit *unit);
+                  Unit *unit,
+                  jmp_buf jmp_error);
 static Node *
 parse_func_decl(Parser *self, 
-                Unit *unit);
+                Unit *unit,
+                jmp_buf jmp_error);
+
+static Node *
+parse_param_var_decl(Parser *self, 
+                     Unit *unit,
+                     jmp_buf jmp_error);
 
 static bool
 run(Parser *self,
@@ -45,6 +59,13 @@ run(Parser *self,
 
 static int
 domain(Parser *self);
+
+static inline BString *
+tok_to_str(bl_token_t *tok) {
+  BString *str = bo_string_new(tok->len);
+  bo_string_appendn(str, tok->content.as_string, tok->len);
+  return str;
+}
 
 /* Parser members */
 bo_decl_members_begin(Parser, Stage)
@@ -87,31 +108,117 @@ Parser_copy(Parser *self, Parser *other)
 
 Node *
 parse_global_stmt(Parser *self, 
-                  Unit *unit)
+                  Unit *unit,
+                  jmp_buf jmp_error)
 {
   NodeGlobalStmt *gstmt = bl_node_global_stmt_new(bo_string_get(unit->src), 1, 0);
+stmt:
+  if (!bl_node_add_child((Node *)gstmt, parse_func_decl(self, unit, jmp_error))) {
+    bl_token_t *tok = bl_tokens_peek(unit->tokens);
+    parse_error("%s %d:%d expected function declaration",
+                bo_string_get(unit->filepath),
+                tok->line,
+                tok->col);
+
+  }
+
+
+  if (bl_tokens_current_is_not(unit->tokens, BL_SYM_EOF))
+    goto stmt;
+
   return (Node *)gstmt;
 }
 
 Node *
 parse_func_decl(Parser *self, 
-                Unit *unit)
+                Unit *unit,
+                jmp_buf jmp_error)
 { 
-  return NULL;
+  NodeFuncDecl *func_decl = NULL;
+  bl_token_t *tok;
+  if (bl_tokens_is_seq(unit->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
+    tok = bl_tokens_consume(unit->tokens);
+    BString *type = tok_to_str(tok);
+
+    tok = bl_tokens_consume(unit->tokens);
+    BString *ident = tok_to_str(tok);
+
+    /*
+     * TODO: store all nodes into array even if parsing failed, node will be
+     * already listed in array and it will not leak later.
+     */
+    func_decl = bl_node_func_decl_new(type, ident, tok->src_loc, tok->line, tok->col);
+
+    /* consume '(' */
+    bl_tokens_consume(unit->tokens);
+
+    if (bl_tokens_current_is_not(unit->tokens, BL_SYM_RPAREN)) {
+param:
+      bl_node_add_child((Node *)func_decl, parse_param_var_decl(self, unit, jmp_error));
+      tok = bl_tokens_consume(unit->tokens);
+      if (tok->sym == BL_SYM_COMMA)
+        goto param;
+    }
+
+    tok = bl_tokens_consume(unit->tokens);
+    if (tok->sym != BL_SYM_RPAREN)
+      parse_error("%s %d:%d expected ')' after function parameter declaration", 
+          bo_string_get(unit->filepath),
+          tok->line,
+          tok->col);
+
+    /* HACK eat {} */
+    tok = bl_tokens_consume(unit->tokens);
+    tok = bl_tokens_consume(unit->tokens);
+  }
+  return (Node *)func_decl;
+}
+
+Node *
+parse_param_var_decl(Parser *self, 
+                     Unit *unit,
+                     jmp_buf jmp_error)
+{
+  bl_token_t *tok = bl_tokens_consume(unit->tokens);
+  if (tok->sym != BL_SYM_IDENT)
+    parse_error("%s %d:%d expected parameter type", 
+        bo_string_get(unit->filepath),
+        tok->line,
+        tok->col);
+
+  BString *type = tok_to_str(tok);
+
+  tok = bl_tokens_consume(unit->tokens);
+  if (tok->sym != BL_SYM_IDENT) {
+    bo_unref(type);
+    parse_error("%s %d:%d expected parameter name", 
+        bo_string_get(unit->filepath),
+        tok->line,
+        tok->col);
+  }
+  
+  BString *ident = tok_to_str(tok);
+  return (Node *)bl_node_param_var_decl_new(type, ident, tok->src_loc, tok->line, tok->col);
 }
 
 bool
 run(Parser *self,
     Unit   *unit)
 {
+  jmp_buf jmp_error;
+  
   if (unit->tokens == NULL) {
     bl_actor_error((Actor *)unit, "no tokens found for unit");
     return false;
   }
 
+  if (setjmp(jmp_error))
+    return false;
+
   bo_unref(unit->ast);
-  unit->ast = parse_global_stmt(self, unit);
+  unit->ast = parse_global_stmt(self, unit, jmp_error);
   bl_log("* parsing done\n");
+
   return true;
 }
 

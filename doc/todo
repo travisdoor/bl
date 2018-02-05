@@ -1,10 +1,4 @@
-- main method
-- expressions (assignment, method call)
-
-- type checking in parser
-- name collision checking in parser
-- better error handling in parser
-- anything after return in current function scope can be ignored
+* store nodes of AST into array not in tree (less possibility of memory leak)
 
 Data types:
   bool

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.c
+// File:   node_param_var_decl.c
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -26,60 +26,60 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include "node_func_decl.h"
+#include <bobject/containers/array.h>
+#include "node_param_var_decl.h"
 
 static BString *
-to_string(NodeFuncDecl *self);
+to_string(NodeParamVarDecl *self);
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
+/* NodeParamVarDecl members */
+bo_decl_members_begin(NodeParamVarDecl, Node)
   BString *type;
   BString *ident;
 bo_end();
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
+/* NodeParamVarDecl constructor parameters */
+bo_decl_params_with_base_begin(NodeParamVarDecl, Node)
   BString *type;
   BString *ident;
 bo_end();
 
-bo_impl_type(NodeFuncDecl, Node);
+bo_impl_type(NodeParamVarDecl, Node);
 
-/* NodeFuncDecl class init */
+/* NodeParamVarDecl class init */
 void
-NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
+NodeParamVarDeclKlass_init(NodeParamVarDeclKlass *klass)
 {
   bo_vtbl_cl(klass, Node)->to_string 
     = (BString *(*)(Node*)) to_string;
 }
 
-/* NodeFuncDecl constructor */
+/* NodeParamVarDecl constructor */
 void
-NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
+NodeParamVarDecl_ctor(NodeParamVarDecl *self, NodeParamVarDeclParams *p)
 {
   bo_parent_ctor(Node, p);
   self->type = p->type;
   self->ident = p->ident;
 }
 
-/* NodeFuncDecl destructor */
+/* NodeParamVarDecl destructor */
 void
-NodeFuncDecl_dtor(NodeFuncDecl *self)
+NodeParamVarDecl_dtor(NodeParamVarDecl *self)
 {
   bo_unref(self->type);
   bo_unref(self->ident);
 }
 
-/* NodeFuncDecl copy constructor */
+/* NodeParamVarDecl copy constructor */
 bo_copy_result
-NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
+NodeParamVarDecl_copy(NodeParamVarDecl *self, NodeParamVarDecl *other)
 {
   return BO_NO_COPY;
 }
 
 BString *
-to_string(NodeFuncDecl *self)
+to_string(NodeParamVarDecl *self)
 {
   BString *ret = bo_string_new(128);
   bo_string_append(ret, "<");
@@ -94,15 +94,15 @@ to_string(NodeFuncDecl *self)
 
 /* public */
 
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *ident,
-                      const char *generated_from,
-                      int         line,
-                      int         col)
+NodeParamVarDecl *
+bl_node_param_var_decl_new(BString *type,
+                           BString *ident,
+                           const char *generated_from,
+                           int         line,
+                           int         col)
 {
-  NodeFuncDeclParams p = {
-    .base.type = BL_NODE_FUNC_DECL,
+  NodeParamVarDeclParams p = {
+    .base.type = BL_NODE_PARAM_VAR_DECL,
     .base.generated_from = generated_from, 
     .base.line = line, 
     .base.col = col,
@@ -110,6 +110,6 @@ bl_node_func_decl_new(BString    *type,
     .ident = ident
   };
   
-  return bo_new(NodeFuncDecl, &p);
+  return bo_new(NodeParamVarDecl, &p);
 }
 

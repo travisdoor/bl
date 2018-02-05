@@ -56,7 +56,6 @@ Unit_dtor(Unit *self)
   bo_unref(self->src);
   bo_unref(self->tokens);
   bo_unref(self->ast);
-  puts("unit destroyed");
 }
 
 bo_copy_result

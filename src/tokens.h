@@ -57,6 +57,10 @@ bl_tokens_peek_nth(Tokens *self,
 bl_token_t *
 bl_tokens_consume(Tokens *self);
 
+bl_token_t **
+bl_tokens_consume_n(Tokens *self,
+                    int     n);
+
 bl_token_t *
 bl_tokens_consume_if(Tokens  *self,
                      bl_sym_e sym);

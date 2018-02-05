@@ -56,7 +56,6 @@ Module_ctor(Module *self, ModuleParams *p)
 void
 Module_dtor(Module *self)
 {
-  puts("module destroyed");
 }
 
 /* Module copy constructor */

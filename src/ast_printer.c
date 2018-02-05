@@ -69,7 +69,6 @@ AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
 void
 AstPrinter_dtor(AstPrinter *self)
 {
-  puts("ast_printer destroyed");
 }
 
 /* AstPrinter copy constructor */
@@ -85,7 +84,7 @@ print_node(AstPrinter *self,
            int pad)
 {
   BString *s = bo_vtbl(node, Node)->to_string(node);
-  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%s\n" ANSI_COLOR_RESET, bo_string_get(s));
+  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET, pad, "", bo_string_get(s));
   bo_unref(s);
 
   if (node->nodes == NULL)

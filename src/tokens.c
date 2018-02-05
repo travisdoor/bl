@@ -117,6 +117,18 @@ bl_tokens_consume(Tokens *self)
   return NULL;
 }
 
+bl_token_t **
+bl_tokens_consume_n(Tokens *self,
+                    int     n)
+{
+  if (self->iter+n < bo_array_size(self->buf)) {
+    return &bo_array_at(self->buf, self->iter, bl_token_t *);
+    self->iter += n;
+  }
+
+  return NULL;
+}
+
 bl_token_t *
 bl_tokens_consume_if(Tokens  *self,
                      bl_sym_e sym)

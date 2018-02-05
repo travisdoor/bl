@@ -32,5 +32,6 @@
 #include "node.h"
 #include "node_global_stmt.h"
 #include "node_func_decl.h"
+#include "node_param_var_decl.h"
 
 #endif /* end of include guard: AST_H_VGMYANDT */

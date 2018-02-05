@@ -62,3 +62,17 @@ Node_copy(Node *self, Node *other)
   return BO_NO_COPY;
 }
 
+/* public */
+bool
+bl_node_add_child(Node *self,
+                  Node *child)
+{
+  if (child == NULL)
+    return false;
+
+  if (self->nodes == NULL)
+    self->nodes = bo_array_new_bo(bo_typeof(Node), true);
+
+  bo_array_push_back(self->nodes, child);
+  return true;
+}

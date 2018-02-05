@@ -27,6 +27,7 @@
 //*****************************************************************************
 
 #include <string.h>
+#include <stdarg.h>
 #include "pipeline/actor.h"
 #include "bldebug.h"
 
