@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   actor.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,87 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
+#include <string.h>
+#include "pipeline/actor.h"
 #include "bldebug.h"
 
-static bool
-run(Parser *self,
-    Unit   *unit);
-
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* Actor constructor parameters */
+bo_decl_params_begin(Actor)
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
+bo_impl_type(Actor, BObject);
 
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
+/* Actor class init */
 void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
-
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
+ActorKlass_init(ActorKlass *klass)
 {
 }
 
-/* Parser destructor */
+/* Actor constructor */
 void
-Parser_dtor(Parser *self)
+Actor_ctor(Actor *self, ActorParams *p)
 {
+  self->state = BL_ACTOR_STATE_PENDING;
+  self->actors = bo_array_new_bo(bo_typeof(Actor), true);
+  self->error[0] = '\0';
 }
 
-/* Parser copy constructor */
+/* Actor destructor */
+void
+Actor_dtor(Actor *self)
+{
+  bo_unref(self->actors);
+  bo_unref(self->error);
+}
+
+/* Actor copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+Actor_copy(Actor *self, Actor *other)
 {
   return BO_NO_COPY;
 }
 
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
 /* public */
-Parser *
-bl_parser_new(void)
+Actor *
+bl_actor_new(void)
 {
-  return bo_new(Parser, NULL);
+  return bo_new(Actor, NULL);
 }
 
-/* public */
+bl_actor_state_e
+bl_actor_state(Actor *self)
+{
+  return self->state;
+}
+
+void
+bl_actor_add(Actor *self, Actor *child)
+{
+  bo_array_push_back(self->actors, child);
+}
+
+void
+bl_actor_error(Actor *self,
+               const char *format,
+               ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(self->error, BL_ACTOR_MAX_ERROR_LEN, format, args);
+  va_end(args);
+}
+
+const char *
+bl_actor_get_error(Actor *self)
+{
+  if (strlen(&self->error[0]) == 0)
+    return NULL;
+  return &self->error[0];
+}
+
+void
+bl_actor_error_reser(Actor *self)
+{
+  self->error[0] = '\0';
+}
+

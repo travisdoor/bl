@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   node.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   02/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,50 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#ifndef BISCUIT_NODE_H
+#define BISCUIT_NODE_H
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+#include <bobject/bobject.h>
+#include <bobject/containers/string.h>
 
-static int
-domain(Parser *self);
+#define NTYPES\
+  nt(FUNCDECL, "func_decl") \
 
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+typedef enum {
+#define nt(tok, str) BL_NODE_##tok,
+  NTYPES 
+#undef nt
+} bl_node_e;
+
+static char *bl_node_strings[] = {
+#define nt(tok, str) str,
+  NTYPES 
+#undef nt
+};
+
+#undef SYMBOLS
+
+/* class declaration */
+bo_decl_type_begin(Node, BObject)
+  /* virtuals */
+  BString *(*to_string)(Node *);
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+/* Node constructor parameters */
+bo_decl_params_begin(Node)
+  bl_node_e type;
+  const char *generated_from;
+  int line;
+  int col;
 bo_end();
 
-bo_impl_type(Parser, Stage);
+/* Node members */
+bo_decl_members_begin(Node, BObject)
+  bl_node_e type;
+  const char *generated_from;
+  int line;
+  int col;
+bo_end();
 
-/* Parser class init */
-void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
+#endif /* end of include guard: BISCUIT_NODE_H */
 
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
-{
-}
-
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
-
-/* Parser copy constructor */
-bo_copy_result
-Parser_copy(Parser *self, Parser *other)
-{
-  return BO_NO_COPY;
-}
-
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
-
-/* public */

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   pipeline.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,31 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#ifndef BISCUIT_PIPELINE_H
+#define BISCUIT_PIPELINE_H
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+#include <bobject/bobject.h>
+#include "pipeline/actor.h"
+#include "pipeline/stage.h"
 
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* class declaration */
+bo_decl_type_begin(Pipeline, BObject)
+  /* virtuals */
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
-
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
-void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
-
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
-{
-}
-
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
-
-/* Parser copy constructor */
-bo_copy_result
-Parser_copy(Parser *self, Parser *other)
-{
-  return BO_NO_COPY;
-}
+Pipeline *
+bl_pipeline_new(void);
 
 bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
+bl_pipeline_run(Pipeline *self,
+                Actor    *actor);
 
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
+void
+bl_pipeline_add_stage(Pipeline *self,
+                      Stage    *stage);
 
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
+Actor *
+bl_pipeline_get_failed(Pipeline *self);
 
-/* public */
+#endif /* end of include guard: BISCUIT_PIPELINE_H */
+

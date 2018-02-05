@@ -28,47 +28,46 @@
 
 #include <stdio.h>
 #include "lexer.h"
+#include "parser.h"
 #include "unit.h"
-
-#define ENABLE_LOG 0
-
-#if ENABLE_LOG
-void log_tokens(Tokens *tokens)
-{
-  // log lexer output
-  bl_token_t *tok;
-  size_t i = 0;
-  while ((tok = bl_tokens_consume(tokens))) {
-    switch (tok->sym) {
-    case BL_SYM_STRING:
-    case BL_SYM_IDENT:
-      printf("T[%zu %d:%d]: %s:%.*s\n", i, tok->line, tok->col,
-          bl_sym_strings[tok->sym], (int)tok->len, tok->content.as_string);
-      break;
-    case BL_SYM_NUM:
-      printf("T[%zu %d:%d]: %s:%d\n", i, tok->line, tok->col,
-          bl_sym_strings[tok->sym], tok->content.as_int);
-      break;
-    default:
-      printf("T[%zu %d:%d]: %s\n", i, tok->line, tok->col,
-          bl_sym_strings[tok->sym]);
-    }
-    i++;
-  }
-  bl_tokens_resert_iter(tokens);
-}
-
-#endif
+#include "module.h"
+#include "file_loader.h"
+#include "pipeline/pipeline.h"
+#include "bldebug.h"
 
 int main(int argc, char *argv[])
 {
   if (argc < 2)
     return 1;
 
-//  printf ("Input file: %s\n", argv[1]);
+  /* init actors */
+  Actor *module = (Actor *)bl_module_new();
 
-  Unit *unit = bl_unit_new(argv[1]);
-  bl_unit_compile(unit);
-  bo_unref(unit);
+  for (int i = 1; i < argc; i++) {
+    Actor *unit = (Actor *)bl_unit_new(argv[i]);
+    bl_actor_add(module, unit);
+  }
+
+  /* init pipeline */
+  Pipeline *pipeline = bl_pipeline_new();
+  Stage *file_loader = (Stage *)bl_file_loader_new(); 
+  Stage *lexer = (Stage *)bl_lexer_new(); 
+  Stage *parser = (Stage *)bl_parser_new(); 
+
+  bl_pipeline_add_stage(pipeline, file_loader);
+  bl_pipeline_add_stage(pipeline, lexer);
+  bl_pipeline_add_stage(pipeline, parser);
+  
+  bl_log("pipeline start\n");
+  if (!bl_pipeline_run(pipeline, module)) {
+    Actor *failed = bl_pipeline_get_failed(pipeline);
+    bl_error("%s\n", bl_actor_get_error(failed));
+    bl_error("pipeline run failed\n");
+  } else 
+    bl_log("pipeline finished without errors\n");
+
+  bo_unref(module);
+  bo_unref(pipeline);
+
   return 0;
 }

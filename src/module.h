@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   cgen.h
+// File:   module.h
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   04/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_CGEN_H
-#define BL_CGEN_H
+#ifndef BL_MODULE_H
+#define BL_MODULE_H
 
-#include "unit.h"
-#include "pnode.h"
-#include "csrc.h"
+#include <bobject/bobject.h>
+#include "pipeline/actor.h"
 
-CSrc *
-bl_cgen_generate(Unit *unit,
-                 PNode *pnode);
+/* class declaration */
+bo_decl_type_begin(Module, Actor)
+  /* virtuals */
+bo_end();
 
-#endif //BL_CGEN_H
+Module *
+bl_module_new(void);
+
+#endif /* end of include guard: BL_MODULE_H */
+

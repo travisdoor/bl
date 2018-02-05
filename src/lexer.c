@@ -28,8 +28,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+#include <bobject/containers/array.h>
 #include "lexer.h"
 #include "bldebug.h"
+#include "unit.h"
+#include "domains.h"
+#include "tokens.h"
 
 /* class Lexer */
 #define is_intend_c(c) \
@@ -41,180 +46,89 @@
 #define is_number_c(c) \
   ((c) >= '0' && (c) <= '9')
 
-#define token(s, c) \
-  { \
-    tok.sym  = (s); \
-    tok.line = ((c).line); \
-    tok.col  = ((c).col); \
-    bl_tokens_push(tokens, &tok); \
-  }
-
-typedef struct _cursor {
+typedef struct _cursor_t
+{
   char *iter;
   int line;
   int col;
-} cursor;
+} cursor_t;
 
-static void
-init_cursor(cursor *cur,
-            char *begin)
-{
-  cur->col  = 1;
-  cur->line = 1;
-  cur->iter = begin;
-}
+static bool
+run(Lexer *self,
+    Unit  *unit);
 
 static int
-scan_string(cursor *cur,
-            char     term,
-            Tokens  *tokens)
+domain(Lexer *self);
+
+static bool 
+scan_string(Lexer  *self,
+            Unit   *unit,
+            char    term,
+            cursor_t *cur);
+
+static bool 
+ignore_till(Lexer *self,
+            Unit   *unit,
+            char   term,
+            cursor_t *cur);
+
+static bool 
+scan_ident(Lexer *self,
+           Unit   *unit,
+           cursor_t *cur);
+
+static bool 
+scan_number(Lexer *self,
+            Unit   *unit,
+            cursor_t *cur);
+
+/* Lexer members */
+bo_decl_members_begin(Lexer, Stage)
+bo_end();
+
+/* Lexer constructor parameters */
+bo_decl_params_begin(Lexer)
+bo_end();
+
+bo_impl_type(Lexer, Stage);
+
+/* Lexer class init */
+void
+LexerKlass_init(LexerKlass *klass)
 {
-  bl_token_t tok;
-  cur->iter++;
-  cur->col++;
-
-  tok.line = cur->line;
-  tok.col = cur->col;
-  char *str = cur->iter;
-
-  size_t len = 0;
-  while (*cur->iter != term) {
-    if (*cur->iter == '\0')
-      return 0;
-    cur->iter++;
-    cur->col++;
-    len++;
-  }
-
-  str = strndup(str, len);
-  tok.content.as_string = str;
-  tok.sym = BL_SYM_STRING;
-
-  bl_tokens_cache_str(tokens, str);
-  bl_tokens_push(tokens, &tok);
-  return 1;
+  bo_vtbl_cl(klass, Stage)->run 
+    = (bool (*)(Stage*, Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->domain
+    = (int (*)(Stage*)) domain;
 }
 
-static int
-ignore_till(cursor *cur,
-            char     term)
+/* Lexer constructor */
+void
+Lexer_ctor(Lexer *self, LexerParams *p)
 {
-  while (*cur->iter != term) {
-    if (*cur->iter == '\n') {
-      cur->col = 1;
-      cur->line++;
-    }
-    if (*cur->iter == '\0')
-      return 0;
-    cur->iter++;
-    cur->col++;
-  }
-
-  if (term == '\n') {
-    cur->col = 1;
-    cur->line++;
-  }
-  return 1;
+  bo_parent_ctor(Actor, p);
 }
 
-static int
-scan_ident(cursor *cur,
-           Tokens  *tokens)
+/* Lexer destructor */
+void
+Lexer_dtor(Lexer *self)
 {
-  bl_token_t tok;
-  size_t len = 2;
-
-  if (strncmp(cur->iter, "if", len) == 0) {
-    token(BL_SYM_IF, *cur);
-    cur->iter += len;
-    cur->col += len;
-    return 1;
-  }
-
-  len = 4;
-  if (strncmp(cur->iter, "else", len) == 0) {
-    token(BL_SYM_ELSE, *cur);
-    cur->iter += len;
-    cur->col += len;
-    return 1;
-  }
-
-  len = 5;
-  if (strncmp(cur->iter, "return", len) == 0) {
-    token(BL_SYM_RET, *cur);
-    cur->iter += len;
-    cur->col += len;
-    return 1;
-  }
-
-  len = 6;
-  if (strncmp(cur->iter, "extern", len) == 0) {
-    token(BL_SYM_EXTERN, *cur);
-    cur->iter += len;
-    cur->col += len;
-    return 1;
-  }
-
-  len = 9;
-  if (strncmp(cur->iter, "namespace", len) == 0) {
-    token(BL_SYM_NAMESPACE, *cur);
-    cur->iter += len;
-    cur->col += len;
-    return 1;
-  }
-
-  char *str = cur->iter;
-  len = 0;
-  while (is_intend_c(*cur->iter)) {
-    (cur->iter)++;
-    len++;
-  }
-
-  str = strndup(str, len);
-  tok.content.as_string = str;
-  tok.sym = BL_SYM_IDENT;
-
-  bl_tokens_cache_str(tokens, str);
-  bl_tokens_push(tokens, &tok);
-
-  cur->iter--;
-  cur->col += len;
-  return 1;
+  puts("lexer destroyed");
 }
 
-static int
-scan_number(cursor *cur,
-            Tokens  *tokens)
+/* Lexer copy constructor */
+bo_copy_result
+Lexer_copy(Lexer *self, Lexer *other)
 {
-  if (!is_number_c(*cur->iter))
-    return 0;
-
-  int n = 0;
-  bl_token_t tok;
-  tok.col  = cur->col;
-  tok.line = cur->line;
-
-  while (true) {
-    n = n * 10 + (*cur->iter) - '0';
-    cur->col++;
-    if (is_number_c(*(cur->iter+1))) {
-      cur->iter++;
-    } else
-      break;
-  }
-
-  tok.sym = BL_SYM_NUM;
-  tok.content.as_int = n;
-  
-  bl_tokens_push(tokens, &tok);
-  return 1;
+  return BO_NO_COPY;
 }
 
-/* public */
-Tokens *
-bl_lexer_scan(Unit *unit)
+bool
+run(Lexer *self,
+    Unit  *unit)
 {
-  Tokens *tokens = bl_tokens_new(unit->src);
+  bo_unref(unit->tokens);
+  unit->tokens = bl_tokens_new();
 
   bl_token_t tok = {
     .sym  = BL_SYM_EOF,
@@ -222,9 +136,13 @@ bl_lexer_scan(Unit *unit)
     .col  = 0
   };
 
-  cursor cur;
-  for (init_cursor(&cur, (char *) bo_string_get(unit->src));
-       *cur.iter != '\0'; cur.iter++) {
+  cursor_t cur = {
+    .iter = (char *)bo_string_get(unit->src),
+    .line = 0,
+    .col = 0
+  };
+
+  for (;*cur.iter != '\0'; cur.iter++) {
     switch (*cur.iter) {
       case '\n':
         cur.line++;
@@ -235,66 +153,231 @@ bl_lexer_scan(Unit *unit)
         cur.col++;
         continue;
       case '{':
-        token(BL_SYM_LBLOCK, cur);
+        bl_token_init(&tok ,BL_SYM_LBLOCK, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '}':
-        token(BL_SYM_RBLOCK, cur);
+        bl_token_init(&tok ,BL_SYM_RBLOCK, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '[':
-        token(BL_SYM_LBRACKET, cur);
+        bl_token_init(&tok ,BL_SYM_LBRACKET, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ']':
-        token(BL_SYM_RBRACKET, cur);
+        bl_token_init(&tok ,BL_SYM_RBRACKET, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '(':
-        token(BL_SYM_LPAREN, cur);
+        bl_token_init(&tok ,BL_SYM_LPAREN, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ')':
-        token(BL_SYM_RPAREN, cur);
+        bl_token_init(&tok ,BL_SYM_RPAREN, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ',':
-        token(BL_SYM_COMMA, cur);
+        bl_token_init(&tok ,BL_SYM_COMMA, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '=':
-        token(BL_SYM_ASIGN, cur);
+        bl_token_init(&tok ,BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case ';':
-        token(BL_SYM_SEMICOLON, cur);
+        bl_token_init(&tok ,BL_SYM_SEMICOLON, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(unit->tokens, &tok);
         cur.col++;
         continue;
       case '"':
-        scan_string(&cur, '"', tokens);
+        scan_string(self, unit, '"', &cur);
         continue;
       case '/':
         switch (*(cur.iter + 1)) {
         case '/':
-          ignore_till(&cur, '\n');
+          ignore_till(self, unit, '\n', &cur);
           continue;
         default:
-          token(BL_SYM_SLASH, cur);
+          bl_token_init(&tok ,BL_SYM_SLASH, cur.line, cur.col, 1, cur.iter);
+          bl_tokens_push(unit->tokens, &tok);
           cur.col++;
           continue;
         }
       default:
-        if (scan_number(&cur, tokens))
+        if (scan_number(self, unit, &cur))
           continue;
 
-        if (scan_ident(&cur, tokens))
+        if (scan_ident(self, unit, &cur))
           continue;
 
-        bl_error_at(bo_string_get(unit->filepath), cur.line, cur.col, "unknown character");
+        /* notify error */
+        bl_actor_error((Actor *)unit, "invalid character %c", cur.iter[0]); 
+        return false;
     }
   }
   tok.sym = BL_SYM_EOF;
-  bl_tokens_push(tokens, &tok);
-  return tokens;
+  bl_tokens_push(unit->tokens, &tok);
+  bl_log("* lexing done\n");
+  return true;
+}
+
+int
+domain(Lexer *self)
+{
+  return BL_DOMAIN_UNIT;
+}
+
+bool
+scan_string(Lexer  *self,
+            Unit   *unit,
+            char    term,
+            cursor_t *cur)
+{
+  bl_token_t tok;
+  cur->iter++;
+  cur->col++;
+
+  bl_token_init(&tok, BL_SYM_STRING, cur->line, cur->col, 0, cur->iter);
+  tok.content.as_string = cur->iter;
+
+  while (*cur->iter != term) {
+    if (*cur->iter == '\0')
+      return false;
+    cur->iter++;
+    cur->col++;
+    tok.len++;
+  }
+
+  bl_tokens_push(unit->tokens, &tok);
+  return true;
+}
+
+bool
+ignore_till(Lexer *self,
+            Unit   *unit,
+            char   term,
+            cursor_t *cur)
+{
+  while (*cur->iter != term) {
+    if (*cur->iter == '\n') {
+      cur->col = 1;
+      cur->line++;
+    }
+    if (*cur->iter == '\0')
+      return false;
+    cur->iter++;
+    cur->col++;
+  }
+
+  if (term == '\n') {
+    cur->col = 1;
+    cur->line++;
+  }
+  return true;
+}
+
+bool
+scan_ident(Lexer *self,
+           Unit   *unit,
+           cursor_t *cur)
+{
+  bl_token_t tok;
+  size_t len = 2;
+
+  if (strncmp(cur->iter, "if", len) == 0) {
+    bl_token_init(&tok, BL_SYM_IF, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    return true;
+  }
+
+  len = 4;
+  if (strncmp(cur->iter, "else", len) == 0) {
+    bl_token_init(&tok, BL_SYM_ELSE, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    return true;
+  }
+
+  len = 5;
+  if (strncmp(cur->iter, "return", len) == 0) {
+    bl_token_init(&tok, BL_SYM_RETURN, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    return true;
+  }
+
+  len = 6;
+  if (strncmp(cur->iter, "extern", len) == 0) {
+    bl_token_init(&tok, BL_SYM_EXTERN, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    return true;
+  }
+
+  len = 9;
+  if (strncmp(cur->iter, "namespace", len) == 0) {
+    bl_token_init(&tok, BL_SYM_NAMESPACE, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    return true;
+  }
+
+  bl_token_init(&tok, BL_SYM_IDENT, cur->line, cur->col, 0, cur->iter);
+  tok.content.as_string = cur->iter;
+  while (is_intend_c(*cur->iter)) {
+    (cur->iter)++;
+    tok.len++;
+  }
+
+  if (tok.len == 0)
+    return false;
+
+  bl_tokens_push(unit->tokens, &tok);
+  cur->iter--;
+  cur->col += len;
+  return true;
+}
+
+bool
+scan_number(Lexer *self,
+            Unit   *unit,
+            cursor_t *cur)
+{
+  if (!is_number_c(*cur->iter))
+    return false;
+
+  int n = 0;
+  bl_token_t tok;
+  bl_token_init(&tok, BL_SYM_NUM, cur->line, cur->col, 0, cur->iter);
+
+  while (true) {
+    n = n * 10 + (*cur->iter) - '0';
+    cur->col++;
+    tok.len++;
+    if (is_number_c(*(cur->iter+1))) {
+      cur->iter++;
+    } else
+      break;
+  }
+
+  tok.content.as_int = n;
+  bl_tokens_push(unit->tokens, &tok);
+  return true;
+}
+
+/* public */
+Lexer *
+bl_lexer_new(void)
+{
+  return bo_new(Lexer, NULL);
 }
 

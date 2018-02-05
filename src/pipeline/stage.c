@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   stage.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,39 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#include "stage.h"
 
-static bool
-run(Parser *self,
-    Unit   *unit);
-
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* Stage constructor parameters */
+bo_decl_params_begin(Stage)
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
+bo_impl_type(Stage, BObject);
 
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
+/* Stage class init */
 void
-ParserKlass_init(ParserKlass *klass)
+StageKlass_init(StageKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
+  bo_vtbl_cl(klass, Stage)->domain = NULL;
+  bo_vtbl_cl(klass, Stage)->run = NULL;
 }
 
-/* Parser constructor */
+/* Stage constructor */
 void
-Parser_ctor(Parser *self, ParserParams *p)
+Stage_ctor(Stage *self, StageParams *p)
 {
 }
 
-/* Parser destructor */
+/* Stage destructor */
 void
-Parser_dtor(Parser *self)
+Stage_dtor(Stage *self)
 {
 }
 
-/* Parser copy constructor */
+/* Stage copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+Stage_copy(Stage *self, Stage *other)
 {
   return BO_NO_COPY;
 }
 
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
 
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
-
-/* public */

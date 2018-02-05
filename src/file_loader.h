@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl  
+// bl 
 //
-// File:   symbol_table.h
+// File:   file_loader.h
 // Author: Martin Dorazil
-// Date:   01/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_SYMBOL_TABLE_H
-#define BISCUIT_SYMBOL_TABLE_H
+#ifndef FILE_LOADER_H_PDNQRKMS
+#define FILE_LOADER_H_PDNQRKMS
 
 #include <bobject/bobject.h>
-#include "pnode.h"
+#include "pipeline/stage.h"
 
 /* class declaration */
-bo_decl_type_begin(SymbolTable, BObject)
+bo_decl_type_begin(FileLoader, Stage)
   /* virtuals */
 bo_end();
 
-SymbolTable *
-bl_symbol_table_new(void);
+/* FileLoader members */
+bo_decl_members_begin(FileLoader, Stage)
+bo_end();
 
-bool
-bl_symbol_table_geristrate(SymbolTable *self,
-                           PNode       *node);
+FileLoader *
+bl_file_loader_new(void);
 
-PNode *
-bl_symbol_table_get(SymbolTable *self,
-                    const char  *id);
-                           
-void
-bl_symbol_table_print(SymbolTable *self,
-                      FILE        *out);
-
-#endif /* end of include guard: BISCUIT_SYMBOL_TABLE_H */
-
+#endif /* end of include guard: FILE_LOADER_H_PDNQRKMS */

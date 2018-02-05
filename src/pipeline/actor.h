@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   pnode.h
+// File:   actor.h
 // Author: Martin Dorazil
-// Date:   26/01/2018
+// Date:   04/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,55 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_PNODE_H
-#define BL_PNODE_H
+#ifndef BISCUIT_ACTOR_H
+#define BISCUIT_ACTOR_H
 
 #include <bobject/bobject.h>
 #include <bobject/containers/array.h>
-#include "token.h"
+#include <bobject/containers/string.h>
 
-typedef enum _bl_ptype {
-  BL_PT_GSCOPE,
-  BL_PT_NSCOPE,
-  BL_PT_SCOPE,
-  BL_PT_DECL,
-  BL_PT_FUNC,
-  BL_PT_CALL,
-  BL_PT_ASGN,
-  BL_PT_RET,
-  BL_PT_NAMESPACE,
-  BL_PT_EXP,
-  BL_PT_TYPE,
-  BL_PT_ID,
-  BL_PT_ARG,
-  BL_PT_ARGS,
-  BL_PT_END
-} bl_ptype_e;
+#define BL_ACTOR_MAX_ERROR_LEN 1024
 
-/* class PNode declaration */
-bo_decl_type_begin(PNode, BObject)
+typedef enum _bl_actor_state_e
+{
+  BL_ACTOR_STATE_PENDING,
+  BL_ACTOR_STATE_FINISHED,
+  BL_ACTOR_STATE_FAILED
+} bl_actor_state_e;
+
+/* class declaration */
+bo_decl_type_begin(Actor, BObject)
   /* virtuals */
 bo_end();
 
-/* class PNode object members */
-bo_decl_members_begin(PNode, BObject)
-  /* members */
-  BArray     *nodes;
-  bl_ptype_e  type;
-  bl_token_t *tok;
+/* Actor members */
+bo_decl_members_begin(Actor, BObject)
+  bl_actor_state_e state;
+  BArray *actors;
+  char error[BL_ACTOR_MAX_ERROR_LEN];
 bo_end();
 
-PNode *
-bl_pnode_new(bl_ptype_e  type,
-             bl_token_t *token);
+Actor *
+bl_actor_new(void);
 
-PNode *
-bl_pnode_new_child(PNode      *self,
-                   bl_ptype_e  type,
-                   bl_token_t *token);
+bl_actor_state_e
+bl_actor_state(Actor *self);
 
-bool
-bl_pnode_push(PNode *self,
-              PNode *child);
+void
+bl_actor_add(Actor *self, Actor *child);
 
-#endif //BL_PNODE_H
+const char *
+bl_actor_get_error(Actor *self);
+
+void
+bl_actor_error(Actor *self,
+               const char *format,
+               ...);
+
+void
+bl_actor_error_reser(Actor *self);
+
+#endif /* end of include guard: BISCUIT_ACTOR_H */
+

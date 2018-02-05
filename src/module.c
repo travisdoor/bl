@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   module.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#include <stdio.h>
+#include "module.h"
 
-static bool
-run(Parser *self,
-    Unit   *unit);
-
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* Module members */
+bo_decl_members_begin(Module, Actor)
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+/* Module constructor parameters */
+bo_decl_params_begin(Module)
 bo_end();
 
-bo_impl_type(Parser, Stage);
+bo_impl_type(Module, Actor);
 
-/* Parser class init */
+/* Module class init */
 void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
-
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
+ModuleKlass_init(ModuleKlass *klass)
 {
 }
 
-/* Parser destructor */
+/* Module constructor */
 void
-Parser_dtor(Parser *self)
+Module_ctor(Module *self, ModuleParams *p)
 {
+  bo_parent_ctor(Actor, p);
 }
 
-/* Parser copy constructor */
+/* Module destructor */
+void
+Module_dtor(Module *self)
+{
+  puts("module destroyed");
+}
+
+/* Module copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+Module_copy(Module *self, Module *other)
 {
   return BO_NO_COPY;
 }
 
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
 /* public */
-Parser *
-bl_parser_new(void)
+Module *
+bl_module_new(void)
 {
-  return bo_new(Parser, NULL);
+  ModuleParams p = {
+  };
+  
+  return bo_new(Module, &p);
 }
 
-/* public */

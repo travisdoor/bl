@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   node.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   02/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,38 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
+#include "node.h"
 #include "bldebug.h"
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+bo_impl_type(Node, BObject);
 
-static int
-domain(Parser *self);
-
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
-bo_end();
-
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
-
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
+/* Node class init */
 void
-ParserKlass_init(ParserKlass *klass)
+NodeKlass_init(NodeKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
+  bo_vtbl_cl(klass, Node)->to_string = NULL;
 }
 
-/* Parser constructor */
+/* Node constructor */
 void
-Parser_ctor(Parser *self, ParserParams *p)
+Node_ctor(Node *self, NodeParams *p)
+{
+  self->type = p->type;
+  self->generated_from = p->generated_from;
+  self->line = p->line;
+  self->col = p->col;
+}
+
+/* Node destructor */
+void
+Node_dtor(Node *self)
 {
 }
 
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
-
-/* Parser copy constructor */
+/* Node copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+Node_copy(Node *self, Node *other)
 {
   return BO_NO_COPY;
 }
 
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
-
-/* public */

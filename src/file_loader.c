@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   file_loader.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,29 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
+#include <stdio.h>
+#include "file_loader.h"
 #include "unit.h"
+#include "domains.h"
+#include "bldebug.h"
 #include "bldebug.h"
 
 static bool
-run(Parser *self,
-    Unit   *unit);
+run(FileLoader *self,
+    Unit       *unit);
 
 static int
-domain(Parser *self);
+domain(FileLoader *self);
 
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+/* FileLoader constructor parameters */
+bo_decl_params_begin(FileLoader)
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
-bo_end();
+bo_impl_type(FileLoader, Stage);
 
-bo_impl_type(Parser, Stage);
-
-/* Parser class init */
+/* FileLoader class init */
 void
-ParserKlass_init(ParserKlass *klass)
+FileLoaderKlass_init(FileLoaderKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
@@ -58,44 +56,63 @@ ParserKlass_init(ParserKlass *klass)
     = (int (*)(Stage*)) domain;
 }
 
-/* Parser constructor */
+/* FileLoader constructor */
 void
-Parser_ctor(Parser *self, ParserParams *p)
+FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
 {
+  bo_parent_ctor(Stage, p);
 }
 
-/* Parser destructor */
+/* FileLoader destructor */
 void
-Parser_dtor(Parser *self)
+FileLoader_dtor(FileLoader *self)
 {
+  puts("file_loader destroyed");
 }
 
-/* Parser copy constructor */
+/* FileLoader copy constructor */
 bo_copy_result
-Parser_copy(Parser *self, Parser *other)
+FileLoader_copy(FileLoader *self, FileLoader *other)
 {
   return BO_NO_COPY;
 }
 
 bool
-run(Parser *self,
-    Unit   *unit)
+run(FileLoader *self,
+    Unit       *unit)
 {
-  bl_log("* parsing done\n");
+  FILE *f = fopen(bo_string_get(unit->filepath), "r");
+  if (f == NULL) {
+    bl_error("file %s not found\n", bo_string_get(unit->filepath));
+    return false;
+  }
+
+  fseek(f, 0, SEEK_END);
+  size_t fsize = (size_t) ftell(f);
+  if (fsize == 0) {
+    fclose(f);
+    bl_error("invalid source in file %s\n", bo_string_get(unit->filepath));
+    return false;
+  }
+
+  fseek(f, 0, SEEK_SET);
+
+  unit->src = bo_string_new(fsize);
+  fread((char *)bo_string_get(unit->src), fsize, 1, f);
+  fclose(f);
   return true;
 }
 
 int
-domain(Parser *self)
+domain(FileLoader *self)
 {
   return BL_DOMAIN_UNIT;
 }
 
 /* public */
-Parser *
-bl_parser_new(void)
+FileLoader *
+bl_file_loader_new(void)
 {
-  return bo_new(Parser, NULL);
+    return bo_new(FileLoader, NULL);
 }
 
-/* public */

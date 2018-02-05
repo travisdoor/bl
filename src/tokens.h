@@ -39,14 +39,10 @@ bo_decl_type_begin(Tokens, BObject)
 bo_end();
 
 Tokens *
-bl_tokens_new(BString *src);
+bl_tokens_new(void);
 
 void
 bl_tokens_push(Tokens *self, bl_token_t *t);
-
-void
-bl_tokens_cache_str(Tokens *self, 
-                    char *str);
 
 bl_token_t *
 bl_tokens_peek(Tokens *self);
@@ -94,8 +90,5 @@ bl_tokens_set_marker(Tokens *self);
 
 void
 bl_tokens_back_to_marker(Tokens *self);
-
-const char *
-bl_tokens_get_src(Tokens *self);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

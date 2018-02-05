@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// Biscuit Engine
 //
 // File:   parser.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,16 +26,20 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_PARSER_H
-#define BL_PARSER_H
+#ifndef BISCUIT_PARSER_H
+#define BISCUIT_PARSER_H
 
-#include <bobject/containers/array.h>
-#include "pnode.h"
-#include "tokens.h"
-#include "unit.h"
+#include <bobject/bobject.h>
+#include "pipeline/stage.h"
+#include "node.h"
 
-PNode *
-bl_parser_scan(Unit   *unit,
-               Tokens *tokens);
+/* class declaration */
+bo_decl_type_begin(Parser, Stage)
+  /* virtuals */
+bo_end();
 
-#endif //BL_PARSER_H
+Parser *
+bl_parser_new(void);
+
+#endif /* end of include guard: BISCUIT_PARSER_H */
+

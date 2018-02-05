@@ -27,82 +27,14 @@
 //*****************************************************************************
 
 #include "unit.h"
-#include "tokens.h"
-#include "lexer.h"
-#include "parser.h"
 #include "bldebug.h"
-#include "cgen.h"
-
-void log_parsed(PNode *node, int lpad)
-{
-  switch (node->type) {
-    case BL_PT_GSCOPE:
-      printf("%*s[gscope]\n", lpad, "");
-      break;
-    case BL_PT_EXP:
-      printf("%*s[exp]\n", lpad, "");
-      break;
-    case BL_PT_DECL:
-      printf("%*s[decl]\n", lpad, "");
-      break;
-    case BL_PT_END:
-      printf("%*s[end]\n", lpad, "");
-      break;
-    case BL_PT_TYPE:
-      printf("%*s[type]\n", lpad, "");
-      break;
-    case BL_PT_ID:
-      printf("%*s[ident] %s\n", lpad, "", node->tok->content.as_string);
-      break;
-    case BL_PT_FUNC:
-      printf("%*s[func]\n", lpad, "");
-      break;
-    case BL_PT_ARGS:
-      printf("%*s[args]\n", lpad, "");
-      break;
-    case BL_PT_ARG:
-      printf("%*s[arg]\n", lpad, "");
-      break;
-    case BL_PT_SCOPE:
-      printf("%*s[scope]\n", lpad, "");
-      break;
-    case BL_PT_NSCOPE:
-      printf("%*s[nscope]\n", lpad, "");
-      break;
-    case BL_PT_NAMESPACE:
-      printf("%*s[namespace]\n", lpad, "");
-      break;
-    case BL_PT_CALL:
-      printf("%*s[call]\n", lpad, "");
-      break;
-    case BL_PT_ASGN:
-      printf("%*s[asign]\n", lpad, "");
-      break;
-    case BL_PT_RET:
-      printf("%*s[return]\n", lpad, "");
-      break;
-    default:
-      printf("%*s[UNKNOWN]\n", lpad, "");
-  }
-
-  if (node->nodes == NULL)
-    return;
-
-  size_t c = bo_array_size(node->nodes);
-  PNode *child;
-  lpad+=2;
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, PNode *);
-    log_parsed(child, lpad);
-  }
-}
 
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
 bo_end();
 
-bo_impl_type(Unit, BObject);
+bo_impl_type(Unit, Actor);
 
 void
 UnitKlass_init(UnitKlass *klass)
@@ -113,17 +45,18 @@ void
 Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
+  bo_parent_ctor(Actor, p);
   self->filepath = bo_string_new_str(p->filepath);
-  self->sym_tbl = bl_symbol_table_new();
-  self->sym_tbl = bl_symbol_table_new();
 }
 
 void
 Unit_dtor(Unit *self)
 {
-  bo_unref(self->sym_tbl);
   bo_unref(self->filepath);
   bo_unref(self->src);
+  bo_unref(self->tokens);
+  bo_unref(self->ast);
+  puts("unit destroyed");
 }
 
 bo_copy_result
@@ -132,27 +65,6 @@ Unit_copy(Unit *self, Unit *other)
   return BO_NO_COPY;
 }
 /* class Unit end */
-
-static void
-load_file(Unit *self)
-{
-  FILE *f = fopen(bo_string_get(self->filepath), "r");
-  if (f == NULL)
-    bl_exit("file %s not found\n", bo_string_get(self->filepath));
-
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  if (fsize == 0) {
-    fclose(f);
-    bl_exit("invalid source in file %s\n", bo_string_get(self->filepath));
-  }
-
-  fseek(f, 0, SEEK_SET);
-
-  self->src = bo_string_new(fsize);
-  fread((char *)bo_string_get(self->src), fsize, 1, f);
-  fclose(f);
-}
 
 /* public */
 Unit *
@@ -164,24 +76,15 @@ bl_unit_new(const char *filepath)
   return bo_new(Unit, &params);
 }
 
-void
-bl_unit_compile(Unit *self)
+const char*
+bl_unit_src_file(Unit *self)
 {
-  load_file(self);
+  return bo_string_get(self->filepath);
+}
 
-  Tokens *tokens = bl_lexer_scan(self);
-  PNode *root = bl_parser_scan(self, tokens);
-  /*log_parsed(root, 0);*/
-  /*bl_symbol_table_print(self->sym_tbl, stdout);*/
-
-  CSrc *csrc = bl_cgen_generate(self, root);
-  BString *impl = bl_csrc_get_impl(csrc);
-
-  printf("%s\n", bo_string_get(impl));
-
-  bo_unref(impl);
-  bo_unref(csrc);
-  bo_unref(root);
-  bo_unref(tokens);
+const char*
+bl_unit_src(Unit *self)
+{
+  return bo_string_get(self->src);
 }
 

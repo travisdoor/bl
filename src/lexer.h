@@ -29,12 +29,18 @@
 #ifndef LEXER_H_HFL8RYQ5
 #define LEXER_H_HFL8RYQ5
 
+#include <bobject/bobject.h>
 #include <bobject/containers/string.h>
-#include "tokens.h"
-#include "unit.h"
+#include "pipeline/stage.h"
+#include "token.h"
 
-Tokens *
-bl_lexer_scan(Unit *unit);
+/* class declaration */
+bo_decl_type_begin(Lexer, Stage)
+  /* virtuals */
+bo_end();
+
+Lexer *
+bl_lexer_new(void);
 
 #endif /* end of include guard: LEXER_H_2F7YITOG */
 

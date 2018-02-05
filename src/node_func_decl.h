@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   pnode.c
+// File:   node_func_decl.h
 // Author: Martin Dorazil
-// Date:   26/01/2018
+// Date:   03/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,74 +26,24 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "pnode.h"
+#ifndef BISCUIT_NODE_FUNC_DECL_H
+#define BISCUIT_NODE_FUNC_DECL_H
 
-/* class PNode */
-bo_decl_params_begin(PNode)
-  bl_ptype_e  type;
-  bl_token_t *token;
+#include <bobject/bobject.h>
+#include "node.h"
+#include "token.h"
+
+/* class declaration */
+bo_decl_type_begin(NodeFuncDecl, Node)
+  /* virtuals */
 bo_end();
 
-bo_impl_type(PNode, BObject);
+NodeFuncDecl *
+bl_node_func_decl_new(BString    *type,
+                      BString    *name,
+                      const char *generated_from,
+                      int         line,
+                      int         col);
 
-void
-PNodeKlass_init(PNodeKlass *klass)
-{
-}
-
-void
-PNode_ctor(PNode *self, PNodeParams *p)
-{
-  /* constructor */
-  self->nodes = bo_array_new_bo(bo_typeof(PNode), true);
-  self->type  = p->type;
-  self->tok   = p->token;
-}
-
-void
-PNode_dtor(PNode *self)
-{
-  bo_unref(self->nodes);
-}
-
-bo_copy_result
-PNode_copy(PNode *self, PNode *other)
-{
-  return BO_NO_COPY;
-}
-/* class PNode end */
-
-PNode *
-bl_pnode_new(bl_ptype_e  type,
-             bl_token_t *token)
-{
-  PNodeParams params = {
-    .type  = type,
-    .token = token
-  };
-
-  return bo_new(PNode, &params);
-}
-
-PNode *
-bl_pnode_new_child(PNode      *self,
-                   bl_ptype_e  type,
-                   bl_token_t *token)
-{
-  if (token == NULL) 
-    return NULL;
-  PNode *child = bl_pnode_new(type, token);
-  bo_array_push_back(self->nodes, child);
-  return child;
-}
-
-bool
-bl_pnode_push(PNode *self,
-              PNode *child)
-{
-  if (!child)
-    return false;
-  bo_array_push_back(self->nodes, child);
-  return true;
-}
+#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
 

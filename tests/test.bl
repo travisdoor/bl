@@ -1,33 +1,5 @@
 // this is testing script
 
-//[C(header="stdio.h", cname="int")]
-//extern struct int {}
-
-namespace biscuit 
-{
-  int number0 = 0;
-  int number;
-
-  int main(char arg) {
-    // this is my local int
-    int my_local_int = 1024;
-    return 10;
-  }
-
-  void test_function(int a, int b, int c){
-    double d = 15;
-  }
-
-  void test_function2(int a, int b, int c){
-    double d = 64;
-  }
-
-  void test_function3(int a, int b, int c){
-    int i;
-    i = 0;
-
-    number0 = 10;
-    return;
-  }
+int sum(int a, int b) {
+  // return a + b;
 }
-

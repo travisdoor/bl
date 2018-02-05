@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   csrc.c
+// File:   domains.h
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   04/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,71 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "csrc.h"
+#ifndef BISCUIT_DOMAINS_H
+#define BISCUIT_DOMAINS_H
 
-/* class CSrc */
-
-bo_impl_type(CSrc, BObject);
-
-void
-CSrcKlass_init(CSrcKlass *klass)
+typedef enum _bl_domain_e
 {
-}
+  BL_DOMAIN_MODULE = 0,
+  BL_DOMAIN_UNIT   = 1,
+} bl_domain_e;
 
-void
-CSrc_ctor(CSrc *self,
-          CSrcParams *p)
-{
-  for (int i = 0; i < BL_CSRC_IMPL_LAYER_COUNT; i++) {
-    self->impl[i] = bo_string_new(256);
-  }
-}
-
-void
-CSrc_dtor(CSrc *self)
-{
-  for (int i = 0; i < BL_CSRC_IMPL_LAYER_COUNT; i++) {
-    bo_unref(self->impl[i]);
-  }
-}
-
-bo_copy_result
-CSrc_copy(CSrc *self,
-          CSrc *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class CSrc end */
-
-CSrc *
-bl_csrc_new(void)
-{
-  return bo_new(CSrc, NULL);
-}
-
-BString *
-bl_csrc_get_impl(CSrc *self)
-{
-  BString *impl = bo_string_new(1024);
-
-  for (int i = 0; i < BL_CSRC_IMPL_LAYER_COUNT; i++) {
-    if (bo_string_len(self->impl[i]) > 0) {
-      bo_string_append_str(impl, self->impl[i]);
-      if (i + 1 < BL_CSRC_IMPL_LAYER_COUNT)
-        bo_string_append(impl, "\n");
-    }
-  }
-
-  return impl;
-}
-
-void
-bl_csrc_merge(CSrc *self,
-              CSrc *other,
-              bl_csrc_impl_layers layer)
-{
-  BString *dest = self->impl[layer];
-  bo_string_append_str(dest, bl_csrc_get_impl(other));
-}
+#endif /* end of include guard: BISCUIT_DOMAINS_H */
 

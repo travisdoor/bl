@@ -37,7 +37,7 @@
   sm(IDENT, "identifier") \
   sm(STRING, "string") \
   sm(NUM, "number") \
-  sm(RET, "return") \
+  sm(RETURN, "return") \
   sm(IF, "if") \
   sm(ELSE, "else") \
   sm(EXTERN, "extern") \
@@ -74,11 +74,22 @@ typedef struct
   bl_sym_e sym;
   int line;
   int col;
+  int len;
+  const char *src_loc;
   union content_u {
     const char *as_string;
     double      as_double;
     int         as_int;
   } content;
 } bl_token_t;
+
+/* content must be set manually */
+void
+bl_token_init(bl_token_t *token,
+              bl_sym_e    symbol,
+              int         line,
+              int         col,
+              int         len,
+              const char *src_loc);
 
 #endif //BL_TOKEN_H

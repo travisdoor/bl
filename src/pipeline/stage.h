@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   parser.c
+// File:   stage.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,76 +26,29 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "parser.h"
-#include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#ifndef BISCUIT_STAGE_H
+#define BISCUIT_STAGE_H
 
-static bool
-run(Parser *self,
-    Unit   *unit);
+#include <bobject/bobject.h>
+#include "pipeline/actor.h"
 
-static int
-domain(Parser *self);
+/* class declaration */
+bo_decl_type_begin(Stage, BObject)
+  /* virtuals */
+  /*
+   * Run operation on an actor.
+   */
+  bool (*run)(Stage*, Actor *);
 
-/* Parser members */
-bo_decl_members_begin(Parser, Stage)
+  /*
+   * Return domain on which stage works (depth in tree where 0 is root level)
+   */
+  int (*domain)(Stage*);
 bo_end();
 
-/* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+/* Stage members */
+bo_decl_members_begin(Stage, BObject)
 bo_end();
 
-bo_impl_type(Parser, Stage);
+#endif /* end of include guard: BISCUIT_STAGE_H */
 
-/* Parser class init */
-void
-ParserKlass_init(ParserKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
-}
-
-/* Parser constructor */
-void
-Parser_ctor(Parser *self, ParserParams *p)
-{
-}
-
-/* Parser destructor */
-void
-Parser_dtor(Parser *self)
-{
-}
-
-/* Parser copy constructor */
-bo_copy_result
-Parser_copy(Parser *self, Parser *other)
-{
-  return BO_NO_COPY;
-}
-
-bool
-run(Parser *self,
-    Unit   *unit)
-{
-  bl_log("* parsing done\n");
-  return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
-/* public */
-Parser *
-bl_parser_new(void)
-{
-  return bo_new(Parser, NULL);
-}
-
-/* public */

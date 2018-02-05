@@ -31,25 +31,25 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
-#include "symbol_table.h"
+#include "pipeline/actor.h"
+#include "tokens.h"
+#include "node.h"
 
 /* class Unit declaration */
-bo_decl_type_begin(Unit, BObject)
+bo_decl_type_begin(Unit, Actor)
   /* virtuals */
 bo_end();
 
 /* class Unit object members */
-bo_decl_members_begin(Unit, BObject)
+bo_decl_members_begin(Unit, Actor)
   /* members */
-  BString     *filepath;
-  BString     *src;
-  SymbolTable *sym_tbl;
+  BString *filepath;
+  BString *src;
+  Tokens  *tokens;
+  Node    *ast;
 bo_end();
 
 Unit *
 bl_unit_new(const char *filepath);
-
-void
-bl_unit_compile(Unit *self);
 
 #endif /* end of include guard: UNIT_H_FC53HXPA */

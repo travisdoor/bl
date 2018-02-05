@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   csrc.h
+// File:   token.c
 // Author: Martin Dorazil
-// Date:   31/01/2018
+// Date:   26.1.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,43 +26,21 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_CSRC_H
-#define BL_CSRC_H
-
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-
-typedef enum _bl_csrc_impl_layers
-{
-  BL_CSRC_IMPL_LAYER_INCLUDE = 0,
-  BL_CSRC_IMPL_LAYER_TYPEDEF,
-  BL_CSRC_IMPL_LAYER_DVAR,
-  BL_CSRC_IMPL_LAYER_IVAR,
-  BL_CSRC_IMPL_LAYER_DFUNC,
-  BL_CSRC_IMPL_LAYER_IFUNC,
-  BL_CSRC_IMPL_LAYER_COUNT
-} bl_csrc_impl_layers;
-
-/* class CSrc declaration */
-bo_decl_type_begin(CSrc, BObject)
-  /* virtuals */
-bo_end();
-
-/* class CSrc object members */
-bo_decl_members_begin(CSrc, BObject)
-  /* members */
-  BString *impl[BL_CSRC_IMPL_LAYER_COUNT];
-bo_end();
-
-CSrc *
-bl_csrc_new(void);
-
-BString *
-bl_csrc_get_impl(CSrc *self);
+#include "token.h"
 
 void
-bl_csrc_merge(CSrc *self,
-              CSrc *other,
-              bl_csrc_impl_layers layer);
-
-#endif //BL_CSRC_H
+bl_token_init(bl_token_t *token,
+              bl_sym_e    symbol,
+              int         line,
+              int         col,
+              int         len,
+              const char *src_loc)
+{
+  (*token) = (bl_token_t) {
+    .sym = symbol,
+    .line = line,
+    .col = col, 
+    .len = len,
+    .src_loc = src_loc
+  };
+}
