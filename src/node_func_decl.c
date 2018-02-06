@@ -38,12 +38,6 @@ bo_decl_members_begin(NodeFuncDecl, Node)
   BString *ident;
 bo_end();
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *ident;
-bo_end();
-
 bo_impl_type(NodeFuncDecl, Node);
 
 /* NodeFuncDecl class init */
@@ -93,23 +87,4 @@ to_string(NodeFuncDecl *self)
 }
 
 /* public */
-
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *ident,
-                      const char *generated_from,
-                      int         line,
-                      int         col)
-{
-  NodeFuncDeclParams p = {
-    .base.type = BL_NODE_FUNC_DECL,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-    .type = type,
-    .ident = ident
-  };
-  
-  return bo_new(NodeFuncDecl, &p);
-}
 

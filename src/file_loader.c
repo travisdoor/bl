@@ -80,9 +80,9 @@ bool
 run(FileLoader *self,
     Unit       *unit)
 {
-  FILE *f = fopen(bo_string_get(unit->filepath), "r");
+  FILE *f = fopen(unit->filepath, "r");
   if (f == NULL) {
-    bl_error("file %s not found\n", bo_string_get(unit->filepath));
+    bl_error("file %s not found\n", unit->filepath);
     return false;
   }
 
@@ -90,7 +90,7 @@ run(FileLoader *self,
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_error("invalid source in file %s\n", bo_string_get(unit->filepath));
+    bl_error("invalid source in file %s\n", unit->filepath);
     return false;
   }
 

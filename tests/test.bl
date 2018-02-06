@@ -1,6 +1,6 @@
 // this is testing script
 
-int first() {
+int first(int kokot) {
   // return a + b;
 }
 

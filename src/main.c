@@ -33,6 +33,7 @@
 #include "module.h"
 #include "file_loader.h"
 #include "ast_printer.h"
+#include "token_printer.h"
 #include "pipeline/pipeline.h"
 #include "bldebug.h"
 
@@ -54,10 +55,12 @@ int main(int argc, char *argv[])
   Stage *file_loader = (Stage *)bl_file_loader_new(); 
   Stage *lexer = (Stage *)bl_lexer_new(); 
   Stage *parser = (Stage *)bl_parser_new(); 
-  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout); 
+  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
+  Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
 
   bl_pipeline_add_stage(pipeline, file_loader);
   bl_pipeline_add_stage(pipeline, lexer);
+  bl_pipeline_add_stage(pipeline, token_printer);
   bl_pipeline_add_stage(pipeline, parser);
   bl_pipeline_add_stage(pipeline, ast_printer);
   

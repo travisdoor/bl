@@ -111,17 +111,15 @@ parse_global_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error)
 {
-  NodeGlobalStmt *gstmt = bl_node_global_stmt_new(bo_string_get(unit->src), 1, 0);
+  NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, bo_string_get(unit->src), 1, 0);
 stmt:
   if (!bl_node_add_child((Node *)gstmt, parse_func_decl(self, unit, jmp_error))) {
     bl_token_t *tok = bl_tokens_peek(unit->tokens);
     parse_error("%s %d:%d expected function declaration",
-                bo_string_get(unit->filepath),
+                unit->filepath,
                 tok->line,
                 tok->col);
-
   }
-
 
   if (bl_tokens_current_is_not(unit->tokens, BL_SYM_EOF))
     goto stmt;
@@ -147,7 +145,8 @@ parse_func_decl(Parser *self,
      * TODO: store all nodes into array even if parsing failed, node will be
      * already listed in array and it will not leak later.
      */
-    func_decl = bl_node_func_decl_new(type, ident, tok->src_loc, tok->line, tok->col);
+    func_decl = bl_ast_node_func_decl_new(
+        unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 
     /* consume '(' */
     bl_tokens_consume(unit->tokens);
@@ -155,15 +154,14 @@ parse_func_decl(Parser *self,
     if (bl_tokens_current_is_not(unit->tokens, BL_SYM_RPAREN)) {
 param:
       bl_node_add_child((Node *)func_decl, parse_param_var_decl(self, unit, jmp_error));
-      tok = bl_tokens_consume(unit->tokens);
-      if (tok->sym == BL_SYM_COMMA)
+      if (bl_tokens_consume_if(unit->tokens, BL_SYM_COMMA))
         goto param;
     }
 
     tok = bl_tokens_consume(unit->tokens);
     if (tok->sym != BL_SYM_RPAREN)
       parse_error("%s %d:%d expected ')' after function parameter declaration", 
-          bo_string_get(unit->filepath),
+          unit->filepath,
           tok->line,
           tok->col);
 
@@ -182,7 +180,7 @@ parse_param_var_decl(Parser *self,
   bl_token_t *tok = bl_tokens_consume(unit->tokens);
   if (tok->sym != BL_SYM_IDENT)
     parse_error("%s %d:%d expected parameter type", 
-        bo_string_get(unit->filepath),
+        unit->filepath,
         tok->line,
         tok->col);
 
@@ -192,13 +190,14 @@ parse_param_var_decl(Parser *self,
   if (tok->sym != BL_SYM_IDENT) {
     bo_unref(type);
     parse_error("%s %d:%d expected parameter name", 
-        bo_string_get(unit->filepath),
+        unit->filepath,
         tok->line,
         tok->col);
   }
   
   BString *ident = tok_to_str(tok);
-  return (Node *)bl_node_param_var_decl_new(type, ident, tok->src_loc, tok->line, tok->col);
+  return (Node *)bl_ast_node_param_var_decl_new(
+      unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 }
 
 bool
@@ -216,7 +215,8 @@ run(Parser *self,
     return false;
 
   bo_unref(unit->ast);
-  unit->ast = parse_global_stmt(self, unit, jmp_error);
+  unit->ast = bl_ast_new();
+  bl_ast_set_root(unit->ast, parse_global_stmt(self, unit, jmp_error));
   bl_log("* parsing done\n");
 
   return true;

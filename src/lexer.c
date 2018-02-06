@@ -106,7 +106,7 @@ LexerKlass_init(LexerKlass *klass)
 void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
-  bo_parent_ctor(Actor, p);
+  bo_parent_ctor(Stage, p);
 }
 
 /* Lexer destructor */
@@ -137,8 +137,8 @@ run(Lexer *self,
 
   cursor_t cur = {
     .iter = (char *)bo_string_get(unit->src),
-    .line = 0,
-    .col = 0
+    .line = 1,
+    .col = 1
   };
 
   for (;*cur.iter != '\0'; cur.iter++) {
@@ -342,7 +342,7 @@ scan_ident(Lexer *self,
 
   bl_tokens_push(unit->tokens, &tok);
   cur->iter--;
-  cur->col += len;
+  cur->col += tok.len;
   return true;
 }
 

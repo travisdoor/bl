@@ -38,12 +38,6 @@ bo_decl_members_begin(NodeParamVarDecl, Node)
   BString *ident;
 bo_end();
 
-/* NodeParamVarDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeParamVarDecl, Node)
-  BString *type;
-  BString *ident;
-bo_end();
-
 bo_impl_type(NodeParamVarDecl, Node);
 
 /* NodeParamVarDecl class init */
@@ -92,24 +86,4 @@ to_string(NodeParamVarDecl *self)
   return ret;
 }
 
-/* public */
-
-NodeParamVarDecl *
-bl_node_param_var_decl_new(BString *type,
-                           BString *ident,
-                           const char *generated_from,
-                           int         line,
-                           int         col)
-{
-  NodeParamVarDeclParams p = {
-    .base.type = BL_NODE_PARAM_VAR_DECL,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-    .type = type,
-    .ident = ident
-  };
-  
-  return bo_new(NodeParamVarDecl, &p);
-}
 

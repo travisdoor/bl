@@ -38,8 +38,8 @@ set(SOURCE_FILES
   src/node_func_decl.h 
   src/node_func_decl.c 
   src/node_global_stmt.h 
-  src/node_global_stmt.c 
-  )
+  src/node_global_stmt.c
+        src/ast.c src/token_printer.h src/token_printer.c)
 
 add_executable(bl ${SOURCE_FILES})
 

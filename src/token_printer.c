@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   ast_printer.c
+// File:   token_printer.c
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,30 +26,36 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include "ast_printer.h"
+#include "token_printer.h"
 #include "unit.h"
 #include "domains.h"
-#include "bldebug.h"
+#include "tokens.h"
 #include "bldebug.h"
 
+/* class TokenPrinter */
 static bool
-run(AstPrinter *self,
+run(TokenPrinter *self,
     Unit       *unit);
 
 static int
-domain(AstPrinter *self);
+domain(TokenPrinter *self);
 
-/* AstPrinter constructor parameters */
-bo_decl_params_begin(AstPrinter)
+/* class TokenPrinter constructor params */
+bo_decl_params_begin(TokenPrinter)
+  /* constructor params */
   FILE *out_stream;
 bo_end();
 
-bo_impl_type(AstPrinter, Stage);
+/* class TokenPrinter object members */
+bo_decl_members_begin(TokenPrinter, Stage)
+  /* members */
+  FILE *out_stream;
+bo_end();
 
-/* AstPrinter class init */
+bo_impl_type(TokenPrinter, Stage);
+
 void
-AstPrinterKlass_init(AstPrinterKlass *klass)
+TokenPrinterKlass_init(TokenPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
@@ -57,78 +63,79 @@ AstPrinterKlass_init(AstPrinterKlass *klass)
     = (int (*)(Stage*)) domain;
 }
 
-/* AstPrinter constructor */
 void
-AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
+TokenPrinter_ctor(TokenPrinter *self, TokenPrinterParams *p)
 {
+  /* constructor */
+  /* initialize parent */
   bo_parent_ctor(Stage, p);
   self->out_stream = p->out_stream;
 }
 
-/* AstPrinter destructor */
 void
-AstPrinter_dtor(AstPrinter *self)
+TokenPrinter_dtor(TokenPrinter *self)
 {
 }
 
-/* AstPrinter copy constructor */
 bo_copy_result
-AstPrinter_copy(AstPrinter *self, AstPrinter *other)
+TokenPrinter_copy(TokenPrinter *self, TokenPrinter *other)
 {
   return BO_NO_COPY;
 }
-
-static void 
-print_node(AstPrinter *self,
-           Node *node,
-           int pad)
-{
-  if (!node)
-    return;
-
-  BString *s = bo_vtbl(node, Node)->to_string(node);
-  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET, pad, "", bo_string_get(s));
-  bo_unref(s);
-
-  if (node->nodes == NULL)
-    return;
-
-  size_t c = bo_array_size(node->nodes);
-  Node *child;
-  pad+=2;
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, Node *);
-    print_node(self, child, pad);
-  }
-}
+/* class TokenPrinter end */
 
 bool
-run(AstPrinter *self,
-    Unit       *unit)
+run(TokenPrinter *self,
+    Unit         *unit)
 {
-  if (unit->ast == NULL) {
-    bl_actor_error((Actor *)unit, "cannot find AST tree in unit %s", unit->filepath);
+  if (unit->tokens == NULL) {
+    bl_actor_error((Actor *)unit, "cannot find tokens array in unit %s", unit->filepath);
     return false;
   }
 
-  print_node(self, bl_ast_get_root(unit->ast), 0); 
+  BArray *tokens = bl_tokens_get_all(unit->tokens);
+
+  fprintf(self->out_stream, ANSI_COLOR_YELLOW "Tokens: \n" ANSI_COLOR_RESET);
+
+  const size_t c = bo_array_size(tokens);
+  bl_token_t *tok;
+  int line = -1;
+  for (size_t i = 0; i < c; i++) {
+    tok = &bo_array_at(tokens, i, bl_token_t);
+
+    if (line == -1)
+      line = tok->line;
+    else if (tok->line != line) {
+      line = tok->line;
+      fprintf(self->out_stream, "\n");
+    }
+
+    fprintf(self->out_stream,
+            ANSI_COLOR_YELLOW "['%s' %i:%i], " ANSI_COLOR_RESET,
+            bl_sym_strings[tok->sym],
+            tok->line,
+            tok->col
+    );
+  }
+
+  fprintf(self->out_stream, "\n");
+
   return true;
 }
 
 int
-domain(AstPrinter *self)
+domain(TokenPrinter *self)
 {
   return BL_DOMAIN_UNIT;
 }
 
-/* public */
-AstPrinter *
-bl_ast_printer_new(FILE *out_stream)
+TokenPrinter *
+bl_token_printer_new(FILE *out_stream)
 {
-  AstPrinterParams p = {
+  TokenPrinterParams p = {
     .out_stream = out_stream
   };
 
-  return bo_new(AstPrinter, &p);
+  return bo_new(TokenPrinter, &p);
 }
 

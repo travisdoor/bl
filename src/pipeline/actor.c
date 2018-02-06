@@ -57,7 +57,6 @@ void
 Actor_dtor(Actor *self)
 {
   bo_unref(self->actors);
-  bo_unref(self->error);
 }
 
 /* Actor copy constructor */

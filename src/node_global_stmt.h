@@ -38,10 +38,9 @@ bo_decl_type_begin(NodeGlobalStmt, Node)
   /* virtuals */
 bo_end();
 
-NodeGlobalStmt *
-bl_node_global_stmt_new(const char *generated_from,
-                        int         line,
-                        int         col);
+/* NodeGlobalStmt constructor parameters */
+bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
+bo_end();
 
 #endif /* end of include guard: BISCUIT_NODE_GLOBAL_STMT_H */
 

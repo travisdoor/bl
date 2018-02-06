@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   ast.h
+// File:   ast.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,83 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_H_VGMYANDT
-#define AST_H_VGMYANDT
+#include <bobject/containers/array.h>
+#include "ast.h"
 
-#include <bobject/bobject.h>
-#include "node.h"
-#include "node_global_stmt.h"
-#include "node_func_decl.h"
-#include "node_param_var_decl.h"
+/* class Ast */
+static void *
+save_to_cache(Ast *self, 
+              void *node);
 
-/* TODO: cache nodes into array */
-
-/* class Ast declaration */
-bo_decl_type_begin(Ast, BObject)
-  /* virtuals */
+/* class Ast constructor params */
+bo_decl_params_begin(Ast)
+  /* constructor params */
 bo_end();
 
+/* class Ast object members */
+bo_decl_members_begin(Ast, BObject)
+  /* members */
+  BArray *cache;
+  Node   *root;
+bo_end();
+
+bo_impl_type(Ast, BObject);
+
+void
+AstKlass_init(AstKlass *klass)
+{
+}
+
+void
+Ast_ctor(Ast *self, AstParams *p)
+{
+  /* constructor */
+  self->cache = bo_array_new_bo(bo_typeof(Node), true);
+}
+
+void
+Ast_dtor(Ast *self)
+{
+  bo_unref(self->cache);
+}
+
+bo_copy_result
+Ast_copy(Ast *self, Ast *other)
+{
+  return BO_NO_COPY;
+}
+/* class Ast end */
+
+void *
+save_to_cache(Ast *self, 
+              void *node)
+{
+  bo_array_push_back(self->cache, node);
+  return node;
+}
+
+/* public */
 Ast *
-bl_ast_new(void);
+bl_ast_new(void)
+{
+  return bo_new(Ast, NULL);
+}
 
 void
 bl_ast_set_root(Ast *self,
-                Node *root);
+                Node *root)
+{
+  if (!root)
+    return;
+  self->root = root;
+}
 
 Node *
-bl_ast_get_root(Ast *self);
+bl_ast_get_root(Ast *self)
+{
+  return self->root;
+}
+
 
 NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
@@ -58,13 +110,35 @@ bl_ast_node_func_decl_new(Ast        *self,
                           BString    *ident,
                           const char *generated_from,
                           int         line,
-                          int         col);
+                          int         col)
+{
+  NodeFuncDeclParams p = {
+    .base.type = BL_NODE_FUNC_DECL,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+    .type = type,
+    .ident = ident
+  };
+  
+  return save_to_cache(self, bo_new(NodeFuncDecl, &p));
+}
 
 NodeGlobalStmt *
 bl_ast_node_global_stmt_new(Ast        *self,
                             const char *generated_from,
                             int         line,
-                            int         col);
+                            int         col)
+{
+  NodeGlobalStmtParams p = {
+    .base.type = BL_NODE_GLOBAL_STMT,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+  };
+  
+  return save_to_cache(self, bo_new(NodeGlobalStmt, &p));
+}
 
 NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,
@@ -72,6 +146,18 @@ bl_ast_node_param_var_decl_new(Ast        *self,
                                BString    *ident,
                                const char *generated_from,
                                int         line,
-                               int         col);
+                               int         col)
+{
+  NodeParamVarDeclParams p = {
+    .base.type = BL_NODE_PARAM_VAR_DECL,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+    .type = type,
+    .ident = ident
+  };
+  
+  return save_to_cache(self, bo_new(NodeParamVarDecl, &p));
+}
 
-#endif /* end of include guard: AST_H_VGMYANDT */
+

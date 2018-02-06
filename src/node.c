@@ -71,7 +71,7 @@ bl_node_add_child(Node *self,
     return false;
 
   if (self->nodes == NULL)
-    self->nodes = bo_array_new_bo(bo_typeof(Node), true);
+    self->nodes = bo_array_new_bo(bo_typeof(Node), false);
 
   bo_array_push_back(self->nodes, child);
   return true;

@@ -38,12 +38,11 @@ bo_decl_type_begin(NodeParamVarDecl, Node)
   /* virtuals */
 bo_end();
 
-NodeParamVarDecl *
-bl_node_param_var_decl_new(BString *type,
-                           BString *ident,
-                           const char *generated_from,
-                           int         line,
-                           int         col);
+/* NodeParamVarDecl constructor parameters */
+bo_decl_params_with_base_begin(NodeParamVarDecl, Node)
+  BString *type;
+  BString *ident;
+bo_end();
 
 #endif /* end of include guard: BISCUIT_NODE_PARAM_VAR_DECL_H */
 

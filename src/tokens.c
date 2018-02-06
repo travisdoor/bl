@@ -26,7 +26,6 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/array.h>
 #include <stdarg.h>
 #include "tokens.h"
 #include "bldebug.h"
@@ -215,5 +214,11 @@ void
 bl_tokens_resert_iter(Tokens *self)
 {
   self->iter = 0;
+}
+
+BArray *
+bl_tokens_get_all(Tokens *self)
+{
+  return self->buf;
 }
 

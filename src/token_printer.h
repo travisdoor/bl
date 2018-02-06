@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   unit.h
+// File:   token_printer.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,34 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef UNIT_H_FC53HXPA
-#define UNIT_H_FC53HXPA
+#ifndef BL_TOKEN_PRINTER_H
+#define BL_TOKEN_PRINTER_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "pipeline/actor.h"
-#include "tokens.h"
-#include "ast.h"
+#include <stdio.h>
+#include "pipeline/stage.h"
 
-/* class Unit declaration */
-bo_decl_type_begin(Unit, Actor)
+/* class TokenPrinter declaration */
+bo_decl_type_begin(TokenPrinter, Stage)
   /* virtuals */
 bo_end();
 
-/* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
-  /* members */
-  /* source file name with path */
-  char *filepath;
-  /* source data */
-  BString *src;
-  /* output of lexer */
-  Tokens  *tokens;
-  /* abstract syntax tree as output of parser */
-  Ast     *ast;
-bo_end();
+TokenPrinter *
+bl_token_printer_new(FILE *out_stream);
 
-Unit *
-bl_unit_new(const char *filepath);
-
-#endif /* end of include guard: UNIT_H_FC53HXPA */
+#endif //BL_TOKEN_PRINTER_H

@@ -26,8 +26,8 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <string.h>
 #include "unit.h"
-#include "bldebug.h"
 
 /* class Unit */
 bo_decl_params_begin(Unit)
@@ -46,13 +46,13 @@ Unit_ctor(Unit *self, UnitParams *p)
 {
   /* constructor */
   bo_parent_ctor(Actor, p);
-  self->filepath = bo_string_new_str(p->filepath);
+  self->filepath = strdup(p->filepath);
 }
 
 void
 Unit_dtor(Unit *self)
 {
-  bo_unref(self->filepath);
+  free(self->filepath);
   bo_unref(self->src);
   bo_unref(self->tokens);
   bo_unref(self->ast);
@@ -78,7 +78,7 @@ bl_unit_new(const char *filepath)
 const char*
 bl_unit_src_file(Unit *self)
 {
-  return bo_string_get(self->filepath);
+  return self->filepath;
 }
 
 const char*

@@ -36,10 +36,6 @@ to_string(NodeGlobalStmt *self);
 bo_decl_members_begin(NodeGlobalStmt, Node)
 bo_end();
 
-/* NodeGlobalStmt constructor parameters */
-bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
-bo_end();
-
 bo_impl_type(NodeGlobalStmt, Node);
 
 /* NodeGlobalStmt class init */
@@ -78,22 +74,5 @@ to_string(NodeGlobalStmt *self)
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
   bo_string_append(ret, ">");
   return ret;
-}
-
-/* public */
-
-NodeGlobalStmt *
-bl_node_global_stmt_new(const char *generated_from,
-                        int         line,
-                        int         col)
-{
-  NodeGlobalStmtParams p = {
-    .base.type = BL_NODE_GLOBAL_STMT,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-  };
-  
-  return bo_new(NodeGlobalStmt, &p);
 }
 
