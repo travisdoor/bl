@@ -143,6 +143,8 @@ run(Lexer *self,
 
   for (;*cur.iter != '\0'; cur.iter++) {
     switch (*cur.iter) {
+      /* TODO: windows line endings */
+      case '\r':
       case '\n':
         cur.line++;
         cur.col = 1;
