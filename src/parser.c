@@ -27,6 +27,7 @@
 //*****************************************************************************
 
 #include <setjmp.h>
+#include <string.h>
 #include "parser.h"
 #include "domains.h"
 #include "unit.h"
@@ -169,10 +170,10 @@ parse_func_decl(Parser *self,
   bl_token_t *tok;
   if (bl_tokens_is_seq(unit->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     tok = bl_tokens_consume(unit->tokens);
-    BString *type = tok_to_str(tok);
+    char *type = strndup(tok->content.as_string, tok->len);
 
     tok = bl_tokens_consume(unit->tokens);
-    BString *ident = tok_to_str(tok);
+    char *ident = strndup(tok->content.as_string, tok->len);
 
     func_decl = bl_ast_node_func_decl_new(
         unit->ast, type, ident, tok->src_loc, tok->line, tok->col);

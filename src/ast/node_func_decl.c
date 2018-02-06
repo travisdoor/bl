@@ -34,8 +34,8 @@ to_string(NodeFuncDecl *self);
 
 /* NodeFuncDecl members */
 bo_decl_members_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *ident;
+  char *type;
+  char *ident;
 bo_end();
 
 bo_impl_type(NodeFuncDecl, Node);
@@ -61,8 +61,8 @@ NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
 void
 NodeFuncDecl_dtor(NodeFuncDecl *self)
 {
-  bo_unref(self->type);
-  bo_unref(self->ident);
+  free(self->type);
+  free(self->ident);
 }
 
 /* NodeFuncDecl copy constructor */
@@ -79,9 +79,9 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
   bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->type);
+  bo_string_append(ret, self->type);
   bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->ident);
+  bo_string_append(ret, self->ident);
   bo_string_append(ret, ">");
   return ret;
 }

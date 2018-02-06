@@ -55,8 +55,8 @@ bl_ast_get_root(Ast *self);
 
 NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
-                          BString    *type,
-                          BString    *ident,
+                          char       *type,
+                          char       *ident,
                           const char *generated_from,
                           int         line,
                           int         col);

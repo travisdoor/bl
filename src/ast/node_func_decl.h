@@ -40,8 +40,8 @@ bo_end();
 
 /* NodeFuncDecl constructor parameters */
 bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *ident;
+  char *type;
+  char *ident;
 bo_end();
 
 #endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
