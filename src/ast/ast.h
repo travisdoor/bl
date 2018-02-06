@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "node.h"
 #include "node_global_stmt.h"
+#include "node_stmt.h"
 #include "node_func_decl.h"
 #include "node_param_var_decl.h"
 
@@ -65,6 +66,12 @@ bl_ast_node_global_stmt_new(Ast        *self,
                             const char *generated_from,
                             int         line,
                             int         col);
+
+NodeStmt *
+bl_ast_node_stmt_new(Ast        *self,
+                     const char *generated_from,
+                     int         line,
+                     int         col);
 
 NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,

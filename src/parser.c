@@ -31,7 +31,7 @@
 #include "domains.h"
 #include "unit.h"
 #include "bldebug.h"
-#include "ast.h"
+#include "ast/ast.h"
 
 #define parse_error(format, ...) \
   { \
@@ -43,6 +43,12 @@ static Node *
 parse_global_stmt(Parser *self, 
                   Unit *unit,
                   jmp_buf jmp_error);
+
+static Node *
+parse_stmt(Parser *self, 
+           Unit *unit,
+           jmp_buf jmp_error);
+
 static Node *
 parse_func_decl(Parser *self, 
                 Unit *unit,
@@ -128,6 +134,33 @@ stmt:
 }
 
 Node *
+parse_stmt(Parser *self, 
+           Unit *unit,
+           jmp_buf jmp_error)
+{
+  /* eat '{' */
+  bl_token_t *tok = bl_tokens_consume(unit->tokens);
+  if (tok->sym != BL_SYM_LBLOCK)
+    parse_error("%s %d:%d expected scope body '{'",
+                unit->filepath,
+                tok->line,
+                tok->col);
+
+  NodeStmt *stmt = bl_ast_node_stmt_new(unit->ast, tok->src_loc, tok->line, tok->col);
+
+  /* TODO: parse function scope */
+  tok = bl_tokens_consume(unit->tokens);
+
+  if (tok->sym != BL_SYM_RBLOCK)
+    parse_error("%s %d:%d missing scope end '}'",
+                unit->filepath,
+                tok->line,
+                tok->col);
+
+  return (Node *)stmt;
+}
+
+Node *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error)
@@ -141,10 +174,6 @@ parse_func_decl(Parser *self,
     tok = bl_tokens_consume(unit->tokens);
     BString *ident = tok_to_str(tok);
 
-    /*
-     * TODO: store all nodes into array even if parsing failed, node will be
-     * already listed in array and it will not leak later.
-     */
     func_decl = bl_ast_node_func_decl_new(
         unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 
@@ -165,9 +194,7 @@ param:
           tok->line,
           tok->col);
 
-    /* HACK eat {} */
-    tok = bl_tokens_consume(unit->tokens);
-    tok = bl_tokens_consume(unit->tokens);
+    bl_node_add_child((Node *)func_decl, parse_stmt(self, unit, jmp_error));
   }
   return (Node *)func_decl;
 }

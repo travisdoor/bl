@@ -33,7 +33,7 @@
 #include <bobject/containers/string.h>
 #include "pipeline/actor.h"
 #include "tokens.h"
-#include "ast.h"
+#include "ast/ast.h"
 
 /* class Unit declaration */
 bo_decl_type_begin(Unit, Actor)

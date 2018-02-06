@@ -30,16 +30,21 @@ set(SOURCE_FILES
   src/unit.c
   src/unit.h 
   src/parser.h 
-  src/parser.c 
-  src/node.h 
-  src/node.c 
-  src/node_param_var_decl.h 
-  src/node_param_var_decl.c 
-  src/node_func_decl.h 
-  src/node_func_decl.c 
-  src/node_global_stmt.h 
-  src/node_global_stmt.c
-        src/ast.c src/token_printer.h src/token_printer.c)
+  src/parser.c
+        src/ast/ast.c
+        src/ast/ast.h
+        src/ast/node.h
+        src/ast/node.c
+        src/ast/node_param_var_decl.h
+        src/ast/node_param_var_decl.c
+        src/ast/node_func_decl.h
+        src/ast/node_func_decl.c
+        src/ast/node_global_stmt.h
+        src/ast/node_global_stmt.c
+        src/ast/node_stmt.h
+        src/ast/node_stmt.c
+  src/token_printer.h 
+  src/token_printer.c)
 
 add_executable(bl ${SOURCE_FILES})
 

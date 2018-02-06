@@ -220,7 +220,8 @@ run(Lexer *self,
           continue;
 
         /* notify error */
-        bl_actor_error((Actor *)unit, "invalid character %c", cur.iter[0]); 
+        bl_actor_error((Actor *)unit, "invalid character %c %i:%i", 
+            cur.iter[0], cur.line, cur.col); 
         return false;
     }
   }

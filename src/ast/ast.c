@@ -140,6 +140,22 @@ bl_ast_node_global_stmt_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeGlobalStmt, &p));
 }
 
+NodeStmt *
+bl_ast_node_stmt_new(Ast        *self,
+                     const char *generated_from,
+                     int         line,
+                     int         col)
+{
+  NodeStmtParams p = {
+    .base.type = BL_NODE_STMT,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+  };
+  
+  return save_to_cache(self, bo_new(NodeStmt, &p));
+}
+
 NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,
                                BString    *type,

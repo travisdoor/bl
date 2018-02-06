@@ -1,11 +1,10 @@
 // this is testing script
 
-int first(int kokot) {
+int sum(int a, int b) {
   // return a + b;
 }
 
 int second(int hello) {
-  // return a + b;
 }
 
 int third(int hello, 
@@ -13,5 +12,8 @@ int third(int hello,
           int b, 
           int c, 
           int d) {
-  // return a + b;
 }
+
+void another(float hello, double d) {
+}
+
