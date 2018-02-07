@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   bl.h
+// File:   lexer_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,14 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef LEXER_H_HFL8RYQ5
+#define LEXER_H_HFL8RYQ5
 
-#include "bl/pipeline/pipeline.h"
 #include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
+#include "pipeline/stage_impl.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+#endif /* end of include guard: LEXER_H_2F7YITOG */
+

@@ -30,7 +30,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <bobject/containers/array.h>
-#include "lexer.h"
+#include "lexer_impl.h"
 #include "bldebug.h"
 #include "unit.h"
 #include "domains.h"

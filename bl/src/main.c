@@ -29,11 +29,35 @@
 #include <stdio.h>
 #include "bl/bl.h"
 
+#define ENABLE_TOKEN_PRINTER 1
+#define ENABLE_AST_PRINTER   1
+
 int main(int argc, char *argv[])
 {
-  puts("hello");
+  puts("BL Compiler version 0.1.0\n");
 
   Pipeline *pipeline = bl_pipeline_new();
+
+  Stage *file_loader = (Stage *)bl_file_loader_new(); 
+  bl_pipeline_add_stage(pipeline, file_loader);
+
+  Stage *lexer = (Stage *)bl_lexer_new();
+  bl_pipeline_add_stage(pipeline, lexer);
+
+#if ENABLE_TOKEN_PRINTER
+  Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
+  bl_pipeline_add_stage(pipeline, token_printer);
+#endif
+
+  Stage *parser = (Stage *)bl_parser_new();
+  bl_pipeline_add_stage(pipeline, parser);
+
+#if ENABLE_AST_PRINTER
+  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
+  bl_pipeline_add_stage(pipeline, ast_printer);
+#endif
+
+
 
   bo_unref(pipeline);
   return 0;

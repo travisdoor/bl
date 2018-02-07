@@ -28,7 +28,7 @@
 
 #include <setjmp.h>
 #include <string.h>
-#include "parser.h"
+#include "parser_impl.h"
 #include "domains.h"
 #include "unit.h"
 #include "bldebug.h"

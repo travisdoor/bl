@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   bl.h
+// File:   token_printer.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,14 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef TOKEN_PRINTER_H_QYAEHC5Q
+#define TOKEN_PRINTER_H_QYAEHC5Q
 
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
+#include <bobject/bobject.h>
+#include <stdio.h>
+#include "bl/pipeline/stage.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+/* class TokenPrinter declaration */
+bo_decl_type_begin(TokenPrinter, Stage)
+  /* virtuals */
+bo_end();
+
+extern BO_EXPORT TokenPrinter *
+bl_token_printer_new(FILE *out_stream);
+
+#endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */

@@ -26,7 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "token_printer.h"
+#include "token_printer_impl.h"
 #include "unit.h"
 #include "domains.h"
 #include "tokens.h"

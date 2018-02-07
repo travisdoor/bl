@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   stage.h
+// File:   file_loader_impl.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,29 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_STAGE_H
-#define BISCUIT_STAGE_H
+#ifndef FILE_LOADER_IMPL_H_SYEAKB2K
+#define FILE_LOADER_IMPL_H_SYEAKB2K
 
-#include <bobject/bobject.h>
-#include "pipeline/actor_impl.h"
+#include "bl/file_loader.h"
+#include "pipeline/stage_impl.h"
 
-/* class declaration */
-bo_decl_type_begin(Stage, BObject)
-  /* virtuals */
-  /*
-   * Run operation on an actor.
-   */
-  bool (*run)(Stage*, Actor *);
-
-  /*
-   * Return domain on which stage works (depth in tree where 0 is root level)
-   */
-  int (*domain)(Stage*);
+/* FileLoader members */
+bo_decl_members_begin(FileLoader, Stage)
 bo_end();
 
-/* Stage members */
-bo_decl_members_begin(Stage, BObject)
-bo_end();
-
-#endif /* end of include guard: BISCUIT_STAGE_H */
-
+#endif /* end of include guard: FILE_LOADER_IMPL_H_SYEAKB2K */

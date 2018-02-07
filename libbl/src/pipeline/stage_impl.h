@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   bl.h
+// File:   stage_impl.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,14 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef BISCUIT_STAGE_H
+#define BISCUIT_STAGE_H
 
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
+#include "bl/pipeline/stage.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+/* Stage members */
+bo_decl_members_begin(Stage, BObject)
+bo_end();
+
+#endif /* end of include guard: BISCUIT_STAGE_H */
+

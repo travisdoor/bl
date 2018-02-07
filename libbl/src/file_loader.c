@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "file_loader.h"
+#include "file_loader_impl.h"
 #include "unit.h"
 #include "domains.h"
 #include "bldebug.h"

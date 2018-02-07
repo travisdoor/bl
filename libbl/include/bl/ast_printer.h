@@ -26,24 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_PRINTER_H_PDNQRKMS
-#define AST_PRINTER_H_PDNQRKMS
+#ifndef AST_PRINTER_H_EOKCLCB3
+#define AST_PRINTER_H_EOKCLCB3
 
 #include <stdio.h>
 #include <bobject/bobject.h>
-#include "pipeline/stage.h"
+#include "bl/pipeline/stage.h"
 
 /* class declaration */
 bo_decl_type_begin(AstPrinter, Stage)
   /* virtuals */
 bo_end();
 
-/* AstPrinter members */
-bo_decl_members_begin(AstPrinter, Stage)
-  FILE *out_stream;
-bo_end();
-
-AstPrinter *
+extern BO_EXPORT AstPrinter *
 bl_ast_printer_new(FILE *out_stream);
 
-#endif /* end of include guard: AST_PRINTER_H_PDNQRKMS */
+#endif /* end of include guard: AST_PRINTER_H_EOKCLCB3 */

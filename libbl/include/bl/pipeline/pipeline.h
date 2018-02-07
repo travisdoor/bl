@@ -30,6 +30,8 @@
 #define PIPELINE_H_QHV37IME
 
 #include <bobject/bobject.h>
+#include "bl/pipeline/actor.h"
+#include "bl/pipeline/stage.h"
 
 /* class declaration */
 bo_decl_type_begin(Pipeline, BObject)
@@ -38,5 +40,16 @@ bo_end();
 
 extern BO_EXPORT Pipeline *
 bl_pipeline_new(void);
+
+extern BO_EXPORT bool
+bl_pipeline_run(Pipeline *self,
+                Actor    *actor);
+
+extern BO_EXPORT void
+bl_pipeline_add_stage(Pipeline *self,
+                      Stage    *stage);
+
+extern BO_EXPORT Actor *
+bl_pipeline_get_failed(Pipeline *self);
 
 #endif /* end of include guard: PIPELINE_H_QHV37IME */

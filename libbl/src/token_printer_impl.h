@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   parser.h
+// File:   token_printer_impl.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,20 +26,10 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_PARSER_H
-#define BISCUIT_PARSER_H
+#ifndef TOKEN_PRINTER_IMPL_H_NCMD0DIW
+#define TOKEN_PRINTER_IMPL_H_NCMD0DIW
 
-#include <bobject/bobject.h>
-#include "pipeline/stage.h"
-#include "ast/node.h"
+#include "bl/token_printer.h"
+#include "pipeline/stage_impl.h"
 
-/* class declaration */
-bo_decl_type_begin(Parser, Stage)
-  /* virtuals */
-bo_end();
-
-Parser *
-bl_parser_new(void);
-
-#endif /* end of include guard: BISCUIT_PARSER_H */
-
+#endif /* end of include guard: TOKEN_PRINTER_IMPL_H_NCMD0DIW */

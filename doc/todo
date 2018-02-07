@@ -1,2 +1,4 @@
 * convert to lib
+* rename all private header to _impl
+* remove empty private headers
 * add google testing framework and implement some basic testing

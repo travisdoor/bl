@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   bl.h
+// File:   parser.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,14 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef PARSER_H_HBFDJRZZ
+#define PARSER_H_HBFDJRZZ
 
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
+#include <bobject/bobject.h>
+#include "bl/pipeline/stage.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+/* class declaration */
+bo_decl_type_begin(Parser, Stage)
+  /* virtuals */
+bo_end();
+
+extern BO_EXPORT Parser *
+bl_parser_new(void);
+
+#endif /* end of include guard: PARSER_H_HBFDJRZZ */

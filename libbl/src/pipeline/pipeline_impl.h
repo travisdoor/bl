@@ -31,18 +31,7 @@
 
 #include "bl/pipeline/pipeline.h"
 #include "pipeline/actor_impl.h"
-#include "pipeline/stage.h"
-
-bool
-bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
-
-void
-bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
-
-Actor *
-bl_pipeline_get_failed(Pipeline *self);
+#include "pipeline/stage_impl.h"
 
 #endif /* end of include guard: BISCUIT_PIPELINE_H */
 

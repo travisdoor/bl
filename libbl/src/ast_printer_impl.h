@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   token_printer.h
+// File:   ast_printer_impl.h
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,19 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TOKEN_PRINTER_H
-#define BL_TOKEN_PRINTER_H
+#ifndef AST_PRINTER_IMPL_H_RF3YJZZ8
+#define AST_PRINTER_IMPL_H_RF3YJZZ8
 
-#include <bobject/bobject.h>
-#include <stdio.h>
-#include "pipeline/stage.h"
+#include "bl/ast_printer.h"
+#include "pipeline/stage_impl.h"
 
-/* class TokenPrinter declaration */
-bo_decl_type_begin(TokenPrinter, Stage)
-  /* virtuals */
+/* AstPrinter members */
+bo_decl_members_begin(AstPrinter, Stage)
+  FILE *out_stream;
 bo_end();
 
-TokenPrinter *
-bl_token_printer_new(FILE *out_stream);
-
-#endif //BL_TOKEN_PRINTER_H
+#endif /* end of include guard: AST_PRINTER_IMPL_H_RF3YJZZ8 */

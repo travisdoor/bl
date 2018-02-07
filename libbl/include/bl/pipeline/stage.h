@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   bl.h
+// File:   stage.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,14 +26,24 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef STAGE_H_OGZN04CD
+#define STAGE_H_OGZN04CD
 
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
+#include <bobject/bobject.h>
+#include "bl/pipeline/actor.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+/* class declaration */
+bo_decl_type_begin(Stage, BObject)
+  /* virtuals */
+  /*
+   * Run operation on an actor.
+   */
+  bool (*run)(Stage*, Actor *);
+
+  /*
+   * Return domain on which stage works (depth in tree where 0 is root level)
+   */
+  int (*domain)(Stage*);
+bo_end();
+
+#endif /* end of include guard: STAGE_H_OGZN04CD */

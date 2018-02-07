@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "ast_printer.h"
+#include "ast_printer_impl.h"
 #include "unit.h"
 #include "domains.h"
 #include "bldebug.h"

@@ -26,7 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "stage.h"
+#include "stage_impl.h"
 
 /* Stage constructor parameters */
 bo_decl_params_begin(Stage)

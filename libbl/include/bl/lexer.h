@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   file_loader.h
+// File:   lexer.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef FILE_LOADER_H_PDNQRKMS
-#define FILE_LOADER_H_PDNQRKMS
+#ifndef LEXER_H_M6HPRS2Z
+#define LEXER_H_M6HPRS2Z
 
 #include <bobject/bobject.h>
-#include "pipeline/stage.h"
+#include "bl/pipeline/stage.h"
 
 /* class declaration */
-bo_decl_type_begin(FileLoader, Stage)
+bo_decl_type_begin(Lexer, Stage)
   /* virtuals */
 bo_end();
 
-/* FileLoader members */
-bo_decl_members_begin(FileLoader, Stage)
-bo_end();
+extern BO_EXPORT Lexer *
+bl_lexer_new(void);
 
-FileLoader *
-bl_file_loader_new(void);
-
-#endif /* end of include guard: FILE_LOADER_H_PDNQRKMS */
+#endif /* end of include guard: LEXER_H_M6HPRS2Z */
