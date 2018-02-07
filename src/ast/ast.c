@@ -158,8 +158,8 @@ bl_ast_node_stmt_new(Ast        *self,
 
 NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,
-                               BString    *type,
-                               BString    *ident,
+                               char       *type,
+                               char       *ident,
                                const char *generated_from,
                                int         line,
                                int         col)

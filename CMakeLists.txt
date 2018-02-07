@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.1.0 LANGUAGES C)
+project(bl VERSION 0.1.0 LANGUAGES C CXX)
 
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -31,18 +31,18 @@ set(SOURCE_FILES
   src/unit.h 
   src/parser.h 
   src/parser.c
-        src/ast/ast.c
-        src/ast/ast.h
-        src/ast/node.h
-        src/ast/node.c
-        src/ast/node_param_var_decl.h
-        src/ast/node_param_var_decl.c
-        src/ast/node_func_decl.h
-        src/ast/node_func_decl.c
-        src/ast/node_global_stmt.h
-        src/ast/node_global_stmt.c
-        src/ast/node_stmt.h
-        src/ast/node_stmt.c
+  src/ast/ast.c
+  src/ast/ast.h
+  src/ast/node.h
+  src/ast/node.c
+  src/ast/node_param_var_decl.h
+  src/ast/node_param_var_decl.c
+  src/ast/node_func_decl.h
+  src/ast/node_func_decl.c
+  src/ast/node_global_stmt.h
+  src/ast/node_global_stmt.c
+  src/ast/node_stmt.h
+  src/ast/node_stmt.c
   src/token_printer.h 
   src/token_printer.c)
 

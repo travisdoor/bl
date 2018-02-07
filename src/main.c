@@ -37,6 +37,9 @@
 #include "pipeline/pipeline.h"
 #include "bldebug.h"
 
+#define ENABLE_TOKEN_DEBUG 0
+#define ENABLE_AST_DEBUG 1
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -52,17 +55,25 @@ int main(int argc, char *argv[])
 
   /* init pipeline */
   Pipeline *pipeline = bl_pipeline_new();
-  Stage *file_loader = (Stage *)bl_file_loader_new(); 
-  Stage *lexer = (Stage *)bl_lexer_new(); 
-  Stage *parser = (Stage *)bl_parser_new(); 
-  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
-  Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
 
+  Stage *file_loader = (Stage *)bl_file_loader_new(); 
   bl_pipeline_add_stage(pipeline, file_loader);
+
+  Stage *lexer = (Stage *)bl_lexer_new(); 
   bl_pipeline_add_stage(pipeline, lexer);
+
+#if ENABLE_TOKEN_DEBUG
+  Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
   bl_pipeline_add_stage(pipeline, token_printer);
+#endif
+
+  Stage *parser = (Stage *)bl_parser_new(); 
   bl_pipeline_add_stage(pipeline, parser);
+
+#if ENABLE_AST_DEBUG
+  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
   bl_pipeline_add_stage(pipeline, ast_printer);
+#endif
   
   bl_log("pipeline start\n");
   if (!bl_pipeline_run(pipeline, module)) {

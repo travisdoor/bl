@@ -67,13 +67,6 @@ run(Parser *self,
 static int
 domain(Parser *self);
 
-static inline BString *
-tok_to_str(bl_token_t *tok) {
-  BString *str = bo_string_new(tok->len);
-  bo_string_appendn(str, tok->content.as_string, tok->len);
-  return str;
-}
-
 /* Parser members */
 bo_decl_members_begin(Parser, Stage)
 bo_end();
@@ -212,18 +205,18 @@ parse_param_var_decl(Parser *self,
         tok->line,
         tok->col);
 
-  BString *type = tok_to_str(tok);
+  char *type = strndup(tok->content.as_string, tok->len);
 
   tok = bl_tokens_consume(unit->tokens);
   if (tok->sym != BL_SYM_IDENT) {
-    bo_unref(type);
+    free(type);
     parse_error("%s %d:%d expected parameter name", 
         unit->filepath,
         tok->line,
         tok->col);
   }
   
-  BString *ident = tok_to_str(tok);
+  char *ident = strndup(tok->content.as_string, tok->len);
   return (Node *)bl_ast_node_param_var_decl_new(
       unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 }
