@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   unit.h
+// File:   pipeline_impl.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   04/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,34 +26,23 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef UNIT_H_FC53HXPA
-#define UNIT_H_FC53HXPA
+#ifndef BISCUIT_PIPELINE_H
+#define BISCUIT_PIPELINE_H
 
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "pipeline/actor.h"
-#include "tokens.h"
-#include "ast/ast.h"
+#include "bl/pipeline/pipeline.h"
+#include "pipeline/actor_impl.h"
+#include "pipeline/stage.h"
 
-/* class Unit declaration */
-bo_decl_type_begin(Unit, Actor)
-  /* virtuals */
-bo_end();
+bool
+bl_pipeline_run(Pipeline *self,
+                Actor    *actor);
 
-/* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
-  /* members */
-  /* source file name with path */
-  char *filepath;
-  /* source data */
-  BString *src;
-  /* output of lexer */
-  Tokens  *tokens;
-  /* abstract syntax tree as output of parser */
-  Ast     *ast;
-bo_end();
+void
+bl_pipeline_add_stage(Pipeline *self,
+                      Stage    *stage);
 
-Unit *
-bl_unit_new(const char *filepath);
+Actor *
+bl_pipeline_get_failed(Pipeline *self);
 
-#endif /* end of include guard: UNIT_H_FC53HXPA */
+#endif /* end of include guard: BISCUIT_PIPELINE_H */
+

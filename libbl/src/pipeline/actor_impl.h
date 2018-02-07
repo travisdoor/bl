@@ -1,7 +1,7 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   pipeline.h
+// File:   actor_impl.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,31 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_PIPELINE_H
-#define BISCUIT_PIPELINE_H
+#ifndef BISCUIT_ACTOR_H
+#define BISCUIT_ACTOR_H
 
-#include <bobject/bobject.h>
-#include "pipeline/actor.h"
-#include "pipeline/stage.h"
+#include "bl/pipeline/actor.h"
 
-/* class declaration */
-bo_decl_type_begin(Pipeline, BObject)
-  /* virtuals */
+/* Actor members */
+bo_decl_members_begin(Actor, BObject)
+  bl_actor_state_e state;
+  BArray *actors;
+  char error[BL_ACTOR_MAX_ERROR_LEN];
 bo_end();
 
-Pipeline *
-bl_pipeline_new(void);
-
-bool
-bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
-
 void
-bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
+bl_actor_error(Actor *self,
+               const char *format,
+               ...);
 
-Actor *
-bl_pipeline_get_failed(Pipeline *self);
-
-#endif /* end of include guard: BISCUIT_PIPELINE_H */
+#endif /* end of include guard: BISCUIT_ACTOR_H */
 

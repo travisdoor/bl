@@ -30,7 +30,7 @@
 #define BL_MODULE_H
 
 #include <bobject/bobject.h>
-#include "pipeline/actor.h"
+#include "pipeline/actor_impl.h"
 
 /* class declaration */
 bo_decl_type_begin(Module, Actor)

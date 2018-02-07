@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   actor.c
+// File:   stage.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,87 +26,29 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <string.h>
-#include <stdarg.h>
-#include "pipeline/actor.h"
-#include "bldebug.h"
+#ifndef BISCUIT_STAGE_H
+#define BISCUIT_STAGE_H
 
-/* Actor constructor parameters */
-bo_decl_params_begin(Actor)
+#include <bobject/bobject.h>
+#include "pipeline/actor_impl.h"
+
+/* class declaration */
+bo_decl_type_begin(Stage, BObject)
+  /* virtuals */
+  /*
+   * Run operation on an actor.
+   */
+  bool (*run)(Stage*, Actor *);
+
+  /*
+   * Return domain on which stage works (depth in tree where 0 is root level)
+   */
+  int (*domain)(Stage*);
 bo_end();
 
-bo_impl_type(Actor, BObject);
+/* Stage members */
+bo_decl_members_begin(Stage, BObject)
+bo_end();
 
-/* Actor class init */
-void
-ActorKlass_init(ActorKlass *klass)
-{
-}
-
-/* Actor constructor */
-void
-Actor_ctor(Actor *self, ActorParams *p)
-{
-  self->state = BL_ACTOR_STATE_PENDING;
-  self->actors = bo_array_new_bo(bo_typeof(Actor), true);
-  self->error[0] = '\0';
-}
-
-/* Actor destructor */
-void
-Actor_dtor(Actor *self)
-{
-  bo_unref(self->actors);
-}
-
-/* Actor copy constructor */
-bo_copy_result
-Actor_copy(Actor *self, Actor *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Actor *
-bl_actor_new(void)
-{
-  return bo_new(Actor, NULL);
-}
-
-bl_actor_state_e
-bl_actor_state(Actor *self)
-{
-  return self->state;
-}
-
-void
-bl_actor_add(Actor *self, Actor *child)
-{
-  bo_array_push_back(self->actors, child);
-}
-
-void
-bl_actor_error(Actor *self,
-               const char *format,
-               ...)
-{
-  va_list args;
-  va_start(args, format);
-  vsnprintf(self->error, BL_ACTOR_MAX_ERROR_LEN, format, args);
-  va_end(args);
-}
-
-const char *
-bl_actor_get_error(Actor *self)
-{
-  if (strlen(&self->error[0]) == 0)
-    return NULL;
-  return &self->error[0];
-}
-
-void
-bl_actor_error_reser(Actor *self)
-{
-  self->error[0] = '\0';
-}
+#endif /* end of include guard: BISCUIT_STAGE_H */
 

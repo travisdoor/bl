@@ -1,11 +1,2 @@
-* use BString only when it is needed
 * convert to lib
 * add google testing framework and implement some basic testing
-
-Data types:
-  bool
-  byte
-  float
-  double
-  int
-

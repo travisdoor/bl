@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   stage.h
+// File:   unit.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,29 +26,34 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_STAGE_H
-#define BISCUIT_STAGE_H
+#ifndef UNIT_H_FC53HXPA
+#define UNIT_H_FC53HXPA
 
 #include <bobject/bobject.h>
-#include "pipeline/actor.h"
+#include <bobject/containers/string.h>
+#include "pipeline/actor_impl.h"
+#include "tokens.h"
+#include "ast/ast.h"
 
-/* class declaration */
-bo_decl_type_begin(Stage, BObject)
+/* class Unit declaration */
+bo_decl_type_begin(Unit, Actor)
   /* virtuals */
-  /*
-   * Run operation on an actor.
-   */
-  bool (*run)(Stage*, Actor *);
-
-  /*
-   * Return domain on which stage works (depth in tree where 0 is root level)
-   */
-  int (*domain)(Stage*);
 bo_end();
 
-/* Stage members */
-bo_decl_members_begin(Stage, BObject)
+/* class Unit object members */
+bo_decl_members_begin(Unit, Actor)
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  /* source data */
+  BString *src;
+  /* output of lexer */
+  Tokens  *tokens;
+  /* abstract syntax tree as output of parser */
+  Ast     *ast;
 bo_end();
 
-#endif /* end of include guard: BISCUIT_STAGE_H */
+Unit *
+bl_unit_new(const char *filepath);
 
+#endif /* end of include guard: UNIT_H_FC53HXPA */

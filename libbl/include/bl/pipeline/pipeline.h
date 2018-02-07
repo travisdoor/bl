@@ -1,7 +1,7 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   actor.h
+// File:   pipeline.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,53 +26,17 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_ACTOR_H
-#define BISCUIT_ACTOR_H
+#ifndef PIPELINE_H_QHV37IME
+#define PIPELINE_H_QHV37IME
 
 #include <bobject/bobject.h>
-#include <bobject/containers/array.h>
-#include <bobject/containers/string.h>
-
-#define BL_ACTOR_MAX_ERROR_LEN 1024
-
-typedef enum _bl_actor_state_e
-{
-  BL_ACTOR_STATE_PENDING,
-  BL_ACTOR_STATE_FINISHED,
-  BL_ACTOR_STATE_FAILED
-} bl_actor_state_e;
 
 /* class declaration */
-bo_decl_type_begin(Actor, BObject)
+bo_decl_type_begin(Pipeline, BObject)
   /* virtuals */
 bo_end();
 
-/* Actor members */
-bo_decl_members_begin(Actor, BObject)
-  bl_actor_state_e state;
-  BArray *actors;
-  char error[BL_ACTOR_MAX_ERROR_LEN];
-bo_end();
+extern BO_EXPORT Pipeline *
+bl_pipeline_new(void);
 
-Actor *
-bl_actor_new(void);
-
-bl_actor_state_e
-bl_actor_state(Actor *self);
-
-void
-bl_actor_add(Actor *self, Actor *child);
-
-const char *
-bl_actor_get_error(Actor *self);
-
-void
-bl_actor_error(Actor *self,
-               const char *format,
-               ...);
-
-void
-bl_actor_error_reser(Actor *self);
-
-#endif /* end of include guard: BISCUIT_ACTOR_H */
-
+#endif /* end of include guard: PIPELINE_H_QHV37IME */

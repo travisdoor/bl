@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "pipeline/pipeline.h"
+#include "pipeline/pipeline_impl.h"
 #include "bldebug.h"
 
 #define EXPECTED_STAGE_COUNT 8
