@@ -31,9 +31,13 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
+#include <bobject/containers/array.h>
 
 #define NTYPES\
-  nt(FUNCDECL, "func_decl") \
+  nt(FUNC_DECL, "func_decl") \
+  nt(GLOBAL_STMT, "global_stmt") \
+  nt(STMT, "stmt") \
+  nt(PARAM_VAR_DECL, "param_var_decl") \
 
 typedef enum {
 #define nt(tok, str) BL_NODE_##tok,
@@ -65,11 +69,17 @@ bo_end();
 
 /* Node members */
 bo_decl_members_begin(Node, BObject)
+  /* not owning, references only!!! */
+  BArray *nodes;
   bl_node_e type;
   const char *generated_from;
   int line;
   int col;
 bo_end();
+
+bool
+bl_node_add_child(Node *self,
+                  Node *child);
 
 #endif /* end of include guard: BISCUIT_NODE_H */
 

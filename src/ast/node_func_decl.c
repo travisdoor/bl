@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.h
+// File:   node_func_decl.c
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -26,24 +26,65 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_FUNC_DECL_H
-#define BISCUIT_NODE_FUNC_DECL_H
+#include <bobject/containers/string.h>
+#include "node_func_decl.h"
 
-#include <bobject/bobject.h>
-#include "node.h"
-#include "token.h"
+static BString *
+to_string(NodeFuncDecl *self);
 
-/* class declaration */
-bo_decl_type_begin(NodeFuncDecl, Node)
-  /* virtuals */
+/* NodeFuncDecl members */
+bo_decl_members_begin(NodeFuncDecl, Node)
+  char *type;
+  char *ident;
 bo_end();
 
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *name,
-                      const char *generated_from,
-                      int         line,
-                      int         col);
+bo_impl_type(NodeFuncDecl, Node);
 
-#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
+/* NodeFuncDecl class init */
+void
+NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
+{
+  bo_vtbl_cl(klass, Node)->to_string 
+    = (BString *(*)(Node*)) to_string;
+}
+
+/* NodeFuncDecl constructor */
+void
+NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
+{
+  bo_parent_ctor(Node, p);
+  self->type = p->type;
+  self->ident = p->ident;
+}
+
+/* NodeFuncDecl destructor */
+void
+NodeFuncDecl_dtor(NodeFuncDecl *self)
+{
+  free(self->type);
+  free(self->ident);
+}
+
+/* NodeFuncDecl copy constructor */
+bo_copy_result
+NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
+{
+  return BO_NO_COPY;
+}
+
+BString *
+to_string(NodeFuncDecl *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, self->type);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, self->ident);
+  bo_string_append(ret, ">");
+  return ret;
+}
+
+/* public */
 

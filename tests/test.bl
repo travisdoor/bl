@@ -3,3 +3,17 @@
 int sum(int a, int b) {
   // return a + b;
 }
+
+int second(int hello) {
+}
+
+int third(int hello, 
+          int a, 
+          int b, 
+          int c, 
+          int d) {
+}
+
+void another(float hello, double d) {
+}
+

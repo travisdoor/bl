@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node.c
+// File:   node_global_stmt.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,38 +26,21 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#ifndef BISCUIT_NODE_GLOBAL_STMT_H
+#define BISCUIT_NODE_GLOBAL_STMT_H
+
+#include <bobject/bobject.h>
 #include "node.h"
-#include "bldebug.h"
+#include "token.h"
 
-bo_impl_type(Node, BObject);
+/* class declaration */
+bo_decl_type_begin(NodeGlobalStmt, Node)
+  /* virtuals */
+bo_end();
 
-/* Node class init */
-void
-NodeKlass_init(NodeKlass *klass)
-{
-  bo_vtbl_cl(klass, Node)->to_string = NULL;
-}
+/* NodeGlobalStmt constructor parameters */
+bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
+bo_end();
 
-/* Node constructor */
-void
-Node_ctor(Node *self, NodeParams *p)
-{
-  self->type = p->type;
-  self->generated_from = p->generated_from;
-  self->line = p->line;
-  self->col = p->col;
-}
-
-/* Node destructor */
-void
-Node_dtor(Node *self)
-{
-}
-
-/* Node copy constructor */
-bo_copy_result
-Node_copy(Node *self, Node *other)
-{
-  return BO_NO_COPY;
-}
+#endif /* end of include guard: BISCUIT_NODE_GLOBAL_STMT_H */
 

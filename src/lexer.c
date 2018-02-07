@@ -106,14 +106,13 @@ LexerKlass_init(LexerKlass *klass)
 void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
-  bo_parent_ctor(Actor, p);
+  bo_parent_ctor(Stage, p);
 }
 
 /* Lexer destructor */
 void
 Lexer_dtor(Lexer *self)
 {
-  puts("lexer destroyed");
 }
 
 /* Lexer copy constructor */
@@ -138,12 +137,14 @@ run(Lexer *self,
 
   cursor_t cur = {
     .iter = (char *)bo_string_get(unit->src),
-    .line = 0,
-    .col = 0
+    .line = 1,
+    .col = 1
   };
 
   for (;*cur.iter != '\0'; cur.iter++) {
     switch (*cur.iter) {
+      /* TODO: windows line endings */
+      case '\r':
       case '\n':
         cur.line++;
         cur.col = 1;
@@ -219,7 +220,8 @@ run(Lexer *self,
           continue;
 
         /* notify error */
-        bl_actor_error((Actor *)unit, "invalid character %c", cur.iter[0]); 
+        bl_actor_error((Actor *)unit, "invalid character %c %i:%i", 
+            cur.iter[0], cur.line, cur.col); 
         return false;
     }
   }
@@ -343,7 +345,7 @@ scan_ident(Lexer *self,
 
   bl_tokens_push(unit->tokens, &tok);
   cur->iter--;
-  cur->col += len;
+  cur->col += tok.len;
   return true;
 }
 

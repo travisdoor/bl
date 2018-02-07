@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
+#include <bobject/containers/array.h>
 #include "token.h"
 
 /* class Tokens declaration */
@@ -56,6 +57,10 @@ bl_tokens_peek_nth(Tokens *self,
 
 bl_token_t *
 bl_tokens_consume(Tokens *self);
+
+bl_token_t **
+bl_tokens_consume_n(Tokens *self,
+                    int     n);
 
 bl_token_t *
 bl_tokens_consume_if(Tokens  *self,
@@ -90,5 +95,8 @@ bl_tokens_set_marker(Tokens *self);
 
 void
 bl_tokens_back_to_marker(Tokens *self);
+
+BArray *
+bl_tokens_get_all(Tokens *self);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

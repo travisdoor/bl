@@ -1,10 +1,6 @@
-- main method
-- expressions (assignment, method call)
-
-- type checking in parser
-- name collision checking in parser
-- better error handling in parser
-- anything after return in current function scope can be ignored
+* use BString only when it is needed
+* convert to lib
+* add google testing framework and implement some basic testing
 
 Data types:
   bool

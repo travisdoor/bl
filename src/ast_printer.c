@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   file_loader.c
+// File:   ast_printer.c
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -27,28 +27,29 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "file_loader.h"
+#include "ast_printer.h"
 #include "unit.h"
 #include "domains.h"
 #include "bldebug.h"
 #include "bldebug.h"
 
 static bool
-run(FileLoader *self,
+run(AstPrinter *self,
     Unit       *unit);
 
 static int
-domain(FileLoader *self);
+domain(AstPrinter *self);
 
-/* FileLoader constructor parameters */
-bo_decl_params_begin(FileLoader)
+/* AstPrinter constructor parameters */
+bo_decl_params_begin(AstPrinter)
+  FILE *out_stream;
 bo_end();
 
-bo_impl_type(FileLoader, Stage);
+bo_impl_type(AstPrinter, Stage);
 
-/* FileLoader class init */
+/* AstPrinter class init */
 void
-FileLoaderKlass_init(FileLoaderKlass *klass)
+AstPrinterKlass_init(AstPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
@@ -56,62 +57,78 @@ FileLoaderKlass_init(FileLoaderKlass *klass)
     = (int (*)(Stage*)) domain;
 }
 
-/* FileLoader constructor */
+/* AstPrinter constructor */
 void
-FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
+AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
 {
   bo_parent_ctor(Stage, p);
+  self->out_stream = p->out_stream;
 }
 
-/* FileLoader destructor */
+/* AstPrinter destructor */
 void
-FileLoader_dtor(FileLoader *self)
+AstPrinter_dtor(AstPrinter *self)
 {
 }
 
-/* FileLoader copy constructor */
+/* AstPrinter copy constructor */
 bo_copy_result
-FileLoader_copy(FileLoader *self, FileLoader *other)
+AstPrinter_copy(AstPrinter *self, AstPrinter *other)
 {
   return BO_NO_COPY;
 }
 
+static void 
+print_node(AstPrinter *self,
+           Node *node,
+           int pad)
+{
+  if (!node)
+    return;
+
+  BString *s = bo_vtbl(node, Node)->to_string(node);
+  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET, pad, "", bo_string_get(s));
+  bo_unref(s);
+
+  if (node->nodes == NULL)
+    return;
+
+  size_t c = bo_array_size(node->nodes);
+  Node *child;
+  pad+=2;
+  for (size_t i = 0; i < c; i++) {
+    child = bo_array_at(node->nodes, i, Node *);
+    print_node(self, child, pad);
+  }
+}
+
 bool
-run(FileLoader *self,
+run(AstPrinter *self,
     Unit       *unit)
 {
-  FILE *f = fopen(unit->filepath, "r");
-  if (f == NULL) {
-    bl_error("file %s not found\n", unit->filepath);
+  if (unit->ast == NULL) {
+    bl_actor_error((Actor *)unit, "cannot find AST tree in unit %s", unit->filepath);
     return false;
   }
 
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  if (fsize == 0) {
-    fclose(f);
-    bl_error("invalid source in file %s\n", unit->filepath);
-    return false;
-  }
-
-  fseek(f, 0, SEEK_SET);
-
-  unit->src = bo_string_new(fsize);
-  fread((char *)bo_string_get(unit->src), fsize, 1, f);
-  fclose(f);
+  print_node(self, bl_ast_get_root(unit->ast), 0); 
   return true;
 }
 
 int
-domain(FileLoader *self)
+domain(AstPrinter *self)
 {
   return BL_DOMAIN_UNIT;
 }
 
 /* public */
-FileLoader *
-bl_file_loader_new(void)
+AstPrinter *
+bl_ast_printer_new(FILE *out_stream)
 {
-    return bo_new(FileLoader, NULL);
+  AstPrinterParams p = {
+    .out_stream = out_stream
+  };
+
+  return bo_new(AstPrinter, &p);
 }
 

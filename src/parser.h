@@ -31,7 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "pipeline/stage.h"
-#include "node.h"
+#include "ast/node.h"
 
 /* class declaration */
 bo_decl_type_begin(Parser, Stage)

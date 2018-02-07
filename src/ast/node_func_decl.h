@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   unit.h
+// File:   node_func_decl.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,34 +26,23 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef UNIT_H_FC53HXPA
-#define UNIT_H_FC53HXPA
+#ifndef BISCUIT_NODE_FUNC_DECL_H
+#define BISCUIT_NODE_FUNC_DECL_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include "pipeline/actor.h"
-#include "tokens.h"
-#include "ast/ast.h"
+#include "node.h"
+#include "token.h"
 
-/* class Unit declaration */
-bo_decl_type_begin(Unit, Actor)
+/* class declaration */
+bo_decl_type_begin(NodeFuncDecl, Node)
   /* virtuals */
 bo_end();
 
-/* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
-  /* members */
-  /* source file name with path */
-  char *filepath;
-  /* source data */
-  BString *src;
-  /* output of lexer */
-  Tokens  *tokens;
-  /* abstract syntax tree as output of parser */
-  Ast     *ast;
+/* NodeFuncDecl constructor parameters */
+bo_decl_params_with_base_begin(NodeFuncDecl, Node)
+  char *type;
+  char *ident;
 bo_end();
 
-Unit *
-bl_unit_new(const char *filepath);
+#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
 
-#endif /* end of include guard: UNIT_H_FC53HXPA */

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.c
+// File:   node_stmt.c
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -26,90 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/string.h>
-#include "node_func_decl.h"
+#include <bobject/containers/array.h>
+#include "node_stmt.h"
 
 static BString *
-to_string(NodeFuncDecl *self);
+to_string(NodeStmt *self);
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *name;
+/* NodeStmt members */
+bo_decl_members_begin(NodeStmt, Node)
 bo_end();
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  BString *type;
-  BString *name;
-bo_end();
+bo_impl_type(NodeStmt, Node);
 
-bo_impl_type(NodeFuncDecl, Node);
-
-/* NodeFuncDecl class init */
+/* NodeStmt class init */
 void
-NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
+NodeStmtKlass_init(NodeStmtKlass *klass)
 {
   bo_vtbl_cl(klass, Node)->to_string 
     = (BString *(*)(Node*)) to_string;
 }
 
-/* NodeFuncDecl constructor */
+/* NodeStmt constructor */
 void
-NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
+NodeStmt_ctor(NodeStmt *self, NodeStmtParams *p)
 {
   bo_parent_ctor(Node, p);
-  self->type = p->type;
-  self->name = p->name;
 }
 
-/* NodeFuncDecl destructor */
+/* NodeStmt destructor */
 void
-NodeFuncDecl_dtor(NodeFuncDecl *self)
+NodeStmt_dtor(NodeStmt *self)
 {
-  bo_unref(self->type);
-  bo_unref(self->name);
 }
 
-/* NodeFuncDecl copy constructor */
+/* NodeStmt copy constructor */
 bo_copy_result
-NodeFuncDecl_copy(NodeFuncDecl *self, NodeFuncDecl *other)
+NodeStmt_copy(NodeStmt *self, NodeStmt *other)
 {
   return BO_NO_COPY;
 }
 
 BString *
-to_string(NodeFuncDecl *self)
+to_string(NodeStmt *self)
 {
   BString *ret = bo_string_new(128);
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->type);
-  bo_string_append(ret, " ");
-  bo_string_append_str(ret, self->name);
   bo_string_append(ret, ">");
   return ret;
-}
-
-/* public */
-
-NodeFuncDecl *
-bl_node_func_decl_new(BString    *type,
-                      BString    *name,
-                      const char *generated_from,
-                      int         line,
-                      int         col)
-{
-  NodeFuncDeclParams p = {
-    .base.type = BL_NODE_FUNCDECL,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-    .type = type,
-    .name = name
-  };
-  
-  return bo_new(NodeFuncDecl, &p);
 }
 
