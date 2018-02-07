@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   bldebug.h
+// File:   unit.h
 // Author: Martin Dorazil
 // Date:   26.1.18
 //
@@ -26,50 +26,26 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BLDEBUG_H_VYI9AXGT
-#define BLDEBUG_H_VYI9AXGT
+#ifndef UNIT_H_OEBBIZQU
+#define UNIT_H_OEBBIZQU
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <bobject/containers/string.h>
+#include "bl/unit.h"
+#include "pipeline/actor_impl.h"
+#include "tokens.h"
+#include "ast/ast.h"
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
+/* class Unit object members */
+bo_decl_members_begin(Unit, Actor)
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  /* source data */
+  BString *src;
+  /* output of lexer */
+  Tokens  *tokens;
+  /* abstract syntax tree as output of parser */
+  Ast     *ast;
+bo_end();
 
-#define bl_assert(expr, format, ...) \
-    if ((expr) == 0) { \
-        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
-        abort(); \
-    }
-
-#define bl_abort(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
-        abort(); \
-    }
-
-#define bl_error(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED format ANSI_COLOR_RESET, ##__VA_ARGS__); \
-    }
-
-#define bl_log(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_GREEN format ANSI_COLOR_RESET, ##__VA_ARGS__); \
-    }
-/*
-#define bl_error_at(file, line, column, msg) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
-        exit(0); \
-    }
-
-#define bl_warning_at(file, line, column, format, ...) \
-    { \
-        fprintf(stdout, ANSI_COLOR_YELLOW "error: %s %d:%d - %s\n" ANSI_COLOR_RESET, (file), (line), (column), (msg)); \
-    }
-    */
-
-#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
-
+#endif /* end of include guard: UNIT_H_FC53HXPA */

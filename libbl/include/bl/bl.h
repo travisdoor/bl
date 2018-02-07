@@ -29,11 +29,13 @@
 #ifndef BL_H_JCNFO1PQ
 #define BL_H_JCNFO1PQ
 
+#include "bl/bldebug.h"
 #include "bl/pipeline/pipeline.h"
 #include "bl/lexer.h"
 #include "bl/token_printer.h"
 #include "bl/file_loader.h"
 #include "bl/parser.h"
 #include "bl/ast_printer.h"
+#include "bl/unit.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

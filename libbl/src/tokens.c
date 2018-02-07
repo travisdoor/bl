@@ -28,7 +28,7 @@
 
 #include <stdarg.h>
 #include "tokens.h"
-#include "bldebug.h"
+#include "bl/bldebug.h"
 
 /* class Tokens */
 

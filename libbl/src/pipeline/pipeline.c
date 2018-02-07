@@ -28,7 +28,7 @@
 
 #include <bobject/containers/array.h>
 #include "pipeline/pipeline_impl.h"
-#include "bldebug.h"
+#include "bl/bldebug.h"
 
 #define EXPECTED_STAGE_COUNT 8
 #define MAX_DOMAIN_COUNT 4

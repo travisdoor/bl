@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module.h
+// File:   unit.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,19 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_MODULE_H
-#define BL_MODULE_H
+#ifndef UNIT_H_IDHOJTNW
+#define UNIT_H_IDHOJTNW
 
 #include <bobject/bobject.h>
-#include "pipeline/actor_impl.h"
+#include "bl/pipeline/actor.h"
 
-/* class declaration */
-bo_decl_type_begin(Module, Actor)
+/* class Unit declaration */
+bo_decl_type_begin(Unit, Actor)
   /* virtuals */
 bo_end();
 
-Module *
-bl_module_new(void);
+extern BO_EXPORT Unit *
+bl_unit_new(const char *filepath);
 
-#endif /* end of include guard: BL_MODULE_H */
+#endif /* end of include guard: UNIT_H_IDHOJTNW */
 

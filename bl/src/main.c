@@ -36,6 +36,17 @@ int main(int argc, char *argv[])
 {
   puts("BL Compiler version 0.1.0\n");
 
+  if (argc < 2)
+    return 1;
+
+  /* init actors */
+  Actor *module = (Actor *)bl_module_new();
+
+  for (int i = 1; i < argc; i++) {
+    Actor *unit = (Actor *)bl_unit_new(argv[i]);
+    bl_actor_add(module, unit);
+  }
+
   Pipeline *pipeline = bl_pipeline_new();
 
   Stage *file_loader = (Stage *)bl_file_loader_new(); 
@@ -57,8 +68,16 @@ int main(int argc, char *argv[])
   bl_pipeline_add_stage(pipeline, ast_printer);
 #endif
 
+  bl_log("pipeline start\n");
+  if (!bl_pipeline_run(pipeline, module)) {
+    Actor *failed = bl_pipeline_get_failed(pipeline);
+    bl_error("%s\n", bl_actor_get_error(failed));
+    bl_error("pipeline run failed\n");
+  } else 
+    bl_log("pipeline finished without errors\n");
 
-
+  bo_unref(module);
   bo_unref(pipeline);
+
   return 0;
 }

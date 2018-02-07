@@ -31,8 +31,8 @@
 #include <stdarg.h>
 #include <bobject/containers/array.h>
 #include "lexer_impl.h"
-#include "bldebug.h"
-#include "unit.h"
+#include "bl/bldebug.h"
+#include "unit_impl.h"
 #include "domains.h"
 #include "tokens.h"
 

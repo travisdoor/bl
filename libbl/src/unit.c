@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <string.h>
-#include "unit.h"
+#include "unit_impl.h"
 
 /* class Unit */
 bo_decl_params_begin(Unit)

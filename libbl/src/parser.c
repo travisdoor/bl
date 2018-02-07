@@ -30,8 +30,8 @@
 #include <string.h>
 #include "parser_impl.h"
 #include "domains.h"
-#include "unit.h"
-#include "bldebug.h"
+#include "unit_impl.h"
+#include "bl/bldebug.h"
 #include "ast/ast.h"
 
 #define parse_error(format, ...) \

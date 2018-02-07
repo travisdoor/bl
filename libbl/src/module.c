@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "module.h"
+#include "module_impl.h"
 
 /* Module members */
 bo_decl_members_begin(Module, Actor)

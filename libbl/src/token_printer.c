@@ -27,10 +27,10 @@
 //*****************************************************************************
 
 #include "token_printer_impl.h"
-#include "unit.h"
+#include "unit_impl.h"
 #include "domains.h"
 #include "tokens.h"
-#include "bldebug.h"
+#include "bl/bldebug.h"
 
 /* class TokenPrinter */
 static bool

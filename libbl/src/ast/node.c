@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include "node.h"
-#include "bldebug.h"
+#include "bl/bldebug.h"
 
 bo_impl_type(Node, BObject);
 
