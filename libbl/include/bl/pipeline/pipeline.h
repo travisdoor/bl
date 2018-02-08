@@ -33,6 +33,7 @@
 #include "bl/pipeline/actor.h"
 #include "bl/pipeline/stage.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(Pipeline, BObject)
   /* virtuals */
@@ -51,5 +52,6 @@ bl_pipeline_add_stage(Pipeline *self,
 
 extern BO_EXPORT Actor *
 bl_pipeline_get_failed(Pipeline *self);
+BO_END_DECLS
 
 #endif /* end of include guard: PIPELINE_H_QHV37IME */

@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/pipeline/stage.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(Parser, Stage)
   /* virtuals */
@@ -39,5 +40,6 @@ bo_end();
 
 extern BO_EXPORT Parser *
 bl_parser_new(void);
+BO_END_DECLS
 
 #endif /* end of include guard: PARSER_H_HBFDJRZZ */

@@ -29,11 +29,13 @@
 #ifndef BISCUIT_DOMAINS_H
 #define BISCUIT_DOMAINS_H
 
+BO_BEGIN_DECLS
 typedef enum _bl_domain_e
 {
   BL_DOMAIN_MODULE = 0,
   BL_DOMAIN_UNIT   = 1,
 } bl_domain_e;
+BO_END_DECLS
 
 #endif /* end of include guard: BISCUIT_DOMAINS_H */
 

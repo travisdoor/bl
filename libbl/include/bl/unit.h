@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/pipeline/actor.h"
 
+BO_BEGIN_DECLS
 /* class Unit declaration */
 bo_decl_type_begin(Unit, Actor)
   /* virtuals */
@@ -39,6 +40,7 @@ bo_end();
 
 extern BO_EXPORT Unit *
 bl_unit_new(const char *filepath);
+BO_END_DECLS
 
 #endif /* end of include guard: UNIT_H_IDHOJTNW */
 

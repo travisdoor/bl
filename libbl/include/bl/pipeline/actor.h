@@ -33,6 +33,7 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/string.h>
 
+BO_BEGIN_DECLS
 #define BL_ACTOR_MAX_ERROR_LEN 1024
 
 typedef enum _bl_actor_state_e
@@ -58,6 +59,7 @@ bl_actor_get_error(Actor *self);
 
 extern BO_EXPORT void
 bl_actor_error_reset(Actor *self);
+BO_END_DECLS
 
 #endif /* end of include guard: ACTOR_H_TQV6OMSD */
 

@@ -32,6 +32,8 @@
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
 
+BO_BEGIN_DECLS
+
 #define BL_NTYPE_LIST\
   nt(FUNC_DECL, "func_decl") \
   nt(GLOBAL_STMT, "global_stmt") \
@@ -53,5 +55,7 @@ bo_end();
 extern BO_EXPORT bool
 bl_node_add_child(Node *self,
                   Node *child);
+
+BO_END_DECLS
 
 #endif //BL_NODE_H

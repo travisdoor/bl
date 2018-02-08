@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <bobject/bobject.h>
 
+BO_BEGIN_DECLS
 #define BL_SYMBOLS_LIST \
   sm(EOF, "end") \
   sm(LINE_COMMENT, "line_comment") \
@@ -86,5 +87,6 @@ bl_token_init(bl_token_t *token,
               int         col,
               int         len,
               const char *src_loc);
+BO_END_DECLS
 
 #endif //BL_TOKEN_H

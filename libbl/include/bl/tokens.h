@@ -34,6 +34,7 @@
 #include <bobject/containers/array.h>
 #include "bl/token.h"
 
+BO_BEGIN_DECLS
 /* class Tokens declaration */
 bo_decl_type_begin(Tokens, BObject)
   /* virtuals */
@@ -98,5 +99,6 @@ bl_tokens_back_to_marker(Tokens *self);
 
 extern BO_EXPORT BArray *
 bl_tokens_get_all(Tokens *self);
+BO_END_DECLS
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include "bl/pipeline/stage.h"
 
+BO_BEGIN_DECLS
 /* class TokenPrinter declaration */
 bo_decl_type_begin(TokenPrinter, Stage)
   /* virtuals */
@@ -40,5 +41,6 @@ bo_end();
 
 extern BO_EXPORT TokenPrinter *
 bl_token_printer_new(FILE *out_stream);
+BO_END_DECLS
 
 #endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */

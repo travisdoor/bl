@@ -33,6 +33,7 @@
 #include <bobject/bobject.h>
 #include "bl/pipeline/stage.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(AstPrinter, Stage)
   /* virtuals */
@@ -40,5 +41,6 @@ bo_end();
 
 extern BO_EXPORT AstPrinter *
 bl_ast_printer_new(FILE *out_stream);
+BO_END_DECLS
 
 #endif /* end of include guard: AST_PRINTER_H_EOKCLCB3 */

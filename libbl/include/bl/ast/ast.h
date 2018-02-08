@@ -36,7 +36,7 @@
 #include "bl/ast/node_func_decl.h"
 #include "bl/ast/node_global_stmt.h"
 
-/* TODO: cache nodes into array */
+BO_BEGIN_DECLS
 
 /* class Ast declaration */
 bo_decl_type_begin(Ast, BObject)
@@ -80,5 +80,7 @@ bl_ast_node_param_var_decl_new(Ast        *self,
                                const char *generated_from,
                                int         line,
                                int         col);
+
+BO_END_DECLS
 
 #endif /* end of include guard: AST_H_VGMYANDT */

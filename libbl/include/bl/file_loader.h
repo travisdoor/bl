@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/pipeline/stage.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(FileLoader, Stage)
   /* virtuals */
@@ -39,5 +40,6 @@ bo_end();
 
 extern BO_EXPORT FileLoader *
 bl_file_loader_new(void);
+BO_END_DECLS
 
 #endif /* end of include guard: FILE_LOADER_H_EA5EZFSW */

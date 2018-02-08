@@ -31,9 +31,11 @@
 
 #include "bl/ast/node.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(NodeStmt, Node)
   /* virtuals */
 bo_end();
+BO_END_DECLS
 
 #endif //BL_NODE_STMT_H

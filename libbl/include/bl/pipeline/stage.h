@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/pipeline/actor.h"
 
+BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(Stage, BObject)
   /* virtuals */
@@ -45,5 +46,6 @@ bo_decl_type_begin(Stage, BObject)
    */
   int (*domain)(Stage*);
 bo_end();
+BO_END_DECLS
 
 #endif /* end of include guard: STAGE_H_OGZN04CD */
