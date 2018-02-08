@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// Biscuit Engine
 //
-// File:   node.h
+// File:   node_return_stmt.c
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   08/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,30 +26,37 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#include "ast/node_return_stmt_impl.h"
 
-#include "bl/ast/node.h"
-
-extern char *bl_node_strings[];
-
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
+/* ReturnStmt members */
+bo_decl_members_begin(ReturnStmt, Node)
 bo_end();
 
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  /* not owning, references only!!! */
-  BArray *nodes;
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
+bo_impl_type(ReturnStmt, Node);
 
-#endif /* end of include guard: BISCUIT_NODE_H */
+/* ReturnStmt class init */
+void
+ReturnStmtKlass_init(ReturnStmtKlass *klass)
+{
+}
+
+/* ReturnStmt constructor */
+void
+ReturnStmt_ctor(ReturnStmt *self, ReturnStmtParams *p)
+{
+  bo_parent_ctor(Node, p);
+}
+
+/* ReturnStmt destructor */
+void
+ReturnStmt_dtor(ReturnStmt *self)
+{
+}
+
+/* ReturnStmt copy constructor */
+bo_copy_result
+ReturnStmt_copy(ReturnStmt *self, ReturnStmt *other)
+{
+  return BO_NO_COPY;
+}
 

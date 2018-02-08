@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node.h
+// File:   node_return_stmt_impl.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,30 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#ifndef NODE_RETURN_STMT_IMPL_H_HSAA43EU
+#define NODE_RETURN_STMT_IMPL_H_HSAA43EU
 
-#include "bl/ast/node.h"
+#include "bl/ast/node_return_stmt.h"
+#include "node_impl.h"
 
-extern char *bl_node_strings[];
-
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
+/* NodeGlobalStmt constructor parameters */
+bo_decl_params_with_base_begin(NodeReturnStmt, Node)
 bo_end();
 
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  /* not owning, references only!!! */
-  BArray *nodes;
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
-
-#endif /* end of include guard: BISCUIT_NODE_H */
-
+#endif /* end of include guard: NODE_RETURN_STMT_IMPL_H_HSAA43EU */

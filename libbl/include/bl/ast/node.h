@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
+#include <bobject/containers/array.h>
 
 BO_BEGIN_DECLS
 
@@ -55,6 +56,12 @@ bo_end();
 extern BO_EXPORT bool
 bl_node_add_child(Node *self,
                   Node *child);
+
+extern BO_EXPORT bl_node_e
+bl_node_type(Node *self);
+
+extern BO_EXPORT BArray *
+bl_node_children(Node *self);
 
 BO_END_DECLS
 

@@ -1,7 +1,7 @@
 // this is testing script
 
 int sum(int a, int b) {
-  // return a + b;
+  // return 0;
 }
 
 int second(int hello) {

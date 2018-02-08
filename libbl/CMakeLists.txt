@@ -24,6 +24,7 @@ set(HEADER_FILES
         include/bl/token.h
         include/bl/tokens.h
         include/bl/ast/node.h
+        include/bl/ast/node_return_stmt.h
         include/bl/ast/node_global_stmt.h
         include/bl/ast/node_func_decl.h
         include/bl/ast/node_param_var_decl.h
@@ -36,6 +37,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_global_stmt_impl.h
         src/ast/node_param_var_decl_impl.h
         src/ast/node_stmt_impl.h
+        src/ast/node_return_stmt_impl.h
         src/pipeline/actor_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
@@ -59,6 +61,7 @@ set(SOURCE_FILES
         src/ast/node_param_var_decl.c
         src/ast/node_func_decl.c
         src/ast/node_global_stmt.c
+        src/ast/node_return_stmt.c
         src/ast/node_stmt.c
         src/token_printer.c)
 

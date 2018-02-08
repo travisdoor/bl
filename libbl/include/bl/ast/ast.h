@@ -43,17 +43,17 @@ bo_decl_type_begin(Ast, BObject)
   /* virtuals */
 bo_end();
 
-Ast *
+extern BO_EXPORT Ast *
 bl_ast_new(void);
 
-void
+extern BO_EXPORT void
 bl_ast_set_root(Ast *self,
                 Node *root);
 
-Node *
+extern BO_EXPORT Node *
 bl_ast_get_root(Ast *self);
 
-NodeFuncDecl *
+extern BO_EXPORT NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
                           char       *type,
                           char       *ident,
@@ -61,19 +61,19 @@ bl_ast_node_func_decl_new(Ast        *self,
                           int         line,
                           int         col);
 
-NodeGlobalStmt *
+extern BO_EXPORT NodeGlobalStmt *
 bl_ast_node_global_stmt_new(Ast        *self,
                             const char *generated_from,
                             int         line,
                             int         col);
 
-NodeStmt *
+extern BO_EXPORT NodeStmt *
 bl_ast_node_stmt_new(Ast        *self,
                      const char *generated_from,
                      int         line,
                      int         col);
 
-NodeParamVarDecl *
+extern BO_EXPORT NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,
                                char       *type,
                                char       *ident,

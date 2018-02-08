@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "bl/bl.h"
 
-#define ENABLE_TOKEN_PRINTER 1
+#define ENABLE_TOKEN_PRINTER 0
 #define ENABLE_AST_PRINTER   1
 
 int main(int argc, char *argv[])

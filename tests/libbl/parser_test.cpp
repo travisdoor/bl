@@ -68,6 +68,18 @@ TEST_F(ParserTest, ast_func_decl)
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
+
+  auto *ast = bl_unit_ast((Unit *)unit);
+  auto *ast_root = bl_ast_get_root(ast);
+
+  Node *node = NULL;
+  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+
+  node = bo_array_at(bl_node_children(ast_root), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_FUNC_DECL);
+
+  node = bo_array_at(bl_node_children(node), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_param)
@@ -82,6 +94,21 @@ TEST_F(ParserTest, ast_func_decl_param)
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
+
+  auto *ast = bl_unit_ast((Unit *)unit);
+  auto *ast_root = bl_ast_get_root(ast);
+
+  Node *node = NULL;
+  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+
+  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
+  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 1, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_params)
@@ -96,4 +123,25 @@ TEST_F(ParserTest, ast_func_decl_params)
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
+
+  auto *ast = bl_unit_ast((Unit *)unit);
+  auto *ast_root = bl_ast_get_root(ast);
+
+  Node *node = NULL;
+  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+
+  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
+  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 1, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 2, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 3, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }

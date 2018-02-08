@@ -82,3 +82,15 @@ bl_node_add_child(Node *self,
   bo_array_push_back(self->nodes, child);
   return true;
 }
+
+bl_node_e
+bl_node_type(Node *self)
+{
+  return self->type;
+}
+
+BArray *
+bl_node_children(Node *self)
+{
+  return self->nodes;
+}

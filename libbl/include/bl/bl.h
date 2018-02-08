@@ -38,5 +38,6 @@
 #include "bl/ast_printer.h"
 #include "bl/unit.h"
 #include "bl/module.h"
+#include "bl/ast/ast.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */
