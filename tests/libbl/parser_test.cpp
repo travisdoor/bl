@@ -197,3 +197,4 @@ TEST_F(ParserTest, ast_func_decl_ret)
   node = bo_array_at(bl_node_children(fnode), 0, Node *);
   ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
+

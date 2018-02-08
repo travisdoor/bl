@@ -1,5 +1,5 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl 
 //
 // File:   node_return_stmt.c
 // Author: Martin Dorazil
@@ -30,9 +30,6 @@
 
 /* NodeReturnStmt members */
 
-static BString *
-to_string(NodeReturnStmt *self);
-
 bo_decl_members_begin(NodeReturnStmt, Node)
 bo_end();
 
@@ -42,8 +39,6 @@ bo_impl_type(NodeReturnStmt, Node);
 void
 NodeReturnStmtKlass_init(NodeReturnStmtKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string 
-    = (BString *(*)(Node*)) to_string;
 }
 
 /* NodeReturnStmt constructor */
@@ -64,15 +59,5 @@ bo_copy_result
 NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
 {
   return BO_NO_COPY;
-}
-
-BString *
-to_string(NodeReturnStmt *self)
-{
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, ">");
-  return ret;
 }
 

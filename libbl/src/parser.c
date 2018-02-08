@@ -52,6 +52,11 @@ parse_stmt(Parser *self,
            jmp_buf jmp_error);
 
 static Node *
+parse_expr(Parser *self, 
+           Unit *unit,
+           jmp_buf jmp_error);
+
+static Node *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error);
@@ -145,7 +150,13 @@ parse_return_stmt(Parser *self,
 
     /* HACK parse expression here */
     if (bl_tokens_current_is(unit->tokens, BL_SYM_NUM)) {
-      tok = bl_tokens_consume(unit->tokens); 
+      if (!bl_node_add_child((Node *)rstmt, parse_expr(self, unit, jmp_error))) {
+        tok = bl_tokens_consume(unit->tokens);
+        parse_error("%s %d:%d expected expression or nothing after return statement",
+                    unit->filepath,
+                    tok->line,
+                    tok->col);
+      }
     }
 
     tok = bl_tokens_consume(unit->tokens);
@@ -259,6 +270,23 @@ parse_param_var_decl(Parser *self,
   char *ident = strndup(tok->content.as_string, tok->len);
   return (Node *)bl_ast_node_param_var_decl_new(
       unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
+}
+
+Node *
+parse_expr(Parser *self, 
+           Unit *unit,
+           jmp_buf jmp_error)
+{
+  NodeExpr *expr = NULL;
+
+  /* HACK currently accept only numbers */
+  if (bl_tokens_current_is(unit->tokens, BL_SYM_NUM)) {
+    bl_token_t *tok = bl_tokens_consume(unit->tokens);
+    expr = bl_ast_node_expr_new(
+        unit->ast, tok->content.as_int, tok->src_loc, tok->line, tok->col);
+  }
+
+  return (Node *)expr;
 }
 
 bool

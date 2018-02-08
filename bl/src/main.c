@@ -36,8 +36,10 @@ int main(int argc, char *argv[])
 {
   puts("BL Compiler version 0.1.0\n");
 
-  if (argc < 2)
+  if (argc < 2) {
+    bl_warning("nothing to do, no input files, sorry :(");
     return 1;
+  }
 
   /* init actors */
   Actor *module = (Actor *)bl_module_new();
@@ -68,13 +70,11 @@ int main(int argc, char *argv[])
   bl_pipeline_add_stage(pipeline, ast_printer);
 #endif
 
-  bl_log("pipeline start\n");
   if (!bl_pipeline_run(pipeline, module)) {
     Actor *failed = bl_pipeline_get_failed(pipeline);
-    bl_error("%s\n", bl_actor_get_error(failed));
-    bl_error("pipeline run failed\n");
+    bl_error("%s", bl_actor_get_error(failed));
   } else 
-    bl_log("pipeline finished without errors\n");
+    bl_log(ANSI_COLOR_GREEN "DONE" ANSI_COLOR_RESET);
 
   bo_unref(module);
   bo_unref(pipeline);

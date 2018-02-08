@@ -29,9 +29,6 @@
 #include <bobject/containers/array.h>
 #include "node_stmt_impl.h"
 
-static BString *
-to_string(NodeStmt *self);
-
 /* NodeStmt members */
 bo_decl_members_begin(NodeStmt, Node)
 bo_end();
@@ -42,8 +39,6 @@ bo_impl_type(NodeStmt, Node);
 void
 NodeStmtKlass_init(NodeStmtKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string 
-    = (BString *(*)(Node*)) to_string;
 }
 
 /* NodeStmt constructor */
@@ -64,15 +59,5 @@ bo_copy_result
 NodeStmt_copy(NodeStmt *self, NodeStmt *other)
 {
   return BO_NO_COPY;
-}
-
-BString *
-to_string(NodeStmt *self)
-{
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, ">");
-  return ret;
 }
 

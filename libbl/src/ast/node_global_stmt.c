@@ -29,9 +29,6 @@
 #include <bobject/containers/array.h>
 #include "node_global_stmt_impl.h"
 
-static BString *
-to_string(NodeGlobalStmt *self);
-
 /* NodeGlobalStmt members */
 bo_decl_members_begin(NodeGlobalStmt, Node)
 bo_end();
@@ -42,8 +39,6 @@ bo_impl_type(NodeGlobalStmt, Node);
 void
 NodeGlobalStmtKlass_init(NodeGlobalStmtKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string 
-    = (BString *(*)(Node*)) to_string;
 }
 
 /* NodeGlobalStmt constructor */
@@ -66,13 +61,4 @@ NodeGlobalStmt_copy(NodeGlobalStmt *self, NodeGlobalStmt *other)
   return BO_NO_COPY;
 }
 
-BString *
-to_string(NodeGlobalStmt *self)
-{
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, ">");
-  return ret;
-}
 
