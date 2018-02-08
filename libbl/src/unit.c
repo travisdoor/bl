@@ -32,6 +32,7 @@
 /* class Unit */
 bo_decl_params_begin(Unit)
   const char *filepath;
+  BString *src;
 bo_end();
 
 bo_impl_type(Unit, Actor);
@@ -47,6 +48,9 @@ Unit_ctor(Unit *self, UnitParams *p)
   /* constructor */
   bo_parent_ctor(Actor, p);
   self->filepath = strdup(p->filepath);
+
+  if (p->src)
+    self->src = bo_ref(p->src);
 }
 
 void
@@ -67,10 +71,22 @@ Unit_copy(Unit *self, Unit *other)
 
 /* public */
 Unit *
-bl_unit_new(const char *filepath)
+bl_unit_new_file(const char *filepath)
 {
   UnitParams params = {
-    .filepath = filepath
+    .filepath = filepath,
+    .src = NULL
+  };
+  return bo_new(Unit, &params);
+}
+
+Unit *
+bl_unit_new_str(const char *name,
+                BString    *src)
+{
+  UnitParams params = {
+    .filepath = name,
+    .src = src
   };
   return bo_new(Unit, &params);
 }

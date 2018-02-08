@@ -21,7 +21,6 @@ set(HEADER_FILES
         include/bl/parser.h
         include/bl/token_printer.h
         include/bl/unit.h
-        include/bl/domains.h
         include/bl/token.h
         include/bl/tokens.h
         include/bl/ast/node.h
@@ -41,6 +40,7 @@ set(HEADER_FILES_IMPL
         src/pipeline/stage_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
+        src/domains_impl.h
         src/unit_impl.h)
 
 set(SOURCE_FILES 

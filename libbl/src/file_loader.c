@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "file_loader_impl.h"
 #include "unit_impl.h"
-#include "bl/domains.h"
+#include "domains_impl.h"
 #include "bl/bldebug.h"
 
 static bool
@@ -81,7 +81,7 @@ run(FileLoader *self,
 {
   FILE *f = fopen(unit->filepath, "r");
   if (f == NULL) {
-    bl_error("file %s not found\n", unit->filepath);
+    bl_actor_error((Actor *)unit, "file not found %s", unit->filepath);
     return false;
   }
 
@@ -89,7 +89,7 @@ run(FileLoader *self,
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_error("invalid source in file %s\n", unit->filepath);
+    bl_actor_error((Actor *)unit, "invalid source file %s", unit->filepath);
     return false;
   }
 

@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
   Actor *module = (Actor *)bl_module_new();
 
   for (int i = 1; i < argc; i++) {
-    Actor *unit = (Actor *)bl_unit_new(argv[i]);
+    Actor *unit = (Actor *) bl_unit_new_file(argv[i]);
     bl_actor_add(module, unit);
   }
 

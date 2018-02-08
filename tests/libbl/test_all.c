@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   lexer_test.cpp
+// File:   test_all.c
 // Author: Martin Dorazil
 // Date:   8.2.18
 //
@@ -27,23 +27,10 @@
 //*****************************************************************************
 
 #include <gtest/gtest.h>
-#include "bl/bl.h"
 
-class LexerTest : public ::testing::Test
+int
+main(int argc, char **argv)
 {
-protected:
-  void
-  SetUp()
-  {
-  }
-
-  void
-  TearDown()
-  {
-  }
-};
-
-TEST_F(LexerTest, initialization)
-{
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
-

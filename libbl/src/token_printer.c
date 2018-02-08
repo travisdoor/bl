@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include "bl/token_printer.h"
-#include "bl/domains.h"
+#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "unit_impl.h"
 #include "pipeline/stage_impl.h"

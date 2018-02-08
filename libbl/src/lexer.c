@@ -32,7 +32,7 @@
 #include <bobject/containers/array.h>
 #include "bl/lexer.h"
 #include "bl/bldebug.h"
-#include "bl/domains.h"
+#include "domains_impl.h"
 #include "unit_impl.h"
 #include "pipeline/stage_impl.h"
 

@@ -30,7 +30,7 @@
 #include <string.h>
 #include "bl/parser.h"
 #include "bl/ast/node.h"
-#include "bl/domains.h"
+#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "pipeline/stage_impl.h"
 #include "unit_impl.h"

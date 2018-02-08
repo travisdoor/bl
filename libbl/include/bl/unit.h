@@ -41,7 +41,11 @@ bo_decl_type_begin(Unit, Actor)
 bo_end();
 
 extern BO_EXPORT Unit *
-bl_unit_new(const char *filepath);
+bl_unit_new_file(const char *filepath);
+
+extern BO_EXPORT Unit *
+bl_unit_new_str(const char *name,
+                BString    *src);
 
 extern BO_EXPORT Tokens *
 bl_unit_tokens(Unit *self);

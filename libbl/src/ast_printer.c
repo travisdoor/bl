@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "ast_printer_impl.h"
 #include "unit_impl.h"
-#include "bl/domains.h"
+#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "ast/node_impl.h"
 
