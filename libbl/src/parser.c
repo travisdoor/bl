@@ -61,6 +61,11 @@ parse_param_var_decl(Parser *self,
                      Unit *unit,
                      jmp_buf jmp_error);
 
+static Node *
+parse_return_stmt(Parser *self,
+                  Unit *unit,
+                  jmp_buf jmp_error);
+
 static bool
 run(Parser *self,
     Unit   *unit);
@@ -129,6 +134,32 @@ stmt:
 }
 
 Node *
+parse_return_stmt(Parser *self,
+                  Unit *unit,
+                  jmp_buf jmp_error)
+{
+  NodeReturnStmt *rstmt = NULL;
+  if (bl_tokens_current_is(unit->tokens, BL_SYM_RETURN)) {
+    bl_token_t *tok = bl_tokens_consume(unit->tokens);
+    rstmt = bl_ast_node_return_stmt_new(unit->ast, tok->src_loc, tok->line, tok->col);
+
+    /* HACK parse expression here */
+    if (bl_tokens_current_is(unit->tokens, BL_SYM_NUM)) {
+      tok = bl_tokens_consume(unit->tokens); 
+    }
+
+    tok = bl_tokens_consume(unit->tokens);
+    if (tok->sym != BL_SYM_SEMICOLON) {
+      parse_error("%s %d:%d missing semicolon ';' at the end of return statement",
+                  unit->filepath,
+                  tok->line,
+                  tok->col);
+    }
+  }
+  return (Node *)rstmt;
+}
+
+Node *
 parse_stmt(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error)
@@ -143,7 +174,15 @@ parse_stmt(Parser *self,
 
   NodeStmt *stmt = bl_ast_node_stmt_new(unit->ast, tok->src_loc, tok->line, tok->col);
 
-  /* TODO: parse function scope */
+stmt:
+  if (bl_tokens_current_is(unit->tokens, BL_SYM_SEMICOLON)) {
+    bl_tokens_consume(unit->tokens);
+    goto stmt;
+  }
+
+  /* return */
+  bl_node_add_child((Node *)stmt, parse_return_stmt(self, unit, jmp_error));
+
   tok = bl_tokens_consume(unit->tokens);
 
   if (tok->sym != BL_SYM_RBLOCK)

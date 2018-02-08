@@ -145,3 +145,55 @@ TEST_F(ParserTest, ast_func_decl_params)
   node = bo_array_at(bl_node_children(fnode), 3, Node *);
   ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
+
+TEST_F(ParserTest, ast_func_decl_extra_semicolon)
+{
+  const char *src =
+    "void func() {;;;}";
+
+  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_extra_semicolon", src);
+  bl_actor_add(module, unit);
+
+  if (!bl_pipeline_run(pipeline, module)) {
+    auto *failed = bl_pipeline_get_failed(pipeline);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+
+  auto *ast = bl_unit_ast((Unit *)unit);
+  auto *ast_root = bl_ast_get_root(ast);
+
+  Node *node = NULL;
+  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+
+  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
+  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
+}
+
+TEST_F(ParserTest, ast_func_decl_ret)
+{
+  const char *src =
+    "int func() {return 0;}";
+
+  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_ret", src);
+  bl_actor_add(module, unit);
+
+  if (!bl_pipeline_run(pipeline, module)) {
+    auto *failed = bl_pipeline_get_failed(pipeline);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+
+  auto *ast = bl_unit_ast((Unit *)unit);
+  auto *ast_root = bl_ast_get_root(ast);
+
+  Node *node = NULL;
+  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+
+  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
+  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
+
+  node = bo_array_at(bl_node_children(fnode), 0, Node *);
+  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
+}

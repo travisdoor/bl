@@ -39,6 +39,7 @@ BO_BEGIN_DECLS
   nt(FUNC_DECL, "func_decl") \
   nt(GLOBAL_STMT, "global_stmt") \
   nt(STMT, "stmt") \
+  nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
 
 typedef enum {

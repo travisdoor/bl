@@ -28,35 +28,51 @@
 
 #include "ast/node_return_stmt_impl.h"
 
-/* ReturnStmt members */
-bo_decl_members_begin(ReturnStmt, Node)
+/* NodeReturnStmt members */
+
+static BString *
+to_string(NodeReturnStmt *self);
+
+bo_decl_members_begin(NodeReturnStmt, Node)
 bo_end();
 
-bo_impl_type(ReturnStmt, Node);
+bo_impl_type(NodeReturnStmt, Node);
 
-/* ReturnStmt class init */
+/* NodeReturnStmt class init */
 void
-ReturnStmtKlass_init(ReturnStmtKlass *klass)
+NodeReturnStmtKlass_init(NodeReturnStmtKlass *klass)
 {
+  bo_vtbl_cl(klass, Node)->to_string 
+    = (BString *(*)(Node*)) to_string;
 }
 
-/* ReturnStmt constructor */
+/* NodeReturnStmt constructor */
 void
-ReturnStmt_ctor(ReturnStmt *self, ReturnStmtParams *p)
+NodeReturnStmt_ctor(NodeReturnStmt *self, NodeReturnStmtParams *p)
 {
   bo_parent_ctor(Node, p);
 }
 
-/* ReturnStmt destructor */
+/* NodeReturnStmt destructor */
 void
-ReturnStmt_dtor(ReturnStmt *self)
+NodeReturnStmt_dtor(NodeReturnStmt *self)
 {
 }
 
-/* ReturnStmt copy constructor */
+/* NodeReturnStmt copy constructor */
 bo_copy_result
-ReturnStmt_copy(ReturnStmt *self, ReturnStmt *other)
+NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
 {
   return BO_NO_COPY;
+}
+
+BString *
+to_string(NodeReturnStmt *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, ">");
+  return ret;
 }
 

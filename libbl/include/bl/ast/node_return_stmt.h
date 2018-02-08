@@ -35,7 +35,7 @@
 BO_BEGIN_DECLS
 
 /* class declaration */
-bo_decl_type_begin(ReturnStmt, Node)
+bo_decl_type_begin(NodeReturnStmt, Node)
   /* virtuals */
 bo_end();
 
