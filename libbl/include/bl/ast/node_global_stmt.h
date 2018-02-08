@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
 // File:   node_global_stmt.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   8.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,21 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_GLOBAL_STMT_H
-#define BISCUIT_NODE_GLOBAL_STMT_H
+#ifndef BL_NODE_GLOBAL_STMT_H
+#define BL_NODE_GLOBAL_STMT_H
 
-#include <bobject/bobject.h>
-#include "node.h"
-#include "token.h"
+#include "bl/ast/node.h"
 
 /* class declaration */
 bo_decl_type_begin(NodeGlobalStmt, Node)
   /* virtuals */
 bo_end();
 
-/* NodeGlobalStmt constructor parameters */
-bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
-bo_end();
-
-#endif /* end of include guard: BISCUIT_NODE_GLOBAL_STMT_H */
-
+#endif //BL_NODE_GLOBAL_STMT_H

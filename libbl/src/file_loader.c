@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "file_loader_impl.h"
 #include "unit_impl.h"
-#include "domains.h"
+#include "bl/domains.h"
 #include "bl/bldebug.h"
 
 static bool

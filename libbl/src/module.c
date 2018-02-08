@@ -27,7 +27,8 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "module_impl.h"
+#include "bl/module.h"
+#include "pipeline/actor_impl.h"
 
 /* Module members */
 bo_decl_members_begin(Module, Actor)

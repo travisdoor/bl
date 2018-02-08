@@ -37,5 +37,6 @@
 #include "bl/parser.h"
 #include "bl/ast_printer.h"
 #include "bl/unit.h"
+#include "bl/module.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

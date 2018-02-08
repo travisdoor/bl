@@ -16,6 +16,7 @@ find_package(BObject 1.0 REQUIRED)
 
 add_subdirectory(libbl)
 add_subdirectory(bl)
+add_subdirectory(tests)
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")

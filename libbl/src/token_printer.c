@@ -26,11 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "token_printer_impl.h"
-#include "unit_impl.h"
-#include "domains.h"
-#include "tokens.h"
+#include "bl/token_printer.h"
+#include "bl/domains.h"
 #include "bl/bldebug.h"
+#include "unit_impl.h"
+#include "pipeline/stage_impl.h"
 
 /* class TokenPrinter */
 static bool

@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/string.h>
-#include "node_func_decl.h"
+#include "node_func_decl_impl.h"
 
 static BString *
 to_string(NodeFuncDecl *self);

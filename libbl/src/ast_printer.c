@@ -29,8 +29,9 @@
 #include <stdio.h>
 #include "ast_printer_impl.h"
 #include "unit_impl.h"
-#include "domains.h"
+#include "bl/domains.h"
 #include "bl/bldebug.h"
+#include "ast/node_impl.h"
 
 static bool
 run(AstPrinter *self,

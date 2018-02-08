@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   token_printer_impl.h
+// File:   lexer_test.cpp
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   8.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -25,11 +25,3 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //*****************************************************************************
-
-#ifndef TOKEN_PRINTER_IMPL_H_NCMD0DIW
-#define TOKEN_PRINTER_IMPL_H_NCMD0DIW
-
-#include "bl/token_printer.h"
-#include "pipeline/stage_impl.h"
-
-#endif /* end of include guard: TOKEN_PRINTER_IMPL_H_NCMD0DIW */

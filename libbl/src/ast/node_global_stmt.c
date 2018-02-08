@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "node_global_stmt.h"
+#include "node_global_stmt_impl.h"
 
 static BString *
 to_string(NodeGlobalStmt *self);

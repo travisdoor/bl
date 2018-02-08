@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   node.h
+// File:   node_func_decl.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   8.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,60 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#ifndef BL_NODE_FUNC_DECL_H
+#define BL_NODE_FUNC_DECL_H
 
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
-
-#define NTYPES\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "stmt") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  NTYPES 
-#undef nt
-} bl_node_e;
-
-static char *bl_node_strings[] = {
-#define nt(tok, str) str,
-  NTYPES 
-#undef nt
-};
-
-#undef SYMBOLS
+#include "bl/ast/node.h"
 
 /* class declaration */
-bo_decl_type_begin(Node, BObject)
+bo_decl_type_begin(NodeFuncDecl, Node)
   /* virtuals */
-  BString *(*to_string)(Node *);
 bo_end();
 
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
-
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  /* not owning, references only!!! */
-  BArray *nodes;
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
-
-bool
-bl_node_add_child(Node *self,
-                  Node *child);
-
-#endif /* end of include guard: BISCUIT_NODE_H */
-
+#endif //BL_NODE_FUNC_DECL_H

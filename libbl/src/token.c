@@ -26,7 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "token.h"
+#include "bl/token.h"
+
+char *bl_sym_strings[] = {
+#define sm(tok, str) str,
+  BL_SYMBOLS_LIST
+#undef sm
+};
 
 void
 bl_token_init(bl_token_t *token,

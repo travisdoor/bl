@@ -28,11 +28,12 @@
 
 #include <setjmp.h>
 #include <string.h>
-#include "parser_impl.h"
-#include "domains.h"
-#include "unit_impl.h"
+#include "bl/parser.h"
+#include "bl/ast/node.h"
+#include "bl/domains.h"
 #include "bl/bldebug.h"
-#include "ast/ast.h"
+#include "pipeline/stage_impl.h"
+#include "unit_impl.h"
 
 #define parse_error(format, ...) \
   { \

@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "node_param_var_decl.h"
+#include "node_param_var_decl_impl.h"
 
 static BString *
 to_string(NodeParamVarDecl *self);

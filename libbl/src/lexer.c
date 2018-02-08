@@ -30,11 +30,11 @@
 #include <string.h>
 #include <stdarg.h>
 #include <bobject/containers/array.h>
-#include "lexer_impl.h"
+#include "bl/lexer.h"
 #include "bl/bldebug.h"
+#include "bl/domains.h"
 #include "unit_impl.h"
-#include "domains.h"
-#include "tokens.h"
+#include "pipeline/stage_impl.h"
 
 /* class Lexer */
 #define is_intend_c(c) \

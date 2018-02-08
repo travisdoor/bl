@@ -32,71 +32,71 @@
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
 #include <bobject/containers/array.h>
-#include "token.h"
+#include "bl/token.h"
 
 /* class Tokens declaration */
 bo_decl_type_begin(Tokens, BObject)
   /* virtuals */
 bo_end();
 
-Tokens *
+extern BO_EXPORT Tokens *
 bl_tokens_new(void);
 
-void
+extern BO_EXPORT void
 bl_tokens_push(Tokens *self, bl_token_t *t);
 
-bl_token_t *
+extern BO_EXPORT bl_token_t *
 bl_tokens_peek(Tokens *self);
 
-bl_token_t *
+extern BO_EXPORT bl_token_t *
 bl_tokens_peek_2nd(Tokens *self);
 
-bl_token_t *
+extern BO_EXPORT bl_token_t *
 bl_tokens_peek_nth(Tokens *self,
                    size_t  n);
 
-bl_token_t *
+extern BO_EXPORT bl_token_t *
 bl_tokens_consume(Tokens *self);
 
-bl_token_t **
+extern BO_EXPORT bl_token_t **
 bl_tokens_consume_n(Tokens *self,
                     int     n);
 
-bl_token_t *
+extern BO_EXPORT bl_token_t *
 bl_tokens_consume_if(Tokens  *self,
                      bl_sym_e sym);
 
-bool
+extern BO_EXPORT bool
 bl_tokens_current_is(Tokens  *self,
                      bl_sym_e sym);
 
-bool
+extern BO_EXPORT bool
 bl_tokens_next_is(Tokens  *self,
                   bl_sym_e sym);
 
-bool
+extern BO_EXPORT bool
 bl_tokens_current_is_not(Tokens  *self,
                          bl_sym_e sym);
 
-bool
+extern BO_EXPORT bool
 bl_tokens_next_is_not(Tokens  *self,
                       bl_sym_e sym);
 
-bool
+extern BO_EXPORT bool
 bl_tokens_is_seq(Tokens *self,
                  int     cnt,
                  ...);
 
-void
+extern BO_EXPORT void
 bl_tokens_resert_iter(Tokens *self);
 
-void
+extern BO_EXPORT void
 bl_tokens_set_marker(Tokens *self);
 
-void
+extern BO_EXPORT void
 bl_tokens_back_to_marker(Tokens *self);
 
-BArray *
+extern BO_EXPORT BArray *
 bl_tokens_get_all(Tokens *self);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

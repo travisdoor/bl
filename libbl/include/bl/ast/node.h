@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   node_stmt.h
+// File:   node.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   8.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,21 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_STMT_H
-#define BISCUIT_NODE_STMT_H
+#ifndef BL_NODE_H
+#define BL_NODE_H
 
 #include <bobject/bobject.h>
-#include "node.h"
-#include "token.h"
+#include <bobject/containers/string.h>
+
+#define BL_NTYPE_LIST\
+  nt(FUNC_DECL, "func_decl") \
+  nt(GLOBAL_STMT, "global_stmt") \
+  nt(STMT, "stmt") \
+  nt(PARAM_VAR_DECL, "param_var_decl") \
+
+typedef enum {
+#define nt(tok, str) BL_NODE_##tok,
+  BL_NTYPE_LIST
+#undef nt
+} bl_node_e;
 
 /* class declaration */
-bo_decl_type_begin(NodeStmt, Node)
+bo_decl_type_begin(Node, BObject)
   /* virtuals */
+  BString *(*to_string)(Node *);
 bo_end();
 
-/* NodeStmt constructor parameters */
-bo_decl_params_with_base_begin(NodeStmt, Node)
-bo_end();
+extern BO_EXPORT bool
+bl_node_add_child(Node *self,
+                  Node *child);
 
-#endif /* end of include guard: BISCUIT_NODE_STMT_H */
-
+#endif //BL_NODE_H

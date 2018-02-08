@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module_impl.h
+// File:   node_param_var_decl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   8.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,11 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef MODULE_IMPL_H_NYJP0RI2
-#define MODULE_IMPL_H_NYJP0RI2
+#ifndef BL_NODE_PARAM_VAR_DECL_H
+#define BL_NODE_PARAM_VAR_DECL_H
 
-#include "bl/module.h"
-#include "pipeline/actor_impl.h"
+#include "bl/ast/node.h"
 
-#endif /* end of include guard: BL_MODULE_H */
+/* class declaration */
+bo_decl_type_begin(NodeParamVarDecl, Node)
+  /* virtuals */
+bo_end();
 
+#endif //BL_NODE_PARAM_VAR_DECL_H

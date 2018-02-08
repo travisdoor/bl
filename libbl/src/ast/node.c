@@ -26,8 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "node.h"
+#include "node_impl.h"
 #include "bl/bldebug.h"
+
+char *bl_node_strings[] = {
+#define nt(tok, str) str,
+  BL_NTYPE_LIST
+#undef nt
+};
 
 bo_impl_type(Node, BObject);
 
