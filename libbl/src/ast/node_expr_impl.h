@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   bldebug.h
+// File:   node_expr.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,43 +26,17 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BLDEBUG_H_VYI9AXGT
-#define BLDEBUG_H_VYI9AXGT
+#ifndef BISCUIT_NODE_EXPR_H
+#define BISCUIT_NODE_EXPR_H
 
-#include <stdlib.h>
-#include <stdio.h>
+#include "bl/ast/node_expr.h"
+#include "node_impl.h"
+#include "bl/token.h"
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
+/* NodeExpr constructor parameters */
+bo_decl_params_with_base_begin(NodeExpr, Node)
+  int num;
+bo_end();
 
-#define bl_assert(expr, format, ...) \
-    if ((expr) == 0) { \
-        fprintf(stderr, ANSI_COLOR_RED "[ASSERT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-        abort(); \
-    }
-
-#define bl_abort(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED "[ABORT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-        abort(); \
-    }
-
-#define bl_error(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED "[ERROR] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-    }
-
-#define bl_warning(format, ...) \
-    { \
-        fprintf(stdout, ANSI_COLOR_YELLOW "[WARNING] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-    }
-
-#define bl_log(format, ...) \
-    { \
-        fprintf(stdout, format "\n", ##__VA_ARGS__); \
-    }
-
-#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
+#endif /* end of include guard: BISCUIT_NODE_EXPR_H */
 

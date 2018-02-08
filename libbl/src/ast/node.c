@@ -35,13 +35,16 @@ char *bl_node_strings[] = {
 #undef nt
 };
 
+static BString *
+to_string(Node *self);
+
 bo_impl_type(Node, BObject);
 
 /* Node class init */
 void
 NodeKlass_init(NodeKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string = NULL;
+  bo_vtbl_cl(klass, Node)->to_string = to_string;
 }
 
 /* Node constructor */
@@ -93,4 +96,14 @@ BArray *
 bl_node_children(Node *self)
 {
   return self->nodes;
+}
+
+BString *
+to_string(Node *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, ">");
+  return ret;
 }

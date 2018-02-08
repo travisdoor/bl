@@ -29,10 +29,12 @@
 #include <bobject/containers/array.h>
 #include "bl/ast/ast.h"
 #include "ast/node_impl.h"
+#include "ast/node_expr_impl.h"
 #include "ast/node_stmt_impl.h"
 #include "ast/node_param_var_decl_impl.h"
 #include "ast/node_func_decl_impl.h"
 #include "ast/node_global_stmt_impl.h"
+#include "ast/node_return_stmt_impl.h"
 
 /* class Ast */
 static void *
@@ -181,4 +183,38 @@ bl_ast_node_param_var_decl_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeParamVarDecl, &p));
 }
 
+NodeReturnStmt *
+bl_ast_node_return_stmt_new(Ast        *self,
+                            const char *generated_from,
+                            int         line,
+                            int         col)
+{
+
+  NodeReturnStmtParams p = {
+    .base.type = BL_NODE_RETURN_STMT,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+  };
+  
+  return save_to_cache(self, bo_new(NodeReturnStmt, &p));
+}
+
+NodeExpr *
+bl_ast_node_expr_new(Ast        *self,
+                     int         num,  // TEST
+                     const char *generated_from,
+                     int         line,
+                     int         col)
+{
+  NodeExprParams p = {
+    .base.type = BL_NODE_EXPR,
+    .base.generated_from = generated_from, 
+    .base.line = line, 
+    .base.col = col,
+    .num = num
+  };
+  
+  return save_to_cache(self, bo_new(NodeExpr, &p));
+}
 

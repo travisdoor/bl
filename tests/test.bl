@@ -1,10 +1,11 @@
 // this is testing script
 
 int sum(int a, int b) {
-  // return 0;
+  return 0;
 }
 
 int second(int hello) {
+  return;
 }
 
 int third(int hello, 

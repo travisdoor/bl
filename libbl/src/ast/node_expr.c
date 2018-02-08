@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   bldebug.h
+// File:   node_expr.c
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   03/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,43 +26,40 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BLDEBUG_H_VYI9AXGT
-#define BLDEBUG_H_VYI9AXGT
+#include <bobject/containers/array.h>
+#include "node_expr_impl.h"
 
-#include <stdlib.h>
-#include <stdio.h>
+/* NodeExpr members */
+bo_decl_members_begin(NodeExpr, Node)
+  int num;
+bo_end();
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
+bo_impl_type(NodeExpr, Node);
 
-#define bl_assert(expr, format, ...) \
-    if ((expr) == 0) { \
-        fprintf(stderr, ANSI_COLOR_RED "[ASSERT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-        abort(); \
-    }
+/* NodeExpr class init */
+void
+NodeExprKlass_init(NodeExprKlass *klass)
+{
+}
 
-#define bl_abort(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED "[ABORT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-        abort(); \
-    }
+/* NodeExpr constructor */
+void
+NodeExpr_ctor(NodeExpr *self, NodeExprParams *p)
+{
+  bo_parent_ctor(Node, p);
+  self->num = p->num;
+}
 
-#define bl_error(format, ...) \
-    { \
-        fprintf(stderr, ANSI_COLOR_RED "[ERROR] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-    }
+/* NodeExpr destructor */
+void
+NodeExpr_dtor(NodeExpr *self)
+{
+}
 
-#define bl_warning(format, ...) \
-    { \
-        fprintf(stdout, ANSI_COLOR_YELLOW "[WARNING] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
-    }
-
-#define bl_log(format, ...) \
-    { \
-        fprintf(stdout, format "\n", ##__VA_ARGS__); \
-    }
-
-#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
+/* NodeExpr copy constructor */
+bo_copy_result
+NodeExpr_copy(NodeExpr *self, NodeExpr *other)
+{
+  return BO_NO_COPY;
+}
 
