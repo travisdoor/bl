@@ -31,6 +31,8 @@
 
 #include <bobject/bobject.h>
 #include "bl/pipeline/actor.h"
+#include "bl/tokens.h"
+#include "bl/ast/ast.h"
 
 BO_BEGIN_DECLS
 /* class Unit declaration */
@@ -40,6 +42,19 @@ bo_end();
 
 extern BO_EXPORT Unit *
 bl_unit_new(const char *filepath);
+
+extern BO_EXPORT Tokens *
+bl_unit_tokens(Unit *self);
+
+extern BO_EXPORT Ast*
+bl_unit_ast(Unit *self);
+
+extern BO_EXPORT const char*
+bl_unit_src_file(Unit *self);
+
+extern BO_EXPORT const char*
+bl_unit_src(Unit *self);
+
 BO_END_DECLS
 
 #endif /* end of include guard: UNIT_H_IDHOJTNW */

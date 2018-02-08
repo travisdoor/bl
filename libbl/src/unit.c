@@ -87,3 +87,14 @@ bl_unit_src(Unit *self)
   return bo_string_get(self->src);
 }
 
+Tokens *
+bl_unit_tokens(Unit *self)
+{
+  return self->tokens;
+}
+
+Ast *
+bl_unit_ast(Unit *self)
+{
+  return self->ast;
+}
