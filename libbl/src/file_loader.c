@@ -95,8 +95,9 @@ run(FileLoader *self,
 
   fseek(f, 0, SEEK_SET);
 
-  unit->src = bo_string_new(fsize);
-  fread((char *)bo_string_get(unit->src), fsize, 1, f);
+  unit->src = malloc(sizeof(char) * (fsize + 1));
+  fread(unit->src, fsize, 1, f);
+  unit->src[fsize] = '\0';
   fclose(f);
   return true;
 }

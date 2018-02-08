@@ -35,7 +35,6 @@
 BO_BEGIN_DECLS
 #define BL_SYMBOLS_LIST \
   sm(EOF, "end") \
-  sm(LINE_COMMENT, "line_comment") \
   sm(IDENT, "identifier") \
   sm(STRING, "string") \
   sm(NUM, "number") \

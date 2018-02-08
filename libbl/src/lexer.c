@@ -136,7 +136,7 @@ run(Lexer *self,
   };
 
   cursor_t cur = {
-    .iter = (char *)bo_string_get(unit->src),
+    .iter = unit->src,
     .line = 1,
     .col = 1
   };

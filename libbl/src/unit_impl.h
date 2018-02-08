@@ -29,7 +29,6 @@
 #ifndef UNIT_H_OEBBIZQU
 #define UNIT_H_OEBBIZQU
 
-#include <bobject/containers/string.h>
 #include "bl/unit.h"
 #include "pipeline/actor_impl.h"
 
@@ -39,7 +38,7 @@ bo_decl_members_begin(Unit, Actor)
   /* source file name with path */
   char *filepath;
   /* source data */
-  BString *src;
+  char *src;
   /* output of lexer */
   Tokens  *tokens;
   /* abstract syntax tree as output of parser */

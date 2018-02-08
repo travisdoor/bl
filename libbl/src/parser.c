@@ -112,7 +112,7 @@ parse_global_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error)
 {
-  NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, bo_string_get(unit->src), 1, 0);
+  NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, unit->src, 1, 0);
 stmt:
   if (!bl_node_add_child((Node *)gstmt, parse_func_decl(self, unit, jmp_error))) {
     bl_token_t *tok = bl_tokens_peek(unit->tokens);

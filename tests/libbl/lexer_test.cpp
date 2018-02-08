@@ -29,21 +29,59 @@
 #include <gtest/gtest.h>
 #include "bl/bl.h"
 
+const char *src =
+  "// "
+  "identifier "
+  "\"string\" "
+  "0123456789 "
+  "return "
+  "if "
+  "else "
+  "extern "
+  "namespace "
+  "class "
+  "struct "
+  "{}[](),;=/";
+
 class LexerTest : public ::testing::Test
 {
 protected:
   void
   SetUp()
   {
+    module = (Actor *)bl_module_new();
+    pipeline = bl_pipeline_new();
+
+    Stage *lexer = (Stage *)bl_lexer_new();
+    bl_pipeline_add_stage(pipeline, lexer);
   }
 
   void
   TearDown()
   {
+    bo_unref(module);
+    bo_unref(pipeline);
   }
+
+  Pipeline *pipeline;
+  Actor *module;
 };
 
 TEST_F(LexerTest, initialization)
 {
+  Actor *unit = (Actor *) bl_unit_new_str("_test_", src);
+  bl_actor_add(module, unit);
+
+  ASSERT_TRUE(bl_pipeline_run(pipeline, module));
+
+  Tokens *tokens = bl_unit_tokens((Unit *)unit);
+  bl_token_t *t;
+
+  t = bl_tokens_consume(tokens);
+  ASSERT_EQ(t->sym, BL_SYM_IDENT);
+
+  t = bl_tokens_consume(tokens);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_STRING);
+  ASSERT_FALSE(strncmp(t->content.as_string, "string", 6));
 }
 
