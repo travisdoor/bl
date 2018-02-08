@@ -37,7 +37,6 @@ set(HEADER_FILES_IMPL
         src/ast/node_param_var_decl_impl.h
         src/ast/node_stmt_impl.h
         src/pipeline/actor_impl.h
-        src/pipeline/stage_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
         src/domains_impl.h

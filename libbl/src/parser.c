@@ -30,9 +30,9 @@
 #include <string.h>
 #include "bl/parser.h"
 #include "bl/ast/node.h"
+#include "bl/pipeline/stage.h"
 #include "domains_impl.h"
 #include "bl/bldebug.h"
-#include "pipeline/stage_impl.h"
 #include "unit_impl.h"
 
 #define parse_error(format, ...) \
@@ -239,7 +239,7 @@ run(Parser *self,
   bo_unref(unit->ast);
   unit->ast = bl_ast_new();
   bl_ast_set_root(unit->ast, parse_global_stmt(self, unit, jmp_error));
-  bl_log("* parsing done\n");
+//  bl_log("* parsing done\n");
 
   return true;
 }

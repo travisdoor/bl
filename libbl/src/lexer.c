@@ -32,9 +32,9 @@
 #include <bobject/containers/array.h>
 #include "bl/lexer.h"
 #include "bl/bldebug.h"
+#include "bl/pipeline/stage.h"
 #include "domains_impl.h"
 #include "unit_impl.h"
-#include "pipeline/stage_impl.h"
 
 /* class Lexer */
 #define is_intend_c(c) \
@@ -227,7 +227,7 @@ run(Lexer *self,
   }
   tok.sym = BL_SYM_EOF;
   bl_tokens_push(unit->tokens, &tok);
-  bl_log("* lexing done\n");
+//  bl_log("* lexing done\n");
   return true;
 }
 

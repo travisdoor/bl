@@ -30,7 +30,7 @@
 #define AST_PRINTER_IMPL_H_RF3YJZZ8
 
 #include "bl/ast_printer.h"
-#include "pipeline/stage_impl.h"
+#include "bl/pipeline/stage.h"
 
 /* AstPrinter members */
 bo_decl_members_begin(AstPrinter, Stage)

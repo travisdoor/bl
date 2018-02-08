@@ -52,11 +52,8 @@ protected:
     module = (Actor *)bl_module_new();
     pipeline = bl_pipeline_new();
 
-    Stage *lexer = (Stage *)bl_lexer_new();
+    auto *lexer = (Stage *)bl_lexer_new();
     bl_pipeline_add_stage(pipeline, lexer);
-
-    Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
-    bl_pipeline_add_stage(pipeline, token_printer);
   }
 
   void
@@ -70,9 +67,9 @@ protected:
   Actor *module;
 };
 
-TEST_F(LexerTest, initialization)
+TEST_F(LexerTest, symbol_parsing)
 {
-  Actor *unit = (Actor *) bl_unit_new_str("_test_", src);
+  auto *unit = (Actor *) bl_unit_new_str("_test_", src);
   bl_actor_add(module, unit);
 
   ASSERT_TRUE(bl_pipeline_run(pipeline, module));

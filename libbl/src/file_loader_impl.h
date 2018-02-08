@@ -30,7 +30,7 @@
 #define FILE_LOADER_IMPL_H_SYEAKB2K
 
 #include "bl/file_loader.h"
-#include "pipeline/stage_impl.h"
+#include "bl/pipeline/stage.h"
 
 /* FileLoader members */
 bo_decl_members_begin(FileLoader, Stage)

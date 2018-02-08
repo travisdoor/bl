@@ -46,6 +46,11 @@ bo_decl_type_begin(Stage, BObject)
    */
   int (*domain)(Stage*);
 bo_end();
+
+/* Stage members */
+bo_decl_members_begin(Stage, BObject)
+bo_end();
+
 BO_END_DECLS
 
 #endif /* end of include guard: STAGE_H_OGZN04CD */
