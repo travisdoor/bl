@@ -1,15 +1,1 @@
-- main method
-- expressions (assignment, method call)
-
-- type checking in parser
-- name collision checking in parser
-- better error handling in parser
-- anything after return in current function scope can be ignored
-
-Data types:
-  bool
-  byte
-  float
-  double
-  int
-
+* add lexer unit testing
