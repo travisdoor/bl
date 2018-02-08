@@ -3,56 +3,20 @@ project(bl VERSION 0.1.0 LANGUAGES C CXX)
 
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
-set(SOURCE_FILES 
-  src/pipeline/stage.h 
-  src/pipeline/stage.c
-  src/pipeline/actor.h 
-  src/pipeline/actor.c
-  src/pipeline/pipeline.h 
-  src/pipeline/pipeline.c
-  src/main.c
-  src/bldebug.h
-  src/lexer.c
-  src/lexer.h 
-  src/module.c
-  src/tokens.c
-  src/tokens.h 
-  src/file_loader.c
-  src/file_loader.h 
-  src/ast_printer.c
-  src/ast_printer.h 
-  src/module.h 
-  src/domains.h 
-  src/token.h
-  src/token.c
-  src/unit.c
-  src/unit.h 
-  src/parser.h 
-  src/parser.c
-  src/ast/ast.c
-  src/ast/ast.h
-  src/ast/node.h
-  src/ast/node.c
-  src/ast/node_param_var_decl.h
-  src/ast/node_param_var_decl.c
-  src/ast/node_func_decl.h
-  src/ast/node_func_decl.c
-  src/ast/node_global_stmt.h
-  src/ast/node_global_stmt.c
-  src/ast/node_stmt.h
-  src/ast/node_stmt.c
-  src/token_printer.h 
-  src/token_printer.c)
+# Set a default build type if none was specified
+set(DEFAULT_BUILD_TYPE "Release")
 
-add_executable(bl ${SOURCE_FILES})
-
-target_include_directories(bl PUBLIC include)
-target_include_directories(bl PRIVATE src)
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+    set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
+endif()
 
 find_package(BObject 1.0 REQUIRED)
-target_link_libraries(bl bobject)
+
+add_subdirectory(libbl)
+add_subdirectory(bl)
+add_subdirectory(tests)
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
@@ -61,3 +25,4 @@ else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces")
 endif()
+

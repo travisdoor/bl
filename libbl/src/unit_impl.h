@@ -1,0 +1,51 @@
+//*****************************************************************************
+// bl
+//
+// File:   unit.h
+// Author: Martin Dorazil
+// Date:   26.1.18
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//*****************************************************************************
+
+#ifndef UNIT_H_OEBBIZQU
+#define UNIT_H_OEBBIZQU
+
+#include <bobject/containers/string.h>
+#include "bl/unit.h"
+#include "pipeline/actor_impl.h"
+#include "bl/tokens.h"
+#include "bl/ast/ast.h"
+
+/* class Unit object members */
+bo_decl_members_begin(Unit, Actor)
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  /* source data */
+  BString *src;
+  /* output of lexer */
+  Tokens  *tokens;
+  /* abstract syntax tree as output of parser */
+  Ast     *ast;
+bo_end();
+
+#endif /* end of include guard: UNIT_H_FC53HXPA */
