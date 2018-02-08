@@ -30,7 +30,7 @@
 #include "bl/bl.h"
 
 const char *src =
-  "// "
+  "// \n"
   "identifier "
   "\"string\" "
   "0123456789 "
@@ -54,6 +54,9 @@ protected:
 
     Stage *lexer = (Stage *)bl_lexer_new();
     bl_pipeline_add_stage(pipeline, lexer);
+
+    Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
+    bl_pipeline_add_stage(pipeline, token_printer);
   }
 
   void
@@ -81,7 +84,29 @@ TEST_F(LexerTest, initialization)
   ASSERT_EQ(t->sym, BL_SYM_IDENT);
 
   t = bl_tokens_consume(tokens);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_STRING);
+  ASSERT_EQ(t->sym, BL_SYM_STRING);
   ASSERT_FALSE(strncmp(t->content.as_string, "string", 6));
+
+  t = bl_tokens_consume(tokens);
+  ASSERT_EQ(t->sym, BL_SYM_NUM);
+  ASSERT_EQ(t->content.as_int, 123456789);
+
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RETURN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IF);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ELSE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EXTERN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NAMESPACE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_CLASS);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_STRUCT);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBLOCK);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RBLOCK);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBRACKET);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RBRACKET);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LPAREN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RPAREN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_COMMA);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SEMICOLON);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ASIGN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SLASH);
 }
 

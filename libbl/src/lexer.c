@@ -298,6 +298,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_IF, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
     return true;
   }
 
@@ -306,6 +307,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_ELSE, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
     return true;
   }
 
@@ -314,6 +316,15 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_RETURN, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
+    return true;
+  }
+
+  if (strncmp(cur->iter, "class", len) == 0) {
+    bl_token_init(&tok, BL_SYM_CLASS, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
     return true;
   }
 
@@ -322,6 +333,15 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_EXTERN, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
+    return true;
+  }
+
+  if (strncmp(cur->iter, "struct", len) == 0) {
+    bl_token_init(&tok, BL_SYM_STRUCT, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
     return true;
   }
 
@@ -330,6 +350,7 @@ scan_ident(Lexer *self,
     bl_token_init(&tok, BL_SYM_NAMESPACE, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
     return true;
   }
 
