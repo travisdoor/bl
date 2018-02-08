@@ -4,17 +4,3 @@ int sum(int a, int b) {
   return 0;
 }
 
-int second(int hello) {
-  return;
-}
-
-int third(int hello, 
-          int a, 
-          int b, 
-          int c, 
-          int d) {
-}
-
-void another(float hello, double d) {
-}
-

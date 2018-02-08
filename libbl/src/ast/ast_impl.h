@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module.c
+// File:   ast_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   6.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,58 +26,16 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef AST_IMPL_H_WM5H6RFD
+#define AST_IMPL_H_WM5H6RFD
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
-bo_end();
+#include "bl/ast/ast.h"
+#include "ast/node_impl.h"
+#include "ast/node_expr_impl.h"
+#include "ast/node_stmt_impl.h"
+#include "ast/node_param_var_decl_impl.h"
+#include "ast/node_func_decl_impl.h"
+#include "ast/node_global_stmt_impl.h"
+#include "ast/node_return_stmt_impl.h"
 
-bo_impl_type(Module, Actor);
-
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
-{
-}
-
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-
+#endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

@@ -90,30 +90,27 @@ run_domain(Pipeline *self,
     return false;
 
   const size_t c = bo_array_size(actor->actors);
-  if (c == 0) {
-    const size_t cs = bo_array_size(self->stages[domain]);
-    Stage *stage = NULL;
-    for (int i = 0; i < cs; i++) {
-      stage = bo_array_at(self->stages[domain], i, Stage *);
-      /* IDEA: state can be managed inside every stage */
-      if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
-        actor->state = BL_ACTOR_STATE_FAILED;
-        self->failed = actor;
-        return false;
-      }
-
-      actor->state = BL_ACTOR_STATE_FINISHED;
-    }
-
-    return true;
-  } 
 
   /* not leaf */
   for (int i = 0; i < c; i++) {
     if (!run_domain(self, bo_array_at(actor->actors, i, Actor *), domain+1)) {
-        actor->state = BL_ACTOR_STATE_FAILED;
-        return false;
+      actor->state = BL_ACTOR_STATE_FAILED;
+      return false;
     }
+  }
+
+  const size_t cs = bo_array_size(self->stages[domain]);
+  Stage *stage = NULL;
+  for (int i = 0; i < cs; i++) {
+    stage = bo_array_at(self->stages[domain], i, Stage *);
+    /* IDEA: state can be managed inside every stage */
+    if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
+      actor->state = BL_ACTOR_STATE_FAILED;
+      self->failed = actor;
+      return false;
+    }
+
+    actor->state = BL_ACTOR_STATE_FINISHED;
   }
 
   return true;

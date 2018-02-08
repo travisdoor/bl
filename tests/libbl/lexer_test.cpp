@@ -49,7 +49,7 @@ protected:
   void
   SetUp()
   {
-    module = (Actor *)bl_module_new();
+    module = (Actor *)bl_module_new("test_module");
     pipeline = bl_pipeline_new();
 
     auto *lexer = (Stage *)bl_lexer_new();

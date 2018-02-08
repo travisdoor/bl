@@ -27,14 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
+#include "ast/ast_impl.h"
 
 /* class Ast */
 static void *

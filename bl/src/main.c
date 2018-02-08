@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
   }
 
   /* init actors */
-  Actor *module = (Actor *)bl_module_new();
+  Actor *module = (Actor *)bl_module_new("testing_module");
 
   for (int i = 1; i < argc; i++) {
     Actor *unit = (Actor *) bl_unit_new_file(argv[i]);
@@ -69,6 +69,9 @@ int main(int argc, char *argv[])
   Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
   bl_pipeline_add_stage(pipeline, ast_printer);
 #endif
+
+  Stage *llvm = (Stage *)bl_llvm_backend_new();
+  bl_pipeline_add_stage(pipeline, llvm);
 
   if (!bl_pipeline_run(pipeline, module)) {
     Actor *failed = bl_pipeline_get_failed(pipeline);

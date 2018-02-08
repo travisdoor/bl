@@ -37,7 +37,7 @@
 
 #define parse_error(format, ...) \
   { \
-    bl_actor_error((Actor *)unit, (format), ##__VA_ARGS__); \
+    bl_actor_error((Actor *)unit, ("(parser) " format), ##__VA_ARGS__); \
     longjmp(jmp_error, 1); \
   } 
 

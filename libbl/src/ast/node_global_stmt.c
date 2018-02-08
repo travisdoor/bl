@@ -29,10 +29,6 @@
 #include <bobject/containers/array.h>
 #include "node_global_stmt_impl.h"
 
-/* NodeGlobalStmt members */
-bo_decl_members_begin(NodeGlobalStmt, Node)
-bo_end();
-
 bo_impl_type(NodeGlobalStmt, Node);
 
 /* NodeGlobalStmt class init */
