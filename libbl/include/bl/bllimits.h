@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   node_func_decl.h
+// File:   bllimits.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,24 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_FUNC_DECL_H
-#define BISCUIT_NODE_FUNC_DECL_H
+#ifndef BLLIMITS_H_YMBRH9TG
+#define BLLIMITS_H_YMBRH9TG
 
-#include "bl/ast/node_func_decl.h"
-#include "node_impl.h"
-#include "bl/token.h"
+/*
+ * Maximum count of parameters passed into function parameter list.
+ */
+#define BL_MAX_FUNC_PARAM_COUNT 32
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
-
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
-
-#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
-
+#endif /* end of include guard: BLLIMITS_H_YMBRH9TG */

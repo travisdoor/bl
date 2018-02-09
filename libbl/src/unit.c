@@ -48,6 +48,12 @@ Unit_ctor(Unit *self, UnitParams *p)
   /* constructor */
   bo_parent_ctor(Actor, p);
   self->filepath = strdup(p->filepath);
+  /* TODO: backslash on windows */
+  self->name = strrchr(self->filepath, '/');
+  if (self->name == NULL)
+    self->name = self->filepath;
+  else
+    self->name++;
 
   if (p->src)
     self->src = strdup(p->src);
@@ -114,3 +120,10 @@ bl_unit_ast(Unit *self)
 {
   return self->ast;
 }
+
+const char*
+bl_unit_name(Unit *self)
+{
+  return self->name;
+}
+

@@ -37,6 +37,7 @@ bo_decl_members_begin(Unit, Actor)
   /* members */
   /* source file name with path */
   char *filepath;
+  char *name;
   /* source data */
   char *src;
   /* output of lexer */

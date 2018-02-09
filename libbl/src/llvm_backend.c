@@ -36,6 +36,8 @@
 #include "bl/module.h"
 #include "bl/pipeline/stage.h"
 #include "bl/bldebug.h"
+#include "bl/type_table.h"
+#include "bl/bllimits.h"
 #include "domains_impl.h"
 #include "module_impl.h"
 #include "unit_impl.h"
@@ -55,6 +57,15 @@ run(LlvmBackend *self,
 
 static int
 domain(LlvmBackend *self);
+
+static LLVMTypeRef
+to_type(const char *t);
+
+static int  
+gen_func_params(Module       *mod,
+                NodeFuncDecl *node,
+                LLVMTypeRef  *out,
+                jmp_buf       jmp_error);
 
 static void
 gen_func(Module       *mod,
@@ -77,6 +88,8 @@ bo_end();
 /* class LlvmBackend object members */
 bo_decl_members_begin(LlvmBackend, Stage)
   /* members */
+  /*Module *tmp_mod;*/
+  /*jmp_buf tmp_jmp_error;*/
 bo_end();
 
 bo_impl_type(LlvmBackend, Stage);
@@ -125,7 +138,7 @@ run(LlvmBackend *self,
   Node *root = bl_ast_get_root(u->ast);
 
   /* TODO: solve only one unit for now */
-  LLVMModuleRef llvm_mod = LLVMModuleCreateWithName(mod->name);
+  LLVMModuleRef llvm_mod = LLVMModuleCreateWithName(u->name);
   
 
   switch (root->type) {
@@ -137,9 +150,7 @@ run(LlvmBackend *self,
   }
 
   char *error = NULL;
-  LLVMVerifyModule(llvm_mod, LLVMAbortProcessAction, &error);
-  
-  if (strlen(error)) {
+  if (LLVMVerifyModule(llvm_mod, LLVMReturnStatusAction, &error)) {
     bl_actor_error((Actor *)mod, "(llvm_backend) not verified with error %s", error);
     LLVMDisposeMessage(error);
     LLVMDisposeModule(llvm_mod);
@@ -166,22 +177,67 @@ domain(LlvmBackend *self)
   return BL_DOMAIN_MODULE;
 }
 
+LLVMTypeRef
+to_type(const char *t)
+{
+  bl_type_e type = bl_strtotype(t);
+  switch (type) {
+    case BL_TYPE_VOID:
+      return LLVMVoidType();
+    case BL_TYPE_I32:
+      return LLVMInt32Type();
+    case BL_TYPE_I64:
+      return LLVMInt64Type();
+    case BL_TYPE_REF:
+    default:
+      return NULL;
+  }
+}
+
+/*
+ * Fill array for parameters of function and return count.
+ */ 
+static int  
+gen_func_params(Module       *mod,
+                NodeFuncDecl *node,
+                LLVMTypeRef  *out,
+                jmp_buf       jmp_error)
+{
+  int out_i = 0;
+  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
+  Node *child = NULL;
+  for (int i = 0; i < c; i++) {
+    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
+    if (child->type == BL_NODE_PARAM_VAR_DECL) {
+      *out = to_type(bo_members(child, NodeParamVarDecl)->type);
+      out++;
+      out_i++;
+    }
+  }
+
+  return out_i;
+}
+
 void
 gen_func(Module       *mod,
          LLVMModuleRef llvm_mod,
          NodeFuncDecl *node,
          jmp_buf       jmp_error)
 {
-  LLVMTypeRef param_types[] = { LLVMInt32Type(), LLVMInt32Type() };
-  LLVMTypeRef ret_type = LLVMFunctionType(LLVMInt32Type(), param_types, 2, 0);
-  LLVMValueRef sum = LLVMAddFunction(llvm_mod, "sum", ret_type);
+  /* params */
+  LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT];
 
-  LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
+  int pc = gen_func_params(mod, node, param_types, jmp_error);
+  LLVMTypeRef ret = to_type(node->type);
+  LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, 0);
+  LLVMValueRef func = LLVMAddFunction(llvm_mod, node->ident, ret_type);
+
+  LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
 
   LLVMBuilderRef builder = LLVMCreateBuilder();
   LLVMPositionBuilderAtEnd(builder, entry);
 
-  LLVMValueRef tmp = LLVMBuildAdd(builder, LLVMGetParam(sum, 0), LLVMGetParam(sum, 1), "tmp");
+  LLVMValueRef tmp = LLVMBuildAdd(builder, LLVMGetParam(func, 0), LLVMGetParam(func, 1), "tmp");
   LLVMBuildRet(builder, tmp);
 }
 

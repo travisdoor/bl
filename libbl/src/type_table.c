@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.h
+// File:   type_table.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,24 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_FUNC_DECL_H
-#define BISCUIT_NODE_FUNC_DECL_H
+#include <string.h>
+#include "bl/type_table.h"
 
-#include "bl/ast/node_func_decl.h"
-#include "node_impl.h"
-#include "bl/token.h"
+char *bl_type_strings[] = {
+#define tp(tok, str) str,
+  BL_TYPE_LIST
+#undef tp 
+};
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
+bl_type_e
+bl_strtotype(const char* str)
+{
+  for (int i = 0; i < BL_TYPE_COUNT; i++) {
+    if (strcmp(bl_type_strings[i], str) == 0)
+      return (bl_type_e) i;
+  }
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
-
-#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
-
+  return BL_TYPE_REF;
+}

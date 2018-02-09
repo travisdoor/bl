@@ -32,12 +32,6 @@
 static BString *
 to_string(NodeFuncDecl *self);
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
-
 bo_impl_type(NodeFuncDecl, Node);
 
 /* NodeFuncDecl class init */

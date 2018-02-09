@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   node_func_decl.h
+// File:   type_table.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,24 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_FUNC_DECL_H
-#define BISCUIT_NODE_FUNC_DECL_H
+#ifndef BISCUIT_TYPE_TABLE_H
+#define BISCUIT_TYPE_TABLE_H
 
-#include "bl/ast/node_func_decl.h"
-#include "node_impl.h"
-#include "bl/token.h"
+#include <bobject/bobject.h>
 
-/* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
+BO_BEGIN_DECLS
 
-/* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
+#define BL_TYPE_LIST \
+  tp(REF, "") \
+  tp(VOID, "void") \
+  tp(I32, "int") \
+  tp(I64, "long") \
 
-#endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */
+typedef enum {
+#define tp(tok, str) BL_TYPE_##tok,
+  BL_TYPE_LIST
+#undef tp
+  BL_TYPE_COUNT
+} bl_type_e;
+
+extern BO_EXPORT char *bl_type_strings[];
+
+extern BO_EXPORT bl_type_e
+bl_strtotype(const char* str);
+
+BO_END_DECLS
+
+#endif /* end of include guard: BISCUIT_TYPE_TABLE_H */
 

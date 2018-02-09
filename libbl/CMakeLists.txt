@@ -18,6 +18,7 @@ set(HEADER_FILES
         include/bl/ast_printer.h
         include/bl/bl.h
         include/bl/bldebug.h
+        include/bl/type_table.h
         include/bl/file_loader.h
         include/bl/lexer.h
         include/bl/module.h
@@ -64,6 +65,7 @@ set(SOURCE_FILES
         src/token.c
         src/unit.c
         src/parser.c
+        src/type_table.c
         src/llvm_backend.c
         src/ast/ast.c
         src/ast/node.c

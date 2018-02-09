@@ -59,6 +59,9 @@ bl_unit_src_file(Unit *self);
 extern BO_EXPORT const char*
 bl_unit_src(Unit *self);
 
+extern BO_EXPORT const char*
+bl_unit_name(Unit *self);
+
 BO_END_DECLS
 
 #endif /* end of include guard: UNIT_H_IDHOJTNW */

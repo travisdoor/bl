@@ -1,6 +1,6 @@
 // this is testing script
 
-int sum(int a, int b) {
+int add(int a, int b) {
   return 0;
 }
 
