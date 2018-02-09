@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   module.c
+// File:   type_table.c
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,58 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
 #include <string.h>
-#include "module_impl.h"
+#include "bl/type_table.h"
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
-bo_end();
+char *bl_type_strings[] = {
+#define tp(tok, str) str,
+  BL_TYPE_LIST
+#undef tp 
+};
 
-bo_impl_type(Module, Actor);
-
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
+bl_type_e
+bl_strtotype(const char* str)
 {
-}
+  for (int i = 0; i < BL_TYPE_COUNT; i++) {
+    if (strcmp(bl_type_strings[i], str) == 0)
+      return (bl_type_e) i;
+  }
 
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
+  return BL_TYPE_REF;
 }
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-

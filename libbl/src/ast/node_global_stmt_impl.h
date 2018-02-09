@@ -33,6 +33,10 @@
 #include "node_impl.h"
 #include "bl/token.h"
 
+/* NodeGlobalStmt members */
+bo_decl_members_begin(NodeGlobalStmt, Node)
+bo_end();
+
 /* NodeGlobalStmt constructor parameters */
 bo_decl_params_with_base_begin(NodeGlobalStmt, Node)
 bo_end();

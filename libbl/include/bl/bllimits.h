@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module.c
+// File:   bllimits.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,58 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef BLLIMITS_H_YMBRH9TG
+#define BLLIMITS_H_YMBRH9TG
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
-bo_end();
+/*
+ * Maximum count of parameters passed into function parameter list.
+ */
+#define BL_MAX_FUNC_PARAM_COUNT 32
 
-bo_impl_type(Module, Actor);
-
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
-{
-}
-
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-
+#endif /* end of include guard: BLLIMITS_H_YMBRH9TG */

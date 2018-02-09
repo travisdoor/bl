@@ -39,7 +39,11 @@ bo_decl_type_begin(Module, Actor)
 bo_end();
 
 extern BO_EXPORT Module *
-bl_module_new(void);
+bl_module_new(const char *name);
+
+extern BO_EXPORT const char *
+bl_module_name(Module *self);
+
 BO_END_DECLS
 
 #endif /* end of include guard: MODULE_H_KZVQNITH */

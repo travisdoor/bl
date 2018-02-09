@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   module.c
+// File:   type_table.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,58 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef BISCUIT_TYPE_TABLE_H
+#define BISCUIT_TYPE_TABLE_H
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
-bo_end();
+#include <bobject/bobject.h>
 
-bo_impl_type(Module, Actor);
+BO_BEGIN_DECLS
 
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
-{
-}
+#define BL_TYPE_LIST \
+  tp(REF, "") \
+  tp(VOID, "void") \
+  tp(I32, "int") \
+  tp(I64, "long") \
 
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
+typedef enum {
+#define tp(tok, str) BL_TYPE_##tok,
+  BL_TYPE_LIST
+#undef tp
+  BL_TYPE_COUNT
+} bl_type_e;
 
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
+extern BO_EXPORT char *bl_type_strings[];
 
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
+extern BO_EXPORT bl_type_e
+bl_strtotype(const char* str);
 
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
+BO_END_DECLS
 
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
+#endif /* end of include guard: BISCUIT_TYPE_TABLE_H */
 

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl 
 //
-// File:   module.c
+// File:   module_impl.h
 // Author: Martin Dorazil
 // Date:   04/02/2018
 //
@@ -26,58 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef MODULE_IMPL_H_QLSAT7WF
+#define MODULE_IMPL_H_QLSAT7WF
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
+#include "bl/module.h"
+#include "pipeline/actor_impl.h"
+
+/* Module members */
+bo_decl_members_begin(Module, Actor)
+  char *name;
 bo_end();
 
-bo_impl_type(Module, Actor);
-
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
-{
-}
-
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-
+#endif /* end of include guard: MODULE_IMPL_H_QLSAT7WF */

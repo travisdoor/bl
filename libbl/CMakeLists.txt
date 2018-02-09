@@ -7,6 +7,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 
 # deps
 find_package(BObject 1.0 REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
+
+llvm_map_components_to_libnames(LLVM_LIBS support core bitwriter)
 
 set(HEADER_FILES
         include/bl/pipeline/actor.h
@@ -15,6 +18,7 @@ set(HEADER_FILES
         include/bl/ast_printer.h
         include/bl/bl.h
         include/bl/bldebug.h
+        include/bl/type_table.h
         include/bl/file_loader.h
         include/bl/lexer.h
         include/bl/module.h
@@ -30,6 +34,7 @@ set(HEADER_FILES
         include/bl/ast/node_func_decl.h
         include/bl/ast/node_param_var_decl.h
         include/bl/ast/ast.h
+        include/bl/llvm_backend.h
         include/bl/ast/node_stmt.h)
 
 set(HEADER_FILES_IMPL
@@ -40,10 +45,12 @@ set(HEADER_FILES_IMPL
         src/ast/node_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
+        src/ast/ast_impl.h
         src/pipeline/actor_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
         src/domains_impl.h
+        src/module_impl.h
         src/unit_impl.h)
 
 set(SOURCE_FILES 
@@ -58,6 +65,8 @@ set(SOURCE_FILES
         src/token.c
         src/unit.c
         src/parser.c
+        src/type_table.c
+        src/llvm_backend.c
         src/ast/ast.c
         src/ast/node.c
         src/ast/node_expr.c
@@ -71,6 +80,7 @@ set(SOURCE_FILES
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
 target_link_libraries(bl bobject)
+target_link_libraries(bl ${LLVM_LIBS})
 
 target_include_directories(bl PUBLIC include)
 target_include_directories(bl PRIVATE src)
