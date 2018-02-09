@@ -33,7 +33,6 @@
 #include "bl/lexer.h"
 #include "bl/bldebug.h"
 #include "bl/pipeline/stage.h"
-#include "domains_impl.h"
 #include "unit_impl.h"
 
 /* class Lexer */
@@ -57,10 +56,7 @@ static bool
 run(Lexer *self,
     Unit  *unit);
 
-static int
-domain(Lexer *self);
-
-static bool 
+static bool
 scan_string(Lexer  *self,
             Unit   *unit,
             char    term,
@@ -87,7 +83,7 @@ bo_decl_members_begin(Lexer, Stage)
 bo_end();
 
 /* Lexer constructor parameters */
-bo_decl_params_begin(Lexer)
+bo_decl_params_with_base_begin(Lexer, Stage)
 bo_end();
 
 bo_impl_type(Lexer, Stage);
@@ -98,15 +94,16 @@ LexerKlass_init(LexerKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* Lexer constructor */
 void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
-  bo_parent_ctor(Stage, p);
+  StageParams _p = {
+    .group = BL_CGROUP_PRE_ANALYZE
+  };
+  bo_parent_ctor(Stage, &_p);
 }
 
 /* Lexer destructor */
@@ -229,12 +226,6 @@ run(Lexer *self,
   bl_tokens_push(unit->tokens, &tok);
 //  bl_log("* lexing done\n");
   return true;
-}
-
-int
-domain(Lexer *self)
-{
-  return BL_DOMAIN_UNIT;
 }
 
 bool

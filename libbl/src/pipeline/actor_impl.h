@@ -34,7 +34,6 @@
 /* Actor members */
 bo_decl_members_begin(Actor, BObject)
   bl_actor_state_e state;
-  BArray *actors;
   char error[BL_ACTOR_MAX_ERROR_LEN];
 bo_end();
 

@@ -28,17 +28,12 @@
 
 #include "bl/pipeline/stage.h"
 
-/* Stage constructor parameters */
-bo_decl_params_begin(Stage)
-bo_end();
-
 bo_impl_type(Stage, BObject);
 
 /* Stage class init */
 void
 StageKlass_init(StageKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->domain = NULL;
   bo_vtbl_cl(klass, Stage)->run = NULL;
 }
 
@@ -46,6 +41,7 @@ StageKlass_init(StageKlass *klass)
 void
 Stage_ctor(Stage *self, StageParams *p)
 {
+  self->group = p->group;
 }
 
 /* Stage destructor */

@@ -31,7 +31,6 @@
 #include "bl/parser.h"
 #include "bl/ast/node.h"
 #include "bl/pipeline/stage.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "unit_impl.h"
 
@@ -75,15 +74,12 @@ static bool
 run(Parser *self,
     Unit   *unit);
 
-static int
-domain(Parser *self);
-
 /* Parser members */
 bo_decl_members_begin(Parser, Stage)
 bo_end();
 
 /* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+bo_decl_params_with_base_begin(Parser, Stage)
 bo_end();
 
 bo_impl_type(Parser, Stage);
@@ -94,14 +90,16 @@ ParserKlass_init(ParserKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* Parser constructor */
 void
 Parser_ctor(Parser *self, ParserParams *p)
 {
+  StageParams _p = {
+    .group = BL_CGROUP_PRE_ANALYZE
+  };
+  bo_parent_ctor(Stage, &_p);
 }
 
 /* Parser destructor */
@@ -309,12 +307,6 @@ run(Parser *self,
 //  bl_log("* parsing done\n");
 
   return true;
-}
-
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
 }
 
 /* public */

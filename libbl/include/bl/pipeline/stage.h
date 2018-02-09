@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/pipeline/actor.h"
+#include "bl/compile_group.h"
 
 BO_BEGIN_DECLS
 /* class declaration */
@@ -40,15 +41,15 @@ bo_decl_type_begin(Stage, BObject)
    * Run operation on an actor.
    */
   bool (*run)(Stage*, Actor *);
-
-  /*
-   * Return domain on which stage works (depth in tree where 0 is root level)
-   */
-  int (*domain)(Stage*);
 bo_end();
 
 /* Stage members */
 bo_decl_members_begin(Stage, BObject)
+  bl_compile_group_e group;
+bo_end();
+
+bo_decl_params_begin(Stage)
+  bl_compile_group_e group;
 bo_end();
 
 BO_END_DECLS

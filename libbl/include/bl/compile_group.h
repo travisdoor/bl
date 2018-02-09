@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module.c
+// File:   compile_group.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,58 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef BL_COMPILE_GROUP_H
+#define BL_COMPILE_GROUP_H
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
-bo_end();
-
-bo_impl_type(Module, Actor);
-
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
+typedef enum _bl_compile_group
 {
-}
+  BL_CGROUP_PRE_ANALYZE =  0,
+  BL_CGROUP_ANALYZE = 1
+} bl_compile_group_e;
 
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-
+#endif //BL_COMPILE_GROUP_H

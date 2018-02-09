@@ -51,9 +51,6 @@ bo_end();
 extern BO_EXPORT bl_actor_state_e
 bl_actor_state(Actor *self);
 
-extern BO_EXPORT void
-bl_actor_add(Actor *self, Actor *child);
-
 extern BO_EXPORT const char *
 bl_actor_get_error(Actor *self);
 

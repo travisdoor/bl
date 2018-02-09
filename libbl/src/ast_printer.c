@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include "ast_printer_impl.h"
 #include "unit_impl.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "ast/node_impl.h"
 
@@ -37,11 +36,8 @@ static bool
 run(AstPrinter *self,
     Unit       *unit);
 
-static int
-domain(AstPrinter *self);
-
 /* AstPrinter constructor parameters */
-bo_decl_params_begin(AstPrinter)
+bo_decl_params_with_base_begin(AstPrinter, Stage)
   FILE *out_stream;
 bo_end();
 
@@ -53,14 +49,13 @@ AstPrinterKlass_init(AstPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* AstPrinter constructor */
 void
 AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
 {
+  p->base.group = BL_CGROUP_PRE_ANALYZE;
   bo_parent_ctor(Stage, p);
   self->out_stream = p->out_stream;
 }
@@ -113,12 +108,6 @@ run(AstPrinter *self,
 
   print_node(self, bl_ast_get_root(unit->ast), 0); 
   return true;
-}
-
-int
-domain(AstPrinter *self)
-{
-  return BL_DOMAIN_UNIT;
 }
 
 /* public */

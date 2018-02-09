@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include "file_loader_impl.h"
 #include "unit_impl.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 
 static bool
@@ -40,7 +39,7 @@ static int
 domain(FileLoader *self);
 
 /* FileLoader constructor parameters */
-bo_decl_params_begin(FileLoader)
+bo_decl_params_with_base_begin(FileLoader, Stage)
 bo_end();
 
 bo_impl_type(FileLoader, Stage);
@@ -51,15 +50,16 @@ FileLoaderKlass_init(FileLoaderKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* FileLoader constructor */
 void
 FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
 {
-  bo_parent_ctor(Stage, p);
+  StageParams _p = {
+    .group = BL_CGROUP_PRE_ANALYZE
+  };
+  bo_parent_ctor(Stage, &_p);
 }
 
 /* FileLoader destructor */
@@ -99,19 +99,16 @@ run(FileLoader *self,
   fread(unit->src, fsize, 1, f);
   unit->src[fsize] = '\0';
   fclose(f);
-  return true;
-}
 
-int
-domain(FileLoader *self)
-{
-  return BL_DOMAIN_UNIT;
+  bl_log("processing file %s", unit->name);
+
+  return true;
 }
 
 /* public */
 FileLoader *
 bl_file_loader_new(void)
 {
-    return bo_new(FileLoader, NULL);
+  return bo_new(FileLoader, NULL);
 }
 

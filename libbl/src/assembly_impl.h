@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   domains.h
+// File:   assembly_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_DOMAINS_H
-#define BISCUIT_DOMAINS_H
+#ifndef BL_ASSEMBLY_IMPL_H
+#define BL_ASSEMBLY_IMPL_H
 
-BO_BEGIN_DECLS
-typedef enum _bl_domain_e
-{
-  BL_DOMAIN_MODULE = 0,
-  BL_DOMAIN_UNIT   = 1,
-} bl_domain_e;
-BO_END_DECLS
+#include "bl/assembly.h"
+#include "unit_impl.h"
 
-#endif /* end of include guard: BISCUIT_DOMAINS_H */
+/* class Assembly object members */
+bo_decl_members_begin(Assembly, BObject)
+  /* members */
+  BArray *units;
+  char *name;
+  Pipeline *pipeline;
+  Unit *failed;
+bo_end();
 
+#endif //BL_ASSEMBLY_IMPL_H

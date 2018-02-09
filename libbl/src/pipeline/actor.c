@@ -48,7 +48,6 @@ void
 Actor_ctor(Actor *self, ActorParams *p)
 {
   self->state = BL_ACTOR_STATE_PENDING;
-  self->actors = bo_array_new_bo(bo_typeof(Actor), true);
   self->error[0] = '\0';
 }
 
@@ -56,7 +55,6 @@ Actor_ctor(Actor *self, ActorParams *p)
 void
 Actor_dtor(Actor *self)
 {
-  bo_unref(self->actors);
 }
 
 /* Actor copy constructor */
@@ -71,12 +69,6 @@ bl_actor_state_e
 bl_actor_state(Actor *self)
 {
   return self->state;
-}
-
-void
-bl_actor_add(Actor *self, Actor *child)
-{
-  bo_array_push_back(self->actors, child);
 }
 
 void

@@ -33,6 +33,8 @@
 #include "bl/pipeline/actor.h"
 #include "bl/pipeline/stage.h"
 
+#define BL_PIPELINE_MAX_GROUP_COUNT 8
+
 BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(Pipeline, BObject)
@@ -44,11 +46,12 @@ bl_pipeline_new(void);
 
 extern BO_EXPORT bool
 bl_pipeline_run(Pipeline *self,
-                Actor    *actor);
+                Actor    *actor,
+                int       group);
 
 extern BO_EXPORT void
 bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage);
+                      Stage *stage);
 
 extern BO_EXPORT Actor *
 bl_pipeline_get_failed(Pipeline *self);
