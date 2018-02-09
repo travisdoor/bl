@@ -26,6 +26,7 @@ set(HEADER_FILES
         include/bl/unit.h
         include/bl/token.h
         include/bl/tokens.h
+        include/bl/analyzer.h
         include/bl/ast/node.h
         include/bl/ast/node_expr.h
         include/bl/ast/node_return_stmt.h
@@ -34,7 +35,9 @@ set(HEADER_FILES
         include/bl/ast/node_param_var_decl.h
         include/bl/ast/ast.h
         include/bl/llvm_backend.h
-        include/bl/ast/node_stmt.h include/bl/assembly.h include/bl/compile_group.h)
+        include/bl/ast/node_stmt.h 
+        include/bl/assembly.h 
+        include/bl/compile_group.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -61,6 +64,7 @@ set(SOURCE_FILES
         src/token.c
         src/unit.c
         src/parser.c
+        src/analyzer.c
         src/type_table.c
         src/llvm_backend.c
         src/ast/ast.c

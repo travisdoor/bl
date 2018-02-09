@@ -33,6 +33,11 @@
 #include "node_impl.h"
 #include "bl/token.h"
 
+/* NodeExpr members */
+bo_decl_members_begin(NodeExpr, Node)
+  int num;
+bo_end();
+
 /* NodeExpr constructor parameters */
 bo_decl_params_with_base_begin(NodeExpr, Node)
   int num;

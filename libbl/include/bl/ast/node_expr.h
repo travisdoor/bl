@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_expr.h
+// File:   node_stmt.h
 // Author: Martin Dorazil
 // Date:   8.2.18
 //
@@ -38,4 +38,4 @@ bo_decl_type_begin(NodeExpr, Node)
 bo_end();
 BO_END_DECLS
 
-#endif //BL_NODE_EXPR_H
+#endif //BL_NODE_STMT_H

@@ -56,10 +56,7 @@ FileLoaderKlass_init(FileLoaderKlass *klass)
 void
 FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
 {
-  StageParams _p = {
-    .group = BL_CGROUP_PRE_ANALYZE
-  };
-  bo_parent_ctor(Stage, &_p);
+  bo_parent_ctor(Stage, p);
 }
 
 /* FileLoader destructor */
@@ -107,8 +104,12 @@ run(FileLoader *self,
 
 /* public */
 FileLoader *
-bl_file_loader_new(void)
+bl_file_loader_new(bl_compile_group_e group)
 {
-  return bo_new(FileLoader, NULL);
+  FileLoaderParams p = {
+    .base.group = group
+  };
+
+  return bo_new(FileLoader, &p);
 }
 

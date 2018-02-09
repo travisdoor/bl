@@ -30,12 +30,16 @@
 #define BL_NODE_FUNC_DECL_H
 
 #include "bl/ast/node.h"
+#include "bl/ast/node_stmt.h"
 
 BO_BEGIN_DECLS
 /* class declaration */
 bo_decl_type_begin(NodeFuncDecl, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT NodeStmt *
+bl_node_func_decl_get_stmt(NodeFuncDecl *self);
 
 BO_END_DECLS
 

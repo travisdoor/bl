@@ -39,7 +39,7 @@ bo_decl_type_begin(FileLoader, Stage)
 bo_end();
 
 extern BO_EXPORT FileLoader *
-bl_file_loader_new(void);
+bl_file_loader_new(bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: FILE_LOADER_H_EA5EZFSW */

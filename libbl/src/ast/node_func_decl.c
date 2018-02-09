@@ -82,3 +82,13 @@ to_string(NodeFuncDecl *self)
 
 /* public */
 
+NodeStmt *
+bl_node_func_decl_get_stmt(NodeFuncDecl *self)
+{
+  const size_t c = bo_array_size(bo_members(self, Node)->nodes);
+  if (!c)
+    return NULL;
+
+  return bo_array_at(bo_members(self, Node)->nodes, c-1, NodeStmt *);
+}
+

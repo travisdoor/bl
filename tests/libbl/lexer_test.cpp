@@ -49,30 +49,30 @@ protected:
   void
   SetUp()
   {
-    module = (Actor *)bl_module_new("test_module");
     pipeline = bl_pipeline_new();
+    assembly = bl_assembly_new("test_module", pipeline);
 
-    auto *lexer = (Stage *)bl_lexer_new();
+    auto *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(pipeline, lexer);
   }
 
   void
   TearDown()
   {
-    bo_unref(module);
+    bo_unref(assembly);
     bo_unref(pipeline);
   }
 
   Pipeline *pipeline;
-  Actor *module;
+  Assembly *assembly;
 };
 
 TEST_F(LexerTest, symbol_parsing)
 {
-  auto *unit = (Actor *) bl_unit_new_str("_test_", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("_test_", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  ASSERT_TRUE(bl_pipeline_run(pipeline, module));
+  ASSERT_TRUE(bl_assembly_compile(assembly));
 
   Tokens *tokens = bl_unit_tokens((Unit *)unit);
   bl_token_t *t;

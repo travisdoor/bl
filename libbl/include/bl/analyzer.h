@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// bl 
 //
-// File:   token_printer.h
+// File:   analyzer.h
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef TOKEN_PRINTER_H_QYAEHC5Q
-#define TOKEN_PRINTER_H_QYAEHC5Q
+#ifndef BISCUIT_ANALYZER_H
+#define BISCUIT_ANALYZER_H
 
 #include <bobject/bobject.h>
-#include <stdio.h>
 #include "bl/pipeline/stage.h"
 
 BO_BEGIN_DECLS
-/* class TokenPrinter declaration */
-bo_decl_type_begin(TokenPrinter, Stage)
+
+/* class declaration */
+bo_decl_type_begin(Analyzer, Stage)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT TokenPrinter *
-bl_token_printer_new(FILE              *out_stream,
-                     bl_compile_group_e group);
+extern BO_EXPORT Analyzer *
+bl_analyzer_new(bl_compile_group_e group);
+
 BO_END_DECLS
 
-#endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */
+#endif /* end of include guard: ANALYZER_H_IDMCCWLX */

@@ -62,7 +62,6 @@ TokenPrinter_ctor(TokenPrinter *self, TokenPrinterParams *p)
 {
   /* constructor */
   /* initialize parent */
-  p->base.group = BL_CGROUP_PRE_ANALYZE;
   bo_parent_ctor(Stage, p);
   self->out_stream = p->out_stream;
 }
@@ -119,9 +118,11 @@ run(TokenPrinter *self,
 }
 
 TokenPrinter *
-bl_token_printer_new(FILE *out_stream)
+bl_token_printer_new(FILE              *out_stream,
+                     bl_compile_group_e group)
 {
   TokenPrinterParams p = {
+    .base.group = group,
     .out_stream = out_stream
   };
 

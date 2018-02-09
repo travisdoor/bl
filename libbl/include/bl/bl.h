@@ -42,5 +42,6 @@
 #include "bl/type_table.h"
 #include "bl/bllimits.h"
 #include "bl/assembly.h"
+#include "bl/analyzer.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

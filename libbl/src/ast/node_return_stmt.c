@@ -61,3 +61,13 @@ NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
   return BO_NO_COPY;
 }
 
+NodeExpr *
+bl_node_return_stmt_get_expr(NodeReturnStmt *self)
+{
+  const size_t c = bo_array_size(bo_members(self, Node)->nodes);
+  if (!c)
+    return NULL;
+
+  return bo_array_at(bo_members(self, Node)->nodes, 0, NodeExpr *);
+}
+

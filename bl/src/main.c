@@ -31,8 +31,6 @@
 
 #define ENABLE_TOKEN_PRINTER   0
 #define ENABLE_AST_PRINTER     1
-#define GROUP_PRE_ANALYZE      0
-#define GROUP_ANALYZE_GENERATE 1
 
 int main(int argc, char *argv[])
 {
@@ -53,26 +51,29 @@ int main(int argc, char *argv[])
   }
 
 
-  Stage *file_loader = (Stage *)bl_file_loader_new();
+  Stage *file_loader = (Stage *)bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
   bl_pipeline_add_stage(pipeline, file_loader);
 
-  Stage *lexer = (Stage *)bl_lexer_new();
+  Stage *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
   bl_pipeline_add_stage(pipeline, lexer);
 
 #if ENABLE_TOKEN_PRINTER
   Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
-  bl_pipeline_add_stage(pipeline, token_printer, GROUP_PRE_ANALYZE);
+  bl_pipeline_add_stage(pipeline, token_printer, BL_CGROUP_PRE_ANALYZE);
 #endif
 
-  Stage *parser = (Stage *)bl_parser_new();
+  Stage *parser = (Stage *)bl_parser_new(BL_CGROUP_PRE_ANALYZE);
   bl_pipeline_add_stage(pipeline, parser);
 
 #if ENABLE_AST_PRINTER
-  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout);
+  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
   bl_pipeline_add_stage(pipeline, ast_printer);
 #endif
 
-  Stage *llvm = (Stage *)bl_llvm_backend_new();
+  Stage *analyzer = (Stage *)bl_analyzer_new(BL_CGROUP_ANALYZE);
+  bl_pipeline_add_stage(pipeline, analyzer);
+
+  Stage *llvm = (Stage *)bl_llvm_backend_new(BL_CGROUP_GENERATE);
   bl_pipeline_add_stage(pipeline, llvm);
 
   if (!bl_assembly_compile(assembly)) {
@@ -86,3 +87,4 @@ int main(int argc, char *argv[])
 
   return 0;
 }
+

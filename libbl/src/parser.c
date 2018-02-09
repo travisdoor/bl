@@ -96,10 +96,7 @@ ParserKlass_init(ParserKlass *klass)
 void
 Parser_ctor(Parser *self, ParserParams *p)
 {
-  StageParams _p = {
-    .group = BL_CGROUP_PRE_ANALYZE
-  };
-  bo_parent_ctor(Stage, &_p);
+  bo_parent_ctor(Stage, p);
 }
 
 /* Parser destructor */
@@ -311,9 +308,13 @@ run(Parser *self,
 
 /* public */
 Parser *
-bl_parser_new(void)
+bl_parser_new(bl_compile_group_e group)
 {
-  return bo_new(Parser, NULL);
+  ParserParams p = {
+    .base.group = group
+  };
+
+  return bo_new(Parser, &p);
 }
 
 /* public */

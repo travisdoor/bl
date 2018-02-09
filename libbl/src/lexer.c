@@ -100,10 +100,7 @@ LexerKlass_init(LexerKlass *klass)
 void
 Lexer_ctor(Lexer *self, LexerParams *p)
 {
-  StageParams _p = {
-    .group = BL_CGROUP_PRE_ANALYZE
-  };
-  bo_parent_ctor(Stage, &_p);
+  bo_parent_ctor(Stage, p);
 }
 
 /* Lexer destructor */
@@ -390,8 +387,12 @@ scan_number(Lexer *self,
 
 /* public */
 Lexer *
-bl_lexer_new(void)
+bl_lexer_new(bl_compile_group_e group)
 {
-  return bo_new(Lexer, NULL);
+  LexerParams p = {
+    .base.group = group
+  };
+
+  return bo_new(Lexer, &p);
 }
 

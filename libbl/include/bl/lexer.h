@@ -39,7 +39,7 @@ bo_decl_type_begin(Lexer, Stage)
 bo_end();
 
 extern BO_EXPORT Lexer *
-bl_lexer_new(void);
+bl_lexer_new(bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: LEXER_H_M6HPRS2Z */

@@ -117,9 +117,12 @@ bl_assembly_compile(Assembly *self)
 
   self->failed = NULL;
 
-  return
-    compile_group(self, BL_CGROUP_PRE_ANALYZE) &&
-    compile_group(self, BL_CGROUP_ANALYZE);
+  for (int i = 0; i < BL_CGROUP_COUNT; i++) {
+    if (!compile_group(self, i))
+      return false;
+  }
+
+  return true;
 }
 
 Unit *

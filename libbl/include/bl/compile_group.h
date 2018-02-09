@@ -31,8 +31,10 @@
 
 typedef enum _bl_compile_group
 {
-  BL_CGROUP_PRE_ANALYZE =  0,
-  BL_CGROUP_ANALYZE = 1
+  BL_CGROUP_PRE_ANALYZE = 0,
+  BL_CGROUP_ANALYZE,
+  BL_CGROUP_GENERATE,
+  BL_CGROUP_COUNT
 } bl_compile_group_e;
 
 #endif //BL_COMPILE_GROUP_H
