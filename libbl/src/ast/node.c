@@ -61,7 +61,6 @@ Node_ctor(Node *self, NodeParams *p)
 void
 Node_dtor(Node *self)
 {
-  bo_unref(self->nodes);
 }
 
 /* Node copy constructor */
@@ -72,30 +71,10 @@ Node_copy(Node *self, Node *other)
 }
 
 /* public */
-bool
-bl_node_add_child(Node *self,
-                  Node *child)
-{
-  if (child == NULL)
-    return false;
-
-  if (self->nodes == NULL)
-    self->nodes = bo_array_new_bo(bo_typeof(Node), false);
-
-  bo_array_push_back(self->nodes, child);
-  return true;
-}
-
 bl_node_e
 bl_node_type(Node *self)
 {
   return self->type;
-}
-
-BArray *
-bl_node_children(Node *self)
-{
-  return self->nodes;
 }
 
 BString *

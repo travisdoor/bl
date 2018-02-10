@@ -99,37 +99,29 @@ analyze_func(Unit         *unit,
   /*
    * Check return type existence.
    */
-  if (bl_strtotype(node->type) == BL_TYPE_REF) {
+  if (bl_strtotype(bl_node_func_decl_type(node)) == BL_TYPE_REF) {
     analyze_error("%s %d:%d unknown return type '%s' for function '%s'",
                   unit->filepath,
                   bo_members(node, Node)->line,
                   bo_members(node, Node)->col,
-                  node->type,
-                  node->ident);
+                  bl_node_func_decl_type(node),
+                  bl_node_func_decl_ident(node));
   }
 
   /*
    * Check params.
    */
-  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
-  Node *child = NULL;
+  const int c = bl_node_func_decl_param_count(node);
+  NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
-    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
+    param = bl_node_func_decl_param(node, i);
 
-    switch (child->type) {
-      case BL_NODE_PARAM_VAR_DECL: {
-          NodeParamVarDecl *param = (NodeParamVarDecl *)child; 
-          if (bl_strtotype(param->type) == BL_TYPE_REF) {
-            analyze_error("%s %d:%d unknown type '%s' for function parameter",
-                          unit->filepath,
-                          bo_members(param, Node)->line,
-                          bo_members(param, Node)->col,
-                          param->type);
-          }
-        break;
-        }
-      default:
-        break;
+    if (bl_strtotype(param->type) == BL_TYPE_REF) {
+      analyze_error("%s %d:%d unknown type '%s' for function parameter",
+                    unit->filepath,
+                    bo_members(param, Node)->line,
+                    bo_members(param, Node)->col,
+                    param->type);
     }
   }
 }
@@ -140,9 +132,9 @@ analyze_gstmt(Unit           *unit,
               jmp_buf         jmp_error)
 {
   Node *child = NULL;
-  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
+  const int c = bl_node_global_stmt_child_count(node);
+  for (int i = 0; i < c; i++) {
+    child = bl_node_global_stmt_child(node, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
         analyze_func(unit, (NodeFuncDecl *)child, jmp_error);

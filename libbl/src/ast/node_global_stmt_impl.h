@@ -35,6 +35,7 @@
 
 /* NodeGlobalStmt members */
 bo_decl_members_begin(NodeGlobalStmt, Node)
+  BArray *nodes;
 bo_end();
 
 /* NodeGlobalStmt constructor parameters */

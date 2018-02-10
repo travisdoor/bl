@@ -31,6 +31,7 @@
 /* NodeReturnStmt members */
 
 bo_decl_members_begin(NodeReturnStmt, Node)
+  NodeExpr *expr;
 bo_end();
 
 bo_impl_type(NodeReturnStmt, Node);
@@ -61,13 +62,20 @@ NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
   return BO_NO_COPY;
 }
 
-NodeExpr *
-bl_node_return_stmt_get_expr(NodeReturnStmt *self)
+bool
+bl_node_return_stmt_add_expr(NodeReturnStmt *self,
+                             NodeExpr       *expr)
 {
-  const size_t c = bo_array_size(bo_members(self, Node)->nodes);
-  if (!c)
-    return NULL;
+  if (expr == NULL)
+    return false;
 
-  return bo_array_at(bo_members(self, Node)->nodes, 0, NodeExpr *);
+  self->expr = expr;
+  return true;
+}
+
+NodeExpr *
+bl_node_return_stmt_expr(NodeReturnStmt *self)
+{
+  return self->expr;
 }
 

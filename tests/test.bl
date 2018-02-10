@@ -1,6 +1,6 @@
 // this is testing script
 
-int main(int i) {
-  return 10;
+int main(int i, int my_int) {
+  return 100;
 }
 

@@ -32,6 +32,14 @@
 static BString *
 to_string(NodeFuncDecl *self);
 
+/* NodeFuncDecl members */
+bo_decl_members_begin(NodeFuncDecl, Node)
+  BArray *params;
+  NodeStmt *stmt;
+  char *type;
+  char *ident;
+bo_end();
+
 bo_impl_type(NodeFuncDecl, Node);
 
 /* NodeFuncDecl class init */
@@ -57,6 +65,7 @@ NodeFuncDecl_dtor(NodeFuncDecl *self)
 {
   free(self->type);
   free(self->ident);
+  bo_unref(self->params);
 }
 
 /* NodeFuncDecl copy constructor */
@@ -82,13 +91,61 @@ to_string(NodeFuncDecl *self)
 
 /* public */
 
+bool
+bl_node_func_decl_add_stmt(NodeFuncDecl *self,
+                           NodeStmt     *stmt)
+{
+  if (!stmt)
+    return false;
+
+  self->stmt = stmt;
+  return true;
+}
+
+bool
+bl_node_func_decl_add_param(NodeFuncDecl     *self,
+                            NodeParamVarDecl *param)
+{
+  if (param == NULL)
+    return false;
+
+  if (self->params == NULL)
+    self->params = bo_array_new_bo(bo_typeof(Node), false);
+  bo_array_push_back(self->params, param);
+  return true;
+}
+
 NodeStmt *
 bl_node_func_decl_get_stmt(NodeFuncDecl *self)
 {
-  const size_t c = bo_array_size(bo_members(self, Node)->nodes);
-  if (!c)
-    return NULL;
+  return self->stmt;
+}
 
-  return bo_array_at(bo_members(self, Node)->nodes, c-1, NodeStmt *);
+int
+bl_node_func_decl_param_count(NodeFuncDecl *self)
+{
+  if (self->params == NULL)
+    return 0;
+
+  return (int) bo_array_size(self->params);
+}
+
+NodeParamVarDecl * 
+bl_node_func_decl_param(NodeFuncDecl *self,
+                        int i)
+{
+  return bo_array_at(self->params, i, NodeParamVarDecl *);
+}
+
+const char *
+bl_node_func_decl_ident(NodeFuncDecl *self)
+{
+  return self->ident;
+}
+
+const char *
+bl_node_func_decl_type(NodeFuncDecl *self)
+{
+  return self->type;
 }
 

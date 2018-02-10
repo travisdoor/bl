@@ -55,15 +55,8 @@ bo_decl_type_begin(Node, BObject)
   BString *(*to_string)(Node *);
 bo_end();
 
-extern BO_EXPORT bool
-bl_node_add_child(Node *self,
-                  Node *child);
-
 extern BO_EXPORT bl_node_e
 bl_node_type(Node *self);
-
-extern BO_EXPORT BArray *
-bl_node_children(Node *self);
 
 BO_END_DECLS
 

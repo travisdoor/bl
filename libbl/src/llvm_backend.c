@@ -77,7 +77,7 @@ static void
 gen_stmt(Unit         *unit,
         LLVMModuleRef  mod,
         LLVMValueRef   func,
-        NodeStmt      *node, 
+        NodeStmt      *stmt,
         jmp_buf        jmp_error);
 
 static void
@@ -90,7 +90,7 @@ gen_ret(Unit           *unit,
 static void
 gen_gstmt(Unit         *unit,
           LLVMModuleRef   mod,
-          NodeGlobalStmt *node, 
+          NodeGlobalStmt *gstmt,
           jmp_buf         jmp_error);
          
 
@@ -207,22 +207,20 @@ gen_func_params(Unit       *unit,
                 jmp_buf       jmp_error)
 {
   int out_i = 0;
-  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
+  const int c = bl_node_func_decl_param_count(node);
 
   /* no params -> use void (scope always presented)*/ 
-  if (c == 1) {
+  if (c == 0) {
       *out = to_type("void");
       return 1;
   }
 
-  Node *child = NULL;
+  NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
-    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
-    if (child->type == BL_NODE_PARAM_VAR_DECL) {
-      *out = to_type(bo_members(child, NodeParamVarDecl)->type);
-      out++;
-      out_i++;
-    }
+    param = bl_node_func_decl_param(node, i);
+    *out = to_type(param->type);
+    out++;
+    out_i++;
   }
 
   return out_i;
@@ -244,7 +242,7 @@ gen_ret(Unit           *unit,
         NodeReturnStmt *node, 
         jmp_buf         jmp_error)
 {
-  NodeExpr *expr = bl_node_return_stmt_get_expr(node);
+  NodeExpr *expr = bl_node_return_stmt_expr(node);
   if (!expr) {
     LLVMBuildRetVoid(builder);
     return;
@@ -264,9 +262,9 @@ gen_func(Unit         *unit,
   LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT];
 
   int pc = gen_func_params(unit, node, param_types, jmp_error);
-  LLVMTypeRef ret = to_type(node->type);
+  LLVMTypeRef ret = to_type(bl_node_func_decl_type(node));
   LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, 0);
-  LLVMValueRef func = LLVMAddFunction(mod, node->ident, ret_type);
+  LLVMValueRef func = LLVMAddFunction(mod, bl_node_func_decl_ident(node), ret_type);
 
   NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
   gen_stmt(unit, mod, func, stmt, jmp_error);
@@ -276,7 +274,7 @@ void
 gen_stmt(Unit         *unit,
          LLVMModuleRef  mod,
          LLVMValueRef   func,
-         NodeStmt      *node, 
+         NodeStmt      *stmt,
          jmp_buf        jmp_error)
 {
   LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
@@ -285,15 +283,15 @@ gen_stmt(Unit         *unit,
   LLVMPositionBuilderAtEnd(builder, entry);
 
   Node *child = NULL;
-  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
+  const int c = bl_node_stmt_child_count(stmt);
+  for (int i = 0; i < c; i++) {
+    child = bl_node_stmt_child(stmt, i);
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
         gen_ret(unit, mod, builder, (NodeReturnStmt *)child, jmp_error);
         break;
       default:
-        gen_error("invalid node in function scope");
+        gen_error("invalid stmt in function scope");
     }
   }
 }
@@ -301,13 +299,13 @@ gen_stmt(Unit         *unit,
 void
 gen_gstmt(Unit           *unit,
           LLVMModuleRef   mod,
-          NodeGlobalStmt *node, 
+          NodeGlobalStmt *gstmt,
           jmp_buf         jmp_error)
 {
   Node *child = NULL;
-  const size_t c = bo_array_size(bo_members(node, Node)->nodes);
+  const int c = bl_node_global_stmt_child_count(gstmt);
   for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(bo_members(node, Node)->nodes, i, Node *);
+    child = bl_node_global_stmt_child(gstmt, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
         gen_func(unit, mod, (NodeFuncDecl *)child, jmp_error);

@@ -31,6 +31,7 @@
 
 /* NodeStmt members */
 bo_decl_members_begin(NodeStmt, Node)
+  BArray *nodes;
 bo_end();
 
 bo_impl_type(NodeStmt, Node);
@@ -52,6 +53,7 @@ NodeStmt_ctor(NodeStmt *self, NodeStmtParams *p)
 void
 NodeStmt_dtor(NodeStmt *self)
 {
+  bo_unref(self->nodes);
 }
 
 /* NodeStmt copy constructor */
@@ -59,5 +61,35 @@ bo_copy_result
 NodeStmt_copy(NodeStmt *self, NodeStmt *other)
 {
   return BO_NO_COPY;
+}
+
+bool
+bl_node_stmt_add_child(NodeStmt *self,
+                       Node *node)
+{
+  if (node == NULL)
+    return false;
+
+  if (self->nodes == NULL)
+    self->nodes = bo_array_new_bo(bo_typeof(Node), false);
+  bo_array_push_back(self->nodes, node);
+  return true;
+}
+
+int
+bl_node_stmt_child_count(NodeStmt *self)
+{
+  if (self->nodes == NULL) {
+    return 0;
+  }
+
+  return (int)bo_array_size(self->nodes);
+}
+
+Node *
+bl_node_stmt_child(NodeStmt *self,
+                   int i)
+{
+  return bo_array_at(self->nodes, (size_t)i, Node *);
 }
 

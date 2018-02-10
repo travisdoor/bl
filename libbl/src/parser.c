@@ -45,12 +45,12 @@ parse_global_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error);
 
-static Node *
+static NodeStmt *
 parse_stmt(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error);
 
-static Node *
+static NodeExpr *
 parse_expr(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error);
@@ -60,12 +60,12 @@ parse_func_decl(Parser *self,
                 Unit *unit,
                 jmp_buf jmp_error);
 
-static Node *
+static NodeParamVarDecl *
 parse_param_var_decl(Parser *self, 
                      Unit *unit,
                      jmp_buf jmp_error);
 
-static Node *
+static NodeReturnStmt *
 parse_return_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error);
@@ -119,7 +119,7 @@ parse_global_stmt(Parser *self,
 {
   NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, unit->src, 1, 0);
 stmt:
-  if (!bl_node_add_child((Node *)gstmt, parse_func_decl(self, unit, jmp_error))) {
+  if (!bl_node_global_stmt_add_child(gstmt, parse_func_decl(self, unit, jmp_error))) {
     bl_token_t *tok = bl_tokens_peek(unit->tokens);
     parse_error("%s %d:%d expected function declaration",
                 unit->filepath,
@@ -133,7 +133,7 @@ stmt:
   return (Node *)gstmt;
 }
 
-Node *
+NodeReturnStmt *
 parse_return_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error)
@@ -145,7 +145,7 @@ parse_return_stmt(Parser *self,
 
     /* HACK parse expression here */
     if (bl_tokens_current_is(unit->tokens, BL_SYM_NUM)) {
-      if (!bl_node_add_child((Node *)rstmt, parse_expr(self, unit, jmp_error))) {
+      if (!bl_node_return_stmt_add_expr(rstmt, parse_expr(self, unit, jmp_error))) {
         tok = bl_tokens_consume(unit->tokens);
         parse_error("%s %d:%d expected expression or nothing after return statement",
                     unit->filepath,
@@ -162,10 +162,10 @@ parse_return_stmt(Parser *self,
                   tok->col);
     }
   }
-  return (Node *)rstmt;
+  return rstmt;
 }
 
-Node *
+NodeStmt *
 parse_stmt(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error)
@@ -187,7 +187,7 @@ stmt:
   }
 
   /* return */
-  bl_node_add_child((Node *)stmt, parse_return_stmt(self, unit, jmp_error));
+  bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self, unit, jmp_error));
 
   tok = bl_tokens_consume(unit->tokens);
 
@@ -197,7 +197,7 @@ stmt:
                 tok->line,
                 tok->col);
 
-  return (Node *)stmt;
+  return stmt;
 }
 
 Node *
@@ -222,7 +222,7 @@ parse_func_decl(Parser *self,
 
     if (bl_tokens_current_is_not(unit->tokens, BL_SYM_RPAREN)) {
 param:
-      bl_node_add_child((Node *)func_decl, parse_param_var_decl(self, unit, jmp_error));
+      bl_node_func_decl_add_param(func_decl, parse_param_var_decl(self, unit, jmp_error));
       if (bl_tokens_consume_if(unit->tokens, BL_SYM_COMMA))
         goto param;
     }
@@ -234,12 +234,12 @@ param:
           tok->line,
           tok->col);
 
-    bl_node_add_child((Node *)func_decl, parse_stmt(self, unit, jmp_error));
+    bl_node_func_decl_add_stmt(func_decl, parse_stmt(self, unit, jmp_error));
   }
   return (Node *)func_decl;
 }
 
-Node *
+NodeParamVarDecl *
 parse_param_var_decl(Parser *self, 
                      Unit *unit,
                      jmp_buf jmp_error)
@@ -263,11 +263,11 @@ parse_param_var_decl(Parser *self,
   }
   
   char *ident = strndup(tok->content.as_string, tok->len);
-  return (Node *)bl_ast_node_param_var_decl_new(
+  return bl_ast_node_param_var_decl_new(
       unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 }
 
-Node *
+NodeExpr *
 parse_expr(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error)
@@ -281,7 +281,7 @@ parse_expr(Parser *self,
         unit->ast, tok->content.as_int, tok->src_loc, tok->line, tok->col);
   }
 
-  return (Node *)expr;
+  return expr;
 }
 
 bool

@@ -44,7 +44,6 @@ bo_end();
 /* Node members */
 bo_decl_members_begin(Node, BObject)
   /* not owning, references only!!! */
-  BArray *nodes;
   bl_node_e type;
   const char *generated_from;
   int line;
