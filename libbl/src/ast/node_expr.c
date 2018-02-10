@@ -29,6 +29,11 @@
 #include <bobject/containers/array.h>
 #include "node_expr_impl.h"
 
+/* NodeExpr members */
+bo_decl_members_begin(NodeExpr, Node)
+  int num;
+bo_end();
+
 bo_impl_type(NodeExpr, Node);
 
 /* NodeExpr class init */
@@ -58,3 +63,8 @@ NodeExpr_copy(NodeExpr *self, NodeExpr *other)
   return BO_NO_COPY;
 }
 
+int
+bl_node_expr_num(NodeExpr *self)
+{
+  return self->num;
+}

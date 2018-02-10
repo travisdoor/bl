@@ -135,7 +135,7 @@ run(AstPrinter *self,
     return false;
   }
 
-  print_node(self, bl_ast_get_root(unit->ast), 0); 
+  print_node(self, bl_ast_get_root(unit->ast), 0);
   return true;
 }
 

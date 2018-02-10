@@ -36,6 +36,10 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeExpr, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT int
+bl_node_expr_num(NodeExpr *self);
+
 BO_END_DECLS
 
 #endif //BL_NODE_STMT_H

@@ -47,7 +47,6 @@ set(HEADER_FILES_IMPL
         src/ast/node_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
-        src/ast/ast_impl.h
         src/pipeline/actor_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h

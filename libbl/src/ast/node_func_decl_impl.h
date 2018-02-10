@@ -37,6 +37,7 @@
 bo_decl_params_with_base_begin(NodeFuncDecl, Node)
   char *type;
   char *ident;
+  bl_sym_e modif;
 bo_end();
 
 #endif /* end of include guard: BISCUIT_NODE_FUNC_DECL_H */

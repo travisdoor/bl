@@ -108,17 +108,19 @@ NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
                           char       *type,
                           char       *ident,
+                          bl_sym_e    modif,
                           const char *generated_from,
                           int         line,
                           int         col)
 {
   NodeFuncDeclParams p = {
-    .base.type = BL_NODE_FUNC_DECL,
+    .base.type           = BL_NODE_FUNC_DECL,
     .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-    .type = type,
-    .ident = ident
+    .base.line           = line,
+    .base.col            = col,
+    .type                = type,
+    .ident               = ident,
+    .modif               = modif
   };
   
   return save_to_cache(self, bo_new(NodeFuncDecl, &p));

@@ -38,6 +38,7 @@ bo_decl_members_begin(NodeFuncDecl, Node)
   NodeStmt *stmt;
   char *type;
   char *ident;
+  bl_sym_e modificator;
 bo_end();
 
 bo_impl_type(NodeFuncDecl, Node);
@@ -57,6 +58,7 @@ NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
   bo_parent_ctor(Node, p);
   self->type = p->type;
   self->ident = p->ident;
+  self->modificator = p->modif;
 }
 
 /* NodeFuncDecl destructor */
@@ -85,6 +87,8 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, self->type);
   bo_string_append(ret, " ");
   bo_string_append(ret, self->ident);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, bl_sym_strings[self->modificator]);
   bo_string_append(ret, ">");
   return ret;
 }
@@ -147,5 +151,11 @@ const char *
 bl_node_func_decl_type(NodeFuncDecl *self)
 {
   return self->type;
+}
+
+bl_sym_e
+bl_node_func_decl_modif(NodeFuncDecl *self)
+{
+  return self->modificator;
 }
 

@@ -36,6 +36,13 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeParamVarDecl, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT const char *
+bl_node_param_var_decl_type(NodeParamVarDecl *self);
+
+extern BO_EXPORT const char *
+bl_node_param_var_decl_ident(NodeParamVarDecl *self);
+
 BO_END_DECLS
 
 #endif //BL_NODE_PARAM_VAR_DECL_H

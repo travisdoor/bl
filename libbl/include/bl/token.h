@@ -55,6 +55,7 @@ BO_BEGIN_DECLS
   sm(SEMICOLON, ";") \
   sm(ASIGN, "=") \
   sm(SLASH, "/") \
+  sm(NONE, "") \
 
 typedef enum {
 #define sm(tok, str) BL_SYM_##tok,

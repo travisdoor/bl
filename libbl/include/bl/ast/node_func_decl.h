@@ -32,6 +32,7 @@
 #include "bl/ast/node.h"
 #include "bl/ast/node_stmt.h"
 #include "bl/ast/node_param_var_decl.h"
+#include "bl/token.h"
 
 BO_BEGIN_DECLS
 /* class declaration */
@@ -44,6 +45,9 @@ bl_node_func_decl_ident(NodeFuncDecl *self);
 
 extern BO_EXPORT const char *
 bl_node_func_decl_type(NodeFuncDecl *self);
+
+extern BO_EXPORT bl_sym_e
+bl_node_func_decl_modif(NodeFuncDecl *self);
 
 extern BO_EXPORT bool
 bl_node_func_decl_add_stmt(NodeFuncDecl *self,

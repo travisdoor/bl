@@ -55,7 +55,7 @@ parse_expr(Parser *self,
            Unit *unit,
            jmp_buf jmp_error);
 
-static Node *
+static NodeFuncDecl *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error);
@@ -119,7 +119,10 @@ parse_global_stmt(Parser *self,
 {
   NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, unit->src, 1, 0);
 stmt:
-  if (!bl_node_global_stmt_add_child(gstmt, parse_func_decl(self, unit, jmp_error))) {
+  if (bl_tokens_consume_if(unit->tokens, BL_SYM_SEMICOLON))
+    goto stmt;
+
+  if (!bl_node_global_stmt_add_child(gstmt, (Node *) parse_func_decl(self, unit, jmp_error))) {
     bl_token_t *tok = bl_tokens_peek(unit->tokens);
     parse_error("%s %d:%d expected function declaration",
                 unit->filepath,
@@ -200,13 +203,26 @@ stmt:
   return stmt;
 }
 
-Node *
+NodeFuncDecl *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error)
 { 
   NodeFuncDecl *func_decl = NULL;
   bl_token_t *tok;
+  bl_sym_e modif = BL_SYM_NONE;
+
+  /*
+   * handle modificators
+   */
+
+  /* Store marker in case when current sequence of tokens is not function at all. */
+  bl_tokens_set_marker(unit->tokens);
+  if (bl_tokens_current_is(unit->tokens, BL_SYM_EXTERN)) {
+    bl_tokens_consume(unit->tokens);
+    modif = BL_SYM_EXTERN;
+  }
+
   if (bl_tokens_is_seq(unit->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     tok = bl_tokens_consume(unit->tokens);
     char *type = strndup(tok->content.as_string, tok->len);
@@ -215,7 +231,7 @@ parse_func_decl(Parser *self,
     char *ident = strndup(tok->content.as_string, tok->len);
 
     func_decl = bl_ast_node_func_decl_new(
-        unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
+        unit->ast, type, ident, modif, tok->src_loc, tok->line, tok->col);
 
     /* consume '(' */
     bl_tokens_consume(unit->tokens);
@@ -234,9 +250,23 @@ param:
           tok->line,
           tok->col);
 
-    bl_node_func_decl_add_stmt(func_decl, parse_stmt(self, unit, jmp_error));
+    if (modif == BL_SYM_EXTERN) {
+      tok = bl_tokens_consume(unit->tokens);
+      if (tok->sym != BL_SYM_SEMICOLON) {
+        parse_error("%s %d:%d missing semicolon ';' at the end of extern function definition",
+                    unit->filepath,
+                    tok->line,
+                    tok->col);
+      }
+    } else {
+      bl_node_func_decl_add_stmt(func_decl, parse_stmt(self, unit, jmp_error));
+    }
+  } else {
+    /* Roll back to marker. */
+    bl_tokens_back_to_marker(unit->tokens);
   }
-  return (Node *)func_decl;
+
+  return func_decl;
 }
 
 NodeParamVarDecl *

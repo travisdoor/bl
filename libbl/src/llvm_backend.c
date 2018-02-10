@@ -102,8 +102,6 @@ bo_end();
 /* class LlvmBackend object members */
 bo_decl_members_begin(LlvmBackend, Stage)
   /* members */
-  /*Module *tmp_mod;*/
-  /*jmp_buf tmp_jmp_error;*/
 bo_end();
 
 bo_impl_type(LlvmBackend, Stage);
@@ -156,7 +154,6 @@ run(LlvmBackend *self,
       gen_error("invalid node on llvm generator input");
   }
 
-  /*
   char *error = NULL;
   if (LLVMVerifyModule(mod, LLVMReturnStatusAction, &error)) {
     bl_actor_error((Actor *)unit, "(llvm_backend) not verified with error %s", error);
@@ -164,7 +161,6 @@ run(LlvmBackend *self,
     LLVMDisposeModule(mod);
     return false;
   }
-  */
 
   char *export_file = malloc(sizeof(char) * (strlen(unit->filepath) + 4));
   strcpy(export_file, unit->filepath);
@@ -191,6 +187,8 @@ to_type(const char *t)
       return LLVMInt32Type();
     case BL_TYPE_I64:
       return LLVMInt64Type();
+    case BL_TYPE_STRING:
+      return LLVMPointerType(LLVMInt8Type(), 0);
     case BL_TYPE_REF:
     default:
       return NULL;
@@ -209,16 +207,15 @@ gen_func_params(Unit       *unit,
   int out_i = 0;
   const int c = bl_node_func_decl_param_count(node);
 
-  /* no params -> use void (scope always presented)*/ 
+  /* no params */
   if (c == 0) {
-      *out = to_type("void");
-      return 1;
+      return 0;
   }
 
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_param(node, i);
-    *out = to_type(param->type);
+    *out = to_type(bl_node_param_var_decl_type(param));
     out++;
     out_i++;
   }
@@ -232,7 +229,7 @@ gen_epr(Unit         *unit,
         NodeExpr     *node, 
         jmp_buf       jmp_error)
 {
-  return LLVMConstInt(LLVMInt32Type(), node->num, true); 
+  return LLVMConstInt(LLVMInt32Type(), (unsigned long long int) bl_node_expr_num(node), true);
 }
 
 void
@@ -259,15 +256,16 @@ gen_func(Unit         *unit,
          jmp_buf       jmp_error)
 {
   /* params */
-  LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT];
+  LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
   int pc = gen_func_params(unit, node, param_types, jmp_error);
   LLVMTypeRef ret = to_type(bl_node_func_decl_type(node));
-  LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, 0);
+  LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
   LLVMValueRef func = LLVMAddFunction(mod, bl_node_func_decl_ident(node), ret_type);
 
   NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
-  gen_stmt(unit, mod, func, stmt, jmp_error);
+  if (stmt)
+    gen_stmt(unit, mod, func, stmt, jmp_error);
 }
 
 void

@@ -116,12 +116,12 @@ analyze_func(Unit         *unit,
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_param(node, i);
 
-    if (bl_strtotype(param->type) == BL_TYPE_REF) {
+    if (bl_strtotype(bl_node_param_var_decl_type(param)) == BL_TYPE_REF) {
       analyze_error("%s %d:%d unknown type '%s' for function parameter",
                     unit->filepath,
                     bo_members(param, Node)->line,
                     bo_members(param, Node)->col,
-                    param->type);
+                    bl_node_param_var_decl_type(param));
     }
   }
 }
