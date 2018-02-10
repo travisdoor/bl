@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module.h
+// File:   assembly_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,24 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef MODULE_H_KZVQNITH
-#define MODULE_H_KZVQNITH
+#ifndef BL_ASSEMBLY_IMPL_H
+#define BL_ASSEMBLY_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/pipeline/actor.h"
+#include "bl/assembly.h"
+#include "unit_impl.h"
 
-BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(Module, Actor)
-  /* virtuals */
+/* class Assembly object members */
+bo_decl_members_begin(Assembly, BObject)
+  /* members */
+  BArray *units;
+  char *name;
+  Pipeline *pipeline;
+  Unit *failed;
 bo_end();
 
-extern BO_EXPORT Module *
-bl_module_new(const char *name);
-
-extern BO_EXPORT const char *
-bl_module_name(Module *self);
-
-BO_END_DECLS
-
-#endif /* end of include guard: MODULE_H_KZVQNITH */
+#endif //BL_ASSEMBLY_IMPL_H

@@ -28,7 +28,6 @@
 
 #include "bl/token_printer.h"
 #include "bl/pipeline/stage.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "unit_impl.h"
 
@@ -37,11 +36,8 @@ static bool
 run(TokenPrinter *self,
     Unit       *unit);
 
-static int
-domain(TokenPrinter *self);
-
 /* class TokenPrinter constructor params */
-bo_decl_params_begin(TokenPrinter)
+bo_decl_params_with_base_begin(TokenPrinter, Stage)
   /* constructor params */
   FILE *out_stream;
 bo_end();
@@ -59,8 +55,6 @@ TokenPrinterKlass_init(TokenPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 void
@@ -123,16 +117,12 @@ run(TokenPrinter *self,
   return true;
 }
 
-int
-domain(TokenPrinter *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
 TokenPrinter *
-bl_token_printer_new(FILE *out_stream)
+bl_token_printer_new(FILE              *out_stream,
+                     bl_compile_group_e group)
 {
   TokenPrinterParams p = {
+    .base.group = group,
     .out_stream = out_stream
   };
 

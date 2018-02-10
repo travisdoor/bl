@@ -40,7 +40,8 @@ bo_decl_type_begin(TokenPrinter, Stage)
 bo_end();
 
 extern BO_EXPORT TokenPrinter *
-bl_token_printer_new(FILE *out_stream);
+bl_token_printer_new(FILE              *out_stream,
+                     bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */

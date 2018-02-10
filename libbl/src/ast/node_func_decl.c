@@ -32,6 +32,15 @@
 static BString *
 to_string(NodeFuncDecl *self);
 
+/* NodeFuncDecl members */
+bo_decl_members_begin(NodeFuncDecl, Node)
+  BArray *params;
+  NodeStmt *stmt;
+  char *type;
+  char *ident;
+  bl_sym_e modificator;
+bo_end();
+
 bo_impl_type(NodeFuncDecl, Node);
 
 /* NodeFuncDecl class init */
@@ -49,6 +58,7 @@ NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
   bo_parent_ctor(Node, p);
   self->type = p->type;
   self->ident = p->ident;
+  self->modificator = p->modif;
 }
 
 /* NodeFuncDecl destructor */
@@ -57,6 +67,7 @@ NodeFuncDecl_dtor(NodeFuncDecl *self)
 {
   free(self->type);
   free(self->ident);
+  bo_unref(self->params);
 }
 
 /* NodeFuncDecl copy constructor */
@@ -76,9 +87,75 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, self->type);
   bo_string_append(ret, " ");
   bo_string_append(ret, self->ident);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, bl_sym_strings[self->modificator]);
   bo_string_append(ret, ">");
   return ret;
 }
 
 /* public */
+
+bool
+bl_node_func_decl_add_stmt(NodeFuncDecl *self,
+                           NodeStmt     *stmt)
+{
+  if (!stmt)
+    return false;
+
+  self->stmt = stmt;
+  return true;
+}
+
+bool
+bl_node_func_decl_add_param(NodeFuncDecl     *self,
+                            NodeParamVarDecl *param)
+{
+  if (param == NULL)
+    return false;
+
+  if (self->params == NULL)
+    self->params = bo_array_new_bo(bo_typeof(Node), false);
+  bo_array_push_back(self->params, param);
+  return true;
+}
+
+NodeStmt *
+bl_node_func_decl_get_stmt(NodeFuncDecl *self)
+{
+  return self->stmt;
+}
+
+int
+bl_node_func_decl_param_count(NodeFuncDecl *self)
+{
+  if (self->params == NULL)
+    return 0;
+
+  return (int) bo_array_size(self->params);
+}
+
+NodeParamVarDecl * 
+bl_node_func_decl_param(NodeFuncDecl *self,
+                        int i)
+{
+  return bo_array_at(self->params, i, NodeParamVarDecl *);
+}
+
+const char *
+bl_node_func_decl_ident(NodeFuncDecl *self)
+{
+  return self->ident;
+}
+
+const char *
+bl_node_func_decl_type(NodeFuncDecl *self)
+{
+  return self->type;
+}
+
+bl_sym_e
+bl_node_func_decl_modif(NodeFuncDecl *self)
+{
+  return self->modificator;
+}
 

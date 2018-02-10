@@ -39,7 +39,7 @@ bo_decl_type_begin(Parser, Stage)
 bo_end();
 
 extern BO_EXPORT Parser *
-bl_parser_new(void);
+bl_parser_new(bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: PARSER_H_HBFDJRZZ */

@@ -36,6 +36,18 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeStmt, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT bool
+bl_node_stmt_add_child(NodeStmt *self,
+                       Node *node);
+
+extern BO_EXPORT int
+bl_node_stmt_child_count(NodeStmt *self);
+
+extern BO_EXPORT Node *
+bl_node_stmt_child(NodeStmt *self,
+                   int i);
+
 BO_END_DECLS
 
 #endif //BL_NODE_STMT_H

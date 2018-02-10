@@ -29,6 +29,11 @@
 #include <bobject/containers/array.h>
 #include "node_global_stmt_impl.h"
 
+/* NodeGlobalStmt members */
+bo_decl_members_begin(NodeGlobalStmt, Node)
+  BArray *nodes;
+bo_end();
+
 bo_impl_type(NodeGlobalStmt, Node);
 
 /* NodeGlobalStmt class init */
@@ -48,6 +53,7 @@ NodeGlobalStmt_ctor(NodeGlobalStmt *self, NodeGlobalStmtParams *p)
 void
 NodeGlobalStmt_dtor(NodeGlobalStmt *self)
 {
+  bo_unref(self->nodes);
 }
 
 /* NodeGlobalStmt copy constructor */
@@ -55,6 +61,36 @@ bo_copy_result
 NodeGlobalStmt_copy(NodeGlobalStmt *self, NodeGlobalStmt *other)
 {
   return BO_NO_COPY;
+}
+
+int
+bl_node_global_stmt_child_count(NodeGlobalStmt *self)
+{
+  if (self->nodes == NULL) {
+    return 0;
+  }
+
+  return (int)bo_array_size(self->nodes);
+}
+
+Node * 
+bl_node_global_stmt_child(NodeGlobalStmt *self,
+                          int             i)
+{
+  return bo_array_at(self->nodes, i, Node *);   
+}
+
+bool
+bl_node_global_stmt_add_child(NodeGlobalStmt *self,
+                              Node *node)
+{
+  if (node == NULL)
+    return false;
+
+  if (self->nodes == NULL)
+    self->nodes = bo_array_new_bo(bo_typeof(Node), false);
+  bo_array_push_back(self->nodes, node);
+  return true;
 }
 
 

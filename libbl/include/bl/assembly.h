@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   module_impl.h
+// File:   assembly.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,34 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef MODULE_IMPL_H_QLSAT7WF
-#define MODULE_IMPL_H_QLSAT7WF
+#ifndef BL_ASSEMBLY_H
+#define BL_ASSEMBLY_H
 
-#include "bl/module.h"
-#include "pipeline/actor_impl.h"
+#include <bobject/bobject.h>
+#include "bl/pipeline/pipeline.h"
+#include "bl/unit.h"
 
-/* Module members */
-bo_decl_members_begin(Module, Actor)
-  char *name;
+BO_BEGIN_DECLS
+
+/* class Assembly declaration */
+bo_decl_type_begin(Assembly, BObject)
+  /* virtuals */
 bo_end();
 
-#endif /* end of include guard: MODULE_IMPL_H_QLSAT7WF */
+extern BO_EXPORT Assembly *
+bl_assembly_new(const char *name,
+                Pipeline   *pipeline);
+
+extern BO_EXPORT void
+bl_assembly_add_unit(Assembly *self,
+                     Unit     *unit);
+
+extern BO_EXPORT bool
+bl_assembly_compile(Assembly *self);
+
+extern BO_EXPORT Unit *
+bl_assembly_failed(Assembly *self);
+
+BO_END_DECLS
+
+#endif //BL_ASSEMBLY_H

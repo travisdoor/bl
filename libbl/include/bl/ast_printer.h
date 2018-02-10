@@ -40,7 +40,8 @@ bo_decl_type_begin(AstPrinter, Stage)
 bo_end();
 
 extern BO_EXPORT AstPrinter *
-bl_ast_printer_new(FILE *out_stream);
+bl_ast_printer_new(FILE              *out_stream,
+                   bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: AST_PRINTER_H_EOKCLCB3 */

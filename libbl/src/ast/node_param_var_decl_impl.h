@@ -33,12 +33,6 @@
 #include "node_impl.h"
 #include "bl/token.h"
 
-/* NodeParamVarDecl members */
-bo_decl_members_begin(NodeParamVarDecl, Node)
-  char *type;
-  char *ident;
-bo_end();
-
 /* NodeParamVarDecl constructor parameters */
 bo_decl_params_with_base_begin(NodeParamVarDecl, Node)
   char *type;

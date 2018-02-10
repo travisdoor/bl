@@ -31,7 +31,6 @@
 #include "bl/parser.h"
 #include "bl/ast/node.h"
 #include "bl/pipeline/stage.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "unit_impl.h"
 
@@ -46,27 +45,27 @@ parse_global_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error);
 
-static Node *
+static NodeStmt *
 parse_stmt(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error);
 
-static Node *
+static NodeExpr *
 parse_expr(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error);
 
-static Node *
+static NodeFuncDecl *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error);
 
-static Node *
+static NodeParamVarDecl *
 parse_param_var_decl(Parser *self, 
                      Unit *unit,
                      jmp_buf jmp_error);
 
-static Node *
+static NodeReturnStmt *
 parse_return_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error);
@@ -75,15 +74,12 @@ static bool
 run(Parser *self,
     Unit   *unit);
 
-static int
-domain(Parser *self);
-
 /* Parser members */
 bo_decl_members_begin(Parser, Stage)
 bo_end();
 
 /* Parser constructor parameters */
-bo_decl_params_begin(Parser)
+bo_decl_params_with_base_begin(Parser, Stage)
 bo_end();
 
 bo_impl_type(Parser, Stage);
@@ -94,14 +90,13 @@ ParserKlass_init(ParserKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* Parser constructor */
 void
 Parser_ctor(Parser *self, ParserParams *p)
 {
+  bo_parent_ctor(Stage, p);
 }
 
 /* Parser destructor */
@@ -124,7 +119,10 @@ parse_global_stmt(Parser *self,
 {
   NodeGlobalStmt *gstmt = bl_ast_node_global_stmt_new(unit->ast, unit->src, 1, 0);
 stmt:
-  if (!bl_node_add_child((Node *)gstmt, parse_func_decl(self, unit, jmp_error))) {
+  if (bl_tokens_consume_if(unit->tokens, BL_SYM_SEMICOLON))
+    goto stmt;
+
+  if (!bl_node_global_stmt_add_child(gstmt, (Node *) parse_func_decl(self, unit, jmp_error))) {
     bl_token_t *tok = bl_tokens_peek(unit->tokens);
     parse_error("%s %d:%d expected function declaration",
                 unit->filepath,
@@ -138,7 +136,7 @@ stmt:
   return (Node *)gstmt;
 }
 
-Node *
+NodeReturnStmt *
 parse_return_stmt(Parser *self,
                   Unit *unit,
                   jmp_buf jmp_error)
@@ -150,7 +148,7 @@ parse_return_stmt(Parser *self,
 
     /* HACK parse expression here */
     if (bl_tokens_current_is(unit->tokens, BL_SYM_NUM)) {
-      if (!bl_node_add_child((Node *)rstmt, parse_expr(self, unit, jmp_error))) {
+      if (!bl_node_return_stmt_add_expr(rstmt, parse_expr(self, unit, jmp_error))) {
         tok = bl_tokens_consume(unit->tokens);
         parse_error("%s %d:%d expected expression or nothing after return statement",
                     unit->filepath,
@@ -167,10 +165,10 @@ parse_return_stmt(Parser *self,
                   tok->col);
     }
   }
-  return (Node *)rstmt;
+  return rstmt;
 }
 
-Node *
+NodeStmt *
 parse_stmt(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error)
@@ -192,7 +190,7 @@ stmt:
   }
 
   /* return */
-  bl_node_add_child((Node *)stmt, parse_return_stmt(self, unit, jmp_error));
+  bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self, unit, jmp_error));
 
   tok = bl_tokens_consume(unit->tokens);
 
@@ -202,16 +200,29 @@ stmt:
                 tok->line,
                 tok->col);
 
-  return (Node *)stmt;
+  return stmt;
 }
 
-Node *
+NodeFuncDecl *
 parse_func_decl(Parser *self, 
                 Unit *unit,
                 jmp_buf jmp_error)
 { 
   NodeFuncDecl *func_decl = NULL;
   bl_token_t *tok;
+  bl_sym_e modif = BL_SYM_NONE;
+
+  /*
+   * handle modificators
+   */
+
+  /* Store marker in case when current sequence of tokens is not function at all. */
+  bl_tokens_set_marker(unit->tokens);
+  if (bl_tokens_current_is(unit->tokens, BL_SYM_EXTERN)) {
+    bl_tokens_consume(unit->tokens);
+    modif = BL_SYM_EXTERN;
+  }
+
   if (bl_tokens_is_seq(unit->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     tok = bl_tokens_consume(unit->tokens);
     char *type = strndup(tok->content.as_string, tok->len);
@@ -220,14 +231,14 @@ parse_func_decl(Parser *self,
     char *ident = strndup(tok->content.as_string, tok->len);
 
     func_decl = bl_ast_node_func_decl_new(
-        unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
+        unit->ast, type, ident, modif, tok->src_loc, tok->line, tok->col);
 
     /* consume '(' */
     bl_tokens_consume(unit->tokens);
 
     if (bl_tokens_current_is_not(unit->tokens, BL_SYM_RPAREN)) {
 param:
-      bl_node_add_child((Node *)func_decl, parse_param_var_decl(self, unit, jmp_error));
+      bl_node_func_decl_add_param(func_decl, parse_param_var_decl(self, unit, jmp_error));
       if (bl_tokens_consume_if(unit->tokens, BL_SYM_COMMA))
         goto param;
     }
@@ -239,12 +250,26 @@ param:
           tok->line,
           tok->col);
 
-    bl_node_add_child((Node *)func_decl, parse_stmt(self, unit, jmp_error));
+    if (modif == BL_SYM_EXTERN) {
+      tok = bl_tokens_consume(unit->tokens);
+      if (tok->sym != BL_SYM_SEMICOLON) {
+        parse_error("%s %d:%d missing semicolon ';' at the end of extern function definition",
+                    unit->filepath,
+                    tok->line,
+                    tok->col);
+      }
+    } else {
+      bl_node_func_decl_add_stmt(func_decl, parse_stmt(self, unit, jmp_error));
+    }
+  } else {
+    /* Roll back to marker. */
+    bl_tokens_back_to_marker(unit->tokens);
   }
-  return (Node *)func_decl;
+
+  return func_decl;
 }
 
-Node *
+NodeParamVarDecl *
 parse_param_var_decl(Parser *self, 
                      Unit *unit,
                      jmp_buf jmp_error)
@@ -268,11 +293,11 @@ parse_param_var_decl(Parser *self,
   }
   
   char *ident = strndup(tok->content.as_string, tok->len);
-  return (Node *)bl_ast_node_param_var_decl_new(
+  return bl_ast_node_param_var_decl_new(
       unit->ast, type, ident, tok->src_loc, tok->line, tok->col);
 }
 
-Node *
+NodeExpr *
 parse_expr(Parser *self, 
            Unit *unit,
            jmp_buf jmp_error)
@@ -286,7 +311,7 @@ parse_expr(Parser *self,
         unit->ast, tok->content.as_int, tok->src_loc, tok->line, tok->col);
   }
 
-  return (Node *)expr;
+  return expr;
 }
 
 bool
@@ -311,17 +336,15 @@ run(Parser *self,
   return true;
 }
 
-int
-domain(Parser *self)
-{
-  return BL_DOMAIN_UNIT;
-}
-
 /* public */
 Parser *
-bl_parser_new(void)
+bl_parser_new(bl_compile_group_e group)
 {
-  return bo_new(Parser, NULL);
+  ParserParams p = {
+    .base.group = group
+  };
+
+  return bo_new(Parser, &p);
 }
 
 /* public */

@@ -1,6 +1,8 @@
 // this is testing script
 
-int add(int a, int b) {
-  return 0;
+extern void puts(string s);
+
+int main() {
+  return 100;
 }
 

@@ -21,12 +21,12 @@ set(HEADER_FILES
         include/bl/type_table.h
         include/bl/file_loader.h
         include/bl/lexer.h
-        include/bl/module.h
         include/bl/parser.h
         include/bl/token_printer.h
         include/bl/unit.h
         include/bl/token.h
         include/bl/tokens.h
+        include/bl/analyzer.h
         include/bl/ast/node.h
         include/bl/ast/node_expr.h
         include/bl/ast/node_return_stmt.h
@@ -35,7 +35,9 @@ set(HEADER_FILES
         include/bl/ast/node_param_var_decl.h
         include/bl/ast/ast.h
         include/bl/llvm_backend.h
-        include/bl/ast/node_stmt.h)
+        include/bl/ast/node_stmt.h 
+        include/bl/assembly.h 
+        include/bl/compile_group.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -45,26 +47,23 @@ set(HEADER_FILES_IMPL
         src/ast/node_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
-        src/ast/ast_impl.h
         src/pipeline/actor_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
-        src/domains_impl.h
-        src/module_impl.h
-        src/unit_impl.h)
+        src/unit_impl.h src/assembly_impl.h)
 
 set(SOURCE_FILES 
         src/pipeline/stage.c
         src/pipeline/actor.c
         src/pipeline/pipeline.c
         src/lexer.c
-        src/module.c
         src/tokens.c
         src/file_loader.c
         src/ast_printer.c
         src/token.c
         src/unit.c
         src/parser.c
+        src/analyzer.c
         src/type_table.c
         src/llvm_backend.c
         src/ast/ast.c
@@ -75,7 +74,7 @@ set(SOURCE_FILES
         src/ast/node_global_stmt.c
         src/ast/node_return_stmt.c
         src/ast/node_stmt.c
-        src/token_printer.c)
+        src/token_printer.c src/assembly.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

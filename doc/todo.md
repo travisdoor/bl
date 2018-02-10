@@ -1,6 +1,10 @@
-* add lexer unit testing
+## TODO
+* function call
+* namespaces
+* compilation not directly in assembly -> use builder object
+* when no return is presented create default one
 
-Features 
+## Features 
 * multiple return values
 * classes
 * structs

@@ -38,9 +38,10 @@
 #include "bl/parser.h"
 #include "bl/ast_printer.h"
 #include "bl/unit.h"
-#include "bl/module.h"
 #include "bl/ast/ast.h"
 #include "bl/type_table.h"
 #include "bl/bllimits.h"
+#include "bl/assembly.h"
+#include "bl/analyzer.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

@@ -33,12 +33,10 @@
 #include "pipeline/actor_impl.h"
 
 #define EXPECTED_STAGE_COUNT 8
-#define MAX_DOMAIN_COUNT 4
-#define STARTING_DOMAIN 0
 
 /* Pipeline members */
 bo_decl_members_begin(Pipeline, BObject)
-  BArray *stages[MAX_DOMAIN_COUNT];
+  BArray *stages[BL_PIPELINE_MAX_GROUP_COUNT];
   Actor *failed;
 bo_end();
 
@@ -58,7 +56,7 @@ PipelineKlass_init(PipelineKlass *klass)
 void
 Pipeline_ctor(Pipeline *self, PipelineParams *p)
 {
-  for (int i = 0; i < MAX_DOMAIN_COUNT; i++) {
+  for (int i = 0; i < BL_PIPELINE_MAX_GROUP_COUNT; i++) {
     self->stages[i] = bo_array_new_bo(bo_typeof(Stage), true); 
     bo_array_reserve(self->stages[i], EXPECTED_STAGE_COUNT);
   }
@@ -68,7 +66,7 @@ Pipeline_ctor(Pipeline *self, PipelineParams *p)
 void
 Pipeline_dtor(Pipeline *self)
 {
-  for (int i = 0; i < MAX_DOMAIN_COUNT; i++) {
+  for (int i = 0; i < BL_PIPELINE_MAX_GROUP_COUNT; i++) {
     bo_unref(self->stages[i]);
   }
 }
@@ -81,30 +79,19 @@ Pipeline_copy(Pipeline *self, Pipeline *other)
 }
 
 static bool 
-run_domain(Pipeline *self,
-           Actor    *actor,
-           int       domain)
+run_group(Pipeline *self,
+         Actor *actor,
+         int group)
 {
-  /* in case actor has been already ran */
-  if (actor->state != BL_ACTOR_STATE_PENDING)
-    return false;
+  const size_t c = bo_array_size(self->stages[group]);
+  if (c == 0)
+    return true;
 
-  const size_t c = bo_array_size(actor->actors);
-
-  /* not leaf */
-  for (int i = 0; i < c; i++) {
-    if (!run_domain(self, bo_array_at(actor->actors, i, Actor *), domain+1)) {
-      actor->state = BL_ACTOR_STATE_FAILED;
-      return false;
-    }
-  }
-
-  const size_t cs = bo_array_size(self->stages[domain]);
   Stage *stage = NULL;
-  for (int i = 0; i < cs; i++) {
-    stage = bo_array_at(self->stages[domain], i, Stage *);
-    /* IDEA: state can be managed inside every stage */
+  for (size_t i = 0; i < c; i++) {
+    stage = bo_array_at(self->stages[group], i, Stage *);
     if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
+      /* FAIL */
       actor->state = BL_ACTOR_STATE_FAILED;
       self->failed = actor;
       return false;
@@ -125,18 +112,18 @@ bl_pipeline_new(void)
 
 bool 
 bl_pipeline_run(Pipeline *self,
-                Actor    *actor)
+                Actor    *actor,
+                int       group)
 {
-  return run_domain(self, actor, STARTING_DOMAIN);
+  bl_assert(group < BL_PIPELINE_MAX_GROUP_COUNT, "invalid group %i", group);
+  return run_group(self, actor, group);
 }
 
 void
 bl_pipeline_add_stage(Pipeline *self,
-                      Stage    *stage)
+                      Stage *stage)
 {
-  const int domain = bo_vtbl(stage, Stage)->domain(stage);
-  bl_assert(domain < MAX_DOMAIN_COUNT, "cannot add domain %i, maximum is %i\n", domain, MAX_DOMAIN_COUNT);
-  bo_array_push_back(self->stages[domain], stage);
+  bo_array_push_back(self->stages[stage->group], stage);
 }
 
 Actor *

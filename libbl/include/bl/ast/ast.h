@@ -59,6 +59,7 @@ extern BO_EXPORT NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
                           char       *type,
                           char       *ident,
+                          bl_sym_e    modif,
                           const char *generated_from,
                           int         line,
                           int         col);

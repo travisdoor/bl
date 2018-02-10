@@ -36,6 +36,7 @@ BO_BEGIN_DECLS
 #define BL_TYPE_LIST \
   tp(REF, "") \
   tp(VOID, "void") \
+  tp(STRING, "string") \
   tp(I32, "int") \
   tp(I64, "long") \
 

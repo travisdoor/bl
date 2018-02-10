@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl 
 //
-// File:   module.c
+// File:   analyzer.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,58 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include <string.h>
-#include "module_impl.h"
+#ifndef BISCUIT_ANALYZER_H
+#define BISCUIT_ANALYZER_H
 
-/* Module constructor parameters */
-bo_decl_params_begin(Module)
-  const char *name;
+#include <bobject/bobject.h>
+#include "bl/pipeline/stage.h"
+
+BO_BEGIN_DECLS
+
+/* class declaration */
+bo_decl_type_begin(Analyzer, Stage)
+  /* virtuals */
 bo_end();
 
-bo_impl_type(Module, Actor);
+extern BO_EXPORT Analyzer *
+bl_analyzer_new(bl_compile_group_e group);
 
-/* Module class init */
-void
-ModuleKlass_init(ModuleKlass *klass)
-{
-}
+BO_END_DECLS
 
-/* Module constructor */
-void
-Module_ctor(Module *self, ModuleParams *p)
-{
-  bo_parent_ctor(Actor, p);
-  self->name = strdup(p->name);
-}
-
-/* Module destructor */
-void
-Module_dtor(Module *self)
-{
-}
-
-/* Module copy constructor */
-bo_copy_result
-Module_copy(Module *self, Module *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-Module *
-bl_module_new(const char *name)
-{
-  ModuleParams p = {
-    .name = name
-  };
-  
-  return bo_new(Module, &p);
-}
-
-const char *
-bl_module_name(Module *self)
-{
-  return self->name;
-}
-
+#endif /* end of include guard: ANALYZER_H_IDMCCWLX */

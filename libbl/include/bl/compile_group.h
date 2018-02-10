@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   domains.h
+// File:   compile_group.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_DOMAINS_H
-#define BISCUIT_DOMAINS_H
+#ifndef BL_COMPILE_GROUP_H
+#define BL_COMPILE_GROUP_H
 
-BO_BEGIN_DECLS
-typedef enum _bl_domain_e
+typedef enum _bl_compile_group
 {
-  BL_DOMAIN_MODULE = 0,
-  BL_DOMAIN_UNIT   = 1,
-} bl_domain_e;
-BO_END_DECLS
+  BL_CGROUP_PRE_ANALYZE = 0,
+  BL_CGROUP_ANALYZE,
+  BL_CGROUP_GENERATE,
+  BL_CGROUP_COUNT
+} bl_compile_group_e;
 
-#endif /* end of include guard: BISCUIT_DOMAINS_H */
-
+#endif //BL_COMPILE_GROUP_H

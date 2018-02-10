@@ -31,6 +31,7 @@
 /* NodeReturnStmt members */
 
 bo_decl_members_begin(NodeReturnStmt, Node)
+  NodeExpr *expr;
 bo_end();
 
 bo_impl_type(NodeReturnStmt, Node);
@@ -59,5 +60,22 @@ bo_copy_result
 NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
 {
   return BO_NO_COPY;
+}
+
+bool
+bl_node_return_stmt_add_expr(NodeReturnStmt *self,
+                             NodeExpr       *expr)
+{
+  if (expr == NULL)
+    return false;
+
+  self->expr = expr;
+  return true;
+}
+
+NodeExpr *
+bl_node_return_stmt_expr(NodeReturnStmt *self)
+{
+  return self->expr;
 }
 

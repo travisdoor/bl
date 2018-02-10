@@ -35,25 +35,25 @@ protected:
   void
   SetUp()
   {
-    module = (Actor *)bl_module_new("test_module");
     pipeline = bl_pipeline_new();
+    assembly = bl_assembly_new("test_assembly", pipeline);
 
-    auto *lexer = (Stage *)bl_lexer_new();
+    auto *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(pipeline, lexer);
 
-    auto *parser = (Stage *)bl_parser_new();
+    auto *parser = (Stage *)bl_parser_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(pipeline, parser);
   }
 
   void
   TearDown()
   {
-    bo_unref(module);
+    bo_unref(assembly);
     bo_unref(pipeline);
   }
 
   Pipeline *pipeline;
-  Actor *module;
+  Assembly *assembly;
 };
 
 TEST_F(ParserTest, ast_func_decl)
@@ -61,25 +61,13 @@ TEST_F(ParserTest, ast_func_decl)
   const char *src =
     "void func() {}";
 
-  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("ast_func_decl", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_pipeline_run(pipeline, module)) {
+  if (!bl_assembly_compile(assembly)) {
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
-
-  auto *ast = bl_unit_ast((Unit *)unit);
-  auto *ast_root = bl_ast_get_root(ast);
-
-  Node *node = NULL;
-  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
-
-  node = bo_array_at(bl_node_children(ast_root), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_FUNC_DECL);
-
-  node = bo_array_at(bl_node_children(node), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_param)
@@ -87,28 +75,13 @@ TEST_F(ParserTest, ast_func_decl_param)
   const char *src =
     "void func(int i) {}";
 
-  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_param", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("ast_func_decl_param", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_pipeline_run(pipeline, module)) {
+  if (!bl_assembly_compile(assembly)) {
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
-
-  auto *ast = bl_unit_ast((Unit *)unit);
-  auto *ast_root = bl_ast_get_root(ast);
-
-  Node *node = NULL;
-  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
-
-  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
-  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 1, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_params)
@@ -116,34 +89,13 @@ TEST_F(ParserTest, ast_func_decl_params)
   const char *src =
     "void func(int i, char c, float f) {}";
 
-  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_params", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("ast_func_decl_params", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_pipeline_run(pipeline, module)) {
+  if (!bl_assembly_compile(assembly)) {
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
-
-  auto *ast = bl_unit_ast((Unit *)unit);
-  auto *ast_root = bl_ast_get_root(ast);
-
-  Node *node = NULL;
-  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
-
-  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
-  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 1, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 2, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_PARAM_VAR_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 3, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_extra_semicolon)
@@ -151,25 +103,13 @@ TEST_F(ParserTest, ast_func_decl_extra_semicolon)
   const char *src =
     "void func() {;;;}";
 
-  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_extra_semicolon", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("ast_func_decl_extra_semicolon", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_pipeline_run(pipeline, module)) {
+  if (!bl_assembly_compile(assembly)) {
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
-
-  auto *ast = bl_unit_ast((Unit *)unit);
-  auto *ast_root = bl_ast_get_root(ast);
-
-  Node *node = NULL;
-  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
-
-  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
-  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
 }
 
 TEST_F(ParserTest, ast_func_decl_ret)
@@ -177,24 +117,26 @@ TEST_F(ParserTest, ast_func_decl_ret)
   const char *src =
     "int func() {return 0;}";
 
-  auto *unit = (Actor *) bl_unit_new_str("ast_func_decl_ret", src);
-  bl_actor_add(module, unit);
+  auto *unit = bl_unit_new_str("ast_func_decl_ret", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_pipeline_run(pipeline, module)) {
+  if (!bl_assembly_compile(assembly)) {
     auto *failed = bl_pipeline_get_failed(pipeline);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
+}
 
-  auto *ast = bl_unit_ast((Unit *)unit);
-  auto *ast_root = bl_ast_get_root(ast);
+TEST_F(ParserTest, ast_func_decl_extern)
+{
+  const char *src =
+    "extern int func(int i);";
 
-  Node *node = NULL;
-  ASSERT_EQ(bl_node_type(ast_root), BL_NODE_GLOBAL_STMT);
+  auto *unit = bl_unit_new_str("ast_func_decl_extern", src);
+  bl_assembly_add_unit(assembly, unit);
 
-  auto *fnode = bo_array_at(bl_node_children(ast_root), 0, Node *);
-  ASSERT_EQ(bl_node_type(fnode), BL_NODE_FUNC_DECL);
-
-  node = bo_array_at(bl_node_children(fnode), 0, Node *);
-  ASSERT_EQ(bl_node_type(node), BL_NODE_STMT);
+  if (!bl_assembly_compile(assembly)) {
+    auto *failed = bl_pipeline_get_failed(pipeline);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
 }
 

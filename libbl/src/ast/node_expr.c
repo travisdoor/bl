@@ -63,3 +63,8 @@ NodeExpr_copy(NodeExpr *self, NodeExpr *other)
   return BO_NO_COPY;
 }
 
+int
+bl_node_expr_num(NodeExpr *self)
+{
+  return self->num;
+}

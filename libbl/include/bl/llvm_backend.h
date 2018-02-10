@@ -40,7 +40,7 @@ bo_decl_type_begin(LlvmBackend, Stage)
 bo_end();
 
 extern BO_EXPORT LlvmBackend *
-bl_llvm_backend_new(void);
+bl_llvm_backend_new(bl_compile_group_e group);
 BO_END_DECLS
 
 #endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */

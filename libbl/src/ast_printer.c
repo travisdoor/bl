@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include "ast_printer_impl.h"
 #include "unit_impl.h"
-#include "domains_impl.h"
 #include "bl/bldebug.h"
 #include "ast/node_impl.h"
 
@@ -37,11 +36,8 @@ static bool
 run(AstPrinter *self,
     Unit       *unit);
 
-static int
-domain(AstPrinter *self);
-
 /* AstPrinter constructor parameters */
-bo_decl_params_begin(AstPrinter)
+bo_decl_params_with_base_begin(AstPrinter, Stage)
   FILE *out_stream;
 bo_end();
 
@@ -53,8 +49,6 @@ AstPrinterKlass_init(AstPrinterKlass *klass)
 {
   bo_vtbl_cl(klass, Stage)->run 
     = (bool (*)(Stage*, Actor *)) run;
-  bo_vtbl_cl(klass, Stage)->domain
-    = (int (*)(Stage*)) domain;
 }
 
 /* AstPrinter constructor */
@@ -90,15 +84,45 @@ print_node(AstPrinter *self,
   fprintf(self->out_stream, ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET, pad, "", bo_string_get(s));
   bo_unref(s);
 
-  if (node->nodes == NULL)
-    return;
+  int c = 0;
+  Node *child = NULL;
 
-  size_t c = bo_array_size(node->nodes);
-  Node *child;
-  pad+=2;
-  for (size_t i = 0; i < c; i++) {
-    child = bo_array_at(node->nodes, i, Node *);
-    print_node(self, child, pad);
+  switch (node->type) {
+    case BL_NODE_GLOBAL_STMT:
+      c = bl_node_global_stmt_child_count((NodeGlobalStmt *) node);
+      pad+=2;
+      for (int i = 0; i < c; i++) {
+        child = bl_node_global_stmt_child((NodeGlobalStmt *) node, i);
+        print_node(self, child, pad);
+      }
+      break;
+    case BL_NODE_FUNC_DECL:
+      c = bl_node_func_decl_param_count((NodeFuncDecl *) node);
+      pad+=2;
+      for (int i = 0; i < c; i++) {
+        child = (Node *) bl_node_func_decl_param((NodeFuncDecl *) node, i);
+        print_node(self, child, pad);
+      }
+      print_node(self, (Node *) bl_node_func_decl_get_stmt((NodeFuncDecl *) node), pad);
+      break;
+    case BL_NODE_PARAM_VAR_DECL:
+      break;
+    case BL_NODE_EXPR:
+      break;
+    case BL_NODE_STMT:
+      c = bl_node_stmt_child_count((NodeStmt *) node);
+      pad+=2;
+      for (int i = 0; i < c; i++) {
+        child = bl_node_stmt_child((NodeStmt *) node, i);
+        print_node(self, child, pad);
+      }
+      break;
+    case BL_NODE_RETURN_STMT:
+      pad+=2;
+      print_node(self, (Node *) bl_node_return_stmt_expr((NodeReturnStmt *) node), pad);
+      break;
+    default:
+      break;
   }
 }
 
@@ -111,21 +135,17 @@ run(AstPrinter *self,
     return false;
   }
 
-  print_node(self, bl_ast_get_root(unit->ast), 0); 
+  print_node(self, bl_ast_get_root(unit->ast), 0);
   return true;
-}
-
-int
-domain(AstPrinter *self)
-{
-  return BL_DOMAIN_UNIT;
 }
 
 /* public */
 AstPrinter *
-bl_ast_printer_new(FILE *out_stream)
+bl_ast_printer_new(FILE              *out_stream,
+                   bl_compile_group_e group)
 {
   AstPrinterParams p = {
+    .base.group = group,
     .out_stream = out_stream
   };
 
