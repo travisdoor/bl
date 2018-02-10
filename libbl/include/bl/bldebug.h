@@ -39,7 +39,7 @@
 
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
-        fprintf(stderr, ANSI_COLOR_RED "[ASSERT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stderr, ANSI_COLOR_RED "[ASSERT]  " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
         abort(); \
     }
 
@@ -51,7 +51,7 @@
 
 #define bl_error(format, ...) \
     { \
-        fprintf(stderr, ANSI_COLOR_RED "[ERROR] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stderr, ANSI_COLOR_RED "[ERROR]   " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
     }
 
 #define bl_warning(format, ...) \

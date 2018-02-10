@@ -3,6 +3,19 @@
 extern void puts(string s);
 
 int main() {
-  return 100;
+  int a;
+  long my_long;
+  string s;
+  string this_is_my_sting;
+
+  return 10;
 }
 
+int another_function(int i) {
+  return 1;
+  string local_string;
+}
+
+string hello() {
+
+}

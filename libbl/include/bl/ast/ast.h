@@ -37,6 +37,7 @@
 #include "bl/ast/node_func_decl.h"
 #include "bl/ast/node_global_stmt.h"
 #include "bl/ast/node_return_stmt.h"
+#include "bl/ast/node_var_decl.h"
 
 BO_BEGIN_DECLS
 
@@ -96,6 +97,14 @@ bl_ast_node_expr_new(Ast        *self,
                      const char *generated_from,
                      int         line,
                      int         col);
+
+extern BO_EXPORT NodeVarDecl *
+bl_ast_node_var_decl_new(Ast         *self,
+                         char       *type,
+                         char       *ident,
+                         const char *generated_from,
+                         int         line,
+                         int         col);
 
 BO_END_DECLS
 

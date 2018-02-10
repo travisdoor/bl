@@ -1,4 +1,5 @@
 ## TODO
+* handle void return statement
 * function call
 * namespaces
 * compilation not directly in assembly -> use builder object

@@ -55,6 +55,11 @@ parse_expr(Parser *self,
            Unit *unit,
            jmp_buf jmp_error);
 
+static NodeVarDecl *
+parse_var_decl(Parser *self,
+               Unit *unit,
+               jmp_buf jmp_error);
+
 static NodeFuncDecl *
 parse_func_decl(Parser *self, 
                 Unit *unit,
@@ -189,16 +194,22 @@ stmt:
     goto stmt;
   }
 
+  /* var decl */
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_var_decl(self, unit, jmp_error)))
+    goto stmt;
+
   /* return */
-  bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self, unit, jmp_error));
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self, unit, jmp_error)))
+    goto stmt;
 
   tok = bl_tokens_consume(unit->tokens);
 
   if (tok->sym != BL_SYM_RBLOCK)
-    parse_error("%s %d:%d missing scope end '}'",
+    parse_error("%s %d:%d expected declaration or scope end '}'",
                 unit->filepath,
                 tok->line,
-                tok->col);
+                tok->col + tok->len);
+
 
   return stmt;
 }
@@ -312,6 +323,35 @@ parse_expr(Parser *self,
   }
 
   return expr;
+}
+
+NodeVarDecl *
+parse_var_decl(Parser *self,
+               Unit *unit,
+               jmp_buf jmp_error)
+{
+  NodeVarDecl *vdcl = NULL;
+
+  bl_tokens_set_marker(unit->tokens);
+  if (bl_tokens_is_seq(unit->tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
+    bl_token_t *tok_type = bl_tokens_consume(unit->tokens);
+    bl_token_t *tok_ident = bl_tokens_consume(unit->tokens);
+
+    if (bl_tokens_consume_if(unit->tokens, BL_SYM_SEMICOLON)) {
+      /* declaration only */
+      char *type = strndup(tok_type->content.as_string, tok_type->len);
+      char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
+      vdcl = bl_ast_node_var_decl_new(
+        unit->ast, type, ident, tok_ident->src_loc, tok_ident->line, tok_ident->col);
+    } else {
+      parse_error("%s %d:%d missing semicolon ';' at the end of variable declaration",
+                  unit->filepath,
+                  tok_ident->line,
+                  tok_ident->col + tok_ident->len);
+    }
+  }
+
+  return vdcl;
 }
 
 bool

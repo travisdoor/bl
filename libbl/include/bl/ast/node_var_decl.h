@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node.h
+// File:   node_var_decl.h
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   10/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,39 +26,25 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_H
-#define BL_NODE_H
+#ifndef BL_NODE_VAR_DECL_H
+#define BL_NODE_VAR_DECL_H
 
+#include "bl/ast/node.h"
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
 
 BO_BEGIN_DECLS
 
-#define BL_NTYPE_LIST\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "stmt") \
-  nt(EXPR, "expression") \
-  nt(VAR_DECL, "var_decl") \
-  nt(RETURN_STMT, "return_stmt") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  BL_NTYPE_LIST
-#undef nt
-} bl_node_e;
-
-/* class declaration */
-bo_decl_type_begin(Node, BObject)
+/* class NodeVarDecl declaration */
+bo_decl_type_begin(NodeVarDecl, Node)
   /* virtuals */
-  BString *(*to_string)(Node *);
 bo_end();
 
-extern BO_EXPORT bl_node_e
-bl_node_type(Node *self);
+extern BO_EXPORT char *
+bl_node_var_decl_ident(NodeVarDecl *self);
+
+extern BO_EXPORT char *
+bl_node_var_decl_type(NodeVarDecl *self);
 
 BO_END_DECLS
 
-#endif //BL_NODE_H
+#endif //BL_NODE_VAR_DECL_H

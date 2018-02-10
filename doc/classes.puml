@@ -1,58 +1,27 @@
 @startuml
-enum bl_actor_state_e {
-  BL_ACTOR_STATE_PENDING
-  BL_ACTOR_STATE_FINISHED
-  BL_ACTOR_STATE_FAILED
+
+class Node
+class NodeStmt
+class NodeGlobalStmt
+class NodeFuncDecl
+class NodeExpr
+class NodeReturnStmt
+class NodeParamVarDecl
+class NodeCallExpr
+class NodeVarDecl {
+  char *type
+  char *ident
 }
 
-enum bl_stage_domain_e {
-  BL_STAGE_DOMAIN_MODULE
-  BL_STAGE_DOMAIN_UNIT
-}
 
-class Actor {
-  + bl_actor_state_e state()
-  + int last_error()
-}
+Node <|-- NodeStmt
+Node <|-- NodeGlobalStmt
+Node <|-- NodeExpr
+Node <|-- NodeFuncDecl
+Node <|-- NodeParamVarDecl
+Node <|-- NodeReturnStmt
+Node <|-- NodeVarDecl
 
-class Pipeline {
-  + void add_stage(Stage *stage)
-  + bool run(Actor *actor)
-}
-
-class Stage {
-  {abstract} + bool run(Actor actor)
-  {abstract} + int domain()
-}
-
-class Module {
-}
-
-class Unit {
-  - BString *src
-}
-
-class Lexer {
-}
-
-class Parser {
-}
-
-class Analyzer {
-}
-
-Stage <|-- Lexer
-Stage <|-- Parser 
-Stage <|-- Analyzer  
-Stage <|-- LlvmBackend 
-
-Pipeline o-- Stage: - stages
-
-Module ..> Unit: have n >
-
-Actor <|-- Module
-Actor <|-- Unit
-Actor *-- bl_actor_state_e: - state
-Actor *-- Actor: - actors 
+NodeExpr <|-- NodeCallExpr
 
 @enduml

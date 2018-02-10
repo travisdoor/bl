@@ -24,6 +24,7 @@ set(HEADER_FILES
         include/bl/parser.h
         include/bl/token_printer.h
         include/bl/unit.h
+        include/bl/bllimits.h
         include/bl/token.h
         include/bl/tokens.h
         include/bl/analyzer.h
@@ -37,10 +38,11 @@ set(HEADER_FILES
         include/bl/llvm_backend.h
         include/bl/ast/node_stmt.h 
         include/bl/assembly.h 
-        include/bl/compile_group.h)
+        include/bl/compile_group.h include/bl/ast/node_var_decl.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
+        src/ast/ast_impl.h
         src/ast/node_func_decl_impl.h
         src/ast/node_global_stmt_impl.h
         src/ast/node_param_var_decl_impl.h
@@ -50,7 +52,7 @@ set(HEADER_FILES_IMPL
         src/pipeline/actor_impl.h
         src/ast_printer_impl.h
         src/file_loader_impl.h
-        src/unit_impl.h src/assembly_impl.h)
+        src/unit_impl.h src/assembly_impl.h src/ast/node_var_decl_impl.h)
 
 set(SOURCE_FILES 
         src/pipeline/stage.c
@@ -74,7 +76,7 @@ set(SOURCE_FILES
         src/ast/node_global_stmt.c
         src/ast/node_return_stmt.c
         src/ast/node_stmt.c
-        src/token_printer.c src/assembly.c)
+        src/token_printer.c src/assembly.c src/ast/node_var_decl.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
