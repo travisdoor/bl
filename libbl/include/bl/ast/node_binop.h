@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   bl.h
+// File:   node_binop.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,22 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef BL_NODE_BINOP_H
+#define BL_NODE_BINOP_H
 
-#include "bl/bldebug.h"
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/llvm_backend.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
-#include "bl/unit.h"
-#include "bl/ast/ast.h"
-#include "bl/type.h"
-#include "bl/bllimits.h"
-#include "bl/assembly.h"
-#include "bl/analyzer.h"
+#include "bl/ast/node.h"
+#include <bobject/bobject.h>
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+BO_BEGIN_DECLS
+
+/* class NodeBinop declaration */
+bo_decl_type_begin(NodeBinop, Node)
+  /* virtuals */
+bo_end();
+
+BO_END_DECLS
+
+#endif //BL_NODE_BINOP_H

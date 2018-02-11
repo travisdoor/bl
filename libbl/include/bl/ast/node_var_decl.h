@@ -29,8 +29,9 @@
 #ifndef BL_NODE_VAR_DECL_H
 #define BL_NODE_VAR_DECL_H
 
-#include "bl/ast/node.h"
 #include <bobject/bobject.h>
+#include "bl/ast/node.h"
+#include "bl/type.h"
 
 BO_BEGIN_DECLS
 
@@ -42,7 +43,7 @@ bo_end();
 extern BO_EXPORT char *
 bl_node_var_decl_ident(NodeVarDecl *self);
 
-extern BO_EXPORT char *
+extern BO_EXPORT Type *
 bl_node_var_decl_type(NodeVarDecl *self);
 
 BO_END_DECLS

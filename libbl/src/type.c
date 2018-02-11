@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_var_decl.c
+// File:   type.c
 // Author: Martin Dorazil
-// Date:   10/02/2018
+// Date:   11/02/2018
 //
 // Copyright 2017 Martin Dorazil
 //
@@ -26,75 +26,108 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_var_decl_impl.h"
+#include <bobject/containers/hash.h>
+#include <string.h>
+#include "bl/type.h"
 
-static BString *
-to_string(NodeVarDecl *self);
+static const char *bl_type_strings[] = {
+#define tp(tok, str) str,
+  BL_TYPE_LIST
+#undef tp
+};
 
-/* class NodeVarDecl */
-/* class NodeVarDecl object members */
-bo_decl_members_begin(NodeVarDecl, Node)
-  /* members */
-  Type *type;
-  char *ident;
+/* class Type */
+bo_decl_params_begin(Type)
+  char *name;
 bo_end();
 
-bo_impl_type(NodeVarDecl, Node);
+/* class Type object members */
+bo_decl_members_begin(Type, BObject)
+  /* members */
+  char     *name;
+  uint32_t  t;
+bo_end();
+
+bo_impl_type(Type, BObject);
 
 void
-NodeVarDeclKlass_init(NodeVarDeclKlass *klass)
+TypeKlass_init(TypeKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string
-    = (BString *(*)(Node*)) to_string;
 }
 
 void
-NodeVarDecl_ctor(NodeVarDecl *self, NodeVarDeclParams *p)
+Type_ctor(Type *self, TypeParams *p)
 {
   /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Node, p);
-  /* initialize self */
-  self->type = p->type;
-  self->ident = p->ident;
+  self->name = p->name;
+
+  for (uint32_t  i = 0; i < BL_TYPE_COUNT; i++) {
+    if (strcmp(bl_type_strings[i], self->name) == 0)
+      self->t = i;
+  }
+
+  if (self->t == BL_TYPE_NONE) {
+    self->t = bo_hash_from_str(self->name);
+  }
 }
 
 void
-NodeVarDecl_dtor(NodeVarDecl *self)
+Type_dtor(Type *self)
 {
-  free(self->ident);
-  bo_unref(self->type);
+  free(self->name);
 }
 
 bo_copy_result
-NodeVarDecl_copy(NodeVarDecl *self, NodeVarDecl *other)
+Type_copy(Type *self, Type *other)
 {
   return BO_NO_COPY;
 }
-/* class NodeVarDecl end */
-
-BString *
-to_string(NodeVarDecl *self)
-{
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, " ");
-  bo_string_append(ret, bl_type_name(self->type));
-  bo_string_append(ret, " ");
-  bo_string_append(ret, self->ident);
-  bo_string_append(ret, ">");
-  return ret;
-}
-
-char *
-bl_node_var_decl_ident(NodeVarDecl *self)
-{
-  return self->ident;
-}
+/* class Type end */
 
 Type *
-bl_node_var_decl_type(NodeVarDecl *self)
+bl_type_new(char *name)
 {
-  return self->type;
+  TypeParams p = {
+    .name = name
+  };
+
+  return bo_new(Type, &p);
+}
+
+uint32_t
+bl_type_get(Type *self)
+{
+  return self->t;
+}
+
+const char *
+bl_type_name(Type *self)
+{
+  return self->name;
+}
+
+bool
+bl_type_is(Type    *self,
+           uint32_t t)
+{
+  return self->t == t;
+}
+
+bool
+bl_type_is_fundamental(Type *self)
+{
+  return self->t < BL_TYPE_COUNT;
+}
+
+bool
+bl_type_is_user_defined(Type *self)
+{
+  return !bl_type_is_fundamental(self);
+}
+
+bool
+bl_type_is_not(Type    *self,
+               uint32_t t)
+{
+  return self->t != t;
 }

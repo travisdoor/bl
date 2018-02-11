@@ -45,6 +45,8 @@ BO_BEGIN_DECLS
   sm(NAMESPACE, "namespace") \
   sm(CLASS, "class") \
   sm(STRUCT, "struct") \
+  sm(TRUE, "true") \
+  sm(FALSE, "false") \
   sm(LBLOCK, "{") \
   sm(RBLOCK, "}") \
   sm(LBRACKET, "[") \

@@ -118,7 +118,7 @@ bl_ast_node_func_decl_new(Ast        *self,
     .base.generated_from = generated_from, 
     .base.line           = line,
     .base.col            = col,
-    .type                = type,
+    .type                = bl_type_new(type),
     .ident               = ident,
     .modif               = modif
   };
@@ -171,7 +171,7 @@ bl_ast_node_param_var_decl_new(Ast        *self,
     .base.generated_from = generated_from, 
     .base.line = line, 
     .base.col = col,
-    .type = type,
+    .type = bl_type_new(type),
     .ident = ident
   };
   
@@ -226,8 +226,8 @@ bl_ast_node_var_decl_new(Ast        *self,
     .base.generated_from = generated_from,
     .base.line = line,
     .base.col = col,
-    .ident = ident,
-    .type = type
+    .type = bl_type_new(type),
+    .ident = ident
   };
 
   return save_to_cache(self, bo_new(NodeVarDecl, &p));

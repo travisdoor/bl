@@ -29,9 +29,9 @@
 #include <setjmp.h>
 #include "bl/analyzer.h"
 #include "bl/bldebug.h"
-#include "bl/type_table.h"
-#include "unit_impl.h"
+#include "bl/bllimits.h"
 #include "ast/ast_impl.h"
+#include "unit_impl.h"
 
 #define analyze_error(cnt, format, ...) \
   { \
@@ -55,6 +55,10 @@ run(Analyzer *self,
 static void
 analyze_func(context_t    *cnt,
              NodeFuncDecl *func);
+
+static void
+analyze_var_decl(context_t   *cnt,
+                 NodeVarDecl *vdcl);
 
 static void
 analyze_stmt(context_t *cnt,
@@ -110,12 +114,13 @@ analyze_func(context_t    *cnt,
   /*
    * Check return type existence.
    */
-  if (bl_strtotype(bl_node_func_decl_type(func)) == BL_TYPE_REF) {
+  Type *type_tmp = bl_node_func_decl_type(func);
+  if (bl_type_is_user_defined(type_tmp)) {
     analyze_error(cnt, "%s %d:%d unknown return type '%s' for function '%s'",
                   cnt->unit->filepath,
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
-                  bl_node_func_decl_type(func),
+                  bl_type_name(type_tmp),
                   bl_node_func_decl_ident(func));
   }
 
@@ -123,16 +128,31 @@ analyze_func(context_t    *cnt,
    * Check params.
    */
   const int c = bl_node_func_decl_param_count(func);
+
+  /*
+   * Reached maximum count of parameters.
+   */
+  if (c > BL_MAX_FUNC_PARAM_COUNT)
+    analyze_error(cnt,
+                  "%s %d:%d reached maximum count of function parameters, function has: %d and maximum is: %d",
+                  cnt->unit->filepath,
+                  bo_members(func, Node)->line,
+                  bo_members(func, Node)->col,
+                  c,
+                  BL_MAX_FUNC_PARAM_COUNT);
+
+
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_param(func, i);
 
-    if (bl_strtotype(bl_node_param_var_decl_type(param)) == BL_TYPE_REF) {
+    type_tmp = bl_node_param_var_decl_type(param);
+    if (bl_type_is_user_defined(type_tmp)) {
       analyze_error(cnt, "%s %d:%d unknown type '%s' for function parameter",
                     cnt->unit->filepath,
                     bo_members(param, Node)->line,
                     bo_members(param, Node)->col,
-                    bl_node_param_var_decl_type(param));
+                    bl_type_name(type_tmp));
     }
   }
 
@@ -142,6 +162,28 @@ analyze_func(context_t    *cnt,
   NodeStmt *stmt = bl_node_func_decl_get_stmt(func);
   if (stmt) {
     analyze_stmt(cnt, stmt);
+  }
+}
+
+void
+analyze_var_decl(context_t *cnt,
+                 NodeVarDecl *vdcl)
+{
+  /*
+   * Check type of declaration.
+   */
+  Type *type_tmp = bl_node_var_decl_type(vdcl);
+  if (bl_type_is_user_defined(type_tmp)) {
+    analyze_error(cnt, "%s %d:%d unknown type '%s'",
+                  cnt->unit->filepath,
+                  bo_members(vdcl, Node)->line,
+                  bo_members(vdcl, Node)->col,
+                  bl_type_name(type_tmp));
+  } else if (bl_type_is(type_tmp, BL_TYPE_VOID)) {
+    analyze_error(cnt, "%s %d:%d 'void' is not allowed here",
+                  cnt->unit->filepath,
+                  bo_members(vdcl, Node)->line,
+                  bo_members(vdcl, Node)->col);
   }
 }
 
@@ -164,13 +206,16 @@ analyze_stmt(context_t *cnt,
                      node->col);
         }
         break;
+      case BL_NODE_VAR_DECL:
+        analyze_var_decl(cnt, (NodeVarDecl *) node);
+        break;
       default:
         break;
     }
   }
 
-  const char *expected_return_type = bl_node_func_decl_type(cnt->current_func_tmp);
-  if (!return_presented && bl_strtotype(expected_return_type) != BL_TYPE_VOID) {
+  Type *exp_ret = bl_node_func_decl_type(cnt->current_func_tmp);
+  if (!return_presented && bl_type_is_not(exp_ret, BL_TYPE_VOID)) {
     analyze_error(cnt, "%s %d:%d unterminated function '%s'",
                   cnt->unit->filepath,
                   bo_members(cnt->current_func_tmp, Node)->line,

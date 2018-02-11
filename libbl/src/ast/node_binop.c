@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   type_table.c
+// File:   node_binop.c
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,22 +26,40 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <string.h>
-#include "bl/type_table.h"
+#include "ast/node_binop_impl.h"
+/* class NodeBinop */
+/* class NodeBinop object members */
+bo_decl_members_begin(NodeBinop, Node)
+  /* members */
+bo_end();
 
-char *bl_type_strings[] = {
-#define tp(tok, str) str,
-  BL_TYPE_LIST
-#undef tp 
-};
+bo_impl_type(NodeBinop, Node);
 
-bl_type_e
-bl_strtotype(const char* str)
+void
+NodeBinopKlass_init(NodeBinopKlass *klass)
 {
-  for (int i = 0; i < BL_TYPE_COUNT; i++) {
-    if (strcmp(bl_type_strings[i], str) == 0)
-      return (bl_type_e) i;
-  }
-
-  return BL_TYPE_REF;
 }
+
+void
+NodeBinop_ctor(NodeBinop *self, NodeBinopParams *p)
+{
+  /* constructor */
+
+  /* initialize parent */
+  bo_parent_ctor(Node, p);
+
+  /* initialize self */
+}
+
+void
+NodeBinop_dtor(NodeBinop *self)
+{
+}
+
+bo_copy_result
+NodeBinop_copy(NodeBinop *self, NodeBinop *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeBinop end */
+

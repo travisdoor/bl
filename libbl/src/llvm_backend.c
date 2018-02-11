@@ -35,7 +35,6 @@
 #include "bl/llvm_backend.h"
 #include "bl/pipeline/stage.h"
 #include "bl/bldebug.h"
-#include "bl/type_table.h"
 #include "bl/bllimits.h"
 #include "unit_impl.h"
 #include "ast/ast_impl.h"
@@ -66,11 +65,11 @@ run(LlvmBackend *self,
     Unit        *unit);
 
 static LLVMTypeRef
-to_type(const char *t);
+to_llvm_type(Type *t);
 
 static LLVMValueRef
-gen_default(context_t      *cnt,
-            const char     *t);
+gen_default(context_t *cnt,
+            Type      *t);
 
 static int  
 gen_func_params(context_t    *cnt,
@@ -196,10 +195,9 @@ run(LlvmBackend *self,
  * TODO: dont use strings here!!!
  */
 LLVMTypeRef
-to_type(const char *t)
+to_llvm_type(Type *t)
 {
-  bl_type_e type = bl_strtotype(t);
-  switch (type) {
+  switch (bl_type_get(t)) {
     case BL_TYPE_VOID:
       return LLVMVoidType();
     case BL_TYPE_I32:
@@ -208,9 +206,9 @@ to_type(const char *t)
       return LLVMInt64Type();
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8Type(), 0);
-    case BL_TYPE_BYTE:
+    case BL_TYPE_CHAR:
+    case BL_TYPE_BOOL:
       return LLVMInt8Type();
-    case BL_TYPE_REF:
     default:
       return NULL;
   }
@@ -222,11 +220,13 @@ to_type(const char *t)
  * TODO: dont use strings here!!!
  */
 static LLVMValueRef
-gen_default(context_t      *cnt,
-            const char     *t)
+gen_default(context_t *cnt,
+            Type      *t)
 {
-  bl_type_e type = bl_strtotype(t);
-  switch (type) {
+  switch (bl_type_get(t)) {
+    case BL_TYPE_BOOL:
+    case BL_TYPE_CHAR:
+      return LLVMConstInt(LLVMInt8Type(), 0, false);
     case BL_TYPE_I32:
       return LLVMConstInt(LLVMInt32Type(), 0, false);
     case BL_TYPE_I64:
@@ -236,7 +236,6 @@ gen_default(context_t      *cnt,
         cnt->empty_string_tmp = LLVMBuildGlobalString(cnt->builder, "\0", NAME_EMPTY_STRING);
       return LLVMConstPointerCast(cnt->empty_string_tmp, LLVMPointerType(LLVMInt8Type(), 0));
     }
-    case BL_TYPE_REF:
     default:
       return NULL;
   }
@@ -261,7 +260,7 @@ gen_func_params(context_t    *cnt,
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_param(node, i);
-    *out = to_type(bl_node_param_var_decl_type(param));
+    *out = to_llvm_type(bl_node_param_var_decl_type(param));
     out++;
     out_i++;
   }
@@ -294,7 +293,7 @@ void
 gen_var_decl(context_t   *cnt,
              NodeVarDecl *vdcl)
 {
-  LLVMTypeRef t = to_type(bl_node_var_decl_type(vdcl));
+  LLVMTypeRef t = to_llvm_type(bl_node_var_decl_type(vdcl));
   LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_var_decl_ident(vdcl));
   LLVMValueRef def = gen_default(cnt, bl_node_var_decl_type(vdcl));
   LLVMBuildStore(cnt->builder, def, var);
@@ -308,7 +307,7 @@ gen_func(context_t    *cnt,
   LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
   int pc = gen_func_params(cnt, node, param_types);
-  LLVMTypeRef ret = to_type(bl_node_func_decl_type(node));
+  LLVMTypeRef ret = to_llvm_type(bl_node_func_decl_type(node));
   LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
   LLVMValueRef func = LLVMAddFunction(cnt->mod, bl_node_func_decl_ident(node), ret_type);
 

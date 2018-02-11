@@ -30,12 +30,12 @@
 #define BISCUIT_NODE_PARAM_VAR_DECL_H
 
 #include "bl/ast/node_param_var_decl.h"
-#include "node_impl.h"
+#include "ast/node_impl.h"
 #include "bl/token.h"
 
 /* NodeParamVarDecl constructor parameters */
 bo_decl_params_with_base_begin(NodeParamVarDecl, Node)
-  char *type;
+  Type *type;
   char *ident;
 bo_end();
 

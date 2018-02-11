@@ -35,8 +35,8 @@
 
 /* NodeFuncDecl constructor parameters */
 bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  char *type;
-  char *ident;
+  Type    *type;
+  char    *ident;
   bl_sym_e modif;
 bo_end();
 

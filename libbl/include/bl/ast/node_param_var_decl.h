@@ -30,6 +30,7 @@
 #define BL_NODE_PARAM_VAR_DECL_H
 
 #include "bl/ast/node.h"
+#include "bl/type.h"
 
 BO_BEGIN_DECLS
 /* class declaration */
@@ -37,7 +38,7 @@ bo_decl_type_begin(NodeParamVarDecl, Node)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT const char *
+extern BO_EXPORT Type *
 bl_node_param_var_decl_type(NodeParamVarDecl *self);
 
 extern BO_EXPORT const char *

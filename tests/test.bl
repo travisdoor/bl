@@ -1,7 +1,7 @@
 // this is testing script
 
 extern void puts(string s);
-extern void putc(byte c);
+extern void putc(char c);
 
 int main() {
   int a;
@@ -20,6 +20,9 @@ int another_function(int i) {
 int func(int i) {
   int local_int1;
   int local_int2;
+
+  // local_int1 = 1000;
+
   return 1;
 }
 

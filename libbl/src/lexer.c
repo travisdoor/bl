@@ -299,9 +299,25 @@ scan_ident(Lexer *self,
     return true;
   }
 
+  if (strncmp(cur->iter, "true", len) == 0) {
+    bl_token_init(&tok, BL_SYM_TRUE, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
+    return true;
+  }
+
   len = 5;
   if (strncmp(cur->iter, "return", len) == 0) {
     bl_token_init(&tok, BL_SYM_RETURN, cur->line, cur->col, len, cur->iter);
+    cur->iter += len;
+    cur->col += len;
+    bl_tokens_push(unit->tokens, &tok);
+    return true;
+  }
+
+  if (strncmp(cur->iter, "false", len) == 0) {
+    bl_token_init(&tok, BL_SYM_FALSE, cur->line, cur->col, len, cur->iter);
     cur->iter += len;
     cur->col += len;
     bl_tokens_push(unit->tokens, &tok);

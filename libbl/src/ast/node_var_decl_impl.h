@@ -33,8 +33,8 @@
 #include "ast/node_impl.h"
 
 bo_decl_params_with_base_begin(NodeVarDecl, Node)
+  Type *type;
   char *ident;
-  char *type;
 bo_end();
 
 #endif //BL_NODE_VAR_DECL_IMPL_H

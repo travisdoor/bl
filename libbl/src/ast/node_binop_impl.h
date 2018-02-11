@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   type_table.h
+// File:   node_binop_impl.h
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,34 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_TYPE_TABLE_H
-#define BISCUIT_TYPE_TABLE_H
+#ifndef BL_NODE_BINOP_IMPL_H
+#define BL_NODE_BINOP_IMPL_H
 
-#include <bobject/bobject.h>
+#include "bl/ast/node_binop.h"
+#include "ast/node_impl.h"
 
-BO_BEGIN_DECLS
+bo_decl_params_with_base_begin(NodeBinop, Node)
+bo_end();
 
-#define BL_TYPE_LIST \
-  tp(REF,    "") \
-  tp(VOID,   "void") \
-  tp(BYTE,   "byte") \
-  tp(I32,    "int") \
-  tp(I64,    "long") \
-  tp(STRING, "string") \
-
-typedef enum {
-#define tp(tok, str) BL_TYPE_##tok,
-  BL_TYPE_LIST
-#undef tp
-  BL_TYPE_COUNT
-} bl_type_e;
-
-extern BO_EXPORT char *bl_type_strings[];
-
-extern BO_EXPORT bl_type_e
-bl_strtotype(const char* str);
-
-BO_END_DECLS
-
-#endif /* end of include guard: BISCUIT_TYPE_TABLE_H */
-
+#endif //BL_NODE_BINOP_IMPL_H
