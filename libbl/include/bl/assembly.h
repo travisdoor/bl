@@ -54,6 +54,9 @@ bl_assembly_compile(Assembly *self);
 extern BO_EXPORT Unit *
 bl_assembly_get_failed(Assembly *self);
 
+extern BO_EXPORT const char *
+bl_assembly_get_name(Assembly *self);
+
 BO_END_DECLS
 
 #endif //BL_ASSEMBLY_H

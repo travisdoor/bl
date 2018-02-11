@@ -37,10 +37,5 @@ bo_decl_members_begin(Actor, BObject)
   char error[BL_ACTOR_MAX_ERROR_LEN];
 bo_end();
 
-void
-bl_actor_error(Actor *self,
-               const char *format,
-               ...);
-
 #endif /* end of include guard: BISCUIT_ACTOR_H */
 

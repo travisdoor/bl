@@ -27,14 +27,19 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "ast_printer_impl.h"
-#include "unit_impl.h"
+#include "bl/ast_printer.h"
+#include "bl/unit.h"
 #include "bl/bldebug.h"
 #include "ast/node_impl.h"
 
 static bool
 run(AstPrinter *self,
     Unit       *unit);
+
+/* AstPrinter members */
+bo_decl_members_begin(AstPrinter, Stage)
+  FILE *out_stream;
+bo_end();
 
 /* AstPrinter constructor parameters */
 bo_decl_params_with_base_begin(AstPrinter, Stage)
@@ -130,12 +135,12 @@ bool
 run(AstPrinter *self,
     Unit       *unit)
 {
-  if (unit->ast == NULL) {
-    bl_actor_error((Actor *)unit, "cannot find AST tree in unit %s", unit->filepath);
+  if (bl_unit_get_ast(unit) == NULL) {
+    bl_actor_error((Actor *)unit, "cannot find AST tree in unit %s", bl_unit_get_src_file(unit));
     return false;
   }
 
-  print_node(self, bl_ast_get_root(unit->ast), 0);
+  print_node(self, bl_ast_get_root(bl_unit_get_ast(unit)), 0);
   return true;
 }
 

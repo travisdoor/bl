@@ -27,7 +27,22 @@
 //*****************************************************************************
 
 #include <string.h>
-#include "unit_impl.h"
+#include "bl/unit.h"
+#include "pipeline/actor_impl.h"
+
+/* class Unit object members */
+bo_decl_members_begin(Unit, Actor)
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  char *name;
+  /* source data */
+  char *src;
+  /* output of lexer */
+  Tokens  *tokens;
+  /* abstract syntax tree as output of parser */
+  Ast     *ast;
+bo_end();
 
 /* class Unit */
 bo_decl_params_begin(Unit)
@@ -115,15 +130,39 @@ bl_unit_get_tokens(Unit *self)
   return self->tokens;
 }
 
+void
+bl_unit_set_tokens(Unit   *self,
+                   Tokens *tokens)
+{
+  bo_unref(self->tokens);
+  self->tokens = tokens;
+}
+
 Ast *
 bl_unit_get_ast(Unit *self)
 {
   return self->ast;
 }
 
+void
+bl_unit_set_ast(Unit *self,
+                Ast  *ast)
+{
+  bo_unref(self->ast);
+  self->ast = ast;
+}
+
 const char*
 bl_unit_get_name(Unit *self)
 {
   return self->name;
+}
+
+void
+bl_unit_set_src(Unit *self,
+                char *src)
+{
+  free(self->src);
+  self->src = src;
 }
 

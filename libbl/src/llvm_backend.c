@@ -36,7 +36,7 @@
 #include "bl/pipeline/stage.h"
 #include "bl/bldebug.h"
 #include "bl/bllimits.h"
-#include "unit_impl.h"
+#include "bl/unit.h"
 #include "ast/ast_impl.h"
 
 /* class LlvmBackend */
@@ -149,10 +149,10 @@ run(LlvmBackend *self,
   if (setjmp(cnt.jmp_error))
     return false;
 
-  Node *root = bl_ast_get_root(unit->ast);
+  Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
   /* TODO: solve only one unit for now */
-  LLVMModuleRef mod = LLVMModuleCreateWithName(unit->name);
+  LLVMModuleRef mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
 
   cnt.builder = LLVMCreateBuilder();
   cnt.unit = unit;
@@ -176,8 +176,8 @@ run(LlvmBackend *self,
   }
 #endif
 
-  char *export_file = malloc(sizeof(char) * (strlen(unit->filepath) + 4));
-  strcpy(export_file, unit->filepath);
+  char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
+  strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
   if (LLVMWriteBitcodeToFile(mod, export_file) != 0) {
     free(export_file);

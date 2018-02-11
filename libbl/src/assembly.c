@@ -28,7 +28,16 @@
 
 #include <string.h>
 #include "bl/bldebug.h"
-#include "assembly_impl.h"
+#include "bl/assembly.h"
+
+/* class Assembly object members */
+bo_decl_members_begin(Assembly, BObject)
+  /* members */
+  BArray *units;
+  char *name;
+  Pipeline *pipeline;
+  Unit *failed;
+bo_end();
 
 /* class Assembly */
 static bool
@@ -131,3 +140,8 @@ bl_assembly_get_failed(Assembly *self)
   return self->failed;
 }
 
+const char *
+bl_assembly_get_name(Assembly *self)
+{
+  return self->name;
+}

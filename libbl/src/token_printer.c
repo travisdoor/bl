@@ -29,7 +29,7 @@
 #include "bl/token_printer.h"
 #include "bl/pipeline/stage.h"
 #include "bl/bldebug.h"
-#include "unit_impl.h"
+#include "bl/unit.h"
 
 /* class TokenPrinter */
 static bool
@@ -82,20 +82,21 @@ bool
 run(TokenPrinter *self,
     Unit         *unit)
 {
-  if (unit->tokens == NULL) {
-    bl_actor_error((Actor *)unit, "cannot find tokens array in unit %s", unit->filepath);
+  Tokens *tokens = bl_unit_get_tokens(unit);
+  if (tokens == NULL) {
+    bl_actor_error((Actor *)unit, "cannot find tokens array in unit %s", bl_unit_get_src_file(unit));
     return false;
   }
 
-  BArray *tokens = bl_tokens_get_all(unit->tokens);
+  BArray *tokens_arr = bl_tokens_get_all(tokens);
 
   fprintf(self->out_stream, ANSI_COLOR_YELLOW "Tokens: \n" ANSI_COLOR_RESET);
 
-  const size_t c = bo_array_size(tokens);
+  const size_t c = bo_array_size(tokens_arr);
   bl_token_t *tok;
   int line = -1;
   for (size_t i = 0; i < c; i++) {
-    tok = &bo_array_at(tokens, i, bl_token_t);
+    tok = &bo_array_at(tokens_arr, i, bl_token_t);
 
     if (line == -1)
       line = tok->line;

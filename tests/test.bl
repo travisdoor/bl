@@ -23,7 +23,7 @@ int func(int i) {
 
   // local_int1 = 1000;
 
-  return 1;
+  return 100;
 }
 
 void no_return_func() {

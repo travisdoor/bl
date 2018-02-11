@@ -30,7 +30,7 @@
 #include "bl/pipeline/pipeline.h"
 #include "bl/bldebug.h"
 #include "bl/pipeline/stage.h"
-#include "pipeline/actor_impl.h"
+#include "bl/pipeline/actor.h"
 
 #define EXPECTED_STAGE_COUNT 8
 
@@ -92,12 +92,12 @@ run_group(Pipeline *self,
     stage = bo_array_at(self->stages[group], i, Stage *);
     if (!bo_vtbl(stage, Stage)->run(stage, actor)) {
       /* FAIL */
-      actor->state = BL_ACTOR_STATE_FAILED;
+      bl_actor_set_state(actor, BL_ACTOR_STATE_FAILED);
       self->failed = actor;
       return false;
     }
 
-    actor->state = BL_ACTOR_STATE_FINISHED;
+    bl_actor_set_state(actor, BL_ACTOR_STATE_FINISHED);
   }
 
   return true;

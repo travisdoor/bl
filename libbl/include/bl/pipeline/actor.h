@@ -51,11 +51,20 @@ bo_end();
 extern BO_EXPORT bl_actor_state_e
 bl_actor_get_state(Actor *self);
 
+extern BO_EXPORT void
+bl_actor_set_state(Actor           *self,
+                   bl_actor_state_e state);
+
 extern BO_EXPORT const char *
 bl_actor_get_error(Actor *self);
 
 extern BO_EXPORT void
 bl_actor_error_reset(Actor *self);
+
+extern BO_EXPORT void
+bl_actor_error(Actor *self,
+               const char *format,
+               ...);
 BO_END_DECLS
 
 #endif /* end of include guard: ACTOR_H_TQV6OMSD */

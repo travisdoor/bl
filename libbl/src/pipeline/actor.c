@@ -28,8 +28,8 @@
 
 #include <string.h>
 #include <stdarg.h>
-#include "pipeline/actor_impl.h"
 #include "bl/bldebug.h"
+#include "pipeline/actor_impl.h"
 
 /* Actor constructor parameters */
 bo_decl_params_begin(Actor)
@@ -96,3 +96,9 @@ bl_actor_error_reset(Actor *self)
   self->error[0] = '\0';
 }
 
+void
+bl_actor_set_state(Actor           *self,
+                   bl_actor_state_e state)
+{
+  self->state = state;
+}

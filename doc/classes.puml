@@ -1,5 +1,5 @@
 @startuml
-
+left to right direction
 class Node
 class NodeStmt
 class NodeGlobalStmt
@@ -8,19 +8,21 @@ class NodeExpr
 class NodeReturnStmt
 class NodeParamVarDecl
 class NodeCallExpr
-class NodeVarDecl {
-  char *type
-  char *ident
-}
+class NodeVarDecl
+class NodeDecl
+class NodeBinop
 
 
 Node <|-- NodeStmt
+Node <|-- NodeDecl
 Node <|-- NodeGlobalStmt
 Node <|-- NodeExpr
-Node <|-- NodeFuncDecl
-Node <|-- NodeParamVarDecl
 Node <|-- NodeReturnStmt
-Node <|-- NodeVarDecl
+Node <|-- NodeBinop
+
+NodeDecl <|-- NodeVarDecl
+NodeDecl <|-- NodeFuncDecl
+NodeDecl <|-- NodeParamVarDecl
 
 NodeExpr <|-- NodeCallExpr
 

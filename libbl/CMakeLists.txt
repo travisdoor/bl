@@ -48,10 +48,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
-        src/pipeline/actor_impl.h
-        src/ast_printer_impl.h
-        src/file_loader_impl.h
-        src/unit_impl.h src/assembly_impl.h src/ast/node_var_decl_impl.h src/ast/node_binop_impl.h)
+        src/ast/node_var_decl_impl.h src/ast/node_binop_impl.h)
 
 set(SOURCE_FILES 
         src/pipeline/stage.c

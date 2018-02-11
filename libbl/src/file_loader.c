@@ -27,16 +27,17 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "file_loader_impl.h"
-#include "unit_impl.h"
+#include "bl/file_loader.h"
+#include "bl/unit.h"
 #include "bl/bldebug.h"
 
 static bool
 run(FileLoader *self,
     Unit       *unit);
 
-static int
-domain(FileLoader *self);
+/* FileLoader members */
+bo_decl_members_begin(FileLoader, Stage)
+bo_end();
 
 /* FileLoader constructor parameters */
 bo_decl_params_with_base_begin(FileLoader, Stage)
@@ -76,9 +77,9 @@ bool
 run(FileLoader *self,
     Unit       *unit)
 {
-  FILE *f = fopen(unit->filepath, "r");
+  FILE *f = fopen(bl_unit_get_src_file(unit), "r");
   if (f == NULL) {
-    bl_actor_error((Actor *)unit, "file not found %s", unit->filepath);
+    bl_actor_error((Actor *)unit, "file not found %s", bl_unit_get_src_file(unit));
     return false;
   }
 
@@ -86,18 +87,18 @@ run(FileLoader *self,
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_actor_error((Actor *)unit, "invalid source file %s", unit->filepath);
+    bl_actor_error((Actor *)unit, "invalid source file %s", bl_unit_get_src_file(unit));
     return false;
   }
 
   fseek(f, 0, SEEK_SET);
 
-  unit->src = malloc(sizeof(char) * (fsize + 1));
-  fread(unit->src, fsize, 1, f);
-  unit->src[fsize] = '\0';
+  char *src = malloc(sizeof(char) * (fsize + 1));
+  fread(src, fsize, 1, f);
+  src[fsize] = '\0';
   fclose(f);
 
-  bl_log("processing file %s", unit->name);
+  bl_unit_set_src(unit, src);
 
   return true;
 }

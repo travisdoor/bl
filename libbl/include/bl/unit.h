@@ -50,14 +50,26 @@ bl_unit_new_str(const char *name,
 extern BO_EXPORT Tokens *
 bl_unit_get_tokens(Unit *self);
 
+extern BO_EXPORT void
+bl_unit_set_tokens(Unit   *self,
+                   Tokens *tokens);
+
 extern BO_EXPORT Ast*
 bl_unit_get_ast(Unit *self);
+
+extern BO_EXPORT void
+bl_unit_set_ast(Unit *self,
+                Ast  *ast);
 
 extern BO_EXPORT const char*
 bl_unit_get_src_file(Unit *self);
 
 extern BO_EXPORT const char*
 bl_unit_get_src(Unit *self);
+
+extern BO_EXPORT void
+bl_unit_set_src(Unit *self,
+                char *src);
 
 extern BO_EXPORT const char*
 bl_unit_get_name(Unit *self);

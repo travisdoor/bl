@@ -30,8 +30,8 @@
 #include "bl/analyzer.h"
 #include "bl/bldebug.h"
 #include "bl/bllimits.h"
+#include "bl/unit.h"
 #include "ast/ast_impl.h"
-#include "unit_impl.h"
 
 #define analyze_error(cnt, format, ...) \
   { \
@@ -117,7 +117,7 @@ analyze_func(context_t    *cnt,
   Type *type_tmp = bl_node_func_decl_get_type(func);
   if (bl_type_is_user_defined(type_tmp)) {
     analyze_error(cnt, "%s %d:%d unknown return type '%s' for function '%s'",
-                  cnt->unit->filepath,
+                  bl_unit_get_src_file(cnt->unit),
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
                   bl_type_get_name(type_tmp), bl_node_func_decl_get_ident(func));
@@ -134,7 +134,7 @@ analyze_func(context_t    *cnt,
   if (c > BL_MAX_FUNC_PARAM_COUNT)
     analyze_error(cnt,
                   "%s %d:%d reached maximum count of function parameters, function has: %d and maximum is: %d",
-                  cnt->unit->filepath,
+                  bl_unit_get_src_file(cnt->unit),
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
                   c,
@@ -148,7 +148,7 @@ analyze_func(context_t    *cnt,
     type_tmp = bl_node_param_var_decl_get_type(param);
     if (bl_type_is_user_defined(type_tmp)) {
       analyze_error(cnt, "%s %d:%d unknown type '%s' for function parameter",
-                    cnt->unit->filepath,
+                    bl_unit_get_src_file(cnt->unit),
                     bo_members(param, Node)->line,
                     bo_members(param, Node)->col, bl_type_get_name(type_tmp));
     }
@@ -173,12 +173,12 @@ analyze_var_decl(context_t *cnt,
   Type *type_tmp = bl_node_var_decl_get_type(vdcl);
   if (bl_type_is_user_defined(type_tmp)) {
     analyze_error(cnt, "%s %d:%d unknown type '%s'",
-                  cnt->unit->filepath,
+                  bl_unit_get_src_file(cnt->unit),
                   bo_members(vdcl, Node)->line,
                   bo_members(vdcl, Node)->col, bl_type_get_name(type_tmp));
   } else if (bl_type_is(type_tmp, BL_TYPE_VOID)) {
     analyze_error(cnt, "%s %d:%d 'void' is not allowed here",
-                  cnt->unit->filepath,
+                  bl_unit_get_src_file(cnt->unit),
                   bo_members(vdcl, Node)->line,
                   bo_members(vdcl, Node)->col);
   }
@@ -198,7 +198,7 @@ analyze_stmt(context_t *cnt,
         return_presented = true;
         if (i != c-1) {
           bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
-                     cnt->unit->filepath,
+                     bl_unit_get_src_file(cnt->unit),
                      node->line,
                      node->col);
         }
@@ -214,7 +214,7 @@ analyze_stmt(context_t *cnt,
   Type *exp_ret = bl_node_func_decl_get_type(cnt->current_func_tmp);
   if (!return_presented && bl_type_is_not(exp_ret, BL_TYPE_VOID)) {
     analyze_error(cnt, "%s %d:%d unterminated function '%s'",
-                  cnt->unit->filepath,
+                  bl_unit_get_src_file(cnt->unit),
                   bo_members(cnt->current_func_tmp, Node)->line,
                   bo_members(cnt->current_func_tmp, Node)->col,
                   bl_node_func_decl_get_ident(cnt->current_func_tmp));
@@ -249,7 +249,7 @@ run(Analyzer *self,
   if (setjmp(cnt.jmp_error))
     return false;
 
-  Node *root = bl_ast_get_root(unit->ast);
+  Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
   switch (root->type) {
     case BL_NODE_GLOBAL_STMT:
