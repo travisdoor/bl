@@ -74,7 +74,7 @@ TEST_F(LexerTest, symbol_parsing)
 
   ASSERT_TRUE(bl_assembly_compile(assembly));
 
-  Tokens *tokens = bl_unit_tokens((Unit *)unit);
+  Tokens *tokens = bl_unit_get_tokens((Unit *) unit);
   bl_token_t *t;
 
   t = bl_tokens_consume(tokens);

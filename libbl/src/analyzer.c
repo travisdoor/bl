@@ -120,7 +120,7 @@ analyze_func(context_t    *cnt,
                   cnt->unit->filepath,
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
-                  bl_type_name(type_tmp), bl_node_func_decl_get_ident(func));
+                  bl_type_get_name(type_tmp), bl_node_func_decl_get_ident(func));
   }
 
   /*
@@ -150,8 +150,7 @@ analyze_func(context_t    *cnt,
       analyze_error(cnt, "%s %d:%d unknown type '%s' for function parameter",
                     cnt->unit->filepath,
                     bo_members(param, Node)->line,
-                    bo_members(param, Node)->col,
-                    bl_type_name(type_tmp));
+                    bo_members(param, Node)->col, bl_type_get_name(type_tmp));
     }
   }
 
@@ -176,8 +175,7 @@ analyze_var_decl(context_t *cnt,
     analyze_error(cnt, "%s %d:%d unknown type '%s'",
                   cnt->unit->filepath,
                   bo_members(vdcl, Node)->line,
-                  bo_members(vdcl, Node)->col,
-                  bl_type_name(type_tmp));
+                  bo_members(vdcl, Node)->col, bl_type_get_name(type_tmp));
   } else if (bl_type_is(type_tmp, BL_TYPE_VOID)) {
     analyze_error(cnt, "%s %d:%d 'void' is not allowed here",
                   cnt->unit->filepath,

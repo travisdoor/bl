@@ -66,7 +66,7 @@ Actor_copy(Actor *self, Actor *other)
 
 /* public */
 bl_actor_state_e
-bl_actor_state(Actor *self)
+bl_actor_get_state(Actor *self)
 {
   return self->state;
 }

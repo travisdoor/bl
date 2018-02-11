@@ -49,7 +49,7 @@ bo_decl_type_begin(Actor, BObject)
 bo_end();
 
 extern BO_EXPORT bl_actor_state_e
-bl_actor_state(Actor *self);
+bl_actor_get_state(Actor *self);
 
 extern BO_EXPORT const char *
 bl_actor_get_error(Actor *self);

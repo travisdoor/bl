@@ -52,7 +52,7 @@ extern BO_EXPORT bool
 bl_assembly_compile(Assembly *self);
 
 extern BO_EXPORT Unit *
-bl_assembly_failed(Assembly *self);
+bl_assembly_get_failed(Assembly *self);
 
 BO_END_DECLS
 

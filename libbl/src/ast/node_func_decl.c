@@ -84,7 +84,7 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
   bo_string_append(ret, " ");
-  bo_string_append(ret, bl_type_name(self->type));
+  bo_string_append(ret, bl_type_get_name(self->type));
   bo_string_append(ret, " ");
   bo_string_append(ret, self->ident);
   bo_string_append(ret, " ");

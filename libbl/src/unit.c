@@ -98,31 +98,31 @@ bl_unit_new_str(const char *name,
 }
 
 const char*
-bl_unit_src_file(Unit *self)
+bl_unit_get_src_file(Unit *self)
 {
   return self->filepath;
 }
 
 const char*
-bl_unit_src(Unit *self)
+bl_unit_get_src(Unit *self)
 {
   return self->src;
 }
 
 Tokens *
-bl_unit_tokens(Unit *self)
+bl_unit_get_tokens(Unit *self)
 {
   return self->tokens;
 }
 
 Ast *
-bl_unit_ast(Unit *self)
+bl_unit_get_ast(Unit *self)
 {
   return self->ast;
 }
 
 const char*
-bl_unit_name(Unit *self)
+bl_unit_get_name(Unit *self)
 {
   return self->name;
 }

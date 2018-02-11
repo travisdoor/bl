@@ -126,7 +126,7 @@ bl_assembly_compile(Assembly *self)
 }
 
 Unit *
-bl_assembly_failed(Assembly *self)
+bl_assembly_get_failed(Assembly *self)
 {
   return self->failed;
 }

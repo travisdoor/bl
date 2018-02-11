@@ -101,7 +101,7 @@ bl_type_get(Type *self)
 }
 
 const char *
-bl_type_name(Type *self)
+bl_type_get_name(Type *self)
 {
   return self->name;
 }

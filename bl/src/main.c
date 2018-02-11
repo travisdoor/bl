@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
   bl_pipeline_add_stage(pipeline, llvm);
 
   if (!bl_assembly_compile(assembly)) {
-    Actor *failed = (Actor *) bl_assembly_failed(assembly);
+    Actor *failed = (Actor *) bl_assembly_get_failed(assembly);
     bl_error("%s", bl_actor_get_error(failed));
   } else 
     bl_log(ANSI_COLOR_GREEN "DONE" ANSI_COLOR_RESET);

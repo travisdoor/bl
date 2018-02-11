@@ -61,7 +61,7 @@ extern  BO_EXPORT uint32_t
 bl_type_get(Type *self);
 
 extern  BO_EXPORT const char *
-bl_type_name(Type *self);
+bl_type_get_name(Type *self);
 
 extern  BO_EXPORT bool
 bl_type_is(Type    *self,
