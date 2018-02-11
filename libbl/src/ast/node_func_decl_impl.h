@@ -30,13 +30,11 @@
 #define BISCUIT_NODE_FUNC_DECL_H
 
 #include "bl/ast/node_func_decl.h"
-#include "node_impl.h"
 #include "bl/token.h"
+#include "ast/node_decl_impl.h"
 
 /* NodeFuncDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeFuncDecl, Node)
-  Type    *type;
-  char    *ident;
+bo_decl_params_with_base_begin(NodeFuncDecl, NodeDecl)
   bl_sym_e modif;
 bo_end();
 

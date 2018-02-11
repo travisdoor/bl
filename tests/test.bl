@@ -28,4 +28,3 @@ int func(int i) {
 
 void no_return_func() {
 }
-

@@ -39,6 +39,7 @@
 #include "bl/ast/node_return_stmt.h"
 #include "bl/ast/node_var_decl.h"
 #include "bl/ast/node_binop.h"
+#include "bl/ast/node_decl.h"
 
 BO_BEGIN_DECLS
 

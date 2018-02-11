@@ -33,15 +33,13 @@ static BString *
 to_string(NodeFuncDecl *self);
 
 /* NodeFuncDecl members */
-bo_decl_members_begin(NodeFuncDecl, Node)
+bo_decl_members_begin(NodeFuncDecl, NodeDecl)
   BArray   *params;
   NodeStmt *stmt;
-  Type     *type;
-  char     *ident;
   bl_sym_e  modificator;
 bo_end();
 
-bo_impl_type(NodeFuncDecl, Node);
+bo_impl_type(NodeFuncDecl, NodeDecl);
 
 /* NodeFuncDecl class init */
 void
@@ -55,9 +53,7 @@ NodeFuncDeclKlass_init(NodeFuncDeclKlass *klass)
 void
 NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
 {
-  bo_parent_ctor(Node, p);
-  self->type = p->type;
-  self->ident = p->ident;
+  bo_parent_ctor(NodeDecl, p);
   self->modificator = p->modif;
 }
 
@@ -65,8 +61,6 @@ NodeFuncDecl_ctor(NodeFuncDecl *self, NodeFuncDeclParams *p)
 void
 NodeFuncDecl_dtor(NodeFuncDecl *self)
 {
-  free(self->ident);
-  bo_unref(self->type);
   bo_unref(self->params);
 }
 
@@ -84,9 +78,9 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
   bo_string_append(ret, " ");
-  bo_string_append(ret, bl_type_get_name(self->type));
+  bo_string_append(ret, bl_type_get_name(bo_members(self, NodeDecl)->type));
   bo_string_append(ret, " ");
-  bo_string_append(ret, self->ident);
+  bo_string_append(ret, bo_members(self, NodeDecl)->ident);
   bo_string_append(ret, " ");
   bo_string_append(ret, bl_sym_strings[self->modificator]);
   bo_string_append(ret, ">");
@@ -139,18 +133,6 @@ bl_node_func_decl_get_param(NodeFuncDecl *self,
                             int i)
 {
   return bo_array_at(self->params, i, NodeParamVarDecl *);
-}
-
-const char *
-bl_node_func_decl_get_ident(NodeFuncDecl *self)
-{
-  return self->ident;
-}
-
-Type *
-bl_node_func_decl_get_type(NodeFuncDecl *self)
-{
-  return self->type;
 }
 
 bl_sym_e

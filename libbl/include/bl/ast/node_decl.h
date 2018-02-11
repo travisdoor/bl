@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_param_var_decl.h
+// File:   node_decl.h
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,26 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_PARAM_VAR_DECL_H
-#define BL_NODE_PARAM_VAR_DECL_H
+#ifndef BL_NODE_DECL_H
+#define BL_NODE_DECL_H
 
-#include "bl/ast/node_decl.h"
+#include <bobject/bobject.h>
+#include "bl/ast/node.h"
 #include "bl/type.h"
 
 BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(NodeParamVarDecl, NodeDecl)
+
+/* class NodeDecl declaration */
+bo_decl_type_begin(NodeDecl, Node)
   /* virtuals */
 bo_end();
 
+extern BO_EXPORT char *
+bl_node_decl_get_ident(NodeDecl *self);
+
+extern BO_EXPORT Type *
+bl_node_decl_get_type(NodeDecl *self);
+
 BO_END_DECLS
 
-#endif //BL_NODE_PARAM_VAR_DECL_H
+#endif //BL_NODE_DECL_H

@@ -31,7 +31,7 @@
 
 /* class Ast */
 static void *
-save_to_cache(Ast *self, 
+save_to_cache(Ast *self,
               void *node);
 
 /* class Ast constructor params */
@@ -74,7 +74,7 @@ Ast_copy(Ast *self, Ast *other)
 /* class Ast end */
 
 void *
-save_to_cache(Ast *self, 
+save_to_cache(Ast *self,
               void *node)
 {
   bo_array_push_back(self->cache, node);
@@ -114,15 +114,19 @@ bl_ast_node_func_decl_new(Ast        *self,
                           int         col)
 {
   NodeFuncDeclParams p = {
-    .base.type           = BL_NODE_FUNC_DECL,
-    .base.generated_from = generated_from, 
-    .base.line           = line,
-    .base.col            = col,
-    .type                = bl_type_new(type),
-    .ident               = ident,
-    .modif               = modif
+    .base = {
+      .base = {
+        .type           = BL_NODE_FUNC_DECL,
+        .generated_from = generated_from,
+        .line           = line,
+        .col            = col,
+      },
+      .type           = bl_type_new(type),
+      .ident          = ident,
+    },
+    .modif            = modif
   };
-  
+
   return save_to_cache(self, bo_new(NodeFuncDecl, &p));
 }
 
@@ -134,11 +138,11 @@ bl_ast_node_global_stmt_new(Ast        *self,
 {
   NodeGlobalStmtParams p = {
     .base.type = BL_NODE_GLOBAL_STMT,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
+    .base.generated_from = generated_from,
+    .base.line = line,
     .base.col = col,
   };
-  
+
   return save_to_cache(self, bo_new(NodeGlobalStmt, &p));
 }
 
@@ -150,11 +154,11 @@ bl_ast_node_stmt_new(Ast        *self,
 {
   NodeStmtParams p = {
     .base.type = BL_NODE_STMT,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
+    .base.generated_from = generated_from,
+    .base.line = line,
     .base.col = col,
   };
-  
+
   return save_to_cache(self, bo_new(NodeStmt, &p));
 }
 
@@ -167,14 +171,18 @@ bl_ast_node_param_var_decl_new(Ast        *self,
                                int         col)
 {
   NodeParamVarDeclParams p = {
-    .base.type = BL_NODE_PARAM_VAR_DECL,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
-    .base.col = col,
-    .type = bl_type_new(type),
-    .ident = ident
+    .base = {
+      .base = {
+        .type = BL_NODE_PARAM_VAR_DECL,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col
+      },
+      .type = bl_type_new(type),
+      .ident = ident
+    }
   };
-  
+
   return save_to_cache(self, bo_new(NodeParamVarDecl, &p));
 }
 
@@ -187,11 +195,11 @@ bl_ast_node_return_stmt_new(Ast        *self,
 
   NodeReturnStmtParams p = {
     .base.type = BL_NODE_RETURN_STMT,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
+    .base.generated_from = generated_from,
+    .base.line = line,
     .base.col = col,
   };
-  
+
   return save_to_cache(self, bo_new(NodeReturnStmt, &p));
 }
 
@@ -204,12 +212,12 @@ bl_ast_node_expr_new(Ast        *self,
 {
   NodeExprParams p = {
     .base.type = BL_NODE_EXPR,
-    .base.generated_from = generated_from, 
-    .base.line = line, 
+    .base.generated_from = generated_from,
+    .base.line = line,
     .base.col = col,
     .num = num
   };
-  
+
   return save_to_cache(self, bo_new(NodeExpr, &p));
 }
 
@@ -222,12 +230,16 @@ bl_ast_node_var_decl_new(Ast        *self,
                          int         col)
 {
   NodeVarDeclParams p = {
-    .base.type = BL_NODE_VAR_DECL,
-    .base.generated_from = generated_from,
-    .base.line = line,
-    .base.col = col,
-    .type = bl_type_new(type),
-    .ident = ident
+    .base = {
+      .base = {
+        .type = BL_NODE_VAR_DECL,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col,
+      },
+      .type = bl_type_new(type),
+      .ident = ident
+    }
   };
 
   return save_to_cache(self, bo_new(NodeVarDecl, &p));

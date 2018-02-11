@@ -51,56 +51,56 @@
 
 typedef struct _context_t
 {
-  Unit          *unit;
-  LLVMModuleRef  mod;
+  Unit *unit;
+  LLVMModuleRef mod;
   LLVMBuilderRef builder;
-  jmp_buf        jmp_error;
+  jmp_buf jmp_error;
 
   /* tmps */
-  LLVMValueRef   empty_string_tmp;
+  LLVMValueRef empty_string_tmp;
 } context_t;
 
 static bool
 run(LlvmBackend *self,
-    Unit        *unit);
+    Unit *unit);
 
 static LLVMTypeRef
 to_llvm_type(Type *t);
 
 static LLVMValueRef
 gen_default(context_t *cnt,
-            Type      *t);
+            Type *t);
 
-static int  
-gen_func_params(context_t    *cnt,
+static int
+gen_func_params(context_t *cnt,
                 NodeFuncDecl *node,
-                LLVMTypeRef  *out);
+                LLVMTypeRef *out);
 
 static void
-gen_func(context_t    *cnt,
+gen_func(context_t *cnt,
          NodeFuncDecl *node);
 
-static LLVMValueRef 
-gen_epr(context_t    *cnt,
-        NodeExpr     *node);
+static LLVMValueRef
+gen_epr(context_t *cnt,
+        NodeExpr *node);
 
 static void
-gen_stmt(context_t    *cnt,
-         LLVMValueRef   func,
-         NodeStmt      *stmt);
+gen_stmt(context_t *cnt,
+         LLVMValueRef func,
+         NodeStmt *stmt);
 
 static void
-gen_ret(context_t      *cnt,
+gen_ret(context_t *cnt,
         NodeReturnStmt *node);
 
 static void
-gen_var_decl(context_t   *cnt,
+gen_var_decl(context_t *cnt,
              NodeVarDecl *vdcl);
 
 static void
-gen_gstmt(context_t      *cnt,
+gen_gstmt(context_t *cnt,
           NodeGlobalStmt *gstmt);
-         
+
 
 /* class LlvmBackend constructor params */
 bo_decl_params_with_base_begin(LlvmBackend, Stage)
@@ -117,12 +117,14 @@ bo_impl_type(LlvmBackend, Stage);
 void
 LlvmBackendKlass_init(LlvmBackendKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->run =
+    (bool (*)(Stage *,
+              Actor *)) run;
 }
 
 void
-LlvmBackend_ctor(LlvmBackend *self, LlvmBackendParams *p)
+LlvmBackend_ctor(LlvmBackend *self,
+                 LlvmBackendParams *p)
 {
   /* constructor */
   /* initialize parent */
@@ -135,7 +137,8 @@ LlvmBackend_dtor(LlvmBackend *self)
 }
 
 bo_copy_result
-LlvmBackend_copy(LlvmBackend *self, LlvmBackend *other)
+LlvmBackend_copy(LlvmBackend *self,
+                 LlvmBackend *other)
 {
   return BO_NO_COPY;
 }
@@ -143,7 +146,7 @@ LlvmBackend_copy(LlvmBackend *self, LlvmBackend *other)
 
 bool
 run(LlvmBackend *self,
-    Unit        *unit)
+    Unit *unit)
 {
   context_t cnt = {0};
   if (setjmp(cnt.jmp_error))
@@ -160,16 +163,15 @@ run(LlvmBackend *self,
 
   switch (root->type) {
     case BL_NODE_GLOBAL_STMT:
-      gen_gstmt(&cnt, (NodeGlobalStmt *)root);
+      gen_gstmt(&cnt, (NodeGlobalStmt *) root);
       break;
-    default:
-      gen_error(&cnt, "invalid node on llvm generator input");
+    default: gen_error(&cnt, "invalid node on llvm generator input");
   }
 
 #if VERIFY
   char *error = NULL;
   if (LLVMVerifyModule(mod, LLVMReturnStatusAction, &error)) {
-    bl_actor_error((Actor *)unit, "(llvm_backend) not verified with error %s", error);
+    bl_actor_error((Actor *) unit, "(llvm_backend) not verified with error %s", error);
     LLVMDisposeMessage(error);
     LLVMDisposeModule(mod);
     return false;
@@ -185,7 +187,7 @@ run(LlvmBackend *self,
     gen_error(&cnt, "error writing bitcode to file, skipping");
   }
   free(export_file);
-  
+
   LLVMDisposeModule(mod);
   return true;
 }
@@ -221,7 +223,7 @@ to_llvm_type(Type *t)
  */
 static LLVMValueRef
 gen_default(context_t *cnt,
-            Type      *t)
+            Type *t)
 {
   switch (bl_type_get(t)) {
     case BL_TYPE_BOOL:
@@ -243,24 +245,24 @@ gen_default(context_t *cnt,
 
 /*
  * Fill array for parameters of function and return count.
- */ 
-static int  
-gen_func_params(context_t    *cnt,
+ */
+static int
+gen_func_params(context_t *cnt,
                 NodeFuncDecl *node,
-                LLVMTypeRef  *out)
+                LLVMTypeRef *out)
 {
   int out_i = 0;
   const int c = bl_node_func_decl_get_param_count(node);
 
   /* no params */
   if (c == 0) {
-      return 0;
+    return 0;
   }
 
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_get_param(node, i);
-    *out = to_llvm_type(bl_node_param_var_decl_get_type(param));
+    *out = to_llvm_type(bl_node_decl_get_type((NodeDecl *)param));
     out++;
     out_i++;
   }
@@ -269,14 +271,14 @@ gen_func_params(context_t    *cnt,
 }
 
 LLVMValueRef
-gen_epr(context_t    *cnt,
-        NodeExpr     *node)
+gen_epr(context_t *cnt,
+        NodeExpr *node)
 {
   return LLVMConstInt(LLVMInt32Type(), (unsigned long long int) bl_node_expr_get_num(node), true);
 }
 
 void
-gen_ret(context_t      *cnt,
+gen_ret(context_t *cnt,
         NodeReturnStmt *node)
 {
   NodeExpr *expr = bl_node_return_stmt_get_expr(node);
@@ -284,32 +286,33 @@ gen_ret(context_t      *cnt,
     LLVMBuildRetVoid(cnt->builder);
     return;
   }
-    
+
   LLVMValueRef tmp = gen_epr(cnt, expr);
   LLVMBuildRet(cnt->builder, tmp);
 }
 
 void
-gen_var_decl(context_t   *cnt,
+gen_var_decl(context_t *cnt,
              NodeVarDecl *vdcl)
 {
-  LLVMTypeRef t = to_llvm_type(bl_node_var_decl_get_type(vdcl));
-  LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_var_decl_get_ident(vdcl));
-  LLVMValueRef def = gen_default(cnt, bl_node_var_decl_get_type(vdcl));
+  LLVMTypeRef t = to_llvm_type(bl_node_decl_get_type((NodeDecl *) vdcl));
+  LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_decl_get_ident((NodeDecl *) vdcl));
+  LLVMValueRef def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
   LLVMBuildStore(cnt->builder, def, var);
 }
 
 void
-gen_func(context_t    *cnt,
+gen_func(context_t *cnt,
          NodeFuncDecl *node)
 {
   /* params */
   LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
   int pc = gen_func_params(cnt, node, param_types);
-  LLVMTypeRef ret = to_llvm_type(bl_node_func_decl_get_type(node));
+  LLVMTypeRef ret = to_llvm_type(bl_node_decl_get_type((NodeDecl *) node));
   LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
-  LLVMValueRef func = LLVMAddFunction(cnt->mod, bl_node_func_decl_get_ident(node), ret_type);
+  LLVMValueRef
+    func = LLVMAddFunction(cnt->mod, bl_node_decl_get_ident((NodeDecl *) node), ret_type);
 
   NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
   if (stmt)
@@ -317,9 +320,9 @@ gen_func(context_t    *cnt,
 }
 
 void
-gen_stmt(context_t     *cnt,
-         LLVMValueRef   func,
-         NodeStmt      *stmt)
+gen_stmt(context_t *cnt,
+         LLVMValueRef func,
+         NodeStmt *stmt)
 {
   bool return_presented = false;
   LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
@@ -332,13 +335,12 @@ gen_stmt(context_t     *cnt,
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
         return_presented = true;
-        gen_ret(cnt, (NodeReturnStmt *)child);
+        gen_ret(cnt, (NodeReturnStmt *) child);
         return;
       case BL_NODE_VAR_DECL:
-        gen_var_decl(cnt, (NodeVarDecl *)child);
+        gen_var_decl(cnt, (NodeVarDecl *) child);
         break;
-      default:
-        gen_error(cnt, "invalid stmt in function scope");
+      default: gen_error(cnt, "invalid stmt in function scope");
     }
   }
 
@@ -348,7 +350,7 @@ gen_stmt(context_t     *cnt,
 }
 
 void
-gen_gstmt(context_t      *cnt,
+gen_gstmt(context_t *cnt,
           NodeGlobalStmt *gstmt)
 {
   Node *child = NULL;
@@ -357,10 +359,9 @@ gen_gstmt(context_t      *cnt,
     child = bl_node_global_stmt_get_child(gstmt, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
-        gen_func(cnt, (NodeFuncDecl *)child);
+        gen_func(cnt, (NodeFuncDecl *) child);
         break;
-      default:
-        gen_error(cnt, "invalid node in global scope");
+      default: gen_error(cnt, "invalid node in global scope");
     }
   }
 }
@@ -368,9 +369,7 @@ gen_gstmt(context_t      *cnt,
 LlvmBackend *
 bl_llvm_backend_new(bl_compile_group_e group)
 {
-  LlvmBackendParams p = {
-    .base.group = group
-  };
+  LlvmBackendParams p = {.base.group = group};
 
   return bo_new(LlvmBackend, &p);
 }

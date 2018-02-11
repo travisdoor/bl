@@ -33,12 +33,10 @@ static BString *
 to_string(NodeParamVarDecl *self);
 
 /* NodeParamVarDecl members */
-bo_decl_members_begin(NodeParamVarDecl, Node)
-  Type *type;
-  char *ident;
+bo_decl_members_begin(NodeParamVarDecl, NodeDecl)
 bo_end();
 
-bo_impl_type(NodeParamVarDecl, Node);
+bo_impl_type(NodeParamVarDecl, NodeDecl);
 
 /* NodeParamVarDecl class init */
 void
@@ -52,17 +50,13 @@ NodeParamVarDeclKlass_init(NodeParamVarDeclKlass *klass)
 void
 NodeParamVarDecl_ctor(NodeParamVarDecl *self, NodeParamVarDeclParams *p)
 {
-  bo_parent_ctor(Node, p);
-  self->type = p->type;
-  self->ident = p->ident;
+  bo_parent_ctor(NodeDecl, p);
 }
 
 /* NodeParamVarDecl destructor */
 void
 NodeParamVarDecl_dtor(NodeParamVarDecl *self)
 {
-  bo_unref(self->type);
-  free(self->ident);
 }
 
 /* NodeParamVarDecl copy constructor */
@@ -79,21 +73,9 @@ to_string(NodeParamVarDecl *self)
   bo_string_append(ret, "<");
   bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
   bo_string_append(ret, " ");
-  bo_string_append(ret, bl_type_get_name(self->type));
+  bo_string_append(ret, bl_type_get_name(bo_members(self, NodeDecl)->type));
   bo_string_append(ret, " ");
-  bo_string_append(ret, self->ident);
+  bo_string_append(ret, bo_members(self, NodeDecl)->ident);
   bo_string_append(ret, ">");
   return ret;
-}
-
-Type *
-bl_node_param_var_decl_get_type(NodeParamVarDecl *self)
-{
-  return self->type;
-}
-
-const char *
-bl_node_param_var_decl_get_ident(NodeParamVarDecl *self)
-{
-  return self->ident;
 }

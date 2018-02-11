@@ -29,7 +29,7 @@
 #ifndef BL_NODE_FUNC_DECL_H
 #define BL_NODE_FUNC_DECL_H
 
-#include "bl/ast/node.h"
+#include "bl/ast/node_decl.h"
 #include "bl/ast/node_stmt.h"
 #include "bl/ast/node_param_var_decl.h"
 #include "bl/token.h"
@@ -37,15 +37,9 @@
 
 BO_BEGIN_DECLS
 /* class declaration */
-bo_decl_type_begin(NodeFuncDecl, Node)
+bo_decl_type_begin(NodeFuncDecl, NodeDecl)
   /* virtuals */
 bo_end();
-
-extern BO_EXPORT const char *
-bl_node_func_decl_get_ident(NodeFuncDecl *self);
-
-extern BO_EXPORT Type *
-bl_node_func_decl_get_type(NodeFuncDecl *self);
 
 extern BO_EXPORT bl_sym_e
 bl_node_func_decl_get_modif(NodeFuncDecl *self);

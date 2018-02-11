@@ -30,21 +30,15 @@
 #define BL_NODE_VAR_DECL_H
 
 #include <bobject/bobject.h>
-#include "bl/ast/node.h"
+#include "bl/ast/node_decl.h"
 #include "bl/type.h"
 
 BO_BEGIN_DECLS
 
 /* class NodeVarDecl declaration */
-bo_decl_type_begin(NodeVarDecl, Node)
+bo_decl_type_begin(NodeVarDecl, NodeDecl)
   /* virtuals */
 bo_end();
-
-extern BO_EXPORT char *
-bl_node_var_decl_get_ident(NodeVarDecl *self);
-
-extern BO_EXPORT Type *
-bl_node_var_decl_get_type(NodeVarDecl *self);
 
 BO_END_DECLS
 

@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_param_var_decl.h
+// File:   node_decl.c
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,54 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_PARAM_VAR_DECL_H
-#define BL_NODE_PARAM_VAR_DECL_H
+#include "ast/node_decl_impl.h"
+/* class NodeDecl */
 
-#include "bl/ast/node_decl.h"
-#include "bl/type.h"
+bo_impl_type(NodeDecl, Node);
 
-BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(NodeParamVarDecl, NodeDecl)
-  /* virtuals */
-bo_end();
+void
+NodeDeclKlass_init(NodeDeclKlass *klass)
+{
+}
 
-BO_END_DECLS
+void
+NodeDecl_ctor(NodeDecl *self,
+              NodeDeclParams *p)
+{
+  /* constructor */
 
-#endif //BL_NODE_PARAM_VAR_DECL_H
+  /* initialize parent */
+  bo_parent_ctor(Node, p);
+
+  /* initialize self */
+  self->ident = p->ident;
+  self->type = p->type;
+}
+
+void
+NodeDecl_dtor(NodeDecl *self)
+{
+  free(self->ident);
+  bo_unref(self->type);
+}
+
+bo_copy_result
+NodeDecl_copy(NodeDecl *self,
+              NodeDecl *other)
+{
+  return BO_NO_COPY;
+}
+
+/* class NodeDecl end */
+
+char *
+bl_node_decl_get_ident(NodeDecl *self)
+{
+  return self->ident;
+}
+
+Type *
+bl_node_decl_get_type(NodeDecl *self)
+{
+  return self->type;
+}

@@ -30,11 +30,9 @@
 #define BL_NODE_VAR_DECL_IMPL_H
 
 #include "bl/ast/node_var_decl.h"
-#include "ast/node_impl.h"
+#include "ast/node_decl_impl.h"
 
-bo_decl_params_with_base_begin(NodeVarDecl, Node)
-  Type *type;
-  char *ident;
+bo_decl_params_with_base_begin(NodeVarDecl, NodeDecl)
 bo_end();
 
 #endif //BL_NODE_VAR_DECL_IMPL_H
