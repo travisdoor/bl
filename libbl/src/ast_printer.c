@@ -34,7 +34,7 @@
 
 static bool
 run(AstPrinter *self,
-    Unit       *unit);
+    Unit *unit);
 
 /* AstPrinter members */
 bo_decl_members_begin(AstPrinter, Stage)
@@ -52,13 +52,15 @@ bo_impl_type(AstPrinter, Stage);
 void
 AstPrinterKlass_init(AstPrinterKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->run =
+    (bool (*)(Stage *,
+              Actor *)) run;
 }
 
 /* AstPrinter constructor */
 void
-AstPrinter_ctor(AstPrinter *self, AstPrinterParams *p)
+AstPrinter_ctor(AstPrinter *self,
+                AstPrinterParams *p)
 {
   bo_parent_ctor(Stage, p);
   self->out_stream = p->out_stream;
@@ -72,12 +74,13 @@ AstPrinter_dtor(AstPrinter *self)
 
 /* AstPrinter copy constructor */
 bo_copy_result
-AstPrinter_copy(AstPrinter *self, AstPrinter *other)
+AstPrinter_copy(AstPrinter *self,
+                AstPrinter *other)
 {
   return BO_NO_COPY;
 }
 
-static void 
+static void
 print_node(AstPrinter *self,
            Node *node,
            int pad)
@@ -86,7 +89,12 @@ print_node(AstPrinter *self,
     return;
 
   BString *s = bo_vtbl(node, Node)->to_string(node);
-  fprintf(self->out_stream, ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET, pad, "", bo_string_get(s));
+  fprintf(
+    self->out_stream,
+    ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET,
+    pad,
+    "",
+    bo_string_get(s));
   bo_unref(s);
 
   int c = 0;
@@ -95,7 +103,7 @@ print_node(AstPrinter *self,
   switch (node->type) {
     case BL_NODE_GLOBAL_STMT:
       c = bl_node_global_stmt_get_child_count((NodeGlobalStmt *) node);
-      pad+=2;
+      pad += 2;
       for (int i = 0; i < c; i++) {
         child = bl_node_global_stmt_get_child((NodeGlobalStmt *) node, i);
         print_node(self, child, pad);
@@ -103,12 +111,20 @@ print_node(AstPrinter *self,
       break;
     case BL_NODE_FUNC_DECL:
       c = bl_node_func_decl_get_param_count((NodeFuncDecl *) node);
-      pad+=2;
+      pad += 2;
       for (int i = 0; i < c; i++) {
         child = (Node *) bl_node_func_decl_get_param((NodeFuncDecl *) node, i);
         print_node(self, child, pad);
       }
       print_node(self, (Node *) bl_node_func_decl_get_stmt((NodeFuncDecl *) node), pad);
+      break;
+    case BL_NODE_CALL:
+      c = bl_node_call_get_arg_count((NodeCall *) node);
+      pad += 2;
+      for (int i = 0; i < c; i++) {
+        child = (Node *)bl_node_call_get_arg((NodeCall *) node, i);
+        print_node(self, child, pad);
+      }
       break;
     case BL_NODE_PARAM_VAR_DECL:
       break;
@@ -116,18 +132,18 @@ print_node(AstPrinter *self,
       break;
     case BL_NODE_STMT:
       c = bl_node_stmt_child_get_count((NodeStmt *) node);
-      pad+=2;
+      pad += 2;
       for (int i = 0; i < c; i++) {
         child = bl_node_stmt_get_child((NodeStmt *) node, i);
         print_node(self, child, pad);
       }
       break;
     case BL_NODE_RETURN_STMT:
-      pad+=2;
+      pad += 2;
       print_node(self, (Node *) bl_node_return_stmt_get_expr((NodeReturnStmt *) node), pad);
       break;
     case BL_NODE_VAR_DECL:
-      pad+=2;
+      pad += 2;
       print_node(self, (Node *) bl_node_var_decl_get_expr((NodeVarDecl *) node), pad);
     default:
       break;
@@ -136,10 +152,10 @@ print_node(AstPrinter *self,
 
 bool
 run(AstPrinter *self,
-    Unit       *unit)
+    Unit *unit)
 {
   if (bl_unit_get_ast(unit) == NULL) {
-    bl_actor_error((Actor *)unit, "cannot find AST tree in unit %s", bl_unit_get_src_file(unit));
+    bl_actor_error((Actor *) unit, "cannot find AST tree in unit %s", bl_unit_get_src_file(unit));
     return false;
   }
 
@@ -149,13 +165,10 @@ run(AstPrinter *self,
 
 /* public */
 AstPrinter *
-bl_ast_printer_new(FILE              *out_stream,
+bl_ast_printer_new(FILE *out_stream,
                    bl_compile_group_e group)
 {
-  AstPrinterParams p = {
-    .base.group = group,
-    .out_stream = out_stream
-  };
+  AstPrinterParams p = {.base.group = group, .out_stream = out_stream};
 
   return bo_new(AstPrinter, &p);
 }

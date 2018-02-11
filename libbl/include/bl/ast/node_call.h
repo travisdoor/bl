@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node.h
+// File:   node_call.h
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,41 +26,33 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_H
-#define BL_NODE_H
+#ifndef BL_NODE_CALL_H
+#define BL_NODE_CALL_H
 
+#include "bl/ast/node_expr.h"
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
 
 BO_BEGIN_DECLS
 
-#define BL_NTYPE_LIST\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "stmt") \
-  nt(CALL, "call_expr") \
-  nt(INT_CONST, "int_const_expr") \
-  nt(STRING_CONST, "string_const_expr") \
-  nt(VAR_DECL, "var_decl") \
-  nt(RETURN_STMT, "return_stmt") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  BL_NTYPE_LIST
-#undef nt
-} bl_node_e;
-
-/* class declaration */
-bo_decl_type_begin(Node, BObject)
+/* class NodeCall declaration */
+bo_decl_type_begin(NodeCall, NodeExpr)
   /* virtuals */
-  BString *(*to_string)(Node *);
 bo_end();
 
-extern BO_EXPORT bl_node_e
-bl_node_get_type(Node *self);
+extern BO_EXPORT const char *
+bl_node_call_get_calle(NodeCall *self);
+
+extern BO_EXPORT bool
+bl_node_call_add_arg(NodeCall *self,
+                     NodeExpr *arg);
+
+extern BO_EXPORT int
+bl_node_call_get_arg_count(NodeCall *self);
+
+extern BO_EXPORT NodeExpr *
+bl_node_call_get_arg(NodeCall *self,
+                     int       i);
 
 BO_END_DECLS
 
-#endif //BL_NODE_H
+#endif //BL_NODE_CALL_H

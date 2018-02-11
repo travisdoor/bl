@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_int_const.c
+// File:   node_call.c
 // Author: Martin Dorazil
 // Date:   11/02/2018
 //
@@ -26,67 +26,82 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_int_const_impl.h"
-
-static BString *
-to_string(NodeIntConst *self);
-
-/* class NodeIntConst */
-/* class NodeIntConst object members */
-bo_decl_members_begin(NodeIntConst, NodeExpr)
+#include "ast/node_call_impl.h"
+/* class NodeCall */
+/* class NodeCall object members */
+bo_decl_members_begin(NodeCall, NodeExpr)
   /* members */
-  unsigned long long num;
+  BArray *args;
+  char   *calle;
 bo_end();
 
-bo_impl_type(NodeIntConst, NodeExpr);
+bo_impl_type(NodeCall, NodeExpr);
 
 void
-NodeIntConstKlass_init(NodeIntConstKlass *klass)
+NodeCallKlass_init(NodeCallKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string = (BString *(*)(Node *)) to_string;
 }
 
 void
-NodeIntConst_ctor(NodeIntConst *self, NodeIntConstParams *p)
+NodeCall_ctor(NodeCall *self,
+              NodeCallParams *p)
 {
   /* constructor */
 
   /* initialize parent */
   bo_parent_ctor(NodeExpr, p);
-
   /* initialize self */
-  self->num = p->num;
+  self->calle = p->calle;
 }
 
 void
-NodeIntConst_dtor(NodeIntConst *self)
+NodeCall_dtor(NodeCall *self)
 {
+  bo_unref(self->args);
+  free(self->calle);
 }
 
 bo_copy_result
-NodeIntConst_copy(NodeIntConst *self, NodeIntConst *other)
+NodeCall_copy(NodeCall *self,
+              NodeCall *other)
 {
   return BO_NO_COPY;
 }
-/* class NodeIntConst end */
+/* class NodeCall end */
 
-unsigned long long
-bl_node_int_const_get_num(NodeIntConst *self)
+bool
+bl_node_call_add_arg(NodeCall *self,
+                     NodeExpr *arg)
 {
-  return self->num;
+  if (arg == NULL)
+    return false;
+
+  if (self->args == NULL)
+    self->args = bo_array_new_bo(bo_typeof(NodeExpr), false);
+
+  bo_array_push_back(self->args, arg);
+
+  return true;
 }
 
-BString *
-to_string(NodeIntConst *self)
+int
+bl_node_call_get_arg_count(NodeCall *self)
 {
-  char str[12];
-  sprintf(str, "%llu", self->num);
+  if (self->args == NULL)
+    return 0;
 
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, " ");
-  bo_string_append(ret, &str[0]);
-  bo_string_append(ret, ">");
-  return ret;
+  return (int) bo_array_size(self->args);
+}
+
+NodeExpr *
+bl_node_call_get_arg(NodeCall *self,
+                     int i)
+{
+  return bo_array_at(self->args, i, NodeExpr *);
+}
+
+const char *
+bl_node_call_get_calle(NodeCall *self)
+{
+  return self->calle;
 }

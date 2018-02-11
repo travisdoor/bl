@@ -42,6 +42,7 @@
 #include "bl/ast/node_decl.h"
 #include "bl/ast/node_int_const.h"
 #include "bl/ast/node_string_const.h"
+#include "bl/ast/node_call.h"
 
 BO_BEGIN_DECLS
 
@@ -111,11 +112,17 @@ bl_ast_node_int_const_new(Ast               *self,
 
 extern BO_EXPORT NodeStringConst *
 bl_ast_node_string_const_new(Ast        *self,
-                             char       *num,
+                             char       *str,
                              const char *generated_from,
                              int         line,
                              int         col);
 
+extern BO_EXPORT NodeCall*
+bl_ast_node_call_new(Ast        *self,
+                     char       *calle,
+                     const char *generated_from,
+                     int         line,
+                     int         col);
 
 extern BO_EXPORT NodeVarDecl *
 bl_ast_node_var_decl_new(Ast         *self,

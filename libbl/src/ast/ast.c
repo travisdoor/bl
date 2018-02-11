@@ -288,3 +288,25 @@ bl_ast_node_binop_new(Ast        *self,
 
   return save_to_cache(self, bo_new(NodeBinop, &p));
 }
+
+NodeCall*
+bl_ast_node_call_new(Ast        *self,
+                     char       *calle,
+                     const char *generated_from,
+                     int         line,
+                     int         col)
+{
+  NodeCallParams p = {
+    .base = {
+      .base = {
+        .type = BL_NODE_CALL,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col,
+      }
+    },
+    .calle = calle
+  };
+
+  return save_to_cache(self, bo_new(NodeCall, &p));
+}

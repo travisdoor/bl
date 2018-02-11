@@ -27,6 +27,10 @@
 //*****************************************************************************
 
 #include "ast/node_string_const_impl.h"
+
+static BString *
+to_string(NodeStringConst *self);
+
 /* class NodeStringConst */
 /* class NodeStringConst object members */
 bo_decl_members_begin(NodeStringConst, NodeExpr)
@@ -39,10 +43,12 @@ bo_impl_type(NodeStringConst, NodeExpr);
 void
 NodeStringConstKlass_init(NodeStringConstKlass *klass)
 {
+  bo_vtbl_cl(klass, Node)->to_string = (BString *(*)(Node *)) to_string;
 }
 
 void
-NodeStringConst_ctor(NodeStringConst *self, NodeStringConstParams *p)
+NodeStringConst_ctor(NodeStringConst *self,
+                     NodeStringConstParams *p)
 {
   /* constructor */
 
@@ -60,14 +66,28 @@ NodeStringConst_dtor(NodeStringConst *self)
 }
 
 bo_copy_result
-NodeStringConst_copy(NodeStringConst *self, NodeStringConst *other)
+NodeStringConst_copy(NodeStringConst *self,
+                     NodeStringConst *other)
 {
   return BO_NO_COPY;
 }
+
 /* class NodeStringConst end */
 
 const char *
 bl_node_string_const_get_str(NodeStringConst *self)
 {
   return self->string;
+}
+
+BString *
+to_string(NodeStringConst *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, self->string);
+  bo_string_append(ret, ">");
+  return ret;
 }

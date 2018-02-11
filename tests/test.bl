@@ -7,7 +7,9 @@ int main() {
   int a;
   long my_long;
   string s;
-  string this_is_my_sting;
+  string this_is_my_sting = "hello world";
+
+  puts("hello world!!!");
 
   return 10;
 }

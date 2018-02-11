@@ -11,8 +11,9 @@ NodeDecl <|-- NodeVarDecl
 NodeDecl <|-- NodeFuncDecl
 NodeDecl <|-- NodeParamVarDecl
 
-NodeExpr <|-- NodeCallExpr
+NodeExpr <|-- NodeCall
 NodeExpr <|-- NodeIntConst
 NodeExpr <|-- NodeStringConst
+NodeExpr <|-- NodeDeclRef
 
 @enduml

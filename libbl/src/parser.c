@@ -56,6 +56,9 @@ parse_stmt(context_t *cnt);
 static NodeExpr *
 parse_expr(context_t *cnt);
 
+static NodeCall *
+parse_call_expr(context_t *cnt);
+
 static NodeVarDecl *
 parse_var_decl(context_t *cnt);
 
@@ -195,6 +198,10 @@ stmt:
   if (bl_node_stmt_add_child(stmt, (Node *) parse_var_decl(cnt)))
     goto stmt;
 
+  /* call expr */
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_call_expr(cnt)))
+    goto stmt;
+
   /* return */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(cnt)))
     goto stmt;
@@ -250,11 +257,13 @@ param:
     }
 
     tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_RPAREN) parse_error(cnt,
-                                               "%s %d:%d expected ')' after function parameter declaration",
-                                               bl_unit_get_src_file(cnt->unit),
-                                               tok->line,
-                                               tok->col);
+    if (tok->sym != BL_SYM_RPAREN) {
+      parse_error(cnt,
+                  "%s %d:%d expected ')' after function parameter declaration",
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col);
+    }
 
     if (modif == BL_SYM_EXTERN) {
       tok = bl_tokens_consume(cnt->tokens);
@@ -323,7 +332,7 @@ parse_expr(context_t *cnt)
 
       expr = (NodeExpr *) bl_ast_node_string_const_new(
         bl_unit_get_ast(cnt->unit),
-        strndup(tok->content.as_string,tok->len),
+        strndup(tok->content.as_string, tok->len),
         tok->src_loc,
         tok->line,
         tok->col);
@@ -334,12 +343,57 @@ parse_expr(context_t *cnt)
   return expr;
 }
 
+NodeCall *
+parse_call_expr(context_t *cnt)
+{
+  NodeCall *call = NULL;
+
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
+    bl_token_t *tok_calle = bl_tokens_consume(cnt->tokens);
+
+    /* eat '(' */
+    bl_tokens_consume(cnt->tokens);
+
+    call = bl_ast_node_call_new(
+      bl_unit_get_ast(cnt->unit),
+      strndup(tok_calle->content.as_string, tok_calle->len),
+      tok_calle->src_loc,
+      tok_calle->line,
+      tok_calle->col);
+
+arg:
+    bl_node_call_add_arg(call, parse_expr(cnt));
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA))
+      goto arg;
+
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RPAREN) {
+      parse_error(cnt,
+                  "%s %d:%d expected ')' after function call argument list",
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col);
+    }
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_SEMICOLON) {
+      parse_error(cnt,
+                  "%s %d:%d missing semicolon ';' at the end of all expression",
+                  bl_unit_get_src_file(
+                    cnt->unit),
+                  tok->line,
+                  tok->col + tok->len);
+    }
+  }
+
+  return call;
+}
+
 NodeVarDecl *
 parse_var_decl(context_t *cnt)
 {
   NodeVarDecl *vdcl = NULL;
 
-  bl_tokens_set_marker(cnt->tokens);
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
     bl_token_t *tok_type = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
@@ -380,13 +434,14 @@ parse_var_decl(context_t *cnt)
     }
 
     /* always must end with semicolon */
-    if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON) parse_error(cnt,
-                                                                             "%s %d:%d missing semicolon ';' at the end of variable declaration",
-                                                                             bl_unit_get_src_file(
-                                                                               cnt->unit),
-                                                                             tok_ident->line,
-                                                                             tok_ident->col +
-                                                                               tok_ident->len);
+    if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON) {
+      parse_error(cnt,
+                  "%s %d:%d missing semicolon ';' at the end of variable declaration",
+                  bl_unit_get_src_file(
+                    cnt->unit),
+                  tok_ident->line,
+                  tok_ident->col + tok_ident->len);
+    }
 
   }
 

@@ -42,5 +42,6 @@
 #include "ast/node_decl_impl.h"
 #include "ast/node_int_const_impl.h"
 #include "ast/node_string_const_impl.h"
+#include "ast/node_call_impl.h"
 
 #endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

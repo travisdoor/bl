@@ -99,6 +99,15 @@ gen_var_decl(context_t *cnt,
              NodeVarDecl *vdcl);
 
 static void
+gen_call(context_t *cnt,
+         NodeCall *call);
+
+static int
+gen_call_args(context_t *cnt,
+              NodeCall *call,
+              LLVMValueRef *out);
+
+static void
 gen_gstmt(context_t *cnt,
           NodeGlobalStmt *gstmt);
 
@@ -285,12 +294,8 @@ gen_epr(context_t *cnt,
        * For constant string we generate constant global array and return pointer
        * to this array.
        */
-      LLVMValueRef
-        str =
-        LLVMBuildGlobalString(
-          cnt->builder,
-          bl_node_string_const_get_str((NodeStringConst *) expr),
-          NAME_CONST_STRING);
+      LLVMValueRef str = LLVMBuildGlobalString(
+        cnt->builder, bl_node_string_const_get_str((NodeStringConst *) expr), NAME_CONST_STRING);
       return LLVMConstPointerCast(str, LLVMPointerType(LLVMInt8Type(), 0));
     }
     default: bl_abort("unknown expression type");
@@ -332,6 +337,45 @@ gen_var_decl(context_t *cnt,
   LLVMBuildStore(cnt->builder, def, var);
 }
 
+int
+gen_call_args(context_t *cnt,
+              NodeCall *call,
+              LLVMValueRef *out)
+{
+  int out_i = 0;
+  const int c = bl_node_call_get_arg_count(call);
+
+  /* no args */
+  if (c == 0) {
+    return 0;
+  }
+
+  NodeExpr *expr = NULL;
+  for (int i = 0; i < c; i++) {
+    expr = bl_node_call_get_arg(call, i);
+    *out = gen_epr(cnt, expr);
+    out++;
+    out_i++;
+  }
+
+  return out_i;
+}
+
+void
+gen_call(context_t *cnt,
+         NodeCall *call)
+{
+  LLVMValueRef fn = LLVMGetNamedFunction(cnt->mod, bl_node_call_get_calle(call));
+  bl_assert(fn, "invalid function");
+
+  /* args */
+  LLVMValueRef args[BL_MAX_FUNC_PARAM_COUNT] = {0};
+  int argc = gen_call_args(cnt, call, args);
+
+  /* TODO: return value passed from build method */
+  LLVMBuildCall(cnt->builder, fn, args, argc, "");
+}
+
 void
 gen_func(context_t *cnt,
          NodeFuncDecl *node)
@@ -370,6 +414,9 @@ gen_stmt(context_t *cnt,
         return;
       case BL_NODE_VAR_DECL:
         gen_var_decl(cnt, (NodeVarDecl *) child);
+        break;
+      case BL_NODE_CALL:
+        gen_call(cnt, (NodeCall *) child);
         break;
       default: gen_error(cnt, "invalid stmt in function scope");
     }
