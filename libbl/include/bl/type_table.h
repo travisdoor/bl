@@ -37,7 +37,7 @@ BO_BEGIN_DECLS
   tp(REF,    "") \
   tp(VOID,   "void") \
   tp(PTR,    "ptr") \
-  tp(CHAR,   "char") \
+  tp(BYTE,   "byte") \
   tp(I32,    "int") \
   tp(I64,    "long") \
   tp(STRING, "string") \

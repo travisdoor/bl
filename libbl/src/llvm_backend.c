@@ -208,7 +208,7 @@ to_type(const char *t)
       return LLVMInt64Type();
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8Type(), 0);
-    case BL_TYPE_CHAR:
+    case BL_TYPE_BYTE:
       return LLVMInt8Type();
     case BL_TYPE_PTR:
       return LLVMPointerType(LLVMInt8Type(), 0);

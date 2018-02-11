@@ -1,7 +1,7 @@
 // this is testing script
 
 extern void puts(string s);
-extern void putc(char c);
+extern void putc(byte c);
 extern ptr malloc(long size);
 
 int main() {
