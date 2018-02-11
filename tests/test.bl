@@ -2,7 +2,6 @@
 
 extern void puts(string s);
 extern void putc(byte c);
-extern ptr malloc(long size);
 
 int main() {
   int a;
@@ -18,10 +17,10 @@ int another_function(int i) {
   return 1;
 }
 
-int unrecheable(int i) {
+int func(int i) {
   int local_int1;
-  return 1;
   int local_int2;
+  return 1;
 }
 
 void no_return_func() {

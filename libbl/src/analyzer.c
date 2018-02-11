@@ -171,7 +171,7 @@ analyze_stmt(context_t *cnt,
 
   const char *expected_return_type = bl_node_func_decl_type(cnt->current_func_tmp);
   if (!return_presented && bl_strtotype(expected_return_type) != BL_TYPE_VOID) {
-    analyze_error(cnt, "%s %d:%d unterminated function %s",
+    analyze_error(cnt, "%s %d:%d unterminated function '%s'",
                   cnt->unit->filepath,
                   bo_members(cnt->current_func_tmp, Node)->line,
                   bo_members(cnt->current_func_tmp, Node)->col,
