@@ -208,6 +208,10 @@ to_type(const char *t)
       return LLVMInt64Type();
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8Type(), 0);
+    case BL_TYPE_CHAR:
+      return LLVMInt8Type();
+    case BL_TYPE_PTR:
+      return LLVMPointerType(LLVMInt8Type(), 0);
     case BL_TYPE_REF:
     default:
       return NULL;
@@ -320,6 +324,7 @@ gen_stmt(context_t     *cnt,
          LLVMValueRef   func,
          NodeStmt      *stmt)
 {
+  bool return_presented = false;
   LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
   LLVMPositionBuilderAtEnd(cnt->builder, entry);
 
@@ -329,6 +334,7 @@ gen_stmt(context_t     *cnt,
     child = bl_node_stmt_child(stmt, i);
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
+        return_presented = true;
         gen_ret(cnt, (NodeReturnStmt *)child);
         return;
       case BL_NODE_VAR_DECL:
@@ -337,6 +343,10 @@ gen_stmt(context_t     *cnt,
       default:
         gen_error(cnt, "invalid stmt in function scope");
     }
+  }
+
+  if (!return_presented) {
+    LLVMBuildRetVoid(cnt->builder);
   }
 }
 

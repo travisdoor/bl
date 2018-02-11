@@ -1,6 +1,8 @@
 // this is testing script
 
 extern void puts(string s);
+extern void putc(char c);
+extern ptr malloc(long size);
 
 int main() {
   int a;
@@ -12,10 +14,16 @@ int main() {
 }
 
 int another_function(int i) {
-  return 1;
   string local_string;
+  return 1;
 }
 
-string hello() {
-
+int unrecheable(int i) {
+  int local_int1;
+  return 1;
+  int local_int2;
 }
+
+void no_return_func() {
+}
+

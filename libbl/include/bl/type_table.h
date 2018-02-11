@@ -34,11 +34,13 @@
 BO_BEGIN_DECLS
 
 #define BL_TYPE_LIST \
-  tp(REF, "") \
-  tp(VOID, "void") \
+  tp(REF,    "") \
+  tp(VOID,   "void") \
+  tp(PTR,    "ptr") \
+  tp(CHAR,   "char") \
+  tp(I32,    "int") \
+  tp(I64,    "long") \
   tp(STRING, "string") \
-  tp(I32, "int") \
-  tp(I64, "long") \
 
 typedef enum {
 #define tp(tok, str) BL_TYPE_##tok,
