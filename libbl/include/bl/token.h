@@ -61,7 +61,8 @@ BO_BEGIN_DECLS
   sm(SLASH, "/") \
   sm(NONE, "") \
 
-typedef enum {
+typedef enum
+{
 #define sm(tok, str) BL_SYM_##tok,
   BL_SYMBOLS_LIST
 #undef sm
@@ -76,21 +77,26 @@ typedef struct
   int col;
   int len;
   const char *src_loc;
-  union content_u {
+  union content_u
+  {
     const char *as_string;
-    double      as_double;
-    int         as_int;
+    double as_double;
+    int as_int;
   } content;
 } bl_token_t;
 
 /* content must be set manually */
 extern BO_EXPORT void
 bl_token_init(bl_token_t *token,
-              bl_sym_e    symbol,
-              int         line,
-              int         col,
-              int         len,
+              bl_sym_e symbol,
+              int line,
+              int col,
+              int len,
               const char *src_loc);
+
+extern BO_EXPORT bool
+bl_token_is_binop(bl_token_t *token);
+
 BO_END_DECLS
 
 #endif //BL_TOKEN_H

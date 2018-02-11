@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
+#include "bl/ast/node_expr.h"
 #include "bl/token.h"
 
 BO_BEGIN_DECLS
@@ -42,6 +43,20 @@ bo_end();
 
 extern BO_EXPORT bl_sym_e
 bl_node_binop_get_op(NodeBinop *self);
+
+extern BO_EXPORT NodeExpr *
+bl_node_binop_get_lvalue(NodeBinop *self);
+
+extern BO_EXPORT NodeExpr *
+bl_node_binop_get_rvalue(NodeBinop *self);
+
+extern BO_EXPORT bool
+bl_node_binop_set_lvalue(NodeBinop *self,
+                         NodeExpr  *lvalue);
+
+extern BO_EXPORT bool
+bl_node_binop_set_rvalue(NodeBinop *self,
+                         NodeExpr  *rvalue);
 
 BO_END_DECLS
 

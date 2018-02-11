@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_binop.c
+// File:   node_decl_ref_impl.h
 // Author: Martin Dorazil
 // Date:   11/02/2018
 //
@@ -26,83 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_binop_impl.h"
+#ifndef BL_NODE_DECL_REF_IMPL_H
+#define BL_NODE_DECL_REF_IMPL_H
 
-/* class NodeBinop */
-/* class NodeBinop object members */
-bo_decl_members_begin(NodeBinop, Node)
-  /* members */
-  bl_sym_e operator;
-  NodeExpr *lvalue;
-  NodeExpr *rvalue;
+#include "bl/ast/node_decl_ref.h"
+#include "ast/node_expr_impl.h"
+
+bo_decl_params_with_base_begin(NodeDeclRef, NodeExpr)
+  char *ident;
 bo_end();
 
-bo_impl_type(NodeBinop, Node);
-
-void
-NodeBinopKlass_init(NodeBinopKlass *klass)
-{
-}
-
-void
-NodeBinop_ctor(NodeBinop *self, NodeBinopParams *p)
-{
-  /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Node, p);
-  /* initialize self */
-  self->operator = p->operator;
-}
-
-void
-NodeBinop_dtor(NodeBinop *self)
-{
-}
-
-bo_copy_result
-NodeBinop_copy(NodeBinop *self, NodeBinop *other)
-{
-  return BO_NO_COPY;
-}
-/* class NodeBinop end */
-
-bl_sym_e
-bl_node_binop_get_op(NodeBinop *self)
-{
-  return self->operator;
-}
-
-NodeExpr *
-bl_node_binop_get_lvalue(NodeBinop *self)
-{
-  return self->lvalue;
-}
-
-NodeExpr *
-bl_node_binop_get_rvalue(NodeBinop *self)
-{
-  return self->rvalue;
-}
-
-bool
-bl_node_binop_set_lvalue(NodeBinop *self,
-                         NodeExpr  *lvalue)
-{
-  if (lvalue == NULL)
-    return false;
-
-  self->lvalue = lvalue;
-  return true;
-}
-
-bool
-bl_node_binop_set_rvalue(NodeBinop *self,
-                         NodeExpr  *rvalue)
-{
-  if (rvalue == NULL)
-    return false;
-
-  self->rvalue = rvalue;
-  return true;
-}
-
+#endif //BL_NODE_DECL_REF_IMPL_H

@@ -9,7 +9,8 @@ int main() {
   string s;
   string this_is_my_sting = "hello world";
 
-  puts("hello world!!!");
+  puts("Hello world!!!");
+  puts("I'm first biscuit who can talk!!!");
 
   return 10;
 }
@@ -19,14 +20,13 @@ int another_function(int i) {
   return 1;
 }
 
-int func(int i) {
-  int local_int1 
-  = 125;
-  int local_int2 = 10;
-
-  // local_int1 = 1000;
-
-  return 100;
+void func(int i) {
+  int local_int1;
+  int local_int2 = 512;
+  
+  local_int1;
+  local_int1 = 6666;
+  local_int1 = 1024;
 }
 
 void no_return_func() {

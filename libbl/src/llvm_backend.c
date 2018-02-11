@@ -31,6 +31,8 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
+#include <bobject/containers/htbl.h>
+#include <bobject/containers/hash.h>
 
 #include "bl/llvm_backend.h"
 #include "bl/pipeline/stage.h"
@@ -59,6 +61,7 @@ typedef struct _context_t
 
   /* tmps */
   LLVMValueRef empty_string_tmp;
+  BHashTable *named_vals_tmp;
 } context_t;
 
 static bool
@@ -82,8 +85,12 @@ gen_func(context_t *cnt,
          NodeFuncDecl *node);
 
 static LLVMValueRef
-gen_epr(context_t *cnt,
-        NodeExpr *expr);
+gen_expr(context_t *cnt,
+         NodeExpr *expr);
+
+static void
+gen_binop(context_t *cnt,
+          NodeBinop *binop);
 
 static void
 gen_stmt(context_t *cnt,
@@ -159,8 +166,10 @@ run(LlvmBackend *self,
     Unit *unit)
 {
   context_t cnt = {0};
-  if (setjmp(cnt.jmp_error))
+  if (setjmp(cnt.jmp_error)) {
+    bo_unref(cnt.named_vals_tmp);
     return false;
+  }
 
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
@@ -170,6 +179,7 @@ run(LlvmBackend *self,
   cnt.builder = LLVMCreateBuilder();
   cnt.unit = unit;
   cnt.mod = mod;
+  cnt.named_vals_tmp = bo_htbl_new(sizeof(LLVMValueRef), 256);
 
   switch (root->type) {
     case BL_NODE_GLOBAL_STMT:
@@ -184,6 +194,7 @@ run(LlvmBackend *self,
     bl_actor_error((Actor *) unit, "(llvm_backend) not verified with error %s", error);
     LLVMDisposeMessage(error);
     LLVMDisposeModule(mod);
+    bo_unref(cnt.named_vals_tmp);
     return false;
   }
 #endif
@@ -199,6 +210,7 @@ run(LlvmBackend *self,
   free(export_file);
 
   LLVMDisposeModule(mod);
+  bo_unref(cnt.named_vals_tmp);
   return true;
 }
 
@@ -281,8 +293,8 @@ gen_func_params(context_t *cnt,
 }
 
 LLVMValueRef
-gen_epr(context_t *cnt,
-        NodeExpr *expr)
+gen_expr(context_t *cnt,
+         NodeExpr *expr)
 {
   bl_node_e nt = bl_node_get_type((Node *) expr);
   switch (nt) {
@@ -298,7 +310,27 @@ gen_epr(context_t *cnt,
         cnt->builder, bl_node_string_const_get_str((NodeStringConst *) expr), NAME_CONST_STRING);
       return LLVMConstPointerCast(str, LLVMPointerType(LLVMInt8Type(), 0));
     }
+    case BL_NODE_DECL_REF: {
+      uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
+      return bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
+    }
     default: bl_abort("unknown expression type");
+  }
+}
+
+void
+gen_binop(context_t *cnt,
+          NodeBinop *binop)
+{
+  switch (bl_node_binop_get_op(binop)) {
+    case BL_SYM_ASIGN: {
+      LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
+      LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
+      LLVMBuildStore(cnt->builder, rvalue, lvalue);
+      break;
+    }
+    default:
+      break;
   }
 }
 
@@ -312,7 +344,7 @@ gen_ret(context_t *cnt,
     return;
   }
 
-  LLVMValueRef tmp = gen_epr(cnt, expr);
+  LLVMValueRef tmp = gen_expr(cnt, expr);
   LLVMBuildRet(cnt->builder, tmp);
 }
 
@@ -329,11 +361,13 @@ gen_var_decl(context_t *cnt,
   LLVMValueRef def = NULL;
   NodeExpr *expr = bl_node_var_decl_get_expr(vdcl);
   if (expr) {
-    def = LLVMConstIntCast(gen_epr(cnt, expr), t, false);
+    def = LLVMConstIntCast(gen_expr(cnt, expr), t, false);
   } else {
     def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
   }
 
+  uint32_t hash = bo_hash_from_str(bl_node_decl_get_ident((NodeDecl *) vdcl));
+  bo_htbl_insert(cnt->named_vals_tmp, hash, var);
   LLVMBuildStore(cnt->builder, def, var);
 }
 
@@ -353,7 +387,7 @@ gen_call_args(context_t *cnt,
   NodeExpr *expr = NULL;
   for (int i = 0; i < c; i++) {
     expr = bl_node_call_get_arg(call, i);
-    *out = gen_epr(cnt, expr);
+    *out = gen_expr(cnt, expr);
     out++;
     out_i++;
   }
@@ -418,6 +452,12 @@ gen_stmt(context_t *cnt,
       case BL_NODE_CALL:
         gen_call(cnt, (NodeCall *) child);
         break;
+      case BL_NODE_BINOP:
+        gen_binop(cnt, (NodeBinop *) child);
+        break;
+      case BL_NODE_DECL_REF:
+        /* only decl reference without any expression, this will be ignored for now */
+        break;
       default: gen_error(cnt, "invalid stmt in function scope");
     }
   }
@@ -425,6 +465,8 @@ gen_stmt(context_t *cnt,
   if (!return_presented) {
     LLVMBuildRetVoid(cnt->builder);
   }
+
+  bo_htbl_clear(cnt->named_vals_tmp);
 }
 
 void

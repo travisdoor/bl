@@ -71,6 +71,10 @@ parse_param_var_decl(context_t *cnt);
 static NodeReturnStmt *
 parse_return_stmt(context_t *cnt);
 
+static NodeBinop *
+parse_binop(context_t *cnt,
+            NodeExpr *lvalue);
+
 static bool
 run(Parser *self,
     Unit *unit);
@@ -174,16 +178,40 @@ parse_return_stmt(context_t *cnt)
   return rstmt;
 }
 
+static NodeBinop *
+parse_binop(context_t *cnt,
+            NodeExpr *lvalue)
+{
+  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  NodeBinop *binop =
+    bl_ast_node_binop_new(bl_unit_get_ast(cnt->unit), tok->sym, tok->src_loc, tok->line, tok->col);
+
+  bl_node_binop_set_lvalue(binop, lvalue);
+  NodeExpr *rvalue = parse_expr(cnt);
+  if (rvalue == NULL) {
+    parse_error(cnt,
+                "%s %d:%d expected rvalue ",
+                bl_unit_get_src_file(cnt->unit),
+                tok->line,
+                tok->col);
+  }
+  bl_node_binop_set_rvalue(binop, rvalue);
+
+  return binop;
+}
+
 NodeStmt *
 parse_stmt(context_t *cnt)
 {
   /* eat '{' */
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-  if (tok->sym != BL_SYM_LBLOCK) parse_error(cnt,
-                                             "%s %d:%d expected scope body '{'",
-                                             bl_unit_get_src_file(cnt->unit),
-                                             tok->line,
-                                             tok->col);
+  if (tok->sym != BL_SYM_LBLOCK) {
+    parse_error(cnt,
+                "%s %d:%d expected scope body '{'",
+                bl_unit_get_src_file(cnt->unit),
+                tok->line,
+                tok->col);
+  }
 
   NodeStmt
     *stmt = bl_ast_node_stmt_new(bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
@@ -205,6 +233,19 @@ stmt:
   /* return */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(cnt)))
     goto stmt;
+
+  /* expr */
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(cnt))) {
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_SEMICOLON) {
+      parse_error(cnt,
+                  "%s %d:%d missing semicolon ';' at the end of expression",
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col);
+    }
+    goto stmt;
+  }
 
   tok = bl_tokens_consume(cnt->tokens);
 
@@ -320,6 +361,17 @@ parse_expr(context_t *cnt)
   /* HACK currently accept only numbers */
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
   switch (tok->sym) {
+    case BL_SYM_IDENT:
+      bl_tokens_consume(cnt->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_decl_ref_new(
+        bl_unit_get_ast(cnt->unit),
+        strndup(tok->content.as_string, tok->len),
+        tok->src_loc,
+        tok->line,
+        tok->col);
+
+      break;
     case BL_SYM_NUM:
       bl_tokens_consume(cnt->tokens);
 
@@ -337,7 +389,16 @@ parse_expr(context_t *cnt)
         tok->line,
         tok->col);
       break;
-    default: bl_abort("unknown symbol in expression");
+    default:
+      break;
+  }
+
+  /* TODO: accept more operators */
+  if (expr && bl_tokens_current_is(cnt->tokens, BL_SYM_ASIGN)) {
+    NodeBinop *binop = parse_binop(cnt, expr);
+    if (binop != NULL) {
+      expr = (NodeExpr *) binop;
+    }
   }
 
   return expr;

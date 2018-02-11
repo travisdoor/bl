@@ -40,6 +40,8 @@ BO_BEGIN_DECLS
   nt(GLOBAL_STMT, "global_stmt") \
   nt(STMT, "stmt") \
   nt(CALL, "call_expr") \
+  nt(BINOP, "binary_operation") \
+  nt(DECL_REF, "decl_ref") \
   nt(INT_CONST, "int_const_expr") \
   nt(STRING_CONST, "string_const_expr") \
   nt(VAR_DECL, "var_decl") \

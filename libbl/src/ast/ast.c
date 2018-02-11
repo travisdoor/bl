@@ -279,7 +279,7 @@ bl_ast_node_binop_new(Ast        *self,
                       int         col)
 {
   NodeBinopParams p = {
-    .base.type = BL_NODE_VAR_DECL,
+    .base.type = BL_NODE_BINOP,
     .base.generated_from = generated_from,
     .base.line = line,
     .base.col = col,
@@ -310,3 +310,26 @@ bl_ast_node_call_new(Ast        *self,
 
   return save_to_cache(self, bo_new(NodeCall, &p));
 }
+
+NodeDeclRef *
+bl_ast_node_decl_ref_new(Ast        *self,
+                         char       *ident,
+                         const char *generated_from,
+                         int         line,
+                         int         col)
+{
+  NodeDeclRefParams p = {
+    .base = {
+      .base = {
+        .type = BL_NODE_DECL_REF,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col,
+      }
+    },
+    .ident = ident
+  };
+
+  return save_to_cache(self, bo_new(NodeDeclRef, &p));
+}
+

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_binop.c
+// File:   node_decl_ref.c
 // Author: Martin Dorazil
 // Date:   11/02/2018
 //
@@ -26,83 +26,48 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_binop_impl.h"
-
-/* class NodeBinop */
-/* class NodeBinop object members */
-bo_decl_members_begin(NodeBinop, Node)
+#include "ast/node_decl_ref_impl.h"
+/* class NodeDeclRef */
+/* class NodeDeclRef object members */
+bo_decl_members_begin(NodeDeclRef, NodeExpr)
   /* members */
-  bl_sym_e operator;
-  NodeExpr *lvalue;
-  NodeExpr *rvalue;
+  char *ident;
 bo_end();
 
-bo_impl_type(NodeBinop, Node);
+bo_impl_type(NodeDeclRef, NodeExpr);
 
 void
-NodeBinopKlass_init(NodeBinopKlass *klass)
+NodeDeclRefKlass_init(NodeDeclRefKlass *klass)
 {
 }
 
 void
-NodeBinop_ctor(NodeBinop *self, NodeBinopParams *p)
+NodeDeclRef_ctor(NodeDeclRef *self, NodeDeclRefParams *p)
 {
   /* constructor */
+
   /* initialize parent */
-  bo_parent_ctor(Node, p);
+  bo_parent_ctor(NodeExpr, p);
+
   /* initialize self */
-  self->operator = p->operator;
+  self->ident = p->ident;
 }
 
 void
-NodeBinop_dtor(NodeBinop *self)
+NodeDeclRef_dtor(NodeDeclRef *self)
 {
+  free(self->ident);
 }
 
 bo_copy_result
-NodeBinop_copy(NodeBinop *self, NodeBinop *other)
+NodeDeclRef_copy(NodeDeclRef *self, NodeDeclRef *other)
 {
   return BO_NO_COPY;
 }
-/* class NodeBinop end */
+/* class NodeDeclRef end */
 
-bl_sym_e
-bl_node_binop_get_op(NodeBinop *self)
+const char *
+bl_node_decl_ref_get_ident(NodeDeclRef *self)
 {
-  return self->operator;
+  return self->ident;
 }
-
-NodeExpr *
-bl_node_binop_get_lvalue(NodeBinop *self)
-{
-  return self->lvalue;
-}
-
-NodeExpr *
-bl_node_binop_get_rvalue(NodeBinop *self)
-{
-  return self->rvalue;
-}
-
-bool
-bl_node_binop_set_lvalue(NodeBinop *self,
-                         NodeExpr  *lvalue)
-{
-  if (lvalue == NULL)
-    return false;
-
-  self->lvalue = lvalue;
-  return true;
-}
-
-bool
-bl_node_binop_set_rvalue(NodeBinop *self,
-                         NodeExpr  *rvalue)
-{
-  if (rvalue == NULL)
-    return false;
-
-  self->rvalue = rvalue;
-  return true;
-}
-
