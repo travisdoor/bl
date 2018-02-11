@@ -115,15 +115,16 @@ Parser_copy(Parser *self,
 Node *
 parse_global_stmt(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   NodeGlobalStmt
     *gstmt =
     bl_ast_node_global_stmt_new(bl_unit_get_ast(cnt->unit), bl_unit_get_src(cnt->unit), 1, 0);
 stmt:
-  if (bl_tokens_consume_if(bl_unit_get_tokens(cnt->unit), BL_SYM_SEMICOLON))
+  if (bl_tokens_consume_if(tokens, BL_SYM_SEMICOLON))
     goto stmt;
 
   if (!bl_node_global_stmt_add_child(gstmt, (Node *) parse_func_decl(cnt))) {
-    bl_token_t *tok = bl_tokens_peek(bl_unit_get_tokens(cnt->unit));
+    bl_token_t *tok = bl_tokens_peek(tokens);
     parse_error(cnt,
                 "%s %d:%d expected function declaration",
                 bl_unit_get_src_file(cnt->unit),
@@ -131,7 +132,7 @@ stmt:
                 tok->col);
   }
 
-  if (bl_tokens_current_is_not(bl_unit_get_tokens(cnt->unit), BL_SYM_EOF))
+  if (bl_tokens_current_is_not(tokens, BL_SYM_EOF))
     goto stmt;
 
   return (Node *) gstmt;
@@ -140,16 +141,17 @@ stmt:
 NodeReturnStmt *
 parse_return_stmt(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   NodeReturnStmt *rstmt = NULL;
-  if (bl_tokens_current_is(bl_unit_get_tokens(cnt->unit), BL_SYM_RETURN)) {
-    bl_token_t *tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  if (bl_tokens_current_is(tokens, BL_SYM_RETURN)) {
+    bl_token_t *tok = bl_tokens_consume(tokens);
     rstmt =
       bl_ast_node_return_stmt_new(bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
 
     /* HACK parse expression here */
-    if (bl_tokens_current_is(bl_unit_get_tokens(cnt->unit), BL_SYM_NUM)) {
+    if (bl_tokens_current_is(tokens, BL_SYM_NUM)) {
       if (!bl_node_return_stmt_add_expr(rstmt, parse_expr(cnt))) {
-        tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+        tok = bl_tokens_consume(tokens);
         parse_error(cnt,
                     "%s %d:%d expected expression or nothing after return statement",
                     bl_unit_get_src_file(cnt->unit),
@@ -158,7 +160,7 @@ parse_return_stmt(context_t *cnt)
       }
     }
 
-    tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+    tok = bl_tokens_consume(tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
       parse_error(cnt,
                   "%s %d:%d missing semicolon ';' at the end of return statement",
@@ -173,8 +175,9 @@ parse_return_stmt(context_t *cnt)
 NodeStmt *
 parse_stmt(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   /* eat '{' */
-  bl_token_t *tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  bl_token_t *tok = bl_tokens_consume(tokens);
   if (tok->sym != BL_SYM_LBLOCK) parse_error(cnt,
                                              "%s %d:%d expected scope body '{'",
                                              bl_unit_get_src_file(cnt->unit),
@@ -185,8 +188,8 @@ parse_stmt(context_t *cnt)
     *stmt = bl_ast_node_stmt_new(bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
 
 stmt:
-  if (bl_tokens_current_is(bl_unit_get_tokens(cnt->unit), BL_SYM_SEMICOLON)) {
-    bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  if (bl_tokens_current_is(tokens, BL_SYM_SEMICOLON)) {
+    bl_tokens_consume(tokens);
     goto stmt;
   }
 
@@ -198,7 +201,7 @@ stmt:
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(cnt)))
     goto stmt;
 
-  tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  tok = bl_tokens_consume(tokens);
 
   if (tok->sym != BL_SYM_RBLOCK) parse_error(cnt,
                                              "%s %d:%d expected declaration or scope end '}'",
@@ -212,6 +215,7 @@ stmt:
 NodeFuncDecl *
 parse_func_decl(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   NodeFuncDecl *func_decl = NULL;
   bl_token_t *tok;
   bl_sym_e modif = BL_SYM_NONE;
@@ -221,19 +225,19 @@ parse_func_decl(context_t *cnt)
    */
 
   /* Store marker in case when current sequence of tokens is not function at all. */
-  bl_tokens_set_marker(bl_unit_get_tokens(cnt->unit));
-  if (bl_tokens_current_is(bl_unit_get_tokens(cnt->unit), BL_SYM_EXTERN)) {
-    bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  bl_tokens_set_marker(tokens);
+  if (bl_tokens_current_is(tokens, BL_SYM_EXTERN)) {
+    bl_tokens_consume(tokens);
     modif = BL_SYM_EXTERN;
   }
 
   if (bl_tokens_is_seq(
-    bl_unit_get_tokens(cnt->unit), 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN
+    tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN
   )) {
-    tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+    tok = bl_tokens_consume(tokens);
     char *type = strndup(tok->content.as_string, tok->len);
 
-    tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+    tok = bl_tokens_consume(tokens);
     char *ident = strndup(tok->content.as_string, tok->len);
 
     func_decl = bl_ast_node_func_decl_new(
@@ -241,16 +245,16 @@ parse_func_decl(context_t *cnt)
     );
 
     /* consume '(' */
-    bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+    bl_tokens_consume(tokens);
 
-    if (bl_tokens_current_is_not(bl_unit_get_tokens(cnt->unit), BL_SYM_RPAREN)) {
+    if (bl_tokens_current_is_not(tokens, BL_SYM_RPAREN)) {
 param:
       bl_node_func_decl_add_param(func_decl, parse_param_var_decl(cnt));
-      if (bl_tokens_consume_if(bl_unit_get_tokens(cnt->unit), BL_SYM_COMMA))
+      if (bl_tokens_consume_if(tokens, BL_SYM_COMMA))
         goto param;
     }
 
-    tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+    tok = bl_tokens_consume(tokens);
     if (tok->sym != BL_SYM_RPAREN) parse_error(cnt,
                                                "%s %d:%d expected ')' after function parameter declaration",
                                                bl_unit_get_src_file(cnt->unit),
@@ -258,7 +262,7 @@ param:
                                                tok->col);
 
     if (modif == BL_SYM_EXTERN) {
-      tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+      tok = bl_tokens_consume(tokens);
       if (tok->sym != BL_SYM_SEMICOLON) {
         parse_error(cnt,
                     "%s %d:%d missing semicolon ';' at the end of extern function definition",
@@ -271,7 +275,7 @@ param:
     }
   } else {
     /* Roll back to marker. */
-    bl_tokens_back_to_marker(bl_unit_get_tokens(cnt->unit));
+    bl_tokens_back_to_marker(tokens);
   }
 
   return func_decl;
@@ -280,7 +284,8 @@ param:
 NodeParamVarDecl *
 parse_param_var_decl(context_t *cnt)
 {
-  bl_token_t *tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
+  bl_token_t *tok = bl_tokens_consume(tokens);
   if (tok->sym != BL_SYM_IDENT) parse_error(cnt,
                                             "%s %d:%d expected parameter type",
                                             bl_unit_get_src_file(cnt->unit),
@@ -289,7 +294,7 @@ parse_param_var_decl(context_t *cnt)
 
   char *type = strndup(tok->content.as_string, tok->len);
 
-  tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  tok = bl_tokens_consume(tokens);
   if (tok->sym != BL_SYM_IDENT) {
     free(type);
     parse_error(cnt,
@@ -308,11 +313,12 @@ parse_param_var_decl(context_t *cnt)
 NodeExpr *
 parse_expr(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   NodeExpr *expr = NULL;
 
   /* HACK currently accept only numbers */
-  if (bl_tokens_current_is(bl_unit_get_tokens(cnt->unit), BL_SYM_NUM)) {
-    bl_token_t *tok = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  if (bl_tokens_current_is(tokens, BL_SYM_NUM)) {
+    bl_token_t *tok = bl_tokens_consume(tokens);
     expr = bl_ast_node_expr_new(
       bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col
     );
@@ -324,14 +330,15 @@ parse_expr(context_t *cnt)
 NodeVarDecl *
 parse_var_decl(context_t *cnt)
 {
+  Tokens *tokens = bl_unit_get_tokens(cnt->unit);
   NodeVarDecl *vdcl = NULL;
 
-  bl_tokens_set_marker(bl_unit_get_tokens(cnt->unit));
-  if (bl_tokens_is_seq(bl_unit_get_tokens(cnt->unit), 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
-    bl_token_t *tok_type = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
-    bl_token_t *tok_ident = bl_tokens_consume(bl_unit_get_tokens(cnt->unit));
+  bl_tokens_set_marker(tokens);
+  if (bl_tokens_is_seq(tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
+    bl_token_t *tok_type = bl_tokens_consume(tokens);
+    bl_token_t *tok_ident = bl_tokens_consume(tokens);
 
-    if (bl_tokens_consume_if(bl_unit_get_tokens(cnt->unit), BL_SYM_SEMICOLON)) {
+    if (bl_tokens_consume_if(tokens, BL_SYM_SEMICOLON)) {
       /* declaration only */
       char *type = strndup(tok_type->content.as_string, tok_type->len);
       char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
