@@ -9,10 +9,14 @@ int main() {
   string s;
   string this_is_my_sting = "hello world";
 
-  puts("Hello world!!!");
   puts("I'm first biscuit who can talk!!!");
-
+  puts(this_is_my_sting);
+  hello();
   return 10;
+}
+
+void hello() {
+  puts("Hello world!!!");
 }
 
 int another_function(int i) {
@@ -25,12 +29,7 @@ void func(int i) {
   int local_int2 = 512;
   
   local_int1;
-  local_int1 = 6666;
-  local_int1 = 1024;
+  //local_int1 = 6666;
+  //local_int1 = 1024;
 }
 
-void no_return_func() {
-  string hello = "i'm constant string value";
-  string hello2 = "i'm constant string value";
-  string hello3 = "i'm constant string value";
-}

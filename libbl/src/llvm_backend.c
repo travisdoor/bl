@@ -72,6 +72,9 @@ static LLVMTypeRef
 to_llvm_type(Type *t);
 
 static LLVMValueRef
+llvm_get_or_create_func(context_t *cnt);
+
+static LLVMValueRef
 gen_default(context_t *cnt,
             Type *t);
 
@@ -312,7 +315,8 @@ gen_expr(context_t *cnt,
     }
     case BL_NODE_DECL_REF: {
       uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
-      return bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
+      LLVMValueRef val = bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
+      return LLVMBuildLoad(cnt->builder, val, "tmp");
     }
     default: bl_abort("unknown expression type");
   }
@@ -393,6 +397,13 @@ gen_call_args(context_t *cnt,
   }
 
   return out_i;
+}
+
+LLVMValueRef
+llvm_get_or_create_func(context_t *cnt)
+{
+  /* TODO: get or create new function */
+  return NULL;
 }
 
 void
