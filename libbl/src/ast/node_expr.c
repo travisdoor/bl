@@ -29,11 +29,6 @@
 #include <bobject/containers/array.h>
 #include "node_expr_impl.h"
 
-/* NodeExpr members */
-bo_decl_members_begin(NodeExpr, Node)
-  int num;
-bo_end();
-
 bo_impl_type(NodeExpr, Node);
 
 /* NodeExpr class init */
@@ -47,7 +42,6 @@ void
 NodeExpr_ctor(NodeExpr *self, NodeExprParams *p)
 {
   bo_parent_ctor(Node, p);
-  self->num = p->num;
 }
 
 /* NodeExpr destructor */
@@ -61,10 +55,4 @@ bo_copy_result
 NodeExpr_copy(NodeExpr *self, NodeExpr *other)
 {
   return BO_NO_COPY;
-}
-
-int
-bl_node_expr_get_num(NodeExpr *self)
-{
-  return self->num;
 }

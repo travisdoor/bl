@@ -82,7 +82,7 @@ gen_func(context_t *cnt,
 
 static LLVMValueRef
 gen_epr(context_t *cnt,
-        NodeExpr *node);
+        NodeExpr *expr);
 
 static void
 gen_stmt(context_t *cnt,
@@ -262,7 +262,7 @@ gen_func_params(context_t *cnt,
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_get_param(node, i);
-    *out = to_llvm_type(bl_node_decl_get_type((NodeDecl *)param));
+    *out = to_llvm_type(bl_node_decl_get_type((NodeDecl *) param));
     out++;
     out_i++;
   }
@@ -272,9 +272,15 @@ gen_func_params(context_t *cnt,
 
 LLVMValueRef
 gen_epr(context_t *cnt,
-        NodeExpr *node)
+        NodeExpr *expr)
 {
-  return LLVMConstInt(LLVMInt32Type(), (unsigned long long int) bl_node_expr_get_num(node), true);
+  bl_node_e nt = bl_node_get_type((Node *) expr);
+  switch (nt) {
+    case BL_NODE_INT_CONST:
+      return LLVMConstInt(
+        LLVMInt32Type(), bl_node_int_const_get_num((NodeIntConst *) expr), true);
+    default: bl_abort("unknown expression type");
+  }
 }
 
 void

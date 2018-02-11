@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   node_expr.h
+// File:   node_int_const.c
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,47 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_EXPR_H
-#define BISCUIT_NODE_EXPR_H
-
-#include "bl/ast/node_expr.h"
-#include "node_impl.h"
-#include "bl/token.h"
-
-/* NodeExpr members */
-bo_decl_members_begin(NodeExpr, Node)
+#include "ast/node_int_const_impl.h"
+/* class NodeIntConst */
+/* class NodeIntConst object members */
+bo_decl_members_begin(NodeIntConst, NodeExpr)
+  /* members */
+  unsigned long long num;
 bo_end();
 
-/* NodeExpr constructor parameters */
-bo_decl_params_with_base_begin(NodeExpr, Node)
-bo_end();
+bo_impl_type(NodeIntConst, NodeExpr);
 
-#endif /* end of include guard: BISCUIT_NODE_EXPR_H */
+void
+NodeIntConstKlass_init(NodeIntConstKlass *klass)
+{
+}
 
+void
+NodeIntConst_ctor(NodeIntConst *self, NodeIntConstParams *p)
+{
+  /* constructor */
+
+  /* initialize parent */
+  bo_parent_ctor(NodeExpr, p);
+
+  /* initialize self */
+  self->num = p->num;
+}
+
+void
+NodeIntConst_dtor(NodeIntConst *self)
+{
+}
+
+bo_copy_result
+NodeIntConst_copy(NodeIntConst *self, NodeIntConst *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeIntConst end */
+
+unsigned long long
+bl_node_int_const_get_num(NodeIntConst *self)
+{
+  return self->num;
+}

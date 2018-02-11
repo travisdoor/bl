@@ -40,6 +40,7 @@
 #include "bl/ast/node_var_decl.h"
 #include "bl/ast/node_binop.h"
 #include "bl/ast/node_decl.h"
+#include "bl/ast/node_int_const.h"
 
 BO_BEGIN_DECLS
 
@@ -100,12 +101,12 @@ bl_ast_node_return_stmt_new(Ast        *self,
                             int         line,
                             int         col);
 
-extern BO_EXPORT NodeExpr *
-bl_ast_node_expr_new(Ast        *self,
-                     int         num,  // TEST
-                     const char *generated_from,
-                     int         line,
-                     int         col);
+extern BO_EXPORT NodeIntConst *
+bl_ast_node_int_const_new(Ast               *self,
+                          unsigned long long num,
+                          const char        *generated_from,
+                          int                line,
+                          int                col);
 
 extern BO_EXPORT NodeVarDecl *
 bl_ast_node_var_decl_new(Ast         *self,

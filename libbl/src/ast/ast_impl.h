@@ -40,5 +40,6 @@
 #include "ast/node_var_decl_impl.h"
 #include "ast/node_binop_impl.h"
 #include "ast/node_decl_impl.h"
+#include "ast/node_int_const_impl.h"
 
 #endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

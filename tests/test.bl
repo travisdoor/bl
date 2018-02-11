@@ -27,5 +27,5 @@ int func(int i) {
 }
 
 void no_return_func() {
-  char my_car = 2;
+  char my_car = "hello";
 }

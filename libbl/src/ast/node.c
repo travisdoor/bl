@@ -72,7 +72,7 @@ Node_copy(Node *self, Node *other)
 
 /* public */
 bl_node_e
-bl_node_type(Node *self)
+bl_node_get_type(Node *self)
 {
   return self->type;
 }

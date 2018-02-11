@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   node_expr.h
+// File:   node_int_const.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_EXPR_H
-#define BISCUIT_NODE_EXPR_H
+#ifndef BL_NODE_INT_CONST_H
+#define BL_NODE_INT_CONST_H
 
 #include "bl/ast/node_expr.h"
-#include "node_impl.h"
-#include "bl/token.h"
+#include <bobject/bobject.h>
 
-/* NodeExpr members */
-bo_decl_members_begin(NodeExpr, Node)
+BO_BEGIN_DECLS
+
+/* class NodeIntConst declaration */
+bo_decl_type_begin(NodeIntConst, NodeExpr)
+  /* virtuals */
 bo_end();
 
-/* NodeExpr constructor parameters */
-bo_decl_params_with_base_begin(NodeExpr, Node)
-bo_end();
+extern BO_EXPORT unsigned long long
+bl_node_int_const_get_num(NodeIntConst *self);
 
-#endif /* end of include guard: BISCUIT_NODE_EXPR_H */
+BO_END_DECLS
 
+#endif //BL_NODE_INT_CONST_H

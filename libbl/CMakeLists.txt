@@ -37,7 +37,7 @@ set(HEADER_FILES
         include/bl/llvm_backend.h
         include/bl/ast/node_stmt.h 
         include/bl/assembly.h 
-        include/bl/compile_group.h include/bl/ast/node_var_decl.h include/bl/type.h include/bl/ast/node_binop.h include/bl/ast/node_decl.h)
+        include/bl/compile_group.h include/bl/ast/node_var_decl.h include/bl/type.h include/bl/ast/node_binop.h include/bl/ast/node_decl.h include/bl/ast/node_int_const.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -48,7 +48,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
-        src/ast/node_var_decl_impl.h src/ast/node_binop_impl.h src/ast/node_decl_impl.h)
+        src/ast/node_var_decl_impl.h src/ast/node_binop_impl.h src/ast/node_decl_impl.h src/ast/node_int_const_impl.h)
 
 set(SOURCE_FILES 
         src/pipeline/stage.c
@@ -71,7 +71,7 @@ set(SOURCE_FILES
         src/ast/node_global_stmt.c
         src/ast/node_return_stmt.c
         src/ast/node_stmt.c
-        src/token_printer.c src/assembly.c src/ast/node_var_decl.c src/type.c src/ast/node_binop.c src/ast/node_decl.c)
+        src/token_printer.c src/assembly.c src/ast/node_var_decl.c src/type.c src/ast/node_binop.c src/ast/node_decl.c src/ast/node_int_const.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

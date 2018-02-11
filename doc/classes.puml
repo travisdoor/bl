@@ -1,18 +1,5 @@
 @startuml
 left to right direction
-class Node
-class NodeStmt
-class NodeGlobalStmt
-class NodeFuncDecl
-class NodeExpr
-class NodeReturnStmt
-class NodeParamVarDecl
-class NodeCallExpr
-class NodeVarDecl
-class NodeDecl
-class NodeBinop
-
-
 Node <|-- NodeStmt
 Node <|-- NodeDecl
 Node <|-- NodeGlobalStmt
@@ -25,5 +12,7 @@ NodeDecl <|-- NodeFuncDecl
 NodeDecl <|-- NodeParamVarDecl
 
 NodeExpr <|-- NodeCallExpr
+NodeExpr <|-- NodeIntConst
+NodeExpr <|-- NodeStringConst
 
 @enduml

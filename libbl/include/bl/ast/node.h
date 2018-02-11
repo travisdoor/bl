@@ -39,7 +39,7 @@ BO_BEGIN_DECLS
   nt(FUNC_DECL, "func_decl") \
   nt(GLOBAL_STMT, "global_stmt") \
   nt(STMT, "stmt") \
-  nt(EXPR, "expression") \
+  nt(INT_CONST, "int_const") \
   nt(VAR_DECL, "var_decl") \
   nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
@@ -57,7 +57,7 @@ bo_decl_type_begin(Node, BObject)
 bo_end();
 
 extern BO_EXPORT bl_node_e
-bl_node_type(Node *self);
+bl_node_get_type(Node *self);
 
 BO_END_DECLS
 

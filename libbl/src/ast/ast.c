@@ -203,22 +203,26 @@ bl_ast_node_return_stmt_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeReturnStmt, &p));
 }
 
-NodeExpr *
-bl_ast_node_expr_new(Ast        *self,
-                     int         num,  // TEST
-                     const char *generated_from,
-                     int         line,
-                     int         col)
+NodeIntConst *
+bl_ast_node_int_const_new(Ast               *self,
+                          unsigned long long num,
+                          const char        *generated_from,
+                          int                line,
+                          int                col)
 {
-  NodeExprParams p = {
-    .base.type = BL_NODE_EXPR,
-    .base.generated_from = generated_from,
-    .base.line = line,
-    .base.col = col,
+  NodeIntConstParams p = {
+    .base = {
+      .base = {
+        .type = BL_NODE_INT_CONST,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col,
+      }
+    },
     .num = num
   };
 
-  return save_to_cache(self, bo_new(NodeExpr, &p));
+  return save_to_cache(self, bo_new(NodeIntConst, &p));
 }
 
 NodeVarDecl *

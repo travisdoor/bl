@@ -311,7 +311,9 @@ parse_expr(context_t *cnt)
   /* HACK currently accept only numbers */
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_NUM)) {
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-    expr = bl_ast_node_expr_new(
+
+    /* TODO: problem with signed and unsigned number types? */
+    expr = (NodeExpr *)bl_ast_node_int_const_new(
       bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col);
   }
 
