@@ -88,13 +88,13 @@ to_string(NodeVarDecl *self)
 }
 
 char *
-bl_node_var_decl_ident(NodeVarDecl *self)
+bl_node_var_decl_get_ident(NodeVarDecl *self)
 {
   return self->ident;
 }
 
 Type *
-bl_node_var_decl_type(NodeVarDecl *self)
+bl_node_var_decl_get_type(NodeVarDecl *self)
 {
   return self->type;
 }

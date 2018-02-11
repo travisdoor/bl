@@ -114,20 +114,19 @@ analyze_func(context_t    *cnt,
   /*
    * Check return type existence.
    */
-  Type *type_tmp = bl_node_func_decl_type(func);
+  Type *type_tmp = bl_node_func_decl_get_type(func);
   if (bl_type_is_user_defined(type_tmp)) {
     analyze_error(cnt, "%s %d:%d unknown return type '%s' for function '%s'",
                   cnt->unit->filepath,
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
-                  bl_type_name(type_tmp),
-                  bl_node_func_decl_ident(func));
+                  bl_type_name(type_tmp), bl_node_func_decl_get_ident(func));
   }
 
   /*
    * Check params.
    */
-  const int c = bl_node_func_decl_param_count(func);
+  const int c = bl_node_func_decl_get_param_count(func);
 
   /*
    * Reached maximum count of parameters.
@@ -144,9 +143,9 @@ analyze_func(context_t    *cnt,
 
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
-    param = bl_node_func_decl_param(func, i);
+    param = bl_node_func_decl_get_param(func, i);
 
-    type_tmp = bl_node_param_var_decl_type(param);
+    type_tmp = bl_node_param_var_decl_get_type(param);
     if (bl_type_is_user_defined(type_tmp)) {
       analyze_error(cnt, "%s %d:%d unknown type '%s' for function parameter",
                     cnt->unit->filepath,
@@ -172,7 +171,7 @@ analyze_var_decl(context_t *cnt,
   /*
    * Check type of declaration.
    */
-  Type *type_tmp = bl_node_var_decl_type(vdcl);
+  Type *type_tmp = bl_node_var_decl_get_type(vdcl);
   if (bl_type_is_user_defined(type_tmp)) {
     analyze_error(cnt, "%s %d:%d unknown type '%s'",
                   cnt->unit->filepath,
@@ -192,10 +191,10 @@ analyze_stmt(context_t *cnt,
              NodeStmt  *stmt)
 {
   bool return_presented = false;
-  const int c = bl_node_stmt_child_count(stmt);
+  const int c = bl_node_stmt_child_get_count(stmt);
   Node *node = NULL;
   for (int i = 0; i < c; i++) {
-    node = bl_node_stmt_child(stmt, i);
+    node = bl_node_stmt_get_child(stmt, i);
     switch (node->type) {
       case BL_NODE_RETURN_STMT:
         return_presented = true;
@@ -214,13 +213,13 @@ analyze_stmt(context_t *cnt,
     }
   }
 
-  Type *exp_ret = bl_node_func_decl_type(cnt->current_func_tmp);
+  Type *exp_ret = bl_node_func_decl_get_type(cnt->current_func_tmp);
   if (!return_presented && bl_type_is_not(exp_ret, BL_TYPE_VOID)) {
     analyze_error(cnt, "%s %d:%d unterminated function '%s'",
                   cnt->unit->filepath,
                   bo_members(cnt->current_func_tmp, Node)->line,
                   bo_members(cnt->current_func_tmp, Node)->col,
-                  bl_node_func_decl_ident(cnt->current_func_tmp));
+                  bl_node_func_decl_get_ident(cnt->current_func_tmp));
   }
 }
 
@@ -229,9 +228,9 @@ analyze_gstmt(context_t      *cnt,
               NodeGlobalStmt *node)
 {
   Node *child = NULL;
-  const int c = bl_node_global_stmt_child_count(node);
+  const int c = bl_node_global_stmt_get_child_count(node);
   for (int i = 0; i < c; i++) {
-    child = bl_node_global_stmt_child(node, i);
+    child = bl_node_global_stmt_get_child(node, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
         analyze_func(cnt, (NodeFuncDecl *)child);

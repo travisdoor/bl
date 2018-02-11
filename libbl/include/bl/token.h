@@ -56,6 +56,8 @@ BO_BEGIN_DECLS
   sm(COMMA, ",") \
   sm(SEMICOLON, ";") \
   sm(ASIGN, "=") \
+  sm(PLUS, "+") \
+  sm(MINUS, "-") \
   sm(SLASH, "/") \
   sm(NONE, "") \
 

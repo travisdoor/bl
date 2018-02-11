@@ -27,10 +27,12 @@
 //*****************************************************************************
 
 #include "ast/node_binop_impl.h"
+
 /* class NodeBinop */
 /* class NodeBinop object members */
 bo_decl_members_begin(NodeBinop, Node)
   /* members */
+  bl_sym_e operator;
 bo_end();
 
 bo_impl_type(NodeBinop, Node);
@@ -44,11 +46,10 @@ void
 NodeBinop_ctor(NodeBinop *self, NodeBinopParams *p)
 {
   /* constructor */
-
   /* initialize parent */
   bo_parent_ctor(Node, p);
-
   /* initialize self */
+  self->operator = p->operator;
 }
 
 void
@@ -63,3 +64,8 @@ NodeBinop_copy(NodeBinop *self, NodeBinop *other)
 }
 /* class NodeBinop end */
 
+bl_sym_e
+bl_node_binop_get_op(NodeBinop *self)
+{
+  return self->operator;
+}

@@ -64,7 +64,7 @@ NodeGlobalStmt_copy(NodeGlobalStmt *self, NodeGlobalStmt *other)
 }
 
 int
-bl_node_global_stmt_child_count(NodeGlobalStmt *self)
+bl_node_global_stmt_get_child_count(NodeGlobalStmt *self)
 {
   if (self->nodes == NULL) {
     return 0;
@@ -74,8 +74,8 @@ bl_node_global_stmt_child_count(NodeGlobalStmt *self)
 }
 
 Node * 
-bl_node_global_stmt_child(NodeGlobalStmt *self,
-                          int             i)
+bl_node_global_stmt_get_child(NodeGlobalStmt *self,
+                              int i)
 {
   return bo_array_at(self->nodes, i, Node *);   
 }

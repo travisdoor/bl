@@ -89,18 +89,18 @@ print_node(AstPrinter *self,
 
   switch (node->type) {
     case BL_NODE_GLOBAL_STMT:
-      c = bl_node_global_stmt_child_count((NodeGlobalStmt *) node);
+      c = bl_node_global_stmt_get_child_count((NodeGlobalStmt *) node);
       pad+=2;
       for (int i = 0; i < c; i++) {
-        child = bl_node_global_stmt_child((NodeGlobalStmt *) node, i);
+        child = bl_node_global_stmt_get_child((NodeGlobalStmt *) node, i);
         print_node(self, child, pad);
       }
       break;
     case BL_NODE_FUNC_DECL:
-      c = bl_node_func_decl_param_count((NodeFuncDecl *) node);
+      c = bl_node_func_decl_get_param_count((NodeFuncDecl *) node);
       pad+=2;
       for (int i = 0; i < c; i++) {
-        child = (Node *) bl_node_func_decl_param((NodeFuncDecl *) node, i);
+        child = (Node *) bl_node_func_decl_get_param((NodeFuncDecl *) node, i);
         print_node(self, child, pad);
       }
       print_node(self, (Node *) bl_node_func_decl_get_stmt((NodeFuncDecl *) node), pad);
@@ -110,16 +110,16 @@ print_node(AstPrinter *self,
     case BL_NODE_EXPR:
       break;
     case BL_NODE_STMT:
-      c = bl_node_stmt_child_count((NodeStmt *) node);
+      c = bl_node_stmt_child_get_count((NodeStmt *) node);
       pad+=2;
       for (int i = 0; i < c; i++) {
-        child = bl_node_stmt_child((NodeStmt *) node, i);
+        child = bl_node_stmt_get_child((NodeStmt *) node, i);
         print_node(self, child, pad);
       }
       break;
     case BL_NODE_RETURN_STMT:
       pad+=2;
-      print_node(self, (Node *) bl_node_return_stmt_expr((NodeReturnStmt *) node), pad);
+      print_node(self, (Node *) bl_node_return_stmt_get_expr((NodeReturnStmt *) node), pad);
       break;
     default:
       break;

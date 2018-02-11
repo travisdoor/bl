@@ -232,3 +232,21 @@ bl_ast_node_var_decl_new(Ast        *self,
 
   return save_to_cache(self, bo_new(NodeVarDecl, &p));
 }
+
+NodeBinop *
+bl_ast_node_binop_new(Ast        *self,
+                      bl_sym_e    op,
+                      const char *generated_from,
+                      int         line,
+                      int         col)
+{
+  NodeBinopParams p = {
+    .base.type = BL_NODE_VAR_DECL,
+    .base.generated_from = generated_from,
+    .base.line = line,
+    .base.col = col,
+    .operator = op
+  };
+
+  return save_to_cache(self, bo_new(NodeBinop, &p));
+}

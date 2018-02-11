@@ -87,13 +87,13 @@ to_string(NodeParamVarDecl *self)
 }
 
 Type *
-bl_node_param_var_decl_type(NodeParamVarDecl *self)
+bl_node_param_var_decl_get_type(NodeParamVarDecl *self)
 {
   return self->type;
 }
 
 const char *
-bl_node_param_var_decl_ident(NodeParamVarDecl *self)
+bl_node_param_var_decl_get_ident(NodeParamVarDecl *self)
 {
   return self->ident;
 }

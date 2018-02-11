@@ -41,7 +41,7 @@ bo_decl_type_begin(NodeReturnStmt, Node)
 bo_end();
 
 extern BO_EXPORT NodeExpr *
-bl_node_return_stmt_expr(NodeReturnStmt *self);
+bl_node_return_stmt_get_expr(NodeReturnStmt *self);
 
 extern BO_EXPORT bool
 bl_node_return_stmt_add_expr(NodeReturnStmt *self,

@@ -64,7 +64,7 @@ NodeExpr_copy(NodeExpr *self, NodeExpr *other)
 }
 
 int
-bl_node_expr_num(NodeExpr *self)
+bl_node_expr_get_num(NodeExpr *self)
 {
   return self->num;
 }

@@ -250,7 +250,7 @@ gen_func_params(context_t    *cnt,
                 LLVMTypeRef  *out)
 {
   int out_i = 0;
-  const int c = bl_node_func_decl_param_count(node);
+  const int c = bl_node_func_decl_get_param_count(node);
 
   /* no params */
   if (c == 0) {
@@ -259,8 +259,8 @@ gen_func_params(context_t    *cnt,
 
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
-    param = bl_node_func_decl_param(node, i);
-    *out = to_llvm_type(bl_node_param_var_decl_type(param));
+    param = bl_node_func_decl_get_param(node, i);
+    *out = to_llvm_type(bl_node_param_var_decl_get_type(param));
     out++;
     out_i++;
   }
@@ -272,14 +272,14 @@ LLVMValueRef
 gen_epr(context_t    *cnt,
         NodeExpr     *node)
 {
-  return LLVMConstInt(LLVMInt32Type(), (unsigned long long int) bl_node_expr_num(node), true);
+  return LLVMConstInt(LLVMInt32Type(), (unsigned long long int) bl_node_expr_get_num(node), true);
 }
 
 void
 gen_ret(context_t      *cnt,
         NodeReturnStmt *node)
 {
-  NodeExpr *expr = bl_node_return_stmt_expr(node);
+  NodeExpr *expr = bl_node_return_stmt_get_expr(node);
   if (!expr) {
     LLVMBuildRetVoid(cnt->builder);
     return;
@@ -293,9 +293,9 @@ void
 gen_var_decl(context_t   *cnt,
              NodeVarDecl *vdcl)
 {
-  LLVMTypeRef t = to_llvm_type(bl_node_var_decl_type(vdcl));
-  LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_var_decl_ident(vdcl));
-  LLVMValueRef def = gen_default(cnt, bl_node_var_decl_type(vdcl));
+  LLVMTypeRef t = to_llvm_type(bl_node_var_decl_get_type(vdcl));
+  LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_var_decl_get_ident(vdcl));
+  LLVMValueRef def = gen_default(cnt, bl_node_var_decl_get_type(vdcl));
   LLVMBuildStore(cnt->builder, def, var);
 }
 
@@ -307,9 +307,9 @@ gen_func(context_t    *cnt,
   LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
   int pc = gen_func_params(cnt, node, param_types);
-  LLVMTypeRef ret = to_llvm_type(bl_node_func_decl_type(node));
+  LLVMTypeRef ret = to_llvm_type(bl_node_func_decl_get_type(node));
   LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
-  LLVMValueRef func = LLVMAddFunction(cnt->mod, bl_node_func_decl_ident(node), ret_type);
+  LLVMValueRef func = LLVMAddFunction(cnt->mod, bl_node_func_decl_get_ident(node), ret_type);
 
   NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
   if (stmt)
@@ -326,9 +326,9 @@ gen_stmt(context_t     *cnt,
   LLVMPositionBuilderAtEnd(cnt->builder, entry);
 
   Node *child = NULL;
-  const int c = bl_node_stmt_child_count(stmt);
+  const int c = bl_node_stmt_child_get_count(stmt);
   for (int i = 0; i < c; i++) {
-    child = bl_node_stmt_child(stmt, i);
+    child = bl_node_stmt_get_child(stmt, i);
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
         return_presented = true;
@@ -352,9 +352,9 @@ gen_gstmt(context_t      *cnt,
           NodeGlobalStmt *gstmt)
 {
   Node *child = NULL;
-  const int c = bl_node_global_stmt_child_count(gstmt);
+  const int c = bl_node_global_stmt_get_child_count(gstmt);
   for (size_t i = 0; i < c; i++) {
-    child = bl_node_global_stmt_child(gstmt, i);
+    child = bl_node_global_stmt_get_child(gstmt, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
         gen_func(cnt, (NodeFuncDecl *)child);

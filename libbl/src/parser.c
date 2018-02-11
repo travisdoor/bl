@@ -270,7 +270,7 @@ param:
                     tok->col);
       }
     } else {
-      bl_node_func_decl_add_stmt(func_decl, parse_stmt(self, unit, jmp_error));
+      bl_node_func_decl_set_stmt(func_decl, parse_stmt(self, unit, jmp_error));
     }
   } else {
     /* Roll back to marker. */

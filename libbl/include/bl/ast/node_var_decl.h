@@ -41,10 +41,10 @@ bo_decl_type_begin(NodeVarDecl, Node)
 bo_end();
 
 extern BO_EXPORT char *
-bl_node_var_decl_ident(NodeVarDecl *self);
+bl_node_var_decl_get_ident(NodeVarDecl *self);
 
 extern BO_EXPORT Type *
-bl_node_var_decl_type(NodeVarDecl *self);
+bl_node_var_decl_get_type(NodeVarDecl *self);
 
 BO_END_DECLS
 

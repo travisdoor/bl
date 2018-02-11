@@ -33,6 +33,7 @@
 #include "ast/node_impl.h"
 
 bo_decl_params_with_base_begin(NodeBinop, Node)
+  bl_sym_e operator;
 bo_end();
 
 #endif //BL_NODE_BINOP_IMPL_H

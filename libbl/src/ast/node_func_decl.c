@@ -96,8 +96,8 @@ to_string(NodeFuncDecl *self)
 /* public */
 
 bool
-bl_node_func_decl_add_stmt(NodeFuncDecl *self,
-                           NodeStmt     *stmt)
+bl_node_func_decl_set_stmt(NodeFuncDecl *self,
+                           NodeStmt *stmt)
 {
   if (!stmt)
     return false;
@@ -126,7 +126,7 @@ bl_node_func_decl_get_stmt(NodeFuncDecl *self)
 }
 
 int
-bl_node_func_decl_param_count(NodeFuncDecl *self)
+bl_node_func_decl_get_param_count(NodeFuncDecl *self)
 {
   if (self->params == NULL)
     return 0;
@@ -135,26 +135,26 @@ bl_node_func_decl_param_count(NodeFuncDecl *self)
 }
 
 NodeParamVarDecl * 
-bl_node_func_decl_param(NodeFuncDecl *self,
-                        int i)
+bl_node_func_decl_get_param(NodeFuncDecl *self,
+                            int i)
 {
   return bo_array_at(self->params, i, NodeParamVarDecl *);
 }
 
 const char *
-bl_node_func_decl_ident(NodeFuncDecl *self)
+bl_node_func_decl_get_ident(NodeFuncDecl *self)
 {
   return self->ident;
 }
 
 Type *
-bl_node_func_decl_type(NodeFuncDecl *self)
+bl_node_func_decl_get_type(NodeFuncDecl *self)
 {
   return self->type;
 }
 
 bl_sym_e
-bl_node_func_decl_modif(NodeFuncDecl *self)
+bl_node_func_decl_get_modif(NodeFuncDecl *self)
 {
   return self->modificator;
 }

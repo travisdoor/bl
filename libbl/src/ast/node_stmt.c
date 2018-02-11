@@ -77,7 +77,7 @@ bl_node_stmt_add_child(NodeStmt *self,
 }
 
 int
-bl_node_stmt_child_count(NodeStmt *self)
+bl_node_stmt_child_get_count(NodeStmt *self)
 {
   if (self->nodes == NULL) {
     return 0;
@@ -87,8 +87,8 @@ bl_node_stmt_child_count(NodeStmt *self)
 }
 
 Node *
-bl_node_stmt_child(NodeStmt *self,
-                   int i)
+bl_node_stmt_get_child(NodeStmt *self,
+                       int i)
 {
   return bo_array_at(self->nodes, (size_t)i, Node *);
 }

@@ -29,8 +29,9 @@
 #ifndef BL_NODE_BINOP_H
 #define BL_NODE_BINOP_H
 
-#include "bl/ast/node.h"
 #include <bobject/bobject.h>
+#include "bl/ast/node.h"
+#include "bl/token.h"
 
 BO_BEGIN_DECLS
 
@@ -38,6 +39,9 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeBinop, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT bl_sym_e
+bl_node_binop_get_op(NodeBinop *self);
 
 BO_END_DECLS
 

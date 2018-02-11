@@ -42,17 +42,17 @@ bo_decl_type_begin(NodeFuncDecl, Node)
 bo_end();
 
 extern BO_EXPORT const char *
-bl_node_func_decl_ident(NodeFuncDecl *self);
+bl_node_func_decl_get_ident(NodeFuncDecl *self);
 
 extern BO_EXPORT Type *
-bl_node_func_decl_type(NodeFuncDecl *self);
+bl_node_func_decl_get_type(NodeFuncDecl *self);
 
 extern BO_EXPORT bl_sym_e
-bl_node_func_decl_modif(NodeFuncDecl *self);
+bl_node_func_decl_get_modif(NodeFuncDecl *self);
 
 extern BO_EXPORT bool
-bl_node_func_decl_add_stmt(NodeFuncDecl *self,
-                           NodeStmt     *stmt);
+bl_node_func_decl_set_stmt(NodeFuncDecl *self,
+                           NodeStmt *stmt);
 
 extern BO_EXPORT bool
 bl_node_func_decl_add_param(NodeFuncDecl     *self,
@@ -62,11 +62,11 @@ extern BO_EXPORT NodeStmt *
 bl_node_func_decl_get_stmt(NodeFuncDecl *self);
 
 extern BO_EXPORT int
-bl_node_func_decl_param_count(NodeFuncDecl *self);
+bl_node_func_decl_get_param_count(NodeFuncDecl *self);
 
 extern BO_EXPORT NodeParamVarDecl * 
-bl_node_func_decl_param(NodeFuncDecl *self,
-                        int i);
+bl_node_func_decl_get_param(NodeFuncDecl *self,
+                            int i);
 
 BO_END_DECLS
 

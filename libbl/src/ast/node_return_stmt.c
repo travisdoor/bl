@@ -74,7 +74,7 @@ bl_node_return_stmt_add_expr(NodeReturnStmt *self,
 }
 
 NodeExpr *
-bl_node_return_stmt_expr(NodeReturnStmt *self)
+bl_node_return_stmt_get_expr(NodeReturnStmt *self)
 {
   return self->expr;
 }

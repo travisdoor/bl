@@ -42,11 +42,11 @@ bl_node_stmt_add_child(NodeStmt *self,
                        Node *node);
 
 extern BO_EXPORT int
-bl_node_stmt_child_count(NodeStmt *self);
+bl_node_stmt_child_get_count(NodeStmt *self);
 
 extern BO_EXPORT Node *
-bl_node_stmt_child(NodeStmt *self,
-                   int i);
+bl_node_stmt_get_child(NodeStmt *self,
+                       int i);
 
 BO_END_DECLS
 

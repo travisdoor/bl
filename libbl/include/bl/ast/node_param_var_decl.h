@@ -39,10 +39,10 @@ bo_decl_type_begin(NodeParamVarDecl, Node)
 bo_end();
 
 extern BO_EXPORT Type *
-bl_node_param_var_decl_type(NodeParamVarDecl *self);
+bl_node_param_var_decl_get_type(NodeParamVarDecl *self);
 
 extern BO_EXPORT const char *
-bl_node_param_var_decl_ident(NodeParamVarDecl *self);
+bl_node_param_var_decl_get_ident(NodeParamVarDecl *self);
 
 BO_END_DECLS
 
