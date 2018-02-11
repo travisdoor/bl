@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node.h
+// File:   node_string_const.c
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   11/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,40 +26,48 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_H
-#define BL_NODE_H
-
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
-
-BO_BEGIN_DECLS
-
-#define BL_NTYPE_LIST\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "stmt") \
-  nt(INT_CONST, "int_const_expr") \
-  nt(STRING_CONST, "string_const_expr") \
-  nt(VAR_DECL, "var_decl") \
-  nt(RETURN_STMT, "return_stmt") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  BL_NTYPE_LIST
-#undef nt
-} bl_node_e;
-
-/* class declaration */
-bo_decl_type_begin(Node, BObject)
-  /* virtuals */
-  BString *(*to_string)(Node *);
+#include "ast/node_string_const_impl.h"
+/* class NodeStringConst */
+/* class NodeStringConst object members */
+bo_decl_members_begin(NodeStringConst, NodeExpr)
+  /* members */
+  char *string;
 bo_end();
 
-extern BO_EXPORT bl_node_e
-bl_node_get_type(Node *self);
+bo_impl_type(NodeStringConst, NodeExpr);
 
-BO_END_DECLS
+void
+NodeStringConstKlass_init(NodeStringConstKlass *klass)
+{
+}
 
-#endif //BL_NODE_H
+void
+NodeStringConst_ctor(NodeStringConst *self, NodeStringConstParams *p)
+{
+  /* constructor */
+
+  /* initialize parent */
+  bo_parent_ctor(NodeExpr, p);
+
+  /* initialize self */
+  self->string = p->string;
+}
+
+void
+NodeStringConst_dtor(NodeStringConst *self)
+{
+  free(self->string);
+}
+
+bo_copy_result
+NodeStringConst_copy(NodeStringConst *self, NodeStringConst *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeStringConst end */
+
+const char *
+bl_node_string_const_get_str(NodeStringConst *self)
+{
+  return self->string;
+}

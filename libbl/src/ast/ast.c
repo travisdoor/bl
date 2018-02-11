@@ -225,6 +225,28 @@ bl_ast_node_int_const_new(Ast               *self,
   return save_to_cache(self, bo_new(NodeIntConst, &p));
 }
 
+NodeStringConst *
+bl_ast_node_string_const_new(Ast        *self,
+                             char       *string,
+                             const char *generated_from,
+                             int         line,
+                             int         col)
+{
+  NodeStringConstParams p = {
+    .base = {
+      .base = {
+        .type = BL_NODE_STRING_CONST,
+        .generated_from = generated_from,
+        .line = line,
+        .col = col,
+      }
+    },
+    .string = string
+  };
+
+  return save_to_cache(self, bo_new(NodeStringConst, &p));
+}
+
 NodeVarDecl *
 bl_ast_node_var_decl_new(Ast        *self,
                          char       *type,

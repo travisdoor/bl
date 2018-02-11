@@ -309,12 +309,26 @@ parse_expr(context_t *cnt)
   NodeExpr *expr = NULL;
 
   /* HACK currently accept only numbers */
-  if (bl_tokens_current_is(cnt->tokens, BL_SYM_NUM)) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+  switch (tok->sym) {
+    case BL_SYM_NUM:
+      bl_tokens_consume(cnt->tokens);
 
-    /* TODO: problem with signed and unsigned number types? */
-    expr = (NodeExpr *)bl_ast_node_int_const_new(
-      bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col);
+      /* TODO: problem with signed and unsigned number types? */
+      expr = (NodeExpr *) bl_ast_node_int_const_new(
+        bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col);
+      break;
+    case BL_SYM_STRING:
+      bl_tokens_consume(cnt->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_string_const_new(
+        bl_unit_get_ast(cnt->unit),
+        strndup(tok->content.as_string,tok->len),
+        tok->src_loc,
+        tok->line,
+        tok->col);
+      break;
+    default: bl_abort("unknown symbol in expression");
   }
 
   return expr;
@@ -366,12 +380,13 @@ parse_var_decl(context_t *cnt)
     }
 
     /* always must end with semicolon */
-    if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON)
-      parse_error(cnt,
-                  "%s %d:%d missing semicolon ';' at the end of variable declaration",
-                  bl_unit_get_src_file(cnt->unit),
-                  tok_ident->line,
-                  tok_ident->col + tok_ident->len);
+    if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON) parse_error(cnt,
+                                                                             "%s %d:%d missing semicolon ';' at the end of variable declaration",
+                                                                             bl_unit_get_src_file(
+                                                                               cnt->unit),
+                                                                             tok_ident->line,
+                                                                             tok_ident->col +
+                                                                               tok_ident->len);
 
   }
 

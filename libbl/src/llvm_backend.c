@@ -41,6 +41,7 @@
 
 /* class LlvmBackend */
 #define NAME_EMPTY_STRING "empty_string"
+#define NAME_CONST_STRING "str_tmp"
 
 #define VERIFY 1
 #define gen_error(cnt, format, ...) \
@@ -279,6 +280,19 @@ gen_epr(context_t *cnt,
     case BL_NODE_INT_CONST:
       return LLVMConstInt(
         LLVMInt32Type(), bl_node_int_const_get_num((NodeIntConst *) expr), true);
+    case BL_NODE_STRING_CONST: {
+      /*
+       * For constant string we generate constant global array and return pointer
+       * to this array.
+       */
+      LLVMValueRef
+        str =
+        LLVMBuildGlobalString(
+          cnt->builder,
+          bl_node_string_const_get_str((NodeStringConst *) expr),
+          NAME_CONST_STRING);
+      return LLVMConstPointerCast(str, LLVMPointerType(LLVMInt8Type(), 0));
+    }
     default: bl_abort("unknown expression type");
   }
 }
