@@ -328,7 +328,7 @@ parse_var_decl(context_t *cnt)
     bl_token_t *tok_type = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
-    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_SEMICOLON)) {
+    if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
       /* declaration only */
       char *type = strndup(tok_type->content.as_string, tok_type->len);
       char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
@@ -339,13 +339,38 @@ parse_var_decl(context_t *cnt)
         tok_ident->src_loc,
         tok_ident->line,
         tok_ident->col);
-    } else {
+    } else if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+      /*
+       * Variable is also asigned to some expression.
+       */
+      char *type = strndup(tok_type->content.as_string, tok_type->len);
+      char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
+      vdcl = bl_ast_node_var_decl_new(
+        bl_unit_get_ast(cnt->unit),
+        type,
+        ident,
+        tok_ident->src_loc,
+        tok_ident->line,
+        tok_ident->col);
+
+      /* expected expression */
+      if (!bl_node_var_decl_set_expr(vdcl, parse_expr(cnt))) {
+        parse_error(cnt,
+                    "%s %d:%d expected expression after '='",
+                    bl_unit_get_src_file(cnt->unit),
+                    tok_ident->line,
+                    tok_ident->col + tok_ident->len);
+      }
+    }
+
+    /* always must end with semicolon */
+    if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON)
       parse_error(cnt,
                   "%s %d:%d missing semicolon ';' at the end of variable declaration",
                   bl_unit_get_src_file(cnt->unit),
                   tok_ident->line,
                   tok_ident->col + tok_ident->len);
-    }
+
   }
 
   return vdcl;

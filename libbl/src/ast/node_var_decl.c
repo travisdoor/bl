@@ -35,6 +35,7 @@ to_string(NodeVarDecl *self);
 /* class NodeVarDecl object members */
 bo_decl_members_begin(NodeVarDecl, NodeDecl)
   /* members */
+  NodeExpr *expr;
 bo_end();
 
 bo_impl_type(NodeVarDecl, NodeDecl);
@@ -79,5 +80,22 @@ to_string(NodeVarDecl *self)
   bo_string_append(ret, bo_members(self, NodeDecl)->ident);
   bo_string_append(ret, ">");
   return ret;
+}
+
+NodeExpr *
+bl_node_var_decl_get_expr(NodeVarDecl *self)
+{
+  return self->expr;
+}
+
+bool
+bl_node_var_decl_set_expr(NodeVarDecl *self,
+                          NodeExpr    *expr)
+{
+  if (expr == NULL)
+    return false;
+
+  self->expr = expr;
+  return true;
 }
 

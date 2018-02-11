@@ -126,6 +126,9 @@ print_node(AstPrinter *self,
       pad+=2;
       print_node(self, (Node *) bl_node_return_stmt_get_expr((NodeReturnStmt *) node), pad);
       break;
+    case BL_NODE_VAR_DECL:
+      pad+=2;
+      print_node(self, (Node *) bl_node_var_decl_get_expr((NodeVarDecl *) node), pad);
     default:
       break;
   }

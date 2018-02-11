@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node_decl.h"
+#include "bl/ast/node_expr.h"
 #include "bl/type.h"
 
 BO_BEGIN_DECLS
@@ -39,6 +40,13 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeVarDecl, NodeDecl)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT NodeExpr *
+bl_node_var_decl_get_expr(NodeVarDecl *self);
+
+extern BO_EXPORT bool
+bl_node_var_decl_set_expr(NodeVarDecl *self,
+                          NodeExpr    *expr);
 
 BO_END_DECLS
 

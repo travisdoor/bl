@@ -19,7 +19,7 @@ int another_function(int i) {
 
 int func(int i) {
   int local_int1;
-  int local_int2;
+  int local_int2 = 10;
 
   // local_int1 = 1000;
 
@@ -27,4 +27,5 @@ int func(int i) {
 }
 
 void no_return_func() {
+  char my_car = 2;
 }

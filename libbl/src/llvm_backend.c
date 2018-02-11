@@ -297,7 +297,18 @@ gen_var_decl(context_t *cnt,
 {
   LLVMTypeRef t = to_llvm_type(bl_node_decl_get_type((NodeDecl *) vdcl));
   LLVMValueRef var = LLVMBuildAlloca(cnt->builder, t, bl_node_decl_get_ident((NodeDecl *) vdcl));
-  LLVMValueRef def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
+
+  /*
+   * Generate expression if there is one or use default value instead.
+   */
+  LLVMValueRef def = NULL;
+  NodeExpr *expr = bl_node_var_decl_get_expr(vdcl);
+  if (expr) {
+    def = LLVMConstIntCast(gen_epr(cnt, expr), t, false);
+  } else {
+    def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
+  }
+
   LLVMBuildStore(cnt->builder, def, var);
 }
 
