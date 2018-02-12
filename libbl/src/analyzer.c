@@ -136,13 +136,15 @@ analyze_func(context_t *cnt,
   /*
    * Reached maximum count of parameters.
    */
-  if (c > BL_MAX_FUNC_PARAM_COUNT) analyze_error(cnt,
-                                                 "%s %d:%d reached maximum count of function parameters, function has: %d and maximum is: %d",
-                                                 bl_unit_get_src_file(cnt->unit),
-                                                 bo_members(func, Node)->line,
-                                                 bo_members(func, Node)->col,
-                                                 c,
-                                                 BL_MAX_FUNC_PARAM_COUNT);
+  if (c > BL_MAX_FUNC_PARAM_COUNT) {
+    analyze_error(cnt,
+                  "%s %d:%d reached maximum count of function parameters, function has: %d and maximum is: %d",
+                  bl_unit_get_src_file(cnt->unit),
+                  bo_members(func, Node)->line,
+                  bo_members(func, Node)->col,
+                  c,
+                  BL_MAX_FUNC_PARAM_COUNT);
+  }
 
   NodeParamVarDecl *param = NULL;
   for (int i = 0; i < c; i++) {
@@ -202,20 +204,17 @@ analyze_stmt(context_t *cnt,
   for (int i = 0; i < c; i++) {
     node = bl_node_stmt_get_child(stmt, i);
     switch (node->type) {
-      case BL_NODE_RETURN_STMT:
-        return_presented = true;
-        if (i != c - 1) {
-          bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
-                     bl_unit_get_src_file(cnt->unit),
-                     node->line,
-                     node->col);
-        }
-        break;
-      case BL_NODE_VAR_DECL:
-        analyze_var_decl(cnt, (NodeVarDecl *) node);
-        break;
-      default:
-        break;
+    case BL_NODE_RETURN_STMT:return_presented = true;
+      if (i != c - 1) {
+        bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
+                   bl_unit_get_src_file(cnt->unit),
+                   node->line,
+                   node->col);
+      }
+      break;
+    case BL_NODE_VAR_DECL:analyze_var_decl(cnt, (NodeVarDecl *) node);
+      break;
+    default:break;
     }
   }
 
@@ -239,11 +238,9 @@ analyze_gstmt(context_t *cnt,
   for (int i = 0; i < c; i++) {
     child = bl_node_global_stmt_get_child(node, i);
     switch (child->type) {
-      case BL_NODE_FUNC_DECL:
-        analyze_func(cnt, (NodeFuncDecl *) child);
-        break;
-      default:
-        break;
+    case BL_NODE_FUNC_DECL:analyze_func(cnt, (NodeFuncDecl *) child);
+      break;
+    default:break;
     }
   }
 }
@@ -261,11 +258,9 @@ run(Analyzer *self,
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
   switch (root->type) {
-    case BL_NODE_GLOBAL_STMT:
-      analyze_gstmt(&cnt, (NodeGlobalStmt *) root);
-      break;
-    default:
-      break;
+  case BL_NODE_GLOBAL_STMT:analyze_gstmt(&cnt, (NodeGlobalStmt *) root);
+    break;
+  default:break;
   }
   return true;
 }
