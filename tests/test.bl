@@ -5,6 +5,8 @@ extern void putc(char c);
 
 void hello() {
   puts("Hello world!!!");
+  puts("Hello world!!!");
+  puts("Hello world!!!");
 }
 
 int main() {
