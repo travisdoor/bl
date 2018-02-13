@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "node_param_var_decl_impl.h"
+#include "ast/node_param_var_decl_impl.h"
 
 static BString *
 to_string(NodeParamVarDecl *self);
@@ -75,7 +75,7 @@ to_string(NodeParamVarDecl *self)
   bo_string_append(ret, " ");
   bo_string_append(ret, bl_type_get_name(bo_members(self, NodeDecl)->type));
   bo_string_append(ret, " ");
-  bo_string_append(ret, bo_members(self, NodeDecl)->ident);
+  bo_string_append(ret, bl_ident_get_name(bo_members(self, NodeDecl)->ident));
   bo_string_append(ret, ">");
   return ret;
 }

@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   hash_helpers.h
+// File:   identificator.h
 // Author: Martin Dorazil
-// Date:   12.2.18
+// Date:   13.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,17 +26,27 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_HASH_HELPERS_H
-#define BL_HASH_HELPERS_H
+#ifndef BL_IDENTIFICATOR_H
+#define BL_IDENTIFICATOR_H
 
-#include <stdint.h>
 #include <bobject/bobject.h>
-#include "bl/type.h"
+
+BO_BEGIN_DECLS
+
+/* class Ident declaration */
+bo_decl_type_begin(Ident, BObject)
+  /* virtuals */
+bo_end();
+
+extern BO_EXPORT Ident *
+bl_ident_new(char *name);
+
+extern BO_EXPORT const char *
+bl_ident_get_name(Ident *self);
 
 extern BO_EXPORT uint32_t
-bl_hash_function(const char *ident,
-                 Type **args,
-                 int argc);
+bl_ident_get_hash(Ident *self);
 
+BO_END_DECLS
 
-#endif //BL_HASH_HELPERS_H
+#endif //BL_IDENTIFICATOR_H

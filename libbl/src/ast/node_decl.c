@@ -53,7 +53,7 @@ NodeDecl_ctor(NodeDecl *self,
 void
 NodeDecl_dtor(NodeDecl *self)
 {
-  free(self->ident);
+  bo_unref(self->ident);
   bo_unref(self->type);
 }
 
@@ -66,7 +66,7 @@ NodeDecl_copy(NodeDecl *self,
 
 /* class NodeDecl end */
 
-char *
+Ident *
 bl_node_decl_get_ident(NodeDecl *self)
 {
   return self->ident;

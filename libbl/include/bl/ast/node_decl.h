@@ -32,6 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
 #include "bl/type.h"
+#include "bl/identificator.h"
 
 BO_BEGIN_DECLS
 
@@ -40,7 +41,7 @@ bo_decl_type_begin(NodeDecl, Node)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT char *
+extern BO_EXPORT Ident *
 bl_node_decl_get_ident(NodeDecl *self);
 
 extern BO_EXPORT Type *

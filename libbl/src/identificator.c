@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   hash_helpers.c
+// File:   identificator.c
 // Author: Martin Dorazil
-// Date:   12.2.18
+// Date:   13.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,13 +26,70 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "bl/hash_helpers.h"
+#include <bobject/containers/hash.h>
+#include "bl/identificator.h"
 
-uint32_t
-bl_hash_function(const char *ident,
-                 Type **args,
-                 int argc)
+/* class Ident */
+
+/* class Ident constructor params */
+bo_decl_params_begin(Ident)
+  /* constructor params */
+  char *name;
+bo_end();
+
+/* class Ident object members */
+bo_decl_members_begin(Ident, BObject)
+  /* members */
+  char *name;
+  uint32_t hash;
+bo_end();
+
+bo_impl_type(Ident, BObject);
+
+void
+IdentKlass_init(IdentKlass *klass)
 {
-  return 0;
 }
 
+void
+Ident_ctor(Ident *self, IdentParams *p)
+{
+  /* constructor */
+  self->name = p->name;
+  self->hash = bo_hash_from_str(p->name);
+}
+
+void
+Ident_dtor(Ident *self)
+{
+  free(self->name);
+}
+
+bo_copy_result
+Ident_copy(Ident *self, Ident *other)
+{
+  return BO_NO_COPY;
+}
+/* class Ident end */
+
+Ident *
+bl_ident_new(char *name)
+{
+  IdentParams p = {
+    .name = name
+  };
+
+  return bo_new(Ident, &p);
+}
+
+const char *
+bl_ident_get_name(Ident *self)
+{
+  return self->name;
+}
+
+uint32_t
+bl_ident_get_hash(Ident *self)
+{
+  return self->hash;
+}

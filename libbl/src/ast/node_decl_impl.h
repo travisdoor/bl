@@ -34,14 +34,14 @@
 
 bo_decl_params_with_base_begin(NodeDecl, Node)
   Type *type;
-  char *ident;
+  Ident *ident;
 bo_end();
 
 /* class NodeDecl object members */
 bo_decl_members_begin(NodeDecl, Node)
   /* members */
   Type *type;
-  char *ident;
+  Ident *ident;
 bo_end();
 
 #endif //BL_NODE_DECL_IMPL_H

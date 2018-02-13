@@ -80,7 +80,7 @@ to_string(NodeFuncDecl *self)
   bo_string_append(ret, " ");
   bo_string_append(ret, bl_type_get_name(bo_members(self, NodeDecl)->type));
   bo_string_append(ret, " ");
-  bo_string_append(ret, bo_members(self, NodeDecl)->ident);
+  bo_string_append(ret, bl_ident_get_name(bo_members(self, NodeDecl)->ident));
   bo_string_append(ret, " ");
   bo_string_append(ret, bl_sym_strings[self->modificator]);
   bo_string_append(ret, ">");

@@ -122,7 +122,7 @@ bl_ast_node_func_decl_new(Ast        *self,
         .col            = col,
       },
       .type           = bl_type_new(type),
-      .ident          = ident,
+      .ident          = bl_ident_new(ident),
     },
     .modif            = modif
   };
@@ -179,7 +179,7 @@ bl_ast_node_param_var_decl_new(Ast        *self,
         .col = col
       },
       .type = bl_type_new(type),
-      .ident = ident
+      .ident = bl_ident_new(ident)
     }
   };
 
@@ -264,7 +264,7 @@ bl_ast_node_var_decl_new(Ast        *self,
         .col = col,
       },
       .type = bl_type_new(type),
-      .ident = ident
+      .ident = bl_ident_new(ident)
     }
   };
 
