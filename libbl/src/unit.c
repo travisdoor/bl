@@ -44,6 +44,9 @@ bo_decl_members_begin(Unit, Actor)
   Ast     *ast;
   /* All symbols registered in this unit */
   SymTbl *sym_tbl;
+
+  /* LLVM Module */
+  LLVMModuleRef module;
 bo_end();
 
 /* class Unit */
@@ -86,6 +89,8 @@ Unit_dtor(Unit *self)
   bo_unref(self->tokens);
   bo_unref(self->ast);
   bo_unref(self->sym_tbl);
+
+  LLVMDisposeModule(self->module);
 }
 
 bo_copy_result
@@ -175,4 +180,17 @@ SymTbl *
 bl_unit_get_sym_tbl(Unit *self)
 {
   return self->sym_tbl;
+}
+
+LLVMModuleRef
+bl_unit_get_llvm_module(Unit *self)
+{
+  return self->module;
+}
+
+void
+bl_unit_set_llvm_module(Unit *self,
+                        LLVMModuleRef module)
+{
+  self->module = module;
 }

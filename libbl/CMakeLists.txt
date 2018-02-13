@@ -9,7 +9,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
-llvm_map_components_to_libnames(LLVM_LIBS support core bitwriter)
+llvm_map_components_to_libnames(LLVM_LIBS support core bitwriter executionengine interpreter native)
 
 set(HEADER_FILES
         include/bl/pipeline/actor.h
@@ -35,8 +35,8 @@ set(HEADER_FILES
         include/bl/ast/node_param_var_decl.h
         include/bl/ast/ast.h
         include/bl/llvm_backend.h
-        include/bl/ast/node_stmt.h 
-        include/bl/assembly.h 
+        include/bl/ast/node_stmt.h
+        include/bl/assembly.h
         include/bl/compile_group.h
         include/bl/ast/node_var_decl.h
         include/bl/type.h
@@ -45,7 +45,7 @@ set(HEADER_FILES
         include/bl/ast/node_int_const.h
         include/bl/ast/node_string_const.h
         include/bl/ast/node_call.h
-        include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h)
+        include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h include/bl/llvm_jit_exec.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -64,7 +64,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_call_impl.h
         src/ast/node_decl_ref_impl.h)
 
-set(SOURCE_FILES 
+set(SOURCE_FILES
         src/pipeline/stage.c
         src/pipeline/actor.c
         src/pipeline/pipeline.c
@@ -94,7 +94,7 @@ set(SOURCE_FILES
         src/ast/node_int_const.c
         src/ast/node_string_const.c
         src/ast/node_call.c
-        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c)
+        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

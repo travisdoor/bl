@@ -71,6 +71,7 @@ run(LlvmBackend *self,
 static void
 init_cnt(context_t *cnt,
          Unit *unit,
+         LLVMModuleRef module,
          jmp_buf jmp_error);
 
 static void
@@ -172,16 +173,18 @@ LlvmBackend_copy(LlvmBackend *self,
 {
   return BO_NO_COPY;
 }
+
 /* class LlvmBackend end */
 
 void
 init_cnt(context_t *cnt,
          Unit *unit,
+         LLVMModuleRef module,
          jmp_buf jmp_error)
 {
   cnt->builder = LLVMCreateBuilder();
   cnt->unit = unit;
-  cnt->mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
+  cnt->mod = module;
   cnt->named_vals_tmp = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
 }
@@ -191,7 +194,7 @@ destroy_cnt(context_t *cnt)
 {
   bo_unref(cnt->named_vals_tmp);
   bo_unref(cnt->const_strings);
-  LLVMDisposeModule(cnt->mod);
+  LLVMDisposeBuilder(cnt->builder);
 }
 
 bool
@@ -200,13 +203,16 @@ run(LlvmBackend *self,
 {
   context_t cnt = {0};
   jmp_buf jmp_error;
+  LLVMModuleRef mod;
 
   if (setjmp(cnt.jmp_error)) {
     destroy_cnt(&cnt);
+    LLVMDisposeModule(mod);
     return false;
   }
 
-  init_cnt(&cnt, unit, jmp_error);
+  mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
+  init_cnt(&cnt, unit, mod, jmp_error);
 
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
   switch (root->type) {
@@ -221,11 +227,14 @@ run(LlvmBackend *self,
   if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) {
     bl_actor_error((Actor *) unit, "(llvm_backend) not verified with error %s", error);
     LLVMDisposeMessage(error);
+    LLVMDisposeModule(mod);
     destroy_cnt(&cnt);
     return false;
   }
 #endif
 
+  /* TODO: move into file writer stage */
+  /*
   char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
   strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
@@ -235,6 +244,9 @@ run(LlvmBackend *self,
     gen_error(&cnt, "error writing bitcode to file, skipping");
   }
   free(export_file);
+  */
+
+  bl_unit_set_llvm_module(unit, cnt.mod);
 
   destroy_cnt(&cnt);
   return true;
@@ -347,8 +359,7 @@ gen_expr(context_t *cnt,
        * to this array.
        */
       return get_or_create_const_string(
-        cnt,
-        bl_node_string_const_get_str((NodeStringConst *) expr));
+        cnt, bl_node_string_const_get_str((NodeStringConst *) expr));
     }
     case BL_NODE_DECL_REF: {
       uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));

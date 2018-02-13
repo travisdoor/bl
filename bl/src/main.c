@@ -76,6 +76,9 @@ int main(int argc, char *argv[])
   Stage *llvm = (Stage *)bl_llvm_backend_new(BL_CGROUP_GENERATE);
   bl_pipeline_add_stage(pipeline, llvm);
 
+  Stage *llvm_jit = (Stage *)bl_llvm_jit_exec_new(BL_CGROUP_GENERATE);
+  bl_pipeline_add_stage(pipeline, llvm_jit);
+
   if (!bl_assembly_compile(assembly)) {
     Actor *failed = (Actor *) bl_assembly_get_failed(assembly);
     bl_error("%s", bl_actor_get_error(failed));
