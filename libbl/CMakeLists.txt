@@ -45,7 +45,7 @@ set(HEADER_FILES
         include/bl/ast/node_int_const.h
         include/bl/ast/node_string_const.h
         include/bl/ast/node_call.h
-        include/bl/ast/node_decl_ref.h include/bl/identificator.h)
+        include/bl/ast/node_decl_ref.h include/bl/identificator.h include/bl/sym_tbl.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -94,7 +94,7 @@ set(SOURCE_FILES
         src/ast/node_int_const.c
         src/ast/node_string_const.c
         src/ast/node_call.c
-        src/ast/node_decl_ref.c src/identificator.c)
+        src/ast/node_decl_ref.c src/identificator.c src/sym_tbl.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

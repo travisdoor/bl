@@ -29,8 +29,10 @@
 #ifndef BL_NODE_CALL_H
 #define BL_NODE_CALL_H
 
-#include "bl/ast/node_expr.h"
 #include <bobject/bobject.h>
+#include "bl/ast/node_expr.h"
+#include "bl/identificator.h"
+#include "bl/type.h"
 
 BO_BEGIN_DECLS
 
@@ -39,8 +41,15 @@ bo_decl_type_begin(NodeCall, NodeExpr)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT const char *
+extern BO_EXPORT Ident *
 bl_node_call_get_calle(NodeCall *self);
+
+extern BO_EXPORT Type *
+bl_node_call_get_ret(NodeCall *self);
+
+extern BO_EXPORT void
+bl_node_call_set_ret(NodeCall *self,
+                     Type     *ret);
 
 extern BO_EXPORT bool
 bl_node_call_add_arg(NodeCall *self,

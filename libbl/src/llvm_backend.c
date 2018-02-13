@@ -399,7 +399,8 @@ void
 gen_call(context_t *cnt,
          NodeCall *call)
 {
-  LLVMValueRef fn = LLVMGetNamedFunction(cnt->mod, bl_node_call_get_calle(call));
+  Ident *calle = bl_node_call_get_calle(call);
+  LLVMValueRef fn = LLVMGetNamedFunction(cnt->mod, bl_ident_get_name(calle));
   bl_assert(fn, "invalid function");
 
   /* args */

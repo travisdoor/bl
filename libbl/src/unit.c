@@ -42,6 +42,8 @@ bo_decl_members_begin(Unit, Actor)
   Tokens  *tokens;
   /* abstract syntax tree as output of parser */
   Ast     *ast;
+  /* All symbols registered in this unit */
+  SymTbl *sym_tbl;
 bo_end();
 
 /* class Unit */
@@ -72,6 +74,8 @@ Unit_ctor(Unit *self, UnitParams *p)
 
   if (p->src)
     self->src = strdup(p->src);
+
+//  self->sym_tbl = bl_sym_tbl_new();
 }
 
 void
@@ -81,6 +85,7 @@ Unit_dtor(Unit *self)
   free(self->src);
   bo_unref(self->tokens);
   bo_unref(self->ast);
+  bo_unref(self->sym_tbl);
 }
 
 bo_copy_result

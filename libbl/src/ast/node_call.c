@@ -32,7 +32,8 @@
 bo_decl_members_begin(NodeCall, NodeExpr)
   /* members */
   BArray *args;
-  char   *calle;
+  Ident *calle;
+  Type *ret_type;
 bo_end();
 
 bo_impl_type(NodeCall, NodeExpr);
@@ -58,7 +59,8 @@ void
 NodeCall_dtor(NodeCall *self)
 {
   bo_unref(self->args);
-  free(self->calle);
+  bo_unref(self->calle);
+  bo_unref(self->ret_type);
 }
 
 bo_copy_result
@@ -100,8 +102,22 @@ bl_node_call_get_arg(NodeCall *self,
   return bo_array_at(self->args, i, NodeExpr *);
 }
 
-const char *
+Ident *
 bl_node_call_get_calle(NodeCall *self)
 {
   return self->calle;
+}
+
+Type *
+bl_node_call_get_ret(NodeCall *self)
+{
+  return self->ret_type;
+}
+
+void
+bl_node_call_set_ret(NodeCall *self,
+                     Type     *ret)
+{
+  bo_unref(self->ret_type);
+  self->ret_type = ret;
 }

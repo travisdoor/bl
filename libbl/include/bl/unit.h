@@ -33,6 +33,7 @@
 #include "bl/pipeline/actor.h"
 #include "bl/tokens.h"
 #include "bl/ast/ast.h"
+#include "bl/sym_tbl.h"
 
 BO_BEGIN_DECLS
 /* class Unit declaration */

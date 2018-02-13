@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_call_impl.h
+// File:   sym_tbl.c
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   13/02/2018
 //
 // Copyright 2017 Martin Dorazil
 //
@@ -26,14 +26,41 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_CALL_IMPL_H
-#define BL_NODE_CALL_IMPL_H
-
-#include "bl/ast/node_call.h"
-#include "ast/node_expr_impl.h"
-
-bo_decl_params_with_base_begin(NodeCall, NodeExpr)
-  Ident *calle;
+#include "bl/sym_tbl.h"
+/* class SymTbl */
+/* class SymTbl object members */
+bo_decl_members_begin(SymTbl, BObject)
+  /* members */
 bo_end();
 
-#endif //BL_NODE_CALL_IMPL_H
+bo_impl_type(SymTbl, BObject);
+
+void
+SymTblKlass_init(SymTblKlass *klass)
+{
+}
+
+void
+SymTbl_ctor(SymTbl *self, SymTblParams *p)
+{
+  /* constructor */
+}
+
+void
+SymTbl_dtor(SymTbl *self)
+{
+}
+
+bo_copy_result
+SymTbl_copy(SymTbl *self, SymTbl *other)
+{
+  return BO_NO_COPY;
+}
+/* class SymTbl end */
+
+SymTbl *
+bl_sym_tbl_new(void)
+{
+  return bo_new(SymTbl, NULL);
+}
+
