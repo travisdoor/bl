@@ -1,7 +1,6 @@
 ## TODO
-* variable assign 
+* analyze - compare call arguments with callee
 * implement expressions
-* function call
 * namespaces
 * compilation not directly in assembly -> use builder object
 * when no return is presented create default one

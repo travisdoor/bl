@@ -1,37 +1,17 @@
 // this is testing script
 
 extern void puts(string s);
-extern void putc(char c);
 
 int main() {
-  int a;
-  long my_long;
-  string s;
   string this_is_my_sting = "hello world";
 
   puts("I'm first biscuit who can talk!!!");
   puts(this_is_my_sting);
-  hello();
+
+  hello(this_is_my_sting);
   return 10;
 }
 
-void hello() {
-  puts("Hello world!!!");
-  puts("Hello world!!!");
-  puts("Hello world!!!");
+void hello(string s) {
+  puts("hello!!!");
 }
-
-int another_function(int i) {
-  string local_string;
-  return 1;
-}
-
-void func(int i) {
-  int local_int1;
-  int local_int2 = 512;
-  
-  local_int1;
-  //local_int1 = 6666;
-  //local_int1 = 1024;
-}
-
