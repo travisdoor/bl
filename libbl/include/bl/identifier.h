@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   identificator.h
+// File:   identifier.h
 // Author: Martin Dorazil
 // Date:   13.2.18
 //
@@ -26,8 +26,8 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_IDENTIFICATOR_H
-#define BL_IDENTIFICATOR_H
+#ifndef BL_IDENTIFIER_H
+#define BL_IDENTIFIER_H
 
 #include <bobject/bobject.h>
 
@@ -49,4 +49,4 @@ bl_ident_get_hash(Ident *self);
 
 BO_END_DECLS
 
-#endif //BL_IDENTIFICATOR_H
+#endif //BL_IDENTIFIER_H

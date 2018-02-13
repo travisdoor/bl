@@ -75,7 +75,7 @@ Unit_ctor(Unit *self, UnitParams *p)
   if (p->src)
     self->src = strdup(p->src);
 
-//  self->sym_tbl = bl_sym_tbl_new();
+  self->sym_tbl = bl_sym_tbl_new();
 }
 
 void
@@ -171,3 +171,8 @@ bl_unit_set_src(Unit *self,
   self->src = src;
 }
 
+SymTbl *
+bl_unit_get_sym_tbl(Unit *self)
+{
+  return self->sym_tbl;
+}

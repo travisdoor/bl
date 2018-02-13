@@ -32,7 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
 #include "bl/type.h"
-#include "bl/identificator.h"
+#include "bl/identifier.h"
 
 BO_BEGIN_DECLS
 

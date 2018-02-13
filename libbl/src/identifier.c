@@ -27,7 +27,7 @@
 //*****************************************************************************
 
 #include <bobject/containers/hash.h>
-#include "bl/identificator.h"
+#include "bl/identifier.h"
 
 /* class Ident */
 

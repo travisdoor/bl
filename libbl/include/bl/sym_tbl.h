@@ -30,6 +30,7 @@
 #define BL_SYM_TBL_H
 
 #include <bobject/bobject.h>
+#include "bl/ast/node_decl.h"
 
 BO_BEGIN_DECLS
 
@@ -40,6 +41,23 @@ bo_end();
 
 extern BO_EXPORT SymTbl *
 bl_sym_tbl_new(void);
+
+/*
+ * This will add new symbol into hash table and return
+ * true on success.
+ */
+extern BO_EXPORT bool
+bl_sym_tbl_register(SymTbl *self,
+                    NodeDecl *node);
+
+/*
+ * Return symbol of excepted type or null when no such
+ * symbol was found.
+ */
+extern BO_EXPORT NodeDecl *
+bl_sym_tbl_get_sym_of_type(SymTbl *self,
+                           Ident  *ident,
+                           bl_node_e type);
 
 BO_END_DECLS
 

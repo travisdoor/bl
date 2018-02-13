@@ -75,6 +75,9 @@ bl_unit_set_src(Unit *self,
 extern BO_EXPORT const char*
 bl_unit_get_name(Unit *self);
 
+extern BO_EXPORT SymTbl *
+bl_unit_get_sym_tbl(Unit *self);
+
 BO_END_DECLS
 
 #endif /* end of include guard: UNIT_H_IDHOJTNW */
