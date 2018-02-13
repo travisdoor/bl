@@ -169,7 +169,9 @@ parse_return_stmt(context_t *cnt)
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
       parse_error(cnt,
-                  "%s %d:%d missing semicolon ';' at the end of return statement",
+                  "%s %d:%d missing semicolon "
+                    BL_YELLOW("';'")
+                    BL_RED(" at the end of return statement"),
                   bl_unit_get_src_file(cnt->unit),
                   tok->line,
                   tok->col);
@@ -183,7 +185,8 @@ parse_binop(context_t *cnt,
             NodeExpr *lvalue)
 {
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-  NodeBinop *binop =
+  NodeBinop
+    *binop =
     bl_ast_node_binop_new(bl_unit_get_ast(cnt->unit), tok->sym, tok->src_loc, tok->line, tok->col);
 
   bl_node_binop_set_lvalue(binop, lvalue);
@@ -206,11 +209,8 @@ parse_stmt(context_t *cnt)
   /* eat '{' */
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_LBLOCK) {
-    parse_error(cnt,
-                "%s %d:%d expected scope body '{'",
-                bl_unit_get_src_file(cnt->unit),
-                tok->line,
-                tok->col);
+    parse_error(cnt, "%s %d:%d expected scope body "
+      BL_YELLOW("'{'"), bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
   }
 
   NodeStmt
@@ -238,22 +238,17 @@ stmt:
   if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(cnt))) {
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(cnt,
-                  "%s %d:%d missing semicolon ';' at the end of expression",
-                  bl_unit_get_src_file(cnt->unit),
-                  tok->line,
-                  tok->col);
+      parse_error(cnt, "%s %d:%d missing semicolon "
+        BL_YELLOW("';'")
+        BL_RED(" at the end of expression"), bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
     goto stmt;
   }
 
   tok = bl_tokens_consume(cnt->tokens);
 
-  if (tok->sym != BL_SYM_RBLOCK) parse_error(cnt,
-                                             "%s %d:%d expected declaration or scope end '}'",
-                                             bl_unit_get_src_file(cnt->unit),
-                                             tok->line,
-                                             tok->col + tok->len);
+  if (tok->sym != BL_SYM_RBLOCK) parse_error(cnt, "%s %d:%d expected declaration or scope end "
+    BL_YELLOW("'}'"), bl_unit_get_src_file(cnt->unit), tok->line, tok->col + tok->len);
 
   return stmt;
 }
@@ -287,6 +282,21 @@ parse_func_decl(context_t *cnt)
     func_decl = bl_ast_node_func_decl_new(
       bl_unit_get_ast(cnt->unit), type, ident, modif, tok->src_loc, tok->line, tok->col);
 
+    /*
+     * Store the new function into the symbol table.
+     */
+    SymTbl *sym_tbl = bl_unit_get_sym_tbl(cnt->unit);
+    if (!bl_sym_tbl_register(sym_tbl, (NodeDecl *) func_decl)) {
+      parse_error(cnt,
+                  "%s %d:%d function with same name already exists"
+                    BL_YELLOW(" '%s'"),
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col,
+                  bl_ident_get_name(bl_node_decl_get_ident((NodeDecl *) func_decl)));
+
+    }
+
     /* consume '(' */
     bl_tokens_consume(cnt->tokens);
 
@@ -300,7 +310,9 @@ param:
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
       parse_error(cnt,
-                  "%s %d:%d expected ')' after function parameter declaration",
+                  "%s %d:%d expected "
+                    BL_YELLOW("')'")
+                    BL_RED(" after function parameter declaration"),
                   bl_unit_get_src_file(cnt->unit),
                   tok->line,
                   tok->col);
@@ -310,7 +322,9 @@ param:
       tok = bl_tokens_consume(cnt->tokens);
       if (tok->sym != BL_SYM_SEMICOLON) {
         parse_error(cnt,
-                    "%s %d:%d missing semicolon ';' at the end of extern function definition",
+                    "%s %d:%d missing semicolon "
+                      BL_YELLOW("';'")
+                      BL_RED(" at the end of extern function definition"),
                     bl_unit_get_src_file(cnt->unit),
                     tok->line,
                     tok->col);
@@ -422,6 +436,21 @@ parse_call_expr(context_t *cnt)
       tok_calle->line,
       tok_calle->col);
 
+    /*
+     * Handle callee existence, when symbol was found, store expected return
+     * type into call node. When no callee was found, it can be defined later
+     * or in another unit in assembly, in such case we only store unsatisfied
+     * call into cache and add information about return type later.
+     */
+    SymTbl *sym_tbl = bl_unit_get_sym_tbl(cnt->unit);
+    Ident *ident = bl_node_call_get_ident(call);
+    NodeDecl *callee = bl_sym_tbl_get_sym_of_type(sym_tbl, ident, BL_NODE_FUNC_DECL);
+    if (callee == NULL) {
+      bl_sym_tbl_add_unsatisfied_expr(sym_tbl, call);
+    } else {
+      bl_node_call_get_set_callee(call, (NodeFuncDecl *) callee);
+    }
+
 arg:
     bl_node_call_add_arg(call, parse_expr(cnt));
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA))
@@ -430,7 +459,9 @@ arg:
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
       parse_error(cnt,
-                  "%s %d:%d expected ')' after function call argument list",
+                  "%s %d:%d expected "
+                    BL_YELLOW("')'")
+                    BL_RED(" after function call argument list"),
                   bl_unit_get_src_file(cnt->unit),
                   tok->line,
                   tok->col);
@@ -438,12 +469,10 @@ arg:
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(cnt,
-                  "%s %d:%d missing semicolon ';' at the end of all expression",
-                  bl_unit_get_src_file(
-                    cnt->unit),
-                  tok->line,
-                  tok->col + tok->len);
+      parse_error(cnt, "%s %d:%d missing semicolon "
+        BL_YELLOW("';'")
+        BL_RED(" at the end of expression"), bl_unit_get_src_file(
+        cnt->unit), tok->line, tok->col + tok->len);
     }
   }
 
@@ -487,7 +516,8 @@ parse_var_decl(context_t *cnt)
       /* expected expression */
       if (!bl_node_var_decl_set_expr(vdcl, parse_expr(cnt))) {
         parse_error(cnt,
-                    "%s %d:%d expected expression after '='",
+                    "%s %d:%d expected expression after "
+                      BL_YELLOW("'='"),
                     bl_unit_get_src_file(cnt->unit),
                     tok_ident->line,
                     tok_ident->col + tok_ident->len);
@@ -496,12 +526,10 @@ parse_var_decl(context_t *cnt)
 
     /* always must end with semicolon */
     if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON) {
-      parse_error(cnt,
-                  "%s %d:%d missing semicolon ';' at the end of variable declaration",
-                  bl_unit_get_src_file(
-                    cnt->unit),
-                  tok_ident->line,
-                  tok_ident->col + tok_ident->len);
+      parse_error(cnt, "%s %d:%d missing semicolon "
+        BL_YELLOW("';'")
+        BL_RED(" at the end of variable declaration"), bl_unit_get_src_file(
+        cnt->unit), tok_ident->line, tok_ident->col + tok_ident->len);
     }
 
   }
@@ -526,7 +554,11 @@ run(Parser *self,
 
   bl_unit_set_ast(unit, bl_ast_new());
   bl_ast_set_root(bl_unit_get_ast(unit), parse_global_stmt(&cnt));
-//  bl_log("* parsing done\n");
+
+  /* TODO: move to another stage??? */
+  if (!bl_sym_tbl_try_satisfy_all(bl_unit_get_sym_tbl(unit))) {
+    parse_error(&cnt, "%s unknown function detected.", bl_unit_get_src_file(unit));
+  }
 
   return true;
 }

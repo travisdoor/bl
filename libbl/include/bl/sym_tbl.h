@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node_decl.h"
+#include "bl/ast/node_call.h"
 
 BO_BEGIN_DECLS
 
@@ -58,6 +59,17 @@ extern BO_EXPORT NodeDecl *
 bl_sym_tbl_get_sym_of_type(SymTbl *self,
                            Ident  *ident,
                            bl_node_e type);
+
+extern BO_EXPORT void
+bl_sym_tbl_add_unsatisfied_expr(SymTbl *self,
+                                NodeCall *expr);
+
+/*
+ * Try to satisfy all calls and return true when all of them
+ * were satisfied, false when there left some unsatisfied.
+ */
+extern BO_EXPORT bool
+bl_sym_tbl_try_satisfy_all(SymTbl *self);
 
 BO_END_DECLS
 

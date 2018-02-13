@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node_expr.h"
+#include "bl/ast/node_func_decl.h"
 #include "bl/identifier.h"
 #include "bl/type.h"
 
@@ -42,14 +43,14 @@ bo_decl_type_begin(NodeCall, NodeExpr)
 bo_end();
 
 extern BO_EXPORT Ident *
-bl_node_call_get_calle(NodeCall *self);
+bl_node_call_get_ident(NodeCall *self);
 
-extern BO_EXPORT Type *
-bl_node_call_get_ret(NodeCall *self);
+extern BO_EXPORT NodeFuncDecl *
+bl_node_call_get_callee(NodeCall *self);
 
 extern BO_EXPORT void
-bl_node_call_set_ret(NodeCall *self,
-                     Type     *ret);
+bl_node_call_get_set_callee(NodeCall *self,
+                            NodeFuncDecl *callee);
 
 extern BO_EXPORT bool
 bl_node_call_add_arg(NodeCall *self,

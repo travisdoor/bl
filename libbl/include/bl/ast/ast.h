@@ -120,7 +120,7 @@ bl_ast_node_string_const_new(Ast        *self,
 
 extern BO_EXPORT NodeCall*
 bl_ast_node_call_new(Ast        *self,
-                     char       *calle,
+                     char       *ident,
                      const char *generated_from,
                      int         line,
                      int         col);

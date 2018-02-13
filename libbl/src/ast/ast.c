@@ -291,7 +291,7 @@ bl_ast_node_binop_new(Ast        *self,
 
 NodeCall*
 bl_ast_node_call_new(Ast        *self,
-                     char       *calle,
+                     char       *ident,
                      const char *generated_from,
                      int         line,
                      int         col)
@@ -305,7 +305,7 @@ bl_ast_node_call_new(Ast        *self,
         .col = col,
       }
     },
-    .calle = bl_ident_new(calle)
+    .ident = bl_ident_new(ident)
   };
 
   return save_to_cache(self, bo_new(NodeCall, &p));

@@ -3,12 +3,6 @@
 extern void puts(string s);
 extern void putc(char c);
 
-void hello() {
-  puts("Hello world!!!");
-  puts("Hello world!!!");
-  puts("Hello world!!!");
-}
-
 int main() {
   int a;
   long my_long;
@@ -19,6 +13,12 @@ int main() {
   puts(this_is_my_sting);
   hello();
   return 10;
+}
+
+void hello() {
+  puts("Hello world!!!");
+  puts("Hello world!!!");
+  puts("Hello world!!!");
 }
 
 int another_function(int i) {

@@ -60,19 +60,28 @@ typedef struct _context_t
   jmp_buf jmp_error;
 
   /* tmps */
-  LLVMValueRef empty_string_tmp;
   BHashTable *named_vals_tmp;
+  BHashTable *const_strings;
 } context_t;
 
 static bool
 run(LlvmBackend *self,
     Unit *unit);
 
+static void
+init_cnt(context_t *cnt,
+         Unit *unit,
+         jmp_buf jmp_error);
+
+static void
+destroy_cnt(context_t *cnt);
+
 static LLVMTypeRef
 to_llvm_type(Type *t);
 
 static LLVMValueRef
-llvm_get_or_create_func(context_t *cnt);
+get_or_create_const_string(context_t *cnt,
+                           const char *str);
 
 static LLVMValueRef
 gen_default(context_t *cnt,
@@ -83,9 +92,10 @@ gen_func_params(context_t *cnt,
                 NodeFuncDecl *node,
                 LLVMTypeRef *out);
 
-static void
+static LLVMValueRef
 gen_func(context_t *cnt,
-         NodeFuncDecl *node);
+         NodeFuncDecl *node,
+         bool forward);
 
 static LLVMValueRef
 gen_expr(context_t *cnt,
@@ -164,39 +174,54 @@ LlvmBackend_copy(LlvmBackend *self,
 }
 /* class LlvmBackend end */
 
+void
+init_cnt(context_t *cnt,
+         Unit *unit,
+         jmp_buf jmp_error)
+{
+  cnt->builder = LLVMCreateBuilder();
+  cnt->unit = unit;
+  cnt->mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
+  cnt->named_vals_tmp = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
+}
+
+void
+destroy_cnt(context_t *cnt)
+{
+  bo_unref(cnt->named_vals_tmp);
+  bo_unref(cnt->const_strings);
+  LLVMDisposeModule(cnt->mod);
+}
+
 bool
 run(LlvmBackend *self,
     Unit *unit)
 {
   context_t cnt = {0};
+  jmp_buf jmp_error;
+
   if (setjmp(cnt.jmp_error)) {
-    bo_unref(cnt.named_vals_tmp);
+    destroy_cnt(&cnt);
     return false;
   }
 
+  init_cnt(&cnt, unit, jmp_error);
+
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
-
-  /* TODO: solve only one unit for now */
-  LLVMModuleRef mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
-
-  cnt.builder = LLVMCreateBuilder();
-  cnt.unit = unit;
-  cnt.mod = mod;
-  cnt.named_vals_tmp = bo_htbl_new(sizeof(LLVMValueRef), 256);
-
   switch (root->type) {
-  case BL_NODE_GLOBAL_STMT:gen_gstmt(&cnt, (NodeGlobalStmt *) root);
-    break;
-  default: gen_error(&cnt, "invalid node on llvm generator input");
+    case BL_NODE_GLOBAL_STMT:
+      gen_gstmt(&cnt, (NodeGlobalStmt *) root);
+      break;
+    default: gen_error(&cnt, "invalid node on llvm generator input");
   }
 
 #if VERIFY
   char *error = NULL;
-  if (LLVMVerifyModule(mod, LLVMReturnStatusAction, &error)) {
+  if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) {
     bl_actor_error((Actor *) unit, "(llvm_backend) not verified with error %s", error);
     LLVMDisposeMessage(error);
-    LLVMDisposeModule(mod);
-    bo_unref(cnt.named_vals_tmp);
+    destroy_cnt(&cnt);
     return false;
   }
 #endif
@@ -204,15 +229,14 @@ run(LlvmBackend *self,
   char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
   strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(mod, export_file) != 0) {
+  if (LLVMWriteBitcodeToFile(cnt.mod, export_file) != 0) {
     free(export_file);
-    LLVMDisposeModule(mod);
+    LLVMDisposeModule(cnt.mod);
     gen_error(&cnt, "error writing bitcode to file, skipping");
   }
   free(export_file);
 
-  LLVMDisposeModule(mod);
-  bo_unref(cnt.named_vals_tmp);
+  destroy_cnt(&cnt);
   return true;
 }
 
@@ -224,14 +248,36 @@ LLVMTypeRef
 to_llvm_type(Type *t)
 {
   switch (bl_type_get(t)) {
-  case BL_TYPE_VOID:return LLVMVoidType();
-  case BL_TYPE_I32:return LLVMInt32Type();
-  case BL_TYPE_I64:return LLVMInt64Type();
-  case BL_TYPE_STRING:return LLVMPointerType(LLVMInt8Type(), 0);
-  case BL_TYPE_CHAR:
-  case BL_TYPE_BOOL:return LLVMInt8Type();
-  default:return NULL;
+    case BL_TYPE_VOID:
+      return LLVMVoidType();
+    case BL_TYPE_I32:
+      return LLVMInt32Type();
+    case BL_TYPE_I64:
+      return LLVMInt64Type();
+    case BL_TYPE_STRING:
+      return LLVMPointerType(LLVMInt8Type(), 0);
+    case BL_TYPE_CHAR:
+    case BL_TYPE_BOOL:
+      return LLVMInt8Type();
+    default:
+      return NULL;
   }
+}
+
+LLVMValueRef
+get_or_create_const_string(context_t *cnt,
+                           const char *str)
+{
+  uint32_t hash = bo_hash_from_str(str);
+  if (bo_htbl_has_key(cnt->const_strings, hash))
+    return bo_htbl_at(cnt->const_strings, hash, LLVMValueRef);
+
+  LLVMValueRef s = LLVMBuildGlobalString(
+    cnt->builder, str, NAME_CONST_STRING);
+
+  s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8Type(), 0));
+  bo_htbl_insert(cnt->const_strings, hash, s);
+  return s;
 }
 
 /*
@@ -244,16 +290,18 @@ gen_default(context_t *cnt,
             Type *t)
 {
   switch (bl_type_get(t)) {
-  case BL_TYPE_BOOL:
-  case BL_TYPE_CHAR:return LLVMConstInt(LLVMInt8Type(), 0, false);
-  case BL_TYPE_I32:return LLVMConstInt(LLVMInt32Type(), 0, false);
-  case BL_TYPE_I64:return LLVMConstInt(LLVMInt64Type(), 0, false);
-  case BL_TYPE_STRING: {
-    if (cnt->empty_string_tmp == NULL)
-      cnt->empty_string_tmp = LLVMBuildGlobalString(cnt->builder, "\0", NAME_EMPTY_STRING);
-    return LLVMConstPointerCast(cnt->empty_string_tmp, LLVMPointerType(LLVMInt8Type(), 0));
-  }
-  default:return NULL;
+    case BL_TYPE_BOOL:
+    case BL_TYPE_CHAR:
+      return LLVMConstInt(LLVMInt8Type(), 0, false);
+    case BL_TYPE_I32:
+      return LLVMConstInt(LLVMInt32Type(), 0, false);
+    case BL_TYPE_I64:
+      return LLVMConstInt(LLVMInt64Type(), 0, false);
+    case BL_TYPE_STRING: {
+      return get_or_create_const_string(cnt, "\0");
+    }
+    default:
+      return NULL;
   }
 }
 
@@ -290,24 +338,24 @@ gen_expr(context_t *cnt,
 {
   bl_node_e nt = bl_node_get_type((Node *) expr);
   switch (nt) {
-  case BL_NODE_INT_CONST:
-    return LLVMConstInt(
-      LLVMInt32Type(), bl_node_int_const_get_num((NodeIntConst *) expr), true);
-  case BL_NODE_STRING_CONST: {
-    /*
-     * For constant string we generate constant global array and return pointer
-     * to this array.
-     */
-    LLVMValueRef str = LLVMBuildGlobalString(
-      cnt->builder, bl_node_string_const_get_str((NodeStringConst *) expr), NAME_CONST_STRING);
-    return LLVMConstPointerCast(str, LLVMPointerType(LLVMInt8Type(), 0));
-  }
-  case BL_NODE_DECL_REF: {
-    uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
-    LLVMValueRef val = bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
-    return LLVMBuildLoad(cnt->builder, val, "tmp");
-  }
-  default: bl_abort("unknown expression type");
+    case BL_NODE_INT_CONST:
+      return LLVMConstInt(
+        LLVMInt32Type(), bl_node_int_const_get_num((NodeIntConst *) expr), true);
+    case BL_NODE_STRING_CONST: {
+      /*
+       * For constant string we generate constant global array and return pointer
+       * to this array.
+       */
+      return get_or_create_const_string(
+        cnt,
+        bl_node_string_const_get_str((NodeStringConst *) expr));
+    }
+    case BL_NODE_DECL_REF: {
+      uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
+      LLVMValueRef val = bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
+      return LLVMBuildLoad(cnt->builder, val, "tmp");
+    }
+    default: bl_abort("unknown expression type");
   }
 }
 
@@ -316,13 +364,14 @@ gen_binop(context_t *cnt,
           NodeBinop *binop)
 {
   switch (bl_node_binop_get_op(binop)) {
-  case BL_SYM_ASIGN: {
-    LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
-    LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
-    LLVMBuildStore(cnt->builder, rvalue, lvalue);
-    break;
-  }
-  default:break;
+    case BL_SYM_ASIGN: {
+      LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
+      LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
+      LLVMBuildStore(cnt->builder, rvalue, lvalue);
+      break;
+    }
+    default:
+      break;
   }
 }
 
@@ -388,20 +437,22 @@ gen_call_args(context_t *cnt,
   return out_i;
 }
 
-LLVMValueRef
-llvm_get_or_create_func(context_t *cnt)
-{
-  /* TODO: get or create new function */
-  return NULL;
-}
-
 void
 gen_call(context_t *cnt,
          NodeCall *call)
 {
-  Ident *calle = bl_node_call_get_calle(call);
-  LLVMValueRef fn = LLVMGetNamedFunction(cnt->mod, bl_ident_get_name(calle));
-  bl_assert(fn, "invalid function");
+  NodeFuncDecl *callee = bl_node_call_get_callee(call);
+
+  LLVMValueRef
+    fn =
+    LLVMGetNamedFunction(cnt->mod, bl_ident_get_name(bl_node_decl_get_ident((NodeDecl *) callee)));
+
+  /*
+   * Create forward declaration when function has not been created yet.
+   */
+  if (fn == NULL) {
+    fn = gen_func(cnt, callee, true);
+  }
 
   /* args */
   LLVMValueRef args[BL_MAX_FUNC_PARAM_COUNT] = {0};
@@ -411,22 +462,31 @@ gen_call(context_t *cnt,
   LLVMBuildCall(cnt->builder, fn, args, argc, "");
 }
 
-void
+LLVMValueRef
 gen_func(context_t *cnt,
-         NodeFuncDecl *node)
+         NodeFuncDecl *node,
+         bool forward)
 {
   /* params */
   LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
   int pc = gen_func_params(cnt, node, param_types);
   Ident *id = bl_node_decl_get_ident((NodeDecl *) node);
-  LLVMTypeRef ret = to_llvm_type(bl_node_decl_get_type((NodeDecl *) node));
-  LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
-  LLVMValueRef func = LLVMAddFunction(cnt->mod, bl_ident_get_name(id), ret_type);
 
-  NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
-  if (stmt)
-    gen_stmt(cnt, func, stmt);
+  LLVMValueRef func = LLVMGetNamedFunction(cnt->mod, bl_ident_get_name(id));
+  if (func == NULL) {
+    LLVMTypeRef ret = to_llvm_type(bl_node_decl_get_type((NodeDecl *) node));
+    LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
+    func = LLVMAddFunction(cnt->mod, bl_ident_get_name(id), ret_type);
+  }
+
+  if (!forward) {
+    NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
+    if (stmt)
+      gen_stmt(cnt, func, stmt);
+  }
+
+  return func;
 }
 
 void
@@ -443,19 +503,23 @@ gen_stmt(context_t *cnt,
   for (int i = 0; i < c; i++) {
     child = bl_node_stmt_get_child(stmt, i);
     switch (child->type) {
-    case BL_NODE_RETURN_STMT:return_presented = true;
-      gen_ret(cnt, (NodeReturnStmt *) child);
-      return;
-    case BL_NODE_VAR_DECL:gen_var_decl(cnt, (NodeVarDecl *) child);
-      break;
-    case BL_NODE_CALL:gen_call(cnt, (NodeCall *) child);
-      break;
-    case BL_NODE_BINOP:gen_binop(cnt, (NodeBinop *) child);
-      break;
-    case BL_NODE_DECL_REF:
-      /* only decl reference without any expression, this will be ignored for now */
-      break;
-    default: gen_error(cnt, "invalid stmt in function scope");
+      case BL_NODE_RETURN_STMT:
+        return_presented = true;
+        gen_ret(cnt, (NodeReturnStmt *) child);
+        return;
+      case BL_NODE_VAR_DECL:
+        gen_var_decl(cnt, (NodeVarDecl *) child);
+        break;
+      case BL_NODE_CALL:
+        gen_call(cnt, (NodeCall *) child);
+        break;
+      case BL_NODE_BINOP:
+        gen_binop(cnt, (NodeBinop *) child);
+        break;
+      case BL_NODE_DECL_REF:
+        /* only decl reference without any expression, this will be ignored for now */
+        break;
+      default: gen_error(cnt, "invalid stmt in function scope");
     }
   }
 
@@ -475,9 +539,10 @@ gen_gstmt(context_t *cnt,
   for (size_t i = 0; i < c; i++) {
     child = bl_node_global_stmt_get_child(gstmt, i);
     switch (child->type) {
-    case BL_NODE_FUNC_DECL:gen_func(cnt, (NodeFuncDecl *) child);
-      break;
-    default: gen_error(cnt, "invalid node in global scope");
+      case BL_NODE_FUNC_DECL:
+        gen_func(cnt, (NodeFuncDecl *) child, false);
+        break;
+      default: gen_error(cnt, "invalid node in global scope");
     }
   }
 }

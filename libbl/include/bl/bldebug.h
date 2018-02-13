@@ -37,6 +37,12 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 
+#define BL_YELLOW(str) \
+    "\x1b[33m" str "\x1b[0m"
+
+#define BL_RED(str) \
+    "\x1b[31m" str "\x1b[0m"
+
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
         fprintf(stderr, ANSI_COLOR_RED "[ASSERT]  " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \

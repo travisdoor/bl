@@ -33,7 +33,7 @@
 #include "ast/node_expr_impl.h"
 
 bo_decl_params_with_base_begin(NodeCall, NodeExpr)
-  Ident *calle;
+  Ident *ident;
 bo_end();
 
 #endif //BL_NODE_CALL_IMPL_H
