@@ -133,7 +133,7 @@ run(Lexer *self,
 
   if (src == NULL) {
     bl_actor_error((Actor *) unit,
-                   "No source loaded into unit " BL_YELLOW("'%s'") ", use builder flag "
+                   "No source loaded for unit " BL_YELLOW("'%s'") ", use builder flag "
                      BL_YELLOW("BL_BUILDER_LOAD_FROM_FILE") " or create unit from loaded source.",
                    bl_unit_get_name(unit));
     return false;
