@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   compile_group.h
+// File:   builder.h
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   14.2.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,34 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_COMPILE_GROUP_H
-#define BL_COMPILE_GROUP_H
+#ifndef BL_BUILDER_H
+#define BL_BUILDER_H
 
-typedef enum _bl_compile_group
+#include <bobject/bobject.h>
+#include "bl/assembly.h"
+
+BO_BEGIN_DECLS
+
+typedef enum _bl_builder_flags
 {
-  BL_CGROUP_PRE_ANALYZE = 0,
-  BL_CGROUP_ANALYZE,
-  BL_CGROUP_GENERATE,
-  BL_CGROUP_POST_GENERATE,
-  BL_CGROUP_COUNT
-} bl_compile_group_e;
+  BL_BUILDER_EXPORT_BC = 0x1,
+  BL_BUILDER_RUN = 0x2,
+  BL_BUILDER_PRINT_TOKENS = 0x4,
+  BL_BUILDER_PRINT_AST = 0x8
+} bl_builder_flags_e;
 
-#endif //BL_COMPILE_GROUP_H
+/* class Builder declaration */
+bo_decl_type_begin(Builder, BObject)
+  /* virtuals */
+bo_end();
+
+extern BO_EXPORT Builder *
+bl_builer_new(uint32_t flags);
+
+extern BO_EXPORT bool
+bl_builder_compile(Builder *self,
+                   Assembly *assembly);
+
+BO_END_DECLS
+
+#endif //BL_BUILDER_H

@@ -9,7 +9,7 @@ int main() {
   puts(this_is_my_sting);
 
   hello(this_is_my_sting);
-  return 10;
+  return 0;
 }
 
 void hello(string s) {

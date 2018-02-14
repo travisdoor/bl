@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   compile_group.h
+// File:   llvm_bc_writer.h
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   14.2.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_COMPILE_GROUP_H
-#define BL_COMPILE_GROUP_H
+#ifndef BL_LLVM_BC_WRITER_H
+#define BL_LLVM_BC_WRITER_H
 
-typedef enum _bl_compile_group
-{
-  BL_CGROUP_PRE_ANALYZE = 0,
-  BL_CGROUP_ANALYZE,
-  BL_CGROUP_GENERATE,
-  BL_CGROUP_POST_GENERATE,
-  BL_CGROUP_COUNT
-} bl_compile_group_e;
+#include <bobject/bobject.h>
+#include "bl/pipeline/stage.h"
 
-#endif //BL_COMPILE_GROUP_H
+BO_BEGIN_DECLS
+
+/* class LlvmBcWriter declaration */
+bo_decl_type_begin(LlvmBcWriter, Stage)
+  /* virtuals */
+bo_end();
+
+extern BO_EXPORT LlvmBcWriter *
+bl_llvm_bc_writer_new(bl_compile_group_e group);
+
+BO_END_DECLS
+
+#endif //BL_LLVM_BC_WRITER_H

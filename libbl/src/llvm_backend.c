@@ -30,7 +30,6 @@
 #include <string.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/hash.h>
 
@@ -232,19 +231,6 @@ run(LlvmBackend *self,
     return false;
   }
 #endif
-
-  /* TODO: move into file writer stage */
-  /*
-  char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
-  strcpy(export_file, bl_unit_get_src_file(unit));
-  strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(cnt.mod, export_file) != 0) {
-    free(export_file);
-    LLVMDisposeModule(cnt.mod);
-    gen_error(&cnt, "error writing bitcode to file, skipping");
-  }
-  free(export_file);
-  */
 
   bl_unit_set_llvm_module(unit, cnt.mod);
 

@@ -28,6 +28,7 @@
 
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
+#include "bl/bldebug.h"
 #include "bl/llvm_jit_exec.h"
 #include "bl/unit.h"
 
@@ -86,23 +87,28 @@ run(LlvmJitExec *self,
 {
   LLVMExecutionEngineRef engine;
   char *error = NULL;
-//  LLVMInitializeNativeTarget();
 
   LLVMLinkInInterpreter();
   if (LLVMCreateInterpreterForModule(&engine, bl_unit_get_llvm_module(unit), &error) != 0) {
-    fprintf(stderr, "failed to create execution engine\n");
-    abort();
+    bl_abort("failed to create execution engine with error %s", error);
   }
 
-  if (error) {
-    fprintf(stderr, "error: %s\n", error);
-    LLVMDisposeMessage(error);
+  LLVMValueRef main = LLVMGetNamedFunction(bl_unit_get_llvm_module(unit), "main");
+  if (main == NULL) {
+    bl_actor_error((Actor *) unit,
+                   "(llvm_interpreter) Unable to get " BL_YELLOW("'main'") BL_RED(" method"));
     LLVMDisposeExecutionEngine(engine);
     return false;
   }
 
-  LLVMValueRef main = LLVMGetNamedFunction(bl_unit_get_llvm_module(unit), "main");
   LLVMGenericValueRef res = LLVMRunFunction(engine, main, 0, NULL);
+
+  int ires = (int) LLVMGenericValueToInt(res, 0);
+  if (ires != 0) {
+    bl_actor_error((Actor *) unit, "(llvm_interpreter) Executed unit return %i", ires);
+    LLVMDisposeExecutionEngine(engine);
+    return false;
+  }
 
   return true;
 }
