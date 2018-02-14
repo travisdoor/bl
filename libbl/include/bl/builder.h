@@ -34,13 +34,11 @@
 
 BO_BEGIN_DECLS
 
-typedef enum _bl_builder_flags
-{
-  BL_BUILDER_EXPORT_BC = 0x1,
-  BL_BUILDER_RUN = 0x2,
-  BL_BUILDER_PRINT_TOKENS = 0x4,
-  BL_BUILDER_PRINT_AST = 0x8
-} bl_builder_flags_e;
+#define BL_BUILDER_EXPORT_BC      0x00000001
+#define BL_BUILDER_RUN            0x00000002
+#define BL_BUILDER_PRINT_TOKENS   0x00000004
+#define BL_BUILDER_PRINT_AST      0x00000008
+#define BL_BUILDER_LOAD_FROM_FILE 0x00000010
 
 /* class Builder declaration */
 bo_decl_type_begin(Builder, BObject)
@@ -48,11 +46,14 @@ bo_decl_type_begin(Builder, BObject)
 bo_end();
 
 extern BO_EXPORT Builder *
-bl_builer_new(uint32_t flags);
+bl_builder_new(unsigned int flags);
 
 extern BO_EXPORT bool
 bl_builder_compile(Builder *self,
                    Assembly *assembly);
+
+extern BO_EXPORT Actor *
+bl_builder_get_failed(Builder *self);
 
 BO_END_DECLS
 

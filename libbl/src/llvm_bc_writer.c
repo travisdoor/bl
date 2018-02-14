@@ -53,8 +53,9 @@ bo_impl_type(LlvmBcWriter, Stage);
 void
 LlvmBcWriterKlass_init(LlvmBcWriterKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run = (bool (*)(Stage *,
-                                            Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->run =
+    (bool (*)(Stage *,
+              Actor *)) run;
 }
 
 void
@@ -92,7 +93,8 @@ run(LlvmBcWriter *self,
   if (LLVMWriteBitcodeToFile(bl_unit_get_llvm_module(unit), export_file) != 0) {
     free(export_file);
     bl_actor_error((Actor *) unit,
-                   "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
+                   "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"),
+                   export_file);
     return false;
   }
   free(export_file);
@@ -102,9 +104,7 @@ run(LlvmBcWriter *self,
 LlvmBcWriter *
 bl_llvm_bc_writer_new(bl_compile_group_e group)
 {
-  LlvmBcWriterParams p = {
-    .base.group = group
-  };
+  LlvmBcWriterParams p = {.base.group = group};
 
   return bo_new(LlvmBcWriter, &p);
 }

@@ -90,11 +90,7 @@ print_node(AstPrinter *self,
 
   BString *s = bo_vtbl(node, Node)->to_string(node);
   fprintf(
-    self->out_stream,
-    ANSI_COLOR_YELLOW "%*s%s\n" ANSI_COLOR_RESET,
-    pad,
-    "",
-    bo_string_get(s));
+    self->out_stream, "%*s%s\n", pad, "", bo_string_get(s));
   bo_unref(s);
 
   int c = 0;
@@ -122,7 +118,7 @@ print_node(AstPrinter *self,
       c = bl_node_call_get_arg_count((NodeCall *) node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = (Node *)bl_node_call_get_arg((NodeCall *) node, i);
+        child = (Node *) bl_node_call_get_arg((NodeCall *) node, i);
         print_node(self, child, pad);
       }
       break;

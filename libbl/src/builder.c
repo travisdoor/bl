@@ -43,18 +43,20 @@
 
 static bool
 compile_group(Builder *self,
+              Assembly *assembly,
               bl_compile_group_e group);
 
 /* class Builder constructor params */
 bo_decl_params_begin(Builder)
   /* constructor params */
-  uint32_t flags;
+  unsigned int flags;
 bo_end();
 
 /* class Builder object members */
 bo_decl_members_begin(Builder, BObject)
   /* members */
   Pipeline *pipeline;
+  Actor *failed;
 bo_end();
 
 bo_impl_type(Builder, BObject);
@@ -72,8 +74,10 @@ Builder_ctor(Builder *self,
   /* initialize self */
   self->pipeline = bl_pipeline_new();
 
-  Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(self->pipeline, file_loader);
+  if (p->flags & BL_BUILDER_LOAD_FROM_FILE) {
+    Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
+    bl_pipeline_add_stage(self->pipeline, file_loader);
+  }
 
   Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
   bl_pipeline_add_stage(self->pipeline, lexer);
@@ -125,14 +129,15 @@ Builder_copy(Builder *self,
 
 bool
 compile_group(Builder *self,
+              Assembly *assembly,
               bl_compile_group_e group)
 {
-  const size_t c = bo_array_size(self->units);
+  const int c = bl_assembly_get_unit_count(assembly);
   Unit *unit = NULL;
-  for (size_t i = 0; i < c; i++) {
-    unit = bo_array_at(self->units, i, Unit *);
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
     if (!bl_pipeline_run(self->pipeline, (Actor *) unit, group)) {
-      self->failed = (Unit *) bl_pipeline_get_failed(self->pipeline);
+      self->failed = bl_pipeline_get_failed(self->pipeline);
       return false;
     }
   }
@@ -141,11 +146,9 @@ compile_group(Builder *self,
 }
 
 Builder *
-bl_builder_new(uint32_t flags)
+bl_builder_new(unsigned int flags)
 {
-  BuilderParams p = {
-    .flags = flags
-  };
+  BuilderParams p = {.flags = flags};
 
   return bo_new(Builder, &p);
 }
@@ -154,17 +157,18 @@ bool
 bl_builder_compile(Builder *self,
                    Assembly *assembly)
 {
-  if (self->pipeline == NULL) {
-    bl_error("no pipeline set for assembpy %s", self->name);
-    return false;
-  }
-
   self->failed = NULL;
 
   for (int i = 0; i < BL_CGROUP_COUNT; i++) {
-    if (!compile_group(self, i))
+    if (!compile_group(self, assembly, i))
       return false;
   }
 
   return true;
+}
+
+Actor *
+bl_builder_get_failed(Builder *self)
+{
+  return self->failed;
 }

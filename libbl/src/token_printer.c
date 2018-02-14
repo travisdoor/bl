@@ -34,7 +34,7 @@
 /* class TokenPrinter */
 static bool
 run(TokenPrinter *self,
-    Unit       *unit);
+    Unit *unit);
 
 /* class TokenPrinter constructor params */
 bo_decl_params_with_base_begin(TokenPrinter, Stage)
@@ -53,12 +53,14 @@ bo_impl_type(TokenPrinter, Stage);
 void
 TokenPrinterKlass_init(TokenPrinterKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->run =
+    (bool (*)(Stage *,
+              Actor *)) run;
 }
 
 void
-TokenPrinter_ctor(TokenPrinter *self, TokenPrinterParams *p)
+TokenPrinter_ctor(TokenPrinter *self,
+                  TokenPrinterParams *p)
 {
   /* constructor */
   /* initialize parent */
@@ -72,7 +74,8 @@ TokenPrinter_dtor(TokenPrinter *self)
 }
 
 bo_copy_result
-TokenPrinter_copy(TokenPrinter *self, TokenPrinter *other)
+TokenPrinter_copy(TokenPrinter *self,
+                  TokenPrinter *other)
 {
   return BO_NO_COPY;
 }
@@ -80,17 +83,19 @@ TokenPrinter_copy(TokenPrinter *self, TokenPrinter *other)
 
 bool
 run(TokenPrinter *self,
-    Unit         *unit)
+    Unit *unit)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
   if (tokens == NULL) {
-    bl_actor_error((Actor *)unit, "cannot find tokens array in unit %s", bl_unit_get_src_file(unit));
+    bl_actor_error((Actor *) unit,
+                   "cannot find tokens array in unit %s",
+                   bl_unit_get_src_file(unit));
     return false;
   }
 
   BArray *tokens_arr = bl_tokens_get_all(tokens);
 
-  fprintf(self->out_stream, ANSI_COLOR_YELLOW "Tokens: \n" ANSI_COLOR_RESET);
+  fprintf(self->out_stream, "Tokens: \n");
 
   const size_t c = bo_array_size(tokens_arr);
   bl_token_t *tok;
@@ -105,12 +110,8 @@ run(TokenPrinter *self,
       fprintf(self->out_stream, "\n");
     }
 
-    fprintf(self->out_stream,
-            ANSI_COLOR_YELLOW "['%s' %i:%i], " ANSI_COLOR_RESET,
-            bl_sym_strings[tok->sym],
-            tok->line,
-            tok->col
-    );
+    fprintf(
+      self->out_stream, "['%s' %i:%i], ", bl_sym_strings[tok->sym], tok->line, tok->col);
   }
 
   fprintf(self->out_stream, "\n");
@@ -119,13 +120,10 @@ run(TokenPrinter *self,
 }
 
 TokenPrinter *
-bl_token_printer_new(FILE              *out_stream,
+bl_token_printer_new(FILE *out_stream,
                      bl_compile_group_e group)
 {
-  TokenPrinterParams p = {
-    .base.group = group,
-    .out_stream = out_stream
-  };
+  TokenPrinterParams p = {.base.group = group, .out_stream = out_stream};
 
   return bo_new(TokenPrinter, &p);
 }

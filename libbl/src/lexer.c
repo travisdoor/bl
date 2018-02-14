@@ -54,28 +54,28 @@ typedef struct _cursor_t
 
 static bool
 run(Lexer *self,
-    Unit  *unit);
+    Unit *unit);
 
 static bool
-scan_string(Lexer  *self,
-            Unit   *unit,
-            char    term,
+scan_string(Lexer *self,
+            Unit *unit,
+            char term,
             cursor_t *cur);
 
-static bool 
+static bool
 ignore_till(Lexer *self,
-            Unit   *unit,
-            char   term,
+            Unit *unit,
+            char term,
             cursor_t *cur);
 
-static bool 
+static bool
 scan_ident(Lexer *self,
-           Unit   *unit,
+           Unit *unit,
            cursor_t *cur);
 
-static bool 
+static bool
 scan_number(Lexer *self,
-            Unit   *unit,
+            Unit *unit,
             cursor_t *cur);
 
 /* Lexer members */
@@ -92,13 +92,15 @@ bo_impl_type(Lexer, Stage);
 void
 LexerKlass_init(LexerKlass *klass)
 {
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
+  bo_vtbl_cl(klass, Stage)->run =
+    (bool (*)(Stage *,
+              Actor *)) run;
 }
 
 /* Lexer constructor */
 void
-Lexer_ctor(Lexer *self, LexerParams *p)
+Lexer_ctor(Lexer *self,
+           LexerParams *p)
 {
   bo_parent_ctor(Stage, p);
 }
@@ -111,31 +113,35 @@ Lexer_dtor(Lexer *self)
 
 /* Lexer copy constructor */
 bo_copy_result
-Lexer_copy(Lexer *self, Lexer *other)
+Lexer_copy(Lexer *self,
+           Lexer *other)
 {
   return BO_NO_COPY;
 }
 
 bool
 run(Lexer *self,
-    Unit  *unit)
+    Unit *unit)
 {
   Tokens *tokens = bl_tokens_new();
   bl_unit_set_tokens(unit, tokens);
 
-  bl_token_t tok = {
-    .sym  = BL_SYM_EOF,
-    .line = 0,
-    .col  = 0
-  };
+  bl_token_t tok = {.sym  = BL_SYM_EOF, .line = 0, .col  = 0};
+  char *src = (char *) bl_unit_get_src(unit);
 
-  cursor_t cur = {
-    .iter = (char *) bl_unit_get_src(unit),
-    .line = 1,
-    .col = 1
-  };
+  bl_log(BL_GREEN("processing unit: %s"), bl_unit_get_name(unit));
 
-  for (;*cur.iter != '\0'; cur.iter++) {
+  if (src == NULL) {
+    bl_actor_error((Actor *) unit,
+                   "No source loaded into unit " BL_YELLOW("'%s'") ", use builder flag "
+                     BL_YELLOW("BL_BUILDER_LOAD_FROM_FILE") " or create unit from loaded source.",
+                   bl_unit_get_name(unit));
+    return false;
+  }
+
+  cursor_t cur = {.iter = src, .line = 1, .col = 1};
+
+  for (; *cur.iter != '\0'; cur.iter++) {
     switch (*cur.iter) {
       /* TODO: windows line endings */
       case '\r':
@@ -148,57 +154,57 @@ run(Lexer *self,
         cur.col++;
         continue;
       case '{':
-        bl_token_init(&tok ,BL_SYM_LBLOCK, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_LBLOCK, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '}':
-        bl_token_init(&tok ,BL_SYM_RBLOCK, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_RBLOCK, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '[':
-        bl_token_init(&tok ,BL_SYM_LBRACKET, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_LBRACKET, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case ']':
-        bl_token_init(&tok ,BL_SYM_RBRACKET, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_RBRACKET, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '(':
-        bl_token_init(&tok ,BL_SYM_LPAREN, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_LPAREN, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case ')':
-        bl_token_init(&tok ,BL_SYM_RPAREN, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_RPAREN, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case ',':
-        bl_token_init(&tok ,BL_SYM_COMMA, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_COMMA, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '=':
-        bl_token_init(&tok ,BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '+':
-        bl_token_init(&tok ,BL_SYM_PLUS, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_PLUS, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case '-':
-        bl_token_init(&tok ,BL_SYM_MINUS, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_MINUS, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
       case ';':
-        bl_token_init(&tok ,BL_SYM_SEMICOLON, cur.line, cur.col, 1, cur.iter);
+        bl_token_init(&tok, BL_SYM_SEMICOLON, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
@@ -207,14 +213,14 @@ run(Lexer *self,
         continue;
       case '/':
         switch (*(cur.iter + 1)) {
-        case '/':
-          ignore_till(self, unit, '\n', &cur);
-          continue;
-        default:
-          bl_token_init(&tok ,BL_SYM_SLASH, cur.line, cur.col, 1, cur.iter);
-          bl_tokens_push(tokens, &tok);
-          cur.col++;
-          continue;
+          case '/':
+            ignore_till(self, unit, '\n', &cur);
+            continue;
+          default:
+            bl_token_init(&tok, BL_SYM_SLASH, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col++;
+            continue;
         }
       default:
         if (scan_number(self, unit, &cur))
@@ -224,8 +230,11 @@ run(Lexer *self,
           continue;
 
         /* notify error */
-        bl_actor_error((Actor *)unit, "invalid character %c %i:%i", 
-            cur.iter[0], cur.line, cur.col); 
+        bl_actor_error((Actor *) unit,
+                       "invalid character %c %i:%i",
+                       cur.iter[0],
+                       cur.line,
+                       cur.col);
         return false;
     }
   }
@@ -236,9 +245,9 @@ run(Lexer *self,
 }
 
 bool
-scan_string(Lexer  *self,
-            Unit   *unit,
-            char    term,
+scan_string(Lexer *self,
+            Unit *unit,
+            char term,
             cursor_t *cur)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
@@ -263,8 +272,8 @@ scan_string(Lexer  *self,
 
 bool
 ignore_till(Lexer *self,
-            Unit   *unit,
-            char   term,
+            Unit *unit,
+            char term,
             cursor_t *cur)
 {
   while (*cur->iter != term) {
@@ -287,7 +296,7 @@ ignore_till(Lexer *self,
 
 bool
 scan_ident(Lexer *self,
-           Unit   *unit,
+           Unit *unit,
            cursor_t *cur)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
@@ -388,7 +397,7 @@ scan_ident(Lexer *self,
 
 bool
 scan_number(Lexer *self,
-            Unit   *unit,
+            Unit *unit,
             cursor_t *cur)
 {
   if (!is_number_c(*cur->iter))
@@ -403,7 +412,7 @@ scan_number(Lexer *self,
     n = n * 10 + (*cur->iter) - '0';
     cur->col++;
     tok.len++;
-    if (is_number_c(*(cur->iter+1))) {
+    if (is_number_c(*(cur->iter + 1))) {
       cur->iter++;
     } else
       break;
@@ -418,9 +427,7 @@ scan_number(Lexer *self,
 Lexer *
 bl_lexer_new(bl_compile_group_e group)
 {
-  LexerParams p = {
-    .base.group = group
-  };
+  LexerParams p = {.base.group = group};
 
   return bo_new(Lexer, &p);
 }

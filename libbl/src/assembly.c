@@ -35,20 +35,13 @@ bo_decl_members_begin(Assembly, BObject)
   /* members */
   BArray *units;
   char *name;
-  Pipeline *pipeline;
-  Unit *failed;
 bo_end();
 
 /* class Assembly */
-static bool
-compile_group(Assembly          *self,
-              bl_compile_group_e group);
-
 bo_impl_type(Assembly, BObject);
 
 bo_decl_params_begin(Assembly)
   const char *name;
-  Pipeline   *pipeline;
 bo_end();
 
 void
@@ -57,12 +50,12 @@ AssemblyKlass_init(AssemblyKlass *klass)
 }
 
 void
-Assembly_ctor(Assembly *self, AssemblyParams *p)
+Assembly_ctor(Assembly *self,
+              AssemblyParams *p)
 {
   /* constructor */
   self->name = strdup(p->name);
   self->units = bo_array_new_bo(bo_typeof(Unit), true);
-  self->pipeline = p->pipeline;
 }
 
 void
@@ -73,75 +66,44 @@ Assembly_dtor(Assembly *self)
 }
 
 bo_copy_result
-Assembly_copy(Assembly *self, Assembly *other)
+Assembly_copy(Assembly *self,
+              Assembly *other)
 {
   return BO_NO_COPY;
 }
+
 /* class Assembly end */
 
-bool
-compile_group(Assembly          *self,
-              bl_compile_group_e group)
-{
-  const size_t c = bo_array_size(self->units);
-  Unit *unit = NULL;
-  for (size_t i = 0; i < c; i++) {
-    unit = bo_array_at(self->units, i, Unit *);
-    if (!bl_pipeline_run(self->pipeline, (Actor *) unit, group)) {
-      self->failed = (Unit *) bl_pipeline_get_failed(self->pipeline);
-      return false;
-    }
-  }
-
-  return true;
-}
-
 Assembly *
-bl_assembly_new(const char *name,
-                Pipeline   *pipeline)
+bl_assembly_new(const char *name)
 {
-  AssemblyParams p = {
-    .name     = name,
-    .pipeline = pipeline
-  };
-
+  AssemblyParams p = {.name = name};
   return bo_new(Assembly, &p);
 }
 
 void
 bl_assembly_add_unit(Assembly *self,
-                     Unit     *unit)
+                     Unit *unit)
 {
   /* TODO: handle duplicity */
   bo_array_push_back(self->units, unit);
-}
-
-bool
-bl_assembly_compile(Assembly *self)
-{
-  if (self->pipeline == NULL) {
-    bl_error("no pipeline set for assembpy %s", self->name);
-    return false;
-  }
-
-  self->failed = NULL;
-
-  for (int i = 0; i < BL_CGROUP_COUNT; i++) {
-    if (!compile_group(self, i))
-      return false;
-  }
-
-  return true;
-}
-
-Unit *
-bl_assembly_get_failed(Assembly *self)
-{
-  return self->failed;
 }
 
 const char *
 bl_assembly_get_name(Assembly *self)
 {
   return self->name;
+}
+
+int
+bl_assembly_get_unit_count(Assembly *self)
+{
+  return (int) bo_array_size(self->units);
+}
+
+Unit *
+bl_assembly_get_unit(Assembly *self,
+                     int i)
+{
+  return bo_array_at(self->units, (size_t) i, Unit *);
 }

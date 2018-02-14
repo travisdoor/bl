@@ -168,13 +168,9 @@ parse_return_stmt(context_t *cnt)
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(cnt,
-                  "%s %d:%d missing semicolon "
-                    BL_YELLOW("';'")
-                    BL_RED(" at the end of return statement"),
-                  bl_unit_get_src_file(cnt->unit),
-                  tok->line,
-                  tok->col);
+      parse_error(cnt, "%s %d:%d missing semicolon "
+        BL_YELLOW("';'")
+        " at the end of return statement", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
   }
   return rstmt;
@@ -240,7 +236,7 @@ stmt:
     if (tok->sym != BL_SYM_SEMICOLON) {
       parse_error(cnt, "%s %d:%d missing semicolon "
         BL_YELLOW("';'")
-        BL_RED(" at the end of expression"), bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
+        " at the end of expression", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
     goto stmt;
   }
@@ -312,7 +308,7 @@ param:
       parse_error(cnt,
                   "%s %d:%d expected "
                     BL_YELLOW("')'")
-                    BL_RED(" after function parameter declaration"),
+                    " after function parameter declaration",
                   bl_unit_get_src_file(cnt->unit),
                   tok->line,
                   tok->col);
@@ -324,7 +320,7 @@ param:
         parse_error(cnt,
                     "%s %d:%d missing semicolon "
                       BL_YELLOW("';'")
-                      BL_RED(" at the end of extern function definition"),
+                      " at the end of extern function definition",
                     bl_unit_get_src_file(cnt->unit),
                     tok->line,
                     tok->col);
@@ -458,20 +454,16 @@ arg:
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
-      parse_error(cnt,
-                  "%s %d:%d expected "
-                    BL_YELLOW("')'")
-                    BL_RED(" after function call argument list"),
-                  bl_unit_get_src_file(cnt->unit),
-                  tok->line,
-                  tok->col);
+      parse_error(cnt, "%s %d:%d expected "
+        BL_YELLOW("')'")
+        " after function call argument list", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_SEMICOLON) {
       parse_error(cnt, "%s %d:%d missing semicolon "
         BL_YELLOW("';'")
-        BL_RED(" at the end of expression"), bl_unit_get_src_file(
+        " at the end of expression", bl_unit_get_src_file(
         cnt->unit), tok->line, tok->col + tok->len);
     }
   }
@@ -528,7 +520,7 @@ parse_var_decl(context_t *cnt)
     if (bl_tokens_consume(cnt->tokens)->sym != BL_SYM_SEMICOLON) {
       parse_error(cnt, "%s %d:%d missing semicolon "
         BL_YELLOW("';'")
-        BL_RED(" at the end of variable declaration"), bl_unit_get_src_file(
+        " at the end of variable declaration", bl_unit_get_src_file(
         cnt->unit), tok_ident->line, tok_ident->col + tok_ident->len);
     }
 

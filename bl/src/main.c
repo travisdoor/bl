@@ -32,7 +32,9 @@
 #define ENABLE_TOKEN_PRINTER   0
 #define ENABLE_AST_PRINTER     0
 
-int main(int argc, char *argv[])
+int
+main(int argc,
+     char *argv[])
 {
   puts("BL Compiler version 0.1.0\n");
 
@@ -41,8 +43,9 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  Pipeline *pipeline = bl_pipeline_new();
-  Assembly *assembly = bl_assembly_new("main_assembly", pipeline);
+  unsigned int build_flag = (BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE);
+  Builder *builder = bl_builder_new(build_flag);
+  Assembly *assembly = bl_assembly_new("main_assembly");
 
   /* init actors */
   for (int i = 1; i < argc; i++) {
@@ -50,43 +53,14 @@ int main(int argc, char *argv[])
     bl_assembly_add_unit(assembly, unit);
   }
 
-
-  Stage *file_loader = (Stage *)bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(pipeline, file_loader);
-
-  Stage *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(pipeline, lexer);
-
-#if ENABLE_TOKEN_PRINTER
-  Stage *token_printer = (Stage *)bl_token_printer_new(stdout);
-  bl_pipeline_add_stage(pipeline, token_printer, BL_CGROUP_PRE_ANALYZE);
-#endif
-
-  Stage *parser = (Stage *)bl_parser_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(pipeline, parser);
-
-#if ENABLE_AST_PRINTER
-  Stage *ast_printer = (Stage *)bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(pipeline, ast_printer);
-#endif
-
-  Stage *analyzer = (Stage *)bl_analyzer_new(BL_CGROUP_ANALYZE);
-  bl_pipeline_add_stage(pipeline, analyzer);
-
-  Stage *llvm = (Stage *)bl_llvm_backend_new(BL_CGROUP_GENERATE);
-  bl_pipeline_add_stage(pipeline, llvm);
-
-  Stage *llvm_jit = (Stage *)bl_llvm_jit_exec_new(BL_CGROUP_GENERATE);
-  bl_pipeline_add_stage(pipeline, llvm_jit);
-
-  if (!bl_assembly_compile(assembly)) {
-    Actor *failed = (Actor *) bl_assembly_get_failed(assembly);
+  if (!bl_builder_compile(builder, assembly)) {
+    Actor *failed = bl_builder_get_failed(builder);
     bl_error("%s", bl_actor_get_error(failed));
-  } else 
-    bl_log(ANSI_COLOR_GREEN "DONE" ANSI_COLOR_RESET);
+  } else {
+    bl_log(BL_GREEN("done"));
+  }
 
   bo_unref(assembly);
-  bo_unref(pipeline);
 
   return 0;
 }

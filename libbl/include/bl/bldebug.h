@@ -32,37 +32,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-
 #define BL_YELLOW(str) \
     "\x1b[33m" str "\x1b[0m"
 
 #define BL_RED(str) \
     "\x1b[31m" str "\x1b[0m"
 
+#define BL_GREEN(str) \
+    "\x1b[32m" str "\x1b[0m"
+
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
-        fprintf(stderr, ANSI_COLOR_RED "[ASSERT]  " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stderr, BL_RED("assert: ") format "\n", ##__VA_ARGS__); \
         abort(); \
     }
 
 #define bl_abort(format, ...) \
     { \
-        fprintf(stderr, ANSI_COLOR_RED "[ABORT] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stderr, BL_RED("abort: ") format "\n", ##__VA_ARGS__); \
         abort(); \
     }
 
 #define bl_error(format, ...) \
     { \
-        fprintf(stderr, ANSI_COLOR_RED "[ERROR]   " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__); \
     }
 
 #define bl_warning(format, ...) \
     { \
-        fprintf(stdout, ANSI_COLOR_YELLOW "[WARNING] " format ANSI_COLOR_RESET "\n", ##__VA_ARGS__); \
+        fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__); \
     }
 
 #define bl_log(format, ...) \

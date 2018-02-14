@@ -41,18 +41,18 @@ bo_decl_type_begin(Assembly, BObject)
 bo_end();
 
 extern BO_EXPORT Assembly *
-bl_assembly_new(const char *name,
-                Pipeline   *pipeline);
+bl_assembly_new(const char *name);
 
 extern BO_EXPORT void
 bl_assembly_add_unit(Assembly *self,
-                     Unit     *unit);
+                     Unit *unit);
 
-extern BO_EXPORT bool
-bl_assembly_compile(Assembly *self);
+extern BO_EXPORT int
+bl_assembly_get_unit_count(Assembly *self);
 
 extern BO_EXPORT Unit *
-bl_assembly_get_failed(Assembly *self);
+bl_assembly_get_unit(Assembly *self,
+                     int i);
 
 extern BO_EXPORT const char *
 bl_assembly_get_name(Assembly *self);

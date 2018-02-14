@@ -44,5 +44,6 @@
 #include "bl/assembly.h"
 #include "bl/analyzer.h"
 #include "bl/llvm_jit_exec.h"
+#include "bl/builder.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */
