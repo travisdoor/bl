@@ -27,7 +27,6 @@
 //*****************************************************************************
 
 #include "bl/builder.h"
-#include "bl/pipeline/pipeline.h"
 #include "bl/file_loader.h"
 #include "bl/lexer.h"
 #include "bl/parser.h"
@@ -50,6 +49,7 @@ compile_group(Builder *self,
 bo_decl_params_begin(Builder)
   /* constructor params */
   unsigned int flags;
+  Pipeline *pipeline;
 bo_end();
 
 /* class Builder object members */
@@ -72,43 +72,47 @@ Builder_ctor(Builder *self,
 {
   /* constructor */
   /* initialize self */
-  self->pipeline = bl_pipeline_new();
+  if (p->pipeline != NULL) {
+    self->pipeline = bo_ref(p->pipeline);
+  } else {
+    self->pipeline = bl_pipeline_new();
 
-  if (p->flags & BL_BUILDER_LOAD_FROM_FILE) {
-    Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, file_loader);
-  }
+    if (p->flags & BL_BUILDER_LOAD_FROM_FILE) {
+      Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
+      bl_pipeline_add_stage(self->pipeline, file_loader);
+    }
 
-  Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(self->pipeline, lexer);
+    Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
+    bl_pipeline_add_stage(self->pipeline, lexer);
 
-  if (p->flags & BL_BUILDER_PRINT_TOKENS) {
-    Stage *token_printer = (Stage *) bl_token_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, token_printer);
-  }
+    if (p->flags & BL_BUILDER_PRINT_TOKENS) {
+      Stage *token_printer = (Stage *) bl_token_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
+      bl_pipeline_add_stage(self->pipeline, token_printer);
+    }
 
-  Stage *parser = (Stage *) bl_parser_new(BL_CGROUP_PRE_ANALYZE);
-  bl_pipeline_add_stage(self->pipeline, parser);
+    Stage *parser = (Stage *) bl_parser_new(BL_CGROUP_PRE_ANALYZE);
+    bl_pipeline_add_stage(self->pipeline, parser);
 
-  if (p->flags & BL_BUILDER_PRINT_AST) {
-    Stage *ast_printer = (Stage *) bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, ast_printer);
-  }
+    if (p->flags & BL_BUILDER_PRINT_AST) {
+      Stage *ast_printer = (Stage *) bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
+      bl_pipeline_add_stage(self->pipeline, ast_printer);
+    }
 
-  Stage *analyzer = (Stage *) bl_analyzer_new(BL_CGROUP_ANALYZE);
-  bl_pipeline_add_stage(self->pipeline, analyzer);
+    Stage *analyzer = (Stage *) bl_analyzer_new(BL_CGROUP_ANALYZE);
+    bl_pipeline_add_stage(self->pipeline, analyzer);
 
-  Stage *llvm = (Stage *) bl_llvm_backend_new(BL_CGROUP_GENERATE);
-  bl_pipeline_add_stage(self->pipeline, llvm);
+    Stage *llvm = (Stage *) bl_llvm_backend_new(BL_CGROUP_GENERATE);
+    bl_pipeline_add_stage(self->pipeline, llvm);
 
-  if (p->flags & BL_BUILDER_RUN) {
-    Stage *llvm_jit = (Stage *) bl_llvm_jit_exec_new(BL_CGROUP_POST_GENERATE);
-    bl_pipeline_add_stage(self->pipeline, llvm_jit);
-  }
+    if (p->flags & BL_BUILDER_RUN) {
+      Stage *llvm_jit = (Stage *) bl_llvm_jit_exec_new(BL_CGROUP_POST_GENERATE);
+      bl_pipeline_add_stage(self->pipeline, llvm_jit);
+    }
 
-  if (p->flags & BL_BUILDER_EXPORT_BC) {
-    Stage *llvm_bc_writer = (Stage *) bl_llvm_bc_writer_new(BL_CGROUP_POST_GENERATE);
-    bl_pipeline_add_stage(self->pipeline, llvm_bc_writer);
+    if (p->flags & BL_BUILDER_EXPORT_BC) {
+      Stage *llvm_bc_writer = (Stage *) bl_llvm_bc_writer_new(BL_CGROUP_POST_GENERATE);
+      bl_pipeline_add_stage(self->pipeline, llvm_bc_writer);
+    }
   }
 }
 
@@ -148,8 +152,14 @@ compile_group(Builder *self,
 Builder *
 bl_builder_new(unsigned int flags)
 {
-  BuilderParams p = {.flags = flags};
+  BuilderParams p = {.flags = flags, .pipeline = NULL};
+  return bo_new(Builder, &p);
+}
 
+Builder *
+bl_builder_new_custom(Pipeline *pipeline)
+{
+  BuilderParams p = {.flags = 0, .pipeline = pipeline};
   return bo_new(Builder, &p);
 }
 

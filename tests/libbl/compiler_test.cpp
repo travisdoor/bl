@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   parser_test.cpp
+// File:   compiler_test.cpp
 // Author: Martin Dorazil
-// Date:   08/02/2018
+// Date:   14/02/2018
 //
 // Copyright 2017 Martin Dorazil
 //
@@ -29,117 +29,102 @@
 #include <gtest/gtest.h>
 #include "bl/bl.h"
 
-class ParserTest : public ::testing::Test
+const char *src1 =
+  "int main() {"
+    "int i;"
+    "char ch;"
+    "string s;"
+    "return 0;"
+  "}";
+
+const char *src2 =
+  "int main() {"
+    "int i = 10;"
+    "char ch;"
+    "string s = \"hello\";"
+    "int a = 0;"
+    "return 0;"
+    "}";
+
+const char *src3 =
+  "extern void puts(string s);"
+  "int main() {"
+    "puts(\"hello\");"
+    "return 0;"
+  "}";
+
+const char *src4 =
+  "void before() {"
+  "}"
+  "int main() {"
+    "before();"
+    "after();"
+    "return 0;"
+  "}"
+  "void after() {"
+  "}";
+
+class CompilerTest : public ::testing::Test
 {
 protected:
   void
   SetUp()
   {
-    pipeline = bl_pipeline_new();
     assembly = bl_assembly_new("test_assembly");
-    builder = bl_builder_new_custom(pipeline);
-
-    auto *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(pipeline, lexer);
-
-    auto *parser = (Stage *)bl_parser_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(pipeline, parser);
+    builder = bl_builder_new(BL_BUILDER_RUN);
   }
 
   void
   TearDown()
   {
     bo_unref(assembly);
-    bo_unref(pipeline);
     bo_unref(builder);
   }
 
-  Pipeline *pipeline;
   Assembly *assembly;
   Builder *builder;
 };
 
-TEST_F(ParserTest, ast_func_decl)
+TEST_F(CompilerTest, simple_definitions)
 {
-  const char *src =
-    "void func() {}";
-
-  auto *unit = bl_unit_new_str("ast_func_decl", src);
+  Unit *unit = bl_unit_new_str("unit1", src1);
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
+    auto *failed = bl_builder_get_failed(builder);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
 
-TEST_F(ParserTest, ast_func_decl_param)
+TEST_F(CompilerTest, simple_definitions_with_asignement)
 {
-  const char *src =
-    "void func(int i) {}";
-
-  auto *unit = bl_unit_new_str("ast_func_decl_param", src);
+  Unit *unit = bl_unit_new_str("unit2", src2);
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
+    auto *failed = bl_builder_get_failed(builder);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
 
-TEST_F(ParserTest, ast_func_decl_params)
+TEST_F(CompilerTest, simple_extern_call)
 {
-  const char *src =
-    "void func(int i, char c, float f) {}";
-
-  auto *unit = bl_unit_new_str("ast_func_decl_params", src);
+  Unit *unit = bl_unit_new_str("unit3", src3);
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
+    auto *failed = bl_builder_get_failed(builder);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
 
-TEST_F(ParserTest, ast_func_decl_extra_semicolon)
+TEST_F(CompilerTest, func_def_ordering)
 {
-  const char *src =
-    "void func() {;;;}";
-
-  auto *unit = bl_unit_new_str("ast_func_decl_extra_semicolon", src);
+  Unit *unit = bl_unit_new_str("unit4", src4);
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
+    auto *failed = bl_builder_get_failed(builder);
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
-
-TEST_F(ParserTest, ast_func_decl_ret)
-{
-  const char *src =
-    "int func() {return 0;}";
-
-  auto *unit = bl_unit_new_str("ast_func_decl_ret", src);
-  bl_assembly_add_unit(assembly, unit);
-
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
-  }
-}
-
-TEST_F(ParserTest, ast_func_decl_extern)
-{
-  const char *src =
-    "extern int func(int i);";
-
-  auto *unit = bl_unit_new_str("ast_func_decl_extern", src);
-  bl_assembly_add_unit(assembly, unit);
-
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_pipeline_get_failed(pipeline);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
-  }
-}
-

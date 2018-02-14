@@ -29,8 +29,7 @@
 #include <gtest/gtest.h>
 #include "bl/bl.h"
 
-const char *src =
-  "// \n"
+const char *src = "// \n"
   "identifier "
   "\"string\" "
   "0123456789 "
@@ -50,9 +49,10 @@ protected:
   SetUp()
   {
     pipeline = bl_pipeline_new();
-    assembly = bl_assembly_new("test_module", pipeline);
+    assembly = bl_assembly_new("test_module");
+    builder = bl_builder_new_custom(pipeline);
 
-    auto *lexer = (Stage *)bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
+    auto *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(pipeline, lexer);
   }
 
@@ -61,10 +61,12 @@ protected:
   {
     bo_unref(assembly);
     bo_unref(pipeline);
+    bo_unref(builder);
   }
 
   Pipeline *pipeline;
   Assembly *assembly;
+  Builder *builder;
 };
 
 TEST_F(LexerTest, symbol_parsing)
@@ -72,7 +74,7 @@ TEST_F(LexerTest, symbol_parsing)
   auto *unit = bl_unit_new_str("_test_", src);
   bl_assembly_add_unit(assembly, unit);
 
-  ASSERT_TRUE(bl_assembly_compile(assembly));
+  ASSERT_TRUE(bl_builder_compile(builder, assembly));
 
   Tokens *tokens = bl_unit_get_tokens((Unit *) unit);
   bl_token_t *t;

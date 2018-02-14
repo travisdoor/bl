@@ -2,16 +2,21 @@
 
 extern void puts(string s);
 
+void before() {
+  puts("before");
+}
+
 int main() {
   string this_is_my_sting = "hello world";
 
   puts("I'm first biscuit who can talk!!!");
   puts(this_is_my_sting);
 
-  hello(this_is_my_sting);
+  after();
+  before();
   return 0;
 }
 
-void hello(string s) {
-  puts("hello!!!");
+void after() {
+  puts("after");
 }

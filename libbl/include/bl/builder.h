@@ -31,6 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/assembly.h"
+#include "bl/pipeline/pipeline.h"
 
 BO_BEGIN_DECLS
 
@@ -47,6 +48,9 @@ bo_end();
 
 extern BO_EXPORT Builder *
 bl_builder_new(unsigned int flags);
+
+extern BO_EXPORT Builder *
+bl_builder_new_custom(Pipeline *pipeline);
 
 extern BO_EXPORT bool
 bl_builder_compile(Builder *self,

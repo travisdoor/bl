@@ -35,7 +35,7 @@
 
 #define analyze_error(cnt, format, ...) \
   { \
-    bl_actor_error((Actor *)(cnt)->unit, ("(analyzer) "format), ##__VA_ARGS__); \
+    bl_actor_error((Actor *)(cnt)->unit, (format), ##__VA_ARGS__); \
     longjmp((cnt)->jmp_error, 1); \
   }
 
