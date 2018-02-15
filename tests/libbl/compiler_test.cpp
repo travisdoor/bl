@@ -45,6 +45,9 @@ const char *src2 =
     "string s = \"hello\";"
     "int a = 0;"
     "bool bl = true;"
+    "bool bl2 = false;"
+    "bool bl3 = 1;"
+    "bool bl4 = 0;"
     "return 0;"
     "}";
 
