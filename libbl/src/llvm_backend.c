@@ -249,13 +249,13 @@ to_llvm_type(Type *t)
     case BL_TYPE_VOID:
       return LLVMVoidType();
     case BL_TYPE_I32:
+    case BL_TYPE_BOOL:
       return LLVMInt32Type();
     case BL_TYPE_I64:
       return LLVMInt64Type();
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8Type(), 0);
     case BL_TYPE_CHAR:
-    case BL_TYPE_BOOL:
       return LLVMInt8Type();
     default:
       return NULL;
@@ -288,10 +288,10 @@ gen_default(context_t *cnt,
             Type *t)
 {
   switch (bl_type_get(t)) {
-    case BL_TYPE_BOOL:
     case BL_TYPE_CHAR:
       return LLVMConstInt(LLVMInt8Type(), 0, false);
     case BL_TYPE_I32:
+    case BL_TYPE_BOOL:
       return LLVMConstInt(LLVMInt32Type(), 0, false);
     case BL_TYPE_I64:
       return LLVMConstInt(LLVMInt64Type(), 0, false);

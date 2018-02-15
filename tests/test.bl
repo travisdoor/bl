@@ -11,6 +11,7 @@ int main() {
 
   bool bl;
   bool bl2 = 0;
+  bool bl3 = true;
 
   return 0;
 }
