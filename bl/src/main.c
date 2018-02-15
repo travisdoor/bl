@@ -35,26 +35,37 @@ main(int argc,
      char *argv[])
 {
   unsigned int build_flag = BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE;
-  int src_start = 1;
   puts("BL Compiler version 0.1.0\n");
 
-  if (argc > 1 && strcmp(argv[1], "-r") == 0) {
-    build_flag |= BL_BUILDER_RUN;
-    ++src_start;
+  bool isCaseInsensitive = false;
+  size_t optind;
+  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+    switch (argv[optind][1]) {
+      case 'r':
+        build_flag |= BL_BUILDER_RUN;
+        break;
+      case 'v':
+        build_flag |= BL_BUILDER_PRINT_TOKENS | BL_BUILDER_PRINT_AST;
+        break;
+      default:fprintf(stderr, "Usage: %s [-rv] [file...]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
   }
+  argv += optind;
 
-  if (src_start >= argc) {
+  if (*argv == NULL) {
     bl_warning("nothing to do, no input files, sorry :(");
-    return 1;
+    exit(EXIT_SUCCESS);
   }
 
   Builder *builder = bl_builder_new(build_flag);
   Assembly *assembly = bl_assembly_new("main_assembly");
 
   /* init actors */
-  for (int i = src_start; i < argc; i++) {
-    Unit *unit = bl_unit_new_file(argv[i]);
+  while (*argv != NULL) {
+    Unit *unit = bl_unit_new_file(*argv);
     bl_assembly_add_unit(assembly, unit);
+    argv++;
   }
 
   if (!bl_builder_compile(builder, assembly)) {

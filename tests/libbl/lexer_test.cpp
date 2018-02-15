@@ -36,6 +36,8 @@ const char *src = "// \n"
   "return "
   "if "
   "else "
+  "true "
+  "false "
   "extern "
   "namespace "
   "class "
@@ -93,6 +95,8 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RETURN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IF);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ELSE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_TRUE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_FALSE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EXTERN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NAMESPACE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_CLASS);

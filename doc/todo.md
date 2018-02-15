@@ -1,8 +1,8 @@
 ## TODO
-* analyze - compare call arguments with callee
+* parse true and false as const int 1/0
 * implement expressions
+* analyze - compare call arguments with callee
 * namespaces
-* compilation not directly in assembly -> use builder object
 * when no return is presented create default one
 
 ## Features 

@@ -34,6 +34,7 @@ const char *src1 =
     "int i;"
     "char ch;"
     "string s;"
+    "bool bl;"
     "return 0;"
   "}";
 
@@ -43,6 +44,7 @@ const char *src2 =
     "char ch;"
     "string s = \"hello\";"
     "int a = 0;"
+    "bool bl = true;"
     "return 0;"
     "}";
 

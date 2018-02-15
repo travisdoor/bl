@@ -1,10 +1,7 @@
 // this is testing script
 
 extern void puts(string s);
-
-void before() {
-  puts("before");
-}
+extern void abort();
 
 int main() {
   string this_is_my_sting = "hello world";
@@ -12,11 +9,9 @@ int main() {
   puts("I'm first biscuit who can talk!!!");
   puts(this_is_my_sting);
 
-  after();
-  before();
+  bool bl;
+  bool bl2 = true;
+
   return 0;
 }
 
-void after() {
-  puts("after");
-}
