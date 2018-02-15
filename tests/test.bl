@@ -4,14 +4,9 @@ extern void puts(string s);
 extern void abort();
 
 int main() {
-  string this_is_my_sting = "hello world";
-
-  puts("I'm first biscuit who can talk!!!");
-  puts(this_is_my_sting);
-
-  bool bl;
-  bool bl2 = 0;
-  bool bl3 = true;
+  string this_is_my_string = "hello world";
+//  puts(this_is_my_string);
+//  puts("hello world");
 
   return 0;
 }

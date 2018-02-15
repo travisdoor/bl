@@ -69,6 +69,13 @@ const char *src4 =
   "void after() {"
   "}";
 
+const char *src5 =
+  "int main() {"
+    "int i = 10;"
+    "i = 0;"
+    "return 0;"
+    "}";
+
 class CompilerTest : public ::testing::Test
 {
 protected:
@@ -126,6 +133,17 @@ TEST_F(CompilerTest, simple_extern_call)
 TEST_F(CompilerTest, func_def_ordering)
 {
   Unit *unit = bl_unit_new_str("unit4", src4);
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly)) {
+    auto *failed = bl_builder_get_failed(builder);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+}
+
+TEST_F(CompilerTest, assign_expr)
+{
+  Unit *unit = bl_unit_new_str("unit5", src5);
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
