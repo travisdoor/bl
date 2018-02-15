@@ -10,7 +10,7 @@ int main() {
   puts(this_is_my_sting);
 
   bool bl;
-  bool bl2 = true;
+  bool bl2 = 0;
 
   return 0;
 }

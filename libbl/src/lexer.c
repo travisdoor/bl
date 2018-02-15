@@ -266,6 +266,7 @@ scan_string(Lexer *self,
     tok.len++;
   }
 
+  cur->col++;
   bl_tokens_push(tokens, &tok);
   return true;
 }
