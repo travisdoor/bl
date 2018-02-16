@@ -350,7 +350,7 @@ gen_expr(context_t *cnt,
     case BL_NODE_DECL_REF: {
       uint32_t hash = bo_hash_from_str(bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
       LLVMValueRef val = bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
-      return LLVMBuildLoad(cnt->builder, val, "tmp");
+      return val;
     }
     default: bl_abort("unknown expression type");
   }
@@ -426,7 +426,7 @@ gen_call_args(context_t *cnt,
   NodeExpr *expr = NULL;
   for (int i = 0; i < c; i++) {
     expr = bl_node_call_get_arg(call, i);
-    *out = gen_expr(cnt, expr);
+    *out = LLVMBuildLoad(cnt->builder, gen_expr(cnt, expr), "tmp");
     out++;
     out_i++;
   }

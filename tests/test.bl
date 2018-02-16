@@ -1,13 +1,22 @@
 // this is testing script
 
-extern void puts(string s);
+extern int puts(string s);
 extern void abort();
 
 int main() {
   string this_is_my_string = "hello world";
-//  puts(this_is_my_string);
-//  puts("hello world");
+  this_is_my_string = "hell";
+
+  int i = 0;
+  i = 100;
+
+//  test(i);
+//  test(i);
+//  test(i);
 
   return 0;
 }
 
+//void test(int i) {
+//  i = 10;
+//}

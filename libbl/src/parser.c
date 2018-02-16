@@ -368,7 +368,6 @@ parse_expr(context_t *cnt)
 {
   NodeExpr *expr = NULL;
 
-  /* HACK currently accept only numbers */
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
   switch (tok->sym) {
     case BL_SYM_IDENT:
