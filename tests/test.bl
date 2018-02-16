@@ -5,18 +5,18 @@ extern void abort();
 
 int main() {
   string this_is_my_string = "hello world";
-  this_is_my_string = "hell";
+//  this_is_my_string = "hell";
 
-  int i = 0;
-  i = 100;
+  int i = 100;
+  bool bl = true;
 
-//  test(i);
-//  test(i);
-//  test(i);
+
+  test(i, bl, this_is_my_string);
 
   return 0;
 }
 
-//void test(int i) {
-//  i = 10;
-//}
+int test(int num, bool bl, string s) {
+  puts(s);
+  return 0;
+}
