@@ -4,19 +4,25 @@ extern int puts(string s);
 extern void abort();
 
 int main() {
-  string this_is_my_string = "hello world";
-//  this_is_my_string = "hell";
+  int i = 0;
+  int b;
+  i = 10;
+  i = b;
 
-  int i = 100;
-  bool bl = true;
+  string s;
+  string s2 = "hello";
+  s2 = "hello2";
+  print(s2);
+  s2 = s;
 
-
-  test(i, bl, this_is_my_string);
-
-  return 0;
+  return get_value(10);
 }
 
-int test(int num, bool bl, string s) {
+void print(string s) {
   puts(s);
-  return 0;
 }
+
+int get_value(int num) {
+  return num;
+}
+

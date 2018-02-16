@@ -364,9 +364,6 @@ gen_expr(context_t *cnt,
     default: bl_abort("unknown expression type");
   }
 
-  if (LLVMIsALoadInst(val)) {
-    return LLVMBuildLoad(cnt->builder, val, "tmp");
-  }
   return val;
 }
 
@@ -378,6 +375,10 @@ gen_binop(context_t *cnt,
     case BL_SYM_ASIGN: {
       LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
       LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
+
+      if (!LLVMIsConstant(rvalue))
+        rvalue = LLVMBuildLoad(cnt->builder, rvalue, "tmp");
+
       LLVMBuildStore(cnt->builder, rvalue, lvalue);
       break;
     }
@@ -396,8 +397,11 @@ gen_ret(context_t *cnt,
     return;
   }
 
-  LLVMValueRef tmp = gen_expr(cnt, expr);
-  LLVMBuildRet(cnt->builder, tmp);
+  LLVMValueRef val = gen_expr(cnt, expr);
+
+  if (!LLVMIsConstant(val))
+    val = LLVMBuildLoad(cnt->builder, val, "tmp");
+  LLVMBuildRet(cnt->builder, val);
 }
 
 void
@@ -440,8 +444,13 @@ gen_call_args(context_t *cnt,
   NodeExpr *expr = NULL;
   for (int i = 0; i < c; i++) {
     expr = bl_node_call_get_arg(call, i);
-//    *out = LLVMBuildLoad(cnt->builder, gen_expr(cnt, expr), "tmp");
-    *out = gen_expr(cnt, expr);
+    LLVMValueRef val = gen_expr(cnt, expr);
+
+    if (!LLVMIsConstant(val))
+      *out = LLVMBuildLoad(cnt->builder, val, "tmp");
+    else
+      *out = val;
+
     out++;
     out_i++;
   }
@@ -471,7 +480,7 @@ gen_call(context_t *cnt,
   int argc = gen_call_args(cnt, call, args);
 
   /* TODO: return value passed from build method */
-  LLVMBuildCall(cnt->builder, fn, args, argc, "tmp");
+  LLVMBuildCall(cnt->builder, fn, args, argc, "");
 }
 
 LLVMValueRef

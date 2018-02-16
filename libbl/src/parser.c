@@ -145,6 +145,9 @@ stmt:
   return (Node *) gstmt;
 }
 
+/*
+ * Return statement.
+ */
 NodeReturnStmt *
 parse_return_stmt(context_t *cnt)
 {
@@ -154,8 +157,12 @@ parse_return_stmt(context_t *cnt)
     rstmt =
       bl_ast_node_return_stmt_new(bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
 
-    /* HACK parse expression here */
-    if (bl_tokens_current_is(cnt->tokens, BL_SYM_NUM)) {
+    /*
+     * Here we expect nothing (for void returning functions) or
+     * some expression.
+     */
+
+    if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_SEMICOLON)) {
       if (!bl_node_return_stmt_add_expr(rstmt, parse_expr(cnt))) {
         tok = bl_tokens_consume(cnt->tokens);
         parse_error(cnt,
@@ -223,7 +230,7 @@ stmt:
     goto stmt;
 
   /* call expr */
-  if (bl_node_stmt_add_child(stmt, (Node *) parse_call_expr(cnt)))
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(cnt)))
     goto stmt;
 
   /* return */
@@ -371,6 +378,10 @@ parse_expr(context_t *cnt)
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
   switch (tok->sym) {
     case BL_SYM_IDENT:
+      expr = (NodeExpr *) parse_call_expr(cnt);
+      if (expr)
+        break;
+
       bl_tokens_consume(cnt->tokens);
 
       expr = (NodeExpr *) bl_ast_node_decl_ref_new(
