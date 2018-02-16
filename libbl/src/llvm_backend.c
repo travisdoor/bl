@@ -120,7 +120,7 @@ static void
 gen_var_decl(context_t *cnt,
              NodeVarDecl *vdcl);
 
-static void
+static LLVMValueRef
 gen_call(context_t *cnt,
          NodeCall *call);
 
@@ -361,6 +361,9 @@ gen_expr(context_t *cnt,
       val = bo_htbl_at(cnt->named_vals_tmp, hash, LLVMValueRef);
       break;
     }
+    case BL_NODE_CALL:
+      val = gen_call(cnt, (NodeCall *) expr);
+      break;
     default: bl_abort("unknown expression type");
   }
 
@@ -419,7 +422,7 @@ gen_var_decl(context_t *cnt,
   LLVMValueRef def = NULL;
   NodeExpr *expr = bl_node_var_decl_get_expr(vdcl);
   if (expr) {
-    def = LLVMConstIntCast(gen_expr(cnt, expr), t, false);
+    def = gen_expr(cnt, expr);
   } else {
     def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
   }
@@ -458,7 +461,7 @@ gen_call_args(context_t *cnt,
   return out_i;
 }
 
-void
+LLVMValueRef
 gen_call(context_t *cnt,
          NodeCall *call)
 {
@@ -480,7 +483,14 @@ gen_call(context_t *cnt,
   int argc = gen_call_args(cnt, call, args);
 
   /* TODO: return value passed from build method */
-  LLVMBuildCall(cnt->builder, fn, args, argc, "");
+
+  LLVMValueRef ret = LLVMBuildCall(cnt->builder, fn, args, argc, "");
+//  if (LLVMTypeOf(ret) != LLVMVoidType()) {
+//    LLVMValueRef tmp = LLVMBuildAlloca(cnt->builder, LLVMTypeOf(ret), "tmp");
+//    ret = LLVMBuildStore(cnt->builder, ret, tmp);
+//  }
+
+  return ret;
 }
 
 LLVMValueRef
@@ -547,11 +557,11 @@ gen_stmt(context_t *cnt,
       case BL_NODE_VAR_DECL:
         gen_var_decl(cnt, (NodeVarDecl *) child);
         break;
-      case BL_NODE_CALL:
-        gen_call(cnt, (NodeCall *) child);
-        break;
       case BL_NODE_BINOP:
         gen_binop(cnt, (NodeBinop *) child);
+        break;
+      case BL_NODE_CALL:
+        gen_expr(cnt, (NodeExpr *) child);
         break;
       case BL_NODE_DECL_REF:
         /* only decl reference without any expression, this will be ignored for now */
@@ -560,11 +570,11 @@ gen_stmt(context_t *cnt,
     }
   }
 
+done:
   if (!return_presented) {
     LLVMBuildRetVoid(cnt->builder);
   }
 
-done:
   bo_htbl_clear(cnt->named_vals_tmp);
 }
 

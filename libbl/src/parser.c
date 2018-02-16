@@ -229,7 +229,7 @@ stmt:
   if (bl_node_stmt_add_child(stmt, (Node *) parse_var_decl(cnt)))
     goto stmt;
 
-  /* call expr */
+  /* expr */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(cnt)))
     goto stmt;
 
@@ -479,14 +479,6 @@ arg:
       parse_error(cnt, "%s %d:%d expected "
         BL_YELLOW("')'")
         " after function call argument list", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
-    }
-
-    tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(cnt, "%s %d:%d missing semicolon "
-        BL_YELLOW("';'")
-        " at the end of expression", bl_unit_get_src_file(
-        cnt->unit), tok->line, tok->col + tok->len);
     }
   }
 

@@ -15,7 +15,10 @@ int main() {
   print(s2);
   s2 = s;
 
-  return get_value(10);
+  int kokot = get_value(10);
+
+  return 0;
+//  return get_value(10);
 }
 
 void print(string s) {
