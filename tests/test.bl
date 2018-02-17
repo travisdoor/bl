@@ -5,27 +5,15 @@ extern void abort();
 
 int main() {
   int i = 0;
-  int b;
-  i = 10;
-  i = b;
+  int b = test(i);
 
-  string s;
-  string s2 = "hello";
-  s2 = "hello2";
-  print(s2);
-  s2 = s;
-
-  int kokot = get_value(get_value(10));
-
-  return 0;
-//  return get_value(10);
+  return test(test(i));
 }
 
-void print(string s) {
-  puts(s);
+int test(int a) {
+  a = 10;
+
+  return 10;
 }
 
-int get_value(int num) {
-  return num;
-}
 

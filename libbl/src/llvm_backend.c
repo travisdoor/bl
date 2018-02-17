@@ -379,7 +379,7 @@ gen_binop(context_t *cnt,
       LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
       LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
 
-      if (!LLVMIsConstant(rvalue))
+      if (LLVMIsAAllocaInst(rvalue))
         rvalue = LLVMBuildLoad(cnt->builder, rvalue, "tmp");
 
       LLVMBuildStore(cnt->builder, rvalue, lvalue);
@@ -402,7 +402,7 @@ gen_ret(context_t *cnt,
 
   LLVMValueRef val = gen_expr(cnt, expr);
 
-  if (!LLVMIsConstant(val))
+  if (LLVMIsAAllocaInst(val))
     val = LLVMBuildLoad(cnt->builder, val, "tmp");
   LLVMBuildRet(cnt->builder, val);
 }
@@ -427,8 +427,8 @@ gen_var_decl(context_t *cnt,
     def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
   }
 
-  bo_htbl_insert(cnt->named_vals_tmp, bl_ident_get_hash(id), var);
   LLVMBuildStore(cnt->builder, def, var);
+  bo_htbl_insert(cnt->named_vals_tmp, bl_ident_get_hash(id), var);
 }
 
 int
@@ -449,7 +449,7 @@ gen_call_args(context_t *cnt,
     expr = bl_node_call_get_arg(call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (!LLVMIsConstant(val))
+    if (LLVMIsAAllocaInst(val))
       *out = LLVMBuildLoad(cnt->builder, val, "tmp");
     else
       *out = val;
