@@ -15,7 +15,7 @@ int main() {
   print(s2);
   s2 = s;
 
-  int kokot = get_value(10);
+  int kokot = get_value(get_value(10));
 
   return 0;
 //  return get_value(10);
