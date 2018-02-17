@@ -73,8 +73,25 @@ const char *src5 =
   "int main() {"
     "int i = 10;"
     "i = 0;"
+    "string s = \"string\";"
+    "string s2;"
+    "s = \"string\";"
+    "s2 = s;"
     "return 0;"
     "}";
+
+const char *src6 =
+  "int before(int a) {"
+    "return a;"
+  "}"
+  "int main() {"
+    "int a = before(10);"
+    "after(a);"
+    "return a;"
+  "}"
+  "int after(int a) {"
+    "return a;"
+  "}";
 
 class CompilerTest : public ::testing::Test
 {
@@ -151,3 +168,15 @@ TEST_F(CompilerTest, assign_expr)
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
+
+TEST_F(CompilerTest, simple_call)
+{
+  Unit *unit = bl_unit_new_str("unit6", src6);
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly)) {
+    auto *failed = bl_builder_get_failed(builder);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+}
+
