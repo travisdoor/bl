@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   llvm_backend.h
+// File:   llvm_bl_cnt_impl.h
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   19/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,42 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LLVM_BACKEND_H_JEGBQZJ4
-#define LLVM_BACKEND_H_JEGBQZJ4
+#ifndef BL_LLVM_BL_CNT_BUF_IMPL_H
+#define BL_LLVM_BL_CNT_BUF_IMPL_H
 
 #include <bobject/bobject.h>
-#include <stdio.h>
-#include "bl/pipeline/stage.h"
+#include <llvm-c/Core.h>
+#include "ast/node_decl_impl.h"
 
 BO_BEGIN_DECLS
-/* class LlvmBackend declaration */
-bo_decl_type_begin(LlvmBackend, Stage)
+
+/*
+ * TODO: this class can be more abstract to be reused in parses also.
+ */
+
+/* class LlvmBlockContext declaration */
+bo_decl_type_begin(LlvmBlockContext, BObject)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT LlvmBackend *
-bl_llvm_backend_new(bl_compile_group_e group);
+LlvmBlockContext *
+bl_llvm_block_context_new(void);
+
+bool
+bl_llvm_block_context_add(LlvmBlockContext *self,
+                          LLVMValueRef val,
+                          Ident *id);
+
+LLVMValueRef
+bl_llvm_block_context_get(LlvmBlockContext *self,
+                          Ident *id);
+
+void
+bl_llvm_block_context_push_block(LlvmBlockContext *self);
+
+void
+bl_llvm_block_context_pop_block(LlvmBlockContext *self);
 
 BO_END_DECLS
 
-#endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */
+#endif //BL_LLVM_BL_CNT_BUF_IMPL_H

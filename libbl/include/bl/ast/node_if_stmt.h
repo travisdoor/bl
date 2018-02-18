@@ -31,6 +31,8 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
+#include "bl/ast/node_expr.h"
+#include "bl/ast/node_stmt.h"
 
 BO_BEGIN_DECLS
 
@@ -38,6 +40,12 @@ BO_BEGIN_DECLS
 bo_decl_type_begin(NodeIfStmt, Node)
   /* virtuals */
 bo_end();
+
+extern BO_EXPORT NodeExpr *
+bl_node_if_stmt_get_cond(NodeIfStmt *self);
+
+extern BO_EXPORT NodeStmt *
+bl_node_if_stmt_get_stmt(NodeIfStmt *self);
 
 BO_END_DECLS
 

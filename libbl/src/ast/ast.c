@@ -327,9 +327,31 @@ bl_ast_node_decl_ref_new(Ast        *self,
         .col = col,
       }
     },
-    .ident = ident
+    .ident = bl_ident_new(ident)
   };
 
   return save_to_cache(self, bo_new(NodeDeclRef, &p));
+}
+
+NodeIfStmt *
+bl_ast_node_if_stmt_new(Ast        *self,
+                        NodeExpr   *cond,
+                        NodeStmt   *body,
+                        const char *generated_from,
+                        int         line,
+                        int         col)
+{
+  NodeIfStmtParams p = {
+    .base = {
+      .type = BL_NODE_IF_STMT,
+      .generated_from = generated_from,
+      .line = line,
+      .col = col
+    },
+    .condition = cond,
+    .body = body
+  };
+
+  return save_to_cache(self, bo_new(NodeIfStmt, &p));
 }
 

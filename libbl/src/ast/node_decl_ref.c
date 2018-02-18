@@ -31,7 +31,7 @@
 /* class NodeDeclRef object members */
 bo_decl_members_begin(NodeDeclRef, NodeExpr)
   /* members */
-  char *ident;
+  Ident *ident;
 bo_end();
 
 bo_impl_type(NodeDeclRef, NodeExpr);
@@ -56,7 +56,7 @@ NodeDeclRef_ctor(NodeDeclRef *self, NodeDeclRefParams *p)
 void
 NodeDeclRef_dtor(NodeDeclRef *self)
 {
-  free(self->ident);
+  bo_unref(self->ident);
 }
 
 bo_copy_result
@@ -66,7 +66,7 @@ NodeDeclRef_copy(NodeDeclRef *self, NodeDeclRef *other)
 }
 /* class NodeDeclRef end */
 
-const char *
+Ident *
 bl_node_decl_ref_get_ident(NodeDeclRef *self)
 {
   return self->ident;

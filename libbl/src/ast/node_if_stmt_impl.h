@@ -33,6 +33,8 @@
 #include "ast/node_impl.h"
 
 bo_decl_params_with_base_begin(NodeIfStmt, Node)
+  NodeExpr *condition;
+  NodeStmt *body;
 bo_end();
 
 #endif //BL_NODE_IF_STMT_IMPL_H

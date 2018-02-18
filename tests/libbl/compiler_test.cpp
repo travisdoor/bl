@@ -93,6 +93,20 @@ const char *src6 =
     "return a;"
   "}";
 
+const char *src7 =
+  "int main() {"
+    "int a = 10;"
+    "int b = 10;"
+    "int result;"
+    "a = a + b;"
+    "a = a - b;"
+    "a = a + 10;"
+    "a = a - 10;"
+    "a = a * b;"
+    "a = a - 100;"
+    "return a;"
+    "}";
+
 class CompilerTest : public ::testing::Test
 {
 protected:
@@ -180,3 +194,13 @@ TEST_F(CompilerTest, simple_call)
   }
 }
 
+TEST_F(CompilerTest, simple_expr)
+{
+  Unit *unit = bl_unit_new_str("unit7", src7);
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly)) {
+    auto *failed = bl_builder_get_failed(builder);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+}

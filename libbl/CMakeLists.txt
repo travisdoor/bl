@@ -62,7 +62,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_int_const_impl.h
         src/ast/node_string_const_impl.h
         src/ast/node_call_impl.h
-        src/ast/node_decl_ref_impl.h src/ast/node_if_stmt_impl.h)
+        src/ast/node_decl_ref_impl.h src/ast/node_if_stmt_impl.h src/llvm_bl_cnt_impl.h)
 
 set(SOURCE_FILES
         src/pipeline/stage.c
@@ -94,7 +94,7 @@ set(SOURCE_FILES
         src/ast/node_int_const.c
         src/ast/node_string_const.c
         src/ast/node_call.c
-        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c)
+        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c src/llvm_bl_cnt.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

@@ -141,6 +141,14 @@ bl_ast_node_decl_ref_new(Ast        *self,
                          int         line,
                          int         col);
 
+extern BO_EXPORT NodeIfStmt *
+bl_ast_node_if_stmt_new(Ast        *self,
+                        NodeExpr   *cond,
+                        NodeStmt   *body,
+                        const char *generated_from,
+                        int         line,
+                        int         col);
+
 BO_END_DECLS
 
 #endif /* end of include guard: AST_H_VGMYANDT */

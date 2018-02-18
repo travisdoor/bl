@@ -127,6 +127,11 @@ print_node(AstPrinter *self,
       print_node(self, (Node *) bl_node_binop_get_lvalue((NodeBinop *) node), pad);
       print_node(self, (Node *) bl_node_binop_get_rvalue((NodeBinop *) node), pad);
       break;
+    case BL_NODE_IF_STMT:
+      pad += 2;
+      print_node(self, (Node *) bl_node_if_stmt_get_cond((NodeIfStmt *) node), pad);
+      print_node(self, (Node *) bl_node_if_stmt_get_stmt((NodeIfStmt *) node), pad);
+      break;
     case BL_NODE_PARAM_VAR_DECL:
       break;
     case BL_NODE_INT_CONST:

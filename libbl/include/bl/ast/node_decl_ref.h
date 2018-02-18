@@ -29,8 +29,9 @@
 #ifndef BL_NODE_DECL_REF_H
 #define BL_NODE_DECL_REF_H
 
-#include "bl/ast/node_expr.h"
 #include <bobject/bobject.h>
+#include "bl/ast/node_expr.h"
+#include "bl/identifier.h"
 
 BO_BEGIN_DECLS
 
@@ -39,7 +40,7 @@ bo_decl_type_begin(NodeDeclRef, NodeExpr)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT const char *
+extern BO_EXPORT Ident *
 bl_node_decl_ref_get_ident(NodeDeclRef *self);
 
 BO_END_DECLS

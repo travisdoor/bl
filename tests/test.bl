@@ -10,6 +10,9 @@ int main() {
 
   printf("a = %i", get(a, b));
 
+  if (a == 4) {
+    int i = 10;
+  }
 //  if (true) {
 //  } else if {
 //  } else {

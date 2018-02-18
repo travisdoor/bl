@@ -42,7 +42,8 @@ const char *src = "// \n"
   "namespace "
   "class "
   "struct "
-  "{}[](),;=/";
+  "{}[](),;=+-*/"
+  "== != > < >= <=";
 
 class LexerTest : public ::testing::Test
 {
@@ -110,6 +111,15 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_COMMA);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SEMICOLON);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ASIGN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_PLUS);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_MINUS);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ASTERISK);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SLASH);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NEQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_GREATER);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LESS);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_GREATER_EQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LESS_EQ);
 }
 

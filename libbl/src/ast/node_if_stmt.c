@@ -32,6 +32,8 @@
 /* class NodeIfStmt object members */
 bo_decl_members_begin(NodeIfStmt, Node)
   /* members */
+  NodeExpr *condition;
+  NodeStmt *body;
 bo_end();
 
 bo_impl_type(NodeIfStmt, Node);
@@ -49,6 +51,8 @@ NodeIfStmt_ctor(NodeIfStmt *self, NodeIfStmtParams *p)
   bo_parent_ctor(Node, p);
 
   /* initialize self */
+  self->body = p->body;
+  self->condition = p->condition;
 }
 
 void
@@ -62,3 +66,15 @@ NodeIfStmt_copy(NodeIfStmt *self, NodeIfStmt *other)
   return BO_NO_COPY;
 }
 /* class NodeIfStmt end */
+
+NodeExpr *
+bl_node_if_stmt_get_cond(NodeIfStmt *self)
+{
+  return self->condition;
+}
+
+NodeStmt *
+bl_node_if_stmt_get_stmt(NodeIfStmt *self)
+{
+  return self->body;
+}
