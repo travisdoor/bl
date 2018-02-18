@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   ast_impl.h
+// File:   node_if_stmt.h
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   18/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,24 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_IMPL_H_WM5H6RFD
-#define AST_IMPL_H_WM5H6RFD
+#ifndef BL_NODE_IF_STMT_H
+#define BL_NODE_IF_STMT_H
 
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
-#include "ast/node_var_decl_impl.h"
-#include "ast/node_binop_impl.h"
-#include "ast/node_decl_impl.h"
-#include "ast/node_int_const_impl.h"
-#include "ast/node_string_const_impl.h"
-#include "ast/node_call_impl.h"
-#include "ast/node_decl_ref_impl.h"
-#include "ast/node_if_stmt_impl.h"
+#include <bobject/bobject.h>
+#include "bl/ast/node.h"
 
-#endif /* end of include guard: AST_IMPL_H_WM5H6RFD */
+BO_BEGIN_DECLS
+
+/* class NodeIfStmt declaration */
+bo_decl_type_begin(NodeIfStmt, Node)
+  /* virtuals */
+bo_end();
+
+BO_END_DECLS
+
+#endif //BL_NODE_IF_STMT_H

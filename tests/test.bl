@@ -1,19 +1,24 @@
 // this is testing script
 
 extern int puts(string s);
+extern int printf(string s, int i);
 extern void abort();
 
 int main() {
-  int i = 0;
-  int b = test(i);
+  int a = 4;
+  int b = 666;
 
-  return test(test(i));
+  printf("a = %i", get(a, b));
+
+//  if (true) {
+//  } else if {
+//  } else {
+//  }
+
+  return 0;
 }
 
-int test(int a) {
-  a = 10;
-
-  return 10;
+int get(int a, int b) {
+  return a + b;
 }
-
 

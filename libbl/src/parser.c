@@ -426,7 +426,7 @@ parse_expr(context_t *cnt)
   }
 
   /* TODO: accept more operators */
-  if (expr && bl_tokens_current_is(cnt->tokens, BL_SYM_ASIGN)) {
+  if (expr && bl_token_is_binop(bl_tokens_peek(cnt->tokens))) {
     NodeBinop *binop = parse_binop(cnt, expr);
     if (binop != NULL) {
       expr = (NodeExpr *) binop;

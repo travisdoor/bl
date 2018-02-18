@@ -203,6 +203,11 @@ run(Lexer *self,
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
+      case '*':
+        bl_token_init(&tok, BL_SYM_ASTERISK, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(tokens, &tok);
+        cur.col++;
+        continue;
       case ';':
         bl_token_init(&tok, BL_SYM_SEMICOLON, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);

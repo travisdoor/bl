@@ -58,6 +58,7 @@ BO_BEGIN_DECLS
   sm(ASIGN, "=") \
   sm(PLUS, "+") \
   sm(MINUS, "-") \
+  sm(ASTERISK, "*") \
   sm(SLASH, "/") \
   sm(NONE, "") \
 

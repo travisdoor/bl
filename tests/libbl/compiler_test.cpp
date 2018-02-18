@@ -85,7 +85,7 @@ const char *src6 =
     "return a;"
   "}"
   "int main() {"
-    "int a = before(10);"
+    "int a = before(0);"
     "after(a);"
     "return a;"
   "}"

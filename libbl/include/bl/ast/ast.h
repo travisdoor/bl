@@ -44,6 +44,7 @@
 #include "bl/ast/node_string_const.h"
 #include "bl/ast/node_call.h"
 #include "bl/ast/node_decl_ref.h"
+#include "bl/ast/node_if_stmt.h"
 
 BO_BEGIN_DECLS
 

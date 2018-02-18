@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   ast_impl.h
+// File:   node_if_stmt.c
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   18/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,24 +26,39 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_IMPL_H_WM5H6RFD
-#define AST_IMPL_H_WM5H6RFD
-
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
-#include "ast/node_var_decl_impl.h"
-#include "ast/node_binop_impl.h"
-#include "ast/node_decl_impl.h"
-#include "ast/node_int_const_impl.h"
-#include "ast/node_string_const_impl.h"
-#include "ast/node_call_impl.h"
-#include "ast/node_decl_ref_impl.h"
 #include "ast/node_if_stmt_impl.h"
+/* class NodeIfStmt */
 
-#endif /* end of include guard: AST_IMPL_H_WM5H6RFD */
+/* class NodeIfStmt object members */
+bo_decl_members_begin(NodeIfStmt, Node)
+  /* members */
+bo_end();
+
+bo_impl_type(NodeIfStmt, Node);
+
+void
+NodeIfStmtKlass_init(NodeIfStmtKlass *klass)
+{
+}
+
+void
+NodeIfStmt_ctor(NodeIfStmt *self, NodeIfStmtParams *p)
+{
+  /* constructor */
+  /* initialize parent */
+  bo_parent_ctor(Node, p);
+
+  /* initialize self */
+}
+
+void
+NodeIfStmt_dtor(NodeIfStmt *self)
+{
+}
+
+bo_copy_result
+NodeIfStmt_copy(NodeIfStmt *self, NodeIfStmt *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeIfStmt end */

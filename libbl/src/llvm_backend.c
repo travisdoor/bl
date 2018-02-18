@@ -30,6 +30,7 @@
 #include <string.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
+#include <llvm-c/Support.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/hash.h>
 
@@ -41,8 +42,6 @@
 #include "ast/ast_impl.h"
 
 /* class LlvmBackend */
-#define NAME_EMPTY_STRING "empty_string"
-#define NAME_CONST_STRING "str_tmp"
 
 #define VERIFY 1
 #define gen_error(cnt, format, ...) \
@@ -102,7 +101,7 @@ static LLVMValueRef
 gen_expr(context_t *cnt,
          NodeExpr *expr);
 
-static void
+static LLVMValueRef
 gen_binop(context_t *cnt,
           NodeBinop *binop);
 
@@ -273,7 +272,7 @@ get_or_create_const_string(context_t *cnt,
     return bo_htbl_at(cnt->const_strings, hash, LLVMValueRef);
 
   LLVMValueRef s = LLVMBuildGlobalString(
-    cnt->builder, str, NAME_CONST_STRING);
+    cnt->builder, str, "str");
 
   s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8Type(), 0));
   bo_htbl_insert(cnt->const_strings, hash, s);
@@ -283,7 +282,6 @@ get_or_create_const_string(context_t *cnt,
 /*
  * Generate default value for known type.
  * For string we create global string array with line terminator.
- * TODO: dont use strings here!!!
  */
 static LLVMValueRef
 gen_default(context_t *cnt,
@@ -364,30 +362,50 @@ gen_expr(context_t *cnt,
     case BL_NODE_CALL:
       val = gen_call(cnt, (NodeCall *) expr);
       break;
+    case BL_NODE_BINOP:
+      val = gen_binop(cnt, (NodeBinop *) expr);
+      break;
     default: bl_abort("unknown expression type");
   }
 
   return val;
 }
 
-void
+LLVMValueRef
 gen_binop(context_t *cnt,
           NodeBinop *binop)
 {
+  LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
+  LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
+
+  if (LLVMIsAAllocaInst(rvalue))
+    rvalue = LLVMBuildLoad(cnt->builder, rvalue, "tmp");
+
   switch (bl_node_binop_get_op(binop)) {
-    case BL_SYM_ASIGN: {
-      LLVMValueRef lvalue = gen_expr(cnt, bl_node_binop_get_lvalue(binop));
-      LLVMValueRef rvalue = gen_expr(cnt, bl_node_binop_get_rvalue(binop));
-
-      if (LLVMIsAAllocaInst(rvalue))
-        rvalue = LLVMBuildLoad(cnt->builder, rvalue, "tmp");
-
+    case BL_SYM_ASIGN:
       LLVMBuildStore(cnt->builder, rvalue, lvalue);
-      break;
-    }
+      return NULL;
+    case BL_SYM_PLUS:
+      if (LLVMIsAAllocaInst(lvalue))
+        lvalue = LLVMBuildLoad(cnt->builder, lvalue, "tmp");
+      return LLVMBuildAdd(cnt->builder, lvalue, rvalue, "tmp");
+    case BL_SYM_MINUS:
+      if (LLVMIsAAllocaInst(lvalue))
+        lvalue = LLVMBuildLoad(cnt->builder, lvalue, "tmp");
+      return LLVMBuildSub(cnt->builder, lvalue, rvalue, "tmp");
+    case BL_SYM_ASTERISK:
+      if (LLVMIsAAllocaInst(lvalue))
+        lvalue = LLVMBuildLoad(cnt->builder, lvalue, "tmp");
+      return LLVMBuildMul(cnt->builder, lvalue, rvalue, "tmp");
+    case BL_SYM_SLASH:
+      if (LLVMIsAAllocaInst(lvalue))
+        lvalue = LLVMBuildLoad(cnt->builder, lvalue, "tmp");
+      return LLVMBuildFDiv(cnt->builder, lvalue, rvalue, "tmp");
     default:
-      break;
+      bl_abort("unknown binop");
   }
+
+  return NULL;
 }
 
 void
