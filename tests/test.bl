@@ -7,35 +7,11 @@ extern void abort();
 int main() {
   int a = 0;
 
-  if (a) {
-    puts("a TRUE ");
-  }
-
-  if (a == 1) {
-    puts("a == 1 TRUE ");
-  }
-
-  if (a != 1) {
-    puts("a != 1 TRUE ");
-  }
-
-  if (a > 0) {
-    puts("a > 0 TRUE ");
-  }
-
-  if (a < 2) {
-    puts("a < 2 TRUE ");
-  }
-
-  if (a >= 1) {
-    puts("a >= 1 TRUE ");
-  }
-
-  if (a <= get_one()) {
-    puts("a <= 1 TRUE ");
-  }
-
+  // problem with bool -> int conversion
   assert(a, "test assert");
+
+  if (a == 0) {
+  }
 
   return 0;
 }
