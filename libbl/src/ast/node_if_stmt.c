@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_int_const.c
+// File:   node_if_stmt.c
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   18/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,67 +26,55 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_int_const_impl.h"
+#include "ast/node_if_stmt_impl.h"
+/* class NodeIfStmt */
 
-static BString *
-to_string(NodeIntConst *self);
-
-/* class NodeIntConst */
-/* class NodeIntConst object members */
-bo_decl_members_begin(NodeIntConst, NodeExpr)
+/* class NodeIfStmt object members */
+bo_decl_members_begin(NodeIfStmt, Node)
   /* members */
-  unsigned long long num;
+  NodeExpr *condition;
+  NodeStmt *body;
 bo_end();
 
-bo_impl_type(NodeIntConst, NodeExpr);
+bo_impl_type(NodeIfStmt, Node);
 
 void
-NodeIntConstKlass_init(NodeIntConstKlass *klass)
+NodeIfStmtKlass_init(NodeIfStmtKlass *klass)
 {
-  bo_vtbl_cl(klass, Node)->to_string = (BString *(*)(Node *)) to_string;
 }
 
 void
-NodeIntConst_ctor(NodeIntConst *self, NodeIntConstParams *p)
+NodeIfStmt_ctor(NodeIfStmt *self, NodeIfStmtParams *p)
 {
   /* constructor */
-
   /* initialize parent */
-  bo_parent_ctor(NodeExpr, p);
+  bo_parent_ctor(Node, p);
 
   /* initialize self */
-  self->num = p->num;
+  self->body = p->body;
+  self->condition = p->condition;
 }
 
 void
-NodeIntConst_dtor(NodeIntConst *self)
+NodeIfStmt_dtor(NodeIfStmt *self)
 {
 }
 
 bo_copy_result
-NodeIntConst_copy(NodeIntConst *self, NodeIntConst *other)
+NodeIfStmt_copy(NodeIfStmt *self, NodeIfStmt *other)
 {
   return BO_NO_COPY;
 }
-/* class NodeIntConst end */
+/* class NodeIfStmt end */
 
-unsigned long long
-bl_node_int_const_get_num(NodeIntConst *self)
+NodeExpr *
+bl_node_if_stmt_get_cond(NodeIfStmt *self)
 {
-  return self->num;
+  return self->condition;
 }
 
-BString *
-to_string(NodeIntConst *self)
+NodeStmt *
+bl_node_if_stmt_get_stmt(NodeIfStmt *self)
 {
-  char str[12];
-  sprintf(str, "%llu", self->num);
-
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, " ");
-  bo_string_append(ret, &str[0]);
-  bo_string_append(ret, ">");
-  return ret;
+  return self->body;
 }

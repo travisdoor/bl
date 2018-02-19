@@ -38,12 +38,12 @@ BO_BEGIN_DECLS
 #define BL_NTYPE_LIST\
   nt(FUNC_DECL, "func_decl") \
   nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "stmt") \
+  nt(STMT, "statement") \
+  nt(IF_STMT, "if statement") \
   nt(CALL, "call_expr") \
   nt(BINOP, "binary_operation") \
   nt(DECL_REF, "decl_ref") \
-  nt(INT_CONST, "int_const_expr") \
-  nt(STRING_CONST, "string_const_expr") \
+  nt(CONST, "const_expr") \
   nt(VAR_DECL, "var_decl") \
   nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \

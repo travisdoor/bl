@@ -53,6 +53,9 @@ parse_global_stmt(context_t *cnt);
 static NodeStmt *
 parse_stmt(context_t *cnt);
 
+static NodeIfStmt *
+parse_if_stmt(context_t *cnt);
+
 static NodeExpr *
 parse_expr(context_t *cnt);
 
@@ -206,6 +209,54 @@ parse_binop(context_t *cnt,
   return binop;
 }
 
+NodeIfStmt *
+parse_if_stmt(context_t *cnt)
+{
+  NodeIfStmt *ifstmt = NULL;
+
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_LPAREN) {
+      parse_error(cnt, "%s %d:%d missing "
+        BL_YELLOW("'('")
+        " after if statement", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
+    }
+
+    NodeExpr *expr = parse_expr(cnt);
+    if (!expr) {
+      parse_error(cnt,
+                  "%s %d:%d expected expression ",
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col);
+    }
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RPAREN) {
+      parse_error(cnt, "%s %d:%d missing "
+        BL_YELLOW("')'")
+        " after expression", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
+    }
+
+    NodeStmt *stmt = parse_stmt(cnt);
+    if (!stmt) {
+      parse_error(cnt,
+                  "%s %d:%d expected if statement body",
+                  bl_unit_get_src_file(cnt->unit),
+                  tok->line,
+                  tok->col);
+    }
+
+    ifstmt = bl_ast_node_if_stmt_new(
+      bl_unit_get_ast(cnt->unit), expr, stmt, tok->src_loc, tok->line, tok->col);
+
+  }
+
+  return ifstmt;
+}
+
 NodeStmt *
 parse_stmt(context_t *cnt)
 {
@@ -233,7 +284,11 @@ stmt:
   if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(cnt)))
     goto stmt;
 
-  /* return */
+  /* if stmt*/
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_if_stmt(cnt)))
+    goto stmt;
+
+  /* return stmt */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(cnt)))
     goto stmt;
 
@@ -395,38 +450,38 @@ parse_expr(context_t *cnt)
     case BL_SYM_NUM:
       bl_tokens_consume(cnt->tokens);
 
-      /* TODO: problem with signed and unsigned number types? */
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_int);
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), true, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, true);
       break;
     case BL_SYM_FALSE:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), false, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, false);
       break;
     case BL_SYM_STRING:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_string_const_new(
-        bl_unit_get_ast(cnt->unit),
-        strndup(tok->content.as_string, tok->len),
-        tok->src_loc,
-        tok->line,
-        tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+
+      bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
       break;
     default:
       break;
   }
 
   /* TODO: accept more operators */
-  if (expr && bl_tokens_current_is(cnt->tokens, BL_SYM_ASIGN)) {
+  if (expr && bl_token_is_binop(bl_tokens_peek(cnt->tokens))) {
     NodeBinop *binop = parse_binop(cnt, expr);
     if (binop != NULL) {
       expr = (NodeExpr *) binop;

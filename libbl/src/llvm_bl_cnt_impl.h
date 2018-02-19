@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_int_const_impl.h
+// File:   llvm_bl_cnt_impl.h
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   19/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,42 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_INT_CONST_IMPL_H
-#define BL_NODE_INT_CONST_IMPL_H
+#ifndef BL_LLVM_BL_CNT_BUF_IMPL_H
+#define BL_LLVM_BL_CNT_BUF_IMPL_H
 
-#include "bl/ast/node_int_const.h"
-#include "ast/node_expr_impl.h"
+#include <bobject/bobject.h>
+#include <llvm-c/Core.h>
+#include "ast/node_decl_impl.h"
 
-bo_decl_params_with_base_begin(NodeIntConst, NodeExpr)
-  unsigned long long num;
+BO_BEGIN_DECLS
+
+/*
+ * TODO: this class can be more abstract to be reused in parses also.
+ */
+
+/* class LlvmBlockContext declaration */
+bo_decl_type_begin(LlvmBlockContext, BObject)
+  /* virtuals */
 bo_end();
 
-#endif //BL_NODE_INT_CONST_IMPL_H
+LlvmBlockContext *
+bl_llvm_block_context_new(void);
+
+bool
+bl_llvm_block_context_add(LlvmBlockContext *self,
+                          LLVMValueRef val,
+                          Ident *id);
+
+LLVMValueRef
+bl_llvm_block_context_get(LlvmBlockContext *self,
+                          Ident *id);
+
+void
+bl_llvm_block_context_push_block(LlvmBlockContext *self);
+
+void
+bl_llvm_block_context_pop_block(LlvmBlockContext *self);
+
+BO_END_DECLS
+
+#endif //BL_LLVM_BL_CNT_BUF_IMPL_H

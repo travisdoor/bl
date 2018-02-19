@@ -58,7 +58,14 @@ BO_BEGIN_DECLS
   sm(ASIGN, "=") \
   sm(PLUS, "+") \
   sm(MINUS, "-") \
+  sm(ASTERISK, "*") \
   sm(SLASH, "/") \
+  sm(EQ, "==") \
+  sm(NEQ, "!=") \
+  sm(GREATER, ">") \
+  sm(LESS, "<") \
+  sm(GREATER_EQ, ">=") \
+  sm(LESS_EQ, "<=") \
   sm(NONE, "") \
 
 typedef enum

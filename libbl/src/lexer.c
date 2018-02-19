@@ -188,11 +188,59 @@ run(Lexer *self,
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;
+      case '!':
+        switch (*(cur.iter + 1)) {
+          case '=':
+            bl_token_init(&tok, BL_SYM_NEQ, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col += 2;
+            cur.iter++;
+            continue;
+          default:
+            break;
+        }
       case '=':
-        bl_token_init(&tok, BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
-        bl_tokens_push(tokens, &tok);
-        cur.col++;
-        continue;
+        switch (*(cur.iter + 1)) {
+          case '=':
+            bl_token_init(&tok, BL_SYM_EQ, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col += 2;
+            cur.iter++;
+            continue;
+          default:
+            bl_token_init(&tok, BL_SYM_ASIGN, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col++;
+            continue;
+        }
+      case '>':
+        switch (*(cur.iter + 1)) {
+          case '=':
+            bl_token_init(&tok, BL_SYM_GREATER_EQ, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col += 2;
+            cur.iter++;
+            continue;
+          default:
+            bl_token_init(&tok, BL_SYM_GREATER, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col++;
+            continue;
+        }
+      case '<':
+        switch (*(cur.iter + 1)) {
+          case '=':
+            bl_token_init(&tok, BL_SYM_LESS_EQ, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col += 2;
+            cur.iter++;
+            continue;
+          default:
+            bl_token_init(&tok, BL_SYM_LESS, cur.line, cur.col, 1, cur.iter);
+            bl_tokens_push(tokens, &tok);
+            cur.col++;
+            continue;
+        }
       case '+':
         bl_token_init(&tok, BL_SYM_PLUS, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
@@ -200,6 +248,11 @@ run(Lexer *self,
         continue;
       case '-':
         bl_token_init(&tok, BL_SYM_MINUS, cur.line, cur.col, 1, cur.iter);
+        bl_tokens_push(tokens, &tok);
+        cur.col++;
+        continue;
+      case '*':
+        bl_token_init(&tok, BL_SYM_ASTERISK, cur.line, cur.col, 1, cur.iter);
         bl_tokens_push(tokens, &tok);
         cur.col++;
         continue;

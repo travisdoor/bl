@@ -29,6 +29,9 @@
 #include "ast/node_binop_impl.h"
 
 /* class NodeBinop */
+BString *
+to_string(NodeBinop *self);
+
 /* class NodeBinop object members */
 bo_decl_members_begin(NodeBinop, Node)
   /* members */
@@ -42,6 +45,7 @@ bo_impl_type(NodeBinop, Node);
 void
 NodeBinopKlass_init(NodeBinopKlass *klass)
 {
+  bo_vtbl_cl(klass, Node)->to_string = (BString *(*)(Node *)) to_string;
 }
 
 void
@@ -65,6 +69,17 @@ NodeBinop_copy(NodeBinop *self, NodeBinop *other)
   return BO_NO_COPY;
 }
 /* class NodeBinop end */
+BString *
+to_string(NodeBinop *self)
+{
+  BString *ret = bo_string_new(128);
+  bo_string_append(ret, "<");
+  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
+  bo_string_append(ret, " ");
+  bo_string_append(ret, bl_sym_strings[self->operator]);
+  bo_string_append(ret, ">");
+  return ret;
+}
 
 bl_sym_e
 bl_node_binop_get_op(NodeBinop *self)

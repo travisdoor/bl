@@ -46,15 +46,13 @@ const char *src2 =
     "int a = 0;"
     "bool bl = true;"
     "bool bl2 = false;"
-    "bool bl3 = 1;"
-    "bool bl4 = 0;"
     "return 0;"
     "}";
 
 const char *src3 =
   "extern void puts(string s);"
   "int main() {"
-    "puts(\"hello\");"
+    "puts(\"\");"
     "return 0;"
   "}";
 
@@ -85,13 +83,27 @@ const char *src6 =
     "return a;"
   "}"
   "int main() {"
-    "int a = before(10);"
+    "int a = before(0);"
     "after(a);"
     "return a;"
   "}"
   "int after(int a) {"
     "return a;"
   "}";
+
+const char *src7 =
+  "int main() {"
+    "int a = 10;"
+    "int b = 10;"
+    "int result;"
+    "a = a + b;"
+    "a = a - b;"
+    "a = a + 10;"
+    "a = a - 10;"
+    "a = a * b;"
+    "a = a - 100;"
+    "return a;"
+    "}";
 
 class CompilerTest : public ::testing::Test
 {
@@ -180,3 +192,13 @@ TEST_F(CompilerTest, simple_call)
   }
 }
 
+TEST_F(CompilerTest, simple_expr)
+{
+  Unit *unit = bl_unit_new_str("unit7", src7);
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly)) {
+    auto *failed = bl_builder_get_failed(builder);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+}

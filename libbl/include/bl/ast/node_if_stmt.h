@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   llvm_backend.h
+// File:   node_if_stmt.h
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   18/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,27 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LLVM_BACKEND_H_JEGBQZJ4
-#define LLVM_BACKEND_H_JEGBQZJ4
+#ifndef BL_NODE_IF_STMT_H
+#define BL_NODE_IF_STMT_H
 
 #include <bobject/bobject.h>
-#include <stdio.h>
-#include "bl/pipeline/stage.h"
+#include "bl/ast/node.h"
+#include "bl/ast/node_expr.h"
+#include "bl/ast/node_stmt.h"
 
 BO_BEGIN_DECLS
-/* class LlvmBackend declaration */
-bo_decl_type_begin(LlvmBackend, Stage)
+
+/* class NodeIfStmt declaration */
+bo_decl_type_begin(NodeIfStmt, Node)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT LlvmBackend *
-bl_llvm_backend_new(bl_compile_group_e group);
+extern BO_EXPORT NodeExpr *
+bl_node_if_stmt_get_cond(NodeIfStmt *self);
+
+extern BO_EXPORT NodeStmt *
+bl_node_if_stmt_get_stmt(NodeIfStmt *self);
 
 BO_END_DECLS
 
-#endif /* end of include guard: TOKEN_PRINTER_H_QYAEHC5Q */
+#endif //BL_NODE_IF_STMT_H

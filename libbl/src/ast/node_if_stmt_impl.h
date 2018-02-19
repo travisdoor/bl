@@ -1,11 +1,11 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_string_const_impl.h
+// File:   node_if_stmt_impl.h
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   18/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_STRING_CONST_IMPL_H
-#define BL_NODE_STRING_CONST_IMPL_H
+#ifndef BL_NODE_IF_STMT_IMPL_H
+#define BL_NODE_IF_STMT_IMPL_H
 
-#include "bl/ast/node_string_const.h"
-#include "ast/node_expr_impl.h"
+#include "bl/ast/node_if_stmt.h"
+#include "ast/node_impl.h"
 
-bo_decl_params_with_base_begin(NodeStringConst, NodeExpr)
-  char *string;
+bo_decl_params_with_base_begin(NodeIfStmt, Node)
+  NodeExpr *condition;
+  NodeStmt *body;
 bo_end();
 
-#endif //BL_NODE_STRING_CONST_IMPL_H
+#endif //BL_NODE_IF_STMT_IMPL_H

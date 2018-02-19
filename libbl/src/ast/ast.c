@@ -203,48 +203,24 @@ bl_ast_node_return_stmt_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeReturnStmt, &p));
 }
 
-NodeIntConst *
-bl_ast_node_int_const_new(Ast               *self,
-                          unsigned long long num,
-                          const char        *generated_from,
-                          int                line,
-                          int                col)
+NodeConst *
+bl_ast_node_const_new(Ast               *self,
+                      const char        *generated_from,
+                      int                line,
+                      int                col)
 {
-  NodeIntConstParams p = {
+  NodeConstParams p = {
     .base = {
       .base = {
-        .type = BL_NODE_INT_CONST,
+        .type = BL_NODE_CONST,
         .generated_from = generated_from,
         .line = line,
         .col = col,
       }
-    },
-    .num = num
+    }
   };
 
-  return save_to_cache(self, bo_new(NodeIntConst, &p));
-}
-
-NodeStringConst *
-bl_ast_node_string_const_new(Ast        *self,
-                             char       *string,
-                             const char *generated_from,
-                             int         line,
-                             int         col)
-{
-  NodeStringConstParams p = {
-    .base = {
-      .base = {
-        .type = BL_NODE_STRING_CONST,
-        .generated_from = generated_from,
-        .line = line,
-        .col = col,
-      }
-    },
-    .string = string
-  };
-
-  return save_to_cache(self, bo_new(NodeStringConst, &p));
+  return save_to_cache(self, bo_new(NodeConst, &p));
 }
 
 NodeVarDecl *
@@ -327,9 +303,31 @@ bl_ast_node_decl_ref_new(Ast        *self,
         .col = col,
       }
     },
-    .ident = ident
+    .ident = bl_ident_new(ident)
   };
 
   return save_to_cache(self, bo_new(NodeDeclRef, &p));
+}
+
+NodeIfStmt *
+bl_ast_node_if_stmt_new(Ast        *self,
+                        NodeExpr   *cond,
+                        NodeStmt   *body,
+                        const char *generated_from,
+                        int         line,
+                        int         col)
+{
+  NodeIfStmtParams p = {
+    .base = {
+      .type = BL_NODE_IF_STMT,
+      .generated_from = generated_from,
+      .line = line,
+      .col = col
+    },
+    .condition = cond,
+    .body = body
+  };
+
+  return save_to_cache(self, bo_new(NodeIfStmt, &p));
 }
 

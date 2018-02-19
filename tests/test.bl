@@ -1,19 +1,21 @@
 // this is testing script
 
+extern int printf(string format, int i);
 extern int puts(string s);
-extern void abort();
 
 int main() {
-  int i = 0;
-  int b = test(i);
+  int a = 0;
 
-  return test(test(i));
+  assert(a == 10, "test assert");
+
+  if (a == 0) {
+  }
+
+  return 0;
 }
 
-int test(int a) {
-  a = 10;
-
-  return 10;
+void assert(bool expr, string msg) {
+  if (expr == false) {
+    puts(msg);
+  }
 }
-
-
