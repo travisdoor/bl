@@ -31,13 +31,24 @@
 #include "bl/unit.h"
 #include "bl/bldebug.h"
 
+typedef struct _cursor_t {
+  char *c;
+  int line;
+  int col;
+} cursor_t;
+
 /* class LexerNew */
 static bool
 run(LexerNew *self,
     Unit *unit);
 
+static bool
+scan(cursor_t *cur,
+     bl_token_t *tok);
+
 static void
-scan(char *c);
+scan_comment(cursor_t *cur,
+             const char *term);
 
 /* class LexerNew constructor params */
 bo_decl_params_with_base_begin(LexerNew, Stage)
@@ -85,34 +96,91 @@ LexerNew_copy(LexerNew *self,
 /* class LexerNew end */
 
 void
-scan(char *c)
+scan_comment(cursor_t *cur,
+             const char *term)
+{
+  const size_t len = strlen(term);
+  while (*cur->c != EOF) {
+    if (*cur->c == '\n') {
+      cur->line++;
+      cur->col = 1;
+    }
+
+    if (strncmp(cur->c, term, len) == 0) {
+      break;
+    }
+    /* increase lines and cols */
+    cur->c++;
+  }
+
+  /* skip terminator */
+  cur->c += len;
+}
+
+bool
+scan(cursor_t *cur,
+     bl_token_t *tok)
 {
   size_t len = 0;
   bl_sym_e sym = BL_SYM_NONE;
 
+  tok->src_loc = cur->c;
+  tok->line = cur->line;
+  tok->col = cur->col;
+
   /*
-   * Scan other symbols described directly in as strings.
+   * Ignored characters
    */
-  for (int i = BL_SYM_RETURN; i < BL_SYM_NONE; i++) {
+
+  switch (*cur->c) {
+    case '\0':
+      return false;
+    case '\r':
+    case '\n':
+      cur->line++;
+      cur->col = 1;
+      cur->c++;
+      return false;
+    case ' ':
+      cur->col++;
+      cur->c++;
+      return false;
+    default:
+      break;
+  }
+
+  /*
+   * Scan symbols described directly as strings.
+   */
+  for (int i = BL_SYM_IF; i < BL_SYM_NONE; i++) {
     len = strlen(bl_sym_strings[i]);
-    if (strncmp(c, bl_sym_strings[i], len) == 0) {
+    if (strncmp(cur->c, bl_sym_strings[i], len) == 0) {
       sym = (bl_sym_e) i;
+      cur->c += len;
+      cur->col += len;
+      break;
     }
   }
 
   switch (sym) {
     case BL_SYM_LCOMMENT:
       /* begin of line comment */
-      break;
+      scan_comment(cur, "\n");
+      return false;
     case BL_SYM_LBCOMMENT:
       /* begin of block comment */
-      break;
-    default:
+      scan_comment(cur, bl_sym_strings[BL_SYM_RBCOMMENT]);
+      return false;
+    case BL_SYM_NONE:
       /* other cases, string, number, identificator, ... */
-      break;
+
+    default:
+      tok->sym = sym;
+      return true;
   }
 
   /* When symbol is unknown report error */
+  return false;
 }
 
 bool
@@ -134,7 +202,19 @@ run(LexerNew *self,
     return false;
   }
 
-  scan(src);
+  cursor_t cur = {
+    .c = src,
+    .line = 1,
+    .col = 1
+  };
+
+  bl_token_t tok = {0};
+
+  while (*cur.c != '\0') {
+    if (scan(&cur, &tok)) {
+      bl_tokens_push(tokens, &tok);
+    }
+  }
 
   return true;
 }

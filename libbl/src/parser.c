@@ -637,6 +637,11 @@ run(Parser *self,
     return false;
   }
 
+  if (bl_tokens_count(bl_unit_get_tokens(unit)) == 0) {
+    bl_warning("empty source file %s", bl_unit_get_name(unit));
+    return true;
+  }
+
   context_t cnt = {0};
   cnt.unit = unit;
   cnt.tokens = bl_unit_get_tokens(unit);

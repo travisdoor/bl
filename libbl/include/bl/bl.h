@@ -32,6 +32,7 @@
 #include "bl/bldebug.h"
 #include "bl/pipeline/pipeline.h"
 #include "bl/lexer.h"
+#include "bl/lexer_new.h"
 #include "bl/token_printer.h"
 #include "bl/llvm_backend.h"
 #include "bl/file_loader.h"

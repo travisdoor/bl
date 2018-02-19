@@ -1,0 +1,40 @@
+// comment line
+//comment line
+
+/*
+ * block comment
+ */
+
+if
+else
+class
+false
+extern
+return
+struct
+namespace
+==
+!=
+>=
+<=
+{
+}
+[
+]
+(
+)
+,
+;
+/
+=
++
+-
+*
+>
+<
+
+"string\n"
+0123456789
+ident
+'c'
+'\n'
