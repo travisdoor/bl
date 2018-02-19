@@ -27,12 +27,14 @@
 //*****************************************************************************
 
 #include <stdio.h>
+#include <locale.h>
 #include "bl/bl.h"
 
 int
 main(int argc,
      char *argv[])
 {
+  setlocale(LC_ALL, "C");
   unsigned int build_flag = BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE;
   puts("BL Compiler version 0.1.0\n");
 

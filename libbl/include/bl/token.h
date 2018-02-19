@@ -34,40 +34,52 @@
 
 BO_BEGIN_DECLS
 #define BL_SYMBOLS_LIST \
-  sm(EOF, "end") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(CHAR, "char") \
-  sm(NUM, "number") \
-  sm(RETURN, "return") \
-  sm(IF, "if") \
-  sm(ELSE, "else") \
-  sm(EXTERN, "extern") \
-  sm(NAMESPACE, "namespace") \
-  sm(CLASS, "class") \
-  sm(STRUCT, "struct") \
-  sm(TRUE, "true") \
-  sm(FALSE, "false") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}") \
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]") \
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",") \
-  sm(SEMICOLON, ";") \
-  sm(ASIGN, "=") \
-  sm(PLUS, "+") \
-  sm(MINUS, "-") \
-  sm(ASTERISK, "*") \
-  sm(SLASH, "/") \
-  sm(EQ, "==") \
-  sm(NEQ, "!=") \
-  sm(GREATER, ">") \
-  sm(LESS, "<") \
+  /*
+   * special symbols
+   * these must be parsed separately
+   */\
+  sm(EOF = 0,    "end") \
+  sm(IDENT,      "identifier") \
+  sm(STRING,     "string") \
+  sm(CHAR,       "char") \
+  sm(NUM,        "number") \
+  /*
+   * other symbols
+   * these can be compared directly with its string representation
+   * symbols with same initial character must be ordered
+   */\
+  sm(IF,         "if") \
+  sm(ELSE,       "else") \
+  sm(TRUE,       "true") \
+  sm(CLASS,      "class") \
+  sm(FALSE,      "false") \
+  sm(EXTERN,     "extern") \
+  sm(RETURN,     "return") \
+  sm(STRUCT,     "struct") \
+  sm(NAMESPACE,  "namespace") \
+  sm(LCOMMENT,   "//") \
+  sm(LBCOMMENT,  "/*") \
+  sm(RBCOMMENT,  "*/") \
+  sm(EQ,         "==") \
+  sm(NEQ,        "!=") \
   sm(GREATER_EQ, ">=") \
-  sm(LESS_EQ, "<=") \
-  sm(NONE, "") \
+  sm(LESS_EQ,    "<=") \
+  sm(LBLOCK,     "{") \
+  sm(RBLOCK,     "}") \
+  sm(LBRACKET,   "[") \
+  sm(RBRACKET,   "]") \
+  sm(LPAREN,     "(") \
+  sm(RPAREN,     ")") \
+  sm(COMMA,      ",") \
+  sm(SEMICOLON,  ";") \
+  sm(SLASH,      "/") \
+  sm(ASIGN,      "=") \
+  sm(PLUS,       "+") \
+  sm(MINUS,      "-") \
+  sm(ASTERISK,   "*") \
+  sm(GREATER,    ">") \
+  sm(LESS,       "<") \
+  sm(NONE,       "") \
 
 typedef enum
 {

@@ -10,6 +10,20 @@
 ## Syntax hints
 ### Arrays
     int[n] int_array;
+    
+### Loops
+    break;
+    continue;
+    
+    loop {
+    }
+    
+    while (expr) {
+    }
+    
+    for (x = 0; x < 10; x++) {
+    }
+
 
 ### Casting
     bool b;

@@ -44,7 +44,7 @@ set(HEADER_FILES
         include/bl/ast/node_decl.h
         include/bl/ast/node_const.h
         include/bl/ast/node_call.h
-        include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h include/bl/llvm_jit_exec.h include/bl/builder.h include/bl/llvm_bc_writer.h include/bl/ast/node_if_stmt.h)
+        include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h include/bl/llvm_jit_exec.h include/bl/builder.h include/bl/llvm_bc_writer.h include/bl/ast/node_if_stmt.h include/bl/lexer_new.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -91,7 +91,7 @@ set(SOURCE_FILES
         src/ast/node_decl.c
         src/ast/node_const.c
         src/ast/node_call.c
-        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c src/llvm_bl_cnt.c)
+        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c src/llvm_bl_cnt.c src/lexer_new.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
