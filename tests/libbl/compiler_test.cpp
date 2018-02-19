@@ -54,7 +54,7 @@ const char *src2 =
 const char *src3 =
   "extern void puts(string s);"
   "int main() {"
-    "puts(\"hello\");"
+    "puts(\"\");"
     "return 0;"
   "}";
 

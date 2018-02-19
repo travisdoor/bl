@@ -108,6 +108,7 @@ gen_binop(context_t *cnt,
 
 static void
 gen_stmt(context_t *cnt,
+         LLVMBasicBlockRef block,
          LLVMValueRef func,
          NodeFuncDecl *fnode,
          NodeStmt *stmt);
@@ -362,8 +363,7 @@ gen_expr(context_t *cnt,
     }
     case BL_NODE_DECL_REF: {
       val = bl_llvm_block_context_get(
-        cnt->block_context,
-        bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
+        cnt->block_context, bl_node_decl_ref_get_ident((NodeDeclRef *) expr));
       break;
     }
     case BL_NODE_CALL:
@@ -475,6 +475,10 @@ gen_var_decl(context_t *cnt,
     def = gen_default(cnt, bl_node_decl_get_type((NodeDecl *) vdcl));
   }
 
+  if (LLVMIsAAllocaInst(def)) {
+    def = LLVMBuildLoad(cnt->builder, def, "tmp");
+  }
+
   LLVMBuildStore(cnt->builder, def, var);
   bl_llvm_block_context_add(cnt->block_context, var, id);
 }
@@ -556,8 +560,10 @@ gen_func(context_t *cnt,
 
   if (!forward) {
     NodeStmt *stmt = bl_node_func_decl_get_stmt(node);
-    if (stmt)
-      gen_stmt(cnt, func, node, stmt);
+    if (stmt) {
+      LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
+      gen_stmt(cnt, block, func, node, stmt);
+    }
   }
 
   return func;
@@ -568,47 +574,50 @@ gen_if_stmt(context_t *cnt,
             NodeIfStmt *ifstmt,
             LLVMValueRef func)
 {
-  LLVMBasicBlockRef thenb = LLVMAppendBasicBlock(func, "then");
-  LLVMBasicBlockRef elseb = LLVMAppendBasicBlock(func, "else");
+  LLVMBasicBlockRef iftrue = LLVMAppendBasicBlock(func, "then");
+  LLVMBasicBlockRef iffalse = LLVMAppendBasicBlock(func, "else");
   LLVMValueRef expr = gen_expr(cnt, bl_node_if_stmt_get_cond(ifstmt));
 
   if (LLVMIsAAllocaInst(expr))
     expr = LLVMBuildLoad(cnt->builder, expr, "tmp");
   expr = LLVMBuildIntCast(cnt->builder, expr, LLVMInt1Type(), "tmp");
 
-  LLVMBuildCondBr(cnt->builder, expr, thenb, elseb);
+  LLVMBuildCondBr(cnt->builder, expr, iftrue, iffalse);
 
-  LLVMPositionBuilderAtEnd(cnt->builder, thenb);
-  LLVMBuildBr(cnt->builder, thenb);
+  gen_stmt(cnt, iftrue, NULL, NULL, bl_node_if_stmt_get_stmt(ifstmt));
+  LLVMPositionBuilderAtEnd(cnt->builder, iftrue);
+  LLVMBuildBr(cnt->builder, iffalse);
 
-  LLVMPositionBuilderAtEnd(cnt->builder, elseb);
-//  LLVMBuildBr(cnt->builder, elseb);
+  LLVMPositionBuilderAtEnd(cnt->builder, iffalse);
 }
 
 void
 gen_stmt(context_t *cnt,
+         LLVMBasicBlockRef block,
          LLVMValueRef func,
          NodeFuncDecl *fnode,
          NodeStmt *stmt)
 {
   bool return_presented = false;
   bl_llvm_block_context_push_block(cnt->block_context);
-  LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
-  LLVMPositionBuilderAtEnd(cnt->builder, entry);
+  LLVMPositionBuilderAtEnd(cnt->builder, block);
 
   /*
    * Create named references to function parameters so they
    * can be called by name in function body.
    */
-  const int pc = bl_node_func_decl_get_param_count(fnode);
-  for (int i = 0; i < pc; i++) {
-    NodeParamVarDecl *param = bl_node_func_decl_get_param(fnode, i);
-    Ident *ident = bl_node_decl_get_ident((NodeDecl *) param);
+  if (fnode) {
+    /* TODO: don't do it here??? */
+    const int pc = bl_node_func_decl_get_param_count(fnode);
+    for (int i = 0; i < pc; i++) {
+      NodeParamVarDecl *param = bl_node_func_decl_get_param(fnode, i);
+      Ident *ident = bl_node_decl_get_ident((NodeDecl *) param);
 
-    LLVMValueRef p = LLVMGetParam(func, i);
-    LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->builder, LLVMTypeOf(p), bl_ident_get_name(ident));
-    LLVMBuildStore(cnt->builder, p, p_tmp);
-    bl_llvm_block_context_add(cnt->block_context, p_tmp, ident);
+      LLVMValueRef p = LLVMGetParam(func, i);
+      LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->builder, LLVMTypeOf(p), bl_ident_get_name(ident));
+      LLVMBuildStore(cnt->builder, p, p_tmp);
+      bl_llvm_block_context_add(cnt->block_context, p_tmp, ident);
+    }
   }
 
   Node *child = NULL;
@@ -640,9 +649,9 @@ gen_stmt(context_t *cnt,
   }
 
 done:
-//  if (!return_presented) {
-//    LLVMBuildRetVoid(cnt->builder);
-//  }
+  if (!return_presented && fnode) {
+    LLVMBuildRetVoid(cnt->builder);
+  }
 
   bl_llvm_block_context_pop_block(cnt->block_context);
 }

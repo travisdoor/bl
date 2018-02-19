@@ -5,23 +5,48 @@ extern int printf(string s, int i);
 extern void abort();
 
 int main() {
-  int a = 4;
-  int b = 666;
+  int a = 0;
 
-  printf("a = %i", get(a, b));
-
-  if (a == 4) {
-    int i = 10;
+  if (a) {
+    puts("a TRUE ");
   }
-//  if (true) {
-//  } else if {
-//  } else {
-//  }
+
+  if (a == 1) {
+    puts("a == 1 TRUE ");
+  }
+
+  if (a != 1) {
+    puts("a != 1 TRUE ");
+  }
+
+  if (a > 0) {
+    puts("a > 0 TRUE ");
+  }
+
+  if (a < 2) {
+    puts("a < 2 TRUE ");
+  }
+
+  if (a >= 1) {
+    puts("a >= 1 TRUE ");
+  }
+
+  if (a <= get_one()) {
+    puts("a <= 1 TRUE ");
+  }
+
+  assert(a, "test assert");
 
   return 0;
 }
 
-int get(int a, int b) {
-  return a + b;
+int get_one() {
+  return 1;
+}
+
+void assert(bool expr, string msg) {
+  if (expr == false) {
+    puts(msg);
+  }
 }
 
