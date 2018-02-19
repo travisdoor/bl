@@ -347,19 +347,27 @@ gen_expr(context_t *cnt,
   bl_node_e nt = bl_node_get_type((Node *) expr);
   LLVMValueRef val;
   switch (nt) {
-    case BL_NODE_INT_CONST:
-      val = LLVMConstInt(
-        LLVMInt32Type(), bl_node_int_const_get_num((NodeIntConst *) expr), true);
+    case BL_NODE_CONST:
+      switch (bl_node_const_get_type((NodeConst *) expr)) {
+        case BL_CONST_INT:
+          val = LLVMConstInt(
+            LLVMInt32Type(),
+            (unsigned long long int) bl_node_const_get_int((NodeConst *) expr),
+            true);
+          break;
+        case BL_CONST_BOOL:
+          val = LLVMConstInt(
+            LLVMInt1Type(),
+            (unsigned long long int) bl_node_const_get_bool((NodeConst *) expr),
+            false);
+          break;
+        case BL_CONST_STRING:
+          val = get_or_create_const_string(
+            cnt, bl_node_const_get_str((NodeConst *) expr));
+          break;
+        default: bl_abort("invalid constant type");
+      }
       break;
-    case BL_NODE_STRING_CONST: {
-      /*
-       * For constant string we generate constant global array and return pointer
-       * to this array.
-       */
-      val = get_or_create_const_string(
-        cnt, bl_node_string_const_get_str((NodeStringConst *) expr));
-      break;
-    }
     case BL_NODE_DECL_REF: {
       val = bl_llvm_block_context_get(
         cnt->block_context, bl_node_decl_ref_get_ident((NodeDeclRef *) expr));

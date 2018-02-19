@@ -249,14 +249,8 @@ parse_if_stmt(context_t *cnt)
                   tok->col);
     }
 
-    ifstmt =
-      bl_ast_node_if_stmt_new(
-        bl_unit_get_ast(cnt->unit),
-        expr,
-        stmt,
-        tok->src_loc,
-        tok->line,
-        tok->col);
+    ifstmt = bl_ast_node_if_stmt_new(
+      bl_unit_get_ast(cnt->unit), expr, stmt, tok->src_loc, tok->line, tok->col);
 
   }
 
@@ -456,31 +450,31 @@ parse_expr(context_t *cnt)
     case BL_SYM_NUM:
       bl_tokens_consume(cnt->tokens);
 
-      /* TODO: problem with signed and unsigned number types? */
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), tok->content.as_int, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_int);
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), true, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, true);
       break;
     case BL_SYM_FALSE:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_int_const_new(
-        bl_unit_get_ast(cnt->unit), false, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, false);
       break;
     case BL_SYM_STRING:
       bl_tokens_consume(cnt->tokens);
 
-      expr = (NodeExpr *) bl_ast_node_string_const_new(
-        bl_unit_get_ast(cnt->unit),
-        strndup(tok->content.as_string, tok->len),
-        tok->src_loc,
-        tok->line,
-        tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+
+      bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
       break;
     default:
       break;

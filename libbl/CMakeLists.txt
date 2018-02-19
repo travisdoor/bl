@@ -42,8 +42,7 @@ set(HEADER_FILES
         include/bl/type.h
         include/bl/ast/node_binop.h
         include/bl/ast/node_decl.h
-        include/bl/ast/node_int_const.h
-        include/bl/ast/node_string_const.h
+        include/bl/ast/node_const.h
         include/bl/ast/node_call.h
         include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h include/bl/llvm_jit_exec.h include/bl/builder.h include/bl/llvm_bc_writer.h include/bl/ast/node_if_stmt.h)
 
@@ -59,8 +58,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_var_decl_impl.h
         src/ast/node_binop_impl.h
         src/ast/node_decl_impl.h
-        src/ast/node_int_const_impl.h
-        src/ast/node_string_const_impl.h
+        src/ast/node_const_impl.h
         src/ast/node_call_impl.h
         src/ast/node_decl_ref_impl.h src/ast/node_if_stmt_impl.h src/llvm_bl_cnt_impl.h)
 
@@ -91,8 +89,7 @@ set(SOURCE_FILES
         src/type.c
         src/ast/node_binop.c
         src/ast/node_decl.c
-        src/ast/node_int_const.c
-        src/ast/node_string_const.c
+        src/ast/node_const.c
         src/ast/node_call.c
         src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c src/llvm_bl_cnt.c)
 

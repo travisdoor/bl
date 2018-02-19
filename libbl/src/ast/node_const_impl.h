@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_string_const.h
+// File:   node_const_impl.h
 // Author: Martin Dorazil
 // Date:   11/02/2018
 //
@@ -26,22 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_STRING_CONST_H
-#define BL_NODE_STRING_CONST_H
+#ifndef BL_NODE_CONST_IMPL_H
+#define BL_NODE_CONST_IMPL_H
 
-#include "bl/ast/node_expr.h"
-#include <bobject/bobject.h>
+#include "bl/ast/node_const.h"
+#include "ast/node_expr_impl.h"
 
-BO_BEGIN_DECLS
-
-/* class NodeStringConst declaration */
-bo_decl_type_begin(NodeStringConst, NodeExpr)
-  /* virtuals */
+bo_decl_params_with_base_begin(NodeConst, NodeExpr)
 bo_end();
 
-extern BO_EXPORT const char *
-bl_node_string_const_get_str(NodeStringConst *self);
-
-BO_END_DECLS
-
-#endif //BL_NODE_STRING_CONST_H
+#endif //BL_NODE_INT_CONST_IMPL_H

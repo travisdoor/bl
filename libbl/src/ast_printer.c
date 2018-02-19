@@ -134,7 +134,7 @@ print_node(AstPrinter *self,
       break;
     case BL_NODE_PARAM_VAR_DECL:
       break;
-    case BL_NODE_INT_CONST:
+    case BL_NODE_CONST:
       break;
     case BL_NODE_STMT:
       c = bl_node_stmt_child_get_count((NodeStmt *) node);

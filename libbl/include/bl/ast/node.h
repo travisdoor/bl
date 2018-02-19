@@ -43,8 +43,7 @@ BO_BEGIN_DECLS
   nt(CALL, "call_expr") \
   nt(BINOP, "binary_operation") \
   nt(DECL_REF, "decl_ref") \
-  nt(INT_CONST, "int_const_expr") \
-  nt(STRING_CONST, "string_const_expr") \
+  nt(CONST, "const_expr") \
   nt(VAR_DECL, "var_decl") \
   nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \

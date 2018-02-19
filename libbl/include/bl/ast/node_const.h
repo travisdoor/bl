@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_string_const_impl.h
+// File:   node_const.h
 // Author: Martin Dorazil
 // Date:   11/02/2018
 //
@@ -26,14 +26,50 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_STRING_CONST_IMPL_H
-#define BL_NODE_STRING_CONST_IMPL_H
+#ifndef BL_NODE_CONST_H
+#define BL_NODE_CONST_H
 
-#include "bl/ast/node_string_const.h"
-#include "ast/node_expr_impl.h"
+#include <bobject/bobject.h>
+#include <stdbool.h>
+#include "bl/ast/node_expr.h"
 
-bo_decl_params_with_base_begin(NodeStringConst, NodeExpr)
-  char *string;
+typedef enum _bl_node_conts_type_e {
+  BL_CONST_INT,
+  BL_CONST_BOOL,
+  BL_CONST_STRING
+} bl_node_conts_type_e;
+
+BO_BEGIN_DECLS
+
+/* class NodeConst declaration */
+bo_decl_type_begin(NodeConst, NodeExpr)
+  /* virtuals */
 bo_end();
 
-#endif //BL_NODE_STRING_CONST_IMPL_H
+extern BO_EXPORT int
+bl_node_const_get_int(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_int(NodeConst *self,
+                      int        val);
+
+extern BO_EXPORT bool
+bl_node_const_get_bool(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_bool(NodeConst *self,
+                      bool val);
+
+extern BO_EXPORT bl_node_conts_type_e
+bl_node_const_get_type(NodeConst *self);
+
+extern BO_EXPORT const char *
+bl_node_const_get_str(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_str(NodeConst *self,
+                      char *val);
+
+BO_END_DECLS
+
+#endif //BL_NODE_INT_CONST_H

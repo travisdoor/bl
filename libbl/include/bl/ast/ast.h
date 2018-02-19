@@ -40,8 +40,7 @@
 #include "bl/ast/node_var_decl.h"
 #include "bl/ast/node_binop.h"
 #include "bl/ast/node_decl.h"
-#include "bl/ast/node_int_const.h"
-#include "bl/ast/node_string_const.h"
+#include "bl/ast/node_const.h"
 #include "bl/ast/node_call.h"
 #include "bl/ast/node_decl_ref.h"
 #include "bl/ast/node_if_stmt.h"
@@ -105,19 +104,11 @@ bl_ast_node_return_stmt_new(Ast        *self,
                             int         line,
                             int         col);
 
-extern BO_EXPORT NodeIntConst *
-bl_ast_node_int_const_new(Ast               *self,
-                          unsigned long long num,
-                          const char        *generated_from,
-                          int                line,
-                          int                col);
-
-extern BO_EXPORT NodeStringConst *
-bl_ast_node_string_const_new(Ast        *self,
-                             char       *str,
-                             const char *generated_from,
-                             int         line,
-                             int         col);
+extern BO_EXPORT NodeConst *
+bl_ast_node_const_new(Ast               *self,
+                      const char        *generated_from,
+                      int                line,
+                      int                col);
 
 extern BO_EXPORT NodeCall*
 bl_ast_node_call_new(Ast        *self,
