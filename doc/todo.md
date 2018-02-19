@@ -1,10 +1,26 @@
 ## TODO
-* implement expressions
+* expression binop priority
 * analyze - compare call arguments with callee
 * namespaces
-* when no return is presented create default one
 
 ## Features 
-* multiple return values
 * classes
 * structs
+
+## Syntax hints
+### Arrays
+    int[n] int_array;
+
+### Casting
+    bool b;
+    int i;
+    
+    i = b as int;
+    
+### Types
+
+    bool
+    char
+    i32
+    string
+    

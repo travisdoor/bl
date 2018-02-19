@@ -30,8 +30,8 @@
 #include "bl/bl.h"
 
 const char *src1 =
-  "int main() {"
-    "int i;"
+  "i32 main() {"
+    "i32 i;"
     "char ch;"
     "string s;"
     "bool bl;"
@@ -39,11 +39,11 @@ const char *src1 =
   "}";
 
 const char *src2 =
-  "int main() {"
-    "int i = 10;"
+  "i32 main() {"
+    "i32 i = 10;"
     "char ch;"
     "string s = \"hello\";"
-    "int a = 0;"
+    "i32 a = 0;"
     "bool bl = true;"
     "bool bl2 = false;"
     "return 0;"
@@ -51,7 +51,7 @@ const char *src2 =
 
 const char *src3 =
   "extern void puts(string s);"
-  "int main() {"
+  "i32 main() {"
     "puts(\"\");"
     "return 0;"
   "}";
@@ -59,7 +59,7 @@ const char *src3 =
 const char *src4 =
   "void before() {"
   "}"
-  "int main() {"
+  "i32 main() {"
     "before();"
     "after();"
     "return 0;"
@@ -68,8 +68,8 @@ const char *src4 =
   "}";
 
 const char *src5 =
-  "int main() {"
-    "int i = 10;"
+  "i32 main() {"
+    "i32 i = 10;"
     "i = 0;"
     "string s = \"string\";"
     "string s2;"
@@ -79,23 +79,23 @@ const char *src5 =
     "}";
 
 const char *src6 =
-  "int before(int a) {"
+  "i32 before(i32 a) {"
     "return a;"
   "}"
-  "int main() {"
-    "int a = before(0);"
+  "i32 main() {"
+    "i32 a = before(0);"
     "after(a);"
     "return a;"
   "}"
-  "int after(int a) {"
+  "i32 after(i32 a) {"
     "return a;"
   "}";
 
 const char *src7 =
-  "int main() {"
-    "int a = 10;"
-    "int b = 10;"
-    "int result;"
+  "i32 main() {"
+    "i32 a = 10;"
+    "i32 b = 10;"
+    "i32 result;"
     "a = a + b;"
     "a = a - b;"
     "a = a + 10;"

@@ -38,8 +38,8 @@ BO_BEGIN_DECLS
   tp(VOID,   "void") \
   tp(CHAR,   "char") \
   tp(BOOL,   "bool") \
-  tp(I32,    "int") \
-  tp(I64,    "long") \
+  tp(I32,    "i32") \
+  tp(I64,    "i64") \
   tp(STRING, "string") \
 
 typedef enum {

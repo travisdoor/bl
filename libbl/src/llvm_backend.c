@@ -294,11 +294,11 @@ gen_default(context_t *cnt,
 {
   switch (bl_type_get(t)) {
     case BL_TYPE_CHAR:
-      return LLVMConstInt(LLVMInt8Type(), 0, false);
+      return LLVMConstInt(LLVMInt8Type(), 0, true);
     case BL_TYPE_I32:
-      return LLVMConstInt(LLVMInt32Type(), 0, false);
+      return LLVMConstInt(LLVMInt32Type(), 0, true);
     case BL_TYPE_I64:
-      return LLVMConstInt(LLVMInt64Type(), 0, false);
+      return LLVMConstInt(LLVMInt64Type(), 0, true);
     case BL_TYPE_BOOL:
       return LLVMConstInt(LLVMInt1Type(), 0, false);
     case BL_TYPE_STRING: {
