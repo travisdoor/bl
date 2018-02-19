@@ -33,7 +33,8 @@
 bo_decl_members_begin(NodeIfStmt, Node)
   /* members */
   NodeExpr *condition;
-  NodeStmt *body;
+  NodeStmt *then_stmt;
+  NodeStmt *else_stmt;
 bo_end();
 
 bo_impl_type(NodeIfStmt, Node);
@@ -51,8 +52,9 @@ NodeIfStmt_ctor(NodeIfStmt *self, NodeIfStmtParams *p)
   bo_parent_ctor(Node, p);
 
   /* initialize self */
-  self->body = p->body;
+  self->then_stmt = p->then_stmt;
   self->condition = p->condition;
+  self->else_stmt = p->else_stmt;
 }
 
 void
@@ -74,7 +76,13 @@ bl_node_if_stmt_get_cond(NodeIfStmt *self)
 }
 
 NodeStmt *
-bl_node_if_stmt_get_stmt(NodeIfStmt *self)
+bl_node_if_stmt_get_then_stmt(NodeIfStmt *self)
 {
-  return self->body;
+  return self->then_stmt;
+}
+
+NodeStmt *
+bl_node_if_stmt_get_else_stmt(NodeIfStmt *self)
+{
+  return self->else_stmt;
 }

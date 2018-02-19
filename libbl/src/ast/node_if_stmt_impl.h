@@ -34,7 +34,8 @@
 
 bo_decl_params_with_base_begin(NodeIfStmt, Node)
   NodeExpr *condition;
-  NodeStmt *body;
+  NodeStmt *then_stmt;
+  NodeStmt *else_stmt;
 bo_end();
 
 #endif //BL_NODE_IF_STMT_IMPL_H

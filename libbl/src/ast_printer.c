@@ -130,7 +130,7 @@ print_node(AstPrinter *self,
     case BL_NODE_IF_STMT:
       pad += 2;
       print_node(self, (Node *) bl_node_if_stmt_get_cond((NodeIfStmt *) node), pad);
-      print_node(self, (Node *) bl_node_if_stmt_get_stmt((NodeIfStmt *) node), pad);
+      print_node(self, (Node *) bl_node_if_stmt_get_then_stmt((NodeIfStmt *) node), pad);
       break;
     case BL_NODE_PARAM_VAR_DECL:
       break;

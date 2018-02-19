@@ -600,10 +600,12 @@ gen_if_stmt(context_t *cnt,
   LLVMBuildCondBr(cnt->builder, expr, ifthen, ifelse);
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifthen);
-  gen_cmp_stmt(cnt, bl_node_if_stmt_get_stmt(ifstmt), NULL);
+  gen_cmp_stmt(cnt, bl_node_if_stmt_get_then_stmt(ifstmt), NULL);
   LLVMBuildBr(cnt->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifelse);
+  if (bl_node_if_stmt_get_else_stmt(ifstmt))
+    gen_cmp_stmt(cnt, bl_node_if_stmt_get_else_stmt(ifstmt), NULL);
   LLVMBuildBr(cnt->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifcont);

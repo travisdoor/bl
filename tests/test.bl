@@ -6,9 +6,10 @@ extern int puts(string s);
 int main() {
   int a = 0;
 
-  assert(a == 10, "test assert");
-
-  if (a == 0) {
+  if (a == 1) {
+    puts("a is 0");
+  } else {
+    puts("a is not 0");
   }
 
   return 0;

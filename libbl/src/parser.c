@@ -213,6 +213,9 @@ NodeIfStmt *
 parse_if_stmt(context_t *cnt)
 {
   NodeIfStmt *ifstmt = NULL;
+  NodeExpr *expr = NULL;
+  NodeStmt *then_stmt = NULL;
+  NodeStmt *else_stmt = NULL;
 
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
@@ -224,7 +227,7 @@ parse_if_stmt(context_t *cnt)
         " after if statement", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
 
-    NodeExpr *expr = parse_expr(cnt);
+    expr = parse_expr(cnt);
     if (!expr) {
       parse_error(cnt,
                   "%s %d:%d expected expression ",
@@ -240,8 +243,11 @@ parse_if_stmt(context_t *cnt)
         " after expression", bl_unit_get_src_file(cnt->unit), tok->line, tok->col);
     }
 
-    NodeStmt *stmt = parse_stmt(cnt);
-    if (!stmt) {
+    /*
+     * Parse then compound statement
+     */
+    then_stmt = parse_stmt(cnt);
+    if (!then_stmt) {
       parse_error(cnt,
                   "%s %d:%d expected if statement body",
                   bl_unit_get_src_file(cnt->unit),
@@ -249,8 +255,24 @@ parse_if_stmt(context_t *cnt)
                   tok->col);
     }
 
+    /*
+     * Parse else statement if there is one.
+     */
+    if (bl_tokens_current_is(cnt->tokens, BL_SYM_ELSE)) {
+      tok = bl_tokens_consume(cnt->tokens);
+
+      else_stmt = parse_stmt(cnt);
+      if (!else_stmt) {
+        parse_error(cnt,
+                    "%s %d:%d expected else statement body",
+                    bl_unit_get_src_file(cnt->unit),
+                    tok->line,
+                    tok->col);
+      }
+    }
+
     ifstmt = bl_ast_node_if_stmt_new(
-      bl_unit_get_ast(cnt->unit), expr, stmt, tok->src_loc, tok->line, tok->col);
+      bl_unit_get_ast(cnt->unit), expr, then_stmt, else_stmt, tok->src_loc, tok->line, tok->col);
 
   }
 
