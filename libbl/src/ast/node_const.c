@@ -38,6 +38,7 @@ bo_decl_members_begin(NodeConst, NodeExpr)
   /* members */
   union {
     char *as_string;
+    char as_char;
     int as_int;
     bool as_bool;
   } content;
@@ -89,6 +90,9 @@ to_string(NodeConst *self)
       break;
     case BL_CONST_STRING:
       sprintf(str, "string %s", self->content.as_string);
+      break;
+    case BL_CONST_CHAR:
+      sprintf(str, "char %c", self->content.as_char);
       break;
   }
 
@@ -150,4 +154,19 @@ bl_node_conts_type_e
 bl_node_const_get_type(NodeConst *self)
 {
   return self->type;
+}
+
+char
+bl_node_const_get_char(NodeConst *self)
+{
+  bl_assert(self->type == BL_CONST_CHAR, "invalid constant node type");
+  return self->content.as_char;
+}
+
+void
+bl_node_const_set_char(NodeConst *self,
+                       char val)
+{
+  self->type = BL_CONST_CHAR;
+  self->content.as_char = val;
 }

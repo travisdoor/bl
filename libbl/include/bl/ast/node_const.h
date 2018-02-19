@@ -33,10 +33,9 @@
 #include <stdbool.h>
 #include "bl/ast/node_expr.h"
 
-typedef enum _bl_node_conts_type_e {
-  BL_CONST_INT,
-  BL_CONST_BOOL,
-  BL_CONST_STRING
+typedef enum _bl_node_conts_type_e
+{
+  BL_CONST_INT, BL_CONST_BOOL, BL_CONST_STRING, BL_CONST_CHAR
 } bl_node_conts_type_e;
 
 BO_BEGIN_DECLS
@@ -51,17 +50,14 @@ bl_node_const_get_int(NodeConst *self);
 
 extern BO_EXPORT void
 bl_node_const_set_int(NodeConst *self,
-                      int        val);
+                      int val);
 
 extern BO_EXPORT bool
 bl_node_const_get_bool(NodeConst *self);
 
 extern BO_EXPORT void
 bl_node_const_set_bool(NodeConst *self,
-                      bool val);
-
-extern BO_EXPORT bl_node_conts_type_e
-bl_node_const_get_type(NodeConst *self);
+                       bool val);
 
 extern BO_EXPORT const char *
 bl_node_const_get_str(NodeConst *self);
@@ -69,6 +65,16 @@ bl_node_const_get_str(NodeConst *self);
 extern BO_EXPORT void
 bl_node_const_set_str(NodeConst *self,
                       char *val);
+
+extern BO_EXPORT char
+bl_node_const_get_char(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_char(NodeConst *self,
+                       char val);
+
+extern BO_EXPORT bl_node_conts_type_e
+bl_node_const_get_type(NodeConst *self);
 
 BO_END_DECLS
 

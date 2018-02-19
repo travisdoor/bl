@@ -498,6 +498,14 @@ parse_expr(context_t *cnt)
 
       bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
       break;
+    case BL_SYM_CHAR:
+      bl_tokens_consume(cnt->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
+
+      bl_node_const_set_char((NodeConst *) expr, tok->content.as_char);
+      break;
     default:
       break;
   }

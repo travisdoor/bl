@@ -63,6 +63,12 @@ scan_string(Lexer *self,
             cursor_t *cur);
 
 static bool
+scan_char(Lexer *self,
+          Unit *unit,
+          char term,
+          cursor_t *cur);
+
+static bool
 ignore_till(Lexer *self,
             Unit *unit,
             char term,
@@ -264,6 +270,9 @@ run(Lexer *self,
       case '"':
         scan_string(self, unit, '"', &cur);
         continue;
+      case '\'':
+        scan_char(self, unit, '\'', &cur);
+        continue;
       case '/':
         switch (*(cur.iter + 1)) {
           case '/':
@@ -320,6 +329,43 @@ scan_string(Lexer *self,
   }
 
   cur->col++;
+  bl_tokens_push(tokens, &tok);
+  return true;
+}
+
+bool
+scan_char(Lexer *self,
+          Unit *unit,
+          char term,
+          cursor_t *cur)
+{
+  Tokens *tokens = bl_unit_get_tokens(unit);
+  bl_token_t tok;
+  char c = '0';
+  cur->iter++;
+  cur->col++;
+
+  bl_token_init(&tok, BL_SYM_CHAR, cur->line, cur->col, 0, cur->iter);
+  c = *cur->iter;
+  if (c == '\\') {
+    switch (*(cur->iter + 1)) {
+      case 'n':
+        c = '\n';
+        cur->iter++;
+        break;
+      default:
+        break;
+    }
+  }
+
+  tok.content.as_char = c;
+
+  if (*(cur->iter + 1) != term) {
+    return false;
+  }
+
+  cur->col++;
+  cur->iter++;
   bl_tokens_push(tokens, &tok);
   return true;
 }

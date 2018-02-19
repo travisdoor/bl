@@ -37,6 +37,7 @@ BO_BEGIN_DECLS
   sm(EOF, "end") \
   sm(IDENT, "identifier") \
   sm(STRING, "string") \
+  sm(CHAR, "char") \
   sm(NUM, "number") \
   sm(RETURN, "return") \
   sm(IF, "if") \
@@ -87,6 +88,7 @@ typedef struct
   union content_u
   {
     const char *as_string;
+    char as_char;
     double as_double;
     int as_int;
   } content;

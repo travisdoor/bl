@@ -1,22 +1,39 @@
 // this is testing script
 
-extern i32 pri32f(string format, i32 i);
 extern i32 puts(string s);
-
-i32 main() {
-  i32 a = 0;
-
-  if (a == 1) {
-    puts("a is 0");
-  } else {
-    puts("a is not 0");
-  }
-
-  return 0;
-}
+extern i32 printf(string s, i32 i);
+extern void abort();
+extern i32 putchar(char c);
 
 void assert(bool expr, string msg) {
-  if (expr == false) {
+  if (expr == true) {
     puts(msg);
+    abort();
   }
+}
+
+void println(string s, i32 i) {
+  printf(s, i);
+  putchar('\n');
+}
+
+i32 main() {
+  i32 a = 15;
+  a = a - 15;
+
+  println("a is %i", a);
+
+  assert(a != 0, "invalid a");
+
+  if (true) {
+    if (a == 0) {
+      puts("a is zero");
+      return a;
+    } else {
+      puts("a is not zero");
+    }
+  }
+
+  abort();
+  return 0;
 }

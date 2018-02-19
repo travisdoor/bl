@@ -204,28 +204,32 @@ analyze_stmt(context_t *cnt,
   for (int i = 0; i < c; i++) {
     node = bl_node_stmt_get_child(stmt, i);
     switch (node->type) {
-    case BL_NODE_RETURN_STMT:return_presented = true;
-      if (i != c - 1) {
-        bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
-                   bl_unit_get_src_file(cnt->unit),
-                   node->line,
-                   node->col);
-      }
-      break;
-    case BL_NODE_VAR_DECL:analyze_var_decl(cnt, (NodeVarDecl *) node);
-      break;
-    default:break;
+      case BL_NODE_RETURN_STMT:
+        return_presented = true;
+        if (i != c - 1) {
+          bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
+                     bl_unit_get_src_file(cnt->unit),
+                     node->line,
+                     node->col);
+        }
+        break;
+      case BL_NODE_VAR_DECL:
+        analyze_var_decl(cnt, (NodeVarDecl *) node);
+        break;
+      default:
+        break;
     }
   }
 
   Type *exp_ret = bl_node_decl_get_type((NodeDecl *) cnt->current_func_tmp);
+  Ident *ident = bl_node_decl_get_ident((NodeDecl *) cnt->current_func_tmp);
   if (!return_presented && bl_type_is_not(exp_ret, BL_TYPE_VOID)) {
     analyze_error(cnt,
                   "%s %d:%d unterminated function '%s'",
                   bl_unit_get_src_file(cnt->unit),
                   bo_members(cnt->current_func_tmp, Node)->line,
                   bo_members(cnt->current_func_tmp, Node)->col,
-                  bl_node_decl_get_ident((NodeDecl *) cnt->current_func_tmp));
+                  bl_ident_get_name(ident));
   }
 }
 
@@ -238,9 +242,11 @@ analyze_gstmt(context_t *cnt,
   for (int i = 0; i < c; i++) {
     child = bl_node_global_stmt_get_child(node, i);
     switch (child->type) {
-    case BL_NODE_FUNC_DECL:analyze_func(cnt, (NodeFuncDecl *) child);
-      break;
-    default:break;
+      case BL_NODE_FUNC_DECL:
+        analyze_func(cnt, (NodeFuncDecl *) child);
+        break;
+      default:
+        break;
     }
   }
 }
@@ -258,9 +264,11 @@ run(Analyzer *self,
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
   switch (root->type) {
-  case BL_NODE_GLOBAL_STMT:analyze_gstmt(&cnt, (NodeGlobalStmt *) root);
-    break;
-  default:break;
+    case BL_NODE_GLOBAL_STMT:
+      analyze_gstmt(&cnt, (NodeGlobalStmt *) root);
+      break;
+    default:
+      break;
   }
   return true;
 }

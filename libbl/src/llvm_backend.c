@@ -61,6 +61,8 @@ typedef struct _context_t
   /* tmps */
   LlvmBlockContext *block_context;
   BHashTable *const_strings;
+  LLVMValueRef ret_value;
+  LLVMBasicBlockRef ret_block;
 } context_t;
 
 static bool
@@ -118,6 +120,10 @@ gen_if_stmt(context_t *cnt,
 static void
 gen_ret(context_t *cnt,
         NodeReturnStmt *node);
+
+static LLVMTypeRef
+get_ret_type(context_t *cnt,
+             NodeFuncDecl *func);
 
 static void
 gen_var_decl(context_t *cnt,
@@ -365,6 +371,12 @@ gen_expr(context_t *cnt,
           val = get_or_create_const_string(
             cnt, bl_node_const_get_str((NodeConst *) expr));
           break;
+        case BL_CONST_CHAR:
+          val = LLVMConstInt(
+            LLVMInt8Type(),
+            (unsigned long long int) bl_node_const_get_char((NodeConst *) expr),
+            false);
+          break;
         default: bl_abort("invalid constant type");
       }
       break;
@@ -452,7 +464,6 @@ gen_ret(context_t *cnt,
 {
   NodeExpr *expr = bl_node_return_stmt_get_expr(node);
   if (!expr) {
-    LLVMBuildRetVoid(cnt->builder);
     return;
   }
 
@@ -460,7 +471,21 @@ gen_ret(context_t *cnt,
 
   if (LLVMIsAAllocaInst(val))
     val = LLVMBuildLoad(cnt->builder, val, "tmp");
-  LLVMBuildRet(cnt->builder, val);
+
+  LLVMBuildStore(cnt->builder, val, cnt->ret_value);
+  LLVMBuildBr(cnt->builder, cnt->ret_block);
+}
+
+LLVMTypeRef
+get_ret_type(context_t *cnt,
+             NodeFuncDecl *func)
+{
+  Type *t = bl_node_decl_get_type((NodeDecl *) func);
+  if (t == NULL) {
+    return LLVMVoidType();
+  }
+
+  return to_llvm_type(t);
 }
 
 void
@@ -601,12 +626,13 @@ gen_if_stmt(context_t *cnt,
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifthen);
   gen_cmp_stmt(cnt, bl_node_if_stmt_get_then_stmt(ifstmt), NULL);
-  LLVMBuildBr(cnt->builder, ifcont);
+//  LLVMBuildBr(cnt->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifelse);
   if (bl_node_if_stmt_get_else_stmt(ifstmt))
     gen_cmp_stmt(cnt, bl_node_if_stmt_get_else_stmt(ifstmt), NULL);
-  LLVMBuildBr(cnt->builder, ifcont);
+  else
+    LLVMBuildBr(cnt->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(cnt->builder, ifcont);
 }
@@ -616,7 +642,6 @@ gen_cmp_stmt(context_t *cnt,
              NodeStmt *stmt,
              NodeFuncDecl *fnode)
 {
-  bool return_presented = false;
   bl_llvm_block_context_push_block(cnt->block_context);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->builder);
   LLVMPositionBuilderAtEnd(cnt->builder, insert_block);
@@ -639,6 +664,18 @@ gen_cmp_stmt(context_t *cnt,
       LLVMBuildStore(cnt->builder, p, p_tmp);
       bl_llvm_block_context_add(cnt->block_context, p_tmp, ident);
     }
+
+    /*
+     * Prepare return value.
+     */
+    LLVMTypeRef ret_type = get_ret_type(cnt, fnode);
+    if (ret_type != LLVMVoidType()) {
+      cnt->ret_value = LLVMBuildAlloca(cnt->builder, ret_type, "ret");
+    } else {
+      cnt->ret_value = NULL;
+    }
+
+    cnt->ret_block = LLVMAppendBasicBlock(parent, "exit");
   }
 
   Node *child = NULL;
@@ -647,7 +684,6 @@ gen_cmp_stmt(context_t *cnt,
     child = bl_node_stmt_get_child(stmt, i);
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
-        return_presented = true;
         gen_ret(cnt, (NodeReturnStmt *) child);
         goto done;
       case BL_NODE_VAR_DECL:
@@ -669,9 +705,18 @@ gen_cmp_stmt(context_t *cnt,
     }
   }
 
+  LLVMBuildBr(cnt->builder, cnt->ret_block);
+
 done:
-  if (!return_presented && fnode) {
-    LLVMBuildRetVoid(cnt->builder);
+  if (fnode) {
+    LLVMPositionBuilderAtEnd(cnt->builder, cnt->ret_block);
+
+    if (cnt->ret_value) {
+      cnt->ret_value = LLVMBuildLoad(cnt->builder, cnt->ret_value, "tmp");
+      LLVMBuildRet(cnt->builder, cnt->ret_value);
+    } else {
+      LLVMBuildRetVoid(cnt->builder);
+    }
   }
 
   bl_llvm_block_context_pop_block(cnt->block_context);
