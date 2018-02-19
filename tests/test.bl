@@ -6,16 +6,16 @@ extern int puts(string s);
 int main() {
   int a = 0;
 
-//  assert(a == 10, "test assert");
+  assert(a == 10, "test assert");
 
-//  if (a == 0) {
-//  }
+  if (a == 0) {
+  }
 
   return 0;
 }
 
 void assert(bool expr, string msg) {
-//  if (expr == false) {
-//    puts(msg);
-//  }
+  if (expr == false) {
+    puts(msg);
+  }
 }
