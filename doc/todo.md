@@ -1,4 +1,5 @@
 ## TODO
+* skipping empty source files
 * expression binop priority
 * analyze - compare call arguments with callee
 * namespaces

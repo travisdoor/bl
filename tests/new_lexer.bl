@@ -11,30 +11,11 @@ class
 false
 extern
 return
-struct
-namespace
-==
-!=
->=
-<=
-{
-}
-[
-]
-(
-)
-,
-;
-/
-=
-+
--
-*
->
-<
+struct namespace
+structnamespace
+hreturnn
+==!=>=<={}[](),;/=+-*><
 
-"string\n"
-0123456789
-ident
-'c'
-'\n'
+ident ident ident
+0123 23344 1234567890
+"" "hello" "h12346789 af" ""

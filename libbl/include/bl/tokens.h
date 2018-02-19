@@ -53,6 +53,9 @@ extern BO_EXPORT bl_token_t *
 bl_tokens_peek(Tokens *self);
 
 extern BO_EXPORT bl_token_t *
+bl_tokens_peek_last(Tokens *self);
+
+extern BO_EXPORT bl_token_t *
 bl_tokens_peek_2nd(Tokens *self);
 
 extern BO_EXPORT bl_token_t *

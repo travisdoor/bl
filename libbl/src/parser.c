@@ -474,7 +474,7 @@ parse_expr(context_t *cnt)
 
       expr = (NodeExpr *) bl_ast_node_const_new(
         bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
-      bl_node_const_set_int((NodeConst *) expr, tok->content.as_int);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);

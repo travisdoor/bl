@@ -50,7 +50,7 @@ typedef struct _cursor_t
   char *iter;
   int line;
   int col;
-} cursor_t;
+} context_t;
 
 static bool
 run(Lexer *self,
@@ -60,29 +60,29 @@ static bool
 scan_string(Lexer *self,
             Unit *unit,
             char term,
-            cursor_t *cur);
+            context_t *cur);
 
 static bool
 scan_char(Lexer *self,
           Unit *unit,
           char term,
-          cursor_t *cur);
+          context_t *cur);
 
 static bool
 ignore_till(Lexer *self,
             Unit *unit,
             char term,
-            cursor_t *cur);
+            context_t *cur);
 
 static bool
 scan_ident(Lexer *self,
            Unit *unit,
-           cursor_t *cur);
+           context_t *cur);
 
 static bool
 scan_number(Lexer *self,
             Unit *unit,
-            cursor_t *cur);
+            context_t *cur);
 
 /* Lexer members */
 bo_decl_members_begin(Lexer, Stage)
@@ -145,7 +145,7 @@ run(Lexer *self,
     return false;
   }
 
-  cursor_t cur = {.iter = src, .line = 1, .col = 1};
+  context_t cur = {.iter = src, .line = 1, .col = 1};
 
   for (; *cur.iter != '\0'; cur.iter++) {
     switch (*cur.iter) {
@@ -310,7 +310,7 @@ bool
 scan_string(Lexer *self,
             Unit *unit,
             char term,
-            cursor_t *cur)
+            context_t *cur)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
   bl_token_t tok;
@@ -337,7 +337,7 @@ bool
 scan_char(Lexer *self,
           Unit *unit,
           char term,
-          cursor_t *cur)
+          context_t *cur)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
   bl_token_t tok;
@@ -374,7 +374,7 @@ bool
 ignore_till(Lexer *self,
             Unit *unit,
             char term,
-            cursor_t *cur)
+            context_t *cur)
 {
   while (*cur->iter != term) {
     if (*cur->iter == '\n') {
@@ -397,7 +397,7 @@ ignore_till(Lexer *self,
 bool
 scan_ident(Lexer *self,
            Unit *unit,
-           cursor_t *cur)
+           context_t *cur)
 {
   Tokens *tokens = bl_unit_get_tokens(unit);
   bl_token_t tok;
@@ -498,7 +498,7 @@ scan_ident(Lexer *self,
 bool
 scan_number(Lexer *self,
             Unit *unit,
-            cursor_t *cur)
+            context_t *cur)
 {
   if (!is_number_c(*cur->iter))
     return false;
@@ -518,7 +518,7 @@ scan_number(Lexer *self,
       break;
   }
 
-  tok.content.as_int = n;
+  tok.content.as_ull = n;
   bl_tokens_push(tokens, &tok);
   return true;
 }

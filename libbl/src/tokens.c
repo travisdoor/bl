@@ -101,6 +101,17 @@ bl_tokens_peek_2nd(Tokens *self)
 }
 
 bl_token_t *
+bl_tokens_peek_last(Tokens *self)
+{
+  const size_t i = bo_array_size(self->buf);
+  if (i == 0) {
+    return NULL;
+  }
+
+  return &bo_array_at(self->buf, i, bl_token_t);
+}
+
+bl_token_t *
 bl_tokens_peek_nth(Tokens *self,
                    size_t n)
 {

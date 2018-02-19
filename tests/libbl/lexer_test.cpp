@@ -91,7 +91,7 @@ TEST_F(LexerTest, symbol_parsing)
 
   t = bl_tokens_consume(tokens);
   ASSERT_EQ(t->sym, BL_SYM_NUM);
-  ASSERT_EQ(t->content.as_int, 123456789);
+  ASSERT_EQ(t->content.as_ull, 123456789);
 
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RETURN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IF);

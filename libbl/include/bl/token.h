@@ -46,9 +46,9 @@ BO_BEGIN_DECLS
   /*
    * other symbols
    * these can be compared directly with its string representation
-   * symbols with same initial character must be ordered
+   * symbols with same initial character must be ordered by length
    */\
-  sm(IF,         "if") \
+  sm(IF,         "if") /* must be first */\
   sm(ELSE,       "else") \
   sm(TRUE,       "true") \
   sm(CLASS,      "class") \
@@ -56,7 +56,7 @@ BO_BEGIN_DECLS
   sm(EXTERN,     "extern") \
   sm(RETURN,     "return") \
   sm(STRUCT,     "struct") \
-  sm(NAMESPACE,  "namespace") \
+  sm(NAMESPACE,  "namespace") /* must be last */\
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \
   sm(RBCOMMENT,  "*/") \
@@ -102,7 +102,7 @@ typedef struct
     const char *as_string;
     char as_char;
     double as_double;
-    int as_int;
+    unsigned long long as_ull;
   } content;
 } bl_token_t;
 
