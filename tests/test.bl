@@ -45,7 +45,7 @@ int get_one() {
 }
 
 void assert(bool expr, string msg) {
-  if (expr == false) {
+  if (expr == true) {
     puts(msg);
   }
 }
