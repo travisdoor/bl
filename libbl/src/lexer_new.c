@@ -196,14 +196,15 @@ scan_string(context_t *cnt,
   tok->line = cnt->line;
   tok->col = cnt->col;
   tok->sym = BL_SYM_STRING;
-  tok->content.as_string = cnt->c;
 
   /* eat " */
   cnt->c++;
+  tok->content.as_string = cnt->c;
 
   int len = 0;
   while (true) {
     if (*cnt->c == '\"') {
+      cnt->c++;
       break;
     } else if (*cnt->c == '\0') {
       scan_error(cnt,
@@ -217,8 +218,8 @@ scan_string(context_t *cnt,
     cnt->c++;
   }
 
-  tok->len = len - 1;
-  cnt->col += len;
+  tok->len = len;
+  cnt->col += len + 2;
   return true;
 }
 
