@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl
+// blc
 //
-// File:   lexer.h
+// File:   lexer_new.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   19/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,20 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef LEXER_H_M6HPRS2Z
-#define LEXER_H_M6HPRS2Z
+#ifndef BL_LEXER_H
+#define BL_LEXER_H
 
 #include <bobject/bobject.h>
 #include "bl/pipeline/stage.h"
 
 BO_BEGIN_DECLS
-/* class declaration */
+
+/* class Lexer declaration */
 bo_decl_type_begin(Lexer, Stage)
   /* virtuals */
 bo_end();
 
 extern BO_EXPORT Lexer *
 bl_lexer_new(bl_compile_group_e group);
+
 BO_END_DECLS
 
-#endif /* end of include guard: LEXER_H_M6HPRS2Z */
+#endif //BL_LEXER_H

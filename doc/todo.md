@@ -1,4 +1,6 @@
 ## TODO
+* dont use context in stages, use self instead.
+* skipping empty source files
 * expression binop priority
 * analyze - compare call arguments with callee
 * namespaces
@@ -10,6 +12,20 @@
 ## Syntax hints
 ### Arrays
     int[n] int_array;
+    
+### Loops
+    break;
+    continue;
+    
+    loop {
+    }
+    
+    while (expr) {
+    }
+    
+    for (x = 0; x < 10; x++) {
+    }
+
 
 ### Casting
     bool b;

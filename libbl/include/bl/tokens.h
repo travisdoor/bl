@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl
+// blc
 //
 // File:   tokens.h
 // Author: Martin Dorazil
@@ -43,11 +43,17 @@ bo_end();
 extern BO_EXPORT Tokens *
 bl_tokens_new(void);
 
+extern BO_EXPORT int
+bl_tokens_count(Tokens *self);
+
 extern BO_EXPORT void
 bl_tokens_push(Tokens *self, bl_token_t *t);
 
 extern BO_EXPORT bl_token_t *
 bl_tokens_peek(Tokens *self);
+
+extern BO_EXPORT bl_token_t *
+bl_tokens_peek_last(Tokens *self);
 
 extern BO_EXPORT bl_token_t *
 bl_tokens_peek_2nd(Tokens *self);

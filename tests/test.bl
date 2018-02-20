@@ -1,9 +1,10 @@
-// this is testing script
+/*
+ * This is Biscuit testing script.
+ */
 
 extern i32 puts(string s);
 extern i32 printf(string s, i32 i);
 extern void abort();
-extern i32 putchar(char c);
 
 void assert(bool expr, string msg) {
   if (expr == true) {
@@ -14,7 +15,6 @@ void assert(bool expr, string msg) {
 
 void println(string s, i32 i) {
   printf(s, i);
-  putchar('\n');
 }
 
 i32 main() {

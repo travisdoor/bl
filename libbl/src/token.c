@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl
+// blc
 //
 // File:   token.c
 // Author: Martin Dorazil
@@ -48,6 +48,6 @@ bl_token_init(bl_token_t *token,
 bool
 bl_token_is_binop(bl_token_t *token)
 {
-  return token->sym >= BL_SYM_ASIGN && token->sym <= BL_SYM_LESS_EQ;
+  return token->sym >= BL_SYM_EQ && token->sym <= BL_SYM_LESS;
 }
 

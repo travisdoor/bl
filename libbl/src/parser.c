@@ -216,9 +216,10 @@ parse_if_stmt(context_t *cnt)
   NodeExpr *expr = NULL;
   NodeStmt *then_stmt = NULL;
   NodeStmt *else_stmt = NULL;
+  bl_token_t *tok = NULL;
 
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    bl_tokens_consume(cnt->tokens);
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -474,7 +475,7 @@ parse_expr(context_t *cnt)
 
       expr = (NodeExpr *) bl_ast_node_const_new(
         bl_unit_get_ast(cnt->unit), tok->src_loc, tok->line, tok->col);
-      bl_node_const_set_int((NodeConst *) expr, tok->content.as_int);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);
@@ -635,6 +636,11 @@ run(Parser *self,
   if (bl_unit_get_tokens(unit) == NULL) {
     bl_actor_error((Actor *) unit, "no tokens found for unit");
     return false;
+  }
+
+  if (bl_tokens_count(bl_unit_get_tokens(unit)) == 0) {
+    bl_warning("empty source file %s", bl_unit_get_name(unit));
+    return true;
   }
 
   context_t cnt = {0};

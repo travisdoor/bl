@@ -1,0 +1,24 @@
+// comment line
+//comment line
+
+/*
+ * block comment
+ */
+
+if
+else
+class
+false
+extern
+return
+struct namespace
+structnamespace
+hreturnn
+==!=>=<={}[](),;/=+-*><
+
+ident ident ident
+0123 23344 1234567890
+""
+"hell""hell with space"
+"kokot"
+
