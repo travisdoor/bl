@@ -103,7 +103,7 @@ LexerKlass_init(LexerKlass *klass)
 
 void
 Lexer_ctor(Lexer *self,
-              LexerParams *p)
+           LexerParams *p)
 {
   /* constructor */
   /* initialize parent */
@@ -119,7 +119,7 @@ Lexer_dtor(Lexer *self)
 
 bo_copy_result
 Lexer_copy(Lexer *self,
-              Lexer *other)
+           Lexer *other)
 {
   return BO_NO_COPY;
 }
@@ -319,8 +319,13 @@ scan:
           /* begin of block comment */
           scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
           goto scan;
-        case BL_SYM_RBCOMMENT:
-          goto scan;
+        case BL_SYM_RBCOMMENT: {
+          scan_error(cnt,
+                     "%s %d:%d unexpected token.",
+                     bl_unit_get_name(cnt->unit),
+                     cnt->line,
+                     cnt->col);
+        }
         default:
           cnt->col += len;
           goto push_token;
