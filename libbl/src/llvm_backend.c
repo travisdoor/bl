@@ -339,49 +339,36 @@ gen_binop(LlvmBackend *self,
   if (LLVMIsAAllocaInst(rvalue))
     rvalue = LLVMBuildLoad(self->builder, rvalue, "tmp");
 
-  switch (bl_node_binop_get_op(binop)) {
-    case BL_SYM_ASIGN:
-      LLVMBuildStore(self->builder, rvalue, lvalue);
-      return NULL;
+  bl_sym_e op = bl_node_binop_get_op(binop);
+
+  if (op == BL_SYM_ASIGN) {
+    LLVMBuildStore(self->builder, rvalue, lvalue);
+    return NULL;
+  }
+
+  if (LLVMIsAAllocaInst(lvalue))
+    lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
+
+  switch (op) {
     case BL_SYM_PLUS:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildAdd(self->builder, lvalue, rvalue, "tmp");
     case BL_SYM_MINUS:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildSub(self->builder, lvalue, rvalue, "tmp");
     case BL_SYM_ASTERISK:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildMul(self->builder, lvalue, rvalue, "tmp");
     case BL_SYM_SLASH:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildFDiv(self->builder, lvalue, rvalue, "tmp");
     case BL_SYM_EQ:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntEQ, lvalue, rvalue, "tmp");
     case BL_SYM_NEQ:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntNE, lvalue, rvalue, "tmp");
     case BL_SYM_GREATER:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntSGT, lvalue, rvalue, "tmp");
     case BL_SYM_LESS:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntSLT, lvalue, rvalue, "tmp");
     case BL_SYM_GREATER_EQ:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntSGE, lvalue, rvalue, "tmp");
     case BL_SYM_LESS_EQ:
-      if (LLVMIsAAllocaInst(lvalue))
-        lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
       return LLVMBuildICmp(self->builder, LLVMIntSLE, lvalue, rvalue, "tmp");
     default: bl_abort("unknown binop");
   }

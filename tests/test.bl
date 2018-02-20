@@ -17,9 +17,7 @@ i32 main() {
   i32 a = 15;
   a = a - 15;
 
-  printf("a is %i\n", a);
-  printf("first\nsecond\nthird\n\n\t\"%i\"", a);
-
+  printf("a is \'%i\'\n", a);
   assert(a != 0, "invalid a");
 
   if (true) {

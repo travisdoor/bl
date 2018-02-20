@@ -1,0 +1,55 @@
+// casting
+bool b = false;
+i32 i = b as i32;
+
+// objects
+
+namespace biscuit {
+  behavior printable {
+    pub print();
+
+    pub dummy() {
+      printf("base functionality\n");
+    }
+  }
+
+  // defined as pub -> can be instantiated from another unit
+  // (default is private)
+  pub struct vec2i {
+    i32 x, // private by default
+    i32 y
+  }
+
+  pub struct vec3i {
+    i32 x,
+    i32 y,
+    i32 z
+  }
+
+  pub behavior vec2i : printable {
+    pub print() {
+      printf("vec2i: %d %d\n", x, y);
+    }
+  }
+
+  pub behavior vec3i : printable {
+    pub dummy() {
+      printf("hello vec3i\n");
+    }
+  }
+}
+
+/**********************************/
+
+use biscuit;
+
+void main() {
+  vec2i v2;
+  vec3i v3;
+
+  v2.print(); // prints ...
+  v2.dummy(); // prints "base functionality"
+
+  v3.print(); // error unimplemented
+  v3.dummy(); // prints "hello vec3i"
+}

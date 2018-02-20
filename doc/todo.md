@@ -40,3 +40,24 @@
     i32
     string
     
+### Objects
+
+```c
+public struct obj {
+  private int a;
+  private int b;
+  
+  public int add() {
+    return a + b;
+  }
+} 
+
+pub struct obj {
+  int a; // private by default
+  int b;
+  
+  pub int add() {
+    return a + b;
+  }
+} 
+```

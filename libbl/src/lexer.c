@@ -221,16 +221,29 @@ scan_string(Lexer *self,
   /* eat " */
   self->c++;
 
-  char *begin = self->c;
   BString *cstr = bl_tokens_create_cached_str(self->tokens);
-  char c = '0';
+  char c;
   int len = 0;
 
+scan:
   while (true) {
     switch (*self->c) {
-      case '\"':
+      case '\"': {
         self->c++;
-        goto exit;
+        char *tmp_c = self->c;
+        /* check multiline string */
+        while (true) {
+          if (*tmp_c == '\"') {
+            /* skip " */
+            self->c = tmp_c + 1;
+            goto scan;
+          } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') || (*tmp_c == '\0')) {
+            goto exit;
+          }
+
+          tmp_c++;
+        }
+      }
       case '\0': {
         scan_error(self,
                    "%s %d:%d unterminated string.",
