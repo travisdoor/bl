@@ -33,43 +33,43 @@
 #include "bl/unit.h"
 #include "ast/ast_impl.h"
 
-#define analyze_error(cnt, format, ...) \
+#define analyze_error(self, format, ...) \
   { \
-    bl_actor_error((Actor *)(cnt)->unit, (format), ##__VA_ARGS__); \
-    longjmp((cnt)->jmp_error, 1); \
+    bl_actor_error((Actor *)(self)->unit, (format), ##__VA_ARGS__); \
+    longjmp((self)->jmp_error, 1); \
   }
-
-typedef struct _context_t
-{
-  Unit *unit;
-  jmp_buf jmp_error;
-
-  /* tmps */
-  NodeFuncDecl *current_func_tmp;
-} context_t;
 
 static bool
 run(Analyzer *self,
     Unit *unit);
 
 static void
-analyze_func(context_t *cnt,
+analyze_func(Analyzer *self,
              NodeFuncDecl *func);
 
 static void
-analyze_var_decl(context_t *cnt,
+analyze_var_decl(Analyzer *self,
                  NodeVarDecl *vdcl);
 
 static void
-analyze_stmt(context_t *cnt,
+analyze_stmt(Analyzer *self,
              NodeStmt *stmt);
 
 static void
-analyze_gstmt(context_t *cnt,
+analyze_gstmt(Analyzer *self,
               NodeGlobalStmt *node);
+
+static void
+reset(Analyzer *self,
+      Unit *unit);
 
 /* Analyzer members */
 bo_decl_members_begin(Analyzer, Stage)
+  Unit *unit;
+  jmp_buf jmp_error;
+
+  /* tmps */
+  NodeFuncDecl *current_func_tmp;
 bo_end();
 
 /* Analyzer constructor parameters */
@@ -110,18 +110,18 @@ Analyzer_copy(Analyzer *self,
 }
 
 void
-analyze_func(context_t *cnt,
+analyze_func(Analyzer *self,
              NodeFuncDecl *func)
 {
-  cnt->current_func_tmp = func;
+  self->current_func_tmp = func;
   /*
    * Check return type existence.
    */
   Type *type_tmp = bl_node_decl_get_type((NodeDecl *) func);
   if (bl_type_is_user_defined(type_tmp)) {
-    analyze_error(cnt,
+    analyze_error(self,
                   "%s %d:%d unknown return type '%s' for function '%s'",
-                  bl_unit_get_src_file(cnt->unit),
+                  bl_unit_get_src_file(self->unit),
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
                   bl_type_get_name(type_tmp),
@@ -137,9 +137,9 @@ analyze_func(context_t *cnt,
    * Reached maximum count of parameters.
    */
   if (c > BL_MAX_FUNC_PARAM_COUNT) {
-    analyze_error(cnt,
+    analyze_error(self,
                   "%s %d:%d reached maximum count of function parameters, function has: %d and maximum is: %d",
-                  bl_unit_get_src_file(cnt->unit),
+                  bl_unit_get_src_file(self->unit),
                   bo_members(func, Node)->line,
                   bo_members(func, Node)->col,
                   c,
@@ -152,9 +152,9 @@ analyze_func(context_t *cnt,
 
     type_tmp = bl_node_decl_get_type((NodeDecl *) param);
     if (bl_type_is_user_defined(type_tmp)) {
-      analyze_error(cnt,
+      analyze_error(self,
                     "%s %d:%d unknown type '%s' for function parameter",
-                    bl_unit_get_src_file(cnt->unit),
+                    bl_unit_get_src_file(self->unit),
                     bo_members(param, Node)->line,
                     bo_members(param, Node)->col,
                     bl_type_get_name(type_tmp));
@@ -166,12 +166,12 @@ analyze_func(context_t *cnt,
    */
   NodeStmt *stmt = bl_node_func_decl_get_stmt(func);
   if (stmt) {
-    analyze_stmt(cnt, stmt);
+    analyze_stmt(self, stmt);
   }
 }
 
 void
-analyze_var_decl(context_t *cnt,
+analyze_var_decl(Analyzer *self,
                  NodeVarDecl *vdcl)
 {
   /*
@@ -179,23 +179,23 @@ analyze_var_decl(context_t *cnt,
    */
   Type *type_tmp = bl_node_decl_get_type((NodeDecl *) vdcl);
   if (bl_type_is_user_defined(type_tmp)) {
-    analyze_error(cnt,
+    analyze_error(self,
                   "%s %d:%d unknown type '%s'",
-                  bl_unit_get_src_file(cnt->unit),
+                  bl_unit_get_src_file(self->unit),
                   bo_members(vdcl, Node)->line,
                   bo_members(vdcl, Node)->col,
                   bl_type_get_name(type_tmp));
   } else if (bl_type_is(type_tmp, BL_TYPE_VOID)) {
-    analyze_error(cnt,
+    analyze_error(self,
                   "%s %d:%d 'void' is not allowed here",
-                  bl_unit_get_src_file(cnt->unit),
+                  bl_unit_get_src_file(self->unit),
                   bo_members(vdcl, Node)->line,
                   bo_members(vdcl, Node)->col);
   }
 }
 
 static void
-analyze_stmt(context_t *cnt,
+analyze_stmt(Analyzer *self,
              NodeStmt *stmt)
 {
   bool return_presented = false;
@@ -208,33 +208,33 @@ analyze_stmt(context_t *cnt,
         return_presented = true;
         if (i != c - 1) {
           bl_warning("(analyzer) %s %d:%d unrecheable code after 'return' statement",
-                     bl_unit_get_src_file(cnt->unit),
+                     bl_unit_get_src_file(self->unit),
                      node->line,
                      node->col);
         }
         break;
       case BL_NODE_VAR_DECL:
-        analyze_var_decl(cnt, (NodeVarDecl *) node);
+        analyze_var_decl(self, (NodeVarDecl *) node);
         break;
       default:
         break;
     }
   }
 
-  Type *exp_ret = bl_node_decl_get_type((NodeDecl *) cnt->current_func_tmp);
-  Ident *ident = bl_node_decl_get_ident((NodeDecl *) cnt->current_func_tmp);
+  Type *exp_ret = bl_node_decl_get_type((NodeDecl *) self->current_func_tmp);
+  Ident *ident = bl_node_decl_get_ident((NodeDecl *) self->current_func_tmp);
   if (!return_presented && bl_type_is_not(exp_ret, BL_TYPE_VOID)) {
-    analyze_error(cnt,
+    analyze_error(self,
                   "%s %d:%d unterminated function '%s'",
-                  bl_unit_get_src_file(cnt->unit),
-                  bo_members(cnt->current_func_tmp, Node)->line,
-                  bo_members(cnt->current_func_tmp, Node)->col,
+                  bl_unit_get_src_file(self->unit),
+                  bo_members(self->current_func_tmp, Node)->line,
+                  bo_members(self->current_func_tmp, Node)->col,
                   bl_ident_get_name(ident));
   }
 }
 
 void
-analyze_gstmt(context_t *cnt,
+analyze_gstmt(Analyzer *self,
               NodeGlobalStmt *node)
 {
   Node *child = NULL;
@@ -243,7 +243,7 @@ analyze_gstmt(context_t *cnt,
     child = bl_node_global_stmt_get_child(node, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
-        analyze_func(cnt, (NodeFuncDecl *) child);
+        analyze_func(self, (NodeFuncDecl *) child);
         break;
       default:
         break;
@@ -251,21 +251,27 @@ analyze_gstmt(context_t *cnt,
   }
 }
 
+void
+reset(Analyzer *self,
+      Unit *unit)
+{
+  self->unit = unit;
+}
+
 bool
 run(Analyzer *self,
     Unit *unit)
 {
-  context_t cnt = {0};
-  cnt.unit = unit;
-
-  if (setjmp(cnt.jmp_error))
+  if (setjmp(self->jmp_error))
     return false;
+
+  reset(self, unit);
 
   Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
 
   switch (root->type) {
     case BL_NODE_GLOBAL_STMT:
-      analyze_gstmt(&cnt, (NodeGlobalStmt *) root);
+      analyze_gstmt(self, (NodeGlobalStmt *) root);
       break;
     default:
       break;
