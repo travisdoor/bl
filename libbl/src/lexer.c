@@ -71,6 +71,9 @@ static bool
 scan_number(Lexer *self,
             bl_token_t *tok);
 
+static char
+scan_specch(char c);
+
 static void
 reset(Lexer *self,
       Unit *unit);
@@ -189,6 +192,19 @@ scan_ident(Lexer *self,
   return true;
 }
 
+char
+scan_specch(char c)
+{
+  switch (c) {
+    case 'n':
+      return '\n';
+    case 't':
+      return '\t';
+    default:
+      return c;
+  }
+}
+
 bool
 scan_string(Lexer *self,
             bl_token_t *tok)
@@ -206,28 +222,37 @@ scan_string(Lexer *self,
   self->c++;
 
   char *begin = self->c;
-
-  int len = 0;
-  while (true) {
-    if (*self->c == '\"') {
-      self->c++;
-      break;
-    } else if (*self->c == '\0') {
-      scan_error(self,
-                 "%s %d:%d unterminated string.",
-                 bl_unit_get_name(self->unit),
-                 self->line,
-                 self->col);
-    }
-
-    len++;
-    self->c++;
-  }
-
   BString *cstr = bl_tokens_create_cached_str(self->tokens);
-  bo_string_appendn(cstr, begin, len);
-  tok->content.as_string = bo_string_get(cstr);
+  char c = '0';
+  int len = 0;
 
+  while (true) {
+    switch (*self->c) {
+      case '\"':
+        self->c++;
+        goto exit;
+      case '\0': {
+        scan_error(self,
+                   "%s %d:%d unterminated string.",
+                   bl_unit_get_name(self->unit),
+                   self->line,
+                   self->col);
+      }
+      case '\\':
+        /* special character */
+        c = scan_specch(*(self->c + 1));
+        self->c += 2;
+        len++;
+        break;
+      default:
+        c = *self->c;
+        len++;
+        self->c++;
+    }
+    bo_string_appendn(cstr, &c, 1);
+  }
+exit:
+  tok->content.as_string = bo_string_get(cstr);
   tok->len = len;
   self->col += len + 2;
   return true;

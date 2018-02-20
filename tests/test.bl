@@ -6,10 +6,6 @@ extern i32 puts(string s);
 extern i32 printf(string s, i32 i);
 extern void abort();
 
-void println(string s, i32 i) {
-  printf(s, i);
-}
-
 void assert(bool expr, string msg) {
   if (expr == true) {
     puts(msg);
@@ -21,7 +17,8 @@ i32 main() {
   i32 a = 15;
   a = a - 15;
 
-  println("a is %i", a);
+  printf("a is %i\n", a);
+  printf("first\nsecond\nthird\n\n\t\"%i\"", a);
 
   assert(a != 0, "invalid a");
 
@@ -37,3 +34,4 @@ i32 main() {
   abort();
   return 0;
 }
+
