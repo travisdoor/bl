@@ -42,7 +42,7 @@ const char *src = "// \n"
   "namespace "
   "class "
   "struct "
-  "{}[](),;=+-*/"
+  "{}[](),;=+-* /"
   "== != > < >= <=";
 
 class LexerTest : public ::testing::Test
