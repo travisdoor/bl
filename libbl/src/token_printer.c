@@ -103,11 +103,12 @@ run(TokenPrinter *self,
   for (size_t i = 0; i < c; i++) {
     tok = &bo_array_at(tokens_arr, i, bl_token_t);
 
-    if (line == -1)
+    if (line == -1) {
       line = tok->line;
-    else if (tok->line != line) {
+      fprintf(self->out_stream, "%d: ", line);
+    } else if (tok->line != line) {
       line = tok->line;
-      fprintf(self->out_stream, "\n");
+      fprintf(self->out_stream, "\n%d: ", line);
     }
 
     fprintf(

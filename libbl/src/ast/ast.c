@@ -106,8 +106,8 @@ bl_ast_get_root(Ast *self)
 
 NodeFuncDecl *
 bl_ast_node_func_decl_new(Ast        *self,
-                          char       *type,
-                          char       *ident,
+                          const char *type,
+                          const char *ident,
                           bl_sym_e    modif,
                           const char *generated_from,
                           int         line,
@@ -164,8 +164,8 @@ bl_ast_node_stmt_new(Ast        *self,
 
 NodeParamVarDecl *
 bl_ast_node_param_var_decl_new(Ast        *self,
-                               char       *type,
-                               char       *ident,
+                               const char *type,
+                               const char *ident,
                                const char *generated_from,
                                int         line,
                                int         col)
@@ -225,8 +225,8 @@ bl_ast_node_const_new(Ast               *self,
 
 NodeVarDecl *
 bl_ast_node_var_decl_new(Ast        *self,
-                         char       *type,
-                         char       *ident,
+                         const char *type,
+                         const char *ident,
                          const char *generated_from,
                          int         line,
                          int         col)
@@ -267,7 +267,7 @@ bl_ast_node_binop_new(Ast        *self,
 
 NodeCall*
 bl_ast_node_call_new(Ast        *self,
-                     char       *ident,
+                     const char *ident,
                      const char *generated_from,
                      int         line,
                      int         col)
@@ -289,7 +289,7 @@ bl_ast_node_call_new(Ast        *self,
 
 NodeDeclRef *
 bl_ast_node_decl_ref_new(Ast        *self,
-                         char       *ident,
+                         const char *ident,
                          const char *generated_from,
                          int         line,
                          int         col)

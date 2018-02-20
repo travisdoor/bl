@@ -59,15 +59,6 @@ static bool
 run(LlvmBackend *self,
     Unit *unit);
 
-static void
-init_self(LlvmBackend *self,
-          Unit *unit,
-          LLVMModuleRef module,
-          jmp_buf jmp_error);
-
-static void
-destroy_self(LlvmBackend *self);
-
 static LLVMTypeRef
 to_llvm_type(Type *t);
 
@@ -188,66 +179,6 @@ LlvmBackend_copy(LlvmBackend *self,
 }
 
 /* class LlvmBackend end */
-
-void
-init_self(LlvmBackend *self,
-          Unit *unit,
-          LLVMModuleRef module,
-          jmp_buf jmp_error)
-{
-}
-
-void
-destroy_self(LlvmBackend *self)
-{
-  bo_unref(self->const_strings);
-  bo_unref(self->block_context);
-  LLVMDisposeBuilder(self->builder);
-}
-
-void
-reset(LlvmBackend *self,
-      Unit *unit)
-{
-  LLVMDisposeBuilder(self->builder);
-  bo_unref(self->const_strings);
-  bo_unref(self->block_context);
-
-  self->builder = LLVMCreateBuilder();
-  self->unit = unit;
-  self->mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
-  self->block_context = bl_llvm_block_context_new();
-  self->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
-}
-
-bool
-run(LlvmBackend *self,
-    Unit *unit)
-{
-  if (setjmp(self->jmp_error)) {
-    return false;
-  }
-
-  reset(self, unit);
-
-  Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
-  switch (root->type) {
-    case BL_NODE_GLOBAL_STMT:
-      gen_gstmt(self, (NodeGlobalStmt *) root);
-      break;
-    default: gen_error(self, "invalid node on llvm generator input");
-  }
-
-#if VERIFY
-  char *error = NULL;
-  if (LLVMVerifyModule(self->mod, LLVMReturnStatusAction, &error)) {
-    gen_error(self, "not verified with error %s", error);
-  }
-#endif
-
-  bl_unit_set_llvm_module(unit, self->mod);
-  return true;
-}
 
 /*
  * Convert known type to LLVM type representation
@@ -745,5 +676,49 @@ bl_llvm_backend_new(bl_compile_group_e group)
   LlvmBackendParams p = {.base.group = group};
 
   return bo_new(LlvmBackend, &p);
+}
+
+void
+reset(LlvmBackend *self,
+      Unit *unit)
+{
+  LLVMDisposeBuilder(self->builder);
+  bo_unref(self->const_strings);
+  bo_unref(self->block_context);
+
+  self->builder = LLVMCreateBuilder();
+  self->unit = unit;
+  self->mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
+  self->block_context = bl_llvm_block_context_new();
+  self->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
+}
+
+bool
+run(LlvmBackend *self,
+    Unit *unit)
+{
+  if (setjmp(self->jmp_error)) {
+    return false;
+  }
+
+  reset(self, unit);
+
+  Node *root = bl_ast_get_root(bl_unit_get_ast(unit));
+  switch (root->type) {
+    case BL_NODE_GLOBAL_STMT:
+      gen_gstmt(self, (NodeGlobalStmt *) root);
+      break;
+    default: gen_error(self, "invalid node on llvm generator input");
+  }
+
+#if VERIFY
+  char *error = NULL;
+  if (LLVMVerifyModule(self->mod, LLVMReturnStatusAction, &error)) {
+    gen_error(self, "not verified with error %s", error);
+  }
+#endif
+
+  bl_unit_set_llvm_module(unit, self->mod);
+  return true;
 }
 

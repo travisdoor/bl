@@ -28,7 +28,6 @@
 
 #include <stdarg.h>
 #include "bl/tokens.h"
-#include "bl/bldebug.h"
 
 /* class Tokens */
 
@@ -41,6 +40,7 @@ bo_end();
 bo_decl_members_begin(Tokens, BObject)
   /* members */
   BArray *buf;
+  BArray *string_cache;
   size_t iter;
   size_t marker;
 bo_end();
@@ -58,12 +58,14 @@ Tokens_ctor(Tokens *self,
 {
   /* constructor */
   self->buf = bo_array_new(sizeof(bl_token_t));
+  self->string_cache = bo_array_new_bo(bo_typeof(BString), true);
 }
 
 void
 Tokens_dtor(Tokens *self)
 {
   bo_unref(self->buf);
+  bo_unref(self->string_cache);
 }
 
 bo_copy_result
@@ -241,4 +243,12 @@ int
 bl_tokens_count(Tokens *self)
 {
   return bo_array_size(self->buf);
+}
+
+BString *
+bl_tokens_create_cached_str(Tokens *self)
+{
+  BString *str = bo_string_new(64);
+  bo_array_push_back(self->string_cache, str);
+  return str;
 }

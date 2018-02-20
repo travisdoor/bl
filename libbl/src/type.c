@@ -38,13 +38,13 @@ static const char *bl_type_strings[] = {
 
 /* class Type */
 bo_decl_params_begin(Type)
-  char *name;
+  const char *name;
 bo_end();
 
 /* class Type object members */
 bo_decl_members_begin(Type, BObject)
   /* members */
-  char     *name;
+  const char     *name;
   uint32_t  t;
 bo_end();
 
@@ -74,7 +74,6 @@ Type_ctor(Type *self, TypeParams *p)
 void
 Type_dtor(Type *self)
 {
-  free(self->name);
 }
 
 bo_copy_result
@@ -85,7 +84,7 @@ Type_copy(Type *self, Type *other)
 /* class Type end */
 
 Type *
-bl_type_new(char *name)
+bl_type_new(const char *name)
 {
   TypeParams p = {
     .name = name

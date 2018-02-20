@@ -34,13 +34,13 @@
 /* class Ident constructor params */
 bo_decl_params_begin(Ident)
   /* constructor params */
-  char *name;
+  const char *name;
 bo_end();
 
 /* class Ident object members */
 bo_decl_members_begin(Ident, BObject)
   /* members */
-  char *name;
+  const char *name;
   uint32_t hash;
 bo_end();
 
@@ -62,7 +62,6 @@ Ident_ctor(Ident *self, IdentParams *p)
 void
 Ident_dtor(Ident *self)
 {
-  free(self->name);
 }
 
 bo_copy_result
@@ -73,7 +72,7 @@ Ident_copy(Ident *self, Ident *other)
 /* class Ident end */
 
 Ident *
-bl_ident_new(char *name)
+bl_ident_new(const char *name)
 {
   IdentParams p = {
     .name = name

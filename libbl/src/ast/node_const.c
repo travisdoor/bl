@@ -37,7 +37,7 @@ to_string(NodeConst *self);
 bo_decl_members_begin(NodeConst, NodeExpr)
   /* members */
   union {
-    char *as_string;
+    const char *as_string;
     char as_char;
     int as_int;
     bool as_bool;
@@ -65,9 +65,6 @@ NodeConst_ctor(NodeConst *self, NodeConstParams *p)
 void
 NodeConst_dtor(NodeConst *self)
 {
-  if (self->type == BL_CONST_STRING) {
-    free(self->content.as_string);
-  }
 }
 
 bo_copy_result
@@ -144,7 +141,7 @@ bl_node_const_get_str(NodeConst *self)
 
 void
 bl_node_const_set_str(NodeConst *self,
-                      char *val)
+                      const char *val)
 {
   self->type = BL_CONST_STRING;
   self->content.as_string = val;

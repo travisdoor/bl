@@ -39,7 +39,7 @@ bo_decl_type_begin(Ident, BObject)
 bo_end();
 
 extern BO_EXPORT Ident *
-bl_ident_new(char *name);
+bl_ident_new(const char *name);
 
 extern BO_EXPORT const char *
 bl_ident_get_name(Ident *self);

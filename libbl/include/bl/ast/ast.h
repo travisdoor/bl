@@ -63,83 +63,83 @@ extern BO_EXPORT Node *
 bl_ast_get_root(Ast *self);
 
 extern BO_EXPORT NodeFuncDecl *
-bl_ast_node_func_decl_new(Ast        *self,
-                          char       *type,
-                          char       *ident,
-                          bl_sym_e    modif,
+bl_ast_node_func_decl_new(Ast *self,
+                          const char *type,
+                          const char *ident,
+                          bl_sym_e modif,
                           const char *generated_from,
-                          int         line,
-                          int         col);
+                          int line,
+                          int col);
 
 extern BO_EXPORT NodeGlobalStmt *
-bl_ast_node_global_stmt_new(Ast        *self,
+bl_ast_node_global_stmt_new(Ast *self,
                             const char *generated_from,
-                            int         line,
-                            int         col);
+                            int line,
+                            int col);
 
 extern BO_EXPORT NodeStmt *
-bl_ast_node_stmt_new(Ast        *self,
+bl_ast_node_stmt_new(Ast *self,
                      const char *generated_from,
-                     int         line,
-                     int         col);
+                     int line,
+                     int col);
 
 extern BO_EXPORT NodeParamVarDecl *
-bl_ast_node_param_var_decl_new(Ast        *self,
-                               char       *type,
-                               char       *ident,
+bl_ast_node_param_var_decl_new(Ast *self,
+                               const char *type,
+                               const char *ident,
                                const char *generated_from,
-                               int         line,
-                               int         col);
+                               int line,
+                               int col);
 
 extern BO_EXPORT NodeBinop *
-bl_ast_node_binop_new(Ast        *self,
-                      bl_sym_e    op,
+bl_ast_node_binop_new(Ast *self,
+                      bl_sym_e op,
                       const char *generated_from,
-                      int         line,
-                      int         col);
+                      int line,
+                      int col);
 
 extern BO_EXPORT NodeReturnStmt *
-bl_ast_node_return_stmt_new(Ast        *self,
+bl_ast_node_return_stmt_new(Ast *self,
                             const char *generated_from,
-                            int         line,
-                            int         col);
+                            int line,
+                            int col);
 
 extern BO_EXPORT NodeConst *
-bl_ast_node_const_new(Ast               *self,
-                      const char        *generated_from,
-                      int                line,
-                      int                col);
+bl_ast_node_const_new(Ast *self,
+                      const char *generated_from,
+                      int line,
+                      int col);
 
-extern BO_EXPORT NodeCall*
-bl_ast_node_call_new(Ast        *self,
-                     char       *ident,
+extern BO_EXPORT NodeCall *
+bl_ast_node_call_new(Ast *self,
+                     const char *ident,
                      const char *generated_from,
-                     int         line,
-                     int         col);
+                     int line,
+                     int col);
 
 extern BO_EXPORT NodeVarDecl *
-bl_ast_node_var_decl_new(Ast         *self,
-                         char       *type,
-                         char       *ident,
+bl_ast_node_var_decl_new(Ast *self,
+                         const char *type,
+                         const char *ident,
                          const char *generated_from,
-                         int         line,
-                         int         col);
+                         int line,
+                         int col);
 
 extern BO_EXPORT NodeDeclRef *
-bl_ast_node_decl_ref_new(Ast        *self,
-                         char       *ident,
+bl_ast_node_decl_ref_new(Ast *self,
+                         const char *ident,
                          const char *generated_from,
-                         int         line,
-                         int         col);
+                         int line,
+                         int col);
 
 extern BO_EXPORT NodeIfStmt *
-bl_ast_node_if_stmt_new(Ast        *self,
-                        NodeExpr   *cond,
-                        NodeStmt   *then_stmt,
-                        NodeStmt   *else_stmt,
+bl_ast_node_if_stmt_new(Ast *self,
+                        NodeExpr *cond,
+                        NodeStmt *then_stmt,
+                        NodeStmt *else_stmt,
                         const char *generated_from,
-                        int         line,
-                        int         col);
+                        int line,
+                        int col);
 
 BO_END_DECLS
 

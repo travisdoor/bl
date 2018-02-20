@@ -55,7 +55,7 @@ bo_decl_type_begin(Type, BObject)
 bo_end();
 
 extern BO_EXPORT Type *
-bl_type_new(char *name);
+bl_type_new(const char *name);
 
 extern  BO_EXPORT uint32_t
 bl_type_get(Type *self);

@@ -51,7 +51,6 @@ BO_BEGIN_DECLS
   sm(IF,         "if") /* must be first */\
   sm(ELSE,       "else") \
   sm(TRUE,       "true") \
-  sm(CLASS,      "class") \
   sm(FALSE,      "false") \
   sm(EXTERN,     "extern") \
   sm(RETURN,     "return") \

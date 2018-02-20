@@ -64,7 +64,7 @@ bl_node_const_get_str(NodeConst *self);
 
 extern BO_EXPORT void
 bl_node_const_set_str(NodeConst *self,
-                      char *val);
+                      const char *val);
 
 extern BO_EXPORT char
 bl_node_const_get_char(NodeConst *self);

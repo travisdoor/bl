@@ -44,7 +44,7 @@ static Node *
 parse_global_stmt(Parser *self);
 
 static NodeStmt *
-parse_stmt(Parser *self);
+parse_cmp_stmt(Parser *self);
 
 static NodeIfStmt *
 parse_if_stmt(Parser *self);
@@ -247,7 +247,7 @@ parse_if_stmt(Parser *self)
     /*
      * Parse then compound statement
      */
-    then_stmt = parse_stmt(self);
+    then_stmt = parse_cmp_stmt(self);
     if (!then_stmt) {
       parse_error(self,
                   "%s %d:%d expected if statement body",
@@ -262,7 +262,7 @@ parse_if_stmt(Parser *self)
     if (bl_tokens_current_is(self->tokens, BL_SYM_ELSE)) {
       tok = bl_tokens_consume(self->tokens);
 
-      else_stmt = parse_stmt(self);
+      else_stmt = parse_cmp_stmt(self);
       if (!else_stmt) {
         parse_error(self,
                     "%s %d:%d expected else statement body",
@@ -281,7 +281,7 @@ parse_if_stmt(Parser *self)
 }
 
 NodeStmt *
-parse_stmt(Parser *self)
+parse_cmp_stmt(Parser *self)
 {
   /* eat '{' */
   bl_token_t *tok = bl_tokens_consume(self->tokens);
@@ -411,7 +411,7 @@ param:
                     tok->col);
       }
     } else {
-      bl_node_func_decl_set_stmt(func_decl, parse_stmt(self));
+      bl_node_func_decl_set_stmt(func_decl, parse_cmp_stmt(self));
     }
   } else {
     /* Roll back to marker. */

@@ -6,15 +6,15 @@ extern i32 puts(string s);
 extern i32 printf(string s, i32 i);
 extern void abort();
 
+void println(string s, i32 i) {
+  printf(s, i);
+}
+
 void assert(bool expr, string msg) {
   if (expr == true) {
     puts(msg);
     abort();
   }
-}
-
-void println(string s, i32 i) {
-  printf(s, i);
 }
 
 i32 main() {

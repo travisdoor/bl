@@ -164,7 +164,8 @@ scan_ident(Lexer *self,
   tok->line = self->line;
   tok->col = self->col;
   tok->sym = BL_SYM_IDENT;
-  tok->content.as_string = self->c;
+
+  char *begin = self->c;
 
   int len = 0;
   while (true) {
@@ -178,6 +179,10 @@ scan_ident(Lexer *self,
 
   if (len == 0)
     return false;
+
+  BString *cstr = bl_tokens_create_cached_str(self->tokens);
+  bo_string_appendn(cstr, begin, len);
+  tok->content.as_string = bo_string_get(cstr);
 
   tok->len = len;
   self->col += len;
@@ -199,7 +204,8 @@ scan_string(Lexer *self,
 
   /* eat " */
   self->c++;
-  tok->content.as_string = self->c;
+
+  char *begin = self->c;
 
   int len = 0;
   while (true) {
@@ -217,6 +223,10 @@ scan_string(Lexer *self,
     len++;
     self->c++;
   }
+
+  BString *cstr = bl_tokens_create_cached_str(self->tokens);
+  bo_string_appendn(cstr, begin, len);
+  tok->content.as_string = bo_string_get(cstr);
 
   tok->len = len;
   self->col += len + 2;
