@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl
+// blc
 //
 // File:   builder.c
 // Author: Martin Dorazil
@@ -28,7 +28,7 @@
 
 #include "bl/builder.h"
 #include "bl/file_loader.h"
-#include "bl/lexer_new.h"
+#include "bl/lexer.h"
 #include "bl/parser.h"
 #include "bl/analyzer.h"
 #include "bl/llvm_backend.h"
@@ -82,7 +82,7 @@ Builder_ctor(Builder *self,
       bl_pipeline_add_stage(self->pipeline, file_loader);
     }
 
-    Stage *lexer = (Stage *) bl_lexer_new_new(BL_CGROUP_PRE_ANALYZE);
+    Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(self->pipeline, lexer);
 
     if (p->flags & BL_BUILDER_PRINT_TOKENS) {

@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl
+// blc
 //
 // File:   lexer_test.cpp
 // Author: Martin Dorazil
@@ -55,7 +55,7 @@ protected:
     assembly = bl_assembly_new("test_module");
     builder = bl_builder_new_custom(pipeline);
 
-    auto *lexer = (Stage *) bl_lexer_new_new(BL_CGROUP_PRE_ANALYZE);
+    auto *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
     bl_pipeline_add_stage(pipeline, lexer);
   }
 

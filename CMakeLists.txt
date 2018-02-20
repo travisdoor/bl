@@ -17,7 +17,7 @@ endif()
 find_package(BObject 1.0 REQUIRED)
 
 add_subdirectory(libbl)
-add_subdirectory(bl)
+add_subdirectory(blc)
 add_subdirectory(tests)
 
 if (MSVC)

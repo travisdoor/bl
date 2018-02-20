@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl
+// blc
 //
 // File:   compiler_test.cpp
 // Author: Martin Dorazil
@@ -34,7 +34,7 @@ const char *src1 =
     "i32 i;"
     "char ch;"
     "string s;"
-    "bool bl;"
+    "bool blc;"
     "return 0;"
   "}";
 
@@ -44,7 +44,7 @@ const char *src2 =
     "char ch;"
     "string s = \"hello\";"
     "i32 a = 0;"
-    "bool bl = true;"
+    "bool blc = true;"
     "bool bl2 = false;"
     "return 0;"
     "}";

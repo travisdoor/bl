@@ -19,7 +19,6 @@ set(HEADER_FILES
         include/bl/bl.h
         include/bl/bldebug.h
         include/bl/file_loader.h
-        include/bl/lexer.h
         include/bl/parser.h
         include/bl/token_printer.h
         include/bl/unit.h
@@ -44,7 +43,14 @@ set(HEADER_FILES
         include/bl/ast/node_decl.h
         include/bl/ast/node_const.h
         include/bl/ast/node_call.h
-        include/bl/ast/node_decl_ref.h include/bl/identifier.h include/bl/sym_tbl.h include/bl/llvm_jit_exec.h include/bl/builder.h include/bl/llvm_bc_writer.h include/bl/ast/node_if_stmt.h include/bl/lexer_new.h)
+        include/bl/ast/node_decl_ref.h
+        include/bl/identifier.h
+        include/bl/sym_tbl.h
+        include/bl/llvm_jit_exec.h
+        include/bl/builder.h
+        include/bl/llvm_bc_writer.h
+        include/bl/ast/node_if_stmt.h
+        include/bl/lexer.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -60,13 +66,14 @@ set(HEADER_FILES_IMPL
         src/ast/node_decl_impl.h
         src/ast/node_const_impl.h
         src/ast/node_call_impl.h
-        src/ast/node_decl_ref_impl.h src/ast/node_if_stmt_impl.h src/llvm_bl_cnt_impl.h)
+        src/ast/node_decl_ref_impl.h
+        src/ast/node_if_stmt_impl.h
+        src/llvm_bl_cnt_impl.h)
 
 set(SOURCE_FILES
         src/pipeline/stage.c
         src/pipeline/actor.c
         src/pipeline/pipeline.c
-        src/lexer.c
         src/tokens.c
         src/file_loader.c
         src/ast_printer.c
@@ -91,7 +98,15 @@ set(SOURCE_FILES
         src/ast/node_decl.c
         src/ast/node_const.c
         src/ast/node_call.c
-        src/ast/node_decl_ref.c src/identifier.c src/sym_tbl.c src/llvm_jit_exec.c src/builder.c src/llvm_bc_writer.c src/ast/node_if_stmt.c src/llvm_bl_cnt.c src/lexer_new.c)
+        src/ast/node_decl_ref.c
+        src/identifier.c
+        src/sym_tbl.c
+        src/llvm_jit_exec.c
+        src/builder.c
+        src/llvm_bc_writer.c
+        src/ast/node_if_stmt.c
+        src/llvm_bl_cnt.c
+        src/lexer.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
