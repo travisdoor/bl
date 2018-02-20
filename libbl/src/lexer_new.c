@@ -319,6 +319,8 @@ scan:
           /* begin of block comment */
           scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
           goto scan;
+        case BL_SYM_RBCOMMENT:
+          goto scan;
         default:
           cnt->col += len;
           goto push_token;

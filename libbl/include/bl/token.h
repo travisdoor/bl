@@ -60,10 +60,6 @@ BO_BEGIN_DECLS
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \
   sm(RBCOMMENT,  "*/") \
-  sm(EQ,         "==") \
-  sm(NEQ,        "!=") \
-  sm(GREATER_EQ, ">=") \
-  sm(LESS_EQ,    "<=") \
   sm(LBLOCK,     "{") \
   sm(RBLOCK,     "}") \
   sm(LBRACKET,   "[") \
@@ -72,6 +68,10 @@ BO_BEGIN_DECLS
   sm(RPAREN,     ")") \
   sm(COMMA,      ",") \
   sm(SEMICOLON,  ";") \
+  sm(EQ,         "==") \
+  sm(NEQ,        "!=") \
+  sm(GREATER_EQ, ">=") \
+  sm(LESS_EQ,    "<=") \
   sm(SLASH,      "/") \
   sm(ASIGN,      "=") \
   sm(PLUS,       "+") \

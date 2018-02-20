@@ -36,10 +36,12 @@
 BO_BEGIN_DECLS
 #define BL_ACTOR_MAX_ERROR_LEN 1024
 
+/* TODO: return state instead of bool */
 typedef enum _bl_actor_state_e
 {
   BL_ACTOR_STATE_PENDING,
   BL_ACTOR_STATE_FINISHED,
+  BL_ACTOR_STATE_SKIPPED,
   BL_ACTOR_STATE_FAILED
 } bl_actor_state_e;
 

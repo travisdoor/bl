@@ -1,4 +1,6 @@
-// this is testing script
+/*
+ * This is Biscuit testing script.
+ */
 
 extern i32 puts(string s);
 extern i32 printf(string s, i32 i);

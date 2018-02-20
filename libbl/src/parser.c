@@ -216,9 +216,10 @@ parse_if_stmt(context_t *cnt)
   NodeExpr *expr = NULL;
   NodeStmt *then_stmt = NULL;
   NodeStmt *else_stmt = NULL;
+  bl_token_t *tok = NULL;
 
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    bl_tokens_consume(cnt->tokens);
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
