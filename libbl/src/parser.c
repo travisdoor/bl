@@ -456,73 +456,35 @@ parse_param_var_decl(Parser *self)
 NodeExpr *
 parse_expr(Parser *self)
 {
+  /* TODO: parse expression with precedence table */
+  
+  /*  Helper table
+   *    | i | = | + | * | $   
+   *  -----------------------
+   *  i | - | > | > | > | > |
+   *  -----------------------
+   *  = | < | < | > | < | > |
+   *  -----------------------
+   *  + | < | > | > | < | > |
+   *  -----------------------
+   *  * | < | > | > | > | > |
+   *  -----------------------
+   *  $ | < | < | < | < | - |
+   *
+   *  < - push
+   *  > - pop
+   *
+   *  precedence:
+   *  i   50    LR
+   *  *   40    LR 
+   *  +   20    LR
+   *  =   10    RL
+   *  $  -1
+   */
   NodeExpr *expr = NULL;
 
-  bl_token_t *tok = bl_tokens_peek(self->tokens);
-  switch (tok->sym) {
-    case BL_SYM_IDENT:
-      expr = (NodeExpr *) parse_call_expr(self);
-      if (expr)
-        break;
+  bo_array_clear(self->prc_stack);
 
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_decl_ref_new(
-        bl_unit_get_ast(self->unit),
-        strndup(tok->content.as_string, tok->len),
-        tok->src_loc,
-        tok->line,
-        tok->col);
-
-      break;
-    case BL_SYM_NUM:
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_const_new(
-        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-      bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
-      break;
-    case BL_SYM_TRUE:
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_const_new(
-        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-      bl_node_const_set_bool((NodeConst *) expr, true);
-      break;
-    case BL_SYM_FALSE:
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_const_new(
-        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-      bl_node_const_set_bool((NodeConst *) expr, false);
-      break;
-    case BL_SYM_STRING:
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_const_new(
-        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-
-      bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
-      break;
-    case BL_SYM_CHAR:
-      bl_tokens_consume(self->tokens);
-
-      expr = (NodeExpr *) bl_ast_node_const_new(
-        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-
-      bl_node_const_set_char((NodeConst *) expr, tok->content.as_char);
-      break;
-    default:
-      break;
-  }
-
-  /* TODO: accept more operators */
-  if (expr && bl_token_is_binop(bl_tokens_peek(self->tokens))) {
-    NodeBinop *binop = parse_binop(self, expr);
-    if (binop != NULL) {
-      expr = (NodeExpr *) binop;
-    }
-  }
 
   return expr;
 }

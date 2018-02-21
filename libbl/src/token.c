@@ -61,15 +61,9 @@ bl_token_binop_precedence(bl_token_t *token)
       return 50;
     case BL_SYM_ASTERISK:
       return 40;
-    case BL_SYM_SLASH:
-      return 40;
-    case BL_SYM_MODULO:
-      return 40;
     case BL_SYM_PLUS:
       return 20;
-    case BL_SYM_MINUS:
-      return 20;
-    case BL_SYM_LESS_EQ:
+    case BL_SYM_ASIGN:
       return 10;
     default:
       return -1;
