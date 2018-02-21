@@ -2,34 +2,12 @@
  * This is Biscuit testing script.
  */
 
-extern i32 puts(string s);
 extern i32 printf(string s, i32 i);
-extern void abort();
-
-void assert(bool expr, string msg) {
-  if (expr == true) {
-    puts(msg);
-    abort();
-  }
-}
 
 i32 main() {
-  i32 a = 15;
-  a = a - 15;
-
-  printf("a is \'%i\'\n", a);
-  assert(a != 0, "invalid a");
-
-  if (true) {
-    if (a == 0) {
-      puts("a is zero");
-      return a;
-    } else {
-      puts("a is not zero");
-    }
-  }
-
-  abort();
+  // should be 28 but result is 34 
+  i32 a = 2 + 4 * 6 + 2;
+  printf("a = %d\n", a);
   return 0;
 }
 

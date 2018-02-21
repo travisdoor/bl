@@ -39,7 +39,7 @@ const char *src = "// \n"
   "true "
   "false "
   "extern "
-  "namespace "
+  "impl "
   "struct "
   "{}[](),;=+-* /"
   "== != > < >= <=";
@@ -98,7 +98,6 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_TRUE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_FALSE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EXTERN);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NAMESPACE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_STRUCT);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBLOCK);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RBLOCK);

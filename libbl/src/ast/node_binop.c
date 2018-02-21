@@ -36,8 +36,8 @@ to_string(NodeBinop *self);
 bo_decl_members_begin(NodeBinop, Node)
   /* members */
   bl_sym_e operator;
-  NodeExpr *lvalue;
-  NodeExpr *rvalue;
+  NodeExpr *lhs;
+  NodeExpr *rhs;
 bo_end();
 
 bo_impl_type(NodeBinop, Node);
@@ -88,36 +88,36 @@ bl_node_binop_get_op(NodeBinop *self)
 }
 
 NodeExpr *
-bl_node_binop_get_lvalue(NodeBinop *self)
+bl_node_binop_get_lhs(NodeBinop *self)
 {
-  return self->lvalue;
+  return self->lhs;
 }
 
 NodeExpr *
-bl_node_binop_get_rvalue(NodeBinop *self)
+bl_node_binop_get_rhs(NodeBinop *self)
 {
-  return self->rvalue;
+  return self->rhs;
 }
 
 bool
-bl_node_binop_set_lvalue(NodeBinop *self,
-                         NodeExpr  *lvalue)
+bl_node_binop_set_lhs(NodeBinop *self,
+                      NodeExpr *lvalue)
 {
   if (lvalue == NULL)
     return false;
 
-  self->lvalue = lvalue;
+  self->lhs = lvalue;
   return true;
 }
 
 bool
-bl_node_binop_set_rvalue(NodeBinop *self,
-                         NodeExpr  *rvalue)
+bl_node_binop_set_rhs(NodeBinop *self,
+                      NodeExpr *rvalue)
 {
   if (rvalue == NULL)
     return false;
 
-  self->rvalue = rvalue;
+  self->rhs = rvalue;
   return true;
 }
 

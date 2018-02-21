@@ -124,8 +124,8 @@ print_node(AstPrinter *self,
       break;
     case BL_NODE_BINOP:
       pad += 2;
-      print_node(self, (Node *) bl_node_binop_get_lvalue((NodeBinop *) node), pad);
-      print_node(self, (Node *) bl_node_binop_get_rvalue((NodeBinop *) node), pad);
+      print_node(self, (Node *) bl_node_binop_get_lhs((NodeBinop *) node), pad);
+      print_node(self, (Node *) bl_node_binop_get_rhs((NodeBinop *) node), pad);
       break;
     case BL_NODE_IF_STMT:
       pad += 2;

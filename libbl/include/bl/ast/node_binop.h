@@ -45,18 +45,18 @@ extern BO_EXPORT bl_sym_e
 bl_node_binop_get_op(NodeBinop *self);
 
 extern BO_EXPORT NodeExpr *
-bl_node_binop_get_lvalue(NodeBinop *self);
+bl_node_binop_get_lhs(NodeBinop *self);
 
 extern BO_EXPORT NodeExpr *
-bl_node_binop_get_rvalue(NodeBinop *self);
+bl_node_binop_get_rhs(NodeBinop *self);
 
 extern BO_EXPORT bool
-bl_node_binop_set_lvalue(NodeBinop *self,
-                         NodeExpr  *lvalue);
+bl_node_binop_set_lhs(NodeBinop *self,
+                      NodeExpr *lvalue);
 
 extern BO_EXPORT bool
-bl_node_binop_set_rvalue(NodeBinop *self,
-                         NodeExpr  *rvalue);
+bl_node_binop_set_rhs(NodeBinop *self,
+                      NodeExpr *rvalue);
 
 BO_END_DECLS
 

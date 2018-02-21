@@ -333,43 +333,43 @@ LLVMValueRef
 gen_binop(LlvmBackend *self,
           NodeBinop *binop)
 {
-  LLVMValueRef lvalue = gen_expr(self, bl_node_binop_get_lvalue(binop));
-  LLVMValueRef rvalue = gen_expr(self, bl_node_binop_get_rvalue(binop));
+  LLVMValueRef lhs = gen_expr(self, bl_node_binop_get_lhs(binop));
+  LLVMValueRef rhs = gen_expr(self, bl_node_binop_get_rhs(binop));
 
-  if (LLVMIsAAllocaInst(rvalue))
-    rvalue = LLVMBuildLoad(self->builder, rvalue, "tmp");
+  if (LLVMIsAAllocaInst(rhs))
+    rhs = LLVMBuildLoad(self->builder, rhs, "tmp");
 
   bl_sym_e op = bl_node_binop_get_op(binop);
 
   if (op == BL_SYM_ASIGN) {
-    LLVMBuildStore(self->builder, rvalue, lvalue);
+    LLVMBuildStore(self->builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lvalue))
-    lvalue = LLVMBuildLoad(self->builder, lvalue, "tmp");
+  if (LLVMIsAAllocaInst(lhs))
+    lhs = LLVMBuildLoad(self->builder, lhs, "tmp");
 
   switch (op) {
     case BL_SYM_PLUS:
-      return LLVMBuildAdd(self->builder, lvalue, rvalue, "tmp");
+      return LLVMBuildAdd(self->builder, lhs, rhs, "tmp");
     case BL_SYM_MINUS:
-      return LLVMBuildSub(self->builder, lvalue, rvalue, "tmp");
+      return LLVMBuildSub(self->builder, lhs, rhs, "tmp");
     case BL_SYM_ASTERISK:
-      return LLVMBuildMul(self->builder, lvalue, rvalue, "tmp");
+      return LLVMBuildMul(self->builder, lhs, rhs, "tmp");
     case BL_SYM_SLASH:
-      return LLVMBuildFDiv(self->builder, lvalue, rvalue, "tmp");
+      return LLVMBuildFDiv(self->builder, lhs, rhs, "tmp");
     case BL_SYM_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntEQ, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "tmp");
     case BL_SYM_NEQ:
-      return LLVMBuildICmp(self->builder, LLVMIntNE, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "tmp");
     case BL_SYM_GREATER:
-      return LLVMBuildICmp(self->builder, LLVMIntSGT, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "tmp");
     case BL_SYM_LESS:
-      return LLVMBuildICmp(self->builder, LLVMIntSLT, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "tmp");
     case BL_SYM_GREATER_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntSGE, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "tmp");
     case BL_SYM_LESS_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntSLE, lvalue, rvalue, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "tmp");
     default: bl_abort("unknown binop");
   }
 

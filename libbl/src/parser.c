@@ -28,6 +28,7 @@
 
 #include <setjmp.h>
 #include <string.h>
+#include <bobject/containers/array.h>
 #include "bl/parser.h"
 #include "bl/ast/node.h"
 #include "bl/pipeline/stage.h"
@@ -83,6 +84,8 @@ run(Parser *self,
 bo_decl_members_begin(Parser, Stage)
   Unit *unit;
   Tokens *tokens;
+  BArray *prc_stack;
+
   jmp_buf jmp_error;
 bo_end();
 
@@ -107,12 +110,14 @@ Parser_ctor(Parser *self,
             ParserParams *p)
 {
   bo_parent_ctor(Stage, p);
+  self->prc_stack = bo_array_new(sizeof(bl_token_t *));
 }
 
 /* Parser destructor */
 void
 Parser_dtor(Parser *self)
 {
+  bo_unref(self->prc_stack);
 }
 
 /* Parser copy constructor */
@@ -195,7 +200,7 @@ parse_binop(Parser *self,
     *binop =
     bl_ast_node_binop_new(bl_unit_get_ast(self->unit), tok->sym, tok->src_loc, tok->line, tok->col);
 
-  bl_node_binop_set_lvalue(binop, lvalue);
+  bl_node_binop_set_lhs(binop, lvalue);
   NodeExpr *rvalue = parse_expr(self);
   if (rvalue == NULL) {
     parse_error(self,
@@ -204,7 +209,7 @@ parse_binop(Parser *self,
                 tok->line,
                 tok->col);
   }
-  bl_node_binop_set_rvalue(binop, rvalue);
+  bl_node_binop_set_rhs(binop, rvalue);
 
   return binop;
 }
@@ -641,6 +646,8 @@ reset(Parser *self,
 
   self->unit = unit;
   self->tokens = bl_unit_get_tokens(unit);
+  
+  bo_array_clear(self->prc_stack);
 }
 
 bool
@@ -671,4 +678,4 @@ bl_parser_new(bl_compile_group_e group)
   return bo_new(Parser, &p);
 }
 
-/* public */
+

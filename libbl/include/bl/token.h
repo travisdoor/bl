@@ -55,7 +55,12 @@ BO_BEGIN_DECLS
   sm(EXTERN,     "extern") \
   sm(RETURN,     "return") \
   sm(STRUCT,     "struct") \
-  sm(NAMESPACE,  "namespace") /* must be last */\
+  sm(PUBLIC,     "public") \
+  sm(AS,         "as") \
+  sm(USE,        "use") \
+  sm(MODULE,     "module") \
+  sm(BEHAVIOR,   "behavior") \
+  sm(IMPL,       "impl") /* must be last */\
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \
   sm(RBCOMMENT,  "*/") \
@@ -72,6 +77,7 @@ BO_BEGIN_DECLS
   sm(GREATER_EQ, ">=") \
   sm(LESS_EQ,    "<=") \
   sm(SLASH,      "/") \
+  sm(MODULO,     "%") \
   sm(ASIGN,      "=") \
   sm(PLUS,       "+") \
   sm(MINUS,      "-") \
@@ -116,6 +122,9 @@ bl_token_init(bl_token_t *token,
 
 extern BO_EXPORT bool
 bl_token_is_binop(bl_token_t *token);
+
+extern BO_EXPORT int
+bl_token_binop_priority(bl_token_t *token);
 
 BO_END_DECLS
 

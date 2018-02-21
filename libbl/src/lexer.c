@@ -352,7 +352,7 @@ scan:
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= BL_SYM_IF && i <= BL_SYM_NAMESPACE && is_intend_c(*self->c)) {
+      if (i >= BL_SYM_IF && i <= BL_SYM_IMPL && is_intend_c(*self->c)) {
         /* roll back */
         self->c -= len;
         break;

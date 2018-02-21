@@ -1,107 +1,63 @@
-// casting
-bool b = false;
-i32 i = b as i32;
-
-// objects
-
 /*
- * Define module name, everything in module math is public for this module
- * but private for other modules.
+ * Example 1
  */
-module biscuit.math {
-  // Abstract behavior can be applied on various data.
-  behavior printable {
-    public void print();
 
-    public void dummy() {
-      printf("base functionality\n");
-    }
+/* file vec3f */
+
+module bl.math {
+  public struct vec3f {
+    f32 x,
+    f32 y,
+    f32 z
   }
 
-  /*
-   * defined as public -> can be instantiated from another modules
-   * (default is private)
-   */
-  public struct vec2i {
-    i32 x, // private by default
-    i32 y
-  }
-
-  // implement behavior on vec2i data, methods from printable behavior can be overridden here
-  impl vec2i : printable {
-    // Public function can be called from other modules.
-    public i32 sum() {
-      return x + y;
-    }
-
-    // Private by default and can be used only inside this module.
-    i32 add() {
-      return x + y;
-    }
-
-    // override printable default method
-    public void print() {
-      printf("i'm vec3i\n");
+  impl vec3f {
+    public void new(f32 x, f32 y, f32 z) {
+      self.x = x;
+      self.y = y;
+      self.z = z;
     }
   }
 }
 
-/**********************************/
 
-// optional use of the module biscuit
-use biscuit;
+/* file entity.bl */
 
-void main() {
-  math.vec2i v2;
+use bl.math;
 
-  v2.print(); // prints ...
-  v2.dummy(); // prints "base functionality"
+module bl {
+  public struct entity {
+    vec3f position,
+    string name
+    u32 hash
+  }
+
+  impl entity {
+    public void new(string name, vec3f position) {
+      self.name = name;
+      self.position = position;
+
+      hash = utl.str_to_hash(&self.name);
+    }
+
+    public void update(f64 delta_time) {
+    }
+  }
 }
 
+/* file test.bl */
 
+use bl;
+use bl.math;
 
-      public struct vector {
-        i32 x,
-        i32 y
-      }
+module test {
+  void main() {
+    entity ent;
+    vec3f pos;
 
+    pos.new(10, 20, 32);
+    ent.new("my_entity", pos);
 
-      impl vector {
-        public i32 sum() {
-          return x + y;
-        }
-      }
-
-      behavior printable {
-        print();
-      }
-
-      impl vector : printable {
-        public i32 sum() {
-          return x + y;
-        }
-
-        public print()  {
-          printf("%d %d\n", x, y);
-        }
-      }
-
-
-      void main() {
-        vector my_vector;
-
-        i32 sum = my_vector.sum();
-        my_vector.print();
-      }
-
-
-
-
-
-
-
-
-
-
-
-
+    ent.update(6.15); 
+  }
+}
