@@ -4,52 +4,104 @@ i32 i = b as i32;
 
 // objects
 
-namespace biscuit {
+/*
+ * Define module name, everything in module math is public for this module
+ * but private for other modules.
+ */
+module biscuit.math {
+  // Abstract behavior can be applied on various data.
   behavior printable {
-    pub print();
+    public void print();
 
-    pub dummy() {
+    public void dummy() {
       printf("base functionality\n");
     }
   }
 
-  // defined as pub -> can be instantiated from another unit
-  // (default is private)
-  pub struct vec2i {
+  /*
+   * defined as public -> can be instantiated from another modules
+   * (default is private)
+   */
+  public struct vec2i {
     i32 x, // private by default
     i32 y
   }
 
-  pub struct vec3i {
-    i32 x,
-    i32 y,
-    i32 z
-  }
-
-  pub behavior vec2i : printable {
-    pub print() {
-      printf("vec2i: %d %d\n", x, y);
+  // implement behavior on vec2i data, methods from printable behavior can be overridden here
+  impl vec2i : printable {
+    // Public function can be called from other modules.
+    public i32 sum() {
+      return x + y;
     }
-  }
 
-  pub behavior vec3i : printable {
-    pub dummy() {
-      printf("hello vec3i\n");
+    // Private by default and can be used only inside this module.
+    i32 add() {
+      return x + y;
+    }
+
+    // override printable default method
+    public void print() {
+      printf("i'm vec3i\n");
     }
   }
 }
 
 /**********************************/
 
+// optional use of the module biscuit
 use biscuit;
 
 void main() {
-  vec2i v2;
-  vec3i v3;
+  math.vec2i v2;
 
   v2.print(); // prints ...
   v2.dummy(); // prints "base functionality"
-
-  v3.print(); // error unimplemented
-  v3.dummy(); // prints "hello vec3i"
 }
+
+
+
+      public struct vector {
+        i32 x,
+        i32 y
+      }
+
+
+      impl vector {
+        public i32 sum() {
+          return x + y;
+        }
+      }
+
+      behavior printable {
+        print();
+      }
+
+      impl vector : printable {
+        public i32 sum() {
+          return x + y;
+        }
+
+        public print()  {
+          printf("%d %d\n", x, y);
+        }
+      }
+
+
+      void main() {
+        vector my_vector;
+
+        i32 sum = my_vector.sum();
+        my_vector.print();
+      }
+
+
+
+
+
+
+
+
+
+
+
+
