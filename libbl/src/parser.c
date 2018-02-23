@@ -459,6 +459,13 @@ parse_param_var_decl(Parser *self)
 NodeExpr *
 parse_expr(Parser *self)
 {
+  /*
+   * Parse 
+   * 1. call expression
+   * 2. variable reference expression
+   * 3. binary expression
+   */
+
   /* TODO: parse expression with precedence table */
 
   /*  Helper table
@@ -512,13 +519,30 @@ parse_expr(Parser *self)
       bo_array_push_back(self->prc_stack, input_tok);
       bl_log("push: %s", bl_sym_strings[input_tok->sym]);
     } else {
-      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
+//      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
       bo_array_push_back(self->prc_out, stack_tok);
       bl_log("pop: %s", bl_sym_strings[stack_tok->sym]);
       bo_array_pop_back(self->prc_stack);
-      // TODO: create expr node
     }
   }
+
+  bl_log("\nStack:");
+  size_t c = bo_array_size(self->prc_stack);
+  bl_token_t *tok = NULL;
+  for (size_t i = 0; i < c; i++) {
+    tok = bo_array_at(self->prc_stack, i, bl_token_t *);
+    bl_log("stack: %s", bl_sym_strings[tok->sym]);
+  }
+
+  bl_log("\nOut:");
+  c = bo_array_size(self->prc_out);
+  tok = NULL;
+  for (size_t i = 0; i < c; i++) {
+    tok = bo_array_at(self->prc_out, i, bl_token_t *);
+    bl_log("out: %s", bl_sym_strings[tok->sym]);
+  }
+
+  exit(0);
 
   return expr;
 }
