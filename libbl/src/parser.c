@@ -85,6 +85,7 @@ bo_decl_members_begin(Parser, Stage)
   Unit *unit;
   Tokens *tokens;
   BArray *prc_stack;
+  BArray *prc_out;
 
   jmp_buf jmp_error;
 bo_end();
@@ -111,6 +112,7 @@ Parser_ctor(Parser *self,
 {
   bo_parent_ctor(Stage, p);
   self->prc_stack = bo_array_new(sizeof(bl_token_t *));
+  self->prc_out = bo_array_new(sizeof(bl_token_t *));
 }
 
 /* Parser destructor */
@@ -118,6 +120,7 @@ void
 Parser_dtor(Parser *self)
 {
   bo_unref(self->prc_stack);
+  bo_unref(self->prc_out);
 }
 
 /* Parser copy constructor */
@@ -457,7 +460,7 @@ NodeExpr *
 parse_expr(Parser *self)
 {
   /* TODO: parse expression with precedence table */
-  
+
   /*  Helper table
    *    | i | = | + | * | $   
    *  -----------------------
@@ -483,8 +486,39 @@ parse_expr(Parser *self)
    */
   NodeExpr *expr = NULL;
 
+  bl_tokens_set_marker(self->tokens);
   bo_array_clear(self->prc_stack);
+  bo_array_clear(self->prc_out);
+  int last_id = 0;
+  bl_token_t *stack_tok = NULL;
+  bl_token_t *input_tok = NULL;
+  bl_token_t none = {.sym = BL_SYM_NONE};
 
+  while (true) {
+    input_tok = bl_tokens_peek(self->tokens);
+    if (bl_token_prec(input_tok) == -1)
+      break;
+
+    bl_tokens_consume(self->tokens);
+    last_id = (int) bo_array_size(self->prc_stack) - 1;
+    if (last_id == -1) {
+      /* empty stack */
+      stack_tok = &none;
+    } else {
+      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
+    }
+
+    if (bl_token_prec(stack_tok) <= bl_token_prec(input_tok)) {
+      bo_array_push_back(self->prc_stack, input_tok);
+      bl_log("push: %s", bl_sym_strings[input_tok->sym]);
+    } else {
+      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
+      bo_array_push_back(self->prc_out, stack_tok);
+      bl_log("pop: %s", bl_sym_strings[stack_tok->sym]);
+      bo_array_pop_back(self->prc_stack);
+      // TODO: create expr node
+    }
+  }
 
   return expr;
 }
@@ -529,9 +563,13 @@ arg:
 
     bl_token_t *tok = bl_tokens_consume(self->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
-      parse_error(self, "%s %d:%d expected "
-        BL_YELLOW("')'")
-        " after function call argument list", bl_unit_get_src_file(self->unit), tok->line, tok->col);
+      parse_error(self,
+                  "%s %d:%d expected "
+                    BL_YELLOW("')'")
+                    " after function call argument list",
+                  bl_unit_get_src_file(self->unit),
+                  tok->line,
+                  tok->col);
     }
   }
 
@@ -608,8 +646,9 @@ reset(Parser *self,
 
   self->unit = unit;
   self->tokens = bl_unit_get_tokens(unit);
-  
+
   bo_array_clear(self->prc_stack);
+  bo_array_clear(self->prc_out);
 }
 
 bool

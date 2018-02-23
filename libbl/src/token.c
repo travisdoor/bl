@@ -52,7 +52,7 @@ bl_token_is_binop(bl_token_t *token)
 }
 
 int
-bl_token_binop_precedence(bl_token_t *token)
+bl_token_prec(bl_token_t *token)
 {
   switch (token->sym) {
     case BL_SYM_IDENT:

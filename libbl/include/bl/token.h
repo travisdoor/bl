@@ -123,8 +123,11 @@ bl_token_init(bl_token_t *token,
 extern BO_EXPORT bool
 bl_token_is_binop(bl_token_t *token);
 
+/*
+ * Return token precedence or -1 when token is not binary operation, identifier or constant.
+ */
 extern BO_EXPORT int
-bl_token_binop_priority(bl_token_t *token);
+bl_token_prec(bl_token_t *token);
 
 BO_END_DECLS
 
