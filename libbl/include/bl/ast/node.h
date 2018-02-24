@@ -38,7 +38,7 @@ BO_BEGIN_DECLS
 #define BL_NTYPE_LIST\
   nt(FUNC_DECL, "func_decl") \
   nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "statement") \
+  nt(STMT, "compound_stmt") \
   nt(IF_STMT, "if statement") \
   nt(CALL, "call_expr") \
   nt(BINOP, "binary_operation") \

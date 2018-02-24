@@ -337,7 +337,7 @@ gen_binop(LlvmBackend *self,
   LLVMValueRef rhs = gen_expr(self, bl_node_binop_get_rhs(binop));
 
   if (LLVMIsAAllocaInst(rhs))
-    rhs = LLVMBuildLoad(self->builder, rhs, "tmp");
+    rhs = LLVMBuildLoad(self->builder, rhs, "");
 
   bl_sym_e op = bl_node_binop_get_op(binop);
 
@@ -347,29 +347,29 @@ gen_binop(LlvmBackend *self,
   }
 
   if (LLVMIsAAllocaInst(lhs))
-    lhs = LLVMBuildLoad(self->builder, lhs, "tmp");
+    lhs = LLVMBuildLoad(self->builder, lhs, "");
 
   switch (op) {
     case BL_SYM_PLUS:
-      return LLVMBuildAdd(self->builder, lhs, rhs, "tmp");
+      return LLVMBuildAdd(self->builder, lhs, rhs, "");
     case BL_SYM_MINUS:
-      return LLVMBuildSub(self->builder, lhs, rhs, "tmp");
+      return LLVMBuildSub(self->builder, lhs, rhs, "");
     case BL_SYM_ASTERISK:
-      return LLVMBuildMul(self->builder, lhs, rhs, "tmp");
+      return LLVMBuildMul(self->builder, lhs, rhs, "");
     case BL_SYM_SLASH:
-      return LLVMBuildFDiv(self->builder, lhs, rhs, "tmp");
+      return LLVMBuildFDiv(self->builder, lhs, rhs, "");
     case BL_SYM_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
     case BL_SYM_NEQ:
-      return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
     case BL_SYM_GREATER:
-      return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "");
     case BL_SYM_LESS:
-      return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "");
     case BL_SYM_GREATER_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "");
     case BL_SYM_LESS_EQ:
-      return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "tmp");
+      return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "");
     default: bl_abort("unknown binop");
   }
 
@@ -388,7 +388,7 @@ gen_ret(LlvmBackend *self,
   LLVMValueRef val = gen_expr(self, expr);
 
   if (LLVMIsAAllocaInst(val))
-    val = LLVMBuildLoad(self->builder, val, "tmp");
+    val = LLVMBuildLoad(self->builder, val, "");
 
   LLVMBuildStore(self->builder, val, self->ret_value);
   LLVMBuildBr(self->builder, self->ret_block);
@@ -427,7 +427,7 @@ gen_var_decl(LlvmBackend *self,
   }
 
   if (LLVMIsAAllocaInst(def)) {
-    def = LLVMBuildLoad(self->builder, def, "tmp");
+    def = LLVMBuildLoad(self->builder, def, "");
   }
 
   LLVMBuildStore(self->builder, def, var);
@@ -453,7 +453,7 @@ gen_call_args(LlvmBackend *self,
     LLVMValueRef val = gen_expr(self, expr);
 
     if (LLVMIsAAllocaInst(val))
-      *out = LLVMBuildLoad(self->builder, val, "tmp");
+      *out = LLVMBuildLoad(self->builder, val, "");
     else
       *out = val;
 
@@ -534,8 +534,8 @@ gen_if_stmt(LlvmBackend *self,
   LLVMValueRef expr = gen_expr(self, bl_node_if_stmt_get_cond(ifstmt));
 
   if (LLVMIsAAllocaInst(expr))
-    expr = LLVMBuildLoad(self->builder, expr, "tmp");
-  expr = LLVMBuildIntCast(self->builder, expr, LLVMInt1Type(), "tmp");
+    expr = LLVMBuildLoad(self->builder, expr, "");
+  expr = LLVMBuildIntCast(self->builder, expr, LLVMInt1Type(), "");
 
   /*
    * If condition break generation.
@@ -630,7 +630,7 @@ done:
     LLVMPositionBuilderAtEnd(self->builder, self->ret_block);
 
     if (self->ret_value) {
-      self->ret_value = LLVMBuildLoad(self->builder, self->ret_value, "tmp");
+      self->ret_value = LLVMBuildLoad(self->builder, self->ret_value, "");
       LLVMBuildRet(self->builder, self->ret_value);
     } else {
       LLVMBuildRetVoid(self->builder);

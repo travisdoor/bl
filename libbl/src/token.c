@@ -59,12 +59,33 @@ bl_token_prec(bl_token_t *token)
       return 50;
     case BL_SYM_NUM:
       return 50;
+
     case BL_SYM_ASTERISK:
       return 40;
+    case BL_SYM_SLASH:
+      return 40;
+
     case BL_SYM_PLUS:
       return 20;
-    case BL_SYM_ASIGN:
+    case BL_SYM_MINUS:
+      return 20;
+
+    case BL_SYM_LESS:
+      return 15;
+    case BL_SYM_GREATER:
+      return 15;
+    case BL_SYM_LESS_EQ:
+      return 15;
+    case BL_SYM_GREATER_EQ:
+      return 15;
+
+    case BL_SYM_EQ:
       return 10;
+    case BL_SYM_NEQ:
+      return 10;
+
+    case BL_SYM_ASIGN:
+      return 5;
     default:
       return -1;
   }

@@ -3,13 +3,32 @@
  */
 
 extern i32 printf(string s, i32 i);
+extern void abort();
 
 i32 main() {
-  // should be 28 but result is 34 
-  // i32 a;
-  2 + 4 * 6 + 2;
-  // on output stack + * +
-  // printf("a = %d\n", a);
+  i32 a = 2 + 2 * 12 + 4; // 30
+  i32 b = a + get(); // 50
+  i32 c;
+
+  // log result
+  if (c == 0) {
+    c = 2 * 5 - 1 * add(a + 10, b);
+    printf("a = %d\n", a);
+    printf("b = %d\n", b);
+    printf("c = %d\n", c);
+  }
+
   return 0;
 }
+
+// return 20
+i32 get() {
+  i32 ret = 10 * 2;
+  return ret;
+}
+
+i32 add(i32 a, i32 b) {
+  return a + b;
+}
+
 

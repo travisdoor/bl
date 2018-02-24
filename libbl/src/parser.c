@@ -201,8 +201,6 @@ parse_return_stmt(Parser *self)
                     tok->col);
       }
     }
-
-    parse_semicolon(self);
   }
   return rstmt;
 }
@@ -298,8 +296,10 @@ stmt:
   }
 
   /* var decl */
-  if (bl_node_stmt_add_child(stmt, (Node *) parse_var_decl(self)))
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_var_decl(self))) {
+    parse_semicolon(self);
     goto stmt;
+  }
 
   /* expr */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(self))) {
@@ -312,8 +312,10 @@ stmt:
     goto stmt;
 
   /* return stmt */
-  if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self)))
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self))) {
+    parse_semicolon(self);
     goto stmt;
+  }
 
   tok = bl_tokens_consume(self->tokens);
 
@@ -457,13 +459,57 @@ parse_prim_expr(Parser *self)
 
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   switch (tok->sym) {
+    case BL_SYM_IDENT:
+      expr = (NodeExpr *) parse_call_expr(self);
+      if (expr)
+        break;
+
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_decl_ref_new(
+        bl_unit_get_ast(self->unit),
+        strndup(tok->content.as_string, tok->len),
+        tok->src_loc,
+        tok->line,
+        tok->col);
+
+      break;
     case BL_SYM_NUM:
-      /* Numeric constant */
       bl_tokens_consume(self->tokens);
 
       expr = (NodeExpr *) bl_ast_node_const_new(
         bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
       bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
+      break;
+    case BL_SYM_TRUE:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, true);
+      break;
+    case BL_SYM_FALSE:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, false);
+      break;
+    case BL_SYM_STRING:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+
+      bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
+      break;
+    case BL_SYM_CHAR:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+
+      bl_node_const_set_char((NodeConst *) expr, tok->content.as_char);
       break;
     default:
       break;
@@ -601,15 +647,6 @@ parse_var_decl(Parser *self)
                     tok_ident->col + tok_ident->len);
       }
     }
-
-    /* always must end with semicolon */
-    if (bl_tokens_consume(self->tokens)->sym != BL_SYM_SEMICOLON) {
-      parse_error(self, "%s %d:%d missing semicolon "
-        BL_YELLOW("';'")
-        " at the end of variable declaration", bl_unit_get_src_file(
-        self->unit), tok_ident->line, tok_ident->col + tok_ident->len);
-    }
-
   }
 
   return vdcl;
