@@ -52,25 +52,40 @@ bl_token_is_binop(bl_token_t *token)
 }
 
 int
-bl_token_binop_precedence(bl_token_t *token)
+bl_token_prec(bl_token_t *token)
 {
   switch (token->sym) {
     case BL_SYM_IDENT:
       return 50;
     case BL_SYM_NUM:
       return 50;
+
     case BL_SYM_ASTERISK:
       return 40;
     case BL_SYM_SLASH:
       return 40;
-    case BL_SYM_MODULO:
-      return 40;
+
     case BL_SYM_PLUS:
       return 20;
     case BL_SYM_MINUS:
       return 20;
+
+    case BL_SYM_LESS:
+      return 15;
+    case BL_SYM_GREATER:
+      return 15;
     case BL_SYM_LESS_EQ:
+      return 15;
+    case BL_SYM_GREATER_EQ:
+      return 15;
+
+    case BL_SYM_EQ:
       return 10;
+    case BL_SYM_NEQ:
+      return 10;
+
+    case BL_SYM_ASIGN:
+      return 5;
     default:
       return -1;
   }
