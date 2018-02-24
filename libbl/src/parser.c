@@ -41,6 +41,9 @@
     longjmp((self)->jmp_error, 1); \
   }
 
+static void
+parse_semicolon(Parser *self);
+
 static Node *
 parse_global_stmt(Parser *self);
 
@@ -75,10 +78,6 @@ parse_param_var_decl(Parser *self);
 
 static NodeReturnStmt *
 parse_return_stmt(Parser *self);
-
-static NodeBinop *
-parse_binop(Parser *self,
-            NodeExpr *lvalue);
 
 static void
 reset(Parser *self,
@@ -139,6 +138,17 @@ Parser_copy(Parser *self,
   return BO_NO_COPY;
 }
 
+void
+parse_semicolon(Parser *self)
+{
+  bl_token_t *tok = bl_tokens_consume(self->tokens);
+  if (tok->sym != BL_SYM_SEMICOLON) {
+    parse_error(self, "%s %d:%d missing semicolon "
+      BL_YELLOW("';'")
+      " at the end of expression", bl_unit_get_src_file(self->unit), tok->line, tok->col);
+  }
+}
+
 Node *
 parse_global_stmt(Parser *self)
 {
@@ -192,37 +202,9 @@ parse_return_stmt(Parser *self)
       }
     }
 
-    tok = bl_tokens_consume(self->tokens);
-    if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(self, "%s %d:%d missing semicolon "
-        BL_YELLOW("';'")
-        " at the end of return statement", bl_unit_get_src_file(self->unit), tok->line, tok->col);
-    }
+    parse_semicolon(self);
   }
   return rstmt;
-}
-
-static NodeBinop *
-parse_binop(Parser *self,
-            NodeExpr *lvalue)
-{
-  bl_token_t *tok = bl_tokens_consume(self->tokens);
-  NodeBinop
-    *binop =
-    bl_ast_node_binop_new(bl_unit_get_ast(self->unit), tok->sym, tok->src_loc, tok->line, tok->col);
-
-  bl_node_binop_set_lhs(binop, lvalue);
-  NodeExpr *rvalue = parse_expr(self);
-  if (rvalue == NULL) {
-    parse_error(self,
-                "%s %d:%d expected rvalue ",
-                bl_unit_get_src_file(self->unit),
-                tok->line,
-                tok->col);
-  }
-  bl_node_binop_set_rhs(binop, rvalue);
-
-  return binop;
 }
 
 NodeIfStmt *
@@ -320,8 +302,10 @@ stmt:
     goto stmt;
 
   /* expr */
-  if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(self)))
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(self))) {
+    parse_semicolon(self);
     goto stmt;
+  }
 
   /* if stmt*/
   if (bl_node_stmt_add_child(stmt, (Node *) parse_if_stmt(self)))
@@ -330,17 +314,6 @@ stmt:
   /* return stmt */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self)))
     goto stmt;
-
-  /* expr */
-  if (bl_node_stmt_add_child(stmt, (Node *) parse_expr(self))) {
-    tok = bl_tokens_consume(self->tokens);
-    if (tok->sym != BL_SYM_SEMICOLON) {
-      parse_error(self, "%s %d:%d missing semicolon "
-        BL_YELLOW("';'")
-        " at the end of expression", bl_unit_get_src_file(self->unit), tok->line, tok->col);
-    }
-    goto stmt;
-  }
 
   tok = bl_tokens_consume(self->tokens);
 
@@ -467,36 +440,7 @@ parse_param_var_decl(Parser *self)
 NodeExpr *
 parse_expr(Parser *self)
 {
-  /* TODO: parse expression with precedence table */
-
-  /*  Helper table
-   *    | i | = | + | * | $   
-   *  -----------------------
-   *  i | - | > | > | > | > |
-   *  -----------------------
-   *  = | < | < | > | < | > |
-   *  -----------------------
-   *  + | < | > | > | < | > |
-   *  -----------------------
-   *  * | < | > | > | > | > |
-   *  -----------------------
-   *  $ | < | < | < | < | - |
-   *
-   *  < - push
-   *  > - pop
-   *
-   *  precedence:
-   *  i   50    LR
-   *  *   40    LR 
-   *  +   20    LR
-   *  =   10    RL
-   *  $  -1
-   */
-  NodeExpr *expr = NULL;
-  expr = parse_expr_1(self, parse_prim_expr(self), 0);
-
-  // TODO: tmp exit
-  return expr;
+  return parse_expr_1(self, parse_prim_expr(self), 0);
 }
 
 NodeExpr *
