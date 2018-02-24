@@ -1,8 +1,5 @@
 ## TODO
--[ ] dont use context in stages, use self instead.
--[ ] skipping empty source files
--[ ] expression binop priority
--[ ] analyze - compare call arguments with callee
+* simple loop 
+* skipping empty source files
+* analyze - compare call arguments with callee
 
-## Features 
-* structs

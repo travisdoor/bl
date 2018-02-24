@@ -116,4 +116,17 @@ if (expr == true) {
 } else if (expr == true) {
   ...
 } else {
+```
+
+### Loop
+
+Simple endless loop:
+```rust
+loop {
+  break;
+  continue;
+}
+```
+
+
 

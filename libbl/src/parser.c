@@ -457,6 +457,13 @@ parse_atom_expr(Parser *self)
       /* eat ( */
       bl_tokens_consume(self->tokens);
       expr = parse_expr(self);
+      if (expr == NULL) {
+        parse_error(self,
+                    "%s %d:%d expected expression.",
+                    bl_unit_get_src_file(self->unit),
+                    tok->line,
+                    tok->col);
+      }
 
       /* eat ) */
       tok = bl_tokens_consume(self->tokens);
