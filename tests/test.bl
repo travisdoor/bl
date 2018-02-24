@@ -8,6 +8,7 @@ i32 main() {
   // should be 28 but result is 34 
   // i32 a;
   2 + 4 * 6 + 2;
+  // on output stack + * +
   // printf("a = %d\n", a);
   return 0;
 }

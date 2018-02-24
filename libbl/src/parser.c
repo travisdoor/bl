@@ -53,6 +53,14 @@ parse_if_stmt(Parser *self);
 static NodeExpr *
 parse_expr(Parser *self);
 
+static NodeExpr *
+parse_prim_expr(Parser *self);
+
+static NodeExpr *
+parse_expr_1(Parser *self,
+             NodeExpr *lhs,
+             int min_precedence);
+
 static NodeCall *
 parse_call_expr(Parser *self);
 
@@ -459,13 +467,6 @@ parse_param_var_decl(Parser *self)
 NodeExpr *
 parse_expr(Parser *self)
 {
-  /*
-   * Parse 
-   * 1. call expression
-   * 2. variable reference expression
-   * 3. binary expression
-   */
-
   /* TODO: parse expression with precedence table */
 
   /*  Helper table
@@ -492,59 +493,71 @@ parse_expr(Parser *self)
    *  $  -1
    */
   NodeExpr *expr = NULL;
+  expr = parse_expr_1(self, parse_prim_expr(self), 0);
 
-  bl_tokens_set_marker(self->tokens);
-  bo_array_clear(self->prc_stack);
-  bo_array_clear(self->prc_out);
-  int last_id = 0;
-  bl_token_t *stack_tok = NULL;
-  bl_token_t *input_tok = NULL;
-  bl_token_t none = {.sym = BL_SYM_NONE};
+  // TODO: tmp exit
+  return expr;
+}
 
-  while (true) {
-    input_tok = bl_tokens_peek(self->tokens);
-    if (bl_token_prec(input_tok) == -1)
+NodeExpr *
+parse_prim_expr(Parser *self)
+{
+  /*
+   * Parse
+   * 1. call expression
+   * 2. variable reference expression
+   * 3. binary expression
+   */
+
+  NodeExpr *expr = NULL;
+
+  bl_token_t *tok = bl_tokens_peek(self->tokens);
+  switch (tok->sym) {
+    case BL_SYM_NUM:
+      /* Numeric constant */
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
       break;
-
-    bl_tokens_consume(self->tokens);
-    last_id = (int) bo_array_size(self->prc_stack) - 1;
-    if (last_id == -1) {
-      /* empty stack */
-      stack_tok = &none;
-    } else {
-      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
-    }
-
-    if (bl_token_prec(stack_tok) <= bl_token_prec(input_tok)) {
-      bo_array_push_back(self->prc_stack, input_tok);
-      bl_log("push: %s", bl_sym_strings[input_tok->sym]);
-    } else {
-//      stack_tok = bo_array_at(self->prc_stack, last_id, bl_token_t *);
-      bo_array_push_back(self->prc_out, stack_tok);
-      bl_log("pop: %s", bl_sym_strings[stack_tok->sym]);
-      bo_array_pop_back(self->prc_stack);
-    }
+    default:
+      break;
   }
-
-  bl_log("\nStack:");
-  size_t c = bo_array_size(self->prc_stack);
-  bl_token_t *tok = NULL;
-  for (size_t i = 0; i < c; i++) {
-    tok = bo_array_at(self->prc_stack, i, bl_token_t *);
-    bl_log("stack: %s", bl_sym_strings[tok->sym]);
-  }
-
-  bl_log("\nOut:");
-  c = bo_array_size(self->prc_out);
-  tok = NULL;
-  for (size_t i = 0; i < c; i++) {
-    tok = bo_array_at(self->prc_out, i, bl_token_t *);
-    bl_log("out: %s", bl_sym_strings[tok->sym]);
-  }
-
-  exit(0);
 
   return expr;
+}
+
+NodeExpr *
+parse_expr_1(Parser *self,
+             NodeExpr *lhs,
+             int min_precedence)
+{
+  NodeExpr *rhs = NULL;
+  bl_token_t *lookahead = bl_tokens_peek(self->tokens);
+  bl_token_t *op = NULL;
+
+  while (bl_token_prec(lookahead) >= min_precedence) {
+    op = lookahead;
+    bl_tokens_consume(self->tokens);
+    rhs = parse_prim_expr(self);
+    lookahead = bl_tokens_peek(self->tokens);
+
+    while ((bl_token_prec(lookahead) > bl_token_prec(op)) ||
+      (lookahead->sym == BL_SYM_ASIGN && bl_token_prec(lookahead) == bl_token_prec(op))) {
+      rhs = parse_expr_1(self, rhs, bl_token_prec(lookahead));
+      lookahead = bl_tokens_peek(self->tokens);
+    }
+
+    NodeExpr *tmp = lhs;
+    lhs = (NodeExpr *) bl_ast_node_binop_new(
+      bl_unit_get_ast(self->unit), op->sym, op->src_loc, op->line, op->col);
+
+    bl_node_binop_set_lhs((NodeBinop *) lhs, tmp);
+    bl_node_binop_set_rhs((NodeBinop *) lhs, rhs);
+  }
+
+  return lhs;
 }
 
 NodeCall *
