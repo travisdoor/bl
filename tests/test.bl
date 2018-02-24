@@ -3,7 +3,7 @@
  */
 
 extern i32 printf(string s, i32 i);
-extern void abort();
+extern i32 puts(string s);
 
 i32 main() {
   i32 a = 2 + 2 * 12 + 4; // 30
@@ -11,11 +11,13 @@ i32 main() {
   i32 c;
 
   // log result
-  if (c == 0) {
+  if (c == 0 && b > 0) {
     c = 2 * 5 - 1 * add(a + 10, b);
     printf("a = %d\n", a);
     printf("b = %d\n", b);
     printf("c = %d\n", c);
+  } else {
+    puts("error");
   }
 
   return 0;

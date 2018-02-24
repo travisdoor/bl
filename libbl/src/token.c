@@ -84,8 +84,23 @@ bl_token_prec(bl_token_t *token)
     case BL_SYM_NEQ:
       return 10;
 
-    case BL_SYM_ASIGN:
+    case BL_SYM_AND:
+      return 9;
+
+    case BL_SYM_XOR:
+      return 8;
+
+    case BL_SYM_OR:
+      return 7;
+
+    case BL_SYM_LOGIC_AND:
+      return 6;
+
+    case BL_SYM_LOGIC_OR:
       return 5;
+
+    case BL_SYM_ASIGN:
+      return 4;
     default:
       return -1;
   }

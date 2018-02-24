@@ -76,6 +76,11 @@ BO_BEGIN_DECLS
   sm(NEQ,        "!=") \
   sm(GREATER_EQ, ">=") \
   sm(LESS_EQ,    "<=") \
+  sm(LOGIC_AND,  "&&") \
+  sm(LOGIC_OR,   "||")\
+  sm(AND,        "&") \
+  sm(OR,         "|")\
+  sm(XOR,        "^")\
   sm(SLASH,      "/") \
   sm(MODULO,     "%") \
   sm(ASIGN,      "=") \

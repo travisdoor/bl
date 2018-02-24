@@ -370,6 +370,10 @@ gen_binop(LlvmBackend *self,
       return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "");
     case BL_SYM_LESS_EQ:
       return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "");
+    case BL_SYM_LOGIC_AND:
+      return LLVMBuildAnd(self->builder, lhs, rhs, "");
+    case BL_SYM_LOGIC_OR:
+      return LLVMBuildOr(self->builder, lhs, rhs, "");
     default: bl_abort("unknown binop");
   }
 
