@@ -57,7 +57,7 @@ static NodeExpr *
 parse_expr(Parser *self);
 
 static NodeExpr *
-parse_prim_expr(Parser *self);
+parse_atom_expr(Parser *self);
 
 static NodeExpr *
 parse_expr_1(Parser *self,
@@ -346,10 +346,10 @@ parse_func_decl(Parser *self)
   if (bl_tokens_is_seq(
     self->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     tok = bl_tokens_consume(self->tokens);
-    char *type = strndup(tok->content.as_string, tok->len);
+    const char *type = tok->content.as_string;
 
     tok = bl_tokens_consume(self->tokens);
-    char *ident = strndup(tok->content.as_string, tok->len);
+    const char *ident = tok->content.as_string;
 
     func_decl = bl_ast_node_func_decl_new(
       bl_unit_get_ast(self->unit), type, ident, modif, tok->src_loc, tok->line, tok->col);
@@ -422,11 +422,10 @@ parse_param_var_decl(Parser *self)
                                             tok->line,
                                             tok->col);
 
-  char *type = strndup(tok->content.as_string, tok->len);
+  const char *type = tok->content.as_string;
 
   tok = bl_tokens_consume(self->tokens);
   if (tok->sym != BL_SYM_IDENT) {
-    free(type);
     parse_error(self,
                 "%s %d:%d expected parameter name",
                 bl_unit_get_src_file(self->unit),
@@ -434,7 +433,7 @@ parse_param_var_decl(Parser *self)
                 tok->col);
   }
 
-  char *ident = strndup(tok->content.as_string, tok->len);
+  const char *ident = tok->content.as_string;
   return bl_ast_node_param_var_decl_new(
     bl_unit_get_ast(self->unit), type, ident, tok->src_loc, tok->line, tok->col);
 }
@@ -442,23 +441,31 @@ parse_param_var_decl(Parser *self)
 NodeExpr *
 parse_expr(Parser *self)
 {
-  return parse_expr_1(self, parse_prim_expr(self), 0);
+  return parse_expr_1(self, parse_atom_expr(self), 0);
 }
 
 NodeExpr *
-parse_prim_expr(Parser *self)
+parse_atom_expr(Parser *self)
 {
-  /*
-   * Parse
-   * 1. call expression
-   * 2. variable reference expression
-   * 3. binary expression
-   */
-
   NodeExpr *expr = NULL;
 
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   switch (tok->sym) {
+    case BL_SYM_LPAREN:
+      /* parse sub-expression in (...) */
+
+      /* eat ( */
+      bl_tokens_consume(self->tokens);
+      expr = parse_expr(self);
+
+      /* eat ) */
+      tok = bl_tokens_consume(self->tokens);
+      if (tok->sym != BL_SYM_RPAREN) {
+        parse_error(self, "%s %d:%d unterminated sub-expression, missing "
+          BL_YELLOW("')'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
+      }
+
+      break;
     case BL_SYM_IDENT:
       expr = (NodeExpr *) parse_call_expr(self);
       if (expr)
@@ -467,11 +474,7 @@ parse_prim_expr(Parser *self)
       bl_tokens_consume(self->tokens);
 
       expr = (NodeExpr *) bl_ast_node_decl_ref_new(
-        bl_unit_get_ast(self->unit),
-        strndup(tok->content.as_string, tok->len),
-        tok->src_loc,
-        tok->line,
-        tok->col);
+        bl_unit_get_ast(self->unit), tok->content.as_string, tok->src_loc, tok->line, tok->col);
 
       break;
     case BL_SYM_NUM:
@@ -501,7 +504,7 @@ parse_prim_expr(Parser *self)
       expr = (NodeExpr *) bl_ast_node_const_new(
         bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
 
-      bl_node_const_set_str((NodeConst *) expr, strndup(tok->content.as_string, tok->len));
+      bl_node_const_set_str((NodeConst *) expr, tok->content.as_string);
       break;
     case BL_SYM_CHAR:
       bl_tokens_consume(self->tokens);
@@ -530,7 +533,7 @@ parse_expr_1(Parser *self,
   while (bl_token_prec(lookahead) >= min_precedence) {
     op = lookahead;
     bl_tokens_consume(self->tokens);
-    rhs = parse_prim_expr(self);
+    rhs = parse_atom_expr(self);
     lookahead = bl_tokens_peek(self->tokens);
 
     while ((bl_token_prec(lookahead) > bl_token_prec(op)) ||
@@ -563,7 +566,7 @@ parse_call_expr(Parser *self)
 
     call = bl_ast_node_call_new(
       bl_unit_get_ast(self->unit),
-      strndup(tok_calle->content.as_string, tok_calle->len),
+      tok_calle->content.as_string,
       tok_calle->src_loc,
       tok_calle->line,
       tok_calle->col);
@@ -614,12 +617,10 @@ parse_var_decl(Parser *self)
 
     if (bl_tokens_current_is(self->tokens, BL_SYM_SEMICOLON)) {
       /* declaration only */
-      char *type = strndup(tok_type->content.as_string, tok_type->len);
-      char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
       vdcl = bl_ast_node_var_decl_new(
         bl_unit_get_ast(self->unit),
-        type,
-        ident,
+        tok_type->content.as_string,
+        tok_ident->content.as_string,
         tok_ident->src_loc,
         tok_ident->line,
         tok_ident->col);
@@ -627,12 +628,10 @@ parse_var_decl(Parser *self)
       /*
        * Variable is also asigned to some expression.
        */
-      char *type = strndup(tok_type->content.as_string, tok_type->len);
-      char *ident = strndup(tok_ident->content.as_string, tok_ident->len);
       vdcl = bl_ast_node_var_decl_new(
         bl_unit_get_ast(self->unit),
-        type,
-        ident,
+        tok_type->content.as_string,
+        tok_ident->content.as_string,
         tok_ident->src_loc,
         tok_ident->line,
         tok_ident->col);

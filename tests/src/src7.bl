@@ -1,0 +1,27 @@
+/*
+ * Unit test 7
+ * -----------
+ * Expressions with method calls and sub expressions.
+ */
+
+i32 main() {
+  i32 a = 2 + 2 * 12 + 4; // 30
+  i32 b = (2 + 2) * 12 + 4; // 52
+  i32 c = 2 + 2 * (12 + 4); // 34
+  i32 d = (2 + get()) * (12 * (4 + 3)); // 588
+  i32 e = add(a, b) * (10 - 5); // 410  
+
+  if (a != 30 || b != 52 || c != 34 || d != 588 || e != 410) {
+    return 1;
+  }
+
+  return 0;
+}
+
+i32 get() {
+  return 5;
+}
+
+i32 add(i32 a, i32 b) {
+  return a + b;
+}

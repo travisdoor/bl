@@ -33,16 +33,21 @@ const char *src = "// \n"
   "identifier "
   "\"string\" "
   "0123456789 "
-  "return "
   "if "
   "else "
   "true "
   "false "
   "extern "
-  "impl "
+  "return "
   "struct "
-  "{}[](),;=+-* /"
-  "== != > < >= <=";
+  "public "
+  "as "
+  "use "
+  "module "
+  "behavior "
+  "impl "
+  "{}[](),; "
+  "== != >= <= && || & | ^ / % = + - * > < ";
 
 class LexerTest : public ::testing::Test
 {
@@ -92,13 +97,19 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(t->sym, BL_SYM_NUM);
   ASSERT_EQ(t->content.as_ull, 123456789);
 
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RETURN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IF);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ELSE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_TRUE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_FALSE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EXTERN);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RETURN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_STRUCT);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_PUBLIC);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_AS);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_USE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_MODULE);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_BEHAVIOR);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IMPL);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBLOCK);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RBLOCK);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBRACKET);
@@ -107,16 +118,22 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RPAREN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_COMMA);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SEMICOLON);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NEQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_GREATER_EQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LESS_EQ);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LOGIC_AND);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LOGIC_OR);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_AND);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_OR);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_XOR);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SLASH);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_MODULO);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ASIGN);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_PLUS);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_MINUS);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ASTERISK);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_SLASH);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_EQ);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_NEQ);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_GREATER);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LESS);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_GREATER_EQ);
-  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LESS_EQ);
 }
 

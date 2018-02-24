@@ -1,0 +1,19 @@
+/*
+ * Unit test 6
+ * -----------
+ * Simple method calling.
+ */
+
+i32 before(i32 a) {
+  return a;
+}
+
+i32 main() {
+  i32 a = before(0);
+  after(a);
+  return a;
+}
+
+i32 after(i32 a) {
+  return a;
+}

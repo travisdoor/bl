@@ -1,0 +1,12 @@
+/*
+ * Unit test 3
+ * -----------
+ * Simple external call.
+ */
+
+extern void puts(string s);
+
+i32 main() {
+  puts("");
+  return 0;
+}

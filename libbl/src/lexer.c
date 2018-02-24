@@ -409,6 +409,10 @@ reset(Lexer *self,
       Unit *unit)
 {
   char *src = (char *) bl_unit_get_src(unit);
+  self->col = 1;
+  self->line = 1;
+  self->c = src;
+  self->unit = unit;
 
   if (src == NULL) {
     scan_error(self, "No source loaded for unit "
@@ -421,12 +425,7 @@ reset(Lexer *self,
   Tokens *tokens = bl_tokens_new();
   /* Unit owns tokens */
   bl_unit_set_tokens(unit, tokens);
-
-  self->col = 1;
-  self->line = 1;
-  self->c = src;
   self->tokens = tokens;
-  self->unit = unit;
 }
 
 bool

@@ -4,7 +4,7 @@
 
 /* file vec3f */
 
-module bl.math {
+module bl::math {
   public struct vec3f {
     f32 x,
     f32 y,
@@ -23,7 +23,7 @@ module bl.math {
 
 /* file entity.bl */
 
-use bl.math;
+use bl::math;
 
 module bl {
   public struct entity {
@@ -48,7 +48,7 @@ module bl {
 /* file test.bl */
 
 use bl;
-use bl.math;
+use bl::math;
 
 module test {
   void main() {

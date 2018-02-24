@@ -1,0 +1,15 @@
+/*
+ * Unit test 2
+ * -----------
+ * Declaration default values. 
+ */
+
+i32 main() {
+  i32 i = 10;
+  char ch;
+  string s = "hello";
+  i32 a = 0;
+  bool blc = true;
+  bool bl2 = false;
+  return 0;
+}

@@ -1,0 +1,17 @@
+/*
+ * Unit test 4
+ * -----------
+ * Method ordering.
+ */
+
+void before() {
+}
+
+i32 main() {
+  before();
+  after();
+  return 0;
+}
+
+void after() {
+}

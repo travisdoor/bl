@@ -1,4 +1,4 @@
-# ![alt text](doc/biscuit_logo.png "logo") Biscuit Language
+# ![alt text](doc/biscuit_logo.png "logo") The Biscuit Language
 
 ## About
-Biscuit is programming language inspired by C and Rust.
+The Biscuit is programming language inspired by C and Rust.

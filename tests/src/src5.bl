@@ -1,0 +1,16 @@
+/*
+ * Unit test 5
+ * -----------
+ * Simple assignement.
+ */
+
+i32 main() {
+  i32 i = 10;
+  i = 0;
+  string s = "string";
+  string s2;
+  s = "string";
+  s2 = s;
+
+  return 0;
+}

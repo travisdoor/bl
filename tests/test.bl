@@ -3,34 +3,27 @@
  */
 
 extern i32 printf(string s, i32 i);
-extern i32 puts(string s);
 
 i32 main() {
   i32 a = 2 + 2 * 12 + 4; // 30
-  i32 b = a + get(); // 50
-  i32 c;
+  i32 b = (2 + 2) * 12 + 4; // 52
+  i32 c = 2 + 2 * (12 + 4); // 20
+  i32 d = (2 + get()) * (12 * (4 + 3)); // 588
+  i32 e = add(a, b) * (10 - 5); // 410
 
-  // log result
-  if (c == 0 && b > 0) {
-    c = 2 * 5 - 1 * add(a + 10, b);
-    printf("a = %d\n", a);
-    printf("b = %d\n", b);
-    printf("c = %d\n", c);
-  } else {
-    puts("error");
-  }
+  printf("a = %d\n", a);
+  printf("b = %d\n", b);
+  printf("c = %d\n", c);
+  printf("d = %d\n", d);
+  printf("e = %d\n", e);
 
   return 0;
 }
 
-// return 20
 i32 get() {
-  i32 ret = 10 * 2;
-  return ret;
+  return 5;
 }
 
 i32 add(i32 a, i32 b) {
   return a + b;
 }
-
-

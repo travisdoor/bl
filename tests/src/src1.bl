@@ -1,0 +1,14 @@
+/*
+ * Unit test 2
+ * -----------
+ * Simple declarations. 
+ */
+
+i32 main() {
+  i32 i;
+  char ch;
+  string s;
+  bool blc;
+
+  return 0;
+}

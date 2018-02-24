@@ -29,81 +29,7 @@
 #include <gtest/gtest.h>
 #include "bl/bl.h"
 
-const char *src1 =
-  "i32 main() {"
-    "i32 i;"
-    "char ch;"
-    "string s;"
-    "bool blc;"
-    "return 0;"
-  "}";
-
-const char *src2 =
-  "i32 main() {"
-    "i32 i = 10;"
-    "char ch;"
-    "string s = \"hello\";"
-    "i32 a = 0;"
-    "bool blc = true;"
-    "bool bl2 = false;"
-    "return 0;"
-    "}";
-
-const char *src3 =
-  "extern void puts(string s);"
-  "i32 main() {"
-    "puts(\"\");"
-    "return 0;"
-  "}";
-
-const char *src4 =
-  "void before() {"
-  "}"
-  "i32 main() {"
-    "before();"
-    "after();"
-    "return 0;"
-  "}"
-  "void after() {"
-  "}";
-
-const char *src5 =
-  "i32 main() {"
-    "i32 i = 10;"
-    "i = 0;"
-    "string s = \"string\";"
-    "string s2;"
-    "s = \"string\";"
-    "s2 = s;"
-    "return 0;"
-    "}";
-
-const char *src6 =
-  "i32 before(i32 a) {"
-    "return a;"
-  "}"
-  "i32 main() {"
-    "i32 a = before(0);"
-    "after(a);"
-    "return a;"
-  "}"
-  "i32 after(i32 a) {"
-    "return a;"
-  "}";
-
-const char *src7 =
-  "i32 main() {"
-    "i32 a = 10;"
-    "i32 b = 10;"
-    "i32 result;"
-    "a = a + b;"
-    "a = a - b;"
-    "a = a + 10;"
-    "a = a - 10;"
-    "a = a * b;"
-    "a = a - 100;"
-    "return a;"
-    "}";
+#define SRC_LOC "../tests/src/"
 
 class CompilerTest : public ::testing::Test
 {
@@ -112,7 +38,7 @@ protected:
   SetUp()
   {
     assembly = bl_assembly_new("test_assembly");
-    builder = bl_builder_new(BL_BUILDER_RUN);
+    builder = bl_builder_new(BL_BUILDER_RUN | BL_BUILDER_LOAD_FROM_FILE);
   }
 
   void
@@ -128,7 +54,7 @@ protected:
 
 TEST_F(CompilerTest, simple_definitions)
 {
-  Unit *unit = bl_unit_new_str("unit1", src1);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src1.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -139,7 +65,7 @@ TEST_F(CompilerTest, simple_definitions)
 
 TEST_F(CompilerTest, simple_definitions_with_asignement)
 {
-  Unit *unit = bl_unit_new_str("unit2", src2);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src2.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -150,7 +76,7 @@ TEST_F(CompilerTest, simple_definitions_with_asignement)
 
 TEST_F(CompilerTest, simple_extern_call)
 {
-  Unit *unit = bl_unit_new_str("unit3", src3);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src3.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -161,7 +87,7 @@ TEST_F(CompilerTest, simple_extern_call)
 
 TEST_F(CompilerTest, func_def_ordering)
 {
-  Unit *unit = bl_unit_new_str("unit4", src4);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src4.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -172,7 +98,7 @@ TEST_F(CompilerTest, func_def_ordering)
 
 TEST_F(CompilerTest, assign_expr)
 {
-  Unit *unit = bl_unit_new_str("unit5", src5);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src5.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -183,7 +109,7 @@ TEST_F(CompilerTest, assign_expr)
 
 TEST_F(CompilerTest, simple_call)
 {
-  Unit *unit = bl_unit_new_str("unit6", src6);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src6.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
@@ -192,9 +118,9 @@ TEST_F(CompilerTest, simple_call)
   }
 }
 
-TEST_F(CompilerTest, simple_expr)
+TEST_F(CompilerTest, expressions)
 {
-  Unit *unit = bl_unit_new_str("unit7", src7);
+  Unit *unit = bl_unit_new_file(SRC_LOC "src7.bl");
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly)) {
