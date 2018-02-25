@@ -10,10 +10,12 @@ i32 main() {
 
   if (a == 0) {
     a = 1;
-    if (a > 0 && b == 0) {
-      b = 1;
-    } else {
-      return 2;
+    {
+      if (a > 0 && b == 0) {
+        b = 1;
+      } else {
+        return 2;
+      }
     }
   } else {
     return 1;

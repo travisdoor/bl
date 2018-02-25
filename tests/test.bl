@@ -17,8 +17,6 @@ i32 main() {
         if (true) {
         }
       }
-    } else {
-      return 10;
     }
   }
 

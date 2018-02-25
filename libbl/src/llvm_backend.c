@@ -90,7 +90,7 @@ static LLVMValueRef
 gen_binop(LlvmBackend *self,
           NodeBinop *binop);
 
-static void
+static bool
 gen_cmp_stmt(LlvmBackend *self,
              NodeStmt *stmt,
              LLVMBasicBlockRef cont_block);
@@ -652,7 +652,7 @@ gen_func(LlvmBackend *self,
 /*
  * Generate compound statement in basic block.
  */
-void
+bool
 gen_cmp_stmt(LlvmBackend *self,
              NodeStmt *stmt,
              LLVMBasicBlockRef cont_block)
@@ -667,7 +667,7 @@ gen_cmp_stmt(LlvmBackend *self,
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
         gen_ret(self, (NodeReturnStmt *) child);
-        return;
+        return true;
       case BL_NODE_VAR_DECL:
         gen_var_decl(self, (NodeVarDecl *) child);
         break;
@@ -685,12 +685,11 @@ gen_cmp_stmt(LlvmBackend *self,
         break;
       case BL_NODE_STMT: {
         bl_llvm_block_context_push_block(self->block_context);
-        gen_cmp_stmt(self, (NodeStmt *) child, cont_block);
+        bool ret = gen_cmp_stmt(self, (NodeStmt *) child, cont_block);
         bl_llvm_block_context_pop_block(self->block_context);
 
-        /* sub statement has return */
-        if (LLVMGetBasicBlockTerminator(block) && cont_block) {
-          return;
+        if (ret) {
+          return ret;
         }
 
         break;
@@ -701,6 +700,8 @@ gen_cmp_stmt(LlvmBackend *self,
       default: bl_warning("unimplemented statement in function scope");
     }
   }
+
+  return false;
 }
 
 void
