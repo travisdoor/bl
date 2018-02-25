@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node.h
+// File:   node_loop_stmt_impl.h
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   25/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,44 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_H
-#define BL_NODE_H
+#ifndef BL_NODE_LOOP_STMT_IMPL_H
+#define BL_NODE_LOOP_STMT_IMPL_H
 
-#include <bobject/bobject.h>
-#include <bobject/containers/string.h>
-#include <bobject/containers/array.h>
+#include "bl/ast/node_loop_stmt.h"
+#include "ast/node_impl.h"
 
-BO_BEGIN_DECLS
-
-#define BL_NTYPE_LIST\
-  nt(FUNC_DECL, "func_decl") \
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(STMT, "compound_stmt") \
-  nt(IF_STMT, "if statement") \
-  nt(CALL, "call_expr") \
-  nt(BINOP, "binary_operation") \
-  nt(DECL_REF, "decl_ref") \
-  nt(CONST, "const_expr") \
-  nt(VAR_DECL, "var_decl") \
-  nt(RETURN_STMT, "return_stmt") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-  nt(LOOP_STMT, "loop_stmt")
-
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  BL_NTYPE_LIST
-#undef nt
-} bl_node_e;
-
-/* class declaration */
-bo_decl_type_begin(Node, BObject)
-  /* virtuals */
-  BString *(*to_string)(Node *);
+bo_decl_params_with_base_begin(NodeLoopStmt, Node)
+  NodeStmt *cmp_stmt;
 bo_end();
 
-extern BO_EXPORT bl_node_e
-bl_node_get_type(Node *self);
-
-BO_END_DECLS
-
-#endif //BL_NODE_H
+#endif //BL_NODE_LOOP_STMT_IMPL_H

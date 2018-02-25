@@ -99,6 +99,10 @@ gen_if_stmt(LlvmBackend *self,
             NodeIfStmt *ifstmt);
 
 static void
+gen_loop_stmt(LlvmBackend *self,
+              NodeLoopStmt *loopstmt);
+
+static void
 gen_ret(LlvmBackend *self,
         NodeReturnStmt *node);
 
@@ -548,15 +552,36 @@ gen_if_stmt(LlvmBackend *self,
 
   LLVMPositionBuilderAtEnd(self->builder, ifthen);
   gen_cmp_stmt(self, bl_node_if_stmt_get_then_stmt(ifstmt), NULL);
-//  LLVMBuildBr(self->builder, ifcont);
+
+  if (LLVMGetBasicBlockTerminator(ifthen) == NULL)
+    LLVMBuildBr(self->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(self->builder, ifelse);
   if (bl_node_if_stmt_get_else_stmt(ifstmt))
     gen_cmp_stmt(self, bl_node_if_stmt_get_else_stmt(ifstmt), NULL);
-  else
+
+  if (LLVMGetBasicBlockTerminator(ifelse) == NULL)
     LLVMBuildBr(self->builder, ifcont);
 
   LLVMPositionBuilderAtEnd(self->builder, ifcont);
+}
+
+void
+gen_loop_stmt(LlvmBackend *self,
+              NodeLoopStmt *loopstmt)
+{
+  LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
+  LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
+
+  LLVMBasicBlockRef loop = LLVMAppendBasicBlock(parent, "loop");
+
+//  LLVMBuildBr(self->builder, loop);
+  LLVMPositionBuilderAtEnd(self->builder, loop);
+
+  gen_cmp_stmt(self, bl_node_loop_get_stmt(loopstmt), NULL);
+
+  if (LLVMGetBasicBlockTerminator(loop) == NULL)
+    LLVMBuildBr(self->builder, loop);
 }
 
 void
@@ -620,6 +645,9 @@ gen_cmp_stmt(LlvmBackend *self,
       case BL_NODE_IF_STMT:
         gen_if_stmt(self, (NodeIfStmt *) child);
         break;
+      case BL_NODE_LOOP_STMT:
+        gen_loop_stmt(self, (NodeLoopStmt *) child);
+        break;
       case BL_NODE_DECL_REF:
         /* only decl reference without any expression, this will be ignored for now */
         break;
@@ -627,7 +655,7 @@ gen_cmp_stmt(LlvmBackend *self,
     }
   }
 
-  LLVMBuildBr(self->builder, self->ret_block);
+//  LLVMBuildBr(self->builder, self->ret_block);
 
 done:
   if (fnode) {

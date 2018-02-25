@@ -79,6 +79,9 @@ parse_param_var_decl(Parser *self);
 static NodeReturnStmt *
 parse_return_stmt(Parser *self);
 
+static NodeLoopStmt *
+parse_loop_stmt(Parser *self);
+
 static void
 reset(Parser *self,
       Unit *unit);
@@ -205,6 +208,35 @@ parse_return_stmt(Parser *self)
   return rstmt;
 }
 
+NodeLoopStmt *
+parse_loop_stmt(Parser *self)
+{
+  NodeLoopStmt *loop = NULL;
+
+  bl_token_t *tok = bl_tokens_peek(self->tokens);
+  if (tok->sym == BL_SYM_LOOP) {
+    bl_tokens_consume(self->tokens);
+    NodeStmt *stmt = parse_cmp_stmt(self);
+    if (!stmt) {
+      parse_error(self,
+                  "%s %d:%d expected if statement body",
+                  bl_unit_get_src_file(self->unit),
+                  tok->line,
+                  tok->col);
+    }
+
+    loop =
+      bl_ast_node_loop_stmt_new(
+        bl_unit_get_ast(self->unit),
+        stmt,
+        tok->src_loc,
+        tok->line,
+        tok->col);
+  }
+
+  return loop;
+}
+
 NodeIfStmt *
 parse_if_stmt(Parser *self)
 {
@@ -309,6 +341,10 @@ stmt:
 
   /* if stmt*/
   if (bl_node_stmt_add_child(stmt, (Node *) parse_if_stmt(self)))
+    goto stmt;
+
+  /* loop */
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_loop_stmt(self)))
     goto stmt;
 
   /* return stmt */

@@ -7,7 +7,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword blKey public struct as module behavior impl use extern return if else
+syn keyword blKey public struct as module behavior impl use extern return if else loop break continue
 syn keyword blType i32 i64 u32 u64 f32 f64 void char string bool 
 syn keyword blBool true false 
 syn keyword blConst self 
