@@ -1,0 +1,23 @@
+/*
+ * Unit test 8
+ * -----------
+ * Compound sub-statements with multiple nesting
+ * and inner returns.
+ */
+
+i32 main() {
+  i32 i;
+
+  {
+    i = 10;
+    {
+      i = 20;
+      {
+        i = 0;
+      }
+      return i;
+    }
+  }
+
+  return 1;
+}

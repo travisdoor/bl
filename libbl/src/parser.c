@@ -159,8 +159,12 @@ parse_global_stmt(Parser *self)
     *gstmt =
     bl_ast_node_global_stmt_new(bl_unit_get_ast(self->unit), bl_unit_get_src(self->unit), 1, 0);
 stmt:
-  if (bl_tokens_consume_if(self->tokens, BL_SYM_SEMICOLON))
+  if (bl_tokens_current_is(self->tokens, BL_SYM_SEMICOLON)) {
+    bl_token_t *tok = bl_tokens_consume(self->tokens);
+    bl_warning("%s %d:%d extra semicolon can be removed "
+                 BL_YELLOW("';'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
     goto stmt;
+  }
 
   if (!bl_node_global_stmt_add_child(gstmt, (Node *) parse_func_decl(self))) {
     bl_token_t *tok = bl_tokens_peek(self->tokens);
@@ -225,13 +229,8 @@ parse_loop_stmt(Parser *self)
                   tok->col);
     }
 
-    loop =
-      bl_ast_node_loop_stmt_new(
-        bl_unit_get_ast(self->unit),
-        stmt,
-        tok->src_loc,
-        tok->line,
-        tok->col);
+    loop = bl_ast_node_loop_stmt_new(
+      bl_unit_get_ast(self->unit), stmt, tok->src_loc, tok->line, tok->col);
   }
 
   return loop;
@@ -323,7 +322,15 @@ parse_cmp_stmt(Parser *self)
 
 stmt:
   if (bl_tokens_current_is(self->tokens, BL_SYM_SEMICOLON)) {
-    bl_tokens_consume(self->tokens);
+    tok = bl_tokens_consume(self->tokens);
+    bl_warning("%s %d:%d extra semicolon can be removed "
+                 BL_YELLOW("';'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
+    goto stmt;
+  }
+
+  /* compound sub-statement */
+  if (bl_tokens_current_is(self->tokens, BL_SYM_LBLOCK)) {
+    bl_node_stmt_add_child(stmt, (Node *) parse_cmp_stmt(self));
     goto stmt;
   }
 
