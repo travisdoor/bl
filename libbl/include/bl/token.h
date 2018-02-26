@@ -60,6 +60,9 @@ BO_BEGIN_DECLS
   sm(USE,        "use") \
   sm(MODULE,     "module") \
   sm(BEHAVIOR,   "behavior") \
+  sm(LOOP,       "loop") \
+  sm(BREAK,      "break") \
+  sm(CONTINUE,   "continue") \
   sm(IMPL,       "impl") /* must be last */\
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \

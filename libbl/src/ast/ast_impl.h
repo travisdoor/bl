@@ -44,5 +44,7 @@
 #include "ast/node_call_impl.h"
 #include "ast/node_decl_ref_impl.h"
 #include "ast/node_if_stmt_impl.h"
+#include "ast/node_loop_stmt_impl.h"
+#include "ast/node_break_stmt_impl.h"
 
 #endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

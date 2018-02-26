@@ -333,3 +333,38 @@ bl_ast_node_if_stmt_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeIfStmt, &p));
 }
 
+NodeLoopStmt *
+bl_ast_node_loop_stmt_new(Ast        *self,
+                          NodeStmt *cmp_stmt,
+                          const char *generated_from,
+                          int         line,
+                          int         col)
+{
+
+  NodeLoopStmtParams p = {
+    .base.type = BL_NODE_LOOP_STMT,
+    .base.generated_from = generated_from,
+    .base.line = line,
+    .base.col = col,
+    .cmp_stmt = cmp_stmt
+  };
+
+  return save_to_cache(self, bo_new(NodeLoopStmt, &p));
+}
+
+NodeBreakStmt *
+bl_ast_node_break_stmt_new(Ast        *self,
+                           const char *generated_from,
+                           int         line,
+                           int         col)
+{
+
+  NodeLoopStmtParams p = {
+    .base.type = BL_NODE_BREAK_STMT,
+    .base.generated_from = generated_from,
+    .base.line = line,
+    .base.col = col
+  };
+
+  return save_to_cache(self, bo_new(NodeBreakStmt, &p));
+}

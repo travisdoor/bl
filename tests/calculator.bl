@@ -1,0 +1,31 @@
+/*
+ * Testing calculator
+ */
+
+extern i32 getchar();
+extern i32 printf(string s, i32 i);
+extern i32 puts(string s);
+
+i32 main() {
+  i32 cmd;
+  i32 cmd_exit = 113; // Q
+  i32 cmd_return = 10; // Return
+
+  printf("enter command: ", 0); 
+  loop {
+    cmd = getchar();
+    if (cmd != cmd_return) {
+      printf("\ncmd: %d\n", cmd); 
+
+      if (cmd == cmd_exit) {
+        break;
+      }
+
+      printf("enter command: ", 0); 
+    }
+  }
+
+  puts("exit");
+
+  return 0;
+}

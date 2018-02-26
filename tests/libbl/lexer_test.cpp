@@ -45,6 +45,9 @@ const char *src = "// \n"
   "use "
   "module "
   "behavior "
+  "loop "
+  "break "
+  "continue "
   "impl "
   "{}[](),; "
   "== != >= <= && || & | ^ / % = + - * > < ";
@@ -109,6 +112,9 @@ TEST_F(LexerTest, symbol_parsing)
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_USE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_MODULE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_BEHAVIOR);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LOOP);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_BREAK);
+  ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_CONTINUE);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IMPL);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_LBLOCK);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_RBLOCK);
