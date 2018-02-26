@@ -8,17 +8,19 @@ i32 main() {
   i32 a;
   i32 b;
 
-  if (a == 0) {
-    a = 1;
-    {
-      if (a > 0 && b == 0) {
-        b = 1;
-      } else {
-        return 2;
+  {
+    if (a == 0) {
+      a = 1;
+      {
+        if (a > 0 && b == 0) {
+          b = 1;
+        } else {
+          return 2;
+        }
       }
+    } else {
+      return 1;
     }
-  } else {
-    return 1;
   }
 
   return a - b;
