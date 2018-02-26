@@ -110,8 +110,7 @@ gen_if_stmt(LlvmBackend *self,
 
 static void
 gen_loop_stmt(LlvmBackend *self,
-              NodeLoopStmt *loopstmt,
-              LLVMBasicBlockRef break_block);
+              NodeLoopStmt *loopstmt);
 
 static void
 gen_ret(LlvmBackend *self,
@@ -595,8 +594,7 @@ gen_if_stmt(LlvmBackend *self,
 
 void
 gen_loop_stmt(LlvmBackend *self,
-              NodeLoopStmt *loopstmt,
-              LLVMBasicBlockRef break_block)
+              NodeLoopStmt *loopstmt)
 {
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
   LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
@@ -743,7 +741,7 @@ gen_cmp_stmt(LlvmBackend *self,
         gen_if_stmt(self, (NodeIfStmt *) child, break_block);
         break;
       case BL_NODE_LOOP_STMT:
-        gen_loop_stmt(self, (NodeLoopStmt *) child, break_block);
+        gen_loop_stmt(self, (NodeLoopStmt *) child);
         break;
       case BL_NODE_BREAK_STMT:
         gen_break_stmt(self, (NodeBreakStmt *) child, break_block);
