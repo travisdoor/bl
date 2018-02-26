@@ -82,6 +82,9 @@ parse_return_stmt(Parser *self);
 static NodeLoopStmt *
 parse_loop_stmt(Parser *self);
 
+static NodeBreakStmt *
+parse_break_stmt(Parser *self);
+
 static void
 reset(Parser *self,
       Unit *unit);
@@ -239,6 +242,19 @@ parse_loop_stmt(Parser *self)
   return loop;
 }
 
+NodeBreakStmt *
+parse_break_stmt(Parser *self)
+{
+  NodeBreakStmt *break_stmt;
+
+  bl_token_t *tok = bl_tokens_peek(self->tokens);
+  if (tok->sym == BL_SYM_BREAK) {
+     // TODO
+  }
+
+  return break_stmt;
+}
+
 NodeIfStmt *
 parse_if_stmt(Parser *self)
 {
@@ -359,6 +375,12 @@ stmt:
 
   /* return stmt */
   if (bl_node_stmt_add_child(stmt, (Node *) parse_return_stmt(self))) {
+    parse_semicolon(self);
+    goto stmt;
+  }
+
+  /* break stmt */
+  if (self->is_loop && bl_node_stmt_add_child(stmt, (Node *) parse_break_stmt(self))) {
     parse_semicolon(self);
     goto stmt;
   }
