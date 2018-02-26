@@ -45,6 +45,7 @@
 #include "bl/ast/node_decl_ref.h"
 #include "bl/ast/node_if_stmt.h"
 #include "bl/ast/node_loop_stmt.h"
+#include "bl/ast/node_break_stmt.h"
 
 BO_BEGIN_DECLS
 
@@ -148,6 +149,12 @@ bl_ast_node_loop_stmt_new(Ast *self,
                           const char *generated_from,
                           int line,
                           int col);
+
+extern BO_EXPORT NodeBreakStmt *
+bl_ast_node_break_stmt_new(Ast *self,
+                           const char *generated_from,
+                           int line,
+                           int col);
 
 BO_END_DECLS
 

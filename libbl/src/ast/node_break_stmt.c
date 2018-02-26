@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   ast_impl.h
+// File:   node_break_stmt.c
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   2/26/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,25 +26,39 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_IMPL_H_WM5H6RFD
-#define AST_IMPL_H_WM5H6RFD
-
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
-#include "ast/node_var_decl_impl.h"
-#include "ast/node_binop_impl.h"
-#include "ast/node_decl_impl.h"
-#include "ast/node_const_impl.h"
-#include "ast/node_call_impl.h"
-#include "ast/node_decl_ref_impl.h"
-#include "ast/node_if_stmt_impl.h"
-#include "ast/node_loop_stmt_impl.h"
 #include "ast/node_break_stmt_impl.h"
+/* class NodeBreakStmt */
 
-#endif /* end of include guard: AST_IMPL_H_WM5H6RFD */
+/* class NodeBreakStmt object members */
+bo_decl_members_begin(NodeBreakStmt, Node)
+  /* members */
+bo_end();
+
+bo_impl_type(NodeBreakStmt, Node);
+
+void
+NodeBreakStmtKlass_init(NodeBreakStmtKlass *klass)
+{
+}
+
+void
+NodeBreakStmt_ctor(NodeBreakStmt *self, NodeBreakStmtParams *p)
+{
+  /* constructor */
+  /* initialize parent */
+  bo_parent_ctor(Node, p);
+
+  /* initialize self */
+}
+
+void
+NodeBreakStmt_dtor(NodeBreakStmt *self)
+{
+}
+
+bo_copy_result
+NodeBreakStmt_copy(NodeBreakStmt *self, NodeBreakStmt *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeBreakStmt end */
