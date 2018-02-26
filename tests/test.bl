@@ -10,7 +10,12 @@ i32 main() {
   loop {
     i = i + 1;
     printf("i = %d\n", i);
+
+    if (i == 100) {
+      break;
+    }
   }
+
 
   return 0;
 }

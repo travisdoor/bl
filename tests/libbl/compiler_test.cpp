@@ -150,3 +150,14 @@ TEST_F(CompilerTest, ifs)
     ASSERT_STREQ(bl_actor_get_error(failed), "");
   }
 }
+
+TEST_F(CompilerTest, loop)
+{
+  Unit *unit = bl_unit_new_file(SRC_LOC "loop_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly)) {
+    auto *failed = bl_builder_get_failed(builder);
+    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  }
+}

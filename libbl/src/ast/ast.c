@@ -353,10 +353,10 @@ bl_ast_node_loop_stmt_new(Ast        *self,
 }
 
 NodeBreakStmt *
-bl_ast_break_loop_stmt_new(Ast        *self,
-                          const char *generated_from,
-                          int         line,
-                          int         col)
+bl_ast_node_break_stmt_new(Ast        *self,
+                           const char *generated_from,
+                           int         line,
+                           int         col)
 {
 
   NodeLoopStmtParams p = {

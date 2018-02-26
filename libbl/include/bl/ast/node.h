@@ -48,7 +48,7 @@ BO_BEGIN_DECLS
   nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
   nt(LOOP_STMT, "loop_stmt") \
-  nt(BREAK_STMT, "loop_stmt")
+  nt(BREAK_STMT, "break_stmt")
 
 typedef enum {
 #define nt(tok, str) BL_NODE_##tok,

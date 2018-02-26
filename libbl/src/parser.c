@@ -220,13 +220,14 @@ NodeLoopStmt *
 parse_loop_stmt(Parser *self)
 {
   NodeLoopStmt *loop = NULL;
+  bool prev_is_loop = self->is_loop;
 
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   if (tok->sym == BL_SYM_LOOP) {
     bl_tokens_consume(self->tokens);
     self->is_loop = true;
     NodeStmt *stmt = parse_cmp_stmt(self);
-    self->is_loop = false;
+    self->is_loop = prev_is_loop;
     if (!stmt) {
       parse_error(self,
                   "%s %d:%d expected if statement body",
@@ -245,11 +246,23 @@ parse_loop_stmt(Parser *self)
 NodeBreakStmt *
 parse_break_stmt(Parser *self)
 {
-  NodeBreakStmt *break_stmt;
+  NodeBreakStmt *break_stmt = NULL;
 
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   if (tok->sym == BL_SYM_BREAK) {
-     // TODO
+    if (!self->is_loop) {
+      parse_error(self,
+                  "%s %d:%d "
+                    BL_YELLOW("break")
+                    " statement outside of a loop or switch",
+                  bl_unit_get_src_file(self->unit),
+                  tok->line,
+                  tok->col);
+    }
+
+    bl_tokens_consume(self->tokens);
+    break_stmt =
+      bl_ast_node_break_stmt_new(bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
   }
 
   return break_stmt;
@@ -380,7 +393,7 @@ stmt:
   }
 
   /* break stmt */
-  if (self->is_loop && bl_node_stmt_add_child(stmt, (Node *) parse_break_stmt(self))) {
+  if (bl_node_stmt_add_child(stmt, (Node *) parse_break_stmt(self))) {
     parse_semicolon(self);
     goto stmt;
   }
