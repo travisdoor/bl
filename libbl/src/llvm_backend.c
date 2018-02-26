@@ -31,7 +31,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/TargetMachine.h>
-#include <llvm-c/Support.h>
+
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/hash.h>
 
@@ -107,7 +107,7 @@ gen_cmp_stmt(LlvmBackend *self,
 static void
 gen_if_stmt(LlvmBackend *self,
             NodeIfStmt *ifstmt,
-            LLVMBasicBlockRef cont_cont,
+            LLVMBasicBlockRef cont_block,
             LLVMBasicBlockRef break_block);
 
 static void
@@ -168,7 +168,8 @@ bo_decl_members_begin(LlvmBackend, Stage)
   LlvmBlockContext *block_context;
   BHashTable *const_strings;
   LLVMValueRef ret_value;
-  LLVMBasicBlockRef ret_block;
+  LLVMBasicBlockRef func_init_block;
+  LLVMBasicBlockRef func_ret_block;
 bo_end();
 
 bo_impl_type(LlvmBackend, Stage);
@@ -428,7 +429,7 @@ gen_ret(LlvmBackend *self,
     val = LLVMBuildLoad(self->builder, val, gname("tmp"));
 
   LLVMBuildStore(self->builder, val, self->ret_value);
-  LLVMBuildBr(self->builder, self->ret_block);
+  LLVMBuildBr(self->builder, self->func_ret_block);
 }
 
 void
@@ -455,10 +456,14 @@ void
 gen_var_decl(LlvmBackend *self,
              NodeVarDecl *vdcl)
 {
+  LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(self->builder);
   LLVMTypeRef t = to_llvm_type(bl_node_decl_get_type((NodeDecl *) vdcl));
 
   Ident *id = bl_node_decl_get_ident((NodeDecl *) vdcl);
+
+  LLVMPositionBuilderAtEnd(self->builder, self->func_init_block);
   LLVMValueRef var = LLVMBuildAlloca(self->builder, t, gname(bl_ident_get_name(id)));
+  LLVMPositionBuilderAtEnd(self->builder, prev_block);
 
   /*
    * Generate expression if there is one or use default value instead.
@@ -538,7 +543,7 @@ gen_call(LlvmBackend *self,
 void
 gen_if_stmt(LlvmBackend *self,
             NodeIfStmt *ifstmt,
-            LLVMBasicBlockRef cont_cont,
+            LLVMBasicBlockRef cont_block,
             LLVMBasicBlockRef break_block)
 {
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
@@ -584,9 +589,9 @@ gen_if_stmt(LlvmBackend *self,
   }
 
   LLVMPositionBuilderAtEnd(self->builder, if_cont);
-  if (cont_cont != NULL) {
-    LLVMBuildBr(self->builder, cont_cont);
-    LLVMPositionBuilderAtEnd(self->builder, cont_cont);
+  if (cont_block != NULL && LLVMGetBasicBlockTerminator(if_cont) == NULL) {
+    LLVMBuildBr(self->builder, cont_block);
+    LLVMPositionBuilderAtEnd(self->builder, cont_block);
   }
 }
 
@@ -625,9 +630,9 @@ gen_loop_stmt(LlvmBackend *self,
   }
 
   LLVMPositionBuilderAtEnd(self->builder, loop_cont);
-  if (cont_block != NULL) {
-    LLVMBuildBr(self->builder, cont_block);
-    LLVMPositionBuilderAtEnd(self->builder, cont_block);
+  if (break_block != NULL) {
+    LLVMBuildBr(self->builder, break_block);
+    LLVMPositionBuilderAtEnd(self->builder, break_block);
   }
 }
 
@@ -653,8 +658,11 @@ gen_func(LlvmBackend *self,
   if (!forward) {
     NodeStmt *stmt = bl_node_func_decl_get_stmt(fnode);
     if (stmt) {
-      LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, gname("entry"));
-      LLVMPositionBuilderAtEnd(self->builder, block);
+      self->func_init_block = LLVMAppendBasicBlock(func, gname("init"));
+      LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(func, gname("entry"));
+      self->func_ret_block = LLVMAppendBasicBlock(func, gname("exit"));
+
+      LLVMPositionBuilderAtEnd(self->builder, self->func_init_block);
 
       bl_llvm_block_context_push_block(self->block_context);
 
@@ -684,16 +692,19 @@ gen_func(LlvmBackend *self,
         self->ret_value = NULL;
       }
 
-      self->ret_block = LLVMAppendBasicBlock(func, gname("exit"));
-
+      LLVMPositionBuilderAtEnd(self->builder, entry_block);
       gen_cmp_stmt(self, stmt, NULL, NULL);
 
-      if (LLVMGetBasicBlockTerminator(block) == NULL) {
-        LLVMPositionBuilderAtEnd(self->builder, block);
-        LLVMBuildBr(self->builder, self->ret_block);
+      LLVMPositionBuilderAtEnd(self->builder, self->func_init_block);
+      LLVMBuildBr(self->builder, entry_block);
+      LLVMPositionBuilderAtEnd(self->builder, entry_block);
+
+      if (LLVMGetBasicBlockTerminator(entry_block) == NULL) {
+        LLVMPositionBuilderAtEnd(self->builder, entry_block);
+        LLVMBuildBr(self->builder, self->func_ret_block);
       }
 
-      LLVMPositionBuilderAtEnd(self->builder, self->ret_block);
+      LLVMPositionBuilderAtEnd(self->builder, self->func_ret_block);
       if (self->ret_value) {
         self->ret_value = LLVMBuildLoad(self->builder, self->ret_value, gname("tmp"));
         LLVMBuildRet(self->builder, self->ret_value);

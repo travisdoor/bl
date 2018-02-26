@@ -3,18 +3,39 @@
  */
 
 extern i32 printf(string s, i32 i);
+extern i32 puts(string s);
 
 i32 main() {
-  i32 i = 0;
+  i32 i = 10;
 
-  loop {
-    i = i + 1;
-    printf("i = %d\n", i);
-
-    if (i == 100) {
-      break;
+  if (i < 10) {
+    if (i > 20) {
     }
+    puts("hell");
   }
+
+//  i32 x;
+//  i32 y;
+
+//  loop {
+//    x = x + 1;
+//    printf("x = %d\n", x);
+//
+//    if (x > 100) {
+//      if (x > 200) {
+//      }
+//      break;
+//    }
+////
+////    if (x == 100) {
+////      break;
+////    }
+//
+////    loop {
+////      puts("inner loop");
+////
+////    }
+//  }
 
 
   return 0;
