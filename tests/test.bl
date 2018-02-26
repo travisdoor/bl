@@ -8,35 +8,8 @@ extern i32 puts(string s);
 i32 main() {
   i32 i = 10;
 
-  if (i < 10) {
-    if (i > 20) {
-    }
-    puts("hell");
-  }
 
-//  i32 x;
-//  i32 y;
-
-//  loop {
-//    x = x + 1;
-//    printf("x = %d\n", x);
-//
-//    if (x > 100) {
-//      if (x > 200) {
-//      }
-//      break;
-//    }
-////
-////    if (x == 100) {
-////      break;
-////    }
-//
-////    loop {
-////      puts("inner loop");
-////
-////    }
-//  }
-
+  printf("i = %d\n", i);
 
   return 0;
 }

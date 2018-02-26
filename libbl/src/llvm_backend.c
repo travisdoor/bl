@@ -101,19 +101,16 @@ gen_binop(LlvmBackend *self,
 static bool
 gen_cmp_stmt(LlvmBackend *self,
              NodeStmt *stmt,
-             LLVMBasicBlockRef cont_block,
              LLVMBasicBlockRef break_block);
 
 static void
 gen_if_stmt(LlvmBackend *self,
             NodeIfStmt *ifstmt,
-            LLVMBasicBlockRef cont_block,
             LLVMBasicBlockRef break_block);
 
 static void
 gen_loop_stmt(LlvmBackend *self,
               NodeLoopStmt *loopstmt,
-              LLVMBasicBlockRef cont_block,
               LLVMBasicBlockRef break_block);
 
 static void
@@ -543,12 +540,13 @@ gen_call(LlvmBackend *self,
 void
 gen_if_stmt(LlvmBackend *self,
             NodeIfStmt *ifstmt,
-            LLVMBasicBlockRef cont_block,
             LLVMBasicBlockRef break_block)
 {
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
   LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
+
+  bool terminated = false;
 
   LLVMBasicBlockRef if_then = LLVMAppendBasicBlock(parent, gname("if_then"));
   LLVMBasicBlockRef if_else = LLVMAppendBasicBlock(parent, gname("if_else"));
@@ -564,14 +562,18 @@ gen_if_stmt(LlvmBackend *self,
    */
   LLVMBuildCondBr(self->builder, expr, if_then, if_else);
 
+  if (bl_node_if_stmt_get_else_stmt(ifstmt) == NULL) {
+    LLVMPositionBuilderAtEnd(self->builder, if_else);
+    LLVMBuildBr(self->builder, if_cont);
+  }
+
   /* then block */
   LLVMPositionBuilderAtEnd(self->builder, if_then);
   bl_llvm_block_context_push_block(self->block_context);
-  gen_cmp_stmt(self, bl_node_if_stmt_get_then_stmt(ifstmt), if_cont, break_block);
+  terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_then_stmt(ifstmt), break_block);
   bl_llvm_block_context_pop_block(self->block_context);
 
-  if (LLVMGetBasicBlockTerminator(if_then) == NULL) {
-    LLVMPositionBuilderAtEnd(self->builder, if_then);
+  if (!terminated) {
     LLVMBuildBr(self->builder, if_cont);
   }
 
@@ -579,26 +581,21 @@ gen_if_stmt(LlvmBackend *self,
   if (bl_node_if_stmt_get_else_stmt(ifstmt) != NULL) {
     LLVMPositionBuilderAtEnd(self->builder, if_else);
     bl_llvm_block_context_push_block(self->block_context);
-    gen_cmp_stmt(self, bl_node_if_stmt_get_then_stmt(ifstmt), if_cont, break_block);
+    // TODO: terminated
+    terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_else_stmt(ifstmt), break_block);
     bl_llvm_block_context_pop_block(self->block_context);
-  }
 
-  if (LLVMGetBasicBlockTerminator(if_else) == NULL) {
-    LLVMPositionBuilderAtEnd(self->builder, if_else);
-    LLVMBuildBr(self->builder, if_cont);
+    if (!terminated) {
+      LLVMBuildBr(self->builder, if_cont);
+    }
   }
 
   LLVMPositionBuilderAtEnd(self->builder, if_cont);
-  if (cont_block != NULL && LLVMGetBasicBlockTerminator(if_cont) == NULL) {
-    LLVMBuildBr(self->builder, cont_block);
-    LLVMPositionBuilderAtEnd(self->builder, cont_block);
-  }
 }
 
 void
 gen_loop_stmt(LlvmBackend *self,
               NodeLoopStmt *loopstmt,
-              LLVMBasicBlockRef cont_block,
               LLVMBasicBlockRef break_block)
 {
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
@@ -620,7 +617,7 @@ gen_loop_stmt(LlvmBackend *self,
 
   LLVMPositionBuilderAtEnd(self->builder, loop);
   bl_llvm_block_context_push_block(self->block_context);
-  gen_cmp_stmt(self, bl_node_loop_stmt_get_stmt(loopstmt), loop, loop_cont);
+  gen_cmp_stmt(self, bl_node_loop_stmt_get_stmt(loopstmt), loop_cont);
   bl_llvm_block_context_pop_block(self->block_context);
 
   /* break go back to loop */
@@ -693,7 +690,7 @@ gen_func(LlvmBackend *self,
       }
 
       LLVMPositionBuilderAtEnd(self->builder, entry_block);
-      gen_cmp_stmt(self, stmt, NULL, NULL);
+      gen_cmp_stmt(self, stmt, NULL);
 
       LLVMPositionBuilderAtEnd(self->builder, self->func_init_block);
       LLVMBuildBr(self->builder, entry_block);
@@ -725,7 +722,6 @@ gen_func(LlvmBackend *self,
 bool
 gen_cmp_stmt(LlvmBackend *self,
              NodeStmt *stmt,
-             LLVMBasicBlockRef cont_block,
              LLVMBasicBlockRef break_block)
 {
   LLVMBasicBlockRef block = LLVMGetInsertBlock(self->builder);
@@ -750,17 +746,17 @@ gen_cmp_stmt(LlvmBackend *self,
         gen_expr(self, (NodeExpr *) child);
         break;
       case BL_NODE_IF_STMT:
-        gen_if_stmt(self, (NodeIfStmt *) child, cont_block, break_block);
+        gen_if_stmt(self, (NodeIfStmt *) child, NULL);
         break;
       case BL_NODE_LOOP_STMT:
-        gen_loop_stmt(self, (NodeLoopStmt *) child, cont_block, break_block);
+        gen_loop_stmt(self, (NodeLoopStmt *) child, break_block);
         break;
       case BL_NODE_BREAK_STMT:
         gen_break_stmt(self, (NodeBreakStmt *) child, break_block);
         return true;
       case BL_NODE_STMT:
         bl_llvm_block_context_push_block(self->block_context);
-        skip = gen_cmp_stmt(self, (NodeStmt *) child, cont_block, break_block);
+        skip = gen_cmp_stmt(self, (NodeStmt *) child, break_block);
         bl_llvm_block_context_pop_block(self->block_context);
 
         if (skip) {
