@@ -6,10 +6,28 @@ extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  i32 i = 10;
+  i32 x;
+  i32 y;
 
+  loop {
+    if (x == 100) {
+      break;
+    }
 
-  printf("i = %d\n", i);
+    loop {
+      if (y == 100) {
+        y = 0;
+        break;
+      }
+
+      printf("x = %d, ", x);
+      printf("y = %d\n", y);
+      y = y + 1;
+    }
+
+    x = x + 1;
+  }
+
 
   return 0;
 }

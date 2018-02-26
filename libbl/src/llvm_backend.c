@@ -602,35 +602,29 @@ gen_loop_stmt(LlvmBackend *self,
   LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
 
-  LLVMBasicBlockRef loop_init = LLVMAppendBasicBlock(parent, gname("loop_init"));
+  bool terminated = false;
+
+  LLVMBasicBlockRef loop_decide = LLVMAppendBasicBlock(parent, gname("loop_decide"));
   LLVMBasicBlockRef loop = LLVMAppendBasicBlock(parent, gname("loop"));
   LLVMBasicBlockRef loop_cont = LLVMAppendBasicBlock(parent, gname("loop_cont"));
 
   /* break into loop_init */
-  LLVMPositionBuilderAtEnd(self->builder, insert_block);
-  LLVMBuildBr(self->builder, loop_init);
-
-  /* TODO: simple loop only don't use expressions for now */
-  LLVMPositionBuilderAtEnd(self->builder, loop_init);
-  /* TODO: build allocas here */
-  LLVMBuildBr(self->builder, loop);
+  LLVMBuildBr(self->builder, loop_decide);
+  LLVMPositionBuilderAtEnd(self->builder, loop_decide);
+  LLVMValueRef expr = LLVMConstInt(LLVMInt1Type(), true, false);
+  LLVMBuildCondBr(self->builder, expr, loop, loop_cont);
 
   LLVMPositionBuilderAtEnd(self->builder, loop);
   bl_llvm_block_context_push_block(self->block_context);
-  gen_cmp_stmt(self, bl_node_loop_stmt_get_stmt(loopstmt), loop_cont);
+  terminated = gen_cmp_stmt(self, bl_node_loop_stmt_get_stmt(loopstmt), loop_cont);
   bl_llvm_block_context_pop_block(self->block_context);
 
   /* break go back to loop */
-  if (LLVMGetBasicBlockTerminator(loop) == NULL) {
-    LLVMPositionBuilderAtEnd(self->builder, loop);
-    LLVMBuildBr(self->builder, loop);
+  if (!terminated) {
+    LLVMBuildBr(self->builder, loop_decide);
   }
 
   LLVMPositionBuilderAtEnd(self->builder, loop_cont);
-  if (break_block != NULL) {
-    LLVMBuildBr(self->builder, break_block);
-    LLVMPositionBuilderAtEnd(self->builder, break_block);
-  }
 }
 
 LLVMValueRef
@@ -726,7 +720,7 @@ gen_cmp_stmt(LlvmBackend *self,
 {
   LLVMBasicBlockRef block = LLVMGetInsertBlock(self->builder);
   LLVMPositionBuilderAtEnd(self->builder, block);
-  bool skip = false;
+  bool terminated = false;
 
   Node *child = NULL;
   const int c = bl_node_stmt_child_get_count(stmt);
@@ -746,7 +740,7 @@ gen_cmp_stmt(LlvmBackend *self,
         gen_expr(self, (NodeExpr *) child);
         break;
       case BL_NODE_IF_STMT:
-        gen_if_stmt(self, (NodeIfStmt *) child, NULL);
+        gen_if_stmt(self, (NodeIfStmt *) child, break_block);
         break;
       case BL_NODE_LOOP_STMT:
         gen_loop_stmt(self, (NodeLoopStmt *) child, break_block);
@@ -756,11 +750,11 @@ gen_cmp_stmt(LlvmBackend *self,
         return true;
       case BL_NODE_STMT:
         bl_llvm_block_context_push_block(self->block_context);
-        skip = gen_cmp_stmt(self, (NodeStmt *) child, break_block);
+        terminated = gen_cmp_stmt(self, (NodeStmt *) child, break_block);
         bl_llvm_block_context_pop_block(self->block_context);
 
-        if (skip) {
-          return skip;
+        if (terminated) {
+          return terminated;
         }
 
         break;
