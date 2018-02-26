@@ -124,7 +124,7 @@ print_node(AstPrinter *self,
       break;
     case BL_NODE_LOOP_STMT:
       pad += 2;
-      print_node(self, (Node *) bl_node_loop_get_stmt((NodeLoopStmt *) node), pad);
+      print_node(self, (Node *) bl_node_loop_stmt_get_stmt((NodeLoopStmt *) node), pad);
       break;
     case BL_NODE_BINOP:
       pad += 2;

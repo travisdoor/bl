@@ -98,6 +98,7 @@ bo_decl_members_begin(Parser, Stage)
   BArray *prc_out;
 
   jmp_buf jmp_error;
+  bool is_loop;
 bo_end();
 
 /* Parser constructor parameters */
@@ -220,7 +221,9 @@ parse_loop_stmt(Parser *self)
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   if (tok->sym == BL_SYM_LOOP) {
     bl_tokens_consume(self->tokens);
+    self->is_loop = true;
     NodeStmt *stmt = parse_cmp_stmt(self);
+    self->is_loop = false;
     if (!stmt) {
       parse_error(self,
                   "%s %d:%d expected if statement body",

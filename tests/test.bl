@@ -8,7 +8,8 @@ i32 main() {
   i32 i = 0;
 
   loop {
-    printf("hello\n");
+    i = i + 1;
+    printf("i = %d\n", i);
   }
 
   return 0;

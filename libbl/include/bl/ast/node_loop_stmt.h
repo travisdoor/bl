@@ -41,7 +41,7 @@ bo_decl_type_begin(NodeLoopStmt, Node)
 bo_end();
 
 extern BO_EXPORT NodeStmt *
-bl_node_loop_get_stmt(NodeLoopStmt *self);
+bl_node_loop_stmt_get_stmt(NodeLoopStmt *self);
 
 BO_END_DECLS
 

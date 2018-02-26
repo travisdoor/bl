@@ -102,7 +102,8 @@ gen_if_stmt(LlvmBackend *self,
 
 static void
 gen_loop_stmt(LlvmBackend *self,
-              NodeLoopStmt *loopstmt);
+              NodeLoopStmt *loopstmt,
+              LLVMBasicBlockRef cont_block);
 
 static void
 gen_ret(LlvmBackend *self,
@@ -567,9 +568,40 @@ gen_if_stmt(LlvmBackend *self,
 
 void
 gen_loop_stmt(LlvmBackend *self,
-              NodeLoopStmt *loopstmt)
+              NodeLoopStmt *loopstmt,
+              LLVMBasicBlockRef cont_block)
 {
-  bl_abort("unimplemented yet");
+  LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(self->builder);
+  LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
+  bl_assert(LLVMIsAFunction(parent), "invalid parent");
+
+  LLVMBasicBlockRef loop_init = LLVMAppendBasicBlock(parent, "loop_init");
+  LLVMBasicBlockRef loop = LLVMAppendBasicBlock(parent, "loop");
+  LLVMBasicBlockRef loop_cont = LLVMAppendBasicBlock(parent, "loop_cont");
+
+  /* break into loop_init */
+  LLVMPositionBuilderAtEnd(self->builder, insert_block);
+  LLVMBuildBr(self->builder, loop_init);
+
+  /* TODO: simple loop only don't use expressions for now */
+  LLVMPositionBuilderAtEnd(self->builder, loop_init);
+  /* TODO: build allocas here */
+  LLVMBuildBr(self->builder, loop);
+
+  LLVMPositionBuilderAtEnd(self->builder, loop);
+  bl_llvm_block_context_push_block(self->block_context);
+  gen_cmp_stmt(self, bl_node_loop_stmt_get_stmt(loopstmt), loop_cont);
+  bl_llvm_block_context_pop_block(self->block_context);
+
+  /* break go back to loop */
+  LLVMPositionBuilderAtEnd(self->builder, loop);
+  LLVMBuildBr(self->builder, loop);
+
+  LLVMPositionBuilderAtEnd(self->builder, loop_cont);
+  if (cont_block != NULL) {
+    LLVMBuildBr(self->builder, cont_block);
+    LLVMPositionBuilderAtEnd(self->builder, cont_block);
+  }
 }
 
 LLVMValueRef
@@ -680,8 +712,7 @@ gen_cmp_stmt(LlvmBackend *self,
       case BL_NODE_IF_STMT:
         gen_if_stmt(self, (NodeIfStmt *) child, cont_block);
         break;
-      case BL_NODE_LOOP_STMT:
-        gen_loop_stmt(self, (NodeLoopStmt *) child);
+      case BL_NODE_LOOP_STMT:gen_loop_stmt(self, (NodeLoopStmt *) child, cont_block);
         break;
       case BL_NODE_STMT: {
         bl_llvm_block_context_push_block(self->block_context);

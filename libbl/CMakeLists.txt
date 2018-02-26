@@ -51,7 +51,7 @@ set(HEADER_FILES
         include/bl/llvm_bc_writer.h
         include/bl/ast/node_if_stmt.h
         include/bl/lexer.h
-        include/bl/ast/node_loop_stmt.h)
+        include/bl/ast/node_loop_stmt.h include/bl/ast/node_break_stmt.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h

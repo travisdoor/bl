@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_loop_stmt.c
+// File:   node_break_stmt.h
 // Author: Martin Dorazil
-// Date:   25/02/2018
+// Date:   2/26/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,48 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_loop_stmt_impl.h"
-/* class NodeLoopStmt */
+#ifndef BL_NODE_BREAK_STMT_H
+#define BL_NODE_BREAK_STMT_H
 
-/* class NodeLoopStmt constructor params */
-/* class NodeLoopStmt object members */
-bo_decl_members_begin(NodeLoopStmt, Node)
-  /* members */
-  NodeStmt *cmp_stmt;
+#include <bobject/bobject.h>
+#include <bl/ast/node.h>
+
+BO_BEGIN_DECLS
+
+/* class NodeBreakStmt declaration */
+bo_decl_type_begin(NodeBreakStmt, Node)
+  /* virtuals */
 bo_end();
 
-bo_impl_type(NodeLoopStmt, Node);
+BO_END_DECLS
 
-void
-NodeLoopStmtKlass_init(NodeLoopStmtKlass *klass)
-{
-}
-
-void
-NodeLoopStmt_ctor(NodeLoopStmt *self, NodeLoopStmtParams *p)
-{
-  /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Node, p);
-
-  /* initialize self */
-  self->cmp_stmt = p->cmp_stmt;
-}
-
-void
-NodeLoopStmt_dtor(NodeLoopStmt *self)
-{
-}
-
-bo_copy_result
-NodeLoopStmt_copy(NodeLoopStmt *self, NodeLoopStmt *other)
-{
-  return BO_NO_COPY;
-}
-/* class NodeLoopStmt end */
-
-NodeStmt *
-bl_node_loop_stmt_get_stmt(NodeLoopStmt *self)
-{
-  return self->cmp_stmt;
-}
+#endif //BL_NODE_BREAK_STMT_H
