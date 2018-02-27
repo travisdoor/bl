@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   ast_impl.h
+// File:   node_continue_stmt.c
 // Author: Martin Dorazil
-// Date:   6.2.18
+// Date:   2/27/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,26 +26,40 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_IMPL_H_WM5H6RFD
-#define AST_IMPL_H_WM5H6RFD
-
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
-#include "ast/node_var_decl_impl.h"
-#include "ast/node_binop_impl.h"
-#include "ast/node_decl_impl.h"
-#include "ast/node_const_impl.h"
-#include "ast/node_call_impl.h"
-#include "ast/node_decl_ref_impl.h"
-#include "ast/node_if_stmt_impl.h"
-#include "ast/node_loop_stmt_impl.h"
-#include "ast/node_break_stmt_impl.h"
 #include "ast/node_continue_stmt_impl.h"
+/* class NodeContinueStmt */
 
-#endif /* end of include guard: AST_IMPL_H_WM5H6RFD */
+/* class NodeContinueStmt object members */
+bo_decl_members_begin(NodeContinueStmt, Node)
+  /* members */
+bo_end();
+
+bo_impl_type(NodeContinueStmt, Node);
+
+void
+NodeContinueStmtKlass_init(NodeContinueStmtKlass *klass)
+{
+}
+
+void
+NodeContinueStmt_ctor(NodeContinueStmt *self, NodeContinueStmtParams *p)
+{
+  /* constructor */
+  /* initialize parent */
+  bo_parent_ctor(Node, p);
+
+  /* initialize self */
+}
+
+void
+NodeContinueStmt_dtor(NodeContinueStmt *self)
+{
+}
+
+bo_copy_result
+NodeContinueStmt_copy(NodeContinueStmt *self, NodeContinueStmt *other)
+{
+  return BO_NO_COPY;
+}
+/* class NodeContinueStmt end */
+

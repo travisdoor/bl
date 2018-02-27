@@ -7,25 +7,15 @@ extern i32 puts(string s);
 
 i32 main() {
   i32 x;
-  i32 y;
 
   loop {
+
+    printf("x = %d\n", x);
+    continue;
+
     if (x == 100) {
       break;
     }
-
-    loop {
-      if (y == 100) {
-        y = 0;
-        break;
-      }
-
-      printf("x = %d, ", x);
-      printf("y = %d\n", y);
-      y = y + 1;
-    }
-
-    x = x + 1;
   }
 
 

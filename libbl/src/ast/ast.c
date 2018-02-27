@@ -359,7 +359,7 @@ bl_ast_node_break_stmt_new(Ast        *self,
                            int         col)
 {
 
-  NodeLoopStmtParams p = {
+  NodeBreakStmtParams p = {
     .base.type = BL_NODE_BREAK_STMT,
     .base.generated_from = generated_from,
     .base.line = line,
@@ -367,4 +367,21 @@ bl_ast_node_break_stmt_new(Ast        *self,
   };
 
   return save_to_cache(self, bo_new(NodeBreakStmt, &p));
+}
+
+NodeContinueStmt *
+bl_ast_node_continue_stmt_new(Ast        *self,
+                             const char *generated_from,
+                             int         line,
+                             int         col)
+{
+
+  NodeContinueStmtParams p = {
+    .base.type = BL_NODE_CONTINUE_STMT,
+    .base.generated_from = generated_from,
+    .base.line = line,
+    .base.col = col
+  };
+
+  return save_to_cache(self, bo_new(NodeContinueStmt, &p));
 }

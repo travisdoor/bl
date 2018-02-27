@@ -48,6 +48,7 @@ BO_BEGIN_DECLS
   nt(RETURN_STMT, "return_stmt") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
   nt(LOOP_STMT, "loop_stmt") \
+  nt(CONTINUE_STMT, "continue_stmt") \
   nt(BREAK_STMT, "break_stmt")
 
 typedef enum {

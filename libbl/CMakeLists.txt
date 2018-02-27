@@ -51,7 +51,7 @@ set(HEADER_FILES
         include/bl/llvm_bc_writer.h
         include/bl/ast/node_if_stmt.h
         include/bl/lexer.h
-        include/bl/ast/node_loop_stmt.h include/bl/ast/node_break_stmt.h)
+        include/bl/ast/node_loop_stmt.h include/bl/ast/node_break_stmt.h include/bl/ast/node_continue_stmt.h)
 
 set(HEADER_FILES_IMPL
         src/ast/node_impl.h
@@ -70,7 +70,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_decl_ref_impl.h
         src/ast/node_if_stmt_impl.h
         src/llvm_bl_cnt_impl.h
-        src/ast/node_loop_stmt_impl.h src/ast/node_break_stmt_impl.h)
+        src/ast/node_loop_stmt_impl.h src/ast/node_break_stmt_impl.h src/ast/node_continue_stmt_impl.h)
 
 set(SOURCE_FILES
         src/pipeline/stage.c
@@ -109,7 +109,7 @@ set(SOURCE_FILES
         src/ast/node_if_stmt.c
         src/llvm_bl_cnt.c
         src/lexer.c
-        src/ast/node_loop_stmt.c src/ast/node_break_stmt.c)
+        src/ast/node_loop_stmt.c src/ast/node_break_stmt.c src/ast/node_continue_stmt.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
