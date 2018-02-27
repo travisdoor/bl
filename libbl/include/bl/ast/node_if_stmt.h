@@ -45,10 +45,21 @@ extern BO_EXPORT NodeExpr *
 bl_node_if_stmt_get_cond(NodeIfStmt *self);
 
 extern BO_EXPORT NodeStmt *
-bl_node_if_stmt_get_then_stmt(NodeIfStmt *self);
+bl_node_if_stmt_get_then(NodeIfStmt *self);
 
 extern BO_EXPORT NodeStmt *
-bl_node_if_stmt_get_else_stmt(NodeIfStmt *self);
+bl_node_if_stmt_get_else(NodeIfStmt *self);
+
+extern BO_EXPORT void
+bl_node_if_stmt_set_else(NodeIfStmt *self,
+                         NodeStmt *else_stmt);
+
+extern BO_EXPORT NodeIfStmt *
+bl_node_if_stmt_get_else_if(NodeIfStmt *self);
+
+extern BO_EXPORT void
+bl_node_if_stmt_set_else_if(NodeIfStmt *self,
+                            NodeIfStmt *else_if);
 
 BO_END_DECLS
 

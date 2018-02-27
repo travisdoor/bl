@@ -28,20 +28,14 @@ i32 main() {
     // simple state machine
     if (state == state_quit) {
       break;
-    }
-
-    if (state == state_enter_a) {
+    } else if (state == state_enter_a) {
       num = 0;
       printf("enter first number: ", 0);
-    }
-
-    if (state == state_enter_b) {
+    } else if (state == state_enter_b) {
       a = num;
       num = 0;
       printf("enter second number: ", 0);
-    }
-
-    if (state == state_add) {
+    } else if (state == state_add) {
       b = num;
       printf("addition is: %d", add(a, b));
       a = 0;
@@ -59,14 +53,10 @@ i32 main() {
       if (cmd == cmd_return) {
         if (state == state_add) {
           state = state_enter_a;
-        } else { // TODO: if else
-          if (state == state_enter_a) {
-            state = state_enter_b;
-          } else { 
-            if (state == state_enter_b) {
-              state = state_add;
-            }
-          }
+        } else if (state == state_enter_a) {
+          state = state_enter_b;
+        } else if (state == state_enter_b) {
+          state = state_add;
         }
 
         break;

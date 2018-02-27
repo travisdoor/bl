@@ -313,7 +313,6 @@ NodeIfStmt *
 bl_ast_node_if_stmt_new(Ast        *self,
                         NodeExpr   *cond,
                         NodeStmt   *then_stmt,
-                        NodeStmt   *else_stmt,
                         const char *generated_from,
                         int         line,
                         int         col)
@@ -327,7 +326,6 @@ bl_ast_node_if_stmt_new(Ast        *self,
     },
     .condition = cond,
     .then_stmt = then_stmt,
-    .else_stmt = else_stmt
   };
 
   return save_to_cache(self, bo_new(NodeIfStmt, &p));

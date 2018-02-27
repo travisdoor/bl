@@ -303,6 +303,7 @@ parse_if_stmt(Parser *self)
   NodeExpr *expr = NULL;
   NodeStmt *then_stmt = NULL;
   NodeStmt *else_stmt = NULL;
+  NodeIfStmt *else_if_stmt = NULL;
   bl_token_t *tok = NULL;
 
   if (bl_tokens_current_is(self->tokens, BL_SYM_IF)) {
@@ -343,25 +344,31 @@ parse_if_stmt(Parser *self)
                   tok->col);
     }
 
+    ifstmt = bl_ast_node_if_stmt_new(
+      bl_unit_get_ast(self->unit), expr, then_stmt, tok->src_loc, tok->line, tok->col);
+
     /*
      * Parse else statement if there is one.
      */
     if (bl_tokens_current_is(self->tokens, BL_SYM_ELSE)) {
       tok = bl_tokens_consume(self->tokens);
 
-      else_stmt = parse_cmp_stmt(self);
-      if (!else_stmt) {
-        parse_error(self,
-                    "%s %d:%d expected else statement body",
-                    bl_unit_get_src_file(self->unit),
-                    tok->line,
-                    tok->col);
+      /* else if */
+      if (bl_tokens_current_is(self->tokens, BL_SYM_IF)) {
+        bl_node_if_stmt_set_else_if(ifstmt, parse_if_stmt(self));
+      } else {
+        else_stmt = parse_cmp_stmt(self);
+        if (!else_stmt) {
+          parse_error(self,
+                      "%s %d:%d expected else statement body",
+                      bl_unit_get_src_file(self->unit),
+                      tok->line,
+                      tok->col);
+        }
+
+        bl_node_if_stmt_set_else(ifstmt, else_stmt);
       }
     }
-
-    ifstmt = bl_ast_node_if_stmt_new(
-      bl_unit_get_ast(self->unit), expr, then_stmt, else_stmt, tok->src_loc, tok->line, tok->col);
-
   }
 
   return ifstmt;
@@ -566,71 +573,78 @@ parse_atom_expr(Parser *self)
 
   bl_token_t *tok = bl_tokens_peek(self->tokens);
   switch (tok->sym) {
-  case BL_SYM_LPAREN:
-    /* parse sub-expression in (...) */
+    case BL_SYM_LPAREN:
+      /* parse sub-expression in (...) */
 
-    /* eat ( */
-    bl_tokens_consume(self->tokens);
-    expr = parse_expr(self);
-    if (expr == NULL) {
-      parse_error(self,
-                  "%s %d:%d expected expression.",
-                  bl_unit_get_src_file(self->unit),
-                  tok->line,
-                  tok->col);
-    }
+      /* eat ( */
+      bl_tokens_consume(self->tokens);
+      expr = parse_expr(self);
+      if (expr == NULL) {
+        parse_error(self,
+                    "%s %d:%d expected expression.",
+                    bl_unit_get_src_file(self->unit),
+                    tok->line,
+                    tok->col);
+      }
 
-    /* eat ) */
-    tok = bl_tokens_consume(self->tokens);
-    if (tok->sym != BL_SYM_RPAREN) {
-      parse_error(self, "%s %d:%d unterminated sub-expression, missing "
-        BL_YELLOW("')'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
-    }
+      /* eat ) */
+      tok = bl_tokens_consume(self->tokens);
+      if (tok->sym != BL_SYM_RPAREN) {
+        parse_error(self, "%s %d:%d unterminated sub-expression, missing "
+          BL_YELLOW("')'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
+      }
 
-    break;
-  case BL_SYM_IDENT:expr = (NodeExpr *) parse_call_expr(self);
-    if (expr)
       break;
+    case BL_SYM_IDENT:
+      expr = (NodeExpr *) parse_call_expr(self);
+      if (expr)
+        break;
 
-    bl_tokens_consume(self->tokens);
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_decl_ref_new(
-      bl_unit_get_ast(self->unit), tok->content.as_string, tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_decl_ref_new(
+        bl_unit_get_ast(self->unit), tok->content.as_string, tok->src_loc, tok->line, tok->col);
 
-    break;
-  case BL_SYM_NUM:bl_tokens_consume(self->tokens);
+      break;
+    case BL_SYM_NUM:
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_const_new(
-      bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-    bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
-    break;
-  case BL_SYM_TRUE:bl_tokens_consume(self->tokens);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_int((NodeConst *) expr, tok->content.as_ull);
+      break;
+    case BL_SYM_TRUE:
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_const_new(
-      bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-    bl_node_const_set_bool((NodeConst *) expr, true);
-    break;
-  case BL_SYM_FALSE:bl_tokens_consume(self->tokens);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, true);
+      break;
+    case BL_SYM_FALSE:
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_const_new(
-      bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
-    bl_node_const_set_bool((NodeConst *) expr, false);
-    break;
-  case BL_SYM_STRING:bl_tokens_consume(self->tokens);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_bool((NodeConst *) expr, false);
+      break;
+    case BL_SYM_STRING:
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_const_new(
-      bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
 
-    bl_node_const_set_str((NodeConst *) expr, tok->content.as_string);
-    break;
-  case BL_SYM_CHAR:bl_tokens_consume(self->tokens);
+      bl_node_const_set_str((NodeConst *) expr, tok->content.as_string);
+      break;
+    case BL_SYM_CHAR:
+      bl_tokens_consume(self->tokens);
 
-    expr = (NodeExpr *) bl_ast_node_const_new(
-      bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
 
-    bl_node_const_set_char((NodeConst *) expr, tok->content.as_char);
-    break;
-  default:break;
+      bl_node_const_set_char((NodeConst *) expr, tok->content.as_char);
+      break;
+    default:
+      break;
   }
 
   return expr;

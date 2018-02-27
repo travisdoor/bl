@@ -139,7 +139,6 @@ extern BO_EXPORT NodeIfStmt *
 bl_ast_node_if_stmt_new(Ast *self,
                         NodeExpr *cond,
                         NodeStmt *then_stmt,
-                        NodeStmt *else_stmt,
                         const char *generated_from,
                         int line,
                         int col);

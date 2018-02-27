@@ -577,7 +577,7 @@ gen_if_stmt(LlvmBackend *self,
    */
   LLVMBuildCondBr(self->builder, expr, if_then, if_else);
 
-  if (bl_node_if_stmt_get_else_stmt(ifstmt) == NULL) {
+  if (bl_node_if_stmt_get_else(ifstmt) == NULL && bl_node_if_stmt_get_else_if(ifstmt) == NULL) {
     LLVMPositionBuilderAtEnd(self->builder, if_else);
     LLVMBuildBr(self->builder, if_cont);
   }
@@ -585,19 +585,24 @@ gen_if_stmt(LlvmBackend *self,
   /* then block */
   LLVMPositionBuilderAtEnd(self->builder, if_then);
   bl_llvm_block_context_push_block(self->block_context);
-  terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_then_stmt(ifstmt), break_block, cont_block);
+  terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_then(ifstmt), break_block, cont_block);
   bl_llvm_block_context_pop_block(self->block_context);
 
   if (!terminated) {
     LLVMBuildBr(self->builder, if_cont);
   }
 
-  /* else block */
-  if (bl_node_if_stmt_get_else_stmt(ifstmt) != NULL) {
+  /* else if */
+  if (bl_node_if_stmt_get_else_if(ifstmt) != NULL) {
+    LLVMPositionBuilderAtEnd(self->builder, if_else);
+    gen_if_stmt(self, bl_node_if_stmt_get_else_if(ifstmt), break_block, cont_block);
+    LLVMBuildBr(self->builder, if_cont);
+  } else if (bl_node_if_stmt_get_else(ifstmt) != NULL) {
+    /* else */
     LLVMPositionBuilderAtEnd(self->builder, if_else);
     bl_llvm_block_context_push_block(self->block_context);
     // TODO: terminated
-    terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_else_stmt(ifstmt), break_block, cont_block);
+    terminated = gen_cmp_stmt(self, bl_node_if_stmt_get_else(ifstmt), break_block, cont_block);
     bl_llvm_block_context_pop_block(self->block_context);
 
     if (!terminated) {
