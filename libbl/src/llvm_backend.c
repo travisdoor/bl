@@ -46,7 +46,7 @@
 /* class LlvmBackend */
 
 #define VERIFY 1
-#define DEBUG_NAMES 1
+#define DEBUG_NAMES 0
 
 #define gen_error(self, format, ...) \
   { \
@@ -244,7 +244,7 @@ get_or_create_const_string(LlvmBackend *self,
     return bo_htbl_at(self->const_strings, hash, LLVMValueRef);
 
   LLVMValueRef s = LLVMBuildGlobalString(
-    self->builder, str, gname("str"));
+    self->builder, str, "str");
 
   s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8Type(), 0));
   bo_htbl_insert(self->const_strings, hash, s);
