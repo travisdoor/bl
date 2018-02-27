@@ -1,4 +1,4 @@
-# ![alt text](doc/biscuit_logo.png "logo") The Biscuit Language
+# ![alt text](biscuit_logo.png "logo") The Biscuit Language
 
 ## Data types
 ```
