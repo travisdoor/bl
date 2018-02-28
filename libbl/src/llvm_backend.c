@@ -165,8 +165,6 @@ bo_decl_members_begin(LlvmBackend, Stage)
   char *error;
   char *module_str;
 
-  char *default_triple;
-
   /* tmps */
   LlvmBlockContext *block_context;
   BHashTable *const_strings;
@@ -192,9 +190,6 @@ LlvmBackend_ctor(LlvmBackend *self,
   /* constructor */
   /* initialize parent */
   bo_parent_ctor(Stage, p);
-
-  /* TODO: set triple */
-  self->default_triple = LLVMGetDefaultTargetTriple();
 }
 
 void
@@ -205,7 +200,6 @@ LlvmBackend_dtor(LlvmBackend *self)
   bo_unref(self->block_context);
   free(self->error);
   free(self->module_str);
-  free(self->default_triple);
 }
 
 bo_copy_result
@@ -857,8 +851,6 @@ reset(LlvmBackend *self,
   self->mod = LLVMModuleCreateWithName(bl_unit_get_name(unit));
   self->block_context = bl_llvm_block_context_new();
   self->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
-
-  LLVMSetTarget(self->mod, self->default_triple);
 }
 
 bool

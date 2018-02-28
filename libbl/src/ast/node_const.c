@@ -86,7 +86,7 @@ to_string(NodeConst *self)
   char str[512];
   switch (self->type) {
     case BL_CONST_INT:
-      snprintf(str, 512, "int %d", self->content.as_ulong);
+      snprintf(str, 512, "int %lu", self->content.as_ulong);
       break;
     case BL_CONST_FLOAT:
       snprintf(str, 512, "float %f", self->content.as_float);
@@ -102,6 +102,8 @@ to_string(NodeConst *self)
       break;
     case BL_CONST_CHAR:
       sprintf(str, "char %c", self->content.as_char);
+      break;
+    default:
       break;
   }
 
