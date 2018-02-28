@@ -36,26 +36,33 @@
 #include "bl/token_printer.h"
 #include "bl/ast_printer.h"
 #include "bl/llvm_bc_writer.h"
+#include "bl/llvm_linker.h"
 #include "bl/bldebug.h"
 
 /* class Builder */
 
 static bool
-compile_group(Builder *self,
-              Assembly *assembly,
-              bl_compile_group_e group);
+compile_group_unit(Builder *self,
+                   Assembly *assembly,
+                   bl_compile_group_e group);
+
+static bool
+compile_group_assembly(Builder *self,
+                       Assembly *assembly,
+                       bl_compile_group_e group);
 
 /* class Builder constructor params */
 bo_decl_params_begin(Builder)
   /* constructor params */
   unsigned int flags;
-  Pipeline *pipeline;
+  Pipeline *pipeline_unit;
 bo_end();
 
 /* class Builder object members */
 bo_decl_members_begin(Builder, BObject)
   /* members */
-  Pipeline *pipeline;
+  Pipeline *pipeline_unit;
+  Pipeline *pipeline_assembly;
   Actor *failed;
 bo_end();
 
@@ -72,54 +79,61 @@ Builder_ctor(Builder *self,
 {
   /* constructor */
   /* initialize self */
-  if (p->pipeline != NULL) {
-    self->pipeline = bo_ref(p->pipeline);
+  if (p->pipeline_unit != NULL) {
+    self->pipeline_unit = bo_ref(p->pipeline_unit);
   } else {
-    self->pipeline = bl_pipeline_new();
+    self->pipeline_unit = bl_pipeline_new();
 
     if (p->flags & BL_BUILDER_LOAD_FROM_FILE) {
       Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline, file_loader);
+      bl_pipeline_add_stage(self->pipeline_unit, file_loader);
     }
 
     Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, lexer);
+    bl_pipeline_add_stage(self->pipeline_unit, lexer);
 
     if (p->flags & BL_BUILDER_PRINT_TOKENS) {
       Stage *token_printer = (Stage *) bl_token_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline, token_printer);
+      bl_pipeline_add_stage(self->pipeline_unit, token_printer);
     }
 
     Stage *parser = (Stage *) bl_parser_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, parser);
+    bl_pipeline_add_stage(self->pipeline_unit, parser);
 
     if (p->flags & BL_BUILDER_PRINT_AST) {
       Stage *ast_printer = (Stage *) bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline, ast_printer);
+      bl_pipeline_add_stage(self->pipeline_unit, ast_printer);
     }
 
     Stage *analyzer = (Stage *) bl_analyzer_new(BL_CGROUP_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline, analyzer);
+    bl_pipeline_add_stage(self->pipeline_unit, analyzer);
 
     Stage *llvm = (Stage *) bl_llvm_backend_new(BL_CGROUP_GENERATE);
-    bl_pipeline_add_stage(self->pipeline, llvm);
+    bl_pipeline_add_stage(self->pipeline_unit, llvm);
 
-    if (p->flags & BL_BUILDER_RUN) {
-      Stage *llvm_jit = (Stage *) bl_llvm_jit_exec_new(BL_CGROUP_POST_GENERATE);
-      bl_pipeline_add_stage(self->pipeline, llvm_jit);
-    }
 
     if (p->flags & BL_BUILDER_EXPORT_BC) {
       Stage *llvm_bc_writer = (Stage *) bl_llvm_bc_writer_new(BL_CGROUP_POST_GENERATE);
-      bl_pipeline_add_stage(self->pipeline, llvm_bc_writer);
+      bl_pipeline_add_stage(self->pipeline_unit, llvm_bc_writer);
     }
+  }
+
+  self->pipeline_assembly = bl_pipeline_new();
+
+  Stage *linker = (Stage *) bl_llvm_linker_new(BL_CGROUP_ASSEMBLY_BUILD);
+  bl_pipeline_add_stage(self->pipeline_assembly, linker);
+
+  if (p->flags & BL_BUILDER_RUN) {
+    Stage *llvm_jit = (Stage *) bl_llvm_jit_exec_new(BL_CGROUP_ASSEMBLY_BUILD);
+    bl_pipeline_add_stage(self->pipeline_assembly, llvm_jit);
   }
 }
 
 void
 Builder_dtor(Builder *self)
 {
-  bo_unref(self->pipeline);
+  bo_unref(self->pipeline_unit);
+  bo_unref(self->pipeline_assembly);
 }
 
 bo_copy_result
@@ -132,16 +146,16 @@ Builder_copy(Builder *self,
 /* class Builder end */
 
 bool
-compile_group(Builder *self,
-              Assembly *assembly,
-              bl_compile_group_e group)
+compile_group_unit(Builder *self,
+                   Assembly *assembly,
+                   bl_compile_group_e group)
 {
   const int c = bl_assembly_get_unit_count(assembly);
   Unit *unit = NULL;
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    if (!bl_pipeline_run(self->pipeline, (Actor *) unit, group)) {
-      self->failed = bl_pipeline_get_failed(self->pipeline);
+    if (!bl_pipeline_run(self->pipeline_unit, (Actor *) unit, group)) {
+      self->failed = bl_pipeline_get_failed(self->pipeline_unit);
       return false;
     }
   }
@@ -149,17 +163,29 @@ compile_group(Builder *self,
   return true;
 }
 
+bool
+compile_group_assembly(Builder *self,
+                       Assembly *assembly,
+                       bl_compile_group_e group)
+{
+  if (!bl_pipeline_run(self->pipeline_assembly, (Actor *) assembly, group)) {
+    self->failed = bl_pipeline_get_failed(self->pipeline_assembly);
+    return false;
+  }
+  return true;
+}
+
 Builder *
 bl_builder_new(unsigned int flags)
 {
-  BuilderParams p = {.flags = flags, .pipeline = NULL};
+  BuilderParams p = {.flags = flags, .pipeline_unit = NULL};
   return bo_new(Builder, &p);
 }
 
 Builder *
 bl_builder_new_custom(Pipeline *pipeline)
 {
-  BuilderParams p = {.flags = 0, .pipeline = pipeline};
+  BuilderParams p = {.flags = 0, .pipeline_unit = pipeline};
   return bo_new(Builder, &p);
 }
 
@@ -170,7 +196,12 @@ bl_builder_compile(Builder *self,
   self->failed = NULL;
 
   for (int i = 0; i < BL_CGROUP_COUNT; i++) {
-    if (!compile_group(self, assembly, i))
+    if (!compile_group_unit(self, assembly, i))
+      return false;
+  }
+
+  for (int i = 0; i < BL_CGROUP_COUNT; i++) {
+    if (!compile_group_assembly(self, assembly, i))
       return false;
   }
 

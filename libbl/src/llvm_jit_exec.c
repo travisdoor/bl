@@ -30,13 +30,13 @@
 #include <llvm-c/ExecutionEngine.h>
 #include "bl/bldebug.h"
 #include "bl/llvm_jit_exec.h"
-#include "bl/unit.h"
+#include "bl/assembly.h"
 
 /* class LlvmJitExec */
 
 static bool
 run(LlvmJitExec *self,
-    Unit *unit);
+    Assembly *assembly);
 
 bo_decl_params_with_base_begin(LlvmJitExec, Stage)
 bo_end();
@@ -83,19 +83,19 @@ LlvmJitExec_copy(LlvmJitExec *self,
 
 bool
 run(LlvmJitExec *self,
-    Unit *unit)
+    Assembly *assembly)
 {
   LLVMExecutionEngineRef engine;
   char *error = NULL;
 
   LLVMLinkInInterpreter();
-  if (LLVMCreateInterpreterForModule(&engine, bl_unit_get_llvm_module(unit), &error) != 0) {
+  if (LLVMCreateInterpreterForModule(&engine, bl_assembly_get_module(assembly), &error) != 0) {
     bl_abort("failed to create execution engine with error %s", error);
   }
 
-  LLVMValueRef main = LLVMGetNamedFunction(bl_unit_get_llvm_module(unit), "main");
+  LLVMValueRef main = LLVMGetNamedFunction(bl_assembly_get_module(assembly), "main");
   if (main == NULL) {
-    bl_actor_error((Actor *) unit,
+    bl_actor_error((Actor *) assembly,
                    "(llvm_interpreter) Unable to get " BL_YELLOW("'main'") BL_RED(" method"));
     LLVMDisposeExecutionEngine(engine);
     return false;
@@ -105,7 +105,7 @@ run(LlvmJitExec *self,
 
   int ires = (int) LLVMGenericValueToInt(res, 0);
   if (ires != 0) {
-    bl_actor_error((Actor *) unit, "(llvm_interpreter) Executed unit return %i", ires);
+    bl_actor_error((Actor *) assembly, "(llvm_interpreter) Executed unit return %i", ires);
     LLVMDisposeExecutionEngine(engine);
     return false;
   }

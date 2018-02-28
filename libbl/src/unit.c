@@ -183,7 +183,7 @@ bl_unit_get_sym_tbl(Unit *self)
 }
 
 LLVMModuleRef
-bl_unit_get_llvm_module(Unit *self)
+bl_unit_get_module(Unit *self)
 {
   return self->module;
 }
@@ -192,5 +192,6 @@ void
 bl_unit_set_llvm_module(Unit *self,
                         LLVMModuleRef module)
 {
+//  LLVMDisposeModule(self->module);
   self->module = module;
 }

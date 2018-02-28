@@ -35,6 +35,7 @@ typedef enum _bl_compile_group
   BL_CGROUP_ANALYZE,
   BL_CGROUP_GENERATE,
   BL_CGROUP_POST_GENERATE,
+  BL_CGROUP_ASSEMBLY_BUILD,
   BL_CGROUP_COUNT
 } bl_compile_group_e;
 

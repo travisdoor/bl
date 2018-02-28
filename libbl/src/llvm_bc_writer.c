@@ -90,7 +90,7 @@ run(LlvmBcWriter *self,
   char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
   strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(bl_unit_get_llvm_module(unit), export_file) != 0) {
+  if (LLVMWriteBitcodeToFile(bl_unit_get_module(unit), export_file) != 0) {
     free(export_file);
     bl_actor_error((Actor *) unit,
                    "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"),

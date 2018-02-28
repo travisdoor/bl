@@ -80,7 +80,7 @@ extern BO_EXPORT SymTbl *
 bl_unit_get_sym_tbl(Unit *self);
 
 extern BO_EXPORT LLVMModuleRef
-bl_unit_get_llvm_module(Unit *self);
+bl_unit_get_module(Unit *self);
 
 extern BO_EXPORT void
 bl_unit_set_llvm_module(Unit *self,

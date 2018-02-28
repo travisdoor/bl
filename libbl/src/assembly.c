@@ -29,16 +29,19 @@
 #include <string.h>
 #include "bl/bldebug.h"
 #include "bl/assembly.h"
+#include "pipeline/actor_impl.h"
 
 /* class Assembly object members */
-bo_decl_members_begin(Assembly, BObject)
+bo_decl_members_begin(Assembly, Actor)
   /* members */
   BArray *units;
   char *name;
+
+  LLVMModuleRef module;
 bo_end();
 
 /* class Assembly */
-bo_impl_type(Assembly, BObject);
+bo_impl_type(Assembly, Actor);
 
 bo_decl_params_begin(Assembly)
   const char *name;
@@ -63,6 +66,7 @@ Assembly_dtor(Assembly *self)
 {
   free(self->name);
   bo_unref(self->units);
+  LLVMDisposeModule(self->module);
 }
 
 bo_copy_result
@@ -107,3 +111,18 @@ bl_assembly_get_unit(Assembly *self,
 {
   return bo_array_at(self->units, (size_t) i, Unit *);
 }
+
+LLVMModuleRef
+bl_assembly_get_module(Assembly *self)
+{
+  return self->module;
+}
+
+void
+bl_assembly_set_module(Assembly *self,
+                       LLVMModuleRef module)
+{
+  LLVMDisposeModule(self->module);
+  self->module = module;
+}
+

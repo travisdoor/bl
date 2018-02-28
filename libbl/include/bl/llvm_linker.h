@@ -1,11 +1,11 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   assembly.h
+// File:   llvm_linker.h
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   28/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,44 +26,22 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_ASSEMBLY_H
-#define BL_ASSEMBLY_H
+#ifndef BL_LLVM_LINKER_H
+#define BL_LLVM_LINKER_H
 
+#include "bl/pipeline/stage.h"
 #include <bobject/bobject.h>
-#include "bl/pipeline/pipeline.h"
-#include "bl/unit.h"
 
 BO_BEGIN_DECLS
 
-/* class Assembly declaration */
-bo_decl_type_begin(Assembly, Actor)
+/* class LlvmLinker declaration */
+bo_decl_type_begin(LlvmLinker, Stage)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT Assembly *
-bl_assembly_new(const char *name);
-
-extern BO_EXPORT void
-bl_assembly_add_unit(Assembly *self,
-                     Unit *unit);
-
-extern BO_EXPORT int
-bl_assembly_get_unit_count(Assembly *self);
-
-extern BO_EXPORT Unit *
-bl_assembly_get_unit(Assembly *self,
-                     int i);
-
-extern BO_EXPORT const char *
-bl_assembly_get_name(Assembly *self);
-
-extern BO_EXPORT LLVMModuleRef
-bl_assembly_get_module(Assembly *self);
-
-extern BO_EXPORT void
-bl_assembly_set_module(Assembly *self,
-                       LLVMModuleRef module);
+extern BO_EXPORT LlvmLinker *
+bl_llvm_linker_new(bl_compile_group_e group);
 
 BO_END_DECLS
 
-#endif //BL_ASSEMBLY_H
+#endif //BL_LLVM_LINKER_H

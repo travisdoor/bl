@@ -2,11 +2,13 @@
  * This is Biscuit testing script.
  */
 
-extern i32 printf(string s, f64 f);
+extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
+extern i32 api_method(i32 a, i32 b);
 
 i32 main() {
-  api_method(10, 10);
+  i32 res = api_method(10, 10);
+  printf("result = %i\n", res);
   return 0;
 }
 
