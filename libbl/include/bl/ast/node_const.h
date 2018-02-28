@@ -35,7 +35,14 @@
 
 typedef enum _bl_node_conts_type_e
 {
-  BL_CONST_INT, BL_CONST_BOOL, BL_CONST_STRING, BL_CONST_CHAR, BL_CONST_DOUBLE, BL_CONST_FLOAT
+  BL_CONST_INT,
+  BL_CONST_LONG,
+  BL_CONST_ULONG,
+  BL_CONST_BOOL,
+  BL_CONST_STRING,
+  BL_CONST_CHAR,
+  BL_CONST_DOUBLE,
+  BL_CONST_FLOAT
 } bl_node_conts_type_e;
 
 BO_BEGIN_DECLS
@@ -51,6 +58,20 @@ bl_node_const_get_int(NodeConst *self);
 extern BO_EXPORT void
 bl_node_const_set_int(NodeConst *self,
                       int val);
+
+extern BO_EXPORT long
+bl_node_const_get_long(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_long(NodeConst *self,
+                      long val);
+
+extern BO_EXPORT unsigned long
+bl_node_const_get_ulong(NodeConst *self);
+
+extern BO_EXPORT void
+bl_node_const_set_ulong(NodeConst *self,
+                       unsigned long val);
 
 extern BO_EXPORT double
 bl_node_const_get_double(NodeConst *self);

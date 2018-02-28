@@ -40,7 +40,7 @@ bo_decl_members_begin(NodeConst, NodeExpr)
   {
     const char *as_string;
     char as_char;
-    int as_int;
+    unsigned long as_ulong;
     double as_double;
     float as_float;
     bool as_bool;
@@ -86,7 +86,13 @@ to_string(NodeConst *self)
   char str[512];
   switch (self->type) {
     case BL_CONST_INT:
-      snprintf(str, 512, "int %d", self->content.as_int);
+      snprintf(str, 512, "int %d", self->content.as_ulong);
+      break;
+    case BL_CONST_FLOAT:
+      snprintf(str, 512, "float %f", self->content.as_float);
+      break;
+    case BL_CONST_DOUBLE:
+      snprintf(str, 512, "double %f", self->content.as_double);
       break;
     case BL_CONST_BOOL:
       sprintf(str, "bool %d", self->content.as_bool);
@@ -112,7 +118,7 @@ int
 bl_node_const_get_int(NodeConst *self)
 {
   bl_assert(self->type == BL_CONST_INT, "invalid constant node type");
-  return self->content.as_int;
+  return self->content.as_ulong;
 }
 
 void
@@ -120,7 +126,7 @@ bl_node_const_set_int(NodeConst *self,
                       int val)
 {
   self->type = BL_CONST_INT;
-  self->content.as_int = val;
+  self->content.as_ulong = val;
 }
 
 bool
@@ -199,6 +205,36 @@ bl_node_const_get_float(NodeConst *self)
 void
 bl_node_const_set_float(NodeConst *self,
                         float val)
+{
+  self->type = BL_CONST_FLOAT;
+  self->content.as_float = val;
+}
+
+long
+bl_node_const_get_long(NodeConst *self)
+{
+  bl_assert(self->type == BL_CONST_LONG, "invalid constant node type");
+  return self->content.as_ulong;
+}
+
+void
+bl_node_const_set_long(NodeConst *self,
+                       long val)
+{
+  self->type = BL_CONST_FLOAT;
+  self->content.as_float = val;
+}
+
+unsigned long
+bl_node_const_get_ulong(NodeConst *self)
+{
+  bl_assert(self->type == BL_CONST_ULONG, "invalid constant node type");
+  return self->content.as_ulong;
+}
+
+void
+bl_node_const_set_ulong(NodeConst *self,
+                        unsigned long val)
 {
   self->type = BL_CONST_FLOAT;
   self->content.as_float = val;

@@ -241,8 +241,7 @@ to_llvm_type(Type *t)
       return LLVMInt8Type();
     case BL_TYPE_BOOL:
       return LLVMInt1Type();
-    default:
-      return NULL;
+    default: bl_abort("unknown type");
   }
 }
 
@@ -277,10 +276,14 @@ gen_default(LlvmBackend *self,
       return LLVMConstInt(LLVMInt32Type(), 0, true);
     case BL_TYPE_I64:
       return LLVMConstInt(LLVMInt64Type(), 0, true);
+    case BL_TYPE_U32:
+      return LLVMConstInt(LLVMInt32Type(), 0, false);
+    case BL_TYPE_U64:
+      return LLVMConstInt(LLVMInt64Type(), 0, false);
     case BL_TYPE_F32:
-      return LLVMConstInt(LLVMFloatType(), 0, true);
+      return LLVMConstReal(LLVMFloatType(), 0);
     case BL_TYPE_F64:
-      return LLVMConstInt(LLVMDoubleType(), 0, true);
+      return LLVMConstReal(LLVMDoubleType(), 0);
     case BL_TYPE_BOOL:
       return LLVMConstInt(LLVMInt1Type(), 0, false);
     case BL_TYPE_STRING: {
@@ -338,16 +341,12 @@ gen_expr(LlvmBackend *self,
             true);
           break;
         case BL_CONST_DOUBLE:
-          val = LLVMConstInt(
-            LLVMDoubleType(),
-            (unsigned long long int) bl_node_const_get_double((NodeConst *) expr),
-            true);
+          val = LLVMConstReal(
+            LLVMDoubleType(), bl_node_const_get_double((NodeConst *) expr));
           break;
         case BL_CONST_FLOAT:
-          val = LLVMConstInt(
-            LLVMFloatType(),
-            (unsigned long long int) bl_node_const_get_float((NodeConst *) expr),
-            true);
+          val = LLVMConstReal(
+            LLVMFloatType(), bl_node_const_get_float((NodeConst *) expr));
           break;
         case BL_CONST_BOOL:
           val = LLVMConstInt(
@@ -533,8 +532,12 @@ gen_call_args(LlvmBackend *self,
     expr = bl_node_call_get_arg(call, i);
     LLVMValueRef val = gen_expr(self, expr);
 
-    if (LLVMIsAAllocaInst(val))
+    if (LLVMIsAAllocaInst(val)) {
       *out = LLVMBuildLoad(self->builder, val, gname("tmp"));
+      if (LLVMGetAllocatedType(val) == LLVMFloatType()) {
+        *out = LLVMBuildCast(self->builder, LLVMFPExt, *out, LLVMDoubleType(), gname("cast"));
+      }
+    }
     else
       *out = val;
 

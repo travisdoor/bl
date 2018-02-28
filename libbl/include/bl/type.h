@@ -40,8 +40,11 @@ BO_BEGIN_DECLS
   tp(BOOL,   "bool") \
   tp(I32,    "i32") \
   tp(I64,    "i64") \
+  tp(U32,    "u32") \
+  tp(U64,    "u64") \
   tp(F32,    "f32") \
   tp(F64,    "f64") \
+  tp(SIZE,   "size") \
   tp(STRING, "string") \
 
 typedef enum {
