@@ -1,7 +1,7 @@
 //*****************************************************************************
 // blc
 //
-// File:   node_stmt.h
+// File:   node_cmp_stmt.h
 // Author: Martin Dorazil
 // Date:   8.2.18
 //
@@ -26,26 +26,26 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_STMT_H
-#define BL_NODE_STMT_H
+#ifndef BL_NODE_CMP_STMT_H
+#define BL_NODE_CMP_STMT_H
 
 #include "bl/ast/node.h"
 
 BO_BEGIN_DECLS
 /* class declaration */
-bo_decl_type_begin(NodeStmt, Node)
+bo_decl_type_begin(NodeCmpStmt, Node)
   /* virtuals */
 bo_end();
 
 extern BO_EXPORT bool
-bl_node_stmt_add_child(NodeStmt *self,
+bl_node_stmt_add_child(NodeCmpStmt *self,
                        Node *node);
 
 extern BO_EXPORT int
-bl_node_stmt_child_get_count(NodeStmt *self);
+bl_node_stmt_child_get_count(NodeCmpStmt *self);
 
 extern BO_EXPORT Node *
-bl_node_stmt_get_child(NodeStmt *self,
+bl_node_stmt_get_child(NodeCmpStmt *self,
                        int i);
 
 BO_END_DECLS

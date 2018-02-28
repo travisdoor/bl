@@ -34,7 +34,7 @@ set(HEADER_FILES
         include/bl/ast/node_param_var_decl.h
         include/bl/ast/ast.h
         include/bl/llvm_backend.h
-        include/bl/ast/node_stmt.h
+        include/bl/ast/node_cmp_stmt.h
         include/bl/assembly.h
         include/bl/compile_group.h
         include/bl/ast/node_var_decl.h
@@ -59,7 +59,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_func_decl_impl.h
         src/ast/node_global_stmt_impl.h
         src/ast/node_param_var_decl_impl.h
-        src/ast/node_stmt_impl.h
+        src/ast/node_cmp_stmt_impl.h
         src/ast/node_return_stmt_impl.h
         src/ast/node_expr_impl.h
         src/ast/node_var_decl_impl.h
@@ -91,7 +91,7 @@ set(SOURCE_FILES
         src/ast/node_func_decl.c
         src/ast/node_global_stmt.c
         src/ast/node_return_stmt.c
-        src/ast/node_stmt.c
+        src/ast/node_cmp_stmt.c
         src/token_printer.c
         src/assembly.c
         src/ast/node_var_decl.c

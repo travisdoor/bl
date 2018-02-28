@@ -35,7 +35,7 @@ to_string(NodeFuncDecl *self);
 /* NodeFuncDecl members */
 bo_decl_members_begin(NodeFuncDecl, NodeDecl)
   BArray   *params;
-  NodeStmt *stmt;
+  NodeCmpStmt *stmt;
   bl_sym_e  modificator;
 bo_end();
 
@@ -91,7 +91,7 @@ to_string(NodeFuncDecl *self)
 
 bool
 bl_node_func_decl_set_stmt(NodeFuncDecl *self,
-                           NodeStmt *stmt)
+                           NodeCmpStmt *stmt)
 {
   if (!stmt)
     return false;
@@ -113,7 +113,7 @@ bl_node_func_decl_add_param(NodeFuncDecl     *self,
   return true;
 }
 
-NodeStmt *
+NodeCmpStmt *
 bl_node_func_decl_get_stmt(NodeFuncDecl *self)
 {
   return self->stmt;

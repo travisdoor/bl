@@ -31,7 +31,7 @@
 
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
-#include "bl/ast/node_stmt.h"
+#include "bl/ast/node_cmp_stmt.h"
 
 BO_BEGIN_DECLS
 
@@ -40,7 +40,7 @@ bo_decl_type_begin(NodeLoopStmt, Node)
   /* virtuals */
 bo_end();
 
-extern BO_EXPORT NodeStmt *
+extern BO_EXPORT NodeCmpStmt *
 bl_node_loop_stmt_get_stmt(NodeLoopStmt *self);
 
 BO_END_DECLS

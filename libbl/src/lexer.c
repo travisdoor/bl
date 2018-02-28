@@ -281,7 +281,7 @@ scan_number(Lexer *self,
   tok->sym = BL_SYM_NUM;
   tok->content.as_string = self->c;
 
-  unsigned long long n = 0;
+  long double n = 0;
   int len = 0;
   while (true) {
     if (!is_number_c(*(self->c))) {
@@ -298,7 +298,7 @@ scan_number(Lexer *self,
 
   tok->len = len;
   self->col += len;
-  tok->content.as_ull = n;
+  tok->content.as_ull = (unsigned long long int) n;
 
   return true;
 }

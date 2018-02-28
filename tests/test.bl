@@ -2,22 +2,15 @@
  * This is Biscuit testing script.
  */
 
-extern i32 printf(string s, i32 i);
+extern i32 printf(string s, f32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  i32 x;
+  f32 a = 0.2;
+  f32 b = 0.0001564; 
 
-  loop {
-
-    printf("x = %d\n", x);
-    continue;
-
-    if (x == 100) {
-      break;
-    }
-  }
-
+  printf("a = %f\n", a);
+  printf("b = %f\n", b);
 
   return 0;
 }

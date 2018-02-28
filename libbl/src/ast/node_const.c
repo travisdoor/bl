@@ -36,10 +36,12 @@ to_string(NodeConst *self);
 /* class NodeConst object members */
 bo_decl_members_begin(NodeConst, NodeExpr)
   /* members */
-  union {
+  union
+  {
     const char *as_string;
     char as_char;
     int as_int;
+    double as_double;
     bool as_bool;
   } content;
   bl_node_conts_type_e type;
@@ -54,7 +56,8 @@ NodeConstKlass_init(NodeConstKlass *klass)
 }
 
 void
-NodeConst_ctor(NodeConst *self, NodeConstParams *p)
+NodeConst_ctor(NodeConst *self,
+               NodeConstParams *p)
 {
   /* constructor */
 
@@ -68,10 +71,12 @@ NodeConst_dtor(NodeConst *self)
 }
 
 bo_copy_result
-NodeConst_copy(NodeConst *self, NodeConst *other)
+NodeConst_copy(NodeConst *self,
+               NodeConst *other)
 {
   return BO_NO_COPY;
 }
+
 /* class NodeConst end */
 
 BString *
@@ -111,7 +116,7 @@ bl_node_const_get_int(NodeConst *self)
 
 void
 bl_node_const_set_int(NodeConst *self,
-                      int        val)
+                      int val)
 {
   self->type = BL_CONST_INT;
   self->content.as_int = val;
@@ -166,4 +171,19 @@ bl_node_const_set_char(NodeConst *self,
 {
   self->type = BL_CONST_CHAR;
   self->content.as_char = val;
+}
+
+double
+bl_node_const_get_double(NodeConst *self)
+{
+  bl_assert(self->type == BL_CONST_DOUBLE, "invalid constant node type");
+  return self->content.as_double;
+}
+
+void
+bl_node_const_set_double(NodeConst *self,
+                         double val)
+{
+  self->type = BL_CONST_DOUBLE;
+  self->content.as_double = val;
 }

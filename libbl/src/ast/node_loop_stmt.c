@@ -33,7 +33,7 @@
 /* class NodeLoopStmt object members */
 bo_decl_members_begin(NodeLoopStmt, Node)
   /* members */
-  NodeStmt *cmp_stmt;
+  NodeCmpStmt *cmp_stmt;
 bo_end();
 
 bo_impl_type(NodeLoopStmt, Node);
@@ -66,7 +66,7 @@ NodeLoopStmt_copy(NodeLoopStmt *self, NodeLoopStmt *other)
 }
 /* class NodeLoopStmt end */
 
-NodeStmt *
+NodeCmpStmt *
 bl_node_loop_stmt_get_stmt(NodeLoopStmt *self)
 {
   return self->cmp_stmt;

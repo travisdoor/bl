@@ -146,20 +146,20 @@ bl_ast_node_global_stmt_new(Ast        *self,
   return save_to_cache(self, bo_new(NodeGlobalStmt, &p));
 }
 
-NodeStmt *
+NodeCmpStmt *
 bl_ast_node_stmt_new(Ast        *self,
                      const char *generated_from,
                      int         line,
                      int         col)
 {
-  NodeStmtParams p = {
+  NodeCmpStmtParams p = {
     .base.type = BL_NODE_STMT,
     .base.generated_from = generated_from,
     .base.line = line,
     .base.col = col,
   };
 
-  return save_to_cache(self, bo_new(NodeStmt, &p));
+  return save_to_cache(self, bo_new(NodeCmpStmt, &p));
 }
 
 NodeParamVarDecl *
@@ -312,7 +312,7 @@ bl_ast_node_decl_ref_new(Ast        *self,
 NodeIfStmt *
 bl_ast_node_if_stmt_new(Ast        *self,
                         NodeExpr   *cond,
-                        NodeStmt   *then_stmt,
+                        NodeCmpStmt   *then_stmt,
                         const char *generated_from,
                         int         line,
                         int         col)
@@ -333,7 +333,7 @@ bl_ast_node_if_stmt_new(Ast        *self,
 
 NodeLoopStmt *
 bl_ast_node_loop_stmt_new(Ast        *self,
-                          NodeStmt *cmp_stmt,
+                          NodeCmpStmt *cmp_stmt,
                           const char *generated_from,
                           int         line,
                           int         col)

@@ -47,7 +47,7 @@ parse_semicolon(Parser *self);
 static Node *
 parse_global_stmt(Parser *self);
 
-static NodeStmt *
+static NodeCmpStmt *
 parse_cmp_stmt(Parser *self);
 
 static NodeIfStmt *
@@ -229,7 +229,7 @@ parse_loop_stmt(Parser *self)
   if (tok->sym == BL_SYM_LOOP) {
     bl_tokens_consume(self->tokens);
     self->is_loop = true;
-    NodeStmt *stmt = parse_cmp_stmt(self);
+    NodeCmpStmt *stmt = parse_cmp_stmt(self);
     self->is_loop = prev_is_loop;
     if (!stmt) {
       parse_error(self,
@@ -301,8 +301,8 @@ parse_if_stmt(Parser *self)
 {
   NodeIfStmt *ifstmt = NULL;
   NodeExpr *expr = NULL;
-  NodeStmt *then_stmt = NULL;
-  NodeStmt *else_stmt = NULL;
+  NodeCmpStmt *then_stmt = NULL;
+  NodeCmpStmt *else_stmt = NULL;
   NodeIfStmt *else_if_stmt = NULL;
   bl_token_t *tok = NULL;
 
@@ -374,7 +374,7 @@ parse_if_stmt(Parser *self)
   return ifstmt;
 }
 
-NodeStmt *
+NodeCmpStmt *
 parse_cmp_stmt(Parser *self)
 {
   /* eat '{' */
@@ -384,7 +384,7 @@ parse_cmp_stmt(Parser *self)
       BL_YELLOW("'{'"), bl_unit_get_src_file(self->unit), tok->line, tok->col);
   }
 
-  NodeStmt
+  NodeCmpStmt
     *stmt = bl_ast_node_stmt_new(bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
 
 stmt:
@@ -605,6 +605,13 @@ parse_atom_expr(Parser *self)
       expr = (NodeExpr *) bl_ast_node_decl_ref_new(
         bl_unit_get_ast(self->unit), tok->content.as_string, tok->src_loc, tok->line, tok->col);
 
+      break;
+    case BL_SYM_DOUBLE:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_double((NodeConst *) expr, tok->content.as_double);
       break;
     case BL_SYM_NUM:
       bl_tokens_consume(self->tokens);

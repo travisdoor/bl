@@ -53,7 +53,7 @@ analyze_var_decl(Analyzer *self,
 
 static void
 analyze_stmt(Analyzer *self,
-             NodeStmt *stmt);
+             NodeCmpStmt *stmt);
 
 static void
 analyze_gstmt(Analyzer *self,
@@ -164,7 +164,7 @@ analyze_func(Analyzer *self,
   /*
    * Validate scope statement if there is one.
    */
-  NodeStmt *stmt = bl_node_func_decl_get_stmt(func);
+  NodeCmpStmt *stmt = bl_node_func_decl_get_stmt(func);
   if (stmt) {
     analyze_stmt(self, stmt);
   }
@@ -196,7 +196,7 @@ analyze_var_decl(Analyzer *self,
 
 static void
 analyze_stmt(Analyzer *self,
-             NodeStmt *stmt)
+             NodeCmpStmt *stmt)
 {
   bool return_presented = false;
   const int c = bl_node_stmt_child_get_count(stmt);

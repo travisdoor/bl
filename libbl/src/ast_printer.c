@@ -141,10 +141,10 @@ print_node(AstPrinter *self,
     case BL_NODE_CONST:
       break;
     case BL_NODE_STMT:
-      c = bl_node_stmt_child_get_count((NodeStmt *) node);
+      c = bl_node_stmt_child_get_count((NodeCmpStmt *) node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = bl_node_stmt_get_child((NodeStmt *) node, i);
+        child = bl_node_stmt_get_child((NodeCmpStmt *) node, i);
         print_node(self, child, pad);
       }
       break;

@@ -33,7 +33,7 @@
 #include "ast/node_impl.h"
 
 bo_decl_params_with_base_begin(NodeLoopStmt, Node)
-  NodeStmt *cmp_stmt;
+  NodeCmpStmt *cmp_stmt;
 bo_end();
 
 #endif //BL_NODE_LOOP_STMT_IMPL_H

@@ -32,7 +32,7 @@
 #include <bobject/bobject.h>
 #include "bl/ast/node.h"
 #include "bl/ast/node_expr.h"
-#include "bl/ast/node_stmt.h"
+#include "bl/ast/node_cmp_stmt.h"
 #include "bl/ast/node_param_var_decl.h"
 #include "bl/ast/node_func_decl.h"
 #include "bl/ast/node_global_stmt.h"
@@ -80,7 +80,7 @@ bl_ast_node_global_stmt_new(Ast *self,
                             int line,
                             int col);
 
-extern BO_EXPORT NodeStmt *
+extern BO_EXPORT NodeCmpStmt *
 bl_ast_node_stmt_new(Ast *self,
                      const char *generated_from,
                      int line,
@@ -138,14 +138,14 @@ bl_ast_node_decl_ref_new(Ast *self,
 extern BO_EXPORT NodeIfStmt *
 bl_ast_node_if_stmt_new(Ast *self,
                         NodeExpr *cond,
-                        NodeStmt *then_stmt,
+                        NodeCmpStmt *then_stmt,
                         const char *generated_from,
                         int line,
                         int col);
 
 extern BO_EXPORT NodeLoopStmt *
 bl_ast_node_loop_stmt_new(Ast *self,
-                          NodeStmt *cmp_stmt,
+                          NodeCmpStmt *cmp_stmt,
                           const char *generated_from,
                           int line,
                           int col);

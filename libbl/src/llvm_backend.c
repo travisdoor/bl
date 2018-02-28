@@ -100,7 +100,7 @@ gen_binop(LlvmBackend *self,
 
 static bool
 gen_cmp_stmt(LlvmBackend *self,
-             NodeStmt *stmt,
+             NodeCmpStmt *stmt,
              LLVMBasicBlockRef break_block,
              LLVMBasicBlockRef cont_block);
 
@@ -666,7 +666,7 @@ gen_func(LlvmBackend *self,
 
   /* Function body */
   if (!forward) {
-    NodeStmt *stmt = bl_node_func_decl_get_stmt(fnode);
+    NodeCmpStmt *stmt = bl_node_func_decl_get_stmt(fnode);
     if (stmt) {
       self->func_init_block = LLVMAppendBasicBlock(func, gname("init"));
       LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(func, gname("entry"));
@@ -734,7 +734,7 @@ gen_func(LlvmBackend *self,
  */
 bool
 gen_cmp_stmt(LlvmBackend *self,
-             NodeStmt *stmt,
+             NodeCmpStmt *stmt,
              LLVMBasicBlockRef break_block,
              LLVMBasicBlockRef cont_block)
 {
@@ -773,7 +773,7 @@ gen_cmp_stmt(LlvmBackend *self,
         return true;
       case BL_NODE_STMT:
         bl_llvm_block_context_push_block(self->block_context);
-        terminated = gen_cmp_stmt(self, (NodeStmt *) child, break_block, cont_block);
+        terminated = gen_cmp_stmt(self, (NodeCmpStmt *) child, break_block, cont_block);
         bl_llvm_block_context_pop_block(self->block_context);
 
         if (terminated) {

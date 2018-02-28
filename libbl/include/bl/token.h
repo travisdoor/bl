@@ -43,6 +43,7 @@ BO_BEGIN_DECLS
   sm(STRING,     "string") \
   sm(CHAR,       "char") \
   sm(NUM,        "number") \
+  sm(DOUBLE,     "double") \
   /*
    * other symbols
    * these can be compared directly with its string representation

@@ -30,7 +30,7 @@
 #define BL_NODE_FUNC_DECL_H
 
 #include "bl/ast/node_decl.h"
-#include "bl/ast/node_stmt.h"
+#include "bl/ast/node_cmp_stmt.h"
 #include "bl/ast/node_param_var_decl.h"
 #include "bl/token.h"
 #include "bl/type.h"
@@ -46,13 +46,13 @@ bl_node_func_decl_get_modif(NodeFuncDecl *self);
 
 extern BO_EXPORT bool
 bl_node_func_decl_set_stmt(NodeFuncDecl *self,
-                           NodeStmt *stmt);
+                           NodeCmpStmt *stmt);
 
 extern BO_EXPORT bool
 bl_node_func_decl_add_param(NodeFuncDecl     *self,
                             NodeParamVarDecl *param);
 
-extern BO_EXPORT NodeStmt *
+extern BO_EXPORT NodeCmpStmt *
 bl_node_func_decl_get_stmt(NodeFuncDecl *self);
 
 extern BO_EXPORT int

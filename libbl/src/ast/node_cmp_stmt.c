@@ -1,7 +1,7 @@
 //*****************************************************************************
 // blc
 //
-// File:   node_stmt.c
+// File:   node_cmp_stmt.c
 // Author: Martin Dorazil
 // Date:   03/02/2018
 //
@@ -27,44 +27,44 @@
 //*****************************************************************************
 
 #include <bobject/containers/array.h>
-#include "node_stmt_impl.h"
+#include "node_cmp_stmt_impl.h"
 
-/* NodeStmt members */
-bo_decl_members_begin(NodeStmt, Node)
+/* NodeCmpStmt members */
+bo_decl_members_begin(NodeCmpStmt, Node)
   BArray *nodes;
 bo_end();
 
-bo_impl_type(NodeStmt, Node);
+bo_impl_type(NodeCmpStmt, Node);
 
-/* NodeStmt class init */
+/* NodeCmpStmt class init */
 void
-NodeStmtKlass_init(NodeStmtKlass *klass)
+NodeCmpStmtKlass_init(NodeCmpStmtKlass *klass)
 {
 }
 
-/* NodeStmt constructor */
+/* NodeCmpStmt constructor */
 void
-NodeStmt_ctor(NodeStmt *self, NodeStmtParams *p)
+NodeCmpStmt_ctor(NodeCmpStmt *self, NodeCmpStmtParams *p)
 {
   bo_parent_ctor(Node, p);
 }
 
-/* NodeStmt destructor */
+/* NodeCmpStmt destructor */
 void
-NodeStmt_dtor(NodeStmt *self)
+NodeCmpStmt_dtor(NodeCmpStmt *self)
 {
   bo_unref(self->nodes);
 }
 
-/* NodeStmt copy constructor */
+/* NodeCmpStmt copy constructor */
 bo_copy_result
-NodeStmt_copy(NodeStmt *self, NodeStmt *other)
+NodeCmpStmt_copy(NodeCmpStmt *self, NodeCmpStmt *other)
 {
   return BO_NO_COPY;
 }
 
 bool
-bl_node_stmt_add_child(NodeStmt *self,
+bl_node_stmt_add_child(NodeCmpStmt *self,
                        Node *node)
 {
   if (node == NULL)
@@ -77,7 +77,7 @@ bl_node_stmt_add_child(NodeStmt *self,
 }
 
 int
-bl_node_stmt_child_get_count(NodeStmt *self)
+bl_node_stmt_child_get_count(NodeCmpStmt *self)
 {
   if (self->nodes == NULL) {
     return 0;
@@ -87,7 +87,7 @@ bl_node_stmt_child_get_count(NodeStmt *self)
 }
 
 Node *
-bl_node_stmt_get_child(NodeStmt *self,
+bl_node_stmt_get_child(NodeCmpStmt *self,
                        int i)
 {
   return bo_array_at(self->nodes, (size_t)i, Node *);

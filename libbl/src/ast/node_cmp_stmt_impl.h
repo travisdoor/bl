@@ -26,15 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_STMT_H
-#define BISCUIT_NODE_STMT_H
+#ifndef BISCUIT_NODE_CMP_STMT_IMPL_H
+#define BISCUIT_NODE_CMP_STMT_IMPL_H
 
-#include "bl/ast/node_stmt.h"
+#include "bl/ast/node_cmp_stmt.h"
 #include "node_impl.h"
 #include "bl/token.h"
 
-/* NodeStmt constructor parameters */
-bo_decl_params_with_base_begin(NodeStmt, Node)
+/* NodeCmpStmt constructor parameters */
+bo_decl_params_with_base_begin(NodeCmpStmt, Node)
 bo_end();
 
 #endif /* end of include guard: BISCUIT_NODE_STMT_H */
