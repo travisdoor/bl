@@ -17,7 +17,7 @@ module my_module {
 Static functions are not associated with any data. It must be
 defined in module body.
 
-```rust
+```
 void my_function(i32 arg1, f32 arg2) {
   ...
 }
@@ -25,14 +25,14 @@ void my_function(i32 arg1, f32 arg2) {
 
 ### Extern
 External functions allows calling of plain C function.
-```rust
+```
 extern i32 puts(string s);
 ```
 
 ## Data
 ### Fundamental
 
-```rust
+```
 void    - void type
 char    - 1 byte character
 bool    - 1 byte boolean type
@@ -46,20 +46,37 @@ f64     - 8 byte float number
 string  - 1 byte pointer to string array
 ```
 
+### Enum
+```
+public enum state : i32 {
+  Init = 0,
+  Read,
+  Write,
+  Success,
+  Fail,
+  Done 
+}
+
+state s;
+s.Init;
+```
+
 ### Struct
-```rust
+```
 struct vector {
   i32 x,
   i32 y
 }
-```
 
+vector vec;
+vec.x = 10;
+```
 
 ## Behavior
 
 Possible manipulation with _vector_ data:
 
-```rust
+```
 struct vector {
   i32 x,
   i32 y
@@ -76,7 +93,7 @@ impl vector {
 
 We can design behavior applicable on any data. 
 
-```rust
+```
 behavior print {
   void print();
 }
@@ -84,7 +101,7 @@ behavior print {
 
 And assign int to any data type.
 
-```rust
+```
 impl vector : print {
   public i32 sum() {
     return x + y;
@@ -98,7 +115,7 @@ impl vector : print {
 
 From now every vector can calculate it's sum and it can be printed.
 
-```rust
+```
 void main() {
   vector my_vector;
   
@@ -110,7 +127,7 @@ void main() {
 ## Flow control
 ### If statement
 
-```rust
+```
 if (expr == true) {
   ...
 } else if (expr == true) {
@@ -121,7 +138,7 @@ if (expr == true) {
 ### Loop
 
 Simple endless loop:
-```rust
+```
 loop {
   break;
   continue;

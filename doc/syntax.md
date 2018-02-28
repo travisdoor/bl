@@ -67,6 +67,7 @@ i32 result = add(10, 10);
 ### If - else
 ```
 if (expr) {
+} if else {
 } else {
 }
 ```

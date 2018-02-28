@@ -2,9 +2,7 @@
 left to right direction
 Node <|-- NodeStmt
 Node <|-- NodeDecl
-Node <|-- NodeGlobalStmt
 Node <|-- NodeExpr
-Node <|-- NodeReturnStmt
 Node <|-- NodeBinop
 
 NodeDecl <|-- NodeVarDecl
@@ -15,5 +13,13 @@ NodeExpr <|-- NodeCall
 NodeExpr <|-- NodeIntConst
 NodeExpr <|-- NodeStringConst
 NodeExpr <|-- NodeDeclRef
+
+NodeStmt <|-- NodeCmpStmt
+NodeStmt <|-- NodeGlobalStmt
+NodeStmt <|-- NodeReturnStmt
+NodeStmt <|-- NodeBreakStmt
+NodeStmt <|-- NodeContinueStmt
+NodeStmt <|-- NodeIfStmt
+NodeStmt <|-- NodeLoopStmt
 
 @enduml
