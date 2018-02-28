@@ -606,6 +606,13 @@ parse_atom_expr(Parser *self)
         bl_unit_get_ast(self->unit), tok->content.as_string, tok->src_loc, tok->line, tok->col);
 
       break;
+    case BL_SYM_FLOAT:
+      bl_tokens_consume(self->tokens);
+
+      expr = (NodeExpr *) bl_ast_node_const_new(
+        bl_unit_get_ast(self->unit), tok->src_loc, tok->line, tok->col);
+      bl_node_const_set_float((NodeConst *) expr, tok->content.as_float);
+      break;
     case BL_SYM_DOUBLE:
       bl_tokens_consume(self->tokens);
 

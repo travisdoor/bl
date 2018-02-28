@@ -43,6 +43,7 @@ BO_BEGIN_DECLS
   sm(STRING,     "string") \
   sm(CHAR,       "char") \
   sm(NUM,        "number") \
+  sm(FLOAT,      "float") \
   sm(DOUBLE,     "double") \
   /*
    * other symbols
@@ -116,6 +117,7 @@ typedef struct
     const char *as_string;
     char as_char;
     double as_double;
+    float as_float;
     unsigned long long as_ull;
   } content;
 } bl_token_t;

@@ -231,6 +231,10 @@ to_llvm_type(Type *t)
       return LLVMInt32Type();
     case BL_TYPE_I64:
       return LLVMInt64Type();
+    case BL_TYPE_F32:
+      return LLVMFloatType();
+    case BL_TYPE_F64:
+      return LLVMDoubleType();
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8Type(), 0);
     case BL_TYPE_CHAR:
@@ -273,6 +277,10 @@ gen_default(LlvmBackend *self,
       return LLVMConstInt(LLVMInt32Type(), 0, true);
     case BL_TYPE_I64:
       return LLVMConstInt(LLVMInt64Type(), 0, true);
+    case BL_TYPE_F32:
+      return LLVMConstInt(LLVMFloatType(), 0, true);
+    case BL_TYPE_F64:
+      return LLVMConstInt(LLVMDoubleType(), 0, true);
     case BL_TYPE_BOOL:
       return LLVMConstInt(LLVMInt1Type(), 0, false);
     case BL_TYPE_STRING: {
@@ -327,6 +335,18 @@ gen_expr(LlvmBackend *self,
           val = LLVMConstInt(
             LLVMInt32Type(),
             (unsigned long long int) bl_node_const_get_int((NodeConst *) expr),
+            true);
+          break;
+        case BL_CONST_DOUBLE:
+          val = LLVMConstInt(
+            LLVMDoubleType(),
+            (unsigned long long int) bl_node_const_get_double((NodeConst *) expr),
+            true);
+          break;
+        case BL_CONST_FLOAT:
+          val = LLVMConstInt(
+            LLVMFloatType(),
+            (unsigned long long int) bl_node_const_get_float((NodeConst *) expr),
             true);
           break;
         case BL_CONST_BOOL:

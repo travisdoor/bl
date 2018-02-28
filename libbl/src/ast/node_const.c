@@ -42,6 +42,7 @@ bo_decl_members_begin(NodeConst, NodeExpr)
     char as_char;
     int as_int;
     double as_double;
+    float as_float;
     bool as_bool;
   } content;
   bl_node_conts_type_e type;
@@ -186,4 +187,19 @@ bl_node_const_set_double(NodeConst *self,
 {
   self->type = BL_CONST_DOUBLE;
   self->content.as_double = val;
+}
+
+float
+bl_node_const_get_float(NodeConst *self)
+{
+  bl_assert(self->type == BL_CONST_FLOAT, "invalid constant node type");
+  return self->content.as_float;
+}
+
+void
+bl_node_const_set_float(NodeConst *self,
+                        float val)
+{
+  self->type = BL_CONST_FLOAT;
+  self->content.as_float = val;
 }

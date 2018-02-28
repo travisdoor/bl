@@ -41,6 +41,7 @@ BO_BEGIN_DECLS
   tp(I32,    "i32") \
   tp(I64,    "i64") \
   tp(F32,    "f32") \
+  tp(F64,    "f64") \
   tp(STRING, "string") \
 
 typedef enum {

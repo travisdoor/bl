@@ -6,8 +6,10 @@ extern i32 printf(string s, f32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  f32 a = 0.2;
-  f32 b = 0.0001564; 
+  f32 a = 0.2f;
+  f32 b = 0.0001564f; 
+  f32 c = .651f; 
+  f32 d = 123.f; 
 
   printf("a = %f\n", a);
   printf("b = %f\n", b);

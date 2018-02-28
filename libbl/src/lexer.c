@@ -278,12 +278,17 @@ scan_number(Lexer *self,
   tok->src_loc = self->c;
   tok->line = self->line;
   tok->col = self->col;
-  tok->sym = BL_SYM_NUM;
   tok->content.as_string = self->c;
 
-  long double n = 0;
+  unsigned long n = 0;
   int len = 0;
   while (true) {
+    if (*(self->c) == '.') {
+      len++;
+      self->c++;
+      goto scan_double;
+    }
+
     if (!is_number_c(*(self->c))) {
       break;
     }
@@ -298,9 +303,45 @@ scan_number(Lexer *self,
 
   tok->len = len;
   self->col += len;
-  tok->content.as_ull = (unsigned long long int) n;
+  tok->sym = BL_SYM_NUM;
+  tok->content.as_ull = n;
+  return true;
+
+scan_double: {
+  unsigned long e = 1;
+
+  while (true) {
+    if (!is_number_c(*(self->c))) {
+      break;
+    }
+
+    n = n * 10 + (*self->c) - '0';
+    e *= 10;
+    len++;
+    self->c++;
+  }
+
+  /*
+   * valid d. or .d -> minimal 2 characters
+   */
+  if (len < 2)
+    return false;
+
+  if (*(self->c) == 'f') {
+    len++;
+    self->c++;
+    tok->sym = BL_SYM_FLOAT;
+    tok->content.as_float = n / (float)e;
+  } else {
+    tok->sym = BL_SYM_DOUBLE;
+    tok->content.as_double = n / (double)e;
+  }
+
+  tok->len = len;
+  self->col += len;
 
   return true;
+}
 }
 
 void
