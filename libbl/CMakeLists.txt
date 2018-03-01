@@ -31,58 +31,24 @@ set(HEADER_FILES
         include/bl/unit.h
         include/bl/bllimits.h
         include/bl/token.h
-        include/bl/tokens.h
         include/bl/analyzer.h
-        include/bl/ast/node.h
-        include/bl/ast/node_expr.h
-        include/bl/ast/node_return_stmt.h
-        include/bl/ast/node_global_stmt.h
-        include/bl/ast/node_func_decl.h
-        include/bl/ast/node_param_var_decl.h
-        include/bl/ast/ast.h
         include/bl/llvm_backend.h
-        include/bl/ast/node_cmp_stmt.h
         include/bl/assembly.h
         include/bl/compile_group.h
-        include/bl/ast/node_var_decl.h
-        include/bl/type.h
-        include/bl/ast/node_binop.h
-        include/bl/ast/node_decl.h
-        include/bl/ast/node_const.h
-        include/bl/ast/node_call.h
-        include/bl/ast/node_decl_ref.h
-        include/bl/identifier.h
-        include/bl/sym_tbl.h
         include/bl/llvm_jit_exec.h
         include/bl/builder.h
         include/bl/llvm_bc_writer.h
-        include/bl/ast/node_if_stmt.h
         include/bl/lexer.h
-        include/bl/ast/node_loop_stmt.h
-        include/bl/ast/node_break_stmt.h
-        include/bl/ast/node_continue_stmt.h include/bl/llvm_linker.h)
+        include/bl/llvm_linker.h include/bl/blmemory.h)
 
 set(HEADER_FILES_IMPL
-        src/ast/node_impl.h
         src/ast/ast_impl.h
-        src/ast/node_func_decl_impl.h
-        src/ast/node_global_stmt_impl.h
-        src/ast/node_param_var_decl_impl.h
-        src/ast/node_cmp_stmt_impl.h
-        src/ast/node_return_stmt_impl.h
-        src/ast/node_expr_impl.h
-        src/ast/node_var_decl_impl.h
-        src/ast/node_binop_impl.h
-        src/ast/node_decl_impl.h
-        src/ast/node_const_impl.h
-        src/ast/node_call_impl.h
-        src/ast/node_decl_ref_impl.h
-        src/ast/node_if_stmt_impl.h
+        src/containers/array_impl.h
         src/llvm_bl_cnt_impl.h
-        src/ast/node_loop_stmt_impl.h
         src/pipeline/actor_impl.h
-        src/ast/node_break_stmt_impl.h
-        src/ast/node_continue_stmt_impl.h)
+        src/sym_tbl_impl.h
+        src/tokens_impl.h
+        src/identifier_impl.h src/ast/node_impl.h src/type_impl.h src/unit_impl.h)
 
 set(SOURCE_FILES
         src/pipeline/stage.c
@@ -90,6 +56,7 @@ set(SOURCE_FILES
         src/pipeline/pipeline.c
         src/tokens.c
         src/file_loader.c
+        src/containers/array.c
         src/ast_printer.c
         src/token.c
         src/unit.c
@@ -97,33 +64,17 @@ set(SOURCE_FILES
         src/analyzer.c
         src/llvm_backend.c
         src/ast/ast.c
-        src/ast/node.c
-        src/ast/node_expr.c
-        src/ast/node_param_var_decl.c
-        src/ast/node_func_decl.c
-        src/ast/node_global_stmt.c
-        src/ast/node_return_stmt.c
-        src/ast/node_cmp_stmt.c
         src/token_printer.c
         src/assembly.c
-        src/ast/node_var_decl.c
         src/type.c
-        src/ast/node_binop.c
-        src/ast/node_decl.c
-        src/ast/node_const.c
-        src/ast/node_call.c
-        src/ast/node_decl_ref.c
         src/identifier.c
         src/sym_tbl.c
         src/llvm_jit_exec.c
         src/builder.c
         src/llvm_bc_writer.c
-        src/ast/node_if_stmt.c
         src/llvm_bl_cnt.c
         src/lexer.c
-        src/ast/node_loop_stmt.c
-        src/ast/node_break_stmt.c
-        src/ast/node_continue_stmt.c src/llvm_linker.c)
+        src/llvm_linker.c src/ast/node.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

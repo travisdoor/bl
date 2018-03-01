@@ -1,11 +1,11 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_binop.h
+// File:   unit_impl.h
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   3/1/18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,38 +26,33 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_BINOP_H
-#define BL_NODE_BINOP_H
+#ifndef BL_UNIT_IMPL_H
+#define BL_UNIT_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/ast/node.h"
-#include "bl/ast/node_expr.h"
-#include "bl/token.h"
+#include "bl/unit.h"
+#include "pipeline/actor_impl.h"
+#include "ast/ast_impl.h"
+#include "sym_tbl_impl.h"
+#include "tokens_impl.h"
 
-BO_BEGIN_DECLS
+/* class Unit object members */
+bo_decl_members_begin(Unit, Actor)
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  char *name;
+  /* source data */
+  char *src;
+  /* output of lexer */
+  bl_tokens_t tokens;
+  /* abstract syntax tree as output of parser */
+  bl_ast_t ast;
+  /* All symbols registered in this unit */
+  bl_sym_tbl_t sym_tbl;
 
-/* class NodeBinop declaration */
-bo_decl_type_begin(NodeBinop, Node)
-  /* virtuals */
+  /* LLVM Module */
+  LLVMModuleRef module;
 bo_end();
 
-extern BO_EXPORT bl_sym_e
-bl_node_binop_get_op(NodeBinop *self);
 
-extern BO_EXPORT NodeExpr *
-bl_node_binop_get_lhs(NodeBinop *self);
-
-extern BO_EXPORT NodeExpr *
-bl_node_binop_get_rhs(NodeBinop *self);
-
-extern BO_EXPORT bool
-bl_node_binop_set_lhs(NodeBinop *self,
-                      NodeExpr *lvalue);
-
-extern BO_EXPORT bool
-bl_node_binop_set_rhs(NodeBinop *self,
-                      NodeExpr *rvalue);
-
-BO_END_DECLS
-
-#endif //BL_NODE_BINOP_H
+#endif //BL_UNIT_IMPL_H

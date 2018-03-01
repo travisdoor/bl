@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node.h
+// File:   node_impl.h
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,29 +26,214 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_H
-#define BISCUIT_NODE_H
+#ifndef BL_NODE_IMPL_H
+#define BL_NODE_IMPL_H
 
-#include "bl/ast/node.h"
+#include <bobject/containers/array.h>
+#include "bl/token.h"
+#include "identifier_impl.h"
+#include "type_impl.h"
 
-extern char *bl_node_strings[];
+#define BL_NTYPE_LIST\
+  nt(GLOBAL_STMT, "global_stmt") \
+  nt(CMP_STMT, "compound_stmt") \
+  nt(IF_STMT, "if statement") \
+  nt(BREAK_STMT, "break_stmt") \
+  nt(RETURN_STMT, "return_stmt") \
+  nt(LOOP_STMT, "loop_stmt") \
+  nt(CONTINUE_STMT, "continue_stmt") \
+  nt(FUNC_DECL, "func_decl") \
+  nt(VAR_DECL, "var_decl") \
+  nt(PARAM_VAR_DECL, "param_var_decl") \
+  nt(CALL_EXPR, "call_expr") \
+  nt(DECL_REF_EXPR, "decl_ref_expr") \
+  nt(CONST_EXPR, "const_expr") \
+  nt(BINOP, "binary_operation") \
 
-/* Node constructor parameters */
-bo_decl_params_begin(Node)
-  bl_node_e type;
+typedef enum
+{
+#define nt(tok, str) BL_NODE_##tok,
+  BL_NTYPE_LIST
+#undef nt
+} bl_node_type_e;
+
+typedef enum _bl_node_conts_type_e
+{
+  BL_CONST_INT,
+  BL_CONST_LONG,
+  BL_CONST_ULONG,
+  BL_CONST_BOOL,
+  BL_CONST_STRING,
+  BL_CONST_CHAR,
+  BL_CONST_DOUBLE,
+  BL_CONST_FLOAT
+} bl_node_conts_type_e;
+
+/*
+ * Statements
+ */
+typedef struct bl_node_cmp_stmt
+{
+  BArray *nodes;
+} bl_node_cmp_stmt_t;
+
+typedef struct bl_node_glob_stmt
+{
+  BArray *nodes;
+} bl_node_glob_stmt_t;
+
+typedef struct bl_node_break_stmt
+{
+} bl_node_break_stmt_t;
+
+typedef struct bl_node_continue_stmt
+{
+} bl_node_continue_stmt_t;
+
+typedef struct bl_node_call_stmt
+{
+  bl_ident_t ident;
+  struct bl_node *callee;
+  BArray *args;
+} bl_node_call_stmt_t;
+
+typedef struct bl_node_loop_stmt
+{
+  struct bl_node *cmp_stmt;
+} bl_node_loop_stmt_t;
+
+typedef struct bl_node_return_stmt
+{
+  struct bl_node *expr;
+} bl_node_return_stmt_t;
+
+typedef struct bl_node_if_stmt
+{
+  struct bl_node *expr;
+  struct bl_node *then_stmt;
+  struct bl_node *else_stmt;
+  struct bl_node *else_if_stmt;
+} bl_node_if_stmt_t;
+
+/*
+ * Declarations
+ */
+typedef struct bl_node_decl
+{
+  bl_sym_e modificator;
+  bl_ident_t ident;
+  bl_type_t type;
+} bl_node_decl_t;
+
+typedef struct bl_node_func_decl
+{
+  bl_node_decl_t base;
+  BArray *params;
+  struct bl_node *cmp_stmt;
+} bl_node_func_decl_t;
+
+typedef struct bl_node_var_decl
+{
+  bl_node_decl_t base;
+  struct bl_node *expr;
+} bl_node_var_decl_t;
+
+typedef struct bl_node_param_var_decl
+{
+  bl_node_decl_t base;
+} bl_node_param_var_decl_t;
+
+/*
+ * Expressions
+ */
+typedef struct bl_node_const_expr
+{
+  bl_node_conts_type_e type;
+  union
+  {
+    const char *as_string;
+    char as_char;
+    unsigned long as_ulong;
+    double as_double;
+    float as_float;
+    bool as_bool;
+  } value;
+} bl_node_const_expr_t;
+
+typedef struct bl_node_decl_ref_expr
+{
+  bl_ident_t ident;
+} bl_node_decl_ref_expr_t;
+
+/*
+ * Other
+ */
+typedef struct bl_node_binop
+{
+  bl_sym_e operator;
+
+  struct bl_node *lhs;
+  struct bl_node *rhs;
+} bl_node_binop_t;
+
+/*
+ * Node base
+ */
+typedef struct bl_node
+{
+  bl_node_type_e type;
+
   const char *generated_from;
   int line;
   int col;
-bo_end();
 
-/* Node members */
-bo_decl_members_begin(Node, BObject)
-  /* not owning, references only!!! */
-  bl_node_e type;
-  const char *generated_from;
-  int line;
-  int col;
-bo_end();
+  union
+  {
+    bl_node_cmp_stmt_t cmp_stmt;
+    bl_node_glob_stmt_t glob_stmt;
+    bl_node_call_stmt_t call_stmt;
+    bl_node_break_stmt_t break_stmt;
+    bl_node_continue_stmt_t continue_stmt;
+    bl_node_loop_stmt_t loop_stmt;
+    bl_node_return_stmt_t return_stmt;
+    bl_node_if_stmt_t if_stmt;
 
-#endif /* end of include guard: BISCUIT_NODE_H */
+    bl_node_func_decl_t func_decl;
+    bl_node_var_decl_t var_decl;
+    bl_node_param_var_decl_t param_var_decl;
 
+    bl_node_const_expr_t const_expr;
+    bl_node_decl_ref_expr_t decl_ref_expr;
+
+    bl_node_binop_t binop;
+  } value;
+} bl_node_t;
+
+bl_node_t *
+bl_node_new(bl_node_type_e type,
+            const char *generated_from,
+            int line,
+            int col);
+
+void
+bl_node_delete(bl_node_t *node);
+
+/* helper functions */
+
+bl_node_t *
+bl_node_glob_stmt_add_child(bl_node_t *node,
+                            bl_node_t *child);
+
+bl_node_t *
+bl_node_cmp_stmt_add_child(bl_node_t *node,
+                           bl_node_t *child);
+
+bl_node_t *
+bl_node_func_decl_stmt_add_param(bl_node_t *node,
+                                 bl_node_t *param);
+
+bl_node_t *
+bl_node_call_expr_add_arg(bl_node_t *node,
+                          bl_node_t *arg);
+
+#endif //BL_NODE_IMPL_H

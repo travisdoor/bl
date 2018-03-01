@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_return_stmt.c
+// File:   blmemory.h
 // Author: Martin Dorazil
-// Date:   08/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,56 +26,21 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_return_stmt_impl.h"
+#ifndef BL_BLMEMORY_H
+#define BL_BLMEMORY_H
 
-/* NodeReturnStmt members */
+#include <memory.h>
 
-bo_decl_members_begin(NodeReturnStmt, Node)
-  NodeExpr *expr;
-bo_end();
+#define bl_malloc(size) \
+  malloc((size))
 
-bo_impl_type(NodeReturnStmt, Node);
+#define bl_free(ptr) \
+  free((ptr))
 
-/* NodeReturnStmt class init */
-void
-NodeReturnStmtKlass_init(NodeReturnStmtKlass *klass)
-{
-}
+#define bl_realloc(ptr, size) \
+  realloc((ptr), (size))
 
-/* NodeReturnStmt constructor */
-void
-NodeReturnStmt_ctor(NodeReturnStmt *self, NodeReturnStmtParams *p)
-{
-  bo_parent_ctor(Node, p);
-}
+#define bl_calloc(n, size) \
+  calloc((n), (size))
 
-/* NodeReturnStmt destructor */
-void
-NodeReturnStmt_dtor(NodeReturnStmt *self)
-{
-}
-
-/* NodeReturnStmt copy constructor */
-bo_copy_result
-NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
-{
-  return BO_NO_COPY;
-}
-
-bool
-bl_node_return_stmt_add_expr(NodeReturnStmt *self,
-                             NodeExpr       *expr)
-{
-  if (expr == NULL)
-    return false;
-
-  self->expr = expr;
-  return true;
-}
-
-NodeExpr *
-bl_node_return_stmt_get_expr(NodeReturnStmt *self)
-{
-  return self->expr;
-}
-
+#endif //BL_BLMEMORY_H

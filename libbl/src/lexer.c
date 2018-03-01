@@ -185,7 +185,7 @@ scan_ident(Lexer *self,
 
   BString *cstr = bl_tokens_create_cached_str(self->tokens);
   bo_string_appendn(cstr, begin, len);
-  tok->content.as_string = bo_string_get(cstr);
+  tok->value.as_string = bo_string_get(cstr);
 
   tok->len = len;
   self->col += len;
@@ -265,7 +265,7 @@ scan:
     bo_string_appendn(cstr, &c, 1);
   }
 exit:
-  tok->content.as_string = bo_string_get(cstr);
+  tok->value.as_string = bo_string_get(cstr);
   tok->len = len;
   self->col += len + 2;
   return true;
@@ -278,7 +278,7 @@ scan_number(Lexer *self,
   tok->src_loc = self->c;
   tok->line = self->line;
   tok->col = self->col;
-  tok->content.as_string = self->c;
+  tok->value.as_string = self->c;
 
   unsigned long n = 0;
   int len = 0;
@@ -304,7 +304,7 @@ scan_number(Lexer *self,
   tok->len = len;
   self->col += len;
   tok->sym = BL_SYM_NUM;
-  tok->content.as_ull = n;
+  tok->value.as_ull = n;
   return true;
 
 scan_double: {
@@ -331,10 +331,10 @@ scan_double: {
     len++;
     self->c++;
     tok->sym = BL_SYM_FLOAT;
-    tok->content.as_float = n / (float)e;
+    tok->value.as_float = n / (float)e;
   } else {
     tok->sym = BL_SYM_DOUBLE;
-    tok->content.as_double = n / (double)e;
+    tok->value.as_double = n / (double)e;
   }
 
   tok->len = len;

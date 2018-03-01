@@ -94,11 +94,11 @@ TEST_F(LexerTest, symbol_parsing)
 
   t = bl_tokens_consume(tokens);
   ASSERT_EQ(t->sym, BL_SYM_STRING);
-  ASSERT_FALSE(strncmp(t->content.as_string, "string", 6));
+  ASSERT_FALSE(strncmp(t->value.as_string, "string", 6));
 
   t = bl_tokens_consume(tokens);
   ASSERT_EQ(t->sym, BL_SYM_NUM);
-  ASSERT_EQ(t->content.as_ull, 123456789);
+  ASSERT_EQ(t->value.as_ull, 123456789);
 
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_IF);
   ASSERT_EQ(bl_tokens_consume(tokens)->sym, BL_SYM_ELSE);

@@ -323,7 +323,7 @@ LLVMValueRef
 gen_expr(LlvmBackend *self,
          NodeExpr *expr)
 {
-  bl_node_e nt = bl_node_get_type((Node *) expr);
+  bl_node_type_e nt = bl_node_get_type((Node *) expr);
   LLVMValueRef val;
   switch (nt) {
     case BL_NODE_CONST:

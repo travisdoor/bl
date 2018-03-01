@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_cmp_stmt.c
+// File:   identifier_impl.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,70 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/array.h>
-#include "node_cmp_stmt_impl.h"
+#ifndef BL_IDENTIFIER_IMPL_H
+#define BL_IDENTIFIER_IMPL_H
 
-/* NodeCmpStmt members */
-bo_decl_members_begin(NodeCmpStmt, Node)
-  BArray *nodes;
-bo_end();
+#include <stdint.h>
 
-bo_impl_type(NodeCmpStmt, Node);
+typedef struct bl_ident
+{
+  const char *name;
+  uint32_t hash;
+} bl_ident_t;
 
-/* NodeCmpStmt class init */
 void
-NodeCmpStmtKlass_init(NodeCmpStmtKlass *klass)
-{
-}
+bl_ident_init(bl_ident_t *ident,
+              const char *name);
 
-/* NodeCmpStmt constructor */
-void
-NodeCmpStmt_ctor(NodeCmpStmt *self, NodeCmpStmtParams *p)
-{
-  bo_parent_ctor(Node, p);
-}
-
-/* NodeCmpStmt destructor */
-void
-NodeCmpStmt_dtor(NodeCmpStmt *self)
-{
-  bo_unref(self->nodes);
-}
-
-/* NodeCmpStmt copy constructor */
-bo_copy_result
-NodeCmpStmt_copy(NodeCmpStmt *self, NodeCmpStmt *other)
-{
-  return BO_NO_COPY;
-}
-
-bool
-bl_node_stmt_add_child(NodeCmpStmt *self,
-                       Node *node)
-{
-  if (node == NULL)
-    return false;
-
-  if (self->nodes == NULL)
-    self->nodes = bo_array_new_bo(bo_typeof(Node), false);
-  bo_array_push_back(self->nodes, node);
-  return true;
-}
-
-int
-bl_node_stmt_child_get_count(NodeCmpStmt *self)
-{
-  if (self->nodes == NULL) {
-    return 0;
-  }
-
-  return (int)bo_array_size(self->nodes);
-}
-
-Node *
-bl_node_stmt_get_child(NodeCmpStmt *self,
-                       int i)
-{
-  return bo_array_at(self->nodes, (size_t)i, Node *);
-}
-
+#endif //BL_IDENTIFIER_IMPL_H

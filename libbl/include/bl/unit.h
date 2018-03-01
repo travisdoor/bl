@@ -32,9 +32,6 @@
 #include <bobject/bobject.h>
 #include <llvm-c/Core.h>
 #include "bl/pipeline/actor.h"
-#include "bl/tokens.h"
-#include "bl/ast/ast.h"
-#include "bl/sym_tbl.h"
 
 BO_BEGIN_DECLS
 /* class Unit declaration */
@@ -49,20 +46,6 @@ extern BO_EXPORT Unit *
 bl_unit_new_str(const char *name,
                 const char *src);
 
-extern BO_EXPORT Tokens *
-bl_unit_get_tokens(Unit *self);
-
-extern BO_EXPORT void
-bl_unit_set_tokens(Unit   *self,
-                   Tokens *tokens);
-
-extern BO_EXPORT Ast*
-bl_unit_get_ast(Unit *self);
-
-extern BO_EXPORT void
-bl_unit_set_ast(Unit *self,
-                Ast  *ast);
-
 extern BO_EXPORT const char*
 bl_unit_get_src_file(Unit *self);
 
@@ -75,9 +58,6 @@ bl_unit_set_src(Unit *self,
 
 extern BO_EXPORT const char*
 bl_unit_get_name(Unit *self);
-
-extern BO_EXPORT SymTbl *
-bl_unit_get_sym_tbl(Unit *self);
 
 extern BO_EXPORT LLVMModuleRef
 bl_unit_get_module(Unit *self);

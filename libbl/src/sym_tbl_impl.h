@@ -1,11 +1,11 @@
 //*****************************************************************************
 // blc
 //
-// File:   identifier.h
+// File:   sym_tbl_impl.h
 // Author: Martin Dorazil
-// Date:   13.2.18
+// Date:   13/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,27 +26,52 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_IDENTIFIER_H
-#define BL_IDENTIFIER_H
+#ifndef BL_SYM_TBL_IMPL_H
+#define BL_SYM_TBL_IMPL_H
 
-#include <bobject/bobject.h>
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include "ast/node_impl.h"
+#include "identifier_impl.h"
 
-BO_BEGIN_DECLS
+typedef struct bl_sym_tbl
+{
+  BHashTable *syms;
+  BArray *unsatisfied;
+} bl_sym_tbl_t;
 
-/* class Ident declaration */
-bo_decl_type_begin(Ident, BObject)
-  /* virtuals */
-bo_end();
+void
+bl_sym_tbl_init(bl_sym_tbl_t *tbl);
 
-extern BO_EXPORT Ident *
-bl_ident_new(const char *name);
+void
+bl_sym_tbl_terminate(bl_sym_tbl_t *tbl);
 
-extern BO_EXPORT const char *
-bl_ident_get_name(Ident *self);
+/*
+ * This will add new symbol into hash table and return
+ * true on success.
+ */
+bool
+bl_sym_tbl_register(bl_sym_tbl_t *tbl,
+                    bl_node_t *node);
 
-extern BO_EXPORT uint32_t
-bl_ident_get_hash(Ident *self);
+/*
+ * Return symbol of excepted type or null when no such
+ * symbol was found.
+ */
+bl_node_t *
+bl_sym_tbl_get_sym_of_type(bl_sym_tbl_t *tbl,
+                           bl_ident_t *ident,
+                           bl_node_type_e type);
 
-BO_END_DECLS
+void
+bl_sym_tbl_add_unsatisfied_expr(bl_sym_tbl_t *tbl,
+                                bl_node_t *expr);
 
-#endif //BL_IDENTIFIER_H
+/*
+ * Try to satisfy all calls and return true when all of them
+ * were satisfied, false when there left some unsatisfied.
+ */
+bool
+bl_sym_tbl_try_satisfy_all(bl_sym_tbl_t *tbl);
+
+#endif //BL_SYM_TBL_H

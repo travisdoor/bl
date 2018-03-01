@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_loop_stmt.h
+// File:   type_impl.h
 // Author: Martin Dorazil
-// Date:   25/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,23 +26,56 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_LOOP_STMT_H
-#define BL_NODE_LOOP_STMT_H
+#ifndef BL_TYPE_IMPL_H
+#define BL_TYPE_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/ast/node.h"
-#include "bl/ast/node_cmp_stmt.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-BO_BEGIN_DECLS
+#define BL_TYPE_LIST \
+  tp(NONE,    "") \
+  tp(VOID,   "void") \
+  tp(CHAR,   "char") \
+  tp(BOOL,   "bool") \
+  tp(I32,    "i32") \
+  tp(I64,    "i64") \
+  tp(U32,    "u32") \
+  tp(U64,    "u64") \
+  tp(F32,    "f32") \
+  tp(F64,    "f64") \
+  tp(SIZE,   "size") \
+  tp(STRING, "string") \
 
-/* class NodeLoopStmt declaration */
-bo_decl_type_begin(NodeLoopStmt, Node)
-  /* virtuals */
-bo_end();
+typedef enum
+{
+#define tp(tok, str) BL_TYPE_##tok,
+  BL_TYPE_LIST
+#undef tp
+  BL_TYPE_COUNT
+} bl_type_e;
 
-extern BO_EXPORT NodeCmpStmt *
-bl_node_loop_stmt_get_stmt(NodeLoopStmt *self);
+typedef struct bl_type
+{
+  const char *name;
+  uint32_t hash;
+} bl_type_t;
 
-BO_END_DECLS
+void
+bl_type_init(bl_type_t *type,
+             const char *name);
 
-#endif //BL_NODE_LOOP_STMT_H
+bool
+bl_type_is(bl_type_t *type,
+           uint32_t t);
+
+bool
+bl_type_is_fundamental(bl_type_t *type);
+
+bool
+bl_type_is_user_defined(bl_type_t *type);
+
+bool
+bl_type_is_not(bl_type_t *type,
+               uint32_t t);
+
+#endif //BL_TYPE_IMPL_H

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
 // File:   node.c
 // Author: Martin Dorazil
-// Date:   02/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,63 +26,151 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "node_impl.h"
+#include <string.h>
+#include "ast/node_impl.h"
 #include "bl/bldebug.h"
-
-char *bl_node_strings[] = {
-#define nt(tok, str) str,
-  BL_NTYPE_LIST
-#undef nt
-};
-
-static BString *
-to_string(Node *self);
-
-bo_impl_type(Node, BObject);
-
-/* Node class init */
-void
-NodeKlass_init(NodeKlass *klass)
-{
-  bo_vtbl_cl(klass, Node)->to_string = to_string;
-}
-
-/* Node constructor */
-void
-Node_ctor(Node *self, NodeParams *p)
-{
-  self->type = p->type;
-  self->generated_from = p->generated_from;
-  self->line = p->line;
-  self->col = p->col;
-}
-
-/* Node destructor */
-void
-Node_dtor(Node *self)
-{
-}
-
-/* Node copy constructor */
-bo_copy_result
-Node_copy(Node *self, Node *other)
-{
-  return BO_NO_COPY;
-}
+#include "bl/blmemory.h"
 
 /* public */
-bl_node_e
-bl_node_get_type(Node *self)
+bl_node_t *
+bl_node_new(bl_node_type_e type,
+            const char *generated_from,
+            int line,
+            int col)
 {
-  return self->type;
+  bl_node_t *node = bl_calloc(1, sizeof(bl_node_t));
+
+  node->type = type;
+  node->generated_from = generated_from;
+  node->line = line;
+  node->col = col;
+
+  switch (type) {
+    case BL_NODE_GLOBAL_STMT:
+      node->value.glob_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
+      break;
+    case BL_NODE_CMP_STMT:
+      node->value.cmp_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
+      break;
+    case BL_NODE_IF_STMT:
+      break;
+    case BL_NODE_BREAK_STMT:
+      break;
+    case BL_NODE_RETURN_STMT:
+      break;
+    case BL_NODE_LOOP_STMT:
+      break;
+    case BL_NODE_CONTINUE_STMT:
+      break;
+    case BL_NODE_FUNC_DECL:
+      node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
+      break;
+    case BL_NODE_VAR_DECL:
+      break;
+    case BL_NODE_PARAM_VAR_DECL:
+      break;
+    case BL_NODE_CALL_EXPR:
+      break;
+    case BL_NODE_DECL_REF_EXPR:
+      break;
+    case BL_NODE_CONST_EXPR:
+      break;
+    case BL_NODE_BINOP:
+      break;
+    default: bl_abort("invalid node type");
+  }
+  return node;
 }
 
-BString *
-to_string(Node *self)
+void
+bl_node_terminate(bl_node_t *node)
 {
-  BString *ret = bo_string_new(128);
-  bo_string_append(ret, "<");
-  bo_string_append(ret, bl_node_strings[bo_members(self, Node)->type]);
-  bo_string_append(ret, ">");
-  return ret;
+  switch (node->type) {
+    case BL_NODE_GLOBAL_STMT:
+      bo_unref(node->value.glob_stmt.nodes);
+      break;
+    case BL_NODE_CMP_STMT:
+      bo_unref(node->value.cmp_stmt.nodes);
+      break;
+    case BL_NODE_IF_STMT:
+      break;
+    case BL_NODE_BREAK_STMT:
+      break;
+    case BL_NODE_RETURN_STMT:
+      break;
+    case BL_NODE_LOOP_STMT:
+      break;
+    case BL_NODE_CONTINUE_STMT:
+      break;
+    case BL_NODE_FUNC_DECL:
+      bo_unref(node->value.func_decl.params);
+      break;
+    case BL_NODE_VAR_DECL:
+      break;
+    case BL_NODE_PARAM_VAR_DECL:
+      break;
+    case BL_NODE_CALL_EXPR:
+      break;
+    case BL_NODE_DECL_REF_EXPR:
+      break;
+    case BL_NODE_CONST_EXPR:
+      break;
+    case BL_NODE_BINOP:
+      break;
+    default: bl_abort("invalid node type");
+  }
+
+  bl_free(node);
+}
+
+bl_node_t *
+bl_node_glob_stmt_add_child(bl_node_t *node,
+                            bl_node_t *child)
+{
+  bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
+
+  if (child == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.glob_stmt.nodes, child);
+  return child;
+}
+
+bl_node_t *
+bl_node_cmp_stmt_add_child(bl_node_t *node,
+                           bl_node_t *child)
+{
+  bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
+
+  if (child == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.cmp_stmt.nodes, child);
+  return child;
+}
+
+bl_node_t *
+bl_node_func_decl_stmt_add_param(bl_node_t *node,
+                                 bl_node_t *param)
+{
+  bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
+
+  if (param == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.func_decl.params, param);
+  return param;
+}
+
+bl_node_t *
+bl_node_call_expr_add_arg(bl_node_t *node,
+                          bl_node_t *arg)
+{
+  bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
+
+  if (arg == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.call_stmt.args, arg);
+  return arg;
 }

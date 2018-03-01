@@ -27,68 +27,13 @@
 //*****************************************************************************
 
 #include <bobject/containers/hash.h>
-#include "bl/identifier.h"
+#include "identifier_impl.h"
 
-/* class Ident */
-
-/* class Ident constructor params */
-bo_decl_params_begin(Ident)
-  /* constructor params */
-  const char *name;
-bo_end();
-
-/* class Ident object members */
-bo_decl_members_begin(Ident, BObject)
-  /* members */
-  const char *name;
-  uint32_t hash;
-bo_end();
-
-bo_impl_type(Ident, BObject);
-
+/* public */
 void
-IdentKlass_init(IdentKlass *klass)
+bl_ident_init(bl_ident_t *ident,
+              const char *name)
 {
-}
-
-void
-Ident_ctor(Ident *self, IdentParams *p)
-{
-  /* constructor */
-  self->name = p->name;
-  self->hash = bo_hash_from_str(p->name);
-}
-
-void
-Ident_dtor(Ident *self)
-{
-}
-
-bo_copy_result
-Ident_copy(Ident *self, Ident *other)
-{
-  return BO_NO_COPY;
-}
-/* class Ident end */
-
-Ident *
-bl_ident_new(const char *name)
-{
-  IdentParams p = {
-    .name = name
-  };
-
-  return bo_new(Ident, &p);
-}
-
-const char *
-bl_ident_get_name(Ident *self)
-{
-  return self->name;
-}
-
-uint32_t
-bl_ident_get_hash(Ident *self)
-{
-  return self->hash;
+  ident->name = name;
+  ident->hash = bo_hash_from_str(name);
 }
