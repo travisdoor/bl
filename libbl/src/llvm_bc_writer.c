@@ -28,83 +28,24 @@
 
 #include <llvm-c/BitWriter.h>
 #include <string.h>
-#include "bl/llvm_bc_writer.h"
-#include "bl/unit.h"
+#include "stages_impl.h"
 #include "bl/bldebug.h"
 
-/* class LlvmBcWriter */
-
-static bool
-run(LlvmBcWriter *self,
-    Unit *unit);
-
-/* class LlvmBcWriter constructor params */
-bo_decl_params_with_base_begin(LlvmBcWriter, Stage)
-  /* constructor params */
-bo_end();
-
-/* class LlvmBcWriter object members */
-bo_decl_members_begin(LlvmBcWriter, Stage)
-  /* members */
-bo_end();
-
-bo_impl_type(LlvmBcWriter, Stage);
-
-void
-LlvmBcWriterKlass_init(LlvmBcWriterKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run =
-    (bool (*)(Stage *,
-              Actor *)) run;
-}
-
-void
-LlvmBcWriter_ctor(LlvmBcWriter *self,
-                  LlvmBcWriterParams *p)
-{
-  /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Stage, p);
-
-  /* initialize self */
-}
-
-void
-LlvmBcWriter_dtor(LlvmBcWriter *self)
-{
-}
-
-bo_copy_result
-LlvmBcWriter_copy(LlvmBcWriter *self,
-                  LlvmBcWriter *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class LlvmBcWriter end */
-
 bool
-run(LlvmBcWriter *self,
-    Unit *unit)
+bl_llvm_bc_writer_run(bl_builder_t *builder,
+                      bl_unit_t *unit)
 {
+  bl_assert(unit->module, "invalid llvm module");
+
   char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
   strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(bl_unit_get_module(unit), export_file) != 0) {
+  if (LLVMWriteBitcodeToFile(unit->module, export_file) != 0) {
     free(export_file);
-    bl_actor_error((Actor *) unit,
-                   "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"),
-                   export_file);
+    bl_builder_error(
+      builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
     return false;
   }
   free(export_file);
   return true;
-}
-
-LlvmBcWriter *
-bl_llvm_bc_writer_new(bl_compile_group_e group)
-{
-  LlvmBcWriterParams p = {.base.group = group};
-
-  return bo_new(LlvmBcWriter, &p);
 }

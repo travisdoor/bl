@@ -28,101 +28,62 @@
 
 #include <string.h>
 #include "bl/bldebug.h"
-#include "bl/assembly.h"
-#include "pipeline/actor_impl.h"
+#include "bl/blmemory.h"
+#include "assembly_impl.h"
+#include "unit_impl.h"
 
-/* class Assembly object members */
-bo_decl_members_begin(Assembly, Actor)
-  /* members */
-  BArray *units;
-  char *name;
+/* public */
 
-  LLVMModuleRef module;
-bo_end();
-
-/* class Assembly */
-bo_impl_type(Assembly, Actor);
-
-bo_decl_params_begin(Assembly)
-  const char *name;
-bo_end();
-
-void
-AssemblyKlass_init(AssemblyKlass *klass)
-{
-}
-
-void
-Assembly_ctor(Assembly *self,
-              AssemblyParams *p)
-{
-  /* constructor */
-  self->name = strdup(p->name);
-  self->units = bo_array_new_bo(bo_typeof(Unit), true);
-}
-
-void
-Assembly_dtor(Assembly *self)
-{
-  free(self->name);
-  bo_unref(self->units);
-  LLVMDisposeModule(self->module);
-}
-
-bo_copy_result
-Assembly_copy(Assembly *self,
-              Assembly *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class Assembly end */
-
-Assembly *
+bl_assembly_t *
 bl_assembly_new(const char *name)
 {
-  AssemblyParams p = {.name = name};
-  return bo_new(Assembly, &p);
+  bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
+  assembly->name = strdup(name);
+  assembly->units = bo_array_new(sizeof(bl_unit_t *));
+  return assembly;
+}
+
+void 
+bl_assembly_delete(bl_assembly_t *assembly)
+{
+  free(assembly->name);
+  LLVMDisposeModule(assembly->module);
+  LLVMContextDispose(assembly->llvm_context);
+
+  const size_t c = bo_array_size(assembly->units);
+  bl_unit_t *unit;
+  for (size_t i = 0; i < c; i++) {
+    unit = bo_array_at(assembly->units, i, bl_unit_t *);
+    bl_unit_delete(unit);
+  }
+  bo_unref(assembly->units);
+  bl_free(assembly);
 }
 
 void
-bl_assembly_add_unit(Assembly *self,
-                     Unit *unit)
+bl_assembly_add_unit(bl_assembly_t *assembly,
+                     bl_unit_t *unit)
 {
   /* TODO: handle duplicity */
-  bo_array_push_back(self->units, unit);
+  bo_array_push_back(assembly->units, unit);
 }
 
 const char *
-bl_assembly_get_name(Assembly *self)
+bl_assembly_get_name(bl_assembly_t *assembly)
 {
-  return self->name;
+  return assembly->name;
 }
 
 int
-bl_assembly_get_unit_count(Assembly *self)
+bl_assembly_get_unit_count(bl_assembly_t *assembly)
 {
-  return (int) bo_array_size(self->units);
+  return (int) bo_array_size(assembly->units);
 }
 
-Unit *
-bl_assembly_get_unit(Assembly *self,
+bl_unit_t *
+bl_assembly_get_unit(bl_assembly_t *assembly,
                      int i)
 {
-  return bo_array_at(self->units, (size_t) i, Unit *);
-}
-
-LLVMModuleRef
-bl_assembly_get_module(Assembly *self)
-{
-  return self->module;
-}
-
-void
-bl_assembly_set_module(Assembly *self,
-                       LLVMModuleRef module)
-{
-  LLVMDisposeModule(self->module);
-  self->module = module;
+  return bo_array_at(assembly->units, (size_t) i, bl_unit_t *);
 }
 

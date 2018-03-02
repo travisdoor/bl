@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   actor.c
+// File:   context_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,79 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <string.h>
-#include <stdarg.h>
-#include "bl/bldebug.h"
-#include "pipeline/actor_impl.h"
+#ifndef BL_CONTEXT_IMPL_H
+#define BL_CONTEXT_IMPL_H
 
-/* Actor constructor parameters */
-bo_decl_params_begin(Actor)
-bo_end();
-
-bo_impl_type(Actor, BObject);
-
-/* Actor class init */
-void
-ActorKlass_init(ActorKlass *klass)
+typedef struct bl_context
 {
-}
 
-/* Actor constructor */
-void
-Actor_ctor(Actor *self, ActorParams *p)
-{
-  self->state = BL_ACTOR_STATE_PENDING;
-  self->error[0] = '\0';
-}
+} bl_context_t;
 
-/* Actor destructor */
-void
-Actor_dtor(Actor *self)
-{
-}
-
-/* Actor copy constructor */
-bo_copy_result
-Actor_copy(Actor *self, Actor *other)
-{
-  return BO_NO_COPY;
-}
-
-/* public */
-bl_actor_state_e
-bl_actor_get_state(Actor *self)
-{
-  return self->state;
-}
-
-void
-bl_actor_error(Actor *self,
-               const char *format,
-               ...)
-{
-  va_list args;
-  va_start(args, format);
-  vsnprintf(self->error, BL_ACTOR_MAX_ERROR_LEN, format, args);
-  va_end(args);
-}
-
-const char *
-bl_actor_get_error(Actor *self)
-{
-  if (strlen(&self->error[0]) == 0)
-    return NULL;
-  return &self->error[0];
-}
-
-void
-bl_actor_error_reset(Actor *self)
-{
-  self->error[0] = '\0';
-}
-
-void
-bl_actor_set_state(Actor           *self,
-                   bl_actor_state_e state)
-{
-  self->state = state;
-}
+#endif //BL_CONTEXT_IMPL_H

@@ -30,13 +30,12 @@
 #define BL_UNIT_IMPL_H
 
 #include "bl/unit.h"
-#include "pipeline/actor_impl.h"
 #include "ast/ast_impl.h"
 #include "sym_tbl_impl.h"
 #include "tokens_impl.h"
 
 /* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
+typedef struct bl_unit {
   /* members */
   /* source file name with path */
   char *filepath;
@@ -52,7 +51,7 @@ bo_decl_members_begin(Unit, Actor)
 
   /* LLVM Module */
   LLVMModuleRef module;
-bo_end();
+} bl_unit_t;
 
 
 #endif //BL_UNIT_IMPL_H

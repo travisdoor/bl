@@ -26,76 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "bl/token_printer.h"
-#include "bl/pipeline/stage.h"
+#include "stages_impl.h"
 #include "bl/bldebug.h"
-#include "bl/unit.h"
-
-/* class TokenPrinter */
-static bool
-run(TokenPrinter *self,
-    Unit *unit);
-
-/* class TokenPrinter constructor params */
-bo_decl_params_with_base_begin(TokenPrinter, Stage)
-  /* constructor params */
-  FILE *out_stream;
-bo_end();
-
-/* class TokenPrinter object members */
-bo_decl_members_begin(TokenPrinter, Stage)
-  /* members */
-  FILE *out_stream;
-bo_end();
-
-bo_impl_type(TokenPrinter, Stage);
-
-void
-TokenPrinterKlass_init(TokenPrinterKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run =
-    (bool (*)(Stage *,
-              Actor *)) run;
-}
-
-void
-TokenPrinter_ctor(TokenPrinter *self,
-                  TokenPrinterParams *p)
-{
-  /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Stage, p);
-  self->out_stream = p->out_stream;
-}
-
-void
-TokenPrinter_dtor(TokenPrinter *self)
-{
-}
-
-bo_copy_result
-TokenPrinter_copy(TokenPrinter *self,
-                  TokenPrinter *other)
-{
-  return BO_NO_COPY;
-}
-/* class TokenPrinter end */
 
 bool
-run(TokenPrinter *self,
-    Unit *unit)
+bl_token_printer_run(bl_unit_t *unit)
 {
-  Tokens *tokens = bl_unit_get_tokens(unit);
-  if (tokens == NULL) {
-    bl_actor_error((Actor *) unit,
-                   "cannot find tokens array in unit %s",
-                   bl_unit_get_src_file(unit));
-    return false;
-  }
+  BArray *tokens_arr = unit->tokens.buf;
 
-  BArray *tokens_arr = bl_tokens_get_all(tokens);
-
-  fprintf(self->out_stream, "Tokens: \n");
+  fprintf(stdout, "Tokens: \n");
 
   const size_t c = bo_array_size(tokens_arr);
   bl_token_t *tok;
@@ -105,27 +44,16 @@ run(TokenPrinter *self,
 
     if (line == -1) {
       line = tok->line;
-      fprintf(self->out_stream, "%d: ", line);
+      fprintf(stdout, "%d: ", line);
     } else if (tok->line != line) {
       line = tok->line;
-      fprintf(self->out_stream, "\n%d: ", line);
+      fprintf(stdout, "\n%d: ", line);
     }
 
     fprintf(
-      self->out_stream, "['%s' %i:%i], ", bl_sym_strings[tok->sym], tok->line, tok->col);
+      stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", bl_sym_strings[tok->sym], tok->line, tok->col);
   }
 
-  fprintf(self->out_stream, "\n");
-
+  fprintf(stdout, "\n");
   return true;
 }
-
-TokenPrinter *
-bl_token_printer_new(FILE *out_stream,
-                     bl_compile_group_e group)
-{
-  TokenPrinterParams p = {.base.group = group, .out_stream = out_stream};
-
-  return bo_new(TokenPrinter, &p);
-}
-

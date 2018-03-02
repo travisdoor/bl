@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl 
 //
-// File:   stage.c
+// File:   builder_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,35 +26,29 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "bl/pipeline/stage.h"
+#ifndef BISCUIT_BUILDER_IMPL_H
+#define BISCUIT_BUILDER_IMPL_H
 
-bo_impl_type(Stage, BObject);
+#include "bl/builder.h"
 
-/* Stage class init */
+typedef struct bl_builder
+{
+  bl_diag_handler_f on_error;
+  bl_diag_handler_f on_warning;
+
+  void *on_error_cnt;
+  void *on_warning_cnt;
+} bl_builder_t;
+
 void
-StageKlass_init(StageKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run = NULL;
-}
+bl_builder_error(bl_builder_t *builder,
+                 const char *format,
+                 ...);
 
-/* Stage constructor */
 void
-Stage_ctor(Stage *self, StageParams *p)
-{
-  self->group = p->group;
-}
+bl_builder_warning(bl_builder_t *builder,
+                   const char *format,
+                   ...);
 
-/* Stage destructor */
-void
-Stage_dtor(Stage *self)
-{
-}
-
-/* Stage copy constructor */
-bo_copy_result
-Stage_copy(Stage *self, Stage *other)
-{
-  return BO_NO_COPY;
-}
-
+#endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */
 

@@ -30,20 +30,9 @@
 #define BL_H_JCNFO1PQ
 
 #include "bl/bldebug.h"
-#include "bl/pipeline/pipeline.h"
-#include "bl/lexer.h"
-#include "bl/token_printer.h"
-#include "bl/llvm_backend.h"
-#include "bl/file_loader.h"
-#include "bl/parser.h"
-#include "bl/ast_printer.h"
 #include "bl/unit.h"
-#include "bl/ast/ast.h"
-#include "bl/type.h"
 #include "bl/bllimits.h"
 #include "bl/assembly.h"
-#include "bl/analyzer.h"
-#include "bl/llvm_jit_exec.h"
 #include "bl/builder.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

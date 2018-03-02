@@ -76,5 +76,5 @@ bool
 bl_type_is_not(bl_type_t *type,
                uint32_t t)
 {
-  return type->t != t;
+  return type->hash != t;
 }

@@ -31,6 +31,12 @@
 #include "bl/bldebug.h"
 #include "bl/blmemory.h"
 
+static const char *node_strings[] = {
+#define nt(tok, str) str,
+  BL_NTYPE_LIST
+#undef nt
+};
+
 /* public */
 bl_node_t *
 bl_node_new(bl_node_type_e type,
@@ -70,6 +76,7 @@ bl_node_new(bl_node_type_e type,
     case BL_NODE_PARAM_VAR_DECL:
       break;
     case BL_NODE_CALL_EXPR:
+      node->value.call_expr.args = bo_array_new(sizeof(bl_node_t *));
       break;
     case BL_NODE_DECL_REF_EXPR:
       break;
@@ -83,7 +90,7 @@ bl_node_new(bl_node_type_e type,
 }
 
 void
-bl_node_terminate(bl_node_t *node)
+bl_node_delete(bl_node_t *node)
 {
   switch (node->type) {
     case BL_NODE_GLOBAL_STMT:
@@ -110,6 +117,7 @@ bl_node_terminate(bl_node_t *node)
     case BL_NODE_PARAM_VAR_DECL:
       break;
     case BL_NODE_CALL_EXPR:
+      bo_unref(node->value.func_decl.params);
       break;
     case BL_NODE_DECL_REF_EXPR:
       break;
@@ -121,6 +129,12 @@ bl_node_terminate(bl_node_t *node)
   }
 
   bl_free(node);
+}
+
+const char *
+bl_node_to_str(bl_node_t *node)
+{
+  return node_strings[node->type];
 }
 
 bl_node_t *
@@ -136,6 +150,24 @@ bl_node_glob_stmt_add_child(bl_node_t *node,
   return child;
 }
 
+int
+bl_node_glob_stmt_get_children_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
+  return (int) bo_array_size(node->value.glob_stmt.nodes);
+}
+
+bl_node_t *
+bl_node_glob_stmt_get_child(bl_node_t *node,
+                            int i)
+{
+  bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
+  if (bo_array_size(node->value.glob_stmt.nodes) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.glob_stmt.nodes, i, bl_node_t *);
+}
+
 bl_node_t *
 bl_node_cmp_stmt_add_child(bl_node_t *node,
                            bl_node_t *child)
@@ -147,6 +179,25 @@ bl_node_cmp_stmt_add_child(bl_node_t *node,
 
   bo_array_push_back(node->value.cmp_stmt.nodes, child);
   return child;
+}
+
+int
+bl_node_cmp_stmt_get_children_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
+  return (int) bo_array_size(node->value.cmp_stmt.nodes);
+}
+
+bl_node_t *
+bl_node_cmp_stmt_get_child(bl_node_t *node,
+                           int i)
+{
+  bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
+
+  if (bo_array_size(node->value.cmp_stmt.nodes) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.cmp_stmt.nodes, i, bl_node_t *);
 }
 
 bl_node_t *
@@ -162,6 +213,24 @@ bl_node_func_decl_stmt_add_param(bl_node_t *node,
   return param;
 }
 
+int
+bl_node_func_decl_get_param_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
+  return (int) bo_array_size(node->value.func_decl.params);
+}
+
+bl_node_t *
+bl_node_func_decl_get_param(bl_node_t *node,
+                            int i)
+{
+  bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
+  if (bo_array_size(node->value.func_decl.params) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.func_decl.params, i, bl_node_t *);
+}
+
 bl_node_t *
 bl_node_call_expr_add_arg(bl_node_t *node,
                           bl_node_t *arg)
@@ -171,6 +240,24 @@ bl_node_call_expr_add_arg(bl_node_t *node,
   if (arg == NULL)
     return NULL;
 
-  bo_array_push_back(node->value.call_stmt.args, arg);
+  bo_array_push_back(node->value.call_expr.args, arg);
   return arg;
+}
+
+int
+bl_node_call_expr_get_arg_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
+  return (int) bo_array_size(node->value.call_expr.args);
+}
+
+bl_node_t *
+bl_node_call_expr_get_arg(bl_node_t *node,
+                          int i)
+{
+  bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
+  if (bo_array_size(node->value.call_expr.args) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.call_expr.args, i, bl_node_t *);
 }

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   actor.h
+// File:   stages_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,48 +26,52 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef ACTOR_H_TQV6OMSD
-#define ACTOR_H_TQV6OMSD
+#ifndef BL_STAGES_IMPL_H
+#define BL_STAGES_IMPL_H
 
-#include <bobject/bobject.h>
-#include <bobject/containers/array.h>
-#include <bobject/containers/string.h>
+#include "builder_impl.h"
+#include "unit_impl.h"
+#include "assembly_impl.h"
 
-BO_BEGIN_DECLS
-#define BL_ACTOR_MAX_ERROR_LEN 1024
+/*
+ * per unit
+ */
+bool
+bl_file_loader_run(bl_builder_t *builder,
+                   bl_unit_t *unit);
 
-/* TODO: return state instead of bool */
-typedef enum _bl_actor_state_e
-{
-  BL_ACTOR_STATE_PENDING,
-  BL_ACTOR_STATE_FINISHED,
-  BL_ACTOR_STATE_SKIPPED,
-  BL_ACTOR_STATE_FAILED
-} bl_actor_state_e;
+bool
+bl_lexer_run(bl_builder_t *builder,
+             bl_unit_t *unit);
 
-/* class declaration */
-bo_decl_type_begin(Actor, BObject)
-  /* virtuals */
-bo_end();
+bool
+bl_token_printer_run(bl_unit_t *unit);
 
-extern BO_EXPORT bl_actor_state_e
-bl_actor_get_state(Actor *self);
+bool
+bl_parser_run(bl_builder_t *builder,
+              bl_unit_t *unit);
 
-extern BO_EXPORT void
-bl_actor_set_state(Actor           *self,
-                   bl_actor_state_e state);
+bool
+bl_ast_printer_run(bl_unit_t *unit);
 
-extern BO_EXPORT const char *
-bl_actor_get_error(Actor *self);
+bool
+bl_llvm_backend_run(bl_builder_t *builder,
+                    bl_unit_t *unit);
 
-extern BO_EXPORT void
-bl_actor_error_reset(Actor *self);
+bool
+bl_llvm_bc_writer_run(bl_builder_t *builder,
+                      bl_unit_t *unit);
 
-extern BO_EXPORT void
-bl_actor_error(Actor *self,
-               const char *format,
-               ...);
-BO_END_DECLS
+/*
+ * per assembly
+ */
 
-#endif /* end of include guard: ACTOR_H_TQV6OMSD */
+bool
+bl_llvm_linker_run(bl_builder_t *builder,
+                   bl_assembly_t *assembly);
 
+bool
+bl_llvm_jit_exec_run(bl_builder_t *builder,
+                     bl_assembly_t *assembly);
+
+#endif //BL_STAGES_IMPL_H

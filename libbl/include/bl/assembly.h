@@ -30,39 +30,31 @@
 #define BL_ASSEMBLY_H
 
 #include <bobject/bobject.h>
-#include "bl/pipeline/pipeline.h"
 #include "bl/unit.h"
 
 BO_BEGIN_DECLS
 
-/* class Assembly declaration */
-bo_decl_type_begin(Assembly, Actor)
-  /* virtuals */
-bo_end();
+typedef struct bl_assembly *bl_assembly_ref;
 
-extern BO_EXPORT Assembly *
+extern BO_EXPORT bl_assembly_ref
 bl_assembly_new(const char *name);
 
+extern BO_EXPORT void 
+bl_assembly_delete(bl_assembly_ref assembly);
+
 extern BO_EXPORT void
-bl_assembly_add_unit(Assembly *self,
-                     Unit *unit);
+bl_assembly_add_unit(bl_assembly_ref assembly,
+                     bl_unit_ref unit);
 
 extern BO_EXPORT int
-bl_assembly_get_unit_count(Assembly *self);
+bl_assembly_get_unit_count(bl_assembly_ref assembly);
 
-extern BO_EXPORT Unit *
-bl_assembly_get_unit(Assembly *self,
+extern BO_EXPORT bl_unit_ref
+bl_assembly_get_unit(bl_assembly_ref assembly,
                      int i);
 
 extern BO_EXPORT const char *
-bl_assembly_get_name(Assembly *self);
-
-extern BO_EXPORT LLVMModuleRef
-bl_assembly_get_module(Assembly *self);
-
-extern BO_EXPORT void
-bl_assembly_set_module(Assembly *self,
-                       LLVMModuleRef module);
+bl_assembly_get_name(bl_assembly_ref assembly);
 
 BO_END_DECLS
 

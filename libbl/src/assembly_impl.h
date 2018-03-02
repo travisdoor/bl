@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// Biscuit Engine
 //
-// File:   ast_printer.h
+// File:   assembly_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,20 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_PRINTER_H_EOKCLCB3
-#define AST_PRINTER_H_EOKCLCB3
+#ifndef BISCUIT_ASSEMBLY_IMPL_H
+#define BISCUIT_ASSEMBLY_IMPL_H
 
-#include <stdio.h>
-#include <bobject/bobject.h>
-#include "bl/pipeline/stage.h"
+#include <bobject/containers/array.h>
+#include <llvm-c/Core.h>
+#include "bl/assembly.h"
 
-BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(AstPrinter, Stage)
-  /* virtuals */
-bo_end();
+typedef struct bl_assembly 
+{
+  BArray *units;
+  char *name;
+  LLVMModuleRef module;
+  LLVMContextRef llvm_context;
+} bl_assembly_t;
 
-extern BO_EXPORT AstPrinter *
-bl_ast_printer_new(FILE              *out_stream,
-                   bl_compile_group_e group);
-BO_END_DECLS
+#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
 
-#endif /* end of include guard: AST_PRINTER_H_EOKCLCB3 */

@@ -52,7 +52,7 @@ bl_sym_tbl_register(bl_sym_tbl_t *tbl,
                     bl_node_t *node)
 {
   bl_assert(node, "invalid node");
-  uint32_t hash = node->;
+  uint32_t hash = node->value.decl.ident.hash;
 
   if (bo_htbl_has_key(tbl->syms, hash))
     return false;
@@ -67,17 +67,16 @@ bl_sym_tbl_get_sym_of_type(bl_sym_tbl_t *tbl,
                            bl_node_type_e type)
 {
   bl_assert(ident, "invalid identifier");
-//  bo_iterator_t iter = bo_htbl_find(tbl->syms, bl_ident_get_hash(ident));
-//  bo_iterator_t end = bo_htbl_end(tbl->syms);
-//  if (bo_iterator_equal(&iter, &end))
-//    return NULL;
-//
-//  NodeDecl *ret = bo_htbl_iter_peek_value(tbl->syms, &iter, NodeDecl *);
-//  if (bl_node_get_type((Node *) ret) != type)
-//    return NULL;
-//
-//  return ret;
-  return NULL;
+  bo_iterator_t iter = bo_htbl_find(tbl->syms, ident->hash);
+  bo_iterator_t end = bo_htbl_end(tbl->syms);
+  if (bo_iterator_equal(&iter, &end))
+    return NULL;
+
+  bl_node_t *ret = bo_htbl_iter_peek_value(tbl->syms, &iter, bl_node_t *);
+  if (ret->type != type)
+    return NULL;
+
+  return ret;
 }
 
 void
@@ -91,44 +90,42 @@ bl_sym_tbl_add_unsatisfied_expr(bl_sym_tbl_t *tbl,
 bool
 bl_sym_tbl_try_satisfy_all(bl_sym_tbl_t *tbl)
 {
-//  size_t c = bo_array_size(tbl->unsatisfied);
-//  size_t i = 0;
-//  bool ret = true;
-//  bool erase = false;
-//  NodeExpr *expr = NULL;
-//  NodeDecl *decl = NULL;
-//  Ident *ident = NULL;
-//
-//  while (i < c) {
-//    expr = bo_array_at(tbl->unsatisfied, i, NodeExpr *);
-//
-//    switch (bl_node_get_type((Node *) expr)){
-//      case BL_NODE_CALL:
-//        ident = bl_node_call_get_ident((NodeCall *) expr);
-//        decl = bl_sym_tbl_get_sym_of_type(tbl, ident, BL_NODE_FUNC_DECL);
-//        if (decl) {
-//          bl_node_call_get_set_callee((NodeCall *) expr, (NodeFuncDecl *) decl);
-//          erase = true;
-//        }
-//        break;
-//      default:
-//        bl_abort("cannot satisfy this type");
-//    }
-//
-//    /*
-//     * Delete when call was satisfied.
-//     */
-//    if (erase) {
-//      bo_array_erase(tbl->unsatisfied, i);
-//      --c;
-//      erase = false;
-//    } else {
-//      i++;
-//      ret = false;
-//    }
-//  }
+  size_t c = bo_array_size(tbl->unsatisfied);
+  size_t i = 0;
+  bool ret = true;
+  bool erase = false;
+  bl_node_t *expr = NULL;
+  bl_node_t *decl = NULL;
+  bl_ident_t *ident = NULL;
 
-//  return ret;
-  return false;
+  while (i < c) {
+    expr = bo_array_at(tbl->unsatisfied, i, bl_node_t *);
+
+    switch (expr->type) {
+      case BL_NODE_CALL_EXPR:
+        ident = &expr->value.call_expr.ident;
+        decl = bl_sym_tbl_get_sym_of_type(tbl, ident, BL_NODE_FUNC_DECL);
+        if (decl) {
+          expr->value.call_expr.callee = decl;
+          erase = true;
+        }
+        break;
+      default: bl_abort("cannot satisfy this type");
+    }
+
+    /*
+     * Delete when call was satisfied.
+     */
+    if (erase) {
+      bo_array_erase(tbl->unsatisfied, i);
+      --c;
+      erase = false;
+    } else {
+      i++;
+      ret = false;
+    }
+  }
+
+  return ret;
 }
 

@@ -118,6 +118,7 @@ typedef struct bl_node_if_stmt
 /*
  * Declarations
  */
+/* TODO: don't use base */
 typedef struct bl_node_decl
 {
   bl_sym_e modificator;
@@ -191,19 +192,20 @@ typedef struct bl_node
   {
     bl_node_cmp_stmt_t cmp_stmt;
     bl_node_glob_stmt_t glob_stmt;
-    bl_node_call_stmt_t call_stmt;
     bl_node_break_stmt_t break_stmt;
     bl_node_continue_stmt_t continue_stmt;
     bl_node_loop_stmt_t loop_stmt;
     bl_node_return_stmt_t return_stmt;
     bl_node_if_stmt_t if_stmt;
 
+    bl_node_decl_t decl;
     bl_node_func_decl_t func_decl;
     bl_node_var_decl_t var_decl;
     bl_node_param_var_decl_t param_var_decl;
 
     bl_node_const_expr_t const_expr;
     bl_node_decl_ref_expr_t decl_ref_expr;
+    bl_node_call_stmt_t call_expr;
 
     bl_node_binop_t binop;
   } value;
@@ -219,21 +221,52 @@ void
 bl_node_delete(bl_node_t *node);
 
 /* helper functions */
+const char *
+bl_node_to_str(bl_node_t *node);
 
+/* TODO: direct access ??? */
 bl_node_t *
 bl_node_glob_stmt_add_child(bl_node_t *node,
                             bl_node_t *child);
+
+int
+bl_node_glob_stmt_get_children_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_glob_stmt_get_child(bl_node_t *node,
+                            int i);
 
 bl_node_t *
 bl_node_cmp_stmt_add_child(bl_node_t *node,
                            bl_node_t *child);
 
+int
+bl_node_cmp_stmt_get_children_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_cmp_stmt_get_child(bl_node_t *node,
+                           int i);
+
 bl_node_t *
 bl_node_func_decl_stmt_add_param(bl_node_t *node,
                                  bl_node_t *param);
 
+int
+bl_node_func_decl_get_param_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_func_decl_get_param(bl_node_t *node,
+                            int i);
+
 bl_node_t *
 bl_node_call_expr_add_arg(bl_node_t *node,
                           bl_node_t *arg);
+
+int
+bl_node_call_expr_get_arg_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_call_expr_get_arg(bl_node_t *node,
+                          int i);
 
 #endif //BL_NODE_IMPL_H

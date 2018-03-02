@@ -85,36 +85,34 @@ bl_llvm_block_context_new(void)
 bool
 bl_llvm_block_context_add(LlvmBlockContext *self,
                           LLVMValueRef val,
-                          Ident *id)
+                          bl_ident_t *id)
 {
   const int i = (const int) bo_array_size(self->blocks);
   if (val == NULL || i == 0) {
     return false;
   }
 
-  const uint32_t hash = bl_ident_get_hash(id);
   BHashTable *block = bo_array_at(self->blocks, i - 1, BHashTable *);
 
-  if (bo_htbl_has_key(block, hash)) {
+  if (bo_htbl_has_key(block, id->hash)) {
     return false;
   }
 
-  bo_htbl_insert(block, hash, val);
+  bo_htbl_insert(block, id->hash, val);
   return true;
 }
 
 LLVMValueRef
 bl_llvm_block_context_get(LlvmBlockContext *self,
-                          Ident *id)
+                          bl_ident_t *id)
 {
   const int c = bo_array_size(self->blocks);
-  const uint32_t hash = bl_ident_get_hash(id);
   BHashTable *block = NULL;
 
   for (int i = 0; i < c; i++) {
     block = bo_array_at(self->blocks, i, BHashTable *);
-    if (bo_htbl_has_key(block, hash)) {
-      return bo_htbl_at(block, hash, LLVMValueRef);
+    if (bo_htbl_has_key(block, id->hash)) {
+      return bo_htbl_at(block, id->hash, LLVMValueRef);
     }
   }
 

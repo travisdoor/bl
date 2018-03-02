@@ -28,9 +28,9 @@
 
 #include <string.h>
 #include <setjmp.h>
-#include "bl/lexer.h"
-#include "bl/unit.h"
+#include "stages_impl.h"
 #include "bl/bldebug.h"
+#include "unit_impl.h"
 
 #define is_intend_c(c) \
   (((c) >= 'a' && (c) <= 'z') || \
@@ -41,154 +41,105 @@
 #define is_number_c(c) \
   ((c) >= '0' && (c) <= '9')
 
-#define scan_error(self, format, ...) \
+#define scan_error(cnt, format, ...) \
   { \
-    bl_actor_error((Actor *)(self)->unit, (format), ##__VA_ARGS__); \
-    longjmp((self)->jmp_error, 1); \
+    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
+    longjmp((cnt)->jmp_error, 1); \
   }
 
-/* class Lexer */
-static bool
-run(Lexer *self,
-    Unit *unit);
+typedef struct context
+{
+  bl_builder_t *builder;
+  bl_unit_t *unit;
+  bl_tokens_t *tokens;
+  jmp_buf jmp_error;
+  char *c;
+  int line;
+  int col;
+} context_t;
 
 static void
-scan(Lexer *self);
+scan(context_t *cnt);
 
 static bool
-scan_comment(Lexer *self,
+scan_comment(context_t *cnt,
              const char *term);
 
 static bool
-scan_ident(Lexer *self,
+scan_ident(context_t *cnt,
            bl_token_t *tok);
 
 static bool
-scan_string(Lexer *self,
+scan_string(context_t *cnt,
             bl_token_t *tok);
 
 static bool
-scan_number(Lexer *self,
+scan_number(context_t *cnt,
             bl_token_t *tok);
 
 static char
 scan_specch(char c);
 
-static void
-reset(Lexer *self,
-      Unit *unit);
-
-/* class Lexer constructor params */
-bo_decl_params_with_base_begin(Lexer, Stage)
-  /* constructor params */
-bo_end();
-
-/* class Lexer object members */
-bo_decl_members_begin(Lexer, Stage)
-  /* members */
-  Unit *unit;
-  Tokens *tokens;
-  jmp_buf jmp_error;
-  char *c;
-  int line;
-  int col;
-bo_end();
-
-bo_impl_type(Lexer, Stage);
-
-void
-LexerKlass_init(LexerKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run =
-    (bool (*)(Stage *,
-              Actor *)) run;
-}
-
-void
-Lexer_ctor(Lexer *self,
-           LexerParams *p)
-{
-  /* constructor */
-  /* initialize parent */
-  bo_parent_ctor(Stage, p);
-
-  /* initialize self */
-}
-
-void
-Lexer_dtor(Lexer *self)
-{
-}
-
-bo_copy_result
-Lexer_copy(Lexer *self,
-           Lexer *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class Lexer end */
-
 bool
-scan_comment(Lexer *self,
+scan_comment(context_t *cnt,
              const char *term)
 {
   const size_t len = strlen(term);
   while (true) {
-    if (*self->c == '\n') {
-      self->line++;
-      self->col = 1;
-    } else if (*self->c == '\0' && strcmp(term, "\n") != 0) {
+    if (*cnt->c == '\n') {
+      cnt->line++;
+      cnt->col = 1;
+    } else if (*cnt->c == '\0' && strcmp(term, "\n") != 0) {
       /*
        * Unterminated comment
        */
-      scan_error(self,
+      scan_error(cnt,
                  "%s %d:%d unterminated comment block.",
-                 bl_unit_get_name(self->unit),
-                 self->line,
-                 self->col);
+                 bl_unit_get_name(cnt->unit),
+                 cnt->line,
+                 cnt->col);
     }
-    if (strncmp(self->c, term, len) == 0) {
+    if (strncmp(cnt->c, term, len) == 0) {
       break;
     }
-    self->c++;
+    cnt->c++;
   }
 
   /* skip terminator */
-  self->c += len;
+  cnt->c += len;
   return true;
 }
 
 bool
-scan_ident(Lexer *self,
+scan_ident(context_t *cnt,
            bl_token_t *tok)
 {
-  tok->src_loc = self->c;
-  tok->line = self->line;
-  tok->col = self->col;
+  tok->src_loc = cnt->c;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
   tok->sym = BL_SYM_IDENT;
 
-  char *begin = self->c;
+  char *begin = cnt->c;
 
   int len = 0;
   while (true) {
-    if (!is_intend_c(*self->c)) {
+    if (!is_intend_c(*cnt->c)) {
       break;
     }
 
     len++;
-    self->c++;
+    cnt->c++;
   }
 
   if (len == 0)
     return false;
 
-  BString *cstr = bl_tokens_create_cached_str(self->tokens);
+  BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
   bo_string_appendn(cstr, begin, len);
   tok->value.as_string = bo_string_get(cstr);
 
   tok->len = len;
-  self->col += len;
+  cnt->col += len;
   return true;
 }
 
@@ -206,36 +157,36 @@ scan_specch(char c)
 }
 
 bool
-scan_string(Lexer *self,
+scan_string(context_t *cnt,
             bl_token_t *tok)
 {
-  if (*self->c != '\"') {
+  if (*cnt->c != '\"') {
     return false;
   }
 
-  tok->src_loc = self->c;
-  tok->line = self->line;
-  tok->col = self->col;
+  tok->src_loc = cnt->c;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
   tok->sym = BL_SYM_STRING;
 
   /* eat " */
-  self->c++;
+  cnt->c++;
 
-  BString *cstr = bl_tokens_create_cached_str(self->tokens);
+  BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
   char c;
   int len = 0;
 
 scan:
   while (true) {
-    switch (*self->c) {
+    switch (*cnt->c) {
       case '\"': {
-        self->c++;
-        char *tmp_c = self->c;
+        cnt->c++;
+        char *tmp_c = cnt->c;
         /* check multiline string */
         while (true) {
           if (*tmp_c == '\"') {
             /* skip " */
-            self->c = tmp_c + 1;
+            cnt->c = tmp_c + 1;
             goto scan;
           } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') || (*tmp_c == '\0')) {
             goto exit;
@@ -245,136 +196,137 @@ scan:
         }
       }
       case '\0': {
-        scan_error(self,
+        scan_error(cnt,
                    "%s %d:%d unterminated string.",
-                   bl_unit_get_name(self->unit),
-                   self->line,
-                   self->col);
+                   bl_unit_get_name(cnt->unit),
+                   cnt->line,
+                   cnt->col);
       }
       case '\\':
         /* special character */
-        c = scan_specch(*(self->c + 1));
-        self->c += 2;
+        c = scan_specch(*(cnt->c + 1));
+        cnt->c += 2;
         len++;
         break;
       default:
-        c = *self->c;
+        c = *cnt->c;
         len++;
-        self->c++;
+        cnt->c++;
     }
     bo_string_appendn(cstr, &c, 1);
   }
 exit:
   tok->value.as_string = bo_string_get(cstr);
   tok->len = len;
-  self->col += len + 2;
+  cnt->col += len + 2;
   return true;
 }
 
 bool
-scan_number(Lexer *self,
+scan_number(context_t *cnt,
             bl_token_t *tok)
 {
-  tok->src_loc = self->c;
-  tok->line = self->line;
-  tok->col = self->col;
-  tok->value.as_string = self->c;
+  tok->src_loc = cnt->c;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
+  tok->value.as_string = cnt->c;
 
   unsigned long n = 0;
   int len = 0;
   while (true) {
-    if (*(self->c) == '.') {
+    if (*(cnt->c) == '.') {
       len++;
-      self->c++;
+      cnt->c++;
       goto scan_double;
     }
 
-    if (!is_number_c(*(self->c))) {
+    if (!is_number_c(*(cnt->c))) {
       break;
     }
 
-    n = n * 10 + (*self->c) - '0';
+    n = n * 10 + (*cnt->c) - '0';
     len++;
-    self->c++;
+    cnt->c++;
   }
 
   if (len == 0)
     return false;
 
   tok->len = len;
-  self->col += len;
+  cnt->col += len;
   tok->sym = BL_SYM_NUM;
   tok->value.as_ull = n;
   return true;
 
-scan_double: {
-  unsigned long e = 1;
+scan_double:
+  {
+    unsigned long e = 1;
 
-  while (true) {
-    if (!is_number_c(*(self->c))) {
-      break;
+    while (true) {
+      if (!is_number_c(*(cnt->c))) {
+        break;
+      }
+
+      n = n * 10 + (*cnt->c) - '0';
+      e *= 10;
+      len++;
+      cnt->c++;
     }
 
-    n = n * 10 + (*self->c) - '0';
-    e *= 10;
-    len++;
-    self->c++;
+    /*
+     * valid d. or .d -> minimal 2 characters
+     */
+    if (len < 2)
+      return false;
+
+    if (*(cnt->c) == 'f') {
+      len++;
+      cnt->c++;
+      tok->sym = BL_SYM_FLOAT;
+      tok->value.as_float = n / (float) e;
+    } else {
+      tok->sym = BL_SYM_DOUBLE;
+      tok->value.as_double = n / (double) e;
+    }
+
+    tok->len = len;
+    cnt->col += len;
+
+    return true;
   }
-
-  /*
-   * valid d. or .d -> minimal 2 characters
-   */
-  if (len < 2)
-    return false;
-
-  if (*(self->c) == 'f') {
-    len++;
-    self->c++;
-    tok->sym = BL_SYM_FLOAT;
-    tok->value.as_float = n / (float)e;
-  } else {
-    tok->sym = BL_SYM_DOUBLE;
-    tok->value.as_double = n / (double)e;
-  }
-
-  tok->len = len;
-  self->col += len;
-
-  return true;
-}
 }
 
 void
-scan(Lexer *self)
+scan(context_t *cnt)
 {
   bl_token_t tok;
 scan:
-  tok.src_loc = self->c;
-  tok.line = self->line;
-  tok.col = self->col;
+  tok.src_loc = cnt->c;
+  tok.line = cnt->line;
+  tok.col = cnt->col;
 
   /*
    * Ignored characters
    */
-  switch (*self->c) {
+  switch (*cnt->c) {
     case '\0':
       tok.sym = BL_SYM_EOF;
-      bl_tokens_push(self->tokens, &tok);
+      bl_tokens_push(cnt->tokens, &tok);
       return;
     case '\r':
     case '\n':
-      self->line++;
-      self->col = 1;
-      self->c++;
+      cnt->line++;
+      cnt->col = 1;
+      cnt->c++;
       goto scan;
     case '\t':
       /* TODO: can be set by user */
-      self->col += 2;
-      self->c++;
+      cnt->col += 2;
+      cnt->c++;
       goto scan;
     case ' ':
-      self->col++;
-      self->c++;
+      cnt->col++;
+      cnt->c++;
       goto scan;
     default:
       break;
@@ -386,37 +338,37 @@ scan:
   size_t len = 0;
   for (int i = BL_SYM_IF; i < BL_SYM_NONE; i++) {
     len = strlen(bl_sym_strings[i]);
-    if (strncmp(self->c, bl_sym_strings[i], len) == 0) {
-      self->c += len;
+    if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
+      cnt->c += len;
       tok.sym = (bl_sym_e) i;
 
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= BL_SYM_IF && i <= BL_SYM_IMPL && is_intend_c(*self->c)) {
+      if (i >= BL_SYM_IF && i <= BL_SYM_IMPL && is_intend_c(*cnt->c)) {
         /* roll back */
-        self->c -= len;
+        cnt->c -= len;
         break;
       }
 
       switch (tok.sym) {
         case BL_SYM_LCOMMENT:
           /* begin of line comment */
-          scan_comment(self, "\n");
+          scan_comment(cnt, "\n");
           goto scan;
         case BL_SYM_LBCOMMENT:
           /* begin of block comment */
-          scan_comment(self, bl_sym_strings[BL_SYM_RBCOMMENT]);
+          scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
           goto scan;
         case BL_SYM_RBCOMMENT: {
-          scan_error(self,
+          scan_error(cnt,
                      "%s %d:%d unexpected token.",
-                     bl_unit_get_name(self->unit),
-                     self->line,
-                     self->col);
+                     bl_unit_get_name(cnt->unit),
+                     cnt->line,
+                     cnt->col);
         }
         default:
-          self->col += len;
+          cnt->col += len;
           goto push_token;
       }
     }
@@ -425,70 +377,37 @@ scan:
   /*
    * Scan special tokens.
    */
-  if (scan_number(self, &tok))
+  if (scan_number(cnt, &tok))
     goto push_token;
 
-  if (scan_ident(self, &tok))
+  if (scan_ident(cnt, &tok))
     goto push_token;
 
-  if (scan_string(self, &tok))
+  if (scan_string(cnt, &tok))
     goto push_token;
 
   /* When symbol is unknown report error */
-  scan_error(self,
-             "%s %d:%d unexpected token.",
-             bl_unit_get_name(self->unit),
-             self->line,
-             self->col);
+  scan_error(cnt, "%s %d:%d unexpected token.", bl_unit_get_name(cnt->unit), cnt->line, cnt->col);
 push_token:
-  bl_tokens_push(self->tokens, &tok);
+  bl_tokens_push(cnt->tokens, &tok);
   goto scan;
 }
 
-void
-reset(Lexer *self,
-      Unit *unit)
-{
-  char *src = (char *) bl_unit_get_src(unit);
-  self->col = 1;
-  self->line = 1;
-  self->c = src;
-  self->unit = unit;
-
-  if (src == NULL) {
-    scan_error(self, "No source loaded for unit "
-      BL_YELLOW("'%s'")
-      ", use builder flag "
-      BL_YELLOW("BL_BUILDER_LOAD_FROM_FILE")
-      " or create unit from loaded source.", bl_unit_get_name(unit));
-  }
-
-  Tokens *tokens = bl_tokens_new();
-  /* Unit owns tokens */
-  bl_unit_set_tokens(unit, tokens);
-  self->tokens = tokens;
-}
-
 bool
-run(Lexer *self,
-    Unit *unit)
+bl_lexer_run(bl_builder_t *builder,
+             bl_unit_t *unit)
 {
-  if (setjmp(self->jmp_error))
-    return false;
-
   bl_log(BL_GREEN("processing unit: %s"), bl_unit_get_name(unit));
 
-  reset(self, unit);
-  scan(self);
+  context_t
+    cnt =
+    {.builder = builder, .tokens = &unit->tokens, .unit = unit, .c = unit->src, .line = 1, .col = 1,};
+
+  if (setjmp(cnt.jmp_error))
+    return false;
+
+  scan(&cnt);
 
   return true;
 }
 
-/* public */
-Lexer *
-bl_lexer_new(bl_compile_group_e group)
-{
-  LexerParams p = {.base.group = group};
-
-  return bo_new(Lexer, &p);
-}

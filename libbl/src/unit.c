@@ -28,118 +28,78 @@
 
 #include <string.h>
 #include "unit_impl.h"
+#include "bl/blmemory.h"
+#include "bl/bldebug.h"
 
-/* class Unit */
-bo_decl_params_begin(Unit)
-  const char *filepath;
-  const char *src;
-bo_end();
-
-bo_impl_type(Unit, Actor);
-
-void
-UnitKlass_init(UnitKlass *klass)
+static void
+init(bl_unit_t *unit)
 {
+  bl_sym_tbl_init(&unit->sym_tbl);
+  bl_tokens_init(&unit->tokens);
+  bl_ast_init(&unit->ast);
 }
-
-void
-Unit_ctor(Unit *self, UnitParams *p)
-{
-  /* constructor */
-  bo_parent_ctor(Actor, p);
-  self->filepath = strdup(p->filepath);
-  /* TODO: backslash on windows */
-  self->name = strrchr(self->filepath, '/');
-  if (self->name == NULL)
-    self->name = self->filepath;
-  else
-    self->name++;
-
-  if (p->src)
-    self->src = strdup(p->src);
-
-  bl_sym_tbl_init(&self->sym_tbl);
-  bl_tokens_init(&self->tokens);
-  bl_ast_init(&self->ast);
-}
-
-void
-Unit_dtor(Unit *self)
-{
-  free(self->filepath);
-  free(self->src);
-  bl_tokens_terminate(&self->tokens);
-  bl_ast_terminate(&self->ast);
-  bl_sym_tbl_terminate(&self->sym_tbl);
-
-  LLVMDisposeModule(self->module);
-}
-
-bo_copy_result
-Unit_copy(Unit *self, Unit *other)
-{
-  return BO_NO_COPY;
-}
-/* class Unit end */
 
 /* public */
-Unit *
+bl_unit_t *
 bl_unit_new_file(const char *filepath)
 {
-  UnitParams params = {
-    .filepath = filepath,
-    .src = NULL
-  };
-  return bo_new(Unit, &params);
+  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit->filepath = strdup(filepath);
+  unit->name = strrchr(unit->filepath, '/');
+  if (unit->name == NULL)
+    unit->name = unit->filepath;
+  else
+    unit->name++;
+  
+  init(unit);
+  return unit;
 }
 
-Unit *
+bl_unit_t *
 bl_unit_new_str(const char *name,
                 const char *src)
 {
-  UnitParams params = {
-    .filepath = name,
-    .src = src
-  };
-  return bo_new(Unit, &params);
-}
+  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit->filepath = strdup(name);
+  unit->name = strdup(name);
 
-const char*
-bl_unit_get_src_file(Unit *self)
-{
-  return self->filepath;
-}
+  if (src)
+    unit->src = strdup(src);
+  else
+    bl_abort("invalid source for %s unit", unit->name);
 
-const char*
-bl_unit_get_src(Unit *self)
-{
-  return self->src;
-}
-
-const char*
-bl_unit_get_name(Unit *self)
-{
-  return self->name;
+  init(unit);
+  return unit;
 }
 
 void
-bl_unit_set_src(Unit *self,
-                char *src)
+bl_unit_delete(bl_unit_t *unit) 
 {
-  free(self->src);
-  self->src = src;
+  free(unit->filepath);
+  free(unit->src);
+  bl_tokens_terminate(&unit->tokens);
+  bl_ast_terminate(&unit->ast);
+  bl_sym_tbl_terminate(&unit->sym_tbl);
+
+  LLVMDisposeModule(unit->module);
+  bl_free(unit);
 }
 
-LLVMModuleRef
-bl_unit_get_module(Unit *self)
+const char*
+bl_unit_get_src_file(bl_unit_t *unit)
 {
-  return self->module;
+  return unit->filepath;
 }
 
-void
-bl_unit_set_llvm_module(Unit *self,
-                        LLVMModuleRef module)
+const char*
+bl_unit_get_src(bl_unit_t *unit)
 {
-//  LLVMDisposeModule(self->module);
-  self->module = module;
+  return unit->src;
 }
+
+const char*
+bl_unit_get_name(bl_unit_t *unit)
+{
+  return unit->name;
+}
+
