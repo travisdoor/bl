@@ -47,8 +47,8 @@ void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
-  LLVMDisposeModule(assembly->module);
-  LLVMContextDispose(assembly->llvm_context);
+  LLVMDisposeModule(assembly->llvm_module);
+  LLVMContextDispose(assembly->llvm_cnt);
 
   const size_t c = bo_array_size(assembly->units);
   bl_unit_t *unit;

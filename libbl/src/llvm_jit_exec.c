@@ -35,16 +35,16 @@ bool
 bl_llvm_jit_exec_run(bl_builder_t *builder,
                      bl_assembly_t *assembly)
 {
-  bl_assert(assembly->module, "invalid assembly module");
+  bl_assert(assembly->llvm_module, "invalid assembly module");
   LLVMExecutionEngineRef engine;
   char *error = NULL;
 
   LLVMLinkInInterpreter();
-  if (LLVMCreateInterpreterForModule(&engine, assembly->module, &error) != 0) {
+  if (LLVMCreateInterpreterForModule(&engine, assembly->llvm_module, &error) != 0) {
     bl_abort("failed to create execution engine with error %s", error);
   }
 
-  LLVMValueRef main = LLVMGetNamedFunction(assembly->module, "main");
+  LLVMValueRef main = LLVMGetNamedFunction(assembly->llvm_module, "main");
   if (main == NULL) {
     bl_builder_error(
       builder,

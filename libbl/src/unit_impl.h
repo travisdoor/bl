@@ -50,7 +50,8 @@ typedef struct bl_unit {
   bl_sym_tbl_t sym_tbl;
 
   /* LLVM Module */
-  LLVMModuleRef module;
+  LLVMModuleRef llvm_module;
+  LLVMContextRef llvm_cnt;
 } bl_unit_t;
 
 

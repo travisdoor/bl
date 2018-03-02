@@ -35,7 +35,7 @@ bool
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly)
 {
-  bl_log(BL_GREEN("linking assembly: %s"), bl_assembly_get_name(assembly));
+  bl_log("linking assembly: " BL_GREEN("%s"), assembly->name);
 
   LLVMContextRef llvm_cnt = LLVMContextCreate();
   LLVMModuleRef dest_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_cnt);
@@ -45,8 +45,8 @@ bl_llvm_linker_run(bl_builder_t *builder,
   LLVMModuleRef module;
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    module = unit->module;
-    unit->module = NULL;
+    module = unit->llvm_module;
+    unit->llvm_module = NULL;
     if (LLVMLinkModules2(dest_module, module)) {
       LLVMDisposeModule(dest_module);
       LLVMContextDispose(llvm_cnt);
@@ -54,7 +54,7 @@ bl_llvm_linker_run(bl_builder_t *builder,
     }
   }
 
-  assembly->llvm_context = llvm_cnt;
-  assembly->module = dest_module;
+  assembly->llvm_cnt = llvm_cnt;
+  assembly->llvm_module = dest_module;
   return true;
 }

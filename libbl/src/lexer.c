@@ -397,8 +397,6 @@ bool
 bl_lexer_run(bl_builder_t *builder,
              bl_unit_t *unit)
 {
-  bl_log(BL_GREEN("processing unit: %s"), bl_unit_get_name(unit));
-
   context_t
     cnt =
     {.builder = builder, .tokens = &unit->tokens, .unit = unit, .c = unit->src, .line = 1, .col = 1,};

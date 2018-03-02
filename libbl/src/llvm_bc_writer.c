@@ -35,12 +35,12 @@ bool
 bl_llvm_bc_writer_run(bl_builder_t *builder,
                       bl_unit_t *unit)
 {
-  bl_assert(unit->module, "invalid llvm module");
+  bl_assert(unit->llvm_module, "invalid llvm module");
 
   char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
   strcpy(export_file, bl_unit_get_src_file(unit));
   strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(unit->module, export_file) != 0) {
+  if (LLVMWriteBitcodeToFile(unit->llvm_module, export_file) != 0) {
     free(export_file);
     bl_builder_error(
       builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);

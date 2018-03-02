@@ -37,8 +37,8 @@ typedef struct bl_assembly
 {
   BArray *units;
   char *name;
-  LLVMModuleRef module;
-  LLVMContextRef llvm_context;
+  LLVMModuleRef llvm_module;
+  LLVMContextRef llvm_cnt;
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

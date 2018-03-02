@@ -27,6 +27,7 @@
 //*****************************************************************************
 
 #include <stdarg.h>
+#include <time.h>
 
 #include "bl/blmemory.h"
 #include "bl/bldebug.h"
@@ -70,6 +71,8 @@ compile_unit(bl_builder_t *builder,
              bl_unit_t *unit,
              uint32_t flags)
 {
+  bl_log("processing unit: " BL_GREEN("%s"), unit->name);
+
   if (flags & BL_BUILDER_LOAD_FROM_FILE && !bl_file_loader_run(builder, unit))
     return false;
 
@@ -131,6 +134,7 @@ bl_builder_compile(bl_builder_t *builder,
                    bl_assembly_t *assembly,
                    uint32_t flags)
 {
+  clock_t begin = clock();
   const size_t c = bo_array_size(assembly->units);
   bl_unit_t *unit;
   for (size_t i = 0; i < c; i++) {
@@ -141,7 +145,13 @@ bl_builder_compile(bl_builder_t *builder,
     }
   }
 
-  return compile_assembly(builder, assembly, flags);
+  bool result = compile_assembly(builder, assembly, flags);
+  clock_t end = clock();
+  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+  bl_log("compiled in " BL_GREEN("%f") " seconds", time_spent);
+
+  return result;
 }
 
 void

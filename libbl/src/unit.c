@@ -81,7 +81,7 @@ bl_unit_delete(bl_unit_t *unit)
   bl_ast_terminate(&unit->ast);
   bl_sym_tbl_terminate(&unit->sym_tbl);
 
-  LLVMDisposeModule(unit->module);
+  LLVMDisposeModule(unit->llvm_module);
   bl_free(unit);
 }
 
