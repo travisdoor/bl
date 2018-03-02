@@ -59,7 +59,7 @@ TEST_F(CompilerTest, simple_definitions)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -69,7 +69,7 @@ TEST_F(CompilerTest, simple_definitions_with_asignement)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -79,7 +79,7 @@ TEST_F(CompilerTest, simple_extern_call)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -89,7 +89,7 @@ TEST_F(CompilerTest, func_def_ordering)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -99,7 +99,7 @@ TEST_F(CompilerTest, assign_expr)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -109,7 +109,7 @@ TEST_F(CompilerTest, simple_call)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -119,7 +119,7 @@ TEST_F(CompilerTest, expressions)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -129,7 +129,7 @@ TEST_F(CompilerTest, compound_sub_statemets)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -139,7 +139,7 @@ TEST_F(CompilerTest, ifs)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }
 
@@ -149,6 +149,6 @@ TEST_F(CompilerTest, loop)
   bl_assembly_add_unit(assembly, unit);
 
   if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(true);
+    ASSERT_TRUE(false);
   }
 }

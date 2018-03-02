@@ -62,6 +62,7 @@ typedef struct
   bl_unit_t *unit;
   LLVMModuleRef mod;
   LLVMBuilderRef llvm_builder;
+  LLVMContextRef llvm_cnt;
   jmp_buf jmp_error;
 
   /* tmps */
@@ -83,7 +84,8 @@ static void
 cnt_terminate(context_t *cnt);
 
 static LLVMTypeRef
-to_llvm_type(bl_type_t *t);
+to_llvm_type(context_t *cnt,
+             bl_type_t *t);
 
 static LLVMValueRef
 get_or_create_const_string(context_t *cnt,
@@ -163,25 +165,26 @@ gen_gstmt(context_t *cnt,
  * Convert known type to LLVM type representation
  */
 LLVMTypeRef
-to_llvm_type(bl_type_t *t)
+to_llvm_type(context_t *cnt,
+             bl_type_t *t)
 {
   switch (t->hash) {
     case BL_TYPE_VOID:
-      return LLVMVoidType();
+      return LLVMVoidTypeInContext(cnt->llvm_cnt);
     case BL_TYPE_I32:
-      return LLVMInt32Type();
+      return LLVMInt32TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_I64:
-      return LLVMInt64Type();
+      return LLVMInt64TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_F32:
-      return LLVMFloatType();
+      return LLVMFloatTypeInContext(cnt->llvm_cnt);
     case BL_TYPE_F64:
-      return LLVMDoubleType();
+      return LLVMDoubleTypeInContext(cnt->llvm_cnt);
     case BL_TYPE_STRING:
-      return LLVMPointerType(LLVMInt8Type(), 0);
+      return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
     case BL_TYPE_CHAR:
-      return LLVMInt8Type();
+      return LLVMInt8TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_BOOL:
-      return LLVMInt1Type();
+      return LLVMInt1TypeInContext(cnt->llvm_cnt);
     default: bl_abort("unknown type");
   }
 }
@@ -197,7 +200,7 @@ get_or_create_const_string(context_t *cnt,
   LLVMValueRef s = LLVMBuildGlobalString(
     cnt->llvm_builder, str, "str");
 
-  s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8Type(), 0));
+  s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0));
   bo_htbl_insert(cnt->const_strings, hash, s);
   return s;
 }
@@ -212,21 +215,21 @@ gen_default(context_t *cnt,
 {
   switch (t->hash) {
     case BL_TYPE_CHAR:
-      return LLVMConstInt(LLVMInt8Type(), 0, true);
+      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_TYPE_I32:
-      return LLVMConstInt(LLVMInt32Type(), 0, true);
+      return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_TYPE_I64:
-      return LLVMConstInt(LLVMInt64Type(), 0, true);
+      return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_TYPE_U32:
-      return LLVMConstInt(LLVMInt32Type(), 0, false);
+      return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_TYPE_U64:
-      return LLVMConstInt(LLVMInt64Type(), 0, false);
+      return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_TYPE_F32:
-      return LLVMConstReal(LLVMFloatType(), 0);
+      return LLVMConstReal(LLVMFloatTypeInContext(cnt->llvm_cnt), 0);
     case BL_TYPE_F64:
-      return LLVMConstReal(LLVMDoubleType(), 0);
+      return LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), 0);
     case BL_TYPE_BOOL:
-      return LLVMConstInt(LLVMInt1Type(), 0, false);
+      return LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_TYPE_STRING: {
       return get_or_create_const_string(cnt, "\0");
     }
@@ -257,7 +260,7 @@ gen_func_params(context_t *cnt,
   bl_node_t *param = NULL;
   for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_get_param(node, i);
-    *out = to_llvm_type(&param->value.param_var_decl.base.type);
+    *out = to_llvm_type(cnt, &param->value.param_var_decl.base.type);
 
     out++;
     out_i++;
@@ -278,25 +281,31 @@ gen_expr(context_t *cnt,
       switch (const_expr->type) {
         case BL_CONST_INT:
           val = LLVMConstInt(
-            LLVMInt32Type(), (unsigned long long int) const_expr->value.as_ulong, true);
+            LLVMInt32TypeInContext(cnt->llvm_cnt),
+            (unsigned long long int) const_expr->value.as_ulong,
+            true);
           break;
         case BL_CONST_DOUBLE:
-          val = LLVMConstReal(LLVMDoubleType(), const_expr->value.as_double);
+          val = LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), const_expr->value.as_double);
           break;
         case BL_CONST_FLOAT:
           val = LLVMConstReal(
-            LLVMFloatType(), const_expr->value.as_float);
+            LLVMFloatTypeInContext(cnt->llvm_cnt), const_expr->value.as_float);
           break;
         case BL_CONST_BOOL:
           val = LLVMConstInt(
-            LLVMInt1Type(), (unsigned long long int) const_expr->value.as_bool, false);
+            LLVMInt1TypeInContext(cnt->llvm_cnt),
+            (unsigned long long int) const_expr->value.as_bool,
+            false);
           break;
         case BL_CONST_STRING:
           val = get_or_create_const_string(cnt, const_expr->value.as_string);
           break;
         case BL_CONST_CHAR:
           val = LLVMConstInt(
-            LLVMInt8Type(), (unsigned long long int) const_expr->value.as_char, false);
+            LLVMInt8TypeInContext(cnt->llvm_cnt),
+            (unsigned long long int) const_expr->value.as_char,
+            false);
           break;
         default: bl_abort("invalid constant type");
       }
@@ -408,7 +417,7 @@ gen_var_decl(context_t *cnt,
 {
   bl_node_var_decl_t *vdcl = &node->value.var_decl;
   LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMTypeRef t = to_llvm_type(&vdcl->base.type);
+  LLVMTypeRef t = to_llvm_type(cnt, &vdcl->base.type);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(vdcl->base.ident.name));
@@ -452,8 +461,13 @@ gen_call_args(context_t *cnt,
 
     if (LLVMIsAAllocaInst(val)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
-      if (LLVMGetAllocatedType(val) == LLVMFloatType()) {
-        *out = LLVMBuildCast(cnt->llvm_builder, LLVMFPExt, *out, LLVMDoubleType(), gname("cast"));
+      if (LLVMGetAllocatedType(val) == LLVMFloatTypeInContext(cnt->llvm_cnt)) {
+        *out = LLVMBuildCast(
+          cnt->llvm_builder,
+          LLVMFPExt,
+          *out,
+          LLVMDoubleTypeInContext(cnt->llvm_cnt),
+          gname("cast"));
       }
     } else
       *out = val;
@@ -508,7 +522,8 @@ gen_if_stmt(context_t *cnt,
 
   if (LLVMIsAAllocaInst(expr))
     expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
-  expr = LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1Type(), gname("tmp"));
+  expr =
+    LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1TypeInContext(cnt->llvm_cnt), gname("tmp"));
 
   /*
    * If condition break generation.
@@ -569,7 +584,7 @@ gen_loop_stmt(context_t *cnt,
   /* break into loop_init */
   LLVMBuildBr(cnt->llvm_builder, loop_decide);
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
-  LLVMValueRef expr = LLVMConstInt(LLVMInt1Type(), true, false);
+  LLVMValueRef expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
   LLVMBuildCondBr(cnt->llvm_builder, expr, loop, loop_cont);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop);
@@ -600,7 +615,7 @@ gen_func(context_t *cnt,
 
   LLVMValueRef func = LLVMGetNamedFunction(cnt->mod, id->name);
   if (func == NULL) {
-    LLVMTypeRef ret = to_llvm_type(type);
+    LLVMTypeRef ret = to_llvm_type(cnt, type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
     func = LLVMAddFunction(cnt->mod, id->name, ret_type);
   }
@@ -627,7 +642,8 @@ gen_func(context_t *cnt,
 
         LLVMValueRef p = LLVMGetParam(func, i);
         LLVMValueRef
-          p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_ident_get_name(ident)));
+          p_tmp =
+          LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_ident_get_name(ident)));
         LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
         bl_llvm_block_context_add(cnt->block_context, p_tmp, ident);
       }
@@ -635,8 +651,8 @@ gen_func(context_t *cnt,
       /*
        * Prepare return value.
        */
-      LLVMTypeRef ret_type = to_llvm_type(&fnode->base.type);
-      if (ret_type != LLVMVoidType()) {
+      LLVMTypeRef ret_type = to_llvm_type(cnt, &fnode->base.type);
+      if (ret_type != LLVMVoidTypeInContext(cnt->llvm_cnt)) {
         cnt->ret_value = LLVMBuildAlloca(cnt->llvm_builder, ret_type, gname("ret"));
       } else {
         cnt->ret_value = NULL;
@@ -756,8 +772,9 @@ cnt_init(bl_builder_t *builder,
 {
   cnt->builder = builder;
   cnt->unit = unit;
-  cnt->mod = LLVMModuleCreateWithName(unit->name);
-  cnt->llvm_builder = LLVMCreateBuilder();
+  cnt->llvm_cnt = LLVMContextCreate();
+  cnt->mod = LLVMModuleCreateWithNameInContext(unit->name, cnt->llvm_cnt);
+  cnt->llvm_builder = LLVMCreateBuilderInContext(cnt->llvm_cnt);
   cnt->block_context = bl_llvm_block_context_new();
   cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
 }
@@ -769,6 +786,7 @@ cnt_terminate(context_t *cnt)
   LLVMDisposeModule(cnt->mod);
   LLVMDisposeMessage(cnt->error);
   LLVMDisposeMessage(cnt->error_src);
+  LLVMContextDispose(cnt->llvm_cnt);
   bo_unref(cnt->const_strings);
   bo_unref(cnt->block_context);
 }
@@ -798,7 +816,9 @@ bl_llvm_backend_run(bl_builder_t *builder,
   }
 
   unit->llvm_module = cnt.mod;
+  unit->llvm_cnt = cnt.llvm_cnt;
   cnt.mod = NULL;
+  cnt.llvm_cnt = NULL;
   cnt_terminate(&cnt);
   return true;
 }
