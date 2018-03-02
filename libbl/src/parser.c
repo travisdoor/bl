@@ -82,6 +82,9 @@ static bl_node_t *
 parse_func_decl(context_t *cnt);
 
 static bl_node_t *
+parse_enum_decl(context_t *cnt);
+
+static bl_node_t *
 parse_param_var_decl(context_t *cnt);
 
 static bl_node_t *
@@ -120,10 +123,14 @@ stmt:
     goto stmt;
   }
 
+  if (bl_node_glob_stmt_add_child(gstmt, parse_enum_decl(cnt))) {
+    goto stmt;
+  }
+
   if (!bl_node_glob_stmt_add_child(gstmt, parse_func_decl(cnt))) {
     bl_token_t *tok = bl_tokens_peek(cnt->tokens);
     parse_error(cnt,
-                "%s %d:%d expected function declaration",
+                "%s %d:%d unexpected declaration in global scope",
                 cnt->unit->filepath,
                 tok->line,
                 tok->col);
@@ -282,8 +289,7 @@ parse_if_stmt(context_t *cnt)
                   tok->col);
     }
 
-    ifstmt =
-      bl_ast_new_node(&cnt->unit->ast, BL_NODE_IF_STMT, tok->src_loc, tok->line, tok->col);
+    ifstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_IF_STMT, tok->src_loc, tok->line, tok->col);
     ifstmt->value.if_stmt.expr = expr;
     ifstmt->value.if_stmt.then_stmt = then_stmt;
 
@@ -406,6 +412,7 @@ parse_func_decl(context_t *cnt)
   if (bl_tokens_is_seq(
     cnt->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
 
+    tok = bl_tokens_peek(cnt->tokens);
     func_decl = bl_ast_new_node(
       &cnt->unit->ast, BL_NODE_FUNC_DECL, tok->src_loc, tok->line, tok->col);
 
@@ -488,6 +495,56 @@ parse_param_var_decl(context_t *cnt)
   bl_type_init(&param->value.param_var_decl.base.type, type);
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
   return param;
+}
+
+bl_node_t *
+parse_enum_decl(context_t *cnt)
+{
+  bl_node_t *enm = NULL;
+  bl_token_t *tok;
+
+  tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM);
+  if (tok) {
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_IDENT) {
+      parse_error(cnt, "%s %d:%d expected enum name", cnt->unit->filepath, tok->line, tok->col);
+    }
+
+    /* TODO parse base type: enum my_enum : i32 {} */
+
+    enm = bl_ast_new_node(
+      &cnt->unit->ast, BL_NODE_ENUM_DECL, tok->src_loc, tok->line, tok->col);
+
+    /* eat '{' */
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_LBLOCK) {
+      parse_error(cnt, "%s %d:%d expected enum body "
+        BL_YELLOW("'{'"), cnt->unit->filepath, tok->line, tok->col);
+    }
+
+elem:
+    /* eat ident */
+    if ((tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT))) {
+      bl_log("%s", tok->value.as_string);
+      if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+        goto elem;
+      } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+        tok = bl_tokens_consume(cnt->tokens);
+        parse_error(cnt, "%s %d:%d enum elements must be separated by comma "
+          BL_YELLOW("','"), cnt->unit->filepath, tok->line, tok->col + tok->len);
+      }
+    }
+
+
+    /* eat '}' */
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, "%s %d:%d expected end of enum body "
+        BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
+    }
+  }
+
+  return enm;
 }
 
 bl_node_t *

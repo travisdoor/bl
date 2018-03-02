@@ -34,8 +34,10 @@
 
 typedef struct bl_ast
 {
-  BArray *cache;
   bl_node_t *root;
+  bl_node_t *cache_begin;
+  bl_node_t *chunk_current;
+  size_t chunk_used;
 } bl_ast_t;
 
 void

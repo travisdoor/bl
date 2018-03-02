@@ -42,6 +42,7 @@
   nt(RETURN_STMT, "return_stmt") \
   nt(LOOP_STMT, "loop_stmt") \
   nt(CONTINUE_STMT, "continue_stmt") \
+  nt(ENUM_DECL, "enum_decl") \
   nt(FUNC_DECL, "func_decl") \
   nt(VAR_DECL, "var_decl") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
@@ -144,6 +145,12 @@ typedef struct bl_node_param_var_decl
   bl_node_decl_t base;
 } bl_node_param_var_decl_t;
 
+typedef struct bl_node_enum_decl
+{
+  bl_node_decl_t base;
+  BArray *constants;
+} bl_node_enum_decl_t;
+
 /*
  * Expressions
  */
@@ -202,6 +209,7 @@ typedef struct bl_node
     bl_node_func_decl_t func_decl;
     bl_node_var_decl_t var_decl;
     bl_node_param_var_decl_t param_var_decl;
+    bl_node_enum_decl_t enum_decl;
 
     bl_node_const_expr_t const_expr;
     bl_node_decl_ref_expr_t decl_ref_expr;
@@ -211,14 +219,15 @@ typedef struct bl_node
   } value;
 } bl_node_t;
 
-bl_node_t *
-bl_node_new(bl_node_type_e type,
-            const char *generated_from,
-            int line,
-            int col);
+void
+bl_node_init(bl_node_t *node,
+             bl_node_type_e type,
+             const char *generated_from,
+             int line,
+             int col);
 
 void
-bl_node_delete(bl_node_t *node);
+bl_node_terminate(bl_node_t *node);
 
 /* helper functions */
 const char *
@@ -268,5 +277,16 @@ bl_node_call_expr_get_arg_count(bl_node_t *node);
 bl_node_t *
 bl_node_call_expr_get_arg(bl_node_t *node,
                           int i);
+
+bl_node_t *
+bl_node_enum_decl_add_const(bl_node_t *node,
+                            bl_node_t *c);
+
+int
+bl_node_enum_decl_get_const_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_enum_decl_get_conts(bl_node_t *node,
+                            int i);
 
 #endif //BL_NODE_IMPL_H

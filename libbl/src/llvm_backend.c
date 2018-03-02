@@ -760,7 +760,7 @@ gen_gstmt(context_t *cnt,
       case BL_NODE_FUNC_DECL:
         gen_func(cnt, child, false);
         break;
-      default: gen_error(cnt, "invalid node in global scope");
+      default: bl_warning("invalid node in global scope");
     }
   }
 }

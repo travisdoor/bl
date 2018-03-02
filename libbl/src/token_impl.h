@@ -56,6 +56,7 @@ BO_BEGIN_DECLS
   sm(FALSE,      "false") \
   sm(EXTERN,     "extern") \
   sm(RETURN,     "return") \
+  sm(ENUM,       "enum") \
   sm(STRUCT,     "struct") \
   sm(PUBLIC,     "public") \
   sm(AS,         "as") \
