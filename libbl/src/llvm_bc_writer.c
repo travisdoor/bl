@@ -37,8 +37,8 @@ bl_llvm_bc_writer_run(bl_builder_t *builder,
 {
   bl_assert(unit->llvm_module, "invalid llvm module");
 
-  char *export_file = malloc(sizeof(char) * (strlen(bl_unit_get_src_file(unit)) + 4));
-  strcpy(export_file, bl_unit_get_src_file(unit));
+  char *export_file = malloc(sizeof(char) * (strlen(unit->filepath) + 4));
+  strcpy(export_file, unit->filepath);
   strcat(export_file, ".bc");
   if (LLVMWriteBitcodeToFile(unit->llvm_module, export_file) != 0) {
     free(export_file);

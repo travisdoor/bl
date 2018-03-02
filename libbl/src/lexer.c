@@ -93,11 +93,7 @@ scan_comment(context_t *cnt,
       /*
        * Unterminated comment
        */
-      scan_error(cnt,
-                 "%s %d:%d unterminated comment block.",
-                 bl_unit_get_name(cnt->unit),
-                 cnt->line,
-                 cnt->col);
+      scan_error(cnt, "%s %d:%d unterminated comment block.", cnt->unit->name, cnt->line, cnt->col);
     }
     if (strncmp(cnt->c, term, len) == 0) {
       break;
@@ -196,11 +192,7 @@ scan:
         }
       }
       case '\0': {
-        scan_error(cnt,
-                   "%s %d:%d unterminated string.",
-                   bl_unit_get_name(cnt->unit),
-                   cnt->line,
-                   cnt->col);
+        scan_error(cnt, "%s %d:%d unterminated string.", cnt->unit->name, cnt->line, cnt->col);
       }
       case '\\':
         /* special character */
@@ -361,11 +353,7 @@ scan:
           scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
           goto scan;
         case BL_SYM_RBCOMMENT: {
-          scan_error(cnt,
-                     "%s %d:%d unexpected token.",
-                     bl_unit_get_name(cnt->unit),
-                     cnt->line,
-                     cnt->col);
+          scan_error(cnt, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line, cnt->col);
         }
         default:
           cnt->col += len;
@@ -387,7 +375,7 @@ scan:
     goto push_token;
 
   /* When symbol is unknown report error */
-  scan_error(cnt, "%s %d:%d unexpected token.", bl_unit_get_name(cnt->unit), cnt->line, cnt->col);
+  scan_error(cnt, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line, cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
   goto scan;

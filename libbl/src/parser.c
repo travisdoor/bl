@@ -726,7 +726,7 @@ bl_parser_run(bl_builder_t *builder,
 
   /* TODO: move to another stage??? */
   if (!bl_sym_tbl_try_satisfy_all(&unit->sym_tbl)) {
-    parse_error(&cnt, "%s unknown function detected.", bl_unit_get_src_file(unit));
+    parse_error(&cnt, "%s unknown function detected.", unit->filepath);
   }
 
   return true;
