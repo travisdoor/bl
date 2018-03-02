@@ -37,7 +37,7 @@
 #define BL_NTYPE_LIST\
   nt(GLOBAL_STMT, "global_stmt") \
   nt(CMP_STMT, "compound_stmt") \
-  nt(IF_STMT, "if statement") \
+  nt(IF_STMT, "if_statement") \
   nt(BREAK_STMT, "break_stmt") \
   nt(RETURN_STMT, "return_stmt") \
   nt(LOOP_STMT, "loop_stmt") \

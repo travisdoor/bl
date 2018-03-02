@@ -31,7 +31,6 @@ set(HEADER_FILES
 set(HEADER_FILES_IMPL
         src/ast/ast_impl.h
         src/builder_impl.h
-        src/containers/array_impl.h
         src/llvm_bl_cnt_impl.h
         src/sym_tbl_impl.h
         src/tokens_impl.h
@@ -46,7 +45,6 @@ set(HEADER_FILES_IMPL
 set(SOURCE_FILES
         src/tokens.c
         src/file_loader.c
-        src/containers/array.c
         src/ast_printer.c
         src/token.c
         src/unit.c
