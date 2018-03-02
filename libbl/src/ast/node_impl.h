@@ -30,7 +30,7 @@
 #define BL_NODE_IMPL_H
 
 #include <bobject/containers/array.h>
-#include "bl/token.h"
+#include "token_impl.h"
 #include "identifier_impl.h"
 #include "type_impl.h"
 

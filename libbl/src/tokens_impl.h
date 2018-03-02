@@ -32,7 +32,7 @@
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
 #include <bobject/containers/array.h>
-#include "bl/token.h"
+#include "token_impl.h"
 
 typedef struct bl_tokens {
   BArray *buf;

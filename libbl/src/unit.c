@@ -28,7 +28,7 @@
 
 #include <string.h>
 #include "unit_impl.h"
-#include "bl/blmemory.h"
+#include "blmemory_impl.h"
 #include "bl/bldebug.h"
 
 static void

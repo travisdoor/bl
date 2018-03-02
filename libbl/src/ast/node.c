@@ -29,7 +29,7 @@
 #include <string.h>
 #include "ast/node_impl.h"
 #include "bl/bldebug.h"
-#include "bl/blmemory.h"
+#include "blmemory_impl.h"
 
 static const char *node_strings[] = {
 #define nt(tok, str) str,

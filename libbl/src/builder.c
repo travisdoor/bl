@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "bl/blmemory.h"
+#include "blmemory_impl.h"
 #include "bl/bldebug.h"
 
 #include "builder_impl.h"

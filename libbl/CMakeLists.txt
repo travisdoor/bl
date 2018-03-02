@@ -20,21 +20,21 @@ llvm_map_components_to_libnames(LLVM_LIBS
 
 set(HEADER_FILES
         include/bl/bl.h
-        include/bl/bldebug.h
         include/bl/unit.h
         include/bl/bllimits.h
-        include/bl/token.h
         include/bl/assembly.h
         include/bl/builder.h
-        include/bl/blmemory.h)
+        include/bl/bldebug.h)
 
 set(HEADER_FILES_IMPL
         src/ast/ast_impl.h
         src/builder_impl.h
+        src/blmemory_impl.h
         src/llvm_bl_cnt_impl.h
         src/sym_tbl_impl.h
         src/tokens_impl.h
         src/assembly_impl.h
+        src/token_impl.h
         src/identifier_impl.h
         src/ast/node_impl.h
         src/type_impl.h
@@ -46,7 +46,7 @@ set(SOURCE_FILES
         src/tokens.c
         src/file_loader.c
         src/ast_printer.c
-        src/token.c
+        src/token_impl.c
         src/unit.c
         src/parser.c
         src/llvm_backend.c
