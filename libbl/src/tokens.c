@@ -27,133 +27,93 @@
 //*****************************************************************************
 
 #include <stdarg.h>
-#include "bl/tokens.h"
-
-/* class Tokens */
-
-/* class Tokens constructor params */
-bo_decl_params_begin(Tokens)
-  /* constructor params */
-bo_end();
-
-/* class Tokens object members */
-bo_decl_members_begin(Tokens, BObject)
-  /* members */
-  BArray *buf;
-  BArray *string_cache;
-  size_t iter;
-  size_t marker;
-bo_end();
-
-bo_impl_type(Tokens, BObject);
+#include "tokens_impl.h"
 
 void
-TokensKlass_init(TokensKlass *klass)
+bl_tokens_init(bl_tokens_t *tokens)
 {
+  tokens->buf = bo_array_new(sizeof(bl_token_t));
+  tokens->string_cache = bo_array_new_bo(bo_typeof(BString), true);
 }
 
 void
-Tokens_ctor(Tokens *self,
-            TokensParams *p)
+bl_tokens_terminate(bl_tokens_t *tokens)
 {
-  /* constructor */
-  self->buf = bo_array_new(sizeof(bl_token_t));
-  self->string_cache = bo_array_new_bo(bo_typeof(BString), true);
+  bo_unref(tokens->buf);
+  bo_unref(tokens->string_cache);
 }
 
 void
-Tokens_dtor(Tokens *self)
-{
-  bo_unref(self->buf);
-  bo_unref(self->string_cache);
-}
-
-bo_copy_result
-Tokens_copy(Tokens *self,
-            Tokens *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class Tokens end */
-
-Tokens *
-bl_tokens_new(void)
-{
-  return bo_new(Tokens, NULL);
-}
-
-void
-bl_tokens_push(Tokens *self,
+bl_tokens_push(bl_tokens_t *tokens,
                bl_token_t *t)
 {
-  bo_array_push_back(self->buf, *t);
+  bo_array_push_back(tokens->buf, *t);
 }
 
 bl_token_t *
-bl_tokens_peek(Tokens *self)
+bl_tokens_peek(bl_tokens_t *tokens)
 {
-  return bl_tokens_peek_nth(self, 1);
+  return bl_tokens_peek_nth(tokens, 1);
 }
 
 bl_token_t *
-bl_tokens_peek_2nd(Tokens *self)
+bl_tokens_peek_2nd(bl_tokens_t *tokens)
 {
-  return bl_tokens_peek_nth(self, 2);
+  return bl_tokens_peek_nth(tokens, 2);
 }
 
 bl_token_t *
-bl_tokens_peek_last(Tokens *self)
+bl_tokens_peek_last(bl_tokens_t *tokens)
 {
-  const size_t i = bo_array_size(self->buf);
+  const size_t i = bo_array_size(tokens->buf);
   if (i == 0) {
     return NULL;
   }
 
-  return &bo_array_at(self->buf, i, bl_token_t);
+  return &bo_array_at(tokens->buf, i, bl_token_t);
 }
 
 bl_token_t *
-bl_tokens_peek_nth(Tokens *self,
+bl_tokens_peek_nth(bl_tokens_t *tokens,
                    size_t n)
 {
-  const size_t i = self->iter + n - 1;
-  if (i < bo_array_size(self->buf))
-    return &bo_array_at(self->buf, i, bl_token_t);
+  const size_t i = tokens->iter + n - 1;
+  if (i < bo_array_size(tokens->buf))
+    return &bo_array_at(tokens->buf, i, bl_token_t);
 
   return NULL;
 }
 
 bl_token_t *
-bl_tokens_consume(Tokens *self)
+bl_tokens_consume(bl_tokens_t *tokens)
 {
-  if (self->iter < bo_array_size(self->buf))
-    return &bo_array_at(self->buf, self->iter++, bl_token_t);
+  if (tokens->iter < bo_array_size(tokens->buf))
+    return &bo_array_at(tokens->buf, tokens->iter++, bl_token_t);
 
   return NULL;
 }
 
 bl_token_t **
-bl_tokens_consume_n(Tokens *self,
+bl_tokens_consume_n(bl_tokens_t *tokens,
                     int n)
 {
-  if (self->iter + n < bo_array_size(self->buf)) {
-    return &bo_array_at(self->buf, self->iter, bl_token_t *);
-    self->iter += n;
+  if (tokens->iter + n < bo_array_size(tokens->buf)) {
+    return &bo_array_at(tokens->buf, tokens->iter, bl_token_t *);
+    tokens->iter += n;
   }
 
   return NULL;
 }
 
 bl_token_t *
-bl_tokens_consume_if(Tokens *self,
+bl_tokens_consume_if(bl_tokens_t *tokens,
                      bl_sym_e sym)
 {
   bl_token_t *tok;
-  if (self->iter < bo_array_size(self->buf)) {
-    tok = &bo_array_at(self->buf, self->iter, bl_token_t);
+  if (tokens->iter < bo_array_size(tokens->buf)) {
+    tok = &bo_array_at(tokens->buf, tokens->iter, bl_token_t);
     if (tok->sym == sym) {
-      self->iter++;
+      tokens->iter++;
       return tok;
     }
   }
@@ -163,49 +123,49 @@ bl_tokens_consume_if(Tokens *self,
 }
 
 bool
-bl_tokens_current_is(Tokens *self,
+bl_tokens_current_is(bl_tokens_t *tokens,
                      bl_sym_e sym)
 {
-  return (&bo_array_at(self->buf, self->iter, bl_token_t))->sym == sym;
+  return (&bo_array_at(tokens->buf, tokens->iter, bl_token_t))->sym == sym;
 }
 
 bool
-bl_tokens_next_is(Tokens *self,
+bl_tokens_next_is(bl_tokens_t *tokens,
                   bl_sym_e sym)
 {
-  return (&bo_array_at(self->buf, self->iter + 1, bl_token_t))->sym == sym;
+  return (&bo_array_at(tokens->buf, tokens->iter + 1, bl_token_t))->sym == sym;
 }
 
 bool
-bl_tokens_current_is_not(Tokens *self,
+bl_tokens_current_is_not(bl_tokens_t *tokens,
                          bl_sym_e sym)
 {
-  return (&bo_array_at(self->buf, self->iter, bl_token_t))->sym != sym;
+  return (&bo_array_at(tokens->buf, tokens->iter, bl_token_t))->sym != sym;
 }
 
 bool
-bl_tokens_next_is_not(Tokens *self,
+bl_tokens_next_is_not(bl_tokens_t *tokens,
                       bl_sym_e sym)
 {
-  return (&bo_array_at(self->buf, self->iter + 1, bl_token_t))->sym != sym;
+  return (&bo_array_at(tokens->buf, tokens->iter + 1, bl_token_t))->sym != sym;
 }
 
 bool
-bl_tokens_is_seq(Tokens *self,
+bl_tokens_is_seq(bl_tokens_t *tokens,
                  int cnt,
                  ...)
 {
   bool ret = true;
-  size_t c = bo_array_size(self->buf);
+  size_t c = bo_array_size(tokens->buf);
   bl_sym_e sym = BL_SYM_EOF;
-  cnt += self->iter;
+  cnt += tokens->iter;
 
   va_list valist;
   va_start(valist, cnt);
 
-  for (size_t i = self->iter; i < cnt && i < c; i++) {
+  for (size_t i = tokens->iter; i < cnt && i < c; i++) {
     sym = va_arg(valist, bl_sym_e);
-    if ((&bo_array_at(self->buf, i, bl_token_t))->sym != sym) {
+    if ((&bo_array_at(tokens->buf, i, bl_token_t))->sym != sym) {
       ret = false;
       break;
     }
@@ -216,39 +176,39 @@ bl_tokens_is_seq(Tokens *self,
 }
 
 void
-bl_tokens_set_marker(Tokens *self)
+bl_tokens_set_marker(bl_tokens_t *tokens)
 {
-  self->marker = self->iter;
+  tokens->marker = tokens->iter;
 }
 
 void
-bl_tokens_back_to_marker(Tokens *self)
+bl_tokens_back_to_marker(bl_tokens_t *tokens)
 {
-  self->iter = self->marker;
+  tokens->iter = tokens->marker;
 }
 
 void
-bl_tokens_resert_iter(Tokens *self)
+bl_tokens_resert_iter(bl_tokens_t *tokens)
 {
-  self->iter = 0;
+  tokens->iter = 0;
 }
 
 BArray *
-bl_tokens_get_all(Tokens *self)
+bl_tokens_get_all(bl_tokens_t *tokens)
 {
-  return self->buf;
+  return tokens->buf;
 }
 
 int
-bl_tokens_count(Tokens *self)
+bl_tokens_count(bl_tokens_t *tokens)
 {
-  return bo_array_size(self->buf);
+  return (int) bo_array_size(tokens->buf);
 }
 
 BString *
-bl_tokens_create_cached_str(Tokens *self)
+bl_tokens_create_cached_str(bl_tokens_t *tokens)
 {
   BString *str = bo_string_new(64);
-  bo_array_push_back(self->string_cache, str);
+  bo_array_push_back(tokens->string_cache, str);
   return str;
 }

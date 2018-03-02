@@ -26,190 +26,184 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "bl/builder.h"
-#include "bl/file_loader.h"
-#include "bl/lexer.h"
-#include "bl/parser.h"
-#include "bl/analyzer.h"
-#include "bl/llvm_backend.h"
-#include "bl/llvm_jit_exec.h"
-#include "bl/token_printer.h"
-#include "bl/ast_printer.h"
-#include "bl/llvm_bc_writer.h"
-#include "bl/llvm_linker.h"
+#include <stdarg.h>
+#include <time.h>
+
+#include "bl/blmemory.h"
 #include "bl/bldebug.h"
 
-/* class Builder */
+#include "builder_impl.h"
+#include "assembly_impl.h"
+#include "unit_impl.h"
+
+#include "stages_impl.h"
+
+#define MAX_MSG_LEN 1024
 
 static bool
-compile_group_unit(Builder *self,
-                   Assembly *assembly,
-                   bl_compile_group_e group);
+compile_unit(bl_builder_t *builder,
+             bl_unit_t *unit,
+             uint32_t flags);
 
 static bool
-compile_group_assembly(Builder *self,
-                       Assembly *assembly,
-                       bl_compile_group_e group);
+compile_assembly(bl_builder_t *builder,
+                 bl_assembly_t *assembly,
+                 uint32_t flags);
 
-/* class Builder constructor params */
-bo_decl_params_begin(Builder)
-  /* constructor params */
-  unsigned int flags;
-  Pipeline *pipeline_unit;
-bo_end();
-
-/* class Builder object members */
-bo_decl_members_begin(Builder, BObject)
-  /* members */
-  Pipeline *pipeline_unit;
-  Pipeline *pipeline_assembly;
-  Actor *failed;
-bo_end();
-
-bo_impl_type(Builder, BObject);
-
-void
-BuilderKlass_init(BuilderKlass *klass)
+static void
+default_error_handler(const char *msg,
+                      void *context)
 {
+  bl_log(BL_RED("error: ")
+           "%s", msg);
 }
 
-void
-Builder_ctor(Builder *self,
-             BuilderParams *p)
+static void
+default_warning_handler(const char *msg,
+                        void *context)
 {
-  /* constructor */
-  /* initialize self */
-  if (p->pipeline_unit != NULL) {
-    self->pipeline_unit = bo_ref(p->pipeline_unit);
-  } else {
-    self->pipeline_unit = bl_pipeline_new();
-
-    if (p->flags & BL_BUILDER_LOAD_FROM_FILE) {
-      Stage *file_loader = (Stage *) bl_file_loader_new(BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline_unit, file_loader);
-    }
-
-    Stage *lexer = (Stage *) bl_lexer_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline_unit, lexer);
-
-    if (p->flags & BL_BUILDER_PRINT_TOKENS) {
-      Stage *token_printer = (Stage *) bl_token_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline_unit, token_printer);
-    }
-
-    Stage *parser = (Stage *) bl_parser_new(BL_CGROUP_PRE_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline_unit, parser);
-
-    if (p->flags & BL_BUILDER_PRINT_AST) {
-      Stage *ast_printer = (Stage *) bl_ast_printer_new(stdout, BL_CGROUP_PRE_ANALYZE);
-      bl_pipeline_add_stage(self->pipeline_unit, ast_printer);
-    }
-
-    Stage *analyzer = (Stage *) bl_analyzer_new(BL_CGROUP_ANALYZE);
-    bl_pipeline_add_stage(self->pipeline_unit, analyzer);
-
-    Stage *llvm = (Stage *) bl_llvm_backend_new(BL_CGROUP_GENERATE);
-    bl_pipeline_add_stage(self->pipeline_unit, llvm);
-
-
-    if (p->flags & BL_BUILDER_EXPORT_BC) {
-      Stage *llvm_bc_writer = (Stage *) bl_llvm_bc_writer_new(BL_CGROUP_POST_GENERATE);
-      bl_pipeline_add_stage(self->pipeline_unit, llvm_bc_writer);
-    }
-  }
-
-  self->pipeline_assembly = bl_pipeline_new();
-
-  Stage *linker = (Stage *) bl_llvm_linker_new(BL_CGROUP_ASSEMBLY_BUILD);
-  bl_pipeline_add_stage(self->pipeline_assembly, linker);
-
-  if (p->flags & BL_BUILDER_RUN) {
-    Stage *llvm_jit = (Stage *) bl_llvm_jit_exec_new(BL_CGROUP_ASSEMBLY_BUILD);
-    bl_pipeline_add_stage(self->pipeline_assembly, llvm_jit);
-  }
-}
-
-void
-Builder_dtor(Builder *self)
-{
-  bo_unref(self->pipeline_unit);
-  bo_unref(self->pipeline_assembly);
-}
-
-bo_copy_result
-Builder_copy(Builder *self,
-             Builder *other)
-{
-  return BO_NO_COPY;
-}
-
-/* class Builder end */
-
-bool
-compile_group_unit(Builder *self,
-                   Assembly *assembly,
-                   bl_compile_group_e group)
-{
-  const int c = bl_assembly_get_unit_count(assembly);
-  Unit *unit = NULL;
-  for (int i = 0; i < c; i++) {
-    unit = bl_assembly_get_unit(assembly, i);
-    if (!bl_pipeline_run(self->pipeline_unit, (Actor *) unit, group)) {
-      self->failed = bl_pipeline_get_failed(self->pipeline_unit);
-      return false;
-    }
-  }
-
-  return true;
+  bl_log(BL_YELLOW("warning: ")
+           "%s", msg);
 }
 
 bool
-compile_group_assembly(Builder *self,
-                       Assembly *assembly,
-                       bl_compile_group_e group)
+compile_unit(bl_builder_t *builder,
+             bl_unit_t *unit,
+             uint32_t flags)
 {
-  if (!bl_pipeline_run(self->pipeline_assembly, (Actor *) assembly, group)) {
-    self->failed = bl_pipeline_get_failed(self->pipeline_assembly);
+  bl_log("processing unit: " BL_GREEN("%s"), unit->name);
+
+  if (flags & BL_BUILDER_LOAD_FROM_FILE && !bl_file_loader_run(builder, unit))
     return false;
-  }
+
+  if (!bl_lexer_run(builder, unit))
+    return false;
+
+  if (flags & BL_BUILDER_PRINT_TOKENS && !bl_token_printer_run(unit))
+    return false;
+
+  if (!bl_parser_run(builder, unit))
+    return false;
+
+  if (flags & BL_BUILDER_PRINT_AST && !bl_ast_printer_run(unit))
+    return false;
+
+  if (!bl_llvm_backend_run(builder, unit))
+    return false;
+
+  if (flags & BL_BUILDER_EXPORT_BC && !bl_llvm_bc_writer_run(builder, unit))
+    return false;
+
   return true;
-}
-
-Builder *
-bl_builder_new(unsigned int flags)
-{
-  BuilderParams p = {.flags = flags, .pipeline_unit = NULL};
-  return bo_new(Builder, &p);
-}
-
-Builder *
-bl_builder_new_custom(Pipeline *pipeline)
-{
-  BuilderParams p = {.flags = 0, .pipeline_unit = pipeline};
-  return bo_new(Builder, &p);
 }
 
 bool
-bl_builder_compile(Builder *self,
-                   Assembly *assembly)
+compile_assembly(bl_builder_t *builder,
+                 bl_assembly_t *assembly,
+                 uint32_t flags)
 {
-  self->failed = NULL;
+  if (!bl_llvm_linker_run(builder, assembly))
+    return false;
 
-  for (int i = 0; i < BL_CGROUP_COUNT; i++) {
-    if (!compile_group_unit(self, assembly, i))
-      return false;
-  }
-
-  for (int i = 0; i < BL_CGROUP_COUNT; i++) {
-    if (!compile_group_assembly(self, assembly, i))
-      return false;
-  }
+  if (flags & BL_BUILDER_RUN && !bl_llvm_jit_exec_run(builder, assembly))
+    return false;
 
   return true;
 }
 
-Actor *
-bl_builder_get_failed(Builder *self)
+/* public */
+bl_builder_t *
+bl_builder_new(void)
 {
-  return self->failed;
+  bl_builder_t *builder = bl_calloc(1, sizeof(bl_builder_t));
+
+  builder->on_error = default_error_handler;
+  builder->on_warning = default_warning_handler;
+
+  return builder;
+}
+
+void
+bl_builder_delete(bl_builder_t *builder)
+{
+  bl_free(builder);
+}
+
+bool
+bl_builder_compile(bl_builder_t *builder,
+                   bl_assembly_t *assembly,
+                   uint32_t flags)
+{
+  clock_t begin = clock();
+  const size_t c = bo_array_size(assembly->units);
+  bl_unit_t *unit;
+  for (size_t i = 0; i < c; i++) {
+    unit = bo_array_at(assembly->units, i, bl_unit_t *);
+    /* IDEA: can run in separate thread */
+    if (!compile_unit(builder, unit, flags)) {
+      return false;
+    }
+  }
+
+  bool result = compile_assembly(builder, assembly, flags);
+  clock_t end = clock();
+  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+  bl_log("compiled in " BL_GREEN("%f") " seconds", time_spent);
+
+  return result;
+}
+
+void
+bl_builder_set_error_diag_handler(bl_builder_t *builder,
+                                  bl_diag_handler_f handler,
+                                  void *context)
+{
+  builder->on_error = handler;
+  builder->on_error_cnt = context;
+}
+
+void
+bl_builder_set_warning_diag_handler(bl_builder_t *builder,
+                                    bl_diag_handler_f handler,
+                                    void *context)
+{
+  builder->on_warning = handler;
+  builder->on_warning_cnt = context;
+}
+
+void
+bl_diag_delete_msg(char *msg)
+{
+  free(msg);
+}
+
+void
+bl_builder_error(bl_builder_t *builder,
+                 const char *format,
+                 ...)
+{
+  char error[MAX_MSG_LEN] = {0};
+
+  va_list args;
+  va_start(args, format);
+  vsnprintf(error, MAX_MSG_LEN, format, args);
+  va_end(args);
+
+  builder->on_error(&error[0], builder->on_error_cnt);
+}
+
+void
+bl_builder_warning(bl_builder_t *builder,
+                   const char *format,
+                   ...)
+{
+  char warning[MAX_MSG_LEN] = {0};
+
+  va_list args;
+  va_start(args, format);
+  vsnprintf(warning, MAX_MSG_LEN, format, args);
+  va_end(args);
+
+  builder->on_warning(&warning[0], builder->on_error_cnt);
 }

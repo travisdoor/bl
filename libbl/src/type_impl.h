@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_return_stmt.c
+// File:   type_impl.h
 // Author: Martin Dorazil
-// Date:   08/02/2018
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,56 +26,56 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/node_return_stmt_impl.h"
+#ifndef BL_TYPE_IMPL_H
+#define BL_TYPE_IMPL_H
 
-/* NodeReturnStmt members */
+#include <stdint.h>
+#include <stdbool.h>
 
-bo_decl_members_begin(NodeReturnStmt, Node)
-  NodeExpr *expr;
-bo_end();
+#define BL_TYPE_LIST \
+  tp(NONE,    "") \
+  tp(VOID,   "void") \
+  tp(CHAR,   "char") \
+  tp(BOOL,   "bool") \
+  tp(I32,    "i32") \
+  tp(I64,    "i64") \
+  tp(U32,    "u32") \
+  tp(U64,    "u64") \
+  tp(F32,    "f32") \
+  tp(F64,    "f64") \
+  tp(SIZE,   "size") \
+  tp(STRING, "string") \
 
-bo_impl_type(NodeReturnStmt, Node);
+typedef enum
+{
+#define tp(tok, str) BL_TYPE_##tok,
+  BL_TYPE_LIST
+#undef tp
+  BL_TYPE_COUNT
+} bl_type_e;
 
-/* NodeReturnStmt class init */
+typedef struct bl_type
+{
+  const char *name;
+  uint32_t hash;
+} bl_type_t;
+
 void
-NodeReturnStmtKlass_init(NodeReturnStmtKlass *klass)
-{
-}
-
-/* NodeReturnStmt constructor */
-void
-NodeReturnStmt_ctor(NodeReturnStmt *self, NodeReturnStmtParams *p)
-{
-  bo_parent_ctor(Node, p);
-}
-
-/* NodeReturnStmt destructor */
-void
-NodeReturnStmt_dtor(NodeReturnStmt *self)
-{
-}
-
-/* NodeReturnStmt copy constructor */
-bo_copy_result
-NodeReturnStmt_copy(NodeReturnStmt *self, NodeReturnStmt *other)
-{
-  return BO_NO_COPY;
-}
+bl_type_init(bl_type_t *type,
+             const char *name);
 
 bool
-bl_node_return_stmt_add_expr(NodeReturnStmt *self,
-                             NodeExpr       *expr)
-{
-  if (expr == NULL)
-    return false;
+bl_type_is(bl_type_t *type,
+           uint32_t t);
 
-  self->expr = expr;
-  return true;
-}
+bool
+bl_type_is_fundamental(bl_type_t *type);
 
-NodeExpr *
-bl_node_return_stmt_get_expr(NodeReturnStmt *self)
-{
-  return self->expr;
-}
+bool
+bl_type_is_user_defined(bl_type_t *type);
 
+bool
+bl_type_is_not(bl_type_t *type,
+               uint32_t t);
+
+#endif //BL_TYPE_IMPL_H

@@ -27,171 +27,79 @@
 //*****************************************************************************
 
 #include <string.h>
-#include "bl/unit.h"
-#include "pipeline/actor_impl.h"
+#include "unit_impl.h"
+#include "bl/blmemory.h"
+#include "bl/bldebug.h"
 
-/* class Unit object members */
-bo_decl_members_begin(Unit, Actor)
-  /* members */
-  /* source file name with path */
-  char *filepath;
-  char *name;
-  /* source data */
-  char *src;
-  /* output of lexer */
-  Tokens  *tokens;
-  /* abstract syntax tree as output of parser */
-  Ast     *ast;
-  /* All symbols registered in this unit */
-  SymTbl *sym_tbl;
-
-  /* LLVM Module */
-  LLVMModuleRef module;
-bo_end();
-
-/* class Unit */
-bo_decl_params_begin(Unit)
-  const char *filepath;
-  const char *src;
-bo_end();
-
-bo_impl_type(Unit, Actor);
-
-void
-UnitKlass_init(UnitKlass *klass)
+static void
+init(bl_unit_t *unit)
 {
+  bl_sym_tbl_init(&unit->sym_tbl);
+  bl_tokens_init(&unit->tokens);
+  bl_ast_init(&unit->ast);
 }
-
-void
-Unit_ctor(Unit *self, UnitParams *p)
-{
-  /* constructor */
-  bo_parent_ctor(Actor, p);
-  self->filepath = strdup(p->filepath);
-  /* TODO: backslash on windows */
-  self->name = strrchr(self->filepath, '/');
-  if (self->name == NULL)
-    self->name = self->filepath;
-  else
-    self->name++;
-
-  if (p->src)
-    self->src = strdup(p->src);
-
-  self->sym_tbl = bl_sym_tbl_new();
-}
-
-void
-Unit_dtor(Unit *self)
-{
-  free(self->filepath);
-  free(self->src);
-  bo_unref(self->tokens);
-  bo_unref(self->ast);
-  bo_unref(self->sym_tbl);
-
-  LLVMDisposeModule(self->module);
-}
-
-bo_copy_result
-Unit_copy(Unit *self, Unit *other)
-{
-  return BO_NO_COPY;
-}
-/* class Unit end */
 
 /* public */
-Unit *
+bl_unit_t *
 bl_unit_new_file(const char *filepath)
 {
-  UnitParams params = {
-    .filepath = filepath,
-    .src = NULL
-  };
-  return bo_new(Unit, &params);
+  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit->filepath = strdup(filepath);
+  unit->name = strrchr(unit->filepath, '/');
+  if (unit->name == NULL)
+    unit->name = unit->filepath;
+  else
+    unit->name++;
+  
+  init(unit);
+  return unit;
 }
 
-Unit *
+bl_unit_t *
 bl_unit_new_str(const char *name,
                 const char *src)
 {
-  UnitParams params = {
-    .filepath = name,
-    .src = src
-  };
-  return bo_new(Unit, &params);
+  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit->filepath = strdup(name);
+  unit->name = strdup(name);
+
+  if (src)
+    unit->src = strdup(src);
+  else
+    bl_abort("invalid source for %s unit", unit->name);
+
+  init(unit);
+  return unit;
+}
+
+void
+bl_unit_delete(bl_unit_t *unit) 
+{
+  free(unit->filepath);
+  free(unit->src);
+  bl_tokens_terminate(&unit->tokens);
+  bl_ast_terminate(&unit->ast);
+  bl_sym_tbl_terminate(&unit->sym_tbl);
+
+  LLVMDisposeModule(unit->llvm_module);
+  bl_free(unit);
 }
 
 const char*
-bl_unit_get_src_file(Unit *self)
+bl_unit_get_src_file(bl_unit_t *unit)
 {
-  return self->filepath;
+  return unit->filepath;
 }
 
 const char*
-bl_unit_get_src(Unit *self)
+bl_unit_get_src(bl_unit_t *unit)
 {
-  return self->src;
-}
-
-Tokens *
-bl_unit_get_tokens(Unit *self)
-{
-  return self->tokens;
-}
-
-void
-bl_unit_set_tokens(Unit   *self,
-                   Tokens *tokens)
-{
-  bo_unref(self->tokens);
-  self->tokens = tokens;
-}
-
-Ast *
-bl_unit_get_ast(Unit *self)
-{
-  return self->ast;
-}
-
-void
-bl_unit_set_ast(Unit *self,
-                Ast  *ast)
-{
-  bo_unref(self->ast);
-  self->ast = ast;
+  return unit->src;
 }
 
 const char*
-bl_unit_get_name(Unit *self)
+bl_unit_get_name(bl_unit_t *unit)
 {
-  return self->name;
+  return unit->name;
 }
 
-void
-bl_unit_set_src(Unit *self,
-                char *src)
-{
-  free(self->src);
-  self->src = src;
-}
-
-SymTbl *
-bl_unit_get_sym_tbl(Unit *self)
-{
-  return self->sym_tbl;
-}
-
-LLVMModuleRef
-bl_unit_get_module(Unit *self)
-{
-  return self->module;
-}
-
-void
-bl_unit_set_llvm_module(Unit *self,
-                        LLVMModuleRef module)
-{
-//  LLVMDisposeModule(self->module);
-  self->module = module;
-}

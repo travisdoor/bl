@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_stmt.h
+// File:   identifier_impl.h
 // Author: Martin Dorazil
-// Date:   8.2.18
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,17 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_EXPR_H
-#define BL_NODE_EXPR_H
+#ifndef BL_IDENTIFIER_IMPL_H
+#define BL_IDENTIFIER_IMPL_H
 
-#include "bl/ast/node.h"
+#include <stdint.h>
 
-BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(NodeExpr, Node)
-  /* virtuals */
-bo_end();
+typedef struct bl_ident
+{
+  const char *name;
+  uint32_t hash;
+} bl_ident_t;
 
-BO_END_DECLS
+void
+bl_ident_init(bl_ident_t *ident,
+              const char *name);
 
-#endif //BL_NODE_STMT_H
+#endif //BL_IDENTIFIER_IMPL_H

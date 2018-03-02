@@ -31,7 +31,7 @@
 
 #include <bobject/bobject.h>
 #include <llvm-c/Core.h>
-#include "ast/node_decl_impl.h"
+#include "ast/node_impl.h"
 
 BO_BEGIN_DECLS
 
@@ -50,11 +50,11 @@ bl_llvm_block_context_new(void);
 bool
 bl_llvm_block_context_add(LlvmBlockContext *self,
                           LLVMValueRef val,
-                          Ident *id);
+                          bl_ident_t *id);
 
 LLVMValueRef
 bl_llvm_block_context_get(LlvmBlockContext *self,
-                          Ident *id);
+                          bl_ident_t *id);
 
 void
 bl_llvm_block_context_push_block(LlvmBlockContext *self);

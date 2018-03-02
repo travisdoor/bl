@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   ast_printer.h
+// File:   context_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef AST_PRINTER_H_EOKCLCB3
-#define AST_PRINTER_H_EOKCLCB3
+#ifndef BL_CONTEXT_IMPL_H
+#define BL_CONTEXT_IMPL_H
 
-#include <stdio.h>
-#include <bobject/bobject.h>
-#include "bl/pipeline/stage.h"
+typedef struct bl_context
+{
 
-BO_BEGIN_DECLS
-/* class declaration */
-bo_decl_type_begin(AstPrinter, Stage)
-  /* virtuals */
-bo_end();
+} bl_context_t;
 
-extern BO_EXPORT AstPrinter *
-bl_ast_printer_new(FILE              *out_stream,
-                   bl_compile_group_e group);
-BO_END_DECLS
-
-#endif /* end of include guard: AST_PRINTER_H_EOKCLCB3 */
+#endif //BL_CONTEXT_IMPL_H

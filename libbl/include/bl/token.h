@@ -112,14 +112,14 @@ typedef struct
   int col;
   int len;
   const char *src_loc;
-  union content_u
+  union
   {
     const char *as_string;
     char as_char;
     double as_double;
     float as_float;
     unsigned long long as_ull;
-  } content;
+  } value;
 } bl_token_t;
 
 /* content must be set manually */

@@ -29,23 +29,26 @@
 #ifndef AST_IMPL_H_WM5H6RFD
 #define AST_IMPL_H_WM5H6RFD
 
-#include "bl/ast/ast.h"
-#include "ast/node_impl.h"
-#include "ast/node_expr_impl.h"
-#include "ast/node_cmp_stmt_impl.h"
-#include "ast/node_param_var_decl_impl.h"
-#include "ast/node_func_decl_impl.h"
-#include "ast/node_global_stmt_impl.h"
-#include "ast/node_return_stmt_impl.h"
-#include "ast/node_var_decl_impl.h"
-#include "ast/node_binop_impl.h"
-#include "ast/node_decl_impl.h"
-#include "ast/node_const_impl.h"
-#include "ast/node_call_impl.h"
-#include "ast/node_decl_ref_impl.h"
-#include "ast/node_if_stmt_impl.h"
-#include "ast/node_loop_stmt_impl.h"
-#include "ast/node_break_stmt_impl.h"
-#include "ast/node_continue_stmt_impl.h"
+#include <bobject/containers/array.h>
+#include "node_impl.h"
+
+typedef struct bl_ast
+{
+  BArray *cache;
+  bl_node_t *root;
+} bl_ast_t;
+
+void
+bl_ast_init(bl_ast_t *ast);
+
+void
+bl_ast_terminate(bl_ast_t *ast);
+
+bl_node_t *
+bl_ast_new_node(bl_ast_t *ast,
+                bl_node_type_e type,
+                const char *generated_from,
+                int line,
+                int col);
 
 #endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

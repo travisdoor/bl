@@ -29,9 +29,7 @@
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
 
-#include <bobject/bobject.h>
 #include "bl/assembly.h"
-#include "bl/pipeline/pipeline.h"
 
 BO_BEGIN_DECLS
 
@@ -41,23 +39,29 @@ BO_BEGIN_DECLS
 #define BL_BUILDER_PRINT_AST      0x00000008
 #define BL_BUILDER_LOAD_FROM_FILE 0x00000010
 
-/* class Builder declaration */
-bo_decl_type_begin(Builder, BObject)
-  /* virtuals */
-bo_end();
+typedef struct bl_builder *bl_builder_ref;
+typedef void (* bl_diag_handler_f)(const char *, void *);
 
-extern BO_EXPORT Builder *
-bl_builder_new(unsigned int flags);
+extern BO_EXPORT bl_builder_ref
+bl_builder_new(void);
 
-extern BO_EXPORT Builder *
-bl_builder_new_custom(Pipeline *pipeline);
+extern BO_EXPORT void
+bl_builder_delete(bl_builder_ref builder);
 
 extern BO_EXPORT bool
-bl_builder_compile(Builder *self,
-                   Assembly *assembly);
+bl_builder_compile(bl_builder_ref builder,
+                   bl_assembly_ref assembly,
+                   uint32_t flags);
 
-extern BO_EXPORT Actor *
-bl_builder_get_failed(Builder *self);
+extern BO_EXPORT void
+bl_builder_set_error_diag_handler(bl_builder_ref builder,
+                                  bl_diag_handler_f handler,
+                                  void *context);
+
+extern BO_EXPORT void
+bl_builder_set_warning_diag_handler(bl_builder_ref builder,
+                                    bl_diag_handler_f handler,
+                                    void *context);
 
 BO_END_DECLS
 

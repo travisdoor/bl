@@ -1,9 +1,9 @@
 //*****************************************************************************
 // Biscuit Engine
 //
-// File:   return_stmt.h
+// File:   assembly_impl.h
 // Author: Martin Dorazil
-// Date:   08/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -20,34 +20,26 @@
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BO LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_RETURN_STMT_H
-#define BISCUIT_RETURN_STMT_H
+#ifndef BISCUIT_ASSEMBLY_IMPL_H
+#define BISCUIT_ASSEMBLY_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/ast/node.h"
-#include "bl/ast/node_expr.h"
+#include <bobject/containers/array.h>
+#include <llvm-c/Core.h>
+#include "bl/assembly.h"
 
-BO_BEGIN_DECLS
+typedef struct bl_assembly 
+{
+  BArray *units;
+  char *name;
+  LLVMModuleRef llvm_module;
+  LLVMContextRef llvm_cnt;
+} bl_assembly_t;
 
-/* class declaration */
-bo_decl_type_begin(NodeReturnStmt, Node)
-  /* virtuals */
-bo_end();
-
-extern BO_EXPORT NodeExpr *
-bl_node_return_stmt_get_expr(NodeReturnStmt *self);
-
-extern BO_EXPORT bool
-bl_node_return_stmt_add_expr(NodeReturnStmt *self,
-                             NodeExpr       *expr);
-
-BO_END_DECLS
-
-#endif /* end of include guard: BISCUIT_RETURN_STMT_H */
+#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
 

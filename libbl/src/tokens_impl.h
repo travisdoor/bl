@@ -34,80 +34,84 @@
 #include <bobject/containers/array.h>
 #include "bl/token.h"
 
-BO_BEGIN_DECLS
-/* class Tokens declaration */
-bo_decl_type_begin(Tokens, BObject)
-  /* virtuals */
-bo_end();
+typedef struct bl_tokens {
+  BArray *buf;
+  BArray *string_cache;
+  size_t iter;
+  size_t marker;
+} bl_tokens_t;
 
-extern BO_EXPORT Tokens *
-bl_tokens_new(void);
+void
+bl_tokens_init(bl_tokens_t *tokens);
 
-extern BO_EXPORT BString *
-bl_tokens_create_cached_str(Tokens *self);
+void
+bl_tokens_terminate(bl_tokens_t *tokens);
 
-extern BO_EXPORT int
-bl_tokens_count(Tokens *self);
+BString *
+bl_tokens_create_cached_str(bl_tokens_t *tokens);
 
-extern BO_EXPORT void
-bl_tokens_push(Tokens *self, bl_token_t *t);
+int
+bl_tokens_count(bl_tokens_t *tokens);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_peek(Tokens *self);
+void
+bl_tokens_push(bl_tokens_t *tokens,
+               bl_token_t *t);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_peek_last(Tokens *self);
+bl_token_t *
+bl_tokens_peek(bl_tokens_t *tokens);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_peek_2nd(Tokens *self);
+bl_token_t *
+bl_tokens_peek_last(bl_tokens_t *tokens);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_peek_nth(Tokens *self,
-                   size_t  n);
+bl_token_t *
+bl_tokens_peek_2nd(bl_tokens_t *tokens);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_consume(Tokens *self);
+bl_token_t *
+bl_tokens_peek_nth(bl_tokens_t *tokens,
+                   size_t n);
 
-extern BO_EXPORT bl_token_t **
-bl_tokens_consume_n(Tokens *self,
-                    int     n);
+bl_token_t *
+bl_tokens_consume(bl_tokens_t *tokens);
 
-extern BO_EXPORT bl_token_t *
-bl_tokens_consume_if(Tokens  *self,
+bl_token_t **
+bl_tokens_consume_n(bl_tokens_t *tokens,
+                    int n);
+
+bl_token_t *
+bl_tokens_consume_if(bl_tokens_t *tokens,
                      bl_sym_e sym);
 
-extern BO_EXPORT bool
-bl_tokens_current_is(Tokens  *self,
+bool
+bl_tokens_current_is(bl_tokens_t *tokens,
                      bl_sym_e sym);
 
-extern BO_EXPORT bool
-bl_tokens_next_is(Tokens  *self,
+bool
+bl_tokens_next_is(bl_tokens_t *tokens,
                   bl_sym_e sym);
 
-extern BO_EXPORT bool
-bl_tokens_current_is_not(Tokens  *self,
+bool
+bl_tokens_current_is_not(bl_tokens_t *tokens,
                          bl_sym_e sym);
 
-extern BO_EXPORT bool
-bl_tokens_next_is_not(Tokens  *self,
+bool
+bl_tokens_next_is_not(bl_tokens_t *tokens,
                       bl_sym_e sym);
 
-extern BO_EXPORT bool
-bl_tokens_is_seq(Tokens *self,
-                 int     cnt,
+bool
+bl_tokens_is_seq(bl_tokens_t *tokens,
+                 int cnt,
                  ...);
 
-extern BO_EXPORT void
-bl_tokens_resert_iter(Tokens *self);
+void
+bl_tokens_resert_iter(bl_tokens_t *tokens);
 
-extern BO_EXPORT void
-bl_tokens_set_marker(Tokens *self);
+void
+bl_tokens_set_marker(bl_tokens_t *tokens);
 
-extern BO_EXPORT void
-bl_tokens_back_to_marker(Tokens *self);
+void
+bl_tokens_back_to_marker(bl_tokens_t *tokens);
 
-extern BO_EXPORT BArray *
-bl_tokens_get_all(Tokens *self);
-BO_END_DECLS
+BArray *
+bl_tokens_get_all(bl_tokens_t *tokens);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

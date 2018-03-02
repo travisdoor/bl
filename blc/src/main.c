@@ -35,18 +35,17 @@ main(int argc,
      char *argv[])
 {
   setlocale(LC_ALL, "C");
-  unsigned int build_flag = BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE;
+  unsigned int build_flags = BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE;
   puts("BL Compiler version 0.1.0\n");
 
-  bool isCaseInsensitive = false;
   size_t optind;
   for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
     switch (argv[optind][1]) {
       case 'r':
-        build_flag |= BL_BUILDER_RUN;
+        build_flags |= BL_BUILDER_RUN;
         break;
       case 'v':
-        build_flag |= BL_BUILDER_PRINT_TOKENS | BL_BUILDER_PRINT_AST;
+        build_flags |= BL_BUILDER_PRINT_TOKENS | BL_BUILDER_PRINT_AST;
         break;
       default:fprintf(stderr, "Usage: %s [-rv] [file...]\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -59,24 +58,22 @@ main(int argc,
     exit(EXIT_SUCCESS);
   }
 
-  Builder *builder = bl_builder_new(build_flag);
-  Assembly *assembly = bl_assembly_new("main_assembly");
+  bl_builder_ref builder = bl_builder_new();
+  bl_assembly_ref assembly = bl_assembly_new("main_assembly");
 
   /* init actors */
   while (*argv != NULL) {
-    Unit *unit = bl_unit_new_file(*argv);
+    bl_unit_ref unit = bl_unit_new_file(*argv);
     bl_assembly_add_unit(assembly, unit);
     argv++;
   }
 
-  if (!bl_builder_compile(builder, assembly)) {
-    Actor *failed = bl_builder_get_failed(builder);
-    bl_error("%s", bl_actor_get_error(failed));
-  } else {
+  if (bl_builder_compile(builder, assembly, build_flags)) {
     bl_log(BL_GREEN("done"));
   }
 
-  bo_unref(assembly);
+  bl_assembly_delete(assembly);
+  bl_builder_delete(builder);
 
   return 0;
 }

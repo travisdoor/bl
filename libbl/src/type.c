@@ -28,7 +28,7 @@
 
 #include <bobject/containers/hash.h>
 #include <string.h>
-#include "bl/type.h"
+#include "type_impl.h"
 
 static const char *bl_type_strings[] = {
 #define tp(tok, str) str,
@@ -36,97 +36,45 @@ static const char *bl_type_strings[] = {
 #undef tp
 };
 
-/* class Type */
-bo_decl_params_begin(Type)
-  const char *name;
-bo_end();
-
-/* class Type object members */
-bo_decl_members_begin(Type, BObject)
-  /* members */
-  const char     *name;
-  uint32_t  t;
-bo_end();
-
-bo_impl_type(Type, BObject);
-
+/* public */
 void
-TypeKlass_init(TypeKlass *klass)
+bl_type_init(bl_type_t *type,
+             const char *name)
 {
-}
+  type->name = name;
 
-void
-Type_ctor(Type *self, TypeParams *p)
-{
-  /* constructor */
-  self->name = p->name;
-
-  for (uint32_t  i = 0; i < BL_TYPE_COUNT; i++) {
-    if (strcmp(bl_type_strings[i], self->name) == 0)
-      self->t = i;
+  for (uint32_t i = 0; i < BL_TYPE_COUNT; i++) {
+    if (strcmp(bl_type_strings[i], name) == 0)
+      type->hash = i;
   }
 
-  if (self->t == BL_TYPE_NONE) {
-    self->t = bo_hash_from_str(self->name);
+  if (type->hash == BL_TYPE_NONE) {
+    type->hash = bo_hash_from_str(name);
   }
-}
-
-void
-Type_dtor(Type *self)
-{
-}
-
-bo_copy_result
-Type_copy(Type *self, Type *other)
-{
-  return BO_NO_COPY;
-}
-/* class Type end */
-
-Type *
-bl_type_new(const char *name)
-{
-  TypeParams p = {
-    .name = name
-  };
-
-  return bo_new(Type, &p);
-}
-
-uint32_t
-bl_type_get(Type *self)
-{
-  return self->t;
-}
-
-const char *
-bl_type_get_name(Type *self)
-{
-  return self->name;
 }
 
 bool
-bl_type_is(Type    *self,
+bl_type_is(bl_type_t *type,
            uint32_t t)
 {
-  return self->t == t;
+  return type->hash == t;
 }
 
 bool
-bl_type_is_fundamental(Type *self)
+bl_type_is_fundamental(bl_type_t *type)
 {
-  return self->t < BL_TYPE_COUNT;
+  return type->hash < BL_TYPE_COUNT;
 }
 
 bool
-bl_type_is_user_defined(Type *self)
+bl_type_is_user_defined(bl_type_t *type)
 {
-  return !bl_type_is_fundamental(self);
+  return !bl_type_is_fundamental(type);
 }
 
 bool
-bl_type_is_not(Type    *self,
+bl_type_is_not(bl_type_t *type,
                uint32_t t)
 {
-  return self->t != t;
+  return type->hash != t;
 }

@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// blc
 //
-// File:   node_loop_stmt.h
+// File:   sym_tbl_impl.h
 // Author: Martin Dorazil
-// Date:   25/02/2018
+// Date:   13/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,23 +26,52 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_LOOP_STMT_H
-#define BL_NODE_LOOP_STMT_H
+#ifndef BL_SYM_TBL_IMPL_H
+#define BL_SYM_TBL_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/ast/node.h"
-#include "bl/ast/node_cmp_stmt.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include "ast/node_impl.h"
+#include "identifier_impl.h"
 
-BO_BEGIN_DECLS
+typedef struct bl_sym_tbl
+{
+  BHashTable *syms;
+  BArray *unsatisfied;
+} bl_sym_tbl_t;
 
-/* class NodeLoopStmt declaration */
-bo_decl_type_begin(NodeLoopStmt, Node)
-  /* virtuals */
-bo_end();
+void
+bl_sym_tbl_init(bl_sym_tbl_t *tbl);
 
-extern BO_EXPORT NodeCmpStmt *
-bl_node_loop_stmt_get_stmt(NodeLoopStmt *self);
+void
+bl_sym_tbl_terminate(bl_sym_tbl_t *tbl);
 
-BO_END_DECLS
+/*
+ * This will add new symbol into hash table and return
+ * true on success.
+ */
+bool
+bl_sym_tbl_register(bl_sym_tbl_t *tbl,
+                    bl_node_t *node);
 
-#endif //BL_NODE_LOOP_STMT_H
+/*
+ * Return symbol of excepted type or null when no such
+ * symbol was found.
+ */
+bl_node_t *
+bl_sym_tbl_get_sym_of_type(bl_sym_tbl_t *tbl,
+                           bl_ident_t *ident,
+                           bl_node_type_e type);
+
+void
+bl_sym_tbl_add_unsatisfied_expr(bl_sym_tbl_t *tbl,
+                                bl_node_t *expr);
+
+/*
+ * Try to satisfy all calls and return true when all of them
+ * were satisfied, false when there left some unsatisfied.
+ */
+bool
+bl_sym_tbl_try_satisfy_all(bl_sym_tbl_t *tbl);
+
+#endif //BL_SYM_TBL_H

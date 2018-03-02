@@ -1,11 +1,11 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   node_binop.h
+// File:   stages_impl.h
 // Author: Martin Dorazil
-// Date:   11/02/2018
+// Date:   02/03/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,38 +26,52 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_BINOP_H
-#define BL_NODE_BINOP_H
+#ifndef BL_STAGES_IMPL_H
+#define BL_STAGES_IMPL_H
 
-#include <bobject/bobject.h>
-#include "bl/ast/node.h"
-#include "bl/ast/node_expr.h"
-#include "bl/token.h"
+#include "builder_impl.h"
+#include "unit_impl.h"
+#include "assembly_impl.h"
 
-BO_BEGIN_DECLS
+/*
+ * per unit
+ */
+bool
+bl_file_loader_run(bl_builder_t *builder,
+                   bl_unit_t *unit);
 
-/* class NodeBinop declaration */
-bo_decl_type_begin(NodeBinop, Node)
-  /* virtuals */
-bo_end();
+bool
+bl_lexer_run(bl_builder_t *builder,
+             bl_unit_t *unit);
 
-extern BO_EXPORT bl_sym_e
-bl_node_binop_get_op(NodeBinop *self);
+bool
+bl_token_printer_run(bl_unit_t *unit);
 
-extern BO_EXPORT NodeExpr *
-bl_node_binop_get_lhs(NodeBinop *self);
+bool
+bl_parser_run(bl_builder_t *builder,
+              bl_unit_t *unit);
 
-extern BO_EXPORT NodeExpr *
-bl_node_binop_get_rhs(NodeBinop *self);
+bool
+bl_ast_printer_run(bl_unit_t *unit);
 
-extern BO_EXPORT bool
-bl_node_binop_set_lhs(NodeBinop *self,
-                      NodeExpr *lvalue);
+bool
+bl_llvm_backend_run(bl_builder_t *builder,
+                    bl_unit_t *unit);
 
-extern BO_EXPORT bool
-bl_node_binop_set_rhs(NodeBinop *self,
-                      NodeExpr *rvalue);
+bool
+bl_llvm_bc_writer_run(bl_builder_t *builder,
+                      bl_unit_t *unit);
 
-BO_END_DECLS
+/*
+ * per assembly
+ */
 
-#endif //BL_NODE_BINOP_H
+bool
+bl_llvm_linker_run(bl_builder_t *builder,
+                   bl_assembly_t *assembly);
+
+bool
+bl_llvm_jit_exec_run(bl_builder_t *builder,
+                     bl_assembly_t *assembly);
+
+#endif //BL_STAGES_IMPL_H

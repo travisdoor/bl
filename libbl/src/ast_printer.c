@@ -27,159 +27,91 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "bl/ast_printer.h"
-#include "bl/unit.h"
-#include "bl/bldebug.h"
+#include "stages_impl.h"
 #include "ast/node_impl.h"
 
-static bool
-run(AstPrinter *self,
-    Unit *unit);
-
-/* AstPrinter members */
-bo_decl_members_begin(AstPrinter, Stage)
-  FILE *out_stream;
-bo_end();
-
-/* AstPrinter constructor parameters */
-bo_decl_params_with_base_begin(AstPrinter, Stage)
-  FILE *out_stream;
-bo_end();
-
-bo_impl_type(AstPrinter, Stage);
-
-/* AstPrinter class init */
-void
-AstPrinterKlass_init(AstPrinterKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run =
-    (bool (*)(Stage *,
-              Actor *)) run;
-}
-
-/* AstPrinter constructor */
-void
-AstPrinter_ctor(AstPrinter *self,
-                AstPrinterParams *p)
-{
-  bo_parent_ctor(Stage, p);
-  self->out_stream = p->out_stream;
-}
-
-/* AstPrinter destructor */
-void
-AstPrinter_dtor(AstPrinter *self)
-{
-}
-
-/* AstPrinter copy constructor */
-bo_copy_result
-AstPrinter_copy(AstPrinter *self,
-                AstPrinter *other)
-{
-  return BO_NO_COPY;
-}
-
 static void
-print_node(AstPrinter *self,
-           Node *node,
+print_node(bl_node_t *node,
            int pad)
 {
   if (!node)
     return;
 
-  BString *s = bo_vtbl(node, Node)->to_string(node);
-  fprintf(
-    self->out_stream, "%*s%s\n", pad, "", bo_string_get(s));
-  bo_unref(s);
+  fprintf(stdout, "%*s%s\n", pad, "", bl_node_to_str(node));
 
   int c = 0;
-  Node *child = NULL;
+  bl_node_t *child = NULL;
 
   switch (node->type) {
     case BL_NODE_GLOBAL_STMT:
-      c = bl_node_global_stmt_get_child_count((NodeGlobalStmt *) node);
+      c = bl_node_glob_stmt_get_children_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = bl_node_global_stmt_get_child((NodeGlobalStmt *) node, i);
-        print_node(self, child, pad);
+        child = bl_node_glob_stmt_get_child(node, i);
+        print_node(child, pad);
       }
       break;
     case BL_NODE_FUNC_DECL:
-      c = bl_node_func_decl_get_param_count((NodeFuncDecl *) node);
+      c = bl_node_func_decl_get_param_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = (Node *) bl_node_func_decl_get_param((NodeFuncDecl *) node, i);
-        print_node(self, child, pad);
+        child = bl_node_func_decl_get_param(node, i);
+        print_node(child, pad);
       }
-      print_node(self, (Node *) bl_node_func_decl_get_stmt((NodeFuncDecl *) node), pad);
+      print_node(node->value.func_decl.cmp_stmt, pad);
       break;
-    case BL_NODE_CALL:
-      c = bl_node_call_get_arg_count((NodeCall *) node);
+    case BL_NODE_CALL_EXPR:
+      c = bl_node_call_expr_get_arg_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = (Node *) bl_node_call_get_arg((NodeCall *) node, i);
-        print_node(self, child, pad);
+        child = bl_node_call_expr_get_arg(node, i);
+        print_node(child, pad);
       }
       break;
     case BL_NODE_LOOP_STMT:
       pad += 2;
-      print_node(self, (Node *) bl_node_loop_stmt_get_stmt((NodeLoopStmt *) node), pad);
+      print_node(node->value.loop_stmt.cmp_stmt, pad);
       break;
     case BL_NODE_BINOP:
       pad += 2;
-      print_node(self, (Node *) bl_node_binop_get_lhs((NodeBinop *) node), pad);
-      print_node(self, (Node *) bl_node_binop_get_rhs((NodeBinop *) node), pad);
+      print_node(node->value.binop.lhs, pad);
+      print_node(node->value.binop.rhs, pad);
       break;
     case BL_NODE_IF_STMT:
       pad += 2;
-      print_node(self, (Node *) bl_node_if_stmt_get_cond((NodeIfStmt *) node), pad);
-      print_node(self, (Node *) bl_node_if_stmt_get_then((NodeIfStmt *) node), pad);
+      print_node(node->value.if_stmt.expr, pad);
+      print_node(node->value.if_stmt.then_stmt, pad);
+      print_node(node->value.if_stmt.else_stmt, pad);
+      print_node(node->value.if_stmt.else_if_stmt, pad);
       break;
-    case BL_NODE_DECL_REF:
+    case BL_NODE_DECL_REF_EXPR:
       break;
-    case BL_NODE_CONST:
+    case BL_NODE_CONST_EXPR:
       break;
-    case BL_NODE_STMT:
-      c = bl_node_stmt_child_get_count((NodeCmpStmt *) node);
+    case BL_NODE_CMP_STMT:
+      c = bl_node_cmp_stmt_get_children_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
-        child = bl_node_stmt_get_child((NodeCmpStmt *) node, i);
-        print_node(self, child, pad);
+        child = bl_node_cmp_stmt_get_child(node, i);
+        print_node(child, pad);
       }
       break;
     case BL_NODE_RETURN_STMT:
       pad += 2;
-      print_node(self, (Node *) bl_node_return_stmt_get_expr((NodeReturnStmt *) node), pad);
+      print_node(node->value.return_stmt.expr, pad);
       break;
     case BL_NODE_VAR_DECL:
       pad += 2;
-      print_node(self, (Node *) bl_node_var_decl_get_expr((NodeVarDecl *) node), pad);
+      print_node(node->value.var_decl.expr, pad);
     default:
       break;
   }
 }
 
 bool
-run(AstPrinter *self,
-    Unit *unit)
+bl_ast_printer_run(bl_unit_t *unit)
 {
-  if (bl_unit_get_ast(unit) == NULL) {
-    bl_actor_error((Actor *) unit, "cannot find AST tree in unit %s", bl_unit_get_src_file(unit));
-    return false;
-  }
-
-  print_node(self, bl_ast_get_root(bl_unit_get_ast(unit)), 0);
+  print_node(unit->ast.root, 0);
   return true;
-}
-
-/* public */
-AstPrinter *
-bl_ast_printer_new(FILE *out_stream,
-                   bl_compile_group_e group)
-{
-  AstPrinterParams p = {.base.group = group, .out_stream = out_stream};
-
-  return bo_new(AstPrinter, &p);
 }
 

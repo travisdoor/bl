@@ -27,59 +27,17 @@
 //*****************************************************************************
 
 #include <stdio.h>
-#include "bl/file_loader.h"
 #include "bl/unit.h"
+#include "stages_impl.h"
 #include "bl/bldebug.h"
 
-static bool
-run(FileLoader *self,
-    Unit       *unit);
-
-/* FileLoader members */
-bo_decl_members_begin(FileLoader, Stage)
-bo_end();
-
-/* FileLoader constructor parameters */
-bo_decl_params_with_base_begin(FileLoader, Stage)
-bo_end();
-
-bo_impl_type(FileLoader, Stage);
-
-/* FileLoader class init */
-void
-FileLoaderKlass_init(FileLoaderKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run 
-    = (bool (*)(Stage*, Actor *)) run;
-}
-
-/* FileLoader constructor */
-void
-FileLoader_ctor(FileLoader *self, FileLoaderParams *p)
-{
-  bo_parent_ctor(Stage, p);
-}
-
-/* FileLoader destructor */
-void
-FileLoader_dtor(FileLoader *self)
-{
-}
-
-/* FileLoader copy constructor */
-bo_copy_result
-FileLoader_copy(FileLoader *self, FileLoader *other)
-{
-  return BO_NO_COPY;
-}
-
 bool
-run(FileLoader *self,
-    Unit       *unit)
+bl_file_loader_run(bl_builder_t *builder,
+                   bl_unit_t *unit)
 {
   FILE *f = fopen(bl_unit_get_src_file(unit), "r");
   if (f == NULL) {
-    bl_actor_error((Actor *)unit, "file not found %s", bl_unit_get_src_file(unit));
+    bl_builder_error(builder, "file not found %s", unit->filepath);
     return false;
   }
 
@@ -87,7 +45,7 @@ run(FileLoader *self,
   size_t fsize = (size_t) ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_actor_error((Actor *)unit, "invalid source file %s", bl_unit_get_src_file(unit));
+    bl_builder_error(builder, "invalid source file %s", unit->filepath);
     return false;
   }
 
@@ -98,19 +56,7 @@ run(FileLoader *self,
   src[fsize] = '\0';
   fclose(f);
 
-  bl_unit_set_src(unit, src);
-
+  unit->src = src;
   return true;
+
 }
-
-/* public */
-FileLoader *
-bl_file_loader_new(bl_compile_group_e group)
-{
-  FileLoaderParams p = {
-    .base.group = group
-  };
-
-  return bo_new(FileLoader, &p);
-}
-

@@ -28,75 +28,28 @@
 
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
+#include "stages_impl.h"
 #include "bl/bldebug.h"
-#include "bl/llvm_jit_exec.h"
-#include "bl/assembly.h"
-
-/* class LlvmJitExec */
-
-static bool
-run(LlvmJitExec *self,
-    Assembly *assembly);
-
-bo_decl_params_with_base_begin(LlvmJitExec, Stage)
-bo_end();
-
-/* class LlvmJitExec object members */
-bo_decl_members_begin(LlvmJitExec, Stage)
-  /* members */
-bo_end();
-
-bo_impl_type(LlvmJitExec, Stage);
-
-void
-LlvmJitExecKlass_init(LlvmJitExecKlass *klass)
-{
-  bo_vtbl_cl(klass, Stage)->run =
-    (bool (*)(Stage *,
-              Actor *)) run;
-}
-
-void
-LlvmJitExec_ctor(LlvmJitExec *self,
-                 LlvmJitExecParams *p)
-{
-  /* constructor */
-
-  /* initialize parent */
-  bo_parent_ctor(Stage, p);
-
-  /* initialize self */
-}
-
-void
-LlvmJitExec_dtor(LlvmJitExec *self)
-{
-}
-
-bo_copy_result
-LlvmJitExec_copy(LlvmJitExec *self,
-                 LlvmJitExec *other)
-{
-  return BO_NO_COPY;
-}
-/* class LlvmJitExec end */
 
 bool
-run(LlvmJitExec *self,
-    Assembly *assembly)
+bl_llvm_jit_exec_run(bl_builder_t *builder,
+                     bl_assembly_t *assembly)
 {
+  bl_assert(assembly->llvm_module, "invalid assembly module");
   LLVMExecutionEngineRef engine;
   char *error = NULL;
 
   LLVMLinkInInterpreter();
-  if (LLVMCreateInterpreterForModule(&engine, bl_assembly_get_module(assembly), &error) != 0) {
+  if (LLVMCreateInterpreterForModule(&engine, assembly->llvm_module, &error) != 0) {
     bl_abort("failed to create execution engine with error %s", error);
   }
 
-  LLVMValueRef main = LLVMGetNamedFunction(bl_assembly_get_module(assembly), "main");
+  LLVMValueRef main = LLVMGetNamedFunction(assembly->llvm_module, "main");
   if (main == NULL) {
-    bl_actor_error((Actor *) assembly,
-                   "(llvm_interpreter) Unable to get " BL_YELLOW("'main'") BL_RED(" method"));
+    bl_builder_error(
+      builder,
+      assembly->name,
+      "(llvm_interpreter) Unable to get " BL_YELLOW("'main'") BL_RED(" method"));
     LLVMDisposeExecutionEngine(engine);
     return false;
   }
@@ -105,21 +58,11 @@ run(LlvmJitExec *self,
 
   int ires = (int) LLVMGenericValueToInt(res, 0);
   if (ires != 0) {
-    bl_actor_error((Actor *) assembly, "(llvm_interpreter) Executed unit return %i", ires);
+    bl_builder_error(builder, assembly->name, "(llvm_interpreter) Executed unit return %i", ires);
     LLVMDisposeExecutionEngine(engine);
     return false;
   }
 
   return true;
-}
-
-LlvmJitExec *
-bl_llvm_jit_exec_new(bl_compile_group_e group)
-{
-  LlvmJitExecParams params = {
-    .base.group = group
-  };
-
-  return bo_new(LlvmJitExec, &params);
 }
 

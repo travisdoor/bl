@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   identifier.h
+// File:   unit_impl.h
 // Author: Martin Dorazil
-// Date:   13.2.18
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,27 +26,33 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_IDENTIFIER_H
-#define BL_IDENTIFIER_H
+#ifndef BL_UNIT_IMPL_H
+#define BL_UNIT_IMPL_H
 
-#include <bobject/bobject.h>
+#include "bl/unit.h"
+#include "ast/ast_impl.h"
+#include "sym_tbl_impl.h"
+#include "tokens_impl.h"
 
-BO_BEGIN_DECLS
+/* class Unit object members */
+typedef struct bl_unit {
+  /* members */
+  /* source file name with path */
+  char *filepath;
+  char *name;
+  /* source data */
+  char *src;
+  /* output of lexer */
+  bl_tokens_t tokens;
+  /* abstract syntax tree as output of parser */
+  bl_ast_t ast;
+  /* All symbols registered in this unit */
+  bl_sym_tbl_t sym_tbl;
 
-/* class Ident declaration */
-bo_decl_type_begin(Ident, BObject)
-  /* virtuals */
-bo_end();
+  /* LLVM Module */
+  LLVMModuleRef llvm_module;
+  LLVMContextRef llvm_cnt;
+} bl_unit_t;
 
-extern BO_EXPORT Ident *
-bl_ident_new(const char *name);
 
-extern BO_EXPORT const char *
-bl_ident_get_name(Ident *self);
-
-extern BO_EXPORT uint32_t
-bl_ident_get_hash(Ident *self);
-
-BO_END_DECLS
-
-#endif //BL_IDENTIFIER_H
+#endif //BL_UNIT_IMPL_H

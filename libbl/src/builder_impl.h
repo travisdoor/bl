@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl 
 //
-// File:   node_param_var_decl.h
+// File:   builder_impl.h
 // Author: Martin Dorazil
-// Date:   03/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,16 +26,29 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_NODE_PARAM_VAR_DECL_H
-#define BISCUIT_NODE_PARAM_VAR_DECL_H
+#ifndef BISCUIT_BUILDER_IMPL_H
+#define BISCUIT_BUILDER_IMPL_H
 
-#include "bl/ast/node_param_var_decl.h"
-#include "ast/node_decl_impl.h"
-#include "bl/token.h"
+#include "bl/builder.h"
 
-/* NodeParamVarDecl constructor parameters */
-bo_decl_params_with_base_begin(NodeParamVarDecl, NodeDecl)
-bo_end();
+typedef struct bl_builder
+{
+  bl_diag_handler_f on_error;
+  bl_diag_handler_f on_warning;
 
-#endif /* end of include guard: BISCUIT_NODE_PARAM_VAR_DECL_H */
+  void *on_error_cnt;
+  void *on_warning_cnt;
+} bl_builder_t;
+
+void
+bl_builder_error(bl_builder_t *builder,
+                 const char *format,
+                 ...);
+
+void
+bl_builder_warning(bl_builder_t *builder,
+                   const char *format,
+                   ...);
+
+#endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */
 
