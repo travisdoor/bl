@@ -283,7 +283,7 @@ parse_if_stmt(context_t *cnt)
     }
 
     ifstmt =
-      bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONTINUE_STMT, tok->src_loc, tok->line, tok->col);
+      bl_ast_new_node(&cnt->unit->ast, BL_NODE_IF_STMT, tok->src_loc, tok->line, tok->col);
     ifstmt->value.if_stmt.expr = expr;
     ifstmt->value.if_stmt.then_stmt = then_stmt;
 

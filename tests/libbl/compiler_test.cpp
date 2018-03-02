@@ -30,6 +30,7 @@
 #include "bl/bl.h"
 
 #define SRC_LOC "../tests/src/"
+#define FLAGS BL_BUILDER_RUN | BL_BUILDER_LOAD_FROM_FILE
 
 class CompilerTest : public ::testing::Test
 {
@@ -38,7 +39,7 @@ protected:
   SetUp()
   {
     assembly = bl_assembly_new("test_assembly");
-    builder = bl_builder_new(BL_BUILDER_RUN | BL_BUILDER_LOAD_FROM_FILE);
+    builder = bl_builder_new();
   }
 
   void
@@ -48,116 +49,106 @@ protected:
     bo_unref(builder);
   }
 
-  Assembly *assembly;
-  Builder *builder;
+  bl_assembly_ref assembly;
+  bl_builder_ref builder;
 };
 
 TEST_F(CompilerTest, simple_definitions)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "simple_decl_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_decl_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, simple_definitions_with_asignement)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "decl_def_values_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "decl_def_values_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, simple_extern_call)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "simple_ext_call_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_ext_call_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, func_def_ordering)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "method_ordering_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "method_ordering_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, assign_expr)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "simple_assignment_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_assignment_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, simple_call)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "simple_method_call_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_method_call_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, expressions)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "expression_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "expression_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, compound_sub_statemets)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "sub_statement_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "sub_statement_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, ifs)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "if_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "if_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
 
 TEST_F(CompilerTest, loop)
 {
-  Unit *unit = bl_unit_new_file(SRC_LOC "loop_test.bl");
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "loop_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly)) {
-    auto *failed = bl_builder_get_failed(builder);
-    ASSERT_STREQ(bl_actor_get_error(failed), "");
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(true);
   }
 }
