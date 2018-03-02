@@ -71,7 +71,7 @@ bl_node_init(bl_node_t *node,
       node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
       break;
     case BL_NODE_ENUM_DECL:
-      node->value.enum_decl.constants = bo_array_new(sizeof(bl_node_t *));
+      node->value.enum_decl.elems = bo_array_new(sizeof(bl_node_t *));
       break;
     case BL_NODE_VAR_DECL:
       break;
@@ -114,7 +114,7 @@ bl_node_terminate(bl_node_t *node)
       bo_unref(node->value.func_decl.params);
       break;
     case BL_NODE_ENUM_DECL:
-      bo_unref(node->value.enum_decl.constants);
+      bo_unref(node->value.enum_decl.elems);
       break;
     case BL_NODE_VAR_DECL:
       break;
@@ -265,32 +265,32 @@ bl_node_call_expr_get_arg(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_enum_decl_add_const(bl_node_t *node,
-                            bl_node_t *c)
+bl_node_enum_decl_add_elem(bl_node_t *node,
+                           bl_node_t *c)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
 
   if (c == NULL)
     return NULL;
 
-  bo_array_push_back(node->value.enum_decl.constants, c);
+  bo_array_push_back(node->value.enum_decl.elems, c);
   return c;
 }
 
 int
-bl_node_enum_decl_get_const_count(bl_node_t *node)
+bl_node_enum_decl_get_elem_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
-  return (int) bo_array_size(node->value.enum_decl.constants);
+  return (int) bo_array_size(node->value.enum_decl.elems);
 }
 
 bl_node_t *
-bl_node_enum_decl_get_conts(bl_node_t *node,
-                            int i)
+bl_node_enum_decl_get_elem(bl_node_t *node,
+                           int i)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
-  if (bo_array_size(node->value.enum_decl.constants) == 0)
+  if (bo_array_size(node->value.enum_decl.elems) == 0)
     return NULL;
 
-  return bo_array_at(node->value.enum_decl.constants, i, bl_node_t *);
+  return bo_array_at(node->value.enum_decl.elems, i, bl_node_t *);
 }

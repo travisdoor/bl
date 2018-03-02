@@ -148,7 +148,7 @@ typedef struct bl_node_param_var_decl
 typedef struct bl_node_enum_decl
 {
   bl_node_decl_t base;
-  BArray *constants;
+  BArray *elems;
 } bl_node_enum_decl_t;
 
 /*
@@ -279,14 +279,14 @@ bl_node_call_expr_get_arg(bl_node_t *node,
                           int i);
 
 bl_node_t *
-bl_node_enum_decl_add_const(bl_node_t *node,
-                            bl_node_t *c);
+bl_node_enum_decl_add_elem(bl_node_t *node,
+                           bl_node_t *c);
 
 int
-bl_node_enum_decl_get_const_count(bl_node_t *node);
+bl_node_enum_decl_get_elem_count(bl_node_t *node);
 
 bl_node_t *
-bl_node_enum_decl_get_conts(bl_node_t *node,
-                            int i);
+bl_node_enum_decl_get_elem(bl_node_t *node,
+                           int i);
 
 #endif //BL_NODE_IMPL_H

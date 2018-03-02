@@ -510,10 +510,12 @@ parse_enum_decl(context_t *cnt)
       parse_error(cnt, "%s %d:%d expected enum name", cnt->unit->filepath, tok->line, tok->col);
     }
 
-    /* TODO parse base type: enum my_enum : i32 {} */
 
     enm = bl_ast_new_node(
       &cnt->unit->ast, BL_NODE_ENUM_DECL, tok->src_loc, tok->line, tok->col);
+
+    /* TODO parse base type: enum my_enum : i32 {} */
+    bl_type_init(&enm->value.decl.type, "i32");
 
     /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);

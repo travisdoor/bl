@@ -12,6 +12,7 @@ enum my_enum {
 }
 
 i32 main() {
+  const i32 c = 666; // evaluate as constant integer in LLVM
   return 0;
 }
 
