@@ -27,10 +27,10 @@
 //*****************************************************************************
 
 #include <string.h>
-#include "bl/bldebug.h"
 #include "blmemory_impl.h"
 #include "assembly_impl.h"
 #include "unit_impl.h"
+#include "common_impl.h"
 
 /* public */
 

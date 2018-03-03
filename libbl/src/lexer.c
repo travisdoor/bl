@@ -29,6 +29,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include "stages_impl.h"
+#include "common_impl.h"
 
 #define is_intend_c(c) \
   (((c) >= 'a' && (c) <= 'z') || \
@@ -39,10 +40,10 @@
 #define is_number_c(c) \
   ((c) >= '0' && (c) <= '9')
 
-#define scan_error(cnt, format, ...) \
+#define scan_error(cnt, code, format, ...) \
   { \
     bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
-    longjmp((cnt)->jmp_error, 1); \
+    longjmp((cnt)->jmp_error, code); \
   }
 
 typedef struct context
@@ -91,7 +92,12 @@ scan_comment(context_t *cnt,
       /*
        * Unterminated comment
        */
-      scan_error(cnt, "%s %d:%d unterminated comment block.", cnt->unit->name, cnt->line, cnt->col);
+      scan_error(cnt,
+                 BL_ERR_UNTERMINATED_COMMENT,
+                 "%s %d:%d unterminated comment block.",
+                 cnt->unit->name,
+                 cnt->line,
+                 cnt->col);
     }
     if (strncmp(cnt->c, term, len) == 0) {
       break;
@@ -190,7 +196,12 @@ scan:
         }
       }
       case '\0': {
-        scan_error(cnt, "%s %d:%d unterminated string.", cnt->unit->name, cnt->line, cnt->col);
+        scan_error(cnt,
+                   BL_ERR_UNTERMINATED_STRING,
+                   "%s %d:%d unterminated string.",
+                   cnt->unit->name,
+                   cnt->line,
+                   cnt->col);
       }
       case '\\':
         /* special character */
@@ -351,7 +362,12 @@ scan:
           scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
           goto scan;
         case BL_SYM_RBCOMMENT: {
-          scan_error(cnt, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line, cnt->col);
+          scan_error(cnt,
+                     BL_ERR_INVALID_TOKEN,
+                     "%s %d:%d unexpected token.",
+                     cnt->unit->name,
+                     cnt->line,
+                     cnt->col);
         }
         default:
           cnt->col += len;
@@ -373,13 +389,18 @@ scan:
     goto push_token;
 
   /* When symbol is unknown report error */
-  scan_error(cnt, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line, cnt->col);
+  scan_error(cnt,
+             BL_ERR_INVALID_TOKEN,
+             "%s %d:%d unexpected token.",
+             cnt->unit->name,
+             cnt->line,
+             cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
   goto scan;
 }
 
-bool
+int
 bl_lexer_run(bl_builder_t *builder,
              bl_unit_t *unit)
 {
@@ -387,11 +408,12 @@ bl_lexer_run(bl_builder_t *builder,
     cnt =
     {.builder = builder, .tokens = &unit->tokens, .unit = unit, .c = unit->src, .line = 1, .col = 1,};
 
-  if (setjmp(cnt.jmp_error))
-    return false;
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error)))
+    return error;
 
   scan(&cnt);
 
-  return true;
+  return BL_NO_ERR;
 }
 

@@ -28,7 +28,7 @@
 
 #include <bobject/containers/array.h>
 #include "ast/ast_impl.h"
-#include "blmemory_impl.h"
+#include "common_impl.h"
 
 #define CACHE_PREALLOC_ELEM 256
 

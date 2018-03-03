@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   file_loader.c
+// File:   error.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   03/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,36 +26,41 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include "bl/unit.h"
-#include "stages_impl.h"
-#include "common_impl.h"
+#ifndef BL_ERROR_H
+#define BL_ERROR_H
 
-int
-bl_file_loader_run(bl_builder_t *builder,
-                   bl_unit_t *unit)
+#include <bobject/bobject.h>
+
+BO_BEGIN_DECLS
+
+typedef enum
 {
-  FILE *f = fopen(unit->filepath, "r");
-  if (f == NULL) {
-    bl_builder_error(builder, "file not found %s", unit->filepath);
-    return BL_ERR_FILE_NOT_FOUND;
-  }
+  BL_NO_ERR = 0,
 
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  if (fsize == 0) {
-    fclose(f);
-    bl_builder_error(builder, "invalid source file %s", unit->filepath);
-    return BL_ERR_INVALID_SOURCE;
-  }
+  BL_ERR_FILE_NOT_FOUND = 1,
+  BL_ERR_INVALID_SOURCE = 2,
 
-  fseek(f, 0, SEEK_SET);
+  BL_ERR_INVALID_TOKEN        = 3,
+  BL_ERR_UNTERMINATED_COMMENT = 4,
+  BL_ERR_UNTERMINATED_STRING  = 5,
 
-  char *src = malloc(sizeof(char) * (fsize + 1));
-  fread(src, fsize, 1, f);
-  src[fsize] = '\0';
-  fclose(f);
+  BL_ERR_MISSING_SEMICOLON     = 10,
+  BL_ERR_MISSING_BRACKET       = 20,
+  BL_ERR_UNEXPECTED_DECL       = 30,
+  BL_ERR_EXPECTED_EXPR         = 40,
+  BL_ERR_MISSING_COMMA         = 50,
+  BL_ERR_EXPECTED_BODY         = 60,
+  BL_ERR_EXPECTED_BODY_END     = 70,
+  BL_ERR_EXPECTED_STMT         = 80,
+  BL_ERR_BREAK_OUTSIDE_LOOP    = 90,
+  BL_ERR_CONTINUE_OUTSIDE_LOOP = 100,
+  BL_ERR_UNEXPECTED_MODIF      = 110,
+  BL_ERR_DUPLICATE_SYMBOL      = 120,
+  BL_ERR_UNKNOWN_SYMBOL        = 130,
+  BL_ERR_EXPECTED_TYPE         = 140,
+  BL_ERR_EXPECTED_NAME         = 150,
+} bl_error_e;
 
-  unit->src = src;
-  return BL_NO_ERR;
-}
+BO_END_DECLS
+
+#endif //BL_ERROR_H

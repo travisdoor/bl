@@ -418,6 +418,7 @@ gen_var_decl(context_t *cnt,
   bl_node_var_decl_t *vdcl      = &node->value.var_decl;
   LLVMBasicBlockRef  prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMTypeRef        t          = to_llvm_type(cnt, &vdcl->base.type);
+//  bl_sym_e           modif      = vdcl->base.modificator;
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(vdcl->base.ident.name));
@@ -801,7 +802,7 @@ cnt_terminate(context_t *cnt)
   bo_unref(cnt->const_strings);
 }
 
-bool
+int
 bl_llvm_backend_run(bl_builder_t *builder,
                     bl_unit_t *unit)
 {

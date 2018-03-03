@@ -36,29 +36,29 @@
 /*
  * per unit
  */
-bool
+int
 bl_file_loader_run(bl_builder_t *builder,
                    bl_unit_t *unit);
 
-bool
+int
 bl_lexer_run(bl_builder_t *builder,
              bl_unit_t *unit);
 
-bool
+int
 bl_token_printer_run(bl_unit_t *unit);
 
-bool
+int
 bl_parser_run(bl_builder_t *builder,
               bl_unit_t *unit);
 
-bool
+int
 bl_ast_printer_run(bl_unit_t *unit);
 
-bool
+int
 bl_llvm_backend_run(bl_builder_t *builder,
                     bl_unit_t *unit);
 
-bool
+int
 bl_llvm_bc_writer_run(bl_builder_t *builder,
                       bl_unit_t *unit);
 
@@ -66,11 +66,11 @@ bl_llvm_bc_writer_run(bl_builder_t *builder,
  * per assembly
  */
 
-bool
+int
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly);
 
-bool
+int
 bl_llvm_jit_exec_run(bl_builder_t *builder,
                      bl_assembly_t *assembly);
 

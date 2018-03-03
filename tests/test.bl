@@ -5,8 +5,10 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
-i32 main() {
+extern enum e {}
 
+i32 main() {
+  const i32 const_int = 666;
   return 0;
 }
 

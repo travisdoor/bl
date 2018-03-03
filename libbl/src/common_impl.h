@@ -1,9 +1,9 @@
 //*****************************************************************************
-// bl 
+// bl
 //
-// File:   file_loader.c
+// File:   common_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   03/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,36 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <stdio.h>
-#include "bl/unit.h"
-#include "stages_impl.h"
-#include "common_impl.h"
+#ifndef BL_COMMON_IMPL_H
+#define BL_COMMON_IMPL_H
 
-int
-bl_file_loader_run(bl_builder_t *builder,
-                   bl_unit_t *unit)
-{
-  FILE *f = fopen(unit->filepath, "r");
-  if (f == NULL) {
-    bl_builder_error(builder, "file not found %s", unit->filepath);
-    return BL_ERR_FILE_NOT_FOUND;
-  }
+#include "bl/bldebug.h"
+#include "bl/error.h"
+#include "blmemory_impl.h"
 
-  fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
-  if (fsize == 0) {
-    fclose(f);
-    bl_builder_error(builder, "invalid source file %s", unit->filepath);
-    return BL_ERR_INVALID_SOURCE;
-  }
-
-  fseek(f, 0, SEEK_SET);
-
-  char *src = malloc(sizeof(char) * (fsize + 1));
-  fread(src, fsize, 1, f);
-  src[fsize] = '\0';
-  fclose(f);
-
-  unit->src = src;
-  return BL_NO_ERR;
-}
+#endif //BL_COMMON_IMPL_H

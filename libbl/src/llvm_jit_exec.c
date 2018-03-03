@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "bl/bldebug.h"
 
-bool
+int
 bl_llvm_jit_exec_run(bl_builder_t *builder,
                      bl_assembly_t *assembly)
 {

@@ -24,7 +24,7 @@ set(HEADER_FILES
         include/bl/bllimits.h
         include/bl/assembly.h
         include/bl/builder.h
-        include/bl/bldebug.h)
+        include/bl/bldebug.h include/bl/error.h)
 
 set(HEADER_FILES_IMPL
         src/ast/ast_impl.h
@@ -39,7 +39,7 @@ set(HEADER_FILES_IMPL
         src/ast/node_impl.h
         src/type_impl.h
         src/unit_impl.h
-        src/stages_impl.h)
+        src/stages_impl.h src/common_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c

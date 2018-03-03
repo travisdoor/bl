@@ -108,7 +108,7 @@ print_node(bl_node_t *node,
   }
 }
 
-bool
+int
 bl_ast_printer_run(bl_unit_t *unit)
 {
   print_node(unit->ast.root, 0);
