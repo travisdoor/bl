@@ -28,8 +28,10 @@ i32 main() {
     }
 
     x = x + 1;
-  }
 
+    continue;
+    x = x - 1;
+  }
 
   if (count != pred) {
     printf("%d != %d\n", count, pred);

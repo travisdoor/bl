@@ -152,3 +152,13 @@ TEST_F(CompilerTest, loop)
     ASSERT_TRUE(false);
   }
 }
+
+TEST_F(CompilerTest, while_loop)
+{
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "while_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  if (!bl_builder_compile(builder, assembly, FLAGS)) {
+    ASSERT_TRUE(false);
+  }
+}

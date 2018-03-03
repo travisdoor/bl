@@ -5,14 +5,8 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
-enum my_enum {
-  A,
-  B,
-  C
-}
-
 i32 main() {
-  const i32 c = 666; // evaluate as constant integer in LLVM
+
   return 0;
 }
 

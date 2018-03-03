@@ -205,9 +205,44 @@ parse_loop_stmt(context_t *cnt)
   bool      prev_is_loop = cnt->is_loop;
 
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
-  if (tok->sym == BL_SYM_LOOP) {
+  if (tok->sym == BL_SYM_LOOP || tok->sym == BL_SYM_WHILE) {
     bl_tokens_consume(cnt->tokens);
-    cnt->is_loop    = true;
+    loop = bl_ast_new_node(&cnt->unit->ast, BL_NODE_LOOP_STMT, tok->src_loc, tok->line, tok->col);
+
+    if (tok->sym == BL_SYM_WHILE) {
+      /* while loop has expression defined in (expr) so we parse it here */
+
+      /* eat ( */
+      tok = bl_tokens_consume(cnt->tokens);
+      if (tok->sym != BL_SYM_LPAREN) {
+        parse_error(cnt, "%s %d:%d missing "
+          BL_YELLOW("'('")
+          " after while statement", cnt->unit->filepath, tok->line, tok->col);
+      }
+
+      loop->value.loop_stmt.expr = parse_expr(cnt);
+      if (!loop->value.loop_stmt.expr) {
+        parse_error(cnt,
+                    "%s %d:%d expected while statement expression ",
+                    cnt->unit->filepath,
+                    tok->line,
+                    tok->col);
+      }
+
+      /* eat ) */
+      tok = bl_tokens_consume(cnt->tokens);
+      if (tok->sym != BL_SYM_RPAREN) {
+        parse_error(cnt, "%s %d:%d missing "
+          BL_YELLOW("')'")
+          " after while statement expression", cnt->unit->filepath, tok->line, tok->col);
+      }
+
+    } else {
+      /* loop without expression defined */
+      loop->value.loop_stmt.expr = NULL;
+    }
+
+    cnt->is_loop = true;
     bl_node_t *stmt = parse_cmp_stmt(cnt);
     cnt->is_loop = prev_is_loop;
     if (!stmt) {
@@ -218,7 +253,6 @@ parse_loop_stmt(context_t *cnt)
                   tok->col);
     }
 
-    loop = bl_ast_new_node(&cnt->unit->ast, BL_NODE_LOOP_STMT, tok->src_loc, tok->line, tok->col);
     loop->value.loop_stmt.cmp_stmt = stmt;
   }
 

@@ -70,6 +70,7 @@ print_node(bl_node_t *node,
     case BL_NODE_LOOP_STMT:
       pad += 2;
       print_node(node->value.loop_stmt.cmp_stmt, pad);
+      print_node(node->value.loop_stmt.expr, pad);
       break;
     case BL_NODE_BINOP:
       pad += 2;

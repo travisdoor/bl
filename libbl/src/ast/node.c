@@ -44,6 +44,11 @@ bl_node_init(bl_node_t *node,
              int line,
              int col)
 {
+  /*
+   * node allocated by calloc in ast tree has all values set to zero by default
+   * when allocation method has been changed, use memset here for setting whole
+   * memory block occupied by node to 0
+   */
   node->type           = type;
   node->generated_from = generated_from;
   node->line           = line;

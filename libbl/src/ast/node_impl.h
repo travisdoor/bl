@@ -101,6 +101,7 @@ typedef struct bl_node_call_stmt
 typedef struct bl_node_loop_stmt
 {
   struct bl_node *cmp_stmt;
+  struct bl_node *expr;
 } bl_node_loop_stmt_t;
 
 typedef struct bl_node_return_stmt
