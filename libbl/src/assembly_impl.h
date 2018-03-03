@@ -33,11 +33,11 @@
 #include <llvm-c/Core.h>
 #include "bl/assembly.h"
 
-typedef struct bl_assembly 
+typedef struct bl_assembly
 {
-  BArray *units;
-  char *name;
-  LLVMModuleRef llvm_module;
+  BArray         *units;
+  char           *name;
+  LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;
 } bl_assembly_t;
 

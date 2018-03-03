@@ -37,7 +37,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
 {
   bl_assert(assembly->llvm_module, "invalid assembly module");
   LLVMExecutionEngineRef engine;
-  char *error = NULL;
+  char                   *error = NULL;
 
   LLVMLinkInInterpreter();
   if (LLVMCreateInterpreterForModule(&engine, assembly->llvm_module, &error) != 0) {

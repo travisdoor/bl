@@ -34,7 +34,8 @@
 #include <bobject/containers/array.h>
 #include "token_impl.h"
 
-typedef struct bl_tokens {
+typedef struct bl_tokens
+{
   BArray *buf;
   BArray *string_cache;
   size_t iter;
@@ -73,10 +74,6 @@ bl_tokens_peek_nth(bl_tokens_t *tokens,
 bl_token_t *
 bl_tokens_consume(bl_tokens_t *tokens);
 
-bl_token_t **
-bl_tokens_consume_n(bl_tokens_t *tokens,
-                    int n);
-
 bl_token_t *
 bl_tokens_consume_if(bl_tokens_t *tokens,
                      bl_sym_e sym);
@@ -103,7 +100,7 @@ bl_tokens_is_seq(bl_tokens_t *tokens,
                  ...);
 
 void
-bl_tokens_resert_iter(bl_tokens_t *tokens);
+bl_tokens_reset_iter(bl_tokens_t *tokens);
 
 void
 bl_tokens_set_marker(bl_tokens_t *tokens);

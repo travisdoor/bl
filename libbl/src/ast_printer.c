@@ -28,7 +28,6 @@
 
 #include <stdio.h>
 #include "stages_impl.h"
-#include "ast/node_impl.h"
 
 static void
 print_node(bl_node_t *node,
@@ -39,7 +38,7 @@ print_node(bl_node_t *node,
 
   fprintf(stdout, "%*s%s\n", pad, "", bl_node_to_str(node));
 
-  int c = 0;
+  int       c      = 0;
   bl_node_t *child = NULL;
 
   switch (node->type) {

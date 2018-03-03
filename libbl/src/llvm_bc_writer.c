@@ -41,9 +41,9 @@ bl_llvm_bc_writer_run(bl_builder_t *builder,
   strcpy(export_file, unit->filepath);
   strcat(export_file, ".bc");
   if (LLVMWriteBitcodeToFile(unit->llvm_module, export_file) != 0) {
-    free(export_file);
     bl_builder_error(
       builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
+    free(export_file);
     return false;
   }
   free(export_file);

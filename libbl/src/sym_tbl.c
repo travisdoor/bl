@@ -36,7 +36,7 @@
 void
 bl_sym_tbl_init(bl_sym_tbl_t *tbl)
 {
-  tbl->syms = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_SYM_COUNT);
+  tbl->syms        = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_SYM_COUNT);
   tbl->unsatisfied = bo_array_new(sizeof(bl_node_t *));
 }
 
@@ -68,7 +68,7 @@ bl_sym_tbl_get_sym_of_type(bl_sym_tbl_t *tbl,
 {
   bl_assert(ident, "invalid identifier");
   bo_iterator_t iter = bo_htbl_find(tbl->syms, ident->hash);
-  bo_iterator_t end = bo_htbl_end(tbl->syms);
+  bo_iterator_t end  = bo_htbl_end(tbl->syms);
   if (bo_iterator_equal(&iter, &end))
     return NULL;
 
@@ -90,12 +90,12 @@ bl_sym_tbl_add_unsatisfied_expr(bl_sym_tbl_t *tbl,
 bool
 bl_sym_tbl_try_satisfy_all(bl_sym_tbl_t *tbl)
 {
-  size_t c = bo_array_size(tbl->unsatisfied);
-  size_t i = 0;
-  bool ret = true;
-  bool erase = false;
-  bl_node_t *expr = NULL;
-  bl_node_t *decl = NULL;
+  size_t     c      = bo_array_size(tbl->unsatisfied);
+  size_t     i      = 0;
+  bool       ret    = true;
+  bool       erase  = false;
+  bl_node_t  *expr  = NULL;
+  bl_node_t  *decl  = NULL;
   bl_ident_t *ident = NULL;
 
   while (i < c) {
@@ -104,7 +104,7 @@ bl_sym_tbl_try_satisfy_all(bl_sym_tbl_t *tbl)
     switch (expr->type) {
       case BL_NODE_CALL_EXPR:
         ident = &expr->value.call_expr.ident;
-        decl = bl_sym_tbl_get_sym_of_type(tbl, ident, BL_NODE_FUNC_DECL);
+        decl  = bl_sym_tbl_get_sym_of_type(tbl, ident, BL_NODE_FUNC_DECL);
         if (decl) {
           expr->value.call_expr.callee = decl;
           erase = true;

@@ -28,7 +28,6 @@
 
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/array.h>
-#include "bl/bllimits.h"
 #include "llvm_bl_cnt_impl.h"
 
 /* class LlvmBlockContext */
@@ -106,7 +105,7 @@ LLVMValueRef
 bl_llvm_block_context_get(LlvmBlockContext *self,
                           bl_ident_t *id)
 {
-  const int c = bo_array_size(self->blocks);
+  const int  c      = bo_array_size(self->blocks);
   BHashTable *block = NULL;
 
   for (int i = 0; i < c; i++) {

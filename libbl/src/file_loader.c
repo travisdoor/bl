@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include "bl/unit.h"
 #include "stages_impl.h"
-#include "bl/bldebug.h"
 
 bool
 bl_file_loader_run(bl_builder_t *builder,

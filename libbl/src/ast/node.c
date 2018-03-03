@@ -29,7 +29,6 @@
 #include <string.h>
 #include "ast/node_impl.h"
 #include "bl/bldebug.h"
-#include "blmemory_impl.h"
 
 static const char *node_strings[] = {
 #define nt(tok, str) str,
@@ -45,10 +44,10 @@ bl_node_init(bl_node_t *node,
              int line,
              int col)
 {
-  node->type = type;
+  node->type           = type;
   node->generated_from = generated_from;
-  node->line = line;
-  node->col = col;
+  node->line           = line;
+  node->col            = col;
 
   switch (type) {
     case BL_NODE_GLOBAL_STMT:

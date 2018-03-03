@@ -93,9 +93,9 @@ typedef struct bl_node_continue_stmt
 
 typedef struct bl_node_call_stmt
 {
-  bl_ident_t ident;
+  bl_ident_t     ident;
   struct bl_node *callee;
-  BArray *args;
+  BArray         *args;
 } bl_node_call_stmt_t;
 
 typedef struct bl_node_loop_stmt
@@ -122,15 +122,15 @@ typedef struct bl_node_if_stmt
 /* TODO: don't use base */
 typedef struct bl_node_decl
 {
-  bl_sym_e modificator;
+  bl_sym_e   modificator;
   bl_ident_t ident;
-  bl_type_t type;
+  bl_type_t  type;
 } bl_node_decl_t;
 
 typedef struct bl_node_func_decl
 {
   bl_node_decl_t base;
-  BArray *params;
+  BArray         *params;
   struct bl_node *cmp_stmt;
 } bl_node_func_decl_t;
 
@@ -148,7 +148,7 @@ typedef struct bl_node_param_var_decl
 typedef struct bl_node_enum_decl
 {
   bl_node_decl_t base;
-  BArray *elems;
+  BArray         *elems;
 } bl_node_enum_decl_t;
 
 /*
@@ -159,13 +159,13 @@ typedef struct bl_node_const_expr
   bl_node_conts_type_e type;
   union
   {
-    const char *as_string;
-    char as_char;
+    const char    *as_string;
+    char          as_char;
     unsigned long as_ulong;
-    double as_double;
-    float as_float;
-    bool as_bool;
-  } value;
+    double        as_double;
+    float         as_float;
+    bool          as_bool;
+  }                    value;
 } bl_node_const_expr_t;
 
 typedef struct bl_node_decl_ref_expr
@@ -192,31 +192,31 @@ typedef struct bl_node
   bl_node_type_e type;
 
   const char *generated_from;
-  int line;
-  int col;
+  int        line;
+  int        col;
 
   union
   {
-    bl_node_cmp_stmt_t cmp_stmt;
-    bl_node_glob_stmt_t glob_stmt;
-    bl_node_break_stmt_t break_stmt;
+    bl_node_cmp_stmt_t      cmp_stmt;
+    bl_node_glob_stmt_t     glob_stmt;
+    bl_node_break_stmt_t    break_stmt;
     bl_node_continue_stmt_t continue_stmt;
-    bl_node_loop_stmt_t loop_stmt;
-    bl_node_return_stmt_t return_stmt;
-    bl_node_if_stmt_t if_stmt;
+    bl_node_loop_stmt_t     loop_stmt;
+    bl_node_return_stmt_t   return_stmt;
+    bl_node_if_stmt_t       if_stmt;
 
-    bl_node_decl_t decl;
-    bl_node_func_decl_t func_decl;
-    bl_node_var_decl_t var_decl;
+    bl_node_decl_t           decl;
+    bl_node_func_decl_t      func_decl;
+    bl_node_var_decl_t       var_decl;
     bl_node_param_var_decl_t param_var_decl;
-    bl_node_enum_decl_t enum_decl;
+    bl_node_enum_decl_t      enum_decl;
 
-    bl_node_const_expr_t const_expr;
+    bl_node_const_expr_t    const_expr;
     bl_node_decl_ref_expr_t decl_ref_expr;
-    bl_node_call_stmt_t call_expr;
+    bl_node_call_stmt_t     call_expr;
 
     bl_node_binop_t binop;
-  } value;
+  }          value;
 } bl_node_t;
 
 void

@@ -66,6 +66,7 @@ BO_BEGIN_DECLS
   sm(LOOP,       "loop") \
   sm(BREAK,      "break") \
   sm(CONTINUE,   "continue") \
+  sm(CONST,   "const") \
   sm(IMPL,       "impl") /* must be last */\
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \
@@ -108,20 +109,20 @@ extern BO_EXPORT char *bl_sym_strings[];
 
 typedef struct
 {
-  bl_sym_e sym;
-  int line;
-  int col;
-  int len;
+  bl_sym_e   sym;
+  int        line;
+  int        col;
+  int        len;
   const char *src_loc;
   union
   {
-    const char *as_string;
-    char as_char;
-    double as_double;
-    float as_float;
+    const char         *as_string;
+    char               as_char;
+    double             as_double;
+    float              as_float;
     unsigned long long as_ull;
-  } value;
-} bl_token_t;
+  }          value;
+}                     bl_token_t;
 
 /* content must be set manually */
 extern BO_EXPORT void

@@ -32,7 +32,7 @@
 void
 bl_tokens_init(bl_tokens_t *tokens)
 {
-  tokens->buf = bo_array_new(sizeof(bl_token_t));
+  tokens->buf          = bo_array_new(sizeof(bl_token_t));
   tokens->string_cache = bo_array_new_bo(bo_typeof(BString), true);
 }
 
@@ -93,18 +93,6 @@ bl_tokens_consume(bl_tokens_t *tokens)
   return NULL;
 }
 
-bl_token_t **
-bl_tokens_consume_n(bl_tokens_t *tokens,
-                    int n)
-{
-  if (tokens->iter + n < bo_array_size(tokens->buf)) {
-    return &bo_array_at(tokens->buf, tokens->iter, bl_token_t *);
-    tokens->iter += n;
-  }
-
-  return NULL;
-}
-
 bl_token_t *
 bl_tokens_consume_if(bl_tokens_t *tokens,
                      bl_sym_e sym)
@@ -155,8 +143,8 @@ bl_tokens_is_seq(bl_tokens_t *tokens,
                  int cnt,
                  ...)
 {
-  bool ret = true;
-  size_t c = bo_array_size(tokens->buf);
+  bool     ret = true;
+  size_t   c   = bo_array_size(tokens->buf);
   bl_sym_e sym = BL_SYM_EOF;
   cnt += tokens->iter;
 
@@ -188,7 +176,7 @@ bl_tokens_back_to_marker(bl_tokens_t *tokens)
 }
 
 void
-bl_tokens_resert_iter(bl_tokens_t *tokens)
+bl_tokens_reset_iter(bl_tokens_t *tokens)
 {
   tokens->iter = 0;
 }

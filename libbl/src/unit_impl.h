@@ -35,24 +35,24 @@
 #include "tokens_impl.h"
 
 /* class Unit object members */
-typedef struct bl_unit {
+typedef struct bl_unit
+{
   /* members */
   /* source file name with path */
-  char *filepath;
-  char *name;
+  char         *filepath;
+  char         *name;
   /* source data */
-  char *src;
+  char         *src;
   /* output of lexer */
-  bl_tokens_t tokens;
+  bl_tokens_t  tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t ast;
+  bl_ast_t     ast;
   /* All symbols registered in this unit */
   bl_sym_tbl_t sym_tbl;
 
   /* LLVM Module */
-  LLVMModuleRef llvm_module;
+  LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;
 } bl_unit_t;
-
 
 #endif //BL_UNIT_IMPL_H

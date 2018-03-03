@@ -71,7 +71,8 @@ compile_unit(bl_builder_t *builder,
              bl_unit_t *unit,
              uint32_t flags)
 {
-  bl_log("processing unit: " BL_GREEN("%s"), unit->name);
+  bl_log("processing unit: "
+           BL_GREEN("%s"), unit->name);
 
   if (flags & BL_BUILDER_LOAD_FROM_FILE && !bl_file_loader_run(builder, unit))
     return false;
@@ -117,7 +118,7 @@ bl_builder_new(void)
 {
   bl_builder_t *builder = bl_calloc(1, sizeof(bl_builder_t));
 
-  builder->on_error = default_error_handler;
+  builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;
 
   return builder;
@@ -134,10 +135,10 @@ bl_builder_compile(bl_builder_t *builder,
                    bl_assembly_t *assembly,
                    uint32_t flags)
 {
-  clock_t begin = clock();
-  const size_t c = bo_array_size(assembly->units);
-  bl_unit_t *unit;
-  for (size_t i = 0; i < c; i++) {
+  clock_t      begin = clock();
+  const size_t c     = bo_array_size(assembly->units);
+  bl_unit_t    *unit;
+  for (size_t  i     = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
     /* IDEA: can run in separate thread */
     if (!compile_unit(builder, unit, flags)) {
@@ -145,11 +146,13 @@ bl_builder_compile(bl_builder_t *builder,
     }
   }
 
-  bool result = compile_assembly(builder, assembly, flags);
-  clock_t end = clock();
-  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+  bool         result     = compile_assembly(builder, assembly, flags);
+  clock_t      end        = clock();
+  double       time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
 
-  bl_log("compiled in " BL_GREEN("%f") " seconds", time_spent);
+  bl_log("compiled in "
+           BL_GREEN("%f")
+           " seconds", time_spent);
 
   return result;
 }
@@ -159,7 +162,7 @@ bl_builder_set_error_diag_handler(bl_builder_t *builder,
                                   bl_diag_handler_f handler,
                                   void *context)
 {
-  builder->on_error = handler;
+  builder->on_error     = handler;
   builder->on_error_cnt = context;
 }
 
@@ -168,7 +171,7 @@ bl_builder_set_warning_diag_handler(bl_builder_t *builder,
                                     bl_diag_handler_f handler,
                                     void *context)
 {
-  builder->on_warning = handler;
+  builder->on_warning     = handler;
   builder->on_warning_cnt = context;
 }
 

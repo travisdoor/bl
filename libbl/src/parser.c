@@ -31,7 +31,6 @@
 #include <bobject/containers/array.h>
 #include "stages_impl.h"
 #include "bl/bldebug.h"
-#include "unit_impl.h"
 
 #define parse_error(cnt, format, ...) \
   { \
@@ -42,15 +41,21 @@
 typedef struct context
 {
   bl_builder_t *builder;
-  bl_unit_t *unit;
-  bl_tokens_t *tokens;
+  bl_unit_t    *unit;
+  bl_tokens_t  *tokens;
 
-  jmp_buf jmp_error;
+  jmp_buf    jmp_error;
+
+  /* tmp */
   bool is_loop;
+  bl_token_t *modif;
 } context_t;
 
 static void
-parse_semicolon(context_t *cnt);
+parse_semicolon_erq(context_t *cnt);
+
+static void
+parse_modif(context_t *cnt);
 
 static bl_node_t *
 parse_global_stmt(context_t *cnt);
@@ -100,13 +105,28 @@ static bl_node_t *
 parse_continue_stmt(context_t *cnt);
 
 void
-parse_semicolon(context_t *cnt)
+parse_semicolon_erq(context_t *cnt)
 {
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_SEMICOLON) {
     parse_error(cnt, "%s %d:%d missing semicolon "
       BL_YELLOW("';'")
       " at the end of expression", cnt->unit->filepath, tok->line, tok->col);
+  }
+}
+
+void
+parse_modif(context_t *cnt)
+{
+  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+  switch (tok->sym) {
+    case BL_SYM_EXTERN:
+    case BL_SYM_CONST:
+      bl_tokens_consume(cnt->tokens);
+      cnt->modif = tok;
+      break;
+    default:
+      break;
   }
 }
 
@@ -122,6 +142,8 @@ stmt:
                  BL_YELLOW("';'"), cnt->unit->filepath, tok->line, tok->col);
     goto stmt;
   }
+
+  parse_modif(cnt);
 
   if (bl_node_glob_stmt_add_child(gstmt, parse_enum_decl(cnt))) {
     goto stmt;
@@ -179,13 +201,13 @@ parse_return_stmt(context_t *cnt)
 bl_node_t *
 parse_loop_stmt(context_t *cnt)
 {
-  bl_node_t *loop = NULL;
-  bool prev_is_loop = cnt->is_loop;
+  bl_node_t *loop        = NULL;
+  bool      prev_is_loop = cnt->is_loop;
 
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
   if (tok->sym == BL_SYM_LOOP) {
     bl_tokens_consume(cnt->tokens);
-    cnt->is_loop = true;
+    cnt->is_loop    = true;
     bl_node_t *stmt = parse_cmp_stmt(cnt);
     cnt->is_loop = prev_is_loop;
     if (!stmt) {
@@ -248,12 +270,11 @@ parse_continue_stmt(context_t *cnt)
 bl_node_t *
 parse_if_stmt(context_t *cnt)
 {
-  bl_node_t *ifstmt = NULL;
-  bl_node_t *expr = NULL;
-  bl_node_t *then_stmt = NULL;
-  bl_node_t *else_stmt = NULL;
-  bl_node_t *else_if_stmt = NULL;
-  bl_token_t *tok = NULL;
+  bl_node_t  *ifstmt    = NULL;
+  bl_node_t  *expr      = NULL;
+  bl_node_t  *then_stmt = NULL;
+  bl_node_t  *else_stmt = NULL;
+  bl_token_t *tok       = NULL;
 
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
     bl_tokens_consume(cnt->tokens);
@@ -290,7 +311,7 @@ parse_if_stmt(context_t *cnt)
     }
 
     ifstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_IF_STMT, tok->src_loc, tok->line, tok->col);
-    ifstmt->value.if_stmt.expr = expr;
+    ifstmt->value.if_stmt.expr      = expr;
     ifstmt->value.if_stmt.then_stmt = then_stmt;
 
     /*
@@ -337,6 +358,8 @@ stmt:
     goto stmt;
   }
 
+  parse_modif(cnt);
+
   /* compound sub-statement */
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_LBLOCK)) {
     bl_node_cmp_stmt_add_child(stmt, parse_cmp_stmt(cnt));
@@ -345,13 +368,13 @@ stmt:
 
   /* var decl */
   if (bl_node_cmp_stmt_add_child(stmt, parse_var_decl(cnt))) {
-    parse_semicolon(cnt);
+    parse_semicolon_erq(cnt);
     goto stmt;
   }
 
   /* expr */
   if (bl_node_cmp_stmt_add_child(stmt, parse_expr(cnt))) {
-    parse_semicolon(cnt);
+    parse_semicolon_erq(cnt);
     goto stmt;
   }
 
@@ -365,19 +388,19 @@ stmt:
 
   /* return stmt */
   if (bl_node_cmp_stmt_add_child(stmt, parse_return_stmt(cnt))) {
-    parse_semicolon(cnt);
+    parse_semicolon_erq(cnt);
     goto stmt;
   }
 
   /* break stmt */
   if (bl_node_cmp_stmt_add_child(stmt, parse_break_stmt(cnt))) {
-    parse_semicolon(cnt);
+    parse_semicolon_erq(cnt);
     goto stmt;
   }
 
   /* continue stmt */
   if (bl_node_cmp_stmt_add_child(stmt, parse_continue_stmt(cnt))) {
-    parse_semicolon(cnt);
+    parse_semicolon_erq(cnt);
     goto stmt;
   }
 
@@ -394,9 +417,9 @@ stmt:
 bl_node_t *
 parse_func_decl(context_t *cnt)
 {
-  bl_node_t *func_decl = NULL;
+  bl_node_t  *func_decl = NULL;
   bl_token_t *tok;
-  bl_sym_e modif = BL_SYM_NONE;
+  bl_sym_e   modif      = BL_SYM_NONE;
 
   /*
    * handle modificators
@@ -404,15 +427,29 @@ parse_func_decl(context_t *cnt)
 
   /* Store marker in case when current sequence of tokens is not function at all. */
   bl_tokens_set_marker(cnt->tokens);
-  if (bl_tokens_current_is(cnt->tokens, BL_SYM_EXTERN)) {
-    bl_tokens_consume(cnt->tokens);
-    modif = BL_SYM_EXTERN;
-  }
 
   if (bl_tokens_is_seq(
     cnt->tokens, 3, BL_SYM_IDENT, BL_SYM_IDENT, BL_SYM_LPAREN)) {
 
-    tok = bl_tokens_peek(cnt->tokens);
+    if (cnt->modif) {
+      switch (cnt->modif->sym) {
+        case BL_SYM_EXTERN:
+          modif = cnt->modif->sym;
+          cnt->modif = NULL;
+          break;
+        default: {
+          parse_error(cnt,
+                      "%s %d:%d function declaration cannot be "
+                        BL_YELLOW("%s"),
+                      cnt->unit->filepath,
+                      cnt->modif->line,
+                      cnt->modif->col,
+                      bl_sym_strings[cnt->modif->sym]);
+        }
+      }
+    }
+
+    tok       = bl_tokens_peek(cnt->tokens);
     func_decl = bl_ast_new_node(
       &cnt->unit->ast, BL_NODE_FUNC_DECL, tok->src_loc, tok->line, tok->col);
 
@@ -500,22 +537,32 @@ parse_param_var_decl(context_t *cnt)
 bl_node_t *
 parse_enum_decl(context_t *cnt)
 {
-  bl_node_t *enm = NULL;
+  bl_node_t  *enm = NULL;
   bl_token_t *tok;
 
   tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM);
   if (tok) {
+    if (cnt->modif) {
+      parse_error(cnt,
+                  "%s %d:%d enum cannot be declared as "
+                    BL_YELLOW("%s"),
+                  cnt->unit->filepath,
+                  cnt->modif->line,
+                  cnt->modif->col,
+                  bl_sym_strings[cnt->modif->sym]);
+    }
+
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_IDENT) {
       parse_error(cnt, "%s %d:%d expected enum name", cnt->unit->filepath, tok->line, tok->col);
     }
-
 
     enm = bl_ast_new_node(
       &cnt->unit->ast, BL_NODE_ENUM_DECL, tok->src_loc, tok->line, tok->col);
 
     /* TODO parse base type: enum my_enum : i32 {} */
     bl_type_init(&enm->value.decl.type, "i32");
+    enm->value.decl.modificator = BL_SYM_NONE;
 
     /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
@@ -597,7 +644,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_float = tok->value.as_float;
-      expr->value.const_expr.type = BL_CONST_FLOAT;
+      expr->value.const_expr.type           = BL_CONST_FLOAT;
       break;
     case BL_SYM_DOUBLE:
       bl_tokens_consume(cnt->tokens);
@@ -605,7 +652,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_double = tok->value.as_double;
-      expr->value.const_expr.type = BL_CONST_DOUBLE;
+      expr->value.const_expr.type            = BL_CONST_DOUBLE;
       break;
     case BL_SYM_NUM:
       bl_tokens_consume(cnt->tokens);
@@ -613,7 +660,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_ulong = tok->value.as_ull;
-      expr->value.const_expr.type = BL_CONST_INT;
+      expr->value.const_expr.type           = BL_CONST_INT;
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);
@@ -621,7 +668,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_bool = true;
-      expr->value.const_expr.type = BL_CONST_BOOL;
+      expr->value.const_expr.type          = BL_CONST_BOOL;
       break;
     case BL_SYM_FALSE:
       bl_tokens_consume(cnt->tokens);
@@ -629,7 +676,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_bool = false;
-      expr->value.const_expr.type = BL_CONST_BOOL;
+      expr->value.const_expr.type          = BL_CONST_BOOL;
       break;
     case BL_SYM_STRING:
       bl_tokens_consume(cnt->tokens);
@@ -637,7 +684,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_string = tok->value.as_string;
-      expr->value.const_expr.type = BL_CONST_STRING;
+      expr->value.const_expr.type            = BL_CONST_STRING;
       break;
     case BL_SYM_CHAR:
       bl_tokens_consume(cnt->tokens);
@@ -645,7 +692,7 @@ parse_atom_expr(context_t *cnt)
       expr =
         bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
       expr->value.const_expr.value.as_char = tok->value.as_char;
-      expr->value.const_expr.type = BL_CONST_CHAR;
+      expr->value.const_expr.type          = BL_CONST_CHAR;
       break;
     default:
       break;
@@ -659,26 +706,26 @@ parse_expr_1(context_t *cnt,
              bl_node_t *lhs,
              int min_precedence)
 {
-  bl_node_t *rhs = NULL;
+  bl_node_t  *rhs       = NULL;
   bl_token_t *lookahead = bl_tokens_peek(cnt->tokens);
-  bl_token_t *op = NULL;
+  bl_token_t *op        = NULL;
 
   while (bl_token_prec(lookahead) >= min_precedence) {
     op = lookahead;
     bl_tokens_consume(cnt->tokens);
-    rhs = parse_atom_expr(cnt);
+    rhs       = parse_atom_expr(cnt);
     lookahead = bl_tokens_peek(cnt->tokens);
 
     while ((bl_token_prec(lookahead) > bl_token_prec(op)) ||
       (lookahead->sym == BL_SYM_ASIGN && bl_token_prec(lookahead) == bl_token_prec(op))) {
-      rhs = parse_expr_1(cnt, rhs, bl_token_prec(lookahead));
+      rhs       = parse_expr_1(cnt, rhs, bl_token_prec(lookahead));
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 
     bl_node_t *tmp = lhs;
     lhs = bl_ast_new_node(&cnt->unit->ast, BL_NODE_BINOP, op->src_loc, op->line, op->col);
-    lhs->value.binop.lhs = tmp;
-    lhs->value.binop.rhs = rhs;
+    lhs->value.binop.lhs      = tmp;
+    lhs->value.binop.rhs      = rhs;
     lhs->value.binop.operator = op->sym;
   }
 
@@ -708,8 +755,8 @@ parse_call_expr(context_t *cnt)
      * call into cache and add information about return type later.
      */
     bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
-    bl_ident_t *ident = &call->value.call_expr.ident;
-    bl_node_t *callee = bl_sym_tbl_get_sym_of_type(sym_tbl, ident, BL_NODE_FUNC_DECL);
+    bl_ident_t   *ident   = &call->value.call_expr.ident;
+    bl_node_t    *callee  = bl_sym_tbl_get_sym_of_type(sym_tbl, ident, BL_NODE_FUNC_DECL);
     if (callee == NULL) {
       bl_sym_tbl_add_unsatisfied_expr(sym_tbl, call);
     } else {
@@ -736,9 +783,25 @@ bl_node_t *
 parse_var_decl(context_t *cnt)
 {
   bl_node_t *vdcl = NULL;
+  bl_sym_e  modif = BL_SYM_NONE;
 
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
-    bl_token_t *tok_type = bl_tokens_consume(cnt->tokens);
+    if (cnt->modif) {
+      switch (cnt->modif->sym) {
+        /* TODO: handle possible modificators for variable declaration */
+        default: {
+          parse_error(cnt,
+                      "%s %d:%d variable declaration cannot be "
+                        BL_YELLOW("%s"),
+                      cnt->unit->filepath,
+                      cnt->modif->line,
+                      cnt->modif->col,
+                      bl_sym_strings[cnt->modif->sym]);
+        }
+      }
+    }
+
+    bl_token_t *tok_type  = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
     if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -767,6 +830,8 @@ parse_var_decl(context_t *cnt)
           BL_YELLOW("'='"), cnt->unit->filepath, tok_ident->line, tok_ident->col + tok_ident->len);
       }
     }
+
+    vdcl->value.decl.modificator = modif;
   }
 
   return vdcl;
@@ -776,7 +841,9 @@ bool
 bl_parser_run(bl_builder_t *builder,
               bl_unit_t *unit)
 {
-  context_t cnt = {.builder = builder, .unit = unit, .tokens = &unit->tokens, .is_loop = false};
+  context_t
+    cnt =
+    {.builder = builder, .unit = unit, .tokens = &unit->tokens, .is_loop = false, .modif = NULL};
 
   if (setjmp(cnt.jmp_error))
     return false;

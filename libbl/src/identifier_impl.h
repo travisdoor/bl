@@ -34,7 +34,7 @@
 typedef struct bl_ident
 {
   const char *name;
-  uint32_t hash;
+  uint32_t   hash;
 } bl_ident_t;
 
 void

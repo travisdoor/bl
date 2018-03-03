@@ -39,7 +39,6 @@ set(HEADER_FILES_IMPL
         src/ast/node_impl.h
         src/type_impl.h
         src/unit_impl.h
-        src/context_impl.h
         src/stages_impl.h)
 
 set(SOURCE_FILES
