@@ -5,8 +5,24 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
+struct another_s {
+  my_struct data
+}
+
+struct my_struct {
+  i32 i,
+  string s
+}
+
 i32 main() {
-  const i32 const_int = 666;
+  my_struct data;
+  another_s data2;
+
+  // std::some_struct s;
+  // s.i = 10;
+  // data.i = 666;
+  // data2.data.i = 10;
+
   return 0;
 }
 

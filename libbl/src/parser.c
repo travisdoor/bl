@@ -90,6 +90,9 @@ static bl_node_t *
 parse_enum_decl(context_t *cnt);
 
 static bl_node_t *
+parse_struct_decl(context_t *cnt);
+
+static bl_node_t *
 parse_param_var_decl(context_t *cnt);
 
 static bl_node_t *
@@ -145,11 +148,19 @@ stmt:
 
   parse_modif(cnt);
 
-  if (bl_node_glob_stmt_add_child(gstmt, parse_enum_decl(cnt))) {
+  if (bl_node_glob_stmt_add_child(gstmt, parse_struct_decl(cnt))) {
     goto stmt;
   }
 
-  if (!bl_node_glob_stmt_add_child(gstmt, parse_func_decl(cnt))) {
+  if (bl_node_glob_stmt_add_child(gstmt, parse_enum_decl(cnt))) {
+    goto stmt;
+  }
+  
+  if (bl_node_glob_stmt_add_child(gstmt, parse_func_decl(cnt))) {
+    goto stmt;
+  }
+
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_EOF)) {
     bl_token_t *tok = bl_tokens_peek(cnt->tokens);
     parse_error(cnt,
                 BL_ERR_UNEXPECTED_DECL,
@@ -159,8 +170,6 @@ stmt:
                 tok->col);
   }
 
-  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_EOF))
-    goto stmt;
 
   return gstmt;
 }
@@ -664,6 +673,71 @@ elem:
 }
 
 bl_node_t *
+parse_struct_decl(context_t *cnt)
+{
+  bl_node_t  *strct = NULL;
+  bl_token_t *tok;
+
+  tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_STRUCT);
+  if (tok) {
+    if (cnt->modif) {
+      parse_error(cnt,
+                  BL_ERR_UNEXPECTED_MODIF,
+                  "%s %d:%d structure cannot be declared as "
+                    BL_YELLOW("%s"),
+                  cnt->unit->filepath,
+                  cnt->modif->line,
+                  cnt->modif->col,
+                  bl_sym_strings[cnt->modif->sym]);
+    }
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_IDENT) {
+      parse_error(cnt,
+                  BL_ERR_EXPECTED_NAME,
+                  "%s %d:%d expected structure name",
+                  cnt->unit->filepath,
+                  tok->line,
+                  tok->col);
+    }
+
+    strct = bl_ast_new_node(
+      &cnt->unit->ast, BL_NODE_STRUCT_DECL, tok->src_loc, tok->line, tok->col);
+
+    bl_type_init(&strct->value.decl.type, tok->value.as_string);
+    strct->value.decl.modificator = BL_SYM_NONE;
+
+    /* eat '{' */
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_LBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, "%s %d:%d expected struct body "
+        BL_YELLOW("'{'"), cnt->unit->filepath, tok->line, tok->col);
+    }
+
+member:
+    /* eat ident */
+    if (bl_node_struct_decl_add_member(strct, parse_var_decl(cnt))) {
+      if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+        goto member;
+      } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+        tok = bl_tokens_consume(cnt->tokens);
+        parse_error(cnt, BL_ERR_MISSING_COMMA, "%s %d:%d struct members must be separated by comma "
+          BL_YELLOW("','"), cnt->unit->filepath, tok->line, tok->col + tok->len);
+      }
+    }
+
+    /* eat '}' */
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, "%s %d:%d expected end of enum body "
+        BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
+    }
+  }
+
+  return strct;
+}
+
+bl_node_t *
 parse_expr(context_t *cnt)
 {
   return parse_expr_1(cnt, parse_atom_expr(cnt), 0);
@@ -879,22 +953,16 @@ parse_var_decl(context_t *cnt)
     bl_token_t *tok_type  = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
-    if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
-      /* declaration only */
-      vdcl = bl_ast_new_node(
-        &cnt->unit->ast, BL_NODE_VAR_DECL, tok_type->src_loc, tok_type->line, tok_type->col);
+    vdcl = bl_ast_new_node(
+      &cnt->unit->ast, BL_NODE_VAR_DECL, tok_type->src_loc, tok_type->line, tok_type->col);
 
-      bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
-      bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
-    } else if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+    bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
+    bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
+
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
       /*
        * Variable is also asigned to some expression.
        */
-      vdcl = bl_ast_new_node(
-        &cnt->unit->ast, BL_NODE_VAR_DECL, tok_type->src_loc, tok_type->line, tok_type->col);
-
-      bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
-      bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
 
       /* expected expression */
       bl_node_t *expr = parse_expr(cnt);

@@ -24,7 +24,8 @@ set(HEADER_FILES
         include/bl/bllimits.h
         include/bl/assembly.h
         include/bl/builder.h
-        include/bl/bldebug.h include/bl/error.h)
+        include/bl/bldebug.h
+        include/bl/error.h)
 
 set(HEADER_FILES_IMPL
         src/ast/ast_impl.h
@@ -32,21 +33,22 @@ set(HEADER_FILES_IMPL
         src/blmemory_impl.h
         src/llvm_bl_cnt_impl.h
         src/sym_tbl_impl.h
-        src/tokens_impl.h
         src/assembly_impl.h
         src/token_impl.h
+        src/tokens_impl.h
         src/identifier_impl.h
         src/ast/node_impl.h
         src/type_impl.h
         src/unit_impl.h
-        src/stages_impl.h src/common_impl.h)
+        src/stages_impl.h
+        src/common_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
         src/file_loader.c
         src/ast_printer.c
-        src/token_impl.c
         src/unit.c
+        src/token.c
         src/parser.c
         src/llvm_backend.c
         src/ast/ast.c

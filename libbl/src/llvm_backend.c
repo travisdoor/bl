@@ -35,13 +35,13 @@
 #include <bobject/containers/hash.h>
 
 #include "stages_impl.h"
-#include "bl/bldebug.h"
 #include "bl/bllimits.h"
 #include "llvm_bl_cnt_impl.h"
+#include "common_impl.h"
 
 /* class context_t */
 
-#define DEBUG_NAMES 0
+#define DEBUG_NAMES 1
 
 #define gen_error(cnt, code, format, ...) \
   { \
@@ -71,6 +71,7 @@ typedef struct
   LLVMBasicBlockRef func_init_block;
   LLVMBasicBlockRef func_ret_block;
   BHashTable        *const_strings;
+  BHashTable        *structs;
   char              *error;
   char              *error_src;
 } context_t;
@@ -102,9 +103,9 @@ gen_func_params(context_t *cnt,
                 bool forward);
 
 static LLVMValueRef
-gen_func(context_t *cnt,
-         bl_node_t *node,
-         bool forward);
+gen_func_decl(context_t *cnt,
+              bl_node_t *node,
+              bool forward);
 
 static LLVMValueRef
 gen_expr(context_t *cnt,
@@ -149,13 +150,17 @@ gen_var_decl(context_t *cnt,
              bl_node_t *node);
 
 static LLVMValueRef
-gen_call(context_t *cnt,
-         bl_node_t *call);
+gen_call_expr(context_t *cnt,
+              bl_node_t *call);
 
 static int
 gen_call_args(context_t *cnt,
               bl_node_t *call,
               LLVMValueRef *out);
+
+static void
+gen_struct_decl(context_t *cnt,
+                bl_node_t *node);
 
 static void
 gen_gstmt(context_t *cnt,
@@ -185,7 +190,19 @@ to_llvm_type(context_t *cnt,
       return LLVMInt8TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
-    default: bl_abort("unknown type");
+    default: {
+      /*
+       * try to find struct type or create new one with name when structure
+       * is defined in another module or later in this module
+       */
+      if (bo_htbl_has_key(cnt->structs, t->hash)) {
+        return bo_htbl_at(cnt->structs, t->hash, LLVMTypeRef);
+      }
+
+      LLVMTypeRef type = LLVMStructCreateNamed(cnt->llvm_cnt, t->name);
+      bo_htbl_insert(cnt->structs, t->hash, type);
+      return type;
+    }
   }
 }
 
@@ -316,7 +333,7 @@ gen_expr(context_t *cnt,
       break;
     }
     case BL_NODE_CALL_EXPR:
-      val        = gen_call(cnt, expr);
+      val        = gen_call_expr(cnt, expr);
       break;
     case BL_NODE_BINOP:
       val = gen_binop(cnt, expr);
@@ -434,11 +451,14 @@ gen_var_decl(context_t *cnt,
     def = gen_default(cnt, &vdcl->base.type);
   }
 
-  if (LLVMIsAAllocaInst(def)) {
-    def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
-  }
+  // TODO: cant generate default values for struct members
+  if (def) {
+    if (LLVMIsAAllocaInst(def)) {
+      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
+    }
 
-  LLVMBuildStore(cnt->llvm_builder, def, var);
+    LLVMBuildStore(cnt->llvm_builder, def, var);
+  }
   bl_llvm_bl_cnt_add(&cnt->block_context, var, &vdcl->base.ident);
 }
 
@@ -481,8 +501,8 @@ gen_call_args(context_t *cnt,
 }
 
 LLVMValueRef
-gen_call(context_t *cnt,
-         bl_node_t *call)
+gen_call_expr(context_t *cnt,
+              bl_node_t *call)
 {
   bl_node_t *callee = call->value.call_expr.callee;
 
@@ -491,7 +511,7 @@ gen_call(context_t *cnt,
    * Create forward declaration when function has not been created yet.
    */
   if (fn == NULL) {
-    fn = gen_func(cnt, callee, true);
+    fn = gen_func_decl(cnt, callee, true);
   }
 
   /* args */
@@ -612,9 +632,9 @@ gen_loop_stmt(context_t *cnt,
 }
 
 LLVMValueRef
-gen_func(context_t *cnt,
-         bl_node_t *node,
-         bool forward)
+gen_func_decl(context_t *cnt,
+              bl_node_t *node,
+              bool forward)
 {
   bl_node_func_decl_t *fnode                               = &node->value.func_decl;
   /* params */
@@ -759,16 +779,48 @@ gen_cmp_stmt(context_t *cnt,
 }
 
 void
+gen_struct_decl(context_t *cnt,
+                bl_node_t *node)
+{
+  bl_node_decl_t *strct_decl = &node->value.decl;
+  
+  LLVMTypeRef type = NULL;
+  if (bo_htbl_has_key(cnt->structs, strct_decl->type.hash)) {
+    type = bo_htbl_at(cnt->structs, strct_decl->type.hash, LLVMTypeRef);
+  } else {
+    type = LLVMStructCreateNamed(cnt->llvm_cnt, strct_decl->type.name);
+    bo_htbl_insert(cnt->structs, strct_decl->type.hash, type);
+  }
+
+  const int c = bl_node_struct_decl_get_member_count(node);
+  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
+  
+  bl_node_t *member;
+
+  for (int i = 0; i < c; i++) {
+    member = bl_node_struct_decl_get_member(node, i);
+    members[i] = to_llvm_type(cnt, &member->value.decl.type);
+  }
+
+  LLVMStructSetBody(type, members, (unsigned int) c, false);
+  bl_free(members);
+}
+
+void
 gen_gstmt(context_t *cnt,
           bl_node_t *gstmt)
 {
-  bl_node_t   *child = NULL;
-  const int   c      = bl_node_glob_stmt_get_children_count(gstmt);
-  for (size_t i      = 0; i < c; i++) {
+  bl_node_t *child = NULL;
+  const int c      = bl_node_glob_stmt_get_children_count(gstmt);
+
+  for (size_t i = 0; i < c; i++) {
     child = bl_node_glob_stmt_get_child(gstmt, i);
     switch (child->type) {
       case BL_NODE_FUNC_DECL:
-        gen_func(cnt, child, false);
+        gen_func_decl(cnt, child, false);
+        break;
+      case BL_NODE_STRUCT_DECL:
+        gen_struct_decl(cnt, child);
         break;
       default: bl_warning("invalid node in global scope");
     }
@@ -786,6 +838,7 @@ cnt_init(bl_builder_t *builder,
   cnt->mod           = LLVMModuleCreateWithNameInContext(unit->name, cnt->llvm_cnt);
   cnt->llvm_builder  = LLVMCreateBuilderInContext(cnt->llvm_cnt);
   cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt->structs       = bo_htbl_new(sizeof(LLVMTypeRef), 256);
 
   bl_llvm_bl_cnt_init(&cnt->block_context);
 }
@@ -800,6 +853,7 @@ cnt_terminate(context_t *cnt)
   LLVMDisposeMessage(cnt->error_src);
   LLVMContextDispose(cnt->llvm_cnt);
   bo_unref(cnt->const_strings);
+  bo_unref(cnt->structs);
 }
 
 bl_error_e

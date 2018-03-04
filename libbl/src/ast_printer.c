@@ -67,6 +67,14 @@ print_node(bl_node_t *node,
         print_node(child, pad);
       }
       break;
+    case BL_NODE_STRUCT_DECL:
+      c = bl_node_struct_decl_get_member_count(node);
+      pad += 2;
+      for (int i = 0; i < c; i++) {
+        child = bl_node_struct_decl_get_member(node, i);
+        print_node(child, pad);
+      }
+      break;
     case BL_NODE_LOOP_STMT:
       pad += 2;
       print_node(node->value.loop_stmt.cmp_stmt, pad);
