@@ -28,7 +28,6 @@
 
 #include <stdio.h>
 #include "stages_impl.h"
-#include "ast/node_impl.h"
 
 static void
 print_node(bl_node_t *node,
@@ -39,7 +38,7 @@ print_node(bl_node_t *node,
 
   fprintf(stdout, "%*s%s\n", pad, "", bl_node_to_str(node));
 
-  int c = 0;
+  int       c      = 0;
   bl_node_t *child = NULL;
 
   switch (node->type) {
@@ -68,9 +67,18 @@ print_node(bl_node_t *node,
         print_node(child, pad);
       }
       break;
+    case BL_NODE_STRUCT_DECL:
+      c = bl_node_struct_decl_get_member_count(node);
+      pad += 2;
+      for (int i = 0; i < c; i++) {
+        child = bl_node_struct_decl_get_member(node, i);
+        print_node(child, pad);
+      }
+      break;
     case BL_NODE_LOOP_STMT:
       pad += 2;
       print_node(node->value.loop_stmt.cmp_stmt, pad);
+      print_node(node->value.loop_stmt.expr, pad);
       break;
     case BL_NODE_BINOP:
       pad += 2;
@@ -108,10 +116,10 @@ print_node(bl_node_t *node,
   }
 }
 
-bool
+bl_error_e
 bl_ast_printer_run(bl_unit_t *unit)
 {
   print_node(unit->ast.root, 0);
-  return true;
+  return BL_NO_ERR;
 }
 

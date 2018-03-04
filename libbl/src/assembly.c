@@ -27,10 +27,10 @@
 //*****************************************************************************
 
 #include <string.h>
-#include "bl/bldebug.h"
 #include "blmemory_impl.h"
 #include "assembly_impl.h"
 #include "unit_impl.h"
+#include "common_impl.h"
 
 /* public */
 
@@ -38,12 +38,12 @@ bl_assembly_t *
 bl_assembly_new(const char *name)
 {
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
-  assembly->name = strdup(name);
+  assembly->name  = strdup(name);
   assembly->units = bo_array_new(sizeof(bl_unit_t *));
   return assembly;
 }
 
-void 
+void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
@@ -51,8 +51,8 @@ bl_assembly_delete(bl_assembly_t *assembly)
   LLVMContextDispose(assembly->llvm_cnt);
 
   const size_t c = bo_array_size(assembly->units);
-  bl_unit_t *unit;
-  for (size_t i = 0; i < c; i++) {
+  bl_unit_t    *unit;
+  for (size_t  i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
     bl_unit_delete(unit);
   }

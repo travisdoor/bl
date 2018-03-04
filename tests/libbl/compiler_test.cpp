@@ -39,7 +39,7 @@ protected:
   SetUp()
   {
     assembly = bl_assembly_new("test_assembly");
-    builder = bl_builder_new();
+    builder  = bl_builder_new();
   }
 
   void
@@ -50,7 +50,7 @@ protected:
   }
 
   bl_assembly_ref assembly;
-  bl_builder_ref builder;
+  bl_builder_ref  builder;
 };
 
 TEST_F(CompilerTest, simple_definitions)
@@ -58,9 +58,7 @@ TEST_F(CompilerTest, simple_definitions)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_decl_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, simple_definitions_with_asignement)
@@ -68,9 +66,7 @@ TEST_F(CompilerTest, simple_definitions_with_asignement)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "decl_def_values_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, simple_extern_call)
@@ -78,9 +74,7 @@ TEST_F(CompilerTest, simple_extern_call)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_ext_call_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, func_def_ordering)
@@ -88,9 +82,7 @@ TEST_F(CompilerTest, func_def_ordering)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "method_ordering_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, assign_expr)
@@ -98,9 +90,7 @@ TEST_F(CompilerTest, assign_expr)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_assignment_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, simple_call)
@@ -108,9 +98,7 @@ TEST_F(CompilerTest, simple_call)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_method_call_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, expressions)
@@ -118,9 +106,7 @@ TEST_F(CompilerTest, expressions)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "expression_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, compound_sub_statemets)
@@ -128,9 +114,7 @@ TEST_F(CompilerTest, compound_sub_statemets)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "sub_statement_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, ifs)
@@ -138,9 +122,7 @@ TEST_F(CompilerTest, ifs)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "if_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
 
 TEST_F(CompilerTest, loop)
@@ -148,7 +130,13 @@ TEST_F(CompilerTest, loop)
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "loop_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
-  if (!bl_builder_compile(builder, assembly, FLAGS)) {
-    ASSERT_TRUE(false);
-  }
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
+}
+
+TEST_F(CompilerTest, while_loop)
+{
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "while_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }

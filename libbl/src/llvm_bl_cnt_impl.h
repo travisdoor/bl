@@ -29,39 +29,33 @@
 #ifndef BL_LLVM_BL_CNT_BUF_IMPL_H
 #define BL_LLVM_BL_CNT_BUF_IMPL_H
 
-#include <bobject/bobject.h>
 #include <llvm-c/Core.h>
 #include "ast/node_impl.h"
 
-BO_BEGIN_DECLS
+typedef struct
+{
+  BArray *blocks;
+} bl_llvm_bl_cnt_t;
 
-/*
- * TODO: this class can be more abstract to be reused in parses also.
- */
+void
+bl_llvm_bl_cnt_init(bl_llvm_bl_cnt_t *bl_cnt);
 
-/* class LlvmBlockContext declaration */
-bo_decl_type_begin(LlvmBlockContext, BObject)
-  /* virtuals */
-bo_end();
-
-LlvmBlockContext *
-bl_llvm_block_context_new(void);
+void
+bl_llvm_bl_cnt_terminate(bl_llvm_bl_cnt_t *bl_cnt);
 
 bool
-bl_llvm_block_context_add(LlvmBlockContext *self,
-                          LLVMValueRef val,
-                          bl_ident_t *id);
+bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt,
+                   LLVMValueRef val,
+                   bl_ident_t *id);
 
 LLVMValueRef
-bl_llvm_block_context_get(LlvmBlockContext *self,
-                          bl_ident_t *id);
+bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt,
+                   bl_ident_t *id);
 
 void
-bl_llvm_block_context_push_block(LlvmBlockContext *self);
+bl_llvm_bl_cnt_push_block(bl_llvm_bl_cnt_t *bl_cnt);
 
 void
-bl_llvm_block_context_pop_block(LlvmBlockContext *self);
-
-BO_END_DECLS
+bl_llvm_bl_cnt_pop_block(bl_llvm_bl_cnt_t *bl_cnt);
 
 #endif //BL_LLVM_BL_CNT_BUF_IMPL_H

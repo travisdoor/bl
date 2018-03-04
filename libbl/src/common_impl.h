@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   context_impl.h
+// File:   common_impl.h
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   03/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,12 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_CONTEXT_IMPL_H
-#define BL_CONTEXT_IMPL_H
+#ifndef BL_COMMON_IMPL_H
+#define BL_COMMON_IMPL_H
 
-typedef struct bl_context
-{
+#include "bl/bldebug.h"
+#include "bl/error.h"
+#include "blmemory_impl.h"
 
-} bl_context_t;
-
-#endif //BL_CONTEXT_IMPL_H
+#endif //BL_COMMON_IMPL_H

@@ -28,8 +28,7 @@
 
 #include <string.h>
 #include "ast/node_impl.h"
-#include "bl/bldebug.h"
-#include "blmemory_impl.h"
+#include "common_impl.h"
 
 static const char *node_strings[] = {
 #define nt(tok, str) str,
@@ -38,18 +37,22 @@ static const char *node_strings[] = {
 };
 
 /* public */
-bl_node_t *
-bl_node_new(bl_node_type_e type,
-            const char *generated_from,
-            int line,
-            int col)
+void
+bl_node_init(bl_node_t *node,
+             bl_node_type_e type,
+             const char *generated_from,
+             int line,
+             int col)
 {
-  bl_node_t *node = bl_calloc(1, sizeof(bl_node_t));
-
-  node->type = type;
+  /*
+   * node allocated by calloc in ast tree has all values set to zero by default
+   * when allocation method has been changed, use memset here for setting whole
+   * memory block occupied by node to 0
+   */
+  node->type           = type;
   node->generated_from = generated_from;
-  node->line = line;
-  node->col = col;
+  node->line           = line;
+  node->col            = col;
 
   switch (type) {
     case BL_NODE_GLOBAL_STMT:
@@ -71,6 +74,12 @@ bl_node_new(bl_node_type_e type,
     case BL_NODE_FUNC_DECL:
       node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
       break;
+    case BL_NODE_STRUCT_DECL:
+      node->value.struct_decl.members = bo_array_new(sizeof(bl_node_t *));
+      break;
+    case BL_NODE_ENUM_DECL:
+      node->value.enum_decl.elems = bo_array_new(sizeof(bl_node_t *));
+      break;
     case BL_NODE_VAR_DECL:
       break;
     case BL_NODE_PARAM_VAR_DECL:
@@ -86,11 +95,10 @@ bl_node_new(bl_node_type_e type,
       break;
     default: bl_abort("invalid node type");
   }
-  return node;
 }
 
 void
-bl_node_delete(bl_node_t *node)
+bl_node_terminate(bl_node_t *node)
 {
   switch (node->type) {
     case BL_NODE_GLOBAL_STMT:
@@ -112,6 +120,12 @@ bl_node_delete(bl_node_t *node)
     case BL_NODE_FUNC_DECL:
       bo_unref(node->value.func_decl.params);
       break;
+    case BL_NODE_STRUCT_DECL:
+      bo_unref(node->value.struct_decl.members);
+      break;
+    case BL_NODE_ENUM_DECL:
+      bo_unref(node->value.enum_decl.elems);
+      break;
     case BL_NODE_VAR_DECL:
       break;
     case BL_NODE_PARAM_VAR_DECL:
@@ -127,8 +141,6 @@ bl_node_delete(bl_node_t *node)
       break;
     default: bl_abort("invalid node type");
   }
-
-  bl_free(node);
 }
 
 const char *
@@ -260,4 +272,66 @@ bl_node_call_expr_get_arg(bl_node_t *node,
     return NULL;
 
   return bo_array_at(node->value.call_expr.args, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_node_enum_decl_add_elem(bl_node_t *node,
+                           bl_node_t *c)
+{
+  bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
+
+  if (c == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.enum_decl.elems, c);
+  return c;
+}
+
+int
+bl_node_enum_decl_get_elem_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
+  return (int) bo_array_size(node->value.enum_decl.elems);
+}
+
+bl_node_t *
+bl_node_enum_decl_get_elem(bl_node_t *node,
+                           int i)
+{
+  bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
+  if (bo_array_size(node->value.enum_decl.elems) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.enum_decl.elems, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_node_struct_decl_add_member(bl_node_t *node,
+                               bl_node_t *member)
+{
+  bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
+
+  if (member == NULL)
+    return NULL;
+
+  bo_array_push_back(node->value.struct_decl.members, member);
+  return member;
+}
+
+int
+bl_node_struct_decl_get_member_count(bl_node_t *node)
+{
+  bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
+  return (int) bo_array_size(node->value.struct_decl.members);
+}
+
+bl_node_t *
+bl_node_struct_decl_get_member(bl_node_t *node,
+                               int i)
+{
+  bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
+  if (bo_array_size(node->value.struct_decl.members) == 0)
+    return NULL;
+
+  return bo_array_at(node->value.struct_decl.members, i, bl_node_t *);
 }

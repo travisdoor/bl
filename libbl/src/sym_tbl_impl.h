@@ -37,7 +37,7 @@
 typedef struct bl_sym_tbl
 {
   BHashTable *syms;
-  BArray *unsatisfied;
+  BArray     *unsatisfied;
 } bl_sym_tbl_t;
 
 void

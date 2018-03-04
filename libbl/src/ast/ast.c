@@ -28,25 +28,47 @@
 
 #include <bobject/containers/array.h>
 #include "ast/ast_impl.h"
+#include "common_impl.h"
+
+#define CACHE_PREALLOC_ELEM 256
+
+typedef struct
+{
+  bl_node_t *next;
+} next_t;
 
 /* public */
 void
 bl_ast_init(bl_ast_t *ast)
 {
-  ast->cache = bo_array_new(sizeof(bl_node_t *));
+  /* one extra element for jump to next chunk */
+  ast->chunk_current = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
+  ast->chunk_used    = 0;
+
+  ((next_t *) &ast->chunk_current[CACHE_PREALLOC_ELEM])->next = NULL;
+  ast->cache_begin                                            = ast->chunk_current;
 }
 
 void
 bl_ast_terminate(bl_ast_t *ast)
 {
-  const size_t c = bo_array_size(ast->cache);
   bl_node_t *node;
-  for (size_t i = 0; i < c; i++) {
-    node = bo_array_at(ast->cache, i, bl_node_t *);
-    bl_node_delete(node);
+  bl_node_t *chunk = ast->cache_begin;
+  int       i      = 0;
+
+  while (chunk != NULL) {
+    if (i != 0 && i % CACHE_PREALLOC_ELEM == 0) {
+      chunk = ((next_t *) &chunk[i])->next;
+      i     = 0;
+      continue;
+    }
+
+    node = &chunk[i];
+    bl_node_terminate(node);
+    i++;
   }
 
-  bo_unref(ast->cache);
+  bl_free(ast->cache_begin);
 }
 
 bl_node_t *
@@ -56,8 +78,16 @@ bl_ast_new_node(bl_ast_t *ast,
                 int line,
                 int col)
 {
-  bl_node_t *node = bl_node_new(type, generated_from, line, col);
-  bo_array_push_back(ast->cache, node);
+  if (ast->chunk_used >= CACHE_PREALLOC_ELEM) {
+    void *new_chunk = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
+    ((next_t *) &ast->chunk_current[CACHE_PREALLOC_ELEM])->next = new_chunk;
+    ast->chunk_current                                          = new_chunk;
+    ast->chunk_used                                             = 0;
+  }
+
+  bl_node_t *node = &(ast->chunk_current[ast->chunk_used]);
+  bl_node_init(node, type, generated_from, line, col);
+  ast->chunk_used++;
   return node;
 }
 

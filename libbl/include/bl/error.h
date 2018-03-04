@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   identifier_impl.h
+// File:   error.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   03/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,19 +26,51 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_IDENTIFIER_IMPL_H
-#define BL_IDENTIFIER_IMPL_H
+#ifndef BL_ERROR_H
+#define BL_ERROR_H
 
-#include <stdint.h>
+#include <bobject/bobject.h>
 
-typedef struct bl_ident
+BO_BEGIN_DECLS
+
+typedef enum
 {
-  const char *name;
-  uint32_t   hash;
-} bl_ident_t;
+  BL_NO_ERR = 0,
 
-void
-bl_ident_init(bl_ident_t *ident,
-              const char *name);
+  BL_ERR_FILE_NOT_FOUND = 100,
+  BL_ERR_INVALID_SOURCE = 101,
 
-#endif //BL_IDENTIFIER_IMPL_H
+  BL_ERR_INVALID_TOKEN        = 200,
+  BL_ERR_UNTERMINATED_COMMENT = 201,
+  BL_ERR_UNTERMINATED_STRING  = 202,
+
+  BL_ERR_MISSING_SEMICOLON     = 300,
+  BL_ERR_MISSING_BRACKET       = 301,
+  BL_ERR_UNEXPECTED_DECL       = 302,
+  BL_ERR_EXPECTED_EXPR         = 303,
+  BL_ERR_MISSING_COMMA         = 304,
+  BL_ERR_EXPECTED_BODY         = 305,
+  BL_ERR_EXPECTED_BODY_END     = 306,
+  BL_ERR_EXPECTED_STMT         = 307,
+  BL_ERR_BREAK_OUTSIDE_LOOP    = 308,
+  BL_ERR_CONTINUE_OUTSIDE_LOOP = 309,
+  BL_ERR_UNEXPECTED_MODIF      = 310,
+  BL_ERR_DUPLICATE_SYMBOL      = 311,
+  BL_ERR_UNKNOWN_SYMBOL        = 312,
+  BL_ERR_EXPECTED_TYPE         = 313,
+  BL_ERR_EXPECTED_NAME         = 314,
+
+  BL_ERR_NOT_VERIFIED = 400,
+
+  BL_ERR_CANNOT_WRITE_BC = 500,
+
+  BL_ERR_CANNOT_LINK = 600,
+
+  BL_ERR_NO_MAIN_METHOD = 700,
+  BL_ERR_INVALID_RESULT = 701
+
+} bl_error_e;
+
+BO_END_DECLS
+
+#endif //BL_ERROR_H

@@ -16,15 +16,16 @@ endif()
 
 find_package(BObject 1.0 REQUIRED)
 
-add_subdirectory(libbl)
-add_subdirectory(blc)
-add_subdirectory(tests)
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -Werror")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wno-missing-braces")
 endif()
+
+add_subdirectory(libbl)
+add_subdirectory(blc)
+add_subdirectory(tests)
 

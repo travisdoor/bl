@@ -68,7 +68,7 @@ main(int argc,
     argv++;
   }
 
-  if (bl_builder_compile(builder, assembly, build_flags)) {
+  if (bl_builder_compile(builder, assembly, build_flags) == BL_NO_ERR) {
     bl_log(BL_GREEN("done"));
   }
 

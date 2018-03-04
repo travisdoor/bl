@@ -42,6 +42,8 @@
   nt(RETURN_STMT, "return_stmt") \
   nt(LOOP_STMT, "loop_stmt") \
   nt(CONTINUE_STMT, "continue_stmt") \
+  nt(ENUM_DECL, "enum_decl") \
+  nt(STRUCT_DECL, "struct_decl") \
   nt(FUNC_DECL, "func_decl") \
   nt(VAR_DECL, "var_decl") \
   nt(PARAM_VAR_DECL, "param_var_decl") \
@@ -92,14 +94,15 @@ typedef struct bl_node_continue_stmt
 
 typedef struct bl_node_call_stmt
 {
-  bl_ident_t ident;
+  bl_ident_t     ident;
   struct bl_node *callee;
-  BArray *args;
+  BArray         *args;
 } bl_node_call_stmt_t;
 
 typedef struct bl_node_loop_stmt
 {
   struct bl_node *cmp_stmt;
+  struct bl_node *expr;
 } bl_node_loop_stmt_t;
 
 typedef struct bl_node_return_stmt
@@ -121,15 +124,15 @@ typedef struct bl_node_if_stmt
 /* TODO: don't use base */
 typedef struct bl_node_decl
 {
-  bl_sym_e modificator;
+  bl_sym_e   modificator;
   bl_ident_t ident;
-  bl_type_t type;
+  bl_type_t  type;
 } bl_node_decl_t;
 
 typedef struct bl_node_func_decl
 {
   bl_node_decl_t base;
-  BArray *params;
+  BArray         *params;
   struct bl_node *cmp_stmt;
 } bl_node_func_decl_t;
 
@@ -144,6 +147,18 @@ typedef struct bl_node_param_var_decl
   bl_node_decl_t base;
 } bl_node_param_var_decl_t;
 
+typedef struct bl_node_enum_decl
+{
+  bl_node_decl_t base;
+  BArray         *elems;
+} bl_node_enum_decl_t;
+
+typedef struct bl_node_struct_decl
+{
+  bl_node_decl_t base;
+  BArray         *members;
+} bl_node_struct_decl_t;
+
 /*
  * Expressions
  */
@@ -152,13 +167,13 @@ typedef struct bl_node_const_expr
   bl_node_conts_type_e type;
   union
   {
-    const char *as_string;
-    char as_char;
+    const char    *as_string;
+    char          as_char;
     unsigned long as_ulong;
-    double as_double;
-    float as_float;
-    bool as_bool;
-  } value;
+    double        as_double;
+    float         as_float;
+    bool          as_bool;
+  }                    value;
 } bl_node_const_expr_t;
 
 typedef struct bl_node_decl_ref_expr
@@ -185,40 +200,41 @@ typedef struct bl_node
   bl_node_type_e type;
 
   const char *generated_from;
-  int line;
-  int col;
+  int        line;
+  int        col;
 
   union
   {
-    bl_node_cmp_stmt_t cmp_stmt;
-    bl_node_glob_stmt_t glob_stmt;
-    bl_node_break_stmt_t break_stmt;
-    bl_node_continue_stmt_t continue_stmt;
-    bl_node_loop_stmt_t loop_stmt;
-    bl_node_return_stmt_t return_stmt;
-    bl_node_if_stmt_t if_stmt;
-
-    bl_node_decl_t decl;
-    bl_node_func_decl_t func_decl;
-    bl_node_var_decl_t var_decl;
+    bl_node_cmp_stmt_t       cmp_stmt;
+    bl_node_glob_stmt_t      glob_stmt;
+    bl_node_break_stmt_t     break_stmt;
+    bl_node_continue_stmt_t  continue_stmt;
+    bl_node_loop_stmt_t      loop_stmt;
+    bl_node_return_stmt_t    return_stmt;
+    bl_node_if_stmt_t        if_stmt;
+    bl_node_decl_t           decl;
+    bl_node_func_decl_t      func_decl;
+    bl_node_var_decl_t       var_decl;
     bl_node_param_var_decl_t param_var_decl;
-
-    bl_node_const_expr_t const_expr;
-    bl_node_decl_ref_expr_t decl_ref_expr;
-    bl_node_call_stmt_t call_expr;
+    bl_node_enum_decl_t      enum_decl;
+    bl_node_struct_decl_t    struct_decl;
+    bl_node_const_expr_t     const_expr;
+    bl_node_decl_ref_expr_t  decl_ref_expr;
+    bl_node_call_stmt_t      call_expr;
 
     bl_node_binop_t binop;
-  } value;
+  }          value;
 } bl_node_t;
 
-bl_node_t *
-bl_node_new(bl_node_type_e type,
-            const char *generated_from,
-            int line,
-            int col);
+void
+bl_node_init(bl_node_t *node,
+             bl_node_type_e type,
+             const char *generated_from,
+             int line,
+             int col);
 
 void
-bl_node_delete(bl_node_t *node);
+bl_node_terminate(bl_node_t *node);
 
 /* helper functions */
 const char *
@@ -268,5 +284,27 @@ bl_node_call_expr_get_arg_count(bl_node_t *node);
 bl_node_t *
 bl_node_call_expr_get_arg(bl_node_t *node,
                           int i);
+
+bl_node_t *
+bl_node_enum_decl_add_elem(bl_node_t *node,
+                           bl_node_t *c);
+
+int
+bl_node_enum_decl_get_elem_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_enum_decl_get_elem(bl_node_t *node,
+                           int i);
+
+bl_node_t *
+bl_node_struct_decl_add_member(bl_node_t *node,
+                               bl_node_t *member);
+
+int
+bl_node_struct_decl_get_member_count(bl_node_t *node);
+
+bl_node_t *
+bl_node_struct_decl_get_member(bl_node_t *node,
+                               int i);
 
 #endif //BL_NODE_IMPL_H

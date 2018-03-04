@@ -34,5 +34,6 @@
 #include "bl/bllimits.h"
 #include "bl/assembly.h"
 #include "bl/builder.h"
+#include "bl/error.h"
 
 #endif /* end of include guard: BL_H_JCNFO1PQ */

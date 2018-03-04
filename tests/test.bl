@@ -4,11 +4,25 @@
 
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
-extern i32 api_method(i32 a, i32 b);
+
+struct another_s {
+  my_struct data
+}
+
+struct my_struct {
+  i32 i,
+  string s
+}
 
 i32 main() {
-  i32 res = api_method(10, 10);
-  printf("result = %i\n", res);
+  my_struct data;
+  another_s data2;
+
+  // std::some_struct s;
+  // s.i = 10;
+  // data.i = 666;
+  // data2.data.i = 10;
+
   return 0;
 }
 

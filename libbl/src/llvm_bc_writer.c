@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "bl/bldebug.h"
 
-bool
+bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder,
                       bl_unit_t *unit)
 {
@@ -41,11 +41,11 @@ bl_llvm_bc_writer_run(bl_builder_t *builder,
   strcpy(export_file, unit->filepath);
   strcat(export_file, ".bc");
   if (LLVMWriteBitcodeToFile(unit->llvm_module, export_file) != 0) {
-    free(export_file);
     bl_builder_error(
       builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
-    return false;
+    free(export_file);
+    return BL_ERR_CANNOT_WRITE_BC;
   }
   free(export_file);
-  return true;
+  return BL_NO_ERR;
 }

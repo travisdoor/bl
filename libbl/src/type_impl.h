@@ -57,7 +57,7 @@ typedef enum
 typedef struct bl_type
 {
   const char *name;
-  uint32_t hash;
+  uint32_t   hash;
 } bl_type_t;
 
 void
