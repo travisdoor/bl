@@ -912,7 +912,7 @@ parse_var_decl(context_t *cnt)
   return vdcl;
 }
 
-int
+bl_error_e
 bl_parser_run(bl_builder_t *builder,
               bl_unit_t *unit)
 {
@@ -923,7 +923,7 @@ bl_parser_run(bl_builder_t *builder,
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
     bl_log("error code %i", error);
-    return false;
+    return (bl_error_e) error;
   }
 
   unit->ast.root = parse_global_stmt(&cnt);
@@ -933,5 +933,5 @@ bl_parser_run(bl_builder_t *builder,
     parse_error(&cnt, BL_ERR_UNKNOWN_SYMBOL, "%s unknown function detected.", unit->filepath);
   }
 
-  return true;
+  return BL_NO_ERR;
 }

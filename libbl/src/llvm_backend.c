@@ -43,11 +43,11 @@
 
 #define DEBUG_NAMES 0
 
-#define gen_error(cnt, format, ...) \
+#define gen_error(cnt, code, format, ...) \
   { \
     bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
     cnt_terminate((cnt)); \
-    longjmp((cnt)->jmp_error, 1); \
+    longjmp((cnt)->jmp_error, (code)); \
   }
 
 #if DEBUG_NAMES
@@ -802,14 +802,16 @@ cnt_terminate(context_t *cnt)
   bo_unref(cnt->const_strings);
 }
 
-int
+bl_error_e
 bl_llvm_backend_run(bl_builder_t *builder,
                     bl_unit_t *unit)
 {
   context_t cnt = {0};
 
-  if (setjmp(cnt.jmp_error))
-    return false;
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error))) {
+    return (bl_error_e) error;
+  }
 
   cnt_init(builder, unit, &cnt);
 
@@ -818,12 +820,16 @@ bl_llvm_backend_run(bl_builder_t *builder,
     case BL_NODE_GLOBAL_STMT:
       gen_gstmt(&cnt, unit->ast.root);
       break;
-    default: gen_error(&cnt, "invalid node on llvm generator input");
+    default: bl_abort("invalid node on llvm generator input");
   }
 
   if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &cnt.error)) {
     cnt.error_src = LLVMPrintModuleToString(cnt.mod);
-    gen_error(&cnt, "not verified with error %s\n%s", cnt.error, cnt.error_src);
+    gen_error(&cnt,
+              BL_ERR_NOT_VERIFIED,
+              "not verified with error %s\n%s",
+              cnt.error,
+              cnt.error_src);
   }
 
   unit->llvm_module = cnt.mod;
@@ -831,5 +837,6 @@ bl_llvm_backend_run(bl_builder_t *builder,
   cnt.mod           = NULL;
   cnt.llvm_cnt      = NULL;
   cnt_terminate(&cnt);
-  return true;
+
+  return BL_NO_ERR;
 }

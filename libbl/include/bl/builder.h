@@ -30,6 +30,7 @@
 #define BL_BUILDER_H
 
 #include "bl/assembly.h"
+#include "bl/error.h"
 
 BO_BEGIN_DECLS
 
@@ -48,7 +49,7 @@ bl_builder_new(void);
 extern BO_EXPORT void
 bl_builder_delete(bl_builder_ref builder);
 
-extern BO_EXPORT bool
+extern BO_EXPORT bl_error_e
 bl_builder_compile(bl_builder_ref builder,
                    bl_assembly_ref assembly,
                    uint32_t flags);

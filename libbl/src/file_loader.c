@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-int
+bl_error_e
 bl_file_loader_run(bl_builder_t *builder,
                    bl_unit_t *unit)
 {

@@ -108,10 +108,10 @@ print_node(bl_node_t *node,
   }
 }
 
-int
+bl_error_e
 bl_ast_printer_run(bl_unit_t *unit)
 {
   print_node(unit->ast.root, 0);
-  return true;
+  return BL_NO_ERR;
 }
 

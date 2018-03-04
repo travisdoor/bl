@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "bl/bldebug.h"
 
-int
+bl_error_e
 bl_llvm_jit_exec_run(bl_builder_t *builder,
                      bl_assembly_t *assembly)
 {
@@ -49,20 +49,20 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
     bl_builder_error(
       builder,
       assembly->name,
-      "(llvm_interpreter) Unable to get " BL_YELLOW("'main'") BL_RED(" method"));
+      "unable to get " BL_YELLOW("'main'") BL_RED(" method"));
     LLVMDisposeExecutionEngine(engine);
-    return false;
+    return BL_ERR_NO_MAIN_METHOD;
   }
 
   LLVMGenericValueRef res = LLVMRunFunction(engine, main, 0, NULL);
 
   int ires = (int) LLVMGenericValueToInt(res, 0);
   if (ires != 0) {
-    bl_builder_error(builder, assembly->name, "(llvm_interpreter) Executed unit return %i", ires);
+    bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
     LLVMDisposeExecutionEngine(engine);
-    return false;
+    return BL_ERR_INVALID_RESULT;
   }
 
-  return true;
+  return BL_NO_ERR;
 }
 

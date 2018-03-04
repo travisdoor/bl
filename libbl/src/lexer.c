@@ -29,7 +29,6 @@
 #include <string.h>
 #include <setjmp.h>
 #include "stages_impl.h"
-#include "common_impl.h"
 
 #define is_intend_c(c) \
   (((c) >= 'a' && (c) <= 'z') || \
@@ -400,7 +399,7 @@ push_token:
   goto scan;
 }
 
-int
+bl_error_e
 bl_lexer_run(bl_builder_t *builder,
              bl_unit_t *unit)
 {
@@ -410,7 +409,7 @@ bl_lexer_run(bl_builder_t *builder,
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error)))
-    return error;
+    return (bl_error_e) error;
 
   scan(&cnt);
 

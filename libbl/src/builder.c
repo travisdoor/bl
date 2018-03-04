@@ -39,12 +39,12 @@
 
 #define MAX_MSG_LEN 1024
 
-static bool
+static bl_error_e
 compile_unit(bl_builder_t *builder,
              bl_unit_t *unit,
              uint32_t flags);
 
-static bool
+static bl_error_e
 compile_assembly(bl_builder_t *builder,
                  bl_assembly_t *assembly,
                  uint32_t flags);
@@ -65,50 +65,53 @@ default_warning_handler(const char *msg,
            "%s", msg);
 }
 
-bool
+bl_error_e
 compile_unit(bl_builder_t *builder,
              bl_unit_t *unit,
              uint32_t flags)
 {
   bl_log("processing unit: "
            BL_GREEN("%s"), unit->name);
+  bl_error_e error;
 
-  if (flags & BL_BUILDER_LOAD_FROM_FILE && !bl_file_loader_run(builder, unit))
-    return false;
+  if (flags & BL_BUILDER_LOAD_FROM_FILE && (error = bl_file_loader_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
-  if (!bl_lexer_run(builder, unit))
-    return false;
+  if ((error = bl_lexer_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
-  if (flags & BL_BUILDER_PRINT_TOKENS && !bl_token_printer_run(unit))
-    return false;
+  if (flags & BL_BUILDER_PRINT_TOKENS && (error = bl_token_printer_run(unit)) != BL_NO_ERR)
+    return error;
 
-  if (!bl_parser_run(builder, unit))
-    return false;
+  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
-  if (flags & BL_BUILDER_PRINT_AST && !bl_ast_printer_run(unit))
-    return false;
+  if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(unit)) != BL_NO_ERR)
+    return error;
 
-  if (!bl_llvm_backend_run(builder, unit))
-    return false;
+  if ((error = bl_llvm_backend_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
-  if (flags & BL_BUILDER_EXPORT_BC && !bl_llvm_bc_writer_run(builder, unit))
-    return false;
+  if (flags & BL_BUILDER_EXPORT_BC && (error = bl_llvm_bc_writer_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
-  return true;
+  return BL_NO_ERR;
 }
 
-bool
+bl_error_e
 compile_assembly(bl_builder_t *builder,
                  bl_assembly_t *assembly,
                  uint32_t flags)
 {
-  if (!bl_llvm_linker_run(builder, assembly))
-    return false;
+  bl_error_e error;
 
-  if (flags & BL_BUILDER_RUN && !bl_llvm_jit_exec_run(builder, assembly))
-    return false;
+  if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
+    return error;
 
-  return true;
+  if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
+  return BL_NO_ERR;
 }
 
 /* public */
@@ -129,7 +132,7 @@ bl_builder_delete(bl_builder_t *builder)
   bl_free(builder);
 }
 
-bool
+bl_error_e
 bl_builder_compile(bl_builder_t *builder,
                    bl_assembly_t *assembly,
                    uint32_t flags)
@@ -137,23 +140,27 @@ bl_builder_compile(bl_builder_t *builder,
   clock_t      begin = clock();
   const size_t c     = bo_array_size(assembly->units);
   bl_unit_t    *unit;
-  for (size_t  i     = 0; i < c; i++) {
+  bl_error_e   error;
+
+  for (size_t i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
+
     /* IDEA: can run in separate thread */
-    if (!compile_unit(builder, unit, flags)) {
-      return false;
+    if ((error = compile_unit(builder, unit, flags)) != BL_NO_ERR) {
+      return error;
     }
   }
 
-  bool         result     = compile_assembly(builder, assembly, flags);
-  clock_t      end        = clock();
-  double       time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
+  error = compile_assembly(builder, assembly, flags);
+
+  clock_t end        = clock();
+  double  time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
 
   bl_log("compiled in "
            BL_GREEN("%f")
            " seconds", time_spent);
 
-  return result;
+  return error;
 }
 
 void

@@ -27,9 +27,9 @@
 //*****************************************************************************
 
 #include "stages_impl.h"
-#include "bl/bldebug.h"
+#include "common_impl.h"
 
-int
+bl_error_e
 bl_token_printer_run(bl_unit_t *unit)
 {
   BArray *tokens_arr = unit->tokens.buf;
@@ -55,5 +55,5 @@ bl_token_printer_run(bl_unit_t *unit)
   }
 
   fprintf(stdout, "\n");
-  return true;
+  return BL_NO_ERR;
 }

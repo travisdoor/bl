@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "bl/bldebug.h"
 
-int
+bl_error_e
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly)
 {
@@ -44,18 +44,22 @@ bl_llvm_linker_run(bl_builder_t *builder,
   const int     c     = bl_assembly_get_unit_count(assembly);
   bl_unit_t     *unit = NULL;
   LLVMModuleRef module;
-  for (int      i     = 0; i < c; i++) {
+
+  for (int i = 0; i < c; i++) {
     unit   = bl_assembly_get_unit(assembly, i);
     module = unit->llvm_module;
+    bl_assert(module, "invalid module");
+
     unit->llvm_module = NULL;
+
     if (LLVMLinkModules2(dest_module, module)) {
       LLVMDisposeModule(dest_module);
       LLVMContextDispose(llvm_cnt);
-      return false;
+      return BL_ERR_CANNOT_LINK;
     }
   }
 
   assembly->llvm_cnt    = llvm_cnt;
   assembly->llvm_module = dest_module;
-  return true;
+  return BL_NO_ERR;
 }
