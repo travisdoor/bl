@@ -35,22 +35,23 @@
 #include "type_impl.h"
 
 #define BL_NTYPE_LIST\
-  nt(GLOBAL_STMT, "global_stmt") \
-  nt(CMP_STMT, "compound_stmt") \
-  nt(IF_STMT, "if_statement") \
-  nt(BREAK_STMT, "break_stmt") \
-  nt(RETURN_STMT, "return_stmt") \
-  nt(LOOP_STMT, "loop_stmt") \
-  nt(CONTINUE_STMT, "continue_stmt") \
-  nt(ENUM_DECL, "enum_decl") \
-  nt(STRUCT_DECL, "struct_decl") \
-  nt(FUNC_DECL, "func_decl") \
-  nt(VAR_DECL, "var_decl") \
-  nt(PARAM_VAR_DECL, "param_var_decl") \
-  nt(CALL_EXPR, "call_expr") \
-  nt(DECL_REF_EXPR, "decl_ref_expr") \
-  nt(CONST_EXPR, "const_expr") \
-  nt(BINOP, "binary_operation") \
+  nt(GLOBAL_STMT,     "global_stmt") \
+  nt(CMP_STMT,        "compound_stmt") \
+  nt(IF_STMT,         "if_statement") \
+  nt(BREAK_STMT,      "break_stmt") \
+  nt(RETURN_STMT,     "return_stmt") \
+  nt(LOOP_STMT,       "loop_stmt") \
+  nt(CONTINUE_STMT,   "continue_stmt") \
+  nt(ENUM_DECL,       "enum_decl") \
+  nt(STRUCT_DECL,     "struct_decl") \
+  nt(FUNC_DECL,       "func_decl") \
+  nt(VAR_DECL,        "var_decl") \
+  nt(PARAM_VAR_DECL,  "param_var_decl") \
+  nt(CALL_EXPR,       "call_expr") \
+  nt(DECL_REF_EXPR,   "decl_ref_expr") \
+  nt(CONST_EXPR,      "const_expr") \
+  nt(MEMBER_EXPR,     "member_expr") \
+  nt(BINOP,           "binary_operation") \
 
 typedef enum
 {
@@ -181,6 +182,12 @@ typedef struct bl_node_decl_ref_expr
   bl_ident_t ident;
 } bl_node_decl_ref_expr_t;
 
+typedef struct bl_node_member_expr
+{
+  bl_ident_t ident;
+  struct bl_node *next;
+} bl_node_member_expr_t;
+
 /*
  * Other
  */
@@ -221,6 +228,7 @@ typedef struct bl_node
     bl_node_const_expr_t     const_expr;
     bl_node_decl_ref_expr_t  decl_ref_expr;
     bl_node_call_stmt_t      call_expr;
+    bl_node_member_expr_t    member_expr;
 
     bl_node_binop_t binop;
   }          value;
