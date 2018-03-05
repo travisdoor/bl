@@ -44,8 +44,8 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
     bl_abort("failed to create execution engine with error %s", error);
   }
 
-  LLVMValueRef main = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  if (main == NULL) {
+  LLVMValueRef main_f = LLVMGetNamedFunction(assembly->llvm_module, "main");
+  if (main_f == NULL) {
     bl_builder_error(
       builder,
       assembly->name,
@@ -54,7 +54,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
     return BL_ERR_NO_MAIN_METHOD;
   }
 
-  LLVMGenericValueRef res = LLVMRunFunction(engine, main, 0, NULL);
+  LLVMGenericValueRef res = LLVMRunFunction(engine, main_f, 0, NULL);
 
   int ires = (int) LLVMGenericValueToInt(res, 0);
   if (ires != 0) {

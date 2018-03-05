@@ -783,7 +783,11 @@ gen_struct_decl(context_t *cnt,
                 bl_node_t *node)
 {
   bl_node_decl_t *strct_decl = &node->value.decl;
-  
+
+  /*
+   * Struct can be cached when variable of this struct type
+   * was declared before struct body.
+   */
   LLVMTypeRef type = NULL;
   if (bo_htbl_has_key(cnt->structs, strct_decl->type.hash)) {
     type = bo_htbl_at(cnt->structs, strct_decl->type.hash, LLVMTypeRef);
