@@ -155,7 +155,7 @@ stmt:
   if (bl_node_glob_stmt_add_child(gstmt, parse_enum_decl(cnt))) {
     goto stmt;
   }
-  
+
   if (bl_node_glob_stmt_add_child(gstmt, parse_func_decl(cnt))) {
     goto stmt;
   }
@@ -169,7 +169,6 @@ stmt:
                 tok->line,
                 tok->col);
   }
-
 
   return gstmt;
 }
@@ -749,6 +748,14 @@ parse_atom_expr(context_t *cnt)
   bl_node_t *expr = NULL;
 
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+
+  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
+    bl_tokens_consume(cnt->tokens);
+    expr = bl_ast_new_node(&cnt->unit->ast, BL_NODE_MEMBER_EXPR, tok->src_loc, tok->line, tok->col);
+    bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
+    return expr;
+  }
+
   switch (tok->sym) {
     case BL_SYM_LPAREN:
       /* parse sub-expression in (...) */
@@ -862,17 +869,21 @@ parse_expr_1(context_t *cnt,
     rhs       = parse_atom_expr(cnt);
     lookahead = bl_tokens_peek(cnt->tokens);
 
-    while ((bl_token_prec(lookahead) > bl_token_prec(op)) ||
-      (lookahead->sym == BL_SYM_ASIGN && bl_token_prec(lookahead) == bl_token_prec(op))) {
+    while (bl_token_prec(lookahead) > bl_token_prec(op)) {
       rhs       = parse_expr_1(cnt, rhs, bl_token_prec(lookahead));
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 
-    bl_node_t *tmp = lhs;
-    lhs = bl_ast_new_node(&cnt->unit->ast, BL_NODE_BINOP, op->src_loc, op->line, op->col);
-    lhs->value.binop.lhs      = tmp;
-    lhs->value.binop.rhs      = rhs;
-    lhs->value.binop.operator = op->sym;
+    if (op->sym == BL_SYM_DOT) {
+      rhs->value.member_expr.next = lhs;
+      lhs = rhs;
+    } else {
+      bl_node_t *tmp = lhs;
+      lhs = bl_ast_new_node(&cnt->unit->ast, BL_NODE_BINOP, op->src_loc, op->line, op->col);
+      lhs->value.binop.lhs      = tmp;
+      lhs->value.binop.rhs      = rhs;
+      lhs->value.binop.operator = op->sym;
+    }
   }
 
   return lhs;

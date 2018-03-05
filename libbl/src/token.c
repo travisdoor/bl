@@ -55,6 +55,9 @@ int
 bl_token_prec(bl_token_t *token)
 {
   switch (token->sym) {
+    case BL_SYM_DOT:
+      return 60;
+
     case BL_SYM_IDENT:
       return 50;
     case BL_SYM_NUM:

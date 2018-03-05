@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include "stages_impl.h"
+#include "common_impl.h"
 
 static void
 print_node(bl_node_t *node,
@@ -36,7 +37,7 @@ print_node(bl_node_t *node,
   if (!node)
     return;
 
-  fprintf(stdout, "%*s%s\n", pad, "", bl_node_to_str(node));
+  fprintf(stdout, "\n%*s" BL_GREEN("%s "), pad, "", bl_node_to_str(node));
 
   int       c      = 0;
   bl_node_t *child = NULL;
@@ -51,6 +52,8 @@ print_node(bl_node_t *node,
       }
       break;
     case BL_NODE_FUNC_DECL:
+      fprintf(stdout, "type: " BL_YELLOW("%s"), node->value.decl.type.name);
+      fprintf(stdout, " name: " BL_YELLOW("%s"), node->value.decl.ident.name);
       c = bl_node_func_decl_get_param_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
@@ -68,6 +71,7 @@ print_node(bl_node_t *node,
       }
       break;
     case BL_NODE_STRUCT_DECL:
+      fprintf(stdout, "name: " BL_YELLOW("%s"), node->value.decl.type.name);
       c = bl_node_struct_decl_get_member_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
@@ -82,6 +86,7 @@ print_node(bl_node_t *node,
       break;
     case BL_NODE_BINOP:
       pad += 2;
+      fprintf(stdout, "op: " BL_YELLOW("%s"), bl_sym_strings[node->value.binop.operator]);
       print_node(node->value.binop.lhs, pad);
       print_node(node->value.binop.rhs, pad);
       break;
@@ -93,8 +98,14 @@ print_node(bl_node_t *node,
       print_node(node->value.if_stmt.else_if_stmt, pad);
       break;
     case BL_NODE_DECL_REF_EXPR:
+      fprintf(stdout, "name " BL_YELLOW("%s"), node->value.decl_ref_expr.ident.name);
       break;
     case BL_NODE_CONST_EXPR:
+      break;
+    case BL_NODE_MEMBER_EXPR:
+      fprintf(stdout, "name " BL_YELLOW("%s"), node->value.member_expr.ident.name);
+      pad += 2;
+      print_node(node->value.member_expr.next, pad);
       break;
     case BL_NODE_CMP_STMT:
       c = bl_node_cmp_stmt_get_children_count(node);
@@ -108,7 +119,10 @@ print_node(bl_node_t *node,
       pad += 2;
       print_node(node->value.return_stmt.expr, pad);
       break;
+    case BL_NODE_PARAM_VAR_DECL:
     case BL_NODE_VAR_DECL:
+      fprintf(stdout, "type: " BL_YELLOW("%s"), node->value.decl.type.name);
+      fprintf(stdout, " name: " BL_YELLOW("%s"), node->value.decl.ident.name);
       pad += 2;
       print_node(node->value.var_decl.expr, pad);
     default:
@@ -120,6 +134,7 @@ bl_error_e
 bl_ast_printer_run(bl_unit_t *unit)
 {
   print_node(unit->ast.root, 0);
+  fprintf(stdout, "\n\n");
   return BL_NO_ERR;
 }
 

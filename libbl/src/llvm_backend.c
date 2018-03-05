@@ -333,10 +333,14 @@ gen_expr(context_t *cnt,
       break;
     }
     case BL_NODE_CALL_EXPR:
-      val        = gen_call_expr(cnt, expr);
+      val = gen_call_expr(cnt, expr);
       break;
     case BL_NODE_BINOP:
       val = gen_binop(cnt, expr);
+      break;
+    case BL_NODE_MEMBER_EXPR:
+      // TODO
+      val = NULL;
       break;
     default: bl_abort("unknown expression type");
   }
@@ -796,9 +800,9 @@ gen_struct_decl(context_t *cnt,
     bo_htbl_insert(cnt->structs, strct_decl->type.hash, type);
   }
 
-  const int c = bl_node_struct_decl_get_member_count(node);
+  const int   c        = bl_node_struct_decl_get_member_count(node);
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
-  
+
   bl_node_t *member;
 
   for (int i = 0; i < c; i++) {

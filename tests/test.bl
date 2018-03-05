@@ -5,24 +5,28 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
-struct another_s {
-  my_struct data
-}
-
 struct my_struct {
-  i32 i,
-  string s
+  i32 first,
+  i32 second
 }
 
 i32 main() {
   my_struct data;
-  another_s data2;
 
-  // std::some_struct s;
-  // s.i = 10;
-  // data.i = 666;
-  // data2.data.i = 10;
+
+  data.first = 10;
+
+  // cause crash
+  /*
+  i32 b;
+  i32 a;
+  a = b = 10;
+  */
 
   return 0;
 }
 
+my_struct test() {
+  my_struct data;
+  return data;
+}

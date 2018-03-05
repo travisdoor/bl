@@ -97,6 +97,7 @@ BO_BEGIN_DECLS
   sm(ASTERISK,   "*") \
   sm(GREATER,    ">") \
   sm(LESS,       "<") \
+  sm(DOT,        ".") \
   sm(NONE,       "") \
 
 typedef enum

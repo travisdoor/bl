@@ -118,6 +118,15 @@ bl_tokens_current_is(bl_tokens_t *tokens,
 }
 
 bool
+bl_tokens_previous_is(bl_tokens_t *tokens,
+                      bl_sym_e sym)
+{
+  if (tokens->iter > 0)
+    return (&bo_array_at(tokens->buf, tokens->iter - 1, bl_token_t))->sym == sym;
+  return false;
+}
+
+bool
 bl_tokens_next_is(bl_tokens_t *tokens,
                   bl_sym_e sym)
 {

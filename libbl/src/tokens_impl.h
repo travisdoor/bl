@@ -83,6 +83,10 @@ bl_tokens_current_is(bl_tokens_t *tokens,
                      bl_sym_e sym);
 
 bool
+bl_tokens_previous_is(bl_tokens_t *tokens,
+                      bl_sym_e sym);
+
+bool
 bl_tokens_next_is(bl_tokens_t *tokens,
                   bl_sym_e sym);
 

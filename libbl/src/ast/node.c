@@ -61,16 +61,6 @@ bl_node_init(bl_node_t *node,
     case BL_NODE_CMP_STMT:
       node->value.cmp_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
       break;
-    case BL_NODE_IF_STMT:
-      break;
-    case BL_NODE_BREAK_STMT:
-      break;
-    case BL_NODE_RETURN_STMT:
-      break;
-    case BL_NODE_LOOP_STMT:
-      break;
-    case BL_NODE_CONTINUE_STMT:
-      break;
     case BL_NODE_FUNC_DECL:
       node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
       break;
@@ -80,17 +70,19 @@ bl_node_init(bl_node_t *node,
     case BL_NODE_ENUM_DECL:
       node->value.enum_decl.elems = bo_array_new(sizeof(bl_node_t *));
       break;
-    case BL_NODE_VAR_DECL:
-      break;
-    case BL_NODE_PARAM_VAR_DECL:
-      break;
     case BL_NODE_CALL_EXPR:
       node->value.call_expr.args = bo_array_new(sizeof(bl_node_t *));
       break;
+    case BL_NODE_IF_STMT:
+    case BL_NODE_BREAK_STMT:
+    case BL_NODE_RETURN_STMT:
+    case BL_NODE_LOOP_STMT:
+    case BL_NODE_CONTINUE_STMT:
+    case BL_NODE_VAR_DECL:
+    case BL_NODE_PARAM_VAR_DECL:
     case BL_NODE_DECL_REF_EXPR:
-      break;
     case BL_NODE_CONST_EXPR:
-      break;
+    case BL_NODE_MEMBER_EXPR:
     case BL_NODE_BINOP:
       break;
     default: bl_abort("invalid node type");
@@ -107,16 +99,6 @@ bl_node_terminate(bl_node_t *node)
     case BL_NODE_CMP_STMT:
       bo_unref(node->value.cmp_stmt.nodes);
       break;
-    case BL_NODE_IF_STMT:
-      break;
-    case BL_NODE_BREAK_STMT:
-      break;
-    case BL_NODE_RETURN_STMT:
-      break;
-    case BL_NODE_LOOP_STMT:
-      break;
-    case BL_NODE_CONTINUE_STMT:
-      break;
     case BL_NODE_FUNC_DECL:
       bo_unref(node->value.func_decl.params);
       break;
@@ -126,17 +108,19 @@ bl_node_terminate(bl_node_t *node)
     case BL_NODE_ENUM_DECL:
       bo_unref(node->value.enum_decl.elems);
       break;
-    case BL_NODE_VAR_DECL:
-      break;
-    case BL_NODE_PARAM_VAR_DECL:
-      break;
     case BL_NODE_CALL_EXPR:
       bo_unref(node->value.func_decl.params);
       break;
+    case BL_NODE_IF_STMT:
+    case BL_NODE_BREAK_STMT:
+    case BL_NODE_RETURN_STMT:
+    case BL_NODE_LOOP_STMT:
+    case BL_NODE_CONTINUE_STMT:
+    case BL_NODE_VAR_DECL:
+    case BL_NODE_PARAM_VAR_DECL:
     case BL_NODE_DECL_REF_EXPR:
-      break;
     case BL_NODE_CONST_EXPR:
-      break;
+    case BL_NODE_MEMBER_EXPR:
     case BL_NODE_BINOP:
       break;
     default: bl_abort("invalid node type");
