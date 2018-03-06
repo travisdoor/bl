@@ -480,7 +480,6 @@ bl_node_t *
 parse_func_decl(context_t *cnt)
 {
   bl_node_t *func_decl = NULL;
-  bl_token_t *tok;
   bl_sym_e modif = BL_SYM_NONE;
 
   /*
@@ -512,15 +511,14 @@ parse_func_decl(context_t *cnt)
       }
     }
 
-    tok = bl_tokens_peek(cnt->tokens);
+    bl_token_t *tok_type = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
+
     func_decl = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_FUNC_DECL, tok->src_loc, tok->line, tok->col);
+      &cnt->unit->ast, BL_NODE_FUNC_DECL, tok_ident->src_loc, tok_ident->line, tok_ident->col);
 
-    tok = bl_tokens_consume(cnt->tokens);
-    bl_type_init(&func_decl->value.func_decl.base.type, tok->value.as_string);
-
-    tok = bl_tokens_consume(cnt->tokens);
-    bl_ident_init(&func_decl->value.func_decl.base.ident, tok->value.as_string);
+    bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string);
+    bl_ident_init(&func_decl->value.decl.ident, tok_ident->value.as_string);
 
     /*
      * Validate and store into scope cache.
@@ -531,26 +529,28 @@ parse_func_decl(context_t *cnt)
       if (conflicted->type == BL_NODE_FUNC_DECL) {
         parse_error(cnt,
                     BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d function already defined here: %d:%d",
+                    "%s %d:%d function " BL_YELLOW("'%s'") " already defined here: %d:%d",
                     cnt->unit->filepath,
                     func_decl->line,
                     func_decl->col,
+                    func_decl->value.decl.ident.name,
                     conflicted->line,
                     conflicted->col);
       } else {
         parse_error(cnt,
                     BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d already defined as different kind of symbol here: %d:%d",
+                    "%s %d:%d " BL_YELLOW("'%s'") " already defined as different kind of symbol here: %d:%d",
                     cnt->unit->filepath,
                     func_decl->line,
                     func_decl->col,
+                    func_decl->value.decl.ident.name,
                     conflicted->line,
                     conflicted->col);
       }
     }
 
     /*
-     * Store the new function into the symbol table.
+     * Store the new function into the symbol table. TODO: remove
      */
     bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
     if (!bl_sym_tbl_register(sym_tbl, func_decl)) {
@@ -559,8 +559,8 @@ parse_func_decl(context_t *cnt)
                   "%s %d:%d function with same name already exists"
                     BL_YELLOW(" '%s'"),
                   cnt->unit->filepath,
-                  tok->line,
-                  tok->col,
+                  tok_ident->line,
+                  tok_ident->col,
                   ((bl_node_decl_t) (func_decl->value.func_decl.base)).ident.name);
 
     }
@@ -575,7 +575,7 @@ param:
         goto param;
     }
 
-    tok = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
       parse_error(cnt, BL_ERR_MISSING_BRACKET, "%s %d:%d expected "
         BL_YELLOW("')'")
@@ -737,6 +737,8 @@ parse_struct_decl(context_t *cnt)
       &cnt->unit->ast, BL_NODE_STRUCT_DECL, tok->src_loc, tok->line, tok->col);
 
     bl_type_init(&strct->value.decl.type, tok->value.as_string);
+    /* TODO: chose what will describe structure type */
+    bl_ident_init(&strct->value.decl.ident, tok->value.as_string); 
     strct->value.decl.modificator = BL_SYM_NONE;
 
     /* eat '{' */
@@ -765,8 +767,37 @@ member:
     /* eat '}' */
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RBLOCK) {
-      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, "%s %d:%d expected end of enum body "
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, "%s %d:%d expected end of struct body "
         BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
+    }
+
+    /*
+     * Validate and store into scope cache.
+     */
+    bl_scope_t *scope = &cnt->unit->scope;
+    bl_node_t *conflicted = bl_scope_add(scope, strct);
+    if (conflicted != NULL) {
+      if (conflicted->type == BL_NODE_STRUCT_DECL) {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d structure " BL_YELLOW("'%s'") " already defined here: %d:%d",
+                    cnt->unit->filepath,
+                    strct->line,
+                    strct->col,
+                    strct->value.decl.ident.name,
+                    conflicted->line,
+                    conflicted->col);
+      } else {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d " BL_YELLOW("'%s'") " already defined as different kind of symbol here: %d:%d",
+                    cnt->unit->filepath,
+                    strct->line,
+                    strct->col,
+                    strct->value.decl.ident.name,
+                    conflicted->line,
+                    conflicted->col);
+      }
     }
   }
 
@@ -1002,7 +1033,7 @@ parse_var_decl(context_t *cnt)
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
     vdcl = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_VAR_DECL, tok_type->src_loc, tok_type->line, tok_type->col);
+      &cnt->unit->ast, BL_NODE_VAR_DECL, tok_ident->src_loc, tok_ident->line, tok_ident->col);
 
     bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
@@ -1016,19 +1047,21 @@ parse_var_decl(context_t *cnt)
       if (conflicted->type == BL_NODE_VAR_DECL) {
         parse_error(cnt,
                     BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d variable already defined here: %d:%d",
+                    "%s %d:%d variable " BL_YELLOW("'%s'") " already defined here: %d:%d",
                     cnt->unit->filepath,
                     vdcl->line,
                     vdcl->col,
+                    vdcl->value.decl.ident.name,
                     conflicted->line,
                     conflicted->col);
       } else {
         parse_error(cnt,
                     BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d already defined as different kind of symbol here: %d:%d",
+                    "%s %d:%d " BL_YELLOW("'%s'") " already defined as different kind of symbol here: %d:%d",
                     cnt->unit->filepath,
                     vdcl->line,
                     vdcl->col,
+                    vdcl->value.decl.ident.name,
                     conflicted->line,
                     conflicted->col);
       }
