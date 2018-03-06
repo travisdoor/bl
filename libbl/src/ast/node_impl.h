@@ -141,6 +141,13 @@ typedef struct bl_node_var_decl
 {
   bl_node_decl_t base;
   struct bl_node *expr;
+
+  /*
+   * When variable is declared as part of the structure we
+   * store it's position in structure here, otherwise this
+   * should be 0.
+   */
+  int order;
 } bl_node_var_decl_t;
 
 typedef struct bl_node_param_var_decl
@@ -184,7 +191,8 @@ typedef struct bl_node_decl_ref_expr
 
 typedef struct bl_node_member_expr
 {
-  bl_ident_t ident;
+  bl_ident_t ident; /* TODO: remove, used only for debug */
+  struct bl_node *member;
   struct bl_node *next;
 } bl_node_member_expr_t;
 

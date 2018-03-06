@@ -14,7 +14,7 @@ i32 main() {
   my_struct data;
 
 
-  data.first = 10;
+//  data.first = 10;
 
   // cause crash
   /*
