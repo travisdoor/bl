@@ -5,28 +5,10 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
-struct my_struct {
-  i32 first,
-  i32 second
+void i() {
 }
 
 i32 main() {
-  my_struct data;
-
-
-//  data.first = 10;
-
-  // cause crash
-  /*
-  i32 b;
-  i32 a;
-  a = b = 10;
-  */
-
+  i32 i;
   return 0;
-}
-
-my_struct test() {
-  my_struct data;
-  return data;
 }

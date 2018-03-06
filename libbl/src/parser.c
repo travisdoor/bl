@@ -137,6 +137,7 @@ bl_node_t *
 parse_global_stmt(context_t *cnt)
 {
   bl_node_t *gstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_GLOBAL_STMT, cnt->unit->src, 1, 0);
+  bl_scope_push(&cnt->unit->scope);
 
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -170,6 +171,7 @@ stmt:
                 tok->col);
   }
 
+  bl_scope_pop(&cnt->unit->scope);
   return gstmt;
 }
 
@@ -407,6 +409,7 @@ parse_cmp_stmt(context_t *cnt)
   bl_node_t
     *stmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_CMP_STMT, tok->src_loc, tok->line, tok->col);
 
+  bl_scope_push(&cnt->unit->scope);
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
@@ -468,6 +471,8 @@ stmt:
       BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
   }
 
+  bl_scope_pop(&cnt->unit->scope);
+
   return stmt;
 }
 
@@ -516,6 +521,33 @@ parse_func_decl(context_t *cnt)
 
     tok = bl_tokens_consume(cnt->tokens);
     bl_ident_init(&func_decl->value.func_decl.base.ident, tok->value.as_string);
+
+    /*
+     * Validate and store into scope cache.
+     */
+    bl_scope_t *scope = &cnt->unit->scope;
+    bl_node_t *conflicted = bl_scope_add(scope, func_decl);
+    if (conflicted != NULL) {
+      if (conflicted->type == BL_NODE_FUNC_DECL) {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d function already defined here: %d:%d",
+                    cnt->unit->filepath,
+                    func_decl->line,
+                    func_decl->col,
+                    conflicted->line,
+                    conflicted->col);
+      } else {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d already defined as different kind of symbol here: %d:%d",
+                    cnt->unit->filepath,
+                    func_decl->line,
+                    func_decl->col,
+                    conflicted->line,
+                    conflicted->col);
+      }
+    }
 
     /*
      * Store the new function into the symbol table.
@@ -975,6 +1007,33 @@ parse_var_decl(context_t *cnt)
     bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
 
+    /*
+     * Validate and store into scope cache.
+     */
+    bl_scope_t *scope = &cnt->unit->scope;
+    bl_node_t *conflicted = bl_scope_add(scope, vdcl);
+    if (conflicted != NULL) {
+      if (conflicted->type == BL_NODE_VAR_DECL) {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d variable already defined here: %d:%d",
+                    cnt->unit->filepath,
+                    vdcl->line,
+                    vdcl->col,
+                    conflicted->line,
+                    conflicted->col);
+      } else {
+        parse_error(cnt,
+                    BL_ERR_DUPLICATE_SYMBOL,
+                    "%s %d:%d already defined as different kind of symbol here: %d:%d",
+                    cnt->unit->filepath,
+                    vdcl->line,
+                    vdcl->col,
+                    conflicted->line,
+                    conflicted->col);
+      }
+    }
+
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
       /*
        * Variable is also asigned to some expression.
@@ -1006,7 +1065,6 @@ bl_parser_run(bl_builder_t *builder,
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
-    bl_log("error code %i", error);
     return (bl_error_e) error;
   }
 

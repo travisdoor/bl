@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   unit_impl.h
+// File:   scope.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/6/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,35 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
+#ifndef BL_SCOPE_H
+#define BL_SCOPE_H
 
-#include "bl/unit.h"
-#include "ast/ast_impl.h"
-#include "sym_tbl_impl.h"
-#include "tokens_impl.h"
-#include "scope_impl.h"
+#include <bobject/containers/array.h>
+#include "ast/node_impl.h"
 
-/* class Unit object members */
-typedef struct bl_unit
+/*
+ * TODO: define global scope for tag for searching
+ * declarations which should appear only in global
+ * scope.
+ */
+
+typedef struct
 {
-  /* members */
-  /* source file name with path */
-  char         *filepath;
-  char         *name;
-  /* source data */
-  char         *src;
-  /* output of lexer */
-  bl_tokens_t  tokens;
-  /* abstract syntax tree as output of parser */
-  bl_ast_t     ast;
-  /* All symbols registered in this unit */
-  bl_sym_tbl_t sym_tbl;
-  bl_scope_t scope;
+  BArray *scopes;
+} bl_scope_t;
 
-  /* LLVM Module */
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
-} bl_unit_t;
+void
+bl_scope_init(bl_scope_t *cnt);
 
-#endif //BL_UNIT_IMPL_H
+void
+bl_scope_terminate(bl_scope_t *cnt);
+
+void
+bl_scope_push(bl_scope_t *cnt);
+
+void
+bl_scope_pop(bl_scope_t *cnt);
+
+/*
+ * Add new declaration into current scope.
+ * When same declaration already exist in current scope
+ * or in parent scopes method return conflicted node,
+ * otherwise null will be returned.
+ */
+bl_node_t *
+bl_scope_add(bl_scope_t *cnt,
+             bl_node_t *node);
+
+/*
+ * Get declaration from current or parent scope.
+ * When no such declaration exist function return
+ * null.
+ */
+bl_node_t *
+bl_scope_get(bl_scope_t *cnt,
+             bl_ident_t *ident);
+
+#endif //BL_SCOPE_H
+
