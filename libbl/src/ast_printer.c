@@ -37,7 +37,13 @@ print_node(bl_node_t *node,
   if (!node)
     return;
 
-  fprintf(stdout, "\n%*s" BL_GREEN("%s "), pad, "", bl_node_to_str(node));
+  fprintf(stdout,
+          "\n%*s" BL_GREEN("%s ") BL_MAGENTA("<%d:%d> "),
+          pad,
+          "",
+          bl_node_to_str(node),
+          node->line,
+          node->col);
 
   int c = 0;
   bl_node_t *child = NULL;

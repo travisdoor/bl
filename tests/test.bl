@@ -5,8 +5,10 @@
 extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
-i32 main() {
-  i32 puts;
+struct puts {
+  i32 i
+}
 
+i32 main() {
   return 0;
 }
