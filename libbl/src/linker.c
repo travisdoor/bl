@@ -30,6 +30,8 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
+#define PRINT_GLOBALS 0
+
 #define link_error(cnt, code, loc, format, ...) \
   { \
     bl_builder_error((cnt)->builder, "%s %d:%d " format, loc->file, loc->line, loc->col, ##__VA_ARGS__); \
@@ -142,7 +144,8 @@ link_call_expr(context_t *cnt,
 
   }
 
-  if (bl_node_call_expr_get_arg_count(unsatisfied) != bl_node_func_decl_get_param_count(found)) {
+  const int param_count = bl_node_call_expr_get_arg_count(unsatisfied);
+  if (param_count != bl_node_func_decl_get_param_count(found)) {
     link_error(cnt,
                BL_ERR_INVALID_PARAM_COUNT,
                unsatisfied,
@@ -150,12 +153,37 @@ link_call_expr(context_t *cnt,
                  BL_YELLOW("'%s'")
                  " has invalid argument count %d (expected is %d), declared here: %s %d:%d",
                unsatisfied->value.call_expr.ident.name,
-               bl_node_call_expr_get_arg_count(unsatisfied),
+               param_count,
                bl_node_func_decl_get_param_count(found),
                found->file,
                found->line,
                found->col);
   }
+
+  /* TODO: args type check
+  bl_node_t *param_uns;
+  bl_node_t *param_found;
+  for (size_t i = 0; i < param_count; i++) {
+    param_found = bo_array_at(found->value.func_decl.params, i, bl_node_t *);
+    param_uns = bo_array_at(unsatisfied->value.call_expr.args, i, bl_node_t *);
+
+    if (param_uns->value.decl.type.hash != param_found->value.decl.type.hash) {
+      link_error(cnt,
+                 BL_ERR_INVALID_PARAM_COUNT,
+                 param_uns,
+                 "invalid type of argument "
+                   BL_YELLOW("'%s'")
+                   " (expected is %s), declared here: %s %d:%d",
+                 unsatisfied->value.call_expr.ident.name,
+                 param_found->value.decl.type.name,
+                 found->file,
+                 found->line,
+                 found->col);
+    }
+  }
+  */
+
+  unsatisfied->value.call_expr.callee = found;
 }
 
 /* public */
@@ -191,6 +219,7 @@ bl_linker_run(bl_builder_t *builder,
   }
 
   /* TEST */
+#if PRINT_GLOBALS
   BHashTable    *src     = bl_scope_get_all(&assembly->scope);
   bo_iterator_t src_iter = bo_htbl_begin(src);
   bo_iterator_t src_end  = bo_htbl_end(src);
@@ -201,6 +230,7 @@ bl_linker_run(bl_builder_t *builder,
     bl_log("decl: %s", decl->value.decl.ident.name);
     bo_htbl_iter_next(src, &src_iter);
   }
+#endif
 
   return BL_NO_ERR;
 }

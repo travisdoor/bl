@@ -7,7 +7,7 @@ extern i32 puts(string s);
 
 i32 main() {
   test3_func();
-  func(64, 1234, 2314, "123");
+  func(64);
   return 0;
 }
 
