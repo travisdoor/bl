@@ -30,13 +30,8 @@
 #define BL_SCOPE_H
 
 #include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 #include "ast/node_impl.h"
-
-/*
- * TODO: define global scope for tag for searching
- * declarations which should appear only in global
- * scope.
- */
 
 typedef struct
 {
@@ -73,6 +68,12 @@ bl_scope_add(bl_scope_t *cnt,
 bl_node_t *
 bl_scope_get(bl_scope_t *cnt,
              bl_ident_t *ident);
+
+BHashTable *
+bl_scope_get_all(bl_scope_t *cnt);
+
+void
+bl_scope_clear(bl_scope_t *scope);
 
 #endif //BL_SCOPE_H
 

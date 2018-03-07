@@ -29,23 +29,27 @@
 #include <llvm-c/BitWriter.h>
 #include <string.h>
 #include "stages_impl.h"
+#include "assembly_impl.h"
 #include "bl/bldebug.h"
 
 bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder,
-                      bl_unit_t *unit)
+                      bl_assembly_t *assembly)
 {
-  bl_assert(unit->llvm_module, "invalid llvm module");
+  bl_assert(assembly->llvm_module, "invalid llvm module");
 
-  char *export_file = malloc(sizeof(char) * (strlen(unit->filepath) + 4));
-  strcpy(export_file, unit->filepath);
+  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+  strcpy(export_file, assembly->name);
   strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(unit->llvm_module, export_file) != 0) {
+  if (LLVMWriteBitcodeToFile(assembly->llvm_module, export_file) != 0) {
     bl_builder_error(
       builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
     free(export_file);
     return BL_ERR_CANNOT_WRITE_BC;
   }
+
+  bl_log("byte code written into " BL_GREEN("%s"), export_file);
+
   free(export_file);
   return BL_NO_ERR;
 }

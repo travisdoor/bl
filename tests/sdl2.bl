@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl api
 //
-// File:   llvm_linker.c
+// File:   sdl2.bl
 // Author: Martin Dorazil
-// Date:   28/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,37 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <llvm-c/Linker.h>
+extern i32 SDL_Init(i32 flags);
+extern void SDL_Quit();
+extern i64 SDL_CreateWindow(string title, i32 x, i32 y, i32 w, i32 h, i32 flags);
+extern void SDL_DestroyWindow(i64 handle);
+extern void SDL_Delay(i32 ms);
+extern string SDL_GetError();
 
-#include "stages_impl.h"
-#include "bl/bldebug.h"
+i32 init() {
+  i32 SDL_INIT_VIDEO = 32;
+  return SDL_Init(SDL_INIT_VIDEO);
+}
 
-bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder,
-                   bl_assembly_t *assembly)
-{
-  // TODO
+void quit() {
+  SDL_Quit();
+}
 
-  return BL_NO_ERR;
+string get_error() {
+  return SDL_GetError();
+}
+
+i64 create_window(string title, i32 x, i32 y) {
+  i32 SDL_WINDOW_FULLSCREEN = 1;
+  i32 SDL_WINDOW_OPENGL = 2;
+  i32 SDL_WINDOW_SHOWN = 4;
+  return SDL_CreateWindow(title, x, y, 800, 600, SDL_WINDOW_SHOWN);
+}
+
+void destroy_window(i64 handle) {
+  SDL_DestroyWindow(handle);
+}
+
+void delay(i32 ms) {
+  SDL_Delay(ms);
 }

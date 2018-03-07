@@ -38,6 +38,9 @@
     longjmp((cnt)->jmp_error, (code)); \
   }
 
+#define new_node(cnt, type, tok) \
+  bl_ast_new_node(&(cnt)->unit->ast, (type), (cnt)->unit->filepath, (tok)->line, (tok)->col);
+
 typedef struct context
 {
   bl_builder_t *builder;
@@ -139,8 +142,8 @@ parse_modif(context_t *cnt)
 bl_node_t *
 parse_global_stmt(context_t *cnt)
 {
-  bl_node_t *gstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_GLOBAL_STMT, cnt->unit->src, 1, 0);
-  bl_scope_push(&cnt->unit->scope);
+  bl_node_t
+    *gstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_GLOBAL_STMT, cnt->unit->filepath, 1, 0);
 
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -174,7 +177,6 @@ stmt:
                 tok->col);
   }
 
-  bl_scope_pop(&cnt->unit->scope);
   return gstmt;
 }
 
@@ -187,8 +189,7 @@ parse_return_stmt(context_t *cnt)
   bl_node_t *rstmt = NULL;
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_RETURN)) {
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-    rstmt =
-      bl_ast_new_node(&cnt->unit->ast, BL_NODE_RETURN_STMT, tok->src_loc, tok->line, tok->col);
+    rstmt           = new_node(cnt, BL_NODE_RETURN_STMT, tok);
 
     /*
      * Here we expect nothing (for void returning functions) or
@@ -222,7 +223,7 @@ parse_loop_stmt(context_t *cnt)
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);
   if (tok->sym == BL_SYM_LOOP || tok->sym == BL_SYM_WHILE) {
     bl_tokens_consume(cnt->tokens);
-    loop = bl_ast_new_node(&cnt->unit->ast, BL_NODE_LOOP_STMT, tok->src_loc, tok->line, tok->col);
+    loop = new_node(cnt, BL_NODE_LOOP_STMT, tok);
 
     if (tok->sym == BL_SYM_WHILE) {
       /* while loop has expression defined in (expr) so we parse it here */
@@ -259,7 +260,9 @@ parse_loop_stmt(context_t *cnt)
     }
 
     cnt->is_loop = true;
+    bl_scope_push(&cnt->unit->scope);
     bl_node_t *stmt = parse_cmp_stmt(cnt);
+    bl_scope_pop(&cnt->unit->scope);
     cnt->is_loop = prev_is_loop;
     if (!stmt) {
       parse_error(cnt,
@@ -290,8 +293,7 @@ parse_break_stmt(context_t *cnt)
     }
 
     bl_tokens_consume(cnt->tokens);
-    break_stmt =
-      bl_ast_new_node(&cnt->unit->ast, BL_NODE_BREAK_STMT, tok->src_loc, tok->line, tok->col);
+    break_stmt = new_node(cnt, BL_NODE_BREAK_STMT, tok);
   }
 
   return break_stmt;
@@ -311,8 +313,7 @@ parse_continue_stmt(context_t *cnt)
     }
 
     bl_tokens_consume(cnt->tokens);
-    continue_stmt =
-      bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONTINUE_STMT, tok->src_loc, tok->line, tok->col);
+    continue_stmt = new_node(cnt, BL_NODE_CONTINUE_STMT, tok);
   }
 
   return continue_stmt;
@@ -357,7 +358,9 @@ parse_if_stmt(context_t *cnt)
     /*
      * Parse then compound statement
      */
+    bl_scope_push(&cnt->unit->scope);
     then_stmt = parse_cmp_stmt(cnt);
+    bl_scope_pop(&cnt->unit->scope);
     if (!then_stmt) {
       parse_error(cnt,
                   BL_ERR_EXPECTED_STMT,
@@ -367,7 +370,7 @@ parse_if_stmt(context_t *cnt)
                   tok->col);
     }
 
-    ifstmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_IF_STMT, tok->src_loc, tok->line, tok->col);
+    ifstmt = new_node(cnt, BL_NODE_IF_STMT, tok);
     ifstmt->value.if_stmt.expr      = expr;
     ifstmt->value.if_stmt.then_stmt = then_stmt;
 
@@ -381,7 +384,10 @@ parse_if_stmt(context_t *cnt)
       if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
         ifstmt->value.if_stmt.else_if_stmt = parse_if_stmt(cnt);
       } else {
+        bl_scope_push(&cnt->unit->scope);
         else_stmt = parse_cmp_stmt(cnt);
+        bl_scope_pop(&cnt->unit->scope);
+
         if (!else_stmt) {
           parse_error(cnt,
                       BL_ERR_EXPECTED_STMT,
@@ -403,16 +409,15 @@ bl_node_t *
 parse_cmp_stmt(context_t *cnt)
 {
   /* eat '{' */
-  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  bl_token_t *tok  = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_LBLOCK) {
     parse_error(cnt, BL_ERR_EXPECTED_BODY, "%s %d:%d expected scope body "
       BL_YELLOW("'{'"), cnt->unit->filepath, tok->line, tok->col);
   }
 
-  bl_node_t
-    *stmt = bl_ast_new_node(&cnt->unit->ast, BL_NODE_CMP_STMT, tok->src_loc, tok->line, tok->col);
+  bl_node_t  *stmt = new_node(cnt, BL_NODE_CMP_STMT, tok);
 
-  bl_scope_push(&cnt->unit->scope);
+//  bl_scope_push(&cnt->unit->scope);
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
@@ -425,7 +430,9 @@ stmt:
 
   /* compound sub-statement */
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_LBLOCK)) {
+    bl_scope_push(&cnt->unit->scope);
     bl_node_cmp_stmt_add_child(stmt, parse_cmp_stmt(cnt));
+    bl_scope_pop(&cnt->unit->scope);
     goto stmt;
   }
 
@@ -474,8 +481,6 @@ stmt:
       BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
   }
 
-  bl_scope_pop(&cnt->unit->scope);
-
   return stmt;
 }
 
@@ -517,8 +522,7 @@ parse_func_decl(context_t *cnt)
     bl_token_t *tok_type  = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
-    func_decl = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_FUNC_DECL, tok_ident->src_loc, tok_ident->line, tok_ident->col);
+    func_decl = new_node(cnt, BL_NODE_FUNC_DECL, tok_ident);
 
     bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string);
     bl_ident_init(&func_decl->value.decl.ident, tok_ident->value.as_string);
@@ -529,51 +533,23 @@ parse_func_decl(context_t *cnt)
     bl_scope_t *scope      = &cnt->unit->scope;
     bl_node_t  *conflicted = bl_scope_add(scope, func_decl);
     if (conflicted != NULL) {
-      if (conflicted->type == BL_NODE_FUNC_DECL) {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d function "
-                      BL_YELLOW("'%s'")
-                      " already declared here: %d:%d",
-                    cnt->unit->filepath,
-                    func_decl->line,
-                    func_decl->col,
-                    func_decl->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      } else {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d "
-                      BL_YELLOW("'%s'")
-                      " already decalared as different kind of symbol here: %d:%d",
-                    cnt->unit->filepath,
-                    func_decl->line,
-                    func_decl->col,
-                    func_decl->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      }
-    }
-
-    /*
-     * Store the new function into the symbol table. TODO: remove
-     */
-    bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
-    if (!bl_sym_tbl_register(sym_tbl, func_decl)) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d function with same name already exists"
-                    BL_YELLOW(" '%s'"),
+                  "%s %d:%d "
+                    BL_YELLOW("'%s'")
+                    " already declared here: %d:%d",
                   cnt->unit->filepath,
-                  tok_ident->line,
-                  tok_ident->col,
-                  ((bl_node_decl_t) (func_decl->value.func_decl.base)).ident.name);
-
+                  func_decl->line,
+                  func_decl->col,
+                  func_decl->value.decl.ident.name,
+                  conflicted->line,
+                  conflicted->col);
     }
 
     /* consume '(' */
     bl_tokens_consume(cnt->tokens);
+
+    bl_scope_push(&cnt->unit->scope);
 
     if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_RPAREN)) {
 param:
@@ -599,6 +575,8 @@ param:
     } else {
       func_decl->value.func_decl.cmp_stmt = parse_cmp_stmt(cnt);
     }
+
+    bl_scope_pop(&cnt->unit->scope);
   } else {
     /* Roll back to marker. */
     bl_tokens_back_to_marker(cnt->tokens);
@@ -610,7 +588,7 @@ param:
 bl_node_t *
 parse_param_var_decl(context_t *cnt)
 {
-  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  bl_token_t *tok   = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_IDENT) {
     parse_error(cnt,
                 BL_ERR_EXPECTED_TYPE,
@@ -634,11 +612,26 @@ parse_param_var_decl(context_t *cnt)
 
   const char *ident = tok->value.as_string;
 
-  bl_node_t *param = bl_ast_new_node(
-    &cnt->unit->ast, BL_NODE_PARAM_VAR_DECL, tok->src_loc, tok->line, tok->col);
+  bl_node_t  *param = new_node(cnt, BL_NODE_PARAM_VAR_DECL, tok);
 
   bl_type_init(&param->value.param_var_decl.base.type, type);
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
+
+  bl_scope_t *scope      = &cnt->unit->scope;
+  bl_node_t  *conflicted = bl_scope_add(scope, param);
+  if (conflicted != NULL) {
+    parse_error(cnt,
+                BL_ERR_DUPLICATE_SYMBOL,
+                "%s %d:%d "
+                  BL_YELLOW("'%s'")
+                  " already declared here: %d:%d",
+                cnt->unit->filepath,
+                param->line,
+                param->col,
+                param->value.decl.ident.name,
+                conflicted->line,
+                conflicted->col);
+  }
   return param;
 }
 
@@ -671,8 +664,7 @@ parse_enum_decl(context_t *cnt)
                   tok->col);
     }
 
-    enm = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_ENUM_DECL, tok->src_loc, tok->line, tok->col);
+    enm = new_node(cnt, BL_NODE_ENUM_DECL, tok);
 
     /* TODO parse base type: enum my_enum : i32 {} */
     bl_type_init(&enm->value.decl.type, "i32");
@@ -689,7 +681,6 @@ parse_enum_decl(context_t *cnt)
 elem:
     /* eat ident */
     if ((tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT))) {
-      bl_log("%s", tok->value.as_string);
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto elem;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
@@ -713,31 +704,17 @@ elem:
     bl_scope_t *scope      = &cnt->unit->scope;
     bl_node_t  *conflicted = bl_scope_add(scope, enm);
     if (conflicted != NULL) {
-      if (conflicted->type == BL_NODE_ENUM_DECL) {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d enum "
-                      BL_YELLOW("'%s'")
-                      " already declared here: %d:%d",
-                    cnt->unit->filepath,
-                    enm->line,
-                    enm->col,
-                    enm->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      } else {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d "
-                      BL_YELLOW("'%s'")
-                      " already declared as different kind of symbol here: %d:%d",
-                    cnt->unit->filepath,
-                    enm->line,
-                    enm->col,
-                    enm->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      }
+      parse_error(cnt,
+                  BL_ERR_DUPLICATE_SYMBOL,
+                  "%s %d:%d "
+                    BL_YELLOW("'%s'")
+                    " already declared here: %d:%d",
+                  cnt->unit->filepath,
+                  enm->line,
+                  enm->col,
+                  enm->value.decl.ident.name,
+                  conflicted->line,
+                  conflicted->col);
     }
   }
 
@@ -774,8 +751,7 @@ parse_struct_decl(context_t *cnt)
                   tok->col);
     }
 
-    strct = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_STRUCT_DECL, tok->src_loc, tok->line, tok->col);
+    strct = new_node(cnt, BL_NODE_STRUCT_DECL, tok);
 
     bl_type_init(&strct->value.decl.type, tok->value.as_string);
     /* TODO: chose what will describe structure type */
@@ -790,6 +766,7 @@ parse_struct_decl(context_t *cnt)
     }
 
     int order = 0;
+    bl_scope_push(&cnt->unit->scope);
 member:
     /* eat ident */
     member = parse_var_decl(cnt);
@@ -804,6 +781,7 @@ member:
           BL_YELLOW("','"), cnt->unit->filepath, tok->line, tok->col + tok->len);
       }
     }
+    bl_scope_pop(&cnt->unit->scope);
 
     /* eat '}' */
     tok = bl_tokens_consume(cnt->tokens);
@@ -818,31 +796,17 @@ member:
     bl_scope_t *scope      = &cnt->unit->scope;
     bl_node_t  *conflicted = bl_scope_add(scope, strct);
     if (conflicted != NULL) {
-      if (conflicted->type == BL_NODE_STRUCT_DECL) {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d structure "
-                      BL_YELLOW("'%s'")
-                      " already declared here: %d:%d",
-                    cnt->unit->filepath,
-                    strct->line,
-                    strct->col,
-                    strct->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      } else {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d "
-                      BL_YELLOW("'%s'")
-                      " already declared as different kind of symbol here: %d:%d",
-                    cnt->unit->filepath,
-                    strct->line,
-                    strct->col,
-                    strct->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      }
+      parse_error(cnt,
+                  BL_ERR_DUPLICATE_SYMBOL,
+                  "%s %d:%d "
+                    BL_YELLOW("'%s'")
+                    " already declared here: %d:%d",
+                  cnt->unit->filepath,
+                  strct->line,
+                  strct->col,
+                  strct->value.decl.ident.name,
+                  conflicted->line,
+                  conflicted->col);
     }
   }
 
@@ -864,7 +828,7 @@ parse_atom_expr(context_t *cnt)
 
   if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
     bl_tokens_consume(cnt->tokens);
-    expr = bl_ast_new_node(&cnt->unit->ast, BL_NODE_MEMBER_EXPR, tok->src_loc, tok->line, tok->col);
+    expr = new_node(cnt, BL_NODE_MEMBER_EXPR, tok);
     bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
     return expr;
   }
@@ -903,56 +867,49 @@ parse_atom_expr(context_t *cnt)
     case BL_SYM_FLOAT:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_float = tok->value.as_float;
       expr->value.const_expr.type           = BL_CONST_FLOAT;
       break;
     case BL_SYM_DOUBLE:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_double = tok->value.as_double;
       expr->value.const_expr.type            = BL_CONST_DOUBLE;
       break;
     case BL_SYM_NUM:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_ulong = tok->value.as_ull;
       expr->value.const_expr.type           = BL_CONST_INT;
       break;
     case BL_SYM_TRUE:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_bool = true;
       expr->value.const_expr.type          = BL_CONST_BOOL;
       break;
     case BL_SYM_FALSE:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_bool = false;
       expr->value.const_expr.type          = BL_CONST_BOOL;
       break;
     case BL_SYM_STRING:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_string = tok->value.as_string;
       expr->value.const_expr.type            = BL_CONST_STRING;
       break;
     case BL_SYM_CHAR:
       bl_tokens_consume(cnt->tokens);
 
-      expr =
-        bl_ast_new_node(&cnt->unit->ast, BL_NODE_CONST_EXPR, tok->src_loc, tok->line, tok->col);
+      expr = new_node(cnt, BL_NODE_CONST_EXPR, tok);
       expr->value.const_expr.value.as_char = tok->value.as_char;
       expr->value.const_expr.type          = BL_CONST_CHAR;
       break;
@@ -988,7 +945,7 @@ parse_expr_1(context_t *cnt,
       lhs = rhs;
     } else {
       bl_node_t *tmp = lhs;
-      lhs = bl_ast_new_node(&cnt->unit->ast, BL_NODE_BINOP, op->src_loc, op->line, op->col);
+      lhs = new_node(cnt, BL_NODE_BINOP, op);
       lhs->value.binop.lhs      = tmp;
       lhs->value.binop.rhs      = rhs;
       lhs->value.binop.operator = op->sym;
@@ -1001,7 +958,7 @@ parse_expr_1(context_t *cnt,
 bl_node_t *
 parse_call_expr(context_t *cnt)
 {
-  bl_node_t *call = NULL;
+  bl_node_t *call_expr = NULL;
 
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     bl_token_t *tok_calle = bl_tokens_consume(cnt->tokens);
@@ -1009,29 +966,19 @@ parse_call_expr(context_t *cnt)
     /* eat '(' */
     bl_tokens_consume(cnt->tokens);
 
-    call = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_CALL_EXPR, tok_calle->src_loc, tok_calle->line, tok_calle->col);
+    call_expr = new_node(cnt, BL_NODE_CALL_EXPR, tok_calle);
 
-    bl_ident_init(&call->value.call_expr.ident, tok_calle->value.as_string);
+    bl_ident_init(&call_expr->value.call_expr.ident, tok_calle->value.as_string);
 
     /*
-     * Handle callee existence, when symbol was found, store expected return
-     * type into call node. When no callee was found, it can be defined later
-     * or in another unit in assembly, in such case we only store unsatisfied
-     * call into cache and add information about return type later.
+     * Call expression is stored as unsatisfied here because callee may
+     * not exist yet and it's declared later in current unit or in another
+     * unit. The linker will handle connecting between expression and callee.
      */
-    bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
-    bl_ident_t   *ident   = &call->value.call_expr.ident;
-    bl_node_t    *callee  = bl_sym_tbl_get_sym_of_type(sym_tbl, ident, BL_NODE_FUNC_DECL);
-
-    if (callee == NULL) {
-      bl_sym_tbl_add_unsatisfied_expr(sym_tbl, call);
-    } else {
-      call->value.call_expr.callee = callee;
-    }
+    bo_array_push_back(cnt->unit->unsatisfied, call_expr);
 
 arg:
-    bl_node_call_expr_add_arg(call, parse_expr(cnt));
+    bl_node_call_expr_add_arg(call_expr, parse_expr(cnt));
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA))
       goto arg;
 
@@ -1043,7 +990,7 @@ arg:
     }
   }
 
-  return call;
+  return call_expr;
 }
 
 bl_node_t *
@@ -1052,7 +999,7 @@ parse_dec_ref_expr(context_t *cnt)
   bl_node_t  *expr;
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
 
-  expr = bl_ast_new_node(&cnt->unit->ast, BL_NODE_DECL_REF_EXPR, tok->src_loc, tok->line, tok->col);
+  expr            = new_node(cnt, BL_NODE_DECL_REF_EXPR, tok);
   bl_ident_init(&expr->value.decl_ref_expr.ident, tok->value.as_string);
 
   /*
@@ -1103,8 +1050,7 @@ parse_var_decl(context_t *cnt)
     bl_token_t *tok_type  = bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
 
-    vdcl = bl_ast_new_node(
-      &cnt->unit->ast, BL_NODE_VAR_DECL, tok_ident->src_loc, tok_ident->line, tok_ident->col);
+    vdcl = new_node(cnt, BL_NODE_VAR_DECL, tok_ident);
 
     bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
@@ -1115,31 +1061,17 @@ parse_var_decl(context_t *cnt)
     bl_scope_t *scope      = &cnt->unit->scope;
     bl_node_t  *conflicted = bl_scope_add(scope, vdcl);
     if (conflicted != NULL) {
-      if (conflicted->type == BL_NODE_VAR_DECL) {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d variable "
-                      BL_YELLOW("'%s'")
-                      " already declared here: %d:%d",
-                    cnt->unit->filepath,
-                    vdcl->line,
-                    vdcl->col,
-                    vdcl->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      } else {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d "
-                      BL_YELLOW("'%s'")
-                      " already declared as different kind of symbol here: %d:%d",
-                    cnt->unit->filepath,
-                    vdcl->line,
-                    vdcl->col,
-                    vdcl->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      }
+      parse_error(cnt,
+                  BL_ERR_DUPLICATE_SYMBOL,
+                  "%s %d:%d "
+                    BL_YELLOW("'%s'")
+                    " already declared here: %d:%d",
+                  cnt->unit->filepath,
+                  vdcl->line,
+                  vdcl->col,
+                  vdcl->value.decl.ident.name,
+                  conflicted->line,
+                  conflicted->col);
     }
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
@@ -1177,11 +1109,6 @@ bl_parser_run(bl_builder_t *builder,
   }
 
   unit->ast.root = parse_global_stmt(&cnt);
-
-  /* TODO: move to another stage??? */
-  if (!bl_sym_tbl_try_satisfy_all(&unit->sym_tbl)) {
-    parse_error(&cnt, BL_ERR_UNKNOWN_SYMBOL, "%s unknown function detected.", unit->filepath);
-  }
 
   return BL_NO_ERR;
 }

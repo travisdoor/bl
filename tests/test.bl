@@ -2,10 +2,24 @@
  * This is Biscuit testing script.
  */
 
-extern i32 printf(string s, i32 i);
+extern i32 printf(string s, string i);
 extern i32 puts(string s);
 
+
 i32 main() {
-  a = 10;
+  if (init() < 0) {
+    puts("cannot initialize SDL");
+  }
+
+  i64 window = create_window("my window", 100, 100);
+
+  delay(3000); 
+
+  destroy_window(window);
+  quit();
+
+  printf("last error: %s\n", get_error());
+
   return 0;
 }
+

@@ -40,7 +40,7 @@ static const char *node_strings[] = {
 void
 bl_node_init(bl_node_t *node,
              bl_node_type_e type,
-             const char *generated_from,
+             const char *file,
              int line,
              int col)
 {
@@ -49,10 +49,10 @@ bl_node_init(bl_node_t *node,
    * when allocation method has been changed, use memset here for setting whole
    * memory block occupied by node to 0
    */
-  node->type           = type;
-  node->generated_from = generated_from;
-  node->line           = line;
-  node->col            = col;
+  node->type = type;
+  node->file = file;
+  node->line = line;
+  node->col  = col;
 
   switch (type) {
     case BL_NODE_GLOBAL_STMT:

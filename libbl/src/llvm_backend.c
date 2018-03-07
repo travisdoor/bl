@@ -59,7 +59,6 @@
 typedef struct
 {
   bl_builder_t *builder;
-  bl_unit_t *unit;
   LLVMModuleRef mod;
   LLVMBuilderRef llvm_builder;
   LLVMContextRef llvm_cnt;
@@ -78,7 +77,7 @@ typedef struct
 
 static void
 cnt_init(bl_builder_t *builder,
-         bl_unit_t *unit,
+         bl_assembly_t *assembly,
          context_t *cnt);
 
 static void
@@ -87,6 +86,10 @@ cnt_terminate(context_t *cnt);
 static LLVMTypeRef
 to_llvm_type(context_t *cnt,
              bl_type_t *t);
+
+static void
+gen_unit(context_t *cnt,
+         bl_unit_t *unit);
 
 static LLVMValueRef
 get_or_create_const_string(context_t *cnt,
@@ -847,17 +850,29 @@ gen_gstmt(context_t *cnt,
 }
 
 void
+gen_unit(context_t *cnt,
+         bl_unit_t *unit)
+{
+  bl_assert(unit->ast.root, "invalid ast root in unit");
+  switch (unit->ast.root->type) {
+    case BL_NODE_GLOBAL_STMT:
+      gen_gstmt(cnt, unit->ast.root);
+      break;
+    default: bl_abort("invalid node on llvm generator input");
+  }
+}
+
+void
 cnt_init(bl_builder_t *builder,
-         bl_unit_t *unit,
+         bl_assembly_t *assembly,
          context_t *cnt)
 {
   cnt->builder = builder;
-  cnt->unit = unit;
   cnt->llvm_cnt = LLVMContextCreate();
-  cnt->mod = LLVMModuleCreateWithNameInContext(unit->name, cnt->llvm_cnt);
+  cnt->mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt->llvm_cnt);
   cnt->llvm_builder = LLVMCreateBuilderInContext(cnt->llvm_cnt);
-  cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt->structs = bo_htbl_new(sizeof(LLVMTypeRef), 256);
+  cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 1024);
+  cnt->structs = bo_htbl_new(sizeof(LLVMTypeRef), 1024);
 
   bl_llvm_bl_cnt_init(&cnt->block_context);
 }
@@ -877,7 +892,7 @@ cnt_terminate(context_t *cnt)
 
 bl_error_e
 bl_llvm_backend_run(bl_builder_t *builder,
-                    bl_unit_t *unit)
+                    bl_assembly_t *assembly)
 {
   context_t cnt = {0};
 
@@ -886,14 +901,14 @@ bl_llvm_backend_run(bl_builder_t *builder,
     return (bl_error_e) error;
   }
 
-  cnt_init(builder, unit, &cnt);
+  cnt_init(builder, assembly, &cnt);
 
-  bl_assert(unit->ast.root, "invalid ast root in unit");
-  switch (unit->ast.root->type) {
-    case BL_NODE_GLOBAL_STMT:
-      gen_gstmt(&cnt, unit->ast.root);
-      break;
-    default: bl_abort("invalid node on llvm generator input");
+  const int c     = bl_assembly_get_unit_count(assembly);
+  bl_unit_t *unit = NULL;
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    gen_unit(&cnt, unit);
   }
 
   if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &cnt.error)) {
@@ -905,8 +920,8 @@ bl_llvm_backend_run(bl_builder_t *builder,
               cnt.error_src);
   }
 
-  unit->llvm_module = cnt.mod;
-  unit->llvm_cnt = cnt.llvm_cnt;
+  assembly->llvm_module = cnt.mod;
+  assembly->llvm_cnt = cnt.llvm_cnt;
   cnt.mod = NULL;
   cnt.llvm_cnt = NULL;
   cnt_terminate(&cnt);

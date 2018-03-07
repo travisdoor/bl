@@ -74,7 +74,7 @@ bl_ast_terminate(bl_ast_t *ast)
 bl_node_t *
 bl_ast_new_node(bl_ast_t *ast,
                 bl_node_type_e type,
-                const char *generated_from,
+                const char *file,
                 int line,
                 int col)
 {
@@ -86,7 +86,7 @@ bl_ast_new_node(bl_ast_t *ast,
   }
 
   bl_node_t *node = &(ast->chunk_current[ast->chunk_used]);
-  bl_node_init(node, type, generated_from, line, col);
+  bl_node_init(node, type, file, line, col);
   ast->chunk_used++;
   return node;
 }

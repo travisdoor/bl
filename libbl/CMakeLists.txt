@@ -63,7 +63,7 @@ set(SOURCE_FILES
         src/llvm_bl_cnt.c
         src/lexer.c
         src/llvm_linker.c 
-        src/ast/node.c src/scope.c)
+        src/ast/node.c src/scope.c src/linker.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

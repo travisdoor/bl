@@ -30,7 +30,6 @@
 #include "blmemory_impl.h"
 #include "assembly_impl.h"
 #include "unit_impl.h"
-#include "common_impl.h"
 
 /* public */
 
@@ -40,12 +39,17 @@ bl_assembly_new(const char *name)
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
   assembly->name  = strdup(name);
   assembly->units = bo_array_new(sizeof(bl_unit_t *));
+
+  bl_scope_init(&assembly->scope);
+
   return assembly;
 }
 
 void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
+  bl_scope_terminate(&assembly->scope);
+
   free(assembly->name);
   LLVMDisposeModule(assembly->llvm_module);
   LLVMContextDispose(assembly->llvm_cnt);
@@ -57,6 +61,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
     bl_unit_delete(unit);
   }
   bo_unref(assembly->units);
+
   bl_free(assembly);
 }
 

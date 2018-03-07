@@ -49,7 +49,7 @@ bl_ast_terminate(bl_ast_t *ast);
 bl_node_t *
 bl_ast_new_node(bl_ast_t *ast,
                 bl_node_type_e type,
-                const char *generated_from,
+                const char *file,
                 int line,
                 int col);
 
