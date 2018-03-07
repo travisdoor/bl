@@ -35,9 +35,11 @@ static void
 init(bl_unit_t *unit)
 {
   bl_scope_init(&unit->scope);
-  bl_unsatisfied_init(&unit->unsatisfied);
   bl_tokens_init(&unit->tokens);
   bl_ast_init(&unit->ast);
+
+  // TODO: reserve
+  unit->unsatisfied = bo_array_new(sizeof(bl_node_t *));
 }
 
 /* public */
@@ -80,7 +82,8 @@ bl_unit_delete(bl_unit_t *unit)
   bl_tokens_terminate(&unit->tokens);
   bl_ast_terminate(&unit->ast);
   bl_scope_terminate(&unit->scope);
-  bl_unsatisfied_terminate(&unit->unsatisfied);
+
+  bo_unref(unit->unsatisfied);
 
   LLVMDisposeModule(unit->llvm_module);
   bl_free(unit);

@@ -33,25 +33,22 @@
 #include "ast/ast_impl.h"
 #include "tokens_impl.h"
 #include "scope_impl.h"
-#include "unsatisfied_impl.h"
 
 /* class Unit object members */
 typedef struct bl_unit
 {
-  /* members */
-  /* source file name with path */
-  char             *filepath;
-  char             *name;
-  /* source data */
-  char             *src;
   /* output of lexer */
-  bl_tokens_t      tokens;
+  bl_tokens_t    tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t         ast;
+  bl_ast_t       ast;
   /* All symbols registered in this unit */
-  bl_scope_t       scope;
-  bl_unsatisfied_t unsatisfied;
-
+  bl_scope_t     scope;
+  /* source file name with path */
+  char           *filepath;
+  char           *name;
+  /* source data */
+  char           *src;
+  BArray         *unsatisfied;
   /* LLVM Module TODO: remove */
   LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;

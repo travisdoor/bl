@@ -41,7 +41,7 @@ set(HEADER_FILES_IMPL
         src/type_impl.h
         src/unit_impl.h
         src/stages_impl.h
-        src/common_impl.h src/scope_impl.h src/unsatisfied_impl.h)
+        src/common_impl.h src/scope_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
@@ -63,7 +63,7 @@ set(SOURCE_FILES
         src/llvm_bl_cnt.c
         src/lexer.c
         src/llvm_linker.c 
-        src/ast/node.c src/scope.c src/linker.c src/unsatisfied.c)
+        src/ast/node.c src/scope.c src/linker.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

@@ -26,12 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/htbl.h>
 #include "scope_impl.h"
 #include "common_impl.h"
 
 #define EXPECTED_SCOPE_COUNT 32
-#define EXPECTED_DECL_COUNT 256
+#define EXPECTED_DECL_COUNT 2048
 
 /* public */
 void
@@ -103,3 +102,16 @@ bl_scope_get(bl_scope_t *cnt,
   return NULL;
 }
 
+BHashTable *
+bl_scope_get_all(bl_scope_t *cnt)
+{
+  const size_t c = bo_array_size(cnt->scopes);
+  bl_assert(c, "invalid scope cache size");
+  return bo_array_at(cnt->scopes, c - 1, BHashTable *);
+}
+
+void
+bl_scope_clear(bl_scope_t *scope)
+{
+  bo_array_clear(scope->scopes);
+}

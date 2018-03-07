@@ -41,7 +41,6 @@ bl_assembly_new(const char *name)
   assembly->units = bo_array_new(sizeof(bl_unit_t *));
 
   bl_scope_init(&assembly->scope);
-  bl_unsatisfied_init(&assembly->unsatisfied);
 
   return assembly;
 }
@@ -49,7 +48,6 @@ bl_assembly_new(const char *name)
 void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
-  bl_unsatisfied_terminate(&assembly->unsatisfied);
   bl_scope_terminate(&assembly->scope);
 
   free(assembly->name);

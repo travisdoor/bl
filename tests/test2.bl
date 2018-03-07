@@ -1,0 +1,14 @@
+i32 test2_func() {
+  test2_func();
+  test2_func2();
+}
+
+i32 test2_func2() {
+  test3_func2();
+}
+
+struct my_struct {
+  i32 a,
+  i32 b
+}
+

@@ -30,9 +30,9 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define link_error(cnt, code, format, ...) \
+#define link_error(cnt, code, loc, format, ...) \
   { \
-    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
+    bl_builder_error((cnt)->builder, "%s %d:%d " format, loc->file, loc->line, loc->col, ##__VA_ARGS__); \
     longjmp((cnt)->jmp_error, (code)); \
   }
 
@@ -47,20 +47,115 @@ static void
 link(context_t *cnt,
      bl_unit_t *unit);
 
+static void
+link_unsatisfied(context_t *cnt,
+                 bl_unit_t *unit);
+
+static void
+link_call_expr(context_t *cnt,
+               bl_node_t *unsatisfied,
+               bl_node_t *found);
+
 void
 link(context_t *cnt,
      bl_unit_t *unit)
 {
-  /* copy unsatisfied nodes into assembly cache */
-  bl_unsatisfied_t *uns   = &cnt->assembly->unsatisfied;
-  const int        cached = bl_unsatisfied_get_count(uns);
-  bo_array_insert(
-    uns->unsatisfied,
-    (size_t) cached,
-    bo_array_data(unit->unsatisfied.unsatisfied),
-    (size_t) bl_unsatisfied_get_count(&unit->unsatisfied));
-
   /* copy global declarations and solve collisions */
+  BHashTable *dest = bl_scope_get_all(&cnt->assembly->scope);
+  BHashTable *src  = bl_scope_get_all(&unit->scope);
+
+  bo_iterator_t src_iter = bo_htbl_begin(src);
+  bo_iterator_t src_end  = bo_htbl_end(src);
+
+  bl_node_t *decl;
+  bl_node_t *coliding;
+  while (!bo_iterator_equal(&src_iter, &src_end)) {
+    decl = bo_htbl_iter_peek_value(src, &src_iter, bl_node_t *);
+    if (bo_htbl_has_key(dest, decl->value.decl.ident.hash)) {
+      coliding = bo_htbl_at(dest, decl->value.decl.ident.hash, bl_node_t *);
+
+      link_error(cnt,
+                 BL_ERR_DUPLICATE_SYMBOL,
+                 decl,
+                 "redeclaration of "
+                   BL_YELLOW("'%s'")
+                   " previous declaration found here: %s %d:%d",
+                 decl->value.decl.ident.name,
+                 coliding->file,
+                 coliding->line,
+                 coliding->col);
+    } else {
+      bo_htbl_insert(dest, decl->value.decl.ident.hash, decl);
+    }
+    bo_htbl_iter_next(src, &src_iter);
+  }
+
+  bl_scope_clear(&unit->scope);
+}
+
+void
+link_unsatisfied(context_t *cnt,
+                 bl_unit_t *unit)
+{
+  const size_t c = bo_array_size(unit->unsatisfied);
+  bl_node_t    *unsatisfied;
+  bl_node_t    *found;
+
+  for (size_t i = 0; i < c; i++) {
+    unsatisfied = bo_array_at(unit->unsatisfied, i, bl_node_t *);
+
+    switch (unsatisfied->type) {
+      case BL_NODE_CALL_EXPR:
+        found = bl_scope_get(
+          &cnt->assembly->scope, &unsatisfied->value.call_expr.ident);
+        link_call_expr(cnt, unsatisfied, found);
+        break;
+      default: bl_abort("expression of type %i cannot be satisfied", unsatisfied->type);
+    }
+  }
+
+  bo_array_clear(unit->unsatisfied);
+}
+
+void
+link_call_expr(context_t *cnt,
+               bl_node_t *unsatisfied,
+               bl_node_t *found)
+{
+  if (found == NULL) {
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "unknown function "
+      BL_YELLOW("'%s'"), unsatisfied->value.call_expr.ident.name);
+  }
+
+  if (found->type != BL_NODE_FUNC_DECL) {
+    link_error(cnt,
+               BL_ERR_DIFF_KIND_OF_SYMBOL,
+               unsatisfied,
+               "expected function, but "
+                 BL_YELLOW("'%s'")
+                 " is %s and it's declared here: %s %d:%d",
+               unsatisfied->value.call_expr.ident.name,
+               bl_node_to_str(found),
+               found->file,
+               found->line,
+               found->col);
+
+  }
+
+  if (bl_node_call_expr_get_arg_count(unsatisfied) != bl_node_func_decl_get_param_count(found)) {
+    link_error(cnt,
+               BL_ERR_INVALID_PARAM_COUNT,
+               unsatisfied,
+               "function call "
+                 BL_YELLOW("'%s'")
+                 " has invalid argument count %d (expected is %d), declared here: %s %d:%d",
+               unsatisfied->value.call_expr.ident.name,
+               bl_node_call_expr_get_arg_count(unsatisfied),
+               bl_node_func_decl_get_param_count(found),
+               found->file,
+               found->line,
+               found->col);
+  }
 }
 
 /* public */
@@ -90,11 +185,21 @@ bl_linker_run(bl_builder_t *builder,
     link(&cnt, unit);
   }
 
-  const int c2 = bl_unsatisfied_get_count(&assembly->unsatisfied);
-  bl_node_t *node;
-  for (int i = 0; i < c2; i++) {
-    node = bl_unsatisfied_get_node(&assembly->unsatisfied, i);
-    bl_log("unsatisfied node: %s", node->value.call_expr.ident.name);
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    link_unsatisfied(&cnt, unit);
+  }
+
+  /* TEST */
+  BHashTable    *src     = bl_scope_get_all(&assembly->scope);
+  bo_iterator_t src_iter = bo_htbl_begin(src);
+  bo_iterator_t src_end  = bo_htbl_end(src);
+
+  bl_node_t *decl;
+  while (!bo_iterator_equal(&src_iter, &src_end)) {
+    decl = bo_htbl_iter_peek_value(src, &src_iter, bl_node_t *);
+    bl_log("decl: %s", decl->value.decl.ident.name);
+    bo_htbl_iter_next(src, &src_iter);
   }
 
   return BL_NO_ERR;

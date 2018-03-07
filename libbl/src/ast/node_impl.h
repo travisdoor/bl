@@ -37,20 +37,20 @@
 #define BL_NTYPE_LIST\
   nt(GLOBAL_STMT,     "global_stmt") \
   nt(CMP_STMT,        "compound_stmt") \
-  nt(IF_STMT,         "if_statement") \
-  nt(BREAK_STMT,      "break_stmt") \
-  nt(RETURN_STMT,     "return_stmt") \
-  nt(LOOP_STMT,       "loop_stmt") \
-  nt(CONTINUE_STMT,   "continue_stmt") \
-  nt(ENUM_DECL,       "enum_decl") \
-  nt(STRUCT_DECL,     "struct_decl") \
-  nt(FUNC_DECL,       "func_decl") \
-  nt(VAR_DECL,        "var_decl") \
-  nt(PARAM_VAR_DECL,  "param_var_decl") \
-  nt(CALL_EXPR,       "call_expr") \
-  nt(DECL_REF_EXPR,   "decl_ref_expr") \
-  nt(CONST_EXPR,      "const_expr") \
-  nt(MEMBER_EXPR,     "member_expr") \
+  nt(IF_STMT,         "if") \
+  nt(BREAK_STMT,      "break") \
+  nt(RETURN_STMT,     "return") \
+  nt(LOOP_STMT,       "loop") \
+  nt(CONTINUE_STMT,   "continue") \
+  nt(ENUM_DECL,       "enumerator") \
+  nt(STRUCT_DECL,     "structure") \
+  nt(FUNC_DECL,       "function") \
+  nt(VAR_DECL,        "variable") \
+  nt(PARAM_VAR_DECL,  "parameter") \
+  nt(CALL_EXPR,       "call") \
+  nt(DECL_REF_EXPR,   "reference") \
+  nt(CONST_EXPR,      "constant") \
+  nt(MEMBER_EXPR,     "member") \
   nt(BINOP,           "binary_operation") \
 
 typedef enum
@@ -98,7 +98,7 @@ typedef struct bl_node_call_stmt
   bl_ident_t     ident;
   struct bl_node *callee;
   BArray         *args;
-} bl_node_call_stmt_t;
+} bl_node_call_expr_t;
 
 typedef struct bl_node_loop_stmt
 {
@@ -214,7 +214,7 @@ typedef struct bl_node
 {
   bl_node_type_e type;
 
-  const char *generated_from;
+  const char *file;
   int        line;
   int        col;
 
@@ -235,7 +235,7 @@ typedef struct bl_node
     bl_node_struct_decl_t    struct_decl;
     bl_node_const_expr_t     const_expr;
     bl_node_decl_ref_expr_t  decl_ref_expr;
-    bl_node_call_stmt_t      call_expr;
+    bl_node_call_expr_t      call_expr;
     bl_node_member_expr_t    member_expr;
 
     bl_node_binop_t binop;
@@ -245,7 +245,7 @@ typedef struct bl_node
 void
 bl_node_init(bl_node_t *node,
              bl_node_type_e type,
-             const char *generated_from,
+             const char *file,
              int line,
              int col);
 

@@ -34,14 +34,12 @@
 #include "bl/assembly.h"
 #include "ast/node_impl.h"
 #include "scope_impl.h"
-#include "unsatisfied_impl.h"
 
 typedef struct bl_assembly
 {
-  bl_scope_t       scope;
-  bl_unsatisfied_t unsatisfied;
-  BArray           *units;
-  char             *name;
+  bl_scope_t scope;
+  BArray     *units;
+  char       *name;
 
   LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;
