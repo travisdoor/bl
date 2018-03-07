@@ -5,20 +5,31 @@
 extern i32 printf(string s, string i);
 extern i32 puts(string s);
 
+// use sdl2;
 
 i32 main() {
+  i32 wait;
+
+  // when modules will be implemented this will be sdl2::init() in case 
+  // we don't write 'use sdl2;' at the top of the file
   if (init() < 0) {
     puts("cannot initialize SDL");
   }
 
   i64 window = create_window("my window", 100, 100);
 
-  delay(3000); 
+  loop {
+    pump_events();
+    delay(16); 
+    wait = wait + 1;
+
+    if (wait > 200) {
+      break;
+    }
+  }
 
   destroy_window(window);
   quit();
-
-  printf("last error: %s\n", get_error());
 
   return 0;
 }

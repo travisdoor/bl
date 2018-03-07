@@ -28,10 +28,23 @@
 
 extern i32 SDL_Init(i32 flags);
 extern void SDL_Quit();
+extern void SDL_PumpEvents();
 extern i64 SDL_CreateWindow(string title, i32 x, i32 y, i32 w, i32 h, i32 flags);
 extern void SDL_DestroyWindow(i64 handle);
 extern void SDL_Delay(i32 ms);
 extern string SDL_GetError();
+
+// module sdl2 {
+
+enum init_flags {
+  INIT_VIDEO,
+}
+
+enum window_flags {
+  SDL_WINDOW_FULLSCREEN,
+  SDL_WINDOW_OPENGL,
+  SDL_WINDOW_SHOWN
+}
 
 i32 init() {
   i32 SDL_INIT_VIDEO = 32;
@@ -59,4 +72,8 @@ void destroy_window(i64 handle) {
 
 void delay(i32 ms) {
   SDL_Delay(ms);
+}
+
+void pump_events() {
+  SDL_PumpEvents();
 }

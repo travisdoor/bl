@@ -41,7 +41,7 @@
 
 /* class context_t */
 
-#define DEBUG_NAMES 1
+#define DEBUG_NAMES 0
 
 #define gen_error(cnt, code, format, ...) \
   { \
