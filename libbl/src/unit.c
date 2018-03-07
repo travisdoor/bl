@@ -36,6 +36,7 @@ init(bl_unit_t *unit)
 {
   bl_sym_tbl_init(&unit->sym_tbl);
   bl_scope_init(&unit->scope);
+  bl_unsatisfied_init(&unit->unsatisfied);
   bl_tokens_init(&unit->tokens);
   bl_ast_init(&unit->ast);
 }
@@ -81,6 +82,7 @@ bl_unit_delete(bl_unit_t *unit)
   bl_ast_terminate(&unit->ast);
   bl_sym_tbl_terminate(&unit->sym_tbl);
   bl_scope_terminate(&unit->scope);
+  bl_unsatisfied_terminate(&unit->unsatisfied);
 
   LLVMDisposeModule(unit->llvm_module);
   bl_free(unit);

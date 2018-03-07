@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   unit_impl.h
+// File:   unsatisfied_impl.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/7/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,37 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
+#ifndef BL_UNSATISFIED_IMPL_H
+#define BL_UNSATISFIED_IMPL_H
 
-#include "bl/unit.h"
-#include "ast/ast_impl.h"
-#include "sym_tbl_impl.h" // TODO: remove
-#include "tokens_impl.h"
-#include "scope_impl.h"
-#include "unsatisfied_impl.h"
+#include <bobject/containers/array.h>
+#include "ast/node_impl.h"
 
-/* class Unit object members */
-typedef struct bl_unit
+typedef struct
 {
-  /* members */
-  /* source file name with path */
-  char         *filepath;
-  char         *name;
-  /* source data */
-  char         *src;
-  /* output of lexer */
-  bl_tokens_t  tokens;
-  /* abstract syntax tree as output of parser */
-  bl_ast_t     ast;
-  /* All symbols registered in this unit */
-  bl_sym_tbl_t sym_tbl;
-  bl_scope_t scope;
-  bl_unsatisfied_t unsatisfied;
+  BArray *unsatisfied;
+} bl_unsatisfied_t;
 
-  /* LLVM Module */
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
-} bl_unit_t;
+void
+bl_unsatisfied_init(bl_unsatisfied_t *uns);
 
-#endif //BL_UNIT_IMPL_H
+void
+bl_unsatisfied_terminate(bl_unsatisfied_t *uns);
+
+void
+bl_unsatisfied_add(bl_unsatisfied_t *uns,
+                   bl_node_t *node);
+
+int
+bl_unsatisfied_get_count(bl_unsatisfied_t *uns);
+
+bl_node_t *
+bl_unsatisfied_get_node(bl_unsatisfied_t *uns,
+                        int i);
+
+#endif //BL_UNSATISFIED_IMPL_H

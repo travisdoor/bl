@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   unit_impl.h
+// File:   unsatisfied.c
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/7/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,37 +26,41 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
-
-#include "bl/unit.h"
-#include "ast/ast_impl.h"
-#include "sym_tbl_impl.h" // TODO: remove
-#include "tokens_impl.h"
-#include "scope_impl.h"
 #include "unsatisfied_impl.h"
 
-/* class Unit object members */
-typedef struct bl_unit
+#define EXPECTED_COUNT 256
+
+/* public */
+void
+bl_unsatisfied_init(bl_unsatisfied_t *uns)
 {
-  /* members */
-  /* source file name with path */
-  char         *filepath;
-  char         *name;
-  /* source data */
-  char         *src;
-  /* output of lexer */
-  bl_tokens_t  tokens;
-  /* abstract syntax tree as output of parser */
-  bl_ast_t     ast;
-  /* All symbols registered in this unit */
-  bl_sym_tbl_t sym_tbl;
-  bl_scope_t scope;
-  bl_unsatisfied_t unsatisfied;
+  uns->unsatisfied = bo_array_new(sizeof(bl_node_t *));
+  bo_array_reserve(uns->unsatisfied, EXPECTED_COUNT);
+}
 
-  /* LLVM Module */
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
-} bl_unit_t;
+void
+bl_unsatisfied_terminate(bl_unsatisfied_t *uns)
+{
+  bo_unref(uns->unsatisfied);
+}
 
-#endif //BL_UNIT_IMPL_H
+void
+bl_unsatisfied_add(bl_unsatisfied_t *uns,
+                   bl_node_t *node)
+
+{
+  bo_array_push_back(uns->unsatisfied, node);
+}
+
+int
+bl_unsatisfied_get_count(bl_unsatisfied_t *uns)
+{
+  return (int) bo_array_size(uns->unsatisfied);
+}
+
+bl_node_t *
+bl_unsatisfied_get_node(bl_unsatisfied_t *uns,
+                        int i)
+{
+  return bo_array_at(uns->unsatisfied, (size_t) i, bl_node_t *);
+}
