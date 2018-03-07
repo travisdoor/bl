@@ -40,19 +40,19 @@ typedef struct bl_unit
 {
   /* members */
   /* source file name with path */
-  char         *filepath;
-  char         *name;
+  char             *filepath;
+  char             *name;
   /* source data */
-  char         *src;
+  char             *src;
   /* output of lexer */
-  bl_tokens_t  tokens;
+  bl_tokens_t      tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t     ast;
+  bl_ast_t         ast;
   /* All symbols registered in this unit */
-  bl_scope_t scope;
+  bl_scope_t       scope;
   bl_unsatisfied_t unsatisfied;
 
-  /* LLVM Module */
+  /* LLVM Module TODO: remove */
   LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;
 } bl_unit_t;

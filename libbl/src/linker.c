@@ -38,68 +38,29 @@
 
 typedef struct
 {
-  bl_builder_t *builder;
-  jmp_buf      jmp_error;
+  bl_builder_t  *builder;
+  bl_assembly_t *assembly;
+  jmp_buf       jmp_error;
 } context_t;
 
 static void
-link_local(context_t *cnt,
-           bl_unit_t *unit);
-
-static bool
-link_call_expr(context_t *cnt,
-               bl_unit_t *unit,
-               bl_node_t *call_expr);
-
-bool
-link_call_expr(context_t *cnt,
-               bl_unit_t *unit,
-               bl_node_t *call_expr)
-{
-  bl_ident_t *ident = &call_expr->value.call_expr.ident;
-
-  bl_node_t *callee = bl_scope_get(&unit->scope, ident);
-  if (callee == NULL) {
-    /* TODO: remove later, callee can be defined in another unit */
-
-    link_error(cnt,
-               BL_ERR_UNKNOWN_SYMBOL,
-               "%s %d:%d function "
-                 BL_YELLOW("'%s'")
-                 " does not exist in current context",
-               unit->filepath,
-               call_expr->line,
-               call_expr->col,
-               ident->name);
-  } else {
-    /* TODO: check callee params and return type */
-    call_expr->value.call_expr.callee = callee;
-  }
-
-  return true;
-}
+link(context_t *cnt,
+     bl_unit_t *unit);
 
 void
-link_local(context_t *cnt,
-           bl_unit_t *unit)
+link(context_t *cnt,
+     bl_unit_t *unit)
 {
-  int       c = bl_unsatisfied_get_count(&unit->unsatisfied);
-  bl_node_t *uns;
-  int       i = 0;
+  /* copy unsatisfied nodes into assembly cache */
+  bl_unsatisfied_t *uns   = &cnt->assembly->unsatisfied;
+  const int        cached = bl_unsatisfied_get_count(uns);
+  bo_array_insert(
+    uns->unsatisfied,
+    (size_t) cached,
+    bo_array_data(unit->unsatisfied.unsatisfied),
+    (size_t) bl_unsatisfied_get_count(&unit->unsatisfied));
 
-  while (i < c) {
-    uns = bl_unsatisfied_get_node(&unit->unsatisfied, i);
-    switch (uns->type) {
-      case BL_NODE_CALL_EXPR:
-        if (link_call_expr(cnt, unit, uns)) {
-          c = bl_unsatisfied_remove(&unit->unsatisfied, i);
-          continue;
-        }
-        break;
-      default: bl_abort("invalid node type");
-    }
-    ++i;
-  }
+  /* copy global declarations and solve collisions */
 }
 
 /* public */
@@ -113,7 +74,7 @@ bl_linker_run(bl_builder_t *builder,
    */
 
   context_t cnt = {
-    .builder = builder
+    .builder = builder, .assembly = assembly
   };
 
   int error = 0;
@@ -126,7 +87,14 @@ bl_linker_run(bl_builder_t *builder,
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    link_local(&cnt, unit);
+    link(&cnt, unit);
+  }
+
+  const int c2 = bl_unsatisfied_get_count(&assembly->unsatisfied);
+  bl_node_t *node;
+  for (int i = 0; i < c2; i++) {
+    node = bl_unsatisfied_get_node(&assembly->unsatisfied, i);
+    bl_log("unsatisfied node: %s", node->value.call_expr.ident.name);
   }
 
   return BL_NO_ERR;
