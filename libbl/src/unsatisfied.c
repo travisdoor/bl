@@ -64,3 +64,11 @@ bl_unsatisfied_get_node(bl_unsatisfied_t *uns,
 {
   return bo_array_at(uns->unsatisfied, (size_t) i, bl_node_t *);
 }
+
+int
+bl_unsatisfied_remove(bl_unsatisfied_t *uns,
+                      int i)
+{
+  bo_array_erase(uns->unsatisfied, (size_t) i);
+  return (int) bo_array_size(uns->unsatisfied);
+}

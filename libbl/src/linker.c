@@ -83,18 +83,22 @@ void
 link_local(context_t *cnt,
            bl_unit_t *unit)
 {
-  const int c = bl_unsatisfied_get_count(&unit->unsatisfied);
+  int       c = bl_unsatisfied_get_count(&unit->unsatisfied);
   bl_node_t *uns;
-  for (int  i = 0; i < c; i++) {
+  int       i = 0;
+
+  while (i < c) {
     uns = bl_unsatisfied_get_node(&unit->unsatisfied, i);
     switch (uns->type) {
       case BL_NODE_CALL_EXPR:
         if (link_call_expr(cnt, unit, uns)) {
-          /* TODO: delete node from unsatisfied queue */
+          c = bl_unsatisfied_remove(&unit->unsatisfied, i);
+          continue;
         }
         break;
       default: bl_abort("invalid node type");
     }
+    ++i;
   }
 }
 

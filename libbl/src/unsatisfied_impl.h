@@ -54,4 +54,12 @@ bl_node_t *
 bl_unsatisfied_get_node(bl_unsatisfied_t *uns,
                         int i);
 
+/*
+ * Remove unsatisfied expression from queue and return
+ * new count of unsatisfied.
+ */
+int
+bl_unsatisfied_remove(bl_unsatisfied_t *uns,
+                      int i);
+
 #endif //BL_UNSATISFIED_IMPL_H

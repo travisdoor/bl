@@ -6,7 +6,9 @@ extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  funcs(32);
+  func(32);
+  func(64);
+  funcs(512);
   return 0;
 }
 
