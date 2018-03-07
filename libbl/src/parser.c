@@ -481,8 +481,6 @@ stmt:
       BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
   }
 
-//  bl_scope_pop(&cnt->unit->scope);
-
   return stmt;
 }
 
@@ -549,22 +547,6 @@ parse_func_decl(context_t *cnt)
                   conflicted->col);
     }
 
-    /*
-     * Store the new function into the symbol table. TODO: remove
-     */
-    bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
-    if (!bl_sym_tbl_register(sym_tbl, func_decl)) {
-      parse_error(cnt,
-                  BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d function with same name already exists"
-                    BL_YELLOW(" '%s'"),
-                  cnt->unit->filepath,
-                  tok_ident->line,
-                  tok_ident->col,
-                  ((bl_node_decl_t) (func_decl->value.func_decl.base)).ident.name);
-
-    }
-
     /* consume '(' */
     bl_tokens_consume(cnt->tokens);
 
@@ -594,12 +576,13 @@ param:
     } else {
       func_decl->value.func_decl.cmp_stmt = parse_cmp_stmt(cnt);
     }
+
+    bl_scope_pop(&cnt->unit->scope);
   } else {
     /* Roll back to marker. */
     bl_tokens_back_to_marker(cnt->tokens);
   }
 
-  bl_scope_pop(&cnt->unit->scope);
 
   return func_decl;
 }
@@ -986,7 +969,7 @@ parse_expr_1(context_t *cnt,
 bl_node_t *
 parse_call_expr(context_t *cnt)
 {
-  bl_node_t *call = NULL;
+  bl_node_t *call_expr = NULL;
 
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     bl_token_t *tok_calle = bl_tokens_consume(cnt->tokens);
@@ -994,29 +977,20 @@ parse_call_expr(context_t *cnt)
     /* eat '(' */
     bl_tokens_consume(cnt->tokens);
 
-    call = bl_ast_new_node(
+    call_expr = bl_ast_new_node(
       &cnt->unit->ast, BL_NODE_CALL_EXPR, tok_calle->src_loc, tok_calle->line, tok_calle->col);
 
-    bl_ident_init(&call->value.call_expr.ident, tok_calle->value.as_string);
+    bl_ident_init(&call_expr->value.call_expr.ident, tok_calle->value.as_string);
 
     /*
-     * Handle callee existence, when symbol was found, store expected return
-     * type into call node. When no callee was found, it can be defined later
-     * or in another unit in assembly, in such case we only store unsatisfied
-     * call into cache and add information about return type later.
+     * Call expression is stored as unsatisfied here because callee may
+     * not exist yet and it's declared later in current unit or in another
+     * unit. The linker will handle connecting between expression and callee.
      */
-    bl_sym_tbl_t *sym_tbl = &cnt->unit->sym_tbl;
-    bl_ident_t   *ident   = &call->value.call_expr.ident;
-    bl_node_t    *callee  = bl_sym_tbl_get_sym_of_type(sym_tbl, ident, BL_NODE_FUNC_DECL);
-
-    if (callee == NULL) {
-      bl_sym_tbl_add_unsatisfied_expr(sym_tbl, call);
-    } else {
-      call->value.call_expr.callee = callee;
-    }
+    bl_unsatisfied_add(&cnt->unit->unsatisfied, call_expr);
 
 arg:
-    bl_node_call_expr_add_arg(call, parse_expr(cnt));
+    bl_node_call_expr_add_arg(call_expr, parse_expr(cnt));
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA))
       goto arg;
 
@@ -1028,7 +1002,7 @@ arg:
     }
   }
 
-  return call;
+  return call_expr;
 }
 
 bl_node_t *
@@ -1148,11 +1122,6 @@ bl_parser_run(bl_builder_t *builder,
   }
 
   unit->ast.root = parse_global_stmt(&cnt);
-
-  /* TODO: move to another stage??? */
-  if (!bl_sym_tbl_try_satisfy_all(&unit->sym_tbl)) {
-    parse_error(&cnt, BL_ERR_UNKNOWN_SYMBOL, "%s unknown function detected.", unit->filepath);
-  }
 
   return BL_NO_ERR;
 }

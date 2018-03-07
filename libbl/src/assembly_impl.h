@@ -32,11 +32,14 @@
 #include <bobject/containers/array.h>
 #include <llvm-c/Core.h>
 #include "bl/assembly.h"
+#include "ast/node_impl.h"
 
 typedef struct bl_assembly
 {
   BArray         *units;
+  bl_node_t      *root;
   char           *name;
+
   LLVMModuleRef  llvm_module;
   LLVMContextRef llvm_cnt;
 } bl_assembly_t;

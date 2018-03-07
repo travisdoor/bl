@@ -89,11 +89,11 @@ compile_unit(bl_builder_t *builder,
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(unit)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_llvm_backend_run(builder, unit)) != BL_NO_ERR)
-    return error;
-
-  if (flags & BL_BUILDER_EXPORT_BC && (error = bl_llvm_bc_writer_run(builder, unit)) != BL_NO_ERR)
-    return error;
+//  if ((error = bl_llvm_backend_run(builder, unit)) != BL_NO_ERR)
+//    return error;
+//
+//  if (flags & BL_BUILDER_EXPORT_BC && (error = bl_llvm_bc_writer_run(builder, unit)) != BL_NO_ERR)
+//    return error;
 
   return BL_NO_ERR;
 }
@@ -108,11 +108,11 @@ compile_assembly(bl_builder_t *builder,
   if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
-    return error;
+//  if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
+//    return error;
 
-  if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
-    return error;
+//  if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
+//    return error;
 
   return BL_NO_ERR;
 }

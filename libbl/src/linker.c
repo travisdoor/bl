@@ -28,6 +28,7 @@
 
 #include <setjmp.h>
 #include "stages_impl.h"
+#include "common_impl.h"
 
 #define link_error(cnt, code, format, ...) \
   { \
@@ -35,10 +36,69 @@
     longjmp((cnt)->jmp_error, (code)); \
   }
 
-typedef struct {
-  jmp_buf jmp_error;
+typedef struct
+{
+  bl_builder_t *builder;
+  jmp_buf      jmp_error;
 } context_t;
 
+static void
+link_local(context_t *cnt,
+           bl_unit_t *unit);
+
+static bool
+link_call_expr(context_t *cnt,
+               bl_unit_t *unit,
+               bl_node_t *call_expr);
+
+bool
+link_call_expr(context_t *cnt,
+               bl_unit_t *unit,
+               bl_node_t *call_expr)
+{
+  bl_ident_t *ident = &call_expr->value.call_expr.ident;
+
+  bl_node_t *callee = bl_scope_get(&unit->scope, ident);
+  if (callee == NULL) {
+    /* TODO: remove later, callee can be defined in another unit */
+
+    link_error(cnt,
+               BL_ERR_UNKNOWN_SYMBOL,
+               "%s %d:%d function "
+                 BL_YELLOW("'%s'")
+                 " does not exist in current context",
+               unit->filepath,
+               call_expr->line,
+               call_expr->col,
+               ident->name);
+  } else {
+    /* TODO: check callee params and return type */
+    call_expr->value.call_expr.callee = callee;
+  }
+
+  return true;
+}
+
+void
+link_local(context_t *cnt,
+           bl_unit_t *unit)
+{
+  const int c = bl_unsatisfied_get_count(&unit->unsatisfied);
+  bl_node_t *uns;
+  for (int  i = 0; i < c; i++) {
+    uns = bl_unsatisfied_get_node(&unit->unsatisfied, i);
+    switch (uns->type) {
+      case BL_NODE_CALL_EXPR:
+        if (link_call_expr(cnt, unit, uns)) {
+          /* TODO: delete node from unsatisfied queue */
+        }
+        break;
+      default: bl_abort("invalid node type");
+    }
+  }
+}
+
+/* public */
 bl_error_e
 bl_linker_run(bl_builder_t *builder,
               bl_assembly_t *assembly)
@@ -47,6 +107,24 @@ bl_linker_run(bl_builder_t *builder,
    * Solve unsatisfied expressions and declaration collisions
    * between units.
    */
+
+  context_t cnt = {
+    .builder = builder
+  };
+
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error))) {
+    return (bl_error_e) error;
+  }
+
+  const int c     = bl_assembly_get_unit_count(assembly);
+  bl_unit_t *unit = NULL;
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    link_local(&cnt, unit);
+  }
+
   return BL_NO_ERR;
 }
 

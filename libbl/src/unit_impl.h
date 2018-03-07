@@ -31,7 +31,6 @@
 
 #include "bl/unit.h"
 #include "ast/ast_impl.h"
-#include "sym_tbl_impl.h" // TODO: remove
 #include "tokens_impl.h"
 #include "scope_impl.h"
 #include "unsatisfied_impl.h"
@@ -50,7 +49,6 @@ typedef struct bl_unit
   /* abstract syntax tree as output of parser */
   bl_ast_t     ast;
   /* All symbols registered in this unit */
-  bl_sym_tbl_t sym_tbl;
   bl_scope_t scope;
   bl_unsatisfied_t unsatisfied;
 
