@@ -2,9 +2,6 @@
  * This is Biscuit testing script.
  */
 
-extern i32 printf(string s, string i);
-extern i32 puts(string s);
-
 // use sdl2;
 
 i32 main() {
@@ -13,13 +10,19 @@ i32 main() {
   // when modules will be implemented this will be sdl2::init() in case 
   // we don't write 'use sdl2;' at the top of the file
   if (init() < 0) {
-    puts("cannot initialize SDL");
+    print("cannot initialize SDL");
+    abort();
   }
 
-  i64 window = create_window("my window", 100, 100);
+  ptr window = create_window("my window", 100, 100);
+  ptr renderer = create_renderer(window);
+
+  set_render_draw_color(renderer, 255, 255, 255, 255);
 
   loop {
+    render_clear(renderer);
     pump_events();
+    render_present(renderer);
     delay(16); 
     wait = wait + 1;
 
@@ -28,6 +31,7 @@ i32 main() {
     }
   }
 
+  destroy_renderer(renderer);
   destroy_window(window);
   quit();
 

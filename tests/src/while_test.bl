@@ -1,0 +1,18 @@
+/*
+ * Unit test
+ * -----------
+ * While loop.
+ */
+
+i32 main() {
+  i32 i = 100;
+
+  while (i != 0) {
+    i = i - 1;
+    continue;
+    i = 0;
+    break;
+  }
+
+  return i;
+}

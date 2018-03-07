@@ -1,11 +1,11 @@
 //*****************************************************************************
-// bl
+// bl api
 //
-// File:   type_impl.h
+// File:   debug.bl
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,59 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TYPE_IMPL_H
-#define BL_TYPE_IMPL_H
+extern i32 printf(string s, string i);
+extern i32 puts(string s);
+extern void abort();
 
-#include <stdint.h>
-#include <stdbool.h>
+// TODO: var_args
+void print(string s) {
+  puts(s);
+}
 
-#define BL_TYPE_LIST \
-  tp(NONE,    "") \
-  tp(VOID,   "void") \
-  tp(CHAR,   "char") \
-  tp(BOOL,   "bool") \
-  tp(I8,     "i8") \
-  tp(U8,     "u8") \
-  tp(I32,    "i32") \
-  tp(I64,    "i64") \
-  tp(U32,    "u32") \
-  tp(U64,    "u64") \
-  tp(PTR,    "ptr") \
-  tp(F32,    "f32") \
-  tp(F64,    "f64") \
-  tp(SIZE,   "size") \
-  tp(STRING, "string") \
-
-typedef enum
-{
-#define tp(tok, str) BL_TYPE_##tok,
-  BL_TYPE_LIST
-#undef tp
-  BL_TYPE_COUNT
-} bl_type_e;
-
-typedef struct bl_type
-{
-  const char *name;
-  uint32_t   hash;
-} bl_type_t;
-
-void
-bl_type_init(bl_type_t *type,
-             const char *name);
-
-bool
-bl_type_is(bl_type_t *type,
-           uint32_t t);
-
-bool
-bl_type_is_fundamental(bl_type_t *type);
-
-bool
-bl_type_is_user_defined(bl_type_t *type);
-
-bool
-bl_type_is_not(bl_type_t *type,
-               uint32_t t);
-
-#endif //BL_TYPE_IMPL_H

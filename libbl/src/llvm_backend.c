@@ -183,9 +183,16 @@ to_llvm_type(context_t *cnt,
   switch (t->hash) {
     case BL_TYPE_VOID:
       return LLVMVoidTypeInContext(cnt->llvm_cnt);
+    case BL_TYPE_CHAR:
+    case BL_TYPE_I8:
+    case BL_TYPE_U8:
+      return LLVMInt8TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_I32:
+    case BL_TYPE_U32:
       return LLVMInt32TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_I64:
+    case BL_TYPE_PTR:
+    case BL_TYPE_U64:
       return LLVMInt64TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_F32:
       return LLVMFloatTypeInContext(cnt->llvm_cnt);
@@ -193,8 +200,6 @@ to_llvm_type(context_t *cnt,
       return LLVMDoubleTypeInContext(cnt->llvm_cnt);
     case BL_TYPE_STRING:
       return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
-    case BL_TYPE_CHAR:
-      return LLVMInt8TypeInContext(cnt->llvm_cnt);
     case BL_TYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
     default: {
@@ -240,12 +245,17 @@ gen_default(context_t *cnt,
   switch (t->hash) {
     case BL_TYPE_CHAR:
       return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, true);
+    case BL_TYPE_I8:
+      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_TYPE_I32:
       return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_TYPE_I64:
       return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, true);
+    case BL_TYPE_U8:
+      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_TYPE_U32:
       return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+    case BL_TYPE_PTR:
     case BL_TYPE_U64:
       return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_TYPE_F32:

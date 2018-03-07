@@ -28,11 +28,22 @@
 
 extern i32 SDL_Init(i32 flags);
 extern void SDL_Quit();
-extern void SDL_PumpEvents();
-extern i64 SDL_CreateWindow(string title, i32 x, i32 y, i32 w, i32 h, i32 flags);
-extern void SDL_DestroyWindow(i64 handle);
+
+extern ptr SDL_CreateWindow(string title, i32 x, i32 y, i32 w, i32 h, u32 flags);
+extern ptr SDL_CreateRenderer(ptr window, i32 index, u32 flags);
+
 extern void SDL_Delay(i32 ms);
+extern void SDL_PumpEvents();
+
+// TODO: use u8
+extern i32 SDL_SetRenderDrawColor(ptr renderer, i32 r, i32 g, i32 b, i32 a);
+extern i32 SDL_RenderClear(ptr renderer);
+extern void SDL_RenderPresent(ptr renderer);
+
 extern string SDL_GetError();
+
+extern void SDL_DestroyWindow(ptr window);
+extern void SDL_DestroyRenderer(ptr renderer);
 
 // module sdl2 {
 
@@ -59,15 +70,16 @@ string get_error() {
   return SDL_GetError();
 }
 
-i64 create_window(string title, i32 x, i32 y) {
-  i32 SDL_WINDOW_FULLSCREEN = 1;
-  i32 SDL_WINDOW_OPENGL = 2;
-  i32 SDL_WINDOW_SHOWN = 4;
+ptr create_window(string title, i32 x, i32 y) {
+  u32 SDL_WINDOW_FULLSCREEN = 1;
+  u32 SDL_WINDOW_OPENGL = 2;
+  u32 SDL_WINDOW_SHOWN = 4;
   return SDL_CreateWindow(title, x, y, 800, 600, SDL_WINDOW_SHOWN);
 }
 
-void destroy_window(i64 handle) {
-  SDL_DestroyWindow(handle);
+ptr create_renderer(ptr window) {
+  // TODO: hacked -1 number -> support unary operators
+  return SDL_CreateRenderer(window, 1 - 2, 0);
 }
 
 void delay(i32 ms) {
@@ -77,3 +89,26 @@ void delay(i32 ms) {
 void pump_events() {
   SDL_PumpEvents();
 }
+
+// TODO: use u8
+i32 set_render_draw_color(ptr renderer, i32 r, i32 g, i32 b, i32 a) {
+   return SDL_SetRenderDrawColor(renderer, r, g, b, a);
+}
+
+i32 render_clear(ptr renderer) {
+  return SDL_RenderClear(renderer);
+}
+
+void render_present(ptr renderer) {
+  SDL_RenderPresent(renderer);
+}
+
+void destroy_window(ptr window) {
+  SDL_DestroyWindow(window);
+}
+
+void destroy_renderer(ptr renderer) {
+  SDL_DestroyRenderer(renderer);
+}
+
+
