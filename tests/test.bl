@@ -6,9 +6,11 @@ extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  say();
+  i32 a;
+  func(a);
   return 0;
 }
 
-void say(string s) {
+void func(i32 s) {
+  i32 result = s;
 }

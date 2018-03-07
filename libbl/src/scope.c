@@ -39,6 +39,11 @@ bl_scope_init(bl_scope_t *cnt)
 {
   cnt->scopes = bo_array_new_bo(bo_typeof(BHashTable), true);
   bo_array_reserve(cnt->scopes, EXPECTED_SCOPE_COUNT);
+
+  /*
+   * Push global scope by default.
+   */
+  bl_scope_push(cnt);
 }
 
 void

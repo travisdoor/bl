@@ -32,12 +32,6 @@
 #include <bobject/containers/array.h>
 #include "ast/node_impl.h"
 
-/*
- * TODO: define global scope for tag for searching
- * declarations which should appear only in global
- * scope.
- */
-
 typedef struct
 {
   BArray *scopes;

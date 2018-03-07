@@ -26,12 +26,27 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <setjmp.h>
 #include "stages_impl.h"
+
+#define link_error(cnt, code, format, ...) \
+  { \
+    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
+    longjmp((cnt)->jmp_error, (code)); \
+  }
+
+typedef struct {
+  jmp_buf jmp_error;
+} context_t;
 
 bl_error_e
 bl_linker_run(bl_builder_t *builder,
               bl_assembly_t *assembly)
 {
+  /*
+   * Solve unsatisfied expressions and declaration collisions
+   * between units.
+   */
   return BL_NO_ERR;
 }
 
