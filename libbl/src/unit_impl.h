@@ -49,9 +49,6 @@ typedef struct bl_unit
   /* source data */
   char           *src;
   BArray         *unsatisfied;
-  /* LLVM Module TODO: remove */
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
 } bl_unit_t;
 
 #endif //BL_UNIT_IMPL_H

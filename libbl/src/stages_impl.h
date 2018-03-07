@@ -55,17 +55,17 @@ bl_parser_run(bl_builder_t *builder,
 bl_error_e
 bl_ast_printer_run(bl_unit_t *unit);
 
-bl_error_e
-bl_llvm_backend_run(bl_builder_t *builder,
-                    bl_unit_t *unit);
-
-bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder,
-                      bl_unit_t *unit);
 
 /*
  * per assembly
  */
+bl_error_e
+bl_llvm_backend_run(bl_builder_t *builder,
+                    bl_assembly_t *assembly);
+
+bl_error_e
+bl_llvm_bc_writer_run(bl_builder_t *builder,
+                      bl_assembly_t *assembly);
 bl_error_e
 bl_linker_run(bl_builder_t *builder,
               bl_assembly_t *assembly);
