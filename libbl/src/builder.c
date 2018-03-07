@@ -105,6 +105,9 @@ compile_assembly(bl_builder_t *builder,
 {
   bl_error_e error;
 
+  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
   if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
     return error;
 

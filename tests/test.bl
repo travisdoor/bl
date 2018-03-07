@@ -6,6 +6,9 @@ extern i32 printf(string s, i32 i);
 extern i32 puts(string s);
 
 i32 main() {
-  a = 10;
+  say();
   return 0;
+}
+
+void say(string s) {
 }

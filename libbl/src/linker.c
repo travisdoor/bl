@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   stages_impl.h
+// File:   linker.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   3/7/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,56 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_STAGES_IMPL_H
-#define BL_STAGES_IMPL_H
+#include "stages_impl.h"
 
-#include "builder_impl.h"
-#include "unit_impl.h"
-#include "assembly_impl.h"
-#include "bl/error.h"
-
-/*
- * per unit
- */
-bl_error_e
-bl_file_loader_run(bl_builder_t *builder,
-                   bl_unit_t *unit);
-
-bl_error_e
-bl_lexer_run(bl_builder_t *builder,
-             bl_unit_t *unit);
-
-bl_error_e
-bl_token_printer_run(bl_unit_t *unit);
-
-bl_error_e
-bl_parser_run(bl_builder_t *builder,
-              bl_unit_t *unit);
-
-bl_error_e
-bl_ast_printer_run(bl_unit_t *unit);
-
-bl_error_e
-bl_llvm_backend_run(bl_builder_t *builder,
-                    bl_unit_t *unit);
-
-bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder,
-                      bl_unit_t *unit);
-
-/*
- * per assembly
- */
 bl_error_e
 bl_linker_run(bl_builder_t *builder,
-              bl_assembly_t *assembly);
+              bl_assembly_t *assembly)
+{
+  return BL_NO_ERR;
+}
 
-bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder,
-                   bl_assembly_t *assembly);
 
-bl_error_e
-bl_llvm_jit_exec_run(bl_builder_t *builder,
-                     bl_assembly_t *assembly);
-
-#endif //BL_STAGES_IMPL_H
