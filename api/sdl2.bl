@@ -57,7 +57,7 @@ enum window_flags {
   SDL_WINDOW_SHOWN
 }
 
-i32 init() {
+public i32 init() {
   i32 SDL_INIT_VIDEO = 32;
   return SDL_Init(SDL_INIT_VIDEO);
 }

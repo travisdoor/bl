@@ -531,7 +531,7 @@ parse_func_decl(context_t *cnt)
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add(scope, func_decl);
+    bl_node_t  *conflicted = bl_scope_add_ident(scope, func_decl);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -618,7 +618,7 @@ parse_param_var_decl(context_t *cnt)
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
 
   bl_scope_t *scope      = &cnt->unit->scope;
-  bl_node_t  *conflicted = bl_scope_add(scope, param);
+  bl_node_t  *conflicted = bl_scope_add_ident(scope, param);
   if (conflicted != NULL) {
     parse_error(cnt,
                 BL_ERR_DUPLICATE_SYMBOL,
@@ -702,7 +702,7 @@ elem:
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add(scope, enm);
+    bl_node_t  *conflicted = bl_scope_add_type(scope, enm);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -794,7 +794,7 @@ member:
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add(scope, strct);
+    bl_node_t  *conflicted = bl_scope_add_type(scope, strct);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -1008,7 +1008,7 @@ parse_dec_ref_expr(context_t *cnt)
    * Validate and store into scope cache.
    */
   bl_scope_t *scope = &cnt->unit->scope;
-  bl_node_t  *ref   = bl_scope_get(scope, &expr->value.decl_ref_expr.ident);
+  bl_node_t  *ref   = bl_scope_get_ident(scope, &expr->value.decl_ref_expr.ident);
 
   if (ref == NULL) {
     parse_error(cnt,
@@ -1063,7 +1063,7 @@ parse_var_decl(context_t *cnt)
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add(scope, vdcl);
+    bl_node_t  *conflicted = bl_scope_add_ident(scope, vdcl);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,

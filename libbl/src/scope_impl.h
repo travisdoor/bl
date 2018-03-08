@@ -57,8 +57,12 @@ bl_scope_pop(bl_scope_t *cnt);
  * otherwise null will be returned.
  */
 bl_node_t *
-bl_scope_add(bl_scope_t *cnt,
-             bl_node_t *node);
+bl_scope_add_ident(bl_scope_t *cnt,
+                   bl_node_t *node);
+
+bl_node_t *
+bl_scope_add_type(bl_scope_t *cnt,
+                  bl_node_t *node);
 
 /*
  * Get declaration from current or parent scope.
@@ -66,8 +70,12 @@ bl_scope_add(bl_scope_t *cnt,
  * null.
  */
 bl_node_t *
-bl_scope_get(bl_scope_t *cnt,
-             bl_ident_t *ident);
+bl_scope_get_ident(bl_scope_t *cnt,
+                   bl_ident_t *ident);
+
+bl_node_t *
+bl_scope_get_type(bl_scope_t *cnt,
+                  bl_type_t *type);
 
 BHashTable *
 bl_scope_get_all(bl_scope_t *cnt);

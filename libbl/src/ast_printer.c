@@ -38,7 +38,7 @@ print_node(bl_node_t *node,
     return;
 
   fprintf(stdout,
-          "\n%*s" BL_GREEN("%s ") BL_YELLOW("0x%p ") BL_MAGENTA("<%d:%d> "),
+          "\n%*s" BL_GREEN("%s ") BL_YELLOW("%p ") BL_MAGENTA("<%d:%d> "),
           pad,
           "",
           bl_node_to_str(node),
@@ -173,9 +173,16 @@ print_node(bl_node_t *node,
 }
 
 bl_error_e
-bl_ast_printer_run(bl_unit_t *unit)
+bl_ast_printer_run(bl_assembly_t *assembly)
 {
-  print_node(unit->ast.root, 0);
+  const int c     = bl_assembly_get_unit_count(assembly);
+  bl_unit_t *unit = NULL;
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    print_node(unit->ast.root, 0);
+  }
+
   fprintf(stdout, "\n\n");
   return BL_NO_ERR;
 }

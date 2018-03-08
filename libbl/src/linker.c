@@ -60,8 +60,7 @@ link_call_expr(context_t *cnt,
 
 static void
 link_member_expr(context_t *cnt,
-                 bl_node_t *unsatisfied,
-                 bl_node_t *found);
+                 bl_node_t *unsatisfied);
 
 void
 link(context_t *cnt,
@@ -113,14 +112,12 @@ link_unsatisfied(context_t *cnt,
 
     switch (unsatisfied->type) {
       case BL_NODE_CALL_EXPR:
-        found = bl_scope_get(
+        found = bl_scope_get_ident(
           &cnt->assembly->scope, &unsatisfied->value.call_expr.ident);
         link_call_expr(cnt, unsatisfied, found);
         break;
       case BL_NODE_MEMBER_EXPR:
-        found = bl_scope_get(
-          &cnt->assembly->scope, &unsatisfied->value.member_expr.ident);
-        link_member_expr(cnt, unsatisfied, found);
+        link_member_expr(cnt, unsatisfied);
         break;
       default: bl_abort("expression of type %i cannot be satisfied", unsatisfied->type);
     }
@@ -151,7 +148,6 @@ link_call_expr(context_t *cnt,
                found->file,
                found->line,
                found->col);
-
   }
 
   const int param_count = bl_node_call_expr_get_arg_count(unsatisfied);
@@ -198,10 +194,42 @@ link_call_expr(context_t *cnt,
 
 void
 link_member_expr(context_t *cnt,
-                 bl_node_t *unsatisfied,
-                 bl_node_t *found)
+                 bl_node_t *unsatisfied)
 {
-//  bl_log("found %s", found->value.decl.ident.name);
+  bl_node_t *next = unsatisfied->value.member_expr.next;
+  bl_assert(next, "no next reference set for member expression");
+
+  switch (next->type) {
+    case BL_NODE_DECL_REF_EXPR: {
+      bl_node_t *ref = next->value.decl_ref_expr.ref;
+      bl_assert(ref, "invalid reference to variable");
+
+      /* find structure type */
+      bl_node_t *type_node = bl_scope_get_type(
+        &cnt->assembly->scope, &ref->value.decl.type);
+
+      if (type_node == NULL) {
+        link_error(cnt, BL_ERR_DIFF_KIND_OF_SYMBOL, unsatisfied, "expected structure or enum");
+      }
+
+      switch (type_node->type) {
+        case BL_NODE_STRUCT_DECL:
+          // TODO: not done!!!
+          unsatisfied->value.member_expr.member = type_node;
+          break;
+        case BL_NODE_ENUM_DECL:
+          break;
+        default: {
+          link_error(cnt, BL_ERR_DIFF_KIND_OF_SYMBOL, unsatisfied, "expected structure or enum");
+        }
+      }
+
+      break;
+    }
+    case BL_NODE_MEMBER_EXPR: bl_log("member expr");
+      break;
+    default: bl_abort("unexpected member next type");
+  }
 }
 
 /* public */

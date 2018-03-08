@@ -1,11 +1,13 @@
 i32 main() {
-  my_struct data;
-  data.a;
-  data.b;
+  A obj;
+  obj.b.i;
 }
 
-struct my_struct {
-  i32 a,
-  i32 b
+struct A {
+  B b
+}
+
+struct B {
+  i32 i 
 }
 
