@@ -830,6 +830,8 @@ parse_atom_expr(context_t *cnt)
     bl_tokens_consume(cnt->tokens);
     expr = new_node(cnt, BL_NODE_MEMBER_EXPR, tok);
     bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
+
+    bo_array_push_back(cnt->unit->unsatisfied, expr);
     return expr;
   }
 
@@ -1018,6 +1020,8 @@ parse_dec_ref_expr(context_t *cnt)
                 expr->col,
                 expr->value.decl_ref_expr.ident.name);
   }
+
+  expr->value.decl_ref_expr.ref = ref;
 
   return expr;
 }

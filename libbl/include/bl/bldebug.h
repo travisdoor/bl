@@ -44,6 +44,9 @@
 #define BL_MAGENTA(str) \
     "\x1b[35m" str "\x1b[0m"
 
+#define BL_CYAN(str) \
+    "\x1b[36m" str "\x1b[0m"
+
 #define bl_assert(expr, format, ...) \
     if ((expr) == 0) { \
         fprintf(stderr, BL_RED("assert: ") format "\n", ##__VA_ARGS__); \

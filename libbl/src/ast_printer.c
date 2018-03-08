@@ -38,14 +38,15 @@ print_node(bl_node_t *node,
     return;
 
   fprintf(stdout,
-          "\n%*s" BL_GREEN("%s ") BL_MAGENTA("<%d:%d> "),
+          "\n%*s" BL_GREEN("%s ") BL_YELLOW("0x%p ") BL_MAGENTA("<%d:%d> "),
           pad,
           "",
           bl_node_to_str(node),
+          node,
           node->line,
           node->col);
 
-  int c = 0;
+  int       c      = 0;
   bl_node_t *child = NULL;
 
   switch (node->type) {
@@ -58,8 +59,8 @@ print_node(bl_node_t *node,
       }
       break;
     case BL_NODE_FUNC_DECL:
-      fprintf(stdout, "type: " BL_YELLOW("%s"), node->value.decl.type.name);
-      fprintf(stdout, ", name: " BL_YELLOW("%s"), node->value.decl.ident.name);
+      fprintf(stdout, "type: " BL_CYAN("%s"), node->value.decl.type.name);
+      fprintf(stdout, ", name: " BL_CYAN("%s"), node->value.decl.ident.name);
       c = bl_node_func_decl_get_param_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
@@ -77,7 +78,7 @@ print_node(bl_node_t *node,
       }
       break;
     case BL_NODE_STRUCT_DECL:
-      fprintf(stdout, "name: " BL_YELLOW("%s"), node->value.decl.type.name);
+      fprintf(stdout, "name: " BL_CYAN("%s"), node->value.decl.type.name);
       c = bl_node_struct_decl_get_member_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
@@ -92,7 +93,7 @@ print_node(bl_node_t *node,
       break;
     case BL_NODE_BINOP:
       pad += 2;
-      fprintf(stdout, "op: " BL_YELLOW("%s"), bl_sym_strings[node->value.binop.operator]);
+      fprintf(stdout, "op: " BL_CYAN("%s"), bl_sym_strings[node->value.binop.operator]);
       print_node(node->value.binop.lhs, pad);
       print_node(node->value.binop.rhs, pad);
       break;
@@ -104,7 +105,11 @@ print_node(bl_node_t *node,
       print_node(node->value.if_stmt.else_if_stmt, pad);
       break;
     case BL_NODE_DECL_REF_EXPR:
-      fprintf(stdout, "name: " BL_YELLOW("%s"), node->value.decl_ref_expr.ident.name);
+      pad += 2;
+      fprintf(stdout,
+              "name: " BL_CYAN("%s") " ref: " BL_YELLOW("0x%p"),
+              node->value.decl_ref_expr.ident.name,
+              node->value.decl_ref_expr.ref);
       break;
     case BL_NODE_CONST_EXPR: {
       bl_node_const_expr_t *const_expr = &node->value.const_expr;
@@ -113,29 +118,29 @@ print_node(bl_node_t *node,
         case BL_CONST_LONG:
         case BL_CONST_INT:
         case BL_CONST_BOOL:
-          fprintf(stdout, "value: " BL_YELLOW("%lu"), const_expr->value.as_ulong);
+          fprintf(stdout, "value: " BL_CYAN("%lu"), const_expr->value.as_ulong);
           break;
         case BL_CONST_STRING:
-          fprintf(stdout, "value: " BL_YELLOW("%s"), const_expr->value.as_string);
+          fprintf(stdout, "value: " BL_CYAN("%s"), const_expr->value.as_string);
           break;
         case BL_CONST_CHAR:
-          fprintf(stdout, "value: " BL_YELLOW("%c"), const_expr->value.as_char);
+          fprintf(stdout, "value: " BL_CYAN("%c"), const_expr->value.as_char);
           break;
         case BL_CONST_DOUBLE:
-          fprintf(stdout, "value: " BL_YELLOW("%f"), const_expr->value.as_double);
+          fprintf(stdout, "value: " BL_CYAN("%f"), const_expr->value.as_double);
           break;
         case BL_CONST_FLOAT:
-          fprintf(stdout, "value: " BL_YELLOW("%f"), const_expr->value.as_float);
+          fprintf(stdout, "value: " BL_CYAN("%f"), const_expr->value.as_float);
           break;
       }
       break;
     }
     case BL_NODE_MEMBER_EXPR: {
-      fprintf(stdout, "name: " BL_YELLOW("%s"), node->value.member_expr.ident.name);
+      fprintf(stdout, "name: " BL_CYAN("%s"), node->value.member_expr.ident.name);
 
       bl_node_t *member = node->value.member_expr.member;
       if (member) {
-        fprintf(stdout, ", member: " BL_YELLOW("%s"), member->value.var_decl.base.ident.name);
+        fprintf(stdout, ", member: " BL_CYAN("%s"), member->value.var_decl.base.ident.name);
       } else {
         fprintf(stdout, ", member: " BL_RED("UNKNOWN"));
       }
@@ -144,7 +149,7 @@ print_node(bl_node_t *node,
       break;
     }
     case BL_NODE_CMP_STMT:
-      c = bl_node_cmp_stmt_get_children_count(node);
+      c          = bl_node_cmp_stmt_get_children_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
         child = bl_node_cmp_stmt_get_child(node, i);
@@ -156,10 +161,10 @@ print_node(bl_node_t *node,
       print_node(node->value.return_stmt.expr, pad);
       break;
     case BL_NODE_VAR_DECL:
-      fprintf(stdout, "order: " BL_YELLOW("%d "), node->value.var_decl.order);
+      fprintf(stdout, "order: " BL_CYAN("%d "), node->value.var_decl.order);
     case BL_NODE_PARAM_VAR_DECL:
-      fprintf(stdout, "type: " BL_YELLOW("%s"), node->value.decl.type.name);
-      fprintf(stdout, ", name: " BL_YELLOW("%s"), node->value.decl.ident.name);
+      fprintf(stdout, "type: " BL_CYAN("%s"), node->value.decl.type.name);
+      fprintf(stdout, ", name: " BL_CYAN("%s"), node->value.decl.ident.name);
       pad += 2;
       print_node(node->value.var_decl.expr, pad);
     default:

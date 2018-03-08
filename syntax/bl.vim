@@ -7,8 +7,8 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword blKey public struct as module behavior impl use extern return if else loop break continue
-syn keyword blType i32 i64 u32 u64 f32 f64 void char string bool 
+syn keyword blKey public struct as module behavior impl use extern return if else loop break continue enum
+syn keyword blType i32 i64 u32 u64 f32 f64 void char string bool ptr u8 i8
 syn keyword blBool true false 
 syn keyword blConst self 
 syn keyword blTodo contained TODO FIXME NOTE TEST HACK

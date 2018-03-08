@@ -1,0 +1,11 @@
+i32 main() {
+  my_struct data;
+  data.a;
+  data.b;
+}
+
+struct my_struct {
+  i32 a,
+  i32 b
+}
+

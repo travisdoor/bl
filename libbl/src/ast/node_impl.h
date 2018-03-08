@@ -187,6 +187,7 @@ typedef struct bl_node_const_expr
 typedef struct bl_node_decl_ref_expr
 {
   bl_ident_t ident;
+  struct bl_node *ref;
 } bl_node_decl_ref_expr_t;
 
 typedef struct bl_node_member_expr

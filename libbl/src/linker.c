@@ -30,7 +30,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define PRINT_GLOBALS 0
+#define PRINT_GLOBALS 1
 
 #define link_error(cnt, code, loc, format, ...) \
   { \
@@ -57,6 +57,11 @@ static void
 link_call_expr(context_t *cnt,
                bl_node_t *unsatisfied,
                bl_node_t *found);
+
+static void
+link_member_expr(context_t *cnt,
+                 bl_node_t *unsatisfied,
+                 bl_node_t *found);
 
 void
 link(context_t *cnt,
@@ -111,6 +116,11 @@ link_unsatisfied(context_t *cnt,
         found = bl_scope_get(
           &cnt->assembly->scope, &unsatisfied->value.call_expr.ident);
         link_call_expr(cnt, unsatisfied, found);
+        break;
+      case BL_NODE_MEMBER_EXPR:
+        found = bl_scope_get(
+          &cnt->assembly->scope, &unsatisfied->value.member_expr.ident);
+        link_member_expr(cnt, unsatisfied, found);
         break;
       default: bl_abort("expression of type %i cannot be satisfied", unsatisfied->type);
     }
@@ -184,6 +194,14 @@ link_call_expr(context_t *cnt,
   */
 
   unsatisfied->value.call_expr.callee = found;
+}
+
+void
+link_member_expr(context_t *cnt,
+                 bl_node_t *unsatisfied,
+                 bl_node_t *found)
+{
+//  bl_log("found %s", found->value.decl.ident.name);
 }
 
 /* public */
