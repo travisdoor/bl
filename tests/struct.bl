@@ -1,6 +1,9 @@
 i32 main() {
-  A obj;
-  obj.b.i;
+  Enum e;
+}
+
+enum Enum {
+  A, B
 }
 
 struct A {

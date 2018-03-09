@@ -83,6 +83,7 @@ bl_node_init(bl_node_t *node,
     case BL_NODE_DECL_REF_EXPR:
     case BL_NODE_CONST_EXPR:
     case BL_NODE_MEMBER_EXPR:
+    case BL_NODE_ENUM_ELEM_DECL:
     case BL_NODE_BINOP:
       break;
     default: bl_abort("invalid node type");
@@ -121,6 +122,7 @@ bl_node_terminate(bl_node_t *node)
     case BL_NODE_DECL_REF_EXPR:
     case BL_NODE_CONST_EXPR:
     case BL_NODE_MEMBER_EXPR:
+    case BL_NODE_ENUM_ELEM_DECL:
     case BL_NODE_BINOP:
       break;
     default: bl_abort("invalid node type");
@@ -318,4 +320,21 @@ bl_node_struct_decl_get_member(bl_node_t *node,
     return NULL;
 
   return bo_array_at(node->value.struct_decl.members, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_node_struct_decl_find_member(bl_node_t *node,
+                                bl_ident_t *ident)
+{
+  bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
+  const int c = bl_node_struct_decl_get_member_count(node);
+  bl_node_t    *member;
+  for (int i = 0; i < c; i++) {
+    member = bl_node_struct_decl_get_member(node, i);
+    if (bl_ident_eq(&member->value.decl.ident, ident)) {
+      return member;
+    }
+  }
+
+  return NULL;
 }

@@ -86,6 +86,24 @@ print_node(bl_node_t *node,
         print_node(child, pad);
       }
       break;
+    case BL_NODE_ENUM_DECL:
+      fprintf(stdout,
+              "type: " BL_CYAN("%s") " name: " BL_CYAN("%s"),
+              node->value.decl.type.name,
+              node->value.decl.ident.name);
+      c = bl_node_enum_decl_get_elem_count(node);
+      pad += 2;
+      for (int i = 0; i < c; i++) {
+        child = bl_node_enum_decl_get_elem(node, i);
+        print_node(child, pad);
+      }
+      break;
+    case BL_NODE_ENUM_ELEM_DECL:
+      fprintf(stdout,
+              "name: " BL_CYAN("%s") " value: " BL_CYAN("%d"),
+              node->value.decl.ident.name,
+              node->value.enum_elem_decl.value);
+      break;
     case BL_NODE_LOOP_STMT:
       pad += 2;
       print_node(node->value.loop_stmt.cmp_stmt, pad);
@@ -105,7 +123,6 @@ print_node(bl_node_t *node,
       print_node(node->value.if_stmt.else_if_stmt, pad);
       break;
     case BL_NODE_DECL_REF_EXPR:
-      pad += 2;
       fprintf(stdout,
               "name: " BL_CYAN("%s") " ref: " BL_YELLOW("0x%p"),
               node->value.decl_ref_expr.ident.name,
@@ -139,11 +156,7 @@ print_node(bl_node_t *node,
       fprintf(stdout, "name: " BL_CYAN("%s"), node->value.member_expr.ident.name);
 
       bl_node_t *member = node->value.member_expr.member;
-      if (member) {
-        fprintf(stdout, ", member: " BL_CYAN("%s"), member->value.var_decl.base.ident.name);
-      } else {
-        fprintf(stdout, ", member: " BL_RED("UNKNOWN"));
-      }
+      fprintf(stdout, ", member: " BL_YELLOW("%p"), member);
       pad += 2;
       print_node(node->value.member_expr.next, pad);
       break;

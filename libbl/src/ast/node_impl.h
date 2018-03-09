@@ -43,6 +43,7 @@
   nt(LOOP_STMT,       "loop") \
   nt(CONTINUE_STMT,   "continue") \
   nt(ENUM_DECL,       "enumerator") \
+  nt(ENUM_ELEM_DECL,  "enum_elem") \
   nt(STRUCT_DECL,     "structure") \
   nt(FUNC_DECL,       "function") \
   nt(VAR_DECL,        "variable") \
@@ -161,6 +162,12 @@ typedef struct bl_node_enum_decl
   BArray         *elems;
 } bl_node_enum_decl_t;
 
+typedef struct bl_node_enum_elem_decl
+{
+  bl_node_decl_t base;
+  int value;
+} bl_node_enum_elem_decl_t;
+
 typedef struct bl_node_struct_decl
 {
   bl_node_decl_t base;
@@ -172,6 +179,7 @@ typedef struct bl_node_struct_decl
  */
 typedef struct bl_node_const_expr
 {
+
   bl_node_conts_type_e type;
   union
   {
@@ -233,6 +241,7 @@ typedef struct bl_node
     bl_node_var_decl_t       var_decl;
     bl_node_param_var_decl_t param_var_decl;
     bl_node_enum_decl_t      enum_decl;
+    bl_node_enum_elem_decl_t enum_elem_decl;
     bl_node_struct_decl_t    struct_decl;
     bl_node_const_expr_t     const_expr;
     bl_node_decl_ref_expr_t  decl_ref_expr;
@@ -323,5 +332,9 @@ bl_node_struct_decl_get_member_count(bl_node_t *node);
 bl_node_t *
 bl_node_struct_decl_get_member(bl_node_t *node,
                                int i);
+
+bl_node_t *
+bl_node_struct_decl_find_member(bl_node_t *node,
+                                bl_ident_t *ident);
 
 #endif //BL_NODE_IMPL_H

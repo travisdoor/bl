@@ -66,65 +66,29 @@ bl_scope_pop(bl_scope_t *cnt)
 }
 
 bl_node_t *
-bl_scope_add_ident(bl_scope_t *cnt,
-                   bl_node_t *node)
+bl_scope_add_symbol(bl_scope_t *cnt,
+                    bl_node_t *node,
+                    uint32_t hash)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
 
-  bl_node_decl_t *decl = &node->value.decl;
-  bl_node_t *found = bl_scope_get_ident(cnt, &decl->ident);
+  bl_node_t *found = bl_scope_get_symbol(cnt, hash);
 
   if (found != NULL) {
     return found;
   }
 
   BHashTable *htbl = bo_array_at(cnt->scopes, c - 1, BHashTable *);
-  bo_htbl_insert(htbl, decl->ident.hash, node);
+  bo_htbl_insert(htbl, hash, node);
 
   return NULL;
+
 }
 
 bl_node_t *
-bl_scope_add_type(bl_scope_t *cnt,
-                  bl_node_t *node)
-{
-  const size_t c = bo_array_size(cnt->scopes);
-  bl_assert(c, "invalid scope cache size");
-
-  bl_node_decl_t *decl = &node->value.decl;
-  bl_node_t *found = bl_scope_get_type(cnt, &decl->type);
-
-  if (found != NULL) {
-    return found;
-  }
-
-  BHashTable *htbl = bo_array_at(cnt->scopes, c - 1, BHashTable *);
-  bo_htbl_insert(htbl, decl->type.hash, node);
-
-  return NULL;
-}
-
-bl_node_t *
-bl_scope_get_ident(bl_scope_t *cnt,
-                   bl_ident_t *ident)
-{
-  const size_t c = bo_array_size(cnt->scopes);
-  bl_assert(c, "invalid scope cache size");
-  
-  BHashTable *htbl = NULL;
-  for (size_t i = c; i-- > 0;) {
-    htbl = bo_array_at(cnt->scopes, i, BHashTable *);
-    if (bo_htbl_has_key(htbl, ident->hash)) {
-      return bo_htbl_at(htbl, ident->hash, bl_node_t *);
-    }
-  }
-  return NULL;
-}
-
-bl_node_t *
-bl_scope_get_type(bl_scope_t *cnt,
-                  bl_type_t *type)
+bl_scope_get_symbol(bl_scope_t *cnt,
+                    uint32_t hash)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
@@ -132,12 +96,11 @@ bl_scope_get_type(bl_scope_t *cnt,
   BHashTable *htbl = NULL;
   for (size_t i = c; i-- > 0;) {
     htbl = bo_array_at(cnt->scopes, i, BHashTable *);
-    if (bo_htbl_has_key(htbl, type->hash)) {
-      return bo_htbl_at(htbl, type->hash, bl_node_t *);
+    if (bo_htbl_has_key(htbl, hash)) {
+      return bo_htbl_at(htbl, hash, bl_node_t *);
     }
   }
   return NULL;
-
 }
 
 BHashTable *

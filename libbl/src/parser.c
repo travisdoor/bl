@@ -531,7 +531,9 @@ parse_func_decl(context_t *cnt)
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add_ident(scope, func_decl);
+    bl_node_t  *conflicted = bl_scope_add_symbol(scope,
+                                                 func_decl,
+                                                 func_decl->value.decl.ident.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -618,7 +620,7 @@ parse_param_var_decl(context_t *cnt)
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
 
   bl_scope_t *scope      = &cnt->unit->scope;
-  bl_node_t  *conflicted = bl_scope_add_ident(scope, param);
+  bl_node_t  *conflicted = bl_scope_add_symbol(scope, param, param->value.decl.ident.hash);
   if (conflicted != NULL) {
     parse_error(cnt,
                 BL_ERR_DUPLICATE_SYMBOL,
@@ -666,7 +668,10 @@ parse_enum_decl(context_t *cnt)
 
     enm = new_node(cnt, BL_NODE_ENUM_DECL, tok);
 
-    /* TODO parse base type: enum my_enum : i32 {} */
+    /*
+     * TODO: parse base type: enum my_enum : i32 {}
+     * this should accept only fundamental types
+     */
     bl_type_init(&enm->value.decl.type, "i32");
     bl_ident_init(&enm->value.decl.ident, tok->value.as_string);
     enm->value.decl.modificator = BL_SYM_NONE;
@@ -678,9 +683,18 @@ parse_enum_decl(context_t *cnt)
         BL_YELLOW("'{'"), cnt->unit->filepath, tok->line, tok->col);
     }
 
+    int counter = 0;
 elem:
     /* eat ident */
     if ((tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT))) {
+
+      bl_node_t *enm_elem = new_node(cnt, BL_NODE_ENUM_ELEM_DECL, tok);
+      bl_ident_init(&enm_elem->value.decl.ident, tok->value.as_string);
+      bl_type_init(&enm_elem->value.decl.type, "i32");
+      enm_elem->value.enum_elem_decl.value = counter++;
+
+      bl_node_enum_decl_add_elem(enm, enm_elem);
+
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto elem;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
@@ -702,7 +716,7 @@ elem:
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add_type(scope, enm);
+    bl_node_t  *conflicted = bl_scope_add_symbol(scope, enm, enm->value.decl.type.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -794,7 +808,7 @@ member:
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add_type(scope, strct);
+    bl_node_t  *conflicted = bl_scope_add_symbol(scope, strct, strct->value.decl.type.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -1008,7 +1022,7 @@ parse_dec_ref_expr(context_t *cnt)
    * Validate and store into scope cache.
    */
   bl_scope_t *scope = &cnt->unit->scope;
-  bl_node_t  *ref   = bl_scope_get_ident(scope, &expr->value.decl_ref_expr.ident);
+  bl_node_t  *ref   = bl_scope_get_symbol(scope, expr->value.decl_ref_expr.ident.hash);
 
   if (ref == NULL) {
     parse_error(cnt,
@@ -1063,7 +1077,7 @@ parse_var_decl(context_t *cnt)
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add_ident(scope, vdcl);
+    bl_node_t  *conflicted = bl_scope_add_symbol(scope, vdcl, vdcl->value.decl.ident.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,

@@ -112,8 +112,8 @@ link_unsatisfied(context_t *cnt,
 
     switch (unsatisfied->type) {
       case BL_NODE_CALL_EXPR:
-        found = bl_scope_get_ident(
-          &cnt->assembly->scope, &unsatisfied->value.call_expr.ident);
+        found = bl_scope_get_symbol(
+          &cnt->assembly->scope, unsatisfied->value.call_expr.ident.hash);
         link_call_expr(cnt, unsatisfied, found);
         break;
       case BL_NODE_MEMBER_EXPR:
@@ -205,18 +205,31 @@ link_member_expr(context_t *cnt,
       bl_assert(ref, "invalid reference to variable");
 
       /* find structure type */
-      bl_node_t *type_node = bl_scope_get_type(
-        &cnt->assembly->scope, &ref->value.decl.type);
+      bl_node_t *type_node = bl_scope_get_symbol(
+        &cnt->assembly->scope, ref->value.decl.type.hash);
 
       if (type_node == NULL) {
         link_error(cnt, BL_ERR_DIFF_KIND_OF_SYMBOL, unsatisfied, "expected structure or enum");
       }
 
       switch (type_node->type) {
-        case BL_NODE_STRUCT_DECL:
-          // TODO: not done!!!
-          unsatisfied->value.member_expr.member = type_node;
+        case BL_NODE_STRUCT_DECL: {
+          unsatisfied->value.member_expr.member
+            = bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
+
+          /*
+           * No such member found.
+           */
+          if (unsatisfied->value.member_expr.member == NULL) {
+            link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "structure "
+              BL_YELLOW("'%s'")
+              " has no member "
+              BL_YELLOW("'%s'"),
+                       type_node->value.decl.type.name, unsatisfied->value.member_expr.ident.name);
+          }
+
           break;
+        }
         case BL_NODE_ENUM_DECL:
           break;
         default: {
@@ -226,8 +239,33 @@ link_member_expr(context_t *cnt,
 
       break;
     }
-    case BL_NODE_MEMBER_EXPR: bl_log("member expr");
+    case BL_NODE_MEMBER_EXPR: {
+      bl_node_t *member = next->value.member_expr.member;
+      bl_assert(member, "no member in next set");
+
+      bl_assert(member->type == BL_NODE_VAR_DECL, "member reference is not variable declaration");
+
+      bl_node_t *type_node = bl_scope_get_symbol(
+        &cnt->assembly->scope, member->value.decl.type.hash);
+
+      bl_assert(type_node, "TODO: handle error no such symbol");
+
+      unsatisfied->value.member_expr.member
+        = bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
+
+      /*
+       * No such member found.
+       */
+      if (unsatisfied->value.member_expr.member == NULL) {
+        link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "structure "
+          BL_YELLOW("'%s'")
+          " has no member "
+          BL_YELLOW("'%s'"),
+                   type_node->value.decl.type.name, unsatisfied->value.member_expr.ident.name);
+      }
+
       break;
+    }
     default: bl_abort("unexpected member next type");
   }
 }

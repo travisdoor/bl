@@ -30,6 +30,7 @@
 #define BL_IDENTIFIER_IMPL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct bl_ident
 {
@@ -40,5 +41,9 @@ typedef struct bl_ident
 void
 bl_ident_init(bl_ident_t *ident,
               const char *name);
+
+bool
+bl_ident_eq(bl_ident_t *first,
+            bl_ident_t *second);
 
 #endif //BL_IDENTIFIER_IMPL_H
