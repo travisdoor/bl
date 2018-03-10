@@ -1,14 +1,5 @@
-i32 test2_func() {
-  test2_func();
-  test2_func2();
-}
-
-i32 test2_func2() {
-  test3_func2();
-}
-
-struct my_struct {
+struct MyData {
   i32 a,
-  i32 b
+  i32 b,
+  string s
 }
-

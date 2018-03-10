@@ -30,7 +30,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define PRINT_GLOBALS 1
+#define PRINT_GLOBALS 0
 
 #define link_error(cnt, code, loc, format, ...) \
   { \
@@ -61,6 +61,11 @@ link_call_expr(context_t *cnt,
 static void
 link_member_expr(context_t *cnt,
                  bl_node_t *unsatisfied);
+
+static void
+link_var_decl_expr(context_t *cnt,
+                   bl_node_t *unsatisfied,
+                   bl_node_t *found);
 
 void
 link(context_t *cnt,
@@ -118,6 +123,11 @@ link_unsatisfied(context_t *cnt,
         break;
       case BL_NODE_MEMBER_EXPR:
         link_member_expr(cnt, unsatisfied);
+        break;
+      case BL_NODE_VAR_DECL:
+        found = bl_scope_get_symbol(
+          &cnt->assembly->scope, unsatisfied->value.decl.type.hash);
+        link_var_decl_expr(cnt, unsatisfied, found);
         break;
       default: bl_abort("expression of type %i cannot be satisfied", unsatisfied->type);
     }
@@ -214,18 +224,22 @@ link_member_expr(context_t *cnt,
 
       switch (type_node->type) {
         case BL_NODE_STRUCT_DECL: {
-          unsatisfied->value.member_expr.member
-            = bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
+          unsatisfied->value.member_expr.member =
+            bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
 
           /*
            * No such member found.
            */
           if (unsatisfied->value.member_expr.member == NULL) {
-            link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "structure "
-              BL_YELLOW("'%s'")
-              " has no member "
-              BL_YELLOW("'%s'"),
-                       type_node->value.decl.type.name, unsatisfied->value.member_expr.ident.name);
+            link_error(cnt,
+                       BL_ERR_UNKNOWN_SYMBOL,
+                       unsatisfied,
+                       "structure "
+                         BL_YELLOW("'%s'")
+                         " has no member "
+                         BL_YELLOW("'%s'"),
+                       type_node->value.decl.type.name,
+                       unsatisfied->value.member_expr.ident.name);
           }
 
           break;
@@ -248,26 +262,58 @@ link_member_expr(context_t *cnt,
       bl_node_t *type_node = bl_scope_get_symbol(
         &cnt->assembly->scope, member->value.decl.type.hash);
 
-      bl_assert(type_node, "TODO: handle error no such symbol");
+      if (type_node == NULL) {
+        link_error(cnt,
+                   BL_ERR_UNKNOWN_SYMBOL,
+                   unsatisfied,
+                   "structure "
+                     BL_YELLOW("'%s'")
+                     " does not exist in current context, maybe missing reference?",
+                   member->value.decl.type.name);
+      }
 
-      unsatisfied->value.member_expr.member
-        = bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
+      unsatisfied->value.member_expr.member =
+        bl_node_struct_decl_find_member(type_node, &unsatisfied->value.member_expr.ident);
 
       /*
        * No such member found.
        */
       if (unsatisfied->value.member_expr.member == NULL) {
-        link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "structure "
-          BL_YELLOW("'%s'")
-          " has no member "
-          BL_YELLOW("'%s'"),
-                   type_node->value.decl.type.name, unsatisfied->value.member_expr.ident.name);
+        link_error(cnt,
+                   BL_ERR_UNKNOWN_SYMBOL,
+                   unsatisfied,
+                   "structure "
+                     BL_YELLOW("'%s'")
+                     " has no member "
+                     BL_YELLOW("'%s'"),
+                   type_node->value.decl.type.name,
+                   unsatisfied->value.member_expr.ident.name);
       }
 
       break;
     }
     default: bl_abort("unexpected member next type");
   }
+}
+
+void
+link_var_decl_expr(context_t *cnt,
+                   bl_node_t *unsatisfied,
+                   bl_node_t *found)
+{
+  if (found == NULL) {
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "unknown type "
+      BL_YELLOW("'%s'"), unsatisfied->value.decl.type.name);
+  }
+
+  // TODO: enum
+  if (found->type != BL_NODE_STRUCT_DECL) {
+    link_error(cnt, BL_ERR_EXPECTED_TYPE, unsatisfied, "invalid type "
+      BL_YELLOW("'%s'")
+      " expected structure or enum", found->value.decl.ident.name);
+  }
+
+  unsatisfied->value.var_decl.custom_type = found;
 }
 
 /* public */
@@ -297,12 +343,6 @@ bl_linker_run(bl_builder_t *builder,
     link(&cnt, unit);
   }
 
-  for (int i = 0; i < c; i++) {
-    unit = bl_assembly_get_unit(assembly, i);
-    link_unsatisfied(&cnt, unit);
-  }
-
-  /* TEST */
 #if PRINT_GLOBALS
   BHashTable    *src     = bl_scope_get_all(&assembly->scope);
   bo_iterator_t src_iter = bo_htbl_begin(src);
@@ -315,6 +355,11 @@ bl_linker_run(bl_builder_t *builder,
     bo_htbl_iter_next(src, &src_iter);
   }
 #endif
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    link_unsatisfied(&cnt, unit);
+  }
 
   return BL_NO_ERR;
 }

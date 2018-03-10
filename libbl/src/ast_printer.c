@@ -174,10 +174,13 @@ print_node(bl_node_t *node,
       print_node(node->value.return_stmt.expr, pad);
       break;
     case BL_NODE_VAR_DECL:
-      fprintf(stdout, "order: " BL_CYAN("%d "), node->value.var_decl.order);
+      fprintf(stdout, "order: " BL_CYAN("%d"), node->value.var_decl.order);
+      if (bl_type_is_user_defined(&node->value.decl.type)) {
+        fprintf(stdout, " custom_type: " BL_YELLOW("%p"), node->value.var_decl.custom_type);
+      }
     case BL_NODE_PARAM_VAR_DECL:
-      fprintf(stdout, "type: " BL_CYAN("%s"), node->value.decl.type.name);
-      fprintf(stdout, ", name: " BL_CYAN("%s"), node->value.decl.ident.name);
+      fprintf(stdout, " type: " BL_CYAN("%s"), node->value.decl.type.name);
+      fprintf(stdout, " name: " BL_CYAN("%s"), node->value.decl.ident.name);
       pad += 2;
       print_node(node->value.var_decl.expr, pad);
     default:

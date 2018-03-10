@@ -47,17 +47,7 @@ extern void SDL_DestroyRenderer(ptr renderer);
 
 // module sdl2 {
 
-enum init_flags {
-  INIT_VIDEO,
-}
-
-enum window_flags {
-  SDL_WINDOW_FULLSCREEN,
-  SDL_WINDOW_OPENGL,
-  SDL_WINDOW_SHOWN
-}
-
-public i32 init() {
+i32 init() {
   i32 SDL_INIT_VIDEO = 32;
   return SDL_Init(SDL_INIT_VIDEO);
 }
@@ -71,8 +61,6 @@ string get_error() {
 }
 
 ptr create_window(string title, i32 x, i32 y) {
-  u32 SDL_WINDOW_FULLSCREEN = 1;
-  u32 SDL_WINDOW_OPENGL = 2;
   u32 SDL_WINDOW_SHOWN = 4;
   return SDL_CreateWindow(title, x, y, 800, 600, SDL_WINDOW_SHOWN);
 }

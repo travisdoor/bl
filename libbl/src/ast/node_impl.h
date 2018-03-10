@@ -149,6 +149,13 @@ typedef struct bl_node_var_decl
    * should be 0.
    */
   int order;
+
+  /*
+   * When type is not fundamental it can be unsatisfied so
+   * we need store reference to type definition used later
+   * in LLVM backend.
+   */
+  struct bl_node *custom_type;
 } bl_node_var_decl_t;
 
 typedef struct bl_node_param_var_decl

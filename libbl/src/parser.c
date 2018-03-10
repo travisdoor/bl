@@ -531,9 +531,8 @@ parse_func_decl(context_t *cnt)
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
-    bl_node_t  *conflicted = bl_scope_add_symbol(scope,
-                                                 func_decl,
-                                                 func_decl->value.decl.ident.hash);
+    bl_node_t  *conflicted = bl_scope_add_symbol(
+      scope, func_decl, func_decl->value.decl.ident.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -1074,6 +1073,17 @@ parse_var_decl(context_t *cnt)
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
 
     /*
+     * When type is not fundamental it can be unsatisfied here,
+     * we need to take note about that and fill up reference to
+     * custom generated type later during linking and notify user
+     * when no such type was found.
+     */
+
+    if (bl_type_is_user_defined(&vdcl->value.decl.type)) {
+      bo_array_push_back(cnt->unit->unsatisfied, vdcl);
+    }
+
+    /*
      * Validate and store into scope cache.
      */
     bl_scope_t *scope      = &cnt->unit->scope;
@@ -1094,7 +1104,7 @@ parse_var_decl(context_t *cnt)
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
       /*
-       * Variable is also asigned to some expression.
+       * Variable is also assigned to some expression.
        */
 
       /* expected expression */
