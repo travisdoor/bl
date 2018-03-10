@@ -10,13 +10,8 @@ find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
 llvm_map_components_to_libnames(LLVM_LIBS
-        support
-        core
-        bitwriter
-        executionengine
-        interpreter
-        linker
-        native)
+        all
+        )
 
 set(HEADER_FILES
         include/bl/bl.h
@@ -41,7 +36,8 @@ set(HEADER_FILES_IMPL
         src/type_impl.h
         src/unit_impl.h
         src/stages_impl.h
-        src/common_impl.h src/scope_impl.h)
+        src/common_impl.h 
+        src/scope_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
@@ -61,9 +57,12 @@ set(SOURCE_FILES
         src/builder.c
         src/llvm_bc_writer.c
         src/llvm_bl_cnt.c
+        src/llvm_native_bin.c
         src/lexer.c
         src/llvm_linker.c 
-        src/ast/node.c src/scope.c src/linker.c)
+        src/ast/node.c 
+        src/scope.c 
+        src/linker.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

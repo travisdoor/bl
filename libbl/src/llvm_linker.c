@@ -27,15 +27,52 @@
 //*****************************************************************************
 
 #include <llvm-c/Linker.h>
+#include <llvm-c/TargetMachine.h>
 
 #include "stages_impl.h"
-#include "bl/bldebug.h"
+#include "common_impl.h"
+#include "bl/error.h"
 
 bl_error_e
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly)
 {
-  // TODO
+  LLVMInitializeAllTargetInfos();
+  LLVMInitializeAllTargets();
+  LLVMInitializeAllTargetMCs();
+  LLVMInitializeAllAsmParsers();
+  LLVMInitializeAllAsmPrinters();
+
+  char *filename = "test.o";
+
+  char *triple    = LLVMGetDefaultTargetTriple();
+  char *cpu       = "";
+  char *features  = "";
+  char *error_msg = NULL;
+
+  bl_log("target triple %s", triple);
+
+
+  LLVMTargetRef target = NULL;
+  if (LLVMGetTargetFromTriple(triple, &target, &error_msg)) {
+    bl_error("cannot get target with error: %s", error_msg);
+    LLVMDisposeMessage(error_msg);
+    return BL_ERR_CANNOT_LINK;
+  }
+
+  LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
+    target, triple, cpu, features, LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+
+  if (LLVMTargetMachineEmitToFile(
+    target_machine, assembly->llvm_module, filename, LLVMObjectFile, &error_msg)) {
+    bl_error("cannot emit object file: %s with error: %s", filename, error_msg);
+
+    LLVMDisposeMessage(error_msg);
+    LLVMDisposeTargetMachine(target_machine);
+    return BL_ERR_CANNOT_LINK;
+  }
+
+  LLVMDisposeTargetMachine(target_machine);
 
   return BL_NO_ERR;
 }

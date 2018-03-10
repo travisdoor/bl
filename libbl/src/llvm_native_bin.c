@@ -1,11 +1,11 @@
 //*****************************************************************************
-// blc
+// Biscuit Engine
 //
-// File:   llvm_jit_exec.c
+// File:   llvm_native_bin.c
 // Author: Martin Dorazil
-// Date:   14/02/2018
+// Date:   10/03/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,43 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 #include "stages_impl.h"
-#include "bl/bldebug.h"
 
 bl_error_e
-bl_llvm_jit_exec_run(bl_builder_t *builder,
-                     bl_assembly_t *assembly)
+bl_llvm_native_bin_run(bl_builder_t *builder,
+                       bl_assembly_t *assembly)
 {
-  bl_assert(assembly->llvm_module, "invalid assembly module");
-  LLVMExecutionEngineRef engine;
-  char                   *error = NULL;
-
-  LLVMLinkInInterpreter();
-  if (LLVMCreateInterpreterForModule(&engine, assembly->llvm_module, &error) != 0) {
-    bl_abort("failed to create execution engine with error %s", error);
-  }
-
-  LLVMValueRef main_f = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  if (main_f == NULL) {
-    bl_builder_error(
-      builder,
-      assembly->name,
-      "unable to get " BL_YELLOW("'main'") " method");
-    LLVMDisposeExecutionEngine(engine);
-    return BL_ERR_NO_MAIN_METHOD;
-  }
-
-  LLVMGenericValueRef res = LLVMRunFunction(engine, main_f, 0, NULL);
-
-  int ires = (int) LLVMGenericValueToInt(res, 0);
-  if (ires != 0) {
-    bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
-    LLVMDisposeExecutionEngine(engine);
-    return BL_ERR_INVALID_RESULT;
-  }
+  // TODO: platform typedef
+  const char *cmd = "ld -lcrt1.o -lc test.o -o test";
+  system(cmd);
 
   return BL_NO_ERR;
 }
+
+
 

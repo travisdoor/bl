@@ -109,7 +109,13 @@ compile_assembly(bl_builder_t *builder,
     (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
+  if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
   if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
+  if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
   return BL_NO_ERR;
