@@ -33,7 +33,7 @@ bl_llvm_native_bin_run(bl_builder_t *builder,
                        bl_assembly_t *assembly)
 {
   // TODO: platform typedef
-  const char *cmd = "ld -lcrt1.o -lc test.o -o test";
+  const char *cmd = "ld -lcrt1.o -lc -lSDL2 test.o -o test";
   system(cmd);
 
   return BL_NO_ERR;

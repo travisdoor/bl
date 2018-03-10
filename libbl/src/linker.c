@@ -63,9 +63,9 @@ link_member_expr(context_t *cnt,
                  bl_node_t *unsatisfied);
 
 static void
-link_var_decl_expr(context_t *cnt,
-                   bl_node_t *unsatisfied,
-                   bl_node_t *found);
+link_decl_expr(context_t *cnt,
+               bl_node_t *unsatisfied,
+               bl_node_t *found);
 
 void
 link(context_t *cnt,
@@ -125,9 +125,11 @@ link_unsatisfied(context_t *cnt,
         link_member_expr(cnt, unsatisfied);
         break;
       case BL_NODE_VAR_DECL:
+      case BL_NODE_PARAM_VAR_DECL:
+      case BL_NODE_FUNC_DECL:
         found = bl_scope_get_symbol(
           &cnt->assembly->scope, unsatisfied->value.decl.type.hash);
-        link_var_decl_expr(cnt, unsatisfied, found);
+        link_decl_expr(cnt, unsatisfied, found);
         break;
       default: bl_abort("expression of type %i cannot be satisfied", unsatisfied->type);
     }
@@ -297,9 +299,9 @@ link_member_expr(context_t *cnt,
 }
 
 void
-link_var_decl_expr(context_t *cnt,
-                   bl_node_t *unsatisfied,
-                   bl_node_t *found)
+link_decl_expr(context_t *cnt,
+               bl_node_t *unsatisfied,
+               bl_node_t *found)
 {
   if (found == NULL) {
     link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "unknown type "
@@ -313,7 +315,7 @@ link_var_decl_expr(context_t *cnt,
       " expected structure or enum", found->value.decl.ident.name);
   }
 
-  unsatisfied->value.var_decl.custom_type = found;
+  unsatisfied->value.decl.type.custom_type = found;
 }
 
 /* public */

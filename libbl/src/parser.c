@@ -524,9 +524,11 @@ parse_func_decl(context_t *cnt)
 
     func_decl = new_node(cnt, BL_NODE_FUNC_DECL, tok_ident);
 
-    bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string);
     bl_ident_init(&func_decl->value.decl.ident, tok_ident->value.as_string);
 
+    if (bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string, NULL)) {
+      bo_array_push_back(cnt->unit->unsatisfied, func_decl);
+    }
     /*
      * Validate and store into scope cache.
      */
@@ -615,8 +617,11 @@ parse_param_var_decl(context_t *cnt)
 
   bl_node_t  *param = new_node(cnt, BL_NODE_PARAM_VAR_DECL, tok);
 
-  bl_type_init(&param->value.param_var_decl.base.type, type);
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
+
+  if (bl_type_init(&param->value.param_var_decl.base.type, type, NULL)) {
+    bo_array_push_back(cnt->unit->unsatisfied, param);
+  }
 
   bl_scope_t *scope      = &cnt->unit->scope;
   bl_node_t  *conflicted = bl_scope_add_symbol(scope, param, param->value.decl.ident.hash);
@@ -671,7 +676,7 @@ parse_enum_decl(context_t *cnt)
      * TODO: parse base type: enum my_enum : i32 {}
      * this should accept only fundamental types
      */
-    bl_type_init(&enm->value.decl.type, "i32");
+    bl_type_init(&enm->value.decl.type, "i32", NULL);
     bl_ident_init(&enm->value.decl.ident, tok->value.as_string);
     enm->value.decl.modificator = BL_SYM_NONE;
 
@@ -689,7 +694,7 @@ elem:
 
       bl_node_t *enm_elem = new_node(cnt, BL_NODE_ENUM_ELEM_DECL, tok);
       bl_ident_init(&enm_elem->value.decl.ident, tok->value.as_string);
-      bl_type_init(&enm_elem->value.decl.type, "i32");
+      bl_type_init(&enm_elem->value.decl.type, "i32", NULL);
       enm_elem->value.enum_elem_decl.value = counter++;
 
       bl_node_enum_decl_add_elem(enm, enm_elem);
@@ -766,7 +771,7 @@ parse_struct_decl(context_t *cnt)
 
     strct = new_node(cnt, BL_NODE_STRUCT_DECL, tok);
 
-    bl_type_init(&strct->value.decl.type, tok->value.as_string);
+    bl_type_init(&strct->value.decl.type, tok->value.as_string, NULL);
     /* TODO: chose what will describe structure type */
     bl_ident_init(&strct->value.decl.ident, tok->value.as_string);
     strct->value.decl.modificator = BL_SYM_NONE;
@@ -1069,7 +1074,6 @@ parse_var_decl(context_t *cnt)
 
     vdcl = new_node(cnt, BL_NODE_VAR_DECL, tok_ident);
 
-    bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
 
     /*
@@ -1079,7 +1083,7 @@ parse_var_decl(context_t *cnt)
      * when no such type was found.
      */
 
-    if (bl_type_is_user_defined(&vdcl->value.decl.type)) {
+    if (bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string, NULL)) {
       bo_array_push_back(cnt->unit->unsatisfied, vdcl);
     }
 

@@ -1,0 +1,24 @@
+/*
+ * Unit test
+ * -----------
+ * Factorial.
+ */
+
+extern i32 printf(string s, i32 i);
+
+i32 main() {
+  printf("factorial(1) = %d\n", factorial(1));
+  printf("factorial(5) = %d\n", factorial(5));
+  printf("factorial(10) = %d\n", factorial(10));
+
+  return 0;
+}
+
+i32 factorial(i32 f)
+{
+  if (f == 0)  {
+    return 1;
+  }
+
+  return (f * factorial(f - 1));
+}

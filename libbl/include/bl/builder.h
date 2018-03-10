@@ -34,11 +34,12 @@
 
 BO_BEGIN_DECLS
 
-#define BL_BUILDER_EXPORT_BC      0x00000001
 #define BL_BUILDER_RUN            0x00000002
 #define BL_BUILDER_PRINT_TOKENS   0x00000004
 #define BL_BUILDER_PRINT_AST      0x00000008
 #define BL_BUILDER_LOAD_FROM_FILE 0x00000010
+#define BL_BUILDER_SYNTAX_ONLY    0x00000020
+#define BL_BUILDER_EMIT_LLVM      0x00000040
 
 typedef struct bl_builder *bl_builder_ref;
 typedef void (* bl_diag_handler_f)(const char *, void *);

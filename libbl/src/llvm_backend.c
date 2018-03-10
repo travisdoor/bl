@@ -41,7 +41,7 @@
 
 /* class context_t */
 
-#define DEBUG_NAMES 1
+#define DEBUG_NAMES 0
 
 #define gen_error(cnt, code, format, ...) \
   { \
@@ -202,8 +202,17 @@ to_llvm_type(context_t *cnt,
       return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
     case BL_TYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
-    default: 
-      bl_abort("invalid type");
+    default: {
+      /* type is not fundamental and must be user defined */
+      bl_assert(t->custom_type,
+                "user defined type reference not specified for non-fundamental type");
+
+      switch (t->custom_type->type) {
+        case BL_NODE_STRUCT_DECL:
+          return gen_struct_decl(cnt, t->custom_type);
+        default: bl_abort("invalid custom type reference");
+      }
+    }
   }
 }
 
@@ -472,21 +481,7 @@ gen_var_decl(context_t *cnt,
 {
   bl_node_var_decl_t *vdcl      = &node->value.var_decl;
   LLVMBasicBlockRef  prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMTypeRef        t;
-
-  if (bl_type_is_fundamental(&vdcl->base.type)) {
-    t = to_llvm_type(cnt, &vdcl->base.type);
-  } else {
-    /* type is not fundamental and must be user defined */
-    bl_assert(vdcl->custom_type, "user defined type reference not specified for non-fundamental type");
-    switch(vdcl->custom_type->type) {
-      case BL_NODE_STRUCT_DECL:
-        t = gen_struct_decl(cnt, vdcl->custom_type);
-        break;
-      default:
-        bl_abort("invalid custom type reference");
-    }
-  }
+  LLVMTypeRef        t          = to_llvm_type(cnt, &vdcl->base.type);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(vdcl->base.ident.name));

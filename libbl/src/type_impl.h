@@ -61,24 +61,23 @@ typedef struct bl_type
 {
   const char *name;
   uint32_t   hash;
+  struct bl_node *custom_type;
 } bl_type_t;
 
-void
-bl_type_init(bl_type_t *type,
-             const char *name);
-
+/*
+ * Initialize type structure and return true when we
+ * pass custom as NULL and type is not fundamental.
+ * In such case we need to store this type as unsatisfied.
+ */
 bool
-bl_type_is(bl_type_t *type,
-           uint32_t t);
+bl_type_init(bl_type_t *type,
+             const char *name,
+             struct bl_node *custom);
 
 bool
 bl_type_is_fundamental(bl_type_t *type);
 
 bool
 bl_type_is_user_defined(bl_type_t *type);
-
-bool
-bl_type_is_not(bl_type_t *type,
-               uint32_t t);
 
 #endif //BL_TYPE_IMPL_H

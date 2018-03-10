@@ -9,3 +9,5 @@
 * release/debug
 * output dir (per configuration)
 * external linkage
+* optimization level
+

@@ -1,0 +1,39 @@
+/*
+ * Unit test
+ * -----------
+ * Struct test.
+ */
+
+i32 main() {
+  A a;
+  B b;
+
+  a.b.i = 10;
+  a.i = 10;
+
+  // b = new_B(a.i); // NOT WORKING
+  b = new_B_def();
+
+  return 0;
+}
+
+B new_B(i32 i) {
+  B data;
+  data.i = i;
+  return data;
+}
+
+B new_B_def() {
+  B data;
+  data.i = 666;
+  return data;
+}
+
+struct A {
+  B b,
+  i32 i
+}
+
+struct B {
+  i32 i
+}

@@ -7,7 +7,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword blKey public struct as module behavior impl use extern return if else loop break continue enum
+syn keyword blKey public struct as module behavior impl use extern return if else while loop break continue enum
 syn keyword blType i32 i64 u32 u64 f32 f64 void char string bool ptr u8 i8
 syn keyword blBool true false 
 syn keyword blConst self 
@@ -17,6 +17,8 @@ syn region blString start='"' end='"'
 
 syn region blComment start='/\*' end='\*/' contains=blTodo
 syn match blComment "//.*$" contains=blTodo
+
+syn match blPreproc "#run"
 
 syntax match blNumber "\v<\d+>"
 syntax match blNumber "\v<\d+\.\d+>"
@@ -49,3 +51,4 @@ hi def link blComment Comment
 hi def link blOperator Operator 
 hi def link blCustomFunc Function
 hi def link blCustomMemVar Function
+hi def link blPreproc PreProc 

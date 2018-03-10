@@ -45,8 +45,8 @@ protected:
   void
   TearDown()
   {
-    bo_unref(assembly);
-    bo_unref(builder);
+    bl_assembly_delete(assembly);
+    bl_builder_delete(builder);
   }
 
   bl_assembly_ref assembly;
@@ -136,6 +136,22 @@ TEST_F(CompilerTest, loop)
 TEST_F(CompilerTest, while_loop)
 {
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "while_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
+}
+
+TEST_F(CompilerTest, factorial)
+{
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "factorial_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
+}
+
+TEST_F(CompilerTest, structure)
+{
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "struct_test.bl");
   bl_assembly_add_unit(assembly, unit);
 
   ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);

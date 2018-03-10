@@ -413,6 +413,8 @@ bl_lexer_run(bl_builder_t *builder,
 
   scan(&cnt);
 
+  builder->total_lines += cnt.line;
+
   return BL_NO_ERR;
 }
 

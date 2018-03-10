@@ -8,7 +8,9 @@ The Biscuit is programming language inspired by C and Rust.
 
 ## Compiler params
 ```
--ast-dump Print out ast.
--lex-dump Print tokens.
--r        Run during compilation.
+-ast-dump     Print out ast.
+-lex-dump     Print tokens.
+-syntax-only 
+-emit-llvm
+-run          Run during compilation.
 ```

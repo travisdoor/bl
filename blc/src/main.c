@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <locale.h>
+#include <string.h>
 #include "bl/bl.h"
 
 int
@@ -35,20 +36,24 @@ main(int argc,
      char *argv[])
 {
   setlocale(LC_ALL, "C");
-  unsigned int build_flags = BL_BUILDER_EXPORT_BC | BL_BUILDER_LOAD_FROM_FILE;
+  unsigned int build_flags = BL_BUILDER_LOAD_FROM_FILE;
   puts("BL Compiler version 0.1.0\n");
 
   size_t optind;
   for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
-    switch (argv[optind][1]) {
-      case 'r':
-        build_flags |= BL_BUILDER_RUN;
-        break;
-      case 'v':
-        build_flags |= BL_BUILDER_PRINT_TOKENS | BL_BUILDER_PRINT_AST;
-        break;
-      default:fprintf(stderr, "Usage: %s [-rv] [file...]\n", argv[0]);
-        exit(EXIT_FAILURE);
+    if (strcmp(&argv[optind][1], "ast-dump") == 0) {
+      build_flags |= BL_BUILDER_PRINT_AST;
+    } else if (strcmp(&argv[optind][1], "lex-dump") == 0) {
+      build_flags |= BL_BUILDER_PRINT_TOKENS;
+    } else if (strcmp(&argv[optind][1], "syntax-only") == 0) {
+      build_flags |= BL_BUILDER_SYNTAX_ONLY;
+    } else if (strcmp(&argv[optind][1], "emit-llvm") == 0) {
+      build_flags |= BL_BUILDER_EMIT_LLVM;
+    } else if (strcmp(&argv[optind][1], "run") == 0) {
+      build_flags |= BL_BUILDER_RUN;
+    } else {
+      fprintf(stderr, "invalid params\n");
+      exit(EXIT_FAILURE);
     }
   }
   argv += optind;
@@ -58,7 +63,7 @@ main(int argc,
     exit(EXIT_SUCCESS);
   }
 
-  bl_builder_ref builder = bl_builder_new();
+  bl_builder_ref  builder  = bl_builder_new();
   bl_assembly_ref assembly = bl_assembly_new("main_assembly");
 
   /* init actors */

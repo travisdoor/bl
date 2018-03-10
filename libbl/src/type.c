@@ -29,6 +29,7 @@
 #include <bobject/containers/hash.h>
 #include <string.h>
 #include "type_impl.h"
+#include "ast/node_impl.h"
 
 static const char *bl_type_strings[] = {
 #define tp(tok, str) str,
@@ -37,27 +38,30 @@ static const char *bl_type_strings[] = {
 };
 
 /* public */
-void
+bool
 bl_type_init(bl_type_t *type,
-             const char *name)
+             const char *name,
+             struct bl_node *custom)
 {
+  bool fundamental = false;
   type->name = name;
 
   for (uint32_t i = 0; i < BL_TYPE_COUNT; i++) {
-    if (strcmp(bl_type_strings[i], name) == 0)
+    if (strcmp(bl_type_strings[i], name) == 0) {
       type->hash = i;
+      fundamental = true;
+      break;
+    }
   }
 
   if (type->hash == BL_TYPE_NONE) {
     type->hash = bo_hash_from_str(name);
   }
-}
 
-bool
-bl_type_is(bl_type_t *type,
-           uint32_t t)
-{
-  return type->hash == t;
+  type->custom_type = custom;
+  if (custom == NULL && !fundamental)
+    return true;
+  return false;
 }
 
 bool
@@ -72,9 +76,4 @@ bl_type_is_user_defined(bl_type_t *type)
   return !bl_type_is_fundamental(type);
 }
 
-bool
-bl_type_is_not(bl_type_t *type,
-               uint32_t t)
-{
-  return type->hash != t;
-}
+

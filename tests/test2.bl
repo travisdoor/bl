@@ -1,5 +1,0 @@
-struct MyData {
-  i32 a,
-  i32 b,
-  string s
-}
