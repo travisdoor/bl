@@ -30,7 +30,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define PRINT_GLOBALS 0
+#define PRINT_GLOBALS 1
 
 #define link_error(cnt, code, loc, format, ...) \
   { \

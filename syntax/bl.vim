@@ -18,7 +18,7 @@ syn region blString start='"' end='"'
 syn region blComment start='/\*' end='\*/' contains=blTodo
 syn match blComment "//.*$" contains=blTodo
 
-syn match blPreproc "#run"
+syn match blPreproc "#run\|#assert\|#test\|#load" 
 
 syntax match blNumber "\v<\d+>"
 syntax match blNumber "\v<\d+\.\d+>"
