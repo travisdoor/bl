@@ -40,9 +40,9 @@
 
 typedef struct
 {
-  bl_builder_t  *builder;
+  bl_builder_t *builder;
   bl_assembly_t *assembly;
-  jmp_buf       jmp_error;
+  jmp_buf jmp_error;
 } context_t;
 
 static void
@@ -73,10 +73,10 @@ link(context_t *cnt,
 {
   /* copy global declarations and solve collisions */
   BHashTable *dest = bl_scope_get_all(&cnt->assembly->scope);
-  BHashTable *src  = bl_scope_get_all(&unit->scope);
+  BHashTable *src = bl_scope_get_all(&unit->scope);
 
   bo_iterator_t src_iter = bo_htbl_begin(src);
-  bo_iterator_t src_end  = bo_htbl_end(src);
+  bo_iterator_t src_end = bo_htbl_end(src);
 
   bl_node_t *decl;
   bl_node_t *coliding;
@@ -109,8 +109,8 @@ link_unsatisfied(context_t *cnt,
                  bl_unit_t *unit)
 {
   const size_t c = bo_array_size(unit->unsatisfied);
-  bl_node_t    *unsatisfied;
-  bl_node_t    *found;
+  bl_node_t *unsatisfied;
+  bl_node_t *found;
 
   for (size_t i = 0; i < c; i++) {
     unsatisfied = bo_array_at(unit->unsatisfied, i, bl_node_t *);
@@ -308,14 +308,18 @@ link_decl_expr(context_t *cnt,
       BL_YELLOW("'%s'"), unsatisfied->value.decl.type.name);
   }
 
-  // TODO: enum
-  if (found->type != BL_NODE_STRUCT_DECL) {
-    link_error(cnt, BL_ERR_EXPECTED_TYPE, unsatisfied, "invalid type "
-      BL_YELLOW("'%s'")
-      " expected structure or enum", found->value.decl.ident.name);
-  }
+  switch (found->type) {
+    case BL_NODE_STRUCT_DECL:
+    case BL_NODE_ENUM_DECL:
+      unsatisfied->value.decl.type.custom_type = found;
+      break;
+    default: {
+      link_error(cnt, BL_ERR_EXPECTED_TYPE, unsatisfied, "invalid type "
+        BL_YELLOW("'%s'")
+        " expected structure or enum", found->value.decl.ident.name);
+    }
 
-  unsatisfied->value.decl.type.custom_type = found;
+  }
 }
 
 /* public */
@@ -337,7 +341,7 @@ bl_linker_run(bl_builder_t *builder,
     return (bl_error_e) error;
   }
 
-  const int c     = bl_assembly_get_unit_count(assembly);
+  const int c = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; i++) {
@@ -346,9 +350,9 @@ bl_linker_run(bl_builder_t *builder,
   }
 
 #if PRINT_GLOBALS
-  BHashTable    *src     = bl_scope_get_all(&assembly->scope);
+  BHashTable *src = bl_scope_get_all(&assembly->scope);
   bo_iterator_t src_iter = bo_htbl_begin(src);
-  bo_iterator_t src_end  = bo_htbl_end(src);
+  bo_iterator_t src_end = bo_htbl_end(src);
 
   bl_node_t *decl;
   while (!bo_iterator_equal(&src_iter, &src_end)) {

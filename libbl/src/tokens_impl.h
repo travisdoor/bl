@@ -72,6 +72,9 @@ bl_tokens_peek_nth(bl_tokens_t *tokens,
                    size_t n);
 
 bl_token_t *
+bl_tokens_peek_prev(bl_tokens_t *tokens);
+
+bl_token_t *
 bl_tokens_consume(bl_tokens_t *tokens);
 
 bl_token_t *

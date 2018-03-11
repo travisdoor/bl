@@ -1,0 +1,19 @@
+/*
+ * Unit test
+ * -----------
+ * Enums.
+ */
+
+i32 main() {
+  state_e s;
+
+  s = STATE_0;
+
+  return 0;
+}
+
+enum state_e {
+  STATE_0,
+  STATE_1,
+  STATE_2
+}

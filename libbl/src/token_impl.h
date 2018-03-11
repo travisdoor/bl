@@ -58,16 +58,10 @@ BO_BEGIN_DECLS
   sm(RETURN,     "return") \
   sm(ENUM,       "enum") \
   sm(STRUCT,     "struct") \
-  sm(PUBLIC,     "public") \
-  sm(AS,         "as") \
-  sm(USE,        "use") \
-  sm(MODULE,     "module") \
-  sm(BEHAVIOR,   "behavior") \
   sm(LOOP,       "loop") \
   sm(WHILE,      "while") \
   sm(BREAK,      "break") \
   sm(CONTINUE,   "continue") \
-  sm(CONST,      "const") \
   sm(IMPL,       "impl") /* must be last */\
   sm(LCOMMENT,   "//") \
   sm(LBCOMMENT,  "/*") \

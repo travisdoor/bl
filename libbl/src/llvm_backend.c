@@ -41,7 +41,7 @@
 
 /* class context_t */
 
-#define DEBUG_NAMES 0
+#define DEBUG_NAMES 1
 
 #define gen_error(cnt, code, format, ...) \
   { \
@@ -210,6 +210,9 @@ to_llvm_type(context_t *cnt,
       switch (t->custom_type->type) {
         case BL_NODE_STRUCT_DECL:
           return gen_struct_decl(cnt, t->custom_type);
+        case BL_NODE_ENUM_DECL: {
+          return to_llvm_type(cnt, &t->custom_type->value.decl.type);
+        }
         default: bl_abort("invalid custom type reference");
       }
     }
@@ -399,9 +402,8 @@ gen_binop(context_t *cnt,
   LLVMValueRef lhs = gen_expr(cnt, binop->lhs);
   LLVMValueRef rhs = gen_expr(cnt, binop->rhs);
 
-
   if (binop->operator == BL_SYM_ASIGN) {
-    if (LLVMIsAAllocaInst(rhs) )
+    if (LLVMIsAAllocaInst(rhs))
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
@@ -876,10 +878,11 @@ gen_gstmt(context_t *cnt,
       case BL_NODE_FUNC_DECL:
         gen_func_decl(cnt, child, false);
         break;
+      case BL_NODE_VAR_DECL:
       case BL_NODE_STRUCT_DECL:
-        /* do nothing structures will be generated only when it is used */
+      case BL_NODE_ENUM_DECL:
         break;
-      default: bl_warning("invalid node in global scope");
+      default: bl_abort("invalid node in global scope");
     }
   }
 }

@@ -1,0 +1,8 @@
+
+i32 glob;
+
+i32 main() {
+  glob = 10;
+  return 0;
+}
+
