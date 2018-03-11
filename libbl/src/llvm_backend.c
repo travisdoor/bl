@@ -58,21 +58,21 @@
 
 typedef struct
 {
-  bl_builder_t   *builder;
-  LLVMModuleRef  mod;
+  bl_builder_t *builder;
+  LLVMModuleRef mod;
   LLVMBuilderRef llvm_builder;
   LLVMContextRef llvm_cnt;
-  jmp_buf        jmp_error;
+  jmp_buf jmp_error;
 
   /* tmps */
-  bl_llvm_bl_cnt_t  block_context;
-  LLVMValueRef      ret_value;
+  bl_llvm_bl_cnt_t block_context;
+  LLVMValueRef ret_value;
   LLVMBasicBlockRef func_init_block;
   LLVMBasicBlockRef func_ret_block;
-  BHashTable        *const_strings;
-  BHashTable        *structs;
-  char              *error;
-  char              *error_src;
+  BHashTable *const_strings;
+  BHashTable *structs;
+  char *error;
+  char *error_src;
 } context_t;
 
 static void
@@ -281,8 +281,8 @@ gen_func_params(context_t *cnt,
                 LLVMTypeRef *out,
                 bool forward)
 {
-  int       out_i = 0;
-  const int c     = bl_node_func_decl_get_param_count(node);
+  int out_i = 0;
+  const int c = bl_node_func_decl_get_param_count(node);
 
   /* no params */
   if (c == 0) {
@@ -290,7 +290,7 @@ gen_func_params(context_t *cnt,
   }
 
   bl_node_t *param = NULL;
-  for (int  i      = 0; i < c; i++) {
+  for (int i = 0; i < c; i++) {
     param = bl_node_func_decl_get_param(node, i);
     *out = to_llvm_type(cnt, &param->value.param_var_decl.base.type);
 
@@ -305,7 +305,7 @@ LLVMValueRef
 gen_expr(context_t *cnt,
          bl_node_t *expr)
 {
-  LLVMValueRef         val;
+  LLVMValueRef val;
   bl_node_const_expr_t *const_expr = NULL;
   switch (expr->type) {
     case BL_NODE_CONST_EXPR:
@@ -348,7 +348,7 @@ gen_expr(context_t *cnt,
       break;
     }
     case BL_NODE_CALL_EXPR:
-      val        = gen_call_expr(cnt, expr);
+      val = gen_call_expr(cnt, expr);
       break;
     case BL_NODE_BINOP:
       val = gen_binop(cnt, expr);
@@ -396,19 +396,23 @@ gen_binop(context_t *cnt,
           bl_node_t *node)
 {
   bl_node_binop_t *binop = &node->value.binop;
-  LLVMValueRef    lhs    = gen_expr(cnt, binop->lhs);
-  LLVMValueRef    rhs    = gen_expr(cnt, binop->rhs);
+  LLVMValueRef lhs = gen_expr(cnt, binop->lhs);
+  LLVMValueRef rhs = gen_expr(cnt, binop->rhs);
 
-  if (LLVMIsAAllocaInst(rhs))
-    rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   if (binop->operator == BL_SYM_ASIGN) {
+    if (LLVMIsAAllocaInst(rhs) )
+      rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
+
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs))
+  if (LLVMIsAAllocaInst(lhs) || binop->lhs->type == BL_NODE_MEMBER_EXPR)
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+
+  if (LLVMIsAAllocaInst(rhs) || binop->rhs->type == BL_NODE_MEMBER_EXPR)
+    rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   switch (binop->operator) {
     case BL_SYM_PLUS:
@@ -479,9 +483,9 @@ void
 gen_var_decl(context_t *cnt,
              bl_node_t *node)
 {
-  bl_node_var_decl_t *vdcl      = &node->value.var_decl;
-  LLVMBasicBlockRef  prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMTypeRef        t          = to_llvm_type(cnt, &vdcl->base.type);
+  bl_node_var_decl_t *vdcl = &node->value.var_decl;
+  LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMTypeRef t = to_llvm_type(cnt, &vdcl->base.type);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(vdcl->base.ident.name));
@@ -513,8 +517,8 @@ gen_call_args(context_t *cnt,
               bl_node_t *call,
               LLVMValueRef *out)
 {
-  int       out_i = 0;
-  const int c     = bl_node_call_expr_get_arg_count(call);
+  int out_i = 0;
+  const int c = bl_node_call_expr_get_arg_count(call);
 
   /* no args */
   if (c == 0) {
@@ -522,11 +526,11 @@ gen_call_args(context_t *cnt,
   }
 
   bl_node_t *expr = NULL;
-  for (int  i     = 0; i < c; i++) {
+  for (int i = 0; i < c; i++) {
     expr = bl_node_call_expr_get_arg(call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (LLVMIsAAllocaInst(val)) {
+    if (LLVMIsAAllocaInst(val) || expr->type == BL_NODE_MEMBER_EXPR) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
       if (LLVMGetAllocatedType(val) == LLVMFloatTypeInContext(cnt->llvm_cnt)) {
         *out = LLVMBuildCast(
@@ -536,8 +540,9 @@ gen_call_args(context_t *cnt,
           LLVMDoubleTypeInContext(cnt->llvm_cnt),
           gname("cast"));
       }
-    } else
+    } else {
       *out = val;
+    }
 
     out++;
     out_i++;
@@ -562,7 +567,7 @@ gen_call_expr(context_t *cnt,
 
   /* args */
   LLVMValueRef args[BL_MAX_FUNC_PARAM_COUNT] = {0};
-  int          argc                          = gen_call_args(cnt, call, args);
+  int argc = gen_call_args(cnt, call, args);
 
   /* TODO: return value passed from build method */
   LLVMValueRef ret = LLVMBuildCall(cnt->llvm_builder, fn, args, argc, "");
@@ -575,17 +580,17 @@ gen_if_stmt(context_t *cnt,
             LLVMBasicBlockRef break_block,
             LLVMBasicBlockRef cont_block)
 {
-  bl_node_if_stmt_t *if_stmt     = &node->value.if_stmt;
+  bl_node_if_stmt_t *if_stmt = &node->value.if_stmt;
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
+  LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
 
-  bool              terminated   = false;
+  bool terminated = false;
 
   LLVMBasicBlockRef if_then = LLVMAppendBasicBlock(parent, gname("if_then"));
   LLVMBasicBlockRef if_else = LLVMAppendBasicBlock(parent, gname("if_else"));
   LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
-  LLVMValueRef      expr    = gen_expr(cnt, if_stmt->expr);
+  LLVMValueRef expr = gen_expr(cnt, if_stmt->expr);
 
   if (LLVMIsAAllocaInst(expr))
     expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
@@ -637,17 +642,17 @@ void
 gen_loop_stmt(context_t *cnt,
               bl_node_t *node)
 {
-  bl_node_loop_stmt_t *loop_stmt   = &node->value.loop_stmt;
-  LLVMBasicBlockRef   insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMValueRef        parent       = LLVMGetBasicBlockParent(insert_block);
+  bl_node_loop_stmt_t *loop_stmt = &node->value.loop_stmt;
+  LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMValueRef parent = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
 
-  bool                terminated   = false;
+  bool terminated = false;
 
   LLVMBasicBlockRef loop_decide = LLVMAppendBasicBlock(parent, gname("loop_decide"));
-  LLVMBasicBlockRef loop        = LLVMAppendBasicBlock(parent, gname("loop"));
-  LLVMBasicBlockRef loop_cont   = LLVMAppendBasicBlock(parent, gname("loop_cont"));
-  LLVMValueRef      expr        = NULL;
+  LLVMBasicBlockRef loop = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_cont = LLVMAppendBasicBlock(parent, gname("loop_cont"));
+  LLVMValueRef expr = NULL;
 
   /* break into loop_init */
   LLVMBuildBr(cnt->llvm_builder, loop_decide);
@@ -682,17 +687,17 @@ gen_func_decl(context_t *cnt,
               bl_node_t *node,
               bool forward)
 {
-  bl_node_func_decl_t *fnode                               = &node->value.func_decl;
+  bl_node_func_decl_t *fnode = &node->value.func_decl;
   /* params */
-  LLVMTypeRef         param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
+  LLVMTypeRef param_types[BL_MAX_FUNC_PARAM_COUNT] = {0};
 
-  const int  pc    = gen_func_params(cnt, node, param_types, forward);
-  bl_ident_t *id   = &fnode->base.ident;
-  bl_type_t  *type = &fnode->base.type;
+  const int pc = gen_func_params(cnt, node, param_types, forward);
+  bl_ident_t *id = &fnode->base.ident;
+  bl_type_t *type = &fnode->base.type;
 
   LLVMValueRef func = LLVMGetNamedFunction(cnt->mod, id->name);
   if (func == NULL) {
-    LLVMTypeRef ret      = to_llvm_type(cnt, type);
+    LLVMTypeRef ret = to_llvm_type(cnt, type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int) pc, false);
     func = LLVMAddFunction(cnt->mod, id->name, ret_type);
   }
@@ -714,10 +719,10 @@ gen_func_decl(context_t *cnt,
        * when this compound statement is function body.
        */
       for (int i = 0; i < pc; i++) {
-        bl_node_t  *param = bl_node_func_decl_get_param(node, i);
+        bl_node_t *param = bl_node_func_decl_get_param(node, i);
         bl_ident_t *ident = &param->value.param_var_decl.base.ident;
 
-        LLVMValueRef p     = LLVMGetParam(func, i);
+        LLVMValueRef p = LLVMGetParam(func, i);
         LLVMValueRef p_tmp = LLVMBuildAlloca(
           cnt->llvm_builder, LLVMTypeOf(p), gname(ident->name));
         LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
@@ -771,13 +776,13 @@ gen_cmp_stmt(context_t *cnt,
              LLVMBasicBlockRef cont_block)
 {
   bl_assert(stmt->type == BL_NODE_CMP_STMT, "invalid node");
-  LLVMBasicBlockRef block      = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMBasicBlockRef block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, block);
-  bool              terminated = false;
+  bool terminated = false;
 
   bl_node_t *child = NULL;
-  const int c      = bl_node_cmp_stmt_get_children_count(stmt);
-  for (int  i      = 0; i < c; i++) {
+  const int c = bl_node_cmp_stmt_get_children_count(stmt);
+  for (int i = 0; i < c; i++) {
     child = bl_node_cmp_stmt_get_child(stmt, i);
     switch (child->type) {
       case BL_NODE_RETURN_STMT:
@@ -843,7 +848,7 @@ gen_struct_decl(context_t *cnt,
     bo_htbl_insert(cnt->structs, strct_decl->type.hash, type);
   }
 
-  const int   c        = bl_node_struct_decl_get_member_count(node);
+  const int c = bl_node_struct_decl_get_member_count(node);
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
 
   bl_node_t *member;
@@ -863,7 +868,7 @@ gen_gstmt(context_t *cnt,
           bl_node_t *gstmt)
 {
   bl_node_t *child = NULL;
-  const int c      = bl_node_glob_stmt_get_children_count(gstmt);
+  const int c = bl_node_glob_stmt_get_children_count(gstmt);
 
   for (size_t i = 0; i < c; i++) {
     child = bl_node_glob_stmt_get_child(gstmt, i);
@@ -897,12 +902,12 @@ cnt_init(bl_builder_t *builder,
          bl_assembly_t *assembly,
          context_t *cnt)
 {
-  cnt->builder       = builder;
-  cnt->llvm_cnt      = LLVMContextCreate();
-  cnt->mod           = LLVMModuleCreateWithNameInContext(assembly->name, cnt->llvm_cnt);
-  cnt->llvm_builder  = LLVMCreateBuilderInContext(cnt->llvm_cnt);
+  cnt->builder = builder;
+  cnt->llvm_cnt = LLVMContextCreate();
+  cnt->mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt->llvm_cnt);
+  cnt->llvm_builder = LLVMCreateBuilderInContext(cnt->llvm_cnt);
   cnt->const_strings = bo_htbl_new(sizeof(LLVMValueRef), 1024);
-  cnt->structs       = bo_htbl_new(sizeof(LLVMTypeRef), 1024);
+  cnt->structs = bo_htbl_new(sizeof(LLVMTypeRef), 1024);
 
   bl_llvm_bl_cnt_init(&cnt->block_context);
 }
@@ -933,7 +938,7 @@ bl_llvm_backend_run(bl_builder_t *builder,
 
   cnt_init(builder, assembly, &cnt);
 
-  const int c     = bl_assembly_get_unit_count(assembly);
+  const int c = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; i++) {
@@ -951,9 +956,9 @@ bl_llvm_backend_run(bl_builder_t *builder,
   }
 
   assembly->llvm_module = cnt.mod;
-  assembly->llvm_cnt    = cnt.llvm_cnt;
-  cnt.mod               = NULL;
-  cnt.llvm_cnt          = NULL;
+  assembly->llvm_cnt = cnt.llvm_cnt;
+  cnt.mod = NULL;
+  cnt.llvm_cnt = NULL;
   cnt_terminate(&cnt);
 
   return BL_NO_ERR;
