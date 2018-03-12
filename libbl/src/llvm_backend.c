@@ -41,7 +41,7 @@
 
 /* class context_t */
 
-#define DEBUG_NAMES 1
+#define DEBUG_NAMES 0
 
 #define gen_error(cnt, code, format, ...) \
   { \
@@ -346,7 +346,17 @@ gen_expr(context_t *cnt,
       }
       break;
     case BL_NODE_DECL_REF_EXPR: {
-      val = bl_llvm_bl_cnt_get(&cnt->block_context, &expr->value.decl_ref_expr.ident);
+      if (expr->value.decl_ref_expr.ref->type == BL_NODE_ENUM_ELEM_DECL) {
+        bl_node_enum_elem_decl_t *elem = &expr->value.decl_ref_expr.ref->value.enum_elem_decl;
+        /* TODO: types of enum can change in future */
+        val = LLVMConstInt(
+          LLVMInt32TypeInContext(cnt->llvm_cnt),
+          (unsigned long long int) elem->value,
+          true);
+      } else {
+        val = bl_llvm_bl_cnt_get(&cnt->block_context, &expr->value.decl_ref_expr.ident);
+      }
+
       bl_assert(val, "unknown symbol");
       break;
     }

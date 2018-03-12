@@ -697,7 +697,6 @@ elem:
       bl_node_t *enm_elem = new_node(cnt, BL_NODE_ENUM_ELEM_DECL, tok);
       bl_ident_init(&enm_elem->value.decl.ident, tok->value.as_string);
       bl_type_init(&enm_elem->value.decl.type, "i32", NULL);
-      enm_elem->value.enum_elem_decl.value = counter++;
 
       bl_node_enum_decl_add_elem(enm, enm_elem);
       /*
@@ -721,6 +720,23 @@ elem:
                     conflicted->col);
       }
 
+      /* default value set by user */
+      if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+        tok = bl_tokens_consume(cnt->tokens);
+        if (tok->sym != BL_SYM_NUM) {
+          parse_error(cnt,
+                      BL_ERR_UNEXPECTED_DECL,
+                      "%s %d:%d expected number ",
+                      cnt->unit->filepath,
+                      tok->line,
+                      tok->col);
+        }
+
+        counter = (int) tok->value.as_ull;
+      }
+
+      enm_elem->value.enum_elem_decl.value = counter++;
+
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto elem;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
@@ -742,7 +758,7 @@ elem:
      * Validate and store into scope cache.
      */
     bl_scope_t *scope = &cnt->unit->scope;
-    bl_node_t *conflicted = bl_scope_add_symbol(scope, enm, enm->value.decl.type.hash);
+    bl_node_t *conflicted = bl_scope_add_symbol(scope, enm, enm->value.decl.ident.hash);
     if (conflicted != NULL) {
       parse_error(cnt,
                   BL_ERR_DUPLICATE_SYMBOL,
@@ -1064,17 +1080,11 @@ parse_dec_ref_expr(context_t *cnt)
   bl_scope_t *scope = &cnt->unit->scope;
   bl_node_t *ref = bl_scope_get_symbol(scope, expr->value.decl_ref_expr.ident.hash);
 
-  if (ref == NULL) {
-    parse_error(cnt,
-                BL_ERR_UNKNOWN_SYMBOL,
-                "%s %d:%d can't resolve variable "
-                  BL_YELLOW("'%s'"),
-                cnt->unit->filepath,
-                expr->line,
-                expr->col,
-                expr->value.decl_ref_expr.ident.name);
-  }
-
+  /*
+   * When ref is NULL symbol can be declared later in global scope.
+   */
+  if (ref == NULL)
+    bo_array_push_back(cnt->unit->unsatisfied, expr);
   expr->value.decl_ref_expr.ref = ref;
 
   return expr;

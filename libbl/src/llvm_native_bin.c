@@ -44,11 +44,11 @@ bl_llvm_native_bin_run(bl_builder_t *builder,
     "-lc %s" 
     "/usr/lib64/crtn.o";
 #elif defined(BL_PLATFORM_MACOS)
-  const char *cmd = "ld -lc -lcrt1.o -lSDL2 --entry main test.o -o test";
+  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o %s";
 #endif
 
   char buf[1024];
-  sprintf(buf, cmd, assembly->name, assembly->name, "");
+  sprintf(buf, cmd, assembly->name, assembly->name, "-lSDL2");
 
   system(buf);
 

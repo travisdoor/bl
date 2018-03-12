@@ -30,7 +30,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define PRINT_GLOBALS 1
+#define PRINT_GLOBALS 0
 
 #define link_error(cnt, code, loc, format, ...) \
   { \
@@ -57,6 +57,10 @@ static void
 link_call_expr(context_t *cnt,
                bl_node_t *unsatisfied,
                bl_node_t *found);
+
+static void
+link_decl_ref_expr(context_t *cnt,
+                   bl_node_t *unsatisfied);
 
 static void
 link_member_expr(context_t *cnt,
@@ -123,6 +127,9 @@ link_unsatisfied(context_t *cnt,
         break;
       case BL_NODE_MEMBER_EXPR:
         link_member_expr(cnt, unsatisfied);
+        break;
+      case BL_NODE_DECL_REF_EXPR:
+        link_decl_ref_expr(cnt, unsatisfied);
         break;
       case BL_NODE_VAR_DECL:
       case BL_NODE_PARAM_VAR_DECL:
@@ -202,6 +209,20 @@ link_call_expr(context_t *cnt,
   */
 
   unsatisfied->value.call_expr.callee = found;
+}
+
+void
+link_decl_ref_expr(context_t *cnt,
+                   bl_node_t *unsatisfied)
+{
+  bl_node_t *found = bl_scope_get_symbol(
+    &cnt->assembly->scope, unsatisfied->value.decl_ref_expr.ident.hash);
+  if (found == NULL) {
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, unsatisfied, "unknown variable "
+      BL_YELLOW("'%s'"), unsatisfied->value.decl_ref_expr.ident.name);
+  }
+
+  unsatisfied->value.decl_ref_expr.ref = found;
 }
 
 void

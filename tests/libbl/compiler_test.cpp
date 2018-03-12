@@ -156,3 +156,11 @@ TEST_F(CompilerTest, structure)
 
   ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
 }
+
+TEST_F(CompilerTest, enumerator)
+{
+  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "enum_test.bl");
+  bl_assembly_add_unit(assembly, unit);
+
+  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
+}

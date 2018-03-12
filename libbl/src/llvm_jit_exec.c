@@ -51,6 +51,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
       assembly->name,
       "unable to get " BL_YELLOW("'main'") " method");
     LLVMDisposeExecutionEngine(engine);
+    assembly->llvm_module = NULL;
     return BL_ERR_NO_MAIN_METHOD;
   }
 
@@ -60,6 +61,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder,
   if (ires != 0) {
     bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
     LLVMDisposeExecutionEngine(engine);
+    assembly->llvm_module = NULL;
     return BL_ERR_INVALID_RESULT;
   }
 

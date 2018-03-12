@@ -68,6 +68,13 @@ main(int argc,
    * HACK: use name of first file as assembly name 
    */
   char *assembly_name = strrchr(*argv, '/');
+  if (assembly_name == NULL) {
+    assembly_name = *argv;
+  } else {
+    ++assembly_name;
+  }
+
+  assembly_name = strdup(assembly_name);
   char *ext = rindex(assembly_name, '.');
   if (ext != NULL) {
     (*ext) = '\0';

@@ -4,16 +4,34 @@
  * Enums.
  */
 
+enum state_e {
+  State0,
+  State00 = 0,
+  State10 = 10,
+  State11,
+  State50 = 50,
+  State51
+}
+
 i32 main() {
   state_e s;
+  s = State0;
 
-  s = STATE_0;
+  if (State0  != 0  ||
+      State00 != 0  ||
+      State10 != 10 ||
+      State11 != 11 ||
+      State50 != 50 ||
+      State51 != 51) {
+    return Error;
+  }
 
-  return 0;
+  return Success;
 }
 
-enum state_e {
-  STATE_0,
-  STATE_1,
-  STATE_2
+enum error_e {
+  Success,
+  Error
 }
+
+
