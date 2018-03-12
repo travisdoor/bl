@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   llvm_native_bin.c
+// File:   config.h
 // Author: Martin Dorazil
-// Date:   10/03/2018
+// Date:   3/12/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,23 +26,17 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "stages_impl.h"
-#include "bl/config.h"
+#ifndef BL_CONFIG_H
+#define BL_CONFIG_H
 
-bl_error_e
-bl_llvm_native_bin_run(bl_builder_t *builder,
-                       bl_assembly_t *assembly)
-{
-#if defined(BL_PLATFORM_LINUX)
-  const char *cmd = "ld.lld /usr/lib64/libc.so test.o -o test --entry main";
-#elif defined(BL_PLATFORM_MACOS)
-  const char *cmd = "ld -lc -lcrt1.o -lSDL2 --entry main test.o -o test";
+#ifdef _WIN32
+#define BL_PLATFORM_WIN
+#elif __APPLE__
+#define BL_PLATFORM_MACOS
+#elif __linux__
+#define BL_PLATFORM_LINUX
+#else
+#error "Unknown platform"
 #endif
 
-  system(cmd);
-
-  return BL_NO_ERR;
-}
-
-
-
+#endif //BL_CONFIG_H

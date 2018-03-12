@@ -1,8 +1,6 @@
-
-i32 glob;
+extern i32 puts(string s);
 
 i32 main() {
-  glob = 10;
+  puts("hello world");
   return 0;
 }
-

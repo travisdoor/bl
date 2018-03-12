@@ -169,11 +169,6 @@ stmt:
     goto stmt;
   }
 
-  if (bl_node_glob_stmt_add_child(gstmt, parse_var_decl(cnt))) {
-    parse_semicolon_rq(cnt);
-    goto stmt;
-  }
-
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_EOF)) {
     bl_token_t *tok = bl_tokens_peek(cnt->tokens);
     parse_error(cnt,

@@ -20,7 +20,7 @@ set(HEADER_FILES
         include/bl/assembly.h
         include/bl/builder.h
         include/bl/bldebug.h
-        include/bl/error.h)
+        include/bl/error.h include/bl/config.h)
 
 set(HEADER_FILES_IMPL
         src/ast/ast_impl.h
