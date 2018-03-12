@@ -64,7 +64,17 @@ main(int argc,
   }
 
   bl_builder_ref  builder  = bl_builder_new();
-  bl_assembly_ref assembly = bl_assembly_new("main_assembly");
+  /*
+   * HACK: use name of first file as assembly name 
+   */
+  char *assembly_name = strrchr(*argv, '/');
+  char *ext = rindex(assembly_name, '.');
+  if (ext != NULL) {
+    (*ext) = '\0';
+  }
+
+  bl_assembly_ref assembly = bl_assembly_new(assembly_name);
+  free(assembly_name);
 
   /* init actors */
   while (*argv != NULL) {
