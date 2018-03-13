@@ -33,8 +33,6 @@
 #include "common_impl.h"
 #include "bl/error.h"
 
-#define LLVM_TARGETS X86
-
 bl_error_e
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly)

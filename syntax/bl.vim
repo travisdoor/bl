@@ -22,6 +22,7 @@ syn match blPreproc "#run\|#assert\|#test\|#load"
 
 syntax match blNumber "\v<\d+>"
 syntax match blNumber "\v<\d+\.\d+>"
+syntax match blNumber "\v\0x\d+|[abcsdf]+>"
 
 " Operators
 syn match blOperator	"\(<<\|>>\|[-+*/%&^|<>!=]\)="
@@ -31,6 +32,8 @@ syn match blOperator	"/[^/*=]"me=e-1
 syn match blOperator	"/$"
 syn match blOperator "&&\|||"
 syn match blOperator	"[][]"
+
+syn match blBraces display "[{}]"
 
 syn match blCustomParen transparent "(" contains=cParen contains=cCppParen
 syn match blCustomFunc "\w\+\s*(\@=" contains=cCustomParen
@@ -52,3 +55,4 @@ hi def link blOperator Operator
 hi def link blCustomFunc Function
 hi def link blCustomMemVar Function
 hi def link blPreproc PreProc 
+hi def link blBraces Braces

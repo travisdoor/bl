@@ -29,6 +29,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include "stages_impl.h"
+#include "common_impl.h"
 
 #define is_intend_c(c) \
   (((c) >= 'a' && (c) <= 'z') || \
@@ -48,12 +49,12 @@
 typedef struct context
 {
   bl_builder_t *builder;
-  bl_unit_t    *unit;
-  bl_tokens_t  *tokens;
-  jmp_buf      jmp_error;
-  char         *c;
-  int          line;
-  int          col;
+  bl_unit_t *unit;
+  bl_tokens_t *tokens;
+  jmp_buf jmp_error;
+  char *c;
+  int line;
+  int col;
 } context_t;
 
 static void
@@ -74,6 +75,10 @@ scan_string(context_t *cnt,
 static bool
 scan_number(context_t *cnt,
             bl_token_t *tok);
+
+static inline int
+c_to_number(char c,
+            int base);
 
 static char
 scan_specch(char c);
@@ -114,9 +119,9 @@ scan_ident(context_t *cnt,
            bl_token_t *tok)
 {
   tok->src_loc = cnt->c;
-  tok->line    = cnt->line;
-  tok->col     = cnt->col;
-  tok->sym     = BL_SYM_IDENT;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
+  tok->sym = BL_SYM_IDENT;
 
   char *begin = cnt->c;
 
@@ -164,16 +169,16 @@ scan_string(context_t *cnt,
   }
 
   tok->src_loc = cnt->c;
-  tok->line    = cnt->line;
-  tok->col     = cnt->col;
-  tok->sym     = BL_SYM_STRING;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
+  tok->sym = BL_SYM_STRING;
 
   /* eat " */
   cnt->c++;
 
   BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
-  char    c;
-  int     len   = 0;
+  char c;
+  int len = 0;
 
 scan:
   while (true) {
@@ -217,34 +222,86 @@ scan:
   }
 exit:
   tok->value.as_string = bo_string_get(cstr);
-  tok->len             = len;
+  tok->len = len;
   cnt->col += len + 2;
   return true;
+}
+
+int
+c_to_number(char c,
+            int base)
+{
+  switch (base) {
+    case 16:
+      if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+      }
+
+      if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+      }
+    case 10:
+      if (c >= '2' && c <= '9') {
+        return c - '0';
+      }
+    case 2:
+      if (c == '0' || c == '1') {
+        return c - '0';
+      }
+      break;
+    default: bl_abort("invalid number base");
+  }
+
+  return -1;
 }
 
 bool
 scan_number(context_t *cnt,
             bl_token_t *tok)
 {
-  tok->src_loc         = cnt->c;
-  tok->line            = cnt->line;
-  tok->col             = cnt->col;
+  tok->src_loc = cnt->c;
+  tok->line = cnt->line;
+  tok->col = cnt->col;
   tok->value.as_string = cnt->c;
 
-  unsigned long n   = 0;
-  int           len = 0;
+  unsigned long n = 0;
+  int len = 0;
+  int base = 10;
+  int buf = 0;
+
+  if (strncmp(cnt->c, "0x", 2) == 0) {
+    base = 16;
+    cnt->c += 2;
+    len += 2;
+  } else if (strncmp(cnt->c, "0b", 2) == 0) {
+    base = 2;
+    cnt->c += 2;
+    len += 2;
+  }
+
   while (true) {
     if (*(cnt->c) == '.') {
+
+      if (base != 10) {
+        scan_error(cnt,
+                   BL_ERR_INVALID_TOKEN,
+                   "%s %d:%d invalid suffix.",
+                   cnt->unit->name,
+                   cnt->line,
+                   cnt->col + len);
+      }
+
       len++;
       cnt->c++;
       goto scan_double;
     }
 
-    if (!is_number_c(*(cnt->c))) {
+    buf = c_to_number(*(cnt->c), base);
+    if (buf == -1) {
       break;
     }
 
-    n = n * 10 + (*cnt->c) - '0';
+    n = n * base + buf;
     len++;
     cnt->c++;
   }
@@ -252,9 +309,9 @@ scan_number(context_t *cnt,
   if (len == 0)
     return false;
 
-  tok->len          = len;
+  tok->len = len;
   cnt->col += len;
-  tok->sym          = BL_SYM_NUM;
+  tok->sym = BL_SYM_NUM;
   tok->value.as_ull = n;
   return true;
 
@@ -263,11 +320,12 @@ scan_double:
     unsigned long e = 1;
 
     while (true) {
-      if (!is_number_c(*(cnt->c))) {
+      buf = c_to_number(*(cnt->c), 10);
+      if (buf == -1) {
         break;
       }
 
-      n = n * 10 + (*cnt->c) - '0';
+      n = n * 10 + buf;
       e *= 10;
       len++;
       cnt->c++;
@@ -282,10 +340,10 @@ scan_double:
     if (*(cnt->c) == 'f') {
       len++;
       cnt->c++;
-      tok->sym            = BL_SYM_FLOAT;
+      tok->sym = BL_SYM_FLOAT;
       tok->value.as_float = n / (float) e;
     } else {
-      tok->sym             = BL_SYM_DOUBLE;
+      tok->sym = BL_SYM_DOUBLE;
       tok->value.as_double = n / (double) e;
     }
 
@@ -302,8 +360,8 @@ scan(context_t *cnt)
   bl_token_t tok;
 scan:
   tok.src_loc = cnt->c;
-  tok.line    = cnt->line;
-  tok.col     = cnt->col;
+  tok.line = cnt->line;
+  tok.col = cnt->col;
 
   /*
    * Ignored characters
@@ -335,8 +393,8 @@ scan:
   /*
    * Scan symbols described directly as strings.
    */
-  size_t   len = 0;
-  for (int i   = BL_SYM_IF; i < BL_SYM_NONE; i++) {
+  size_t len = 0;
+  for (int i = BL_SYM_IF; i < BL_SYM_NONE; i++) {
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;
