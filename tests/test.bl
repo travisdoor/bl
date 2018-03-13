@@ -1,9 +1,6 @@
 extern i32 puts(string s);
 
 i32 main() {
-  i32 dec = 01248;
-  i32 hex = 0x15FfA2;
-  i32 bin = 0b1001101;
-
+  puts("hello");
   return 0;
 }

@@ -165,9 +165,9 @@ gen_call_args(context_t *cnt,
               bl_node_t *call,
               LLVMValueRef *out);
 
-static LLVMTypeRef
-gen_struct_decl(context_t *cnt,
-                bl_node_t *node);
+//static LLVMTypeRef
+//gen_struct_decl(context_t *cnt,
+//                bl_node_t *node);
 
 static void
 gen_gstmt(context_t *cnt,
@@ -203,18 +203,19 @@ to_llvm_type(context_t *cnt,
     case BL_TYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
     default: {
+      bl_abort("invalide type");
       /* type is not fundamental and must be user defined */
-      bl_assert(t->custom_type,
-                "user defined type reference not specified for non-fundamental type");
-
-      switch (t->custom_type->type) {
-        case BL_NODE_STRUCT_DECL:
-          return gen_struct_decl(cnt, t->custom_type);
-        case BL_NODE_ENUM_DECL: {
-          return to_llvm_type(cnt, &t->custom_type->value.decl.type);
-        }
-        default: bl_abort("invalid custom type reference");
-      }
+//      bl_assert(t->custom_type,
+//                "user defined type reference not specified for non-fundamental type");
+//
+//      switch (t->custom_type->type) {
+//        case BL_NODE_STRUCT_DECL:
+//          return gen_struct_decl(cnt, t->custom_type);
+//        case BL_NODE_ENUM_DECL: {
+//          return to_llvm_type(cnt, &t->custom_type->value.decl.type);
+//        }
+//        default: bl_abort("invalid custom type reference");
+//      }
     }
   }
 }
@@ -840,17 +841,13 @@ gen_cmp_stmt(context_t *cnt,
 
   return false;
 }
-
+/*
 LLVMTypeRef
 gen_struct_decl(context_t *cnt,
                 bl_node_t *node)
 {
   bl_node_decl_t *strct_decl = &node->value.decl;
 
-  /*
-   * Struct can be cached when variable of this struct type
-   * was declared before struct body.
-   */
   LLVMTypeRef type = NULL;
   if (bo_htbl_has_key(cnt->structs, strct_decl->type.hash)) {
     type = bo_htbl_at(cnt->structs, strct_decl->type.hash, LLVMTypeRef);
@@ -874,6 +871,7 @@ gen_struct_decl(context_t *cnt,
   bl_free(members);
   return type;
 }
+*/
 
 void
 gen_gstmt(context_t *cnt,

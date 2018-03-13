@@ -38,18 +38,15 @@ static const char *bl_type_strings[] = {
 };
 
 /* public */
-bool
+void
 bl_type_init(bl_type_t *type,
-             const char *name,
-             struct bl_node *custom)
+             const char *name)
 {
-  bool fundamental = false;
   type->name = name;
 
   for (uint32_t i = 0; i < BL_TYPE_COUNT; i++) {
     if (strcmp(bl_type_strings[i], name) == 0) {
       type->hash = i;
-      fundamental = true;
       break;
     }
   }
@@ -57,11 +54,6 @@ bl_type_init(bl_type_t *type,
   if (type->hash == BL_TYPE_NONE) {
     type->hash = bo_hash_from_str(name);
   }
-
-  type->custom_type = custom;
-  if (custom == NULL && !fundamental)
-    return true;
-  return false;
 }
 
 bool

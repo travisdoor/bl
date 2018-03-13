@@ -178,10 +178,6 @@ print_node(bl_node_t *node,
     case BL_NODE_PARAM_VAR_DECL:
       fprintf(stdout, " type: " BL_CYAN("%s"), node->value.decl.type.name);
       fprintf(stdout, " name: " BL_CYAN("%s"), node->value.decl.ident.name);
-
-      if (bl_type_is_user_defined(&node->value.decl.type)) {
-        fprintf(stdout, " custom_type: " BL_YELLOW("%p"), node->value.decl.type.custom_type);
-      }
       pad += 2;
       print_node(node->value.var_decl.expr, pad);
     default:

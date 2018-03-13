@@ -527,10 +527,7 @@ parse_func_decl(context_t *cnt)
     func_decl = new_node(cnt, BL_NODE_FUNC_DECL, tok_ident);
 
     bl_ident_init(&func_decl->value.decl.ident, tok_ident->value.as_string);
-
-    if (bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string, NULL)) {
-      bo_array_push_back(cnt->unit->unsatisfied, func_decl);
-    }
+    bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string);
     /*
      * Validate and store into scope cache.
      */
@@ -620,10 +617,7 @@ parse_param_var_decl(context_t *cnt)
   bl_node_t *param = new_node(cnt, BL_NODE_PARAM_VAR_DECL, tok);
 
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
-
-  if (bl_type_init(&param->value.param_var_decl.base.type, type, NULL)) {
-    bo_array_push_back(cnt->unit->unsatisfied, param);
-  }
+  bl_type_init(&param->value.param_var_decl.base.type, type);
 
   bl_scope_t *scope = &cnt->unit->scope;
   bl_node_t *conflicted = bl_scope_add_symbol(scope, param, param->value.decl.ident.hash);
@@ -678,7 +672,7 @@ parse_enum_decl(context_t *cnt)
      * TODO: parse base type: enum my_enum : i32 {}
      * this should accept only fundamental types
      */
-    bl_type_init(&enm->value.decl.type, "i32", NULL);
+    bl_type_init(&enm->value.decl.type, "i32"); // HACK
     bl_ident_init(&enm->value.decl.ident, tok->value.as_string);
     enm->value.decl.modificator = BL_SYM_NONE;
 
@@ -696,7 +690,7 @@ elem:
 
       bl_node_t *enm_elem = new_node(cnt, BL_NODE_ENUM_ELEM_DECL, tok);
       bl_ident_init(&enm_elem->value.decl.ident, tok->value.as_string);
-      bl_type_init(&enm_elem->value.decl.type, "i32", NULL);
+      bl_type_init(&enm_elem->value.decl.type, "i32"); // HACK!!!
 
       bl_node_enum_decl_add_elem(enm, enm_elem);
       /*
@@ -809,7 +803,7 @@ parse_struct_decl(context_t *cnt)
 
     strct = new_node(cnt, BL_NODE_STRUCT_DECL, tok);
 
-    bl_type_init(&strct->value.decl.type, tok->value.as_string, NULL);
+    bl_type_init(&strct->value.decl.type, tok->value.as_string);
     /* TODO: chose what will describe structure type */
     bl_ident_init(&strct->value.decl.ident, tok->value.as_string);
     strct->value.decl.modificator = BL_SYM_NONE;
@@ -1031,13 +1025,6 @@ parse_call_expr(context_t *cnt)
 
     bl_ident_init(&call_expr->value.call_expr.ident, tok_calle->value.as_string);
 
-    /*
-     * Call expression is stored as unsatisfied here because callee may
-     * not exist yet and it's declared later in current unit or in another
-     * unit. The linker will handle connecting between expression and callee.
-     */
-    bo_array_push_back(cnt->unit->unsatisfied, call_expr);
-
 arg:
     bl_node_call_expr_add_arg(call_expr, parse_expr(cnt));
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA))
@@ -1060,8 +1047,6 @@ parse_member_access_expr(context_t *cnt)
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   bl_node_t *expr = new_node(cnt, BL_NODE_MEMBER_EXPR, tok);
   bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
-
-  bo_array_push_back(cnt->unit->unsatisfied, expr);
   return expr;
 }
 
@@ -1073,19 +1058,7 @@ parse_dec_ref_expr(context_t *cnt)
 
   expr = new_node(cnt, BL_NODE_DECL_REF_EXPR, tok);
   bl_ident_init(&expr->value.decl_ref_expr.ident, tok->value.as_string);
-
-  /*
-   * Validate and store into scope cache.
-   */
-  bl_scope_t *scope = &cnt->unit->scope;
-  bl_node_t *ref = bl_scope_get_symbol(scope, expr->value.decl_ref_expr.ident.hash);
-
-  /*
-   * When ref is NULL symbol can be declared later in global scope.
-   */
-  if (ref == NULL)
-    bo_array_push_back(cnt->unit->unsatisfied, expr);
-  expr->value.decl_ref_expr.ref = ref;
+  expr->value.decl_ref_expr.ref = NULL;
 
   return expr;
 }
@@ -1118,17 +1091,7 @@ parse_var_decl(context_t *cnt)
     vdcl = new_node(cnt, BL_NODE_VAR_DECL, tok_ident);
 
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
-
-    /*
-     * When type is not fundamental it can be unsatisfied here,
-     * we need to take note about that and fill up reference to
-     * custom generated type later during linking and notify user
-     * when no such type was found.
-     */
-
-    if (bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string, NULL)) {
-      bo_array_push_back(cnt->unit->unsatisfied, vdcl);
-    }
+    bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
 
     /*
      * Validate and store into scope cache.

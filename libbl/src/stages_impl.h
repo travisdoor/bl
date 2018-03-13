@@ -62,6 +62,7 @@ bl_llvm_backend_run(bl_builder_t *builder,
 bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder,
                       bl_assembly_t *assembly);
+
 bl_error_e
 bl_linker_run(bl_builder_t *builder,
               bl_assembly_t *assembly);
@@ -69,6 +70,10 @@ bl_linker_run(bl_builder_t *builder,
 bl_error_e
 bl_llvm_linker_run(bl_builder_t *builder,
                    bl_assembly_t *assembly);
+
+bl_error_e
+bl_analyzer_run(bl_builder_t *builder,
+                bl_assembly_t *assembly);
 
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly);

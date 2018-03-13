@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   unit_impl.h
+// File:   analyzer.c
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   13/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,28 +26,11 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
+#include "stages_impl.h"
 
-#include "bl/unit.h"
-#include "ast/ast_impl.h"
-#include "tokens_impl.h"
-#include "scope_impl.h"
-
-/* class Unit object members */
-typedef struct bl_unit
+bl_error_e
+bl_analyzer_run(bl_builder_t *builder,
+                bl_assembly_t *assembly)
 {
-  /* output of lexer */
-  bl_tokens_t    tokens;
-  /* abstract syntax tree as output of parser */
-  bl_ast_t       ast;
-  /* All symbols registered in this unit */
-  bl_scope_t     scope;
-  /* source file name with path */
-  char           *filepath;
-  char           *name;
-  /* source data */
-  char           *src;
-} bl_unit_t;
-
-#endif //BL_UNIT_IMPL_H
+  return BL_NO_ERR;
+}
