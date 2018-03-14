@@ -32,6 +32,12 @@
 #include <bobject/containers/array.h>
 #include "id_impl.h"
 
+typedef struct {
+  int line;
+  int col;
+  const char *file;
+} bl_src_t;
+
 typedef struct
 {
   BArray *items;
@@ -56,6 +62,7 @@ typedef enum
 
 typedef struct
 {
+  bl_src_t src;
   bl_id_t id;
   bl_item_e t;
   union
