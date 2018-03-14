@@ -262,9 +262,7 @@ parse_loop_stmt(context_t *cnt)
     }
 
     cnt->is_loop = true;
-    bl_scope_push(&cnt->unit->scope);
     bl_node_t *stmt = parse_cmp_stmt(cnt);
-    bl_scope_pop(&cnt->unit->scope);
     cnt->is_loop = prev_is_loop;
     if (!stmt) {
       parse_error(cnt,
@@ -360,9 +358,7 @@ parse_if_stmt(context_t *cnt)
     /*
      * Parse then compound statement
      */
-    bl_scope_push(&cnt->unit->scope);
     then_stmt = parse_cmp_stmt(cnt);
-    bl_scope_pop(&cnt->unit->scope);
     if (!then_stmt) {
       parse_error(cnt,
                   BL_ERR_EXPECTED_STMT,
@@ -386,9 +382,7 @@ parse_if_stmt(context_t *cnt)
       if (bl_tokens_current_is(cnt->tokens, BL_SYM_IF)) {
         ifstmt->value.if_stmt.else_if_stmt = parse_if_stmt(cnt);
       } else {
-        bl_scope_push(&cnt->unit->scope);
         else_stmt = parse_cmp_stmt(cnt);
-        bl_scope_pop(&cnt->unit->scope);
 
         if (!else_stmt) {
           parse_error(cnt,
@@ -432,9 +426,7 @@ stmt:
 
   /* compound sub-statement */
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_LBLOCK)) {
-    bl_scope_push(&cnt->unit->scope);
     bl_node_cmp_stmt_add_child(stmt, parse_cmp_stmt(cnt));
-    bl_scope_pop(&cnt->unit->scope);
     goto stmt;
   }
 
@@ -528,30 +520,9 @@ parse_func_decl(context_t *cnt)
 
     bl_ident_init(&func_decl->value.decl.ident, tok_ident->value.as_string);
     bl_type_init(&func_decl->value.decl.type, tok_type->value.as_string);
-    /*
-     * Validate and store into scope cache.
-     */
-    bl_scope_t *scope = &cnt->unit->scope;
-    bl_node_t *conflicted = bl_scope_add_symbol(
-      scope, func_decl, func_decl->value.decl.ident.hash);
-    if (conflicted != NULL) {
-      parse_error(cnt,
-                  BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d "
-                    BL_YELLOW("'%s'")
-                    " already declared here: %d:%d",
-                  cnt->unit->filepath,
-                  func_decl->line,
-                  func_decl->col,
-                  func_decl->value.decl.ident.name,
-                  conflicted->line,
-                  conflicted->col);
-    }
 
     /* consume '(' */
     bl_tokens_consume(cnt->tokens);
-
-    bl_scope_push(&cnt->unit->scope);
 
     if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_RPAREN)) {
 param:
@@ -577,8 +548,8 @@ param:
     } else {
       func_decl->value.func_decl.cmp_stmt = parse_cmp_stmt(cnt);
     }
-
-    bl_scope_pop(&cnt->unit->scope);
+    /* store into global scope cache */
+    bo_array_push_back(cnt->unit->global_idents, func_decl);
   } else {
     /* Roll back to marker. */
     bl_tokens_back_to_marker(cnt->tokens);
@@ -619,21 +590,6 @@ parse_param_var_decl(context_t *cnt)
   bl_ident_init(&param->value.param_var_decl.base.ident, ident);
   bl_type_init(&param->value.param_var_decl.base.type, type);
 
-  bl_scope_t *scope = &cnt->unit->scope;
-  bl_node_t *conflicted = bl_scope_add_symbol(scope, param, param->value.decl.ident.hash);
-  if (conflicted != NULL) {
-    parse_error(cnt,
-                BL_ERR_DUPLICATE_SYMBOL,
-                "%s %d:%d "
-                  BL_YELLOW("'%s'")
-                  " already declared here: %d:%d",
-                cnt->unit->filepath,
-                param->line,
-                param->col,
-                param->value.decl.ident.name,
-                conflicted->line,
-                conflicted->col);
-  }
   return param;
 }
 
@@ -672,9 +628,11 @@ parse_enum_decl(context_t *cnt)
      * TODO: parse base type: enum my_enum : i32 {}
      * this should accept only fundamental types
      */
-    bl_type_init(&enm->value.decl.type, "i32"); // HACK
-    bl_ident_init(&enm->value.decl.ident, tok->value.as_string);
+    bl_type_init(&enm->value.decl.type, tok->value.as_string);
     enm->value.decl.modificator = BL_SYM_NONE;
+
+    /* store into global scope cache */
+    bo_array_push_back(cnt->unit->global_types, enm);
 
     /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
@@ -693,26 +651,9 @@ elem:
       bl_type_init(&enm_elem->value.decl.type, "i32"); // HACK!!!
 
       bl_node_enum_decl_add_elem(enm, enm_elem);
-      /*
-       * TODO: later enum elems should not be in global scope but,
-       * inside namespace, module or whatever that will be called.
-       */
-      bl_node_t
-        *conflicted =
-        bl_scope_add_symbol(&cnt->unit->scope, enm_elem, enm_elem->value.decl.ident.hash);
-      if (conflicted != NULL) {
-        parse_error(cnt,
-                    BL_ERR_DUPLICATE_SYMBOL,
-                    "%s %d:%d "
-                      BL_YELLOW("'%s'")
-                      " already declared here: %d:%d",
-                    cnt->unit->filepath,
-                    enm_elem->line,
-                    enm_elem->col,
-                    enm_elem->value.decl.ident.name,
-                    conflicted->line,
-                    conflicted->col);
-      }
+
+      /* store into global scope cache */
+      bo_array_push_back(cnt->unit->global_idents, enm_elem);
 
       /* default value set by user */
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
@@ -746,25 +687,6 @@ elem:
     if (tok->sym != BL_SYM_RBLOCK) {
       parse_error(cnt, BL_ERR_EXPECTED_BODY_END, "%s %d:%d expected end of enum body "
         BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
-    }
-
-    /*
-     * Validate and store into scope cache.
-     */
-    bl_scope_t *scope = &cnt->unit->scope;
-    bl_node_t *conflicted = bl_scope_add_symbol(scope, enm, enm->value.decl.ident.hash);
-    if (conflicted != NULL) {
-      parse_error(cnt,
-                  BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d "
-                    BL_YELLOW("'%s'")
-                    " already declared here: %d:%d",
-                  cnt->unit->filepath,
-                  enm->line,
-                  enm->col,
-                  enm->value.decl.ident.name,
-                  conflicted->line,
-                  conflicted->col);
     }
   }
 
@@ -804,8 +726,6 @@ parse_struct_decl(context_t *cnt)
     strct = new_node(cnt, BL_NODE_STRUCT_DECL, tok);
 
     bl_type_init(&strct->value.decl.type, tok->value.as_string);
-    /* TODO: chose what will describe structure type */
-    bl_ident_init(&strct->value.decl.ident, tok->value.as_string);
     strct->value.decl.modificator = BL_SYM_NONE;
 
     /* eat '{' */
@@ -816,7 +736,6 @@ parse_struct_decl(context_t *cnt)
     }
 
     int order = 0;
-    bl_scope_push(&cnt->unit->scope);
 member:
     /* eat ident */
     member = parse_var_decl(cnt);
@@ -831,7 +750,6 @@ member:
           BL_YELLOW("','"), cnt->unit->filepath, tok->line, tok->col + tok->len);
       }
     }
-    bl_scope_pop(&cnt->unit->scope);
 
     /* eat '}' */
     tok = bl_tokens_consume(cnt->tokens);
@@ -840,24 +758,8 @@ member:
         BL_YELLOW("'}'"), cnt->unit->filepath, tok->line, tok->col + tok->len);
     }
 
-    /*
-     * Validate and store into scope cache.
-     */
-    bl_scope_t *scope = &cnt->unit->scope;
-    bl_node_t *conflicted = bl_scope_add_symbol(scope, strct, strct->value.decl.type.hash);
-    if (conflicted != NULL) {
-      parse_error(cnt,
-                  BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d "
-                    BL_YELLOW("'%s'")
-                    " already declared here: %d:%d",
-                  cnt->unit->filepath,
-                  strct->line,
-                  strct->col,
-                  strct->value.decl.ident.name,
-                  conflicted->line,
-                  conflicted->col);
-    }
+    /* store into global scope cache */
+    bo_array_push_back(cnt->unit->global_types, strct);
   }
 
   return strct;
@@ -1092,25 +994,6 @@ parse_var_decl(context_t *cnt)
 
     bl_ident_init(&vdcl->value.var_decl.base.ident, tok_ident->value.as_string);
     bl_type_init(&vdcl->value.var_decl.base.type, tok_type->value.as_string);
-
-    /*
-     * Validate and store into scope cache.
-     */
-    bl_scope_t *scope = &cnt->unit->scope;
-    bl_node_t *conflicted = bl_scope_add_symbol(scope, vdcl, vdcl->value.decl.ident.hash);
-    if (conflicted != NULL) {
-      parse_error(cnt,
-                  BL_ERR_DUPLICATE_SYMBOL,
-                  "%s %d:%d "
-                    BL_YELLOW("'%s'")
-                    " already declared here: %d:%d",
-                  cnt->unit->filepath,
-                  vdcl->line,
-                  vdcl->col,
-                  vdcl->value.decl.ident.name,
-                  conflicted->line,
-                  conflicted->col);
-    }
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
       /*

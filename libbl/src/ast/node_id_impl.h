@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   analyzer.c
+// File:   node_id_impl.h
 // Author: Martin Dorazil
-// Date:   13/03/2018
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,11 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "stages_impl.h"
+#ifndef BL_NODE_ID_IMPL_H
+#define BL_NODE_ID_IMPL_H
 
-bl_error_e
-bl_analyzer_run(bl_builder_t *builder,
-                bl_assembly_t *assembly)
+#include <stdint.h>
+
+typedef struct
 {
-  return BL_NO_ERR;
-}
+  const char *str;
+  uint32_t hash;
+} bl_node_id;
+
+void
+bl_node_id_init(bl_node_id *node_id,
+                const char *str);
+
+#endif //BL_NODE_ID_IMPL_H

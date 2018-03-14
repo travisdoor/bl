@@ -38,16 +38,17 @@
 typedef struct bl_unit
 {
   /* output of lexer */
-  bl_tokens_t    tokens;
+  bl_tokens_t tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t       ast;
-  /* All symbols registered in this unit */
-  bl_scope_t     scope;
+  bl_ast_t ast;
+  BArray *global_types;
+  BArray *global_idents;
   /* source file name with path */
-  char           *filepath;
-  char           *name;
+  char *filepath;
+  char *name;
   /* source data */
-  char           *src;
+  char *src;
+
 } bl_unit_t;
 
 #endif //BL_UNIT_IMPL_H

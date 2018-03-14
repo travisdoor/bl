@@ -70,6 +70,7 @@ print_node(bl_node_t *node,
       print_node(node->value.func_decl.cmp_stmt, pad);
       break;
     case BL_NODE_CALL_EXPR:
+      fprintf(stdout, "name: " BL_CYAN("%s"), node->value.call_expr.ident.name);
       c = bl_node_call_expr_get_arg_count(node);
       pad += 2;
       for (int i = 0; i < c; i++) {
@@ -178,6 +179,11 @@ print_node(bl_node_t *node,
     case BL_NODE_PARAM_VAR_DECL:
       fprintf(stdout, " type: " BL_CYAN("%s"), node->value.decl.type.name);
       fprintf(stdout, " name: " BL_CYAN("%s"), node->value.decl.ident.name);
+
+      if (bl_type_is_user_defined(&node->value.decl.type)) {
+        fprintf(stdout, " ref: " BL_CYAN("%p"), node->value.decl.type.ref);
+      }
+
       pad += 2;
       print_node(node->value.var_decl.expr, pad);
     default:

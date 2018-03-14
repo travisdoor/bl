@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   type_impl.h
+// File:   node_id.c
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,13 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_TYPE_IMPL_H
-#define BL_TYPE_IMPL_H
-
-#include <stdint.h>
-#include <stdbool.h>
-
-#define BL_TYPE_LIST \
-  tp(NONE,    "") \
-  tp(VOID,   "void") \
-  tp(CHAR,   "char") \
-  tp(BOOL,   "bool") \
-  tp(I8,     "i8") \
-  tp(U8,     "u8") \
-  tp(I32,    "i32") \
-  tp(I64,    "i64") \
-  tp(U32,    "u32") \
-  tp(U64,    "u64") \
-  tp(PTR,    "ptr") \
-  tp(F32,    "f32") \
-  tp(F64,    "f64") \
-  tp(SIZE,   "size") \
-  tp(STRING, "string") \
-
-typedef enum
-{
-#define tp(tok, str) BL_TYPE_##tok,
-  BL_TYPE_LIST
-#undef tp
-  BL_TYPE_COUNT
-} bl_type_e;
-
-typedef struct bl_type
-{
-  const char *name;
-  uint32_t   hash;
-  struct bl_node *ref;
-} bl_type_t;
-
+#include <bobject/containers/hash.h>
+#include "ast/node_id_impl.h"
 
 void
-bl_type_init(bl_type_t *type,
-             const char *name);
-
-bool
-bl_type_is_fundamental(bl_type_t *type);
-
-bool
-bl_type_is_user_defined(bl_type_t *type);
-
-#endif //BL_TYPE_IMPL_H
+bl_node_id_init(bl_node_id *node_id,
+                const char *str)
+{
+  node_id->hash = bo_hash_from_str(str);
+  node_id->str = str;
+}

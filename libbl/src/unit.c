@@ -34,9 +34,11 @@
 static void
 init(bl_unit_t *unit)
 {
-  bl_scope_init(&unit->scope);
   bl_tokens_init(&unit->tokens);
   bl_ast_init(&unit->ast);
+
+  unit->global_types = bo_array_new(sizeof(bl_node_t *));
+  unit->global_idents = bo_array_new(sizeof(bl_node_t *));
 }
 
 /* public */
@@ -45,9 +47,9 @@ bl_unit_new_file(const char *filepath)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
   unit->filepath = strdup(filepath);
-  unit->name     = strrchr(unit->filepath, '/');
+  unit->name = strrchr(unit->filepath, '/');
   if (unit->name == NULL)
-    unit->name   = unit->filepath;
+    unit->name = unit->filepath;
   else
     unit->name++;
 
@@ -61,7 +63,7 @@ bl_unit_new_str(const char *name,
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
   unit->filepath = strdup(name);
-  unit->name     = strdup(name);
+  unit->name = strdup(name);
 
   if (src)
     unit->src = strdup(src);
@@ -78,7 +80,8 @@ bl_unit_delete(bl_unit_t *unit)
   free(unit->src);
   bl_tokens_terminate(&unit->tokens);
   bl_ast_terminate(&unit->ast);
-  bl_scope_terminate(&unit->scope);
+  bo_unref(unit->global_idents);
+  bo_unref(unit->global_types);
   bl_free(unit);
 }
 

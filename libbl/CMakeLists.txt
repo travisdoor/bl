@@ -36,7 +36,7 @@ set(HEADER_FILES_IMPL
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
-        src/scope_impl.h)
+        src/scope_impl.h src/ast/node_id_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
@@ -60,7 +60,7 @@ set(SOURCE_FILES
         src/llvm_linker.c 
         src/ast/node.c 
         src/scope.c 
-        src/linker.c src/analyzer.c)
+        src/linker.c src/ast/node_id.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

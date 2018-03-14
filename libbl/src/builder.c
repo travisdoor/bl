@@ -104,9 +104,6 @@ compile_assembly(bl_builder_t *builder,
 
 
   if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
-    if ((error = bl_analyzer_run(builder, assembly)) != BL_NO_ERR)
-      return error;
-
     if ((error = bl_llvm_backend_run(builder, assembly)) != BL_NO_ERR)
       return error;
 

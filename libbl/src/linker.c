@@ -46,24 +46,23 @@ typedef struct
 } context_t;
 
 static void
-link(context_t *cnt,
-     bl_unit_t *unit);
+merge_globals(context_t *cnt,
+              bl_unit_t *unit);
+
 
 void
-link(context_t *cnt,
-     bl_unit_t *unit)
+merge_globals(context_t *cnt,
+              bl_unit_t *unit)
 {
   /* copy global declarations and solve collisions */
-  BHashTable *dest = bl_scope_get_all(&cnt->assembly->scope);
-  BHashTable *src = bl_scope_get_all(&unit->scope);
+ /* BHashTable *dest = bl_scope_get_all(&cnt->assembly->scope);
 
-  bo_iterator_t src_iter = bo_htbl_begin(src);
-  bo_iterator_t src_end = bo_htbl_end(src);
+  const size_t c = bo_array_size(unit->globals);
 
   bl_node_t *decl;
   bl_node_t *coliding;
-  while (!bo_iterator_equal(&src_iter, &src_end)) {
-    decl = bo_htbl_iter_peek_value(src, &src_iter, bl_node_t *);
+  for (size_t i = 0; i < c; i++) {
+    decl = bo_array_at(unit->globals, i, bl_node_t *);
     if (bo_htbl_has_key(dest, decl->value.decl.ident.hash)) {
       coliding = bo_htbl_at(dest, decl->value.decl.ident.hash, bl_node_t *);
 
@@ -80,10 +79,9 @@ link(context_t *cnt,
     } else {
       bo_htbl_insert(dest, decl->value.decl.ident.hash, decl);
     }
-    bo_htbl_iter_next(src, &src_iter);
   }
 
-  bl_scope_clear(&unit->scope);
+  bo_array_clear(unit->globals);*/
 }
 
 /* public */
@@ -91,11 +89,6 @@ bl_error_e
 bl_linker_run(bl_builder_t *builder,
               bl_assembly_t *assembly)
 {
-  /*
-   * Solve unsatisfied expressions and declaration collisions
-   * between units.
-   */
-
   context_t cnt = {
     .builder = builder, .assembly = assembly
   };
@@ -110,7 +103,7 @@ bl_linker_run(bl_builder_t *builder,
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    link(&cnt, unit);
+    merge_globals(&cnt, unit);
   }
 
 #if PRINT_GLOBALS
