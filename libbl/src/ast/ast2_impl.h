@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_id_impl.h
+// File:   ast2_impl.h
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -26,19 +26,49 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE_ID_IMPL_H
-#define BL_NODE_ID_IMPL_H
+#ifndef BL_NODE2_IMPL_H
+#define BL_NODE2_IMPL_H
 
-#include <stdint.h>
+#include <bobject/containers/array.h>
+#include "id_impl.h"
 
 typedef struct
 {
-  const char *str;
-  uint32_t hash;
-} bl_node_id_t;
+  BArray *items;
+} bl_module_t;
 
-void
-bl_node_id_init(bl_node_id_t *node_id,
-                const char *str);
+typedef struct
+{
+  BArray *params;
+  // TODO: return type
+} bl_func_decl_t;
 
-#endif //BL_NODE_ID_IMPL_H
+typedef struct
+{
+  BArray *stmts;
+} bl_block_t;
+
+typedef enum
+{
+  BL_ITEM_MODULE,
+  BL_ITEM_FUNC
+} bl_item_e;
+
+typedef struct
+{
+  bl_id_t id;
+  bl_item_e t;
+  union
+  {
+    bl_module_t module;
+
+    struct
+    {
+      bl_func_decl_t func_decl;
+      bl_block_t block;
+    } func;
+
+  } node;
+} bl_item_t;
+
+#endif //BL_NODE2_IMPL_H

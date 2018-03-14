@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node2_impl.h
+// File:   id_impl.h
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -26,39 +26,19 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE2_IMPL_H
-#define BL_NODE2_IMPL_H
+#ifndef BL_NODE_ID_IMPL_H
+#define BL_NODE_ID_IMPL_H
 
-#include <bobject/containers/array.h>
-#include "node_id_impl.h"
-
-typedef struct
-{
-  bl_node_id_t id;
-} bl_node_type_t;
-
-typedef enum
-{
-  BL_NODE_ITEM_FUNC_DECL
-} bl_node_item_e;
+#include <stdint.h>
 
 typedef struct
 {
-  bl_node_id_t id;
+  const char *str;
+  uint32_t hash;
+} bl_id_t;
 
-  bl_node_item_e t;
-  union
-  {
-    struct
-    {
-      BArray *params;
-      bl_node_type_t *ret_type;
-    } func_decl;
-  } item;
-} bl_node_item;
+void
+bl_id_init(bl_id_t *id,
+           const char *str);
 
-typedef struct bl_node
-{
-} bl_node_t;
-
-#endif //BL_NODE2_IMPL_H
+#endif //BL_NODE_ID_IMPL_H

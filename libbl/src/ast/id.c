@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_id.c
+// File:   id.c
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -27,12 +27,12 @@
 //*****************************************************************************
 
 #include <bobject/containers/hash.h>
-#include "ast/node_id_impl.h"
+#include "ast/id_impl.h"
 
 void
-bl_node_id_init(bl_node_id_t *node_id,
+bl_id_init(bl_id_t *id,
                 const char *str)
 {
-  node_id->hash = bo_hash_from_str(str);
-  node_id->str = str;
+  id->hash = bo_hash_from_str(str);
+  id->str = str;
 }

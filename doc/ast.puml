@@ -1,0 +1,12 @@
+@startuml
+
+class module {
+}
+
+class item {
+
+}
+
+module <- item: < has items
+
+@enduml
