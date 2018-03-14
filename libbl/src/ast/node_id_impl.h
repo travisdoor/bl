@@ -35,10 +35,10 @@ typedef struct
 {
   const char *str;
   uint32_t hash;
-} bl_node_id;
+} bl_node_id_t;
 
 void
-bl_node_id_init(bl_node_id *node_id,
+bl_node_id_init(bl_node_id_t *node_id,
                 const char *str);
 
 #endif //BL_NODE_ID_IMPL_H

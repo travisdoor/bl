@@ -36,7 +36,7 @@ set(HEADER_FILES_IMPL
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
-        src/scope_impl.h src/ast/node_id_impl.h)
+        src/scope_impl.h src/ast/node_id_impl.h src/ast/node2_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c

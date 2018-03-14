@@ -216,10 +216,6 @@ typedef struct bl_node_binop
   struct bl_node *rhs;
 } bl_node_binop_t;
 
-typedef struct {
-  bl_ident_t ident;
-} bl_node_type_t;
-
 /*
  * Node base
  */

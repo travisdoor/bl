@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   node_id.c
+// File:   node2_impl.h
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -26,13 +26,39 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/hash.h>
-#include "ast/node_id_impl.h"
+#ifndef BL_NODE2_IMPL_H
+#define BL_NODE2_IMPL_H
 
-void
-bl_node_id_init(bl_node_id_t *node_id,
-                const char *str)
+#include <bobject/containers/array.h>
+#include "node_id_impl.h"
+
+typedef struct
 {
-  node_id->hash = bo_hash_from_str(str);
-  node_id->str = str;
-}
+  bl_node_id_t id;
+} bl_node_type_t;
+
+typedef enum
+{
+  BL_NODE_ITEM_FUNC_DECL
+} bl_node_item_e;
+
+typedef struct
+{
+  bl_node_id_t id;
+
+  bl_node_item_e t;
+  union
+  {
+    struct
+    {
+      BArray *params;
+      bl_node_type_t *ret_type;
+    } func_decl;
+  } item;
+} bl_node_item;
+
+typedef struct bl_node
+{
+} bl_node_t;
+
+#endif //BL_NODE2_IMPL_H
