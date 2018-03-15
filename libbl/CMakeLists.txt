@@ -60,7 +60,7 @@ set(SOURCE_FILES
         src/llvm_linker.c 
         src/ast/node.c 
         src/scope.c 
-        src/linker.c src/ast/id.c)
+        src/linker.c src/ast/id.c src/parser2.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

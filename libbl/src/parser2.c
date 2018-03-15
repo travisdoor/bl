@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   ast2_impl.h
+// File:   parser2.c
 // Author: Martin Dorazil
-// Date:   3/14/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,56 +26,41 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE2_IMPL_H
-#define BL_NODE2_IMPL_H
-
-#include <bobject/containers/array.h>
-#include "id_impl.h"
-
-typedef struct {
-  int line;
-  int col;
-  const char *file;
-} bl_src_t;
+#include <setjmp.h>
+#include "stages_impl.h"
+#include "ast/ast2_impl.h"
 
 typedef struct
 {
-  BArray *items;
-} bl_module_t;
+  bl_builder_t *builder;
+  bl_unit_t *unit;
 
-typedef struct
+  jmp_buf jmp_error;
+} context_t;
+
+static bl_item_t *
+parse_item(context_t *cnt);
+
+static bl_item_t *
+parse_item(context_t *cnt)
 {
-  BArray *params;
-  // TODO: return type
-} bl_func_decl_t;
+  return NULL;
+}
 
-typedef struct
+bl_error_e
+bl_parser2_run(bl_builder_t *builder,
+               bl_unit_t *unit)
 {
-  BArray *stmts;
-} bl_block_t;
+  context_t
+    cnt =
+    {.builder = builder, .unit = unit};
 
-typedef enum
-{
-  BL_ITEM_MODULE,
-  BL_ITEM_FUNC
-} bl_item_e;
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error))) {
+    return (bl_error_e) error;
+  }
 
-typedef struct
-{
-  bl_src_t src;
-  bl_id_t id;
-  bl_item_e t;
-  union
-  {
-    bl_module_t module;
+  parse_item(&cnt);
 
-    struct
-    {
-      bl_func_decl_t *func_decl;
-      bl_block_t *block;
-    } func;
-
-  } node;
-} bl_item_t;
-
-#endif //BL_NODE2_IMPL_H
+  return BL_NO_ERR;
+}

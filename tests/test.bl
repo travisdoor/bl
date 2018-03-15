@@ -1,18 +1,2 @@
 i32 main(i32 a) {
-  i32 a;
-  hell h;
 }
-
-struct hell {
-  another a
-}
-
-struct another {
-  i32 i,
-  ivan h
-}
-
-struct ivan {
-  i32 i
-}
-
