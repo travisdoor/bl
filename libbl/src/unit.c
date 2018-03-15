@@ -35,10 +35,7 @@ static void
 init(bl_unit_t *unit)
 {
   bl_tokens_init(&unit->tokens);
-  bl_ast_init(&unit->ast);
-
-  unit->global_types = bo_array_new(sizeof(bl_node_t *));
-  unit->global_idents = bo_array_new(sizeof(bl_node_t *));
+  bl_ast2_init(&unit->ast);
 }
 
 /* public */
@@ -79,9 +76,7 @@ bl_unit_delete(bl_unit_t *unit)
   free(unit->filepath);
   free(unit->src);
   bl_tokens_terminate(&unit->tokens);
-  bl_ast_terminate(&unit->ast);
-  bo_unref(unit->global_idents);
-  bo_unref(unit->global_types);
+  bl_ast2_terminate(&unit->ast);
   bl_free(unit);
 }
 

@@ -31,7 +31,6 @@
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include "ast/node_impl.h"
 
 typedef struct
 {

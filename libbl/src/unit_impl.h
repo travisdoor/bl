@@ -30,9 +30,8 @@
 #define BL_UNIT_IMPL_H
 
 #include "bl/unit.h"
-#include "ast/ast_impl.h"
+#include "ast/ast2_impl.h"
 #include "tokens_impl.h"
-#include "scope_impl.h"
 
 /* class Unit object members */
 typedef struct bl_unit
@@ -40,9 +39,7 @@ typedef struct bl_unit
   /* output of lexer */
   bl_tokens_t tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t ast;
-  BArray *global_types;
-  BArray *global_idents;
+  bl_ast2_t ast;
   /* source file name with path */
   char *filepath;
   char *name;

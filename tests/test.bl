@@ -1,2 +1,9 @@
-i32 main(i32 a) {
+/*
+ * testing playground.
+ */
+
+i32 main() {
+}
+
+i32 hello() {
 }

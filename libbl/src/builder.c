@@ -83,8 +83,8 @@ compile_unit(bl_builder_t *builder,
   if (flags & BL_BUILDER_PRINT_TOKENS && (error = bl_token_printer_run(unit)) != BL_NO_ERR)
     return error;
 
-//  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
-//    return error;
+  if ((error = bl_parser2_run(builder, unit)) != BL_NO_ERR)
+    return error;
 
   return BL_NO_ERR;
 }
@@ -94,13 +94,13 @@ compile_assembly(bl_builder_t *builder,
                  bl_assembly_t *assembly,
                  uint32_t flags)
 {
-//  bl_error_e error;
+  bl_error_e error;
 //
 //  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
 //    return error;
 //
-//  if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
-//    return error;
+  if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
+    return error;
 //
 //
 //  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {

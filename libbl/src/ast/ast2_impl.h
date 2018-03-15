@@ -32,42 +32,64 @@
 #include <bobject/containers/array.h>
 #include "id_impl.h"
 
-typedef struct {
+#define BL_NTYPE_LIST\
+  nt(ITEM,      "item") \
+  nt(MODULE,    "module") \
+  nt(BLOCK,     "block") \
+  nt(FUNC_DECL, "block") \
+
+typedef struct
+{
   int line;
   int col;
   const char *file;
 } bl_src_t;
 
+typedef enum
+{
+#define nt(tok, str) BL_NODE_##tok,
+  BL_NTYPE_LIST
+#undef nt
+} bl_node_e;
+
 typedef struct
 {
+  bl_node_e t;
+} bl_node_t;
+
+typedef struct
+{
+  bl_node_t base_;
   BArray *items;
 } bl_module_t;
 
 typedef struct
 {
+  bl_node_t base_;
   BArray *params;
   // TODO: return type
 } bl_func_decl_t;
 
 typedef struct
 {
+  bl_node_t base_;
   BArray *stmts;
 } bl_block_t;
 
-typedef enum
-{
-  BL_ITEM_MODULE,
-  BL_ITEM_FUNC
-} bl_item_e;
-
 typedef struct
 {
+  bl_node_t base_;
+  enum
+  {
+    BL_ITEM_MODULE, 
+    BL_ITEM_FUNC
+  } t;
+
   bl_src_t src;
   bl_id_t id;
-  bl_item_e t;
   union
   {
-    bl_module_t module;
+    bl_module_t *module;
 
     struct
     {
@@ -77,5 +99,38 @@ typedef struct
 
   } node;
 } bl_item_t;
+
+typedef struct
+{
+  BArray *nodes;
+  bl_module_t *root;
+} bl_ast2_t;
+
+void
+bl_ast2_init(bl_ast2_t *ast);
+
+void
+bl_ast2_terminate(bl_ast2_t *ast);
+
+bl_node_t *
+_bl_ast2_new_node(bl_ast2_t *ast,
+                  bl_node_e type);
+
+const char *
+bl_node_to_str(bl_node_t *node);
+
+#define bl_ast2_new_node(ast, nt, t) \
+  (t *)_bl_ast2_new_node((ast), (nt));
+
+bl_item_t *
+bl_ast_module_push_item(bl_module_t *module,
+                        bl_item_t *item);
+
+size_t
+bl_ast_module_item_count(bl_module_t *module);
+
+bl_item_t *
+bl_ast_module_get_item(bl_module_t *module,
+                       size_t i);
 
 #endif //BL_NODE2_IMPL_H

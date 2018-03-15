@@ -23,7 +23,6 @@ set(HEADER_FILES
         include/bl/error.h include/bl/config.h)
 
 set(HEADER_FILES_IMPL
-        src/ast/ast_impl.h
         src/builder_impl.h
         src/blmemory_impl.h
         src/llvm_bl_cnt_impl.h
@@ -36,17 +35,13 @@ set(HEADER_FILES_IMPL
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
-        src/scope_impl.h src/ast/id_impl.h src/ast/ast2_impl.h)
+        src/ast/id_impl.h src/ast/ast2_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
         src/file_loader.c
-        src/ast_printer.c
         src/unit.c
         src/token.c
-        src/parser.c
-        src/llvm_backend.c
-        src/ast/ast.c
         src/token_printer.c
         src/assembly.c
         src/type.c
@@ -57,10 +52,9 @@ set(SOURCE_FILES
         src/llvm_bl_cnt.c
         src/llvm_native_bin.c
         src/lexer.c
+        src/ast_printer.c
         src/llvm_linker.c 
-        src/ast/node.c 
-        src/scope.c 
-        src/linker.c src/ast/id.c src/parser2.c)
+        src/ast/id.c src/parser2.c src/ast/ast2.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

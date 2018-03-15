@@ -40,16 +40,12 @@ bl_assembly_new(const char *name)
   assembly->name  = strdup(name);
   assembly->units = bo_array_new(sizeof(bl_unit_t *));
 
-  bl_scope_init(&assembly->scope);
-
   return assembly;
 }
 
 void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
-  bl_scope_terminate(&assembly->scope);
-
   free(assembly->name);
   LLVMDisposeModule(assembly->llvm_module);
   LLVMContextDispose(assembly->llvm_cnt);
