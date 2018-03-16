@@ -421,6 +421,7 @@ scan:
              cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
+  tok.file = cnt->unit->filepath;
   goto scan;
 }
 

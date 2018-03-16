@@ -35,9 +35,11 @@ char *bl_sym_strings[] = {
 };
 
 void
-bl_token_init(bl_token_t *token, bl_sym_e symbol, int line, int col, int len, const char *src_loc)
+bl_token_init(bl_token_t *token, bl_sym_e symbol, int line, int col, int len, const char *src_loc,
+              const char *file)
 {
-  (*token) = (bl_token_t){.sym = symbol, .line = line, .col = col, .len = len, .src_loc = src_loc};
+  (*token) = (bl_token_t){
+      .sym = symbol, .line = line, .col = col, .len = len, .src_loc = src_loc, .file = file};
 }
 
 bool

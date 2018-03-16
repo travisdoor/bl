@@ -31,9 +31,18 @@
 
 #include <bobject/containers/array.h>
 #include "id_impl.h"
+#include "token_impl.h"
 
+// clang-format off
 #define BL_NTYPE_LIST                                                                              \
-  nt(ITEM, "item") nt(MODULE, "module") nt(BLOCK, "block") nt(FUNC_DECL, "block")
+  nt(ITEM, "item") \
+  nt(MODULE, "module") \
+  nt(BLOCK, "block") \
+  nt(FUNC_DECL, "func_decl") \
+  nt(STRUCT_DECL, "struct_decl") \
+  nt(ENUM_DECL, "enum_decl") \
+  nt(ARG, "arg") \
+// clang-format on
 
 typedef struct
 {
@@ -69,6 +78,23 @@ typedef struct
 typedef struct
 {
   bl_node_t base_;
+} bl_struct_decl_t;
+
+typedef struct
+{
+  bl_node_t base_;
+} bl_enum_decl_t;
+
+typedef struct
+{
+  bl_node_t base_;
+  bl_id_t id;
+  // TODO: type 
+} bl_arg_t;
+
+typedef struct
+{
+  bl_node_t base_;
   BArray *stmts;
 } bl_block_t;
 
@@ -78,7 +104,9 @@ typedef struct
   enum
   {
     BL_ITEM_MODULE,
-    BL_ITEM_FUNC
+    BL_ITEM_FUNC,
+    BL_ITEM_STRUCT,
+    BL_ITEM_ENUM
   } t;
 
   bl_src_t src;
@@ -86,13 +114,14 @@ typedef struct
   union
   {
     bl_module_t *module;
+    bl_struct_decl_t *struct_decl;
+    bl_enum_decl_t *enum_decl;
 
     struct
     {
       bl_func_decl_t *func_decl;
       bl_block_t *block;
     } func;
-
   } node;
 } bl_item_t;
 
@@ -101,6 +130,9 @@ typedef struct
   BArray *nodes;
   bl_module_t *root;
 } bl_ast2_t;
+
+void
+bl_src_init(bl_src_t *src, bl_token_t *tok);
 
 void
 bl_ast2_init(bl_ast2_t *ast);
@@ -124,5 +156,15 @@ bl_ast_module_item_count(bl_module_t *module);
 
 bl_item_t *
 bl_ast_module_get_item(bl_module_t *module, size_t i);
+
+
+bl_arg_t *
+bl_ast_func_push_arg(bl_func_decl_t *func, bl_arg_t *arg);
+
+size_t
+bl_ast_func_arg_count(bl_func_decl_t *func);
+
+bl_arg_t *
+bl_ast_func_get_arg(bl_func_decl_t *func, size_t i);
 
 #endif // BL_NODE2_IMPL_H

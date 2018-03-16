@@ -39,6 +39,14 @@ static void
 delete_node(bl_node_t *node);
 
 void
+bl_src_init(bl_src_t *src, bl_token_t *tok)
+{
+  src->file = tok->file;
+  src->line = tok->line;
+  src->col  = tok->col;
+}
+
+void
 bl_ast2_init(bl_ast2_t *ast)
 {
   ast->nodes = bo_array_new(sizeof(void *));
@@ -76,7 +84,16 @@ _bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type)
     new_node = bl_calloc(sizeof(bl_block_t), 1);
     break;
   case BL_NODE_FUNC_DECL:
-    new_node = bl_calloc(sizeof(bl_block_t), 1);
+    new_node = bl_calloc(sizeof(bl_func_decl_t), 1);
+    break;
+  case BL_NODE_ARG:
+    new_node = bl_calloc(sizeof(bl_arg_t), 1);
+    break;
+  case BL_NODE_STRUCT_DECL:
+    new_node = bl_calloc(sizeof(bl_struct_decl_t), 1);
+    break;
+  case BL_NODE_ENUM_DECL:
+    new_node = bl_calloc(sizeof(bl_enum_decl_t), 1);
     break;
   default:
     bl_abort("unknown node type");
@@ -101,6 +118,10 @@ delete_node(bl_node_t *node)
     break;
   case BL_NODE_FUNC_DECL:
     bo_unref(((bl_func_decl_t *)node)->params);
+    break;
+  case BL_NODE_ARG:
+  case BL_NODE_STRUCT_DECL:
+  case BL_NODE_ENUM_DECL:
     break;
   default:
     bl_abort("unknown node type");
@@ -142,4 +163,35 @@ bl_ast_module_get_item(bl_module_t *module, size_t i)
     return 0;
 
   return bo_array_at(module->items, i, bl_item_t *);
+}
+
+bl_arg_t *
+bl_ast_func_push_arg(bl_func_decl_t *func, bl_arg_t *arg)
+{
+  if (func->params == NULL) {
+    func->params = bo_array_new(sizeof(void *));
+  }
+
+  if (arg == NULL)
+    return NULL;
+
+  bo_array_push_back(func->params, arg);
+  return arg;
+}
+
+size_t
+bl_ast_func_arg_count(bl_func_decl_t *func)
+{
+  if (func->params == NULL)
+    return 0;
+  return bo_array_size(func->params);
+}
+
+bl_arg_t *
+bl_ast_func_get_arg(bl_func_decl_t *func, size_t i)
+{
+  if (func->params == NULL)
+    return 0;
+
+  return bo_array_at(func->params, i, bl_arg_t *);
 }

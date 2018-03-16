@@ -2,8 +2,18 @@
  * testing playground.
  */
 
-fn i32 main() {
+fn main(a i32, b i32) i32 {
 }
 
-fn i32 hello() {
+fn hello() {
 }
+
+fn another_func(float f64) {
+}
+
+struct data {
+}
+
+enum state {
+}
+

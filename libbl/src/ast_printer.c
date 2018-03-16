@@ -41,7 +41,7 @@ print_node(bl_node_t *node, int pad)
 
   switch (node->t) {
   case BL_NODE_MODULE: {
-    pad++;
+    pad += 2;
     bl_item_t *item;
     bl_module_t *module = (bl_module_t *)node;
     const size_t c      = bl_ast_module_item_count(module);
@@ -52,8 +52,35 @@ print_node(bl_node_t *node, int pad)
 
     break;
   }
-  case BL_NODE_ITEM:
+  case BL_NODE_FUNC_DECL: {
+    pad += 2;
+    bl_arg_t *arg;
+    bl_func_decl_t *func = (bl_func_decl_t *)node;
+    const size_t c       = bl_ast_func_arg_count(func);
+    for (size_t i = 0; i < c; i++) {
+      arg = bl_ast_func_get_arg(func, i);
+      print_node((bl_node_t *)arg, pad);
+    }
+
     break;
+  }
+  case BL_NODE_ITEM: {
+    pad += 2;
+    bl_item_t *item = (bl_item_t *)node;
+    fprintf(stdout, "name: " BL_YELLOW("%s"), item->id.str);
+
+    switch (item->t) {
+    case BL_ITEM_FUNC:
+      print_node((bl_node_t *)item->node.func.func_decl, pad); 
+      print_node((bl_node_t *)item->node.func.block, pad); 
+      break;
+    case BL_ITEM_MODULE:
+      break;
+    default:
+      break;
+    }
+    break;
+  }
   default:
     break;
   }

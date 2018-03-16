@@ -33,36 +33,67 @@
 #include <bobject/bobject.h>
 
 BO_BEGIN_DECLS
-#define BL_SYMBOLS_LIST                                                                            \
-  /*                                                                                               \
-   * special symbols                                                                               \
-   * these must be parsed separately                                                               \
-   */                                                                                              \
-  sm(EOF = 0, "end") sm(IDENT, "identifier") sm(STRING, "string") sm(CHAR, "char")                 \
-      sm(NUM, "number") sm(FLOAT, "float")                                                         \
-          sm(DOUBLE, "double") /*                                                                  \
-                                * other symbols                                                    \
-                                * these can be compared directly with its string representation    \
-                                * symbols with same initial character must be ordered by length    \
-                                */                                                                 \
-      sm(IF, "if")             /* must be first */                                                 \
-      sm(FN, "fn") sm(ELSE, "else") sm(TRUE, "true") sm(FALSE, "false") sm(EXTERN, "extern")       \
-          sm(RETURN, "return") sm(ENUM, "enum") sm(STRUCT, "struct") sm(LOOP, "loop")              \
-              sm(WHILE, "while") sm(BREAK, "break") sm(CONTINUE, "continue")                       \
-                  sm(IMPL, "impl") /* must be last */                                              \
-      sm(LCOMMENT, "//") sm(LBCOMMENT, "/*") sm(RBCOMMENT, "*/") sm(LBLOCK, "{") sm(RBLOCK, "}")   \
-          sm(LBRACKET, "[") sm(RBRACKET, "]") sm(LPAREN, "(") sm(RPAREN, ")") sm(COMMA, ",")       \
-              sm(SEMICOLON, ";") sm(EQ, "==") sm(NEQ, "!=") sm(GREATER_EQ, ">=") sm(LESS_EQ, "<=") \
-                  sm(LOGIC_AND, "&&") sm(LOGIC_OR, "||") sm(AND, "&") sm(OR, "|") sm(XOR, "^")     \
-                      sm(SLASH, "/") sm(MODULO, "%") sm(ASIGN, "=") sm(PLUS, "+") sm(MINUS, "-")   \
-                          sm(ASTERISK, "*") sm(GREATER, ">") sm(LESS, "<") sm(DOT, ".")            \
-                              sm(NONE, "")
+
+// clang-format off
+#define BL_SYMBOLS_LIST \
+  sm(EOF = 0, "end") \
+  sm(IDENT, "identifier") \
+  sm(STRING, "string") \
+  sm(CHAR, "char") \
+  sm(NUM, "number") \
+  sm(FLOAT, "float") \
+  sm(DOUBLE, "double") \
+  sm(IF, "if") /* must be first */ \
+  sm(FN, "fn") \
+  sm(ELSE, "else") \
+  sm(TRUE, "true") \
+  sm(FALSE, "false") \
+  sm(EXTERN, "extern") \
+  sm(RETURN, "return") \
+  sm(ENUM, "enum") \
+  sm(STRUCT, "struct") \
+  sm(LOOP, "loop")\
+  sm(WHILE, "while") \
+  sm(BREAK, "break")\
+  sm(CONTINUE, "continue")\
+  sm(IMPL, "impl") /* must be last */\
+  sm(LCOMMENT, "//") \
+  sm(LBCOMMENT, "/*") \
+  sm(RBCOMMENT, "*/") \
+  sm(LBLOCK, "{") \
+  sm(RBLOCK, "}")\
+  sm(LBRACKET, "[") \
+  sm(RBRACKET, "]")\
+  sm(LPAREN, "(") \
+  sm(RPAREN, ")") \
+  sm(COMMA, ",")\
+  sm(SEMICOLON, ";") \
+  sm(EQ, "==") \
+  sm(NEQ, "!=") \
+  sm(GREATER_EQ, ">=") \
+  sm(LESS_EQ, "<=")\
+  sm(LOGIC_AND, "&&") \
+  sm(LOGIC_OR, "||")\
+  sm(AND, "&") \
+  sm(OR, "|") \
+  sm(XOR, "^")\
+  sm(SLASH, "/") \
+  sm(MODULO, "%") \
+  sm(ASIGN, "=") \
+  sm(PLUS, "+") \
+  sm(MINUS, "-")\
+  sm(ASTERISK, "*") \
+  sm(GREATER, ">") \
+  sm(LESS, "<") \
+  sm(DOT, ".") \
+  sm(NONE, "")\
 
 typedef enum {
 #define sm(tok, str) BL_SYM_##tok,
   BL_SYMBOLS_LIST
 #undef sm
 } bl_sym_e;
+// clang-format on
 
 extern BO_EXPORT char *bl_sym_strings[];
 
@@ -73,6 +104,7 @@ typedef struct
   int col;
   int len;
   const char *src_loc;
+  const char *file;
   union
   {
     const char *as_string;
@@ -85,7 +117,8 @@ typedef struct
 
 /* content must be set manually */
 extern BO_EXPORT void
-bl_token_init(bl_token_t *token, bl_sym_e symbol, int line, int col, int len, const char *src_loc);
+bl_token_init(bl_token_t *token, bl_sym_e symbol, int line, int col, int len, const char *src_loc,
+              const char *file);
 
 extern BO_EXPORT bool
 bl_token_is_binop(bl_token_t *token);
