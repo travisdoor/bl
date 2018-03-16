@@ -44,13 +44,10 @@ void
 bl_llvm_bl_cnt_terminate(bl_llvm_bl_cnt_t *bl_cnt);
 
 bool
-bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt,
-                   LLVMValueRef val,
-                   bl_ident_t *id);
+bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt, LLVMValueRef val, bl_ident_t *id);
 
 LLVMValueRef
-bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt,
-                   bl_ident_t *id);
+bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt, bl_ident_t *id);
 
 void
 bl_llvm_bl_cnt_push_block(bl_llvm_bl_cnt_t *bl_cnt);
@@ -58,4 +55,4 @@ bl_llvm_bl_cnt_push_block(bl_llvm_bl_cnt_t *bl_cnt);
 void
 bl_llvm_bl_cnt_pop_block(bl_llvm_bl_cnt_t *bl_cnt);
 
-#endif //BL_LLVM_BL_CNT_BUF_IMPL_H
+#endif // BL_LLVM_BL_CNT_BUF_IMPL_H

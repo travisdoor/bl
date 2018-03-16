@@ -31,16 +31,14 @@
 
 /* public */
 void
-bl_ident_init(bl_ident_t *ident,
-              const char *name)
+bl_ident_init(bl_ident_t *ident, const char *name)
 {
   ident->name = name;
   ident->hash = bo_hash_from_str(name);
 }
 
 bool
-bl_ident_eq(bl_ident_t *first,
-            bl_ident_t *second)
+bl_ident_eq(bl_ident_t *first, bl_ident_t *second)
 {
   return first->hash == second->hash;
 }

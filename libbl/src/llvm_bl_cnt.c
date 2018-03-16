@@ -43,9 +43,7 @@ bl_llvm_bl_cnt_terminate(bl_llvm_bl_cnt_t *bl_cnt)
 }
 
 bool
-bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt,
-                   LLVMValueRef val,
-                   bl_ident_t *id)
+bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt, LLVMValueRef val, bl_ident_t *id)
 {
   const size_t i = bo_array_size(bl_cnt->blocks);
   if (val == NULL || i == 0) {
@@ -63,11 +61,10 @@ bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt,
 }
 
 LLVMValueRef
-bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt,
-                   bl_ident_t *id)
+bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt, bl_ident_t *id)
 {
-  const size_t c      = bo_array_size(bl_cnt->blocks);
-  BHashTable   *block = NULL;
+  const size_t c    = bo_array_size(bl_cnt->blocks);
+  BHashTable *block = NULL;
 
   for (size_t i = 0; i < c; i++) {
     block = bo_array_at(bl_cnt->blocks, i, BHashTable *);
@@ -91,4 +88,3 @@ bl_llvm_bl_cnt_pop_block(bl_llvm_bl_cnt_t *bl_cnt)
 {
   bo_array_pop_back(bl_cnt->blocks);
 }
-

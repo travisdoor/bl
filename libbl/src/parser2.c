@@ -28,6 +28,7 @@
 
 #include <setjmp.h>
 #include "stages_impl.h"
+#include "common_impl.h"
 
 typedef struct
 {
@@ -77,14 +78,22 @@ bl_item_t *
 parse_item(context_t *cnt)
 {
   bl_item_t *item = NULL;
+  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+
+  switch (tok->sym) {
+  case BL_SYM_FN:
+    break;
+  default:
+    bl_abort("invalid symbol, expected item");
+  }
 
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
     /* must be a function */
-    item = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, bl_item_t);
+    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, bl_item_t);
     item->t = BL_ITEM_FUNC;
 
     item->node.func.func_decl = parse_func_decl(cnt);
-    item->node.func.block = parse_block(cnt);
+    item->node.func.block     = parse_block(cnt);
   }
 
   return item;
@@ -107,16 +116,13 @@ parse_module(context_t *cnt)
 }
 
 bl_error_e
-bl_parser2_run(bl_builder_t *builder,
-               bl_unit_t *unit)
+bl_parser2_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t cnt = {
-    .builder = builder, .unit = unit, .ast = &unit->ast, .tokens = &unit->tokens
-  };
+  context_t cnt = {.builder = builder, .unit = unit, .ast = &unit->ast, .tokens = &unit->tokens};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
-    return (bl_error_e) error;
+    return (bl_error_e)error;
   }
 
   unit->ast.root = parse_module(&cnt);

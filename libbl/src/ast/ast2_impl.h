@@ -32,11 +32,8 @@
 #include <bobject/containers/array.h>
 #include "id_impl.h"
 
-#define BL_NTYPE_LIST\
-  nt(ITEM,      "item") \
-  nt(MODULE,    "module") \
-  nt(BLOCK,     "block") \
-  nt(FUNC_DECL, "block") \
+#define BL_NTYPE_LIST                                                                              \
+  nt(ITEM, "item") nt(MODULE, "module") nt(BLOCK, "block") nt(FUNC_DECL, "block")
 
 typedef struct
 {
@@ -45,8 +42,7 @@ typedef struct
   const char *file;
 } bl_src_t;
 
-typedef enum
-{
+typedef enum {
 #define nt(tok, str) BL_NODE_##tok,
   BL_NTYPE_LIST
 #undef nt
@@ -81,7 +77,7 @@ typedef struct
   bl_node_t base_;
   enum
   {
-    BL_ITEM_MODULE, 
+    BL_ITEM_MODULE,
     BL_ITEM_FUNC
   } t;
 
@@ -113,24 +109,20 @@ void
 bl_ast2_terminate(bl_ast2_t *ast);
 
 bl_node_t *
-_bl_ast2_new_node(bl_ast2_t *ast,
-                  bl_node_e type);
+_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type);
 
 const char *
 bl_node_to_str(bl_node_t *node);
 
-#define bl_ast2_new_node(ast, nt, t) \
-  (t *)_bl_ast2_new_node((ast), (nt));
+#define bl_ast2_new_node(ast, nt, t) (t *)_bl_ast2_new_node((ast), (nt));
 
 bl_item_t *
-bl_ast_module_push_item(bl_module_t *module,
-                        bl_item_t *item);
+bl_ast_module_push_item(bl_module_t *module, bl_item_t *item);
 
 size_t
 bl_ast_module_item_count(bl_module_t *module);
 
 bl_item_t *
-bl_ast_module_get_item(bl_module_t *module,
-                       size_t i);
+bl_ast_module_get_item(bl_module_t *module, size_t i);
 
-#endif //BL_NODE2_IMPL_H
+#endif // BL_NODE2_IMPL_H

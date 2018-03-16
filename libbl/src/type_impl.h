@@ -32,42 +32,27 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define BL_TYPE_LIST \
-  tp(NONE,    "") \
-  tp(VOID,   "void") \
-  tp(CHAR,   "char") \
-  tp(BOOL,   "bool") \
-  tp(I8,     "i8") \
-  tp(U8,     "u8") \
-  tp(I32,    "i32") \
-  tp(I64,    "i64") \
-  tp(U32,    "u32") \
-  tp(U64,    "u64") \
-  tp(PTR,    "ptr") \
-  tp(F32,    "f32") \
-  tp(F64,    "f64") \
-  tp(SIZE,   "size") \
-  tp(STRING, "string") \
+#define BL_TYPE_LIST                                                                               \
+  tp(NONE, "") tp(VOID, "void") tp(CHAR, "char") tp(BOOL, "bool") tp(I8, "i8") tp(U8, "u8")        \
+      tp(I32, "i32") tp(I64, "i64") tp(U32, "u32") tp(U64, "u64") tp(PTR, "ptr") tp(F32, "f32")    \
+          tp(F64, "f64") tp(SIZE, "size") tp(STRING, "string")
 
-typedef enum
-{
+typedef enum {
 #define tp(tok, str) BL_TYPE_##tok,
   BL_TYPE_LIST
 #undef tp
-  BL_TYPE_COUNT
+      BL_TYPE_COUNT
 } bl_type_e;
 
 typedef struct bl_type
 {
   const char *name;
-  uint32_t   hash;
+  uint32_t hash;
   struct bl_node *ref;
 } bl_type_t;
 
-
 void
-bl_type_init(bl_type_t *type,
-             const char *name);
+bl_type_init(bl_type_t *type, const char *name);
 
 bool
 bl_type_is_fundamental(bl_type_t *type);
@@ -75,4 +60,4 @@ bl_type_is_fundamental(bl_type_t *type);
 bool
 bl_type_is_user_defined(bl_type_t *type);
 
-#endif //BL_TYPE_IMPL_H
+#endif // BL_TYPE_IMPL_H

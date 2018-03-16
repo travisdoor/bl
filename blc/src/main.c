@@ -32,8 +32,7 @@
 #include "bl/bl.h"
 
 int
-main(int argc,
-     char *argv[])
+main(int argc, char *argv[])
 {
   setlocale(LC_ALL, "C");
   unsigned int build_flags = BL_BUILDER_LOAD_FROM_FILE;
@@ -63,9 +62,9 @@ main(int argc,
     exit(EXIT_SUCCESS);
   }
 
-  bl_builder_ref  builder  = bl_builder_new();
+  bl_builder_ref builder = bl_builder_new();
   /*
-   * HACK: use name of first file as assembly name 
+   * HACK: use name of first file as assembly name
    */
   char *assembly_name = strrchr(*argv, '/');
   if (assembly_name == NULL) {
@@ -75,7 +74,7 @@ main(int argc,
   }
 
   assembly_name = strdup(assembly_name);
-  char *ext = rindex(assembly_name, '.');
+  char *ext     = rindex(assembly_name, '.');
   if (ext != NULL) {
     (*ext) = '\0';
   }
@@ -99,4 +98,3 @@ main(int argc,
 
   return 0;
 }
-

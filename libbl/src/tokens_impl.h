@@ -55,8 +55,7 @@ int
 bl_tokens_count(bl_tokens_t *tokens);
 
 void
-bl_tokens_push(bl_tokens_t *tokens,
-               bl_token_t *t);
+bl_tokens_push(bl_tokens_t *tokens, bl_token_t *t);
 
 bl_token_t *
 bl_tokens_peek(bl_tokens_t *tokens);
@@ -68,8 +67,7 @@ bl_token_t *
 bl_tokens_peek_2nd(bl_tokens_t *tokens);
 
 bl_token_t *
-bl_tokens_peek_nth(bl_tokens_t *tokens,
-                   size_t n);
+bl_tokens_peek_nth(bl_tokens_t *tokens, size_t n);
 
 bl_token_t *
 bl_tokens_peek_prev(bl_tokens_t *tokens);
@@ -78,33 +76,25 @@ bl_token_t *
 bl_tokens_consume(bl_tokens_t *tokens);
 
 bl_token_t *
-bl_tokens_consume_if(bl_tokens_t *tokens,
-                     bl_sym_e sym);
+bl_tokens_consume_if(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_current_is(bl_tokens_t *tokens,
-                     bl_sym_e sym);
+bl_tokens_current_is(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_previous_is(bl_tokens_t *tokens,
-                      bl_sym_e sym);
+bl_tokens_previous_is(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_next_is(bl_tokens_t *tokens,
-                  bl_sym_e sym);
+bl_tokens_next_is(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_current_is_not(bl_tokens_t *tokens,
-                         bl_sym_e sym);
+bl_tokens_current_is_not(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_next_is_not(bl_tokens_t *tokens,
-                      bl_sym_e sym);
+bl_tokens_next_is_not(bl_tokens_t *tokens, bl_sym_e sym);
 
 bool
-bl_tokens_is_seq(bl_tokens_t *tokens,
-                 int cnt,
-                 ...);
+bl_tokens_is_seq(bl_tokens_t *tokens, int cnt, ...);
 
 void
 bl_tokens_reset_iter(bl_tokens_t *tokens);

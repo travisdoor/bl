@@ -39,23 +39,21 @@ typedef struct bl_assembly *bl_assembly_ref;
 extern BO_EXPORT bl_assembly_ref
 bl_assembly_new(const char *name);
 
-extern BO_EXPORT void 
+extern BO_EXPORT void
 bl_assembly_delete(bl_assembly_ref assembly);
 
 extern BO_EXPORT void
-bl_assembly_add_unit(bl_assembly_ref assembly,
-                     bl_unit_ref unit);
+bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
 
 extern BO_EXPORT int
 bl_assembly_get_unit_count(bl_assembly_ref assembly);
 
 extern BO_EXPORT bl_unit_ref
-bl_assembly_get_unit(bl_assembly_ref assembly,
-                     int i);
+bl_assembly_get_unit(bl_assembly_ref assembly, int i);
 
 extern BO_EXPORT const char *
 bl_assembly_get_name(bl_assembly_ref assembly);
 
 BO_END_DECLS
 
-#endif //BL_ASSEMBLY_H
+#endif // BL_ASSEMBLY_H

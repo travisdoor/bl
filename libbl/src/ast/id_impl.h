@@ -38,7 +38,6 @@ typedef struct
 } bl_id_t;
 
 void
-bl_id_init(bl_id_t *id,
-           const char *str);
+bl_id_init(bl_id_t *id, const char *str);
 
-#endif //BL_NODE_ID_IMPL_H
+#endif // BL_NODE_ID_IMPL_H

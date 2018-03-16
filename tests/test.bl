@@ -2,8 +2,8 @@
  * testing playground.
  */
 
-i32 main() {
+fn i32 main() {
 }
 
-i32 hello() {
+fn i32 hello() {
 }

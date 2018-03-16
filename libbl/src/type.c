@@ -33,14 +33,13 @@
 
 static const char *bl_type_strings[] = {
 #define tp(tok, str) str,
-  BL_TYPE_LIST
+    BL_TYPE_LIST
 #undef tp
 };
 
 /* public */
 void
-bl_type_init(bl_type_t *type,
-             const char *name)
+bl_type_init(bl_type_t *type, const char *name)
 {
   type->name = name;
 
@@ -67,5 +66,3 @@ bl_type_is_user_defined(bl_type_t *type)
 {
   return !bl_type_is_fundamental(type);
 }
-
-

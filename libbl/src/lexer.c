@@ -31,19 +31,16 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define is_intend_c(c) \
-  (((c) >= 'a' && (c) <= 'z') || \
-   ((c) >= 'A' && (c) <= 'Z')|| \
-   ((c) >= '0' && (c) <= '9')|| \
+#define is_intend_c(c)                                                                             \
+  (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||       \
    (c) == '_' || (c) == '-')
 
-#define is_number_c(c) \
-  ((c) >= '0' && (c) <= '9')
+#define is_number_c(c) ((c) >= '0' && (c) <= '9')
 
-#define scan_error(cnt, code, format, ...) \
-  { \
-    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__); \
-    longjmp((cnt)->jmp_error, code); \
+#define scan_error(cnt, code, format, ...)                                                         \
+  {                                                                                                \
+    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__);                                     \
+    longjmp((cnt)->jmp_error, code);                                                               \
   }
 
 typedef struct context
@@ -61,31 +58,25 @@ static void
 scan(context_t *cnt);
 
 static bool
-scan_comment(context_t *cnt,
-             const char *term);
+scan_comment(context_t *cnt, const char *term);
 
 static bool
-scan_ident(context_t *cnt,
-           bl_token_t *tok);
+scan_ident(context_t *cnt, bl_token_t *tok);
 
 static bool
-scan_string(context_t *cnt,
-            bl_token_t *tok);
+scan_string(context_t *cnt, bl_token_t *tok);
 
 static bool
-scan_number(context_t *cnt,
-            bl_token_t *tok);
+scan_number(context_t *cnt, bl_token_t *tok);
 
 static inline int
-c_to_number(char c,
-            int base);
+c_to_number(char c, int base);
 
 static char
 scan_specch(char c);
 
 bool
-scan_comment(context_t *cnt,
-             const char *term)
+scan_comment(context_t *cnt, const char *term)
 {
   const size_t len = strlen(term);
   while (true) {
@@ -96,12 +87,8 @@ scan_comment(context_t *cnt,
       /*
        * Unterminated comment
        */
-      scan_error(cnt,
-                 BL_ERR_UNTERMINATED_COMMENT,
-                 "%s %d:%d unterminated comment block.",
-                 cnt->unit->name,
-                 cnt->line,
-                 cnt->col);
+      scan_error(cnt, BL_ERR_UNTERMINATED_COMMENT, "%s %d:%d unterminated comment block.",
+                 cnt->unit->name, cnt->line, cnt->col);
     }
     if (strncmp(cnt->c, term, len) == 0) {
       break;
@@ -115,13 +102,12 @@ scan_comment(context_t *cnt,
 }
 
 bool
-scan_ident(context_t *cnt,
-           bl_token_t *tok)
+scan_ident(context_t *cnt, bl_token_t *tok)
 {
   tok->src_loc = cnt->c;
-  tok->line = cnt->line;
-  tok->col = cnt->col;
-  tok->sym = BL_SYM_IDENT;
+  tok->line    = cnt->line;
+  tok->col     = cnt->col;
+  tok->sym     = BL_SYM_IDENT;
 
   char *begin = cnt->c;
 
@@ -151,27 +137,26 @@ char
 scan_specch(char c)
 {
   switch (c) {
-    case 'n':
-      return '\n';
-    case 't':
-      return '\t';
-    default:
-      return c;
+  case 'n':
+    return '\n';
+  case 't':
+    return '\t';
+  default:
+    return c;
   }
 }
 
 bool
-scan_string(context_t *cnt,
-            bl_token_t *tok)
+scan_string(context_t *cnt, bl_token_t *tok)
 {
   if (*cnt->c != '\"') {
     return false;
   }
 
   tok->src_loc = cnt->c;
-  tok->line = cnt->line;
-  tok->col = cnt->col;
-  tok->sym = BL_SYM_STRING;
+  tok->line    = cnt->line;
+  tok->col     = cnt->col;
+  tok->sym     = BL_SYM_STRING;
 
   /* eat " */
   cnt->c++;
@@ -183,91 +168,86 @@ scan_string(context_t *cnt,
 scan:
   while (true) {
     switch (*cnt->c) {
-      case '\"': {
-        cnt->c++;
-        char *tmp_c = cnt->c;
-        /* check multiline string */
-        while (true) {
-          if (*tmp_c == '\"') {
-            /* skip " */
-            cnt->c = tmp_c + 1;
-            goto scan;
-          } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') || (*tmp_c == '\0')) {
-            goto exit;
-          }
-
-          tmp_c++;
+    case '\"': {
+      cnt->c++;
+      char *tmp_c = cnt->c;
+      /* check multiline string */
+      while (true) {
+        if (*tmp_c == '\"') {
+          /* skip " */
+          cnt->c = tmp_c + 1;
+          goto scan;
+        } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') || (*tmp_c == '\0')) {
+          goto exit;
         }
+
+        tmp_c++;
       }
-      case '\0': {
-        scan_error(cnt,
-                   BL_ERR_UNTERMINATED_STRING,
-                   "%s %d:%d unterminated string.",
-                   cnt->unit->name,
-                   cnt->line,
-                   cnt->col);
-      }
-      case '\\':
-        /* special character */
-        c = scan_specch(*(cnt->c + 1));
-        cnt->c += 2;
-        len++;
-        break;
-      default:
-        c = *cnt->c;
-        len++;
-        cnt->c++;
+    }
+    case '\0': {
+      scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated string.", cnt->unit->name,
+                 cnt->line, cnt->col);
+    }
+    case '\\':
+      /* special character */
+      c = scan_specch(*(cnt->c + 1));
+      cnt->c += 2;
+      len++;
+      break;
+    default:
+      c = *cnt->c;
+      len++;
+      cnt->c++;
     }
     bo_string_appendn(cstr, &c, 1);
   }
 exit:
   tok->value.as_string = bo_string_get(cstr);
-  tok->len = len;
+  tok->len             = len;
   cnt->col += len + 2;
   return true;
 }
 
 int
-c_to_number(char c,
-            int base)
+c_to_number(char c, int base)
 {
   switch (base) {
-    case 16:
-      if (c >= 'a' && c <= 'f') {
-        return c - 'a' + 10;
-      }
+  case 16:
+    if (c >= 'a' && c <= 'f') {
+      return c - 'a' + 10;
+    }
 
-      if (c >= 'A' && c <= 'F') {
-        return c - 'A' + 10;
-      }
-    case 10:
-      if (c >= '2' && c <= '9') {
-        return c - '0';
-      }
-    case 2:
-      if (c == '0' || c == '1') {
-        return c - '0';
-      }
-      break;
-    default: bl_abort("invalid number base");
+    if (c >= 'A' && c <= 'F') {
+      return c - 'A' + 10;
+    }
+  case 10:
+    if (c >= '2' && c <= '9') {
+      return c - '0';
+    }
+  case 2:
+    if (c == '0' || c == '1') {
+      return c - '0';
+    }
+    break;
+  default:
+    bl_abort("invalid number base");
   }
 
   return -1;
 }
 
 bool
-scan_number(context_t *cnt,
-            bl_token_t *tok)
+scan_number(context_t *cnt, bl_token_t *tok)
 {
-  tok->src_loc = cnt->c;
-  tok->line = cnt->line;
-  tok->col = cnt->col;
+  tok->src_loc         = cnt->c;
+  tok->line            = cnt->line;
+  tok->col             = cnt->col;
   tok->value.as_string = cnt->c;
 
   unsigned long n = 0;
-  int len = 0;
-  int base = 10;
-  int buf = 0;
+  int len         = 0;
+  int base        = 10;
+  int buf         = 0;
 
   if (strncmp(cnt->c, "0x", 2) == 0) {
     base = 16;
@@ -283,12 +263,8 @@ scan_number(context_t *cnt,
     if (*(cnt->c) == '.') {
 
       if (base != 10) {
-        scan_error(cnt,
-                   BL_ERR_INVALID_TOKEN,
-                   "%s %d:%d invalid suffix.",
-                   cnt->unit->name,
-                   cnt->line,
-                   cnt->col + len);
+        scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d invalid suffix.", cnt->unit->name,
+                   cnt->line, cnt->col + len);
       }
 
       len++;
@@ -311,47 +287,46 @@ scan_number(context_t *cnt,
 
   tok->len = len;
   cnt->col += len;
-  tok->sym = BL_SYM_NUM;
+  tok->sym          = BL_SYM_NUM;
   tok->value.as_ull = n;
   return true;
 
-scan_double:
-  {
-    unsigned long e = 1;
+scan_double : {
+  unsigned long e = 1;
 
-    while (true) {
-      buf = c_to_number(*(cnt->c), 10);
-      if (buf == -1) {
-        break;
-      }
-
-      n = n * 10 + buf;
-      e *= 10;
-      len++;
-      cnt->c++;
+  while (true) {
+    buf = c_to_number(*(cnt->c), 10);
+    if (buf == -1) {
+      break;
     }
 
-    /*
-     * valid d. or .d -> minimal 2 characters
-     */
-    if (len < 2)
-      return false;
-
-    if (*(cnt->c) == 'f') {
-      len++;
-      cnt->c++;
-      tok->sym = BL_SYM_FLOAT;
-      tok->value.as_float = n / (float) e;
-    } else {
-      tok->sym = BL_SYM_DOUBLE;
-      tok->value.as_double = n / (double) e;
-    }
-
-    tok->len = len;
-    cnt->col += len;
-
-    return true;
+    n = n * 10 + buf;
+    e *= 10;
+    len++;
+    cnt->c++;
   }
+
+  /*
+   * valid d. or .d -> minimal 2 characters
+   */
+  if (len < 2)
+    return false;
+
+  if (*(cnt->c) == 'f') {
+    len++;
+    cnt->c++;
+    tok->sym            = BL_SYM_FLOAT;
+    tok->value.as_float = n / (float)e;
+  } else {
+    tok->sym             = BL_SYM_DOUBLE;
+    tok->value.as_double = n / (double)e;
+  }
+
+  tok->len = len;
+  cnt->col += len;
+
+  return true;
+}
 }
 
 void
@@ -360,34 +335,34 @@ scan(context_t *cnt)
   bl_token_t tok;
 scan:
   tok.src_loc = cnt->c;
-  tok.line = cnt->line;
-  tok.col = cnt->col;
+  tok.line    = cnt->line;
+  tok.col     = cnt->col;
 
   /*
    * Ignored characters
    */
   switch (*cnt->c) {
-    case '\0':
-      tok.sym = BL_SYM_EOF;
-      bl_tokens_push(cnt->tokens, &tok);
-      return;
-    case '\r':
-    case '\n':
-      cnt->line++;
-      cnt->col = 1;
-      cnt->c++;
-      goto scan;
-    case '\t':
-      /* TODO: can be set by user */
-      cnt->col += 2;
-      cnt->c++;
-      goto scan;
-    case ' ':
-      cnt->col++;
-      cnt->c++;
-      goto scan;
-    default:
-      break;
+  case '\0':
+    tok.sym = BL_SYM_EOF;
+    bl_tokens_push(cnt->tokens, &tok);
+    return;
+  case '\r':
+  case '\n':
+    cnt->line++;
+    cnt->col = 1;
+    cnt->c++;
+    goto scan;
+  case '\t':
+    /* TODO: can be set by user */
+    cnt->col += 2;
+    cnt->c++;
+    goto scan;
+  case ' ':
+    cnt->col++;
+    cnt->c++;
+    goto scan;
+  default:
+    break;
   }
 
   /*
@@ -398,7 +373,7 @@ scan:
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym = (bl_sym_e) i;
+      tok.sym = (bl_sym_e)i;
 
       /*
        * Two joined symbols will be parsed as identifier.
@@ -410,25 +385,21 @@ scan:
       }
 
       switch (tok.sym) {
-        case BL_SYM_LCOMMENT:
-          /* begin of line comment */
-          scan_comment(cnt, "\n");
-          goto scan;
-        case BL_SYM_LBCOMMENT:
-          /* begin of block comment */
-          scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
-          goto scan;
-        case BL_SYM_RBCOMMENT: {
-          scan_error(cnt,
-                     BL_ERR_INVALID_TOKEN,
-                     "%s %d:%d unexpected token.",
-                     cnt->unit->name,
-                     cnt->line,
-                     cnt->col);
-        }
-        default:
-          cnt->col += len;
-          goto push_token;
+      case BL_SYM_LCOMMENT:
+        /* begin of line comment */
+        scan_comment(cnt, "\n");
+        goto scan;
+      case BL_SYM_LBCOMMENT:
+        /* begin of block comment */
+        scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
+        goto scan;
+      case BL_SYM_RBCOMMENT: {
+        scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name,
+                   cnt->line, cnt->col);
+      }
+      default:
+        cnt->col += len;
+        goto push_token;
       }
     }
   }
@@ -446,11 +417,7 @@ scan:
     goto push_token;
 
   /* When symbol is unknown report error */
-  scan_error(cnt,
-             BL_ERR_INVALID_TOKEN,
-             "%s %d:%d unexpected token.",
-             cnt->unit->name,
-             cnt->line,
+  scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
              cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
@@ -458,16 +425,20 @@ push_token:
 }
 
 bl_error_e
-bl_lexer_run(bl_builder_t *builder,
-             bl_unit_t *unit)
+bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t
-    cnt =
-    {.builder = builder, .tokens = &unit->tokens, .unit = unit, .c = unit->src, .line = 1, .col = 1,};
+  context_t cnt = {
+      .builder = builder,
+      .tokens  = &unit->tokens,
+      .unit    = unit,
+      .c       = unit->src,
+      .line    = 1,
+      .col     = 1,
+  };
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error)))
-    return (bl_error_e) error;
+    return (bl_error_e)error;
 
   scan(&cnt);
 
@@ -475,4 +446,3 @@ bl_lexer_run(bl_builder_t *builder,
 
   return BL_NO_ERR;
 }
-

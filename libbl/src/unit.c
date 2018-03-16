@@ -43,8 +43,8 @@ bl_unit_t *
 bl_unit_new_file(const char *filepath)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
-  unit->filepath = strdup(filepath);
-  unit->name = strrchr(unit->filepath, '/');
+  unit->filepath  = strdup(filepath);
+  unit->name      = strrchr(unit->filepath, '/');
   if (unit->name == NULL)
     unit->name = unit->filepath;
   else
@@ -55,16 +55,16 @@ bl_unit_new_file(const char *filepath)
 }
 
 bl_unit_t *
-bl_unit_new_str(const char *name,
-                const char *src)
+bl_unit_new_str(const char *name, const char *src)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
-  unit->filepath = strdup(name);
-  unit->name = strdup(name);
+  unit->filepath  = strdup(name);
+  unit->name      = strdup(name);
 
   if (src)
     unit->src = strdup(src);
-  else bl_abort("invalid source for %s unit", unit->name);
+  else
+    bl_abort("invalid source for %s unit", unit->name);
 
   init(unit);
   return unit;
@@ -97,4 +97,3 @@ bl_unit_get_name(bl_unit_t *unit)
 {
   return unit->name;
 }
-

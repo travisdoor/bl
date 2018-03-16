@@ -31,16 +31,12 @@
 
 #include <memory.h>
 
-#define bl_malloc(size) \
-  malloc((size))
+#define bl_malloc(size) malloc((size))
 
-#define bl_free(ptr) \
-  free((ptr))
+#define bl_free(ptr) free((ptr))
 
-#define bl_realloc(ptr, size) \
-  realloc((ptr), (size))
+#define bl_realloc(ptr, size) realloc((ptr), (size))
 
-#define bl_calloc(n, size) \
-  calloc((n), (size))
+#define bl_calloc(n, size) calloc((n), (size))
 
-#endif //BL_BLMEMORY_H
+#endif // BL_BLMEMORY_H

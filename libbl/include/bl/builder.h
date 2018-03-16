@@ -34,15 +34,15 @@
 
 BO_BEGIN_DECLS
 
-#define BL_BUILDER_RUN            0x00000002
-#define BL_BUILDER_PRINT_TOKENS   0x00000004
-#define BL_BUILDER_PRINT_AST      0x00000008
+#define BL_BUILDER_RUN 0x00000002
+#define BL_BUILDER_PRINT_TOKENS 0x00000004
+#define BL_BUILDER_PRINT_AST 0x00000008
 #define BL_BUILDER_LOAD_FROM_FILE 0x00000010
-#define BL_BUILDER_SYNTAX_ONLY    0x00000020
-#define BL_BUILDER_EMIT_LLVM      0x00000040
+#define BL_BUILDER_SYNTAX_ONLY 0x00000020
+#define BL_BUILDER_EMIT_LLVM 0x00000040
 
 typedef struct bl_builder *bl_builder_ref;
-typedef void (* bl_diag_handler_f)(const char *, void *);
+typedef void (*bl_diag_handler_f)(const char *, void *);
 
 extern BO_EXPORT bl_builder_ref
 bl_builder_new(void);
@@ -51,20 +51,15 @@ extern BO_EXPORT void
 bl_builder_delete(bl_builder_ref builder);
 
 extern BO_EXPORT bl_error_e
-bl_builder_compile(bl_builder_ref builder,
-                   bl_assembly_ref assembly,
-                   uint32_t flags);
+bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
 
 extern BO_EXPORT void
-bl_builder_set_error_diag_handler(bl_builder_ref builder,
-                                  bl_diag_handler_f handler,
-                                  void *context);
+bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);
 
 extern BO_EXPORT void
-bl_builder_set_warning_diag_handler(bl_builder_ref builder,
-                                    bl_diag_handler_f handler,
+bl_builder_set_warning_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler,
                                     void *context);
 
 BO_END_DECLS
 
-#endif //BL_BUILDER_H
+#endif // BL_BUILDER_H

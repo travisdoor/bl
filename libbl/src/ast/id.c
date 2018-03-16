@@ -30,9 +30,8 @@
 #include "ast/id_impl.h"
 
 void
-bl_id_init(bl_id_t *id,
-                const char *str)
+bl_id_init(bl_id_t *id, const char *str)
 {
   id->hash = bo_hash_from_str(str);
-  id->str = str;
+  id->str  = str;
 }

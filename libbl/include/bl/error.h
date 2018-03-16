@@ -33,8 +33,7 @@
 
 BO_BEGIN_DECLS
 
-typedef enum
-{
+typedef enum {
   BL_NO_ERR = 0,
 
   BL_ERR_FILE_NOT_FOUND = 100,
@@ -76,4 +75,4 @@ typedef enum
 
 BO_END_DECLS
 
-#endif //BL_ERROR_H
+#endif // BL_ERROR_H

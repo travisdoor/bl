@@ -33,4 +33,4 @@
 #include "bl/error.h"
 #include "blmemory_impl.h"
 
-#endif //BL_COMMON_IMPL_H
+#endif // BL_COMMON_IMPL_H

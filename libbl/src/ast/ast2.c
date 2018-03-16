@@ -31,7 +31,7 @@
 
 static const char *node_strings[] = {
 #define nt(tok, str) str,
-  BL_NTYPE_LIST
+    BL_NTYPE_LIST
 #undef nt
 };
 
@@ -42,7 +42,7 @@ void
 bl_ast2_init(bl_ast2_t *ast)
 {
   ast->nodes = bo_array_new(sizeof(void *));
-  ast->root = NULL;
+  ast->root  = NULL;
 }
 
 void
@@ -61,25 +61,25 @@ bl_ast2_terminate(bl_ast2_t *ast)
 }
 
 bl_node_t *
-_bl_ast2_new_node(bl_ast2_t *ast,
-                  bl_node_e type)
+_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type)
 {
   bl_node_t *new_node;
 
   switch (type) {
-    case BL_NODE_ITEM:
-      new_node = bl_calloc(sizeof(bl_item_t), 1);
-      break;
-    case BL_NODE_MODULE:
-      new_node = bl_calloc(sizeof(bl_module_t), 1);
-      break;
-    case BL_NODE_BLOCK:
-      new_node = bl_calloc(sizeof(bl_block_t), 1);
-      break;
-    case BL_NODE_FUNC_DECL:
-      new_node = bl_calloc(sizeof(bl_block_t), 1);
-      break;
-    default: bl_abort("unknown node type");
+  case BL_NODE_ITEM:
+    new_node = bl_calloc(sizeof(bl_item_t), 1);
+    break;
+  case BL_NODE_MODULE:
+    new_node = bl_calloc(sizeof(bl_module_t), 1);
+    break;
+  case BL_NODE_BLOCK:
+    new_node = bl_calloc(sizeof(bl_block_t), 1);
+    break;
+  case BL_NODE_FUNC_DECL:
+    new_node = bl_calloc(sizeof(bl_block_t), 1);
+    break;
+  default:
+    bl_abort("unknown node type");
   }
 
   new_node->t = type;
@@ -91,18 +91,19 @@ void
 delete_node(bl_node_t *node)
 {
   switch (node->t) {
-    case BL_NODE_ITEM:
-      break;
-    case BL_NODE_MODULE:
-      bo_unref(((bl_module_t *) node)->items);
-      break;
-    case BL_NODE_BLOCK:
-      bo_unref(((bl_block_t *) node)->stmts);
-      break;
-    case BL_NODE_FUNC_DECL:
-      bo_unref(((bl_func_decl_t *) node)->params);
-      break;
-    default: bl_abort("unknown node type");
+  case BL_NODE_ITEM:
+    break;
+  case BL_NODE_MODULE:
+    bo_unref(((bl_module_t *)node)->items);
+    break;
+  case BL_NODE_BLOCK:
+    bo_unref(((bl_block_t *)node)->stmts);
+    break;
+  case BL_NODE_FUNC_DECL:
+    bo_unref(((bl_func_decl_t *)node)->params);
+    break;
+  default:
+    bl_abort("unknown node type");
   }
 }
 
@@ -113,8 +114,7 @@ bl_node_to_str(bl_node_t *node)
 }
 
 bl_item_t *
-bl_ast_module_push_item(bl_module_t *module,
-                        bl_item_t *item)
+bl_ast_module_push_item(bl_module_t *module, bl_item_t *item)
 {
   if (module->items == NULL) {
     module->items = bo_array_new(sizeof(void *));
@@ -136,12 +136,10 @@ bl_ast_module_item_count(bl_module_t *module)
 }
 
 bl_item_t *
-bl_ast_module_get_item(bl_module_t *module,
-                       size_t i)
+bl_ast_module_get_item(bl_module_t *module, size_t i)
 {
   if (module->items == NULL)
     return 0;
 
   return bo_array_at(module->items, i, bl_item_t *);
 }
-

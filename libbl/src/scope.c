@@ -71,7 +71,7 @@ bl_scope_push(bl_scope_t *cnt)
   scope_t scope;
 
   scope.idents = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
-  scope.types = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
+  scope.types  = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
   bo_array_push_back(cnt->scopes, scope);
 }
 
@@ -87,8 +87,7 @@ bl_scope_pop(bl_scope_t *cnt)
 }
 
 bl_node_t *
-bl_scope_add_ident(bl_scope_t *cnt,
-                   bl_node_t *node)
+bl_scope_add_ident(bl_scope_t *cnt, bl_node_t *node)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
@@ -106,8 +105,7 @@ bl_scope_add_ident(bl_scope_t *cnt,
 }
 
 bl_node_t *
-bl_scope_add_type(bl_scope_t *cnt,
-                  bl_node_t *node)
+bl_scope_add_type(bl_scope_t *cnt, bl_node_t *node)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
@@ -125,8 +123,7 @@ bl_scope_add_type(bl_scope_t *cnt,
 }
 
 bl_node_t *
-bl_scope_get_ident(bl_scope_t *cnt,
-                   bl_ident_t *ident)
+bl_scope_get_ident(bl_scope_t *cnt, bl_ident_t *ident)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
@@ -142,8 +139,7 @@ bl_scope_get_ident(bl_scope_t *cnt,
 }
 
 bl_node_t *
-bl_scope_get_type(bl_scope_t *cnt,
-                   bl_type_t *type)
+bl_scope_get_type(bl_scope_t *cnt, bl_type_t *type)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
@@ -165,4 +161,3 @@ bl_scope_get_all(bl_scope_t *cnt)
   bl_assert(c, "invalid scope cache size");
   return bo_array_at(cnt->scopes, c - 1, BHashTable *);
 }
-

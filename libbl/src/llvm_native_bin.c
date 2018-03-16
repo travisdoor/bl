@@ -30,19 +30,18 @@
 #include "bl/config.h"
 
 bl_error_e
-bl_llvm_native_bin_run(bl_builder_t *builder,
-                       bl_assembly_t *assembly)
+bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
-  const char *cmd = 
-    "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker " 
-    "/lib64/ld-linux-x86-64.so.2 %s.o -o %s " 
-    "/usr/lib64/crt1.o "
-    "/usr/lib64/crti.o "
-    "-L/usr/bin " 
-    "-L/usr/lib64 " 
-    "-lc %s " 
-    "/usr/lib64/crtn.o";
+  const char *cmd =
+      "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker "
+      "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
+      "/usr/lib64/crt1.o "
+      "/usr/lib64/crti.o "
+      "-L/usr/bin "
+      "-L/usr/lib64 "
+      "-lc %s "
+      "/usr/lib64/crtn.o";
 #elif defined(BL_PLATFORM_MACOS)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o %s";
 #endif
@@ -54,6 +53,3 @@ bl_llvm_native_bin_run(bl_builder_t *builder,
 
   return BL_NO_ERR;
 }
-
-
-

@@ -48,4 +48,4 @@ typedef struct bl_unit
 
 } bl_unit_t;
 
-#endif //BL_UNIT_IMPL_H
+#endif // BL_UNIT_IMPL_H

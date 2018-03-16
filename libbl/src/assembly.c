@@ -37,8 +37,8 @@ bl_assembly_t *
 bl_assembly_new(const char *name)
 {
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
-  assembly->name  = strdup(name);
-  assembly->units = bo_array_new(sizeof(bl_unit_t *));
+  assembly->name          = strdup(name);
+  assembly->units         = bo_array_new(sizeof(bl_unit_t *));
 
   return assembly;
 }
@@ -51,8 +51,8 @@ bl_assembly_delete(bl_assembly_t *assembly)
   LLVMContextDispose(assembly->llvm_cnt);
 
   const size_t c = bo_array_size(assembly->units);
-  bl_unit_t    *unit;
-  for (size_t  i = 0; i < c; i++) {
+  bl_unit_t *unit;
+  for (size_t i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
     bl_unit_delete(unit);
   }
@@ -62,8 +62,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
 }
 
 void
-bl_assembly_add_unit(bl_assembly_t *assembly,
-                     bl_unit_t *unit)
+bl_assembly_add_unit(bl_assembly_t *assembly, bl_unit_t *unit)
 {
   /* TODO: handle duplicity */
   bo_array_push_back(assembly->units, unit);
@@ -78,13 +77,11 @@ bl_assembly_get_name(bl_assembly_t *assembly)
 int
 bl_assembly_get_unit_count(bl_assembly_t *assembly)
 {
-  return (int) bo_array_size(assembly->units);
+  return (int)bo_array_size(assembly->units);
 }
 
 bl_unit_t *
-bl_assembly_get_unit(bl_assembly_t *assembly,
-                     int i)
+bl_assembly_get_unit(bl_assembly_t *assembly, int i)
 {
-  return bo_array_at(assembly->units, (size_t) i, bl_unit_t *);
+  return bo_array_at(assembly->units, (size_t)i, bl_unit_t *);
 }
-

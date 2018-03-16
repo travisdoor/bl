@@ -32,52 +32,44 @@
 #include "ast/ast2_impl.h"
 
 static void
-print_node(bl_node_t *node,
-           int pad)
+print_node(bl_node_t *node, int pad)
 {
   if (!node)
     return;
 
-  fprintf(
-    stdout,
-    "\n%*s" BL_GREEN("%s ") BL_YELLOW("%p "),
-    pad,
-    "",
-    bl_node_to_str(node),
-    node);
+  fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_YELLOW("%p "), pad, "", bl_node_to_str(node), node);
 
   switch (node->t) {
-    case BL_NODE_MODULE: {
-      pad++;
-      bl_item_t *item;
-      bl_module_t *module = (bl_module_t *)node;
-      const size_t c = bl_ast_module_item_count(module);
-      for (size_t i = 0; i < c; i++) {
-        item = bl_ast_module_get_item(module, i);
-        print_node((bl_node_t *) item, pad);
-      }
-
-      break;
+  case BL_NODE_MODULE: {
+    pad++;
+    bl_item_t *item;
+    bl_module_t *module = (bl_module_t *)node;
+    const size_t c      = bl_ast_module_item_count(module);
+    for (size_t i = 0; i < c; i++) {
+      item = bl_ast_module_get_item(module, i);
+      print_node((bl_node_t *)item, pad);
     }
-    case BL_NODE_ITEM:
-      break;
-    default:
-      break;
+
+    break;
+  }
+  case BL_NODE_ITEM:
+    break;
+  default:
+    break;
   }
 }
 
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
-  const int c = bl_assembly_get_unit_count(assembly);
+  const int c     = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    print_node((bl_node_t *) unit->ast.root, 0);
+    print_node((bl_node_t *)unit->ast.root, 0);
   }
 
   fprintf(stdout, "\n\n");
   return BL_NO_ERR;
 }
-
