@@ -57,7 +57,7 @@ static bl_func_decl_t *
 parse_func_decl(context_t *cnt);
 
 static bl_block_t *
-parse_block(context_t *cnt);
+parse_block_maybe(context_t *cnt);
 
 static bl_struct_decl_t *
 parse_struct(context_t *cnt);
@@ -67,6 +67,70 @@ parse_enum(context_t *cnt);
 
 static bl_arg_t *
 parse_arg(context_t *cnt);
+
+static bl_type_t *
+parse_type(context_t *cnt);
+
+static bl_type_t *
+parse_ret_type(context_t *cnt);
+
+bl_type_t *
+parse_type(context_t *cnt)
+{
+  bl_type_t *type = NULL;
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
+  if (tok != NULL) {
+    type = bl_ast2_new_node(cnt->ast, BL_NODE_TYPE, tok, bl_type_t);
+    bl_id_init(&type->id, tok->value.as_string);
+
+    switch (type->id.hash) {
+    case BL_FTYPE_VOID:
+    case BL_FTYPE_I8:
+    case BL_FTYPE_I32:
+    case BL_FTYPE_I64:
+    case BL_FTYPE_U8:
+    case BL_FTYPE_U32:
+    case BL_FTYPE_U64:
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+    case BL_FTYPE_CHAR:
+    case BL_FTYPE_STRING:
+    case BL_FTYPE_BOOL:
+      type->t         = BL_TYPE_FUND;
+      type->type.fund = type->id.hash;
+      break;
+    default:
+      type->t = BL_TYPE_UNKNOWN;
+    }
+  }
+
+  return type;
+}
+
+bl_type_t *
+parse_ret_type(context_t *cnt)
+{
+  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+  switch (tok->sym) {
+  case BL_SYM_IDENT:
+    return parse_type(cnt);
+  case BL_SYM_LBLOCK:
+  case BL_SYM_SEMICOLON: {
+    bl_type_t *type = bl_ast2_new_node(cnt->ast, BL_NODE_TYPE, tok, bl_type_t);
+    type->id        = (bl_id_t){.str = "void", .hash = BL_FTYPE_VOID};
+    type->t         = BL_TYPE_FUND;
+    type->type.fund = BL_FTYPE_VOID;
+    return type;
+  }
+  default:
+    parse_error(
+        cnt, BL_ERR_EXPECTED_TYPE, tok,
+        "expected function return type or nothing in case when function has no return type");
+  }
+
+  /* should not be reached */
+  return NULL;
+}
 
 bl_struct_decl_t *
 parse_struct(context_t *cnt)
@@ -87,9 +151,9 @@ parse_enum(context_t *cnt)
 bl_func_decl_t *
 parse_func_decl(context_t *cnt)
 {
-  bl_func_decl_t *func_decl = bl_ast2_new_node(cnt->ast, BL_NODE_FUNC_DECL, bl_func_decl_t);
+  bl_token_t *tok           = bl_tokens_consume(cnt->tokens);
+  bl_func_decl_t *func_decl = bl_ast2_new_node(cnt->ast, BL_NODE_FUNC_DECL, tok, bl_func_decl_t);
 
-  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_LPAREN) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "expected function parameter list");
   }
@@ -105,13 +169,12 @@ arg:
   tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_RPAREN) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok,
-                "missing " BL_YELLOW("')'") " at the end of function parameter list");
+                "expected end of parameter list " BL_YELLOW(
+                    "')'") " or another parameter separated by comma");
   }
 
   /* has return type defined? if not we use void */
-  if (bl_tokens_peek(cnt->tokens)->sym == BL_SYM_IDENT) {
-    bl_tokens_consume(cnt->tokens);
-  }
+  func_decl->ret = parse_ret_type(cnt);
 
   return func_decl;
 }
@@ -120,22 +183,39 @@ bl_arg_t *
 parse_arg(context_t *cnt)
 {
   bl_arg_t *arg = NULL;
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_IDENT)) {
-    arg = bl_ast2_new_node(cnt->ast, BL_NODE_ARG, bl_arg_t);
-    // TODO: fill arg
-    bl_tokens_consume(cnt->tokens);
-    bl_tokens_consume(cnt->tokens);
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    arg             = bl_ast2_new_node(cnt->ast, BL_NODE_ARG, tok, bl_arg_t);
+    bl_id_init(&arg->id, tok->value.as_string);
+
+    arg->type = parse_type(cnt);
+    if (arg->type == NULL) {
+      bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "expected argument type");
+    }
   }
 
   return arg;
 }
 
 bl_block_t *
-parse_block(context_t *cnt)
+parse_block_maybe(context_t *cnt)
 {
-  bl_block_t *block = bl_ast2_new_node(cnt->ast, BL_NODE_BLOCK, bl_block_t);
-  bl_tokens_consume(cnt->tokens); // {
-  bl_tokens_consume(cnt->tokens); // }
+  bl_block_t *block = NULL;
+
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+  if (tok_begin != NULL) {
+    block = bl_ast2_new_node(cnt->ast, BL_NODE_BLOCK, tok_begin, bl_block_t);
+
+    /* TODO: parse block body */
+
+    bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
+    if (tok_end->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
+                  "expected end of the block " BL_YELLOW("'}'") " started %d:%d", tok_begin->line,
+                  tok_begin->col);
+    }
+  }
 
   return block;
 }
@@ -157,38 +237,40 @@ parse_item(context_t *cnt)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected function name");
     }
 
-    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, bl_item_t);
+    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
     item->t = BL_ITEM_FUNC;
 
     bl_id_init(&item->id, tok->value.as_string);
-    bl_src_init(&item->src, tok);
 
     item->node.func.func_decl = parse_func_decl(cnt);
-    item->node.func.block     = parse_block(cnt);
+    item->node.func.block     = parse_block_maybe(cnt);
+
+    if (item->node.func.block == NULL) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "missing function body");
+    }
+
     break;
   }
   case BL_SYM_STRUCT:
     bl_tokens_consume(cnt->tokens);
     tok     = bl_tokens_consume(cnt->tokens);
-    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, bl_item_t);
+    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
     item->t = BL_ITEM_STRUCT;
     bl_id_init(&item->id, tok->value.as_string);
-    bl_src_init(&item->src, tok);
     item->node.struct_decl = parse_struct(cnt);
     break;
   case BL_SYM_ENUM:
     bl_tokens_consume(cnt->tokens);
     tok     = bl_tokens_consume(cnt->tokens);
-    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, bl_item_t);
+    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
     item->t = BL_ITEM_ENUM;
     bl_id_init(&item->id, tok->value.as_string);
-    bl_src_init(&item->src, tok);
     item->node.enum_decl = parse_enum(cnt);
     break;
   case BL_SYM_EOF:
     break;
   default:
-    bl_abort("invalid symbol %d, expected item", tok->sym);
+    parse_error(cnt, BL_ERR_INVALID_TOKEN, tok, "invalid token, expected: fn, struct or enum");
   }
 
   return item;
@@ -197,7 +279,7 @@ parse_item(context_t *cnt)
 bl_module_t *
 parse_module(context_t *cnt)
 {
-  bl_module_t *module = bl_ast2_new_node(cnt->ast, BL_NODE_MODULE, bl_module_t);
+  bl_module_t *module = bl_ast2_new_node(cnt->ast, BL_NODE_MODULE, NULL, bl_module_t);
 
   /*
    * Should be extended when nested modules and named modules will

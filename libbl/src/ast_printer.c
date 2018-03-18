@@ -37,7 +37,8 @@ print_node(bl_node_t *node, int pad)
   if (!node)
     return;
 
-  fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_YELLOW("%p "), pad, "", bl_node_to_str(node), node);
+  fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d> ") BL_YELLOW("%p "), pad, "",
+          bl_ast2_node_to_str(node), node->src.line, node->src.col, node);
 
   switch (node->t) {
   case BL_NODE_MODULE: {
@@ -62,6 +63,20 @@ print_node(bl_node_t *node, int pad)
       print_node((bl_node_t *)arg, pad);
     }
 
+    print_node((bl_node_t *)func->ret, pad);
+
+    break;
+  }
+  case BL_NODE_TYPE: {
+    bl_type_t *type = (bl_type_t *)node;
+    fprintf(stdout, "name: " BL_YELLOW("%s"), type->id.str);
+    break;
+  }
+  case BL_NODE_ARG: {
+    pad += 2;
+    bl_arg_t *arg = (bl_arg_t *)node;
+    fprintf(stdout, "name: " BL_YELLOW("%s"), arg->id.str);
+    print_node((bl_node_t *)arg->type, pad);
     break;
   }
   case BL_NODE_ITEM: {
@@ -71,8 +86,8 @@ print_node(bl_node_t *node, int pad)
 
     switch (item->t) {
     case BL_ITEM_FUNC:
-      print_node((bl_node_t *)item->node.func.func_decl, pad); 
-      print_node((bl_node_t *)item->node.func.block, pad); 
+      print_node((bl_node_t *)item->node.func.func_decl, pad);
+      print_node((bl_node_t *)item->node.func.block, pad);
       break;
     case BL_ITEM_MODULE:
       break;

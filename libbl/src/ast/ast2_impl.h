@@ -42,14 +42,37 @@
   nt(STRUCT_DECL, "struct_decl") \
   nt(ENUM_DECL, "enum_decl") \
   nt(ARG, "arg") \
+  nt(STMT, "stmt") \
+  nt(DECL, "decl") \
+  nt(EXPR, "expr") \
+  nt(TYPE, "type")
+
 // clang-format on
 
-typedef struct
+typedef struct bl_ast2 bl_ast2_t;
+
+typedef struct bl_src bl_src_t;
+typedef struct bl_node bl_node_t;
+typedef struct bl_type bl_type_t;
+typedef struct bl_module bl_module_t;
+typedef struct bl_func_decl bl_func_decl_t;
+typedef struct bl_struct_decl bl_struct_decl_t;
+typedef struct bl_enum_decl bl_enum_decl_t;
+typedef struct bl_arg bl_arg_t;
+typedef struct bl_block bl_block_t;
+typedef struct bl_item bl_item_t;
+typedef struct bl_stmt bl_stmt_t;
+typedef struct bl_decl bl_decl_t;
+typedef struct bl_expr bl_expr_t;
+
+typedef enum bl_fund_type bl_fund_type_e;
+
+struct bl_src
 {
   int line;
   int col;
   const char *file;
-} bl_src_t;
+};
 
 typedef enum {
 #define nt(tok, str) BL_NODE_##tok,
@@ -57,48 +80,86 @@ typedef enum {
 #undef nt
 } bl_node_e;
 
-typedef struct
+struct bl_node
 {
   bl_node_e t;
-} bl_node_t;
+  bl_src_t src;
+};
 
-typedef struct
+enum bl_fund_type
 {
-  bl_node_t base_;
-  BArray *items;
-} bl_module_t;
+  BL_FTYPE_VOID   = 0x7c9faa57,
+  BL_FTYPE_I8     = 0x597806,
+  BL_FTYPE_I32    = 0xb887853,
+  BL_FTYPE_I64    = 0xb8878b8,
+  BL_FTYPE_U8     = 0x597992,
+  BL_FTYPE_U32    = 0xb88ab5f,
+  BL_FTYPE_U64    = 0xb88abc4,
+  BL_FTYPE_F32    = 0xb886b90,
+  BL_FTYPE_F64    = 0xb886bf5,
+  BL_FTYPE_CHAR   = 0x7c952063,
+  BL_FTYPE_STRING = 0x1c93affc,
+  BL_FTYPE_BOOL   = 0x7c94b391,
+};
 
-typedef struct
-{
-  bl_node_t base_;
-  BArray *params;
-  // TODO: return type
-} bl_func_decl_t;
-
-typedef struct
-{
-  bl_node_t base_;
-} bl_struct_decl_t;
-
-typedef struct
-{
-  bl_node_t base_;
-} bl_enum_decl_t;
-
-typedef struct
+struct bl_type
 {
   bl_node_t base_;
   bl_id_t id;
-  // TODO: type 
-} bl_arg_t;
 
-typedef struct
+  enum
+  {
+    BL_TYPE_FUND,
+    BL_TYPE_STRUCT,
+    BL_TYPE_ENUM,
+    BL_TYPE_UNKNOWN
+  } t;
+
+  union
+  {
+    bl_fund_type_e fund;
+    bl_struct_decl_t *strct;
+    bl_enum_decl_t *enm;
+  } type;
+};
+
+struct bl_module
+{
+  bl_node_t base_;
+  BArray *items;
+};
+
+struct bl_func_decl
+{
+  bl_node_t base_;
+  BArray *params;
+  bl_type_t *ret;
+};
+
+struct bl_struct_decl
+{
+  bl_node_t base_;
+};
+
+struct bl_enum_decl
+{
+  bl_node_t base_;
+};
+
+struct bl_arg
+{
+  bl_node_t base_;
+  bl_id_t id;
+  bl_type_t *type;
+};
+
+struct bl_block
 {
   bl_node_t base_;
   BArray *stmts;
-} bl_block_t;
+};
 
-typedef struct
+struct bl_item
 {
   bl_node_t base_;
   enum
@@ -106,10 +167,10 @@ typedef struct
     BL_ITEM_MODULE,
     BL_ITEM_FUNC,
     BL_ITEM_STRUCT,
-    BL_ITEM_ENUM
+    BL_ITEM_ENUM,
+    BL_ITEM_EXTERN,
   } t;
 
-  bl_src_t src;
   bl_id_t id;
   union
   {
@@ -122,14 +183,46 @@ typedef struct
       bl_func_decl_t *func_decl;
       bl_block_t *block;
     } func;
-  } node;
-} bl_item_t;
 
-typedef struct
+    struct
+    {
+      bl_func_decl_t *func_decl;
+    } extern_func;
+  } node;
+};
+
+struct bl_decl
+{
+  bl_node_t base_;
+};
+
+struct bl_expr
+{
+  bl_node_t base_;
+};
+
+struct bl_stmt
+{
+  bl_node_t base_;
+
+  enum
+  {
+    BL_STMT_DECL,
+    BL_STMT_EXPR
+  } t;
+
+  union
+  {
+    bl_decl_t *decl;
+    bl_expr_t *expr;
+  } stmt;
+};
+
+struct bl_ast2
 {
   BArray *nodes;
   bl_module_t *root;
-} bl_ast2_t;
+};
 
 void
 bl_src_init(bl_src_t *src, bl_token_t *tok);
@@ -141,12 +234,12 @@ void
 bl_ast2_terminate(bl_ast2_t *ast);
 
 bl_node_t *
-_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type);
+_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type, bl_token_t *tok);
 
 const char *
-bl_node_to_str(bl_node_t *node);
+bl_ast2_node_to_str(bl_node_t *node);
 
-#define bl_ast2_new_node(ast, nt, t) (t *)_bl_ast2_new_node((ast), (nt));
+#define bl_ast2_new_node(ast, nt, tok, t) (t *)_bl_ast2_new_node((ast), (nt), (tok));
 
 bl_item_t *
 bl_ast_module_push_item(bl_module_t *module, bl_item_t *item);
@@ -157,7 +250,6 @@ bl_ast_module_item_count(bl_module_t *module);
 bl_item_t *
 bl_ast_module_get_item(bl_module_t *module, size_t i);
 
-
 bl_arg_t *
 bl_ast_func_push_arg(bl_func_decl_t *func, bl_arg_t *arg);
 
@@ -166,5 +258,14 @@ bl_ast_func_arg_count(bl_func_decl_t *func);
 
 bl_arg_t *
 bl_ast_func_get_arg(bl_func_decl_t *func, size_t i);
+
+bl_stmt_t *
+bl_ast_block_push_stmt(bl_block_t *block, bl_stmt_t *stmt);
+
+size_t
+bl_ast_block_stmt_count(bl_block_t *block);
+
+bl_stmt_t *
+bl_ast_block_get_stmt(bl_block_t *block, size_t i);
 
 #endif // BL_NODE2_IMPL_H

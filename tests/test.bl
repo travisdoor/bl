@@ -3,6 +3,8 @@
  */
 
 fn main(a i32, b i32) i32 {
+  /*var i i32;*/
+  /*i = 10; */
 }
 
 fn hello() {

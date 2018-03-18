@@ -26,6 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <bobject/containers/hash.h>
 #include "ast/ast2_impl.h"
 #include "common_impl.h"
 
@@ -69,7 +70,7 @@ bl_ast2_terminate(bl_ast2_t *ast)
 }
 
 bl_node_t *
-_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type)
+_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type, bl_token_t *tok)
 {
   bl_node_t *new_node;
 
@@ -95,11 +96,25 @@ _bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type)
   case BL_NODE_ENUM_DECL:
     new_node = bl_calloc(sizeof(bl_enum_decl_t), 1);
     break;
+  case BL_NODE_TYPE:
+    new_node = bl_calloc(sizeof(bl_type_t), 1);
+    break;
+  case BL_NODE_STMT:
+    new_node = bl_calloc(sizeof(bl_stmt_t), 1);
+    break;
+  case BL_NODE_EXPR:
+    new_node = bl_calloc(sizeof(bl_expr_t), 1);
+    break;
+  case BL_NODE_DECL:
+    new_node = bl_calloc(sizeof(bl_decl_t), 1);
+    break;
   default:
     bl_abort("unknown node type");
   }
 
   new_node->t = type;
+  if (tok != NULL)
+    bl_src_init(&new_node->src, tok);
   bo_array_push_back(ast->nodes, new_node);
   return new_node;
 }
@@ -122,6 +137,10 @@ delete_node(bl_node_t *node)
   case BL_NODE_ARG:
   case BL_NODE_STRUCT_DECL:
   case BL_NODE_ENUM_DECL:
+  case BL_NODE_TYPE:
+  case BL_NODE_STMT:
+  case BL_NODE_EXPR:
+  case BL_NODE_DECL:
     break;
   default:
     bl_abort("unknown node type");
@@ -129,7 +148,7 @@ delete_node(bl_node_t *node)
 }
 
 const char *
-bl_node_to_str(bl_node_t *node)
+bl_ast2_node_to_str(bl_node_t *node)
 {
   return node_strings[node->t];
 }
@@ -194,4 +213,35 @@ bl_ast_func_get_arg(bl_func_decl_t *func, size_t i)
     return 0;
 
   return bo_array_at(func->params, i, bl_arg_t *);
+}
+
+bl_stmt_t *
+bl_ast_block_push_stmt(bl_block_t *block, bl_stmt_t *stmt)
+{
+  if (block->stmts == NULL) {
+    block->stmts = bo_array_new(sizeof(void *));
+  }
+
+  if (stmt == NULL)
+    return NULL;
+
+  bo_array_push_back(block->stmts, stmt);
+  return stmt;
+}
+
+size_t
+bl_ast_block_stmt_count(bl_block_t *block)
+{
+  if (block->stmts == NULL)
+    return 0;
+  return bo_array_size(block->stmts);
+}
+
+bl_stmt_t *
+bl_ast_block_get_stmt(bl_block_t *block, size_t i)
+{
+  if (block->stmts == NULL)
+    return 0;
+
+  return bo_array_at(block->stmts, i, bl_stmt_t *);
 }
