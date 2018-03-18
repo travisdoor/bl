@@ -7,7 +7,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword blKey public struct as module behavior impl use extern return if else while loop break continue enum
+syn keyword blKey public struct as module behavior impl use extern return if else while loop break continue enum fn var
 syn keyword blType i32 i64 u32 u64 f32 f64 void char string bool ptr u8 i8
 syn keyword blBool true false 
 syn keyword blConst self 
@@ -22,7 +22,8 @@ syn match blPreproc "#run\|#assert\|#test\|#load"
 
 syntax match blNumber "\v<\d+>"
 syntax match blNumber "\v<\d+\.\d+>"
-syntax match blNumber "\v\0x\d+|[abcsdf]+>"
+syntax match blNumber "\<0[xX]\x\+[lL]\=\>"
+syntax match blNumber "\<0[bB][01]\+[lL]\=\>"
 
 " Operators
 syn match blOperator	"\(<<\|>>\|[-+*/%&^|<>!=]\)="
