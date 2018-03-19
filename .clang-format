@@ -1,0 +1,14 @@
+BasedOnStyle: LLVM 
+AccessModifierOffset: -2
+IndentWidth: 2
+UseTab: Never
+BreakBeforeBraces: Mozilla 
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: false
+SortIncludes: false
+AlwaysBreakTemplateDeclarations: true
+AlwaysBreakAfterReturnType: All
+AllowShortFunctionsOnASingleLine: false
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: true
+ColumnLimit: 100
