@@ -45,32 +45,40 @@
   nt(STMT, "stmt") \
   nt(DECL, "decl") \
   nt(EXPR, "expr") \
+  nt(BINOP, "binop") \
+  nt(CALL, "call") \
+  nt(VAR_REF, "var_ref") \
+  nt(CONST_EXPR, "constant") \
   nt(TYPE, "type")
 
 // clang-format on
 
 typedef struct bl_ast2 bl_ast2_t;
 
-typedef struct bl_src bl_src_t;
-typedef struct bl_node bl_node_t;
-typedef struct bl_type bl_type_t;
-typedef struct bl_module bl_module_t;
-typedef struct bl_func_decl bl_func_decl_t;
+typedef struct bl_src         bl_src_t;
+typedef struct bl_node        bl_node_t;
+typedef struct bl_type        bl_type_t;
+typedef struct bl_module      bl_module_t;
+typedef struct bl_func_decl   bl_func_decl_t;
 typedef struct bl_struct_decl bl_struct_decl_t;
-typedef struct bl_enum_decl bl_enum_decl_t;
-typedef struct bl_arg bl_arg_t;
-typedef struct bl_block bl_block_t;
-typedef struct bl_item bl_item_t;
-typedef struct bl_stmt bl_stmt_t;
-typedef struct bl_decl bl_decl_t;
-typedef struct bl_expr bl_expr_t;
+typedef struct bl_enum_decl   bl_enum_decl_t;
+typedef struct bl_arg         bl_arg_t;
+typedef struct bl_block       bl_block_t;
+typedef struct bl_item        bl_item_t;
+typedef struct bl_stmt        bl_stmt_t;
+typedef struct bl_decl        bl_decl_t;
+typedef struct bl_expr        bl_expr_t;
+typedef struct bl_const_expr  bl_const_expr_t;
+typedef struct bl_binop       bl_binop_t;
+typedef struct bl_call        bl_call_t;
+typedef struct bl_var_ref     bl_var_ref_t;
 
 typedef enum bl_fund_type bl_fund_type_e;
 
 struct bl_src
 {
-  int line;
-  int col;
+  int         line;
+  int         col;
   const char *file;
 };
 
@@ -83,7 +91,7 @@ typedef enum {
 struct bl_node
 {
   bl_node_e t;
-  bl_src_t src;
+  bl_src_t  src;
 };
 
 enum bl_fund_type
@@ -105,7 +113,7 @@ enum bl_fund_type
 struct bl_type
 {
   bl_node_t base_;
-  bl_id_t id;
+  bl_id_t   id;
 
   enum
   {
@@ -117,22 +125,22 @@ struct bl_type
 
   union
   {
-    bl_fund_type_e fund;
+    bl_fund_type_e    fund;
     bl_struct_decl_t *strct;
-    bl_enum_decl_t *enm;
+    bl_enum_decl_t *  enm;
   } type;
 };
 
 struct bl_module
 {
   bl_node_t base_;
-  BArray *items;
+  BArray *  items;
 };
 
 struct bl_func_decl
 {
-  bl_node_t base_;
-  BArray *params;
+  bl_node_t  base_;
+  BArray *   params;
   bl_type_t *ret;
 };
 
@@ -148,15 +156,15 @@ struct bl_enum_decl
 
 struct bl_arg
 {
-  bl_node_t base_;
-  bl_id_t id;
+  bl_node_t  base_;
+  bl_id_t    id;
   bl_type_t *type;
 };
 
 struct bl_block
 {
   bl_node_t base_;
-  BArray *stmts;
+  BArray *  stmts;
 };
 
 struct bl_item
@@ -174,14 +182,14 @@ struct bl_item
   bl_id_t id;
   union
   {
-    bl_module_t *module;
+    bl_module_t *     module;
     bl_struct_decl_t *struct_decl;
-    bl_enum_decl_t *enum_decl;
+    bl_enum_decl_t *  enum_decl;
 
     struct
     {
       bl_func_decl_t *func_decl;
-      bl_block_t *block;
+      bl_block_t *    block;
     } func;
 
     struct
@@ -193,12 +201,71 @@ struct bl_item
 
 struct bl_decl
 {
-  bl_node_t base_;
+  bl_node_t  base_;
+  bl_id_t    id;
+  bl_type_t *type;
+  bl_expr_t *init_expr;
+};
+
+struct bl_const_expr
+{
+  bl_node_t  base_;
+  bl_type_t *type;
+
+  union
+  {
+    char               c;
+    bool               b;
+    long long          s;
+    unsigned long long u;
+    double             f;
+    const char *       str;
+  } value;
+};
+
+struct bl_binop
+{
+  bl_node_t  base_;
+  bl_sym_e   op;
+  bl_expr_t *lhs;
+  bl_expr_t *rhs;
+};
+
+struct bl_call
+{
+  bl_node_t       base_;
+  bl_id_t         id;
+  bl_func_decl_t *callee;
+};
+
+struct bl_var_ref
+{
+  bl_node_t  base_;
+  bl_id_t    id;
+  bl_decl_t *ref;
 };
 
 struct bl_expr
 {
   bl_node_t base_;
+
+  enum
+  {
+    BL_EXPR_CONST,
+    BL_EXPR_BINOP,
+    BL_EXPR_NESTED,
+    BL_EXPR_CALL,
+    BL_EXPR_VAR_REF
+  } t;
+
+  union
+  {
+    bl_const_expr_t *cnst;
+    bl_binop_t *     binop;
+    bl_expr_t *      nested;
+    bl_call_t *      call;
+    bl_var_ref_t *   var_ref;
+  } expr;
 };
 
 struct bl_stmt
@@ -220,7 +287,7 @@ struct bl_stmt
 
 struct bl_ast2
 {
-  BArray *nodes;
+  BArray *     nodes;
   bl_module_t *root;
 };
 

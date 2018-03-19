@@ -11,4 +11,6 @@ AlwaysBreakAfterReturnType: All
 AllowShortFunctionsOnASingleLine: false
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+PointerAlignment: Right
 ColumnLimit: 100

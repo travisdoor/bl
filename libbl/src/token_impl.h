@@ -45,6 +45,7 @@ BO_BEGIN_DECLS
   sm(DOUBLE, "double") \
   sm(IF, "if") /* must be first */ \
   sm(FN, "fn") \
+  sm(VAR, "var") \
   sm(ELSE, "else") \
   sm(TRUE, "true") \
   sm(FALSE, "false") \

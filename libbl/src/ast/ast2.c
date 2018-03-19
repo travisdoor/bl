@@ -58,7 +58,7 @@ void
 bl_ast2_terminate(bl_ast2_t *ast)
 {
   const size_t c = bo_array_size(ast->nodes);
-  bl_node_t *node;
+  bl_node_t *  node;
 
   for (size_t i = 0; i < c; i++) {
     node = bo_array_at(ast->nodes, i, bl_node_t *);
@@ -108,6 +108,17 @@ _bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type, bl_token_t *tok)
   case BL_NODE_DECL:
     new_node = bl_calloc(sizeof(bl_decl_t), 1);
     break;
+  case BL_NODE_CONST_EXPR:
+    new_node = bl_calloc(sizeof(bl_const_expr_t), 1);
+    break;
+  case BL_NODE_BINOP:
+    new_node = bl_calloc(sizeof(bl_binop_t), 1);
+  case BL_NODE_CALL:
+    new_node = bl_calloc(sizeof(bl_call_t), 1);
+    break;
+  case BL_NODE_VAR_REF:
+    new_node = bl_calloc(sizeof(bl_var_ref_t), 1);
+    break;
   default:
     bl_abort("unknown node type");
   }
@@ -141,6 +152,10 @@ delete_node(bl_node_t *node)
   case BL_NODE_STMT:
   case BL_NODE_EXPR:
   case BL_NODE_DECL:
+  case BL_NODE_CONST_EXPR:
+  case BL_NODE_BINOP:
+  case BL_NODE_CALL:
+  case BL_NODE_VAR_REF:
     break;
   default:
     bl_abort("unknown node type");
