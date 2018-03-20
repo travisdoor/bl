@@ -3,42 +3,14 @@
  */
 
 fn main(a i32, b i32) i32 {
-  var i i32;
-  var milan i32 = 10 + 2;
-  var str string = "hello";
+  var result i32 = add(32, i + 256);
 
-  var test i32 = hello(32, i + 256);
-
-  var bl bool = true & false || (hello() + 256 * 3);
-  i = 10; 
-
-  { // block
-    { // block
-    }
-  }
-
-  /*
-  if (true) {
-  } else if {
-  } else {
-  }
-
-  loop (true) {
-  }
-
-  while (true) {
-  }
-  */
-}
-
-fn say_hello() {
+  var bl bool = true;
 }
 
 fn add(a i32, b i32) i32 {
 }
 
-enum enm {
+fn no_return(i f64) {
 }
 
-struct data_t {
-}

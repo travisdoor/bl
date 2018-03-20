@@ -47,6 +47,7 @@ static void
 visit_item(bl_visitor_t *visitor, bl_item_t *item, bl_src_t *src)
 {
   print_head("item", src, item, visitor->nesting);
+  fprintf(stdout, " name: " BL_YELLOW("'%s'"), item->id.str);
   bl_visitor_walk_item(visitor, item);
 }
 
@@ -89,6 +90,7 @@ static void
 visit_decl(bl_visitor_t *visitor, bl_decl_t *decl, bl_src_t *src)
 {
   print_head("var", src, decl, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), decl->id.str);
   bl_visitor_walk_decl(visitor, decl);
 }
 
@@ -99,6 +101,81 @@ visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
   bl_visitor_walk_expr(visitor, expr);
 }
 
+static void
+visit_const_expr(bl_visitor_t *visitor, bl_const_expr_t *expr, bl_src_t *src)
+{
+  print_head("constant", src, expr, visitor->nesting);
+
+  switch (expr->type->type.fund) {
+  case BL_FTYPE_I8:
+  case BL_FTYPE_I32:
+  case BL_FTYPE_I64:
+  case BL_FTYPE_U8:
+  case BL_FTYPE_U32:
+  case BL_FTYPE_U64:
+    fprintf(stdout, "value: " BL_MAGENTA("%lld"), expr->value.s);
+    break;
+  case BL_FTYPE_F32:
+  case BL_FTYPE_F64:
+    fprintf(stdout, "value: " BL_MAGENTA("%f"), expr->value.f);
+    break;
+  case BL_FTYPE_CHAR:
+    fprintf(stdout, "value: " BL_MAGENTA("%c"), expr->value.c);
+    break;
+  case BL_FTYPE_STRING:
+    fprintf(stdout, "value: " BL_MAGENTA("%s"), expr->value.str);
+    break;
+  case BL_FTYPE_BOOL:
+    if (expr->value.b == true)
+      fprintf(stdout, "value: " BL_MAGENTA("true"));
+    else
+      fprintf(stdout, "value: " BL_MAGENTA("false"));
+    break;
+  default:
+    break;
+  }
+
+  bl_visitor_walk_const_expr(visitor, expr);
+}
+
+static void
+visit_binop(bl_visitor_t *visitor, bl_binop_t *binop, bl_src_t *src)
+{
+  print_head("binop", src, binop, visitor->nesting);
+  bl_visitor_walk_binop(visitor, binop);
+}
+
+static void
+visit_call(bl_visitor_t *visitor, bl_call_t *call, bl_src_t *src)
+{
+  print_head("call", src, call, visitor->nesting);
+  bl_visitor_walk_call(visitor, call);
+}
+
+static void
+visit_var_ref(bl_visitor_t *visitor, bl_var_ref_t *ref, bl_src_t *src)
+{
+  print_head("ref", src, ref, visitor->nesting);
+  fprintf(stdout, "ref: " BL_YELLOW("'%s'"), ref->id.str);
+  bl_visitor_walk_var_ref(visitor, ref);
+}
+
+static void
+visit_type(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src)
+{
+  print_head("type", src, type, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), type->id.str);
+  bl_visitor_walk_type(visitor, type);
+}
+
+static void
+visit_arg(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src)
+{
+  print_head("arg", src, arg, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), arg->id.str);
+  bl_visitor_walk_arg(visitor, arg);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -107,7 +184,8 @@ bl_ast_printer_run(bl_assembly_t *assembly)
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
-    /*print_node((bl_node_t *)unit->ast.root, 0);*/
+
+    fprintf(stdout, "\nAST for unit " BL_YELLOW("%s") ":", unit->name);
 
     bl_visitor_t visitor;
     bl_visitor_init(&visitor, NULL);
@@ -121,6 +199,12 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_stmt, BL_VISIT_STMT);
     bl_visitor_add(&visitor, visit_decl, BL_VISIT_DECL);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
+    bl_visitor_add(&visitor, visit_const_expr, BL_VISIT_CONST);
+    bl_visitor_add(&visitor, visit_call, BL_VISIT_CALL);
+    bl_visitor_add(&visitor, visit_binop, BL_VISIT_BINOP);
+    bl_visitor_add(&visitor, visit_var_ref, BL_VISIT_VAR_REF);
+    bl_visitor_add(&visitor, visit_arg, BL_VISIT_ARG);
+    bl_visitor_add(&visitor, visit_type, BL_VISIT_TYPE);
 
     bl_visitor_walk_root(&visitor, (bl_node_t *)unit->ast.root);
   }
