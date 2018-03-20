@@ -506,7 +506,7 @@ parse_struct(context_t *cnt)
 {
   bl_tokens_consume(cnt->tokens); // {
   bl_tokens_consume(cnt->tokens); // }
-  return NULL;
+  return bl_ast2_new_node(cnt->ast, BL_NODE_STRUCT_DECL, NULL, bl_struct_decl_t);
 }
 
 bl_enum_decl_t *
@@ -514,7 +514,7 @@ parse_enum(context_t *cnt)
 {
   bl_tokens_consume(cnt->tokens); // {
   bl_tokens_consume(cnt->tokens); // }
-  return NULL;
+  return bl_ast2_new_node(cnt->ast, BL_NODE_ENUM_DECL, NULL, bl_enum_decl_t);
 }
 
 bl_func_decl_t *

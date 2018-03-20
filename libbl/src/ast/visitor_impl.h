@@ -32,14 +32,45 @@
 #include "ast2_impl.h"
 
 typedef struct bl_visitor bl_visitor_t;
-typedef enum { BL_VISIT_MODULE, BL_VISIT_ITEM, BL_VISIT_COUNT } bl_visit_e;
-typedef void (*bl_visit_module_f)(bl_visitor_t *visitor, bl_module_t *module);
-typedef void (*bl_visit_item_f)(bl_visitor_t *visitor, bl_item_t *item);
+
+typedef enum {
+  BL_VISIT_MODULE,
+  BL_VISIT_ITEM,
+  BL_VISIT_FUNC_DECL,
+  BL_VISIT_STRUCT_DECL,
+  BL_VISIT_ENUM_DECL,
+  BL_VISIT_BLOCK,
+  BL_VISIT_STMT,
+  BL_VISIT_DECL,
+  BL_VISIT_EXPR,
+  BL_VISIT_COUNT
+} bl_visit_e;
+
+typedef void (*bl_visit_module_f)(bl_visitor_t *visitor, bl_module_t *module, bl_src_t *src);
+
+typedef void (*bl_visit_item_f)(bl_visitor_t *visitor, bl_item_t *item, bl_src_t *src);
+
+typedef void (*bl_visit_func_decl_f)(bl_visitor_t *visitor, bl_func_decl_t *func_decl,
+                                     bl_src_t *src);
+
+typedef void (*bl_visit_block_f)(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src);
+
+typedef void (*bl_visit_struct_decl_f)(bl_visitor_t *visitor, bl_struct_decl_t *strct,
+                                       bl_src_t *src);
+
+typedef void (*bl_visit_enum_decl_f)(bl_visitor_t *visitor, bl_enum_decl_t *enm, bl_src_t *src);
+
+typedef void (*bl_visit_stmt_f)(bl_visitor_t *visitor, bl_stmt_t *stmt, bl_src_t *src);
+
+typedef void (*bl_visit_decl_f)(bl_visitor_t *visitor, bl_decl_t *decl, bl_src_t *src);
+
+typedef void (*bl_visit_expr_f)(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src);
 
 struct bl_visitor
 {
   void *visitors[BL_VISIT_COUNT];
-  void *     context;
+  void *context;
+  int   nesting;
 };
 
 void
@@ -57,5 +88,29 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module);
 
 void
 bl_visitor_walk_item(bl_visitor_t *visitor, bl_item_t *item);
+
+void
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
+
+void
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
+
+void
+bl_visitor_walk_func_decl(bl_visitor_t *visitor, bl_func_decl_t *func_decl);
+
+void
+bl_visitor_walk_struct_decl(bl_visitor_t *visitor, bl_struct_decl_t *struct_decl);
+
+void
+bl_visitor_walk_enum_decl(bl_visitor_t *visitor, bl_enum_decl_t *enum_decl);
+
+void
+bl_visitor_walk_stmt(bl_visitor_t *visitor, bl_stmt_t *stmt);
+
+void
+bl_visitor_walk_decl(bl_visitor_t *visitor, bl_decl_t *decl);
+
+void
+bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr);
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */
