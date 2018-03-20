@@ -4,27 +4,18 @@
 
 fn main(a i32, b i32) i32 {
   var i i32;
-  var i2 i32 = (10 + (3 * 2)) / 20;
+  var i2 i32 = (10 + (3 * 2)) / 20 * 32 + 156 | 2;
   var milan i32 = 10 + 2;
   var str string = "hello";
 
-  var test i32 = hello();
+  var test i32 = hello(32, i + 256);
 
   var bl bool = true & false || (hello() + 256 * 3);
-  /*i = 10; */
+  i = 10; 
 }
 
-fn hello() {
-  var i i32 = 10;
-  i = 0;
+enum enm {
 }
 
-fn another_func(float f64) {
+struct data_t {
 }
-
-struct data {
-}
-
-enum state {
-}
-

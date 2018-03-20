@@ -145,6 +145,9 @@ delete_node(bl_node_t *node)
   case BL_NODE_FUNC_DECL:
     bo_unref(((bl_func_decl_t *)node)->params);
     break;
+  case BL_NODE_CALL:
+    bo_unref(((bl_call_t *)node)->args);
+    break;
   case BL_NODE_ARG:
   case BL_NODE_STRUCT_DECL:
   case BL_NODE_ENUM_DECL:
@@ -154,7 +157,6 @@ delete_node(bl_node_t *node)
   case BL_NODE_DECL:
   case BL_NODE_CONST_EXPR:
   case BL_NODE_BINOP:
-  case BL_NODE_CALL:
   case BL_NODE_VAR_REF:
     break;
   default:
@@ -259,4 +261,35 @@ bl_ast_block_get_stmt(bl_block_t *block, size_t i)
     return 0;
 
   return bo_array_at(block->stmts, i, bl_stmt_t *);
+}
+
+bl_expr_t *
+bl_ast_call_push_arg(bl_call_t *call, bl_expr_t *expr)
+{
+  if (call->args == NULL) {
+    call->args = bo_array_new(sizeof(void *));
+  }
+
+  if (call == NULL)
+    return NULL;
+
+  bo_array_push_back(call->args, expr);
+  return expr;
+}
+
+size_t
+bl_ast_call_arg_count(bl_call_t *call)
+{
+  if (call->args == NULL)
+    return 0;
+  return bo_array_size(call->args);
+}
+
+bl_expr_t *
+bl_ast_call_get_arg(bl_call_t *call, size_t i)
+{
+  if (call->args == NULL)
+    return 0;
+
+  return bo_array_at(call->args, i, bl_expr_t *);
 }

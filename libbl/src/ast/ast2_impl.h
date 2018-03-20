@@ -236,6 +236,7 @@ struct bl_call
   bl_node_t       base_;
   bl_id_t         id;
   bl_func_decl_t *callee;
+  BArray *        args;
 };
 
 struct bl_var_ref
@@ -334,5 +335,14 @@ bl_ast_block_stmt_count(bl_block_t *block);
 
 bl_stmt_t *
 bl_ast_block_get_stmt(bl_block_t *block, size_t i);
+
+bl_expr_t *
+bl_ast_call_push_arg(bl_call_t *call, bl_expr_t *expr);
+
+size_t
+bl_ast_call_arg_count(bl_call_t *call);
+
+bl_expr_t *
+bl_ast_call_get_arg(bl_call_t *call, size_t i);
 
 #endif // BL_NODE2_IMPL_H

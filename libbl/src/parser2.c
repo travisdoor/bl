@@ -172,7 +172,17 @@ parse_call_maybe(context_t *cnt)
 
     /* constume ( */
     bl_token_t *tok_param_begin = bl_tokens_consume(cnt->tokens);
-    /* TODO: parse params */
+
+    if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RPAREN) {
+    arg:
+      if (bl_ast_call_push_arg(call, parse_expr_maybe(cnt)) == NULL) {
+        bl_token_t *error_tok = bl_tokens_peek(cnt->tokens);
+        parse_error(cnt, BL_ERR_EXPECTED_EXPR, error_tok,
+                    "expected expression in call argument list");
+      } else if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+        goto arg;
+      }
+    }
 
     bl_token_t *tok_param_end = bl_tokens_consume(cnt->tokens);
     if (tok_param_end->sym != BL_SYM_RPAREN) {
@@ -372,7 +382,12 @@ parse_expr_1(context_t *cnt, bl_expr_t *lhs, int min_precedence)
     lhs->t               = BL_EXPR_BINOP;
     lhs->expr.binop->lhs = tmp;
     lhs->expr.binop->rhs = rhs;
-    lhs->expr.binop->op  = op->sym;
+
+    if (bl_token_is_binop(op))
+      lhs->expr.binop->op = op->sym;
+    else {
+      parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, "expected binary operation");
+    }
   }
 
   return lhs;

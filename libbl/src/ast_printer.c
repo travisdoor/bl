@@ -76,8 +76,17 @@ print_node(bl_node_t *node, int pad)
     break;
   }
   case BL_NODE_CALL: {
+    pad += 2;
     bl_call_t *call = (bl_call_t *)node;
     fprintf(stdout, "callee: " BL_YELLOW("%s:%p"), call->id.str, call->callee);
+
+    bl_expr_t *      arg;
+    const size_t    c    = bl_ast_call_arg_count(call);
+    for (size_t i = 0; i < c; i++) {
+      arg = bl_ast_call_get_arg(call, i);
+      print_node((bl_node_t *)arg, pad);
+    }
+
     break;
   }
   case BL_NODE_VAR_REF: {
