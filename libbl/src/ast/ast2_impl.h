@@ -276,13 +276,15 @@ struct bl_stmt
   enum
   {
     BL_STMT_DECL,
-    BL_STMT_EXPR
+    BL_STMT_EXPR,
+    BL_STMT_BLOCK
   } t;
 
   union
   {
-    bl_decl_t *decl;
-    bl_expr_t *expr;
+    bl_decl_t * decl;
+    bl_expr_t * expr;
+    bl_block_t *block;
   } stmt;
 };
 

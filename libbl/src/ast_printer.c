@@ -30,6 +30,7 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 #include "ast/ast2_impl.h"
+#include "ast/visitor_impl.h"
 
 static void
 print_node(bl_node_t *node, int pad)
@@ -80,8 +81,8 @@ print_node(bl_node_t *node, int pad)
     bl_call_t *call = (bl_call_t *)node;
     fprintf(stdout, "callee: " BL_YELLOW("%s:%p"), call->id.str, call->callee);
 
-    bl_expr_t *      arg;
-    const size_t    c    = bl_ast_call_arg_count(call);
+    bl_expr_t *  arg;
+    const size_t c = bl_ast_call_arg_count(call);
     for (size_t i = 0; i < c; i++) {
       arg = bl_ast_call_get_arg(call, i);
       print_node((bl_node_t *)arg, pad);
@@ -90,7 +91,7 @@ print_node(bl_node_t *node, int pad)
     break;
   }
   case BL_NODE_VAR_REF: {
-    bl_var_ref_t *var_ref = (bl_var_ref_t*)node;
+    bl_var_ref_t *var_ref = (bl_var_ref_t *)node;
     fprintf(stdout, "ref: " BL_YELLOW("%s:%p"), var_ref->id.str, var_ref->ref);
     break;
   }
@@ -180,6 +181,9 @@ print_node(bl_node_t *node, int pad)
     case BL_STMT_EXPR:
       print_node((bl_node_t *)stmt->stmt.expr, pad);
       break;
+    case BL_STMT_BLOCK:
+      print_node((bl_node_t *)stmt->stmt.block, pad);
+      break;
     default:
       break;
     }
@@ -219,6 +223,20 @@ print_node(bl_node_t *node, int pad)
   }
 }
 
+static void
+visit_module(bl_visitor_t *visitor, bl_module_t *module)
+{
+  fprintf(stdout, "\nmodule");
+  bl_visitor_walk_module(visitor, module);
+}
+
+static void
+visit_item(bl_visitor_t *visitor, bl_item_t *item)
+{
+  fprintf(stdout, "\nitem: %s", item->id.str);
+  bl_visitor_walk_item(visitor, item);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -228,8 +246,16 @@ bl_ast_printer_run(bl_assembly_t *assembly)
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
     print_node((bl_node_t *)unit->ast.root, 0);
+
+    bl_visitor_t visitor;
+
+    bl_visitor_add(&visitor, visit_module, BL_VISIT_MODULE);
+    bl_visitor_add(&visitor, visit_item, BL_VISIT_ITEM);
+
+    bl_visitor_walk_root(&visitor, (bl_node_t *)unit->ast.root);
   }
 
   fprintf(stdout, "\n\n");
+
   return BL_NO_ERR;
 }

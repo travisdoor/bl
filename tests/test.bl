@@ -4,7 +4,6 @@
 
 fn main(a i32, b i32) i32 {
   var i i32;
-  var i2 i32 = (10 + (3 * 2)) / 20 * 32 + 156 | 2;
   var milan i32 = 10 + 2;
   var str string = "hello";
 
@@ -12,6 +11,30 @@ fn main(a i32, b i32) i32 {
 
   var bl bool = true & false || (hello() + 256 * 3);
   i = 10; 
+
+  { // block
+    { // block
+    }
+  }
+
+  /*
+  if (true) {
+  } else if {
+  } else {
+  }
+
+  loop (true) {
+  }
+
+  while (true) {
+  }
+  */
+}
+
+fn say_hello() {
+}
+
+fn add(a i32, b i32) i32 {
 }
 
 enum enm {

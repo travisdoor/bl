@@ -423,6 +423,14 @@ parse_stmt_maybe(context_t *cnt)
     return stmt;
   }
 
+  bl_block_t *block = parse_block_maybe(cnt);
+  if (block != NULL) {
+    stmt             = bl_ast2_new_node(cnt->ast, BL_NODE_STMT, tok, bl_stmt_t);
+    stmt->t          = BL_STMT_BLOCK;
+    stmt->stmt.block = block;
+    return stmt;
+  }
+
   return stmt;
 }
 
