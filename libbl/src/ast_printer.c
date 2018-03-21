@@ -102,6 +102,14 @@ visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
 }
 
 static void
+visit_path(bl_visitor_t *visitor, bl_path_t *path, bl_src_t *src)
+{
+  print_head("path", src, path, visitor->nesting);
+  fprintf(stdout, "id: " BL_YELLOW("'%s' -> %p"), path->id.str, path->ref);
+  bl_visitor_walk_path(visitor, path);
+}
+
+static void
 visit_const_expr(bl_visitor_t *visitor, bl_const_expr_t *expr, bl_src_t *src)
 {
   print_head("constant", src, expr, visitor->nesting);
@@ -149,6 +157,7 @@ static void
 visit_call(bl_visitor_t *visitor, bl_call_t *call, bl_src_t *src)
 {
   print_head("call", src, call, visitor->nesting);
+  fprintf(stdout, "ref: " BL_YELLOW("'%s' -> %p"), call->id.str, call->callee);
   bl_visitor_walk_call(visitor, call);
 }
 
@@ -156,7 +165,7 @@ static void
 visit_var_ref(bl_visitor_t *visitor, bl_var_ref_t *ref, bl_src_t *src)
 {
   print_head("ref", src, ref, visitor->nesting);
-  fprintf(stdout, "ref: " BL_YELLOW("'%s'"), ref->id.str);
+  fprintf(stdout, "ref: " BL_YELLOW("'%s' -> %p"), ref->id.str, ref->ref);
   bl_visitor_walk_var_ref(visitor, ref);
 }
 
@@ -205,6 +214,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_var_ref, BL_VISIT_VAR_REF);
     bl_visitor_add(&visitor, visit_arg, BL_VISIT_ARG);
     bl_visitor_add(&visitor, visit_type, BL_VISIT_TYPE);
+    bl_visitor_add(&visitor, visit_path, BL_VISIT_PATH);
 
     bl_visitor_walk_root(&visitor, (bl_node_t *)unit->ast.root);
   }

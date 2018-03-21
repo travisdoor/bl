@@ -49,6 +49,7 @@ typedef enum {
   BL_VISIT_VAR_REF,
   BL_VISIT_ARG,
   BL_VISIT_TYPE,
+  BL_VISIT_PATH,
   BL_VISIT_COUNT
 } bl_visit_e;
 
@@ -76,13 +77,15 @@ typedef void (*bl_visit_const_expr_f)(bl_visitor_t *visitor, bl_const_expr_t *ex
 
 typedef void (*bl_visit_const_binop_f)(bl_visitor_t *visitor, bl_binop_t *binop, bl_src_t *src);
 
-typedef void (*bl_visit_const_call_f)(bl_visitor_t *visitor, bl_call_t *call, bl_src_t *src);
+typedef void (*bl_visit_call_f)(bl_visitor_t *visitor, bl_call_t *call, bl_src_t *src);
 
-typedef void (*bl_visit_const_var_ref_f)(bl_visitor_t *visitor, bl_var_ref_t *ref, bl_src_t *src);
+typedef void (*bl_visit_var_ref_f)(bl_visitor_t *visitor, bl_var_ref_t *ref, bl_src_t *src);
 
 typedef void (*bl_visit_arg_f)(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src);
 
 typedef void (*bl_visit_type_f)(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src);
+
+typedef void (*bl_visit_path_f)(bl_visitor_t *visitor, bl_path_t *path, bl_src_t *src);
 
 struct bl_visitor
 {
@@ -148,5 +151,8 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg);
 
 void
 bl_visitor_walk_type(bl_visitor_t *visitor, bl_type_t *type);
+
+void
+bl_visitor_walk_path(bl_visitor_t *visitor, bl_path_t *path);
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */

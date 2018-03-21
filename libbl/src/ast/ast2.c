@@ -119,6 +119,9 @@ _bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type, bl_token_t *tok)
   case BL_NODE_VAR_REF:
     new_node = bl_calloc(sizeof(bl_var_ref_t), 1);
     break;
+  case BL_NODE_PATH:
+    new_node = bl_calloc(sizeof(bl_path_t), 1);
+    break;
   default:
     bl_abort("unknown node type");
   }
@@ -158,6 +161,7 @@ delete_node(bl_node_t *node)
   case BL_NODE_CONST_EXPR:
   case BL_NODE_BINOP:
   case BL_NODE_VAR_REF:
+  case BL_NODE_PATH:
     break;
   default:
     bl_abort("unknown node type");

@@ -40,6 +40,7 @@ typedef struct bl_unit
   bl_tokens_t tokens;
   /* abstract syntax tree as output of parser */
   bl_ast2_t ast;
+  BArray *globals;
   /* source file name with path */
   char *filepath;
   char *name;

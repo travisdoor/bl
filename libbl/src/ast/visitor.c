@@ -120,6 +120,12 @@ visit_arg(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src)
   bl_visitor_walk_arg(visitor, arg);
 }
 
+static void
+visit_path(bl_visitor_t *visitor, bl_path_t *path, bl_src_t *src)
+{
+  bl_visitor_walk_path(visitor, path);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -140,6 +146,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_VAR_REF]     = visit_var_ref;
   visitor->visitors[BL_VISIT_ARG]         = visit_arg;
   visitor->visitors[BL_VISIT_TYPE]        = visit_type;
+  visitor->visitors[BL_VISIT_PATH]        = visit_path;
 }
 
 void
@@ -313,13 +320,13 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
 
   switch (expr->t) {
   case BL_EXPR_CALL: {
-    bl_visit_const_call_f v = visitor->visitors[BL_VISIT_CALL];
+    bl_visit_call_f v = visitor->visitors[BL_VISIT_CALL];
     v(visitor, expr->expr.call, &expr->expr.call->base_.src);
     break;
   }
 
   case BL_EXPR_VAR_REF: {
-    bl_visit_const_var_ref_f v = visitor->visitors[BL_VISIT_VAR_REF];
+    bl_visit_var_ref_f v = visitor->visitors[BL_VISIT_VAR_REF];
     v(visitor, expr->expr.var_ref, &expr->expr.var_ref->base_.src);
     break;
   }
@@ -339,6 +346,12 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
   case BL_EXPR_NESTED: {
     bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
     v(visitor, expr->expr.nested, &expr->expr.nested->base_.src);
+    break;
+  }
+
+  case BL_EXPR_PATH: {
+    bl_visit_path_f v = visitor->visitors[BL_VISIT_PATH];
+    v(visitor, expr->expr.path, &expr->expr.path->base_.src);
     break;
   }
 
@@ -404,4 +417,35 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg)
 void
 bl_visitor_walk_type(bl_visitor_t *visitor, bl_type_t *type)
 {
+}
+
+void
+bl_visitor_walk_path(bl_visitor_t *visitor, bl_path_t *path)
+{
+  visitor->nesting++;
+
+  switch (path->t) {
+  case BL_PATH_PATH:{
+    bl_visit_path_f vt = visitor->visitors[BL_VISIT_PATH];
+    vt(visitor, path->next.path, &path->next.path->base_.src);
+    break;
+  }
+
+  case BL_PATH_CALL:{
+    bl_visit_call_f vt = visitor->visitors[BL_VISIT_CALL];
+    vt(visitor, path->next.call, &path->next.call->base_.src);
+    break;
+  }
+
+  case BL_PATH_VAR_REF:{
+    bl_visit_var_ref_f vt = visitor->visitors[BL_VISIT_VAR_REF];
+    vt(visitor, path->next.var_ref, &path->next.var_ref->base_.src);
+    break;
+  }
+
+  default:
+    bl_abort("invalid path");
+  }
+
+  visitor->nesting--;
 }

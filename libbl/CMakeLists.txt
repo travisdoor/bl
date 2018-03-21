@@ -37,7 +37,7 @@ set(HEADER_FILES_IMPL
         src/common_impl.h 
         src/ast/id_impl.h
         src/ast/visitor_impl.h
-        src/ast/ast2_impl.h)
+        src/ast/ast2_impl.h )
 
 set(SOURCE_FILES
         src/tokens.c

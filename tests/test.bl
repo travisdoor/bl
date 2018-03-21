@@ -2,15 +2,20 @@
  * testing playground.
  */
 
-fn main(a i32, b i32) i32 {
-  var result i32 = add(32, i + 256);
+module std {
+  fn main(a i32, b i32) i32 {
+    var result i32 = add(32, i + 256);
+    var bl bool = true;
+  }
 
-  var bl bool = true;
-}
+  fn add(a i32, b i32) i32 {
+  }
 
-fn add(a i32, b i32) i32 {
+  fn no_return(i f64) {
+  }
 }
 
 fn no_return(i f64) {
+  std::add(123, 321);
 }
 

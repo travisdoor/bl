@@ -45,6 +45,7 @@ BO_BEGIN_DECLS
   sm(DOUBLE, "double") \
   sm(IF, "if") /* must be first */ \
   sm(FN, "fn") \
+  sm(MODULE, "module") \
   sm(VAR, "var") \
   sm(ELSE, "else") \
   sm(TRUE, "true") \
@@ -58,6 +59,7 @@ BO_BEGIN_DECLS
   sm(BREAK, "break")\
   sm(CONTINUE, "continue")\
   sm(IMPL, "impl") /* must be last */\
+  sm(MODULE_PATH, "::") \
   sm(LCOMMENT, "//") \
   sm(LBCOMMENT, "/*") \
   sm(RBCOMMENT, "*/") \

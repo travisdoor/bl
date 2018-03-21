@@ -48,10 +48,10 @@ typedef struct
 } context_t;
 
 static bl_item_t *
-parse_item(context_t *cnt);
+parse_item_maybe(context_t *cnt);
 
 static bl_module_t *
-parse_module(context_t *cnt);
+parse_module_rq(context_t *cnt, bool is_gscope);
 
 static bl_expr_t *
 parse_atom_expr(context_t *cnt);
@@ -91,6 +91,9 @@ parse_const_expr_maybe(context_t *cnt);
 
 static bl_expr_t *
 parse_nested_expr_maybe(context_t *cnt);
+
+static bl_path_t *
+parse_path_maybe(context_t *cnt);
 
 static bl_call_t *
 parse_call_maybe(context_t *cnt);
@@ -241,6 +244,48 @@ parse_nested_expr_maybe(context_t *cnt)
   return expr;
 }
 
+bl_path_t *
+parse_path_maybe(context_t *cnt)
+{
+  bl_path_t *path = NULL;
+
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_MODULE_PATH)) {
+    bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
+    path                  = bl_ast2_new_node(cnt->ast, BL_NODE_PATH, tok_ident, bl_path_t);
+    bl_id_init(&path->id, tok_ident->value.as_string);
+
+    bl_tokens_consume(cnt->tokens); // eat ::
+
+    /* next path element */
+    bl_path_t *next_path = parse_path_maybe(cnt);
+    if (next_path != NULL) {
+      path->t         = BL_PATH_PATH;
+      path->next.path = next_path;
+      return path;
+    }
+
+    bl_call_t *next_call = parse_call_maybe(cnt);
+    if (next_call != NULL) {
+      path->t         = BL_PATH_CALL;
+      path->next.call = next_call;
+      return path;
+    }
+
+    bl_var_ref_t *next_var = parse_var_ref_maybe(cnt);
+    if (next_var != NULL) {
+      path->t            = BL_PATH_VAR_REF;
+      path->next.var_ref = next_var;
+      return path;
+    }
+
+    bl_token_t *tok_err = bl_tokens_consume(cnt->tokens); // eat ::
+    parse_error(cnt, BL_ERR_INVALID_TOKEN, tok_err,
+                "invalid token found in path, expected call or variable");
+  }
+
+  return path;
+}
+
 bl_const_expr_t *
 parse_const_expr_maybe(context_t *cnt)
 {
@@ -336,6 +381,14 @@ parse_atom_expr(context_t *cnt)
     expr              = bl_ast2_new_node(cnt->ast, BL_NODE_EXPR, tok, bl_expr_t);
     expr->t           = BL_EXPR_NESTED;
     expr->expr.nested = sub_expr;
+    return expr;
+  }
+
+  bl_path_t *path = parse_path_maybe(cnt);
+  if (path != NULL) {
+    expr            = bl_ast2_new_node(cnt->ast, BL_NODE_EXPR, tok, bl_expr_t);
+    expr->t         = BL_EXPR_PATH;
+    expr->expr.path = path;
     return expr;
   }
 
@@ -593,7 +646,7 @@ parse_block_maybe(context_t *cnt)
 }
 
 bl_item_t *
-parse_item(context_t *cnt)
+parse_item_maybe(context_t *cnt)
 {
   bl_item_t * item = NULL;
   bl_token_t *tok  = bl_tokens_peek(cnt->tokens);
@@ -623,7 +676,8 @@ parse_item(context_t *cnt)
 
     break;
   }
-  case BL_SYM_STRUCT:
+
+  case BL_SYM_STRUCT: {
     bl_tokens_consume(cnt->tokens);
     tok     = bl_tokens_consume(cnt->tokens);
     item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
@@ -631,7 +685,9 @@ parse_item(context_t *cnt)
     bl_id_init(&item->id, tok->value.as_string);
     item->node.struct_decl = parse_struct(cnt);
     break;
-  case BL_SYM_ENUM:
+  }
+
+  case BL_SYM_ENUM: {
     bl_tokens_consume(cnt->tokens);
     tok     = bl_tokens_consume(cnt->tokens);
     item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
@@ -639,27 +695,63 @@ parse_item(context_t *cnt)
     bl_id_init(&item->id, tok->value.as_string);
     item->node.enum_decl = parse_enum(cnt);
     break;
-  case BL_SYM_EOF:
+  }
+
+  case BL_SYM_MODULE: {
+    bl_tokens_consume(cnt->tokens);
+    tok = bl_tokens_consume(cnt->tokens);
+
+    if (tok->sym != BL_SYM_IDENT) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected module name");
+    }
+
+    item    = bl_ast2_new_node(cnt->ast, BL_NODE_ITEM, tok, bl_item_t);
+    item->t = BL_ITEM_MODULE;
+    bl_id_init(&item->id, tok->value.as_string);
+    item->node.module = parse_module_rq(cnt, false);
     break;
+  }
+
   default:
-    parse_error(cnt, BL_ERR_INVALID_TOKEN, tok, "invalid token, expected: fn, struct or enum");
+    break;
   }
 
   return item;
 }
 
 bl_module_t *
-parse_module(context_t *cnt)
+parse_module_rq(context_t *cnt, bool is_gscope)
 {
-  bl_module_t *module = bl_ast2_new_node(cnt->ast, BL_NODE_MODULE, NULL, bl_module_t);
+  bl_token_t *tok_begin = NULL;
+  if (!is_gscope) {
+    tok_begin = bl_tokens_consume(cnt->tokens);
+    if (tok_begin->sym != BL_SYM_LBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin, "expected module block " BL_YELLOW("'{'"));
+    }
+  }
+
+  bl_module_t *module = bl_ast2_new_node(cnt->ast, BL_NODE_MODULE, tok_begin, bl_module_t);
 
   /*
    * Should be extended when nested modules and named modules will
    * be implemented.
    */
 
-  while (bl_ast_module_push_item(module, parse_item(cnt))) {
+  while (true) {
+    bl_item_t *item = bl_ast_module_push_item(module, parse_item_maybe(cnt));
+    if (item == NULL) {
+      break;
+    }
   };
+
+  if (!is_gscope) {
+    bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
+    if (tok_end->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end,
+                  "expected end of the module block " BL_YELLOW("'}'") ", starting: %d:%d",
+                  tok_begin->line, tok_begin->col);
+    }
+  }
 
   return module;
 }
@@ -674,6 +766,6 @@ bl_parser2_run(bl_builder_t *builder, bl_unit_t *unit)
     return (bl_error_e)error;
   }
 
-  unit->ast.root = parse_module(&cnt);
+  unit->ast.root = parse_module_rq(&cnt, true);
   return BL_NO_ERR;
 }

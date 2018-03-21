@@ -45,8 +45,10 @@
   nt(STMT, "stmt") \
   nt(DECL, "decl") \
   nt(EXPR, "expr") \
+  nt(PATH, "path") \
   nt(BINOP, "binop") \
   nt(CALL, "call") \
+  nt(IF, "if") \
   nt(VAR_REF, "var_ref") \
   nt(CONST_EXPR, "constant") \
   nt(TYPE, "type")
@@ -56,6 +58,7 @@
 typedef struct bl_ast2 bl_ast2_t;
 
 typedef struct bl_src         bl_src_t;
+typedef struct bl_path        bl_path_t;
 typedef struct bl_node        bl_node_t;
 typedef struct bl_type        bl_type_t;
 typedef struct bl_module      bl_module_t;
@@ -72,6 +75,7 @@ typedef struct bl_const_expr  bl_const_expr_t;
 typedef struct bl_binop       bl_binop_t;
 typedef struct bl_call        bl_call_t;
 typedef struct bl_var_ref     bl_var_ref_t;
+typedef struct bl_if          bl_if_t;
 
 typedef enum bl_fund_type bl_fund_type_e;
 
@@ -92,6 +96,27 @@ struct bl_node
 {
   bl_node_e t;
   bl_src_t  src;
+};
+
+struct bl_path
+{
+  bl_node_t    base_;
+  bl_id_t      id;
+  bl_module_t *ref;
+
+  enum
+  {
+    BL_PATH_PATH,
+    BL_PATH_CALL,
+    BL_PATH_VAR_REF
+  } t;
+
+  union
+  {
+    bl_path_t *   path;
+    bl_call_t *   call;
+    bl_var_ref_t *var_ref;
+  } next;
 };
 
 enum bl_fund_type
@@ -180,6 +205,7 @@ struct bl_item
   } t;
 
   bl_id_t id;
+
   union
   {
     bl_module_t *     module;
@@ -256,7 +282,8 @@ struct bl_expr
     BL_EXPR_BINOP,
     BL_EXPR_NESTED,
     BL_EXPR_CALL,
-    BL_EXPR_VAR_REF
+    BL_EXPR_VAR_REF,
+    BL_EXPR_PATH
   } t;
 
   union
@@ -266,6 +293,7 @@ struct bl_expr
     bl_expr_t *      nested;
     bl_call_t *      call;
     bl_var_ref_t *   var_ref;
+    bl_path_t *      path;
   } expr;
 };
 
@@ -277,7 +305,8 @@ struct bl_stmt
   {
     BL_STMT_DECL,
     BL_STMT_EXPR,
-    BL_STMT_BLOCK
+    BL_STMT_BLOCK,
+    BL_STMT_IF
   } t;
 
   union
@@ -285,7 +314,13 @@ struct bl_stmt
     bl_decl_t * decl;
     bl_expr_t * expr;
     bl_block_t *block;
+    bl_if_t *   if_stmt;
   } stmt;
+};
+
+struct bl_if
+{
+  bl_node_t base_;
 };
 
 struct bl_ast2

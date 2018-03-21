@@ -36,6 +36,7 @@ init(bl_unit_t *unit)
 {
   bl_tokens_init(&unit->tokens);
   bl_ast2_init(&unit->ast);
+  unit->globals = bo_array_new(sizeof(bl_expr_t *));
 }
 
 /* public */
@@ -78,6 +79,7 @@ bl_unit_delete(bl_unit_t *unit)
   bl_tokens_terminate(&unit->tokens);
   bl_ast2_terminate(&unit->ast);
   bl_free(unit);
+  bo_unref(unit->globals);
 }
 
 const char *
