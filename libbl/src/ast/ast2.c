@@ -26,274 +26,141 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <bobject/containers/hash.h>
 #include "ast/ast2_impl.h"
 #include "common_impl.h"
 
-static const char *node_strings[] = {
-#define nt(tok, str) str,
-    BL_NTYPE_LIST
-#undef nt
-};
+// static const char *node_strings[] = {
+//#define nt(tok, str) str,
+//  BL_NTYPE_LIST
+//#undef nt
+//};
+
+#define CACHE_PREALLOC_ELEM 256
+
+typedef struct
+{
+  bl_node_t *next;
+} next_t;
 
 static void
-delete_node(bl_node_t *node);
-
-void
-bl_src_init(bl_src_t *src, bl_token_t *tok)
+node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
 {
-  src->file = tok->file;
-  src->line = tok->line;
-  src->col  = tok->col;
-}
+  /*
+   * node allocated by calloc in ast tree has all values set to zero by default
+   * when allocation method has been changed, use memset here for setting whole
+   * memory block occupied by node to 0
+   */
 
-void
-bl_ast2_init(bl_ast2_t *ast)
-{
-  ast->nodes = bo_array_new(sizeof(void *));
-  ast->root  = NULL;
-}
-
-void
-bl_ast2_terminate(bl_ast2_t *ast)
-{
-  const size_t c = bo_array_size(ast->nodes);
-  bl_node_t *  node;
-
-  for (size_t i = 0; i < c; i++) {
-    node = bo_array_at(ast->nodes, i, bl_node_t *);
-    delete_node(node);
+  node->t = type;
+  if (tok != NULL) {
+    node->src.col  = tok->col;
+    node->src.file = tok->file;
+    node->src.line = tok->line;
   }
 
-  bo_unref(ast->nodes);
-  ast->root = NULL;
+  switch (node->t) {
+  case BL_NODE_MODULE:
+    BL_MODULE(node).nodes = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_BLOCK:
+    BL_BLOCK(node).nodes = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_STRUCT:
+  case BL_NODE_ENUM:
+  case BL_NODE_FUNC:
+    break;
+  default:
+    bl_abort("invalid node type");
+  }
+}
+
+static void
+node_terminate(bl_node_t *node)
+{
+  switch (node->t) {
+  case BL_NODE_MODULE:
+    bo_unref(BL_MODULE(node).nodes);
+    break;
+  case BL_NODE_BLOCK:
+    bo_unref(BL_BLOCK(node).nodes);
+    break;
+  case BL_NODE_STRUCT:
+  case BL_NODE_ENUM:
+  case BL_NODE_FUNC:
+    break;
+  default:
+    bl_abort("invalid node type");
+  }
+}
+
+/* public */
+void
+bl_ast_init(bl_ast_t *ast)
+{
+  /* one extra element for jump to next chunk */
+  ast->chunk_current = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
+  ast->chunk_used    = 0;
+
+  ((next_t *)&ast->chunk_current[CACHE_PREALLOC_ELEM])->next = NULL;
+  ast->cache_begin                                           = ast->chunk_current;
+}
+
+void
+bl_ast_terminate(bl_ast_t *ast)
+{
+  bl_node_t *node;
+  bl_node_t *chunk = ast->cache_begin;
+  int        i     = 0;
+
+  while (chunk != NULL) {
+    if (i != 0 && i % CACHE_PREALLOC_ELEM == 0) {
+      chunk = ((next_t *)&chunk[i])->next;
+      i     = 0;
+      continue;
+    }
+
+    node = &chunk[i];
+    node_terminate(node);
+    i++;
+  }
+
+  bl_free(ast->cache_begin);
 }
 
 bl_node_t *
-_bl_ast2_new_node(bl_ast2_t *ast, bl_node_e type, bl_token_t *tok)
+bl_ast_new_node(bl_ast_t *ast, bl_node_e type, bl_token_t *tok)
 {
-  bl_node_t *new_node;
-
-  switch (type) {
-  case BL_NODE_ITEM:
-    new_node = bl_calloc(sizeof(bl_item_t), 1);
-    break;
-  case BL_NODE_MODULE:
-    new_node = bl_calloc(sizeof(bl_module_t), 1);
-    break;
-  case BL_NODE_BLOCK:
-    new_node = bl_calloc(sizeof(bl_block_t), 1);
-    break;
-  case BL_NODE_FUNC_DECL:
-    new_node = bl_calloc(sizeof(bl_func_decl_t), 1);
-    break;
-  case BL_NODE_ARG:
-    new_node = bl_calloc(sizeof(bl_arg_t), 1);
-    break;
-  case BL_NODE_STRUCT_DECL:
-    new_node = bl_calloc(sizeof(bl_struct_decl_t), 1);
-    break;
-  case BL_NODE_ENUM_DECL:
-    new_node = bl_calloc(sizeof(bl_enum_decl_t), 1);
-    break;
-  case BL_NODE_TYPE:
-    new_node = bl_calloc(sizeof(bl_type_t), 1);
-    break;
-  case BL_NODE_STMT:
-    new_node = bl_calloc(sizeof(bl_stmt_t), 1);
-    break;
-  case BL_NODE_EXPR:
-    new_node = bl_calloc(sizeof(bl_expr_t), 1);
-    break;
-  case BL_NODE_DECL:
-    new_node = bl_calloc(sizeof(bl_decl_t), 1);
-    break;
-  case BL_NODE_CONST_EXPR:
-    new_node = bl_calloc(sizeof(bl_const_expr_t), 1);
-    break;
-  case BL_NODE_BINOP:
-    new_node = bl_calloc(sizeof(bl_binop_t), 1);
-  case BL_NODE_CALL:
-    new_node = bl_calloc(sizeof(bl_call_t), 1);
-    break;
-  case BL_NODE_VAR_REF:
-    new_node = bl_calloc(sizeof(bl_var_ref_t), 1);
-    break;
-  case BL_NODE_PATH:
-    new_node = bl_calloc(sizeof(bl_path_t), 1);
-    break;
-  default:
-    bl_abort("unknown node type");
+  if (ast->chunk_used >= CACHE_PREALLOC_ELEM) {
+    void *new_chunk = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
+    ((next_t *)&ast->chunk_current[CACHE_PREALLOC_ELEM])->next = new_chunk;
+    ast->chunk_current                                         = new_chunk;
+    ast->chunk_used                                            = 0;
   }
 
-  new_node->t = type;
-  if (tok != NULL)
-    bl_src_init(&new_node->src, tok);
-  bo_array_push_back(ast->nodes, new_node);
-  return new_node;
+  bl_node_t *node = &(ast->chunk_current[ast->chunk_used]);
+  node_init(node, type, tok);
+  ast->chunk_used++;
+  return node;
 }
 
-void
-delete_node(bl_node_t *node)
+bl_node_t *
+bl_ast_module_push_node(bl_module_t *module, bl_node_t *node)
 {
-  switch (node->t) {
-  case BL_NODE_ITEM:
-    break;
-  case BL_NODE_MODULE:
-    bo_unref(((bl_module_t *)node)->items);
-    break;
-  case BL_NODE_BLOCK:
-    bo_unref(((bl_block_t *)node)->stmts);
-    break;
-  case BL_NODE_FUNC_DECL:
-    bo_unref(((bl_func_decl_t *)node)->params);
-    break;
-  case BL_NODE_CALL:
-    bo_unref(((bl_call_t *)node)->args);
-    break;
-  case BL_NODE_ARG:
-  case BL_NODE_STRUCT_DECL:
-  case BL_NODE_ENUM_DECL:
-  case BL_NODE_TYPE:
-  case BL_NODE_STMT:
-  case BL_NODE_EXPR:
-  case BL_NODE_DECL:
-  case BL_NODE_CONST_EXPR:
-  case BL_NODE_BINOP:
-  case BL_NODE_VAR_REF:
-  case BL_NODE_PATH:
-    break;
-  default:
-    bl_abort("unknown node type");
-  }
-}
-
-const char *
-bl_ast2_node_to_str(bl_node_t *node)
-{
-  return node_strings[node->t];
-}
-
-bl_item_t *
-bl_ast_module_push_item(bl_module_t *module, bl_item_t *item)
-{
-  if (module->items == NULL) {
-    module->items = bo_array_new(sizeof(void *));
-  }
-
-  if (item == NULL)
+  if (node == NULL)
     return NULL;
 
-  bo_array_push_back(module->items, item);
-  return item;
+  bo_array_push_back(module->nodes, node);
+  return node;
 }
 
 size_t
-bl_ast_module_item_count(bl_module_t *module)
+bl_ast_module_node_count(bl_module_t *module)
 {
-  if (module->items == NULL)
-    return 0;
-  return bo_array_size(module->items);
+  return bo_array_size(module->nodes);
 }
 
-bl_item_t *
-bl_ast_module_get_item(bl_module_t *module, size_t i)
+bl_node_t *
+bl_ast_module_get_node(bl_module_t *module, const size_t i)
 {
-  if (module->items == NULL)
-    return 0;
-
-  return bo_array_at(module->items, i, bl_item_t *);
-}
-
-bl_arg_t *
-bl_ast_func_push_arg(bl_func_decl_t *func, bl_arg_t *arg)
-{
-  if (func->params == NULL) {
-    func->params = bo_array_new(sizeof(void *));
-  }
-
-  if (arg == NULL)
-    return NULL;
-
-  bo_array_push_back(func->params, arg);
-  return arg;
-}
-
-size_t
-bl_ast_func_arg_count(bl_func_decl_t *func)
-{
-  if (func->params == NULL)
-    return 0;
-  return bo_array_size(func->params);
-}
-
-bl_arg_t *
-bl_ast_func_get_arg(bl_func_decl_t *func, size_t i)
-{
-  if (func->params == NULL)
-    return 0;
-
-  return bo_array_at(func->params, i, bl_arg_t *);
-}
-
-bl_stmt_t *
-bl_ast_block_push_stmt(bl_block_t *block, bl_stmt_t *stmt)
-{
-  if (block->stmts == NULL) {
-    block->stmts = bo_array_new(sizeof(void *));
-  }
-
-  if (stmt == NULL)
-    return NULL;
-
-  bo_array_push_back(block->stmts, stmt);
-  return stmt;
-}
-
-size_t
-bl_ast_block_stmt_count(bl_block_t *block)
-{
-  if (block->stmts == NULL)
-    return 0;
-  return bo_array_size(block->stmts);
-}
-
-bl_stmt_t *
-bl_ast_block_get_stmt(bl_block_t *block, size_t i)
-{
-  if (block->stmts == NULL)
-    return 0;
-
-  return bo_array_at(block->stmts, i, bl_stmt_t *);
-}
-
-bl_expr_t *
-bl_ast_call_push_arg(bl_call_t *call, bl_expr_t *expr)
-{
-  if (call->args == NULL) {
-    call->args = bo_array_new(sizeof(void *));
-  }
-
-  if (call == NULL)
-    return NULL;
-
-  bo_array_push_back(call->args, expr);
-  return expr;
-}
-
-size_t
-bl_ast_call_arg_count(bl_call_t *call)
-{
-  if (call->args == NULL)
-    return 0;
-  return bo_array_size(call->args);
-}
-
-bl_expr_t *
-bl_ast_call_get_arg(bl_call_t *call, size_t i)
-{
-  if (call->args == NULL)
-    return 0;
-
-  return bo_array_at(call->args, i, bl_expr_t *);
+  return bo_array_at(module->nodes, i, bl_node_t *);
 }

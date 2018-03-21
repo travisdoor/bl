@@ -39,7 +39,7 @@ typedef struct bl_unit
   /* output of lexer */
   bl_tokens_t tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast2_t ast;
+  bl_ast_t ast;
   BArray *globals;
   /* source file name with path */
   char *filepath;

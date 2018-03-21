@@ -35,57 +35,12 @@ typedef struct bl_visitor bl_visitor_t;
 
 typedef enum {
   BL_VISIT_MODULE,
-  BL_VISIT_ITEM,
-  BL_VISIT_FUNC_DECL,
-  BL_VISIT_STRUCT_DECL,
-  BL_VISIT_ENUM_DECL,
-  BL_VISIT_BLOCK,
-  BL_VISIT_STMT,
-  BL_VISIT_DECL,
-  BL_VISIT_EXPR,
-  BL_VISIT_CONST,
-  BL_VISIT_BINOP,
-  BL_VISIT_CALL,
-  BL_VISIT_VAR_REF,
-  BL_VISIT_ARG,
-  BL_VISIT_TYPE,
-  BL_VISIT_PATH,
+  BL_VISIT_FUNC,
   BL_VISIT_COUNT
 } bl_visit_e;
 
 typedef void (*bl_visit_module_f)(bl_visitor_t *visitor, bl_module_t *module, bl_src_t *src);
-
-typedef void (*bl_visit_item_f)(bl_visitor_t *visitor, bl_item_t *item, bl_src_t *src);
-
-typedef void (*bl_visit_func_decl_f)(bl_visitor_t *visitor, bl_func_decl_t *func_decl,
-                                     bl_src_t *src);
-
-typedef void (*bl_visit_block_f)(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src);
-
-typedef void (*bl_visit_struct_decl_f)(bl_visitor_t *visitor, bl_struct_decl_t *strct,
-                                       bl_src_t *src);
-
-typedef void (*bl_visit_enum_decl_f)(bl_visitor_t *visitor, bl_enum_decl_t *enm, bl_src_t *src);
-
-typedef void (*bl_visit_stmt_f)(bl_visitor_t *visitor, bl_stmt_t *stmt, bl_src_t *src);
-
-typedef void (*bl_visit_decl_f)(bl_visitor_t *visitor, bl_decl_t *decl, bl_src_t *src);
-
-typedef void (*bl_visit_expr_f)(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src);
-
-typedef void (*bl_visit_const_expr_f)(bl_visitor_t *visitor, bl_const_expr_t *expr, bl_src_t *src);
-
-typedef void (*bl_visit_const_binop_f)(bl_visitor_t *visitor, bl_binop_t *binop, bl_src_t *src);
-
-typedef void (*bl_visit_call_f)(bl_visitor_t *visitor, bl_call_t *call, bl_src_t *src);
-
-typedef void (*bl_visit_var_ref_f)(bl_visitor_t *visitor, bl_var_ref_t *ref, bl_src_t *src);
-
-typedef void (*bl_visit_arg_f)(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src);
-
-typedef void (*bl_visit_type_f)(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src);
-
-typedef void (*bl_visit_path_f)(bl_visitor_t *visitor, bl_path_t *path, bl_src_t *src);
+typedef void (*bl_visit_fn_f)(bl_visitor_t *visitor, bl_func_t *func, bl_src_t *src);
 
 struct bl_visitor
 {
@@ -100,59 +55,11 @@ bl_visitor_init(bl_visitor_t *visitor, void *context);
 void
 bl_visitor_add(bl_visitor_t *visitor, void *visit, bl_visit_e type);
 
-/* walks */
-void
-bl_visitor_walk_root(bl_visitor_t *visitor, bl_node_t *root);
-
 void
 bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module);
 
 void
-bl_visitor_walk_item(bl_visitor_t *visitor, bl_item_t *item);
+bl_visitor_walk_func(bl_visitor_t *visitor, bl_func_t *module);
 
-void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
-
-void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
-
-void
-bl_visitor_walk_func_decl(bl_visitor_t *visitor, bl_func_decl_t *func_decl);
-
-void
-bl_visitor_walk_struct_decl(bl_visitor_t *visitor, bl_struct_decl_t *struct_decl);
-
-void
-bl_visitor_walk_enum_decl(bl_visitor_t *visitor, bl_enum_decl_t *enum_decl);
-
-void
-bl_visitor_walk_stmt(bl_visitor_t *visitor, bl_stmt_t *stmt);
-
-void
-bl_visitor_walk_decl(bl_visitor_t *visitor, bl_decl_t *decl);
-
-void
-bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr);
-
-void
-bl_visitor_walk_const_expr(bl_visitor_t *visitor, bl_const_expr_t *expr);
-
-void
-bl_visitor_walk_binop(bl_visitor_t *visitor, bl_binop_t *binop);
-
-void
-bl_visitor_walk_call(bl_visitor_t *visitor, bl_call_t *call);
-
-void
-bl_visitor_walk_var_ref(bl_visitor_t *visitor, bl_var_ref_t *ref);
-
-void
-bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg);
-
-void
-bl_visitor_walk_type(bl_visitor_t *visitor, bl_type_t *type);
-
-void
-bl_visitor_walk_path(bl_visitor_t *visitor, bl_path_t *path);
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */
