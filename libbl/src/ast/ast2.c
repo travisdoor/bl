@@ -68,6 +68,7 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
   case BL_NODE_STRUCT:
   case BL_NODE_ENUM:
   case BL_NODE_FUNC:
+  case BL_NODE_TYPE:
     break;
   default:
     bl_abort("invalid node type");
@@ -87,6 +88,7 @@ node_terminate(bl_node_t *node)
   case BL_NODE_STRUCT:
   case BL_NODE_ENUM:
   case BL_NODE_FUNC:
+  case BL_NODE_TYPE:
     break;
   default:
     bl_abort("invalid node type");
