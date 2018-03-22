@@ -94,51 +94,50 @@ bl_node_t *
 parse_const_expr_maybe(context_t *cnt)
 {
 // HACK: rewrite later
-#define create(_type_, _str_type_)                                                                 \
+#define create(_type_)                                                                             \
   bl_tokens_consume(cnt->tokens);                                                                  \
-  const_expr                   = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok);                     \
-  bl_peek_expr(const_expr).t   = BL_EXPR_CONST;                                                    \
-  bl_node_t *type              = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);                     \
-  bl_peek_type(type).t         = BL_TYPE_FUND;                                                     \
-  bl_peek_type(type).type.fund = (_type_);                                                         \
-  bl_id_init(&bl_peek_type(type).id, (_str_type_));
+  const_expr                 = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok);                       \
+  bl_peek_expr(const_expr).t = BL_EXPR_CONST;                                                      \
+  bl_node_t *type            = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);                       \
+  bl_peek_type(type).t       = BL_TYPE_FUND;                                                       \
+  bl_peek_fund_type(type)    = (_type_);
 
   bl_node_t * const_expr = NULL;
   bl_token_t *tok        = bl_tokens_peek(cnt->tokens);
 
   switch (tok->sym) {
   case BL_SYM_NUM: {
-    create(BL_FTYPE_I32, "i32");
+    create(BL_FTYPE_I32);
     bl_peek_const_expr(const_expr).value.s = tok->value.u;
     break;
   }
 
   case BL_SYM_STRING: {
-    create(BL_FTYPE_STRING, "string");
+    create(BL_FTYPE_STRING);
     bl_peek_const_expr(const_expr).value.str = tok->value.str;
     break;
   }
 
   case BL_SYM_FLOAT: {
-    create(BL_FTYPE_F32, "f32");
+    create(BL_FTYPE_F32);
     bl_peek_const_expr(const_expr).value.f = tok->value.d;
     break;
   }
 
   case BL_SYM_DOUBLE: {
-    create(BL_FTYPE_F64, "f64");
+    create(BL_FTYPE_F64);
     bl_peek_const_expr(const_expr).value.f = tok->value.d;
     break;
   }
 
   case BL_SYM_CHAR: {
-    create(BL_FTYPE_CHAR, "char");
+    create(BL_FTYPE_CHAR);
     bl_peek_const_expr(const_expr).value.c = tok->value.c;
     break;
   }
   case BL_SYM_TRUE:
   case BL_SYM_FALSE:
-    create(BL_FTYPE_BOOL, "bool");
+    create(BL_FTYPE_BOOL);
 
     if (tok->sym == BL_SYM_TRUE)
       bl_peek_const_expr(const_expr).value.b = true;
@@ -156,7 +155,7 @@ parse_const_expr_maybe(context_t *cnt)
 bl_node_t *
 parse_atom_expr(context_t *cnt)
 {
-  bl_node_t * expr = NULL;
+  bl_node_t *expr = NULL;
 
   expr = parse_const_expr_maybe(cnt);
 
@@ -238,26 +237,21 @@ parse_type_maybe(context_t *cnt)
   bl_token_t *tok  = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (tok != NULL) {
     type = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);
-    bl_id_init(&bl_peek_type(type).id, tok->value.str);
 
-    switch (bl_peek_type(type).id.hash) {
-    case BL_FTYPE_VOID:
-    case BL_FTYPE_I8:
-    case BL_FTYPE_I32:
-    case BL_FTYPE_I64:
-    case BL_FTYPE_U8:
-    case BL_FTYPE_U32:
-    case BL_FTYPE_U64:
-    case BL_FTYPE_F32:
-    case BL_FTYPE_F64:
-    case BL_FTYPE_CHAR:
-    case BL_FTYPE_STRING:
-    case BL_FTYPE_BOOL:
+    int found = -1;
+    for (int i = 0; i < bl_nelems(bl_fund_type_strings); i++) {
+      if (strcmp(bl_fund_type_strings[i], tok->value.str) == 0) {
+        found = i;
+        break;
+      }
+    }
+
+    if (found > -1) {
       bl_peek_type(type).t         = BL_TYPE_FUND;
-      bl_peek_type(type).type.fund = (bl_fund_type_e)bl_peek_type(type).id.hash;
-      break;
-    default:
+      bl_peek_type(type).type.fund = (bl_fund_type_e)found;
+    } else {
       bl_peek_type(type).t = BL_TYPE_REF;
+      bl_id_init(&bl_peek_ref_type(type).id, tok->value.str);
     }
   }
 
@@ -273,10 +267,9 @@ parse_ret_type_rq(context_t *cnt)
     return parse_type_maybe(cnt);
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
-    bl_node_t *type              = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);
-    bl_peek_type(type).id        = (bl_id_t){.str = "void", .hash = BL_FTYPE_VOID};
-    bl_peek_type(type).t         = BL_TYPE_FUND;
-    bl_peek_type(type).type.fund = BL_FTYPE_VOID;
+    bl_node_t *type         = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);
+    bl_peek_type(type).t    = BL_TYPE_FUND;
+    bl_peek_fund_type(type) = BL_FTYPE_VOID;
     return type;
   }
   default:

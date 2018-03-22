@@ -29,12 +29,6 @@
 #include "ast/ast2_impl.h"
 #include "common_impl.h"
 
-// static const char *node_strings[] = {
-//#define nt(tok, str) str,
-//  BL_NTYPE_LIST
-//#undef nt
-//};
-
 #define CACHE_PREALLOC_ELEM 256
 
 typedef struct

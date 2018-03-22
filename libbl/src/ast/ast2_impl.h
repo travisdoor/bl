@@ -45,6 +45,20 @@
   nt(EXPR, "expr") \
   nt(MODULE, "module")
 
+#define BL_FUND_TYPE_LIST                                                                              \
+ ft(VOID, "void") \
+ ft(I8, "i8") \
+ ft(I32, "i32") \
+ ft(I64, "i64") \
+ ft(U8, "u8") \
+ ft(U32, "u32") \
+ ft(U64, "u64") \
+ ft(F32, "f32") \
+ ft(F64, "f64") \
+ ft(CHAR, "char") \
+ ft(STRING, "string") \
+ ft(BOOL, "bool")
+
 // clang-format on
 
 typedef enum {
@@ -52,6 +66,18 @@ typedef enum {
   BL_NTYPE_LIST
 #undef nt
 } bl_node_e;
+
+typedef enum {
+#define ft(tok, str) BL_FTYPE_##tok,
+  BL_FUND_TYPE_LIST
+#undef ft
+} bl_fund_type_e;
+
+static const char *bl_fund_type_strings[] = {
+#define ft(tok, str) str,
+  BL_FUND_TYPE_LIST
+#undef ft
+};
 
 typedef struct bl_ast bl_ast_t;
 
@@ -68,6 +94,9 @@ typedef struct bl_ast bl_ast_t;
 #define bl_peek_const_expr(node) (node)->n.expr.expr.const_expr
 #define bl_peek_binop(node) (node)->n.expr.expr.binop
 
+#define bl_peek_fund_type(node) (node)->n.type.type.fund
+#define bl_peek_ref_type(node) (node)->n.type.type.ref
+
 typedef struct bl_node   bl_node_t;
 typedef struct bl_module bl_module_t;
 typedef struct bl_func   bl_func_t;
@@ -78,8 +107,6 @@ typedef struct bl_type   bl_type_t;
 typedef struct bl_arg    bl_arg_t;
 typedef struct bl_var    bl_var_t;
 typedef struct bl_expr   bl_expr_t;
-
-typedef enum bl_fund_type bl_fund_type_e;
 
 /*
  * AST main context data
@@ -92,29 +119,8 @@ struct bl_ast
   size_t     chunk_used;
 };
 
-/*
- * type node
- */
-enum bl_fund_type
-{
-  BL_FTYPE_VOID   = 0x7c9faa57,
-  BL_FTYPE_I8     = 0x597806,
-  BL_FTYPE_I32    = 0xb887853,
-  BL_FTYPE_I64    = 0xb8878b8,
-  BL_FTYPE_U8     = 0x597992,
-  BL_FTYPE_U32    = 0xb88ab5f,
-  BL_FTYPE_U64    = 0xb88abc4,
-  BL_FTYPE_F32    = 0xb886b90,
-  BL_FTYPE_F64    = 0xb886bf5,
-  BL_FTYPE_CHAR   = 0x7c952063,
-  BL_FTYPE_STRING = 0x1c93affc,
-  BL_FTYPE_BOOL   = 0x7c94b391,
-};
-
 struct bl_type
 {
-  bl_id_t id;
-
   enum
   {
     BL_TYPE_FUND,
@@ -124,7 +130,11 @@ struct bl_type
   union
   {
     bl_fund_type_e fund;
-    bl_node_t *    ref;
+
+    struct {
+      bl_id_t id;
+      bl_node_t *ref;
+    } ref;
   } type;
 };
 

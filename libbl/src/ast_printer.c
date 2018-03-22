@@ -57,9 +57,9 @@ visit_type(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src)
 {
   print_head("type", src, type, visitor->nesting);
   if (type->t == BL_TYPE_REF) {
-    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), type->id.str, type->type.ref);
+    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), type->type.ref.id.str, type->type.ref.ref);
   } else {
-    fprintf(stdout, "name: " BL_YELLOW("'%s'"), type->id.str);
+    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[type->type.fund]);
   }
   bl_visitor_walk_type(visitor, type);
 }

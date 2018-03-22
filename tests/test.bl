@@ -22,10 +22,12 @@ fn no_return(i f64) {
 */
 
 module std {
-  enum state_e {
+  module inner_module {
+    fn no_return() {
+    }
   }
 
-  fn no_return() {
+  enum state_e {
   }
 
   fn add(first i32, second i32,) i32 {
@@ -36,6 +38,9 @@ module std {
     10 + 10;
     {
       var test i64;
+      {
+        var test string;
+      }
     }
   }
 }
