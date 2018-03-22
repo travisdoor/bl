@@ -100,28 +100,27 @@ typedef enum {
 
 extern BO_EXPORT char *bl_sym_strings[];
 
-typedef struct
+typedef struct bl_src
 {
-  bl_sym_e sym;
-  int line;
-  int col;
-  int len;
+  int         line;
+  int         col;
+  int         len;
   const char *src_loc;
   const char *file;
+} bl_src_t;
+
+typedef struct
+{
+  bl_sym_e    sym;
+  bl_src_t    src;
   union
   {
-    const char *as_string;
-    char as_char;
-    double as_double;
-    float as_float;
-    unsigned long long as_ull;
+    const char *       str;
+    char               c;
+    double             d;
+    unsigned long long u;
   } value;
 } bl_token_t;
-
-/* content must be set manually */
-extern BO_EXPORT void
-bl_token_init(bl_token_t *token, bl_sym_e symbol, int line, int col, int len, const char *src_loc,
-              const char *file);
 
 extern BO_EXPORT bool
 bl_token_is_binop(bl_token_t *token);

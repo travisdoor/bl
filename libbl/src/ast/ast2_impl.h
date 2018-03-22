@@ -54,14 +54,6 @@ typedef enum {
 } bl_node_e;
 
 typedef struct bl_ast bl_ast_t;
-typedef struct bl_src bl_src_t;
-
-struct bl_src
-{
-  int         line;
-  int         col;
-  const char *file;
-};
 
 #define bl_peek_module(node) (node)->n.module
 #define bl_peek_func(node) (node)->n.func
@@ -242,7 +234,7 @@ struct bl_block
  */
 struct bl_node
 {
-  bl_src_t  src;
+  bl_src_t *src;
   bl_node_e t;
 
   union

@@ -119,25 +119,25 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module)
     switch (node->t) {
     case BL_NODE_MODULE: {
       bl_visit_module_f v = visitor->visitors[BL_VISIT_MODULE];
-      v(visitor, &bl_peek_module(node), &node->src);
+      v(visitor, &bl_peek_module(node), node->src);
       break;
     }
 
     case BL_NODE_FUNC: {
       bl_visit_fn_f v = visitor->visitors[BL_VISIT_FUNC];
-      v(visitor, &bl_peek_func(node), &node->src);
+      v(visitor, &bl_peek_func(node), node->src);
       break;
     }
 
     case BL_NODE_STRUCT: {
       bl_visit_struct_f v = visitor->visitors[BL_VISIT_STRUCT];
-      v(visitor, &bl_peek_struct(node), &node->src);
+      v(visitor, &bl_peek_struct(node), node->src);
       break;
     }
 
     case BL_NODE_ENUM: {
       bl_visit_enum_f v = visitor->visitors[BL_VISIT_ENUM];
-      v(visitor, &bl_peek_enum(node), &node->src);
+      v(visitor, &bl_peek_enum(node), node->src);
       break;
     }
 
@@ -161,12 +161,12 @@ bl_visitor_walk_func(bl_visitor_t *visitor, bl_func_t *func)
 
   for (size_t i = 0; i < c; i++) {
     arg = bl_ast_func_get_arg(func, i);
-    va(visitor, &bl_peek_arg(arg), &arg->src);
+    va(visitor, &bl_peek_arg(arg), arg->src);
   }
 
-  vt(visitor, &bl_peek_type(func->ret_type), &func->ret_type->src);
+  vt(visitor, &bl_peek_type(func->ret_type), func->ret_type->src);
   if (func->block)
-    vb(visitor, &bl_peek_block(func->block), &func->block->src);
+    vb(visitor, &bl_peek_block(func->block), func->block->src);
 
   visitor->nesting--;
 }
@@ -183,7 +183,7 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg)
   visitor->nesting++;
 
   bl_visit_type_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, &bl_peek_type(arg->type), &arg->type->src);
+  vt(visitor, &bl_peek_type(arg->type), arg->type->src);
 
   visitor->nesting--;
 }
@@ -206,7 +206,7 @@ bl_visitor_walk_var(bl_visitor_t *visitor, bl_var_t *var)
   visitor->nesting++;
 
   bl_visit_type_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, &bl_peek_type(var->type), &var->type->src);
+  vt(visitor, &bl_peek_type(var->type), var->type->src);
 
   visitor->nesting--;
 }
@@ -224,19 +224,19 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block)
     switch (node->t) {
     case BL_NODE_VAR: {
       bl_visit_var_f v = visitor->visitors[BL_VISIT_VAR];
-      v(visitor, &bl_peek_var(node), &node->src);
+      v(visitor, &bl_peek_var(node), node->src);
       break;
     }
 
     case BL_NODE_EXPR: {
       bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
-      v(visitor, &bl_peek_expr(node), &node->src);
+      v(visitor, &bl_peek_expr(node), node->src);
       break;
     }
 
     case BL_NODE_BLOCK: {
       bl_visit_block_f v = visitor->visitors[BL_VISIT_BLOCK];
-      v(visitor, &bl_peek_block(node), &node->src);
+      v(visitor, &bl_peek_block(node), node->src);
       break;
     }
 
@@ -256,8 +256,8 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
   switch (expr->t) {
   case BL_EXPR_BINOP: {
     bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
-    v(visitor, &bl_peek_expr(expr->expr.binop.lhs), &expr->expr.binop.lhs->src);
-    v(visitor, &bl_peek_expr(expr->expr.binop.rhs), &expr->expr.binop.rhs->src);
+    v(visitor, &bl_peek_expr(expr->expr.binop.lhs), expr->expr.binop.lhs->src);
+    v(visitor, &bl_peek_expr(expr->expr.binop.rhs), expr->expr.binop.rhs->src);
   }
   case BL_EXPR_CONST:
     break;

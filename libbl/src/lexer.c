@@ -35,8 +35,6 @@
   (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||       \
    (c) == '_' || (c) == '-')
 
-#define is_number_c(c) ((c) >= '0' && (c) <= '9')
-
 #define scan_error(cnt, code, format, ...)                                                         \
   {                                                                                                \
     bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__);                                     \
@@ -104,9 +102,9 @@ scan_comment(context_t *cnt, const char *term)
 bool
 scan_ident(context_t *cnt, bl_token_t *tok)
 {
-  tok->src_loc = cnt->c;
-  tok->line    = cnt->line;
-  tok->col     = cnt->col;
+  tok->src.src_loc = cnt->c;
+  tok->src.line    = cnt->line;
+  tok->src.col     = cnt->col;
   tok->sym     = BL_SYM_IDENT;
 
   char *begin = cnt->c;
@@ -126,9 +124,9 @@ scan_ident(context_t *cnt, bl_token_t *tok)
 
   BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
   bo_string_appendn(cstr, begin, len);
-  tok->value.as_string = bo_string_get(cstr);
+  tok->value.str = bo_string_get(cstr);
 
-  tok->len = len;
+  tok->src.len = len;
   cnt->col += len;
   return true;
 }
@@ -153,9 +151,9 @@ scan_string(context_t *cnt, bl_token_t *tok)
     return false;
   }
 
-  tok->src_loc = cnt->c;
-  tok->line    = cnt->line;
-  tok->col     = cnt->col;
+  tok->src.src_loc = cnt->c;
+  tok->src.line    = cnt->line;
+  tok->src.col     = cnt->col;
   tok->sym     = BL_SYM_STRING;
 
   /* eat " */
@@ -202,8 +200,8 @@ scan:
     bo_string_appendn(cstr, &c, 1);
   }
 exit:
-  tok->value.as_string = bo_string_get(cstr);
-  tok->len             = len;
+  tok->value.str = bo_string_get(cstr);
+  tok->src.len             = len;
   cnt->col += len + 2;
   return true;
 }
@@ -239,10 +237,10 @@ c_to_number(char c, int base)
 bool
 scan_number(context_t *cnt, bl_token_t *tok)
 {
-  tok->src_loc         = cnt->c;
-  tok->line            = cnt->line;
-  tok->col             = cnt->col;
-  tok->value.as_string = cnt->c;
+  tok->src.src_loc         = cnt->c;
+  tok->src.line            = cnt->line;
+  tok->src.col             = cnt->col;
+  tok->value.str = cnt->c;
 
   unsigned long n = 0;
   int len         = 0;
@@ -285,10 +283,10 @@ scan_number(context_t *cnt, bl_token_t *tok)
   if (len == 0)
     return false;
 
-  tok->len = len;
+  tok->src.len = len;
   cnt->col += len;
   tok->sym          = BL_SYM_NUM;
-  tok->value.as_ull = n;
+  tok->value.u = n;
   return true;
 
 scan_double : {
@@ -316,13 +314,13 @@ scan_double : {
     len++;
     cnt->c++;
     tok->sym            = BL_SYM_FLOAT;
-    tok->value.as_float = n / (float)e;
   } else {
     tok->sym             = BL_SYM_DOUBLE;
-    tok->value.as_double = n / (double)e;
   }
 
-  tok->len = len;
+  tok->value.d = n / (double)e;
+
+  tok->src.len = len;
   cnt->col += len;
 
   return true;
@@ -334,9 +332,9 @@ scan(context_t *cnt)
 {
   bl_token_t tok;
 scan:
-  tok.src_loc = cnt->c;
-  tok.line    = cnt->line;
-  tok.col     = cnt->col;
+  tok.src.src_loc = cnt->c;
+  tok.src.line    = cnt->line;
+  tok.src.col     = cnt->col;
 
   /*
    * Ignored characters
@@ -421,7 +419,7 @@ scan:
              cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
-  tok.file = cnt->unit->filepath;
+  tok.src.file = cnt->unit->filepath;
   goto scan;
 }
 

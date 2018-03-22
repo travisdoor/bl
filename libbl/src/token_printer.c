@@ -43,15 +43,15 @@ bl_token_printer_run(bl_unit_t *unit)
     tok = &bo_array_at(tokens_arr, i, bl_token_t);
 
     if (line == -1) {
-      line = tok->line;
+      line = tok->src.line;
       fprintf(stdout, "%d: ", line);
-    } else if (tok->line != line) {
-      line = tok->line;
+    } else if (tok->src.line != line) {
+      line = tok->src.line;
       fprintf(stdout, "\n%d: ", line);
     }
 
-    fprintf(stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", bl_sym_strings[tok->sym], tok->line,
-            tok->col);
+    fprintf(stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", bl_sym_strings[tok->sym], tok->src.line,
+            tok->src.col);
   }
 
   fprintf(stdout, "\n");

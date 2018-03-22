@@ -53,9 +53,7 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
 
   node->t = type;
   if (tok != NULL) {
-    node->src.col  = tok->col;
-    node->src.file = tok->file;
-    node->src.line = tok->line;
+    node->src = &tok->src;
   }
 
   switch (node->t) {
