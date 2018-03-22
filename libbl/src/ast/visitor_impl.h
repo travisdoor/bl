@@ -42,6 +42,7 @@ typedef enum {
   BL_VISIT_ENUM,
   BL_VISIT_VAR,
   BL_VISIT_BLOCK,
+  BL_VISIT_EXPR,
   BL_VISIT_COUNT
 } bl_visit_e;
 
@@ -53,6 +54,7 @@ typedef void (*bl_visit_struct_f)(bl_visitor_t *visitor, bl_struct_t *strct, bl_
 typedef void (*bl_visit_enum_f)(bl_visitor_t *visitor, bl_enum_t *enm, bl_src_t *src);
 typedef void (*bl_visit_var_f)(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src);
 typedef void (*bl_visit_block_f)(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src);
+typedef void (*bl_visit_expr_f)(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src);
 
 struct bl_visitor
 {
@@ -90,6 +92,9 @@ bl_visitor_walk_var(bl_visitor_t *visitor, bl_var_t *var);
 
 void
 bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
+
+void
+bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr);
 
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */

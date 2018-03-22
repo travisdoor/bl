@@ -28,11 +28,15 @@ module std {
   fn no_return() {
   }
 
-  fn add(first i32, second i32) i32 {
+  fn add(first i32, second i32,) i32 {
   }
 
   fn get_context() context_t {
     var hello i32;
+    10 + 10;
+    {
+      var test i64;
+    }
   }
 }
 

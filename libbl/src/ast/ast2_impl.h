@@ -42,6 +42,7 @@
   nt(TYPE, "type") \
   nt(ARG, "arg") \
   nt(VAR, "var") \
+  nt(EXPR, "expr") \
   nt(MODULE, "module")
 
 // clang-format on
@@ -70,6 +71,10 @@ struct bl_src
 #define bl_peek_type(node) (node)->n.type
 #define bl_peek_arg(node) (node)->n.arg
 #define bl_peek_var(node) (node)->n.var
+#define bl_peek_expr(node) (node)->n.expr
+
+#define bl_peek_const_expr(node) (node)->n.expr.expr.const_expr
+#define bl_peek_binop(node) (node)->n.expr.expr.binop
 
 typedef struct bl_node   bl_node_t;
 typedef struct bl_module bl_module_t;
@@ -80,6 +85,7 @@ typedef struct bl_block  bl_block_t;
 typedef struct bl_type   bl_type_t;
 typedef struct bl_arg    bl_arg_t;
 typedef struct bl_var    bl_var_t;
+typedef struct bl_expr   bl_expr_t;
 
 typedef enum bl_fund_type bl_fund_type_e;
 
@@ -128,6 +134,44 @@ struct bl_type
     bl_fund_type_e fund;
     bl_node_t *    ref;
   } type;
+};
+
+/*
+ * expr node
+ */
+struct bl_expr
+{
+  enum
+  {
+    BL_EXPR_CONST,
+    BL_EXPR_BINOP
+  } t;
+
+  union
+  {
+    struct
+    {
+      bl_node_t *type;
+
+      union
+      {
+        char               c;
+        bool               b;
+        long long          s;
+        unsigned long long u;
+        double             f;
+        const char *       str;
+      } value;
+    } const_expr;
+
+    struct
+    {
+      bl_sym_e   op;
+      bl_node_t *lhs;
+      bl_node_t *rhs;
+    } binop;
+
+  } expr;
 };
 
 /*
@@ -211,6 +255,7 @@ struct bl_node
     bl_type_t   type;
     bl_arg_t    arg;
     bl_var_t    var;
+    bl_expr_t   expr;
   } n;
 };
 
@@ -249,6 +294,5 @@ bl_ast_block_node_count(bl_block_t *block);
 
 bl_node_t *
 bl_ast_block_get_node(bl_block_t *block, const size_t i);
-
 
 #endif // BL_NODE2_IMPL_H

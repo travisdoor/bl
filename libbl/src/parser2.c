@@ -75,23 +75,150 @@ static bl_node_t *
 parse_ret_type_rq(context_t *cnt);
 
 static bl_node_t *
-parse_var_rq(context_t *cnt);
+parse_var_maybe(context_t *cnt);
 
+static bl_node_t *
+parse_expr_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence);
+
+static bl_node_t *
+parse_atom_expr(context_t *cnt);
+
+static bl_node_t *
+parse_const_expr_maybe(context_t *cnt);
+
+/* impl*/
 bl_node_t *
-parse_var_rq(context_t *cnt)
+parse_const_expr_maybe(context_t *cnt)
 {
-  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
-  bl_node_t * var    = bl_ast_new_node(cnt->ast, BL_NODE_VAR, tok_id);
+// HACK: rewrite later
+#define create(_type_, _str_type_)                                                                 \
+  bl_tokens_consume(cnt->tokens);                                                                  \
+  const_expr                   = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok);                     \
+  bl_peek_expr(const_expr).t   = BL_EXPR_CONST;                                                    \
+  bl_node_t *type              = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);                     \
+  bl_peek_type(type).t         = BL_TYPE_FUND;                                                     \
+  bl_peek_type(type).type.fund = (_type_);                                                         \
+  bl_id_init(&bl_peek_type(type).id, (_str_type_));
 
-  bl_id_init(&bl_peek_var(var).id, tok_id->value.as_string);
+  bl_node_t * const_expr = NULL;
+  bl_token_t *tok        = bl_tokens_peek(cnt->tokens);
 
-  bl_peek_var(var).type = parse_type_maybe(cnt);
-  if (bl_peek_var(var).type == NULL) {
-    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+  switch (tok->sym) {
+  case BL_SYM_NUM: {
+    create(BL_FTYPE_I32, "i32");
+    bl_peek_const_expr(const_expr).value.s = tok->value.as_ull;
+    break;
   }
 
-  parse_semicolon_rq(cnt);
+  case BL_SYM_STRING: {
+    create(BL_FTYPE_STRING, "string");
+    bl_peek_const_expr(const_expr).value.str = tok->value.as_string;
+    break;
+  }
+
+  case BL_SYM_FLOAT: {
+    create(BL_FTYPE_F32, "f32");
+    bl_peek_const_expr(const_expr).value.f = tok->value.as_float;
+    break;
+  }
+
+  case BL_SYM_DOUBLE: {
+    create(BL_FTYPE_F64, "f64");
+    bl_peek_const_expr(const_expr).value.f = tok->value.as_double;
+    break;
+  }
+
+  case BL_SYM_CHAR: {
+    create(BL_FTYPE_CHAR, "char");
+    bl_peek_const_expr(const_expr).value.c = tok->value.as_char;
+    break;
+  }
+  case BL_SYM_TRUE:
+  case BL_SYM_FALSE:
+    create(BL_FTYPE_BOOL, "bool");
+
+    if (tok->sym == BL_SYM_TRUE)
+      bl_peek_const_expr(const_expr).value.b = true;
+    else
+      bl_peek_const_expr(const_expr).value.b = false;
+    break;
+  default:
+    break;
+  }
+
+  return const_expr;
+#undef create
+}
+
+bl_node_t *
+parse_atom_expr(context_t *cnt)
+{
+  bl_node_t * expr = NULL;
+
+  expr = parse_const_expr_maybe(cnt);
+
+  return expr;
+}
+
+bl_node_t *
+parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
+{
+  bl_node_t * rhs       = NULL;
+  bl_token_t *lookahead = bl_tokens_peek(cnt->tokens);
+  bl_token_t *op        = NULL;
+
+  while (bl_token_prec(lookahead) >= min_precedence) {
+    op = lookahead;
+    bl_tokens_consume(cnt->tokens);
+    rhs       = parse_atom_expr(cnt);
+    lookahead = bl_tokens_peek(cnt->tokens);
+
+    while (bl_token_prec(lookahead) > bl_token_prec(op)) {
+      rhs       = parse_expr_1(cnt, rhs, bl_token_prec(lookahead));
+      lookahead = bl_tokens_peek(cnt->tokens);
+    }
+
+    if (bl_token_is_binop(op)) {
+      bl_node_t *tmp         = lhs;
+      lhs                    = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, op);
+      bl_peek_expr(lhs).t    = BL_EXPR_BINOP;
+      bl_peek_binop(lhs).lhs = tmp;
+      bl_peek_binop(lhs).rhs = rhs;
+      bl_peek_binop(lhs).op  = op->sym;
+    } else {
+      parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, "expected binary operation");
+    }
+  }
+
+  return lhs;
+}
+
+bl_node_t *
+parse_expr_maybe(context_t *cnt)
+{
+  return parse_expr_1(cnt, parse_atom_expr(cnt), 0);
+}
+
+bl_node_t *
+parse_var_maybe(context_t *cnt)
+{
+  bl_node_t *var = NULL;
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR)) {
+    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+    var                = bl_ast_new_node(cnt->ast, BL_NODE_VAR, tok_id);
+
+    bl_id_init(&bl_peek_var(var).id, tok_id->value.as_string);
+
+    bl_peek_var(var).type = parse_type_maybe(cnt);
+    if (bl_peek_var(var).type == NULL) {
+      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+    }
+  }
+
   return var;
 }
 
@@ -173,28 +300,42 @@ parse_block_rq(context_t *cnt)
                 "expected begin of the block " BL_YELLOW("'{'"));
   }
 
-  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
-  while (tok->sym != BL_SYM_RBLOCK) {
-    bl_node_t *node = NULL;
-    switch (tok->sym) {
-    case BL_SYM_VAR:
-      bl_tokens_consume(cnt->tokens);
-      node = parse_var_rq(cnt);
-      break;
-    default:
-      parse_error(cnt, BL_ERR_INVALID_TOKEN, tok, "unexpected token in the block");
-    }
-
-    bl_ast_block_push_node(&bl_peek_block(block), node);
-    tok = bl_tokens_peek(cnt->tokens);
+  bl_token_t *tok;
+stmt:
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
+    tok = bl_tokens_consume(cnt->tokens);
+    // TODO: warning macro
+    bl_warning("%s %d:%d extra semicolon can be removed " BL_YELLOW("';'"), cnt->unit->filepath,
+               tok->line, tok->col);
+    goto stmt;
   }
 
-  bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
-  if (tok_end->sym != BL_SYM_RBLOCK) {
-    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
-                "expected end of the block body " BL_YELLOW("'}'") ", starting %d%d",
-                tok_begin->file, tok_begin->col);
+  /* compound sub-statement */
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_LBLOCK)) {
+    bl_ast_block_push_node(&bl_peek_block(block), parse_block_rq(cnt));
+    goto stmt;
   }
+
+  /* var decl */
+  if (bl_ast_block_push_node(&bl_peek_block(block), parse_var_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
+    goto stmt;
+  }
+
+  /* expr */
+  if (bl_ast_block_push_node(&bl_peek_block(block), parse_expr_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
+    goto stmt;
+  }
+
+  tok = bl_tokens_consume(cnt->tokens);
+
+  if (tok->sym != BL_SYM_RBLOCK) {
+    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+                "expected declaration or scope end " BL_YELLOW("'}'") ", starting %d:%d",
+                tok_begin->line, tok_begin->col);
+  }
+
   return block;
 }
 

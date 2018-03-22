@@ -72,6 +72,7 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
   case BL_NODE_ENUM:
   case BL_NODE_VAR:
   case BL_NODE_TYPE:
+  case BL_NODE_EXPR:
   case BL_NODE_ARG:
     break;
   default:
@@ -96,6 +97,7 @@ node_terminate(bl_node_t *node)
   case BL_NODE_ENUM:
   case BL_NODE_VAR:
   case BL_NODE_TYPE:
+  case BL_NODE_EXPR:
   case BL_NODE_ARG:
     break;
   default:

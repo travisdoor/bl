@@ -78,6 +78,12 @@ visit_block(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src)
   bl_visitor_walk_block(visitor, block);
 }
 
+static void
+visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
+{
+  bl_visitor_walk_expr(visitor, expr);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -92,6 +98,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_ENUM]   = visit_enum;
   visitor->visitors[BL_VISIT_VAR]    = visit_var;
   visitor->visitors[BL_VISIT_BLOCK]  = visit_block;
+  visitor->visitors[BL_VISIT_EXPR]   = visit_expr;
 }
 
 void
@@ -220,9 +227,43 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block)
       v(visitor, &bl_peek_var(node), &node->src);
       break;
     }
+
+    case BL_NODE_EXPR: {
+      bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
+      v(visitor, &bl_peek_expr(node), &node->src);
+      break;
+    }
+
+    case BL_NODE_BLOCK: {
+      bl_visit_block_f v = visitor->visitors[BL_VISIT_BLOCK];
+      v(visitor, &bl_peek_block(node), &node->src);
+      break;
+    }
+
     default:
       bl_abort("unknown node in block visit");
     }
+  }
+
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
+{
+  visitor->nesting++;
+
+  switch (expr->t) {
+  case BL_EXPR_BINOP: {
+    bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
+    v(visitor, &bl_peek_expr(expr->expr.binop.lhs), &expr->expr.binop.lhs->src);
+    v(visitor, &bl_peek_expr(expr->expr.binop.rhs), &expr->expr.binop.rhs->src);
+  }
+  case BL_EXPR_CONST:
+    break;
+
+  default:
+    bl_abort("unknown node in expr visit");
   }
 
   visitor->nesting--;

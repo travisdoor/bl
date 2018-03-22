@@ -103,6 +103,13 @@ visit_var(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src)
   bl_visitor_walk_var(visitor, var);
 }
 
+static void
+visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
+{
+  print_head("expression", src, expr, visitor->nesting);
+  bl_visitor_walk_expr(visitor, expr);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -125,6 +132,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
     bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
     bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+    bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
 
     bl_visitor_walk_module(&visitor, &bl_peek_module(unit->ast.root));
   }
