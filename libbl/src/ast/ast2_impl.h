@@ -40,6 +40,8 @@
   nt(ENUM, "enum") \
   nt(BLOCK, "block") \
   nt(TYPE, "type") \
+  nt(ARG, "arg") \
+  nt(VAR, "var") \
   nt(MODULE, "module")
 
 // clang-format on
@@ -60,12 +62,14 @@ struct bl_src
   const char *file;
 };
 
-#define BL_MODULE(node) (node)->n.module
-#define BL_FUNC(node) (node)->n.func
-#define BL_STRUCT(node) (node)->n.strct
-#define BL_ENUM(node) (node)->n.enm
-#define BL_BLOCK(node) (node)->n.block
-#define BL_TYPE(node) (node)->n.type
+#define bl_peek_module(node) (node)->n.module
+#define bl_peek_func(node) (node)->n.func
+#define bl_peek_struct(node) (node)->n.strct
+#define bl_peek_enum(node) (node)->n.enm
+#define bl_peek_block(node) (node)->n.block
+#define bl_peek_type(node) (node)->n.type
+#define bl_peek_arg(node) (node)->n.arg
+#define bl_peek_var(node) (node)->n.var
 
 typedef struct bl_node   bl_node_t;
 typedef struct bl_module bl_module_t;
@@ -74,6 +78,8 @@ typedef struct bl_struct bl_struct_t;
 typedef struct bl_enum   bl_enum_t;
 typedef struct bl_block  bl_block_t;
 typedef struct bl_type   bl_type_t;
+typedef struct bl_arg    bl_arg_t;
+typedef struct bl_var    bl_var_t;
 
 typedef enum bl_fund_type bl_fund_type_e;
 
@@ -90,7 +96,7 @@ struct bl_ast
 
 /*
  * type node
- */ 
+ */
 enum bl_fund_type
 {
   BL_FTYPE_VOID   = 0x7c9faa57,
@@ -126,7 +132,7 @@ struct bl_type
 
 /*
  * module node
- */ 
+ */
 struct bl_module
 {
   bl_id_t id;
@@ -134,19 +140,37 @@ struct bl_module
 };
 
 /*
+ * var declaration
+ */
+struct bl_var
+{
+  bl_id_t    id;
+  bl_node_t *type;
+};
+
+/*
+ * func argument
+ */
+struct bl_arg
+{
+  bl_id_t    id;
+  bl_node_t *type;
+};
+
+/*
  * function declaration node
- */ 
+ */
 struct bl_func
 {
   bl_id_t    id;
-  BArray *   params;
+  BArray *   args;
   bl_node_t *block;
-  // TODO: return type
+  bl_node_t *ret_type;
 };
 
 /*
  * structure declaration node
- */ 
+ */
 struct bl_struct
 {
   bl_id_t id;
@@ -154,7 +178,7 @@ struct bl_struct
 
 /*
  * enum declaration node
- */ 
+ */
 struct bl_enum
 {
   bl_id_t id;
@@ -162,7 +186,7 @@ struct bl_enum
 
 /*
  * block declaration node
- */ 
+ */
 struct bl_block
 {
   BArray *nodes;
@@ -171,7 +195,7 @@ struct bl_block
 /*
  * base node union type
  * this node is actually allocated
- */ 
+ */
 struct bl_node
 {
   bl_src_t  src;
@@ -185,6 +209,8 @@ struct bl_node
     bl_enum_t   enm;
     bl_block_t  block;
     bl_type_t   type;
+    bl_arg_t    arg;
+    bl_var_t    var;
   } n;
 };
 
@@ -205,5 +231,24 @@ bl_ast_module_node_count(bl_module_t *module);
 
 bl_node_t *
 bl_ast_module_get_node(bl_module_t *module, const size_t i);
+
+bl_node_t *
+bl_ast_func_push_arg(bl_func_t *func, bl_node_t *arg);
+
+size_t
+bl_ast_func_arg_count(bl_func_t *func);
+
+bl_node_t *
+bl_ast_func_get_arg(bl_func_t *func, const size_t i);
+
+bl_node_t *
+bl_ast_block_push_node(bl_block_t *block, bl_node_t *node);
+
+size_t
+bl_ast_block_node_count(bl_block_t *block);
+
+bl_node_t *
+bl_ast_block_get_node(bl_block_t *block, const size_t i);
+
 
 #endif // BL_NODE2_IMPL_H

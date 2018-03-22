@@ -52,6 +52,57 @@ visit_func(bl_visitor_t *visitor, bl_func_t *func, bl_src_t *src)
   bl_visitor_walk_func(visitor, func);
 }
 
+static void
+visit_type(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src)
+{
+  print_head("type", src, type, visitor->nesting);
+  if (type->t == BL_TYPE_REF) {
+    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), type->id.str, type->type.ref);
+  } else {
+    fprintf(stdout, "name: " BL_YELLOW("'%s'"), type->id.str);
+  }
+  bl_visitor_walk_type(visitor, type);
+}
+
+static void
+visit_arg(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src)
+{
+  print_head("arg", src, arg, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), arg->id.str);
+  bl_visitor_walk_arg(visitor, arg);
+}
+
+static void
+visit_struct(bl_visitor_t *visitor, bl_struct_t *strct, bl_src_t *src)
+{
+  print_head("struct", src, strct, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), strct->id.str);
+  bl_visitor_walk_struct(visitor, strct);
+}
+
+static void
+visit_enum(bl_visitor_t *visitor, bl_enum_t *enm, bl_src_t *src)
+{
+  print_head("enum", src, enm, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), enm->id.str);
+  bl_visitor_walk_enum(visitor, enm);
+}
+
+static void
+visit_block(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src)
+{
+  print_head("block", src, block, visitor->nesting);
+  bl_visitor_walk_block(visitor, block);
+}
+
+static void
+visit_var(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src)
+{
+  print_head("variable", src, var, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), var->id.str);
+  bl_visitor_walk_var(visitor, var);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -68,7 +119,14 @@ bl_ast_printer_run(bl_assembly_t *assembly)
 
     bl_visitor_add(&visitor, visit_module, BL_VISIT_MODULE);
     bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
-    bl_visitor_walk_module(&visitor, &BL_MODULE(unit->ast.root));
+    bl_visitor_add(&visitor, visit_type, BL_VISIT_TYPE);
+    bl_visitor_add(&visitor, visit_arg, BL_VISIT_ARG);
+    bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
+    bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
+    bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
+    bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+
+    bl_visitor_walk_module(&visitor, &bl_peek_module(unit->ast.root));
   }
 
   fprintf(stdout, "\n\n");

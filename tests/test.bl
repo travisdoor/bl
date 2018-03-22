@@ -22,8 +22,22 @@ fn no_return(i f64) {
 */
 
 module std {
+  enum state_e {
+  }
+
   fn no_return() {
   }
+
+  fn add(first i32, second i32) i32 {
+  }
+
+  fn get_context() context_t {
+    var hello i32;
+  }
 }
+
+struct context_t {
+}
+
 
 

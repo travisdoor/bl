@@ -60,15 +60,19 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
 
   switch (node->t) {
   case BL_NODE_MODULE:
-    BL_MODULE(node).nodes = bo_array_new(sizeof(bl_node_t *));
+    bl_peek_module(node).nodes = bo_array_new(sizeof(bl_node_t *));
     break;
   case BL_NODE_BLOCK:
-    BL_BLOCK(node).nodes = bo_array_new(sizeof(bl_node_t *));
+    bl_peek_block(node).nodes = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_FUNC:
+    bl_peek_func(node).args = bo_array_new(sizeof(bl_node_t *));
     break;
   case BL_NODE_STRUCT:
   case BL_NODE_ENUM:
-  case BL_NODE_FUNC:
+  case BL_NODE_VAR:
   case BL_NODE_TYPE:
+  case BL_NODE_ARG:
     break;
   default:
     bl_abort("invalid node type");
@@ -80,15 +84,19 @@ node_terminate(bl_node_t *node)
 {
   switch (node->t) {
   case BL_NODE_MODULE:
-    bo_unref(BL_MODULE(node).nodes);
+    bo_unref(bl_peek_module(node).nodes);
     break;
   case BL_NODE_BLOCK:
-    bo_unref(BL_BLOCK(node).nodes);
+    bo_unref(bl_peek_block(node).nodes);
+    break;
+  case BL_NODE_FUNC:
+    bo_unref(bl_peek_func(node).args);
     break;
   case BL_NODE_STRUCT:
   case BL_NODE_ENUM:
-  case BL_NODE_FUNC:
+  case BL_NODE_VAR:
   case BL_NODE_TYPE:
+  case BL_NODE_ARG:
     break;
   default:
     bl_abort("invalid node type");
@@ -165,4 +173,48 @@ bl_node_t *
 bl_ast_module_get_node(bl_module_t *module, const size_t i)
 {
   return bo_array_at(module->nodes, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_ast_func_push_arg(bl_func_t *func, bl_node_t *arg)
+{
+  if (arg == NULL)
+    return NULL;
+
+  bo_array_push_back(func->args, arg);
+  return arg;
+}
+
+size_t
+bl_ast_func_arg_count(bl_func_t *func)
+{
+  return bo_array_size(func->args);
+}
+
+bl_node_t *
+bl_ast_func_get_arg(bl_func_t *func, const size_t i)
+{
+  return bo_array_at(func->args, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_ast_block_push_node(bl_block_t *block, bl_node_t *node)
+{
+  if (node == NULL)
+    return NULL;
+
+  bo_array_push_back(block->nodes, node);
+  return node;
+}
+
+size_t
+bl_ast_block_node_count(bl_block_t *block)
+{
+  return bo_array_size(block->nodes);
+}
+
+bl_node_t *
+bl_ast_block_get_node(bl_block_t *block, const size_t i)
+{
+  return bo_array_at(block->nodes, i, bl_node_t *);
 }
