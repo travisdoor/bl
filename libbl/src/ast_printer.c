@@ -106,7 +106,23 @@ visit_var(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src)
 static void
 visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
 {
-  print_head("expression", src, expr, visitor->nesting);
+  print_head("expr", src, expr, visitor->nesting);
+  switch (expr->t) {
+  case BL_EXPR_CONST:
+    fprintf(stdout, BL_CYAN("<const>"));
+    break;
+  case BL_EXPR_BINOP:
+    fprintf(stdout, BL_CYAN("<binop>"));
+    break;
+  case BL_EXPR_VAR_REF:
+    fprintf(stdout, BL_CYAN("<ref>") " name: " BL_YELLOW("'%s' -> %p"), expr->expr.var_ref.id.str,
+            expr->expr.var_ref.ref);
+    break;
+  case BL_EXPR_CALL:
+    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"), expr->expr.call.id.str,
+            expr->expr.call.ref);
+    break;
+  }
   bl_visitor_walk_expr(visitor, expr);
 }
 

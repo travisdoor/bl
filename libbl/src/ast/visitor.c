@@ -208,6 +208,11 @@ bl_visitor_walk_var(bl_visitor_t *visitor, bl_var_t *var)
   bl_visit_type_f vt = visitor->visitors[BL_VISIT_TYPE];
   vt(visitor, &bl_peek_type(var->type), var->type->src);
 
+  if (var->init_expr) {
+    bl_visit_expr_f ve = visitor->visitors[BL_VISIT_EXPR];
+    ve(visitor, &bl_peek_expr(var->init_expr), var->init_expr->src);
+  }
+
   visitor->nesting--;
 }
 
@@ -254,12 +259,27 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
   visitor->nesting++;
 
   switch (expr->t) {
+
   case BL_EXPR_BINOP: {
     bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
     v(visitor, &bl_peek_expr(expr->expr.binop.lhs), expr->expr.binop.lhs->src);
     v(visitor, &bl_peek_expr(expr->expr.binop.rhs), expr->expr.binop.rhs->src);
+    break;
   }
+
+  case BL_EXPR_CALL: {
+    bl_visit_expr_f v   = visitor->visitors[BL_VISIT_EXPR];
+    const size_t    c   = bl_ast_call_arg_count(expr);
+    bl_node_t *     arg = NULL;
+    for (size_t i = 0; i < c; i++) {
+      arg = bl_ast_call_get_arg(expr, i);
+      v(visitor, &bl_peek_expr(arg), arg->src);
+    }
+    break;
+  }
+
   case BL_EXPR_CONST:
+  case BL_EXPR_VAR_REF:
     break;
 
   default:

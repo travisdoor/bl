@@ -75,7 +75,7 @@ typedef enum {
 
 static const char *bl_fund_type_strings[] = {
 #define ft(tok, str) str,
-  BL_FUND_TYPE_LIST
+    BL_FUND_TYPE_LIST
 #undef ft
 };
 
@@ -93,6 +93,8 @@ typedef struct bl_ast bl_ast_t;
 
 #define bl_peek_const_expr(node) (node)->n.expr.expr.const_expr
 #define bl_peek_binop(node) (node)->n.expr.expr.binop
+#define bl_peek_var_ref(node) (node)->n.expr.expr.var_ref
+#define bl_peek_call(node) (node)->n.expr.expr.call
 
 #define bl_peek_fund_type(node) (node)->n.type.type.fund
 #define bl_peek_ref_type(node) (node)->n.type.type.ref
@@ -131,8 +133,9 @@ struct bl_type
   {
     bl_fund_type_e fund;
 
-    struct {
-      bl_id_t id;
+    struct
+    {
+      bl_id_t    id;
       bl_node_t *ref;
     } ref;
   } type;
@@ -146,7 +149,9 @@ struct bl_expr
   enum
   {
     BL_EXPR_CONST,
-    BL_EXPR_BINOP
+    BL_EXPR_BINOP,
+    BL_EXPR_VAR_REF,
+    BL_EXPR_CALL
   } t;
 
   union
@@ -173,6 +178,19 @@ struct bl_expr
       bl_node_t *rhs;
     } binop;
 
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *ref;
+    } var_ref;
+
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *ref;
+      BArray *   args;
+    } call;
+
   } expr;
 };
 
@@ -192,6 +210,7 @@ struct bl_var
 {
   bl_id_t    id;
   bl_node_t *type;
+  bl_node_t *init_expr;
 };
 
 /*
@@ -296,5 +315,14 @@ bl_ast_block_node_count(bl_block_t *block);
 
 bl_node_t *
 bl_ast_block_get_node(bl_block_t *block, const size_t i);
+
+bl_node_t *
+bl_ast_call_push_arg(bl_expr_t *call, bl_node_t *node);
+
+size_t
+bl_ast_call_arg_count(bl_expr_t *call);
+
+bl_node_t *
+bl_ast_call_get_arg(bl_expr_t *call, const size_t i);
 
 #endif // BL_NODE2_IMPL_H

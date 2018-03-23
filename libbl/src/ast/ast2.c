@@ -49,27 +49,6 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
   if (tok != NULL) {
     node->src = &tok->src;
   }
-
-  switch (node->t) {
-  case BL_NODE_MODULE:
-    bl_peek_module(node).nodes = bo_array_new(sizeof(bl_node_t *));
-    break;
-  case BL_NODE_BLOCK:
-    bl_peek_block(node).nodes = bo_array_new(sizeof(bl_node_t *));
-    break;
-  case BL_NODE_FUNC:
-    bl_peek_func(node).args = bo_array_new(sizeof(bl_node_t *));
-    break;
-  case BL_NODE_STRUCT:
-  case BL_NODE_ENUM:
-  case BL_NODE_VAR:
-  case BL_NODE_TYPE:
-  case BL_NODE_EXPR:
-  case BL_NODE_ARG:
-    break;
-  default:
-    bl_abort("invalid node type");
-  }
 }
 
 static void
@@ -85,11 +64,15 @@ node_terminate(bl_node_t *node)
   case BL_NODE_FUNC:
     bo_unref(bl_peek_func(node).args);
     break;
+  case BL_NODE_EXPR:
+    if (bl_peek_expr(node).t == BL_EXPR_CALL) {
+      bo_unref(&bl_peek_call(node).args);
+    }
+    break;
   case BL_NODE_STRUCT:
   case BL_NODE_ENUM:
   case BL_NODE_VAR:
   case BL_NODE_TYPE:
-  case BL_NODE_EXPR:
   case BL_NODE_ARG:
     break;
   default:
@@ -153,6 +136,10 @@ bl_ast_module_push_node(bl_module_t *module, bl_node_t *node)
   if (node == NULL)
     return NULL;
 
+  if (module->nodes == NULL) {
+    module->nodes = bo_array_new(sizeof(bl_node_t *));
+  }
+
   bo_array_push_back(module->nodes, node);
   return node;
 }
@@ -160,12 +147,16 @@ bl_ast_module_push_node(bl_module_t *module, bl_node_t *node)
 size_t
 bl_ast_module_node_count(bl_module_t *module)
 {
+  if (module->nodes == NULL)
+    return 0;
   return bo_array_size(module->nodes);
 }
 
 bl_node_t *
 bl_ast_module_get_node(bl_module_t *module, const size_t i)
 {
+  if (module->nodes == NULL)
+    return NULL;
   return bo_array_at(module->nodes, i, bl_node_t *);
 }
 
@@ -175,6 +166,10 @@ bl_ast_func_push_arg(bl_func_t *func, bl_node_t *arg)
   if (arg == NULL)
     return NULL;
 
+  if (func->args == NULL) {
+    func->args = bo_array_new(sizeof(bl_node_t *));
+  }
+
   bo_array_push_back(func->args, arg);
   return arg;
 }
@@ -182,12 +177,16 @@ bl_ast_func_push_arg(bl_func_t *func, bl_node_t *arg)
 size_t
 bl_ast_func_arg_count(bl_func_t *func)
 {
+  if (func->args == NULL)
+    return 0;
   return bo_array_size(func->args);
 }
 
 bl_node_t *
 bl_ast_func_get_arg(bl_func_t *func, const size_t i)
 {
+  if (func->args == NULL)
+    return NULL;
   return bo_array_at(func->args, i, bl_node_t *);
 }
 
@@ -197,6 +196,10 @@ bl_ast_block_push_node(bl_block_t *block, bl_node_t *node)
   if (node == NULL)
     return NULL;
 
+  if (block->nodes == NULL) {
+    block->nodes = bo_array_new(sizeof(bl_node_t *));
+  }
+
   bo_array_push_back(block->nodes, node);
   return node;
 }
@@ -204,11 +207,49 @@ bl_ast_block_push_node(bl_block_t *block, bl_node_t *node)
 size_t
 bl_ast_block_node_count(bl_block_t *block)
 {
+  if (block->nodes == NULL)
+    return 0;
   return bo_array_size(block->nodes);
 }
 
 bl_node_t *
 bl_ast_block_get_node(bl_block_t *block, const size_t i)
 {
+  if (block->nodes == NULL)
+    return NULL;
   return bo_array_at(block->nodes, i, bl_node_t *);
+}
+
+bl_node_t *
+bl_ast_call_push_arg(bl_expr_t *call, bl_node_t *arg)
+{
+  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  if (arg == NULL)
+    return NULL;
+
+  if (call->expr.call.args == NULL) {
+    call->expr.call.args = bo_array_new(sizeof(bl_node_t *));
+  }
+
+  bo_array_push_back(call->expr.call.args, arg);
+  return arg;
+}
+
+size_t
+bl_ast_call_arg_count(bl_expr_t *call)
+{
+  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  if (call->expr.call.args == NULL)
+    return 0;
+
+  return bo_array_size(call->expr.call.args);
+}
+
+bl_node_t *
+bl_ast_call_get_arg(bl_expr_t *call, const size_t i)
+{
+  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  if (call->expr.call.args == NULL)
+    return NULL;
+  return bo_array_at(call->expr.call.args, i, bl_node_t *);
 }
