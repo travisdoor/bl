@@ -45,7 +45,7 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
    * memory block occupied by node to 0
    */
 
-  node->t = type;
+  node->node_variant = type;
   if (tok != NULL) {
     node->src = &tok->src;
   }
@@ -54,19 +54,19 @@ node_init(bl_node_t *node, bl_node_e type, bl_token_t *tok)
 static void
 node_terminate(bl_node_t *node)
 {
-  switch (node->t) {
+  switch (node->node_variant) {
   case BL_NODE_MODULE:
-    bo_unref(bl_peek_module(node).nodes);
+    bo_unref(bl_peek_module(node)->nodes);
     break;
   case BL_NODE_BLOCK:
-    bo_unref(bl_peek_block(node).nodes);
+    bo_unref(bl_peek_block(node)->nodes);
     break;
   case BL_NODE_FUNC:
-    bo_unref(bl_peek_func(node).args);
+    bo_unref(bl_peek_func(node)->args);
     break;
   case BL_NODE_EXPR:
-    if (bl_peek_expr(node).t == BL_EXPR_CALL) {
-      bo_unref(&bl_peek_call(node).args);
+    if (bl_peek_expr(node)->expr_variant == BL_EXPR_CALL) {
+      bo_unref(&bl_peek_call(node)->args);
     }
     break;
   case BL_NODE_STRUCT:
@@ -223,7 +223,7 @@ bl_ast_block_get_node(bl_block_t *block, const size_t i)
 bl_node_t *
 bl_ast_call_push_arg(bl_expr_t *call, bl_node_t *arg)
 {
-  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  bl_assert(call->expr_variant == BL_EXPR_CALL, "invalid expr");
   if (arg == NULL)
     return NULL;
 
@@ -238,7 +238,7 @@ bl_ast_call_push_arg(bl_expr_t *call, bl_node_t *arg)
 size_t
 bl_ast_call_arg_count(bl_expr_t *call)
 {
-  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  bl_assert(call->expr_variant == BL_EXPR_CALL, "invalid expr");
   if (call->expr.call.args == NULL)
     return 0;
 
@@ -248,7 +248,7 @@ bl_ast_call_arg_count(bl_expr_t *call)
 bl_node_t *
 bl_ast_call_get_arg(bl_expr_t *call, const size_t i)
 {
-  bl_assert(call->t == BL_EXPR_CALL, "invalid expr");
+  bl_assert(call->expr_variant == BL_EXPR_CALL, "invalid expr");
   if (call->expr.call.args == NULL)
     return NULL;
   return bo_array_at(call->expr.call.args, i, bl_node_t *);

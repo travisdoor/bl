@@ -37,77 +37,78 @@
           (name), (src)->line, (src)->col, (ptr));
 
 static void
-visit_module(bl_visitor_t *visitor, bl_module_t *module, bl_src_t *src)
+visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  print_head("module", src, module, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), module->id.str);
+  print_head("module", bl_peek_src(module), module, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_module(module)->id.str);
   bl_visitor_walk_module(visitor, module);
 }
 
 static void
-visit_func(bl_visitor_t *visitor, bl_func_t *func, bl_src_t *src)
+visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
-  print_head("function", src, func, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), func->id.str);
+  print_head("function", bl_peek_src(func), func, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_func(func)->id.str);
   bl_visitor_walk_func(visitor, func);
 }
 
 static void
-visit_type(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src)
+visit_type(bl_visitor_t *visitor, bl_node_t *type)
 {
-  print_head("type", src, type, visitor->nesting);
-  if (type->t == BL_TYPE_REF) {
-    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), type->type.ref.id.str, type->type.ref.ref);
+  print_head("type", bl_peek_src(type), type, visitor->nesting);
+  if (bl_peek_type(type)->type_variant == BL_TYPE_REF) {
+    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), bl_peek_ref_type(type)->id.str,
+            bl_peek_ref_type(type)->ref);
   } else {
-    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[type->type.fund]);
+    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[*bl_peek_fund_type(type)]);
   }
   bl_visitor_walk_type(visitor, type);
 }
 
 static void
-visit_arg(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src)
+visit_arg(bl_visitor_t *visitor, bl_node_t *arg)
 {
-  print_head("arg", src, arg, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), arg->id.str);
+  print_head("arg", bl_peek_src(arg), arg, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_arg(arg)->id.str);
   bl_visitor_walk_arg(visitor, arg);
 }
 
 static void
-visit_struct(bl_visitor_t *visitor, bl_struct_t *strct, bl_src_t *src)
+visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
-  print_head("struct", src, strct, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), strct->id.str);
+  print_head("struct", bl_peek_src(strct), strct, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_struct(strct)->id.str);
   bl_visitor_walk_struct(visitor, strct);
 }
 
 static void
-visit_enum(bl_visitor_t *visitor, bl_enum_t *enm, bl_src_t *src)
+visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
-  print_head("enum", src, enm, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), enm->id.str);
+  print_head("enum", bl_peek_src(enm), enm, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_enum(enm)->id.str);
   bl_visitor_walk_enum(visitor, enm);
 }
 
 static void
-visit_block(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src)
+visit_block(bl_visitor_t *visitor, bl_node_t *block)
 {
-  print_head("block", src, block, visitor->nesting);
+  print_head("block", bl_peek_src(block), block, visitor->nesting);
   bl_visitor_walk_block(visitor, block);
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src)
+visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
-  print_head("variable", src, var, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), var->id.str);
+  print_head("variable", bl_peek_src(var), var, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_var(var)->id.str);
   bl_visitor_walk_var(visitor, var);
 }
 
 static void
-visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
+visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  print_head("expr", src, expr, visitor->nesting);
-  switch (expr->t) {
+  print_head("expr", bl_peek_src(expr), expr, visitor->nesting);
+  switch (bl_peek_expr(expr)->expr_variant) {
   case BL_EXPR_CONST:
     fprintf(stdout, BL_CYAN("<const>"));
     break;
@@ -115,13 +116,19 @@ visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
     fprintf(stdout, BL_CYAN("<binop>"));
     break;
   case BL_EXPR_VAR_REF:
-    fprintf(stdout, BL_CYAN("<ref>") " name: " BL_YELLOW("'%s' -> %p"), expr->expr.var_ref.id.str,
-            expr->expr.var_ref.ref);
+    fprintf(stdout, BL_CYAN("<ref>") " name: " BL_YELLOW("'%s' -> %p"),
+            bl_peek_var_ref(expr)->id.str, bl_peek_var_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
-    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"), expr->expr.call.id.str,
-            expr->expr.call.ref);
+    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"), bl_peek_call(expr)->id.str,
+            bl_peek_call(expr)->ref);
     break;
+  case BL_EXPR_PATH:
+    fprintf(stdout, BL_CYAN("<path>") " name: " BL_YELLOW("'%s' -> %p"), bl_peek_path(expr)->id.str,
+            bl_peek_path(expr)->next);
+    break;
+  default:
+    bl_abort("invalid expression");
   }
   bl_visitor_walk_expr(visitor, expr);
 }
@@ -150,7 +157,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
 
-    bl_visitor_walk_module(&visitor, &bl_peek_module(unit->ast.root));
+    bl_visitor_walk_module(&visitor, unit->ast.root);
   }
 
   fprintf(stdout, "\n\n");

@@ -35,7 +35,7 @@ module std {
 
   fn get_context() context_t {
     var hello i32;
-    var a i32 = hello + 10 + add(15 + 2, 256);
+    var a i32 = hello + (10 + add(15 + 2, 256)) + (10);
     10 + 10;
     {
       var test i64;
@@ -43,6 +43,8 @@ module std {
         var test string;
       }
     }
+
+    std::add();
   }
 }
 

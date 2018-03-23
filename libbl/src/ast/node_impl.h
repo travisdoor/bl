@@ -111,7 +111,7 @@ typedef struct bl_node_if_stmt
 /*
  * Declarations
  */
-/* TODO: don't use base */
+/* TODO: don'type_variant use base */
 typedef struct bl_node_decl
 {
   bl_sym_e modificator;

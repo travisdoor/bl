@@ -31,55 +31,55 @@
 #include "common_impl.h"
 
 static void
-visit_module(bl_visitor_t *visitor, bl_module_t *module, bl_src_t *src)
+visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   bl_visitor_walk_module(visitor, module);
 }
 
 static void
-visit_func(bl_visitor_t *visitor, bl_func_t *func, bl_src_t *src)
+visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_visitor_walk_func(visitor, func);
 }
 
 static void
-visit_type(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src)
+visit_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   bl_visitor_walk_type(visitor, type);
 }
 
 static void
-visit_arg(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src)
+visit_arg(bl_visitor_t *visitor, bl_node_t *arg)
 {
   bl_visitor_walk_arg(visitor, arg);
 }
 
 static void
-visit_struct(bl_visitor_t *visitor, bl_struct_t *strct, bl_src_t *src)
+visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_visitor_walk_struct(visitor, strct);
 }
 
 static void
-visit_enum(bl_visitor_t *visitor, bl_enum_t *enm, bl_src_t *src)
+visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   bl_visitor_walk_enum(visitor, enm);
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src)
+visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   bl_visitor_walk_var(visitor, var);
 }
 
 static void
-visit_block(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src)
+visit_block(bl_visitor_t *visitor, bl_node_t *block)
 {
   bl_visitor_walk_block(visitor, block);
 }
 
 static void
-visit_expr(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src)
+visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   bl_visitor_walk_expr(visitor, expr);
 }
@@ -108,36 +108,36 @@ bl_visitor_add(bl_visitor_t *visitor, void *visit, bl_visit_e type)
 }
 
 void
-bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module)
+bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   visitor->nesting++;
-  const size_t c    = bl_ast_module_node_count(module);
+  const size_t c    = bl_ast_module_node_count(bl_peek_module(module));
   bl_node_t *  node = NULL;
   for (size_t i = 0; i < c; i++) {
-    node = bl_ast_module_get_node(module, i);
+    node = bl_ast_module_get_node(bl_peek_module(module), i);
 
-    switch (node->t) {
+    switch (node->node_variant) {
     case BL_NODE_MODULE: {
-      bl_visit_module_f v = visitor->visitors[BL_VISIT_MODULE];
-      v(visitor, &bl_peek_module(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_MODULE];
+      v(visitor, node);
       break;
     }
 
     case BL_NODE_FUNC: {
-      bl_visit_fn_f v = visitor->visitors[BL_VISIT_FUNC];
-      v(visitor, &bl_peek_func(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_FUNC];
+      v(visitor, node);
       break;
     }
 
     case BL_NODE_STRUCT: {
-      bl_visit_struct_f v = visitor->visitors[BL_VISIT_STRUCT];
-      v(visitor, &bl_peek_struct(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_STRUCT];
+      v(visitor, node);
       break;
     }
 
     case BL_NODE_ENUM: {
-      bl_visit_enum_f v = visitor->visitors[BL_VISIT_ENUM];
-      v(visitor, &bl_peek_enum(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_ENUM];
+      v(visitor, node);
       break;
     }
 
@@ -149,99 +149,99 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module)
 }
 
 void
-bl_visitor_walk_func(bl_visitor_t *visitor, bl_func_t *func)
+bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   visitor->nesting++;
 
-  bl_visit_type_f  vt  = visitor->visitors[BL_VISIT_TYPE];
-  bl_visit_arg_f   va  = visitor->visitors[BL_VISIT_ARG];
-  bl_visit_block_f vb  = visitor->visitors[BL_VISIT_BLOCK];
-  const size_t     c   = bl_ast_func_arg_count(func);
+  bl_visit_f  vt  = visitor->visitors[BL_VISIT_TYPE];
+  bl_visit_f   va  = visitor->visitors[BL_VISIT_ARG];
+  bl_visit_f vb  = visitor->visitors[BL_VISIT_BLOCK];
+  const size_t     c   = bl_ast_func_arg_count(bl_peek_func(func));
   bl_node_t *      arg = NULL;
 
   for (size_t i = 0; i < c; i++) {
-    arg = bl_ast_func_get_arg(func, i);
-    va(visitor, &bl_peek_arg(arg), arg->src);
+    arg = bl_ast_func_get_arg(bl_peek_func(func), i);
+    va(visitor, arg);
   }
 
-  vt(visitor, &bl_peek_type(func->ret_type), func->ret_type->src);
-  if (func->block)
-    vb(visitor, &bl_peek_block(func->block), func->block->src);
+  vt(visitor, bl_peek_func(func)->ret_type);
+  if (bl_peek_func(func)->block)
+    vb(visitor, bl_peek_func(func)->block);
 
   visitor->nesting--;
 }
 
 void
-bl_visitor_walk_type(bl_visitor_t *visitor, bl_type_t *type)
+bl_visitor_walk_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   /* nothing to do, terminal node */
 }
 
 void
-bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg)
+bl_visitor_walk_arg(bl_visitor_t *visitor, bl_node_t *arg)
 {
   visitor->nesting++;
 
-  bl_visit_type_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, &bl_peek_type(arg->type), arg->type->src);
+  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+  vt(visitor, bl_peek_arg(arg)->type);
 
   visitor->nesting--;
 }
 
 void
-bl_visitor_walk_struct(bl_visitor_t *visitor, bl_struct_t *strct)
+bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   // TODO
 }
 
 void
-bl_visitor_walk_enum(bl_visitor_t *visitor, bl_enum_t *enm)
+bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   // TODO
 }
 
 void
-bl_visitor_walk_var(bl_visitor_t *visitor, bl_var_t *var)
+bl_visitor_walk_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   visitor->nesting++;
 
-  bl_visit_type_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, &bl_peek_type(var->type), var->type->src);
+  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+  vt(visitor, bl_peek_var(var)->type);
 
-  if (var->init_expr) {
-    bl_visit_expr_f ve = visitor->visitors[BL_VISIT_EXPR];
-    ve(visitor, &bl_peek_expr(var->init_expr), var->init_expr->src);
+  if (bl_peek_var(var)->init_expr) {
+    bl_visit_f ve = visitor->visitors[BL_VISIT_EXPR];
+    ve(visitor, bl_peek_var(var)->init_expr);
   }
 
   visitor->nesting--;
 }
 
 void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block)
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block)
 {
   visitor->nesting++;
-  const size_t c    = bl_ast_block_node_count(block);
+  const size_t c    = bl_ast_block_node_count(bl_peek_block(block));
   bl_node_t *  node = NULL;
 
   for (size_t i = 0; i < c; i++) {
-    node = bl_ast_block_get_node(block, i);
+    node = bl_ast_block_get_node(bl_peek_block(block), i);
 
-    switch (node->t) {
+    switch (node->node_variant) {
     case BL_NODE_VAR: {
-      bl_visit_var_f v = visitor->visitors[BL_VISIT_VAR];
-      v(visitor, &bl_peek_var(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_VAR];
+      v(visitor, node);
       break;
     }
 
     case BL_NODE_EXPR: {
-      bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
-      v(visitor, &bl_peek_expr(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
+      v(visitor, node);
       break;
     }
 
     case BL_NODE_BLOCK: {
-      bl_visit_block_f v = visitor->visitors[BL_VISIT_BLOCK];
-      v(visitor, &bl_peek_block(node), node->src);
+      bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
+      v(visitor, node);
       break;
     }
 
@@ -254,26 +254,32 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block)
 }
 
 void
-bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr)
+bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   visitor->nesting++;
 
-  switch (expr->t) {
+  switch (bl_peek_expr(expr)->expr_variant) {
 
   case BL_EXPR_BINOP: {
-    bl_visit_expr_f v = visitor->visitors[BL_VISIT_EXPR];
-    v(visitor, &bl_peek_expr(expr->expr.binop.lhs), expr->expr.binop.lhs->src);
-    v(visitor, &bl_peek_expr(expr->expr.binop.rhs), expr->expr.binop.rhs->src);
+    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
+    v(visitor, bl_peek_binop(expr)->lhs);
+    v(visitor, bl_peek_binop(expr)->rhs);
+    break;
+  }
+
+  case BL_EXPR_PATH: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
+    v(visitor, bl_peek_path(expr)->next);
     break;
   }
 
   case BL_EXPR_CALL: {
-    bl_visit_expr_f v   = visitor->visitors[BL_VISIT_EXPR];
-    const size_t    c   = bl_ast_call_arg_count(expr);
+    bl_visit_f v   = visitor->visitors[BL_VISIT_EXPR];
+    const size_t    c   = bl_ast_call_arg_count(bl_peek_expr(expr));
     bl_node_t *     arg = NULL;
     for (size_t i = 0; i < c; i++) {
-      arg = bl_ast_call_get_arg(expr, i);
-      v(visitor, &bl_peek_expr(arg), arg->src);
+      arg = bl_ast_call_get_arg(bl_peek_expr(expr), i);
+      v(visitor, arg);
     }
     break;
   }

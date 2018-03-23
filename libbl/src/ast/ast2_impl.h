@@ -81,23 +81,26 @@ static const char *bl_fund_type_strings[] = {
 
 typedef struct bl_ast bl_ast_t;
 
-#define bl_peek_module(node) (node)->n.module
-#define bl_peek_func(node) (node)->n.func
-#define bl_peek_struct(node) (node)->n.strct
-#define bl_peek_enum(node) (node)->n.enm
-#define bl_peek_block(node) (node)->n.block
-#define bl_peek_type(node) (node)->n.type
-#define bl_peek_arg(node) (node)->n.arg
-#define bl_peek_var(node) (node)->n.var
-#define bl_peek_expr(node) (node)->n.expr
+#define bl_peek_src(node) (node)->src
 
-#define bl_peek_const_expr(node) (node)->n.expr.expr.const_expr
-#define bl_peek_binop(node) (node)->n.expr.expr.binop
-#define bl_peek_var_ref(node) (node)->n.expr.expr.var_ref
-#define bl_peek_call(node) (node)->n.expr.expr.call
+#define bl_peek_module(node) (&(node)->n.module)
+#define bl_peek_func(node)   (&(node)->n.func)
+#define bl_peek_struct(node) (&(node)->n.strct)
+#define bl_peek_enum(node) (&(node)->n.enm)
+#define bl_peek_block(node) (&(node)->n.block)
+#define bl_peek_type(node) (&(node)->n.type)
+#define bl_peek_arg(node) (&(node)->n.arg)
+#define bl_peek_var(node) (&(node)->n.var)
+#define bl_peek_expr(node) (&(node)->n.expr)
 
-#define bl_peek_fund_type(node) (node)->n.type.type.fund
-#define bl_peek_ref_type(node) (node)->n.type.type.ref
+#define bl_peek_const_expr(node) (&(node)->n.expr.expr.const_expr)
+#define bl_peek_binop(node) (&(node)->n.expr.expr.binop)
+#define bl_peek_var_ref(node) (&(node)->n.expr.expr.var_ref)
+#define bl_peek_call(node) (&(node)->n.expr.expr.call)
+#define bl_peek_path(node) (&(node)->n.expr.expr.path)
+
+#define bl_peek_fund_type(node) (&(node)->n.type.type.fund)
+#define bl_peek_ref_type(node) (&(node)->n.type.type.ref)
 
 typedef struct bl_node   bl_node_t;
 typedef struct bl_module bl_module_t;
@@ -127,7 +130,7 @@ struct bl_type
   {
     BL_TYPE_FUND,
     BL_TYPE_REF
-  } t;
+  } type_variant;
 
   union
   {
@@ -151,8 +154,9 @@ struct bl_expr
     BL_EXPR_CONST,
     BL_EXPR_BINOP,
     BL_EXPR_VAR_REF,
-    BL_EXPR_CALL
-  } t;
+    BL_EXPR_CALL,
+    BL_EXPR_PATH
+  } expr_variant;
 
   union
   {
@@ -190,6 +194,12 @@ struct bl_expr
       bl_node_t *ref;
       BArray *   args;
     } call;
+
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *next;
+    } path;
 
   } expr;
 };
@@ -264,7 +274,7 @@ struct bl_block
 struct bl_node
 {
   bl_src_t *src;
-  bl_node_e t;
+  bl_node_e node_variant;
 
   union
   {

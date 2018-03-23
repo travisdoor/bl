@@ -46,15 +46,7 @@ typedef enum {
   BL_VISIT_COUNT
 } bl_visit_e;
 
-typedef void (*bl_visit_module_f)(bl_visitor_t *visitor, bl_module_t *module, bl_src_t *src);
-typedef void (*bl_visit_fn_f)(bl_visitor_t *visitor, bl_func_t *func, bl_src_t *src);
-typedef void (*bl_visit_type_f)(bl_visitor_t *visitor, bl_type_t *type, bl_src_t *src);
-typedef void (*bl_visit_arg_f)(bl_visitor_t *visitor, bl_arg_t *arg, bl_src_t *src);
-typedef void (*bl_visit_struct_f)(bl_visitor_t *visitor, bl_struct_t *strct, bl_src_t *src);
-typedef void (*bl_visit_enum_f)(bl_visitor_t *visitor, bl_enum_t *enm, bl_src_t *src);
-typedef void (*bl_visit_var_f)(bl_visitor_t *visitor, bl_var_t *var, bl_src_t *src);
-typedef void (*bl_visit_block_f)(bl_visitor_t *visitor, bl_block_t *block, bl_src_t *src);
-typedef void (*bl_visit_expr_f)(bl_visitor_t *visitor, bl_expr_t *expr, bl_src_t *src);
+typedef void (*bl_visit_f)(bl_visitor_t *visitor, bl_node_t *module);
 
 struct bl_visitor
 {
@@ -70,31 +62,31 @@ void
 bl_visitor_add(bl_visitor_t *visitor, void *visit, bl_visit_e type);
 
 void
-bl_visitor_walk_module(bl_visitor_t *visitor, bl_module_t *module);
+bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module);
 
 void
-bl_visitor_walk_func(bl_visitor_t *visitor, bl_func_t *func);
+bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func);
 
 void
-bl_visitor_walk_type(bl_visitor_t *visitor, bl_type_t *type);
+bl_visitor_walk_type(bl_visitor_t *visitor, bl_node_t *type);
 
 void
-bl_visitor_walk_arg(bl_visitor_t *visitor, bl_arg_t *arg);
+bl_visitor_walk_arg(bl_visitor_t *visitor, bl_node_t *arg);
 
 void
-bl_visitor_walk_struct(bl_visitor_t *visitor, bl_struct_t *strct);
+bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct);
 
 void
-bl_visitor_walk_enum(bl_visitor_t *visitor, bl_enum_t *enm);
+bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm);
 
 void
-bl_visitor_walk_var(bl_visitor_t *visitor, bl_var_t *var);
+bl_visitor_walk_var(bl_visitor_t *visitor, bl_node_t *var);
 
 void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_block_t *block);
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block);
 
 void
-bl_visitor_walk_expr(bl_visitor_t *visitor, bl_expr_t *expr);
+bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr);
 
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */
