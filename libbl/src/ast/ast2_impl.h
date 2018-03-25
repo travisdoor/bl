@@ -34,24 +34,6 @@
 #include "token_impl.h"
 
 // clang-format off
-#define BL_NTYPE_LIST                                                                              \
-  nt(FUNC, "func") \
-  nt(STRUCT, "struct") \
-  nt(ENUM, "enum") \
-  nt(BLOCK, "block") \
-  nt(TYPE, "type") \
-  nt(ARG, "arg") \
-  nt(VAR, "var") \
-  nt(EXPR, "expr") /* remove */\
-  nt(CONST, "const") /* new */\
-  nt(CALL, "call") /* new */\
-  nt(VAR_REF, "var_ref") /* new */\
-  nt(PATH, "path") /* new */\
-  nt(BINOP, "binop") /* new */\
-  nt(TYPE_FUND, "type_fund") /* new */\
-  nt(TYPE_REF, "type_ref") /* new */\
-  nt(MODULE, "module")
-
 #define BL_FUND_TYPE_LIST                                                                              \
  ft(VOID, "void") \
  ft(I8, "i8") \
@@ -68,11 +50,7 @@
 
 // clang-format on
 
-typedef enum {
-#define nt(tok, str) BL_NODE_##tok,
-  BL_NTYPE_LIST
-#undef nt
-} bl_node_e;
+typedef enum { BL_NODE_DECL, BL_NODE_STMT, BL_NODE_TYPE } bl_node_e;
 
 typedef enum {
 #define ft(tok, str) BL_FTYPE_##tok,
@@ -80,18 +58,12 @@ typedef enum {
 #undef ft
 } bl_fund_type_e;
 
-static const char *bl_fund_type_strings[] = {
-#define ft(tok, str) str,
-    BL_FUND_TYPE_LIST
-#undef ft
-};
-
 typedef struct bl_ast bl_ast_t;
 
 #define bl_peek_src(node) (node)->src
 
 #define bl_peek_module(node) (&(node)->n.module)
-#define bl_peek_func(node)   (&(node)->n.func)
+#define bl_peek_func(node) (&(node)->n.func)
 #define bl_peek_struct(node) (&(node)->n.strct)
 #define bl_peek_enum(node) (&(node)->n.enm)
 #define bl_peek_block(node) (&(node)->n.block)
@@ -115,10 +87,12 @@ typedef struct bl_func   bl_func_t;
 typedef struct bl_struct bl_struct_t;
 typedef struct bl_enum   bl_enum_t;
 typedef struct bl_block  bl_block_t;
-typedef struct bl_type   bl_type_t;
 typedef struct bl_arg    bl_arg_t;
 typedef struct bl_var    bl_var_t;
 typedef struct bl_expr   bl_expr_t;
+typedef struct bl_decl   bl_decl_t;
+typedef struct bl_stmt   bl_stmt_t;
+typedef struct bl_type   bl_type_t;
 
 /*
  * AST main context data
@@ -141,7 +115,10 @@ struct bl_type
 
   union
   {
-    bl_fund_type_e fund;
+    struct
+    {
+      bl_fund_type_e type;
+    } fund;
 
     struct
     {
@@ -211,67 +188,80 @@ struct bl_expr
   } expr;
 };
 
-/*
- * module node
- */
-struct bl_module
+struct bl_decl
 {
-  bl_id_t id;
-  BArray *nodes;
+  union
+  {
+    /*
+     * module node
+     */
+    struct
+    {
+      bl_id_t id;
+      BArray *nodes;
+    } module;
+
+    /*
+     * var declaration
+     */
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *type;
+      bl_node_t *init_expr;
+    } var;
+
+    /*
+     * func argument
+     */
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *type;
+    } arg;
+
+    /*
+     * function declaration node
+     */
+    struct
+    {
+      bl_id_t    id;
+      BArray *   args;
+      bl_node_t *block;
+      bl_node_t *ret_type;
+    } func;
+
+    /*
+     * structure declaration node
+     */
+    struct
+    {
+      bl_id_t id;
+    } strct;
+
+    /*
+     * enum declaration node
+     */
+    struct
+    {
+      bl_id_t id;
+    } enm;
+
+    /*
+     * block declaration node
+     */
+    struct
+    {
+      BArray *nodes;
+    } block;
+  } decl;
 };
 
-/*
- * var declaration
- */
-struct bl_var
-{
-  bl_id_t    id;
-  bl_node_t *type;
-  bl_node_t *init_expr;
-};
-
-/*
- * func argument
- */
-struct bl_arg
-{
-  bl_id_t    id;
-  bl_node_t *type;
-};
-
-/*
- * function declaration node
- */
-struct bl_func
-{
-  bl_id_t    id;
-  BArray *   args;
-  bl_node_t *block;
-  bl_node_t *ret_type;
-};
-
-/*
- * structure declaration node
- */
-struct bl_struct
-{
-  bl_id_t id;
-};
-
-/*
- * enum declaration node
- */
-struct bl_enum
-{
-  bl_id_t id;
-};
-
-/*
- * block declaration node
- */
-struct bl_block
-{
-  BArray *nodes;
+struct bl_stmt {
+  union {
+    bl_expr_t expr;
+    // if, loop, while ...
+  } stmt;
 };
 
 /*
@@ -285,15 +275,9 @@ struct bl_node
 
   union
   {
-    bl_module_t module;
-    bl_func_t   func;
-    bl_struct_t strct;
-    bl_enum_t   enm;
-    bl_block_t  block;
     bl_type_t   type;
-    bl_arg_t    arg;
-    bl_var_t    var;
-    bl_expr_t   expr;
+    bl_stmt_t   stmt;
+    bl_decl_t   decl;
   } n;
 };
 

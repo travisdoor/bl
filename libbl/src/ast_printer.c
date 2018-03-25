@@ -60,7 +60,7 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
     fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), bl_peek_ref_type(type)->id.str,
             bl_peek_ref_type(type)->ref);
   } else {
-    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[*bl_peek_fund_type(type)]);
+    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[bl_peek_fund_type(type)->type]);
   }
   bl_visitor_walk_type(visitor, type);
 }

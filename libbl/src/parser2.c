@@ -109,7 +109,7 @@ parse_var_ref_maybe(context_t *cnt)
   bl_token_t *tok_id  = bl_tokens_peek(cnt->tokens);
   if (tok_id->sym == BL_SYM_IDENT) {
     bl_tokens_consume(cnt->tokens);
-    var_ref                  = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_id);
+    var_ref                             = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_id);
     bl_peek_expr(var_ref)->expr_variant = BL_EXPR_VAR_REF;
     bl_id_init(&bl_peek_var_ref(var_ref)->id, tok_id->value.str);
   }
@@ -122,8 +122,8 @@ parse_call_maybe(context_t *cnt)
 {
   bl_node_t *call = NULL;
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
-    bl_token_t *tok_id    = bl_tokens_consume(cnt->tokens);
-    call                  = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_id);
+    bl_token_t *tok_id               = bl_tokens_consume(cnt->tokens);
+    call                             = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_id);
     bl_peek_expr(call)->expr_variant = BL_EXPR_CALL;
     bl_id_init(&bl_peek_call(call)->id, tok_id->value.str);
 
@@ -166,7 +166,7 @@ parse_const_expr_maybe(context_t *cnt)
   bl_peek_expr(const_expr)->expr_variant = BL_EXPR_CONST;                                          \
   bl_node_t *type                        = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);           \
   bl_peek_type(type)->type_variant       = BL_TYPE_FUND;                                           \
-  *bl_peek_fund_type(type)               = (_type_);
+  bl_peek_fund_type(type)->type          = (_type_);
 
   bl_node_t * const_expr = NULL;
   bl_token_t *tok        = bl_tokens_peek(cnt->tokens);
@@ -252,9 +252,9 @@ parse_path_maybe(context_t *cnt)
   bl_node_t *path = NULL;
 
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_MODULE_PATH)) {
-    bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
-    path                  = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_ident);
-    bl_peek_expr(path)->expr_variant  = BL_EXPR_PATH;
+    bl_token_t *tok_ident            = bl_tokens_consume(cnt->tokens);
+    path                             = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, tok_ident);
+    bl_peek_expr(path)->expr_variant = BL_EXPR_PATH;
     bl_id_init(&bl_peek_path(path)->id, tok_ident->value.str);
 
     bl_tokens_consume(cnt->tokens); // eat ::
@@ -329,12 +329,12 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
     }
 
     if (bl_token_is_binop(op)) {
-      bl_node_t *tmp         = lhs;
-      lhs                    = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, op);
-      bl_peek_expr(lhs)->expr_variant    = BL_EXPR_BINOP;
-      bl_peek_binop(lhs)->lhs = tmp;
-      bl_peek_binop(lhs)->rhs = rhs;
-      bl_peek_binop(lhs)->op  = op->sym;
+      bl_node_t *tmp                  = lhs;
+      lhs                             = bl_ast_new_node(cnt->ast, BL_NODE_EXPR, op);
+      bl_peek_expr(lhs)->expr_variant = BL_EXPR_BINOP;
+      bl_peek_binop(lhs)->lhs         = tmp;
+      bl_peek_binop(lhs)->rhs         = rhs;
+      bl_peek_binop(lhs)->op          = op->sym;
     } else {
       parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, "expected binary operation");
     }
@@ -407,8 +407,8 @@ parse_type_maybe(context_t *cnt)
     }
 
     if (found > -1) {
-      bl_peek_type(type)->type_variant         = BL_TYPE_FUND;
-      bl_peek_type(type)->type.fund = (bl_fund_type_e)found;
+      bl_peek_type(type)->type_variant   = BL_TYPE_FUND;
+      bl_peek_type(type)->type.fund.type = (bl_fund_type_e)found;
     } else {
       bl_peek_type(type)->type_variant = BL_TYPE_REF;
       bl_id_init(&bl_peek_ref_type(type)->id, tok->value.str);
@@ -427,9 +427,9 @@ parse_ret_type_rq(context_t *cnt)
     return parse_type_maybe(cnt);
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
-    bl_node_t *type         = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);
-    bl_peek_type(type)->type_variant    = BL_TYPE_FUND;
-    *bl_peek_fund_type(type) = BL_FTYPE_VOID;
+    bl_node_t *type                  = bl_ast_new_node(cnt->ast, BL_NODE_TYPE, tok);
+    bl_peek_type(type)->type_variant = BL_TYPE_FUND;
+    bl_peek_fund_type(type)->type    = BL_FTYPE_VOID;
     return type;
   }
   default:
