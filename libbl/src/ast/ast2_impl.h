@@ -42,7 +42,14 @@
   nt(TYPE, "type") \
   nt(ARG, "arg") \
   nt(VAR, "var") \
-  nt(EXPR, "expr") \
+  nt(EXPR, "expr") /* remove */\
+  nt(CONST, "const") /* new */\
+  nt(CALL, "call") /* new */\
+  nt(VAR_REF, "var_ref") /* new */\
+  nt(PATH, "path") /* new */\
+  nt(BINOP, "binop") /* new */\
+  nt(TYPE_FUND, "type_fund") /* new */\
+  nt(TYPE_REF, "type_ref") /* new */\
   nt(MODULE, "module")
 
 #define BL_FUND_TYPE_LIST                                                                              \
