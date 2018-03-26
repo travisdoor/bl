@@ -2,25 +2,6 @@
  * testing playground.
  */
 
-/*
-fn main(a i32, b i32) i32 {
-  var result i32 = add(32, i + 256);
-  var bl bool = true;
-}
-
-fn add(a i32, b i32) i32 {
-}
-
-fn no_return(i f64) {
-}
-*/
-
-/*
-fn no_return(i f64) {
-  std::add(123, 321);
-}
-*/
-
 module std {
   module inner_module {
     fn no_return() {
@@ -44,7 +25,7 @@ module std {
       }
     }
 
-    std::add();
+    /*std::add();*/
   }
 }
 
