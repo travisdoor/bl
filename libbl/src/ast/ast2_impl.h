@@ -69,6 +69,7 @@ typedef struct bl_ast bl_ast_t;
 #define bl_node_is_stmt(node) ((node)->node_variant == BL_NODE_STMT)
 #define bl_node_is_decl(node) ((node)->node_variant == BL_NODE_DECL)
 #define bl_node_is_type(node) ((node)->node_variant == BL_NODE_TYPE)
+#define bl_node_is_expr(node) ((node)->node_variant == BL_NODE_EXPR)
 
 #define bl_peek_type(node) (&(node)->n.type)
 #define bl_peek_stmt(node) (&(node)->n.stmt)
@@ -197,6 +198,7 @@ struct bl_expr
     struct
     {
       bl_id_t    id;
+      bl_node_t *ref;
       bl_node_t *next;
     } path;
 
@@ -308,7 +310,7 @@ enum bl_node_variant
 
 struct bl_node
 {
-  bl_src_t *src;
+  bl_src_t *        src;
   bl_node_variant_e node_variant;
 
   union
@@ -364,7 +366,8 @@ bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next);
+bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                     bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name);

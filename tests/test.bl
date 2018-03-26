@@ -25,7 +25,14 @@ module std {
       }
     }
 
-    /*std::add();*/
+    std::add();
+    std::state_e::A;
+
+    {
+      {
+        var data i32;
+      }
+    }
   }
 }
 

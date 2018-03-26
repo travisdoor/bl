@@ -125,7 +125,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   case BL_EXPR_PATH:
     fprintf(stdout, BL_CYAN("<path>") " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_path(expr)->id.str,
-            bl_peek_expr_path(expr)->next);
+            bl_peek_expr_path(expr)->ref);
     break;
   default:
     bl_abort("invalid expression");

@@ -67,6 +67,7 @@ node_terminate(bl_node_t *node)
     default:
       break;
     }
+    break;
   case BL_NODE_EXPR:
     switch (bl_peek_expr(node)->expr_variant) {
     case BL_EXPR_CALL:
@@ -285,7 +286,8 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next)
+bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                     bl_node_t *next)
 {
   bl_node_t *path = alloc_node(ast);
   if (tok)
@@ -295,6 +297,7 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   bl_peek_expr(path)->expr_variant = BL_EXPR_PATH;
   bl_id_init(&bl_peek_expr_path(path)->id, name);
   bl_peek_expr_path(path)->next = next;
+  bl_peek_expr_path(path)->ref  = ref;
 
   return path;
 }

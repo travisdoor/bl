@@ -263,7 +263,7 @@ parse_path_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_INVALID_TOKEN, tok_err,
                 "invalid token found in path, expected call or variable");
   done:
-    bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, next);
+    path = bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, NULL, next);
   }
 
   return path;
@@ -424,7 +424,7 @@ parse_block_rq(context_t *cnt)
                 "expected begin of the block " BL_YELLOW("'{'"));
   }
 
-  bl_node_t * block     = bl_ast_add_decl_block(cnt->ast, tok_begin);
+  bl_node_t * block = bl_ast_add_decl_block(cnt->ast, tok_begin);
   bl_token_t *tok;
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
