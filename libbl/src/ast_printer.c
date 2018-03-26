@@ -60,7 +60,8 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
     fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), bl_peek_type_ref(type)->id.str,
             bl_peek_type_ref(type)->ref);
   } else {
-    fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_fund_type_strings[bl_peek_type_fund(type)->type]);
+    fprintf(stdout, "name: " BL_YELLOW("'%s'"),
+            bl_fund_type_strings[bl_peek_type_fund(type)->type]);
   }
   bl_visitor_walk_type(visitor, type);
 }
@@ -120,17 +121,24 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
             bl_peek_expr_var_ref(expr)->id.str, bl_peek_expr_var_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
-    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_call(expr)->id.str,
-            bl_peek_expr_call(expr)->ref);
+    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"),
+            bl_peek_expr_call(expr)->id.str, bl_peek_expr_call(expr)->ref);
     break;
   case BL_EXPR_PATH:
-    fprintf(stdout, BL_CYAN("<path>") " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_path(expr)->id.str,
-            bl_peek_expr_path(expr)->ref);
+    fprintf(stdout, BL_CYAN("<path>") " name: " BL_YELLOW("'%s' -> %p"),
+            bl_peek_expr_path(expr)->id.str, bl_peek_expr_path(expr)->ref);
     break;
   default:
     bl_abort("invalid expression");
   }
   bl_visitor_walk_expr(visitor, expr);
+}
+
+static void
+visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  print_head("if", bl_peek_src(if_stmt), if_stmt, visitor->nesting);
+  bl_visitor_walk_if(visitor, if_stmt);
 }
 
 bl_error_e
@@ -156,6 +164,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
     bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
+    bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

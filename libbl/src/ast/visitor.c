@@ -84,6 +84,12 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
   bl_visitor_walk_expr(visitor, expr);
 }
 
+static void
+visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  bl_visitor_walk_if(visitor, if_stmt);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -99,6 +105,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_VAR]    = visit_var;
   visitor->visitors[BL_VISIT_BLOCK]  = visit_block;
   visitor->visitors[BL_VISIT_EXPR]   = visit_expr;
+  visitor->visitors[BL_VISIT_IF]     = visit_if;
 }
 
 void
@@ -242,13 +249,26 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block)
         break;
       }
       default:
-        bl_abort("invalid declaration in module");
+        bl_abort("invalid declaration in block");
       }
       break;
 
     case BL_NODE_EXPR: {
       bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
       v(visitor, node);
+      break;
+    }
+
+    case BL_NODE_STMT: {
+      switch (bl_peek_stmt(node)->stmt_variant) {
+      case BL_STMT_IF: {
+        bl_visit_f v = visitor->visitors[BL_VISIT_IF];
+        v(visitor, node);
+        break;
+      }
+      default:
+        bl_abort("invalid statement in block");
+      }
       break;
     }
 
@@ -298,6 +318,16 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   default:
     bl_abort("unknown node in expr visit");
   }
+
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  visitor->nesting++;
+
+  // TODO:
 
   visitor->nesting--;
 }

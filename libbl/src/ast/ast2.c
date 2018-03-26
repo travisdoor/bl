@@ -408,6 +408,23 @@ bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok)
 }
 
 bl_node_t *
+bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
+                   bl_node_t *false_stmt)
+{
+  bl_node_t *if_stmt = alloc_node(ast);
+  if (tok)
+    if_stmt->src = &tok->src;
+
+  if_stmt->node_variant                = BL_NODE_STMT;
+  bl_peek_stmt(if_stmt)->stmt_variant  = BL_STMT_IF;
+  bl_peek_stmt_if(if_stmt)->test       = test;
+  bl_peek_stmt_if(if_stmt)->true_stmt  = true_stmt;
+  bl_peek_stmt_if(if_stmt)->false_stmt = false_stmt;
+
+  return if_stmt;
+}
+
+bl_node_t *
 bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
 {
   bl_assert(bl_peek_decl(module)->decl_variant == BL_DECL_MODULE, "invalid module");

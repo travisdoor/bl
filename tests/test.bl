@@ -33,6 +33,15 @@ module std {
         var data i32;
       }
     }
+
+    if (true) {
+      hello(12);
+      hello(13);
+    }
+
+    if (true) 
+      hello();
+
   }
 }
 

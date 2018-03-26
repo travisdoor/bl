@@ -93,6 +93,8 @@ typedef struct bl_ast bl_ast_t;
 #define bl_peek_decl_enum(node) (&(node)->n.decl.decl.enm)
 #define bl_peek_decl_block(node) (&(node)->n.decl.decl.block)
 
+#define bl_peek_stmt_if(node) (&(node)->n.stmt.stmt.if_stmt)
+
 typedef struct bl_node bl_node_t;
 
 typedef struct bl_decl bl_decl_t;
@@ -287,11 +289,25 @@ struct bl_decl
   } decl;
 };
 
+enum bl_stmt_variant
+{
+  BL_STMT_IF
+};
+
 struct bl_stmt
 {
+  bl_stmt_variant_e stmt_variant;
   union
   {
-    // if, loop, while ...
+    /*
+     * if statement
+     */
+    struct
+    {
+      bl_node_t *test;
+      bl_node_t *true_stmt;
+      bl_node_t *false_stmt;
+    } if_stmt;
   } stmt;
 };
 
@@ -391,6 +407,10 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok);
+
+bl_node_t *
+bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
+                   bl_node_t *false_stmt);
 
 /*
  * helpers
