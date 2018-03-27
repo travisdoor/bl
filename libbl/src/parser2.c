@@ -105,9 +105,96 @@ static bl_node_t *
 parse_if_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_stmt_maybe(context_t *cnt);
+parse_loop_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_block_content_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_while_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_break_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_continue_maybe(context_t *cnt);
 
 /* impl*/
+bl_node_t *
+parse_loop_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LOOP);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  bl_node_t *true_stmt = parse_block_content_maybe(cnt);
+  if (true_stmt == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
+  }
+
+  return bl_ast_add_stmt_loop(cnt->ast, tok_begin, true_stmt);
+}
+
+bl_node_t *
+parse_while_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_WHILE);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN) == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                "expected " BL_YELLOW("'('") " after while statement");
+  }
+
+  bl_node_t *test = parse_expr_maybe(cnt);
+  if (test == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression for the while statement");
+  }
+
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_RPAREN) == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                "expected " BL_YELLOW("')'") " after while statement expression");
+  }
+
+  bl_node_t *true_stmt = parse_block_content_maybe(cnt);
+  if (true_stmt == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
+  }
+
+  return bl_ast_add_stmt_while(cnt->ast, tok_begin, test, true_stmt);
+}
+
+bl_node_t *
+parse_break_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_BREAK);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  return bl_ast_add_stmt_break(cnt->ast, tok_begin);
+}
+
+bl_node_t *
+parse_continue_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_CONTINUE);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  return bl_ast_add_stmt_continue(cnt->ast, tok_begin);
+}
+
 bl_node_t *
 parse_var_ref_maybe(context_t *cnt)
 {
@@ -431,44 +518,46 @@ parse_if_maybe(context_t *cnt)
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN) == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
 
-    parse_error(
-        cnt, BL_ERR_MISSING_BRACKET, err_tok,
-        "expected " BL_YELLOW("'('") " after if statement");
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                "expected " BL_YELLOW("'('") " after if statement");
   }
 
   bl_node_t *test = parse_expr_maybe(cnt);
   if (test == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
 
-    parse_error(
-        cnt, BL_ERR_EXPECTED_EXPR, err_tok,
-        "expected expression for the if statement");
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression for the if statement");
   }
 
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_RPAREN) == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
 
-    parse_error(
-        cnt, BL_ERR_MISSING_BRACKET, err_tok,
-        "expected " BL_YELLOW("')'") " after if statement expression");
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                "expected " BL_YELLOW("')'") " after if statement expression");
   }
 
-  bl_node_t *true_stmt = parse_stmt_maybe(cnt);
+  bl_node_t *true_stmt = parse_block_content_maybe(cnt);
   if (true_stmt == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-
-    parse_error(
-        cnt, BL_ERR_EXPECTED_STMT, err_tok,
-        "expected statement for true result of the if expression test");
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok,
+                "expected statement for true result of the if expression test");
   }
 
-  bl_node_t *false_stmt = NULL; // TODO
+  bl_node_t *false_stmt = NULL;
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ELSE)) {
+    false_stmt = parse_block_content_maybe(cnt);
+    if (false_stmt == NULL) {
+      bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok,
+                  "expected statement for false result of the if expression test");
+    }
+  }
 
   return bl_ast_add_stmt_if(cnt->ast, tok_begin, test, true_stmt, false_stmt);
 }
 
 bl_node_t *
-parse_stmt_maybe(context_t *cnt)
+parse_block_content_maybe(context_t *cnt)
 {
   bl_node_t *stmt = NULL;
 
@@ -482,6 +571,24 @@ parse_stmt_maybe(context_t *cnt)
   }
 
   if ((stmt = parse_if_maybe(cnt))) {
+    goto done;
+  }
+
+  if ((stmt = parse_loop_maybe(cnt))) {
+    goto done;
+  }
+
+  if ((stmt = parse_while_maybe(cnt))) {
+    goto done;
+  }
+
+  if ((stmt = parse_break_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
+    goto done;
+  }
+
+  if ((stmt = parse_continue_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
     goto done;
   }
 
@@ -515,7 +622,7 @@ stmt:
   }
 
   /* stmts */
-  if (bl_ast_block_push_node(block, parse_stmt_maybe(cnt))) {
+  if (bl_ast_block_push_node(block, parse_block_content_maybe(cnt))) {
     goto stmt;
   }
 

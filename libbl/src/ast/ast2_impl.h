@@ -65,48 +65,32 @@ static const char *bl_fund_type_strings[] = {
 typedef struct bl_ast bl_ast_t;
 
 #define bl_peek_src(node) (node)->src
+#define bl_node_is(node, c) ((node)->code == (c))
+#define bl_node_code(node) (node)->code
 
-#define bl_node_is_stmt(node) ((node)->node_variant == BL_NODE_STMT)
-#define bl_node_is_decl(node) ((node)->node_variant == BL_NODE_DECL)
-#define bl_node_is_type(node) ((node)->node_variant == BL_NODE_TYPE)
-#define bl_node_is_expr(node) ((node)->node_variant == BL_NODE_EXPR)
+#define bl_peek_type_fund(node) (&(node)->n.type_fund)
+#define bl_peek_type_ref(node) (&(node)->n.type_ref)
 
-#define bl_peek_type(node) (&(node)->n.type)
-#define bl_peek_stmt(node) (&(node)->n.stmt)
-#define bl_peek_expr(node) (&(node)->n.expr)
-#define bl_peek_decl(node) (&(node)->n.decl)
+#define bl_peek_expr_const(node) (&(node)->n.expr_const)
+#define bl_peek_expr_binop(node) (&(node)->n.expr_binop)
+#define bl_peek_expr_var_ref(node) (&(node)->n.expr_var_ref)
+#define bl_peek_expr_call(node) (&(node)->n.expr_call)
+#define bl_peek_expr_path(node) (&(node)->n.expr_path)
 
-#define bl_peek_type_fund(node) (&(node)->n.type.type.fund)
-#define bl_peek_type_ref(node) (&(node)->n.type.type.ref)
+#define bl_peek_decl_module(node) (&(node)->n.decl_module)
+#define bl_peek_decl_var(node) (&(node)->n.decl_var)
+#define bl_peek_decl_arg(node) (&(node)->n.decl_arg)
+#define bl_peek_decl_func(node) (&(node)->n.decl_func)
+#define bl_peek_decl_struct(node) (&(node)->n.decl_strct)
+#define bl_peek_decl_enum(node) (&(node)->n.decl_enm)
+#define bl_peek_decl_block(node) (&(node)->n.decl_block)
 
-#define bl_peek_expr_const(node) (&(node)->n.expr.expr.const_expr)
-#define bl_peek_expr_binop(node) (&(node)->n.expr.expr.binop)
-#define bl_peek_expr_var_ref(node) (&(node)->n.expr.expr.var_ref)
-#define bl_peek_expr_call(node) (&(node)->n.expr.expr.call)
-#define bl_peek_expr_path(node) (&(node)->n.expr.expr.path)
+#define bl_peek_stmt_if(node) (&(node)->n.stmt_if)
+#define bl_peek_stmt_loop(node) (&(node)->n.stmt_loop)
+#define bl_peek_stmt_while(node) (&(node)->n.stmt_while)
 
-#define bl_peek_decl_module(node) (&(node)->n.decl.decl.module)
-#define bl_peek_decl_var(node) (&(node)->n.decl.decl.var)
-#define bl_peek_decl_arg(node) (&(node)->n.decl.decl.arg)
-#define bl_peek_decl_func(node) (&(node)->n.decl.decl.func)
-#define bl_peek_decl_struct(node) (&(node)->n.decl.decl.strct)
-#define bl_peek_decl_enum(node) (&(node)->n.decl.decl.enm)
-#define bl_peek_decl_block(node) (&(node)->n.decl.decl.block)
-
-#define bl_peek_stmt_if(node) (&(node)->n.stmt.stmt.if_stmt)
-
-typedef struct bl_node bl_node_t;
-
-typedef struct bl_decl bl_decl_t;
-typedef struct bl_stmt bl_stmt_t;
-typedef struct bl_type bl_type_t;
-typedef struct bl_expr bl_expr_t;
-
-typedef enum bl_node_variant bl_node_variant_e;
-typedef enum bl_decl_variant bl_decl_variant_e;
-typedef enum bl_stmt_variant bl_stmt_variant_e;
-typedef enum bl_expr_variant bl_expr_variant_e;
-typedef enum bl_type_variant bl_type_variant_e;
+typedef struct bl_node    bl_node_t;
+typedef enum bl_node_code bl_node_code_e;
 
 /*
  * AST main context data
@@ -119,49 +103,125 @@ struct bl_ast
   size_t     chunk_used;
 };
 
-enum bl_type_variant
+enum bl_node_code
 {
-  BL_TYPE_FUND,
-  BL_TYPE_REF
-};
+  BL_STMT_IF,
+  BL_STMT_LOOP,
+  BL_STMT_WHILE,
+  BL_STMT_BREAK,
+  BL_STMT_CONTINUE,
 
-struct bl_type
-{
-  bl_type_variant_e type_variant;
+  BL_DECL_MODULE,
+  BL_DECL_VAR,
+  BL_DECL_ARG,
+  BL_DECL_FUNC,
+  BL_DECL_STRUCT,
+  BL_DECL_ENUM,
+  BL_DECL_BLOCK,
 
-  union
-  {
-    struct
-    {
-      bl_fund_type_e type;
-    } fund;
-
-    struct
-    {
-      bl_id_t    id;
-      bl_node_t *ref;
-    } ref;
-  } type;
-};
-
-/*
- * expr node
- */
-enum bl_expr_variant
-{
   BL_EXPR_CONST,
   BL_EXPR_BINOP,
   BL_EXPR_VAR_REF,
   BL_EXPR_CALL,
-  BL_EXPR_PATH
+  BL_EXPR_PATH,
+
+  BL_TYPE_FUND,
+  BL_TYPE_REF
 };
 
-struct bl_expr
+struct bl_node
 {
-  bl_expr_variant_e expr_variant;
+  bl_src_t *     src;
+  bl_node_code_e code;
 
   union
   {
+    struct
+    {
+      bl_node_t *test;
+      bl_node_t *true_stmt;
+      bl_node_t *false_stmt;
+    } stmt_if;
+
+    struct
+    {
+      bl_node_t *true_stmt;
+    } stmt_loop;
+
+    struct
+    {
+      bl_node_t *test;
+      bl_node_t *true_stmt;
+    } stmt_while;
+
+    struct
+    {
+    } stmt_break;
+
+    struct
+    {
+    } stmt_continue;
+
+    struct
+    {
+      bl_id_t id;
+      BArray *nodes;
+    } decl_module;
+
+    /*
+     * var declaration
+     */
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *type;
+      bl_node_t *init_expr;
+    } decl_var;
+
+    /*
+     * func argument
+     */
+    struct
+    {
+      bl_id_t    id;
+      bl_node_t *type;
+    } decl_arg;
+
+    /*
+     * function declaration node
+     */
+    struct
+    {
+      bl_id_t    id;
+      BArray *   args;
+      bl_node_t *block;
+      bl_node_t *ret_type;
+    } decl_func;
+
+    /*
+     * structure declaration node
+     */
+    struct
+    {
+      bl_id_t id;
+    } decl_strct;
+
+    /*
+     * enum declaration node
+     */
+    struct
+    {
+      bl_id_t id;
+    } decl_enm;
+
+    /*
+     * block declaration node
+     */
+    struct
+    {
+      BArray *nodes;
+    } decl_block;
+
     struct
     {
       bl_node_t *type;
@@ -175,166 +235,45 @@ struct bl_expr
         double             f;
         const char *       str;
       } value;
-    } const_expr;
+    } expr_const;
 
     struct
     {
       bl_sym_e   op;
       bl_node_t *lhs;
       bl_node_t *rhs;
-    } binop;
+    } expr_binop;
 
     struct
     {
       bl_id_t    id;
       bl_node_t *ref;
-    } var_ref;
+    } expr_var_ref;
 
     struct
     {
       bl_id_t    id;
       bl_node_t *ref;
       BArray *   args;
-    } call;
+    } expr_call;
 
     struct
     {
       bl_id_t    id;
       bl_node_t *ref;
       bl_node_t *next;
-    } path;
+    } expr_path;
 
-  } expr;
-};
-
-enum bl_decl_variant
-{
-  BL_DECL_MODULE,
-  BL_DECL_VAR,
-  BL_DECL_ARG,
-  BL_DECL_FUNC,
-  BL_DECL_STRUCT,
-  BL_DECL_ENUM,
-  BL_DECL_BLOCK
-};
-
-struct bl_decl
-{
-  bl_decl_variant_e decl_variant;
-
-  union
-  {
-    /*
-     * module node
-     */
     struct
     {
-      bl_id_t id;
-      BArray *nodes;
-    } module;
+      bl_fund_type_e type;
+    } type_fund;
 
-    /*
-     * var declaration
-     */
     struct
     {
       bl_id_t    id;
-      bl_node_t *type;
-      bl_node_t *init_expr;
-    } var;
-
-    /*
-     * func argument
-     */
-    struct
-    {
-      bl_id_t    id;
-      bl_node_t *type;
-    } arg;
-
-    /*
-     * function declaration node
-     */
-    struct
-    {
-      bl_id_t    id;
-      BArray *   args;
-      bl_node_t *block;
-      bl_node_t *ret_type;
-    } func;
-
-    /*
-     * structure declaration node
-     */
-    struct
-    {
-      bl_id_t id;
-    } strct;
-
-    /*
-     * enum declaration node
-     */
-    struct
-    {
-      bl_id_t id;
-    } enm;
-
-    /*
-     * block declaration node
-     */
-    struct
-    {
-      BArray *nodes;
-    } block;
-  } decl;
-};
-
-enum bl_stmt_variant
-{
-  BL_STMT_IF
-};
-
-struct bl_stmt
-{
-  bl_stmt_variant_e stmt_variant;
-  union
-  {
-    /*
-     * if statement
-     */
-    struct
-    {
-      bl_node_t *test;
-      bl_node_t *true_stmt;
-      bl_node_t *false_stmt;
-    } if_stmt;
-  } stmt;
-};
-
-/*
- * base node union type
- * this node is actually allocated
- */
-
-enum bl_node_variant
-{
-  BL_NODE_DECL,
-  BL_NODE_STMT,
-  BL_NODE_TYPE,
-  BL_NODE_EXPR
-};
-
-struct bl_node
-{
-  bl_src_t *        src;
-  bl_node_variant_e node_variant;
-
-  union
-  {
-    bl_type_t type;
-    bl_stmt_t stmt;
-    bl_decl_t decl;
-    bl_expr_t expr;
+      bl_node_t *ref;
+    } type_ref;
   } n;
 };
 
@@ -411,6 +350,18 @@ bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok);
 bl_node_t *
 bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
                    bl_node_t *false_stmt);
+
+bl_node_t *
+bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *true_stmt);
+
+bl_node_t *
+bl_ast_add_stmt_while(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);
+
+bl_node_t *
+bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok);
+
+bl_node_t *
+bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok);
 
 /*
  * helpers

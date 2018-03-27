@@ -56,7 +56,7 @@ static void
 visit_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   print_head("type", bl_peek_src(type), type, visitor->nesting);
-  if (bl_peek_type(type)->type_variant == BL_TYPE_REF) {
+  if (bl_node_is(type, BL_TYPE_REF)) {
     fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), bl_peek_type_ref(type)->id.str,
             bl_peek_type_ref(type)->ref);
   } else {
@@ -109,7 +109,7 @@ static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   print_head("expr", bl_peek_src(expr), expr, visitor->nesting);
-  switch (bl_peek_expr(expr)->expr_variant) {
+  switch (bl_node_code(expr)) {
   case BL_EXPR_CONST:
     fprintf(stdout, BL_CYAN("<const>"));
     break;
@@ -141,6 +141,34 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   bl_visitor_walk_if(visitor, if_stmt);
 }
 
+static void
+visit_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
+{
+  print_head("loop", bl_peek_src(stmt_loop), stmt_loop, visitor->nesting);
+  bl_visitor_walk_loop(visitor, stmt_loop);
+}
+
+static void
+visit_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
+{
+  print_head("while", bl_peek_src(stmt_while), stmt_while, visitor->nesting);
+  bl_visitor_walk_while(visitor, stmt_while);
+}
+
+static void
+visit_break(bl_visitor_t *visitor, bl_node_t *stmt_break)
+{
+  print_head("break", bl_peek_src(stmt_break), stmt_break, visitor->nesting);
+  bl_visitor_walk_break(visitor, stmt_break);
+}
+
+static void
+visit_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
+{
+  print_head("continue", bl_peek_src(stmt_continue), stmt_continue, visitor->nesting);
+  bl_visitor_walk_continue(visitor, stmt_continue);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -165,6 +193,10 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
     bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
+    bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
+    bl_visitor_add(&visitor, visit_while, BL_VISIT_WHILE);
+    bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
+    bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

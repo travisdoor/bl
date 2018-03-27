@@ -31,6 +31,9 @@
 #include "common_impl.h"
 
 static void
+walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt);
+
+static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   bl_visitor_walk_module(visitor, module);
@@ -90,22 +93,50 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   bl_visitor_walk_if(visitor, if_stmt);
 }
 
+static void
+visit_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
+{
+  bl_visitor_walk_loop(visitor, stmt_loop);
+}
+
+static void
+visit_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
+{
+  bl_visitor_walk_while(visitor, stmt_while);
+}
+
+static void
+visit_break(bl_visitor_t *visitor, bl_node_t *stmt_break)
+{
+  bl_visitor_walk_break(visitor, stmt_break);
+}
+
+static void
+visit_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
+{
+  bl_visitor_walk_continue(visitor, stmt_continue);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
   visitor->context = context;
   visitor->nesting = 0;
 
-  visitor->visitors[BL_VISIT_MODULE] = visit_module;
-  visitor->visitors[BL_VISIT_FUNC]   = visit_func;
-  visitor->visitors[BL_VISIT_TYPE]   = visit_type;
-  visitor->visitors[BL_VISIT_ARG]    = visit_arg;
-  visitor->visitors[BL_VISIT_STRUCT] = visit_struct;
-  visitor->visitors[BL_VISIT_ENUM]   = visit_enum;
-  visitor->visitors[BL_VISIT_VAR]    = visit_var;
-  visitor->visitors[BL_VISIT_BLOCK]  = visit_block;
-  visitor->visitors[BL_VISIT_EXPR]   = visit_expr;
-  visitor->visitors[BL_VISIT_IF]     = visit_if;
+  visitor->visitors[BL_VISIT_MODULE]   = visit_module;
+  visitor->visitors[BL_VISIT_FUNC]     = visit_func;
+  visitor->visitors[BL_VISIT_TYPE]     = visit_type;
+  visitor->visitors[BL_VISIT_ARG]      = visit_arg;
+  visitor->visitors[BL_VISIT_STRUCT]   = visit_struct;
+  visitor->visitors[BL_VISIT_ENUM]     = visit_enum;
+  visitor->visitors[BL_VISIT_VAR]      = visit_var;
+  visitor->visitors[BL_VISIT_BLOCK]    = visit_block;
+  visitor->visitors[BL_VISIT_EXPR]     = visit_expr;
+  visitor->visitors[BL_VISIT_IF]       = visit_if;
+  visitor->visitors[BL_VISIT_LOOP]     = visit_loop;
+  visitor->visitors[BL_VISIT_WHILE]    = visit_while;
+  visitor->visitors[BL_VISIT_BREAK]    = visit_break;
+  visitor->visitors[BL_VISIT_CONTINUE] = visit_continue;
 }
 
 void
@@ -123,9 +154,7 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
   for (size_t i = 0; i < c; i++) {
     node = bl_ast_module_get_node(module, i);
 
-    bl_assert(bl_node_is_decl(node), "node in module must be declaration");
-
-    switch (bl_peek_decl(node)->decl_variant) {
+    switch (bl_node_code(node)) {
     case BL_DECL_MODULE: {
       bl_visit_f v = visitor->visitors[BL_VISIT_MODULE];
       v(visitor, node);
@@ -151,7 +180,7 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
     }
 
     default:
-      bl_abort("unknown node in visitor");
+      bl_abort("unknown node in module");
     }
   }
   visitor->nesting--;
@@ -234,47 +263,7 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block)
 
   for (size_t i = 0; i < c; i++) {
     node = bl_ast_block_get_node(block, i);
-
-    switch (node->node_variant) {
-    case BL_NODE_DECL:
-      switch (bl_peek_decl(node)->decl_variant) {
-      case BL_DECL_BLOCK: {
-        bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
-        v(visitor, node);
-        break;
-      }
-      case BL_DECL_VAR: {
-        bl_visit_f v = visitor->visitors[BL_VISIT_VAR];
-        v(visitor, node);
-        break;
-      }
-      default:
-        bl_abort("invalid declaration in block");
-      }
-      break;
-
-    case BL_NODE_EXPR: {
-      bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
-      v(visitor, node);
-      break;
-    }
-
-    case BL_NODE_STMT: {
-      switch (bl_peek_stmt(node)->stmt_variant) {
-      case BL_STMT_IF: {
-        bl_visit_f v = visitor->visitors[BL_VISIT_IF];
-        v(visitor, node);
-        break;
-      }
-      default:
-        bl_abort("invalid statement in block");
-      }
-      break;
-    }
-
-    default:
-      bl_abort("unknown node in block visit");
-    }
+    walk_block_content(visitor, node);
   }
 
   visitor->nesting--;
@@ -285,7 +274,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   visitor->nesting++;
 
-  switch (bl_peek_expr(expr)->expr_variant) {
+  switch (bl_node_code(expr)) {
 
   case BL_EXPR_BINOP: {
     bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
@@ -326,8 +315,102 @@ void
 bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 {
   visitor->nesting++;
-
-  // TODO:
-
+  bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
+  vexpr(visitor, bl_peek_stmt_if(if_stmt)->test);
+  walk_block_content(visitor, bl_peek_stmt_if(if_stmt)->true_stmt);
+  walk_block_content(visitor, bl_peek_stmt_if(if_stmt)->false_stmt);
   visitor->nesting--;
+}
+
+void
+bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
+{
+  visitor->nesting++;
+  walk_block_content(visitor, bl_peek_stmt_loop(stmt_loop)->true_stmt);
+  visitor->nesting--;
+}
+
+static void
+walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
+{
+  if (stmt == NULL)
+    return;
+
+  switch (bl_node_code(stmt)) {
+  case BL_DECL_BLOCK: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
+    v(visitor, stmt);
+    break;
+  }
+  case BL_DECL_VAR: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_VAR];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_EXPR_CALL:
+  case BL_EXPR_VAR_REF:
+  case BL_EXPR_BINOP:
+  case BL_EXPR_CONST:
+  case BL_EXPR_PATH: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_IF: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_IF];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_LOOP: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_LOOP];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_WHILE: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_WHILE];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_BREAK: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_BREAK];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_CONTINUE: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_CONTINUE];
+    v(visitor, stmt);
+    break;
+  }
+
+  default:
+    bl_abort("unknown statement");
+  }
+}
+
+void
+bl_visitor_walk_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
+{
+  visitor->nesting++;
+  bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
+  vexpr(visitor, bl_peek_stmt_while(stmt_while)->test);
+  walk_block_content(visitor, bl_peek_stmt_while(stmt_while)->true_stmt);
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_break(bl_visitor_t *visitor, bl_node_t *stmt_break)
+{
+  // terminal
+}
+
+void
+bl_visitor_walk_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
+{
+  // terminal
 }

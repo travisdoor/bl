@@ -44,6 +44,10 @@ typedef enum {
   BL_VISIT_BLOCK,
   BL_VISIT_EXPR,
   BL_VISIT_IF,
+  BL_VISIT_LOOP,
+  BL_VISIT_WHILE,
+  BL_VISIT_BREAK,
+  BL_VISIT_CONTINUE,
   BL_VISIT_COUNT
 } bl_visit_e;
 
@@ -91,6 +95,18 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr);
 
 void
 bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t *if_stmt);
+
+void
+bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop);
+
+void
+bl_visitor_walk_while(bl_visitor_t *visitor, bl_node_t *stmt_while);
+
+void
+bl_visitor_walk_break(bl_visitor_t *visitor, bl_node_t *stmt_break);
+
+void
+bl_visitor_walk_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue);
 
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */

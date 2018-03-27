@@ -35,13 +35,23 @@ module std {
     }
 
     if (true) {
-      hello(12);
-      hello(13);
+      if_true(12);
+    } else if (true) {
+      if_false(12);
+    } else {
+  
     }
 
     if (true) 
       hello();
 
+    loop {
+      break;
+      continue;
+    }
+
+    while (true) {
+    }
   }
 }
 

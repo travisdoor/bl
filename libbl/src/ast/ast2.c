@@ -52,36 +52,21 @@ alloc_node(bl_ast_t *ast)
 static void
 node_terminate(bl_node_t *node)
 {
-  switch (node->node_variant) {
-  case BL_NODE_DECL:
-    switch (bl_peek_decl(node)->decl_variant) {
-    case BL_DECL_MODULE:
-      bo_unref(bl_peek_decl_module(node)->nodes);
-      break;
-    case BL_DECL_FUNC:
-      bo_unref(bl_peek_decl_func(node)->args);
-      break;
-    case BL_DECL_BLOCK:
-      bo_unref(bl_peek_decl_block(node)->nodes);
-      break;
-    default:
-      break;
-    }
+  switch (node->code) {
+  case BL_DECL_MODULE:
+    bo_unref(bl_peek_decl_module(node)->nodes);
     break;
-  case BL_NODE_EXPR:
-    switch (bl_peek_expr(node)->expr_variant) {
-    case BL_EXPR_CALL:
-      bo_unref(bl_peek_expr_call(node)->args);
-      break;
-    default:
-      break;
-    }
-
-  case BL_NODE_STMT:
-  case BL_NODE_TYPE:
+  case BL_DECL_FUNC:
+    bo_unref(bl_peek_decl_func(node)->args);
+    break;
+  case BL_DECL_BLOCK:
+    bo_unref(bl_peek_decl_block(node)->nodes);
+    break;
+  case BL_EXPR_CALL:
+    bo_unref(bl_peek_expr_call(node)->args);
     break;
   default:
-    bl_abort("invalid node");
+    break;
   }
 }
 
@@ -126,9 +111,8 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
   if (tok)
     type->src = &tok->src;
 
-  type->node_variant               = BL_NODE_TYPE;
-  bl_peek_type(type)->type_variant = BL_TYPE_FUND;
-  bl_peek_type_fund(type)->type    = t;
+  type->code                    = BL_TYPE_FUND;
+  bl_peek_type_fund(type)->type = t;
 
   return type;
 }
@@ -140,8 +124,7 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   if (tok)
     type->src = &tok->src;
 
-  type->node_variant               = BL_NODE_TYPE;
-  bl_peek_type(type)->type_variant = BL_TYPE_REF;
+  type->code = BL_TYPE_REF;
   bl_id_init(&bl_peek_type_ref(type)->id, name);
   bl_peek_type_ref(type)->ref = ref;
 
@@ -155,8 +138,7 @@ bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant  = BL_EXPR_CONST;
+  expr_const->code                        = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type    = type;
   bl_peek_expr_const(expr_const)->value.c = c;
 
@@ -170,8 +152,7 @@ bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant  = BL_EXPR_CONST;
+  expr_const->code                        = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type    = type;
   bl_peek_expr_const(expr_const)->value.b = b;
 
@@ -185,8 +166,7 @@ bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, lo
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant  = BL_EXPR_CONST;
+  expr_const->code                        = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type    = type;
   bl_peek_expr_const(expr_const)->value.s = s;
 
@@ -201,8 +181,7 @@ bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant  = BL_EXPR_CONST;
+  expr_const->code                        = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type    = type;
   bl_peek_expr_const(expr_const)->value.u = u;
 
@@ -216,8 +195,7 @@ bl_ast_add_expr_const_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, do
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant  = BL_EXPR_CONST;
+  expr_const->code                        = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type    = type;
   bl_peek_expr_const(expr_const)->value.f = f;
 
@@ -231,8 +209,7 @@ bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const
   if (tok)
     expr_const->src = &tok->src;
 
-  expr_const->node_variant                  = BL_NODE_EXPR;
-  bl_peek_expr(expr_const)->expr_variant    = BL_EXPR_CONST;
+  expr_const->code                          = BL_EXPR_CONST;
   bl_peek_expr_const(expr_const)->type      = type;
   bl_peek_expr_const(expr_const)->value.str = str;
 
@@ -246,11 +223,10 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
   if (tok)
     binop->src = &tok->src;
 
-  binop->node_variant               = BL_NODE_EXPR;
-  bl_peek_expr(binop)->expr_variant = BL_EXPR_BINOP;
-  bl_peek_expr_binop(binop)->op     = op;
-  bl_peek_expr_binop(binop)->lhs    = lhs;
-  bl_peek_expr_binop(binop)->rhs    = rhs;
+  binop->code                    = BL_EXPR_BINOP;
+  bl_peek_expr_binop(binop)->op  = op;
+  bl_peek_expr_binop(binop)->lhs = lhs;
+  bl_peek_expr_binop(binop)->rhs = rhs;
 
   return binop;
 }
@@ -262,8 +238,7 @@ bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_nod
   if (tok)
     var_ref->src = &tok->src;
 
-  var_ref->node_variant               = BL_NODE_EXPR;
-  bl_peek_expr(var_ref)->expr_variant = BL_EXPR_VAR_REF;
+  var_ref->code = BL_EXPR_VAR_REF;
   bl_id_init(&bl_peek_expr_var_ref(var_ref)->id, name);
   bl_peek_expr_var_ref(var_ref)->ref = ref;
 
@@ -277,8 +252,7 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   if (tok)
     call->src = &tok->src;
 
-  call->node_variant               = BL_NODE_EXPR;
-  bl_peek_expr(call)->expr_variant = BL_EXPR_CALL;
+  call->code = BL_EXPR_CALL;
   bl_id_init(&bl_peek_expr_call(call)->id, name);
   bl_peek_expr_call(call)->ref = ref;
 
@@ -293,8 +267,7 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   if (tok)
     path->src = &tok->src;
 
-  path->node_variant               = BL_NODE_EXPR;
-  bl_peek_expr(path)->expr_variant = BL_EXPR_PATH;
+  path->code = BL_EXPR_PATH;
   bl_id_init(&bl_peek_expr_path(path)->id, name);
   bl_peek_expr_path(path)->next = next;
   bl_peek_expr_path(path)->ref  = ref;
@@ -309,8 +282,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name)
   if (tok)
     module->src = &tok->src;
 
-  module->node_variant               = BL_NODE_DECL;
-  bl_peek_decl(module)->decl_variant = BL_DECL_MODULE;
+  module->code = BL_DECL_MODULE;
   if (name != NULL)
     bl_id_init(&bl_peek_decl_module(module)->id, name);
 
@@ -325,8 +297,7 @@ bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   if (tok)
     var->src = &tok->src;
 
-  var->node_variant                = BL_NODE_DECL;
-  bl_peek_decl(var)->decl_variant  = BL_DECL_VAR;
+  var->code                        = BL_DECL_VAR;
   bl_peek_decl_var(var)->init_expr = init_expr;
   bl_peek_decl_var(var)->type      = type;
   bl_id_init(&bl_peek_decl_var(var)->id, name);
@@ -341,9 +312,8 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   if (tok)
     arg->src = &tok->src;
 
-  arg->node_variant               = BL_NODE_DECL;
-  bl_peek_decl(arg)->decl_variant = BL_DECL_ARG;
-  bl_peek_decl_arg(arg)->type     = type;
+  arg->code                   = BL_DECL_ARG;
+  bl_peek_decl_arg(arg)->type = type;
   bl_id_init(&bl_peek_decl_arg(arg)->id, name);
 
   return arg;
@@ -357,8 +327,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   if (tok)
     func->src = &tok->src;
 
-  func->node_variant                = BL_NODE_DECL;
-  bl_peek_decl(func)->decl_variant  = BL_DECL_FUNC;
+  func->code                        = BL_DECL_FUNC;
   bl_peek_decl_func(func)->block    = block;
   bl_peek_decl_func(func)->ret_type = ret_type;
   bl_id_init(&bl_peek_decl_func(func)->id, name);
@@ -373,8 +342,7 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name)
   if (tok)
     strct->src = &tok->src;
 
-  strct->node_variant               = BL_NODE_DECL;
-  bl_peek_decl(strct)->decl_variant = BL_DECL_STRUCT;
+  strct->code = BL_DECL_STRUCT;
   bl_id_init(&bl_peek_decl_struct(strct)->id, name);
 
   return strct;
@@ -387,8 +355,7 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name)
   if (tok)
     enm->src = &tok->src;
 
-  enm->node_variant               = BL_NODE_DECL;
-  bl_peek_decl(enm)->decl_variant = BL_DECL_ENUM;
+  enm->code = BL_DECL_ENUM;
   bl_id_init(&bl_peek_decl_enum(enm)->id, name);
 
   return enm;
@@ -401,8 +368,7 @@ bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok)
   if (tok)
     block->src = &tok->src;
 
-  block->node_variant               = BL_NODE_DECL;
-  bl_peek_decl(block)->decl_variant = BL_DECL_BLOCK;
+  block->code = BL_DECL_BLOCK;
 
   return block;
 }
@@ -415,8 +381,7 @@ bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *t
   if (tok)
     if_stmt->src = &tok->src;
 
-  if_stmt->node_variant                = BL_NODE_STMT;
-  bl_peek_stmt(if_stmt)->stmt_variant  = BL_STMT_IF;
+  if_stmt->code                        = BL_STMT_IF;
   bl_peek_stmt_if(if_stmt)->test       = test;
   bl_peek_stmt_if(if_stmt)->true_stmt  = true_stmt;
   bl_peek_stmt_if(if_stmt)->false_stmt = false_stmt;
@@ -425,9 +390,58 @@ bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *t
 }
 
 bl_node_t *
+bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *true_stmt)
+{
+  bl_node_t *loop_stmt = alloc_node(ast);
+  if (tok)
+    loop_stmt->src = &tok->src;
+
+  loop_stmt->code                         = BL_STMT_LOOP;
+  bl_peek_stmt_loop(loop_stmt)->true_stmt = true_stmt;
+
+  return loop_stmt;
+}
+
+bl_node_t *
+bl_ast_add_stmt_while(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt)
+{
+  bl_node_t *while_stmt = alloc_node(ast);
+  if (tok)
+    while_stmt->src = &tok->src;
+
+  while_stmt->code                          = BL_STMT_WHILE;
+  bl_peek_stmt_while(while_stmt)->test      = test;
+  bl_peek_stmt_while(while_stmt)->true_stmt = true_stmt;
+
+  return while_stmt;
+}
+
+bl_node_t *
+bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok)
+{
+  bl_node_t *break_stmt = alloc_node(ast);
+  if (tok)
+    break_stmt->src = &tok->src;
+
+  break_stmt->code = BL_STMT_BREAK;
+  return break_stmt;
+}
+
+bl_node_t *
+bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok)
+{
+  bl_node_t *continue_stmt = alloc_node(ast);
+  if (tok)
+    continue_stmt->src = &tok->src;
+
+  continue_stmt->code = BL_STMT_CONTINUE;
+  return continue_stmt;
+}
+
+bl_node_t *
 bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
 {
-  bl_assert(bl_peek_decl(module)->decl_variant == BL_DECL_MODULE, "invalid module");
+  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   if (node == NULL)
     return NULL;
 
@@ -442,7 +456,7 @@ bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
 size_t
 bl_ast_module_node_count(bl_node_t *module)
 {
-  bl_assert(bl_peek_decl(module)->decl_variant == BL_DECL_MODULE, "invalid module");
+  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   if (bl_peek_decl_module(module)->nodes == NULL)
     return 0;
   return bo_array_size(bl_peek_decl_module(module)->nodes);
@@ -451,7 +465,7 @@ bl_ast_module_node_count(bl_node_t *module)
 bl_node_t *
 bl_ast_module_get_node(bl_node_t *module, const size_t i)
 {
-  bl_assert(bl_peek_decl(module)->decl_variant == BL_DECL_MODULE, "invalid module");
+  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   if (bl_peek_decl_module(module)->nodes == NULL)
     return NULL;
   return bo_array_at(bl_peek_decl_module(module)->nodes, i, bl_node_t *);
@@ -460,7 +474,7 @@ bl_ast_module_get_node(bl_node_t *module, const size_t i)
 bl_node_t *
 bl_ast_func_push_arg(bl_node_t *func, bl_node_t *arg)
 {
-  bl_assert(bl_peek_decl(func)->decl_variant == BL_DECL_FUNC, "invalid module");
+  bl_assert(bl_node_is(func, BL_DECL_FUNC), "invalid func");
   if (arg == NULL)
     return NULL;
 
@@ -475,7 +489,7 @@ bl_ast_func_push_arg(bl_node_t *func, bl_node_t *arg)
 size_t
 bl_ast_func_arg_count(bl_node_t *func)
 {
-  bl_assert(bl_peek_decl(func)->decl_variant == BL_DECL_FUNC, "invalid func");
+  bl_assert(bl_node_is(func, BL_DECL_FUNC), "invalid func");
   if (bl_peek_decl_func(func)->args == NULL)
     return 0;
   return bo_array_size(bl_peek_decl_func(func)->args);
@@ -484,7 +498,7 @@ bl_ast_func_arg_count(bl_node_t *func)
 bl_node_t *
 bl_ast_func_get_arg(bl_node_t *func, const size_t i)
 {
-  bl_assert(bl_peek_decl(func)->decl_variant == BL_DECL_FUNC, "invalid func");
+  bl_assert(bl_node_is(func, BL_DECL_FUNC), "invalid func");
   if (bl_peek_decl_func(func)->args == NULL)
     return NULL;
   return bo_array_at(bl_peek_decl_func(func)->args, i, bl_node_t *);
@@ -493,7 +507,7 @@ bl_ast_func_get_arg(bl_node_t *func, const size_t i)
 bl_node_t *
 bl_ast_block_push_node(bl_node_t *block, bl_node_t *node)
 {
-  bl_assert(bl_peek_decl(block)->decl_variant == BL_DECL_BLOCK, "invalid block");
+  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
   if (node == NULL)
     return NULL;
 
@@ -508,7 +522,7 @@ bl_ast_block_push_node(bl_node_t *block, bl_node_t *node)
 size_t
 bl_ast_block_node_count(bl_node_t *block)
 {
-  bl_assert(bl_peek_decl(block)->decl_variant == BL_DECL_BLOCK, "invalid block");
+  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
   if (bl_peek_decl_block(block)->nodes == NULL)
     return 0;
   return bo_array_size(bl_peek_decl_block(block)->nodes);
@@ -517,7 +531,7 @@ bl_ast_block_node_count(bl_node_t *block)
 bl_node_t *
 bl_ast_block_get_node(bl_node_t *block, const size_t i)
 {
-  bl_assert(bl_peek_decl(block)->decl_variant == BL_DECL_BLOCK, "invalid block");
+  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
   if (bl_peek_decl_block(block)->nodes == NULL)
     return NULL;
   return bo_array_at(bl_peek_decl_block(block)->nodes, i, bl_node_t *);
@@ -526,7 +540,7 @@ bl_ast_block_get_node(bl_node_t *block, const size_t i)
 bl_node_t *
 bl_ast_call_push_arg(bl_node_t *call, bl_node_t *arg)
 {
-  bl_assert(bl_peek_expr(call)->expr_variant == BL_EXPR_CALL, "invalid call");
+  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
   if (arg == NULL)
     return NULL;
 
@@ -541,7 +555,7 @@ bl_ast_call_push_arg(bl_node_t *call, bl_node_t *arg)
 size_t
 bl_ast_call_arg_count(bl_node_t *call)
 {
-  bl_assert(bl_peek_expr(call)->expr_variant == BL_EXPR_CALL, "invalid call");
+  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
   if (bl_peek_expr_call(call)->args == NULL)
     return 0;
 
@@ -551,7 +565,7 @@ bl_ast_call_arg_count(bl_node_t *call)
 bl_node_t *
 bl_ast_call_get_arg(bl_node_t *call, const size_t i)
 {
-  bl_assert(bl_peek_expr(call)->expr_variant == BL_EXPR_CALL, "invalid call");
+  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
   if (bl_peek_expr_call(call)->args == NULL)
     return NULL;
   return bo_array_at(bl_peek_expr_call(call)->args, i, bl_node_t *);
