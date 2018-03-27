@@ -52,6 +52,9 @@ module std {
 
     while (true) {
     }
+
+    while (true) 
+      a + 1;
   }
 }
 
