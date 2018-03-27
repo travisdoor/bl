@@ -88,6 +88,7 @@ typedef struct bl_ast bl_ast_t;
 #define bl_peek_stmt_if(node) (&(node)->n.stmt_if)
 #define bl_peek_stmt_loop(node) (&(node)->n.stmt_loop)
 #define bl_peek_stmt_while(node) (&(node)->n.stmt_while)
+#define bl_peek_stmt_return(node) (&(node)->n.stmt_return)
 
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
@@ -110,6 +111,7 @@ enum bl_node_code
   BL_STMT_WHILE,
   BL_STMT_BREAK,
   BL_STMT_CONTINUE,
+  BL_STMT_RETURN,
 
   BL_DECL_MODULE,
   BL_DECL_VAR,
@@ -161,6 +163,11 @@ struct bl_node
     struct
     {
     } stmt_continue;
+
+    struct
+    {
+      bl_node_t *expr;
+    } stmt_return;
 
     struct
     {
@@ -362,6 +369,9 @@ bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok);
 
 bl_node_t *
 bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok);
+
+bl_node_t *
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
 
 /*
  * helpers

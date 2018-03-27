@@ -117,6 +117,12 @@ visit_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
   bl_visitor_walk_continue(visitor, stmt_continue);
 }
 
+static void
+visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
+{
+  bl_visitor_walk_return(visitor, stmt_return);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -137,6 +143,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_WHILE]    = visit_while;
   visitor->visitors[BL_VISIT_BREAK]    = visit_break;
   visitor->visitors[BL_VISIT_CONTINUE] = visit_continue;
+  visitor->visitors[BL_VISIT_RETURN]   = visit_return;
 }
 
 void
@@ -413,4 +420,15 @@ void
 bl_visitor_walk_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
 {
   // terminal
+}
+
+void
+bl_visitor_walk_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
+{
+  visitor->nesting++;
+  if (bl_peek_stmt_return(stmt_return)->expr) {
+    bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
+    vexpr(visitor, bl_peek_stmt_return(stmt_return)->expr);
+  }
+  visitor->nesting--;
 }

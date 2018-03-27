@@ -439,6 +439,18 @@ bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok)
 }
 
 bl_node_t *
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
+{
+  bl_node_t *return_stmt = alloc_node(ast);
+  if (tok)
+    return_stmt->src = &tok->src;
+
+  return_stmt->code                      = BL_STMT_RETURN;
+  bl_peek_stmt_return(return_stmt)->expr = expr;
+  return return_stmt;
+}
+
+bl_node_t *
 bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");

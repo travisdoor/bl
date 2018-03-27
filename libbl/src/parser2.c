@@ -119,7 +119,22 @@ parse_break_maybe(context_t *cnt);
 static bl_node_t *
 parse_continue_maybe(context_t *cnt);
 
+static bl_node_t *
+parse_return_maybe(context_t *cnt);
+
 /* impl*/
+bl_node_t *
+parse_return_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_RETURN);
+  if (!tok_begin) {
+    return NULL;
+  }
+  
+  bl_node_t *expr = parse_expr_maybe(cnt);
+  return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr);
+}
+
 bl_node_t *
 parse_loop_maybe(context_t *cnt)
 {
@@ -579,6 +594,11 @@ parse_block_content_maybe(context_t *cnt)
   }
 
   if ((stmt = parse_while_maybe(cnt))) {
+    goto done;
+  }
+
+  if ((stmt = parse_return_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
     goto done;
   }
 
