@@ -26,10 +26,61 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <setjmp.h>
+#include "common_impl.h"
 #include "stages_impl.h"
+#include "ast/visitor_impl.h"
+
+#define link_error(cnt, code, loc, format, ...)                                                    \
+  {                                                                                                \
+    bl_builder_error((cnt)->builder, "%s %d:%d " format, loc->file, loc->line, loc->col,           \
+                     ##__VA_ARGS__);                                                               \
+    longjmp((cnt)->jmp_error, (code));                                                             \
+  }
+
+typedef struct
+{
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+  jmp_buf        jmp_error;
+} context_t;
+
+static void
+visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
+{
+  switch (bl_node_code(expr)) {
+    case BL_EXPR_CALL:
+      bl_log("linker call detected %s", bl_peek_expr_call(expr)->id.str);
+      break;
+    default:
+      break;
+  }
+
+  bl_visitor_walk_expr(visitor, expr);
+}
 
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
+  context_t cnt = {.builder = builder, .assembly = assembly};
+
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error))) {
+    return (bl_error_e)error;
+  }
+
+  bl_visitor_t visitor;
+  bl_visitor_init(&visitor, &cnt);
+  bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
+
+
+  const int  c    = bl_assembly_get_unit_count(assembly);
+  bl_unit_t *unit = NULL;
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_module(&visitor, unit->ast.root);
+  }
+
   return BL_NO_ERR;
 }

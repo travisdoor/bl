@@ -82,10 +82,10 @@ bl_error_e
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_error_e error;
-  //
-  //  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
-  //    return error;
-  //
+
+  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
     return error;
   //
@@ -135,10 +135,10 @@ bl_builder_delete(bl_builder_t *builder)
 bl_error_e
 bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
-  clock_t begin  = clock();
-  const size_t c = bo_array_size(assembly->units);
-  bl_unit_t *unit;
-  bl_error_e error;
+  clock_t      begin = clock();
+  const size_t c     = bo_array_size(assembly->units);
+  bl_unit_t *  unit;
+  bl_error_e   error;
 
   for (size_t i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
@@ -151,8 +151,8 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
 
   error = compile_assembly(builder, assembly, flags);
 
-  clock_t end       = clock();
-  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+  clock_t end        = clock();
+  double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
   bl_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds", builder->total_lines,
          time_spent);
