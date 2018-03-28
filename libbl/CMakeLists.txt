@@ -25,13 +25,9 @@ set(HEADER_FILES
 set(HEADER_FILES_IMPL
         src/builder_impl.h
         src/blmemory_impl.h
-        src/llvm_bl_cnt_impl.h
         src/assembly_impl.h
         src/token_impl.h
         src/tokens_impl.h
-        src/identifier_impl.h
-        src/ast/node_impl.h
-        src/type_impl.h
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
@@ -46,12 +42,9 @@ set(SOURCE_FILES
         src/token.c
         src/token_printer.c
         src/assembly.c
-        src/type.c
-        src/identifier.c
         src/llvm_jit_exec.c
         src/builder.c
         src/llvm_bc_writer.c
-        src/llvm_bl_cnt.c
         src/llvm_native_bin.c
         src/lexer.c
         src/ast_printer.c

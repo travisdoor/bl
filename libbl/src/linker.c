@@ -1,9 +1,9 @@
 //*****************************************************************************
 // blc
 //
-// File:   llvm_bl_cnt_impl.h
+// File:   linker.c
 // Author: Martin Dorazil
-// Date:   19/02/2018
+// Date:   14.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,33 +26,10 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_LLVM_BL_CNT_BUF_IMPL_H
-#define BL_LLVM_BL_CNT_BUF_IMPL_H
+#include "stages_impl.h"
 
-#include <llvm-c/Core.h>
-#include "ast/node_impl.h"
-
-typedef struct
+bl_error_e
+bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  BArray *blocks;
-} bl_llvm_bl_cnt_t;
-
-void
-bl_llvm_bl_cnt_init(bl_llvm_bl_cnt_t *bl_cnt);
-
-void
-bl_llvm_bl_cnt_terminate(bl_llvm_bl_cnt_t *bl_cnt);
-
-bool
-bl_llvm_bl_cnt_add(bl_llvm_bl_cnt_t *bl_cnt, LLVMValueRef val, bl_ident_t *id);
-
-LLVMValueRef
-bl_llvm_bl_cnt_get(bl_llvm_bl_cnt_t *bl_cnt, bl_ident_t *id);
-
-void
-bl_llvm_bl_cnt_push_block(bl_llvm_bl_cnt_t *bl_cnt);
-
-void
-bl_llvm_bl_cnt_pop_block(bl_llvm_bl_cnt_t *bl_cnt);
-
-#endif // BL_LLVM_BL_CNT_BUF_IMPL_H
+  return BL_NO_ERR;
+}
