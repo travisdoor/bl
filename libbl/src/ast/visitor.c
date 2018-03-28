@@ -51,8 +51,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
   case BL_EXPR_CALL:
   case BL_EXPR_VAR_REF:
   case BL_EXPR_BINOP:
-  case BL_EXPR_CONST:
-  case BL_EXPR_PATH: {
+  case BL_EXPR_CONST: {
     bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
     v(visitor, stmt);
     break;
@@ -90,6 +89,12 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
 
   case BL_STMT_RETURN: {
     bl_visit_f v = visitor->visitors[BL_VISIT_RETURN];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_EXPR_PATH: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_PATH];
     v(visitor, stmt);
     break;
   }
@@ -192,6 +197,12 @@ visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
   bl_visitor_walk_return(visitor, stmt_return);
 }
 
+static void
+visit_path(bl_visitor_t *visitor, bl_node_t *expr_path)
+{
+  bl_visitor_walk_path(visitor, expr_path);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -213,6 +224,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_BREAK]    = visit_break;
   visitor->visitors[BL_VISIT_CONTINUE] = visit_continue;
   visitor->visitors[BL_VISIT_RETURN]   = visit_return;
+  visitor->visitors[BL_VISIT_PATH]     = visit_path;
 }
 
 void
@@ -267,20 +279,28 @@ bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   visitor->nesting++;
 
-  bl_visit_f   vt  = visitor->visitors[BL_VISIT_TYPE];
-  bl_visit_f   va  = visitor->visitors[BL_VISIT_ARG];
-  bl_visit_f   vb  = visitor->visitors[BL_VISIT_BLOCK];
-  const size_t c   = bl_ast_func_arg_count(func);
-  bl_node_t *  arg = NULL;
+  bl_decl_func_t *fn  = bl_peek_decl_func(func);
+  const size_t    c   = bl_ast_func_arg_count(func);
+  bl_node_t *     arg = NULL;
+  bl_visit_f      va  = visitor->visitors[BL_VISIT_ARG];
 
   for (size_t i = 0; i < c; i++) {
     arg = bl_ast_func_get_arg(func, i);
     va(visitor, arg);
   }
 
-  vt(visitor, bl_peek_decl_func(func)->ret_type);
-  if (bl_peek_decl_func(func)->block)
-    vb(visitor, bl_peek_decl_func(func)->block);
+  if (bl_node_code(fn->ret_type) == BL_EXPR_PATH) {
+    bl_visit_f v = visitor->visitors[BL_VISIT_PATH];
+    v(visitor, fn->ret_type);
+  } else {
+    bl_visit_f v = visitor->visitors[BL_VISIT_TYPE];
+    v(visitor, fn->ret_type);
+  }
+
+  if (bl_peek_decl_func(func)->block) {
+    bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
+    v(visitor, bl_peek_decl_func(func)->block);
+  }
 
   visitor->nesting--;
 }
@@ -319,10 +339,17 @@ bl_visitor_walk_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   visitor->nesting++;
 
-  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, bl_peek_decl_var(var)->type);
+  bl_decl_var_t *_var = bl_peek_decl_var(var);
 
-  if (bl_peek_decl_var(var)->init_expr) {
+  if (bl_node_code(_var->type) == BL_EXPR_PATH) {
+    bl_visit_f vp = visitor->visitors[BL_VISIT_PATH];
+    vp(visitor, _var->type);
+  } else {
+    bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+    vt(visitor, _var->type);
+  }
+
+  if (_var->init_expr) {
     bl_visit_f ve = visitor->visitors[BL_VISIT_EXPR];
     ve(visitor, bl_peek_decl_var(var)->init_expr);
   }
@@ -356,12 +383,6 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
     v(visitor, bl_peek_expr_binop(expr)->lhs);
     v(visitor, bl_peek_expr_binop(expr)->rhs);
-    break;
-  }
-
-  case BL_EXPR_PATH: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
-    v(visitor, bl_peek_expr_path(expr)->next);
     break;
   }
 
@@ -436,5 +457,33 @@ bl_visitor_walk_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
     bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
     vexpr(visitor, bl_peek_stmt_return(stmt_return)->expr);
   }
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_path(bl_visitor_t *visitor, bl_node_t *expr_path)
+{
+  visitor->nesting++;
+  bl_visit_f v = NULL;
+  bl_expr_path_t *path = bl_peek_expr_path(expr_path);
+  switch (bl_node_code(path->next)) {
+  case BL_EXPR_VAR_REF:
+  case BL_EXPR_CALL:
+    v= visitor->visitors[BL_VISIT_EXPR];
+    break;
+
+  case BL_EXPR_PATH:
+    v= visitor->visitors[BL_VISIT_PATH];
+    break;
+
+  case BL_TYPE_REF:
+    v = visitor->visitors[BL_VISIT_TYPE];
+    break;
+
+  default:
+    bl_abort("invalid path");
+  }
+
+  v(visitor, path->next);
   visitor->nesting--;
 }

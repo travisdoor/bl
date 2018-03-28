@@ -108,26 +108,24 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  print_head("expr", bl_peek_src(expr), expr, visitor->nesting);
   switch (bl_node_code(expr)) {
   case BL_EXPR_CONST: {
-    fprintf(stdout, BL_CYAN("<const>"));
+    print_head("const", bl_peek_src(expr), expr, visitor->nesting);
     break;
   }
   case BL_EXPR_BINOP:
-    fprintf(stdout, BL_CYAN("<binop>") " operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);
+    print_head("binop", bl_peek_src(expr), expr, visitor->nesting);
+    fprintf(stdout, " operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);
     break;
   case BL_EXPR_VAR_REF:
-    fprintf(stdout, BL_CYAN("<ref>") " name: " BL_YELLOW("'%s' -> %p"),
+    print_head("var_ref", bl_peek_src(expr), expr, visitor->nesting);
+    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"),
             bl_peek_expr_var_ref(expr)->id.str, bl_peek_expr_var_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
-    fprintf(stdout, BL_CYAN("<call>") " name: " BL_YELLOW("'%s' -> %p"),
+    print_head("call", bl_peek_src(expr), expr, visitor->nesting);
+    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"),
             bl_peek_expr_call(expr)->id.str, bl_peek_expr_call(expr)->ref);
-    break;
-  case BL_EXPR_PATH:
-    fprintf(stdout, BL_CYAN("<path>") " name: " BL_YELLOW("'%s' -> %p"),
-            bl_peek_expr_path(expr)->id.str, bl_peek_expr_path(expr)->ref);
     break;
   default:
     bl_abort("invalid expression");
@@ -177,6 +175,15 @@ visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
   bl_visitor_walk_return(visitor, stmt_return);
 }
 
+static void
+visit_path(bl_visitor_t *visitor, bl_node_t *expr_path)
+{
+  print_head("path", bl_peek_src(expr_path), expr_path, visitor->nesting);
+  fprintf(stdout, " ref: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_path(expr_path)->id.str,
+          bl_peek_expr_path(expr_path)->ref);
+  bl_visitor_walk_path(visitor, expr_path);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -206,6 +213,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
     bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
+    bl_visitor_add(&visitor, visit_path, BL_VISIT_PATH);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

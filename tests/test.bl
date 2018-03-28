@@ -15,7 +15,7 @@ module std {
     return 10;
   }
 
-  fn get_context() context_t {
+  fn get_context() std::context_t {
     var hello i32;
     var a i32 = hello + (10 + add(15 + 2, 256)) + (10);
     10 + 10;
@@ -29,7 +29,7 @@ module std {
     std::add();
     std::state_e::A;
 
-    var test context_t;
+    var test hell::context_t;
 
     {
       {

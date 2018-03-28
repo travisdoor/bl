@@ -49,6 +49,7 @@ typedef enum {
   BL_VISIT_BREAK,
   BL_VISIT_CONTINUE,
   BL_VISIT_RETURN,
+  BL_VISIT_PATH,
   BL_VISIT_COUNT
 } bl_visit_e;
 
@@ -111,6 +112,9 @@ bl_visitor_walk_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue);
 
 void
 bl_visitor_walk_return(bl_visitor_t *visitor, bl_node_t *stmt_return);
+
+void
+bl_visitor_walk_path(bl_visitor_t *visitor, bl_node_t *expr_path);
 
 
 #endif /* end of include guard: VISITOR_IMPL_H_0IZSKUFY */

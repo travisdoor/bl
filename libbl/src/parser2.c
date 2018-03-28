@@ -350,48 +350,46 @@ parse_nested_expr_maybe(context_t *cnt)
 bl_node_t *
 parse_path_maybe(context_t *cnt, int expected_flag)
 {
-  bl_node_t *path = NULL;
-
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_MODULE_PATH)) {
-    bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
-    bl_tokens_consume(cnt->tokens); // eat ::
-
-    /* next path element */
-    bl_node_t *next = NULL;
-    next            = parse_path_maybe(cnt, expected_flag);
-    if (next != NULL) {
-      goto done;
+  /*
+   * We expect identificator here as entry point to another path,
+   * function call, variable reference or type. This function can return
+   * any of these nodes depending on source code.
+   */
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
+    if (bl_tokens_next_is(cnt->tokens, BL_SYM_MODULE_PATH)) {
+      bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
+      bl_tokens_consume(cnt->tokens); /* eat :: */
+      /* next path element */
+      bl_node_t *next = parse_path_maybe(cnt, expected_flag);
+      return bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, NULL, next);
     }
 
+    bl_node_t *curr = NULL;
     if (expected_flag & PATH_EXPECTED_CALL) {
-      next = parse_call_maybe(cnt);
-      if (next != NULL) {
-        goto done;
+      if ((curr = parse_call_maybe(cnt)) != NULL) {
+        return curr;
       }
     }
 
     if (expected_flag & PATH_EXPECTED_VAR) {
-      next = parse_var_ref_maybe(cnt);
-      if (next != NULL) {
-        goto done;
+      if ((curr = parse_var_ref_maybe(cnt)) != NULL) {
+        return curr;
       }
     }
 
     if (expected_flag & PATH_EXPECTED_TYPE) {
-      next = parse_type_maybe(cnt);
-      if (next != NULL) {
-        goto done;
+      if ((curr = parse_type_maybe(cnt)) != NULL) {
+        return curr;
       }
     }
 
-    bl_token_t *tok_err = bl_tokens_consume(cnt->tokens); // eat ::
+    bl_token_t *tok_err = bl_tokens_consume(cnt->tokens);
     parse_error(cnt, BL_ERR_INVALID_TOKEN, tok_err,
-                "invalid token found in path, expected call, variable or variable");
-  done:
-    path = bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, NULL, next);
+                "invalid token found in path, expected call, variable or type");
   }
 
-  return path;
+  /* not path, variable, call or type */
+  return NULL;
 }
 
 bl_node_t *
@@ -408,11 +406,13 @@ parse_atom_expr(context_t *cnt)
   if ((expr = parse_const_expr_maybe(cnt)))
     return expr;
 
+  /*
   if ((expr = parse_call_maybe(cnt)))
-    return expr;
+  return expr;
 
   if ((expr = parse_var_ref_maybe(cnt)))
-    return expr;
+  return expr;
+  */
 
   return expr;
 }
@@ -461,7 +461,7 @@ parse_var_maybe(context_t *cnt)
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR)) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
 
-    type = parse_type_maybe(cnt);
+    type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
     if (type == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
@@ -526,7 +526,7 @@ parse_ret_type_rq(context_t *cnt)
 
   switch (tok->sym) {
   case BL_SYM_IDENT:
-    type = parse_type_maybe(cnt);
+    type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
     break;
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
@@ -684,7 +684,7 @@ parse_arg_maybe(context_t *cnt)
   bl_node_t *arg = NULL;
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
     bl_token_t *tok  = bl_tokens_consume(cnt->tokens);
-    bl_node_t * type = parse_type_maybe(cnt);
+    bl_node_t * type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
 
     if (type == NULL) {
       bl_token_t *tok = bl_tokens_peek(cnt->tokens);
