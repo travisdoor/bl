@@ -31,6 +31,75 @@
 #include "common_impl.h"
 
 static void
+walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
+{
+  if (stmt == NULL)
+    return;
+
+  switch (bl_node_code(stmt)) {
+  case BL_DECL_BLOCK: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
+    v(visitor, stmt);
+    break;
+  }
+  case BL_DECL_VAR: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_VAR];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_EXPR_CALL:
+  case BL_EXPR_VAR_REF:
+  case BL_EXPR_BINOP:
+  case BL_EXPR_CONST:
+  case BL_EXPR_PATH: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_IF: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_IF];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_LOOP: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_LOOP];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_WHILE: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_WHILE];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_BREAK: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_BREAK];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_CONTINUE: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_CONTINUE];
+    v(visitor, stmt);
+    break;
+  }
+
+  case BL_STMT_RETURN: {
+    bl_visit_f v = visitor->visitors[BL_VISIT_RETURN];
+    v(visitor, stmt);
+    break;
+  }
+
+  default:
+    bl_abort("unknown statement");
+  }
+}
+
+static void
 walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt);
 
 static void
@@ -335,69 +404,6 @@ bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
   visitor->nesting++;
   walk_block_content(visitor, bl_peek_stmt_loop(stmt_loop)->true_stmt);
   visitor->nesting--;
-}
-
-static void
-walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
-{
-  if (stmt == NULL)
-    return;
-
-  switch (bl_node_code(stmt)) {
-  case BL_DECL_BLOCK: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_BLOCK];
-    v(visitor, stmt);
-    break;
-  }
-  case BL_DECL_VAR: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_VAR];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_EXPR_CALL:
-  case BL_EXPR_VAR_REF:
-  case BL_EXPR_BINOP:
-  case BL_EXPR_CONST:
-  case BL_EXPR_PATH: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_STMT_IF: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_IF];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_STMT_LOOP: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_LOOP];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_STMT_WHILE: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_WHILE];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_STMT_BREAK: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_BREAK];
-    v(visitor, stmt);
-    break;
-  }
-
-  case BL_STMT_CONTINUE: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_CONTINUE];
-    v(visitor, stmt);
-    break;
-  }
-
-  default:
-    bl_abort("unknown statement");
-  }
 }
 
 void

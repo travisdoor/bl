@@ -110,11 +110,12 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   print_head("expr", bl_peek_src(expr), expr, visitor->nesting);
   switch (bl_node_code(expr)) {
-  case BL_EXPR_CONST:
+  case BL_EXPR_CONST: {
     fprintf(stdout, BL_CYAN("<const>"));
     break;
+  }
   case BL_EXPR_BINOP:
-    fprintf(stdout, BL_CYAN("<binop>"));
+    fprintf(stdout, BL_CYAN("<binop>") " operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);
     break;
   case BL_EXPR_VAR_REF:
     fprintf(stdout, BL_CYAN("<ref>") " name: " BL_YELLOW("'%s' -> %p"),
@@ -169,6 +170,13 @@ visit_continue(bl_visitor_t *visitor, bl_node_t *stmt_continue)
   bl_visitor_walk_continue(visitor, stmt_continue);
 }
 
+static void
+visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
+{
+  print_head("return", bl_peek_src(stmt_return), stmt_return, visitor->nesting);
+  bl_visitor_walk_return(visitor, stmt_return);
+}
+
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -197,6 +205,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_while, BL_VISIT_WHILE);
     bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
+    bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }
