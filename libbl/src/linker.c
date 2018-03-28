@@ -46,17 +46,11 @@ typedef struct
 } context_t;
 
 static void
-visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
+visit_path(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  switch (bl_node_code(expr)) {
-    case BL_EXPR_CALL:
-      bl_log("linker call detected %s", bl_peek_expr_call(expr)->id.str);
-      break;
-    default:
-      break;
-  }
+  bl_log("linker path detected %s", bl_peek_expr_path(expr)->id.str);
 
-  bl_visitor_walk_expr(visitor, expr);
+  /*bl_visitor_walk_expr(visitor, expr);*/
 }
 
 bl_error_e
@@ -71,8 +65,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
-  bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
-
+  bl_visitor_add(&visitor, visit_path, BL_VISIT_PATH);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

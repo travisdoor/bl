@@ -11,6 +11,8 @@ module std {
   enum state_e {
   }
 
+  fn add() {}
+
   fn add(first i32, second i32) i32 {
     return 10;
   }

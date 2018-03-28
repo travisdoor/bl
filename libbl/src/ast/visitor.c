@@ -237,38 +237,45 @@ void
 bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   visitor->nesting++;
-  const size_t c    = bl_ast_module_node_count(module);
-  bl_node_t *  node = NULL;
-  for (size_t i = 0; i < c; i++) {
-    node = bl_ast_module_get_node(module, i);
 
-    switch (bl_node_code(node)) {
-    case BL_DECL_MODULE: {
-      bl_visit_f v = visitor->visitors[BL_VISIT_MODULE];
-      v(visitor, node);
-      break;
-    }
+  bl_node_t *       node    = NULL;
+  bl_decl_module_t *_module = bl_peek_decl_module(module);
+  if (_module->nodes) {
+    bo_iterator_t iter = bo_htbl_begin(_module->nodes);
+    bo_iterator_t end  = bo_htbl_end(_module->nodes);
 
-    case BL_DECL_FUNC: {
-      bl_visit_f v = visitor->visitors[BL_VISIT_FUNC];
-      v(visitor, node);
-      break;
-    }
+    while (!bo_iterator_equal(&iter, &end)) {
+      node = bo_htbl_iter_peek_value(_module->nodes, &iter, bl_node_t *);
+      bo_htbl_iter_next(_module->nodes, &iter);
 
-    case BL_DECL_STRUCT: {
-      bl_visit_f v = visitor->visitors[BL_VISIT_STRUCT];
-      v(visitor, node);
-      break;
-    }
+      switch (bl_node_code(node)) {
+      case BL_DECL_MODULE: {
+        bl_visit_f v = visitor->visitors[BL_VISIT_MODULE];
+        v(visitor, node);
+        break;
+      }
 
-    case BL_DECL_ENUM: {
-      bl_visit_f v = visitor->visitors[BL_VISIT_ENUM];
-      v(visitor, node);
-      break;
-    }
+      case BL_DECL_FUNC: {
+        bl_visit_f v = visitor->visitors[BL_VISIT_FUNC];
+        v(visitor, node);
+        break;
+      }
 
-    default:
-      bl_abort("unknown node in module");
+      case BL_DECL_STRUCT: {
+        bl_visit_f v = visitor->visitors[BL_VISIT_STRUCT];
+        v(visitor, node);
+        break;
+      }
+
+      case BL_DECL_ENUM: {
+        bl_visit_f v = visitor->visitors[BL_VISIT_ENUM];
+        v(visitor, node);
+        break;
+      }
+
+      default:
+        bl_abort("unknown node in module");
+      }
     }
   }
   visitor->nesting--;
@@ -464,16 +471,16 @@ void
 bl_visitor_walk_path(bl_visitor_t *visitor, bl_node_t *expr_path)
 {
   visitor->nesting++;
-  bl_visit_f v = NULL;
+  bl_visit_f      v    = NULL;
   bl_expr_path_t *path = bl_peek_expr_path(expr_path);
   switch (bl_node_code(path->next)) {
   case BL_EXPR_VAR_REF:
   case BL_EXPR_CALL:
-    v= visitor->visitors[BL_VISIT_EXPR];
+    v = visitor->visitors[BL_VISIT_EXPR];
     break;
 
   case BL_EXPR_PATH:
-    v= visitor->visitors[BL_VISIT_PATH];
+    v = visitor->visitors[BL_VISIT_PATH];
     break;
 
   case BL_TYPE_REF:

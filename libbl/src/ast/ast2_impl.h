@@ -30,6 +30,7 @@
 #define BL_NODE2_IMPL_H
 
 #include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 #include "id_impl.h"
 #include "token_impl.h"
 
@@ -186,8 +187,8 @@ struct bl_stmt_return
 
 struct bl_decl_module
 {
-  bl_id_t id;
-  BArray *nodes;
+  bl_id_t     id;
+  BHashTable *nodes;
 };
 
 struct bl_decl_var
@@ -404,14 +405,15 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
 /*
  * helpers
  */
+
 bl_node_t *
-bl_ast_module_push_node(bl_node_t *module, bl_node_t *node);
+bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id);
 
 size_t
 bl_ast_module_node_count(bl_node_t *module);
 
 bl_node_t *
-bl_ast_module_get_node(bl_node_t *module, const size_t i);
+bl_ast_module_get_node(bl_node_t *module, bl_id_t *id);
 
 bl_node_t *
 bl_ast_func_push_arg(bl_node_t *func, bl_node_t *arg);

@@ -451,18 +451,23 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
 }
 
 bl_node_t *
-bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
+bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
+
   if (node == NULL)
     return NULL;
 
-  if (bl_peek_decl_module(module)->nodes == NULL) {
-    bl_peek_decl_module(module)->nodes = bo_array_new(sizeof(bl_node_t *));
+  bl_decl_module_t *_module = bl_peek_decl_module(module);
+
+  if (_module->nodes == NULL) {
+    _module->nodes = bo_htbl_new(sizeof(bl_node_t *), 512);
+  } else if (bo_htbl_has_key(_module->nodes, id->hash)) {
+    return bo_htbl_at(_module->nodes, id->hash, bl_node_t *);
   }
 
-  bo_array_push_back(bl_peek_decl_module(module)->nodes, node);
-  return node;
+  bo_htbl_insert(_module->nodes, id->hash, node);
+  return NULL;
 }
 
 size_t
@@ -471,16 +476,20 @@ bl_ast_module_node_count(bl_node_t *module)
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   if (bl_peek_decl_module(module)->nodes == NULL)
     return 0;
-  return bo_array_size(bl_peek_decl_module(module)->nodes);
+  return bo_htbl_size(bl_peek_decl_module(module)->nodes);
 }
 
 bl_node_t *
-bl_ast_module_get_node(bl_node_t *module, const size_t i)
+bl_ast_module_get_node(bl_node_t *module, bl_id_t *id)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
-  if (bl_peek_decl_module(module)->nodes == NULL)
+  bl_decl_module_t *_module = bl_peek_decl_module(module);
+
+  if (_module->nodes == NULL)
     return NULL;
-  return bo_array_at(bl_peek_decl_module(module)->nodes, i, bl_node_t *);
+  if (bo_htbl_has_key(_module->nodes, id->hash))
+    return bo_htbl_at(bl_peek_decl_module(module)->nodes, id->hash, bl_node_t *);
+  return NULL;
 }
 
 bl_node_t *

@@ -37,6 +37,13 @@
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
+#define parse_error_node(cnt, code, node, format, ...)                                             \
+  {                                                                                                \
+    bl_builder_error((cnt)->builder, "%s %d:%d " format, (node)->src->file, (node)->src->line,     \
+                     (node)->src->col, ##__VA_ARGS__);                                             \
+    longjmp((cnt)->jmp_error, (code));                                                             \
+  }
+
 typedef struct
 {
   bl_builder_t *builder;
@@ -405,14 +412,6 @@ parse_atom_expr(context_t *cnt)
 
   if ((expr = parse_const_expr_maybe(cnt)))
     return expr;
-
-  /*
-  if ((expr = parse_call_maybe(cnt)))
-  return expr;
-
-  if ((expr = parse_var_ref_maybe(cnt)))
-  return expr;
-  */
 
   return expr;
 }
@@ -819,20 +818,30 @@ parse_module_maybe(context_t *cnt, bool global)
     module = bl_ast_add_decl_module(cnt->ast, NULL, NULL);
   }
 
+  bl_node_t *conflicted = NULL;
+  bl_node_t *node       = NULL;
+
 decl:
-  if (bl_ast_module_push_node(module, parse_module_maybe(cnt, false))) {
-    goto decl;
-  }
+  node = parse_module_maybe(cnt, false);
 
-  if (bl_ast_module_push_node(module, parse_fn_maybe(cnt))) {
-    goto decl;
-  }
+  if (!node)
+    node = parse_fn_maybe(cnt);
 
-  if (bl_ast_module_push_node(module, parse_struct_maybe(cnt))) {
-    goto decl;
-  }
+  if (!node)
+    node = parse_struct_maybe(cnt);
 
-  if (bl_ast_module_push_node(module, parse_enum_maybe(cnt))) {
+  if (!node)
+    node = parse_enum_maybe(cnt);
+
+  if (node) {
+    conflicted = bl_ast_module_insert_node(module, node, &bl_peek_decl_module(node)->id);
+    if (conflicted) {
+      parse_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node,
+                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+                  tok_current->value.str, conflicted->src->file, conflicted->src->line,
+                  conflicted->src->col);
+    }
+
     goto decl;
   }
 
