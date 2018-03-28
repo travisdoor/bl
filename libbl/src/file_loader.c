@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl 
+// bl
 //
 // File:   file_loader.c
 // Author: Martin Dorazil
@@ -32,8 +32,7 @@
 #include "common_impl.h"
 
 bl_error_e
-bl_file_loader_run(bl_builder_t *builder,
-                   bl_unit_t *unit)
+bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
 {
   FILE *f = fopen(unit->filepath, "r");
   if (f == NULL) {
@@ -42,7 +41,7 @@ bl_file_loader_run(bl_builder_t *builder,
   }
 
   fseek(f, 0, SEEK_END);
-  size_t fsize = (size_t) ftell(f);
+  size_t fsize = (size_t)ftell(f);
   if (fsize == 0) {
     fclose(f);
     bl_builder_error(builder, "invalid source file %s", unit->filepath);

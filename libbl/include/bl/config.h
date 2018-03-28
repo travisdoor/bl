@@ -39,4 +39,4 @@
 #error "Unknown platform"
 #endif
 
-#endif //BL_CONFIG_H
+#endif // BL_CONFIG_H

@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   common_impl.h
+// File:   id_impl.h
 // Author: Martin Dorazil
-// Date:   03/03/2018
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,13 +26,18 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_COMMON_IMPL_H
-#define BL_COMMON_IMPL_H
+#ifndef BL_NODE_ID_IMPL_H
+#define BL_NODE_ID_IMPL_H
 
-#include "bl/bldebug.h"
-#include "bl/error.h"
-#include "blmemory_impl.h"
+#include <stdint.h>
 
-#define bl_nelems(x) (sizeof(x) / sizeof((x)[0]))
+typedef struct
+{
+  const char *str;
+  uint32_t hash;
+} bl_id_t;
 
-#endif // BL_COMMON_IMPL_H
+void
+bl_id_init(bl_id_t *id, const char *str);
+
+#endif // BL_NODE_ID_IMPL_H

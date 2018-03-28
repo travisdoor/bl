@@ -32,11 +32,17 @@
 #define EXPECTED_SCOPE_COUNT 32
 #define EXPECTED_DECL_COUNT 2048
 
+typedef struct
+{
+  BHashTable *idents;
+  BHashTable *types;
+} scope_t;
+
 /* public */
 void
 bl_scope_init(bl_scope_t *cnt)
 {
-  cnt->scopes = bo_array_new_bo(bo_typeof(BHashTable), true);
+  cnt->scopes = bo_array_new(sizeof(scope_t));
   bo_array_reserve(cnt->scopes, EXPECTED_SCOPE_COUNT);
 
   /*
@@ -48,6 +54,13 @@ bl_scope_init(bl_scope_t *cnt)
 void
 bl_scope_terminate(bl_scope_t *cnt)
 {
+  const size_t c = bo_array_size(cnt->scopes);
+  for (size_t i = 0; i < c; i++) {
+    scope_t *scope = &bo_array_at(cnt->scopes, i, scope_t);
+    bo_unref(scope->idents);
+    bo_unref(scope->types);
+  }
+
   bo_unref(cnt->scopes);
 }
 
@@ -55,49 +68,87 @@ void
 bl_scope_push(bl_scope_t *cnt)
 {
   // TODO: possible speed up when hash tables will be reused
-  BHashTable *scope = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
+  scope_t scope;
+
+  scope.idents = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
+  scope.types  = bo_htbl_new(sizeof(bl_node_t *), EXPECTED_DECL_COUNT);
   bo_array_push_back(cnt->scopes, scope);
 }
 
 void
 bl_scope_pop(bl_scope_t *cnt)
 {
+  const size_t c = bo_array_size(cnt->scopes);
+  scope_t *scope = &bo_array_at(cnt->scopes, c - 1, scope_t);
+  bo_unref(scope->idents);
+  bo_unref(scope->types);
+
   bo_array_pop_back(cnt->scopes);
 }
 
 bl_node_t *
-bl_scope_add_symbol(bl_scope_t *cnt,
-                    bl_node_t *node,
-                    uint32_t hash)
+bl_scope_add_ident(bl_scope_t *cnt, bl_node_t *node)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
 
-  bl_node_t *found = bl_scope_get_symbol(cnt, hash);
+  bl_node_t *found = bl_scope_get_ident(cnt, &node->value.decl.ident);
 
   if (found != NULL) {
     return found;
   }
 
-  BHashTable *htbl = bo_array_at(cnt->scopes, c - 1, BHashTable *);
-  bo_htbl_insert(htbl, hash, node);
+  scope_t *scope = &bo_array_at(cnt->scopes, c - 1, scope_t);
+  bo_htbl_insert(scope->idents, node->value.decl.ident.hash, node);
 
   return NULL;
-
 }
 
 bl_node_t *
-bl_scope_get_symbol(bl_scope_t *cnt,
-                    uint32_t hash)
+bl_scope_add_type(bl_scope_t *cnt, bl_node_t *node)
 {
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
 
-  BHashTable *htbl = NULL;
+  bl_node_t *found = bl_scope_get_type(cnt, &node->value.decl.type);
+
+  if (found != NULL) {
+    return found;
+  }
+
+  scope_t *scope = &bo_array_at(cnt->scopes, c - 1, scope_t);
+  bo_htbl_insert(scope->types, node->value.decl.type.hash, node);
+
+  return NULL;
+}
+
+bl_node_t *
+bl_scope_get_ident(bl_scope_t *cnt, bl_ident_t *ident)
+{
+  const size_t c = bo_array_size(cnt->scopes);
+  bl_assert(c, "invalid scope cache size");
+
+  scope_t *scope = NULL;
   for (size_t i = c; i-- > 0;) {
-    htbl = bo_array_at(cnt->scopes, i, BHashTable *);
-    if (bo_htbl_has_key(htbl, hash)) {
-      return bo_htbl_at(htbl, hash, bl_node_t *);
+    scope = &bo_array_at(cnt->scopes, i, scope_t);
+    if (bo_htbl_has_key(scope->idents, ident->hash)) {
+      return bo_htbl_at(scope->idents, ident->hash, bl_node_t *);
+    }
+  }
+  return NULL;
+}
+
+bl_node_t *
+bl_scope_get_type(bl_scope_t *cnt, bl_type_t *type)
+{
+  const size_t c = bo_array_size(cnt->scopes);
+  bl_assert(c, "invalid scope cache size");
+
+  scope_t *scope = NULL;
+  for (size_t i = c; i-- > 0;) {
+    scope = &bo_array_at(cnt->scopes, i, scope_t);
+    if (bo_htbl_has_key(scope->types, type->hash)) {
+      return bo_htbl_at(scope->types, type->hash, bl_node_t *);
     }
   }
   return NULL;
@@ -109,10 +160,4 @@ bl_scope_get_all(bl_scope_t *cnt)
   const size_t c = bo_array_size(cnt->scopes);
   bl_assert(c, "invalid scope cache size");
   return bo_array_at(cnt->scopes, c - 1, BHashTable *);
-}
-
-void
-bl_scope_clear(bl_scope_t *scope)
-{
-  bo_array_clear(scope->scopes);
 }

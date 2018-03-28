@@ -32,18 +32,14 @@
 #include <bobject/containers/array.h>
 #include <llvm-c/Core.h>
 #include "bl/assembly.h"
-#include "ast/node_impl.h"
-#include "scope_impl.h"
 
 typedef struct bl_assembly
 {
-  bl_scope_t scope;
-  BArray     *units;
-  char       *name;
+  BArray *units;
+  char *name;
 
-  LLVMModuleRef  llvm_module;
+  LLVMModuleRef llvm_module;
   LLVMContextRef llvm_cnt;
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
-

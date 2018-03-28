@@ -35,15 +35,13 @@
 typedef struct bl_ident
 {
   const char *name;
-  uint32_t   hash;
+  uint32_t hash;
 } bl_ident_t;
 
 void
-bl_ident_init(bl_ident_t *ident,
-              const char *name);
+bl_ident_init(bl_ident_t *ident, const char *name);
 
 bool
-bl_ident_eq(bl_ident_t *first,
-            bl_ident_t *second);
+bl_ident_eq(bl_ident_t *first, bl_ident_t *second);
 
-#endif //BL_IDENTIFIER_IMPL_H
+#endif // BL_IDENTIFIER_IMPL_H

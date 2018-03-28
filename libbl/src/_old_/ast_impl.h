@@ -37,7 +37,7 @@ typedef struct bl_ast
   bl_node_t *root;
   bl_node_t *cache_begin;
   bl_node_t *chunk_current;
-  size_t    chunk_used;
+  size_t chunk_used;
 } bl_ast_t;
 
 void
@@ -47,10 +47,6 @@ void
 bl_ast_terminate(bl_ast_t *ast);
 
 bl_node_t *
-bl_ast_new_node(bl_ast_t *ast,
-                bl_node_type_e type,
-                const char *file,
-                int line,
-                int col);
+bl_ast_new_node(bl_ast_t *ast, bl_node_type_e type, const char *file, int line, int col);
 
 #endif /* end of include guard: AST_IMPL_H_WM5H6RFD */

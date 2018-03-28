@@ -40,38 +40,27 @@
 #define MAX_MSG_LEN 1024
 
 static bl_error_e
-compile_unit(bl_builder_t *builder,
-             bl_unit_t *unit,
-             uint32_t flags);
+compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags);
 
 static bl_error_e
-compile_assembly(bl_builder_t *builder,
-                 bl_assembly_t *assembly,
-                 uint32_t flags);
+compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags);
 
 static void
-default_error_handler(const char *msg,
-                      void *context)
+default_error_handler(const char *msg, void *context)
 {
-  bl_log(BL_RED("error: ")
-           "%s", msg);
+  bl_log(BL_RED("error: ") "%s", msg);
 }
 
 static void
-default_warning_handler(const char *msg,
-                        void *context)
+default_warning_handler(const char *msg, void *context)
 {
-  bl_log(BL_YELLOW("warning: ")
-           "%s", msg);
+  bl_log(BL_YELLOW("warning: ") "%s", msg);
 }
 
 bl_error_e
-compile_unit(bl_builder_t *builder,
-             bl_unit_t *unit,
-             uint32_t flags)
+compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags)
 {
-  bl_log("processing unit: "
-           BL_GREEN("%s"), unit->name);
+  bl_log("processing unit: " BL_GREEN("%s"), unit->name);
   bl_error_e error;
 
   if (flags & BL_BUILDER_LOAD_FROM_FILE && (error = bl_file_loader_run(builder, unit)) != BL_NO_ERR)
@@ -83,44 +72,44 @@ compile_unit(bl_builder_t *builder,
   if (flags & BL_BUILDER_PRINT_TOKENS && (error = bl_token_printer_run(unit)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
+  if ((error = bl_parser2_run(builder, unit)) != BL_NO_ERR)
     return error;
 
   return BL_NO_ERR;
 }
 
 bl_error_e
-compile_assembly(bl_builder_t *builder,
-                 bl_assembly_t *assembly,
-                 uint32_t flags)
+compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_error_e error;
-
-  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
-    return error;
-
+  //
+  //  if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
+  //    return error;
+  //
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
     return error;
-
-  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
-    if ((error = bl_llvm_backend_run(builder, assembly)) != BL_NO_ERR)
-      return error;
-
-    if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
-      return error;
-
-    if (flags & BL_BUILDER_EMIT_LLVM &&
-      (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
-      return error;
-
-    if (!(flags & BL_BUILDER_RUN)) {
-      if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
-        return error;
-
-      if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)
-        return error;
-    }
-  }
+  //
+  //
+  //  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
+  //    if ((error = bl_llvm_backend_run(builder, assembly)) != BL_NO_ERR)
+  //      return error;
+  //
+  //    if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) !=
+  //    BL_NO_ERR)
+  //      return error;
+  //
+  //    if (flags & BL_BUILDER_EMIT_LLVM &&
+  //      (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
+  //      return error;
+  //
+  //    if (!(flags & BL_BUILDER_RUN)) {
+  //      if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
+  //        return error;
+  //
+  //      if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)
+  //        return error;
+  //    }
+  //  }
 
   return BL_NO_ERR;
 }
@@ -144,14 +133,12 @@ bl_builder_delete(bl_builder_t *builder)
 }
 
 bl_error_e
-bl_builder_compile(bl_builder_t *builder,
-                   bl_assembly_t *assembly,
-                   uint32_t flags)
+bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
-  clock_t      begin = clock();
-  const size_t c     = bo_array_size(assembly->units);
-  bl_unit_t    *unit;
-  bl_error_e   error;
+  clock_t begin  = clock();
+  const size_t c = bo_array_size(assembly->units);
+  bl_unit_t *unit;
+  bl_error_e error;
 
   for (size_t i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
@@ -164,31 +151,24 @@ bl_builder_compile(bl_builder_t *builder,
 
   error = compile_assembly(builder, assembly, flags);
 
-  clock_t end        = clock();
-  double  time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
+  clock_t end       = clock();
+  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  bl_log("compiled "
-           BL_GREEN("%i")
-           " lines in "
-           BL_GREEN("%f")
-           " seconds", builder->total_lines, time_spent);
+  bl_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds", builder->total_lines,
+         time_spent);
 
   return error;
 }
 
 void
-bl_builder_set_error_diag_handler(bl_builder_t *builder,
-                                  bl_diag_handler_f handler,
-                                  void *context)
+bl_builder_set_error_diag_handler(bl_builder_t *builder, bl_diag_handler_f handler, void *context)
 {
   builder->on_error     = handler;
   builder->on_error_cnt = context;
 }
 
 void
-bl_builder_set_warning_diag_handler(bl_builder_t *builder,
-                                    bl_diag_handler_f handler,
-                                    void *context)
+bl_builder_set_warning_diag_handler(bl_builder_t *builder, bl_diag_handler_f handler, void *context)
 {
   builder->on_warning     = handler;
   builder->on_warning_cnt = context;
@@ -201,9 +181,7 @@ bl_diag_delete_msg(char *msg)
 }
 
 void
-bl_builder_error(bl_builder_t *builder,
-                 const char *format,
-                 ...)
+bl_builder_error(bl_builder_t *builder, const char *format, ...)
 {
   char error[MAX_MSG_LEN] = {0};
 
@@ -216,9 +194,7 @@ bl_builder_error(bl_builder_t *builder,
 }
 
 void
-bl_builder_warning(bl_builder_t *builder,
-                   const char *format,
-                   ...)
+bl_builder_warning(bl_builder_t *builder, const char *format, ...)
 {
   char warning[MAX_MSG_LEN] = {0};
 

@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   scope.h
+// File:   id.c
 // Author: Martin Dorazil
-// Date:   3/6/18
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,55 +26,12 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_SCOPE_H
-#define BL_SCOPE_H
+#include <bobject/containers/hash.h>
+#include "ast/id_impl.h"
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include "ast/node_impl.h"
-
-typedef struct
+void
+bl_id_init(bl_id_t *id, const char *str)
 {
-  BArray *scopes;
-} bl_scope_t;
-
-void
-bl_scope_init(bl_scope_t *cnt);
-
-void
-bl_scope_terminate(bl_scope_t *cnt);
-
-void
-bl_scope_push(bl_scope_t *cnt);
-
-void
-bl_scope_pop(bl_scope_t *cnt);
-
-/*
- * Add new declaration into current scope.
- * When same declaration already exist in current scope
- * or in parent scopes method return conflicted node,
- * otherwise null will be returned.
- */
-bl_node_t *
-bl_scope_add_symbol(bl_scope_t *cnt,
-                    bl_node_t *node,
-                    uint32_t hash);
-
-/*
- * Get declaration from current or parent scope.
- * When no such declaration exist function return
- * null.
- */
-bl_node_t *
-bl_scope_get_symbol(bl_scope_t *cnt,
-                    uint32_t hash);
-
-BHashTable *
-bl_scope_get_all(bl_scope_t *cnt);
-
-void
-bl_scope_clear(bl_scope_t *scope);
-
-#endif //BL_SCOPE_H
-
+  id->hash = bo_hash_from_str(str);
+  id->str  = str;
+}

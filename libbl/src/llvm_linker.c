@@ -34,8 +34,7 @@
 #include "bl/error.h"
 
 bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder,
-                   bl_assembly_t *assembly)
+bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   LLVMInitializeAllTargetInfos();
   LLVMInitializeAllTargets();
@@ -62,11 +61,12 @@ bl_llvm_linker_run(bl_builder_t *builder,
     return BL_ERR_CANNOT_LINK;
   }
 
-  LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
-    target, triple, cpu, features, LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+  LLVMTargetMachineRef target_machine =
+      LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelDefault,
+                              LLVMRelocDefault, LLVMCodeModelDefault);
 
-  if (LLVMTargetMachineEmitToFile(
-    target_machine, assembly->llvm_module, filename, LLVMObjectFile, &error_msg)) {
+  if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
+                                  &error_msg)) {
     bl_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
     LLVMDisposeMessage(error_msg);

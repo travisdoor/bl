@@ -38,47 +38,42 @@
  * per unit
  */
 bl_error_e
-bl_file_loader_run(bl_builder_t *builder,
-                   bl_unit_t *unit);
+bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit);
 
 bl_error_e
-bl_lexer_run(bl_builder_t *builder,
-             bl_unit_t *unit);
+bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit);
 
 bl_error_e
 bl_token_printer_run(bl_unit_t *unit);
 
 bl_error_e
-bl_parser_run(bl_builder_t *builder,
-              bl_unit_t *unit);
+bl_parser_run(bl_builder_t *builder, bl_unit_t *unit);
+
+bl_error_e
+bl_parser2_run(bl_builder_t *builder, bl_unit_t *unit);
 
 /*
  * per assembly
  */
 bl_error_e
-bl_llvm_backend_run(bl_builder_t *builder,
-                    bl_assembly_t *assembly);
+bl_llvm_backend_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder,
-                      bl_assembly_t *assembly);
-bl_error_e
-bl_linker_run(bl_builder_t *builder,
-              bl_assembly_t *assembly);
+bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder,
-                   bl_assembly_t *assembly);
+bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+bl_error_e
+bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly);
 
 bl_error_e
-bl_llvm_jit_exec_run(bl_builder_t *builder,
-                     bl_assembly_t *assembly);
+bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
-bl_llvm_native_bin_run(bl_builder_t *builder,
-                       bl_assembly_t *assembly);
+bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
-#endif //BL_STAGES_IMPL_H
+#endif // BL_STAGES_IMPL_H

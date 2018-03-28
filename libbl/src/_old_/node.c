@@ -32,17 +32,13 @@
 
 static const char *node_strings[] = {
 #define nt(tok, str) str,
-  BL_NTYPE_LIST
+    BL_NTYPE_LIST
 #undef nt
 };
 
 /* public */
 void
-bl_node_init(bl_node_t *node,
-             bl_node_type_e type,
-             const char *file,
-             int line,
-             int col)
+bl_node_init(bl_node_t *node, bl_node_type_e type, const char *file, int line, int col)
 {
   /*
    * node allocated by calloc in ast tree has all values set to zero by default
@@ -55,38 +51,39 @@ bl_node_init(bl_node_t *node,
   node->col  = col;
 
   switch (type) {
-    case BL_NODE_GLOBAL_STMT:
-      node->value.glob_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_CMP_STMT:
-      node->value.cmp_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_FUNC_DECL:
-      node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_STRUCT_DECL:
-      node->value.struct_decl.members = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_ENUM_DECL:
-      node->value.enum_decl.elems = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_CALL_EXPR:
-      node->value.call_expr.args = bo_array_new(sizeof(bl_node_t *));
-      break;
-    case BL_NODE_IF_STMT:
-    case BL_NODE_BREAK_STMT:
-    case BL_NODE_RETURN_STMT:
-    case BL_NODE_LOOP_STMT:
-    case BL_NODE_CONTINUE_STMT:
-    case BL_NODE_VAR_DECL:
-    case BL_NODE_PARAM_VAR_DECL:
-    case BL_NODE_DECL_REF_EXPR:
-    case BL_NODE_CONST_EXPR:
-    case BL_NODE_MEMBER_EXPR:
-    case BL_NODE_ENUM_ELEM_DECL:
-    case BL_NODE_BINOP:
-      break;
-    default: bl_abort("invalid node type");
+  case BL_NODE_GLOBAL_STMT:
+    node->value.glob_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_CMP_STMT:
+    node->value.cmp_stmt.nodes = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_FUNC_DECL:
+    node->value.func_decl.params = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_STRUCT_DECL:
+    node->value.struct_decl.members = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_ENUM_DECL:
+    node->value.enum_decl.elems = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_CALL_EXPR:
+    node->value.call_expr.args = bo_array_new(sizeof(bl_node_t *));
+    break;
+  case BL_NODE_IF_STMT:
+  case BL_NODE_BREAK_STMT:
+  case BL_NODE_RETURN_STMT:
+  case BL_NODE_LOOP_STMT:
+  case BL_NODE_CONTINUE_STMT:
+  case BL_NODE_VAR_DECL:
+  case BL_NODE_PARAM_VAR_DECL:
+  case BL_NODE_DECL_REF_EXPR:
+  case BL_NODE_CONST_EXPR:
+  case BL_NODE_MEMBER_EXPR:
+  case BL_NODE_ENUM_ELEM_DECL:
+  case BL_NODE_BINOP:
+    break;
+  default:
+    bl_abort("invalid node type");
   }
 }
 
@@ -94,38 +91,39 @@ void
 bl_node_terminate(bl_node_t *node)
 {
   switch (node->type) {
-    case BL_NODE_GLOBAL_STMT:
-      bo_unref(node->value.glob_stmt.nodes);
-      break;
-    case BL_NODE_CMP_STMT:
-      bo_unref(node->value.cmp_stmt.nodes);
-      break;
-    case BL_NODE_FUNC_DECL:
-      bo_unref(node->value.func_decl.params);
-      break;
-    case BL_NODE_STRUCT_DECL:
-      bo_unref(node->value.struct_decl.members);
-      break;
-    case BL_NODE_ENUM_DECL:
-      bo_unref(node->value.enum_decl.elems);
-      break;
-    case BL_NODE_CALL_EXPR:
-      bo_unref(node->value.func_decl.params);
-      break;
-    case BL_NODE_IF_STMT:
-    case BL_NODE_BREAK_STMT:
-    case BL_NODE_RETURN_STMT:
-    case BL_NODE_LOOP_STMT:
-    case BL_NODE_CONTINUE_STMT:
-    case BL_NODE_VAR_DECL:
-    case BL_NODE_PARAM_VAR_DECL:
-    case BL_NODE_DECL_REF_EXPR:
-    case BL_NODE_CONST_EXPR:
-    case BL_NODE_MEMBER_EXPR:
-    case BL_NODE_ENUM_ELEM_DECL:
-    case BL_NODE_BINOP:
-      break;
-    default: bl_abort("invalid node type");
+  case BL_NODE_GLOBAL_STMT:
+    bo_unref(node->value.glob_stmt.nodes);
+    break;
+  case BL_NODE_CMP_STMT:
+    bo_unref(node->value.cmp_stmt.nodes);
+    break;
+  case BL_NODE_FUNC_DECL:
+    bo_unref(node->value.func_decl.params);
+    break;
+  case BL_NODE_STRUCT_DECL:
+    bo_unref(node->value.struct_decl.members);
+    break;
+  case BL_NODE_ENUM_DECL:
+    bo_unref(node->value.enum_decl.elems);
+    break;
+  case BL_NODE_CALL_EXPR:
+    bo_unref(node->value.func_decl.params);
+    break;
+  case BL_NODE_IF_STMT:
+  case BL_NODE_BREAK_STMT:
+  case BL_NODE_RETURN_STMT:
+  case BL_NODE_LOOP_STMT:
+  case BL_NODE_CONTINUE_STMT:
+  case BL_NODE_VAR_DECL:
+  case BL_NODE_PARAM_VAR_DECL:
+  case BL_NODE_DECL_REF_EXPR:
+  case BL_NODE_CONST_EXPR:
+  case BL_NODE_MEMBER_EXPR:
+  case BL_NODE_ENUM_ELEM_DECL:
+  case BL_NODE_BINOP:
+    break;
+  default:
+    bl_abort("invalid node type");
   }
 }
 
@@ -136,8 +134,7 @@ bl_node_to_str(bl_node_t *node)
 }
 
 bl_node_t *
-bl_node_glob_stmt_add_child(bl_node_t *node,
-                            bl_node_t *child)
+bl_node_glob_stmt_add_child(bl_node_t *node, bl_node_t *child)
 {
   bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
 
@@ -152,12 +149,11 @@ int
 bl_node_glob_stmt_get_children_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
-  return (int) bo_array_size(node->value.glob_stmt.nodes);
+  return (int)bo_array_size(node->value.glob_stmt.nodes);
 }
 
 bl_node_t *
-bl_node_glob_stmt_get_child(bl_node_t *node,
-                            int i)
+bl_node_glob_stmt_get_child(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_GLOBAL_STMT, "invalid node");
   if (bo_array_size(node->value.glob_stmt.nodes) == 0)
@@ -167,8 +163,7 @@ bl_node_glob_stmt_get_child(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_cmp_stmt_add_child(bl_node_t *node,
-                           bl_node_t *child)
+bl_node_cmp_stmt_add_child(bl_node_t *node, bl_node_t *child)
 {
   bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
 
@@ -183,12 +178,11 @@ int
 bl_node_cmp_stmt_get_children_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
-  return (int) bo_array_size(node->value.cmp_stmt.nodes);
+  return (int)bo_array_size(node->value.cmp_stmt.nodes);
 }
 
 bl_node_t *
-bl_node_cmp_stmt_get_child(bl_node_t *node,
-                           int i)
+bl_node_cmp_stmt_get_child(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_CMP_STMT, "invalid node");
 
@@ -199,8 +193,7 @@ bl_node_cmp_stmt_get_child(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_func_decl_stmt_add_param(bl_node_t *node,
-                                 bl_node_t *param)
+bl_node_func_decl_stmt_add_param(bl_node_t *node, bl_node_t *param)
 {
   bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
 
@@ -215,12 +208,11 @@ int
 bl_node_func_decl_get_param_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
-  return (int) bo_array_size(node->value.func_decl.params);
+  return (int)bo_array_size(node->value.func_decl.params);
 }
 
 bl_node_t *
-bl_node_func_decl_get_param(bl_node_t *node,
-                            int i)
+bl_node_func_decl_get_param(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_FUNC_DECL, "invalid node");
   if (bo_array_size(node->value.func_decl.params) == 0)
@@ -230,8 +222,7 @@ bl_node_func_decl_get_param(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_call_expr_add_arg(bl_node_t *node,
-                          bl_node_t *arg)
+bl_node_call_expr_add_arg(bl_node_t *node, bl_node_t *arg)
 {
   bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
 
@@ -246,12 +237,11 @@ int
 bl_node_call_expr_get_arg_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
-  return (int) bo_array_size(node->value.call_expr.args);
+  return (int)bo_array_size(node->value.call_expr.args);
 }
 
 bl_node_t *
-bl_node_call_expr_get_arg(bl_node_t *node,
-                          int i)
+bl_node_call_expr_get_arg(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_CALL_EXPR, "invalid node");
   if (bo_array_size(node->value.call_expr.args) == 0)
@@ -261,8 +251,7 @@ bl_node_call_expr_get_arg(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_enum_decl_add_elem(bl_node_t *node,
-                           bl_node_t *c)
+bl_node_enum_decl_add_elem(bl_node_t *node, bl_node_t *c)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
 
@@ -277,12 +266,11 @@ int
 bl_node_enum_decl_get_elem_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
-  return (int) bo_array_size(node->value.enum_decl.elems);
+  return (int)bo_array_size(node->value.enum_decl.elems);
 }
 
 bl_node_t *
-bl_node_enum_decl_get_elem(bl_node_t *node,
-                           int i)
+bl_node_enum_decl_get_elem(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_ENUM_DECL, "invalid node");
   if (bo_array_size(node->value.enum_decl.elems) == 0)
@@ -292,8 +280,7 @@ bl_node_enum_decl_get_elem(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_struct_decl_add_member(bl_node_t *node,
-                               bl_node_t *member)
+bl_node_struct_decl_add_member(bl_node_t *node, bl_node_t *member)
 {
   bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
 
@@ -308,12 +295,11 @@ int
 bl_node_struct_decl_get_member_count(bl_node_t *node)
 {
   bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
-  return (int) bo_array_size(node->value.struct_decl.members);
+  return (int)bo_array_size(node->value.struct_decl.members);
 }
 
 bl_node_t *
-bl_node_struct_decl_get_member(bl_node_t *node,
-                               int i)
+bl_node_struct_decl_get_member(bl_node_t *node, int i)
 {
   bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
   if (bo_array_size(node->value.struct_decl.members) == 0)
@@ -323,12 +309,11 @@ bl_node_struct_decl_get_member(bl_node_t *node,
 }
 
 bl_node_t *
-bl_node_struct_decl_find_member(bl_node_t *node,
-                                bl_ident_t *ident)
+bl_node_struct_decl_find_member(bl_node_t *node, bl_ident_t *ident)
 {
   bl_assert(node->type == BL_NODE_STRUCT_DECL, "invalid node");
   const int c = bl_node_struct_decl_get_member_count(node);
-  bl_node_t    *member;
+  bl_node_t *member;
   for (int i = 0; i < c; i++) {
     member = bl_node_struct_decl_get_member(node, i);
     if (bl_ident_eq(&member->value.decl.ident, ident)) {

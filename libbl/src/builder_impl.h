@@ -1,5 +1,5 @@
 //*****************************************************************************
-// bl 
+// bl
 //
 // File:   builder_impl.h
 // Author: Martin Dorazil
@@ -42,14 +42,9 @@ typedef struct bl_builder
 } bl_builder_t;
 
 void
-bl_builder_error(bl_builder_t *builder,
-                 const char *format,
-                 ...);
+bl_builder_error(bl_builder_t *builder, const char *format, ...);
 
 void
-bl_builder_warning(bl_builder_t *builder,
-                   const char *format,
-                   ...);
+bl_builder_warning(bl_builder_t *builder, const char *format, ...);
 
 #endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */
-

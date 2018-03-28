@@ -33,8 +33,7 @@
 
 BO_BEGIN_DECLS
 
-typedef enum
-{
+typedef enum {
   BL_NO_ERR = 0,
 
   BL_ERR_FILE_NOT_FOUND = 100,
@@ -59,6 +58,7 @@ typedef enum
   BL_ERR_UNKNOWN_SYMBOL        = 312,
   BL_ERR_EXPECTED_TYPE         = 313,
   BL_ERR_EXPECTED_NAME         = 314,
+  BL_ERR_EXPECTED_BINOP        = 315,
 
   BL_ERR_NOT_VERIFIED = 400,
 
@@ -67,6 +67,7 @@ typedef enum
   BL_ERR_CANNOT_LINK         = 600,
   BL_ERR_DIFF_KIND_OF_SYMBOL = 601,
   BL_ERR_INVALID_PARAM_COUNT = 602,
+  BL_ERR_UNKNOWN_TYPE        = 603,
 
   BL_ERR_NO_MAIN_METHOD = 700,
   BL_ERR_INVALID_RESULT = 701
@@ -75,4 +76,4 @@ typedef enum
 
 BO_END_DECLS
 
-#endif //BL_ERROR_H
+#endif // BL_ERROR_H

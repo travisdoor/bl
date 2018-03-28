@@ -1,9 +1,9 @@
 //*****************************************************************************
 // bl
 //
-// File:   common_impl.h
+// File:   scope.h
 // Author: Martin Dorazil
-// Date:   03/03/2018
+// Date:   3/6/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,13 +26,53 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_COMMON_IMPL_H
-#define BL_COMMON_IMPL_H
+#ifndef BL_SCOPE_H
+#define BL_SCOPE_H
 
-#include "bl/bldebug.h"
-#include "bl/error.h"
-#include "blmemory_impl.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 
-#define bl_nelems(x) (sizeof(x) / sizeof((x)[0]))
+typedef struct
+{
+  BArray *scopes;
+} bl_scope_t;
 
-#endif // BL_COMMON_IMPL_H
+void
+bl_scope_init(bl_scope_t *cnt);
+
+void
+bl_scope_terminate(bl_scope_t *cnt);
+
+void
+bl_scope_push(bl_scope_t *cnt);
+
+void
+bl_scope_pop(bl_scope_t *cnt);
+
+/*
+ * Add new declaration into current scope.
+ * When same declaration already exist in current scope
+ * or in parent scopes method return conflicted node,
+ * otherwise null will be returned.
+ */
+bl_node_t *
+bl_scope_add_ident(bl_scope_t *cnt, bl_node_t *node);
+
+bl_node_t *
+bl_scope_add_type(bl_scope_t *cnt, bl_node_t *node);
+
+/*
+ * Get declaration from current or parent scope.
+ * When no such declaration exist function return
+ * null.
+ */
+bl_node_t *
+bl_scope_get_ident(bl_scope_t *cnt, bl_ident_t *ident);
+
+bl_node_t *
+bl_scope_get_type(bl_scope_t *cnt, bl_type_t *type);
+
+BHashTable *
+bl_scope_get_all(bl_scope_t *cnt);
+
+#endif // BL_SCOPE_H

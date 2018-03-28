@@ -30,25 +30,23 @@
 #define BL_UNIT_IMPL_H
 
 #include "bl/unit.h"
-#include "ast/ast_impl.h"
+#include "ast/ast2_impl.h"
 #include "tokens_impl.h"
-#include "scope_impl.h"
 
 /* class Unit object members */
 typedef struct bl_unit
 {
   /* output of lexer */
-  bl_tokens_t    tokens;
+  bl_tokens_t tokens;
   /* abstract syntax tree as output of parser */
-  bl_ast_t       ast;
-  /* All symbols registered in this unit */
-  bl_scope_t     scope;
+  bl_ast_t ast;
+  BArray *globals;
   /* source file name with path */
-  char           *filepath;
-  char           *name;
+  char *filepath;
+  char *name;
   /* source data */
-  char           *src;
-  BArray         *unsatisfied;
+  char *src;
+
 } bl_unit_t;
 
-#endif //BL_UNIT_IMPL_H
+#endif // BL_UNIT_IMPL_H

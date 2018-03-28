@@ -33,8 +33,7 @@
 #include "bl/bldebug.h"
 
 bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder,
-                      bl_assembly_t *assembly)
+bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   bl_assert(assembly->llvm_module, "invalid llvm module");
 
@@ -42,8 +41,8 @@ bl_llvm_bc_writer_run(bl_builder_t *builder,
   strcpy(export_file, assembly->name);
   strcat(export_file, ".bc");
   if (LLVMWriteBitcodeToFile(assembly->llvm_module, export_file) != 0) {
-    bl_builder_error(
-      builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"), export_file);
+    bl_builder_error(builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"),
+                     export_file);
     free(export_file);
     return BL_ERR_CANNOT_WRITE_BC;
   }
