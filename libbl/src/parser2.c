@@ -47,6 +47,12 @@ typedef struct
   jmp_buf jmp_error;
 } context_t;
 
+typedef enum {
+  PATH_EXPECTED_CALL = 1,
+  PATH_EXPECTED_VAR  = 2,
+  PATH_EXPECTED_TYPE = 4
+} path_expected_e;
+
 static bl_node_t *
 parse_fn_maybe(context_t *cnt);
 
@@ -99,7 +105,7 @@ static bl_node_t *
 parse_nested_expr_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_path_maybe(context_t *cnt);
+parse_path_maybe(context_t *cnt, int expected_flag);
 
 static bl_node_t *
 parse_if_maybe(context_t *cnt);
@@ -130,7 +136,7 @@ parse_return_maybe(context_t *cnt)
   if (!tok_begin) {
     return NULL;
   }
-  
+
   bl_node_t *expr = parse_expr_maybe(cnt);
   return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr);
 }
@@ -342,7 +348,7 @@ parse_nested_expr_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_path_maybe(context_t *cnt)
+parse_path_maybe(context_t *cnt, int expected_flag)
 {
   bl_node_t *path = NULL;
 
@@ -352,24 +358,35 @@ parse_path_maybe(context_t *cnt)
 
     /* next path element */
     bl_node_t *next = NULL;
-    next            = parse_path_maybe(cnt);
+    next            = parse_path_maybe(cnt, expected_flag);
     if (next != NULL) {
       goto done;
     }
 
-    next = parse_call_maybe(cnt);
-    if (next != NULL) {
-      goto done;
+    if (expected_flag & PATH_EXPECTED_CALL) {
+      next = parse_call_maybe(cnt);
+      if (next != NULL) {
+        goto done;
+      }
     }
 
-    next = parse_var_ref_maybe(cnt);
-    if (next != NULL) {
-      goto done;
+    if (expected_flag & PATH_EXPECTED_VAR) {
+      next = parse_var_ref_maybe(cnt);
+      if (next != NULL) {
+        goto done;
+      }
+    }
+
+    if (expected_flag & PATH_EXPECTED_TYPE) {
+      next = parse_type_maybe(cnt);
+      if (next != NULL) {
+        goto done;
+      }
     }
 
     bl_token_t *tok_err = bl_tokens_consume(cnt->tokens); // eat ::
     parse_error(cnt, BL_ERR_INVALID_TOKEN, tok_err,
-                "invalid token found in path, expected call or variable");
+                "invalid token found in path, expected call, variable or variable");
   done:
     path = bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, NULL, next);
   }
@@ -385,7 +402,7 @@ parse_atom_expr(context_t *cnt)
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
 
-  if ((expr = parse_path_maybe(cnt)))
+  if ((expr = parse_path_maybe(cnt, PATH_EXPECTED_VAR | PATH_EXPECTED_CALL)))
     return expr;
 
   if ((expr = parse_const_expr_maybe(cnt)))
@@ -504,22 +521,26 @@ parse_type_maybe(context_t *cnt)
 bl_node_t *
 parse_ret_type_rq(context_t *cnt)
 {
-  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+  bl_token_t *tok  = bl_tokens_peek(cnt->tokens);
+  bl_node_t * type = NULL;
+
   switch (tok->sym) {
   case BL_SYM_IDENT:
-    return parse_type_maybe(cnt);
+    type = parse_type_maybe(cnt);
+    break;
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
-    return bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID);
+    type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID);
+    break;
   }
   default:
-    parse_error(
-        cnt, BL_ERR_EXPECTED_TYPE, tok,
-        "expected function return type or nothing in case when function has no return type");
+    break;
   }
 
-  /* should not be reached */
-  return NULL;
+  if (type == NULL)
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, "expected return type");
+
+  return type;
 }
 
 bl_node_t *
@@ -722,8 +743,7 @@ parse_fn_maybe(context_t *cnt)
 
     if (block == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_err,
-                  "expected function function body" BL_YELLOW("'{'"));
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_err, "expected function body " BL_YELLOW("'{'"));
     }
 
     bl_peek_decl_func(fn)->block = block;
