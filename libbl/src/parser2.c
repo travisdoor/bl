@@ -51,6 +51,7 @@ typedef struct
   bl_ast_t *    ast;
   bl_tokens_t * tokens;
 
+  /* tmps */
   jmp_buf jmp_error;
 } context_t;
 
@@ -70,7 +71,7 @@ static bl_node_t *
 parse_enum_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_module_maybe(context_t *cnt, bool global);
+parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global);
 
 static bl_node_t *
 parse_block_maybe(context_t *cnt);
@@ -791,13 +792,14 @@ parse_enum_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_module_maybe(context_t *cnt, bool global)
+parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global)
 {
   bl_node_t * module          = NULL;
   bl_token_t *tok_id          = NULL;
   bl_token_t *tok_begin_block = NULL;
 
   if (!global) {
+    bl_assert(parent, "non-global module must have parent module!!!");
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_MODULE) == NULL) {
       return NULL;
     }
@@ -808,40 +810,52 @@ parse_module_maybe(context_t *cnt, bool global)
     if (tok_id->sym != BL_SYM_IDENT) {
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected module name");
     }
-    module = bl_ast_add_decl_module(cnt->ast, tok_id, tok_id->value.str);
+
+    module = bl_ast_add_decl_module(cnt->ast, parent, tok_id, tok_id->value.str);
 
     if (tok_begin_block->sym != BL_SYM_LBLOCK) {
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin_block,
                   "expected block after module name " BL_YELLOW("'{'"));
     }
   } else {
-    module = bl_ast_add_decl_module(cnt->ast, NULL, NULL);
+    module = bl_ast_add_decl_module(cnt->ast, parent, NULL, NULL);
   }
 
   bl_node_t *conflicted = NULL;
   bl_node_t *node       = NULL;
+  bl_id_t *  curr_id    = NULL;
 
 decl:
-  node = parse_module_maybe(cnt, false);
+  node = parse_module_maybe(cnt, module, false);
+  if (node) {
+    curr_id = &bl_peek_decl_module(node)->id;
+  }
 
-  if (!node)
-    node = parse_fn_maybe(cnt);
+  if (!node) {
+    node    = parse_fn_maybe(cnt);
+    curr_id = &bl_peek_decl_func(node)->id;
+  }
 
-  if (!node)
-    node = parse_struct_maybe(cnt);
+  if (!node) {
+    node    = parse_struct_maybe(cnt);
+    curr_id = &bl_peek_decl_struct(node)->id;
+  }
 
-  if (!node)
-    node = parse_enum_maybe(cnt);
+  if (!node) {
+    node    = parse_enum_maybe(cnt);
+    curr_id = &bl_peek_decl_enum(node)->id;
+  }
 
   if (node) {
-    conflicted = bl_ast_module_insert_node(module, node, &bl_peek_decl_module(node)->id);
+    conflicted = bl_ast_module_has_node(module, curr_id);
     if (conflicted) {
       parse_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
-                  tok_current->value.str, conflicted->src->file, conflicted->src->line,
-                  conflicted->src->col);
+                       "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+                       curr_id->str, conflicted->src->file, conflicted->src->line,
+                       conflicted->src->col);
     }
 
+    bl_ast_module_insert_node(module, node, curr_id);
     goto decl;
   }
 
@@ -867,6 +881,6 @@ bl_parser2_run(bl_builder_t *builder, bl_unit_t *unit)
     return (bl_error_e)error;
   }
 
-  unit->ast.root = parse_module_maybe(&cnt, true);
+  unit->ast.root = parse_module_maybe(&cnt, NULL, true);
   return BL_NO_ERR;
 }

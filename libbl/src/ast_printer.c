@@ -40,7 +40,8 @@ static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   print_head("module", bl_peek_src(module), module, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_module(module)->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " parent: " BL_YELLOW("%p"),
+          bl_peek_decl_module(module)->id.str, bl_peek_decl_module(module)->parent);
   bl_visitor_walk_module(visitor, module);
 }
 
@@ -119,13 +120,13 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   case BL_EXPR_VAR_REF:
     print_head("var_ref", bl_peek_src(expr), expr, visitor->nesting);
-    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"),
-            bl_peek_expr_var_ref(expr)->id.str, bl_peek_expr_var_ref(expr)->ref);
+    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_var_ref(expr)->id.str,
+            bl_peek_expr_var_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);
-    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"),
-            bl_peek_expr_call(expr)->id.str, bl_peek_expr_call(expr)->ref);
+    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_call(expr)->id.str,
+            bl_peek_expr_call(expr)->ref);
     break;
   default:
     bl_abort("invalid expression");

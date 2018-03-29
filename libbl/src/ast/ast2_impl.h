@@ -188,6 +188,7 @@ struct bl_stmt_return
 struct bl_decl_module
 {
   bl_id_t     id;
+  bl_node_t * parent;
   BHashTable *nodes;
 };
 
@@ -361,7 +362,10 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
                      bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name);
+bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name);
+
+bl_node_t *
+bl_ast_add_decl_module_id(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, bl_id_t *id);
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
@@ -406,6 +410,11 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
  * helpers
  */
 
+/* module */
+/**************************************************************************************************/
+bl_node_t *
+bl_ast_module_has_node(bl_node_t *module, bl_id_t *id);
+
 bl_node_t *
 bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id);
 
@@ -416,6 +425,13 @@ bl_node_t *
 bl_ast_module_get_node(bl_node_t *module, bl_id_t *id);
 
 bl_node_t *
+bl_ast_module_merge(bl_node_t *dest, bl_node_t *src);
+/**************************************************************************************************/
+
+/* function */
+/**************************************************************************************************/
+
+bl_node_t *
 bl_ast_func_push_arg(bl_node_t *func, bl_node_t *arg);
 
 size_t
@@ -423,7 +439,10 @@ bl_ast_func_arg_count(bl_node_t *func);
 
 bl_node_t *
 bl_ast_func_get_arg(bl_node_t *func, const size_t i);
+/**************************************************************************************************/
 
+/* block */
+/**************************************************************************************************/
 bl_node_t *
 bl_ast_block_push_node(bl_node_t *block, bl_node_t *node);
 
@@ -433,6 +452,8 @@ bl_ast_block_node_count(bl_node_t *block);
 bl_node_t *
 bl_ast_block_get_node(bl_node_t *block, const size_t i);
 
+/* call */
+/**************************************************************************************************/
 bl_node_t *
 bl_ast_call_push_arg(bl_node_t *call, bl_node_t *node);
 
@@ -441,5 +462,6 @@ bl_ast_call_arg_count(bl_node_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_node_t *call, const size_t i);
+/**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

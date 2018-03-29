@@ -276,17 +276,26 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name)
+bl_ast_add_decl_module_id(bl_ast_t *ast,bl_node_t *parent,  bl_token_t *tok, bl_id_t *id)
 {
   bl_node_t *module = alloc_node(ast);
   if (tok)
     module->src = &tok->src;
 
   module->code = BL_DECL_MODULE;
-  if (name != NULL)
-    bl_id_init(&bl_peek_decl_module(module)->id, name);
+  bl_peek_decl_module(module)->id = *id;
+  bl_peek_decl_module(module)->parent = parent;
 
   return module;
+}
+
+bl_node_t *
+bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name)
+{
+  bl_id_t id;
+  if (name != NULL)
+    bl_id_init(&id, name);
+  return bl_ast_add_decl_module_id(ast, parent, tok, &id);
 }
 
 bl_node_t *
@@ -450,6 +459,25 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
   return return_stmt;
 }
 
+/* module */
+/**************************************************************************************************/
+bl_node_t *
+bl_ast_module_has_node(bl_node_t *module, bl_id_t *id)
+{
+  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
+  bl_assert(id, "invalid id");
+
+  bl_decl_module_t *_module = bl_peek_decl_module(module);
+  if (_module->nodes == NULL) {
+    return NULL;
+  }
+
+  if (!bo_htbl_has_key(_module->nodes, id->hash))
+    return NULL;
+
+  return bo_htbl_at(_module->nodes, id->hash, bl_node_t *);
+}
+
 bl_node_t *
 bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id)
 {
@@ -462,12 +490,10 @@ bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id)
 
   if (_module->nodes == NULL) {
     _module->nodes = bo_htbl_new(sizeof(bl_node_t *), 512);
-  } else if (bo_htbl_has_key(_module->nodes, id->hash)) {
-    return bo_htbl_at(_module->nodes, id->hash, bl_node_t *);
   }
 
   bo_htbl_insert(_module->nodes, id->hash, node);
-  return NULL;
+  return node;
 }
 
 size_t
@@ -492,6 +518,35 @@ bl_ast_module_get_node(bl_node_t *module, bl_id_t *id)
   return NULL;
 }
 
+bl_node_t *
+bl_ast_module_merge(bl_node_t *dest, bl_node_t *src)
+{
+  /*
+  bl_assert(bl_node_is(dest, BL_DECL_MODULE), "invalid module");
+  bl_assert(bl_node_is(src, BL_DECL_MODULE), "invalid module");
+
+  bl_decl_module_t *_dest = bl_peek_decl_module(dest);
+  bl_decl_module_t *_src  = bl_peek_decl_module(src);
+  bl_node_t *       node    = NULL;
+
+  if (_src->nodes) {
+    bo_iterator_t iter = bo_htbl_begin(_src->nodes);
+    bo_iterator_t end  = bo_htbl_end(_src->nodes);
+
+    while (!bo_iterator_equal(&iter, &end)) {
+      node = bo_htbl_iter_peek_value(_src->nodes, &iter, bl_node_t *);
+      bo_htbl_iter_next(_src->nodes, &iter);
+      // TODO
+    }
+  }
+  */
+
+  return NULL;
+}
+/**************************************************************************************************/
+
+/* function */
+/**************************************************************************************************/
 bl_node_t *
 bl_ast_func_push_arg(bl_node_t *func, bl_node_t *arg)
 {
@@ -524,7 +579,10 @@ bl_ast_func_get_arg(bl_node_t *func, const size_t i)
     return NULL;
   return bo_array_at(bl_peek_decl_func(func)->args, i, bl_node_t *);
 }
+/**************************************************************************************************/
 
+/* block */
+/**************************************************************************************************/
 bl_node_t *
 bl_ast_block_push_node(bl_node_t *block, bl_node_t *node)
 {
@@ -557,7 +615,10 @@ bl_ast_block_get_node(bl_node_t *block, const size_t i)
     return NULL;
   return bo_array_at(bl_peek_decl_block(block)->nodes, i, bl_node_t *);
 }
+/**************************************************************************************************/
 
+/* call */
+/**************************************************************************************************/
 bl_node_t *
 bl_ast_call_push_arg(bl_node_t *call, bl_node_t *arg)
 {

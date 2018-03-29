@@ -1,7 +1,7 @@
 /*
  * testing playground.
  */
-
+/*
 module std {
   module inner_module {
     fn no_return() {
@@ -10,8 +10,6 @@ module std {
 
   enum state_e {
   }
-
-  fn add() {}
 
   fn add(first i32, second i32) i32 {
     return 10;
@@ -67,6 +65,28 @@ module hell {
   struct context_t {
   }
 }
+*/
 
+// TODO: coliding modules must be merged in ast
+/*
+module hell {
 
+}
+*/
 
+// TEST: module merging
+
+module A {
+  fn a() {}
+}
+
+module A {
+  fn b() {}
+}
+
+module A {
+  fn c() {}
+
+  module B {
+  }
+}
