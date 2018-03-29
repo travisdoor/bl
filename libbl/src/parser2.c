@@ -823,39 +823,26 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global)
 
   bl_node_t *conflicted = NULL;
   bl_node_t *node       = NULL;
-  bl_id_t *  curr_id    = NULL;
 
 decl:
   node = parse_module_maybe(cnt, module, false);
-  if (node) {
-    curr_id = &bl_peek_decl_module(node)->id;
+
+  if (!node) {
+    node = parse_fn_maybe(cnt);
   }
 
   if (!node) {
-    node    = parse_fn_maybe(cnt);
-    curr_id = &bl_peek_decl_func(node)->id;
+    node = parse_struct_maybe(cnt);
   }
 
   if (!node) {
-    node    = parse_struct_maybe(cnt);
-    curr_id = &bl_peek_decl_struct(node)->id;
-  }
-
-  if (!node) {
-    node    = parse_enum_maybe(cnt);
-    curr_id = &bl_peek_decl_enum(node)->id;
+    node = parse_enum_maybe(cnt);
   }
 
   if (node) {
-    conflicted = bl_ast_module_has_node(module, curr_id);
-    if (conflicted) {
-      parse_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node,
-                       "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
-                       curr_id->str, conflicted->src->file, conflicted->src->line,
-                       conflicted->src->col);
-    }
-
-    bl_ast_module_insert_node(module, node, curr_id);
+    conflicted = bl_ast_module_has_node(module, bl_ast_try_get_id(node));
+    bl_assert(conflicted, "conflict");
+    bl_ast_module_insert_node(module, node);
     goto decl;
   }
 

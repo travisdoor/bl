@@ -365,9 +365,6 @@ bl_node_t *
 bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name);
 
 bl_node_t *
-bl_ast_add_decl_module_id(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, bl_id_t *id);
-
-bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
                     bl_node_t *init_expr);
 
@@ -416,7 +413,7 @@ bl_node_t *
 bl_ast_module_has_node(bl_node_t *module, bl_id_t *id);
 
 bl_node_t *
-bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id);
+bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node);
 
 size_t
 bl_ast_module_node_count(bl_node_t *module);
@@ -424,8 +421,8 @@ bl_ast_module_node_count(bl_node_t *module);
 bl_node_t *
 bl_ast_module_get_node(bl_node_t *module, bl_id_t *id);
 
-bl_node_t *
-bl_ast_module_merge(bl_node_t *dest, bl_node_t *src);
+bool 
+bl_ast_module_merge(bl_node_t *dest, bl_node_t *src, bl_node_t **redecl, bl_node_t **orig);
 /**************************************************************************************************/
 
 /* function */
@@ -462,6 +459,12 @@ bl_ast_call_arg_count(bl_node_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_node_t *call, const size_t i);
+/**************************************************************************************************/
+
+/* other */
+/**************************************************************************************************/
+bl_id_t *
+bl_ast_try_get_id(bl_node_t *node);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

@@ -276,26 +276,18 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_module_id(bl_ast_t *ast,bl_node_t *parent,  bl_token_t *tok, bl_id_t *id)
+bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name)
 {
   bl_node_t *module = alloc_node(ast);
   if (tok)
     module->src = &tok->src;
 
   module->code = BL_DECL_MODULE;
-  bl_peek_decl_module(module)->id = *id;
+  if (name)
+    bl_id_init(&bl_peek_decl_module(module)->id, name);
   bl_peek_decl_module(module)->parent = parent;
 
   return module;
-}
-
-bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name)
-{
-  bl_id_t id;
-  if (name != NULL)
-    bl_id_init(&id, name);
-  return bl_ast_add_decl_module_id(ast, parent, tok, &id);
 }
 
 bl_node_t *
@@ -479,7 +471,7 @@ bl_ast_module_has_node(bl_node_t *module, bl_id_t *id)
 }
 
 bl_node_t *
-bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id)
+bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
 
@@ -492,7 +484,7 @@ bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node, bl_id_t *id)
     _module->nodes = bo_htbl_new(sizeof(bl_node_t *), 512);
   }
 
-  bo_htbl_insert(_module->nodes, id->hash, node);
+  bo_htbl_insert(_module->nodes, bl_ast_try_get_id(node)->hash, node);
   return node;
 }
 
@@ -518,16 +510,15 @@ bl_ast_module_get_node(bl_node_t *module, bl_id_t *id)
   return NULL;
 }
 
-bl_node_t *
-bl_ast_module_merge(bl_node_t *dest, bl_node_t *src)
+bool
+bl_ast_module_merge(bl_node_t *dest, bl_node_t *src, bl_node_t **redecl, bl_node_t **orig)
 {
-  /*
   bl_assert(bl_node_is(dest, BL_DECL_MODULE), "invalid module");
   bl_assert(bl_node_is(src, BL_DECL_MODULE), "invalid module");
 
-  bl_decl_module_t *_dest = bl_peek_decl_module(dest);
-  bl_decl_module_t *_src  = bl_peek_decl_module(src);
-  bl_node_t *       node    = NULL;
+  bl_decl_module_t *_src       = bl_peek_decl_module(src);
+  bl_node_t *       node       = NULL;
+  bl_node_t *       conflicted = NULL;
 
   if (_src->nodes) {
     bo_iterator_t iter = bo_htbl_begin(_src->nodes);
@@ -536,12 +527,26 @@ bl_ast_module_merge(bl_node_t *dest, bl_node_t *src)
     while (!bo_iterator_equal(&iter, &end)) {
       node = bo_htbl_iter_peek_value(_src->nodes, &iter, bl_node_t *);
       bo_htbl_iter_next(_src->nodes, &iter);
-      // TODO
+
+      conflicted = bl_ast_module_has_node(dest, bl_ast_try_get_id(node));
+      if (conflicted && bl_node_code(conflicted) == BL_DECL_MODULE &&
+          bl_ast_module_merge(conflicted, node, redecl, orig)) {
+        *orig   = conflicted;
+        *redecl = node;
+        return false;
+      }
+
+      if (*redecl) {
+        return false;
+      }
+
+      bl_ast_module_insert_node(dest, node);
     }
   }
-  */
 
-  return NULL;
+  *redecl = NULL;
+  *orig   = NULL;
+  return true;
 }
 /**************************************************************************************************/
 
@@ -652,3 +657,48 @@ bl_ast_call_get_arg(bl_node_t *call, const size_t i)
     return NULL;
   return bo_array_at(bl_peek_expr_call(call)->args, i, bl_node_t *);
 }
+
+/* other */
+/**************************************************************************************************/
+bl_id_t *
+bl_ast_try_get_id(bl_node_t *node)
+{
+  if (node == NULL) {
+    return NULL;
+  }
+
+  switch (bl_node_code(node)) {
+  case BL_DECL_MODULE:
+    return &bl_peek_decl_module(node)->id;
+  case BL_DECL_VAR:
+    return &bl_peek_decl_var(node)->id;
+  case BL_DECL_ARG:
+    return &bl_peek_decl_arg(node)->id;
+  case BL_DECL_FUNC:
+    return &bl_peek_decl_func(node)->id;
+  case BL_DECL_STRUCT:
+    return &bl_peek_decl_struct(node)->id;
+  case BL_DECL_ENUM:
+    return &bl_peek_decl_enum(node)->id;
+  case BL_EXPR_VAR_REF:
+    return &bl_peek_expr_var_ref(node)->id;
+  case BL_EXPR_CALL:
+    return &bl_peek_expr_call(node)->id;
+  case BL_EXPR_PATH:
+    return &bl_peek_expr_path(node)->id;
+  case BL_TYPE_REF:
+    return &bl_peek_type_ref(node)->id;
+  case BL_TYPE_FUND:
+  case BL_EXPR_BINOP:
+  case BL_DECL_BLOCK:
+  case BL_EXPR_CONST:
+  case BL_STMT_IF:
+  case BL_STMT_LOOP:
+  case BL_STMT_WHILE:
+  case BL_STMT_BREAK:
+  case BL_STMT_CONTINUE:
+  case BL_STMT_RETURN:
+    return NULL;
+  }
+}
+/**************************************************************************************************/

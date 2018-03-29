@@ -1,6 +1,7 @@
 /*
  * testing playground.
  */
+
 /*
 module std {
   module inner_module {
@@ -77,16 +78,11 @@ module hell {
 // TEST: module merging
 
 module A {
+  fn b() {}
   fn a() {}
 }
 
 module A {
   fn b() {}
-}
-
-module A {
   fn c() {}
-
-  module B {
-  }
 }
