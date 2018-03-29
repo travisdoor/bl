@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// Biscuit Language
 //
-// File:   assembly_impl.h
+// File:   scope.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   29/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,42 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
-
-#include <bobject/containers/array.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
 #include "scope_impl.h"
+#include "common_impl.h"
 
-typedef struct bl_assembly
+bl_scope_t *
+bl_scope_new(void)
 {
-  BArray *units;
-  char *  name;
+  bl_scope_t *scope = bl_malloc(sizeof(bl_scope_t));
+  scope->nodes      = bo_htbl_new(sizeof(bl_node_t *), 1024);
+  return scope;
+}
 
-  bl_scope_t *   scope;
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
-} bl_assembly_t;
+void
+bl_scope_delete(bl_scope_t *scope)
+{
+  if (!scope)
+    return;
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  bo_unref(scope->nodes);
+  bl_free(scope);
+}
+
+void
+bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
+{
+  bl_id_t *id = bl_ast_try_get_id(node);
+  bl_assert(id, "invalid id");
+  bo_htbl_insert(scope->nodes, id->hash, node);
+}
+
+bl_node_t *
+bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
+{
+  bl_assert(id, "invalid id");
+  if (bo_htbl_has_key(scope->nodes, id->hash)) {
+    return bo_htbl_at(scope->nodes, id->hash, bl_node_t *);
+  }
+
+  return NULL;
+}

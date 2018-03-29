@@ -40,8 +40,7 @@ static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   print_head("module", bl_peek_src(module), module, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") " parent: " BL_YELLOW("%p"),
-          bl_peek_decl_module(module)->id.str, bl_peek_decl_module(module)->parent);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_module(module)->id.str);
   bl_visitor_walk_module(visitor, module);
 }
 

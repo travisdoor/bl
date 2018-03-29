@@ -39,6 +39,7 @@ bl_assembly_new(const char *name)
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
   assembly->name          = strdup(name);
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
+  assembly->scope         = bl_scope_new();
 
   return assembly;
 }
@@ -47,11 +48,12 @@ void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
+  bl_scope_delete(assembly->scope);
   LLVMDisposeModule(assembly->llvm_module);
   LLVMContextDispose(assembly->llvm_cnt);
 
   const size_t c = bo_array_size(assembly->units);
-  bl_unit_t *unit;
+  bl_unit_t *  unit;
   for (size_t i = 0; i < c; i++) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
     bl_unit_delete(unit);

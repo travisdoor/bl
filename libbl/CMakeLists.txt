@@ -31,6 +31,7 @@ set(HEADER_FILES_IMPL
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
+        src/scope_impl.h
         src/ast/id_impl.h
         src/ast/visitor_impl.h
         src/ast/ast2_impl.h )
@@ -50,6 +51,7 @@ set(SOURCE_FILES
         src/lexer.c
         src/ast_printer.c
         src/llvm_linker.c 
+        src/scope.c 
         src/ast/id.c src/parser2.c src/ast/ast2.c src/ast/visitor.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})

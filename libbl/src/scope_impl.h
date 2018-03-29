@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Engine
+// Biscuit Language
 //
-// File:   assembly_impl.h
+// File:   scope_impl.h
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   29/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,22 +26,27 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
+#ifndef BISCUIT_SCOPE_IMPL_H
+#define BISCUIT_SCOPE_IMPL_H
 
-#include <bobject/containers/array.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
+#include <bobject/containers/htbl.h>
+#include "ast/ast2_impl.h"
 
-typedef struct bl_assembly
+typedef struct bl_scope
 {
-  BArray *units;
-  char *  name;
+  BHashTable *nodes;
+} bl_scope_t;
 
-  bl_scope_t *   scope;
-  LLVMModuleRef  llvm_module;
-  LLVMContextRef llvm_cnt;
-} bl_assembly_t;
+bl_scope_t *
+bl_scope_new(void);
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+void
+bl_scope_delete(bl_scope_t *scope);
+
+void
+bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node);
+
+bl_node_t *
+bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
+
+#endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

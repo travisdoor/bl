@@ -811,14 +811,14 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected module name");
     }
 
-    module = bl_ast_add_decl_module(cnt->ast, parent, tok_id, tok_id->value.str);
+    module = bl_ast_add_decl_module(cnt->ast, tok_id, tok_id->value.str);
 
     if (tok_begin_block->sym != BL_SYM_LBLOCK) {
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin_block,
                   "expected block after module name " BL_YELLOW("'{'"));
     }
   } else {
-    module = bl_ast_add_decl_module(cnt->ast, parent, NULL, NULL);
+    module = bl_ast_add_decl_module(cnt->ast, NULL, NULL);
   }
 
 decl:

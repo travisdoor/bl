@@ -78,21 +78,30 @@ module hell {
 // TEST: module merging
 module A {
   module B {
-    fn a() {}
+    public fn a() {}
   }
 
   module B {
     fn b() {}
+    extern fn ext();
+    public extern fn ext();
+  }
+
+  module H {
   }
 }
 
 module A {
   module B {
-    fn c() {}
+    module B {
+      module B {
+      }
+    }
   }
 
   module H {
     struct t {}
+    enum te {}
   }
 }
 

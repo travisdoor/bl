@@ -28,6 +28,7 @@
 
 #include "ast/ast2_impl.h"
 #include "common_impl.h"
+#include "scope_impl.h"
 
 #define CACHE_PREALLOC_ELEM 256
 
@@ -55,6 +56,7 @@ node_terminate(bl_node_t *node)
   switch (node->code) {
   case BL_DECL_MODULE:
     bo_unref(bl_peek_decl_module(node)->nodes);
+    bl_scope_delete(bl_peek_decl_module(node)->scope);
     break;
   case BL_DECL_FUNC:
     bo_unref(bl_peek_decl_func(node)->args);
@@ -276,7 +278,7 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name)
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name)
 {
   bl_node_t *module = alloc_node(ast);
   if (tok)
@@ -285,7 +287,6 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const 
   module->code = BL_DECL_MODULE;
   if (name)
     bl_id_init(&bl_peek_decl_module(module)->id, name);
-  bl_peek_decl_module(module)->parent = parent;
 
   return module;
 }

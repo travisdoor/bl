@@ -31,6 +31,8 @@
 #include "stages_impl.h"
 #include "ast/visitor_impl.h"
 
+#define peek_cnt(visitor) ((context_t *)(visitor)->context)
+
 #define link_error(cnt, code, loc, format, ...)                                                    \
   {                                                                                                \
     bl_builder_error((cnt)->builder, "%s %d:%d " format, loc->file, loc->line, loc->col,           \
@@ -43,20 +45,89 @@ typedef struct
   bl_builder_t * builder;
   bl_assembly_t *assembly;
   jmp_buf        jmp_error;
+  bl_scope_t *   curr_scope_tmp;
 } context_t;
 
 static void
-visit_path(bl_visitor_t *visitor, bl_node_t *expr)
+visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
-  bl_log("linker path detected %s", bl_peek_expr_path(expr)->id.str);
+  bl_decl_func_t *_func = bl_peek_decl_func(func);
+  context_t *     cnt   = peek_cnt(visitor);
+  bl_scope_t *    scope = peek_cnt(visitor)->curr_scope_tmp;
 
-  /*bl_visitor_walk_expr(visitor, expr);*/
+  bl_node_t *conflict = bl_scope_get_node(scope, &_func->id);
+
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               _func->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  }
+
+  bl_scope_insert_node(scope, func);
+}
+
+static void
+visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
+{
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  context_t *       cnt    = peek_cnt(visitor);
+  bl_scope_t *      scope  = peek_cnt(visitor)->curr_scope_tmp;
+
+  bl_node_t *conflict = bl_scope_get_node(scope, &_strct->id);
+
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               _strct->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  }
+
+  bl_scope_insert_node(scope, strct);
+}
+
+static void
+visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
+{
+  bl_decl_enum_t *_enm  = bl_peek_decl_enum(enm);
+  context_t *     cnt   = peek_cnt(visitor);
+  bl_scope_t *    scope = peek_cnt(visitor)->curr_scope_tmp;
+
+  bl_node_t *conflict = bl_scope_get_node(scope, &_enm->id);
+
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  }
+
+  bl_scope_insert_node(scope, enm);
+}
+
+static void
+visit_module(bl_visitor_t *visitor, bl_node_t *module)
+{
+  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->curr_scope_tmp;
+  bl_assert(prev_scope_tmp, "invalid current scope in linker");
+  bl_decl_module_t *_module  = bl_peek_decl_module(module);
+  bl_node_t *       conflict = bl_scope_get_node(prev_scope_tmp, &_module->id);
+
+  if (conflict) {
+    peek_cnt(visitor)->curr_scope_tmp = bl_peek_decl_module(conflict)->scope;
+    bl_log("reuse %s", _module->id.str);
+  } else {
+    _module->scope                    = bl_scope_new();
+    peek_cnt(visitor)->curr_scope_tmp = _module->scope;
+    bl_scope_insert_node(prev_scope_tmp, module);
+    bl_log("new %s", _module->id.str);
+  }
+
+  bl_visitor_walk_module(visitor, module);
+  peek_cnt(visitor)->curr_scope_tmp = prev_scope_tmp;
 }
 
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly};
+  context_t cnt = {.builder = builder, .assembly = assembly, .curr_scope_tmp = assembly->scope};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -65,7 +136,10 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
-  bl_visitor_add(&visitor, visit_path, BL_VISIT_PATH);
+  bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
+  bl_visitor_add(&visitor, visit_module, BL_VISIT_MODULE);
+  bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

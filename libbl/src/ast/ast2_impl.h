@@ -187,9 +187,10 @@ struct bl_stmt_return
 
 struct bl_decl_module
 {
-  bl_id_t     id;
-  bl_node_t * parent;
-  BArray *    nodes;
+  bl_id_t          id;
+  bl_node_t *      parent;
+  BArray *         nodes;
+  struct bl_scope *scope;
 };
 
 struct bl_decl_var
@@ -362,7 +363,7 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
                      bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_node_t *parent, bl_token_t *tok, const char *name);
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
