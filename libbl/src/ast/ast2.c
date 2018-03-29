@@ -454,24 +454,7 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
 /* module */
 /**************************************************************************************************/
 bl_node_t *
-bl_ast_module_has_node(bl_node_t *module, bl_id_t *id)
-{
-  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
-  bl_assert(id, "invalid id");
-
-  bl_decl_module_t *_module = bl_peek_decl_module(module);
-  if (_module->nodes == NULL) {
-    return NULL;
-  }
-
-  if (!bo_htbl_has_key(_module->nodes, id->hash))
-    return NULL;
-
-  return bo_htbl_at(_module->nodes, id->hash, bl_node_t *);
-}
-
-bl_node_t *
-bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node)
+bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
 
@@ -481,10 +464,10 @@ bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node)
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
   if (_module->nodes == NULL) {
-    _module->nodes = bo_htbl_new(sizeof(bl_node_t *), 512);
+    _module->nodes = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_htbl_insert(_module->nodes, bl_ast_try_get_id(node)->hash, node);
+  bo_array_push_back(_module->nodes, node);
   return node;
 }
 
@@ -494,59 +477,18 @@ bl_ast_module_node_count(bl_node_t *module)
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   if (bl_peek_decl_module(module)->nodes == NULL)
     return 0;
-  return bo_htbl_size(bl_peek_decl_module(module)->nodes);
+  return bo_array_size(bl_peek_decl_module(module)->nodes);
 }
 
 bl_node_t *
-bl_ast_module_get_node(bl_node_t *module, bl_id_t *id)
+bl_ast_module_get_node(bl_node_t *module, size_t i)
 {
   bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
   if (_module->nodes == NULL)
     return NULL;
-  if (bo_htbl_has_key(_module->nodes, id->hash))
-    return bo_htbl_at(bl_peek_decl_module(module)->nodes, id->hash, bl_node_t *);
-  return NULL;
-}
-
-bool
-bl_ast_module_merge(bl_node_t *dest, bl_node_t *src, bl_node_t **redecl, bl_node_t **orig)
-{
-  bl_assert(bl_node_is(dest, BL_DECL_MODULE), "invalid module");
-  bl_assert(bl_node_is(src, BL_DECL_MODULE), "invalid module");
-
-  bl_decl_module_t *_src       = bl_peek_decl_module(src);
-  bl_node_t *       node       = NULL;
-  bl_node_t *       conflicted = NULL;
-
-  if (_src->nodes) {
-    bo_iterator_t iter = bo_htbl_begin(_src->nodes);
-    bo_iterator_t end  = bo_htbl_end(_src->nodes);
-
-    while (!bo_iterator_equal(&iter, &end)) {
-      node = bo_htbl_iter_peek_value(_src->nodes, &iter, bl_node_t *);
-      bo_htbl_iter_next(_src->nodes, &iter);
-
-      conflicted = bl_ast_module_has_node(dest, bl_ast_try_get_id(node));
-      if (conflicted && bl_node_code(conflicted) == BL_DECL_MODULE &&
-          bl_ast_module_merge(conflicted, node, redecl, orig)) {
-        *orig   = conflicted;
-        *redecl = node;
-        return false;
-      }
-
-      if (*redecl) {
-        return false;
-      }
-
-      bl_ast_module_insert_node(dest, node);
-    }
-  }
-
-  *redecl = NULL;
-  *orig   = NULL;
-  return true;
+  return bo_array_at(_module->nodes, i, bl_node_t *);
 }
 /**************************************************************************************************/
 

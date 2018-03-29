@@ -189,7 +189,7 @@ struct bl_decl_module
 {
   bl_id_t     id;
   bl_node_t * parent;
-  BHashTable *nodes;
+  BArray *    nodes;
 };
 
 struct bl_decl_var
@@ -410,19 +410,13 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
 /* module */
 /**************************************************************************************************/
 bl_node_t *
-bl_ast_module_has_node(bl_node_t *module, bl_id_t *id);
-
-bl_node_t *
-bl_ast_module_insert_node(bl_node_t *module, bl_node_t *node);
+bl_ast_module_push_node(bl_node_t *module, bl_node_t *node);
 
 size_t
 bl_ast_module_node_count(bl_node_t *module);
 
 bl_node_t *
-bl_ast_module_get_node(bl_node_t *module, bl_id_t *id);
-
-bool 
-bl_ast_module_merge(bl_node_t *dest, bl_node_t *src, bl_node_t **redecl, bl_node_t **orig);
+bl_ast_module_get_node(bl_node_t *module, size_t i);
 /**************************************************************************************************/
 
 /* function */

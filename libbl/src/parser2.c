@@ -821,28 +821,20 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global)
     module = bl_ast_add_decl_module(cnt->ast, parent, NULL, NULL);
   }
 
-  bl_node_t *conflicted = NULL;
-  bl_node_t *node       = NULL;
-
 decl:
-  node = parse_module_maybe(cnt, module, false);
-
-  if (!node) {
-    node = parse_fn_maybe(cnt);
+  if (bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false))) {
+    goto decl;
   }
 
-  if (!node) {
-    node = parse_struct_maybe(cnt);
+  if (bl_ast_module_push_node(module, parse_fn_maybe(cnt))) {
+    goto decl;
   }
 
-  if (!node) {
-    node = parse_enum_maybe(cnt);
+  if (bl_ast_module_push_node(module, parse_struct_maybe(cnt))) {
+    goto decl;
   }
 
-  if (node) {
-    conflicted = bl_ast_module_has_node(module, bl_ast_try_get_id(node));
-    bl_assert(conflicted, "conflict");
-    bl_ast_module_insert_node(module, node);
+  if (bl_ast_module_push_node(module, parse_enum_maybe(cnt))) {
     goto decl;
   }
 

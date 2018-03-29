@@ -76,13 +76,23 @@ module hell {
 */
 
 // TEST: module merging
-
 module A {
-  fn b() {}
-  fn a() {}
+  module B {
+    fn a() {}
+  }
+
+  module B {
+    fn b() {}
+  }
 }
 
 module A {
-  fn b() {}
-  fn c() {}
+  module B {
+    fn c() {}
+  }
+
+  module H {
+    struct t {}
+  }
 }
+
