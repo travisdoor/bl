@@ -278,9 +278,7 @@ struct bl_expr_call
 
 struct bl_expr_path
 {
-  bl_id_t    id;
-  bl_node_t *ref;
-  bl_node_t *next;
+  bl_id_t id;
 };
 
 struct bl_type_fund
@@ -368,11 +366,11 @@ bl_node_t *
 bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                     BArray *path);
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                     bl_node_t *next);
+bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
 bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name);

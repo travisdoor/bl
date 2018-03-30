@@ -55,12 +55,6 @@ typedef struct
   jmp_buf jmp_error;
 } context_t;
 
-typedef enum {
-  PATH_EXPECTED_CALL = 1,
-  PATH_EXPECTED_VAR  = 2,
-  PATH_EXPECTED_TYPE = 4
-} path_expected_e;
-
 static bl_node_t *
 parse_fn_maybe(context_t *cnt, int modif);
 
@@ -107,13 +101,13 @@ static bl_node_t *
 parse_var_ref_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_call_maybe(context_t *cnt);
+parse_call_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
 parse_nested_expr_maybe(context_t *cnt);
 
-static bl_node_t *
-parse_path_maybe(context_t *cnt, int expected_flag);
+static BArray *
+parse_path_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_if_maybe(context_t *cnt);
@@ -259,12 +253,20 @@ parse_var_ref_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_call_maybe(context_t *cnt)
+parse_call_maybe(context_t *cnt, BArray *path)
 {
   bl_node_t *call = NULL;
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
-    call               = bl_ast_add_expr_call(cnt->ast, tok_id, tok_id->value.str, NULL);
+
+    if (path == NULL) {
+      path = bo_array_new(sizeof(bl_node_t *));
+    }
+
+    bl_node_t *id = bl_ast_add_expr_path(cnt->ast, tok_id, tok_id->value.str);
+    bo_array_push_back(path, id);
+
+    call = bl_ast_add_expr_call(cnt->ast, tok_id, tok_id->value.str, NULL, path);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -292,6 +294,7 @@ parse_call_maybe(context_t *cnt)
                       "')'") " or another parameter separated by comma");
     }
   }
+
   return call;
 }
 
@@ -376,65 +379,50 @@ parse_nested_expr_maybe(context_t *cnt)
   return expr;
 }
 
-bl_node_t *
-parse_path_maybe(context_t *cnt, int expected_flag)
+BArray *
+parse_path_maybe(context_t *cnt)
 {
-  /*
-   * We expect identificator here as entry point to another path,
-   * function call, variable reference or type. This function can return
-   * any of these nodes depending on source code.
-   */
-  if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
-    if (bl_tokens_next_is(cnt->tokens, BL_SYM_MODULE_PATH)) {
-      bl_token_t *tok_ident = bl_tokens_consume(cnt->tokens);
-      bl_tokens_consume(cnt->tokens); /* eat :: */
-      /* next path element */
-      bl_node_t *next = parse_path_maybe(cnt, expected_flag);
-      return bl_ast_add_expr_path(cnt->ast, tok_ident, tok_ident->value.str, NULL, next);
-    }
+  BArray *    path      = NULL;
+  bl_node_t * path_elem = NULL;
+  bl_token_t *tok       = NULL;
 
-    bl_node_t *curr = NULL;
-    if (expected_flag & PATH_EXPECTED_CALL) {
-      if ((curr = parse_call_maybe(cnt)) != NULL) {
-        return curr;
-      }
-    }
+next:
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_MODULE_PATH)) {
+    if (!path)
+      path = bo_array_new(sizeof(bl_node_t *));
 
-    if (expected_flag & PATH_EXPECTED_VAR) {
-      if ((curr = parse_var_ref_maybe(cnt)) != NULL) {
-        return curr;
-      }
-    }
+    tok = bl_tokens_consume(cnt->tokens);
 
-    if (expected_flag & PATH_EXPECTED_TYPE) {
-      if ((curr = parse_type_maybe(cnt)) != NULL) {
-        return curr;
-      }
-    }
-
-    bl_token_t *tok_err = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_INVALID_TOKEN, tok_err,
-                "invalid token found in path, expected call, variable or type");
+    path_elem = bl_ast_add_expr_path(cnt->ast, tok, tok->value.str);
+    bo_array_push_back(path, path_elem);
+    bl_tokens_consume(cnt->tokens); /* eat :: */
+    goto next;
   }
 
-  /* not path, variable, call or type */
-  return NULL;
+  return path;
 }
 
 bl_node_t *
 parse_atom_expr(context_t *cnt)
 {
   bl_node_t *expr = NULL;
+  BArray *   path = NULL;
 
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
 
-  if ((expr = parse_path_maybe(cnt, PATH_EXPECTED_VAR | PATH_EXPECTED_CALL)))
+  path = parse_path_maybe(cnt);
+
+  if ((expr = parse_call_maybe(cnt, path)))
+    return expr;
+
+  if ((expr = parse_var_ref_maybe(cnt)))
     return expr;
 
   if ((expr = parse_const_expr_maybe(cnt)))
     return expr;
 
+  bo_unref(path);
   return expr;
 }
 
@@ -482,7 +470,7 @@ parse_var_maybe(context_t *cnt)
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR)) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
 
-    type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
+    type = parse_type_maybe(cnt);
     if (type == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
@@ -547,7 +535,7 @@ parse_ret_type_rq(context_t *cnt)
 
   switch (tok->sym) {
   case BL_SYM_IDENT:
-    type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
+    type = parse_type_maybe(cnt);
     break;
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
@@ -705,7 +693,7 @@ parse_arg_maybe(context_t *cnt)
   bl_node_t *arg = NULL;
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
     bl_token_t *tok  = bl_tokens_consume(cnt->tokens);
-    bl_node_t * type = parse_path_maybe(cnt, PATH_EXPECTED_TYPE);
+    bl_node_t * type = parse_type_maybe(cnt);
 
     if (type == NULL) {
       bl_token_t *tok = bl_tokens_peek(cnt->tokens);

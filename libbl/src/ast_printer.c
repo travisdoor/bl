@@ -48,6 +48,22 @@ print_modif(int modif)
   }
 }
 
+static inline void
+print_path(BArray *path)
+{
+  if (!path)
+    return;
+  // bl_assert(path, "invalid path");
+  const size_t c = bo_array_size(path);
+  bl_node_t *  path_elem;
+  for (size_t i = 0; i < c; i++) {
+    path_elem = bo_array_at(path, i, bl_node_t *);
+    fprintf(stdout, BL_CYAN("%s"), bl_peek_expr_path(path_elem)->id.str);
+    if (i != c - 1)
+      fprintf(stdout, BL_CYAN("::"));
+  }
+}
+
 static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
@@ -143,6 +159,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);
+    print_path(bl_peek_expr_call(expr)->path);
     fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_call(expr)->id.str,
             bl_peek_expr_call(expr)->ref);
     break;
@@ -194,15 +211,6 @@ visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
   bl_visitor_walk_return(visitor, stmt_return);
 }
 
-static void
-visit_path(bl_visitor_t *visitor, bl_node_t *expr_path)
-{
-  print_head("path", bl_peek_src(expr_path), expr_path, visitor->nesting);
-  fprintf(stdout, " ref: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_path(expr_path)->id.str,
-          bl_peek_expr_path(expr_path)->ref);
-  bl_visitor_walk_path(visitor, expr_path);
-}
-
 bl_error_e
 bl_ast_printer_run(bl_assembly_t *assembly)
 {
@@ -232,7 +240,6 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
     bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
-    bl_visitor_add(&visitor, visit_path, BL_VISIT_PATH);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

@@ -264,8 +264,7 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                     bl_node_t *next)
+bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name)
 {
   bl_node_t *path = alloc_node(ast);
   if (tok)
@@ -273,8 +272,6 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 
   path->code = BL_EXPR_PATH;
   bl_id_init(&bl_peek_expr_path(path)->id, name);
-  bl_peek_expr_path(path)->next = next;
-  bl_peek_expr_path(path)->ref  = ref;
 
   return path;
 }
@@ -632,14 +629,13 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_expr_var_ref(node)->id;
   case BL_EXPR_CALL:
     return &bl_peek_expr_call(node)->id;
-  case BL_EXPR_PATH:
-    return &bl_peek_expr_path(node)->id;
   case BL_TYPE_REF:
     return &bl_peek_type_ref(node)->id;
   case BL_TYPE_FUND:
-  case BL_EXPR_BINOP:
   case BL_DECL_BLOCK:
+  case BL_EXPR_BINOP:
   case BL_EXPR_CONST:
+  case BL_EXPR_PATH:
   case BL_STMT_IF:
   case BL_STMT_LOOP:
   case BL_STMT_WHILE:
