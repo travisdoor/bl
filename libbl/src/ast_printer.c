@@ -36,6 +36,18 @@
   fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), (pad)*2, "",       \
           (name), (src)->line, (src)->col, (ptr));
 
+static inline void
+print_modif(int modif)
+{
+  if (modif & BL_MODIF_PUBLIC) {
+    fprintf(stdout, BL_CYAN(" %s "), bl_sym_strings[BL_SYM_PUBLIC]);
+  }
+
+  if (modif & BL_MODIF_EXTERN) {
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXTERN]);
+  }
+}
+
 static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
@@ -48,7 +60,10 @@ static void
 visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   print_head("function", bl_peek_src(func), func, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_func(func)->id.str);
+  bl_decl_func_t *_func = bl_peek_decl_func(func);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _func->id.str);
+  print_modif(_func->modif);
+
   bl_visitor_walk_func(visitor, func);
 }
 
@@ -78,7 +93,9 @@ static void
 visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   print_head("struct", bl_peek_src(strct), strct, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_struct(strct)->id.str);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _strct->id.str);
+  print_modif(_strct->modif);
   bl_visitor_walk_struct(visitor, strct);
 }
 
@@ -86,7 +103,9 @@ static void
 visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   print_head("enum", bl_peek_src(enm), enm, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_enum(enm)->id.str);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _enm->id.str);
+  print_modif(_enm->modif);
   bl_visitor_walk_enum(visitor, enm);
 }
 

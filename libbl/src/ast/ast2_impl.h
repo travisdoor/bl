@@ -117,6 +117,7 @@ typedef struct bl_type_ref  bl_type_ref_t;
 typedef struct bl_type_fund bl_type_fund_t;
 
 typedef enum bl_node_code bl_node_code_e;
+typedef enum bl_modif     bl_modif_e;
 
 /*
  * AST main context data
@@ -154,6 +155,13 @@ enum bl_node_code
 
   BL_TYPE_FUND,
   BL_TYPE_REF
+};
+
+enum bl_modif
+{
+  BL_MODIF_NONE   = 0,
+  BL_MODIF_PUBLIC = 1,
+  BL_MODIF_EXTERN = 2
 };
 
 struct bl_stmt_if
@@ -209,6 +217,7 @@ struct bl_decl_arg
 struct bl_decl_func
 {
   bl_id_t    id;
+  int        modif;
   BArray *   args;
   bl_node_t *block;
   bl_node_t *ret_type;
@@ -217,11 +226,13 @@ struct bl_decl_func
 struct bl_decl_struct
 {
   bl_id_t id;
+  int     modif;
 };
 
 struct bl_decl_enum
 {
   bl_id_t id;
+  int     modif;
 };
 
 struct bl_decl_block
@@ -261,6 +272,7 @@ struct bl_expr_call
 {
   bl_id_t    id;
   bl_node_t *ref;
+  BArray *   path;
   BArray *   args;
 };
 
@@ -356,7 +368,7 @@ bl_node_t *
 bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
@@ -374,13 +386,13 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type);
+                     bl_node_t *ret_type, int modif);
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name);
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
-bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name);
+bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok);

@@ -2,106 +2,22 @@
  * testing playground.
  */
 
-/*
-module std {
-  module inner_module {
-    fn no_return() {
-    }
-  }
-
-  enum state_e {
-  }
-
-  fn add(first i32, second i32) i32 {
-    return 10;
-  }
-
-  fn get_context() std::context_t {
-    var hello i32;
-    var a i32 = hello + (10 + add(15 + 2, 256)) + (10);
-    10 + 10;
-    {
-      var test i64;
-      {
-        var test string;
-      }
-    }
-
-    std::add();
-    std::state_e::A;
-
-    var test hell::context_t;
-
-    {
-      {
-        var data i32;
-      }
-    }
-
-    if (true) {
-      if_true(12);
-    } else if (true) {
-      if_false(12);
-    } else {
-  
-    }
-
-    if (true) 
-      hello();
-
-    loop {
-      break;
-      continue;
-    }
-
-    while (true) {
-    }
-
-    while (true) 
-      a + 1;
-  }
+module debug {
+  public extern fn printf(s string) i32;
 }
 
-module hell {
-  struct context_t {
-  }
-}
-*/
-
-// TODO: coliding modules must be merged in ast
-/*
-module hell {
-
-}
-*/
-
-// TEST: module merging
-module A {
-  module B {
-    public fn a() {}
-  }
-
-  module B {
-    fn b() {}
-    extern fn ext();
-    public extern fn ext();
-  }
-
-  module H {
-  }
+fn main() i32 {
+  sdl::init();
+  sdl::priv(); // should be invalid here (private function)
+  debug::printf("hello\n");
 }
 
 module A {
   module B {
-    module B {
-      module B {
-      }
-    }
+    fn test() {}
   }
 
-  module H {
-    struct t {}
-    enum te {}
+  fn hell() {
+    B::A::test();
   }
 }
-

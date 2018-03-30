@@ -58,6 +58,7 @@ BO_BEGIN_DECLS
   sm(WHILE, "while") \
   sm(BREAK, "break")\
   sm(CONTINUE, "continue")\
+  sm(PUBLIC, "public")\
   sm(IMPL, "impl") /* must be last */\
   sm(MODULE_PATH, "::") \
   sm(LCOMMENT, "//") \

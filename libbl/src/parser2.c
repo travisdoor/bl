@@ -62,13 +62,13 @@ typedef enum {
 } path_expected_e;
 
 static bl_node_t *
-parse_fn_maybe(context_t *cnt);
+parse_fn_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
-parse_struct_maybe(context_t *cnt);
+parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
-parse_enum_maybe(context_t *cnt);
+parse_enum_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
 parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global);
@@ -136,7 +136,28 @@ parse_continue_maybe(context_t *cnt);
 static bl_node_t *
 parse_return_maybe(context_t *cnt);
 
+int
+parse_modifs_maybe(context_t *cnt);
+
 /* impl*/
+int
+parse_modifs_maybe(context_t *cnt)
+{
+  int res = BL_MODIF_NONE;
+modif:
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_EXTERN)) {
+    res |= BL_MODIF_EXTERN;
+    goto modif;
+  }
+
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_PUBLIC)) {
+    res |= BL_MODIF_PUBLIC;
+    goto modif;
+  }
+
+  return res;
+}
+
 bl_node_t *
 parse_return_maybe(context_t *cnt)
 {
@@ -698,7 +719,7 @@ parse_arg_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_fn_maybe(context_t *cnt)
+parse_fn_maybe(context_t *cnt, int modif)
 {
   bl_node_t *fn = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_FN) != NULL) {
@@ -707,7 +728,7 @@ parse_fn_maybe(context_t *cnt)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected function name");
     }
 
-    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL);
+    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif);
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -741,9 +762,17 @@ parse_fn_maybe(context_t *cnt)
     bl_peek_decl_func(fn)->ret_type = parse_ret_type_rq(cnt);
     bl_node_t *block                = parse_block_maybe(cnt);
 
-    if (block == NULL) {
-      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_err, "expected function body " BL_YELLOW("'{'"));
+    if (modif & BL_MODIF_EXTERN) {
+      if (block != NULL) {
+        parse_error_node(cnt, BL_ERR_UNEXPECTED_DECL, fn,
+                         "extern function " BL_YELLOW("'%s'") " can't have body",
+                         bl_peek_decl_func(fn)->id.str);
+      }
+
+      parse_semicolon_rq(cnt);
+    } else if (block == NULL) {
+      parse_error_node(cnt, BL_ERR_EXPECTED_BODY, fn, "function " BL_YELLOW("'%s'") " has no body",
+                       bl_peek_decl_func(fn)->id.str);
     }
 
     bl_peek_decl_func(fn)->block = block;
@@ -753,7 +782,7 @@ parse_fn_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_struct_maybe(context_t *cnt)
+parse_struct_maybe(context_t *cnt, int modif)
 {
   bl_node_t *strct = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_STRUCT) != NULL) {
@@ -763,7 +792,7 @@ parse_struct_maybe(context_t *cnt)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected struct name");
     }
 
-    strct = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str);
+    strct = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
 
     // TODO
     tok = bl_tokens_consume(cnt->tokens);
@@ -773,7 +802,7 @@ parse_struct_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_enum_maybe(context_t *cnt)
+parse_enum_maybe(context_t *cnt, int modif)
 {
   bl_node_t *enm = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM) != NULL) {
@@ -782,7 +811,8 @@ parse_enum_maybe(context_t *cnt)
     if (tok->sym != BL_SYM_IDENT) {
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected enum name");
     }
-    enm = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str);
+
+    enm = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, modif);
 
     // TODO
     tok = bl_tokens_consume(cnt->tokens);
@@ -821,20 +851,45 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global)
     module = bl_ast_add_decl_module(cnt->ast, NULL, NULL);
   }
 
+  int        modif = BL_MODIF_NONE;
+  bl_node_t *node  = NULL;
 decl:
-  if (bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false))) {
+  modif = parse_modifs_maybe(cnt);
+
+  if ((node = bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false)))) {
+    if (modif & BL_MODIF_PUBLIC) {
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+                       "module can't be declared as " BL_YELLOW("'%s'"),
+                       bl_sym_strings[BL_SYM_PUBLIC]);
+    }
+
+    if (modif & BL_MODIF_EXTERN) {
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+                       "module can't be declared as " BL_YELLOW("'%s'"),
+                       bl_sym_strings[BL_SYM_EXTERN]);
+    }
     goto decl;
   }
 
-  if (bl_ast_module_push_node(module, parse_fn_maybe(cnt))) {
+  if (bl_ast_module_push_node(module, parse_fn_maybe(cnt, modif))) {
     goto decl;
   }
 
-  if (bl_ast_module_push_node(module, parse_struct_maybe(cnt))) {
+  if ((node = bl_ast_module_push_node(module, parse_struct_maybe(cnt, modif)))) {
+    if (modif & BL_MODIF_EXTERN) {
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+                       "struct can't be declared as " BL_YELLOW("'%s'"),
+                       bl_sym_strings[BL_SYM_EXTERN]);
+    }
     goto decl;
   }
 
-  if (bl_ast_module_push_node(module, parse_enum_maybe(cnt))) {
+  if ((node = bl_ast_module_push_node(module, parse_enum_maybe(cnt, modif)))) {
+    if (modif & BL_MODIF_EXTERN) {
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+                       "enum can't be declared as " BL_YELLOW("'%s'"),
+                       bl_sym_strings[BL_SYM_EXTERN]);
+    }
     goto decl;
   }
 

@@ -66,6 +66,7 @@ node_terminate(bl_node_t *node)
     break;
   case BL_EXPR_CALL:
     bo_unref(bl_peek_expr_call(node)->args);
+    bo_unref(bl_peek_expr_call(node)->path);
     break;
   default:
     break;
@@ -248,7 +249,7 @@ bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_nod
 }
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref)
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
 {
   bl_node_t *call = alloc_node(ast);
   if (tok)
@@ -256,7 +257,8 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 
   call->code = BL_EXPR_CALL;
   bl_id_init(&bl_peek_expr_call(call)->id, name);
-  bl_peek_expr_call(call)->ref = ref;
+  bl_peek_expr_call(call)->ref  = ref;
+  bl_peek_expr_call(call)->path = path;
 
   return call;
 }
@@ -323,7 +325,7 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type)
+                     bl_node_t *ret_type, int modif)
 {
   bl_node_t *func = alloc_node(ast);
   if (tok)
@@ -332,13 +334,14 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   func->code                        = BL_DECL_FUNC;
   bl_peek_decl_func(func)->block    = block;
   bl_peek_decl_func(func)->ret_type = ret_type;
+  bl_peek_decl_func(func)->modif    = modif;
   bl_id_init(&bl_peek_decl_func(func)->id, name);
 
   return func;
 }
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name)
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
 {
   bl_node_t *strct = alloc_node(ast);
   if (tok)
@@ -346,12 +349,13 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name)
 
   strct->code = BL_DECL_STRUCT;
   bl_id_init(&bl_peek_decl_struct(strct)->id, name);
+  bl_peek_decl_struct(strct)->modif = modif;
 
   return strct;
 }
 
 bl_node_t *
-bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name)
+bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
 {
   bl_node_t *enm = alloc_node(ast);
   if (tok)
@@ -359,6 +363,7 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name)
 
   enm->code = BL_DECL_ENUM;
   bl_id_init(&bl_peek_decl_enum(enm)->id, name);
+  bl_peek_decl_enum(enm)->modif = modif;
 
   return enm;
 }
