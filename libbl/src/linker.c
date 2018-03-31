@@ -146,15 +146,45 @@ link_module(bl_visitor_t *visitor, bl_node_t *module)
 static void
 link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  /*context_t * cnt    = peek_cnt(visitor);*/
-  /*bl_scope_t *cscope = cnt->cscope;*/
-  /*bl_scope_t *gscope = cnt->gscope;*/
-  /*bl_node_t * entry = NULL;*/
+  context_t * cnt       = peek_cnt(visitor);
+  bl_scope_t *cscope    = cnt->cscope;
+  bl_scope_t *gscope    = cnt->gscope;
+  bl_node_t * entry     = NULL;
+  bl_node_t * path_elem = NULL;
+  BArray *    path      = NULL;
+  size_t      c         = 0;
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
     bl_log("call: %s", bl_peek_expr_call(expr)->id.str);
 
+    path = bl_peek_expr_call(expr)->path;
+    bl_assert(path, "invalid path");
+    c = bo_array_size(path);
+    bl_assert(c, "path must have at least one element");
+
+    path_elem = bo_array_at(path, 0, bl_node_t *);
+    /* search in current scope for path symbol */
+    entry = bl_scope_get_node(cscope, &bl_peek_expr_path(path_elem)->id);
+    if (!entry) {
+      entry = bl_scope_get_node(gscope, &bl_peek_expr_path(path_elem)->id);
+      if (!entry) {
+        link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
+                   "unknown module or enumerator " BL_YELLOW("'%s'"),
+                   bl_peek_expr_path(path_elem)->id.str);
+      }
+    }
+
+    switch (bl_node_code(entry)) {
+    case BL_DECL_MODULE:
+      bl_log("found symbol %s -> %p as module", bl_peek_decl_module(entry)->id.str, entry);
+      break;
+    case BL_DECL_FUNC:
+      bl_log("found symbol %s -> %p as function", bl_peek_decl_func(entry)->id.str, entry);
+      break;
+    default:
+      break;
+    }
 
     break;
   default:
