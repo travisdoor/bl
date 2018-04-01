@@ -249,14 +249,13 @@ bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_nod
 }
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
 {
   bl_node_t *call = alloc_node(ast);
   if (tok)
     call->src = &tok->src;
 
   call->code = BL_EXPR_CALL;
-  bl_id_init(&bl_peek_expr_call(call)->id, name);
   bl_peek_expr_call(call)->ref  = ref;
   bl_peek_expr_call(call)->path = path;
 
@@ -277,7 +276,7 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name)
 }
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name)
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
 {
   bl_node_t *module = alloc_node(ast);
   if (tok)
@@ -286,6 +285,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name)
   module->code = BL_DECL_MODULE;
   if (name)
     bl_id_init(&bl_peek_decl_module(module)->id, name);
+  bl_peek_decl_module(module)->modif = modif;
 
   return module;
 }
@@ -627,22 +627,31 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_enum(node)->id;
   case BL_EXPR_VAR_REF:
     return &bl_peek_expr_var_ref(node)->id;
-  case BL_EXPR_CALL:
-    return &bl_peek_expr_call(node)->id;
   case BL_TYPE_REF:
     return &bl_peek_type_ref(node)->id;
-  case BL_TYPE_FUND:
-  case BL_DECL_BLOCK:
-  case BL_EXPR_BINOP:
-  case BL_EXPR_CONST:
-  case BL_EXPR_PATH:
-  case BL_STMT_IF:
-  case BL_STMT_LOOP:
-  case BL_STMT_WHILE:
-  case BL_STMT_BREAK:
-  case BL_STMT_CONTINUE:
-  case BL_STMT_RETURN:
+  default:
     return NULL;
+  }
+}
+
+int
+bl_ast_try_get_modif(bl_node_t *node)
+{
+  if (node == NULL) {
+    return BL_MODIF_NONE;
+  }
+
+  switch (bl_node_code(node)) {
+  case BL_DECL_MODULE:
+    return bl_peek_decl_module(node)->modif;
+  case BL_DECL_FUNC:
+    return bl_peek_decl_func(node)->modif;
+  case BL_DECL_STRUCT:
+    return bl_peek_decl_struct(node)->modif;
+  case BL_DECL_ENUM:
+    return bl_peek_decl_enum(node)->modif;
+  default:
+    return BL_MODIF_NONE;
   }
 }
 /**************************************************************************************************/

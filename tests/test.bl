@@ -2,22 +2,11 @@
  * testing playground.
  */
 
-module debug {
+public module debug {
   public extern fn printf(s string) i32;
 }
 
 fn main() i32 {
   sdl::init();
-  sdl::priv(); // should be invalid here (private function)
   debug::printf("hello\n");
-}
-
-module A {
-  module B {
-    fn test() {}
-  }
-
-  fn hell() {
-    B::A::test();
-  }
 }

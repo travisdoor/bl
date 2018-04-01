@@ -143,49 +143,61 @@ link_module(bl_visitor_t *visitor, bl_node_t *module)
   peek_cnt(visitor)->cscope = prev_scope_tmp;
 }
 
+typedef enum { LOOKUP_GSCOPE = 1, LOOKUP_CSCOPE = 2 } lookup_flag_e;
+
+static bl_node_t *
+lookup_node(context_t *cnt, BArray *path, bl_scope_t *cscope, int scope_flag, int iter)
+{
+  bl_node_t *found     = NULL;
+  bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
+
+  /* search symbol in current scope */
+  if (scope_flag & LOOKUP_CSCOPE) {
+    found = bl_scope_get_node(cscope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in current scope */
+  if (scope_flag & LOOKUP_GSCOPE && !found) {
+    found = bl_scope_get_node(cnt->gscope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  if (found == NULL) {
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
+               "unknown module or enumerator " BL_YELLOW("'%s'") " in path expression",
+               bl_peek_expr_path(path_elem)->id.str);
+  }
+
+  iter++;
+
+  if (cscope != cnt->cscope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
+    link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+               "symbol " BL_YELLOW("'%s'") " is private in this context, declared here: %s %d:%d",
+               bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+               found->src->col);
+  }
+
+  if (bl_node_code(found) == BL_DECL_MODULE) {
+    bl_assert(iter < bo_array_size(path), "module cannot be last path element");
+    return lookup_node(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_CSCOPE, iter);
+  } else {
+    bl_assert(iter == bo_array_size(path), "invalid path");
+    return found;
+  }
+
+  return NULL;
+}
+
 static void
 link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  context_t * cnt       = peek_cnt(visitor);
-  bl_scope_t *cscope    = cnt->cscope;
-  bl_scope_t *gscope    = cnt->gscope;
-  bl_node_t * entry     = NULL;
-  bl_node_t * path_elem = NULL;
-  BArray *    path      = NULL;
-  size_t      c         = 0;
+  bl_node_t *found = NULL;
+  context_t *cnt   = peek_cnt(visitor);
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
-    bl_log("call: %s", bl_peek_expr_call(expr)->id.str);
-
-    path = bl_peek_expr_call(expr)->path;
-    bl_assert(path, "invalid path");
-    c = bo_array_size(path);
-    bl_assert(c, "path must have at least one element");
-
-    path_elem = bo_array_at(path, 0, bl_node_t *);
-    /* search in current scope for path symbol */
-    entry = bl_scope_get_node(cscope, &bl_peek_expr_path(path_elem)->id);
-    if (!entry) {
-      entry = bl_scope_get_node(gscope, &bl_peek_expr_path(path_elem)->id);
-      if (!entry) {
-        link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
-                   "unknown module or enumerator " BL_YELLOW("'%s'"),
-                   bl_peek_expr_path(path_elem)->id.str);
-      }
-    }
-
-    switch (bl_node_code(entry)) {
-    case BL_DECL_MODULE:
-      bl_log("found symbol %s -> %p as module", bl_peek_decl_module(entry)->id.str, entry);
-      break;
-    case BL_DECL_FUNC:
-      bl_log("found symbol %s -> %p as function", bl_peek_decl_func(entry)->id.str, entry);
-      break;
-    default:
-      break;
-    }
-
+    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
+                        LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
+    bl_peek_expr_call(expr)->ref = found;
     break;
   default:
     break;

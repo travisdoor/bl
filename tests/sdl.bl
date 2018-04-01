@@ -26,7 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
-module sdl {
+public module sdl {
   public fn init() {
     priv();
   }

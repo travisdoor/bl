@@ -196,6 +196,7 @@ struct bl_stmt_return
 struct bl_decl_module
 {
   bl_id_t          id;
+  int              modif;
   bl_node_t *      parent;
   BArray *         nodes;
   struct bl_scope *scope;
@@ -270,7 +271,6 @@ struct bl_expr_var_ref
 
 struct bl_expr_call
 {
-  bl_id_t    id;
   bl_node_t *ref;
   BArray *   path;
   BArray *   args;
@@ -366,14 +366,13 @@ bl_node_t *
 bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                     BArray *path);
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name);
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
@@ -470,6 +469,9 @@ bl_ast_call_get_arg(bl_node_t *call, const size_t i);
 /**************************************************************************************************/
 bl_id_t *
 bl_ast_try_get_id(bl_node_t *node);
+
+int
+bl_ast_try_get_modif(bl_node_t *node);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H
