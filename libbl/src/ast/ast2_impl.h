@@ -46,6 +46,7 @@
  ft(F32, "f32") \
  ft(F64, "f64") \
  ft(CHAR, "char") \
+ ft(PTR, "ptr") \
  ft(STRING, "string") \
  ft(BOOL, "bool")
 
@@ -265,7 +266,8 @@ struct bl_expr_binop
 
 struct bl_expr_var_ref
 {
-  bl_id_t    id;
+  bl_id_t    id; // TODO: remove
+  BArray *   path;
   bl_node_t *ref;
 };
 
@@ -288,7 +290,8 @@ struct bl_type_fund
 
 struct bl_type_ref
 {
-  bl_id_t    id;
+  bl_id_t    id; // TODO: remove
+  BArray *   path;
   bl_node_t *ref;
 };
 
@@ -338,7 +341,7 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c);
@@ -363,7 +366,8 @@ bl_node_t *
 bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs);
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref);
+bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                        BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);

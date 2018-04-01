@@ -11,10 +11,10 @@ public module debug {
 }
 
 fn main() i32 {
+  var flag sdl::init_flags_e;
   return 0;
-  test();
 }
 
-fn test() {
-
+fn get_flag() sdl::init_flags_e {
 }
+

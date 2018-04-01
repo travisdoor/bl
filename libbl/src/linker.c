@@ -170,8 +170,7 @@ lookup_node(context_t *cnt, BArray *path, bl_scope_t *cscope, int scope_flag, in
   }
 
   if (found == NULL) {
-    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
-               "unknown module or enumerator " BL_YELLOW("'%s'") " in path expression",
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src, "unknown symbol " BL_YELLOW("'%s'"),
                bl_peek_expr_path(path_elem)->id.str);
   }
 
@@ -203,8 +202,9 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
-    found                        = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
+    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
                         LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
+
     bl_peek_expr_call(expr)->ref = found;
     break;
   default:
@@ -212,6 +212,25 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 }
 
+static void
+link_type(bl_visitor_t *visitor, bl_node_t *type)
+{
+  bl_node_t *found = NULL;
+  context_t *cnt   = peek_cnt(visitor);
+
+  switch (bl_node_code(type)) {
+  case BL_TYPE_REF:
+    found = lookup_node(cnt, bl_peek_type_ref(type)->path, cnt->cscope,
+                        LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
+
+    bl_peek_type_ref(type)->ref = found;
+    break;
+  default:
+    break;
+  }
+
+  bl_visitor_walk_type(visitor, type);
+}
 /**************************************************************************************************/
 
 /* main entry function */
@@ -248,6 +267,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_link, &cnt);
   bl_visitor_add(&visitor_link, link_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_link, link_expr, BL_VISIT_EXPR);
+  bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);

@@ -98,7 +98,7 @@ static bl_node_t *
 parse_const_expr_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_var_ref_maybe(context_t *cnt);
+parse_var_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path);
@@ -240,13 +240,19 @@ parse_continue_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_var_ref_maybe(context_t *cnt)
+parse_var_ref_maybe(context_t *cnt, BArray *path)
 {
   bl_node_t * var_ref = NULL;
   bl_token_t *tok_id  = bl_tokens_peek(cnt->tokens);
   if (tok_id->sym == BL_SYM_IDENT) {
     bl_tokens_consume(cnt->tokens);
-    var_ref = bl_ast_add_expr_var_ref(cnt->ast, tok_id, tok_id->value.str, NULL);
+    if (path == NULL) {
+      path = bo_array_new(sizeof(bl_node_t *));
+    }
+
+    bl_node_t *id_path = bl_ast_add_expr_path(cnt->ast, tok_id, tok_id->value.str);
+    bo_array_push_back(path, id_path);
+    var_ref = bl_ast_add_expr_var_ref(cnt->ast, tok_id, tok_id->value.str, NULL, path);
   }
 
   return var_ref;
@@ -416,7 +422,7 @@ parse_atom_expr(context_t *cnt)
   if ((expr = parse_call_maybe(cnt, path)))
     return expr;
 
-  if ((expr = parse_var_ref_maybe(cnt)))
+  if ((expr = parse_var_ref_maybe(cnt, path)))
     return expr;
 
   if ((expr = parse_const_expr_maybe(cnt)))
@@ -507,7 +513,9 @@ bl_node_t *
 parse_type_maybe(context_t *cnt)
 {
   bl_node_t * type = NULL;
+  BArray *    path = parse_path_maybe(cnt);
   bl_token_t *tok  = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
+
   if (tok != NULL) {
     int found = -1;
     for (int i = 0; i < bl_nelems(bl_fund_type_strings); i++) {
@@ -518,10 +526,20 @@ parse_type_maybe(context_t *cnt)
     }
 
     if (found > -1) {
+      // IDEA: use path also for fundamental types?
       type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found);
     } else {
-      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL);
+      if (path == NULL) {
+        path = bo_array_new(sizeof(bl_node_t *));
+      }
+
+      bl_node_t *id_node = bl_ast_add_expr_path(cnt->ast, tok, tok->value.str);
+      bo_array_push_back(path, id_node);
+
+      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path);
     }
+  } else {
+    bo_unref(path);
   }
 
   return type;

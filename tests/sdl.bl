@@ -27,11 +27,25 @@
 //*****************************************************************************
 
 public module sdl {
-  public fn init() {
-    priv();
+  extern fn SDL_Init(flag i32) ptr;
+
+  extern fn SDL_CreateWidnow(name string, 
+                             posx i32, 
+                             posy i32, 
+                             sizex i32, 
+                             sizey i32) ptr;
+
+  public enum init_flags_e {
   }
 
-  fn priv() i32 {
-    return 0;
+  public fn init(flags init_flags_e) {
+    var handle ptr = SDL_Init(flags);
   }
+
+  public enum create_window_flags_e {
+  }
+
+  public fn create_window(name string, flags create_window_flags_e) {
+    var handle ptr = SDL_CreateWidnow(name, flags, 0, 800, 600);
+  } 
 }

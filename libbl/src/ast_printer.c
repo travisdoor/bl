@@ -89,10 +89,10 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   print_head("type", bl_peek_src(type), type, visitor->nesting);
   if (bl_node_is(type, BL_TYPE_REF)) {
-    fprintf(stdout, "name: " BL_YELLOW("'%s' -> %p"), bl_peek_type_ref(type)->id.str,
-            bl_peek_type_ref(type)->ref);
+    print_path(bl_peek_type_ref(type)->path);
+    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_type_ref(type)->ref);
   } else {
-    fprintf(stdout, "name: " BL_YELLOW("'%s'"),
+    fprintf(stdout, "fundamental: " BL_MAGENTA("%s"),
             bl_fund_type_strings[bl_peek_type_fund(type)->type]);
   }
   bl_visitor_walk_type(visitor, type);
@@ -155,8 +155,8 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   case BL_EXPR_VAR_REF:
     print_head("var_ref", bl_peek_src(expr), expr, visitor->nesting);
-    fprintf(stdout, " name: " BL_YELLOW("'%s' -> %p"), bl_peek_expr_var_ref(expr)->id.str,
-            bl_peek_expr_var_ref(expr)->ref);
+    print_path(bl_peek_expr_var_ref(expr)->path);
+    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_var_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);

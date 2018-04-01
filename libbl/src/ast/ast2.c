@@ -68,6 +68,12 @@ node_terminate(bl_node_t *node)
     bo_unref(bl_peek_expr_call(node)->args);
     bo_unref(bl_peek_expr_call(node)->path);
     break;
+  case BL_EXPR_VAR_REF:
+    bo_unref(bl_peek_expr_var_ref(node)->path);
+    break;
+  case BL_TYPE_REF:
+    bo_unref(bl_peek_type_ref(node)->path);
+    break;
   default:
     break;
   }
@@ -121,7 +127,7 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
 }
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref)
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -130,6 +136,7 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   type->code = BL_TYPE_REF;
   bl_id_init(&bl_peek_type_ref(type)->id, name);
   bl_peek_type_ref(type)->ref = ref;
+  bl_peek_type_ref(type)->path = path;
 
   return type;
 }
@@ -235,7 +242,8 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
 }
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref)
+bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                        BArray *path)
 {
   bl_node_t *var_ref = alloc_node(ast);
   if (tok)
@@ -243,7 +251,8 @@ bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_nod
 
   var_ref->code = BL_EXPR_VAR_REF;
   bl_id_init(&bl_peek_expr_var_ref(var_ref)->id, name);
-  bl_peek_expr_var_ref(var_ref)->ref = ref;
+  bl_peek_expr_var_ref(var_ref)->ref  = ref;
+  bl_peek_expr_var_ref(var_ref)->path = path;
 
   return var_ref;
 }
@@ -255,7 +264,7 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *pat
   if (tok)
     call->src = &tok->src;
 
-  call->code = BL_EXPR_CALL;
+  call->code                    = BL_EXPR_CALL;
   bl_peek_expr_call(call)->ref  = ref;
   bl_peek_expr_call(call)->path = path;
 
