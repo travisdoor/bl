@@ -114,13 +114,21 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
   bl_node_t *       conflict = bl_scope_get_node(prev_scope_tmp, &_module->id);
 
   if (conflict) {
+    if (bl_ast_try_get_modif(module) != bl_ast_try_get_modif(conflict)) {
+      link_error(peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, module->src,
+                 "previous declaration of module " BL_YELLOW(
+                     "'%s'") " has different access modifier, originally declared here: %s %d:%d",
+                 _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+    }
+
     peek_cnt(visitor)->cscope = bl_peek_decl_module(conflict)->scope;
-    /*bl_log("reuse %s", _module->id.str);*/
+    _module->scope            = bl_peek_decl_module(conflict)->scope;
+    bl_log("reuse %s", _module->id.str);
   } else {
     _module->scope            = bl_scope_new();
     peek_cnt(visitor)->cscope = _module->scope;
     bl_scope_insert_node(prev_scope_tmp, module);
-    /*bl_log("new %s", _module->id.str);*/
+    bl_log("new %s", _module->id.str);
   }
 
   bl_visitor_walk_module(visitor, module);
@@ -195,7 +203,7 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
-    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
+    found                        = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
                         LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
     bl_peek_expr_call(expr)->ref = found;
     break;

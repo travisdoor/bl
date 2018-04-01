@@ -3,10 +3,15 @@
  */
 
 public module debug {
-  public extern fn printf(s string) i32;
+  extern fn printf(s string) i32;
+
+  public fn print(s string) {
+    printf(s);
+  }
 }
 
 fn main() i32 {
   sdl::init();
-  debug::printf("hello\n");
+  debug::print("hello\n");
+  return 0;
 }

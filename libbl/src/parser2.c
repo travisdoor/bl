@@ -840,12 +840,13 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
   }
 
   int        next_modif = BL_MODIF_NONE;
-  bl_node_t *node  = NULL;
+  bl_node_t *node       = NULL;
 decl:
   next_modif = parse_modifs_maybe(cnt);
 
-  if ((node = bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false, next_modif)))) {
-    if (modif & BL_MODIF_EXTERN) {
+  if ((node =
+           bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false, next_modif)))) {
+    if (next_modif & BL_MODIF_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
                        "module can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
