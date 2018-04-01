@@ -147,9 +147,9 @@ gen_func(context_t *cnt, bl_node_t *func, bool forward)
   }
 
   if (!forward && _func->block) {
-    cnt->func_init_block          = LLVMAppendBasicBlock(llvm_func, gname("init"));
-    LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(llvm_func, gname("entry"));
-    cnt->func_ret_block           = LLVMAppendBasicBlock(llvm_func, gname("exit"));
+    cnt->func_init_block  = LLVMAppendBasicBlock(llvm_func, gname("init"));
+    cnt->func_entry_block = LLVMAppendBasicBlock(llvm_func, gname("entry"));
+    cnt->func_ret_block   = LLVMAppendBasicBlock(llvm_func, gname("exit"));
   }
 }
 
