@@ -267,12 +267,12 @@ bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
   visitor->nesting++;
 
   bl_decl_func_t *fn  = bl_peek_decl_func(func);
-  const size_t    c   = bl_ast_func_arg_count(func);
+  const size_t    c   = bl_ast_func_arg_count(bl_peek_decl_func(func));
   bl_node_t *     arg = NULL;
   bl_visit_f      va  = visitor->visitors[BL_VISIT_ARG];
 
   for (size_t i = 0; i < c; i++) {
-    arg = bl_ast_func_get_arg(func, i);
+    arg = bl_ast_func_get_arg(bl_peek_decl_func(func), i);
     va(visitor, arg);
   }
 

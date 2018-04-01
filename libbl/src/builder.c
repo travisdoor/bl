@@ -88,28 +88,26 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
     return error;
-  //
-  //
-  //  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
-  //    if ((error = bl_llvm_backend_run(builder, assembly)) != BL_NO_ERR)
-  //      return error;
-  //
-  //    if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) !=
-  //    BL_NO_ERR)
-  //      return error;
-  //
-  //    if (flags & BL_BUILDER_EMIT_LLVM &&
-  //      (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
-  //      return error;
-  //
-  //    if (!(flags & BL_BUILDER_RUN)) {
-  //      if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
-  //        return error;
-  //
-  //      if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)
-  //        return error;
-  //    }
-  //  }
+
+  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
+    if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR)
+      return error;
+
+    /*if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)*/
+      /*return error;*/
+
+    if (flags & BL_BUILDER_EMIT_LLVM &&
+        (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
+      return error;
+
+    /*if (!(flags & BL_BUILDER_RUN)) {*/
+      /*if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)*/
+        /*return error;*/
+
+      /*if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)*/
+        /*return error;*/
+    /*}*/
+  }
 
   return BL_NO_ERR;
 }

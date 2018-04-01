@@ -20,7 +20,8 @@ set(HEADER_FILES
         include/bl/assembly.h
         include/bl/builder.h
         include/bl/bldebug.h
-        include/bl/error.h include/bl/config.h)
+        include/bl/error.h 
+        include/bl/config.h)
 
 set(HEADER_FILES_IMPL
         src/builder_impl.h
@@ -44,15 +45,19 @@ set(SOURCE_FILES
         src/token.c
         src/token_printer.c
         src/assembly.c
-        src/llvm_jit_exec.c
         src/builder.c
-        src/llvm_bc_writer.c
-        src/llvm_native_bin.c
         src/lexer.c
         src/ast_printer.c
+        src/llvm_jit_exec.c
+        src/llvm_bc_writer.c
+        src/llvm_native_bin.c
         src/llvm_linker.c 
+        src/llvm_generator.c 
         src/scope.c 
-        src/ast/id.c src/parser2.c src/ast/ast2.c src/ast/visitor.c)
+        src/ast/id.c 
+        src/parser2.c 
+        src/ast/ast2.c 
+        src/ast/visitor.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

@@ -42,6 +42,7 @@
 
 #define BL_CYAN(str) "\x1b[36m" str "\x1b[0m"
 
+#ifdef BL_DEBUG
 #define bl_assert(expr, format, ...)                                                               \
   if ((expr) == 0) {                                                                               \
     fprintf(stderr, BL_RED("assert: ") format "\n", ##__VA_ARGS__);                                \
@@ -68,5 +69,30 @@
   {                                                                                                \
     fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
   }
+#else
+#define bl_assert(expr, format, ...)                                                               \
+  while (0) {                                                                                      \
+  }
+
+#define bl_abort(format, ...)                                                                      \
+  {                                                                                                \
+    fprintf(stderr, BL_RED("abort: ") format "\n", ##__VA_ARGS__);                                 \
+    abort();                                                                                       \
+  }
+
+#define bl_error(format, ...)                                                                      \
+  {                                                                                                \
+    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
+  }
+
+#define bl_warning(format, ...)                                                                    \
+  {                                                                                                \
+    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
+  }
+
+#define bl_log(format, ...)                                                                        \
+  while (0) {                                                                                      \
+  }
+#endif
 
 #endif /* end of include guard: BLDEBUG_H_VYI9AXGT */

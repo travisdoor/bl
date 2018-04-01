@@ -39,4 +39,6 @@
 #error "Unknown platform"
 #endif
 
+#define BL_MAX_FUNC_ARG_COUNT 32
+
 #endif // BL_CONFIG_H

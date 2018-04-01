@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
+set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")

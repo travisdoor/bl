@@ -36,6 +36,17 @@ public module sdl {
                              sizey i32) ptr;
 
   public enum init_flags_e {
+    /*
+    Timer          = 0x00000001,
+    Audio          = 0x00000010,
+    Video          = 0x00000020,
+    Joystick       = 0x00000200,
+    Haptic         = 0x00001000,
+    GameController = 0x00002000,
+    Events         = 0x00004000,
+    NoParachute    = 0x00010000,
+    All            = 0x00007FFF
+    */
   }
 
   public fn init(flags init_flags_e) {

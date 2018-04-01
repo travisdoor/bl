@@ -744,7 +744,7 @@ parse_fn_maybe(context_t *cnt, int modif)
     /* parse args */
     bool rq = false;
   arg:
-    if (bl_ast_func_push_arg(fn, parse_arg_maybe(cnt))) {
+    if (bl_ast_func_push_arg(bl_peek_decl_func(fn), parse_arg_maybe(cnt))) {
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         rq = true;
         goto arg;
@@ -753,6 +753,12 @@ parse_fn_maybe(context_t *cnt, int modif)
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err,
                   "expected function argument after comma " BL_YELLOW("','"));
+    }
+
+    if (bl_ast_func_arg_count(bl_peek_decl_func(fn)) > BL_MAX_FUNC_ARG_COUNT) {
+      parse_error_node(cnt, BL_ERR_INVALID_PARAM_COUNT, fn,
+                       "maximum argument count reached (%d) in declaration of " BL_YELLOW("'%s'"),
+                       BL_MAX_FUNC_ARG_COUNT, bl_peek_decl_func(fn)->id.str);
     }
 
     tok = bl_tokens_consume(cnt->tokens);

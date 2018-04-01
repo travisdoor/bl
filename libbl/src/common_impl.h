@@ -30,6 +30,7 @@
 #define BL_COMMON_IMPL_H
 
 #include "bl/bldebug.h"
+#include "bl/config.h"
 #include "bl/error.h"
 #include "blmemory_impl.h"
 
