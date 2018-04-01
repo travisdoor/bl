@@ -11,7 +11,10 @@ public module debug {
 }
 
 fn main() i32 {
-  sdl::init();
-  debug::print("hello\n");
   return 0;
+  test();
+}
+
+fn test() {
+
 }
