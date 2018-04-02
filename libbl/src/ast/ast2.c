@@ -40,14 +40,9 @@ typedef struct
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
 {
-  if (ast->chunk_used >= CACHE_PREALLOC_ELEM) {
-    void *new_chunk = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
-    ((next_t *)&ast->chunk_current[CACHE_PREALLOC_ELEM])->next = new_chunk;
-    ast->chunk_current                                         = new_chunk;
-    ast->chunk_used                                            = 0;
-  }
-
-  return &(ast->chunk_current[ast->chunk_used++]);
+  bl_node_t *node = bl_calloc(sizeof(bl_node_t), 1);
+  bo_array_push_back(ast->nodes, node);
+  return node;
 }
 
 static void
@@ -86,34 +81,21 @@ node_terminate(bl_node_t *node)
 void
 bl_ast_init(bl_ast_t *ast)
 {
-  /* one extra element for jump to next chunk */
-  ast->chunk_current = bl_calloc(CACHE_PREALLOC_ELEM + 1, sizeof(bl_node_t));
-  ast->chunk_used    = 0;
-
-  ((next_t *)&ast->chunk_current[CACHE_PREALLOC_ELEM])->next = NULL;
-  ast->cache_begin                                           = ast->chunk_current;
+  ast->nodes = bo_array_new(sizeof(bl_node_t *));
+  bo_array_reserve(ast->nodes, 1024);
 }
 
 void
 bl_ast_terminate(bl_ast_t *ast)
 {
-  bl_node_t *node;
-  bl_node_t *chunk = ast->cache_begin;
-  int        i     = 0;
-
-  while (chunk != NULL) {
-    if (i != 0 && i % CACHE_PREALLOC_ELEM == 0) {
-      chunk = ((next_t *)&chunk[i])->next;
-      i     = 0;
-      continue;
-    }
-
-    node = &chunk[i];
+  bl_node_t *  node;
+  const size_t c = bo_array_size(ast->nodes);
+  for (size_t i = 0; i < c; ++i) {
+    node = bo_array_at(ast->nodes, i, bl_node_t *);
     node_terminate(node);
-    i++;
   }
 
-  bl_free(ast->cache_begin);
+  bo_unref(ast->nodes);
 }
 
 bl_node_t *
@@ -245,15 +227,13 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
 }
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                        BArray *path)
+bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
 {
   bl_node_t *var_ref = alloc_node(ast);
   if (tok)
     var_ref->src = &tok->src;
 
-  var_ref->code = BL_EXPR_VAR_REF;
-  bl_id_init(&bl_peek_expr_var_ref(var_ref)->id, name);
+  var_ref->code                       = BL_EXPR_VAR_REF;
   bl_peek_expr_var_ref(var_ref)->ref  = ref;
   bl_peek_expr_var_ref(var_ref)->path = path;
 
@@ -394,13 +374,14 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif
 }
 
 bl_node_t *
-bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok)
+bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent)
 {
   bl_node_t *block = alloc_node(ast);
   if (tok)
     block->src = &tok->src;
 
-  block->code = BL_DECL_BLOCK;
+  block->code                       = BL_DECL_BLOCK;
+  bl_peek_decl_block(block)->parent = parent;
 
   return block;
 }
@@ -650,8 +631,6 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_struct(node)->id;
   case BL_DECL_ENUM:
     return &bl_peek_decl_enum(node)->id;
-  case BL_EXPR_VAR_REF:
-    return &bl_peek_expr_var_ref(node)->id;
   case BL_TYPE_REF:
     return &bl_peek_type_ref(node)->id;
   case BL_DECL_VARIANT:
@@ -680,5 +659,17 @@ bl_ast_try_get_modif(bl_node_t *node)
   default:
     return BL_MODIF_NONE;
   }
+}
+
+size_t
+bl_ast_node_count(bl_ast_t *ast)
+{
+  return bo_array_size(ast->nodes);
+}
+
+bl_node_t *
+bl_ast_get_node(bl_ast_t *ast, size_t i)
+{
+  return bo_array_at(ast->nodes, i, bl_node_t *);
 }
 /**************************************************************************************************/

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// Biscuit Language
+// Biscuit Language 
 //
-// File:   sdl.bl
+// File:   block_scope_impl.h
 // Author: Martin Dorazil
-// Date:   29/03/2018
+// Date:   14.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,44 +26,34 @@
 // SOFTWARE.
 //*****************************************************************************
 
-public module sdl {
-  // extern private functions
-  extern fn SDL_Init(flag i32) i32;
-  extern fn SDL_Quit();
-  extern fn SDL_CreateWindow(name string, posx i32, posy i32, sizex i32, sizey i32) ptr;
-  extern fn SDL_DestroyWindow(window ptr);
-  extern fn SDL_CreateRenderer(window ptr, index i32, flags u32) ptr;
-  extern fn SDL_DestroyRenderer(renderer ptr);
-  extern fn SDL_Delay(ms i32);
-  extern fn SDL_PumpEvents();
-  extern fn SDL_SetRenderDrawColor(renderer ptr, r i32, g i32, b i32, a i32) i32;
-  extern fn SDL_RenderClear(renderer ptr) i32;
-  extern fn SDL_RenderPresent(renderer ptr);
-  extern fn SDL_GetError() string;
-  
+#ifndef BLOCK_SCOPE_IMPL_H_C5LHTUYK
+#define BLOCK_SCOPE_IMPL_H_C5LHTUYK
 
-  // public
-  public fn init(flags i32) i32 {
-    return SDL_Init(flags);
-  }
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include "ast//ast2_impl.h"
 
-  public fn quit() {
-    SDL_Quit();
-  }
+typedef struct {
+  BArray *scopes; 
+} bl_block_scope_t;
 
-  public fn create_window(name string, flags i32) ptr {
-    return SDL_CreateWindow(name, flags, 0, 800, 600);
-  } 
+void
+bl_block_scope_init(bl_block_scope_t *scope);
 
-  public fn destroy_window(window ptr) {
-    SDL_DestroyWindow(window);
-  }
+void
+bl_block_scope_terminate(bl_block_scope_t *scope);
 
-  public fn delay(ms i32) {
-    SDL_Delay(ms);
-  }
+void
+bl_block_scope_push(bl_block_scope_t *scope);
 
-  public fn pump_events() {
-    SDL_PumpEvents();
-  }
-}
+void
+bl_block_scope_pop(bl_block_scope_t *scope);
+
+/* insert new node or return conflicted node */
+void
+bl_block_scope_insert_node(bl_block_scope_t *scope, bl_node_t *node);
+
+bl_node_t *
+bl_block_scope_get_node(bl_block_scope_t *scope, bl_id_t *id);
+
+#endif /* end of include guard: BLOCK_SCOPE_IMPL_H_C5LHTUYK */

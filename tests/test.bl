@@ -3,17 +3,29 @@
  */
 
 public module debug {
-  extern fn printf(s string) i32;
+  extern fn printf(s string, n i32) i32;
+  extern fn puts(s string) i32;
 
-  public fn print(s string) {
-    printf(s);
+  public fn print(s string, i i32) {
+    printf(s, i);
+  }
+
+  public fn println(s string) {
+    puts(s);
   }
 }
 
 fn main() i32 {
-  test();
-  return 0;
+  // test SDL2
+  sdl::init(0x00000010);
+  var window ptr = sdl::create_window("hello world", 4);
+
+  sdl::pump_events();
+  sdl::delay(2000);
+
+  sdl::destroy_window(window);
+  sdl::quit();
+
+  return 666;
 }
 
-fn test() {
-}

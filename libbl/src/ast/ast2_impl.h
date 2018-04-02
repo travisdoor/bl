@@ -128,9 +128,8 @@ typedef enum bl_modif     bl_modif_e;
 struct bl_ast
 {
   bl_node_t *root;
-  bl_node_t *cache_begin;
-  bl_node_t *chunk_current;
-  size_t     chunk_used;
+  bl_node_t *entry_func;
+  BArray *   nodes;
 };
 
 enum bl_node_code
@@ -165,7 +164,8 @@ enum bl_modif
 {
   BL_MODIF_NONE   = 0,
   BL_MODIF_PUBLIC = 1,
-  BL_MODIF_EXTERN = 2
+  BL_MODIF_EXTERN = 2,
+  BL_MODIF_EXPORT = 4,
 };
 
 struct bl_stmt_if
@@ -233,6 +233,7 @@ struct bl_decl_func
   BArray *   args;
   bl_node_t *block;
   bl_node_t *ret_type;
+  int        used;
 };
 
 struct bl_decl_struct
@@ -243,14 +244,15 @@ struct bl_decl_struct
 
 struct bl_decl_enum
 {
-  bl_id_t          id;
-  int              modif;
-  BArray *         elems;
+  bl_id_t id;
+  int     modif;
+  BArray *elems;
 };
 
 struct bl_decl_block
 {
-  BArray *nodes;
+  BArray *   nodes;
+  bl_node_t *parent;
 };
 
 struct bl_expr_const
@@ -277,7 +279,6 @@ struct bl_expr_binop
 
 struct bl_expr_var_ref
 {
-  bl_id_t    id; // TODO: remove
   BArray *   path;
   bl_node_t *ref;
 };
@@ -378,8 +379,7 @@ bl_node_t *
 bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs);
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                        BArray *path);
+bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
@@ -412,7 +412,7 @@ bl_node_t *
 bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
-bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok);
+bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
@@ -492,6 +492,12 @@ bl_ast_try_get_id(bl_node_t *node);
 
 int
 bl_ast_try_get_modif(bl_node_t *node);
+
+size_t
+bl_ast_node_count(bl_ast_t *ast);
+
+bl_node_t *
+bl_ast_get_node(bl_ast_t *ast, size_t i);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

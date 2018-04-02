@@ -59,6 +59,7 @@ typedef enum {
   BL_ERR_EXPECTED_TYPE         = 313,
   BL_ERR_EXPECTED_NAME         = 314,
   BL_ERR_EXPECTED_BINOP        = 315,
+  BL_ERR_DUPLICATE_ENTRY       = 316,
 
   BL_ERR_NOT_VERIFIED = 400,
 

@@ -397,6 +397,22 @@ bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 }
 
 void
+bl_visitor_walk_if_true(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  visitor->nesting++;
+  walk_block_content(visitor, bl_peek_stmt_if(if_stmt)->true_stmt);
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_if_false(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  visitor->nesting++;
+  walk_block_content(visitor, bl_peek_stmt_if(if_stmt)->false_stmt);
+  visitor->nesting--;
+}
+
+void
 bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
 {
   visitor->nesting++;

@@ -98,6 +98,12 @@ void
 bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t *if_stmt);
 
 void
+bl_visitor_walk_if_true(bl_visitor_t *visitor, bl_node_t *if_stmt);
+
+void
+bl_visitor_walk_if_false(bl_visitor_t *visitor, bl_node_t *if_stmt);
+
+void
 bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop);
 
 void

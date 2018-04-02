@@ -46,6 +46,10 @@ print_modif(int modif)
   if (modif & BL_MODIF_EXTERN) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXTERN]);
   }
+
+  if (modif & BL_MODIF_EXPORT) {
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
+  }
 }
 
 static inline void
@@ -78,7 +82,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   print_head("function", bl_peek_src(func), func, visitor->nesting);
   bl_decl_func_t *_func = bl_peek_decl_func(func);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _func->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _func->id.str, _func->used);
   print_modif(_func->modif);
 
   bl_visitor_walk_func(visitor, func);

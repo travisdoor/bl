@@ -30,6 +30,7 @@
 #include "common_impl.h"
 #include "stages_impl.h"
 #include "ast/visitor_impl.h"
+#include "block_scope_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
@@ -42,11 +43,12 @@
 
 typedef struct
 {
-  bl_builder_t * builder;
-  bl_assembly_t *assembly;
-  jmp_buf        jmp_error;
-  bl_scope_t *   cscope;
-  bl_scope_t *   gscope;
+  bl_block_scope_t block_scope;
+  bl_builder_t *   builder;
+  bl_assembly_t *  assembly;
+  jmp_buf          jmp_error;
+  bl_scope_t *     gscope;
+  bl_scope_t *     mod_scope;
 } context_t;
 
 /* declaration merging */
@@ -56,7 +58,7 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
   context_t *     cnt   = peek_cnt(visitor);
-  bl_scope_t *    scope = peek_cnt(visitor)->cscope;
+  bl_scope_t *    scope = peek_cnt(visitor)->mod_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_func->id);
 
@@ -74,7 +76,7 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
   context_t *       cnt    = peek_cnt(visitor);
-  bl_scope_t *      scope  = peek_cnt(visitor)->cscope;
+  bl_scope_t *      scope  = peek_cnt(visitor)->mod_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_strct->id);
 
@@ -92,7 +94,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm  = bl_peek_decl_enum(enm);
   context_t *     cnt   = peek_cnt(visitor);
-  bl_scope_t *    scope = peek_cnt(visitor)->cscope;
+  bl_scope_t *    scope = peek_cnt(visitor)->mod_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_enm->id);
 
@@ -108,7 +110,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 static void
 merge_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->cscope;
+  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
   bl_decl_module_t *_module  = bl_peek_decl_module(module);
   bl_node_t *       conflict = bl_scope_get_node(prev_scope_tmp, &_module->id);
@@ -121,18 +123,16 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
                  _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     }
 
-    peek_cnt(visitor)->cscope = bl_peek_decl_module(conflict)->scope;
-    _module->scope            = bl_peek_decl_module(conflict)->scope;
-    bl_log("reuse %s", _module->id.str);
+    peek_cnt(visitor)->mod_scope = bl_peek_decl_module(conflict)->scope;
+    _module->scope               = bl_peek_decl_module(conflict)->scope;
   } else {
-    _module->scope            = bl_scope_new();
-    peek_cnt(visitor)->cscope = _module->scope;
+    _module->scope               = bl_scope_new();
+    peek_cnt(visitor)->mod_scope = _module->scope;
     bl_scope_insert_node(prev_scope_tmp, module);
-    bl_log("new %s", _module->id.str);
   }
 
   bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->cscope = prev_scope_tmp;
+  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
 /**************************************************************************************************/
 
@@ -141,30 +141,44 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
 static void
 link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->cscope;
+  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
-  peek_cnt(visitor)->cscope = bl_peek_decl_module(module)->scope;
-  bl_assert(peek_cnt(visitor)->cscope, "invalid next scope");
+  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
 
   bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->cscope = prev_scope_tmp;
+  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
 
-typedef enum { LOOKUP_GSCOPE = 1, LOOKUP_CSCOPE = 2 } lookup_flag_e;
+typedef enum { LOOKUP_GSCOPE = 1, LOOKUP_MOD_SCOPE = 2, LOOKUP_BLOCK_SCOPE = 4 } lookup_flag_e;
 
 static bl_node_t *
-lookup_node(context_t *cnt, BArray *path, bl_scope_t *cscope, int scope_flag, int iter)
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter);
+
+static bl_node_t *
+lookup_node(context_t *cnt, BArray *path, int scope_flag)
+{
+  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0);
+}
+
+bl_node_t *
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter)
 {
   bl_node_t *found     = NULL;
   bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
 
-  /* search symbol in current scope */
-  if (scope_flag & LOOKUP_CSCOPE) {
-    found = bl_scope_get_node(cscope, &bl_peek_expr_path(path_elem)->id);
+  /* search symbol in block scope */
+  if (scope_flag & LOOKUP_BLOCK_SCOPE) {
+    found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_expr_path(path_elem)->id);
   }
 
-  /* search symbol in current scope */
+  /* search symbol in module scope */
+  if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
+    found = bl_scope_get_node(mod_scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in global scope */
   if (scope_flag & LOOKUP_GSCOPE && !found) {
     found = bl_scope_get_node(cnt->gscope, &bl_peek_expr_path(path_elem)->id);
   }
@@ -176,7 +190,7 @@ lookup_node(context_t *cnt, BArray *path, bl_scope_t *cscope, int scope_flag, in
 
   iter++;
 
-  if (cscope != cnt->cscope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
+  if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
     link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
                "symbol " BL_YELLOW("'%s'") " is private in this context, declared here: %s %d:%d",
                bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
@@ -184,8 +198,13 @@ lookup_node(context_t *cnt, BArray *path, bl_scope_t *cscope, int scope_flag, in
   }
 
   if (bl_node_code(found) == BL_DECL_MODULE) {
-    bl_assert(iter < bo_array_size(path), "module cannot be last path element");
-    return lookup_node(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_CSCOPE, iter);
+    if (iter == bo_array_size(path)) {
+      link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
+                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s %d:%d",
+                 bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+                 found->src->col);
+    }
+    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path");
     return found;
@@ -202,14 +221,22 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
-    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, cnt->cscope,
-                        LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
+    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
 
     bl_peek_expr_call(expr)->ref = found;
+    bl_peek_decl_func(found)->used++;
+    break;
+  case BL_EXPR_VAR_REF:
+    found = lookup_node(cnt, bl_peek_expr_var_ref(expr)->path,
+                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
+
+    bl_peek_expr_var_ref(expr)->ref = found;
     break;
   default:
     break;
   }
+
+  bl_visitor_walk_expr(visitor, expr);
 }
 
 static void
@@ -220,8 +247,7 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
 
   switch (bl_node_code(type)) {
   case BL_TYPE_REF:
-    found = lookup_node(cnt, bl_peek_type_ref(type)->path, cnt->cscope,
-                        LOOKUP_GSCOPE | LOOKUP_CSCOPE, 0);
+    found = lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
 
     bl_peek_type_ref(type)->ref = found;
     break;
@@ -231,6 +257,65 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
 
   bl_visitor_walk_type(visitor, type);
 }
+
+static void
+link_func_args(context_t *cnt, bl_decl_func_t *func)
+{
+  /*
+   * make all function parameters available in current block scope context
+   */
+
+  const size_t c = bl_ast_func_arg_count(func);
+  bl_node_t *  arg;
+  for (size_t i = 0; i < c; ++i) {
+    arg = bl_ast_func_get_arg(func, i);
+
+    bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_decl_arg(arg)->id);
+    if (conflict) {
+      link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg->src,
+                 "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+                 bl_peek_decl_arg(arg)->id.str, conflict->src->file, conflict->src->line,
+                 conflict->src->col);
+    } else {
+      bl_block_scope_insert_node(&cnt->block_scope, arg);
+    }
+  }
+}
+
+static void
+link_block(bl_visitor_t *visitor, bl_node_t *block)
+{
+  context_t *      cnt    = peek_cnt(visitor);
+  bl_decl_block_t *_block = bl_peek_decl_block(block);
+
+  bl_block_scope_push(&cnt->block_scope);
+
+  bl_assert(_block->parent, "block has no parent");
+  if (bl_node_code(_block->parent) == BL_DECL_FUNC) {
+    link_func_args(cnt, bl_peek_decl_func(_block->parent));
+  }
+
+  bl_visitor_walk_block(visitor, block);
+  bl_block_scope_pop(&cnt->block_scope);
+}
+
+static void
+link_var(bl_visitor_t *visitor, bl_node_t *var)
+{
+  context_t *    cnt  = peek_cnt(visitor);
+  bl_decl_var_t *_var = bl_peek_decl_var(var);
+
+  bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &_var->id);
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               _var->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  } else {
+    bl_block_scope_insert_node(&cnt->block_scope, var);
+  }
+
+  bl_visitor_walk_var(visitor, var);
+}
 /**************************************************************************************************/
 
 /* main entry function */
@@ -238,10 +323,12 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder  = builder,
-                   .assembly = assembly,
-                   .cscope   = assembly->scope,
-                   .gscope   = assembly->scope};
+  context_t cnt = {.builder   = builder,
+                   .assembly  = assembly,
+                   .mod_scope = assembly->scope,
+                   .gscope    = assembly->scope};
+
+  bl_block_scope_init(&cnt.block_scope);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -268,11 +355,15 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_link, link_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
+  bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
+  bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_link, unit->ast.root);
   }
+
+  bl_block_scope_terminate(&cnt.block_scope);
 
   return BL_NO_ERR;
 }
