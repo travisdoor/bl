@@ -4,9 +4,9 @@
  * Factorial.
  */
 
-extern i32 printf(string s, i32 i);
+extern fn printf(s string, i i32) i32;
 
-i32 main() {
+fn main() i32 {
   printf("factorial(1) = %d\n", factorial(1));
   printf("factorial(5) = %d\n", factorial(5));
   printf("factorial(10) = %d\n", factorial(10));
@@ -14,7 +14,7 @@ i32 main() {
   return 0;
 }
 
-i32 factorial(i32 f)
+fn factorial(f i32) i32 
 {
   if (f == 0)  {
     return 1;

@@ -4,12 +4,19 @@
  * Declaration default values. 
  */
 
-i32 main() {
-  i32 i = 10;
-  char ch;
-  string s = "hello";
-  i32 a = 0;
-  bool blc = true;
-  bool bl2 = false;
+fn main() i32 {
+  var _i8     i8;
+  var _i32    i32;
+  var _i64    i64;
+  var _u8     u8;
+  var _u32    u32;
+  var _u64    u64;
+  var _f32    f32;
+  var _f64    f64;
+  var _char   char;
+  var _ptr    ptr;
+  var _string string;
+  var _bool   bool;
+
   return 0;
 }

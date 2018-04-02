@@ -4,9 +4,9 @@
  * If test.
  */
 
-i32 main() {
-  i32 a;
-  i32 b;
+fn main() i32 {
+  var a i32;
+  var b i32;
 
   {
     if (a == 0) {

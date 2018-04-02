@@ -4,9 +4,9 @@
  * Simple external call.
  */
 
-extern void puts(string s);
+extern fn puts(s string);
 
-i32 main() {
+fn main() i32 {
   puts("");
   return 0;
 }

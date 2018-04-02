@@ -4,16 +4,16 @@
  * Simple method calling.
  */
 
-i32 before(i32 a) {
+fn before(a i32) i32 {
   return a;
 }
 
-i32 main() {
-  i32 a = before(0);
+fn main() i32 {
+  var a i32 = before(0);
   after(a);
   return a;
 }
 
-i32 after(i32 a) {
+fn after(a i32) i32 {
   return a;
 }

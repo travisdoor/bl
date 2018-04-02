@@ -4,14 +4,14 @@
  * Method ordering.
  */
 
-void before() {
+fn before() {
 }
 
-i32 main() {
+fn main() i32 {
   before();
   after();
   return 0;
 }
 
-void after() {
+fn after() {
 }

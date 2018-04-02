@@ -4,12 +4,12 @@
  * Expressions with method calls and sub expressions.
  */
 
-i32 main() {
-  i32 a = 2 + 2 * 12 + 4; // 30
-  i32 b = (2 + 2) * 12 + 4; // 52
-  i32 c = 2 + 2 * (12 + 4); // 34
-  i32 d = (2 + get()) * (12 * (4 + 3)); // 588
-  i32 e = add(a, b) * (10 - 5); // 410  
+fn main() i32 {
+  var a i32 = 2 + 2 * 12 + 4; // 30
+  var b i32 = (2 + 2) * 12 + 4; // 52
+  var c i32 = 2 + 2 * (12 + 4); // 34
+  var d i32 = (2 + get()) * (12 * (4 + 3)); // 588
+  var e i32 = add(a, b) * (10 - 5); // 410  
 
   if (a != 30 || b != 52 || c != 34 || d != 588 || e != 410) {
     return 1;
@@ -18,10 +18,10 @@ i32 main() {
   return 0;
 }
 
-i32 get() {
+fn get() i32 {
   return 5;
 }
 
-i32 add(i32 a, i32 b) {
+fn add(a i32, b i32) i32 {
   return a + b;
 }

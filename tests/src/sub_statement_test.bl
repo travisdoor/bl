@@ -5,8 +5,8 @@
  * and inner returns.
  */
 
-i32 main() {
-  i32 i;
+fn main() i32 {
+  var i i32;
 
   {
     i = 10;

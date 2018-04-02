@@ -4,11 +4,11 @@
  * Simple assignement.
  */
 
-i32 main() {
-  i32 i = 10;
+fn main() i32 {
+  var i i32 = 10;
   i = 0;
-  string s = "string";
-  string s2;
+  var s string = "string";
+  var s2 string;
   s = "string";
   s2 = s;
 

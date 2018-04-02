@@ -53,14 +53,6 @@ protected:
   bl_builder_ref  builder;
 };
 
-TEST_F(CompilerTest, simple_definitions)
-{
-  bl_unit_ref unit = bl_unit_new_file(SRC_LOC "simple_decl_test.bl");
-  bl_assembly_add_unit(assembly, unit);
-
-  ASSERT_EQ(bl_builder_compile(builder, assembly, FLAGS), BL_NO_ERR);
-}
-
 TEST_F(CompilerTest, simple_definitions_with_asignement)
 {
   bl_unit_ref unit = bl_unit_new_file(SRC_LOC "decl_def_values_test.bl");
