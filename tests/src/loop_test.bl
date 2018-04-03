@@ -4,13 +4,13 @@
  * Simple loop test.
  */
 
-extern i32 printf(string s, i32 i, i32 i2);
+extern fn printf(s string, i i32, i2 i32) i32;
 
-i32 main() {
-  i32 x;
-  i32 y;
-  i32 pred = 100 * 100;
-  i32 count;
+fn main() i32 {
+  var x i32;
+  var y i32;
+  var pred i32 = 100 * 100;
+  var count i32;
 
   loop {
     if (x == 100) {
