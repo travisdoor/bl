@@ -402,7 +402,7 @@ bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *t
 }
 
 bl_node_t *
-bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *true_stmt)
+bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt)
 {
   bl_node_t *loop_stmt = alloc_node(ast);
   if (tok)
@@ -410,6 +410,7 @@ bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *true_stmt)
 
   loop_stmt->code                         = BL_STMT_LOOP;
   bl_peek_stmt_loop(loop_stmt)->true_stmt = true_stmt;
+  bl_peek_stmt_loop(loop_stmt)->test      = test;
 
   return loop_stmt;
 }

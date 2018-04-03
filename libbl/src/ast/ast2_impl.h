@@ -178,6 +178,9 @@ struct bl_stmt_if
 
 struct bl_stmt_loop
 {
+  /* even if loop doesn't have user defined test expression parser will create one due to
+   * compatibility with while loop */
+  bl_node_t *test;
   bl_node_t *true_stmt;
 };
 
@@ -419,7 +422,7 @@ bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *t
                    bl_node_t *false_stmt);
 
 bl_node_t *
-bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *true_stmt);
+bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);
 
 bl_node_t *
 bl_ast_add_stmt_while(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);

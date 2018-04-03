@@ -624,6 +624,52 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_cont);
 }
 
+static void
+visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
+{
+  /*
+  bl_log("loop");
+  context_t *cnt = peek_cnt(visitor);
+  skip_if_terminated(cnt);
+  bl_stmt_loop_t *  _loop        = bl_peek_stmt_loop(loop);
+  LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
+  bl_assert(LLVMIsAFunction(parent), "invalid parent");
+
+  bool terminated = false;
+
+  LLVMBasicBlockRef loop_decide = LLVMAppendBasicBlock(parent, gname("loop_decide"));
+  LLVMBasicBlockRef loop_block  = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_cont   = LLVMAppendBasicBlock(parent, gname("loop_cont"));
+  LLVMValueRef      expr        = NULL;
+
+  LLVMBuildBr(cnt->llvm_builder, loop_decide);
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
+
+  if (_loop->test) {
+    expr = gen_expr(cnt, loop_stmt->expr);
+
+    if (LLVMIsAAllocaInst(expr))
+      expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+  } else {
+    expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
+  }
+
+  LLVMBuildCondBr(cnt->llvm_builder, expr, loop, loop_cont);
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop);
+  bl_llvm_bl_cnt_push_block(&cnt->block_context);
+  terminated = gen_cmp_stmt(cnt, loop_stmt->cmp_stmt, loop_cont, loop_decide);
+  bl_llvm_bl_cnt_pop_block(&cnt->block_context);
+
+  if (!terminated) {
+    LLVMBuildBr(cnt->llvm_builder, loop_decide);
+  }
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_cont);
+  */
+}
+
 /*************************************************************************************************
  * top level visitors
  * here we decide which functions should be generated
@@ -671,6 +717,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&gen_visitor, visit_block, BL_VISIT_BLOCK);
   bl_visitor_add(&gen_visitor, visit_return, BL_VISIT_RETURN);
   bl_visitor_add(&gen_visitor, visit_if, BL_VISIT_IF);
+  bl_visitor_add(&gen_visitor, visit_loop, BL_VISIT_LOOP);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
