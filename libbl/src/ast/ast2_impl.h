@@ -26,13 +26,14 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_NODE2_IMPL_H
-#define BL_NODE2_IMPL_H
+#ifndef BL_AST2_IMPL_H
+#define BL_AST2_IMPL_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include "id_impl.h"
 #include "token_impl.h"
+#include "scope_impl.h"
 
 // clang-format off
 #define BL_FUND_TYPE_LIST                                                                              \
@@ -199,11 +200,10 @@ struct bl_stmt_return
 
 struct bl_decl_module
 {
-  bl_id_t          id;
-  int              modif;
-  bl_node_t *      parent;
-  BArray *         nodes;
-  struct bl_scope *scope;
+  bl_id_t     id;
+  int         modif;
+  BArray *    nodes;
+  bl_scope_t *scope;
 };
 
 struct bl_decl_var

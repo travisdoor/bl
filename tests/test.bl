@@ -26,6 +26,8 @@ fn main() i32 {
   sdl::destroy_window(window);
   sdl::quit();
 
-  return 666;
+  debug::println("done");
+
+  return 0;
 }
 

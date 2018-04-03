@@ -51,7 +51,6 @@ node_terminate(bl_node_t *node)
   switch (node->code) {
   case BL_DECL_MODULE:
     bo_unref(bl_peek_decl_module(node)->nodes);
-    bl_scope_delete(bl_peek_decl_module(node)->scope);
     break;
   case BL_DECL_FUNC:
     bo_unref(bl_peek_decl_func(node)->args);

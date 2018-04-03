@@ -1,0 +1,35 @@
+/*
+ * Unit test
+ * -----------
+ * Module test.
+ */
+
+module A {
+  public module B {
+  }
+
+  public fn test() {
+  }
+}
+
+module A {
+  public module B {
+    public fn test() {
+    }
+  }
+}
+
+module A {
+  public module C {
+    public fn test() {
+    }
+  }
+}
+
+fn main() i32 {
+  A::test();
+  A::B::test();
+  A::C::test();
+  return 0;
+}
+

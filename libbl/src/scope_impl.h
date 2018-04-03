@@ -30,23 +30,27 @@
 #define BISCUIT_SCOPE_IMPL_H
 
 #include <bobject/containers/htbl.h>
-#include "ast/ast2_impl.h"
+#include <bobject/containers/array.h>
+#include "ast/id_impl.h"
 
-typedef struct bl_scope
-{
-  BHashTable *nodes;
-} bl_scope_t;
+typedef BHashTable bl_scope_t;
+typedef BArray bl_scope_cache_t;
+
+struct bl_node;
+
+bl_scope_cache_t *
+bl_scope_cache_new(void);
+
+void
+bl_scope_cache_delete(bl_scope_cache_t *cache);
 
 bl_scope_t *
-bl_scope_new(void);
+bl_scope_new(bl_scope_cache_t *cache);
 
 void
-bl_scope_delete(bl_scope_t *scope);
+bl_scope_insert_node(bl_scope_t *scope, struct bl_node *node);
 
-void
-bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node);
-
-bl_node_t *
+struct bl_node *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
 
 #endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

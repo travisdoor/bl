@@ -28,23 +28,26 @@
 
 #include "scope_impl.h"
 #include "common_impl.h"
+#include "ast/ast2_impl.h"
 
-bl_scope_t *
-bl_scope_new(void)
+bl_scope_cache_t *
+bl_scope_cache_new(void)
 {
-  bl_scope_t *scope = bl_malloc(sizeof(bl_scope_t));
-  scope->nodes      = bo_htbl_new(sizeof(bl_node_t *), 1024);
-  return scope;
+  return bo_array_new_bo(bo_typeof(BHashTable), true);
 }
 
 void
-bl_scope_delete(bl_scope_t *scope)
+bl_scope_cache_delete(bl_scope_cache_t *cache)
 {
-  if (!scope)
-    return;
+  bo_unref(cache);
+}
 
-  bo_unref(scope->nodes);
-  bl_free(scope);
+bl_scope_t *
+bl_scope_new(bl_scope_cache_t *cache)
+{
+  bl_scope_t *scope = bo_htbl_new(sizeof(bl_node_t *), 1024);
+  bo_array_push_back(cache, scope);
+  return scope;
 }
 
 void
@@ -52,15 +55,15 @@ bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
 {
   bl_id_t *id = bl_ast_try_get_id(node);
   bl_assert(id, "invalid id");
-  bo_htbl_insert(scope->nodes, id->hash, node);
+  bo_htbl_insert(scope, id->hash, node);
 }
 
 bl_node_t *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 {
   bl_assert(id, "invalid id");
-  if (bo_htbl_has_key(scope->nodes, id->hash)) {
-    return bo_htbl_at(scope->nodes, id->hash, bl_node_t *);
+  if (bo_htbl_has_key(scope, id->hash)) {
+    return bo_htbl_at(scope, id->hash, bl_node_t *);
   }
 
   return NULL;

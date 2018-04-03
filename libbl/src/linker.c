@@ -110,7 +110,8 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 static void
 merge_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
+  context_t * cnt            = peek_cnt(visitor);
+  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
   bl_decl_module_t *_module  = bl_peek_decl_module(module);
   bl_node_t *       conflict = bl_scope_get_node(prev_scope_tmp, &_module->id);
@@ -126,7 +127,7 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
     peek_cnt(visitor)->mod_scope = bl_peek_decl_module(conflict)->scope;
     _module->scope               = bl_peek_decl_module(conflict)->scope;
   } else {
-    _module->scope               = bl_scope_new();
+    _module->scope               = bl_scope_new(cnt->assembly->scope_cache);
     peek_cnt(visitor)->mod_scope = _module->scope;
     bl_scope_insert_node(prev_scope_tmp, module);
   }
