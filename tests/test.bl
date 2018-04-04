@@ -16,17 +16,21 @@ public module debug {
 }
 
 fn main() i32 {
-  // test SDL2
-  sdl::init(0x00000010);
-  var window ptr = sdl::create_window("hello world", 4);
+  debug::println("loop");
 
-  sdl::pump_events();
-  sdl::delay(2000);
+  var i i32;
 
-  sdl::destroy_window(window);
-  sdl::quit();
+  while (i < 10) {
+    i = i + 1;
+    debug::print("i = %d\n", i);
+  }
 
-  debug::println("done");
+  /*
+  loop {
+    debug::println("hello");
+    break;
+  }
+  */
 
   return 0;
 }

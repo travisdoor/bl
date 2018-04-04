@@ -69,12 +69,6 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
     break;
   }
 
-  case BL_STMT_WHILE: {
-    bl_visit_f v = visitor->visitors[BL_VISIT_WHILE];
-    v(visitor, stmt);
-    break;
-  }
-
   case BL_STMT_BREAK: {
     bl_visit_f v = visitor->visitors[BL_VISIT_BREAK];
     v(visitor, stmt);
@@ -168,12 +162,6 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
 }
 
 static void
-visit_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
-{
-  bl_visitor_walk_while(visitor, stmt_while);
-}
-
-static void
 visit_break(bl_visitor_t *visitor, bl_node_t *stmt_break)
 {
   bl_visitor_walk_break(visitor, stmt_break);
@@ -208,7 +196,6 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_EXPR]     = visit_expr;
   visitor->visitors[BL_VISIT_IF]       = visit_if;
   visitor->visitors[BL_VISIT_LOOP]     = visit_loop;
-  visitor->visitors[BL_VISIT_WHILE]    = visit_while;
   visitor->visitors[BL_VISIT_BREAK]    = visit_break;
   visitor->visitors[BL_VISIT_CONTINUE] = visit_continue;
   visitor->visitors[BL_VISIT_RETURN]   = visit_return;
@@ -416,17 +403,17 @@ void
 bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
 {
   visitor->nesting++;
+  bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
+  vexpr(visitor, bl_peek_stmt_loop(stmt_loop)->test);
   walk_block_content(visitor, bl_peek_stmt_loop(stmt_loop)->true_stmt);
   visitor->nesting--;
 }
 
 void
-bl_visitor_walk_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
+bl_visitor_walk_loop_body(bl_visitor_t *visitor, bl_node_t *stmt_loop)
 {
   visitor->nesting++;
-  bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
-  vexpr(visitor, bl_peek_stmt_while(stmt_while)->test);
-  walk_block_content(visitor, bl_peek_stmt_while(stmt_while)->true_stmt);
+  walk_block_content(visitor, bl_peek_stmt_loop(stmt_loop)->true_stmt);
   visitor->nesting--;
 }
 

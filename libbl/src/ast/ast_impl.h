@@ -91,13 +91,11 @@ typedef struct bl_ast bl_ast_t;
 
 #define bl_peek_stmt_if(node) (&(node)->n.stmt_if)
 #define bl_peek_stmt_loop(node) (&(node)->n.stmt_loop)
-#define bl_peek_stmt_while(node) (&(node)->n.stmt_while)
 #define bl_peek_stmt_return(node) (&(node)->n.stmt_return)
 
 typedef struct bl_node          bl_node_t;
 typedef struct bl_stmt_if       bl_stmt_if_t;
 typedef struct bl_stmt_loop     bl_stmt_loop_t;
-typedef struct bl_stmt_while    bl_stmt_while_t;
 typedef struct bl_stmt_break    bl_stmt_break_t;
 typedef struct bl_stmt_continue bl_stmt_continue_t;
 typedef struct bl_stmt_return   bl_stmt_return_t;
@@ -177,14 +175,6 @@ struct bl_stmt_if
 };
 
 struct bl_stmt_loop
-{
-  /* even if loop doesn't have user defined test expression parser will create one due to
-   * compatibility with while loop */
-  bl_node_t *test;
-  bl_node_t *true_stmt;
-};
-
-struct bl_stmt_while
 {
   bl_node_t *test;
   bl_node_t *true_stmt;
@@ -319,7 +309,6 @@ struct bl_node
   {
     bl_stmt_if_t       stmt_if;
     bl_stmt_loop_t     stmt_loop;
-    bl_stmt_while_t    stmt_while;
     bl_stmt_break_t    stmt_break;
     bl_stmt_continue_t stmt_continue;
     bl_stmt_return_t   stmt_return;
@@ -423,9 +412,6 @@ bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *t
 
 bl_node_t *
 bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);
-
-bl_node_t *
-bl_ast_add_stmt_while(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);
 
 bl_node_t *
 bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok);

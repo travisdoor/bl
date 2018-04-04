@@ -643,7 +643,6 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   if (_if_stmt->false_stmt != NULL) {
     /* else */
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
-    // TODO: terminated
     bl_visitor_walk_if_false(visitor, if_stmt);
 
     curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -658,16 +657,12 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 static void
 visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
 {
-  /*
-  bl_log("loop");
   context_t *cnt = peek_cnt(visitor);
   skip_if_terminated(cnt);
   bl_stmt_loop_t *  _loop        = bl_peek_stmt_loop(loop);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
-
-  bool terminated = false;
 
   LLVMBasicBlockRef loop_decide = LLVMAppendBasicBlock(parent, gname("loop_decide"));
   LLVMBasicBlockRef loop_block  = LLVMAppendBasicBlock(parent, gname("loop"));
@@ -678,7 +673,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
 
   if (_loop->test) {
-    expr = gen_expr(cnt, loop_stmt->expr);
+    expr = gen_expr(cnt, _loop->test);
 
     if (LLVMIsAAllocaInst(expr))
       expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
@@ -686,19 +681,17 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
   }
 
-  LLVMBuildCondBr(cnt->llvm_builder, expr, loop, loop_cont);
+  LLVMBuildCondBr(cnt->llvm_builder, expr, loop_block, loop_cont);
 
-  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop);
-  bl_llvm_bl_cnt_push_block(&cnt->block_context);
-  terminated = gen_cmp_stmt(cnt, loop_stmt->cmp_stmt, loop_cont, loop_decide);
-  bl_llvm_bl_cnt_pop_block(&cnt->block_context);
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_block);
+  bl_visitor_walk_loop_body(visitor, loop);
 
-  if (!terminated) {
+  LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
     LLVMBuildBr(cnt->llvm_builder, loop_decide);
   }
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_cont);
-  */
 }
 
 /*************************************************************************************************

@@ -211,7 +211,7 @@ parse_while_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
                 "expected " BL_YELLOW("')'") " after while statement expression");
   }
-  bl_node_t *loop = bl_ast_add_stmt_while(cnt->ast, tok_begin, test, NULL);
+  bl_node_t *loop = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
 
   bl_node_t *true_stmt = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL) {
@@ -219,7 +219,7 @@ parse_while_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
   }
 
-  bl_peek_stmt_while(loop)->true_stmt = true_stmt;
+  bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
 
   return loop;
 }

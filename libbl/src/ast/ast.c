@@ -416,20 +416,6 @@ bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t 
 }
 
 bl_node_t *
-bl_ast_add_stmt_while(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt)
-{
-  bl_node_t *while_stmt = alloc_node(ast);
-  if (tok)
-    while_stmt->src = &tok->src;
-
-  while_stmt->code                          = BL_STMT_WHILE;
-  bl_peek_stmt_while(while_stmt)->test      = test;
-  bl_peek_stmt_while(while_stmt)->true_stmt = true_stmt;
-
-  return while_stmt;
-}
-
-bl_node_t *
 bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok)
 {
   bl_node_t *break_stmt = alloc_node(ast);

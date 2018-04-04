@@ -188,13 +188,6 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *stmt_loop)
 }
 
 static void
-visit_while(bl_visitor_t *visitor, bl_node_t *stmt_while)
-{
-  print_head("while", bl_peek_src(stmt_while), stmt_while, visitor->nesting);
-  bl_visitor_walk_while(visitor, stmt_while);
-}
-
-static void
 visit_break(bl_visitor_t *visitor, bl_node_t *stmt_break)
 {
   print_head("break", bl_peek_src(stmt_break), stmt_break, visitor->nesting);
@@ -240,7 +233,6 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
     bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
     bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
-    bl_visitor_add(&visitor, visit_while, BL_VISIT_WHILE);
     bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
     bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
