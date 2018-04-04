@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "stages_impl.h"
 #include "common_impl.h"
-#include "ast/ast2_impl.h"
+#include "ast/ast_impl.h"
 #include "ast/visitor_impl.h"
 
 #define print_head(name, src, ptr, pad)                                                            \

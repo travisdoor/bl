@@ -72,7 +72,7 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags)
   if (flags & BL_BUILDER_PRINT_TOKENS && (error = bl_token_printer_run(unit)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_parser2_run(builder, unit)) != BL_NO_ERR)
+  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
     return error;
 
   return BL_NO_ERR;

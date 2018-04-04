@@ -47,7 +47,8 @@ bl_error_e
 bl_token_printer_run(bl_unit_t *unit);
 
 bl_error_e
-bl_parser2_run(bl_builder_t *builder, bl_unit_t *unit);
+bl_parser_run(bl_builder_t *builder,
+              bl_unit_t *unit);
 
 /*
  * per assembly

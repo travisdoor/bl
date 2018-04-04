@@ -36,7 +36,7 @@ set(HEADER_FILES_IMPL
         src/block_scope_impl.h
         src/ast/id_impl.h
         src/ast/visitor_impl.h
-        src/ast/ast2_impl.h )
+        src/ast/ast_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
@@ -56,9 +56,9 @@ set(SOURCE_FILES
         src/llvm_generator.c 
         src/scope.c 
         src/block_scope.c
-        src/ast/id.c 
-        src/parser2.c 
-        src/ast/ast2.c 
+        src/ast/id.c
+        src/parser.c
+        src/ast/ast.c
         src/ast/visitor.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})

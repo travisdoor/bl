@@ -31,7 +31,7 @@
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include "ast//ast2_impl.h"
+#include "ast/ast_impl.h"
 
 typedef struct {
   BArray *scopes; 

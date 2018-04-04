@@ -30,7 +30,7 @@
 #define BL_UNIT_IMPL_H
 
 #include "bl/unit.h"
-#include "ast/ast2_impl.h"
+#include "ast/ast_impl.h"
 #include "tokens_impl.h"
 
 /* class Unit object members */

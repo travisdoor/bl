@@ -29,7 +29,7 @@
 #ifndef VISITOR_IMPL_H_0IZSKUFY
 #define VISITOR_IMPL_H_0IZSKUFY
 
-#include "ast2_impl.h"
+#include "ast_impl.h"
 
 typedef struct bl_visitor bl_visitor_t;
 

@@ -1,7 +1,7 @@
 //*****************************************************************************
 // bl
 //
-// File:   ast2.c
+// File:   ast.c
 // Author: Martin Dorazil
 // Date:   15/03/2018
 //
@@ -26,7 +26,7 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include "ast/ast2_impl.h"
+#include "ast/ast_impl.h"
 #include "common_impl.h"
 #include "scope_impl.h"
 

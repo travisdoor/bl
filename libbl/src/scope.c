@@ -28,7 +28,7 @@
 
 #include "scope_impl.h"
 #include "common_impl.h"
-#include "ast/ast2_impl.h"
+#include "ast/ast_impl.h"
 
 bl_scope_cache_t *
 bl_scope_cache_new(void)
