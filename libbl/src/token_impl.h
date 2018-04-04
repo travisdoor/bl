@@ -50,6 +50,7 @@ BO_BEGIN_DECLS
   sm(ELSE, "else") \
   sm(TRUE, "true") \
   sm(FALSE, "false") \
+  sm(NULL, "null") \
   sm(EXTERN, "extern") \
   sm(EXPORT, "export") \
   sm(RETURN, "return") \

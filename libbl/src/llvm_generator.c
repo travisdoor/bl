@@ -57,7 +57,7 @@
   if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
 
-#define DEBUG_NAMES 1
+#define DEBUG_NAMES 0
 
 #if DEBUG_NAMES
 #define gname(s) s
@@ -69,20 +69,32 @@ typedef struct
 {
   bl_builder_t * builder;
   bl_assembly_t *assembly;
-  BHashTable *   gen_stack;
+
+  /* hash set of unique pointers to ast nodes of the exported functions */
+  BHashTable *gen_stack;
+  BHashTable *gen_stack_extern;
 
   LLVMModuleRef  mod;
   LLVMBuilderRef llvm_builder;
   LLVMContextRef llvm_cnt;
 
   /* tmps */
-  BHashTable *      gscope;
-  BHashTable *      cscope;
-  BHashTable *      const_strings;
+  /* mapping ast node pointers to LLVMValues for symbols in global scope */
+  BHashTable *gscope;
+
+  /* mapping ast node pointers to LLVMValues for symbols in current function scope */
+  BHashTable *cscope;
+
+  /* constant string cache */
+  BHashTable *const_strings;
+
+  /* LLVM blocks */
   LLVMBasicBlockRef func_init_block;
   LLVMBasicBlockRef func_ret_block;
   LLVMBasicBlockRef func_entry_block;
-  LLVMValueRef      ret_value;
+
+  /* LLVMValueRef to current return tmp */
+  LLVMValueRef ret_value;
 } context_t;
 
 static int
@@ -181,7 +193,11 @@ gen_func(context_t *cnt, bl_node_t *func)
 {
   bl_decl_func_t *_func     = bl_peek_decl_func(func);
   LLVMValueRef    llvm_func = NULL;
-  if (is_in_gscope(func)) {
+
+  /* find extern functions by name in current module */
+  if (_func->modif & BL_MODIF_EXTERN) {
+    llvm_func = LLVMGetNamedFunction(cnt->mod, _func->id.str);
+  } else if (is_in_gscope(func)) {
     llvm_func = get_value_gscope(func);
   }
 
@@ -194,7 +210,8 @@ gen_func(context_t *cnt, bl_node_t *func)
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
     llvm_func            = LLVMAddFunction(cnt->mod, _func->id.str, ret_type);
 
-    push_value_gscope(func, llvm_func);
+    if (!(_func->modif & BL_MODIF_EXTERN))
+      push_value_gscope(func, llvm_func);
 
     if (!bo_htbl_has_key(cnt->gen_stack, (uint64_t)func)) {
       bo_htbl_insert_empty(cnt->gen_stack, (uint64_t)func);
@@ -313,6 +330,10 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, true);
       break;
+    case BL_FTYPE_U64:
+      val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, false);
+      break;
     case BL_FTYPE_F32:
     case BL_FTYPE_F64:
       val = LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), cnst->value.f);
@@ -423,6 +444,16 @@ generate(bl_visitor_t *visitor)
   context_t *   cnt  = peek_cnt(visitor);
   bl_node_t *   node = NULL;
   bo_iterator_t begin;
+
+  while (bo_htbl_size(cnt->gen_stack_extern) > 0) {
+    begin = bo_htbl_begin(cnt->gen_stack_extern);
+    node  = bo_htbl_iter_peek_value(cnt->gen_stack, &begin, bl_node_t *);
+
+    gen_func(cnt, node);
+    bo_htbl_erase(cnt->gen_stack_extern, &begin);
+  }
+
+  /* generate all exported functions and functions used inside */
   while (bo_htbl_size(cnt->gen_stack) > 0) {
     begin = bo_htbl_begin(cnt->gen_stack);
     node  = (bl_node_t *)bo_htbl_iter_peek_key(cnt->gen_stack, &begin);
@@ -677,10 +708,14 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
 static void
 visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
-  context_t *cnt = peek_cnt(visitor);
-  if (bl_peek_decl_func(func)->modif & BL_MODIF_EXPORT) {
+  context_t *     cnt   = peek_cnt(visitor);
+  bl_decl_func_t *_func = bl_peek_decl_func(func);
+  if (_func->modif & BL_MODIF_EXPORT) {
     /* generate exported functions */
     bo_htbl_insert_empty(cnt->gen_stack, (uint64_t)func);
+  } else if (_func->modif & BL_MODIF_EXTERN) {
+    if (!bo_htbl_has_key(cnt->gen_stack_extern, _func->id.hash))
+      bo_htbl_insert(cnt->gen_stack_extern, _func->id.hash, func);
   }
 }
 
@@ -694,15 +729,16 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   size_t     c    = bo_array_size(assembly->units);
 
   /* context initialization */
-  context_t cnt     = {0};
-  cnt.builder       = builder;
-  cnt.llvm_cnt      = LLVMContextCreate();
-  cnt.mod           = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
-  cnt.llvm_builder  = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.gscope        = bo_htbl_new(sizeof(LLVMValueRef), 2048);
-  cnt.cscope        = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.gen_stack     = bo_htbl_new(0, 2048);
+  context_t cnt        = {0};
+  cnt.builder          = builder;
+  cnt.llvm_cnt         = LLVMContextCreate();
+  cnt.mod              = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.llvm_builder     = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.gscope           = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.cscope           = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.const_strings    = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.gen_stack_extern = bo_htbl_new(sizeof(bl_node_t), 2048);
+  cnt.gen_stack        = bo_htbl_new(0, 2048);
 
   bl_visitor_t top_visitor;
   bl_visitor_t gen_visitor;
@@ -744,6 +780,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
   bo_unref(cnt.gen_stack);
+  bo_unref(cnt.gen_stack_extern);
 
   assembly->llvm_module = cnt.mod;
   assembly->llvm_cnt    = cnt.llvm_cnt;

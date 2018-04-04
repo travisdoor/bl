@@ -348,6 +348,13 @@ parse_const_expr_maybe(context_t *cnt)
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR);
     const_expr = bl_ast_add_expr_const_char(cnt->ast, tok, type, tok->value.c);
     break;
+
+  case BL_SYM_NULL:
+    bl_tokens_consume(cnt->tokens);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_U64);
+    const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, 0);
+    break;
+
   case BL_SYM_TRUE:
   case BL_SYM_FALSE: {
     bl_tokens_consume(cnt->tokens);
