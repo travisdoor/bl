@@ -203,6 +203,7 @@ struct bl_decl_var
 {
   bl_id_t    id;
   bl_node_t *type;
+  int        used;
   bl_node_t *init_expr;
 };
 
@@ -223,10 +224,10 @@ struct bl_decl_func
 {
   bl_id_t    id;
   int        modif;
+  int        used;
   BArray *   args;
   bl_node_t *block;
   bl_node_t *ret_type;
-  int        used;
 };
 
 struct bl_decl_struct
@@ -488,8 +489,8 @@ bl_ast_node_count(bl_ast_t *ast);
 bl_node_t *
 bl_ast_get_node(bl_ast_t *ast, size_t i);
 
-bl_node_t *
-bl_ast_try_get_expr_type(bl_node_t *expr);
+bool
+bl_type_eq(bl_node_t *first, bl_node_t *second);
 
 const char *
 bl_ast_try_get_type_name(bl_node_t *type);

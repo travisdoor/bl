@@ -659,20 +659,24 @@ bl_ast_get_node(bl_ast_t *ast, size_t i)
   return bo_array_at(ast->nodes, i, bl_node_t *);
 }
 
-bl_node_t *
-bl_ast_try_get_expr_type(bl_node_t *expr)
+bool
+bl_type_eq(bl_node_t *first, bl_node_t *second)
 {
-  switch (bl_node_code(expr)) {
-  case BL_EXPR_CONST:
-    return bl_peek_expr_const(expr)->type;
-  case BL_EXPR_VAR_REF: {
-    bl_node_t *ref = bl_peek_expr_var_ref(expr)->ref;
-    bl_assert(bl_node_is(ref, BL_DECL_VAR), "invalid variable reference");
-    return bl_peek_decl_var(ref)->type;
-  }
-  default:
-    return NULL;
-  }
+  bl_assert(bl_node_is(first, BL_TYPE_REF) || bl_node_is(first, BL_TYPE_FUND), "not type");
+  bl_assert(bl_node_is(second, BL_TYPE_REF) || bl_node_is(second, BL_TYPE_FUND), "not type");
+
+  if (first->code != second->code)
+    return false;
+
+  if (bl_node_is(first, BL_TYPE_FUND) &&
+      bl_peek_type_fund(first)->type == bl_peek_type_fund(second)->type)
+    return true;
+
+  if (bl_node_is(first, BL_TYPE_REF) &&
+      bl_peek_type_ref(first)->ref == bl_peek_type_ref(second)->ref)
+    return true;
+
+  return false;
 }
 
 const char *

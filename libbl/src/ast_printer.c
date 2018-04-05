@@ -141,7 +141,8 @@ static void
 visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   print_head("variable", bl_peek_src(var), var, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_var(var)->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", bl_peek_decl_var(var)->id.str,
+          bl_peek_decl_var(var)->used);
   bl_visitor_walk_var(visitor, var);
 }
 

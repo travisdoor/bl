@@ -232,6 +232,7 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
                         LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
 
     bl_peek_expr_var_ref(expr)->ref = found;
+    bl_peek_decl_var(found)->used++;
     break;
   default:
     break;

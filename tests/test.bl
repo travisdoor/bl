@@ -18,11 +18,19 @@ public module debug {
 */
 
 fn main() i32 {
-  var i string = "hello";
+  var i i32 = test3();
   test(i);
   return 0;
 }
 
 fn test(i i32) {
+  test2(i);
+}
+
+fn test2(i i32) {
+}
+
+fn test3(i i32) f32 {
+  return 0.2f;
 }
 
