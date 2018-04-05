@@ -36,7 +36,7 @@
 
 #define link_error(cnt, code, loc, format, ...)                                                    \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s %d:%d " format, loc->file, loc->line, loc->col,           \
+    bl_builder_error((cnt)->builder, "%s:%d:%d " format, loc->file, loc->line, loc->col,           \
                      ##__VA_ARGS__);                                                               \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }

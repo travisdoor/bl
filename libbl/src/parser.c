@@ -32,14 +32,14 @@
 
 #define parse_error(cnt, code, tok, format, ...)                                                   \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s %d:%d " format, (tok)->src.file, (tok)->src.line,         \
+    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (tok)->src.file, (tok)->src.line,         \
                      (tok)->src.col, ##__VA_ARGS__);                                               \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
 #define parse_error_node(cnt, code, node, format, ...)                                             \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s %d:%d " format, (node)->src->file, (node)->src->line,     \
+    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,     \
                      (node)->src->col, ##__VA_ARGS__);                                             \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
@@ -53,6 +53,7 @@ typedef struct
 
   /* tmps */
   jmp_buf jmp_error;
+  bool    inside_loop;
 } context_t;
 
 static bl_node_t *
@@ -171,6 +172,9 @@ parse_loop_maybe(context_t *cnt)
   if (!tok_begin) {
     return NULL;
   }
+
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop = true;
   bl_node_t *test_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL);
   bl_node_t *test      = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
   bl_node_t *loop      = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
@@ -181,6 +185,7 @@ parse_loop_maybe(context_t *cnt)
   }
 
   bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
+  cnt->inside_loop = prev_inside_loop;
 
   return loop;
 }
@@ -232,6 +237,11 @@ parse_break_maybe(context_t *cnt)
     return NULL;
   }
 
+  if (!cnt->inside_loop) {
+    parse_error(cnt, BL_ERR_BREAK_OUTSIDE_LOOP, tok_begin,
+                BL_YELLOW("'break'") " statement outside loop");
+  }
+
   return bl_ast_add_stmt_break(cnt->ast, tok_begin);
 }
 
@@ -241,6 +251,11 @@ parse_continue_maybe(context_t *cnt)
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_CONTINUE);
   if (!tok_begin) {
     return NULL;
+  }
+
+  if (!cnt->inside_loop) {
+    parse_error(cnt, BL_ERR_CONTINUE_OUTSIDE_LOOP, tok_begin,
+                BL_YELLOW("'continue'") " statement outside loop");
   }
 
   return bl_ast_add_stmt_continue(cnt->ast, tok_begin);
@@ -953,7 +968,11 @@ decl:
 bl_error_e
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t cnt = {.builder = builder, .unit = unit, .ast = &unit->ast, .tokens = &unit->tokens};
+  context_t cnt = {.builder     = builder,
+                   .unit        = unit,
+                   .ast         = &unit->ast,
+                   .tokens      = &unit->tokens,
+                   .inside_loop = false};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {

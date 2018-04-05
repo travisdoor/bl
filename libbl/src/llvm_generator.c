@@ -93,6 +93,10 @@ typedef struct
   LLVMBasicBlockRef func_ret_block;
   LLVMBasicBlockRef func_entry_block;
 
+  /* used for loop generation (statements break and continue) */
+  LLVMBasicBlockRef continue_block;
+  LLVMBasicBlockRef break_block;
+
   /* LLVMValueRef to current return tmp */
   LLVMValueRef ret_value;
 } context_t;
@@ -664,10 +668,14 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
   bl_assert(LLVMIsAFunction(parent), "invalid parent");
 
-  LLVMBasicBlockRef loop_decide = LLVMAppendBasicBlock(parent, gname("loop_decide"));
-  LLVMBasicBlockRef loop_block  = LLVMAppendBasicBlock(parent, gname("loop"));
-  LLVMBasicBlockRef loop_cont   = LLVMAppendBasicBlock(parent, gname("loop_cont"));
-  LLVMValueRef      expr        = NULL;
+  LLVMBasicBlockRef loop_decide         = LLVMAppendBasicBlock(parent, gname("loop_decide"));
+  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_cont           = LLVMAppendBasicBlock(parent, gname("loop_cont"));
+  LLVMValueRef      expr                = NULL;
+  LLVMBasicBlockRef prev_break_block    = cnt->break_block;
+  LLVMBasicBlockRef prev_continue_block = cnt->continue_block;
+  cnt->break_block                      = loop_cont;
+  cnt->continue_block                   = loop_decide;
 
   LLVMBuildBr(cnt->llvm_builder, loop_decide);
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
@@ -691,9 +699,26 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
     LLVMBuildBr(cnt->llvm_builder, loop_decide);
   }
 
+  cnt->break_block    = prev_break_block;
+  cnt->continue_block = prev_continue_block;
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_cont);
 }
 
+static void
+visit_break(bl_visitor_t *visitor, bl_node_t *brk)
+{
+  context_t *cnt = peek_cnt(visitor);
+  skip_if_terminated(cnt);
+  LLVMBuildBr(cnt->llvm_builder, cnt->break_block);
+}
+
+static void
+visit_continue(bl_visitor_t *visitor, bl_node_t *cont)
+{
+  context_t *cnt = peek_cnt(visitor);
+  skip_if_terminated(cnt);
+  LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
+}
 /*************************************************************************************************
  * top level visitors
  * here we decide which functions should be generated
@@ -747,6 +772,8 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&gen_visitor, visit_return, BL_VISIT_RETURN);
   bl_visitor_add(&gen_visitor, visit_if, BL_VISIT_IF);
   bl_visitor_add(&gen_visitor, visit_loop, BL_VISIT_LOOP);
+  bl_visitor_add(&gen_visitor, visit_break, BL_VISIT_BREAK);
+  bl_visitor_add(&gen_visitor, visit_continue, BL_VISIT_CONTINUE);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);

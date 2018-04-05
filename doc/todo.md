@@ -1,7 +1,8 @@
 ## TODO
-* simple loop 
 * skipping empty source files
-* analyze - compare call arguments with callee
+* typechecking
+* return presented check
+* break and continue only inside loop
 
 ## information needed for compilation
 * executable name

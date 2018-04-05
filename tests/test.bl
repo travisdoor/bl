@@ -3,11 +3,11 @@
  */
 
 public module debug {
-  extern fn printf(s string, n i32) i32;
+  extern fn printf(s string, n i32, n2 i32) i32;
   extern fn puts(s string) i32;
 
-  public fn print(s string, i i32) {
-    printf(s, i);
+  public fn print(s string, i i32, i2 i32) {
+    printf(s, i, i2);
   }
 
   public fn println(s string) {
@@ -18,19 +18,29 @@ public module debug {
 fn main() i32 {
   debug::println("loop");
 
+  var x i32;
+  var y i32;
+
+  while (x < 10) {
+    while (y < 10) {
+      debug::print("xy = %d %d\n", x, y);
+      y = y + 1;
+    }
+    x = x + 1;
+    y = 0;
+  }
+
   var i i32;
 
-  while (i < 10) {
-    i = i + 1;
-    debug::print("i = %d\n", i);
-  }
-
-  /*
   loop {
+    debug::print("i = %d\n", i, 0);
+    if (i > 100)
+      break;
+
+    i = i + 1;
+    continue;
     debug::println("hello");
-    break;
   }
-  */
 
   return 0;
 }
