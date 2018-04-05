@@ -18,7 +18,7 @@ public module debug {
 */
 
 fn main() i32 {
-  var i i32 = test3();
+  var i f32 = test3(12 + 3);
   test(i);
   return 0;
 }

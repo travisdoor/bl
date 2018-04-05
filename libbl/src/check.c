@@ -146,12 +146,11 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
   }
 
   if (!bl_type_eq(ref_type, expected_type)) {
-    check_error(
-        cnt, BL_ERR_INVALID_TYPE, var_ref,
-        "invalid type of variable " BL_YELLOW(
-            "'%s'") " call, expected is %s but function returns %s, declared here: %s:%d:%d",
-        ref_id->str, bl_ast_try_get_type_name(expected_type), bl_ast_try_get_type_name(ref_type),
-        ref->src->file, ref->src->line, ref->src->col);
+    check_error(cnt, BL_ERR_INVALID_TYPE, var_ref,
+                "invalid type of variable " BL_YELLOW(
+                    "'%s'") ", expected is %s but variable is declared %s, declared here: %s:%d:%d",
+                ref_id->str, bl_ast_try_get_type_name(expected_type),
+                bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
   }
 }
 
