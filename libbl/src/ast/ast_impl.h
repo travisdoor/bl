@@ -487,6 +487,12 @@ bl_ast_node_count(bl_ast_t *ast);
 
 bl_node_t *
 bl_ast_get_node(bl_ast_t *ast, size_t i);
+
+bl_node_t *
+bl_ast_try_get_expr_type(bl_node_t *expr);
+
+const char *
+bl_ast_try_get_type_name(bl_node_t *type);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

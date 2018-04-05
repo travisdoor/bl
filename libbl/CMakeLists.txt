@@ -48,6 +48,7 @@ set(SOURCE_FILES
         src/assembly.c
         src/builder.c
         src/lexer.c
+        src/check.c
         src/ast_printer.c
         src/llvm_jit_exec.c
         src/llvm_bc_writer.c

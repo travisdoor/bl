@@ -658,4 +658,33 @@ bl_ast_get_node(bl_ast_t *ast, size_t i)
 {
   return bo_array_at(ast->nodes, i, bl_node_t *);
 }
+
+bl_node_t *
+bl_ast_try_get_expr_type(bl_node_t *expr)
+{
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_CONST:
+    return bl_peek_expr_const(expr)->type;
+  case BL_EXPR_VAR_REF: {
+    bl_node_t *ref = bl_peek_expr_var_ref(expr)->ref;
+    bl_assert(bl_node_is(ref, BL_DECL_VAR), "invalid variable reference");
+    return bl_peek_decl_var(ref)->type;
+  }
+  default:
+    return NULL;
+  }
+}
+
+const char *
+bl_ast_try_get_type_name(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    return bl_fund_type_strings[bl_peek_type_fund(type)->type];
+  case BL_TYPE_REF:
+    return bl_peek_type_ref(type)->id.str;
+  default:
+    return NULL;
+  }
+}
 /**************************************************************************************************/

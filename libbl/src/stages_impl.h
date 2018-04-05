@@ -60,6 +60,9 @@ bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
+bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
