@@ -56,22 +56,22 @@ typedef struct
   jmp_buf    jmp_error;
 } context_t;
 
-static void
+static bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type);
 
-static void
+static bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type);
 
-static void
+static bl_node_t *
 check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type);
 
-static void
+static bl_node_t *
 check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type);
 
-static void
+static bl_node_t *
 check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type);
 
-void
+bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
 {
   bl_expr_call_t *_call  = bl_peek_expr_call(call);
@@ -111,29 +111,30 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
 
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type);
   }
+
+  return _callee->ret_type;
 }
 
-void
+bl_node_t *
 check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
 {
-  if (expected_type == NULL)
-    return;
-
   bl_expr_const_t *_cnst = bl_peek_expr_const(cnst);
+
+  if (expected_type == NULL)
+    return _cnst->type;
 
   if (!bl_type_eq(_cnst->type, expected_type)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, cnst,
                 "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
                 bl_ast_try_get_type_name(_cnst->type), bl_ast_try_get_type_name(expected_type));
   }
+
+  return _cnst->type;
 }
 
-void
+bl_node_t *
 check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
 {
-  if (expected_type == NULL)
-    return;
-
   bl_node_t *ref = bl_peek_expr_var_ref(var_ref)->ref;
   bl_node_t *ref_type;
   bl_id_t *  ref_id;
@@ -151,6 +152,9 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
     bl_abort("invalid variable reference");
   }
 
+  if (expected_type == NULL)
+    return ref_type;
+
   if (!bl_type_eq(ref_type, expected_type)) {
     check_error(
         cnt, BL_ERR_INVALID_TYPE, var_ref,
@@ -159,33 +163,43 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
         ref_id->str, bl_ast_try_get_type_name(expected_type), bl_ast_try_get_type_name(ref_type),
         ref->src->file, ref->src->line, ref->src->col);
   }
+
+  return ref_type;
 }
 
-void
+bl_node_t *
 check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
 {
-  check_expr(cnt, bl_peek_expr_binop(binop)->lhs, expected_type);
-  check_expr(cnt, bl_peek_expr_binop(binop)->rhs, expected_type);
+  bl_expr_binop_t *_binop      = bl_peek_expr_binop(binop);
+  bl_node_t *      result_type = NULL;
+
+  result_type = check_expr(cnt, _binop->lhs, expected_type);
+  if (!bl_type_eq(result_type, check_expr(cnt, _binop->rhs, expected_type))) {
+    check_error(
+        cnt, BL_ERR_INVALID_TYPE, _binop->rhs,
+        "right hand side of binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
+        bl_ast_try_get_type_name(result_type));
+  }
+
+  return result_type;
 }
 
-void
+bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
 {
   switch (bl_node_code(expr)) {
   case BL_EXPR_VAR_REF:
-    check_var_ref(cnt, expr, expected_type);
-    break;
+    return check_var_ref(cnt, expr, expected_type);
 
   case BL_EXPR_CALL:
-    check_call(cnt, expr, expected_type);
-    break;
+    return check_call(cnt, expr, expected_type);
 
   case BL_EXPR_BINOP:
-    check_binop(cnt, expr, expected_type);
+    return check_binop(cnt, expr, expected_type);
     break;
 
   case BL_EXPR_CONST:
-    check_const(cnt, expr, expected_type);
+    return check_const(cnt, expr, expected_type);
     break;
 
   default:
