@@ -172,14 +172,17 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
 {
   bl_expr_binop_t *_binop      = bl_peek_expr_binop(binop);
   bl_node_t *      result_type = NULL;
+  bl_node_t *      lhs_type    = NULL;
 
-  result_type = check_expr(cnt, _binop->lhs, expected_type);
-  if (!bl_type_eq(result_type, check_expr(cnt, _binop->rhs, expected_type))) {
+  lhs_type = check_expr(cnt, _binop->lhs, expected_type);
+  if (!bl_type_eq(lhs_type, check_expr(cnt, _binop->rhs, expected_type))) {
     check_error(
         cnt, BL_ERR_INVALID_TYPE, _binop->rhs,
         "right hand side of binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
         bl_ast_try_get_type_name(result_type));
   }
+
+  bl_abort("invalid binop operation");
 
   return result_type;
 }
@@ -263,6 +266,18 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
   check_expr(cnt, _ret->expr, expected_type);
 }
 
+static void
+visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
+{
+  // TODO
+}
+
+static void
+visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
+{
+  // TODO
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -283,6 +298,8 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
+  bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
+  bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

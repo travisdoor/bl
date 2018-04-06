@@ -34,3 +34,7 @@ fn test3(i i32) f32 {
   return 0.2f;
 }
 
+fn test3(i i32) f32 {
+  return 0.2f;
+}
+
