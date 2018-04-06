@@ -18,8 +18,9 @@ public module debug {
 */
 
 fn main() i32 {
-  var i f32 = test3(12 + 3);
-  test(i);
+  //var i f32 = test3(12 + 3);
+  12 + 0.2f;
+  //test(i);
   return 0;
 }
 
@@ -31,6 +32,6 @@ fn test2(i i32) {
 }
 
 fn test3(i i32) f32 {
-  return 0.2f;
+  return "hello";
 }
 

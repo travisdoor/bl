@@ -50,7 +50,10 @@ typedef struct
 {
   bl_builder_t * builder;
   bl_assembly_t *assembly;
-  jmp_buf        jmp_error;
+
+  /* tmps */
+  bl_node_t *curr_func;
+  jmp_buf    jmp_error;
 } context_t;
 
 static void
@@ -65,6 +68,9 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type);
 static void
 check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type);
 
+static void
+check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type);
+
 void
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
 {
@@ -77,7 +83,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
     if (!bl_type_eq(_callee->ret_type, expected_type)) {
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, call,
-          "invalid return type of function " BL_YELLOW(
+          "incompatible return type of function " BL_YELLOW(
               "'%s'") " call, expected is %s but function returns %s, declared here: %s:%d:%d",
           _callee->id.str, bl_ast_try_get_type_name(expected_type),
           bl_ast_try_get_type_name(_callee->ret_type), callee->src->file, callee->src->line,
@@ -117,7 +123,7 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
 
   if (!bl_type_eq(_cnst->type, expected_type)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, cnst,
-                "invalid constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
+                "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
                 bl_ast_try_get_type_name(_cnst->type), bl_ast_try_get_type_name(expected_type));
   }
 }
@@ -146,12 +152,20 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
   }
 
   if (!bl_type_eq(ref_type, expected_type)) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, var_ref,
-                "invalid type of variable " BL_YELLOW(
-                    "'%s'") ", expected is %s but variable is declared %s, declared here: %s:%d:%d",
-                ref_id->str, bl_ast_try_get_type_name(expected_type),
-                bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
+    check_error(
+        cnt, BL_ERR_INVALID_TYPE, var_ref,
+        "incompatible type of variable " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+            "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+        ref_id->str, bl_ast_try_get_type_name(expected_type), bl_ast_try_get_type_name(ref_type),
+        ref->src->file, ref->src->line, ref->src->col);
   }
+}
+
+void
+check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
+{
+  check_expr(cnt, bl_peek_expr_binop(binop)->lhs, expected_type);
+  check_expr(cnt, bl_peek_expr_binop(binop)->rhs, expected_type);
 }
 
 void
@@ -167,8 +181,7 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
     break;
 
   case BL_EXPR_BINOP:
-    check_expr(cnt, bl_peek_expr_binop(expr)->lhs, expected_type);
-    check_expr(cnt, bl_peek_expr_binop(expr)->rhs, expected_type);
+    check_binop(cnt, expr, expected_type);
     break;
 
   case BL_EXPR_CONST:
@@ -188,6 +201,12 @@ static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   context_t *cnt = peek_cnt(visitor);
+
+  /* warn about unused expressions in function scope */
+  if (bl_node_is(expr, BL_EXPR_BINOP) && bl_peek_expr_binop(expr)->op != BL_SYM_ASIGN) {
+    check_warning(cnt, expr, "expression has no effect");
+  }
+
   check_expr(cnt, expr, NULL);
 }
 
@@ -216,7 +235,18 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
                   _func->id.str);
   }
 
+  cnt->curr_func = func;
   bl_visitor_walk_func(visitor, func);
+}
+
+static void
+visit_return(bl_visitor_t *visitor, bl_node_t *ret)
+{
+  context_t *cnt = peek_cnt(visitor);
+  bl_assert(cnt->curr_func, "invalid current function");
+  bl_stmt_return_t *_ret          = bl_peek_stmt_return(ret);
+  bl_node_t *       expected_type = bl_peek_decl_func(cnt->curr_func)->ret_type;
+  check_expr(cnt, _ret->expr, expected_type);
 }
 
 /*************************************************************************************************
@@ -238,6 +268,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
+  bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

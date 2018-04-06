@@ -69,6 +69,7 @@ typedef struct bl_ast bl_ast_t;
 
 #define bl_peek_src(node) (node)->src
 #define bl_node_is(node, c) ((node)->code == (c))
+#define bl_node_is_not(node, c) ((node)->code != (c))
 #define bl_node_code(node) (node)->code
 
 #define bl_peek_type_fund(node) (&(node)->n.type_fund)
