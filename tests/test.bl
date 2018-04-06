@@ -2,7 +2,6 @@
  * testing playground.
  */
 
-/*
 public module debug {
   extern fn printf(s string, n i32, n2 i32) i32;
   extern fn puts(s string) i32;
@@ -15,7 +14,6 @@ public module debug {
     puts(s);
   }
 }
-*/
 
 fn main() i32 {
   //var i f32 = test3(12 + 3);
