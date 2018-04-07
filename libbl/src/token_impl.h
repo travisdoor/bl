@@ -32,8 +32,6 @@
 #include <stdio.h>
 #include <bobject/bobject.h>
 
-BO_BEGIN_DECLS
-
 // clang-format off
 #define BL_SYMBOLS_LIST \
   sm(EOF = 0, "end") \
@@ -45,6 +43,7 @@ BO_BEGIN_DECLS
   sm(DOUBLE, "double") \
   sm(IF, "if") /* must be first */ \
   sm(FN, "fn") \
+  sm(AS, "as") \
   sm(MODULE, "module") \
   sm(VAR, "var") \
   sm(ELSE, "else") \
@@ -101,7 +100,7 @@ typedef enum {
 } bl_sym_e;
 // clang-format on
 
-extern BO_EXPORT char *bl_sym_strings[];
+extern char *bl_sym_strings[];
 
 typedef struct bl_src
 {
@@ -114,8 +113,8 @@ typedef struct bl_src
 
 typedef struct
 {
-  bl_sym_e    sym;
-  bl_src_t    src;
+  bl_sym_e sym;
+  bl_src_t src;
   union
   {
     const char *       str;
@@ -125,15 +124,21 @@ typedef struct
   } value;
 } bl_token_t;
 
-extern BO_EXPORT bool
+/* is token any known binary operation? */
+bool
 bl_token_is_binop(bl_token_t *token);
+
+bool
+bl_token_is(bl_token_t *token, bl_sym_e sym);
+
+/* is token logical operation which result type should be boolean */
+bool
+bl_token_is_logic_op(bl_token_t *token);
 
 /*
  * Return token precedence or -1 when token is not binary operation, identifier or constant.
  */
-extern BO_EXPORT int
+int
 bl_token_prec(bl_token_t *token);
-
-BO_END_DECLS
 
 #endif // BL_TOKEN_H

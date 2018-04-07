@@ -2,39 +2,20 @@
  * testing playground.
  */
 
-public module debug {
-  extern fn printf(s string, n i32, n2 i32) i32;
-  extern fn puts(s string) i32;
-
-  public fn print(s string, i i32, i2 i32) {
-    printf(s, i, i2);
-  }
-
-  public fn println(s string) {
-    puts(s);
-  }
-}
-
 fn main() i32 {
-  //var i f32 = test3(12 + 3);
-  var i i32;
-  12 + (2 + i * test3(i));
-  //test(i);
+  var _i8     i8      = 10;
+  var _i32    i32;
+  var _i64    i64;
+  var _u8     u8;
+  var _u32    u32;
+  var _u64    u64;
+  var _f32    f32;
+  var _f64    f64;
+  var _char   char;
+  var _ptr    ptr;
+  var _string string;
+  var _bool   bool;
+
+ 
   return 0;
 }
-
-fn test(i i32) {
-  test2(i);
-}
-
-fn test2(i i32) {
-}
-
-fn test3(i i32) f32 {
-  return 0.2f;
-}
-
-fn test3(i i32) f32 {
-  return 0.2f;
-}
-

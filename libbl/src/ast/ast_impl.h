@@ -80,6 +80,7 @@ typedef struct bl_ast bl_ast_t;
 #define bl_peek_expr_var_ref(node) (&(node)->n.expr_var_ref)
 #define bl_peek_expr_call(node) (&(node)->n.expr_call)
 #define bl_peek_expr_path(node) (&(node)->n.expr_path)
+#define bl_peek_expr_cast(node) (&(node)->n.expr_cast)
 
 #define bl_peek_decl_module(node) (&(node)->n.decl_module)
 #define bl_peek_decl_var(node) (&(node)->n.decl_var)
@@ -115,6 +116,7 @@ typedef struct bl_expr_binop   bl_expr_binop_t;
 typedef struct bl_expr_var_ref bl_expr_var_ref_t;
 typedef struct bl_expr_call    bl_expr_call_t;
 typedef struct bl_expr_path    bl_expr_path_t;
+typedef struct bl_expr_cast    bl_expr_cast_t;
 
 typedef struct bl_type_ref  bl_type_ref_t;
 typedef struct bl_type_fund bl_type_fund_t;
@@ -265,11 +267,18 @@ struct bl_expr_const
   } value;
 };
 
+struct bl_expr_cast
+{
+  bl_node_t *type;
+  bl_node_t *expr;
+};
+
 struct bl_expr_binop
 {
   bl_sym_e   op;
   bl_node_t *lhs;
   bl_node_t *rhs;
+  bl_node_t *type;
 };
 
 struct bl_expr_var_ref
@@ -329,6 +338,7 @@ struct bl_node
     bl_expr_var_ref_t expr_var_ref;
     bl_expr_call_t    expr_call;
     bl_expr_path_t    expr_path;
+    bl_expr_cast_t    expr_cast;
 
     bl_type_ref_t  type_ref;
     bl_type_fund_t type_fund;
@@ -360,6 +370,9 @@ bl_node_t *
 bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s);
 
 bl_node_t *
+bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *type);
+
+bl_node_t *
 bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
                                unsigned long long u);
 
@@ -370,7 +383,8 @@ bl_node_t *
 bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str);
 
 bl_node_t *
-bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs);
+bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs,
+                      bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);

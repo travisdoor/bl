@@ -174,18 +174,18 @@ parse_loop_maybe(context_t *cnt)
   }
 
   const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop = true;
-  bl_node_t *test_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL);
-  bl_node_t *test      = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
-  bl_node_t *loop      = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
-  bl_node_t *true_stmt = parse_block_content_maybe(cnt, loop);
+  cnt->inside_loop            = true;
+  bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL);
+  bl_node_t *test             = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
+  bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
+  bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
   }
 
   bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
-  cnt->inside_loop = prev_inside_loop;
+  cnt->inside_loop                   = prev_inside_loop;
 
   return loop;
 }
@@ -366,7 +366,7 @@ parse_const_expr_maybe(context_t *cnt)
 
   case BL_SYM_NULL:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_U64);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, 0);
     break;
 
@@ -480,8 +480,16 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
     }
 
     if (bl_token_is_binop(op)) {
-      bl_node_t *tmp = lhs;
-      lhs            = bl_ast_add_expr_binop(cnt->ast, op, op->sym, tmp, rhs);
+      bl_node_t *result_type = NULL;
+      bl_node_t *tmp         = lhs;
+
+      /* Set result type to bool for logical binary operations, this is used for type checking later
+       * in the compiler pipeline. Other types are checked recursively. */
+      if (bl_token_is_logic_op(op)) {
+        result_type = bl_ast_add_type_fund(cnt->ast, op, BL_FTYPE_BOOL);
+      }
+
+      lhs = bl_ast_add_expr_binop(cnt->ast, op, op->sym, tmp, rhs, result_type);
     } else {
       parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, "expected binary operation");
     }

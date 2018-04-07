@@ -28,14 +28,6 @@
 
 #include "ast/ast_impl.h"
 #include "common_impl.h"
-#include "scope_impl.h"
-
-#define CACHE_PREALLOC_ELEM 256
-
-typedef struct
-{
-  bl_node_t *next;
-} next_t;
 
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
@@ -126,6 +118,20 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
+bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *type)
+{
+  bl_node_t *expr_cast = alloc_node(ast);
+  if (tok)
+    expr_cast->src = &tok->src;
+
+  expr_cast->code                    = BL_EXPR_CONST;
+  bl_peek_expr_cast(expr_cast)->type = type;
+  bl_peek_expr_cast(expr_cast)->expr = expr;
+
+  return expr_cast;
+}
+
+bl_node_t *
 bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c)
 {
   bl_node_t *expr_const = alloc_node(ast);
@@ -211,16 +217,18 @@ bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const
 }
 
 bl_node_t *
-bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs)
+bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs,
+                      bl_node_t *type)
 {
   bl_node_t *binop = alloc_node(ast);
   if (tok)
     binop->src = &tok->src;
 
-  binop->code                    = BL_EXPR_BINOP;
-  bl_peek_expr_binop(binop)->op  = op;
-  bl_peek_expr_binop(binop)->lhs = lhs;
-  bl_peek_expr_binop(binop)->rhs = rhs;
+  binop->code                     = BL_EXPR_BINOP;
+  bl_peek_expr_binop(binop)->op   = op;
+  bl_peek_expr_binop(binop)->lhs  = lhs;
+  bl_peek_expr_binop(binop)->rhs  = rhs;
+  bl_peek_expr_binop(binop)->type = type;
 
   return binop;
 }
@@ -662,6 +670,9 @@ bl_ast_get_node(bl_ast_t *ast, size_t i)
 bool
 bl_type_eq(bl_node_t *first, bl_node_t *second)
 {
+  if (!first || !second)
+    return false;
+
   bl_assert(bl_node_is(first, BL_TYPE_REF) || bl_node_is(first, BL_TYPE_FUND), "not type");
   bl_assert(bl_node_is(second, BL_TYPE_REF) || bl_node_is(second, BL_TYPE_FUND), "not type");
 

@@ -40,6 +40,25 @@ bl_token_is_binop(bl_token_t *token)
   return token->sym >= BL_SYM_EQ && token->sym <= BL_SYM_LESS;
 }
 
+bool
+bl_token_is_logic_op(bl_token_t *token)
+{
+  switch (token->sym) {
+  case BL_SYM_LESS:
+  case BL_SYM_GREATER:
+  case BL_SYM_LESS_EQ:
+  case BL_SYM_GREATER_EQ:
+  case BL_SYM_EQ:
+  case BL_SYM_NEQ:
+  case BL_SYM_LOGIC_AND:
+  case BL_SYM_LOGIC_OR:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 int
 bl_token_prec(bl_token_t *token)
 {
@@ -49,6 +68,7 @@ bl_token_prec(bl_token_t *token)
 
   case BL_SYM_IDENT:
   case BL_SYM_NUM:
+  case BL_SYM_AS:
     return 50;
 
   case BL_SYM_ASTERISK:
@@ -89,4 +109,10 @@ bl_token_prec(bl_token_t *token)
   default:
     return -1;
   }
+}
+
+bool
+bl_token_is(bl_token_t *token, bl_sym_e sym)
+{
+  return token->sym == sym;
 }

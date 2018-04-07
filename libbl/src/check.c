@@ -56,6 +56,10 @@ typedef struct
   jmp_buf    jmp_error;
 } context_t;
 
+/* static bool type node used for type checking */
+static bl_node_t bool_ftype = {
+    .src = NULL, .code = BL_TYPE_FUND, .n.type_fund.type = BL_FTYPE_BOOL};
+
 static bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type);
 
@@ -83,8 +87,8 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
     if (!bl_type_eq(_callee->ret_type, expected_type)) {
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, call,
-          "incompatible return type of function " BL_YELLOW(
-              "'%s'") " call, expected is %s but function returns %s, declared here: %s:%d:%d",
+          "incompatible return type of function " BL_YELLOW("'%s'") " call, expected is " BL_YELLOW(
+              "'%s'") " but function returns " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           _callee->id.str, bl_ast_try_get_type_name(expected_type),
           bl_ast_try_get_type_name(_callee->ret_type), callee->src->file, callee->src->line,
           callee->src->col);
@@ -170,21 +174,25 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
 bl_node_t *
 check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
 {
-  bl_expr_binop_t *_binop      = bl_peek_expr_binop(binop);
-  bl_node_t *      result_type = NULL;
-  bl_node_t *      lhs_type    = NULL;
+  bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
 
-  lhs_type = check_expr(cnt, _binop->lhs, expected_type);
-  if (!bl_type_eq(lhs_type, check_expr(cnt, _binop->rhs, expected_type))) {
-    check_error(
-        cnt, BL_ERR_INVALID_TYPE, _binop->rhs,
-        "right hand side of binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
-        bl_ast_try_get_type_name(result_type));
+  if (_binop->type && expected_type) {
+    if (!bl_type_eq(_binop->type, expected_type)) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, binop,
+                  "binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
+                  bl_ast_try_get_type_name(expected_type));
+    }
+
+    expected_type = NULL;
   }
 
-  bl_abort("invalid binop operation");
+  bl_node_t *lhs_type = check_expr(cnt, _binop->lhs, expected_type);
+  check_expr(cnt, _binop->rhs, lhs_type);
 
-  return result_type;
+  if (_binop->type == NULL)
+    return lhs_type;
+  else
+    return _binop->type;
 }
 
 bl_node_t *
@@ -199,11 +207,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
 
   case BL_EXPR_BINOP:
     return check_binop(cnt, expr, expected_type);
-    break;
 
   case BL_EXPR_CONST:
     return check_const(cnt, expr, expected_type);
-    break;
 
   default:
     bl_abort("node is not expression");
@@ -263,19 +269,33 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
   bl_assert(cnt->curr_func, "invalid current function");
   bl_stmt_return_t *_ret          = bl_peek_stmt_return(ret);
   bl_node_t *       expected_type = bl_peek_decl_func(cnt->curr_func)->ret_type;
-  check_expr(cnt, _ret->expr, expected_type);
+
+  if (_ret->expr)
+    check_expr(cnt, _ret->expr, expected_type);
 }
 
 static void
 visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 {
-  // TODO
+  context_t *cnt = peek_cnt(visitor);
+  bl_assert(cnt->curr_func, "invalid current function");
+  bl_stmt_if_t *_if = bl_peek_stmt_if(if_stmt);
+  check_expr(cnt, _if->test, &bool_ftype);
+
+  bl_visitor_walk_if_true(visitor, if_stmt);
+  if (_if->false_stmt)
+    bl_visitor_walk_if_false(visitor, if_stmt);
 }
 
 static void
 visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
 {
-  // TODO
+  context_t *cnt = peek_cnt(visitor);
+  bl_assert(cnt->curr_func, "invalid current function");
+  bl_stmt_loop_t *_loop = bl_peek_stmt_loop(loop);
+  check_expr(cnt, _loop->test, &bool_ftype);
+
+  bl_visitor_walk_loop_body(visitor, loop);
 }
 
 /*************************************************************************************************
