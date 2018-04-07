@@ -113,13 +113,13 @@ typedef struct bl_stmt_break    bl_stmt_break_t;
 typedef struct bl_stmt_continue bl_stmt_continue_t;
 typedef struct bl_stmt_return   bl_stmt_return_t;
 
-typedef struct bl_decl_module  bl_decl_module_t;
-typedef struct bl_decl_var     bl_decl_var_t;
-typedef struct bl_decl_arg     bl_decl_arg_t;
-typedef struct bl_decl_func    bl_decl_func_t;
-typedef struct bl_decl_struct  bl_decl_struct_t;
-typedef struct bl_decl_enum    bl_decl_enum_t;
-typedef struct bl_decl_block   bl_decl_block_t;
+typedef struct bl_decl_module bl_decl_module_t;
+typedef struct bl_decl_var    bl_decl_var_t;
+typedef struct bl_decl_arg    bl_decl_arg_t;
+typedef struct bl_decl_func   bl_decl_func_t;
+typedef struct bl_decl_struct bl_decl_struct_t;
+typedef struct bl_decl_enum   bl_decl_enum_t;
+typedef struct bl_decl_block  bl_decl_block_t;
 
 typedef struct bl_expr_const   bl_expr_const_t;
 typedef struct bl_expr_binop   bl_expr_binop_t;
@@ -213,8 +213,9 @@ struct bl_decl_var
 {
   bl_id_t    id;
   bl_node_t *type;
-  int        used;
   bl_node_t *init_expr;
+  int        used;
+  int        order; /* order is used when variable declaration is inside struct */
 };
 
 struct bl_decl_arg

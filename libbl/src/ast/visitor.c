@@ -179,26 +179,33 @@ visit_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
   bl_visitor_walk_return(visitor, stmt_return);
 }
 
+static void
+visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
+{
+  bl_visitor_walk_struct_member(visitor, member);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
   visitor->context = context;
   visitor->nesting = 0;
 
-  visitor->visitors[BL_VISIT_MODULE]   = visit_module;
-  visitor->visitors[BL_VISIT_FUNC]     = visit_func;
-  visitor->visitors[BL_VISIT_TYPE]     = visit_type;
-  visitor->visitors[BL_VISIT_ARG]      = visit_arg;
-  visitor->visitors[BL_VISIT_STRUCT]   = visit_struct;
-  visitor->visitors[BL_VISIT_ENUM]     = visit_enum;
-  visitor->visitors[BL_VISIT_VAR]      = visit_var;
-  visitor->visitors[BL_VISIT_BLOCK]    = visit_block;
-  visitor->visitors[BL_VISIT_EXPR]     = visit_expr;
-  visitor->visitors[BL_VISIT_IF]       = visit_if;
-  visitor->visitors[BL_VISIT_LOOP]     = visit_loop;
-  visitor->visitors[BL_VISIT_BREAK]    = visit_break;
-  visitor->visitors[BL_VISIT_CONTINUE] = visit_continue;
-  visitor->visitors[BL_VISIT_RETURN]   = visit_return;
+  visitor->visitors[BL_VISIT_MODULE]        = visit_module;
+  visitor->visitors[BL_VISIT_FUNC]          = visit_func;
+  visitor->visitors[BL_VISIT_TYPE]          = visit_type;
+  visitor->visitors[BL_VISIT_ARG]           = visit_arg;
+  visitor->visitors[BL_VISIT_STRUCT]        = visit_struct;
+  visitor->visitors[BL_VISIT_ENUM]          = visit_enum;
+  visitor->visitors[BL_VISIT_VAR]           = visit_var;
+  visitor->visitors[BL_VISIT_BLOCK]         = visit_block;
+  visitor->visitors[BL_VISIT_EXPR]          = visit_expr;
+  visitor->visitors[BL_VISIT_IF]            = visit_if;
+  visitor->visitors[BL_VISIT_LOOP]          = visit_loop;
+  visitor->visitors[BL_VISIT_BREAK]         = visit_break;
+  visitor->visitors[BL_VISIT_CONTINUE]      = visit_continue;
+  visitor->visitors[BL_VISIT_RETURN]        = visit_return;
+  visitor->visitors[BL_VISIT_STRUCT_MEMBER] = visit_struct_member;
 }
 
 void
@@ -295,7 +302,18 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_node_t *arg)
 void
 bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
-  // TODO
+  visitor->nesting++;
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  const size_t      c      = bl_ast_struct_member_count(_strct);
+  bl_node_t *       member = NULL;
+
+  for (size_t i = 0; i < c; i++) {
+    member        = bl_ast_struct_get_member(_strct, i);
+    bl_visit_f ve = visitor->visitors[BL_VISIT_STRUCT_MEMBER];
+    ve(visitor, member);
+  }
+
+  visitor->nesting--;
 }
 
 void
@@ -439,5 +457,16 @@ bl_visitor_walk_return(bl_visitor_t *visitor, bl_node_t *stmt_return)
     bl_visit_f vexpr = visitor->visitors[BL_VISIT_EXPR];
     vexpr(visitor, bl_peek_stmt_return(stmt_return)->expr);
   }
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_struct_member(bl_visitor_t *visitor, bl_node_t *member)
+{
+  visitor->nesting++;
+  bl_decl_var_t *_member = bl_peek_decl_var(member);
+
+  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+  vt(visitor, _member->type);
   visitor->nesting--;
 }

@@ -39,6 +39,7 @@ typedef enum {
   BL_VISIT_TYPE,
   BL_VISIT_ARG,
   BL_VISIT_STRUCT,
+  BL_VISIT_STRUCT_MEMBER,
   BL_VISIT_ENUM,
   BL_VISIT_VAR,
   BL_VISIT_BLOCK,
@@ -80,6 +81,9 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_node_t *arg);
 
 void
 bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct);
+
+void
+bl_visitor_walk_struct_member(bl_visitor_t *visitor, bl_node_t *member);
 
 void
 bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm);

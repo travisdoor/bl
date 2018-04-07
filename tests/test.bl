@@ -17,6 +17,7 @@ fn main() i32 {
   var _string string = "hello";
   var _bool   bool   = true;
   */
+  var hello i32;
  
   return 0;
 }

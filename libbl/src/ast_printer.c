@@ -147,6 +147,15 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 }
 
 static void
+visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
+{
+  print_head("member", bl_peek_src(member), member, visitor->nesting);
+  bl_decl_var_t *_member = bl_peek_decl_var(member);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " order: %d", _member->id.str, _member->order);
+  bl_visitor_walk_struct_member(visitor, member);
+}
+
+static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   switch (bl_node_code(expr)) {
@@ -237,6 +246,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
     bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
+    bl_visitor_add(&visitor, visit_struct_member, BL_VISIT_STRUCT_MEMBER);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

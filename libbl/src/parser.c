@@ -63,6 +63,9 @@ static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
+parse_struct_member_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_enum_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
@@ -302,7 +305,7 @@ parse_call_maybe(context_t *cnt, BArray *path)
     }
 
     /* parse args */
-    bool rq = false;
+    bool            rq    = false;
     bl_expr_call_t *_call = bl_peek_expr_call(call);
   arg:
     if (bl_ast_call_push_arg(_call, parse_expr_maybe(cnt))) {
@@ -508,34 +511,34 @@ parse_expr_maybe(context_t *cnt)
 bl_node_t *
 parse_var_maybe(context_t *cnt)
 {
-  bl_node_t *var       = NULL;
   bl_node_t *type      = NULL;
   bl_node_t *init_expr = NULL;
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR)) {
-    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
 
-    type = parse_type_maybe(cnt);
-    if (type == NULL) {
-      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
-    }
-
-    /*
-     * parse init expr when variable declaration is fallowd by assign symbol
-     */
-    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
-      init_expr = parse_expr_maybe(cnt);
-      if (init_expr == NULL) {
-        bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-        parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
-                    "expected expression after " BL_YELLOW("'='") " in variable declaration");
-      }
-    }
-
-    var = bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr);
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR) == NULL) {
+    return NULL;
   }
 
-  return var;
+  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+
+  type = parse_type_maybe(cnt);
+  if (type == NULL) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+  }
+
+  /*
+   * parse init expr when variable declaration is fallowd by assign symbol
+   */
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+    init_expr = parse_expr_maybe(cnt);
+    if (init_expr == NULL) {
+      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+                  "expected expression after " BL_YELLOW("'='") " in variable declaration");
+    }
+  }
+
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr);
 }
 
 void
@@ -856,6 +859,25 @@ parse_fn_maybe(context_t *cnt, int modif)
 }
 
 bl_node_t *
+parse_struct_member_maybe(context_t *cnt)
+{
+  bl_node_t *type      = NULL;
+
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
+    return NULL;
+  }
+  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+
+  type = parse_type_maybe(cnt);
+  if (type == NULL) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+  }
+
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL);
+}
+
+bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif)
 {
   bl_node_t *strct = NULL;
@@ -866,12 +888,40 @@ parse_struct_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected struct name");
     }
 
-    strct = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
+    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
+    bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
-    // TODO
+    /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_LBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected struct body " BL_YELLOW("'{'"));
+    }
+
+    int        order = 0;
+    bl_node_t *member;
+  member:
+    /* eat ident */
+    member = parse_struct_member_maybe(cnt);
+    if (bl_ast_struct_push_member(_strct, member)) {
+      bl_peek_decl_var(member)->order = order++;
+
+      if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+        goto member;
+      } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+        tok = bl_tokens_consume(cnt->tokens);
+        parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+                    "struct members must be separated by comma " BL_YELLOW("','"));
+      }
+    }
+
+    /* eat '}' */
     tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+                  "expected end of struct body " BL_YELLOW("'}'"));
+    }
   }
+
   return strct;
 }
 

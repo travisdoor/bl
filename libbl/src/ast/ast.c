@@ -568,7 +568,7 @@ bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i)
  * struct
  *************************************************************************************************/
 bl_node_t *
-bl_ast_struct_push_arg(bl_decl_struct_t *strct, bl_node_t *member)
+bl_ast_struct_push_member(bl_decl_struct_t *strct, bl_node_t *member)
 {
   if (member == NULL)
     return NULL;
@@ -582,7 +582,7 @@ bl_ast_struct_push_arg(bl_decl_struct_t *strct, bl_node_t *member)
 }
 
 size_t
-bl_ast_struct_arg_count(bl_decl_struct_t *strct)
+bl_ast_struct_member_count(bl_decl_struct_t *strct)
 {
   if (strct->members == NULL)
     return 0;
@@ -591,7 +591,7 @@ bl_ast_struct_arg_count(bl_decl_struct_t *strct)
 }
 
 bl_node_t *
-bl_ast_struct_get_arg(bl_decl_struct_t *strct, const size_t i)
+bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i)
 {
   if (strct->members == NULL)
     return NULL;
