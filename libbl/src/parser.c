@@ -732,7 +732,7 @@ stmt:
   }
 
   /* stmts */
-  if (bl_ast_block_push_node(block, parse_block_content_maybe(cnt, block))) {
+  if (bl_ast_block_push_node(bl_peek_decl_block(block), parse_block_content_maybe(cnt, block))) {
     goto stmt;
   }
 

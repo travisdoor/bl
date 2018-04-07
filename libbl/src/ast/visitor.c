@@ -325,11 +325,11 @@ void
 bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block)
 {
   visitor->nesting++;
-  const size_t c    = bl_ast_block_node_count(block);
+  const size_t c    = bl_ast_block_node_count(bl_peek_decl_block(block));
   bl_node_t *  node = NULL;
 
   for (size_t i = 0; i < c; i++) {
-    node = bl_ast_block_get_node(block, i);
+    node = bl_ast_block_get_node(bl_peek_decl_block(block), i);
     walk_block_content(visitor, node);
   }
 

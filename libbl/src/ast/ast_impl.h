@@ -34,6 +34,7 @@
 #include "id_impl.h"
 #include "token_impl.h"
 #include "scope_impl.h"
+#include "common_impl.h"
 
 // clang-format off
 #define BL_FUND_TYPE_LIST                                                                              \
@@ -67,33 +68,44 @@ static const char *bl_fund_type_strings[] = {
 
 typedef struct bl_ast bl_ast_t;
 
-#define bl_peek_src(node) (node)->src
-#define bl_node_is(node, c) ((node)->code == (c))
-#define bl_node_is_not(node, c) ((node)->code != (c))
-#define bl_node_code(node) (node)->code
+#ifdef BL_DEBUG
+static inline void *
+_node_abort(void)
+{
+  bl_abort("invalid ast node peek");
+}
 
-#define bl_peek_type_fund(node) (&(node)->n.type_fund)
-#define bl_peek_type_ref(node) (&(node)->n.type_ref)
+#define _bl_peek(node, member, c, type)                                                            \
+  ((node)->code == c ? &(node)->n.member : (type *)_node_abort())
+#else
+#define _bl_peek(node, member, c, type) &(node)->n.member
+#endif
 
-#define bl_peek_expr_const(node) (&(node)->n.expr_const)
-#define bl_peek_expr_binop(node) (&(node)->n.expr_binop)
-#define bl_peek_expr_var_ref(node) (&(node)->n.expr_var_ref)
-#define bl_peek_expr_call(node) (&(node)->n.expr_call)
-#define bl_peek_expr_path(node) (&(node)->n.expr_path)
-#define bl_peek_expr_cast(node) (&(node)->n.expr_cast)
+#define bl_peek_src(n) (n)->src
+#define bl_node_is(n, c) ((n)->code == (c))
+#define bl_node_is_not(n, c) ((n)->code != (c))
+#define bl_node_code(n) (n)->code
 
-#define bl_peek_decl_module(node) (&(node)->n.decl_module)
-#define bl_peek_decl_var(node) (&(node)->n.decl_var)
-#define bl_peek_decl_arg(node) (&(node)->n.decl_arg)
-#define bl_peek_decl_func(node) (&(node)->n.decl_func)
-#define bl_peek_decl_struct(node) (&(node)->n.decl_struct)
-#define bl_peek_decl_enum(node) (&(node)->n.decl_enum)
-#define bl_peek_decl_block(node) (&(node)->n.decl_block)
-#define bl_peek_decl_variant(node) (&(node)->n.decl_variant)
-
-#define bl_peek_stmt_if(node) (&(node)->n.stmt_if)
-#define bl_peek_stmt_loop(node) (&(node)->n.stmt_loop)
-#define bl_peek_stmt_return(node) (&(node)->n.stmt_return)
+// clang-format off
+#define bl_peek_type_fund(n)    _bl_peek(n, type_fund, BL_TYPE_FUND, bl_type_fund_t)
+#define bl_peek_type_ref(n)     _bl_peek(n, type_ref, BL_TYPE_REF, bl_type_ref_t)
+#define bl_peek_expr_const(n)   _bl_peek(n, expr_const, BL_EXPR_CONST, bl_expr_const_t)
+#define bl_peek_expr_binop(n)   _bl_peek(n, expr_binop, BL_EXPR_BINOP, bl_expr_binop_t)
+#define bl_peek_expr_var_ref(n) _bl_peek(n, expr_var_ref, BL_EXPR_VAR_REF, bl_expr_var_ref_t)
+#define bl_peek_expr_call(n)    _bl_peek(n, expr_call, BL_EXPR_CALL, bl_expr_call_t)
+#define bl_peek_expr_path(n)    _bl_peek(n, expr_path, BL_EXPR_PATH, bl_expr_path_t)
+#define bl_peek_decl_module(n)  _bl_peek(n, decl_module, BL_DECL_MODULE, bl_decl_module_t)
+#define bl_peek_decl_var(n)     _bl_peek(n, decl_var, BL_DECL_VAR, bl_decl_var_t)
+#define bl_peek_decl_arg(n)     _bl_peek(n, decl_arg, BL_DECL_ARG, bl_decl_arg_t)
+#define bl_peek_decl_func(n)    _bl_peek(n, decl_func, BL_DECL_FUNC, bl_decl_func_t)
+#define bl_peek_decl_struct(n)  _bl_peek(n, decl_struct, BL_DECL_STRUCT, bl_decl_struct_t)
+#define bl_peek_decl_enum(n)    _bl_peek(n, decl_enum, BL_DECL_ENUM, bl_decl_enum_t)
+#define bl_peek_decl_block(n)   _bl_peek(n, decl_block, BL_DECL_BLOCK, bl_decl_block_t)
+#define bl_peek_decl_variant(n) _bl_peek(n, decl_variant, BL_DECL_VARIANT, bl_decl_variant_t)
+#define bl_peek_stmt_if(n)      _bl_peek(n, stmt_if, BL_STMT_IF, bl_stmt_if_t)
+#define bl_peek_stmt_loop(n)    _bl_peek(n, stmt_loop, BL_STMT_LOOP, bl_stmt_loop_t)
+#define bl_peek_stmt_return(n)  _bl_peek(n, stmt_return, BL_STMT_RETURN, bl_stmt_return_t)
+// clang-format on
 
 typedef struct bl_node          bl_node_t;
 typedef struct bl_stmt_if       bl_stmt_if_t;
@@ -116,7 +128,6 @@ typedef struct bl_expr_binop   bl_expr_binop_t;
 typedef struct bl_expr_var_ref bl_expr_var_ref_t;
 typedef struct bl_expr_call    bl_expr_call_t;
 typedef struct bl_expr_path    bl_expr_path_t;
-typedef struct bl_expr_cast    bl_expr_cast_t;
 
 typedef struct bl_type_ref  bl_type_ref_t;
 typedef struct bl_type_fund bl_type_fund_t;
@@ -237,6 +248,7 @@ struct bl_decl_struct
 {
   bl_id_t id;
   int     modif;
+  BArray *members;
 };
 
 struct bl_decl_enum
@@ -323,25 +335,21 @@ struct bl_node
     bl_stmt_break_t    stmt_break;
     bl_stmt_continue_t stmt_continue;
     bl_stmt_return_t   stmt_return;
-
-    bl_decl_module_t  decl_module;
-    bl_decl_var_t     decl_var;
-    bl_decl_arg_t     decl_arg;
-    bl_decl_func_t    decl_func;
-    bl_decl_struct_t  decl_struct;
-    bl_decl_enum_t    decl_enum;
-    bl_decl_block_t   decl_block;
-    bl_decl_variant_t decl_variant;
-
-    bl_expr_const_t   expr_const;
-    bl_expr_binop_t   expr_binop;
-    bl_expr_var_ref_t expr_var_ref;
-    bl_expr_call_t    expr_call;
-    bl_expr_path_t    expr_path;
-    bl_expr_cast_t    expr_cast;
-
-    bl_type_ref_t  type_ref;
-    bl_type_fund_t type_fund;
+    bl_decl_module_t   decl_module;
+    bl_decl_var_t      decl_var;
+    bl_decl_arg_t      decl_arg;
+    bl_decl_func_t     decl_func;
+    bl_decl_struct_t   decl_struct;
+    bl_decl_enum_t     decl_enum;
+    bl_decl_block_t    decl_block;
+    bl_decl_variant_t  decl_variant;
+    bl_expr_const_t    expr_const;
+    bl_expr_binop_t    expr_binop;
+    bl_expr_var_ref_t  expr_var_ref;
+    bl_expr_call_t     expr_call;
+    bl_expr_path_t     expr_path;
+    bl_type_ref_t      type_ref;
+    bl_type_fund_t     type_fund;
   } n;
 };
 
@@ -368,9 +376,6 @@ bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool
 
 bl_node_t *
 bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s);
-
-bl_node_t *
-bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
@@ -470,13 +475,13 @@ bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i);
 /* block */
 /**************************************************************************************************/
 bl_node_t *
-bl_ast_block_push_node(bl_node_t *block, bl_node_t *node);
+bl_ast_block_push_node(bl_decl_block_t *block, bl_node_t *node);
 
 size_t
-bl_ast_block_node_count(bl_node_t *block);
+bl_ast_block_node_count(bl_decl_block_t *block);
 
 bl_node_t *
-bl_ast_block_get_node(bl_node_t *block, const size_t i);
+bl_ast_block_get_node(bl_decl_block_t *block, const size_t i);
 
 /* call */
 /**************************************************************************************************/
@@ -488,6 +493,18 @@ bl_ast_call_arg_count(bl_node_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_node_t *call, const size_t i);
+/**************************************************************************************************/
+
+/* struct */
+/**************************************************************************************************/
+bl_node_t *
+bl_ast_struct_push_member(bl_node_t *call, bl_node_t *node);
+
+size_t
+bl_ast_struct_member_count(bl_node_t *call);
+
+bl_node_t *
+bl_ast_struct_get_member(bl_node_t *call, const size_t i);
 /**************************************************************************************************/
 
 /* other */

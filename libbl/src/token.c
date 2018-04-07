@@ -68,7 +68,7 @@ bl_token_prec(bl_token_t *token)
 
   case BL_SYM_IDENT:
   case BL_SYM_NUM:
-  case BL_SYM_AS:
+  case BL_SYM_CAST:
     return 50;
 
   case BL_SYM_ASTERISK:

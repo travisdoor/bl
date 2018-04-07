@@ -3,19 +3,27 @@
  */
 
 fn main() i32 {
-  var _i8     i8      = 10;
-  var _i32    i32;
-  var _i64    i64;
-  var _u8     u8;
-  var _u32    u32;
-  var _u64    u64;
-  var _f32    f32;
-  var _f64    f64;
-  var _char   char;
-  var _ptr    ptr;
-  var _string string;
-  var _bool   bool;
-
+  /*
+  var _i8     i8     = 10;
+  var _i32    i32    = 10;
+  var _i64    i64    = 10;
+  var _u8     u8     = 10;
+  var _u32    u32    = 10;
+  var _u64    u64    = 10;
+  var _f32    f32    = 10;
+  var _f64    f64    = 10;
+  var _char   char   = 10;
+  var _ptr    ptr    = null;
+  var _string string = "hello";
+  var _bool   bool   = true;
+  */
  
   return 0;
 }
+
+struct data_t {
+  a i32, 
+  b i32,
+  c i32
+}
+

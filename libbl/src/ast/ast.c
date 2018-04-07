@@ -27,7 +27,6 @@
 //*****************************************************************************
 
 #include "ast/ast_impl.h"
-#include "common_impl.h"
 
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
@@ -115,20 +114,6 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   bl_peek_type_ref(type)->path = path;
 
   return type;
-}
-
-bl_node_t *
-bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *type)
-{
-  bl_node_t *expr_cast = alloc_node(ast);
-  if (tok)
-    expr_cast->src = &tok->src;
-
-  expr_cast->code                    = BL_EXPR_CONST;
-  bl_peek_expr_cast(expr_cast)->type = type;
-  bl_peek_expr_cast(expr_cast)->expr = expr;
-
-  return expr_cast;
 }
 
 bl_node_t *
@@ -534,36 +519,33 @@ bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i)
 /* block */
 /**************************************************************************************************/
 bl_node_t *
-bl_ast_block_push_node(bl_node_t *block, bl_node_t *node)
+bl_ast_block_push_node(bl_decl_block_t *block, bl_node_t *node)
 {
-  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
   if (node == NULL)
     return NULL;
 
-  if (bl_peek_decl_block(block)->nodes == NULL) {
-    bl_peek_decl_block(block)->nodes = bo_array_new(sizeof(bl_node_t *));
+  if (block->nodes == NULL) {
+    block->nodes = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_array_push_back(bl_peek_decl_block(block)->nodes, node);
+  bo_array_push_back(block->nodes, node);
   return node;
 }
 
 size_t
-bl_ast_block_node_count(bl_node_t *block)
+bl_ast_block_node_count(bl_decl_block_t *block)
 {
-  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
-  if (bl_peek_decl_block(block)->nodes == NULL)
+  if (block->nodes == NULL)
     return 0;
-  return bo_array_size(bl_peek_decl_block(block)->nodes);
+  return bo_array_size(block->nodes);
 }
 
 bl_node_t *
-bl_ast_block_get_node(bl_node_t *block, const size_t i)
+bl_ast_block_get_node(bl_decl_block_t *block, const size_t i)
 {
-  bl_assert(bl_node_is(block, BL_DECL_BLOCK), "invalid block");
-  if (bl_peek_decl_block(block)->nodes == NULL)
+  if (block->nodes == NULL)
     return NULL;
-  return bo_array_at(bl_peek_decl_block(block)->nodes, i, bl_node_t *);
+  return bo_array_at(block->nodes, i, bl_node_t *);
 }
 /**************************************************************************************************/
 
