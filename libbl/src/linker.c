@@ -273,11 +273,11 @@ link_func_args(context_t *cnt, bl_decl_func_t *func)
   for (size_t i = 0; i < c; ++i) {
     arg = bl_ast_func_get_arg(func, i);
 
-    bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_decl_arg(arg)->id);
+    bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_decl_var(arg)->id);
     if (conflict) {
       link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg->src,
                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
-                 bl_peek_decl_arg(arg)->id.str, conflict->src->file, conflict->src->line,
+                 bl_peek_decl_var(arg)->id.str, conflict->src->file, conflict->src->line,
                  conflict->src->col);
     } else {
       bl_block_scope_insert_node(&cnt->block_scope, arg);

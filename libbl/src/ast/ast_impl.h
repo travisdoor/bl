@@ -96,7 +96,6 @@ _node_abort(void)
 #define bl_peek_expr_path(n)    _bl_peek(n, expr_path, BL_EXPR_PATH, bl_expr_path_t)
 #define bl_peek_decl_module(n)  _bl_peek(n, decl_module, BL_DECL_MODULE, bl_decl_module_t)
 #define bl_peek_decl_var(n)     _bl_peek(n, decl_var, BL_DECL_VAR, bl_decl_var_t)
-#define bl_peek_decl_arg(n)     _bl_peek(n, decl_arg, BL_DECL_ARG, bl_decl_arg_t)
 #define bl_peek_decl_func(n)    _bl_peek(n, decl_func, BL_DECL_FUNC, bl_decl_func_t)
 #define bl_peek_decl_struct(n)  _bl_peek(n, decl_struct, BL_DECL_STRUCT, bl_decl_struct_t)
 #define bl_peek_decl_enum(n)    _bl_peek(n, decl_enum, BL_DECL_ENUM, bl_decl_enum_t)
@@ -115,7 +114,6 @@ typedef struct bl_stmt_return   bl_stmt_return_t;
 
 typedef struct bl_decl_module bl_decl_module_t;
 typedef struct bl_decl_var    bl_decl_var_t;
-typedef struct bl_decl_arg    bl_decl_arg_t;
 typedef struct bl_decl_func   bl_decl_func_t;
 typedef struct bl_decl_struct bl_decl_struct_t;
 typedef struct bl_decl_enum   bl_decl_enum_t;
@@ -153,7 +151,6 @@ enum bl_node_code
 
   BL_DECL_MODULE,
   BL_DECL_VAR,
-  BL_DECL_ARG,
   BL_DECL_FUNC,
   BL_DECL_STRUCT,
   BL_DECL_ENUM,
@@ -216,12 +213,6 @@ struct bl_decl_var
   bl_node_t *init_expr;
   int        used;
   int        order; /* order is used when variable declaration is inside struct */
-};
-
-struct bl_decl_arg
-{
-  bl_id_t    id;
-  bl_node_t *type;
 };
 
 struct bl_decl_func
@@ -326,7 +317,6 @@ struct bl_node
     bl_stmt_return_t   stmt_return;
     bl_decl_module_t   decl_module;
     bl_decl_var_t      decl_var;
-    bl_decl_arg_t      decl_arg;
     bl_decl_func_t     decl_func;
     bl_decl_struct_t   decl_struct;
     bl_decl_enum_t     decl_enum;

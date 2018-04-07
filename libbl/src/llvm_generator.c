@@ -169,8 +169,8 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
 {
-  int       out_i = 0;
-  const int c     = bl_ast_func_arg_count(func);
+  int          out_i = 0;
+  const size_t c     = bl_ast_func_arg_count(func);
 
   /* no args */
   if (c == 0) {
@@ -180,7 +180,7 @@ gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
   bl_node_t *arg = NULL;
   for (int i = 0; i < c; i++) {
     arg  = bl_ast_func_get_arg(func, i);
-    *out = to_llvm_type(cnt, bl_peek_decl_arg(arg)->type);
+    *out = to_llvm_type(cnt, bl_peek_decl_var(arg)->type);
 
     out++;
     out_i++;

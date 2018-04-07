@@ -18,13 +18,20 @@ fn main() i32 {
   var _bool   bool   = true;
   */
   var hello i32;
- 
+  var test my_module::data_t; 
+  var test2 data_t; 
   return 0;
 }
 
-struct data_t {
-  a i32, 
-  b i32,
-  c i32
+module my_module {
+  public struct data_t {
+    a i32, 
+    b i32,
+    b i32,
+    c i32
+  }
 }
 
+public struct data_t {
+  x i32
+}

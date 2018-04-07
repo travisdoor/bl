@@ -106,7 +106,7 @@ static void
 visit_arg(bl_visitor_t *visitor, bl_node_t *arg)
 {
   print_head("arg", bl_peek_src(arg), arg, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_arg(arg)->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), bl_peek_decl_var(arg)->id.str);
   bl_visitor_walk_arg(visitor, arg);
 }
 

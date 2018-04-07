@@ -294,7 +294,7 @@ bl_visitor_walk_arg(bl_visitor_t *visitor, bl_node_t *arg)
   visitor->nesting++;
 
   bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
-  vt(visitor, bl_peek_decl_arg(arg)->type);
+  vt(visitor, bl_peek_decl_var(arg)->type);
 
   visitor->nesting--;
 }

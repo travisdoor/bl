@@ -302,9 +302,9 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   if (tok)
     arg->src = &tok->src;
 
-  arg->code                   = BL_DECL_ARG;
-  bl_peek_decl_arg(arg)->type = type;
-  bl_id_init(&bl_peek_decl_arg(arg)->id, name);
+  arg->code                   = BL_DECL_VAR;
+  bl_peek_decl_var(arg)->type = type;
+  bl_id_init(&bl_peek_decl_var(arg)->id, name);
 
   return arg;
 }
@@ -613,8 +613,6 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_module(node)->id;
   case BL_DECL_VAR:
     return &bl_peek_decl_var(node)->id;
-  case BL_DECL_ARG:
-    return &bl_peek_decl_arg(node)->id;
   case BL_DECL_FUNC:
     return &bl_peek_decl_func(node)->id;
   case BL_DECL_STRUCT:
