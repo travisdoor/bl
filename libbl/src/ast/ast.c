@@ -62,6 +62,9 @@ node_terminate(bl_node_t *node)
   case BL_DECL_ENUM:
     bo_unref(bl_peek_decl_enum(node)->elems);
     break;
+  case BL_DECL_STRUCT:
+    bo_unref(bl_peek_decl_struct(node)->members);
+    break;
   default:
     break;
   }
@@ -101,6 +104,9 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
   return type;
 }
 
+/*************************************************************************************************
+ * node constructors
+ *************************************************************************************************/
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
 {
@@ -109,7 +115,6 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
     type->src = &tok->src;
 
   type->code = BL_TYPE_REF;
-  bl_id_init(&bl_peek_type_ref(type)->id, name);
   bl_peek_type_ref(type)->ref  = ref;
   bl_peek_type_ref(type)->path = path;
 
@@ -291,22 +296,6 @@ bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
-bl_ast_add_decl_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                        bl_node_t *value)
-{
-  bl_node_t *variant = alloc_node(ast);
-  if (tok)
-    variant->src = &tok->src;
-
-  variant->code                        = BL_DECL_VARIANT;
-  bl_peek_decl_variant(variant)->value = value;
-  bl_peek_decl_variant(variant)->type  = type;
-  bl_id_init(&bl_peek_decl_var(variant)->id, name);
-
-  return variant;
-}
-
-bl_node_t *
 bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type)
 {
   bl_node_t *arg = alloc_node(ast);
@@ -442,49 +431,42 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
   return return_stmt;
 }
 
-/* module */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * module
+ *************************************************************************************************/
 bl_node_t *
-bl_ast_module_push_node(bl_node_t *module, bl_node_t *node)
+bl_ast_module_push_node(bl_decl_module_t *module, bl_node_t *node)
 {
-  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
-
   if (node == NULL)
     return NULL;
 
-  bl_decl_module_t *_module = bl_peek_decl_module(module);
-
-  if (_module->nodes == NULL) {
-    _module->nodes = bo_array_new(sizeof(bl_node_t *));
+  if (module->nodes == NULL) {
+    module->nodes = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_array_push_back(_module->nodes, node);
+  bo_array_push_back(module->nodes, node);
   return node;
 }
 
 size_t
-bl_ast_module_node_count(bl_node_t *module)
+bl_ast_module_node_count(bl_decl_module_t *module)
 {
-  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
-  if (bl_peek_decl_module(module)->nodes == NULL)
+  if (module->nodes == NULL)
     return 0;
-  return bo_array_size(bl_peek_decl_module(module)->nodes);
+  return bo_array_size(module->nodes);
 }
 
 bl_node_t *
-bl_ast_module_get_node(bl_node_t *module, size_t i)
+bl_ast_module_get_node(bl_decl_module_t *module, size_t i)
 {
-  bl_assert(bl_node_is(module, BL_DECL_MODULE), "invalid module");
-  bl_decl_module_t *_module = bl_peek_decl_module(module);
-
-  if (_module->nodes == NULL)
+  if (module->nodes == NULL)
     return NULL;
-  return bo_array_at(_module->nodes, i, bl_node_t *);
+  return bo_array_at(module->nodes, i, bl_node_t *);
 }
-/**************************************************************************************************/
 
-/* function */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * function
+ *************************************************************************************************/
 bl_node_t *
 bl_ast_func_push_arg(bl_decl_func_t *func, bl_node_t *arg)
 {
@@ -514,10 +496,10 @@ bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i)
     return NULL;
   return bo_array_at(func->args, i, bl_node_t *);
 }
-/**************************************************************************************************/
 
-/* block */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * block
+ *************************************************************************************************/
 bl_node_t *
 bl_ast_block_push_node(bl_decl_block_t *block, bl_node_t *node)
 {
@@ -547,46 +529,78 @@ bl_ast_block_get_node(bl_decl_block_t *block, const size_t i)
     return NULL;
   return bo_array_at(block->nodes, i, bl_node_t *);
 }
-/**************************************************************************************************/
 
-/* call */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * call
+ *************************************************************************************************/
 bl_node_t *
-bl_ast_call_push_arg(bl_node_t *call, bl_node_t *arg)
+bl_ast_call_push_arg(bl_expr_call_t *call, bl_node_t *arg)
 {
-  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
   if (arg == NULL)
     return NULL;
 
-  if (bl_peek_expr_call(call)->args == NULL) {
-    bl_peek_expr_call(call)->args = bo_array_new(sizeof(bl_node_t *));
+  if (call->args == NULL) {
+    call->args = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_array_push_back(bl_peek_expr_call(call)->args, arg);
+  bo_array_push_back(call->args, arg);
   return arg;
 }
 
 size_t
-bl_ast_call_arg_count(bl_node_t *call)
+bl_ast_call_arg_count(bl_expr_call_t *call)
 {
-  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
-  if (bl_peek_expr_call(call)->args == NULL)
+  if (call->args == NULL)
     return 0;
 
-  return bo_array_size(bl_peek_expr_call(call)->args);
+  return bo_array_size(call->args);
 }
 
 bl_node_t *
-bl_ast_call_get_arg(bl_node_t *call, const size_t i)
+bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i)
 {
-  bl_assert(bl_node_is(call, BL_EXPR_CALL), "invalid call");
-  if (bl_peek_expr_call(call)->args == NULL)
+  if (call->args == NULL)
     return NULL;
-  return bo_array_at(bl_peek_expr_call(call)->args, i, bl_node_t *);
+  return bo_array_at(call->args, i, bl_node_t *);
 }
 
-/* other */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * struct
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_struct_push_arg(bl_decl_struct_t *strct, bl_node_t *member)
+{
+  if (member == NULL)
+    return NULL;
+
+  if (strct->members == NULL) {
+    strct->members = bo_array_new(sizeof(bl_node_t *));
+  }
+
+  bo_array_push_back(strct->members, member);
+  return member;
+}
+
+size_t
+bl_ast_struct_arg_count(bl_decl_struct_t *strct)
+{
+  if (strct->members == NULL)
+    return 0;
+
+  return bo_array_size(strct->members);
+}
+
+bl_node_t *
+bl_ast_struct_get_arg(bl_decl_struct_t *strct, const size_t i)
+{
+  if (strct->members == NULL)
+    return NULL;
+  return bo_array_at(strct->members, i, bl_node_t *);
+}
+
+/*************************************************************************************************
+ * other
+ *************************************************************************************************/
 bl_id_t *
 bl_ast_try_get_id(bl_node_t *node)
 {
@@ -607,10 +621,6 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_struct(node)->id;
   case BL_DECL_ENUM:
     return &bl_peek_decl_enum(node)->id;
-  case BL_TYPE_REF:
-    return &bl_peek_type_ref(node)->id;
-  case BL_DECL_VARIANT:
-    return &bl_peek_decl_variant(node)->id;
   default:
     return NULL;
   }
@@ -679,7 +689,7 @@ bl_ast_try_get_type_name(bl_node_t *type)
   case BL_TYPE_FUND:
     return bl_fund_type_strings[bl_peek_type_fund(type)->type];
   case BL_TYPE_REF:
-    return bl_peek_type_ref(type)->id.str;
+    return "unknown";
   default:
     return NULL;
   }

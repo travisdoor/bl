@@ -228,8 +228,9 @@ gen_func(context_t *cnt, bl_node_t *func)
 int
 gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 {
-  int       out_i = 0;
-  const int c     = bl_ast_call_arg_count(call);
+  int             out_i = 0;
+  bl_expr_call_t *_call = bl_peek_expr_call(call);
+  const int       c     = bl_ast_call_arg_count(_call);
 
   /* no args */
   if (c == 0) {
@@ -238,7 +239,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 
   bl_node_t *expr = NULL;
   for (int i = 0; i < c; i++) {
-    expr             = bl_ast_call_get_arg(call, i);
+    expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
     if (LLVMIsAAllocaInst(val)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));

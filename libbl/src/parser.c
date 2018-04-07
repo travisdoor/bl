@@ -303,8 +303,9 @@ parse_call_maybe(context_t *cnt, BArray *path)
 
     /* parse args */
     bool rq = false;
+    bl_expr_call_t *_call = bl_peek_expr_call(call);
   arg:
-    if (bl_ast_call_push_arg(call, parse_expr_maybe(cnt))) {
+    if (bl_ast_call_push_arg(_call, parse_expr_maybe(cnt))) {
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         rq = true;
         goto arg;
@@ -924,13 +925,14 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
     module = bl_ast_add_decl_module(cnt->ast, NULL, NULL, BL_MODIF_PUBLIC);
   }
 
-  int        next_modif = BL_MODIF_NONE;
-  bl_node_t *node       = NULL;
+  int               next_modif = BL_MODIF_NONE;
+  bl_node_t *       node       = NULL;
+  bl_decl_module_t *_module    = bl_peek_decl_module(module);
 decl:
   next_modif = parse_modifs_maybe(cnt);
 
   if ((node =
-           bl_ast_module_push_node(module, parse_module_maybe(cnt, module, false, next_modif)))) {
+           bl_ast_module_push_node(_module, parse_module_maybe(cnt, module, false, next_modif)))) {
     if (next_modif & BL_MODIF_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
                        "module can't be declared as " BL_YELLOW("'%s'"),
@@ -939,11 +941,11 @@ decl:
     goto decl;
   }
 
-  if (bl_ast_module_push_node(module, parse_fn_maybe(cnt, next_modif))) {
+  if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, next_modif))) {
     goto decl;
   }
 
-  if ((node = bl_ast_module_push_node(module, parse_struct_maybe(cnt, next_modif)))) {
+  if ((node = bl_ast_module_push_node(_module, parse_struct_maybe(cnt, next_modif)))) {
     if (next_modif & BL_MODIF_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
                        "struct can't be declared as " BL_YELLOW("'%s'"),
@@ -952,7 +954,7 @@ decl:
     goto decl;
   }
 
-  if ((node = bl_ast_module_push_node(module, parse_enum_maybe(cnt, next_modif)))) {
+  if ((node = bl_ast_module_push_node(_module, parse_enum_maybe(cnt, next_modif)))) {
     if (next_modif & BL_MODIF_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
                        "enum can't be declared as " BL_YELLOW("'%s'"),

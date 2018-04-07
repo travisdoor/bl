@@ -95,7 +95,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
     }
   }
 
-  const size_t call_arg_c   = bl_ast_call_arg_count(call);
+  const size_t call_arg_c   = bl_ast_call_arg_count(_call);
   const size_t callee_arg_c = bl_ast_func_arg_count(_callee);
 
   if (call_arg_c != callee_arg_c) {
@@ -111,7 +111,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
   bl_node_t *call_arg;
   for (size_t i = 0; i < call_arg_c; ++i) {
     callee_arg = bl_ast_func_get_arg(_callee, i);
-    call_arg   = bl_ast_call_get_arg(call, i);
+    call_arg   = bl_ast_call_get_arg(_call, i);
 
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type);
   }

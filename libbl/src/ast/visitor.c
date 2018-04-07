@@ -211,10 +211,11 @@ void
 bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   visitor->nesting++;
-  const size_t c    = bl_ast_module_node_count(module);
-  bl_node_t *  node = NULL;
+  bl_decl_module_t *_module = bl_peek_decl_module(module);
+  const size_t      c       = bl_ast_module_node_count(_module);
+  bl_node_t *       node    = NULL;
   for (size_t i = 0; i < c; i++) {
-    node = bl_ast_module_get_node(module, i);
+    node = bl_ast_module_get_node(_module, i);
 
     switch (bl_node_code(node)) {
     case BL_DECL_MODULE: {
@@ -351,11 +352,12 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 
   case BL_EXPR_CALL: {
-    bl_visit_f   v   = visitor->visitors[BL_VISIT_EXPR];
-    const size_t c   = bl_ast_call_arg_count(expr);
-    bl_node_t *  arg = NULL;
+    bl_expr_call_t *call = bl_peek_expr_call(expr);
+    bl_visit_f      v    = visitor->visitors[BL_VISIT_EXPR];
+    const size_t    c    = bl_ast_call_arg_count(call);
+    bl_node_t *     arg  = NULL;
     for (size_t i = 0; i < c; i++) {
-      arg = bl_ast_call_get_arg(expr, i);
+      arg = bl_ast_call_get_arg(call, i);
       v(visitor, arg);
     }
     break;
