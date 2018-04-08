@@ -53,4 +53,7 @@ bl_scope_insert_node(bl_scope_t *scope, struct bl_node *node);
 struct bl_node *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
 
+void
+bl_scope_clear(bl_scope_t *scope);
+
 #endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

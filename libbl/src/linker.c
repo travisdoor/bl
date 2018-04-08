@@ -43,16 +43,20 @@
 
 typedef struct
 {
-  bl_block_scope_t block_scope;
-  bl_builder_t *   builder;
-  bl_assembly_t *  assembly;
-  jmp_buf          jmp_error;
-  bl_scope_t *     gscope;
-  bl_scope_t *     mod_scope;
+  bl_block_scope_t  block_scope;
+  bl_block_scope_t  tmp_scope;
+  bl_builder_t *    builder;
+  bl_assembly_t *   assembly;
+  jmp_buf           jmp_error;
+  bl_scope_t *      gscope;
+  bl_scope_t *      mod_scope;
 } context_t;
 
-/* declaration merging */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * declaration merging
+ * all declaration in corresponding modules must be merged due to lack of header files and
+ * context free grammar
+ *************************************************************************************************/
 static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func)
 {
@@ -64,7 +68,7 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
 
   if (conflict) {
     link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func->src,
-               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                _func->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
 
@@ -82,9 +86,28 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 
   if (conflict) {
     link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct->src,
-               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                _strct->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
+
+  /* check for duplicit members */
+  bl_block_scope_push(&cnt->tmp_scope);
+  bl_node_t *  member = NULL;
+  const size_t c      = bl_ast_struct_member_count(_strct);
+  for (size_t i = 0; i < c; i++) {
+    member   = bl_ast_struct_get_member(_strct, i);
+    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_var(member)->id);
+
+    if (conflict) {
+      link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, member->src,
+                 "duplicate struct memeber " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                 bl_peek_decl_var(member)->id.str, conflict->src->file, conflict->src->line,
+                 conflict->src->col);
+    }
+
+    bl_block_scope_insert_node(&cnt->tmp_scope, member);
+  }
+  bl_block_scope_pop(&cnt->tmp_scope);
 
   bl_scope_insert_node(scope, strct);
 }
@@ -100,7 +123,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 
   if (conflict) {
     link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm->src,
-               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
 
@@ -120,7 +143,7 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
     if (bl_ast_try_get_modif(module) != bl_ast_try_get_modif(conflict)) {
       link_error(peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, module->src,
                  "previous declaration of module " BL_YELLOW(
-                     "'%s'") " has different access modifier, originally declared here: %s %d:%d",
+                     "'%s'") " has different access modifier, originally declared here: %s:%d:%d",
                  _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     }
 
@@ -135,10 +158,10 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
   bl_visitor_walk_module(visitor, module);
   peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
-/**************************************************************************************************/
 
-/* linking expressions */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * link expresions
+ *************************************************************************************************/
 static void
 link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
@@ -193,7 +216,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
   if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
     link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
-               "symbol " BL_YELLOW("'%s'") " is private in this context, declared here: %s %d:%d",
+               "symbol " BL_YELLOW("'%s'") " is private in this context, declared here: %s:%d:%d",
                bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
                found->src->col);
   }
@@ -201,7 +224,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   if (bl_node_code(found) == BL_DECL_MODULE) {
     if (iter == bo_array_size(path)) {
       link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
-                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s %d:%d",
+                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
                  bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
                  found->src->col);
     }
@@ -276,7 +299,7 @@ link_func_args(context_t *cnt, bl_decl_func_t *func)
     bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_decl_var(arg)->id);
     if (conflict) {
       link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg->src,
-                 "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+                 "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                  bl_peek_decl_var(arg)->id.str, conflict->src->file, conflict->src->line,
                  conflict->src->col);
     } else {
@@ -311,7 +334,7 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &_var->id);
   if (conflict) {
     link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
-               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s %d:%d",
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                _var->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   } else {
     bl_block_scope_insert_node(&cnt->block_scope, var);
@@ -319,10 +342,10 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
 
   bl_visitor_walk_var(visitor, var);
 }
-/**************************************************************************************************/
 
-/* main entry function */
-/**************************************************************************************************/
+/*************************************************************************************************
+ * main entry function
+ *************************************************************************************************/
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
@@ -332,6 +355,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .gscope    = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
+  bl_block_scope_init(&cnt.tmp_scope);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -367,6 +391,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
+  bl_block_scope_terminate(&cnt.tmp_scope);
 
   return BL_NO_ERR;
 }

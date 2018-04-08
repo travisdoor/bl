@@ -68,3 +68,9 @@ bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 
   return NULL;
 }
+
+void
+bl_scope_clear(bl_scope_t *scope)
+{
+  bo_htbl_clear(scope);
+}

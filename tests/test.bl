@@ -11,14 +11,12 @@ fn main() i32 {
 module my_module {
   public struct data_t {
     a i32, 
-    b i32,
-    b i32,
+    b i32, 
     c i32
   }
 }
 
 public struct data_t {
   x data_t,
-  y my_module::data_t,
-  z nothing
+  y my_module::data_t
 }
