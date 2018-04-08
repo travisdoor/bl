@@ -18,8 +18,7 @@ fn main() i32 {
   var _bool   bool   = true;
   */
   var hello i32;
-  var test my_module::data_t; 
-  var test2 data_t; 
+  var a i32 = 20;
   return 0;
 }
 

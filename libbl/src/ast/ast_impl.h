@@ -78,7 +78,7 @@ _node_abort(void)
 #define _bl_peek(node, member, c, type)                                                            \
   ((node)->code == c ? &(node)->n.member : (type *)_node_abort())
 #else
-#define _bl_peek(node, member, c, type) &(node)->n.member
+#define _bl_peek(node, member, c, type) (&(node)->n.member)
 #endif
 
 #define bl_peek_src(n) (n)->src

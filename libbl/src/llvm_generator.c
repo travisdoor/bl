@@ -158,7 +158,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
     case BL_FTYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
-    default:
+    default: /* TODO: solve custom ref types */
       bl_abort("invalide type");
     }
   }
@@ -623,6 +623,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 
   if (LLVMIsAAllocaInst(expr))
     expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+
   expr =
       LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1TypeInContext(cnt->llvm_cnt), gname("tmp"));
 
