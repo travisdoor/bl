@@ -48,13 +48,13 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 static void
 default_error_handler(const char *msg, void *context)
 {
-  bl_log(BL_RED("error: ") "%s", msg);
+  bl_error("%s", msg);
 }
 
 static void
 default_warning_handler(const char *msg, void *context)
 {
-  bl_log(BL_YELLOW("warning: ") "%s", msg);
+  bl_warning("%s", msg);
 }
 
 bl_error_e
