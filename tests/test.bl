@@ -18,5 +18,6 @@ module my_module {
 
 public struct data_t {
   x data_t,
+  x data_t,
   y my_module::data_t
 }

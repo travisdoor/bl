@@ -104,11 +104,10 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
                  bl_peek_decl_var(member)->id.str, conflict->src->file, conflict->src->line,
                  conflict->src->col);
     }
-
     bl_block_scope_insert_node(&cnt->tmp_scope, member);
   }
-  bl_block_scope_pop(&cnt->tmp_scope);
 
+  bl_block_scope_pop(&cnt->tmp_scope);
   bl_scope_insert_node(scope, strct);
 }
 

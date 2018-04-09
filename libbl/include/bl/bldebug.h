@@ -44,20 +44,16 @@
     fprintf(stderr, BL_RED("assert: ") format "\n", ##__VA_ARGS__);                                \
     abort();                                                                                       \
   }
+#else
+#define bl_assert(expr, format, ...)                                                               \
+  while (0) {                                                                                      \
+  }
+#endif
 
 #define bl_log(format, ...)                                                                        \
   {                                                                                                \
     fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
   }
-#else
-#define bl_assert(expr, format, ...)                                                               \
-  while (0) {                                                                                      \
-  }
-
-#define bl_log(format, ...)                                                                        \
-  while (0) {                                                                                      \
-  }
-#endif
 
 #define bl_abort(format, ...)                                                                      \
   {                                                                                                \
