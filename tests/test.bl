@@ -5,6 +5,9 @@
 fn main() i32 {
   var hello i32;
   var a i32 = 20;
+
+  var data my_module::data_t;
+
   return 0;
 }
 
@@ -18,6 +21,9 @@ module my_module {
 
 public struct data_t {
   x data_t,
-  x data_t,
   y my_module::data_t
+}
+
+struct unused {
+  a i32
 }

@@ -229,6 +229,7 @@ struct bl_decl_struct
 {
   bl_id_t id;
   int     modif;
+  int     used;
   BArray *members;
 };
 

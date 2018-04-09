@@ -126,6 +126,9 @@ static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
 
 static LLVMTypeRef
+gen_struct(context_t *cnt, bl_node_t *strct);
+
+static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
 
 /*
@@ -134,7 +137,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type);
 LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
-  if (bl_node_code(type) == BL_TYPE_FUND) {
+  if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     switch (_type->type) {
     case BL_FTYPE_VOID:
@@ -158,12 +161,55 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
     case BL_FTYPE_BOOL:
       return LLVMInt1TypeInContext(cnt->llvm_cnt);
-    default: /* TODO: solve custom ref types */
-      bl_abort("invalide type");
+    default:
+      bl_abort("unknown fundamenetal type");
+    }
+  } else if (bl_node_is(type, BL_TYPE_REF)) {
+    /* here we solve custom user defined types like structures and enumerators which are described
+     * by reference to definition node */
+    bl_type_ref_t *_type = bl_peek_type_ref(type);
+    bl_assert(ref, "invalid type reference");
+    switch (bl_node_code(_type->ref)) {
+    case BL_DECL_STRUCT:
+      return gen_struct(cnt, _type->ref);
+    case BL_DECL_ENUM:
+      bl_abort("generation of enums is not implemented yet!!!");
+    default:
+      bl_abort("invalid reference type");
     }
   }
 
   bl_abort("invalid type");
+}
+
+LLVMTypeRef
+gen_struct(context_t *cnt, bl_node_t *strct)
+{
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  LLVMTypeRef       type   = NULL;
+
+  /* structure can be already generated -> check cache */
+  if (is_in_gscope(strct)) {
+    type = (LLVMTypeRef)get_value_gscope(strct);
+    return type;
+  }
+
+  type = LLVMStructCreateNamed(cnt->llvm_cnt, _strct->id.str);
+  push_value_gscope(strct, type);
+
+  const size_t c       = bl_ast_struct_member_count(_strct);
+  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
+  bl_node_t *  member;
+
+  for (size_t i = 0; i < c; i++) {
+    member     = bl_ast_struct_get_member(_strct, i);
+    members[i] = to_llvm_type(cnt, bl_peek_decl_var(member)->type);
+  }
+
+  LLVMStructSetBody(type, members, (unsigned int)c, false);
+  bl_free(members);
+
+  return type;
 }
 
 int
@@ -178,7 +224,7 @@ gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
   }
 
   bl_node_t *arg = NULL;
-  for (int i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; i++) {
     arg  = bl_ast_func_get_arg(func, i);
     *out = to_llvm_type(cnt, bl_peek_decl_var(arg)->type);
 
@@ -319,7 +365,8 @@ gen_default(context_t *cnt, bl_node_t *type)
       return NULL;
     }
   }
-  bl_abort("unimplemented default value setting for non-fundamental types");
+
+  return NULL;
 }
 
 LLVMValueRef

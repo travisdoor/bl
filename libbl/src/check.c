@@ -235,6 +235,17 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 }
 
 static void
+visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
+{
+  context_t *       cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  if (_strct->modif == BL_MODIF_NONE && _strct->used == 0) {
+    check_warning(cnt, strct, "structure " BL_YELLOW("'%s'") " is declared but never used",
+                  _strct->id.str);
+  }
+}
+
+static void
 visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
@@ -306,6 +317,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
   bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
   bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
+  bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
