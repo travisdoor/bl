@@ -140,9 +140,14 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 static void
 visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
-  print_head("variable", bl_peek_src(var), var, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", bl_peek_decl_var(var)->id.str,
-          bl_peek_decl_var(var)->used);
+  bl_decl_var_t *_var = bl_peek_decl_var(var);
+  if (_var->modif & BL_MODIF_CONST) {
+    print_head("constant", bl_peek_src(var), var, visitor->nesting);
+  } else {
+    print_head("variable", bl_peek_src(var), var, visitor->nesting);
+  }
+
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _var->id.str, _var->used);
   bl_visitor_walk_var(visitor, var);
 }
 

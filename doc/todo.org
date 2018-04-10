@@ -1,0 +1,15 @@
+* TODO list
+  
+** Basics
+
+  1. Constant "variable" declaration
+  2. Enum declaration
+  3. Struct member access
+  4. Arrays
+  5. Unary operator
+     * -
+     * +
+     * ++
+     * --
+  6. Pointers 
+  

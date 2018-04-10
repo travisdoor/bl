@@ -34,64 +34,64 @@
 
 // clang-format off
 #define BL_SYMBOLS_LIST \
-  sm(EOF = 0, "end") \
-  sm(IDENT, "identifier") \
-  sm(STRING, "string") \
-  sm(CHAR, "char") \
-  sm(NUM, "number") \
-  sm(FLOAT, "float") \
-  sm(DOUBLE, "double") \
-  sm(IF, "if") /* must be first */ \
-  sm(FN, "fn") \
-  sm(CAST, "cast") \
-  sm(MODULE, "module") \
-  sm(VAR, "var") \
-  sm(ELSE, "else") \
-  sm(TRUE, "true") \
-  sm(FALSE, "false") \
-  sm(NULL, "null") \
-  sm(EXTERN, "extern") \
-  sm(EXPORT, "export") \
-  sm(RETURN, "return") \
-  sm(ENUM, "enum") \
-  sm(STRUCT, "struct") \
-  sm(LOOP, "loop")\
-  sm(WHILE, "while") \
-  sm(BREAK, "break")\
-  sm(CONTINUE, "continue")\
-  sm(PUBLIC, "public")\
-  sm(IMPL, "impl") /* must be last */\
+  sm(EOF = 0,     "end") \
+  sm(IDENT,       "identifier") \
+  sm(STRING,      "string") \
+  sm(CHAR,        "char") \
+  sm(NUM,         "number") \
+  sm(FLOAT,       "float") \
+  sm(DOUBLE,      "double") \
+  sm(IF,          "if") /* must be first */ \
+  sm(FN,          "fn") \
+  sm(VAR,         "var") \
+  sm(CAST,        "cast") \
+  sm(ELSE,        "else") \
+  sm(TRUE,        "true") \
+  sm(NULL,        "null") \
+  sm(ENUM,        "enum") \
+  sm(LOOP,        "loop")\
+  sm(FALSE,       "false") \
+  sm(CONST,       "const") \
+  sm(WHILE,       "while") \
+  sm(BREAK,       "break")\
+  sm(PUBLIC,      "public")\
+  sm(EXTERN,      "extern") \
+  sm(MODULE,      "module") \
+  sm(EXPORT,      "export") \
+  sm(RETURN,      "return") \
+  sm(STRUCT,      "struct") \
+  sm(CONTINUE,    "continue") /* must be last */ \
   sm(MODULE_PATH, "::") \
-  sm(LCOMMENT, "//") \
-  sm(LBCOMMENT, "/*") \
-  sm(RBCOMMENT, "*/") \
-  sm(LBLOCK, "{") \
-  sm(RBLOCK, "}")\
-  sm(LBRACKET, "[") \
-  sm(RBRACKET, "]")\
-  sm(LPAREN, "(") \
-  sm(RPAREN, ")") \
-  sm(COMMA, ",")\
-  sm(SEMICOLON, ";") \
-  sm(EQ, "==") \
-  sm(NEQ, "!=") \
-  sm(GREATER_EQ, ">=") \
-  sm(LESS_EQ, "<=")\
-  sm(LOGIC_AND, "&&") \
-  sm(LOGIC_OR, "||")\
-  sm(AND, "&") \
-  sm(OR, "|") \
-  sm(XOR, "^")\
-  sm(SLASH, "/") \
-  sm(MODULO, "%") \
-  sm(ASIGN, "=") \
-  sm(PLUS, "+") \
-  sm(MINUS, "-")\
-  sm(ASTERISK, "*") \
-  sm(GREATER, ">") \
-  sm(LESS, "<") \
-  sm(DOT, ".") \
-  sm(NONE, "")\
+  sm(LCOMMENT,    "//") \
+  sm(LBCOMMENT,   "/*") \
+  sm(RBCOMMENT,   "*/") \
+  sm(LBLOCK,      "{") \
+  sm(RBLOCK,      "}")\
+  sm(LBRACKET,    "[") \
+  sm(RBRACKET,    "]")\
+  sm(LPAREN,      "(") \
+  sm(RPAREN,      ")") \
+  sm(COMMA,       ",")\
+  sm(SEMICOLON,   ";") \
+  sm(EQ,          "==") /* logical begin */ \
+  sm(NEQ,         "!=") \
+  sm(GREATER_EQ,  ">=") \
+  sm(LESS_EQ,     "<=")\
+  sm(LOGIC_AND,   "&&") \
+  sm(LOGIC_OR,    "||") /* logical end */ \
+  sm(AND,         "&") \
+  sm(OR,          "|") \
+  sm(XOR,         "^") \
+  sm(SLASH,       "/") \
+  sm(MODULO,      "%") \
+  sm(ASIGN,       "=") \
+  sm(PLUS,        "+") \
+  sm(MINUS,       "-")\
+  sm(ASTERISK,    "*") \
+  sm(GREATER,     ">") \
+  sm(LESS,        "<") \
+  sm(DOT,         ".") \
+  sm(NONE,        "")\
 
 typedef enum {
 #define sm(tok, str) BL_SYM_##tok,

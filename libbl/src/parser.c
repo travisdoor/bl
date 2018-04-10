@@ -511,14 +511,27 @@ parse_expr_maybe(context_t *cnt)
 bl_node_t *
 parse_var_maybe(context_t *cnt)
 {
-  bl_node_t *type      = NULL;
-  bl_node_t *init_expr = NULL;
+  bl_node_t * type      = NULL;
+  bl_node_t * init_expr = NULL;
+  bl_token_t *tok_id    = NULL;
+  int         modif     = BL_MODIF_NONE; /* pass later as an argument */
 
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_VAR) == NULL) {
+  /* Constant variable can be declared without 'var' key word at the begining, we use 'const'
+   * keyword instead. This can lead to confusion later becouse 'const' is used as modifier stored in
+   * modif buffer of declaration, but for now anything else than var cannot be declared as constant.
+   * Fix this latex? */
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_VAR) &&
+      bl_tokens_current_is_not(cnt->tokens, BL_SYM_CONST)) {
     return NULL;
   }
 
-  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+  /* consume keyword and determinate constant variant of declaration */
+  tok_id = bl_tokens_consume(cnt->tokens);
+  if (tok_id->sym == BL_SYM_CONST) {
+    modif |= BL_MODIF_CONST;
+  }
+
+  tok_id = bl_tokens_consume(cnt->tokens);
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
@@ -528,6 +541,7 @@ parse_var_maybe(context_t *cnt)
 
   /*
    * parse init expr when variable declaration is fallowd by assign symbol
+   * note: constant must have initialization
    */
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
     init_expr = parse_expr_maybe(cnt);
@@ -538,7 +552,13 @@ parse_var_maybe(context_t *cnt)
     }
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr);
+  if (init_expr == NULL && modif & BL_MODIF_CONST) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+                "expected initialization expression after constant declaration");
+  }
+
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif);
 }
 
 void
@@ -861,7 +881,7 @@ parse_fn_maybe(context_t *cnt, int modif)
 bl_node_t *
 parse_struct_member_maybe(context_t *cnt)
 {
-  bl_node_t *type      = NULL;
+  bl_node_t *type = NULL;
 
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
     return NULL;
@@ -874,7 +894,7 @@ parse_struct_member_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL);
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL, BL_MODIF_NONE);
 }
 
 bl_node_t *

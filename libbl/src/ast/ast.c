@@ -114,7 +114,7 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   if (tok)
     type->src = &tok->src;
 
-  type->code = BL_TYPE_REF;
+  type->code                   = BL_TYPE_REF;
   bl_peek_type_ref(type)->ref  = ref;
   bl_peek_type_ref(type)->path = path;
 
@@ -281,7 +281,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr)
+                    bl_node_t *init_expr, int modif)
 {
   bl_node_t *var = alloc_node(ast);
   if (tok)
@@ -290,6 +290,7 @@ bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   var->code                        = BL_DECL_VAR;
   bl_peek_decl_var(var)->init_expr = init_expr;
   bl_peek_decl_var(var)->type      = type;
+  bl_peek_decl_var(var)->modif     = modif;
   bl_id_init(&bl_peek_decl_var(var)->id, name);
 
   return var;

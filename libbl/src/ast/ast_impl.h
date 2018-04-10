@@ -172,6 +172,7 @@ enum bl_modif
   BL_MODIF_PUBLIC = 1,
   BL_MODIF_EXTERN = 2,
   BL_MODIF_EXPORT = 4,
+  BL_MODIF_CONST  = 8
 };
 
 struct bl_stmt_if
@@ -209,6 +210,7 @@ struct bl_decl_module
 struct bl_decl_var
 {
   bl_id_t    id;
+  int        modif;
   bl_node_t *type;
   bl_node_t *init_expr;
   int        used;
@@ -382,9 +384,9 @@ bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name);
 bl_node_t *
 bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
-bl_node_t *
+bl_node_t * 
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr);
+                    bl_node_t *init_expr, int modif);
 
 bl_node_t *
 bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type);

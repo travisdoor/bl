@@ -4,7 +4,9 @@
 
 fn main() i32 {
   var hello i32;
-  var a i32 = 20;
+
+  var b i32 = 20;
+  const c i32 = 100; 
 
   var data my_module::data_t;
 
@@ -17,13 +19,4 @@ module my_module {
     b i32, 
     c i32
   }
-}
-
-public struct data_t {
-  x data_t,
-  y my_module::data_t
-}
-
-struct unused {
-  a i32
 }

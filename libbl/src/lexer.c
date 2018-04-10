@@ -376,7 +376,7 @@ scan:
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= BL_SYM_IF && i <= BL_SYM_IMPL && is_intend_c(*cnt->c)) {
+      if (i >= BL_SYM_IF && i <= BL_SYM_CONTINUE && is_intend_c(*cnt->c)) {
         /* roll back */
         cnt->c -= len;
         break;
