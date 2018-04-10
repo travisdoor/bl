@@ -87,7 +87,7 @@ static bl_node_t *
 parse_ret_type_rq(context_t *cnt);
 
 static bl_node_t *
-parse_var_maybe(context_t *cnt);
+parse_var_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
 parse_expr_maybe(context_t *cnt);
@@ -509,12 +509,13 @@ parse_expr_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_var_maybe(context_t *cnt)
+parse_var_maybe(context_t *cnt, int modif)
 {
   bl_node_t * type      = NULL;
   bl_node_t * init_expr = NULL;
   bl_token_t *tok_id    = NULL;
-  int         modif     = BL_MODIF_NONE; /* pass later as an argument */
+
+  /* TODO: check for invalid modificators */
 
   /* Constant variable can be declared without 'var' key word at the begining, we use 'const'
    * keyword instead. This can lead to confusion later becouse 'const' is used as modifier stored in
@@ -690,11 +691,18 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
 {
   bl_node_t *stmt = NULL;
 
+  int modif = parse_modifs_maybe(cnt);
+  if (modif != BL_MODIF_NONE) {
+    bl_token_t *err_tok = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_UNEXPECTED_MODIF, err_tok, "unexpected modificator " BL_YELLOW("'%s'"),
+                bl_sym_strings[err_tok->sym]);
+  }
+
   if ((stmt = parse_block_maybe(cnt, parent))) {
     goto done;
   }
 
-  if ((stmt = parse_var_maybe(cnt))) {
+  if ((stmt = parse_var_maybe(cnt, BL_MODIF_NONE))) {
     parse_semicolon_rq(cnt);
     goto done;
   }

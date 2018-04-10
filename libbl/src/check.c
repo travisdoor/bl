@@ -224,7 +224,10 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   context_t *    cnt  = peek_cnt(visitor);
   bl_decl_var_t *_var = bl_peek_decl_var(var);
-  if (_var->used == 0) {
+  if (_var->used == 0 && _var->modif & BL_MODIF_CONST) {
+    check_warning(cnt, var, "constant " BL_YELLOW("'%s'") " is declared but never used",
+                  _var->id.str);
+  } else if (_var->used == 0) {
     check_warning(cnt, var, "variable " BL_YELLOW("'%s'") " is declared but never used",
                   _var->id.str);
   }

@@ -3,7 +3,7 @@
  */
 
 fn main() i32 {
-  var hello i32;
+  var hello i32; // invalid use of public modificator here
 
   var b i32 = 20;
   const c i32 = 100; 
