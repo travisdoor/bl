@@ -64,6 +64,7 @@
   
 (defun bl-mode ()
   (interactive)
+  (setq tab-width 2)
   (kill-all-local-variables)
   (use-local-map bl-mode-map)
   (set-syntax-table bl-mode-syntax-table)

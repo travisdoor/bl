@@ -966,10 +966,20 @@ parse_enum_maybe(context_t *cnt, int modif)
 
     enm = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, modif);
 
-    // TODO
+    /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_LBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
+    }
+
+    /* eat '}' */
     tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+                  "expected end of enum body " BL_YELLOW("'}'"));
+    }
   }
+
   return enm;
 }
 

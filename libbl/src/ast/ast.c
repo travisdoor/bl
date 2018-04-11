@@ -60,7 +60,7 @@ node_terminate(bl_node_t *node)
     bo_unref(bl_peek_type_ref(node)->path);
     break;
   case BL_DECL_ENUM:
-    bo_unref(bl_peek_decl_enum(node)->elems);
+    bo_unref(bl_peek_decl_enum(node)->members);
     break;
   case BL_DECL_STRUCT:
     bo_unref(bl_peek_decl_struct(node)->members);

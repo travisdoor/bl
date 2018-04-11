@@ -239,7 +239,7 @@ struct bl_decl_enum
 {
   bl_id_t id;
   int     modif;
-  BArray *elems;
+  BArray *members;
 };
 
 struct bl_decl_block
@@ -443,7 +443,6 @@ bl_ast_func_arg_count(bl_decl_func_t *func);
 
 bl_node_t *
 bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i);
-/**************************************************************************************************/
 
 /*************************************************************************************************
  * block
@@ -468,7 +467,6 @@ bl_ast_call_arg_count(bl_expr_call_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i);
-/**************************************************************************************************/
 
 /*************************************************************************************************
  * struct
@@ -481,7 +479,6 @@ bl_ast_struct_member_count(bl_decl_struct_t *strct);
 
 bl_node_t *
 bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
-/**************************************************************************************************/
 
 /*************************************************************************************************
  * other

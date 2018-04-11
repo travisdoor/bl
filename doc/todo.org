@@ -1,15 +1,12 @@
-* TODO list
+Todo list
+ 
+[change with shift+arrow] 
+* TODO Constant "variable" declaration
+* TODO Constant expression evaluator
+* TODO Enum declaration
+* TODO Struct member access
+* TODO Arrays
+* TODO Unary operator
+* TODO Pointers 
   
-** Basics
-
-  1. Constant "variable" declaration
-  2. Enum declaration
-  3. Struct member access
-  4. Arrays
-  5. Unary operator
-     * -
-     * +
-     * ++
-     * --
-  6. Pointers 
-  
+   
