@@ -185,6 +185,12 @@ visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
   bl_visitor_walk_struct_member(visitor, member);
 }
 
+static void
+visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
+{
+  bl_visitor_walk_enum_variant(visitor, variant);
+}
+
 void
 bl_visitor_init(bl_visitor_t *visitor, void *context)
 {
@@ -206,6 +212,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_CONTINUE]      = visit_continue;
   visitor->visitors[BL_VISIT_RETURN]        = visit_return;
   visitor->visitors[BL_VISIT_STRUCT_MEMBER] = visit_struct_member;
+  visitor->visitors[BL_VISIT_ENUM_VARIANT]  = visit_enum_variant;
 }
 
 void
@@ -319,7 +326,18 @@ bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct)
 void
 bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
-  // TODO
+  visitor->nesting++;
+  bl_decl_enum_t *_enm   = bl_peek_decl_enum(enm);
+  const size_t    c      = bl_ast_enum_member_count(_enm);
+  bl_node_t *     member = NULL;
+
+  for (size_t i = 0; i < c; i++) {
+    member        = bl_ast_enum_get_member(_enm, i);
+    bl_visit_f ve = visitor->visitors[BL_VISIT_ENUM_VARIANT];
+    ve(visitor, member);
+  }
+
+  visitor->nesting--;
 }
 
 void
@@ -468,5 +486,16 @@ bl_visitor_walk_struct_member(bl_visitor_t *visitor, bl_node_t *member)
 
   bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
   vt(visitor, _member->type);
+  visitor->nesting--;
+}
+
+void
+bl_visitor_walk_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
+{
+  visitor->nesting++;
+  bl_decl_var_t *_variant = bl_peek_decl_var(variant);
+
+  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+  vt(visitor, _variant->type);
   visitor->nesting--;
 }

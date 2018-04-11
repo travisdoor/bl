@@ -600,6 +600,40 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i)
 }
 
 /*************************************************************************************************
+ * enum
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_enum_push_member(bl_decl_enum_t *enm, bl_node_t *member)
+{
+  if (member == NULL)
+    return NULL;
+
+  if (enm->members == NULL) {
+    enm->members = bo_array_new(sizeof(bl_node_t *));
+  }
+
+  bo_array_push_back(enm->members, member);
+  return member;
+}
+
+size_t
+bl_ast_enum_member_count(bl_decl_enum_t *enm)
+{
+  if (enm->members == NULL)
+    return 0;
+
+  return bo_array_size(enm->members);
+}
+
+bl_node_t *
+bl_ast_enum_get_member(bl_decl_enum_t *enm, const size_t i)
+{
+  if (enm->members == NULL)
+    return NULL;
+  return bo_array_at(enm->members, i, bl_node_t *);
+}
+
+/*************************************************************************************************
  * other
  *************************************************************************************************/
 bl_id_t *

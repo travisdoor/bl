@@ -161,6 +161,15 @@ visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
 }
 
 static void
+visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
+{
+  print_head("variant", bl_peek_src(variant), variant, visitor->nesting);
+  bl_decl_var_t *_varinat = bl_peek_decl_var(variant);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _varinat->id.str);
+  bl_visitor_walk_enum_variant(visitor, variant);
+}
+
+static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   switch (bl_node_code(expr)) {
@@ -252,6 +261,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
     bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
     bl_visitor_add(&visitor, visit_struct_member, BL_VISIT_STRUCT_MEMBER);
+    bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

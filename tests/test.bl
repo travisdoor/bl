@@ -9,6 +9,7 @@ fn main() i32 {
   const c i32 = 100; 
 
   var data my_module::data_t;
+  var state my_module::enum_t;
 
   return 0;
 }

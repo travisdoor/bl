@@ -168,7 +168,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
     bl_type_ref_t *_type = bl_peek_type_ref(type);
-    bl_assert(ref, "invalid type reference");
+    bl_assert(_type, "invalid type reference");
     switch (bl_node_code(_type->ref)) {
     case BL_DECL_STRUCT:
       return gen_struct(cnt, _type->ref);

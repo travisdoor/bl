@@ -66,6 +66,9 @@ static bl_node_t *
 parse_struct_member_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_enum_member_maybe(context_t *cnt, bl_node_t *type);
+
+static bl_node_t *
 parse_enum_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
@@ -906,6 +909,20 @@ parse_struct_member_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_enum_member_maybe(context_t *cnt, bl_node_t *type)
+{
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
+    return NULL;
+  }
+
+  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+
+  /* TODO: parse expresion */
+
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL, BL_MODIF_CONST);
+}
+
+bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif)
 {
   bl_node_t *strct = NULL;
@@ -964,12 +981,30 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected enum name");
     }
 
-    enm = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, modif);
+    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, modif);
+    bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+
+    /* TODO: support more types */
+    bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
 
     /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LBLOCK) {
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
+    }
+
+    bl_node_t *member;
+
+  member:
+    member = parse_enum_member_maybe(cnt, type);
+    if (bl_ast_enum_push_member(_enm, member)) {
+      if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+        goto member;
+      } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+        tok = bl_tokens_consume(cnt->tokens);
+        parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+                    "enum variants must be separated by comma " BL_YELLOW("','"));
+      }
     }
 
     /* eat '}' */

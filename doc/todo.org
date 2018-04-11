@@ -1,9 +1,10 @@
-Todo list
+#+TITLE: Todo list
  
-[change with shift+arrow] 
-* TODO Constant "variable" declaration
+#+change with shift+arrow
+* DONE Constant "variable" declaration
+* DONE Enum declaration
+* TODO Consider individual types for struct member and enum variation 
 * TODO Constant expression evaluator
-* TODO Enum declaration
 * TODO Struct member access
 * TODO Arrays
 * TODO Unary operator
