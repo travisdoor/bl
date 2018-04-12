@@ -328,9 +328,12 @@ bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   visitor->nesting++;
   bl_decl_enum_t *_enm    = bl_peek_decl_enum(enm);
+
+  bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
+  vt(visitor, _enm->type);
+  
   const size_t    c       = bl_ast_enum_variant_count(_enm);
   bl_node_t *     variant = NULL;
-
   for (size_t i = 0; i < c; i++) {
     variant       = bl_ast_enum_get_variant(_enm, i);
     bl_visit_f ve = visitor->visitors[BL_VISIT_ENUM_VARIANT];
@@ -482,7 +485,7 @@ void
 bl_visitor_walk_struct_member(bl_visitor_t *visitor, bl_node_t *member)
 {
   visitor->nesting++;
-  bl_decl_var_t *_member = bl_peek_decl_var(member);
+  bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(member);
 
   bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
   vt(visitor, _member->type);

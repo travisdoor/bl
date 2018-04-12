@@ -203,7 +203,7 @@ gen_struct(context_t *cnt, bl_node_t *strct)
 
   for (size_t i = 0; i < c; i++) {
     member     = bl_ast_struct_get_member(_strct, i);
-    members[i] = to_llvm_type(cnt, bl_peek_decl_var(member)->type);
+    members[i] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
   }
 
   LLVMStructSetBody(type, members, (unsigned int)c, false);

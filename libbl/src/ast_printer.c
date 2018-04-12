@@ -155,7 +155,7 @@ static void
 visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
 {
   print_head("member", bl_peek_src(member), member, visitor->nesting);
-  bl_decl_var_t *_member = bl_peek_decl_var(member);
+  bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(member);
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " order: %d", _member->id.str, _member->order);
   bl_visitor_walk_struct_member(visitor, member);
 }

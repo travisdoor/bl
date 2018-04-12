@@ -1,13 +1,20 @@
 #+TITLE: Todo list
  
 #+change with shift+arrow
-* DONE Constant "variable" declaration
-* DONE Enum declaration
-* TODO Consider individual types for struct member and enum variation 
-* TODO Constant expression evaluator
-* TODO Struct member access
-* TODO Arrays
-* TODO Unary operator
-* TODO Pointers 
+* TASKS
+** DONE Constant "variable" declaration
+** DONE Enum declaration
+** DONE Consider individual types for struct member and enum variation 
+** DONE Enum variant node
+** DONE Struct member node
+** TODO Enum type generation 
+** TODO Struct and enum member access 
+** TODO Enum base expression generation (only numbers accepted for now)
+** TODO Struct member access
+** TODO Constant expression evaluator
+** TODO Arrays
+** TODO Unary operator
+** TODO Pointers 
   
+* BUGS
    

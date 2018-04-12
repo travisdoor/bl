@@ -583,7 +583,7 @@ parse_type_maybe(context_t *cnt)
 
   if (tok != NULL) {
     int found = -1;
-    for (int i = 0; i < bl_nelems(bl_fund_type_strings); i++) {
+    for (int i = 0; i < BL_FUND_TYPE_COUNT; i++) {
       if (strcmp(bl_fund_type_strings[i], tok->value.str) == 0) {
         found = i;
         break;
@@ -905,7 +905,8 @@ parse_struct_member_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL, BL_MODIF_NONE);
+  /* TODO: parse initialization expression here */
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, BL_MODIF_NONE);
 }
 
 bl_node_t *
@@ -947,7 +948,7 @@ parse_struct_maybe(context_t *cnt, int modif)
     /* eat ident */
     member = parse_struct_member_maybe(cnt);
     if (bl_ast_struct_push_member(_strct, member)) {
-      bl_peek_decl_var(member)->order = order++;
+      bl_peek_decl_struct_member(member)->order = order++;
 
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto member;

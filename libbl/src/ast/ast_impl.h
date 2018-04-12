@@ -53,25 +53,26 @@
     ft(BOOL,   "bool")
 
 #define BL_NODE_TYPE_LIST \
-    nt(STMT_IF,           stmt_if) \
-    nt(STMT_LOOP,         stmt_loop) \
-    nt(STMT_BREAK,        stmt_break) \
-    nt(STMT_CONTINUE,     stmt_continue) \
-    nt(STMT_RETURN,       stmt_return) \
-    nt(DECL_MODULE,       decl_module) \
-    nt(DECL_VAR,          decl_var) \
-    nt(DECL_FUNC,         decl_func) \
-    nt(DECL_STRUCT,       decl_struct) \
-    nt(DECL_ENUM,         decl_enum) \
-    nt(DECL_ENUM_VARIANT, decl_enum_variant) \
-    nt(DECL_BLOCK,        decl_block) \
-    nt(EXPR_CONST,        expr_const) \
-    nt(EXPR_BINOP,        expr_binop) \
-    nt(EXPR_VAR_REF,      expr_var_ref) \
-    nt(EXPR_CALL,         expr_call) \
-    nt(EXPR_PATH,         expr_path) \
-    nt(TYPE_FUND,         type_fund) \
-    nt(TYPE_REF,          type_ref)
+    nt(STMT_IF,            stmt_if) \
+    nt(STMT_LOOP,          stmt_loop) \
+    nt(STMT_BREAK,         stmt_break) \
+    nt(STMT_CONTINUE,      stmt_continue) \
+    nt(STMT_RETURN,        stmt_return) \
+    nt(DECL_MODULE,        decl_module) \
+    nt(DECL_VAR,           decl_var) \
+    nt(DECL_FUNC,          decl_func) \
+    nt(DECL_STRUCT,        decl_struct) \
+    nt(DECL_STRUCT_MEMBER, decl_struct_member) \
+    nt(DECL_ENUM,          decl_enum) \
+    nt(DECL_ENUM_VARIANT,  decl_enum_variant) \
+    nt(DECL_BLOCK,         decl_block) \
+    nt(EXPR_CONST,         expr_const) \
+    nt(EXPR_BINOP,         expr_binop) \
+    nt(EXPR_VAR_REF,       expr_var_ref) \
+    nt(EXPR_CALL,          expr_call) \
+    nt(EXPR_PATH,          expr_path) \
+    nt(TYPE_FUND,          type_fund) \
+    nt(TYPE_REF,           type_ref)
 
 // clang-format on
 
@@ -84,13 +85,10 @@ typedef enum {
 #define ft(tok, str) BL_FTYPE_##tok,
   BL_FUND_TYPE_LIST
 #undef ft
+  BL_FUND_TYPE_COUNT
 } bl_fund_type_e;
 
-static const char *bl_fund_type_strings[] = {
-#define ft(tok, str) str,
-    BL_FUND_TYPE_LIST
-#undef ft
-};
+extern const char *bl_fund_type_strings[];
 
 /*************************************************************************************************
  * generation of node typedefs and code enum
@@ -104,6 +102,7 @@ enum bl_node_code
 #define nt(code, name) BL_##code,
   BL_NODE_TYPE_LIST
 #undef nt
+  BL_NODE_COUNT
 };
 
 #define bl_peek_src(n) (n)->src
@@ -169,7 +168,7 @@ struct bl_decl_var
   bl_node_t *type;
   bl_node_t *init_expr;
   int        used;
-  int        order; /* order is used when variable declaration is inside struct */
+  int        order; /* TODO remove */
 };
 
 struct bl_decl_func
@@ -188,6 +187,15 @@ struct bl_decl_struct
   int     modif;
   int     used;
   BArray *members;
+};
+
+struct bl_decl_struct_member
+{
+  bl_id_t    id;
+  int        modif;
+  bl_node_t *type;
+  int        order;
+  /*bl_node_t *init_expr;*/
 };
 
 struct bl_decl_enum
@@ -293,9 +301,9 @@ bl_ast_terminate(bl_ast_t *ast);
  *************************************************************************************************/
 #ifdef BL_DEBUG
 #define nt(code, name)                                                                             \
-  inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                               \
+  static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                        \
   {                                                                                                \
-    if (n->code == BL_##CODE)                                                                      \
+    if (bl_node_is(n, BL_##code))                                                                  \
       return &(n->n.name);                                                                         \
     bl_abort("invalid node type");                                                                 \
   }
@@ -303,7 +311,7 @@ BL_NODE_TYPE_LIST
 #undef nt
 #else
 #define nt(code, name)                                                                             \
-  inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                               \
+  static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                               \
   {                                                                                                \
     return &(n->n.name);                                                                           \
   }
@@ -368,6 +376,10 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 
 bl_node_t *
 bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
+
+bl_node_t *
+bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+                              int modif);
 
 bl_node_t *
 bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif);

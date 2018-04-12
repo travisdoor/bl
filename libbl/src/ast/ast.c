@@ -28,6 +28,12 @@
 
 #include "ast/ast_impl.h"
 
+const char *bl_fund_type_strings[] = {
+#define ft(tok, str) str,
+    BL_FUND_TYPE_LIST
+#undef ft
+};
+
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
 {
@@ -339,6 +345,23 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
   bl_peek_decl_struct(strct)->modif = modif;
 
   return strct;
+}
+
+bl_node_t *
+bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+                              int modif)
+{
+  bl_node_t *member = alloc_node(ast);
+  if (tok)
+    member->src = &tok->src;
+
+  member->code                     = BL_DECL_STRUCT_MEMBER;
+  bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(member);
+  _member->type                    = type;
+  _member->modif                   = modif;
+  bl_id_init(&_member->id, name);
+
+  return member;
 }
 
 bl_node_t *
@@ -663,6 +686,10 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_module(node)->id;
   case BL_DECL_VAR:
     return &bl_peek_decl_var(node)->id;
+  case BL_DECL_STRUCT_MEMBER:
+    return &bl_peek_decl_struct_member(node)->id;
+  case BL_DECL_ENUM_VARIANT:
+    return &bl_peek_decl_enum_variant(node)->id;
   case BL_DECL_FUNC:
     return &bl_peek_decl_func(node)->id;
   case BL_DECL_STRUCT:

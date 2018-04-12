@@ -96,7 +96,7 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
   const size_t c      = bl_ast_struct_member_count(_strct);
   for (size_t i = 0; i < c; i++) {
     member   = bl_ast_struct_get_member(_strct, i);
-    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_var(member)->id);
+    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
       link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, member->src,
@@ -126,6 +126,24 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
                _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
 
+  /* check for duplicit variants */
+  bl_block_scope_push(&cnt->tmp_scope);
+  bl_node_t *  variant = NULL;
+  const size_t c      = bl_ast_enum_variant_count(_enm);
+  for (size_t i = 0; i < c; i++) {
+    variant = bl_ast_enum_get_variant(_enm, i);
+    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_enum_variant(variant)->id);
+
+    if (conflict) {
+      link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
+                 "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                 bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file, conflict->src->line,
+                 conflict->src->col);
+    }
+    bl_block_scope_insert_node(&cnt->tmp_scope, variant);
+  }
+
+  bl_block_scope_pop(&cnt->tmp_scope);
   bl_scope_insert_node(scope, enm);
 }
 
