@@ -60,7 +60,7 @@ node_terminate(bl_node_t *node)
     bo_unref(bl_peek_type_ref(node)->path);
     break;
   case BL_DECL_ENUM:
-    bo_unref(bl_peek_decl_enum(node)->members);
+    bo_unref(bl_peek_decl_enum(node)->variants);
     break;
   case BL_DECL_STRUCT:
     bo_unref(bl_peek_decl_struct(node)->members);
@@ -91,6 +91,9 @@ bl_ast_terminate(bl_ast_t *ast)
   bo_unref(ast->nodes);
 }
 
+/*************************************************************************************************
+ * node constructors
+ *************************************************************************************************/
 bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
 {
@@ -104,9 +107,6 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
   return type;
 }
 
-/*************************************************************************************************
- * node constructors
- *************************************************************************************************/
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
 {
@@ -342,7 +342,7 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 }
 
 bl_node_t *
-bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
+bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif)
 {
   bl_node_t *enm = alloc_node(ast);
   if (tok)
@@ -351,8 +351,23 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif
   enm->code = BL_DECL_ENUM;
   bl_id_init(&bl_peek_decl_enum(enm)->id, name);
   bl_peek_decl_enum(enm)->modif = modif;
+  bl_peek_decl_enum(enm)->type  = type;
 
   return enm;
+}
+
+bl_node_t *
+bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr)
+{
+  bl_node_t *variant = alloc_node(ast);
+  if (tok)
+    variant->src = &tok->src;
+
+  variant->code = BL_DECL_ENUM_VARIANT;
+  bl_id_init(&bl_peek_decl_enum_variant(variant)->id, name);
+  bl_peek_decl_enum_variant(variant)->expr = expr;
+
+  return variant;
 }
 
 bl_node_t *
@@ -603,34 +618,34 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i)
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_push_member(bl_decl_enum_t *enm, bl_node_t *member)
+bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant)
 {
-  if (member == NULL)
+  if (variant == NULL)
     return NULL;
 
-  if (enm->members == NULL) {
-    enm->members = bo_array_new(sizeof(bl_node_t *));
+  if (enm->variants == NULL) {
+    enm->variants = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_array_push_back(enm->members, member);
-  return member;
+  bo_array_push_back(enm->variants, variant);
+  return variant;
 }
 
 size_t
-bl_ast_enum_member_count(bl_decl_enum_t *enm)
+bl_ast_enum_variant_count(bl_decl_enum_t *enm)
 {
-  if (enm->members == NULL)
+  if (enm->variants == NULL)
     return 0;
 
-  return bo_array_size(enm->members);
+  return bo_array_size(enm->variants);
 }
 
 bl_node_t *
-bl_ast_enum_get_member(bl_decl_enum_t *enm, const size_t i)
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i)
 {
-  if (enm->members == NULL)
+  if (enm->variants == NULL)
     return NULL;
-  return bo_array_at(enm->members, i, bl_node_t *);
+  return bo_array_at(enm->variants, i, bl_node_t *);
 }
 
 /*************************************************************************************************

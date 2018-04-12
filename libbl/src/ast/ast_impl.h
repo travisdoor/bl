@@ -128,7 +128,7 @@ enum bl_modif
 };
 
 /*************************************************************************************************
- * definition of the node structure bodies 
+ * definition of the node structure bodies
  *************************************************************************************************/
 struct bl_stmt_if
 {
@@ -192,9 +192,10 @@ struct bl_decl_struct
 
 struct bl_decl_enum
 {
-  bl_id_t id;
-  int     modif;
-  BArray *members;
+  bl_id_t    id;
+  int        modif;
+  bl_node_t *type;
+  BArray *   variants;
 };
 
 struct bl_decl_enum_variant
@@ -288,7 +289,7 @@ bl_ast_terminate(bl_ast_t *ast);
 
 /*************************************************************************************************
  * generation of peek function
- * note: in debug mode function will check validity of node type  
+ * note: in debug mode function will check validity of node type
  *************************************************************************************************/
 #ifdef BL_DEBUG
 #define nt(code, name)                                                                             \
@@ -369,7 +370,10 @@ bl_node_t *
 bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
-bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
+bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif);
+
+bl_node_t *
+bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);
@@ -454,13 +458,13 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_push_member(bl_decl_enum_t *enm, bl_node_t *member);
+bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant);
 
 size_t
-bl_ast_enum_member_count(bl_decl_enum_t *enm);
+bl_ast_enum_variant_count(bl_decl_enum_t *enm);
 
 bl_node_t *
-bl_ast_enum_get_member(bl_decl_enum_t *enm, const size_t i);
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i);
 
 /*************************************************************************************************
  * other

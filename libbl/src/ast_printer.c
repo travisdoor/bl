@@ -164,8 +164,8 @@ static void
 visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 {
   print_head("variant", bl_peek_src(variant), variant, visitor->nesting);
-  bl_decl_var_t *_varinat = bl_peek_decl_var(variant);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _varinat->id.str);
+  bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(variant);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _variant->id.str);
   bl_visitor_walk_enum_variant(visitor, variant);
 }
 

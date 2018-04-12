@@ -66,7 +66,7 @@ static bl_node_t *
 parse_struct_member_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_enum_member_maybe(context_t *cnt, bl_node_t *type);
+parse_enum_variant_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_enum_maybe(context_t *cnt, int modif);
@@ -909,7 +909,7 @@ parse_struct_member_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_enum_member_maybe(context_t *cnt, bl_node_t *type)
+parse_enum_variant_maybe(context_t *cnt)
 {
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
     return NULL;
@@ -918,8 +918,7 @@ parse_enum_member_maybe(context_t *cnt, bl_node_t *type)
   bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
 
   /* TODO: parse expresion */
-
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, NULL, BL_MODIF_CONST);
+  return bl_ast_add_decl_enum_variant(cnt->ast, tok_id, tok_id->value.str, NULL);
 }
 
 bl_node_t *
@@ -981,11 +980,10 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected enum name");
     }
 
-    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, modif);
-    bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
-
     /* TODO: support more types */
-    bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    bl_node_t *type      = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif);
+    bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
     /* eat '{' */
     tok = bl_tokens_consume(cnt->tokens);
@@ -993,13 +991,13 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t *member;
+    bl_node_t *variant;
 
-  member:
-    member = parse_enum_member_maybe(cnt, type);
-    if (bl_ast_enum_push_member(_enm, member)) {
+  variant:
+    variant = parse_enum_variant_maybe(cnt);
+    if (bl_ast_enum_push_variant(_enm, variant)) {
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
-        goto member;
+        goto variant;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
         tok = bl_tokens_consume(cnt->tokens);
         parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
