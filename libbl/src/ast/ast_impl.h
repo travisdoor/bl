@@ -61,6 +61,7 @@
     nt(DECL_MODULE,        decl_module) \
     nt(DECL_VAR,           decl_var) \
     nt(DECL_FUNC,          decl_func) \
+    nt(DECL_ARG,           decl_arg) \
     nt(DECL_STRUCT,        decl_struct) \
     nt(DECL_STRUCT_MEMBER, decl_struct_member) \
     nt(DECL_ENUM,          decl_enum) \
@@ -171,6 +172,12 @@ struct bl_decl_var
   int        order; /* TODO remove */
 };
 
+struct bl_decl_arg
+{
+  bl_id_t    id;
+  bl_node_t *type;
+};
+
 struct bl_decl_func
 {
   bl_id_t    id;
@@ -202,6 +209,7 @@ struct bl_decl_enum
 {
   bl_id_t    id;
   int        modif;
+  int        used;
   bl_node_t *type;
   BArray *   variants;
 };

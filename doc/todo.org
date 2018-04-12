@@ -8,6 +8,7 @@
 ** DONE Enum variant node
 ** DONE Struct member node
 ** TODO Enum type generation 
+** TODO Rename var_ref to ref 
 ** TODO Struct and enum member access 
 ** TODO Enum base expression generation (only numbers accepted for now)
 ** TODO Struct member access

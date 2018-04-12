@@ -249,6 +249,22 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 }
 
 static void
+visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
+{
+  context_t *     cnt  = peek_cnt(visitor);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  if (_enm->modif == BL_MODIF_NONE && _enm->used == 0) {
+    check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is declared but never used",
+                  _enm->id.str);
+  }
+
+  if (bl_node_is_not(_enm->type, BL_TYPE_FUND)) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
+                "enumerator has invalid type, only fundamental types are supported");
+  }
+}
+
+static void
 visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
@@ -321,6 +337,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
   bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
   bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

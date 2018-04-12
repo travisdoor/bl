@@ -21,9 +21,15 @@ module my_module {
     c i32
   }
 
-  public enum enum_t {
+  public enum enum_t i32 {
     A,
     B,
     C
   }
+}
+
+enum enum_t {
+  A,
+  B,
+  C
 }

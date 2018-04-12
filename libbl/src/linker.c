@@ -291,8 +291,19 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
   switch (bl_node_code(type)) {
   case BL_TYPE_REF:
     found = lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
-
     bl_peek_type_ref(type)->ref = found;
+
+    switch (bl_node_code(found)) {
+    case BL_DECL_STRUCT:
+      bl_peek_decl_struct(found)->used++;
+      break;
+    case BL_DECL_ENUM:
+      bl_peek_decl_enum(found)->used++;
+      break;
+    default:
+      bl_abort("invalid type");
+    }
+    
     break;
   default:
     break;

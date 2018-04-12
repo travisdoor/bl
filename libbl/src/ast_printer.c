@@ -115,7 +115,7 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   print_head("struct", bl_peek_src(strct), strct, visitor->nesting);
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _strct->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _strct->id.str, _strct->used);
   print_modif(_strct->modif);
   bl_visitor_walk_struct(visitor, strct);
 }
@@ -125,7 +125,7 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   print_head("enum", bl_peek_src(enm), enm, visitor->nesting);
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'"), _enm->id.str);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _enm->id.str, _enm->used);
   print_modif(_enm->modif);
   bl_visitor_walk_enum(visitor, enm);
 }

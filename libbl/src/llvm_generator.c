@@ -36,23 +36,15 @@
 #include "ast/visitor_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
-
 #define push_value_cscope(ptr, llvm_value_ref)                                                     \
   (bo_htbl_insert(cnt->cscope, (uint64_t)(ptr), (llvm_value_ref)))
-
 #define push_value_gscope(ptr, llvm_value_ref)                                                     \
   (bo_htbl_insert(cnt->gscope, (uint64_t)(ptr), (llvm_value_ref)))
-
 #define get_value_cscope(ptr) (bo_htbl_at(cnt->cscope, (uint64_t)(ptr), LLVMValueRef))
-
 #define get_value_gscope(ptr) (bo_htbl_at(cnt->gscope, (uint64_t)(ptr), LLVMValueRef))
-
 #define is_in_gscope(ptr) (bo_htbl_has_key(cnt->gscope, (uint64_t)ptr))
-
 #define is_in_cscope(ptr) (bo_htbl_has_key(cnt->cscope, (uint64_t)ptr))
-
 #define reset_cscope() (bo_htbl_clear(cnt->cscope))
-
 #define skip_if_terminated(cnt)                                                                    \
   if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
@@ -129,6 +121,9 @@ static LLVMTypeRef
 gen_struct(context_t *cnt, bl_node_t *strct);
 
 static LLVMTypeRef
+gen_enum(context_t *cnt, bl_node_t *enm);
+
+static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
 
 /*
@@ -173,7 +168,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     case BL_DECL_STRUCT:
       return gen_struct(cnt, _type->ref);
     case BL_DECL_ENUM:
-      bl_abort("generation of enums is not implemented yet!!!");
+      return gen_enum(cnt, _type->ref);
     default:
       bl_abort("invalid reference type");
     }
@@ -210,6 +205,13 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   bl_free(members);
 
   return type;
+}
+
+LLVMTypeRef
+gen_enum(context_t *cnt, bl_node_t *enm)
+{
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  return to_llvm_type(cnt, _enm->type);
 }
 
 int

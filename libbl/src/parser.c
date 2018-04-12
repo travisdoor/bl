@@ -981,8 +981,13 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected enum name");
     }
 
-    /* TODO: support more types */
-    bl_node_t *type      = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    bl_node_t *type = parse_type_maybe(cnt);
+
+    if (type == NULL) {
+      /* use i32 as default type when there is no other user specified */
+      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    }
+
     enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif);
     bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
