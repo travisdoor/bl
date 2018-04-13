@@ -315,7 +315,7 @@ bl_ast_terminate(bl_ast_t *ast);
   {                                                                                                \
     if (bl_node_is(n, BL_##code))                                                                  \
       return &(n->n.name);                                                                         \
-    bl_abort("invalid node type");                                                                 \
+    bl_abort("invalid node type, expected: " #name " not %s", bl_node_name(n));                    \
   }
 BL_NODE_TYPE_LIST
 #undef nt
