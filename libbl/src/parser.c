@@ -105,7 +105,7 @@ static bl_node_t *
 parse_const_expr_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_var_ref_maybe(context_t *cnt, BArray *path);
+parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path);
@@ -268,10 +268,10 @@ parse_continue_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_var_ref_maybe(context_t *cnt, BArray *path)
+parse_decl_ref_maybe(context_t *cnt, BArray *path)
 {
-  bl_node_t * var_ref = NULL;
-  bl_token_t *tok_id  = bl_tokens_peek(cnt->tokens);
+  bl_node_t * decl_ref = NULL;
+  bl_token_t *tok_id   = bl_tokens_peek(cnt->tokens);
   if (tok_id->sym == BL_SYM_IDENT) {
     bl_tokens_consume(cnt->tokens);
     if (path == NULL) {
@@ -280,10 +280,10 @@ parse_var_ref_maybe(context_t *cnt, BArray *path)
 
     bl_node_t *id_path = bl_ast_add_expr_path(cnt->ast, tok_id, tok_id->value.str);
     bo_array_push_back(path, id_path);
-    var_ref = bl_ast_add_expr_var_ref(cnt->ast, tok_id, NULL, path);
+    decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
   }
 
-  return var_ref;
+  return decl_ref;
 }
 
 bl_node_t *
@@ -458,7 +458,7 @@ parse_atom_expr(context_t *cnt)
   if ((expr = parse_call_maybe(cnt, path)))
     return expr;
 
-  if ((expr = parse_var_ref_maybe(cnt, path)))
+  if ((expr = parse_decl_ref_maybe(cnt, path)))
     return expr;
 
   if ((expr = parse_const_expr_maybe(cnt)))
@@ -761,7 +761,7 @@ stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
     // TODO: warning macro
-    bl_warning("%s %d:%d extra semicolon can be removed " BL_YELLOW("';'"), cnt->unit->filepath,
+    bl_msg_warning("%s %d:%d extra semicolon can be removed " BL_YELLOW("';'"), cnt->unit->filepath,
                tok->src.line, tok->src.col);
     goto stmt;
   }
@@ -918,8 +918,18 @@ parse_enum_variant_maybe(context_t *cnt)
 
   bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
 
-  /* TODO: parse expresion */
-  return bl_ast_add_decl_enum_variant(cnt->ast, tok_id, tok_id->value.str, NULL);
+  bl_node_t * expr       = NULL;
+  bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  if (tok_assign != NULL) {
+    /* expected expression */
+    expr = parse_expr_maybe(cnt);
+    if (expr == NULL) {
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_assign,
+                  "expected constant expression after enum variant declaration");
+    }
+  }
+
+  return bl_ast_add_decl_enum_variant(cnt->ast, tok_id, tok_id->value.str, expr);
 }
 
 bl_node_t *
@@ -997,11 +1007,25 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t *variant;
+    bl_node_t *variant  = NULL;
+    bl_node_t *conflict = NULL;
 
   variant:
     variant = parse_enum_variant_maybe(cnt);
-    if (bl_ast_enum_push_variant(_enm, variant)) {
+
+    /* check for duplicity */
+    if (variant) {
+      conflict = bl_ast_enum_get_variant(_enm, &bl_peek_decl_enum_variant(variant)->id);
+      if (conflict) {
+        parse_error_node(
+            cnt, BL_ERR_DUPLICATE_SYMBOL, variant,
+            "duplicate enum variant " BL_YELLOW("'%s'") ", already declared here: %s:%d:%d",
+            bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file, conflict->src->line,
+            conflict->src->col);
+      }
+
+      bl_ast_enum_insert_variant(_enm, variant);
+
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto variant;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {

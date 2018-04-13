@@ -48,19 +48,19 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 static void
 default_error_handler(const char *msg, void *context)
 {
-  bl_error("%s", msg);
+  bl_msg_error("%s", msg);
 }
 
 static void
 default_warning_handler(const char *msg, void *context)
 {
-  bl_warning("%s", msg);
+  bl_msg_warning("%s", msg);
 }
 
 bl_error_e
 compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags)
 {
-  bl_log("processing unit: " BL_GREEN("%s"), unit->name);
+  bl_msg_log("processing unit: " BL_GREEN("%s"), unit->name);
   bl_error_e error;
 
   if (flags & BL_BUILDER_LOAD_FROM_FILE && (error = bl_file_loader_run(builder, unit)) != BL_NO_ERR)
@@ -86,10 +86,10 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
   if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_check_run(builder, assembly)) != BL_NO_ERR)
+  if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
     return error;
 
-  if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
+  if ((error = bl_check_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
   if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
@@ -155,7 +155,7 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
   clock_t end        = clock();
   double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  bl_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds", builder->total_lines,
+  bl_msg_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds", builder->total_lines,
          time_spent);
 
   return error;

@@ -49,7 +49,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
   }
 
   case BL_EXPR_CALL:
-  case BL_EXPR_VAR_REF:
+  case BL_EXPR_DECL_REF:
   case BL_EXPR_BINOP:
   case BL_EXPR_CONST: {
     bl_visit_f v = visitor->visitors[BL_VISIT_EXPR];
@@ -327,17 +327,22 @@ void
 bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   visitor->nesting++;
-  bl_decl_enum_t *_enm    = bl_peek_decl_enum(enm);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
   bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
   vt(visitor, _enm->type);
-  
-  const size_t    c       = bl_ast_enum_variant_count(_enm);
-  bl_node_t *     variant = NULL;
-  for (size_t i = 0; i < c; i++) {
-    variant       = bl_ast_enum_get_variant(_enm, i);
-    bl_visit_f ve = visitor->visitors[BL_VISIT_ENUM_VARIANT];
-    ve(visitor, variant);
+
+  if (_enm->variants) {
+    bo_iterator_t iter    = bo_htbl_begin(_enm->variants);
+    bo_iterator_t end     = bo_htbl_end(_enm->variants);
+    bl_node_t *   variant = NULL;
+    bl_visit_f    ve      = visitor->visitors[BL_VISIT_ENUM_VARIANT];
+
+    while (!bo_iterator_equal(&iter, &end)) {
+      variant = bo_htbl_iter_peek_value(_enm->variants, &iter, bl_node_t *);
+      ve(visitor, variant);
+      bo_htbl_iter_next(_enm->variants, &iter);
+    }
   }
 
   visitor->nesting--;
@@ -403,7 +408,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 
   case BL_EXPR_CONST:
-  case BL_EXPR_VAR_REF:
+  case BL_EXPR_DECL_REF:
     break;
 
   default:

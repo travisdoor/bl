@@ -21,7 +21,7 @@ set(HEADER_FILES
         include/bl/builder.h
         include/bl/bldebug.h
         include/bl/error.h 
-        include/bl/config.h)
+        include/bl/config.h include/bl/messages.h)
 
 set(HEADER_FILES_IMPL
         src/builder_impl.h
@@ -49,6 +49,7 @@ set(SOURCE_FILES
         src/builder.c
         src/lexer.c
         src/check.c
+        src/bldebug.c
         src/ast_printer.c
         src/llvm_jit_exec.c
         src/llvm_bc_writer.c

@@ -34,6 +34,12 @@ const char *bl_fund_type_strings[] = {
 #undef ft
 };
 
+const char *bl_node_type_strings[] = {
+#define nt(code, name) #name,
+    BL_NODE_TYPE_LIST
+#undef ft
+};
+
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
 {
@@ -59,8 +65,8 @@ node_terminate(bl_node_t *node)
     bo_unref(bl_peek_expr_call(node)->args);
     bo_unref(bl_peek_expr_call(node)->path);
     break;
-  case BL_EXPR_VAR_REF:
-    bo_unref(bl_peek_expr_var_ref(node)->path);
+  case BL_EXPR_DECL_REF:
+    bo_unref(bl_peek_expr_decl_ref(node)->path);
     break;
   case BL_TYPE_REF:
     bo_unref(bl_peek_type_ref(node)->path);
@@ -230,17 +236,17 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
 }
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
 {
-  bl_node_t *var_ref = alloc_node(ast);
+  bl_node_t *decl_ref = alloc_node(ast);
   if (tok)
-    var_ref->src = &tok->src;
+    decl_ref->src = &tok->src;
 
-  var_ref->code                       = BL_EXPR_VAR_REF;
-  bl_peek_expr_var_ref(var_ref)->ref  = ref;
-  bl_peek_expr_var_ref(var_ref)->path = path;
+  decl_ref->code                       = BL_EXPR_DECL_REF;
+  bl_peek_expr_decl_ref(decl_ref)->ref  = ref;
+  bl_peek_expr_decl_ref(decl_ref)->path = path;
 
-  return var_ref;
+  return decl_ref;
 }
 
 bl_node_t *
@@ -641,34 +647,29 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i)
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant)
+bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant)
 {
   if (variant == NULL)
     return NULL;
 
   if (enm->variants == NULL) {
-    enm->variants = bo_array_new(sizeof(bl_node_t *));
+    enm->variants = bo_htbl_new(sizeof(bl_node_t *), 128);
   }
 
-  bo_array_push_back(enm->variants, variant);
+  bo_htbl_insert(enm->variants, bl_peek_decl_enum_variant(variant)->id.hash, variant);
   return variant;
 }
 
-size_t
-bl_ast_enum_variant_count(bl_decl_enum_t *enm)
-{
-  if (enm->variants == NULL)
-    return 0;
-
-  return bo_array_size(enm->variants);
-}
-
 bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i)
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id)
 {
   if (enm->variants == NULL)
     return NULL;
-  return bo_array_at(enm->variants, i, bl_node_t *);
+
+  if (!bo_htbl_has_key(enm->variants, id->hash)) 
+    return NULL;
+  
+  return bo_htbl_at(enm->variants, id->hash, bl_node_t *);
 }
 
 /*************************************************************************************************

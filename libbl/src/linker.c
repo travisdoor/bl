@@ -43,13 +43,13 @@
 
 typedef struct
 {
-  bl_block_scope_t  block_scope;
-  bl_block_scope_t  tmp_scope;
-  bl_builder_t *    builder;
-  bl_assembly_t *   assembly;
-  jmp_buf           jmp_error;
-  bl_scope_t *      gscope;
-  bl_scope_t *      mod_scope;
+  bl_block_scope_t block_scope;
+  bl_block_scope_t tmp_scope;
+  bl_builder_t *   builder;
+  bl_assembly_t *  assembly;
+  jmp_buf          jmp_error;
+  bl_scope_t *     gscope;
+  bl_scope_t *     mod_scope;
 } context_t;
 
 /*************************************************************************************************
@@ -126,24 +126,6 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
                _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
 
-  /* check for duplicit variants */
-  bl_block_scope_push(&cnt->tmp_scope);
-  bl_node_t *  variant = NULL;
-  const size_t c      = bl_ast_enum_variant_count(_enm);
-  for (size_t i = 0; i < c; i++) {
-    variant = bl_ast_enum_get_variant(_enm, i);
-    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_enum_variant(variant)->id);
-
-    if (conflict) {
-      link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
-                 "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                 bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file, conflict->src->line,
-                 conflict->src->col);
-    }
-    bl_block_scope_insert_node(&cnt->tmp_scope, variant);
-  }
-
-  bl_block_scope_pop(&cnt->tmp_scope);
   bl_scope_insert_node(scope, enm);
 }
 
@@ -192,22 +174,37 @@ link_module(bl_visitor_t *visitor, bl_node_t *module)
   peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
 
-typedef enum { LOOKUP_GSCOPE = 1, LOOKUP_MOD_SCOPE = 2, LOOKUP_BLOCK_SCOPE = 4 } lookup_flag_e;
+/* flags used in lookup methods for finding declarations in various scopes */
+typedef enum {
+  LOOKUP_GSCOPE       = 1, // search in global-scope
+  LOOKUP_MOD_SCOPE    = 2, // search in scope of current module
+  LOOKUP_BLOCK_SCOPE  = 4, // search in scope of surrent block (ex.: function body)
+  LOOKUP_ENUM_VARIANT = 8  // search in enum variants
+} lookup_flag_e;
 
 static bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter);
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+              bl_node_t *prev_node);
 
 static bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag)
 {
-  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0);
+  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL);
 }
 
 bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter)
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+              bl_node_t *prev_node)
 {
   bl_node_t *found     = NULL;
   bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
+
+  /* search symbol in enum declaration */
+  if (scope_flag & LOOKUP_ENUM_VARIANT) {
+    bl_assert(prev_node, "invalid prev node");
+    found =
+        bl_ast_enum_get_variant(bl_peek_decl_enum(prev_node), &bl_peek_expr_path(path_elem)->id);
+  }
 
   /* search symbol in block scope */
   if (scope_flag & LOOKUP_BLOCK_SCOPE) {
@@ -238,16 +235,25 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
                found->src->col);
   }
 
-  if (bl_node_code(found) == BL_DECL_MODULE) {
+  if (bl_node_is(found, BL_DECL_MODULE)) { /* found another module */
     if (iter == bo_array_size(path)) {
       link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
                  "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
                  bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
                  found->src->col);
     }
-    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter);
+    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
+                         found);
+
+  } else if (bl_node_is(found, BL_DECL_ENUM)) { /* found enum */
+    /* last in path -> return enum declaration */
+    if (iter == bo_array_size(path))
+      return found;
+
+    /* not last in path -> we need to determinate enum variant */
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
   } else {
-    bl_assert(iter == bo_array_size(path), "invalid path");
+    bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
   }
 
@@ -267,11 +273,11 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
     break;
-  case BL_EXPR_VAR_REF:
-    found = lookup_node(cnt, bl_peek_expr_var_ref(expr)->path,
+  case BL_EXPR_DECL_REF:
+    found = lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
                         LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
 
-    bl_peek_expr_var_ref(expr)->ref = found;
+    bl_peek_expr_decl_ref(expr)->ref = found;
     if (bl_node_is(found, BL_DECL_VAR))
       bl_peek_decl_var(found)->used++;
     break;
@@ -303,7 +309,7 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
     default:
       bl_abort("invalid type");
     }
-    
+
     break;
   default:
     break;

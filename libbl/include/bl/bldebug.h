@@ -31,6 +31,10 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <bobject/bobject.h>
+#include "bl/config.h"
+
+BO_BEGIN_DECLS
 
 #define BL_YELLOW(str) "\x1b[33m" str "\x1b[0m"
 #define BL_RED(str) "\x1b[31m" str "\x1b[0m"
@@ -38,37 +42,51 @@
 #define BL_MAGENTA(str) "\x1b[35m" str "\x1b[0m"
 #define BL_CYAN(str) "\x1b[36m" str "\x1b[0m"
 
+#if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
+#ifndef __FILENAME__
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+#elif defined(BL_COMPILER_MSVC)
+#ifndef __FILENAME__
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#endif
+#else
+#pragma message("WARNING: Cannot parse filename with this compiler")
+#define __FILENAME__
+#endif
+
+typedef enum { BL_LOG_ASSERT, BL_LOG_ABORT, BL_LOG_MSG } bl_log_msg_type_e;
+
+extern BO_EXPORT void
+_bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
+
 #ifdef BL_DEBUG
 #define bl_assert(expr, format, ...)                                                               \
   if ((expr) == 0) {                                                                               \
-    fprintf(stderr, BL_RED("assert: ") format "\n", ##__VA_ARGS__);                                \
+    _bl_log(BL_LOG_ASSERT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                         \
     abort();                                                                                       \
+  }
+
+#define bl_log(format, ...)                                                                        \
+  {                                                                                                \
+    _bl_log(BL_LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
   }
 #else
 #define bl_assert(expr, format, ...)                                                               \
   while (0) {                                                                                      \
   }
-#endif
 
 #define bl_log(format, ...)                                                                        \
-  {                                                                                                \
-    fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
+  while (0) {                                                                                      \
   }
+#endif
 
 #define bl_abort(format, ...)                                                                      \
   {                                                                                                \
-    fprintf(stderr, BL_RED("abort: ") format "\n", ##__VA_ARGS__);                                 \
+    _bl_log(BL_LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     abort();                                                                                       \
   }
 
-#define bl_error(format, ...)                                                                      \
-  {                                                                                                \
-    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
-  }
-
-#define bl_warning(format, ...)                                                                    \
-  {                                                                                                \
-    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
-  }
+BO_END_DECLS
 
 #endif /* end of include guard: BLDEBUG_H_VYI9AXGT */

@@ -47,7 +47,7 @@ bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
     return BL_ERR_CANNOT_WRITE_BC;
   }
 
-  bl_log("byte code written into " BL_GREEN("%s"), export_file);
+  bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
 
   free(export_file);
   return BL_NO_ERR;

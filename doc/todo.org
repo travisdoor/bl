@@ -7,7 +7,8 @@
 ** DONE Consider individual types for struct member and enum variation 
 ** DONE Enum variant node
 ** DONE Struct member node
-** TODO Enum type generation 
+** DONE Enum type generation 
+** TODO Constant with separate node 
 ** TODO Rename var_ref to ref 
 ** TODO Struct and enum member access 
 ** TODO Enum base expression generation (only numbers accepted for now)
@@ -16,6 +17,20 @@
 ** TODO Arrays
 ** TODO Unary operator
 ** TODO Pointers 
-  
+
 * BUGS
+   
+* PIPELINE
+  - file loader
+  - lexer
+  - token printer
+  - parser
+  - linker
+  - ast printer
+  - check
+  - llvm generator
+  - llvm jit execute
+  - llvm byte-code writer
+  - llvm linker
+  - llvm native bin builder
    

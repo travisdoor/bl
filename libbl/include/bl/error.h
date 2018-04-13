@@ -71,6 +71,7 @@ typedef enum {
   BL_ERR_INVALID_ARG_COUNT     = 33,
   BL_ERR_INVALID_ARG_TYPE      = 34,
   BL_ERR_INVALID_TYPE          = 35,
+  BL_ERR_INVALID_EXPR          = 36,
 } bl_error_e;
 
 BO_END_DECLS

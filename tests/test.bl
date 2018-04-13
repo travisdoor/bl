@@ -2,34 +2,24 @@
  * testing playground.
 */
 
-fn main() i32 {
-  var hello i32; // invalid use of public modificator here
-
-  var b i32 = 20;
-  const c i32 = 100; 
-
-  var data my_module::data_t;
-  var state my_module::enum_t;
-
-  return 0;
+module m {
+  fn main() i32 {
+    var state m::enum_e = m::enum_e::A; 
+    return 0;
+  }
 }
 
-module my_module {
+module m {
+  public enum enum_e i32 { // every enum variant must be bublic by default
+    A = 10,
+    B = 20,
+    C = 30
+  }
+
   public struct data_t {
-    a i32, 
-    b i32, 
-    c i32
+    a i32,
+    b string,
+    c f64,
+    next data_t
   }
-
-  public enum enum_t i32 {
-    A,
-    B,
-    C
-  }
-}
-
-enum enum_t {
-  A,
-  B,
-  C
 }

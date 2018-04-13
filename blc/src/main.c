@@ -58,7 +58,7 @@ main(int argc, char *argv[])
   argv += optind;
 
   if (*argv == NULL) {
-    bl_warning("nothing to do, no input files, sorry :(");
+    bl_msg_warning("nothing to do, no input files, sorry :(");
     exit(EXIT_SUCCESS);
   }
 
@@ -90,7 +90,7 @@ main(int argc, char *argv[])
   }
 
   if (bl_builder_compile(builder, assembly, build_flags) == BL_NO_ERR) {
-    bl_log(BL_GREEN("done"));
+    bl_msg_log(BL_GREEN("done"));
   }
 
   bl_assembly_delete(assembly);

@@ -1,9 +1,9 @@
 //*****************************************************************************
-// blc
+// bl
 //
-// File:   blc.h
+// File:   messages.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   13/04/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,15 +26,28 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef BL_MESSAGES_H
+#define BL_MESSAGES_H
 
-#include "bl/bldebug.h"
-#include "bl/unit.h"
-#include "bl/bllimits.h"
-#include "bl/assembly.h"
-#include "bl/builder.h"
-#include "bl/error.h"
-#include "bl/messages.h"
+#include <bobject/bobject.h>
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+BO_BEGIN_DECLS
+
+#define bl_msg_log(format, ...)                                                                    \
+  {                                                                                                \
+    fprintf(stdout, BL_GREEN(format) "\n", ##__VA_ARGS__);                                         \
+  }
+
+#define bl_msg_error(format, ...)                                                                  \
+  {                                                                                                \
+    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
+  }
+
+#define bl_msg_warning(format, ...)                                                                \
+  {                                                                                                \
+    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
+  }
+
+BO_END_DECLS
+
+#endif // BL_MESSAGES_H

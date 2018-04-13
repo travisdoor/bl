@@ -69,7 +69,7 @@
     nt(DECL_BLOCK,         decl_block) \
     nt(EXPR_CONST,         expr_const) \
     nt(EXPR_BINOP,         expr_binop) \
-    nt(EXPR_VAR_REF,       expr_var_ref) \
+    nt(EXPR_DECL_REF,      expr_decl_ref) \
     nt(EXPR_CALL,          expr_call) \
     nt(EXPR_PATH,          expr_path) \
     nt(TYPE_FUND,          type_fund) \
@@ -86,10 +86,11 @@ typedef enum {
 #define ft(tok, str) BL_FTYPE_##tok,
   BL_FUND_TYPE_LIST
 #undef ft
-  BL_FUND_TYPE_COUNT
+      BL_FUND_TYPE_COUNT
 } bl_fund_type_e;
 
 extern const char *bl_fund_type_strings[];
+extern const char *bl_node_type_strings[];
 
 /*************************************************************************************************
  * generation of node typedefs and code enum
@@ -103,13 +104,14 @@ enum bl_node_code
 #define nt(code, name) BL_##code,
   BL_NODE_TYPE_LIST
 #undef nt
-  BL_NODE_COUNT
+      BL_NODE_COUNT
 };
 
 #define bl_peek_src(n) (n)->src
 #define bl_node_is(n, c) ((n)->code == (c))
 #define bl_node_is_not(n, c) ((n)->code != (c))
 #define bl_node_code(n) (n)->code
+#define bl_node_name(n) bl_node_type_strings[(n)->code]
 
 struct bl_ast
 {
@@ -207,11 +209,11 @@ struct bl_decl_struct_member
 
 struct bl_decl_enum
 {
-  bl_id_t    id;
-  int        modif;
-  int        used;
-  bl_node_t *type;
-  BArray *   variants;
+  bl_id_t     id;
+  int         modif;
+  int         used;
+  bl_node_t * type;
+  BHashTable *variants;
 };
 
 struct bl_decl_enum_variant
@@ -255,7 +257,7 @@ struct bl_expr_binop
   bl_node_t *type;
 };
 
-struct bl_expr_var_ref
+struct bl_expr_decl_ref
 {
   BArray *   path;
   bl_node_t *ref;
@@ -319,7 +321,7 @@ BL_NODE_TYPE_LIST
 #undef nt
 #else
 #define nt(code, name)                                                                             \
-  static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                               \
+  static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                        \
   {                                                                                                \
     return &(n->n.name);                                                                           \
   }
@@ -360,7 +362,7 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
                       bl_node_t *type);
 
 bl_node_t *
-bl_ast_add_expr_var_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
@@ -478,13 +480,10 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant);
-
-size_t
-bl_ast_enum_variant_count(bl_decl_enum_t *enm);
+bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant);
 
 bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i);
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id);
 
 /*************************************************************************************************
  * other

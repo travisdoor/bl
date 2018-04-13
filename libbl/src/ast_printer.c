@@ -170,21 +170,58 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 }
 
 static void
+print_const_expr(bl_expr_const_t *expr)
+{
+  bl_type_fund_t *type = bl_peek_type_fund(expr->type);
+  switch (type->type) {
+  case BL_FTYPE_I8:
+  case BL_FTYPE_I32:
+  case BL_FTYPE_I64:
+    fprintf(stdout, "value: " BL_MAGENTA("%lld"), expr->value.s);
+    break;
+  case BL_FTYPE_U8:
+  case BL_FTYPE_U32:
+  case BL_FTYPE_U64:
+    fprintf(stdout, "value: " BL_MAGENTA("%llu"), expr->value.u);
+    break;
+  case BL_FTYPE_PTR:
+    fprintf(stdout, "value: " BL_MAGENTA("0x%llx"), expr->value.u);
+    break;
+  case BL_FTYPE_F32:
+  case BL_FTYPE_F64:
+    fprintf(stdout, "value: " BL_MAGENTA("%f"), expr->value.f);
+    break;
+  case BL_FTYPE_BOOL:
+    fprintf(stdout, "value: " BL_MAGENTA("%s"), expr->value.b ? "true" : "false");
+    break;
+  case BL_FTYPE_STRING:
+    fprintf(stdout, "value: " BL_MAGENTA("'%s'"), expr->value.str);
+    break;
+  case BL_FTYPE_CHAR:
+    fprintf(stdout, "value: " BL_MAGENTA("%c"), expr->value.c);
+    break;
+  default:
+    bl_abort("invalid constant type");
+  }
+}
+
+static void
 visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   switch (bl_node_code(expr)) {
   case BL_EXPR_CONST: {
     print_head("const", bl_peek_src(expr), expr, visitor->nesting);
+    print_const_expr(bl_peek_expr_const(expr));
     break;
   }
   case BL_EXPR_BINOP:
     print_head("binop", bl_peek_src(expr), expr, visitor->nesting);
     fprintf(stdout, "operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);
     break;
-  case BL_EXPR_VAR_REF:
-    print_head("var_ref", bl_peek_src(expr), expr, visitor->nesting);
-    print_path(bl_peek_expr_var_ref(expr)->path);
-    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_var_ref(expr)->ref);
+  case BL_EXPR_DECL_REF:
+    print_head("decl_ref", bl_peek_src(expr), expr, visitor->nesting);
+    print_path(bl_peek_expr_decl_ref(expr)->path);
+    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_decl_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);

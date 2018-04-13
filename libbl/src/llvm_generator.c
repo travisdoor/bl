@@ -380,10 +380,20 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
     bl_expr_const_t *cnst = bl_peek_expr_const(expr);
     switch (bl_peek_type_fund(cnst->type)->type) {
+    case BL_FTYPE_I8:
+      val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, true);
+      break;
     case BL_FTYPE_I32:
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, true);
       break;
+    case BL_FTYPE_U8:
+      val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, false);
+    case BL_FTYPE_U32:
+      val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, false);
     case BL_FTYPE_U64:
     case BL_FTYPE_PTR:
       val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
@@ -410,8 +420,8 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     break;
   }
 
-  case BL_EXPR_VAR_REF: {
-    val = get_value_cscope(bl_peek_expr_var_ref(expr)->ref);
+  case BL_EXPR_DECL_REF: {
+    val = get_value_cscope(bl_peek_expr_decl_ref(expr)->ref);
     bl_assert(val, "unknown symbol");
     break;
   }

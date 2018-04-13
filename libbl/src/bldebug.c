@@ -1,9 +1,9 @@
 //*****************************************************************************
 // blc
 //
-// File:   blc.h
+// File:   bldebug.c
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,15 +26,32 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
-
+#include <stdarg.h>
 #include "bl/bldebug.h"
-#include "bl/unit.h"
-#include "bl/bllimits.h"
-#include "bl/assembly.h"
-#include "bl/builder.h"
-#include "bl/error.h"
-#include "bl/messages.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+#define MAX_LOG_MSG_SIZE 2048
+
+void
+_bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...)
+{
+  char    buffer[MAX_LOG_MSG_SIZE];
+  va_list args;
+  va_start(args, msg);
+  vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);
+
+  switch (t) {
+  case BL_LOG_ASSERT:
+    fprintf(stderr, BL_RED("assert [%s:%d]: %s") "\n", file, line, buffer);
+    break;
+  case BL_LOG_ABORT:
+    fprintf(stderr, BL_RED("abort [%s:%d]: %s") "\n", file, line, buffer);
+    break;
+  case BL_LOG_MSG:
+    fprintf(stderr, "log [%s:%d]: %s\n", file, line, buffer);
+    break;
+  default:
+    break;
+  }
+
+  va_end(args);
+}

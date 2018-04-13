@@ -32,8 +32,7 @@
 #include "bl/bldebug.h"
 #include "bl/config.h"
 #include "bl/error.h"
+#include "bl/messages.h"
 #include "blmemory_impl.h"
-
-#define bl_nelems(x) (sizeof(x) / sizeof((x)[0]))
 
 #endif // BL_COMMON_IMPL_H

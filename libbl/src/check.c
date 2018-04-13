@@ -67,7 +67,7 @@ static bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type);
 
 static bl_node_t *
-check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type);
+check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type);
 
 static bl_node_t *
 check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type);
@@ -137,9 +137,9 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
 }
 
 bl_node_t *
-check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
+check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
 {
-  bl_node_t *    ref  = bl_peek_expr_var_ref(var_ref)->ref;
+  bl_node_t *    ref  = bl_peek_expr_decl_ref(decl_ref)->ref;
   bl_decl_var_t *_ref = bl_peek_decl_var(ref);
 
   if (expected_type == NULL)
@@ -147,7 +147,7 @@ check_var_ref(context_t *cnt, bl_node_t *var_ref, bl_node_t *expected_type)
 
   if (!bl_type_eq(_ref->type, expected_type)) {
     check_error(
-        cnt, BL_ERR_INVALID_TYPE, var_ref,
+        cnt, BL_ERR_INVALID_TYPE, decl_ref,
         "incompatible type of variable " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
             "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
         _ref->id.str, bl_ast_try_get_type_name(expected_type), bl_ast_try_get_type_name(_ref->type),
@@ -185,8 +185,8 @@ bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
 {
   switch (bl_node_code(expr)) {
-  case BL_EXPR_VAR_REF:
-    return check_var_ref(cnt, expr, expected_type);
+  case BL_EXPR_DECL_REF:
+    return check_decl_ref(cnt, expr, expected_type);
 
   case BL_EXPR_CALL:
     return check_call(cnt, expr, expected_type);

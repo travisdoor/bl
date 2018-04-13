@@ -39,6 +39,14 @@
 #error "Unknown platform"
 #endif
 
+#ifdef __clang__
+#define BL_COMPILER_CLANG
+#elif __GNUC__
+#define BL_COMPILER_GNUC
+#elif _MSC_VER
+#define BL_COMPILER_MSVC
+#endif
+
 #define BL_MAX_FUNC_ARG_COUNT 32
 
 #endif // BL_CONFIG_H
