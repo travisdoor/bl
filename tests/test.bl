@@ -5,6 +5,7 @@
 module m {
   fn main() i32 {
     var state m::enum_e = m::enum_e::A; 
+    var state2 m::enum_e; 
     return 0;
   }
 }

@@ -220,6 +220,7 @@ struct bl_decl_enum_variant
 {
   bl_id_t    id;
   bl_node_t *expr;
+  bl_node_t *parent;
 };
 
 struct bl_decl_block
@@ -309,25 +310,15 @@ bl_ast_terminate(bl_ast_t *ast);
  * generation of peek function
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
-#ifdef BL_DEBUG
 #define nt(code, name)                                                                             \
   static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                        \
   {                                                                                                \
-    if (bl_node_is(n, BL_##code))                                                                  \
-      return &(n->n.name);                                                                         \
-    bl_abort("invalid node type, expected: " #name " not %s", bl_node_name(n));                    \
-  }
-BL_NODE_TYPE_LIST
-#undef nt
-#else
-#define nt(code, name)                                                                             \
-  static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                        \
-  {                                                                                                \
+    bl_assert(bl_node_is(n, BL_##code), "invalid node type, expected: " #name " not %s",           \
+              bl_node_name(n));                                                                    \
     return &(n->n.name);                                                                           \
   }
 BL_NODE_TYPE_LIST
 #undef nt
-#endif
 
 /*************************************************************************************************
  * constructors
@@ -395,7 +386,8 @@ bl_node_t *
 bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif);
 
 bl_node_t *
-bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr);
+bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr,
+                             bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);
@@ -501,7 +493,7 @@ bl_node_t *
 bl_ast_get_node(bl_ast_t *ast, size_t i);
 
 bool
-bl_type_eq(bl_node_t *first, bl_node_t *second);
+bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
 const char *
 bl_ast_try_get_type_name(bl_node_t *type);

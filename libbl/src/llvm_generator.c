@@ -49,9 +49,7 @@
   if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
 
-#define DEBUG_NAMES 0
-
-#if DEBUG_NAMES
+#if BL_DEBUG
 #define gname(s) s
 #else
 #define gname(s) ""
@@ -421,7 +419,21 @@ gen_expr(context_t *cnt, bl_node_t *expr)
   }
 
   case BL_EXPR_DECL_REF: {
-    val = get_value_cscope(bl_peek_expr_decl_ref(expr)->ref);
+    bl_node_t *ref = bl_peek_expr_decl_ref(expr)->ref;
+
+    switch (bl_node_code(ref)) {
+    case BL_DECL_VAR:
+      val = get_value_cscope(ref);
+      break;
+    case BL_DECL_ENUM_VARIANT: {
+      bl_decl_enum_variant_t *variant = bl_peek_decl_enum_variant(ref);
+      val = gen_expr(cnt, variant->expr);
+      break;
+    }
+    default:
+      bl_abort("cannot generate reference to %s", bl_node_name(ref));
+    }
+
     bl_assert(val, "unknown symbol");
     break;
   }

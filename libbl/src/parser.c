@@ -66,7 +66,7 @@ static bl_node_t *
 parse_struct_member_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_enum_variant_maybe(context_t *cnt);
+parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
 parse_enum_maybe(context_t *cnt, int modif);
@@ -910,7 +910,7 @@ parse_struct_member_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_enum_variant_maybe(context_t *cnt)
+parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent)
 {
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
     return NULL;
@@ -929,7 +929,7 @@ parse_enum_variant_maybe(context_t *cnt)
     }
   }
 
-  return bl_ast_add_decl_enum_variant(cnt->ast, tok_id, tok_id->value.str, expr);
+  return bl_ast_add_decl_enum_variant(cnt->ast, tok_id, tok_id->value.str, expr, parent);
 }
 
 bl_node_t *
@@ -1011,7 +1011,7 @@ parse_enum_maybe(context_t *cnt, int modif)
     bl_node_t *conflict = NULL;
 
   variant:
-    variant = parse_enum_variant_maybe(cnt);
+    variant = parse_enum_variant_maybe(cnt, enm);
 
     /* check for duplicity */
     if (variant) {

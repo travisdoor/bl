@@ -84,7 +84,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
   bl_decl_func_t *_callee = bl_peek_decl_func(callee);
 
   if (expected_type != NULL) {
-    if (!bl_type_eq(_callee->ret_type, expected_type)) {
+    if (!bl_type_compatible(_callee->ret_type, expected_type)) {
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, call,
           "incompatible return type of function " BL_YELLOW("'%s'") " call, expected is " BL_YELLOW(
@@ -127,7 +127,7 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
   if (expected_type == NULL)
     return _cnst->type;
 
-  if (!bl_type_eq(_cnst->type, expected_type)) {
+  if (!bl_type_compatible(_cnst->type, expected_type)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, cnst,
                 "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
                 bl_ast_try_get_type_name(_cnst->type), bl_ast_try_get_type_name(expected_type));
@@ -139,22 +139,45 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
 bl_node_t *
 check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
 {
-  bl_node_t *    ref  = bl_peek_expr_decl_ref(decl_ref)->ref;
-  bl_decl_var_t *_ref = bl_peek_decl_var(ref);
+  bl_node_t *ref      = bl_peek_expr_decl_ref(decl_ref)->ref;
+  bl_node_t *ref_type = NULL;
 
   if (expected_type == NULL)
-    return _ref->type;
+    return ref_type;
 
-  if (!bl_type_eq(_ref->type, expected_type)) {
-    check_error(
-        cnt, BL_ERR_INVALID_TYPE, decl_ref,
-        "incompatible type of variable " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
-            "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-        _ref->id.str, bl_ast_try_get_type_name(expected_type), bl_ast_try_get_type_name(_ref->type),
-        ref->src->file, ref->src->line, ref->src->col);
+  switch (bl_node_code(ref)) {
+  case BL_DECL_VAR: {
+    ref_type = bl_peek_decl_var(ref)->type;
+
+    if (!bl_type_compatible(ref_type, expected_type)) {
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+              "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+          bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
+          bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
+    }
+    break;
   }
 
-  return _ref->type;
+  case BL_DECL_ENUM_VARIANT: {
+    ref_type = bl_peek_decl_enum_variant(ref)->parent;
+
+    if (ref_type != bl_peek_type_ref(expected_type)->ref) {
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+              "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+          bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
+          bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
+    }
+    break;
+  }
+  default:
+    bl_abort("cannot check reference of type: %s", bl_node_name(ref));
+  }
+
+  return ref_type;
 }
 
 bl_node_t *
@@ -163,7 +186,7 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
   bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
 
   if (_binop->type && expected_type) {
-    if (!bl_type_eq(_binop->type, expected_type)) {
+    if (!bl_type_compatible(_binop->type, expected_type)) {
       check_error(cnt, BL_ERR_INVALID_TYPE, binop,
                   "binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
                   bl_ast_try_get_type_name(expected_type));

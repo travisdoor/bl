@@ -8,8 +8,9 @@
 ** DONE Enum variant node
 ** DONE Struct member node
 ** DONE Enum type generation 
+** TODO Enum instance (unitialized) should have first enum value if there is one 
 ** TODO Constant with separate node 
-** TODO Rename var_ref to ref 
+** DONE Rename var_ref to ref 
 ** TODO Struct and enum member access 
 ** TODO Enum base expression generation (only numbers accepted for now)
 ** TODO Struct member access

@@ -242,7 +242,7 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
   if (tok)
     decl_ref->src = &tok->src;
 
-  decl_ref->code                       = BL_EXPR_DECL_REF;
+  decl_ref->code                        = BL_EXPR_DECL_REF;
   bl_peek_expr_decl_ref(decl_ref)->ref  = ref;
   bl_peek_expr_decl_ref(decl_ref)->path = path;
 
@@ -386,7 +386,8 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr)
+bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr,
+                             bl_node_t *parent)
 {
   bl_node_t *variant = alloc_node(ast);
   if (tok)
@@ -394,7 +395,8 @@ bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, b
 
   variant->code = BL_DECL_ENUM_VARIANT;
   bl_id_init(&bl_peek_decl_enum_variant(variant)->id, name);
-  bl_peek_decl_enum_variant(variant)->expr = expr;
+  bl_peek_decl_enum_variant(variant)->expr   = expr;
+  bl_peek_decl_enum_variant(variant)->parent = parent;
 
   return variant;
 }
@@ -666,9 +668,9 @@ bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id)
   if (enm->variants == NULL)
     return NULL;
 
-  if (!bo_htbl_has_key(enm->variants, id->hash)) 
+  if (!bo_htbl_has_key(enm->variants, id->hash))
     return NULL;
-  
+
   return bo_htbl_at(enm->variants, id->hash, bl_node_t *);
 }
 
@@ -736,7 +738,7 @@ bl_ast_get_node(bl_ast_t *ast, size_t i)
 }
 
 bool
-bl_type_eq(bl_node_t *first, bl_node_t *second)
+bl_type_compatible(bl_node_t *first, bl_node_t *second)
 {
   if (!first || !second)
     return false;
@@ -764,8 +766,19 @@ bl_ast_try_get_type_name(bl_node_t *type)
   switch (bl_node_code(type)) {
   case BL_TYPE_FUND:
     return bl_fund_type_strings[bl_peek_type_fund(type)->type];
-  case BL_TYPE_REF:
-    return "unknown";
+  case BL_TYPE_REF: {
+    bl_node_t *ref = bl_peek_type_ref(type)->ref;
+    switch (bl_node_code(ref)) {
+    case BL_DECL_ENUM:
+      return bl_peek_decl_enum(ref)->id.str;
+    case BL_DECL_STRUCT:
+      return bl_peek_decl_struct(ref)->id.str;
+    default:
+      bl_abort("invalid reference to type %s", bl_node_name(ref));
+    }
+
+    break;
+  }
   default:
     return NULL;
   }
