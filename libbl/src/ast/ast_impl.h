@@ -192,10 +192,11 @@ struct bl_decl_func
 
 struct bl_decl_struct
 {
-  bl_id_t id;
-  int     modif;
-  int     used;
-  BArray *members;
+  bl_id_t     id;
+  int         modif;
+  int         used;
+  BArray *    members;
+  bl_scope_t *scope;
 };
 
 struct bl_decl_struct_member
@@ -275,6 +276,7 @@ struct bl_expr_call
 struct bl_expr_path
 {
   bl_id_t id;
+  // IDEA: should contain reference to member/variant/module?
 };
 
 struct bl_type_fund

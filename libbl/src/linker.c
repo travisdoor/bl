@@ -44,7 +44,6 @@
 typedef struct
 {
   bl_block_scope_t block_scope;
-  bl_block_scope_t tmp_scope;
   bl_builder_t *   builder;
   bl_assembly_t *  assembly;
   jmp_buf          jmp_error;
@@ -91,23 +90,22 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
   }
 
   /* check for duplicit members */
-  bl_block_scope_push(&cnt->tmp_scope);
+  _strct->scope       = bl_scope_new(cnt->assembly->scope_cache);
   bl_node_t *  member = NULL;
   const size_t c      = bl_ast_struct_member_count(_strct);
   for (size_t i = 0; i < c; i++) {
     member   = bl_ast_struct_get_member(_strct, i);
-    conflict = bl_block_scope_get_node(&cnt->tmp_scope, &bl_peek_decl_struct_member(member)->id);
+    conflict = bl_scope_get_node(_strct->scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
       link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, member->src,
                  "duplicate struct memeber " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                 bl_peek_decl_var(member)->id.str, conflict->src->file, conflict->src->line,
-                 conflict->src->col);
+                 bl_peek_decl_struct_member(member)->id.str, conflict->src->file,
+                 conflict->src->line, conflict->src->col);
     }
-    bl_block_scope_insert_node(&cnt->tmp_scope, member);
+    bl_scope_insert_node(_strct->scope, member);
   }
 
-  bl_block_scope_pop(&cnt->tmp_scope);
   bl_scope_insert_node(scope, strct);
 }
 
@@ -127,8 +125,6 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
   }
 
   /* check for duplicit members and prepare lookup scope cache */
-  bl_block_scope_push(&cnt->tmp_scope);
-
   _enm->scope          = bl_scope_new(cnt->assembly->scope_cache);
   bl_node_t *  variant = NULL;
   const size_t c       = bl_ast_enum_get_count(_enm);
@@ -195,10 +191,11 @@ link_module(bl_visitor_t *visitor, bl_node_t *module)
 
 /* flags used in lookup methods for finding declarations in various scopes */
 typedef enum {
-  LOOKUP_GSCOPE       = 1, // search in global-scope
-  LOOKUP_MOD_SCOPE    = 2, // search in scope of current module
-  LOOKUP_BLOCK_SCOPE  = 4, // search in scope of surrent block (ex.: function body)
-  LOOKUP_ENUM_VARIANT = 8  // search in enum variants
+  LOOKUP_GSCOPE        = 1,  // search in global-scope
+  LOOKUP_MOD_SCOPE     = 2,  // search in scope of current module
+  LOOKUP_BLOCK_SCOPE   = 4,  // search in scope of surrent block (ex.: function body)
+  LOOKUP_ENUM_VARIANT  = 8,  // search in enum variants
+  LOOKUP_STRUCT_MEMBER = 16, // search in struct members
 } lookup_flag_e;
 
 static bl_node_t *
@@ -223,6 +220,13 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
     bl_assert(prev_node, "invalid prev node");
     found =
         bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in struct declaration */
+  if (scope_flag & LOOKUP_STRUCT_MEMBER) {
+    bl_assert(prev_node, "invalid prev node");
+    found =
+        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
   }
 
   /* search symbol in block scope */
@@ -271,6 +275,22 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
     /* not last in path -> we need to determinate enum variant */
     return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
+  } else if (bl_node_is(found, BL_DECL_VAR)) { /* found enum */
+    bl_log("decl var  %s", bl_peek_decl_var(found)->id.str);
+
+    /* last in path -> return var declaration */
+    if (iter == bo_array_size(path))
+      return found;
+
+    // TODO
+    bl_decl_var_t *_var = bl_peek_decl_var(found);
+    bl_assert(bl_node_is(_var->type, BL_TYPE_REF), "non-terminal member access in path with fundamantal type");
+
+    /* must be reference to structure */
+    bl_node_t *ref = bl_peek_type_ref(_var->type)->ref;
+    
+    /* not last in path -> we need to determinate struct member */
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
@@ -409,7 +429,6 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .gscope    = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
-  bl_block_scope_init(&cnt.tmp_scope);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -445,7 +464,6 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
-  bl_block_scope_terminate(&cnt.tmp_scope);
 
   return BL_NO_ERR;
 }

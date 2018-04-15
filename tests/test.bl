@@ -8,7 +8,8 @@ module c {
 
 module m {
   fn main() i32 {
-    var state m.enum_e = m.enum_e.B; 
+    // enum test
+    var state m.enum_e = m.enum_e.A; 
     var state2 m.enum_e; // should be set to first enum variant if there is one
 
     if (state == m.enum_e.A)
@@ -21,6 +22,10 @@ module m {
     state = m.enum_e.E; // 23
     state = m.enum_e.F; // 30
     state = m.enum_e.G; // 31
+
+    // struct test
+    var data m.data_t; 
+    data.a = 666;
 
     return 0;
   }
@@ -45,7 +50,6 @@ module m {
   public struct data_t {
     a i32,
     b string,
-    c f64,
-    next data_t
+    c f64
   }
 }

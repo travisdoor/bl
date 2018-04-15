@@ -270,6 +270,25 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
     check_warning(cnt, strct, "structure " BL_YELLOW("'%s'") " is declared but never used",
                   _strct->id.str);
   }
+
+  if (bl_ast_struct_member_count(_strct) == 0) {
+    check_warning(cnt, strct, "structure " BL_YELLOW("'%s'") " is empty", _strct->id.str);
+  }
+
+  /* check all memebrs of structure */
+  bl_node_t *              member  = NULL;
+  bl_decl_struct_member_t *_member = NULL;
+  const size_t             c       = bl_ast_struct_member_count(_strct);
+
+  for (size_t i = 0; i < c; i++) {
+    member  = bl_ast_struct_get_member(_strct, i);
+    _member = bl_peek_decl_struct_member(member);
+
+    if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, _member->type,
+                  "structure cannot contains self-typed member " BL_YELLOW("'%s'"), _member->id.str);
+    }
+  }
 }
 
 static void

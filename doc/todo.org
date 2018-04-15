@@ -15,6 +15,8 @@
 ** DONE Check enum non-existing variant expression  
 ** TODO Struct member access 
 ** DONE Enum member access 
+** DONE Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
+** TODO Public and private struct members. 
 ** TODO Type casting 
 ** TODO Single character parsing ('c') 
 ** TODO Enum base expression generation (only numbers accepted for now)
