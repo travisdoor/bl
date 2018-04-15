@@ -370,12 +370,14 @@ gen_default(context_t *cnt, bl_node_t *type)
     switch (bl_node_code(ref)) {
     case BL_DECL_ENUM: {
       bl_decl_enum_t *enm = bl_peek_decl_enum(ref);
-      if (enm->def == NULL)
+
+      if (bl_ast_enum_get_count(enm) == 0)
         return NULL;
 
-      bl_assert(bl_peek_decl_enum_variant(enm->def)->expr,
+      bl_node_t *def_variant = bl_ast_enum_get_variant(enm, 0);
+      bl_assert(bl_peek_decl_enum_variant(def_variant)->expr,
                 "every enum varaint must have constant initializer");
-      return gen_expr(cnt, bl_peek_decl_enum_variant(enm->def)->expr);
+      return gen_expr(cnt, bl_peek_decl_enum_variant(def_variant)->expr);
     }
     default:
       bl_warning("LLVM cannot generate default value for node type: %s", bl_node_name(ref));

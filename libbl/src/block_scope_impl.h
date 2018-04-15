@@ -33,7 +33,7 @@
 #include <bobject/containers/htbl.h>
 #include "ast/ast_impl.h"
 
-typedef struct {
+typedef struct bl_block_scope {
   BArray *scopes; 
 } bl_block_scope_t;
 

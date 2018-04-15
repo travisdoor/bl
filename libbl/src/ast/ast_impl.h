@@ -213,8 +213,8 @@ struct bl_decl_enum
   int         modif;
   int         used;
   bl_node_t * type;
-  bl_node_t * def; // first inserted variant will be used as default
-  BHashTable *variants;
+  BArray *    variants;
+  bl_scope_t *scope;
 };
 
 struct bl_decl_enum_variant
@@ -329,6 +329,9 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
+
+bl_node_t *
+bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c);
@@ -473,10 +476,10 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant);
+bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant);
 
 bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id);
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i);
 
 size_t
 bl_ast_enum_get_count(bl_decl_enum_t *enm);

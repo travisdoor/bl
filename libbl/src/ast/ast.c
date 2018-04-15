@@ -134,14 +134,22 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
+bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+{
+  bl_node_t *cnst = alloc_node(ast);
+  if (tok)
+    cnst->src = &tok->src;
+
+  cnst->code                     = BL_EXPR_CONST;
+  bl_peek_expr_const(cnst)->type = type;
+
+  return cnst;
+}
+
+bl_node_t *
 bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                        = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type    = type;
+  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.c = c;
 
   return expr_const;
@@ -150,12 +158,7 @@ bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char
 bl_node_t *
 bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                        = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type    = type;
+  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.b = b;
 
   return expr_const;
@@ -164,12 +167,7 @@ bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool
 bl_node_t *
 bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                        = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type    = type;
+  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.s = s;
 
   return expr_const;
@@ -179,12 +177,7 @@ bl_node_t *
 bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
                                unsigned long long u)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                        = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type    = type;
+  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.u = u;
 
   return expr_const;
@@ -193,12 +186,7 @@ bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
 bl_node_t *
 bl_ast_add_expr_const_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                        = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type    = type;
+  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.f = f;
 
   return expr_const;
@@ -207,12 +195,7 @@ bl_ast_add_expr_const_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, do
 bl_node_t *
 bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str)
 {
-  bl_node_t *expr_const = alloc_node(ast);
-  if (tok)
-    expr_const->src = &tok->src;
-
-  expr_const->code                          = BL_EXPR_CONST;
-  bl_peek_expr_const(expr_const)->type      = type;
+  bl_node_t *expr_const                     = bl_ast_add_expr_const(ast, tok, type);
   bl_peek_expr_const(expr_const)->value.str = str;
 
   return expr_const;
@@ -649,30 +632,26 @@ bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i)
  * enum
  *************************************************************************************************/
 bl_node_t *
-bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant)
+bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant)
 {
   if (variant == NULL)
     return NULL;
 
   if (enm->variants == NULL) {
-    enm->variants = bo_htbl_new(sizeof(bl_node_t *), 128);
-    enm->def      = variant;
+    enm->variants = bo_array_new(sizeof(bl_node_t *));
   }
 
-  bo_htbl_insert(enm->variants, bl_peek_decl_enum_variant(variant)->id.hash, variant);
+  bo_array_push_back(enm->variants, variant);
   return variant;
 }
 
 bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id)
+bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i)
 {
   if (enm->variants == NULL)
     return NULL;
 
-  if (!bo_htbl_has_key(enm->variants, id->hash))
-    return NULL;
-
-  return bo_htbl_at(enm->variants, id->hash, bl_node_t *);
+  return bo_array_at(enm->variants, i, bl_node_t *);
 }
 
 size_t
@@ -681,7 +660,7 @@ bl_ast_enum_get_count(bl_decl_enum_t *enm)
   if (enm->variants == NULL)
     return 0;
 
-  return bo_htbl_size(enm->variants);
+  return bo_array_size(enm->variants);
 }
 
 /*************************************************************************************************

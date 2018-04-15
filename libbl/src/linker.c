@@ -126,6 +126,25 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
                _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
 
+  /* check for duplicit members and prepare lookup scope cache */
+  bl_block_scope_push(&cnt->tmp_scope);
+
+  _enm->scope          = bl_scope_new(cnt->assembly->scope_cache);
+  bl_node_t *  variant = NULL;
+  const size_t c       = bl_ast_enum_get_count(_enm);
+  for (size_t i = 0; i < c; i++) {
+    variant  = bl_ast_enum_get_variant(_enm, i);
+    conflict = bl_scope_get_node(_enm->scope, &bl_peek_decl_enum_variant(variant)->id);
+
+    if (conflict) {
+      link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
+                 "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                 bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file,
+                 conflict->src->line, conflict->src->col);
+    }
+    bl_scope_insert_node(_enm->scope, variant);
+  }
+
   bl_scope_insert_node(scope, enm);
 }
 
@@ -203,7 +222,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   if (scope_flag & LOOKUP_ENUM_VARIANT) {
     bl_assert(prev_node, "invalid prev node");
     found =
-        bl_ast_enum_get_variant(bl_peek_decl_enum(prev_node), &bl_peek_expr_path(path_elem)->id);
+        bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
   }
 
   /* search symbol in block scope */
@@ -307,7 +326,8 @@ link_type(bl_visitor_t *visitor, bl_node_t *type)
       bl_peek_decl_enum(found)->used++;
       break;
     default:
-      bl_abort("invalid type");
+      link_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                 "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
     }
 
     break;

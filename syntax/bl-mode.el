@@ -40,7 +40,7 @@
 (defconst bl-font-lock-keywords-1
   (list
    '("\\<\\(const\\|var\\|if\\|while\\|loop\\|break\\|continue\\|else\\|extern\\|module\\|public\\|struct\\|enum\\|fn\\|return\\)\\>" . font-lock-keyword-face)
-   '("\\<\\(i8\\|i32\\|i64\\|u8\\|u32\\|u64\\|f32\\|f64\\|string\\|char\\|ptr\\)\\>" . font-lock-type-face)
+   '("\\<\\(i8\\|i32\\|i64\\|u8\\|u32\\|u64\\|f32\\|f64\\|string\\|char\\|bool\\|ptr\\)\\>" . font-lock-type-face)
    '("\\(\\s"\\w*\\s"\\)" . font-lock-string-face)
    '("\\<\\(\\+\\|-\\)?[0-9]+\\(\\.[0-9]+\\)?\\>" . font-lock-constant-face)
    '("\\<true\\|false\\|null\\>" . font-lock-constant-face))

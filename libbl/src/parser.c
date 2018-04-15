@@ -1008,24 +1008,12 @@ parse_enum_maybe(context_t *cnt, int modif)
     }
 
     bl_node_t *variant  = NULL;
-    bl_node_t *conflict = NULL;
 
   variant:
     variant = parse_enum_variant_maybe(cnt, enm);
 
     /* check for duplicity */
-    if (variant) {
-      conflict = bl_ast_enum_get_variant(_enm, &bl_peek_decl_enum_variant(variant)->id);
-      if (conflict) {
-        parse_error_node(
-            cnt, BL_ERR_DUPLICATE_SYMBOL, variant,
-            "duplicate enum variant " BL_YELLOW("'%s'") ", already declared here: %s:%d:%d",
-            bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file, conflict->src->line,
-            conflict->src->col);
-      }
-
-      bl_ast_enum_insert_variant(_enm, variant);
-
+    if (bl_ast_enum_push_variant(_enm, variant)) {
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto variant;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {

@@ -10,10 +10,17 @@ module m {
   fn main() i32 {
     var state m.enum_e = m.enum_e.B; 
     var state2 m.enum_e; // should be set to first enum variant if there is one
-    var name m.names.Tereza;
 
     if (state == m.enum_e.A)
        c.puts("state is A");
+
+    state = m.enum_e.A; // 10 
+    state = m.enum_e.B; // 20
+    state = m.enum_e.C; // 21
+    state = m.enum_e.D; // 22
+    state = m.enum_e.E; // 23
+    state = m.enum_e.F; // 30
+    state = m.enum_e.G; // 31
 
     return 0;
   }
@@ -23,7 +30,11 @@ module m {
   public enum enum_e i32 {
     A = 10,
     B = 20,
-    //	C  // should be 21
+    C,
+    D,
+    E,
+    F = 40,
+    G 
   }
 
   enum names string { 

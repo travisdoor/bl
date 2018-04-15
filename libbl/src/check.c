@@ -50,6 +50,7 @@ typedef struct
 {
   bl_builder_t * builder;
   bl_assembly_t *assembly;
+  bl_unit_t *    current_unit;
 
   /* tmps */
   bl_node_t *curr_func;
@@ -285,27 +286,25 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
     check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is empty", _enm->id.str);
   }
 
-  if (bl_node_is_not(_enm->type, BL_TYPE_FUND)) {
+  if (bl_node_is_not(_enm->type, BL_TYPE_FUND) ||
+      (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_BOOL ||
+       bl_peek_type_fund(_enm->type)->type == BL_FTYPE_PTR ||
+       bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
-                "enumerator has invalid type, only fundamental types are supported except bool");
-  }
-
-  if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_BOOL) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type, "enumerator has invalid type bool");
+                "enumerator has invalid type, only numerical, string and char types are supported");
   }
 
   /* check all expressions of enum variants */
-  bo_iterator_t           iter     = bo_htbl_begin(_enm->variants);
-  bo_iterator_t           end      = bo_htbl_end(_enm->variants);
-  bl_node_t *             variant  = NULL;
-  bl_decl_enum_variant_t *_variant = NULL;
+  bl_node_t *             variant       = NULL;
+  bl_decl_enum_variant_t *_variant      = NULL;
+  bl_decl_enum_variant_t *_prev_variant = NULL;
+  const size_t            c             = bl_ast_enum_get_count(_enm);
 
-  while (!bo_iterator_equal(&iter, &end)) {
-    variant  = bo_htbl_iter_peek_value(_enm->variants, &iter, bl_node_t *);
-    _variant = bl_peek_decl_enum_variant(variant);
-    bo_htbl_iter_next(_enm->variants, &iter);
+  for (size_t i = 0; i < c; i++) {
+    _prev_variant = _variant;
+    variant       = bl_ast_enum_get_variant(_enm, i);
+    _variant      = bl_peek_decl_enum_variant(variant);
 
-    /* TODO: handle char same way */
     if (_variant->expr == NULL) {
       if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_STRING) {
         check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
@@ -321,8 +320,43 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
                     _variant->id.str);
       }
 
-      bl_abort("missing variant expr for enum: %s", _enm->id.str);
+      _variant->expr = bl_ast_add_expr_const(&cnt->current_unit->ast, NULL, _enm->type);
+
+      switch (bl_peek_type_fund(_enm->type)->type) {
+      case BL_FTYPE_I8:
+      case BL_FTYPE_I32:
+      case BL_FTYPE_I64: {
+        long long tmp = _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.s + 1 : 0;
+        bl_peek_expr_const(_variant->expr)->value.s = tmp;
+        bl_log("setting variant %s to %d", _variant->id.str, tmp);
+        break;
+      }
+
+      case BL_FTYPE_U8:
+      case BL_FTYPE_U32:
+      case BL_FTYPE_U64: {
+        unsigned long long tmp =
+            _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.u + 1 : 0;
+        bl_peek_expr_const(_variant->expr)->value.u = tmp;
+        break;
+      }
+
+      case BL_FTYPE_F32:
+      case BL_FTYPE_F64: {
+        double tmp = _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.f + 1.0 : 0.0;
+        bl_peek_expr_const(_variant->expr)->value.f = tmp;
+        break;
+      }
+
+      default:
+        bl_abort("missing variant expr for enum: %s", _enm->id.str);
+      }
+
+      /* try to determinate next varaint expression */
+    } else if (bl_node_is_not(_variant->expr, BL_EXPR_CONST)) {
+      bl_abort("enum variant must be const-expr for now");
     }
+
     check_expr(cnt, _variant->expr, _enm->type);
   }
 }
@@ -406,7 +440,8 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; i++) {
-    unit = bl_assembly_get_unit(assembly, i);
+    unit             = bl_assembly_get_unit(assembly, i);
+    cnt.current_unit = unit;
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }
 

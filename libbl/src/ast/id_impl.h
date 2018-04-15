@@ -31,7 +31,7 @@
 
 #include <stdint.h>
 
-typedef struct
+typedef struct bl_id
 {
   const char *str;
   uint32_t hash;

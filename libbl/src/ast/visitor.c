@@ -332,17 +332,13 @@ bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_visit_f vt = visitor->visitors[BL_VISIT_TYPE];
   vt(visitor, _enm->type);
 
-  if (_enm->variants) {
-    bo_iterator_t iter    = bo_htbl_begin(_enm->variants);
-    bo_iterator_t end     = bo_htbl_end(_enm->variants);
-    bl_node_t *   variant = NULL;
-    bl_visit_f    ve      = visitor->visitors[BL_VISIT_ENUM_VARIANT];
+  const size_t c       = bl_ast_enum_get_count(_enm);
+  bl_node_t *  variant = NULL;
+  bl_visit_f   ve      = visitor->visitors[BL_VISIT_ENUM_VARIANT];
 
-    while (!bo_iterator_equal(&iter, &end)) {
-      variant = bo_htbl_iter_peek_value(_enm->variants, &iter, bl_node_t *);
-      ve(visitor, variant);
-      bo_htbl_iter_next(_enm->variants, &iter);
-    }
+  for (size_t i = 0; i < c; i++) {
+    variant = bl_ast_enum_get_variant(_enm, i);
+    ve(visitor, variant);
   }
 
   visitor->nesting--;
