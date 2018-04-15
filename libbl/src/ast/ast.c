@@ -656,6 +656,7 @@ bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant)
 
   if (enm->variants == NULL) {
     enm->variants = bo_htbl_new(sizeof(bl_node_t *), 128);
+    enm->def      = variant;
   }
 
   bo_htbl_insert(enm->variants, bl_peek_decl_enum_variant(variant)->id.hash, variant);
@@ -672,6 +673,15 @@ bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id)
     return NULL;
 
   return bo_htbl_at(enm->variants, id->hash, bl_node_t *);
+}
+
+size_t
+bl_ast_enum_get_count(bl_decl_enum_t *enm)
+{
+  if (enm->variants == NULL)
+    return 0;
+
+  return bo_htbl_size(enm->variants);
 }
 
 /*************************************************************************************************

@@ -281,9 +281,49 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
                   _enm->id.str);
   }
 
+  if (bl_ast_enum_get_count(_enm) == 0) {
+    check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is empty", _enm->id.str);
+  }
+
   if (bl_node_is_not(_enm->type, BL_TYPE_FUND)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
-                "enumerator has invalid type, only fundamental types are supported");
+                "enumerator has invalid type, only fundamental types are supported except bool");
+  }
+
+  if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_BOOL) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type, "enumerator has invalid type bool");
+  }
+
+  /* check all expressions of enum variants */
+  bo_iterator_t           iter     = bo_htbl_begin(_enm->variants);
+  bo_iterator_t           end      = bo_htbl_end(_enm->variants);
+  bl_node_t *             variant  = NULL;
+  bl_decl_enum_variant_t *_variant = NULL;
+
+  while (!bo_iterator_equal(&iter, &end)) {
+    variant  = bo_htbl_iter_peek_value(_enm->variants, &iter, bl_node_t *);
+    _variant = bl_peek_decl_enum_variant(variant);
+    bo_htbl_iter_next(_enm->variants, &iter);
+
+    /* TODO: handle char same way */
+    if (_variant->expr == NULL) {
+      if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_STRING) {
+        check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
+                    "missing expression for variant " BL_YELLOW(
+                        "'%s'") " (string enumerator cannot increment it's automatically)",
+                    _variant->id.str);
+      }
+
+      if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_CHAR) {
+        check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
+                    "missing expression for variant " BL_YELLOW(
+                        "'%s'") " (char enumerator cannot increment it's automatically)",
+                    _variant->id.str);
+      }
+
+      bl_abort("missing variant expr for enum: %s", _enm->id.str);
+    }
+    check_expr(cnt, _variant->expr, _enm->type);
   }
 }
 

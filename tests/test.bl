@@ -2,19 +2,33 @@
  * testing playground.
 */
 
+module c {
+  public extern fn puts(s string) i32;
+}
+
 module m {
   fn main() i32 {
-    var state m::enum_e = m::enum_e::A; 
-    var state2 m::enum_e; 
+    var state m.enum_e = m.enum_e.B; 
+    var state2 m.enum_e; // should be set to first enum variant if there is one
+    var name m.names.Tereza;
+
+    if (state == m.enum_e.A)
+       c.puts("state is A");
+
     return 0;
   }
 }
 
 module m {
-  public enum enum_e i32 { // every enum variant must be bublic by default
+  public enum enum_e i32 {
     A = 10,
     B = 20,
-    C = 30
+    //	C  // should be 21
+  }
+
+  enum names string { 
+    Tereza = "tereza",
+    Milan = "milan"
   }
 
   public struct data_t {

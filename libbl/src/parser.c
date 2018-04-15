@@ -429,7 +429,7 @@ parse_path_maybe(context_t *cnt)
   bl_token_t *tok       = NULL;
 
 next:
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_MODULE_PATH)) {
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_PATH)) {
     if (!path)
       path = bo_array_new(sizeof(bl_node_t *));
 
@@ -762,7 +762,7 @@ stmt:
     tok = bl_tokens_consume(cnt->tokens);
     // TODO: warning macro
     bl_msg_warning("%s %d:%d extra semicolon can be removed " BL_YELLOW("';'"), cnt->unit->filepath,
-               tok->src.line, tok->src.col);
+                   tok->src.line, tok->src.col);
     goto stmt;
   }
 
@@ -916,10 +916,10 @@ parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent)
     return NULL;
   }
 
-  bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
-
+  bl_token_t *tok_id     = bl_tokens_consume(cnt->tokens);
   bl_node_t * expr       = NULL;
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+
   if (tok_assign != NULL) {
     /* expected expression */
     expr = parse_expr_maybe(cnt);

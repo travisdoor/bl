@@ -64,7 +64,7 @@ print_path(BArray *path)
     path_elem = bo_array_at(path, i, bl_node_t *);
     fprintf(stdout, BL_CYAN("%s"), bl_peek_expr_path(path_elem)->id.str);
     if (i != c - 1)
-      fprintf(stdout, BL_CYAN("::"));
+      fprintf(stdout, BL_CYAN("."));
   }
 }
 
@@ -125,7 +125,8 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   print_head("enum", bl_peek_src(enm), enm, visitor->nesting);
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _enm->id.str, _enm->used);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") ", used: %d, default: " BL_YELLOW("%p"), _enm->id.str,
+          _enm->used, _enm->def);
   print_modif(_enm->modif);
   bl_visitor_walk_enum(visitor, enm);
 }

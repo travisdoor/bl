@@ -8,10 +8,15 @@
 ** DONE Enum variant node
 ** DONE Struct member node
 ** DONE Enum type generation 
-** TODO Enum instance (unitialized) should have first enum value if there is one 
+** DONE Enum instance (unitialized) should have first enum value if there is one 
 ** TODO Constant with separate node 
 ** DONE Rename var_ref to ref 
-** TODO Struct and enum member access 
+** DONE Improve unit testing 
+** DONE Check enum non-existing variant expression  
+** TODO Struct member access 
+** DONE Enum member access 
+** TODO Type casting 
+** TODO Single character parsing ('c') 
 ** TODO Enum base expression generation (only numbers accepted for now)
 ** TODO Struct member access
 ** TODO Constant expression evaluator

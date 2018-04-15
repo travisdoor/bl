@@ -55,7 +55,7 @@ BO_BEGIN_DECLS
 #define __FILENAME__
 #endif
 
-typedef enum { BL_LOG_ASSERT, BL_LOG_ABORT, BL_LOG_MSG } bl_log_msg_type_e;
+typedef enum { BL_LOG_ASSERT, BL_LOG_ABORT, BL_LOG_WARNING, BL_LOG_MSG } bl_log_msg_type_e;
 
 extern BO_EXPORT void
 _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
@@ -71,12 +71,22 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
   {                                                                                                \
     _bl_log(BL_LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
   }
+
+#define bl_warning(format, ...)                                                                    \
+  {                                                                                                \
+    _bl_log(BL_LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
+  }
+
 #else
 #define bl_assert(expr, format, ...)                                                               \
   while (0) {                                                                                      \
   }
 
 #define bl_log(format, ...)                                                                        \
+  while (0) {                                                                                      \
+  }
+
+#define bl_warning(format, ...)                                                                    \
   while (0) {                                                                                      \
   }
 #endif

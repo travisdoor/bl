@@ -213,6 +213,7 @@ struct bl_decl_enum
   int         modif;
   int         used;
   bl_node_t * type;
+  bl_node_t * def; // first inserted variant will be used as default
   BHashTable *variants;
 };
 
@@ -476,6 +477,9 @@ bl_ast_enum_insert_variant(bl_decl_enum_t *enm, bl_node_t *variant);
 
 bl_node_t *
 bl_ast_enum_get_variant(bl_decl_enum_t *enm, bl_id_t *id);
+
+size_t
+bl_ast_enum_get_count(bl_decl_enum_t *enm);
 
 /*************************************************************************************************
  * other
