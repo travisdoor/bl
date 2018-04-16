@@ -9,9 +9,10 @@
 ** DONE Struct member node
 ** DONE Enum type generation 
 ** DONE Enum instance (unitialized) should have first enum value if there is one 
+** TODO Reserve for arrays 
 ** TODO Constant with separate node 
 ** DONE Rename var_ref to ref 
-** TODO Enum unit test 
+** DONE Enum unit test 
 ** TODO Improve unit testing 
 ** DONE Check enum non-existing variant expression  
 ** TODO Struct member access 
@@ -29,7 +30,10 @@
 ** TODO Pointers 
 
 * BUGS
-   
+** TODO Structures must be linked before everything else due to inner structures of other type 
+** create buffer, store structures during merge into that buffer and than link them right after merge
+
+
 * PIPELINE
   - file loader
   - lexer
