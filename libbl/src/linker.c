@@ -49,6 +49,12 @@ typedef struct
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
+
+  /* This queue is filled durring merge procedure with all found structures, these structures must
+   * be linked first because they can points to other structures in its blocks. Ex.: struct A { foo
+   * B } -> here B must be linked before other processing (member access pointers have no idea about
+   * type when struct B is declared later in code or in other module) */
+  BArray *struct_queue;
 } context_t;
 
 /*************************************************************************************************
@@ -301,7 +307,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
     /* lookup member type */
     return found;
-    //return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
+    // return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
