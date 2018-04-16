@@ -590,7 +590,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 
       LLVMValueRef p = LLVMGetParam(llvm_func, i);
       LLVMValueRef p_tmp =
-          LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_arg(arg)->id.str));
+          LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_var(arg)->id.str));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
 
       push_value_cscope(arg, p_tmp);

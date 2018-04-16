@@ -263,7 +263,7 @@ struct bl_expr_binop
 struct bl_expr_decl_ref
 {
   BArray *   path;
-  bl_node_t *ref;
+  bl_node_t *ref; // TODO: remove, can be used last path ref
 };
 
 struct bl_expr_call
@@ -275,8 +275,8 @@ struct bl_expr_call
 
 struct bl_expr_path
 {
-  bl_id_t id;
-  // IDEA: should contain reference to member/variant/module?
+  bl_id_t    id;
+  bl_node_t *ref;
 };
 
 struct bl_type_fund
@@ -287,7 +287,7 @@ struct bl_type_fund
 struct bl_type_ref
 {
   BArray *   path;
-  bl_node_t *ref;
+  bl_node_t *ref; // TODO: remove, can be used last path ref
 };
 
 struct bl_node

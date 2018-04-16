@@ -16,6 +16,7 @@
 ** TODO Struct member access 
 ** DONE Enum member access 
 ** DONE Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
+** TODO Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
 ** TODO Public and private struct members. 
 ** TODO Type casting 
 ** TODO Single character parsing ('c') 
