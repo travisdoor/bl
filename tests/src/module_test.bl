@@ -27,9 +27,9 @@ module A {
 }
 
 fn main() i32 {
-  A::test();
-  A::B::test();
-  A::C::test();
+  A.test();
+  A.B.test();
+  A.C.test();
   return 0;
 }
 

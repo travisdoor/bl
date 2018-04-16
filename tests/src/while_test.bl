@@ -4,8 +4,8 @@
  * While loop.
  */
 
-i32 main() {
-  i32 i = 100;
+fn main() i32 {
+  var i i32 = 100;
 
   while (i != 0) {
     i = i - 1;

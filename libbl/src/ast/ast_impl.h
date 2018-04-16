@@ -81,6 +81,7 @@ typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
 typedef enum bl_modif     bl_modif_e;
+//typedef BArray            bl_path_t;
 
 typedef enum {
 #define ft(tok, str) BL_FTYPE_##tok,

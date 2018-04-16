@@ -204,6 +204,8 @@ parse_while_maybe(context_t *cnt)
     return NULL;
   }
 
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop            = true;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN) == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
 
@@ -231,6 +233,7 @@ parse_while_maybe(context_t *cnt)
   }
 
   bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
+  cnt->inside_loop                   = prev_inside_loop;
 
   return loop;
 }
@@ -1007,7 +1010,7 @@ parse_enum_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t *variant  = NULL;
+    bl_node_t *variant = NULL;
 
   variant:
     variant = parse_enum_variant_maybe(cnt, enm);

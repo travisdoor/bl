@@ -103,6 +103,7 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
                  bl_peek_decl_struct_member(member)->id.str, conflict->src->file,
                  conflict->src->line, conflict->src->col);
     }
+
     bl_scope_insert_node(_strct->scope, member);
   }
 
@@ -286,13 +287,21 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
     // TODO
     bl_decl_var_t *_var = bl_peek_decl_var(found);
-    bl_assert(bl_node_is(_var->type, BL_TYPE_REF), "non-terminal member access in path with fundamantal type");
+    bl_assert(bl_node_is(_var->type, BL_TYPE_REF),
+              "non-terminal member access in path with fundamantal type");
 
     /* must be reference to structure */
     bl_node_t *ref = bl_peek_type_ref(_var->type)->ref;
-    
+
     /* not last in path -> we need to determinate struct member */
     return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
+  } else if (bl_node_is(found, BL_DECL_STRUCT_MEMBER)) {
+    bl_decl_struct_member_t *member = bl_peek_decl_struct_member(found);
+    bl_log("trying to link struct member %s -> %p", member->id.str, member->type);
+
+    /* lookup member type */
+    return found;
+    //return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;

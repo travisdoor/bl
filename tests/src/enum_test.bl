@@ -5,33 +5,59 @@
  */
 
 enum state_e {
-  State0,
-  State00 = 0,
-  State10 = 10,
-  State11,
-  State50 = 50,
-  State51
+  S0,
+  S00 = 0,
+  S10 = 10,
+  S11,
+  S50 = 50,
+  S51
 }
 
-i32 main() {
-  state_e s;
-  s = State0;
-
-  if (State0  != 0  ||
-      State00 != 0  ||
-      State10 != 10 ||
-      State11 != 11 ||
-      State50 != 50 ||
-      State51 != 51) {
-    return Error;
-  }
-
-  return Success;
+enum names_e string { 
+  Tereza = "tereza",
+  Milan = "milan"
 }
 
-enum error_e {
-  Success,
-  Error
+fn main() i32 {
+  var s state_e;
+  var n names_e;
+
+  if (s != state_e.S0)
+     return 1;
+
+  s = state_e.S0;
+  if (s != state_e.S0)
+     return 2;
+
+  s = state_e.S00;
+  if (s != state_e.S00)
+     return 3;
+
+  s = state_e.S10;
+  if (s != state_e.S10)
+     return 4;
+
+  s = state_e.S11;
+  if (s != state_e.S11)
+     return 5;
+
+  s = state_e.S50;
+  if (s != state_e.S50)
+     return 6;
+
+  s = state_e.S51;
+  if (s != state_e.S51)
+     return 6;
+
+  n = names_e.Tereza;
+  if (n != names_e.Tereza)
+     return 7;
+
+  n = names_e.Milan;
+  if (n != names_e.Milan)
+     return 8;
+
+  return 0;
 }
 
 

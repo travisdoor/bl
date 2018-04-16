@@ -15,17 +15,17 @@ module m {
     if (state == m.enum_e.A)
        c.puts("state is A");
 
-    state = m.enum_e.A; // 10 
-    state = m.enum_e.B; // 20
-    state = m.enum_e.C; // 21
-    state = m.enum_e.D; // 22
-    state = m.enum_e.E; // 23
-    state = m.enum_e.F; // 30
-    state = m.enum_e.G; // 31
+    state = enum_e.A; // 10 
+    state = enum_e.B; // 20
+    state = enum_e.C; // 21
+    state = enum_e.D; // 22
+    state = enum_e.E; // 23
+    state = enum_e.F; // 30
+    state = enum_e.G; // 31
 
     // struct test
     var data m.data_t; 
-    data.a = 666;
+    //data.in.a = 666;
 
     return 0;
   }
@@ -50,6 +50,11 @@ module m {
   public struct data_t {
     a i32,
     b string,
-    c f64
+    c f64,
+    in inner_t
+  }
+
+  public struct inner_t {
+    a i32
   }
 }

@@ -11,6 +11,7 @@
 ** DONE Enum instance (unitialized) should have first enum value if there is one 
 ** TODO Constant with separate node 
 ** DONE Rename var_ref to ref 
+** TODO Enum unit test 
 ** TODO Improve unit testing 
 ** DONE Check enum non-existing variant expression  
 ** TODO Struct member access 
