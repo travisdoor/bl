@@ -17,3 +17,33 @@ Modules are similar to C++ namespaces.
 	    ...
 	  }
 	}
+	
+## Fundamental types
+
+| Name | Size | Value         |
+-------------------------------
+| i8   | 1B   | signed number |
+| i32  | 4B   | signed number |
+| i64  | 8B   | signed number |
+	
+## Functions
+
+	fn add(a i32, b i32) i32 {
+	  return a + b;
+	}
+	
+## Variables
+    
+	var foo i32;
+
+## Constants 
+	
+	const foo i32 = 10;
+	
+## If - else
+
+	if (true) {
+	  ...
+	} else {
+	  ...
+	}
