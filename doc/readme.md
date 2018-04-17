@@ -7,3 +7,13 @@
 	   is
 	   multiline
 	   comment */
+
+## Modules
+Modules are similar to C++ namespaces.
+
+	module foo {
+	  ...
+	  module bar {
+	    ...
+	  }
+	}
