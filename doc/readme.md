@@ -1,4 +1,4 @@
-# ![alt text](biscuit_logo.png "logo") The Biscuit Language - basics
+ #![alt text](biscuit_logo.png "logo") The Biscuit Language - basics
 
 ## Comments
 
@@ -8,16 +8,6 @@
 	   multiline
 	   comment */
 
-## Modules
-Modules are similar to C++ namespaces.
-
-	module foo {
-	  ...
-	  module bar {
-	    ...
-	  }
-	}
-	
 ## Fundamental types
 
 | Name | Size | Value           |
@@ -34,6 +24,7 @@ Modules are similar to C++ namespaces.
 | ptr | 8B   | pointer |
 | string | 8B   | pointer to string |
 | bool | 1b   | true/false |
+
 	
 ## Functions
 Functions are declared using 'fn' keyword fallowed by name of the function, 
@@ -60,7 +51,41 @@ nothing when function does not return any value.
     fn print_addition() {
       c.printf("2 + 3 = %d\n", add(2, 3));
     }
-    
+
+## Modules
+Modules are similar to C++ namespaces.
+
+    /* EXAMPLE: Module */
+
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
+
+    // declaration of module A
+    module A {
+      // public module B
+      public module B {
+        // public function add (can be called from the outside)
+        public fn add(a i32, b i32) i32 {
+          return priv_add(a, b);
+        }
+
+        // private function priv_add (can be called only inside module 'A')
+        fn priv_add(a i32, b i32) i32 {
+          return a + b;
+        }
+      }
+
+      public fn print_addition() {
+        c.printf("2 + 3 = %d\n", B.add(2, 3));
+      }
+    }
+
+    fn main() {
+      c.printf("2 + 3 = %d\n", A.B.add(2, 3));
+      A.print_addition();
+      // A.B.priv_add(2, 3) generate error (method is private for module A.B)
+    }
 	
 ## Variables
     

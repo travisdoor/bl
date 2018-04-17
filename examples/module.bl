@@ -1,0 +1,31 @@
+/* EXAMPLE: Module */
+
+module c {
+  public extern fn printf(s string, i i32) i32;
+}
+
+// declaration of module A
+module A {
+  // public module B
+  public module B {
+    // public function add (can be called from the outside)
+    public fn add(a i32, b i32) i32 {
+      return priv_add(a, b);
+    }
+
+    // private function priv_add (can be called only inside module 'A')
+    fn priv_add(a i32, b i32) i32 {
+      return a + b;
+    }
+  }
+
+  public fn print_addition() {
+    c.printf("2 + 3 = %d\n", B.add(2, 3));
+  }
+}
+
+fn main() {
+   c.printf("2 + 3 = %d\n", A.B.add(2, 3));
+   A.print_addition();
+   // A.B.priv_add(2, 3) generate error (method is private for module A.B)
+}
