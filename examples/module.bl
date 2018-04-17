@@ -27,5 +27,5 @@ module A {
 fn main() {
    c.printf("2 + 3 = %d\n", A.B.add(2, 3));
    A.print_addition();
-   // A.B.priv_add(2, 3) generate error (method is private for module A.B)
+   // A.B.priv_add(2, 3) generates error (method is private for module A.B)
 }

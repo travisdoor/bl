@@ -84,12 +84,24 @@ Modules are similar to C++ namespaces.
     fn main() {
       c.printf("2 + 3 = %d\n", A.B.add(2, 3));
       A.print_addition();
-      // A.B.priv_add(2, 3) generate error (method is private for module A.B)
+      // A.B.priv_add(2, 3) generates error (method is private for module A.B)
     }
 	
 ## Variables
     
-	var foo i32;
+    /* EXAMPLE: Var */
+
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
+
+    fn main() {
+      // declaration of variable i of i32 type (automatically set to default value 0)
+      var a i32;
+      var b i32 = 10; 
+
+      c.printf("a + b = %d\n", a + b);
+    }
 
 ## Constants 
 	

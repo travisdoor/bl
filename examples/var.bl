@@ -1,0 +1,13 @@
+/* EXAMPLE: Var */
+
+module c {
+  public extern fn printf(s string, i i32) i32;
+}
+
+fn main() {
+  // declaration of variable i of i32 type (automatically set to default value 0)
+  var a i32;
+  var b i32 = 10; 
+
+  c.printf("a + b = %d\n", a + b);
+}
