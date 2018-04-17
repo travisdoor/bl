@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // bl
 //
 // File:   visitor_impl.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #ifndef VISITOR_IMPL_H_0IZSKUFY
 #define VISITOR_IMPL_H_0IZSKUFY
@@ -32,6 +32,8 @@
 #include "ast_impl.h"
 
 typedef struct bl_visitor bl_visitor_t;
+
+#define BL_SKIP_VISIT NULL
 
 typedef enum {
   BL_VISIT_MODULE,

@@ -18,8 +18,9 @@
 ** TODO Struct member access 
 ** DONE Enum member access 
 ** DONE Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
-** TODO Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
 ** TODO Public and private struct members. 
+** TODO All public members in structure must have also public types -> print error 
+** TODO Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
 ** TODO Type casting 
 ** TODO Single character parsing ('c') 
 ** TODO Enum base expression generation (only numbers accepted for now)
@@ -30,9 +31,9 @@
 ** TODO Pointers 
 
 * BUGS
-** TODO Structures must be linked before everything else due to inner structures of other type 
+** DONE Structures must be linked before everything else due to inner structures of other type 
 ** create buffer, store structures during merge into that buffer and than link them right after merge
-** TODO Structures cannot be linked in current context with buffer solution
+** DONE Structures cannot be linked in current context with buffer solution
 
 * PIPELINE
   - file loader

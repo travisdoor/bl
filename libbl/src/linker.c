@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // blc
 //
 // File:   linker.c
@@ -24,7 +24,19 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
+
+/*************************************************************************************************
+ * Linker will do 3 partial iterations of AST passed in.
+ *
+ * 1) merge all modules and prepare scope buffers for symbol finding, it also notify user about
+ *    duplicate symbols and name collisions in source after merge
+ *
+ * 2) connect type tree of custom types (mostly structures) so references to those types can be used
+ *    later in compilation
+ *
+ * 3) link rest of the source (mostly expressions referencing to some custom types)
+ *************************************************************************************************/
 
 #include <setjmp.h>
 #include "common_impl.h"
@@ -50,12 +62,6 @@ typedef struct
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
-
-  /* This queue is filled durring merge procedure with all found structures, these structures must
-   * be linked first because they can points to other structures in its blocks. Ex.: struct A { foo
-   * B } -> here B must be linked before other processing (member access pointers have no idea about
-   * type when struct B is declared later in code or in other module) */
-  BArray *struct_queue;
 } context_t;
 
 /* flags used in lookup methods for finding declarations in various scopes */
@@ -81,6 +87,12 @@ static void
 satisfy_type(context_t *cnt, bl_node_t *type);
 
 static void
+pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct);
+
+static void
+pre_link_module(bl_visitor_t *visitor, bl_node_t *module);
+
+static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func);
 
 static void
@@ -91,9 +103,6 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm);
 
 static void
 merge_module(bl_visitor_t *visitor, bl_node_t *module);
-
-static void
-satisfy_structs(context_t *cnt);
 
 static void
 link_module(bl_visitor_t *visitor, bl_node_t *module);
@@ -113,8 +122,131 @@ link_block(bl_visitor_t *visitor, bl_node_t *block);
 static void
 link_var(bl_visitor_t *visitor, bl_node_t *var);
 
-static void
-link_struct(bl_visitor_t *visitor, bl_node_t *strct);
+/*************************************************************************************************
+ * util functions used on multiple places
+ *************************************************************************************************/
+void
+satisfy_type(context_t *cnt, bl_node_t *type)
+{
+  if (bl_node_is(type, BL_TYPE_REF)) {
+    bl_node_t *found =
+        lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
+    bl_peek_type_ref(type)->ref = found;
+
+    switch (bl_node_code(found)) {
+    case BL_DECL_STRUCT:
+      bl_peek_decl_struct(found)->used++;
+      break;
+    case BL_DECL_ENUM:
+      bl_peek_decl_enum(found)->used++;
+      break;
+    default:
+      link_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                 "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
+    }
+  }
+}
+
+bl_node_t *
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+              bl_node_t *prev_node)
+{
+  bl_node_t *found     = NULL;
+  bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
+
+  /* search symbol in enum declaration */
+  if (scope_flag & LOOKUP_ENUM_VARIANT) {
+    bl_assert(prev_node, "invalid prev node");
+    found =
+        bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in struct declaration */
+  if (scope_flag & LOOKUP_STRUCT_MEMBER) {
+    bl_assert(prev_node, "invalid prev node");
+    found =
+        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in block scope */
+  if (scope_flag & LOOKUP_BLOCK_SCOPE) {
+    found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in module scope */
+  if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
+    found = bl_scope_get_node(mod_scope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  /* search symbol in global scope */
+  if (scope_flag & LOOKUP_GSCOPE && !found) {
+    found = bl_scope_get_node(cnt->gscope, &bl_peek_expr_path(path_elem)->id);
+  }
+
+  if (found == NULL) {
+    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src, "unknown symbol " BL_YELLOW("'%s'"),
+               bl_peek_expr_path(path_elem)->id.str);
+  }
+
+  /* store reference to found element into current path for later use */
+  bl_peek_expr_path(path_elem)->ref = found;
+  iter++;
+
+  if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
+    link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+               "symbol " BL_YELLOW("'%s'") " is private, declared here: %s:%d:%d",
+               bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+               found->src->col);
+  }
+
+  if (bl_node_is(found, BL_DECL_MODULE)) { /* found another module */
+    if (iter == bo_array_size(path)) {
+      link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
+                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
+                 bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+                 found->src->col);
+    }
+    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
+                         found);
+
+  } else if (bl_node_is(found, BL_DECL_ENUM)) { /* found enum */
+    /* last in path -> return enum declaration */
+    if (iter == bo_array_size(path))
+      return found;
+
+    /* not last in path -> we need to determinate enum variant */
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
+  } else if (bl_node_is(found, BL_DECL_VAR)) { /* found enum */
+    bl_log("decl var  %s", bl_peek_decl_var(found)->id.str);
+
+    /* last in path -> return var declaration */
+    if (iter == bo_array_size(path))
+      return found;
+
+    // TODO
+    bl_decl_var_t *_var = bl_peek_decl_var(found);
+    bl_assert(bl_node_is(_var->type, BL_TYPE_REF),
+              "non-terminal member access in path with fundamantal type");
+
+    /* must be reference to structure */
+    bl_node_t *ref = bl_peek_type_ref(_var->type)->ref;
+
+    /* not last in path -> we need to determinate struct member */
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
+  } else if (bl_node_is(found, BL_DECL_STRUCT_MEMBER)) {
+    bl_decl_struct_member_t *member = bl_peek_decl_struct_member(found);
+    bl_log("trying to link struct member %s -> %p", member->id.str, member->type);
+
+    /* lookup member type */
+    return found;
+    // return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
+  } else {
+    bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
+    return found;
+  }
+
+  return NULL;
+}
 
 /*************************************************************************************************
  * declaration merging
@@ -173,10 +305,6 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
   }
 
   bl_scope_insert_node(scope, strct);
-
-  /* store unique structure into queue of struct declaration because they can have members with
-   * reference types which need to be linked before we can use them */
-  bo_array_push_back(cnt->struct_queue, strct);
 }
 
 void
@@ -244,163 +372,42 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
 }
 
 /*************************************************************************************************
- * link structure types stored in cache
+ * satisfy structure types stored in cache
  * note: check all cached structures, link members with reference to other structures and
  * clear cache
  *************************************************************************************************/
 void
-satisfy_structs(context_t *cnt)
+pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
-  const size_t      c      = bo_array_size(cnt->struct_queue);
-  bl_node_t *       strct  = NULL;
-  bl_decl_struct_t *_strct = NULL;
-
+  context_t *              cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *       _strct = bl_peek_decl_struct(strct);
+  const size_t             c      = bl_ast_struct_member_count(_strct);
+  bl_node_t *              member;
+  bl_decl_struct_member_t *_member;
   for (size_t i = 0; i < c; i++) {
-    strct  = bo_array_at(cnt->struct_queue, i, bl_node_t *);
-    _strct = bl_peek_decl_struct(strct);
-
-    const size_t             cm      = bl_ast_struct_member_count(_strct);
-    bl_node_t *              member  = NULL;
-    bl_decl_struct_member_t *_member = NULL;
-    for (size_t im = 0; im < cm; im++) {
-      member  = bl_ast_struct_get_member(_strct, im);
-      _member = bl_peek_decl_struct_member(member);
-
-      bl_log("try to satisfy type of struct member: %s", _member->id.str);
-      satisfy_type(cnt, _member->type);
-    }
+    member  = bl_ast_struct_get_member(_strct, i);
+    _member = bl_peek_decl_struct_member(member);
+    satisfy_type(cnt, _member->type);
   }
-
-  bo_array_reset(cnt->struct_queue);
 }
 
 void
-satisfy_type(context_t *cnt, bl_node_t *type)
+pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  if (bl_node_is(type, BL_TYPE_REF)) {
-    bl_node_t *found =
-        lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
-    bl_peek_type_ref(type)->ref = found;
+  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
+  bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
-    switch (bl_node_code(found)) {
-    case BL_DECL_STRUCT:
-      bl_peek_decl_struct(found)->used++;
-      break;
-    case BL_DECL_ENUM:
-      bl_peek_decl_enum(found)->used++;
-      break;
-    default:
-      link_error(cnt, BL_ERR_INVALID_TYPE, type->src,
-                 "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
-    }
-  }
+  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
+
+  bl_visitor_walk_module(visitor, module);
+  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
 
 bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag)
 {
   return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL);
-}
-
-bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
-              bl_node_t *prev_node)
-{
-  bl_node_t *found     = NULL;
-  bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
-
-  /* search symbol in enum declaration */
-  if (scope_flag & LOOKUP_ENUM_VARIANT) {
-    bl_assert(prev_node, "invalid prev node");
-    found =
-        bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
-  }
-
-  /* search symbol in struct declaration */
-  if (scope_flag & LOOKUP_STRUCT_MEMBER) {
-    bl_assert(prev_node, "invalid prev node");
-    found =
-        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
-  }
-
-  /* search symbol in block scope */
-  if (scope_flag & LOOKUP_BLOCK_SCOPE) {
-    found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_expr_path(path_elem)->id);
-  }
-
-  /* search symbol in module scope */
-  if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
-    found = bl_scope_get_node(mod_scope, &bl_peek_expr_path(path_elem)->id);
-  }
-
-  /* search symbol in global scope */
-  if (scope_flag & LOOKUP_GSCOPE && !found) {
-    found = bl_scope_get_node(cnt->gscope, &bl_peek_expr_path(path_elem)->id);
-  }
-
-  if (found == NULL) {
-    link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src, "unknown symbol " BL_YELLOW("'%s'"),
-               bl_peek_expr_path(path_elem)->id.str);
-  }
-
-  /* store reference to found element into current path for later use */
-  bl_peek_expr_path(path_elem)->ref = found;
-  iter++;
-
-  if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
-    link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
-               "symbol " BL_YELLOW("'%s'") " is private in this context, declared here: %s:%d:%d",
-               bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
-               found->src->col);
-  }
-
-  if (bl_node_is(found, BL_DECL_MODULE)) { /* found another module */
-    if (iter == bo_array_size(path)) {
-      link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
-                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
-                 bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
-                 found->src->col);
-    }
-    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
-                         found);
-
-  } else if (bl_node_is(found, BL_DECL_ENUM)) { /* found enum */
-    /* last in path -> return enum declaration */
-    if (iter == bo_array_size(path))
-      return found;
-
-    /* not last in path -> we need to determinate enum variant */
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
-  } else if (bl_node_is(found, BL_DECL_VAR)) { /* found enum */
-    bl_log("decl var  %s", bl_peek_decl_var(found)->id.str);
-
-    /* last in path -> return var declaration */
-    if (iter == bo_array_size(path))
-      return found;
-
-    // TODO
-    bl_decl_var_t *_var = bl_peek_decl_var(found);
-    bl_assert(bl_node_is(_var->type, BL_TYPE_REF),
-              "non-terminal member access in path with fundamantal type");
-
-    /* must be reference to structure */
-    bl_node_t *ref = bl_peek_type_ref(_var->type)->ref;
-
-    /* not last in path -> we need to determinate struct member */
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
-  } else if (bl_node_is(found, BL_DECL_STRUCT_MEMBER)) {
-    bl_decl_struct_member_t *member = bl_peek_decl_struct_member(found);
-    bl_log("trying to link struct member %s -> %p", member->id.str, member->type);
-
-    /* lookup member type */
-    return found;
-    // return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
-  } else {
-    bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
-    return found;
-  }
-
-  return NULL;
 }
 
 /*************************************************************************************************
@@ -514,32 +521,23 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_visitor_walk_var(visitor, var);
 }
 
-void
-link_struct(bl_visitor_t *visitor, bl_node_t *strct)
-{
-  /* make struct visitor terminal -> structures are linked after merge */
-}
-
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder      = builder,
-                   .assembly     = assembly,
-                   .mod_scope    = assembly->scope,
-                   .gscope       = assembly->scope,
-                   .struct_queue = bo_array_new(sizeof(bl_node_t *))};
+  context_t cnt = {.builder   = builder,
+                   .assembly  = assembly,
+                   .mod_scope = assembly->scope,
+                   .gscope    = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
-  bo_array_reserve(cnt.struct_queue, STRUCT_QUEUE_RESERVE);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
     /* free allocated memory on error */
     bl_block_scope_terminate(&cnt.block_scope);
-    bo_unref(cnt.struct_queue);
     return (bl_error_e)error;
   }
 
@@ -560,7 +558,17 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   /* 2) build structure type tree references */
-  satisfy_structs(&cnt);
+  bl_visitor_t visitor_pre_link;
+  bl_visitor_init(&visitor_pre_link, &cnt);
+  bl_visitor_add(&visitor_pre_link, pre_link_module, BL_VISIT_MODULE);
+  bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_FUNC);
+  bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_pre_link, pre_link_struct, BL_VISIT_STRUCT);
+
+  for (int i = 0; i < c; i++) {
+    unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_module(&visitor_pre_link, unit->ast.root);
+  }
 
   /* 3) link the rest */
   bl_visitor_t visitor_link;
@@ -570,7 +578,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
-  bl_visitor_add(&visitor_link, link_struct, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
@@ -578,7 +586,6 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
-  bo_unref(cnt.struct_queue);
 
   return BL_NO_ERR;
 }

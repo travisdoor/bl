@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // bl
 //
 // File:   stages_impl.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #ifndef BL_STAGES_IMPL_H
 #define BL_STAGES_IMPL_H

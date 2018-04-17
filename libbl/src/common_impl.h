@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // bl
 //
 // File:   common_impl.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #ifndef BL_COMMON_IMPL_H
 #define BL_COMMON_IMPL_H

@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // bl
 //
 // File:   check.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #include <setjmp.h>
 #include "common_impl.h"
@@ -347,7 +347,6 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
       case BL_FTYPE_I64: {
         long long tmp = _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.s + 1 : 0;
         bl_peek_expr_const(_variant->expr)->value.s = tmp;
-        bl_log("setting variant %s to %d", _variant->id.str, tmp);
         break;
       }
 

@@ -51,10 +51,21 @@ module m {
     a i32,
     b string,
     c f64,
-    in m.inner_t // should work without m.
+    o other.A,
+    in inner_t // should work without m.
   }
 
-  public struct inner_t {
+  struct inner_t {
     a i32
+  }
+}
+
+module other {
+  public struct A {
+    b B
+  }
+
+  struct B {
+    a A
   }
 }

@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // blc
 //
 // File:   tokens.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #ifndef TOKENS_H_Z3NM7BJC
 #define TOKENS_H_Z3NM7BJC

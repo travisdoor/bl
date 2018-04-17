@@ -1,4 +1,4 @@
-//*****************************************************************************
+//************************************************************************************************
 // Biscuit Language
 //
 // File:   block_scope.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+//************************************************************************************************
 
 #include "block_scope_impl.h"
 #include "common_impl.h"
