@@ -1,0 +1,18 @@
+/* EXAMPLE: Function */
+
+module c {
+  public extern fn printf(s string, i i32) i32;
+}
+
+fn main() {
+   c.printf("2 + 3 = %d\n", add(2, 3));
+   print_addition();
+}
+
+fn add(a i32, b i32) i32 {
+   return a + b;
+}
+
+fn print_addition() {
+   c.printf("2 + 3 = %d\n", add(2, 3));
+}

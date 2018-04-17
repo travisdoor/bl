@@ -40,15 +40,27 @@ Functions are declared using 'fn' keyword fallowed by name of the function,
 params and return type. Return type is optional and can be 'void' or simply
 nothing when function does not return any value.
 
-	// minimal function declaration takes no parameters and has no return 
-	fn foo() {
-	  ...	
-	}
+    // C printf
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
 
-	// function takes parameters a, b and return value of i32 type
-	fn add(a i32, b i32) i32 {
-	  return a + b;
-	}
+    // main function declaration
+    fn main() {
+      c.printf("2 + 3 = %d\n", add(2, 3));
+      print_addition();
+    }
+    
+    // function add takes two numbers and return addition
+    fn add(a i32, b i32) i32 {
+      return a + b;
+    }
+
+    // function without parameters returning no value
+    fn print_addition() {
+      c.printf("2 + 3 = %d\n", add(2, 3));
+    }
+    
 	
 ## Variables
     
