@@ -56,3 +56,23 @@ Modules are similar to C++ namespaces.
 	} else {
 	  ...
 	}
+	
+## Loop
+Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
+
+	var i i32 = 0;
+	loop {
+	  i = i + 1;
+	  if (i > 10)
+	    break;
+	}
+	
+	
+## While
+Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
+ 
+	while (true) {
+	  ...
+	}
+	
+	
