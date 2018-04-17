@@ -32,6 +32,7 @@
 #include "ast/visitor_impl.h"
 #include "block_scope_impl.h"
 
+#define STRUCT_QUEUE_RESERVE 1024
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
 #define link_error(cnt, code, loc, format, ...)                                                    \
@@ -57,12 +58,70 @@ typedef struct
   BArray *struct_queue;
 } context_t;
 
+/* flags used in lookup methods for finding declarations in various scopes */
+typedef enum {
+  LOOKUP_GSCOPE        = 1,  // search in global-scope
+  LOOKUP_MOD_SCOPE     = 2,  // search in scope of current module
+  LOOKUP_BLOCK_SCOPE   = 4,  // search in scope of surrent block (ex.: function body)
+  LOOKUP_ENUM_VARIANT  = 8,  // search in enum variants
+  LOOKUP_STRUCT_MEMBER = 16, // search in struct members
+} lookup_flag_e;
+
+/*************************************************************************************************
+ * forward declarations
+ *************************************************************************************************/
+static bl_node_t *
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+              bl_node_t *prev_node);
+
+static bl_node_t *
+lookup_node(context_t *cnt, BArray *path, int scope_flag);
+
+static void
+satisfy_type(context_t *cnt, bl_node_t *type);
+
+static void
+merge_func(bl_visitor_t *visitor, bl_node_t *func);
+
+static void
+merge_struct(bl_visitor_t *visitor, bl_node_t *strct);
+
+static void
+merge_enum(bl_visitor_t *visitor, bl_node_t *enm);
+
+static void
+merge_module(bl_visitor_t *visitor, bl_node_t *module);
+
+static void
+satisfy_structs(context_t *cnt);
+
+static void
+link_module(bl_visitor_t *visitor, bl_node_t *module);
+
+static void
+link_expr(bl_visitor_t *visitor, bl_node_t *expr);
+
+static void
+link_type(bl_visitor_t *visitor, bl_node_t *type);
+
+static void
+link_func_args(context_t *cnt, bl_decl_func_t *func);
+
+static void
+link_block(bl_visitor_t *visitor, bl_node_t *block);
+
+static void
+link_var(bl_visitor_t *visitor, bl_node_t *var);
+
+static void
+link_struct(bl_visitor_t *visitor, bl_node_t *strct);
+
 /*************************************************************************************************
  * declaration merging
  * all declaration in corresponding modules must be merged due to lack of header files and
  * context free grammar
  *************************************************************************************************/
-static void
+void
 merge_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
@@ -80,7 +139,7 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_scope_insert_node(scope, func);
 }
 
-static void
+void
 merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
@@ -114,9 +173,13 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
   }
 
   bl_scope_insert_node(scope, strct);
+
+  /* store unique structure into queue of struct declaration because they can have members with
+   * reference types which need to be linked before we can use them */
+  bo_array_push_back(cnt->struct_queue, strct);
 }
 
-static void
+void
 merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm  = bl_peek_decl_enum(enm);
@@ -151,7 +214,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_scope_insert_node(scope, enm);
 }
 
-static void
+void
 merge_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t * cnt            = peek_cnt(visitor);
@@ -181,35 +244,59 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
 }
 
 /*************************************************************************************************
- * link expresions
+ * link structure types stored in cache
+ * note: check all cached structures, link members with reference to other structures and
+ * clear cache
  *************************************************************************************************/
-static void
-link_module(bl_visitor_t *visitor, bl_node_t *module)
+void
+satisfy_structs(context_t *cnt)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
-  bl_assert(prev_scope_tmp, "invalid current scope in linker");
+  const size_t      c      = bo_array_size(cnt->struct_queue);
+  bl_node_t *       strct  = NULL;
+  bl_decl_struct_t *_strct = NULL;
 
-  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
-  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
+  for (size_t i = 0; i < c; i++) {
+    strct  = bo_array_at(cnt->struct_queue, i, bl_node_t *);
+    _strct = bl_peek_decl_struct(strct);
 
-  bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+    const size_t             cm      = bl_ast_struct_member_count(_strct);
+    bl_node_t *              member  = NULL;
+    bl_decl_struct_member_t *_member = NULL;
+    for (size_t im = 0; im < cm; im++) {
+      member  = bl_ast_struct_get_member(_strct, im);
+      _member = bl_peek_decl_struct_member(member);
+
+      bl_log("try to satisfy type of struct member: %s", _member->id.str);
+      satisfy_type(cnt, _member->type);
+    }
+  }
+
+  bo_array_reset(cnt->struct_queue);
 }
 
-/* flags used in lookup methods for finding declarations in various scopes */
-typedef enum {
-  LOOKUP_GSCOPE        = 1,  // search in global-scope
-  LOOKUP_MOD_SCOPE     = 2,  // search in scope of current module
-  LOOKUP_BLOCK_SCOPE   = 4,  // search in scope of surrent block (ex.: function body)
-  LOOKUP_ENUM_VARIANT  = 8,  // search in enum variants
-  LOOKUP_STRUCT_MEMBER = 16, // search in struct members
-} lookup_flag_e;
+void
+satisfy_type(context_t *cnt, bl_node_t *type)
+{
+  if (bl_node_is(type, BL_TYPE_REF)) {
+    bl_node_t *found =
+        lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
+    bl_peek_type_ref(type)->ref = found;
 
-static bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
-              bl_node_t *prev_node);
+    switch (bl_node_code(found)) {
+    case BL_DECL_STRUCT:
+      bl_peek_decl_struct(found)->used++;
+      break;
+    case BL_DECL_ENUM:
+      bl_peek_decl_enum(found)->used++;
+      break;
+    default:
+      link_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                 "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
+    }
+  }
+}
 
-static bl_node_t *
+bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag)
 {
   return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL);
@@ -316,7 +403,23 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   return NULL;
 }
 
-static void
+/*************************************************************************************************
+ * link expresions
+ *************************************************************************************************/
+void
+link_module(bl_visitor_t *visitor, bl_node_t *module)
+{
+  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
+  bl_assert(prev_scope_tmp, "invalid current scope in linker");
+
+  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
+
+  bl_visitor_walk_module(visitor, module);
+  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+}
+
+void
 link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   bl_node_t *found = NULL;
@@ -344,38 +447,15 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
   bl_visitor_walk_expr(visitor, expr);
 }
 
-static void
+void
 link_type(bl_visitor_t *visitor, bl_node_t *type)
 {
-  bl_node_t *found = NULL;
-  context_t *cnt   = peek_cnt(visitor);
-
-  switch (bl_node_code(type)) {
-  case BL_TYPE_REF:
-    found = lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
-    bl_peek_type_ref(type)->ref = found;
-
-    switch (bl_node_code(found)) {
-    case BL_DECL_STRUCT:
-      bl_peek_decl_struct(found)->used++;
-      break;
-    case BL_DECL_ENUM:
-      bl_peek_decl_enum(found)->used++;
-      break;
-    default:
-      link_error(cnt, BL_ERR_INVALID_TYPE, type->src,
-                 "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
-    }
-
-    break;
-  default:
-    break;
-  }
-
+  context_t *cnt = peek_cnt(visitor);
+  satisfy_type(cnt, type);
   bl_visitor_walk_type(visitor, type);
 }
 
-static void
+void
 link_func_args(context_t *cnt, bl_decl_func_t *func)
 {
   /*
@@ -399,7 +479,7 @@ link_func_args(context_t *cnt, bl_decl_func_t *func)
   }
 }
 
-static void
+void
 link_block(bl_visitor_t *visitor, bl_node_t *block)
 {
   context_t *      cnt    = peek_cnt(visitor);
@@ -416,7 +496,7 @@ link_block(bl_visitor_t *visitor, bl_node_t *block)
   bl_block_scope_pop(&cnt->block_scope);
 }
 
-static void
+void
 link_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   context_t *    cnt  = peek_cnt(visitor);
@@ -434,24 +514,36 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_visitor_walk_var(visitor, var);
 }
 
+void
+link_struct(bl_visitor_t *visitor, bl_node_t *strct)
+{
+  /* make struct visitor terminal -> structures are linked after merge */
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder   = builder,
-                   .assembly  = assembly,
-                   .mod_scope = assembly->scope,
-                   .gscope    = assembly->scope};
+  context_t cnt = {.builder      = builder,
+                   .assembly     = assembly,
+                   .mod_scope    = assembly->scope,
+                   .gscope       = assembly->scope,
+                   .struct_queue = bo_array_new(sizeof(bl_node_t *))};
 
   bl_block_scope_init(&cnt.block_scope);
+  bo_array_reserve(cnt.struct_queue, STRUCT_QUEUE_RESERVE);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
+    /* free allocated memory on error */
+    bl_block_scope_terminate(&cnt.block_scope);
+    bo_unref(cnt.struct_queue);
     return (bl_error_e)error;
   }
 
+  /* 1) merge all modules and check for duplicity */
   bl_visitor_t visitor_merge;
   bl_visitor_init(&visitor_merge, &cnt);
   bl_visitor_add(&visitor_merge, merge_func, BL_VISIT_FUNC);
@@ -467,6 +559,10 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bl_visitor_walk_module(&visitor_merge, unit->ast.root);
   }
 
+  /* 2) build structure type tree references */
+  satisfy_structs(&cnt);
+
+  /* 3) link the rest */
   bl_visitor_t visitor_link;
   bl_visitor_init(&visitor_link, &cnt);
   bl_visitor_add(&visitor_link, link_module, BL_VISIT_MODULE);
@@ -474,6 +570,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_link, link_struct, BL_VISIT_STRUCT);
 
   for (int i = 0; i < c; i++) {
     unit = bl_assembly_get_unit(assembly, i);
@@ -481,6 +578,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
+  bo_unref(cnt.struct_queue);
 
   return BL_NO_ERR;
 }

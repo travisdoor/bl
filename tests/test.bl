@@ -51,7 +51,7 @@ module m {
     a i32,
     b string,
     c f64,
-    in inner_t
+    in m.inner_t // should work without m.
   }
 
   public struct inner_t {

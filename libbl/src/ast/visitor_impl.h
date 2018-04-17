@@ -57,7 +57,7 @@ typedef void (*bl_visit_f)(bl_visitor_t *visitor, bl_node_t *module);
 
 struct bl_visitor
 {
-  void *visitors[BL_VISIT_COUNT];
+  bl_visit_f visitors[BL_VISIT_COUNT];
   void *context;
   int   nesting;
 };

@@ -32,7 +32,7 @@
 * BUGS
 ** TODO Structures must be linked before everything else due to inner structures of other type 
 ** create buffer, store structures during merge into that buffer and than link them right after merge
-
+** TODO Structures cannot be linked in current context with buffer solution
 
 * PIPELINE
   - file loader
