@@ -20,11 +20,20 @@ Modules are similar to C++ namespaces.
 	
 ## Fundamental types
 
-| Name | Size | Value         |
-|------|------|---------------|
-| i8   | 1B   | signed number |
-| i32  | 4B   | signed number |
-| i64  | 8B   | signed number |
+| Name | Size | Value           |
+|------|------|-----------------|
+| char | 1B   | character |
+| i8   | 1B   | signed number   |
+| i32  | 4B   | signed number   |
+| i64  | 8B   | signed number   |
+| u8   | 1B   | unsigned number |
+| u32  | 4B   | unsigned number |
+| u64  | 8B   | unsigned number |
+| f32  | 4B   | floating-point number |
+| f64  | 8B   | floating-point number |
+| ptr | 8B   | pointer |
+| string | 8B   | pointer to string |
+| bool | 1b   | true/false |
 	
 ## Functions
 
