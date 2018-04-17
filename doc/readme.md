@@ -75,4 +75,21 @@ Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 	  ...
 	}
 	
+## Enum
+
+	enum foo {
+	  A = 0,
+	  B,
+	  C,
+	  D = 10,
+	  E,
+	  F
+	}
 	
+## Struct
+
+	struct foo {
+	  i32 a,
+	  string b,
+	  f64 c
+	}
