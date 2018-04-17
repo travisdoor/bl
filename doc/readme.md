@@ -36,7 +36,16 @@ Modules are similar to C++ namespaces.
 | bool | 1b   | true/false |
 	
 ## Functions
+Functions are declared using 'fn' keyword fallowed by name of the function, 
+params and return type. Return type is optional and can be 'void' or simply
+nothing when function does not return any value.
 
+	// minimal function declaration takes no parameters and has no return 
+	fn foo() {
+	  ...	
+	}
+
+	// function takes parameters a, b and return value of i32 type
 	fn add(a i32, b i32) i32 {
 	  return a + b;
 	}
