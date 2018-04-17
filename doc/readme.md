@@ -1,4 +1,4 @@
-#![alt text](biscuit_logo.png "logo") The Biscuit Language - basics
+# ![alt text](biscuit_logo.png "logo") The Biscuit Language - basics
 
 ## Comments
 
