@@ -2,12 +2,20 @@
  * testing playground.
 */
 
+/*
+// IDEA: loading of references
+#load "std/*"
+#load "std/debug.bl"
+*/
+
 fn main() i32 {
   // struct test
   var data m.data_t; 
   //data.in.a = 666;
-  data.a = 666;
-  data.in.a = 666;
+  //data.a = 666;
+  //data.in.a = 666;
+
+  std.println("hello world");
 
   return 0;
 }
