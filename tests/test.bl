@@ -11,9 +11,8 @@
 fn main() i32 {
   // struct test
   var data m.data_t; 
-  //data.in.a = 666;
   //data.a = 666;
-  //data.in.a = 666;
+  data.in.a = 666;
 
   std.println("hello world");
 
@@ -22,7 +21,7 @@ fn main() i32 {
 
 module m {
   public struct data_t {
-    a i32,
+    public a i32,
     b string,
     c f64,
     in inner_t // should work without m.

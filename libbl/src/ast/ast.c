@@ -707,6 +707,8 @@ bl_ast_try_get_modif(bl_node_t *node)
     return bl_peek_decl_func(node)->modif;
   case BL_DECL_STRUCT:
     return bl_peek_decl_struct(node)->modif;
+  case BL_DECL_STRUCT_MEMBER:
+    return bl_peek_decl_struct_member(node)->modif;
   case BL_DECL_ENUM:
     return bl_peek_decl_enum(node)->modif;
   case BL_DECL_ENUM_VARIANT:

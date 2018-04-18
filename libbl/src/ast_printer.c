@@ -40,7 +40,7 @@ static inline void
 print_modif(int modif)
 {
   if (modif & BL_MODIF_PUBLIC) {
-    fprintf(stdout, BL_CYAN(" %s "), bl_sym_strings[BL_SYM_PUBLIC]);
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_PUBLIC]);
   }
 
   if (modif & BL_MODIF_EXTERN) {
@@ -158,6 +158,7 @@ visit_struct_member(bl_visitor_t *visitor, bl_node_t *member)
   print_head("member", bl_peek_src(member), member, visitor->nesting);
   bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(member);
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " order: %d", _member->id.str, _member->order);
+  print_modif(_member->modif);
   bl_visitor_walk_struct_member(visitor, member);
 }
 

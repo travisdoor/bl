@@ -19,6 +19,7 @@
 ** DONE Enum member access 
 ** DONE Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
 ** TODO Public and private struct members. 
+** TODO Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
 ** TODO All public members in structure must have also public types -> print error 
 ** TODO Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
 ** TODO Type casting 

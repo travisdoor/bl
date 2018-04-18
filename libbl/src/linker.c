@@ -192,6 +192,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   bl_peek_expr_path(path_elem)->ref = found;
   iter++;
 
+  bl_log("checking visibility of node %s", bl_node_name(found));
   if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
     link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
                "symbol " BL_YELLOW("'%s'") " is private, declared here: %s:%d:%d",

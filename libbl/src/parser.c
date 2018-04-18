@@ -897,6 +897,10 @@ parse_struct_member_maybe(context_t *cnt)
 {
   bl_node_t *type = NULL;
 
+  bl_modif_e modif = parse_modifs_maybe(cnt);
+
+
+
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
     return NULL;
   }
@@ -909,7 +913,8 @@ parse_struct_member_maybe(context_t *cnt)
   }
 
   /* TODO: parse initialization expression here */
-  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, BL_MODIF_NONE);
+  /* TODO: parse modifiaction for member */
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif);
 }
 
 bl_node_t *
