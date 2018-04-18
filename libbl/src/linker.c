@@ -234,11 +234,15 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
     /* not last in path -> we need to determinate struct member */
     return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
   } else if (bl_node_is(found, BL_DECL_STRUCT_MEMBER)) {
-    bl_decl_struct_member_t *member = bl_peek_decl_struct_member(found);
-    bl_log("trying to link struct member %s -> %p", member->id.str, member->type);
+    if (iter == bo_array_size(path))
+      return found;
+
+    bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(found);
+    bl_log("trying to link struct member %s -> %p", _member->id.str, _member->type);
 
     /* lookup member type */
-    return found;
+    bl_type_ref_t *strct_ref = bl_peek_type_ref(_member->type);
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, strct_ref->ref);
     // return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));

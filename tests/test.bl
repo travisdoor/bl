@@ -2,70 +2,25 @@
  * testing playground.
 */
 
-module c {
-  public extern fn puts(s string) i32;
+fn main() i32 {
+  // struct test
+  var data m.data_t; 
+  //data.in.a = 666;
+  data.a = 666;
+  data.in.a = 666;
+
+  return 0;
 }
 
 module m {
-  fn main() i32 {
-    // enum test
-    var state m.enum_e = m.enum_e.A; 
-    var state2 m.enum_e; // should be set to first enum variant if there is one
-
-    if (state == m.enum_e.A)
-       c.puts("state is A");
-
-    state = enum_e.A; // 10 
-    state = enum_e.B; // 20
-    state = enum_e.C; // 21
-    state = enum_e.D; // 22
-    state = enum_e.E; // 23
-    state = enum_e.F; // 30
-    state = enum_e.G; // 31
-
-    // struct test
-    var data m.data_t; 
-    //data.in.a = 666;
-
-    return 0;
-  }
-}
-
-module m {
-  public enum enum_e i32 {
-    A = 10,
-    B = 20,
-    C,
-    D,
-    E,
-    F = 40,
-    G 
-  }
-
-  enum names string { 
-    Tereza = "tereza",
-    Milan = "milan"
-  }
-
   public struct data_t {
     a i32,
     b string,
     c f64,
-    o other.A,
     in inner_t // should work without m.
   }
 
   struct inner_t {
     a i32
-  }
-}
-
-module other {
-  public struct A {
-    b B
-  }
-
-  struct B {
-    a A
   }
 }

@@ -460,7 +460,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       for (size_t i = 0; i < c; i++) {
         path_elem = bo_array_at(path, i, bl_node_t *);
         _path_elem = bl_peek_expr_path(path_elem);
-        bl_log("path elem %d -> %s", i, bl_node_name(_path_elem->ref));
+        bl_log("path elem %d -> %s [%p]", i, bl_node_name(_path_elem->ref), _path_elem->ref);
       }
       bl_abort("cannot generate reference to %s", bl_node_name(ref));
       break;
