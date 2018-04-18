@@ -9,5 +9,5 @@ fn main() {
   var a i32;
   var b i32 = 10; 
 
-  c.printf("a + b = %d\n", a + b);
+  c::printf("a + b = %d\n", a + b);
 }

@@ -11,8 +11,9 @@
 fn main() i32 {
   // struct test
   var data m::data_t; 
-  //data::a = 666;
+  data;
   //data.in.a = 666;
+  //data->in->a = 666;
 
   std::println("hello world");
 

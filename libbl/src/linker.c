@@ -216,34 +216,6 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
     /* not last in path -> we need to determinate enum variant */
     return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
-  } else if (bl_node_is(found, BL_DECL_VAR)) { /* found enum */
-    bl_log("decl var  %s", bl_peek_decl_var(found)->id.str);
-
-    /* last in path -> return var declaration */
-    if (iter == bo_array_size(path))
-      return found;
-
-    // TODO
-    bl_decl_var_t *_var = bl_peek_decl_var(found);
-    bl_assert(bl_node_is(_var->type, BL_TYPE_REF),
-              "non-terminal member access in path with fundamantal type");
-
-    /* must be reference to structure */
-    bl_node_t *ref = bl_peek_type_ref(_var->type)->ref;
-
-    /* not last in path -> we need to determinate struct member */
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, ref);
-  } else if (bl_node_is(found, BL_DECL_STRUCT_MEMBER)) {
-    if (iter == bo_array_size(path))
-      return found;
-
-    bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(found);
-    bl_log("trying to link struct member %s -> %p", _member->id.str, _member->type);
-
-    /* lookup member type */
-    bl_type_ref_t *strct_ref = bl_peek_type_ref(_member->type);
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, strct_ref->ref);
-    // return lookup_node_1(cnt, path, mod_scope, LOOKUP_STRUCT_MEMBER, iter, found);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
