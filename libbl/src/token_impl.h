@@ -61,7 +61,7 @@
   sm(RETURN,      "return") \
   sm(STRUCT,      "struct") \
   sm(CONTINUE,    "continue") /* must be last */ \
-  sm(PATH,        ".") \
+  sm(PATH,        "::") \
   sm(LCOMMENT,    "//") \
   sm(LBCOMMENT,   "/*") \
   sm(RBCOMMENT,   "*/") \

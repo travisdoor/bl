@@ -64,7 +64,7 @@ print_path(BArray *path)
     path_elem = bo_array_at(path, i, bl_node_t *);
     fprintf(stdout, BL_CYAN("%s"), bl_peek_expr_path(path_elem)->id.str);
     if (i != c - 1)
-      fprintf(stdout, BL_CYAN("."));
+      fprintf(stdout, BL_CYAN("::"));
   }
 }
 

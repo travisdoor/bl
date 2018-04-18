@@ -34,19 +34,19 @@ public module std {
   } 
 
   public fn exit(status i32) {
-    c.exit(status);
+    c::exit(status);
   }
 
   public fn abort() {
-    c.abort();
+    c::abort();
   }
 
   public fn assert(expr bool) {
     if (expr != true)
-      c.abort();
+      c::abort();
   }
 
   public fn println(str string) {
-    c.puts(str);
+    c::puts(str);
   }
 }

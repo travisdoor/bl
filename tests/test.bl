@@ -1,5 +1,5 @@
 /*
- * testing playground.
+ * testing playground::
 */
 
 /*
@@ -10,11 +10,11 @@
 
 fn main() i32 {
   // struct test
-  var data m.data_t; 
-  //data.a = 666;
-  data.in.a = 666;
+  var data m::data_t; 
+  //data::a = 666;
+  //data.in.a = 666;
 
-  std.println("hello world");
+  std::println("hello world");
 
   return 0;
 }
@@ -24,7 +24,7 @@ module m {
     public a i32,
     b string,
     c f64,
-    in inner_t // should work without m.
+    in inner_t // should work without m
   }
 
   struct inner_t {
