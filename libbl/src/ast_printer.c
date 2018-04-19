@@ -125,8 +125,7 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   print_head("enum", bl_peek_src(enm), enm, visitor->nesting);
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") ", used: %d", _enm->id.str,
-          _enm->used);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") ", used: %d", _enm->id.str, _enm->used);
   print_modif(_enm->modif);
   bl_visitor_walk_enum(visitor, enm);
 }
@@ -224,6 +223,11 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     print_head("decl_ref", bl_peek_src(expr), expr, visitor->nesting);
     print_path(bl_peek_expr_decl_ref(expr)->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_decl_ref(expr)->ref);
+    break;
+  case BL_EXPR_MEMBER_REF:
+    print_head("member_ref", bl_peek_src(expr), expr, visitor->nesting);
+    fprintf(stdout, BL_YELLOW("'%s'") " -> " BL_YELLOW("%p"), bl_peek_expr_member_ref(expr)->id.str,
+            bl_peek_expr_member_ref(expr)->ref);
     break;
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);

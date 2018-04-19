@@ -52,3 +52,5 @@
   - llvm linker
   - llvm native bin builder
    
+* IDEAS
+** typecast: i32(...);

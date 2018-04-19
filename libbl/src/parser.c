@@ -295,7 +295,24 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path)
 bl_node_t *
 parse_member_ref_maybe(context_t *cnt)
 {
-  // TODO
+  bl_node_t *member_ref = NULL;
+  /*
+   * try to parse member reference
+   * note: Previous "." symbol has been consumed by the expression parser so we need to check
+   * previous symbol, not current in this case. If previous symbol is "." it must be fallowed by
+   * identificator of struct member.
+   */
+  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
+    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+    if (tok_id->sym != BL_SYM_IDENT) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected structure member name");
+    }
+
+    /* next member will be set later */
+    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL);
+  }
+
+  return member_ref;
 }
 
 bl_node_t *
@@ -462,15 +479,8 @@ parse_atom_expr(context_t *cnt)
   bl_node_t *expr = NULL;
   BArray *   path = NULL;
 
-  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
-    bl_log("found member access token in expression");
-    /*
-    bl_tokens_consume(cnt->tokens);
-    expr = new_node(cnt, BL_NODE_MEMBER_EXPR, tok);
-    bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
+  if ((expr = parse_member_ref_maybe(cnt)))
     return expr;
-    */
-  }
 
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
@@ -508,7 +518,10 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 
-    if (bl_token_is_binop(op)) {
+    if (op->sym == BL_SYM_DOT) {
+      bl_peek_expr_member_ref(rhs)->next = lhs;
+      lhs                                = rhs;
+    } else if (bl_token_is_binop(op)) {
       bl_node_t *result_type = NULL;
       bl_node_t *tmp         = lhs;
 

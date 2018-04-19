@@ -11,9 +11,8 @@
 fn main() i32 {
   // struct test
   var data m::data_t; 
-  data.b;
-  //data.in.a = 666; // normal access to struct members
-  //data->in->a = 666; // pointer access
+  data.b = 10;
+  data.in.a = 666;
 
   std::println("hello world");
 
