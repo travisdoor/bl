@@ -1,56 +1,54 @@
-#+TITLE: Todo list
- 
-#+change with shift+arrow
 * TASKS
-** DONE Constant "variable" declaration
-** DONE Enum declaration
-** DONE Consider individual types for struct member and enum variation 
-** DONE Enum variant node
-** DONE Struct member node
-** DONE Enum type generation 
-** DONE Enum instance (unitialized) should have first enum value if there is one 
-** DONE Member ref expression node 
-** TODO Member ref expression node parsing
-** TODO Reserve for arrays 
-** TODO Constant with separate node 
-** DONE Rename var_ref to ref 
-** DONE Enum unit test 
-** TODO Improve unit testing 
-** DONE Check enum non-existing variant expression  
-** TODO Struct member access 
-** DONE Enum member access 
-** DONE Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
-** TODO Public and private struct members. 
-** TODO Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
-** TODO All public members in structure must have also public types -> print error 
-** TODO Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
-** TODO Type casting 
-** TODO Single character parsing ('c') 
-** TODO Enum base expression generation (only numbers accepted for now)
-** TODO Struct member access
-** TODO Constant expression evaluator
-** TODO Arrays
-** TODO Unary operator (separate expression node in ast)
-** TODO Pointers 
+- [X] Constant "variable" declaration
+- [X] Enum declaration
+- [X] Consider individual types for struct member and enum variation 
+- [X] Enum variant node
+- [X] Struct member node
+- [X] Enum type generation 
+- [X] Enum instance (unitialized) should have first enum value if there is one 
+- [X] Member ref expression node 
+- [ ] Member ref expression node parsing
+- [ ] Reserve for arrays 
+- [ ] Constant with separate node 
+- [X] Rename var_ref to ref 
+- [X] Enum unit test 
+- [ ] Improve unit testing 
+- [X] Check enum non-existing variant expression  
+- [ ] Struct member access 
+- [X] Enum member access 
+- [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
+- [ ] Public and private struct members. 
+- [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
+- [ ] All public members in structure must have also public types -> print error 
+- [ ] Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
+- [ ] Type casting 
+- [ ] Single character parsing ('c') 
+- [ ] Enum base expression generation (only numbers accepted for now)
+- [ ] Struct member access
+- [ ] Constant expression evaluator
+- [ ] Arrays
+- [ ] Unary operator (separate expression node in ast)
+- [ ] Pointers 
+- [ ] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
+  
+
 
 * BUGS
-** DONE Structures must be linked before everything else due to inner structures of other type 
-** create buffer, store structures during merge into that buffer and than link them right after merge
-** DONE Structures cannot be linked in current context with buffer solution
 
 * PIPELINE
-  - file loader
-  - lexer
-  - token printer
-  - parser
-  - linker
-  - ast printer
-  - check
-  - llvm generator
-  - llvm jit execute
-  - llvm byte-code writer
-  - llvm linker
-  - llvm native bin builder
+- file loader
+- lexer
+- token printer
+- parser
+- linker
+- ast printer
+- check
+- llvm generator
+- llvm jit execute
+- llvm byte-code writer
+- llvm linker
+- llvm native bin builder
    
+
 * IDEAS
-** typecast: i32(...);
+- implicit casting pointer to bool: if (some_ptr) {}

@@ -66,11 +66,10 @@ typedef struct
 
 /* flags used in lookup methods for finding declarations in various scopes */
 typedef enum {
-  LOOKUP_GSCOPE        = 1,  // search in global-scope
-  LOOKUP_MOD_SCOPE     = 2,  // search in scope of current module
-  LOOKUP_BLOCK_SCOPE   = 4,  // search in scope of surrent block (ex.: function body)
-  LOOKUP_ENUM_VARIANT  = 8,  // search in enum variants
-  LOOKUP_STRUCT_MEMBER = 16, // search in struct members
+  LOOKUP_GSCOPE       = 1, // search in global-scope
+  LOOKUP_MOD_SCOPE    = 2, // search in scope of current module
+  LOOKUP_BLOCK_SCOPE  = 4, // search in scope of surrent block (ex.: function body)
+  LOOKUP_ENUM_VARIANT = 8, // search in enum variants
 } lookup_flag_e;
 
 /*************************************************************************************************
@@ -83,8 +82,14 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 static bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag);
 
-static void
+static bl_node_t *
 satisfy_type(context_t *cnt, bl_node_t *type);
+
+static bl_node_t *
+satisfy_member(context_t *cnt, bl_node_t *expr);
+
+static bl_node_t *
+satisfy_decl_ref(context_t *cnt, bl_node_t *expr);
 
 static void
 pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct);
@@ -125,12 +130,12 @@ link_var(bl_visitor_t *visitor, bl_node_t *var);
 /*************************************************************************************************
  * util functions used on multiple places
  *************************************************************************************************/
-void
+bl_node_t *
 satisfy_type(context_t *cnt, bl_node_t *type)
 {
+  bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
-    bl_node_t *found =
-        lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
+    found = lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
     bl_peek_type_ref(type)->ref = found;
 
     switch (bl_node_code(found)) {
@@ -145,6 +150,54 @@ satisfy_type(context_t *cnt, bl_node_t *type)
                  "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_try_get_id(found)->str);
     }
   }
+
+  return found;
+}
+
+bl_node_t *
+satisfy_decl_ref(context_t *cnt, bl_node_t *expr)
+{
+  bl_node_t *found = lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
+                                 LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
+
+  bl_peek_expr_decl_ref(expr)->ref = found;
+  if (bl_node_is(found, BL_DECL_VAR))
+    bl_peek_decl_var(found)->used++;
+
+  return found;
+}
+
+bl_node_t *
+satisfy_member(context_t *cnt, bl_node_t *expr)
+{
+  bl_assert(expr, "invalid expression");
+  bl_node_t *found = NULL;
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_MEMBER_REF: {
+    bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(expr);
+    bl_assert(_member_ref->next, "missing reference to next expr");
+    found = satisfy_member(cnt, _member_ref->next);
+
+    
+    
+    break;
+  }
+    
+  case BL_EXPR_DECL_REF: {
+    /* link decl reference */
+    found = satisfy_decl_ref(cnt, expr); 
+
+    /* get referenced decl */
+    found = bl_peek_expr_decl_ref(found)->ref;
+    /* get type */
+    found = bl_peek_decl_var(found)->type;
+  }
+    
+  default:
+    bl_abort("invalid node %s", bl_node_name(expr));
+  }
+
+  return found;
 }
 
 bl_node_t *
@@ -159,13 +212,6 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
     bl_assert(prev_node, "invalid prev node");
     found =
         bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_path_elem(path_elem)->id);
-  }
-
-  /* search symbol in struct declaration */
-  if (scope_flag & LOOKUP_STRUCT_MEMBER) {
-    bl_assert(prev_node, "invalid prev node");
-    found =
-        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in block scope */
@@ -416,15 +462,15 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_peek_decl_func(found)->used++;
     break;
   case BL_EXPR_DECL_REF:
-    found = lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
-                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
-
-    bl_peek_expr_decl_ref(expr)->ref = found;
-    if (bl_node_is(found, BL_DECL_VAR))
-      bl_peek_decl_var(found)->used++;
+    satisfy_decl_ref(cnt, expr);
     break;
   case BL_EXPR_MEMBER_REF:
-    bl_log("linking expr member reference");
+    /* member access expression has not been linked yet -> solve it recursivelly */
+    if (bl_peek_expr_member_ref(expr)->ref == NULL) {
+      bl_log("linking expr member reference");
+      satisfy_member(cnt, expr);
+    }
+
     break;
   default:
     break;
