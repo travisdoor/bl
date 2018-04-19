@@ -293,6 +293,12 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path)
 }
 
 bl_node_t *
+parse_member_ref_maybe(context_t *cnt)
+{
+  // TODO
+}
+
+bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path)
 {
   bl_node_t *call = NULL;
