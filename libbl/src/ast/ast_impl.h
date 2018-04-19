@@ -71,9 +71,9 @@
     nt(EXPR_BINOP,         expr_binop) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
     nt(EXPR_CALL,          expr_call) \
-    nt(EXPR_PATH,          expr_path) \
     nt(TYPE_FUND,          type_fund) \
-    nt(TYPE_REF,           type_ref)
+    nt(TYPE_REF,           type_ref) \
+    nt(PATH_ELEM,          path_elem) 
 
 // clang-format on
 
@@ -81,7 +81,6 @@ typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
 typedef enum bl_modif     bl_modif_e;
-typedef BArray            bl_path_t;
 
 typedef enum {
 #define ft(tok, str) BL_FTYPE_##tok,
@@ -263,18 +262,18 @@ struct bl_expr_binop
 
 struct bl_expr_decl_ref
 {
-  bl_path_t *path;
+  BArray *   path;
   bl_node_t *ref; // TODO: remove, can be used last path ref
 };
 
 struct bl_expr_call
 {
   bl_node_t *ref;
-  bl_path_t *path;
+  BArray *   path;
   BArray *   args;
 };
 
-struct bl_expr_path
+struct bl_path_elem
 {
   bl_id_t    id;
   bl_node_t *ref;
@@ -287,7 +286,7 @@ struct bl_type_fund
 
 struct bl_type_ref
 {
-  bl_path_t *path;
+  BArray *   path;
   bl_node_t *ref; // TODO: remove, can be used last path ref
 };
 
@@ -331,8 +330,7 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                    bl_path_t *path);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
@@ -361,13 +359,13 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
                       bl_node_t *type);
 
 bl_node_t *
-bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path_t *path);
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path_t *path);
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name);
+bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
 bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
@@ -489,28 +487,6 @@ size_t
 bl_ast_enum_get_count(bl_decl_enum_t *enm);
 
 /*************************************************************************************************
- * path 
- *************************************************************************************************/
-
-bl_path_t *
-bl_ast_path_new(void);
-
-void
-bl_ast_path_delete(bl_path_t *path);
-
-size_t
-bl_ast_path_count(bl_path_t *path);
-
-bl_node_t *
-bl_ast_path_get(bl_path_t *path, size_t i);
-
-bl_node_t *
-bl_ast_path_get_last(bl_path_t *path);
-
-bl_node_t *
-bl_ast_path_push(bl_path_t *path, bl_node_t *expr_path);
-
-/*************************************************************************************************
  * other
  *************************************************************************************************/
 bl_id_t *
@@ -530,6 +506,9 @@ bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
 const char *
 bl_ast_try_get_type_name(bl_node_t *type);
+
+bl_node_t *
+bl_ast_path_get_last(BArray *path);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

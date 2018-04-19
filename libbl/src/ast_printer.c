@@ -62,7 +62,7 @@ print_path(BArray *path)
   bl_node_t *  path_elem;
   for (size_t i = 0; i < c; i++) {
     path_elem = bo_array_at(path, i, bl_node_t *);
-    fprintf(stdout, BL_CYAN("%s"), bl_peek_expr_path(path_elem)->id.str);
+    fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path_elem)->id.str);
     if (i != c - 1)
       fprintf(stdout, BL_CYAN("::"));
   }

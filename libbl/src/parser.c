@@ -281,7 +281,7 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path)
       path = bo_array_new(sizeof(bl_node_t *));
     }
 
-    bl_node_t *id_path = bl_ast_add_expr_path(cnt->ast, tok_id, tok_id->value.str);
+    bl_node_t *id_path = bl_ast_add_path_elem(cnt->ast, tok_id, tok_id->value.str);
     bo_array_push_back(path, id_path);
     decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
   }
@@ -300,7 +300,7 @@ parse_call_maybe(context_t *cnt, BArray *path)
       path = bo_array_new(sizeof(bl_node_t *));
     }
 
-    bl_node_t *id = bl_ast_add_expr_path(cnt->ast, tok_id, tok_id->value.str);
+    bl_node_t *id = bl_ast_add_path_elem(cnt->ast, tok_id, tok_id->value.str);
     bo_array_push_back(path, id);
 
     call = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path);
@@ -438,7 +438,7 @@ next:
 
     tok = bl_tokens_consume(cnt->tokens);
 
-    path_elem = bl_ast_add_expr_path(cnt->ast, tok, tok->value.str);
+    path_elem = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
     bo_array_push_back(path, path_elem);
     bl_tokens_consume(cnt->tokens); /* eat :: */
     goto next;
@@ -601,7 +601,7 @@ parse_type_maybe(context_t *cnt)
         path = bo_array_new(sizeof(bl_node_t *));
       }
 
-      bl_node_t *id_node = bl_ast_add_expr_path(cnt->ast, tok, tok->value.str);
+      bl_node_t *id_node = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
       bo_array_push_back(path, id_node);
 
       type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path);

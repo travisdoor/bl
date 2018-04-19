@@ -121,7 +121,7 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                    bl_path_t *path)
+                    BArray *path)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -220,7 +220,7 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
 }
 
 bl_node_t *
-bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path_t *path)
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
 {
   bl_node_t *decl_ref = alloc_node(ast);
   if (tok)
@@ -234,7 +234,7 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path
 }
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path_t *path)
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
 {
   bl_node_t *call = alloc_node(ast);
   if (tok)
@@ -248,14 +248,14 @@ bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_path_t *
 }
 
 bl_node_t *
-bl_ast_add_expr_path(bl_ast_t *ast, bl_token_t *tok, const char *name)
+bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name)
 {
   bl_node_t *path = alloc_node(ast);
   if (tok)
     path->src = &tok->src;
 
-  path->code = BL_EXPR_PATH;
-  bl_id_init(&bl_peek_expr_path(path)->id, name);
+  path->code = BL_PATH_ELEM;
+  bl_id_init(&bl_peek_path_elem(path)->id, name);
 
   return path;
 }
@@ -663,49 +663,6 @@ bl_ast_enum_get_count(bl_decl_enum_t *enm)
 
   return bo_array_size(enm->variants);
 }
-/*************************************************************************************************
- * path
- *************************************************************************************************/
-
-bl_path_t *
-bl_ast_path_new(void)
-{
-  return bo_array_new(sizeof(bl_node_t *));
-}
-
-void
-bl_ast_path_delete(bl_path_t *path)
-{
-  bo_unref(path);
-}
-
-size_t
-bl_ast_path_count(bl_path_t *path)
-{
-  return bo_array_size(path);
-}
-
-bl_node_t *
-bl_ast_path_get(bl_path_t *path, size_t i)
-{
-  return bo_array_at(path, i, bl_node_t *);
-}
-
-bl_node_t *
-bl_ast_path_get_last(bl_path_t *path)
-{
-  const size_t c = bo_array_size(path);
-  if (c == 0)
-    return NULL;
-
-  return bo_array_at(path, c - 1, bl_node_t *);
-}
-
-bl_node_t *
-bl_ast_path_push(bl_path_t *path, bl_node_t *expr_path)
-{
-  bo_array_push_back(path, expr_path);
-}
 
 /*************************************************************************************************
  * other
@@ -819,5 +776,15 @@ bl_ast_try_get_type_name(bl_node_t *type)
   default:
     return NULL;
   }
+}
+
+bl_node_t *
+bl_ast_path_get_last(BArray *path)
+{
+  const size_t c = bo_array_size(path);
+  if (c == 0)
+    return NULL;
+
+  return bo_array_at(path, c - 1, bl_node_t *);
 }
 /**************************************************************************************************/

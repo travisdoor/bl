@@ -158,44 +158,44 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   if (scope_flag & LOOKUP_ENUM_VARIANT) {
     bl_assert(prev_node, "invalid prev node");
     found =
-        bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
+        bl_scope_get_node(bl_peek_decl_enum(prev_node)->scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in struct declaration */
   if (scope_flag & LOOKUP_STRUCT_MEMBER) {
     bl_assert(prev_node, "invalid prev node");
     found =
-        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_expr_path(path_elem)->id);
+        bl_scope_get_node(bl_peek_decl_struct(prev_node)->scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in block scope */
   if (scope_flag & LOOKUP_BLOCK_SCOPE) {
-    found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_expr_path(path_elem)->id);
+    found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in module scope */
   if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
-    found = bl_scope_get_node(mod_scope, &bl_peek_expr_path(path_elem)->id);
+    found = bl_scope_get_node(mod_scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in global scope */
   if (scope_flag & LOOKUP_GSCOPE && !found) {
-    found = bl_scope_get_node(cnt->gscope, &bl_peek_expr_path(path_elem)->id);
+    found = bl_scope_get_node(cnt->gscope, &bl_peek_path_elem(path_elem)->id);
   }
 
   if (found == NULL) {
     link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src, "unknown symbol " BL_YELLOW("'%s'"),
-               bl_peek_expr_path(path_elem)->id.str);
+               bl_peek_path_elem(path_elem)->id.str);
   }
 
   /* store reference to found element into current path for later use */
-  bl_peek_expr_path(path_elem)->ref = found;
+  bl_peek_path_elem(path_elem)->ref = found;
   iter++;
 
   if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
     link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
                "symbol " BL_YELLOW("'%s'") " is private, declared here: %s:%d:%d",
-               bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+               bl_peek_path_elem(path_elem)->id.str, found->src->file, found->src->line,
                found->src->col);
   }
 
@@ -203,7 +203,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
     if (iter == bo_array_size(path)) {
       link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
                  "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
-                 bl_peek_expr_path(path_elem)->id.str, found->src->file, found->src->line,
+                 bl_peek_path_elem(path_elem)->id.str, found->src->file, found->src->line,
                  found->src->col);
     }
     return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
