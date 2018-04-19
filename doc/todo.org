@@ -7,17 +7,16 @@
 - [X] Enum type generation 
 - [X] Enum instance (unitialized) should have first enum value if there is one 
 - [X] Member ref expression node 
-- [ ] Member ref expression node parsing
+- [X] Member ref expression node parsing
 - [ ] Reserve for arrays 
 - [ ] Constant with separate node 
 - [X] Rename var_ref to ref 
 - [X] Enum unit test 
 - [ ] Improve unit testing 
 - [X] Check enum non-existing variant expression  
-- [ ] Struct member access 
 - [X] Enum member access 
 - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
-- [ ] Public and private struct members. 
+- [X] Public and private struct members parsing.
 - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
 - [ ] All public members in structure must have also public types -> print error 
 - [ ] Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
@@ -30,7 +29,8 @@
 - [ ] Unary operator (separate expression node in ast)
 - [ ] Pointers 
 - [ ] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
-  
+- [ ] Member access type checking [[7][here]]  
+- [ ] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::satisfy_member(context_t%20*cnt,%20bl_node_t%20*expr)][here]] -> generate error if member is inaccessible  
 
 
 * BUGS

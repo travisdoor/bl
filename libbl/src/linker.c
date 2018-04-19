@@ -176,23 +176,30 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
   case BL_EXPR_MEMBER_REF: {
     bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(expr);
     bl_assert(_member_ref->next, "missing reference to next expr");
-    found = satisfy_member(cnt, _member_ref->next);
+    bl_node_t *type = satisfy_member(cnt, _member_ref->next);
+    type            = bl_peek_type_ref(type)->ref;
 
-    
-    
+    found = bl_scope_get_node(bl_peek_decl_struct(type)->scope, &_member_ref->id);
+    if (found == NULL) {
+      link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, expr->src,
+                 "no such member " BL_YELLOW("'%s'") " in structure " BL_YELLOW("'%s'"),
+                 _member_ref->id.str, bl_ast_try_get_id(type)->str);
+    }
+
+    _member_ref->ref = found;
+    found            = bl_peek_decl_struct_member(found)->type;
     break;
   }
-    
+
   case BL_EXPR_DECL_REF: {
     /* link decl reference */
-    found = satisfy_decl_ref(cnt, expr); 
+    found = satisfy_decl_ref(cnt, expr);
 
-    /* get referenced decl */
-    found = bl_peek_expr_decl_ref(found)->ref;
     /* get type */
     found = bl_peek_decl_var(found)->type;
+    break;
   }
-    
+
   default:
     bl_abort("invalid node %s", bl_node_name(expr));
   }

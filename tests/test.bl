@@ -13,6 +13,7 @@ fn main() i32 {
   var data m::data_t; 
   data.b = 10;
   data.in.a = 666;
+  data.in.adam.karel.size = 666;
 
   std::println("hello world");
 
@@ -28,6 +29,15 @@ module m {
   }
 
   struct inner_t {
-    a i32
+    a i32,
+    adam adam_t 
+  }
+
+  struct adam_t {
+    karel karel_t
+  }
+
+  struct karel_t {
+    size i32
   }
 }

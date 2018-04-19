@@ -221,6 +221,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
   case BL_EXPR_CONST:
     return check_const(cnt, expr, expected_type);
 
+  case BL_EXPR_MEMBER_REF:
+    return NULL;
+
   default:
     bl_abort("node is not expression");
   }
