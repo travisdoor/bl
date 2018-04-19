@@ -423,6 +423,9 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
     if (bl_node_is(found, BL_DECL_VAR))
       bl_peek_decl_var(found)->used++;
     break;
+  case BL_EXPR_MEMBER_REF:
+    bl_log("linking expr member reference");
+    break;
   default:
     break;
   }
