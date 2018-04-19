@@ -7,7 +7,7 @@ module c {
 
 // main function declaration
 fn main() {
-  c.printf("2 + 3 = %d\n", add(2, 3));
+  c::printf("2 + 3 = %d\n", add(2, 3));
   print_addition();
 }
 
@@ -18,6 +18,6 @@ fn add(a i32, b i32) i32 {
 
 // function without parameters returning no value
 fn print_addition() {
-  c.printf("2 + 3 = %d\n", add(2, 3));
+  c::printf("2 + 3 = %d\n", add(2, 3));
 }
 

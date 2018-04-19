@@ -9,6 +9,8 @@
 ** DONE Struct member node
 ** DONE Enum type generation 
 ** DONE Enum instance (unitialized) should have first enum value if there is one 
+** DONE Member ref expression node 
+** TODO Member ref expression node parsing
 ** TODO Reserve for arrays 
 ** TODO Constant with separate node 
 ** DONE Rename var_ref to ref 

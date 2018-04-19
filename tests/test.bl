@@ -11,7 +11,7 @@
 fn main() i32 {
   // struct test
   var data m::data_t; 
-  data;
+  data.b;
   //data.in.a = 666; // normal access to struct members
   //data->in->a = 666; // pointer access
 

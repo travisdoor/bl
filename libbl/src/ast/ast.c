@@ -120,8 +120,7 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
 }
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
-                    BArray *path)
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -231,6 +230,20 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
   bl_peek_expr_decl_ref(decl_ref)->path = path;
 
   return decl_ref;
+}
+bl_node_t *
+bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next)
+{
+  bl_node_t *member_ref = alloc_node(ast);
+  if (tok)
+    member_ref->src = &tok->src;
+
+  member_ref->code                  = BL_EXPR_MEMBER_REF;
+  bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
+  bl_id_init(&_member_ref->id, name);
+  _member_ref->next = next;
+
+  return member_ref;
 }
 
 bl_node_t *

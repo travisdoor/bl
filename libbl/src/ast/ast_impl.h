@@ -70,10 +70,11 @@
     nt(EXPR_CONST,         expr_const) \
     nt(EXPR_BINOP,         expr_binop) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
+    nt(EXPR_MEMBER_REF,    expr_member_ref) \
     nt(EXPR_CALL,          expr_call) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
-    nt(PATH_ELEM,          path_elem) 
+    nt(PATH_ELEM,          path_elem)
 
 // clang-format on
 
@@ -266,6 +267,13 @@ struct bl_expr_decl_ref
   bl_node_t *ref; // TODO: remove, can be used last path ref
 };
 
+struct bl_expr_member_ref
+{
+  bl_id_t    id;
+  bl_node_t *ref;
+  bl_node_t *next;
+};
+
 struct bl_expr_call
 {
   bl_node_t *ref;
@@ -360,6 +368,9 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
 
 bl_node_t *
 bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
+
+bl_node_t *
+bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
