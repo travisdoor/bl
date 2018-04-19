@@ -38,7 +38,7 @@ nothing when function does not return any value.
 
     // main function declaration
     fn main() {
-      c.printf("2 + 3 = %d\n", add(2, 3));
+      c::printf("2 + 3 = %d\n", add(2, 3));
       print_addition();
     }
     
@@ -49,7 +49,7 @@ nothing when function does not return any value.
 
     // function without parameters returning no value
     fn print_addition() {
-      c.printf("2 + 3 = %d\n", add(2, 3));
+      c::printf("2 + 3 = %d\n", add(2, 3));
     }
 
 ## Modules
@@ -77,14 +77,14 @@ Modules are similar to C++ namespaces.
       }
 
       public fn print_addition() {
-        c.printf("2 + 3 = %d\n", B.add(2, 3));
+        c::printf("2 + 3 = %d\n", B.add(2, 3));
       }
     }
 
     fn main() {
-      c.printf("2 + 3 = %d\n", A.B.add(2, 3));
-      A.print_addition();
-      // A.B.priv_add(2, 3) generates error (method is private for module A.B)
+      c::printf("2 + 3 = %d\n", A.B.add(2, 3));
+      A::print_addition();
+      // A::B::priv_add(2, 3) generates error (method is private for module A::B)
     }
 	
 ## Variables
@@ -100,7 +100,7 @@ Modules are similar to C++ namespaces.
       var a i32;
       var b i32 = 10; 
 
-      c.printf("a + b = %d\n", a + b);
+      c::printf("a + b = %d\n", a + b);
     }
 
 ## Constants 

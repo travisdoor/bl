@@ -108,6 +108,9 @@ static bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
+parse_member_ref_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
@@ -452,6 +455,16 @@ parse_atom_expr(context_t *cnt)
 {
   bl_node_t *expr = NULL;
   BArray *   path = NULL;
+
+  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
+    bl_log("found member access token in expression");
+    /*
+    bl_tokens_consume(cnt->tokens);
+    expr = new_node(cnt, BL_NODE_MEMBER_EXPR, tok);
+    bl_ident_init(&expr->value.member_expr.ident, tok->value.as_string);
+    return expr;
+    */
+  }
 
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
@@ -898,8 +911,6 @@ parse_struct_member_maybe(context_t *cnt)
   bl_node_t *type = NULL;
 
   bl_modif_e modif = parse_modifs_maybe(cnt);
-
-
 
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
     return NULL;
