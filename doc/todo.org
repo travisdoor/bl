@@ -30,7 +30,7 @@
 ** TODO Struct member access
 ** TODO Constant expression evaluator
 ** TODO Arrays
-** TODO Unary operator
+** TODO Unary operator (separate expression node in ast)
 ** TODO Pointers 
 
 * BUGS
