@@ -469,14 +469,13 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_peek_decl_func(found)->used++;
     break;
   case BL_EXPR_DECL_REF:
-    satisfy_decl_ref(cnt, expr);
+    if (bl_peek_expr_decl_ref(expr)->ref == NULL)
+      satisfy_decl_ref(cnt, expr);
     break;
   case BL_EXPR_MEMBER_REF:
     /* member access expression has not been linked yet -> solve it recursivelly */
-    if (bl_peek_expr_member_ref(expr)->ref == NULL) {
-      bl_log("linking expr member reference");
+    if (bl_peek_expr_member_ref(expr)->ref == NULL)
       satisfy_member(cnt, expr);
-    }
 
     break;
   default:
