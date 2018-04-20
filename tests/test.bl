@@ -1,6 +1,6 @@
 /*
  * testing playground::
-*/
+ */
 
 /*
 // IDEA: loading of references
@@ -8,23 +8,10 @@
 #load "std/debug.bl"
 */
 
-fn main() i32 {
-  // struct test
-  var data m::data_t; 
-  data.b = 10;
-  data.in.a = 666;
-  data.in.adam.karel.size = 666;
-
-  std::println("hello world");
-
-  return 0;
-}
-
 module m {
   public struct data_t {
     public a i32,
-    b string,
-    c f64,
+    b i32,
     in inner_t // should work without m
   }
 
@@ -40,4 +27,15 @@ module m {
   struct karel_t {
     size i32
   }
+}
+
+fn main() i32 {
+  // struct test
+  var data m::data_t; 
+  data.b = 10;
+
+  std::println("hello world");
+  std::print_1("data.b = %d\n", data.b);
+
+  return 0;
 }

@@ -23,7 +23,7 @@
 - [ ] Type casting 
 - [ ] Single character parsing ('c') 
 - [ ] Enum base expression generation (only numbers accepted for now)
-- [ ] Struct member access
+- [X] Struct member access
 - [ ] Constant expression evaluator
 - [ ] Arrays
 - [ ] Unary operator (separate expression node in ast)
@@ -34,6 +34,7 @@
 
 
 * BUGS
+
 
 * PIPELINE
 - file loader

@@ -100,6 +100,9 @@ gen_func(context_t *cnt, bl_node_t *func);
 static LLVMValueRef
 gen_call(context_t *cnt, bl_node_t *call);
 
+static int
+gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out);
+
 static LLVMValueRef
 get_or_create_const_string(context_t *cnt, const char *str);
 
@@ -107,10 +110,10 @@ static LLVMValueRef
 gen_binop(context_t *cnt, bl_node_t *binop);
 
 static LLVMValueRef
-gen_default(context_t *cnt, bl_node_t *type);
+gen_member_ref(context_t *cnt, bl_node_t *member);
 
-static int
-gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out);
+static LLVMValueRef
+gen_default(context_t *cnt, bl_node_t *type);
 
 static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
@@ -287,7 +290,8 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
   for (int i = 0; i < c; i++) {
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
-    if (LLVMIsAAllocaInst(val)) {
+
+    if (LLVMIsAAllocaInst(val) || bl_node_is(expr,  BL_EXPR_MEMBER_REF)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
     } else {
       *out = val;
@@ -437,6 +441,12 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     break;
   }
 
+  case BL_EXPR_MEMBER_REF: {
+    val = gen_member_ref(cnt, expr);
+    // TODO
+    break;
+  }
+
   case BL_EXPR_DECL_REF: {
     bl_node_t *ref  = bl_peek_expr_decl_ref(expr)->ref;
     BArray *   path = bl_peek_expr_decl_ref(expr)->path;
@@ -458,7 +468,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       bl_node_t *     path_elem  = NULL;
       bl_path_elem_t *_path_elem = NULL;
       for (size_t i = 0; i < c; i++) {
-        path_elem = bo_array_at(path, i, bl_node_t *);
+        path_elem  = bo_array_at(path, i, bl_node_t *);
         _path_elem = bl_peek_path_elem(path_elem);
         bl_log("path elem %d -> %s [%p]", i, bl_node_name(_path_elem->ref), _path_elem->ref);
       }
@@ -506,10 +516,10 @@ gen_binop(context_t *cnt, bl_node_t *binop)
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs))
+  if (LLVMIsAAllocaInst(lhs) || bl_node_is(_binop->lhs, BL_EXPR_MEMBER_REF))
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
 
-  if (LLVMIsAAllocaInst(rhs))
+  if (LLVMIsAAllocaInst(rhs) || bl_node_is(_binop->rhs, BL_EXPR_MEMBER_REF))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   switch (_binop->op) {
@@ -542,6 +552,33 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   }
 
   return NULL;
+}
+
+LLVMValueRef
+gen_member_ref(context_t *cnt, bl_node_t *member)
+{
+  LLVMValueRef ptr = NULL;
+
+  switch (bl_node_code(member)) {
+  case BL_EXPR_MEMBER_REF: {
+    bl_expr_member_ref_t *   _member_ref = bl_peek_expr_member_ref(member);
+    bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
+    ptr                                  = gen_member_ref(cnt, _member_ref->next);
+    ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
+                             gname(_member->id.str));
+    break;
+  }
+  case BL_EXPR_DECL_REF: {
+    bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(member);
+    ptr                           = get_value_cscope(_decl_ref->ref);
+    break;
+  }
+  default:
+    bl_abort("invalid expression");
+  }
+
+  bl_assert(ptr, "invalid reference ptr");
+  return ptr;
 }
 
 /*************************************************************************************************
