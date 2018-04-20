@@ -186,6 +186,9 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
                  _member_ref->id.str, bl_ast_try_get_id(type)->str);
     }
 
+    /* if current mod_scope contains found structure than private members of the struct can be
+     * referenced, otherwise check if the member is public and generate error when it's not */
+
     _member_ref->ref = found;
     found            = bl_peek_decl_struct_member(found)->type;
     break;
@@ -193,10 +196,22 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_DECL_REF: {
     /* link decl reference */
-    found = satisfy_decl_ref(cnt, expr);
+    bl_node_t *ref = satisfy_decl_ref(cnt, expr);
+
+    if (bl_node_is_not(ref, BL_DECL_VAR)) {
+      link_error(cnt, BL_ERR_INVALID_TYPE, expr->src,
+                 BL_YELLOW("'%s'") " is not structure, declared here: %s:%d:%d",
+                 bl_ast_try_get_id(ref)->str, ref->src->file, ref->src->line, ref->src->col);
+    }
 
     /* get type */
-    found = bl_peek_decl_var(found)->type;
+    found = bl_peek_decl_var(ref)->type;
+
+    if (bl_node_is_not(found, BL_TYPE_REF)) {
+      link_error(cnt, BL_ERR_INVALID_TYPE, expr->src,
+                 BL_YELLOW("'%s'") " is not structure, declared here: %s:%d:%d",
+                 bl_ast_try_get_id(ref)->str, ref->src->file, ref->src->line, ref->src->col);
+    }
     break;
   }
 
