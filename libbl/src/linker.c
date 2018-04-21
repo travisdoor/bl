@@ -179,6 +179,10 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
     bl_node_t *type = satisfy_member(cnt, _member_ref->next);
     type            = bl_peek_type_ref(type)->ref;
 
+    /* try to find structure declaration in current module scope, when it is found we can access
+     * private members also */
+    bool access_priv = bl_scope_get_node(cnt->mod_scope, &bl_peek_decl_struct(type)->id);
+
     found = bl_scope_get_node(bl_peek_decl_struct(type)->scope, &_member_ref->id);
     if (found == NULL) {
       link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, expr->src,
@@ -189,8 +193,17 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
     /* if current mod_scope contains found structure than private members of the struct can be
      * referenced, otherwise check if the member is public and generate error when it's not */
 
+    bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(found);
+    if (!access_priv && _member->modif == BL_MODIF_NONE) {
+      link_error(cnt, BL_ERR_PRIVATE, expr->src,
+                 "member " BL_YELLOW("'%s'") " of the structure " BL_YELLOW(
+                     "'%s'") " is private in context of current module, declared here: %s:%d:%d",
+                 _member->id.str, bl_ast_try_get_id(type)->str, found->src->file, found->src->line,
+                 found->src->col);
+    }
+
     _member_ref->ref = found;
-    found            = bl_peek_decl_struct_member(found)->type;
+    found            = _member->type;
     break;
   }
 

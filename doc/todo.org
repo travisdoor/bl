@@ -12,12 +12,14 @@
 - [ ] Constant with separate node 
 - [X] Rename var_ref to ref 
 - [X] Enum unit test 
-- [ ] Improve unit testing for structs
+- [ ] Improve unit testing 
 - [X] Check enum non-existing variant expression  
 - [X] Enum member access 
 - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
 - [X] Public and private struct members parsing.
 - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
+- [ ] All public members in structure must have also public types -> print error 
+- [ ] Expr_decl_ref and type_ref should use path refs instead direct ref -> simple generation of struct member access 
 - [ ] Type casting 
 - [ ] Single character parsing ('c') 
 - [ ] Enum base expression generation (only numbers accepted for now)
@@ -28,12 +30,11 @@
 - [ ] Pointers 
 - [X] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
 - [ ] Member access type checking [[7][here]]  
-- [ ] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::/*%20if%20current%20mod_scope%20contains%20found%20structure%20than%20private%20members%20of%20the%20struct%20can%20be][here]] -> generate error if member is inaccessible  
-- [ ] All public members in structure must have also public types -> print error 
+- [X] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::satisfy_member(context_t%20*cnt,%20bl_node_t%20*expr)][here]] -> generate error if member is inaccessible  
+- [ ] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
 
 
 * BUGS
-
 
 * PIPELINE
 - file loader
@@ -51,4 +52,4 @@
    
 
 * IDEAS
-- implicit casting pointer to bool: if (some_ptr) {}
+- implicit casting pointer to bool: if (some_PT) {}

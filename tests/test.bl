@@ -1,41 +1,42 @@
-/*
- * testing playground::
- */
-
-/*
-// IDEA: loading of references
-#load "std/*"
-#load "std/debug.bl"
-*/
-
-module m {
-  public struct data_t {
-    public a i32,
-    b i32,
-    in inner_t // should work without m
+module game {
+  public struct vec2_t {
+    public x i32, 
+    public y i32
   }
 
-  struct inner_t {
-    a i32,
-    adam adam_t 
+  public struct entity_t {
+    public position vec2_t,
+    name string
   }
 
-  struct adam_t {
-    karel karel_t
+  public fn new_entity(name string, position vec2_t) entity_t {
+    var entity entity_t;
+    entity.position = position;
+    entity.name = name;
+    return entity;
   }
 
-  struct karel_t {
-    size i32
+  public fn new_vec2(x i32, y i32) vec2_t {
+    var vec vec2_t;
+    vec.x = x;
+    vec.y = y;
+    return vec;
+  }
+
+  public fn print_name(entity entity_t) {
+    _print_name(entity);
+  }
+
+  fn _print_name(entity entity_t) {
+    std::println(entity.name);
   }
 }
 
 fn main() i32 {
-  // struct test
-  var data m::data_t; 
-  data.b = 10;
-
-  std::println("hello world");
-  std::print_1("data.b = %d\n", data.b);
+  var position game::vec2_t = game::new_vec2(10, 20);
+  var player game::entity_t = game::new_entity("milan", position);
+  
+  game::print_name(player);
 
   return 0;
 }
