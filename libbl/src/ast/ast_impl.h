@@ -284,7 +284,6 @@ struct bl_expr_call
 struct bl_path_elem
 {
   bl_id_t    id;
-  bl_node_t *ref;
 };
 
 struct bl_type_fund

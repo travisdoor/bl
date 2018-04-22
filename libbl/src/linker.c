@@ -269,8 +269,6 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
                bl_peek_path_elem(path_elem)->id.str);
   }
 
-  /* store reference to found element into current path for later use */
-  bl_peek_path_elem(path_elem)->ref = found;
   iter++;
 
   if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
