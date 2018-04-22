@@ -94,11 +94,14 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
   print_head("type", bl_peek_src(type), type, visitor->nesting);
   if (bl_node_is(type, BL_TYPE_REF)) {
     print_path(bl_peek_type_ref(type)->path);
-    fprintf(stdout, " -> " BL_YELLOW("%p") " count: " BL_YELLOW("%zu"), bl_peek_type_ref(type)->ref,
-            bl_peek_type_ref(type)->count);
+    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_type_ref(type)->ref);
+    if (bl_peek_type_ref(type)->count)
+      fprintf(stdout, " count: " BL_YELLOW("%zu"), bl_peek_type_ref(type)->count);
   } else {
-    fprintf(stdout, "fundamental: " BL_MAGENTA("%s") " count: " BL_YELLOW("%zu"),
-            bl_fund_type_strings[bl_peek_type_fund(type)->type], bl_peek_type_fund(type)->count);
+    fprintf(stdout, "fundamental: " BL_MAGENTA("%s"),
+            bl_fund_type_strings[bl_peek_type_fund(type)->type]);
+    if (bl_peek_type_fund(type)->count)
+      fprintf(stdout, " count: " BL_YELLOW("%zu"), bl_peek_type_fund(type)->count);
   }
   bl_visitor_walk_type(visitor, type);
 }

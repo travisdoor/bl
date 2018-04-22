@@ -2,10 +2,18 @@
 
 struct data_t {
   a i32,
-  b i32
+  b i32[20]
 }
 
 fn main() {
-   var arr1 i32[10];
-   var arr2 data_t[10];
+  var arr1 i32[10][2][16][45];
+
+  /*
+  arr1[0] = 10;  
+  arr2[1].a = 0;
+  arr2[2].b[1] = 0;
+  */
+}
+
+fn test(arr1 i32[10], arr2 data_t[50]) i32[2] {
 }
