@@ -659,7 +659,7 @@ parse_type_maybe(context_t *cnt)
       bo_array_push_back(path, id_node);
 
       /* TODO: set array count for reference types */
-      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path);
+      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path, count);
     }
   } else {
     bo_unref(path);

@@ -133,33 +133,45 @@ to_llvm_type(context_t *cnt, bl_node_t *type);
 LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
+  LLVMTypeRef llvm_type = NULL;
+  size_t      count     = 0;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     switch (_type->type) {
     case BL_FTYPE_VOID:
-      return LLVMVoidTypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMVoidTypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_CHAR:
     case BL_FTYPE_I8:
     case BL_FTYPE_U8:
-      return LLVMInt8TypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMInt8TypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_I32:
     case BL_FTYPE_U32:
-      return LLVMInt32TypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMInt32TypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_I64:
     case BL_FTYPE_PTR:
     case BL_FTYPE_U64:
-      return LLVMInt64TypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMInt64TypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_F32:
-      return LLVMFloatTypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMFloatTypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_F64:
-      return LLVMDoubleTypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMDoubleTypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_STRING:
-      return LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
+      llvm_type = LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
+      break;
     case BL_FTYPE_BOOL:
-      return LLVMInt1TypeInContext(cnt->llvm_cnt);
+      llvm_type = LLVMInt1TypeInContext(cnt->llvm_cnt);
+      break;
     default:
       bl_abort("unknown fundamenetal type");
     }
+
+    count = _type->count;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -167,15 +179,25 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     bl_assert(_type, "invalid type reference");
     switch (bl_node_code(_type->ref)) {
     case BL_DECL_STRUCT:
-      return gen_struct(cnt, _type->ref);
+      llvm_type = gen_struct(cnt, _type->ref);
+      break;
     case BL_DECL_ENUM:
-      return gen_enum(cnt, _type->ref);
+      llvm_type = gen_enum(cnt, _type->ref);
+      break;
     default:
       bl_abort("invalid reference type");
     }
+
+    count = _type->count;
   }
 
-  bl_abort("invalid type");
+  /* type is array */
+  if (count) {
+    bl_log("trying to generate array");
+    llvm_type = LLVMArrayType(llvm_type, count);
+  }
+
+  return llvm_type;
 }
 
 LLVMTypeRef
@@ -291,7 +313,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (LLVMIsAAllocaInst(val) || bl_node_is(expr,  BL_EXPR_MEMBER_REF)) {
+    if (LLVMIsAAllocaInst(val) || bl_node_is(expr, BL_EXPR_MEMBER_REF)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
     } else {
       *out = val;
@@ -340,28 +362,27 @@ static LLVMValueRef
 gen_default(context_t *cnt, bl_node_t *type)
 {
   if (bl_node_code(type) == BL_TYPE_FUND) {
-    switch (bl_peek_type_fund(type)->type) {
+    bl_type_fund_t *_type     = bl_peek_type_fund(type);
+    LLVMTypeRef     llvm_type = to_llvm_type(cnt, type);
+
+    /* skip arrays */
+    if (_type->count)
+      return NULL;
+
+    switch (_type->type) {
     case BL_FTYPE_CHAR:
-      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_FTYPE_I8:
-      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_FTYPE_I32:
-      return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_FTYPE_I64:
-      return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, true);
     case BL_FTYPE_U8:
-      return LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_FTYPE_U32:
-      return LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
     case BL_FTYPE_PTR:
     case BL_FTYPE_U64:
-      return LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, false);
-    case BL_FTYPE_F32:
-      return LLVMConstReal(LLVMFloatTypeInContext(cnt->llvm_cnt), 0);
-    case BL_FTYPE_F64:
-      return LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), 0);
     case BL_FTYPE_BOOL:
-      return LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), 0, false);
+      return LLVMConstInt(llvm_type, 0, false);
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+      return LLVMConstReal(llvm_type, 0);
     case BL_FTYPE_STRING: {
       return get_or_create_const_string(cnt, "\0");
     }
@@ -369,8 +390,12 @@ gen_default(context_t *cnt, bl_node_t *type)
       return NULL;
     }
   } else if (bl_node_code(type) == BL_TYPE_REF) {
-    bl_log("try to generate default value for type reference");
+    /* skip arrays */
+    if (bl_peek_type_ref(type)->count)
+      return NULL;
+
     bl_node_t *ref = bl_peek_type_ref(type)->ref;
+
     switch (bl_node_code(ref)) {
     case BL_DECL_ENUM: {
       bl_decl_enum_t *enm = bl_peek_decl_enum(ref);
@@ -448,7 +473,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
   }
 
   case BL_EXPR_DECL_REF: {
-    bl_node_t *ref  = bl_peek_expr_decl_ref(expr)->ref;
+    bl_node_t *ref = bl_peek_expr_decl_ref(expr)->ref;
 
     switch (bl_node_code(ref)) {
     case BL_DECL_VAR: {
@@ -728,7 +753,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 
   LLVMValueRef val = gen_expr(cnt, _ret->expr);
 
-  if (LLVMIsAAllocaInst(val) || bl_node_is(_ret->expr, BL_EXPR_MEMBER_REF)) 
+  if (LLVMIsAAllocaInst(val) || bl_node_is(_ret->expr, BL_EXPR_MEMBER_REF))
     val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
 
   LLVMBuildStore(cnt->llvm_builder, val, cnt->ret_value);

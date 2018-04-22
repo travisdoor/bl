@@ -1,8 +1,11 @@
 /* testing playground */
 
-fn test(arr i32[64]) {
+struct data_t {
+  a i32,
+  b i32
 }
 
 fn main() {
-   var arr i32[10];
+   var arr1 i32[10];
+   var arr2 data_t[10];
 }

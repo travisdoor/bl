@@ -296,6 +296,7 @@ struct bl_type_ref
 {
   BArray *   path;
   bl_node_t *ref;
+  size_t     count;
 };
 
 struct bl_node
@@ -338,7 +339,8 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, size_t count);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
+                    size_t count);
 
 bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);

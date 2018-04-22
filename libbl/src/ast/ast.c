@@ -121,7 +121,8 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, size_t co
 }
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
+                    size_t count)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -130,6 +131,7 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
   type->code                   = BL_TYPE_REF;
   bl_peek_type_ref(type)->ref  = ref;
   bl_peek_type_ref(type)->path = path;
+  bl_peek_type_ref(type)->count = count;
 
   return type;
 }
