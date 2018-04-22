@@ -184,7 +184,7 @@ parse_loop_maybe(context_t *cnt)
 
   const bool prev_inside_loop = cnt->inside_loop;
   cnt->inside_loop            = true;
-  bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL);
+  bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL, 0);
   bl_node_t *test             = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
   bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
   bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
@@ -372,37 +372,37 @@ parse_const_expr_maybe(context_t *cnt)
   switch (tok->sym) {
   case BL_SYM_NUM:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, 0);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, tok->value.u);
     break;
 
   case BL_SYM_STRING:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING, 0);
     const_expr = bl_ast_add_expr_const_str(cnt->ast, tok, type, tok->value.str);
     break;
 
   case BL_SYM_FLOAT:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32, 0);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_DOUBLE:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64, 0);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_CHAR:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR, 0);
     const_expr = bl_ast_add_expr_const_char(cnt->ast, tok, type, tok->value.c);
     break;
 
   case BL_SYM_NULL:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR, 0);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, 0);
     break;
 
@@ -410,7 +410,7 @@ parse_const_expr_maybe(context_t *cnt)
   case BL_SYM_FALSE: {
     bl_tokens_consume(cnt->tokens);
     bool val   = tok->sym == BL_SYM_TRUE;
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL, 0);
     const_expr = bl_ast_add_expr_const_bool(cnt->ast, tok, type, val);
 
     break;
@@ -528,7 +528,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       /* Set result type to bool for logical binary operations, this is used for type checking later
        * in the compiler pipeline. Other types are checked recursively. */
       if (bl_token_is_logic_op(op)) {
-        result_type = bl_ast_add_type_fund(cnt->ast, op, BL_FTYPE_BOOL);
+        result_type = bl_ast_add_type_fund(cnt->ast, op, BL_FTYPE_BOOL, 0);
       }
 
       lhs = bl_ast_add_expr_binop(cnt->ast, op, op->sym, tmp, rhs, result_type);
@@ -605,7 +605,7 @@ parse_semicolon_rq(context_t *cnt)
 {
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_SEMICOLON) {
-    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "missing semicolon " BL_YELLOW("';'"));
+    parse_error(cnt, BL_ERR_MISSING_SEMICOLON, tok, "missing semicolon " BL_YELLOW("';'"));
   }
 }
 
@@ -625,9 +625,31 @@ parse_type_maybe(context_t *cnt)
       }
     }
 
+    size_t count = 0;
+    /* is type array type? */
+
+    bl_token_t *tok_arr_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBRACKET);
+    if (tok_arr_begin != NULL) {
+      /* TODO: elem count expression must be evaluated */
+      bl_token_t *tok_count = bl_tokens_consume_if(cnt->tokens, BL_SYM_NUM);
+      if (tok_count == NULL) {
+        parse_error(cnt, BL_ERR_INVALID_EXPR, tok_count,
+                    "expected array element count after " BL_YELLOW("'['"));
+      }
+
+      count = tok_count->value.u;
+
+      bl_token_t *tok_arr_end = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBRACKET);
+      if (tok_arr_end == NULL) {
+        parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_arr_end,
+                    "missing right bracked after array size definition " BL_YELLOW(
+                        "']'") ", started here: %d:%d",
+                    tok_arr_begin->src.line, tok_arr_begin->src.col);
+      }
+    }
+
     if (found > -1) {
-      // IDEA: use path also for fundamental types?
-      type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found);
+      type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found, count);
     } else {
       if (path == NULL) {
         path = bo_array_new(sizeof(bl_node_t *));
@@ -636,6 +658,7 @@ parse_type_maybe(context_t *cnt)
       bl_node_t *id_node = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
       bo_array_push_back(path, id_node);
 
+      /* TODO: set array count for reference types */
       type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path);
     }
   } else {
@@ -657,7 +680,7 @@ parse_ret_type_rq(context_t *cnt)
     break;
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
-    type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID);
+    type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID, 0);
     break;
   }
   default:
@@ -927,7 +950,7 @@ parse_fn_maybe(context_t *cnt, int modif)
 bl_node_t *
 parse_struct_member_maybe(context_t *cnt)
 {
-  bl_node_t *type = NULL;
+  bl_node_t *type  = NULL;
   bl_modif_e modif = parse_modifs_maybe(cnt);
 
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_IDENT)) {
@@ -1031,7 +1054,7 @@ parse_enum_maybe(context_t *cnt, int modif)
 
     if (type == NULL) {
       /* use i32 as default type when there is no other user specified */
-      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, 0);
     }
 
     enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif);

@@ -449,7 +449,6 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_DECL_REF: {
     bl_node_t *ref  = bl_peek_expr_decl_ref(expr)->ref;
-    BArray *   path = bl_peek_expr_decl_ref(expr)->path;
 
     switch (bl_node_code(ref)) {
     case BL_DECL_VAR: {
@@ -460,19 +459,6 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     case BL_DECL_ENUM_VARIANT: {
       bl_decl_enum_variant_t *variant = bl_peek_decl_enum_variant(ref);
       val                             = gen_expr(cnt, variant->expr);
-      break;
-    }
-
-    case BL_DECL_STRUCT_MEMBER: {
-      const size_t    c          = bo_array_size(path);
-      bl_node_t *     path_elem  = NULL;
-      bl_path_elem_t *_path_elem = NULL;
-      for (size_t i = 0; i < c; i++) {
-        path_elem  = bo_array_at(path, i, bl_node_t *);
-        _path_elem = bl_peek_path_elem(path_elem);
-        bl_log("path elem %d -> %s [%p]", i, bl_node_name(_path_elem->ref), _path_elem->ref);
-      }
-      bl_abort("cannot generate reference to %s", bl_node_name(ref));
       break;
     }
 

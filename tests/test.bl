@@ -1,42 +1,8 @@
-module game {
-  public struct vec2_t {
-    public x i32, 
-    public y i32
-  }
+/* testing playground */
 
-  public struct entity_t {
-    public position vec2_t,
-    name string
-  }
-
-  public fn new_entity(name string, position vec2_t) entity_t {
-    var entity entity_t;
-    entity.position = position;
-    entity.name = name;
-    return entity;
-  }
-
-  public fn new_vec2(x i32, y i32) vec2_t {
-    var vec vec2_t;
-    vec.x = x;
-    vec.y = y;
-    return vec;
-  }
-
-  public fn print_name(entity entity_t) {
-    _print_name(entity);
-  }
-
-  fn _print_name(entity entity_t) {
-    std::println(entity.name);
-  }
+fn test(arr i32[64]) {
 }
 
-fn main() i32 {
-  var position game::vec2_t = game::new_vec2(10, 20);
-  var player game::entity_t = game::new_entity("milan", position);
-  
-  game::print_name(player);
-
-  return 0;
+fn main() {
+   var arr i32[10];
 }

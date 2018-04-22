@@ -107,14 +107,15 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, size_t count)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
     type->src = &tok->src;
 
-  type->code                    = BL_TYPE_FUND;
-  bl_peek_type_fund(type)->type = t;
+  type->code                     = BL_TYPE_FUND;
+  bl_peek_type_fund(type)->type  = t;
+  bl_peek_type_fund(type)->count = count;
 
   return type;
 }

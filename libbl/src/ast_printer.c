@@ -96,8 +96,8 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
     print_path(bl_peek_type_ref(type)->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_type_ref(type)->ref);
   } else {
-    fprintf(stdout, "fundamental: " BL_MAGENTA("%s"),
-            bl_fund_type_strings[bl_peek_type_fund(type)->type]);
+    fprintf(stdout, "fundamental: " BL_MAGENTA("%s") " count: " BL_YELLOW("%zu"),
+            bl_fund_type_strings[bl_peek_type_fund(type)->type], bl_peek_type_fund(type)->count);
   }
   bl_visitor_walk_type(visitor, type);
 }

@@ -172,7 +172,6 @@ struct bl_decl_var
   bl_node_t *type;
   bl_node_t *init_expr;
   int        used;
-  int        order; /* TODO remove */
 };
 
 struct bl_decl_arg
@@ -264,7 +263,7 @@ struct bl_expr_binop
 struct bl_expr_decl_ref
 {
   BArray *   path;
-  bl_node_t *ref; // TODO: remove, can be used last path ref
+  bl_node_t *ref;
 };
 
 struct bl_expr_member_ref
@@ -283,18 +282,20 @@ struct bl_expr_call
 
 struct bl_path_elem
 {
-  bl_id_t    id;
+  bl_id_t id;
 };
 
 struct bl_type_fund
 {
   bl_fund_type_e type;
+  /* count is used for array types when it is greater than 0 ex.: var arr i32[1]; */
+  size_t count;
 };
 
 struct bl_type_ref
 {
   BArray *   path;
-  bl_node_t *ref; // TODO: remove, can be used last path ref
+  bl_node_t *ref;
 };
 
 struct bl_node
@@ -334,7 +335,7 @@ BL_NODE_TYPE_LIST
  * constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, size_t count);
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
