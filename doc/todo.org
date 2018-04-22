@@ -39,6 +39,7 @@
 
 
 * BUGS
+- [X] Unable to return struct member copy from the function
 
 * PIPELINE
 - file loader

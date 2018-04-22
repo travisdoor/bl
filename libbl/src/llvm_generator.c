@@ -728,7 +728,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 
   LLVMValueRef val = gen_expr(cnt, _ret->expr);
 
-  if (LLVMIsAAllocaInst(val))
+  if (LLVMIsAAllocaInst(val) || bl_node_is(_ret->expr, BL_EXPR_MEMBER_REF)) 
     val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
 
   LLVMBuildStore(cnt->llvm_builder, val, cnt->ret_value);

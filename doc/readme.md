@@ -77,12 +77,12 @@ Modules are similar to C++ namespaces.
       }
 
       public fn print_addition() {
-        c::printf("2 + 3 = %d\n", B.add(2, 3));
+        c::printf("2 + 3 = %d\n", B::add(2, 3));
       }
     }
 
     fn main() {
-      c::printf("2 + 3 = %d\n", A.B.add(2, 3));
+      c::printf("2 + 3 = %d\n", A::B::add(2, 3));
       A::print_addition();
       // A::B::priv_add(2, 3) generates error (method is private for module A::B)
     }
@@ -145,9 +145,41 @@ Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 	}
 	
 ## Struct
+Structures in BL are similar to C structures with a few exceptions: members are separated by comma
+and all members are private by default. Private members are visible only in current module in
+which is structure defined. Public members are visible for reading and writing from anywhere.
+Whole structure can be public also.
 
-	struct foo {
-	  i32 a,
-	  string b,
-	  f64 c
-	}
+    /* EXAMPLE: Struct */
+
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
+
+    module data {
+      public struct user_t {
+        public name string,
+        public age i32,
+        id i32 // private struct member is visible only inside current module
+      }
+
+      public fn new_user(name string, age i32) user_t {
+        var user user_t;
+        user.name = name;
+        user.age = age; 
+        user.id = 666; // id is visible inside current module
+        return user;
+      }
+
+      public fn get_id(user user_t) i32 {
+        return user.id;
+      }
+    }
+
+    fn main() {
+      var user data::user_t = data::new_user("Tereza", 24);
+      c::printf("Tereza is %d years old\n", user.age);
+      c::printf("Tereza has id %d\n", data::get_id(user));
+    }
+
+
