@@ -345,7 +345,7 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
   _strct->scope       = bl_scope_new(cnt->assembly->scope_cache);
   bl_node_t *  member = NULL;
   const size_t c      = bl_ast_struct_member_count(_strct);
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     member   = bl_ast_struct_get_member(_strct, i);
     conflict = bl_scope_get_node(_strct->scope, &bl_peek_decl_struct_member(member)->id);
 
@@ -381,7 +381,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
   _enm->scope          = bl_scope_new(cnt->assembly->scope_cache);
   bl_node_t *  variant = NULL;
   const size_t c       = bl_ast_enum_get_count(_enm);
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     variant  = bl_ast_enum_get_variant(_enm, i);
     conflict = bl_scope_get_node(_enm->scope, &bl_peek_decl_enum_variant(variant)->id);
 
@@ -439,7 +439,7 @@ pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct)
   const size_t             c      = bl_ast_struct_member_count(_strct);
   bl_node_t *              member;
   bl_decl_struct_member_t *_member;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     member  = bl_ast_struct_get_member(_strct, i);
     _member = bl_peek_decl_struct_member(member);
     satisfy_type(cnt, _member->type);
@@ -609,7 +609,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_merge, unit->ast.root);
   }
@@ -622,7 +622,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_pre_link, pre_link_struct, BL_VISIT_STRUCT);
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_pre_link, unit->ast.root);
   }
@@ -637,7 +637,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
   bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_link, unit->ast.root);
   }

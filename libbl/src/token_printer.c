@@ -39,7 +39,7 @@ bl_token_printer_run(bl_unit_t *unit)
   const size_t c = bo_array_size(tokens_arr);
   bl_token_t *tok;
   int line = -1;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     tok = &bo_array_at(tokens_arr, i, bl_token_t);
 
     if (line == -1) {

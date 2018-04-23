@@ -286,7 +286,7 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
   bl_decl_struct_member_t *_member = NULL;
   const size_t             c       = bl_ast_struct_member_count(_strct);
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     member  = bl_ast_struct_get_member(_strct, i);
     _member = bl_peek_decl_struct_member(member);
 
@@ -325,7 +325,7 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_decl_enum_variant_t *_prev_variant = NULL;
   const size_t            c             = bl_ast_enum_get_count(_enm);
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     _prev_variant = _variant;
     variant       = bl_ast_enum_get_variant(_enm, i);
     _variant      = bl_peek_decl_enum_variant(variant);
@@ -463,7 +463,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit             = bl_assembly_get_unit(assembly, i);
     cnt.current_unit = unit;
     bl_visitor_walk_module(&visitor, unit->ast.root);

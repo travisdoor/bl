@@ -59,7 +59,7 @@ print_path(BArray *path)
     return;
   const size_t c = bo_array_size(path);
   bl_node_t *  path_elem;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
     fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path_elem)->id.str);
     if (i != c - 1)
@@ -75,7 +75,7 @@ print_dims(BArray *dims)
 
   const size_t c = bo_array_size(dims);
   size_t       dim;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     dim = bo_array_at(dims, i, size_t);
     fprintf(stdout, BL_CYAN("[%zu]"), dim);
   }
@@ -307,7 +307,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
 
     fprintf(stdout, "\nAST for unit " BL_YELLOW("%s") ":", unit->name);

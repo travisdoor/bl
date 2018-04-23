@@ -565,6 +565,9 @@ bl_type_compatible(bl_node_t *first, bl_node_t *second);
 const char *
 bl_ast_try_get_type_name(bl_node_t *type);
 
+BArray *
+bl_ast_try_get_type_dims(bl_node_t *type);
+
 bl_node_t *
 bl_ast_path_get_last(BArray *path);
 /**************************************************************************************************/

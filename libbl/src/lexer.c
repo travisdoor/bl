@@ -367,7 +367,7 @@ scan:
    * Scan symbols described directly as strings.
    */
   size_t len = 0;
-  for (int i = BL_SYM_IF; i < BL_SYM_NONE; i++) {
+  for (int i = BL_SYM_IF; i < BL_SYM_NONE; ++i) {
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;

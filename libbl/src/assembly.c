@@ -55,7 +55,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
 
   const size_t c = bo_array_size(assembly->units);
   bl_unit_t *  unit;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
     bl_unit_delete(unit);
   }

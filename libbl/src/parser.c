@@ -652,7 +652,7 @@ parse_type_maybe(context_t *cnt)
 
   if (tok != NULL) {
     int found = -1;
-    for (int i = 0; i < BL_FUND_TYPE_COUNT; i++) {
+    for (int i = 0; i < BL_FUND_TYPE_COUNT; ++i) {
       if (strcmp(bl_fund_type_strings[i], tok->value.str) == 0) {
         found = i;
         break;

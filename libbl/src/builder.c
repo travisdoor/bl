@@ -141,7 +141,7 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
   bl_unit_t *  unit;
   bl_error_e   error;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
 
     /* IDEA: can run in separate thread */

@@ -158,7 +158,7 @@ bl_tokens_is_seq(bl_tokens_t *tokens, int cnt, ...)
   va_list valist;
   va_start(valist, cnt);
 
-  for (size_t i = tokens->iter; i < cnt && i < c; i++) {
+  for (size_t i = tokens->iter; i < cnt && i < c; ++i) {
     sym = va_arg(valist, bl_sym_e);
     if ((&bo_array_at(tokens->buf, i, bl_token_t))->sym != sym) {
       ret = false;

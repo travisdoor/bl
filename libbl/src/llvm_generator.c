@@ -113,6 +113,13 @@ static LLVMValueRef
 gen_member_ref(context_t *cnt, bl_node_t *member);
 
 static LLVMValueRef
+gen_array_ref(context_t *cnt, bl_node_t *member);
+
+static LLVMValueRef
+gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims,
+                size_t *dims_iter, size_t *iter);
+
+static LLVMValueRef
 gen_default(context_t *cnt, bl_node_t *type);
 
 static LLVMValueRef
@@ -134,7 +141,7 @@ LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   LLVMTypeRef llvm_type = NULL;
-  size_t      size = 0;
+  size_t      size      = 0;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     switch (_type->type) {
@@ -219,7 +226,7 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
   bl_node_t *  member;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     member     = bl_ast_struct_get_member(_strct, i);
     members[i] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
   }
@@ -249,7 +256,7 @@ gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
   }
 
   bl_node_t *arg = NULL;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     arg  = bl_ast_func_get_arg(func, i);
     *out = to_llvm_type(cnt, bl_peek_decl_var(arg)->type);
 
@@ -309,7 +316,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
   }
 
   bl_node_t *expr = NULL;
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
@@ -468,7 +475,11 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_MEMBER_REF: {
     val = gen_member_ref(cnt, expr);
-    // TODO
+    break;
+  }
+
+  case BL_EXPR_ARRAY_REF: {
+    val = gen_array_ref(cnt, expr);
     break;
   }
 
@@ -592,6 +603,52 @@ gen_member_ref(context_t *cnt, bl_node_t *member)
   return ptr;
 }
 
+LLVMValueRef
+gen_array_ref(context_t *cnt, bl_node_t *array)
+{
+  size_t  dim_mult = 1;
+  size_t  dim_iter = 0;
+  size_t  iter     = 0;
+  BArray *dims     = NULL;
+  return gen_array_ref_1(cnt, array, &dim_mult, &dims, &dim_iter, &iter);
+}
+
+LLVMValueRef
+gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims,
+                size_t *dims_iter, size_t *iter)
+{
+  LLVMValueRef ptr = NULL;
+
+  switch (bl_node_code(array)) {
+  case BL_EXPR_ARRAY_REF: {
+    bl_expr_array_ref_t *_array = bl_peek_expr_array_ref(array);
+    ptr            = gen_array_ref_1(cnt, _array->next, dim_mult, dims, dims_iter, iter);
+    const size_t i = _array->i * (*dim_mult);
+    *dim_mult      = (*dim_mult) * bo_array_at(*dims, *dims_iter, size_t);
+    ++(*dims_iter);
+
+    bl_log("array index %zu", i);
+    //return LLVMBuildGEP(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned int NumIndices, const char *Name)
+
+    break;
+  }
+
+  case BL_EXPR_DECL_REF: {
+    bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(array);
+    bl_decl_var_t *     _var      = bl_peek_decl_var(_decl_ref->ref);
+    ptr                           = get_value_cscope(_decl_ref->ref);
+    *dims                         = bl_ast_try_get_type_dims(_var->type);
+    break;
+  }
+
+  default:
+    bl_abort("invalid expression");
+  }
+
+  bl_assert(ptr, "invalid reference ptr");
+  return ptr;
+}
+
 /*************************************************************************************************
  * generate visitors
  *************************************************************************************************/
@@ -650,7 +707,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
      * when this compound statement is function body.
      */
     const size_t pc = bl_ast_func_arg_count(func);
-    for (int i = 0; i < pc; i++) {
+    for (int i = 0; i < pc; ++i) {
       bl_node_t *arg = bl_ast_func_get_arg(func, i);
 
       LLVMValueRef p = LLVMGetParam(llvm_func, i);
@@ -933,7 +990,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&gen_visitor, visit_break, BL_VISIT_BREAK);
   bl_visitor_add(&gen_visitor, visit_continue, BL_VISIT_CONTINUE);
 
-  for (int i = 0; i < c; i++) {
+  for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&top_visitor, unit->ast.root);
   }

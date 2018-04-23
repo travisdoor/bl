@@ -228,7 +228,7 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
   bl_decl_module_t *_module = bl_peek_decl_module(module);
   const size_t      c       = bl_ast_module_node_count(_module);
   bl_node_t *       node    = NULL;
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     node = bl_ast_module_get_node(_module, i);
 
     switch (bl_node_code(node)) {
@@ -268,7 +268,7 @@ bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
   const size_t    c   = bl_ast_func_arg_count(bl_peek_decl_func(func));
   bl_node_t *     arg = NULL;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     arg = bl_ast_func_get_arg(bl_peek_decl_func(func), i);
     call_visit(visitor, arg, BL_VISIT_ARG);
   }
@@ -304,7 +304,7 @@ bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct)
   const size_t      c      = bl_ast_struct_member_count(_strct);
   bl_node_t *       member = NULL;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     member = bl_ast_struct_get_member(_strct, i);
     call_visit(visitor, member, BL_VISIT_STRUCT_MEMBER);
   }
@@ -322,7 +322,7 @@ bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
   const size_t c       = bl_ast_enum_get_count(_enm);
   bl_node_t *  variant = NULL;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     variant = bl_ast_enum_get_variant(_enm, i);
     call_visit(visitor, variant, BL_VISIT_ENUM_VARIANT);
   }
@@ -352,7 +352,7 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t *block)
   const size_t c    = bl_ast_block_node_count(bl_peek_decl_block(block));
   bl_node_t *  node = NULL;
 
-  for (size_t i = 0; i < c; i++) {
+  for (size_t i = 0; i < c; ++i) {
     node = bl_ast_block_get_node(bl_peek_decl_block(block), i);
     walk_block_content(visitor, node);
   }
@@ -387,7 +387,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_expr_call_t *call = bl_peek_expr_call(expr);
     const size_t    c    = bl_ast_call_arg_count(call);
     bl_node_t *     arg  = NULL;
-    for (size_t i = 0; i < c; i++) {
+    for (size_t i = 0; i < c; ++i) {
       arg = bl_ast_call_get_arg(call, i);
       call_visit(visitor, arg, BL_VISIT_EXPR);
     }
