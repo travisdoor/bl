@@ -57,7 +57,6 @@ print_path(BArray *path)
 {
   if (!path)
     return;
-  // bl_assert(path, "invalid path");
   const size_t c = bo_array_size(path);
   bl_node_t *  path_elem;
   for (size_t i = 0; i < c; i++) {
@@ -65,6 +64,20 @@ print_path(BArray *path)
     fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path_elem)->id.str);
     if (i != c - 1)
       fprintf(stdout, BL_CYAN("::"));
+  }
+}
+
+static inline void
+print_dims(BArray *dims)
+{
+  if (!dims)
+    return;
+
+  const size_t c = bo_array_size(dims);
+  size_t       dim;
+  for (size_t i = 0; i < c; i++) {
+    dim = bo_array_at(dims, i, size_t);
+    fprintf(stdout, BL_CYAN("[%zu]"), dim);
   }
 }
 
@@ -93,15 +106,14 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   print_head("type", bl_peek_src(type), type, visitor->nesting);
   if (bl_node_is(type, BL_TYPE_REF)) {
-    print_path(bl_peek_type_ref(type)->path);
-    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_type_ref(type)->ref);
-    if (bl_peek_type_ref(type)->count)
-      fprintf(stdout, " count: " BL_YELLOW("%zu"), bl_peek_type_ref(type)->count);
+    bl_type_ref_t *_type = bl_peek_type_ref(type);
+    print_path(_type->path);
+    fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
+    print_dims(_type->dims);
   } else {
-    fprintf(stdout, "fundamental: " BL_MAGENTA("%s"),
-            bl_fund_type_strings[bl_peek_type_fund(type)->type]);
-    if (bl_peek_type_fund(type)->count)
-      fprintf(stdout, " count: " BL_YELLOW("%zu"), bl_peek_type_fund(type)->count);
+    bl_type_fund_t *_type = bl_peek_type_fund(type);
+    fprintf(stdout, "fundamental: " BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
+    print_dims(_type->dims);
   }
   bl_visitor_walk_type(visitor, type);
 }
@@ -219,25 +231,35 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     print_const_expr(bl_peek_expr_const(expr));
     break;
   }
+
   case BL_EXPR_BINOP:
     print_head("binop", bl_peek_src(expr), expr, visitor->nesting);
     fprintf(stdout, "operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);
     break;
+
   case BL_EXPR_DECL_REF:
     print_head("decl_ref", bl_peek_src(expr), expr, visitor->nesting);
     print_path(bl_peek_expr_decl_ref(expr)->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_decl_ref(expr)->ref);
     break;
+
   case BL_EXPR_MEMBER_REF:
     print_head("member_ref", bl_peek_src(expr), expr, visitor->nesting);
     fprintf(stdout, BL_YELLOW("'%s'") " -> " BL_YELLOW("%p"), bl_peek_expr_member_ref(expr)->id.str,
             bl_peek_expr_member_ref(expr)->ref);
     break;
+
+  case BL_EXPR_ARRAY_REF:
+    print_head("array_elem_ref", bl_peek_src(expr), expr, visitor->nesting);
+    fprintf(stdout, "id: " BL_YELLOW("%zu"), bl_peek_expr_array_ref(expr)->i);
+    break;
+
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);
     print_path(bl_peek_expr_call(expr)->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_call(expr)->ref);
     break;
+
   default:
     bl_abort("invalid expression");
   }

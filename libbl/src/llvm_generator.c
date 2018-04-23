@@ -134,7 +134,7 @@ LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   LLVMTypeRef llvm_type = NULL;
-  size_t      count     = 0;
+  size_t      size = 0;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     switch (_type->type) {
@@ -171,7 +171,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("unknown fundamenetal type");
     }
 
-    count = _type->count;
+    size = bl_ast_type_fund_dim_total_size(_type);
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -188,13 +188,13 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("invalid reference type");
     }
 
-    count = _type->count;
+    size = bl_ast_type_ref_dim_total_size(_type);
   }
 
   /* type is array */
-  if (count) {
+  if (size) {
     bl_log("trying to generate array");
-    llvm_type = LLVMArrayType(llvm_type, count);
+    llvm_type = LLVMArrayType(llvm_type, size);
   }
 
   return llvm_type;
@@ -366,7 +366,7 @@ gen_default(context_t *cnt, bl_node_t *type)
     LLVMTypeRef     llvm_type = to_llvm_type(cnt, type);
 
     /* skip arrays */
-    if (_type->count)
+    if (_type->dims)
       return NULL;
 
     switch (_type->type) {
@@ -391,7 +391,7 @@ gen_default(context_t *cnt, bl_node_t *type)
     }
   } else if (bl_node_code(type) == BL_TYPE_REF) {
     /* skip arrays */
-    if (bl_peek_type_ref(type)->count)
+    if (bl_peek_type_ref(type)->dims)
       return NULL;
 
     bl_node_t *ref = bl_peek_type_ref(type)->ref;

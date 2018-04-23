@@ -80,6 +80,9 @@ parse_block_maybe(context_t *cnt, bl_node_t *parent);
 static bl_node_t *
 parse_type_maybe(context_t *cnt);
 
+static bool
+parse_array_dim_maybe(context_t *cnt, size_t *count);
+
 static bl_node_t *
 parse_arg_maybe(context_t *cnt);
 
@@ -109,6 +112,9 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
 parse_member_ref_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_array_ref_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path);
@@ -316,6 +322,28 @@ parse_member_ref_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_array_ref_maybe(context_t *cnt)
+{
+  bl_node_t *array_ref = NULL;
+  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_LBRACKET)) {
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+
+    /* TODO: parse next exprsssion */
+    if (tok->sym != BL_SYM_NUM) {
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected array index");
+    }
+
+    array_ref = bl_ast_add_expr_array_ref(cnt->ast, tok, tok->value.u, NULL);
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (tok->sym != BL_SYM_RBRACKET) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "missing bracket " BL_YELLOW("']'"));
+    }
+  }
+  return array_ref;
+}
+
+bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path)
 {
   bl_node_t *call = NULL;
@@ -479,6 +507,9 @@ parse_atom_expr(context_t *cnt)
   bl_node_t *expr = NULL;
   BArray *   path = NULL;
 
+  if ((expr = parse_array_ref_maybe(cnt)))
+    return expr;
+
   if ((expr = parse_member_ref_maybe(cnt)))
     return expr;
 
@@ -518,7 +549,10 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 
-    if (op->sym == BL_SYM_DOT) {
+    if (op->sym == BL_SYM_LBRACKET) {
+      bl_peek_expr_array_ref(rhs)->next = lhs;
+      lhs                               = rhs;
+    } else if (op->sym == BL_SYM_DOT) {
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (bl_token_is_binop(op)) {
@@ -626,30 +660,13 @@ parse_type_maybe(context_t *cnt)
     }
 
     size_t count = 0;
-    /* is type array type? */
-
-    bl_token_t *tok_arr_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBRACKET);
-    if (tok_arr_begin != NULL) {
-      /* TODO: elem count expression must be evaluated */
-      bl_token_t *tok_count = bl_tokens_consume_if(cnt->tokens, BL_SYM_NUM);
-      if (tok_count == NULL) {
-        parse_error(cnt, BL_ERR_INVALID_EXPR, tok_count,
-                    "expected array element count after " BL_YELLOW("'['"));
-      }
-
-      count = tok_count->value.u;
-
-      bl_token_t *tok_arr_end = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBRACKET);
-      if (tok_arr_end == NULL) {
-        parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_arr_end,
-                    "missing right bracked after array size definition " BL_YELLOW(
-                        "']'") ", started here: %d:%d",
-                    tok_arr_begin->src.line, tok_arr_begin->src.col);
-      }
-    }
 
     if (found > -1) {
       type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found, count);
+
+      while (parse_array_dim_maybe(cnt, &count)) {
+        bl_ast_type_fund_push_dim(bl_peek_type_fund(type), count);
+      }
     } else {
       if (path == NULL) {
         path = bo_array_new(sizeof(bl_node_t *));
@@ -660,12 +677,44 @@ parse_type_maybe(context_t *cnt)
 
       /* TODO: set array count for reference types */
       type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path, count);
+
+      while (parse_array_dim_maybe(cnt, &count)) {
+        bl_ast_type_ref_push_dim(bl_peek_type_ref(type), count);
+      }
     }
   } else {
     bo_unref(path);
   }
 
   return type;
+}
+
+bool
+parse_array_dim_maybe(context_t *cnt, size_t *count)
+{
+  bl_token_t *tok_arr_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBRACKET);
+  if (tok_arr_begin != NULL) {
+    /* TODO: elem count expression must be evaluated */
+    bl_token_t *tok_count = bl_tokens_consume_if(cnt->tokens, BL_SYM_NUM);
+    if (tok_count == NULL) {
+      parse_error(cnt, BL_ERR_INVALID_EXPR, tok_count,
+                  "expected array element count after " BL_YELLOW("'['"));
+    }
+
+    *count = tok_count->value.u;
+
+    bl_token_t *tok_arr_end = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBRACKET);
+    if (tok_arr_end == NULL) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_arr_end,
+                  "missing right bracked after array size definition " BL_YELLOW(
+                      "']'") ", started here: %d:%d",
+                  tok_arr_begin->src.line, tok_arr_begin->src.col);
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 bl_node_t *

@@ -71,6 +71,7 @@
     nt(EXPR_BINOP,         expr_binop) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
     nt(EXPR_MEMBER_REF,    expr_member_ref) \
+    nt(EXPR_ARRAY_REF,     expr_array_ref) \
     nt(EXPR_CALL,          expr_call) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
@@ -273,6 +274,12 @@ struct bl_expr_member_ref
   bl_node_t *next;
 };
 
+struct bl_expr_array_ref
+{
+  size_t     i;
+  bl_node_t *next;
+};
+
 struct bl_expr_call
 {
   bl_node_t *ref;
@@ -289,14 +296,19 @@ struct bl_type_fund
 {
   bl_fund_type_e type;
   /* count is used for array types when it is greater than 0 ex.: var arr i32[1]; */
-  size_t count;
+  size_t count; // TODO: remove
+  /* dimensions are used when type is array */
+  BArray *dims;
 };
 
 struct bl_type_ref
 {
   BArray *   path;
   bl_node_t *ref;
-  size_t     count;
+  size_t     count; // TODO: remove
+
+  /* dimensions are used when type is array */
+  BArray *dims;
 };
 
 struct bl_node
@@ -373,6 +385,9 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next);
+
+bl_node_t *
+bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, size_t i, bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
@@ -498,6 +513,36 @@ bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i);
 
 size_t
 bl_ast_enum_get_count(bl_decl_enum_t *enm);
+
+/*************************************************************************************************
+ * type fund
+ *************************************************************************************************/
+void
+bl_ast_type_fund_push_dim(bl_type_fund_t *type, size_t dim);
+
+size_t
+bl_ast_type_fund_get_dim(bl_type_fund_t *type, const size_t i);
+
+size_t
+bl_ast_type_fund_get_dim_count(bl_type_fund_t *type);
+
+size_t
+bl_ast_type_fund_dim_total_size(bl_type_fund_t *type);
+
+/*************************************************************************************************
+ * type ref
+ *************************************************************************************************/
+void
+bl_ast_type_ref_push_dim(bl_type_ref_t *type, size_t dim);
+
+size_t
+bl_ast_type_ref_get_dim(bl_type_ref_t *type, const size_t i);
+
+size_t
+bl_ast_type_ref_get_dim_count(bl_type_ref_t *type);
+
+size_t
+bl_ast_type_ref_dim_total_size(bl_type_ref_t *type);
 
 /*************************************************************************************************
  * other

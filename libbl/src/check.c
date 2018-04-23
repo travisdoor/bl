@@ -224,6 +224,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
   case BL_EXPR_MEMBER_REF:
     return NULL;
 
+  case BL_EXPR_ARRAY_REF:
+    return NULL;
+
   default:
     bl_abort("node is not expression");
   }
