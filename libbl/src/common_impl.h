@@ -35,4 +35,6 @@
 #include "bl/messages.h"
 #include "blmemory_impl.h"
 
+#define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+
 #endif // BL_COMMON_IMPL_H

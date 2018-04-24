@@ -252,7 +252,7 @@ bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_
 }
 
 bl_node_t *
-bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, size_t i, bl_node_t *next)
+bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next)
 {
   bl_node_t *array_ref = alloc_node(ast);
   if (tok)
@@ -260,7 +260,7 @@ bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, size_t i, bl_node_t *n
 
   array_ref->code                 = BL_EXPR_ARRAY_REF;
   bl_expr_array_ref_t *_array_ref = bl_peek_expr_array_ref(array_ref);
-  _array_ref->i                   = i;
+  _array_ref->index               = index;
   _array_ref->next                = next;
 
   return array_ref;

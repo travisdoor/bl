@@ -1,17 +1,37 @@
 /* testing playground */
 
+module c {
+  public extern fn printf(s string, i i32) i32;
+}
+
 struct data_t {
+  x u64,
   a i32,
-  b i32[20]
+  b i32,
+  c i32,
+  arr i32[10]
 }
 
 fn main() {
-  var arr1 i32[10][5][2];
+   var arr i32[10];
+   arr[0] = 0;
+   arr[1] = 1;
+   arr[2] = 2;
+   arr[3] = 3;
 
-  arr1[0][1][2] = 10;
-  //arr2[1].a = 10;
-  //arr2[1].b[8] = 10;
-}
+   c::printf("arr[0] = %d\n", arr[0]); 
+   c::printf("arr[1] = %d\n", arr[1]); 
+   c::printf("arr[2] = %d\n", arr[2]); 
+   c::printf("arr[3] = %d\n", arr[3]); 
 
-fn test(arr1 i32[10], arr2 data_t[50]) i32[2] {
+   var data data_t;
+   data.arr[0] = 0;
+   data.arr[1] = 1;
+   data.arr[2] = 2;
+   data.arr[3] = 3;
+
+   c::printf("data.arr[0] = %d\n", data.arr[0]); 
+   c::printf("data.arr[1] = %d\n", data.arr[1]); 
+   c::printf("data.arr[2] = %d\n", data.arr[2]); 
+   c::printf("data.arr[3] = %d\n", data.arr[3]); 
 }

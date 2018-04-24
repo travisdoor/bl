@@ -276,7 +276,7 @@ struct bl_expr_member_ref
 
 struct bl_expr_array_ref
 {
-  size_t     i;
+  bl_node_t *index;
   bl_node_t *next;
 };
 
@@ -387,7 +387,7 @@ bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, size_t i, bl_node_t *next);
+bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);

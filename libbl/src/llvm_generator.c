@@ -110,14 +110,14 @@ static LLVMValueRef
 gen_binop(context_t *cnt, bl_node_t *binop);
 
 static LLVMValueRef
-gen_member_ref(context_t *cnt, bl_node_t *member);
+gen_member_ref(context_t *cnt, bl_node_t *member_ref);
 
 static LLVMValueRef
-gen_array_ref(context_t *cnt, bl_node_t *member);
+gen_array_ref(context_t *cnt, bl_node_t *array_ref);
 
-static LLVMValueRef
-gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims,
-                size_t *dims_iter, size_t *iter);
+/* static LLVMValueRef */
+/* gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims, */
+/*                 size_t *dims_iter, size_t *iter); */
 
 static LLVMValueRef
 gen_default(context_t *cnt, bl_node_t *type);
@@ -320,7 +320,8 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (LLVMIsAAllocaInst(val) || bl_node_is(expr, BL_EXPR_MEMBER_REF)) {
+    if (LLVMIsAAllocaInst(val) || bl_node_is(expr, BL_EXPR_MEMBER_REF) ||
+        bl_node_is(expr, BL_EXPR_ARRAY_REF)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
     } else {
       *out = val;
@@ -577,77 +578,70 @@ gen_binop(context_t *cnt, bl_node_t *binop)
 }
 
 LLVMValueRef
-gen_member_ref(context_t *cnt, bl_node_t *member)
+gen_member_ref(context_t *cnt, bl_node_t *member_ref)
 {
   LLVMValueRef ptr = NULL;
 
-  switch (bl_node_code(member)) {
-  case BL_EXPR_MEMBER_REF: {
-    bl_expr_member_ref_t *   _member_ref = bl_peek_expr_member_ref(member);
-    bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
-    ptr                                  = gen_member_ref(cnt, _member_ref->next);
-    ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
-                             gname(_member->id.str));
-    break;
-  }
-  case BL_EXPR_DECL_REF: {
-    bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(member);
-    ptr                           = get_value_cscope(_decl_ref->ref);
-    break;
-  }
-  default:
-    bl_abort("invalid expression");
-  }
-
-  bl_assert(ptr, "invalid reference ptr");
+  bl_expr_member_ref_t *   _member_ref = bl_peek_expr_member_ref(member_ref);
+  bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
+  ptr                                  = gen_expr(cnt, _member_ref->next);
+  ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
+                           gname(_member->id.str));
   return ptr;
 }
 
 LLVMValueRef
-gen_array_ref(context_t *cnt, bl_node_t *array)
+gen_array_ref(context_t *cnt, bl_node_t *array_ref)
 {
-  size_t  dim_mult = 1;
-  size_t  dim_iter = 0;
-  size_t  iter     = 0;
-  BArray *dims     = NULL;
-  return gen_array_ref_1(cnt, array, &dim_mult, &dims, &dim_iter, &iter);
-}
+  LLVMValueRef         ptr        = NULL;
+  bl_expr_array_ref_t *_array_ref = bl_peek_expr_array_ref(array_ref);
+  ptr                             = gen_expr(cnt, _array_ref->next);
 
-LLVMValueRef
-gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims,
-                size_t *dims_iter, size_t *iter)
-{
-  LLVMValueRef ptr = NULL;
+  LLVMValueRef indices[2];
+  indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+  indices[1] = gen_expr(cnt, _array_ref->index);
 
-  switch (bl_node_code(array)) {
-  case BL_EXPR_ARRAY_REF: {
-    bl_expr_array_ref_t *_array = bl_peek_expr_array_ref(array);
-    ptr            = gen_array_ref_1(cnt, _array->next, dim_mult, dims, dims_iter, iter);
-    const size_t i = _array->i * (*dim_mult);
-    *dim_mult      = (*dim_mult) * bo_array_at(*dims, *dims_iter, size_t);
-    ++(*dims_iter);
+  ptr = LLVMBuildGEP(cnt->llvm_builder, ptr, indices, BL_ARRAY_SIZE(indices), "");
 
-    bl_log("array index %zu", i);
-    //return LLVMBuildGEP(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned int NumIndices, const char *Name)
-
-    break;
-  }
-
-  case BL_EXPR_DECL_REF: {
-    bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(array);
-    bl_decl_var_t *     _var      = bl_peek_decl_var(_decl_ref->ref);
-    ptr                           = get_value_cscope(_decl_ref->ref);
-    *dims                         = bl_ast_try_get_type_dims(_var->type);
-    break;
-  }
-
-  default:
-    bl_abort("invalid expression");
-  }
-
-  bl_assert(ptr, "invalid reference ptr");
   return ptr;
 }
+
+/* LLVMValueRef */
+/* gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims, */
+/*                 size_t *dims_iter, size_t *iter) */
+/* { */
+/*   LLVMValueRef ptr = NULL; */
+
+/*   switch (bl_node_code(array)) { */
+/*   case BL_EXPR_ARRAY_REF: { */
+/*     bl_expr_array_ref_t *_array = bl_peek_expr_array_ref(array); */
+/*     ptr            = gen_array_ref_1(cnt, _array->next, dim_mult, dims, dims_iter, iter); */
+/*     const size_t i = _array->i * (*dim_mult); */
+/*     *dim_mult      = (*dim_mult) * bo_array_at(*dims, *dims_iter, size_t); */
+/*     ++(*dims_iter); */
+
+/*     bl_log("array index %zu", i); */
+/*     //return LLVMBuildGEP(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned
+ * int NumIndices, const char *Name) */
+
+/*     break; */
+/*   } */
+
+/*   case BL_EXPR_DECL_REF: { */
+/*     bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(array); */
+/*     bl_decl_var_t *     _var      = bl_peek_decl_var(_decl_ref->ref); */
+/*     ptr                           = get_value_cscope(_decl_ref->ref); */
+/*     *dims                         = bl_ast_try_get_type_dims(_var->type); */
+/*     break; */
+/*   } */
+
+/*   default: */
+/*     bl_abort("invalid expression"); */
+/*   } */
+
+/*   bl_assert(ptr, "invalid reference ptr"); */
+/*   return ptr; */
+/* } */
 
 /*************************************************************************************************
  * generate visitors

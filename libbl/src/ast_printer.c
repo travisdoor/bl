@@ -251,7 +251,6 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_ARRAY_REF:
     print_head("array_elem_ref", bl_peek_src(expr), expr, visitor->nesting);
-    fprintf(stdout, "id: " BL_YELLOW("%zu"), bl_peek_expr_array_ref(expr)->i);
     break;
 
   case BL_EXPR_CALL:

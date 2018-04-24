@@ -325,15 +325,15 @@ bl_node_t *
 parse_array_ref_maybe(context_t *cnt)
 {
   bl_node_t *array_ref = NULL;
-  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_LBRACKET)) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
 
-    /* TODO: parse next exprsssion */
-    if (tok->sym != BL_SYM_NUM) {
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected array index");
+  bl_token_t *tok = bl_tokens_peek_prev(cnt->tokens);
+  if (tok->sym == BL_SYM_LBRACKET) {
+    bl_node_t *index = parse_expr_maybe(cnt);
+    if (index == NULL) {
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected array indexing expression");
     }
 
-    array_ref = bl_ast_add_expr_array_ref(cnt->ast, tok, tok->value.u, NULL);
+    array_ref = bl_ast_add_expr_array_ref(cnt->ast, tok, index, NULL);
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RBRACKET) {

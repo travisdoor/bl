@@ -379,6 +379,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 
   case BL_EXPR_ARRAY_REF: {
+    call_visit(visitor, bl_peek_expr_array_ref(expr)->index, BL_VISIT_EXPR);
     call_visit(visitor, bl_peek_expr_array_ref(expr)->next, BL_VISIT_EXPR);
     break;
   }
