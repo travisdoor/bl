@@ -1,0 +1,74 @@
+/*
+ * Unit test runner
+ * ----------------
+ */
+
+module c {
+  public extern fn printf(msg string, s string) i32;
+  public extern fn puts(msg string) i32;
+  public extern fn system(cmd string) i32;
+}
+
+struct unit_t {
+  cmd string,
+  name string,
+  state i32
+}
+
+fn new_unit(cmd string, name string) unit_t {
+  var unit unit_t;
+  unit.cmd = cmd;
+  unit.name = name;
+  unit.state = 0;
+  return unit;
+}
+
+fn print_unit_result(unit unit_t) {
+  var str_state string;
+  if (unit.state == 0)
+    str_state = "OK";
+  else  
+    str_state = "FAIL";
+
+  c::printf("* [%s] ", str_state);
+  c::printf("%s\n", unit.name);
+}
+
+fn main() {
+  var units unit_t[15];
+
+  units[0]  = new_unit("blc -run src/decl_def_values_test.bl", "decl_def_values_test");
+  units[1]  = new_unit("blc -run src/enum_test.bl", "enum_test");
+  units[2]  = new_unit("blc -run src/expression_test.bl", "expression_test");
+  units[3]  = new_unit("blc -run src/factorial_test.bl", "factorial_test");
+  units[4]  = new_unit("blc -run src/if_test.bl", "if_test");
+  units[5]  = new_unit("blc -run src/loop_test.bl", "loop_test");
+  units[6]  = new_unit("blc -run src/method_ordering_test.bl", "method_ordering_test");
+  units[7]  = new_unit("blc -run src/module_test.bl", "module_test");
+  units[8]  = new_unit("blc -run src/simple_array_test.bl", "simple_array_test");
+  units[9]  = new_unit("blc -run src/simple_assignment_test.bl", "simple_assignment_test");
+  units[10] = new_unit("blc -run src/simple_ext_call_test.bl", "simple_ext_call_test");
+  units[11] = new_unit("blc -run src/simple_method_call_test.bl", "simple_method_call_test");
+  units[12] = new_unit("blc -run src/struct_test.bl", "struct_test");
+  units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub_statement_test");
+  units[14] = new_unit("blc -run src/while_test.bl", "while_test");
+
+  var i i32;
+  while (i < 15) {
+    var cmp_result i32 = c::system(units[i].cmd);
+    units[i].state = cmp_result;
+    i = i + 1;
+  }
+
+  c::puts("*****************************************");
+  c::puts("* Unit Testing Results");
+  c::puts("*");
+
+  i = 0;
+  while (i < 15) {
+    print_unit_result(units[i]);
+    i = i + 1;
+  }
+
+  c::puts("*****************************************");
+}

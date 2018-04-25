@@ -13,31 +13,36 @@ struct data_t {
 }
 
 fn main() {
-   var arr i32[10];
+  var arr i32[10];
 
-   arr[0] = 0;
-   arr[1] = 1;
-   arr[2] = 2;
-   arr[1 + 2] = 3; 
+  arr[0] = 0;
+  arr[1] = 1;
+  arr[2] = 2;
+  arr[1 + 2] = 3; 
+  arr[1 + get_id(1)] = 3; 
 
-   c::printf("arr[0] = %d\n", arr[0]); 
-   c::printf("arr[1] = %d\n", arr[1]); 
-   c::printf("arr[2] = %d\n", arr[2]); 
-   c::printf("arr[3] = %d\n", arr[3]); 
+  c::printf("arr[0] = %d\n", arr[0]); 
+  c::printf("arr[1] = %d\n", arr[1]); 
+  c::printf("arr[2] = %d\n", arr[2]); 
+  c::printf("arr[3] = %d\n", arr[3]); 
 
-   var data data_t;
-   data.arr[0] = 0;
-   data.arr[1] = 1;
-   data.arr[2] = 2;
-   data.arr[3] = 3;
+  var data data_t;
+  data.arr[0] = 0;
+  data.arr[1] = 1;
+  data.arr[2] = 2;
+  data.arr[3] = 3;
 
-   c::printf("data.arr[0] = %d\n", data.arr[0]); 
-   c::printf("data.arr[1] = %d\n", data.arr[1]); 
-   c::printf("data.arr[2] = %d\n", data.arr[2]); 
-   c::printf("data.arr[3] = %d\n", data.arr[3]); 
+  c::printf("data.arr[0] = %d\n", data.arr[0]); 
+  c::printf("data.arr[1] = %d\n", data.arr[1]); 
+  c::printf("data.arr[2] = %d\n", data.arr[2]); 
+  c::printf("data.arr[3] = %d\n", data.arr[3]); 
 
-   /*var arr2 i32[10][10][10];
-   arr2[1][2][3] = 10;
+  /*var arr2 i32[10][10][10];
+  arr2[1][2][3] = 10;
 
-   arr2[1 + 2][2][3] = 10;*/
+  arr2[1 + 2][2][3] = 10;*/
+}
+
+fn get_id(i i32) i32 {
+  return i + 1;
 }

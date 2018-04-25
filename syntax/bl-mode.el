@@ -88,7 +88,6 @@
 
 (defun bl-mode ()
   (interactive)
-  (setq-default indent-tabs-mode nil)
   (setq tab-width 2)
   (kill-all-local-variables)
   (use-local-map bl-mode-map)

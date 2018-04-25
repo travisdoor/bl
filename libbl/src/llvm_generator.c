@@ -539,10 +539,12 @@ gen_binop(context_t *cnt, bl_node_t *binop)
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs) || bl_node_is(_binop->lhs, BL_EXPR_MEMBER_REF))
+  if (LLVMIsAAllocaInst(lhs) || bl_node_is(_binop->lhs, BL_EXPR_MEMBER_REF) ||
+      bl_node_is(_binop->lhs, BL_EXPR_ARRAY_REF))
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
 
-  if (LLVMIsAAllocaInst(rhs) || bl_node_is(_binop->rhs, BL_EXPR_MEMBER_REF))
+  if (LLVMIsAAllocaInst(rhs) || bl_node_is(_binop->rhs, BL_EXPR_MEMBER_REF) ||
+      bl_node_is(_binop->rhs, BL_EXPR_ARRAY_REF))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   switch (_binop->op) {
@@ -597,9 +599,14 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref)
   bl_expr_array_ref_t *_array_ref = bl_peek_expr_array_ref(array_ref);
   ptr                             = gen_expr(cnt, _array_ref->next);
 
+  LLVMValueRef index = gen_expr(cnt, _array_ref->index);
+
+  if (LLVMIsAAllocaInst(index) || bl_node_is(_array_ref->index, BL_EXPR_MEMBER_REF))
+    index = LLVMBuildLoad(cnt->llvm_builder, index, gname("tmp"));
+
   LLVMValueRef indices[2];
   indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
-  indices[1] = gen_expr(cnt, _array_ref->index);
+  indices[1] = index;
 
   ptr = LLVMBuildGEP(cnt->llvm_builder, ptr, indices, BL_ARRAY_SIZE(indices), "");
 
