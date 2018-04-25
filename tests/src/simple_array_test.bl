@@ -1,0 +1,18 @@
+/*
+ * Unit test
+ * -----------
+ * While loop.
+ */
+
+module c {
+  public extern fn abort();
+}
+
+fn assert(expr bool) {
+   if (expr != true)
+     c::abort();
+}
+
+fn main() {
+  
+}

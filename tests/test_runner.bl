@@ -80,7 +80,7 @@ module bl_tester {
     units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub_statement_test");
     units[14] = new_unit("blc -run src/while_test.bl", "while_test");
   
-    c::puts("Wellcome to Biscuit Language Tester");
+    c::puts("Welcome to Biscuit Language Tester");
     var cmd ptr = c::malloc(1024); 
     loop {
       c::printf(">> ", "");
