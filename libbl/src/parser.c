@@ -102,7 +102,7 @@ static bl_node_t *
 parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence);
 
 static bl_node_t *
-parse_atom_expr(context_t *cnt);
+parse_atom_expr(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
 parse_const_expr_maybe(context_t *cnt);
@@ -111,10 +111,10 @@ static bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
-parse_member_ref_maybe(context_t *cnt);
+parse_member_ref_maybe(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
-parse_array_ref_maybe(context_t *cnt);
+parse_array_ref_maybe(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path);
@@ -299,16 +299,13 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path)
 }
 
 bl_node_t *
-parse_member_ref_maybe(context_t *cnt)
+parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
 {
+  if (!op)
+    return NULL;
+
   bl_node_t *member_ref = NULL;
-  /*
-   * try to parse member reference
-   * note: Previous "." symbol has been consumed by the expression parser so we need to check
-   * previous symbol, not current in this case. If previous symbol is "." it must be fallowed by
-   * identificator of struct member.
-   */
-  if (bl_tokens_previous_is(cnt->tokens, BL_SYM_DOT)) {
+  if (bl_token_is(op, BL_SYM_DOT)) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
     if (tok_id->sym != BL_SYM_IDENT) {
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected structure member name");
@@ -322,20 +319,21 @@ parse_member_ref_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_array_ref_maybe(context_t *cnt)
+parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
 {
-  bl_node_t *array_ref = NULL;
+  if (!op)
+    return NULL;
 
-  bl_token_t *tok = bl_tokens_peek_prev(cnt->tokens);
-  if (tok->sym == BL_SYM_LBRACKET) {
+  bl_node_t *array_ref = NULL;
+  if (bl_token_is(op, BL_SYM_LBRACKET)) {
     bl_node_t *index = parse_expr_maybe(cnt);
     if (index == NULL) {
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected array indexing expression");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, op, "expected array indexing expression");
     }
 
-    array_ref = bl_ast_add_expr_array_ref(cnt->ast, tok, index, NULL);
+    array_ref = bl_ast_add_expr_array_ref(cnt->ast, op, index, NULL);
 
-    tok = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RBRACKET) {
       parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "missing bracket " BL_YELLOW("']'"));
     }
@@ -502,15 +500,15 @@ next:
 }
 
 bl_node_t *
-parse_atom_expr(context_t *cnt)
+parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
   BArray *   path = NULL;
 
-  if ((expr = parse_array_ref_maybe(cnt)))
+  if ((expr = parse_array_ref_maybe(cnt, op)))
     return expr;
 
-  if ((expr = parse_member_ref_maybe(cnt)))
+  if ((expr = parse_member_ref_maybe(cnt, op)))
     return expr;
 
   if ((expr = parse_nested_expr_maybe(cnt)))
@@ -541,7 +539,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
   while (bl_token_prec(lookahead) >= min_precedence) {
     op = lookahead;
     bl_tokens_consume(cnt->tokens);
-    rhs       = parse_atom_expr(cnt);
+    rhs       = parse_atom_expr(cnt, op);
     lookahead = bl_tokens_peek(cnt->tokens);
 
     while (bl_token_prec(lookahead) > bl_token_prec(op)) {
@@ -577,7 +575,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
 bl_node_t *
 parse_expr_maybe(context_t *cnt)
 {
-  return parse_expr_1(cnt, parse_atom_expr(cnt), 0);
+  return parse_expr_1(cnt, parse_atom_expr(cnt, NULL), 0);
 }
 
 bl_node_t *
