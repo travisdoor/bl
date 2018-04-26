@@ -47,6 +47,7 @@ set(SOURCE_FILES
         src/token_printer.c
         src/assembly.c
         src/builder.c
+        src/evaluator.c
         src/lexer.c
         src/check.c
         src/bldebug.c

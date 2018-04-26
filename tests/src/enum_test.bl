@@ -10,7 +10,8 @@ enum state_e {
   S10 = 10,
   S11,
   S50 = 50,
-  S51
+  S51,
+  S53 = 50 + 3
 }
 
 enum names_e string { 

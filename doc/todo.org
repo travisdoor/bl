@@ -36,15 +36,15 @@
   - [ ] Parsing
 - [ ] For loop [0/1]
   - [ ] Parsing for (i i32 in 0..10) {}
-- [-] Other [1/6]
+- [-] Other [2/6]
   - [X] Constant "variable" declaration
-  - [ ] Improve unit testing 
+  - [X] Improve unit testing 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [ ] Constant expression evaluator
 - [ ] Unary operator (separate expression node in ast)
-- [ ] Pointers 
+- [ ] Pointers
 
 
 * BUGS
