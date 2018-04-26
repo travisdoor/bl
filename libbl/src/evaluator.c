@@ -39,6 +39,49 @@
 #include "ast/visitor_impl.h"
 
 /*************************************************************************************************
+ * evaluation
+ *************************************************************************************************/
+
+static bl_node_t *
+eval_expr(bl_node_t *expr);
+
+static bl_node_t *
+eval_binop(bl_node_t *binop);
+
+bl_node_t *
+eval_binop(bl_node_t *binop)
+{
+  bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
+  _binop->lhs             = eval_expr(_binop->lhs);
+  _binop->rhs             = eval_expr(_binop->rhs);
+
+  switch (_binop->op) {
+  case BL_SYM_PLUS:
+    bl_peek_expr_const(_binop->lhs)->value.s += bl_peek_expr_const(_binop->rhs)->value.s;
+    return _binop->lhs;
+  default:
+    bl_abort("unsupported eval operation %s", bl_sym_strings[_binop->op]);
+  }
+
+  bl_abort("invalid binop");
+}
+
+bl_node_t *
+eval_expr(bl_node_t *expr)
+{
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_BINOP:
+    return eval_binop(expr);
+  case BL_EXPR_CONST:
+    return expr;
+  default:
+    bl_abort("expression %s cannot be evaluated", bl_node_name(expr));
+  }
+
+  bl_abort("invalid expression");
+}
+
+/*************************************************************************************************
  * visitors
  *************************************************************************************************/
 
@@ -46,6 +89,8 @@ static void
 eval_enum_variant(bl_visitor_t *visitor, bl_node_t *var)
 {
   bl_log("trying to evaluate enum variant");
+  bl_decl_enum_variant_t *_var = bl_peek_decl_enum_variant(var);
+  _var->expr                   = eval_expr(_var->expr);
 }
 
 /*************************************************************************************************

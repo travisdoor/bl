@@ -378,7 +378,8 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 
       /* try to determinate next varaint expression */
     } else if (bl_node_is_not(_variant->expr, BL_EXPR_CONST)) {
-      bl_abort("enum variant must be const-expr for now");
+      // bl_abort("enum variant must be const-expr for now");
+      // TODO: enum variant check
     }
 
     check_expr(cnt, _variant->expr, _enm->type);

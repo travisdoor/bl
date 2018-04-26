@@ -11,7 +11,7 @@ enum state_e {
   S11,
   S50 = 50,
   S51,
-  S53 = 50 + 3
+  S53 = 50 + 3 + 12 + 13
 }
 
 enum names_e string { 
@@ -50,13 +50,17 @@ fn main() i32 {
   if (s != state_e::S51)
      return 6;
 
+  s = state_e::S53;
+  if (s != state_e::S53)
+     return 7;
+
   n = names_e::Tereza;
   if (n != names_e::Tereza)
-     return 7;
+     return 8;
 
   n = names_e::Milan;
   if (n != names_e::Milan)
-     return 8;
+     return 9;
 
   return 0;
 }
