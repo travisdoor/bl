@@ -143,6 +143,32 @@ Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 	  E,
 	  F
 	}
+
+## Array
+
+
+    /* EXAMPLE: Array */
+
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
+
+    fn main() {
+      var arr i32[256];
+      var i i32;
+
+      while (i < 256) {
+        arr[i] = i;
+        i = i + 1;
+      }
+
+      i = 0;
+      while (i < 256) {
+        c::printf("i = %d\n", i);
+        i = i + 1;
+      }
+    }
+
 	
 ## Struct
 Structures in BL are similar to C structures with a few exceptions: members are separated by comma
