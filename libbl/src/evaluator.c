@@ -74,6 +74,10 @@ eval_expr(bl_node_t *expr)
     return eval_binop(expr);
   case BL_EXPR_CONST:
     return expr;
+  case BL_EXPR_DECL_REF:
+    return eval_expr(bl_peek_expr_decl_ref(expr)->ref);
+  case BL_DECL_ENUM_VARIANT:
+    return eval_expr(bl_peek_decl_enum_variant(expr)->expr);
   default:
     bl_abort("expression %s cannot be evaluated", bl_node_name(expr));
   }

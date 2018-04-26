@@ -4,6 +4,8 @@
  * Enums.
  */
 
+extern fn printf(s string, e state_e) i32;
+
 enum state_e {
   S0,
   S00 = 0,
@@ -11,7 +13,8 @@ enum state_e {
   S11,
   S50 = 50,
   S51,
-  S53 = 50 + 3 + 12 + 13
+  S53 = 50 + 3 + 12 + 13,
+  S54 = S53 + 1
 }
 
 enum names_e string { 
@@ -53,6 +56,8 @@ fn main() i32 {
   s = state_e::S53;
   if (s != state_e::S53)
      return 7;
+
+  printf("S53 = %d\n", s);
 
   n = names_e::Tereza;
   if (n != names_e::Tereza)
