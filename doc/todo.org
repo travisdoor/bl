@@ -21,7 +21,7 @@
   - [ ] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
   - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
   - [ ] All public members in structure must have also public types -> print error 
-- [-] Array [4/7]
+- [-] Array [4/8]
   - [X] Parsing
   - [X] Array elem expression parsing 
   - [ ] LLVM generation 
@@ -29,10 +29,13 @@
   - [ ] Multidimensional arrays??? 
     decl_var should contain array with dimension sizes do recalculate positions later
     -> define helper methods for adding dimensions
+  - [ ] Array type checking (size and type) 
   - [X] Use expression reference instead number in [N] 
   - [ ] Handle zero sized arrays -> generate error (in check.c)
 - [ ] Casting [0/1]
   - [ ] Parsing
+- [ ] For loop [0/1]
+  - [ ] Parsing for (i i32 in 0..10) {}
 - [-] Other [1/6]
   - [X] Constant "variable" declaration
   - [ ] Improve unit testing 

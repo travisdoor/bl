@@ -40,9 +40,9 @@ module bl_tester {
     c::printf("%s\n", unit.name);
   }
 
-  fn test_all(units unit_t[15]) {
+  fn test_all(units unit_t[16]) {
     var i i32;
-    while (i < 15) {
+    while (i < 16) {
       var cmp_result i32 = c::system(units[i].cmd);
       units[i].state = cmp_result;
       i = i + 1;
@@ -62,7 +62,7 @@ module bl_tester {
   }
 
   fn main() {
-    var units unit_t[15];
+    var units unit_t[16];
   
     units[0]  = new_unit("blc -run src/decl_def_values_test.bl", "decl_def_values_test");
     units[1]  = new_unit("blc -run src/enum_test.bl", "enum_test");
@@ -79,6 +79,7 @@ module bl_tester {
     units[12] = new_unit("blc -run src/struct_test.bl", "struct_test");
     units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub_statement_test");
     units[14] = new_unit("blc -run src/while_test.bl", "while_test");
+    units[15] = new_unit("blc -run src/simple_array_test.bl", "simple_array_test");
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd ptr = c::malloc(1024); 
