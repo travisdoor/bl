@@ -153,7 +153,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
 
   switch (bl_node_code(ref)) {
   case BL_DECL_VAR: {
-    if (!(bl_peek_decl_var(ref)->modif & BL_MODIF_CONST)) {
+    if (!(bl_peek_decl_var(ref)->modif & BL_MODIF_CONST) && const_expr) {
       check_error(cnt, BL_ERR_INVALID_EXPR, ref,
                   "expected const-expr, variable reference cannot be evaluated at compile time");
     }
