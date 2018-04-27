@@ -292,7 +292,8 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 
     if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
       check_error(cnt, BL_ERR_INVALID_TYPE, _member->type,
-                  "structure cannot contains self-typed member " BL_YELLOW("'%s'"), _member->id.str);
+                  "structure cannot contains self-typed member " BL_YELLOW("'%s'"),
+                  _member->id.str);
     }
   }
 }
@@ -317,6 +318,32 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
        bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
                 "enumerator has invalid type, only numerical, string and char types are supported");
+  }
+
+  bl_visitor_walk_enum(visitor, enm);
+}
+
+static void
+visit_enum_variant(bl_visitor_t *visitor, bl_node_t *var)
+{
+  context_t *             cnt           = peek_cnt(visitor);
+  bl_decl_enum_variant_t *_var          = bl_peek_decl_enum_variant(var);
+  bl_node_t *             expected_type = bl_peek_decl_enum(_var->parent)->type;
+
+  if (_var->expr != NULL) {
+    /* check result type of the expression */
+    check_expr(cnt, _var->expr, expected_type);
+  } else {
+    bl_type_fund_t *type = bl_peek_type_fund(expected_type);
+    switch (type->type) {
+    case BL_FTYPE_CHAR:
+    case BL_FTYPE_STRING:
+      check_error(cnt, BL_ERR_EXPECTED_EXPR, var,
+                  "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?", _var->id.str);
+      break;
+    default:
+      break;
+    }
   }
 }
 
@@ -394,6 +421,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
   bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

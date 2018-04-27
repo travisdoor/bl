@@ -199,6 +199,19 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
   // TODO walk type???
 }
 
+static void
+eval_decl_var(bl_visitor_t *visitor, bl_node_t *var)
+{
+  context_t *    cnt  = peek_cnt(visitor);
+  bl_decl_var_t *_var = bl_peek_decl_var(var);
+  if (_var->modif & BL_MODIF_CONST) {
+    bl_assert(_var->init_expr, "constant declaration without init expression");
+    _var->init_expr = eval_expr(cnt, _var->init_expr);
+  }
+
+  bl_visitor_walk_var(visitor, var);
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -211,6 +224,7 @@ bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_eval, &cnt);
   bl_visitor_add(&visitor_eval, eval_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_eval, eval_type, BL_VISIT_TYPE);
+  bl_visitor_add(&visitor_eval, eval_decl_var, BL_VISIT_VAR);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

@@ -40,15 +40,20 @@
   - [ ] Parsing for (i i32 in 0..10) {}
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [3/6]
+- [-] Other [3/7]
   - [X] Constant "variable" declaration
+  - [ ] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
 - [ ] Unary operator (separate expression node in ast)
-- [ ] Evaluate const init expressions 
+- [X] Evaluate const init expressions 
+- [ ] Windows port!!!
+  - [ ] BObject compilation
+  - [ ] LLVM instalation
+  - [ ] Linker fix
 - [ ] Pointers
 
 

@@ -134,14 +134,24 @@ Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 	}
 	
 ## Enum
+Enumerators are by default of type i32 but they can be: i8, i32, i64, u8, u32, u64, f32, f64, string or char.
+String and char typed enumerators must have explicit const-expr value set.
 
+    // by default i32
 	enum foo {
-	  A = 0,
-	  B,
-	  C,
-	  D = 10,
-	  E,
-	  F
+	  A = 0,     // 0
+	  B,         // 1
+	  C,         // 2
+	  D = 10,    // 10
+	  E = D + 1, // 11
+	  F          // 12
+	}
+
+    // string enum (all variants must be explicitly set)
+	enum foo string {
+	  A = "A",     
+	  B = "B",    
+	  C = "C"      
 	}
 
 ## Array

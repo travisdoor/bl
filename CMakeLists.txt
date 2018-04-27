@@ -28,5 +28,5 @@ endif()
 
 add_subdirectory(libbl)
 add_subdirectory(blc)
-add_subdirectory(tests)
+# add_subdirectory(tests)
 
