@@ -48,10 +48,14 @@
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
 - [ ] Unary operator (separate expression node in ast)
+- [ ] Evaluate const init expressions 
 - [ ] Pointers
 
 
-* BUGS
+* BUGS [1/2]
+- [ ] When enumerator variant is used as array size, compiler 
+don't track usage of this enum and warn user about unused declaration.
+
 - [X] Unable to return struct member copy from the function
 
 * PIPELINE

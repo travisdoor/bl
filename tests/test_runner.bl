@@ -14,6 +14,11 @@ module bl_tester {
     public extern fn free(p ptr);
     public extern fn strcmp(a ptr, b string) i32;
   }
+
+  // HACK: replace with global constant when this feature will be implemented...
+  enum unit_count i32 {
+    c = 15
+  } 
   
   struct unit_t {
     cmd string,
@@ -40,9 +45,9 @@ module bl_tester {
     c::printf("%s\n", unit.name);
   }
 
-  fn test_all(units unit_t[16]) {
+  fn test_all(units unit_t[unit_count::c]) {
     var i i32;
-    while (i < 16) {
+    while (i < unit_count::c) {
       var cmp_result i32 = c::system(units[i].cmd);
       units[i].state = cmp_result;
       i = i + 1;
@@ -53,7 +58,7 @@ module bl_tester {
     c::puts("*");
   
     i = 0;
-    while (i < 16) {
+    while (i < unit_count::c) {
       print_unit_result(units[i]);
       i = i + 1;
     }
@@ -62,7 +67,7 @@ module bl_tester {
   }
 
   fn main() {
-    var units unit_t[16];
+    var units unit_t[unit_count::c];
   
     units[0]  = new_unit("blc -run src/decl_def_values_test.bl", "decl_def_values_test");
     units[1]  = new_unit("blc -run src/enum_test.bl", "enum_test");
@@ -79,7 +84,6 @@ module bl_tester {
     units[12] = new_unit("blc -run src/struct_test.bl", "struct_test");
     units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub_statement_test");
     units[14] = new_unit("blc -run src/while_test.bl", "while_test");
-    units[15] = new_unit("blc -run src/simple_array_test.bl", "simple_array_test");
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd ptr = c::malloc(1024); 

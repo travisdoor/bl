@@ -348,11 +348,10 @@ BL_NODE_TYPE_LIST
  * constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, size_t count);
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    size_t count);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
 
 bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
@@ -517,10 +516,10 @@ bl_ast_enum_get_count(bl_decl_enum_t *enm);
 /*************************************************************************************************
  * type fund
  *************************************************************************************************/
-void
-bl_ast_type_fund_push_dim(bl_type_fund_t *type, size_t dim);
+bl_node_t *
+bl_ast_type_fund_push_dim(bl_type_fund_t *type, bl_node_t *dim);
 
-size_t
+bl_node_t *
 bl_ast_type_fund_get_dim(bl_type_fund_t *type, const size_t i);
 
 size_t
@@ -532,10 +531,10 @@ bl_ast_type_fund_dim_total_size(bl_type_fund_t *type);
 /*************************************************************************************************
  * type ref
  *************************************************************************************************/
-void
-bl_ast_type_ref_push_dim(bl_type_ref_t *type, size_t dim);
+bl_node_t *
+bl_ast_type_ref_push_dim(bl_type_ref_t *type, bl_node_t *dim);
 
-size_t
+bl_node_t *
 bl_ast_type_ref_get_dim(bl_type_ref_t *type, const size_t i);
 
 size_t

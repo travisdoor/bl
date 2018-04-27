@@ -107,6 +107,11 @@ eval_expr(context_t *cnt, bl_node_t *expr)
     return eval_expr(cnt, bl_peek_expr_decl_ref(expr)->ref);
   case BL_DECL_ENUM_VARIANT:
     return eval_expr(cnt, bl_peek_decl_enum_variant(expr)->expr);
+  case BL_DECL_VAR: {
+    bl_decl_var_t *_var = bl_peek_decl_var(expr);
+    bl_assert(_var->modif & BL_MODIF_CONST, "cannot evaluate non-const variable");
+    return _var->init_expr;
+  }
   default:
     bl_abort("expression %s cannot be evaluated", bl_node_name(expr));
   }
@@ -139,10 +144,11 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
     prev_variant = curr_variant;
     curr_variant = bl_ast_enum_get_variant(_enm, i);
 
-  /* 
-   * there can be enum variants without explicit init expression declaration spicified in code, in
-   * such case we need to generate those expressions automatically as previous variant reference + 1
-   */
+    /*
+     * there can be enum variants without explicit init expression declaration spicified in code, in
+     * such case we need to generate those expressions automatically as previous variant reference +
+     * 1
+     */
     if (bl_peek_decl_enum_variant(curr_variant)->expr == NULL) {
       if (prev_variant == NULL) {
         /* create default constant init expression */
@@ -164,6 +170,35 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
   }
 }
 
+static void
+eval_type(bl_visitor_t *visitor, bl_node_t *type)
+{
+  context_t *cnt  = peek_cnt(visitor);
+  BArray *   dims = NULL;
+
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND: {
+    dims = bl_peek_type_fund(type)->dims;
+    break;
+  }
+  case BL_TYPE_REF:
+    dims = bl_peek_type_ref(type)->dims;
+    break;
+  default:
+    bl_abort("invalid type %s", bl_node_name(type));
+  }
+
+  if (dims) {
+    bl_node_t *  dim = NULL;
+    const size_t c   = bo_array_size(dims);
+    for (size_t i = 0; i < c; ++i) {
+      dim                                    = bo_array_at(dims, i, bl_node_t *);
+      *((bl_node_t **)_bo_array_at(dims, i)) = eval_expr(cnt, dim);
+    }
+  }
+  // TODO walk type???
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -175,6 +210,7 @@ bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor_eval;
   bl_visitor_init(&visitor_eval, &cnt);
   bl_visitor_add(&visitor_eval, eval_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_eval, eval_type, BL_VISIT_TYPE);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

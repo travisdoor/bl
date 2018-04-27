@@ -74,10 +74,10 @@ print_dims(BArray *dims)
     return;
 
   const size_t c = bo_array_size(dims);
-  size_t       dim;
+  bl_node_t *  dim;
   for (size_t i = 0; i < c; ++i) {
-    dim = bo_array_at(dims, i, size_t);
-    fprintf(stdout, BL_CYAN("[%zu]"), dim);
+    dim = bo_array_at(dims, i, bl_node_t *);
+    fprintf(stdout, BL_CYAN("[%p]"), dim);
   }
 }
 

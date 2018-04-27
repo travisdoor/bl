@@ -5,17 +5,18 @@
  */
 
 fn main() i32 {
-  var arr i32[256];  
+  const count i32 = 256;
+  var arr i32[count];  
   var i i32;
 
-  while (i < 256) {
+  while (i < count) {
     arr[i] = i;
     i = i + 1;
   }
 
 
   i = 0;
-  while (i < 256) {
+  while (i < count) {
     if (arr[i] != i)
       return 1;
     i = i + 1;
