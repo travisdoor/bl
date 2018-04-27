@@ -8,13 +8,16 @@ extern fn printf(s string, e state_e) i32;
 
 enum state_e {
   S0,
-  S00 = 0,
-  S10 = 10,
-  S11,
-  S50 = 50,
-  S51,
-  S53 = 50 + 3 + 12 + 13,
-  S54 = S53 + 1
+  S1,
+  S2 = 10,
+  S3,
+  S4 = 50,
+  S5,
+  S6 = 50 + 3 + 12 + 13,
+  S7 = S6 + 1,
+  S8 = S7 * (1 + S2),
+  S9, // S8 + 1
+  S10 // S9 + 1
 }
 
 enum names_e string { 
@@ -32,40 +35,65 @@ fn main() i32 {
   s = state_e::S0;
   if (s != state_e::S0)
      return 2;
+  printf("S0 = %d\n", s);
 
-  s = state_e::S00;
-  if (s != state_e::S00)
+  s = state_e::S1;
+  if (s != state_e::S1)
      return 3;
+  printf("S1 = %d\n", s);
+
+  s = state_e::S2;
+  if (s != state_e::S2)
+     return 4;
+  printf("S2 = %d\n", s);
+
+  s = state_e::S3;
+  if (s != state_e::S3)
+     return 5;
+  printf("S3 = %d\n", s);
+
+  s = state_e::S4;
+  if (s != state_e::S4)
+     return 6;
+  printf("S4 = %d\n", s);
+
+  s = state_e::S5;
+  if (s != state_e::S5)
+     return 6;
+  printf("S5 = %d\n", s);
+
+  s = state_e::S6;
+  if (s != state_e::S6)
+     return 7;
+  printf("S6 = %d\n", s);
+
+  s = state_e::S7;
+  if (s != state_e::S7)
+     return 8;
+  printf("S7 = %d\n", s);
+
+  s = state_e::S8;
+  if (s != state_e::S8)
+     return 8;
+  printf("S8 = %d\n", s);
+
+  s = state_e::S9;
+  if (s != state_e::S9)
+     return 9;
+  printf("S9 = %d\n", s);
 
   s = state_e::S10;
   if (s != state_e::S10)
-     return 4;
-
-  s = state_e::S11;
-  if (s != state_e::S11)
-     return 5;
-
-  s = state_e::S50;
-  if (s != state_e::S50)
-     return 6;
-
-  s = state_e::S51;
-  if (s != state_e::S51)
-     return 6;
-
-  s = state_e::S53;
-  if (s != state_e::S53)
-     return 7;
-
-  printf("S53 = %d\n", s);
+     return 10;
+  printf("S10 = %d\n", s);
 
   n = names_e::Tereza;
   if (n != names_e::Tereza)
-     return 8;
+     return 11;
 
   n = names_e::Milan;
   if (n != names_e::Milan)
-     return 9;
+     return 12;
 
   return 0;
 }

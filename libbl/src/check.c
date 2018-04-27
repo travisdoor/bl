@@ -162,9 +162,9 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
   }
 
   case BL_DECL_ENUM_VARIANT: {
-    ref_type = bl_peek_decl_enum_variant(ref)->parent;
+    ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
 
-    if (ref_type != bl_peek_type_ref(expected_type)->ref) {
+    if (!bl_type_compatible(ref_type, expected_type)) {
       check_error(
           cnt, BL_ERR_INVALID_TYPE, decl_ref,
           "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
@@ -317,72 +317,6 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
        bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
                 "enumerator has invalid type, only numerical, string and char types are supported");
-  }
-
-  /* check all expressions of enum variants */
-  bl_node_t *             variant       = NULL;
-  bl_decl_enum_variant_t *_variant      = NULL;
-  bl_decl_enum_variant_t *_prev_variant = NULL;
-  const size_t            c             = bl_ast_enum_get_count(_enm);
-
-  for (size_t i = 0; i < c; ++i) {
-    _prev_variant = _variant;
-    variant       = bl_ast_enum_get_variant(_enm, i);
-    _variant      = bl_peek_decl_enum_variant(variant);
-
-    if (_variant->expr == NULL) {
-      if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_STRING) {
-        check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
-                    "missing expression for variant " BL_YELLOW(
-                        "'%s'") " (string enumerator cannot increment it's automatically)",
-                    _variant->id.str);
-      }
-
-      if (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_CHAR) {
-        check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
-                    "missing expression for variant " BL_YELLOW(
-                        "'%s'") " (char enumerator cannot increment it's automatically)",
-                    _variant->id.str);
-      }
-
-      _variant->expr = bl_ast_add_expr_const(&cnt->current_unit->ast, NULL, _enm->type);
-
-      switch (bl_peek_type_fund(_enm->type)->type) {
-      case BL_FTYPE_I8:
-      case BL_FTYPE_I32:
-      case BL_FTYPE_I64: {
-        long long tmp = _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.s + 1 : 0;
-        bl_peek_expr_const(_variant->expr)->value.s = tmp;
-        break;
-      }
-
-      case BL_FTYPE_U8:
-      case BL_FTYPE_U32:
-      case BL_FTYPE_U64: {
-        unsigned long long tmp =
-            _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.u + 1 : 0;
-        bl_peek_expr_const(_variant->expr)->value.u = tmp;
-        break;
-      }
-
-      case BL_FTYPE_F32:
-      case BL_FTYPE_F64: {
-        double tmp = _prev_variant ? bl_peek_expr_const(_prev_variant->expr)->value.f + 1.0 : 0.0;
-        bl_peek_expr_const(_variant->expr)->value.f = tmp;
-        break;
-      }
-
-      default:
-        bl_abort("missing variant expr for enum: %s", _enm->id.str);
-      }
-
-      /* try to determinate next varaint expression */
-    } else if (bl_node_is_not(_variant->expr, BL_EXPR_CONST)) {
-      // bl_abort("enum variant must be const-expr for now");
-      // TODO: enum variant check
-    }
-
-    check_expr(cnt, _variant->expr, _enm->type);
   }
 }
 

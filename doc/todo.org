@@ -1,12 +1,13 @@
 * TASKS
-- [-] Enum [7/8]
+- [-] Enum [8/9]
   - [X] Enum declaration
   - [X] Enum variant node
   - [X] Enum type generation 
   - [X] Enum instance (unitialized) should have first enum value if there is one 
   - [X] Enum unit test 
   - [X] Enum member access 
-  - [ ] Enum base expression generation (only numbers accepted for now)
+  - [X] Enum base expression generation (only numbers accepted for now)
+  - [ ] All expressions passed into evaluation must be validated by check as consts 
   - [X] Check enum non-existing variant expression  
 - [-] Struct [8/12]
   - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
@@ -21,7 +22,7 @@
   - [ ] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
   - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
   - [ ] All public members in structure must have also public types -> print error 
-- [-] Array [4/8]
+- [-] Array [4/9]
   - [X] Parsing
   - [X] Array elem expression parsing 
   - [ ] LLVM generation 
@@ -31,18 +32,21 @@
     -> define helper methods for adding dimensions
   - [ ] Array type checking (size and type) 
   - [X] Use expression reference instead number in [N] 
+  - [ ] Array definition size as const expr 
   - [ ] Handle zero sized arrays -> generate error (in check.c)
 - [ ] Casting [0/1]
   - [ ] Parsing
 - [ ] For loop [0/1]
   - [ ] Parsing for (i i32 in 0..10) {}
-- [-] Other [2/6]
+- [ ] Variable argument type [0/1]
+  - [ ] Parsing
+- [-] Other [3/6]
   - [X] Constant "variable" declaration
   - [X] Improve unit testing 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
-  - [ ] Constant expression evaluator
+  - [X] Constant expression evaluator
 - [ ] Unary operator (separate expression node in ast)
 - [ ] Pointers
 
@@ -58,6 +62,7 @@
 - linker
 - ast printer
 - check
+- const expr evaluation
 - llvm generator
 - llvm jit execute
 - llvm byte-code writer

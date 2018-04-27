@@ -116,6 +116,9 @@ static void
 link_expr(bl_visitor_t *visitor, bl_node_t *expr);
 
 static void
+link_enum(bl_visitor_t *visitor, bl_node_t *enm);
+
+static void
 link_type(bl_visitor_t *visitor, bl_node_t *type);
 
 static void
@@ -516,6 +519,20 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 }
 
 void
+link_enum(bl_visitor_t *visitor, bl_node_t *enm)
+{
+  context_t *     cnt  = peek_cnt(visitor);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+
+  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
+  cnt->mod_scope             = _enm->scope;
+  bl_assert(cnt->mod_scope, "invalid next scope");
+
+  bl_visitor_walk_enum(visitor, enm);
+  cnt->mod_scope = prev_scope_tmp;
+}
+
+void
 link_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   context_t *cnt = peek_cnt(visitor);
@@ -639,6 +656,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_link, link_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
   for (int i = 0; i < c; ++i) {

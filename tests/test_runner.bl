@@ -53,7 +53,7 @@ module bl_tester {
     c::puts("*");
   
     i = 0;
-    while (i < 15) {
+    while (i < 16) {
       print_unit_result(units[i]);
       i = i + 1;
     }
