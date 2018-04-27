@@ -18,5 +18,5 @@ enum test_e {
 */
 
 enum invalid string {
-  A
+  A = 12
 }

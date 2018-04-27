@@ -62,23 +62,28 @@ static bl_node_t bool_ftype = {
     .src = NULL, .code = BL_TYPE_FUND, .n.type_fund.type = BL_FTYPE_BOOL};
 
 static bl_node_t *
-check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type);
+check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
-check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type);
+check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
-check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type);
+check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
-check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type);
+check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
-check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type);
+check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool const_expr);
 
 bl_node_t *
-check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
+check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr)
 {
+  if (const_expr) {
+    check_error(cnt, BL_ERR_INVALID_EXPR, call,
+                "expected const-expr, function call cannot be evaluated at compile time");
+  }
+
   bl_expr_call_t *_call  = bl_peek_expr_call(call);
   bl_node_t *     callee = _call->ref;
   bl_assert(callee, "invalid callee in function type check");
@@ -114,14 +119,14 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type)
     callee_arg = bl_ast_func_get_arg(_callee, i);
     call_arg   = bl_ast_call_get_arg(_call, i);
 
-    check_expr(cnt, call_arg, bl_peek_decl_var(callee_arg)->type);
+    check_expr(cnt, call_arg, bl_peek_decl_var(callee_arg)->type, false);
   }
 
   return _callee->ret_type;
 }
 
 bl_node_t *
-check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
+check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_const_t *_cnst = bl_peek_expr_const(cnst);
 
@@ -138,7 +143,7 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type)
 }
 
 bl_node_t *
-check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
+check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bool const_expr)
 {
   bl_node_t *ref      = bl_peek_expr_decl_ref(decl_ref)->ref;
   bl_node_t *ref_type = NULL;
@@ -148,6 +153,11 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
 
   switch (bl_node_code(ref)) {
   case BL_DECL_VAR: {
+    if (!(bl_peek_decl_var(ref)->modif & BL_MODIF_CONST)) {
+      check_error(cnt, BL_ERR_INVALID_EXPR, ref,
+                  "expected const-expr, variable reference cannot be evaluated at compile time");
+    }
+
     ref_type = bl_peek_decl_var(ref)->type;
 
     if (!bl_type_compatible(ref_type, expected_type)) {
@@ -182,7 +192,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type)
 }
 
 bl_node_t *
-check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
+check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
 
@@ -196,8 +206,8 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
     expected_type = NULL;
   }
 
-  bl_node_t *lhs_type = check_expr(cnt, _binop->lhs, expected_type);
-  check_expr(cnt, _binop->rhs, lhs_type);
+  bl_node_t *lhs_type = check_expr(cnt, _binop->lhs, expected_type, const_expr);
+  check_expr(cnt, _binop->rhs, lhs_type, const_expr);
 
   if (_binop->type == NULL)
     return lhs_type;
@@ -206,20 +216,20 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type)
 }
 
 bl_node_t *
-check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type)
+check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr)
 {
   switch (bl_node_code(expr)) {
   case BL_EXPR_DECL_REF:
-    return check_decl_ref(cnt, expr, expected_type);
+    return check_decl_ref(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_CALL:
-    return check_call(cnt, expr, expected_type);
+    return check_call(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_BINOP:
-    return check_binop(cnt, expr, expected_type);
+    return check_binop(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_CONST:
-    return check_const(cnt, expr, expected_type);
+    return check_const(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_MEMBER_REF:
     return NULL;
@@ -246,7 +256,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     check_warning(cnt, expr, "expression has no effect");
   }
 
-  check_expr(cnt, expr, NULL);
+  check_expr(cnt, expr, NULL, false);
 }
 
 static void
@@ -263,7 +273,7 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   }
 
   if (_var->init_expr != NULL) {
-    check_expr(cnt, _var->init_expr, _var->type);
+    check_expr(cnt, _var->init_expr, _var->type, _var->modif & BL_MODIF_CONST);
   }
 }
 
@@ -332,7 +342,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *var)
 
   if (_var->expr != NULL) {
     /* check result type of the expression */
-    check_expr(cnt, _var->expr, expected_type);
+    check_expr(cnt, _var->expr, expected_type, true);
   } else {
     bl_type_fund_t *type = bl_peek_type_fund(expected_type);
     switch (type->type) {
@@ -370,7 +380,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
   bl_node_t *       expected_type = bl_peek_decl_func(cnt->curr_func)->ret_type;
 
   if (_ret->expr)
-    check_expr(cnt, _ret->expr, expected_type);
+    check_expr(cnt, _ret->expr, expected_type, false);
 }
 
 static void
@@ -379,7 +389,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
   bl_stmt_if_t *_if = bl_peek_stmt_if(if_stmt);
-  check_expr(cnt, _if->test, &bool_ftype);
+  check_expr(cnt, _if->test, &bool_ftype, false);
 
   bl_visitor_walk_if_true(visitor, if_stmt);
   if (_if->false_stmt)
@@ -392,7 +402,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
   bl_stmt_loop_t *_loop = bl_peek_stmt_loop(loop);
-  check_expr(cnt, _loop->test, &bool_ftype);
+  check_expr(cnt, _loop->test, &bool_ftype, false);
 
   bl_visitor_walk_loop_body(visitor, loop);
 }
