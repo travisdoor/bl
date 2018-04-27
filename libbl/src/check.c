@@ -206,6 +206,22 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
     expected_type = NULL;
   }
 
+  switch (_binop->op) {
+  case BL_SYM_ASIGN:
+    if (bl_node_is(_binop->lhs, BL_EXPR_DECL_REF) &&
+        bl_node_is(bl_peek_expr_decl_ref(_binop->lhs)->ref, BL_DECL_VAR)) {
+      bl_decl_var_t *_var = bl_peek_decl_var(bl_peek_expr_decl_ref(_binop->lhs)->ref);
+      if (_var->modif & BL_MODIF_CONST) {
+        check_error(cnt, BL_ERR_INVALID_EXPR, binop,
+                    "constant " BL_YELLOW("'%s'") " is not mutable and it's value cannot be changed ",
+                    _var->id.str);
+      }
+    }
+    break;
+  default:
+    break;
+  }
+
   bl_node_t *lhs_type = check_expr(cnt, _binop->lhs, expected_type, const_expr);
   check_expr(cnt, _binop->rhs, lhs_type, const_expr);
 

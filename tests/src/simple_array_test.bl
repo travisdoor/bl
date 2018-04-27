@@ -1,7 +1,7 @@
 /*
  * Unit test
  * -----------
- * While loop.
+ * Simple array test 
  */
 
 fn main() i32 {

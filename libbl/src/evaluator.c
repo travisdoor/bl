@@ -34,15 +34,25 @@
  * Ex.: var arr i32[10 + 2]; is evaluated to var arr i32[12];
  *************************************************************************************************/
 
+#include <setjmp.h>
 #include "common_impl.h"
 #include "stages_impl.h"
 #include "ast/visitor_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
+#define eval_error(cnt, code, node, format, ...)                                                   \
+  {                                                                                                \
+    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,     \
+                     (node)->src->col, ##__VA_ARGS__);                                             \
+    longjmp((cnt)->jmp_error, (code));                                                             \
+  }
+
 typedef struct
 {
-  bl_ast_t *ast;
+  bl_builder_t *builder;
+  bl_ast_t *    ast;
+  jmp_buf       jmp_error;
 } context_t;
 
 /*************************************************************************************************
@@ -189,11 +199,18 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
   }
 
   if (dims) {
-    bl_node_t *  dim = NULL;
-    const size_t c   = bo_array_size(dims);
+    bl_node_t *  dim    = NULL;
+    bl_node_t *  result = NULL;
+    const size_t c      = bo_array_size(dims);
     for (size_t i = 0; i < c; ++i) {
-      dim                                    = bo_array_at(dims, i, bl_node_t *);
-      *((bl_node_t **)_bo_array_at(dims, i)) = eval_expr(cnt, dim);
+      dim    = bo_array_at(dims, i, bl_node_t *);
+      result = eval_expr(cnt, dim);
+
+      if (bl_peek_expr_const(result)->value.u == 0) {
+        eval_error(cnt, BL_ERR_INVALID_EXPR, type, "arrays with zero size are not allowed");
+      }
+
+      *((bl_node_t **)_bo_array_at(dims, i)) = result;
     }
   }
   // TODO walk type???
@@ -219,6 +236,12 @@ bl_error_e
 bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt;
+  cnt.builder = builder;
+
+  int error = 0;
+  if ((error = setjmp(cnt.jmp_error))) {
+    return (bl_error_e)error;
+  }
 
   bl_visitor_t visitor_eval;
   bl_visitor_init(&visitor_eval, &cnt);
