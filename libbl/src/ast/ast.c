@@ -323,6 +323,24 @@ bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
+bl_ast_add_decl_const(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+                      bl_node_t *init_expr, int modif)
+{
+  bl_node_t *cnst = alloc_node(ast);
+  if (tok)
+    cnst->src = &tok->src;
+
+  cnst->code                        = BL_DECL_CONST;
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  _cnst->init_expr = init_expr;
+  _cnst->type      = type;
+  _cnst->modif     = modif;
+  bl_id_init(&_cnst->id, name);
+
+  return cnst;
+}
+
+bl_node_t *
 bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type)
 {
   bl_node_t *arg = alloc_node(ast);

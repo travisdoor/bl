@@ -38,6 +38,12 @@
   - [ ] Parsing
 - [ ] For loop [0/1]
   - [ ] Parsing for (i i32 in 0..10) {}
+- [ ] Global/local const [0/5]
+  - [ ] Unique node
+  - [ ] Parsing
+  - [ ] Visitor and linking
+  - [ ] Evaluation
+  - [ ] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
 - [-] Other [4/7]

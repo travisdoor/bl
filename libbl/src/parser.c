@@ -96,6 +96,9 @@ static bl_node_t *
 parse_var_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
+parse_const_maybe(context_t *cnt, int modif);
+
+static bl_node_t *
 parse_expr_maybe(context_t *cnt);
 
 static bl_node_t *

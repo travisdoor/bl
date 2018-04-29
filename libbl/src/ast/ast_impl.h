@@ -60,6 +60,7 @@
     nt(STMT_RETURN,        stmt_return) \
     nt(DECL_MODULE,        decl_module) \
     nt(DECL_VAR,           decl_var) \
+    nt(DECL_CONST,         decl_const) \
     nt(DECL_FUNC,          decl_func) \
     nt(DECL_ARG,           decl_arg) \
     nt(DECL_STRUCT,        decl_struct) \
@@ -148,10 +149,14 @@ struct bl_stmt_loop
 };
 
 struct bl_stmt_break
-{};
+{
+  void *_dummy;
+};
 
 struct bl_stmt_continue
-{};
+{
+  void *_dummy;
+};
 
 struct bl_stmt_return
 {
@@ -167,6 +172,15 @@ struct bl_decl_module
 };
 
 struct bl_decl_var
+{
+  bl_id_t    id;
+  int        modif;
+  bl_node_t *type;
+  bl_node_t *init_expr;
+  int        used;
+};
+
+struct bl_decl_const
 {
   bl_id_t    id;
   int        modif;
@@ -400,6 +414,10 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
                     bl_node_t *init_expr, int modif);
+
+bl_node_t *
+bl_ast_add_decl_const(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+                      bl_node_t *init_expr, int modif);
 
 bl_node_t *
 bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type);
