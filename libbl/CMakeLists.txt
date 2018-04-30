@@ -66,6 +66,15 @@ set(SOURCE_FILES
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
+get_target_property(t bl TYPE)
+if("x${t}" STREQUAL "xSTATIC_LIBRARY")
+    SET(LLVM_SHARED_LIBS 0)
+    MESSAGE("-- Found static LLVM libraries.")
+else()
+    MESSAGE("-- Found shared LLVM libraries." )
+    SET(LLVM_SHARED_LIBS 1)
+endif()
+
 target_link_libraries(bl bobject)
 target_link_libraries(bl ${LLVM_LIBS})
 
