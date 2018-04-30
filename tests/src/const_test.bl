@@ -1,0 +1,12 @@
+/*
+ * Unit test
+ * -----------
+ * Local and global const test.
+ */
+
+//const _i32_global i32 = 256;
+
+fn main() i32 {
+  const _i32_local i32 = 256;
+  return 0;
+}
