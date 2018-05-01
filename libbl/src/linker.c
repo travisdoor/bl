@@ -130,6 +130,9 @@ link_block(bl_visitor_t *visitor, bl_node_t *block);
 static void
 link_var(bl_visitor_t *visitor, bl_node_t *var);
 
+static void
+link_const(bl_visitor_t *visitor, bl_node_t *cnst);
+
 /*************************************************************************************************
  * util functions used on multiple places
  *************************************************************************************************/
@@ -166,6 +169,8 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *expr)
   bl_peek_expr_decl_ref(expr)->ref = found;
   if (bl_node_is(found, BL_DECL_VAR))
     bl_peek_decl_var(found)->used++;
+  else if (bl_node_is(found, BL_DECL_CONST))
+    bl_peek_decl_const(found)->used++;
 
   return found;
 }
@@ -599,6 +604,24 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_visitor_walk_var(visitor, var);
 }
 
+void
+link_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  context_t *    cnt  = peek_cnt(visitor);
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+
+  bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &_cnst->id);
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+               _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  } else {
+    bl_block_scope_insert_node(&cnt->block_scope, cnst);
+  }
+
+  bl_visitor_walk_const(visitor, cnst);
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -656,6 +679,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_link, link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_link, link_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 

@@ -591,6 +591,7 @@ parse_const_maybe(context_t *cnt, int modif)
   /* consume keyword and determinate constant variant of declaration */
   bl_tokens_consume(cnt->tokens);
   tok_id = bl_tokens_consume(cnt->tokens);
+  // TODO:
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {

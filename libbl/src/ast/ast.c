@@ -823,6 +823,8 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_module(node)->id;
   case BL_DECL_VAR:
     return &bl_peek_decl_var(node)->id;
+  case BL_DECL_CONST:
+    return &bl_peek_decl_const(node)->id;
   case BL_DECL_STRUCT_MEMBER:
     return &bl_peek_decl_struct_member(node)->id;
   case BL_DECL_ENUM_VARIANT:
