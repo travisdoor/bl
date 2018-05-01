@@ -62,6 +62,7 @@ typedef struct
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
+  bool             is_in_global_scope;
 } context_t;
 
 /* flags used in lookup methods for finding declarations in various scopes */
@@ -98,7 +99,13 @@ static void
 pre_link_module(bl_visitor_t *visitor, bl_node_t *module);
 
 static void
+pre_link_const(bl_visitor_t *visitor, bl_node_t *cnst);
+
+static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func);
+
+static void
+merge_const(bl_visitor_t *visitor, bl_node_t *cnst);
 
 static void
 merge_struct(bl_visitor_t *visitor, bl_node_t *strct);
@@ -132,6 +139,9 @@ link_var(bl_visitor_t *visitor, bl_node_t *var);
 
 static void
 link_const(bl_visitor_t *visitor, bl_node_t *cnst);
+
+static void
+link_fn(bl_visitor_t *visitor, bl_node_t *fn);
 
 /*************************************************************************************************
  * util functions used on multiple places
@@ -339,6 +349,25 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
 }
 
 void
+merge_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  bl_log("linking constant");
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  context_t *      cnt   = peek_cnt(visitor);
+  bl_scope_t *     scope = peek_cnt(visitor)->mod_scope;
+
+  bl_node_t *conflict = bl_scope_get_node(scope, &_cnst->id);
+
+  if (conflict) {
+    link_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
+               "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+               _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  }
+
+  bl_scope_insert_node(scope, cnst);
+}
+
+void
 merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
@@ -469,6 +498,13 @@ pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 
   bl_visitor_walk_module(visitor, module);
   peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+}
+
+void
+pre_link_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  bl_log("trying to pre-link global constant %s", _cnst->id.str);
 }
 
 bl_node_t *
@@ -605,9 +641,20 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
 }
 
 void
+link_fn(bl_visitor_t *visitor, bl_node_t *fn)
+{
+  peek_cnt(visitor)->is_in_global_scope = false;
+  bl_visitor_walk_func(visitor, fn);
+  peek_cnt(visitor)->is_in_global_scope = true;
+}
+
+void
 link_const(bl_visitor_t *visitor, bl_node_t *cnst)
 {
-  context_t *    cnt  = peek_cnt(visitor);
+  context_t *cnt = peek_cnt(visitor);
+  if (cnt->is_in_global_scope)
+    return;
+
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
 
   bl_node_t *conflict = bl_block_scope_get_node(&cnt->block_scope, &_cnst->id);
@@ -648,10 +695,12 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_merge, merge_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_merge, merge_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_merge, merge_struct, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor_merge, merge_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_merge, merge_enum, BL_VISIT_ENUM);
 
-  const int  c    = bl_assembly_get_unit_count(assembly);
-  bl_unit_t *unit = NULL;
+  const int  c           = bl_assembly_get_unit_count(assembly);
+  bl_unit_t *unit        = NULL;
+  cnt.is_in_global_scope = true;
 
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
@@ -662,10 +711,12 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor_pre_link;
   bl_visitor_init(&visitor_pre_link, &cnt);
   bl_visitor_add(&visitor_pre_link, pre_link_module, BL_VISIT_MODULE);
+  bl_visitor_add(&visitor_pre_link, pre_link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_pre_link, pre_link_struct, BL_VISIT_STRUCT);
 
+  cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_pre_link, unit->ast.root);
@@ -679,10 +730,12 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_link, link_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_link, link_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_link, link_fn, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_link, link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_link, link_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
+  cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
     bl_visitor_walk_module(&visitor_link, unit->ast.root);

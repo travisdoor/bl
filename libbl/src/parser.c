@@ -591,7 +591,9 @@ parse_const_maybe(context_t *cnt, int modif)
   /* consume keyword and determinate constant variant of declaration */
   bl_tokens_consume(cnt->tokens);
   tok_id = bl_tokens_consume(cnt->tokens);
-  // TODO:
+  if (!bl_token_is(tok_id, BL_SYM_IDENT)) {
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected constant name");
+  }
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
@@ -599,9 +601,9 @@ parse_const_maybe(context_t *cnt, int modif)
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after constant name");
   }
 
-  tok_id = bl_tokens_consume(cnt->tokens);
-  if (tok_id == NULL) {
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_id,
+  bl_token_t *tok_expr = bl_tokens_consume(cnt->tokens);
+  if (tok_expr == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_expr,
                 "expected initialization expression after constant declaration");
   }
 
@@ -641,6 +643,10 @@ parse_var_maybe(context_t *cnt, int modif)
   /* consume keyword and determinate constant variant of declaration */
   tok_id = bl_tokens_consume(cnt->tokens);
   tok_id = bl_tokens_consume(cnt->tokens);
+
+  if (!bl_token_is(tok_id, BL_SYM_IDENT)) {
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected variable name");
+  }
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
@@ -1255,6 +1261,9 @@ decl:
                   "missing module block end " BL_YELLOW("'}'") ", starting " BL_YELLOW("%d:%d"),
                   tok_begin_block->src.line, tok_begin_block->src.col);
     }
+  } else if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_EOF)) {
+    bl_token_t *tok_err = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_UNEXPECTED_DECL, tok_err, "unexpected symbol in module body");
   }
 
   return module;

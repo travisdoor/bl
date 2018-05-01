@@ -117,10 +117,9 @@ eval_expr(context_t *cnt, bl_node_t *expr)
     return eval_expr(cnt, bl_peek_expr_decl_ref(expr)->ref);
   case BL_DECL_ENUM_VARIANT:
     return eval_expr(cnt, bl_peek_decl_enum_variant(expr)->expr);
-  case BL_DECL_VAR: {
-    bl_decl_var_t *_var = bl_peek_decl_var(expr);
-    bl_assert(_var->modif & BL_MODIF_CONST, "cannot evaluate non-const variable");
-    return _var->init_expr;
+  case BL_DECL_CONST: {
+    bl_decl_const_t *_cnst = bl_peek_decl_const(expr);
+    return _cnst->init_expr;
   }
   default:
     bl_abort("expression %s cannot be evaluated", bl_node_name(expr));
@@ -217,16 +216,14 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
 }
 
 static void
-eval_decl_var(bl_visitor_t *visitor, bl_node_t *var)
+eval_decl_const(bl_visitor_t *visitor, bl_node_t *cnst)
 {
-  context_t *    cnt  = peek_cnt(visitor);
-  bl_decl_var_t *_var = bl_peek_decl_var(var);
-  if (_var->modif & BL_MODIF_CONST) {
-    bl_assert(_var->init_expr, "constant declaration without init expression");
-    _var->init_expr = eval_expr(cnt, _var->init_expr);
-  }
+  context_t *      cnt   = peek_cnt(visitor);
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  bl_assert(_cnst->init_expr, "constant without init expression");
+  _cnst->init_expr = eval_expr(cnt, _cnst->init_expr);
 
-  bl_visitor_walk_var(visitor, var);
+  bl_visitor_walk_const(visitor, cnst);
 }
 
 /*************************************************************************************************
@@ -247,7 +244,7 @@ bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_eval, &cnt);
   bl_visitor_add(&visitor_eval, eval_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_eval, eval_type, BL_VISIT_TYPE);
-  bl_visitor_add(&visitor_eval, eval_decl_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_eval, eval_decl_const, BL_VISIT_CONST);
 
   const int  c    = bl_assembly_get_unit_count(assembly);
   bl_unit_t *unit = NULL;

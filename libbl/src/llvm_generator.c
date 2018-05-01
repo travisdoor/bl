@@ -488,8 +488,15 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     bl_node_t *ref = bl_peek_expr_decl_ref(expr)->ref;
 
     switch (bl_node_code(ref)) {
+
     case BL_DECL_VAR: {
       val = get_value_cscope(ref);
+      break;
+    }
+
+    case BL_DECL_CONST: {
+      bl_decl_const_t *_const = bl_peek_decl_const(ref);
+      val                     = gen_expr(cnt, _const->init_expr);
       break;
     }
 

@@ -152,12 +152,8 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
     return ref_type;
 
   switch (bl_node_code(ref)) {
-  case BL_DECL_VAR: {
-    if (!(bl_peek_decl_var(ref)->modif & BL_MODIF_CONST) && const_expr) {
-      check_error(cnt, BL_ERR_INVALID_EXPR, ref,
-                  "expected const-expr, variable reference cannot be evaluated at compile time");
-    }
 
+  case BL_DECL_VAR: {
     ref_type = bl_peek_decl_var(ref)->type;
 
     if (!bl_type_compatible(ref_type, expected_type)) {
@@ -165,6 +161,21 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
           cnt, BL_ERR_INVALID_TYPE, decl_ref,
           "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+          bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
+          bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
+    }
+    break;
+  }
+
+  case BL_DECL_CONST: {
+    bl_assert(bl_peek_decl_const(ref)->init_expr, "invalid const init expr");
+    ref_type = bl_peek_decl_const(ref)->type;
+
+    if (!bl_type_compatible(ref_type, expected_type)) {
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          "incompatible type of constant reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+              "'%s'") " but constant is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
           bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
     }
@@ -184,6 +195,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
     }
     break;
   }
+
   default:
     bl_abort("cannot check reference of type: %s", bl_node_name(ref));
   }
@@ -209,13 +221,11 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
   switch (_binop->op) {
   case BL_SYM_ASIGN:
     if (bl_node_is(_binop->lhs, BL_EXPR_DECL_REF) &&
-        bl_node_is(bl_peek_expr_decl_ref(_binop->lhs)->ref, BL_DECL_VAR)) {
-      bl_decl_var_t *_var = bl_peek_decl_var(bl_peek_expr_decl_ref(_binop->lhs)->ref);
-      if (_var->modif & BL_MODIF_CONST) {
-        check_error(cnt, BL_ERR_INVALID_EXPR, binop,
-                    "constant " BL_YELLOW("'%s'") " is not mutable and it's value cannot be changed ",
-                    _var->id.str);
-      }
+        bl_node_is(bl_peek_expr_decl_ref(_binop->lhs)->ref, BL_DECL_CONST)) {
+      bl_decl_const_t *_cnst = bl_peek_decl_const(bl_peek_expr_decl_ref(_binop->lhs)->ref);
+      check_error(cnt, BL_ERR_INVALID_EXPR, binop,
+                  "constant " BL_YELLOW("'%s'") " is not mutable and it's value cannot be changed ",
+                  _cnst->id.str);
     }
     break;
   default:
@@ -280,16 +290,30 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   context_t *    cnt  = peek_cnt(visitor);
   bl_decl_var_t *_var = bl_peek_decl_var(var);
-  if (_var->used == 0 && _var->modif & BL_MODIF_CONST) {
-    check_warning(cnt, var, "constant " BL_YELLOW("'%s'") " is declared but never used",
-                  _var->id.str);
-  } else if (_var->used == 0) {
+
+  if (_var->used == 0) {
     check_warning(cnt, var, "variable " BL_YELLOW("'%s'") " is declared but never used",
                   _var->id.str);
   }
 
   if (_var->init_expr != NULL) {
-    check_expr(cnt, _var->init_expr, _var->type, _var->modif & BL_MODIF_CONST);
+    check_expr(cnt, _var->init_expr, _var->type, false);
+  }
+}
+
+static void
+visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  context_t *      cnt   = peek_cnt(visitor);
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+
+  if (_cnst->used == 0) {
+    check_warning(cnt, cnst, "constant " BL_YELLOW("'%s'") " is declared but never used",
+                  _cnst->id.str);
+  }
+
+  if (_cnst->init_expr != NULL) {
+    check_expr(cnt, _cnst->init_expr, _cnst->type, true);
   }
 }
 
@@ -441,6 +465,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor, &cnt);
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
   bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
