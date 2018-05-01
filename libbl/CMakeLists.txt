@@ -9,10 +9,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
-llvm_map_components_to_libnames(LLVM_LIBS
-        all
-        )
-
 set(HEADER_FILES
         include/bl/bl.h
         include/bl/unit.h
@@ -66,17 +62,9 @@ set(SOURCE_FILES
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
-get_target_property(t bl TYPE)
-if("x${t}" STREQUAL "xSTATIC_LIBRARY")
-    SET(LLVM_SHARED_LIBS 0)
-    MESSAGE("-- Found static LLVM libraries.")
-else()
-    MESSAGE("-- Found shared LLVM libraries." )
-    SET(LLVM_SHARED_LIBS 1)
-endif()
-
-target_link_libraries(bl bobject)
-target_link_libraries(bl ${LLVM_LIBS})
+#llvm_config(bl all)
+target_link_libraries(bl PUBLIC bobject)
+target_link_libraries(bl PUBLIC LLVM)
 
 target_include_directories(bl PUBLIC include)
 target_include_directories(bl PRIVATE src)
