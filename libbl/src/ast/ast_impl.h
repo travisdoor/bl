@@ -135,6 +135,8 @@ enum bl_modif
 /*************************************************************************************************
  * definition of the node structure bodies
  *************************************************************************************************/
+
+/* if statement */
 struct bl_stmt_if
 {
   bl_node_t *test;
@@ -142,27 +144,32 @@ struct bl_stmt_if
   bl_node_t *false_stmt;
 };
 
+/* loop statement */
 struct bl_stmt_loop
 {
   bl_node_t *test;
   bl_node_t *true_stmt;
 };
 
+/* break inside loops */
 struct bl_stmt_break
 {
   void *_dummy;
 };
 
+/* continue inside loops */
 struct bl_stmt_continue
 {
   void *_dummy;
 };
 
+/* function return statement */
 struct bl_stmt_return
 {
   bl_node_t *expr;
 };
 
+/* module declaration */
 struct bl_decl_module
 {
   bl_id_t     id;
@@ -171,6 +178,7 @@ struct bl_decl_module
   bl_scope_t *scope;
 };
 
+/* variable declaration */
 struct bl_decl_var
 {
   bl_id_t    id;

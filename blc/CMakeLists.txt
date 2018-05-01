@@ -11,5 +11,5 @@ set(SOURCE_FILES
 add_executable(blc ${SOURCE_FILES})
 
 target_include_directories(blc PRIVATE src)
-target_link_libraries(blc bl)
+target_link_libraries(blc PUBLIC bl)
 
