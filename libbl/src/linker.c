@@ -99,9 +99,6 @@ static void
 pre_link_module(bl_visitor_t *visitor, bl_node_t *module);
 
 static void
-pre_link_const(bl_visitor_t *visitor, bl_node_t *cnst);
-
-static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func);
 
 static void
@@ -351,7 +348,6 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
 void
 merge_const(bl_visitor_t *visitor, bl_node_t *cnst)
 {
-  bl_log("linking constant");
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
   context_t *      cnt   = peek_cnt(visitor);
   bl_scope_t *     scope = peek_cnt(visitor)->mod_scope;
@@ -500,13 +496,6 @@ pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
   peek_cnt(visitor)->mod_scope = prev_scope_tmp;
 }
 
-void
-pre_link_const(bl_visitor_t *visitor, bl_node_t *cnst)
-{
-  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
-  bl_log("trying to pre-link global constant %s", _cnst->id.str);
-}
-
 bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag)
 {
@@ -652,8 +641,10 @@ void
 link_const(bl_visitor_t *visitor, bl_node_t *cnst)
 {
   context_t *cnt = peek_cnt(visitor);
-  if (cnt->is_in_global_scope)
+  if (cnt->is_in_global_scope) {
+    bl_visitor_walk_const(visitor, cnst);
     return;
+  }
 
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
 
@@ -711,7 +702,6 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor_pre_link;
   bl_visitor_init(&visitor_pre_link, &cnt);
   bl_visitor_add(&visitor_pre_link, pre_link_module, BL_VISIT_MODULE);
-  bl_visitor_add(&visitor_pre_link, pre_link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_pre_link, pre_link_struct, BL_VISIT_STRUCT);

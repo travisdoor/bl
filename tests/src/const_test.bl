@@ -4,12 +4,19 @@
  * Local and global const test.
  */
 
+const _i32_global i32 = 256;
 
 fn main() i32 {
   const _i32_local i32 = 256 + 10;
   var copy i32 = _i32_local;
   copy = _i32_global;
+  copy = A::_i32_global;
+  copy = A::_i32_global2;
   return 0;
 }
 
-const _i32_global i32 = 256;
+module A {
+  public const _i32_global i32 = 256;
+  public const _i32_global2 i32 = _i32_global3 + 1;
+  const _i32_global3 i32 = 256;
+}

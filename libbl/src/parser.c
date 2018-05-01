@@ -851,7 +851,7 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
     goto done;
   }
 
-  if ((stmt = parse_const_maybe(cnt, BL_MODIF_NONE))) {
+  if ((stmt = parse_const_maybe(cnt, modif))) {
     parse_semicolon_rq(cnt);
     goto done;
   }

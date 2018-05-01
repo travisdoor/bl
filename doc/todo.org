@@ -38,29 +38,34 @@
   - [ ] Parsing
 - [ ] For loop [0/1]
   - [ ] Parsing for (i i32 in 0..10) {}
-- [-] Global/local const [2/5]
+- [X] Global/local const [5/5]
   - [X] Unique node
   - [X] Parsing
-  - [ ] Visitor and linking
-  - [ ] Evaluation
-  - [ ] LLVM generation
+  - [X] Visitor and linking
+  - [X] Evaluation
+  - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [4/7]
+- [-] Other [4/8]
   - [X] Constant "variable" declaration
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
+  - [ ] Separate node for func params 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
 - [ ] Unary operator (separate expression node in ast)
-- [X] Evaluate const init expressions 
+- [-] Value evaluation [1/2]
+  - [ ] String constant evaluation 
+  - [X] Evaluate const init expressions 
 - [-] Windows port!!!
   - [X] BObject compilation
   - [X] LLVM instalation
   - [ ] Linker fix
 - [ ] Pointers
+- [ ] Check numeric limits
+- [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32') 
 
 
 * BUGS [1/2]

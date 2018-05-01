@@ -68,6 +68,21 @@ eval_binop(context_t *cnt, bl_node_t *binop);
 static void
 eval_enum_variant(context_t *cnt, bl_node_t *var);
 
+static bl_node_t *
+eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs);
+
+bl_node_t *
+eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs)
+{
+  bl_node_t *      result  = bl_ast_add_expr_const(cnt->ast, NULL, bl_peek_expr_const(lhs)->type);
+  bl_expr_const_t *_result = bl_peek_expr_const(result);
+
+  const long long lhs_val = bl_peek_expr_const(lhs)->value.s;
+  const long long rhs_val  = bl_peek_expr_const(rhs)->value.s;
+  _result->value.s    = lhs_val + rhs_val;
+  return result;
+}
+
 bl_node_t *
 eval_binop(context_t *cnt, bl_node_t *binop)
 {
@@ -83,7 +98,7 @@ eval_binop(context_t *cnt, bl_node_t *binop)
 
   switch (_binop->op) {
   case BL_SYM_PLUS:
-    _result->value.s = lhs + rhs;
+    result = eval_add(cnt, _binop->lhs, _binop->rhs);
     break;
   case BL_SYM_MINUS:
     _result->value.s = lhs - rhs;
