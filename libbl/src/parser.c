@@ -576,6 +576,45 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
 }
 
 bl_node_t *
+parse_const_maybe(context_t *cnt, int modif)
+{
+  bl_node_t * type      = NULL;
+  bl_node_t * init_expr = NULL;
+  bl_token_t *tok_id    = NULL;
+
+  /* TODO: check for invalid modificators */
+
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_CONST)) {
+    return NULL;
+  }
+
+  /* consume keyword and determinate constant variant of declaration */
+  bl_tokens_consume(cnt->tokens);
+  tok_id = bl_tokens_consume(cnt->tokens);
+
+  type = parse_type_maybe(cnt);
+  if (type == NULL) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after constant name");
+  }
+
+  tok_id = bl_tokens_consume(cnt->tokens);
+  if (tok_id == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_id,
+                "expected initialization expression after constant declaration");
+  }
+
+  init_expr = parse_expr_maybe(cnt);
+  if (init_expr == NULL) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+                "expected initialization expression after constant declaration");
+  }
+
+  return bl_ast_add_decl_const(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif);
+}
+
+bl_node_t *
 parse_expr_maybe(context_t *cnt)
 {
   return parse_expr_1(cnt, parse_atom_expr(cnt, NULL), 0);
@@ -594,17 +633,12 @@ parse_var_maybe(context_t *cnt, int modif)
    * keyword instead. This can lead to confusion later becouse 'const' is used as modifier stored in
    * modif buffer of declaration, but for now anything else than var cannot be declared as constant.
    * Fix this latex? */
-  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_VAR) &&
-      bl_tokens_current_is_not(cnt->tokens, BL_SYM_CONST)) {
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_VAR)) {
     return NULL;
   }
 
   /* consume keyword and determinate constant variant of declaration */
   tok_id = bl_tokens_consume(cnt->tokens);
-  if (tok_id->sym == BL_SYM_CONST) {
-    modif |= BL_MODIF_CONST;
-  }
-
   tok_id = bl_tokens_consume(cnt->tokens);
 
   type = parse_type_maybe(cnt);
@@ -624,12 +658,12 @@ parse_var_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
                   "expected expression after " BL_YELLOW("'='") " in variable declaration");
     }
-  }
 
-  if (init_expr == NULL && modif & BL_MODIF_CONST) {
-    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
-                "expected initialization expression after constant declaration");
+    if (init_expr == NULL) {
+      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+                  "expected initialization expression after constant declaration");
+    }
   }
 
   return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif);
@@ -806,6 +840,11 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
   }
 
   if ((stmt = parse_var_maybe(cnt, BL_MODIF_NONE))) {
+    parse_semicolon_rq(cnt);
+    goto done;
+  }
+
+  if ((stmt = parse_const_maybe(cnt, BL_MODIF_NONE))) {
     parse_semicolon_rq(cnt);
     goto done;
   }
@@ -1182,6 +1221,11 @@ decl:
   }
 
   if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, next_modif))) {
+    goto decl;
+  }
+
+  if (bl_ast_module_push_node(_module, parse_const_maybe(cnt, next_modif))) {
+    parse_semicolon_rq(cnt);
     goto decl;
   }
 

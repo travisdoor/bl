@@ -157,14 +157,20 @@ static void
 visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   bl_decl_var_t *_var = bl_peek_decl_var(var);
-  if (_var->modif & BL_MODIF_CONST) {
-    print_head("constant", bl_peek_src(var), var, visitor->nesting);
-  } else {
-    print_head("variable", bl_peek_src(var), var, visitor->nesting);
-  }
+  print_head("variable", bl_peek_src(var), var, visitor->nesting);
 
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _var->id.str, _var->used);
   bl_visitor_walk_var(visitor, var);
+}
+
+static void
+visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  print_head("constant", bl_peek_src(cnst), cnst, visitor->nesting);
+
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _cnst->id.str, _cnst->used);
+  bl_visitor_walk_const(visitor, cnst);
 }
 
 static void
@@ -322,6 +328,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
     bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
     bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+    bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
     bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
     bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
