@@ -4,10 +4,18 @@
  * Unary expr test 
  */
 
+
 fn main() i32 {
   var a i32 = -1;
+  var b i32 = -(2 + 2);
+  var c i32 = +(2 + 2);
+  var d i32 = -a;
+  //const c i32 = -1;
 
   utest::assert(a == (0 - 1));
+  utest::assert(b == (0 - 4));
+  utest::assert(c == 4);
+  utest::assert(d == 1);
 
   return 0;
 }

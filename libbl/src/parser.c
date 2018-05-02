@@ -557,7 +557,6 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (lhs == NULL && bl_token_is_unary(op)) {
-      bl_log("unary expression parsing");
       lhs = bl_ast_add_expr_unary(cnt->ast, op, op->sym, rhs);
     } else if (bl_token_is_binop(op)) {
       bl_node_t *result_type = NULL;

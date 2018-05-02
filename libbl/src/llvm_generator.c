@@ -125,6 +125,9 @@ gen_default(context_t *cnt, bl_node_t *type);
 static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
 
+static LLVMValueRef
+gen_unary_expr(context_t *cnt, bl_node_t *expr);
+
 static LLVMTypeRef
 gen_struct(context_t *cnt, bl_node_t *strct);
 
@@ -426,6 +429,35 @@ gen_default(context_t *cnt, bl_node_t *type)
 }
 
 LLVMValueRef
+gen_unary_expr(context_t *cnt, bl_node_t *expr)
+{
+  bl_expr_unary_t *_unary = bl_peek_expr_unary(expr);
+  bl_assert(_unary->next, "invalid unary expression, next is NULL");
+  LLVMValueRef next_val = gen_expr(cnt, _unary->next);
+
+  if (LLVMIsAAllocaInst(next_val) || bl_node_is(_unary->next, BL_EXPR_MEMBER_REF) ||
+      bl_node_is(_unary->next, BL_EXPR_ARRAY_REF))
+    next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+
+  int mult = 1;
+  switch (_unary->op) {
+  case BL_SYM_MINUS:
+    mult = -1;
+    break;
+  case BL_SYM_PLUS:
+    mult = 1;
+    break;
+  default:
+    bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+  }
+
+  // TODO: depending on type???
+  LLVMTypeRef type = LLVMTypeOf(next_val);
+  LLVMValueRef cnst = LLVMConstInt(type, mult, false);
+  return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
+}
+
+LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr)
 {
   LLVMValueRef val;
@@ -481,6 +513,12 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_ARRAY_REF: {
     val = gen_array_ref(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_UNARY: {
+    val = gen_unary_expr(cnt, expr);
+    // TODO
     break;
   }
 
