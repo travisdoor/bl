@@ -4,15 +4,6 @@
  * Evaluation test 
  */
 
-module utest {
-  extern fn abort();
-
-  public fn assert(expr bool) {
-    if (expr != true)
-      abort();
-  }
-}
-
 const a i32 = 1; // 1
 const b i32 = 1 + a; // 2 
 const c i32 = 1 + b * b; // 5

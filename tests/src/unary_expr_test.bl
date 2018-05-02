@@ -1,0 +1,13 @@
+/*
+ * Unit test
+ * -----------
+ * Unary expr test 
+ */
+
+fn main() i32 {
+  var a i32 = -1;
+
+  utest::assert(a == (0 - 1));
+
+  return 0;
+}

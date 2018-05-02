@@ -50,7 +50,10 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
   sprintf(buf, cmd, assembly->name, assembly->name, "-lSDL2");
 
   /* TODO: handle error */
-  system(buf);
+  int result = system(buf);
+  if (result != 0) {
+    return BL_ERR_JIT_RUN_FAILED;
+  }
 
   return BL_NO_ERR;
 }

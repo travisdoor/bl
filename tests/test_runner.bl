@@ -15,7 +15,7 @@ module bl_tester {
     public extern fn strcmp(a ptr, b string) i32;
   }
 
-  const unit_count i32 = 17;
+  const unit_count i32 = 18;
   
   struct unit_t {
     cmd string,
@@ -82,7 +82,8 @@ module bl_tester {
     units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub statement test");
     units[14] = new_unit("blc -run src/while_test.bl", "while test");
     units[15] = new_unit("blc -run src/const_test.bl", "const test");
-    units[16] = new_unit("blc -run src/eval_test.bl", "const evaluator test");
+    units[16] = new_unit("blc -run src/eval_test.bl src/utest.bl", "const evaluator test");
+    units[17] = new_unit("blc -run src/unary_expr_test.bl src/utest.bl", "unary expression test");
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd ptr = c::malloc(1024); 

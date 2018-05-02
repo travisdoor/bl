@@ -44,6 +44,10 @@ static bl_node_t *
 alloc_node(bl_ast_t *ast)
 {
   bl_node_t *node = bl_calloc(sizeof(bl_node_t), 1);
+  if (node == NULL) {
+    bl_abort("bad alloc");
+  }
+
   bo_array_push_back(ast->nodes, node);
   return node;
 }
@@ -217,6 +221,19 @@ bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lh
   bl_peek_expr_binop(binop)->type = type;
 
   return binop;
+}
+
+bl_node_t *
+bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *next)
+{
+  bl_node_t *unary = alloc_node(ast);
+  if (tok)
+    unary->src = &tok->src;
+
+  unary->code                     = BL_EXPR_UNARY;
+  bl_peek_expr_unary(unary)->op = op;
+  bl_peek_expr_unary(unary)->next = next;
+  return unary;
 }
 
 bl_node_t *

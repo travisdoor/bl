@@ -51,7 +51,11 @@ bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
   fseek(f, 0, SEEK_SET);
 
   char *src = malloc(sizeof(char) * (fsize + 1));
-  fread(src, fsize, 1, f);
+  size_t result = fread(src, fsize, 1, f);
+  if (result != 1) {
+    bl_abort("cannot read file %s", unit->filepath);
+  }
+
   src[fsize] = '\0';
   fclose(f);
 

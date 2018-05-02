@@ -41,6 +41,19 @@ bl_token_is_binop(bl_token_t *token)
 }
 
 bool
+bl_token_is_unary(bl_token_t *token)
+{
+  switch (token->sym) {
+  case BL_SYM_MINUS:
+    return true;
+  default:
+    return false;
+  }
+
+  return false;
+}
+
+bool
 bl_token_is_logic_op(bl_token_t *token)
 {
   switch (token->sym) {

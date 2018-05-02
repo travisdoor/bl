@@ -70,6 +70,7 @@
     nt(DECL_BLOCK,         decl_block) \
     nt(EXPR_CONST,         expr_const) \
     nt(EXPR_BINOP,         expr_binop) \
+    nt(EXPR_UNARY,         expr_unary) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
     nt(EXPR_MEMBER_REF,    expr_member_ref) \
     nt(EXPR_ARRAY_REF,     expr_array_ref) \
@@ -282,6 +283,12 @@ struct bl_expr_binop
   bl_node_t *type;
 };
 
+struct bl_expr_unary
+{
+  bl_sym_e   op;
+  bl_node_t *next;
+};
+
 struct bl_expr_decl_ref
 {
   BArray *   path;
@@ -399,6 +406,9 @@ bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const
 bl_node_t *
 bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs,
                       bl_node_t *type);
+
+bl_node_t *
+bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);

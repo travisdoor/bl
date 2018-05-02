@@ -55,7 +55,9 @@
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
-- [ ] Unary operator (separate expression node in ast)
+- [ ] Unary operator (separate expression node in ast) [0/2]
+  - [ ] Ast node
+  - [ ] Parsing
 - [-] Value evaluation [1/2]
   - [ ] String constant evaluation 
   - [X] Evaluate const init expressions 

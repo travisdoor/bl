@@ -63,6 +63,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
   case BL_EXPR_MEMBER_REF:
   case BL_EXPR_ARRAY_REF:
   case BL_EXPR_BINOP:
+  case BL_EXPR_UNARY:
   case BL_EXPR_CONST: {
     call_visit(visitor, stmt, BL_VISIT_EXPR);
     break;
@@ -431,6 +432,11 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_MEMBER_REF: {
     call_visit(visitor, bl_peek_expr_member_ref(expr)->next, BL_VISIT_EXPR);
+    break;
+  }
+
+  case BL_EXPR_UNARY: {
+    call_visit(visitor, bl_peek_expr_unary(expr)->next, BL_VISIT_EXPR);
     break;
   }
 
