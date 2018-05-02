@@ -1,0 +1,11 @@
+/*
+ * Unit test
+ * -----------
+ * Sizeof buildin test 
+ */
+
+
+fn main() i32 {
+  var l size_t = sizeof(i32); // sizeof([type]) -> size_t;
+  return 0;
+}

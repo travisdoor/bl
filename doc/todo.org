@@ -69,7 +69,12 @@
   - [ ] Linker fix
 - [ ] Pointers
 - [ ] Check numeric limits
-- [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32') 
+- [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32')
+- [ ] Sizeof buildin [0/4]
+  - [ ] Ast node
+  - [ ] Parsing
+  - [ ] Generation
+  - [ ] Size_t type 32/64 bit
 
 
 * BUGS [1/2]

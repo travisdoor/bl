@@ -1,7 +1,7 @@
 //************************************************************************************************
 // BL - STD 
 //
-// File:   debug.bl
+// File:   memory.bl
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -27,17 +27,17 @@
 //************************************************************************************************
 
 public module std {
-  public fn exit(status i32) {
-    c::exit(status);
+  public fn alocate(count i32) ptr {
+    var p ptr = c::malloc(count);
+    if (p == null)
+      abort();
+    return p;
   }
 
-  public fn abort() {
-    c::abort();
-  }
+  public fn free(p ptr) {
+    if (p == null)
+      return;
 
-  public fn assert(expr bool) {
-    if (expr != true) {
-      c::abort();
-    }
+    c::free(p);
   }
 }

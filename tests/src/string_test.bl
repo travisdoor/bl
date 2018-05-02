@@ -1,0 +1,13 @@
+/*
+ * Unit test
+ * -----------
+ * Sizeof buildin test
+ * deps: std::string, std::debug, std::memory
+ */
+
+fn main() i32 {
+  var s std::string_t = std::string_new("hello"); 
+  //std::string_print(s);
+  //std::string_delete(s);
+  return 0;
+}
