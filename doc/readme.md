@@ -104,7 +104,10 @@ Modules are similar to C++ namespaces.
     }
 
 ## Constants 
-	
+Constants can be defined in local scope of function or in global scope of module. Constant
+value cannot be changed and initialization const-expression is requred. Constants in global
+scope are private by default and can be made public with 'public' keyword.
+
 	const foo i32 = 10;
 	
 ## If - else

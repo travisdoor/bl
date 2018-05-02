@@ -514,7 +514,12 @@ parse_unary_expr_maybe(context_t *cnt)
   if (bl_token_is_unary(tok_op)) {
     bl_tokens_consume(cnt->tokens);
     bl_node_t *next = parse_expr_maybe(cnt);
-    bl_assert(next, "invalid next expression after unary operator, generate compiler error?");
+
+    if (next == NULL) {
+      bl_token_t *err_tok = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression after unary operator");
+    }
+    
     unary = bl_ast_add_expr_unary(cnt->ast, tok_op, tok_op->sym, next);
   }
 
