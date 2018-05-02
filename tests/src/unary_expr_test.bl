@@ -10,12 +10,24 @@ fn main() i32 {
   var b i32 = -(2 + 2);
   var c i32 = +(2 + 2);
   var d i32 = -a;
-  //const c i32 = -1;
+  var e i32 = 1 -(-2); // ERROR not working without ()
+  var f i32 = -get();
+  var g i32 = (get() + 1) * -10;
+
+
+  //const ca i32 = -1; // ERROR cannot be evaluated
 
   utest::assert(a == (0 - 1));
   utest::assert(b == (0 - 4));
   utest::assert(c == 4);
   utest::assert(d == 1);
+  utest::assert(e == 3);
+  utest::assert(f == 0 - 1);
+  utest::assert(g == 0 - 20);
 
   return 0;
+}
+
+fn get() i32 {
+  return 1;
 }

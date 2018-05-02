@@ -111,6 +111,9 @@ static bl_node_t *
 parse_const_expr_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_unary_expr_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
@@ -503,6 +506,22 @@ next:
 }
 
 bl_node_t *
+parse_unary_expr_maybe(context_t *cnt)
+{
+  bl_node_t *unary = NULL;
+  bl_token_t *tok_op = bl_tokens_peek(cnt->tokens);
+
+  if (bl_token_is_unary(tok_op)) {
+    bl_tokens_consume(cnt->tokens);
+    bl_node_t *next = parse_expr_maybe(cnt);
+    bl_assert(next, "invalid next expression after unary operator, generate compiler error?");
+    unary = bl_ast_add_expr_unary(cnt->ast, tok_op, tok_op->sym, next);
+  }
+
+  return unary;
+}
+
+bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
@@ -512,6 +531,9 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
     return expr;
 
   if ((expr = parse_member_ref_maybe(cnt, op)))
+    return expr;
+
+  if ((expr = parse_unary_expr_maybe(cnt)))
     return expr;
 
   if ((expr = parse_nested_expr_maybe(cnt)))
@@ -556,8 +578,6 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
     } else if (op->sym == BL_SYM_DOT) {
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
-    } else if (lhs == NULL && bl_token_is_unary(op)) {
-      lhs = bl_ast_add_expr_unary(cnt->ast, op, op->sym, rhs);
     } else if (bl_token_is_binop(op)) {
       bl_node_t *result_type = NULL;
       bl_node_t *tmp         = lhs;
