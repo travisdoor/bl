@@ -54,3 +54,4 @@ dkms.conf
 .ycm_extra_conf.py
 *bin/
 .idea/
+/tests/src/test_runner

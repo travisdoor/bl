@@ -37,6 +37,7 @@ set(HEADER_FILES_IMPL
 set(SOURCE_FILES
         src/tokens.c
         src/linker.c
+        src/preproc.c
         src/file_loader.c
         src/unit.c
         src/token.c

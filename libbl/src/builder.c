@@ -40,7 +40,7 @@
 #define MAX_MSG_LEN 1024
 
 static bl_error_e
-compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags);
+compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, uint32_t flags);
 
 static bl_error_e
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags);
@@ -58,7 +58,7 @@ default_warning_handler(const char *msg, void *context)
 }
 
 bl_error_e
-compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags)
+compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_msg_log("processing unit: " BL_GREEN("%s"), unit->name);
   bl_error_e error;
@@ -73,6 +73,9 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, uint32_t flags)
     return error;
 
   if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
+    return error;
+
+  if ((error = bl_preproc_run(builder, unit, assembly)) != BL_NO_ERR)
     return error;
 
   return BL_NO_ERR;
@@ -147,7 +150,7 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
 
     /* IDEA: can run in separate thread */
-    if ((error = compile_unit(builder, unit, flags)) != BL_NO_ERR) {
+    if ((error = compile_unit(builder, unit, assembly, flags)) != BL_NO_ERR) {
       return error;
     }
   }

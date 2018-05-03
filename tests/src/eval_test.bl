@@ -4,6 +4,8 @@
  * Evaluation test 
  */
 
+#load "utest.bl"
+
 const a i32 = 1; // 1
 const b i32 = 1 + a; // 2 
 const c i32 = 1 + b * b; // 5

@@ -4,6 +4,7 @@
  * Unary expr test 
  */
 
+#load "utest.bl"
 
 fn main() i32 {
   var a i32 = -1;

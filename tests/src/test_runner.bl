@@ -66,26 +66,26 @@ module bl_tester {
   fn main() {
     var units unit_t[unit_count];
   
-    units[0]  = new_unit("blc -run src/decl_def_values_test.bl", "decl def values test");
-    units[1]  = new_unit("blc -run src/enum_test.bl", "enum test");
-    units[2]  = new_unit("blc -run src/expression_test.bl", "expression test");
-    units[3]  = new_unit("blc -run src/factorial_test.bl", "factorial test");
-    units[4]  = new_unit("blc -run src/if_test.bl", "if test");
-    units[5]  = new_unit("blc -run src/loop_test.bl", "loop test");
-    units[6]  = new_unit("blc -run src/method_ordering_test.bl", "method ordering test");
-    units[7]  = new_unit("blc -run src/module_test.bl", "module test");
-    units[8]  = new_unit("blc -run src/simple_array_test.bl", "simple array test");
-    units[9]  = new_unit("blc -run src/simple_assignment_test.bl", "simple assignment test");
-    units[10] = new_unit("blc -run src/simple_ext_call_test.bl", "simple ext call test");
-    units[11] = new_unit("blc -run src/simple_method_call_test.bl", "simple method call test");
-    units[12] = new_unit("blc -run src/struct_test.bl", "struct test");
-    units[13] = new_unit("blc -run src/sub_statement_test.bl", "sub statement test");
-    units[14] = new_unit("blc -run src/while_test.bl", "while test");
-    units[15] = new_unit("blc -run src/const_test.bl", "const test");
-    units[16] = new_unit("blc -run src/eval_test.bl src/utest.bl", "const evaluator test");
-    units[17] = new_unit("blc -run src/unary_expr_test.bl src/utest.bl", "unary expression test");
-    units[18] = new_unit("blc -run src/sizeof_test.bl src/utest.bl", "size of test");
-    units[19] = new_unit("blc -run src/load_test.bl", "load test");
+    units[0]  = new_unit("blc -run decl_def_values_test.bl", "decl def values test");
+    units[1]  = new_unit("blc -run enum_test.bl", "enum test");
+    units[2]  = new_unit("blc -run expression_test.bl", "expression test");
+    units[3]  = new_unit("blc -run factorial_test.bl", "factorial test");
+    units[4]  = new_unit("blc -run if_test.bl", "if test");
+    units[5]  = new_unit("blc -run loop_test.bl", "loop test");
+    units[6]  = new_unit("blc -run method_ordering_test.bl", "method ordering test");
+    units[7]  = new_unit("blc -run module_test.bl", "module test");
+    units[8]  = new_unit("blc -run simple_array_test.bl", "simple array test");
+    units[9]  = new_unit("blc -run simple_assignment_test.bl", "simple assignment test");
+    units[10] = new_unit("blc -run simple_ext_call_test.bl", "simple ext call test");
+    units[11] = new_unit("blc -run simple_method_call_test.bl", "simple method call test");
+    units[12] = new_unit("blc -run struct_test.bl", "struct test");
+    units[13] = new_unit("blc -run sub_statement_test.bl", "sub statement test");
+    units[14] = new_unit("blc -run while_test.bl", "while test");
+    units[15] = new_unit("blc -run const_test.bl", "const test");
+    units[16] = new_unit("blc -run eval_test.bl", "const evaluator test");
+    units[17] = new_unit("blc -run unary_expr_test.bl", "unary expression test");
+    units[18] = new_unit("blc -run sizeof_test.bl", "size of test");
+    units[19] = new_unit("blc -run load_test.bl", "load test");
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd ptr = c::malloc(1024); 
