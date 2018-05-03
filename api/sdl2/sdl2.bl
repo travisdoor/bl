@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 public module sdl2 {
-  module sdl2_c {
+  module c {
     public extern fn SDL_Init(flags i32) i32;
     public extern fn SDL_Quit();
 
@@ -36,7 +36,12 @@ public module sdl2 {
 				      y i32,
 				      w i32,
 				      h i32,
-				      flags u32) ptr;
+				      flags i32) ptr;
+
+    public extern fn SDL_DestroyWindow(handle ptr);
+    public extern fn SDL_GetError() string;
+    public extern fn SDL_Delay(ms i32);
+    public extern fn SDL_PumpEvents();
   }
 
   public enum init_flags_e i32 {
@@ -51,15 +56,62 @@ public module sdl2 {
     Everything 	   = Timer | Audio | Video | Joystick | Haptic | GameController | Events
   }
 
+  public enum window_flags_e i32 {
+    Fullscreen        = 0x00000001,
+    OpenGL            = 0x00000002,
+    Shown             = 0x00000004,
+    Hidden            = 0x00000008,
+    Borderless        = 0x00000010,
+    Resizable         = 0x00000020,
+    Minimized         = 0x00000040,
+    Maximized         = 0x00000080,
+    InputGrabbed      = 0x00000100,
+    InputFocus        = 0x00000200,
+    MouseFocus        = 0x00000400,
+    FullscreenDesktop = (Fullscreen | 0x00001000),
+    Foreign           = 0x00000800,
+    AllowHighdpi      = 0x00002000,
+    MouseCapture      = 0x00004000,
+    AlwaysOnTop       = 0x00008000,
+    SkipTaskbar       = 0x00010000,
+    Utility           = 0x00020000,
+    Tooltip           = 0x00040000,
+    PopupMenu         = 0x00080000,
+    Vulkan            = 0x10000000
+  }
+  
+
   public struct window_t {
     handle ptr
   }
 
   public fn init(flags i32) i32 {
-    return sdl2_c::SDL_Init(flags);
+    return c::SDL_Init(flags);
   }
 
   public fn quit() {
-    sdl2_c::SDL_Quit();
+    c::SDL_Quit();
+  }
+
+  public fn create_window(title string, x i32, y i32, w i32, h i32, flags i32) window_t {
+    var win window_t;
+    win.handle = c::SDL_CreateWindow(title, x, y, w, h, flags);
+    return win;
+  }
+
+  public fn destroy_window(win window_t) {
+    c::SDL_DestroyWindow(win.handle);
+  }
+
+  public fn get_error() string {
+    return c::SDL_GetError();
+  }
+
+  public fn delay(ms i32) {
+    c::SDL_Delay(ms);
+  }
+
+  public fn pump_events() {
+    c::SDL_PumpEvents();
   }
 }
