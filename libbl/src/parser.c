@@ -152,6 +152,9 @@ parse_continue_maybe(context_t *cnt);
 static bl_node_t *
 parse_return_maybe(context_t *cnt);
 
+static bl_node_t *
+parse_sizeof_maybe(context_t *cnt);
+
 int
 parse_modifs_maybe(context_t *cnt);
 
@@ -544,6 +547,9 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
 
+  if ((expr = parse_sizeof_maybe(cnt)))
+    return expr;
+
   path = parse_path_maybe(cnt);
 
   if ((expr = parse_call_maybe(cnt, path)))
@@ -804,6 +810,41 @@ parse_ret_type_rq(context_t *cnt)
 }
 
 bl_node_t *
+parse_sizeof_maybe(context_t *cnt)
+{
+  bl_node_t *szof = NULL;
+
+  bl_token_t *tok_id = bl_tokens_peek(cnt->tokens);
+  if (bl_token_is(tok_id, BL_SYM_SIZEOF)) {
+    bl_tokens_consume(cnt->tokens);
+
+    /* eat ( */
+    if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN)) {
+      bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                  "expected " BL_YELLOW("'('") " after sizeof buildin");
+    }
+
+    bl_node_t *type = parse_type_maybe(cnt);
+    if (type == NULL) {
+      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name as parameter");
+    }
+
+    /* eat ) */
+    if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_RPAREN)) {
+      bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+                  "expected " BL_YELLOW("')'") " after sizeof buildin argument");
+    }
+
+    szof = bl_ast_add_expr_sizeof(cnt->ast, tok_id, type);
+  }
+  
+  return szof;
+}
+
+bl_node_t *
 parse_if_maybe(context_t *cnt)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_IF);
@@ -813,7 +854,6 @@ parse_if_maybe(context_t *cnt)
 
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN) == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-
     parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
                 "expected " BL_YELLOW("'('") " after if statement");
   }

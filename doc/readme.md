@@ -24,6 +24,7 @@
 | ptr | 8B   | pointer |
 | string | 8B   | pointer to string |
 | bool | 1b   | true/false |
+| size_t | arch-depend (4/8B)   | unsigned number |
 
 	
 ## Functions

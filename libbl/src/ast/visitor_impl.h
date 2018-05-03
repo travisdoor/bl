@@ -53,6 +53,7 @@ typedef enum {
   BL_VISIT_BREAK,
   BL_VISIT_CONTINUE,
   BL_VISIT_RETURN,
+  BL_VISIT_SIZEOF,
   BL_VISIT_COUNT
 } bl_visit_e;
 

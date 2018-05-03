@@ -260,6 +260,10 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
   case BL_EXPR_UNARY:
     return check_expr(cnt, bl_peek_expr_unary(expr)->next, expected_type, const_expr);
 
+  case BL_EXPR_SIZEOF:
+    // TODO:
+    return NULL;
+
   case BL_EXPR_MEMBER_REF:
     return NULL;
 

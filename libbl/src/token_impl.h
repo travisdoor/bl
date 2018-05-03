@@ -60,6 +60,7 @@
   sm(EXPORT,      "export") \
   sm(RETURN,      "return") \
   sm(STRUCT,      "struct") \
+  sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
   sm(PATH,        "::") \
   sm(LCOMMENT,    "//") \

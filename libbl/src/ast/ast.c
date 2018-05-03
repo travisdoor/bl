@@ -139,6 +139,18 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
+bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+{
+  bl_node_t *expr_sizeof = alloc_node(ast);
+  if (tok)
+    expr_sizeof->src = &tok->src;
+
+  expr_sizeof->code                      = BL_EXPR_SIZEOF;
+  bl_peek_expr_sizeof(expr_sizeof)->type = type;
+  return expr_sizeof;
+}
+
+bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *cnst = alloc_node(ast);

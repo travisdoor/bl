@@ -177,6 +177,16 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     case BL_FTYPE_BOOL:
       llvm_type = LLVMInt1TypeInContext(cnt->llvm_cnt);
       break;
+    case BL_FTYPE_SIZE:
+      /* TODO: use target setup later */
+      if (sizeof(size_t) == 4) {
+        llvm_type = LLVMInt32TypeInContext(cnt->llvm_cnt);
+      } else if (sizeof(size_t) == 8) {
+        llvm_type = LLVMInt64TypeInContext(cnt->llvm_cnt);
+      } else {
+        bl_abort("unsupported architecture");
+      }
+      break;
     default:
       bl_abort("unknown fundamenetal type");
     }
@@ -513,6 +523,12 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_ARRAY_REF: {
     val = gen_array_ref(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_SIZEOF: {
+    bl_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(expr);
+    val = LLVMSizeOf(to_llvm_type(cnt, _sizeof->type));
     break;
   }
 

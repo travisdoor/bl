@@ -45,6 +45,7 @@
     ft(U8,     "u8") \
     ft(U32,    "u32") \
     ft(U64,    "u64") \
+    ft(SIZE,   "size_t") \
     ft(F32,    "f32") \
     ft(F64,    "f64") \
     ft(CHAR,   "char") \
@@ -75,6 +76,7 @@
     nt(EXPR_MEMBER_REF,    expr_member_ref) \
     nt(EXPR_ARRAY_REF,     expr_array_ref) \
     nt(EXPR_CALL,          expr_call) \
+    nt(EXPR_SIZEOF,        expr_sizeof) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem)
@@ -167,6 +169,11 @@ struct bl_stmt_continue
 struct bl_stmt_return
 {
   bl_node_t *expr;
+};
+
+struct bl_expr_sizeof
+{
+  bl_node_t *type;
 };
 
 /* module declaration */
@@ -380,6 +387,9 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
+
+bl_node_t *
+bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);

@@ -205,6 +205,7 @@ print_const_expr(bl_expr_const_t *expr)
   case BL_FTYPE_U8:
   case BL_FTYPE_U32:
   case BL_FTYPE_U64:
+  case BL_FTYPE_SIZE:
     fprintf(stdout, "value: " BL_MAGENTA("%llu"), expr->value.u);
     break;
   case BL_FTYPE_PTR:
@@ -241,6 +242,11 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_UNARY: {
     print_head("unary", bl_peek_src(expr), expr, visitor->nesting);
     fprintf(stdout, "operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_unary(expr)->op]);
+    break;
+  }
+
+  case BL_EXPR_SIZEOF: {
+    print_head("sizeof", bl_peek_src(expr), expr, visitor->nesting);
     break;
   }
 
