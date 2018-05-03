@@ -106,6 +106,9 @@ eval_binop(context_t *cnt, bl_node_t *binop)
   case BL_SYM_ASTERISK:
     _result->value.s = lhs * rhs;
     break;
+  case BL_SYM_OR:
+    _result->value.s = lhs | rhs;
+    break;
   case BL_SYM_SLASH:
     if (rhs == 0)
       _result->value.s = 0;

@@ -28,6 +28,38 @@
 
 public module sdl2 {
   module sdl2_c {
+    public extern fn SDL_Init(flags i32) i32;
+    public extern fn SDL_Quit();
 
+    public extern fn SDL_CreateWindow(title string,
+                                      x i32,
+				      y i32,
+				      w i32,
+				      h i32,
+				      flags u32) ptr;
+  }
+
+  public enum init_flags_e i32 {
+    Timer          = 0x00000001,
+    Audio 	   = 0x00000010,
+    Video 	   = 0x00000020,
+    Joystick	   = 0x00000200, 
+    Haptic 	   = 0x00001000,
+    GameController = 0x00002000,
+    Events 	   = 0x00004000,
+    NoParachute    = 0x00100000,
+    Everything 	   = Timer | Audio | Video | Joystick | Haptic | GameController | Events
+  }
+
+  public struct window_t {
+    handle ptr
+  }
+
+  public fn init(flags i32) i32 {
+    return sdl2_c::SDL_Init(flags);
+  }
+
+  public fn quit() {
+    sdl2_c::SDL_Quit();
   }
 }
