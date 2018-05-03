@@ -223,3 +223,14 @@ Whole structure can be public also.
     }
 
 
+## Preprocessor directives
+### Load
+Load preprocessor directive can be used for loading other source files into current assembly.
+You can use relative path to files in current folder or in PATH environment variable.
+
+	#load "some/my/file.bl" // in current directory
+	#load "std/debug.bl" // in PATH
+	
+	fn main() i32 {
+	  return 0;
+	}

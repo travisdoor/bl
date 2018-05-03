@@ -27,14 +27,58 @@
 //************************************************************************************************
 
 #include <stdio.h>
+#include <limits.h>
+#include <string.h>
 #include "bl/unit.h"
 #include "stages_impl.h"
 #include "common_impl.h"
 
+#define ENV_PATH "PATH"
+
+static FILE *
+search_file(const char *filepath)
+{
+  if (filepath == NULL)
+    return NULL;
+
+  FILE *f = fopen(filepath, "r");
+  if (f != NULL) {
+    return f;
+  }
+
+  char  tmp[PATH_MAX];
+  char *dup          = strdup(getenv(ENV_PATH));
+  char *s            = dup;
+  char *p            = NULL;
+  int   filepath_len = strlen(filepath);
+
+  do {
+    p = strchr(s, ':');
+    if (p != NULL) {
+      p[0] = 0;
+    }
+
+    if (strlen(s) + filepath_len + strlen("/") >= PATH_MAX)
+      bl_abort("path too long");
+
+    strcpy(&tmp[0], s);
+    strcat(&tmp[0], "/");
+    strcat(&tmp[0], filepath);
+
+    bl_log("Path in $PATH: %s", &tmp[0]);
+    f = fopen(&tmp[0], "r");
+    s = p + 1;
+  } while (p != NULL && f == NULL);
+
+  free(dup);
+  return f;
+}
+
 bl_error_e
 bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  FILE *f = fopen(unit->filepath, "r");
+  FILE *f = search_file(unit->filepath);
+
   if (f == NULL) {
     bl_builder_error(builder, "file not found %s", unit->filepath);
     return BL_ERR_FILE_NOT_FOUND;
@@ -50,7 +94,7 @@ bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
 
   fseek(f, 0, SEEK_SET);
 
-  char *src = malloc(sizeof(char) * (fsize + 1));
+  char * src    = malloc(sizeof(char) * (fsize + 1));
   size_t result = fread(src, fsize, 1, f);
   if (result != 1) {
     bl_abort("cannot read file %s", unit->filepath);

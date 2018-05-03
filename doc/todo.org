@@ -72,9 +72,10 @@
 - [ ] Check numeric limits
 - [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32')
 - [ ] Set size of size_t by target machine architecture [[file:~/Develop/bl/libbl/src/llvm_generator.c::if%20(sizeof(size_t)%20%3D%3D%204)%20{][here]]  
-- [ ] Preprocesor #load [0/2]
-  - [ ] Ast representation
-  - [ ] Parsing
+- [-] Preprocesor #load [2/3]
+  - [X] Ast representatio
+  - [X] Parsing
+  - [ ] Search for files in path
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
   - [X] Parsing
