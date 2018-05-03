@@ -57,6 +57,9 @@ typedef struct
 } context_t;
 
 static bl_node_t *
+parse_pre_load_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_fn_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
@@ -845,6 +848,26 @@ parse_sizeof_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_pre_load_maybe(context_t *cnt)
+{
+  bl_node_t *pre_load = NULL;
+
+  bl_token_t *tok_id = bl_tokens_peek(cnt->tokens);
+  if (bl_token_is(tok_id, BL_SYM_LOAD)) {
+    bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok_path = bl_tokens_consume(cnt->tokens);
+    if (!bl_token_is(tok_path, BL_SYM_STRING)) {
+      parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path,
+                  "expected path string after load preprocessor directive");
+    }
+
+    pre_load = bl_ast_add_pre_load(cnt->ast, tok_id, tok_path->value.str);
+  }
+  
+  return pre_load;
+}
+
+bl_node_t *
 parse_if_maybe(context_t *cnt)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_IF);
@@ -1295,6 +1318,10 @@ decl:
   }
 
   if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, next_modif))) {
+    goto decl;
+  }
+
+  if (bl_ast_module_push_node(_module, parse_pre_load_maybe(cnt))) {
     goto decl;
   }
 

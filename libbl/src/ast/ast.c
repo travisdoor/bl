@@ -139,6 +139,18 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 }
 
 bl_node_t *
+bl_ast_add_pre_load(bl_ast_t *ast, bl_token_t *tok, const char *filepath)
+{
+  bl_node_t *load = alloc_node(ast);
+  if (tok)
+    load->src = &tok->src;
+
+  load->code                       = BL_PRE_LOAD;
+  bl_peek_pre_load(load)->filepath = filepath;
+  return load;
+}
+
+bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *expr_sizeof = alloc_node(ast);

@@ -1,0 +1,15 @@
+/*
+ * Unit test
+ * -----------
+ * Load preprocesor directive
+ */
+
+#load "std/utest.bl"
+#load "std/utest.bl"
+#load "std/utest.bl"
+#load "std/utest.bl"
+
+fn main() i32 {
+  return 0;
+}
+  

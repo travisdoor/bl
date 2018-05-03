@@ -54,6 +54,7 @@
   sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
+  sm(LOAD,        "#load") \
   sm(PUBLIC,      "public")\
   sm(EXTERN,      "extern") \
   sm(MODULE,      "module") \
