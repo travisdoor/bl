@@ -65,7 +65,6 @@ search_file(const char *filepath)
     strcat(&tmp[0], "/");
     strcat(&tmp[0], filepath);
 
-    bl_log("Path in $PATH: %s", &tmp[0]);
     f = fopen(&tmp[0], "r");
     s = p + 1;
   } while (p != NULL && f == NULL);

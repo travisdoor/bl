@@ -4,8 +4,8 @@
  * Load preprocesor directive
  */
 
+#load "std/std.bl"
 #load "utest.bl"
-#load "std/debug.bl"
 
 fn main() i32 {
   return 0;

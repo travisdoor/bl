@@ -1,7 +1,7 @@
 //************************************************************************************************
 // BL - STD 
 //
-// File:   string.bl
+// File:   sdl2.bl
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -26,28 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-public module std {
-  public struct string_t {
-    public len i32, // use size_t
-    data ptr
-  }
+public module sdl2 {
+  module sdl2_c {
 
-  public fn string_new(s string) string_t {
-    var str string_t;
-    str.len = 0;
-    str.data = c::strdup(s);
-    return str; 
-  }
-
-  public fn string_delete(s string_t) {
-    free(s.data);
-    s.data = null;
-  }
-
-  public fn string_print(s string_t) {
-    if (s.data == null)
-      return;
-
-    c::puts(s.data);
   }
 }

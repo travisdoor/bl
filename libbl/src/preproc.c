@@ -44,9 +44,6 @@ preproc_load(bl_visitor_t *visitor, bl_node_t *load)
 {
   context_t *    cnt   = peek_cnt(visitor);
   bl_pre_load_t *_load = bl_peek_pre_load(load);
-
-  bl_log("adding %s unit to compilation queue", _load->filepath);
-
   bl_unit_t *unit = bl_unit_new_file(_load->filepath);
   bl_assembly_add_unit(cnt->assembly, unit);
 }

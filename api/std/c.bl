@@ -30,10 +30,9 @@ public module std {
   module c {
     public extern fn abort();
     public extern fn exit(status i32); 
-    public extern fn puts(str ptr) i32; 
+    public extern fn puts(str string) i32; 
     public extern fn printf(str string, a i32, b i32) i32; 
     public extern fn malloc(count i32) ptr;
     public extern fn free(p ptr);
-    public extern fn strdup(s string) ptr;
   } 
 }
