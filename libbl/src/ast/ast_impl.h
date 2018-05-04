@@ -80,7 +80,7 @@
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
-    nt(PRE_LOAD,           pre_load) \
+    nt(PRE_LOAD,           pre_load)
 
 // clang-format on
 
@@ -333,7 +333,7 @@ struct bl_type_fund
   bl_fund_type_e type;
   /* dimensions are used when type is array */
   BArray *dims;
-  bool is_ptr;
+  bool    is_ptr;
 };
 
 struct bl_type_ref
@@ -342,6 +342,7 @@ struct bl_type_ref
   bl_node_t *ref;
   /* dimensions are used when type is array */
   BArray *dims;
+  bool    is_ptr;
 };
 
 struct bl_pre_load
@@ -390,7 +391,8 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_ptr);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
+                    bool is_ptr);
 
 bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);

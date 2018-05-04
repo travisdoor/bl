@@ -199,6 +199,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
      * by reference to definition node */
     bl_type_ref_t *_type = bl_peek_type_ref(type);
     bl_assert(_type, "invalid type reference");
+    is_ptr = _type->is_ptr;
     switch (bl_node_code(_type->ref)) {
     case BL_DECL_STRUCT:
       llvm_type = gen_struct(cnt, _type->ref);
@@ -388,9 +389,9 @@ get_or_create_const_string(context_t *cnt, const char *str)
 static LLVMValueRef
 gen_default(context_t *cnt, bl_node_t *type)
 {
+  LLVMTypeRef llvm_type = to_llvm_type(cnt, type);
   if (bl_node_code(type) == BL_TYPE_FUND) {
-    bl_type_fund_t *_type     = bl_peek_type_fund(type);
-    LLVMTypeRef     llvm_type = to_llvm_type(cnt, type);
+    bl_type_fund_t *_type = bl_peek_type_fund(type);
 
     if (_type->is_ptr)
       return LLVMConstPointerNull(llvm_type);
@@ -420,6 +421,9 @@ gen_default(context_t *cnt, bl_node_t *type)
       return NULL;
     }
   } else if (bl_node_code(type) == BL_TYPE_REF) {
+    if (bl_peek_type_ref(type)->is_ptr)
+      return LLVMConstPointerNull(llvm_type);
+
     /* skip arrays */
     if (bl_peek_type_ref(type)->dims)
       return NULL;
@@ -438,6 +442,7 @@ gen_default(context_t *cnt, bl_node_t *type)
                 "every enum varaint must have constant initializer");
       return gen_expr(cnt, bl_peek_decl_enum_variant(def_variant)->expr);
     }
+
     default:
       bl_warning("LLVM cannot generate default value for node type: %s", bl_node_name(ref));
       return NULL;

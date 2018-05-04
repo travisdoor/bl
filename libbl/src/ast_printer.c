@@ -115,6 +115,9 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
   print_head("type", bl_peek_src(type), type, visitor->nesting);
   if (bl_node_is(type, BL_TYPE_REF)) {
     bl_type_ref_t *_type = bl_peek_type_ref(type);
+    if (_type->is_ptr)
+      fprintf(stdout, BL_CYAN("*"));
+
     print_path(_type->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
     print_dims(_type->dims);

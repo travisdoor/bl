@@ -730,7 +730,6 @@ parse_type_maybe(context_t *cnt)
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_ASTERISK, BL_SYM_IDENT)) {
     bl_tokens_consume(cnt->tokens);
     is_ptr = true;
-    bl_log("type is pointer!!!");
   }
 
   BArray *    path = parse_path_maybe(cnt);
@@ -758,7 +757,7 @@ parse_type_maybe(context_t *cnt)
       bo_array_push_back(path, id_node);
 
       /* TODO: set array count for reference types */
-      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path);
+      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path, is_ptr);
       bl_ast_type_ref_push_dim(bl_peek_type_ref(type), expr_dim);
     }
   } else {

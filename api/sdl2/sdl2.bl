@@ -1,5 +1,5 @@
 //************************************************************************************************
-// BL - STD 
+// BL - SDL2
 //
 // File:   sdl2.bl
 // Author: Martin Dorazil
@@ -26,44 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
+// TODO: try without sdl2
+#load "sdl2/c.bl"
+#load "sdl2/events.bl"
+#load "sdl2/keyboard.bl"
+
 public module sdl2 {
-  module c {
-    public extern fn SDL_Init(flags i32) i32;
-
-    public extern fn SDL_Quit();
-
-    public extern fn SDL_CreateWindow(title string,
-                                      x i32,
-				      y i32,
-				      w i32,
-				      h i32,
-				      flags i32) ptr;
-
-    public extern fn SDL_DestroyWindow(handle ptr);
-
-    public extern fn SDL_GetError() string;
-
-    public extern fn SDL_Delay(ms i32);
-
-    public extern fn SDL_PumpEvents();
-
-    public extern fn SDL_CreateRenderer(window ptr,
-                                        index i32,
-                                        flags i32) ptr;
-
-    public extern fn SDL_DestroyRenderer(handle ptr);
-
-    public extern fn SDL_SetRenderDrawColor(renderer ptr,
-                                            r i32,
-                                            g i32,
-                                            b i32,
-                                            a i32) i32;
-
-    public extern fn SDL_RenderClear(renderer ptr) i32;
-
-    public extern fn SDL_RenderPresent(renderer ptr);
-  }
-
   public enum init_flags_e i32 {
     Timer          = 0x00000001,
     Audio 	   = 0x00000010,
@@ -106,7 +74,7 @@ public module sdl2 {
     PresentVSync  = 0x00000004,
     TargetTexture = 0x00000008
   }
-  
+
   public struct window_t {
     handle ptr
   }

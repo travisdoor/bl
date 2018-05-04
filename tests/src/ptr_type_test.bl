@@ -4,10 +4,16 @@
  * Pointer type 
  */
 
+struct foo {
+  a i32
+}
+
 fn main() i32 {
   var i8_ptr *i8;
   var i32_ptr *i32;
   var i64_ptr *i64;
+
+  var foo_ptr *foo; 
 
   //i8_ptr = null;
   return 0;

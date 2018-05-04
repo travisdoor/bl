@@ -126,15 +126,17 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_p
 }
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path)
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
+                    bool is_ptr)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
     type->src = &tok->src;
 
-  type->code                   = BL_TYPE_REF;
-  bl_peek_type_ref(type)->ref  = ref;
-  bl_peek_type_ref(type)->path = path;
+  type->code                     = BL_TYPE_REF;
+  bl_peek_type_ref(type)->ref    = ref;
+  bl_peek_type_ref(type)->path   = path;
+  bl_peek_type_ref(type)->is_ptr = is_ptr;
 
   return type;
 }

@@ -46,8 +46,9 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [4/9]
+- [-] Other [4/10]
   - [X] Constant "variable" declaration
+  - [ ] i16 and u16
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
   - [ ] Separate node for func params 
