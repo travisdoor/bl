@@ -1,9 +1,9 @@
-//************************************************************************************************
-// BL - STD 
+//*****************************************************************************
+// SDL2_Image 
 //
-// File:   debug.bl
+// File:   image.bl
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   29/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -24,28 +24,32 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+//*****************************************************************************
 
-public module std {
-  public fn exit(status i32) {
-    c::exit(status);
+public module sdl2_img {
+  module c {
+    public extern fn IMG_Load(file string) *sdl2::surface_t;
+    public extern fn IMG_Init(flags i32) i32;
+    public extern fn IMG_Quit();
   }
 
-  public fn abort() {
-    c::abort();
-  }
+  public enum init_flags_e i32
+  {
+    JPG  = 0x00000001,
+    PNG  = 0x00000002,
+    TIF  = 0x00000004,
+    WEBP = 0x00000008
+  } 
 
-  public fn assert(expr bool) {
-    if (expr != true) {
-      c::abort();
-    }
-  }
+  public fn init(flags i32) i32 {
+    return c::IMG_Init(flags);
+  } 
 
-  public fn println(s string) {
-    c::puts(s);
-  }
+  public fn quit() {
+    c::IMG_Quit();
+  } 
 
-  public fn print(s string, i i32) {
-    c::printf(s, i);
+  public fn load(file string) *sdl2::surface_t {
+    return c::IMG_Load(file);
   }
 }

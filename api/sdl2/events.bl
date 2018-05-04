@@ -27,15 +27,21 @@
 //************************************************************************************************
 
 public module sdl2 {
+  public enum event_type_e i32 {
+    Quit    = 0x100, 
+    KeyDown = 0x300,
+    KeyUp,
+  }
+
   public struct event_key_t {
-    type u32,
-    timestamp u32,
-    window_id u32,
-    state u8,
-    repeat u8,
+    public type event_type_e,
+    public timestamp u32,
+    public window_id u32,
+    public state u8,
+    public repeat u8,
     _padding2 u8,
     _padding3 u8,
-    keysym keysym_t
+    public keysym keysym_t
   }
 
   public fn poll_event(event *event_key_t) i32 {

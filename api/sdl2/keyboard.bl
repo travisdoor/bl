@@ -30,9 +30,9 @@
 
 public module sdl2 {
   public struct keysym_t {
-    scancode scancode_e,
-    sym i32,
-    mod u32,
+    public scancode scancode_e,
+    public sym i32,
+    public mod u32,
     _unused u8[16]
   }
 }

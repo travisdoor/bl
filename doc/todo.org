@@ -81,6 +81,8 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
+- [ ] Modules [0/1]
+  - [ ] "using" key-word 
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
   - [X] Parsing

@@ -1,7 +1,7 @@
 //************************************************************************************************
-// BL - STD 
+// BL - SDL2
 //
-// File:   debug.bl
+// File:   surface.bl
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -26,26 +26,23 @@
 // SOFTWARE.
 //************************************************************************************************
 
-public module std {
-  public fn exit(status i32) {
-    c::exit(status);
-  }
+public module sdl2 {
+  public struct surface_t {
+    public flags i32,
+    public format ptr,
+    public w i32,
+    public h i32,
+    public pitch i32,
+    pixels ptr,
+    userdata ptr,
+    locked i32,
+    lock_data ptr,
+    public clip_rect rect_t,
+    map ptr,
+    refcount i32
+  } 
 
-  public fn abort() {
-    c::abort();
-  }
-
-  public fn assert(expr bool) {
-    if (expr != true) {
-      c::abort();
-    }
-  }
-
-  public fn println(s string) {
-    c::puts(s);
-  }
-
-  public fn print(s string, i i32) {
-    c::printf(s, i);
+  public fn convert_surface(src *sdl2::surface_t, fmt ptr, flags i32) *sdl2::surface_t {
+    return c::SDL_ConvertSurface(src, fmt, flags);
   }
 }

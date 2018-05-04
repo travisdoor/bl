@@ -64,5 +64,19 @@ public module sdl2 {
     public extern fn SDL_RenderPresent(renderer ptr);
 
     public extern fn SDL_PollEvent(event *sdl2::event_key_t) i32;
+           
+    public extern fn SDL_GetWindowSurface(window ptr) *sdl2::surface_t;
+
+    public extern fn SDL_UpperBlit(src *sdl2::surface_t,
+                                   srcrect *sdl2::rect_t,
+                                   dest *sdl2::surface_t,
+                                   dstrect *sdl2::rect_t) i32;
+
+    public extern fn SDL_UpdateWindowSurface(window ptr) i32;
+
+    public extern fn SDL_ConvertSurface(src *sdl2::surface_t,
+                                        fmt ptr,
+                                        flags i32) *sdl2::surface_t;
+
   }
 }

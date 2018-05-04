@@ -26,10 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
-// TODO: try without sdl2
 #load "sdl2/c.bl"
 #load "sdl2/events.bl"
 #load "sdl2/keyboard.bl"
+#load "sdl2/surface.bl"
+#load "sdl2/rect.bl"
+#load "sdl2/surface.bl"
 
 public module sdl2 {
   public enum init_flags_e i32 {
@@ -133,5 +135,21 @@ public module sdl2 {
 
   public fn render_present(renderer renderer_t) {
     c::SDL_RenderPresent(renderer.handle);
+  }
+
+  public fn get_window_surface(win window_t) *surface_t {
+    return c::SDL_GetWindowSurface(win.handle);
+  }
+
+  public fn blit_surface(src *sdl2::surface_t,
+                         srcrect *sdl2::rect_t,
+                         dest *sdl2::surface_t,
+                         dstrect *sdl2::rect_t) i32
+  {
+    return c::SDL_UpperBlit(src, srcrect, dest, dstrect);
+  }
+
+  public fn update_window_surface(window window_t) i32 {
+    return c::SDL_UpdateWindowSurface(window.handle);
   }
 }
