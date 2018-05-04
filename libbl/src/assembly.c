@@ -27,9 +27,12 @@
 //************************************************************************************************
 
 #include <string.h>
+#include <bobject/containers/hash.h>
 #include "blmemory_impl.h"
 #include "assembly_impl.h"
 #include "unit_impl.h"
+
+#define EXPECTED_UNIT_COUNT 512 
 
 /* public */
 
@@ -39,8 +42,11 @@ bl_assembly_new(const char *name)
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
   assembly->name          = strdup(name);
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
+  assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->scope_cache   = bl_scope_cache_new();
   assembly->scope         = bl_scope_new(assembly->scope_cache);
+
+  bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
   return assembly;
 }
@@ -60,6 +66,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
     bl_unit_delete(unit);
   }
   bo_unref(assembly->units);
+  bo_unref(assembly->unique_cache);
 
   bl_free(assembly);
 }
@@ -67,8 +74,24 @@ bl_assembly_delete(bl_assembly_t *assembly)
 void
 bl_assembly_add_unit(bl_assembly_t *assembly, bl_unit_t *unit)
 {
-  /* TODO: handle duplicity */
   bo_array_push_back(assembly->units, unit);
+}
+
+bool 
+bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
+{
+  uint32_t hash = 0;
+  if (unit->filepath)
+    hash = bo_hash_from_str(unit->filepath);
+  else
+    hash = bo_hash_from_str(unit->name);
+
+  if (bo_htbl_has_key(assembly->unique_cache, hash))
+    return false;
+
+  bo_htbl_insert_empty(assembly->unique_cache, hash);
+  bl_assembly_add_unit(assembly, unit);
+  return true;
 }
 
 const char *

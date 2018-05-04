@@ -1,22 +1,10 @@
 /* testing playground */
 
-module c {
-  public extern fn printf(s string, i i32) i32;
-}
+#load "std/std.bl"
+#load "std/std.bl"
+#load "std/std.bl"
+#load "std/std.bl"
+#load "std/std.bl"
 
 fn main() {
-}
-
-fn test() i32 {
-  return 0;
-}
-
-/*
-enum test_e {
-  A = test()
-}
-*/
-
-enum invalid string {
-  A = 12
 }

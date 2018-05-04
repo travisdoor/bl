@@ -85,7 +85,11 @@ main(int argc, char *argv[])
   /* init actors */
   while (*argv != NULL) {
     bl_unit_ref unit = bl_unit_new_file(*argv);
-    bl_assembly_add_unit(assembly, unit);
+    bool added = bl_assembly_add_unit_unique(assembly, unit);
+    if (added == false) {
+      bl_unit_delete(unit);
+    }
+
     argv++;
   }
 

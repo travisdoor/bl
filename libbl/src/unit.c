@@ -27,9 +27,12 @@
 //************************************************************************************************
 
 #include <string.h>
+#include <limits.h>
 #include "unit_impl.h"
 #include "blmemory_impl.h"
 #include "bl/bldebug.h"
+
+#define ENV_PATH "PATH"
 
 static void
 init(bl_unit_t *unit)
@@ -38,18 +41,55 @@ init(bl_unit_t *unit)
   bl_ast_init(&unit->ast);
 }
 
+static char *
+search_file(const char *filepath)
+{
+  if (filepath == NULL)
+    return NULL;
+
+  char tmp_rpath[PATH_MAX];
+  char *rpath = realpath(filepath, tmp_rpath);
+  if (rpath != NULL) {
+    return strdup(rpath);
+  }
+
+  /* file has not been found in current working direcotry -> search in PATH */
+  char  tmp_env[PATH_MAX];
+  char *env          = strdup(getenv(ENV_PATH));
+  char *s            = env;
+  char *p            = NULL;
+  int   filepath_len = strlen(filepath);
+
+  do {
+    p = strchr(s, ':');
+    if (p != NULL) {
+      p[0] = 0;
+    }
+
+    if (strlen(s) + filepath_len + strlen("/") >= PATH_MAX)
+      bl_abort("path too long");
+
+    strcpy(&tmp_env[0], s);
+    strcat(&tmp_env[0], "/");
+    strcat(&tmp_env[0], filepath);
+
+    rpath = realpath(&tmp_env[0], tmp_rpath);
+    s     = p + 1;
+  } while (p != NULL && rpath == NULL);
+
+  free(env);
+  if (rpath)
+    return strdup(rpath);
+  return NULL;
+}
+
 /* public */
 bl_unit_t *
 bl_unit_new_file(const char *filepath)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
-  unit->filepath  = strdup(filepath);
-  unit->name      = strrchr(unit->filepath, '/');
-  if (unit->name == NULL)
-    unit->name = unit->filepath;
-  else
-    unit->name++;
-
+  unit->filepath  = search_file(filepath);
+  unit->name      = strdup(filepath);
   init(unit);
   return unit;
 }
@@ -75,6 +115,7 @@ bl_unit_delete(bl_unit_t *unit)
 {
   free(unit->filepath);
   free(unit->src);
+  free(unit->name);
   bl_tokens_terminate(&unit->tokens);
   bl_ast_terminate(&unit->ast);
   bl_free(unit);

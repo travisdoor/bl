@@ -30,6 +30,7 @@
 #define BISCUIT_ASSEMBLY_IMPL_H
 
 #include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 #include <llvm-c/Core.h>
 #include "bl/assembly.h"
 #include "scope_impl.h"
@@ -37,6 +38,7 @@
 typedef struct bl_assembly
 {
   BArray *          units;
+  BHashTable *      unique_cache;
   char *            name;
   bl_scope_t *      scope;
   bl_scope_cache_t *scope_cache;
