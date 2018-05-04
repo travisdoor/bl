@@ -145,8 +145,10 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   LLVMTypeRef llvm_type = NULL;
   size_t      size      = 0;
+  bool        is_ptr    = false;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
+    is_ptr                = _type->is_ptr;
     switch (_type->type) {
     case BL_FTYPE_VOID:
       llvm_type = LLVMVoidTypeInContext(cnt->llvm_cnt);
@@ -209,6 +211,10 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     }
 
     size = bl_ast_type_ref_dim_total_size(_type);
+  }
+
+  if (is_ptr) {
+    llvm_type = LLVMPointerType(llvm_type, 0);
   }
 
   /* type is array */
@@ -386,6 +392,9 @@ gen_default(context_t *cnt, bl_node_t *type)
     bl_type_fund_t *_type     = bl_peek_type_fund(type);
     LLVMTypeRef     llvm_type = to_llvm_type(cnt, type);
 
+    if (_type->is_ptr)
+      return LLVMConstPointerNull(llvm_type);
+
     /* skip arrays */
     if (_type->dims)
       return NULL;
@@ -462,7 +471,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
   }
 
   // TODO: depending on type???
-  LLVMTypeRef type = LLVMTypeOf(next_val);
+  LLVMTypeRef  type = LLVMTypeOf(next_val);
   LLVMValueRef cnst = LLVMConstInt(type, mult, false);
   return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
 }
@@ -528,7 +537,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_SIZEOF: {
     bl_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(expr);
-    val = LLVMSizeOf(to_llvm_type(cnt, _sizeof->type));
+    val                       = LLVMSizeOf(to_llvm_type(cnt, _sizeof->type));
     break;
   }
 
@@ -673,43 +682,6 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref)
 
   return ptr;
 }
-
-/* LLVMValueRef */
-/* gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims, */
-/*                 size_t *dims_iter, size_t *iter) */
-/* { */
-/*   LLVMValueRef ptr = NULL; */
-
-/*   switch (bl_node_code(array)) { */
-/*   case BL_EXPR_ARRAY_REF: { */
-/*     bl_expr_array_ref_t *_array = bl_peek_expr_array_ref(array); */
-/*     ptr            = gen_array_ref_1(cnt, _array->next, dim_mult, dims, dims_iter, iter); */
-/*     const size_t i = _array->i * (*dim_mult); */
-/*     *dim_mult      = (*dim_mult) * bo_array_at(*dims, *dims_iter, size_t); */
-/*     ++(*dims_iter); */
-
-/*     bl_log("array index %zu", i); */
-/*     //return LLVMBuildGEP(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned
- * int NumIndices, const char *Name) */
-
-/*     break; */
-/*   } */
-
-/*   case BL_EXPR_DECL_REF: { */
-/*     bl_expr_decl_ref_t *_decl_ref = bl_peek_expr_decl_ref(array); */
-/*     bl_decl_var_t *     _var      = bl_peek_decl_var(_decl_ref->ref); */
-/*     ptr                           = get_value_cscope(_decl_ref->ref); */
-/*     *dims                         = bl_ast_try_get_type_dims(_var->type); */
-/*     break; */
-/*   } */
-
-/*   default: */
-/*     bl_abort("invalid expression"); */
-/*   } */
-
-/*   bl_assert(ptr, "invalid reference ptr"); */
-/*   return ptr; */
-/* } */
 
 /*************************************************************************************************
  * generate visitors

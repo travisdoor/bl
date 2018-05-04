@@ -202,7 +202,7 @@ parse_loop_maybe(context_t *cnt)
 
   const bool prev_inside_loop = cnt->inside_loop;
   cnt->inside_loop            = true;
-  bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL);
+  bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL, false);
   bl_node_t *test             = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
   bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
   bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
@@ -410,37 +410,37 @@ parse_const_expr_maybe(context_t *cnt)
   switch (tok->sym) {
   case BL_SYM_NUM:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, false);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, tok->value.u);
     break;
 
   case BL_SYM_STRING:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING, false);
     const_expr = bl_ast_add_expr_const_str(cnt->ast, tok, type, tok->value.str);
     break;
 
   case BL_SYM_FLOAT:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32, false);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_DOUBLE:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64, false);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_CHAR:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR, false);
     const_expr = bl_ast_add_expr_const_char(cnt->ast, tok, type, tok->value.c);
     break;
 
   case BL_SYM_NULL:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR, false);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, 0);
     break;
 
@@ -448,7 +448,7 @@ parse_const_expr_maybe(context_t *cnt)
   case BL_SYM_FALSE: {
     bl_tokens_consume(cnt->tokens);
     bool val   = tok->sym == BL_SYM_TRUE;
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL, false);
     const_expr = bl_ast_add_expr_const_bool(cnt->ast, tok, type, val);
 
     break;
@@ -514,7 +514,7 @@ next:
 bl_node_t *
 parse_unary_expr_maybe(context_t *cnt)
 {
-  bl_node_t *unary = NULL;
+  bl_node_t * unary  = NULL;
   bl_token_t *tok_op = bl_tokens_peek(cnt->tokens);
 
   if (bl_token_is_unary(tok_op)) {
@@ -525,7 +525,7 @@ parse_unary_expr_maybe(context_t *cnt)
       bl_token_t *err_tok = bl_tokens_peek(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression after unary operator");
     }
-    
+
     unary = bl_ast_add_expr_unary(cnt->ast, tok_op, tok_op->sym, next);
   }
 
@@ -599,7 +599,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       /* Set result type to bool for logical binary operations, this is used for type checking later
        * in the compiler pipeline. Other types are checked recursively. */
       if (bl_token_is_logic_op(op)) {
-        result_type = bl_ast_add_type_fund(cnt->ast, op, BL_FTYPE_BOOL);
+        result_type = bl_ast_add_type_fund(cnt->ast, op, BL_FTYPE_BOOL, false);
       }
 
       lhs = bl_ast_add_expr_binop(cnt->ast, op, op->sym, tmp, rhs, result_type);
@@ -724,10 +724,17 @@ parse_semicolon_rq(context_t *cnt)
 bl_node_t *
 parse_type_maybe(context_t *cnt)
 {
-  bl_node_t * type = NULL;
-  BArray *    path = parse_path_maybe(cnt);
-  bl_token_t *tok  = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
+  bl_node_t *type   = NULL;
+  bool       is_ptr = false;
 
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_ASTERISK, BL_SYM_IDENT)) {
+    bl_tokens_consume(cnt->tokens);
+    is_ptr = true;
+    bl_log("type is pointer!!!");
+  }
+
+  BArray *    path = parse_path_maybe(cnt);
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (tok != NULL) {
     int found = -1;
     for (int i = 0; i < BL_FUND_TYPE_COUNT; ++i) {
@@ -740,7 +747,7 @@ parse_type_maybe(context_t *cnt)
     bl_node_t *expr_dim = parse_array_dim_maybe(cnt);
 
     if (found > -1) {
-      type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found);
+      type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found, is_ptr);
       bl_ast_type_fund_push_dim(bl_peek_type_fund(type), expr_dim);
     } else {
       if (path == NULL) {
@@ -799,7 +806,7 @@ parse_ret_type_rq(context_t *cnt)
     break;
   case BL_SYM_LBLOCK:
   case BL_SYM_SEMICOLON: {
-    type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID);
+    type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_VOID, false);
     break;
   }
   default:
@@ -843,7 +850,7 @@ parse_sizeof_maybe(context_t *cnt)
 
     szof = bl_ast_add_expr_sizeof(cnt->ast, tok_id, type);
   }
-  
+
   return szof;
 }
 
@@ -863,7 +870,7 @@ parse_pre_load_maybe(context_t *cnt)
 
     pre_load = bl_ast_add_pre_load(cnt->ast, tok_id, tok_path->value.str);
   }
-  
+
   return pre_load;
 }
 
@@ -1232,7 +1239,7 @@ parse_enum_maybe(context_t *cnt, int modif)
 
     if (type == NULL) {
       /* use i32 as default type when there is no other user specified */
-      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32);
+      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, false);
     }
 
     enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif);

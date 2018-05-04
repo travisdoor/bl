@@ -120,7 +120,11 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
     print_dims(_type->dims);
   } else {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
-    fprintf(stdout, "fundamental: " BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
+    fprintf(stdout, "fundamental: ");
+    if (_type->is_ptr)
+      fprintf(stdout, BL_CYAN("*"));
+    fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
+
     print_dims(_type->dims);
   }
   bl_visitor_walk_type(visitor, type);

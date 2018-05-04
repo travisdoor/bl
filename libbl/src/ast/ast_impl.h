@@ -331,18 +331,15 @@ struct bl_path_elem
 struct bl_type_fund
 {
   bl_fund_type_e type;
-  /* count is used for array types when it is greater than 0 ex.: var arr i32[1]; */
-  size_t count; // TODO: remove
   /* dimensions are used when type is array */
   BArray *dims;
+  bool is_ptr;
 };
 
 struct bl_type_ref
 {
   BArray *   path;
   bl_node_t *ref;
-  size_t     count; // TODO: remove
-
   /* dimensions are used when type is array */
   BArray *dims;
 };
@@ -390,7 +387,7 @@ BL_NODE_TYPE_LIST
  * constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t);
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_ptr);
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path);

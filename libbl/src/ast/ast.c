@@ -112,14 +112,15 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t)
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_ptr)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
     type->src = &tok->src;
 
-  type->code                    = BL_TYPE_FUND;
-  bl_peek_type_fund(type)->type = t;
+  type->code                      = BL_TYPE_FUND;
+  bl_peek_type_fund(type)->type   = t;
+  bl_peek_type_fund(type)->is_ptr = is_ptr;
 
   return type;
 }
@@ -255,7 +256,7 @@ bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *ne
     unary->src = &tok->src;
 
   unary->code                     = BL_EXPR_UNARY;
-  bl_peek_expr_unary(unary)->op = op;
+  bl_peek_expr_unary(unary)->op   = op;
   bl_peek_expr_unary(unary)->next = next;
   return unary;
 }
@@ -371,11 +372,11 @@ bl_ast_add_decl_const(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_
   if (tok)
     cnst->src = &tok->src;
 
-  cnst->code                        = BL_DECL_CONST;
+  cnst->code             = BL_DECL_CONST;
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
-  _cnst->init_expr = init_expr;
-  _cnst->type      = type;
-  _cnst->modif     = modif;
+  _cnst->init_expr       = init_expr;
+  _cnst->type            = type;
+  _cnst->modif           = modif;
   bl_id_init(&_cnst->id, name);
 
   return cnst;
