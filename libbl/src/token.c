@@ -44,6 +44,8 @@ bool
 bl_token_is_unary(bl_token_t *token)
 {
   switch (token->sym) {
+  case BL_SYM_AND:
+  case BL_SYM_ASTERISK:
   case BL_SYM_MINUS:
   case BL_SYM_PLUS:
     return true;

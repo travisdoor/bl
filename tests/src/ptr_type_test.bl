@@ -4,6 +4,8 @@
  * Pointer type 
  */
 
+#load "utest.bl"
+
 struct foo {
   a i32
 }
@@ -15,6 +17,15 @@ fn main() i32 {
 
   var foo_ptr *foo; 
 
-  //i8_ptr = null;
+  var a i32 = 10;
+  i32_ptr = &a;
+
+  var b i32 = (*i32_ptr);
+  utest::assert(b == 10);
+
   return 0;
+}
+
+fn test(f *foo) *foo {
+  return f;
 }

@@ -452,33 +452,48 @@ gen_default(context_t *cnt, bl_node_t *type)
   return NULL;
 }
 
+/*
+ * generate unary expressions like +, -, &, *, ++, --, ...
+ */
 LLVMValueRef
 gen_unary_expr(context_t *cnt, bl_node_t *expr)
 {
   bl_expr_unary_t *_unary = bl_peek_expr_unary(expr);
   bl_assert(_unary->next, "invalid unary expression, next is NULL");
-  LLVMValueRef next_val = gen_expr(cnt, _unary->next);
+  LLVMValueRef next_val  = gen_expr(cnt, _unary->next);
+  LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
-  if (LLVMIsAAllocaInst(next_val) || bl_node_is(_unary->next, BL_EXPR_MEMBER_REF) ||
-      bl_node_is(_unary->next, BL_EXPR_ARRAY_REF))
+  if (_unary->op == BL_SYM_MINUS || _unary->op == BL_SYM_PLUS) {
+    if (LLVMIsAAllocaInst(next_val) || bl_node_is(_unary->next, BL_EXPR_MEMBER_REF) ||
+        bl_node_is(_unary->next, BL_EXPR_ARRAY_REF)) {
+      next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+      next_type = LLVMTypeOf(next_val);
+    }
+    int mult = 1;
+    switch (_unary->op) {
+    case BL_SYM_MINUS:
+      mult = -1;
+      break;
+    case BL_SYM_PLUS:
+      mult = 1;
+      break;
+    default:
+      bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+    }
+
+    LLVMValueRef cnst = LLVMConstInt(next_type, mult, false);
+    return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
+  } else if (_unary->op == BL_SYM_AND) {
+    /* unary operation is getting address of something "&foo" */
+    LLVMValueRef indices[1];
+    indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+    return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, BL_ARRAY_SIZE(indices), gname("tmp"));
+  } else if (_unary->op == BL_SYM_ASTERISK) {
     next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
-
-  int mult = 1;
-  switch (_unary->op) {
-  case BL_SYM_MINUS:
-    mult = -1;
-    break;
-  case BL_SYM_PLUS:
-    mult = 1;
-    break;
-  default:
+    return LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+  } else {
     bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
   }
-
-  // TODO: depending on type???
-  LLVMTypeRef  type = LLVMTypeOf(next_val);
-  LLVMValueRef cnst = LLVMConstInt(type, mult, false);
-  return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
 }
 
 LLVMValueRef

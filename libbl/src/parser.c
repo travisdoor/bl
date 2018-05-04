@@ -733,7 +733,7 @@ parse_type_maybe(context_t *cnt)
   }
 
   BArray *    path = parse_path_maybe(cnt);
-  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
+  bl_token_t *tok  = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (tok != NULL) {
     int found = -1;
     for (int i = 0; i < BL_FUND_TYPE_COUNT; ++i) {
@@ -800,6 +800,7 @@ parse_ret_type_rq(context_t *cnt)
   bl_node_t * type = NULL;
 
   switch (tok->sym) {
+  case BL_SYM_ASTERISK:
   case BL_SYM_IDENT:
     type = parse_type_maybe(cnt);
     break;
