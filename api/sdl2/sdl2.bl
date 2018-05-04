@@ -29,6 +29,7 @@
 public module sdl2 {
   module c {
     public extern fn SDL_Init(flags i32) i32;
+
     public extern fn SDL_Quit();
 
     public extern fn SDL_CreateWindow(title string,
@@ -39,9 +40,28 @@ public module sdl2 {
 				      flags i32) ptr;
 
     public extern fn SDL_DestroyWindow(handle ptr);
+
     public extern fn SDL_GetError() string;
+
     public extern fn SDL_Delay(ms i32);
+
     public extern fn SDL_PumpEvents();
+
+    public extern fn SDL_CreateRenderer(window ptr,
+                                        index i32,
+                                        flags i32) ptr;
+
+    public extern fn SDL_DestroyRenderer(handle ptr);
+
+    public extern fn SDL_SetRenderDrawColor(renderer ptr,
+                                            r i32,
+                                            g i32,
+                                            b i32,
+                                            a i32) i32;
+
+    public extern fn SDL_RenderClear(renderer ptr) i32;
+
+    public extern fn SDL_RenderPresent(renderer ptr);
   }
 
   public enum init_flags_e i32 {
@@ -79,9 +99,19 @@ public module sdl2 {
     PopupMenu         = 0x00080000,
     Vulkan            = 0x10000000
   }
-  
 
+  public enum renderer_flags i32 {
+    Software      = 0x00000001,
+    Accelerated   = 0x00000002,
+    PresentVSync  = 0x00000004,
+    TargetTexture = 0x00000008
+  }
+  
   public struct window_t {
+    handle ptr
+  }
+
+  public struct renderer_t {
     handle ptr
   }
 
@@ -103,6 +133,16 @@ public module sdl2 {
     c::SDL_DestroyWindow(win.handle);
   }
 
+  public fn create_renderer(window window_t, index i32, flags i32) renderer_t {
+    var r renderer_t;
+    r.handle = c::SDL_CreateRenderer(window.handle, index, flags);
+    return r;
+  }
+
+  public fn destroy_renderer(renderer renderer_t) {
+    c::SDL_DestroyRenderer(renderer.handle);
+  }
+
   public fn get_error() string {
     return c::SDL_GetError();
   }
@@ -113,5 +153,17 @@ public module sdl2 {
 
   public fn pump_events() {
     c::SDL_PumpEvents();
+  }
+
+  public fn set_render_draw_color(renderer renderer_t, r i32, g i32, b i32, a i32) i32 {
+    return c::SDL_SetRenderDrawColor(renderer.handle, r, g, b, a);
+  }
+
+  public fn render_clear(renderer renderer_t) i32 {
+    return c::SDL_RenderClear(renderer.handle);
+  }
+
+  public fn render_present(renderer renderer_t) {
+    c::SDL_RenderPresent(renderer.handle);
   }
 }

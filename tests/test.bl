@@ -4,7 +4,7 @@
 #load "std/std.bl"
 #load "std/std.bl"
 #load "std/std.bl"
-#load "std/std.bl"
+#load "std/std2.bl"
 
 fn main() {
 }
