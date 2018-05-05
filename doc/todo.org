@@ -90,8 +90,6 @@
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
 
-
-
 * BUGS [1/2]
 - [ ] When enumerator variant is used as array size, compiler 
 don't track usage of this enum and warn user about unused declaration.

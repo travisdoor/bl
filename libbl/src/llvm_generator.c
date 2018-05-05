@@ -464,8 +464,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
   if (_unary->op == BL_SYM_MINUS || _unary->op == BL_SYM_PLUS) {
-    if (LLVMIsAAllocaInst(next_val) || bl_node_is(_unary->next, BL_EXPR_MEMBER_REF) ||
-        bl_node_is(_unary->next, BL_EXPR_ARRAY_REF)) {
+    if (LLVMIsAAllocaInst(next_val) || LLVMIsAGetElementPtrInst(next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
     }
@@ -490,7 +489,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
     return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, BL_ARRAY_SIZE(indices), gname("tmp"));
   } else if (_unary->op == BL_SYM_ASTERISK) {
     next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
-    return LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+    return next_val;
   } else {
     bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
   }
@@ -622,19 +621,18 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   LLVMValueRef     rhs    = gen_expr(cnt, _binop->rhs);
 
   if (_binop->op == BL_SYM_ASIGN) {
-    if (LLVMIsAAllocaInst(rhs))
+    //if (LLVMIsAAllocaInst(rhs))
+    /* if (LLVMIsAAllocaInst(rhs) || LLVMIsAGetElementPtrInst(rhs)) { */
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
-
+      bl_log("load %s", bl_node_name(_binop->rhs));
+    /* } */
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs) || bl_node_is(_binop->lhs, BL_EXPR_MEMBER_REF) ||
-      bl_node_is(_binop->lhs, BL_EXPR_ARRAY_REF))
+  if (LLVMIsAAllocaInst(lhs) || LLVMIsAGetElementPtrInst(lhs))
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
-
-  if (LLVMIsAAllocaInst(rhs) || bl_node_is(_binop->rhs, BL_EXPR_MEMBER_REF) ||
-      bl_node_is(_binop->rhs, BL_EXPR_ARRAY_REF))
+  if (LLVMIsAAllocaInst(rhs) || LLVMIsAGetElementPtrInst(rhs))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   switch (_binop->op) {
@@ -691,7 +689,7 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref)
 
   LLVMValueRef index = gen_expr(cnt, _array_ref->index);
 
-  if (LLVMIsAAllocaInst(index) || bl_node_is(_array_ref->index, BL_EXPR_MEMBER_REF))
+  if (LLVMIsAAllocaInst(index) || LLVMIsAGetElementPtrInst(index))
     index = LLVMBuildLoad(cnt->llvm_builder, index, gname("tmp"));
 
   LLVMValueRef indices[2];
@@ -864,7 +862,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 
   LLVMValueRef val = gen_expr(cnt, _ret->expr);
 
-  if (LLVMIsAAllocaInst(val) || bl_node_is(_ret->expr, BL_EXPR_MEMBER_REF))
+  if (LLVMIsAAllocaInst(val) || LLVMIsAGetElementPtrInst(val))
     val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
 
   LLVMBuildStore(cnt->llvm_builder, val, cnt->ret_value);
@@ -887,7 +885,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
   LLVMValueRef      expr    = gen_expr(cnt, _if_stmt->test);
 
-  if (LLVMIsAAllocaInst(expr))
+  if (LLVMIsAAllocaInst(expr) || LLVMIsAGetElementPtrInst(expr))
     expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
 
   expr =
@@ -952,7 +950,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
   if (_loop->test) {
     expr = gen_expr(cnt, _loop->test);
 
-    if (LLVMIsAAllocaInst(expr))
+    if (LLVMIsAAllocaInst(expr) || LLVMIsAGetElementPtrInst(expr))
       expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
   } else {
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
@@ -1052,11 +1050,11 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   generate(&gen_visitor);
 
 #ifdef BL_DEBUG
-  char *error;
-  if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) {
-    char *str = LLVMPrintModuleToString(cnt.mod);
-    bl_abort("module not verified with error: %s\n%s", error, str);
-  }
+  /* char *error; */
+  /* if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) { */
+  /*   char *str = LLVMPrintModuleToString(cnt.mod); */
+  /*   bl_abort("module not verified with error: %s\n%s", error, str); */
+  /* } */
 #endif
 
   /*char *str = LLVMPrintModuleToString(cnt.mod);*/

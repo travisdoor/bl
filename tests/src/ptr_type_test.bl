@@ -4,28 +4,36 @@
  * Pointer type 
  */
 
-#load "utest.bl"
+//#load "utest.bl"
 
-struct foo {
-  a i32
-}
+extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
-  var i8_ptr *i8;
-  var i32_ptr *i32;
-  var i64_ptr *i64;
-
-  var foo_ptr *foo; 
-
-  var a i32 = 10;
-  i32_ptr = &a;
-
-  var b i32 = (*i32_ptr);
-  utest::assert(b == 10);
-
+  //test_fund();
+  test_struct();
   return 0;
 }
 
-fn test(f *foo) *foo {
-  return f;
+fn test_fund() {
+  var i32_ptr *i32;
+
+  var a i32 = 10;
+  i32_ptr = &a; 
+  a = (*i32_ptr);
+}
+
+fn test_struct() {
+  var c foo;
+  var foo_ptr *foo; 
+
+  //c.a = 10;
+  //foo_ptr = &c;
+  c = *foo_ptr;
+  //(*foo_ptr).a = 20;
+  printf("(*foo_ptr).a = %d\n", c.a);
+}
+
+struct foo {
+  a i32,
+  b u32
 }

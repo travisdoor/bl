@@ -243,9 +243,15 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
     break;
   }
 
-  case BL_EXPR_ARRAY_REF:
+  case BL_EXPR_ARRAY_REF: {
     found = satisfy_member(cnt, bl_peek_expr_array_ref(expr)->next);
     break;
+  }
+
+  case BL_EXPR_UNARY: {
+    found = satisfy_member(cnt, bl_peek_expr_unary(expr)->next);
+    break;
+  }
 
   default:
     bl_abort("invalid node %s", bl_node_name(expr));
