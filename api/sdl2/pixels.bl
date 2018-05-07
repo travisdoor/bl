@@ -1,7 +1,7 @@
 //************************************************************************************************
 // BL - SDL2
 //
-// File:   surface.bl
+// File:   pixels.bl
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -27,26 +27,25 @@
 //************************************************************************************************
 
 public module sdl2 {
-  public struct surface_t {
-    public flags i32,
-    public format ptr,
-    public w i32,
-    public h i32,
-    public pitch i32,
-    pixels ptr,
-    userdata ptr,
-    locked i32,
-    lock_data ptr,
-    public clip_rect rect_t,
-    map ptr,
-    refcount i32
-  } 
-
-  public fn convert_surface(src *surface_t, fmt *pixel_format_t, flags i32) *surface_t {
-    return c::SDL_ConvertSurface(src, fmt, flags);
-  }
-
-  public fn free_surface(surface surface_t) {
-    c::SDL_FreeSurface(surface);
+  public struct pixel_format_t {
+    public format u32,
+    public palette ptr,
+    public bits_per_pixel u8,
+    public bytes_per_pixel u8,
+    padding u8[2],
+    public r_mask u32,
+    public g_mask u32,
+    public b_mask u32,
+    public a_mask u32,
+    public r_loss u8,
+    public g_loss u8,
+    public b_loss u8,
+    public a_loss u8,
+    public r_shift u8,
+    public g_shift u8,
+    public b_shift u8,
+    public a_shift u8,
+    refcound i32,
+    next ptr // TODO
   }
 }

@@ -1,7 +1,7 @@
 //************************************************************************************************
 // BL - SDL2
 //
-// File:   surface.bl
+// File:   render.bl
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -27,26 +27,50 @@
 //************************************************************************************************
 
 public module sdl2 {
-  public struct surface_t {
-    public flags i32,
-    public format ptr,
-    public w i32,
-    public h i32,
-    public pitch i32,
-    pixels ptr,
-    userdata ptr,
-    locked i32,
-    lock_data ptr,
-    public clip_rect rect_t,
-    map ptr,
-    refcount i32
-  } 
-
-  public fn convert_surface(src *surface_t, fmt *pixel_format_t, flags i32) *surface_t {
-    return c::SDL_ConvertSurface(src, fmt, flags);
+  public enum renderer_flags i32 {
+    Software      = 0x00000001,
+    Accelerated   = 0x00000002,
+    PresentVSync  = 0x00000004,
+    TargetTexture = 0x00000008
   }
 
-  public fn free_surface(surface surface_t) {
-    c::SDL_FreeSurface(surface);
+  public struct renderer_t {
+    handle ptr
+  }
+
+  public struct texture_t {
+    handle ptr
+  }
+
+  public fn create_renderer(window window_t, index i32, flags i32) *renderer_t {
+    return c::SDL_CreateRenderer(window.handle, index, flags);
+  }
+
+  public fn destroy_renderer(renderer *renderer_t) {
+    c::SDL_DestroyRenderer(renderer);
+  }
+
+  public fn create_texture_from_surface(renderer *renderer_t, surface *surface_t) *texture_t {
+    return c::SDL_CreateTextureFromSurface(renderer, surface);
+  }
+
+  public fn destroy_texture(texture *texture_t) {
+    c::SDL_DestroyTexture(texture);
+  }
+
+  public fn render_present(renderer *renderer_t) {
+    c::SDL_RenderPresent(renderer);
+  }
+
+  public fn set_render_draw_color(renderer *renderer_t, r i32, g i32, b i32, a i32) i32 {
+    return c::SDL_SetRenderDrawColor(renderer, r, g, b, a);
+  }
+
+  public fn render_clear(renderer *renderer_t) i32 {
+    return c::SDL_RenderClear(renderer);
+  }
+
+  public fn render_copy(renderer *renderer_t, texture *texture_t, srcrect *rect_t, destrect *rect_t) i32 {
+    return c::SDL_RenderCopy(renderer, texture, srcrect, destrect);
   }
 }

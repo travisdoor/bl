@@ -26,12 +26,15 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/debug.bl"
 #load "sdl2/c.bl"
 #load "sdl2/events.bl"
 #load "sdl2/keyboard.bl"
 #load "sdl2/surface.bl"
 #load "sdl2/rect.bl"
 #load "sdl2/surface.bl"
+#load "sdl2/pixels.bl"
+#load "sdl2/render.bl"
 
 public module sdl2 {
   public enum init_flags_e i32 {
@@ -70,18 +73,7 @@ public module sdl2 {
     Vulkan            = 0x10000000
   }
 
-  public enum renderer_flags i32 {
-    Software      = 0x00000001,
-    Accelerated   = 0x00000002,
-    PresentVSync  = 0x00000004,
-    TargetTexture = 0x00000008
-  }
-
   public struct window_t {
-    handle ptr
-  }
-
-  public struct renderer_t {
     handle ptr
   }
 
@@ -103,16 +95,6 @@ public module sdl2 {
     c::SDL_DestroyWindow(win.handle);
   }
 
-  public fn create_renderer(window window_t, index i32, flags i32) renderer_t {
-    var r renderer_t;
-    r.handle = c::SDL_CreateRenderer(window.handle, index, flags);
-    return r;
-  }
-
-  public fn destroy_renderer(renderer renderer_t) {
-    c::SDL_DestroyRenderer(renderer.handle);
-  }
-
   public fn get_error() string {
     return c::SDL_GetError();
   }
@@ -125,26 +107,14 @@ public module sdl2 {
     c::SDL_PumpEvents();
   }
 
-  public fn set_render_draw_color(renderer renderer_t, r i32, g i32, b i32, a i32) i32 {
-    return c::SDL_SetRenderDrawColor(renderer.handle, r, g, b, a);
-  }
-
-  public fn render_clear(renderer renderer_t) i32 {
-    return c::SDL_RenderClear(renderer.handle);
-  }
-
-  public fn render_present(renderer renderer_t) {
-    c::SDL_RenderPresent(renderer.handle);
-  }
-
   public fn get_window_surface(win window_t) *surface_t {
     return c::SDL_GetWindowSurface(win.handle);
   }
 
-  public fn blit_surface(src *sdl2::surface_t,
-                         srcrect *sdl2::rect_t,
-                         dest *sdl2::surface_t,
-                         dstrect *sdl2::rect_t) i32
+  public fn blit_surface(src *surface_t,
+                         srcrect *rect_t,
+                         dest *surface_t,
+                         dstrect *rect_t) i32
   {
     return c::SDL_UpperBlit(src, srcrect, dest, dstrect);
   }

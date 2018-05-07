@@ -10,6 +10,8 @@ fn main() i32 {
   var i32_ptr *i32;
   var a i32 = 10;
 
+  utest::assert(i32_ptr == null);
+
   i32_ptr = &a; 
   (*i32_ptr) = 1;
   a = (*i32_ptr);
@@ -20,6 +22,7 @@ fn main() i32 {
   foo.a = -10;
   foo.b = -20;
 
+  utest::assert(foo_ptr == null);
   foo_ptr = &foo;
   foo = *foo_ptr;
 
