@@ -31,6 +31,7 @@
 #include "stages_impl.h"
 #include "assembly_impl.h"
 #include "bl/bldebug.h"
+#include "bl/error.h"
 
 bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
@@ -39,13 +40,19 @@ bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
   strcpy(export_file, assembly->name);
-  strcat(export_file, ".bc");
-  if (LLVMWriteBitcodeToFile(assembly->llvm_module, export_file) != 0) {
-    bl_builder_error(builder, "(llvm_bc_writer) Error writing bytecode to file " BL_YELLOW("'%s'"),
-                     export_file);
+  strcat(export_file, ".ll");
+
+  char *str = LLVMPrintModuleToString(assembly->llvm_module);
+
+  FILE *f = fopen(export_file, "w");
+  if (f == NULL) {
+    bl_builder_error(builder, "cannot open file %s", export_file);
     free(export_file);
     return BL_ERR_CANNOT_WRITE_BC;
   }
+  fprintf(f, "%s\n", str);
+  fclose(f);
+  LLVMDisposeMessage(str);
 
   bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
 

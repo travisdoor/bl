@@ -562,7 +562,6 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_UNARY: {
     val = gen_unary_expr(cnt, expr);
-    // TODO
     break;
   }
 
@@ -616,21 +615,24 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 LLVMValueRef
 gen_binop(context_t *cnt, bl_node_t *binop)
 {
+#define is_deref(node)                                                                             \
+  ((bl_node_is((node), BL_EXPR_UNARY) && bl_peek_expr_unary((node))->op == BL_SYM_ASTERISK))
+
   bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
   LLVMValueRef     lhs    = gen_expr(cnt, _binop->lhs);
   LLVMValueRef     rhs    = gen_expr(cnt, _binop->rhs);
 
   if (_binop->op == BL_SYM_ASIGN) {
-    //if (LLVMIsAAllocaInst(rhs))
-    /* if (LLVMIsAAllocaInst(rhs) || LLVMIsAGetElementPtrInst(rhs)) { */
+    /* special case for dereferencing on the right side, we need to perform additional load because
+     * we use pointer to data not real data. */
+    if (LLVMIsAAllocaInst(rhs) || is_deref(_binop->rhs)) {
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
-      bl_log("load %s", bl_node_name(_binop->rhs));
-    /* } */
+    }
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs) || LLVMIsAGetElementPtrInst(lhs))
+  if (LLVMIsAAllocaInst(lhs) || LLVMIsAGetElementPtrInst(lhs) || is_deref(_binop->lhs))
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
   if (LLVMIsAAllocaInst(rhs) || LLVMIsAGetElementPtrInst(rhs))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
@@ -665,6 +667,7 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   }
 
   return NULL;
+#undef is_deref
 }
 
 LLVMValueRef
@@ -1050,16 +1053,12 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   generate(&gen_visitor);
 
 #ifdef BL_DEBUG
-  /* char *error; */
-  /* if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) { */
-  /*   char *str = LLVMPrintModuleToString(cnt.mod); */
-  /*   bl_abort("module not verified with error: %s\n%s", error, str); */
-  /* } */
+  char *error;
+  if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) {
+    char *str = LLVMPrintModuleToString(cnt.mod);
+    bl_abort("module not verified with error: %s\n%s", error, str);
+  }
 #endif
-
-  /*char *str = LLVMPrintModuleToString(cnt.mod);*/
-  /*bl_log("\n%s", str);*/
-  /*LLVMDisposeMessage(str);*/
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
