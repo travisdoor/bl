@@ -31,6 +31,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include <bobject/bobject.h>
 #include "bl/config.h"
 
@@ -64,7 +65,7 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 #define bl_assert(expr, format, ...)                                                               \
   if ((expr) == 0) {                                                                               \
     _bl_log(BL_LOG_ASSERT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                         \
-    abort();                                                                                       \
+    assert(false);                                                                                       \
   }
 
 #define bl_log(format, ...)                                                                        \
