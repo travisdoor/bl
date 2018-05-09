@@ -46,7 +46,7 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [4/10]
+- [-] Other [4/11]
   - [X] Constant "variable" declaration
   - [ ] i16 and u16
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
@@ -56,6 +56,7 @@
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
+  - [ ] Path parsing fix (last node of path must be parsed also) 
   - [ ] Implicit numeric constant casting
 - [-] Unary operator (separate expression node in ast) [2/4]
   - [X] Ast node

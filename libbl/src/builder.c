@@ -48,7 +48,11 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 static void
 default_error_handler(const char *msg, void *context)
 {
+#if BL_ASSERT_ON_CMP_ERROR
+  bl_assert(false, "%s", msg);
+#else
   bl_msg_error("%s", msg);
+#endif
 }
 
 static void

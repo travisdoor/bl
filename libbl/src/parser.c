@@ -297,16 +297,13 @@ parse_continue_maybe(context_t *cnt)
 bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, BArray *path)
 {
+  if (!path)
+    return NULL;
+
   bl_node_t * decl_ref = NULL;
   bl_token_t *tok_id   = bl_tokens_peek(cnt->tokens);
-  if (tok_id->sym == BL_SYM_IDENT) {
-    bl_tokens_consume(cnt->tokens);
-    if (path == NULL) {
-      path = bo_array_new(sizeof(bl_node_t *));
-    }
 
-    bl_node_t *id_path = bl_ast_add_path_elem(cnt->ast, tok_id, tok_id->value.str);
-    bo_array_push_back(path, id_path);
+  if (bo_array_size(path) > 0) {
     decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
   }
 
@@ -359,18 +356,13 @@ parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
 bl_node_t *
 parse_call_maybe(context_t *cnt, BArray *path)
 {
+  if (!path)
+    return NULL;
+
   bl_node_t *call = NULL;
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) {
-    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
-
-    if (path == NULL) {
-      path = bo_array_new(sizeof(bl_node_t *));
-    }
-
-    bl_node_t *id = bl_ast_add_path_elem(cnt->ast, tok_id, tok_id->value.str);
-    bo_array_push_back(path, id);
-
-    call = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path);
+  if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
+    bl_token_t *tok_id = bl_tokens_peek_prev(cnt->tokens);
+    call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -494,12 +486,14 @@ parse_nested_expr_maybe(context_t *cnt)
 BArray *
 parse_path_maybe(context_t *cnt)
 {
-  BArray *    path      = NULL;
-  bl_node_t * path_elem = NULL;
-  bl_token_t *tok       = NULL;
+  BArray *    path          = NULL;
+  bl_node_t * path_elem     = NULL;
+  bl_token_t *separator_tok = NULL;
+  bl_token_t *tok           = NULL;
+  bool        rq            = false;
 
 next:
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_PATH)) {
+  if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
     if (!path)
       path = bo_array_new(sizeof(bl_node_t *));
 
@@ -507,8 +501,16 @@ next:
 
     path_elem = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
     bo_array_push_back(path, path_elem);
-    bl_tokens_consume(cnt->tokens); /* eat :: */
-    goto next;
+    rq = false;
+
+    separator_tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_PATH);
+    if (separator_tok != NULL) {
+      rq = true;
+      goto next;
+    }
+  } else if (rq) {
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, separator_tok,
+                "expected enum or module name after path separator");
   }
 
   return path;
@@ -735,12 +737,19 @@ parse_type_maybe(context_t *cnt)
     is_ptr = true;
   }
 
-  BArray *    path = parse_path_maybe(cnt);
-  bl_token_t *tok  = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
-  if (tok != NULL) {
+  BArray *    path           = parse_path_maybe(cnt);
+  bl_node_t * last_path_elem = NULL;
+  bl_token_t *prev_tok     = NULL;
+
+  if (path && bo_array_size(path) > 0) {
+    last_path_elem = bo_array_at(path, bo_array_size(path) - 1, bl_node_t *);
+    prev_tok     = bl_tokens_peek_prev(cnt->tokens);
+
+    bl_assert(last_path_elem, "invalid last path elem in type parsing");
+
     int found = -1;
     for (int i = 0; i < BL_FUND_TYPE_COUNT; ++i) {
-      if (strcmp(bl_fund_type_strings[i], tok->value.str) == 0) {
+      if (strcmp(bl_fund_type_strings[i], bl_peek_path_elem(last_path_elem)->id.str) == 0) {
         found = i;
         break;
       }
@@ -749,18 +758,11 @@ parse_type_maybe(context_t *cnt)
     bl_node_t *expr_dim = parse_array_dim_maybe(cnt);
 
     if (found > -1) {
-      type = bl_ast_add_type_fund(cnt->ast, tok, (bl_fund_type_e)found, is_ptr);
+      type = bl_ast_add_type_fund(cnt->ast, prev_tok, (bl_fund_type_e)found, is_ptr);
       bl_ast_type_fund_push_dim(bl_peek_type_fund(type), expr_dim);
     } else {
-      if (path == NULL) {
-        path = bo_array_new(sizeof(bl_node_t *));
-      }
-
-      bl_node_t *id_node = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
-      bo_array_push_back(path, id_node);
-
-      /* TODO: set array count for reference types */
-      type = bl_ast_add_type_ref(cnt->ast, tok, tok->value.str, NULL, path, is_ptr);
+      type = bl_ast_add_type_ref(cnt->ast, prev_tok, bl_peek_path_elem(last_path_elem)->id.str,
+                                 NULL, path, is_ptr);
       bl_ast_type_ref_push_dim(bl_peek_type_ref(type), expr_dim);
     }
   } else {
