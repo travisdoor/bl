@@ -6,6 +6,10 @@
 
 const _i32_global i32 = 256;
 
+struct foo {
+  a i32[_i32_global]
+}
+
 fn main() i32 {
   const _i32_local i32 = 256 + 10;
   var copy i32 = _i32_local;

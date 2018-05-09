@@ -90,10 +90,9 @@
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
 
-* BUGS [1/2]
-- [ ] When enumerator variant is used as array size, compiler 
-don't track usage of this enum and warn user about unused declaration.
-
+* BUGS [2/3]
+- [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
+- [X] Cannot evaluate array size inside structures. 
 - [X] Unable to return struct member copy from the function
 
 * PIPELINE

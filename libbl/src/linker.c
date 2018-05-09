@@ -729,7 +729,6 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_fn, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_link, link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_link, link_enum, BL_VISIT_ENUM);
-  bl_visitor_add(&visitor_link, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
   cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
