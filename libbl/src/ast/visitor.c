@@ -75,6 +75,11 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
     break;
   }
 
+  case BL_STMT_USING: {
+    call_visit(visitor, stmt, BL_VISIT_USING);
+    break;
+  }
+
   case BL_STMT_LOOP: {
     call_visit(visitor, stmt, BL_VISIT_LOOP);
     break;

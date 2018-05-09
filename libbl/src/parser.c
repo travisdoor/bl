@@ -360,8 +360,8 @@ parse_call_maybe(context_t *cnt, BArray *path)
     return NULL;
 
   bl_node_t *call = NULL;
-  if (bo_array_size(path) > 0 && bl_tokens_next_is(cnt->tokens, BL_SYM_LPAREN)) {
-    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+  if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
+    bl_token_t *tok_id = bl_tokens_peek_prev(cnt->tokens);
     call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
