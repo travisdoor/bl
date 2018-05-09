@@ -956,6 +956,11 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
     goto done;
   }
 
+  if ((stmt = parse_using_maybe(cnt))) {
+    parse_semicolon_rq(cnt);
+    goto done;
+  }
+
   if ((stmt = parse_if_maybe(cnt))) {
     goto done;
   }
