@@ -63,6 +63,9 @@ static bl_node_t *
 parse_fn_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
+parse_using_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
@@ -1133,6 +1136,22 @@ parse_fn_maybe(context_t *cnt, int modif)
 }
 
 bl_node_t *
+parse_using_maybe(context_t *cnt)
+{
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_USING);
+  if (tok == NULL)
+    return NULL;
+
+  BArray *path = parse_path_maybe(cnt);
+  if (path == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok,
+                "expected module name or path to module after using keyword");
+  }
+
+  return bl_ast_add_stmt_using(cnt->ast, tok, path);
+}
+
+bl_node_t *
 parse_struct_member_maybe(context_t *cnt)
 {
   bl_node_t *type  = NULL;
@@ -1333,6 +1352,11 @@ decl:
   }
 
   if (bl_ast_module_push_node(_module, parse_const_maybe(cnt, next_modif))) {
+    parse_semicolon_rq(cnt);
+    goto decl;
+  }
+
+  if (bl_ast_module_push_node(_module, parse_using_maybe(cnt))) {
     parse_semicolon_rq(cnt);
     goto decl;
   }

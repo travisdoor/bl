@@ -7,7 +7,7 @@
 const _i32_global i32 = 256;
 
 struct foo {
-  a i32[_i32_global]
+  a i32[_i32_global + 1]
 }
 
 fn main() i32 {
@@ -16,6 +16,7 @@ fn main() i32 {
   copy = _i32_global;
   copy = A::_i32_global;
   copy = A::_i32_global2;
+  var f foo;
   return 0;
 }
 

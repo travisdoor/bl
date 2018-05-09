@@ -1,0 +1,23 @@
+/*
+ * Unit test
+ * -----------
+ * Using test 
+ */
+
+module A {
+  public fn foo() {}
+
+  public module B {
+    public fn bar() {}
+  }
+}
+
+using A;
+using A::B; // B must be public
+
+fn main() i32 {
+  A::foo();
+  A::B::bar();
+
+  return 0;
+}

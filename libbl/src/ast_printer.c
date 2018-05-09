@@ -82,6 +82,13 @@ print_dims(BArray *dims)
 }
 
 static void
+visit_using(bl_visitor_t *visitor, bl_node_t *using)
+{
+  print_head("using", bl_peek_src(using), using, visitor->nesting);
+  print_path(bl_peek_stmt_using(using)->path);
+}
+
+static void
 visit_load(bl_visitor_t *visitor, bl_node_t *load)
 {
   print_head("load", bl_peek_src(load), load, visitor->nesting);
@@ -365,6 +372,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_struct_member, BL_VISIT_STRUCT_MEMBER);
     bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
     bl_visitor_add(&visitor, visit_load, BL_VISIT_LOAD);
+    bl_visitor_add(&visitor, visit_using, BL_VISIT_USING);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }

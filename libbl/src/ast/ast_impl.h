@@ -59,6 +59,7 @@
     nt(STMT_BREAK,         stmt_break) \
     nt(STMT_CONTINUE,      stmt_continue) \
     nt(STMT_RETURN,        stmt_return) \
+    nt(STMT_USING,         stmt_using) \
     nt(DECL_MODULE,        decl_module) \
     nt(DECL_VAR,           decl_var) \
     nt(DECL_CONST,         decl_const) \
@@ -89,7 +90,8 @@ typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
 typedef enum bl_modif     bl_modif_e;
 
-typedef enum {
+typedef enum
+{
 #define ft(tok, str) BL_FTYPE_##tok,
   BL_FUND_TYPE_LIST
 #undef ft
@@ -170,6 +172,11 @@ struct bl_stmt_continue
 struct bl_stmt_return
 {
   bl_node_t *expr;
+};
+
+struct bl_stmt_using
+{
+  BArray *path;
 };
 
 struct bl_expr_sizeof
@@ -494,6 +501,9 @@ bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok);
 
 bl_node_t *
 bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
+
+bl_node_t *
+bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path);
 
 /*************************************************************************************************
  * module

@@ -51,6 +51,7 @@
   sm(ENUM,        "enum") \
   sm(LOOP,        "loop")\
   sm(FALSE,       "false") \
+  sm(USING,       "using") \
   sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\

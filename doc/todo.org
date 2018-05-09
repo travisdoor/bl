@@ -17,7 +17,7 @@
   - [X] Public and private struct members parsing.
   - [X] Struct member access
   - [X] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
-  - [ ] Member access type checking [[7][here]]  
+  - [ ] *Member access type checking* [[7][here]]
   - [X] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::satisfy_member(context_t%20*cnt,%20bl_node_t%20*expr)][here]] -> generate error if member is inaccessible  
   - [ ] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
   - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
@@ -65,7 +65,7 @@
 - [-] Value evaluation [1/2]
   - [ ] String constant evaluation 
   - [X] Evaluate const init expressions 
-- [-] Windows port!!!
+- [-] Windows port!!! [2/3]
   - [X] BObject compilation
   - [X] LLVM instalation
   - [ ] Linker fix
@@ -81,8 +81,9 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
-- [ ] Modules [0/1]
-  - [ ] "using" key-word 
+- [-] Using [1/2]
+  - [X] Ast node for using
+  - [ ] Parsing 
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
   - [X] Parsing
@@ -111,12 +112,7 @@
 - llvm linker
 - llvm native bin builder
   
-
 * IDEAS
 - implicit casting pointer to bool: if (some_PT) {}
 - static array
-#+BEGIN-SRC
-var arr i32[64];
-arr[0] = 10;
-#+END-SRC
 - zero initialized statc arrays??

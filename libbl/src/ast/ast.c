@@ -82,6 +82,9 @@ node_terminate(bl_node_t *node)
   case BL_DECL_STRUCT:
     bo_unref(bl_peek_decl_struct(node)->members);
     break;
+  case BL_STMT_USING:
+    bo_unref(bl_peek_stmt_using(node)->path);
+    break;
   default:
     break;
   }
@@ -552,6 +555,18 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
   return_stmt->code                      = BL_STMT_RETURN;
   bl_peek_stmt_return(return_stmt)->expr = expr;
   return return_stmt;
+}
+
+bl_node_t *
+bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path)
+{
+  bl_node_t *using_stmt = alloc_node(ast);
+  if (tok)
+    using_stmt->src = &tok->src;
+
+  using_stmt->code                     = BL_STMT_USING;
+  bl_peek_stmt_using(using_stmt)->path = path;
+  return using_stmt;
 }
 
 /*************************************************************************************************
