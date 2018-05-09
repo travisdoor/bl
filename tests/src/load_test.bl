@@ -4,6 +4,8 @@
  * Load preprocesor directive
  */
 
+#load "std/std.bl" // should be loaded once per assembly 
+#load "std/std.bl"
 #load "std/std.bl"
 #load "utest.bl"
 
