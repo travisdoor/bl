@@ -57,6 +57,7 @@
 
     ;; Modules
     ("\\(\\w+\\)\\(::\\)" 1 font-lock-reference-face)
+    ("\\(using \\)\\(\\w+\\)" 2 font-lock-reference-face)
     ("\\(module \\)\\(\\w+\\)" 2 font-lock-reference-face)
 
     ;; Hash directives

@@ -86,6 +86,7 @@ visit_using(bl_visitor_t *visitor, bl_node_t *using)
 {
   print_head("using", bl_peek_src(using), using, visitor->nesting);
   print_path(bl_peek_stmt_using(using)->path);
+  fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_stmt_using(using)->ref);
 }
 
 static void

@@ -34,17 +34,20 @@
  *
  * 2) connect type tree of custom types (mostly structures) so references to those types can be used
  *    later in compilation
+ *    prepare file-global usings
  *
  * 3) link rest of the source (mostly expressions referencing to some custom types)
  *************************************************************************************************/
 
 #include <setjmp.h>
+#include <bobject/containers/htbl.h>
 #include "common_impl.h"
 #include "stages_impl.h"
 #include "ast/visitor_impl.h"
 #include "block_scope_impl.h"
 
 #define STRUCT_QUEUE_RESERVE 1024
+#define EXPECTED_USING_COUNT 32
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
 #define link_error(cnt, code, loc, format, ...)                                                    \
@@ -62,15 +65,18 @@ typedef struct
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
+  BHashTable *     curr_usings;
   bool             is_in_global_scope;
 } context_t;
 
 /* flags used in lookup methods for finding declarations in various scopes */
-typedef enum {
-  LOOKUP_GSCOPE       = 1, // search in global-scope
-  LOOKUP_MOD_SCOPE    = 2, // search in scope of current module
-  LOOKUP_BLOCK_SCOPE  = 4, // search in scope of surrent block (ex.: function body)
-  LOOKUP_ENUM_VARIANT = 8, // search in enum variants
+typedef enum
+{
+  LOOKUP_GSCOPE       = 1,  // search in global-scope
+  LOOKUP_MOD_SCOPE    = 2,  // search in scope of current module
+  LOOKUP_BLOCK_SCOPE  = 4,  // search in scope of surrent block (ex.: function body)
+  LOOKUP_ENUM_VARIANT = 8,  // search in enum variants
+  LOOKUP_USING        = 16, // search in all available usings
 } lookup_flag_e;
 
 /*************************************************************************************************
@@ -139,6 +145,9 @@ link_const(bl_visitor_t *visitor, bl_node_t *cnst);
 
 static void
 link_fn(bl_visitor_t *visitor, bl_node_t *fn);
+
+static void
+link_using(bl_visitor_t *visitor, bl_node_t *using);
 
 /*************************************************************************************************
  * util functions used on multiple places
@@ -305,11 +314,9 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
   if (bl_node_is(found, BL_DECL_MODULE)) { /* found another module */
     if (iter == bo_array_size(path)) {
-      link_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src,
-                 "symbol " BL_YELLOW("'%s'") " is module, declared here: %s:%d:%d",
-                 bl_peek_path_elem(path_elem)->id.str, found->src->file, found->src->line,
-                 found->src->col);
+      return found;
     }
+
     return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
                          found);
 
@@ -638,9 +645,11 @@ link_var(bl_visitor_t *visitor, bl_node_t *var)
 void
 link_fn(bl_visitor_t *visitor, bl_node_t *fn)
 {
-  peek_cnt(visitor)->is_in_global_scope = false;
+  context_t *cnt = peek_cnt(visitor);
+  bo_htbl_clear(cnt->curr_usings);
+  cnt->is_in_global_scope = false;
   bl_visitor_walk_func(visitor, fn);
-  peek_cnt(visitor)->is_in_global_scope = true;
+  cnt->is_in_global_scope = true;
 }
 
 void
@@ -666,6 +675,25 @@ link_const(bl_visitor_t *visitor, bl_node_t *cnst)
   bl_visitor_walk_const(visitor, cnst);
 }
 
+void
+link_using(bl_visitor_t *visitor, bl_node_t *using)
+{
+  context_t *      cnt    = peek_cnt(visitor);
+  bl_stmt_using_t *_using = bl_peek_stmt_using(using);
+  bl_assert(_using->path, "invalid path in using statement");
+  bl_node_t *module = lookup_node(cnt, _using->path, LOOKUP_GSCOPE);
+  if (module) {
+    _using->ref = module;
+    if (cnt->is_in_global_scope && !bo_htbl_has_key(cnt->curr_usings, (uint64_t)module)) {
+      /* using is defined in function scope and should live only in function body, we also don't
+       * want to have duplicit module references in curr_using cache due to performance */
+      bo_htbl_insert_empty(cnt->curr_usings, (uint64_t)module);
+    }
+  } else {
+    bl_abort("unhandled compiler error for module lookup fail");
+  }
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -678,6 +706,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .gscope    = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
+  cnt.curr_usings = bo_htbl_new(0, EXPECTED_USING_COUNT);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -729,6 +758,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_link, link_fn, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_link, link_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_link, link_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_link, link_using, BL_VISIT_USING);
 
   cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
@@ -737,6 +767,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
+  bo_unref(cnt.curr_usings);
 
   return BL_NO_ERR;
 }

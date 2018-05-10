@@ -72,10 +72,11 @@
   - [X] BObject compilation
   - [X] LLVM instalation
   - [ ] Linker fix
-- [-] Pointer [2/3]
-  - [ ] Parse unary address-of and dereferencing
+- [-] Pointer [3/4]
+  - [X] Parse unary address-of and dereferencing
   - [X] Pointer type fundamental
   - [X] Pointer type ref
+  - [ ] -> operator
 - [ ] Check numeric limits
 - [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32')
 - [ ] Set size of size_t by target machine architecture [[file:~/Develop/bl/libbl/src/llvm_generator.c::if%20(sizeof(size_t)%20%3D%3D%204)%20{][here]]  

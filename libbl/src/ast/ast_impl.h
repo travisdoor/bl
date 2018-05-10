@@ -176,7 +176,8 @@ struct bl_stmt_return
 
 struct bl_stmt_using
 {
-  BArray *path;
+  BArray *   path;
+  bl_node_t *ref;
 };
 
 struct bl_expr_sizeof

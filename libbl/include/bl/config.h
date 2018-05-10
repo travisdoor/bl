@@ -48,6 +48,11 @@
 #endif
 
 #define BL_MAX_FUNC_ARG_COUNT 32
+
+#if BL_DEBUG
 #define BL_ASSERT_ON_CMP_ERROR 1
+#else
+#define BL_ASSERT_ON_CMP_ERROR 0
+#endif
 
 #endif // BL_CONFIG_H

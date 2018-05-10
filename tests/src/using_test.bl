@@ -12,8 +12,10 @@ module A {
   }
 }
 
+/*
 using A;
 using A::B; // B must be public
+*/
 
 fn main() i32 {
   A::foo();
@@ -21,6 +23,9 @@ fn main() i32 {
 
   using A;
   using A::B; // B must be public
+
+  //foo();
+  //bar();
 
   return 0;
 }
