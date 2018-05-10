@@ -90,6 +90,9 @@ static bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag);
 
 static bl_node_t *
+lookup_node_in_usings(context_t *cnt, bl_id_t *id);
+
+static bl_node_t *
 satisfy_type(context_t *cnt, bl_node_t *type);
 
 static bl_node_t *
@@ -157,7 +160,8 @@ satisfy_type(context_t *cnt, bl_node_t *type)
 {
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
-    found = lookup_node(cnt, bl_peek_type_ref(type)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
+    found                       = lookup_node(cnt, bl_peek_type_ref(type)->path,
+                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING);
     bl_peek_type_ref(type)->ref = found;
 
     switch (bl_node_code(found)) {
@@ -179,8 +183,9 @@ satisfy_type(context_t *cnt, bl_node_t *type)
 bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *expr)
 {
-  bl_node_t *found = lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
-                                 LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE);
+  bl_node_t *found =
+      lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
+                  LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE | LOOKUP_USING);
 
   bl_peek_expr_decl_ref(expr)->ref = found;
   if (bl_node_is(found, BL_DECL_VAR))
@@ -270,6 +275,30 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
 }
 
 bl_node_t *
+lookup_node_in_usings(context_t *cnt, bl_id_t *id)
+{
+  /* local (function) usings */
+  bl_log("looking for symbol in usings references");
+
+  bo_iterator_t iter   = bo_htbl_begin(cnt->curr_usings);
+  bo_iterator_t end    = bo_htbl_end(cnt->curr_usings);
+  bl_node_t *   module = NULL;
+  bl_node_t *   found  = NULL;
+  while (!bo_iterator_equal(&iter, &end)) {
+    module = (bl_node_t *)bo_htbl_iter_peek_key(cnt->curr_usings, &iter);
+    bo_htbl_iter_next(cnt->curr_usings, &iter);
+    bl_assert(module, "invalid module in using cache");
+
+    found = bl_scope_get_node(bl_peek_decl_module(module)->scope, id);
+    if (found) {
+      return found;
+    }
+  }
+
+  return found;
+}
+
+bl_node_t *
 lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
               bl_node_t *prev_node)
 {
@@ -284,8 +313,13 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   }
 
   /* search symbol in block scope */
-  if (scope_flag & LOOKUP_BLOCK_SCOPE) {
+  if (scope_flag & LOOKUP_BLOCK_SCOPE && !found) {
     found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_path_elem(path_elem)->id);
+  }
+
+  /* search symbol in using cache of local or global file scope if there is one */
+  if (scope_flag & LOOKUP_USING && !found) {
+    found = lookup_node_in_usings(cnt, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in module scope */
@@ -539,7 +573,8 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
-    found = lookup_node(cnt, bl_peek_expr_call(expr)->path, LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE);
+    found = lookup_node(cnt, bl_peek_expr_call(expr)->path,
+                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
@@ -684,7 +719,7 @@ link_using(bl_visitor_t *visitor, bl_node_t *using)
   bl_node_t *module = lookup_node(cnt, _using->path, LOOKUP_GSCOPE);
   if (module) {
     _using->ref = module;
-    if (cnt->is_in_global_scope && !bo_htbl_has_key(cnt->curr_usings, (uint64_t)module)) {
+    if (!cnt->is_in_global_scope && !bo_htbl_has_key(cnt->curr_usings, (uint64_t)module)) {
       /* using is defined in function scope and should live only in function body, we also don't
        * want to have duplicit module references in curr_using cache due to performance */
       bo_htbl_insert_empty(cnt->curr_usings, (uint64_t)module);

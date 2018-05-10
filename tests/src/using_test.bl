@@ -5,6 +5,15 @@
  */
 
 module A {
+  public struct Struct {
+    i i32
+  }
+
+  public enum Enum i32 {
+    Foo,
+    Bar
+  }
+
   public fn foo() {}
 
   public module B {
@@ -18,14 +27,18 @@ using A::B; // B must be public
 */
 
 fn main() i32 {
-  A::foo();
-  A::B::bar();
-
   using A;
   using A::B; // B must be public
 
-  //foo();
-  //bar();
+  foo();
+  bar();
+
+  var s Struct;
+  var e Enum;
+  e = Enum::Foo;
+
+  A::foo();
+  A::B::bar();
 
   return 0;
 }
