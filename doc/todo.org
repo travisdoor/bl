@@ -85,20 +85,22 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
-- [-] Using [3/7]
+- [-] Using [4/7]
   - [X] Ast node for using
   - [X] Duplicity using check 
   - [X] Parsing
   - [ ] Global usings valid only in module?
   - [ ] Using inside struct or enum body?
   - [ ] Symbol colisions handling
-  - [ ] Using must be module or enumerator -> improve checking
+  - [X] Using must be module or enumerator -> improve checking
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
   - [X] Parsing
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
+- [ ] Error handling [0/1]
+  - [ ] struct a { i i32 } a.i.b.c
 * BUGS [2/4]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] Cannot evaluate array size inside structures. 

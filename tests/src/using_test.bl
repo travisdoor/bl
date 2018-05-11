@@ -6,7 +6,7 @@
 
 module A {
   public struct Struct {
-    i i32
+    public i i32
   }
 
   public enum Enum i32 {
@@ -36,6 +36,8 @@ fn main() i32 {
   var s Struct;
   var e Enum;
   e = Enum::Foo;
+
+  s.i.b;
 
   A::foo();
   A::B::bar();

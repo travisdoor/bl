@@ -75,6 +75,8 @@ typedef enum
   BL_ERR_INVALID_EXPR          = 36,
   BL_ERR_JIT_RUN_FAILED        = 37,
   BL_ERR_EXPECTED_STRING       = 38,
+  BL_ERR_EXPECTED_MODULE       = 39,
+  BL_ERR_EXPECTED_FUNC         = 40,
 } bl_error_e;
 
 BO_END_DECLS

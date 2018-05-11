@@ -79,15 +79,17 @@ typedef enum
   LOOKUP_USING        = 16, // search in all available usings
 } lookup_flag_e;
 
+typedef void (*lookup_elem_valid_f)(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
 /*************************************************************************************************
  * forward declarations
  *************************************************************************************************/
 static bl_node_t *
 lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
-              bl_node_t *prev_node);
+              bl_node_t *prev_node, lookup_elem_valid_f validator);
 
 static bl_node_t *
-lookup_node(context_t *cnt, BArray *path, int scope_flag);
+lookup_node(context_t *cnt, BArray *path, int scope_flag, lookup_elem_valid_f validator);
 
 static bl_node_t *
 lookup_node_in_usings(context_t *cnt, bl_id_t *id);
@@ -152,6 +154,12 @@ link_fn(bl_visitor_t *visitor, bl_node_t *fn);
 static void
 link_using(bl_visitor_t *visitor, bl_node_t *using);
 
+static void
+valid_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
+static void
+valid_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
 /*************************************************************************************************
  * util functions used on multiple places
  *************************************************************************************************/
@@ -161,7 +169,7 @@ satisfy_type(context_t *cnt, bl_node_t *type)
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
     found                       = lookup_node(cnt, bl_peek_type_ref(type)->path,
-                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING);
+                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING, NULL);
     bl_peek_type_ref(type)->ref = found;
 
     switch (bl_node_code(found)) {
@@ -185,7 +193,7 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *expr)
 {
   bl_node_t *found =
       lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
-                  LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE | LOOKUP_USING);
+                  LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE | LOOKUP_USING, NULL);
 
   bl_peek_expr_decl_ref(expr)->ref = found;
   if (bl_node_is(found, BL_DECL_VAR))
@@ -300,7 +308,7 @@ lookup_node_in_usings(context_t *cnt, bl_id_t *id)
 
 bl_node_t *
 lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
-              bl_node_t *prev_node)
+              bl_node_t *prev_node, lookup_elem_valid_f validator)
 {
   bl_node_t *found     = NULL;
   bl_node_t *path_elem = bo_array_at(path, iter, bl_node_t *);
@@ -346,13 +354,17 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
                found->src->col);
   }
 
+  if (validator != NULL) {
+    validator(cnt, path_elem, found, iter == bo_array_size(path));
+  }
+
   if (bl_node_is(found, BL_DECL_MODULE)) { /* found another module */
     if (iter == bo_array_size(path)) {
       return found;
     }
 
     return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
-                         found);
+                         found, validator);
 
   } else if (bl_node_is(found, BL_DECL_ENUM)) { /* found enum */
     /* last in path -> return enum declaration */
@@ -360,7 +372,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
       return found;
 
     /* not last in path -> we need to determinate enum variant */
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found);
+    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found, validator);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
@@ -544,9 +556,9 @@ pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 }
 
 bl_node_t *
-lookup_node(context_t *cnt, BArray *path, int scope_flag)
+lookup_node(context_t *cnt, BArray *path, int scope_flag, lookup_elem_valid_f validator)
 {
-  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL);
+  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL, validator);
 }
 
 /*************************************************************************************************
@@ -574,7 +586,7 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
     found = lookup_node(cnt, bl_peek_expr_call(expr)->path,
-                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING);
+                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING, valid_call_elem);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
@@ -710,13 +722,49 @@ link_const(bl_visitor_t *visitor, bl_node_t *cnst)
   bl_visitor_walk_const(visitor, cnst);
 }
 
+/* validation of elements found during using path linking */
+void
+valid_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+{
+  if (bl_node_is_not(found, BL_DECL_MODULE)) {
+    link_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+               "expeced module name in using path, " BL_YELLOW(
+                   "'%s'") " is invalid, declared here %s:%d:%d",
+               bl_ast_try_get_id(found)->str, found->src->file, found->src->line, found->src->col);
+  }
+}
+
+/* validation of elements found during expr-call path linking */
+void
+valid_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+{
+  if (last) {
+    if (bl_node_is_not(found, BL_DECL_FUNC)) {
+      /* accept functions only */
+      link_error(cnt, BL_ERR_EXPECTED_FUNC, elem->src,
+                 "expeced function name, " BL_YELLOW("'%s'") " is invalid, declared here %s:%d:%d",
+                 bl_ast_try_get_id(found)->str, found->src->file, found->src->line,
+                 found->src->col);
+    }
+  } else {
+    /* accept modules only */
+    if (bl_node_is_not(found, BL_DECL_MODULE)) {
+      /* accept functions only */
+      link_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+                 "expeced module name, " BL_YELLOW("'%s'") " is invalid, declared here %s:%d:%d",
+                 bl_ast_try_get_id(found)->str, found->src->file, found->src->line,
+                 found->src->col);
+    }
+  }
+}
+
 void
 link_using(bl_visitor_t *visitor, bl_node_t *using)
 {
   context_t *      cnt    = peek_cnt(visitor);
   bl_stmt_using_t *_using = bl_peek_stmt_using(using);
   bl_assert(_using->path, "invalid path in using statement");
-  bl_node_t *module = lookup_node(cnt, _using->path, LOOKUP_GSCOPE);
+  bl_node_t *module = lookup_node(cnt, _using->path, LOOKUP_GSCOPE, valid_using_elem);
   if (module) {
     _using->ref = module;
     if (!cnt->is_in_global_scope && !bo_htbl_has_key(cnt->curr_usings, (uint64_t)module)) {
