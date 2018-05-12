@@ -55,6 +55,7 @@ typedef struct
   /* tmps */
   bl_node_t *curr_func;
   jmp_buf    jmp_error;
+  bool       fn_has_return;
 } context_t;
 
 /* static bool type node used for type checking */
@@ -416,6 +417,16 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 
   cnt->curr_func = func;
   bl_visitor_walk_func(visitor, func);
+
+  bool ignore_missing_return = bl_node_is(_func->ret_type, BL_TYPE_FUND) &&
+                               bl_peek_type_fund(_func->ret_type)->type == BL_FTYPE_VOID;
+
+  if (!ignore_missing_return && !cnt->fn_has_return && !(_func->modif & BL_MODIF_EXTERN)) {
+    // error -> missing return statement
+    check_error(cnt, BL_ERR_MISSING_RETURN, func,
+                "missing return statement in function " BL_YELLOW("'%s'"), _func->id.str);
+  }
+  cnt->fn_has_return = false;
 }
 
 static void
@@ -428,6 +439,8 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 
   if (_ret->expr)
     check_expr(cnt, _ret->expr, expected_type, false);
+
+  cnt->fn_has_return = true;
 }
 
 static void
@@ -461,7 +474,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
 bl_error_e
 bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly};
+  context_t cnt = {.builder = builder, .assembly = assembly, .fn_has_return = false};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
