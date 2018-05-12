@@ -40,9 +40,11 @@
 #define BL_FUND_TYPE_LIST                                                                              \
     ft(VOID,   "void") \
     ft(I8,     "i8") \
+    ft(I16,    "i16") \
     ft(I32,    "i32") \
     ft(I64,    "i64") \
     ft(U8,     "u8") \
+    ft(U16,    "u16") \
     ft(U32,    "u32") \
     ft(U64,    "u64") \
     ft(SIZE,   "size_t") \

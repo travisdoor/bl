@@ -158,6 +158,10 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     case BL_FTYPE_U8:
       llvm_type = LLVMInt8TypeInContext(cnt->llvm_cnt);
       break;
+    case BL_FTYPE_I16:
+    case BL_FTYPE_U16:
+      llvm_type = LLVMInt16TypeInContext(cnt->llvm_cnt);
+      break;
     case BL_FTYPE_I32:
     case BL_FTYPE_U32:
       llvm_type = LLVMInt32TypeInContext(cnt->llvm_cnt);
@@ -403,9 +407,11 @@ gen_default(context_t *cnt, bl_node_t *type)
     switch (_type->type) {
     case BL_FTYPE_CHAR:
     case BL_FTYPE_I8:
+    case BL_FTYPE_I16:
     case BL_FTYPE_I32:
     case BL_FTYPE_I64:
     case BL_FTYPE_U8:
+    case BL_FTYPE_U16:
     case BL_FTYPE_U32:
     case BL_FTYPE_PTR:
     case BL_FTYPE_U64:
@@ -508,12 +514,19 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, true);
       break;
+    case BL_FTYPE_I16:
+      val = LLVMConstInt(LLVMInt16TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, true);
+      break;
     case BL_FTYPE_I32:
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, true);
       break;
     case BL_FTYPE_U8:
       val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, false);
+    case BL_FTYPE_U16:
+      val = LLVMConstInt(LLVMInt16TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
     case BL_FTYPE_U32:
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),

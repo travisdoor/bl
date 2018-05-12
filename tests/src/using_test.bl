@@ -4,43 +4,36 @@
  * Using test 
  */
 
-module A {
-  public struct Struct {
-    public i i32
-  }
-
-  public enum Enum i32 {
-    Foo,
-    Bar
-  }
-
-  public fn foo() {}
-
-  public module B {
-    public fn bar() {}
-  }
-}
-
-/*
-using A;
-using A::B; // B must be public
-*/
+fn foo() {}
 
 fn main() i32 {
   using A;
   using A::B; // B must be public
+  using A::C; // B must be public
 
   foo();
   bar();
 
-  var s Struct;
-  var e Enum;
-  e = Enum::Foo;
-
-  s.i.b;
-
-  A::foo();
-  A::B::bar();
+  var a Foo;
 
   return 0;
+}
+
+module A {
+  public fn foo() {}
+
+  public struct Foo {
+  }
+
+  public module B {
+    public fn bar() {}
+    public fn foo() {}
+
+    public struct Foo {
+    }
+  }
+
+  public module C {
+    public fn foo() {}
+  }
 }

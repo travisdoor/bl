@@ -1,10 +1,41 @@
 /* testing playground */
 
-#load "std/std.bl"
-#load "std/std.bl"
-#load "std/std.bl"
-#load "std/std.bl"
-#load "std/std2.bl"
+// file 1
+module A {
+  public fn foo() {}
+}
+
+module B {
+  using A;
+
+  public fn bar() {
+    foo(); // dostupne diky usingu
+    A::foo(); // normalni pristup
+  }
+
+  module C {
+    // using uz neplati???
+  }
+}
+
+// using uz neplati???
+//********************* jiny pripad ********************
+
+// file 2
+module A {
+  public fn foo() {}
+}
+
+using A; // using v globalnim modulu
 
 fn main() {
+  foo(); // pres using
+  A::foo(); // normal
+}
+
+module B {
+  fn test() {
+    foo(); // invalid protoze using uz neplati v zanorenem modulu podle
+    // pravidel z file 1???
+  }
 }

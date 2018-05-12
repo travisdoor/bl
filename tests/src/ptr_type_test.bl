@@ -17,32 +17,6 @@ fn main() i32 {
   a = (*i32_ptr);
   utest::assert((*i32_ptr) == a);
 
-  var foo_ptr *foo_t;
-  var foo foo_t;
-  foo.a = -10;
-  foo.b = -20;
-
-  utest::assert(foo_ptr == null);
-  foo_ptr = &foo;
-  foo = *foo_ptr;
-
-  utest::assert(foo.a == -10);
-  utest::assert(foo.b == -20);
-  utest::assert((*foo_ptr).a == -10);
-  utest::assert((*foo_ptr).b == -20);
-
-  (*foo_ptr).a = 10;
-  (*foo_ptr).b = 20;
-
-  utest::assert(foo.a == 10);
-  utest::assert(foo.b == 20);
-  utest::assert((*foo_ptr).a == 10);
-  utest::assert((*foo_ptr).b == 20);
-
   return 0;
 }
 
-struct foo_t {
-  a i32,
-  b u32
-}

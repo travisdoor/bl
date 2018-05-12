@@ -46,9 +46,9 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [4/13]
+- [-] Other [5/13]
   - [X] Constant "variable" declaration
-  - [ ] i16 and u16
+  - [X] i16 and u16
   - [ ] Remove 'ptr' type 
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
@@ -85,13 +85,14 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
-- [-] Using [4/7]
+- [-] Using [6/8]
   - [X] Ast node for using
   - [X] Duplicity using check 
   - [X] Parsing
   - [ ] Global usings valid only in module?
   - [ ] Using inside struct or enum body?
-  - [ ] Symbol colisions handling
+  - [X] Symbol colisions handling between modules 
+  - [X] Symbol colisions handling between current module and used modules
   - [X] Using must be module or enumerator -> improve checking
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
@@ -127,3 +128,11 @@
 - implicit casting pointer to bool: if (some_PT) {}
 - static array
 - zero initialized statc arrays??
+- statement tagging?
+  [tag = "gameloop"]
+  loop {
+    loop {
+      break gameloop;
+    }
+  }
+

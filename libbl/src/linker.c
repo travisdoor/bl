@@ -57,6 +57,12 @@
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
+#define link_warning(cnt, loc, format, ...)                                                        \
+  {                                                                                                \
+    bl_builder_warning((cnt)->builder, "%s:%d:%d " format, loc->file, loc->line, loc->col,         \
+                       ##__VA_ARGS__);                                                             \
+  }
+
 typedef struct
 {
   bl_block_scope_t block_scope;
@@ -65,7 +71,7 @@ typedef struct
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
-  BHashTable *     curr_usings;
+  BHashTable *     local_usings;
   bool             is_in_global_scope;
 } context_t;
 
@@ -92,7 +98,7 @@ static bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag, lookup_elem_valid_f validator);
 
 static bl_node_t *
-lookup_node_in_usings(context_t *cnt, bl_id_t *id);
+lookup_node_in_usings(context_t *cnt, bl_node_t *elem, bl_node_t *prev_found);
 
 static bl_node_t *
 satisfy_type(context_t *cnt, bl_node_t *type);
@@ -282,28 +288,43 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
   return found;
 }
 
+/*
+ * Search in all curent valid usings in file.
+ * When prev_found is not NULL this method will generate warnings about ambiguous
+ * symbols caused by using directives and return prev_found.
+ * When pre_found is set to NULL method will find elem->id if there is one and return
+ * first found.
+ */
 bl_node_t *
-lookup_node_in_usings(context_t *cnt, bl_id_t *id)
+lookup_node_in_usings(context_t *cnt, bl_node_t *elem, bl_node_t *prev_found)
 {
   /* local (function) usings */
   bl_log("looking for symbol in usings references");
 
-  bo_iterator_t iter   = bo_htbl_begin(cnt->curr_usings);
-  bo_iterator_t end    = bo_htbl_end(cnt->curr_usings);
+  bo_iterator_t iter   = bo_htbl_begin(cnt->local_usings);
+  bo_iterator_t end    = bo_htbl_end(cnt->local_usings);
   bl_node_t *   module = NULL;
-  bl_node_t *   found  = NULL;
+
   while (!bo_iterator_equal(&iter, &end)) {
-    module = (bl_node_t *)bo_htbl_iter_peek_key(cnt->curr_usings, &iter);
-    bo_htbl_iter_next(cnt->curr_usings, &iter);
+    module = (bl_node_t *)bo_htbl_iter_peek_key(cnt->local_usings, &iter);
+    bo_htbl_iter_next(cnt->local_usings, &iter);
     bl_assert(module, "invalid module in using cache");
 
-    found = bl_scope_get_node(bl_peek_decl_module(module)->scope, id);
-    if (found) {
-      return found;
+    bl_node_t *found =
+        bl_scope_get_node(bl_peek_decl_module(module)->scope, &bl_peek_path_elem(elem)->id);
+    if (!prev_found && found) {
+      prev_found = found;
+    } else if (found) {
+      link_warning(cnt, elem->src,
+                   BL_YELLOW("'%s'") " is ambiguous, first found here: %s:%d:%d will be used. "
+                                     "Colliding symbol with same name found here: %s:%d:%d. This "
+                                     "can be caused by using directive.",
+                   bl_peek_path_elem(elem)->id.str, prev_found->src->file, prev_found->src->line,
+                   prev_found->src->col, found->src->file, found->src->line, found->src->col);
     }
   }
 
-  return found;
+  return prev_found;
 }
 
 bl_node_t *
@@ -325,11 +346,6 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
     found = bl_block_scope_get_node(&cnt->block_scope, &bl_peek_path_elem(path_elem)->id);
   }
 
-  /* search symbol in using cache of local or global file scope if there is one */
-  if (scope_flag & LOOKUP_USING && !found) {
-    found = lookup_node_in_usings(cnt, &bl_peek_path_elem(path_elem)->id);
-  }
-
   /* search symbol in module scope */
   if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
     found = bl_scope_get_node(mod_scope, &bl_peek_path_elem(path_elem)->id);
@@ -338,6 +354,11 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   /* search symbol in global scope */
   if (scope_flag & LOOKUP_GSCOPE && !found) {
     found = bl_scope_get_node(cnt->gscope, &bl_peek_path_elem(path_elem)->id);
+  }
+
+  /* search symbol in using cache of local or global file scope if there is one */
+  if (scope_flag & LOOKUP_USING) {
+    found = lookup_node_in_usings(cnt, path_elem, found);
   }
 
   if (found == NULL) {
@@ -693,7 +714,7 @@ void
 link_fn(bl_visitor_t *visitor, bl_node_t *fn)
 {
   context_t *cnt = peek_cnt(visitor);
-  bo_htbl_clear(cnt->curr_usings);
+  bo_htbl_clear(cnt->local_usings);
   cnt->is_in_global_scope = false;
   bl_visitor_walk_func(visitor, fn);
   cnt->is_in_global_scope = true;
@@ -765,16 +786,15 @@ link_using(bl_visitor_t *visitor, bl_node_t *using)
   bl_stmt_using_t *_using = bl_peek_stmt_using(using);
   bl_assert(_using->path, "invalid path in using statement");
   bl_node_t *module = lookup_node(cnt, _using->path, LOOKUP_GSCOPE, valid_using_elem);
-  if (module) {
-    _using->ref = module;
-    if (!cnt->is_in_global_scope && !bo_htbl_has_key(cnt->curr_usings, (uint64_t)module)) {
-      /* using is defined in function scope and should live only in function body, we also don't
-       * want to have duplicit module references in curr_using cache due to performance */
-      bo_htbl_insert_empty(cnt->curr_usings, (uint64_t)module);
-    }
-  } else {
-    bl_abort("unhandled compiler error for module lookup fail");
+  bl_assert(module, "unhandled compiler error for module lookup fail");
+
+  _using->ref = module;
+  if (!cnt->is_in_global_scope && !bo_htbl_has_key(cnt->local_usings, (uint64_t)module)) {
+    /* using is defined in function scope and should live only in function body, we also don't
+     * want to have duplicit module references in curr_using cache due to performance */
+    bo_htbl_insert_empty(cnt->local_usings, (uint64_t)module);
   }
+  bl_log("global scope %d", cnt->is_in_global_scope);
 }
 
 /*************************************************************************************************
@@ -789,7 +809,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .gscope    = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
-  cnt.curr_usings = bo_htbl_new(0, EXPECTED_USING_COUNT);
+  cnt.local_usings = bo_htbl_new(0, EXPECTED_USING_COUNT);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -850,7 +870,7 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   bl_block_scope_terminate(&cnt.block_scope);
-  bo_unref(cnt.curr_usings);
+  bo_unref(cnt.local_usings);
 
   return BL_NO_ERR;
 }

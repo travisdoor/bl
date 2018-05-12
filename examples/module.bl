@@ -28,4 +28,10 @@ fn main() {
    c::printf("2 + 3 = %d\n", A::B::add(2, 3));
    A::print_addition();
    // A::B::priv_add(2, 3) generates error (method is private for module A::B)
+
+   // using simplify path to print_addition method.
+   // compiler will generate warning in case of symbol name colision across modules
+   // caused by using directive, in such case first found will be used
+   using A;
+   print_addition();
 }

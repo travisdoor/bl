@@ -6,9 +6,11 @@
 
 fn main() i32 {
   var _i8     i8;
+  var _i16    i16;
   var _i32    i32;
   var _i64    i64;
   var _u8     u8;
+  var _u16    u16;
   var _u32    u32;
   var _u64    u64;
   var _f32    f32;
