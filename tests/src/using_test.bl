@@ -4,15 +4,16 @@
  * Using test 
  */
 
+using D;
+
 fn foo() {}
 
 fn main() i32 {
   using A;
-  using A::B; // B must be public
-  using A::C; // B must be public
+  using A::B;
+  using A::C; 
 
   foo();
-  bar();
 
   var a Foo;
 
@@ -26,7 +27,6 @@ module A {
   }
 
   public module B {
-    public fn bar() {}
     public fn foo() {}
 
     public struct Foo {
@@ -36,4 +36,8 @@ module A {
   public module C {
     public fn foo() {}
   }
+}
+
+module D {
+  public fn bar() {}
 }

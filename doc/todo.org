@@ -46,10 +46,11 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [6/14]
+- [-] Other [6/15]
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
+  - [ ] Improve error checking of return statement (not all path return value error?) 
   - [ ] Remove 'ptr' type 
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
