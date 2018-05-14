@@ -127,14 +127,9 @@
 - llvm native bin builder
   
 * IDEAS
-- implicit casting pointer to bool: if (some_PT) {}
-- static array
-- zero initialized statc arrays??
-- statement tagging?
-  [tag = "gameloop"]
-  loop {
-    loop {
-      break gameloop;
-    }
-  }
-
+** implicit casting pointer to bool: if (some_PT) {}
+** static array
+** zero initialized statc arrays??
+** statement tagging?
+* NOTES
+** global using search return array of all founds references???

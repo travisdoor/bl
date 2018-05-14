@@ -1,9 +1,9 @@
 //************************************************************************************************
-// bl
+// Biscuit Language
 //
-// File:   unit_impl.h
+// File:   global_using_cache_impl.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   14.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,41 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
+#ifndef GLOBAL_USING_CACHE_IMPL_H_C5LHTUYK
+#define GLOBAL_USING_CACHE_IMPL_H_C5LHTUYK
 
-#include "bl/unit.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 #include "ast/ast_impl.h"
-#include "tokens_impl.h"
-#include "block_scope_impl.h"
 
-/* class Unit object members */
-typedef struct bl_unit
+typedef struct bl_global_using_cache
 {
-  /* output of lexer */
-  bl_tokens_t tokens;
-  /* abstract syntax tree as output of parser */
-  bl_ast_t ast;
-  BArray * globals;
-  /* source file name with path */
-  char *filepath;
-  char *name;
-  /* source data */
-  char *src;
+  BArray *caches;
+} bl_global_using_cache_t;
 
-  /* block scope cache now mainly used for usigns valid per unit with lifetime limited to current
-   * module scope */
-  bl_block_scope_t global_usings;
-} bl_unit_t;
+void
+bl_global_using_cache_init(bl_global_using_cache_t *cache);
 
-#endif // BL_UNIT_IMPL_H
+void
+bl_global_using_cache_terminate(bl_global_using_cache_t *cache);
+
+void
+bl_global_using_cache_push(bl_global_using_cache_t *cache);
+
+void
+bl_global_using_cache_pop(bl_global_using_cache_t *cache);
+
+/* insert new node or return conflicted node */
+void
+bl_global_using_cache_insert(bl_global_using_cache_t *cache, bl_node_t *node);
+
+bo_iterator_t
+bl_global_usings_get_next(bl_global_using_cache_t *cache, bo_iterator_t iter);
+
+bl_node_t *
+bl_global_using_cache_find_node(bl_global_using_cache_t *cache, bl_id_t *id);
+
+void
+bl_global_using_cache_clear(bl_global_using_cache_t *cache);
+
+#endif

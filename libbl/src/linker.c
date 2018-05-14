@@ -68,6 +68,7 @@ typedef struct
   bl_block_scope_t block_scope;
   bl_builder_t *   builder;
   bl_assembly_t *  assembly;
+  bl_unit_t *      unit;
   jmp_buf          jmp_error;
   bl_scope_t *     gscope;
   bl_scope_t *     mod_scope;
@@ -114,6 +115,9 @@ pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct);
 
 static void
 pre_link_module(bl_visitor_t *visitor, bl_node_t *module);
+
+static void
+pre_link_usings(bl_visitor_t *visitor, bl_node_t *using);
 
 static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func);
@@ -566,14 +570,26 @@ pre_link_struct(bl_visitor_t *visitor, bl_node_t *strct)
 void
 pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
+  context_t * cnt            = peek_cnt(visitor);
+  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
   peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
   bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
 
+  /* push global using cache to deeper level in tree structure */
+  bl_block_scope_push(&cnt->unit->global_usings);
   bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+  bl_block_scope_pop(&cnt->unit->global_usings);
+  cnt->mod_scope = prev_scope_tmp;
+}
+
+void
+pre_link_usings(bl_visitor_t *visitor, bl_node_t *using)
+{
+  context_t *cnt = peek_cnt(visitor);
+  bl_log("pre-linking global using -> insert into block cache");
+  bl_block_scope_insert_node(&cnt->unit->global_usings, using);
 }
 
 bl_node_t *
@@ -588,14 +604,17 @@ lookup_node(context_t *cnt, BArray *path, int scope_flag, lookup_elem_valid_f va
 void
 link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
-  bl_scope_t *prev_scope_tmp = peek_cnt(visitor)->mod_scope;
+  context_t * cnt            = peek_cnt(visitor);
+  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
-  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
-  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
+  cnt->mod_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(cnt->mod_scope, "invalid next scope");
 
+  bl_block_scope_push(&cnt->unit->global_usings);
   bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+  bl_block_scope_pop(&cnt->unit->global_usings);
+  cnt->mod_scope = prev_scope_tmp;
 }
 
 void
@@ -827,27 +846,29 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_merge, merge_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_merge, merge_enum, BL_VISIT_ENUM);
 
-  const int  c           = bl_assembly_get_unit_count(assembly);
-  bl_unit_t *unit        = NULL;
+  const int c            = bl_assembly_get_unit_count(assembly);
   cnt.is_in_global_scope = true;
 
   for (int i = 0; i < c; ++i) {
-    unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&visitor_merge, unit->ast.root);
+    cnt.unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_module(&visitor_merge, cnt.unit->ast.root);
   }
 
   /* 2) build structure type tree references */
   bl_visitor_t visitor_pre_link;
   bl_visitor_init(&visitor_pre_link, &cnt);
   bl_visitor_add(&visitor_pre_link, pre_link_module, BL_VISIT_MODULE);
+  bl_visitor_add(&visitor_pre_link, pre_link_usings, BL_VISIT_USING);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_pre_link, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_pre_link, pre_link_struct, BL_VISIT_STRUCT);
 
   cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
-    unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&visitor_pre_link, unit->ast.root);
+    cnt.unit = bl_assembly_get_unit(assembly, i);
+    bl_block_scope_push(&cnt.unit->global_usings);
+    bl_visitor_walk_module(&visitor_pre_link, cnt.unit->ast.root);
+    bl_block_scope_pop(&cnt.unit->global_usings);
   }
 
   /* 3) link the rest */
@@ -865,8 +886,10 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   cnt.is_in_global_scope = true;
   for (int i = 0; i < c; ++i) {
-    unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&visitor_link, unit->ast.root);
+    cnt.unit = bl_assembly_get_unit(assembly, i);
+
+    bl_block_scope_push(&cnt.unit->global_usings);
+    bl_visitor_walk_module(&visitor_link, cnt.unit->ast.root);
   }
 
   bl_block_scope_terminate(&cnt.block_scope);

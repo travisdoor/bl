@@ -39,6 +39,7 @@ init(bl_unit_t *unit)
 {
   bl_tokens_init(&unit->tokens);
   bl_ast_init(&unit->ast);
+  bl_block_scope_init(&unit->global_usings);
 }
 
 static char *
@@ -47,7 +48,7 @@ search_file(const char *filepath)
   if (filepath == NULL)
     return NULL;
 
-  char tmp_rpath[PATH_MAX];
+  char  tmp_rpath[PATH_MAX];
   char *rpath = realpath(filepath, tmp_rpath);
   if (rpath != NULL) {
     return strdup(rpath);
@@ -119,6 +120,7 @@ bl_unit_delete(bl_unit_t *unit)
   bl_tokens_terminate(&unit->tokens);
   bl_ast_terminate(&unit->ast);
   bl_free(unit);
+  bl_block_scope_terminate(&unit->global_usings);
 }
 
 const char *
