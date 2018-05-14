@@ -36,6 +36,7 @@
 typedef struct bl_global_using_cache
 {
   BArray *caches;
+  int     i;
 } bl_global_using_cache_t;
 
 void
@@ -54,11 +55,8 @@ bl_global_using_cache_pop(bl_global_using_cache_t *cache);
 void
 bl_global_using_cache_insert(bl_global_using_cache_t *cache, bl_node_t *node);
 
-bo_iterator_t
-bl_global_usings_get_next(bl_global_using_cache_t *cache, bo_iterator_t iter);
-
-bl_node_t *
-bl_global_using_cache_find_node(bl_global_using_cache_t *cache, bl_id_t *id);
+bool
+bl_global_usings_get_next(bl_global_using_cache_t *cache, bo_iterator_t *iter);
 
 void
 bl_global_using_cache_clear(bl_global_using_cache_t *cache);
