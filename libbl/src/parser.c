@@ -60,7 +60,7 @@ static bl_node_t *
 parse_pre_load_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_fn_maybe(context_t *cnt, int modif);
+parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
 parse_using_maybe(context_t *cnt);
@@ -739,11 +739,11 @@ parse_type_maybe(context_t *cnt)
 
   BArray *    path           = parse_path_maybe(cnt);
   bl_node_t * last_path_elem = NULL;
-  bl_token_t *prev_tok     = NULL;
+  bl_token_t *prev_tok       = NULL;
 
   if (path && bo_array_size(path) > 0) {
     last_path_elem = bo_array_at(path, bo_array_size(path) - 1, bl_node_t *);
-    prev_tok     = bl_tokens_peek_prev(cnt->tokens);
+    prev_tok       = bl_tokens_peek_prev(cnt->tokens);
 
     bl_assert(last_path_elem, "invalid last path elem in type parsing");
 
@@ -1055,7 +1055,7 @@ parse_arg_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_fn_maybe(context_t *cnt, int modif)
+parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 {
   bl_node_t *fn = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_FN) != NULL) {
@@ -1064,7 +1064,7 @@ parse_fn_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected function name");
     }
 
-    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif);
+    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent);
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
       if (cnt->ast->entry_func) {
@@ -1311,8 +1311,8 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
   bl_token_t *tok_id          = NULL;
   bl_token_t *tok_begin_block = NULL;
 
-  if (!global) {
-    bl_assert(parent, "non-global module must have parent module!!!");
+  if (parent != NULL) {
+    /* module nested in other module */
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_MODULE) == NULL) {
       return NULL;
     }
@@ -1324,14 +1324,15 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected module name");
     }
 
-    module = bl_ast_add_decl_module(cnt->ast, tok_id, tok_id->value.str, modif);
+    module = bl_ast_add_decl_module(cnt->ast, tok_id, tok_id->value.str, modif, parent);
 
     if (tok_begin_block->sym != BL_SYM_LBLOCK) {
       parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin_block,
                   "expected block after module name " BL_YELLOW("'{'"));
     }
   } else {
-    module = bl_ast_add_decl_module(cnt->ast, NULL, NULL, BL_MODIF_PUBLIC);
+    /* anonymous global scope module */
+    module = bl_ast_add_decl_module(cnt->ast, NULL, NULL, BL_MODIF_PUBLIC, NULL);
   }
 
   int               next_modif = BL_MODIF_NONE;
@@ -1350,7 +1351,7 @@ decl:
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, next_modif))) {
+  if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, next_modif, parent))) {
     goto decl;
   }
 

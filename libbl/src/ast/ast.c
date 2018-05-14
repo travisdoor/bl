@@ -338,7 +338,8 @@ bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name)
 }
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif,
+                       bl_node_t *parent)
 {
   bl_node_t *module = alloc_node(ast);
   if (tok)
@@ -347,7 +348,8 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
   module->code = BL_DECL_MODULE;
   if (name)
     bl_id_init(&bl_peek_decl_module(module)->id, name);
-  bl_peek_decl_module(module)->modif = modif;
+  bl_peek_decl_module(module)->modif  = modif;
+  bl_peek_decl_module(module)->parent = parent;
 
   return module;
 }
@@ -403,17 +405,19 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type, int modif)
+                     bl_node_t *ret_type, int modif, bl_node_t *parent)
 {
   bl_node_t *func = alloc_node(ast);
   if (tok)
     func->src = &tok->src;
 
-  func->code                        = BL_DECL_FUNC;
-  bl_peek_decl_func(func)->block    = block;
-  bl_peek_decl_func(func)->ret_type = ret_type;
-  bl_peek_decl_func(func)->modif    = modif;
-  bl_id_init(&bl_peek_decl_func(func)->id, name);
+  func->code            = BL_DECL_FUNC;
+  bl_decl_func_t *_func = bl_peek_decl_func(func);
+  _func->block          = block;
+  _func->ret_type       = ret_type;
+  _func->modif          = modif;
+  _func->parent         = parent;
+  bl_id_init(&(_func->id), name);
 
   return func;
 }

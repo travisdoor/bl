@@ -194,6 +194,7 @@ struct bl_decl_module
   int         modif;
   BArray *    nodes;
   bl_scope_t *scope;
+  bl_node_t * parent;
 };
 
 /* variable declaration */
@@ -229,6 +230,7 @@ struct bl_decl_func
   BArray *   args;
   bl_node_t *block;
   bl_node_t *ret_type;
+  bl_node_t *parent;
 };
 
 struct bl_decl_struct
@@ -455,7 +457,8 @@ bl_node_t *
 bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif,
+                       bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
@@ -470,7 +473,7 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type, int modif);
+                     bl_node_t *ret_type, int modif, bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
