@@ -31,7 +31,6 @@ set(HEADER_FILES_IMPL
         src/common_impl.h 
         src/scope_impl.h
         src/block_scope_impl.h
-        src/global_using_cache_impl.h
         src/ast/id_impl.h  
         src/ast/visitor_impl.h
         src/ast/ast_impl.h)
@@ -60,7 +59,6 @@ set(SOURCE_FILES
         src/block_scope.c
         src/ast/id.c
         src/parser.c
-        src/global_using_cache.c
         src/ast/ast.c
         src/ast/visitor.c)
 
