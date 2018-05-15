@@ -417,6 +417,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   _func->ret_type       = ret_type;
   _func->modif          = modif;
   _func->parent         = parent;
+  _func->scope          = NULL;
   bl_id_init(&(_func->id), name);
 
   return func;
@@ -493,6 +494,7 @@ bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent)
 
   block->code                       = BL_DECL_BLOCK;
   bl_peek_decl_block(block)->parent = parent;
+  bl_peek_decl_block(block)->scope  = NULL;
 
   return block;
 }
@@ -1011,5 +1013,39 @@ bl_ast_path_get_last(BArray *path)
     return NULL;
 
   return bo_array_at(path, c - 1, bl_node_t *);
+}
+
+bl_scope_t *
+bl_ast_try_get_scope(bl_node_t *node)
+{
+  switch (bl_node_code(node)) {
+  case BL_DECL_MODULE:
+    return bl_peek_decl_module(node)->scope;
+  case BL_DECL_BLOCK:
+    return bl_peek_decl_block(node)->scope;
+  case BL_DECL_ENUM:
+    return bl_peek_decl_enum(node)->scope;
+  case BL_DECL_STRUCT:
+    return bl_peek_decl_struct(node)->scope;
+  case BL_DECL_FUNC:
+    return bl_peek_decl_func(node)->scope;
+  default:
+    return NULL;
+  }
+}
+
+bl_node_t *
+bl_ast_try_get_parent(bl_node_t *node)
+{
+  switch (bl_node_code(node)) {
+  case BL_DECL_MODULE:
+    return bl_peek_decl_module(node)->parent;
+  case BL_DECL_BLOCK:
+    return bl_peek_decl_block(node)->parent;
+  case BL_DECL_FUNC:
+    return bl_peek_decl_func(node)->parent;
+  default:
+    return NULL;
+  }
 }
 /**************************************************************************************************/

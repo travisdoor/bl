@@ -48,6 +48,8 @@ set(SOURCE_FILES
         src/evaluator.c
         src/lexer.c
         src/check.c
+        src/connect.c
+        src/merge.c
         src/bldebug.c
         src/ast_printer.c
         src/llvm_jit_exec.c

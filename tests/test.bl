@@ -1,11 +1,21 @@
+/* testing playground */
+
+module A {
+  public module B {
+  }
+}
+
+module A {
+  public module B {
+    public fn test() {}
+  }
+}
+
 fn main() {
-
+  A::B::test();
 }
 
-fn hello() i32 {
-  // generate error -> missing return n;
-  return 3;
-}
+
 
 
 

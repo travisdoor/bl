@@ -224,13 +224,14 @@ struct bl_decl_arg
 
 struct bl_decl_func
 {
-  bl_id_t    id;
-  int        modif;
-  int        used;
-  BArray *   args;
-  bl_node_t *block;
-  bl_node_t *ret_type;
-  bl_node_t *parent;
+  bl_id_t     id;
+  int         modif;
+  int         used;
+  BArray *    args;
+  bl_node_t * block;
+  bl_node_t * ret_type;
+  bl_node_t * parent;
+  bl_scope_t *scope;
 };
 
 struct bl_decl_struct
@@ -270,8 +271,9 @@ struct bl_decl_enum_variant
 
 struct bl_decl_block
 {
-  BArray *   nodes;
-  bl_node_t *parent;
+  BArray *    nodes;
+  bl_node_t * parent;
+  bl_scope_t *scope;
 };
 
 struct bl_expr_const
@@ -639,6 +641,12 @@ bl_ast_try_get_type_dims(bl_node_t *type);
 
 bl_node_t *
 bl_ast_path_get_last(BArray *path);
+
+bl_scope_t *
+bl_ast_try_get_scope(bl_node_t *node);
+
+bl_node_t *
+bl_ast_try_get_parent(bl_node_t *node);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

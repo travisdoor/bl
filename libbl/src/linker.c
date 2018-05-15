@@ -65,22 +65,32 @@
 
 typedef struct
 {
-  bl_block_scope_t block_scope;
-  bl_builder_t *   builder;
-  bl_assembly_t *  assembly;
-  bl_unit_t *      unit;
-  jmp_buf          jmp_error;
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+  bl_unit_t *    unit;
+  jmp_buf        jmp_error;
+
+  /* Current compound node is pointer to current root for symbol lookup. It is typically block of
+   * code inside curly brackets (module, function body, etc.). This node must have scope cache. When
+   * needed symbol has not been found in scope of this node we need access to parent of this node
+   * also. For example when we looking for type declaration of variable we first search in scope of
+   * current compound node and than recursively in its parent nodes when type is declared
+   * somewhere in global scope or parent module. */
+  bl_node_t *curr_compound;
+
+  bl_block_scope_t block_scope; // TODO: use normal scope and node tree recursive search
   bl_scope_t *     gscope;
-  bl_scope_t *     mod_scope;
+  bl_scope_t *     curr_scope;
   BHashTable *     local_usings;
   bool             is_in_global_scope;
+
 } context_t;
 
 /* flags used in lookup methods for finding declarations in various scopes */
 typedef enum
 {
   LOOKUP_GSCOPE       = 1,  // search in global-scope
-  LOOKUP_MOD_SCOPE    = 2,  // search in scope of current module
+  LOOKUP_CURR_SCOPE   = 2,  // search in scope of current module
   LOOKUP_BLOCK_SCOPE  = 4,  // search in scope of surrent block (ex.: function body)
   LOOKUP_ENUM_VARIANT = 8,  // search in enum variants
   LOOKUP_USING        = 16, // search in all available usings
@@ -92,7 +102,7 @@ typedef void (*lookup_elem_valid_f)(context_t *cnt, bl_node_t *elem, bl_node_t *
  * forward declarations
  *************************************************************************************************/
 static bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *curr_scope, int scope_flag, int iter,
               bl_node_t *prev_node, lookup_elem_valid_f validator);
 
 static bl_node_t *
@@ -179,7 +189,7 @@ satisfy_type(context_t *cnt, bl_node_t *type)
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
     found                       = lookup_node(cnt, bl_peek_type_ref(type)->path,
-                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING, NULL);
+                        LOOKUP_GSCOPE | LOOKUP_CURR_SCOPE | LOOKUP_USING, NULL);
     bl_peek_type_ref(type)->ref = found;
 
     switch (bl_node_code(found)) {
@@ -203,7 +213,7 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *expr)
 {
   bl_node_t *found =
       lookup_node(cnt, bl_peek_expr_decl_ref(expr)->path,
-                  LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_BLOCK_SCOPE | LOOKUP_USING, NULL);
+                  LOOKUP_GSCOPE | LOOKUP_CURR_SCOPE | LOOKUP_BLOCK_SCOPE | LOOKUP_USING, NULL);
 
   bl_peek_expr_decl_ref(expr)->ref = found;
   if (bl_node_is(found, BL_DECL_VAR))
@@ -228,7 +238,7 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
 
     /* try to find structure declaration in current module scope, when it is found we can access
      * private members also */
-    bool access_priv = bl_scope_get_node(cnt->mod_scope, &bl_peek_decl_struct(type)->id);
+    bool access_priv = bl_scope_get_node(cnt->curr_scope, &bl_peek_decl_struct(type)->id);
 
     found = bl_scope_get_node(bl_peek_decl_struct(type)->scope, &_member_ref->id);
     if (found == NULL) {
@@ -237,7 +247,7 @@ satisfy_member(context_t *cnt, bl_node_t *expr)
                  _member_ref->id.str, bl_ast_try_get_id(type)->str);
     }
 
-    /* if current mod_scope contains found structure than private members of the struct can be
+    /* if current curr_scope contains found structure than private members of the struct can be
      * referenced, otherwise check if the member is public and generate error when it's not */
 
     bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(found);
@@ -332,7 +342,7 @@ lookup_node_in_usings(context_t *cnt, bl_node_t *elem, bl_node_t *prev_found)
 }
 
 bl_node_t *
-lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_flag, int iter,
+lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *curr_scope, int scope_flag, int iter,
               bl_node_t *prev_node, lookup_elem_valid_f validator)
 {
   bl_node_t *found     = NULL;
@@ -351,8 +361,8 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
   }
 
   /* search symbol in module scope */
-  if (scope_flag & LOOKUP_MOD_SCOPE && !found) {
-    found = bl_scope_get_node(mod_scope, &bl_peek_path_elem(path_elem)->id);
+  if (scope_flag & LOOKUP_CURR_SCOPE && !found) {
+    found = bl_scope_get_node(curr_scope, &bl_peek_path_elem(path_elem)->id);
   }
 
   /* search symbol in global scope */
@@ -372,7 +382,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
   iter++;
 
-  if (mod_scope != cnt->mod_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
+  if (curr_scope != cnt->curr_scope && !(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
     link_error(cnt, BL_ERR_PRIVATE, path_elem->src,
                "symbol " BL_YELLOW("'%s'") " is private, declared here: %s:%d:%d",
                bl_peek_path_elem(path_elem)->id.str, found->src->file, found->src->line,
@@ -388,7 +398,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
       return found;
     }
 
-    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_MOD_SCOPE, iter,
+    return lookup_node_1(cnt, path, bl_peek_decl_module(found)->scope, LOOKUP_CURR_SCOPE, iter,
                          found, validator);
 
   } else if (bl_node_is(found, BL_DECL_ENUM)) { /* found enum */
@@ -397,7 +407,7 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
       return found;
 
     /* not last in path -> we need to determinate enum variant */
-    return lookup_node_1(cnt, path, mod_scope, LOOKUP_ENUM_VARIANT, iter, found, validator);
+    return lookup_node_1(cnt, path, curr_scope, LOOKUP_ENUM_VARIANT, iter, found, validator);
   } else {
     bl_assert(iter == bo_array_size(path), "invalid path, last found is %s", bl_node_name(found));
     return found;
@@ -408,15 +418,14 @@ lookup_node_1(context_t *cnt, BArray *path, bl_scope_t *mod_scope, int scope_fla
 
 /*************************************************************************************************
  * declaration merging
- * all declaration in corresponding modules must be merged due to lack of header files and
- * context free grammar
+ * all declaration in corresponding modules must be merged due to lack of header files
  *************************************************************************************************/
 void
 merge_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
   context_t *     cnt   = peek_cnt(visitor);
-  bl_scope_t *    scope = peek_cnt(visitor)->mod_scope;
+  bl_scope_t *    scope = peek_cnt(visitor)->curr_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_func->id);
 
@@ -434,7 +443,7 @@ merge_const(bl_visitor_t *visitor, bl_node_t *cnst)
 {
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
   context_t *      cnt   = peek_cnt(visitor);
-  bl_scope_t *     scope = peek_cnt(visitor)->mod_scope;
+  bl_scope_t *     scope = peek_cnt(visitor)->curr_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_cnst->id);
 
@@ -452,7 +461,7 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
   context_t *       cnt    = peek_cnt(visitor);
-  bl_scope_t *      scope  = peek_cnt(visitor)->mod_scope;
+  bl_scope_t *      scope  = peek_cnt(visitor)->curr_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_strct->id);
 
@@ -488,7 +497,7 @@ merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm  = bl_peek_decl_enum(enm);
   context_t *     cnt   = peek_cnt(visitor);
-  bl_scope_t *    scope = peek_cnt(visitor)->mod_scope;
+  bl_scope_t *    scope = peek_cnt(visitor)->curr_scope;
 
   bl_node_t *conflict = bl_scope_get_node(scope, &_enm->id);
 
@@ -522,7 +531,7 @@ void
 merge_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t * cnt            = peek_cnt(visitor);
-  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
+  bl_scope_t *prev_scope_tmp = cnt->curr_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
   bl_decl_module_t *_module  = bl_peek_decl_module(module);
   bl_node_t *       conflict = bl_scope_get_node(prev_scope_tmp, &_module->id);
@@ -535,16 +544,16 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
                  _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     }
 
-    peek_cnt(visitor)->mod_scope = bl_peek_decl_module(conflict)->scope;
-    _module->scope               = bl_peek_decl_module(conflict)->scope;
+    peek_cnt(visitor)->curr_scope = bl_peek_decl_module(conflict)->scope;
+    _module->scope                = bl_peek_decl_module(conflict)->scope;
   } else {
-    _module->scope               = bl_scope_new(cnt->assembly->scope_cache);
-    peek_cnt(visitor)->mod_scope = _module->scope;
+    _module->scope                = bl_scope_new(cnt->assembly->scope_cache);
+    peek_cnt(visitor)->curr_scope = _module->scope;
     bl_scope_insert_node(prev_scope_tmp, module);
   }
 
   bl_visitor_walk_module(visitor, module);
-  peek_cnt(visitor)->mod_scope = prev_scope_tmp;
+  peek_cnt(visitor)->curr_scope = prev_scope_tmp;
 }
 
 /*************************************************************************************************
@@ -571,17 +580,17 @@ void
 pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t * cnt            = peek_cnt(visitor);
-  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
+  bl_scope_t *prev_scope_tmp = cnt->curr_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
-  peek_cnt(visitor)->mod_scope = bl_peek_decl_module(module)->scope;
-  bl_assert(peek_cnt(visitor)->mod_scope, "invalid next scope");
+  peek_cnt(visitor)->curr_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(peek_cnt(visitor)->curr_scope, "invalid next scope");
 
   /* push global using cache to deeper level in tree structure */
   bl_block_scope_push(&cnt->unit->global_usings);
   bl_visitor_walk_module(visitor, module);
   bl_block_scope_pop(&cnt->unit->global_usings);
-  cnt->mod_scope = prev_scope_tmp;
+  cnt->curr_scope = prev_scope_tmp;
 }
 
 void
@@ -595,7 +604,7 @@ pre_link_usings(bl_visitor_t *visitor, bl_node_t *using)
 bl_node_t *
 lookup_node(context_t *cnt, BArray *path, int scope_flag, lookup_elem_valid_f validator)
 {
-  return lookup_node_1(cnt, path, cnt->mod_scope, scope_flag, 0, NULL, validator);
+  return lookup_node_1(cnt, path, cnt->curr_scope, scope_flag, 0, NULL, validator);
 }
 
 /*************************************************************************************************
@@ -605,16 +614,16 @@ void
 link_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t * cnt            = peek_cnt(visitor);
-  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
+  bl_scope_t *prev_scope_tmp = cnt->curr_scope;
   bl_assert(prev_scope_tmp, "invalid current scope in linker");
 
-  cnt->mod_scope = bl_peek_decl_module(module)->scope;
-  bl_assert(cnt->mod_scope, "invalid next scope");
+  cnt->curr_scope = bl_peek_decl_module(module)->scope;
+  bl_assert(cnt->curr_scope, "invalid next scope");
 
   bl_block_scope_push(&cnt->unit->global_usings);
   bl_visitor_walk_module(visitor, module);
   bl_block_scope_pop(&cnt->unit->global_usings);
-  cnt->mod_scope = prev_scope_tmp;
+  cnt->curr_scope = prev_scope_tmp;
 }
 
 void
@@ -626,7 +635,7 @@ link_expr(bl_visitor_t *visitor, bl_node_t *expr)
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
     found = lookup_node(cnt, bl_peek_expr_call(expr)->path,
-                        LOOKUP_GSCOPE | LOOKUP_MOD_SCOPE | LOOKUP_USING, valid_call_elem);
+                        LOOKUP_GSCOPE | LOOKUP_CURR_SCOPE | LOOKUP_USING, valid_call_elem);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
@@ -654,12 +663,12 @@ link_enum(bl_visitor_t *visitor, bl_node_t *enm)
   context_t *     cnt  = peek_cnt(visitor);
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
-  bl_scope_t *prev_scope_tmp = cnt->mod_scope;
-  cnt->mod_scope             = _enm->scope;
-  bl_assert(cnt->mod_scope, "invalid next scope");
+  bl_scope_t *prev_scope_tmp = cnt->curr_scope;
+  cnt->curr_scope            = _enm->scope;
+  bl_assert(cnt->curr_scope, "invalid next scope");
 
   bl_visitor_walk_enum(visitor, enm);
-  cnt->mod_scope = prev_scope_tmp;
+  cnt->curr_scope = prev_scope_tmp;
 }
 
 void
@@ -822,10 +831,10 @@ link_using(bl_visitor_t *visitor, bl_node_t *using)
 bl_error_e
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder   = builder,
-                   .assembly  = assembly,
-                   .mod_scope = assembly->scope,
-                   .gscope    = assembly->scope};
+  context_t cnt = {.builder    = builder,
+                   .assembly   = assembly,
+                   .curr_scope = assembly->scope,
+                   .gscope     = assembly->scope};
 
   bl_block_scope_init(&cnt.block_scope);
   cnt.local_usings = bo_htbl_new(0, EXPECTED_USING_COUNT);

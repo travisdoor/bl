@@ -90,7 +90,15 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_error_e error;
 
+  /*
   if ((error = bl_linker_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+  */
+
+  if ((error = bl_merge_run(builder, assembly)) != BL_NO_ERR)
+    return error;
+
+  if ((error = bl_connect_run(builder, assembly)) != BL_NO_ERR)
     return error;
 
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
