@@ -587,9 +587,9 @@ pre_link_module(bl_visitor_t *visitor, bl_node_t *module)
 void
 pre_link_usings(bl_visitor_t *visitor, bl_node_t *using)
 {
-  context_t *cnt = peek_cnt(visitor);
+  /*context_t *cnt = peek_cnt(visitor);
   bl_log("pre-linking global using -> insert into block cache");
-  bl_block_scope_insert_node(&cnt->unit->global_usings, using);
+  bl_block_scope_insert_node(&cnt->unit->global_usings, using);*/
 }
 
 bl_node_t *
