@@ -80,6 +80,9 @@ parse_enum_maybe(context_t *cnt, int modif);
 static bl_node_t *
 parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif);
 
+static void
+parse_module_body(context_t *cnt, bl_node_t *module);
+
 static bl_node_t *
 parse_block_maybe(context_t *cnt, bl_node_t *parent);
 
@@ -161,7 +164,7 @@ parse_return_maybe(context_t *cnt);
 static bl_node_t *
 parse_sizeof_maybe(context_t *cnt);
 
-int
+static int
 parse_modifs_maybe(context_t *cnt);
 
 /* impl*/
@@ -1402,6 +1405,11 @@ decl:
   return module;
 }
 
+void
+parse_module_body(context_t *cnt, bl_node_t *module)
+{
+}
+
 bl_error_e
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
 {
@@ -1415,6 +1423,10 @@ bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
   if ((error = setjmp(cnt.jmp_error))) {
     return (bl_error_e)error;
   }
+
+  /* TODO: create global scope root module by default */
+  bl_node_t *glob_module = bl_ast_add_decl_module(cnt.ast, NULL, NULL, BL_MODIF_PUBLIC, NULL);
+  parse_module_body(&cnt, glob_module);
 
   unit->ast.root = parse_module_maybe(&cnt, NULL, true, BL_MODIF_PUBLIC);
   return BL_NO_ERR;

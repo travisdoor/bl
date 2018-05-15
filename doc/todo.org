@@ -104,6 +104,10 @@
   - [ ] Evaluation
 - [ ] Error handling [0/1]
   - [ ] struct a { i i32 } a.i.b.c
+- [ ] Better linker [0/2]
+  - [ ] Create global root module by default in parser
+  - [ ] Review module merging
+
 * BUGS [2/4]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] Cannot evaluate array size inside structures. 
