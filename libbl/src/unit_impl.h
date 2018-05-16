@@ -32,7 +32,6 @@
 #include "bl/unit.h"
 #include "ast/ast_impl.h"
 #include "tokens_impl.h"
-#include "block_scope_impl.h"
 
 /* class Unit object members */
 typedef struct bl_unit
@@ -47,10 +46,6 @@ typedef struct bl_unit
   char *name;
   /* source data */
   char *src;
-
-  /* block scope cache now mainly used for usigns valid per unit with lifetime limited to current
-   * module scope */
-  bl_block_scope_t global_usings;
 } bl_unit_t;
 
 #endif // BL_UNIT_IMPL_H

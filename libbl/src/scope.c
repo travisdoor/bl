@@ -33,19 +33,33 @@
 bl_scope_cache_t *
 bl_scope_cache_new(void)
 {
-  return bo_array_new_bo(bo_typeof(BHashTable), true);
+  return bo_array_new(sizeof(bl_scope_t *));
 }
 
 void
 bl_scope_cache_delete(bl_scope_cache_t *cache)
 {
+  const size_t c     = bo_array_size(cache);
+  bl_scope_t * scope = NULL;
+  for (size_t i = 0; i < c; ++i) {
+    scope = bo_array_at(cache, i, bl_scope_t *);
+    bo_unref(scope->anonymous_syms);
+    bo_unref(scope->named_syms);
+    bl_free(scope);
+  }
+
   bo_unref(cache);
 }
 
 bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache)
 {
-  bl_scope_t *scope = bo_htbl_new(sizeof(bl_node_t *), 1024);
+  bl_scope_t *scope = bl_malloc(sizeof(bl_scope_t));
+
+  scope->named_syms     = bo_htbl_new(sizeof(bl_node_t *), 1024);
+  scope->anonymous_syms = bo_htbl_new(0, 64);
+  scope->magic          = 666;
+
   bo_array_push_back(cache, scope);
   return scope;
 }
@@ -55,22 +69,53 @@ bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
 {
   bl_id_t *id = bl_ast_try_get_id(node);
   bl_assert(id, "invalid id");
-  bo_htbl_insert(scope, id->hash, node);
+  bo_htbl_insert(scope->named_syms, id->hash, node);
 }
 
 bl_node_t *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 {
   bl_assert(id, "invalid id");
-  if (bo_htbl_has_key(scope, id->hash)) {
-    return bo_htbl_at(scope, id->hash, bl_node_t *);
+  if (bo_htbl_has_key(scope->named_syms, id->hash)) {
+    return bo_htbl_at(scope->named_syms, id->hash, bl_node_t *);
   }
 
   return NULL;
 }
 
 void
+bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node)
+{
+  bo_htbl_insert_empty(scope->anonymous_syms, (uint64_t)node);
+}
+
+bool
+bl_scope_has_anonymous(bl_scope_t *scope, struct bl_node *node)
+{
+  return bo_htbl_has_key(scope->anonymous_syms, (uint64_t)node);
+}
+
+bl_node_t *
+bl_scope_get_next_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
+{
+  bo_iterator_t end = bo_htbl_end(scope->anonymous_syms);
+  if (bo_iterator_equal(&end, iter))
+    return NULL;
+
+  bl_node_t *node = (bl_node_t *)bo_htbl_iter_peek_key(scope->anonymous_syms, iter);
+  bo_htbl_iter_next(scope->anonymous_syms, iter);
+  return node;
+}
+
+void
+bl_scope_init_iter_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
+{
+  *iter = bo_htbl_begin(scope->anonymous_syms);
+}
+
+void
 bl_scope_clear(bl_scope_t *scope)
 {
-  bo_htbl_clear(scope);
+  bo_htbl_clear(scope->named_syms);
+  bo_htbl_clear(scope->anonymous_syms);
 }

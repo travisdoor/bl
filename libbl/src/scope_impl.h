@@ -33,7 +33,23 @@
 #include <bobject/containers/array.h>
 #include "ast/id_impl.h"
 
-typedef BHashTable bl_scope_t;
+/* Scope cache is used for storing unique symbols found after parsing in AST nodes. Every compound
+ * node (typically block of code inside curly braces) can have multiple declarations needed by other
+ * parts of user code. Scope cache is attached to this compound block and it's used for symbol
+ * lookup.
+ *
+ * Scope can store two kind of symbols:
+ * 1) named symbols - all symbols which can be found by unique name
+ * 2) anonymous symbols - special kind of symbols which has no name
+ */
+
+typedef struct
+{
+  BHashTable *named_syms;
+  BHashTable *anonymous_syms;
+  int         magic;
+} bl_scope_t;
+
 typedef BArray bl_scope_cache_t;
 
 struct bl_node;
@@ -52,6 +68,18 @@ bl_scope_insert_node(bl_scope_t *scope, struct bl_node *node);
 
 struct bl_node *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
+
+void
+bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node);
+
+bool
+bl_scope_has_anonymous(bl_scope_t *scope, struct bl_node *node);
+
+struct bl_node *
+bl_scope_get_next_anonymous(bl_scope_t *scope, bo_iterator_t *iter);
+
+void
+bl_scope_init_iter_anonymous(bl_scope_t *scope, bo_iterator_t *iter);
 
 void
 bl_scope_clear(bl_scope_t *scope);

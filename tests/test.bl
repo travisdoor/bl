@@ -13,7 +13,10 @@ module A {
 
 fn main() {
   A::B::test();
+  //test();
 }
+
+using A::B;
 
 
 

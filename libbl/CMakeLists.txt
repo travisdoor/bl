@@ -30,14 +30,12 @@ set(HEADER_FILES_IMPL
         src/stages_impl.h
         src/common_impl.h 
         src/scope_impl.h
-        src/block_scope_impl.h
         src/ast/id_impl.h  
         src/ast/visitor_impl.h
         src/ast/ast_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
-        src/linker.c
         src/preproc.c
         src/file_loader.c
         src/unit.c
@@ -58,7 +56,6 @@ set(SOURCE_FILES
         src/llvm_linker.c 
         src/llvm_generator.c 
         src/scope.c 
-        src/block_scope.c
         src/ast/id.c
         src/parser.c
         src/ast/ast.c

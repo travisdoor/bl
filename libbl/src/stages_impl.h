@@ -58,10 +58,6 @@ bl_preproc_run(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly);
 bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
-// TODO: remove
-bl_error_e
-bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
 bl_error_e
 bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly);
 

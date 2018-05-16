@@ -75,6 +75,9 @@ void
 bl_visitor_add(bl_visitor_t *visitor, bl_visit_f visit, bl_visit_e type);
 
 void
+bl_visitor_walk_gscope(bl_visitor_t *visitor, bl_node_t *root);
+
+void
 bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module);
 
 void

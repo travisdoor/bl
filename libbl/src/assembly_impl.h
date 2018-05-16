@@ -45,9 +45,7 @@ typedef struct bl_assembly
   LLVMModuleRef     llvm_module;
   LLVMContextRef    llvm_cnt;
 
-  bl_scope_t *      scope;
   bl_scope_cache_t *scope_cache;
-
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

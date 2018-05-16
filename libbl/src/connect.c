@@ -76,11 +76,14 @@ typedef struct
 static bl_node_t *
 lookup(context_t *cnt, BArray *path);
 
-/* static bl_node_t * */
-/* lookup_in_scope(context_t *cnt, BArray *path, int iter, bl_node_t *curr_compound); */
-
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
+
+static bl_node_t *
+lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
+
+static void
+pre_connect_using(bl_visitor_t *visitor, bl_node_t *using);
 
 static void
 connect_module(bl_visitor_t *visitor, bl_node_t *module);
@@ -100,6 +103,12 @@ lookup(context_t *cnt, BArray *path)
   bl_node_t *path_elem = bo_array_at(path, 0, bl_node_t *);
   bl_node_t *found     = lookup_in_tree(cnt, path_elem, cnt->curr_compound);
 
+  const size_t c = bo_array_size(path);
+  for (size_t i = 1; i < c; ++i) {
+    path_elem = bo_array_at(path, i, bl_node_t *);
+    found     = lookup_in_scope(cnt, path_elem, found);
+  }
+
   return found;
 }
 
@@ -111,6 +120,7 @@ lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
   bl_node_t * tmp_curr_compound = curr_compound;
 
   while (found == NULL && tmp_curr_compound != NULL) {
+    bl_log("lookup in compound %p", tmp_curr_compound);
     tmp_scope = bl_ast_try_get_scope(tmp_curr_compound);
     bl_assert(tmp_scope, "invalid scope");
     found             = bl_scope_get_node(tmp_scope, &bl_peek_path_elem(path_elem)->id);
@@ -125,12 +135,22 @@ lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
   return found;
 }
 
-/* bl_node_t * */
-/* lookup_in_scope(context_t *cnt, BArray *path, int iter, bl_node_t *curr_compound) */
-/* { */
-/*   return NULL; */
-/* } */
+bl_node_t *
+lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
+{
+  bl_scope_t *scope = bl_ast_try_get_scope(curr_compound);
+  return bl_scope_get_node(scope, &bl_peek_path_elem(path_elem)->id);
+}
 
+void
+pre_connect_using(bl_visitor_t *visitor, bl_node_t *using)
+{
+  context_t *cnt                 = peek_cnt(visitor);
+  bl_node_t *found               = lookup(cnt, bl_peek_stmt_using(using)->path);
+  bl_peek_stmt_using(using)->ref = found;
+}
+
+/* note: same method is used for pre_connect walking too!!! */
 void
 connect_module(bl_visitor_t *visitor, bl_node_t *module)
 {
@@ -182,7 +202,8 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
     bl_log("connecting call");
-    bl_node_t *found             = lookup(cnt, bl_peek_expr_call(expr)->path);
+    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path);
+
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
     break;
@@ -217,6 +238,17 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   if ((error = setjmp(cnt.jmp_error))) {
     /* free allocated memory on error */
     return (bl_error_e)error;
+  }
+
+  bl_visitor_t visitor_pre_connect;
+  bl_visitor_init(&visitor_pre_connect, &cnt);
+  bl_visitor_add(&visitor_pre_connect, pre_connect_using, BL_VISIT_USING);
+  bl_visitor_add(&visitor_pre_connect, connect_module, BL_VISIT_MODULE);
+  bl_visitor_add(&visitor_pre_connect, BL_SKIP_VISIT, BL_VISIT_FUNC);
+
+  for (int i = 0; i < c; ++i) {
+    cnt.unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_gscope(&visitor_pre_connect, cnt.unit->ast.root);
   }
 
   bl_visitor_t visitor_connect;

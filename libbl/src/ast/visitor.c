@@ -309,6 +309,12 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
 }
 
 void
+bl_visitor_walk_gscope(bl_visitor_t *visitor, bl_node_t *root)
+{
+  call_visit(visitor, root, BL_VISIT_MODULE);
+}
+
+void
 bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   visitor->nesting++;

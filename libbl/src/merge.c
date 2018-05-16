@@ -225,7 +225,9 @@ bl_error_e
 bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   bl_log("mergeing...");
-  context_t cnt = {.builder = builder, .assembly = assembly, .curr_scope = assembly->scope};
+  context_t cnt = {.builder    = builder,
+                   .assembly   = assembly,
+                   .curr_scope = bl_scope_new(assembly->scope_cache)};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -246,6 +248,8 @@ bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
+    /* set shared global scope for all anonymous root modules of all units */
+    bl_peek_decl_module(cnt.unit->ast.root)->scope = cnt.curr_scope;
     bl_visitor_walk_module(&visitor_merge, cnt.unit->ast.root);
   }
 
