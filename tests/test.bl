@@ -9,14 +9,28 @@ module A {
   public module B {
     public fn test() {}
   }
+
+  using C;
+}
+
+module C {
+  public fn hello() {}
 }
 
 fn main() {
   A::B::test();
   //test();
+  using A::B;
+  {
+    using A::B;
+    {
+      using A::B;
+    }
+  }
 }
 
 using A::B;
+
 
 
 

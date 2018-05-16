@@ -57,7 +57,7 @@ bl_scope_new(bl_scope_cache_t *cache)
   bl_scope_t *scope = bl_malloc(sizeof(bl_scope_t));
 
   scope->named_syms     = bo_htbl_new(sizeof(bl_node_t *), 1024);
-  scope->anonymous_syms = bo_htbl_new(0, 64);
+  scope->anonymous_syms = bo_htbl_new(sizeof(bl_node_t *), 64);
   scope->magic          = 666;
 
   bo_array_push_back(cache, scope);
@@ -84,15 +84,19 @@ bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 }
 
 void
-bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node)
+bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node, uint64_t key)
 {
-  bo_htbl_insert_empty(scope->anonymous_syms, (uint64_t)node);
+  bo_htbl_insert(scope->anonymous_syms, key, node);
 }
 
-bool
-bl_scope_has_anonymous(bl_scope_t *scope, struct bl_node *node)
+bl_node_t *
+bl_scope_get_anonymous(bl_scope_t *scope, uint64_t key)
 {
-  return bo_htbl_has_key(scope->anonymous_syms, (uint64_t)node);
+  if (bo_htbl_has_key(scope->anonymous_syms, key)) {
+    return bo_htbl_at(scope->anonymous_syms, key, bl_node_t *);
+  }
+
+  return NULL;
 }
 
 bl_node_t *
@@ -102,7 +106,7 @@ bl_scope_get_next_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
   if (bo_iterator_equal(&end, iter))
     return NULL;
 
-  bl_node_t *node = (bl_node_t *)bo_htbl_iter_peek_key(scope->anonymous_syms, iter);
+  bl_node_t *node = bo_htbl_iter_peek_value(scope->anonymous_syms, iter, bl_node_t *);
   bo_htbl_iter_next(scope->anonymous_syms, iter);
   return node;
 }
@@ -114,8 +118,14 @@ bl_scope_init_iter_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
 }
 
 void
-bl_scope_clear(bl_scope_t *scope)
+bl_scope_clear_all(bl_scope_t *scope)
 {
   bo_htbl_clear(scope->named_syms);
+  bo_htbl_clear(scope->anonymous_syms);
+}
+
+void
+bl_scope_clear_anonymous(bl_scope_t *scope)
+{
   bo_htbl_clear(scope->anonymous_syms);
 }

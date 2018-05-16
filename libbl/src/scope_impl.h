@@ -70,10 +70,10 @@ struct bl_node *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
 
 void
-bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node);
+bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node, uint64_t key);
 
-bool
-bl_scope_has_anonymous(bl_scope_t *scope, struct bl_node *node);
+struct bl_node *
+bl_scope_get_anonymous(bl_scope_t *scope, uint64_t key);
 
 struct bl_node *
 bl_scope_get_next_anonymous(bl_scope_t *scope, bo_iterator_t *iter);
@@ -82,6 +82,9 @@ void
 bl_scope_init_iter_anonymous(bl_scope_t *scope, bo_iterator_t *iter);
 
 void
-bl_scope_clear(bl_scope_t *scope);
+bl_scope_clear_all(bl_scope_t *scope);
+
+void
+bl_scope_clear_anonymous(bl_scope_t *scope);
 
 #endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

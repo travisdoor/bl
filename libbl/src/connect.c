@@ -73,17 +73,22 @@ typedef struct
   bl_node_t *curr_compound;
 } context_t;
 
+typedef void (*lookup_elem_valid_f)(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
 static bl_node_t *
-lookup(context_t *cnt, BArray *path);
+lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator);
 
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
 
 static bl_node_t *
+lookup_key_in_tree(context_t *cnt, uint64_t key, bl_node_t *curr_compound);
+
+static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
 
 static void
-pre_connect_using(bl_visitor_t *visitor, bl_node_t *using);
+connect_using(bl_visitor_t *visitor, bl_node_t *using);
 
 static void
 connect_module(bl_visitor_t *visitor, bl_node_t *module);
@@ -97,16 +102,28 @@ connect_func(bl_visitor_t *visitor, bl_node_t *func);
 static void
 connect_expr(bl_visitor_t *visitor, bl_node_t *expr);
 
-bl_node_t *
-lookup(context_t *cnt, BArray *path)
-{
-  bl_node_t *path_elem = bo_array_at(path, 0, bl_node_t *);
-  bl_node_t *found     = lookup_in_tree(cnt, path_elem, cnt->curr_compound);
+static void
+validate_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
 
-  const size_t c = bo_array_size(path);
+static void
+validate_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
+bl_node_t *
+lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
+{
+  const size_t c         = bo_array_size(path);
+  bl_node_t *  path_elem = bo_array_at(path, 0, bl_node_t *);
+  bl_node_t *  found     = lookup_in_tree(cnt, path_elem, cnt->curr_compound);
+
+  if (validator)
+    validator(cnt, path_elem, found, c == 1);
+
   for (size_t i = 1; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
     found     = lookup_in_scope(cnt, path_elem, found);
+
+    if (validator)
+      validator(cnt, path_elem, found, c == i + 1);
   }
 
   return found;
@@ -120,16 +137,27 @@ lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
   bl_node_t * tmp_curr_compound = curr_compound;
 
   while (found == NULL && tmp_curr_compound != NULL) {
-    bl_log("lookup in compound %p", tmp_curr_compound);
     tmp_scope = bl_ast_try_get_scope(tmp_curr_compound);
     bl_assert(tmp_scope, "invalid scope");
     found             = bl_scope_get_node(tmp_scope, &bl_peek_path_elem(path_elem)->id);
     tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
   }
 
-  if (found == NULL) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, path_elem->src, "unknown symbol " BL_YELLOW("'%s'"),
-                  bl_peek_path_elem(path_elem)->id.str);
+  return found;
+}
+
+bl_node_t *
+lookup_key_in_tree(context_t *cnt, uint64_t key, bl_node_t *curr_compound)
+{
+  bl_node_t * found             = NULL;
+  bl_scope_t *tmp_scope         = NULL;
+  bl_node_t * tmp_curr_compound = curr_compound;
+
+  while (found == NULL && tmp_curr_compound != NULL) {
+    tmp_scope = bl_ast_try_get_scope(tmp_curr_compound);
+    bl_assert(tmp_scope, "invalid scope");
+    found             = bl_scope_get_anonymous(tmp_scope, key);
+    tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
   }
 
   return found;
@@ -143,11 +171,21 @@ lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 }
 
 void
-pre_connect_using(bl_visitor_t *visitor, bl_node_t *using)
+connect_using(bl_visitor_t *visitor, bl_node_t *using)
 {
-  context_t *cnt                 = peek_cnt(visitor);
-  bl_node_t *found               = lookup(cnt, bl_peek_stmt_using(using)->path);
+  context_t *cnt   = peek_cnt(visitor);
+  bl_node_t *found = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using_elem);
   bl_peek_stmt_using(using)->ref = found;
+
+  bl_node_t *conflict = lookup_key_in_tree(cnt, (uint64_t)found, cnt->curr_compound);
+
+  if (conflict) {
+    connect_warning(cnt, using->src, "using with no effect due to previous one here: %d:%d",
+                    conflict->src->line, conflict->src->col);
+  } else {
+    bl_scope_t *scope = bl_ast_try_get_scope(cnt->curr_compound);
+    bl_scope_insert_anonymous(scope, using, (uint64_t)found);
+  }
 }
 
 /* note: same method is used for pre_connect walking too!!! */
@@ -160,6 +198,7 @@ connect_module(bl_visitor_t *visitor, bl_node_t *module)
 
   bl_visitor_walk_module(visitor, module);
 
+  bl_scope_clear_anonymous(bl_peek_decl_module(module)->scope);
   cnt->curr_compound = prev_cmp;
 }
 
@@ -175,6 +214,7 @@ connect_block(bl_visitor_t *visitor, bl_node_t *block)
 
   bl_visitor_walk_block(visitor, block);
 
+  bl_scope_clear_all(_block->scope);
   cnt->curr_compound = prev_cmp;
 }
 
@@ -191,6 +231,7 @@ connect_func(bl_visitor_t *visitor, bl_node_t *func)
   cnt->curr_compound = func;
 
   bl_visitor_walk_func(visitor, func);
+  bl_scope_clear_all(_func->scope);
 
   cnt->curr_compound = prev_cmp;
 }
@@ -200,13 +241,13 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   context_t *cnt = peek_cnt(visitor);
   switch (bl_node_code(expr)) {
-  case BL_EXPR_CALL:
-    bl_log("connecting call");
-    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path);
+  case BL_EXPR_CALL: {
+    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call_elem);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
     break;
+  }
   case BL_EXPR_DECL_REF:
     /* if (bl_peek_expr_decl_ref(expr)->ref == NULL) */
     /*   satisfy_decl_ref(cnt, expr); */
@@ -224,13 +265,48 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
   bl_visitor_walk_expr(visitor, expr);
 }
 
+void
+validate_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+{
+  if (last) {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown function " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+    if (bl_node_is_not(found, BL_DECL_FUNC))
+      connect_error(cnt, BL_ERR_EXPECTED_FUNC, elem->src, "expected function name");
+  } else {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+
+    if (bl_node_is_not(found, BL_DECL_MODULE)) {
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+                    "expected module name in function call path");
+    }
+  }
+}
+
+void
+validate_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+{
+  if (found == NULL) {
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
+                  bl_peek_path_elem(elem)->id.str);
+  }
+
+  if (bl_node_is_not(found, BL_DECL_MODULE)) {
+    connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in using path");
+  }
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
 bl_error_e
 bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  bl_log("connecting...");
   context_t cnt = {.builder = builder, .assembly = assembly, .curr_compound = NULL};
   const int c   = bl_assembly_get_unit_count(assembly);
 
@@ -242,7 +318,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_visitor_t visitor_pre_connect;
   bl_visitor_init(&visitor_pre_connect, &cnt);
-  bl_visitor_add(&visitor_pre_connect, pre_connect_using, BL_VISIT_USING);
   bl_visitor_add(&visitor_pre_connect, connect_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_pre_connect, BL_SKIP_VISIT, BL_VISIT_FUNC);
 
@@ -257,10 +332,11 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_connect, connect_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_connect, connect_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_connect, connect_expr, BL_VISIT_EXPR);
+  bl_visitor_add(&visitor_connect, connect_using, BL_VISIT_USING);
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&visitor_connect, cnt.unit->ast.root);
+    bl_visitor_walk_gscope(&visitor_connect, cnt.unit->ast.root);
   }
 
   return BL_NO_ERR;
