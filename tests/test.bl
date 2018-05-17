@@ -1,38 +1,19 @@
 /* testing playground */
 
-module A {
-  public module B {
-  }
-}
-
-module A {
-  public module B {
-    public fn test() {}
+public module A {
+  module B {
+    fn bar() {}
   }
 
-  //using C;
+  fn foo() {
+    B::bar();
+  }
 }
-
-module C {
-  public fn hello() {}
-}
-
 
 fn main() {
-  using C;
-
-  test();
-  hello();
-  A::B::test();
-
-  {  
-    var foo i32;
-  }
-
-  foo = 40;
+  using A;
 }
 
-using A::B;
 
 
 

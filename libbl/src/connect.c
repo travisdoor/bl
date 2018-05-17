@@ -73,8 +73,13 @@ typedef struct
   bl_node_t *curr_compound;
 } context_t;
 
-typedef void (*lookup_elem_valid_f)(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+#define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
+typedef void (*lookup_elem_valid_f)(_VALIDATE_ARGS);
+#define VALIDATE_F(name) void validate_##name(_VALIDATE_ARGS)
 
+/*************************************************************************************************
+ * helpers
+ *************************************************************************************************/
 static void
 include_using(context_t *cnt, bl_node_t *using);
 
@@ -90,9 +95,15 @@ lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
 static bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
 
+/*************************************************************************************************
+ * Pre-connect
+ *************************************************************************************************/
 static void
 pre_connect_using(bl_visitor_t *visitor, bl_node_t *using);
 
+/*************************************************************************************************
+ * Connect
+ *************************************************************************************************/
 static void
 connect_module(bl_visitor_t *visitor, bl_node_t *module);
 
@@ -111,12 +122,18 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr);
 static void
 connect_using(bl_visitor_t *visitor, bl_node_t *using);
 
-static void
-validate_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+/*************************************************************************************************
+ * Validation
+ *************************************************************************************************/
 
-static void
-validate_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+static VALIDATE_F(decl_ref);
+static VALIDATE_F(call);
+static VALIDATE_F(using);
+static VALIDATE_F(public);
 
+/*************************************************************************************************
+ * Helpers impl
+ *************************************************************************************************/
 bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
 {
@@ -127,12 +144,15 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
   if (validator)
     validator(cnt, path_elem, found, c == 1);
 
+  validate_public(cnt, path_elem, found, c == 1);
+
   for (size_t i = 1; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
     found     = lookup_in_scope(cnt, path_elem, found);
 
     if (validator)
       validator(cnt, path_elem, found, c == i + 1);
+    validate_public(cnt, path_elem, found, c == i + 1);
   }
 
   return found;
@@ -167,15 +187,29 @@ lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
 {
-  bl_expr_decl_ref_t *_ref = bl_peek_expr_decl_ref(ref);
-  _ref->ref                = lookup(cnt, _ref->path, NULL); // TODO: validator
-  return _ref->ref;
+  bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
+  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref); // TODO: validator
+  _ref->ref                 = found;
+
+  switch (bl_node_code(found)) {
+  case BL_DECL_VAR:
+    bl_peek_decl_var(found)->used++;
+    break;
+  case BL_DECL_CONST:
+    bl_peek_decl_const(found)->used++;
+    break;
+  default:
+    // TODO: handle as error
+    break;
+  }
+
+  return found;
 }
 
 void
 include_using(context_t *cnt, bl_node_t *using)
 {
-  bl_node_t *found = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using_elem);
+  bl_node_t *found               = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using);
   bl_peek_stmt_using(using)->ref = found;
   /* insert into curent compound scope reference to the scope of found compound block */
 
@@ -194,6 +228,9 @@ include_using(context_t *cnt, bl_node_t *using)
   }
 }
 
+/*************************************************************************************************
+ * Pre-connect impl
+ *************************************************************************************************/
 void
 pre_connect_using(bl_visitor_t *visitor, bl_node_t *using)
 {
@@ -205,6 +242,9 @@ pre_connect_using(bl_visitor_t *visitor, bl_node_t *using)
   include_using(cnt, using);
 }
 
+/*************************************************************************************************
+ * Connect impl
+ *************************************************************************************************/
 void
 connect_using(bl_visitor_t *visitor, bl_node_t *using)
 {
@@ -269,7 +309,7 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
   context_t *cnt = peek_cnt(visitor);
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL: {
-    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call_elem);
+    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
@@ -315,8 +355,10 @@ connect_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_visitor_walk_var(visitor, var);
 }
 
-void
-validate_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+/*************************************************************************************************
+ * Validate impl
+ *************************************************************************************************/
+VALIDATE_F(call)
 {
   if (last) {
     if (found == NULL) {
@@ -338,8 +380,7 @@ validate_call_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
   }
 }
 
-void
-validate_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
+VALIDATE_F(using)
 {
   if (found == NULL) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
@@ -348,6 +389,23 @@ validate_using_elem(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
 
   if (bl_node_is_not(found, BL_DECL_MODULE)) {
     connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in using path");
+  }
+}
+
+VALIDATE_F(decl_ref)
+{
+  if (found == NULL) {
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown symbol " BL_YELLOW("'%s'"),
+                  bl_peek_path_elem(elem)->id.str);
+  }
+}
+
+VALIDATE_F(public)
+{
+  if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
+    connect_error(cnt, BL_ERR_PRIVATE, elem->src,
+                  "symbol " BL_YELLOW("'%s'") " is private in this context",
+                  bl_peek_path_elem(elem)->id.str);
   }
 }
 

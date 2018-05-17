@@ -226,7 +226,6 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
 bl_error_e
 bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  bl_log("mergeing...");
   context_t cnt = {
       .builder = builder, .assembly = assembly, .curr_scope = bl_scope_new(assembly->scope_cache)};
 
