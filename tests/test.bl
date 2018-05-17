@@ -17,22 +17,22 @@ module C {
   public fn hello() {}
 }
 
-using A::B;
 
 fn main() {
+  using C;
+
   test();
+  hello();
   A::B::test();
 
-  /*using A::B;
-  {
-    using A::B;
-    {
-      using A::B;
-    }
-  }*/
+  {  
+    var foo i32;
+  }
+
+  foo = 40;
 }
 
-//using A::B;
+using A::B;
 
 
 
