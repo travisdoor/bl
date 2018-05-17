@@ -129,10 +129,10 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
 bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 {
-  bl_node_t *         found             = NULL;
-  bl_node_t *         linked_by         = NULL;
+  bl_node_t *  found             = NULL;
+  bl_node_t *  linked_by         = NULL;
   bl_scopes_t *tmp_scopes        = NULL;
-  bl_node_t *         tmp_curr_compound = curr_compound;
+  bl_node_t *  tmp_curr_compound = curr_compound;
 
   while (found == NULL && tmp_curr_compound != NULL) {
     tmp_scopes = bl_ast_try_get_scopes(tmp_curr_compound);
@@ -147,7 +147,7 @@ bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 {
   bl_scopes_t *scopes    = bl_ast_try_get_scopes(curr_compound);
-  bl_node_t *         linked_by = NULL;
+  bl_node_t *  linked_by = NULL;
   return bl_scopes_get_node(scopes, &bl_peek_path_elem(path_elem)->id, &linked_by);
 }
 
@@ -158,6 +158,14 @@ connect_using(bl_visitor_t *visitor, bl_node_t *using)
   bl_node_t *found = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using_elem);
   bl_peek_stmt_using(using)->ref = found;
   /* insert into curent compound scope reference to the scope of found compound block */
+
+  bl_scopes_t *found_scopes = bl_ast_try_get_scopes(found);
+  bl_scopes_t *curr_scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_assert(found_scopes, "invalid scopes");
+  bl_assert(curr_scopes, "invalid scopes");
+
+  /* TODO: check for scope conflicts */
+  bl_scopes_include(curr_scopes, found_scopes->main, using);
 }
 
 /* note: same method is used for pre_connect walking too!!! */

@@ -20,8 +20,9 @@ module C {
 using A::B;
 
 fn main() {
+  test();
   A::B::test();
-  //test();
+
   /*using A::B;
   {
     using A::B;
