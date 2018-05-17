@@ -71,6 +71,7 @@ typedef struct
    * current compound node and than recursively in its parent nodes when type is declared
    * somewhere in global scope or parent module. */
   bl_node_t *curr_compound;
+  bl_node_t *curr_module;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -87,10 +88,10 @@ static bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator);
 
 static bl_node_t *
-lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound);
+lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by);
 
 static bl_node_t *
-lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
+lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound, bl_node_t **linked_by);
 
 static bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
@@ -129,7 +130,6 @@ connect_using(bl_visitor_t *visitor, bl_node_t *using);
 static VALIDATE_F(decl_ref);
 static VALIDATE_F(call);
 static VALIDATE_F(using);
-static VALIDATE_F(public);
 
 /*************************************************************************************************
  * Helpers impl
@@ -139,37 +139,47 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
 {
   const size_t c         = bo_array_size(path);
   bl_node_t *  path_elem = bo_array_at(path, 0, bl_node_t *);
-  bl_node_t *  found = lookup_in_tree(cnt, &bl_peek_path_elem(path_elem)->id, cnt->curr_compound);
+  bl_node_t *  linked_by = NULL;
+  bl_node_t *  found =
+      lookup_in_tree(cnt, &bl_peek_path_elem(path_elem)->id, cnt->curr_compound, &linked_by);
 
   if (validator)
     validator(cnt, path_elem, found, c == 1);
 
-  validate_public(cnt, path_elem, found, c == 1);
+  if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && cnt->curr_module != linked_by) {
+    connect_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+                  "symbol " BL_YELLOW("'%s'") " is private in this context",
+                  bl_peek_path_elem(path_elem)->id.str);
+  }
 
   for (size_t i = 1; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
-    found     = lookup_in_scope(cnt, path_elem, found);
+    found     = lookup_in_scope(cnt, path_elem, found, &linked_by);
 
     if (validator)
       validator(cnt, path_elem, found, c == i + 1);
-    validate_public(cnt, path_elem, found, c == i + 1);
+
+    if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && cnt->curr_module != linked_by) {
+      connect_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+                    "symbol " BL_YELLOW("'%s'") " is private in this context",
+                    bl_peek_path_elem(path_elem)->id.str);
+    }
   }
 
   return found;
 }
 
 bl_node_t *
-lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound)
+lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
   bl_node_t *  found             = NULL;
-  bl_node_t *  linked_by         = NULL;
   bl_scopes_t *tmp_scopes        = NULL;
   bl_node_t *  tmp_curr_compound = curr_compound;
 
   while (found == NULL && tmp_curr_compound != NULL) {
     tmp_scopes = bl_ast_try_get_scopes(tmp_curr_compound);
     bl_assert(tmp_scopes, "invalid scopes");
-    found             = bl_scopes_get_node(tmp_scopes, id, &linked_by);
+    found             = bl_scopes_get_node(tmp_scopes, id, linked_by);
     tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
   }
 
@@ -177,11 +187,10 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound)
 }
 
 bl_node_t *
-lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
+lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
   bl_scopes_t *scopes    = bl_ast_try_get_scopes(curr_compound);
-  bl_node_t *  linked_by = NULL;
-  return bl_scopes_get_node(scopes, &bl_peek_path_elem(path_elem)->id, &linked_by);
+  return bl_scopes_get_node(scopes, &bl_peek_path_elem(path_elem)->id, linked_by);
 }
 
 bl_node_t *
@@ -262,11 +271,14 @@ connect_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t *cnt      = peek_cnt(visitor);
   bl_node_t *prev_cmp = cnt->curr_compound;
+  bl_node_t *prev_mod = cnt->curr_module;
   cnt->curr_compound  = module;
+  cnt->curr_module    = module;
 
   bl_visitor_walk_module(visitor, module);
 
   cnt->curr_compound = prev_cmp;
+  cnt->curr_module   = prev_mod;
 }
 
 void
@@ -342,7 +354,7 @@ connect_var(bl_visitor_t *visitor, bl_node_t *var)
   context_t *    cnt  = peek_cnt(visitor);
   bl_decl_var_t *_var = bl_peek_decl_var(var);
 
-  bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound);
+  bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound, NULL);
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
@@ -400,23 +412,15 @@ VALIDATE_F(decl_ref)
   }
 }
 
-VALIDATE_F(public)
-{
-  if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC)) {
-    connect_error(cnt, BL_ERR_PRIVATE, elem->src,
-                  "symbol " BL_YELLOW("'%s'") " is private in this context",
-                  bl_peek_path_elem(elem)->id.str);
-  }
-}
-
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
 bl_error_e
 bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly, .curr_compound = NULL};
-  const int c   = bl_assembly_get_unit_count(assembly);
+  context_t cnt = {
+      .builder = builder, .assembly = assembly, .curr_compound = NULL, .curr_module = NULL};
+  const int c = bl_assembly_get_unit_count(assembly);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {

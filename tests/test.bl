@@ -1,17 +1,23 @@
 /* testing playground */
 
-public module A {
+module A {
   module B {
-    fn bar() {}
+    fn bar() {
+      A::foo();
+      foo();
+    }
   }
 
   fn foo() {
-    B::bar();
+    //B::bar();
   }
+
+  public fn pub_foo() {}
 }
 
 fn main() {
   using A;
+  pub_foo();
 }
 
 
