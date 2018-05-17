@@ -10,26 +10,28 @@ module A {
     public fn test() {}
   }
 
-  using C;
+  //using C;
 }
 
 module C {
   public fn hello() {}
 }
 
+using A::B;
+
 fn main() {
   A::B::test();
   //test();
-  using A::B;
+  /*using A::B;
   {
     using A::B;
     {
       using A::B;
     }
-  }
+  }*/
 }
 
-using A::B;
+//using A::B;
 
 
 

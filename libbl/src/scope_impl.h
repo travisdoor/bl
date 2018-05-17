@@ -82,27 +82,30 @@ typedef struct
   /* key: scope pointer, value: pointer to node which caused linking */
   BHashTable *scopes;
   bl_scope_t *main;
-} bl_linked_scopes_t;
+} bl_scopes_t;
 
 void
-bl_linked_scopes_init(bl_linked_scopes_t *scopes);
+bl_scopes_init(bl_scopes_t *scopes);
 
 void
-bl_linked_scopes_terminate(bl_linked_scopes_t *scopes);
+bl_scopes_terminate(bl_scopes_t *scopes);
 
 /* Inserted into first scope by default */
 void
-bl_linked_scopes_insert_node(bl_linked_scopes_t *scopes, struct bl_node *node);
+bl_scopes_insert_node(bl_scopes_t *scopes, struct bl_node *node);
 
 /* Search symbol across all scopes and return found node or NULL. Pointer to linked_by is set to
  * current compound block owner node or to using which includes scope from other compound block. */
 struct bl_node *
-bl_linked_scopes_get_node(bl_linked_scopes_t *scopes, bl_id_t *id, struct bl_node **linked_by_out);
+bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, struct bl_node **linked_by_out);
 
 struct bl_node *
-bl_linked_scopes_get_linked_by(bl_linked_scopes_t *scopes, bl_scope_t *scope);
+bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope);
 
 void
-bl_linked_scopes_include(bl_linked_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by);
+bl_scopes_include(bl_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by);
+
+void
+bl_scopes_include_main(bl_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by);
 
 #endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

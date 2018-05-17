@@ -58,12 +58,15 @@ node_terminate(bl_node_t *node)
   switch (node->code) {
   case BL_DECL_MODULE:
     bo_unref(bl_peek_decl_module(node)->nodes);
+    bl_scopes_terminate(&bl_peek_decl_module(node)->scopes);
     break;
   case BL_DECL_FUNC:
     bo_unref(bl_peek_decl_func(node)->args);
+    bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
     break;
   case BL_DECL_BLOCK:
     bo_unref(bl_peek_decl_block(node)->nodes);
+    bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
     break;
   case BL_EXPR_CALL:
     bo_unref(bl_peek_expr_call(node)->args);
@@ -350,6 +353,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
     bl_id_init(&bl_peek_decl_module(module)->id, name);
   bl_peek_decl_module(module)->modif  = modif;
   bl_peek_decl_module(module)->parent = parent;
+  bl_scopes_init(&bl_peek_decl_module(module)->scopes);
 
   return module;
 }
@@ -417,8 +421,8 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   _func->ret_type       = ret_type;
   _func->modif          = modif;
   _func->parent         = parent;
-  _func->scope          = NULL;
   bl_id_init(&(_func->id), name);
+  bl_scopes_init(&(_func->scopes));
 
   return func;
 }
@@ -488,13 +492,14 @@ bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, b
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent)
 {
-  bl_node_t *block = alloc_node(ast);
+  bl_node_t *      block  = alloc_node(ast);
   if (tok)
     block->src = &tok->src;
 
-  block->code                       = BL_DECL_BLOCK;
-  bl_peek_decl_block(block)->parent = parent;
-  bl_peek_decl_block(block)->scope  = NULL;
+  block->code    = BL_DECL_BLOCK;
+  bl_decl_block_t *_block = bl_peek_decl_block(block);
+  _block->parent = parent;
+  bl_scopes_init(&(_block->scopes));
 
   return block;
 }
@@ -1015,20 +1020,16 @@ bl_ast_path_get_last(BArray *path)
   return bo_array_at(path, c - 1, bl_node_t *);
 }
 
-bl_scope_t *
-bl_ast_try_get_scope(bl_node_t *node)
+bl_scopes_t *
+bl_ast_try_get_scopes(bl_node_t *node)
 {
   switch (bl_node_code(node)) {
   case BL_DECL_MODULE:
-    return bl_peek_decl_module(node)->scope;
+    return &bl_peek_decl_module(node)->scopes;
   case BL_DECL_BLOCK:
-    return bl_peek_decl_block(node)->scope;
-  case BL_DECL_ENUM:
-    return bl_peek_decl_enum(node)->scope;
-  case BL_DECL_STRUCT:
-    return bl_peek_decl_struct(node)->scope;
+    return &bl_peek_decl_block(node)->scopes;
   case BL_DECL_FUNC:
-    return bl_peek_decl_func(node)->scope;
+    return &bl_peek_decl_func(node)->scopes;
   default:
     return NULL;
   }

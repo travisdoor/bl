@@ -206,11 +206,13 @@ merge_module(bl_visitor_t *visitor, bl_node_t *module)
                   _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     }
 
-    peek_cnt(visitor)->curr_scope = bl_peek_decl_module(conflict)->scope;
-    _module->scope                = bl_peek_decl_module(conflict)->scope;
+    peek_cnt(visitor)->curr_scope = bl_peek_decl_module(conflict)->scopes.main;
+    bl_scopes_include_main(&_module->scopes, bl_peek_decl_module(conflict)->scopes.main,
+                                  NULL);
   } else {
-    _module->scope                = bl_scope_new(cnt->assembly->scope_cache);
-    peek_cnt(visitor)->curr_scope = _module->scope;
+    bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
+    bl_scopes_include_main(&_module->scopes, main_scope, NULL);
+    peek_cnt(visitor)->curr_scope = _module->scopes.main;
     bl_scope_insert_node(prev_scope_tmp, module);
   }
 
@@ -225,9 +227,8 @@ bl_error_e
 bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   bl_log("mergeing...");
-  context_t cnt = {.builder    = builder,
-                   .assembly   = assembly,
-                   .curr_scope = bl_scope_new(assembly->scope_cache)};
+  context_t cnt = {
+      .builder = builder, .assembly = assembly, .curr_scope = bl_scope_new(assembly->scope_cache)};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -249,7 +250,8 @@ bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
     /* set shared global scope for all anonymous root modules of all units */
-    bl_peek_decl_module(cnt.unit->ast.root)->scope = cnt.curr_scope;
+    bl_scopes_include_main(&bl_peek_decl_module(cnt.unit->ast.root)->scopes, cnt.curr_scope,
+                                  NULL);
     bl_visitor_walk_module(&visitor_merge, cnt.unit->ast.root);
   }
 

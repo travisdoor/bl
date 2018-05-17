@@ -91,28 +91,28 @@ bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
  *************************************************************************************************/
 
 void
-bl_linked_scopes_init(bl_linked_scopes_t *scopes)
+bl_scopes_init(bl_scopes_t *scopes)
 {
   scopes->scopes = bo_htbl_new(sizeof(bl_node_t *), 16);
   scopes->main   = NULL;
 }
 
 void
-bl_linked_scopes_terminate(bl_linked_scopes_t *scopes)
+bl_scopes_terminate(bl_scopes_t *scopes)
 {
   bo_unref(scopes->scopes);
   scopes->main = NULL;
 }
 
 void
-bl_linked_scopes_insert_node(bl_linked_scopes_t *scopes, bl_node_t *node)
+bl_scopes_insert_node(bl_scopes_t *scopes, bl_node_t *node)
 {
   bl_assert(scopes->main, "compound block has no main scope set");
   bl_scope_insert_node(scopes->main, node);
 }
 
 bl_node_t *
-bl_linked_scopes_get_node(bl_linked_scopes_t *scopes, bl_id_t *id, bl_node_t **linked_by_out)
+bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, bl_node_t **linked_by_out)
 {
   bl_node_t *   found     = NULL;
   bl_node_t *   linked_by = NULL;
@@ -125,6 +125,7 @@ bl_linked_scopes_get_node(bl_linked_scopes_t *scopes, bl_id_t *id, bl_node_t **l
     linked_by = bo_htbl_iter_peek_value(scopes->scopes, &iter, bl_node_t *);
 
     found = bl_scope_get_node(scope, id);
+    bo_htbl_iter_next(scopes->scopes, &iter);
   }
 
   if (linked_by_out)
@@ -134,7 +135,7 @@ bl_linked_scopes_get_node(bl_linked_scopes_t *scopes, bl_id_t *id, bl_node_t **l
 }
 
 bl_node_t *
-bl_linked_scopes_get_linked_by(bl_linked_scopes_t *scopes, bl_scope_t *scope)
+bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope)
 {
   if (bo_htbl_has_key(scopes->scopes, (uint64_t)scope)) {
     return bo_htbl_at(scopes->scopes, (uint64_t)scope, bl_node_t *);
@@ -144,7 +145,14 @@ bl_linked_scopes_get_linked_by(bl_linked_scopes_t *scopes, bl_scope_t *scope)
 }
 
 void
-bl_linked_scopes_include(bl_linked_scopes_t *scopes, bl_scope_t *scope, bl_node_t *linked_by)
+bl_scopes_include(bl_scopes_t *scopes, bl_scope_t *scope, bl_node_t *linked_by)
 {
+  bo_htbl_insert(scopes->scopes, (uint64_t)scope, linked_by);
+}
+
+void
+bl_scopes_include_main(bl_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by)
+{
+  scopes->main = scope;
   bo_htbl_insert(scopes->scopes, (uint64_t)scope, linked_by);
 }
