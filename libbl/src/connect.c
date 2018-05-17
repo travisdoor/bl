@@ -82,9 +82,6 @@ static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
 
 static bl_node_t *
-lookup_key_in_tree(context_t *cnt, uint64_t key, bl_node_t *curr_compound);
-
-static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound);
 
 static void
@@ -147,23 +144,6 @@ lookup_in_tree(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 }
 
 bl_node_t *
-lookup_key_in_tree(context_t *cnt, uint64_t key, bl_node_t *curr_compound)
-{
-  bl_node_t * found             = NULL;
-  bl_scope_t *tmp_scope         = NULL;
-  bl_node_t * tmp_curr_compound = curr_compound;
-
-  while (found == NULL && tmp_curr_compound != NULL) {
-    tmp_scope = bl_ast_try_get_scope(tmp_curr_compound);
-    bl_assert(tmp_scope, "invalid scope");
-    found             = bl_scope_get_anonymous(tmp_scope, key);
-    tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
-  }
-
-  return found;
-}
-
-bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound)
 {
   bl_scope_t *scope = bl_ast_try_get_scope(curr_compound);
@@ -176,16 +156,6 @@ connect_using(bl_visitor_t *visitor, bl_node_t *using)
   context_t *cnt   = peek_cnt(visitor);
   bl_node_t *found = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using_elem);
   bl_peek_stmt_using(using)->ref = found;
-
-  bl_node_t *conflict = lookup_key_in_tree(cnt, (uint64_t)found, cnt->curr_compound);
-
-  if (conflict) {
-    connect_warning(cnt, using->src, "using with no effect due to previous one here: %d:%d",
-                    conflict->src->line, conflict->src->col);
-  } else {
-    bl_scope_t *scope = bl_ast_try_get_scope(cnt->curr_compound);
-    bl_scope_insert_anonymous(scope, using, (uint64_t)found);
-  }
 }
 
 /* note: same method is used for pre_connect walking too!!! */
@@ -198,7 +168,6 @@ connect_module(bl_visitor_t *visitor, bl_node_t *module)
 
   bl_visitor_walk_module(visitor, module);
 
-  bl_scope_clear_anonymous(bl_peek_decl_module(module)->scope);
   cnt->curr_compound = prev_cmp;
 }
 
@@ -214,7 +183,6 @@ connect_block(bl_visitor_t *visitor, bl_node_t *block)
 
   bl_visitor_walk_block(visitor, block);
 
-  bl_scope_clear_all(_block->scope);
   cnt->curr_compound = prev_cmp;
 }
 
@@ -231,7 +199,6 @@ connect_func(bl_visitor_t *visitor, bl_node_t *func)
   cnt->curr_compound = func;
 
   bl_visitor_walk_func(visitor, func);
-  bl_scope_clear_all(_func->scope);
 
   cnt->curr_compound = prev_cmp;
 }

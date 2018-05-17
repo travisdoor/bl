@@ -83,7 +83,6 @@ typedef struct
   bl_scope_t *     curr_scope;
   BHashTable *     local_usings;
   bool             is_in_global_scope;
-
 } context_t;
 
 /* flags used in lookup methods for finding declarations in various scopes */

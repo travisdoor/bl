@@ -30,6 +30,9 @@
 #include "common_impl.h"
 #include "ast/ast_impl.h"
 
+/*************************************************************************************************
+ * Scope Cache
+ *************************************************************************************************/
 bl_scope_cache_t *
 bl_scope_cache_new(void)
 {
@@ -43,23 +46,20 @@ bl_scope_cache_delete(bl_scope_cache_t *cache)
   bl_scope_t * scope = NULL;
   for (size_t i = 0; i < c; ++i) {
     scope = bo_array_at(cache, i, bl_scope_t *);
-    bo_unref(scope->anonymous_syms);
-    bo_unref(scope->named_syms);
-    bl_free(scope);
+    bo_unref(scope);
   }
 
   bo_unref(cache);
 }
 
+/*************************************************************************************************
+ * Scope
+ *************************************************************************************************/
+
 bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache)
 {
-  bl_scope_t *scope = bl_malloc(sizeof(bl_scope_t));
-
-  scope->named_syms     = bo_htbl_new(sizeof(bl_node_t *), 1024);
-  scope->anonymous_syms = bo_htbl_new(sizeof(bl_node_t *), 64);
-  scope->magic          = 666;
-
+  bl_scope_t *scope = bo_htbl_new(sizeof(bl_node_t *), 1024);
   bo_array_push_back(cache, scope);
   return scope;
 }
@@ -69,63 +69,82 @@ bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
 {
   bl_id_t *id = bl_ast_try_get_id(node);
   bl_assert(id, "invalid id");
-  bo_htbl_insert(scope->named_syms, id->hash, node);
+  bo_htbl_insert(scope, id->hash, node);
 }
 
 bl_node_t *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 {
   bl_assert(id, "invalid id");
-  if (bo_htbl_has_key(scope->named_syms, id->hash)) {
-    return bo_htbl_at(scope->named_syms, id->hash, bl_node_t *);
+  if (bo_htbl_has_key(scope, id->hash)) {
+    return bo_htbl_at(scope, id->hash, bl_node_t *);
+  }
+
+  return NULL;
+}
+
+/*************************************************************************************************
+ * Linked scopes
+ * note: Linked scopes is lookup hash table of scopes available for AST compound block. Every
+ * compound node has one scope by default containing all symbols available in curent scope (scopes
+ * can by shared between multiple modules).
+ *************************************************************************************************/
+
+void
+bl_linked_scopes_init(bl_linked_scopes_t *scopes)
+{
+  scopes->scopes = bo_htbl_new(sizeof(bl_node_t *), 16);
+  scopes->main   = NULL;
+}
+
+void
+bl_linked_scopes_terminate(bl_linked_scopes_t *scopes)
+{
+  bo_unref(scopes->scopes);
+  scopes->main = NULL;
+}
+
+void
+bl_linked_scopes_insert_node(bl_linked_scopes_t *scopes, bl_node_t *node)
+{
+  bl_assert(scopes->main, "compound block has no main scope set");
+  bl_scope_insert_node(scopes->main, node);
+}
+
+bl_node_t *
+bl_linked_scopes_get_node(bl_linked_scopes_t *scopes, bl_id_t *id, bl_node_t **linked_by_out)
+{
+  bl_node_t *   found     = NULL;
+  bl_node_t *   linked_by = NULL;
+  bl_scope_t *  scope     = NULL;
+  bo_iterator_t iter      = bo_htbl_begin(scopes->scopes);
+  bo_iterator_t end       = bo_htbl_end(scopes->scopes);
+
+  while (!found && !bo_iterator_equal(&iter, &end)) {
+    scope     = (bl_scope_t *)bo_htbl_iter_peek_key(scopes->scopes, &iter);
+    linked_by = bo_htbl_iter_peek_value(scopes->scopes, &iter, bl_node_t *);
+
+    found = bl_scope_get_node(scope, id);
+  }
+
+  if (linked_by_out)
+    (*linked_by_out) = linked_by;
+
+  return found;
+}
+
+bl_node_t *
+bl_linked_scopes_get_linked_by(bl_linked_scopes_t *scopes, bl_scope_t *scope)
+{
+  if (bo_htbl_has_key(scopes->scopes, (uint64_t)scope)) {
+    return bo_htbl_at(scopes->scopes, (uint64_t)scope, bl_node_t *);
   }
 
   return NULL;
 }
 
 void
-bl_scope_insert_anonymous(bl_scope_t *scope, struct bl_node *node, uint64_t key)
+bl_linked_scopes_include(bl_linked_scopes_t *scopes, bl_scope_t *scope, bl_node_t *linked_by)
 {
-  bo_htbl_insert(scope->anonymous_syms, key, node);
-}
-
-bl_node_t *
-bl_scope_get_anonymous(bl_scope_t *scope, uint64_t key)
-{
-  if (bo_htbl_has_key(scope->anonymous_syms, key)) {
-    return bo_htbl_at(scope->anonymous_syms, key, bl_node_t *);
-  }
-
-  return NULL;
-}
-
-bl_node_t *
-bl_scope_get_next_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
-{
-  bo_iterator_t end = bo_htbl_end(scope->anonymous_syms);
-  if (bo_iterator_equal(&end, iter))
-    return NULL;
-
-  bl_node_t *node = bo_htbl_iter_peek_value(scope->anonymous_syms, iter, bl_node_t *);
-  bo_htbl_iter_next(scope->anonymous_syms, iter);
-  return node;
-}
-
-void
-bl_scope_init_iter_anonymous(bl_scope_t *scope, bo_iterator_t *iter)
-{
-  *iter = bo_htbl_begin(scope->anonymous_syms);
-}
-
-void
-bl_scope_clear_all(bl_scope_t *scope)
-{
-  bo_htbl_clear(scope->named_syms);
-  bo_htbl_clear(scope->anonymous_syms);
-}
-
-void
-bl_scope_clear_anonymous(bl_scope_t *scope)
-{
-  bo_htbl_clear(scope->anonymous_syms);
+  bo_htbl_insert(scopes->scopes, (uint64_t)scope, linked_by);
 }
