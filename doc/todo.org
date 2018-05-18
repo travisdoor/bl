@@ -87,15 +87,15 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
-- [-] Using [3/8]
+- [-] Using [5/8]
   - [X] Ast node for using
-  - [ ] Duplicity using check 
+  - [X] Duplicity using check 
   - [X] Parsing
   - [X] Global usings valid only in module?
   - [ ] Using inside struct or enum body?
   - [ ] Symbol colisions handling between modules 
   - [ ] Symbol colisions handling between current module and used modules
-  - [ ] Using must be module or enumerator -> improve checking
+  - [X] Using must be module or enumerator -> improve checking
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
   - [X] Parsing
@@ -104,11 +104,11 @@
   - [ ] Evaluation
 - [ ] Error handling [0/1]
   - [ ] struct a { i i32 } a.i.b.c
-- [-] Better linker [2/5]
+- [X] Better linker [4/4]
   - [X] Create global root module by default in parser
   - [X] Review module merging
-  - [ ] Path element validation via validation methods???
-  - [ ] Add assembly root module and link it to all unit global modules
+  - [X] Path element validation via validation methods???
+  - [X] Add assembly root module and link it to all unit global modules
 
 * BUGS [2/4]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
@@ -117,25 +117,34 @@
 - [X] Unable to return struct member copy from the function
 
 * PIPELINE
-- file loader
-- lexer
-- token printer
-- parser
-- preprocessor 
-- linker
-- ast printer
-- check
-- const expr evaluation
-- llvm generator
-- llvm jit execute
-- llvm byte-code writer
-- llvm linker
-- llvm native bin builder
+** Text (can run in multithread)
+   1. file loader
+   2. lexer
+
+** Tokens (can run in multithread)
+   1. token printer
+   2. parser
+
+** AST
+   1. preprocessor
+   2. merge 
+   3. connection 
+   4. ast printing 
+   5. check
+   6. const-expr evaluation
+
+** LLVM
+   1. llvm generator
+   2. llvm jit execute
+   3. llvm byte-code writer
+   4. llvm linker
+   5. llvm native bin builder
   
 * IDEAS
 ** implicit casting pointer to bool: if (some_PT) {}
 ** static array
 ** zero initialized statc arrays??
 ** statement tagging?
+
 * NOTES
 ** global using search return array of all founds references???

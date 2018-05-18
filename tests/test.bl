@@ -1,11 +1,11 @@
 /* testing playground */
 
-const gc i32 = 666; 
-
 fn main() {
    const c i32 = gc; 
    var _c i32 = c; 
 }
+
+const gc i32 = 666; 
 
 
 
