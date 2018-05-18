@@ -537,7 +537,7 @@ VALIDATE_F(type)
       break;
     default:
       connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem->src,
-                    "expected type name " BL_YELLOW("'%s'") " is invalid",
+                    "expected type name, " BL_YELLOW("'%s'") " is invalid",
                     bl_peek_path_elem(elem)->id.str);
     }
   } else {
