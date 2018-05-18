@@ -536,7 +536,9 @@ VALIDATE_F(type)
     case BL_DECL_ENUM:
       break;
     default:
-      connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem->src, "expected type");
+      connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem->src,
+                    "expected type name " BL_YELLOW("'%s'") " is invalid",
+                    bl_peek_path_elem(elem)->id.str);
     }
   } else {
     if (found == NULL) {
