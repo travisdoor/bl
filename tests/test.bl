@@ -3,8 +3,9 @@
 module A {
   module B {
     fn bar() {
-      A::foo();
-      foo();
+      using A;
+      //A::foo();
+      //foo();
     }
   }
 
@@ -17,6 +18,9 @@ module A {
 
 fn main() {
   using A;
+  //A::foo(); // is private here
+  A::pub_foo();
+  //foo(); // is private here
   pub_foo();
 }
 
