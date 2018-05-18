@@ -1,27 +1,10 @@
 /* testing playground */
 
-module A {
-  module B {
-    fn bar() {
-      using A;
-      //A::foo();
-      //foo();
-    }
-  }
-
-  fn foo() {
-    //B::bar();
-  }
-
-  public fn pub_foo() {}
-}
+const gc i32 = 666; 
 
 fn main() {
-  using A;
-  //A::foo(); // is private here
-  A::pub_foo();
-  //foo(); // is private here
-  pub_foo();
+   const c i32 = gc; 
+   var _c i32 = c; 
 }
 
 

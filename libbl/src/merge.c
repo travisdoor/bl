@@ -67,9 +67,6 @@ static void
 merge_func(bl_visitor_t *visitor, bl_node_t *func);
 
 static void
-merge_const(bl_visitor_t *visitor, bl_node_t *cnst);
-
-static void
 merge_struct(bl_visitor_t *visitor, bl_node_t *strct);
 
 static void
@@ -98,24 +95,6 @@ merge_func(bl_visitor_t *visitor, bl_node_t *func)
   }
 
   bl_scope_insert_node(scope, func);
-}
-
-void
-merge_const(bl_visitor_t *visitor, bl_node_t *cnst)
-{
-  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
-  context_t *      cnt   = peek_cnt(visitor);
-  bl_scope_t *     scope = peek_cnt(visitor)->curr_scope;
-
-  bl_node_t *conflict = bl_scope_get_node(scope, &_cnst->id);
-
-  if (conflict) {
-    merge_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
-                "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
-  }
-
-  bl_scope_insert_node(scope, cnst);
 }
 
 void
@@ -240,7 +219,7 @@ bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_merge, merge_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_merge, merge_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_merge, merge_struct, BL_VISIT_STRUCT);
-  bl_visitor_add(&visitor_merge, merge_const, BL_VISIT_CONST);
+  bl_visitor_add(&visitor_merge, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_merge, merge_enum, BL_VISIT_ENUM);
 
   const int c = bl_assembly_get_unit_count(assembly);

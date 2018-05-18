@@ -71,7 +71,6 @@ typedef struct
    * current compound node and than recursively in its parent nodes when type is declared
    * somewhere in global scope or parent module. */
   bl_node_t *curr_compound;
-  bl_node_t *curr_module;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -85,7 +84,7 @@ static void
 include_using(context_t *cnt, bl_node_t *using);
 
 static bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator);
+lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
@@ -98,11 +97,20 @@ lookup_in_scope(context_t *cnt, bl_node_t *path_elem, bl_node_t *curr_compound,
 static bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
 
+static bl_node_t *
+satisfy_type(context_t *cnt, bl_node_t *type);
+
+static void
+satisfy_const(context_t *cnt, bl_node_t *cnst);
+
 /*************************************************************************************************
  * Pre-connect
  *************************************************************************************************/
 static void
 pre_connect_using(bl_visitor_t *visitor, bl_node_t *using);
+
+static void
+pre_connect_const(bl_visitor_t *visitor, bl_node_t *cnst);
 
 /*************************************************************************************************
  * Connect
@@ -125,6 +133,12 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr);
 static void
 connect_using(bl_visitor_t *visitor, bl_node_t *using);
 
+static void
+connect_type(bl_visitor_t *visitor, bl_node_t *type);
+
+static void
+connect_const(bl_visitor_t *visitor, bl_node_t *cnst);
+
 /*************************************************************************************************
  * Validation
  *************************************************************************************************/
@@ -132,12 +146,13 @@ connect_using(bl_visitor_t *visitor, bl_node_t *using);
 static VALIDATE_F(decl_ref);
 static VALIDATE_F(call);
 static VALIDATE_F(using);
+static VALIDATE_F(type);
 
 /*************************************************************************************************
  * Helpers impl
  *************************************************************************************************/
 bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
+lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
 {
   const size_t c             = bo_array_size(path);
   bl_node_t *  path_elem     = bo_array_at(path, 0, bl_node_t *);
@@ -157,6 +172,9 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
                   bl_peek_path_elem(path_elem)->id.str);
   }
 
+  if (found_in_curr_branch)
+    (*found_in_curr_branch) = prev_compound == found;
+
   for (size_t i = 1; i < c; ++i) {
     prev_found = found;
     path_elem  = bo_array_at(path, i, bl_node_t *);
@@ -171,6 +189,8 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator)
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
                     bl_peek_path_elem(path_elem)->id.str);
     }
+    if (found_in_curr_branch)
+      (*found_in_curr_branch) = prev_compound == prev_found;
     prev_compound = found;
   }
 
@@ -211,7 +231,7 @@ bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
 {
   bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
-  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref); // TODO: validator
+  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
   _ref->ref                 = found;
 
   switch (bl_node_code(found)) {
@@ -229,26 +249,74 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
   return found;
 }
 
+bl_node_t *
+satisfy_type(context_t *cnt, bl_node_t *type)
+{
+  bl_node_t *found = NULL;
+  if (bl_node_is(type, BL_TYPE_REF)) {
+    found                       = lookup(cnt, bl_peek_type_ref(type)->path, validate_type, NULL);
+    bl_peek_type_ref(type)->ref = found;
+
+    switch (bl_node_code(found)) {
+    case BL_DECL_STRUCT:
+      bl_peek_decl_struct(found)->used++;
+      break;
+    case BL_DECL_ENUM:
+      bl_peek_decl_enum(found)->used++;
+      break;
+    default:
+      connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                    "unknown type, struct or enum " BL_YELLOW("'%s'"),
+                    bl_ast_try_get_id(found)->str);
+    }
+  }
+
+  return found;
+}
+
+void
+satisfy_const(context_t *cnt, bl_node_t *cnst)
+{
+  bl_decl_const_t *_cnst    = bl_peek_decl_const(cnst);
+  bl_node_t *      conflict = lookup_in_tree(cnt, &_cnst->id, cnt->curr_compound, NULL, NULL);
+  if (conflict) {
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
+                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                  _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  } else {
+    bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+    bl_scopes_insert_node(scopes, cnst);
+  }
+}
+
 void
 include_using(context_t *cnt, bl_node_t *using)
 {
-  bl_node_t *found               = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using);
+  bl_node_t *conflict       = NULL;
+  bool       in_curr_branch = false;
+  bl_node_t *found = lookup(cnt, bl_peek_stmt_using(using)->path, validate_using, &in_curr_branch);
   bl_peek_stmt_using(using)->ref = found;
-  /* insert into curent compound scope reference to the scope of found compound block */
+
+  if (in_curr_branch) {
+    connect_warning(cnt, using->src, "using with no effect, trying to link current branch");
+    return;
+  }
 
   bl_scopes_t *found_scopes = bl_ast_try_get_scopes(found);
   bl_scopes_t *curr_scopes  = bl_ast_try_get_scopes(cnt->curr_compound);
   bl_assert(found_scopes, "invalid scopes");
   bl_assert(curr_scopes, "invalid scopes");
 
-  /* TODO: check for scope conflicts */
-  bl_node_t *conflict = bl_scopes_get_linked_by(curr_scopes, found_scopes->main);
-  if (conflict == NULL) {
-    bl_scopes_include(curr_scopes, found_scopes->main, using);
-  } else {
+  /* check for scope conflicts */
+  conflict = bl_scopes_get_linked_by(curr_scopes, found_scopes->main);
+  if (conflict) {
     connect_warning(cnt, using->src, "using with no effect due previous one here: %d:%d",
                     conflict->src->line, conflict->src->col);
+    return;
   }
+
+  /* add found compound into cache */
+  bl_scopes_include(curr_scopes, found_scopes->main, using);
 }
 
 /*************************************************************************************************
@@ -265,6 +333,17 @@ pre_connect_using(bl_visitor_t *visitor, bl_node_t *using)
   include_using(cnt, using);
 }
 
+void
+pre_connect_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  context_t *cnt = peek_cnt(visitor);
+  if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE))
+    return;
+
+  satisfy_const(cnt, cnst);
+  bl_visitor_walk_const(visitor, cnst);
+}
+
 /*************************************************************************************************
  * Connect impl
  *************************************************************************************************/
@@ -279,20 +358,38 @@ connect_using(bl_visitor_t *visitor, bl_node_t *using)
   include_using(cnt, using);
 }
 
+void
+connect_type(bl_visitor_t *visitor, bl_node_t *type)
+{
+  context_t *cnt = peek_cnt(visitor);
+  satisfy_type(cnt, type);
+  bl_visitor_walk_type(visitor, type);
+}
+
+void
+connect_const(bl_visitor_t *visitor, bl_node_t *cnst)
+{
+  context_t *cnt = peek_cnt(visitor);
+  if (bl_node_is(cnt->curr_compound, BL_DECL_MODULE)) {
+    bl_visitor_walk_const(visitor, cnst);
+    return;
+  }
+
+  satisfy_const(cnt, cnst);
+  bl_visitor_walk_const(visitor, cnst);
+}
+
 /* note: same method is used for pre_connect walking too!!! */
 void
 connect_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t *cnt      = peek_cnt(visitor);
   bl_node_t *prev_cmp = cnt->curr_compound;
-  bl_node_t *prev_mod = cnt->curr_module;
   cnt->curr_compound  = module;
-  cnt->curr_module    = module;
 
   bl_visitor_walk_module(visitor, module);
 
   cnt->curr_compound = prev_cmp;
-  cnt->curr_module   = prev_mod;
 }
 
 void
@@ -303,7 +400,7 @@ connect_block(bl_visitor_t *visitor, bl_node_t *block)
   bl_node_t *      prev_cmp = cnt->curr_compound;
 
   bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
-  bl_scopes_include_main(&_block->scopes, main_scope, NULL);
+  bl_scopes_include_main(&_block->scopes, main_scope, block);
   cnt->curr_compound = block;
 
   bl_visitor_walk_block(visitor, block);
@@ -318,10 +415,10 @@ connect_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_decl_func_t *_func    = bl_peek_decl_func(func);
   bl_node_t *     prev_cmp = cnt->curr_compound;
 
-  /* IDEA: extern functions without body can be leaved without scope cache becouse they have no body
-   * and can be called only */
+  /* IDEA: extern functions without body can be leaved without scope cache becouse they have no
+   * body and can be called only */
   bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
-  bl_scopes_include_main(&_func->scopes, main_scope, NULL);
+  bl_scopes_include_main(&_func->scopes, main_scope, func);
   cnt->curr_compound = func;
 
   bl_visitor_walk_func(visitor, func);
@@ -335,7 +432,7 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
   context_t *cnt = peek_cnt(visitor);
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL: {
-    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call);
+    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call, NULL);
 
     bl_peek_expr_call(expr)->ref = found;
     bl_peek_decl_func(found)->used++;
@@ -426,15 +523,41 @@ VALIDATE_F(decl_ref)
   }
 }
 
+VALIDATE_F(type)
+{
+  if (last) {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown type " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+
+    switch (bl_node_code(found)) {
+    case BL_DECL_STRUCT:
+    case BL_DECL_ENUM:
+      break;
+    default:
+      connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem->src, "expected type");
+    }
+  } else {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+
+    if (bl_node_is_not(found, BL_DECL_MODULE)) {
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in type path");
+    }
+  }
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
 bl_error_e
 bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {
-      .builder = builder, .assembly = assembly, .curr_compound = NULL, .curr_module = NULL};
-  const int c = bl_assembly_get_unit_count(assembly);
+  context_t cnt = {.builder = builder, .assembly = assembly, .curr_compound = NULL};
+  const int c   = bl_assembly_get_unit_count(assembly);
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
@@ -446,6 +569,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_pre_connect, &cnt);
   bl_visitor_add(&visitor_pre_connect, connect_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_pre_connect, pre_connect_using, BL_VISIT_USING);
+  bl_visitor_add(&visitor_pre_connect, pre_connect_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_pre_connect, BL_SKIP_VISIT, BL_VISIT_FUNC);
 
   for (int i = 0; i < c; ++i) {
@@ -461,6 +585,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_connect, connect_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor_connect, connect_using, BL_VISIT_USING);
   bl_visitor_add(&visitor_connect, connect_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor_connect, connect_type, BL_VISIT_TYPE);
+  bl_visitor_add(&visitor_connect, connect_const, BL_VISIT_CONST);
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
