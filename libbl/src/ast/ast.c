@@ -81,6 +81,7 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_ENUM:
     bo_unref(bl_peek_decl_enum(node)->variants);
+    bl_scopes_terminate(&bl_peek_decl_enum(node)->scopes);
     break;
   case BL_DECL_STRUCT:
     bo_unref(bl_peek_decl_struct(node)->members);
@@ -466,9 +467,11 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
     enm->src = &tok->src;
 
   enm->code = BL_DECL_ENUM;
-  bl_id_init(&bl_peek_decl_enum(enm)->id, name);
-  bl_peek_decl_enum(enm)->modif = modif;
-  bl_peek_decl_enum(enm)->type  = type;
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  bl_id_init(&_enm->id, name);
+  bl_scopes_init(&_enm->scopes);
+  _enm->modif = modif;
+  _enm->type  = type;
 
   return enm;
 }
@@ -1030,6 +1033,8 @@ bl_ast_try_get_scopes(bl_node_t *node)
     return &bl_peek_decl_block(node)->scopes;
   case BL_DECL_FUNC:
     return &bl_peek_decl_func(node)->scopes;
+  case BL_DECL_ENUM:
+    return &bl_peek_decl_enum(node)->scopes;
   default:
     return NULL;
   }

@@ -1,11 +1,22 @@
 /* testing playground */
 
-fn main() {
-   const c i32 = gc; 
-   var _c i32 = c; 
+extern fn printf(s string, e i32);
+
+enum enum_t i32 {
+  Foo,
+  Bar
 }
 
-const gc i32 = 666; 
+fn main() {
+  using enum_t;
+  var e enum_t;
+  e = enum_t::Foo;
+  e = Foo;
+
+  printf("Foo = %d\n", Foo);
+  printf("Bar = %d\n", Bar);
+}
+
 
 
 

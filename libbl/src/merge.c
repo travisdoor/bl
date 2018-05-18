@@ -70,9 +70,6 @@ static void
 merge_struct(bl_visitor_t *visitor, bl_node_t *strct);
 
 static void
-merge_enum(bl_visitor_t *visitor, bl_node_t *enm);
-
-static void
 merge_module(bl_visitor_t *visitor, bl_node_t *module);
 
 /*************************************************************************************************
@@ -134,41 +131,6 @@ merge_struct(bl_visitor_t *visitor, bl_node_t *strct)
 }
 
 void
-merge_enum(bl_visitor_t *visitor, bl_node_t *enm)
-{
-  bl_decl_enum_t *_enm  = bl_peek_decl_enum(enm);
-  context_t *     cnt   = peek_cnt(visitor);
-  bl_scope_t *    scope = peek_cnt(visitor)->curr_scope;
-
-  bl_node_t *conflict = bl_scope_get_node(scope, &_enm->id);
-
-  if (conflict) {
-    merge_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm->src,
-                "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
-  }
-
-  /* check for duplicit members and prepare lookup scope cache */
-  _enm->scope          = bl_scope_new(cnt->assembly->scope_cache);
-  bl_node_t *  variant = NULL;
-  const size_t c       = bl_ast_enum_get_count(_enm);
-  for (size_t i = 0; i < c; ++i) {
-    variant  = bl_ast_enum_get_variant(_enm, i);
-    conflict = bl_scope_get_node(_enm->scope, &bl_peek_decl_enum_variant(variant)->id);
-
-    if (conflict) {
-      merge_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
-                  "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file,
-                  conflict->src->line, conflict->src->col);
-    }
-    bl_scope_insert_node(_enm->scope, variant);
-  }
-
-  bl_scope_insert_node(scope, enm);
-}
-
-void
 merge_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   context_t * cnt            = peek_cnt(visitor);
@@ -220,7 +182,7 @@ bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_merge, merge_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_merge, merge_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor_merge, BL_SKIP_VISIT, BL_VISIT_CONST);
-  bl_visitor_add(&visitor_merge, merge_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_merge, BL_SKIP_VISIT, BL_VISIT_ENUM);
 
   const int c = bl_assembly_get_unit_count(assembly);
 

@@ -112,6 +112,9 @@ pre_connect_using(bl_visitor_t *visitor, bl_node_t *using);
 static void
 pre_connect_const(bl_visitor_t *visitor, bl_node_t *cnst);
 
+static void
+pre_connect_enum(bl_visitor_t *visitor, bl_node_t *enm);
+
 /*************************************************************************************************
  * Connect
  *************************************************************************************************/
@@ -277,16 +280,22 @@ satisfy_type(context_t *cnt, bl_node_t *type)
 void
 satisfy_const(context_t *cnt, bl_node_t *cnst)
 {
-  bl_decl_const_t *_cnst    = bl_peek_decl_const(cnst);
-  bl_node_t *      conflict = lookup_in_tree(cnt, &_cnst->id, cnt->curr_compound, NULL, NULL);
+  bl_decl_const_t *_cnst     = bl_peek_decl_const(cnst);
+  bl_scopes_t *    scopes    = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_node_t *      linked_by = NULL;
+  bl_node_t *      conflict = lookup_in_tree(cnt, &_cnst->id, cnt->curr_compound, &linked_by, NULL);
+
   if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
-  } else {
-    bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
-    bl_scopes_insert_node(scopes, cnst);
+    if (linked_by == cnt->curr_compound) {
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
+                    "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                    _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+    } else {
+      connect_warning(cnt, cnst->src, BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d",
+                      _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+    }
   }
+  bl_scopes_insert_node(scopes, cnst);
 }
 
 void
@@ -342,6 +351,42 @@ pre_connect_const(bl_visitor_t *visitor, bl_node_t *cnst)
 
   satisfy_const(cnt, cnst);
   bl_visitor_walk_const(visitor, cnst);
+}
+
+void
+pre_connect_enum(bl_visitor_t *visitor, bl_node_t *enm)
+{
+  bl_decl_enum_t *_enm     = bl_peek_decl_enum(enm);
+  context_t *     cnt      = peek_cnt(visitor);
+  bl_node_t *     conflict = lookup_in_tree(cnt, &_enm->id, cnt->curr_compound, NULL, NULL);
+
+  if (conflict) {
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm->src,
+                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                  _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+  }
+
+  /* check for duplicit members and prepare lookup scope cache */
+  bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
+  bl_scopes_include_main(&_enm->scopes, scope, enm);
+
+  bl_node_t *  variant = NULL;
+  const size_t c       = bl_ast_enum_get_count(_enm);
+  for (size_t i = 0; i < c; ++i) {
+    variant  = bl_ast_enum_get_variant(_enm, i);
+    conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
+
+    if (conflict) {
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
+                    "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                    bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file,
+                    conflict->src->line, conflict->src->col);
+    }
+    bl_scope_insert_node(scope, variant);
+  }
+
+  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_insert_node(scopes, enm);
 }
 
 /*************************************************************************************************
@@ -462,18 +507,24 @@ connect_expr(bl_visitor_t *visitor, bl_node_t *expr)
 void
 connect_var(bl_visitor_t *visitor, bl_node_t *var)
 {
-  context_t *    cnt  = peek_cnt(visitor);
-  bl_decl_var_t *_var = bl_peek_decl_var(var);
+  context_t *    cnt       = peek_cnt(visitor);
+  bl_decl_var_t *_var      = bl_peek_decl_var(var);
+  bl_node_t *    linked_by = NULL;
 
-  bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound, NULL, NULL);
+  bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound, &linked_by, NULL);
   if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _var->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
-  } else {
-    bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
-    bl_scopes_insert_node(scopes, var);
+    if (linked_by == cnt->curr_compound) {
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
+                    "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                    _var->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+    } else {
+      connect_warning(cnt, var->src, BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d",
+                      _var->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+    }
   }
+
+  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_insert_node(scopes, var);
 
   bl_visitor_walk_var(visitor, var);
 }
@@ -510,8 +561,15 @@ VALIDATE_F(using)
                   bl_peek_path_elem(elem)->id.str);
   }
 
-  if (bl_node_is_not(found, BL_DECL_MODULE)) {
-    connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in using path");
+  if (last) {
+    if (bl_node_is_not(found, BL_DECL_MODULE) && bl_node_is_not(found, BL_DECL_ENUM)) {
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+                    "expected module or enum in using path");
+    }
+  } else {
+    if (bl_node_is_not(found, BL_DECL_MODULE)) {
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in using path");
+    }
   }
 }
 
@@ -572,6 +630,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_pre_connect, connect_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_pre_connect, pre_connect_using, BL_VISIT_USING);
   bl_visitor_add(&visitor_pre_connect, pre_connect_const, BL_VISIT_CONST);
+  bl_visitor_add(&visitor_pre_connect, pre_connect_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_pre_connect, BL_SKIP_VISIT, BL_VISIT_FUNC);
 
   for (int i = 0; i < c; ++i) {

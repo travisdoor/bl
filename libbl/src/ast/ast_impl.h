@@ -190,10 +190,10 @@ struct bl_expr_sizeof
 /* module declaration */
 struct bl_decl_module
 {
-  bl_id_t            id;
-  int                modif;
-  BArray *           nodes;
-  bl_node_t *        parent;
+  bl_id_t     id;
+  int         modif;
+  BArray *    nodes;
+  bl_node_t * parent;
   bl_scopes_t scopes;
 };
 
@@ -224,13 +224,13 @@ struct bl_decl_arg
 
 struct bl_decl_func
 {
-  bl_id_t            id;
-  int                modif;
-  int                used;
-  BArray *           args;
-  bl_node_t *        block;
-  bl_node_t *        ret_type;
-  bl_node_t *        parent;
+  bl_id_t     id;
+  int         modif;
+  int         used;
+  BArray *    args;
+  bl_node_t * block;
+  bl_node_t * ret_type;
+  bl_node_t * parent;
   bl_scopes_t scopes;
 };
 
@@ -259,7 +259,7 @@ struct bl_decl_enum
   int         used;
   bl_node_t * type;
   BArray *    variants;
-  bl_scope_t *scope;
+  bl_scopes_t scopes;
 };
 
 struct bl_decl_enum_variant
@@ -271,8 +271,8 @@ struct bl_decl_enum_variant
 
 struct bl_decl_block
 {
-  BArray *           nodes;
-  bl_node_t *        parent;
+  BArray *    nodes;
+  bl_node_t * parent;
   bl_scopes_t scopes;
 };
 
