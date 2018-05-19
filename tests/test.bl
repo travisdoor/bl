@@ -2,25 +2,16 @@
 
 extern fn printf(s string, e i32);
 
-enum enum_t i32 {
-  Foo,
-  Bar
+module A {
+  public module B {
+    public module C {
+      public fn hello() {}
+    }
+  }
 }
 
 fn main() {
-  using enum_t;
-  var e enum_t;
-  e = enum_t::Foo;
-  e = Foo;
-
-  printf("Foo = %d\n", Foo);
-  printf("Bar = %d\n", Bar);
+  using A::B::C;
+  A::B::C::hello();
+  hello();
 }
-
-
-
-
-
-
-
-

@@ -95,8 +95,10 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
     return error;
   */
 
+  /*
   if ((error = bl_merge_run(builder, assembly)) != BL_NO_ERR)
     return error;
+  */
 
   if ((error = bl_connect_run(builder, assembly)) != BL_NO_ERR)
     return error;

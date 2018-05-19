@@ -85,6 +85,7 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_STRUCT:
     bo_unref(bl_peek_decl_struct(node)->members);
+    bl_scopes_terminate(&bl_peek_decl_struct(node)->scopes);
     break;
   case BL_STMT_USING:
     bo_unref(bl_peek_stmt_using(node)->path);
@@ -435,9 +436,11 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
   if (tok)
     strct->src = &tok->src;
 
-  strct->code = BL_DECL_STRUCT;
-  bl_id_init(&bl_peek_decl_struct(strct)->id, name);
-  bl_peek_decl_struct(strct)->modif = modif;
+  strct->code              = BL_DECL_STRUCT;
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  bl_id_init(&_strct->id, name);
+  bl_scopes_init(&_strct->scopes);
+  _strct->modif = modif;
 
   return strct;
 }
@@ -466,7 +469,7 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
   if (tok)
     enm->src = &tok->src;
 
-  enm->code = BL_DECL_ENUM;
+  enm->code            = BL_DECL_ENUM;
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   bl_id_init(&_enm->id, name);
   bl_scopes_init(&_enm->scopes);
@@ -495,13 +498,13 @@ bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, b
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent)
 {
-  bl_node_t *      block  = alloc_node(ast);
+  bl_node_t *block = alloc_node(ast);
   if (tok)
     block->src = &tok->src;
 
-  block->code    = BL_DECL_BLOCK;
+  block->code             = BL_DECL_BLOCK;
   bl_decl_block_t *_block = bl_peek_decl_block(block);
-  _block->parent = parent;
+  _block->parent          = parent;
   bl_scopes_init(&(_block->scopes));
 
   return block;
@@ -1035,6 +1038,8 @@ bl_ast_try_get_scopes(bl_node_t *node)
     return &bl_peek_decl_func(node)->scopes;
   case BL_DECL_ENUM:
     return &bl_peek_decl_enum(node)->scopes;
+  case BL_DECL_STRUCT:
+    return &bl_peek_decl_struct(node)->scopes;
   default:
     return NULL;
   }

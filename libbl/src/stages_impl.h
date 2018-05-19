@@ -59,9 +59,6 @@ bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
-bl_merge_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
 bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e

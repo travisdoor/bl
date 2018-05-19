@@ -240,7 +240,7 @@ struct bl_decl_struct
   int         modif;
   int         used;
   BArray *    members;
-  bl_scope_t *scope;
+  bl_scopes_t scopes;
 };
 
 struct bl_decl_struct_member
