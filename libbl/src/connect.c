@@ -373,13 +373,11 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t *module)
     bl_scopes_t *conflict_scopes = bl_ast_try_get_scopes(conflict);
     bl_assert(conflict_scopes->main, "invalid main scope");
     bl_scopes_include_main(&_module->scopes, conflict_scopes->main, module);
-    bl_log("merging module %p with %p", module, conflict);
   } else {
     bl_scopes_t *prev_scopes = bl_ast_try_get_scopes(prev_cmp);
     bl_scope_t * new_main    = bl_scope_new(cnt->assembly->scope_cache);
     bl_scopes_include_main(&_module->scopes, new_main, module);
     bl_scopes_insert_node(prev_scopes, module);
-    bl_log("new module %p", module);
   }
 
   /* non-terminal */
