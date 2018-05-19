@@ -4,14 +4,19 @@ extern fn printf(s string, e i32);
 
 module A {
   public module B {
-    public module C {
+    module C {
+      using B::C;
       public fn hello() {}
+    }
+
+    fn hello() {
+      C::hello();
     }
   }
 }
 
 fn main() {
-  using A::B::C;
-  A::B::C::hello();
-  hello();
+  //using A::B::C;
+  //A::B::C::hello();
+  //hello();
 }

@@ -177,11 +177,11 @@ static VALIDATE_F(type);
 bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
 {
-  const size_t c             = bo_array_size(path);
-  bl_node_t *  path_elem     = bo_array_at(path, 0, bl_node_t *);
-  bl_node_t *  linked_by     = NULL;
-  bl_node_t *  prev_compound = NULL;
-  bl_node_t *  prev_found    = NULL;
+  const size_t c              = bo_array_size(path);
+  bl_node_t *  path_elem      = bo_array_at(path, 0, bl_node_t *);
+  bl_node_t *  linked_by      = NULL;
+  bl_node_t *  prev_compound  = NULL;
+  bool         in_curr_branch = false;
   bl_node_t *  found = lookup_in_tree(cnt, &bl_peek_path_elem(path_elem)->id, cnt->curr_compound,
                                     &linked_by, &prev_compound);
 
@@ -195,28 +195,25 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
                   bl_peek_path_elem(path_elem)->id.str);
   }
 
-  if (found_in_curr_branch)
-    (*found_in_curr_branch) = prev_compound == found;
+  in_curr_branch = prev_compound == found;
 
   for (size_t i = 1; i < c; ++i) {
-    prev_found = found;
-    path_elem  = bo_array_at(path, i, bl_node_t *);
-    found      = lookup_in_scope(cnt, &bl_peek_path_elem(path_elem)->id, found, &linked_by);
+    path_elem = bo_array_at(path, i, bl_node_t *);
+    found     = lookup_in_scope(cnt, &bl_peek_path_elem(path_elem)->id, found, &linked_by);
 
     if (validator)
       validator(cnt, path_elem, found, c == i + 1);
     bl_assert(found, "null found symbol unhandled by validator");
 
-    if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && prev_compound != prev_found) {
+    if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
       connect_error(cnt, BL_ERR_PRIVATE, path_elem->src,
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
                     bl_peek_path_elem(path_elem)->id.str);
     }
-    if (found_in_curr_branch)
-      (*found_in_curr_branch) = prev_compound == prev_found;
-    prev_compound = found;
   }
 
+  if (found_in_curr_branch)
+    (*found_in_curr_branch) = in_curr_branch;
   return found;
 }
 
