@@ -75,7 +75,7 @@ static bl_node_t *
 parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
-parse_enum_maybe(context_t *cnt, int modif);
+parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
 parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif);
@@ -141,16 +141,16 @@ static BArray *
 parse_path_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_if_maybe(context_t *cnt);
+parse_if_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
-parse_loop_maybe(context_t *cnt);
+parse_loop_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
 parse_block_content_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
-parse_while_maybe(context_t *cnt);
+parse_while_maybe(context_t *cnt, bl_node_t *parent);
 
 static bl_node_t *
 parse_break_maybe(context_t *cnt);
@@ -199,7 +199,7 @@ parse_return_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_loop_maybe(context_t *cnt)
+parse_loop_maybe(context_t *cnt, bl_node_t *parent)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LOOP);
   if (!tok_begin) {
@@ -210,7 +210,7 @@ parse_loop_maybe(context_t *cnt)
   cnt->inside_loop            = true;
   bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL, false);
   bl_node_t *test             = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
-  bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
+  bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL, parent);
   bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
@@ -224,7 +224,7 @@ parse_loop_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_while_maybe(context_t *cnt)
+parse_while_maybe(context_t *cnt, bl_node_t *parent)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_WHILE);
   if (!tok_begin) {
@@ -251,7 +251,7 @@ parse_while_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
                 "expected " BL_YELLOW("')'") " after while statement expression");
   }
-  bl_node_t *loop = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL);
+  bl_node_t *loop = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL, parent);
 
   bl_node_t *true_stmt = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL) {
@@ -883,7 +883,7 @@ parse_pre_load_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_if_maybe(context_t *cnt)
+parse_if_maybe(context_t *cnt, bl_node_t *parent)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_IF);
   if (tok_begin == NULL) {
@@ -910,7 +910,7 @@ parse_if_maybe(context_t *cnt)
                 "expected " BL_YELLOW("')'") " after if statement expression");
   }
 
-  bl_node_t *if_stmt = bl_ast_add_stmt_if(cnt->ast, tok_begin, test, NULL, NULL);
+  bl_node_t *if_stmt = bl_ast_add_stmt_if(cnt->ast, tok_begin, test, NULL, NULL, parent);
 
   bl_node_t *true_stmt = parse_block_content_maybe(cnt, if_stmt);
   if (true_stmt == NULL) {
@@ -966,15 +966,15 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
     goto done;
   }
 
-  if ((stmt = parse_if_maybe(cnt))) {
+  if ((stmt = parse_if_maybe(cnt, parent))) {
     goto done;
   }
 
-  if ((stmt = parse_loop_maybe(cnt))) {
+  if ((stmt = parse_loop_maybe(cnt, parent))) {
     goto done;
   }
 
-  if ((stmt = parse_while_maybe(cnt))) {
+  if ((stmt = parse_while_maybe(cnt, parent))) {
     goto done;
   }
 
@@ -1254,7 +1254,7 @@ parse_struct_maybe(context_t *cnt, int modif)
 }
 
 bl_node_t *
-parse_enum_maybe(context_t *cnt, int modif)
+parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
 {
   bl_node_t *enm = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM) != NULL) {
@@ -1271,7 +1271,7 @@ parse_enum_maybe(context_t *cnt, int modif)
       type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, false);
     }
 
-    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif);
+    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif, parent);
     bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
     /* eat '{' */
@@ -1392,7 +1392,7 @@ decl:
     goto decl;
   }
 
-  if ((node = bl_ast_module_push_node(_module, parse_enum_maybe(cnt, modif)))) {
+  if ((node = bl_ast_module_push_node(_module, parse_enum_maybe(cnt, modif, module)))) {
     if (modif & BL_MODIF_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
                        "enum can't be declared as " BL_YELLOW("'%s'"),

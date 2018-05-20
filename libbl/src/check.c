@@ -120,7 +120,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
     callee_arg = bl_ast_func_get_arg(_callee, i);
     call_arg   = bl_ast_call_get_arg(_call, i);
 
-    check_expr(cnt, call_arg, bl_peek_decl_var(callee_arg)->type, false);
+    check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
   }
 
   return _callee->ret_type;
@@ -162,6 +162,20 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
           cnt, BL_ERR_INVALID_TYPE, decl_ref,
           "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+          bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
+          bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
+    }
+    break;
+  }
+
+  case BL_DECL_ARG: {
+    ref_type = bl_peek_decl_arg(ref)->type;
+
+    if (!bl_type_compatible(ref_type, expected_type)) {
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          "incompatible type of function argument reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+              "'%s'") " but argument is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, bl_ast_try_get_type_name(expected_type),
           bl_ast_try_get_type_name(ref_type), ref->src->file, ref->src->line, ref->src->col);
     }

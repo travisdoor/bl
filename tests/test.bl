@@ -16,7 +16,11 @@ module A {
 }
 
 fn main() {
-  //using A::B::C;
-  //A::B::C::hello();
-  //hello();
+  var a i32;
+
+  {
+    if (a == 0) {
+      a = 10;
+    }
+  }
 }

@@ -26,16 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/*************************************************************************************************
- * Connect will do 3 partial iterations of AST passed in.
- *
- * 2) connect type tree of custom types (mostly structures) so references to those types can be used
- *    later in compilation
- *    prepare file-global usings
- *
- * 3) connect rest of the source (mostly expressions referencing to some custom types)
- *************************************************************************************************/
-
 #include <setjmp.h>
 #include <bobject/containers/htbl.h>
 #include "common_impl.h"
@@ -162,6 +152,9 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t *type);
 static void
 third_pass_const(bl_visitor_t *visitor, bl_node_t *cnst);
 
+static void
+third_pass_enum(bl_visitor_t *visitor, bl_node_t *enm);
+
 /*************************************************************************************************
  * Validation
  *************************************************************************************************/
@@ -226,6 +219,9 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
   bl_node_t *  tmp_curr_compound = curr_compound;
 
   while (found == NULL && tmp_curr_compound != NULL) {
+    if (bl_node_is(tmp_curr_compound, BL_STMT_IF) || bl_node_is(tmp_curr_compound, BL_STMT_LOOP))
+      goto skip;
+
     tmp_scopes = bl_ast_try_get_scopes(tmp_curr_compound);
     bl_assert(tmp_scopes, "invalid scopes");
     found = bl_scopes_get_node(tmp_scopes, id, linked_by);
@@ -233,6 +229,7 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
     if (found == NULL && prev_compound != NULL)
       (*prev_compound) = tmp_curr_compound;
 
+  skip:
     tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
   }
 
@@ -626,6 +623,7 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
 
   bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound, &linked_by, NULL);
   if (conflict) {
+    /* some nodes can lead to another compound blocks but they has no context, we shoud skip them */
     if (linked_by == cnt->curr_compound) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, var->src,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
@@ -645,10 +643,38 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
 void
 third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
 {
+  bl_decl_func_t *_func    = bl_peek_decl_func(func);
+  context_t *     cnt      = peek_cnt(visitor);
+  bl_node_t *     prev_cmp = cnt->curr_compound;
+  cnt->curr_compound       = func;
+
+  const size_t c = bl_ast_func_arg_count(_func);
+  bl_node_t *  arg;
+  for (size_t i = 0; i < c; ++i) {
+    arg = bl_ast_func_get_arg(_func, i);
+
+    bl_node_t *conflict = lookup_in_scope(cnt, &bl_peek_decl_arg(arg)->id, func, NULL);
+    if (conflict) {
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg->src,
+                    "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                    bl_peek_decl_arg(arg)->id.str, conflict->src->file, conflict->src->line,
+                    conflict->src->col);
+    } else {
+      bl_scopes_insert_node(&_func->scopes, arg);
+    }
+  }
+
+  bl_visitor_walk_func(visitor, func);
+  cnt->curr_compound = prev_cmp;
+}
+
+void
+third_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
+{
   context_t *cnt      = peek_cnt(visitor);
   bl_node_t *prev_cmp = cnt->curr_compound;
-  cnt->curr_compound  = func;
-  bl_visitor_walk_func(visitor, func);
+  cnt->curr_compound  = enm;
+  bl_visitor_walk_enum(visitor, enm);
   cnt->curr_compound = prev_cmp;
 }
 
@@ -789,6 +815,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);
+  bl_visitor_add(&visitor_third, third_pass_enum, BL_VISIT_ENUM);
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);

@@ -282,7 +282,7 @@ gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
   bl_node_t *arg = NULL;
   for (size_t i = 0; i < c; ++i) {
     arg  = bl_ast_func_get_arg(func, i);
-    *out = to_llvm_type(cnt, bl_peek_decl_var(arg)->type);
+    *out = to_llvm_type(cnt, bl_peek_decl_arg(arg)->type);
 
     out++;
     out_i++;
@@ -583,7 +583,8 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
     switch (bl_node_code(ref)) {
 
-    case BL_DECL_VAR: {
+    case BL_DECL_VAR:
+    case BL_DECL_ARG: {
       val = get_value_cscope(ref);
       break;
     }
@@ -780,7 +781,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 
       LLVMValueRef p = LLVMGetParam(llvm_func, i);
       LLVMValueRef p_tmp =
-          LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_var(arg)->id.str));
+          LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_arg(arg)->id.str));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
 
       push_value_cscope(arg, p_tmp);
