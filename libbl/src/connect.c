@@ -89,8 +89,17 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
 static bl_node_t *
 satisfy_type(context_t *cnt, bl_node_t *type);
 
-static void
+static bl_node_t *
 satisfy_const(context_t *cnt, bl_node_t *cnst);
+
+static bl_node_t *
+satisfy_call(context_t *cnt, bl_node_t *call);
+
+static bl_node_t *
+satisfy_member(context_t *cnt, bl_node_t *member);
+
+static bl_node_t *
+satisfy_expr(context_t *cnt, bl_node_t *expr);
 
 /*************************************************************************************************
  * First pass
@@ -123,6 +132,9 @@ second_pass_module(bl_visitor_t *visitor, bl_node_t *module);
 
 static void
 second_pass_using(bl_visitor_t *visitor, bl_node_t *using);
+
+static void
+second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct);
 
 /*************************************************************************************************
  * Third pass
@@ -290,7 +302,7 @@ satisfy_type(context_t *cnt, bl_node_t *type)
   return found;
 }
 
-void
+bl_node_t *
 satisfy_const(context_t *cnt, bl_node_t *cnst)
 {
   bl_decl_const_t *_cnst     = bl_peek_decl_const(cnst);
@@ -309,6 +321,50 @@ satisfy_const(context_t *cnt, bl_node_t *cnst)
     }
   }
   bl_scopes_insert_node(scopes, cnst);
+  return cnst;
+}
+
+bl_node_t *
+satisfy_call(context_t *cnt, bl_node_t *call)
+{
+  bl_node_t *found             = lookup(cnt, bl_peek_expr_call(call)->path, validate_call, NULL);
+  bl_peek_expr_call(call)->ref = found;
+  bl_peek_decl_func(found)->used++;
+  return found;
+}
+
+bl_node_t *
+satisfy_member(context_t *cnt, bl_node_t *member)
+{
+  bl_node_t *found = NULL;
+  return found;
+}
+
+bl_node_t *
+satisfy_expr(context_t *cnt, bl_node_t *expr)
+{
+  bl_node_t *found = NULL;
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_CALL: {
+    found = satisfy_call(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_DECL_REF: {
+    found = satisfy_decl_ref(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_MEMBER_REF: {
+    found = satisfy_member(cnt, expr);
+    break;
+  }
+
+  default:
+    break;
+  }
+
+  return found;
 }
 
 void
@@ -518,6 +574,21 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t *using)
   include_using(cnt, using);
 }
 
+void
+second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
+{
+  context_t *              cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *       _strct = bl_peek_decl_struct(strct);
+  const size_t             c      = bl_ast_struct_member_count(_strct);
+  bl_node_t *              member;
+  bl_decl_struct_member_t *_member;
+  for (size_t i = 0; i < c; ++i) {
+    member  = bl_ast_struct_get_member(_strct, i);
+    _member = bl_peek_decl_struct_member(member);
+    satisfy_type(cnt, _member->type);
+  }
+}
+
 /*************************************************************************************************
  * Connect impl
  *************************************************************************************************/
@@ -585,32 +656,8 @@ void
 third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   context_t *cnt = peek_cnt(visitor);
-  switch (bl_node_code(expr)) {
-  case BL_EXPR_CALL: {
-    bl_node_t *found = lookup(cnt, bl_peek_expr_call(expr)->path, validate_call, NULL);
-
-    bl_peek_expr_call(expr)->ref = found;
-    bl_peek_decl_func(found)->used++;
-    break;
-  }
-
-  case BL_EXPR_DECL_REF: {
-    satisfy_decl_ref(cnt, expr);
-    break;
-  }
-
-  case BL_EXPR_MEMBER_REF: {
-    /* member access expression has not been linked yet -> solve it recursivelly */
-    /* if (bl_peek_expr_member_ref(expr)->ref == NULL) */
-    /*   satisfy_member(cnt, expr); */
-
-    break;
-  }
-
-  default:
-    break;
-  }
-
+  satisfy_expr(cnt, expr);
+  /* terminal */
   bl_visitor_walk_expr(visitor, expr);
 }
 
@@ -796,6 +843,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_second, &cnt);
   bl_visitor_add(&visitor_second, second_pass_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_second, second_pass_using, BL_VISIT_USING);
+  bl_visitor_add(&visitor_second, second_pass_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_FUNC);
@@ -816,6 +864,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_third, third_pass_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_third, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
