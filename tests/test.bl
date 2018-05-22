@@ -2,39 +2,11 @@
 
 extern fn printf(s string, e i32);
 
-module A {
-  struct S {
-    a i32
-  }
-
-  // S.a public in module A
-
-  module B {
-    fn hello() {
-      var s S;
-      s.a = 10; // a is public in inner modules
-    }
-  }
-}
-
-// S.a is private here in outer modules
-
 struct foo_t {
-  a i32,
-  b i32,
-  bar bar_t
+  a i32
 }
 
 fn main() {
-  var foo foo_t;  
-  foo.bar.a = 10;
-}
-
-struct bar_t {
-  foobar foobar_t,
-  a i32
-}
-
-struct foobar_t {
-  a i32
+  var foo foo_t;
+  foo.a = 10;
 }

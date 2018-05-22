@@ -79,11 +79,12 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
 // return bool found in curr branch???
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
-               bl_node_t **prev_compound);
+               bool *found_in_curr_branch);
 
 static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by);
 
+/* all satisfy methods returns result data type of the operation */
 static bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
 
@@ -186,10 +187,9 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
   const size_t c              = bo_array_size(path);
   bl_node_t *  path_elem      = bo_array_at(path, 0, bl_node_t *);
   bl_node_t *  linked_by      = NULL;
-  bl_node_t *  prev_compound  = NULL;
   bool         in_curr_branch = false;
   bl_node_t *  found = lookup_in_tree(cnt, &bl_peek_path_elem(path_elem)->id, cnt->curr_compound,
-                                    &linked_by, &prev_compound);
+                                    &linked_by, &in_curr_branch);
 
   if (validator)
     validator(cnt, path_elem, found, c == 1);
@@ -200,8 +200,6 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
                   "symbol " BL_YELLOW("'%s'") " is private in this context",
                   bl_peek_path_elem(path_elem)->id.str);
   }
-
-  in_curr_branch = prev_compound == found;
 
   for (size_t i = 1; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
@@ -220,16 +218,21 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
 
   if (found_in_curr_branch)
     (*found_in_curr_branch) = in_curr_branch;
+
   return found;
 }
 
 bl_node_t *
 lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
-               bl_node_t **prev_compound)
+               bool *found_in_curr_branch)
 {
   bl_node_t *  found             = NULL;
   bl_scopes_t *tmp_scopes        = NULL;
   bl_node_t *  tmp_curr_compound = curr_compound;
+  bl_node_t *  prev_compound     = NULL;
+
+  if (found_in_curr_branch)
+    (*found_in_curr_branch) = false;
 
   while (found == NULL && tmp_curr_compound != NULL) {
     if (bl_node_is(tmp_curr_compound, BL_STMT_IF) || bl_node_is(tmp_curr_compound, BL_STMT_LOOP))
@@ -239,12 +242,15 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
     bl_assert(tmp_scopes, "invalid scopes");
     found = bl_scopes_get_node(tmp_scopes, id, linked_by);
 
-    if (found == NULL && prev_compound != NULL)
-      (*prev_compound) = tmp_curr_compound;
+    if (found == NULL)
+      prev_compound = tmp_curr_compound;
 
   skip:
     tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
   }
+
+  if (found_in_curr_branch)
+    (*found_in_curr_branch) = prev_compound == found;
 
   return found;
 }
@@ -259,6 +265,7 @@ lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t
 bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
 {
+  bl_node_t *         type  = NULL;
   bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
   bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
   _ref->ref                 = found;
@@ -266,16 +273,17 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
   switch (bl_node_code(found)) {
   case BL_DECL_VAR:
     bl_peek_decl_var(found)->used++;
+    type = bl_peek_decl_var(found)->type;
     break;
   case BL_DECL_CONST:
     bl_peek_decl_const(found)->used++;
+    type = bl_peek_decl_const(found)->type;
     break;
   default:
-    // TODO: handle as error
-    break;
+    bl_abort("invalid decl ref");
   }
 
-  return found;
+  return type;
 }
 
 bl_node_t *
@@ -322,7 +330,7 @@ satisfy_const(context_t *cnt, bl_node_t *cnst)
     }
   }
   bl_scopes_insert_node(scopes, cnst);
-  return cnst;
+  return bl_peek_decl_const(cnst)->type;
 }
 
 bl_node_t *
@@ -331,19 +339,30 @@ satisfy_call(context_t *cnt, bl_node_t *call)
   bl_node_t *found             = lookup(cnt, bl_peek_expr_call(call)->path, validate_call, NULL);
   bl_peek_expr_call(call)->ref = found;
   bl_peek_decl_func(found)->used++;
-  return found;
+
+  return bl_peek_decl_func(found)->ret_type;
 }
 
 bl_node_t *
 satisfy_member(context_t *cnt, bl_node_t *member)
 {
-  bl_node_t *found = NULL;
-  return found;
+  bl_expr_member_ref_t *_member = bl_peek_expr_member_ref(member);
+  bl_node_t *type = NULL;
+
+  bl_assert(_member->next, "missing next node in member reference");
+  type = satisfy_expr(cnt, _member->next);
+
+  /* TODO: handle as compiler error */
+  if (bl_node_is_not(type, BL_TYPE_REF))
+    bl_abort("fundamental type has no members");
+
+  return type;
 }
 
 bl_node_t *
 satisfy_expr(context_t *cnt, bl_node_t *expr)
 {
+  /* expressions are not iterated by visitor due to recursive dependencies between some nodes */
   bl_node_t *found = NULL;
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL: {
@@ -358,6 +377,13 @@ satisfy_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_MEMBER_REF: {
     found = satisfy_member(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_BINOP: {
+    bl_expr_binop_t *_binop = bl_peek_expr_binop(expr);
+    found                   = satisfy_expr(cnt, _binop->lhs);
+    satisfy_expr(cnt, _binop->rhs);
     break;
   }
 
@@ -658,8 +684,7 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   context_t *cnt = peek_cnt(visitor);
   satisfy_expr(cnt, expr);
-  /* terminal */
-  bl_visitor_walk_expr(visitor, expr);
+  // bl_visitor_walk_expr(visitor, expr);
 }
 
 void

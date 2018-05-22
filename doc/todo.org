@@ -46,7 +46,7 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [6/15]
+- [-] Other [9/16]
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
@@ -54,14 +54,15 @@
   - [ ] Remove 'ptr' type 
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
-  - [ ] Separate node for func params 
+  - [X] Separate node for func params 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
-  - [ ] Path parsing fix (last node of path must be parsed also) 
+  - [X] Path parsing fix (last node of path must be parsed also) 
   - [ ] Implicit numeric constant casting
-  - [ ] Nodes using path should use token of last path element (simple add method -> not use of previous token)
+  - [ ] Use talloc instead of normal memory allocators
+  - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
 - [-] Unary operator (separate expression node in ast) [2/4]
   - [X] Ast node
   - [X] Parsing
@@ -104,11 +105,13 @@
   - [ ] Evaluation
 - [ ] Error handling [0/1]
   - [ ] struct a { i i32 } a.i.b.c
-- [-] Better linker [4/5]
+- [-] Better linker [5/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging
   - [X] Path element validation via validation methods???
-  - [ ] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
+  - [X] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
+  - [ ] Member access parser + better expression handling 
+  - [ ] Satisfy methods should return result type???
   - [X] Add assembly root module and link it to all unit global modules
 
 * BUGS [2/4]
