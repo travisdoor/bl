@@ -357,11 +357,26 @@ satisfy_member(context_t *cnt, bl_node_t *member)
     bl_abort("fundamental type has no members");
   type = bl_peek_type_ref(type)->ref;
 
+  /* determinate if struct is declared in current tree and private members can be referenced too */
+  bl_node_t *linked_by = NULL;
+  bool       in_curr_branch =
+      lookup_in_tree(cnt, &bl_peek_decl_struct(type)->id, cnt->curr_compound, &linked_by, NULL);
+  bool ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
+
   bl_node_t *ref = lookup_in_scope(cnt, &_member->id, type, NULL);
   if (!ref) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member->src,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
                   bl_peek_decl_struct(type)->id.str, _member->id.str);
+  }
+
+  /* check visibility of found member */
+  bl_decl_struct_member_t *_ref = bl_peek_decl_struct_member(ref);
+  if (!ignore_private && !(_ref->modif & BL_MODIF_PUBLIC)) {
+    connect_error(cnt, BL_ERR_PRIVATE, member->src,
+                  "member " BL_YELLOW("'%s'") " of structure " BL_YELLOW(
+                      "'%s'") " is private in this context",
+                  _ref->id.str, bl_peek_decl_struct(type)->id.str);
   }
 
   _member->ref = ref;

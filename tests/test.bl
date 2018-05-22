@@ -2,11 +2,21 @@
 
 extern fn printf(s string, e i32);
 
-struct foo_t {
-  a i32
+module A {
+  public struct foo_t {
+    a i32
+  }
+
+  fn hello() {
+    var foo foo_t;
+    foo.a = 10;
+  }
 }
 
+
+
 fn main() {
+  using A;
   var foo foo_t;
   foo.a = 10;
 }
