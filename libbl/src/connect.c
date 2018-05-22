@@ -347,7 +347,7 @@ bl_node_t *
 satisfy_member(context_t *cnt, bl_node_t *member)
 {
   bl_expr_member_ref_t *_member = bl_peek_expr_member_ref(member);
-  bl_node_t *type = NULL;
+  bl_node_t *           type    = NULL;
 
   bl_assert(_member->next, "missing next node in member reference");
   type = satisfy_expr(cnt, _member->next);
@@ -355,6 +355,16 @@ satisfy_member(context_t *cnt, bl_node_t *member)
   /* TODO: handle as compiler error */
   if (bl_node_is_not(type, BL_TYPE_REF))
     bl_abort("fundamental type has no members");
+  type = bl_peek_type_ref(type)->ref;
+
+  bl_node_t *ref = lookup_in_scope(cnt, &_member->id, type, NULL);
+  if (!ref) {
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member->src,
+                  "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
+                  bl_peek_decl_struct(type)->id.str, _member->id.str);
+  }
+
+  _member->ref = ref;
 
   return type;
 }
