@@ -4,7 +4,12 @@ extern fn printf(s string, e i32);
 
 module A {
   public struct foo_t {
-    a i32
+    public a i32,
+    public bar bar_t
+  }
+
+  public struct bar_t {
+    public a i32
   }
 
   fn hello() {
@@ -14,9 +19,18 @@ module A {
 }
 
 
+const c i32 = 10;
+
+enum e i32 {
+  Foo,
+  Bar
+}
 
 fn main() {
   using A;
   var foo foo_t;
   foo.a = 10;
+  foo.bar.a = 10;
+
+  foo.a = e::Foo;
 }

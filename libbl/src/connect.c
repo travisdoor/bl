@@ -86,6 +86,12 @@ lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t
 
 /* all satisfy methods returns result data type of the operation */
 static bl_node_t *
+satisfy_unary(context_t *cnt, bl_node_t *unary);
+
+static bl_node_t *
+satisfy_binop(context_t *cnt, bl_node_t *binop);
+
+static bl_node_t *
 satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
 
 static bl_node_t *
@@ -274,15 +280,58 @@ satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
   case BL_DECL_VAR:
     bl_peek_decl_var(found)->used++;
     type = bl_peek_decl_var(found)->type;
+
+    if (bl_node_is(type, BL_TYPE_REF)) {
+      type = bl_peek_type_ref(type)->ref;
+    }
+
     break;
+
   case BL_DECL_CONST:
     bl_peek_decl_const(found)->used++;
     type = bl_peek_decl_const(found)->type;
     break;
-  default:
-    bl_abort("invalid decl ref");
+
+  case BL_DECL_ARG:
+    type = bl_peek_decl_arg(found)->type;
+    break;
+
+  case BL_DECL_ENUM_VARIANT: {
+    /* get enum type */
+    bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(found);
+    bl_node_t *             enm      = _variant->parent;
+    bl_decl_enum_t *        _enm     = bl_peek_decl_enum(enm);
+
+    if (_variant->expr) {
+      bl_node_t *prev_cmp = cnt->curr_compound;
+      cnt->curr_compound  = enm;
+      satisfy_expr(cnt, _variant->expr);
+      cnt->curr_compound = prev_cmp;
+    }
+    _enm->used++;
+    type = _enm->type;
+    break;
   }
 
+  default:
+    bl_abort("invalid decl ref %s", bl_node_name(found));
+  }
+
+  return type;
+}
+
+bl_node_t *
+satisfy_unary(context_t *cnt, bl_node_t *unary)
+{
+  return satisfy_expr(cnt, bl_peek_expr_unary(unary)->next);
+}
+
+bl_node_t *
+satisfy_binop(context_t *cnt, bl_node_t *binop)
+{
+  bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
+  bl_node_t *      type   = satisfy_expr(cnt, _binop->lhs);
+  satisfy_expr(cnt, _binop->rhs);
   return type;
 }
 
@@ -353,9 +402,8 @@ satisfy_member(context_t *cnt, bl_node_t *member)
   type = satisfy_expr(cnt, _member->next);
 
   /* TODO: handle as compiler error */
-  if (bl_node_is_not(type, BL_TYPE_REF))
-    bl_abort("fundamental type has no members");
-  type = bl_peek_type_ref(type)->ref;
+  if (bl_node_is_not(type, BL_DECL_STRUCT))
+    bl_abort("type %s has no members", bl_node_name(type));
 
   /* determinate if struct is declared in current tree and private members can be referenced too */
   bl_node_t *linked_by = NULL;
@@ -390,30 +438,26 @@ satisfy_expr(context_t *cnt, bl_node_t *expr)
   /* expressions are not iterated by visitor due to recursive dependencies between some nodes */
   bl_node_t *found = NULL;
   switch (bl_node_code(expr)) {
-  case BL_EXPR_CALL: {
+  case BL_EXPR_CALL:
     found = satisfy_call(cnt, expr);
     break;
-  }
-
-  case BL_EXPR_DECL_REF: {
+  case BL_EXPR_DECL_REF:
     found = satisfy_decl_ref(cnt, expr);
     break;
-  }
-
-  case BL_EXPR_MEMBER_REF: {
+  case BL_EXPR_MEMBER_REF:
     found = satisfy_member(cnt, expr);
     break;
-  }
-
-  case BL_EXPR_BINOP: {
-    bl_expr_binop_t *_binop = bl_peek_expr_binop(expr);
-    found                   = satisfy_expr(cnt, _binop->lhs);
-    satisfy_expr(cnt, _binop->rhs);
+  case BL_EXPR_UNARY:
+    found = satisfy_unary(cnt, expr);
     break;
-  }
+  case BL_EXPR_BINOP:
+    found = satisfy_binop(cnt, expr);
+    break;
+  case BL_EXPR_CONST:
+    found = 
 
   default:
-    break;
+    bl_abort("invalid expression %s", bl_node_name(expr));
   }
 
   return found;
