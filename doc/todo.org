@@ -105,13 +105,13 @@
   - [ ] Evaluation
 - [ ] Error handling [0/1]
   - [ ] struct a { i i32 } a.i.b.c
-- [-] Better linker [5/7]
+- [-] Better linker [6/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging
   - [X] Path element validation via validation methods???
   - [X] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
-  - [ ] Member access parser + better expression handling 
-  - [ ] Satisfy methods should return result type???
+  - [X] Member access parser + better expression handling 
+  - [ ] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
 * BUGS [2/4]

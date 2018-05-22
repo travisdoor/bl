@@ -84,30 +84,23 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
 static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by);
 
-/* all satisfy methods returns result data type of the operation */
 static bl_node_t *
-satisfy_unary(context_t *cnt, bl_node_t *unary);
+get_result_type(context_t *cnt, bl_node_t *node);
 
-static bl_node_t *
-satisfy_binop(context_t *cnt, bl_node_t *binop);
+static void
+connect_type(context_t *cnt, bl_node_t *type);
 
-static bl_node_t *
-satisfy_decl_ref(context_t *cnt, bl_node_t *ref);
+static void
+connect_const(context_t *cnt, bl_node_t *cnst);
 
-static bl_node_t *
-satisfy_type(context_t *cnt, bl_node_t *type);
+static void
+connect_call(context_t *cnt, bl_node_t *call);
 
-static bl_node_t *
-satisfy_const(context_t *cnt, bl_node_t *cnst);
+static void
+connect_decl_ref(context_t *cnt, bl_node_t *ref);
 
-static bl_node_t *
-satisfy_call(context_t *cnt, bl_node_t *call);
-
-static bl_node_t *
-satisfy_member(context_t *cnt, bl_node_t *member);
-
-static bl_node_t *
-satisfy_expr(context_t *cnt, bl_node_t *expr);
+static void
+connect_member_ref(context_t *cnt, bl_node_t *member_ref);
 
 /*************************************************************************************************
  * First pass
@@ -269,74 +262,62 @@ lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t
 }
 
 bl_node_t *
-satisfy_decl_ref(context_t *cnt, bl_node_t *ref)
+get_result_type(context_t *cnt, bl_node_t *node)
 {
-  bl_node_t *         type  = NULL;
-  bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
-  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
-  _ref->ref                 = found;
+  bl_node_t *type = NULL;
 
-  switch (bl_node_code(found)) {
+  switch (bl_node_code(node)) {
+  case BL_EXPR_CALL:
+    type = get_result_type(cnt, bl_peek_expr_call(node)->ref);
+    break;
+
+  case BL_EXPR_DECL_REF:
+    type = get_result_type(cnt, bl_peek_expr_decl_ref(node)->ref);
+    break;
+
+  case BL_EXPR_MEMBER_REF:
+    type = get_result_type(cnt, bl_peek_expr_member_ref(node)->ref);
+    break;
+
+  case BL_EXPR_UNARY:
+    type = get_result_type(cnt, bl_peek_expr_unary(node)->next);
+    break;
+
   case BL_DECL_VAR:
-    bl_peek_decl_var(found)->used++;
-    type = bl_peek_decl_var(found)->type;
-
-    if (bl_node_is(type, BL_TYPE_REF)) {
-      type = bl_peek_type_ref(type)->ref;
-    }
-
+    type = get_result_type(cnt, bl_peek_decl_var(node)->type);
     break;
 
   case BL_DECL_CONST:
-    bl_peek_decl_const(found)->used++;
-    type = bl_peek_decl_const(found)->type;
+    type = get_result_type(cnt, bl_peek_decl_const(node)->type);
     break;
 
-  case BL_DECL_ARG:
-    type = bl_peek_decl_arg(found)->type;
+  case BL_DECL_FUNC:
+    type = get_result_type(cnt, bl_peek_decl_func(node)->ret_type);
     break;
 
-  case BL_DECL_ENUM_VARIANT: {
-    /* get enum type */
-    bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(found);
-    bl_node_t *             enm      = _variant->parent;
-    bl_decl_enum_t *        _enm     = bl_peek_decl_enum(enm);
-
-    if (_variant->expr) {
-      bl_node_t *prev_cmp = cnt->curr_compound;
-      cnt->curr_compound  = enm;
-      satisfy_expr(cnt, _variant->expr);
-      cnt->curr_compound = prev_cmp;
-    }
-    _enm->used++;
-    type = _enm->type;
+  case BL_TYPE_REF:
+    type = bl_peek_type_ref(node)->ref;
     break;
-  }
+
+  case BL_DECL_STRUCT_MEMBER:
+    type = get_result_type(cnt, bl_peek_decl_struct_member(node)->type);
+    break;
+
+  case BL_DECL_STRUCT:
+  case BL_DECL_ENUM:
+  case BL_TYPE_FUND:
+    type = node;
+    break;
 
   default:
-    bl_abort("invalid decl ref %s", bl_node_name(found));
+    bl_abort("unable to get result type of %s node", bl_node_name(node));
   }
 
   return type;
 }
 
-bl_node_t *
-satisfy_unary(context_t *cnt, bl_node_t *unary)
-{
-  return satisfy_expr(cnt, bl_peek_expr_unary(unary)->next);
-}
-
-bl_node_t *
-satisfy_binop(context_t *cnt, bl_node_t *binop)
-{
-  bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
-  bl_node_t *      type   = satisfy_expr(cnt, _binop->lhs);
-  satisfy_expr(cnt, _binop->rhs);
-  return type;
-}
-
-bl_node_t *
-satisfy_type(context_t *cnt, bl_node_t *type)
+void
+connect_type(context_t *cnt, bl_node_t *type)
 {
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
@@ -356,12 +337,10 @@ satisfy_type(context_t *cnt, bl_node_t *type)
                     bl_ast_try_get_id(found)->str);
     }
   }
-
-  return found;
 }
 
-bl_node_t *
-satisfy_const(context_t *cnt, bl_node_t *cnst)
+void
+connect_const(context_t *cnt, bl_node_t *cnst)
 {
   bl_decl_const_t *_cnst     = bl_peek_decl_const(cnst);
   bl_scopes_t *    scopes    = bl_ast_try_get_scopes(cnt->curr_compound);
@@ -379,27 +358,53 @@ satisfy_const(context_t *cnt, bl_node_t *cnst)
     }
   }
   bl_scopes_insert_node(scopes, cnst);
-  return bl_peek_decl_const(cnst)->type;
 }
 
-bl_node_t *
-satisfy_call(context_t *cnt, bl_node_t *call)
+void
+connect_call(context_t *cnt, bl_node_t *call)
 {
   bl_node_t *found             = lookup(cnt, bl_peek_expr_call(call)->path, validate_call, NULL);
   bl_peek_expr_call(call)->ref = found;
   bl_peek_decl_func(found)->used++;
+}
+void
+connect_decl_ref(context_t *cnt, bl_node_t *ref)
+{
+  bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
+  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
+  _ref->ref                 = found;
 
-  return bl_peek_decl_func(found)->ret_type;
+  switch (bl_node_code(found)) {
+  case BL_DECL_VAR:
+    bl_peek_decl_var(found)->used++;
+    break;
+
+  case BL_DECL_CONST:
+    bl_peek_decl_const(found)->used++;
+    break;
+
+  case BL_DECL_ARG:
+    break;
+
+  case BL_DECL_ENUM_VARIANT: {
+    /* get enum type */
+    bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(found);
+    bl_node_t *             enm      = _variant->parent;
+    bl_decl_enum_t *        _enm     = bl_peek_decl_enum(enm);
+    _enm->used++;
+    break;
+  }
+
+  default:
+    bl_abort("invalid decl ref %s", bl_node_name(found));
+  }
 }
 
-bl_node_t *
-satisfy_member(context_t *cnt, bl_node_t *member)
+void
+connect_member_ref(context_t *cnt, bl_node_t *member_ref)
 {
-  bl_expr_member_ref_t *_member = bl_peek_expr_member_ref(member);
-  bl_node_t *           type    = NULL;
-
-  bl_assert(_member->next, "missing next node in member reference");
-  type = satisfy_expr(cnt, _member->next);
+  bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
+  bl_node_t *           type        = get_result_type(cnt, _member_ref->next);
 
   /* TODO: handle as compiler error */
   if (bl_node_is_not(type, BL_DECL_STRUCT))
@@ -411,56 +416,23 @@ satisfy_member(context_t *cnt, bl_node_t *member)
       lookup_in_tree(cnt, &bl_peek_decl_struct(type)->id, cnt->curr_compound, &linked_by, NULL);
   bool ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
 
-  bl_node_t *ref = lookup_in_scope(cnt, &_member->id, type, NULL);
+  bl_node_t *ref = lookup_in_scope(cnt, &_member_ref->id, type, NULL);
   if (!ref) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member->src,
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref->src,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
-                  bl_peek_decl_struct(type)->id.str, _member->id.str);
+                  bl_peek_decl_struct(type)->id.str, _member_ref->id.str);
   }
 
   /* check visibility of found member */
   bl_decl_struct_member_t *_ref = bl_peek_decl_struct_member(ref);
   if (!ignore_private && !(_ref->modif & BL_MODIF_PUBLIC)) {
-    connect_error(cnt, BL_ERR_PRIVATE, member->src,
+    connect_error(cnt, BL_ERR_PRIVATE, member_ref->src,
                   "member " BL_YELLOW("'%s'") " of structure " BL_YELLOW(
                       "'%s'") " is private in this context",
                   _ref->id.str, bl_peek_decl_struct(type)->id.str);
   }
 
-  _member->ref = ref;
-
-  return type;
-}
-
-bl_node_t *
-satisfy_expr(context_t *cnt, bl_node_t *expr)
-{
-  /* expressions are not iterated by visitor due to recursive dependencies between some nodes */
-  bl_node_t *found = NULL;
-  switch (bl_node_code(expr)) {
-  case BL_EXPR_CALL:
-    found = satisfy_call(cnt, expr);
-    break;
-  case BL_EXPR_DECL_REF:
-    found = satisfy_decl_ref(cnt, expr);
-    break;
-  case BL_EXPR_MEMBER_REF:
-    found = satisfy_member(cnt, expr);
-    break;
-  case BL_EXPR_UNARY:
-    found = satisfy_unary(cnt, expr);
-    break;
-  case BL_EXPR_BINOP:
-    found = satisfy_binop(cnt, expr);
-    break;
-  case BL_EXPR_CONST:
-    found = 
-
-  default:
-    bl_abort("invalid expression %s", bl_node_name(expr));
-  }
-
-  return found;
+  _member_ref->ref = ref;
 }
 
 void
@@ -538,7 +510,7 @@ first_pass_const(bl_visitor_t *visitor, bl_node_t *cnst)
   if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE))
     return;
 
-  satisfy_const(cnt, cnst);
+  connect_const(cnt, cnst);
   /* terminal */
 }
 
@@ -681,7 +653,7 @@ second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   for (size_t i = 0; i < c; ++i) {
     member  = bl_ast_struct_get_member(_strct, i);
     _member = bl_peek_decl_struct_member(member);
-    satisfy_type(cnt, _member->type);
+    connect_type(cnt, _member->type);
   }
 }
 
@@ -703,7 +675,7 @@ void
 third_pass_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   context_t *cnt = peek_cnt(visitor);
-  satisfy_type(cnt, type);
+  connect_type(cnt, type);
   bl_visitor_walk_type(visitor, type);
 }
 
@@ -716,7 +688,7 @@ third_pass_const(bl_visitor_t *visitor, bl_node_t *cnst)
     return;
   }
 
-  satisfy_const(cnt, cnst);
+  connect_const(cnt, cnst);
   bl_visitor_walk_const(visitor, cnst);
 }
 
@@ -752,8 +724,22 @@ void
 third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
   context_t *cnt = peek_cnt(visitor);
-  satisfy_expr(cnt, expr);
-  // bl_visitor_walk_expr(visitor, expr);
+  /* expressions are handled backwards!!! */
+  bl_visitor_walk_expr(visitor, expr);
+
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_CALL:
+    connect_call(cnt, expr);
+    break;
+  case BL_EXPR_DECL_REF:
+    connect_decl_ref(cnt, expr);
+    break;
+  case BL_EXPR_MEMBER_REF:
+    connect_member_ref(cnt, expr);
+    break;
+  default:
+    break;
+  }
 }
 
 void
@@ -823,28 +809,6 @@ third_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
 /*************************************************************************************************
  * Validate impl
  *************************************************************************************************/
-VALIDATE_F(call)
-{
-  if (last) {
-    if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown function " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
-    }
-    if (bl_node_is_not(found, BL_DECL_FUNC))
-      connect_error(cnt, BL_ERR_EXPECTED_FUNC, elem->src, "expected function name");
-  } else {
-    if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
-    }
-
-    if (bl_node_is_not(found, BL_DECL_MODULE)) {
-      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
-                    "expected module name in function call path");
-    }
-  }
-}
-
 VALIDATE_F(using)
 {
   if (found == NULL) {
@@ -869,6 +833,28 @@ VALIDATE_F(decl_ref)
   if (found == NULL) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown symbol " BL_YELLOW("'%s'"),
                   bl_peek_path_elem(elem)->id.str);
+  }
+}
+
+VALIDATE_F(call)
+{
+  if (last) {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown function " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+    if (bl_node_is_not(found, BL_DECL_FUNC))
+      connect_error(cnt, BL_ERR_EXPECTED_FUNC, elem->src, "expected function name");
+  } else {
+    if (found == NULL) {
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
+                    bl_peek_path_elem(elem)->id.str);
+    }
+
+    if (bl_node_is_not(found, BL_DECL_MODULE)) {
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+                    "expected module name in function call path");
+    }
   }
 }
 
