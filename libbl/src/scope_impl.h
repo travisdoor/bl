@@ -33,16 +33,32 @@
 #include <bobject/containers/array.h>
 #include "ast/id_impl.h"
 
-typedef BHashTable bl_scope_t;
-typedef BArray bl_scope_cache_t;
+/* Scope cache is used for storing unique symbols found after parsing in AST nodes. Every compound
+ * node (typically block of code inside curly braces) can have multiple declarations needed by other
+ * parts of user code. Scope cache is attached to this compound block and it's used for symbol
+ * lookup.
+ */
 
 struct bl_node;
+
+/*************************************************************************************************
+ * Scope Cache
+ * note: Scope cache holds all scopes needed during compilation
+ *************************************************************************************************/
+
+typedef BArray bl_scope_cache_t;
 
 bl_scope_cache_t *
 bl_scope_cache_new(void);
 
 void
 bl_scope_cache_delete(bl_scope_cache_t *cache);
+
+/*************************************************************************************************
+ * Scope
+ *************************************************************************************************/
+
+typedef BHashTable bl_scope_t;
 
 bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache);
@@ -53,7 +69,43 @@ bl_scope_insert_node(bl_scope_t *scope, struct bl_node *node);
 struct bl_node *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id);
 
+/*************************************************************************************************
+ * Linked scopes
+ * note: Linked scopes is lookup hash table of scopes available for AST compound block. Every
+ * compound node has one scope by default containing all symbols available in curent scope (scopes
+ * can by shared between multiple modules). Scope of current compound is represented by pointer to
+ * main scope in linked_scopes.
+ *************************************************************************************************/
+
+typedef struct
+{
+  /* key: scope pointer, value: pointer to node which caused linking */
+  BHashTable *scopes;
+  bl_scope_t *main;
+} bl_scopes_t;
+
 void
-bl_scope_clear(bl_scope_t *scope);
+bl_scopes_init(bl_scopes_t *scopes);
+
+void
+bl_scopes_terminate(bl_scopes_t *scopes);
+
+/* Inserted into first scope by default */
+void
+bl_scopes_insert_node(bl_scopes_t *scopes, struct bl_node *node);
+
+/* Search symbol across all scopes and return found node or NULL. Pointer to linked_by is set to
+ * current compound block owner node or to using which includes scope from other compound block. */
+struct bl_node *
+bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, struct bl_node **linked_by_out);
+
+struct bl_node *
+bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope);
+
+void
+bl_scopes_include(bl_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by);
+
+void
+bl_scopes_include_main(bl_scopes_t *scopes, bl_scope_t *scope, struct bl_node *linked_by);
 
 #endif /* end of include guard: BISCUIT_SCOPE_IMPL_H */

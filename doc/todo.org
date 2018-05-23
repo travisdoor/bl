@@ -46,7 +46,7 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [6/15]
+- [-] Other [9/16]
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
@@ -54,14 +54,15 @@
   - [ ] Remove 'ptr' type 
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
-  - [ ] Separate node for func params 
+  - [X] Separate node for func params 
   - [ ] Type casting 
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
-  - [ ] Path parsing fix (last node of path must be parsed also) 
+  - [X] Path parsing fix (last node of path must be parsed also) 
   - [ ] Implicit numeric constant casting
-  - [ ] Nodes using path should use token of last path element (simple add method -> not use of previous token)
+  - [ ] Use talloc instead of normal memory allocators
+  - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
 - [-] Unary operator (separate expression node in ast) [2/4]
   - [X] Ast node
   - [X] Parsing
@@ -87,14 +88,14 @@
   - [X] Parsing
   - [X] Duplicit load detection 
   - [X] Search for files in path
-- [-] Using [6/8]
+- [-] Using [5/8]
   - [X] Ast node for using
   - [X] Duplicity using check 
   - [X] Parsing
-  - [ ] Global usings valid only in module?
+  - [X] Global usings valid only in module?
   - [ ] Using inside struct or enum body?
-  - [X] Symbol colisions handling between modules 
-  - [X] Symbol colisions handling between current module and used modules
+  - [ ] Symbol colisions handling between modules 
+  - [ ] Symbol colisions handling between current module and used modules
   - [X] Using must be module or enumerator -> improve checking
 - [-] Sizeof buildin [4/5]
   - [X] Ast node
@@ -104,6 +105,15 @@
   - [ ] Evaluation
 - [ ] Error handling [0/1]
   - [ ] struct a { i i32 } a.i.b.c
+- [-] Better linker [6/7]
+  - [X] Create global root module by default in parser
+  - [X] Review module merging
+  - [X] Path element validation via validation methods???
+  - [X] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
+  - [X] Member access parser + better expression handling 
+  - [ ] Finalize 
+  - [X] Add assembly root module and link it to all unit global modules
+
 * BUGS [2/4]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] Cannot evaluate array size inside structures. 
@@ -111,25 +121,34 @@
 - [X] Unable to return struct member copy from the function
 
 * PIPELINE
-- file loader
-- lexer
-- token printer
-- parser
-- preprocessor 
-- linker
-- ast printer
-- check
-- const expr evaluation
-- llvm generator
-- llvm jit execute
-- llvm byte-code writer
-- llvm linker
-- llvm native bin builder
+** Text (can run in multithread)
+   1. file loader
+   2. lexer
+
+** Tokens (can run in multithread)
+   1. token printer
+   2. parser
+
+** AST
+   1. preprocessor
+   2. merge 
+   3. connection 
+   4. ast printing 
+   5. check
+   6. const-expr evaluation
+
+** LLVM
+   1. llvm generator
+   2. llvm jit execute
+   3. llvm byte-code writer
+   4. llvm linker
+   5. llvm native bin builder
   
 * IDEAS
 ** implicit casting pointer to bool: if (some_PT) {}
 ** static array
 ** zero initialized statc arrays??
 ** statement tagging?
+
 * NOTES
 ** global using search return array of all founds references???

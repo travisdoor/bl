@@ -14,7 +14,7 @@ fn main() i32 {
   using A::C; 
 
   foo();
-  bar();
+  //bar();
 
   var a Foo;
 

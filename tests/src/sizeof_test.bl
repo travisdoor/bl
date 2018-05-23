@@ -4,7 +4,7 @@
  * Sizeof buildin test 
  */
 
-extern fn printf(s string, s size_t) i32;
+extern fn printf(s string, i size_t) i32;
 
 struct A {
   i i32,

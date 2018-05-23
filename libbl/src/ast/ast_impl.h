@@ -146,6 +146,7 @@ enum bl_modif
 /* if statement */
 struct bl_stmt_if
 {
+  bl_node_t *parent;
   bl_node_t *test;
   bl_node_t *true_stmt;
   bl_node_t *false_stmt;
@@ -154,6 +155,7 @@ struct bl_stmt_if
 /* loop statement */
 struct bl_stmt_loop
 {
+  bl_node_t *parent;
   bl_node_t *test;
   bl_node_t *true_stmt;
 };
@@ -191,9 +193,10 @@ struct bl_expr_sizeof
 struct bl_decl_module
 {
   bl_id_t     id;
+  bl_node_t * parent;
   int         modif;
   BArray *    nodes;
-  bl_scope_t *scope;
+  bl_scopes_t scopes;
 };
 
 /* variable declaration */
@@ -223,12 +226,14 @@ struct bl_decl_arg
 
 struct bl_decl_func
 {
-  bl_id_t    id;
-  int        modif;
-  int        used;
-  BArray *   args;
-  bl_node_t *block;
-  bl_node_t *ret_type;
+  bl_id_t     id;
+  bl_node_t * parent;
+  int         modif;
+  int         used;
+  BArray *    args;
+  bl_node_t * block;
+  bl_node_t * ret_type;
+  bl_scopes_t scopes;
 };
 
 struct bl_decl_struct
@@ -237,7 +242,7 @@ struct bl_decl_struct
   int         modif;
   int         used;
   BArray *    members;
-  bl_scope_t *scope;
+  bl_scopes_t scopes;
 };
 
 struct bl_decl_struct_member
@@ -252,24 +257,26 @@ struct bl_decl_struct_member
 struct bl_decl_enum
 {
   bl_id_t     id;
+  bl_node_t * parent;
   int         modif;
   int         used;
   bl_node_t * type;
   BArray *    variants;
-  bl_scope_t *scope;
+  bl_scopes_t scopes;
 };
 
 struct bl_decl_enum_variant
 {
   bl_id_t    id;
-  bl_node_t *expr;
   bl_node_t *parent;
+  bl_node_t *expr;
 };
 
 struct bl_decl_block
 {
-  BArray *   nodes;
-  bl_node_t *parent;
+  bl_node_t * parent;
+  BArray *    nodes;
+  bl_scopes_t scopes;
 };
 
 struct bl_expr_const
@@ -455,7 +462,8 @@ bl_node_t *
 bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name);
 
 bl_node_t *
-bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
+bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif,
+                       bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
@@ -470,7 +478,7 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type, int modif);
+                     bl_node_t *ret_type, int modif, bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
@@ -480,7 +488,8 @@ bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, 
                               int modif);
 
 bl_node_t *
-bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif);
+bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif,
+                     bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr,
@@ -491,10 +500,11 @@ bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_stmt_if(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
-                   bl_node_t *false_stmt);
+                   bl_node_t *false_stmt, bl_node_t *parent);
 
 bl_node_t *
-bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt);
+bl_ast_add_stmt_loop(bl_ast_t *ast, bl_token_t *tok, bl_node_t *test, bl_node_t *true_stmt,
+                     bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_stmt_break(bl_ast_t *ast, bl_token_t *tok);
@@ -636,6 +646,12 @@ bl_ast_try_get_type_dims(bl_node_t *type);
 
 bl_node_t *
 bl_ast_path_get_last(BArray *path);
+
+bl_scopes_t *
+bl_ast_try_get_scopes(bl_node_t *node);
+
+bl_node_t *
+bl_ast_try_get_parent(bl_node_t *node);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H
