@@ -65,6 +65,7 @@
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
   sm(PATH,        "::") \
+  sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \
   sm(LBCOMMENT,   "/*") \
   sm(RBCOMMENT,   "*/") \

@@ -286,8 +286,9 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_MEMBER_REF:
     print_head("member_ref", bl_peek_src(expr), expr, visitor->nesting);
-    fprintf(stdout, BL_YELLOW("'%s'") " -> " BL_YELLOW("%p"), bl_peek_expr_member_ref(expr)->id.str,
-            bl_peek_expr_member_ref(expr)->ref);
+    fprintf(stdout, BL_YELLOW("'%s'") " -> " BL_YELLOW("%p") BL_MAGENTA(" (%s)"),
+            bl_peek_expr_member_ref(expr)->id.str, bl_peek_expr_member_ref(expr)->ref,
+            bl_peek_expr_member_ref(expr)->is_ptr_ref ? "->" : ".");
     break;
 
   case BL_EXPR_ARRAY_REF:

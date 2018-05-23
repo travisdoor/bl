@@ -34,5 +34,7 @@ public module std {
     public extern fn printf(str string, a i32) i32; 
     public extern fn malloc(count i32) ptr;
     public extern fn free(p ptr);
+    public extern fn rand() i32;
+    public extern fn time(timer *void) *void;
   } 
 }

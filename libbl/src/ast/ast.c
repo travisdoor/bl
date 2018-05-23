@@ -286,7 +286,8 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
 }
 
 bl_node_t *
-bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next)
+bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
+                           bool is_ptr_ref)
 {
   bl_node_t *member_ref = alloc_node(ast);
   if (tok)
@@ -295,7 +296,8 @@ bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_
   member_ref->code                  = BL_EXPR_MEMBER_REF;
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
   bl_id_init(&_member_ref->id, name);
-  _member_ref->next = next;
+  _member_ref->next       = next;
+  _member_ref->is_ptr_ref = is_ptr_ref;
 
   return member_ref;
 }

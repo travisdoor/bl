@@ -41,7 +41,8 @@ public module sdl2 {
     public repeat u8,
     _padding2 u8,
     _padding3 u8,
-    public keysym keysym_t
+    public keysym keysym_t,
+    _padding4 u8[12]
   }
 
   public fn poll_event(event *event_key_t) i32 {

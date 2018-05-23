@@ -33,7 +33,7 @@
 
 #define is_intend_c(c)                                                                             \
   (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||       \
-   (c) == '_' || (c) == '-')
+   (c) == '_')
 
 #define scan_error(cnt, code, format, ...)                                                         \
   {                                                                                                \
@@ -44,12 +44,12 @@
 typedef struct context
 {
   bl_builder_t *builder;
-  bl_unit_t *unit;
-  bl_tokens_t *tokens;
-  jmp_buf jmp_error;
-  char *c;
-  int line;
-  int col;
+  bl_unit_t *   unit;
+  bl_tokens_t * tokens;
+  jmp_buf       jmp_error;
+  char *        c;
+  int           line;
+  int           col;
 } context_t;
 
 static void
@@ -105,7 +105,7 @@ scan_ident(context_t *cnt, bl_token_t *tok)
   tok->src.src_loc = cnt->c;
   tok->src.line    = cnt->line;
   tok->src.col     = cnt->col;
-  tok->sym     = BL_SYM_IDENT;
+  tok->sym         = BL_SYM_IDENT;
 
   char *begin = cnt->c;
 
@@ -154,14 +154,14 @@ scan_string(context_t *cnt, bl_token_t *tok)
   tok->src.src_loc = cnt->c;
   tok->src.line    = cnt->line;
   tok->src.col     = cnt->col;
-  tok->sym     = BL_SYM_STRING;
+  tok->sym         = BL_SYM_STRING;
 
   /* eat " */
   cnt->c++;
 
   BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
-  char c;
-  int len = 0;
+  char     c;
+  int      len = 0;
 
 scan:
   while (true) {
@@ -201,7 +201,7 @@ scan:
   }
 exit:
   tok->value.str = bo_string_get(cstr);
-  tok->src.len             = len;
+  tok->src.len   = len;
   cnt->col += len + 2;
   return true;
 }
@@ -237,15 +237,15 @@ c_to_number(char c, int base)
 bool
 scan_number(context_t *cnt, bl_token_t *tok)
 {
-  tok->src.src_loc         = cnt->c;
-  tok->src.line            = cnt->line;
-  tok->src.col             = cnt->col;
-  tok->value.str = cnt->c;
+  tok->src.src_loc = cnt->c;
+  tok->src.line    = cnt->line;
+  tok->src.col     = cnt->col;
+  tok->value.str   = cnt->c;
 
-  unsigned long n = 0;
-  int len         = 0;
-  int base        = 10;
-  int buf         = 0;
+  unsigned long n    = 0;
+  int           len  = 0;
+  int           base = 10;
+  int           buf  = 0;
 
   if (strncmp(cnt->c, "0x", 2) == 0) {
     base = 16;
@@ -285,7 +285,7 @@ scan_number(context_t *cnt, bl_token_t *tok)
 
   tok->src.len = len;
   cnt->col += len;
-  tok->sym          = BL_SYM_NUM;
+  tok->sym     = BL_SYM_NUM;
   tok->value.u = n;
   return true;
 
@@ -313,9 +313,9 @@ scan_double : {
   if (*(cnt->c) == 'f') {
     len++;
     cnt->c++;
-    tok->sym            = BL_SYM_FLOAT;
+    tok->sym = BL_SYM_FLOAT;
   } else {
-    tok->sym             = BL_SYM_DOUBLE;
+    tok->sym = BL_SYM_DOUBLE;
   }
 
   tok->value.d = n / (double)e;

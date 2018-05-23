@@ -2,7 +2,29 @@
 
 extern fn printf(s string, e i32);
 
-fn main() {
-  var p *void;
+struct foo_t {
+  a    	   i32,
+  bar      bar_t,
+  bar_ptr *bar_t
 }
+
+struct bar_t {
+  foobar      foobar_t,
+  foobar_ptr *foobar_t,
+}
+
+struct foobar_t {
+  a i32
+}
+
+fn main() {
+  var foo_ptr *foo_t;
+  var foo foo_t;
+
+  foo_ptr = &foo;
+  foo_ptr->a = 10;
+
+  foo_ptr->bar.foobar_ptr->a = 10;
+}
+
 

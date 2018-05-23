@@ -660,6 +660,8 @@ gen_binop(context_t *cnt, bl_node_t *binop)
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
   case BL_SYM_SLASH:
     return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+  case BL_SYM_MODULO:
+    return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
   case BL_SYM_EQ:
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, gname("tmp"));
   case BL_SYM_NEQ:
@@ -692,6 +694,10 @@ gen_member_ref(context_t *cnt, bl_node_t *member_ref)
   bl_expr_member_ref_t *   _member_ref = bl_peek_expr_member_ref(member_ref);
   bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
   ptr                                  = gen_expr(cnt, _member_ref->next);
+
+  if (_member_ref->is_ptr_ref) 
+    ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
+  
   ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
                            gname(_member->id.str));
   return ptr;

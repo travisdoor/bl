@@ -320,14 +320,16 @@ parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
     return NULL;
 
   bl_node_t *member_ref = NULL;
-  if (bl_token_is(op, BL_SYM_DOT)) {
+  bool       is_ptr_ref = bl_token_is(op, BL_SYM_ARROW);
+
+  if (bl_token_is(op, BL_SYM_DOT) || is_ptr_ref) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
     if (tok_id->sym != BL_SYM_IDENT) {
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected structure member name");
     }
 
     /* next member will be set later */
-    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL);
+    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL, is_ptr_ref);
   }
 
   return member_ref;
@@ -597,7 +599,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
     if (op->sym == BL_SYM_LBRACKET) {
       bl_peek_expr_array_ref(rhs)->next = lhs;
       lhs                               = rhs;
-    } else if (op->sym == BL_SYM_DOT) {
+    } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (bl_token_is_binop(op)) {

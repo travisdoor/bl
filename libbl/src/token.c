@@ -80,6 +80,7 @@ bl_token_prec(bl_token_t *token)
 {
   switch (token->sym) {
   case BL_SYM_DOT:
+  case BL_SYM_ARROW:
   case BL_SYM_LBRACKET:
     return 60;
 
@@ -90,6 +91,7 @@ bl_token_prec(bl_token_t *token)
 
   case BL_SYM_ASTERISK:
   case BL_SYM_SLASH:
+  case BL_SYM_MODULO:
     return 40;
 
   case BL_SYM_PLUS:
