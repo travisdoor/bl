@@ -3,24 +3,19 @@
 extern fn printf(s string, e i32);
 
 struct foo_t {
-  bar bar_t,
-  a i32
-}
-
-module A {
-  struct p_foo_t {
-    a i32
-  }
-}
-
-fn main() {
-  var foo foo_t;
-  foo.a = -10;
-  foo.bar.a = 10;
-
-  var p_foo A::p_foo_t;
+  a i32[size],
+  bars bar_t[size]
 }
 
 struct bar_t {
   a i32
 }
+
+const size i32 = 10;
+
+fn main() {
+  var foo foo_t;
+  foo.a[0] = 0;
+  foo.bars[0].a = 10;
+}
+

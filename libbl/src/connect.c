@@ -283,8 +283,16 @@ get_result_type(context_t *cnt, bl_node_t *node)
     type = get_result_type(cnt, bl_peek_expr_unary(node)->next);
     break;
 
+  case BL_EXPR_ARRAY_REF:
+    type = get_result_type(cnt, bl_peek_expr_array_ref(node)->next);
+    break;
+
   case BL_DECL_VAR:
     type = get_result_type(cnt, bl_peek_decl_var(node)->type);
+    break;
+
+  case BL_DECL_ARG:
+    type = get_result_type(cnt, bl_peek_decl_arg(node)->type);
     break;
 
   case BL_DECL_CONST:
@@ -945,7 +953,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_third, third_pass_enum, BL_VISIT_ENUM);
-  bl_visitor_add(&visitor_third, BL_SKIP_VISIT, BL_VISIT_STRUCT);
 
   for (int i = 0; i < c; ++i) {
     cnt.unit = bl_assembly_get_unit(assembly, i);
