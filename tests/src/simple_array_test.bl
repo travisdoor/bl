@@ -6,6 +6,8 @@
 
 #load "utest.bl"
 
+using utest;
+
 struct foo_t {
   x i32,
   y i32
@@ -23,8 +25,23 @@ fn main() i32 {
 
   i = 0;
   while (i < count) {
-    if (arr[i] != i)
-      return 1;
+    assert(arr[i] == i); 
+    i = i + 1;
+  }
+
+  var foos foo_t[count];
+
+  i = 0;
+  while (i < count) {
+    foos[i].x = i;
+    foos[i].y = i;
+    i = i + 1;
+  }
+
+  i = 0;
+  while (i < count) {
+    assert(foos[i].x == i); 
+    assert(foos[i].y == i); 
     i = i + 1;
   }
 
