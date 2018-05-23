@@ -74,7 +74,7 @@ public module sdl2 {
   }
 
   public struct window_t {
-    handle ptr
+    handle *void 
   }
 
   public fn init(flags i32) i32 {

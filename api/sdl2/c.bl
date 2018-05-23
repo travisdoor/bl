@@ -80,7 +80,8 @@ public module sdl2 {
 
     public extern fn SDL_FreeSurface(surface sdl2::surface_t);
 
-    public extern fn SDL_CreateTextureFromSurface(renderer *sdl2::renderer_t, surface *sdl2::surface_t) *sdl2::texture_t;
+    public extern fn SDL_CreateTextureFromSurface(renderer *sdl2::renderer_t,
+						  surface *sdl2::surface_t) *sdl2::texture_t;
 
     public extern fn SDL_DestroyTexture(texture *sdl2::texture_t);
 

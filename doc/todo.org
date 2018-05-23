@@ -114,10 +114,11 @@
   - [ ] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
-* BUGS [2/4]
+* BUGS [2/5]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] Cannot evaluate array size inside structures. 
 - [ ] Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
+- [ ] Array of struct has invalid addresing during access? 
 - [X] Unable to return struct member copy from the function
 
 * PIPELINE

@@ -35,11 +35,11 @@ public module sdl2 {
   }
 
   public struct renderer_t {
-    handle ptr
+    handle *void 
   }
 
   public struct texture_t {
-    handle ptr
+    handle *void 
   }
 
   public fn create_renderer(window window_t, index i32, flags i32) *renderer_t {

@@ -29,16 +29,16 @@
 public module sdl2 {
   public struct surface_t {
     public flags i32,
-    public format ptr,
+    public format *void,
     public w i32,
     public h i32,
     public pitch i32,
-    pixels ptr,
-    userdata ptr,
+    pixels *void,
+    userdata *void,
     locked i32,
-    lock_data ptr,
+    lock_data *void,
     public clip_rect rect_t,
-    map ptr,
+    map *void,
     refcount i32
   } 
 

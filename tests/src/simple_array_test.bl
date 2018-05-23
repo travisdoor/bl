@@ -4,6 +4,13 @@
  * Simple array test 
  */
 
+#load "utest.bl"
+
+struct foo_t {
+  x i32,
+  y i32
+}
+
 fn main() i32 {
   const count i32 = 256;
   var arr i32[count];  
@@ -13,7 +20,6 @@ fn main() i32 {
     arr[i] = i;
     i = i + 1;
   }
-
 
   i = 0;
   while (i < count) {
