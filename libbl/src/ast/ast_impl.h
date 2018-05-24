@@ -351,7 +351,7 @@ struct bl_type_fund
   bl_fund_type_e type;
   /* dimensions are used when type is array */
   BArray *dims;
-  bool    is_ptr;
+  int     is_ptr;
 };
 
 struct bl_type_ref
@@ -360,7 +360,7 @@ struct bl_type_ref
   bl_node_t *ref;
   /* dimensions are used when type is array */
   BArray *dims;
-  bool    is_ptr;
+  int     is_ptr;
 };
 
 struct bl_pre_load
@@ -406,11 +406,11 @@ BL_NODE_TYPE_LIST
  * constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_ptr);
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, int is_ptr);
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    bool is_ptr);
+                    int is_ptr);
 
 bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
@@ -640,8 +640,8 @@ bl_ast_get_node(bl_ast_t *ast, size_t i);
 bool
 bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
-const char *
-bl_ast_try_get_type_name(bl_node_t *type);
+void
+bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
 
 BArray *
 bl_ast_try_get_type_dims(bl_node_t *type);

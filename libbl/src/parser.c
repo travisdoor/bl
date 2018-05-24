@@ -735,11 +735,10 @@ bl_node_t *
 parse_type_maybe(context_t *cnt)
 {
   bl_node_t *type   = NULL;
-  bool       is_ptr = false;
+  int is_ptr = 0;
 
-  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_ASTERISK, BL_SYM_IDENT)) {
-    bl_tokens_consume(cnt->tokens);
-    is_ptr = true;
+  while (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASTERISK)) {
+    ++is_ptr;
   }
 
   BArray *    path           = parse_path_maybe(cnt);

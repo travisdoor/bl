@@ -120,7 +120,7 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 bl_node_t *
-bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_ptr)
+bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, int is_ptr)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -135,7 +135,7 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, bool is_p
 
 bl_node_t *
 bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    bool is_ptr)
+                    int is_ptr)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -978,39 +978,61 @@ bl_type_compatible(bl_node_t *first, bl_node_t *second)
   if (first->code != second->code)
     return false;
 
-  if (bl_node_is(first, BL_TYPE_FUND) &&
-      bl_peek_type_fund(first)->type == bl_peek_type_fund(second)->type)
-    return true;
-
-  if (bl_node_is(first, BL_TYPE_REF) &&
-      bl_peek_type_ref(first)->ref == bl_peek_type_ref(second)->ref)
-    return true;
+  if (bl_node_is(first, BL_TYPE_FUND)) {
+    bl_type_fund_t *_first  = bl_peek_type_fund(first);
+    bl_type_fund_t *_second = bl_peek_type_fund(second);
+    return _first->type == _second->type && _first->is_ptr == _second->is_ptr;
+  } else if (bl_node_is(first, BL_TYPE_REF)) {
+    bl_type_ref_t *_first  = bl_peek_type_ref(first);
+    bl_type_ref_t *_second = bl_peek_type_ref(second);
+    return _first->ref == _second->ref && _first->is_ptr == _second->is_ptr;
+  }
 
   return false;
 }
 
-const char *
-bl_ast_try_get_type_name(bl_node_t *type)
+void
+bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len)
 {
+  bl_assert(max_len, "invalid max_len of buffer");
+  bl_assert(out_name, "invalid out_name buffer");
+
+  const char *tmp = NULL;
+  int         is_ptr;
+
   switch (bl_node_code(type)) {
   case BL_TYPE_FUND:
-    return bl_fund_type_strings[bl_peek_type_fund(type)->type];
+    tmp    = bl_fund_type_strings[bl_peek_type_fund(type)->type];
+    is_ptr = bl_peek_type_fund(type)->is_ptr;
+    break;
   case BL_TYPE_REF: {
     bl_node_t *ref = bl_peek_type_ref(type)->ref;
+    is_ptr         = bl_peek_type_ref(type)->is_ptr;
     switch (bl_node_code(ref)) {
     case BL_DECL_ENUM:
-      return bl_peek_decl_enum(ref)->id.str;
+      tmp = bl_peek_decl_enum(ref)->id.str;
+      break;
     case BL_DECL_STRUCT:
-      return bl_peek_decl_struct(ref)->id.str;
+      tmp = bl_peek_decl_struct(ref)->id.str;
+      break;
     default:
       bl_abort("invalid reference to type %s", bl_node_name(ref));
     }
-
     break;
   }
   default:
-    return NULL;
+    bl_abort("invalid node %s", bl_node_name(type));
   }
+
+  bl_assert(tmp, "invalid tmp name");
+  if (strlen(tmp) + is_ptr + 1 > max_len) {
+    snprintf(out_name, max_len, "%s", tmp);
+    return;
+  }
+
+  memset(out_name, '*', is_ptr);
+  out_name[is_ptr] = '\0';
+  strcat(out_name, tmp);
 }
 
 BArray *

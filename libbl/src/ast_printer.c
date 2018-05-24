@@ -123,19 +123,18 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
   print_head("type", bl_peek_src(type), type, visitor->nesting);
   if (bl_node_is(type, BL_TYPE_REF)) {
     bl_type_ref_t *_type = bl_peek_type_ref(type);
-    if (_type->is_ptr)
+    for (int i = 0; i < _type->is_ptr; ++i)
       fprintf(stdout, BL_CYAN("*"));
-
     print_path(_type->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
     print_dims(_type->dims);
   } else {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     fprintf(stdout, "fundamental: ");
-    if (_type->is_ptr)
+    for (int i = 0; i < _type->is_ptr; ++i)
       fprintf(stdout, BL_CYAN("*"));
-    fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
 
+    fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
     print_dims(_type->dims);
   }
   bl_visitor_walk_type(visitor, type);
