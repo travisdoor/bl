@@ -77,6 +77,9 @@ get_tmp_fund(context_t *cnt, bl_fund_type_e t, int is_ptr)
 static inline bl_node_t *
 dup_tmp_type(context_t *cnt, bl_node_t *type, int delta_ptr)
 {
+  if (!type)
+    return NULL;
+
   bl_node_t *tmp = &cnt->tmp_type;
   tmp->code      = type->code;
   if (bl_node_is(type, BL_TYPE_FUND)) {

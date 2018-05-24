@@ -13,6 +13,7 @@ fn main() {
   var foo foo_t;
 
   foo_ptr = &foo;
+  foo_ptr = null;
   hello(i);
 }
 

@@ -46,7 +46,7 @@ public module sdl2 {
     return c::SDL_ConvertSurface(src, fmt, flags);
   }
 
-  public fn free_surface(surface surface_t) {
+  public fn free_surface(surface *surface_t) {
     c::SDL_FreeSurface(surface);
   }
 }
