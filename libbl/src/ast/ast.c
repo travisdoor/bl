@@ -1098,4 +1098,67 @@ bl_ast_try_get_parent(bl_node_t *node)
     bl_abort("cannot get parent of %s", bl_node_name(node));
   }
 }
+
+bl_node_t *
+bl_ast_get_result_type(bl_node_t *node)
+{
+  bl_node_t *type = NULL;
+
+  switch (bl_node_code(node)) {
+  case BL_EXPR_CALL:
+    type = bl_ast_get_result_type(bl_peek_expr_call(node)->ref);
+    break;
+
+  case BL_EXPR_DECL_REF:
+    type = bl_ast_get_result_type(bl_peek_expr_decl_ref(node)->ref);
+    break;
+
+  case BL_EXPR_MEMBER_REF:
+    type = bl_ast_get_result_type(bl_peek_expr_member_ref(node)->ref);
+    break;
+
+  case BL_EXPR_UNARY:
+    type = bl_ast_get_result_type(bl_peek_expr_unary(node)->next);
+    break;
+
+  case BL_EXPR_ARRAY_REF:
+    type = bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next);
+    break;
+
+  case BL_DECL_VAR:
+    type = bl_ast_get_result_type(bl_peek_decl_var(node)->type);
+    break;
+
+  case BL_DECL_ARG:
+    type = bl_ast_get_result_type(bl_peek_decl_arg(node)->type);
+    break;
+
+  case BL_DECL_CONST:
+    type = bl_ast_get_result_type(bl_peek_decl_const(node)->type);
+    break;
+
+  case BL_DECL_FUNC:
+    type = bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type);
+    break;
+
+  case BL_TYPE_REF:
+    type = bl_peek_type_ref(node)->ref;
+    break;
+
+  case BL_DECL_STRUCT_MEMBER:
+    type = bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type);
+    break;
+
+  case BL_DECL_STRUCT:
+  case BL_DECL_ENUM:
+  case BL_TYPE_FUND:
+    type = node;
+    break;
+
+  default:
+    bl_abort("unable to get result type of %s node", bl_node_name(node));
+  }
+
+  return type;
+}
 /**************************************************************************************************/

@@ -14,7 +14,7 @@ fn main() {
 
   foo_ptr = &foo;
   foo_ptr = null;
-  hello(i);
+  //hello(i);
 }
 
 fn hello(foo *foo_t) {

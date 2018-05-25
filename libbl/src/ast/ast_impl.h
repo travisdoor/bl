@@ -640,6 +640,9 @@ bl_ast_get_node(bl_ast_t *ast, size_t i);
 bool
 bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
+bl_node_t *
+bl_ast_get_result_type(bl_node_t *node);
+
 void
 bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
 

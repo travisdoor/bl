@@ -84,9 +84,6 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
 static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by);
 
-static bl_node_t *
-get_result_type(context_t *cnt, bl_node_t *node);
-
 static void
 connect_type(context_t *cnt, bl_node_t *type);
 
@@ -261,69 +258,6 @@ lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t
   return bl_scopes_get_node(scopes, id, linked_by);
 }
 
-bl_node_t *
-get_result_type(context_t *cnt, bl_node_t *node)
-{
-  bl_node_t *type = NULL;
-
-  switch (bl_node_code(node)) {
-  case BL_EXPR_CALL:
-    type = get_result_type(cnt, bl_peek_expr_call(node)->ref);
-    break;
-
-  case BL_EXPR_DECL_REF:
-    type = get_result_type(cnt, bl_peek_expr_decl_ref(node)->ref);
-    break;
-
-  case BL_EXPR_MEMBER_REF:
-    type = get_result_type(cnt, bl_peek_expr_member_ref(node)->ref);
-    break;
-
-  case BL_EXPR_UNARY:
-    type = get_result_type(cnt, bl_peek_expr_unary(node)->next);
-    break;
-
-  case BL_EXPR_ARRAY_REF:
-    type = get_result_type(cnt, bl_peek_expr_array_ref(node)->next);
-    break;
-
-  case BL_DECL_VAR:
-    type = get_result_type(cnt, bl_peek_decl_var(node)->type);
-    break;
-
-  case BL_DECL_ARG:
-    type = get_result_type(cnt, bl_peek_decl_arg(node)->type);
-    break;
-
-  case BL_DECL_CONST:
-    type = get_result_type(cnt, bl_peek_decl_const(node)->type);
-    break;
-
-  case BL_DECL_FUNC:
-    type = get_result_type(cnt, bl_peek_decl_func(node)->ret_type);
-    break;
-
-  case BL_TYPE_REF:
-    type = bl_peek_type_ref(node)->ref;
-    break;
-
-  case BL_DECL_STRUCT_MEMBER:
-    type = get_result_type(cnt, bl_peek_decl_struct_member(node)->type);
-    break;
-
-  case BL_DECL_STRUCT:
-  case BL_DECL_ENUM:
-  case BL_TYPE_FUND:
-    type = node;
-    break;
-
-  default:
-    bl_abort("unable to get result type of %s node", bl_node_name(node));
-  }
-
-  return type;
-}
-
 void
 connect_type(context_t *cnt, bl_node_t *type)
 {
@@ -412,7 +346,7 @@ void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
-  bl_node_t *           type        = get_result_type(cnt, _member_ref->next);
+  bl_node_t *           type        = bl_ast_get_result_type(_member_ref->next);
 
   /* TODO: handle as compiler error */
   if (bl_node_is_not(type, BL_DECL_STRUCT))
