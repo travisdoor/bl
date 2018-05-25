@@ -170,7 +170,6 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       llvm_type = LLVMInt32TypeInContext(cnt->llvm_cnt);
       break;
     case BL_FTYPE_I64:
-    case BL_FTYPE_PTR:
     case BL_FTYPE_U64:
       llvm_type = LLVMInt64TypeInContext(cnt->llvm_cnt);
       break;
@@ -425,7 +424,6 @@ gen_default(context_t *cnt, bl_node_t *type)
     case BL_FTYPE_U8:
     case BL_FTYPE_U16:
     case BL_FTYPE_U32:
-    case BL_FTYPE_PTR:
     case BL_FTYPE_U64:
     case BL_FTYPE_BOOL:
       return LLVMConstInt(llvm_type, 0, false);
@@ -544,7 +542,6 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
     case BL_FTYPE_U64:
-    case BL_FTYPE_PTR:
       val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
       break;

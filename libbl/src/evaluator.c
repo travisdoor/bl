@@ -78,8 +78,8 @@ eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs)
   bl_expr_const_t *_result = bl_peek_expr_const(result);
 
   const long long lhs_val = bl_peek_expr_const(lhs)->value.s;
-  const long long rhs_val  = bl_peek_expr_const(rhs)->value.s;
-  _result->value.s    = lhs_val + rhs_val;
+  const long long rhs_val = bl_peek_expr_const(rhs)->value.s;
+  _result->value.s        = lhs_val + rhs_val;
   return result;
 }
 
@@ -131,6 +131,9 @@ eval_expr(context_t *cnt, bl_node_t *expr)
     return eval_binop(cnt, expr);
   case BL_EXPR_CONST:
     return expr;
+  case BL_EXPR_CAST: {
+    return eval_expr(cnt, bl_peek_expr_cast(expr)->next);
+  }
   case BL_EXPR_DECL_REF:
     return eval_expr(cnt, bl_peek_expr_decl_ref(expr)->ref);
   case BL_DECL_ENUM_VARIANT:

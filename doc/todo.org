@@ -1,5 +1,5 @@
 * TASKS
-- [X] Enum [9/9]
+- [-] Enum [9/10]
   - [X] Enum declaration
   - [X] Enum variant node
   - [X] Enum type generation 
@@ -8,6 +8,7 @@
   - [X] Enum member access 
   - [X] Enum base expression generation (only numbers accepted for now)
   - [X] All expressions passed into evaluation must be validated by check as consts 
+  - [ ] Pointer enums are invalid!!! 
   - [X] Check enum non-existing variant expression  
 - [-] Struct [8/12]
   - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
@@ -46,16 +47,16 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [9/16]
+- [-] Other [11/16]
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
   - [ ] Improve error checking of return statement (not all path return value error?) 
-  - [ ] Remove 'ptr' type 
+  - [X] Remove 'ptr' type 
   - [X] Check const = ? -> constants cannot be modified at runtime!!!
   - [X] Improve unit testing 
   - [X] Separate node for func params 
-  - [ ] Type casting 
+  - [X] Type casting
   - [ ] Single character parsing ('c') 
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
@@ -63,10 +64,10 @@
   - [ ] Implicit numeric constant casting
   - [ ] Use talloc instead of normal memory allocators
   - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
-- [-] Unary operator (separate expression node in ast) [2/4]
+- [-] Unary operator (separate expression node in ast) [3/4]
   - [X] Ast node
   - [X] Parsing
-  - [ ] Check validity (not valid for struct references)
+  - [X] Check validity (not valid for struct references)
   - [ ] Evaluation
 - [-] Value evaluation [1/2]
   - [ ] String constant evaluation 
@@ -75,13 +76,14 @@
   - [X] BObject compilation
   - [X] LLVM instalation
   - [ ] Linker fix
-- [-] Pointer [3/4]
+- [X] Pointer [4/4]
   - [X] Parse unary address-of and dereferencing
   - [X] Pointer type fundamental
   - [X] Pointer type ref
-  - [ ] -> operator
-- [ ] Check numeric limits
-- [ ] Improve error messages for invalid syntax (check extremes like 'var 666 = i32')
+  - [X] -> operator
+- [ ] Check [0/2]
+  - [ ] Only pointers can have null value
+  - [ ] Check numeric limits
 - [ ] Set size of size_t by target machine architecture [[file:~/Develop/bl/libbl/src/llvm_generator.c::if%20(sizeof(size_t)%20%3D%3D%204)%20{][here]]  
 - [X] Preprocesor #load [4/4]
   - [X] Ast representatio
@@ -103,15 +105,13 @@
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
-- [ ] Error handling [0/1]
-  - [ ] struct a { i i32 } a.i.b.c
-- [-] Better linker [6/7]
+- [X] Better linker [7/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging
   - [X] Path element validation via validation methods???
   - [X] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
   - [X] Member access parser + better expression handling 
-  - [ ] Finalize 
+  - [X] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
 * BUGS [2/5]

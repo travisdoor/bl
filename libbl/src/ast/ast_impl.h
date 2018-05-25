@@ -51,7 +51,6 @@
     ft(F32,    "f32") \
     ft(F64,    "f64") \
     ft(CHAR,   "char") \
-    ft(PTR,    "ptr") \
     ft(STRING, "string") \
     ft(BOOL,   "bool")
 

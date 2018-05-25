@@ -27,14 +27,14 @@
 //************************************************************************************************
 
 public module std {
-  public fn alocate(count i32) ptr {
-    var p ptr = c::malloc(count);
+  public fn alocate(count i32) *void {
+    var p *void = c::malloc(count);
     if (p == null)
       abort();
     return p;
   }
 
-  public fn free(p ptr) {
+  public fn free(p *void) {
     if (p == null)
       return;
 

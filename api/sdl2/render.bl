@@ -42,8 +42,8 @@ public module sdl2 {
     handle *void 
   }
 
-  public fn create_renderer(window window_t, index i32, flags i32) *renderer_t {
-    return c::SDL_CreateRenderer(window.handle, index, flags);
+  public fn create_renderer(window *window_t, index i32, flags i32) *renderer_t {
+    return c::SDL_CreateRenderer(window, index, flags);
   }
 
   public fn destroy_renderer(renderer *renderer_t) {

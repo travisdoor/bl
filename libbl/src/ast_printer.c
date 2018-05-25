@@ -230,9 +230,6 @@ print_const_expr(bl_expr_const_t *expr)
   case BL_FTYPE_SIZE:
     fprintf(stdout, "value: " BL_MAGENTA("%llu"), expr->value.u);
     break;
-  case BL_FTYPE_PTR:
-    fprintf(stdout, "value: " BL_MAGENTA("0x%llx"), expr->value.u);
-    break;
   case BL_FTYPE_F32:
   case BL_FTYPE_F64:
     fprintf(stdout, "value: " BL_MAGENTA("%f"), expr->value.f);

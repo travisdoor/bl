@@ -1,6 +1,6 @@
 /* testing playground */
 
-extern fn printf(s string, i f32);
+extern fn printf(s string, i f64);
 
 enum Enum {
   A, B, C
@@ -10,10 +10,9 @@ fn main() {
   var e Enum;
   e = Enum::A;
 
-  var i i32;
-  i = cast(i32) Enum::A;
-
-
+  var i i64;
+  var f f64 = 0.4;
+  printf("f = %f\n", f);
 }
 
 
