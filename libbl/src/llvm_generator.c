@@ -126,6 +126,9 @@ static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
 
 static LLVMValueRef
+gen_null(context_t *cnt, bl_node_t *nl);
+
+static LLVMValueRef
 gen_unary_expr(context_t *cnt, bl_node_t *expr);
 
 static LLVMTypeRef
@@ -578,6 +581,11 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     break;
   }
 
+  case BL_EXPR_NULL: {
+    val = gen_null(cnt, expr);
+    break;
+  }
+
   case BL_EXPR_DECL_REF: {
     bl_node_t *ref = bl_peek_expr_decl_ref(expr)->ref;
 
@@ -624,6 +632,15 @@ gen_expr(context_t *cnt, bl_node_t *expr)
   }
 
   return val;
+}
+
+LLVMValueRef
+gen_null(context_t *cnt, bl_node_t *nl)
+{
+  bl_expr_null_t *_null = bl_peek_expr_null(nl);
+  bl_assert(_null->type, "invalid null type %s:%d:%d", nl->src->file, nl->src->line, nl->src->col);
+  LLVMTypeRef type = to_llvm_type(cnt, _null->type);
+  return LLVMConstPointerNull(type);
 }
 
 LLVMValueRef

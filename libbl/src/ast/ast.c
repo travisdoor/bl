@@ -174,6 +174,18 @@ bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 }
 
 bl_node_t *
+bl_ast_add_expr_null(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+{
+  bl_node_t *expr_null = alloc_node(ast);
+  if (tok)
+    expr_null->src = &tok->src;
+
+  expr_null->code                    = BL_EXPR_NULL;
+  bl_peek_expr_null(expr_null)->type = type;
+  return expr_null;
+}
+
+bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *cnst = alloc_node(ast);

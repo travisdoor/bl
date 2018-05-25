@@ -85,14 +85,14 @@ public module sdl2 {
     c::SDL_Quit();
   }
 
-  public fn create_window(title string, x i32, y i32, w i32, h i32, flags i32) window_t {
-    var win window_t;
-    win.handle = c::SDL_CreateWindow(title, x, y, w, h, flags);
+  public fn create_window(title string, x i32, y i32, w i32, h i32, flags i32) *window_t {
+    var win *window_t;
+    win = c::SDL_CreateWindow(title, x, y, w, h, flags);
     return win;
   }
 
-  public fn destroy_window(win window_t) {
-    c::SDL_DestroyWindow(win.handle);
+  public fn destroy_window(win *window_t) {
+    c::SDL_DestroyWindow(win);
   }
 
   public fn get_error() string {
@@ -107,8 +107,8 @@ public module sdl2 {
     c::SDL_PumpEvents();
   }
 
-  public fn get_window_surface(win window_t) *surface_t {
-    return c::SDL_GetWindowSurface(win.handle);
+  public fn get_window_surface(win *window_t) *surface_t {
+    return c::SDL_GetWindowSurface(win);
   }
 
   public fn blit_surface(src *surface_t,
@@ -119,7 +119,7 @@ public module sdl2 {
     return c::SDL_UpperBlit(src, srcrect, dest, dstrect);
   }
 
-  public fn update_window_surface(window window_t) i32 {
-    return c::SDL_UpdateWindowSurface(window.handle);
+  public fn update_window_surface(window *window_t) i32 {
+    return c::SDL_UpdateWindowSurface(window);
   }
 }

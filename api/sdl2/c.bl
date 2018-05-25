@@ -37,9 +37,9 @@ public module sdl2 {
 				      y i32,
 				      w i32,
 				      h i32,
-				      flags i32) *sdl2::window_t;
+				      flags i32) *window_t;
 
-    public extern fn SDL_DestroyWindow(window *sdl2::window_t);
+    public extern fn SDL_DestroyWindow(window *window_t);
 
     public extern fn SDL_GetError() string;
 
@@ -47,47 +47,47 @@ public module sdl2 {
 
     public extern fn SDL_PumpEvents();
 
-    public extern fn SDL_CreateRenderer(window *sdl2::window_t,
+    public extern fn SDL_CreateRenderer(window *window_t,
                                         index i32,
-                                        flags i32) *sdl2::renderer_t;
+                                        flags i32) *renderer_t;
 
-    public extern fn SDL_DestroyRenderer(handle *sdl2::renderer_t);
+    public extern fn SDL_DestroyRenderer(handle *renderer_t);
 
-    public extern fn SDL_SetRenderDrawColor(renderer *sdl2::renderer_t,
+    public extern fn SDL_SetRenderDrawColor(renderer *renderer_t,
                                             r i32,
                                             g i32,
                                             b i32,
                                             a i32) i32;
 
-    public extern fn SDL_RenderClear(renderer *sdl2::renderer_t) i32;
+    public extern fn SDL_RenderClear(renderer *renderer_t) i32;
 
-    public extern fn SDL_RenderPresent(renderer *sdl2::renderer_t);
+    public extern fn SDL_RenderPresent(renderer *renderer_t);
 
-    public extern fn SDL_PollEvent(event *sdl2::event_key_t) i32;
+    public extern fn SDL_PollEvent(event *event_key_t) i32;
            
-    public extern fn SDL_GetWindowSurface(window *sdl2::window_t) *sdl2::surface_t;
+    public extern fn SDL_GetWindowSurface(window *window_t) *surface_t;
 
-    public extern fn SDL_UpperBlit(src *sdl2::surface_t,
-                                   srcrect *sdl2::rect_t,
-                                   dest *sdl2::surface_t,
-                                   dstrect *sdl2::rect_t) i32;
+    public extern fn SDL_UpperBlit(src *surface_t,
+                                   srcrect *rect_t,
+                                   dest *surface_t,
+                                   dstrect *rect_t) i32;
 
-    public extern fn SDL_UpdateWindowSurface(window *sdl2::window_t) i32;
+    public extern fn SDL_UpdateWindowSurface(window *window_t) i32;
 
-    public extern fn SDL_ConvertSurface(src *sdl2::surface_t,
-                                        fmt *sdl2::pixel_format_t,
-                                        flags i32) *sdl2::surface_t;
+    public extern fn SDL_ConvertSurface(src *surface_t,
+                                        fmt *pixel_format_t,
+                                        flags i32) *surface_t;
 
-    public extern fn SDL_FreeSurface(surface sdl2::surface_t);
+    public extern fn SDL_FreeSurface(surface *surface_t);
 
-    public extern fn SDL_CreateTextureFromSurface(renderer *sdl2::renderer_t,
-						  surface *sdl2::surface_t) *sdl2::texture_t;
+    public extern fn SDL_CreateTextureFromSurface(renderer *renderer_t,
+						  surface *surface_t) *texture_t;
 
-    public extern fn SDL_DestroyTexture(texture *sdl2::texture_t);
+    public extern fn SDL_DestroyTexture(texture *texture_t);
 
-    public extern fn SDL_RenderCopy(renderer *sdl2::renderer_t,
-                                    texture *sdl2::texture_t,
-                                    srcrect *sdl2::rect_t,
-                                    dstcrect *sdl2::rect_t) i32;
+    public extern fn SDL_RenderCopy(renderer *renderer_t,
+                                    texture *texture_t,
+                                    srcrect *rect_t,
+                                    dstcrect *rect_t) i32;
   }
 }

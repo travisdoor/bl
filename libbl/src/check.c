@@ -31,6 +31,9 @@
 #include "stages_impl.h"
 #include "ast/visitor_impl.h"
 
+/* Check perform one pass over AST tree where it solves implicit casting and checking of type
+ * compatibility of expression nodes. */
+
 #define TYPE_NAME_TMP_SIZE 512
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
@@ -75,6 +78,17 @@ get_tmp_fund(context_t *cnt, bl_fund_type_e t, int is_ptr)
 }
 
 static inline bl_node_t *
+get_tmp_ref(context_t *cnt, bl_node_t *ref, int is_ptr)
+{
+  bl_node_t *tmp          = &cnt->tmp_type;
+  tmp->code               = BL_TYPE_REF;
+  tmp->n.type_ref.dims   = NULL;
+  tmp->n.type_ref.is_ptr = is_ptr;
+  tmp->n.type_ref.ref = ref;
+  return tmp;
+}
+
+static inline bl_node_t *
 dup_tmp_type(context_t *cnt, bl_node_t *type, int delta_ptr)
 {
   if (!type)
@@ -106,6 +120,9 @@ static bl_node_t *
 check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
+check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type, bool const_expr);
+
+static bl_node_t *
 check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
@@ -129,12 +146,29 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
     next_type = dup_tmp_type(cnt, next_type, 1);
     break;
   }
+
+  case BL_SYM_ASTERISK: {
+    next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
+    next_type = dup_tmp_type(cnt, next_type, -1);
+    break;
+  }
+
   default:
     next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
     break;
   }
 
   return next_type;
+}
+
+bl_node_t *
+check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type, bool const_expr)
+{
+  bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
+  // TODO
+  check_expr(cnt, _member_ref->next, NULL, const_expr);
+  
+  return bl_peek_decl_struct_member(_member_ref->ref)->type;
 }
 
 bl_node_t *
@@ -273,7 +307,8 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
   }
 
   case BL_DECL_ENUM_VARIANT: {
-    ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
+    ref_type = get_tmp_ref(cnt, bl_peek_decl_enum_variant(ref)->parent, false);
+    //ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
 
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
@@ -354,11 +389,15 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
     return check_unary(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_SIZEOF:
-    // TODO:
     return NULL;
 
-  case BL_EXPR_MEMBER_REF:
+  case BL_EXPR_NULL: {
+    bl_peek_expr_null(expr)->type = expected_type;
     return NULL;
+  }
+
+  case BL_EXPR_MEMBER_REF:
+    return check_member_ref(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_ARRAY_REF:
     return NULL;

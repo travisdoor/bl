@@ -1,23 +1,15 @@
 /* testing playground */
 
-extern fn printf(s string, e i32);
-
-struct foo_t {
-  a i32
+enum Enum {
+  A, B, C
 }
 
 fn main() {
-  var foo_ptr *foo_t;
+  var e Enum;
+  e = Enum::A;
 
   var i i32;
-  var foo foo_t;
-
-  foo_ptr = &foo;
-  foo_ptr = null;
-  //hello(i);
+  i = Enum::A;
 }
 
-fn hello(foo *foo_t) {
-  foo->a = 10;
-}
 

@@ -440,8 +440,9 @@ parse_const_expr_maybe(context_t *cnt)
 
   case BL_SYM_NULL:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_PTR, false);
-    const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, 0);
+    /* null pointer expression, type is added later during reference connection becouse null must be
+     * implicitly casted */
+    const_expr = bl_ast_add_expr_null(cnt->ast, tok, NULL);
     break;
 
   case BL_SYM_TRUE:
@@ -735,7 +736,7 @@ bl_node_t *
 parse_type_maybe(context_t *cnt)
 {
   bl_node_t *type   = NULL;
-  int is_ptr = 0;
+  int        is_ptr = 0;
 
   while (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASTERISK)) {
     ++is_ptr;

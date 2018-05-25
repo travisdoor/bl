@@ -80,6 +80,7 @@
     nt(EXPR_ARRAY_REF,     expr_array_ref) \
     nt(EXPR_CALL,          expr_call) \
     nt(EXPR_SIZEOF,        expr_sizeof) \
+    nt(EXPR_NULL,          expr_null) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
@@ -185,6 +186,11 @@ struct bl_stmt_using
 };
 
 struct bl_expr_sizeof
+{
+  bl_node_t *type;
+};
+
+struct bl_expr_null
 {
   bl_node_t *type;
 };
@@ -414,6 +420,9 @@ bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
+
+bl_node_t *
+bl_ast_add_expr_null(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);

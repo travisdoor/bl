@@ -500,6 +500,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_CONST:
   case BL_EXPR_DECL_REF:
+  case BL_EXPR_NULL: 
     break;
 
   default:

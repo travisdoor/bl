@@ -294,6 +294,10 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     print_head("array_elem_ref", bl_peek_src(expr), expr, visitor->nesting);
     break;
 
+  case BL_EXPR_NULL:
+    print_head("null", bl_peek_src(expr), expr, visitor->nesting);
+    break;
+
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);
     print_path(bl_peek_expr_call(expr)->path);
