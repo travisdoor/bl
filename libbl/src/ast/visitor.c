@@ -476,6 +476,12 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   }
 
+  case BL_EXPR_CAST: {
+    call_visit(visitor, bl_peek_expr_cast(expr)->to_type, BL_VISIT_TYPE);
+    call_visit(visitor, bl_peek_expr_cast(expr)->next, BL_VISIT_EXPR);
+    break;
+  }
+
   case BL_EXPR_UNARY: {
     call_visit(visitor, bl_peek_expr_unary(expr)->next, BL_VISIT_EXPR);
     break;

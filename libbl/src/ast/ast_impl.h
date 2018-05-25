@@ -81,6 +81,7 @@
     nt(EXPR_CALL,          expr_call) \
     nt(EXPR_SIZEOF,        expr_sizeof) \
     nt(EXPR_NULL,          expr_null) \
+    nt(EXPR_CAST,          expr_cast) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
@@ -195,6 +196,12 @@ struct bl_expr_null
   bl_node_t *type;
 };
 
+struct bl_expr_cast
+{
+  bl_node_t *to_type;
+  bl_node_t *next;
+};
+
 /* module declaration */
 struct bl_decl_module
 {
@@ -298,12 +305,6 @@ struct bl_expr_const
     double             f;
     const char *       str;
   } value;
-};
-
-struct bl_expr_cast
-{
-  bl_node_t *type;
-  bl_node_t *expr;
 };
 
 struct bl_expr_binop
@@ -462,6 +463,9 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
                            bool is_ptr_ref);
+
+bl_node_t *
+bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next);
 
 bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);

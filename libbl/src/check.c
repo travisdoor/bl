@@ -80,11 +80,11 @@ get_tmp_fund(context_t *cnt, bl_fund_type_e t, int is_ptr)
 static inline bl_node_t *
 get_tmp_ref(context_t *cnt, bl_node_t *ref, int is_ptr)
 {
-  bl_node_t *tmp          = &cnt->tmp_type;
-  tmp->code               = BL_TYPE_REF;
+  bl_node_t *tmp         = &cnt->tmp_type;
+  tmp->code              = BL_TYPE_REF;
   tmp->n.type_ref.dims   = NULL;
   tmp->n.type_ref.is_ptr = is_ptr;
-  tmp->n.type_ref.ref = ref;
+  tmp->n.type_ref.ref    = ref;
   return tmp;
 }
 
@@ -131,6 +131,9 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
 static bl_node_t *
 check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool const_expr);
 
+static bl_node_t *
+check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const_expr);
+
 bl_node_t *
 check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool const_expr)
 {
@@ -162,12 +165,29 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
 }
 
 bl_node_t *
+check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const_expr)
+{
+  bl_expr_cast_t *_cast = bl_peek_expr_cast(cast);
+  if (expected_type && !bl_type_compatible(_cast->to_type, expected_type)) {
+    bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+    bl_ast_try_get_type_name(_cast->to_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+
+    check_error(cnt, BL_ERR_INVALID_TYPE, cast,
+                "incompatible result type of casting, expected is " BL_YELLOW(
+                    "'%s'") " but result is " BL_YELLOW("'%s'"),
+                cnt->tname_tmp1, cnt->tname_tmp2);
+  }
+  check_expr(cnt, _cast->next, NULL, const_expr);
+  return _cast->to_type;
+}
+
+bl_node_t *
 check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
   // TODO
   check_expr(cnt, _member_ref->next, NULL, const_expr);
-  
+
   return bl_peek_decl_struct_member(_member_ref->ref)->type;
 }
 
@@ -308,7 +328,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
 
   case BL_DECL_ENUM_VARIANT: {
     ref_type = get_tmp_ref(cnt, bl_peek_decl_enum_variant(ref)->parent, false);
-    //ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
+    // ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
 
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
@@ -401,6 +421,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
 
   case BL_EXPR_ARRAY_REF:
     return NULL;
+
+  case BL_EXPR_CAST:
+    return check_cast(cnt, expr, expected_type, const_expr);
 
   default:
     bl_abort("node is not expression");

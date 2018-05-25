@@ -272,6 +272,11 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   }
 
+  case BL_EXPR_CAST: {
+    print_head("cast", bl_peek_src(expr), expr, visitor->nesting);
+    break;
+  }
+
   case BL_EXPR_BINOP:
     print_head("binop", bl_peek_src(expr), expr, visitor->nesting);
     fprintf(stdout, "operation: " BL_YELLOW("'%s'"), bl_sym_strings[bl_peek_expr_binop(expr)->op]);

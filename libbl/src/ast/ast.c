@@ -174,6 +174,20 @@ bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 }
 
 bl_node_t *
+bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next)
+{
+  bl_node_t *cast = alloc_node(ast);
+  if (tok)
+    cast->src = &tok->src;
+
+  cast->code            = BL_EXPR_CAST;
+  bl_expr_cast_t *_cast = bl_peek_expr_cast(cast);
+  _cast->next           = next;
+  _cast->to_type        = to_type;
+  return cast;
+}
+
+bl_node_t *
 bl_ast_add_expr_null(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *expr_null = alloc_node(ast);

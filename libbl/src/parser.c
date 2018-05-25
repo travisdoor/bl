@@ -123,6 +123,9 @@ static bl_node_t *
 parse_unary_expr_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_cast_expr_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, BArray *path);
 
 static bl_node_t *
@@ -462,6 +465,45 @@ parse_const_expr_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_cast_expr_maybe(context_t *cnt)
+{
+  bl_node_t *cast = NULL;
+
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_CAST);
+  if (tok_begin) {
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    if (!bl_token_is(tok, BL_SYM_LPAREN)) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin,
+                  "expected " BL_YELLOW("'('") " after cast expression");
+    }
+
+    bl_node_t *to_type = parse_type_maybe(cnt);
+    if (to_type == NULL) {
+      tok = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok,
+                  "expected type name as cast parameter");
+    }
+
+    tok = bl_tokens_consume(cnt->tokens);
+    if (!bl_token_is(tok, BL_SYM_RPAREN)) {
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin,
+                  "expected " BL_YELLOW("')'") " after cast expression");
+    }
+
+    bl_node_t *next = parse_atom_expr(cnt, NULL);
+    if (next == NULL) {
+      tok = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok,
+                  "expected expression after cast");
+    }
+
+    cast = bl_ast_add_expr_cast(cnt->ast, tok_begin, to_type, next);
+  }
+  
+  return cast;
+}
+
+bl_node_t *
 parse_nested_expr_maybe(context_t *cnt)
 {
   bl_node_t * expr      = NULL;
@@ -559,6 +601,9 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
     return expr;
 
   if ((expr = parse_nested_expr_maybe(cnt)))
+    return expr;
+
+  if ((expr = parse_cast_expr_maybe(cnt)))
     return expr;
 
   if ((expr = parse_sizeof_maybe(cnt)))

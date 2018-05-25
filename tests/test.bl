@@ -1,5 +1,7 @@
 /* testing playground */
 
+extern fn printf(s string, i f32);
+
 enum Enum {
   A, B, C
 }
@@ -9,7 +11,9 @@ fn main() {
   e = Enum::A;
 
   var i i32;
-  i = Enum::A;
+  i = cast(i32) Enum::A;
+
+
 }
 
 

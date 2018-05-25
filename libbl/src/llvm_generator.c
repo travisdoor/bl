@@ -271,6 +271,15 @@ gen_enum(context_t *cnt, bl_node_t *enm)
   return to_llvm_type(cnt, _enm->type);
 }
 
+LLVMValueRef
+gen_cast(context_t *cnt, bl_node_t *cast)
+{
+  bl_expr_cast_t *_cast = bl_peek_expr_cast(cast);
+  LLVMTypeRef dest_type = to_llvm_type(cnt, _cast->to_type);
+  LLVMValueRef next = gen_expr(cnt, _cast->next);
+  return LLVMBuildCast(cnt->llvm_builder, LLVMBitCast, next, dest_type, gname("tmp"));
+}
+
 int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
 {
@@ -624,6 +633,11 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_BINOP: {
     val = gen_binop(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_CAST: {
+    val = gen_cast(cnt, expr);
     break;
   }
 
