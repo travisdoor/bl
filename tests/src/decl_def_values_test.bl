@@ -16,7 +16,6 @@ fn main() i32 {
   var _f32    f32;
   var _f64    f64;
   var _char   char;
-  var _ptr    ptr;
   var _string string;
   var _bool   bool;
 

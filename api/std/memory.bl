@@ -26,18 +26,27 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/debug.bl"
+
 public module std {
-  public fn alocate(count i32) *void {
-    var p *void = c::malloc(count);
-    if (p == null)
-      abort();
-    return p;
-  }
+  public module memory {
+    module c {
+      public extern fn malloc(count size_t) *void;
+      public extern fn free(p *void);
+    }
 
-  public fn free(p *void) {
-    if (p == null)
-      return;
+    public fn malloc(count size_t) *void {
+      var p *void = c::malloc(count);
+      if (p == null)
+        debug::abort();
+      return p;
+    }
 
-    c::free(p);
-  }
+    public fn free(p *void) {
+      if (p == null)
+        return;
+
+      c::free(p);
+    }
+  } 
 }

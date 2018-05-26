@@ -1075,6 +1075,20 @@ bl_ast_try_get_type_dims(bl_node_t *type)
   }
 }
 
+int
+bl_type_is_ptr(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    return bl_peek_type_fund(type)->is_ptr;
+  case BL_TYPE_REF: {
+    return bl_peek_type_ref(type)->is_ptr;
+  }
+  default:
+    return -1;
+  }
+}
+
 bl_node_t *
 bl_ast_path_get_last(BArray *path)
 {

@@ -114,6 +114,9 @@ static bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
+check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_expr);
+
+static bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
@@ -151,6 +154,9 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
   }
 
   case BL_SYM_ASTERISK: {
+    if (expected_type)
+      expected_type = dup_tmp_type(cnt, expected_type, 1);
+
     next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
     next_type = dup_tmp_type(cnt, next_type, -1);
     break;
@@ -390,6 +396,21 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
 }
 
 bl_node_t *
+check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_expr)
+{
+  if (!expected_type)
+    return NULL;
+
+  bl_expr_null_t *_null = bl_peek_expr_null(nl);
+  if (bl_type_is_ptr(expected_type) <= 0) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, nl, "only pointers can be set to null value");
+  }
+
+  _null->type = expected_type;
+  return NULL;
+}
+
+bl_node_t *
 check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr)
 {
   switch (bl_node_code(expr)) {
@@ -412,8 +433,7 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
     return NULL;
 
   case BL_EXPR_NULL: {
-    bl_peek_expr_null(expr)->type = expected_type;
-    return NULL;
+    return check_null(cnt, expr, expected_type, const_expr);
   }
 
   case BL_EXPR_MEMBER_REF:

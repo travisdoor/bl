@@ -9,13 +9,13 @@ module bl_tester {
     public extern fn puts(msg string) i32;
     public extern fn system(cmd string) i32;
     public extern fn getchar() i32;
-    public extern fn scanf(s string, buf ptr) i32;
-    public extern fn malloc(s i32) ptr;
-    public extern fn free(p ptr);
-    public extern fn strcmp(a ptr, b string) i32;
+    public extern fn scanf(s string, buf *void) i32;
+    public extern fn malloc(s i32) *void;
+    public extern fn free(p *void);
+    public extern fn strcmp(a *void, b string) i32;
   }
 
-  const unit_count i32 = 22;
+  const unit_count i32 = 23;
   
   struct unit_t {
     cmd string,
@@ -88,9 +88,10 @@ module bl_tester {
     units[19] = new_unit("blc -run load_test.bl", "load test");
     units[20] = new_unit("blc -run ptr_type_test.bl", "pointer type test");
     units[21] = new_unit("blc -run using_test.bl", "using test");
+    units[22] = new_unit("blc -run cast_test.bl", "casting test");
   
     c::puts("Welcome to Biscuit Language Tester");
-    var cmd ptr = c::malloc(1024); 
+    var cmd *void = c::malloc(1024); 
     loop {
       c::printf(">> ", "");
       c::scanf("%s", cmd);

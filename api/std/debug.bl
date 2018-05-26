@@ -27,25 +27,34 @@
 //************************************************************************************************
 
 public module std {
-  public fn exit(status i32) {
-    c::exit(status);
-  }
+  public module debug {
+    module c { 
+      public extern fn abort();
+      public extern fn exit(status i32); 
+      public extern fn puts(str string) i32; 
+      public extern fn printf(str string, a i32) i32; 
+    }
+    
+    public fn exit(status i32) {
+      c::exit(status);
+    }
 
-  public fn abort() {
-    c::abort();
-  }
-
-  public fn assert(expr bool) {
-    if (expr != true) {
+    public fn abort() {
       c::abort();
     }
-  }
 
-  public fn println(s string) {
-    c::puts(s);
-  }
+    public fn assert(expr bool) {
+      if (expr != true) {
+	c::abort();
+      }
+    }
 
-  public fn print(s string, i i32) {
-    c::printf(s, i);
+    public fn println(s string) {
+      c::puts(s);
+    }
+
+    public fn print(s string, i i32) {
+      c::printf(s, i);
+    }
   }
 }

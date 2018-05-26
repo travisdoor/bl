@@ -37,7 +37,6 @@ fn main() i32 {
   var s_bool size_t = sizeof(bool); 
   var s_f32 size_t = sizeof(f32); 
   var s_f64 size_t = sizeof(f64); 
-  var s_ptr size_t = sizeof(ptr); 
 
   var s_A size_t = sizeof(A); 
   var s_B size_t = sizeof(B); 
@@ -56,7 +55,6 @@ fn main() i32 {
   printf("sizeof(bool)   = %luB\n", s_bool);
   printf("sizeof(f32)    = %luB\n", s_f32);
   printf("sizeof(f64)    = %luB\n", s_f64);
-  printf("sizeof(ptr)    = %luB\n", s_ptr);
 
   printf("sizeof(A)      = %luB\n", s_A);
   printf("sizeof(B)      = %luB\n", s_B);

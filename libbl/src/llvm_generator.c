@@ -48,6 +48,8 @@
 #define skip_if_terminated(cnt)                                                                    \
   if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
+#define is_deref(node)                                                                             \
+  ((bl_node_is((node), BL_EXPR_UNARY) && bl_peek_expr_unary((node))->op == BL_SYM_ASTERISK))
 
 #if BL_DEBUG
 #define gname(s) s
@@ -273,10 +275,69 @@ gen_enum(context_t *cnt, bl_node_t *enm)
 LLVMValueRef
 gen_cast(context_t *cnt, bl_node_t *cast)
 {
-  bl_expr_cast_t *_cast = bl_peek_expr_cast(cast);
-  LLVMTypeRef dest_type = to_llvm_type(cnt, _cast->to_type);
-  LLVMValueRef next = gen_expr(cnt, _cast->next);
-  return LLVMBuildCast(cnt->llvm_builder, LLVMBitCast, next, dest_type, gname("tmp"));
+  bl_expr_cast_t *_cast     = bl_peek_expr_cast(cast);
+  LLVMTypeRef     dest_type = to_llvm_type(cnt, _cast->to_type);
+  LLVMValueRef    next      = gen_expr(cnt, _cast->next);
+
+  if (LLVMIsAAllocaInst(next)) {
+    next = LLVMBuildLoad(cnt->llvm_builder, next, gname("tmp"));
+  }
+
+  LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
+  LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
+
+  LLVMOpcode op = LLVMBitCast;
+
+  bl_log("from %d to %d", src_kind, dest_kind);
+  switch (dest_kind) {
+
+  case LLVMPointerTypeKind: {
+    switch (src_kind) {
+    case LLVMPointerTypeKind:
+      op = LLVMBitCast;
+      break;
+    case LLVMIntegerTypeKind:
+      op = LLVMIntToPtr;
+      break;
+    default:
+      break;
+    }
+    break;
+  }
+
+  case LLVMIntegerTypeKind: {
+    switch (src_kind) {
+    case LLVMFloatTypeKind:
+    case LLVMDoubleTypeKind:
+      op = LLVMFPToSI;
+      break;
+    case LLVMPointerTypeKind:
+      op = LLVMPtrToInt;
+      break;
+    default:
+      break;
+    }
+    break;
+  }
+
+  case LLVMFloatTypeKind:
+  case LLVMDoubleTypeKind: {
+    switch (src_kind) {
+    case LLVMIntegerTypeKind:
+      op = LLVMSIToFP;
+      bl_log("si -> fp");
+      break;
+    default:
+      break;
+    }
+    break;
+  }
+
+  default:
+    bl_abort("invalid cast combination");
+  }
+
+  return LLVMBuildCast(cnt->llvm_builder, op, next, dest_type, gname("tmp"));
 }
 
 int
@@ -355,8 +416,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (LLVMIsAAllocaInst(val) || bl_node_is(expr, BL_EXPR_MEMBER_REF) ||
-        bl_node_is(expr, BL_EXPR_ARRAY_REF)) {
+    if (LLVMIsAAllocaInst(val) || LLVMIsAGetElementPtrInst(val) || is_deref(expr)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
     } else {
       *out = val;
@@ -657,8 +717,6 @@ gen_null(context_t *cnt, bl_node_t *nl)
 LLVMValueRef
 gen_binop(context_t *cnt, bl_node_t *binop)
 {
-#define is_deref(node)                                                                             \
-  ((bl_node_is((node), BL_EXPR_UNARY) && bl_peek_expr_unary((node))->op == BL_SYM_ASTERISK))
 
   bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
   LLVMValueRef     lhs    = gen_expr(cnt, _binop->lhs);
@@ -711,7 +769,6 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   }
 
   return NULL;
-#undef is_deref
 }
 
 LLVMValueRef
@@ -723,9 +780,9 @@ gen_member_ref(context_t *cnt, bl_node_t *member_ref)
   bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
   ptr                                  = gen_expr(cnt, _member_ref->next);
 
-  if (_member_ref->is_ptr_ref) 
+  if (_member_ref->is_ptr_ref)
     ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
-  
+
   ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
                            gname(_member->id.str));
   return ptr;

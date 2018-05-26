@@ -1,0 +1,9 @@
+/*
+ * Unit test casting 
+ * ----------------
+ */
+
+
+fn main() i32 {
+  return 0;
+}

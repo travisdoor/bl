@@ -1,18 +1,34 @@
 /* testing playground */
 
-extern fn printf(s string, i f64);
+#load "std/memory.bl"
+#load "std/debug.bl"
 
-enum Enum {
-  A, B, C
-}
+using std::memory;
+using std::debug;
 
 fn main() {
-  var e Enum;
-  e = Enum::A;
+  const count i32 = 256;
+  var data *i32 = cast(*i32) malloc(cast(size_t) count * sizeof(i32));
 
-  var i i64;
-  var f f64 = 0.4;
-  printf("f = %f\n", f);
+  var i i32;
+  var iter *i32 = data;
+
+  while (i < count) {
+    (*iter) = i;
+    iter = cast(*i32) (cast(size_t) iter + sizeof(i32));
+    i = i + 1;
+  }
+
+  i = 0;
+  iter = data;
+  while (i < count) {
+    print("data = %d\n", (*iter));
+
+    iter = cast(*i32) (cast(size_t) iter + sizeof(i32));
+    i = i + 1;
+  }
+ 
+  free(cast(*void) data);
 }
 
 

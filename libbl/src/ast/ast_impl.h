@@ -652,6 +652,9 @@ bl_ast_get_node(bl_ast_t *ast, size_t i);
 bool
 bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
+int
+bl_type_is_ptr(bl_node_t *first);
+
 bl_node_t *
 bl_ast_get_result_type(bl_node_t *node);
 
