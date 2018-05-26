@@ -1,13 +1,21 @@
 /*
  * Unit test
  * -----------
- * Sizeof buildin test
- * deps: std::string, std::debug, std::memory
  */
 
+#load "std/string.bl"
+
+using std;
+
+extern fn printf(format string, s string);
+
 fn main() i32 {
-  var s std::string_t = std::string_new("hello"); 
-  //std::string_print(s);
-  //std::string_delete(s);
+  var str string::string_t;
+  string::init(&str);
+
+  string::setc(&str, "hello world");
+  printf("str = %s\n", string::c_str(&str));
+ 
+  string::terminate(&str);
   return 0;
 }

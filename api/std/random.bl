@@ -26,13 +26,10 @@
 // SOFTWARE.
 //************************************************************************************************
 
-public module std {
-  module c {
-    public extern fn rand() i32;
-    public extern fn time(timer *void) *void;
-  } 
+#load "libc/libc.bl"
 
+public module std {
   public fn random() i32 {
-    return c::rand();
+    return libc::rand();
   }
 }

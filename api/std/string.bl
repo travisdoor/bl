@@ -26,6 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/memory.bl"
+#load "std/debug.bl"
+
 public module std {
   public module string {
     public struct string_t {
@@ -33,6 +36,36 @@ public module std {
       public len size_t
     }
 
-    
+    public fn init(str *string_t) {
+      str->data = null;
+      str->len = cast(size_t) 0;
+    }
+
+    public fn terminate(str *string_t) {
+      memory::free(str->data);
+      str->data = null;
+      str->len = cast(size_t) 0;
+    }
+
+    public fn c_str(str *string_t) string {
+      if (str->len == cast(size_t) 0)
+        return "";
+
+      return cast(string) str->data;
+    }
+
+    public fn setc(dest *string_t, src string) {
+      var size size_t = libc::strlen(src) + cast(size_t) 1;
+      expand_if_needed(dest, size);
+      libc::strcpy(cast(string) dest->data, cast(string) src);
+    }
+
+    fn expand_if_needed(str *string_t, needed size_t) {
+      if (str->len >= needed)
+        return;
+
+      str->len = needed;
+      str->data = libc::realloc(str->data, needed);
+    }
   }
 }

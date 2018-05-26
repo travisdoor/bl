@@ -142,6 +142,13 @@ gen_enum(context_t *cnt, bl_node_t *enm);
 static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
 
+static inline bool
+should_load(bl_node_t *node)
+{
+  return bl_node_is(node, BL_EXPR_ARRAY_REF) || bl_node_is(node, BL_EXPR_MEMBER_REF) ||
+         is_deref(node);
+}
+
 /*
  * convert known type to LLVM type representation
  */
@@ -228,7 +235,6 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   /* type is array */
   if (size) {
-    bl_log("trying to generate array");
     llvm_type = LLVMArrayType(llvm_type, size);
   }
 
@@ -279,16 +285,16 @@ gen_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeRef     dest_type = to_llvm_type(cnt, _cast->to_type);
   LLVMValueRef    next      = gen_expr(cnt, _cast->next);
 
-  if (LLVMIsAAllocaInst(next)) {
+  if (should_load(_cast->next) || LLVMIsAAllocaInst(next)) {
     next = LLVMBuildLoad(cnt->llvm_builder, next, gname("tmp"));
   }
 
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMOpcode op = LLVMBitCast;
+  LLVMOpcode op = LLVMTrunc;
 
-  bl_log("from %d to %d", src_kind, dest_kind);
+  // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
 
   case LLVMPointerTypeKind: {
@@ -325,7 +331,7 @@ gen_cast(context_t *cnt, bl_node_t *cast)
     switch (src_kind) {
     case LLVMIntegerTypeKind:
       op = LLVMSIToFP;
-      bl_log("si -> fp");
+      // bl_log("si -> fp");
       break;
     default:
       break;
@@ -416,7 +422,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
     expr             = bl_ast_call_get_arg(_call, i);
     LLVMValueRef val = gen_expr(cnt, expr);
 
-    if (LLVMIsAAllocaInst(val) || LLVMIsAGetElementPtrInst(val) || is_deref(expr)) {
+    if (should_load(expr) || LLVMIsAAllocaInst(val)) {
       *out = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
     } else {
       *out = val;
@@ -540,7 +546,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
   if (_unary->op == BL_SYM_MINUS || _unary->op == BL_SYM_PLUS) {
-    if (LLVMIsAAllocaInst(next_val) || LLVMIsAGetElementPtrInst(next_val)) {
+    if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
     }
@@ -725,16 +731,16 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   if (_binop->op == BL_SYM_ASIGN) {
     /* special case for dereferencing on the right side, we need to perform additional load because
      * we use pointer to data not real data. */
-    if (LLVMIsAAllocaInst(rhs) || is_deref(_binop->rhs)) {
+    if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs)) {
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
     }
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs) || LLVMIsAGetElementPtrInst(lhs) || is_deref(_binop->lhs))
+  if (should_load(_binop->lhs) || LLVMIsAAllocaInst(lhs))
     lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
-  if (LLVMIsAAllocaInst(rhs) || LLVMIsAGetElementPtrInst(rhs))
+  if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   switch (_binop->op) {
@@ -797,7 +803,7 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref)
 
   LLVMValueRef index = gen_expr(cnt, _array_ref->index);
 
-  if (LLVMIsAAllocaInst(index) || LLVMIsAGetElementPtrInst(index))
+  if (should_load(_array_ref->index) || LLVMIsAAllocaInst(index))
     index = LLVMBuildLoad(cnt->llvm_builder, index, gname("tmp"));
 
   LLVMValueRef indices[2];
@@ -935,18 +941,20 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   LLVMValueRef def = NULL;
   if (_var->init_expr) {
     def = gen_expr(cnt, _var->init_expr);
+
+    if (should_load(_var->init_expr) || LLVMIsAAllocaInst(def))
+      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
+
   } else {
     def = gen_default(cnt, _var->type);
+
+    if (LLVMIsAAllocaInst(def))
+      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
   }
 
   // TODO: can't generate default values for struct members
-  if (def) {
-    if (LLVMIsAAllocaInst(def)) {
-      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
-    }
-
+  if (def)
     LLVMBuildStore(cnt->llvm_builder, def, llvm_var);
-  }
 
   push_value_cscope(var, llvm_var);
 }
@@ -970,7 +978,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 
   LLVMValueRef val = gen_expr(cnt, _ret->expr);
 
-  if (LLVMIsAAllocaInst(val) || LLVMIsAGetElementPtrInst(val))
+  if (should_load(_ret->expr) || LLVMIsAAllocaInst(val))
     val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
 
   LLVMBuildStore(cnt->llvm_builder, val, cnt->ret_value);
@@ -993,7 +1001,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
   LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
   LLVMValueRef      expr    = gen_expr(cnt, _if_stmt->test);
 
-  if (LLVMIsAAllocaInst(expr) || LLVMIsAGetElementPtrInst(expr))
+  if (should_load(_if_stmt->test) || LLVMIsAAllocaInst(expr))
     expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
 
   expr =
@@ -1058,7 +1066,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
   if (_loop->test) {
     expr = gen_expr(cnt, _loop->test);
 
-    if (LLVMIsAAllocaInst(expr) || LLVMIsAGetElementPtrInst(expr))
+    if (should_load(_loop->test) || LLVMIsAAllocaInst(expr))
       expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
   } else {
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);

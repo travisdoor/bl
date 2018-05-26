@@ -490,7 +490,7 @@ parse_cast_expr_maybe(context_t *cnt)
                   "expected " BL_YELLOW("')'") " after cast expression");
     }
 
-    bl_node_t *next = parse_atom_expr(cnt, NULL);
+    bl_node_t *next = parse_expr_1(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin));
     if (next == NULL) {
       tok = bl_tokens_peek(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok,
@@ -572,7 +572,8 @@ parse_unary_expr_maybe(context_t *cnt)
 
   if (bl_token_is_unary(tok_op)) {
     bl_tokens_consume(cnt->tokens);
-    bl_node_t *next = parse_expr_maybe(cnt);
+    //bl_node_t *next = parse_expr_maybe(cnt);
+    bl_node_t *next = parse_expr_1(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_op));
 
     if (next == NULL) {
       bl_token_t *err_tok = bl_tokens_peek(cnt->tokens);

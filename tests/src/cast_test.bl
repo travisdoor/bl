@@ -3,7 +3,24 @@
  * ----------------
  */
 
+extern fn printf(s string, p *void) i32;
+extern fn puts(s string) i32;
+
+struct foo_t {
+  i *i32
+}
 
 fn main() i32 {
+  var foo foo_t;
+  var i i32;
+  foo.i = &i;
+
+  // cannot compile
+  if ((&i) == foo.i) {
+    puts("same"); 
+  } else {
+    puts("INVALID!!!"); 
+  }
+
   return 0;
 }

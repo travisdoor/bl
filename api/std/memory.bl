@@ -27,16 +27,12 @@
 //************************************************************************************************
 
 #load "std/debug.bl"
+#load "libc/libc.bl"
 
 public module std {
   public module memory {
-    module c {
-      public extern fn malloc(count size_t) *void;
-      public extern fn free(p *void);
-    }
-
     public fn malloc(count size_t) *void {
-      var p *void = c::malloc(count);
+      var p *void = libc::malloc(count);
       if (p == null)
         debug::abort();
       return p;
@@ -46,7 +42,7 @@ public module std {
       if (p == null)
         return;
 
-      c::free(p);
+      libc::free(p);
     }
   } 
 }

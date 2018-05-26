@@ -1189,6 +1189,10 @@ bl_ast_get_result_type(bl_node_t *node)
     type = bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type);
     break;
 
+  case BL_EXPR_CAST:
+    type = bl_peek_expr_cast(node)->to_type;
+    break;
+
   case BL_DECL_STRUCT:
   case BL_DECL_ENUM:
   case BL_TYPE_FUND:
