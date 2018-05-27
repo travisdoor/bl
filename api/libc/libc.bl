@@ -39,7 +39,4 @@ public module libc {
 
   public extern fn strlen(str string) size_t;
   public extern fn strcpy(dest string, source string) string;
-
-  // math
-  public extern fn sqrtf(f f32) f32;
 }

@@ -26,8 +26,6 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#load "libc/libc.bl"
-
 public module std {
   public module math {
     public struct vec2i_t {
@@ -35,24 +33,24 @@ public module std {
       public y i32
     }
 
-    public fn vec2i_set(vec *vec2i_t, x i32, y i32) {
+    public fn vec2i_init(vec *vec2i_t, x i32, y i32) {
       vec->x = x; 
       vec->y = y; 
     }
 
     public fn vec2i_add(a *vec2i_t, b *vec2i_t) {
       a->x = a->x + b->x; 
-      a->y = a->x + b->y; 
+      a->y = a->y + b->y; 
     }
 
     public fn vec2i_sub(a *vec2i_t, b *vec2i_t) {
       a->x = a->x - b->x; 
-      a->y = a->x - b->y; 
+      a->y = a->y - b->y; 
     }
 
     public fn vec2i_mul(a *vec2i_t, b *vec2i_t) {
       a->x = a->x * b->x; 
-      a->y = a->x * b->y; 
+      a->y = a->y * b->y; 
     }
 
 
@@ -61,39 +59,46 @@ public module std {
       public y f32
     }
 
-    public fn vec2f_set(vec *vec2f_t, x f32, y f32) {
+    public fn vec2f_init(vec *vec2f_t, x f32, y f32) {
       vec->x = x; 
       vec->y = y; 
     }
 
     public fn vec2f_add(a *vec2f_t, b *vec2f_t) {
       a->x = a->x + b->x; 
-      a->y = a->x + b->y; 
+      a->y = a->y + b->y; 
     }
 
     public fn vec2f_sub(a *vec2f_t, b *vec2f_t) {
       a->x = a->x - b->x; 
-      a->y = a->x - b->y; 
+      a->y = a->y - b->y; 
     }
 
     public fn vec2f_mul(a *vec2f_t, b *vec2f_t) {
       a->x = a->x * b->x; 
-      a->y = a->x * b->y; 
+      a->y = a->y * b->y; 
     }
 
     public fn vec2f_mulf(a *vec2f_t, f f32) {
       a->x = a->x * f; 
-      a->y = a->x * f; 
+      a->y = a->y * f; 
     }
 
     public fn vec2f_len(v *vec2f_t) f32 {
-      return libc::sqrtf(v->x * v->x + v->y * v->y);
+      return sqrtf(v->x * v->x + v->y * v->y);
     }
 
     public fn vec2f_normalize(v *vec2f_t) {
       var w f32 = vec2f_len(v);
       v->x = v->x / w;
       v->y = v->y / w;
+    }
+
+    public fn vec2f_rotate(v *vec2f_t, rad f32) {
+      var tmp vec2f_t;
+      tmp.x = v->x * cosf(rad) - v->y * sinf(rad);
+      tmp.y = v->x * sinf(rad) + v->y * cosf(rad);
+      (*v) = tmp;
     }
   }
 }

@@ -89,5 +89,13 @@ public module sdl2 {
                                     texture *texture_t,
                                     srcrect *rect_t,
                                     dstcrect *rect_t) i32;
+
+    public extern fn SDL_RenderCopyEx(renderer *renderer_t,
+				      texture *texture_t,
+				      srcrect *rect_t,
+				      dstrect *rect_t,
+				      angle f64,
+				      center *point_t,
+				      flip renderer_flip_e) i32;
   }
 }

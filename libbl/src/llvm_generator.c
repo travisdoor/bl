@@ -333,6 +333,11 @@ gen_cast(context_t *cnt, bl_node_t *cast)
       op = LLVMSIToFP;
       // bl_log("si -> fp");
       break;
+    case LLVMFloatTypeKind:
+    case LLVMDoubleTypeKind: {
+      op = LLVMFPExt;
+      break;
+    }
     default:
       break;
     }
@@ -526,7 +531,7 @@ gen_default(context_t *cnt, bl_node_t *type)
     }
 
     default:
-      bl_warning("LLVM cannot generate default value for node type: %s", bl_node_name(ref));
+      // bl_warning("LLVM cannot generate default value for node type: %s", bl_node_name(ref));
       return NULL;
     }
   }
@@ -550,6 +555,9 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
     }
+
+    LLVMTypeKind next_type_kind = LLVMGetTypeKind(next_type);
+
     int mult = 1;
     switch (_unary->op) {
     case BL_SYM_MINUS:
@@ -560,6 +568,11 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
       break;
     default:
       bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+    }
+
+    if (next_type_kind == LLVMFloatTypeKind || next_type_kind == LLVMDoubleTypeKind) {
+      LLVMValueRef cnst = LLVMConstReal(next_type, (double)mult);
+      return LLVMBuildFMul(cnt->llvm_builder, cnst, next_val, "");
     }
 
     LLVMValueRef cnst = LLVMConstInt(next_type, mult, false);
@@ -612,6 +625,8 @@ gen_expr(context_t *cnt, bl_node_t *expr)
                          (unsigned long long int)cnst->value.s, false);
       break;
     case BL_FTYPE_F32:
+      val = LLVMConstReal(LLVMFloatTypeInContext(cnt->llvm_cnt), cnst->value.f);
+      break;
     case BL_FTYPE_F64:
       val = LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), cnst->value.f);
       break;
@@ -729,8 +744,8 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   LLVMValueRef     rhs    = gen_expr(cnt, _binop->rhs);
 
   if (_binop->op == BL_SYM_ASIGN) {
-    /* special case for dereferencing on the right side, we need to perform additional load because
-     * we use pointer to data not real data. */
+    /* special case for dereferencing on the right side, we need to perform additional load
+     * because we use pointer to data not real data. */
     if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs)) {
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
     }
@@ -743,33 +758,71 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs))
     rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
+  LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
+  LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
+
+  bl_assert(lhs_kind == rhs_kind, "both operands of binary operation must be same type");
+  bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
   switch (_binop->op) {
   case BL_SYM_PLUS:
+    if (float_kind)
+      return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
     return LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_MINUS:
+    if (float_kind)
+      return LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_ASTERISK:
+    if (float_kind)
+      return LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_SLASH:
     return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_MODULO:
     return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_EQ:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, gname("tmp"));
+
   case BL_SYM_NEQ:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, gname("tmp"));
+
   case BL_SYM_GREATER:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, gname("tmp"));
+
   case BL_SYM_LESS:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, gname("tmp"));
+
   case BL_SYM_GREATER_EQ:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, gname("tmp"));
+
   case BL_SYM_LESS_EQ:
+    if (float_kind)
+      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, gname("tmp"));
+
   case BL_SYM_LOGIC_AND:
     return LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   case BL_SYM_LOGIC_OR:
     return LLVMBuildOr(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+
   default:
     bl_abort("unknown binop");
   }

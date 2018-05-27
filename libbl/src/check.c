@@ -191,9 +191,19 @@ bl_node_t *
 check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
-  // TODO
-  check_expr(cnt, _member_ref->next, NULL, const_expr);
+  bl_node_t *           member_type = bl_peek_decl_struct_member(_member_ref->ref)->type;
 
+  if (expected_type && !bl_type_compatible(member_type, expected_type)) {
+    bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+    bl_ast_try_get_type_name(member_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+
+    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref,
+                "incompatible type of member reference, expected is " BL_YELLOW(
+                    "'%s'") " but reference is " BL_YELLOW("'%s'"),
+                cnt->tname_tmp1, cnt->tname_tmp2);
+  }
+
+  check_expr(cnt, _member_ref->next, NULL, const_expr);
   return bl_peek_decl_struct_member(_member_ref->ref)->type;
 }
 

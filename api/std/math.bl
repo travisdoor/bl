@@ -27,3 +27,21 @@
 //*****************************************************************************
 
 #load "std/vec2.bl"
+
+public module std {
+  public module math {
+    public const Pi f64 = 3.14159265358;
+  
+    public extern fn sqrtf(f f32) f32;
+    public extern fn sinf(f f32) f32;
+    public extern fn cosf(f f32) f32;
+
+    public fn rad_to_deg(rad f32) f32 {
+      return rad * 180.f / cast(f32) Pi;
+    }
+
+    public fn deg_to_rad(deg f32) f32 {
+      return deg * cast(f32) Pi / 180.f;
+    }
+  }
+}

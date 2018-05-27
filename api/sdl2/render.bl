@@ -27,11 +27,17 @@
 //************************************************************************************************
 
 public module sdl2 {
-  public enum renderer_flags i32 {
+  public enum renderer_flags_e i32 {
     Software      = 0x00000001,
     Accelerated   = 0x00000002,
     PresentVSync  = 0x00000004,
     TargetTexture = 0x00000008
+  }
+
+  public enum renderer_flip_e i32 {
+    None       = 0x00000000,     
+    Horizontal = 0x00000001, 
+    Vertical   = 0x00000002   
   }
 
   public struct renderer_t {
@@ -72,5 +78,16 @@ public module sdl2 {
 
   public fn render_copy(renderer *renderer_t, texture *texture_t, srcrect *rect_t, destrect *rect_t) i32 {
     return c::SDL_RenderCopy(renderer, texture, srcrect, destrect);
+  }
+
+  public fn render_copy_ex(renderer *renderer_t,
+			   texture *texture_t,
+			   srcrect *rect_t,
+			   dstrect *rect_t,
+			   angle f64,
+			   center *point_t,
+			   flip renderer_flip_e) i32
+  {
+    return c::SDL_RenderCopyEx(renderer, texture, srcrect, dstrect, angle, center, flip);
   }
 }

@@ -73,6 +73,11 @@ public module sdl2 {
     Vulkan            = 0x10000000
   }
 
+  public struct point_t {
+    x i32,
+    y i32
+  }
+
   public struct window_t {
     handle *void 
   }
