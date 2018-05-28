@@ -46,7 +46,13 @@ public module sdl2 {
     GameController = 0x00002000,
     Events 	   = 0x00004000,
     NoParachute    = 0x00100000,
-    //Everything 	   = Timer | Audio | Video | Joystick | Haptic | GameController | Events
+    Everything 	   = cast(i32) Timer |
+    		     cast(i32) Audio |
+		     cast(i32) Video |
+		     cast(i32) Joystick |
+		     cast(i32) Haptic |
+		     cast(i32) GameController |
+		     cast(i32) Events
   }
 
   public enum window_flags_e i32 {

@@ -47,7 +47,7 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
 #endif
 
   char buf[1024];
-  sprintf(buf, cmd, assembly->name, assembly->name, "-lSDL2 -lSDL2_image");
+  sprintf(buf, cmd, assembly->name, assembly->name, "-lSDL2 -lSDL2_image -lm");
 
   /* TODO: handle error */
   int result = system(buf);

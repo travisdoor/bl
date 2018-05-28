@@ -292,7 +292,7 @@ gen_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMOpcode op = LLVMTrunc;
+  LLVMOpcode op = LLVMZExt;
 
   // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
@@ -395,9 +395,15 @@ gen_func(context_t *cnt, bl_node_t *func)
   const int   pc                                 = gen_func_args(cnt, _func, param_types);
 
   if (llvm_func == NULL) {
+    char name_tmp[BL_MAX_FUNC_NAME_LEN];
+    if (!(_func->modif & BL_MODIF_EXTERN) && !(_func->modif & BL_MODIF_EXPORT))
+      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "bl_%s", _func->id.str);
+    else 
+      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s", _func->id.str);
+    
     LLVMTypeRef ret      = to_llvm_type(cnt, _func->ret_type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
-    llvm_func            = LLVMAddFunction(cnt->mod, _func->id.str, ret_type);
+    llvm_func            = LLVMAddFunction(cnt->mod, &name_tmp[0], ret_type);
 
     if (!(_func->modif & BL_MODIF_EXTERN))
       push_value_gscope(func, llvm_func);

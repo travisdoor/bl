@@ -35,4 +35,17 @@ public module sdl2 {
     public mod u32,
     _unused u8[16]
   }
+
+  public fn get_key_state() *u8 {
+    return c::SDL_GetKeyboardState(null);
+  }
+
+  public fn key_pressed(scancode scancode_e) bool {
+    var tmp *u8 = get_key_state();
+    if (tmp == null)
+      return false;
+      
+    tmp = cast(*u8) (cast(u64) tmp + cast(u64) scancode);
+    return *tmp > cast(u8) 0;
+  }
 }

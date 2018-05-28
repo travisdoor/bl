@@ -48,6 +48,7 @@
 #endif
 
 #define BL_MAX_FUNC_ARG_COUNT 32
+#define BL_MAX_FUNC_NAME_LEN  512
 
 #if BL_DEBUG
 #define BL_ASSERT_ON_CMP_ERROR 1

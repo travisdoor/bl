@@ -97,5 +97,7 @@ public module sdl2 {
 				      angle f64,
 				      center *point_t,
 				      flip renderer_flip_e) i32;
+
+    public extern fn SDL_GetKeyboardState(numkeys *i32) *u8;
   }
 }
