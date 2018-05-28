@@ -398,9 +398,9 @@ gen_func(context_t *cnt, bl_node_t *func)
     char name_tmp[BL_MAX_FUNC_NAME_LEN];
     if (!(_func->modif & BL_MODIF_EXTERN) && !(_func->modif & BL_MODIF_EXPORT))
       snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "bl_%s", _func->id.str);
-    else 
+    else
       snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s", _func->id.str);
-    
+
     LLVMTypeRef ret      = to_llvm_type(cnt, _func->ret_type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
     llvm_func            = LLVMAddFunction(cnt->mod, &name_tmp[0], ret_type);
@@ -788,7 +788,9 @@ gen_binop(context_t *cnt, bl_node_t *binop)
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_SLASH:
-    return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    if (float_kind)
+      return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    return LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_MODULO:
     return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
