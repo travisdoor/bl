@@ -14,14 +14,15 @@
 |------|------|-----------------|
 | char | 1B   | character |
 | i8   | 1B   | signed number   |
+| i16  | 2B   | signed number   |
 | i32  | 4B   | signed number   |
 | i64  | 8B   | signed number   |
 | u8   | 1B   | unsigned number |
+| u16  | 2B   | unsigned number |
 | u32  | 4B   | unsigned number |
 | u64  | 8B   | unsigned number |
 | f32  | 4B   | floating-point number |
 | f64  | 8B   | floating-point number |
-| ptr | 8B   | pointer |
 | string | 8B   | pointer to string |
 | bool | 1b   | true/false |
 | size_t | arch-depend (4/8B)   | unsigned number |
@@ -54,6 +55,7 @@ nothing when function does not return any value.
     }
 
 ## Modules
+### Module declaration
 Modules are similar to C++ namespaces.
 
     /* EXAMPLE: Module */
@@ -87,6 +89,22 @@ Modules are similar to C++ namespaces.
       A::print_addition();
       // A::B::priv_add(2, 3) generates error (method is private for module A::B)
     }
+
+### Using
+Using can be used in global scope or local scope to symplify path to symbols inside other modules.
+
+	/* EXAMPLE: Using */
+	
+	module A {
+	  public module B {
+        public extern fn printf(s string) i32;
+      }
+	}
+	
+	fn main() {
+      using A::B; 
+      printf("hello world\n");
+	}
 	
 ## Variables
     

@@ -1,5 +1,5 @@
 * TASKS
-- [-] Enum [9/10]
+- [X] Enum [10/10]
   - [X] Enum declaration
   - [X] Enum variant node
   - [X] Enum type generation 
@@ -8,9 +8,9 @@
   - [X] Enum member access 
   - [X] Enum base expression generation (only numbers accepted for now)
   - [X] All expressions passed into evaluation must be validated by check as consts 
-  - [ ] Pointer enums are invalid!!! 
+  - [X] Pointer enums are invalid!!! 
   - [X] Check enum non-existing variant expression  
-- [-] Struct [8/12]
+- [-] Struct [9/12]
   - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
   - [X] Member ref expression node 
   - [X] Member ref expression node parsing
@@ -18,7 +18,7 @@
   - [X] Public and private struct members parsing.
   - [X] Struct member access
   - [X] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
-  - [ ] *Member access type checking* [[7][here]]
+  - [X] *Member access type checking* [[7][here]]
   - [X] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::satisfy_member(context_t%20*cnt,%20bl_node_t%20*expr)][here]] -> generate error if member is inaccessible  
   - [ ] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
   - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
@@ -35,8 +35,9 @@
   - [X] Use expression reference instead number in [N] 
   - [X] Array definition size as const expr 
   - [X] Handle zero sized arrays -> generate error (in check.c)
-- [ ] Casting [0/1]
-  - [ ] Parsing
+- [-] Casting [1/2]
+  - [X] Parsing
+  - [ ] Implicit numeric constant casting
 - [ ] For loop [0/1]
   - [ ] Parsing for (i i32 in 0..10) {}
 - [X] Global/local const [5/5]
@@ -47,7 +48,7 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [11/16]
+- [-] Other [11/15]
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
@@ -61,7 +62,6 @@
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
   - [X] Path parsing fix (last node of path must be parsed also) 
-  - [ ] Implicit numeric constant casting
   - [ ] Use talloc instead of normal memory allocators
   - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
 - [-] Unary operator (separate expression node in ast) [3/4]
@@ -81,8 +81,8 @@
   - [X] Pointer type fundamental
   - [X] Pointer type ref
   - [X] -> operator
-- [ ] Check [0/2]
-  - [ ] Only pointers can have null value
+- [-] Check [1/2]
+  - [X] Only pointers can have null value
   - [ ] Check numeric limits
 - [ ] Set size of size_t by target machine architecture [[file:~/Develop/bl/libbl/src/llvm_generator.c::if%20(sizeof(size_t)%20%3D%3D%204)%20{][here]]  
 - [X] Preprocesor #load [4/4]

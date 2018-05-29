@@ -556,7 +556,8 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 
   if (bl_node_is_not(_enm->type, BL_TYPE_FUND) ||
       (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_BOOL ||
-       bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID)) {
+       bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID) ||
+      bl_peek_type_fund(_enm->type)->is_ptr) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
                 "enumerator has invalid type, only numerical, string and char types are supported");
   }
