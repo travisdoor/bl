@@ -8,7 +8,8 @@
 	   multiline
 	   comment */
 
-## Fundamental types
+## Types
+### Fundamental types
 
 | Name | Size | Value           |
 |------|------|-----------------|
@@ -26,6 +27,48 @@
 | string | 8B   | pointer to string |
 | bool | 1b   | true/false |
 | size_t | arch-depend (4/8B)   | unsigned number |
+
+### Pointer types
+
+### Type casting
+
+### Struct
+Structures in BL are similar to C structures with a few exceptions: members are separated by comma
+and all members are private by default. Private members are visible only in current module in
+which is structure defined. Public members are visible for reading and writing from anywhere.
+Whole structure can be public also.
+
+    /* EXAMPLE: Struct */
+
+    module c {
+      public extern fn printf(s string, i i32) i32;
+    }
+
+    module data {
+      public struct user_t {
+        public name string,
+        public age i32,
+        id i32 // private struct member is visible only inside current module
+      }
+
+      public fn new_user(name string, age i32) user_t {
+        var user user_t;
+        user.name = name;
+        user.age = age; 
+        user.id = 666; // id is visible inside current module
+        return user;
+      }
+
+      public fn get_id(user user_t) i32 {
+        return user.id;
+      }
+    }
+
+    fn main() {
+      var user data::user_t = data::new_user("Tereza", 24);
+      c::printf("Tereza is %d years old\n", user.age);
+      c::printf("Tereza has id %d\n", data::get_id(user));
+    }
 
 	
 ## Functions
@@ -169,12 +212,12 @@ String and char typed enumerators must have explicit const-expr value set for ev
 
     // by default i32
 	enum foo {
-	  A = 0,     // 0
-	  B,         // 1
-	  C,         // 2
-	  D = 10,    // 10
-	  E = D + 1, // 11
-	  F          // 12
+	  A = 0,               // 0
+	  B,                   // 1
+	  C,                   // 2
+	  D = 10,              // 10
+	  E = cast(i32) D + 1, // 11
+	  F                    // 12
 	}
 
     // string enum (all variants must be explicitly set)
@@ -209,45 +252,6 @@ String and char typed enumerators must have explicit const-expr value set for ev
       }
     }
 
-	
-## Struct
-Structures in BL are similar to C structures with a few exceptions: members are separated by comma
-and all members are private by default. Private members are visible only in current module in
-which is structure defined. Public members are visible for reading and writing from anywhere.
-Whole structure can be public also.
-
-    /* EXAMPLE: Struct */
-
-    module c {
-      public extern fn printf(s string, i i32) i32;
-    }
-
-    module data {
-      public struct user_t {
-        public name string,
-        public age i32,
-        id i32 // private struct member is visible only inside current module
-      }
-
-      public fn new_user(name string, age i32) user_t {
-        var user user_t;
-        user.name = name;
-        user.age = age; 
-        user.id = 666; // id is visible inside current module
-        return user;
-      }
-
-      public fn get_id(user user_t) i32 {
-        return user.id;
-      }
-    }
-
-    fn main() {
-      var user data::user_t = data::new_user("Tereza", 24);
-      c::printf("Tereza is %d years old\n", user.age);
-      c::printf("Tereza has id %d\n", data::get_id(user));
-    }
-
 
 ## Preprocessor directives
 ### Load
@@ -255,7 +259,7 @@ Load preprocessor directive can be used for loading other source files into curr
 You can use relative path to files in current folder or in PATH environment variable.
 
 	#load "some/my/file.bl" // in current directory
-	#load "std/debug.bl" // in PATH
+	#load "std/debug.bl" // in PATH system variable
 	
 	fn main() i32 {
 	  return 0;
