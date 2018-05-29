@@ -98,6 +98,14 @@ visit_load(bl_visitor_t *visitor, bl_node_t *load)
 }
 
 static void
+visit_link(bl_visitor_t *visitor, bl_node_t *link)
+{
+  print_head("link", bl_peek_src(link), link, visitor->nesting);
+  fprintf(stdout, "path: " BL_YELLOW("'%s'"), bl_peek_pre_link(link)->lib);
+  bl_visitor_walk_link(visitor, link);
+}
+
+static void
 visit_module(bl_visitor_t *visitor, bl_node_t *module)
 {
   print_head("module", bl_peek_src(module), module, visitor->nesting);
@@ -379,6 +387,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_struct_member, BL_VISIT_STRUCT_MEMBER);
     bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
     bl_visitor_add(&visitor, visit_load, BL_VISIT_LOAD);
+    bl_visitor_add(&visitor, visit_link, BL_VISIT_LINK);
     bl_visitor_add(&visitor, visit_using, BL_VISIT_USING);
 
     bl_visitor_walk_module(&visitor, unit->ast.root);

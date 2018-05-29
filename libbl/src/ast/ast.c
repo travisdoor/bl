@@ -162,6 +162,18 @@ bl_ast_add_pre_load(bl_ast_t *ast, bl_token_t *tok, const char *filepath)
 }
 
 bl_node_t *
+bl_ast_add_pre_link(bl_ast_t *ast, bl_token_t *tok, const char *lib)
+{
+  bl_node_t *link = alloc_node(ast);
+  if (tok)
+    link->src = &tok->src;
+
+  link->code                  = BL_PRE_LINK;
+  bl_peek_pre_link(link)->lib = lib;
+  return link;
+}
+
+bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *expr_sizeof = alloc_node(ast);

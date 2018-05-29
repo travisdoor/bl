@@ -56,6 +56,7 @@
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
   sm(LOAD,        "#load") \
+  sm(LINK,        "#link") \
   sm(PUBLIC,      "public")\
   sm(EXTERN,      "extern") \
   sm(MODULE,      "module") \

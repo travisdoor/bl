@@ -39,6 +39,7 @@ typedef struct bl_assembly
 {
   BArray *          units;
   BHashTable *      unique_cache;
+  BHashTable *      link_cache;
   char *            name;
 
   /* LLVM objects */

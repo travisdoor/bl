@@ -217,6 +217,12 @@ visit_pre_load(bl_visitor_t *visitor, bl_node_t *pre_load)
 }
 
 static void
+visit_pre_link(bl_visitor_t *visitor, bl_node_t *pre_link)
+{
+  bl_visitor_walk_link(visitor, pre_link);
+}
+
+static void
 visit_using(bl_visitor_t *visitor, bl_node_t *using)
 {
   bl_visitor_walk_using(visitor, using);
@@ -246,6 +252,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_STRUCT_MEMBER] = visit_struct_member;
   visitor->visitors[BL_VISIT_ENUM_VARIANT]  = visit_enum_variant;
   visitor->visitors[BL_VISIT_LOAD]          = visit_pre_load;
+  visitor->visitors[BL_VISIT_LINK]          = visit_pre_link;
   visitor->visitors[BL_VISIT_USING]         = visit_using;
 }
 
@@ -298,6 +305,11 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t *module)
 
     case BL_PRE_LOAD: {
       call_visit(visitor, node, BL_VISIT_LOAD);
+      break;
+    }
+
+    case BL_PRE_LINK: {
+      call_visit(visitor, node, BL_VISIT_LINK);
       break;
     }
 
@@ -608,6 +620,12 @@ bl_visitor_walk_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 
 void
 bl_visitor_walk_load(bl_visitor_t *visitor, bl_node_t *pre_load)
+{
+  // terminal
+}
+
+void
+bl_visitor_walk_link(bl_visitor_t *visitor, bl_node_t *pre_link)
 {
   // terminal
 }

@@ -84,7 +84,8 @@
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
-    nt(PRE_LOAD,           pre_load)
+    nt(PRE_LOAD,           pre_load) \
+    nt(PRE_LINK,           pre_link)
 
 // clang-format on
 
@@ -375,6 +376,12 @@ struct bl_pre_load
   const char *filepath;
 };
 
+struct bl_pre_link
+{
+  /* use id? */
+  const char *lib;
+};
+
 struct bl_node
 {
   bl_src_t *     src;
@@ -429,6 +436,9 @@ bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_pre_load(bl_ast_t *ast, bl_token_t *tok, const char *filepath);
+
+bl_node_t *
+bl_ast_add_pre_link(bl_ast_t *ast, bl_token_t *tok, const char *lib);
 
 bl_node_t *
 bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c);

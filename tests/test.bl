@@ -1,7 +1,9 @@
 /* testing playground */
 
-enum foo_e *i32 {
-}
+#link "SDL2"
+#link "SDL2"
+#link "SDL2"
+#link "SDL2"
 
 fn main() {
 }

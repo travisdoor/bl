@@ -26,6 +26,10 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#link "SDL2_image"
+
+#load "sdl2/sdl2.bl"
+
 public module sdl2_img {
   module c {
     public extern fn IMG_Load(file string) *sdl2::surface_t;

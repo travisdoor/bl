@@ -39,6 +39,9 @@ typedef struct {
 static void
 preproc_load(bl_visitor_t *visitor, bl_node_t *load);
 
+static void
+preproc_link(bl_visitor_t *visitor, bl_node_t *link);
+
 void
 preproc_load(bl_visitor_t *visitor, bl_node_t *load)
 {
@@ -49,6 +52,13 @@ preproc_load(bl_visitor_t *visitor, bl_node_t *load)
   if (added == false) {
     bl_unit_delete(unit);
   }
+}
+
+void
+preproc_link(bl_visitor_t *visitor, bl_node_t *link)
+{
+  context_t *    cnt   = peek_cnt(visitor);
+  bl_assembly_add_link(cnt->assembly, bl_peek_pre_link(link)->lib);
 }
 
 /*************************************************************************************************
@@ -62,6 +72,7 @@ bl_preproc_run(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly)
   bl_visitor_t visitor_preproc;
   bl_visitor_init(&visitor_preproc, &cnt);
   bl_visitor_add(&visitor_preproc, preproc_load, BL_VISIT_LOAD);
+  bl_visitor_add(&visitor_preproc, preproc_link, BL_VISIT_LINK);
   bl_visitor_add(&visitor_preproc, BL_SKIP_VISIT, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_preproc, BL_SKIP_VISIT, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor_preproc, BL_SKIP_VISIT, BL_VISIT_CONST);

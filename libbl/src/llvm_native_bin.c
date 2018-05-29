@@ -43,12 +43,25 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
       "-lc %s "
       "/usr/lib64/crtn.o";
 #elif defined(BL_PLATFORM_MACOS)
-  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o %s";
+  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
 #endif
 
+  // TODO: use dynamic buffer
   char buf[1024];
-  sprintf(buf, cmd, assembly->name, assembly->name, "-lSDL2 -lSDL2_image -lm");
+  sprintf(buf, cmd, assembly->name, assembly->name);
 
+  bo_iterator_t iter = bo_htbl_begin(assembly->link_cache);
+  bo_iterator_t end  = bo_htbl_end(assembly->link_cache);
+  const char *  lib  = NULL;
+  while (!bo_iterator_equal(&iter, &end)) {
+    lib = bo_htbl_iter_peek_value(assembly->link_cache, &iter, const char *);
+    strcat(&buf[0], " -l");
+    strcat(&buf[0], lib);
+    bo_htbl_iter_next(assembly->link_cache, &iter);
+    bl_log("linking %s", lib);
+  }
+
+  bl_log("cmd %s", buf);
   /* TODO: handle error */
   int result = system(buf);
   if (result != 0) {

@@ -45,6 +45,9 @@ bl_assembly_delete(bl_assembly_ref assembly);
 extern BO_EXPORT void
 bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
 
+extern BO_EXPORT void
+bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
+
 extern BO_EXPORT bool 
 bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
 

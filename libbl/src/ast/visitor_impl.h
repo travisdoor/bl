@@ -55,6 +55,7 @@ typedef enum {
   BL_VISIT_RETURN,
   BL_VISIT_SIZEOF,
   BL_VISIT_LOAD,
+  BL_VISIT_LINK,
   BL_VISIT_USING,
   BL_VISIT_COUNT
 } bl_visit_e;
@@ -139,6 +140,9 @@ bl_visitor_walk_return(bl_visitor_t *visitor, bl_node_t *stmt_return);
 
 void
 bl_visitor_walk_load(bl_visitor_t *visitor, bl_node_t *pre_load);
+
+void
+bl_visitor_walk_link(bl_visitor_t *visitor, bl_node_t *pre_link);
 
 void
 bl_visitor_walk_using(bl_visitor_t *visitor, bl_node_t *using);
