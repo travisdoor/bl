@@ -76,8 +76,13 @@ Pointer variables are set to null by default.
 	
 	var i i32;
 	i32_ptr = &i; // store address of i variable
+	
+	i = *i32_ptr; // dereferencing of pointer
 
 ### Type casting
+
+	var a i32;
+	var b i64 = cast(i63) a; 
 
 	
 ## Functions
