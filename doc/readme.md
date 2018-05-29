@@ -91,7 +91,7 @@ Modules are similar to C++ namespaces.
     }
 
 ### Using
-Using can be used in global scope or local scope to symplify path to symbols inside other modules.
+Using can be used in global scope or local scope to symplify path to symbols inside other modules. Only public modules are exposed via using.
 
 	/* EXAMPLE: Using */
 	
@@ -102,8 +102,16 @@ Using can be used in global scope or local scope to symplify path to symbols ins
 	}
 	
 	fn main() {
+      {
+        {
+           // using affect symbol lookup only in current block
+           using A::B; 
+           printf("hello from nested block\n");
+        }
+      }
+
       using A::B; 
-      printf("hello world\n");
+      printf("hello from local scope\n");
 	}
 	
 ## Variables
