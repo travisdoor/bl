@@ -4,7 +4,7 @@
 The Biscuit is programming language inspired by C and Rust.
 
 ## Change log
-* Not released yet.
+* 0.2.0 - pre alpha basic language with lot of bugs :)
 
 ## Platforms
 * MacOS (clang)

@@ -114,12 +114,12 @@
   - [X] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
-* BUGS [2/7]
+* BUGS [3/8]
 - [ ] (1) When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] (2) Cannot evaluate array size inside structures. 
 - [ ] (3) Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
 - [ ] (4) Invalid copying of: rect_src.w = e->rect.w;
-- [ ] (5) Wrong parsing of cast expressions cast(i32) foo->i;  
+- [X] (5) Wrong parsing of cast expressions cast(i32) foo->i;  
 - [X] (6) Unable to return struct member copy from the function
 - [ ] (7) Missing checking: some_module./->foo
 - [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
