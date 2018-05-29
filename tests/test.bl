@@ -1,34 +1,32 @@
 /* testing playground */
 
-#load "std/memory.bl"
-#load "std/debug.bl"
+struct foo_t {
+  bar bar_t, 
+  a i32 = 666,
+  b i32 = 10,
+  c i32
+}
 
-using std::memory;
-using std::debug;
+struct bar_t {
+  a i32 = 1000
+}
+
+extern fn printf(s string, i i32);
 
 fn main() {
-  const count i32 = 256;
-  var data *i32 = cast(*i32) malloc(cast(size_t) count * sizeof(i32));
+  var foo foo_t; 
+  // foo.a = 666
+  // foo.b = 10
+  // foo.c = 0
+  // foo.bar.a = 1000
 
   var i i32;
-  var iter *i32 = data;
-
-  while (i < count) {
-    (*iter) = i;
-    iter = cast(*i32) (cast(size_t) iter + sizeof(i32));
-    i = i + 1;
-  }
-
-  i = 0;
-  iter = data;
-  while (i < count) {
-    print("data = %d\n", (*iter));
-
-    iter = cast(*i32) (cast(size_t) iter + sizeof(i32));
-    i = i + 1;
-  }
- 
-  free(cast(*void) data);
+  // i = 0
+  
+  printf("foo.a = %d\n", foo.a);
+  printf("foo.b = %d\n", foo.b);
+  printf("foo.c = %d\n", foo.c);
+  printf("foo.bar.a = %d\n", foo.bar.a);
 }
 
 

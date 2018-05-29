@@ -588,6 +588,8 @@ bl_visitor_walk_struct_member(bl_visitor_t *visitor, bl_node_t *member)
   bl_decl_struct_member_t *_member = bl_peek_decl_struct_member(member);
 
   call_visit(visitor, _member->type, BL_VISIT_TYPE);
+  if (_member->init_expr)
+    call_visit(visitor, _member->init_expr, BL_VISIT_EXPR);
   visitor->nesting--;
 }
 

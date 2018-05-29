@@ -1013,7 +1013,6 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
       def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
   }
 
-  // TODO: can't generate default values for struct members
   if (def)
     LLVMBuildStore(cnt->llvm_builder, def, llvm_var);
 

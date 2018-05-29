@@ -480,8 +480,7 @@ parse_cast_expr_maybe(context_t *cnt)
     bl_node_t *to_type = parse_type_maybe(cnt);
     if (to_type == NULL) {
       tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok,
-                  "expected type name as cast parameter");
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, "expected type name as cast parameter");
     }
 
     tok = bl_tokens_consume(cnt->tokens);
@@ -493,13 +492,12 @@ parse_cast_expr_maybe(context_t *cnt)
     bl_node_t *next = parse_expr_1(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin));
     if (next == NULL) {
       tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok,
-                  "expected expression after cast");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected expression after cast");
     }
 
     cast = bl_ast_add_expr_cast(cnt->ast, tok_begin, to_type, next);
   }
-  
+
   return cast;
 }
 
@@ -572,7 +570,7 @@ parse_unary_expr_maybe(context_t *cnt)
 
   if (bl_token_is_unary(tok_op)) {
     bl_tokens_consume(cnt->tokens);
-    //bl_node_t *next = parse_expr_maybe(cnt);
+    // bl_node_t *next = parse_expr_maybe(cnt);
     bl_node_t *next = parse_expr_1(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_op));
 
     if (next == NULL) {
@@ -1226,8 +1224,20 @@ parse_struct_member_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
   }
 
-  /* TODO: parse initialization expression here */
-  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif);
+  /* parse initialization expression if there is one */
+  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  bl_node_t * init_expr = NULL;
+  if (tok_expr) {
+    init_expr = parse_expr_maybe(cnt);
+    if (!init_expr) {
+      parse_error(
+          cnt, BL_ERR_EXPECTED_EXPR, tok_expr,
+          "expected init expression after " BL_YELLOW("=") " for struct member " BL_YELLOW("'%s'"),
+          tok_id->value.str);
+    }
+  }
+
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif, init_expr);
 }
 
 bl_node_t *

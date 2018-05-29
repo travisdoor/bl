@@ -46,6 +46,6 @@ public module sdl2 {
       return false;
       
     tmp = cast(*u8) (cast(u64) tmp + cast(u64) scancode);
-    return *tmp > cast(u8) 0;
+    return false;
   }
 }
