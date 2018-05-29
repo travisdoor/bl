@@ -69,7 +69,7 @@ Whole structure can be public also.
 
 ### Pointer types
 Pointer to storage of any type can be defined with asterix prefix before type definition.
-Pointer variables are set no null by default.
+Pointer variables are set to null by default.
 
 	var i32_ptr *i32;
 	i32_ptr = null;
