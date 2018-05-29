@@ -10,6 +10,7 @@
 
 ## Types
 ### Fundamental types
+Basic data types integrated into compiler.
 
 | Name | Size | Value           |
 |------|------|-----------------|
@@ -27,10 +28,6 @@
 | string | 8B   | pointer to string |
 | bool | 1b   | true/false |
 | size_t | arch-depend (4/8B)   | unsigned number |
-
-### Pointer types
-
-### Type casting
 
 ### Struct
 Structures in BL are similar to C structures with a few exceptions: members are separated by comma
@@ -69,6 +66,15 @@ Whole structure can be public also.
       c::printf("Tereza is %d years old\n", user.age);
       c::printf("Tereza has id %d\n", data::get_id(user));
     }
+
+### Pointer types
+Pointer to any type can be defined with asterix prefix.
+
+	var i32_ptr *i32;
+	
+Pointer variables are set no null by default.
+
+### Type casting
 
 	
 ## Functions
