@@ -1,11 +1,24 @@
 /* testing playground */
 
-#link "SDL2"
-#link "SDL2"
-#link "SDL2"
-#link "SDL2"
+#load "src/utest.bl"
+
+using utest;
+
+struct A {
+  b B, // use defaults for structure B
+  x i32 = 10, // has init expr
+  y i32 // should use default for i32
+}
+
+struct B {
+  x i32 = 666 // init expr
+}
 
 fn main() {
+  var a A; 
+  assert(a.x == 10);
+  assert(a.y == 0);
+  assert(a.b.x == 666);
 }
 
 

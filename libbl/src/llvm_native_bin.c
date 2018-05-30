@@ -40,8 +40,8 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
       "/usr/lib64/crti.o "
       "-L/usr/bin "
       "-L/usr/lib64 "
-      "-lc %s "
-      "/usr/lib64/crtn.o";
+      "/usr/lib64/crtn.o "
+      "-lc ";
 #elif defined(BL_PLATFORM_MACOS)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
 #endif

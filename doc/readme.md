@@ -148,7 +148,8 @@ Modules are similar to C++ namespaces.
     }
 
 ### Using
-Using can be used in global scope or local scope to symplify path to symbols inside other modules. Only public modules are exposed via using.
+Using can be used in global scope or local scope to symplify path to symbols inside other modules. 
+Only public symbols are exposed via using directive.
 
 	/* EXAMPLE: Using */
 	

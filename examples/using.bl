@@ -1,0 +1,20 @@
+/* EXAMPLE: Using */
+
+module A {
+  public module B {
+    public extern fn printf(s string) i32;
+  }
+}
+
+fn main() {
+  {
+    {
+       // using affect symbol lookup only in current block
+       using A::B; 
+       printf("hello from nested block\n");
+    }
+  }
+
+  using A::B; 
+  printf("hello from local scope\n");
+}
