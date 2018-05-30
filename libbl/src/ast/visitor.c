@@ -505,6 +505,17 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     break;
   }
 
+  case BL_EXPR_INIT: {
+    bl_expr_init_t *init = bl_peek_expr_init(expr);
+    const size_t    c    = bl_ast_init_expr_count(init);
+    bl_node_t *     expr  = NULL;
+    for (size_t i = 0; i < c; ++i) {
+      expr = bl_ast_init_get_expr(init, i);
+      call_visit(visitor, expr, BL_VISIT_EXPR);
+    }
+    break;
+  }
+
   case BL_EXPR_CALL: {
     bl_expr_call_t *call = bl_peek_expr_call(expr);
     const size_t    c    = bl_ast_call_arg_count(call);

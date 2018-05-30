@@ -69,6 +69,9 @@ static bl_node_t *
 parse_using_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_init_expr_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
@@ -603,6 +606,9 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
     return expr;
 
   if ((expr = parse_nested_expr_maybe(cnt)))
+    return expr;
+
+  if ((expr = parse_init_expr_maybe(cnt)))
     return expr;
 
   if ((expr = parse_cast_expr_maybe(cnt)))
@@ -1228,6 +1234,40 @@ parse_using_maybe(context_t *cnt)
   }
 
   return bl_ast_add_stmt_using(cnt->ast, tok, path);
+}
+
+bl_node_t *
+parse_init_expr_maybe(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+  if (!tok_begin)
+    return NULL;
+
+  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, NULL);
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+  bl_node_t *     expr  = NULL;
+  bl_token_t *    tok   = NULL;
+next_expr:
+  /* eat ident */
+  expr = parse_expr_maybe(cnt);
+  if (bl_ast_init_push_expr(_init, expr)) {
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+      goto next_expr;
+    } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+      tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+                  "initializer list expressions must be separated by comma " BL_YELLOW("','"));
+    }
+  }
+
+  /* eat '}' */
+  bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
+  if (tok_end->sym != BL_SYM_RBLOCK) {
+    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
+                "expected end of the initialization block " BL_YELLOW("'}'"));
+  }
+
+  return init;
 }
 
 bl_node_t *

@@ -75,6 +75,9 @@ node_terminate(bl_node_t *node)
   case BL_EXPR_DECL_REF:
     bo_unref(bl_peek_expr_decl_ref(node)->path);
     break;
+  case BL_EXPR_INIT:
+    bo_unref(bl_peek_expr_init(node)->exprs);
+    break;
   case BL_TYPE_REF:
     bo_unref(bl_peek_type_ref(node)->path);
     bo_unref(bl_peek_type_ref(node)->dims);
@@ -197,6 +200,20 @@ bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node
   _cast->next           = next;
   _cast->to_type        = to_type;
   return cast;
+}
+
+bl_node_t *
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+{
+  bl_node_t *init = alloc_node(ast);
+  if (tok)
+    init->src = &tok->src;
+
+  init->code            = BL_EXPR_INIT;
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+  _init->type           = type;
+  _init->exprs          = bo_array_new(sizeof(bl_node_t *));
+  return init;
 }
 
 bl_node_t *
@@ -765,6 +782,40 @@ bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i)
   if (call->args == NULL)
     return NULL;
   return bo_array_at(call->args, i, bl_node_t *);
+}
+
+/*************************************************************************************************
+ * init
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr)
+{
+  if (expr == NULL)
+    return NULL;
+
+  if (init->exprs == NULL) {
+    init->exprs = bo_array_new(sizeof(bl_node_t *));
+  }
+
+  bo_array_push_back(init->exprs, expr);
+  return expr;
+}
+
+size_t
+bl_ast_init_expr_count(bl_expr_init_t *init)
+{
+  if (init->exprs == NULL)
+    return 0;
+
+  return bo_array_size(init->exprs);
+}
+
+bl_node_t *
+bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i)
+{
+  if (init->exprs == NULL)
+    return NULL;
+  return bo_array_at(init->exprs, i, bl_node_t *);
 }
 
 /*************************************************************************************************

@@ -1,24 +1,38 @@
 /* testing playground */
 
-#load "src/utest.bl"
-
-using utest;
+extern fn printf(s string, i i32) i32;
 
 struct A {
-  b B, // use defaults for structure B
+  b B,
   x i32 = 10, // has init expr
   y i32 // should use default for i32
 }
 
 struct B {
-  x i32 = 666 // init expr
+  c C,
+  x i32
+}
+
+struct C {
+  x i32
 }
 
 fn main() {
-  var a A; 
-  assert(a.x == 10);
-  assert(a.y == 0);
-  assert(a.b.x == 666);
+  var a A = {
+    a.b.x = 666,
+    a.b.c.x = 888,
+    a.x = 1,
+    a.y = 2
+  }; 
+
+  var b i32 = { 3 };
+
+  printf("b = %d\n", b);
+
+  printf("a.x = %d\n", a.x);
+  printf("a.y = %d\n", a.y);
+  printf("a.b.x = %d\n", a.b.x);
+  printf("a.b.c.x = %d\n", a.b.c.x);
 }
 
 

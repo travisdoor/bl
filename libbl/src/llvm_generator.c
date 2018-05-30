@@ -93,6 +93,9 @@ typedef struct
   LLVMValueRef ret_value;
 } context_t;
 
+static LLVMValueRef
+gen_init(context_t *cnt, bl_node_t *init);
+
 static int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out);
 
@@ -121,8 +124,10 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref);
 /* gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims, */
 /*                 size_t *dims_iter, size_t *iter); */
 
+#if 0
 static LLVMValueRef
 gen_default(context_t *cnt, bl_node_t *type);
+#endif
 
 static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
@@ -239,6 +244,26 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   }
 
   return llvm_type;
+}
+
+LLVMValueRef
+gen_init(context_t *cnt, bl_node_t *init)
+{
+  bl_log("init expr");
+  LLVMValueRef    result = NULL;
+  bl_expr_init_t *_init  = bl_peek_expr_init(init);
+  const size_t    c      = bl_ast_init_expr_count(_init);
+  bl_node_t *     expr   = NULL;
+
+  for (size_t i = 0; i < c; ++i) {
+    expr   = bl_ast_init_get_expr(_init, i);
+    result = gen_expr(cnt, expr);
+    if (result)
+      break;
+  }
+
+  /* return null just for convension */
+  return result;
 }
 
 LLVMTypeRef
@@ -474,6 +499,7 @@ get_or_create_const_string(context_t *cnt, const char *str)
   return s;
 }
 
+#if 0
 /*
  * Generate default value for known type.
  * For string we create global string array with line terminator.
@@ -544,6 +570,7 @@ gen_default(context_t *cnt, bl_node_t *type)
 
   return NULL;
 }
+#endif
 
 /*
  * generate unary expressions like +, -, &, *, ++, --, ...
@@ -676,6 +703,11 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_NULL: {
     val = gen_null(cnt, expr);
+    break;
+  }
+
+  case BL_EXPR_INIT: {
+    val = gen_init(cnt, expr);
     break;
   }
 
@@ -995,28 +1027,20 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef llvm_var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_var->id.str));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-
-  /*
-   * Generate expression if there is one or use default value instead.
-   */
-  LLVMValueRef def = NULL;
-  if (_var->init_expr) {
-    def = gen_expr(cnt, _var->init_expr);
-
-    if (should_load(_var->init_expr) || LLVMIsAAllocaInst(def))
-      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
-
-  } else {
-    def = gen_default(cnt, _var->type);
-
-    if (LLVMIsAAllocaInst(def))
-      def = LLVMBuildLoad(cnt->llvm_builder, def, gname("tmp"));
-  }
-
-  if (def)
-    LLVMBuildStore(cnt->llvm_builder, def, llvm_var);
-
   push_value_cscope(var, llvm_var);
+
+
+  bl_assert(_var->init_expr, "invalid init expression for variable declaration");
+  LLVMValueRef init = gen_expr(cnt, _var->init_expr);
+  if (init) {
+    /* store value when it is generated (in some cases here when we have variable of the reference
+     * type to something which can be initialized by initialization list gen_expr result can be NULL
+     * becouse initialization list has no return value) */
+
+    if (should_load(_var->init_expr) || LLVMIsAAllocaInst(init))
+      init = LLVMBuildLoad(cnt->llvm_builder, init, gname("tmp"));
+    LLVMBuildStore(cnt->llvm_builder, init, llvm_var);
+  }
 }
 
 static void

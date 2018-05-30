@@ -81,6 +81,7 @@
     nt(EXPR_SIZEOF,        expr_sizeof) \
     nt(EXPR_NULL,          expr_null) \
     nt(EXPR_CAST,          expr_cast) \
+    nt(EXPR_INIT,          expr_init) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
@@ -200,6 +201,12 @@ struct bl_expr_cast
 {
   bl_node_t *to_type;
   bl_node_t *next;
+};
+
+struct bl_expr_init
+{
+  bl_node_t *type;
+  BArray *   exprs;
 };
 
 /* module declaration */
@@ -477,6 +484,9 @@ bl_node_t *
 bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next);
 
 bl_node_t *
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
+
+bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
 
 bl_node_t *
@@ -589,6 +599,18 @@ bl_ast_call_arg_count(bl_expr_call_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i);
+
+/*************************************************************************************************
+ * init 
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr);
+
+size_t
+bl_ast_init_expr_count(bl_expr_init_t *init);
+
+bl_node_t *
+bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i);
 
 /*************************************************************************************************
  * struct

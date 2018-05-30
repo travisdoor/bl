@@ -455,6 +455,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
   case BL_EXPR_CAST:
     return check_cast(cnt, expr, expected_type, const_expr);
 
+  case BL_EXPR_INIT:
+    return NULL;
+
   default:
     bl_abort("node is not expression");
   }

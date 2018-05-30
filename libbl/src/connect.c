@@ -679,6 +679,7 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_MEMBER_REF:
     connect_member_ref(cnt, expr);
     break;
+
   default:
     break;
   }
