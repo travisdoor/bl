@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include <bobject/containers/hash.h>
-#include "ast/id_impl.h"
+#include "id_impl.h"
 
 void
 bl_id_init(bl_id_t *id, const char *str)

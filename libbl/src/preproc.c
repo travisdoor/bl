@@ -28,7 +28,7 @@
 
 #include "common_impl.h"
 #include "stages_impl.h"
-#include "ast/visitor_impl.h"
+#include "visitor_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 

@@ -28,7 +28,7 @@
 
 #include "scope_impl.h"
 #include "common_impl.h"
-#include "ast/ast_impl.h"
+#include "ast_impl.h"
 
 /*************************************************************************************************
  * Scope Cache

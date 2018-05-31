@@ -29,8 +29,8 @@
 #include <stdio.h>
 #include "stages_impl.h"
 #include "common_impl.h"
-#include "ast/ast_impl.h"
-#include "ast/visitor_impl.h"
+#include "ast_impl.h"
+#include "visitor_impl.h"
 
 #define print_head(name, src, ptr, pad)                                                            \
   fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), (pad)*2, "",       \

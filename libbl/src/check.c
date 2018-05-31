@@ -29,7 +29,7 @@
 #include <setjmp.h>
 #include "common_impl.h"
 #include "stages_impl.h"
-#include "ast/visitor_impl.h"
+#include "visitor_impl.h"
 
 /* Check perform one pass over AST tree where it solves implicit casting and checking of type
  * compatibility of expression nodes. */

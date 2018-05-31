@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "ast/ast_impl.h"
+#include "ast_impl.h"
 
 const char *bl_fund_type_strings[] = {
 #define ft(tok, str) str,
