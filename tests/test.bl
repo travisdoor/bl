@@ -29,12 +29,12 @@ fn main() {
    * initialization list will generate temporary variable of 
    * desired type and set variable a
    */
-  a = A {
+  /*a = A {
     a.b.x = 666,
     a.b.c.x = 888,
     a.x = 1,
     a.y = 2
-  }; 
+  }; */
 
   printf("a.x = %d\n", a.x);
   printf("a.y = %d\n", a.y);
