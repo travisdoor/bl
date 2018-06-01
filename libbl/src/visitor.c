@@ -506,11 +506,18 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 
   case BL_EXPR_INIT: {
-    bl_expr_init_t *init = bl_peek_expr_init(expr);
-    const size_t    c    = bl_ast_init_expr_count(init);
-    bl_node_t *     expr  = NULL;
+    bl_expr_init_t *_init = bl_peek_expr_init(expr);
+
+    if (_init->type)
+      call_visit(visitor, _init->type, BL_VISIT_TYPE);
+
+    if (_init->tmp)
+      call_visit(visitor, _init->tmp, BL_VISIT_VAR);
+
+    const size_t c    = bl_ast_init_expr_count(_init);
+    bl_node_t *  expr = NULL;
     for (size_t i = 0; i < c; ++i) {
-      expr = bl_ast_init_get_expr(init, i);
+      expr = bl_ast_init_get_expr(_init, i);
       call_visit(visitor, expr, BL_VISIT_EXPR);
     }
     break;
@@ -529,7 +536,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_CONST:
   case BL_EXPR_DECL_REF:
-  case BL_EXPR_NULL: 
+  case BL_EXPR_NULL:
     break;
 
   default:

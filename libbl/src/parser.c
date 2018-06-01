@@ -1239,14 +1239,32 @@ parse_using_maybe(context_t *cnt)
 bl_node_t *
 parse_init_expr_maybe(context_t *cnt)
 {
+  bl_node_t *type = NULL;
+  /* Initialization list can have explicitly defined resulting type of initialization. */
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LBLOCK))
+    type = parse_type_maybe(cnt);
+
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
   if (!tok_begin)
     return NULL;
 
-  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, NULL);
+  /* Type of initialization list can be NULL, in such case we must have reference to value which
+   * we want to initialize. */
+  if (type == NULL) {
+    parse_error(cnt, BL_ERR_UNKNOWN_TYPE, tok_begin,
+                "unknown result type of initialization list expression");
+  }
+
+  /* When we know which value we are trying to initialize use reference to this value instead of
+   * creating temporary one. */
+  bl_node_t *tmp = bl_ast_add_decl_var(cnt->ast, tok_begin, "tmp", type, NULL, BL_MODIF_NONE);
+
+  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type, tmp);
   bl_expr_init_t *_init = bl_peek_expr_init(init);
   bl_node_t *     expr  = NULL;
   bl_token_t *    tok   = NULL;
+
+  /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
 next_expr:
   /* eat ident */
   expr = parse_expr_maybe(cnt);

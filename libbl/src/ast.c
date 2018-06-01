@@ -203,7 +203,7 @@ bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node
 }
 
 bl_node_t *
-bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bl_node_t *tmp)
 {
   bl_node_t *init = alloc_node(ast);
   if (tok)
@@ -212,6 +212,7 @@ bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
   init->code            = BL_EXPR_INIT;
   bl_expr_init_t *_init = bl_peek_expr_init(init);
   _init->type           = type;
+  _init->tmp            = tmp;
   _init->exprs          = bo_array_new(sizeof(bl_node_t *));
   return init;
 }

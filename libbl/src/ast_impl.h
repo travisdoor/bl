@@ -206,6 +206,7 @@ struct bl_expr_cast
 struct bl_expr_init
 {
   bl_node_t *type;
+  bl_node_t *tmp;
   BArray *   exprs;
 };
 
@@ -484,7 +485,7 @@ bl_node_t *
 bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bl_node_t *tmp);
 
 bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
