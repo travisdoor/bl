@@ -228,6 +228,9 @@ struct bl_decl_var
   bl_node_t *type;
   bl_node_t *init_expr;
   int        used;
+
+  /* variable invisible for symbol lookup functions when true */
+  bool is_anonymous;
 };
 
 struct bl_decl_const
@@ -502,7 +505,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr, int modif);
+                    bl_node_t *init_expr, int modif, bool is_anonymous);
 
 bl_node_t *
 bl_ast_add_decl_const(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,

@@ -18,17 +18,22 @@ struct C {
 }
 
 fn main() {
-  var a A;
+  var a A = A {
+    a.b.x = 666,
+    a.b.c.x = 888,
+    a.x = 1,
+    a.y = 2
+  }; 
 
   /* 
    * initialization list will generate temporary variable of 
    * desired type and set variable a
    */
   a = A {
-    .b.x = 666,
-    .b.c.x = 888,
-    .x = 1,
-    .y = 2
+    a.b.x = 666,
+    a.b.c.x = 888,
+    a.x = 1,
+    a.y = 2
   }; 
 
   printf("a.x = %d\n", a.x);

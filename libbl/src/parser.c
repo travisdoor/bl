@@ -773,7 +773,7 @@ parse_var_maybe(context_t *cnt, int modif)
     }
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif);
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif, false);
 }
 
 void
@@ -1257,7 +1257,8 @@ parse_init_expr_maybe(context_t *cnt)
 
   /* When we know which value we are trying to initialize use reference to this value instead of
    * creating temporary one. */
-  bl_node_t *tmp = bl_ast_add_decl_var(cnt->ast, tok_begin, "tmp", type, NULL, BL_MODIF_NONE);
+  bl_node_t *tmp =
+      bl_ast_add_decl_var(cnt->ast, tok_begin, "_init_tmp", type, NULL, BL_MODIF_NONE, true);
 
   bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type, tmp);
   bl_expr_init_t *_init = bl_peek_expr_init(init);

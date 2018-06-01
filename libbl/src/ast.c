@@ -420,16 +420,17 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr, int modif)
+                    bl_node_t *init_expr, int modif, bool is_anonymous)
 {
   bl_node_t *var = alloc_node(ast);
   if (tok)
     var->src = &tok->src;
 
-  var->code                        = BL_DECL_VAR;
-  bl_peek_decl_var(var)->init_expr = init_expr;
-  bl_peek_decl_var(var)->type      = type;
-  bl_peek_decl_var(var)->modif     = modif;
+  var->code                           = BL_DECL_VAR;
+  bl_peek_decl_var(var)->init_expr    = init_expr;
+  bl_peek_decl_var(var)->type         = type;
+  bl_peek_decl_var(var)->modif        = modif;
+  bl_peek_decl_var(var)->is_anonymous = is_anonymous;
   bl_id_init(&bl_peek_decl_var(var)->id, name);
 
   return var;

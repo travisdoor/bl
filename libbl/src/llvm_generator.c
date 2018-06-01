@@ -1029,6 +1029,10 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(var, llvm_var);
 
+  if (!_var->init_expr) {
+    bl_warning("missing initialization of variable");
+    return;
+  }
 
   bl_assert(_var->init_expr, "invalid init expression for variable declaration");
   LLVMValueRef init = gen_expr(cnt, _var->init_expr);
