@@ -2,44 +2,7 @@
 
 extern fn printf(s string, i i32) i32;
 
-struct A {
-  b B,
-  x i32 = 10, // has init expr
-  y i32 // should use default for i32
-}
-
-struct B {
-  c C,
-  x i32
-}
-
-struct C {
-  x i32
-}
-
 fn main() {
-  var a A = A {
-    a.b.x = 666,
-    a.b.c.x = 888,
-    a.x = 1,
-    a.y = 2
-  }; 
-
-  /* 
-   * initialization list will generate temporary variable of 
-   * desired type and set variable a
-   */
-  /*a = A {
-    a.b.x = 666,
-    a.b.c.x = 888,
-    a.x = 1,
-    a.y = 2
-  }; */
-
-  printf("a.x = %d\n", a.x);
-  printf("a.y = %d\n", a.y);
-  printf("a.b.x = %d\n", a.b.x);
-  printf("a.b.c.x = %d\n", a.b.c.x);
+  var i i32;
+  printf("i = %d\n", i);
 }
-
-

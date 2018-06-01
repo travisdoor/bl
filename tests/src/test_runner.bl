@@ -15,7 +15,7 @@ module bl_tester {
     public extern fn strcmp(a *void, b string) i32;
   }
 
-  const unit_count i32 = 23;
+  const unit_count i32 = 24;
   
   struct unit_t {
     cmd string,
@@ -89,6 +89,7 @@ module bl_tester {
     units[20] = new_unit("blc -run ptr_type_test.bl", "pointer type test");
     units[21] = new_unit("blc -run using_test.bl", "using test");
     units[22] = new_unit("blc -run cast_test.bl", "casting test");
+    units[23] = new_unit("blc -run init_list_test.bl", "initialization lists");
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd *void = c::malloc(1024); 

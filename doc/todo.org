@@ -105,6 +105,11 @@
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
+- [ ] Default values 
+- [X] Initialization list [3/3]
+  - [X] Parsing
+  - [X] Type prediction
+  - [X] IR generation
 - [X] Better linker [7/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging
@@ -123,6 +128,7 @@
 - [X] (6) Unable to return struct member copy from the function
 - [ ] (7) Missing checking: some_module./->foo
 - [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
+- [ ] (9) Cannot access members in structure returned from function call directly get_C().x;
 
 * PIPELINE
 ** Text (can run in multithread)

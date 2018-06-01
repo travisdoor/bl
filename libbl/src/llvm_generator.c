@@ -249,20 +249,21 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 LLVMValueRef
 gen_init(context_t *cnt, bl_node_t *init)
 {
-  bl_log("init expr");
-  LLVMValueRef    result = NULL;
-  bl_expr_init_t *_init  = bl_peek_expr_init(init);
-  const size_t    c      = bl_ast_init_expr_count(_init);
-  bl_node_t *     expr   = NULL;
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+
+  bl_assert(_init->type, "invalid type for initialization list");
+  LLVMValueRef    result =
+      LLVMBuildAlloca(cnt->llvm_builder, to_llvm_type(cnt, _init->type), gname("tmp"));
+  push_value_cscope(init, result);
+
+  const size_t c    = bl_ast_init_expr_count(_init);
+  bl_node_t *  expr = NULL;
 
   for (size_t i = 0; i < c; ++i) {
-    expr   = bl_ast_init_get_expr(_init, i);
-    result = gen_expr(cnt, expr);
-    if (result)
-      break;
+    expr = bl_ast_init_get_expr(_init, i);
+    gen_expr(cnt, expr);
   }
 
-  /* return null just for convension */
   return result;
 }
 
@@ -716,6 +717,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
     switch (bl_node_code(ref)) {
 
+    case BL_EXPR_INIT:
     case BL_DECL_VAR:
     case BL_DECL_ARG: {
       val = get_value_cscope(ref);

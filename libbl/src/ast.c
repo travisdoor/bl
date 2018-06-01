@@ -203,7 +203,7 @@ bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node
 }
 
 bl_node_t *
-bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bl_node_t *tmp)
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *init = alloc_node(ast);
   if (tok)
@@ -212,7 +212,6 @@ bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bl_node_t 
   init->code            = BL_EXPR_INIT;
   bl_expr_init_t *_init = bl_peek_expr_init(init);
   _init->type           = type;
-  _init->tmp            = tmp;
   _init->exprs          = bo_array_new(sizeof(bl_node_t *));
   return init;
 }
@@ -630,7 +629,7 @@ bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok)
 }
 
 bl_node_t *
-bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func)
 {
   bl_node_t *return_stmt = alloc_node(ast);
   if (tok)
@@ -638,6 +637,7 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
 
   return_stmt->code                      = BL_STMT_RETURN;
   bl_peek_stmt_return(return_stmt)->expr = expr;
+  bl_peek_stmt_return(return_stmt)->func = func;
   return return_stmt;
 }
 
@@ -1208,6 +1208,7 @@ bl_ast_try_get_parent(bl_node_t *node)
 bl_node_t *
 bl_ast_get_result_type(bl_node_t *node)
 {
+  bl_assert(node, "invalid node");
   bl_node_t *type = NULL;
 
   switch (bl_node_code(node)) {
@@ -1227,9 +1228,30 @@ bl_ast_get_result_type(bl_node_t *node)
     type = bl_ast_get_result_type(bl_peek_expr_unary(node)->next);
     break;
 
+  case BL_EXPR_BINOP:
+    type = bl_ast_get_result_type(bl_peek_expr_binop(node)->lhs);
+    break;
+
   case BL_EXPR_ARRAY_REF:
     type = bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next);
     break;
+
+  case BL_EXPR_CAST:
+    type = bl_peek_expr_cast(node)->to_type;
+    break;
+
+  case BL_EXPR_INIT:
+    type = bl_ast_get_result_type(bl_peek_expr_init(node)->type);
+    break;
+
+  case BL_EXPR_CONST:
+    type = bl_ast_get_result_type(bl_peek_expr_const(node)->type);
+    break;
+
+  case BL_STMT_RETURN: {
+    type = bl_ast_get_result_type(bl_peek_stmt_return(node)->func);
+    break;
+  }
 
   case BL_DECL_VAR:
     type = bl_ast_get_result_type(bl_peek_decl_var(node)->type);
@@ -1247,20 +1269,11 @@ bl_ast_get_result_type(bl_node_t *node)
     type = bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type);
     break;
 
-  case BL_TYPE_REF:
-    type = bl_peek_type_ref(node)->ref;
-    break;
-
   case BL_DECL_STRUCT_MEMBER:
     type = bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type);
     break;
 
-  case BL_EXPR_CAST:
-    type = bl_peek_expr_cast(node)->to_type;
-    break;
-
-  case BL_DECL_STRUCT:
-  case BL_DECL_ENUM:
+  case BL_TYPE_REF:
   case BL_TYPE_FUND:
     type = node;
     break;

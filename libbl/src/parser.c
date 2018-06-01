@@ -54,6 +54,9 @@ typedef struct
   /* tmps */
   jmp_buf jmp_error;
   bool    inside_loop;
+
+  bl_node_t *curr_init_list;
+  bl_node_t *curr_func;
 } context_t;
 
 static bl_node_t *
@@ -204,7 +207,7 @@ parse_return_maybe(context_t *cnt)
   }
 
   bl_node_t *expr = parse_expr_maybe(cnt);
-  return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr);
+  return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_func);
 }
 
 bl_node_t *
@@ -654,6 +657,12 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       bl_peek_expr_array_ref(rhs)->next = lhs;
       lhs                               = rhs;
     } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
+      if (!lhs && cnt->curr_init_list) {
+        /* we are in initialialization list */
+        lhs = bl_ast_add_expr_decl_ref(cnt->ast, op, cnt->curr_init_list, NULL);
+      }
+
+      bl_assert(lhs, "invalid next node in member reference");
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (bl_token_is_binop(op)) {
@@ -1143,6 +1152,8 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     }
 
     fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent);
+    bl_node_t *prev_fn = cnt->curr_func;
+    cnt->curr_func     = fn;
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
       if (cnt->ast->entry_func) {
@@ -1215,6 +1226,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     }
 
     bl_peek_decl_func(fn)->block = block;
+    cnt->curr_func               = prev_fn;
   }
 
   return fn;
@@ -1239,7 +1251,9 @@ parse_using_maybe(context_t *cnt)
 bl_node_t *
 parse_init_expr_maybe(context_t *cnt)
 {
+  /* Type is optional!!! */
   bl_node_t *type = NULL;
+
   /* Initialization list can have explicitly defined resulting type of initialization. */
   if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LBLOCK))
     type = parse_type_maybe(cnt);
@@ -1248,22 +1262,16 @@ parse_init_expr_maybe(context_t *cnt)
   if (!tok_begin)
     return NULL;
 
-  /* Type of initialization list can be NULL, in such case we must have reference to value which
-   * we want to initialize. */
-  if (type == NULL) {
-    parse_error(cnt, BL_ERR_UNKNOWN_TYPE, tok_begin,
-                "unknown result type of initialization list expression");
-  }
+  /* When type is not explicitly defined for init. list we need to fill them later during linking.
+   */
 
-  /* When we know which value we are trying to initialize use reference to this value instead of
-   * creating temporary one. */
-  bl_node_t *tmp =
-      bl_ast_add_decl_var(cnt->ast, tok_begin, "_init_tmp", type, NULL, BL_MODIF_NONE, true);
-
-  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type, tmp);
+  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type);
   bl_expr_init_t *_init = bl_peek_expr_init(init);
   bl_node_t *     expr  = NULL;
   bl_token_t *    tok   = NULL;
+
+  bl_node_t *prev_init_list = cnt->curr_init_list;
+  cnt->curr_init_list       = init;
 
   /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
 next_expr:
@@ -1285,6 +1293,8 @@ next_expr:
     parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
                 "expected end of the initialization block " BL_YELLOW("'}'"));
   }
+
+  cnt->curr_init_list = prev_init_list;
 
   return init;
 }
@@ -1549,11 +1559,13 @@ decl:
 bl_error_e
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t cnt = {.builder     = builder,
-                   .unit        = unit,
-                   .ast         = &unit->ast,
-                   .tokens      = &unit->tokens,
-                   .inside_loop = false};
+  context_t cnt = {.builder        = builder,
+                   .unit           = unit,
+                   .ast            = &unit->ast,
+                   .tokens         = &unit->tokens,
+                   .curr_init_list = NULL,
+                   .curr_func      = NULL,
+                   .inside_loop    = false};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {

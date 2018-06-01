@@ -179,6 +179,7 @@ struct bl_stmt_continue
 struct bl_stmt_return
 {
   bl_node_t *expr;
+  bl_node_t *func;
 };
 
 struct bl_stmt_using
@@ -206,7 +207,6 @@ struct bl_expr_cast
 struct bl_expr_init
 {
   bl_node_t *type;
-  bl_node_t *tmp;
   BArray *   exprs;
 };
 
@@ -488,7 +488,7 @@ bl_node_t *
 bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bl_node_t *tmp);
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
@@ -551,7 +551,7 @@ bl_node_t *
 bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok);
 
 bl_node_t *
-bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func);
 
 bl_node_t *
 bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path);

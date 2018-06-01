@@ -511,9 +511,6 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     if (_init->type)
       call_visit(visitor, _init->type, BL_VISIT_TYPE);
 
-    if (_init->tmp)
-      call_visit(visitor, _init->tmp, BL_VISIT_VAR);
-
     const size_t c    = bl_ast_init_expr_count(_init);
     bl_node_t *  expr = NULL;
     for (size_t i = 0; i < c; ++i) {
