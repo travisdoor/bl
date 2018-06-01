@@ -5,4 +5,7 @@ extern fn printf(s string, i i32) i32;
 fn main() {
   var i i32;
   printf("i = %d\n", i);
+
+  var j i32;
+  printf("j = %d\n", j);
 }

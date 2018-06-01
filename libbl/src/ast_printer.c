@@ -32,9 +32,16 @@
 #include "ast_impl.h"
 #include "visitor_impl.h"
 
-#define print_head(name, src, ptr, pad)                                                            \
-  fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), (pad)*2, "",       \
-          (name), (src)->line, (src)->col, (ptr));
+static inline void
+print_head(const char *name, bl_src_t *src, void *ptr, int pad)
+{
+  if (src)
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), pad * 2, "", name,
+            src->line, src->col, ptr);
+  else
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<->") BL_YELLOW(" %p "), pad * 2, "", name,
+            ptr);
+}
 
 static inline void
 print_modif(int modif)

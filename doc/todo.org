@@ -129,6 +129,7 @@
 - [ ] (7) Missing checking: some_module./->foo
 - [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
 - [ ] (9) Cannot access members in structure returned from function call directly get_C().x;
+- [ ] (10) Tmp for initialization list should be declared out of the loops in LLVM. 
 
 * PIPELINE
 ** Text (can run in multithread)

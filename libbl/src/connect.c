@@ -52,6 +52,7 @@ typedef struct
   bl_builder_t * builder;
   bl_assembly_t *assembly;
   bl_unit_t *    unit;
+  bl_ast_t *     ast;
   jmp_buf        jmp_error;
 
   /* Current compound node is pointer to current root for symbol lookup. It is typically block of
@@ -64,6 +65,8 @@ typedef struct
 
   /* This temporary storage is used during type detection. */
   bl_node_t *curr_lvalue;
+
+  /* Last visited function. */
   bl_node_t *curr_func;
 } context_t;
 
@@ -102,6 +105,9 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref);
 
 static void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref);
+
+static bl_node_t *
+create_def_value(context_t *cnt, bl_node_t *type);
 
 /*************************************************************************************************
  * First pass
@@ -422,6 +428,50 @@ include_using(context_t *cnt, bl_node_t *using)
 
   /* add found compound into cache */
   bl_scopes_include(curr_scopes, found_scopes->main, using);
+}
+
+bl_node_t *
+create_def_value(context_t *cnt, bl_node_t *type)
+{
+  bl_node_t *def = NULL;
+  if (bl_node_is(type, BL_TYPE_FUND)) {
+    bl_type_fund_t *_type = bl_peek_type_fund(type);
+
+    if (_type->is_ptr) {
+      def = bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
+    }
+
+    /* skip arrays */
+    if (_type->dims)
+      return NULL;
+
+    switch (_type->type) {
+    case BL_FTYPE_CHAR:
+    case BL_FTYPE_I8:
+    case BL_FTYPE_I16:
+    case BL_FTYPE_I32:
+    case BL_FTYPE_I64:
+    case BL_FTYPE_U8:
+    case BL_FTYPE_U16:
+    case BL_FTYPE_U32:
+    case BL_FTYPE_U64:
+    case BL_FTYPE_BOOL:
+      def = bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
+      break;
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+      def = bl_ast_add_expr_const_double(cnt->ast, NULL, type, 0.0f);
+      break;
+    case BL_FTYPE_STRING: {
+      def = bl_ast_add_expr_const_str(cnt->ast, NULL, type, "\0");
+      break;
+    }
+    default:
+      return NULL;
+    }
+  }
+
+  return def;
 }
 
 /*************************************************************************************************
@@ -773,6 +823,10 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, var);
 
+  if (!_var->init_expr) {
+    _var->init_expr = create_def_value(cnt, _var->type);
+  }
+
   bl_visitor_walk_var(visitor, var);
   cnt->curr_lvalue = prev;
 }
@@ -974,6 +1028,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.unit        = bl_assembly_get_unit(assembly, i);
     cnt.curr_lvalue = NULL;
     cnt.curr_func   = NULL;
+    cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_third, cnt.unit->ast.root);
   }
 
