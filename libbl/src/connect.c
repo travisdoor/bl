@@ -873,7 +873,7 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
 
   bl_visitor_walk_var(visitor, var);
 
-  if (!_var->init_expr) {
+  if (!_var->init_expr && !(_var->modif & BL_MODIF_UNINIT)) {
     _var->init_expr = create_def_value(cnt, _var->type);
   }
 

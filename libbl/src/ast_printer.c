@@ -57,6 +57,10 @@ print_modif(int modif)
   if (modif & BL_MODIF_EXPORT) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
   }
+
+  if (modif & BL_MODIF_UNINIT) {
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_UNINIT]);
+  }
 }
 
 static inline void
@@ -195,8 +199,8 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   bl_decl_var_t *_var = bl_peek_decl_var(var);
   print_head("variable", bl_peek_src(var), var, visitor->nesting);
-
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _var->id.str, _var->used);
+  print_modif(_var->modif);
   bl_visitor_walk_var(visitor, var);
 }
 

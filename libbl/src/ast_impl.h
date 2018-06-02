@@ -139,7 +139,8 @@ enum bl_modif
   BL_MODIF_NONE   = 0,
   BL_MODIF_PUBLIC = 1,
   BL_MODIF_EXTERN = 2,
-  BL_MODIF_EXPORT = 4
+  BL_MODIF_EXPORT = 4,
+  BL_MODIF_UNINIT = 8,
 };
 
 /*************************************************************************************************

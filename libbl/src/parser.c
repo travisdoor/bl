@@ -195,6 +195,11 @@ modif:
     goto modif;
   }
 
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_UNINIT)) {
+    res |= BL_MODIF_UNINIT;
+    goto modif;
+  }
+
   return res;
 }
 
@@ -1025,17 +1030,17 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *stmt = NULL;
 
   int modif = parse_modifs_maybe(cnt);
-  if (modif != BL_MODIF_NONE) {
+  /*if (modif != BL_MODIF_NONE) {
     bl_token_t *err_tok = bl_tokens_peek_prev(cnt->tokens);
     parse_error(cnt, BL_ERR_UNEXPECTED_MODIF, err_tok, "unexpected modificator " BL_YELLOW("'%s'"),
                 bl_sym_strings[err_tok->sym]);
-  }
+		}*/
 
   if ((stmt = parse_block_maybe(cnt, parent))) {
     goto done;
   }
 
-  if ((stmt = parse_var_maybe(cnt, BL_MODIF_NONE))) {
+  if ((stmt = parse_var_maybe(cnt, modif))) {
     parse_semicolon_rq(cnt);
     goto done;
   }

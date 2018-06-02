@@ -4,20 +4,21 @@ extern fn printf(s string, i i32) i32;
 
 fn main() {
   var i i32;
-  //printf("i = %d\n", i);
+  printf("i = %d\n", i);
 
   var j i32;
-  //printf("j = %d\n", j);
+  printf("j = %d\n", j);
 
-  var a A = {
-    .a = 0,
-    .b = 0
-  };
+  var a A; // initialized variable by default 
+  printf("a.a = %d\n", a.a);
+  printf("a.b = %d\n", a.b);
 
-  var b A;
+  uninit var b A; // uninitialized variable
+  printf("b.a = %d\n", b.a);
+  printf("b.b = %d\n", b.b);
 }
 
 struct A {
-  a i32,
+  a i32 = 666,
   b i32
 }
