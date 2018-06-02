@@ -4,6 +4,8 @@
  * Declaration default values. 
  */
 
+#load "utest.bl"
+
 fn main() i32 {
   var _i8     i8;
   var _i16    i16;
@@ -18,6 +20,8 @@ fn main() i32 {
   var _char   char;
   var _string string;
   var _bool   bool;
+
+  // TODO asserions
 
   return 0;
 }

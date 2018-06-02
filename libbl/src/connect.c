@@ -432,12 +432,11 @@ include_using(context_t *cnt, bl_node_t *using)
 bl_node_t *
 create_def_value(context_t *cnt, bl_node_t *type)
 {
-  bl_node_t *def = NULL;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
 
     if (_type->is_ptr) {
-      def = bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
+      return bl_ast_add_expr_null(cnt->ast, NULL, type);
     }
 
     /* skip arrays */
@@ -455,22 +454,18 @@ create_def_value(context_t *cnt, bl_node_t *type)
     case BL_FTYPE_U32:
     case BL_FTYPE_U64:
     case BL_FTYPE_BOOL:
-      def = bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
-      break;
+      return bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
     case BL_FTYPE_F32:
     case BL_FTYPE_F64:
-      def = bl_ast_add_expr_const_double(cnt->ast, NULL, type, 0.0f);
-      break;
+      return bl_ast_add_expr_const_double(cnt->ast, NULL, type, 0.0f);
     case BL_FTYPE_STRING: {
-      def = bl_ast_add_expr_const_str(cnt->ast, NULL, type, "\0");
-      break;
+      return bl_ast_add_expr_const_str(cnt->ast, NULL, type, "\0");
     }
     default:
       return NULL;
     }
   }
-
-  return def;
+  return NULL;
 }
 
 /*************************************************************************************************
@@ -763,6 +758,15 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
       bl_assert(cnt->curr_lvalue, "invalid lvalue");
       _init->type = bl_ast_get_result_type(cnt->curr_lvalue);
     }
+    break;
+  }
+
+  case BL_EXPR_CONST: {
+    bl_expr_const_t *_const = bl_peek_expr_const(expr);
+    if (!_const->type) {
+      _const->type = bl_ast_get_result_type(cnt->curr_lvalue);
+    }
+    break;
   }
 
   default:

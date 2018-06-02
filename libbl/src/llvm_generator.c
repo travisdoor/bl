@@ -645,15 +645,22 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, true);
       break;
+    case BL_FTYPE_I64:
+      val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
+                         (unsigned long long int)cnst->value.s, true);
+      break;
     case BL_FTYPE_U8:
       val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
+      break;
     case BL_FTYPE_U16:
       val = LLVMConstInt(LLVMInt16TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
+      break;
     case BL_FTYPE_U32:
       val = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
+      break;
     case BL_FTYPE_U64:
       val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
@@ -676,7 +683,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
                          (unsigned long long int)cnst->value.c, false);
       break;
     default:
-      bl_abort("invalid constant type");
+      bl_abort("invalid constant type %s", bl_node_name(expr));
     }
     break;
   }
