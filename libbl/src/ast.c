@@ -1208,7 +1208,7 @@ bl_ast_try_get_parent(bl_node_t *node)
 bl_node_t *
 bl_ast_get_result_type(bl_node_t *node)
 {
-  bl_assert(node, "invalid node");
+  bl_assert(node, "cannot get result type");
   bl_node_t *type = NULL;
 
   switch (bl_node_code(node)) {

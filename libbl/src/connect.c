@@ -83,7 +83,6 @@ include_using(context_t *cnt, bl_node_t *using);
 static bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
-// return bool found in curr branch???
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
                bool *found_in_curr_branch);
