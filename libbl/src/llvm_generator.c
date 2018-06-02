@@ -790,7 +790,7 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   LLVMValueRef     lhs    = gen_expr(cnt, _binop->lhs);
   LLVMValueRef     rhs    = gen_expr(cnt, _binop->rhs);
 
-  if (_binop->op == BL_SYM_ASIGN) {
+  if (_binop->op == BL_SYM_ASSIGN) {
     /* special case for dereferencing on the right side, we need to perform additional load
      * because we use pointer to data not real data. */
     if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs)) {

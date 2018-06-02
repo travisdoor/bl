@@ -105,11 +105,15 @@
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
-- [ ] Default values 
+- [-] Default values [1/2]
+  - [X] Generation of constants for simple types
+  - [ ] Generation of initialization list for custom types
 - [X] Initialization list [3/3]
   - [X] Parsing
   - [X] Type prediction
   - [X] IR generation
+- [ ] Threading
+- [ ] Better error reporting
 - [X] Better linker [7/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging

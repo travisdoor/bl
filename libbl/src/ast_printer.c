@@ -39,7 +39,7 @@ print_head(const char *name, bl_src_t *src, void *ptr, int pad)
     fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), pad * 2, "", name,
             src->line, src->col, ptr);
   else
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<->") BL_YELLOW(" %p "), pad * 2, "", name,
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<generated>") BL_YELLOW(" %p "), pad * 2, "", name,
             ptr);
 }
 

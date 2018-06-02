@@ -464,7 +464,52 @@ create_def_value(context_t *cnt, bl_node_t *type)
     default:
       return NULL;
     }
+  } else if (bl_node_is(type, BL_TYPE_REF)) {
+    bl_node_t *ref = bl_peek_type_ref(type)->ref;
+    bl_assert(ref, "invalid ref type reference");
+
+    switch (bl_node_code(ref)) {
+    case BL_DECL_ENUM: {
+      bl_decl_enum_t *_enum = bl_peek_decl_enum(ref);
+      bl_assert(bl_ast_enum_get_count(_enum),
+                "cannot generate default initialization value for an empty enum");
+
+      bl_node_t *def_variant = bl_ast_enum_get_variant(_enum, 0);
+      return bl_ast_add_expr_decl_ref(cnt->ast, NULL, def_variant, NULL);
+    }
+
+    case BL_DECL_STRUCT: {
+      /* default value for structures is going to be tricky... */
+      bl_node_t *init_list = bl_ast_add_expr_init(cnt->ast, NULL, type);
+      /* iterate struct members and genrate default values */
+      bl_decl_struct_t *       _struct = bl_peek_decl_struct(ref);
+      bl_node_t *              member  = NULL;
+      bl_decl_struct_member_t *_member = NULL;
+      const size_t             c       = bl_ast_struct_member_count(_struct);
+      for (size_t i = 0; i < c; ++i) {
+        member = bl_ast_struct_get_member(_struct, i);
+        bl_assert(member, "invalid structure member");
+        _member = bl_peek_decl_struct_member(member);
+
+        if (!_member->init_expr) {
+          _member->init_expr = create_def_value(cnt, _member->type);
+        }
+
+	bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
+        bl_node_t *member_ref = bl_ast_add_expr_member_ref(cnt->ast, NULL, "", init_decl_ref, member,false);
+        bl_node_t *assign     = bl_ast_add_expr_binop(cnt->ast, NULL, BL_SYM_ASSIGN, member_ref,
+                                                  _member->init_expr, NULL);
+        bl_ast_init_push_expr(bl_peek_expr_init(init_list), assign);
+      }
+
+      return init_list;
+    }
+
+    default:
+      bl_abort("unknow reference %s", bl_node_name(ref));
+    }
   }
+
   return NULL;
 }
 
@@ -826,11 +871,12 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, var);
 
+  bl_visitor_walk_var(visitor, var);
+
   if (!_var->init_expr) {
     _var->init_expr = create_def_value(cnt, _var->type);
   }
 
-  bl_visitor_walk_var(visitor, var);
   cnt->curr_lvalue = prev;
 }
 

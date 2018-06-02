@@ -341,7 +341,7 @@ parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
     }
 
     /* next member will be set later */
-    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL, is_ptr_ref);
+    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL, NULL, is_ptr_ref);
   }
 
   return member_ref;
@@ -767,7 +767,7 @@ parse_var_maybe(context_t *cnt, int modif)
    * parse init expr when variable declaration is fallowd by assign symbol
    * note: constant must have initialization
    */
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN)) {
     init_expr = parse_expr_maybe(cnt);
     if (init_expr == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
@@ -1317,7 +1317,7 @@ parse_struct_member_maybe(context_t *cnt)
   }
 
   /* parse initialization expression if there is one */
-  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN);
   bl_node_t * init_expr = NULL;
   if (tok_expr) {
     init_expr = parse_expr_maybe(cnt);
@@ -1341,7 +1341,7 @@ parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent)
 
   bl_token_t *tok_id     = bl_tokens_consume(cnt->tokens);
   bl_node_t * expr       = NULL;
-  bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN);
 
   if (tok_assign != NULL) {
     /* expected expression */
@@ -1444,6 +1444,11 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
         parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
                     "enum variants must be separated by comma " BL_YELLOW("','"));
       }
+    }
+
+    if (bl_ast_enum_get_count(_enm) == 0) {
+      parse_error(cnt, BL_ERR_EMPTY, tok, "enumerator " BL_YELLOW("'%s'") " is empty",
+                  _enm->id.str);
     }
 
     /* eat '}' */
