@@ -135,6 +135,8 @@
 - [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
 - [ ] (9) Cannot access members in structure returned from function call directly get_C().x;
 - [ ] (10) Tmp for initialization list should be declared out of the loops in LLVM. 
+- [ ] (11) Structure initializer cannot detect type of array element member.
+           units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
 
 * PIPELINE
 ** Text (can run in multithread)

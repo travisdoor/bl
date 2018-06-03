@@ -6,7 +6,23 @@
 
 #load "utest.bl"
 
+struct A {
+  b B
+}
+
+struct B {
+  c C,
+  ptr *void
+}
+
+struct C {
+  i i32,
+  ptr *i32
+}
+
 fn main() i32 {
+  using utest;
+
   var _i8     i8;
   var _i16    i16;
   var _i32    i32;
@@ -21,7 +37,14 @@ fn main() i32 {
   var _string string;
   var _bool   bool;
 
-  // TODO asserions
+
+  var a A;
+
+  assert(a.b.ptr == null);
+  assert(a.b.c.i == 0);
+  assert(a.b.c.ptr == null);
+
+  uninit var ua A;
 
   return 0;
 }

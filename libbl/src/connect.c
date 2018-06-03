@@ -470,8 +470,17 @@ create_def_value(context_t *cnt, bl_node_t *type)
       return NULL;
     }
   } else if (bl_node_is(type, BL_TYPE_REF)) {
-    bl_node_t *ref = bl_peek_type_ref(type)->ref;
+    bl_type_ref_t *_type = bl_peek_type_ref(type);
+    bl_node_t *    ref   = _type->ref;
     bl_assert(ref, "invalid ref type reference");
+
+    /* skip arrays */
+    if (_type->dims)
+      return NULL;
+
+    if (_type->is_ptr) {
+      return bl_ast_add_expr_null(cnt->ast, NULL, type);
+    }
 
     switch (bl_node_code(ref)) {
     case BL_DECL_ENUM: {
@@ -501,6 +510,9 @@ create_def_value(context_t *cnt, bl_node_t *type)
         if (!_member->init_expr) {
           _member->init_expr = create_def_value(cnt, _member->type);
         }
+
+        if (!_member->init_expr)
+          return NULL;
 
         bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
         bl_node_t *member_ref =

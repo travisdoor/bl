@@ -1046,10 +1046,6 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_assert(_var->init_expr, "invalid init expression for variable declaration");
   LLVMValueRef init = gen_expr(cnt, _var->init_expr);
   if (init) {
-    /* store value when it is generated (in some cases here when we have variable of the reference
-     * type to something which can be initialized by initialization list gen_expr result can be NULL
-     * becouse initialization list has no return value) */
-
     if (should_load(_var->init_expr) || LLVMIsAAllocaInst(init))
       init = LLVMBuildLoad(cnt->llvm_builder, init, gname("tmp"));
     LLVMBuildStore(cnt->llvm_builder, init, llvm_var);

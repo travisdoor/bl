@@ -1,0 +1,38 @@
+/*
+ * Unit test
+ * -----------
+ * Enums.
+ */
+
+#load "utest.bl"
+
+struct A {
+  b B,
+  x i32
+}
+
+struct B {
+  c C,
+  x i32
+}
+
+struct C {
+  x i32
+}
+
+fn main() i32 {
+  var a A = {
+    .b = {
+      .c = {
+        .x = 10
+      },
+      .x = 20
+    },
+    .x = 30
+  };
+
+  utest::assert(a.x == 30);
+  utest::assert(a.b.x == 20);
+  utest::assert(a.b.c.x == 10);
+  return 0;
+}

@@ -1,29 +1,4 @@
 /* testing playground */
 
-extern fn printf(s string, i i32) i32;
-
 fn main() {
-  var i i32;
-  printf("i = %d\n", i);
-
-  var j i32;
-  printf("j = %d\n", j);
-
-  var a A; // initialized variable by default 
-  printf("a.i = %d\n", a.i);
-  printf("a.j = %d\n", a.j);
-
-  uninit var b A; // uninitialized variable
-  printf("b.i = %d\n", b.i);
-  printf("b.j = %d\n", b.j);
-}
-
-struct A {
-  b B,
-  i i32 = 666,
-  j i32
-}
-
-struct B {
-  i i32 = 512
 }
