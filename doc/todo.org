@@ -108,9 +108,10 @@
 - [-] Default values [1/2]
   - [X] Generation of constants for simple types
   - [ ] Generation of initialization list for custom types
-- [X] Initialization list [3/3]
+- [-] Initialization list [3/4]
   - [X] Parsing
   - [X] Type prediction
+  - [ ] Error checkings 
   - [X] IR generation
 - [ ] Threading
 - [ ] Better error reporting
@@ -177,3 +178,4 @@
    - cast(i32) f
 * NOTES
 ** global using search return array of all founds references???
+** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625

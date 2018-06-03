@@ -361,7 +361,12 @@ void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
-  bl_node_t *           type        = bl_ast_get_result_type(_member_ref->next);
+
+  /* anonymous members can be already linked */
+  if (_member_ref->ref)
+    return;
+
+  bl_node_t *type = bl_ast_get_result_type(_member_ref->next);
 
   if (bl_node_is_not(type, BL_TYPE_REF)) {
     connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
@@ -479,7 +484,9 @@ create_def_value(context_t *cnt, bl_node_t *type)
     }
 
     case BL_DECL_STRUCT: {
-      /* default value for structures is going to be tricky... */
+      /* default value for structures is going to be tricky... Here we want to generate
+       * initialization list with deafult values for every member of structure.*/
+
       bl_node_t *init_list = bl_ast_add_expr_init(cnt->ast, NULL, type);
       /* iterate struct members and genrate default values */
       bl_decl_struct_t *       _struct = bl_peek_decl_struct(ref);
@@ -495,9 +502,10 @@ create_def_value(context_t *cnt, bl_node_t *type)
           _member->init_expr = create_def_value(cnt, _member->type);
         }
 
-	bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
-        bl_node_t *member_ref = bl_ast_add_expr_member_ref(cnt->ast, NULL, "", init_decl_ref, member,false);
-        bl_node_t *assign     = bl_ast_add_expr_binop(cnt->ast, NULL, BL_SYM_ASSIGN, member_ref,
+        bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
+        bl_node_t *member_ref =
+            bl_ast_add_expr_member_ref(cnt->ast, NULL, "", init_decl_ref, member, false);
+        bl_node_t *assign = bl_ast_add_expr_binop(cnt->ast, NULL, BL_SYM_ASSIGN, member_ref,
                                                   _member->init_expr, NULL);
         bl_ast_init_push_expr(bl_peek_expr_init(init_list), assign);
       }

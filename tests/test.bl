@@ -10,15 +10,20 @@ fn main() {
   printf("j = %d\n", j);
 
   var a A; // initialized variable by default 
-  printf("a.a = %d\n", a.a);
-  printf("a.b = %d\n", a.b);
+  printf("a.i = %d\n", a.i);
+  printf("a.j = %d\n", a.j);
 
   uninit var b A; // uninitialized variable
-  printf("b.a = %d\n", b.a);
-  printf("b.b = %d\n", b.b);
+  printf("b.i = %d\n", b.i);
+  printf("b.j = %d\n", b.j);
 }
 
 struct A {
-  a i32 = 666,
-  b i32
+  b B,
+  i i32 = 666,
+  j i32
+}
+
+struct B {
+  i i32 = 512
 }
