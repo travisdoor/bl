@@ -33,11 +33,6 @@ public module std {
       public y i32
     }
 
-    public fn vec2i_init(vec *vec2i_t, x i32, y i32) {
-      vec->x = x; 
-      vec->y = y; 
-    }
-
     public fn vec2i_add(a *vec2i_t, b *vec2i_t) {
       a->x = a->x + b->x; 
       a->y = a->y + b->y; 
@@ -57,11 +52,6 @@ public module std {
     public struct vec2f_t {
       public x f32,
       public y f32
-    }
-
-    public fn vec2f_init(vec *vec2f_t, x f32, y f32) {
-      vec->x = x; 
-      vec->y = y; 
     }
 
     public fn vec2f_add(a *vec2f_t, b *vec2f_t) {

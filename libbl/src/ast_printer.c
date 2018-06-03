@@ -29,12 +29,19 @@
 #include <stdio.h>
 #include "stages_impl.h"
 #include "common_impl.h"
-#include "ast/ast_impl.h"
-#include "ast/visitor_impl.h"
+#include "ast_impl.h"
+#include "visitor_impl.h"
 
-#define print_head(name, src, ptr, pad)                                                            \
-  fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), (pad)*2, "",       \
-          (name), (src)->line, (src)->col, (ptr));
+static inline void
+print_head(const char *name, bl_src_t *src, void *ptr, int pad)
+{
+  if (src)
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), pad * 2, "", name,
+            src->line, src->col, ptr);
+  else
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<generated>") BL_YELLOW(" %p "), pad * 2, "", name,
+            ptr);
+}
 
 static inline void
 print_modif(int modif)
@@ -49,6 +56,10 @@ print_modif(int modif)
 
   if (modif & BL_MODIF_EXPORT) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
+  }
+
+  if (modif & BL_MODIF_UNINIT) {
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_UNINIT]);
   }
 }
 
@@ -188,8 +199,8 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
 {
   bl_decl_var_t *_var = bl_peek_decl_var(var);
   print_head("variable", bl_peek_src(var), var, visitor->nesting);
-
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _var->id.str, _var->used);
+  print_modif(_var->modif);
   bl_visitor_walk_var(visitor, var);
 }
 
@@ -279,6 +290,11 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   case BL_EXPR_CAST: {
     print_head("cast", bl_peek_src(expr), expr, visitor->nesting);
+    break;
+  }
+
+  case BL_EXPR_INIT: {
+    print_head("init_list", bl_peek_src(expr), expr, visitor->nesting);
     break;
   }
 

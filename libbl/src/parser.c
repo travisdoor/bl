@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   parser2.c
+// File:   parser.c
 // Author: Martin Dorazil
 // Date:   3/15/18
 //
@@ -54,6 +54,9 @@ typedef struct
   /* tmps */
   jmp_buf jmp_error;
   bool    inside_loop;
+
+  bl_node_t *curr_init_list;
+  bl_node_t *curr_func;
 } context_t;
 
 static bl_node_t *
@@ -67,6 +70,9 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
 parse_using_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_init_expr_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
@@ -189,6 +195,11 @@ modif:
     goto modif;
   }
 
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_UNINIT)) {
+    res |= BL_MODIF_UNINIT;
+    goto modif;
+  }
+
   return res;
 }
 
@@ -201,7 +212,7 @@ parse_return_maybe(context_t *cnt)
   }
 
   bl_node_t *expr = parse_expr_maybe(cnt);
-  return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr);
+  return bl_ast_add_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_func);
 }
 
 bl_node_t *
@@ -335,7 +346,7 @@ parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
     }
 
     /* next member will be set later */
-    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL, is_ptr_ref);
+    member_ref = bl_ast_add_expr_member_ref(cnt->ast, tok_id, tok_id->value.str, NULL, NULL, is_ptr_ref);
   }
 
   return member_ref;
@@ -605,6 +616,9 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_nested_expr_maybe(cnt)))
     return expr;
 
+  if ((expr = parse_init_expr_maybe(cnt)))
+    return expr;
+
   if ((expr = parse_cast_expr_maybe(cnt)))
     return expr;
 
@@ -648,6 +662,12 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
       bl_peek_expr_array_ref(rhs)->next = lhs;
       lhs                               = rhs;
     } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
+      if (!lhs && cnt->curr_init_list) {
+        /* we are in initialialization list */
+        lhs = bl_ast_add_expr_decl_ref(cnt->ast, op, cnt->curr_init_list, NULL);
+      }
+
+      bl_assert(lhs, "invalid next node in member reference");
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (bl_token_is_binop(op)) {
@@ -752,7 +772,7 @@ parse_var_maybe(context_t *cnt, int modif)
    * parse init expr when variable declaration is fallowd by assign symbol
    * note: constant must have initialization
    */
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN)) {
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN)) {
     init_expr = parse_expr_maybe(cnt);
     if (init_expr == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
@@ -767,7 +787,7 @@ parse_var_maybe(context_t *cnt, int modif)
     }
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif);
+  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif, false);
 }
 
 void
@@ -1010,17 +1030,17 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *stmt = NULL;
 
   int modif = parse_modifs_maybe(cnt);
-  if (modif != BL_MODIF_NONE) {
+  /*if (modif != BL_MODIF_NONE) {
     bl_token_t *err_tok = bl_tokens_peek_prev(cnt->tokens);
     parse_error(cnt, BL_ERR_UNEXPECTED_MODIF, err_tok, "unexpected modificator " BL_YELLOW("'%s'"),
                 bl_sym_strings[err_tok->sym]);
-  }
+		}*/
 
   if ((stmt = parse_block_maybe(cnt, parent))) {
     goto done;
   }
 
-  if ((stmt = parse_var_maybe(cnt, BL_MODIF_NONE))) {
+  if ((stmt = parse_var_maybe(cnt, modif))) {
     parse_semicolon_rq(cnt);
     goto done;
   }
@@ -1137,6 +1157,8 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     }
 
     fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent);
+    bl_node_t *prev_fn = cnt->curr_func;
+    cnt->curr_func     = fn;
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
       if (cnt->ast->entry_func) {
@@ -1209,6 +1231,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     }
 
     bl_peek_decl_func(fn)->block = block;
+    cnt->curr_func               = prev_fn;
   }
 
   return fn;
@@ -1231,6 +1254,57 @@ parse_using_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_init_expr_maybe(context_t *cnt)
+{
+  /* Type is optional!!! */
+  bl_node_t *type = NULL;
+
+  /* Initialization list can have explicitly defined resulting type of initialization. */
+  if (bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LBLOCK))
+    type = parse_type_maybe(cnt);
+
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+  if (!tok_begin)
+    return NULL;
+
+  /* When type is not explicitly defined for init. list we need to fill them later during linking.
+   */
+
+  bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type);
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+  bl_node_t *     expr  = NULL;
+  bl_token_t *    tok   = NULL;
+
+  bl_node_t *prev_init_list = cnt->curr_init_list;
+  cnt->curr_init_list       = init;
+
+  /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
+next_expr:
+  /* eat ident */
+  expr = parse_expr_maybe(cnt);
+  if (bl_ast_init_push_expr(_init, expr)) {
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+      goto next_expr;
+    } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
+      tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+                  "initializer list expressions must be separated by comma " BL_YELLOW("','"));
+    }
+  }
+
+  /* eat '}' */
+  bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
+  if (tok_end->sym != BL_SYM_RBLOCK) {
+    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
+                "expected end of the initialization block " BL_YELLOW("'}'"));
+  }
+
+  cnt->curr_init_list = prev_init_list;
+
+  return init;
+}
+
+bl_node_t *
 parse_struct_member_maybe(context_t *cnt)
 {
   bl_node_t *type  = NULL;
@@ -1248,7 +1322,7 @@ parse_struct_member_maybe(context_t *cnt)
   }
 
   /* parse initialization expression if there is one */
-  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN);
   bl_node_t * init_expr = NULL;
   if (tok_expr) {
     init_expr = parse_expr_maybe(cnt);
@@ -1272,7 +1346,7 @@ parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent)
 
   bl_token_t *tok_id     = bl_tokens_consume(cnt->tokens);
   bl_node_t * expr       = NULL;
-  bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASIGN);
+  bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN);
 
   if (tok_assign != NULL) {
     /* expected expression */
@@ -1375,6 +1449,11 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
         parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
                     "enum variants must be separated by comma " BL_YELLOW("','"));
       }
+    }
+
+    if (bl_ast_enum_get_count(_enm) == 0) {
+      parse_error(cnt, BL_ERR_EMPTY, tok, "enumerator " BL_YELLOW("'%s'") " is empty",
+                  _enm->id.str);
     }
 
     /* eat '}' */
@@ -1490,11 +1569,13 @@ decl:
 bl_error_e
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t cnt = {.builder     = builder,
-                   .unit        = unit,
-                   .ast         = &unit->ast,
-                   .tokens      = &unit->tokens,
-                   .inside_loop = false};
+  context_t cnt = {.builder        = builder,
+                   .unit           = unit,
+                   .ast            = &unit->ast,
+                   .tokens         = &unit->tokens,
+                   .curr_init_list = NULL,
+                   .curr_func      = NULL,
+                   .inside_loop    = false};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {

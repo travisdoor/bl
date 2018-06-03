@@ -29,7 +29,7 @@
 #include <setjmp.h>
 #include "common_impl.h"
 #include "stages_impl.h"
-#include "ast/visitor_impl.h"
+#include "visitor_impl.h"
 
 /* Check perform one pass over AST tree where it solves implicit casting and checking of type
  * compatibility of expression nodes. */
@@ -383,7 +383,7 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
   }
 
   switch (_binop->op) {
-  case BL_SYM_ASIGN:
+  case BL_SYM_ASSIGN:
     if (bl_node_is(_binop->lhs, BL_EXPR_DECL_REF) &&
         bl_node_is(bl_peek_expr_decl_ref(_binop->lhs)->ref, BL_DECL_CONST)) {
       bl_decl_const_t *_cnst = bl_peek_decl_const(bl_peek_expr_decl_ref(_binop->lhs)->ref);
@@ -455,6 +455,9 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
   case BL_EXPR_CAST:
     return check_cast(cnt, expr, expected_type, const_expr);
 
+  case BL_EXPR_INIT:
+    return NULL;
+
   default:
     bl_abort("node is not expression");
   }
@@ -470,7 +473,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
   context_t *cnt = peek_cnt(visitor);
 
   /* warn about unused expressions in function scope */
-  if (bl_node_is(expr, BL_EXPR_BINOP) && bl_peek_expr_binop(expr)->op != BL_SYM_ASIGN) {
+  if (bl_node_is(expr, BL_EXPR_BINOP) && bl_peek_expr_binop(expr)->op != BL_SYM_ASSIGN) {
     check_warning(cnt, expr, "expression has no effect");
   }
 
@@ -548,10 +551,6 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
   if (_enm->modif == BL_MODIF_NONE && _enm->used == 0) {
     check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is declared but never used",
                   _enm->id.str);
-  }
-
-  if (bl_ast_enum_get_count(_enm) == 0) {
-    check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is empty", _enm->id.str);
   }
 
   if (bl_node_is_not(_enm->type, BL_TYPE_FUND) ||

@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "ast/ast_impl.h"
+#include "ast_impl.h"
 
 const char *bl_fund_type_strings[] = {
 #define ft(tok, str) str,
@@ -74,6 +74,9 @@ node_terminate(bl_node_t *node)
     break;
   case BL_EXPR_DECL_REF:
     bo_unref(bl_peek_expr_decl_ref(node)->path);
+    break;
+  case BL_EXPR_INIT:
+    bo_unref(bl_peek_expr_init(node)->exprs);
     break;
   case BL_TYPE_REF:
     bo_unref(bl_peek_type_ref(node)->path);
@@ -197,6 +200,20 @@ bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node
   _cast->next           = next;
   _cast->to_type        = to_type;
   return cast;
+}
+
+bl_node_t *
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+{
+  bl_node_t *init = alloc_node(ast);
+  if (tok)
+    init->src = &tok->src;
+
+  init->code            = BL_EXPR_INIT;
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+  _init->type           = type;
+  _init->exprs          = bo_array_new(sizeof(bl_node_t *));
+  return init;
 }
 
 bl_node_t *
@@ -325,7 +342,7 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
-                           bool is_ptr_ref)
+                           bl_node_t *ref, bool is_ptr_ref)
 {
   bl_node_t *member_ref = alloc_node(ast);
   if (tok)
@@ -335,6 +352,7 @@ bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
   bl_id_init(&_member_ref->id, name);
   _member_ref->next       = next;
+  _member_ref->ref        = ref;
   _member_ref->is_ptr_ref = is_ptr_ref;
 
   return member_ref;
@@ -402,16 +420,17 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr, int modif)
+                    bl_node_t *init_expr, int modif, bool is_anonymous)
 {
   bl_node_t *var = alloc_node(ast);
   if (tok)
     var->src = &tok->src;
 
-  var->code                        = BL_DECL_VAR;
-  bl_peek_decl_var(var)->init_expr = init_expr;
-  bl_peek_decl_var(var)->type      = type;
-  bl_peek_decl_var(var)->modif     = modif;
+  var->code                           = BL_DECL_VAR;
+  bl_peek_decl_var(var)->init_expr    = init_expr;
+  bl_peek_decl_var(var)->type         = type;
+  bl_peek_decl_var(var)->modif        = modif;
+  bl_peek_decl_var(var)->is_anonymous = is_anonymous;
   bl_id_init(&bl_peek_decl_var(var)->id, name);
 
   return var;
@@ -611,7 +630,7 @@ bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok)
 }
 
 bl_node_t *
-bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func)
 {
   bl_node_t *return_stmt = alloc_node(ast);
   if (tok)
@@ -619,6 +638,7 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr)
 
   return_stmt->code                      = BL_STMT_RETURN;
   bl_peek_stmt_return(return_stmt)->expr = expr;
+  bl_peek_stmt_return(return_stmt)->func = func;
   return return_stmt;
 }
 
@@ -765,6 +785,40 @@ bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i)
   if (call->args == NULL)
     return NULL;
   return bo_array_at(call->args, i, bl_node_t *);
+}
+
+/*************************************************************************************************
+ * init
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr)
+{
+  if (expr == NULL)
+    return NULL;
+
+  if (init->exprs == NULL) {
+    init->exprs = bo_array_new(sizeof(bl_node_t *));
+  }
+
+  bo_array_push_back(init->exprs, expr);
+  return expr;
+}
+
+size_t
+bl_ast_init_expr_count(bl_expr_init_t *init)
+{
+  if (init->exprs == NULL)
+    return 0;
+
+  return bo_array_size(init->exprs);
+}
+
+bl_node_t *
+bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i)
+{
+  if (init->exprs == NULL)
+    return NULL;
+  return bo_array_at(init->exprs, i, bl_node_t *);
 }
 
 /*************************************************************************************************
@@ -1155,6 +1209,7 @@ bl_ast_try_get_parent(bl_node_t *node)
 bl_node_t *
 bl_ast_get_result_type(bl_node_t *node)
 {
+  bl_assert(node, "cannot get result type");
   bl_node_t *type = NULL;
 
   switch (bl_node_code(node)) {
@@ -1174,9 +1229,30 @@ bl_ast_get_result_type(bl_node_t *node)
     type = bl_ast_get_result_type(bl_peek_expr_unary(node)->next);
     break;
 
+  case BL_EXPR_BINOP:
+    type = bl_ast_get_result_type(bl_peek_expr_binop(node)->lhs);
+    break;
+
   case BL_EXPR_ARRAY_REF:
     type = bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next);
     break;
+
+  case BL_EXPR_CAST:
+    type = bl_peek_expr_cast(node)->to_type;
+    break;
+
+  case BL_EXPR_INIT:
+    type = bl_ast_get_result_type(bl_peek_expr_init(node)->type);
+    break;
+
+  case BL_EXPR_CONST:
+    type = bl_ast_get_result_type(bl_peek_expr_const(node)->type);
+    break;
+
+  case BL_STMT_RETURN: {
+    type = bl_ast_get_result_type(bl_peek_stmt_return(node)->func);
+    break;
+  }
 
   case BL_DECL_VAR:
     type = bl_ast_get_result_type(bl_peek_decl_var(node)->type);
@@ -1194,20 +1270,11 @@ bl_ast_get_result_type(bl_node_t *node)
     type = bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type);
     break;
 
-  case BL_TYPE_REF:
-    type = bl_peek_type_ref(node)->ref;
-    break;
-
   case BL_DECL_STRUCT_MEMBER:
     type = bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type);
     break;
 
-  case BL_EXPR_CAST:
-    type = bl_peek_expr_cast(node)->to_type;
-    break;
-
-  case BL_DECL_STRUCT:
-  case BL_DECL_ENUM:
+  case BL_TYPE_REF:
   case BL_TYPE_FUND:
     type = node;
     break;

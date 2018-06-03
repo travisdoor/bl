@@ -105,6 +105,16 @@
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
+- [-] Default values [1/2]
+  - [X] Generation of constants for simple types
+  - [ ] Generation of initialization list for custom types
+- [-] Initialization list [3/4]
+  - [X] Parsing
+  - [X] Type prediction
+  - [ ] Error checkings 
+  - [X] IR generation
+- [ ] Threading
+- [ ] Better error reporting
 - [X] Better linker [7/7]
   - [X] Create global root module by default in parser
   - [X] Review module merging
@@ -123,6 +133,10 @@
 - [X] (6) Unable to return struct member copy from the function
 - [ ] (7) Missing checking: some_module./->foo
 - [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
+- [ ] (9) Cannot access members in structure returned from function call directly get_C().x;
+- [ ] (10) Tmp for initialization list should be declared out of the loops in LLVM. 
+- [ ] (11) Structure initializer cannot detect type of array element member.
+           units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
 
 * PIPELINE
 ** Text (can run in multithread)
@@ -154,6 +168,11 @@
 ** zero initialized statc arrays??
 ** statement tagging?
 
+** simple constructor like initialization of structs
+   struct foo (a i32, b i32) {
+     a i32, // connected by name
+     b i32
+   } 
 ** Casting syntax:
    - cast<i32>(f)
    - f as i32
@@ -161,3 +180,4 @@
    - cast(i32) f
 * NOTES
 ** global using search return array of all founds references???
+** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625

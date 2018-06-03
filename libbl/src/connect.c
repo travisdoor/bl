@@ -30,7 +30,7 @@
 #include <bobject/containers/htbl.h>
 #include "common_impl.h"
 #include "stages_impl.h"
-#include "ast/visitor_impl.h"
+#include "visitor_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
@@ -52,6 +52,7 @@ typedef struct
   bl_builder_t * builder;
   bl_assembly_t *assembly;
   bl_unit_t *    unit;
+  bl_ast_t *     ast;
   jmp_buf        jmp_error;
 
   /* Current compound node is pointer to current root for symbol lookup. It is typically block of
@@ -61,6 +62,12 @@ typedef struct
    * current compound node and than recursively in its parent nodes when type is declared
    * somewhere in global scope or parent module. */
   bl_node_t *curr_compound;
+
+  /* This temporary storage is used during type detection. */
+  bl_node_t *curr_lvalue;
+
+  /* Last visited function. */
+  bl_node_t *curr_func;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -76,7 +83,6 @@ include_using(context_t *cnt, bl_node_t *using);
 static bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
-// return bool found in curr branch???
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
                bool *found_in_curr_branch);
@@ -98,6 +104,9 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref);
 
 static void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref);
+
+static bl_node_t *
+create_def_value(context_t *cnt, bl_node_t *type);
 
 /*************************************************************************************************
  * First pass
@@ -149,6 +158,9 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func);
 
 static void
 third_pass_var(bl_visitor_t *visitor, bl_node_t *var);
+
+static void
+third_pass_return(bl_visitor_t *visitor, bl_node_t *ret);
 
 static void
 third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr);
@@ -312,25 +324,28 @@ connect_call(context_t *cnt, bl_node_t *call)
 void
 connect_decl_ref(context_t *cnt, bl_node_t *ref)
 {
-  bl_expr_decl_ref_t *_ref  = bl_peek_expr_decl_ref(ref);
-  bl_node_t *         found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
-  _ref->ref                 = found;
+  bl_expr_decl_ref_t *_ref = bl_peek_expr_decl_ref(ref);
+  if (!_ref->ref) {
+    bl_node_t *found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
+    _ref->ref        = found;
+  }
 
-  switch (bl_node_code(found)) {
+  switch (bl_node_code(_ref->ref)) {
   case BL_DECL_VAR:
-    bl_peek_decl_var(found)->used++;
+    bl_peek_decl_var(_ref->ref)->used++;
     break;
 
   case BL_DECL_CONST:
-    bl_peek_decl_const(found)->used++;
+    bl_peek_decl_const(_ref->ref)->used++;
     break;
 
   case BL_DECL_ARG:
+  case BL_EXPR_INIT:
     break;
 
   case BL_DECL_ENUM_VARIANT: {
     /* get enum type */
-    bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(found);
+    bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(_ref->ref);
     bl_node_t *             enm      = _variant->parent;
     bl_decl_enum_t *        _enm     = bl_peek_decl_enum(enm);
     _enm->used++;
@@ -338,7 +353,7 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
   }
 
   default:
-    bl_abort("invalid decl ref %s", bl_node_name(found));
+    bl_abort("invalid decl ref %s", bl_node_name(_ref->ref));
   }
 }
 
@@ -346,11 +361,23 @@ void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
-  bl_node_t *           type        = bl_ast_get_result_type(_member_ref->next);
 
-  /* TODO: handle as compiler error */
-  if (bl_node_is_not(type, BL_DECL_STRUCT))
-    bl_abort("type %s has no members", bl_node_name(type));
+  /* anonymous members can be already linked */
+  if (_member_ref->ref)
+    return;
+
+  bl_node_t *type = bl_ast_get_result_type(_member_ref->next);
+
+  if (bl_node_is_not(type, BL_TYPE_REF)) {
+    connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                  "field has no members, structure is expected");
+  }
+
+  type = bl_peek_type_ref(type)->ref;
+  if (bl_node_is_not(type, BL_DECL_STRUCT)) {
+    connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+                  "field has no members, structure is expected");
+  }
 
   /* determinate if struct is declared in current tree and private members can be referenced too */
   bl_node_t *linked_by = NULL;
@@ -405,6 +432,105 @@ include_using(context_t *cnt, bl_node_t *using)
 
   /* add found compound into cache */
   bl_scopes_include(curr_scopes, found_scopes->main, using);
+}
+
+bl_node_t *
+create_def_value(context_t *cnt, bl_node_t *type)
+{
+  if (bl_node_is(type, BL_TYPE_FUND)) {
+    bl_type_fund_t *_type = bl_peek_type_fund(type);
+
+    if (_type->is_ptr) {
+      return bl_ast_add_expr_null(cnt->ast, NULL, type);
+    }
+
+    /* skip arrays */
+    if (_type->dims)
+      return NULL;
+
+    switch (_type->type) {
+    case BL_FTYPE_CHAR:
+    case BL_FTYPE_I8:
+    case BL_FTYPE_I16:
+    case BL_FTYPE_I32:
+    case BL_FTYPE_I64:
+    case BL_FTYPE_U8:
+    case BL_FTYPE_U16:
+    case BL_FTYPE_U32:
+    case BL_FTYPE_U64:
+    case BL_FTYPE_BOOL:
+      return bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+      return bl_ast_add_expr_const_double(cnt->ast, NULL, type, 0.0f);
+    case BL_FTYPE_STRING: {
+      return bl_ast_add_expr_const_str(cnt->ast, NULL, type, "\0");
+    }
+    default:
+      return NULL;
+    }
+  } else if (bl_node_is(type, BL_TYPE_REF)) {
+    bl_type_ref_t *_type = bl_peek_type_ref(type);
+    bl_node_t *    ref   = _type->ref;
+    bl_assert(ref, "invalid ref type reference");
+
+    /* skip arrays */
+    if (_type->dims)
+      return NULL;
+
+    if (_type->is_ptr) {
+      return bl_ast_add_expr_null(cnt->ast, NULL, type);
+    }
+
+    switch (bl_node_code(ref)) {
+    case BL_DECL_ENUM: {
+      bl_decl_enum_t *_enum = bl_peek_decl_enum(ref);
+      bl_assert(bl_ast_enum_get_count(_enum),
+                "cannot generate default initialization value for an empty enum");
+
+      bl_node_t *def_variant = bl_ast_enum_get_variant(_enum, 0);
+      return bl_ast_add_expr_decl_ref(cnt->ast, NULL, def_variant, NULL);
+    }
+
+    case BL_DECL_STRUCT: {
+      /* default value for structures is going to be tricky... Here we want to generate
+       * initialization list with deafult values for every member of structure.*/
+
+      bl_node_t *init_list = bl_ast_add_expr_init(cnt->ast, NULL, type);
+      /* iterate struct members and genrate default values */
+      bl_decl_struct_t *       _struct = bl_peek_decl_struct(ref);
+      bl_node_t *              member  = NULL;
+      bl_decl_struct_member_t *_member = NULL;
+      const size_t             c       = bl_ast_struct_member_count(_struct);
+      for (size_t i = 0; i < c; ++i) {
+        member = bl_ast_struct_get_member(_struct, i);
+        bl_assert(member, "invalid structure member");
+        _member = bl_peek_decl_struct_member(member);
+
+        if (!_member->init_expr) {
+          _member->init_expr = create_def_value(cnt, _member->type);
+        }
+
+        if (!_member->init_expr)
+          return NULL;
+
+        bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
+        bl_node_t *member_ref =
+            bl_ast_add_expr_member_ref(cnt->ast, NULL, "", init_decl_ref, member, false);
+        bl_node_t *assign = bl_ast_add_expr_binop(cnt->ast, NULL, BL_SYM_ASSIGN, member_ref,
+                                                  _member->init_expr, NULL);
+        bl_ast_init_push_expr(bl_peek_expr_init(init_list), assign);
+      }
+
+      return init_list;
+    }
+
+    default:
+      bl_abort("unknow reference %s", bl_node_name(ref));
+    }
+  }
+
+  return NULL;
 }
 
 /*************************************************************************************************
@@ -510,8 +636,6 @@ first_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_func->scopes, main_scope, func);
 
-  /* TODO: insert args into scope of function */
-
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, func);
   /* terminal */
@@ -614,6 +738,16 @@ third_pass_using(bl_visitor_t *visitor, bl_node_t *using)
 }
 
 void
+third_pass_return(bl_visitor_t *visitor, bl_node_t *ret)
+{
+  context_t *cnt   = peek_cnt(visitor);
+  bl_node_t *prev  = cnt->curr_lvalue;
+  cnt->curr_lvalue = ret;
+  bl_visitor_walk_return(visitor, ret);
+  cnt->curr_lvalue = prev;
+}
+
+void
 third_pass_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   context_t *cnt = peek_cnt(visitor);
@@ -665,9 +799,48 @@ third_pass_block(bl_visitor_t *visitor, bl_node_t *block)
 void
 third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
 {
-  context_t *cnt = peek_cnt(visitor);
+  context_t *cnt  = peek_cnt(visitor);
+  bl_node_t *prev = cnt->curr_lvalue;
+
+  /* validate expressions before walking */
+  switch (bl_node_code(expr)) {
+  case BL_EXPR_MEMBER_REF: {
+    bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(expr);
+    if (!_member_ref->next) {
+      connect_error(cnt, BL_ERR_EXPECTED_EXPR, expr->src, "member access without context ");
+    }
+    break;
+  }
+
+  case BL_EXPR_BINOP: {
+    cnt->curr_lvalue = expr;
+    break;
+  }
+
+  case BL_EXPR_INIT: {
+    bl_expr_init_t *_init = bl_peek_expr_init(expr);
+    if (!_init->type) {
+      bl_assert(cnt->curr_lvalue, "invalid lvalue");
+      _init->type = bl_ast_get_result_type(cnt->curr_lvalue);
+    }
+    break;
+  }
+
+  case BL_EXPR_CONST: {
+    bl_expr_const_t *_const = bl_peek_expr_const(expr);
+    if (!_const->type) {
+      _const->type = bl_ast_get_result_type(cnt->curr_lvalue);
+    }
+    break;
+  }
+
+  default:
+    break;
+  }
+
   /* expressions are handled backwards!!! */
   bl_visitor_walk_expr(visitor, expr);
+  cnt->curr_lvalue = prev;
 
   switch (bl_node_code(expr)) {
   case BL_EXPR_CALL:
@@ -679,6 +852,7 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_MEMBER_REF:
     connect_member_ref(cnt, expr);
     break;
+
   default:
     break;
   }
@@ -690,6 +864,16 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
   context_t *    cnt       = peek_cnt(visitor);
   bl_decl_var_t *_var      = bl_peek_decl_var(var);
   bl_node_t *    linked_by = NULL;
+  bl_node_t *    prev      = cnt->curr_lvalue;
+  cnt->curr_lvalue         = var;
+
+  /* Anonymous variables are in most cases generated by compiler itself and shoud not conflict with
+   * variables declared directly by compiled code. When variable is anonymous we are going to skip
+   * it's inserting into lookup table and checking for conflicts. */
+  if (_var->is_anonymous) {
+    bl_visitor_walk_var(visitor, var);
+    return;
+  }
 
   bl_node_t *conflict = lookup_in_tree(cnt, &_var->id, cnt->curr_compound, &linked_by, NULL);
   if (conflict) {
@@ -708,6 +892,12 @@ third_pass_var(bl_visitor_t *visitor, bl_node_t *var)
   bl_scopes_insert_node(scopes, var);
 
   bl_visitor_walk_var(visitor, var);
+
+  if (!_var->init_expr && !(_var->modif & BL_MODIF_UNINIT)) {
+    _var->init_expr = create_def_value(cnt, _var->type);
+  }
+
+  cnt->curr_lvalue = prev;
 }
 
 void
@@ -716,7 +906,10 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_decl_func_t *_func    = bl_peek_decl_func(func);
   context_t *     cnt      = peek_cnt(visitor);
   bl_node_t *     prev_cmp = cnt->curr_compound;
-  cnt->curr_compound       = func;
+  bl_node_t *     prev_fn  = cnt->curr_func;
+
+  cnt->curr_compound = func;
+  cnt->curr_func     = func;
 
   const size_t c = bl_ast_func_arg_count(_func);
   bl_node_t *  arg;
@@ -736,6 +929,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
 
   bl_visitor_walk_func(visitor, func);
   cnt->curr_compound = prev_cmp;
+  cnt->curr_func     = prev_fn;
 }
 
 void
@@ -835,7 +1029,11 @@ VALIDATE_F(type)
 bl_error_e
 bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly, .curr_compound = NULL};
+  context_t cnt = {.builder       = builder,
+                   .assembly      = assembly,
+                   .curr_compound = NULL,
+                   .curr_lvalue   = NULL,
+                   .curr_func     = NULL};
   const int c   = bl_assembly_get_unit_count(assembly);
   /* all anonymous global modules needs shared cache */
   bl_scope_t *gscope = bl_scope_new(assembly->scope_cache);
@@ -859,6 +1057,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bl_scopes_include_main(&bl_peek_decl_module(cnt.unit->ast.root)->scopes, gscope,
                            cnt.unit->ast.root);
     cnt.curr_compound = cnt.unit->ast.root;
+    cnt.curr_lvalue   = NULL;
+    cnt.curr_func     = NULL;
     bl_visitor_walk_module(&visitor_first, cnt.unit->ast.root);
   }
 
@@ -870,9 +1070,13 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_ENUM);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_FUNC);
+  // bl_visitor_add(&visitor_second, second_pass_var, BL_VISIT_VAR);
+  // bl_visitor_add(&visitor_second, second_pass_expr, BL_VISIT_EXPR);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+    cnt.unit        = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue = NULL;
+    cnt.curr_func   = NULL;
     bl_visitor_walk_gscope(&visitor_second, cnt.unit->ast.root);
   }
 
@@ -887,9 +1091,13 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_third, third_pass_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_third, third_pass_return, BL_VISIT_RETURN);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+    cnt.unit        = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue = NULL;
+    cnt.curr_func   = NULL;
+    cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_third, cnt.unit->ast.root);
   }
 

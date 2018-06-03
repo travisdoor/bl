@@ -123,7 +123,7 @@ bl_token_prec(bl_token_t *token)
   case BL_SYM_LOGIC_OR:
     return 5;
 
-  case BL_SYM_ASIGN:
+  case BL_SYM_ASSIGN:
     return 4;
   default:
     return -1;

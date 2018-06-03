@@ -15,20 +15,13 @@ module bl_tester {
     public extern fn strcmp(a *void, b string) i32;
   }
 
-  const unit_count i32 = 23;
+  const unit_count i32 = 24;
   
   struct unit_t {
     cmd string,
     name string,
+    run string,
     state i32
-  }
-  
-  fn new_unit(cmd string, name string) unit_t {
-    var unit unit_t;
-    unit.cmd = cmd;
-    unit.name = name;
-    unit.state = 0;
-    return unit;
   }
   
   fn print_unit_result(unit unit_t) {
@@ -46,6 +39,8 @@ module bl_tester {
     var i i32;
     while (i < unit_count) {
       var cmp_result i32 = c::system(units[i].cmd);
+      if (cmp_result == 0)
+        cmp_result = c::system(units[i].run);
       units[i].state = cmp_result;
       i = i + 1;
     }
@@ -65,30 +60,31 @@ module bl_tester {
 
   fn main() {
     var units unit_t[unit_count];
-  
-    units[0]  = new_unit("blc -run decl_def_values_test.bl", "decl def values test");
-    units[1]  = new_unit("blc -run enum_test.bl", "enum test");
-    units[2]  = new_unit("blc -run expression_test.bl", "expression test");
-    units[3]  = new_unit("blc -run factorial_test.bl", "factorial test");
-    units[4]  = new_unit("blc -run if_test.bl", "if test");
-    units[5]  = new_unit("blc -run loop_test.bl", "loop test");
-    units[6]  = new_unit("blc -run method_ordering_test.bl", "method ordering test");
-    units[7]  = new_unit("blc -run module_test.bl", "module test");
-    units[8]  = new_unit("blc -run simple_array_test.bl", "simple array test");
-    units[9]  = new_unit("blc -run simple_assignment_test.bl", "simple assignment test");
-    units[10] = new_unit("blc -run simple_ext_call_test.bl", "simple ext call test");
-    units[11] = new_unit("blc -run simple_method_call_test.bl", "simple method call test");
-    units[12] = new_unit("blc -run struct_test.bl", "struct test");
-    units[13] = new_unit("blc -run sub_statement_test.bl", "sub statement test");
-    units[14] = new_unit("blc -run while_test.bl", "while test");
-    units[15] = new_unit("blc -run const_test.bl", "const test");
-    units[16] = new_unit("blc -run eval_test.bl", "const evaluator test");
-    units[17] = new_unit("blc -run unary_expr_test.bl", "unary expression test");
-    units[18] = new_unit("blc -run sizeof_test.bl", "size of test");
-    units[19] = new_unit("blc -run load_test.bl", "load test");
-    units[20] = new_unit("blc -run ptr_type_test.bl", "pointer type test");
-    units[21] = new_unit("blc -run using_test.bl", "using test");
-    units[22] = new_unit("blc -run cast_test.bl", "casting test");
+
+    units[0]  = unit_t { .cmd = "blc decl_def_values_test.bl", .run = "./decl_def_values_test" , .name = "decl def values"};
+    units[1]  = unit_t { .cmd = "blc enum_test.bl", "enum test", .run = "./enum_test", .name = "enumerator test"};
+    units[2]  = unit_t { .cmd = "blc expression_test.bl", .run = "./expression_test", .name = "expression test"};
+    units[3]  = unit_t { .cmd = "blc factorial_test.bl", .run = "./factorial_test", .name = "factorial test"};
+    units[4]  = unit_t { .cmd = "blc if_test.bl", .run = "./if_test", .name = "if test"};
+    units[5]  = unit_t { .cmd = "blc loop_test.bl", .run = "./loop_test", .name = "loop test"};
+    units[6]  = unit_t { .cmd = "blc method_ordering_test.bl", .run = "./method_ordering_test", .name = "method ordering test"};
+    units[7]  = unit_t { .cmd = "blc module_test.bl", .run = "./module_test", .name = "module test"};
+    units[8]  = unit_t { .cmd = "blc simple_array_test.bl", .run = "./simple_array_test", .name = "simple array test"};
+    units[9]  = unit_t { .cmd = "blc simple_assignment_test.bl", .run = "./simple_assignment_test", .name = "simple assignment test"};
+    units[10] = unit_t { .cmd = "blc simple_ext_call_test.bl", .run = "./simple_ext_call_test", .name = "simple ext call test"};
+    units[11] = unit_t { .cmd = "blc simple_method_call_test.bl", .run = "./simple_method_call_test", .name = "simple method call test"};
+    units[12] = unit_t { .cmd = "blc struct_test.bl", .run = "./struct_test", .name = "struct test"};
+    units[13] = unit_t { .cmd = "blc sub_statement_test.bl", .run = "./sub_statement_test", .name = "sub statement test"};
+    units[14] = unit_t { .cmd = "blc while_test.bl", .run = "./while_test", .name = "while test"};
+    units[15] = unit_t { .cmd = "blc const_test.bl", .run = "./const_test", .name = "const test"};
+    units[16] = unit_t { .cmd = "blc eval_test.bl", .run = "./eval_test", .name = "const evaluator test"};
+    units[17] = unit_t { .cmd = "blc unary_expr_test.bl", .run = "./unary_expr_test", .name = "unary expression test"};
+    units[18] = unit_t { .cmd = "blc sizeof_test.bl", .run = "./sizeof_test", .name = "size of test"};
+    units[19] = unit_t { .cmd = "blc load_test.bl", .run = "./load_test", .name = "load test"};
+    units[20] = unit_t { .cmd = "blc ptr_type_test.bl", .run = "./ptr_type_test", .name = "pointer type test"};
+    units[21] = unit_t { .cmd = "blc using_test.bl", .run = "./using_test", .name = "using test"};
+    units[22] = unit_t { .cmd = "blc cast_test.bl", .run = "./cast_test", .name = "casting test"};
+    units[23] = unit_t { .cmd = "blc init_list_test.bl", .run = "./init_list_test", .name = "initialization lists"};
   
     c::puts("Welcome to Biscuit Language Tester");
     var cmd *void = c::malloc(1024); 

@@ -81,6 +81,7 @@
     nt(EXPR_SIZEOF,        expr_sizeof) \
     nt(EXPR_NULL,          expr_null) \
     nt(EXPR_CAST,          expr_cast) \
+    nt(EXPR_INIT,          expr_init) \
     nt(TYPE_FUND,          type_fund) \
     nt(TYPE_REF,           type_ref) \
     nt(PATH_ELEM,          path_elem) \
@@ -138,7 +139,8 @@ enum bl_modif
   BL_MODIF_NONE   = 0,
   BL_MODIF_PUBLIC = 1,
   BL_MODIF_EXTERN = 2,
-  BL_MODIF_EXPORT = 4
+  BL_MODIF_EXPORT = 4,
+  BL_MODIF_UNINIT = 8,
 };
 
 /*************************************************************************************************
@@ -178,6 +180,7 @@ struct bl_stmt_continue
 struct bl_stmt_return
 {
   bl_node_t *expr;
+  bl_node_t *func;
 };
 
 struct bl_stmt_using
@@ -202,6 +205,12 @@ struct bl_expr_cast
   bl_node_t *next;
 };
 
+struct bl_expr_init
+{
+  bl_node_t *type;
+  BArray *   exprs;
+};
+
 /* module declaration */
 struct bl_decl_module
 {
@@ -220,6 +229,9 @@ struct bl_decl_var
   bl_node_t *type;
   bl_node_t *init_expr;
   int        used;
+
+  /* variable invisible for symbol lookup functions when true */
+  bool is_anonymous;
 };
 
 struct bl_decl_const
@@ -471,10 +483,13 @@ bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray 
 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
-                           bool is_ptr_ref);
+                           bl_node_t *ref, bool is_ptr_ref);
 
 bl_node_t *
 bl_ast_add_expr_cast(bl_ast_t *ast, bl_token_t *tok, bl_node_t *to_type, bl_node_t *next);
+
+bl_node_t *
+bl_ast_add_expr_init(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
@@ -491,7 +506,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                    bl_node_t *init_expr, int modif);
+                    bl_node_t *init_expr, int modif, bool is_anonymous);
 
 bl_node_t *
 bl_ast_add_decl_const(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
@@ -537,7 +552,7 @@ bl_node_t *
 bl_ast_add_stmt_continue(bl_ast_t *ast, bl_token_t *tok);
 
 bl_node_t *
-bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr);
+bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func);
 
 bl_node_t *
 bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path);
@@ -589,6 +604,18 @@ bl_ast_call_arg_count(bl_expr_call_t *call);
 
 bl_node_t *
 bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i);
+
+/*************************************************************************************************
+ * init
+ *************************************************************************************************/
+bl_node_t *
+bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr);
+
+size_t
+bl_ast_init_expr_count(bl_expr_init_t *init);
+
+bl_node_t *
+bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i);
 
 /*************************************************************************************************
  * struct

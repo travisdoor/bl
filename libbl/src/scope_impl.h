@@ -31,7 +31,7 @@
 
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/array.h>
-#include "ast/id_impl.h"
+#include "id_impl.h"
 
 /* Scope cache is used for storing unique symbols found after parsing in AST nodes. Every compound
  * node (typically block of code inside curly braces) can have multiple declarations needed by other

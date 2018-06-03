@@ -1,4 +1,4 @@
-/* EXAMPLE: Var */
+/* example: var */
 
 module c {
   public extern fn printf(s string, i i32) i32;

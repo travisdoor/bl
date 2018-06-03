@@ -29,9 +29,9 @@ set(HEADER_FILES_IMPL
         src/stages_impl.h
         src/common_impl.h 
         src/scope_impl.h
-        src/ast/id_impl.h  
-        src/ast/visitor_impl.h
-        src/ast/ast_impl.h)
+        src/id_impl.h  
+        src/visitor_impl.h
+        src/ast_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
@@ -54,10 +54,10 @@ set(SOURCE_FILES
         src/llvm_linker.c 
         src/llvm_generator.c 
         src/scope.c 
-        src/ast/id.c
+        src/id.c
         src/parser.c
-        src/ast/ast.c
-        src/ast/visitor.c)
+        src/ast.c
+        src/visitor.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 

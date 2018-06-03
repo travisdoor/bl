@@ -62,7 +62,7 @@ bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   LLVMTargetMachineRef target_machine =
-      LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelDefault,
+      LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelAggressive,
                               LLVMRelocDefault, LLVMCodeModelDefault);
 
   if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
