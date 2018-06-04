@@ -5,7 +5,7 @@
  */
 
 fn main() i32 {
-  var i i32 = 100;
+  mut i i32 = 100;
 
   while (i != 0) {
     i = i - 1;

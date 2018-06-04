@@ -11,8 +11,8 @@ struct foo_t {
 }
 
 fn main() i32 {
-  var foo foo_t;
-  var i i32;
+  mut foo foo_t;
+  mut i i32;
   foo.i = &i;
 
   // cannot compile

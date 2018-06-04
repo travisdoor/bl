@@ -41,7 +41,7 @@ public module sdl2 {
   }
 
   public fn key_pressed(scancode scancode_e) bool {
-    var tmp *u8 = get_key_state();
+    mut tmp *u8 = get_key_state();
     if (tmp == null)
       return false;
       

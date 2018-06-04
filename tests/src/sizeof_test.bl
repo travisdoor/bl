@@ -25,23 +25,23 @@ enum D i64 {
 }
 
 fn main() i32 {
-  var s_i8 size_t = sizeof(i8);
-  var s_i32 size_t = sizeof(i32);
-  var s_i64 size_t = sizeof(i64); 
-  var s_u8 size_t = sizeof(u8);
-  var s_u32 size_t = sizeof(u32);
-  var s_u64 size_t = sizeof(u64); 
-  var s_size_t size_t = sizeof(size_t); 
-  var s_string size_t = sizeof(string); 
-  var s_char size_t = sizeof(char); 
-  var s_bool size_t = sizeof(bool); 
-  var s_f32 size_t = sizeof(f32); 
-  var s_f64 size_t = sizeof(f64); 
+  mut s_i8 size_t = sizeof(i8);
+  mut s_i32 size_t = sizeof(i32);
+  mut s_i64 size_t = sizeof(i64); 
+  mut s_u8 size_t = sizeof(u8);
+  mut s_u32 size_t = sizeof(u32);
+  mut s_u64 size_t = sizeof(u64); 
+  mut s_size_t size_t = sizeof(size_t); 
+  mut s_string size_t = sizeof(string); 
+  mut s_char size_t = sizeof(char); 
+  mut s_bool size_t = sizeof(bool); 
+  mut s_f32 size_t = sizeof(f32); 
+  mut s_f64 size_t = sizeof(f64); 
 
-  var s_A size_t = sizeof(A); 
-  var s_B size_t = sizeof(B); 
-  var s_C size_t = sizeof(C); 
-  var s_D size_t = sizeof(D); 
+  mut s_A size_t = sizeof(A); 
+  mut s_B size_t = sizeof(B); 
+  mut s_C size_t = sizeof(C); 
+  mut s_D size_t = sizeof(D); 
 
   printf("sizeof(i8)     = %luB\n", s_i8);
   printf("sizeof(i32)    = %luB\n", s_i32);

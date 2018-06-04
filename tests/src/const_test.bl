@@ -12,11 +12,11 @@ struct foo {
 
 fn main() i32 {
   const _i32_local i32 = 256 + 10;
-  var copy i32 = _i32_local;
+  mut copy i32 = _i32_local;
   copy = _i32_global;
   copy = A::_i32_global;
   copy = A::_i32_global2;
-  var f foo;
+  mut f foo;
   return 0;
 }
 

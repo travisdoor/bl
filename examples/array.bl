@@ -5,8 +5,8 @@ module c {
 }
 
 fn main() {
-  var arr i32[256];
-  var i i32;
+  mut arr i32[256];
+  mut i i32;
 
   while (i < 256) {
     arr[i] = i;

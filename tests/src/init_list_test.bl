@@ -21,7 +21,7 @@ struct C {
 }
 
 fn main() i32 {
-  var a A = {
+  mut a A = {
     .b = {
       .c = {
         .x = 10

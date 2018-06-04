@@ -43,7 +43,7 @@
   sm(DOUBLE,      "double") \
   sm(IF,          "if") /* must be first */ \
   sm(FN,          "fn") \
-  sm(VAR,         "var") \
+  sm(MUT,         "mut") \
   sm(CAST,        "cast") \
   sm(ELSE,        "else") \
   sm(TRUE,        "true") \
@@ -58,7 +58,6 @@
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
   sm(PUBLIC,      "public")\
-  sm(UNINIT,      "uninit") \
   sm(EXTERN,      "extern") \
   sm(MODULE,      "module") \
   sm(EXPORT,      "export") \

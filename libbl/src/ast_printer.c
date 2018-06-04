@@ -57,10 +57,6 @@ print_modif(int modif)
   if (modif & BL_MODIF_EXPORT) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
   }
-
-  if (modif & BL_MODIF_UNINIT) {
-    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_UNINIT]);
-  }
 }
 
 static inline void
@@ -195,13 +191,13 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_node_t *var)
+visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
-  bl_decl_var_t *_var = bl_peek_decl_var(var);
-  print_head("variable", bl_peek_src(var), var, visitor->nesting);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _var->id.str, _var->used);
-  print_modif(_var->modif);
-  bl_visitor_walk_var(visitor, var);
+  bl_decl_mut_t *_mut = bl_peek_decl_mut(mut);
+  print_head("variable", bl_peek_src(mut), mut, visitor->nesting);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _mut->id.str, _mut->used);
+  print_modif(_mut->modif);
+  bl_visitor_walk_mut(visitor, mut);
 }
 
 static void
@@ -392,7 +388,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
     bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
     bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
-    bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+    bl_visitor_add(&visitor, visit_mut, BL_VISIT_mut);
     bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
     bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);

@@ -44,7 +44,7 @@ typedef enum {
   BL_VISIT_STRUCT_MEMBER,
   BL_VISIT_ENUM,
   BL_VISIT_ENUM_VARIANT,
-  BL_VISIT_VAR,
+  BL_VISIT_mut,
   BL_VISIT_CONST,
   BL_VISIT_BLOCK,
   BL_VISIT_EXPR,
@@ -103,7 +103,7 @@ void
 bl_visitor_walk_enum_variant(bl_visitor_t *visitor, bl_node_t *variant);
 
 void
-bl_visitor_walk_var(bl_visitor_t *visitor, bl_node_t *var);
+bl_visitor_walk_mut(bl_visitor_t *visitor, bl_node_t *mut);
 
 void
 bl_visitor_walk_const(bl_visitor_t *visitor, bl_node_t *cnst);

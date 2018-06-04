@@ -6,7 +6,7 @@
  */
 
 fn main() i32 {
-  var i i32;
+  mut i i32;
 
   {
     i = 10;

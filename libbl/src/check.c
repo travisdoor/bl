@@ -288,8 +288,8 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
 
   switch (bl_node_code(ref)) {
 
-  case BL_DECL_VAR: {
-    ref_type = bl_peek_decl_var(ref)->type;
+  case BL_DECL_MUT: {
+    ref_type = bl_peek_decl_mut(ref)->type;
 
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
@@ -481,18 +481,18 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_node_t *var)
+visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
   context_t *    cnt  = peek_cnt(visitor);
-  bl_decl_var_t *_var = bl_peek_decl_var(var);
+  bl_decl_mut_t *_mut = bl_peek_decl_mut(mut);
 
-  if (_var->used == 0) {
-    check_warning(cnt, var, "variable " BL_YELLOW("'%s'") " is declared but never used",
-                  _var->id.str);
+  if (_mut->used == 0) {
+    check_warning(cnt, mut, "variable " BL_YELLOW("'%s'") " is declared but never used",
+                  _mut->id.str);
   }
 
-  if (_var->init_expr != NULL) {
-    check_expr(cnt, _var->init_expr, _var->type, false);
+  if (_mut->init_expr != NULL) {
+    check_expr(cnt, _mut->init_expr, _mut->type, false);
   }
 }
 
@@ -565,22 +565,23 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 }
 
 static void
-visit_enum_variant(bl_visitor_t *visitor, bl_node_t *var)
+visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 {
   context_t *             cnt           = peek_cnt(visitor);
-  bl_decl_enum_variant_t *_var          = bl_peek_decl_enum_variant(var);
-  bl_node_t *             expected_type = bl_peek_decl_enum(_var->parent)->type;
+  bl_decl_enum_variant_t *_variant      = bl_peek_decl_enum_variant(variant);
+  bl_node_t *             expected_type = bl_peek_decl_enum(_variant->parent)->type;
 
-  if (_var->expr != NULL) {
+  if (_variant->expr != NULL) {
     /* check result type of the expression */
-    check_expr(cnt, _var->expr, expected_type, true);
+    check_expr(cnt, _variant->expr, expected_type, true);
   } else {
     bl_type_fund_t *type = bl_peek_type_fund(expected_type);
     switch (type->type) {
     case BL_FTYPE_CHAR:
     case BL_FTYPE_STRING:
-      check_error(cnt, BL_ERR_EXPECTED_EXPR, var,
-                  "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?", _var->id.str);
+      check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
+                  "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?",
+                  _variant->id.str);
       break;
     default:
       break;
@@ -667,7 +668,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
-  bl_visitor_add(&visitor, visit_var, BL_VISIT_VAR);
+  bl_visitor_add(&visitor, visit_mut, BL_VISIT_mut);
   bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);

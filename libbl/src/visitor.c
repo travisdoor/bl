@@ -48,8 +48,8 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
     break;
   }
 
-  case BL_DECL_VAR: {
-    call_visit(visitor, stmt, BL_VISIT_VAR);
+  case BL_DECL_MUT: {
+    call_visit(visitor, stmt, BL_VISIT_mut);
     break;
   }
 
@@ -145,9 +145,9 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_node_t *var)
+visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
-  bl_visitor_walk_var(visitor, var);
+  bl_visitor_walk_mut(visitor, mut);
 }
 
 static void
@@ -240,7 +240,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_ARG]           = visit_arg;
   visitor->visitors[BL_VISIT_STRUCT]        = visit_struct;
   visitor->visitors[BL_VISIT_ENUM]          = visit_enum;
-  visitor->visitors[BL_VISIT_VAR]           = visit_var;
+  visitor->visitors[BL_VISIT_mut]           = visit_mut;
   visitor->visitors[BL_VISIT_CONST]         = visit_const;
   visitor->visitors[BL_VISIT_BLOCK]         = visit_block;
   visitor->visitors[BL_VISIT_EXPR]          = visit_expr;
@@ -421,15 +421,15 @@ bl_visitor_walk_enum(bl_visitor_t *visitor, bl_node_t *enm)
 }
 
 void
-bl_visitor_walk_var(bl_visitor_t *visitor, bl_node_t *var)
+bl_visitor_walk_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
   visitor->nesting++;
 
-  bl_decl_var_t *_var = bl_peek_decl_var(var);
-  call_visit(visitor, _var->type, BL_VISIT_TYPE);
+  bl_decl_mut_t *_mut = bl_peek_decl_mut(mut);
+  call_visit(visitor, _mut->type, BL_VISIT_TYPE);
 
-  if (_var->init_expr) {
-    call_visit(visitor, bl_peek_decl_var(var)->init_expr, BL_VISIT_EXPR);
+  if (_mut->init_expr) {
+    call_visit(visitor, bl_peek_decl_mut(mut)->init_expr, BL_VISIT_EXPR);
   }
 
   visitor->nesting--;

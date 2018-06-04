@@ -111,7 +111,7 @@ static bl_node_t *
 parse_ret_type_rq(context_t *cnt);
 
 static bl_node_t *
-parse_var_maybe(context_t *cnt, int modif);
+parse_mut_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
 parse_const_maybe(context_t *cnt, int modif);
@@ -192,11 +192,6 @@ modif:
 
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_PUBLIC)) {
     res |= BL_MODIF_PUBLIC;
-    goto modif;
-  }
-
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_UNINIT)) {
-    res |= BL_MODIF_UNINIT;
     goto modif;
   }
 
@@ -738,7 +733,7 @@ parse_expr_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_var_maybe(context_t *cnt, int modif)
+parse_mut_maybe(context_t *cnt, int modif)
 {
   bl_node_t * type      = NULL;
   bl_node_t * init_expr = NULL;
@@ -746,11 +741,11 @@ parse_var_maybe(context_t *cnt, int modif)
 
   /* TODO: check for invalid modificators */
 
-  /* Constant variable can be declared without 'var' key word at the begining, we use 'const'
+  /* Constant variable can be declared without 'mut' key word at the begining, we use 'const'
    * keyword instead. This can lead to confusion later becouse 'const' is used as modifier stored in
-   * modif buffer of declaration, but for now anything else than var cannot be declared as constant.
+   * modif buffer of declaration, but for now anything else than mut cannot be declared as constant.
    * Fix this latex? */
-  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_VAR)) {
+  if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_MUT)) {
     return NULL;
   }
 
@@ -787,7 +782,7 @@ parse_var_maybe(context_t *cnt, int modif)
     }
   }
 
-  return bl_ast_add_decl_var(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif, false);
+  return bl_ast_add_decl_mut(cnt->ast, tok_id, tok_id->value.str, type, init_expr, modif, false);
 }
 
 void
@@ -1040,7 +1035,7 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
     goto done;
   }
 
-  if ((stmt = parse_var_maybe(cnt, modif))) {
+  if ((stmt = parse_mut_maybe(cnt, modif))) {
     parse_semicolon_rq(cnt);
     goto done;
   }

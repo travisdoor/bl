@@ -124,11 +124,6 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref);
 /* gen_array_ref_1(context_t *cnt, bl_node_t *array, size_t *dim_mult, BArray **dims, */
 /*                 size_t *dims_iter, size_t *iter); */
 
-#if 0
-static LLVMValueRef
-gen_default(context_t *cnt, bl_node_t *type);
-#endif
-
 static LLVMValueRef
 gen_expr(context_t *cnt, bl_node_t *expr);
 
@@ -252,8 +247,13 @@ gen_init(context_t *cnt, bl_node_t *init)
   bl_expr_init_t *_init = bl_peek_expr_init(init);
 
   bl_assert(_init->type, "invalid type for initialization list");
-  LLVMValueRef    result =
+
+  LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
+  LLVMValueRef result =
       LLVMBuildAlloca(cnt->llvm_builder, to_llvm_type(cnt, _init->type), gname("tmp"));
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(init, result);
 
   const size_t c    = bl_ast_init_expr_count(_init);
@@ -500,79 +500,6 @@ get_or_create_const_string(context_t *cnt, const char *str)
   return s;
 }
 
-#if 0
-/*
- * Generate default value for known type.
- * For string we create global string array with line terminator.
- */
-static LLVMValueRef
-gen_default(context_t *cnt, bl_node_t *type)
-{
-  LLVMTypeRef llvm_type = to_llvm_type(cnt, type);
-  if (bl_node_code(type) == BL_TYPE_FUND) {
-    bl_type_fund_t *_type = bl_peek_type_fund(type);
-
-    if (_type->is_ptr)
-      return LLVMConstPointerNull(llvm_type);
-
-    /* skip arrays */
-    if (_type->dims)
-      return NULL;
-
-    switch (_type->type) {
-    case BL_FTYPE_CHAR:
-    case BL_FTYPE_I8:
-    case BL_FTYPE_I16:
-    case BL_FTYPE_I32:
-    case BL_FTYPE_I64:
-    case BL_FTYPE_U8:
-    case BL_FTYPE_U16:
-    case BL_FTYPE_U32:
-    case BL_FTYPE_U64:
-    case BL_FTYPE_BOOL:
-      return LLVMConstInt(llvm_type, 0, false);
-    case BL_FTYPE_F32:
-    case BL_FTYPE_F64:
-      return LLVMConstReal(llvm_type, 0);
-    case BL_FTYPE_STRING: {
-      return get_or_create_const_string(cnt, "\0");
-    }
-    default:
-      return NULL;
-    }
-  } else if (bl_node_code(type) == BL_TYPE_REF) {
-    if (bl_peek_type_ref(type)->is_ptr)
-      return LLVMConstPointerNull(llvm_type);
-
-    /* skip arrays */
-    if (bl_peek_type_ref(type)->dims)
-      return NULL;
-
-    bl_node_t *ref = bl_peek_type_ref(type)->ref;
-
-    switch (bl_node_code(ref)) {
-    case BL_DECL_ENUM: {
-      bl_decl_enum_t *enm = bl_peek_decl_enum(ref);
-
-      if (bl_ast_enum_get_count(enm) == 0)
-        return NULL;
-
-      bl_node_t *def_variant = bl_ast_enum_get_variant(enm, 0);
-      bl_assert(bl_peek_decl_enum_variant(def_variant)->expr,
-                "every enum varaint must have constant initializer");
-      return gen_expr(cnt, bl_peek_decl_enum_variant(def_variant)->expr);
-    }
-
-    default:
-      // bl_warning("LLVM cannot generate default value for node type: %s", bl_node_name(ref));
-      return NULL;
-    }
-  }
-
-  return NULL;
-}
-#endif
-
 /*
  * generate unary expressions like +, -, &, *, ++, --, ...
  */
@@ -725,7 +652,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     switch (bl_node_code(ref)) {
 
     case BL_EXPR_INIT:
-    case BL_DECL_VAR:
+    case BL_DECL_MUT:
     case BL_DECL_ARG: {
       val = get_value_cscope(ref);
       break;
@@ -1025,30 +952,24 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_node_t *var)
+visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
   context_t *cnt = peek_cnt(visitor);
   skip_if_terminated(cnt);
-  bl_decl_var_t *   _var       = bl_peek_decl_var(var);
+  bl_decl_mut_t *   _mut       = bl_peek_decl_mut(mut);
   LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMTypeRef       t          = to_llvm_type(cnt, _var->type);
+  LLVMTypeRef       t          = to_llvm_type(cnt, _mut->type);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
-  LLVMValueRef llvm_var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_var->id.str));
+  LLVMValueRef llvm_mut = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_mut->id.str));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_value_cscope(var, llvm_var);
+  push_value_cscope(mut, llvm_mut);
 
-  if (!_var->init_expr) {
-    bl_warning("missing initialization of variable");
-    return;
-  }
-
-  bl_assert(_var->init_expr, "invalid init expression for variable declaration");
-  LLVMValueRef init = gen_expr(cnt, _var->init_expr);
-  if (init) {
-    if (should_load(_var->init_expr) || LLVMIsAAllocaInst(init))
+  if (_mut->init_expr) {
+    LLVMValueRef init = gen_expr(cnt, _mut->init_expr);
+    if (should_load(_mut->init_expr) || LLVMIsAAllocaInst(init))
       init = LLVMBuildLoad(cnt->llvm_builder, init, gname("tmp"));
-    LLVMBuildStore(cnt->llvm_builder, init, llvm_var);
+    LLVMBuildStore(cnt->llvm_builder, init, llvm_mut);
   }
 }
 
@@ -1242,7 +1163,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_visitor_add(&top_visitor, visit_func, BL_VISIT_FUNC);
 
-  bl_visitor_add(&gen_visitor, visit_var, BL_VISIT_VAR);
+  bl_visitor_add(&gen_visitor, visit_mut, BL_VISIT_mut);
   bl_visitor_add(&gen_visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&gen_visitor, visit_block, BL_VISIT_BLOCK);
   bl_visitor_add(&gen_visitor, visit_return, BL_VISIT_RETURN);

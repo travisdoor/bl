@@ -25,7 +25,7 @@ module bl_tester {
   }
   
   fn print_unit_result(unit unit_t) {
-    var str_state string;
+    mut str_state string;
     if (unit.state == 0)
       str_state = "OK";
     else  
@@ -36,9 +36,9 @@ module bl_tester {
   }
 
   fn test_all(units unit_t[unit_count]) {
-    var i i32;
+    mut i i32;
     while (i < unit_count) {
-      var cmp_result i32 = c::system(units[i].cmd);
+      mut cmp_result i32 = c::system(units[i].cmd);
       if (cmp_result == 0)
         cmp_result = c::system(units[i].run);
       units[i].state = cmp_result;
@@ -59,7 +59,7 @@ module bl_tester {
   }
 
   fn main() {
-    var units unit_t[unit_count];
+    mut units unit_t[unit_count];
 
     units[0]  = unit_t { .cmd = "blc decl_def_values_test.bl", .run = "./decl_def_values_test" , .name = "decl def values"};
     units[1]  = unit_t { .cmd = "blc enum_test.bl", "enum test", .run = "./enum_test", .name = "enumerator test"};
@@ -87,7 +87,7 @@ module bl_tester {
     units[23] = unit_t { .cmd = "blc init_list_test.bl", .run = "./init_list_test", .name = "initialization lists"};
   
     c::puts("Welcome to Biscuit Language Tester");
-    var cmd *void = c::malloc(1024); 
+    mut cmd *void = c::malloc(1024); 
     loop {
       c::printf(">> ", "");
       c::scanf("%s", cmd);

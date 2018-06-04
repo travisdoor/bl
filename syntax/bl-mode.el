@@ -15,7 +15,7 @@
 (add-to-list 'auto-mode-alist '("\\.bl\\'" . bl-mode))
 
 (defconst bl-keywords
-  '("const" "var" "if" "while" "loop" "break" "continue" "else" "extern"
+  '("const" "mut" "var" "if" "while" "loop" "break" "continue" "else" "extern"
     "module" "public" "struct" "enum" "fn" "return" "using" "cast" "uninit"))
 
 (defconst bl-types

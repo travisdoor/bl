@@ -31,7 +31,7 @@
  * to be evaluated due to correct llvm generation. All expresions processed here must
  * be checked in type check already.
  *
- * Ex.: var arr i32[10 + 2]; is evaluated to var arr i32[12];
+ * Ex.: mut arr i32[10 + 2]; is evaluated to mut arr i32[12];
  *************************************************************************************************/
 
 #include <setjmp.h>
@@ -66,7 +66,7 @@ static bl_node_t *
 eval_binop(context_t *cnt, bl_node_t *binop);
 
 static void
-eval_enum_variant(context_t *cnt, bl_node_t *var);
+eval_enum_variant(context_t *cnt, bl_node_t *mut);
 
 static bl_node_t *
 eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs);
@@ -150,10 +150,10 @@ eval_expr(context_t *cnt, bl_node_t *expr)
 }
 
 void
-eval_enum_variant(context_t *cnt, bl_node_t *var)
+eval_enum_variant(context_t *cnt, bl_node_t *variant)
 {
-  bl_decl_enum_variant_t *_var = bl_peek_decl_enum_variant(var);
-  _var->expr                   = eval_expr(cnt, _var->expr);
+  bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(variant);
+  _variant->expr                   = eval_expr(cnt, _variant->expr);
 }
 
 /*************************************************************************************************
