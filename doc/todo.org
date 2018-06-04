@@ -105,9 +105,10 @@
   - [X] Generation
   - [X] Size_t type 32/64 bit
   - [ ] Evaluation
-- [-] Default values [1/2]
+- [-] Default values [2/3]
   - [X] Generation of constants for simple types
-  - [ ] Generation of initialization list for custom types
+  - [ ] Alloca in LLVM position. 
+  - [X] Generation of initialization list for custom types
 - [-] Initialization list [3/4]
   - [X] Parsing
   - [X] Type prediction
