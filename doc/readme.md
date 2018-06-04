@@ -181,7 +181,6 @@ Variable (mutable) can be declared with 'mut' key-word. They are alocated only w
     }
 
     fn main() {
-      // declaration of variable i of i32 type (automatically set to default value 0)
       mut a i32 = 20;
       mut b i32 = 10; 
 

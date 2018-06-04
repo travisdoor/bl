@@ -43,6 +43,7 @@ const char *bl_node_type_strings[] = {
 static bl_node_t *
 alloc_node(bl_ast_t *ast)
 {
+  // PERFORMANCE: use pool
   bl_node_t *node = bl_calloc(sizeof(bl_node_t), 1);
   if (node == NULL) {
     bl_abort("bad alloc");
@@ -1205,83 +1206,89 @@ bl_ast_try_get_parent(bl_node_t *node)
   }
 }
 
-bl_node_t *
-bl_ast_get_result_type(bl_node_t *node)
+void
+bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type)
 {
   bl_assert(node, "cannot get result type");
-  bl_node_t *type = NULL;
 
   switch (bl_node_code(node)) {
   case BL_EXPR_CALL:
-    type = bl_ast_get_result_type(bl_peek_expr_call(node)->ref);
+    bl_ast_get_result_type(bl_peek_expr_call(node)->ref, out_type);
     break;
 
   case BL_EXPR_DECL_REF:
-    type = bl_ast_get_result_type(bl_peek_expr_decl_ref(node)->ref);
+    bl_ast_get_result_type(bl_peek_expr_decl_ref(node)->ref, out_type);
     break;
 
   case BL_EXPR_MEMBER_REF:
-    type = bl_ast_get_result_type(bl_peek_expr_member_ref(node)->ref);
+    bl_ast_get_result_type(bl_peek_expr_member_ref(node)->ref, out_type);
     break;
 
-  case BL_EXPR_UNARY:
-    type = bl_ast_get_result_type(bl_peek_expr_unary(node)->next);
+  case BL_EXPR_UNARY: {
+    bl_ast_get_result_type(bl_peek_expr_unary(node)->next, out_type);
     break;
+  }
 
   case BL_EXPR_BINOP:
-    type = bl_ast_get_result_type(bl_peek_expr_binop(node)->lhs);
+    bl_ast_get_result_type(bl_peek_expr_binop(node)->lhs, out_type);
     break;
 
   case BL_EXPR_ARRAY_REF:
-    type = bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next);
+    bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next, out_type);
     break;
 
   case BL_EXPR_CAST:
-    type = bl_peek_expr_cast(node)->to_type;
+    *out_type = *bl_peek_expr_cast(node)->to_type;
     break;
 
   case BL_EXPR_INIT:
-    type = bl_ast_get_result_type(bl_peek_expr_init(node)->type);
+    bl_ast_get_result_type(bl_peek_expr_init(node)->type, out_type);
     break;
 
   case BL_EXPR_CONST:
-    type = bl_ast_get_result_type(bl_peek_expr_const(node)->type);
+    bl_ast_get_result_type(bl_peek_expr_const(node)->type, out_type);
     break;
 
   case BL_STMT_RETURN: {
-    type = bl_ast_get_result_type(bl_peek_stmt_return(node)->func);
+    bl_ast_get_result_type(bl_peek_stmt_return(node)->func, out_type);
     break;
   }
 
   case BL_DECL_MUT:
-    type = bl_ast_get_result_type(bl_peek_decl_mut(node)->type);
+    bl_ast_get_result_type(bl_peek_decl_mut(node)->type, out_type);
     break;
 
   case BL_DECL_ARG:
-    type = bl_ast_get_result_type(bl_peek_decl_arg(node)->type);
+    bl_ast_get_result_type(bl_peek_decl_arg(node)->type, out_type);
     break;
 
   case BL_DECL_CONST:
-    type = bl_ast_get_result_type(bl_peek_decl_const(node)->type);
+    bl_ast_get_result_type(bl_peek_decl_const(node)->type, out_type);
     break;
 
   case BL_DECL_FUNC:
-    type = bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type);
+    bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type, out_type);
     break;
 
   case BL_DECL_STRUCT_MEMBER:
-    type = bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type);
+    bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type, out_type);
     break;
 
   case BL_TYPE_REF:
   case BL_TYPE_FUND:
-    type = node;
+    *out_type = *node;
     break;
 
   default:
     bl_abort("unable to get result type of %s node", bl_node_name(node));
   }
+}
 
-  return type;
+bl_node_t *
+bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
+{
+  bl_node_t *dup = alloc_node(ast);
+  memcpy(dup, node, sizeof(bl_node_t));
+  return dup;
 }
 /**************************************************************************************************/
