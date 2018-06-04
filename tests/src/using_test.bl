@@ -16,7 +16,7 @@ fn main() i32 {
   foo();
   //bar();
 
-  var a Foo;
+  mut a Foo;
 
   return 0;
 }

@@ -725,7 +725,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     switch (bl_node_code(ref)) {
 
     case BL_EXPR_INIT:
-    case BL_DECL_VAR:
+    case BL_DECL_MUT:
     case BL_DECL_ARG: {
       val = get_value_cscope(ref);
       break;
@@ -1025,31 +1025,31 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
 }
 
 static void
-visit_var(bl_visitor_t *visitor, bl_node_t *var)
+visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 {
   context_t *cnt = peek_cnt(visitor);
   skip_if_terminated(cnt);
-  bl_decl_var_t *   _var       = bl_peek_decl_var(var);
+  bl_decl_mut_t *   _mut       = bl_peek_decl_mut(mut);
   LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-  LLVMTypeRef       t          = to_llvm_type(cnt, _var->type);
+  LLVMTypeRef       t          = to_llvm_type(cnt, _mut->type);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
-  LLVMValueRef llvm_var = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_var->id.str));
+  LLVMValueRef llvm_mut = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_mut->id.str));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_value_cscope(var, llvm_var);
+  push_value_cscope(mut, llvm_mut);
 
   /* TODO: remove when default initialization of arrays will be implemented */
-  if (!_var->init_expr) {
+  if (!_mut->init_expr) {
     bl_warning("missing initialization of variable");
     return;
   }
 
-  bl_assert(_var->init_expr, "invalid init expression for variable declaration");
-  LLVMValueRef init = gen_expr(cnt, _var->init_expr);
+  bl_assert(_mut->init_expr, "invalid init expression for variable declaration");
+  LLVMValueRef init = gen_expr(cnt, _mut->init_expr);
   if (init) {
-    if (should_load(_var->init_expr) || LLVMIsAAllocaInst(init))
+    if (should_load(_mut->init_expr) || LLVMIsAAllocaInst(init))
       init = LLVMBuildLoad(cnt->llvm_builder, init, gname("tmp"));
-    LLVMBuildStore(cnt->llvm_builder, init, llvm_var);
+    LLVMBuildStore(cnt->llvm_builder, init, llvm_mut);
   }
 }
 
@@ -1243,7 +1243,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_visitor_add(&top_visitor, visit_func, BL_VISIT_FUNC);
 
-  bl_visitor_add(&gen_visitor, visit_var, BL_VISIT_VAR);
+  bl_visitor_add(&gen_visitor, visit_mut, BL_VISIT_mut);
   bl_visitor_add(&gen_visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&gen_visitor, visit_block, BL_VISIT_BLOCK);
   bl_visitor_add(&gen_visitor, visit_return, BL_VISIT_RETURN);

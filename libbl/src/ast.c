@@ -419,21 +419,21 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 }
 
 bl_node_t *
-bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+bl_ast_add_decl_mut(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
                     bl_node_t *init_expr, int modif, bool is_anonymous)
 {
-  bl_node_t *var = alloc_node(ast);
+  bl_node_t *mut = alloc_node(ast);
   if (tok)
-    var->src = &tok->src;
+    mut->src = &tok->src;
 
-  var->code                           = BL_DECL_VAR;
-  bl_peek_decl_var(var)->init_expr    = init_expr;
-  bl_peek_decl_var(var)->type         = type;
-  bl_peek_decl_var(var)->modif        = modif;
-  bl_peek_decl_var(var)->is_anonymous = is_anonymous;
-  bl_id_init(&bl_peek_decl_var(var)->id, name);
+  mut->code                           = BL_DECL_MUT;
+  bl_peek_decl_mut(mut)->init_expr    = init_expr;
+  bl_peek_decl_mut(mut)->type         = type;
+  bl_peek_decl_mut(mut)->modif        = modif;
+  bl_peek_decl_mut(mut)->is_anonymous = is_anonymous;
+  bl_id_init(&bl_peek_decl_mut(mut)->id, name);
 
-  return var;
+  return mut;
 }
 
 bl_node_t *
@@ -489,7 +489,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif, bl_node_t *cnst)
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
 {
   bl_node_t *strct = alloc_node(ast);
   if (tok)
@@ -500,7 +500,6 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
   bl_id_init(&_strct->id, name);
   bl_scopes_init(&_strct->scopes);
   _strct->modif = modif;
-  _strct->cnst  = cnst;
 
   return strct;
 }
@@ -1000,8 +999,8 @@ bl_ast_try_get_id(bl_node_t *node)
   switch (bl_node_code(node)) {
   case BL_DECL_MODULE:
     return &bl_peek_decl_module(node)->id;
-  case BL_DECL_VAR:
-    return &bl_peek_decl_var(node)->id;
+  case BL_DECL_MUT:
+    return &bl_peek_decl_mut(node)->id;
   case BL_DECL_ARG:
     return &bl_peek_decl_arg(node)->id;
   case BL_DECL_CONST:
@@ -1255,8 +1254,8 @@ bl_ast_get_result_type(bl_node_t *node)
     break;
   }
 
-  case BL_DECL_VAR:
-    type = bl_ast_get_result_type(bl_peek_decl_var(node)->type);
+  case BL_DECL_MUT:
+    type = bl_ast_get_result_type(bl_peek_decl_mut(node)->type);
     break;
 
   case BL_DECL_ARG:

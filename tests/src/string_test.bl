@@ -10,7 +10,7 @@ using std;
 extern fn printf(format string, s string);
 
 fn main() i32 {
-  var str string::string_t;
+  mut str string::string_t;
   string::init(&str);
 
   string::setc(&str, "hello world");

@@ -23,28 +23,28 @@ struct C {
 fn main() i32 {
   using utest;
 
-  var _i8     i8;
-  var _i16    i16;
-  var _i32    i32;
-  var _i64    i64;
-  var _u8     u8;
-  var _u16    u16;
-  var _u32    u32;
-  var _u64    u64;
-  var _f32    f32;
-  var _f64    f64;
-  var _char   char;
-  var _string string;
-  var _bool   bool;
+  mut _i8     i8;
+  mut _i16    i16;
+  mut _i32    i32;
+  mut _i64    i64;
+  mut _u8     u8;
+  mut _u16    u16;
+  mut _u32    u32;
+  mut _u64    u64;
+  mut _f32    f32;
+  mut _f64    f64;
+  mut _char   char;
+  mut _string string;
+  mut _bool   bool;
 
 
-  var a A;
+  mut a A;
 
   assert(a.b.ptr == null);
   assert(a.b.c.i == 0);
   assert(a.b.c.ptr == null);
 
-  uninit var ua A;
+  uninit mut ua A;
 
   return 0;
 }

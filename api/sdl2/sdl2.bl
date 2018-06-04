@@ -99,7 +99,7 @@ public module sdl2 {
   }
 
   public fn create_window(title string, x i32, y i32, w i32, h i32, flags i32) *window_t {
-    var win *window_t;
+    mut win *window_t;
     win = c::SDL_CreateWindow(title, x, y, w, h, flags);
     return win;
   }

@@ -15,8 +15,8 @@ struct foo_t {
 
 fn main() i32 {
   const count i32 = 256;
-  var arr i32[count];  
-  var i i32;
+  mut arr i32[count];  
+  mut i i32;
 
   while (i < count) {
     arr[i] = i;
@@ -29,7 +29,7 @@ fn main() i32 {
     i = i + 1;
   }
 
-  var foos foo_t[count];
+  mut foos foo_t[count];
 
   i = 0;
   while (i < count) {

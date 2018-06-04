@@ -55,7 +55,7 @@ public module std {
     }
 
     public fn setc(dest *string_t, src string) {
-      var size size_t = libc::strlen(src) + cast(size_t) 1;
+      mut size size_t = libc::strlen(src) + cast(size_t) 1;
       expand_if_needed(dest, size);
       libc::strcpy(cast(string) dest->data, cast(string) src);
     }

@@ -62,7 +62,7 @@
     nt(STMT_RETURN,        stmt_return) \
     nt(STMT_USING,         stmt_using) \
     nt(DECL_MODULE,        decl_module) \
-    nt(DECL_VAR,           decl_var) \
+    nt(DECL_MUT,           decl_mut) \
     nt(DECL_CONST,         decl_const) \
     nt(DECL_FUNC,          decl_func) \
     nt(DECL_ARG,           decl_arg) \
@@ -150,18 +150,18 @@ enum bl_modif
 /* if statement */
 struct bl_stmt_if
 {
-  bl_node_t *parent;
-  bl_node_t *test;
-  bl_node_t *true_stmt;
-  bl_node_t *false_stmt;
+  bl_node_t *parent;     /* parent node */
+  bl_node_t *test;       /* testing condition expression */
+  bl_node_t *true_stmt;  /* statement invoked when condition is true */
+  bl_node_t *false_stmt; /* statement invoked when condition is false */
 };
 
 /* loop statement */
 struct bl_stmt_loop
 {
-  bl_node_t *parent;
-  bl_node_t *test;
-  bl_node_t *true_stmt;
+  bl_node_t *parent;    /* parent node */
+  bl_node_t *test;      /* testing condition */
+  bl_node_t *true_stmt; /* statment invoked in loop */
 };
 
 /* break inside loops */
@@ -179,86 +179,84 @@ struct bl_stmt_continue
 /* function return statement */
 struct bl_stmt_return
 {
-  bl_node_t *expr;
-  bl_node_t *func;
+  bl_node_t *expr; /* return expression */
+  bl_node_t *func; /* function parent */
 };
 
 struct bl_stmt_using
 {
-  BArray *   path;
-  bl_node_t *ref;
+  BArray *   path; /* path */
+  bl_node_t *ref;  /* reference to module or enum */
 };
 
 struct bl_expr_sizeof
 {
-  bl_node_t *type;
+  bl_node_t *type; /* desired type */
 };
 
 struct bl_expr_null
 {
-  bl_node_t *type;
+  bl_node_t *type; /* null type */
 };
 
 struct bl_expr_cast
 {
-  bl_node_t *to_type;
-  bl_node_t *next;
+  bl_node_t *to_type; /* destination type of the cast */
+  bl_node_t *next;    /* fallowing expression */
 };
 
 struct bl_expr_init
 {
-  bl_node_t *type;
-  BArray *   exprs;
+  bl_node_t *type;  /* initialization list type result */
+  BArray *   exprs; /* array of initializators */
 };
 
 /* module declaration */
 struct bl_decl_module
 {
-  bl_id_t     id;
-  bl_node_t * parent;
-  int         modif;
-  BArray *    nodes;
-  bl_scopes_t scopes;
+  bl_id_t     id;     /* identificator */
+  bl_node_t * parent; /* parent node */
+  int         modif;  /* modificator*/
+  BArray *    nodes;  /* array of nodes in module */
+  bl_scopes_t scopes; /* scope cache */
 };
 
 /* variable declaration */
-struct bl_decl_var
+struct bl_decl_mut
 {
-  bl_id_t    id;
-  int        modif;
-  bl_node_t *type;
-  bl_node_t *init_expr;
-  int        used;
-
-  /* variable invisible for symbol lookup functions when true */
-  bool is_anonymous;
+  bl_id_t    id;           /* identificator */
+  int        modif;        /* modificator */
+  bl_node_t *type;         /* variable type */
+  bl_node_t *init_expr;    /* initialization expression if there is one */
+  int        used;         /* usage count */
+  bool       is_anonymous; /* variable invisible for symbol lookup functions when true */
 };
 
 struct bl_decl_const
 {
-  bl_id_t    id;
-  int        modif;
-  bl_node_t *type;
-  bl_node_t *init_expr;
-  int        used;
+  bl_id_t    id;        /* identificator */
+  int        modif;     /* modificator */
+  bl_node_t *type;      /* constant type */
+  bl_node_t *init_expr; /* initialization expressions (must have one) */
+  int        used;      /* usage count */
 };
 
 struct bl_decl_arg
 {
-  bl_id_t    id;
-  bl_node_t *type;
+  bl_id_t    id;   /* identificator */
+  bl_node_t *type; /* argument type */
 };
 
 struct bl_decl_func
 {
-  bl_id_t     id;
-  bl_node_t * parent;
-  int         modif;
-  int         used;
-  BArray *    args;
-  bl_node_t * block;
-  bl_node_t * ret_type;
-  bl_scopes_t scopes;
+  bl_id_t     id;       /* identificator */
+  bl_node_t * parent;   /* parent node */
+  int         modif;    /* modificator */
+  int         used;     /* count of usage */
+  BArray *    args;     /* array of arguments */
+  bl_node_t * block;    /* function block (for extern function is NULL) */
+  bl_node_t * ret_type; /* return type */
+  bl_scopes_t scopes;   /* scope cache */
 };
 
 struct bl_decl_struct
@@ -268,16 +266,15 @@ struct bl_decl_struct
   int         used;    /* count of usage */
   BArray *    members; /* array of members */
   bl_scopes_t scopes;  /* scope cache */
-  bl_node_t * cnst;    /* default constructor */
 };
 
 struct bl_decl_struct_member
 {
-  bl_id_t    id;
-  int        modif;
-  bl_node_t *type;
-  int        order;
-  bl_node_t *init_expr;
+  bl_id_t    id;        /* identificator */
+  int        modif;     /* modificator */
+  bl_node_t *type;      /* structure member type */
+  int        order;     /* order inside struct layout */
+  bl_node_t *init_expr; /* initialization expression */
 };
 
 struct bl_decl_enum
@@ -506,7 +503,7 @@ bl_ast_add_decl_module(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
                        bl_node_t *parent);
 
 bl_node_t *
-bl_ast_add_decl_var(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
+bl_ast_add_decl_mut(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
                     bl_node_t *init_expr, int modif, bool is_anonymous);
 
 bl_node_t *
@@ -521,8 +518,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
                      bl_node_t *ret_type, int modif, bl_node_t *parent);
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif,
-                       bl_node_t *cnst);
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
 
 bl_node_t *
 bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,

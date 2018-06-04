@@ -7,13 +7,13 @@
 #load "utest.bl"
 
 fn main() i32 {
-  var a i32 = -1;
-  var b i32 = -(2 + 2);
-  var c i32 = +(2 + 2);
-  var d i32 = -a;
-  var e i32 = 1 -(-2); // ERROR not working without ()
-  var f i32 = -get();
-  var g i32 = (get() + 1) * -10;
+  mut a i32 = -1;
+  mut b i32 = -(2 + 2);
+  mut c i32 = +(2 + 2);
+  mut d i32 = -a;
+  mut e i32 = 1 -(-2); // ERROR not working without ()
+  mut f i32 = -get();
+  mut g i32 = (get() + 1) * -10;
 
 
   //const ca i32 = -1; // ERROR cannot be evaluated

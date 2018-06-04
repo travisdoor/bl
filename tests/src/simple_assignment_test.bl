@@ -5,10 +5,10 @@
  */
 
 fn main() i32 {
-  var i i32 = 10;
+  mut i i32 = 10;
   i = 0;
-  var s string = "string";
-  var s2 string;
+  mut s string = "string";
+  mut s2 string;
   s = "string";
   s2 = s;
 

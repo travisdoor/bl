@@ -32,7 +32,7 @@
 public module std {
   public module memory {
     public fn malloc(count size_t) *void {
-      var p *void = libc::malloc(count);
+      mut p *void = libc::malloc(count);
       if (p == null)
         debug::abort();
       return p;
