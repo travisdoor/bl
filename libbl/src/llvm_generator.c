@@ -1038,6 +1038,7 @@ visit_var(bl_visitor_t *visitor, bl_node_t *var)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(var, llvm_var);
 
+  /* TODO: remove when default initialization of arrays will be implemented */
   if (!_var->init_expr) {
     bl_warning("missing initialization of variable");
     return;

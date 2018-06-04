@@ -1371,7 +1371,7 @@ parse_struct_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected struct name");
     }
 
-    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
+    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif, NULL);
     bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
     /* eat '{' */

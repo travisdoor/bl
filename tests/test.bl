@@ -1,4 +1,18 @@
 /* testing playground */
 
+extern fn puts(s string) i32;
+
+struct Foo {
+  i i32
+}
+
+fn _foo(foo *Foo) {
+  foo->i = 0; 
+}
+
 fn main() {
+  loop {
+    var foo Foo;
+    puts("looping");
+  }
 }

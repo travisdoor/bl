@@ -182,3 +182,4 @@
 * NOTES
 ** global using search return array of all founds references???
 ** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625
+   
