@@ -273,7 +273,6 @@ struct bl_decl_struct_member
   int        modif;     /* modificator */
   bl_node_t *type;      /* structure member type */
   int        order;     /* order inside struct layout */
-  bl_node_t *init_expr; /* initialization expression */
 };
 
 struct bl_decl_enum
@@ -517,7 +516,7 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                              int modif, bl_node_t *init_expr);
+                              int modif);
 
 bl_node_t *
 bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif,

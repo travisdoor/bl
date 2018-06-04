@@ -1316,20 +1316,7 @@ parse_struct_member_maybe(context_t *cnt)
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
   }
 
-  /* parse initialization expression if there is one */
-  bl_token_t *tok_expr  = bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN);
-  bl_node_t * init_expr = NULL;
-  if (tok_expr) {
-    init_expr = parse_expr_maybe(cnt);
-    if (!init_expr) {
-      parse_error(
-          cnt, BL_ERR_EXPECTED_EXPR, tok_expr,
-          "expected init expression after " BL_YELLOW("=") " for struct member " BL_YELLOW("'%s'"),
-          tok_id->value.str);
-    }
-  }
-
-  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif, init_expr);
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif);
 }
 
 bl_node_t *
