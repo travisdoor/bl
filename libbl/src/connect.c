@@ -105,9 +105,6 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref);
 static void
 connect_member_ref(context_t *cnt, bl_node_t *member_ref);
 
-static bl_node_t *
-create_def_value(context_t *cnt, bl_node_t *type);
-
 /*************************************************************************************************
  * First pass
  * - join all modules in one (in context meaning)
@@ -432,105 +429,6 @@ include_using(context_t *cnt, bl_node_t *using)
 
   /* add found compound into cache */
   bl_scopes_include(curr_scopes, found_scopes->main, using);
-}
-
-bl_node_t *
-create_def_value(context_t *cnt, bl_node_t *type)
-{
-  if (bl_node_is(type, BL_TYPE_FUND)) {
-    bl_type_fund_t *_type = bl_peek_type_fund(type);
-
-    if (_type->is_ptr) {
-      return bl_ast_add_expr_null(cnt->ast, NULL, type);
-    }
-
-    /* skip arrays */
-    if (_type->dims)
-      return NULL;
-
-    switch (_type->type) {
-    case BL_FTYPE_CHAR:
-    case BL_FTYPE_I8:
-    case BL_FTYPE_I16:
-    case BL_FTYPE_I32:
-    case BL_FTYPE_I64:
-    case BL_FTYPE_U8:
-    case BL_FTYPE_U16:
-    case BL_FTYPE_U32:
-    case BL_FTYPE_U64:
-    case BL_FTYPE_BOOL:
-      return bl_ast_add_expr_const_unsigned(cnt->ast, NULL, type, 0);
-    case BL_FTYPE_F32:
-    case BL_FTYPE_F64:
-      return bl_ast_add_expr_const_double(cnt->ast, NULL, type, 0.0f);
-    case BL_FTYPE_STRING: {
-      return bl_ast_add_expr_const_str(cnt->ast, NULL, type, "\0");
-    }
-    default:
-      return NULL;
-    }
-  } else if (bl_node_is(type, BL_TYPE_REF)) {
-    bl_type_ref_t *_type = bl_peek_type_ref(type);
-    bl_node_t *    ref   = _type->ref;
-    bl_assert(ref, "invalid ref type reference");
-
-    /* skip arrays */
-    if (_type->dims)
-      return NULL;
-
-    if (_type->is_ptr) {
-      return bl_ast_add_expr_null(cnt->ast, NULL, type);
-    }
-
-    switch (bl_node_code(ref)) {
-    case BL_DECL_ENUM: {
-      bl_decl_enum_t *_enum = bl_peek_decl_enum(ref);
-      bl_assert(bl_ast_enum_get_count(_enum),
-                "cannot generate default initialization value for an empty enum");
-
-      bl_node_t *def_variant = bl_ast_enum_get_variant(_enum, 0);
-      return bl_ast_add_expr_decl_ref(cnt->ast, NULL, def_variant, NULL);
-    }
-
-    case BL_DECL_STRUCT: {
-      /* default value for structures is going to be tricky... Here we want to generate
-       * initialization list with deafult values for every member of structure.*/
-
-      bl_node_t *init_list = bl_ast_add_expr_init(cnt->ast, NULL, type);
-      /* iterate struct members and genrate default values */
-      bl_decl_struct_t *       _struct = bl_peek_decl_struct(ref);
-      bl_node_t *              member  = NULL;
-      bl_decl_struct_member_t *_member = NULL;
-      const size_t             c       = bl_ast_struct_member_count(_struct);
-      for (size_t i = 0; i < c; ++i) {
-        member = bl_ast_struct_get_member(_struct, i);
-        bl_assert(member, "invalid structure member");
-        _member = bl_peek_decl_struct_member(member);
-
-        if (!_member->init_expr) {
-          _member->init_expr = create_def_value(cnt, _member->type);
-        }
-
-        if (!_member->init_expr)
-          return NULL;
-
-        bl_node_t *init_decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, NULL, init_list, NULL);
-        bl_node_t *member_ref =
-            bl_ast_add_expr_member_ref(cnt->ast, NULL, "", init_decl_ref, member, false);
-        bl_node_t *assign = bl_ast_add_expr_binop(cnt->ast, NULL, BL_SYM_ASSIGN, member_ref,
-                                                  _member->init_expr, NULL);
-        bl_ast_init_push_expr(bl_peek_expr_init(init_list), assign);
-      }
-
-      return init_list;
-    }
-
-    default:
-      bl_abort("unknow reference %s", bl_node_name(ref));
-    }
-  }
-
-  return NULL;
 }
 
 /*************************************************************************************************
@@ -892,11 +790,6 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t *mut)
   bl_scopes_insert_node(scopes, mut);
 
   bl_visitor_walk_mut(visitor, mut);
-
-  if (!_mut->init_expr && !(_mut->modif & BL_MODIF_UNINIT)) {
-    _mut->init_expr = create_def_value(cnt, _mut->type);
-  }
-
   cnt->curr_lvalue = prev;
 }
 

@@ -23,28 +23,25 @@ struct C {
 fn main() i32 {
   using utest;
 
-  mut _i8     i8;
-  mut _i16    i16;
-  mut _i32    i32;
-  mut _i64    i64;
-  mut _u8     u8;
-  mut _u16    u16;
-  mut _u32    u32;
-  mut _u64    u64;
-  mut _f32    f32;
-  mut _f64    f64;
-  mut _char   char;
-  mut _string string;
-  mut _bool   bool;
+  mut _i8     i8 = cast(i8) 0;
+  mut _i16    i16 = cast(i16) 0;
+  mut _i32    i32 = 0;
+  mut _i64    i64 = cast(i64) 0;
+  mut _u8     u8 = cast(u8) 0;
+  mut _u16    u16 = cast(u16) 0;
+  mut _u32    u32 = cast(u32) 0;
+  mut _u64    u64 = cast(u64) 0;
+  mut _f32    f32 = 0.f;
+  mut _f64    f64 = 0.0;
+  mut _char   char; // TODO
+  mut _string string = "\0";
+  mut _bool   bool = false;
 
-
-  mut a A;
-
-  assert(a.b.ptr == null);
-  assert(a.b.c.i == 0);
-  assert(a.b.c.ptr == null);
-
-  uninit mut ua A;
+  mut a A = {
+    .b.c.i = 0,
+    .b.c.ptr = null,
+    .b.ptr = null
+  };
 
   return 0;
 }

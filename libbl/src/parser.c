@@ -195,11 +195,6 @@ modif:
     goto modif;
   }
 
-  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_UNINIT)) {
-    res |= BL_MODIF_UNINIT;
-    goto modif;
-  }
-
   return res;
 }
 

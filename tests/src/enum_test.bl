@@ -26,8 +26,8 @@ enum names_e string {
 }
 
 fn main() i32 {
-  mut s state_e;
-  mut n names_e;
+  mut s state_e = state_e::S0;
+  mut n names_e = names_e::Tereza;
 
   if (s != state_e::S0)
      return 1;

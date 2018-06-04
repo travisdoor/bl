@@ -57,10 +57,6 @@ print_modif(int modif)
   if (modif & BL_MODIF_EXPORT) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
   }
-
-  if (modif & BL_MODIF_UNINIT) {
-    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_UNINIT]);
-  }
 }
 
 static inline void

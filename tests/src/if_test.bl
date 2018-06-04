@@ -5,8 +5,8 @@
  */
 
 fn main() i32 {
-  mut a i32;
-  mut b i32;
+  mut a i32 = 0;
+  mut b i32 = 0;
 
   {
     if (a == 0) {

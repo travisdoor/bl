@@ -2,6 +2,13 @@
 
 extern fn puts(s string) i32;
 
+struct Foo {
+  i i32
+}
+
 fn main() {
-  mut a i32 = 10;
+  loop {
+    mut foo Foo;
+    puts("looping...");
+  }
 }

@@ -58,7 +58,6 @@
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
   sm(PUBLIC,      "public")\
-  sm(UNINIT,      "uninit") \
   sm(EXTERN,      "extern") \
   sm(MODULE,      "module") \
   sm(EXPORT,      "export") \

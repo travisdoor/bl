@@ -139,8 +139,7 @@ enum bl_modif
   BL_MODIF_NONE   = 0,
   BL_MODIF_PUBLIC = 1,
   BL_MODIF_EXTERN = 2,
-  BL_MODIF_EXPORT = 4,
-  BL_MODIF_UNINIT = 8,
+  BL_MODIF_EXPORT = 4
 };
 
 /*************************************************************************************************
@@ -279,32 +278,32 @@ struct bl_decl_struct_member
 
 struct bl_decl_enum
 {
-  bl_id_t     id;
-  bl_node_t * parent;
-  int         modif;
-  int         used;
-  bl_node_t * type;
-  BArray *    variants;
-  bl_scopes_t scopes;
+  bl_id_t     id;       /* identificator */
+  bl_node_t * parent;   /* parent node */
+  int         modif;    /* modificator */
+  int         used;     /* count of usage */
+  bl_node_t * type;     /* enum type */
+  BArray *    variants; /* array of enum variants */
+  bl_scopes_t scopes;   /* scope cache */
 };
 
 struct bl_decl_enum_variant
 {
-  bl_id_t    id;
-  bl_node_t *parent;
-  bl_node_t *expr;
+  bl_id_t    id;     /* identificator */
+  bl_node_t *parent; /* parent node */
+  bl_node_t *expr;   /* enum variant initialization expression */
 };
 
 struct bl_decl_block
 {
-  bl_node_t * parent;
-  BArray *    nodes;
-  bl_scopes_t scopes;
+  bl_node_t * parent; /* parent node */
+  BArray *    nodes;  /* array of nodes in compount block */
+  bl_scopes_t scopes; /* scope cache */
 };
 
 struct bl_expr_const
 {
-  bl_node_t *type;
+  bl_node_t *type; /* variant of type */
 
   union
   {
@@ -314,81 +313,77 @@ struct bl_expr_const
     unsigned long long u;
     double             f;
     const char *       str;
-  } value;
+  } value; /* value of type */
 };
 
 struct bl_expr_binop
 {
-  bl_sym_e   op;
-  bl_node_t *lhs;
-  bl_node_t *rhs;
-  bl_node_t *type;
+  bl_sym_e   op;   /* operator */
+  bl_node_t *lhs;  /* left-hand side value */
+  bl_node_t *rhs;  /* right-hand side value */
+  bl_node_t *type; /* result type of operations (type of left operand in most cases) */
 };
 
 struct bl_expr_unary
 {
-  bl_sym_e   op;
-  bl_node_t *next;
+  bl_sym_e   op;   /* operator of unary expression */
+  bl_node_t *next; /* fallowing node */
 };
 
 struct bl_expr_decl_ref
 {
-  BArray *   path;
-  bl_node_t *ref;
+  BArray *   path; /* path */
+  bl_node_t *ref;  /* reference to referenced node */
 };
 
 struct bl_expr_member_ref
 {
-  bl_id_t    id;
-  bl_node_t *ref;
-  bl_node_t *next;
-  bool       is_ptr_ref;
+  bl_id_t    id;         /* member identificator */
+  bl_node_t *ref;        /* reference to member */
+  bl_node_t *next;       /* fallowing expression */
+  bool       is_ptr_ref; /* true when we accesig to members via pointer */
 };
 
 struct bl_expr_array_ref
 {
-  bl_node_t *index;
-  bl_node_t *next;
+  bl_node_t *index; /* index expression */
+  bl_node_t *next;  /* fallowing expression */
 };
 
 struct bl_expr_call
 {
-  bl_node_t *ref;
-  BArray *   path;
-  BArray *   args;
+  BArray *   path; /* path */
+  bl_node_t *ref;  /* reference to function */
+  BArray *   args; /* argument list passed into function */
 };
 
 struct bl_path_elem
 {
-  bl_id_t id;
+  bl_id_t id; /* identificator of element in path array */
 };
 
 struct bl_type_fund
 {
-  bl_fund_type_e type;
-  /* dimensions are used when type is array */
-  BArray *dims;
-  int     is_ptr;
+  bl_fund_type_e type;   /* fundamental type variant */
+  BArray *       dims;   /* dimensions are used when type is array */
+  int            is_ptr; /* is pointer */
 };
 
 struct bl_type_ref
 {
-  BArray *   path;
-  bl_node_t *ref;
-  /* dimensions are used when type is array */
-  BArray *dims;
-  int     is_ptr;
+  BArray *   path;   /* path */
+  bl_node_t *ref;    /* reference to type */
+  BArray *   dims;   /* dimensions are used when type is array */
+  int        is_ptr; /* is pointer */
 };
 
 struct bl_pre_load
 {
-  /* use id? */
   const char *filepath;
 };
 
 struct bl_pre_link
 {
-  /* use id? */
   const char *lib;
 };
 

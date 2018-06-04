@@ -49,7 +49,7 @@ Whole structure can be public also.
       }
 
       public fn new_user(name string, age i32) user_t {
-        var user user_t;
+        mut user user_t;
         user.name = name;
         user.age = age; 
         user.id = 666; // id is visible inside current module
@@ -62,27 +62,26 @@ Whole structure can be public also.
     }
 
     fn main() {
-      var user data::user_t = data::new_user("Tereza", 24);
+      mut user data::user_t = data::new_user("Tereza", 24);
       c::printf("Tereza is %d years old\n", user.age);
       c::printf("Tereza has id %d\n", data::get_id(user));
     }
 
 ### Pointer types
 Pointer to storage of any type can be defined with asterix prefix before type definition.
-Pointer variables are set to null by default.
 
-	var i32_ptr *i32;
+	mut i32_ptr *i32 = null; 
 	i32_ptr = null;
 	
-	var i i32;
+	mut i i32 = 0;
 	i32_ptr = &i; // store address of i variable
 	
 	i = *i32_ptr; // dereferencing of pointer
 
 ### Type casting
 
-	var a i32;
-	var b i64 = cast(i63) a; 
+	mut a i32;
+	mut b i64 = cast(i63) a; 
 
 	
 ## Functions
@@ -173,8 +172,9 @@ Only public symbols are exposed via using directive.
 	}
 	
 ## Variables
+Variable (mutable) can be declared with 'mut' key-word. They are alocated only with no default value set.
     
-    /* EXAMPLE: Var */
+    /* EXAMPLE: Mut */
 
     module c {
       public extern fn printf(s string, i i32) i32;
@@ -182,8 +182,8 @@ Only public symbols are exposed via using directive.
 
     fn main() {
       // declaration of variable i of i32 type (automatically set to default value 0)
-      var a i32;
-      var b i32 = 10; 
+      mut a i32 = 20;
+      mut b i32 = 10; 
 
       c::printf("a + b = %d\n", a + b);
     }
@@ -206,7 +206,7 @@ scope are private by default and can be made public with 'public' keyword.
 ## Loop
 Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 
-	var i i32 = 0;
+	mut i i32 = 0;
 	loop {
 	  i = i + 1;
 	  if (i > 10)
@@ -252,8 +252,8 @@ String and char typed enumerators must have explicit const-expr value set for ev
     }
 
     fn main() {
-      var arr i32[256];
-      var i i32;
+      mut arr i32[256];
+      mut i i32 = 0;
 
       while (i < 256) {
         arr[i] = i;
