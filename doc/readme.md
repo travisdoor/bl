@@ -196,7 +196,7 @@ scope are private by default and can be made public with 'public' keyword.
 	
 ## If - else
 
-	if (true) {
+	if true {
 	  ...
 	} else {
 	  ...
@@ -208,15 +208,16 @@ Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
 	mut i i32 = 0;
 	loop {
 	  i = i + 1;
-	  if (i > 10)
+	  if i > 10 {
 	    break;
+	  }
 	}
 	
 	
 ## While
 Use 'break' to interrupt iteration and 'continue' to jump to another cycle.
  
-	while (true) {
+	while true {
 	  ...
 	}
 	
@@ -254,13 +255,13 @@ String and char typed enumerators must have explicit const-expr value set for ev
       mut arr i32[256];
       mut i i32 = 0;
 
-      while (i < 256) {
+      while i < 256 {
         arr[i] = i;
         i = i + 1;
       }
 
       i = 0;
-      while (i < 256) {
+      while i < 256 {
         c::printf("i = %d\n", i);
         i = i + 1;
       }
@@ -278,3 +279,6 @@ You can use relative path to files in current folder or in PATH environment vari
 	fn main() i32 {
 	  return 0;
 	}
+	
+### Link
+Temporary linking of external libraries.

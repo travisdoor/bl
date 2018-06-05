@@ -7,7 +7,8 @@ module utest {
   extern fn abort();
 
   public fn assert(expr bool) {
-    if (expr != true)
+    if expr != true {
       abort();
+    }
   }
 }

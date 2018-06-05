@@ -7,17 +7,17 @@
 #load "utest.bl"
 
 struct A {
-  b B
+  b B,
+  i i32
 }
 
 struct B {
   c C,
-  ptr *void
+  i i32
 }
 
 struct C {
-  i i32,
-  ptr *i32
+  i i32
 }
 
 fn main() i32 {
@@ -39,8 +39,8 @@ fn main() i32 {
 
   mut a A = {
     .b.c.i = 0,
-    .b.c.ptr = null,
-    .b.ptr = null
+    .b.i = 0,
+    .i = 0
   };
 
   return 0;

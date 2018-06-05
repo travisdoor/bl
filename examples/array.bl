@@ -6,18 +6,16 @@ module c {
 
 fn main() {
   mut arr i32[256];
-  mut i i32;
+  mut i i32 = 0;
 
-  while (i < 256) {
+  while i < 256 {
     arr[i] = i;
     i = i + 1;
   }
 
   i = 0;
-  while (i < 256) {
+  while i < 256 {
     c::printf("i = %d\n", i);
     i = i + 1;
   }
-  
-  
 }
