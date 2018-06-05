@@ -45,13 +45,13 @@ typedef struct bl_builder *bl_builder_ref;
 typedef void (*bl_diag_handler_f)(const char *, void *);
 
 extern BO_EXPORT bl_builder_ref
-bl_builder_new(void);
+                 bl_builder_new(void);
 
 extern BO_EXPORT void
 bl_builder_delete(bl_builder_ref builder);
 
 extern BO_EXPORT bl_error_e
-bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
+                 bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
 
 extern BO_EXPORT void
 bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);

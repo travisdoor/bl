@@ -116,7 +116,7 @@ typedef struct bl_src
   const char *file;
 } bl_src_t;
 
-typedef struct
+typedef struct bl_token
 {
   bl_sym_e sym;
   bl_src_t src;

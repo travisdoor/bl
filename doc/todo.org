@@ -167,21 +167,9 @@
    5. llvm native bin builder
   
 * IDEAS
-** implicit casting pointer to bool: if (some_PT) {}
-** static array
-** zero initialized statc arrays??
-** statement tagging?
-
-** simple constructor like initialization of structs
-   struct foo (a i32, b i32) {
-     a i32, // connected by name
-     b i32
-   } 
-** Casting syntax:
-   - cast<i32>(f)
-   - f as i32
-   - i32(f)
-   - cast(i32) f
+  - for loop:
+    for i in expr .. expr {
+    }
 * NOTES
 ** global using search return array of all founds references???
 ** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625

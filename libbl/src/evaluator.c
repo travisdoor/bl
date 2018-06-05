@@ -41,10 +41,10 @@
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
-#define eval_error(cnt, code, node, format, ...)                                                   \
+#define eval_error(cnt, code, node, pos, format, ...)                                              \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,     \
-                     (node)->src->col, ##__VA_ARGS__);                                             \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
+                   ##__VA_ARGS__);                                                                 \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
@@ -227,7 +227,8 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
       result = eval_expr(cnt, dim);
 
       if (bl_peek_expr_const(result)->value.u == 0) {
-        eval_error(cnt, BL_ERR_INVALID_EXPR, type, "arrays with zero size are not allowed");
+        eval_error(cnt, BL_ERR_INVALID_EXPR, type, BL_BUILDER_CUR_WORD,
+                   "arrays with zero size are not allowed");
       }
 
       *((bl_node_t **)_bo_array_at(dims, i)) = result;

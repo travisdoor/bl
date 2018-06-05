@@ -79,6 +79,7 @@ typedef enum
   BL_ERR_EXPECTED_FUNC         = 40,
   BL_ERR_MISSING_RETURN        = 41,
   BL_ERR_EMPTY                 = 42,
+  BL_ERR_UNEXPECTED_SYMBOL     = 43,
 } bl_error_e;
 
 BO_END_DECLS

@@ -38,13 +38,32 @@ typedef struct bl_builder
 
   void *on_error_cnt;
   void *on_warning_cnt;
-  int total_lines;
+  int   total_lines;
 } bl_builder_t;
+
+typedef enum
+{
+  BL_BUILDER_ERROR,
+  BL_BUILDER_WARNING,
+} bl_builder_msg_type;
+
+typedef enum
+{
+  BL_BUILDER_CUR_AFTER,
+  BL_BUILDER_CUR_WORD,
+  BL_BUILDER_CUR_BEFORE
+} bl_builder_msg_cur_pos;
+
+struct bl_src;
 
 void
 bl_builder_error(bl_builder_t *builder, const char *format, ...);
 
 void
 bl_builder_warning(bl_builder_t *builder, const char *format, ...);
+
+void
+bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
+               bl_builder_msg_cur_pos pos, const char *format, ...);
 
 #endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */

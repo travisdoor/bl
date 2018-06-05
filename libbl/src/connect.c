@@ -34,17 +34,17 @@
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
-#define connect_error(cnt, code, loc, format, ...)                                                 \
+#define connect_error(cnt, code, node, pos, format, ...)                                           \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s:%d:%d " format, loc->file, loc->line, loc->col,           \
-                     ##__VA_ARGS__);                                                               \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
+                   ##__VA_ARGS__);                                                                 \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
-#define connect_warning(cnt, loc, format, ...)                                                     \
+#define connect_warning(cnt, node, pos, format, ...)                                               \
   {                                                                                                \
-    bl_builder_warning((cnt)->builder, "%s:%d:%d " format, loc->file, loc->line, loc->col,         \
-                       ##__VA_ARGS__);                                                             \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
+                   ##__VA_ARGS__);                                                                 \
   }
 
 typedef struct
@@ -201,7 +201,7 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
   bl_assert(found, "null found symbol unhandled by validator");
 
   if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
-    connect_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+    connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
                   "symbol " BL_YELLOW("'%s'") " is private in this context",
                   bl_peek_path_elem(path_elem)->id.str);
   }
@@ -215,7 +215,7 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
     bl_assert(found, "null found symbol unhandled by validator");
 
     if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
-      connect_error(cnt, BL_ERR_PRIVATE, path_elem->src,
+      connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
                     bl_peek_path_elem(path_elem)->id.str);
     }
@@ -283,7 +283,7 @@ connect_type(context_t *cnt, bl_node_t *type)
       bl_peek_decl_enum(found)->used++;
       break;
     default:
-      connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+      connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
                     "unknown type, struct or enum " BL_YELLOW("'%s'"),
                     bl_ast_try_get_id(found)->str);
     }
@@ -300,12 +300,13 @@ connect_const(context_t *cnt, bl_node_t *cnst)
 
   if (conflict) {
     if (linked_by == cnt->curr_compound) {
-      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst->src,
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                     _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     } else {
-      connect_warning(cnt, cnst->src, BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d",
-                      _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+      connect_warning(cnt, cnst, BL_BUILDER_CUR_WORD,
+                      BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d", _cnst->id.str,
+                      conflict->src->file, conflict->src->line, conflict->src->col);
     }
   }
   bl_scopes_insert_node(scopes, cnst);
@@ -367,13 +368,13 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   bl_ast_get_result_type(_member_ref->next, &type);
 
   if (bl_node_is_not(&type, BL_TYPE_REF)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type.src,
+    connect_error(cnt, BL_ERR_INVALID_TYPE, &type, BL_BUILDER_CUR_WORD,
                   "field has no members, structure is expected");
   }
 
   type = *bl_peek_type_ref(&type)->ref;
   if (bl_node_is_not(&type, BL_DECL_STRUCT)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type.src,
+    connect_error(cnt, BL_ERR_INVALID_TYPE, &type, BL_BUILDER_CUR_WORD,
                   "field has no members, structure is expected");
   }
 
@@ -385,7 +386,7 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
 
   bl_node_t *ref = lookup_in_scope(cnt, &_member_ref->id, &type, NULL);
   if (!ref) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref->src,
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref, BL_BUILDER_CUR_WORD,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
                   bl_peek_decl_struct(&type)->id.str, _member_ref->id.str);
   }
@@ -393,7 +394,7 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   /* check visibility of found member */
   bl_decl_struct_member_t *_ref = bl_peek_decl_struct_member(ref);
   if (!ignore_private && !(_ref->modif & BL_MODIF_PUBLIC)) {
-    connect_error(cnt, BL_ERR_PRIVATE, member_ref->src,
+    connect_error(cnt, BL_ERR_PRIVATE, member_ref, BL_BUILDER_CUR_WORD,
                   "member " BL_YELLOW("'%s'") " of structure " BL_YELLOW(
                       "'%s'") " is private in this context",
                   _ref->id.str, bl_peek_decl_struct(&type)->id.str);
@@ -411,7 +412,8 @@ include_using(context_t *cnt, bl_node_t *using)
   bl_peek_stmt_using(using)->ref = found;
 
   if (in_curr_branch) {
-    connect_warning(cnt, using->src, "using with no effect, trying to link current branch");
+    connect_warning(cnt, using, BL_BUILDER_CUR_WORD,
+                    "using with no effect, trying to link current branch");
     return;
   }
 
@@ -423,8 +425,9 @@ include_using(context_t *cnt, bl_node_t *using)
   /* check for scope conflicts */
   conflict = bl_scopes_get_linked_by(curr_scopes, found_scopes->main);
   if (conflict) {
-    connect_warning(cnt, using->src, "using with no effect due previous one here: %d:%d",
-                    conflict->src->line, conflict->src->col);
+    connect_warning(cnt, using, BL_BUILDER_CUR_WORD,
+                    "using with no effect due previous one here: %d:%d", conflict->src->line,
+                    conflict->src->col);
     return;
   }
 
@@ -449,7 +452,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t *module)
   if (conflict) {
     if (bl_ast_try_get_modif(module) != bl_ast_try_get_modif(conflict)) {
       connect_error(
-          peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, module->src,
+          peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, module, BL_BUILDER_CUR_WORD,
           "previous declaration of module " BL_YELLOW(
               "'%s'") " has different access modifier, originally declared here: %s:%d:%d",
           _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
@@ -489,7 +492,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_node_t *     conflict = lookup_in_tree(cnt, &_enm->id, cnt->curr_compound, NULL, NULL);
 
   if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm->src,
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                   _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
@@ -505,7 +508,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
     conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
 
     if (conflict) {
-      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant->src,
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant, BL_BUILDER_CUR_WORD,
                     "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                     bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file,
                     conflict->src->line, conflict->src->col);
@@ -526,7 +529,7 @@ first_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_node_t *     conflict = lookup_in_scope(cnt, &_func->id, cnt->curr_compound, NULL);
 
   if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func->src,
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                   _func->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
@@ -548,7 +551,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   bl_node_t *       conflict = lookup_in_scope(cnt, &_strct->id, cnt->curr_compound, NULL);
 
   if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct->src,
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                   _strct->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
   }
@@ -566,7 +569,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
 
     if (conflict) {
       connect_error(
-          cnt, BL_ERR_DUPLICATE_SYMBOL, member->src,
+          cnt, BL_ERR_DUPLICATE_SYMBOL, member, BL_BUILDER_CUR_WORD,
           "duplicate struct memeber " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
           bl_peek_decl_struct_member(member)->id.str, conflict->src->file, conflict->src->line,
           conflict->src->col);
@@ -706,7 +709,8 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_MEMBER_REF: {
     bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(expr);
     if (!_member_ref->next) {
-      connect_error(cnt, BL_ERR_EXPECTED_EXPR, expr->src, "member access without context ");
+      connect_error(cnt, BL_ERR_EXPECTED_EXPR, expr, BL_BUILDER_CUR_WORD,
+                    "member access without context ");
     }
     break;
   }
@@ -723,7 +727,6 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
       bl_node_t type = {0};
       bl_ast_get_result_type(cnt->curr_lvalue, &type);
       _init->type = bl_ast_dup_node(cnt->ast, &type);
-
     }
     break;
   }
@@ -783,12 +786,13 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t *mut)
   if (conflict) {
     /* some nodes can lead to another compound blocks but they has no context, we shoud skip them */
     if (linked_by == cnt->curr_compound) {
-      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, mut->src,
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, mut, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                     _mut->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
     } else {
-      connect_warning(cnt, mut->src, BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d",
-                      _mut->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+      connect_warning(cnt, mut, BL_BUILDER_CUR_WORD,
+                      BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d", _mut->id.str,
+                      conflict->src->file, conflict->src->line, conflict->src->col);
     }
   }
 
@@ -817,7 +821,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
 
     bl_node_t *conflict = lookup_in_scope(cnt, &bl_peek_decl_arg(arg)->id, func, NULL);
     if (conflict) {
-      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg->src,
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
                     bl_peek_decl_arg(arg)->id.str, conflict->src->file, conflict->src->line,
                     conflict->src->col);
@@ -847,18 +851,19 @@ third_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
 VALIDATE_F(using)
 {
   if (found == NULL) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
-                  bl_peek_path_elem(elem)->id.str);
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                  "unknown module " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
   }
 
   if (last) {
     if (bl_node_is_not(found, BL_DECL_MODULE) && bl_node_is_not(found, BL_DECL_ENUM)) {
-      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem, BL_BUILDER_CUR_WORD,
                     "expected module or enum in using path");
     }
   } else {
     if (bl_node_is_not(found, BL_DECL_MODULE)) {
-      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in using path");
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem, BL_BUILDER_CUR_WORD,
+                    "expected module name in using path");
     }
   }
 }
@@ -866,8 +871,8 @@ VALIDATE_F(using)
 VALIDATE_F(decl_ref)
 {
   if (found == NULL) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown symbol " BL_YELLOW("'%s'"),
-                  bl_peek_path_elem(elem)->id.str);
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                  "unknown symbol " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
   }
 }
 
@@ -875,19 +880,19 @@ VALIDATE_F(call)
 {
   if (last) {
     if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown function " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                    "unknown function " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
     }
     if (bl_node_is_not(found, BL_DECL_FUNC))
-      connect_error(cnt, BL_ERR_EXPECTED_FUNC, elem->src, "expected function name");
+      connect_error(cnt, BL_ERR_EXPECTED_FUNC, elem, BL_BUILDER_CUR_WORD, "expected function name");
   } else {
     if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                    "unknown module " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
     }
 
     if (bl_node_is_not(found, BL_DECL_MODULE)) {
-      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src,
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem, BL_BUILDER_CUR_WORD,
                     "expected module name in function call path");
     }
   }
@@ -897,8 +902,8 @@ VALIDATE_F(type)
 {
   if (last) {
     if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown type " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                    "unknown type " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
     }
 
     switch (bl_node_code(found)) {
@@ -906,18 +911,19 @@ VALIDATE_F(type)
     case BL_DECL_ENUM:
       break;
     default:
-      connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem->src,
+      connect_error(cnt, BL_ERR_EXPECTED_TYPE, elem, BL_BUILDER_CUR_WORD,
                     "expected type name, " BL_YELLOW("'%s'") " is invalid",
                     bl_peek_path_elem(elem)->id.str);
     }
   } else {
     if (found == NULL) {
-      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem->src, "unknown module " BL_YELLOW("'%s'"),
-                    bl_peek_path_elem(elem)->id.str);
+      connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
+                    "unknown module " BL_YELLOW("'%s'"), bl_peek_path_elem(elem)->id.str);
     }
 
     if (bl_node_is_not(found, BL_DECL_MODULE)) {
-      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem->src, "expected module name in type path");
+      connect_error(cnt, BL_ERR_EXPECTED_MODULE, elem, BL_BUILDER_CUR_WORD,
+                    "expected module name in type path");
     }
   }
 }

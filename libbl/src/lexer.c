@@ -371,7 +371,8 @@ scan:
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym = (bl_sym_e)i;
+      tok.sym      = (bl_sym_e)i;
+      tok.src.len = len;
 
       /*
        * Two joined symbols will be parsed as identifier.

@@ -28,6 +28,7 @@
 
 #include <stdarg.h>
 #include <time.h>
+#include <bobject/containers/string.h>
 
 #include "common_impl.h"
 
@@ -36,6 +37,7 @@
 #include "unit_impl.h"
 
 #include "stages_impl.h"
+#include "token_impl.h"
 
 #define MAX_MSG_LEN 1024
 
@@ -146,9 +148,9 @@ bl_builder_delete(bl_builder_t *builder)
 bl_error_e
 bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
-  clock_t      begin = clock();
-  bl_unit_t *  unit;
-  bl_error_e   error;
+  clock_t    begin = clock();
+  bl_unit_t *unit;
+  bl_error_e error;
 
   for (size_t i = 0; i < bo_array_size(assembly->units); ++i) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
@@ -164,8 +166,8 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
   clock_t end        = clock();
   double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  bl_msg_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds", builder->total_lines,
-         time_spent);
+  bl_msg_log("compiled " BL_GREEN("%i") " lines in " BL_GREEN("%f") " seconds",
+             builder->total_lines, time_spent);
 
   return error;
 }
@@ -214,4 +216,63 @@ bl_builder_warning(bl_builder_t *builder, const char *format, ...)
   va_end(args);
 
   builder->on_warning(&warning[0], builder->on_error_cnt);
+}
+
+void
+bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
+               bl_builder_msg_cur_pos pos, const char *format, ...)
+{
+  bl_assert(src, "invalid source");
+  BString *tmp              = bo_string_new(MAX_MSG_LEN);
+  char     msg[MAX_MSG_LEN] = {0};
+
+  int line = src->line;
+  int col  = src->col;
+  int len  = src->len;
+
+  switch (pos) {
+  case BL_BUILDER_CUR_AFTER:
+    col += len;
+    len = 1;
+    break;
+
+  case BL_BUILDER_CUR_WORD:
+    break;
+
+  case BL_BUILDER_CUR_BEFORE:
+    --col;
+    len = 1;
+    break;
+  }
+
+  snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", type == BL_BUILDER_ERROR ? "E" : "W", code,
+           src->file, line, col);
+  va_list args;
+  va_start(args, format);
+  vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
+  va_end(args);
+  bo_string_append(tmp, &msg[0]);
+
+  char *begin = (char *)(src->src_loc - src->col + 1);
+  long  l     = strchr(src->src_loc, '\n') - begin;
+
+  if (l < 0)
+    l = strlen(begin);
+
+  bo_string_append(tmp, "\n | ");
+  bo_string_appendn(tmp, begin, l);
+  bo_string_append(tmp, "\n | ");
+
+  for (int i = 0; i < col + len - 1; ++i) {
+    if (i < col - 1)
+      bo_string_append(tmp, " ");
+    else
+      bo_string_append(tmp, type == BL_BUILDER_ERROR ? BL_RED("^") : BL_YELLOW("^"));
+  }
+
+  if (type == BL_BUILDER_ERROR)
+    builder->on_error(bo_string_get(tmp), builder->on_error_cnt);
+  else
+    builder->on_warning(bo_string_get(tmp), builder->on_error_cnt);
+  bo_unref(tmp);
 }

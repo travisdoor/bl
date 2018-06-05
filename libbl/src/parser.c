@@ -30,18 +30,30 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-#define parse_error(cnt, code, tok, format, ...)                                                   \
+#define parse_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (tok)->src.file, (tok)->src.line,         \
-                     (tok)->src.col, ##__VA_ARGS__);                                               \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), &(tok)->src, (pos), (format),         \
+                   ##__VA_ARGS__);                                                                 \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
-#define parse_error_node(cnt, code, node, format, ...)                                             \
+#define parse_error_node(cnt, code, node, pos, format, ...)                                        \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,     \
-                     (node)->src->col, ##__VA_ARGS__);                                             \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
+                   ##__VA_ARGS__);                                                                 \
     longjmp((cnt)->jmp_error, (code));                                                             \
+  }
+
+#define parse_warning(cnt, tok, pos, format, ...)                                                  \
+  {                                                                                                \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, &(tok)->src, (pos), (format),            \
+                   ##__VA_ARGS__);                                                                 \
+  }
+
+#define parse_warning_node(cnt, node, pos, format, ...)                                            \
+  {                                                                                                \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
+                   ##__VA_ARGS__);                                                                 \
   }
 
 typedef struct
@@ -226,7 +238,7 @@ parse_loop_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL || bl_node_is_not(true_stmt, BL_DECL_BLOCK)) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD, "expected loop body");
   }
 
   bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
@@ -249,7 +261,8 @@ parse_while_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *test = parse_expr_maybe(cnt);
   if (test == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression for the while statement");
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                "expected expression for the while statement");
   }
 
   bl_node_t *loop = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL, parent);
@@ -257,7 +270,7 @@ parse_while_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *true_stmt = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL || bl_node_is_not(true_stmt, BL_DECL_BLOCK)) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, "expected loop body");
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD, "expected loop body");
   }
 
   bl_peek_stmt_loop(loop)->true_stmt = true_stmt;
@@ -275,7 +288,7 @@ parse_break_maybe(context_t *cnt)
   }
 
   if (!cnt->inside_loop) {
-    parse_error(cnt, BL_ERR_BREAK_OUTSIDE_LOOP, tok_begin,
+    parse_error(cnt, BL_ERR_BREAK_OUTSIDE_LOOP, tok_begin, BL_BUILDER_CUR_WORD,
                 BL_YELLOW("'break'") " statement outside loop");
   }
 
@@ -291,7 +304,7 @@ parse_continue_maybe(context_t *cnt)
   }
 
   if (!cnt->inside_loop) {
-    parse_error(cnt, BL_ERR_CONTINUE_OUTSIDE_LOOP, tok_begin,
+    parse_error(cnt, BL_ERR_CONTINUE_OUTSIDE_LOOP, tok_begin, BL_BUILDER_CUR_WORD,
                 BL_YELLOW("'continue'") " statement outside loop");
   }
 
@@ -326,7 +339,8 @@ parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
   if (bl_token_is(op, BL_SYM_DOT) || is_ptr_ref) {
     bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
     if (tok_id->sym != BL_SYM_IDENT) {
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected structure member name");
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, BL_BUILDER_CUR_WORD,
+                  "expected structure member name");
     }
 
     /* next member will be set later */
@@ -347,14 +361,16 @@ parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
   if (bl_token_is(op, BL_SYM_LBRACKET)) {
     bl_node_t *index = parse_expr_maybe(cnt);
     if (index == NULL) {
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, op, "expected array indexing expression");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, op, BL_BUILDER_CUR_WORD,
+                  "expected array indexing expression");
     }
 
     array_ref = bl_ast_add_expr_array_ref(cnt->ast, op, index, NULL);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RBRACKET) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "missing bracket " BL_YELLOW("']'"));
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                  "missing bracket " BL_YELLOW("']'"));
     }
   }
   return array_ref;
@@ -373,7 +389,8 @@ parse_call_maybe(context_t *cnt, BArray *path)
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "expected function parameter list");
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                  "expected function parameter list");
     }
 
     /* parse args */
@@ -387,13 +404,13 @@ parse_call_maybe(context_t *cnt, BArray *path)
       }
     } else if (rq) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err,
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
                   "expected function argument after comma " BL_YELLOW("','"));
     }
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                   "expected end of parameter list " BL_YELLOW(
                       "')'") " or another parameter separated by comma");
     }
@@ -472,26 +489,28 @@ parse_cast_expr_maybe(context_t *cnt)
   if (tok_begin) {
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (!bl_token_is(tok, BL_SYM_LPAREN)) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin, BL_BUILDER_CUR_WORD,
                   "expected " BL_YELLOW("'('") " after cast expression");
     }
 
     bl_node_t *to_type = parse_type_maybe(cnt);
     if (to_type == NULL) {
       tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, "expected type name as cast parameter");
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, BL_BUILDER_CUR_WORD,
+                  "expected type name as cast parameter");
     }
 
     tok = bl_tokens_consume(cnt->tokens);
     if (!bl_token_is(tok, BL_SYM_RPAREN)) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin, BL_BUILDER_CUR_WORD,
                   "expected " BL_YELLOW("')'") " after cast expression");
     }
 
     bl_node_t *next = parse_expr_1(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin));
     if (next == NULL) {
       tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, "expected expression after cast");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, BL_BUILDER_CUR_WORD,
+                  "expected expression after cast");
     }
 
     cast = bl_ast_add_expr_cast(cnt->ast, tok_begin, to_type, next);
@@ -513,13 +532,14 @@ parse_nested_expr_maybe(context_t *cnt)
     bl_tokens_consume(cnt->tokens);
     expr = parse_expr_maybe(cnt);
     if (expr == NULL) {
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_begin, "expected expression.");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_begin, BL_BUILDER_CUR_WORD,
+                  "expected expression.");
     }
 
     /* eat ) */
     bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
     if (tok_end->sym != BL_SYM_RPAREN) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end, BL_BUILDER_CUR_WORD,
                   "unterminated sub-expression, missing " BL_YELLOW("')'") ", started %d:%d",
                   tok_begin->src.line, tok_begin->src.col);
     }
@@ -554,7 +574,7 @@ next:
       goto next;
     }
   } else if (rq) {
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, separator_tok,
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, separator_tok, BL_BUILDER_CUR_WORD,
                 "expected enum or module name after path separator");
   }
 
@@ -574,7 +594,8 @@ parse_unary_expr_maybe(context_t *cnt)
 
     if (next == NULL) {
       bl_token_t *err_tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression after unary operator");
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                  "expected expression after unary operator");
     }
 
     unary = bl_ast_add_expr_unary(cnt->ast, tok_op, tok_op->sym, next);
@@ -667,7 +688,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence)
 
       lhs = bl_ast_add_expr_binop(cnt->ast, op, op->sym, tmp, rhs, result_type);
     } else {
-      parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, "expected binary operation");
+      parse_error(cnt, BL_ERR_EXPECTED_BINOP, op, BL_BUILDER_CUR_WORD, "expected binary operation");
     }
   }
 
@@ -691,25 +712,26 @@ parse_const_maybe(context_t *cnt, int modif)
   bl_tokens_consume(cnt->tokens);
   tok_id = bl_tokens_consume(cnt->tokens);
   if (!bl_token_is(tok_id, BL_SYM_IDENT)) {
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected constant name");
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, BL_BUILDER_CUR_WORD, "expected constant name");
   }
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after constant name");
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+                "expected type name after constant name");
   }
 
   bl_token_t *tok_expr = bl_tokens_consume(cnt->tokens);
   if (tok_expr == NULL) {
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_expr,
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_expr, BL_BUILDER_CUR_WORD,
                 "expected initialization expression after constant declaration");
   }
 
   init_expr = parse_expr_maybe(cnt);
   if (init_expr == NULL) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_WORD,
                 "expected initialization expression after constant declaration");
   }
 
@@ -744,13 +766,14 @@ parse_mut_maybe(context_t *cnt, int modif)
   tok_id = bl_tokens_consume(cnt->tokens);
 
   if (!bl_token_is(tok_id, BL_SYM_IDENT)) {
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected variable name");
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, BL_BUILDER_CUR_WORD, "expected variable name");
   }
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+                "expected type name after variable name");
   }
 
   /*
@@ -761,13 +784,13 @@ parse_mut_maybe(context_t *cnt, int modif)
     init_expr = parse_expr_maybe(cnt);
     if (init_expr == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_WORD,
                   "expected expression after " BL_YELLOW("'='") " in variable declaration");
     }
 
     if (init_expr == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err,
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_WORD,
                   "expected initialization expression after constant declaration");
     }
   }
@@ -780,7 +803,10 @@ parse_semicolon_rq(context_t *cnt)
 {
   bl_token_t *tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_SEMICOLON) {
-    parse_error(cnt, BL_ERR_MISSING_SEMICOLON, tok, "missing semicolon " BL_YELLOW("';'"));
+    // TEST
+
+    parse_error(cnt, BL_ERR_MISSING_SEMICOLON, tok, BL_BUILDER_CUR_WORD,
+                "expected semicolon " BL_YELLOW("';'"));
   }
 }
 
@@ -837,13 +863,13 @@ parse_array_dim_maybe(context_t *cnt)
     /* TODO: elem count expression must be evaluated */
     bl_node_t *dim = parse_expr_maybe(cnt);
     if (dim == NULL) {
-      parse_error(cnt, BL_ERR_INVALID_EXPR, tok_arr_begin,
+      parse_error(cnt, BL_ERR_INVALID_EXPR, tok_arr_begin, BL_BUILDER_CUR_WORD,
                   "expected array element count after " BL_YELLOW("'['"));
     }
 
     bl_token_t *tok_arr_end = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBRACKET);
     if (tok_arr_end == NULL) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_arr_end,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_arr_end, BL_BUILDER_CUR_WORD,
                   "missing right bracked after array size definition " BL_YELLOW(
                       "']'") ", started here: %d:%d",
                   tok_arr_begin->src.line, tok_arr_begin->src.col);
@@ -875,8 +901,11 @@ parse_ret_type_rq(context_t *cnt)
     break;
   }
 
-  if (type == NULL)
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, "expected return type");
+  if (!type) {
+    tok = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, BL_BUILDER_CUR_AFTER,
+                "expected function return type or function body after argument list");
+  }
 
   return type;
 }
@@ -893,20 +922,21 @@ parse_sizeof_maybe(context_t *cnt)
     /* eat ( */
     if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN)) {
       bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok, BL_BUILDER_CUR_WORD,
                   "expected " BL_YELLOW("'('") " after sizeof buildin");
     }
 
     bl_node_t *type = parse_type_maybe(cnt);
     if (type == NULL) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name as parameter");
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+                  "expected type name as parameter");
     }
 
     /* eat ) */
     if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_RPAREN)) {
       bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok, BL_BUILDER_CUR_WORD,
                   "expected " BL_YELLOW("')'") " after sizeof buildin argument");
     }
 
@@ -926,7 +956,7 @@ parse_pre_load_maybe(context_t *cnt)
     bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_path = bl_tokens_consume(cnt->tokens);
     if (!bl_token_is(tok_path, BL_SYM_STRING)) {
-      parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path,
+      parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path, BL_BUILDER_CUR_WORD,
                   "expected path string after load preprocessor directive");
     }
 
@@ -946,7 +976,7 @@ parse_pre_link_maybe(context_t *cnt)
     bl_tokens_consume(cnt->tokens);
     bl_token_t *tok_path = bl_tokens_consume(cnt->tokens);
     if (!bl_token_is(tok_path, BL_SYM_STRING)) {
-      parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path,
+      parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path, BL_BUILDER_CUR_WORD,
                   "expected path string after link preprocessor directive");
     }
 
@@ -967,7 +997,8 @@ parse_if_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *test = parse_expr_maybe(cnt);
   if (test == NULL) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, "expected expression for the if statement");
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                "expected expression for the if statement");
   }
 
   bl_node_t *if_stmt = bl_ast_add_stmt_if(cnt->ast, tok_begin, test, NULL, NULL, parent);
@@ -975,17 +1006,17 @@ parse_if_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *true_stmt = parse_block_content_maybe(cnt, if_stmt);
   if (true_stmt == NULL || bl_node_is_not(true_stmt, BL_DECL_BLOCK)) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok,
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD,
                 "expected compound statement for true result of the if expression test");
   }
 
   bl_node_t *false_stmt = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ELSE)) {
     false_stmt = parse_block_content_maybe(cnt, if_stmt);
-    if (false_stmt == NULL || (bl_node_is_not(false_stmt, BL_DECL_BLOCK) && 
-                               bl_node_is_not(false_stmt, BL_STMT_IF))) {
+    if (false_stmt == NULL ||
+        (bl_node_is_not(false_stmt, BL_DECL_BLOCK) && bl_node_is_not(false_stmt, BL_STMT_IF))) {
       bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok,
+      parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD,
                   "expected statement for false result of the if expression test");
     }
   }
@@ -1077,9 +1108,8 @@ parse_block_maybe(context_t *cnt, bl_node_t *parent)
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
-    // TODO: warning macro
-    bl_msg_warning("%s %d:%d extra semicolon can be removed " BL_YELLOW("';'"), cnt->unit->filepath,
-                   tok->src.line, tok->src.col);
+    parse_warning(cnt, tok, BL_BUILDER_CUR_WORD,
+                  "extra semicolon can be removed " BL_YELLOW("';'"));
     goto stmt;
   }
 
@@ -1088,10 +1118,10 @@ stmt:
     goto stmt;
   }
 
-  tok = bl_tokens_consume(cnt->tokens);
-
-  if (tok->sym != BL_SYM_RBLOCK) {
-    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+  tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
+  if (!tok) {
+    tok = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok, BL_BUILDER_CUR_AFTER,
                 "expected declaration or scope end " BL_YELLOW("'}'") ", starting %d:%d",
                 tok_begin->src.line, tok_begin->src.col);
   }
@@ -1109,7 +1139,7 @@ parse_arg_maybe(context_t *cnt)
 
     if (type == NULL) {
       bl_token_t *tok = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "expected argument type");
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD, "expected argument type");
     }
 
     arg = bl_ast_add_decl_arg(cnt->ast, tok, tok->value.str, type);
@@ -1125,7 +1155,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_FN) != NULL) {
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_IDENT) {
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected function name");
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected function name");
     }
 
     fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent);
@@ -1135,14 +1165,14 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
       if (cnt->ast->entry_func) {
         bl_src_t *err_src = cnt->ast->entry_func->src;
-        parse_error_node(cnt, BL_ERR_DUPLICATE_ENTRY, fn,
+        parse_error_node(cnt, BL_ERR_DUPLICATE_ENTRY, fn, BL_BUILDER_CUR_WORD,
                          "main function can be declared only once across all modules, previous "
                          "declaration here %s %d:%d",
                          err_src->file, err_src->line, err_src->col);
       }
 
       if (modif & BL_MODIF_EXTERN) {
-        parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, fn,
+        parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, fn, BL_BUILDER_CUR_WORD,
                          "main function can't be declared as " BL_YELLOW("'%s'"),
                          bl_sym_strings[BL_SYM_EXTERN]);
       }
@@ -1153,7 +1183,8 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, "expected function parameter list");
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                  "expected function parameter list");
     }
 
     /* parse args */
@@ -1166,19 +1197,19 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
       }
     } else if (rq) {
       bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err,
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
                   "expected function argument after comma " BL_YELLOW("','"));
     }
 
     if (bl_ast_func_arg_count(bl_peek_decl_func(fn)) > BL_MAX_FUNC_ARG_COUNT) {
-      parse_error_node(cnt, BL_ERR_INVALID_PARAM_COUNT, fn,
+      parse_error_node(cnt, BL_ERR_INVALID_PARAM_COUNT, fn, BL_BUILDER_CUR_WORD,
                        "maximum argument count reached (%d) in declaration of " BL_YELLOW("'%s'"),
                        BL_MAX_FUNC_ARG_COUNT, bl_peek_decl_func(fn)->id.str);
     }
 
     tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_RPAREN) {
-      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok,
+      parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                   "expected end of parameter list " BL_YELLOW(
                       "')'") " or another parameter separated by comma");
     }
@@ -1191,15 +1222,15 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 
     if (modif & BL_MODIF_EXTERN) {
       if (block != NULL) {
-        parse_error_node(cnt, BL_ERR_UNEXPECTED_DECL, fn,
+        parse_error_node(cnt, BL_ERR_UNEXPECTED_DECL, fn, BL_BUILDER_CUR_WORD,
                          "extern function " BL_YELLOW("'%s'") " can't have body",
                          bl_peek_decl_func(fn)->id.str);
       }
 
       parse_semicolon_rq(cnt);
     } else if (block == NULL) {
-      parse_error_node(cnt, BL_ERR_EXPECTED_BODY, fn, "function " BL_YELLOW("'%s'") " has no body",
-                       bl_peek_decl_func(fn)->id.str);
+      parse_error_node(cnt, BL_ERR_EXPECTED_BODY, fn, BL_BUILDER_CUR_WORD,
+                       "function " BL_YELLOW("'%s'") " has no body", bl_peek_decl_func(fn)->id.str);
     }
 
     bl_peek_decl_func(fn)->block = block;
@@ -1218,7 +1249,7 @@ parse_using_maybe(context_t *cnt)
 
   BArray *path = parse_path_maybe(cnt);
   if (path == NULL) {
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok,
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD,
                 "expected module name or path to module after using keyword");
   }
 
@@ -1259,7 +1290,7 @@ next_expr:
       goto next_expr;
     } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
       tok = bl_tokens_consume(cnt->tokens);
-      parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+      parse_error(cnt, BL_ERR_MISSING_COMMA, tok, BL_BUILDER_CUR_WORD,
                   "initializer list expressions must be separated by comma " BL_YELLOW("','"));
     }
   }
@@ -1267,7 +1298,7 @@ next_expr:
   /* eat '}' */
   bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
   if (tok_end->sym != BL_SYM_RBLOCK) {
-    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end,
+    parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok_end, BL_BUILDER_CUR_WORD,
                 "expected end of the initialization block " BL_YELLOW("'}'"));
   }
 
@@ -1290,7 +1321,8 @@ parse_struct_member_maybe(context_t *cnt)
   type = parse_type_maybe(cnt);
   if (type == NULL) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, "expected type name after variable name");
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+                "expected type name after variable name");
   }
 
   return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif);
@@ -1311,7 +1343,7 @@ parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent)
     /* expected expression */
     expr = parse_expr_maybe(cnt);
     if (expr == NULL) {
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_assign,
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_assign, BL_BUILDER_CUR_WORD,
                   "expected constant expression after enum variant declaration");
     }
   }
@@ -1327,16 +1359,18 @@ parse_struct_maybe(context_t *cnt, int modif)
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
 
     if (tok->sym != BL_SYM_IDENT) {
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected struct name");
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected struct name");
     }
 
     strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
     bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
     /* eat '{' */
-    tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_LBLOCK) {
-      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected struct body " BL_YELLOW("'{'"));
+    tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+    if (!tok) {
+      tok = bl_tokens_peek_prev(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, BL_BUILDER_CUR_AFTER,
+                  "expected struct body " BL_YELLOW("'{'"));
     }
 
     int        order = 0;
@@ -1350,16 +1384,18 @@ parse_struct_maybe(context_t *cnt, int modif)
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto member;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
-        tok = bl_tokens_consume(cnt->tokens);
-        parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
-                    "struct members must be separated by comma " BL_YELLOW("','"));
+        tok = bl_tokens_peek_prev(cnt->tokens);
+        parse_error(
+            cnt, BL_ERR_UNEXPECTED_SYMBOL, tok, BL_BUILDER_CUR_AFTER,
+            "expected comma " BL_YELLOW("','") " or struct declaration end " BL_YELLOW("'}'"));
       }
     }
 
     /* eat '}' */
-    tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_RBLOCK) {
-      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+    tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
+    if (!tok) {
+      tok = bl_tokens_peek_prev(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok, BL_BUILDER_CUR_AFTER,
                   "expected end of struct body " BL_YELLOW("'}'"));
     }
   }
@@ -1372,26 +1408,28 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
 {
   bl_node_t *enm = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM) != NULL) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok_id = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
 
-    if (tok->sym != BL_SYM_IDENT) {
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, "expected enum name");
+    if (!tok_id) {
+      bl_token_t *tok_err = bl_tokens_peek_prev(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_AFTER, "expected enum name");
     }
 
     bl_node_t *type = parse_type_maybe(cnt);
 
     if (type == NULL) {
       /* use i32 as default type when there is no other user specified */
-      type = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, false);
+      type = bl_ast_add_type_fund(cnt->ast, tok_id, BL_FTYPE_I32, false);
     }
 
-    enm                  = bl_ast_add_decl_enum(cnt->ast, tok, tok->value.str, type, modif, parent);
+    enm = bl_ast_add_decl_enum(cnt->ast, tok_id, tok_id->value.str, type, modif, parent);
     bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
 
     /* eat '{' */
-    tok = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LBLOCK) {
-      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, "expected enum body " BL_YELLOW("'{'"));
+      parse_error(cnt, BL_ERR_EXPECTED_BODY, tok, BL_BUILDER_CUR_WORD,
+                  "expected enum body " BL_YELLOW("'{'"));
     }
 
     bl_node_t *variant = NULL;
@@ -1404,21 +1442,22 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto variant;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
-        tok = bl_tokens_consume(cnt->tokens);
-        parse_error(cnt, BL_ERR_MISSING_COMMA, tok,
+        tok = bl_tokens_peek_prev(cnt->tokens);
+        parse_error(cnt, BL_ERR_MISSING_COMMA, tok, BL_BUILDER_CUR_AFTER,
                     "enum variants must be separated by comma " BL_YELLOW("','"));
       }
     }
 
     if (bl_ast_enum_get_count(_enm) == 0) {
-      parse_error(cnt, BL_ERR_EMPTY, tok, "enumerator " BL_YELLOW("'%s'") " is empty",
-                  _enm->id.str);
+      parse_error(cnt, BL_ERR_EMPTY, tok_id, BL_BUILDER_CUR_WORD,
+                  "enumerator " BL_YELLOW("'%s'") " is empty", _enm->id.str);
     }
 
     /* eat '}' */
-    tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_RBLOCK) {
-      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok,
+    tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
+    if (!tok) {
+      tok = bl_tokens_peek_prev(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok, BL_BUILDER_CUR_AFTER,
                   "expected end of enum body " BL_YELLOW("'}'"));
     }
   }
@@ -1443,13 +1482,13 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
   tok_begin_block = bl_tokens_consume(cnt->tokens);
 
   if (tok_id->sym != BL_SYM_IDENT) {
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, "expected module name");
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, BL_BUILDER_CUR_WORD, "expected module name");
   }
 
   module = bl_ast_add_decl_module(cnt->ast, tok_id, tok_id->value.str, modif, parent);
 
   if (tok_begin_block->sym != BL_SYM_LBLOCK) {
-    parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin_block,
+    parse_error(cnt, BL_ERR_EXPECTED_BODY, tok_begin_block, BL_BUILDER_CUR_WORD,
                 "expected block after module name " BL_YELLOW("'{'"));
   }
 
@@ -1457,8 +1496,8 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
 
   bl_token_t *tok_end_block = bl_tokens_consume(cnt->tokens);
   if (tok_end_block->sym != BL_SYM_RBLOCK) {
-    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end_block,
-                "expected block end " BL_YELLOW("'{'") " starting here: %d:%d",
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end_block, BL_BUILDER_CUR_WORD,
+                "expected block end " BL_YELLOW("'}'") " starting here: %d:%d",
                 tok_begin_block->src.line, tok_begin_block->src.col);
   }
 
@@ -1477,7 +1516,7 @@ decl:
 
   if ((node = bl_ast_module_push_node(_module, parse_module_maybe(cnt, module, false, modif)))) {
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "module can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
@@ -1508,7 +1547,7 @@ decl:
 
   if ((node = bl_ast_module_push_node(_module, parse_struct_maybe(cnt, modif)))) {
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "struct can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
@@ -1517,11 +1556,17 @@ decl:
 
   if ((node = bl_ast_module_push_node(_module, parse_enum_maybe(cnt, modif, module)))) {
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "enum can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
     goto decl;
+  }
+
+  bl_token_t *tok = bl_tokens_peek(cnt->tokens);
+  if (!bl_token_is(tok, BL_SYM_RBLOCK) && !bl_token_is(tok, BL_SYM_EOF)) {
+    parse_error(cnt, BL_ERR_UNEXPECTED_SYMBOL, tok, BL_BUILDER_CUR_WORD,
+                "unexpected symbol in module body");
   }
 }
 

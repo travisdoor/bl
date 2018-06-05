@@ -37,17 +37,17 @@
 #define TYPE_NAME_TMP_SIZE 512
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
 
-#define check_error(cnt, code, node, format, ...)                                                  \
+#define check_error(cnt, code, node, pos, format, ...)                                             \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,     \
-                     (node)->src->col, ##__VA_ARGS__);                                             \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
+                   ##__VA_ARGS__);                                                                 \
     longjmp((cnt)->jmp_error, (code));                                                             \
   }
 
-#define check_warning(cnt, node, format, ...)                                                      \
+#define check_warning(cnt, node, pos, format, ...)                                                 \
   {                                                                                                \
-    bl_builder_warning((cnt)->builder, "%s:%d:%d " format, (node)->src->file, (node)->src->line,   \
-                       (node)->src->col, ##__VA_ARGS__);                                           \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
+                   ##__VA_ARGS__);                                                                 \
   }
 
 typedef struct
@@ -178,7 +178,7 @@ check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const
     bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
     bl_ast_try_get_type_name(_cast->to_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
-    check_error(cnt, BL_ERR_INVALID_TYPE, cast,
+    check_error(cnt, BL_ERR_INVALID_TYPE, cast, BL_BUILDER_CUR_WORD,
                 "incompatible result type of casting, expected is " BL_YELLOW(
                     "'%s'") " but result is " BL_YELLOW("'%s'"),
                 cnt->tname_tmp1, cnt->tname_tmp2);
@@ -197,7 +197,7 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
     bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
     bl_ast_try_get_type_name(member_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
-    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref,
+    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_WORD,
                 "incompatible type of member reference, expected is " BL_YELLOW(
                     "'%s'") " but reference is " BL_YELLOW("'%s'"),
                 cnt->tname_tmp1, cnt->tname_tmp2);
@@ -211,7 +211,7 @@ bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr)
 {
   if (const_expr) {
-    check_error(cnt, BL_ERR_INVALID_EXPR, call,
+    check_error(cnt, BL_ERR_INVALID_EXPR, call, BL_BUILDER_CUR_WORD,
                 "expected const-expr, function call cannot be evaluated at compile time");
   }
 
@@ -226,7 +226,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
       bl_ast_try_get_type_name(_callee->ret_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_ARG_COUNT, call,
+          cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
           "incompatible return type of function " BL_YELLOW("'%s'") " call, expected is " BL_YELLOW(
               "'%s'") " but function returns " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           _callee->id.str, cnt->tname_tmp1, cnt->tname_tmp2, callee->src->file, callee->src->line,
@@ -239,7 +239,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
 
   if (call_arg_c != callee_arg_c) {
     check_error(
-        cnt, BL_ERR_INVALID_ARG_COUNT, call,
+        cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
         "invalid argument count in " BL_YELLOW(
             "'%s'") " function call, expected is %d but called with %d, declared here: %s:%d:%d",
         _callee->id.str, callee_arg_c, call_arg_c, callee->src->file, callee->src->line,
@@ -270,7 +270,7 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool cons
     bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
     bl_ast_try_get_type_name(_cnst->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
-    check_error(cnt, BL_ERR_INVALID_TYPE, cnst,
+    check_error(cnt, BL_ERR_INVALID_TYPE, cnst, BL_BUILDER_CUR_WORD,
                 "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
                 cnt->tname_tmp2, cnt->tname_tmp1);
   }
@@ -296,7 +296,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
@@ -313,7 +313,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of function argument reference " BL_YELLOW(
               "'%s'") ", expected is " BL_YELLOW("'%s'") " but argument is "
                                                          "declared " BL_YELLOW(
@@ -333,7 +333,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of constant reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but constant is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
@@ -350,7 +350,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref,
+          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
@@ -374,7 +374,7 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
   if (_binop->type && expected_type) {
     if (!bl_type_compatible(_binop->type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      check_error(cnt, BL_ERR_INVALID_TYPE, binop,
+      check_error(cnt, BL_ERR_INVALID_TYPE, binop, BL_BUILDER_CUR_WORD,
                   "binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
                   cnt->tname_tmp1);
     }
@@ -387,7 +387,7 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
     if (bl_node_is(_binop->lhs, BL_EXPR_DECL_REF) &&
         bl_node_is(bl_peek_expr_decl_ref(_binop->lhs)->ref, BL_DECL_CONST)) {
       bl_decl_const_t *_cnst = bl_peek_decl_const(bl_peek_expr_decl_ref(_binop->lhs)->ref);
-      check_error(cnt, BL_ERR_INVALID_EXPR, binop,
+      check_error(cnt, BL_ERR_INVALID_EXPR, binop, BL_BUILDER_CUR_WORD,
                   "constant " BL_YELLOW("'%s'") " is not mutable and it's value cannot be changed ",
                   _cnst->id.str);
     }
@@ -413,7 +413,8 @@ check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_e
 
   bl_expr_null_t *_null = bl_peek_expr_null(nl);
   if (bl_type_is_ptr(expected_type) <= 0) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, nl, "only pointers can be set to null value");
+    check_error(cnt, BL_ERR_INVALID_TYPE, nl, BL_BUILDER_CUR_WORD,
+                "only pointers can be set to null value");
   }
 
   _null->type = expected_type;
@@ -474,7 +475,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
 
   /* warn about unused expressions in function scope */
   if (bl_node_is(expr, BL_EXPR_BINOP) && bl_peek_expr_binop(expr)->op != BL_SYM_ASSIGN) {
-    check_warning(cnt, expr, "expression has no effect");
+    check_warning(cnt, expr, BL_BUILDER_CUR_WORD, "expression has no effect");
   }
 
   check_expr(cnt, expr, NULL, false);
@@ -487,8 +488,8 @@ visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
   bl_decl_mut_t *_mut = bl_peek_decl_mut(mut);
 
   if (_mut->used == 0) {
-    check_warning(cnt, mut, "variable " BL_YELLOW("'%s'") " is declared but never used",
-                  _mut->id.str);
+    check_warning(cnt, mut, BL_BUILDER_CUR_WORD,
+                  "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
   }
 
   if (_mut->init_expr != NULL) {
@@ -503,8 +504,8 @@ visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
 
   if (_cnst->used == 0) {
-    check_warning(cnt, cnst, "constant " BL_YELLOW("'%s'") " is declared but never used",
-                  _cnst->id.str);
+    check_warning(cnt, cnst, BL_BUILDER_CUR_WORD,
+                  "constant " BL_YELLOW("'%s'") " is declared but never used", _cnst->id.str);
   }
 
   if (_cnst->init_expr != NULL) {
@@ -518,12 +519,13 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
   context_t *       cnt    = peek_cnt(visitor);
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
   if (_strct->modif == BL_MODIF_NONE && _strct->used == 0) {
-    check_warning(cnt, strct, "structure " BL_YELLOW("'%s'") " is declared but never used",
-                  _strct->id.str);
+    check_warning(cnt, strct, BL_BUILDER_CUR_WORD,
+                  "structure " BL_YELLOW("'%s'") " is declared but never used", _strct->id.str);
   }
 
   if (bl_ast_struct_member_count(_strct) == 0) {
-    check_warning(cnt, strct, "structure " BL_YELLOW("'%s'") " is empty", _strct->id.str);
+    check_warning(cnt, strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
+                  _strct->id.str);
   }
 
   /* check all memebrs of structure */
@@ -536,7 +538,7 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
     _member = bl_peek_decl_struct_member(member);
 
     if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
-      check_error(cnt, BL_ERR_INVALID_TYPE, _member->type,
+      check_error(cnt, BL_ERR_INVALID_TYPE, _member->type, BL_BUILDER_CUR_WORD,
                   "structure cannot contains self-typed member " BL_YELLOW("'%s'"),
                   _member->id.str);
     }
@@ -549,15 +551,15 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
   context_t *     cnt  = peek_cnt(visitor);
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   if (_enm->modif == BL_MODIF_NONE && _enm->used == 0) {
-    check_warning(cnt, enm, "enumerator " BL_YELLOW("'%s'") " is declared but never used",
-                  _enm->id.str);
+    check_warning(cnt, enm, BL_BUILDER_CUR_WORD,
+                  "enumerator " BL_YELLOW("'%s'") " is declared but never used", _enm->id.str);
   }
 
   if (bl_node_is_not(_enm->type, BL_TYPE_FUND) ||
       (bl_peek_type_fund(_enm->type)->type == BL_FTYPE_BOOL ||
        bl_peek_type_fund(_enm->type)->type == BL_FTYPE_VOID) ||
       bl_peek_type_fund(_enm->type)->is_ptr) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type,
+    check_error(cnt, BL_ERR_INVALID_TYPE, _enm->type, BL_BUILDER_CUR_WORD,
                 "enumerator has invalid type, only numerical, string and char types are supported");
   }
 
@@ -579,7 +581,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
     switch (type->type) {
     case BL_FTYPE_CHAR:
     case BL_FTYPE_STRING:
-      check_error(cnt, BL_ERR_EXPECTED_EXPR, variant,
+      check_error(cnt, BL_ERR_EXPECTED_EXPR, variant, BL_BUILDER_CUR_WORD,
                   "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?",
                   _variant->id.str);
       break;
@@ -595,8 +597,8 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   bl_decl_func_t *_func = bl_peek_decl_func(func);
   context_t *     cnt   = peek_cnt(visitor);
   if (_func->modif == BL_MODIF_NONE && _func->used == 0) {
-    check_warning(cnt, func, "function " BL_YELLOW("'%s'") " is declared but never used",
-                  _func->id.str);
+    check_warning(cnt, func, BL_BUILDER_CUR_WORD,
+                  "function " BL_YELLOW("'%s'") " is declared but never used", _func->id.str);
   }
 
   cnt->curr_func = func;
@@ -607,7 +609,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 
   if (!ignore_missing_return && !cnt->fn_has_return && !(_func->modif & BL_MODIF_EXTERN)) {
     // error -> missing return statement
-    check_error(cnt, BL_ERR_MISSING_RETURN, func,
+    check_error(cnt, BL_ERR_MISSING_RETURN, func, BL_BUILDER_CUR_WORD,
                 "missing return statement in function " BL_YELLOW("'%s'"), _func->id.str);
   }
   cnt->fn_has_return = false;

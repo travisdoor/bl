@@ -1,12 +1,12 @@
 /* testing playground */
 
-extern fn puts(s string) i32;
+extern fn printf(s string, i i32) i32;
+
+enum E i32 {
+  A, B, C,
+}
 
 fn main() {
-  mut i i32 = 0;
-
-  while i < 10 {
-    i = i + 1;
-    puts("looping");
-  }
+  mut i i32;
 }
+
