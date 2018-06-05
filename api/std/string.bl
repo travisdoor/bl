@@ -48,8 +48,9 @@ public module std {
     }
 
     public fn c_str(str *string_t) string {
-      if (str->len == cast(size_t) 0)
+      if str->len == cast(size_t) 0 {
         return "";
+      }
 
       return cast(string) str->data;
     }
@@ -61,8 +62,9 @@ public module std {
     }
 
     fn expand_if_needed(str *string_t, needed size_t) {
-      if (str->len >= needed)
+      if str->len >= needed {
         return;
+      }
 
       str->len = needed;
       str->data = libc::realloc(str->data, needed);

@@ -5,8 +5,7 @@ module c {
 }
 
 fn main() {
-  // declaration of variable i of i32 type (automatically set to default value 0)
-  mut a i32;
+  mut a i32 = 20;
   mut b i32 = 10; 
 
   c::printf("a + b = %d\n", a + b);

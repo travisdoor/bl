@@ -42,8 +42,9 @@ public module sdl2 {
 
   public fn key_pressed(scancode scancode_e) bool {
     mut tmp *u8 = get_key_state();
-    if (tmp == null)
+    if tmp == null {
       return false;
+    }
       
     tmp = cast(*u8) (cast(u64) tmp + cast(u64) scancode);
     return *tmp > cast(u8) 0;

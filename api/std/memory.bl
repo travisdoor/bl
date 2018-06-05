@@ -33,14 +33,17 @@ public module std {
   public module memory {
     public fn malloc(count size_t) *void {
       mut p *void = libc::malloc(count);
-      if (p == null)
+      if p == null {
         debug::abort();
+      }
+      
       return p;
     }
 
     public fn free(p *void) {
-      if (p == null)
+      if p == null {
         return;
+      }
 
       libc::free(p);
     }

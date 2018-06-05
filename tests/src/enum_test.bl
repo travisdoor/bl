@@ -29,71 +29,89 @@ fn main() i32 {
   mut s state_e = state_e::S0;
   mut n names_e = names_e::Tereza;
 
-  if (s != state_e::S0)
+  if s != state_e::S0 {
      return 1;
+  }
 
   s = state_e::S0;
-  if (s != state_e::S0)
+  if s != state_e::S0 {
      return 2;
+  }
+  
   printf("S0 = %d\n", s);
 
   s = state_e::S1;
-  if (s != state_e::S1)
+  if s != state_e::S1 {
      return 3;
+  }
+
   printf("S1 = %d\n", s);
 
   s = state_e::S2;
-  if (s != state_e::S2)
+  if s != state_e::S2 {
      return 4;
+  }
   printf("S2 = %d\n", s);
 
   s = state_e::S3;
-  if (s != state_e::S3)
+  if s != state_e::S3 {
      return 5;
+  }
   printf("S3 = %d\n", s);
 
   s = state_e::S4;
-  if (s != state_e::S4)
+  if s != state_e::S4 {
      return 6;
+  }
   printf("S4 = %d\n", s);
 
   s = state_e::S5;
-  if (s != state_e::S5)
+  if s != state_e::S5 {
      return 6;
+  }
+
   printf("S5 = %d\n", s);
 
   s = state_e::S6;
-  if (s != state_e::S6)
+  if s != state_e::S6 {
      return 7;
+  }
+     
   printf("S6 = %d\n", s);
 
   s = state_e::S7;
-  if (s != state_e::S7)
+  if s != state_e::S7 {
      return 8;
+  }
   printf("S7 = %d\n", s);
 
   s = state_e::S8;
-  if (s != state_e::S8)
+  if s != state_e::S8 {
      return 8;
+  }
   printf("S8 = %d\n", s);
 
   s = state_e::S9;
-  if (s != state_e::S9)
+  if s != state_e::S9 {
      return 9;
+  }
   printf("S9 = %d\n", s);
 
   s = state_e::S10;
-  if (s != state_e::S10)
+  if s != state_e::S10 {
      return 10;
+  }
   printf("S10 = %d\n", s);
 
   n = names_e::Tereza;
-  if (n != names_e::Tereza)
+  if n != names_e::Tereza {
      return 11;
+  }
 
   n = names_e::Milan;
-  if (n != names_e::Milan)
+  if n != names_e::Milan {
      return 12;
+  }
 
   return 0;
 }

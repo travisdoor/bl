@@ -363,30 +363,31 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   if (_member_ref->ref)
     return;
 
-  bl_node_t *type = bl_ast_get_result_type(_member_ref->next);
+  bl_node_t type;
+  bl_ast_get_result_type(_member_ref->next, &type);
 
-  if (bl_node_is_not(type, BL_TYPE_REF)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+  if (bl_node_is_not(&type, BL_TYPE_REF)) {
+    connect_error(cnt, BL_ERR_INVALID_TYPE, type.src,
                   "field has no members, structure is expected");
   }
 
-  type = bl_peek_type_ref(type)->ref;
-  if (bl_node_is_not(type, BL_DECL_STRUCT)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type->src,
+  type = *bl_peek_type_ref(&type)->ref;
+  if (bl_node_is_not(&type, BL_DECL_STRUCT)) {
+    connect_error(cnt, BL_ERR_INVALID_TYPE, type.src,
                   "field has no members, structure is expected");
   }
 
   /* determinate if struct is declared in current tree and private members can be referenced too */
   bl_node_t *linked_by = NULL;
   bool       in_curr_branch =
-      lookup_in_tree(cnt, &bl_peek_decl_struct(type)->id, cnt->curr_compound, &linked_by, NULL);
+      lookup_in_tree(cnt, &bl_peek_decl_struct(&type)->id, cnt->curr_compound, &linked_by, NULL);
   bool ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
 
-  bl_node_t *ref = lookup_in_scope(cnt, &_member_ref->id, type, NULL);
+  bl_node_t *ref = lookup_in_scope(cnt, &_member_ref->id, &type, NULL);
   if (!ref) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref->src,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
-                  bl_peek_decl_struct(type)->id.str, _member_ref->id.str);
+                  bl_peek_decl_struct(&type)->id.str, _member_ref->id.str);
   }
 
   /* check visibility of found member */
@@ -395,7 +396,7 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
     connect_error(cnt, BL_ERR_PRIVATE, member_ref->src,
                   "member " BL_YELLOW("'%s'") " of structure " BL_YELLOW(
                       "'%s'") " is private in this context",
-                  _ref->id.str, bl_peek_decl_struct(type)->id.str);
+                  _ref->id.str, bl_peek_decl_struct(&type)->id.str);
   }
 
   _member_ref->ref = ref;
@@ -719,7 +720,10 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
     bl_expr_init_t *_init = bl_peek_expr_init(expr);
     if (!_init->type) {
       bl_assert(cnt->curr_lvalue, "invalid lvalue");
-      _init->type = bl_ast_get_result_type(cnt->curr_lvalue);
+      bl_node_t type = {0};
+      bl_ast_get_result_type(cnt->curr_lvalue, &type);
+      _init->type = bl_ast_dup_node(cnt->ast, &type);
+
     }
     break;
   }
@@ -727,7 +731,9 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_CONST: {
     bl_expr_const_t *_const = bl_peek_expr_const(expr);
     if (!_const->type) {
-      _const->type = bl_ast_get_result_type(cnt->curr_lvalue);
+      bl_node_t type = {0};
+      bl_ast_get_result_type(cnt->curr_lvalue, &type);
+      _const->type = bl_ast_dup_node(cnt->ast, &type);
     }
     break;
   }

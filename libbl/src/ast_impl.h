@@ -684,8 +684,8 @@ bl_type_compatible(bl_node_t *first, bl_node_t *second);
 int
 bl_type_is_ptr(bl_node_t *first);
 
-bl_node_t *
-bl_ast_get_result_type(bl_node_t *node);
+void
+bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
 
 void
 bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
@@ -701,6 +701,9 @@ bl_ast_try_get_scopes(bl_node_t *node);
 
 bl_node_t *
 bl_ast_try_get_parent(bl_node_t *node);
+
+bl_node_t *
+bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H
