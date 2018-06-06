@@ -223,6 +223,7 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
                bl_builder_msg_cur_pos pos, const char *format, ...)
 {
   bl_assert(src, "invalid source");
+  bl_assert(src->unit, "invalid unit attached to source location");
   BString *tmp              = bo_string_new(MAX_MSG_LEN);
   char     msg[MAX_MSG_LEN] = {0};
 
@@ -248,28 +249,47 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
   }
 
   snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", type == BL_BUILDER_ERROR ? "E" : "W", code,
-           src->file, line, col);
+           src->unit->filepath, line, col);
   va_list args;
   va_start(args, format);
   vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
   va_end(args);
   bo_string_append(tmp, &msg[0]);
 
-  char *begin = (char *)(src->src_loc - src->col + 1);
-  long  l     = strchr(src->src_loc, '\n') - begin;
+  int         pad      = sprintf(msg, "%d", src->line) + 2;
+  long        line_len = 0;
+  const char *line_str = bl_unit_get_src_ln(src->unit, src->line - 1, &line_len);
+  if (line_str && line_len) {
+    sprintf(msg, "\n%*d", pad, src->line - 1);
+    bo_string_append(tmp, &msg[0]);
+    bo_string_append(tmp, " | ");
+    bo_string_appendn(tmp, line_str, line_len);
+  }
 
-  if (l < 0)
-    l = strlen(begin);
-
-  bo_string_append(tmp, "\n | ");
-  bo_string_appendn(tmp, begin, l);
-  bo_string_append(tmp, "\n | ");
+  line_str = bl_unit_get_src_ln(src->unit, src->line, &line_len);
+  if (line_str && line_len) {
+    sprintf(msg, "\n%*d", pad, src->line);
+    bo_string_append(tmp, &msg[0]);
+    bo_string_append(tmp, " | ");
+    bo_string_appendn(tmp, line_str, line_len);
+    sprintf(msg, "\n%*s", pad, "");
+    bo_string_append(tmp, &msg[0]);
+    bo_string_append(tmp, " | ");
+  }
 
   for (int i = 0; i < col + len - 1; ++i) {
     if (i < col - 1)
       bo_string_append(tmp, " ");
     else
       bo_string_append(tmp, type == BL_BUILDER_ERROR ? BL_RED("^") : BL_YELLOW("^"));
+  }
+
+  line_str = bl_unit_get_src_ln(src->unit, src->line + 1, &line_len);
+  if (line_str && line_len) {
+    sprintf(msg, "\n%*d", pad, src->line + 1);
+    bo_string_append(tmp, &msg[0]);
+    bo_string_append(tmp, " | ");
+    bo_string_appendn(tmp, line_str, line_len);
   }
 
   if (type == BL_BUILDER_ERROR)

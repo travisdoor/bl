@@ -229,8 +229,8 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
           cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
           "incompatible return type of function " BL_YELLOW("'%s'") " call, expected is " BL_YELLOW(
               "'%s'") " but function returns " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          _callee->id.str, cnt->tname_tmp1, cnt->tname_tmp2, callee->src->file, callee->src->line,
-          callee->src->col);
+          _callee->id.str, cnt->tname_tmp1, cnt->tname_tmp2, callee->src->unit->filepath,
+          callee->src->line, callee->src->col);
     }
   }
 
@@ -242,7 +242,7 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
         cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
         "invalid argument count in " BL_YELLOW(
             "'%s'") " function call, expected is %d but called with %d, declared here: %s:%d:%d",
-        _callee->id.str, callee_arg_c, call_arg_c, callee->src->file, callee->src->line,
+        _callee->id.str, callee_arg_c, call_arg_c, callee->src->unit->filepath, callee->src->line,
         callee->src->col);
   }
 
@@ -299,7 +299,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
           cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
+          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
           ref->src->line, ref->src->col);
     }
     break;
@@ -318,7 +318,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
               "'%s'") ", expected is " BL_YELLOW("'%s'") " but argument is "
                                                          "declared " BL_YELLOW(
                                                              "'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
+          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
           ref->src->line, ref->src->col);
     }
     break;
@@ -336,7 +336,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
           cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of constant reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but constant is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
+          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
           ref->src->line, ref->src->col);
     }
     break;
@@ -353,7 +353,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
           cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->file,
+          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
           ref->src->line, ref->src->col);
     }
     break;

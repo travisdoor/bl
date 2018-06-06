@@ -107,13 +107,13 @@ typedef enum {
 
 extern char *bl_sym_strings[];
 
+struct bl_unit;
 typedef struct bl_src
 {
-  int         line;
-  int         col;
-  int         len;
-  const char *src_loc;
-  const char *file;
+  int             line;
+  int             col;
+  int             len;
+  struct bl_unit *unit;
 } bl_src_t;
 
 typedef struct bl_token

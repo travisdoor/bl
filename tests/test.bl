@@ -5,8 +5,8 @@ extern fn printf(s string, i i32) i32;
 enum E i32 {
   A, B, C,
 }
-
 fn main() {
   mut i i32;
+  const i i32 = 21;
 }
 

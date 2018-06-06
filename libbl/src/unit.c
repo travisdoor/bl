@@ -138,3 +138,24 @@ bl_unit_get_name(bl_unit_t *unit)
 {
   return unit->name;
 }
+
+const char *
+bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
+{
+  int         l    = 1;
+  const char *iter = unit->src;
+  while (iter && l != line) {
+    ++l;
+    iter = strchr(iter, '\n') + 1;
+  }
+
+  if (len) {
+    long l = strchr(iter, '\n') - iter;
+    if (l < 0) {
+      l = strlen(iter);
+    }
+    (*len) = l;
+  }
+
+  return iter;
+}

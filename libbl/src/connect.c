@@ -302,11 +302,12 @@ connect_const(context_t *cnt, bl_node_t *cnst)
     if (linked_by == cnt->curr_compound) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, cnst, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                    _cnst->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+                    _cnst->id.str, conflict->src->unit->filepath, conflict->src->line,
+                    conflict->src->col);
     } else {
       connect_warning(cnt, cnst, BL_BUILDER_CUR_WORD,
                       BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d", _cnst->id.str,
-                      conflict->src->file, conflict->src->line, conflict->src->col);
+                      conflict->src->unit->filepath, conflict->src->line, conflict->src->col);
     }
   }
   bl_scopes_insert_node(scopes, cnst);
@@ -455,7 +456,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t *module)
           peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, module, BL_BUILDER_CUR_WORD,
           "previous declaration of module " BL_YELLOW(
               "'%s'") " has different access modifier, originally declared here: %s:%d:%d",
-          _module->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+          _module->id.str, conflict->src->unit->filepath, conflict->src->line, conflict->src->col);
     }
 
     bl_scopes_t *conflict_scopes = bl_ast_try_get_scopes(conflict);
@@ -494,7 +495,8 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _enm->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+                  _enm->id.str, conflict->src->unit->filepath, conflict->src->line,
+                  conflict->src->col);
   }
 
   /* check for duplicit members and prepare lookup scope cache */
@@ -510,7 +512,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant, BL_BUILDER_CUR_WORD,
                     "duplicate enum variant " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                    bl_peek_decl_enum_variant(variant)->id.str, conflict->src->file,
+                    bl_peek_decl_enum_variant(variant)->id.str, conflict->src->unit->filepath,
                     conflict->src->line, conflict->src->col);
     }
     bl_scope_insert_node(scope, variant);
@@ -531,7 +533,8 @@ first_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _func->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+                  _func->id.str, conflict->src->unit->filepath, conflict->src->line,
+                  conflict->src->col);
   }
 
   /* create new scope for function declaration */
@@ -553,7 +556,8 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct, BL_BUILDER_CUR_WORD,
                   "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _strct->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+                  _strct->id.str, conflict->src->unit->filepath, conflict->src->line,
+                  conflict->src->col);
   }
 
   /* check for duplicit members */
@@ -571,8 +575,8 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
       connect_error(
           cnt, BL_ERR_DUPLICATE_SYMBOL, member, BL_BUILDER_CUR_WORD,
           "duplicate struct memeber " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-          bl_peek_decl_struct_member(member)->id.str, conflict->src->file, conflict->src->line,
-          conflict->src->col);
+          bl_peek_decl_struct_member(member)->id.str, conflict->src->unit->filepath,
+          conflict->src->line, conflict->src->col);
     }
 
     bl_scope_insert_node(scope, member);
@@ -788,11 +792,12 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t *mut)
     if (linked_by == cnt->curr_compound) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, mut, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                    _mut->id.str, conflict->src->file, conflict->src->line, conflict->src->col);
+                    _mut->id.str, conflict->src->unit->filepath, conflict->src->line,
+                    conflict->src->col);
     } else {
       connect_warning(cnt, mut, BL_BUILDER_CUR_WORD,
                       BL_YELLOW("'%s'") " hides symbol declared here: %s:%d:%d", _mut->id.str,
-                      conflict->src->file, conflict->src->line, conflict->src->col);
+                      conflict->src->unit->filepath, conflict->src->line, conflict->src->col);
     }
   }
 
@@ -823,8 +828,8 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                    bl_peek_decl_arg(arg)->id.str, conflict->src->file, conflict->src->line,
-                    conflict->src->col);
+                    bl_peek_decl_arg(arg)->id.str, conflict->src->unit->filepath,
+                    conflict->src->line, conflict->src->col);
     } else {
       bl_scopes_insert_node(&_func->scopes, arg);
     }

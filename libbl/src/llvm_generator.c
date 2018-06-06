@@ -704,7 +704,8 @@ LLVMValueRef
 gen_null(context_t *cnt, bl_node_t *nl)
 {
   bl_expr_null_t *_null = bl_peek_expr_null(nl);
-  bl_assert(_null->type, "invalid null type %s:%d:%d", nl->src->file, nl->src->line, nl->src->col);
+  bl_assert(_null->type, "invalid null type %s:%d:%d", nl->src->unit->filepath, nl->src->line,
+            nl->src->col);
   LLVMTypeRef type = to_llvm_type(cnt, _null->type);
   return LLVMConstPointerNull(type);
 }

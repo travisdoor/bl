@@ -717,8 +717,8 @@ parse_const_maybe(context_t *cnt, int modif)
 
   type = parse_type_maybe(cnt);
   if (type == NULL) {
-    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+    bl_token_t *tok_err = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_AFTER,
                 "expected type name after constant name");
   }
 
@@ -730,8 +730,8 @@ parse_const_maybe(context_t *cnt, int modif)
 
   init_expr = parse_expr_maybe(cnt);
   if (init_expr == NULL) {
-    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_WORD,
+    bl_token_t *tok_err = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_AFTER,
                 "expected initialization expression after constant declaration");
   }
 
@@ -783,9 +783,9 @@ parse_mut_maybe(context_t *cnt, int modif)
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASSIGN)) {
     init_expr = parse_expr_maybe(cnt);
     if (init_expr == NULL) {
-      bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_WORD,
-                  "expected expression after " BL_YELLOW("'='") " in variable declaration");
+      bl_token_t *tok_err = bl_tokens_peek_prev(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_err, BL_BUILDER_CUR_AFTER,
+                  "expected expression after variable assignment");
     }
 
     if (init_expr == NULL) {
@@ -801,12 +801,11 @@ parse_mut_maybe(context_t *cnt, int modif)
 void
 parse_semicolon_rq(context_t *cnt)
 {
-  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-  if (tok->sym != BL_SYM_SEMICOLON) {
-    // TEST
-
-    parse_error(cnt, BL_ERR_MISSING_SEMICOLON, tok, BL_BUILDER_CUR_WORD,
-                "expected semicolon " BL_YELLOW("';'"));
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_SEMICOLON);
+  if (!tok) {
+    tok = bl_tokens_peek_prev(cnt->tokens);
+    parse_error(cnt, BL_ERR_MISSING_SEMICOLON, tok, BL_BUILDER_CUR_AFTER,
+                "missing semicolon " BL_YELLOW("';'"));
   }
 }
 
@@ -1168,7 +1167,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
         parse_error_node(cnt, BL_ERR_DUPLICATE_ENTRY, fn, BL_BUILDER_CUR_WORD,
                          "main function can be declared only once across all modules, previous "
                          "declaration here %s %d:%d",
-                         err_src->file, err_src->line, err_src->col);
+                         err_src->unit->filepath, err_src->line, err_src->col);
       }
 
       if (modif & BL_MODIF_EXTERN) {

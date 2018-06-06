@@ -52,6 +52,9 @@ extern BO_EXPORT const char *
 bl_unit_get_src(bl_unit_ref unit);
 
 extern BO_EXPORT const char *
+bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len);
+
+extern BO_EXPORT const char *
 bl_unit_get_name(bl_unit_ref unit);
 
 BO_END_DECLS

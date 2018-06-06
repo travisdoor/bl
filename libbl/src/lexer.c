@@ -102,7 +102,6 @@ scan_comment(context_t *cnt, const char *term)
 bool
 scan_ident(context_t *cnt, bl_token_t *tok)
 {
-  tok->src.src_loc = cnt->c;
   tok->src.line    = cnt->line;
   tok->src.col     = cnt->col;
   tok->sym         = BL_SYM_IDENT;
@@ -151,7 +150,6 @@ scan_string(context_t *cnt, bl_token_t *tok)
     return false;
   }
 
-  tok->src.src_loc = cnt->c;
   tok->src.line    = cnt->line;
   tok->src.col     = cnt->col;
   tok->sym         = BL_SYM_STRING;
@@ -237,7 +235,6 @@ c_to_number(char c, int base)
 bool
 scan_number(context_t *cnt, bl_token_t *tok)
 {
-  tok->src.src_loc = cnt->c;
   tok->src.line    = cnt->line;
   tok->src.col     = cnt->col;
   tok->value.str   = cnt->c;
@@ -332,7 +329,6 @@ scan(context_t *cnt)
 {
   bl_token_t tok;
 scan:
-  tok.src.src_loc = cnt->c;
   tok.src.line    = cnt->line;
   tok.src.col     = cnt->col;
 
@@ -420,7 +416,7 @@ scan:
              cnt->col);
 push_token:
   bl_tokens_push(cnt->tokens, &tok);
-  tok.src.file = cnt->unit->filepath;
+  tok.src.unit = cnt->unit;
   goto scan;
 }
 
