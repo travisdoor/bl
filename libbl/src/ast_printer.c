@@ -388,7 +388,7 @@ bl_ast_printer_run(bl_assembly_t *assembly)
     bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
     bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
     bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
-    bl_visitor_add(&visitor, visit_mut, BL_VISIT_mut);
+    bl_visitor_add(&visitor, visit_mut, BL_VISIT_MUT);
     bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
     bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
     bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);

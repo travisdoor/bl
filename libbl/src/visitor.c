@@ -49,7 +49,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t *stmt)
   }
 
   case BL_DECL_MUT: {
-    call_visit(visitor, stmt, BL_VISIT_mut);
+    call_visit(visitor, stmt, BL_VISIT_MUT);
     break;
   }
 
@@ -240,7 +240,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->visitors[BL_VISIT_ARG]           = visit_arg;
   visitor->visitors[BL_VISIT_STRUCT]        = visit_struct;
   visitor->visitors[BL_VISIT_ENUM]          = visit_enum;
-  visitor->visitors[BL_VISIT_mut]           = visit_mut;
+  visitor->visitors[BL_VISIT_MUT]           = visit_mut;
   visitor->visitors[BL_VISIT_CONST]         = visit_const;
   visitor->visitors[BL_VISIT_BLOCK]         = visit_block;
   visitor->visitors[BL_VISIT_EXPR]          = visit_expr;

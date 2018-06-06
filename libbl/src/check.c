@@ -670,7 +670,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
-  bl_visitor_add(&visitor, visit_mut, BL_VISIT_mut);
+  bl_visitor_add(&visitor, visit_mut, BL_VISIT_MUT);
   bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);

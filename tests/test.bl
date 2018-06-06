@@ -1,12 +1,20 @@
 /* testing playground */
 
-extern fn printf(s string, i i32) i32;
+fn myfunc() i32 {
+  return 666;
+}
 
-enum E i32 {
-  A, B, C,
-}
 fn main() {
-  mut i i32;
-  const i i32 = 21;
+  const result i32 = #run myfunc(); // executed in compile time and return result to final compiled module
 }
+
+/*
+
+	module test.bl
+ 	- main()       
+
+	module preproc 
+	- myfunc()
+
+*/
 

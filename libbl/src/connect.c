@@ -996,7 +996,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_block, BL_VISIT_BLOCK);
   bl_visitor_add(&visitor_third, third_pass_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor_third, third_pass_using, BL_VISIT_USING);
-  bl_visitor_add(&visitor_third, third_pass_mut, BL_VISIT_mut);
+  bl_visitor_add(&visitor_third, third_pass_mut, BL_VISIT_MUT);
   bl_visitor_add(&visitor_third, third_pass_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);

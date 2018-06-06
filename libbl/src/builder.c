@@ -241,9 +241,7 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
     break;
 
   case BL_BUILDER_CUR_BEFORE:
-    --col;
-    if (col < 0)
-      col = 0;
+    col -= col < 1 ? 0 : 1;
     len = 1;
     break;
   }
