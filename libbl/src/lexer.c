@@ -415,8 +415,8 @@ scan:
   scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
              cnt->col);
 push_token:
-  bl_tokens_push(cnt->tokens, &tok);
   tok.src.unit = cnt->unit;
+  bl_tokens_push(cnt->tokens, &tok);
   goto scan;
 }
 

@@ -146,14 +146,16 @@ bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
   const char *iter = unit->src;
   while (iter && l != line) {
     ++l;
-    iter = strchr(iter, '\n') + 1;
+    iter = strchr(iter, '\n');
+    iter = iter ? iter + 1 : NULL;
   }
 
   if (len) {
-    long l = strchr(iter, '\n') - iter;
-    if (l < 0) {
+    long l = 0;
+    if (iter)
+       l = strchr(iter, '\n') - iter;
+    if (l < 0)
       l = strlen(iter);
-    }
     (*len) = l;
   }
 
