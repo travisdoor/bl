@@ -170,6 +170,13 @@
   - for loop:
     for i in expr .. expr {
     }
+
+    for i = expr .. expr {
+    }
+
+    for i = 0..10 {
+      arr[i];
+    }
 * NOTES
 ** global using search return array of all founds references???
 ** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625

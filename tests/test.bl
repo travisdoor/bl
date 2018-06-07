@@ -1,10 +1,18 @@
 /* testing playground */
 
-fn myfunc() i32 {
-  return 666;
+fn main() {
+  myfunc(); // executed in compile time and return result to final compiled module
 }
 
-fn main() {
-  const result i32 = myfunc(); // executed in compile time and return result to final compiled module
+extern fn printf(s string);
+
+module A {
+  extern fn printf(s string);
+}
+
+
+
+fn myfunc() i32 {
+  return 666;
 }
 
