@@ -1131,7 +1131,6 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   cnt.generated_externals = bo_htbl_new(0, 2048);
 
   bl_visitor_t gen_visitor;
-
   bl_visitor_init(&gen_visitor, &cnt);
 
   bl_visitor_add(&gen_visitor, visit_func, BL_VISIT_FUNC);
@@ -1143,6 +1142,9 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&gen_visitor, visit_loop, BL_VISIT_LOOP);
   bl_visitor_add(&gen_visitor, visit_break, BL_VISIT_BREAK);
   bl_visitor_add(&gen_visitor, visit_continue, BL_VISIT_CONTINUE);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_ENUM);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_STRUCT);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_CONST);
 
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
