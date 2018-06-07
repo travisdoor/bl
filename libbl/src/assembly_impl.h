@@ -37,16 +37,15 @@
 
 typedef struct bl_assembly
 {
-  BArray *          units;
-  BHashTable *      unique_cache;
-  BHashTable *      link_cache;
-  char *            name;
-
-  /* LLVM objects */
-  LLVMModuleRef     llvm_module;
-  LLVMContextRef    llvm_cnt;
-
-  bl_scope_cache_t *scope_cache;
+  BArray *      units;           /* array of all units in assembly */
+  BHashTable *  unique_cache;    /* cache for loading only unique units */
+  BHashTable *  link_cache;      /* all linked externals libraries passed to linker */
+  char *        name;            /* assembly name */
+  LLVMModuleRef llvm_module;     /* main llvm module */
+  LLVMModuleRef llvm_module_jit; /* llvm module used for JIT execution during compilation (excluded
+                                    from final compilation result) */
+  LLVMContextRef    llvm_cnt;    /* llvm generation context */
+  bl_scope_cache_t *scope_cache; /* global scope cache */
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

@@ -36,18 +36,27 @@
 #include "visitor_impl.h"
 
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
+
 #define push_value_cscope(ptr, llvm_value_ref)                                                     \
   (bo_htbl_insert(cnt->cscope, (uint64_t)(ptr), (llvm_value_ref)))
+
 #define push_value_gscope(ptr, llvm_value_ref)                                                     \
   (bo_htbl_insert(cnt->gscope, (uint64_t)(ptr), (llvm_value_ref)))
+
 #define get_value_cscope(ptr) (bo_htbl_at(cnt->cscope, (uint64_t)(ptr), LLVMValueRef))
+
 #define get_value_gscope(ptr) (bo_htbl_at(cnt->gscope, (uint64_t)(ptr), LLVMValueRef))
+
 #define is_in_gscope(ptr) (bo_htbl_has_key(cnt->gscope, (uint64_t)ptr))
+
 #define is_in_cscope(ptr) (bo_htbl_has_key(cnt->cscope, (uint64_t)ptr))
+
 #define reset_cscope() (bo_htbl_clear(cnt->cscope))
+
 #define skip_if_terminated(cnt)                                                                    \
   if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
+
 #define is_deref(node)                                                                             \
   ((bl_node_is((node), BL_EXPR_UNARY) && bl_peek_expr_unary((node))->op == BL_SYM_ASTERISK))
 
@@ -66,7 +75,7 @@ typedef struct
   BHashTable *gen_stack;
   BHashTable *gen_stack_extern;
 
-  LLVMModuleRef  mod;
+  LLVMModuleRef  llvm_mod;
   LLVMBuilderRef llvm_builder;
   LLVMContextRef llvm_cnt;
 
@@ -411,7 +420,7 @@ gen_func(context_t *cnt, bl_node_t *func)
 
   /* find extern functions by name in current module */
   if (_func->modif & BL_MODIF_EXTERN) {
-    llvm_func = LLVMGetNamedFunction(cnt->mod, _func->id.str);
+    llvm_func = LLVMGetNamedFunction(cnt->llvm_mod, _func->id.str);
   } else if (is_in_gscope(func)) {
     llvm_func = get_value_gscope(func);
   }
@@ -423,13 +432,13 @@ gen_func(context_t *cnt, bl_node_t *func)
   if (llvm_func == NULL) {
     char name_tmp[BL_MAX_FUNC_NAME_LEN];
     if (!(_func->modif & BL_MODIF_EXTERN) && !(_func->modif & BL_MODIF_EXPORT))
-      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "bl_%s", _func->id.str);
+      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s_%u", _func->id.str, _func->id.hash);
     else
       snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s", _func->id.str);
 
     LLVMTypeRef ret      = to_llvm_type(cnt, _func->ret_type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
-    llvm_func            = LLVMAddFunction(cnt->mod, &name_tmp[0], ret_type);
+    llvm_func            = LLVMAddFunction(cnt->llvm_mod, &name_tmp[0], ret_type);
 
     if (!(_func->modif & BL_MODIF_EXTERN))
       push_value_gscope(func, llvm_func);
@@ -1126,6 +1135,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   context_t *     cnt   = peek_cnt(visitor);
   bl_decl_func_t *_func = bl_peek_decl_func(func);
+
   if (_func->modif & BL_MODIF_EXPORT) {
     /* generate exported functions */
     bo_htbl_insert_empty(cnt->gen_stack, (uint64_t)func);
@@ -1148,7 +1158,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   context_t cnt        = {0};
   cnt.builder          = builder;
   cnt.llvm_cnt         = LLVMContextCreate();
-  cnt.mod              = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.llvm_mod         = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
   cnt.llvm_builder     = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.gscope           = bo_htbl_new(sizeof(LLVMValueRef), 2048);
   cnt.cscope           = bo_htbl_new(sizeof(LLVMValueRef), 256);
@@ -1196,7 +1206,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bo_unref(cnt.gen_stack);
   bo_unref(cnt.gen_stack_extern);
 
-  assembly->llvm_module = cnt.mod;
+  assembly->llvm_module = cnt.llvm_mod;
   assembly->llvm_cnt    = cnt.llvm_cnt;
 
   return BL_NO_ERR;

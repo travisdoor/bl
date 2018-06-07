@@ -5,16 +5,6 @@ fn myfunc() i32 {
 }
 
 fn main() {
-  const result i32 = #run myfunc(); // executed in compile time and return result to final compiled module
+  const result i32 = myfunc(); // executed in compile time and return result to final compiled module
 }
-
-/*
-
-	module test.bl
- 	- main()       
-
-	module preproc 
-	- myfunc()
-
-*/
 
