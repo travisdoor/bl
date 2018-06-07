@@ -43,16 +43,6 @@ bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
   LLVMInitializeAllAsmParsers();
   LLVMInitializeAllAsmPrinters();
 
-  /*struct LLVMMCJITCompilerOptions options;
-  options.OptLevel = LLVMCodeGenLevelDefault;
-  options.CodeModel = LLVMCodeModelJITDefault;
-  options.EnableFastISel = false;
-  options.NoFramePointerElim = false;
-  options.MCJMM = NULL;
-
-
-  LLVMCreateMCJITCompilerForModule(&engine, assembly->llvm_module, &options, sizeof(options), &error);*/
-
   LLVMExecutionEngineRef engine;
   if (LLVMCreateJITCompilerForModule(&engine, assembly->llvm_module, 0, &error) != 0)
     bl_abort("failed to create execution engine with error %s", error);
@@ -74,30 +64,6 @@ bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
     assembly->llvm_module = NULL;
     return BL_ERR_INVALID_RESULT;
   }
-
-  /*LLVMLinkInInterpreter();
-  if (LLVMCreateInterpreterForModule(&engine, assembly->llvm_module, &error) != 0) {
-    bl_abort("failed to create execution engine with error %s", error);
-  }
-
-  LLVMValueRef main_f = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  if (main_f == NULL) {
-    bl_builder_error(builder, assembly->name, "unable to get " BL_YELLOW("'main'") " method");
-    LLVMDisposeExecutionEngine(engine);
-    assembly->llvm_module = NULL;
-    return BL_ERR_NO_MAIN_METHOD;
-  }
-
-  LLVMGenericValueRef res = LLVMRunFunction(engine, main_f, 0, NULL);
-
-  int ires = (int)LLVMGenericValueToInt(res, 0);
-  if (ires != 0) {
-    bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
-    LLVMDisposeExecutionEngine(engine);
-    assembly->llvm_module = NULL;
-    return BL_ERR_INVALID_RESULT;
-  }
-  */
 
   return BL_NO_ERR;
 }
