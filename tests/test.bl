@@ -1,10 +1,26 @@
 /* testing playground */
 
-fn myfunc() i32 {
-  return 666;
+extern fn puts(s string) i32;
+
+#test
+fn test1() {
+  target(true);
+}
+
+#test
+fn test2() {
+  target(true);
+}
+
+fn target(is_test bool) {
+  if is_test {
+    puts("testing target"); 
+  } else {
+    puts("running target"); 
+  }
 }
 
 fn main() {
-  const result i32 = myfunc(); // executed in compile time and return result to final compiled module
+  target(false);
 }
 

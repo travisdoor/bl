@@ -54,7 +54,8 @@
 #define reset_cscope() (bo_htbl_clear(cnt->cscope))
 
 #define skip_if_terminated(cnt)                                                                    \
-  if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
+  if (LLVMGetInsertBlock((cnt)->llvm_builder) &&                                                   \
+      LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
     return;
 
 #define is_deref(node)                                                                             \
@@ -68,38 +69,26 @@
 
 typedef struct
 {
-  bl_builder_t * builder;
-  bl_assembly_t *assembly;
-
-  /* hash set of unique pointers to ast nodes of the exported functions */
-  BHashTable *gen_stack;
-  BHashTable *gen_stack_extern;
-
-  LLVMModuleRef  llvm_mod;
-  LLVMBuilderRef llvm_builder;
-  LLVMContextRef llvm_cnt;
-
-  /* tmps */
-  /* mapping ast node pointers to LLVMValues for symbols in global scope */
-  BHashTable *gscope;
-
-  /* mapping ast node pointers to LLVMValues for symbols in current function scope */
-  BHashTable *cscope;
-
-  /* constant string cache */
-  BHashTable *const_strings;
-
-  /* LLVM blocks */
+  bl_builder_t * builder;      /* main builder */
+  bl_assembly_t *assembly;     /* current assembly */
+  LLVMModuleRef  llvm_mod;     /* main llvm module */
+  LLVMBuilderRef llvm_builder; /* llvm IR code builder */
+  LLVMContextRef llvm_cnt;     /* llvm context */
+  BHashTable *   gscope; /* mapping ast node pointers to LLVMValues for symbols in global scope */
+  BHashTable *   cscope; /* mapping ast node pointers to LLVMValues for symbols in current function
+                            scope, functions can be later located by node pointer */
+  BHashTable *const_strings; /* constant string cache */
+  BHashTable
+      *generated_externals; /* functions marked as extern must be generated only once even if
+                               they appears in multiple locations in source (ex.: printf
+                               function from C can be declared multiple times). We need to store
+                               identifiers of already generated externals and skip duplicates. */
   LLVMBasicBlockRef func_init_block;
   LLVMBasicBlockRef func_ret_block;
   LLVMBasicBlockRef func_entry_block;
-
-  /* used for loop generation (statements break and continue) */
   LLVMBasicBlockRef continue_block;
   LLVMBasicBlockRef break_block;
-
-  /* LLVMValueRef to current return tmp */
-  LLVMValueRef ret_value;
+  LLVMValueRef      ret_value; /* LLVMValueRef to current return tmp */
 } context_t;
 
 static LLVMValueRef
@@ -442,10 +431,6 @@ gen_func(context_t *cnt, bl_node_t *func)
 
     if (!(_func->modif & BL_MODIF_EXTERN))
       push_value_gscope(func, llvm_func);
-
-    if (!bo_htbl_has_key(cnt->gen_stack, (uint64_t)func)) {
-      bo_htbl_insert_empty(cnt->gen_stack, (uint64_t)func);
-    }
   }
 
   return llvm_func;
@@ -858,36 +843,6 @@ gen_array_ref(context_t *cnt, bl_node_t *array_ref)
  * generate visitors
  *************************************************************************************************/
 
-/*
- * generate all functions in gen_stack
- */
-static void
-generate(bl_visitor_t *visitor)
-{
-  context_t *   cnt  = peek_cnt(visitor);
-  bl_node_t *   node = NULL;
-  bo_iterator_t begin;
-
-  while (bo_htbl_size(cnt->gen_stack_extern) > 0) {
-    begin = bo_htbl_begin(cnt->gen_stack_extern);
-    node  = bo_htbl_iter_peek_value(cnt->gen_stack, &begin, bl_node_t *);
-
-    gen_func(cnt, node);
-    bo_htbl_erase(cnt->gen_stack_extern, &begin);
-  }
-
-  /* generate all exported functions and functions used inside */
-  while (bo_htbl_size(cnt->gen_stack) > 0) {
-    begin = bo_htbl_begin(cnt->gen_stack);
-    node  = (bl_node_t *)bo_htbl_iter_peek_key(cnt->gen_stack, &begin);
-
-    gen_func(cnt, node);
-    bl_visitor_walk_func(visitor, node);
-    reset_cscope();
-    bo_htbl_erase(cnt->gen_stack, &begin);
-  }
-}
-
 static void
 visit_block(bl_visitor_t *visitor, bl_node_t *block)
 {
@@ -1126,23 +1081,33 @@ visit_continue(bl_visitor_t *visitor, bl_node_t *cont)
   skip_if_terminated(cnt);
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
-/*************************************************************************************************
- * top level visitors
- * here we decide which functions should be generated
- *************************************************************************************************/
+
 static void
 visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   context_t *     cnt   = peek_cnt(visitor);
   bl_decl_func_t *_func = bl_peek_decl_func(func);
 
+  /* Here we need to decide if function should be generated.
+   * - export(main for example) generated every time
+   * - extern generated only once and only when they are used
+   * - internal functions are generated only when they are used
+   */
   if (_func->modif & BL_MODIF_EXPORT) {
-    /* generate exported functions */
-    bo_htbl_insert_empty(cnt->gen_stack, (uint64_t)func);
+    gen_func(cnt, func);
+    bl_visitor_walk_func(visitor, func);
   } else if (_func->modif & BL_MODIF_EXTERN) {
-    if (!bo_htbl_has_key(cnt->gen_stack_extern, _func->id.hash))
-      bo_htbl_insert(cnt->gen_stack_extern, _func->id.hash, func);
+    if (!bo_htbl_has_key(cnt->generated_externals, _func->id.hash)) {
+      bo_htbl_insert_empty(cnt->generated_externals, _func->id.hash);
+      gen_func(cnt, func);
+      bl_visitor_walk_func(visitor, func);
+    }
+  } else if (_func->used) {
+    gen_func(cnt, func);
+    bl_visitor_walk_func(visitor, func);
   }
+
+  reset_cscope();
 }
 
 /*************************************************************************************************
@@ -1155,25 +1120,20 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   size_t     c    = bo_array_size(assembly->units);
 
   /* context initialization */
-  context_t cnt        = {0};
-  cnt.builder          = builder;
-  cnt.llvm_cnt         = LLVMContextCreate();
-  cnt.llvm_mod         = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
-  cnt.llvm_builder     = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.gscope           = bo_htbl_new(sizeof(LLVMValueRef), 2048);
-  cnt.cscope           = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.const_strings    = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.gen_stack_extern = bo_htbl_new(sizeof(bl_node_t), 2048);
-  cnt.gen_stack        = bo_htbl_new(0, 2048);
+  context_t cnt           = {0};
+  cnt.builder             = builder;
+  cnt.llvm_cnt            = LLVMContextCreate();
+  cnt.llvm_mod            = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.llvm_builder        = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.gscope              = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.cscope              = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.const_strings       = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.generated_externals = bo_htbl_new(0, 2048);
 
-  bl_visitor_t top_visitor;
   bl_visitor_t gen_visitor;
-
-  bl_visitor_init(&top_visitor, &cnt);
   bl_visitor_init(&gen_visitor, &cnt);
 
-  bl_visitor_add(&top_visitor, visit_func, BL_VISIT_FUNC);
-
+  bl_visitor_add(&gen_visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&gen_visitor, visit_mut, BL_VISIT_MUT);
   bl_visitor_add(&gen_visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&gen_visitor, visit_block, BL_VISIT_BLOCK);
@@ -1182,18 +1142,19 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&gen_visitor, visit_loop, BL_VISIT_LOOP);
   bl_visitor_add(&gen_visitor, visit_break, BL_VISIT_BREAK);
   bl_visitor_add(&gen_visitor, visit_continue, BL_VISIT_CONTINUE);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_ENUM);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_STRUCT);
+  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_CONST);
 
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&top_visitor, unit->ast.root);
+    bl_visitor_walk_module(&gen_visitor, unit->ast.root);
   }
-
-  generate(&gen_visitor);
 
 #ifdef BL_DEBUG
   char *error;
-  if (LLVMVerifyModule(cnt.mod, LLVMReturnStatusAction, &error)) {
-    char *str = LLVMPrintModuleToString(cnt.mod);
+  if (LLVMVerifyModule(cnt.llvm_mod, LLVMReturnStatusAction, &error)) {
+    char *str = LLVMPrintModuleToString(cnt.llvm_mod);
     bl_abort("module not verified with error: %s\n%s", error, str);
   }
 #endif
@@ -1203,8 +1164,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bo_unref(cnt.gscope);
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
-  bo_unref(cnt.gen_stack);
-  bo_unref(cnt.gen_stack_extern);
+  bo_unref(cnt.generated_externals);
 
   assembly->llvm_module = cnt.llvm_mod;
   assembly->llvm_cnt    = cnt.llvm_cnt;
