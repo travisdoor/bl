@@ -69,6 +69,7 @@
 
 typedef struct
 {
+  bool           runtime;      /* true when we are generating runtime code */
   bl_builder_t * builder;      /* main builder */
   bl_assembly_t *assembly;     /* current assembly */
   LLVMModuleRef  llvm_mod;     /* main llvm module */
@@ -1111,11 +1112,53 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 }
 
 /*************************************************************************************************
- * main entry function
+ * sub entry functions
+ *************************************************************************************************/
+
+#ifdef A
+static generate_units(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
+{
+  bl_unit_t *unit = NULL;
+  size_t     c    = bo_array_size(assembly->units);
+
+  for (int i = 0; i < c; ++i) {
+    unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_module(&gen_visitor, unit->ast.root);
+  }
+}
+
+/* First step of IR creation is generation of JIT code later executed via #run directive or in unit
+ * testing later. This will produce LLVM module containing only code needed during compilation time.
+ */
+static bl_error_e
+generate_JIT(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
+{
+  return BL_NO_ERR;
+}
+
+/* Second step of IR generation will produce runtime code only. */
+static bl_error_e
+generate_runtime(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
+{
+  return BL_NO_ERR;
+}
+#endif
+
+/*************************************************************************************************
+ * main entry functions
  *************************************************************************************************/
 bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
+#ifdef A
+  bl_error_e result;
+
+  result = generate_JIT(
+#endif
+
+#define B
+#ifdef B
+  /* ignored */
   bl_unit_t *unit = NULL;
   size_t     c    = bo_array_size(assembly->units);
 
@@ -1168,6 +1211,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   assembly->llvm_module = cnt.llvm_mod;
   assembly->llvm_cnt    = cnt.llvm_cnt;
+#endif
 
   return BL_NO_ERR;
 }

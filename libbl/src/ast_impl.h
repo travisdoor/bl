@@ -137,9 +137,11 @@ struct bl_ast
 enum bl_modif
 {
   BL_MODIF_NONE   = 0,
-  BL_MODIF_PUBLIC = 1,
-  BL_MODIF_EXTERN = 2,
-  BL_MODIF_EXPORT = 4
+  BL_MODIF_PUBLIC = 1, /* explicit */
+  BL_MODIF_EXTERN = 2, /* explicit */
+  BL_MODIF_EXPORT = 4, /* implicit */
+  BL_MODIF_UTEST  = 8, /* partialy implicit (when #test directive has
+			  been used before declaration) */
 };
 
 /*************************************************************************************************
@@ -269,10 +271,10 @@ struct bl_decl_struct
 
 struct bl_decl_struct_member
 {
-  bl_id_t    id;        /* identificator */
-  int        modif;     /* modificator */
-  bl_node_t *type;      /* structure member type */
-  int        order;     /* order inside struct layout */
+  bl_id_t    id;    /* identificator */
+  int        modif; /* modificator */
+  bl_node_t *type;  /* structure member type */
+  int        order; /* order inside struct layout */
 };
 
 struct bl_decl_enum

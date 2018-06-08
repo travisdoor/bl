@@ -16,11 +16,12 @@ fn target(is_test bool) {
   if is_test {
     puts("testing target"); 
   } else {
-    puts("running target"); 
+    putss("running target"); 
   }
 }
 
-fn main() {
+fn main() i32 {
   target(false);
+  return 0;
 }
 

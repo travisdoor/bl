@@ -37,11 +37,19 @@
 
 BO_BEGIN_DECLS
 
-#define BL_YELLOW(str) "\x1b[33m" str "\x1b[0m"
-#define BL_RED(str) "\x1b[31m" str "\x1b[0m"
-#define BL_GREEN(str) "\x1b[32m" str "\x1b[0m"
-#define BL_MAGENTA(str) "\x1b[35m" str "\x1b[0m"
-#define BL_CYAN(str) "\x1b[36m" str "\x1b[0m"
+#define BL_COLOR_END "\x1b[0m"
+
+#define BL_MAGENTA_BEGIN "\x1b[35m"
+#define BL_CYAN_BEGIN "\x1b[36m"
+#define BL_RED_BEGIN "\x1b[31m"
+#define BL_YELLOW_BEGIN "\x1b[33m"
+#define BL_GREEN_BEGIN "\x1b[32m"
+
+#define BL_YELLOW(str) BL_YELLOW_BEGIN str BL_COLOR_END 
+#define BL_RED(str) BL_RED_BEGIN str  BL_COLOR_END
+#define BL_GREEN(str) BL_GREEN_BEGIN str BL_COLOR_END 
+#define BL_MAGENTA(str) BL_MAGENTA_BEGIN str  BL_COLOR_END
+#define BL_CYAN(str) BL_CYAN_BEGIN str BL_COLOR_END 
 
 #if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
 #ifndef __FILENAME__
@@ -56,7 +64,13 @@ BO_BEGIN_DECLS
 #define __FILENAME__
 #endif
 
-typedef enum { BL_LOG_ASSERT, BL_LOG_ABORT, BL_LOG_WARNING, BL_LOG_MSG } bl_log_msg_type_e;
+typedef enum
+{
+  BL_LOG_ASSERT,
+  BL_LOG_ABORT,
+  BL_LOG_WARNING,
+  BL_LOG_MSG
+} bl_log_msg_type_e;
 
 extern BO_EXPORT void
 _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
@@ -65,7 +79,7 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 #define bl_assert(expr, format, ...)                                                               \
   if ((expr) == 0) {                                                                               \
     _bl_log(BL_LOG_ASSERT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                         \
-    assert(false);                                                                                       \
+    assert(false);                                                                                 \
   }
 
 #define bl_log(format, ...)                                                                        \

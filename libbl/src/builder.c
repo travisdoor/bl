@@ -266,7 +266,7 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
 
   line_str = bl_unit_get_src_ln(src->unit, src->line, &line_len);
   if (line_str && line_len) {
-    sprintf(msg, "\n%*d", pad, src->line);
+    sprintf(msg, BL_CYAN("\n%*d"), pad, src->line);
     bo_string_append(tmp, &msg[0]);
     bo_string_append(tmp, " | ");
     bo_string_appendn(tmp, line_str, line_len);
