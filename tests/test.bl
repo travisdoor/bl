@@ -1,10 +1,26 @@
 /* testing playground */
 
-enum names string {
-  Tereza = "Tereza"
+extern fn puts(s string) i32;
+
+#test
+fn test1() {
+  target(true);
+}
+
+#test
+fn test2() {
+  target(true);
+}
+
+fn target(is_test bool) {
+  if is_test {
+    puts("testing target"); 
+  } else {
+    puts("running target"); 
+  }
 }
 
 fn main() {
-  mut name names = names::Tereza;
+  target(false);
 }
 
