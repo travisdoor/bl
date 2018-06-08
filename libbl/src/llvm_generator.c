@@ -1115,8 +1115,11 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
  * sub entry functions
  *************************************************************************************************/
 
+#define A
+//#define B
 #ifdef A
-static generate_units(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
+static void
+generate_units(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
 {
   bl_unit_t *unit = NULL;
   size_t     c    = bo_array_size(assembly->units);
@@ -1130,17 +1133,15 @@ static generate_units(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *vis
 /* First step of IR creation is generation of JIT code later executed via #run directive or in unit
  * testing later. This will produce LLVM module containing only code needed during compilation time.
  */
-static bl_error_e
+static void
 generate_JIT(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
 {
-  return BL_NO_ERR;
 }
 
 /* Second step of IR generation will produce runtime code only. */
-static bl_error_e
+static void
 generate_runtime(context_t *cnt, bl_assembly_t *assembly, bl_visitor_t *visitor)
 {
-  return BL_NO_ERR;
 }
 #endif
 
@@ -1151,12 +1152,39 @@ bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
 #ifdef A
-  bl_error_e result;
+  /* context initialization */
+  context_t cnt           = {0};
+  cnt.builder             = builder;
+  cnt.llvm_cnt            = LLVMContextCreate();
+  cnt.llvm_builder        = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.gscope              = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.cscope              = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.const_strings       = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.generated_externals = bo_htbl_new(0, 2048);
 
-  result = generate_JIT(
+  cnt.llvm_mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  generate_JIT(&cnt, assembly, &visitor);
+  assembly->llvm_module_jit = cnt.llvm_mod;
+
+  bo_htbl_clear(cnt.gscope);
+  bo_htbl_clear(cnt.cscope);
+  bo_htbl_clear(cnt.const_strings);
+  bo_htbl_clear(cnt.generated_externals);
+
+  cnt.llvm_mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  generate_runtime(&cnt, assembly, &visitor);
+  assembly->llvm_module = cnt.llvm_mod;
+
+  /* context destruction */
+  LLVMDisposeBuilder(cnt.llvm_builder);
+  bo_unref(cnt.gscope);
+  bo_unref(cnt.cscope);
+  bo_unref(cnt.const_strings);
+  bo_unref(cnt.generated_externals);
+  assembly->llvm_cnt = cnt.llvm_cnt;
+  return BL_NO_ERR;
 #endif
 
-#define B
 #ifdef B
   /* ignored */
   bl_unit_t *unit = NULL;
