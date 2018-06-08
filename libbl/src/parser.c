@@ -78,6 +78,9 @@ static bl_node_t *
 parse_pre_link_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_pre_test_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
@@ -943,6 +946,11 @@ parse_sizeof_maybe(context_t *cnt)
   }
 
   return szof;
+}
+
+bl_node_t *
+parse_pre_test_maybe(context_t *cnt)
+{
 }
 
 bl_node_t *

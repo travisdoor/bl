@@ -55,6 +55,7 @@
   sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
+  sm(TEST,        "#test") \
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
   sm(PUBLIC,      "public")\
