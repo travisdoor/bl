@@ -50,6 +50,8 @@ main(int argc, char *argv[])
       build_flags |= BL_BUILDER_EMIT_LLVM;
     } else if (strcmp(&argv[optind][1], "run") == 0) {
       build_flags |= BL_BUILDER_RUN;
+    } else if (strcmp(&argv[optind][1], "run-tests") == 0) {
+      build_flags |= BL_BUILDER_RUN_TESTS;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);

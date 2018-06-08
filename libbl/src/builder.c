@@ -108,6 +108,9 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
     if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
+    if (flags & BL_BUILDER_RUN_TESTS && (error = bl_test_runner_run(builder, assembly)) != BL_NO_ERR)
+      return error;
+
     if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
       return error;
 

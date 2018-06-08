@@ -46,6 +46,7 @@ typedef struct bl_assembly
                                     from final compilation result) */
   LLVMContextRef    llvm_cnt;    /* llvm generation context */
   bl_scope_cache_t *scope_cache; /* global scope cache */
+  BArray *          utest_methods; /* LLVMValues to test methods which should run in compile time */
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

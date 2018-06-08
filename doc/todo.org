@@ -10,6 +10,13 @@
   - [X] All expressions passed into evaluation must be validated by check as consts 
   - [X] Pointer enums are invalid!!! 
   - [X] Check enum non-existing variant expression  
+- [ ] Function overloading [0/1]
+  - [ ] Use rewrite hash generation fn foo(i i32, f f64) i32 -> hash(foo@i32@f64->i32)
+- [ ] JIT executed code [0/4]
+  - [ ] Testing function #test directive
+  - [ ] JIT generation
+  - [ ] JIT executor
+  - [ ] Calling methods evaluated in compile time from runtime #run directive
 - [-] Struct [10/12]
   - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
   - [X] Member ref expression node 

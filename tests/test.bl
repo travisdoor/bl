@@ -4,24 +4,16 @@ extern fn puts(s string) i32;
 
 #test
 fn test1() {
-  target(true);
+  puts("test1");
 }
 
 #test
 fn test2() {
-  target(true);
-}
-
-fn target(is_test bool) {
-  if is_test {
-    puts("testing target"); 
-  } else {
-    putss("running target"); 
-  }
+  puts("test2");
 }
 
 fn main() i32 {
-  target(false);
+  puts("runtime");
   return 0;
 }
 
