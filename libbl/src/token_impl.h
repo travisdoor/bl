@@ -50,6 +50,7 @@
   sm(NULL,        "null") \
   sm(ENUM,        "enum") \
   sm(LOOP,        "loop")\
+  sm(RUN,         "#run")\
   sm(FALSE,       "false") \
   sm(USING,       "using") \
   sm(CONST,       "const") \

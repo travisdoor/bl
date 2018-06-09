@@ -375,15 +375,17 @@ bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_n
 }
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path,
+                     bool run_in_compile_time)
 {
   bl_node_t *call = alloc_node(ast);
   if (tok)
     call->src = &tok->src;
 
-  call->code                    = BL_EXPR_CALL;
-  bl_peek_expr_call(call)->ref  = ref;
-  bl_peek_expr_call(call)->path = path;
+  call->code                                   = BL_EXPR_CALL;
+  bl_peek_expr_call(call)->ref                 = ref;
+  bl_peek_expr_call(call)->path                = path;
+  bl_peek_expr_call(call)->run_in_compile_time = run_in_compile_time;
 
   return call;
 }

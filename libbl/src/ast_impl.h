@@ -357,6 +357,7 @@ struct bl_expr_call
   BArray *   path; /* path */
   bl_node_t *ref;  /* reference to function */
   BArray *   args; /* argument list passed into function */
+  bool       run_in_compile_time;
 };
 
 struct bl_path_elem
@@ -490,7 +491,8 @@ bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path,
+                     bool run_in_compile_time);
 
 bl_node_t *
 bl_ast_add_path_elem(bl_ast_t *ast, bl_token_t *tok, const char *name);

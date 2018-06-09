@@ -328,7 +328,8 @@ visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
   case BL_EXPR_CALL:
     print_head("call", bl_peek_src(expr), expr, visitor->nesting);
     print_path(bl_peek_expr_call(expr)->path);
-    fprintf(stdout, " -> " BL_YELLOW("%p"), bl_peek_expr_call(expr)->ref);
+    fprintf(stdout, " -> " BL_YELLOW("%p") BL_CYAN(" %s"), bl_peek_expr_call(expr)->ref,
+            bl_peek_expr_call(expr)->run_in_compile_time ? "#run" : "");
     break;
 
   default:

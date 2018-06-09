@@ -159,7 +159,10 @@ static bl_node_t *
 parse_array_ref_maybe(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
-parse_call_maybe(context_t *cnt, BArray *path);
+parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time);
+
+static bl_node_t *
+parse_pre_run_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_nested_expr_maybe(context_t *cnt);
@@ -380,7 +383,26 @@ parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
-parse_call_maybe(context_t *cnt, BArray *path)
+parse_pre_run_maybe(context_t *cnt)
+{
+  bl_token_t *tok_run = bl_tokens_consume_if(cnt->tokens, BL_SYM_RUN);
+  if (!tok_run)
+    return NULL;
+
+  BArray *   path = parse_path_maybe(cnt);
+  bl_node_t *call = parse_call_maybe(cnt, path, true);
+
+  if (!call) {
+    bo_unref(path);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_run, BL_BUILDER_CUR_AFTER,
+                "expected method call after #run directive");
+  }
+
+  return call;
+}
+
+bl_node_t *
+parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
 {
   if (!path)
     return NULL;
@@ -388,7 +410,7 @@ parse_call_maybe(context_t *cnt, BArray *path)
   bl_node_t *call = NULL;
   if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
     bl_token_t *tok_id = bl_tokens_peek_prev(cnt->tokens);
-    call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path);
+    call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path, run_in_compile_time);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -631,9 +653,12 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_sizeof_maybe(cnt)))
     return expr;
 
+  if ((expr = parse_pre_run_maybe(cnt)))
+    return expr;
+
   path = parse_path_maybe(cnt);
 
-  if ((expr = parse_call_maybe(cnt, path)))
+  if ((expr = parse_call_maybe(cnt, path, false)))
     return expr;
 
   if ((expr = parse_decl_ref_maybe(cnt, path)))
