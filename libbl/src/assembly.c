@@ -46,7 +46,7 @@ bl_assembly_new(const char *name)
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache    = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->scope_cache   = bl_scope_cache_new();
-  assembly->utest_methods = bo_array_new(sizeof(LLVMValueRef));
+  assembly->utest_methods = bo_array_new(sizeof(bl_utest_t));
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 

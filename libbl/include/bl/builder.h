@@ -41,6 +41,7 @@ BO_BEGIN_DECLS
 #define BL_BUILDER_SYNTAX_ONLY 0x00000020
 #define BL_BUILDER_EMIT_LLVM 0x00000040
 #define BL_BUILDER_RUN_TESTS 0x00000080
+#define BL_BUILDER_NO_BIN 0x00000100
 
 typedef struct bl_builder *bl_builder_ref;
 typedef void (*bl_diag_handler_f)(const char *, void *);

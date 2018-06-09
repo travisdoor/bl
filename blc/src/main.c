@@ -52,6 +52,8 @@ main(int argc, char *argv[])
       build_flags |= BL_BUILDER_RUN;
     } else if (strcmp(&argv[optind][1], "run-tests") == 0) {
       build_flags |= BL_BUILDER_RUN_TESTS;
+    } else if (strcmp(&argv[optind][1], "no-bin") == 0) {
+      build_flags |= BL_BUILDER_NO_BIN;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);
@@ -86,8 +88,8 @@ main(int argc, char *argv[])
 
   /* init actors */
   while (*argv != NULL) {
-    bl_unit_ref unit = bl_unit_new_file(*argv);
-    bool added = bl_assembly_add_unit_unique(assembly, unit);
+    bl_unit_ref unit  = bl_unit_new_file(*argv);
+    bool        added = bl_assembly_add_unit_unique(assembly, unit);
     if (added == false) {
       bl_unit_delete(unit);
     }

@@ -35,6 +35,14 @@
 #include "bl/assembly.h"
 #include "scope_impl.h"
 
+struct bl_node;
+
+typedef struct
+{
+  struct bl_node *func;
+  LLVMValueRef    llvm_func;
+} bl_utest_t;
+
 typedef struct bl_assembly
 {
   BArray *      units;           /* array of all units in assembly */

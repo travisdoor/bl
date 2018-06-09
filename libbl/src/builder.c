@@ -118,7 +118,7 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
         (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
-    if (!(flags & BL_BUILDER_RUN)) {
+    if (!(flags & BL_BUILDER_NO_BIN)) {
       if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
         return error;
 

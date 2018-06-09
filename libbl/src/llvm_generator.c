@@ -1113,8 +1113,10 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   } else {
     /* JIT */
     if (_func->modif & BL_MODIF_UTEST) {
-      LLVMValueRef utest = gen_func(cnt, func);
-      bl_assert(utest, "generated invalid utest method");
+      LLVMValueRef llvm_func = gen_func(cnt, func);
+      bl_assert(llvm_func, "generated invalid utest method");
+
+      bl_utest_t utest = {.func = func, .llvm_func = llvm_func};
       bo_array_push_back(cnt->assembly->utest_methods, utest);
       bl_visitor_walk_func(visitor, func);
     } else if (_func->used_jit) {
