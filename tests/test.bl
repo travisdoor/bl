@@ -2,8 +2,13 @@
 
 extern fn puts(s string) i32;
 
+struct A {
+  i i32
+}
+
 #test
 fn test1() {
+  mut a A;
   shared(false);  
 }
 
