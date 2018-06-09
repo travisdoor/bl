@@ -4,24 +4,31 @@
  * Local and global const test.
  */
 
-const _i32_global i32 = 256;
+#load "std/utest.bl"
+using std::utest;
 
-struct foo {
-  a i32[_i32_global + 1]
-}
+module cnst {
+  const _i32_global i32 = 256;
+  
+  struct foo {
+    a i32[_i32_global + 1]
+  }
+  
+  #test
+  fn constants() i32 {
+    const _i32_local i32 = 256 + 10;
+    mut copy i32 = _i32_local;
+    copy = _i32_global;
+    copy = A::_i32_global;
+    copy = A::_i32_global2;
+    mut f foo;
 
-fn main() i32 {
-  const _i32_local i32 = 256 + 10;
-  mut copy i32 = _i32_local;
-  copy = _i32_global;
-  copy = A::_i32_global;
-  copy = A::_i32_global2;
-  mut f foo;
-  return 0;
-}
-
-module A {
-  public const _i32_global i32 = 256;
-  public const _i32_global2 i32 = _i32_global3 + 1;
-  const _i32_global3 i32 = 256;
+    return SUCCESS;
+  }
+  
+  module A {
+    public const _i32_global i32 = 256;
+    public const _i32_global2 i32 = _i32_global3 + 1;
+    const _i32_global3 i32 = 256;
+  }
 }

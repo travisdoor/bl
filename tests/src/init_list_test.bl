@@ -4,35 +4,48 @@
  * Enums.
  */
 
-#load "utest.bl"
+#load "std/utest.bl"
+using std::utest;
 
-struct A {
-  b B,
-  x i32
-}
-
-struct B {
-  c C,
-  x i32
-}
-
-struct C {
-  x i32
-}
-
-fn main() i32 {
-  mut a A = {
-    .b = {
-      .c = {
-        .x = 10
+module init {
+  struct A {
+    b B,
+    x i32
+  }
+  
+  struct B {
+    c C,
+    x i32
+  }
+  
+  struct C {
+    x i32
+  }
+  
+  #test
+  fn initialization() i32 {
+    mut a A = {
+      .b = {
+        .c = {
+          .x = 10
+        },
+        .x = 20
       },
-      .x = 20
-    },
-    .x = 30
-  };
+      .x = 30
+    };
+  
+    if a.x != 30 {
+      return FAIL;
+    }
 
-  utest::assert(a.x == 30);
-  utest::assert(a.b.x == 20);
-  utest::assert(a.b.c.x == 10);
-  return 0;
+    if a.b.x != 20 {
+      return FAIL;
+    }
+
+    if a.b.c.x != 10 {
+      return FAIL;
+    }
+
+    return SUCCESS;
+  }
 }

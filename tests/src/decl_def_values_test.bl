@@ -4,44 +4,46 @@
  * Declaration default values. 
  */
 
-#load "utest.bl"
+#load "std/utest.bl"
 
-struct A {
-  b B,
-  i i32
-}
-
-struct B {
-  c C,
-  i i32
-}
-
-struct C {
-  i i32
-}
-
-fn main() i32 {
-  using utest;
-
-  mut _i8     i8 = cast(i8) 0;
-  mut _i16    i16 = cast(i16) 0;
-  mut _i32    i32 = 0;
-  mut _i64    i64 = cast(i64) 0;
-  mut _u8     u8 = cast(u8) 0;
-  mut _u16    u16 = cast(u16) 0;
-  mut _u32    u32 = cast(u32) 0;
-  mut _u64    u64 = cast(u64) 0;
-  mut _f32    f32 = 0.f;
-  mut _f64    f64 = 0.0;
-  mut _char   char; // TODO
-  mut _string string = "\0";
-  mut _bool   bool = false;
-
-  mut a A = {
-    .b.c.i = 0,
-    .b.i = 0,
-    .i = 0
-  };
-
-  return 0;
+module decl_def_values {
+  struct A {
+    b B,
+    i i32
+  }
+  
+  struct B {
+    c C,
+    i i32
+  }
+  
+  struct C {
+    i i32
+  }
+  
+  #test
+  fn decl_def_values() i32 {
+    using std::utest;
+    mut _i8     i8 = cast(i8) 0;
+    mut _i16    i16 = cast(i16) 0;
+    mut _i32    i32 = 0;
+    mut _i64    i64 = cast(i64) 0;
+    mut _u8     u8 = cast(u8) 0;
+    mut _u16    u16 = cast(u16) 0;
+    mut _u32    u32 = cast(u32) 0;
+    mut _u64    u64 = cast(u64) 0;
+    mut _f32    f32 = 0.f;
+    mut _f64    f64 = 0.0;
+    mut _char   char; // TODO
+    mut _string string = "\0";
+    mut _bool   bool = false;
+  
+    mut a A = {
+      .b.c.i = 0,
+      .b.i = 0,
+      .i = 0
+    };
+  
+    return SUCCESS;
+  }
 }

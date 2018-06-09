@@ -4,46 +4,58 @@
  * Simple array test 
  */
 
-#load "utest.bl"
+#load "std/utest.bl"
+using std::utest;
 
-using utest;
+module array {
+  struct foo_t {
+    x i32,
+    y i32
+  }
 
-struct foo_t {
-  x i32,
-  y i32
-}
-
-fn main() i32 {
   const count i32 = 256;
-  mut arr i32[count];  
-  mut i i32 = 0;
-
-  while (i < count) {
-    arr[i] = i;
-    i = i + 1;
+  
+  #test
+  fn array_i32() i32 {
+    mut arr i32[count];  
+    mut i i32 = 0;
+  
+    while (i < count) {
+      arr[i] = i;
+      i = i + 1;
+    }
+  
+    i = 0;
+    while (i < count) {
+      if arr[i] != i {
+        return FAIL;
+      }
+      i = i + 1;
+    }
+  
+  
+    return SUCCESS;
   }
 
-  i = 0;
-  while (i < count) {
-    assert(arr[i] == i); 
-    i = i + 1;
+  #test
+  fn array_struct() i32 {
+    mut foos foo_t[count];
+    mut i i32 = 0;
+
+    while (i < count) {
+      foos[i].x = i;
+      foos[i].y = i;
+      i = i + 1;
+    }
+  
+    i = 0;
+    while (i < count) {
+      if foos[i].x != i || foos[i].y != i {
+        return FAIL;
+      }
+      i = i + 1;
+    }
+
+    return SUCCESS;
   }
-
-  mut foos foo_t[count];
-
-  i = 0;
-  while (i < count) {
-    foos[i].x = i;
-    foos[i].y = i;
-    i = i + 1;
-  }
-
-  i = 0;
-  while (i < count) {
-    assert(foos[i].x == i); 
-    assert(foos[i].y == i); 
-    i = i + 1;
-  }
-
-  return 0;
 }

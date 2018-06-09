@@ -4,21 +4,33 @@
  * Factorial.
  */
 
-extern fn printf(s string, i i32) i32;
+#load "std/utest.bl"
+using std::utest;
 
-fn main() i32 {
-  printf("factorial(1) = %d\n", factorial(1));
-  printf("factorial(5) = %d\n", factorial(5));
-  printf("factorial(10) = %d\n", factorial(10));
+module fact {
+  #test 
+  fn factorial_calc() i32 {
+    if factorial(1) != 1 {
+      return FAIL;
+    }
 
-  return 0;
-}
+    if factorial(5) != 120 {
+      return FAIL;
+    }
 
-fn factorial(f i32) i32 
-{
-  if (f == 0)  {
-    return 1;
+    if factorial(10) != 3628800 {
+      return FAIL;
+    }
+  
+    return SUCCESS;
   }
-
-  return (f * factorial(f - 1));
+  
+  fn factorial(f i32) i32 
+  {
+    if (f == 0)  {
+      return 1;
+    }
+  
+    return (f * factorial(f - 1));
+  }
 }

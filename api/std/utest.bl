@@ -1,0 +1,19 @@
+/*
+ * Unit test - helpers
+ * -----------
+ */
+
+public module std {
+  public module utest {
+    extern fn abort();
+  
+    public const SUCCESS i32 = 0;
+    public const FAIL i32 = 1;
+  
+    public fn assert(expr bool) {
+      if expr != true {
+        abort();
+      }
+    }
+  }
+}
