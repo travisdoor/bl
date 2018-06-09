@@ -596,7 +596,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
   context_t *     cnt   = peek_cnt(visitor);
-  if (_func->modif == BL_MODIF_NONE && _func->used == 0) {
+  if (_func->modif == BL_MODIF_NONE && !_func->used && !_func->used_jit) {
     check_warning(cnt, func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is declared but never used", _func->id.str);
   }

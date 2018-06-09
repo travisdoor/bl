@@ -141,7 +141,7 @@ enum bl_modif
   BL_MODIF_EXTERN = 2, /* explicit */
   BL_MODIF_EXPORT = 4, /* implicit */
   BL_MODIF_UTEST  = 8, /* partialy implicit (when #test directive has
-			  been used before declaration) */
+                          been used before declaration) */
 };
 
 /*************************************************************************************************
@@ -254,6 +254,7 @@ struct bl_decl_func
   bl_node_t * parent;   /* parent node */
   int         modif;    /* modificator */
   int         used;     /* count of usage */
+  int         used_jit; /* count of usage in compile-time tree */
   BArray *    args;     /* array of arguments */
   bl_node_t * block;    /* function block (for extern function is NULL) */
   bl_node_t * ret_type; /* return type */

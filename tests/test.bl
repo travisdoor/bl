@@ -4,16 +4,24 @@ extern fn puts(s string) i32;
 
 #test
 fn test1() {
-  puts("test1");
+  shared(false);  
 }
 
 #test
 fn test2() {
-  puts("test2");
+  shared(false);  
+}
+
+fn shared(runtime bool) {
+  if runtime {
+    puts("run-time");
+  } else {
+    puts("compile-time");
+  }
 }
 
 fn main() i32 {
-  puts("runtime");
+  shared(true);  
   return 0;
 }
 

@@ -1117,6 +1117,9 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
       bl_assert(utest, "generated invalid utest method");
       bo_array_push_back(cnt->assembly->utest_methods, utest);
       bl_visitor_walk_func(visitor, func);
+    } else if (_func->used_jit) {
+      gen_func(cnt, func);
+      bl_visitor_walk_func(visitor, func);
     }
   }
 
