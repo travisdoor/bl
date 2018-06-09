@@ -69,6 +69,7 @@
 
 typedef struct
 {
+  bool           runtime;      /* true when we are generating runtime code */
   bl_builder_t * builder;      /* main builder */
   bl_assembly_t *assembly;     /* current assembly */
   LLVMModuleRef  llvm_mod;     /* main llvm module */
@@ -1090,74 +1091,134 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 
   /* Here we need to decide if function should be generated.
    * - export(main for example) generated every time
+   * - utest fucntions are generated only when we are compiling JIT code
    * - extern generated only once and only when they are used
    * - internal functions are generated only when they are used
    */
-  if (_func->modif & BL_MODIF_EXPORT) {
-    gen_func(cnt, func);
-    bl_visitor_walk_func(visitor, func);
-  } else if (_func->modif & BL_MODIF_EXTERN) {
-    if (!bo_htbl_has_key(cnt->generated_externals, _func->id.hash)) {
-      bo_htbl_insert_empty(cnt->generated_externals, _func->id.hash);
+  if (cnt->runtime) {
+    /* runtime */
+    if (_func->modif & BL_MODIF_EXPORT) {
+      gen_func(cnt, func);
+      bl_visitor_walk_func(visitor, func);
+    } else if (_func->modif & BL_MODIF_EXTERN) {
+      if (!bo_htbl_has_key(cnt->generated_externals, _func->id.hash)) {
+        bo_htbl_insert_empty(cnt->generated_externals, _func->id.hash);
+        gen_func(cnt, func);
+        bl_visitor_walk_func(visitor, func);
+      }
+    } else if (_func->used) {
       gen_func(cnt, func);
       bl_visitor_walk_func(visitor, func);
     }
-  } else if (_func->used) {
-    gen_func(cnt, func);
-    bl_visitor_walk_func(visitor, func);
+  } else {
+    /* JIT */
+    if (_func->modif & BL_MODIF_UTEST) {
+      LLVMValueRef llvm_func = gen_func(cnt, func);
+      bl_assert(llvm_func, "generated invalid utest method");
+
+      bl_utest_t utest = {.func = func, .llvm_func = llvm_func};
+      bo_array_push_back(cnt->assembly->utest_methods, utest);
+      bl_visitor_walk_func(visitor, func);
+    } else if (_func->used_jit) {
+      gen_func(cnt, func);
+      bl_visitor_walk_func(visitor, func);
+    }
   }
 
   reset_cscope();
 }
 
 /*************************************************************************************************
- * main entry function
+ * main entry functions
  *************************************************************************************************/
+static void
+validate(LLVMModuleRef module)
+{
+  char *error;
+  if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
+    char *str = LLVMPrintModuleToString(module);
+    bl_abort("module not verified with error: %s\n%s", error, str);
+  }
+}
+
 bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  bl_unit_t *unit = NULL;
-  size_t     c    = bo_array_size(assembly->units);
-
+  //#define PRINT_IR
   /* context initialization */
   context_t cnt           = {0};
   cnt.builder             = builder;
+  cnt.assembly            = assembly;
   cnt.llvm_cnt            = LLVMContextCreate();
-  cnt.llvm_mod            = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
   cnt.llvm_builder        = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.gscope              = bo_htbl_new(sizeof(LLVMValueRef), 2048);
   cnt.cscope              = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt.const_strings       = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt.generated_externals = bo_htbl_new(0, 2048);
 
-  bl_visitor_t gen_visitor;
-  bl_visitor_init(&gen_visitor, &cnt);
+  bl_unit_t *unit = NULL;
+  size_t     c    = bo_array_size(assembly->units);
 
-  bl_visitor_add(&gen_visitor, visit_func, BL_VISIT_FUNC);
-  bl_visitor_add(&gen_visitor, visit_mut, BL_VISIT_MUT);
-  bl_visitor_add(&gen_visitor, visit_expr, BL_VISIT_EXPR);
-  bl_visitor_add(&gen_visitor, visit_block, BL_VISIT_BLOCK);
-  bl_visitor_add(&gen_visitor, visit_return, BL_VISIT_RETURN);
-  bl_visitor_add(&gen_visitor, visit_if, BL_VISIT_IF);
-  bl_visitor_add(&gen_visitor, visit_loop, BL_VISIT_LOOP);
-  bl_visitor_add(&gen_visitor, visit_break, BL_VISIT_BREAK);
-  bl_visitor_add(&gen_visitor, visit_continue, BL_VISIT_CONTINUE);
-  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_ENUM);
-  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_STRUCT);
-  bl_visitor_add(&gen_visitor, BL_SKIP_VISIT, BL_VISIT_CONST);
+  /* prepare visitor */
+  bl_visitor_t visitor;
+  bl_visitor_init(&visitor, &cnt);
 
+  bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
+  bl_visitor_add(&visitor, visit_mut, BL_VISIT_MUT);
+  bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
+  bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
+  bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
+  bl_visitor_add(&visitor, visit_if, BL_VISIT_IF);
+  bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
+  bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
+  bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
+  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_CONST);
+
+  /* generate JIT */
+  cnt.llvm_mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.runtime  = false;
   for (int i = 0; i < c; ++i) {
     unit = bl_assembly_get_unit(assembly, i);
-    bl_visitor_walk_module(&gen_visitor, unit->ast.root);
+    bl_visitor_walk_module(&visitor, unit->ast.root);
   }
-
 #ifdef BL_DEBUG
-  char *error;
-  if (LLVMVerifyModule(cnt.llvm_mod, LLVMReturnStatusAction, &error)) {
+#ifdef PRINT_IR
+  {
     char *str = LLVMPrintModuleToString(cnt.llvm_mod);
-    bl_abort("module not verified with error: %s\n%s", error, str);
+    bl_log(str);
+    LLVMDisposeMessage(str);
   }
 #endif
+  validate(cnt.llvm_mod);
+#endif
+  assembly->llvm_module_jit = cnt.llvm_mod;
+
+  /* cleanup (we reuse already allocated buffers)*/
+  bo_htbl_clear(cnt.gscope);
+  bo_htbl_clear(cnt.cscope);
+  bo_htbl_clear(cnt.const_strings);
+  bo_htbl_clear(cnt.generated_externals);
+
+  /* generate runtime */
+  cnt.llvm_mod = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.runtime  = true;
+  for (int i = 0; i < c; ++i) {
+    unit = bl_assembly_get_unit(assembly, i);
+    bl_visitor_walk_module(&visitor, unit->ast.root);
+  }
+#ifdef BL_DEBUG
+#ifdef PRINT_IR
+  {
+    char *str = LLVMPrintModuleToString(cnt.llvm_mod);
+    bl_log(str);
+    LLVMDisposeMessage(str);
+  }
+#endif
+  validate(cnt.llvm_mod);
+#endif
+  assembly->llvm_module = cnt.llvm_mod;
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
@@ -1165,9 +1226,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
   bo_unref(cnt.generated_externals);
-
-  assembly->llvm_module = cnt.llvm_mod;
-  assembly->llvm_cnt    = cnt.llvm_cnt;
+  assembly->llvm_cnt = cnt.llvm_cnt;
 
   return BL_NO_ERR;
 }

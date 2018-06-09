@@ -35,7 +35,7 @@ BO_BEGIN_DECLS
 
 #define bl_msg_log(format, ...)                                                                    \
   {                                                                                                \
-    fprintf(stdout, BL_GREEN(format) "\n", ##__VA_ARGS__);                                         \
+    fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
   }
 
 #define bl_msg_error(format, ...)                                                                  \

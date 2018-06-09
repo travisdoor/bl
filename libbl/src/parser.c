@@ -78,6 +78,9 @@ static bl_node_t *
 parse_pre_link_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_pre_test_maybe(context_t *cnt, int modif, bl_node_t *parent);
+
+static bl_node_t *
 parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
@@ -946,6 +949,24 @@ parse_sizeof_maybe(context_t *cnt)
 }
 
 bl_node_t *
+parse_pre_test_maybe(context_t *cnt, int modif, bl_node_t *parent)
+{
+  bl_token_t *tok_test = bl_tokens_consume_if(cnt->tokens, BL_SYM_TEST);
+  if (!tok_test)
+    return NULL;
+
+  modif |= BL_MODIF_UTEST;
+
+  /* function declaration is expected after #test directive */
+  bl_node_t *decl_func = parse_fn_maybe(cnt, modif, parent);
+  if (!decl_func) {
+    parse_error(cnt, BL_ERR_EXPECTED_FUNC, tok_test, BL_BUILDER_CUR_AFTER,
+                "expected function declaration after #test directive");
+  }
+  return decl_func;
+}
+
+bl_node_t *
 parse_pre_load_maybe(context_t *cnt)
 {
   bl_node_t *pre_load = NULL;
@@ -1523,6 +1544,10 @@ decl:
   }
 
   if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, modif, module))) {
+    goto decl;
+  }
+
+  if (bl_ast_module_push_node(_module, parse_pre_test_maybe(cnt, modif, module))) {
     goto decl;
   }
 

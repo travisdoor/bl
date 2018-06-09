@@ -4,62 +4,53 @@
  * Sizeof buildin test 
  */
 
-extern fn printf(s string, i size_t) i32;
+#load "std/utest.bl"
+using std::utest;
 
-struct A {
-  i i32,
-  f f64
-}
+module size_of {
+  struct A {
+    i i32,
+    f f64
+  }
+  
+  struct B {
+    a A,
+    i i32
+  }
+  
+  enum C i32 {
+    Hello
+  }
+  
+  enum D i64 {
+    Hello
+  }
+  
+  #test 
+  fn sizeof_test() i32 {
+    if sizeof(i8) != cast(size_t) 1 { return FAIL; }
+    if sizeof(i16) != cast(size_t) 2 { return FAIL; }
+    if sizeof(i32) != cast(size_t) 4 { return FAIL; }
+    if sizeof(i64) != cast(size_t) 8 { return FAIL; }
 
-struct B {
-  a A,
-  i i32
-}
+    if sizeof(u8) != cast(size_t) 1 { return FAIL; }
+    if sizeof(u16) != cast(size_t) 2 { return FAIL; }
+    if sizeof(u32) != cast(size_t) 4 { return FAIL; }
+    if sizeof(u64) != cast(size_t) 8 { return FAIL; }
 
-enum C i32 {
-  Hello
-}
+    if sizeof(f32) != cast(size_t) 4 { return FAIL; }
+    if sizeof(f64) != cast(size_t) 8 { return FAIL; }
 
-enum D i64 {
-  Hello
-}
+    if sizeof(size_t) != cast(size_t) 8 { return FAIL; }
+    if sizeof(string) != cast(size_t) 8 { return FAIL; }
+    if sizeof(char) != cast(size_t) 1 { return FAIL; }
+    if sizeof(bool) != cast(size_t) 1 { return FAIL; }
 
-fn main() i32 {
-  mut s_i8 size_t = sizeof(i8);
-  mut s_i32 size_t = sizeof(i32);
-  mut s_i64 size_t = sizeof(i64); 
-  mut s_u8 size_t = sizeof(u8);
-  mut s_u32 size_t = sizeof(u32);
-  mut s_u64 size_t = sizeof(u64); 
-  mut s_size_t size_t = sizeof(size_t); 
-  mut s_string size_t = sizeof(string); 
-  mut s_char size_t = sizeof(char); 
-  mut s_bool size_t = sizeof(bool); 
-  mut s_f32 size_t = sizeof(f32); 
-  mut s_f64 size_t = sizeof(f64); 
-
-  mut s_A size_t = sizeof(A); 
-  mut s_B size_t = sizeof(B); 
-  mut s_C size_t = sizeof(C); 
-  mut s_D size_t = sizeof(D); 
-
-  printf("sizeof(i8)     = %luB\n", s_i8);
-  printf("sizeof(i32)    = %luB\n", s_i32);
-  printf("sizeof(i64)    = %luB\n", s_i64);
-  printf("sizeof(u8)     = %luB\n", s_u8);
-  printf("sizeof(u32)    = %luB\n", s_u32);
-  printf("sizeof(u64)    = %luB\n", s_u64);
-  printf("sizeof(size_t) = %luB\n", s_size_t);
-  printf("sizeof(string) = %luB\n", s_string);
-  printf("sizeof(char)   = %luB\n", s_char);
-  printf("sizeof(bool)   = %luB\n", s_bool);
-  printf("sizeof(f32)    = %luB\n", s_f32);
-  printf("sizeof(f64)    = %luB\n", s_f64);
-
-  printf("sizeof(A)      = %luB\n", s_A);
-  printf("sizeof(B)      = %luB\n", s_B);
-  printf("sizeof(C)      = %luB\n", s_C);
-  printf("sizeof(D)      = %luB\n", s_D);
-
-  return 0;
+    if sizeof(A) != cast(size_t) 16 { return FAIL; }
+    if sizeof(B) != cast(size_t) 24 { return FAIL; }
+    if sizeof(C) != cast(size_t) 4 { return FAIL; }
+    if sizeof(D) != cast(size_t) 8 { return FAIL; }
+  
+    return SUCCESS;
+  }
 }

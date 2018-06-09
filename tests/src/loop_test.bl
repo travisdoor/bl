@@ -4,39 +4,61 @@
  * Simple loop test.
  */
 
-extern fn printf(s string, i i32, i2 i32) i32;
+#load "std/utest.bl"
+using std::utest;
 
-fn main() i32 {
-  mut x i32 = 0; 
-  mut y i32 = 0; 
-  mut pred i32 = 100 * 100;
-  mut count i32 = 0; 
-
-  loop {
-    if (x == 100) {
-      break;
-    }
-
+module loop_test {
+  #test 
+  fn loop_test() i32 {
+    mut x i32 = 0; 
+    mut y i32 = 0; 
+    mut pred i32 = 100 * 100;
+    mut count i32 = 0; 
+  
     loop {
-      if (y == 100) {
-        y = 0;
+      if (x == 100) {
         break;
       }
+  
+      loop {
+        if (y == 100) {
+          y = 0;
+          break;
+        }
+  
+        y = y + 1;
+        count = count + 1;
+      }
+  
+      x = x + 1;
+  
+      continue;
+      x = x - 1;
+    }
+  
+    if count != pred {
+      return FAIL;
+    }
+  
+    return SUCCESS;
+  }
 
-      y = y + 1;
-      count = count + 1;
+  #test
+  fn while_test() i32 {
+    const count i32 = 256;
+    mut i i32 = 0;
+
+    while i < count {
+      i = i + 1;
+      {
+        continue;
+      }
     }
 
-    x = x + 1;
+    if i != count {
+      return FAIL;
+    }
 
-    continue;
-    x = x - 1;
+    return SUCCESS;
   }
-
-  if (count != pred) {
-    printf("%d != %d\n", count, pred);
-    return 1;
-  }
-
-  return 0;
 }

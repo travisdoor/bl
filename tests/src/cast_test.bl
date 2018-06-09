@@ -3,24 +3,26 @@
  * ----------------
  */
 
-extern fn printf(s string, p *void) i32;
-extern fn puts(s string) i32;
+#load "std/utest.bl"
 
-struct foo_t {
-  i *i32
-}
+using std::utest;
 
-fn main() i32 {
-  mut foo foo_t;
-  mut i i32;
-  foo.i = &i;
-
-  // cannot compile
-  if ((&i) == foo.i) {
-    puts("same"); 
-  } else {
-    puts("INVALID!!!"); 
+module casting {
+  struct foo_t {
+    i *i32
   }
+  
+  #test
+  fn casting() i32 {
+    mut foo foo_t;
+    mut i i32;
+    foo.i = &i;
+  
+    // cannot compile
+    if ((&i) != foo.i) {
+      return FAIL;
+    }  
 
-  return 0;
+    return SUCCESS;
+  }
 }

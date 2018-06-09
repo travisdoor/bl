@@ -68,6 +68,9 @@ typedef struct
 
   /* Last visited function. */
   bl_node_t *curr_func;
+
+  /* true when we are in runtime tree */
+  bool runtime;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -318,7 +321,11 @@ connect_call(context_t *cnt, bl_node_t *call)
 {
   bl_node_t *found             = lookup(cnt, bl_peek_expr_call(call)->path, validate_call, NULL);
   bl_peek_expr_call(call)->ref = found;
-  bl_peek_decl_func(found)->used++;
+
+  if (cnt->runtime)
+    bl_peek_decl_func(found)->used++;
+  else
+    bl_peek_decl_func(found)->used_jit++;
 }
 void
 connect_decl_ref(context_t *cnt, bl_node_t *ref)
@@ -811,13 +818,15 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t *mut)
 void
 third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
 {
-  bl_decl_func_t *_func    = bl_peek_decl_func(func);
-  context_t *     cnt      = peek_cnt(visitor);
-  bl_node_t *     prev_cmp = cnt->curr_compound;
-  bl_node_t *     prev_fn  = cnt->curr_func;
+  bl_decl_func_t *_func        = bl_peek_decl_func(func);
+  context_t *     cnt          = peek_cnt(visitor);
+  bl_node_t *     prev_cmp     = cnt->curr_compound;
+  bl_node_t *     prev_fn      = cnt->curr_func;
+  bool            prev_runtime = cnt->runtime;
 
   cnt->curr_compound = func;
   cnt->curr_func     = func;
+  cnt->runtime       = !(_func->modif & BL_MODIF_UTEST);
 
   const size_t c = bl_ast_func_arg_count(_func);
   bl_node_t *  arg;
@@ -836,6 +845,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   }
 
   bl_visitor_walk_func(visitor, func);
+  cnt->runtime       = prev_runtime;
   cnt->curr_compound = prev_cmp;
   cnt->curr_func     = prev_fn;
 }
@@ -941,6 +951,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {.builder       = builder,
                    .assembly      = assembly,
+                   .runtime       = true,
                    .curr_compound = NULL,
                    .curr_lvalue   = NULL,
                    .curr_func     = NULL};

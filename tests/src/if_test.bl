@@ -4,25 +4,30 @@
  * If test.
  */
 
-fn main() i32 {
-  mut a i32 = 0;
-  mut b i32 = 0;
+#load "std/utest.bl"
+using std::utest;
 
-  {
-    if a == 0 {
-      a = 1;
-      {
-        if a > 0 && b == 0 {
-          b = 1;
-        } else {
-          return 2;
+module if_test {
+  #test
+  fn if_test() i32 {
+    mut a i32 = 0;
+    mut b i32 = 0;
+  
+    {
+      if a == 0 {
+        a = 1;
+        {
+          if a > 0 && b == 0 {
+            b = 1;
+          } else {
+            return FAIL;
+          }
         }
+      } else {
+        return FAIL;
       }
-    } else {
-      return 1;
     }
+  
+    return SUCCESS;
   }
-
-  return a - b;
 }
-

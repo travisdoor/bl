@@ -220,6 +220,14 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
   bl_assert(callee, "invalid callee in function type check");
   bl_decl_func_t *_callee = bl_peek_decl_func(callee);
 
+  if (_callee->modif & BL_MODIF_UTEST) {
+    check_error(cnt, BL_ERR_INVALID_EXPR, call, BL_BUILDER_CUR_WORD,
+                "calling function " BL_YELLOW(
+                    "'%s'") " marked as #test from runtime tree is not possible, because "
+                            "function is not included in runtime assembly, declared here: %s:%d:%d",
+                _callee->id.str, callee->src->unit->filepath, callee->src->line, callee->src->col);
+  }
+
   if (expected_type != NULL) {
     if (!bl_type_compatible(_callee->ret_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
@@ -503,7 +511,7 @@ visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
   context_t *      cnt   = peek_cnt(visitor);
   bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
 
-  if (_cnst->used == 0) {
+  if (!(_cnst->modif & BL_MODIF_PUBLIC) && _cnst->used == 0) {
     check_warning(cnt, cnst, BL_BUILDER_CUR_WORD,
                   "constant " BL_YELLOW("'%s'") " is declared but never used", _cnst->id.str);
   }
@@ -596,9 +604,26 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   bl_decl_func_t *_func = bl_peek_decl_func(func);
   context_t *     cnt   = peek_cnt(visitor);
-  if (_func->modif == BL_MODIF_NONE && _func->used == 0) {
+  if (_func->modif == BL_MODIF_NONE && !_func->used && !_func->used_jit) {
     check_warning(cnt, func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is declared but never used", _func->id.str);
+  }
+
+  if (_func->modif & BL_MODIF_UTEST) {
+    if (bl_ast_func_arg_count(_func)) {
+      check_error(
+          cnt, BL_ERR_INVALID_ARG_COUNT, func, BL_BUILDER_CUR_WORD,
+          "function " BL_YELLOW("'%s'") " is marked as #test, those functions are invoked in "
+                                        "compile-time and it cannot take any parameters",
+          _func->id.str);
+    }
+
+    if (!bl_type_compatible(_func->ret_type, get_tmp_fund(cnt, BL_FTYPE_I32, 0))) {
+      check_error(cnt, BL_ERR_EXPECTED_TYPE, func, BL_BUILDER_CUR_WORD,
+                  "function " BL_YELLOW("'%s'") " is marked as #test, those functions must return "
+                                                "i32 value (0 when test passed without errors)",
+                  _func->id.str);
+    }
   }
 
   cnt->curr_func = func;

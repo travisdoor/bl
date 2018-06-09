@@ -108,6 +108,9 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
     if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
+    if (flags & BL_BUILDER_RUN_TESTS && (error = bl_test_runner_run(builder, assembly)) != BL_NO_ERR)
+      return error;
+
     if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
@@ -115,7 +118,7 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
         (error = bl_llvm_bc_writer_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
-    if (!(flags & BL_BUILDER_RUN)) {
+    if (!(flags & BL_BUILDER_NO_BIN)) {
       if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
         return error;
 
@@ -266,7 +269,7 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
 
   line_str = bl_unit_get_src_ln(src->unit, src->line, &line_len);
   if (line_str && line_len) {
-    sprintf(msg, "\n%*d", pad, src->line);
+    sprintf(msg, BL_CYAN("\n%*d"), pad, src->line);
     bo_string_append(tmp, &msg[0]);
     bo_string_append(tmp, " | ");
     bo_string_appendn(tmp, line_str, line_len);

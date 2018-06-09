@@ -4,116 +4,103 @@
  * Enums.
  */
 
-extern fn printf(s string, e state_e) i32;
+#load "std/utest.bl"
+using std::utest;
 
-enum state_e {
-  S0,
-  S1,
-  S2 = 10,
-  S3,
-  S4 = 50,
-  S5,
-  S6 = 50 + 3 + 12 + 13,
-  S7 = cast(i32) S6 + 1,
-  S8 = cast(i32) S7 * (1 + cast(i32) S2),
-  S9, // S8 + 1
-  S10 // S9 + 1
-}
-
-enum names_e string { 
-  Tereza = "tereza",
-  Milan = "milan"
-}
-
-fn main() i32 {
-  mut s state_e = state_e::S0;
-  mut n names_e = names_e::Tereza;
-
-  if s != state_e::S0 {
-     return 1;
-  }
-
-  s = state_e::S0;
-  if s != state_e::S0 {
-     return 2;
+module enums {
+  enum state_e {
+    S0,
+    S1,
+    S2 = 10,
+    S3,
+    S4 = 50,
+    S5,
+    S6 = 50 + 3 + 12 + 13,
+    S7 = cast(i32) S6 + 1,
+    S8 = cast(i32) S7 * (1 + cast(i32) S2),
+    S9, // S8 + 1
+    S10 // S9 + 1
   }
   
-  printf("S0 = %d\n", s);
+  enum names_e string { 
+    Tereza = "tereza",
+    Milan = "milan"
+  }
+  
+  #test
+  fn enum_i32_values() i32 {
+    using state_e;
 
-  s = state_e::S1;
-  if s != state_e::S1 {
-     return 3;
+    if S0 != cast(state_e) 0 {
+      return FAIL;
+    }
+
+    if S1 != cast(state_e) 1 {
+      return FAIL;
+    }
+
+    if S2 != cast(state_e) 10 {
+      return FAIL;
+    }
+
+    if S3 != cast(state_e) 11 {
+      return FAIL;
+    }
+
+    if S4 != cast(state_e) 50 {
+      return FAIL;
+    }
+
+    if S5 != cast(state_e) 51 {
+      return FAIL;
+    }
+
+    if S6 != cast(state_e) 78 {
+      return FAIL;
+    }
+
+    if S7 != cast(state_e) 79 {
+      return FAIL;
+    }
+
+    if S8 != cast(state_e) 869 {
+      return FAIL;
+    }
+
+    if S9 != cast(state_e) 870 {
+      return FAIL;
+    }
+
+    if S10 != cast(state_e) 871 {
+      return FAIL;
+    }
+
+    return SUCCESS;
   }
 
-  printf("S1 = %d\n", s);
-
-  s = state_e::S2;
-  if s != state_e::S2 {
-     return 4;
-  }
-  printf("S2 = %d\n", s);
-
-  s = state_e::S3;
-  if s != state_e::S3 {
-     return 5;
-  }
-  printf("S3 = %d\n", s);
-
-  s = state_e::S4;
-  if s != state_e::S4 {
-     return 6;
-  }
-  printf("S4 = %d\n", s);
-
-  s = state_e::S5;
-  if s != state_e::S5 {
-     return 6;
+  #test
+  fn enum_i32_set() i32 {
+    mut s state_e = state_e::S0;
+    if s != state_e::S0 {
+      return FAIL;
+    }
+    
+    return SUCCESS;
   }
 
-  printf("S5 = %d\n", s);
+  #test
+  fn enum_string() i32 {
+    using names_e;
 
-  s = state_e::S6;
-  if s != state_e::S6 {
-     return 7;
+    if Tereza != cast(names_e) "tereza" {
+      return FAIL;
+    }
+
+    if Milan != cast(names_e) "milan" {
+      return FAIL;
+    }
+
+    return SUCCESS;
   }
-     
-  printf("S6 = %d\n", s);
-
-  s = state_e::S7;
-  if s != state_e::S7 {
-     return 8;
-  }
-  printf("S7 = %d\n", s);
-
-  s = state_e::S8;
-  if s != state_e::S8 {
-     return 8;
-  }
-  printf("S8 = %d\n", s);
-
-  s = state_e::S9;
-  if s != state_e::S9 {
-     return 9;
-  }
-  printf("S9 = %d\n", s);
-
-  s = state_e::S10;
-  if s != state_e::S10 {
-     return 10;
-  }
-  printf("S10 = %d\n", s);
-
-  n = names_e::Tereza;
-  if n != names_e::Tereza {
-     return 11;
-  }
-
-  n = names_e::Milan;
-  if n != names_e::Milan {
-     return 12;
-  }
-
-  return 0;
 }
-
 

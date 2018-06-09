@@ -39,8 +39,8 @@ print_head(const char *name, bl_src_t *src, void *ptr, int pad)
     fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), pad * 2, "", name,
             src->line, src->col, ptr);
   else
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<generated>") BL_YELLOW(" %p "), pad * 2, "", name,
-            ptr);
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<generated>") BL_YELLOW(" %p "), pad * 2, "",
+            name, ptr);
 }
 
 static inline void
@@ -56,6 +56,10 @@ print_modif(int modif)
 
   if (modif & BL_MODIF_EXPORT) {
     fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_EXPORT]);
+  }
+
+  if (modif & BL_MODIF_UTEST) {
+    fprintf(stdout, BL_CYAN(" %s"), bl_sym_strings[BL_SYM_TEST]);
   }
 }
 
@@ -126,7 +130,8 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   print_head("function", bl_peek_src(func), func, visitor->nesting);
   bl_decl_func_t *_func = bl_peek_decl_func(func);
-  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _func->id.str, _func->used);
+  fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d, %d", _func->id.str, _func->used,
+          _func->used_jit);
   print_modif(_func->modif);
 
   bl_visitor_walk_func(visitor, func);

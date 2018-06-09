@@ -54,6 +54,7 @@ set(SOURCE_FILES
         src/llvm_linker.c 
         src/llvm_generator.c 
         src/scope.c 
+        src/test_runner.c 
         src/id.c
         src/parser.c
         src/ast.c

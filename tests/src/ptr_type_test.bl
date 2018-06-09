@@ -4,17 +4,52 @@
  * Pointer type 
  */
 
-#load "utest.bl"
+#load "std/utest.bl"
+using std::utest;
 
-fn main() i32 {
-  mut i32_ptr *i32;
-  mut a i32 = 10;
+module ptr {
+  #test
+  fn assignment_and_dereferencing_fund() i32 {
+    mut i32_ptr *i32;
+    mut a i32 = 10;
+  
+    i32_ptr = &a; 
+    (*i32_ptr) = 1;
+    a = (*i32_ptr);
+    if (*i32_ptr) != a {
+      return FAIL;
+    }
+  
+    return SUCCESS;
+  }
 
-  i32_ptr = &a; 
-  (*i32_ptr) = 1;
-  a = (*i32_ptr);
-  utest::assert((*i32_ptr) == a);
+  struct foo_t {
+    bar bar_t,
+    i i32
+  }
 
-  return 0;
+  struct bar_t {
+    i i32
+  }
+
+  #test
+  fn assignment_and_dereferencing_struct() i32 {
+    mut foo_ptr *foo_t;
+    mut foo foo_t = {
+      .bar.i = 666,
+      .i = 10
+    };
+  
+    foo_ptr = &foo; 
+
+    if foo_ptr->bar.i != 666 {
+      return FAIL;
+    }
+
+    if foo_ptr->i != 10 {
+      return FAIL;
+    }
+  
+    return SUCCESS;
+  }
 }
-
