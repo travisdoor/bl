@@ -27,41 +27,22 @@
 //************************************************************************************************
 
 //#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 #include "stages_impl.h"
 #include "bl/bldebug.h"
 
 bl_error_e
 bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  bl_assert(assembly->llvm_module, "invalid assembly module");
-  char *error = NULL;
+  char *llvm_error = NULL;
+  if (LLVMCreateJITCompilerForModule(&assembly->llvm_runtime_engine, assembly->llvm_module, 0,
+                                     &llvm_error) != 0)
+    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
-  LLVMInitializeAllTargetInfos();
-  LLVMInitializeAllTargets();
-  LLVMInitializeAllTargetMCs();
-  LLVMInitializeAllAsmParsers();
-  LLVMInitializeAllAsmPrinters();
-
-  LLVMExecutionEngineRef engine;
-  if (LLVMCreateJITCompilerForModule(&engine, assembly->llvm_module, 0, &error) != 0)
-    bl_abort("failed to create execution engine with error %s", error);
-
-  LLVMValueRef main_f = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  if (main_f == NULL) {
-    bl_builder_error(builder, assembly->name, "unable to get " BL_YELLOW("'main'") " method");
-    LLVMDisposeExecutionEngine(engine);
-    assembly->llvm_module = NULL;
-    return BL_ERR_NO_MAIN_METHOD;
-  }
-
-  LLVMGenericValueRef res = LLVMRunFunction(engine, main_f, 0, NULL);
-
-  int ires = (int)LLVMGenericValueToInt(res, 0);
+  LLVMGenericValueRef result =
+      LLVMRunFunction(assembly->llvm_runtime_engine, assembly->llvm_main_func, 0, NULL);
+  int ires = (int)LLVMGenericValueToInt(result, 0);
   if (ires != 0) {
     bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
-    LLVMDisposeExecutionEngine(engine);
-    assembly->llvm_module = NULL;
     return BL_ERR_INVALID_RESULT;
   }
 

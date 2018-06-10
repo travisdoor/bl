@@ -32,9 +32,6 @@
 #define MAX_REPORT_LEN 512
 #define REPORT_COL_W 80
 
-/* TEST */
-#include <llvm-c/ExecutionEngine.h>
-
 bl_error_e
 bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
@@ -46,25 +43,12 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bool         status              = false;
   char         tmp[MAX_REPORT_LEN] = {0};
 
-  /* TEST */
-  bl_assert(assembly->llvm_module_jit, "invalid assembly module");
-  char *error = NULL;
-
-  LLVMInitializeAllTargetInfos();
-  LLVMInitializeAllTargets();
-  LLVMInitializeAllTargetMCs();
-  LLVMInitializeAllAsmParsers();
-  LLVMInitializeAllAsmPrinters();
-
-  LLVMExecutionEngineRef engine;
-  if (LLVMCreateJITCompilerForModule(&engine, assembly->llvm_module_jit, 0, &error) != 0)
-    bl_abort("failed to create execution engine with error %s", error);
-
   for (size_t i = 0; i < c; ++i) {
-    utest                      = &bo_array_at(assembly->utest_methods, i, bl_utest_t);
-    src                        = utest->func->src;
-    LLVMGenericValueRef result = LLVMRunFunction(engine, utest->llvm_func, 0, NULL);
-    status                     = !(int)LLVMGenericValueToInt(result, 0);
+    utest = &bo_array_at(assembly->utest_methods, i, bl_utest_t);
+    src   = utest->func->src;
+    LLVMGenericValueRef result =
+        LLVMRunFunction(assembly->llvm_compiletime_engine, utest->llvm_func, 0, NULL);
+    status = !(int)LLVMGenericValueToInt(result, 0);
 
     snprintf(tmp, MAX_REPORT_LEN, "  " BL_GREEN("%s") " %s:%d",
              bl_peek_decl_func(utest->func)->id.str, src->unit->name, src->line);

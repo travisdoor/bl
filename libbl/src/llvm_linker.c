@@ -36,12 +36,6 @@
 bl_error_e
 bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  LLVMInitializeAllTargetInfos();
-  LLVMInitializeAllTargets();
-  LLVMInitializeAllTargetMCs();
-  LLVMInitializeAllAsmParsers();
-  LLVMInitializeAllAsmPrinters();
-
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + 3));
   strcpy(filename, assembly->name);
   strcat(filename, ".o");

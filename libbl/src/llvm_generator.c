@@ -1098,7 +1098,11 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   if (cnt->runtime) {
     /* runtime */
     if (_func->modif & BL_MODIF_EXPORT) {
-      gen_func(cnt, func);
+      LLVMValueRef llvm_func = gen_func(cnt, func);
+      if (strcmp(_func->id.str, "main") == 0) {
+        /* store reference to main function */
+        cnt->assembly->llvm_main_func = llvm_func;
+      }
       bl_visitor_walk_func(visitor, func);
     } else if (_func->modif & BL_MODIF_EXTERN) {
       if (!bo_htbl_has_key(cnt->generated_externals, _func->id.hash)) {
@@ -1193,7 +1197,11 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 #endif
   validate(cnt.llvm_mod);
 #endif
-  assembly->llvm_module_jit = cnt.llvm_mod;
+  /* initialize execution engine for compile time module (engine will take ownership of the module
+   * here)*/
+  char *llvm_error = NULL;
+  if (LLVMCreateJITCompilerForModule(&assembly->llvm_compiletime_engine, cnt.llvm_mod, 0, &llvm_error) != 0)
+    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
   /* cleanup (we reuse already allocated buffers)*/
   bo_htbl_clear(cnt.gscope);

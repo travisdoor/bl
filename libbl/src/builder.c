@@ -63,6 +63,22 @@ default_warning_handler(const char *msg, void *context)
   bl_msg_warning("%s", msg);
 }
 
+static bool llvm_initialized = false;
+
+static void
+llvm_init(void)
+{
+  if (llvm_initialized)
+    return;
+
+  LLVMInitializeAllTargetInfos();
+  LLVMInitializeAllTargets();
+  LLVMInitializeAllTargetMCs();
+  LLVMInitializeAllAsmParsers();
+  LLVMInitializeAllAsmPrinters();
+  llvm_initialized = true;
+}
+
 bl_error_e
 compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, uint32_t flags)
 {
@@ -138,6 +154,8 @@ bl_builder_new(void)
 
   builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;
+
+  llvm_init();
 
   return builder;
 }

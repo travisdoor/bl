@@ -58,8 +58,12 @@ bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
   bl_scope_cache_delete(assembly->scope_cache);
-  LLVMDisposeModule(assembly->llvm_module);
-  LLVMDisposeModule(assembly->llvm_module_jit);
+
+  LLVMDisposeExecutionEngine(assembly->llvm_compiletime_engine);
+  if (assembly->llvm_runtime_engine)
+    LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
+  else
+    LLVMDisposeModule(assembly->llvm_module);
   LLVMContextDispose(assembly->llvm_cnt);
 
   const size_t c = bo_array_size(assembly->units);
