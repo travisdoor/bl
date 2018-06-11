@@ -1198,12 +1198,12 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 {
   bl_node_t *fn = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_FN) != NULL) {
-    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
-    if (tok->sym != BL_SYM_IDENT) {
-      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected function name");
+    bl_token_t *tok_id = bl_tokens_consume(cnt->tokens);
+    if (tok_id->sym != BL_SYM_IDENT) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_id, BL_BUILDER_CUR_WORD, "expected function name");
     }
 
-    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent,
+    fn = bl_ast_add_decl_func(cnt->ast, tok_id, tok_id->value.str, NULL, NULL, modif, parent,
                               modif & BL_MODIF_UTEST);
     bl_node_t *prev_fn = cnt->curr_func;
     cnt->curr_func     = fn;
@@ -1228,16 +1228,18 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
       bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT | BL_MODIF_ENTRY;
     }
 
-    tok = bl_tokens_consume(cnt->tokens);
+    bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
       parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                   "expected function parameter list");
     }
 
     /* parse args */
-    bool rq = false;
+    bool       rq = false;
+    bl_node_t *arg;
   arg:
-    if (bl_ast_func_push_arg(bl_peek_decl_func(fn), parse_arg_maybe(cnt))) {
+    arg = parse_arg_maybe(cnt);
+    if (bl_ast_func_push_arg(bl_peek_decl_func(fn), arg)) {
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         rq = true;
         goto arg;

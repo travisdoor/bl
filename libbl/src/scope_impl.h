@@ -84,6 +84,12 @@ typedef struct
   bl_scope_t *main;
 } bl_scopes_t;
 
+typedef struct
+{
+  struct bl_node *node;
+  struct bl_node *linked_by;
+} bl_found_node_tuple_t;
+
 void
 bl_scopes_init(bl_scopes_t *scopes);
 
@@ -98,6 +104,9 @@ bl_scopes_insert_node(bl_scopes_t *scopes, struct bl_node *node);
  * current compound block owner node or to using which includes scope from other compound block. */
 struct bl_node *
 bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, struct bl_node **linked_by_out);
+
+int
+bl_scopes_get_nodes(bl_scopes_t *scopes, bl_id_t *id, bl_found_node_tuple_t **found);
 
 struct bl_node *
 bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope);

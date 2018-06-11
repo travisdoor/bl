@@ -232,7 +232,6 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
                bool *found_in_curr_branch)
 {
   bl_node_t *  found             = NULL;
-  bl_scopes_t *tmp_scopes        = NULL;
   bl_node_t *  tmp_curr_compound = curr_compound;
   bl_node_t *  prev_compound     = NULL;
 
@@ -243,9 +242,7 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
     if (bl_node_is(tmp_curr_compound, BL_STMT_IF) || bl_node_is(tmp_curr_compound, BL_STMT_LOOP))
       goto skip;
 
-    tmp_scopes = bl_ast_try_get_scopes(tmp_curr_compound);
-    bl_assert(tmp_scopes, "invalid scopes");
-    found = bl_scopes_get_node(tmp_scopes, id, linked_by);
+    found = lookup_in_scope(cnt, id, tmp_curr_compound, linked_by);
 
     if (found == NULL)
       prev_compound = tmp_curr_compound;
@@ -264,6 +261,7 @@ bl_node_t *
 lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
   bl_scopes_t *scopes = bl_ast_try_get_scopes(curr_compound);
+  bl_assert(scopes, "invalid scopes");
   return bl_scopes_get_node(scopes, id, linked_by);
 }
 

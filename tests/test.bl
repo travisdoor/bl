@@ -1,21 +1,26 @@
 /* testing playground */
 
-extern fn puts(s string) i32;
-extern fn printf(s string, i i32) i32;
+module A {
+  public struct foo {
+    i i32
+  }
 
-fn foo_i32() i32 {
-  return 666;
+  public fn test(f foo) {}
 }
 
-fn foo_u32() u32 {
-  return cast(u32) 666;
+module B {
+  public struct foo {
+    i i32,
+    j i32,
+  }
+
+  public fn test(f foo) {}
 }
 
 fn main() {
-  mut result_i32 i32 = #run foo_i32();
-  mut result_u32 u32 = #run foo_u32();
+  using A;
+  using B;
 
-  printf("result_i32 = %d\n", result_i32);
-  printf("result_u32 = %d\n", cast(i32) result_u32);
+  mut f foo;
 }
 
