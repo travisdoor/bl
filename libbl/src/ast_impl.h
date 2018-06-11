@@ -103,6 +103,21 @@ typedef enum
       BL_FUND_TYPE_COUNT
 } bl_fund_type_e;
 
+typedef enum
+{
+  BL_UNKNOWN_KIND,
+  BL_SINT_KIND,   /* i8, i16, i32, i64 */
+  BL_UINT_KIND,   /* u8, i16, u32, u64 */
+  BL_PTR_KIND,    /* pointers */
+  BL_STRUCT_KIND, /* structs */
+  BL_REAL_KIND,   /* f32, f64 */
+  BL_STR_KIND,    /* string */
+  BL_CHAR_KIND,   /* char */
+  BL_BOOL_KIND,   /* bool */
+  BL_VOID_KIND,   /* void */
+  BL_SIZE_KIND    /* size_t */
+} bl_type_kind_e;
+
 extern const char *bl_fund_type_strings[];
 extern const char *bl_node_type_strings[];
 
@@ -688,6 +703,9 @@ bl_type_compatible(bl_node_t *first, bl_node_t *second);
 
 int
 bl_type_is_ptr(bl_node_t *first);
+
+bl_type_kind_e
+bl_type_get_kind(bl_node_t *type);
 
 void
 bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);

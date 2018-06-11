@@ -487,10 +487,34 @@ gen_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
 
-  if (_call->run_in_compile_time) {
-    LLVMValueRef fn = get_value_gscope_CT(_call->ref);
-    LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
-    return NULL;
+  if (_call->run_in_compile_time && cnt->runtime) {
+    bl_decl_func_t *    _callee = bl_peek_decl_func(_call->ref);
+    LLVMValueRef        fn      = get_value_gscope_CT(_call->ref);
+    LLVMGenericValueRef tmp = LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
+
+    LLVMTypeRef    ret_type      = to_llvm_type(cnt, _callee->ret_type);
+    bl_type_kind_e ret_type_kind = bl_type_get_kind(_callee->ret_type);
+    LLVMValueRef   result        = NULL;
+
+    switch (ret_type_kind) {
+    case BL_SINT_KIND:
+      result = LLVMConstInt(ret_type, LLVMGenericValueToInt(tmp, true), true);
+      break;
+    case BL_UINT_KIND:
+    case BL_SIZE_KIND:
+    case BL_BOOL_KIND:
+    case BL_CHAR_KIND:
+      result = LLVMConstInt(ret_type, LLVMGenericValueToInt(tmp, false), false);
+      break;
+    case BL_REAL_KIND:
+      result = LLVMConstReal(ret_type, LLVMGenericValueToFloat(ret_type, tmp));
+      break;
+    default:
+      bl_abort("unsupported type of run result");
+    }
+
+    LLVMDisposeGenericValue(tmp);
+    return result;
   } else {
     LLVMValueRef fn                          = gen_func(cnt, _call->ref, false);
     LLVMValueRef argv[BL_MAX_FUNC_ARG_COUNT] = {0};
@@ -530,6 +554,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
       next_type = LLVMTypeOf(next_val);
     }
 
+    /* TODO use BL_KIND */
     LLVMTypeKind next_type_kind = LLVMGetTypeKind(next_type);
 
     int mult = 1;
@@ -1188,7 +1213,7 @@ validate(LLVMModuleRef module)
 bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-#define PRINT_IR
+  //#define PRINT_IR
   /* context initialization */
   context_t cnt           = {0};
   cnt.builder             = builder;

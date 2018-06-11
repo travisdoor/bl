@@ -1294,4 +1294,53 @@ bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
   memcpy(dup, node, sizeof(bl_node_t));
   return dup;
 }
+
+bl_type_kind_e
+bl_type_get_kind(bl_node_t *type)
+{
+  if (!type)
+    return BL_UNKNOWN_KIND;
+
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    if (bl_peek_type_fund(type)->is_ptr)
+      return BL_PTR_KIND;
+
+    switch (bl_peek_type_fund(type)->type) {
+    case BL_FTYPE_I8:
+    case BL_FTYPE_I16:
+    case BL_FTYPE_I32:
+    case BL_FTYPE_I64:
+      return BL_SINT_KIND;
+    case BL_FTYPE_U8:
+    case BL_FTYPE_U16:
+    case BL_FTYPE_U32:
+    case BL_FTYPE_U64:
+      return BL_UINT_KIND;
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+      return BL_REAL_KIND;
+    case BL_FTYPE_STRING:
+      return BL_STR_KIND;
+    case BL_FTYPE_CHAR:
+      return BL_CHAR_KIND;
+    case BL_FTYPE_BOOL:
+      return BL_BOOL_KIND;
+    case BL_FTYPE_VOID:
+      return BL_VOID_KIND;
+    case BL_FTYPE_SIZE:
+      return BL_SIZE_KIND;
+    default:
+      return BL_UNKNOWN_KIND;
+    }
+    break;
+  case BL_TYPE_REF:
+    if (bl_peek_type_ref(type)->is_ptr)
+      return BL_PTR_KIND;
+
+    return BL_STRUCT_KIND;
+  default:
+    return BL_UNKNOWN_KIND;
+  }
+}
 /**************************************************************************************************/

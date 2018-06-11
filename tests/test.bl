@@ -1,12 +1,21 @@
 /* testing playground */
 
 extern fn puts(s string) i32;
+extern fn printf(s string, i i32) i32;
 
-fn foo() {
-  puts("hello from compile-time");
+fn foo_i32() i32 {
+  return 666;
+}
+
+fn foo_u32() u32 {
+  return cast(u32) 666;
 }
 
 fn main() {
-  #run foo();
+  mut result_i32 i32 = #run foo_i32();
+  mut result_u32 u32 = #run foo_u32();
+
+  printf("result_i32 = %d\n", result_i32);
+  printf("result_u32 = %d\n", cast(i32) result_u32);
 }
 

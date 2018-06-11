@@ -245,6 +245,13 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
   const size_t call_arg_c   = bl_ast_call_arg_count(_call);
   const size_t callee_arg_c = bl_ast_func_arg_count(_callee);
 
+  if (_call->run_in_compile_time && call_arg_c) {
+    check_error(cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
+                "calling function " BL_YELLOW(
+                    "'%s'") " in compile time with parameters is not supported for now!!!",
+                _callee->id.str);
+  }
+
   if (call_arg_c != callee_arg_c) {
     check_error(
         cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
