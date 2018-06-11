@@ -262,6 +262,13 @@ lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t
 {
   bl_scopes_t *scopes = bl_ast_try_get_scopes(curr_compound);
   bl_assert(scopes, "invalid scopes");
+
+  /* test */
+  bl_found_node_tuple_t found[3];
+  int c = bl_scopes_get_nodes(scopes, id, found, 3);
+  for (int i = 0; i < c; ++i) 
+    bl_log("found: %p linked by %p", found[i].node, found[i].linked_by);
+  
   return bl_scopes_get_node(scopes, id, linked_by);
 }
 

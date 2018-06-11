@@ -106,7 +106,8 @@ struct bl_node *
 bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, struct bl_node **linked_by_out);
 
 int
-bl_scopes_get_nodes(bl_scopes_t *scopes, bl_id_t *id, bl_found_node_tuple_t **found);
+bl_scopes_get_nodes(bl_scopes_t *scopes, bl_id_t *id, bl_found_node_tuple_t *found,
+                    int max_found_coun);
 
 struct bl_node *
 bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope);

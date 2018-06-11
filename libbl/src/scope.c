@@ -134,6 +134,32 @@ bl_scopes_get_node(bl_scopes_t *scopes, bl_id_t *id, bl_node_t **linked_by_out)
   return found;
 }
 
+int
+bl_scopes_get_nodes(bl_scopes_t *scopes, bl_id_t *id, bl_found_node_tuple_t *found,
+                    int max_found_count)
+{
+  bl_node_t *           tmp = NULL;
+  bl_node_t *           linked_by = NULL;
+  bl_scope_t *          scope     = NULL;
+  bo_iterator_t         iter      = bo_htbl_begin(scopes->scopes);
+  bo_iterator_t         end       = bo_htbl_end(scopes->scopes);
+  int                   c         = 0;
+
+  while (c < max_found_count && !bo_iterator_equal(&iter, &end)) {
+    scope     = (bl_scope_t *)bo_htbl_iter_peek_key(scopes->scopes, &iter);
+    linked_by = bo_htbl_iter_peek_value(scopes->scopes, &iter, bl_node_t *);
+    tmp = bl_scope_get_node(scope, id);
+
+    if (tmp) {
+      found[c++] = (bl_found_node_tuple_t){ .node = tmp, .linked_by = linked_by };
+    }
+    
+    bo_htbl_iter_next(scopes->scopes, &iter);
+  }
+
+  return c;
+}
+
 bl_node_t *
 bl_scopes_get_linked_by(bl_scopes_t *scopes, bl_scope_t *scope)
 {
