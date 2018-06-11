@@ -2,12 +2,11 @@
 
 extern fn puts(s string) i32;
 
-fn i_will_run_in_compile_time() {
-  puts("hello from compiler!");
+fn foo() {
+  puts("hello from compile-time");
 }
 
-fn main() i32 {
-  #run i_will_run_in_compile_time();
-  return 0;
+fn main() {
+  #run foo();
 }
 

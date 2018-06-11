@@ -29,4 +29,3 @@
 #load "std/debug.bl"
 #load "std/memory.bl"
 #load "std/random.bl"
-#load "std/string.bl"

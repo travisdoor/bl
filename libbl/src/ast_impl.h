@@ -130,7 +130,6 @@ enum bl_node_code
 struct bl_ast
 {
   bl_node_t *root;
-  bl_node_t *entry_func;
   BArray *   nodes;
 };
 
@@ -142,6 +141,7 @@ enum bl_modif
   BL_MODIF_EXPORT = 4, /* implicit */
   BL_MODIF_UTEST  = 8, /* partialy implicit (when #test directive has
                           been used before declaration) */
+  BL_MODIF_ENTRY = 16, /* entry function (typically main) */
 };
 
 /*************************************************************************************************
@@ -250,15 +250,15 @@ struct bl_decl_arg
 
 struct bl_decl_func
 {
-  bl_id_t     id;       /* identificator */
-  bl_node_t * parent;   /* parent node */
-  int         modif;    /* modificator */
-  int         used;     /* count of usage */
-  int         used_jit; /* count of usage in compile-time tree */
-  BArray *    args;     /* array of arguments */
-  bl_node_t * block;    /* function block (for extern function is NULL) */
-  bl_node_t * ret_type; /* return type */
-  bl_scopes_t scopes;   /* scope cache */
+  bl_id_t     id;                 /* identificator */
+  bl_node_t * parent;             /* parent node */
+  int         modif;              /* modificator */
+  int         used;               /* count of usage */
+  BArray *    args;               /* array of arguments */
+  bl_node_t * block;              /* function block (for extern function is NULL) */
+  bl_node_t * ret_type;           /* return type */
+  bl_scopes_t scopes;             /* scope cache */
+  bool        gen_in_compiletime; /* true when function is called via #run directive */
 };
 
 struct bl_decl_struct
@@ -514,7 +514,7 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type, int modif, bl_node_t *parent);
+                     bl_node_t *ret_type, int modif, bl_node_t *parent, bool gen_in_compiletime);
 
 bl_node_t *
 bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);

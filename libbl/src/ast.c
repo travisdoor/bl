@@ -37,7 +37,7 @@ const char *bl_fund_type_strings[] = {
 const char *bl_node_type_strings[] = {
 #define nt(code, name) #name,
     BL_NODE_TYPE_LIST
-#undef ft
+#undef nt
 };
 
 static bl_node_t *
@@ -473,18 +473,19 @@ bl_ast_add_decl_arg(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t 
 
 bl_node_t *
 bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *block,
-                     bl_node_t *ret_type, int modif, bl_node_t *parent)
+                     bl_node_t *ret_type, int modif, bl_node_t *parent, bool gen_in_compiletime)
 {
   bl_node_t *func = alloc_node(ast);
   if (tok)
     func->src = &tok->src;
 
-  func->code            = BL_DECL_FUNC;
-  bl_decl_func_t *_func = bl_peek_decl_func(func);
-  _func->block          = block;
-  _func->ret_type       = ret_type;
-  _func->modif          = modif;
-  _func->parent         = parent;
+  func->code                = BL_DECL_FUNC;
+  bl_decl_func_t *_func     = bl_peek_decl_func(func);
+  _func->block              = block;
+  _func->ret_type           = ret_type;
+  _func->modif              = modif;
+  _func->parent             = parent;
+  _func->gen_in_compiletime = gen_in_compiletime;
   bl_id_init(&(_func->id), name);
   bl_scopes_init(&(_func->scopes));
 

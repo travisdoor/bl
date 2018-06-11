@@ -1203,11 +1203,13 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected function name");
     }
 
-    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent);
+    fn = bl_ast_add_decl_func(cnt->ast, tok, tok->value.str, NULL, NULL, modif, parent,
+                              modif & BL_MODIF_UTEST);
     bl_node_t *prev_fn = cnt->curr_func;
     cnt->curr_func     = fn;
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
+      /*
       if (cnt->ast->entry_func) {
         bl_src_t *err_src = cnt->ast->entry_func->src;
         parse_error_node(cnt, BL_ERR_DUPLICATE_ENTRY, fn, BL_BUILDER_CUR_WORD,
@@ -1221,9 +1223,9 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
                          "main function can't be declared as " BL_YELLOW("'%s'"),
                          bl_sym_strings[BL_SYM_EXTERN]);
       }
+      */
 
-      bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT;
-      cnt->ast->entry_func         = fn;
+      bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT | BL_MODIF_ENTRY;
     }
 
     tok = bl_tokens_consume(cnt->tokens);

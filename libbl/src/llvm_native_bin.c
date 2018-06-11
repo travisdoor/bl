@@ -58,7 +58,6 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
     strcat(&buf[0], " -l");
     strcat(&buf[0], lib);
     bo_htbl_iter_next(assembly->link_cache, &iter);
-    bl_log("linking %s", lib);
   }
 
   bl_log("cmd %s", buf);

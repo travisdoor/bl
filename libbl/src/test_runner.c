@@ -43,6 +43,11 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bool         status              = false;
   char         tmp[MAX_REPORT_LEN] = {0};
 
+  if (!c) {
+    bl_msg_log(BL_YELLOW("no tests found"));
+    return BL_NO_ERR;
+  }
+  
   for (size_t i = 0; i < c; ++i) {
     utest = &bo_array_at(assembly->utest_methods, i, bl_utest_t);
     src   = utest->func->src;

@@ -57,7 +57,8 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [11/14]
+- [-] Other [11/15]
+  - [ ] Check for multiple or missing main function. 
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
