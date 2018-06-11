@@ -1,36 +1,7 @@
 /* testing playground */
 
-module A {
-  public struct foo {
-    i i32
-  }
-
-  public fn test(f foo) {}
-}
-
-module B {
-  public struct foo {
-    i i32,
-    j i32,
-  }
-
-  public fn test(f foo) {}
-}
-
-module C {
-  public struct foo {
-    i i32,
-    j i32,
-  }
-
-  public fn test(f foo) {}
-}
-
 fn main() {
-  using A;
-  using B;
-  using C;
-
-  mut f foo;
+  mut _i32 i32 = 0;
+  mut  u32 = 0;
 }
 

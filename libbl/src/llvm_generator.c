@@ -627,6 +627,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
                          (unsigned long long int)cnst->value.s, false);
       break;
     case BL_FTYPE_U64:
+    case BL_FTYPE_SIZE:
       val = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt),
                          (unsigned long long int)cnst->value.s, false);
       break;

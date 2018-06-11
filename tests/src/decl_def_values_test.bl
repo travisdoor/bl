@@ -24,14 +24,15 @@ module decl_def_values {
   #test
   fn decl_def_values() i32 {
     using std::utest;
-    mut _i8     i8 = cast(i8) 0;
-    mut _i16    i16 = cast(i16) 0;
+    mut _i8     i8 = 0;
+    mut _i16    i16 = 0;
     mut _i32    i32 = 0;
-    mut _i64    i64 = cast(i64) 0;
-    mut _u8     u8 = cast(u8) 0;
-    mut _u16    u16 = cast(u16) 0;
-    mut _u32    u32 = cast(u32) 0;
-    mut _u64    u64 = cast(u64) 0;
+    mut _i64    i64 = 0;
+    mut _u8     u8 = 0;
+    mut _u16    u16 = 0;
+    mut _u32    u32 = 0;
+    mut _u64    u64 = 0;
+    mut _size   size_t = 0;
     mut _f32    f32 = 0.f;
     mut _f64    f64 = 0.0;
     mut _char   char; // TODO

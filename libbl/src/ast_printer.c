@@ -240,30 +240,25 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 static void
 print_const_expr(bl_expr_const_t *expr)
 {
-  bl_type_fund_t *type = bl_peek_type_fund(expr->type);
-  switch (type->type) {
-  case BL_FTYPE_I8:
-  case BL_FTYPE_I32:
-  case BL_FTYPE_I64:
+  bl_type_kind_e kind = bl_type_get_kind(expr->type);
+  switch (kind) {
+  case BL_SINT_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%lld"), expr->value.s);
     break;
-  case BL_FTYPE_U8:
-  case BL_FTYPE_U32:
-  case BL_FTYPE_U64:
-  case BL_FTYPE_SIZE:
+  case BL_UINT_KIND:
+  case BL_SIZE_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%llu"), expr->value.u);
     break;
-  case BL_FTYPE_F32:
-  case BL_FTYPE_F64:
+  case BL_REAL_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%f"), expr->value.f);
     break;
-  case BL_FTYPE_BOOL:
+  case BL_BOOL_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%s"), expr->value.b ? "true" : "false");
     break;
-  case BL_FTYPE_STRING:
+  case BL_STR_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("'%s'"), expr->value.str);
     break;
-  case BL_FTYPE_CHAR:
+  case BL_CHAR_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%c"), expr->value.c);
     break;
   default:

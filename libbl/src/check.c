@@ -58,7 +58,7 @@ typedef struct
   bl_node_t      tmp_type;
   bl_builder_t * builder;
   bl_assembly_t *assembly;
-  bl_unit_t *    current_unit;
+  bl_unit_t *    unit;
 
   /* tmps */
   bl_node_t *curr_func;
@@ -282,12 +282,18 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool cons
     return _cnst->type;
 
   if (!bl_type_compatible(_cnst->type, expected_type)) {
-    bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-    bl_ast_try_get_type_name(_cnst->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+    bl_type_kind_e kind = bl_type_get_kind(expected_type);
+    if (kind == BL_SINT_KIND || kind == BL_UINT_KIND || kind == BL_SIZE_KIND) {
+      _cnst->type = bl_ast_dup_node(&cnt->unit->ast, expected_type);
+    } else {
+      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_try_get_type_name(_cnst->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
-    check_error(cnt, BL_ERR_INVALID_TYPE, cnst, BL_BUILDER_CUR_WORD,
-                "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
-                cnt->tname_tmp2, cnt->tname_tmp1);
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, cnst, BL_BUILDER_CUR_WORD,
+          "incompatible constant type " BL_YELLOW("'%s'") ", expected is " BL_YELLOW("'%s'"),
+          cnt->tname_tmp2, cnt->tname_tmp1);
+    }
   }
 
   return _cnst->type;
@@ -716,8 +722,8 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; ++i) {
-    unit             = bl_assembly_get_unit(assembly, i);
-    cnt.current_unit = unit;
+    unit     = bl_assembly_get_unit(assembly, i);
+    cnt.unit = unit;
     bl_visitor_walk_module(&visitor, unit->ast.root);
   }
 

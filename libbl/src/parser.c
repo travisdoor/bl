@@ -454,31 +454,31 @@ parse_const_expr_maybe(context_t *cnt)
   switch (tok->sym) {
   case BL_SYM_NUM:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, 0);
     const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, tok->value.u);
     break;
 
   case BL_SYM_STRING:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING, 0);
     const_expr = bl_ast_add_expr_const_str(cnt->ast, tok, type, tok->value.str);
     break;
 
   case BL_SYM_FLOAT:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32, 0);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_DOUBLE:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64, 0);
     const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_CHAR:
     bl_tokens_consume(cnt->tokens);
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR, 0);
     const_expr = bl_ast_add_expr_const_char(cnt->ast, tok, type, tok->value.c);
     break;
 
@@ -493,7 +493,7 @@ parse_const_expr_maybe(context_t *cnt)
   case BL_SYM_FALSE: {
     bl_tokens_consume(cnt->tokens);
     bool val   = tok->sym == BL_SYM_TRUE;
-    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL, false);
+    type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL, 0);
     const_expr = bl_ast_add_expr_const_bool(cnt->ast, tok, type, val);
 
     break;
