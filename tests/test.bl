@@ -17,9 +17,19 @@ module B {
   public fn test(f foo) {}
 }
 
+module C {
+  public struct foo {
+    i i32,
+    j i32,
+  }
+
+  public fn test(f foo) {}
+}
+
 fn main() {
   using A;
   using B;
+  using C;
 
   mut f foo;
 }

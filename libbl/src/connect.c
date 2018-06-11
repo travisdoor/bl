@@ -84,11 +84,11 @@ static bl_node_t *
 lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
 static bl_node_t *
-lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
+lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by,
                bool *found_in_curr_branch);
 
 static bl_node_t *
-lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by);
+lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by);
 
 static void
 connect_type(context_t *cnt, bl_node_t *type);
@@ -193,8 +193,8 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
   bl_node_t *  path_elem      = bo_array_at(path, 0, bl_node_t *);
   bl_node_t *  linked_by      = NULL;
   bool         in_curr_branch = false;
-  bl_node_t *  found = lookup_in_tree(cnt, &bl_peek_path_elem(path_elem)->id, cnt->curr_compound,
-                                    &linked_by, &in_curr_branch);
+  bl_node_t *  found =
+      lookup_in_tree(cnt, path_elem, cnt->curr_compound, &linked_by, &in_curr_branch);
 
   if (validator)
     validator(cnt, path_elem, found, c == 1);
@@ -208,7 +208,7 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
 
   for (size_t i = 1; i < c; ++i) {
     path_elem = bo_array_at(path, i, bl_node_t *);
-    found     = lookup_in_scope(cnt, &bl_peek_path_elem(path_elem)->id, found, &linked_by);
+    found     = lookup_in_scope(cnt, path_elem, found, &linked_by);
 
     if (validator)
       validator(cnt, path_elem, found, c == i + 1);
@@ -228,12 +228,12 @@ lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_
 }
 
 bl_node_t *
-lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by,
+lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by,
                bool *found_in_curr_branch)
 {
-  bl_node_t *  found             = NULL;
-  bl_node_t *  tmp_curr_compound = curr_compound;
-  bl_node_t *  prev_compound     = NULL;
+  bl_node_t *found             = NULL;
+  bl_node_t *tmp_curr_compound = curr_compound;
+  bl_node_t *prev_compound     = NULL;
 
   if (found_in_curr_branch)
     (*found_in_curr_branch) = false;
@@ -242,7 +242,7 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
     if (bl_node_is(tmp_curr_compound, BL_STMT_IF) || bl_node_is(tmp_curr_compound, BL_STMT_LOOP))
       goto skip;
 
-    found = lookup_in_scope(cnt, id, tmp_curr_compound, linked_by);
+    found = lookup_in_scope(cnt, ref, tmp_curr_compound, linked_by);
 
     if (found == NULL)
       prev_compound = tmp_curr_compound;
@@ -258,18 +258,39 @@ lookup_in_tree(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t 
 }
 
 bl_node_t *
-lookup_in_scope(context_t *cnt, bl_id_t *id, bl_node_t *curr_compound, bl_node_t **linked_by)
+lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
   bl_scopes_t *scopes = bl_ast_try_get_scopes(curr_compound);
   bl_assert(scopes, "invalid scopes");
 
+  bl_id_t *id = bl_ast_try_get_id(ref);
+  bl_assert(id, "invalid id for node %s", bl_node_name(ref));
+
   /* test */
-  bl_found_node_tuple_t found[3];
-  int c = bl_scopes_get_nodes(scopes, id, found, 3);
-  for (int i = 0; i < c; ++i) 
-    bl_log("found: %p linked by %p", found[i].node, found[i].linked_by);
-  
-  return bl_scopes_get_node(scopes, id, linked_by);
+  bl_found_node_tuple_t found[5];
+  int                   c = bl_scopes_get_nodes(scopes, id, found, 5);
+
+  if (c > 1) {
+    connect_warning(cnt, ref, BL_BUILDER_CUR_WORD, "ambiguous symbol " BL_YELLOW("'%s'"), id->str);
+    for (int i = 0; i < c; ++i) {
+      connect_warning(cnt, found[i].node, BL_BUILDER_CUR_WORD,
+                      "%s"
+                      "declared here:",
+                      i > 0 ? "other " : "first and used ");
+      // ambiguous
+      connect_warning(cnt, found[i].linked_by, BL_BUILDER_CUR_WORD, "ambiguity caused by:");
+    }
+  }
+
+  if (c) {
+    if (linked_by)
+      (*linked_by) = found[0].linked_by;
+    return found[0].node;
+  }
+
+  if (linked_by)
+    (*linked_by) = NULL;
+  return NULL;
 }
 
 void
@@ -301,7 +322,7 @@ connect_const(context_t *cnt, bl_node_t *cnst)
   bl_decl_const_t *_cnst     = bl_peek_decl_const(cnst);
   bl_scopes_t *    scopes    = bl_ast_try_get_scopes(cnt->curr_compound);
   bl_node_t *      linked_by = NULL;
-  bl_node_t *      conflict = lookup_in_tree(cnt, &_cnst->id, cnt->curr_compound, &linked_by, NULL);
+  bl_node_t *      conflict  = lookup_in_tree(cnt, cnst, cnt->curr_compound, &linked_by, NULL);
 
   if (conflict) {
     if (linked_by == cnt->curr_compound) {
@@ -390,12 +411,11 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   }
 
   /* determinate if struct is declared in current tree and private members can be referenced too */
-  bl_node_t *linked_by = NULL;
-  bool       in_curr_branch =
-      lookup_in_tree(cnt, &bl_peek_decl_struct(&type)->id, cnt->curr_compound, &linked_by, NULL);
-  bool ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
+  bl_node_t *linked_by      = NULL;
+  bool       in_curr_branch = lookup_in_tree(cnt, &type, cnt->curr_compound, &linked_by, NULL);
+  bool       ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
 
-  bl_node_t *ref = lookup_in_scope(cnt, &_member_ref->id, &type, NULL);
+  bl_node_t *ref = lookup_in_scope(cnt, member_ref, &type, NULL);
   if (!ref) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref, BL_BUILDER_CUR_WORD,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
@@ -456,7 +476,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t *module)
   bl_decl_module_t *_module  = bl_peek_decl_module(module);
   context_t *       cnt      = peek_cnt(visitor);
   bl_node_t *       prev_cmp = cnt->curr_compound;
-  bl_node_t *       conflict = lookup_in_scope(cnt, &_module->id, prev_cmp, NULL);
+  bl_node_t *       conflict = lookup_in_scope(cnt, module, prev_cmp, NULL);
 
   cnt->curr_compound = module;
 
@@ -500,7 +520,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm     = bl_peek_decl_enum(enm);
   context_t *     cnt      = peek_cnt(visitor);
-  bl_node_t *     conflict = lookup_in_tree(cnt, &_enm->id, cnt->curr_compound, NULL, NULL);
+  bl_node_t *     conflict = lookup_in_tree(cnt, enm, cnt->curr_compound, NULL, NULL);
 
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, enm, BL_BUILDER_CUR_WORD,
@@ -538,7 +558,7 @@ first_pass_func(bl_visitor_t *visitor, bl_node_t *func)
 {
   context_t *     cnt      = peek_cnt(visitor);
   bl_decl_func_t *_func    = bl_peek_decl_func(func);
-  bl_node_t *     conflict = lookup_in_scope(cnt, &_func->id, cnt->curr_compound, NULL);
+  bl_node_t *     conflict = lookup_in_scope(cnt, func, cnt->curr_compound, NULL);
 
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, func, BL_BUILDER_CUR_WORD,
@@ -561,7 +581,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   bl_decl_struct_t *_strct   = bl_peek_decl_struct(strct);
   context_t *       cnt      = peek_cnt(visitor);
-  bl_node_t *       conflict = lookup_in_scope(cnt, &_strct->id, cnt->curr_compound, NULL);
+  bl_node_t *       conflict = lookup_in_scope(cnt, strct, cnt->curr_compound, NULL);
 
   if (conflict) {
     connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, strct, BL_BUILDER_CUR_WORD,
@@ -796,7 +816,7 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t *mut)
     return;
   }
 
-  bl_node_t *conflict = lookup_in_tree(cnt, &_mut->id, cnt->curr_compound, &linked_by, NULL);
+  bl_node_t *conflict = lookup_in_tree(cnt, mut, cnt->curr_compound, &linked_by, NULL);
   if (conflict) {
     /* some nodes can lead to another compound blocks but they has no context, we shoud skip them */
     if (linked_by == cnt->curr_compound) {
@@ -834,7 +854,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   for (size_t i = 0; i < c; ++i) {
     arg = bl_ast_func_get_arg(_func, i);
 
-    bl_node_t *conflict = lookup_in_scope(cnt, &bl_peek_decl_arg(arg)->id, func, NULL);
+    bl_node_t *conflict = lookup_in_scope(cnt, arg, func, NULL);
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg, BL_BUILDER_CUR_WORD,
                     "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",

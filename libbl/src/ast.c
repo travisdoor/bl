@@ -1018,6 +1018,10 @@ bl_ast_try_get_id(bl_node_t *node)
     return &bl_peek_decl_struct(node)->id;
   case BL_DECL_ENUM:
     return &bl_peek_decl_enum(node)->id;
+  case BL_PATH_ELEM:
+    return &bl_peek_path_elem(node)->id;
+  case BL_EXPR_MEMBER_REF:
+    return &bl_peek_expr_member_ref(node)->id;
   default:
     return NULL;
   }
