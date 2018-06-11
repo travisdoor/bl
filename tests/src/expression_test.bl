@@ -36,13 +36,13 @@ module exprs {
   
     //const ca i32 = -1; // ERROR cannot be evaluated
   
-    if a != (0 - 1) { return FAIL; };
-    if b != (0 - 4) { return FAIL; };
-    if c != 4 { return FAIL; };
-    if d != 1 { return FAIL; };
-    if e != 3 { return FAIL; };
-    if f != (0 - 5) { return FAIL; };
-    if g != (0 - 60) { return FAIL; };
+    if a != (0 - 1) { return FAIL; }
+    if b != (0 - 4) { return FAIL; }
+    if c != 4 { return FAIL; }
+    if d != 1 { return FAIL; }
+    if e != 3 { return FAIL; }
+    if f != (0 - 5) { return FAIL; }
+    if g != (0 - 60) { return FAIL; }
   
     return SUCCESS;
   }
