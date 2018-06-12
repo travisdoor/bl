@@ -411,6 +411,7 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
   if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
     bl_token_t *tok_id = bl_tokens_peek_prev(cnt->tokens);
     call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path, run_in_compile_time);
+    bl_expr_call_t *_call = bl_peek_expr_call(call);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
     if (tok->sym != BL_SYM_LPAREN) {
@@ -420,9 +421,16 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
 
     /* parse args */
     bool            rq    = false;
-    bl_expr_call_t *_call = bl_peek_expr_call(call);
+    bl_node_t * prev = call;
+    bl_node_t **arg  = &_call->_args;
   arg:
-    if (bl_ast_call_push_arg(_call, parse_expr_maybe(cnt))) {
+    *arg = parse_expr_maybe(cnt);
+    if (*arg) {
+      _call->argsc++;
+      (*arg)->prev = prev;
+      prev         = *arg;
+      arg          = &(*arg)->next;
+
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         rq = true;
         goto arg;
@@ -1205,8 +1213,9 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 
     fn = bl_ast_add_decl_func(cnt->ast, tok_id, tok_id->value.str, NULL, NULL, modif, parent,
                               modif & BL_MODIF_UTEST);
-    bl_node_t *prev_fn = cnt->curr_func;
-    cnt->curr_func     = fn;
+    bl_decl_func_t *_fn     = bl_peek_decl_func(fn);
+    bl_node_t *     prev_fn = cnt->curr_func;
+    cnt->curr_func          = fn;
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
       bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT | BL_MODIF_ENTRY;
@@ -1219,11 +1228,17 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     }
 
     /* parse args */
-    bool       rq = false;
-    bl_node_t *arg;
+    bool        rq   = false;
+    bl_node_t * prev = fn;
+    bl_node_t **arg  = &_fn->_args;
   arg:
-    arg = parse_arg_maybe(cnt);
-    if (bl_ast_func_push_arg(bl_peek_decl_func(fn), arg)) {
+    *arg = parse_arg_maybe(cnt);
+    if (*arg) {
+      _fn->argsc++;
+      (*arg)->prev = prev;
+      prev         = *arg;
+      arg          = &(*arg)->next;
+
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         rq = true;
         goto arg;
@@ -1234,10 +1249,10 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
                   "expected function argument after comma " BL_YELLOW("','"));
     }
 
-    if (bl_ast_func_arg_count(bl_peek_decl_func(fn)) > BL_MAX_FUNC_ARG_COUNT) {
+    if (bl_peek_decl_func(fn)->argsc > BL_MAX_FUNC_ARG_COUNT) {
       parse_error_node(cnt, BL_ERR_INVALID_PARAM_COUNT, fn, BL_BUILDER_CUR_WORD,
                        "maximum argument count reached (%d) in declaration of " BL_YELLOW("'%s'"),
-                       BL_MAX_FUNC_ARG_COUNT, bl_peek_decl_func(fn)->id.str);
+                       BL_MAX_FUNC_ARG_COUNT, _fn->id.str);
     }
 
     tok = bl_tokens_consume(cnt->tokens);
@@ -1250,24 +1265,23 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     /*
      * parse function return type definition, and use void if there is no type specified
      */
-    bl_peek_decl_func(fn)->ret_type = parse_ret_type_rq(cnt);
-    bl_node_t *block                = parse_block_maybe(cnt, fn);
+    _fn->ret_type    = parse_ret_type_rq(cnt);
+    bl_node_t *block = parse_block_maybe(cnt, fn);
 
     if (modif & BL_MODIF_EXTERN) {
       if (block != NULL) {
         parse_error_node(cnt, BL_ERR_UNEXPECTED_DECL, fn, BL_BUILDER_CUR_WORD,
-                         "extern function " BL_YELLOW("'%s'") " can't have body",
-                         bl_peek_decl_func(fn)->id.str);
+                         "extern function " BL_YELLOW("'%s'") " can't have body", _fn->id.str);
       }
 
       parse_semicolon_rq(cnt);
     } else if (block == NULL) {
       parse_error_node(cnt, BL_ERR_EXPECTED_BODY, fn, BL_BUILDER_CUR_WORD,
-                       "function " BL_YELLOW("'%s'") " has no body", bl_peek_decl_func(fn)->id.str);
+                       "function " BL_YELLOW("'%s'") " has no body", _fn->id.str);
     }
 
-    bl_peek_decl_func(fn)->block = block;
-    cnt->curr_func               = prev_fn;
+    _fn->block     = block;
+    cnt->curr_func = prev_fn;
   }
 
   return fn;

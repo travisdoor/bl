@@ -332,14 +332,13 @@ bl_visitor_walk_func(bl_visitor_t *visitor, bl_node_t *func)
   visitor->nesting++;
 
   bl_decl_func_t *fn  = bl_peek_decl_func(func);
-  const size_t    c   = bl_ast_func_arg_count(bl_peek_decl_func(func));
-  bl_node_t *     arg = NULL;
 
-  for (size_t i = 0; i < c; ++i) {
-    arg = bl_ast_func_get_arg(bl_peek_decl_func(func), i);
+  bl_node_t *     arg = fn->_args;
+  while (arg) {
     call_visit(visitor, arg, BL_VISIT_ARG);
+    arg = arg->next;
   }
-
+  
   call_visit(visitor, fn->ret_type, BL_VISIT_TYPE);
 
   if (bl_peek_decl_func(func)->block) {
@@ -521,12 +520,12 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
   }
 
   case BL_EXPR_CALL: {
-    bl_expr_call_t *call = bl_peek_expr_call(expr);
-    const size_t    c    = bl_ast_call_arg_count(call);
-    bl_node_t *     arg  = NULL;
-    for (size_t i = 0; i < c; ++i) {
-      arg = bl_ast_call_get_arg(call, i);
+    bl_expr_call_t *_call = bl_peek_expr_call(expr);
+    bl_node_t *     arg  = _call->_args;
+
+    while (arg) {
       call_visit(visitor, arg, BL_VISIT_EXPR);
+      arg = arg->next;
     }
     break;
   }

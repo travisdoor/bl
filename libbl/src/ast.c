@@ -62,7 +62,6 @@ node_terminate(bl_node_t *node)
     bl_scopes_terminate(&bl_peek_decl_module(node)->scopes);
     break;
   case BL_DECL_FUNC:
-    bo_unref(bl_peek_decl_func(node)->args);
     bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
     break;
   case BL_DECL_BLOCK:
@@ -70,7 +69,6 @@ node_terminate(bl_node_t *node)
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
     break;
   case BL_EXPR_CALL:
-    bo_unref(bl_peek_expr_call(node)->args);
     bo_unref(bl_peek_expr_call(node)->path);
     break;
   case BL_EXPR_DECL_REF:
@@ -691,39 +689,6 @@ bl_ast_module_get_node(bl_decl_module_t *module, size_t i)
 }
 
 /*************************************************************************************************
- * function
- *************************************************************************************************/
-bl_node_t *
-bl_ast_func_push_arg(bl_decl_func_t *func, bl_node_t *arg)
-{
-  if (arg == NULL)
-    return NULL;
-
-  if (func->args == NULL) {
-    func->args = bo_array_new(sizeof(bl_node_t *));
-  }
-
-  bo_array_push_back(func->args, arg);
-  return arg;
-}
-
-size_t
-bl_ast_func_arg_count(bl_decl_func_t *func)
-{
-  if (func->args == NULL)
-    return 0;
-  return bo_array_size(func->args);
-}
-
-bl_node_t *
-bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i)
-{
-  if (func->args == NULL)
-    return NULL;
-  return bo_array_at(func->args, i, bl_node_t *);
-}
-
-/*************************************************************************************************
  * block
  *************************************************************************************************/
 bl_node_t *
@@ -754,40 +719,6 @@ bl_ast_block_get_node(bl_decl_block_t *block, const size_t i)
   if (block->nodes == NULL)
     return NULL;
   return bo_array_at(block->nodes, i, bl_node_t *);
-}
-
-/*************************************************************************************************
- * call
- *************************************************************************************************/
-bl_node_t *
-bl_ast_call_push_arg(bl_expr_call_t *call, bl_node_t *arg)
-{
-  if (arg == NULL)
-    return NULL;
-
-  if (call->args == NULL) {
-    call->args = bo_array_new(sizeof(bl_node_t *));
-  }
-
-  bo_array_push_back(call->args, arg);
-  return arg;
-}
-
-size_t
-bl_ast_call_arg_count(bl_expr_call_t *call)
-{
-  if (call->args == NULL)
-    return 0;
-
-  return bo_array_size(call->args);
-}
-
-bl_node_t *
-bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i)
-{
-  if (call->args == NULL)
-    return NULL;
-  return bo_array_at(call->args, i, bl_node_t *);
 }
 
 /*************************************************************************************************

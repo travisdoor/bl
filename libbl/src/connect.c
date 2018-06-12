@@ -849,11 +849,9 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   cnt->curr_compound = func;
   cnt->curr_func     = func;
 
-  const size_t c = bl_ast_func_arg_count(_func);
-  bl_node_t *  arg;
-  for (size_t i = 0; i < c; ++i) {
-    arg = bl_ast_func_get_arg(_func, i);
-
+  // TODO can be solved via visitor because we use walk later
+  bl_node_t *arg = _func->_args;
+  while (arg) {
     bl_node_t *conflict = lookup_in_scope(cnt, arg, func, NULL);
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg, BL_BUILDER_CUR_WORD,
@@ -863,6 +861,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
     } else {
       bl_scopes_insert_node(&_func->scopes, arg);
     }
+    arg = arg->next;
   }
 
   bl_visitor_walk_func(visitor, func);

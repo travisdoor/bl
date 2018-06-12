@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_AST2_IMPL_H
-#define BL_AST2_IMPL_H
+#ifndef BL_AST_IMPL_H
+#define BL_AST_IMPL_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
@@ -89,6 +89,8 @@
     nt(PRE_LINK,           pre_link)
 
 // clang-format on
+
+#define BL_AST_TERMINATE 0
 
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
@@ -265,11 +267,14 @@ struct bl_decl_arg
 
 struct bl_decl_func
 {
-  bl_id_t     id;                 /* identificator */
-  bl_node_t * parent;             /* parent node */
-  int         modif;              /* modificator */
-  int         used;               /* count of usage */
-  BArray *    args;               /* array of arguments */
+  bl_id_t    id;     /* identificator */
+  bl_node_t *parent; /* parent node */
+  int        modif;  /* modificator */
+  int        used;   /* count of usage */
+
+  bl_node_t *_args;
+  int        argsc;
+
   bl_node_t * block;              /* function block (for extern function is NULL) */
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
@@ -369,9 +374,10 @@ struct bl_expr_array_ref
 
 struct bl_expr_call
 {
-  BArray *   path; /* path */
-  bl_node_t *ref;  /* reference to function */
-  BArray *   args; /* argument list passed into function */
+  BArray *   path;  /* path */
+  bl_node_t *ref;   /* reference to function */
+  bl_node_t *_args; /* argument list passed into function */
+  int        argsc;
   bool       run_in_compile_time;
 };
 
@@ -409,6 +415,9 @@ struct bl_node
 {
   bl_src_t *     src;
   bl_node_code_e code;
+
+  bl_node_t *next;
+  bl_node_t *prev;
 
   union
   {
@@ -582,18 +591,6 @@ bl_node_t *
 bl_ast_module_get_node(bl_decl_module_t *module, size_t i);
 
 /*************************************************************************************************
- * function
- *************************************************************************************************/
-bl_node_t *
-bl_ast_func_push_arg(bl_decl_func_t *func, bl_node_t *arg);
-
-size_t
-bl_ast_func_arg_count(bl_decl_func_t *func);
-
-bl_node_t *
-bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i);
-
-/*************************************************************************************************
  * block
  *************************************************************************************************/
 bl_node_t *
@@ -604,18 +601,6 @@ bl_ast_block_node_count(bl_decl_block_t *block);
 
 bl_node_t *
 bl_ast_block_get_node(bl_decl_block_t *block, const size_t i);
-
-/*************************************************************************************************
- * call
- *************************************************************************************************/
-bl_node_t *
-bl_ast_call_push_arg(bl_expr_call_t *call, bl_node_t *node);
-
-size_t
-bl_ast_call_arg_count(bl_expr_call_t *call);
-
-bl_node_t *
-bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i);
 
 /*************************************************************************************************
  * init

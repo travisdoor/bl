@@ -272,32 +272,29 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
     }
   }
 
-  const size_t call_arg_c   = bl_ast_call_arg_count(_call);
-  const size_t callee_arg_c = bl_ast_func_arg_count(_callee);
-
-  if (_call->run_in_compile_time && call_arg_c) {
+  if (_call->run_in_compile_time && _call->argsc) {
     check_error(cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
                 "calling function " BL_YELLOW(
                     "'%s'") " in compile time with parameters is not supported for now!!!",
                 _callee->id.str);
   }
 
-  if (call_arg_c != callee_arg_c) {
+  if (_call->argsc != _callee->argsc) {
     check_error(
         cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
         "invalid argument count in " BL_YELLOW(
             "'%s'") " function call, expected is %d but called with %d, declared here: %s:%d:%d",
-        _callee->id.str, callee_arg_c, call_arg_c, callee->src->unit->filepath, callee->src->line,
+        _callee->id.str, _callee->argsc, _call->argsc, callee->src->unit->filepath, callee->src->line,
         callee->src->col);
   }
 
-  bl_node_t *callee_arg;
-  bl_node_t *call_arg;
-  for (size_t i = 0; i < call_arg_c; ++i) {
-    callee_arg = bl_ast_func_get_arg(_callee, i);
-    call_arg   = bl_ast_call_get_arg(_call, i);
-
+  bl_node_t *callee_arg = _callee->_args;
+  bl_node_t *call_arg = _call->_args;
+  while (callee_arg) {
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
+
+    callee_arg = callee_arg->next;
+    call_arg   = call_arg->next;
   }
 
   return _callee->ret_type;
@@ -341,7 +338,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
 
   case BL_EXPR_INIT: {
     ref_type = bl_peek_expr_init(ref)->type;
-    
+
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
@@ -681,7 +678,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   }
 
   if (_func->modif & BL_MODIF_UTEST) {
-    if (bl_ast_func_arg_count(_func)) {
+    if (_func->argsc) {
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, func, BL_BUILDER_CUR_WORD,
           "function " BL_YELLOW("'%s'") " is marked as #test, those functions are invoked in "
