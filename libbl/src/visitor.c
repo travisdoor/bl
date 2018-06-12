@@ -390,12 +390,10 @@ bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
   visitor->nesting++;
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
-  const size_t      c      = bl_ast_struct_member_count(_strct);
-  bl_node_t *       member = NULL;
-
-  for (size_t i = 0; i < c; ++i) {
-    member = bl_ast_struct_get_member(_strct, i);
+  bl_node_t *       member = _strct->_members;
+  while (member) {
     call_visit(visitor, member, BL_VISIT_STRUCT_MEMBER);
+    member = member->next;
   }
 
   visitor->nesting--;
@@ -510,11 +508,10 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t *expr)
     if (_init->type)
       call_visit(visitor, _init->type, BL_VISIT_TYPE);
 
-    const size_t c    = bl_ast_init_expr_count(_init);
-    bl_node_t *  expr = NULL;
-    for (size_t i = 0; i < c; ++i) {
-      expr = bl_ast_init_get_expr(_init, i);
+    bl_node_t *  expr = _init->_exprs;
+    while (expr) {
       call_visit(visitor, expr, BL_VISIT_EXPR);
+      expr = expr->next;
     }
     break;
   }

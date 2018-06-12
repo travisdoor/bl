@@ -225,8 +225,8 @@ struct bl_expr_cast
 
 struct bl_expr_init
 {
-  bl_node_t *type;  /* initialization list type result */
-  BArray *   exprs; /* array of initializators */
+  bl_node_t *type; /* initialization list type result */
+  bl_node_t *_exprs;
 };
 
 /* module declaration */
@@ -283,11 +283,12 @@ struct bl_decl_func
 
 struct bl_decl_struct
 {
-  bl_id_t     id;      /* structure id */
-  int         modif;   /* modificators */
-  int         used;    /* count of usage */
-  BArray *    members; /* array of members */
-  bl_scopes_t scopes;  /* scope cache */
+  bl_id_t     id;    /* structure id */
+  int         modif; /* modificators */
+  int         used;  /* count of usage */
+  bl_node_t * _members;
+  int         membersc;
+  bl_scopes_t scopes; /* scope cache */
 };
 
 struct bl_decl_struct_member
@@ -601,30 +602,6 @@ bl_ast_block_node_count(bl_decl_block_t *block);
 
 bl_node_t *
 bl_ast_block_get_node(bl_decl_block_t *block, const size_t i);
-
-/*************************************************************************************************
- * init
- *************************************************************************************************/
-bl_node_t *
-bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr);
-
-size_t
-bl_ast_init_expr_count(bl_expr_init_t *init);
-
-bl_node_t *
-bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i);
-
-/*************************************************************************************************
- * struct
- *************************************************************************************************/
-bl_node_t *
-bl_ast_struct_push_member(bl_decl_struct_t *strct, bl_node_t *member);
-
-size_t
-bl_ast_struct_member_count(bl_decl_struct_t *strct);
-
-bl_node_t *
-bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
 
 /*************************************************************************************************
  * enum

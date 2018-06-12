@@ -409,8 +409,8 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
 
   bl_node_t *call = NULL;
   if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
-    bl_token_t *tok_id = bl_tokens_peek_prev(cnt->tokens);
-    call               = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path, run_in_compile_time);
+    bl_token_t *tok_id    = bl_tokens_peek_prev(cnt->tokens);
+    call                  = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path, run_in_compile_time);
     bl_expr_call_t *_call = bl_peek_expr_call(call);
 
     bl_token_t *tok = bl_tokens_consume(cnt->tokens);
@@ -420,7 +420,7 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
     }
 
     /* parse args */
-    bool            rq    = false;
+    bool        rq   = false;
     bl_node_t * prev = call;
     bl_node_t **arg  = &_call->_args;
   arg:
@@ -1322,17 +1322,22 @@ parse_init_expr_maybe(context_t *cnt)
 
   bl_node_t *     init  = bl_ast_add_expr_init(cnt->ast, tok_begin, type);
   bl_expr_init_t *_init = bl_peek_expr_init(init);
-  bl_node_t *     expr  = NULL;
   bl_token_t *    tok   = NULL;
 
   bl_node_t *prev_init_list = cnt->curr_init_list;
   cnt->curr_init_list       = init;
 
+  bl_node_t * prev = init;
+  bl_node_t **expr = &_init->_exprs;
   /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
 next_expr:
   /* eat ident */
-  expr = parse_expr_maybe(cnt);
-  if (bl_ast_init_push_expr(_init, expr)) {
+  *expr = parse_expr_maybe(cnt);
+  if (*expr) {
+    (*expr)->prev = prev;
+    prev          = *expr;
+    expr          = &(*expr)->next;
+
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       goto next_expr;
     } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
@@ -1420,13 +1425,18 @@ parse_struct_maybe(context_t *cnt, int modif)
                   "expected struct body " BL_YELLOW("'{'"));
     }
 
-    int        order = 0;
-    bl_node_t *member;
+    int         order  = 0;
+    bl_node_t * prev   = strct;
+    bl_node_t **member = &_strct->_members;
   member:
     /* eat ident */
-    member = parse_struct_member_maybe(cnt);
-    if (bl_ast_struct_push_member(_strct, member)) {
-      bl_peek_decl_struct_member(member)->order = order++;
+    *member = parse_struct_member_maybe(cnt);
+    if (*member) {
+      bl_peek_decl_struct_member(*member)->order = order++;
+      _strct->membersc++;
+      (*member)->prev = prev;
+      prev            = *member;
+      member          = &(*member)->next;
 
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto member;

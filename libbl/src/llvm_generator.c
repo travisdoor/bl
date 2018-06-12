@@ -263,12 +263,10 @@ gen_init(context_t *cnt, bl_node_t *init)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(init, result);
 
-  const size_t c    = bl_ast_init_expr_count(_init);
-  bl_node_t *  expr = NULL;
-
-  for (size_t i = 0; i < c; ++i) {
-    expr = bl_ast_init_get_expr(_init, i);
+  bl_node_t *expr = _init->_exprs;
+  while (expr) {
     gen_expr(cnt, expr);
+    expr = expr->next;
   }
 
   return result;
@@ -289,16 +287,16 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   type = LLVMStructCreateNamed(cnt->llvm_cnt, _strct->id.str);
   push_value_gscope(strct, type);
 
-  const size_t c       = bl_ast_struct_member_count(_strct);
-  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
-  bl_node_t *  member;
+  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * _strct->membersc);
+  bl_node_t *  member  = _strct->_members;
+  int          i       = 0;
 
-  for (size_t i = 0; i < c; ++i) {
-    member     = bl_ast_struct_get_member(_strct, i);
-    members[i] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
+  while (member && i < _strct->membersc) {
+    members[i++] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
+    member       = member->next;
   }
 
-  LLVMStructSetBody(type, members, (unsigned int)c, false);
+  LLVMStructSetBody(type, members, (unsigned int) i, false);
   bl_free(members);
 
   return type;

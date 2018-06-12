@@ -146,12 +146,11 @@ bl_node_t *
 check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(init);
-  const size_t    c     = bl_ast_init_expr_count(_init);
-  bl_node_t *     expr  = NULL;
+  bl_node_t *     expr  = _init->_exprs;
 
-  for (size_t i = 0; i < c; ++i) {
-    expr = bl_ast_init_get_expr(_init, i);
+  while (expr) {
     check_expr(cnt, expr, NULL, const_expr);
+    expr = expr->next;
   }
 
   return NULL;
@@ -224,14 +223,17 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
   }
 
   bl_node_t *next_type = check_expr(cnt, _member_ref->next, NULL, const_expr);
-  if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
-                "expected reference access operator " BL_YELLOW("'->'"));
-  }
+  // HACK
+  if (next_type) {
+    if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                  "expected reference access operator " BL_YELLOW("'->'"));
+    }
 
-  if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
-                "expected access operator " BL_YELLOW("'.'"));
+    if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                  "expected access operator " BL_YELLOW("'.'"));
+    }
   }
 
   return bl_peek_decl_struct_member(_member_ref->ref)->type;
@@ -284,12 +286,12 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
         cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
         "invalid argument count in " BL_YELLOW(
             "'%s'") " function call, expected is %d but called with %d, declared here: %s:%d:%d",
-        _callee->id.str, _callee->argsc, _call->argsc, callee->src->unit->filepath, callee->src->line,
-        callee->src->col);
+        _callee->id.str, _callee->argsc, _call->argsc, callee->src->unit->filepath,
+        callee->src->line, callee->src->col);
   }
 
   bl_node_t *callee_arg = _callee->_args;
-  bl_node_t *call_arg = _call->_args;
+  bl_node_t *call_arg   = _call->_args;
   while (callee_arg) {
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
 
@@ -588,18 +590,16 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
                   "structure " BL_YELLOW("'%s'") " is declared but never used", _strct->id.str);
   }
 
-  if (bl_ast_struct_member_count(_strct) == 0) {
+  if (_strct->membersc == 0) {
     check_warning(cnt, strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
                   _strct->id.str);
   }
 
   /* check all memebrs of structure */
-  bl_node_t *              member  = NULL;
+  bl_node_t *              member  = _strct->_members;
   bl_decl_struct_member_t *_member = NULL;
-  const size_t             c       = bl_ast_struct_member_count(_strct);
 
-  for (size_t i = 0; i < c; ++i) {
-    member  = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     _member = bl_peek_decl_struct_member(member);
 
     if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
@@ -607,6 +607,8 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
                   "structure cannot contains self-typed member " BL_YELLOW("'%s'"),
                   _member->id.str);
     }
+
+    member = member->next;
   }
 }
 

@@ -594,11 +594,9 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_strct->scopes, scope, strct);
 
-  bl_node_t *member = NULL;
+  bl_node_t *member = _strct->_members;
 
-  const size_t c = bl_ast_struct_member_count(_strct);
-  for (size_t i = 0; i < c; ++i) {
-    member   = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
@@ -610,6 +608,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
     }
 
     bl_scope_insert_node(scope, member);
+    member = member->next;
   }
 
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
@@ -647,15 +646,15 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t *using)
 void
 second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
-  context_t *              cnt    = peek_cnt(visitor);
-  bl_decl_struct_t *       _strct = bl_peek_decl_struct(strct);
-  const size_t             c      = bl_ast_struct_member_count(_strct);
-  bl_node_t *              member;
+  context_t *       cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+
+  bl_node_t *              member = _strct->_members;
   bl_decl_struct_member_t *_member;
-  for (size_t i = 0; i < c; ++i) {
-    member  = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     _member = bl_peek_decl_struct_member(member);
     connect_type(cnt, _member->type);
+    member = member->next;
   }
 }
 
