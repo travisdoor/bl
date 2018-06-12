@@ -64,6 +64,7 @@ typedef struct
   bl_node_t *curr_func;
   jmp_buf    jmp_error;
   bool       fn_has_return;
+  bl_node_t *entry_fn;
 } context_t;
 
 static inline bl_node_t *
@@ -117,6 +118,9 @@ static bl_node_t *
 check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
+check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr);
+
+static bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
@@ -136,6 +140,22 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
 
 static bl_node_t *
 check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const_expr);
+
+/* impl */
+bl_node_t *
+check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr)
+{
+  bl_expr_init_t *_init = bl_peek_expr_init(init);
+  const size_t    c     = bl_ast_init_expr_count(_init);
+  bl_node_t *     expr  = NULL;
+
+  for (size_t i = 0; i < c; ++i) {
+    expr = bl_ast_init_get_expr(_init, i);
+    check_expr(cnt, expr, NULL, const_expr);
+  }
+
+  return NULL;
+}
 
 bl_node_t *
 check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool const_expr)
@@ -203,7 +223,17 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
                 cnt->tname_tmp1, cnt->tname_tmp2);
   }
 
-  check_expr(cnt, _member_ref->next, NULL, const_expr);
+  bl_node_t *next_type = check_expr(cnt, _member_ref->next, NULL, const_expr);
+  if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                "expected reference access operator " BL_YELLOW("'->'"));
+  }
+
+  if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                "expected access operator " BL_YELLOW("'.'"));
+  }
+
   return bl_peek_decl_struct_member(_member_ref->ref)->type;
 }
 
@@ -308,6 +338,23 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
   bl_assert(ref, "invalid reference");
 
   switch (bl_node_code(ref)) {
+
+  case BL_EXPR_INIT: {
+    ref_type = bl_peek_expr_init(ref)->type;
+    
+    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
+      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+
+      check_error(
+          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
+          "incompatible type of initializator list " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+              "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
+          ref->src->line, ref->src->col);
+    }
+    break;
+  }
 
   case BL_DECL_MUT: {
     ref_type = bl_peek_decl_mut(ref)->type;
@@ -478,7 +525,7 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
     return check_cast(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_INIT:
-    return NULL;
+    return check_init(cnt, expr, expected_type, const_expr);
 
   default:
     bl_abort("node is not expression");
@@ -620,6 +667,17 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   if (_func->modif == BL_MODIF_NONE && !_func->used) {
     check_warning(cnt, func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is declared but never used", _func->id.str);
+  }
+
+  if (_func->modif & BL_MODIF_ENTRY) {
+    if (cnt->entry_fn) {
+      check_error(
+          cnt, BL_ERR_MULTIPLE_MAIN, func, BL_BUILDER_CUR_WORD,
+          "assembly can only have one entry method main, previous alredy defined here: %s:%d:%d",
+          cnt->entry_fn->src->unit->filepath, cnt->entry_fn->src->line, cnt->entry_fn->src->col);
+    } else {
+      cnt->entry_fn = func;
+    }
   }
 
   if (_func->modif & BL_MODIF_UTEST) {

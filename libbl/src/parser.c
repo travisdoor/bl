@@ -1209,22 +1209,6 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     cnt->curr_func     = fn;
 
     if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
-      /*
-      if (cnt->ast->entry_func) {
-        bl_src_t *err_src = cnt->ast->entry_func->src;
-        parse_error_node(cnt, BL_ERR_DUPLICATE_ENTRY, fn, BL_BUILDER_CUR_WORD,
-                         "main function can be declared only once across all modules, previous "
-                         "declaration here %s %d:%d",
-                         err_src->unit->filepath, err_src->line, err_src->col);
-      }
-
-      if (modif & BL_MODIF_EXTERN) {
-        parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, fn, BL_BUILDER_CUR_WORD,
-                         "main function can't be declared as " BL_YELLOW("'%s'"),
-                         bl_sym_strings[BL_SYM_EXTERN]);
-      }
-      */
-
       bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT | BL_MODIF_ENTRY;
     }
 

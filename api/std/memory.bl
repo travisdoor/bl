@@ -47,5 +47,9 @@ public module std {
 
       libc::free(p);
     }
+
+    public fn realloc(p *void, new_size size_t) *void {
+      return libc::realloc(p, new_size);
+    }
   } 
 }

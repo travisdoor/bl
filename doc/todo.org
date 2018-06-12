@@ -57,8 +57,8 @@
   - [X] LLVM generation
 - [ ] Variable argument type [0/1]
   - [ ] Parsing
-- [-] Other [11/15]
-  - [ ] Check for multiple or missing main function. 
+- [-] Other [12/16]
+  - [X] Check for multiple or missing main function. 
   - [X] Constant "variable" declaration
   - [X] i16 and u16
   - [X] Error when return statement is missing
@@ -72,6 +72,7 @@
   - [ ] Linux/MacOS installation in CMAKE
   - [X] Constant expression evaluator
   - [X] Path parsing fix (last node of path must be parsed also) 
+  - [ ] Implicit integer type casting. 
   - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
 - [-] Unary operator (separate expression node in ast) [3/4]
   - [X] Ast node
@@ -125,8 +126,6 @@
   - [X] IR generation
 - [ ] Threading
 - [ ] Better error reporting
-- [ ] Replace -> operator [0/1]
-  - [ ] Implicit dereferencing of pointers
 - [ ] Cleanup () in statemets like if (true) {} -> if true {}
     
 - [X] Better linker [7/7]
@@ -138,19 +137,22 @@
   - [X] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
-* BUGS [3/8]
-- [ ] (1) When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
-- [X] (2) Cannot evaluate array size inside structures. 
-- [ ] (3) Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
-- [ ] (4) Invalid copying of: rect_src.w = e->rect.w;
-- [X] (5) Wrong parsing of cast expressions cast(i32) foo->i;  
-- [X] (6) Unable to return struct member copy from the function
-- [ ] (7) Missing checking: some_module./->foo
-- [ ] (8) Invalid publicity detection when we try to access from submodule to private member in upper module
-- [ ] (9) Cannot access members in structure returned from function call directly get_C().x;
-- [ ] (10) Tmp for initialization list should be declared out of the loops in LLVM. 
-- [ ] (11) Structure initializer cannot detect type of array element member.
-           units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
+* BUGS [4/14]
+- [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
+- [X] Cannot evaluate array size inside structures. 
+- [ ] Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
+- [X] Invalid copying of: rect_src.w = e->rect.w;
+- [X] Wrong parsing of cast expressions cast(i32) foo->i;  
+- [X] Unable to return struct member copy from the function
+- [ ] Missing checking: some_module./->foo
+- [ ] Invalid publicity detection when we try to access from submodule to private member in upper module
+- [ ] Cannot access members in structure returned from function call directly get_C().x;
+- [ ] Tmp for initialization list should be declared out of the loops in LLVM. 
+- [ ] Structure initializer cannot detect type of array element member.
+      units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
+- [ ] Direct dereferencing before return cause llvm backend error
+      return *get_elem_ptr(arr, i); 
+- [ ] Casting from size_t to i32 generates llvm backend error
 
 * PIPELINE
 ** Text (can run in multithread)
