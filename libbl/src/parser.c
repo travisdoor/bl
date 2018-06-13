@@ -422,7 +422,7 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
     /* parse args */
     bool        rq   = false;
     bl_node_t * prev = call;
-    bl_node_t **arg  = &_call->_args;
+    bl_node_t **arg  = &_call->args;
   arg:
     *arg = parse_expr_maybe(cnt);
     if (*arg) {
@@ -1156,8 +1156,11 @@ parse_block_maybe(context_t *cnt, bl_node_t *parent)
     return NULL;
   }
 
-  bl_node_t * block = bl_ast_add_decl_block(cnt->ast, tok_begin, parent);
-  bl_token_t *tok;
+  bl_node_t *      block  = bl_ast_add_decl_block(cnt->ast, tok_begin, parent);
+  bl_decl_block_t *_block = bl_peek_decl_block(block);
+  bl_token_t *     tok;
+  bl_node_t *      prev = block;
+  bl_node_t **     node = &_block->nodes;
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
@@ -1167,7 +1170,11 @@ stmt:
   }
 
   /* stmts */
-  if (bl_ast_block_push_node(bl_peek_decl_block(block), parse_block_content_maybe(cnt, block))) {
+  *node = parse_block_content_maybe(cnt, block);
+  if (*node) {
+    (*node)->prev = prev;
+    prev          = *node;
+    node          = &(*node)->next;
     goto stmt;
   }
 
@@ -1230,7 +1237,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     /* parse args */
     bool        rq   = false;
     bl_node_t * prev = fn;
-    bl_node_t **arg  = &_fn->_args;
+    bl_node_t **arg  = &_fn->args;
   arg:
     *arg = parse_arg_maybe(cnt);
     if (*arg) {
@@ -1328,7 +1335,7 @@ parse_init_expr_maybe(context_t *cnt)
   cnt->curr_init_list       = init;
 
   bl_node_t * prev = init;
-  bl_node_t **expr = &_init->_exprs;
+  bl_node_t **expr = &_init->exprs;
   /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
 next_expr:
   /* eat ident */
@@ -1427,7 +1434,7 @@ parse_struct_maybe(context_t *cnt, int modif)
 
     int         order  = 0;
     bl_node_t * prev   = strct;
-    bl_node_t **member = &_strct->_members;
+    bl_node_t **member = &_strct->members;
   member:
     /* eat ident */
     *member = parse_struct_member_maybe(cnt);
@@ -1489,13 +1496,16 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
                   "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t *variant = NULL;
+    bl_node_t * prev    = enm;
+    bl_node_t **variant = &_enm->variants;
 
   variant:
-    variant = parse_enum_variant_maybe(cnt, enm);
+    *variant = parse_enum_variant_maybe(cnt, enm);
 
-    /* check for duplicity */
-    if (bl_ast_enum_push_variant(_enm, variant)) {
+    if (*variant) {
+      (*variant)->prev = prev;
+      prev             = *variant;
+      variant          = &(*variant)->next;
       if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
         goto variant;
       } else if (bl_tokens_peek(cnt->tokens)->sym != BL_SYM_RBLOCK) {
@@ -1505,7 +1515,7 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
       }
     }
 
-    if (bl_ast_enum_get_count(_enm) == 0) {
+    if (!_enm->variants) {
       parse_error(cnt, BL_ERR_EMPTY, tok_id, BL_BUILDER_CUR_WORD,
                   "enumerator " BL_YELLOW("'%s'") " is empty", _enm->id.str);
     }
@@ -1564,60 +1574,86 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
 void
 parse_module_body(context_t *cnt, bl_node_t *module)
 {
+#define iterate                                                                                    \
+  {                                                                                                \
+    (*node)->prev = prev;                                                                          \
+    prev          = *node;                                                                         \
+    node          = &(*node)->next;                                                                \
+  }
+
   int               modif   = BL_MODIF_NONE;
-  bl_node_t *       node    = NULL;
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
+  bl_node_t * prev = module;
+  bl_node_t **node = &_module->nodes;
 decl:
   modif = parse_modifs_maybe(cnt);
 
-  if ((node = bl_ast_module_push_node(_module, parse_module_maybe(cnt, module, false, modif)))) {
+  *node = parse_module_maybe(cnt, module, false, modif);
+  if (*node) {
+    iterate;
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
                        "module can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_fn_maybe(cnt, modif, module))) {
+  *node = parse_fn_maybe(cnt, modif, module);
+  if (*node) {
+    iterate;
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_pre_test_maybe(cnt, modif, module))) {
+  *node = parse_pre_test_maybe(cnt, modif, module);
+  if (*node) {
+    iterate;
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_pre_load_maybe(cnt))) {
+  *node = parse_pre_load_maybe(cnt);
+  if (*node) {
+    iterate;
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_pre_link_maybe(cnt))) {
+  *node = parse_pre_link_maybe(cnt);
+  if (*node) {
+    iterate;
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_const_maybe(cnt, modif))) {
+  *node = parse_const_maybe(cnt, modif);
+  if (*node) {
+    iterate;
     parse_semicolon_rq(cnt);
     goto decl;
   }
 
-  if (bl_ast_module_push_node(_module, parse_using_maybe(cnt))) {
+  *node = parse_using_maybe(cnt);
+  if (*node) {
+    iterate;
     parse_semicolon_rq(cnt);
     goto decl;
   }
 
-  if ((node = bl_ast_module_push_node(_module, parse_struct_maybe(cnt, modif)))) {
+  *node = parse_struct_maybe(cnt, modif);
+  if (*node) {
+    iterate;
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
                        "struct can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
     goto decl;
   }
 
-  if ((node = bl_ast_module_push_node(_module, parse_enum_maybe(cnt, modif, module)))) {
+  *node = parse_enum_maybe(cnt, modif, module);
+  if (*node) {
+    iterate;
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
                        "enum can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
@@ -1629,6 +1665,7 @@ decl:
     parse_error(cnt, BL_ERR_UNEXPECTED_SYMBOL, tok, BL_BUILDER_CUR_WORD,
                 "unexpected symbol in module body");
   }
+#undef iterate
 }
 
 bl_error_e

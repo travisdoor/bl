@@ -146,7 +146,7 @@ bl_node_t *
 check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(init);
-  bl_node_t *     expr  = _init->_exprs;
+  bl_node_t *     expr  = _init->exprs;
 
   while (expr) {
     check_expr(cnt, expr, NULL, const_expr);
@@ -290,8 +290,8 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
         callee->src->line, callee->src->col);
   }
 
-  bl_node_t *callee_arg = _callee->_args;
-  bl_node_t *call_arg   = _call->_args;
+  bl_node_t *callee_arg = _callee->args;
+  bl_node_t *call_arg   = _call->args;
   while (callee_arg) {
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
 
@@ -590,13 +590,13 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
                   "structure " BL_YELLOW("'%s'") " is declared but never used", _strct->id.str);
   }
 
-  if (_strct->membersc == 0) {
+  if (!_strct->members) {
     check_warning(cnt, strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
                   _strct->id.str);
   }
 
   /* check all memebrs of structure */
-  bl_node_t *              member  = _strct->_members;
+  bl_node_t *              member  = _strct->members;
   bl_decl_struct_member_t *_member = NULL;
 
   while (member) {

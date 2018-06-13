@@ -166,13 +166,10 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   context_t *     cnt  = peek_cnt(visitor);
 
-  const size_t c            = bl_ast_enum_get_count(_enm);
-  bl_node_t *  curr_variant = NULL;
-  bl_node_t *  prev_variant = NULL;
+  bl_node_t *prev_variant = NULL;
+  bl_node_t *curr_variant = _enm->variants;
 
-  for (size_t i = 0; i < c; ++i) {
-    prev_variant = curr_variant;
-    curr_variant = bl_ast_enum_get_variant(_enm, i);
+  while (curr_variant) {
 
     /*
      * there can be enum variants without explicit init expression declaration spicified in code, in
@@ -197,6 +194,8 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
     }
 
     eval_enum_variant(cnt, curr_variant);
+    prev_variant = curr_variant;
+    curr_variant = curr_variant->next;
   }
 }
 

@@ -58,14 +58,12 @@ node_terminate(bl_node_t *node)
 {
   switch (node->code) {
   case BL_DECL_MODULE:
-    bo_unref(bl_peek_decl_module(node)->nodes);
     bl_scopes_terminate(&bl_peek_decl_module(node)->scopes);
     break;
   case BL_DECL_FUNC:
     bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
     break;
   case BL_DECL_BLOCK:
-    bo_unref(bl_peek_decl_block(node)->nodes);
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
     break;
   case BL_EXPR_CALL:
@@ -79,7 +77,6 @@ node_terminate(bl_node_t *node)
     bo_unref(bl_peek_type_ref(node)->dims);
     break;
   case BL_DECL_ENUM:
-    bo_unref(bl_peek_decl_enum(node)->variants);
     bl_scopes_terminate(&bl_peek_decl_enum(node)->scopes);
     break;
   case BL_DECL_STRUCT:
@@ -648,107 +645,6 @@ bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path)
   using_stmt->code                     = BL_STMT_USING;
   bl_peek_stmt_using(using_stmt)->path = path;
   return using_stmt;
-}
-
-/*************************************************************************************************
- * module
- *************************************************************************************************/
-bl_node_t *
-bl_ast_module_push_node(bl_decl_module_t *module, bl_node_t *node)
-{
-  if (node == NULL)
-    return NULL;
-
-  if (module->nodes == NULL) {
-    module->nodes = bo_array_new(sizeof(bl_node_t *));
-  }
-
-  bo_array_push_back(module->nodes, node);
-  return node;
-}
-
-size_t
-bl_ast_module_node_count(bl_decl_module_t *module)
-{
-  if (module->nodes == NULL)
-    return 0;
-  return bo_array_size(module->nodes);
-}
-
-bl_node_t *
-bl_ast_module_get_node(bl_decl_module_t *module, size_t i)
-{
-  if (module->nodes == NULL)
-    return NULL;
-  return bo_array_at(module->nodes, i, bl_node_t *);
-}
-
-/*************************************************************************************************
- * block
- *************************************************************************************************/
-bl_node_t *
-bl_ast_block_push_node(bl_decl_block_t *block, bl_node_t *node)
-{
-  if (node == NULL)
-    return NULL;
-
-  if (block->nodes == NULL) {
-    block->nodes = bo_array_new(sizeof(bl_node_t *));
-  }
-
-  bo_array_push_back(block->nodes, node);
-  return node;
-}
-
-size_t
-bl_ast_block_node_count(bl_decl_block_t *block)
-{
-  if (block->nodes == NULL)
-    return 0;
-  return bo_array_size(block->nodes);
-}
-
-bl_node_t *
-bl_ast_block_get_node(bl_decl_block_t *block, const size_t i)
-{
-  if (block->nodes == NULL)
-    return NULL;
-  return bo_array_at(block->nodes, i, bl_node_t *);
-}
-
-/*************************************************************************************************
- * enum
- *************************************************************************************************/
-bl_node_t *
-bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant)
-{
-  if (variant == NULL)
-    return NULL;
-
-  if (enm->variants == NULL) {
-    enm->variants = bo_array_new(sizeof(bl_node_t *));
-  }
-
-  bo_array_push_back(enm->variants, variant);
-  return variant;
-}
-
-bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i)
-{
-  if (enm->variants == NULL)
-    return NULL;
-
-  return bo_array_at(enm->variants, i, bl_node_t *);
-}
-
-size_t
-bl_ast_enum_get_count(bl_decl_enum_t *enm)
-{
-  if (enm->variants == NULL)
-    return 0;
-
-  return bo_array_size(enm->variants);
 }
 
 /*************************************************************************************************

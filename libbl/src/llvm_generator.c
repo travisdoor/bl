@@ -263,7 +263,7 @@ gen_init(context_t *cnt, bl_node_t *init)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(init, result);
 
-  bl_node_t *expr = _init->_exprs;
+  bl_node_t *expr = _init->exprs;
   while (expr) {
     gen_expr(cnt, expr);
     expr = expr->next;
@@ -288,7 +288,7 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   push_value_gscope(strct, type);
 
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * _strct->membersc);
-  bl_node_t *  member  = _strct->_members;
+  bl_node_t *  member  = _strct->members;
   int          i       = 0;
 
   while (member && i < _strct->membersc) {
@@ -386,7 +386,7 @@ int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
 {
   int        out_i = 0;
-  bl_node_t *arg   = func->_args;
+  bl_node_t *arg   = func->args;
   while (arg) {
     *out = to_llvm_type(cnt, bl_peek_decl_arg(arg)->type);
 
@@ -446,7 +446,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
   int             out_i = 0;
   bl_expr_call_t *_call = bl_peek_expr_call(call);
 
-  bl_node_t *expr = _call->_args;
+  bl_node_t *expr = _call->args;
   while (expr) {
     LLVMValueRef val = gen_expr(cnt, expr);
 
@@ -896,7 +896,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
      * can be called by name in function body. This is valid only
      * when this compound statement is function body.
      */
-    bl_node_t *arg = func->_args;
+    bl_node_t *arg = func->args;
     int        i   = 0;
     while (arg) {
       LLVMValueRef p = LLVMGetParam(llvm_func, i++);

@@ -533,10 +533,8 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_enm->scopes, scope, enm);
 
-  bl_node_t *  variant = NULL;
-  const size_t c       = bl_ast_enum_get_count(_enm);
-  for (size_t i = 0; i < c; ++i) {
-    variant  = bl_ast_enum_get_variant(_enm, i);
+  bl_node_t *variant = _enm->variants;
+  while (variant) {
     conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
 
     if (conflict) {
@@ -546,6 +544,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
                     conflict->src->line, conflict->src->col);
     }
     bl_scope_insert_node(scope, variant);
+    variant = variant->next;
   }
 
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
@@ -594,7 +593,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_strct->scopes, scope, strct);
 
-  bl_node_t *member = _strct->_members;
+  bl_node_t *member = _strct->members;
 
   while (member) {
     conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
@@ -649,7 +648,7 @@ second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   context_t *       cnt    = peek_cnt(visitor);
   bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
-  bl_node_t *              member = _strct->_members;
+  bl_node_t *              member = _strct->members;
   bl_decl_struct_member_t *_member;
   while (member) {
     _member = bl_peek_decl_struct_member(member);
@@ -849,7 +848,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   cnt->curr_func     = func;
 
   // TODO can be solved via visitor because we use walk later
-  bl_node_t *arg = _func->_args;
+  bl_node_t *arg = _func->args;
   while (arg) {
     bl_node_t *conflict = lookup_in_scope(cnt, arg, func, NULL);
     if (conflict) {
