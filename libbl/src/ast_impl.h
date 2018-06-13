@@ -605,7 +605,7 @@ bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
 void
 bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
 
-bl_node_t *
+bl_node_t **
 bl_ast_try_get_type_dim(bl_node_t *type);
 
 bl_node_t *

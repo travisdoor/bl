@@ -536,26 +536,26 @@ check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const
  *************************************************************************************************/
 
 static void
-visit_expr(bl_visitor_t *visitor, bl_node_t *expr)
+visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 {
   context_t *cnt = peek_cnt(visitor);
 
   /* warn about unused expressions in function scope */
-  if (bl_node_is(expr, BL_EXPR_BINOP) && bl_peek_expr_binop(expr)->op != BL_SYM_ASSIGN) {
-    check_warning(cnt, expr, BL_BUILDER_CUR_WORD, "expression has no effect");
+  if (bl_node_is(*expr, BL_EXPR_BINOP) && bl_peek_expr_binop(*expr)->op != BL_SYM_ASSIGN) {
+    check_warning(cnt, *expr, BL_BUILDER_CUR_WORD, "expression has no effect");
   }
 
-  check_expr(cnt, expr, NULL, false);
+  check_expr(cnt, *expr, NULL, false);
 }
 
 static void
-visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
+visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 {
   context_t *    cnt  = peek_cnt(visitor);
-  bl_decl_mut_t *_mut = bl_peek_decl_mut(mut);
+  bl_decl_mut_t *_mut = bl_peek_decl_mut(*mut);
 
   if (_mut->used == 0) {
-    check_warning(cnt, mut, BL_BUILDER_CUR_WORD,
+    check_warning(cnt, *mut, BL_BUILDER_CUR_WORD,
                   "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
   }
 
@@ -565,13 +565,13 @@ visit_mut(bl_visitor_t *visitor, bl_node_t *mut)
 }
 
 static void
-visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
+visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *      cnt   = peek_cnt(visitor);
-  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  bl_decl_const_t *_cnst = bl_peek_decl_const(*cnst);
 
   if (!(_cnst->modif & BL_MODIF_PUBLIC) && _cnst->used == 0) {
-    check_warning(cnt, cnst, BL_BUILDER_CUR_WORD,
+    check_warning(cnt, *cnst, BL_BUILDER_CUR_WORD,
                   "constant " BL_YELLOW("'%s'") " is declared but never used", _cnst->id.str);
   }
 
@@ -581,17 +581,17 @@ visit_const(bl_visitor_t *visitor, bl_node_t *cnst)
 }
 
 static void
-visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
+visit_struct(bl_visitor_t *visitor, bl_node_t **strct)
 {
   context_t *       cnt    = peek_cnt(visitor);
-  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
   if (_strct->modif == BL_MODIF_NONE && _strct->used == 0) {
-    check_warning(cnt, strct, BL_BUILDER_CUR_WORD,
+    check_warning(cnt, *strct, BL_BUILDER_CUR_WORD,
                   "structure " BL_YELLOW("'%s'") " is declared but never used", _strct->id.str);
   }
 
   if (!_strct->members) {
-    check_warning(cnt, strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
+    check_warning(cnt, *strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
                   _strct->id.str);
   }
 
@@ -602,7 +602,7 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
   while (member) {
     _member = bl_peek_decl_struct_member(member);
 
-    if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
+    if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == *strct) {
       check_error(cnt, BL_ERR_INVALID_TYPE, _member->type, BL_BUILDER_CUR_WORD,
                   "structure cannot contains self-typed member " BL_YELLOW("'%s'"),
                   _member->id.str);
@@ -613,12 +613,12 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
 }
 
 static void
-visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
+visit_enum(bl_visitor_t *visitor, bl_node_t **enm)
 {
   context_t *     cnt  = peek_cnt(visitor);
-  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(*enm);
   if (_enm->modif == BL_MODIF_NONE && _enm->used == 0) {
-    check_warning(cnt, enm, BL_BUILDER_CUR_WORD,
+    check_warning(cnt, *enm, BL_BUILDER_CUR_WORD,
                   "enumerator " BL_YELLOW("'%s'") " is declared but never used", _enm->id.str);
   }
 
@@ -634,10 +634,10 @@ visit_enum(bl_visitor_t *visitor, bl_node_t *enm)
 }
 
 static void
-visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
+visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 {
   context_t *             cnt           = peek_cnt(visitor);
-  bl_decl_enum_variant_t *_variant      = bl_peek_decl_enum_variant(variant);
+  bl_decl_enum_variant_t *_variant      = bl_peek_decl_enum_variant(*variant);
   bl_node_t *             expected_type = bl_peek_decl_enum(_variant->parent)->type;
 
   if (_variant->expr != NULL) {
@@ -648,7 +648,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
     switch (type->type) {
     case BL_FTYPE_CHAR:
     case BL_FTYPE_STRING:
-      check_error(cnt, BL_ERR_EXPECTED_EXPR, variant, BL_BUILDER_CUR_WORD,
+      check_error(cnt, BL_ERR_EXPECTED_EXPR, *variant, BL_BUILDER_CUR_WORD,
                   "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?",
                   _variant->id.str);
       break;
@@ -659,44 +659,44 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t *variant)
 }
 
 static void
-visit_func(bl_visitor_t *visitor, bl_node_t *func)
+visit_func(bl_visitor_t *visitor, bl_node_t **func)
 {
-  bl_decl_func_t *_func = bl_peek_decl_func(func);
+  bl_decl_func_t *_func = bl_peek_decl_func(*func);
   context_t *     cnt   = peek_cnt(visitor);
   if (_func->modif == BL_MODIF_NONE && !_func->used) {
-    check_warning(cnt, func, BL_BUILDER_CUR_WORD,
+    check_warning(cnt, *func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is declared but never used", _func->id.str);
   }
 
   if (_func->modif & BL_MODIF_ENTRY) {
     if (cnt->entry_fn) {
       check_error(
-          cnt, BL_ERR_MULTIPLE_MAIN, func, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_MULTIPLE_MAIN, *func, BL_BUILDER_CUR_WORD,
           "assembly can only have one entry method main, previous alredy defined here: %s:%d:%d",
           cnt->entry_fn->src->unit->filepath, cnt->entry_fn->src->line, cnt->entry_fn->src->col);
     } else {
-      cnt->entry_fn = func;
+      cnt->entry_fn = *func;
     }
   }
 
   if (_func->modif & BL_MODIF_UTEST) {
     if (_func->argsc) {
       check_error(
-          cnt, BL_ERR_INVALID_ARG_COUNT, func, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_INVALID_ARG_COUNT, *func, BL_BUILDER_CUR_WORD,
           "function " BL_YELLOW("'%s'") " is marked as #test, those functions are invoked in "
                                         "compile-time and it cannot take any parameters",
           _func->id.str);
     }
 
     if (!bl_type_compatible(_func->ret_type, get_tmp_fund(cnt, BL_FTYPE_I32, 0))) {
-      check_error(cnt, BL_ERR_EXPECTED_TYPE, func, BL_BUILDER_CUR_WORD,
+      check_error(cnt, BL_ERR_EXPECTED_TYPE, *func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is marked as #test, those functions must return "
                                                 "i32 value (0 when test passed without errors)",
                   _func->id.str);
     }
   }
 
-  cnt->curr_func = func;
+  cnt->curr_func = *func;
   bl_visitor_walk_func(visitor, func);
 
   bool ignore_missing_return = bl_node_is(_func->ret_type, BL_TYPE_FUND) &&
@@ -704,18 +704,18 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
 
   if (!ignore_missing_return && !cnt->fn_has_return && !(_func->modif & BL_MODIF_EXTERN)) {
     // error -> missing return statement
-    check_error(cnt, BL_ERR_MISSING_RETURN, func, BL_BUILDER_CUR_WORD,
+    check_error(cnt, BL_ERR_MISSING_RETURN, *func, BL_BUILDER_CUR_WORD,
                 "missing return statement in function " BL_YELLOW("'%s'"), _func->id.str);
   }
   cnt->fn_has_return = false;
 }
 
 static void
-visit_return(bl_visitor_t *visitor, bl_node_t *ret)
+visit_return(bl_visitor_t *visitor, bl_node_t **ret)
 {
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
-  bl_stmt_return_t *_ret          = bl_peek_stmt_return(ret);
+  bl_stmt_return_t *_ret          = bl_peek_stmt_return(*ret);
   bl_node_t *       expected_type = bl_peek_decl_func(cnt->curr_func)->ret_type;
 
   if (_ret->expr)
@@ -725,11 +725,11 @@ visit_return(bl_visitor_t *visitor, bl_node_t *ret)
 }
 
 static void
-visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
+visit_if(bl_visitor_t *visitor, bl_node_t **if_stmt)
 {
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
-  bl_stmt_if_t *_if = bl_peek_stmt_if(if_stmt);
+  bl_stmt_if_t *_if = bl_peek_stmt_if(*if_stmt);
   check_expr(cnt, _if->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
 
   bl_visitor_walk_if_true(visitor, if_stmt);
@@ -738,11 +738,11 @@ visit_if(bl_visitor_t *visitor, bl_node_t *if_stmt)
 }
 
 static void
-visit_loop(bl_visitor_t *visitor, bl_node_t *loop)
+visit_loop(bl_visitor_t *visitor, bl_node_t **loop)
 {
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
-  bl_stmt_loop_t *_loop = bl_peek_stmt_loop(loop);
+  bl_stmt_loop_t *_loop = bl_peek_stmt_loop(*loop);
   check_expr(cnt, _loop->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
 
   bl_visitor_walk_loop_body(visitor, loop);
@@ -781,7 +781,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   for (int i = 0; i < c; ++i) {
     unit     = bl_assembly_get_unit(assembly, i);
     cnt.unit = unit;
-    bl_visitor_walk_module(&visitor, unit->ast.root);
+    bl_visitor_walk_module(&visitor, &unit->ast.root);
   }
 
   return BL_NO_ERR;

@@ -1,13 +1,10 @@
 /* testing playground */
 
-module A {
-  public module B {
-    public fn foo() {}
-  }
+fn foo() {
 }
 
 fn main() {
-  A::B::foo();
+  foo();
 }
 
 

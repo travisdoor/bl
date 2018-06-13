@@ -161,9 +161,9 @@ eval_enum_variant(context_t *cnt, bl_node_t *variant)
  *************************************************************************************************/
 
 static void
-eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
+eval_enum(bl_visitor_t *visitor, bl_node_t **enm)
 {
-  bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(*enm);
   context_t *     cnt  = peek_cnt(visitor);
 
   bl_node_t *prev_variant = NULL;
@@ -200,25 +200,25 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
 }
 
 static void
-eval_type(bl_visitor_t *visitor, bl_node_t *type)
+eval_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   context_t *cnt    = peek_cnt(visitor);
   bl_node_t *dim    = NULL;
   bl_node_t *result = NULL;
 
-  switch (bl_node_code(type)) {
+  switch (bl_node_code(*type)) {
   case BL_TYPE_REF:
-    dim = bl_peek_type_ref(type)->dim;
+    dim = bl_peek_type_ref(*type)->dim;
     if (dim) {
       result                      = eval_expr(cnt, dim);
-      bl_peek_type_ref(type)->dim = result;
+      bl_peek_type_ref(*type)->dim = result;
     }
     break;
   case BL_TYPE_FUND:
-    dim = bl_peek_type_fund(type)->dim;
+    dim = bl_peek_type_fund(*type)->dim;
     if (dim) {
       result                       = eval_expr(cnt, dim);
-      bl_peek_type_fund(type)->dim = result;
+      bl_peek_type_fund(*type)->dim = result;
     }
     break;
   default:
@@ -226,7 +226,7 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
   }
 
   if (result && bl_peek_expr_const(result)->value.u == 0) {
-    eval_error(cnt, BL_ERR_INVALID_EXPR, type, BL_BUILDER_CUR_WORD,
+    eval_error(cnt, BL_ERR_INVALID_EXPR, *type, BL_BUILDER_CUR_WORD,
                "arrays with zero size are not allowed");
   }
 
@@ -234,10 +234,10 @@ eval_type(bl_visitor_t *visitor, bl_node_t *type)
 }
 
 static void
-eval_decl_const(bl_visitor_t *visitor, bl_node_t *cnst)
+eval_decl_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *      cnt   = peek_cnt(visitor);
-  bl_decl_const_t *_cnst = bl_peek_decl_const(cnst);
+  bl_decl_const_t *_cnst = bl_peek_decl_const(*cnst);
   bl_assert(_cnst->init_expr, "constant without init expression");
   _cnst->init_expr = eval_expr(cnt, _cnst->init_expr);
 
@@ -269,7 +269,7 @@ bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly)
   for (int i = 0; i < c; ++i) {
     unit    = bl_assembly_get_unit(assembly, i);
     cnt.ast = &unit->ast;
-    bl_visitor_walk_module(&visitor_eval, unit->ast.root);
+    bl_visitor_walk_module(&visitor_eval, &unit->ast.root);
   }
 
   return BL_NO_ERR;

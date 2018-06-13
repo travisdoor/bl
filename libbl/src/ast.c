@@ -811,14 +811,14 @@ bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len)
   strcat(out_name, tmp);
 }
 
-bl_node_t *
+bl_node_t **
 bl_ast_try_get_type_dim(bl_node_t *type)
 {
   switch (bl_node_code(type)) {
   case BL_TYPE_FUND:
-    return bl_peek_type_fund(type)->dim;
+    return &bl_peek_type_fund(type)->dim;
   case BL_TYPE_REF: {
-    return bl_peek_type_ref(type)->dim;
+    return &bl_peek_type_ref(type)->dim;
   }
   default:
     return NULL;

@@ -37,16 +37,16 @@ typedef struct {
 } context_t;
 
 static void
-preproc_load(bl_visitor_t *visitor, bl_node_t *load);
+preproc_load(bl_visitor_t *visitor, bl_node_t **load);
 
 static void
-preproc_link(bl_visitor_t *visitor, bl_node_t *link);
+preproc_link(bl_visitor_t *visitor, bl_node_t **link);
 
 void
-preproc_load(bl_visitor_t *visitor, bl_node_t *load)
+preproc_load(bl_visitor_t *visitor, bl_node_t **load)
 {
   context_t *    cnt   = peek_cnt(visitor);
-  bl_pre_load_t *_load = bl_peek_pre_load(load);
+  bl_pre_load_t *_load = bl_peek_pre_load(*load);
   bl_unit_t *unit = bl_unit_new_file(_load->filepath);
   bool added = bl_assembly_add_unit_unique(cnt->assembly, unit);
   if (added == false) {
@@ -55,10 +55,10 @@ preproc_load(bl_visitor_t *visitor, bl_node_t *load)
 }
 
 void
-preproc_link(bl_visitor_t *visitor, bl_node_t *link)
+preproc_link(bl_visitor_t *visitor, bl_node_t **link)
 {
   context_t *    cnt   = peek_cnt(visitor);
-  bl_assembly_add_link(cnt->assembly, bl_peek_pre_link(link)->lib);
+  bl_assembly_add_link(cnt->assembly, bl_peek_pre_link(*link)->lib);
 }
 
 /*************************************************************************************************
@@ -78,7 +78,7 @@ bl_preproc_run(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_preproc, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_preproc, BL_SKIP_VISIT, BL_VISIT_ENUM);
 
-  bl_visitor_walk_module(&visitor_preproc, unit->ast.root);
+  bl_visitor_walk_module(&visitor_preproc, &unit->ast.root);
 
   return BL_NO_ERR;
 }
