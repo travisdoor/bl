@@ -72,7 +72,7 @@ get_tmp_fund(context_t *cnt, bl_fund_type_e t, int is_ptr)
 {
   bl_node_t *tmp          = &cnt->tmp_type;
   tmp->code               = BL_TYPE_FUND;
-  tmp->n.type_fund.dims   = NULL;
+  tmp->n.type_fund.dim    = NULL;
   tmp->n.type_fund.is_ptr = is_ptr;
   tmp->n.type_fund.type   = t;
   return tmp;
@@ -83,7 +83,7 @@ get_tmp_ref(context_t *cnt, bl_node_t *ref, int is_ptr)
 {
   bl_node_t *tmp         = &cnt->tmp_type;
   tmp->code              = BL_TYPE_REF;
-  tmp->n.type_ref.dims   = NULL;
+  tmp->n.type_ref.dim    = NULL;
   tmp->n.type_ref.is_ptr = is_ptr;
   tmp->n.type_ref.ref    = ref;
   return tmp;
@@ -98,11 +98,11 @@ dup_tmp_type(context_t *cnt, bl_node_t *type, int delta_ptr)
   bl_node_t *tmp = &cnt->tmp_type;
   tmp->code      = type->code;
   if (bl_node_is(type, BL_TYPE_FUND)) {
-    tmp->n.type_fund.dims   = bl_peek_type_fund(type)->dims;
+    tmp->n.type_fund.dim    = bl_peek_type_fund(type)->dim;
     tmp->n.type_fund.type   = bl_peek_type_fund(type)->type;
     tmp->n.type_fund.is_ptr = bl_peek_type_fund(type)->is_ptr + delta_ptr;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
-    tmp->n.type_ref.dims   = bl_peek_type_ref(type)->dims;
+    tmp->n.type_ref.dim    = bl_peek_type_ref(type)->dim;
     tmp->n.type_ref.ref    = bl_peek_type_ref(type)->ref;
     tmp->n.type_ref.is_ptr = bl_peek_type_ref(type)->is_ptr + delta_ptr;
   } else {

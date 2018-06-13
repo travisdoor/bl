@@ -66,9 +66,6 @@ node_terminate(bl_node_t *node)
   case BL_DECL_BLOCK:
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
     break;
-  case BL_TYPE_REF:
-    bo_unref(bl_peek_type_ref(node)->dims);
-    break;
   case BL_DECL_ENUM:
     bl_scopes_terminate(&bl_peek_decl_enum(node)->scopes);
     break;
@@ -638,102 +635,6 @@ bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path)
 }
 
 /*************************************************************************************************
- * type fund
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_fund_push_dim(bl_type_fund_t *type, bl_node_t *dim)
-{
-  if (!dim)
-    return NULL;
-
-  if (type->dims == NULL)
-    type->dims = bo_array_new(sizeof(bl_node_t *));
-
-  bo_array_push_back(type->dims, dim);
-  return dim;
-}
-
-bl_node_t *
-bl_ast_type_fund_get_dim(bl_type_fund_t *type, const size_t i)
-{
-  if (type->dims == NULL)
-    return 0;
-
-  return bo_array_at(type->dims, i, bl_node_t *);
-}
-
-size_t
-bl_ast_type_fund_get_dim_count(bl_type_fund_t *type)
-{
-  if (type->dims == NULL)
-    return 0;
-
-  return bo_array_size(type->dims);
-}
-
-size_t
-bl_ast_type_fund_dim_total_size(bl_type_fund_t *type)
-{
-  const size_t c = bl_ast_type_fund_get_dim_count(type);
-  if (c == 0)
-    return 0;
-  size_t total = bl_peek_expr_const(bl_ast_type_fund_get_dim(type, 0))->value.u;
-  for (int i = 1; i < c; ++i) {
-    total *= bl_peek_expr_const(bl_ast_type_fund_get_dim(type, i))->value.u;
-  }
-
-  return total;
-}
-
-/*************************************************************************************************
- * type ref
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_ref_push_dim(bl_type_ref_t *type, bl_node_t *dim)
-{
-  if (!dim)
-    return NULL;
-
-  if (type->dims == NULL)
-    type->dims = bo_array_new(sizeof(bl_node_t *));
-
-  bo_array_push_back(type->dims, dim);
-  return dim;
-}
-
-bl_node_t *
-bl_ast_type_ref_get_dim(bl_type_ref_t *type, const size_t i)
-{
-  if (type->dims == NULL)
-    return 0;
-
-  return bo_array_at(type->dims, i, bl_node_t *);
-}
-
-size_t
-bl_ast_type_ref_get_dim_count(bl_type_ref_t *type)
-{
-  if (type->dims == NULL)
-    return 0;
-
-  return bo_array_size(type->dims);
-}
-
-size_t
-bl_ast_type_ref_dim_total_size(bl_type_ref_t *type)
-{
-  const size_t c = bl_ast_type_ref_get_dim_count(type);
-  if (c == 0)
-    return 0;
-  size_t total = bl_peek_expr_const(bl_ast_type_ref_get_dim(type, 0))->value.u;
-  for (int i = 1; i < c; ++i) {
-    total *= bl_peek_expr_const(bl_ast_type_ref_get_dim(type, i))->value.u;
-  }
-
-  return total;
-}
-
-/*************************************************************************************************
  * other
  *************************************************************************************************/
 bl_id_t *
@@ -879,14 +780,14 @@ bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len)
   strcat(out_name, tmp);
 }
 
-BArray *
-bl_ast_try_get_type_dims(bl_node_t *type)
+bl_node_t *
+bl_ast_try_get_type_dim(bl_node_t *type)
 {
   switch (bl_node_code(type)) {
   case BL_TYPE_FUND:
-    return bl_peek_type_fund(type)->dims;
+    return bl_peek_type_fund(type)->dim;
   case BL_TYPE_REF: {
-    return bl_peek_type_ref(type)->dims;
+    return bl_peek_type_ref(type)->dim;
   }
   default:
     return NULL;

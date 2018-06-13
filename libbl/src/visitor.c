@@ -352,28 +352,10 @@ void
 bl_visitor_walk_type(bl_visitor_t *visitor, bl_node_t *type)
 {
   visitor->nesting++;
-  BArray *dims = NULL;
+  bl_node_t *dim = bl_ast_try_get_type_dim(type);
 
-  switch (bl_node_code(type)) {
-  case BL_TYPE_FUND: {
-    dims = bl_peek_type_fund(type)->dims;
-    break;
-  }
-  case BL_TYPE_REF:
-    dims = bl_peek_type_ref(type)->dims;
-    break;
-  default:
-    bl_abort("invalid type %s", bl_node_name(type));
-  }
-
-  if (dims) {
-    bl_node_t *  dim = NULL;
-    const size_t c   = bo_array_size(dims);
-    for (size_t i = 0; i < c; ++i) {
-      dim = bo_array_at(dims, i, bl_node_t *);
-      call_visit(visitor, dim, BL_VISIT_EXPR);
-    }
-  }
+  if (dim)
+    call_visit(visitor, dim, BL_VISIT_EXPR);
   visitor->nesting--;
 }
 

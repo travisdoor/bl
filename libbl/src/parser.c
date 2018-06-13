@@ -875,11 +875,11 @@ parse_type_maybe(context_t *cnt)
 
     if (found > -1) {
       type = bl_ast_add_type_fund(cnt->ast, prev_tok, (bl_fund_type_e)found, is_ptr);
-      bl_ast_type_fund_push_dim(bl_peek_type_fund(type), expr_dim);
+      bl_peek_type_fund(type)->dim = expr_dim;
     } else {
       type = bl_ast_add_type_ref(cnt->ast, prev_tok, bl_peek_path_elem(last_path_elem)->id.str,
                                  NULL, path, is_ptr);
-      bl_ast_type_ref_push_dim(bl_peek_type_ref(type), expr_dim);
+      bl_peek_type_ref(type)->dim = expr_dim;
     }
   }
   return type;

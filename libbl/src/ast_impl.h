@@ -388,7 +388,7 @@ struct bl_path_elem
 struct bl_type_fund
 {
   bl_fund_type_e type;   /* fundamental type variant */
-  BArray *       dims;   /* dimensions are used when type is array */
+  bl_node_t *    dim;    /* dimensions are used when type is array */
   int            is_ptr; /* is pointer */
 };
 
@@ -396,7 +396,7 @@ struct bl_type_ref
 {
   bl_node_t *path;   /* path */
   bl_node_t *ref;    /* reference to type */
-  BArray *   dims;   /* dimensions are used when type is array */
+  bl_node_t *dim;    /* dimensions are used when type is array */
   int        is_ptr; /* is pointer */
 };
 
@@ -578,36 +578,6 @@ bl_node_t *
 bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path);
 
 /*************************************************************************************************
- * type fund
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_fund_push_dim(bl_type_fund_t *type, bl_node_t *dim);
-
-bl_node_t *
-bl_ast_type_fund_get_dim(bl_type_fund_t *type, const size_t i);
-
-size_t
-bl_ast_type_fund_get_dim_count(bl_type_fund_t *type);
-
-size_t
-bl_ast_type_fund_dim_total_size(bl_type_fund_t *type);
-
-/*************************************************************************************************
- * type ref
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_ref_push_dim(bl_type_ref_t *type, bl_node_t *dim);
-
-bl_node_t *
-bl_ast_type_ref_get_dim(bl_type_ref_t *type, const size_t i);
-
-size_t
-bl_ast_type_ref_get_dim_count(bl_type_ref_t *type);
-
-size_t
-bl_ast_type_ref_dim_total_size(bl_type_ref_t *type);
-
-/*************************************************************************************************
  * other
  *************************************************************************************************/
 bl_id_t *
@@ -637,8 +607,8 @@ bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
 void
 bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
 
-BArray *
-bl_ast_try_get_type_dims(bl_node_t *type);
+bl_node_t *
+bl_ast_try_get_type_dim(bl_node_t *type);
 
 bl_node_t *
 bl_ast_path_get_last(bl_node_t *path);

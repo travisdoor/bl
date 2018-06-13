@@ -215,7 +215,8 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("unknown fundamenetal type");
     }
 
-    size = bl_ast_type_fund_dim_total_size(_type);
+    if (_type->dim)
+      size = bl_peek_expr_const(_type->dim)->value.u;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -233,7 +234,8 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("invalid reference type");
     }
 
-    size = bl_ast_type_ref_dim_total_size(_type);
+    if (_type->dim)
+      size = bl_peek_expr_const(_type->dim)->value.u;
   }
 
   if (is_ptr) {
@@ -296,7 +298,7 @@ gen_struct(context_t *cnt, bl_node_t *strct)
     member       = member->next;
   }
 
-  LLVMStructSetBody(type, members, (unsigned int) i, false);
+  LLVMStructSetBody(type, members, (unsigned int)i, false);
   bl_free(members);
 
   return type;
