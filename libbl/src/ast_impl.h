@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_AST2_IMPL_H
-#define BL_AST2_IMPL_H
+#ifndef BL_AST_IMPL_H
+#define BL_AST_IMPL_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
@@ -90,6 +90,8 @@
 
 // clang-format on
 
+#define BL_AST_TERMINATE 0
+
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
@@ -142,10 +144,14 @@ enum bl_node_code
 #define bl_node_code(n) (n)->code
 #define bl_node_name(n) bl_node_type_strings[(n)->code]
 
+struct chunk;
+
 struct bl_ast
 {
   bl_node_t *root;
-  BArray *   nodes;
+
+  struct chunk *first_chunk;
+  struct chunk *current_chunk;
 };
 
 enum bl_modif
@@ -201,7 +207,7 @@ struct bl_stmt_return
 
 struct bl_stmt_using
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to module or enum */
 };
 
@@ -223,8 +229,8 @@ struct bl_expr_cast
 
 struct bl_expr_init
 {
-  bl_node_t *type;  /* initialization list type result */
-  BArray *   exprs; /* array of initializators */
+  bl_node_t *type; /* initialization list type result */
+  bl_node_t *exprs;
 };
 
 /* module declaration */
@@ -233,7 +239,7 @@ struct bl_decl_module
   bl_id_t     id;     /* identificator */
   bl_node_t * parent; /* parent node */
   int         modif;  /* modificator*/
-  BArray *    nodes;  /* array of nodes in module */
+  bl_node_t * nodes;
   bl_scopes_t scopes; /* scope cache */
 };
 
@@ -269,7 +275,8 @@ struct bl_decl_func
   bl_node_t * parent;             /* parent node */
   int         modif;              /* modificator */
   int         used;               /* count of usage */
-  BArray *    args;               /* array of arguments */
+  bl_node_t * args;               /* pointer to list of arguments */
+  int         argsc;              /* arguments count */
   bl_node_t * block;              /* function block (for extern function is NULL) */
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
@@ -278,11 +285,12 @@ struct bl_decl_func
 
 struct bl_decl_struct
 {
-  bl_id_t     id;      /* structure id */
-  int         modif;   /* modificators */
-  int         used;    /* count of usage */
-  BArray *    members; /* array of members */
-  bl_scopes_t scopes;  /* scope cache */
+  bl_id_t     id;       /* structure id */
+  int         modif;    /* modificators */
+  int         used;     /* count of usage */
+  bl_node_t * members;  /* pointer to list of members */
+  int         membersc; /* member count */
+  bl_scopes_t scopes;   /* scope cache */
 };
 
 struct bl_decl_struct_member
@@ -295,13 +303,13 @@ struct bl_decl_struct_member
 
 struct bl_decl_enum
 {
-  bl_id_t     id;       /* identificator */
-  bl_node_t * parent;   /* parent node */
-  int         modif;    /* modificator */
-  int         used;     /* count of usage */
-  bl_node_t * type;     /* enum type */
-  BArray *    variants; /* array of enum variants */
-  bl_scopes_t scopes;   /* scope cache */
+  bl_id_t     id;     /* identificator */
+  bl_node_t * parent; /* parent node */
+  int         modif;  /* modificator */
+  int         used;   /* count of usage */
+  bl_node_t * type;   /* enum type */
+  bl_node_t * variants;
+  bl_scopes_t scopes; /* scope cache */
 };
 
 struct bl_decl_enum_variant
@@ -314,7 +322,7 @@ struct bl_decl_enum_variant
 struct bl_decl_block
 {
   bl_node_t * parent; /* parent node */
-  BArray *    nodes;  /* array of nodes in compount block */
+  bl_node_t * nodes;  /* list of nodes in compount block */
   bl_scopes_t scopes; /* scope cache */
 };
 
@@ -349,7 +357,7 @@ struct bl_expr_unary
 
 struct bl_expr_decl_ref
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to referenced node */
 };
 
@@ -369,9 +377,10 @@ struct bl_expr_array_ref
 
 struct bl_expr_call
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to function */
-  BArray *   args; /* argument list passed into function */
+  bl_node_t *args; /* argument list passed into function */
+  int        argsc;
   bool       run_in_compile_time;
 };
 
@@ -383,15 +392,15 @@ struct bl_path_elem
 struct bl_type_fund
 {
   bl_fund_type_e type;   /* fundamental type variant */
-  BArray *       dims;   /* dimensions are used when type is array */
+  bl_node_t *    dim;    /* dimensions are used when type is array */
   int            is_ptr; /* is pointer */
 };
 
 struct bl_type_ref
 {
-  BArray *   path;   /* path */
+  bl_node_t *path;   /* path */
   bl_node_t *ref;    /* reference to type */
-  BArray *   dims;   /* dimensions are used when type is array */
+  bl_node_t *dim;    /* dimensions are used when type is array */
   int        is_ptr; /* is pointer */
 };
 
@@ -409,6 +418,9 @@ struct bl_node
 {
   bl_src_t *     src;
   bl_node_code_e code;
+
+  bl_node_t *next;
+  bl_node_t *prev;
 
   union
   {
@@ -445,8 +457,8 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, int is_ptr);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    int is_ptr);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                    bl_node_t *path, int is_ptr);
 
 bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
@@ -490,7 +502,7 @@ bl_node_t *
 bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path);
 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
@@ -506,7 +518,7 @@ bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path,
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path,
                      bool run_in_compile_time);
 
 bl_node_t *
@@ -567,121 +579,7 @@ bl_node_t *
 bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func);
 
 bl_node_t *
-bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path);
-
-/*************************************************************************************************
- * module
- *************************************************************************************************/
-bl_node_t *
-bl_ast_module_push_node(bl_decl_module_t *module, bl_node_t *node);
-
-size_t
-bl_ast_module_node_count(bl_decl_module_t *module);
-
-bl_node_t *
-bl_ast_module_get_node(bl_decl_module_t *module, size_t i);
-
-/*************************************************************************************************
- * function
- *************************************************************************************************/
-bl_node_t *
-bl_ast_func_push_arg(bl_decl_func_t *func, bl_node_t *arg);
-
-size_t
-bl_ast_func_arg_count(bl_decl_func_t *func);
-
-bl_node_t *
-bl_ast_func_get_arg(bl_decl_func_t *func, const size_t i);
-
-/*************************************************************************************************
- * block
- *************************************************************************************************/
-bl_node_t *
-bl_ast_block_push_node(bl_decl_block_t *block, bl_node_t *node);
-
-size_t
-bl_ast_block_node_count(bl_decl_block_t *block);
-
-bl_node_t *
-bl_ast_block_get_node(bl_decl_block_t *block, const size_t i);
-
-/*************************************************************************************************
- * call
- *************************************************************************************************/
-bl_node_t *
-bl_ast_call_push_arg(bl_expr_call_t *call, bl_node_t *node);
-
-size_t
-bl_ast_call_arg_count(bl_expr_call_t *call);
-
-bl_node_t *
-bl_ast_call_get_arg(bl_expr_call_t *call, const size_t i);
-
-/*************************************************************************************************
- * init
- *************************************************************************************************/
-bl_node_t *
-bl_ast_init_push_expr(bl_expr_init_t *init, bl_node_t *expr);
-
-size_t
-bl_ast_init_expr_count(bl_expr_init_t *init);
-
-bl_node_t *
-bl_ast_init_get_expr(bl_expr_init_t *init, const size_t i);
-
-/*************************************************************************************************
- * struct
- *************************************************************************************************/
-bl_node_t *
-bl_ast_struct_push_member(bl_decl_struct_t *strct, bl_node_t *member);
-
-size_t
-bl_ast_struct_member_count(bl_decl_struct_t *strct);
-
-bl_node_t *
-bl_ast_struct_get_member(bl_decl_struct_t *strct, const size_t i);
-
-/*************************************************************************************************
- * enum
- *************************************************************************************************/
-bl_node_t *
-bl_ast_enum_push_variant(bl_decl_enum_t *enm, bl_node_t *variant);
-
-bl_node_t *
-bl_ast_enum_get_variant(bl_decl_enum_t *enm, const size_t i);
-
-size_t
-bl_ast_enum_get_count(bl_decl_enum_t *enm);
-
-/*************************************************************************************************
- * type fund
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_fund_push_dim(bl_type_fund_t *type, bl_node_t *dim);
-
-bl_node_t *
-bl_ast_type_fund_get_dim(bl_type_fund_t *type, const size_t i);
-
-size_t
-bl_ast_type_fund_get_dim_count(bl_type_fund_t *type);
-
-size_t
-bl_ast_type_fund_dim_total_size(bl_type_fund_t *type);
-
-/*************************************************************************************************
- * type ref
- *************************************************************************************************/
-bl_node_t *
-bl_ast_type_ref_push_dim(bl_type_ref_t *type, bl_node_t *dim);
-
-bl_node_t *
-bl_ast_type_ref_get_dim(bl_type_ref_t *type, const size_t i);
-
-size_t
-bl_ast_type_ref_get_dim_count(bl_type_ref_t *type);
-
-size_t
-bl_ast_type_ref_dim_total_size(bl_type_ref_t *type);
+bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path);
 
 /*************************************************************************************************
  * other
@@ -691,12 +589,6 @@ bl_ast_try_get_id(bl_node_t *node);
 
 int
 bl_ast_try_get_modif(bl_node_t *node);
-
-size_t
-bl_ast_node_count(bl_ast_t *ast);
-
-bl_node_t *
-bl_ast_get_node(bl_ast_t *ast, size_t i);
 
 bool
 bl_type_compatible(bl_node_t *first, bl_node_t *second);
@@ -713,11 +605,11 @@ bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
 void
 bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
 
-BArray *
-bl_ast_try_get_type_dims(bl_node_t *type);
+bl_node_t *
+bl_ast_try_get_type_dim(bl_node_t *type);
 
 bl_node_t *
-bl_ast_path_get_last(BArray *path);
+bl_ast_path_get_last(bl_node_t *path);
 
 bl_scopes_t *
 bl_ast_try_get_scopes(bl_node_t *node);

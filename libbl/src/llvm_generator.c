@@ -215,7 +215,8 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("unknown fundamenetal type");
     }
 
-    size = bl_ast_type_fund_dim_total_size(_type);
+    if (_type->dim)
+      size = bl_peek_expr_const(_type->dim)->value.u;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -233,7 +234,8 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("invalid reference type");
     }
 
-    size = bl_ast_type_ref_dim_total_size(_type);
+    if (_type->dim)
+      size = bl_peek_expr_const(_type->dim)->value.u;
   }
 
   if (is_ptr) {
@@ -263,12 +265,10 @@ gen_init(context_t *cnt, bl_node_t *init)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
   push_value_cscope(init, result);
 
-  const size_t c    = bl_ast_init_expr_count(_init);
-  bl_node_t *  expr = NULL;
-
-  for (size_t i = 0; i < c; ++i) {
-    expr = bl_ast_init_get_expr(_init, i);
+  bl_node_t *expr = _init->exprs;
+  while (expr) {
     gen_expr(cnt, expr);
+    expr = expr->next;
   }
 
   return result;
@@ -289,16 +289,16 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   type = LLVMStructCreateNamed(cnt->llvm_cnt, _strct->id.str);
   push_value_gscope(strct, type);
 
-  const size_t c       = bl_ast_struct_member_count(_strct);
-  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * c);
-  bl_node_t *  member;
+  LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * _strct->membersc);
+  bl_node_t *  member  = _strct->members;
+  int          i       = 0;
 
-  for (size_t i = 0; i < c; ++i) {
-    member     = bl_ast_struct_get_member(_strct, i);
-    members[i] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
+  while (member && i < _strct->membersc) {
+    members[i++] = to_llvm_type(cnt, bl_peek_decl_struct_member(member)->type);
+    member       = member->next;
   }
 
-  LLVMStructSetBody(type, members, (unsigned int)c, false);
+  LLVMStructSetBody(type, members, (unsigned int)i, false);
   bl_free(members);
 
   return type;
@@ -387,21 +387,14 @@ gen_cast(context_t *cnt, bl_node_t *cast)
 int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
 {
-  int          out_i = 0;
-  const size_t c     = bl_ast_func_arg_count(func);
-
-  /* no args */
-  if (c == 0) {
-    return 0;
-  }
-
-  bl_node_t *arg = NULL;
-  for (size_t i = 0; i < c; ++i) {
-    arg  = bl_ast_func_get_arg(func, i);
+  int        out_i = 0;
+  bl_node_t *arg   = func->args;
+  while (arg) {
     *out = to_llvm_type(cnt, bl_peek_decl_arg(arg)->type);
 
     out++;
     out_i++;
+    arg = arg->next;
   }
 
   return out_i;
@@ -454,16 +447,9 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 {
   int             out_i = 0;
   bl_expr_call_t *_call = bl_peek_expr_call(call);
-  const int       c     = bl_ast_call_arg_count(_call);
 
-  /* no args */
-  if (c == 0) {
-    return 0;
-  }
-
-  bl_node_t *expr = NULL;
-  for (int i = 0; i < c; ++i) {
-    expr             = bl_ast_call_get_arg(_call, i);
+  bl_node_t *expr = _call->args;
+  while (expr) {
     LLVMValueRef val = gen_expr(cnt, expr);
 
     if (should_load(expr) || LLVMIsAAllocaInst(val)) {
@@ -474,6 +460,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 
     out++;
     out_i++;
+    expr = expr->next;
   }
 
   return out_i;
@@ -911,16 +898,16 @@ visit_block(bl_visitor_t *visitor, bl_node_t *block)
      * can be called by name in function body. This is valid only
      * when this compound statement is function body.
      */
-    const size_t pc = bl_ast_func_arg_count(func);
-    for (int i = 0; i < pc; ++i) {
-      bl_node_t *arg = bl_ast_func_get_arg(func, i);
-
-      LLVMValueRef p = LLVMGetParam(llvm_func, i);
+    bl_node_t *arg = func->args;
+    int        i   = 0;
+    while (arg) {
+      LLVMValueRef p = LLVMGetParam(llvm_func, i++);
       LLVMValueRef p_tmp =
           LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_arg(arg)->id.str));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
 
       push_value_cscope(arg, p_tmp);
+      arg = arg->next;
     }
 
     /*

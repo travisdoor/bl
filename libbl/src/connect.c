@@ -81,7 +81,7 @@ static void
 include_using(context_t *cnt, bl_node_t *using);
 
 static bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
+lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by,
@@ -187,38 +187,38 @@ static VALIDATE_F(type);
  * Helpers impl
  *************************************************************************************************/
 bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
+lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
 {
-  const size_t c              = bo_array_size(path);
-  bl_node_t *  path_elem      = bo_array_at(path, 0, bl_node_t *);
-  bl_node_t *  linked_by      = NULL;
-  bool         in_curr_branch = false;
-  bl_node_t *  found =
-      lookup_in_tree(cnt, path_elem, cnt->curr_compound, &linked_by, &in_curr_branch);
+  bl_assert(path, "invalid path");
+  bl_node_t *linked_by      = NULL;
+  bool       in_curr_branch = false;
+  bl_node_t *found = lookup_in_tree(cnt, path, cnt->curr_compound, &linked_by, &in_curr_branch);
 
   if (validator)
-    validator(cnt, path_elem, found, c == 1);
+    validator(cnt, path, found, !path->next);
   bl_assert(found, "null found symbol unhandled by validator");
 
   if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
-    connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                   "symbol " BL_YELLOW("'%s'") " is private in this context",
-                  bl_peek_path_elem(path_elem)->id.str);
+                  bl_peek_path_elem(path)->id.str);
   }
 
-  for (size_t i = 1; i < c; ++i) {
-    path_elem = bo_array_at(path, i, bl_node_t *);
-    found     = lookup_in_scope(cnt, path_elem, found, &linked_by);
+  path = path->next;
+  while (path) {
+    found = lookup_in_scope(cnt, path, found, &linked_by);
 
     if (validator)
-      validator(cnt, path_elem, found, c == i + 1);
+      validator(cnt, path, found, !path->next);
     bl_assert(found, "null found symbol unhandled by validator");
 
     if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
-      connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
+      connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
-                    bl_peek_path_elem(path_elem)->id.str);
+                    bl_peek_path_elem(path)->id.str);
     }
+
+    path = path->next;
   }
 
   if (found_in_curr_branch)
@@ -533,10 +533,8 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_enm->scopes, scope, enm);
 
-  bl_node_t *  variant = NULL;
-  const size_t c       = bl_ast_enum_get_count(_enm);
-  for (size_t i = 0; i < c; ++i) {
-    variant  = bl_ast_enum_get_variant(_enm, i);
+  bl_node_t *variant = _enm->variants;
+  while (variant) {
     conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
 
     if (conflict) {
@@ -546,6 +544,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t *enm)
                     conflict->src->line, conflict->src->col);
     }
     bl_scope_insert_node(scope, variant);
+    variant = variant->next;
   }
 
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
@@ -594,11 +593,9 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_strct->scopes, scope, strct);
 
-  bl_node_t *member = NULL;
+  bl_node_t *member = _strct->members;
 
-  const size_t c = bl_ast_struct_member_count(_strct);
-  for (size_t i = 0; i < c; ++i) {
-    member   = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
@@ -610,6 +607,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
     }
 
     bl_scope_insert_node(scope, member);
+    member = member->next;
   }
 
   bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
@@ -647,15 +645,15 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t *using)
 void
 second_pass_struct(bl_visitor_t *visitor, bl_node_t *strct)
 {
-  context_t *              cnt    = peek_cnt(visitor);
-  bl_decl_struct_t *       _strct = bl_peek_decl_struct(strct);
-  const size_t             c      = bl_ast_struct_member_count(_strct);
-  bl_node_t *              member;
+  context_t *       cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+
+  bl_node_t *              member = _strct->members;
   bl_decl_struct_member_t *_member;
-  for (size_t i = 0; i < c; ++i) {
-    member  = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     _member = bl_peek_decl_struct_member(member);
     connect_type(cnt, _member->type);
+    member = member->next;
   }
 }
 
@@ -849,11 +847,9 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
   cnt->curr_compound = func;
   cnt->curr_func     = func;
 
-  const size_t c = bl_ast_func_arg_count(_func);
-  bl_node_t *  arg;
-  for (size_t i = 0; i < c; ++i) {
-    arg = bl_ast_func_get_arg(_func, i);
-
+  // TODO can be solved via visitor because we use walk later
+  bl_node_t *arg = _func->args;
+  while (arg) {
     bl_node_t *conflict = lookup_in_scope(cnt, arg, func, NULL);
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, arg, BL_BUILDER_CUR_WORD,
@@ -863,6 +859,7 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t *func)
     } else {
       bl_scopes_insert_node(&_func->scopes, arg);
     }
+    arg = arg->next;
   }
 
   bl_visitor_walk_func(visitor, func);

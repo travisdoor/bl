@@ -72,7 +72,7 @@ get_tmp_fund(context_t *cnt, bl_fund_type_e t, int is_ptr)
 {
   bl_node_t *tmp          = &cnt->tmp_type;
   tmp->code               = BL_TYPE_FUND;
-  tmp->n.type_fund.dims   = NULL;
+  tmp->n.type_fund.dim    = NULL;
   tmp->n.type_fund.is_ptr = is_ptr;
   tmp->n.type_fund.type   = t;
   return tmp;
@@ -83,7 +83,7 @@ get_tmp_ref(context_t *cnt, bl_node_t *ref, int is_ptr)
 {
   bl_node_t *tmp         = &cnt->tmp_type;
   tmp->code              = BL_TYPE_REF;
-  tmp->n.type_ref.dims   = NULL;
+  tmp->n.type_ref.dim    = NULL;
   tmp->n.type_ref.is_ptr = is_ptr;
   tmp->n.type_ref.ref    = ref;
   return tmp;
@@ -98,11 +98,11 @@ dup_tmp_type(context_t *cnt, bl_node_t *type, int delta_ptr)
   bl_node_t *tmp = &cnt->tmp_type;
   tmp->code      = type->code;
   if (bl_node_is(type, BL_TYPE_FUND)) {
-    tmp->n.type_fund.dims   = bl_peek_type_fund(type)->dims;
+    tmp->n.type_fund.dim    = bl_peek_type_fund(type)->dim;
     tmp->n.type_fund.type   = bl_peek_type_fund(type)->type;
     tmp->n.type_fund.is_ptr = bl_peek_type_fund(type)->is_ptr + delta_ptr;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
-    tmp->n.type_ref.dims   = bl_peek_type_ref(type)->dims;
+    tmp->n.type_ref.dim    = bl_peek_type_ref(type)->dim;
     tmp->n.type_ref.ref    = bl_peek_type_ref(type)->ref;
     tmp->n.type_ref.is_ptr = bl_peek_type_ref(type)->is_ptr + delta_ptr;
   } else {
@@ -146,12 +146,11 @@ bl_node_t *
 check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(init);
-  const size_t    c     = bl_ast_init_expr_count(_init);
-  bl_node_t *     expr  = NULL;
+  bl_node_t *     expr  = _init->exprs;
 
-  for (size_t i = 0; i < c; ++i) {
-    expr = bl_ast_init_get_expr(_init, i);
+  while (expr) {
     check_expr(cnt, expr, NULL, const_expr);
+    expr = expr->next;
   }
 
   return NULL;
@@ -224,14 +223,17 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
   }
 
   bl_node_t *next_type = check_expr(cnt, _member_ref->next, NULL, const_expr);
-  if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
-                "expected reference access operator " BL_YELLOW("'->'"));
-  }
+  // HACK
+  if (next_type) {
+    if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                  "expected reference access operator " BL_YELLOW("'->'"));
+    }
 
-  if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
-    check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
-                "expected access operator " BL_YELLOW("'.'"));
+    if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
+      check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
+                  "expected access operator " BL_YELLOW("'.'"));
+    }
   }
 
   return bl_peek_decl_struct_member(_member_ref->ref)->type;
@@ -272,32 +274,29 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
     }
   }
 
-  const size_t call_arg_c   = bl_ast_call_arg_count(_call);
-  const size_t callee_arg_c = bl_ast_func_arg_count(_callee);
-
-  if (_call->run_in_compile_time && call_arg_c) {
+  if (_call->run_in_compile_time && _call->argsc) {
     check_error(cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
                 "calling function " BL_YELLOW(
                     "'%s'") " in compile time with parameters is not supported for now!!!",
                 _callee->id.str);
   }
 
-  if (call_arg_c != callee_arg_c) {
+  if (_call->argsc != _callee->argsc) {
     check_error(
         cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
         "invalid argument count in " BL_YELLOW(
             "'%s'") " function call, expected is %d but called with %d, declared here: %s:%d:%d",
-        _callee->id.str, callee_arg_c, call_arg_c, callee->src->unit->filepath, callee->src->line,
-        callee->src->col);
+        _callee->id.str, _callee->argsc, _call->argsc, callee->src->unit->filepath,
+        callee->src->line, callee->src->col);
   }
 
-  bl_node_t *callee_arg;
-  bl_node_t *call_arg;
-  for (size_t i = 0; i < call_arg_c; ++i) {
-    callee_arg = bl_ast_func_get_arg(_callee, i);
-    call_arg   = bl_ast_call_get_arg(_call, i);
-
+  bl_node_t *callee_arg = _callee->args;
+  bl_node_t *call_arg   = _call->args;
+  while (callee_arg) {
     check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
+
+    callee_arg = callee_arg->next;
+    call_arg   = call_arg->next;
   }
 
   return _callee->ret_type;
@@ -341,7 +340,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
 
   case BL_EXPR_INIT: {
     ref_type = bl_peek_expr_init(ref)->type;
-    
+
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
@@ -591,18 +590,16 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
                   "structure " BL_YELLOW("'%s'") " is declared but never used", _strct->id.str);
   }
 
-  if (bl_ast_struct_member_count(_strct) == 0) {
+  if (!_strct->members) {
     check_warning(cnt, strct, BL_BUILDER_CUR_WORD, "structure " BL_YELLOW("'%s'") " is empty",
                   _strct->id.str);
   }
 
   /* check all memebrs of structure */
-  bl_node_t *              member  = NULL;
+  bl_node_t *              member  = _strct->members;
   bl_decl_struct_member_t *_member = NULL;
-  const size_t             c       = bl_ast_struct_member_count(_strct);
 
-  for (size_t i = 0; i < c; ++i) {
-    member  = bl_ast_struct_get_member(_strct, i);
+  while (member) {
     _member = bl_peek_decl_struct_member(member);
 
     if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == strct) {
@@ -610,6 +607,8 @@ visit_struct(bl_visitor_t *visitor, bl_node_t *strct)
                   "structure cannot contains self-typed member " BL_YELLOW("'%s'"),
                   _member->id.str);
     }
+
+    member = member->next;
   }
 }
 
@@ -681,7 +680,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t *func)
   }
 
   if (_func->modif & BL_MODIF_UTEST) {
-    if (bl_ast_func_arg_count(_func)) {
+    if (_func->argsc) {
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, func, BL_BUILDER_CUR_WORD,
           "function " BL_YELLOW("'%s'") " is marked as #test, those functions are invoked in "

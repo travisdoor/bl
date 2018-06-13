@@ -166,13 +166,10 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   context_t *     cnt  = peek_cnt(visitor);
 
-  const size_t c            = bl_ast_enum_get_count(_enm);
-  bl_node_t *  curr_variant = NULL;
-  bl_node_t *  prev_variant = NULL;
+  bl_node_t *prev_variant = NULL;
+  bl_node_t *curr_variant = _enm->variants;
 
-  for (size_t i = 0; i < c; ++i) {
-    prev_variant = curr_variant;
-    curr_variant = bl_ast_enum_get_variant(_enm, i);
+  while (curr_variant) {
 
     /*
      * there can be enum variants without explicit init expression declaration spicified in code, in
@@ -197,43 +194,42 @@ eval_enum(bl_visitor_t *visitor, bl_node_t *enm)
     }
 
     eval_enum_variant(cnt, curr_variant);
+    prev_variant = curr_variant;
+    curr_variant = curr_variant->next;
   }
 }
 
 static void
 eval_type(bl_visitor_t *visitor, bl_node_t *type)
 {
-  context_t *cnt  = peek_cnt(visitor);
-  BArray *   dims = NULL;
+  context_t *cnt    = peek_cnt(visitor);
+  bl_node_t *dim    = NULL;
+  bl_node_t *result = NULL;
 
   switch (bl_node_code(type)) {
-  case BL_TYPE_FUND: {
-    dims = bl_peek_type_fund(type)->dims;
-    break;
-  }
   case BL_TYPE_REF:
-    dims = bl_peek_type_ref(type)->dims;
+    dim = bl_peek_type_ref(type)->dim;
+    if (dim) {
+      result                      = eval_expr(cnt, dim);
+      bl_peek_type_ref(type)->dim = result;
+    }
+    break;
+  case BL_TYPE_FUND:
+    dim = bl_peek_type_fund(type)->dim;
+    if (dim) {
+      result                       = eval_expr(cnt, dim);
+      bl_peek_type_fund(type)->dim = result;
+    }
     break;
   default:
-    bl_abort("invalid type %s", bl_node_name(type));
+    bl_abort("invalid type");
   }
 
-  if (dims) {
-    bl_node_t *  dim    = NULL;
-    bl_node_t *  result = NULL;
-    const size_t c      = bo_array_size(dims);
-    for (size_t i = 0; i < c; ++i) {
-      dim    = bo_array_at(dims, i, bl_node_t *);
-      result = eval_expr(cnt, dim);
-
-      if (bl_peek_expr_const(result)->value.u == 0) {
-        eval_error(cnt, BL_ERR_INVALID_EXPR, type, BL_BUILDER_CUR_WORD,
-                   "arrays with zero size are not allowed");
-      }
-
-      *((bl_node_t **)_bo_array_at(dims, i)) = result;
-    }
+  if (result && bl_peek_expr_const(result)->value.u == 0) {
+    eval_error(cnt, BL_ERR_INVALID_EXPR, type, BL_BUILDER_CUR_WORD,
+               "arrays with zero size are not allowed");
   }
+
   // TODO walk type???
 }
 

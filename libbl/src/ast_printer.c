@@ -68,31 +68,14 @@ print_modif(int modif)
 }
 
 static inline void
-print_path(BArray *path)
+print_path(bl_node_t *path)
 {
-  if (!path)
-    return;
-  const size_t c = bo_array_size(path);
-  bl_node_t *  path_elem;
-  for (size_t i = 0; i < c; ++i) {
-    path_elem = bo_array_at(path, i, bl_node_t *);
-    fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path_elem)->id.str);
-    if (i != c - 1)
+  while (path) {
+    fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path)->id.str);
+    path = path->next;
+
+    if (path)
       fprintf(stdout, BL_CYAN("::"));
-  }
-}
-
-static inline void
-print_dims(BArray *dims)
-{
-  if (!dims)
-    return;
-
-  const size_t c = bo_array_size(dims);
-  bl_node_t *  dim;
-  for (size_t i = 0; i < c; ++i) {
-    dim = bo_array_at(dims, i, bl_node_t *);
-    fprintf(stdout, BL_CYAN("[%p]"), dim);
   }
 }
 
@@ -150,7 +133,7 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
       fprintf(stdout, BL_CYAN("*"));
     print_path(_type->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
-    print_dims(_type->dims);
+    fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
   } else {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
     fprintf(stdout, "fundamental: ");
@@ -158,7 +141,7 @@ visit_type(bl_visitor_t *visitor, bl_node_t *type)
       fprintf(stdout, BL_CYAN("*"));
 
     fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
-    print_dims(_type->dims);
+    fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
   }
   bl_visitor_walk_type(visitor, type);
 }
