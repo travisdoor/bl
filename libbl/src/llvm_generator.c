@@ -325,8 +325,10 @@ gen_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMOpcode op = LLVMZExt;
+  LLVMOpcode op = LLVMSExt;
 
+
+  
   // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
 

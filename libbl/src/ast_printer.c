@@ -133,7 +133,8 @@ visit_type(bl_visitor_t *visitor, bl_node_t **type)
       fprintf(stdout, BL_CYAN("*"));
     print_path(_type->path);
     fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
-    fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
+    if (_type->dim)
+      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
   } else {
     bl_type_fund_t *_type = bl_peek_type_fund(*type);
     fprintf(stdout, "fundamental: ");
@@ -141,7 +142,8 @@ visit_type(bl_visitor_t *visitor, bl_node_t **type)
       fprintf(stdout, BL_CYAN("*"));
 
     fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
-    fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
+    if (_type->dim)
+      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
   }
   bl_visitor_walk_type(visitor, type);
 }
@@ -185,7 +187,7 @@ static void
 visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 {
   bl_decl_mut_t *_mut = bl_peek_decl_mut(*mut);
-  print_head("variable", bl_peek_src(*mut), *mut, visitor->nesting);
+  print_head("mutable", bl_peek_src(*mut), *mut, visitor->nesting);
   fprintf(stdout, "name: " BL_YELLOW("'%s'") " used: %d", _mut->id.str, _mut->used);
   print_modif(_mut->modif);
   bl_visitor_walk_mut(visitor, mut);

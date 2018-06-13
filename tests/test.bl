@@ -1,10 +1,32 @@
 /* testing playground */
 
-fn foo() {
-}
+#load "std/utest.bl"
+using std::utest;
 
-fn main() {
-  foo();
+#test
+fn intereget_implicit_cast() i32 {
+  mut _i8  i8 = 10;
+  mut _i16 i16 = 10;
+  mut _i32 i32 = 10;
+  mut _i64 i64 = 10;
+
+  mut _u8  u8 = 10;
+  mut _u16 u16 = 10;
+  mut _u32 u32 = 10;
+  mut _u64 u64 = 10;
+
+  mut dest i32;
+  dest = _i8;
+  dest = _i16;
+  dest = _i32;
+  //dest = _i64;
+
+  /*dest = _u8;
+  dest = _u16;
+  dest = _u32;
+  dest = _u64;*/
+
+  return SUCCESS; 
 }
 
 

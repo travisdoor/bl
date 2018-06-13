@@ -112,7 +112,7 @@ dup_tmp_type(context_t *cnt, bl_node_t *type, int delta_ptr)
 }
 
 static bl_node_t *
-check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr);
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
 check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_expr);
@@ -124,7 +124,7 @@ static bl_node_t *
 check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
-check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bool const_expr);
+check_decl_ref(context_t *cnt, bl_node_t **decl_ref, bl_node_t *expected_type, bool const_expr);
 
 static bl_node_t *
 check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type, bool const_expr);
@@ -146,11 +146,11 @@ bl_node_t *
 check_init(context_t *cnt, bl_node_t *init, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(init);
-  bl_node_t *     expr  = _init->exprs;
+  bl_node_t **    expr  = &_init->exprs;
 
-  while (expr) {
+  while (*expr) {
     check_expr(cnt, expr, NULL, const_expr);
-    expr = expr->next;
+    expr = &(*expr)->next;
   }
 
   return NULL;
@@ -167,7 +167,7 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
     if (expected_type)
       expected_type = dup_tmp_type(cnt, expected_type, -1);
 
-    next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
+    next_type = check_expr(cnt, &_unary->next, expected_type, const_expr);
     next_type = dup_tmp_type(cnt, next_type, 1);
     break;
   }
@@ -176,13 +176,13 @@ check_unary(context_t *cnt, bl_node_t *unary, bl_node_t *expected_type, bool con
     if (expected_type)
       expected_type = dup_tmp_type(cnt, expected_type, 1);
 
-    next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
+    next_type = check_expr(cnt, &_unary->next, expected_type, const_expr);
     next_type = dup_tmp_type(cnt, next_type, -1);
     break;
   }
 
   default:
-    next_type = check_expr(cnt, _unary->next, expected_type, const_expr);
+    next_type = check_expr(cnt, &_unary->next, expected_type, const_expr);
     break;
   }
 
@@ -202,7 +202,7 @@ check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const
                     "'%s'") " but result is " BL_YELLOW("'%s'"),
                 cnt->tname_tmp1, cnt->tname_tmp2);
   }
-  check_expr(cnt, _cast->next, NULL, const_expr);
+  check_expr(cnt, &_cast->next, NULL, const_expr);
   return _cast->to_type;
 }
 
@@ -222,7 +222,7 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
                 cnt->tname_tmp1, cnt->tname_tmp2);
   }
 
-  bl_node_t *next_type = check_expr(cnt, _member_ref->next, NULL, const_expr);
+  bl_node_t *next_type = check_expr(cnt, &_member_ref->next, NULL, const_expr);
   // HACK
   if (next_type) {
     if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
@@ -290,13 +290,13 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
         callee->src->line, callee->src->col);
   }
 
-  bl_node_t *callee_arg = _callee->args;
-  bl_node_t *call_arg   = _call->args;
-  while (callee_arg) {
-    check_expr(cnt, call_arg, bl_peek_decl_arg(callee_arg)->type, false);
+  bl_node_t **callee_arg = &_callee->args;
+  bl_node_t **call_arg   = &_call->args;
+  while (*callee_arg) {
+    check_expr(cnt, call_arg, bl_peek_decl_arg(*callee_arg)->type, false);
 
-    callee_arg = callee_arg->next;
-    call_arg   = call_arg->next;
+    callee_arg = &(*callee_arg)->next;
+    call_arg   = &(*call_arg)->next;
   }
 
   return _callee->ret_type;
@@ -329,9 +329,9 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool cons
 }
 
 bl_node_t *
-check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bool const_expr)
+check_decl_ref(context_t *cnt, bl_node_t **decl_ref, bl_node_t *expected_type, bool const_expr)
 {
-  bl_node_t *ref      = bl_peek_expr_decl_ref(decl_ref)->ref;
+  bl_node_t *ref      = bl_peek_expr_decl_ref(*decl_ref)->ref;
   bl_node_t *ref_type = NULL;
 
   bl_assert(ref, "invalid reference");
@@ -346,7 +346,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of initializator list " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
@@ -359,15 +359,23 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
     ref_type = bl_peek_decl_mut(ref)->type;
 
     if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+      bl_type_kind_e src_kind  = bl_type_get_kind(expected_type);
+      bl_type_kind_e dest_kind = bl_type_get_kind(expected_type);
 
-      check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
-          "incompatible type of variable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
-              "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
-          ref->src->line, ref->src->col);
+      if (src_kind == dest_kind) {
+        bl_node_t *icast = bl_ast_add_expr_cast(&cnt->unit->ast, NULL, expected_type, *decl_ref);
+        *decl_ref        = icast;
+      } else {
+        bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+        bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+
+        check_error(
+            cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
+            "no implicit cast for type of mutable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+                "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
+            bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
+            ref->src->line, ref->src->col);
+      }
     }
     break;
   }
@@ -380,7 +388,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of function argument reference " BL_YELLOW(
               "'%s'") ", expected is " BL_YELLOW("'%s'") " but argument is "
                                                          "declared " BL_YELLOW(
@@ -400,7 +408,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of constant reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but constant is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
@@ -417,7 +425,7 @@ check_decl_ref(context_t *cnt, bl_node_t *decl_ref, bl_node_t *expected_type, bo
       bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
       bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
       check_error(
-          cnt, BL_ERR_INVALID_TYPE, decl_ref, BL_BUILDER_CUR_WORD,
+          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
           "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
           bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
@@ -463,8 +471,8 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
     break;
   }
 
-  bl_node_t *lhs_type = check_expr(cnt, _binop->lhs, expected_type, const_expr);
-  check_expr(cnt, _binop->rhs, lhs_type, const_expr);
+  bl_node_t *lhs_type = check_expr(cnt, &_binop->lhs, expected_type, const_expr);
+  check_expr(cnt, &_binop->rhs, lhs_type, const_expr);
 
   if (_binop->type == NULL)
     return lhs_type;
@@ -489,42 +497,42 @@ check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_e
 }
 
 bl_node_t *
-check_expr(context_t *cnt, bl_node_t *expr, bl_node_t *expected_type, bool const_expr)
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *expected_type, bool const_expr)
 {
-  switch (bl_node_code(expr)) {
+  switch (bl_node_code(*expr)) {
   case BL_EXPR_DECL_REF:
     return check_decl_ref(cnt, expr, expected_type, const_expr);
 
   case BL_EXPR_CALL:
-    return check_call(cnt, expr, expected_type, const_expr);
+    return check_call(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_BINOP:
-    return check_binop(cnt, expr, expected_type, const_expr);
+    return check_binop(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_CONST:
-    return check_const(cnt, expr, expected_type, const_expr);
+    return check_const(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_UNARY:
-    return check_unary(cnt, expr, expected_type, const_expr);
+    return check_unary(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_SIZEOF:
     return NULL;
 
   case BL_EXPR_NULL: {
-    return check_null(cnt, expr, expected_type, const_expr);
+    return check_null(cnt, *expr, expected_type, const_expr);
   }
 
   case BL_EXPR_MEMBER_REF:
-    return check_member_ref(cnt, expr, expected_type, const_expr);
+    return check_member_ref(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_ARRAY_REF:
     return NULL;
 
   case BL_EXPR_CAST:
-    return check_cast(cnt, expr, expected_type, const_expr);
+    return check_cast(cnt, *expr, expected_type, const_expr);
 
   case BL_EXPR_INIT:
-    return check_init(cnt, expr, expected_type, const_expr);
+    return check_init(cnt, *expr, expected_type, const_expr);
 
   default:
     bl_abort("node is not expression");
@@ -545,7 +553,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
     check_warning(cnt, *expr, BL_BUILDER_CUR_WORD, "expression has no effect");
   }
 
-  check_expr(cnt, *expr, NULL, false);
+  check_expr(cnt, expr, NULL, false);
 }
 
 static void
@@ -560,7 +568,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
   }
 
   if (_mut->init_expr != NULL) {
-    check_expr(cnt, _mut->init_expr, _mut->type, false);
+    check_expr(cnt, &_mut->init_expr, _mut->type, false);
   }
 }
 
@@ -576,7 +584,7 @@ visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
   }
 
   if (_cnst->init_expr != NULL) {
-    check_expr(cnt, _cnst->init_expr, _cnst->type, true);
+    check_expr(cnt, &_cnst->init_expr, _cnst->type, true);
   }
 }
 
@@ -642,7 +650,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 
   if (_variant->expr != NULL) {
     /* check result type of the expression */
-    check_expr(cnt, _variant->expr, expected_type, true);
+    check_expr(cnt, &_variant->expr, expected_type, true);
   } else {
     bl_type_fund_t *type = bl_peek_type_fund(expected_type);
     switch (type->type) {
@@ -719,7 +727,7 @@ visit_return(bl_visitor_t *visitor, bl_node_t **ret)
   bl_node_t *       expected_type = bl_peek_decl_func(cnt->curr_func)->ret_type;
 
   if (_ret->expr)
-    check_expr(cnt, _ret->expr, expected_type, false);
+    check_expr(cnt, &_ret->expr, expected_type, false);
 
   cnt->fn_has_return = true;
 }
@@ -730,7 +738,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t **if_stmt)
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
   bl_stmt_if_t *_if = bl_peek_stmt_if(*if_stmt);
-  check_expr(cnt, _if->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
+  check_expr(cnt, &_if->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
 
   bl_visitor_walk_if_true(visitor, if_stmt);
   if (_if->false_stmt)
@@ -743,7 +751,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t **loop)
   context_t *cnt = peek_cnt(visitor);
   bl_assert(cnt->curr_func, "invalid current function");
   bl_stmt_loop_t *_loop = bl_peek_stmt_loop(*loop);
-  check_expr(cnt, _loop->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
+  check_expr(cnt, &_loop->test, get_tmp_fund(cnt, BL_FTYPE_BOOL, 0), false);
 
   bl_visitor_walk_loop_body(visitor, loop);
 }

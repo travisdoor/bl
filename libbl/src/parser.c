@@ -324,7 +324,7 @@ parse_decl_ref_maybe(context_t *cnt, bl_node_t *path)
     return NULL;
 
   bl_node_t * decl_ref = NULL;
-  bl_token_t *tok_id   = bl_tokens_peek(cnt->tokens);
+  bl_token_t *tok_id   = bl_tokens_peek_prev(cnt->tokens);
 
   decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
 
