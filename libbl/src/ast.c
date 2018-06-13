@@ -28,6 +28,14 @@
 
 #include "ast_impl.h"
 
+#define CHUNK_SIZE 512
+
+typedef struct chunk
+{
+  struct chunk *next;
+  int           count;
+} chunk_t;
+
 const char *bl_fund_type_strings[] = {
 #define ft(tok, str) str,
     BL_FUND_TYPE_LIST
@@ -39,19 +47,6 @@ const char *bl_node_type_strings[] = {
     BL_NODE_TYPE_LIST
 #undef nt
 };
-
-static bl_node_t *
-alloc_node(bl_ast_t *ast)
-{
-  // PERFORMANCE: use pool
-  bl_node_t *node = bl_calloc(sizeof(bl_node_t), 1);
-  if (node == NULL) {
-    bl_abort("bad alloc");
-  }
-
-  bo_array_push_back(ast->nodes, node);
-  return node;
-}
 
 static void
 node_terminate(bl_node_t *node)
@@ -77,25 +72,73 @@ node_terminate(bl_node_t *node)
   }
 }
 
+static inline bl_node_t *
+get_node_in_chunk(chunk_t *chunk, int i)
+{
+  return (bl_node_t *)((char *)chunk + (i * sizeof(bl_node_t)));
+}
+
+static inline chunk_t *
+alloc_chunk(void)
+{
+  const size_t size_in_bytes = sizeof(bl_node_t) * CHUNK_SIZE;
+  chunk_t *    chunk         = bl_malloc(size_in_bytes);
+  memset(chunk, 0, size_in_bytes);
+  chunk->count = 1;
+  return chunk;
+}
+
+static inline chunk_t *
+free_chunk(chunk_t *chunk)
+{
+  if (!chunk)
+    return NULL;
+
+  chunk_t *next = chunk->next;
+
+  for (int i = 0; i < chunk->count - 1; ++i) {
+    node_terminate(get_node_in_chunk(chunk, i + 1));
+  }
+  bl_free(chunk);
+  return next;
+}
+
+static bl_node_t *
+alloc_node(bl_ast_t *ast)
+{
+  if (!ast->current_chunk) {
+    ast->current_chunk = alloc_chunk();
+    ast->first_chunk   = ast->current_chunk;
+  }
+
+  if (ast->current_chunk->count == CHUNK_SIZE) {
+    // last chunk node
+    chunk_t *chunk           = alloc_chunk();
+    ast->current_chunk->next = chunk;
+    ast->current_chunk       = chunk;
+  }
+
+  bl_node_t *node = get_node_in_chunk(ast->current_chunk, ast->current_chunk->count);
+  ast->current_chunk->count++;
+
+  return node;
+}
+
 /* public */
 void
 bl_ast_init(bl_ast_t *ast)
 {
-  ast->nodes = bo_array_new(sizeof(bl_node_t *));
-  bo_array_reserve(ast->nodes, 1024);
+  ast->first_chunk   = NULL;
+  ast->current_chunk = NULL;
 }
 
 void
 bl_ast_terminate(bl_ast_t *ast)
 {
-  bl_node_t *  node;
-  const size_t c = bo_array_size(ast->nodes);
-  for (size_t i = 0; i < c; ++i) {
-    node = bo_array_at(ast->nodes, i, bl_node_t *);
-    node_terminate(node);
+  chunk_t *chunk = ast->first_chunk;
+  while (chunk) {
+    chunk = free_chunk(chunk);
   }
-
-  bo_unref(ast->nodes);
 }
 
 /*************************************************************************************************
@@ -697,18 +740,6 @@ bl_ast_try_get_modif(bl_node_t *node)
   default:
     return BL_MODIF_NONE;
   }
-}
-
-size_t
-bl_ast_node_count(bl_ast_t *ast)
-{
-  return bo_array_size(ast->nodes);
-}
-
-bl_node_t *
-bl_ast_get_node(bl_ast_t *ast, size_t i)
-{
-  return bo_array_at(ast->nodes, i, bl_node_t *);
 }
 
 bool

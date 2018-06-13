@@ -144,10 +144,14 @@ enum bl_node_code
 #define bl_node_code(n) (n)->code
 #define bl_node_name(n) bl_node_type_strings[(n)->code]
 
+struct chunk;
+
 struct bl_ast
 {
   bl_node_t *root;
-  BArray *   nodes;
+
+  struct chunk *first_chunk;
+  struct chunk *current_chunk;
 };
 
 enum bl_modif
@@ -585,12 +589,6 @@ bl_ast_try_get_id(bl_node_t *node);
 
 int
 bl_ast_try_get_modif(bl_node_t *node);
-
-size_t
-bl_ast_node_count(bl_ast_t *ast);
-
-bl_node_t *
-bl_ast_get_node(bl_ast_t *ast, size_t i);
 
 bool
 bl_type_compatible(bl_node_t *first, bl_node_t *second);
