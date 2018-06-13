@@ -66,14 +66,7 @@ node_terminate(bl_node_t *node)
   case BL_DECL_BLOCK:
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
     break;
-  case BL_EXPR_CALL:
-    bo_unref(bl_peek_expr_call(node)->path);
-    break;
-  case BL_EXPR_DECL_REF:
-    bo_unref(bl_peek_expr_decl_ref(node)->path);
-    break;
   case BL_TYPE_REF:
-    bo_unref(bl_peek_type_ref(node)->path);
     bo_unref(bl_peek_type_ref(node)->dims);
     break;
   case BL_DECL_ENUM:
@@ -81,9 +74,6 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_STRUCT:
     bl_scopes_terminate(&bl_peek_decl_struct(node)->scopes);
-    break;
-  case BL_STMT_USING:
-    bo_unref(bl_peek_stmt_using(node)->path);
     break;
   default:
     break;
@@ -129,8 +119,8 @@ bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, int is_pt
 }
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    int is_ptr)
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                    bl_node_t *path, int is_ptr)
 {
   bl_node_t *type = alloc_node(ast);
   if (tok)
@@ -318,7 +308,7 @@ bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *ne
 }
 
 bl_node_t *
-bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path)
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path)
 {
   bl_node_t *decl_ref = alloc_node(ast);
   if (tok)
@@ -365,7 +355,7 @@ bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_n
 }
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path,
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path,
                      bool run_in_compile_time)
 {
   bl_node_t *call = alloc_node(ast);
@@ -636,7 +626,7 @@ bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_
 }
 
 bl_node_t *
-bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path)
+bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path)
 {
   bl_node_t *using_stmt = alloc_node(ast);
   if (tok)
@@ -918,13 +908,18 @@ bl_type_is_ptr(bl_node_t *type)
 }
 
 bl_node_t *
-bl_ast_path_get_last(BArray *path)
+bl_ast_path_get_last(bl_node_t *path)
 {
-  const size_t c = bo_array_size(path);
-  if (c == 0)
+  if (!path)
     return NULL;
 
-  return bo_array_at(path, c - 1, bl_node_t *);
+  bl_node_t *last = path;
+  while (true) {
+    if (!last->next)
+      return last;
+
+    last = last->next;
+  }
 }
 
 bl_scopes_t *

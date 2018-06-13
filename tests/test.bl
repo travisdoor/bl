@@ -1,10 +1,13 @@
 /* testing playground */
 
-fn foo(i i32, j i32) {
+module A {
+  public module B {
+    public fn foo() {}
+  }
 }
 
 fn main() {
-  foo(10, 21);
+  A::B::foo();
 }
 
 

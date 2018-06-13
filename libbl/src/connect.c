@@ -81,7 +81,7 @@ static void
 include_using(context_t *cnt, bl_node_t *using);
 
 static bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
+lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *found_in_curr_branch);
 
 static bl_node_t *
 lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by,
@@ -187,38 +187,38 @@ static VALIDATE_F(type);
  * Helpers impl
  *************************************************************************************************/
 bl_node_t *
-lookup(context_t *cnt, BArray *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
+lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
 {
-  const size_t c              = bo_array_size(path);
-  bl_node_t *  path_elem      = bo_array_at(path, 0, bl_node_t *);
-  bl_node_t *  linked_by      = NULL;
-  bool         in_curr_branch = false;
-  bl_node_t *  found =
-      lookup_in_tree(cnt, path_elem, cnt->curr_compound, &linked_by, &in_curr_branch);
+  bl_assert(path, "invalid path");
+  bl_node_t *linked_by      = NULL;
+  bool       in_curr_branch = false;
+  bl_node_t *found = lookup_in_tree(cnt, path, cnt->curr_compound, &linked_by, &in_curr_branch);
 
   if (validator)
-    validator(cnt, path_elem, found, c == 1);
+    validator(cnt, path, found, !path->next);
   bl_assert(found, "null found symbol unhandled by validator");
 
   if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
-    connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                   "symbol " BL_YELLOW("'%s'") " is private in this context",
-                  bl_peek_path_elem(path_elem)->id.str);
+                  bl_peek_path_elem(path)->id.str);
   }
 
-  for (size_t i = 1; i < c; ++i) {
-    path_elem = bo_array_at(path, i, bl_node_t *);
-    found     = lookup_in_scope(cnt, path_elem, found, &linked_by);
+  path = path->next;
+  while (path) {
+    found = lookup_in_scope(cnt, path, found, &linked_by);
 
     if (validator)
-      validator(cnt, path_elem, found, c == i + 1);
+      validator(cnt, path, found, !path->next);
     bl_assert(found, "null found symbol unhandled by validator");
 
     if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
-      connect_error(cnt, BL_ERR_PRIVATE, path_elem, BL_BUILDER_CUR_WORD,
+      connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
-                    bl_peek_path_elem(path_elem)->id.str);
+                    bl_peek_path_elem(path)->id.str);
     }
+
+    path = path->next;
   }
 
   if (found_in_curr_branch)

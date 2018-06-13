@@ -68,16 +68,13 @@ print_modif(int modif)
 }
 
 static inline void
-print_path(BArray *path)
+print_path(bl_node_t *path)
 {
-  if (!path)
-    return;
-  const size_t c = bo_array_size(path);
-  bl_node_t *  path_elem;
-  for (size_t i = 0; i < c; ++i) {
-    path_elem = bo_array_at(path, i, bl_node_t *);
-    fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path_elem)->id.str);
-    if (i != c - 1)
+  while (path) {
+    fprintf(stdout, BL_CYAN("%s"), bl_peek_path_elem(path)->id.str);
+    path = path->next;
+
+    if (path)
       fprintf(stdout, BL_CYAN("::"));
   }
 }

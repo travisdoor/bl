@@ -150,7 +150,7 @@ static bl_node_t *
 parse_cast_expr_maybe(context_t *cnt);
 
 static bl_node_t *
-parse_decl_ref_maybe(context_t *cnt, BArray *path);
+parse_decl_ref_maybe(context_t *cnt, bl_node_t *path);
 
 static bl_node_t *
 parse_member_ref_maybe(context_t *cnt, bl_token_t *op);
@@ -159,7 +159,7 @@ static bl_node_t *
 parse_array_ref_maybe(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
-parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time);
+parse_call_maybe(context_t *cnt, bl_node_t *path, bool run_in_compile_time);
 
 static bl_node_t *
 parse_pre_run_maybe(context_t *cnt);
@@ -167,7 +167,7 @@ parse_pre_run_maybe(context_t *cnt);
 static bl_node_t *
 parse_nested_expr_maybe(context_t *cnt);
 
-static BArray *
+static bl_node_t *
 parse_path_maybe(context_t *cnt);
 
 static bl_node_t *
@@ -318,7 +318,7 @@ parse_continue_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_decl_ref_maybe(context_t *cnt, BArray *path)
+parse_decl_ref_maybe(context_t *cnt, bl_node_t *path)
 {
   if (!path)
     return NULL;
@@ -326,9 +326,7 @@ parse_decl_ref_maybe(context_t *cnt, BArray *path)
   bl_node_t * decl_ref = NULL;
   bl_token_t *tok_id   = bl_tokens_peek(cnt->tokens);
 
-  if (bo_array_size(path) > 0) {
-    decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
-  }
+  decl_ref = bl_ast_add_expr_decl_ref(cnt->ast, tok_id, NULL, path);
 
   return decl_ref;
 }
@@ -389,7 +387,7 @@ parse_pre_run_maybe(context_t *cnt)
   if (!tok_run)
     return NULL;
 
-  BArray *   path = parse_path_maybe(cnt);
+  bl_node_t *path = parse_path_maybe(cnt);
   bl_node_t *call = parse_call_maybe(cnt, path, true);
 
   if (!call) {
@@ -402,13 +400,13 @@ parse_pre_run_maybe(context_t *cnt)
 }
 
 bl_node_t *
-parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
+parse_call_maybe(context_t *cnt, bl_node_t *path, bool run_in_compile_time)
 {
   if (!path)
     return NULL;
 
   bl_node_t *call = NULL;
-  if (bo_array_size(path) > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
+  if (path > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
     bl_token_t *tok_id    = bl_tokens_peek_prev(cnt->tokens);
     call                  = bl_ast_add_expr_call(cnt->ast, tok_id, NULL, path, run_in_compile_time);
     bl_expr_call_t *_call = bl_peek_expr_call(call);
@@ -421,7 +419,7 @@ parse_call_maybe(context_t *cnt, BArray *path, bool run_in_compile_time)
 
     /* parse args */
     bool        rq   = false;
-    bl_node_t * prev = call;
+    bl_node_t * prev = NULL;
     bl_node_t **arg  = &_call->args;
   arg:
     *arg = parse_expr_maybe(cnt);
@@ -581,25 +579,26 @@ parse_nested_expr_maybe(context_t *cnt)
   return expr;
 }
 
-BArray *
+bl_node_t *
 parse_path_maybe(context_t *cnt)
 {
-  BArray *    path          = NULL;
-  bl_node_t * path_elem     = NULL;
+  bl_node_t * path          = NULL;
   bl_token_t *separator_tok = NULL;
   bl_token_t *tok           = NULL;
   bool        rq            = false;
 
+  bl_node_t * prev      = NULL;
+  bl_node_t **path_elem = &path;
+
 next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_IDENT)) {
-    if (!path)
-      path = bo_array_new(sizeof(bl_node_t *));
-
     tok = bl_tokens_consume(cnt->tokens);
 
-    path_elem = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
-    bo_array_push_back(path, path_elem);
-    rq = false;
+    *path_elem         = bl_ast_add_path_elem(cnt->ast, tok, tok->value.str);
+    (*path_elem)->prev = prev;
+    prev               = *path_elem;
+    path_elem          = &(*path_elem)->next;
+    rq                 = false;
 
     separator_tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_PATH);
     if (separator_tok != NULL) {
@@ -641,7 +640,7 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
-  BArray *   path = NULL;
+  bl_node_t *path = NULL;
 
   if ((expr = parse_array_ref_maybe(cnt, op)))
     return expr;
@@ -678,7 +677,6 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_init_expr_maybe(cnt)))
     return expr;
 
-  bo_unref(path);
   return expr;
 }
 
@@ -855,12 +853,12 @@ parse_type_maybe(context_t *cnt)
     ++is_ptr;
   }
 
-  BArray *    path           = parse_path_maybe(cnt);
+  bl_node_t * path           = parse_path_maybe(cnt);
   bl_node_t * last_path_elem = NULL;
   bl_token_t *prev_tok       = NULL;
 
-  if (path && bo_array_size(path) > 0) {
-    last_path_elem = bo_array_at(path, bo_array_size(path) - 1, bl_node_t *);
+  if (path) {
+    last_path_elem = bl_ast_path_get_last(path);
     prev_tok       = bl_tokens_peek_prev(cnt->tokens);
 
     bl_assert(last_path_elem, "invalid last path elem in type parsing");
@@ -883,10 +881,7 @@ parse_type_maybe(context_t *cnt)
                                  NULL, path, is_ptr);
       bl_ast_type_ref_push_dim(bl_peek_type_ref(type), expr_dim);
     }
-  } else {
-    bo_unref(path);
   }
-
   return type;
 }
 
@@ -1159,7 +1154,7 @@ parse_block_maybe(context_t *cnt, bl_node_t *parent)
   bl_node_t *      block  = bl_ast_add_decl_block(cnt->ast, tok_begin, parent);
   bl_decl_block_t *_block = bl_peek_decl_block(block);
   bl_token_t *     tok;
-  bl_node_t *      prev = block;
+  bl_node_t *      prev = NULL;
   bl_node_t **     node = &_block->nodes;
 stmt:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -1236,7 +1231,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
 
     /* parse args */
     bool        rq   = false;
-    bl_node_t * prev = fn;
+    bl_node_t * prev = NULL;
     bl_node_t **arg  = &_fn->args;
   arg:
     *arg = parse_arg_maybe(cnt);
@@ -1301,7 +1296,7 @@ parse_using_maybe(context_t *cnt)
   if (tok == NULL)
     return NULL;
 
-  BArray *path = parse_path_maybe(cnt);
+  bl_node_t *path = parse_path_maybe(cnt);
   if (path == NULL) {
     parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD,
                 "expected module name or path to module after using keyword");
@@ -1334,7 +1329,7 @@ parse_init_expr_maybe(context_t *cnt)
   bl_node_t *prev_init_list = cnt->curr_init_list;
   cnt->curr_init_list       = init;
 
-  bl_node_t * prev = init;
+  bl_node_t * prev = NULL;
   bl_node_t **expr = &_init->exprs;
   /* Loop until we reach the end of initialization list. (expressions are separated by comma) */
 next_expr:
@@ -1584,7 +1579,7 @@ parse_module_body(context_t *cnt, bl_node_t *module)
   int               modif   = BL_MODIF_NONE;
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
-  bl_node_t * prev = module;
+  bl_node_t * prev = NULL;
   bl_node_t **node = &_module->nodes;
 decl:
   modif = parse_modifs_maybe(cnt);

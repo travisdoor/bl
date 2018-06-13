@@ -203,7 +203,7 @@ struct bl_stmt_return
 
 struct bl_stmt_using
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to module or enum */
 };
 
@@ -353,7 +353,7 @@ struct bl_expr_unary
 
 struct bl_expr_decl_ref
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to referenced node */
 };
 
@@ -373,7 +373,7 @@ struct bl_expr_array_ref
 
 struct bl_expr_call
 {
-  BArray *   path; /* path */
+  bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to function */
   bl_node_t *args; /* argument list passed into function */
   int        argsc;
@@ -394,7 +394,7 @@ struct bl_type_fund
 
 struct bl_type_ref
 {
-  BArray *   path;   /* path */
+  bl_node_t *path;   /* path */
   bl_node_t *ref;    /* reference to type */
   BArray *   dims;   /* dimensions are used when type is array */
   int        is_ptr; /* is pointer */
@@ -453,8 +453,8 @@ bl_node_t *
 bl_ast_add_type_fund(bl_ast_t *ast, bl_token_t *tok, bl_fund_type_e t, int is_ptr);
 
 bl_node_t *
-bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref, BArray *path,
-                    int is_ptr);
+bl_ast_add_type_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *ref,
+                    bl_node_t *path, int is_ptr);
 
 bl_node_t *
 bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
@@ -498,7 +498,7 @@ bl_node_t *
 bl_ast_add_expr_unary(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path);
+bl_ast_add_expr_decl_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path);
 
 bl_node_t *
 bl_ast_add_expr_member_ref(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *next,
@@ -514,7 +514,7 @@ bl_node_t *
 bl_ast_add_expr_array_ref(bl_ast_t *ast, bl_token_t *tok, bl_node_t *index, bl_node_t *next);
 
 bl_node_t *
-bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, BArray *path,
+bl_ast_add_expr_call(bl_ast_t *ast, bl_token_t *tok, bl_node_t *ref, bl_node_t *path,
                      bool run_in_compile_time);
 
 bl_node_t *
@@ -575,7 +575,7 @@ bl_node_t *
 bl_ast_add_stmt_return(bl_ast_t *ast, bl_token_t *tok, bl_node_t *expr, bl_node_t *func);
 
 bl_node_t *
-bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, BArray *path);
+bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path);
 
 /*************************************************************************************************
  * type fund
@@ -641,7 +641,7 @@ BArray *
 bl_ast_try_get_type_dims(bl_node_t *type);
 
 bl_node_t *
-bl_ast_path_get_last(BArray *path);
+bl_ast_path_get_last(bl_node_t *path);
 
 bl_scopes_t *
 bl_ast_try_get_scopes(bl_node_t *node);
