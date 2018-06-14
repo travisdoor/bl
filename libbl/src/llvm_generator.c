@@ -143,8 +143,8 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr);
 static LLVMTypeRef
 gen_struct(context_t *cnt, bl_node_t *strct);
 
-/*static LLVMTypeRef
-  gen_enum(context_t *cnt, bl_node_t *enm);*/
+static LLVMTypeRef
+gen_enum(context_t *cnt, bl_node_t *enm);
 
 static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
@@ -227,9 +227,9 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     case BL_DECL_STRUCT:
       llvm_type = gen_struct(cnt, _type->ref);
       break;
-      /*case BL_DECL_ENUM:
+    case BL_DECL_ENUM:
       llvm_type = gen_enum(cnt, _type->ref);
-      break;*/
+      break;
     default:
       bl_abort("invalid reference type");
     }
@@ -304,12 +304,12 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   return type;
 }
 
-/*LLVMTypeRef
+LLVMTypeRef
 gen_enum(context_t *cnt, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   return to_llvm_type(cnt, _enm->type);
-  }*/
+}
 
 LLVMValueRef
 gen_cast(context_t *cnt, bl_node_t *cast)
@@ -327,8 +327,6 @@ gen_cast(context_t *cnt, bl_node_t *cast)
 
   LLVMOpcode op = LLVMSExt;
 
-
-  
   // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
 
@@ -1165,7 +1163,7 @@ generate(bl_visitor_t *visitor, bool runtime)
     bl_visitor_walk_module(visitor, &unit->ast.root);
   }
 
-  bl_node_t **     func;
+  bl_node_t **    func;
   bl_decl_func_t *_func;
   for (size_t i = 0; i < bo_array_size(cnt->gen_stack); ++i) {
     func  = &bo_array_at(cnt->gen_stack, i, bl_node_t *);

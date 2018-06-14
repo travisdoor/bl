@@ -312,7 +312,7 @@ connect_type(context_t *cnt, bl_node_t *type)
       connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
                     "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_get_id(found)->str);
     }
-  }
+  } 
 }
 
 void
@@ -692,12 +692,6 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   context_t *cnt = peek_cnt(visitor);
   connect_type(cnt, *type);
-
-  if (bl_node_is(*type, BL_TYPE_REF) && bl_node_is(bl_peek_type_ref(*type)->ref, BL_DECL_ENUM)) {
-    bl_node_t *enm_type = bl_ast_get_type(bl_peek_type_ref(*type)->ref);
-    *type = enm_type;
-  }
-
   bl_visitor_walk_type(visitor, type);
 }
 

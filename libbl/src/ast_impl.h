@@ -318,6 +318,7 @@ struct bl_decl_enum_variant
   bl_id_t    id;     /* identificator */
   bl_node_t *parent; /* parent node */
   bl_node_t *expr;   /* enum variant initialization expression */
+  bl_node_t *type;  
 };
 
 struct bl_decl_block
@@ -565,7 +566,7 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 
 bl_node_t *
 bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr,
-                             bl_node_t *parent);
+                             bl_node_t *parent, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);

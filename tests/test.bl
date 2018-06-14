@@ -35,12 +35,15 @@ fn integer_implicit_cast() i32 {
 
   mut i32_size size_t = sizeof(i32);
 
+  foo.e = enm::A;
+
   return 0; 
 }
 
 struct foo_t {
   bar bar_t,
-  i i32
+  i i32,
+  e enm
 }
 
 struct bar_t {
