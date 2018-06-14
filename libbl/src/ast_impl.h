@@ -224,7 +224,7 @@ struct bl_expr_null
 struct bl_expr_cast
 {
   bl_node_t *type; /* destination type of the cast */
-  bl_node_t *next;    /* fallowing expression */
+  bl_node_t *next; /* fallowing expression */
 };
 
 struct bl_expr_init
@@ -353,12 +353,17 @@ struct bl_expr_unary
 {
   bl_sym_e   op;   /* operator of unary expression */
   bl_node_t *next; /* fallowing node */
+
+  /* some unary expressions can change resulting type of next expression (pointer dereferencing,
+   * address of, ...), in such cases we create copy of typeof(next) node*/
+  bl_node_t *type;
 };
 
 struct bl_expr_decl_ref
 {
   bl_node_t *path; /* path */
   bl_node_t *ref;  /* reference to referenced node */
+  bl_node_t *type;
 };
 
 struct bl_expr_member_ref
@@ -367,12 +372,14 @@ struct bl_expr_member_ref
   bl_node_t *ref;        /* reference to member */
   bl_node_t *next;       /* fallowing expression */
   bool       is_ptr_ref; /* true when we accesig to members via pointer */
+  bl_node_t *type;
 };
 
 struct bl_expr_array_ref
 {
   bl_node_t *index; /* index expression */
   bl_node_t *next;  /* fallowing expression */
+  bl_node_t *type;
 };
 
 struct bl_expr_call
@@ -382,6 +389,7 @@ struct bl_expr_call
   bl_node_t *args; /* argument list passed into function */
   int        argsc;
   bool       run_in_compile_time;
+  bl_node_t *type;
 };
 
 struct bl_path_elem
@@ -596,11 +604,17 @@ bl_ast_type_compatible(bl_node_t *first, bl_node_t *second);
 int
 bl_ast_type_is_ptr(bl_node_t *first);
 
-bl_type_kind_e
-bl_ast_type_get_kind(bl_node_t *type);
+void
+bl_ast_type_addrof(bl_node_t *type);
 
 void
-bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
+bl_ast_type_deref(bl_node_t *type);
+
+void
+bl_ast_type_remove_dim(bl_node_t *type);
+
+bl_type_kind_e
+bl_ast_type_get_kind(bl_node_t *type);
 
 bl_node_t *
 bl_ast_get_type(bl_node_t *node);

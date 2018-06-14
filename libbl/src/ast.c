@@ -894,84 +894,6 @@ bl_ast_get_parent(bl_node_t *node)
   }
 }
 
-void
-bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type)
-{
-  bl_assert(node, "cannot get result type");
-
-  switch (bl_node_code(node)) {
-  case BL_EXPR_CALL:
-    bl_ast_get_result_type(bl_peek_expr_call(node)->ref, out_type);
-    break;
-
-  case BL_EXPR_DECL_REF:
-    bl_ast_get_result_type(bl_peek_expr_decl_ref(node)->ref, out_type);
-    break;
-
-  case BL_EXPR_MEMBER_REF:
-    bl_ast_get_result_type(bl_peek_expr_member_ref(node)->ref, out_type);
-    break;
-
-  case BL_EXPR_UNARY: {
-    bl_ast_get_result_type(bl_peek_expr_unary(node)->next, out_type);
-    break;
-  }
-
-  case BL_EXPR_BINOP:
-    bl_ast_get_result_type(bl_peek_expr_binop(node)->lhs, out_type);
-    break;
-
-  case BL_EXPR_ARRAY_REF:
-    bl_ast_get_result_type(bl_peek_expr_array_ref(node)->next, out_type);
-    break;
-
-  case BL_EXPR_CAST:
-    *out_type = *bl_peek_expr_cast(node)->type;
-    break;
-
-  case BL_EXPR_INIT:
-    bl_ast_get_result_type(bl_peek_expr_init(node)->type, out_type);
-    break;
-
-  case BL_EXPR_CONST:
-    bl_ast_get_result_type(bl_peek_expr_const(node)->type, out_type);
-    break;
-
-  case BL_STMT_RETURN: {
-    bl_ast_get_result_type(bl_peek_stmt_return(node)->func, out_type);
-    break;
-  }
-
-  case BL_DECL_MUT:
-    bl_ast_get_result_type(bl_peek_decl_mut(node)->type, out_type);
-    break;
-
-  case BL_DECL_ARG:
-    bl_ast_get_result_type(bl_peek_decl_arg(node)->type, out_type);
-    break;
-
-  case BL_DECL_CONST:
-    bl_ast_get_result_type(bl_peek_decl_const(node)->type, out_type);
-    break;
-
-  case BL_DECL_FUNC:
-    bl_ast_get_result_type(bl_peek_decl_func(node)->ret_type, out_type);
-    break;
-
-  case BL_DECL_STRUCT_MEMBER:
-    bl_ast_get_result_type(bl_peek_decl_struct_member(node)->type, out_type);
-    break;
-
-  case BL_TYPE_REF:
-  case BL_TYPE_FUND:
-    *out_type = *node;
-    break;
-
-  default:
-    bl_abort("unable to get result type of %s node", bl_node_name(node));
-  }
-}
-
 bl_node_t *
 bl_ast_get_type(bl_node_t *node)
 {
@@ -989,6 +911,17 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_expr_const(node)->type;
   case BL_EXPR_BINOP:
     return bl_peek_expr_binop(node)->type;
+  case BL_EXPR_DECL_REF:
+    return bl_peek_expr_decl_ref(node)->type;
+  case BL_EXPR_UNARY:
+    return bl_peek_expr_unary(node)->type;
+  case BL_EXPR_MEMBER_REF:
+    return bl_peek_expr_member_ref(node)->type;
+  case BL_EXPR_CALL:
+    return bl_peek_expr_call(node)->type;
+  case BL_EXPR_ARRAY_REF:
+    return bl_peek_expr_array_ref(node)->type;
+
   case BL_DECL_MUT:
     return bl_peek_decl_mut(node)->type;
   case BL_DECL_CONST:
@@ -1001,8 +934,11 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_decl_struct_member(node)->type;
   case BL_DECL_ENUM:
     return bl_peek_decl_enum(node)->type;
+  case BL_DECL_ENUM_VARIANT:
+    return bl_ast_get_type(bl_peek_decl_enum_variant(node)->parent);
+
   default:
-    return NULL;
+    bl_abort("cannot get type of %s", bl_node_name(node));
   }
 }
 
@@ -1060,6 +996,54 @@ bl_ast_type_get_kind(bl_node_t *type)
     return BL_STRUCT_KIND;
   default:
     return BL_UNKNOWN_KIND;
+  }
+}
+
+void
+bl_ast_type_addrof(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    bl_peek_type_fund(type)->is_ptr++;
+    break;
+  case BL_TYPE_REF: 
+    bl_peek_type_ref(type)->is_ptr++;
+    break;
+  default:
+    bl_abort("invalid type");
+    break;
+  }
+}
+
+void
+bl_ast_type_deref(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    bl_peek_type_fund(type)->is_ptr--;
+    break;
+  case BL_TYPE_REF: 
+    bl_peek_type_ref(type)->is_ptr--;
+    break;
+  default:
+    bl_abort("invalid type");
+    break;
+  }
+}
+
+void
+bl_ast_type_remove_dim(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_TYPE_FUND:
+    bl_peek_type_fund(type)->dim = NULL;
+    break;
+  case BL_TYPE_REF: 
+    bl_peek_type_ref(type)->dim = NULL;
+    break;
+  default:
+    bl_abort("invalid type");
+    break;
   }
 }
 /**************************************************************************************************/

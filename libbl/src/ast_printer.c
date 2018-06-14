@@ -79,6 +79,29 @@ print_path(bl_node_t *path)
   }
 }
 
+static inline void
+print_type_base_info(bl_node_t *type, bool with_reference_address)
+{
+  if (bl_node_is(type, BL_TYPE_REF)) {
+    bl_type_ref_t *_type = bl_peek_type_ref(type);
+    for (int i = 0; i < _type->is_ptr; ++i)
+      fprintf(stdout, BL_CYAN("*"));
+    print_path(_type->path);
+    if (_type->dim)
+      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
+    if (with_reference_address)
+      fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
+  } else {
+    bl_type_fund_t *_type = bl_peek_type_fund(type);
+    for (int i = 0; i < _type->is_ptr; ++i)
+      fprintf(stdout, BL_CYAN("*"));
+
+    fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
+    if (_type->dim)
+      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
+  }
+}
+
 static void
 visit_using(bl_visitor_t *visitor, bl_node_t **using)
 {
@@ -127,24 +150,7 @@ static void
 visit_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   print_head("type", bl_peek_src(*type), *type, visitor->nesting);
-  if (bl_node_is(*type, BL_TYPE_REF)) {
-    bl_type_ref_t *_type = bl_peek_type_ref(*type);
-    for (int i = 0; i < _type->is_ptr; ++i)
-      fprintf(stdout, BL_CYAN("*"));
-    print_path(_type->path);
-    fprintf(stdout, " -> " BL_YELLOW("%p"), _type->ref);
-    if (_type->dim)
-      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
-  } else {
-    bl_type_fund_t *_type = bl_peek_type_fund(*type);
-    fprintf(stdout, "fundamental: ");
-    for (int i = 0; i < _type->is_ptr; ++i)
-      fprintf(stdout, BL_CYAN("*"));
-
-    fprintf(stdout, BL_CYAN("%s"), bl_fund_type_strings[_type->type]);
-    if (_type->dim)
-      fprintf(stdout, BL_CYAN("[%p]"), _type->dim);
-  }
+  print_type_base_info(*type, true);
   bl_visitor_walk_type(visitor, type);
 }
 
@@ -317,6 +323,13 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
   default:
     bl_abort("invalid expression");
+  }
+
+  bl_node_t *type = bl_ast_get_type(*expr);
+  if (type) {
+    fprintf(stdout, " (");
+    print_type_base_info(type, false);
+    fprintf(stdout, ")");
   }
   bl_visitor_walk_expr(visitor, expr);
 }
