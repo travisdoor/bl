@@ -62,11 +62,13 @@ typedef struct
 
   /* tmps */
   jmp_buf    jmp_error;
-  bl_node_t *exp_type;
 } context_t;
 
-static void 
+static void
 check_call(context_t *cnt, bl_node_t *call);
+
+static void
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type);
 
 void
 check_call(context_t *cnt, bl_node_t *call)
@@ -100,6 +102,11 @@ check_call(context_t *cnt, bl_node_t *call)
   }
 }
 
+static void
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
+{
+}
+
 /*************************************************************************************************
  * visitors
  *************************************************************************************************/
@@ -108,7 +115,6 @@ static void
 visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 {
   context_t *cnt           = peek_cnt(visitor);
-  bl_node_t *prev_exp_type = cnt->exp_type;
 
   if (cnt->exp_type) {
     bl_node_t *expr_type = bl_ast_get_type(*expr);
@@ -141,7 +147,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
     cnt->exp_type = bl_peek_expr_binop(*expr)->type;
     break;
 
-  case BL_EXPR_CALL: 
+  case BL_EXPR_CALL:
     check_call(cnt, *expr);
     break;
 
@@ -150,7 +156,6 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
   }
 
   bl_visitor_walk_expr(visitor, expr);
-  cnt->exp_type = prev_exp_type;
 }
 
 /*************************************************************************************************
@@ -160,7 +165,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 bl_error_e
 bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly, .exp_type = NULL};
+  context_t cnt = {.builder = builder, .assembly = assembly};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
