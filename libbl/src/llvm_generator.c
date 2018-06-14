@@ -143,8 +143,8 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr);
 static LLVMTypeRef
 gen_struct(context_t *cnt, bl_node_t *strct);
 
-static LLVMTypeRef
-gen_enum(context_t *cnt, bl_node_t *enm);
+/*static LLVMTypeRef
+  gen_enum(context_t *cnt, bl_node_t *enm);*/
 
 static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
@@ -227,9 +227,9 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     case BL_DECL_STRUCT:
       llvm_type = gen_struct(cnt, _type->ref);
       break;
-    case BL_DECL_ENUM:
+      /*case BL_DECL_ENUM:
       llvm_type = gen_enum(cnt, _type->ref);
-      break;
+      break;*/
     default:
       bl_abort("invalid reference type");
     }
@@ -304,12 +304,12 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   return type;
 }
 
-LLVMTypeRef
+/*LLVMTypeRef
 gen_enum(context_t *cnt, bl_node_t *enm)
 {
   bl_decl_enum_t *_enm = bl_peek_decl_enum(enm);
   return to_llvm_type(cnt, _enm->type);
-}
+  }*/
 
 LLVMValueRef
 gen_cast(context_t *cnt, bl_node_t *cast)
@@ -655,7 +655,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_EXPR_SIZEOF: {
     bl_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(expr);
-    val                       = LLVMSizeOf(to_llvm_type(cnt, _sizeof->type));
+    val                       = LLVMSizeOf(to_llvm_type(cnt, _sizeof->des_type));
     break;
   }
 

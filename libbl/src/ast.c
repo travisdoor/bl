@@ -205,8 +205,9 @@ bl_ast_add_expr_sizeof(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
   if (tok)
     expr_sizeof->src = &tok->src;
 
-  expr_sizeof->code                      = BL_EXPR_SIZEOF;
-  bl_peek_expr_sizeof(expr_sizeof)->type = type;
+  expr_sizeof->code                          = BL_EXPR_SIZEOF;
+  bl_peek_expr_sizeof(expr_sizeof)->des_type = type;
+  bl_peek_expr_sizeof(expr_sizeof)->type     = bl_ast_add_type_fund(ast, NULL, BL_FTYPE_SIZE, 0);
   return expr_sizeof;
 }
 
@@ -936,6 +937,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_decl_enum(node)->type;
   case BL_DECL_ENUM_VARIANT:
     return bl_ast_get_type(bl_peek_decl_enum_variant(node)->parent);
+  case BL_EXPR_SIZEOF:
+    return bl_peek_expr_sizeof(node)->type;
 
   default:
     bl_abort("cannot get type of %s", bl_node_name(node));
@@ -1006,7 +1009,7 @@ bl_ast_type_addrof(bl_node_t *type)
   case BL_TYPE_FUND:
     bl_peek_type_fund(type)->is_ptr++;
     break;
-  case BL_TYPE_REF: 
+  case BL_TYPE_REF:
     bl_peek_type_ref(type)->is_ptr++;
     break;
   default:
@@ -1022,7 +1025,7 @@ bl_ast_type_deref(bl_node_t *type)
   case BL_TYPE_FUND:
     bl_peek_type_fund(type)->is_ptr--;
     break;
-  case BL_TYPE_REF: 
+  case BL_TYPE_REF:
     bl_peek_type_ref(type)->is_ptr--;
     break;
   default:
@@ -1038,7 +1041,7 @@ bl_ast_type_remove_dim(bl_node_t *type)
   case BL_TYPE_FUND:
     bl_peek_type_fund(type)->dim = NULL;
     break;
-  case BL_TYPE_REF: 
+  case BL_TYPE_REF:
     bl_peek_type_ref(type)->dim = NULL;
     break;
   default:
@@ -1046,4 +1049,45 @@ bl_ast_type_remove_dim(bl_node_t *type)
     break;
   }
 }
+
+void
+bl_ast_dup_node_buf(bl_node_t *dest, bl_node_t *node)
+{
+  memcpy(dest, node, sizeof(bl_node_t));
+}
+
+bool
+bl_ast_type_is_fund(bl_node_t *type, bl_fund_type_e t)
+{
+  if (!type)
+    return false;
+
+  if (bl_node_is_not(type, BL_TYPE_FUND))
+    return false;
+
+  return bl_peek_type_fund(type)->type == t;
+}
+
+bool
+bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type)
+{
+  bl_type_kind_e from_kind = bl_ast_type_get_kind(from_type);
+  bl_type_kind_e to_kind   = bl_ast_type_get_kind(to_type);
+
+  if (from_kind != to_kind)
+    return false;
+
+  /* ok ... same kind but... */
+  if (from_kind == BL_PTR_KIND) {
+    /* implicitly cast any pointer to *void */
+    if (bl_ast_type_is_fund(from_type, BL_FTYPE_VOID) ||
+        bl_ast_type_is_fund(to_type, BL_FTYPE_VOID))
+      return true;
+    else
+      return false;
+  }
+
+  return true;
+}
+
 /**************************************************************************************************/

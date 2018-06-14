@@ -2,17 +2,58 @@
 
 #test
 fn integer_implicit_cast() i32 {
-  mut i i32 = 0;
-  mut j i8;
+  mut foo foo_t;
 
-  i = i + j + foo(10); 
+  foo.i = 20;
+  foo.bar.i = foo.i;
+
+  foo = {
+    .i = 20,
+    .bar.i = 20
+  };
+
+  mut foo_ptr *foo_t = &foo;
+
+  (*foo_ptr) = {
+    .i = 20,
+    .bar.i = 20
+  };
+
+  foo_ptr = {
+    ->i = 20,
+    ->bar.i = 20
+  };
+
+  //(&foo)->i = 20; // cause crash
+
+  gimme_void_ptr(foo_ptr);
+  
+  mut _u8 u8 = 0;
+  mut e enm = enm::A;
+
+  if _u8 == 10 {}
+
+  mut i32_size size_t = sizeof(i32);
 
   return 0; 
 }
 
-fn foo() i32 {
-  return 3; // what if return is missing??
+struct foo_t {
+  bar bar_t,
+  i i32
 }
 
+struct bar_t {
+  i i64
+}
 
+fn gimme_void_ptr(any *void) {
+}
 
+fn gimme_i32_ptr(any *i32) {
+}
+
+enum enm {
+  A = 10,
+  B
+}

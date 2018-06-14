@@ -213,7 +213,8 @@ struct bl_stmt_using
 
 struct bl_expr_sizeof
 {
-  bl_node_t *type; /* desired type */
+  bl_node_t *des_type; /* desired type */
+  bl_node_t *type; /* result type */
 };
 
 struct bl_expr_null
@@ -625,6 +626,9 @@ bl_ast_get_type_name(bl_node_t *type, char *out_name, int max_len);
 bl_node_t **
 bl_ast_get_type_dim(bl_node_t *type);
 
+bool
+bl_ast_type_is_fund(bl_node_t *type, bl_fund_type_e t);
+
 bl_node_t *
 bl_ast_path_get_last(bl_node_t *path);
 
@@ -636,6 +640,12 @@ bl_ast_get_parent(bl_node_t *node);
 
 bl_node_t *
 bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node);
+
+void
+bl_ast_dup_node_buf(bl_node_t *dest, bl_node_t *node);
+
+bool
+bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

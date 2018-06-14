@@ -692,6 +692,12 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   context_t *cnt = peek_cnt(visitor);
   connect_type(cnt, *type);
+
+  if (bl_node_is(*type, BL_TYPE_REF) && bl_node_is(bl_peek_type_ref(*type)->ref, BL_DECL_ENUM)) {
+    bl_node_t *enm_type = bl_ast_get_type(bl_peek_type_ref(*type)->ref);
+    *type = enm_type;
+  }
+
   bl_visitor_walk_type(visitor, type);
 }
 
@@ -755,7 +761,7 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
   case BL_EXPR_BINOP: {
     bl_expr_binop_t *_binop = bl_peek_expr_binop(*expr);
-    cnt->curr_lvalue = _binop->lhs;
+    cnt->curr_lvalue        = _binop->lhs;
     break;
   }
 

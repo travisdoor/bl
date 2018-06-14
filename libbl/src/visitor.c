@@ -461,7 +461,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr)
   }
 
   case BL_EXPR_SIZEOF: {
-    call_visit(visitor, &bl_peek_expr_sizeof(*expr)->type, BL_VISIT_TYPE);
+    call_visit(visitor, &bl_peek_expr_sizeof(*expr)->des_type, BL_VISIT_TYPE);
     break;
   }
 
