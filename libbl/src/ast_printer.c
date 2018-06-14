@@ -225,7 +225,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 static void
 print_const_expr(bl_expr_const_t *expr)
 {
-  bl_type_kind_e kind = bl_type_get_kind(expr->type);
+  bl_type_kind_e kind = bl_ast_type_get_kind(expr->type);
   switch (kind) {
   case BL_SINT_KIND:
     fprintf(stdout, "value: " BL_MAGENTA("%lld"), expr->value.s);

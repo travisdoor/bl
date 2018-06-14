@@ -315,7 +315,7 @@ LLVMValueRef
 gen_cast(context_t *cnt, bl_node_t *cast)
 {
   bl_expr_cast_t *_cast     = bl_peek_expr_cast(cast);
-  LLVMTypeRef     dest_type = to_llvm_type(cnt, _cast->to_type);
+  LLVMTypeRef     dest_type = to_llvm_type(cnt, _cast->type);
   LLVMValueRef    next      = gen_expr(cnt, _cast->next);
 
   if (should_load(_cast->next) || LLVMIsAAllocaInst(next)) {
@@ -482,7 +482,7 @@ gen_call(context_t *cnt, bl_node_t *call)
     LLVMGenericValueRef tmp = LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
 
     LLVMTypeRef    ret_type      = to_llvm_type(cnt, _callee->ret_type);
-    bl_type_kind_e ret_type_kind = bl_type_get_kind(_callee->ret_type);
+    bl_type_kind_e ret_type_kind = bl_ast_type_get_kind(_callee->ret_type);
     LLVMValueRef   result        = NULL;
 
     switch (ret_type_kind) {

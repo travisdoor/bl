@@ -193,9 +193,9 @@ bl_node_t *
 check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const_expr)
 {
   bl_expr_cast_t *_cast = bl_peek_expr_cast(cast);
-  if (expected_type && !bl_type_compatible(_cast->to_type, expected_type)) {
-    bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-    bl_ast_try_get_type_name(_cast->to_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+  if (expected_type && !bl_ast_type_compatible(_cast->type, expected_type)) {
+    bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+    bl_ast_get_type_name(_cast->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
     check_error(cnt, BL_ERR_INVALID_TYPE, cast, BL_BUILDER_CUR_WORD,
                 "incompatible result type of casting, expected is " BL_YELLOW(
@@ -203,7 +203,7 @@ check_cast(context_t *cnt, bl_node_t *cast, bl_node_t *expected_type, bool const
                 cnt->tname_tmp1, cnt->tname_tmp2);
   }
   check_expr(cnt, &_cast->next, NULL, const_expr);
-  return _cast->to_type;
+  return _cast->type;
 }
 
 bl_node_t *
@@ -212,9 +212,9 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
   bl_node_t *           member_type = bl_peek_decl_struct_member(_member_ref->ref)->type;
 
-  if (expected_type && !bl_type_compatible(member_type, expected_type)) {
-    bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-    bl_ast_try_get_type_name(member_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+  if (expected_type && !bl_ast_type_compatible(member_type, expected_type)) {
+    bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+    bl_ast_get_type_name(member_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
     check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_WORD,
                 "incompatible type of member reference, expected is " BL_YELLOW(
@@ -225,12 +225,12 @@ check_member_ref(context_t *cnt, bl_node_t *member_ref, bl_node_t *expected_type
   bl_node_t *next_type = check_expr(cnt, &_member_ref->next, NULL, const_expr);
   // HACK
   if (next_type) {
-    if (bl_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
+    if (bl_ast_type_is_ptr(next_type) && !_member_ref->is_ptr_ref) {
       check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
                   "expected reference access operator " BL_YELLOW("'->'"));
     }
 
-    if (!bl_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
+    if (!bl_ast_type_is_ptr(next_type) && _member_ref->is_ptr_ref) {
       check_error(cnt, BL_ERR_INVALID_TYPE, member_ref, BL_BUILDER_CUR_BEFORE,
                   "expected access operator " BL_YELLOW("'.'"));
     }
@@ -261,9 +261,9 @@ check_call(context_t *cnt, bl_node_t *call, bl_node_t *expected_type, bool const
   }
 
   if (expected_type != NULL) {
-    if (!bl_type_compatible(_callee->ret_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(_callee->ret_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+    if (!bl_ast_type_compatible(_callee->ret_type, expected_type)) {
+      bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_get_type_name(_callee->ret_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
           cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
@@ -310,13 +310,13 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool cons
   if (expected_type == NULL)
     return _cnst->type;
 
-  if (!bl_type_compatible(_cnst->type, expected_type)) {
-    bl_type_kind_e kind = bl_type_get_kind(expected_type);
+  if (!bl_ast_type_compatible(_cnst->type, expected_type)) {
+    bl_type_kind_e kind = bl_ast_type_get_kind(expected_type);
     if (kind == BL_SINT_KIND || kind == BL_UINT_KIND || kind == BL_SIZE_KIND) {
       _cnst->type = bl_ast_dup_node(&cnt->unit->ast, expected_type);
     } else {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(_cnst->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_get_type_name(_cnst->type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
           cnt, BL_ERR_INVALID_TYPE, cnst, BL_BUILDER_CUR_WORD,
@@ -331,114 +331,35 @@ check_const(context_t *cnt, bl_node_t *cnst, bl_node_t *expected_type, bool cons
 bl_node_t *
 check_decl_ref(context_t *cnt, bl_node_t **decl_ref, bl_node_t *expected_type, bool const_expr)
 {
-  bl_node_t *ref      = bl_peek_expr_decl_ref(*decl_ref)->ref;
-  bl_node_t *ref_type = NULL;
+  /*bl_node_t *ref = bl_peek_expr_decl_ref(*decl_ref)->ref;
+  bl_node_t *ref_type;
 
   bl_assert(ref, "invalid reference");
+  ref_type = bl_ast_get_type(ref);
 
-  switch (bl_node_code(ref)) {
+  if (expected_type && !bl_ast_type_compatible(&cnt->tmp_type, expected_type)) {
+    bl_type_kind_e src_kind  = bl_ast_type_get_kind(expected_type);
+    bl_type_kind_e dest_kind = bl_ast_type_get_kind(&cnt->tmp_type);
 
-  case BL_EXPR_INIT: {
-    ref_type = bl_peek_expr_init(ref)->type;
-
-    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
+    if (src_kind == dest_kind) {
+      bl_node_t *icast = bl_ast_add_expr_cast(&cnt->unit->ast, NULL, expected_type, *decl_ref);
+      *decl_ref        = icast;
+      bl_log("build cast");
+    } else {
+      bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+      bl_ast_get_type_name(&cnt->tmp_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
 
       check_error(
           cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
-          "incompatible type of initializator list " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
+          "no implicit type cast for " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
               "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
+          bl_ast_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
           ref->src->line, ref->src->col);
     }
-    break;
   }
 
-  case BL_DECL_MUT: {
-    ref_type = bl_peek_decl_mut(ref)->type;
-
-    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_type_kind_e src_kind  = bl_type_get_kind(expected_type);
-      bl_type_kind_e dest_kind = bl_type_get_kind(expected_type);
-
-      if (src_kind == dest_kind) {
-        bl_node_t *icast = bl_ast_add_expr_cast(&cnt->unit->ast, NULL, expected_type, *decl_ref);
-        *decl_ref        = icast;
-      } else {
-        bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-        bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
-
-        check_error(
-            cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
-            "no implicit cast for type of mutable reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
-                "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-            bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
-            ref->src->line, ref->src->col);
-      }
-    }
-    break;
-  }
-
-  case BL_DECL_ARG: {
-    ref_type = bl_peek_decl_arg(ref)->type;
-
-    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
-
-      check_error(
-          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
-          "incompatible type of function argument reference " BL_YELLOW(
-              "'%s'") ", expected is " BL_YELLOW("'%s'") " but argument is "
-                                                         "declared " BL_YELLOW(
-                                                             "'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
-          ref->src->line, ref->src->col);
-    }
-    break;
-  }
-
-  case BL_DECL_CONST: {
-    bl_assert(bl_peek_decl_const(ref)->init_expr, "invalid const init expr");
-    ref_type = bl_peek_decl_const(ref)->type;
-
-    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
-
-      check_error(
-          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
-          "incompatible type of constant reference " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
-              "'%s'") " but constant is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
-          ref->src->line, ref->src->col);
-    }
-    break;
-  }
-
-  case BL_DECL_ENUM_VARIANT: {
-    ref_type = get_tmp_ref(cnt, bl_peek_decl_enum_variant(ref)->parent, false);
-    // ref_type = bl_peek_decl_enum(bl_peek_decl_enum_variant(ref)->parent)->type;
-
-    if (expected_type && !bl_type_compatible(ref_type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
-      bl_ast_try_get_type_name(ref_type, &cnt->tname_tmp2[0], TYPE_NAME_TMP_SIZE);
-      check_error(
-          cnt, BL_ERR_INVALID_TYPE, *decl_ref, BL_BUILDER_CUR_WORD,
-          "incompatible type of enum variant " BL_YELLOW("'%s'") ", expected is " BL_YELLOW(
-              "'%s'") " but variable is declared " BL_YELLOW("'%s'") ", declared here: %s:%d:%d",
-          bl_ast_try_get_id(ref)->str, cnt->tname_tmp1, cnt->tname_tmp2, ref->src->unit->filepath,
-          ref->src->line, ref->src->col);
-    }
-    break;
-  }
-
-  default:
-    bl_abort("cannot check reference of type: %s", bl_node_name(ref));
-  }
-
-  return ref_type;
+  return &cnt->tmp_type;*/
+  return NULL;
 }
 
 bl_node_t *
@@ -447,8 +368,8 @@ check_binop(context_t *cnt, bl_node_t *binop, bl_node_t *expected_type, bool con
   bl_expr_binop_t *_binop = bl_peek_expr_binop(binop);
 
   if (_binop->type && expected_type) {
-    if (!bl_type_compatible(_binop->type, expected_type)) {
-      bl_ast_try_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
+    if (!bl_ast_type_compatible(_binop->type, expected_type)) {
+      bl_ast_get_type_name(expected_type, &cnt->tname_tmp1[0], TYPE_NAME_TMP_SIZE);
       check_error(cnt, BL_ERR_INVALID_TYPE, binop, BL_BUILDER_CUR_WORD,
                   "binary operation has incompatible type, expected is " BL_YELLOW("'%s'"),
                   cnt->tname_tmp1);
@@ -487,7 +408,7 @@ check_null(context_t *cnt, bl_node_t *nl, bl_node_t *expected_type, bool const_e
     return NULL;
 
   bl_expr_null_t *_null = bl_peek_expr_null(nl);
-  if (bl_type_is_ptr(expected_type) <= 0) {
+  if (bl_ast_type_is_ptr(expected_type) <= 0) {
     check_error(cnt, BL_ERR_INVALID_TYPE, nl, BL_BUILDER_CUR_WORD,
                 "only pointers can be set to null value");
   }
@@ -696,7 +617,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
           _func->id.str);
     }
 
-    if (!bl_type_compatible(_func->ret_type, get_tmp_fund(cnt, BL_FTYPE_I32, 0))) {
+    if (!bl_ast_type_compatible(_func->ret_type, get_tmp_fund(cnt, BL_FTYPE_I32, 0))) {
       check_error(cnt, BL_ERR_EXPECTED_TYPE, *func, BL_BUILDER_CUR_WORD,
                   "function " BL_YELLOW("'%s'") " is marked as #test, those functions must return "
                                                 "i32 value (0 when test passed without errors)",

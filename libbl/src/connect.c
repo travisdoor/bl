@@ -198,7 +198,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
     validator(cnt, path, found, !path->next);
   bl_assert(found, "null found symbol unhandled by validator");
 
-  if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
+  if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
     connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                   "symbol " BL_YELLOW("'%s'") " is private in this context",
                   bl_peek_path_elem(path)->id.str);
@@ -212,7 +212,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
       validator(cnt, path, found, !path->next);
     bl_assert(found, "null found symbol unhandled by validator");
 
-    if (!(bl_ast_try_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
+    if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
       connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
                     "symbol " BL_YELLOW("'%s'") " is private in this context",
                     bl_peek_path_elem(path)->id.str);
@@ -248,7 +248,7 @@ lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node
       prev_compound = tmp_curr_compound;
 
   skip:
-    tmp_curr_compound = bl_ast_try_get_parent(tmp_curr_compound);
+    tmp_curr_compound = bl_ast_get_parent(tmp_curr_compound);
   }
 
   if (found_in_curr_branch)
@@ -260,10 +260,10 @@ lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node
 bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
-  bl_scopes_t *scopes = bl_ast_try_get_scopes(curr_compound);
+  bl_scopes_t *scopes = bl_ast_get_scopes(curr_compound);
   bl_assert(scopes, "invalid scopes");
 
-  bl_id_t *id = bl_ast_try_get_id(ref);
+  bl_id_t *id = bl_ast_get_id(ref);
   bl_assert(id, "invalid id for node %s", bl_node_name(ref));
 
   /* test */
@@ -311,7 +311,7 @@ connect_type(context_t *cnt, bl_node_t *type)
     default:
       connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
                     "unknown type, struct or enum " BL_YELLOW("'%s'"),
-                    bl_ast_try_get_id(found)->str);
+                    bl_ast_get_id(found)->str);
     }
   }
 }
@@ -320,7 +320,7 @@ void
 connect_const(context_t *cnt, bl_node_t *cnst)
 {
   bl_decl_const_t *_cnst     = bl_peek_decl_const(cnst);
-  bl_scopes_t *    scopes    = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *    scopes    = bl_ast_get_scopes(cnt->curr_compound);
   bl_node_t *      linked_by = NULL;
   bl_node_t *      conflict  = lookup_in_tree(cnt, cnst, cnt->curr_compound, &linked_by, NULL);
 
@@ -448,8 +448,8 @@ include_using(context_t *cnt, bl_node_t *using)
     return;
   }
 
-  bl_scopes_t *found_scopes = bl_ast_try_get_scopes(found);
-  bl_scopes_t *curr_scopes  = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *found_scopes = bl_ast_get_scopes(found);
+  bl_scopes_t *curr_scopes  = bl_ast_get_scopes(cnt->curr_compound);
   bl_assert(found_scopes, "invalid scopes");
   bl_assert(curr_scopes, "invalid scopes");
 
@@ -481,7 +481,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t **module)
   cnt->curr_compound = *module;
 
   if (conflict) {
-    if (bl_ast_try_get_modif(*module) != bl_ast_try_get_modif(conflict)) {
+    if (bl_ast_get_modif(*module) != bl_ast_get_modif(conflict)) {
       connect_error(
           peek_cnt(visitor), BL_ERR_UNCOMPATIBLE_MODIF, *module, BL_BUILDER_CUR_WORD,
           "previous declaration of module " BL_YELLOW(
@@ -489,11 +489,11 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t **module)
           _module->id.str, conflict->src->unit->filepath, conflict->src->line, conflict->src->col);
     }
 
-    bl_scopes_t *conflict_scopes = bl_ast_try_get_scopes(conflict);
+    bl_scopes_t *conflict_scopes = bl_ast_get_scopes(conflict);
     bl_assert(conflict_scopes->main, "invalid main scope");
     bl_scopes_include_main(&_module->scopes, conflict_scopes->main, *module);
   } else {
-    bl_scopes_t *prev_scopes = bl_ast_try_get_scopes(prev_cmp);
+    bl_scopes_t *prev_scopes = bl_ast_get_scopes(prev_cmp);
     bl_scope_t * new_main    = bl_scope_new(cnt->assembly->scope_cache);
     bl_scopes_include_main(&_module->scopes, new_main, *module);
     bl_scopes_insert_node(prev_scopes, *module);
@@ -547,7 +547,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
     variant = variant->next;
   }
 
-  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, *enm);
   /* terminal */
 }
@@ -570,7 +570,7 @@ first_pass_func(bl_visitor_t *visitor, bl_node_t **func)
   bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_func->scopes, main_scope, *func);
 
-  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, *func);
   /* terminal */
 }
@@ -610,7 +610,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
     member = member->next;
   }
 
-  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, *strct);
 
   /* terminal */
@@ -829,7 +829,7 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t **mut)
     }
   }
 
-  bl_scopes_t *scopes = bl_ast_try_get_scopes(cnt->curr_compound);
+  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
   bl_scopes_insert_node(scopes, *mut);
 
   bl_visitor_walk_mut(visitor, mut);

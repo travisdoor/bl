@@ -17,14 +17,14 @@ fn intereget_implicit_cast() i32 {
 
   mut dest i32;
   dest = _i8;
-  dest = _i16;
-  dest = _i32;
+  //dest = _i16;
+  //dest = _i32;
   //dest = _i64;
 
-  /*dest = _u8;
-  dest = _u16;
-  dest = _u32;
-  dest = _u64;*/
+  //dest = _u8;
+  //dest = _u16;
+  //dest = _u32;
+  //dest = _u64;
 
   return SUCCESS; 
 }

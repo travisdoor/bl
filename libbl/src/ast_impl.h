@@ -223,7 +223,7 @@ struct bl_expr_null
 
 struct bl_expr_cast
 {
-  bl_node_t *to_type; /* destination type of the cast */
+  bl_node_t *type; /* destination type of the cast */
   bl_node_t *next;    /* fallowing expression */
 };
 
@@ -585,37 +585,40 @@ bl_ast_add_stmt_using(bl_ast_t *ast, bl_token_t *tok, bl_node_t *path);
  * other
  *************************************************************************************************/
 bl_id_t *
-bl_ast_try_get_id(bl_node_t *node);
+bl_ast_get_id(bl_node_t *node);
 
 int
-bl_ast_try_get_modif(bl_node_t *node);
+bl_ast_get_modif(bl_node_t *node);
 
 bool
-bl_type_compatible(bl_node_t *first, bl_node_t *second);
+bl_ast_type_compatible(bl_node_t *first, bl_node_t *second);
 
 int
-bl_type_is_ptr(bl_node_t *first);
+bl_ast_type_is_ptr(bl_node_t *first);
 
 bl_type_kind_e
-bl_type_get_kind(bl_node_t *type);
+bl_ast_type_get_kind(bl_node_t *type);
 
 void
 bl_ast_get_result_type(bl_node_t *node, bl_node_t *out_type);
 
+bl_node_t *
+bl_ast_get_type(bl_node_t *node);
+
 void
-bl_ast_try_get_type_name(bl_node_t *type, char *out_name, int max_len);
+bl_ast_get_type_name(bl_node_t *type, char *out_name, int max_len);
 
 bl_node_t **
-bl_ast_try_get_type_dim(bl_node_t *type);
+bl_ast_get_type_dim(bl_node_t *type);
 
 bl_node_t *
 bl_ast_path_get_last(bl_node_t *path);
 
 bl_scopes_t *
-bl_ast_try_get_scopes(bl_node_t *node);
+bl_ast_get_scopes(bl_node_t *node);
 
 bl_node_t *
-bl_ast_try_get_parent(bl_node_t *node);
+bl_ast_get_parent(bl_node_t *node);
 
 bl_node_t *
 bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node);

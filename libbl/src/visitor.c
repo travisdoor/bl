@@ -351,7 +351,7 @@ void
 bl_visitor_walk_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   visitor->nesting++;
-  bl_node_t **dim = bl_ast_try_get_type_dim(*type);
+  bl_node_t **dim = bl_ast_get_type_dim(*type);
 
   if (*dim)
     call_visit(visitor, dim, BL_VISIT_EXPR);
@@ -466,7 +466,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr)
   }
 
   case BL_EXPR_CAST: {
-    call_visit(visitor, &bl_peek_expr_cast(*expr)->to_type, BL_VISIT_TYPE);
+    call_visit(visitor, &bl_peek_expr_cast(*expr)->type, BL_VISIT_TYPE);
     call_visit(visitor, &bl_peek_expr_cast(*expr)->next, BL_VISIT_EXPR);
     break;
   }
