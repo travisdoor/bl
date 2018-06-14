@@ -2,9 +2,16 @@
 
 #test
 fn integer_implicit_cast() i32 {
-  mut i i32[10];
-  i[0] = 10;
+  mut i i32 = 0;
+  mut j i8;
+
+  i = i + j + foo(10); 
+
   return 0; 
+}
+
+fn foo() i32 {
+  return 3; // what if return is missing??
 }
 
 
