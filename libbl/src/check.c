@@ -183,16 +183,6 @@ check_call(context_t *cnt, bl_node_t **call)
   }
 }
 
-static inline bool
-can_borrow(bl_node_t *from_type, bl_node_t *to_type)
-{
-  bl_type_kind_e from_kind = bl_ast_type_get_kind(from_type);
-  bl_type_kind_e to_kind   = bl_ast_type_get_kind(to_type);
-
-  return ((from_kind == BL_SIZE_KIND || from_kind == BL_UINT_KIND || from_kind == BL_SINT_KIND) &&
-          (to_kind == BL_SIZE_KIND || to_kind == BL_UINT_KIND || to_kind == BL_SINT_KIND));
-}
-
 static void
 check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
 {
@@ -215,9 +205,7 @@ check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
       exp_type = bl_peek_decl_enum(bl_peek_type_ref(exp_type)->ref)->type;
     }
 
-    if (can_borrow(exp_type, expr_type) && bl_node_is(*expr, BL_EXPR_CONST)) {
-      bl_peek_expr_const(*expr)->type = bl_ast_dup_node(cnt->ast, exp_type);
-    } else if (bl_ast_can_implcast(expr_type, exp_type)) {
+    if (bl_ast_can_implcast(expr_type, exp_type)) {
       bl_node_t *icast = bl_ast_add_expr_cast(cnt->ast, NULL, exp_type, *expr);
       *expr            = icast;
     } else {

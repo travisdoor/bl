@@ -107,9 +107,10 @@ typedef enum
 
 typedef enum
 {
-  BL_UNKNOWN_KIND,
+  BL_UNKNOWN_KIND = 0,
   BL_SINT_KIND,   /* i8, i16, i32, i64 */
   BL_UINT_KIND,   /* u8, i16, u32, u64 */
+  BL_SIZE_KIND,   /* size_t */
   BL_PTR_KIND,    /* pointers */
   BL_STRUCT_KIND, /* structs */
   BL_REAL_KIND,   /* f32, f64 */
@@ -117,7 +118,6 @@ typedef enum
   BL_CHAR_KIND,   /* char */
   BL_BOOL_KIND,   /* bool */
   BL_VOID_KIND,   /* void */
-  BL_SIZE_KIND    /* size_t */
 } bl_type_kind_e;
 
 extern const char *bl_fund_type_strings[];

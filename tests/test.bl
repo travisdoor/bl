@@ -37,7 +37,7 @@ fn integer_implicit_cast() i32 {
 
   foo.e = enm::A;
 
-  //const c u32 = 10 + 2;
+  const c u32 = 10 + 2;
 
   return 0; 
 }

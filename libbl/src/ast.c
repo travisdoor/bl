@@ -1087,6 +1087,9 @@ bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type)
   bl_type_kind_e from_kind = bl_ast_type_get_kind(from_type);
   bl_type_kind_e to_kind   = bl_ast_type_get_kind(to_type);
 
+  if (from_kind <= BL_SIZE_KIND && to_kind <= BL_SIZE_KIND)
+    return true;
+
   if (from_kind != to_kind)
     return false;
 
