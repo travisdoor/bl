@@ -54,4 +54,22 @@ module init {
 
     return SUCCESS;
   }
+
+  #test
+  fn pointer_init() i32 {
+    mut d D;
+    mut _d *D = &d;
+
+    (*_d) = {
+      .x = 0,
+      .y = 0,
+      .z = 0,
+    };
+
+    if d.x != 0 { return FAIL; }
+    if d.y != 0 { return FAIL; }
+    if d.z != 0 { return FAIL; }
+
+    return SUCCESS;
+  }
 }

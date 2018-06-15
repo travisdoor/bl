@@ -183,6 +183,16 @@ check_call(context_t *cnt, bl_node_t **call)
   }
 }
 
+static inline bool
+can_borrow(bl_node_t *from_type, bl_node_t *to_type)
+{
+  bl_type_kind_e from_kind = bl_ast_type_get_kind(from_type);
+  bl_type_kind_e to_kind   = bl_ast_type_get_kind(to_type);
+
+  return ((from_kind == BL_SIZE_KIND || from_kind == BL_UINT_KIND || from_kind == BL_SINT_KIND) &&
+          (to_kind == BL_SIZE_KIND || to_kind == BL_UINT_KIND || to_kind == BL_SINT_KIND));
+}
+
 static void
 check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
 {
@@ -201,15 +211,11 @@ check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
       break;
     }
   } else if ((exp_type && !bl_ast_type_compatible(exp_type, expr_type))) {
-    bl_type_kind_e kind = bl_ast_type_get_kind(exp_type);
-
     if (bl_ast_type_is_ref(exp_type, BL_DECL_ENUM)) {
       exp_type = bl_peek_decl_enum(bl_peek_type_ref(exp_type)->ref)->type;
     }
 
-    if ((kind == BL_REAL_KIND || kind == BL_SIZE_KIND || kind == BL_UINT_KIND ||
-         kind == BL_SINT_KIND) &&
-        bl_node_is(*expr, BL_EXPR_CONST)) {
+    if (can_borrow(exp_type, expr_type) && bl_node_is(*expr, BL_EXPR_CONST)) {
       bl_peek_expr_const(*expr)->type = bl_ast_dup_node(cnt->ast, exp_type);
     } else if (bl_ast_can_implcast(expr_type, exp_type)) {
       bl_node_t *icast = bl_ast_add_expr_cast(cnt->ast, NULL, exp_type, *expr);
@@ -282,6 +288,13 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 {
   context_t *cnt = peek_cnt(visitor);
   check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type);
+}
+
+static void
+visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
+{
+  context_t *cnt = peek_cnt(visitor);
+  check_expr(cnt, &bl_peek_decl_const(*cnst)->init_expr, bl_peek_decl_const(*cnst)->type);
 }
 
 static void
@@ -423,6 +436,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor, &cnt);
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor, visit_mut, BL_VISIT_MUT);
+  bl_visitor_add(&visitor, visit_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
