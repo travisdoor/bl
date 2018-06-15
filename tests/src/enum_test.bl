@@ -80,7 +80,7 @@ module enums {
 
   #test
   fn enum_i32_set() i32 {
-    mut s state_e = state_e::S0;
+    mut s = state_e::S0;
     if s != state_e::S0 {
       return FAIL;
     }

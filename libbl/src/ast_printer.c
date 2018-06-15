@@ -229,7 +229,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 }
 
 static void
-print_const_expr(bl_expr_const_t *expr)
+print_literal(bl_expr_literal_t *expr)
 {
   bl_type_kind_e kind = bl_ast_type_get_kind(expr->type);
   switch (kind) {
@@ -261,9 +261,9 @@ static void
 visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 {
   switch (bl_node_code(*expr)) {
-  case BL_EXPR_CONST: {
-    print_head("const", bl_peek_src(*expr), *expr, visitor->nesting);
-    print_const_expr(bl_peek_expr_const(*expr));
+  case BL_EXPR_LITERAL: {
+    print_head("literal ", bl_peek_src(*expr), *expr, visitor->nesting);
+    print_literal(bl_peek_expr_literal(*expr));
     break;
   }
 

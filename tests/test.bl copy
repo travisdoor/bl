@@ -1,0 +1,103 @@
+/* testing playground */
+
+#load "std/utest.bl"
+#load "std/memory.bl"
+
+module array {
+  const alloc_size size_t = 64;
+
+  public struct array_t {
+    public elems *i32,
+    public len size_t,
+    allocated size_t
+  }
+  
+  public fn init(arr *array_t) {
+    arr->elems = null;
+    arr->len = 0;
+    arr->allocated = 0;
+  }
+
+  public fn terminate(arr *array_t) {
+    arr->len = 0;
+    arr->allocated = 0;
+    std::memory::free(cast(*void) arr->elems);
+  }
+
+  public fn append(arr *array_t, val i32) {
+    arr->len = arr->len + 1;
+    resize_if_needed(arr);
+
+    mut new_elem *i32 = get_elem_ptr(arr, arr->len - 1);
+    (*new_elem) = val;
+  }
+
+  public fn get(arr *array_t, i size_t) i32 {
+    // return *get_elem_ptr(arr, i); 
+    mut val *i32 = get_elem_ptr(arr, i); 
+    return (*val);
+  }
+
+  fn resize_if_needed(arr *array_t) {
+    using std::memory;
+    if arr->len > arr->allocated {
+      arr->allocated = arr->allocated + alloc_size;
+      arr->elems = cast(*i32) realloc(cast(*void) arr->elems, arr->allocated * sizeof(i32)); 
+    }
+  }
+
+  fn get_elem_ptr(arr *array_t, i size_t) *i32 {
+    if i >= arr->len {
+      return null;
+    }
+
+    return cast(*i32) (cast(size_t) arr->elems + (i * sizeof(i32)));
+  }
+
+  #test
+  fn init_test() i32 {
+    using std::utest;
+
+    mut arr array_t;
+    init(&arr);
+
+    if arr.elems != null { return FAIL; }
+    if arr.len != 0 { return FAIL; }
+
+    terminate(&arr);
+    
+    return SUCCESS; 
+  }
+
+  #test
+  fn append_test() i32 {
+    using std::utest;
+    const count i32 = 200;
+    mut i i32 = 0;
+    mut arr array_t;
+
+    init(&arr);
+
+    while i < count {
+      append(&arr, i);
+      i = i + 1;
+    }
+
+    if arr.len != cast(size_t) count { return FAIL; }
+
+    i = 0;
+    while i < count {
+      if get(&arr, cast(size_t) i) != i { return FAIL; }
+      i = i + 1;
+    }
+
+    terminate(&arr);
+    
+    return SUCCESS; 
+  }
+}
+
+fn main() {
+}
+
+

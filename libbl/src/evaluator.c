@@ -74,11 +74,11 @@ eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs);
 bl_node_t *
 eval_add(context_t *cnt, bl_node_t *lhs, bl_node_t *rhs)
 {
-  bl_node_t *      result  = bl_ast_add_expr_const(cnt->ast, NULL, bl_peek_expr_const(lhs)->type);
-  bl_expr_const_t *_result = bl_peek_expr_const(result);
+  bl_node_t *      result  = bl_ast_add_expr_literal(cnt->ast, NULL, bl_peek_expr_literal(lhs)->type);
+  bl_expr_literal_t *_result = bl_peek_expr_literal(result);
 
-  const long long lhs_val = bl_peek_expr_const(lhs)->value.s;
-  const long long rhs_val = bl_peek_expr_const(rhs)->value.s;
+  const long long lhs_val = bl_peek_expr_literal(lhs)->value.s;
+  const long long rhs_val = bl_peek_expr_literal(rhs)->value.s;
   _result->value.s        = lhs_val + rhs_val;
   return result;
 }
@@ -90,11 +90,11 @@ eval_binop(context_t *cnt, bl_node_t *binop)
   _binop->lhs             = eval_expr(cnt, _binop->lhs);
   _binop->rhs             = eval_expr(cnt, _binop->rhs);
 
-  bl_node_t *result = bl_ast_add_expr_const(cnt->ast, NULL, bl_peek_expr_const(_binop->lhs)->type);
-  bl_expr_const_t *_result = bl_peek_expr_const(result);
+  bl_node_t *result = bl_ast_add_expr_literal(cnt->ast, NULL, bl_peek_expr_literal(_binop->lhs)->type);
+  bl_expr_literal_t *_result = bl_peek_expr_literal(result);
 
-  const long long lhs = bl_peek_expr_const(_binop->lhs)->value.s;
-  const long long rhs = bl_peek_expr_const(_binop->rhs)->value.s;
+  const long long lhs = bl_peek_expr_literal(_binop->lhs)->value.s;
+  const long long rhs = bl_peek_expr_literal(_binop->rhs)->value.s;
 
   switch (_binop->op) {
   case BL_SYM_PLUS:
@@ -129,7 +129,7 @@ eval_expr(context_t *cnt, bl_node_t *expr)
   switch (bl_node_code(expr)) {
   case BL_EXPR_BINOP:
     return eval_binop(cnt, expr);
-  case BL_EXPR_CONST:
+  case BL_EXPR_LITERAL:
     return expr;
   case BL_EXPR_CAST: {
     return eval_expr(cnt, bl_peek_expr_cast(expr)->next);
@@ -179,16 +179,16 @@ eval_enum(bl_visitor_t *visitor, bl_node_t **enm)
     if (bl_peek_decl_enum_variant(curr_variant)->expr == NULL) {
       if (prev_variant == NULL) {
         /* create default constant init expression */
-        bl_node_t *def_expr                   = bl_ast_add_expr_const(cnt->ast, NULL, _enm->type);
-        bl_peek_expr_const(def_expr)->value.u = 0;
+        bl_node_t *def_expr                   = bl_ast_add_expr_literal(cnt->ast, NULL, _enm->type);
+        bl_peek_expr_literal(def_expr)->value.u = 0;
         bl_peek_decl_enum_variant(curr_variant)->expr = def_expr;
       } else {
-        bl_node_t *def_expr_one        = bl_ast_add_expr_const(cnt->ast, NULL, _enm->type);
-        bl_node_t *def_expr_const_prev = bl_peek_decl_enum_variant(prev_variant)->expr;
+        bl_node_t *def_expr_one        = bl_ast_add_expr_literal(cnt->ast, NULL, _enm->type);
+        bl_node_t *def_expr_literal_prev = bl_peek_decl_enum_variant(prev_variant)->expr;
         bl_node_t *def_expr_add        = bl_ast_add_expr_binop(
-            cnt->ast, NULL, BL_SYM_PLUS, def_expr_const_prev, def_expr_one, _enm->type);
+            cnt->ast, NULL, BL_SYM_PLUS, def_expr_literal_prev, def_expr_one, _enm->type);
 
-        bl_peek_expr_const(def_expr_one)->value.u     = 1;
+        bl_peek_expr_literal(def_expr_one)->value.u     = 1;
         bl_peek_decl_enum_variant(curr_variant)->expr = def_expr_add;
       }
     }
@@ -225,7 +225,7 @@ eval_type(bl_visitor_t *visitor, bl_node_t **type)
     bl_abort("invalid type");
   }
 
-  if (result && bl_peek_expr_const(result)->value.u == 0) {
+  if (result && bl_peek_expr_literal(result)->value.u == 0) {
     eval_error(cnt, BL_ERR_INVALID_EXPR, *type, BL_BUILDER_CUR_WORD,
                "arrays with zero size are not allowed");
   }

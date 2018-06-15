@@ -358,8 +358,8 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
   bl_expr_decl_ref_t *_ref = bl_peek_expr_decl_ref(ref);
   if (!_ref->ref) {
     bl_node_t *found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
-    _ref->ref  = found;
-    _ref->type = bl_ast_get_type(found);
+    _ref->ref        = found;
+    _ref->type       = bl_ast_get_type(found);
     bl_assert(_ref->type, "cannot get type of decl ref");
   } else {
     /* implicit declaration references will be connected we need to fill result type only */
@@ -875,6 +875,15 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t **mut)
   bl_scopes_insert_node(scopes, *mut);
 
   bl_visitor_walk_mut(visitor, mut);
+
+  if (!_mut->type) {
+    if (!_mut->init_expr) {
+      connect_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, *mut, BL_BUILDER_CUR_WORD,
+                    "implicitly typed mutable must be initialized");
+    }
+    _mut->type = bl_ast_dup_node(cnt->ast, bl_ast_get_type(_mut->init_expr));
+  }
+
   cnt->curr_lvalue = prev;
 }
 

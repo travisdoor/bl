@@ -71,7 +71,7 @@
     nt(DECL_ENUM,          decl_enum) \
     nt(DECL_ENUM_VARIANT,  decl_enum_variant) \
     nt(DECL_BLOCK,         decl_block) \
-    nt(EXPR_CONST,         expr_const) \
+    nt(EXPR_LITERAL,         expr_literal) \
     nt(EXPR_BINOP,         expr_binop) \
     nt(EXPR_UNARY,         expr_unary) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
@@ -328,7 +328,7 @@ struct bl_decl_block
   bl_scopes_t scopes; /* scope cache */
 };
 
-struct bl_expr_const
+struct bl_expr_literal
 {
   bl_node_t *type; /* variant of type */
 
@@ -477,7 +477,7 @@ bl_node_t *
 bl_ast_add_expr_null(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
-bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
+bl_ast_add_expr_literal(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type);
 
 bl_node_t *
 bl_ast_add_pre_load(bl_ast_t *ast, bl_token_t *tok, const char *filepath);
@@ -486,23 +486,23 @@ bl_node_t *
 bl_ast_add_pre_link(bl_ast_t *ast, bl_token_t *tok, const char *lib);
 
 bl_node_t *
-bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c);
+bl_ast_add_expr_literal_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c);
 
 bl_node_t *
-bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b);
+bl_ast_add_expr_literal_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b);
 
 bl_node_t *
-bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s);
+bl_ast_add_expr_literal_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s);
 
 bl_node_t *
-bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
+bl_ast_add_expr_literal_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
                                unsigned long long u);
 
 bl_node_t *
-bl_ast_add_expr_const_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f);
+bl_ast_add_expr_literal_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f);
 
 bl_node_t *
-bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str);
+bl_ast_add_expr_literal_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str);
 
 bl_node_t *
 bl_ast_add_expr_binop(bl_ast_t *ast, bl_token_t *tok, bl_sym_e op, bl_node_t *lhs, bl_node_t *rhs,

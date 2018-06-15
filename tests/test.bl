@@ -12,7 +12,7 @@ fn integer_implicit_cast() i32 {
     .bar.i = 20
   };
 
-  mut foo_ptr *foo_t = &foo;
+  mut foo_ptr = &foo;
 
   (*foo_ptr) = {
     .i = 20,
@@ -33,11 +33,13 @@ fn integer_implicit_cast() i32 {
 
   if _u8 == 10 {}
 
-  mut i32_size size_t = sizeof(i32);
+  mut i32_size = sizeof(i32);
 
   foo.e = enm::A;
 
   const c u32 = 10 + 2;
+
+  mut int = get_int();
 
   return 0; 
 }
@@ -56,6 +58,10 @@ fn gimme_void_ptr(any *void) {
 }
 
 fn gimme_i32_ptr(any *i32) {
+}
+
+fn get_int() i32 {
+  return 10;
 }
 
 enum enm {

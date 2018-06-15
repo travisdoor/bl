@@ -65,7 +65,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt)
   case BL_EXPR_BINOP:
   case BL_EXPR_UNARY:
   case BL_EXPR_SIZEOF:
-  case BL_EXPR_CONST: {
+  case BL_EXPR_LITERAL: {
     call_visit(visitor, stmt, BL_VISIT_EXPR);
     break;
   }
@@ -403,7 +403,8 @@ bl_visitor_walk_mut(bl_visitor_t *visitor, bl_node_t **mut)
   visitor->nesting++;
 
   bl_decl_mut_t *_mut = bl_peek_decl_mut(*mut);
-  call_visit(visitor, &_mut->type, BL_VISIT_TYPE);
+  if (_mut->type)
+    call_visit(visitor, &_mut->type, BL_VISIT_TYPE);
 
   if (_mut->init_expr) {
     call_visit(visitor, &bl_peek_decl_mut(*mut)->init_expr, BL_VISIT_EXPR);
@@ -507,7 +508,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr)
     break;
   }
 
-  case BL_EXPR_CONST:
+  case BL_EXPR_LITERAL:
   case BL_EXPR_DECL_REF:
   case BL_EXPR_NULL:
     break;

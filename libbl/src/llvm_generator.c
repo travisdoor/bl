@@ -216,7 +216,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     }
 
     if (_type->dim)
-      size = bl_peek_expr_const(_type->dim)->value.u;
+      size = bl_peek_expr_literal(_type->dim)->value.u;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -235,7 +235,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     }
 
     if (_type->dim)
-      size = bl_peek_expr_const(_type->dim)->value.u;
+      size = bl_peek_expr_literal(_type->dim)->value.u;
   }
 
   if (is_ptr) {
@@ -581,9 +581,9 @@ gen_expr(context_t *cnt, bl_node_t *expr)
 {
   LLVMValueRef val;
   switch (bl_node_code(expr)) {
-  case BL_EXPR_CONST: {
+  case BL_EXPR_LITERAL: {
 
-    bl_expr_const_t *cnst = bl_peek_expr_const(expr);
+    bl_expr_literal_t *cnst = bl_peek_expr_literal(expr);
     switch (bl_peek_type_fund(cnst->type)->type) {
     case BL_FTYPE_I8:
       val = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt),

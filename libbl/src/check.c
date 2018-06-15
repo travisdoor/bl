@@ -249,7 +249,7 @@ check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
     break;
 
   case BL_EXPR_ARRAY_REF:
-  case BL_EXPR_CONST:
+  case BL_EXPR_LITERAL:
   case BL_EXPR_DECL_REF:
   case BL_EXPR_NULL:
   case BL_EXPR_SIZEOF:
@@ -274,7 +274,14 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 static void
 visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 {
-  context_t *cnt = peek_cnt(visitor);
+  context_t *    cnt  = peek_cnt(visitor);
+  bl_decl_mut_t *_mut = bl_peek_decl_mut(*mut);
+
+  if (_mut->used == 0) {
+    check_warning(cnt, *mut, BL_BUILDER_CUR_WORD,
+                  "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
+  }
+
   check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type);
 }
 

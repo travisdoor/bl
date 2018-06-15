@@ -141,7 +141,7 @@ static bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
-parse_const_expr_maybe(context_t *cnt);
+parse_literal_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_unary_expr_maybe(context_t *cnt);
@@ -239,7 +239,7 @@ parse_loop_maybe(context_t *cnt, bl_node_t *parent)
   const bool prev_inside_loop = cnt->inside_loop;
   cnt->inside_loop            = true;
   bl_node_t *test_type        = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_BOOL, false);
-  bl_node_t *test             = bl_ast_add_expr_const_bool(cnt->ast, NULL, test_type, true);
+  bl_node_t *test             = bl_ast_add_expr_literal_bool(cnt->ast, NULL, test_type, true);
   bl_node_t *loop             = bl_ast_add_stmt_loop(cnt->ast, tok_begin, test, NULL, parent);
   bl_node_t *true_stmt        = parse_block_content_maybe(cnt, loop);
   if (true_stmt == NULL || bl_node_is_not(true_stmt, BL_DECL_BLOCK)) {
@@ -451,9 +451,9 @@ parse_call_maybe(context_t *cnt, bl_node_t *path, bool run_in_compile_time)
 }
 
 bl_node_t *
-parse_const_expr_maybe(context_t *cnt)
+parse_literal_maybe(context_t *cnt)
 {
-  bl_node_t * const_expr = NULL;
+  bl_node_t * literal = NULL;
   bl_node_t * type       = NULL;
   bl_token_t *tok        = bl_tokens_peek(cnt->tokens);
 
@@ -461,38 +461,38 @@ parse_const_expr_maybe(context_t *cnt)
   case BL_SYM_NUM:
     bl_tokens_consume(cnt->tokens);
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_I32, 0);
-    const_expr = bl_ast_add_expr_const_unsigned(cnt->ast, tok, type, tok->value.u);
+    literal = bl_ast_add_expr_literal_unsigned(cnt->ast, tok, type, tok->value.u);
     break;
 
   case BL_SYM_STRING:
     bl_tokens_consume(cnt->tokens);
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_STRING, 0);
-    const_expr = bl_ast_add_expr_const_str(cnt->ast, tok, type, tok->value.str);
+    literal = bl_ast_add_expr_literal_str(cnt->ast, tok, type, tok->value.str);
     break;
 
   case BL_SYM_FLOAT:
     bl_tokens_consume(cnt->tokens);
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F32, 0);
-    const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
+    literal = bl_ast_add_expr_literal_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_DOUBLE:
     bl_tokens_consume(cnt->tokens);
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_F64, 0);
-    const_expr = bl_ast_add_expr_const_double(cnt->ast, tok, type, tok->value.d);
+    literal = bl_ast_add_expr_literal_double(cnt->ast, tok, type, tok->value.d);
     break;
 
   case BL_SYM_CHAR:
     bl_tokens_consume(cnt->tokens);
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_CHAR, 0);
-    const_expr = bl_ast_add_expr_const_char(cnt->ast, tok, type, tok->value.c);
+    literal = bl_ast_add_expr_literal_char(cnt->ast, tok, type, tok->value.c);
     break;
 
   case BL_SYM_NULL:
     bl_tokens_consume(cnt->tokens);
     /* null pointer expression, type is added later during reference connection becouse null must be
      * implicitly casted */
-    const_expr = bl_ast_add_expr_null(cnt->ast, tok, NULL);
+    literal = bl_ast_add_expr_null(cnt->ast, tok, NULL);
     break;
 
   case BL_SYM_TRUE:
@@ -500,7 +500,7 @@ parse_const_expr_maybe(context_t *cnt)
     bl_tokens_consume(cnt->tokens);
     bool val   = tok->sym == BL_SYM_TRUE;
     type       = bl_ast_add_type_fund(cnt->ast, tok, BL_FTYPE_BOOL, 0);
-    const_expr = bl_ast_add_expr_const_bool(cnt->ast, tok, type, val);
+    literal = bl_ast_add_expr_literal_bool(cnt->ast, tok, type, val);
 
     break;
   }
@@ -508,7 +508,7 @@ parse_const_expr_maybe(context_t *cnt)
     break;
   }
 
-  return const_expr;
+  return literal;
 }
 
 bl_node_t *
@@ -671,7 +671,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_decl_ref_maybe(cnt, path)))
     return expr;
 
-  if ((expr = parse_const_expr_maybe(cnt)))
+  if ((expr = parse_literal_maybe(cnt)))
     return expr;
 
   if ((expr = parse_init_expr_maybe(cnt)))
@@ -790,7 +790,7 @@ parse_mut_maybe(context_t *cnt, int modif)
   /* Constant variable can be declared without 'mut' key word at the begining, we use 'const'
    * keyword instead. This can lead to confusion later becouse 'const' is used as modifier stored in
    * modif buffer of declaration, but for now anything else than mut cannot be declared as constant.
-   * Fix this latex? */
+   * Fix this later? */
   if (bl_tokens_current_is_not(cnt->tokens, BL_SYM_MUT)) {
     return NULL;
   }
@@ -804,11 +804,11 @@ parse_mut_maybe(context_t *cnt, int modif)
   }
 
   type = parse_type_maybe(cnt);
-  if (type == NULL) {
+  /*if (type == NULL) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
                 "expected type name after variable name");
-  }
+		}*/
 
   /*
    * parse init expr when variable declaration is fallowd by assign symbol

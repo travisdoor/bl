@@ -251,71 +251,71 @@ bl_ast_add_expr_null(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 }
 
 bl_node_t *
-bl_ast_add_expr_const(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
+bl_ast_add_expr_literal(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 {
   bl_node_t *cnst = alloc_node(ast);
   if (tok)
     cnst->src = &tok->src;
 
-  cnst->code                     = BL_EXPR_CONST;
-  bl_peek_expr_const(cnst)->type = type;
+  cnst->code                     = BL_EXPR_LITERAL;
+  bl_peek_expr_literal(cnst)->type = type;
 
   return cnst;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c)
+bl_ast_add_expr_literal_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c)
 {
-  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.c = c;
+  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.c = c;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b)
+bl_ast_add_expr_literal_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b)
 {
-  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.b = b;
+  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.b = b;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s)
+bl_ast_add_expr_literal_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s)
 {
-  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.s = s;
+  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.s = s;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
+bl_ast_add_expr_literal_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
                                unsigned long long u)
 {
-  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.u = u;
+  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.u = u;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f)
+bl_ast_add_expr_literal_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f)
 {
-  bl_node_t *expr_const                   = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.f = f;
+  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.f = f;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
-bl_ast_add_expr_const_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str)
+bl_ast_add_expr_literal_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str)
 {
-  bl_node_t *expr_const                     = bl_ast_add_expr_const(ast, tok, type);
-  bl_peek_expr_const(expr_const)->value.str = str;
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
+  bl_peek_expr_literal(expr_literal)->value.str = str;
 
-  return expr_const;
+  return expr_literal;
 }
 
 bl_node_t *
@@ -909,8 +909,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_expr_cast(node)->type;
   case BL_EXPR_INIT:
     return bl_peek_expr_init(node)->type;
-  case BL_EXPR_CONST:
-    return bl_peek_expr_const(node)->type;
+  case BL_EXPR_LITERAL:
+    return bl_peek_expr_literal(node)->type;
   case BL_EXPR_BINOP:
     return bl_peek_expr_binop(node)->type;
   case BL_EXPR_DECL_REF:
