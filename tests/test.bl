@@ -58,5 +58,5 @@ fn gimme_i32_ptr(any *i32) {
 
 enum enm {
   A = 10,
-  B
+  B = A
 }

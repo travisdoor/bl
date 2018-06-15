@@ -285,6 +285,7 @@ lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_nod
   if (c) {
     if (linked_by)
       (*linked_by) = found[0].linked_by;
+
     return found[0].node;
   }
 
@@ -312,7 +313,7 @@ connect_type(context_t *cnt, bl_node_t *type)
       connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
                     "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_get_id(found)->str);
     }
-  } 
+  }
 }
 
 void
@@ -357,8 +358,8 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
   bl_expr_decl_ref_t *_ref = bl_peek_expr_decl_ref(ref);
   if (!_ref->ref) {
     bl_node_t *found = lookup(cnt, _ref->path, validate_decl_ref, NULL); // TODO: validator
-    _ref->ref        = found;
-    _ref->type       = bl_ast_get_type(found);
+    _ref->ref  = found;
+    _ref->type = bl_ast_get_type(found);
     bl_assert(_ref->type, "cannot get type of decl ref");
   } else {
     /* implicit declaration references will be connected we need to fill result type only */
@@ -381,8 +382,7 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
   case BL_DECL_ENUM_VARIANT: {
     /* get enum type */
     bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(_ref->ref);
-    bl_node_t *             enm      = _variant->parent;
-    bl_decl_enum_t *        _enm     = bl_peek_decl_enum(enm);
+    bl_decl_enum_t *        _enm     = bl_peek_decl_enum(_variant->parent);
     _enm->used++;
     break;
   }
@@ -692,6 +692,11 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
 {
   context_t *cnt = peek_cnt(visitor);
   connect_type(cnt, *type);
+
+  if (bl_ast_type_is_ref(*type, BL_DECL_ENUM)) {
+    *type = bl_peek_decl_enum(bl_peek_type_ref(*type)->ref)->type;
+  }
+
   bl_visitor_walk_type(visitor, type);
 }
 

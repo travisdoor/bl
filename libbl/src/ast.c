@@ -577,6 +577,7 @@ bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, b
   bl_id_init(&bl_peek_decl_enum_variant(variant)->id, name);
   bl_peek_decl_enum_variant(variant)->expr   = expr;
   bl_peek_decl_enum_variant(variant)->parent = parent;
+  bl_peek_decl_enum_variant(variant)->type   = bl_peek_decl_enum(parent)->type;
 
   return variant;
 }
@@ -936,7 +937,7 @@ bl_ast_get_type(bl_node_t *node)
   case BL_DECL_ENUM:
     return bl_peek_decl_enum(node)->type;
   case BL_DECL_ENUM_VARIANT:
-    return bl_ast_get_type(bl_peek_decl_enum_variant(node)->parent);
+    return bl_peek_decl_enum_variant(node)->type;
   case BL_EXPR_SIZEOF:
     return bl_peek_expr_sizeof(node)->type;
 
@@ -1066,6 +1067,18 @@ bl_ast_type_is_fund(bl_node_t *type, bl_fund_type_e t)
     return false;
 
   return bl_peek_type_fund(type)->type == t;
+}
+
+bool
+bl_ast_type_is_ref(bl_node_t *type, bl_node_code_e t)
+{
+  if (!type)
+    return false;
+
+  if (bl_node_is_not(type, BL_TYPE_REF))
+    return false;
+
+  return bl_node_is(bl_peek_type_ref(type)->ref, t);
 }
 
 bool

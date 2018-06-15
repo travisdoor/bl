@@ -21,9 +21,15 @@ module init {
   struct C {
     x i32
   }
+
+  struct D {
+    x f32,
+    y f32,
+    z f32
+  }
   
   #test
-  fn initialization() i32 {
+  fn simple_init() i32 {
     mut a A = {
       .b = {
         .c = {

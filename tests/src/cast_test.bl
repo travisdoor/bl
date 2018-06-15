@@ -18,7 +18,6 @@ module casting {
     mut i i32;
     foo.i = &i;
   
-    // cannot compile
     if ((&i) != foo.i) {
       return FAIL;
     }  

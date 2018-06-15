@@ -214,7 +214,7 @@ struct bl_stmt_using
 struct bl_expr_sizeof
 {
   bl_node_t *des_type; /* desired type */
-  bl_node_t *type; /* result type */
+  bl_node_t *type;     /* result type */
 };
 
 struct bl_expr_null
@@ -315,10 +315,10 @@ struct bl_decl_enum
 
 struct bl_decl_enum_variant
 {
-  bl_id_t    id;     /* identificator */
-  bl_node_t *parent; /* parent node */
-  bl_node_t *expr;   /* enum variant initialization expression */
-  bl_node_t *type;  
+  bl_id_t    id;   /* identificator */
+  bl_node_t *expr; /* enum variant initialization expression */
+  bl_node_t *parent;
+  bl_node_t *type;
 };
 
 struct bl_decl_block
@@ -566,7 +566,7 @@ bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 
 bl_node_t *
 bl_ast_add_decl_enum_variant(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *expr,
-                             bl_node_t *parent, bl_node_t *type);
+                             bl_node_t *parent);
 
 bl_node_t *
 bl_ast_add_decl_block(bl_ast_t *ast, bl_token_t *tok, bl_node_t *parent);
@@ -629,6 +629,9 @@ bl_ast_get_type_dim(bl_node_t *type);
 
 bool
 bl_ast_type_is_fund(bl_node_t *type, bl_fund_type_e t);
+
+bool
+bl_ast_type_is_ref(bl_node_t *type, bl_node_code_e t);
 
 bl_node_t *
 bl_ast_path_get_last(bl_node_t *path);

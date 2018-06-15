@@ -1491,8 +1491,8 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
                   "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t * prev    = enm;
-    bl_node_t **variant = &_enm->variants;
+    bl_node_t * prev         = enm;
+    bl_node_t **variant      = &_enm->variants;
 
   variant:
     *variant = parse_enum_variant_maybe(cnt, enm);

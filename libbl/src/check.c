@@ -200,8 +200,13 @@ check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
     default:
       break;
     }
-  } else if (exp_type && !bl_ast_type_compatible(exp_type, expr_type)) {
+  } else if ((exp_type && !bl_ast_type_compatible(exp_type, expr_type))) {
     bl_type_kind_e kind = bl_ast_type_get_kind(exp_type);
+
+    if (bl_ast_type_is_ref(exp_type, BL_DECL_ENUM)) {
+      exp_type = bl_peek_decl_enum(bl_peek_type_ref(exp_type)->ref)->type;
+    }
+
     if ((kind == BL_REAL_KIND || kind == BL_SIZE_KIND || kind == BL_UINT_KIND ||
          kind == BL_SINT_KIND) &&
         bl_node_is(*expr, BL_EXPR_CONST)) {
@@ -379,7 +384,8 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 {
   context_t *             cnt      = peek_cnt(visitor);
   bl_decl_enum_variant_t *_variant = bl_peek_decl_enum_variant(*variant);
-  bl_node_t *             exp_type = bl_peek_decl_enum(_variant->parent)->type;
+  bl_node_t *             enm      = _variant->parent;
+  bl_node_t *             exp_type = bl_peek_decl_enum(enm)->type;
 
   if (_variant->expr != NULL) {
     /* check result type of the expression */

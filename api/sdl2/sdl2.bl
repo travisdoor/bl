@@ -48,13 +48,7 @@ public module sdl2 {
     GameController = 0x00002000,
     Events 	   = 0x00004000,
     NoParachute    = 0x00100000,
-    Everything 	   = cast(i32) Timer |
-    		     cast(i32) Audio |
-		     cast(i32) Video |
-		     cast(i32) Joystick |
-		     cast(i32) Haptic |
-		     cast(i32) GameController |
-		     cast(i32) Events
+    Everything 	   = Timer | Audio | Video | Joystick | Haptic | GameController | Events
   }
 
   public enum window_flags_e i32 {
@@ -69,7 +63,7 @@ public module sdl2 {
     InputGrabbed      = 0x00000100,
     InputFocus        = 0x00000200,
     MouseFocus        = 0x00000400,
-    FullscreenDesktop = (cast(i32)Fullscreen | 0x00001000),
+    FullscreenDesktop = Fullscreen | 0x00001000,
     Foreign           = 0x00000800,
     AllowHighdpi      = 0x00002000,
     MouseCapture      = 0x00004000,
