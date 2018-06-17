@@ -1,70 +1,12 @@
 /* testing playground */
 
-#test
-fn integer_implicit_cast() i32 {
-  mut foo foo_t;
+extern fn printf(s string, i i32) i32;
+extern fn puts(s string) i32;
 
-  foo.i = 20;
-  foo.bar.i = foo.i;
-
-  foo = {
-    .i = 20,
-    .bar.i = 20
-  };
-
-  mut foo_ptr = &foo;
-
-  (*foo_ptr) = {
-    .i = 20,
-    .bar.i = 20
-  };
-
-  foo_ptr = {
-    ->i = 20,
-    ->bar.i = 20
-  };
-
-  //(&foo)->i = 20; // cause crash
-
-  gimme_void_ptr(foo_ptr);
-  
-  mut _u8 u8 = 0;
-  mut e enm = enm::A;
-
-  if _u8 == 10 {}
-
-  mut i32_size = sizeof(i32);
-
-  foo.e = enm::A;
-
-  const c u32 = 10 + 2;
-
-  mut int = get_int();
-
-  return 0; 
+fn main() i32 {
+  return 1; 
 }
 
-struct foo_t {
-  bar bar_t,
-  i i32,
-  e enm
+fn hello() {
 }
 
-struct bar_t {
-  i i64
-}
-
-fn gimme_void_ptr(any *void) {
-}
-
-fn gimme_i32_ptr(any *i32) {
-}
-
-fn get_int() i32 {
-  return 10;
-}
-
-enum enm {
-  A = 10,
-  B = A
-}

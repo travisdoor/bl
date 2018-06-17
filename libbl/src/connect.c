@@ -881,7 +881,17 @@ third_pass_mut(bl_visitor_t *visitor, bl_node_t **mut)
       connect_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, *mut, BL_BUILDER_CUR_WORD,
                     "implicitly typed mutable must be initialized");
     }
-    _mut->type = bl_ast_dup_node(cnt->ast, bl_ast_get_type(_mut->init_expr));
+
+    bl_node_t *type = bl_ast_get_type(_mut->init_expr);
+
+    if (bl_ast_type_is_fund(type, BL_FTYPE_VOID)) {
+      connect_error(
+          cnt, BL_ERR_INVALID_TYPE, *mut, BL_BUILDER_CUR_WORD,
+          "cannot assign " BL_YELLOW("'void'") " to implicitly typed mutable " BL_YELLOW("'%s'"),
+          _mut->id.str);
+    }
+
+    _mut->type = bl_ast_dup_node(cnt->ast, type);
   }
 
   cnt->curr_lvalue = prev;

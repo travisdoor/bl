@@ -282,6 +282,12 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
                   "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
   }
 
+  if (bl_ast_type_is_fund(_mut->type, BL_FTYPE_VOID)) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, _mut->type, BL_BUILDER_CUR_WORD,
+                "mutable " BL_YELLOW("'%s'") " has invalid type " BL_YELLOW("'void'"),
+                _mut->id.str);
+  }
+
   check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type);
 }
 
