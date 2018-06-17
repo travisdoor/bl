@@ -3,10 +3,20 @@
 extern fn printf(s string, i i32) i32;
 extern fn puts(s string) i32;
 
-fn main() i32 {
-  return 1; 
+#test
+fn test() i32 {
+  mut a = hello(); 
+  return 0; 
 }
 
-fn hello() {
+fn hello() *i32 {
+  mut _local = A::get();
+  return _local;
+}
+
+module A {
+  public fn get() *i32 {
+    return null;
+  }
 }
 

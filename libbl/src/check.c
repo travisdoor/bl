@@ -282,7 +282,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
                   "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
   }
 
-  if (bl_ast_type_is_fund(_mut->type, BL_FTYPE_VOID)) {
+  if (bl_ast_type_is_fund(_mut->type, BL_FTYPE_VOID) && !bl_ast_type_is_ptr(_mut->type)) {
     check_error(cnt, BL_ERR_INVALID_TYPE, _mut->type, BL_BUILDER_CUR_WORD,
                 "mutable " BL_YELLOW("'%s'") " has invalid type " BL_YELLOW("'void'"),
                 _mut->id.str);
@@ -419,6 +419,14 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
   }
 }
 
+static void
+visit_return(bl_visitor_t *visitor, bl_node_t **ret)
+{
+  context_t *cnt = peek_cnt(visitor);
+  bl_stmt_return_t *_ret = bl_peek_stmt_return(*ret);
+  check_expr(cnt, &_ret->expr, bl_ast_get_type(_ret->func));
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -441,6 +449,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
   bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
   bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_ARG);
 

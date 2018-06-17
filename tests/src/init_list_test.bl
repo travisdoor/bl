@@ -72,4 +72,17 @@ module init {
 
     return SUCCESS;
   }
+
+  #test
+  fn tricky() i32 {
+    if (D {.x = 10.f}.x != 10.f) {
+      return FAIL;
+    }
+
+    if (10.f != D {.x = 10.f}.x) {
+      return FAIL;
+    }
+
+    return SUCCESS;
+  }
 }

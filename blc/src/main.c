@@ -54,6 +54,8 @@ main(int argc, char *argv[])
       build_flags |= BL_BUILDER_RUN_TESTS;
     } else if (strcmp(&argv[optind][1], "no-bin") == 0) {
       build_flags |= BL_BUILDER_NO_BIN;
+    } else if (strcmp(&argv[optind][1], "no-warning") == 0) {
+      build_flags |= BL_BUILDER_NO_WARN;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);

@@ -923,6 +923,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_expr_call(node)->type;
   case BL_EXPR_ARRAY_REF:
     return bl_peek_expr_array_ref(node)->type;
+  case BL_EXPR_SIZEOF:
+    return bl_peek_expr_sizeof(node)->type;
 
   case BL_DECL_MUT:
     return bl_peek_decl_mut(node)->type;
@@ -938,17 +940,19 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_decl_enum(node)->type;
   case BL_DECL_ENUM_VARIANT:
     return bl_peek_decl_enum_variant(node)->type;
-  case BL_EXPR_SIZEOF:
-    return bl_peek_expr_sizeof(node)->type;
+
+  case BL_STMT_RETURN:
+    return bl_ast_get_type(bl_peek_stmt_return(node)->func);
 
   default:
-    bl_abort("cannot get type of %s", bl_node_name(node));
+    return NULL;
   }
 }
 
 bl_node_t *
 bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
 {
+  bl_assert(node, "cannot duplicate node");
   bl_node_t *dup = alloc_node(ast);
   memcpy(dup, node, sizeof(bl_node_t));
   return dup;
