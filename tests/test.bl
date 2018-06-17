@@ -5,18 +5,17 @@ extern fn puts(s string) i32;
 
 #test
 fn test() i32 {
-  mut a = hello(); 
+
+  mut a A;
+  mut a_ptr = &a;
+
+  (*a_ptr) = { .i = 10, .i = 20 };
+  
+
   return 0; 
 }
 
-fn hello() *i32 {
-  mut _local = A::get();
-  return _local;
+struct A {
+  i i32,
+  j i32
 }
-
-module A {
-  public fn get() *i32 {
-    return null;
-  }
-}
-

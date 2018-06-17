@@ -85,12 +85,12 @@ public module std {
     }
 
     public fn vec2f_rotate(v *vec2f_t, rad f32) {
-      mut tmp vec2f_t = { 
+      (*v) = { 
         .x = v->x * cosf(rad) - v->y * sinf(rad),
         .y = v->x * sinf(rad) + v->y * cosf(rad)
       };
 
-      (*v) = tmp;
+      //(*v) = tmp;
     }
   }
 }
