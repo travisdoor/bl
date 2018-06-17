@@ -25,25 +25,53 @@ module decl_def_values {
   fn decl_def_values() i32 {
     using std::utest;
     mut _i8     i8 = 0;
+    if _i8 != 0 { return FAIL; }
+
     mut _i16    i16 = 0;
+    if _i16 != 0 { return FAIL; }
+
     mut _i32    i32 = 0;
+    if _i32 != 0 { return FAIL; }
+
     mut _i64    i64 = 0;
+    if _i64 != 0 { return FAIL; }
+
     mut _u8     u8 = 0;
+    if _u8 != 0 { return FAIL; }
+    
     mut _u16    u16 = 0;
+    if _u16 != 0 { return FAIL; }
+
     mut _u32    u32 = 0;
+    if _u32 != 0 { return FAIL; }
+
     mut _u64    u64 = 0;
+    if _u64 != 0 { return FAIL; }
+
     mut _size   size_t = 0;
+    if _size != 0 { return FAIL; }
+
     mut _f32    f32 = 0.f;
+    if _f32 != 0.f { return FAIL; }
+
     mut _f64    f64 = 0.0;
-    mut _char   char; // TODO
+    if _f64 != 0.0 { return FAIL; }
+
+    //mut _char   char; // TODO
+
     mut _string string = "\0";
+    if _string != "\0" { return FAIL; }
+
     mut _bool   bool = false;
+    if _bool == true { return FAIL; }
   
-    mut a A = {
+    mut _a A = {
       .b.c.i = 0,
       .b.i = 0,
       .i = 0
     };
+
+    if _a.b.c.i != 0 { return FAIL; }
   
     return SUCCESS;
   }

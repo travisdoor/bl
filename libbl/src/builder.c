@@ -124,7 +124,8 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
     if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
-    if (flags & BL_BUILDER_RUN_TESTS && (error = bl_test_runner_run(builder, assembly)) != BL_NO_ERR)
+    if (flags & BL_BUILDER_RUN_TESTS &&
+        (error = bl_test_runner_run(builder, assembly)) != BL_NO_ERR)
       return error;
 
     if (flags & BL_BUILDER_RUN && (error = bl_llvm_jit_exec_run(builder, assembly)) != BL_NO_ERR)
@@ -154,6 +155,7 @@ bl_builder_new(void)
 
   builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;
+  builder->no_warn    = false;
 
   llvm_init();
 
@@ -172,6 +174,8 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
   clock_t    begin = clock();
   bl_unit_t *unit;
   bl_error_e error;
+
+  builder->no_warn = flags & BL_BUILDER_NO_WARN;
 
   for (size_t i = 0; i < bo_array_size(assembly->units); ++i) {
     unit = bo_array_at(assembly->units, i, bl_unit_t *);
@@ -243,6 +247,9 @@ void
 bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
                bl_builder_msg_cur_pos pos, const char *format, ...)
 {
+  if (builder->no_warn && type == BL_BUILDER_WARNING)
+    return;
+
   bl_assert(src, "invalid source");
   bl_assert(src->unit, "invalid unit attached to source location");
   BString *tmp              = bo_string_new(MAX_MSG_LEN);

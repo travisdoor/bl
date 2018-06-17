@@ -67,7 +67,7 @@ bl_scope_new(bl_scope_cache_t *cache)
 void
 bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
 {
-  bl_id_t *id = bl_ast_try_get_id(node);
+  bl_id_t *id = bl_ast_get_id(node);
   bl_assert(id, "invalid id");
   bo_htbl_insert(scope, id->hash, node);
 }

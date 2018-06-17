@@ -133,5 +133,7 @@ bl_token_prec(bl_token_t *token)
 bool
 bl_token_is(bl_token_t *token, bl_sym_e sym)
 {
+  if (!token)
+    return false;
   return token->sym == sym;
 }

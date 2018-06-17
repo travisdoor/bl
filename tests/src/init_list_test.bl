@@ -21,9 +21,15 @@ module init {
   struct C {
     x i32
   }
+
+  struct D {
+    x f32,
+    y f32,
+    z f32
+  }
   
   #test
-  fn initialization() i32 {
+  fn simple_init() i32 {
     mut a A = {
       .b = {
         .c = {
@@ -43,6 +49,37 @@ module init {
     }
 
     if a.b.c.x != 10 {
+      return FAIL;
+    }
+
+    return SUCCESS;
+  }
+
+  #test
+  fn pointer_init() i32 {
+    mut d D;
+    mut _d = &d;
+
+    (*_d) = {
+      .x = 0.f,
+      .y = 0.f,
+      .z = 0.f,
+    };
+
+    if d.x != 0.f { return FAIL; }
+    if d.y != 0.f { return FAIL; }
+    if d.z != 0.f { return FAIL; }
+
+    return SUCCESS;
+  }
+
+  #test
+  fn tricky() i32 {
+    if (D {.x = 10.f}.x != 10.f) {
+      return FAIL;
+    }
+
+    if (10.f != D {.x = 10.f}.x) {
       return FAIL;
     }
 

@@ -47,7 +47,7 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bl_msg_log(BL_YELLOW("no tests found"));
     return BL_NO_ERR;
   }
-  
+
   for (size_t i = 0; i < c; ++i) {
     utest = &bo_array_at(assembly->utest_methods, i, bl_utest_t);
     src   = utest->func->src;
@@ -55,8 +55,8 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
         LLVMRunFunction(assembly->llvm_compiletime_engine, utest->llvm_func, 0, NULL);
     status = !(int)LLVMGenericValueToInt(result, 0);
 
-    snprintf(tmp, MAX_REPORT_LEN, "  " BL_GREEN("%s") " %s:%d",
-             bl_peek_decl_func(utest->func)->id.str, src->unit->name, src->line);
+    snprintf(tmp, MAX_REPORT_LEN, "  %s::" BL_GREEN("%s"), src->unit->name,
+             bl_peek_decl_func(utest->func)->id.str);
 
     const int dcount = REPORT_COL_W - strlen(tmp) - 6 + 2 * strlen(BL_GREEN_BEGIN);
     for (int j = 0; j < dcount; ++j) {

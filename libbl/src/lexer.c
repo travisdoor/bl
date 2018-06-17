@@ -200,6 +200,7 @@ scan:
 exit:
   tok->value.str = bo_string_get(cstr);
   tok->src.len   = len;
+  tok->src.col = tok->src.col + 1;
   cnt->col += len + 2;
   return true;
 }

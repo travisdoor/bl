@@ -10,11 +10,11 @@ using std::utest;
 module exprs {
   #test
   fn expr_basics() i32 {
-    mut a i32 = 2 + 2 * 12 + 4; // 30
-    mut b i32 = (2 + 2) * 12 + 4; // 52
-    mut c i32 = 2 + 2 * (12 + 4); // 34
-    mut d i32 = (2 + get()) * (12 * (4 + 3)); // 588
-    mut e i32 = add(a, b) * (10 - 5); // 410  
+    mut a = 2 + 2 * 12 + 4; // 30
+    mut b = (2 + 2) * 12 + 4; // 52
+    mut c = 2 + 2 * (12 + 4); // 34
+    mut d = (2 + get()) * (12 * (4 + 3)); // 588
+    mut e = add(a, b) * (10 - 5); // 410  
   
     if a != 30 || b != 52 || c != 34 || d != 588 || e != 410 {
       return FAIL;
