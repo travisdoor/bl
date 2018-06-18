@@ -156,6 +156,9 @@ should_load(bl_node_t *node)
          is_deref(node);
 }
 
+static LLVMGenericValueRef
+run_in_compile_time(context_t *cnt, bl_node_t *callee);
+
 /*
  * convert known type to LLVM type representation
  */
@@ -163,7 +166,7 @@ LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   LLVMTypeRef llvm_type = NULL;
-  size_t      size      = 0;
+  bl_node_t * size_expr = NULL;
   bool        is_ptr    = false;
   if (bl_node_is(type, BL_TYPE_FUND)) {
     bl_type_fund_t *_type = bl_peek_type_fund(type);
@@ -215,8 +218,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("unknown fundamenetal type");
     }
 
-    if (_type->dim)
-      size = bl_peek_expr_literal(_type->dim)->value.u;
+    size_expr = _type->dim;
   } else if (bl_node_is(type, BL_TYPE_REF)) {
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
@@ -234,8 +236,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       bl_abort("invalid reference type");
     }
 
-    if (_type->dim)
-      size = bl_peek_expr_literal(_type->dim)->value.u;
+    size_expr = _type->dim;
   }
 
   if (is_ptr) {
@@ -243,7 +244,11 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   }
 
   /* type is array */
-  if (size) {
+  if (size_expr) {
+    bl_assert(bl_node_is(size_expr, BL_EXPR_CALL), "expected call");
+    bl_node_t *callee = bl_peek_expr_call(size_expr)->ref;
+    LLVMGenericValueRef size_generic = run_in_compile_time(cnt, callee);
+    size_t size = LLVMGenericValueToInt(size_generic, false);
     llvm_type = LLVMArrayType(llvm_type, size);
   }
 
@@ -466,6 +471,13 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
   return out_i;
 }
 
+LLVMGenericValueRef
+run_in_compile_time(context_t *cnt, bl_node_t *callee)
+{
+  LLVMValueRef fn = get_value_gscope_CT(callee);
+  return LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
+}
+
 /*
  * generate method call and return value of method return
  */
@@ -476,8 +488,7 @@ gen_call(context_t *cnt, bl_node_t *call)
 
   if (_call->run_in_compile_time && cnt->runtime) {
     bl_decl_func_t *    _callee = bl_peek_decl_func(_call->ref);
-    LLVMValueRef        fn      = get_value_gscope_CT(_call->ref);
-    LLVMGenericValueRef tmp = LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
+    LLVMGenericValueRef tmp     = run_in_compile_time(cnt, _call->ref);
 
     LLVMTypeRef    ret_type      = to_llvm_type(cnt, _callee->ret_type);
     bl_type_kind_e ret_type_kind = bl_ast_type_get_kind(_callee->ret_type);

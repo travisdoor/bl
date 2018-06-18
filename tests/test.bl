@@ -8,15 +8,29 @@ fn get_size() size_t {
 }
 
 fn main() i32 {
-  printf("A = %d\n", E::A);
-  printf("B = %d\n", E::B);
-  printf("C = %d\n", E::C);
-  printf("D = %d\n", E::D);
+  mut arr i32 [#run __arr_count() * #run __arr_count()];
+  mut arr2 i32 [10 + 32];
+  mut arr3 i32 [10 + 32 * 10];
+  mut arr4 Foo [32 * 10];
+
+  mut bar Bar; 
+
+  printf("arr.count = %d\n", arr.count);
+  printf("arr2.count = %d\n", arr2.count);
+  printf("arr3.count = %d\n", arr3.count);
+  printf("arr4.count = %d\n", arr4.count);
 
   return 0;
 }
 
-enum E {
-  A = 2, B, C = 10, D = 10
+fn __arr_count() size_t {
+  return 10 + 2;
 }
 
+struct Foo {
+  i i32
+}
+
+struct Bar {
+  i i32 [256]
+}
