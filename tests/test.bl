@@ -3,13 +3,11 @@
 extern fn printf(s string, i i32) i32;
 extern fn puts(s string) i32;
 
-const c i32 = 10; 
-
 #test
 fn test() i32 {
-  return c;
+
+  mut arr i32[10];
+
+  return 0;
 }
 
-enum E {
-  A, B, C
-}

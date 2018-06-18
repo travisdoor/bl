@@ -284,7 +284,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 
   if (_mut->used == 0) {
     check_warning(cnt, *mut, BL_BUILDER_CUR_WORD,
-                  "variable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
+                  "mutable " BL_YELLOW("'%s'") " is declared but never used", _mut->id.str);
   }
 
   if (bl_ast_type_is_fund(_mut->type, BL_FTYPE_VOID) && !bl_ast_type_is_ptr(_mut->type)) {
