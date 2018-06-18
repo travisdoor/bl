@@ -26,9 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <bobject/containers/hash.h>
 #include "ast_impl.h"
 
 #define CHUNK_SIZE 256
+static bool buildin_hashes_initialized = false;
 
 typedef struct chunk
 {
@@ -47,6 +49,14 @@ const char *bl_node_type_strings[] = {
     BL_NODE_TYPE_LIST
 #undef nt
 };
+
+const char *bl_buildin_strings[] = {
+#define bt(code, name) #name,
+    BL_SPEC_BUILINS
+#undef nt
+};
+
+static uint64_t buildin_hashes[BL_BUILDIN_COUNT] = {0};
 
 static void
 node_terminate(bl_node_t *node)
@@ -257,7 +267,7 @@ bl_ast_add_expr_literal(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
   if (tok)
     cnst->src = &tok->src;
 
-  cnst->code                     = BL_EXPR_LITERAL;
+  cnst->code                       = BL_EXPR_LITERAL;
   bl_peek_expr_literal(cnst)->type = type;
 
   return cnst;
@@ -266,7 +276,7 @@ bl_ast_add_expr_literal(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type)
 bl_node_t *
 bl_ast_add_expr_literal_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, char c)
 {
-  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.c = c;
 
   return expr_literal;
@@ -275,7 +285,7 @@ bl_ast_add_expr_literal_char(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, ch
 bl_node_t *
 bl_ast_add_expr_literal_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bool b)
 {
-  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.b = b;
 
   return expr_literal;
@@ -284,7 +294,7 @@ bl_ast_add_expr_literal_bool(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, bo
 bl_node_t *
 bl_ast_add_expr_literal_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, long long s)
 {
-  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.s = s;
 
   return expr_literal;
@@ -292,9 +302,9 @@ bl_ast_add_expr_literal_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, 
 
 bl_node_t *
 bl_ast_add_expr_literal_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
-                               unsigned long long u)
+                                 unsigned long long u)
 {
-  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.u = u;
 
   return expr_literal;
@@ -303,7 +313,7 @@ bl_ast_add_expr_literal_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type
 bl_node_t *
 bl_ast_add_expr_literal_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f)
 {
-  bl_node_t *expr_literal                   = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.f = f;
 
   return expr_literal;
@@ -312,7 +322,7 @@ bl_ast_add_expr_literal_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, 
 bl_node_t *
 bl_ast_add_expr_literal_str(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, const char *str)
 {
-  bl_node_t *expr_literal                     = bl_ast_add_expr_literal(ast, tok, type);
+  bl_node_t *expr_literal                       = bl_ast_add_expr_literal(ast, tok, type);
   bl_peek_expr_literal(expr_literal)->value.str = str;
 
   return expr_literal;
@@ -958,6 +968,19 @@ bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
   return dup;
 }
 
+void
+bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src)
+{
+  if (!dest || !src)
+    return;
+
+  bl_node_t *tmp = *dest;
+  *dest = bl_ast_dup_node(ast, src);
+
+  (*dest)->next = tmp->next;
+  (*dest)->prev = tmp->prev;
+}
+
 bl_type_kind_e
 bl_ast_type_get_kind(bl_node_t *type)
 {
@@ -1102,6 +1125,8 @@ bl_ast_node_is_const(bl_node_t *node)
     return true;
   case BL_EXPR_DECL_REF:
     return bl_ast_node_is_const(bl_peek_expr_decl_ref(node)->ref);
+  case BL_EXPR_CALL:
+    return bl_peek_expr_call(node)->run_in_compile_time;
   default:
     return false;
   }
@@ -1130,6 +1155,25 @@ bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type)
   }
 
   return true;
+}
+
+uint64_t
+bl_ast_buildin_hash(bl_buildin_e t)
+{
+  if (!buildin_hashes_initialized) {
+    for (int i = 0; i < BL_BUILDIN_COUNT; ++i) {
+      buildin_hashes[i] = bo_hash_from_str(bl_buildin_strings[i]);
+    }
+    buildin_hashes_initialized = true;
+  }
+
+  return buildin_hashes[t];
+}
+
+bool
+bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t)
+{
+  return id->hash == bl_ast_buildin_hash(t);
 }
 
 /**************************************************************************************************/

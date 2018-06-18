@@ -105,7 +105,7 @@ static void
 connect_decl_ref(context_t *cnt, bl_node_t *ref);
 
 static void
-connect_member_ref(context_t *cnt, bl_node_t *member_ref);
+connect_member_ref(context_t *cnt, bl_node_t **member_ref);
 
 /*************************************************************************************************
  * First pass
@@ -404,9 +404,9 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
 }
 
 void
-connect_member_ref(context_t *cnt, bl_node_t *member_ref)
+connect_member_ref(context_t *cnt, bl_node_t **member_ref)
 {
-  bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(member_ref);
+  bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(*member_ref);
 
   /* anonymous members can be already linked */
   if (_member_ref->ref)
@@ -415,14 +415,21 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   bl_node_t *type = bl_ast_get_type(_member_ref->next);
   bl_assert(type, "invalid member ref type");
 
+  /* solve array buildins */
+  if (bl_ast_get_type_dim(type) && bl_ast_is_buildin(&_member_ref->id, BL_BUILDIN_ARR_COUNT)) {
+    bl_ast_dup_and_insert(cnt->ast, member_ref, *bl_ast_get_type_dim(type));
+    return;
+  }
+
   if (bl_node_is_not(type, BL_TYPE_REF)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_INVALID_TYPE, _member_ref->next, BL_BUILDER_CUR_WORD,
                   "field has no members, structure is expected");
   }
 
   type = bl_peek_type_ref(type)->ref;
+
   if (bl_node_is_not(type, BL_DECL_STRUCT)) {
-    connect_error(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_INVALID_TYPE, _member_ref->next, BL_BUILDER_CUR_WORD,
                   "field has no members, structure is expected");
   }
 
@@ -431,9 +438,9 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   bool       in_curr_branch = lookup_in_tree(cnt, type, cnt->curr_compound, &linked_by, NULL);
   bool       ignore_private = in_curr_branch && bl_node_is_not(linked_by, BL_STMT_USING);
 
-  bl_node_t *ref = lookup_in_scope(cnt, member_ref, type, NULL);
+  bl_node_t *ref = lookup_in_scope(cnt, *member_ref, type, NULL);
   if (!ref) {
-    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, member_ref, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, *member_ref, BL_BUILDER_CUR_WORD,
                   "structure " BL_YELLOW("'%s'") " has no member " BL_YELLOW("'%s'"),
                   bl_peek_decl_struct(type)->id.str, _member_ref->id.str);
   }
@@ -441,7 +448,7 @@ connect_member_ref(context_t *cnt, bl_node_t *member_ref)
   /* check visibility of found member */
   bl_decl_struct_member_t *_ref = bl_peek_decl_struct_member(ref);
   if (!ignore_private && !(_ref->modif & BL_MODIF_PUBLIC)) {
-    connect_error(cnt, BL_ERR_PRIVATE, member_ref, BL_BUILDER_CUR_WORD,
+    connect_error(cnt, BL_ERR_PRIVATE, *member_ref, BL_BUILDER_CUR_WORD,
                   "member " BL_YELLOW("'%s'") " of structure " BL_YELLOW(
                       "'%s'") " is private in this context",
                   _ref->id.str, bl_peek_decl_struct(type)->id.str);
@@ -808,9 +815,10 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
     connect_decl_ref(cnt, *expr);
     break;
 
-  case BL_EXPR_MEMBER_REF:
-    connect_member_ref(cnt, *expr);
+  case BL_EXPR_MEMBER_REF: {
+    connect_member_ref(cnt, expr);
     break;
+  }
 
   case BL_EXPR_UNARY: {
     bl_expr_unary_t *_unary = bl_peek_expr_unary(*expr);

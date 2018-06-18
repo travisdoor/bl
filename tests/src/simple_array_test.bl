@@ -58,4 +58,35 @@ module array {
 
     return SUCCESS;
   }
+
+  #test
+  fn array_count() i32 {
+    mut a i32 [count];
+    if a.count != count { return FAIL; }
+
+    mut foos foo_t [count];
+    if foos.count != count { return FAIL; }
+
+    return SUCCESS;
+  }
+
+  #test
+  fn array_count_iteration() i32 {
+    mut a i32 [count];
+    if a.count != count { return FAIL; }
+
+    mut i = 0;
+    while i < a.count {
+      a[i] = i;
+      i = i + 1;
+    }
+
+    i = 0;
+    while i < a.count {
+      if a[i] != i { return FAIL; }
+      i = i + 1;
+    }
+
+    return SUCCESS;
+  }
 }

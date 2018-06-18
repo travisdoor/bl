@@ -63,6 +63,7 @@ typedef struct
   /* tmps */
   jmp_buf    jmp_error;
   bl_node_t *entry_fn;
+  bl_node_t *prev_enum_variant;
 } context_t;
 
 static void
@@ -395,7 +396,9 @@ visit_enum(bl_visitor_t *visitor, bl_node_t **enm)
                 "enumerator has invalid type, only numerical, string and char types are supported");
   }
 
+  cnt->prev_enum_variant = NULL;
   bl_visitor_walk_enum(visitor, enm);
+  cnt->prev_enum_variant = NULL;
 }
 
 static void
@@ -418,10 +421,28 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
                   "cannot generate value of enum variant " BL_YELLOW("'%s'") " = ?",
                   _variant->id.str);
       break;
-    default:
+    default: {
+      /* fill missing enum varaints */
+
+      if (!cnt->prev_enum_variant) {
+        /* first enum variant has no initial value -> we need to create one, counting starts from
+         * zero */
+        _variant->expr = bl_ast_add_expr_literal_signed(cnt->ast, NULL, exp_type, 0);
+      } else {
+        /* previous variant has init expression we need to generate +1 constant */
+        bl_node_t *one = bl_ast_add_expr_literal_signed(cnt->ast, NULL, exp_type, 1);
+        bl_node_t *add = bl_ast_add_expr_binop(
+            cnt->ast, NULL, BL_SYM_PLUS, bl_peek_decl_enum_variant(cnt->prev_enum_variant)->expr,
+            one, exp_type);
+        _variant->expr = add;
+      }
+
       break;
     }
+    }
   }
+
+  cnt->prev_enum_variant = *variant;
 }
 
 static void
@@ -439,7 +460,8 @@ visit_return(bl_visitor_t *visitor, bl_node_t **ret)
 bl_error_e
 bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder = builder, .assembly = assembly, .entry_fn = NULL};
+  context_t cnt = {
+      .builder = builder, .assembly = assembly, .entry_fn = NULL, .prev_enum_variant = NULL};
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {

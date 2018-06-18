@@ -37,7 +37,7 @@
 #include "common_impl.h"
 
 // clang-format off
-#define BL_FUND_TYPE_LIST                                                                              \
+#define BL_FUND_TYPE_LIST                                                                         \
     ft(VOID,   "void") \
     ft(I8,     "i8") \
     ft(I16,    "i16") \
@@ -53,6 +53,10 @@
     ft(CHAR,   "char") \
     ft(STRING, "string") \
     ft(BOOL,   "bool")
+
+#define BL_SPEC_BUILINS\
+    bt(ARR_COUNT = 0, count) \
+    bt(MAIN,          main) \
 
 #define BL_NODE_TYPE_LIST \
     nt(STMT_IF,            stmt_if) \
@@ -71,7 +75,7 @@
     nt(DECL_ENUM,          decl_enum) \
     nt(DECL_ENUM_VARIANT,  decl_enum_variant) \
     nt(DECL_BLOCK,         decl_block) \
-    nt(EXPR_LITERAL,         expr_literal) \
+    nt(EXPR_LITERAL,       expr_literal) \
     nt(EXPR_BINOP,         expr_binop) \
     nt(EXPR_UNARY,         expr_unary) \
     nt(EXPR_DECL_REF,      expr_decl_ref) \
@@ -107,6 +111,14 @@ typedef enum
 
 typedef enum
 {
+#define bt(name, str) BL_BUILDIN_##name,
+  BL_SPEC_BUILINS
+#undef bt
+      BL_BUILDIN_COUNT
+} bl_buildin_e;
+
+typedef enum
+{
   BL_UNKNOWN_KIND = 0,
   BL_SINT_KIND,   /* i8, i16, i32, i64 */
   BL_UINT_KIND,   /* u8, i16, u32, u64 */
@@ -122,6 +134,7 @@ typedef enum
 
 extern const char *bl_fund_type_strings[];
 extern const char *bl_node_type_strings[];
+extern const char *bl_buildin_strings[];
 
 /*************************************************************************************************
  * generation of node typedefs and code enum
@@ -496,7 +509,7 @@ bl_ast_add_expr_literal_signed(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, 
 
 bl_node_t *
 bl_ast_add_expr_literal_unsigned(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type,
-                               unsigned long long u);
+                                 unsigned long long u);
 
 bl_node_t *
 bl_ast_add_expr_literal_double(bl_ast_t *ast, bl_token_t *tok, bl_node_t *type, double f);
@@ -649,10 +662,19 @@ bl_node_t *
 bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node);
 
 void
+bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src);
+
+void
 bl_ast_dup_node_buf(bl_node_t *dest, bl_node_t *node);
 
 bool
 bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type);
+
+uint64_t
+bl_ast_buildin_hash(bl_buildin_e t);
+
+bool
+bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

@@ -80,9 +80,6 @@ bl_error_e
 bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 bl_error_e
-bl_evaluator_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
 bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 #endif // BL_STAGES_IMPL_H

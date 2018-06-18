@@ -1223,7 +1223,7 @@ parse_fn_maybe(context_t *cnt, int modif, bl_node_t *parent)
     bl_node_t *     prev_fn = cnt->curr_func;
     cnt->curr_func          = fn;
 
-    if (strcmp(bl_peek_decl_func(fn)->id.str, "main") == 0) {
+    if (bl_ast_is_buildin(&bl_peek_decl_func(fn)->id, BL_BUILDIN_MAIN)) {
       bl_peek_decl_func(fn)->modif = BL_MODIF_EXPORT | BL_MODIF_ENTRY;
     }
 

@@ -3,17 +3,20 @@
 extern fn printf(s string, i i32) i32;
 extern fn puts(s string) i32;
 
-#test
-fn test() i32 {
+fn get_size() size_t {
+  return 10;
+}
 
-  mut arr i32[10];
-  arr[0];
-  arr.count;
-  count(arr);
-
-  const i i32 = 10;
-  //i = 0; // -> error (trying to change constant)
+fn main() i32 {
+  printf("A = %d\n", E::A);
+  printf("B = %d\n", E::B);
+  printf("C = %d\n", E::C);
+  printf("D = %d\n", E::D);
 
   return 0;
+}
+
+enum E {
+  A = 2, B, C = 10, D = 10
 }
 
