@@ -3,19 +3,13 @@
 extern fn printf(s string, i i32) i32;
 extern fn puts(s string) i32;
 
+const c i32 = 10; 
+
 #test
 fn test() i32 {
-
-  mut a A;
-  mut a_ptr = &a;
-
-  (*a_ptr) = { .i = 10, .i = 20 };
-  
-
-  return 0; 
+  return c;
 }
 
-struct A {
-  i i32,
-  j i32
+enum E {
+  A, B, C
 }

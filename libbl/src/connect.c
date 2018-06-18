@@ -176,6 +176,9 @@ third_pass_const(bl_visitor_t *visitor, bl_node_t **cnst);
 static void
 third_pass_enum(bl_visitor_t *visitor, bl_node_t **enm);
 
+static void
+third_pass_enum_variant(bl_visitor_t *visitor, bl_node_t **variant);
+
 /*************************************************************************************************
  * Validation
  *************************************************************************************************/
@@ -712,13 +715,16 @@ void
 third_pass_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *cnt = peek_cnt(visitor);
+  cnt->curr_decl = *cnst;
   if (bl_node_is(cnt->curr_compound, BL_DECL_MODULE)) {
     bl_visitor_walk_const(visitor, cnst);
+    cnt->curr_decl = NULL;
     return;
   }
 
   connect_const(cnt, *cnst);
   bl_visitor_walk_const(visitor, cnst);
+  cnt->curr_decl = NULL;
 }
 
 void
@@ -810,13 +816,14 @@ third_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
     bl_expr_unary_t *_unary = bl_peek_expr_unary(*expr);
     bl_node_t *      type   = bl_ast_get_type(_unary->next);
     bl_assert(type, "invalid type of next expression of unary expression");
+
+    _unary->type = bl_ast_dup_node(cnt->ast, type);
+
     switch (_unary->op) {
     case BL_SYM_AND:
-      _unary->type = bl_ast_dup_node(cnt->ast, type);
       bl_ast_type_addrof(_unary->type);
       break;
     case BL_SYM_ASTERISK:
-      _unary->type = bl_ast_dup_node(cnt->ast, type);
       bl_ast_type_deref(_unary->type);
       break;
     default:
@@ -958,6 +965,15 @@ third_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
   cnt->curr_compound  = *enm;
   bl_visitor_walk_enum(visitor, enm);
   cnt->curr_compound = prev_cmp;
+}
+
+void
+third_pass_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
+{
+  context_t *cnt = peek_cnt(visitor);
+  cnt->curr_decl = *variant;
+  bl_visitor_walk_enum_variant(visitor, variant);
+  cnt->curr_decl = NULL;
 }
 
 /*************************************************************************************************
@@ -1126,6 +1142,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_type, BL_VISIT_TYPE);
   bl_visitor_add(&visitor_third, third_pass_const, BL_VISIT_CONST);
   bl_visitor_add(&visitor_third, third_pass_enum, BL_VISIT_ENUM);
+  bl_visitor_add(&visitor_third, third_pass_enum_variant, BL_VISIT_ENUM_VARIANT);
   bl_visitor_add(&visitor_third, third_pass_return, BL_VISIT_RETURN);
 
   for (int i = 0; i < c; ++i) {

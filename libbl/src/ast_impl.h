@@ -633,6 +633,9 @@ bl_ast_type_is_fund(bl_node_t *type, bl_fund_type_e t);
 bool
 bl_ast_type_is_ref(bl_node_t *type, bl_node_code_e t);
 
+bool
+bl_ast_node_is_const(bl_node_t *node);
+
 bl_node_t *
 bl_ast_path_get_last(bl_node_t *path);
 

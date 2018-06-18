@@ -25,13 +25,13 @@ module exprs {
 
   #test 
   fn expr_unary() i32 {
-    mut a i32 = -1;
-    mut b i32 = -(2 + 2);
-    mut c i32 = +(2 + 2);
-    mut d i32 = -a;
-    mut e i32 = 1 -(-2); // ERROR not working without ()
-    mut f i32 = -get();
-    mut g i32 = (get() + 1) * -10;
+    mut a = -1;
+    mut b = -(2 + 2);
+    mut c = +(2 + 2);
+    mut d = -a;
+    mut e = 1 -(-2); // ERROR not working without ()
+    mut f = -get();
+    mut g = (get() + 1) * -10;
   
   
     //const ca i32 = -1; // ERROR cannot be evaluated

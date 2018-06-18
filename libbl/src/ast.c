@@ -1086,6 +1086,28 @@ bl_ast_type_is_ref(bl_node_t *type, bl_node_code_e t)
 }
 
 bool
+bl_ast_node_is_const(bl_node_t *node)
+{
+  if (!node)
+    return false;
+
+  switch (bl_node_code(node)) {
+  case BL_EXPR_LITERAL:
+  case BL_EXPR_BINOP:
+  case BL_EXPR_UNARY:
+  case BL_DECL_ENUM_VARIANT:
+  case BL_EXPR_CAST:
+  case BL_EXPR_SIZEOF:
+  case BL_DECL_CONST:
+    return true;
+  case BL_EXPR_DECL_REF:
+    return bl_ast_node_is_const(bl_peek_expr_decl_ref(node)->ref);
+  default:
+    return false;
+  }
+}
+
+bool
 bl_ast_can_implcast(bl_node_t *from_type, bl_node_t *to_type)
 {
   bl_type_kind_e from_kind = bl_ast_type_get_kind(from_type);

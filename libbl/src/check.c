@@ -66,35 +66,35 @@ typedef struct
 } context_t;
 
 static void
-check_call(context_t *cnt, bl_node_t **call);
+check_call(context_t *cnt, bl_node_t **call, bool exp_const);
 
 static void
-check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type);
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type, bool exp_const);
 
 static void
-check_init(context_t *cnt, bl_node_t **init);
+check_init(context_t *cnt, bl_node_t **init, bool exp_const);
 
 static void
-check_member_ref(context_t *cnt, bl_node_t **member_ref);
+check_member_ref(context_t *cnt, bl_node_t **member_ref, bool exp_const);
 
 static void
-check_unary(context_t *cnt, bl_node_t **unary);
+check_unary(context_t *cnt, bl_node_t **unary, bool exp_const);
 
 /* impl */
 void
-check_init(context_t *cnt, bl_node_t **init)
+check_init(context_t *cnt, bl_node_t **init, bool exp_const)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(*init);
   bl_node_t **    expr  = &_init->exprs;
 
   while (*expr) {
-    check_expr(cnt, expr, NULL);
+    check_expr(cnt, expr, NULL, exp_const);
     expr = &(*expr)->next;
   }
 }
 
 void
-check_unary(context_t *cnt, bl_node_t **unary)
+check_unary(context_t *cnt, bl_node_t **unary, bool exp_const)
 {
   bl_expr_unary_t *_unary = bl_peek_expr_unary(*unary);
 
@@ -104,7 +104,7 @@ check_unary(context_t *cnt, bl_node_t **unary)
     bl_node_t tmp_type;
     bl_ast_dup_node_buf(&tmp_type, type);
     bl_ast_type_deref(&tmp_type);
-    check_expr(cnt, &_unary->next, &tmp_type);
+    check_expr(cnt, &_unary->next, &tmp_type, exp_const);
     break;
   }
 
@@ -112,18 +112,18 @@ check_unary(context_t *cnt, bl_node_t **unary)
     bl_node_t tmp_type;
     bl_ast_dup_node_buf(&tmp_type, type);
     bl_ast_type_addrof(&tmp_type);
-    check_expr(cnt, &_unary->next, &tmp_type);
+    check_expr(cnt, &_unary->next, &tmp_type, exp_const);
     break;
   }
 
   default:
-    check_expr(cnt, &_unary->next, type);
+    check_expr(cnt, &_unary->next, type, exp_const);
     break;
   }
 }
 
 void
-check_member_ref(context_t *cnt, bl_node_t **member_ref)
+check_member_ref(context_t *cnt, bl_node_t **member_ref, bool exp_const)
 {
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(*member_ref);
   bl_node_t *           next_type   = bl_ast_get_type(_member_ref->next);
@@ -138,11 +138,11 @@ check_member_ref(context_t *cnt, bl_node_t **member_ref)
                 "expected reference access operator " BL_YELLOW("'->'"));
   }
 
-  check_expr(cnt, &_member_ref->next, NULL);
+  check_expr(cnt, &_member_ref->next, NULL, exp_const);
 }
 
 void
-check_call(context_t *cnt, bl_node_t **call)
+check_call(context_t *cnt, bl_node_t **call, bool exp_const)
 {
   bl_expr_call_t *_call   = bl_peek_expr_call(*call);
   bl_node_t *     callee  = _call->ref;
@@ -176,7 +176,7 @@ check_call(context_t *cnt, bl_node_t **call)
   bl_node_t **call_arg   = &_call->args;
 
   while (*callee_arg) {
-    check_expr(cnt, call_arg, bl_ast_get_type(*callee_arg));
+    check_expr(cnt, call_arg, bl_ast_get_type(*callee_arg), exp_const);
 
     callee_arg = &(*callee_arg)->next;
     call_arg   = &(*call_arg)->next;
@@ -184,12 +184,17 @@ check_call(context_t *cnt, bl_node_t **call)
 }
 
 static void
-check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
+check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type, bool exp_const)
 {
   if (!*expr)
     return;
 
   bl_node_t *expr_type = bl_ast_get_type(*expr);
+
+  if (exp_const && !bl_ast_node_is_const(*expr)) {
+    check_error(cnt, BL_ERR_INVALID_TYPE, *expr, BL_BUILDER_CUR_WORD,
+                "expected constant expression");
+  }
 
   if (!expr_type) {
     switch (bl_node_code(*expr)) {
@@ -222,30 +227,30 @@ check_expr(context_t *cnt, bl_node_t **expr, bl_node_t *exp_type)
 
   switch (bl_node_code(*expr)) {
   case BL_EXPR_BINOP: {
-    check_expr(cnt, &bl_peek_expr_binop(*expr)->lhs, NULL);
+    check_expr(cnt, &bl_peek_expr_binop(*expr)->lhs, NULL, exp_const);
     exp_type = bl_ast_get_type(bl_peek_expr_binop(*expr)->lhs);
-    check_expr(cnt, &bl_peek_expr_binop(*expr)->rhs, exp_type);
+    check_expr(cnt, &bl_peek_expr_binop(*expr)->rhs, exp_type, exp_const);
     break;
   }
 
   case BL_EXPR_CALL:
-    check_call(cnt, expr);
+    check_call(cnt, expr, exp_const);
     break;
 
   case BL_EXPR_CAST:
-    check_expr(cnt, &bl_peek_expr_cast(*expr)->next, NULL);
+    check_expr(cnt, &bl_peek_expr_cast(*expr)->next, NULL, exp_const);
     break;
 
   case BL_EXPR_INIT:
-    check_init(cnt, expr);
+    check_init(cnt, expr, exp_const);
     break;
 
   case BL_EXPR_MEMBER_REF:
-    check_member_ref(cnt, expr);
+    check_member_ref(cnt, expr, exp_const);
     break;
 
   case BL_EXPR_UNARY:
-    check_unary(cnt, expr);
+    check_unary(cnt, expr, exp_const);
     break;
 
   case BL_EXPR_ARRAY_REF:
@@ -268,7 +273,7 @@ static void
 visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 {
   context_t *cnt = peek_cnt(visitor);
-  check_expr(cnt, expr, NULL);
+  check_expr(cnt, expr, NULL, false);
 }
 
 static void
@@ -288,14 +293,14 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
                 _mut->id.str);
   }
 
-  check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type);
+  check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type, false);
 }
 
 static void
 visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *cnt = peek_cnt(visitor);
-  check_expr(cnt, &bl_peek_decl_const(*cnst)->init_expr, bl_peek_decl_const(*cnst)->type);
+  check_expr(cnt, &bl_peek_decl_const(*cnst)->init_expr, bl_peek_decl_const(*cnst)->type, true);
 }
 
 static void
@@ -403,7 +408,7 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 
   if (_variant->expr != NULL) {
     /* check result type of the expression */
-    check_expr(cnt, &_variant->expr, exp_type);
+    check_expr(cnt, &_variant->expr, exp_type, true);
   } else {
     bl_type_fund_t *type = bl_peek_type_fund(exp_type);
     switch (type->type) {
@@ -422,9 +427,9 @@ visit_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 static void
 visit_return(bl_visitor_t *visitor, bl_node_t **ret)
 {
-  context_t *cnt = peek_cnt(visitor);
+  context_t *       cnt  = peek_cnt(visitor);
   bl_stmt_return_t *_ret = bl_peek_stmt_return(*ret);
-  check_expr(cnt, &_ret->expr, bl_ast_get_type(_ret->func));
+  check_expr(cnt, &_ret->expr, bl_ast_get_type(_ret->func), false);
 }
 
 /*************************************************************************************************
