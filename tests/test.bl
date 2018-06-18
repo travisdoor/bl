@@ -7,6 +7,12 @@ extern fn puts(s string) i32;
 fn test() i32 {
 
   mut arr i32[10];
+  arr[0];
+  arr.count;
+  count(arr);
+
+  const i i32 = 10;
+  //i = 0; // -> error (trying to change constant)
 
   return 0;
 }
