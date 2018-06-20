@@ -31,6 +31,7 @@
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <bobject/containers/list.h>
 #include "id_impl.h"
 #include "token_impl.h"
 #include "scope_impl.h"
@@ -156,6 +157,12 @@ enum bl_node_code
 #define bl_node_is_not(n, c) ((n)->code != (c))
 #define bl_node_code(n) (n)->code
 #define bl_node_name(n) bl_node_type_strings[(n)->code]
+
+typedef struct
+{
+  bl_node_t *node;   /* dependency node */
+  bool       strict; /* is dependency strict (ex.: caused by #run directive) */
+} bl_dependency_t;
 
 struct chunk;
 
@@ -295,7 +302,7 @@ struct bl_decl_func
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
   bool        gen_in_compiletime; /* TODO: remove */
-  BArray *    deps;               /* array of dependencies (function called from this function) */
+  BList *     deps; /* linked-list of dependencies (function called from this function) */
 };
 
 struct bl_decl_struct
@@ -676,6 +683,9 @@ bl_ast_buildin_hash(bl_buildin_e t);
 
 bool
 bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
+
+bl_dependency_t *
+bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict);
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

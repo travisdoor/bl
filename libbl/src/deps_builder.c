@@ -40,21 +40,27 @@ typedef struct
   BHashTable *unique_deps_per_func;
 } context_t;
 
-static inline bool
-has_dependency(context_t *cnt, bl_node_t *dep)
+static inline bl_dependency_t *
+get_dependency(context_t *cnt, bl_node_t *dep)
 {
-  return bo_htbl_has_key(cnt->unique_deps_per_func, (uint64_t)dep);
+  if (bo_htbl_has_key(cnt->unique_deps_per_func, (uint64_t)dep))
+    return bo_htbl_at(cnt->unique_deps_per_func, (uint64_t)dep, bl_dependency_t *);
+  return NULL;
 }
-static inline void
-add_dependency_of_curr_func(context_t *cnt, bl_node_t *dep)
-{
-  if (has_dependency(cnt, dep))
-    return;
 
-  bo_htbl_insert_empty(cnt->unique_deps_per_func, (uint64_t)dep);
-  // TODO add to function deps array
-  bl_log("unique dependency %s -> %s", bl_ast_get_id(cnt->curr_func)->str,
-         bl_ast_get_id(dep)->str);
+static inline void
+add_dependency_of_curr_func(context_t *cnt, bl_node_t *dep, bool strict)
+{
+  bl_dependency_t *tmp = get_dependency(cnt, dep);
+  if (tmp) {
+    if (!tmp->strict)
+      tmp->strict = strict;
+    return;
+  }
+
+  bl_decl_func_t *_callee = bl_peek_decl_func(dep);
+  tmp                     = bl_ast_func_add_dep(_callee, dep, strict);
+  bo_htbl_insert(cnt->unique_deps_per_func, (uint64_t)dep, tmp);
 }
 
 static inline void
@@ -70,6 +76,21 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   cnt->curr_func = *func;
   reset_unique_deps_cache(cnt);
   bl_visitor_walk_func(visitor, func);
+
+  // TEST
+  bl_decl_func_t *_func = bl_peek_decl_func(*func);
+  if (_func->deps) {
+    bl_dependency_t *dep;
+    bo_iterator_t    iter = bo_list_begin(_func->deps);
+    bo_iterator_t    end  = bo_list_end(_func->deps);
+    while (!bo_iterator_equal(&iter, &end)) {
+      dep = &bo_list_iter_peek(_func->deps, &iter, bl_dependency_t);
+      bl_log("unique dependency %s -> %s (%s)", _func->id.str, bl_ast_get_id(dep->node)->str,
+             dep->strict ? "STRICT" : "LAX");
+
+      bo_list_iter_next(_func->deps, &iter);
+    }
+  }
 }
 
 static void
@@ -83,7 +104,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
     /* Store dependency of current processed function on another callee. Later during generation we
      * need to know which function should go first. */
-    add_dependency_of_curr_func(cnt, _call->ref);
+    add_dependency_of_curr_func(cnt, _call->ref, _call->run_in_compile_time);
   }
 
   bl_visitor_walk_expr(visitor, expr);
@@ -92,7 +113,9 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 bl_error_e
 bl_deps_builder_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.curr_func = NULL, .unique_deps_per_func = bo_htbl_new(0, EXPECTED_DEPS_COUNT)};
+  context_t cnt = {.curr_func = NULL,
+                   .unique_deps_per_func =
+                       bo_htbl_new(sizeof(bl_dependency_t *), EXPECTED_DEPS_COUNT)};
 
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);

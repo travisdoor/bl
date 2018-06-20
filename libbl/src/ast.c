@@ -1177,4 +1177,21 @@ bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t)
   return id->hash == bl_ast_buildin_hash(t);
 }
 
+bl_dependency_t *
+bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict)
+{
+  bl_assert(dep, "invalid dependency");
+  if (!_func->deps) {
+    _func->deps = bo_list_new(sizeof(bl_dependency_t));
+  }
+
+  bl_dependency_t tmp = {
+    .node = dep,
+    .strict = strict
+  };
+
+  bo_list_push_back(_func->deps, tmp);
+  return &bo_list_back(_func->deps, bl_dependency_t);
+}
+
 /**************************************************************************************************/
