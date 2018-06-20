@@ -58,7 +58,7 @@ add_dependency_of_curr_func(context_t *cnt, bl_node_t *dep, bool strict)
     return;
   }
 
-  bl_decl_func_t *_callee = bl_peek_decl_func(dep);
+  bl_decl_func_t *_callee = bl_peek_decl_func(cnt->curr_func);
   tmp                     = bl_ast_func_add_dep(_callee, dep, strict);
   bo_htbl_insert(cnt->unique_deps_per_func, (uint64_t)dep, tmp);
 }
