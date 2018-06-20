@@ -38,6 +38,8 @@ typedef struct
 {
   bl_node_t * curr_func;
   BHashTable *unique_deps_per_func;
+
+  bl_assembly_t *assembly;
 } context_t;
 
 static inline bl_dependency_t *
@@ -77,6 +79,10 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   reset_unique_deps_cache(cnt);
   bl_visitor_walk_func(visitor, func);
 
+  bo_list_push_back(cnt->assembly->func_queue, *func);
+
+  #define PRINT_DEPS
+  #ifdef PRINT_DEPS
   // TEST
   bl_decl_func_t *_func = bl_peek_decl_func(*func);
   if (_func->deps) {
@@ -91,6 +97,8 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
       bo_list_iter_next(_func->deps, &iter);
     }
   }
+  #endif
+  #undef PRINT_DEPS
 }
 
 static void
@@ -104,7 +112,8 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
     /* Store dependency of current processed function on another callee. Later during generation we
      * need to know which function should go first. */
-    add_dependency_of_curr_func(cnt, _call->ref, _call->run_in_compile_time);
+    if (_call->ref != cnt->curr_func)
+      add_dependency_of_curr_func(cnt, _call->ref, _call->run_in_compile_time);
   }
 
   bl_visitor_walk_expr(visitor, expr);
@@ -115,7 +124,8 @@ bl_deps_builder_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {.curr_func = NULL,
                    .unique_deps_per_func =
-                       bo_htbl_new(sizeof(bl_dependency_t *), EXPECTED_DEPS_COUNT)};
+                       bo_htbl_new(sizeof(bl_dependency_t *), EXPECTED_DEPS_COUNT),
+                   .assembly = assembly};
 
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);

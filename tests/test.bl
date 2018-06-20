@@ -1,25 +1,18 @@
 /* testing playground */
 
 fn main() i32 {
+  #run hello();
   hello();
-  foo();
-  foo();
-  #run foo();
-  foo();
   return 0;
 }
+// main -> hello
 
-fn hello() {}
+fn hello() {
+  foo();
+}
+// hello -> foo 
 
 fn foo() {
   hello();
-  hello();
-  hello();
-  bar();
-  bar();
-  bar();
-  bar();
 }
-
-fn bar() {
-}
+// foo

@@ -31,6 +31,7 @@
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <bobject/containers/list.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Core.h>
 #include "bl/assembly.h"
@@ -55,6 +56,8 @@ typedef struct bl_assembly
   LLVMContextRef    llvm_cnt;       /* llvm generation context */
   bl_scope_cache_t *scope_cache;    /* global scope cache */
   BArray *          utest_methods; /* LLVMValues to test methods which should run in compile time */
+
+  BList *func_queue; /* queue of functions to be generated created by deps_builder */
 
   LLVMExecutionEngineRef llvm_runtime_engine;     /* LLVM execution engine for runtime module */
   LLVMExecutionEngineRef llvm_compiletime_engine; /* LLVM execution engine for compiletime module */
