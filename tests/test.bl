@@ -1,36 +1,23 @@
 /* testing playground */
 
-extern fn printf(s string, i i32) i32;
-extern fn puts(s string) i32;
-
-fn get_size() size_t {
-  return 10;
-}
-
 fn main() i32 {
-  mut arr i32 [#run __arr_count() * #run __arr_count()];
-  mut arr2 i32 [10 + 32];
-  mut arr3 i32 [10 + 32 * 10];
-  mut arr4 Foo [32 * 10];
-
-  mut bar Bar; 
-
-  printf("arr.count = %d\n", arr.count);
-  printf("arr2.count = %d\n", arr2.count);
-  printf("arr3.count = %d\n", arr3.count);
-  printf("arr4.count = %d\n", arr4.count);
-
+  hello();
+  foo();
+  foo();
   return 0;
 }
 
-fn __arr_count() size_t {
-  return 10 + 2;
+fn hello() {}
+
+fn foo() {
+  hello();
+  hello();
+  hello();
+  bar();
+  bar();
+  bar();
+  bar();
 }
 
-struct Foo {
-  i i32
-}
-
-struct Bar {
-  i i32 [256]
+fn bar() {
 }

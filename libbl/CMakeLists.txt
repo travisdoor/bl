@@ -56,6 +56,7 @@ set(SOURCE_FILES
         src/test_runner.c 
         src/id.c
         src/parser.c
+        src/deps_builder.c
         src/ast.c
         src/visitor.c)
 

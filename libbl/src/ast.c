@@ -67,6 +67,7 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_FUNC:
     bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
+    bo_unref(bl_peek_decl_func(node)->deps);
     break;
   case BL_DECL_BLOCK:
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
@@ -975,7 +976,7 @@ bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src)
     return;
 
   bl_node_t *tmp = *dest;
-  *dest = bl_ast_dup_node(ast, src);
+  *dest          = bl_ast_dup_node(ast, src);
 
   (*dest)->next = tmp->next;
   (*dest)->prev = tmp->prev;

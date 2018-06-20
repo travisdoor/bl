@@ -294,7 +294,8 @@ struct bl_decl_func
   bl_node_t * block;              /* function block (for extern function is NULL) */
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
-  bool        gen_in_compiletime; /* true when function is called via #run directive */
+  bool        gen_in_compiletime; /* TODO: remove */
+  BArray *    deps;               /* array of dependencies (function called from this function) */
 };
 
 struct bl_decl_struct

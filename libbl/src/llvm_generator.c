@@ -73,31 +73,54 @@
 
 typedef struct
 {
-  bool           runtime;      /* true when we are generating runtime code */
-  bl_builder_t * builder;      /* main builder */
-  bl_assembly_t *assembly;     /* current assembly */
-  LLVMModuleRef  llvm_mod;     /* main llvm module */
-  LLVMBuilderRef llvm_builder; /* llvm IR code builder */
-  LLVMContextRef llvm_cnt;     /* llvm context */
-  BArray *       gen_stack;    /* selected functions for generation */
-  BHashTable *gscope_CT; /* mapping ast node pointers to LLVMValues for symbols in global scope for
-                            compile time symbols*/
-  BHashTable *gscope;    /* mapping ast node pointers to LLVMValues for symbols in global scope */
-  BHashTable *cscope;    /* mapping ast node pointers to LLVMValues for symbols in current function
-                            scope, functions can be later located by node pointer */
-  BHashTable *const_strings; /* constant string cache */
+  /* true when we are generating runtime code */
+  bool runtime;
 
-  BHashTable
-      *generated_externals; /* functions marked as extern must be generated only once even if
-                               they appears in multiple locations in source (ex.: printf
-                               function from C can be declared multiple times). We need to store
-                               identifiers of already generated externals and skip duplicates. */
+  /* main builder */
+  bl_builder_t *builder;
+
+  /* current assembly */
+  bl_assembly_t *assembly;
+
+  /* main llvm module */
+  LLVMModuleRef llvm_mod;
+
+  /* llvm IR code builder */
+  LLVMBuilderRef llvm_builder;
+
+  /* llvm context */
+  LLVMContextRef llvm_cnt;
+
+  /* selected functions for generation */
+  BArray *gen_stack;
+
+  /* mapping ast node pointers to LLVMValues for symbols in global scope for compile time symbols*/
+  BHashTable *gscope_CT;
+
+  /* mapping ast node pointers to LLVMValues for symbols in global scope */
+  BHashTable *gscope;
+
+  /* mapping ast node pointers to LLVMValues for symbols in current function scope, functions can be
+   * later located by node pointer */
+  BHashTable *cscope;
+
+  /* constant string cache */
+  BHashTable *const_strings;
+
+  /* functions marked as extern must be generated only once even if they appears in multiple
+   * locations in source (ex.: printf function from C can be declared multiple times). We need to
+   * store identifiers of already generated externals and skip duplicates. */
+  BHashTable *      generated_externals;
+
+  /* temporary blocks */
   LLVMBasicBlockRef func_init_block;
   LLVMBasicBlockRef func_ret_block;
   LLVMBasicBlockRef func_entry_block;
   LLVMBasicBlockRef continue_block;
   LLVMBasicBlockRef break_block;
-  LLVMValueRef      ret_value; /* LLVMValueRef to current return tmp */
+
+  /* LLVMValueRef to current return tmp */
+  LLVMValueRef ret_value;
 } context_t;
 
 static LLVMValueRef
@@ -246,10 +269,10 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   /* type is array */
   if (size_expr) {
     bl_assert(bl_node_is(size_expr, BL_EXPR_CALL), "expected call");
-    bl_node_t *callee = bl_peek_expr_call(size_expr)->ref;
+    bl_node_t *         callee       = bl_peek_expr_call(size_expr)->ref;
     LLVMGenericValueRef size_generic = run_in_compile_time(cnt, callee);
-    size_t size = LLVMGenericValueToInt(size_generic, false);
-    llvm_type = LLVMArrayType(llvm_type, size);
+    size_t              size         = LLVMGenericValueToInt(size_generic, false);
+    llvm_type                        = LLVMArrayType(llvm_type, size);
   }
 
   return llvm_type;
