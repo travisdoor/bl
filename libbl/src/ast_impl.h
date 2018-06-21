@@ -686,6 +686,7 @@ bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
 
 bl_dependency_t *
 bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict);
+
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

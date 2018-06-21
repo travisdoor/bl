@@ -1,7 +1,7 @@
 /* testing playground */
 
 fn main() i32 {
-  #run hello();
+  //#run hello();
   hello();
   return 0;
 }
@@ -15,4 +15,3 @@ fn hello() {
 fn foo() {
   hello();
 }
-// foo

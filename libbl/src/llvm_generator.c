@@ -29,6 +29,7 @@
 #include <setjmp.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
+#include <llvm-c/Linker.h>
 #include <bobject/containers/hash.h>
 
 #include "common_impl.h"
@@ -47,13 +48,12 @@
 
 #define get_value_gscope(ptr) (bo_htbl_at(cnt->gscope, (uint64_t)(ptr), LLVMValueRef))
 
-#define get_value_gscope_CT(ptr) (bo_htbl_at(cnt->gscope_CT, (uint64_t)(ptr), LLVMValueRef))
-
 #define is_in_gscope(ptr) (bo_htbl_has_key(cnt->gscope, (uint64_t)ptr))
 
 #define is_in_cscope(ptr) (bo_htbl_has_key(cnt->cscope, (uint64_t)ptr))
 
 #define reset_cscope() (bo_htbl_clear(cnt->cscope))
+#define reset_gscope() (bo_htbl_clear(cnt->gscope))
 
 #define gen_stack_push(ptr) bo_array_push_back(cnt->gen_stack, ptr);
 
@@ -73,9 +73,6 @@
 
 typedef struct
 {
-  /* true when we are generating runtime code */
-  bool runtime;
-
   /* main builder */
   bl_builder_t *builder;
 
@@ -91,12 +88,6 @@ typedef struct
   /* llvm context */
   LLVMContextRef llvm_cnt;
 
-  /* selected functions for generation */
-  BArray *gen_stack;
-
-  /* mapping ast node pointers to LLVMValues for symbols in global scope for compile time symbols*/
-  BHashTable *gscope_CT;
-
   /* mapping ast node pointers to LLVMValues for symbols in global scope */
   BHashTable *gscope;
 
@@ -107,10 +98,7 @@ typedef struct
   /* constant string cache */
   BHashTable *const_strings;
 
-  /* functions marked as extern must be generated only once even if they appears in multiple
-   * locations in source (ex.: printf function from C can be declared multiple times). We need to
-   * store identifiers of already generated externals and skip duplicates. */
-  BHashTable *      generated_externals;
+  BHashTable *generated;
 
   /* temporary blocks */
   LLVMBasicBlockRef func_init_block;
@@ -123,6 +111,11 @@ typedef struct
   LLVMValueRef ret_value;
 } context_t;
 
+typedef struct
+{
+  LLVMModuleRef llvm_module;
+} fn_meta_t;
+
 static LLVMValueRef
 gen_init(context_t *cnt, bl_node_t *init);
 
@@ -130,7 +123,7 @@ static int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out);
 
 static LLVMValueRef
-gen_func(context_t *cnt, bl_node_t *func, bool top_level);
+gen_func(context_t *cnt, bl_node_t *func);
 
 static LLVMValueRef
 gen_call(context_t *cnt, bl_node_t *call);
@@ -432,7 +425,7 @@ gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out)
  * generate function declaration (forward or direct)
  */
 LLVMValueRef
-gen_func(context_t *cnt, bl_node_t *func, bool top_level)
+gen_func(context_t *cnt, bl_node_t *func)
 {
   bl_decl_func_t *_func     = bl_peek_decl_func(func);
   LLVMValueRef    llvm_func = NULL;
@@ -461,10 +454,6 @@ gen_func(context_t *cnt, bl_node_t *func, bool top_level)
 
     if (!(_func->modif & BL_MODIF_EXTERN))
       push_value_gscope(func, llvm_func);
-
-    if (!top_level) {
-      gen_stack_push(func);
-    }
   }
 
   return llvm_func;
@@ -497,8 +486,9 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 LLVMGenericValueRef
 run_in_compile_time(context_t *cnt, bl_node_t *callee)
 {
-  LLVMValueRef fn = get_value_gscope_CT(callee);
-  return LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);
+  /*LLVMValueRef fn = get_value_gscope_CT(callee);
+    return LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);*/
+  return NULL;
 }
 
 /*
@@ -509,6 +499,7 @@ gen_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
 
+  /*
   if (_call->run_in_compile_time && cnt->runtime) {
     bl_decl_func_t *    _callee = bl_peek_decl_func(_call->ref);
     LLVMGenericValueRef tmp     = run_in_compile_time(cnt, _call->ref);
@@ -536,12 +527,12 @@ gen_call(context_t *cnt, bl_node_t *call)
 
     LLVMDisposeGenericValue(tmp);
     return result;
-  } else {
-    LLVMValueRef fn                          = gen_func(cnt, _call->ref, false);
-    LLVMValueRef argv[BL_MAX_FUNC_ARG_COUNT] = {0};
-    int          argc                        = gen_call_args(cnt, call, argv);
-    return LLVMBuildCall(cnt->llvm_builder, fn, argv, argc, "");
-  }
+    } else {*/
+  LLVMValueRef fn                          = gen_func(cnt, _call->ref);
+  LLVMValueRef argv[BL_MAX_FUNC_ARG_COUNT] = {0};
+  int          argc                        = gen_call_args(cnt, call, argv);
+  return LLVMBuildCall(cnt->llvm_builder, fn, argv, argc, "");
+  //}
 }
 
 LLVMValueRef
@@ -1148,80 +1139,10 @@ visit_continue(bl_visitor_t *visitor, bl_node_t **cont)
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
 
-static void
-visit_func(bl_visitor_t *visitor, bl_node_t **func)
-{
-  /* Visitor on the function level will only select functions which are entry points for assembly
-   * (main function, exported functions, utests and in case of compile time pass functions which are
-   * called via #run directive later in runtime). */
-
-  context_t *     cnt   = peek_cnt(visitor);
-  bl_decl_func_t *_func = bl_peek_decl_func(*func);
-
-  /* external functions must be only once across whole module */
-  if (_func->modif & BL_MODIF_EXTERN) {
-    if (bo_htbl_has_key(cnt->generated_externals, _func->id.hash)) {
-      return;
-    }
-    bo_htbl_insert_empty(cnt->generated_externals, _func->id.hash);
-  }
-
-  if (cnt->runtime) {
-    /* !!! RUNTIME !!! */
-    if (_func->modif & BL_MODIF_EXPORT) {
-      gen_stack_push(*func);
-    }
-  } else {
-    /* !!! COMPILETIME !!! */
-    if (_func->gen_in_compiletime) {
-      gen_stack_push(*func);
-    }
-  }
-}
-
-static void
-generate(bl_visitor_t *visitor, bool runtime)
-{
-  context_t *cnt = peek_cnt(visitor);
-
-  bl_unit_t *unit = NULL;
-  size_t     c    = bo_array_size(cnt->assembly->units);
-
-  cnt->gscope_CT = cnt->gscope;
-  cnt->gscope    = bo_htbl_new(sizeof(LLVMValueRef), 2048);
-  cnt->llvm_mod  = LLVMModuleCreateWithNameInContext(cnt->assembly->name, cnt->llvm_cnt);
-  cnt->runtime   = runtime;
-
-  for (int i = 0; i < c; ++i) {
-    unit = bl_assembly_get_unit(cnt->assembly, i);
-    bl_visitor_walk_module(visitor, &unit->ast.root);
-  }
-
-  bl_node_t **    func;
-  bl_decl_func_t *_func;
-  for (size_t i = 0; i < bo_array_size(cnt->gen_stack); ++i) {
-    func  = &bo_array_at(cnt->gen_stack, i, bl_node_t *);
-    _func = bl_peek_decl_func(*func);
-
-    LLVMValueRef llvm_func = gen_func(cnt, *func, true);
-
-    if (_func->modif & BL_MODIF_ENTRY)
-      cnt->assembly->llvm_main_func = llvm_func;
-
-    if (_func->modif & BL_MODIF_UTEST) {
-      bl_utest_t utest = {.llvm_func = llvm_func, .func = *func};
-
-      bo_array_push_back(cnt->assembly->utest_methods, utest);
-    }
-
-    bl_visitor_walk_func(visitor, func);
-    reset_cscope();
-  }
-}
-
 /*************************************************************************************************
  * main entry functions
  *************************************************************************************************/
+#if 0
 static void
 validate(LLVMModuleRef module)
 {
@@ -1231,27 +1152,127 @@ validate(LLVMModuleRef module)
     bl_abort("module not verified with error: %s\n%s", error, str);
   }
 }
+#endif
+
+static bool
+has_satysfied_deps(context_t *cnt, bl_node_t *fn)
+{
+  bl_decl_func_t *_fn = bl_peek_decl_func(fn);
+  if (!_fn->deps)
+    return true;
+
+  bo_iterator_t    iter = bo_list_begin(_fn->deps);
+  bo_iterator_t    end  = bo_list_end(_fn->deps);
+  bl_dependency_t *dep;
+  while (!bo_iterator_equal(&iter, &end)) {
+    dep = &bo_list_iter_peek(_fn->deps, &iter, bl_dependency_t);
+
+    if (dep->strict && !bo_htbl_has_key(cnt->generated, (uint64_t)dep->node)) {
+      return false;
+    }
+
+    bo_list_iter_next(_fn->deps, &iter);
+  }
+
+  return true;
+}
+
+static void
+generate(bl_visitor_t *visitor)
+{
+  context_t *     cnt   = peek_cnt(visitor);
+  BList *         queue = cnt->assembly->func_queue;
+  bl_node_t *     fn;
+  bl_decl_func_t *_fn;
+  while (!bo_list_empty(queue)) {
+    fn  = bo_list_front(queue, bl_node_t *);
+    _fn = bl_peek_decl_func(fn);
+    bo_list_pop_front(queue);
+
+    if (has_satysfied_deps(cnt, fn)) {
+      cnt->llvm_mod =
+          LLVMModuleCreateWithNameInContext(bl_peek_decl_func(fn)->id.str, cnt->llvm_cnt);
+
+      LLVMValueRef llvm_func = gen_func(cnt, fn);
+
+      if (_fn->modif & BL_MODIF_ENTRY)
+        cnt->assembly->llvm_main_func = llvm_func;
+
+      bl_visitor_walk_func(visitor, &fn);
+      reset_cscope();
+      reset_gscope();
+
+#define PRINT_IR
+#ifdef PRINT_IR
+      {
+        char *str = LLVMPrintModuleToString(cnt->llvm_mod);
+        bl_log("\n--------------------------------------------------------------------------------"
+               "\n%s"
+               "\n--------------------------------------------------------------------------------",
+               str);
+        LLVMDisposeMessage(str);
+      }
+#endif
+#undef PRINT_IR
+
+      fn_meta_t meta = {.llvm_module = cnt->llvm_mod};
+
+      bo_htbl_insert(cnt->generated, (uint64_t)fn, meta);
+    } else {
+      bo_list_push_back(queue, fn);
+    }
+  }
+}
+
+static void
+link(context_t *cnt)
+{
+  LLVMModuleRef main_module = LLVMModuleCreateWithNameInContext(cnt->assembly->name, cnt->llvm_cnt);
+
+  bo_iterator_t iter = bo_htbl_begin(cnt->generated);
+  bo_iterator_t end  = bo_htbl_end(cnt->generated);
+  fn_meta_t *   meta;
+  while (!bo_iterator_equal(&iter, &end)) {
+    meta = &bo_htbl_iter_peek_value(cnt->generated, &iter, fn_meta_t);
+    if (LLVMLinkModules2(main_module, meta->llvm_module)) {
+      bl_abort("unable to link modules");
+    }
+    bo_htbl_iter_next(cnt->generated, &iter);
+  }
+
+#define PRINT_IR
+#ifdef PRINT_IR
+      {
+        char *str = LLVMPrintModuleToString(main_module);
+        bl_log("\n--------------------------------------------------------------------------------"
+               "\n%s"
+               "\n--------------------------------------------------------------------------------",
+               str);
+        LLVMDisposeMessage(str);
+      }
+#endif
+#undef PRINT_IR
+}
 
 bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   //#define PRINT_IR
   /* context initialization */
-  context_t cnt           = {0};
-  cnt.builder             = builder;
-  cnt.assembly            = assembly;
-  cnt.llvm_cnt            = LLVMContextCreate();
-  cnt.llvm_builder        = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.gen_stack           = bo_array_new(sizeof(bl_node_t *));
-  cnt.cscope              = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.const_strings       = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.generated_externals = bo_htbl_new(0, 2048);
+  context_t cnt     = {0};
+  cnt.builder       = builder;
+  cnt.assembly      = assembly;
+  cnt.llvm_cnt      = LLVMContextCreate();
+  cnt.llvm_builder  = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.cscope        = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.gscope        = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.generated     = bo_htbl_new(sizeof(fn_meta_t), bo_list_size(assembly->func_queue));
 
   /* prepare visitor */
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
 
-  bl_visitor_add(&visitor, visit_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor, visit_mut, BL_VISIT_MUT);
   bl_visitor_add(&visitor, visit_expr, BL_VISIT_EXPR);
   bl_visitor_add(&visitor, visit_block, BL_VISIT_BLOCK);
@@ -1260,59 +1281,16 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_loop, BL_VISIT_LOOP);
   bl_visitor_add(&visitor, visit_break, BL_VISIT_BREAK);
   bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
-  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_ENUM);
-  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_STRUCT);
-  bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_CONST);
 
-  /* generate compile-time code */
-  generate(&visitor, false);
-#ifdef BL_DEBUG
-#ifdef PRINT_IR
-  {
-    char *str = LLVMPrintModuleToString(cnt.llvm_mod);
-    bl_log("\n--------------------------------------------------------------------------------\n%s",
-           str);
-    LLVMDisposeMessage(str);
-  }
-#endif
-  validate(cnt.llvm_mod);
-#endif
-  /* initialize execution engine for compile time module (engine will take ownership of the module
-   * here)*/
-  char *llvm_error = NULL;
-  if (LLVMCreateJITCompilerForModule(&assembly->llvm_compiletime_engine, cnt.llvm_mod, 0,
-                                     &llvm_error) != 0)
-    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
-
-  /* cleanup (we reuse already allocated buffers)*/
-  bo_htbl_clear(cnt.cscope);
-  bo_htbl_clear(cnt.const_strings);
-  bo_htbl_clear(cnt.generated_externals);
-  bo_array_clear(cnt.gen_stack);
-
-  /* generate runtime */
-  generate(&visitor, true);
-#ifdef BL_DEBUG
-#ifdef PRINT_IR
-  {
-    char *str = LLVMPrintModuleToString(cnt.llvm_mod);
-    bl_log("\n--------------------------------------------------------------------------------\n%s",
-           str);
-    LLVMDisposeMessage(str);
-  }
-#endif
-  validate(cnt.llvm_mod);
-#endif
-  assembly->llvm_module = cnt.llvm_mod;
+  generate(&visitor);
+  link(&cnt);
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
   bo_unref(cnt.gscope);
-  bo_unref(cnt.gscope_CT);
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
-  bo_unref(cnt.generated_externals);
-  bo_unref(cnt.gen_stack);
+  bo_unref(cnt.generated);
   assembly->llvm_cnt = cnt.llvm_cnt;
 
   return BL_NO_ERR;
