@@ -15,3 +15,9 @@ fn hello() {
 fn foo() {
   hello();
 }
+
+module A {
+  fn foo() {
+  }
+}
+

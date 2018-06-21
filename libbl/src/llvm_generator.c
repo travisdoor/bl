@@ -116,6 +116,9 @@ typedef struct
   LLVMModuleRef llvm_module;
 } fn_meta_t;
 
+static void
+gen_name(char *out_buf, int max_len, bl_node_t *node);
+
 static LLVMValueRef
 gen_init(context_t *cnt, bl_node_t *init);
 
@@ -174,6 +177,27 @@ should_load(bl_node_t *node)
 
 static LLVMGenericValueRef
 run_in_compile_time(context_t *cnt, bl_node_t *callee);
+
+void
+gen_name(char *out_buf, int max_len, bl_node_t *node)
+{
+  int l      = 0;
+  out_buf[0] = '\0';
+
+  while (node) {
+    const char *tmp = bl_ast_get_id(node)->str;
+    if (!tmp)
+      break;
+    int tmp_len = strlen(tmp) + 1;
+
+    if (tmp_len + l + 1 > max_len)
+      break;
+
+    sprintf(out_buf + l, "_%s", tmp);
+    l += tmp_len;
+    node = bl_ast_get_parent(node);
+  }
+}
 
 /*
  * convert known type to LLVM type representation
@@ -443,10 +467,13 @@ gen_func(context_t *cnt, bl_node_t *func)
 
   if (llvm_func == NULL) {
     char name_tmp[BL_MAX_FUNC_NAME_LEN];
+
     if (!(_func->modif & BL_MODIF_EXTERN) && !(_func->modif & BL_MODIF_EXPORT))
-      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s_%u", _func->id.str, _func->id.hash);
+      gen_name(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, func);
     else
       snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s", _func->id.str);
+
+    bl_log("name: %s", name_tmp);
 
     LLVMTypeRef ret      = to_llvm_type(cnt, _func->ret_type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
@@ -1224,7 +1251,7 @@ generate(bl_visitor_t *visitor)
   }
 }
 
-static void
+static LLVMModuleRef
 link(context_t *cnt)
 {
   LLVMModuleRef main_module = LLVMModuleCreateWithNameInContext(cnt->assembly->name, cnt->llvm_cnt);
@@ -1242,16 +1269,17 @@ link(context_t *cnt)
 
 #define PRINT_IR
 #ifdef PRINT_IR
-      {
-        char *str = LLVMPrintModuleToString(main_module);
-        bl_log("\n--------------------------------------------------------------------------------"
-               "\n%s"
-               "\n--------------------------------------------------------------------------------",
-               str);
-        LLVMDisposeMessage(str);
-      }
+  {
+    char *str = LLVMPrintModuleToString(main_module);
+    bl_log("\n--------------------------------------------------------------------------------"
+           "\n%s"
+           "\n--------------------------------------------------------------------------------",
+           str);
+    LLVMDisposeMessage(str);
+  }
 #endif
 #undef PRINT_IR
+  return main_module;
 }
 
 bl_error_e
@@ -1283,7 +1311,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
 
   generate(&visitor);
-  link(&cnt);
+  assembly->llvm_module = link(&cnt);
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
@@ -1291,6 +1319,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
   bo_unref(cnt.generated);
+
   assembly->llvm_cnt = cnt.llvm_cnt;
 
   return BL_NO_ERR;
