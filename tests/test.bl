@@ -2,22 +2,17 @@
 
 fn main() i32 {
   //#run hello();
+  //#run foo();
   hello();
   return 0;
 }
-// main -> hello
 
 fn hello() {
   foo();
 }
-// hello -> foo 
 
 fn foo() {
   hello();
 }
 
-module A {
-  fn foo() {
-  }
-}
 
