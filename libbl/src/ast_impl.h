@@ -302,7 +302,8 @@ struct bl_decl_func
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
   bool        gen_in_compiletime; /* TODO: remove */
-  BList *     deps; /* linked-list of dependencies (function called from this function) */
+  BList *     deps;  /* linked-list of dependencies (function called from this function) */
+  char *      uname; /* function unique name */
 };
 
 struct bl_decl_struct

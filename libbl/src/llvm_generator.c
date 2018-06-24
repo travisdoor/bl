@@ -94,7 +94,12 @@ typedef struct
   /* constant string cache */
   BHashTable *const_strings;
 
-  BHashTable *metas;
+  /* funit data for every compilation unit (function), this is only mapping of pointers, actual
+   * funit-data will be allocated in funit_cache */
+  BHashTable *funit_mapping;
+
+  /* funit data cache */
+  BHashTable *funit_cache;
 
   /* temporary blocks */
   LLVMBasicBlockRef func_init_block;
@@ -111,9 +116,78 @@ typedef struct
 
 typedef struct
 {
-  LLVMModuleRef llvm_module;
-  bool          linked;
-} fn_meta_t;
+  LLVMModuleRef          llvm_module;
+  LLVMExecutionEngineRef llvm_jit;
+  bool                   linked;
+} funit_t;
+
+static inline void
+funit_set(context_t *cnt, bl_node_t *node, funit_t *funit)
+{
+  bl_assert(bo_htbl_has_key(cnt->funit_mapping, (uint64_t)node), "duplicate funit mapping");
+  bo_htbl_erase_key(cnt->funit_mapping, (uint64_t)node);
+  bo_htbl_insert(cnt->funit_mapping, (uint64_t)node, funit);
+}
+
+static funit_t *
+funit_add(context_t *cnt, bl_node_t *node, LLVMModuleRef module)
+{
+  funit_t *tmp = bl_malloc(sizeof(funit_t));
+  *tmp         = (funit_t){.llvm_module = module, .llvm_jit = NULL, .linked = false};
+
+  bo_htbl_insert_empty(cnt->funit_cache, (uint64_t)tmp);
+
+  bl_assert(!bo_htbl_has_key(cnt->funit_mapping, (uint64_t)node), "duplicate funit mapping");
+  bo_htbl_insert(cnt->funit_mapping, (uint64_t)node, tmp);
+
+  return tmp;
+}
+
+static inline funit_t *
+funit_get(context_t *cnt, bl_node_t *node)
+{
+  bl_assert(bo_htbl_has_key(cnt->funit_mapping, (uint64_t)node), "missing funit mapping");
+  return bo_htbl_at(cnt->funit_mapping, (uint64_t)node, funit_t *);
+}
+
+static void
+funit_delete(context_t *cnt, funit_t *funit, bool dispose_llvm)
+{
+  if (dispose_llvm) {
+    if (funit->llvm_jit)
+      LLVMDisposeExecutionEngine(funit->llvm_jit);
+    else
+      LLVMDisposeModule(funit->llvm_module);
+  }
+
+  // bl_log("free funit %p", funit);
+  bl_free(funit);
+  bo_htbl_erase_key(cnt->funit_cache, (uint64_t)funit);
+}
+
+static inline void
+funit_delete_all(context_t *cnt, bool dispose_llvm)
+{
+  bo_iterator_t iter = bo_htbl_begin(cnt->funit_cache);
+  bo_iterator_t end  = bo_htbl_end(cnt->funit_cache);
+  funit_t *     tmp;
+  while (!bo_iterator_equal(&iter, &end)) {
+    tmp = (funit_t *)bo_htbl_iter_peek_key(cnt->funit_cache, &iter);
+    bo_htbl_iter_next(cnt->funit_cache, &iter);
+
+    if (dispose_llvm) {
+      if (tmp->llvm_jit)
+        LLVMDisposeExecutionEngine(tmp->llvm_jit);
+      else
+        LLVMDisposeModule(tmp->llvm_module);
+    }
+
+    // bl_log("free funit %p", funit);
+    bl_free(tmp);
+  }
+
+  bo_htbl_clear(cnt->funit_cache);
+}
 
 static inline context_t *
 peek_cnt(bl_visitor_t *visitor)
@@ -121,11 +195,11 @@ peek_cnt(bl_visitor_t *visitor)
   return (context_t *)visitor->context;
 }
 
-static inline void
-gen_name(char *out_buf, int max_len, bl_node_t *node);
-
 static LLVMValueRef
 gen_init(context_t *cnt, bl_node_t *init);
+
+static LLVMModuleRef
+link(context_t *cnt, bl_node_t *entry);
 
 static inline int
 gen_func_args(context_t *cnt, bl_decl_func_t *func, LLVMTypeRef *out);
@@ -181,28 +255,7 @@ should_load(bl_node_t *node)
 }
 
 static LLVMGenericValueRef
-run_in_compile_time(context_t *cnt, bl_node_t *callee);
-
-void
-gen_name(char *out_buf, int max_len, bl_node_t *node)
-{
-  int l      = 0;
-  out_buf[0] = '\0';
-
-  while (node) {
-    const char *tmp = bl_ast_get_id(node)->str;
-    if (!tmp)
-      break;
-    int tmp_len = strlen(tmp) + 1;
-
-    if (tmp_len + l + 1 > max_len)
-      break;
-
-    sprintf(out_buf + l, "_%s", tmp);
-    l += tmp_len;
-    node = bl_ast_get_parent(node);
-  }
-}
+run_fn(context_t *cnt, bl_node_t *callee);
 
 /*
  * convert known type to LLVM type representation
@@ -292,7 +345,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   if (size_expr) {
     bl_assert(bl_node_is(size_expr, BL_EXPR_CALL), "expected call");
     bl_node_t *         callee       = bl_peek_expr_call(size_expr)->ref;
-    LLVMGenericValueRef size_generic = run_in_compile_time(cnt, callee);
+    LLVMGenericValueRef size_generic = run_fn(cnt, callee);
     size_t              size         = LLVMGenericValueToInt(size_generic, false);
     llvm_type                        = LLVMArrayType(llvm_type, size);
   }
@@ -471,18 +524,15 @@ gen_func(context_t *cnt, bl_node_t *func)
   const int   pc                                 = gen_func_args(cnt, _func, param_types);
 
   if (llvm_func == NULL) {
-    char name_tmp[BL_MAX_FUNC_NAME_LEN];
-
+    const char *uname = NULL;
     if (!(_func->modif & BL_MODIF_EXTERN) && !(_func->modif & BL_MODIF_EXPORT))
-      gen_name(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, func);
+      uname = _func->uname;
     else
-      snprintf(&name_tmp[0], BL_MAX_FUNC_NAME_LEN, "%s", _func->id.str);
-
-    bl_log("name: %s", name_tmp);
+      uname = _func->id.str;
 
     LLVMTypeRef ret      = to_llvm_type(cnt, _func->ret_type);
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
-    llvm_func            = LLVMAddFunction(cnt->llvm_mod, &name_tmp[0], ret_type);
+    llvm_func            = LLVMAddFunction(cnt->llvm_mod, uname, ret_type);
 
     if (!(_func->modif & BL_MODIF_EXTERN))
       push_value_gscope(func, llvm_func);
@@ -516,11 +566,26 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 }
 
 LLVMGenericValueRef
-run_in_compile_time(context_t *cnt, bl_node_t *callee)
+run_fn(context_t *cnt, bl_node_t *callee)
 {
-  /*LLVMValueRef fn = get_value_gscope_CT(callee);
-    return LLVMRunFunction(cnt->assembly->llvm_compiletime_engine, fn, 0, NULL);*/
-  return NULL;
+  funit_t *funit = funit_get(cnt, callee);
+  bl_assert(funit, "missing funit for callee %s", bl_ast_get_id(callee)->str);
+
+  if (!funit->linked) {
+    /* create new execution engine for function */
+    funit->llvm_module = link(cnt, callee);
+    bl_assert(funit->llvm_module, "invalid module");
+  }
+
+  if (!funit->llvm_jit) {
+    char *llvm_error = NULL;
+    if (LLVMCreateJITCompilerForModule(&funit->llvm_jit, funit->llvm_module, 0, &llvm_error) != 0)
+      bl_abort("failed to create execution engine for compile-time module with error %s",
+               llvm_error);
+  }
+
+  LLVMValueRef fn = LLVMGetNamedFunction(funit->llvm_module, bl_peek_decl_func(callee)->uname);
+  return LLVMRunFunction(funit->llvm_jit, fn, 0, NULL);
 }
 
 /*
@@ -531,16 +596,18 @@ gen_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
 
-  /*
-  if (_call->run_in_compile_time && cnt->runtime) {
+  if (_call->run_in_compile_time) {
     bl_decl_func_t *    _callee = bl_peek_decl_func(_call->ref);
-    LLVMGenericValueRef tmp     = run_in_compile_time(cnt, _call->ref);
+    LLVMGenericValueRef tmp     = run_fn(cnt, _call->ref);
 
     LLVMTypeRef    ret_type      = to_llvm_type(cnt, _callee->ret_type);
     bl_type_kind_e ret_type_kind = bl_ast_type_get_kind(_callee->ret_type);
     LLVMValueRef   result        = NULL;
 
     switch (ret_type_kind) {
+    case BL_VOID_KIND:
+      result = NULL;
+      break;
     case BL_SINT_KIND:
       result = LLVMConstInt(ret_type, LLVMGenericValueToInt(tmp, true), true);
       break;
@@ -559,12 +626,12 @@ gen_call(context_t *cnt, bl_node_t *call)
 
     LLVMDisposeGenericValue(tmp);
     return result;
-    } else {*/
-  LLVMValueRef fn                          = gen_func(cnt, _call->ref);
-  LLVMValueRef argv[BL_MAX_FUNC_ARG_COUNT] = {0};
-  int          argc                        = gen_call_args(cnt, call, argv);
-  return LLVMBuildCall(cnt->llvm_builder, fn, argv, argc, "");
-  //}
+  } else {
+    LLVMValueRef fn                          = gen_func(cnt, _call->ref);
+    LLVMValueRef argv[BL_MAX_FUNC_ARG_COUNT] = {0};
+    int          argc                        = gen_call_args(cnt, call, argv);
+    return LLVMBuildCall(cnt->llvm_builder, fn, argv, argc, "");
+  }
 }
 
 LLVMValueRef
@@ -1199,7 +1266,7 @@ has_satysfied_deps(context_t *cnt, bl_node_t *fn)
   while (!bo_iterator_equal(&iter, &end)) {
     dep = &bo_list_iter_peek(_fn->deps, &iter, bl_dependency_t);
 
-    if (dep->strict && !bo_htbl_has_key(cnt->metas, (uint64_t)dep->node)) {
+    if (dep->strict && !bo_htbl_has_key(cnt->funit_mapping, (uint64_t)dep->node)) {
       return false;
     }
 
@@ -1249,9 +1316,7 @@ generate(bl_visitor_t *visitor)
 #endif
 #undef PRINT_IR
 
-      fn_meta_t meta = {.llvm_module = cnt->llvm_mod, .linked = false};
-
-      bo_htbl_insert(cnt->metas, (uint64_t)fn, meta);
+      funit_add(cnt, fn, cnt->llvm_mod);
     } else {
       bo_list_push_back(queue, fn);
     }
@@ -1261,17 +1326,16 @@ generate(bl_visitor_t *visitor)
 static LLVMModuleRef
 _link(context_t *cnt, bl_node_t *entry)
 {
-  bl_assert(bo_htbl_has_key(cnt->metas, (uint64_t)entry), "missing meta");
-  fn_meta_t *   meta        = &bo_htbl_at(cnt->metas, (uint64_t)entry, fn_meta_t);
-  LLVMModuleRef dest_module = meta->llvm_module;
+  funit_t *     funit       = funit_get(cnt, entry);
+  LLVMModuleRef dest_module = funit->llvm_module;
 
-  if (meta->linked)
+  if (funit->linked)
     return NULL;
-  meta->linked = true;
+  funit->linked = true;
 
   bl_decl_func_t *_entry = bl_peek_decl_func(entry);
   if (!_entry->deps)
-    return meta->llvm_module;
+    return funit->llvm_module;
 
   bo_iterator_t    iter = bo_list_begin(_entry->deps);
   bo_iterator_t    end  = bo_list_end(_entry->deps);
@@ -1285,16 +1349,20 @@ _link(context_t *cnt, bl_node_t *entry)
       /* must be linked */
       LLVMModuleRef src_module = _link(cnt, dep->node);
 
-      if (src_module)
-        bl_log("linking %s to %s", bl_ast_get_id(dep->node)->str, _entry->id.str);
+      /*if (src_module)
+        bl_log("linking %s to %s", bl_ast_get_id(dep->node)->str, _entry->id.str);*/
 
-      if (src_module && LLVMLinkModules2(dest_module, src_module)) {
-        bl_abort("unable to link modules");
+      if (src_module) {
+        if (LLVMLinkModules2(dest_module, src_module))
+          bl_abort("unable to link modules");
+
+        /* replace dep funit with current funit */
+        funit_t *dep_funit = funit_get(cnt, dep->node);
+        bl_log("delete funit for module %s during linking into %s", bl_ast_get_id(dep->node)->str,
+               _entry->id.str);
+        funit_delete(cnt, dep_funit, false);
+        funit_set(cnt, dep->node, funit);
       }
-
-      /* replace dep meta with current meta */
-      bl_assert(bo_htbl_has_key(cnt->metas, (uint64_t)dep->node), "missing meta");
-      fn_meta_t *dep_meta = &bo_htbl_at(cnt->metas, (uint64_t)dep->node, fn_meta_t);
     }
   }
 
@@ -1303,28 +1371,38 @@ _link(context_t *cnt, bl_node_t *entry)
 
 /* This function will take already generated dependencies of entry function node and it will create
  * merged llvm module which can be used for binary export or for JIT calling via #run directive. All
- * linked metas from metas cache will keep its linking to original node but llvm modules will be
+ * linked funits from funits cache will keep its linking to original node but llvm modules will be
  * replaced by reference to merged node. */
-static LLVMModuleRef
+LLVMModuleRef
 link(context_t *cnt, bl_node_t *entry)
 {
   if (!entry)
     return NULL;
 
-  bl_assert(bo_htbl_has_key(cnt->metas, (uint64_t)entry), "missing meta");
-  fn_meta_t *   meta        = &bo_htbl_at(cnt->metas, (uint64_t)entry, fn_meta_t);
-  LLVMModuleRef dest_module = meta->llvm_module;
+  funit_t *     funit       = funit_get(cnt, entry);
+  LLVMModuleRef dest_module = funit->llvm_module;
 
-  if (meta->linked)
-    return dest_module;
+  if (!funit->linked)
+    dest_module = _link(cnt, entry);
 
-  return _link(cnt, entry);
+#define PRINT_IR
+#ifdef PRINT_IR
+  {
+    char *str = LLVMPrintModuleToString(dest_module);
+    bl_log("\n--------------------------------------------------------------------------------"
+           "\n%s"
+           "\n--------------------------------------------------------------------------------",
+           str);
+    LLVMDisposeMessage(str);
+  }
+#endif
+#undef PRINT_IR
+  return dest_module;
 }
 
 bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  //#define PRINT_IR
   /* context initialization */
   context_t cnt     = {0};
   cnt.builder       = builder;
@@ -1334,7 +1412,8 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   cnt.cscope        = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt.const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt.gscope        = bo_htbl_new(sizeof(LLVMValueRef), 2048);
-  cnt.metas         = bo_htbl_new(sizeof(fn_meta_t), bo_list_size(assembly->func_queue));
+  cnt.funit_mapping = bo_htbl_new(sizeof(funit_t *), bo_list_size(assembly->func_queue));
+  cnt.funit_cache   = bo_htbl_new(0, bo_list_size(assembly->func_queue));
   cnt.tmp_main      = NULL;
 
   /* prepare visitor */
@@ -1351,27 +1430,23 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_continue, BL_VISIT_CONTINUE);
 
   generate(&visitor);
-  assembly->llvm_module = link(&cnt, cnt.tmp_main);
 
-#define PRINT_IR
-#ifdef PRINT_IR
-  {
-    char *str = LLVMPrintModuleToString(assembly->llvm_module);
-    bl_log("\n--------------------------------------------------------------------------------"
-           "\n%s"
-           "\n--------------------------------------------------------------------------------",
-           str);
-    LLVMDisposeMessage(str);
+  if (cnt.tmp_main) {
+    assembly->llvm_module = link(&cnt, cnt.tmp_main);
+
+    funit_t *main_funit = funit_get(&cnt, cnt.tmp_main);
+    funit_delete(&cnt, main_funit, false);
   }
-#endif
-#undef PRINT_IR
+
+  funit_delete_all(&cnt, true);
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
   bo_unref(cnt.gscope);
   bo_unref(cnt.cscope);
   bo_unref(cnt.const_strings);
-  bo_unref(cnt.metas);
+  bo_unref(cnt.funit_mapping);
+  bo_unref(cnt.funit_cache);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
 

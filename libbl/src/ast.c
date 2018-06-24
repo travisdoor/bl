@@ -68,6 +68,7 @@ node_terminate(bl_node_t *node)
   case BL_DECL_FUNC:
     bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
     bo_unref(bl_peek_decl_func(node)->deps);
+    free(bl_peek_decl_func(node)->uname);
     break;
   case BL_DECL_BLOCK:
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);

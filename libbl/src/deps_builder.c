@@ -42,6 +42,27 @@ typedef struct
   bl_assembly_t *assembly;
 } context_t;
 
+static inline void
+get_uname(char *out_buf, int max_len, bl_node_t *node)
+{
+  int l      = 0;
+  out_buf[0] = '\0';
+
+  while (node) {
+    const char *tmp = bl_ast_get_id(node)->str;
+    if (!tmp)
+      break;
+    int tmp_len = strlen(tmp) + 1;
+
+    if (tmp_len + l + 1 > max_len)
+      break;
+
+    sprintf(out_buf + l, "_%s", tmp);
+    l += tmp_len;
+    node = bl_ast_get_parent(node);
+  }
+}
+
 static inline bl_dependency_t *
 get_dependency(context_t *cnt, bl_node_t *dep)
 {
@@ -75,16 +96,22 @@ static void
 visit_func(bl_visitor_t *visitor, bl_node_t **func)
 {
   context_t *cnt = peek_cnt(visitor);
+  bl_decl_func_t *_func = bl_peek_decl_func(*func);
+
   cnt->curr_func = *func;
   reset_unique_deps_cache(cnt);
   bl_visitor_walk_func(visitor, func);
 
   bo_list_push_back(cnt->assembly->func_queue, *func);
 
-  #define PRINT_DEPS
-  #ifdef PRINT_DEPS
+  /* create function unique name */
+  char tmp[BL_MAX_FUNC_NAME_LEN] = {0};
+  get_uname(&tmp[0], BL_MAX_FUNC_NAME_LEN, *func);
+  _func->uname = strdup(tmp);
+
+#define PRINT_DEPS
+#ifdef PRINT_DEPS
   // TEST
-  bl_decl_func_t *_func = bl_peek_decl_func(*func);
   if (_func->deps) {
     bl_dependency_t *dep;
     bo_iterator_t    iter = bo_list_begin(_func->deps);
@@ -97,8 +124,8 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
       bo_list_iter_next(_func->deps, &iter);
     }
   }
-  #endif
-  #undef PRINT_DEPS
+#endif
+#undef PRINT_DEPS
 }
 
 static void
