@@ -1179,7 +1179,7 @@ bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t)
 }
 
 bl_dependency_t *
-bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict)
+bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, int type)
 {
   bl_assert(dep, "invalid dependency");
   if (!_func->deps) {
@@ -1188,7 +1188,7 @@ bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict)
 
   bl_dependency_t tmp = {
     .node = dep,
-    .strict = strict
+    .type = type
   };
 
   bo_list_push_back(_func->deps, tmp);

@@ -4,22 +4,20 @@ extern fn puts(s string) i32;
 extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
+  // called in compile-time
   mut f10 = #run fctr10();
   mut f15 = #run fctr15();
+
+  mut arr1 i32 [#run fctr10()];
+  mut arr2 i32 [120 + 23];
+
   printf("factorial 10 = %d\n", f10);
   printf("factorial 15 = %d\n", f15);
 
-  hello();
   return 0;
 }
 
-fn hello() {
-  foo();
-}
-
-fn foo() {
-}
-
+// runtime
 fn fctr10() i32 {
   return factorial(10);
 }

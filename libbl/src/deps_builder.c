@@ -72,17 +72,16 @@ get_dependency(context_t *cnt, bl_node_t *dep)
 }
 
 static inline void
-add_dependency_of_curr_func(context_t *cnt, bl_node_t *dep, bool strict)
+add_dependency_of_curr_func(context_t *cnt, bl_node_t *dep, int type)
 {
   bl_dependency_t *tmp = get_dependency(cnt, dep);
   if (tmp) {
-    if (!tmp->strict)
-      tmp->strict = strict;
+    tmp->type |= type;
     return;
   }
 
   bl_decl_func_t *_callee = bl_peek_decl_func(cnt->curr_func);
-  tmp                     = bl_ast_func_add_dep(_callee, dep, strict);
+  tmp                     = bl_ast_func_add_dep(_callee, dep, type);
   bo_htbl_insert(cnt->unique_deps_per_func, (uint64_t)dep, tmp);
 }
 
@@ -95,7 +94,7 @@ reset_unique_deps_cache(context_t *cnt)
 static void
 visit_func(bl_visitor_t *visitor, bl_node_t **func)
 {
-  context_t *cnt = peek_cnt(visitor);
+  context_t *     cnt   = peek_cnt(visitor);
   bl_decl_func_t *_func = bl_peek_decl_func(*func);
 
   cnt->curr_func = *func;
@@ -109,7 +108,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   get_uname(&tmp[0], BL_MAX_FUNC_NAME_LEN, *func);
   _func->uname = strdup(tmp);
 
-#define PRINT_DEPS
+  //#define PRINT_DEPS
 #ifdef PRINT_DEPS
   // TEST
   if (_func->deps) {
@@ -118,8 +117,9 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
     bo_iterator_t    end  = bo_list_end(_func->deps);
     while (!bo_iterator_equal(&iter, &end)) {
       dep = &bo_list_iter_peek(_func->deps, &iter, bl_dependency_t);
-      bl_log("unique dependency %s -> %s (%s)", _func->id.str, bl_ast_get_id(dep->node)->str,
-             dep->strict ? "STRICT" : "LAX");
+
+      bl_log("unique dependency %s -> %s (%d)", _func->id.str, bl_ast_get_id(dep->node)->str,
+             dep->type);
 
       bo_list_iter_next(_func->deps, &iter);
     }
@@ -140,7 +140,8 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
     /* Store dependency of current processed function on another callee. Later during generation we
      * need to know which function should go first. */
     if (_call->ref != cnt->curr_func)
-      add_dependency_of_curr_func(cnt, _call->ref, _call->run_in_compile_time);
+      add_dependency_of_curr_func(cnt, _call->ref,
+                                  _call->run_in_compile_time ? BL_DEP_STRICT : BL_DEP_LAX);
   }
 
   bl_visitor_walk_expr(visitor, expr);

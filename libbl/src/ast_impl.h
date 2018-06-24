@@ -158,10 +158,16 @@ enum bl_node_code
 #define bl_node_code(n) (n)->code
 #define bl_node_name(n) bl_node_type_strings[(n)->code]
 
+typedef enum
+{
+  BL_DEP_LAX = 0b01,
+  BL_DEP_STRICT = 0b10,
+} bl_dep_e;
+
 typedef struct
 {
-  bl_node_t *node;   /* dependency node */
-  bool       strict; /* is dependency strict (ex.: caused by #run directive) */
+  bl_node_t *node; /* dependency node */
+  bl_dep_e   type; /* is dependency strict (ex.: caused by #run directive) */
 } bl_dependency_t;
 
 struct chunk;
@@ -686,7 +692,7 @@ bool
 bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
 
 bl_dependency_t *
-bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, bool strict);
+bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, int type);
 
 /**************************************************************************************************/
 
