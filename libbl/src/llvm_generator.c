@@ -257,17 +257,18 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     size_expr = _type->dim;
   }
 
-  if (is_ptr) {
-    llvm_type = LLVMPointerType(llvm_type, 0);
-  }
-
   /* type is array */
   if (size_expr) {
     bl_assert(bl_node_is(size_expr, BL_EXPR_CALL), "expected call");
     bl_node_t *         callee       = bl_peek_expr_call(size_expr)->ref;
     LLVMGenericValueRef size_generic = run_fn(cnt, callee);
     size_t              size         = LLVMGenericValueToInt(size_generic, false);
+    bl_log("size %d", size);
     llvm_type                        = LLVMArrayType(llvm_type, size);
+  }
+
+  if (is_ptr) {
+    llvm_type = LLVMPointerType(llvm_type, 0);
   }
 
   return llvm_type;

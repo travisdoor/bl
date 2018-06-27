@@ -5,14 +5,15 @@ extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
   mut foo foo_t;
-  // should generate call not copy of expression
-  printf("foo.data.count = %d\n", foo.data.count);
-  
+  hello();
   return 0;
 }
 
-struct foo_t {
-  data i32 [c]
+fn hello() {
+  mut foo foo_t;
 }
 
-const c i32 = 10;
+struct foo_t {
+  data i32 [10],
+  data2 i32 [20]
+}

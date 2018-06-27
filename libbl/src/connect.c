@@ -71,6 +71,7 @@ typedef struct
   /* Last visited function. */
   bl_node_t *curr_func;
   bl_node_t *curr_mod;
+  int        name_counter;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -332,8 +333,13 @@ connect_type(context_t *cnt, bl_node_t *type)
        * evaluation function has no effect on runtime, in runtime module whole array size
        * expression will be replaced by constant literal.*/
 
+      char tmp_name[BL_MAX_FUNC_NAME_LEN] = {0};
+      snprintf(tmp_name, BL_MAX_FUNC_NAME_LEN, "__arr_count_%d__", cnt->name_counter++);
+      BString *stmp = bl_tokens_create_cached_str(&cnt->unit->tokens);
+      bo_string_append(stmp, tmp_name);
+
       bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
-      bl_node_t *func      = bl_ast_add_decl_func(cnt->ast, NULL, "__arr_count__", NULL, size_type,
+      bl_node_t *func      = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
                                              BL_MODIF_NONE, cnt->curr_mod, true);
       bl_node_t *block     = bl_ast_add_decl_block(cnt->ast, NULL, func);
       bl_peek_decl_func(func)->block   = block;
@@ -379,9 +385,13 @@ void
 connect_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
-  bl_node_t *     found = lookup(cnt, _call->path, validate_call, NULL);
-  _call->ref            = found;
-  _call->type           = bl_ast_get_type(found);
+
+  if (_call->ref)
+    return;
+
+  bl_node_t *found = lookup(cnt, _call->path, validate_call, NULL);
+  _call->ref       = found;
+  _call->type      = bl_ast_get_type(found);
 
   bl_decl_func_t *_callee = bl_peek_decl_func(found);
   _callee->used++;
@@ -1159,6 +1169,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.curr_func     = NULL;
     cnt.curr_decl     = NULL;
     cnt.curr_mod      = NULL;
+    cnt.ast           = &cnt.unit->ast;
+    cnt.name_counter  = 0;
     bl_visitor_walk_module(&visitor_first, &cnt.unit->ast.root);
   }
 
@@ -1174,11 +1186,13 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   // bl_visitor_add(&visitor_second, second_pass_expr, BL_VISIT_EXPR);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit        = bl_assembly_get_unit(assembly, i);
-    cnt.curr_lvalue = NULL;
-    cnt.curr_func   = NULL;
-    cnt.curr_decl   = NULL;
-    cnt.curr_mod    = NULL;
+    cnt.unit         = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue  = NULL;
+    cnt.curr_func    = NULL;
+    cnt.curr_decl    = NULL;
+    cnt.curr_mod     = NULL;
+    cnt.ast          = &cnt.unit->ast;
+    cnt.name_counter = 0;
     bl_visitor_walk_gscope(&visitor_second, &cnt.unit->ast.root);
   }
 
@@ -1197,12 +1211,13 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_return, BL_VISIT_RETURN);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit        = bl_assembly_get_unit(assembly, i);
-    cnt.curr_lvalue = NULL;
-    cnt.curr_func   = NULL;
-    cnt.curr_decl   = NULL;
-    cnt.curr_mod    = NULL;
-    cnt.ast         = &cnt.unit->ast;
+    cnt.unit         = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue  = NULL;
+    cnt.curr_func    = NULL;
+    cnt.curr_decl    = NULL;
+    cnt.curr_mod     = NULL;
+    cnt.ast          = &cnt.unit->ast;
+    cnt.name_counter = 0;
     bl_visitor_walk_gscope(&visitor_third, &cnt.unit->ast.root);
   }
 
