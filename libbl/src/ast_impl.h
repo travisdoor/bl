@@ -320,6 +320,7 @@ struct bl_decl_struct
   bl_node_t * members;  /* pointer to list of members */
   int         membersc; /* member count */
   bl_scopes_t scopes;   /* scope cache */
+  BList *     deps;  /* linked-list of dependencies (function called from during initialization) */
 };
 
 struct bl_decl_struct_member
@@ -691,8 +692,11 @@ bl_ast_buildin_hash(bl_buildin_e t);
 bool
 bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
 
+BList *
+bl_ast_get_deps(bl_node_t *node);
+
 bl_dependency_t *
-bl_ast_func_add_dep(bl_decl_func_t *_func, bl_node_t *dep, int type);
+bl_ast_add_dep(bl_node_t *node, bl_node_t *dep, int type);
 
 /**************************************************************************************************/
 

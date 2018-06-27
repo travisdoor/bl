@@ -91,9 +91,6 @@ typedef struct
    * later located by node pointer */
   BHashTable *cscope;
 
-  /* constant string cache */
-  BHashTable *const_strings;
-
   BHashTable *llvm_modules;
 
   /* temporary blocks */
@@ -107,6 +104,7 @@ typedef struct
   LLVMValueRef ret_value;
 
   LLVMExecutionEngineRef llvm_jit;
+  BHashTable *           jit_linked;
 
   bl_node_t *tmp_main;
 } context_t;
@@ -490,11 +488,18 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 static void
 link_into_jit(context_t *cnt, bl_node_t *fn)
 {
-  bl_decl_func_t *_fn    = bl_peek_decl_func(fn);
-  LLVMModuleRef   module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
+  if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn))
+    return;
+
+  bl_decl_func_t *_fn = bl_peek_decl_func(fn);
+  bl_assert(bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn),
+            "function %s has no llvm module generated yet!!!", _fn->id.str) LLVMModuleRef module =
+      bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
   bl_assert("invalid llvm module for function %s", _fn->id.str);
+
   module = LLVMCloneModule(module);
   LLVMAddModule(cnt->llvm_jit, module);
+  bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
 
   if (!_fn->deps)
     return;
@@ -508,7 +513,6 @@ link_into_jit(context_t *cnt, bl_node_t *fn)
 
     if (dep->type & BL_DEP_LAX) {
       link_into_jit(cnt, dep->node);
-      // TODO solve multiple adding of already added modules
     }
   }
 }
@@ -519,7 +523,7 @@ create_jit(context_t *cnt)
   LLVMModuleRef          module = LLVMModuleCreateWithNameInContext("run", cnt->llvm_cnt);
   LLVMExecutionEngineRef jit;
   char *                 llvm_error = NULL;
-  if (LLVMCreateJITCompilerForModule(&jit, module, 0, &llvm_error) != 0)
+  if (LLVMCreateJITCompilerForModule(&jit, module, 3, &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
   return jit;
@@ -589,14 +593,16 @@ gen_call(context_t *cnt, bl_node_t *call)
 LLVMValueRef
 get_or_create_const_string(context_t *cnt, const char *str)
 {
-  uint32_t hash = bo_hash_from_str(str);
-  if (bo_htbl_has_key(cnt->const_strings, hash))
-    return bo_htbl_at(cnt->const_strings, hash, LLVMValueRef);
+  uint32_t  hash    = bo_hash_from_str(str);
+  const int max_len = 32;
+  char      name_tmp[max_len];
+  snprintf(&name_tmp[0], max_len, "str_%u", hash);
 
-  LLVMValueRef s = LLVMBuildGlobalString(cnt->llvm_builder, str, "str");
+  LLVMValueRef s = LLVMGetNamedGlobal(cnt->llvm_mod, name_tmp);
+  if (!s)
+    s = LLVMBuildGlobalString(cnt->llvm_builder, str, name_tmp);
 
   s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0));
-  bo_htbl_insert(cnt->const_strings, hash, s);
   return s;
 }
 
@@ -1208,21 +1214,25 @@ validate(LLVMModuleRef module)
 static inline bool
 has_satysfied_deps(context_t *cnt, bl_node_t *fn)
 {
-  bl_decl_func_t *_fn = bl_peek_decl_func(fn);
-  if (!_fn->deps)
+  BList *deps = bl_ast_get_deps(fn);
+  if (!deps)
     return true;
 
-  bo_iterator_t    iter = bo_list_begin(_fn->deps);
-  bo_iterator_t    end  = bo_list_end(_fn->deps);
+  bo_iterator_t    iter = bo_list_begin(deps);
+  bo_iterator_t    end  = bo_list_end(deps);
   bl_dependency_t *dep;
   while (!bo_iterator_equal(&iter, &end)) {
-    dep = &bo_list_iter_peek(_fn->deps, &iter, bl_dependency_t);
+    dep = &bo_list_iter_peek(deps, &iter, bl_dependency_t);
 
-    if (dep->type & BL_DEP_STRICT && !bo_htbl_has_key(cnt->llvm_modules, (uint64_t)dep->node)) {
+    if (bl_node_is(dep->node, BL_DECL_STRUCT)) {
+      if (!has_satysfied_deps(cnt, dep->node))
+	return false;
+    } else if (dep->type & BL_DEP_STRICT &&
+               !bo_htbl_has_key(cnt->llvm_modules, (uint64_t)dep->node)) {
       return false;
     }
 
-    bo_list_iter_next(_fn->deps, &iter);
+    bo_list_iter_next(deps, &iter);
   }
 
   return true;
@@ -1278,8 +1288,12 @@ generate(bl_visitor_t *visitor)
 static LLVMModuleRef
 _link(context_t *cnt, bl_node_t *entry)
 {
-  bl_decl_func_t *_entry      = bl_peek_decl_func(entry);
-  LLVMModuleRef   dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
+  bl_decl_func_t *_entry = bl_peek_decl_func(entry);
+
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry))
+    return NULL;
+
+  LLVMModuleRef dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
   bl_assert("invalid llvm module for function %s", _entry->id.str);
   if (!_entry->deps)
     return dest_module;
@@ -1296,10 +1310,12 @@ _link(context_t *cnt, bl_node_t *entry)
       /* must be linked */
       LLVMModuleRef src_module = _link(cnt, dep->node);
 
-      if (LLVMLinkModules2(dest_module, src_module))
-        bl_abort("unable to link modules");
+      if (src_module) {
+        if (LLVMLinkModules2(dest_module, src_module))
+          bl_abort("unable to link modules");
 
-      bo_htbl_erase_key(cnt->llvm_modules, (uint64_t)dep->node);
+        bo_htbl_erase_key(cnt->llvm_modules, (uint64_t)dep->node);
+      }
     }
   }
 
@@ -1333,17 +1349,17 @@ bl_error_e
 bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   /* context initialization */
-  context_t cnt     = {0};
-  cnt.builder       = builder;
-  cnt.assembly      = assembly;
-  cnt.llvm_cnt      = LLVMContextCreate();
-  cnt.llvm_builder  = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.cscope        = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.const_strings = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.gscope        = bo_htbl_new(sizeof(LLVMValueRef), 2048);
-  cnt.llvm_modules  = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->func_queue));
-  cnt.llvm_jit      = create_jit(&cnt);
-  cnt.tmp_main      = NULL;
+  context_t cnt    = {0};
+  cnt.builder      = builder;
+  cnt.assembly     = assembly;
+  cnt.llvm_cnt     = LLVMContextCreate();
+  cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.cscope       = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.gscope       = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->func_queue));
+  cnt.jit_linked   = bo_htbl_new(0, bo_list_size(assembly->func_queue));
+  cnt.llvm_jit     = create_jit(&cnt);
+  cnt.tmp_main     = NULL;
 
   /* prepare visitor */
   bl_visitor_t visitor;
@@ -1362,18 +1378,16 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   if (cnt.tmp_main) {
     assembly->llvm_module = link(&cnt, cnt.tmp_main);
-    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t) cnt.tmp_main);
+    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.tmp_main);
   }
-
-  bl_log("leaved %d unfreed modules", bo_htbl_size(cnt.llvm_modules));
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
   LLVMDisposeExecutionEngine(cnt.llvm_jit);
   bo_unref(cnt.gscope);
   bo_unref(cnt.cscope);
-  bo_unref(cnt.const_strings);
   bo_unref(cnt.llvm_modules);
+  bo_unref(cnt.jit_linked);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
 

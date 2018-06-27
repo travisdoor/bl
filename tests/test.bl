@@ -4,33 +4,15 @@ extern fn puts(s string) i32;
 extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
-  // called in compile-time
-  mut f10 = #run fctr10();
-  mut f15 = #run fctr15();
-
-  mut arr1 i32 [#run fctr10()];
-  mut arr2 i32 [120 + 23];
-
-  printf("factorial 10 = %d\n", f10);
-  printf("factorial 15 = %d\n", f15);
-
+  mut foo foo_t;
+  // should generate call not copy of expression
+  printf("foo.data.count = %d\n", foo.data.count);
+  
   return 0;
 }
 
-// runtime
-fn fctr10() i32 {
-  return factorial(10);
+struct foo_t {
+  data i32 [c]
 }
 
-fn fctr15() i32 {
-  return factorial(15);
-}
-
-fn factorial(f i32) i32 
-{
-  if (f == 0)  {
-    return 1;
-  }
-
-  return (f * factorial(f - 1));
-}
+const c i32 = 10;

@@ -365,7 +365,7 @@ visit_struct(bl_visitor_t *visitor, bl_node_t **strct)
   }
 
   /* check all memebrs of structure */
-  bl_node_t **              member  = &_strct->members;
+  bl_node_t **             member  = &_strct->members;
   bl_decl_struct_member_t *_member = NULL;
 
   while (*member) {
@@ -470,6 +470,7 @@ visit_module(bl_visitor_t *visitor, bl_node_t **module)
 static void
 visit_type(bl_visitor_t *visitor, bl_node_t **type)
 {
+#if 0
   context_t * cnt = peek_cnt(visitor);
   bl_node_t **dim = bl_ast_get_type_dim(*type);
   if (*dim) {
@@ -493,10 +494,12 @@ visit_type(bl_visitor_t *visitor, bl_node_t **type)
                                              BL_MODIF_NONE, cnt->curr_module, true);
       bl_node_t *block     = bl_ast_add_decl_block(cnt->ast, NULL, func);
       bl_peek_decl_func(func)->block   = block;
+      bl_peek_decl_func(func)->used    = 1;
       bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
 
-      func->next                                   = bl_peek_decl_module(cnt->curr_module)->nodes;
-      func->prev                                   = NULL;
+      func->next = bl_peek_decl_module(cnt->curr_module)->nodes;
+      func->prev = NULL;
+
       bl_peek_decl_module(cnt->curr_module)->nodes = func;
 
       bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
@@ -504,6 +507,7 @@ visit_type(bl_visitor_t *visitor, bl_node_t **type)
       *dim = call;
     }
   }
+#endif
 }
 
 /*************************************************************************************************

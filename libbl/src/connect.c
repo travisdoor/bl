@@ -319,6 +319,43 @@ connect_type(context_t *cnt, bl_node_t *type)
                     "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_get_id(found)->str);
     }
   }
+
+  // TEST
+  bl_node_t **dim = bl_ast_get_type_dim(type);
+  if (*dim) {
+    static bl_node_t static_ftype_size_t = {.code               = BL_TYPE_FUND,
+                                            .n.type_fund.type   = BL_FTYPE_SIZE,
+                                            .n.type_fund.dim    = NULL,
+                                            .n.type_fund.is_ptr = false};
+
+    //check_expr(cnt, dim, &static_ftype_size_t, true);
+
+    if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
+      /* For array types (has dimesnsions) we need to generate implicit function running in
+       * compile time which will evaluate final array size needed by LLVM. This solution is kind
+       * of temporary and it can be eventually replaced when we will have const evaluator
+       * implemented, until then we leave evaluation on LLVM compile time module. Calling to
+       * evaluation function has no effect on runtime, in runtime module whole array size
+       * expression will be replaced by constant literal.*/
+
+      bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
+      bl_node_t *func      = bl_ast_add_decl_func(cnt->ast, NULL, "__arr_count__", NULL, size_type,
+                                             BL_MODIF_NONE, cnt->curr_module, true);
+      bl_node_t *block     = bl_ast_add_decl_block(cnt->ast, NULL, func);
+      bl_peek_decl_func(func)->block   = block;
+      bl_peek_decl_func(func)->used    = 1;
+      bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
+
+      func->next = bl_peek_decl_module(cnt->curr_module)->nodes;
+      func->prev = NULL;
+
+      bl_peek_decl_module(cnt->curr_module)->nodes = func;
+
+      bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
+
+      *dim = call;
+    }
+  }
 }
 
 void
@@ -417,7 +454,8 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
 
   /* solve array buildins */
   if (bl_ast_get_type_dim(type) && bl_ast_is_buildin(&_member_ref->id, BL_BUILDIN_ARR_COUNT)) {
-    bl_ast_dup_and_insert(cnt->ast, member_ref, *bl_ast_get_type_dim(type));
+    // bl_ast_dup_and_insert(cnt->ast, member_ref, *bl_ast_get_type_dim(type));
+    *member_ref = *bl_ast_get_type_dim(type);
     return;
   }
 
