@@ -339,9 +339,9 @@ connect_type(context_t *cnt, bl_node_t *type)
       bo_string_append(stmp, tmp_name);
 
       bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
-      bl_node_t *func      = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
+      bl_node_t *func  = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
                                              BL_MODIF_NONE, cnt->curr_mod, true);
-      bl_node_t *block     = bl_ast_add_decl_block(cnt->ast, NULL, func);
+      bl_node_t *block = bl_ast_add_decl_block(cnt->ast, NULL, func);
       bl_peek_decl_func(func)->block   = block;
       bl_peek_decl_func(func)->used    = 1;
       bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
@@ -1139,6 +1139,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {.builder       = builder,
                    .assembly      = assembly,
+                   .name_counter  = 0,
                    .curr_compound = NULL,
                    .curr_lvalue   = NULL,
                    .curr_func     = NULL};
@@ -1170,7 +1171,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.curr_decl     = NULL;
     cnt.curr_mod      = NULL;
     cnt.ast           = &cnt.unit->ast;
-    cnt.name_counter  = 0;
     bl_visitor_walk_module(&visitor_first, &cnt.unit->ast.root);
   }
 
@@ -1186,13 +1186,12 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   // bl_visitor_add(&visitor_second, second_pass_expr, BL_VISIT_EXPR);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit         = bl_assembly_get_unit(assembly, i);
-    cnt.curr_lvalue  = NULL;
-    cnt.curr_func    = NULL;
-    cnt.curr_decl    = NULL;
-    cnt.curr_mod     = NULL;
-    cnt.ast          = &cnt.unit->ast;
-    cnt.name_counter = 0;
+    cnt.unit        = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue = NULL;
+    cnt.curr_func   = NULL;
+    cnt.curr_decl   = NULL;
+    cnt.curr_mod    = NULL;
+    cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_second, &cnt.unit->ast.root);
   }
 
@@ -1211,13 +1210,12 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, third_pass_return, BL_VISIT_RETURN);
 
   for (int i = 0; i < c; ++i) {
-    cnt.unit         = bl_assembly_get_unit(assembly, i);
-    cnt.curr_lvalue  = NULL;
-    cnt.curr_func    = NULL;
-    cnt.curr_decl    = NULL;
-    cnt.curr_mod     = NULL;
-    cnt.ast          = &cnt.unit->ast;
-    cnt.name_counter = 0;
+    cnt.unit        = bl_assembly_get_unit(assembly, i);
+    cnt.curr_lvalue = NULL;
+    cnt.curr_func   = NULL;
+    cnt.curr_decl   = NULL;
+    cnt.curr_mod    = NULL;
+    cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_third, &cnt.unit->ast.root);
   }
 
