@@ -39,12 +39,6 @@
 
 struct bl_node;
 
-typedef struct
-{
-  struct bl_node *func;
-  LLVMValueRef    llvm_func;
-} bl_utest_t;
-
 typedef struct bl_assembly
 {
   BArray *          units;          /* array of all units in assembly */
@@ -60,7 +54,7 @@ typedef struct bl_assembly
   BList *func_queue; /* queue of functions to be generated created by deps_builder */
 
   LLVMExecutionEngineRef llvm_runtime_engine;     /* LLVM execution engine for runtime module */
-  LLVMExecutionEngineRef llvm_compiletime_engine; /* LLVM execution engine for compiletime module */
+  LLVMExecutionEngineRef llvm_jit; /* LLVM execution engine for compiletime module */
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

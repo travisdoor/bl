@@ -4,16 +4,21 @@ extern fn puts(s string) i32;
 extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
-  mut foo foo_t;
-  hello();
   return 0;
 }
 
-fn hello() {
+const c i32 = 256;
+
+#test
+fn test() i32 {
+  mut arr i32 [c];
   mut foo foo_t;
+
+  printf("arr.count = %d\n", arr.count);
+  printf("foo.arr.count = %d\n", foo.arr.count);
+  return 0;
 }
 
 struct foo_t {
-  data i32 [10],
-  data2 i32 [20]
+  arr i32 [c]
 }

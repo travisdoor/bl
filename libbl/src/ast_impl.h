@@ -160,7 +160,7 @@ enum bl_node_code
 
 typedef enum
 {
-  BL_DEP_LAX = 0b01,
+  BL_DEP_LAX    = 0b01,
   BL_DEP_STRICT = 0b10,
 } bl_dep_e;
 
@@ -320,7 +320,7 @@ struct bl_decl_struct
   bl_node_t * members;  /* pointer to list of members */
   int         membersc; /* member count */
   bl_scopes_t scopes;   /* scope cache */
-  BList *     deps;  /* linked-list of dependencies (function called from during initialization) */
+  BList *     deps; /* linked-list of dependencies (function called from during initialization) */
 };
 
 struct bl_decl_struct_member

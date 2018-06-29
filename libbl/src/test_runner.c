@@ -38,7 +38,7 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_msg_log(BL_GREEN("Running utests:"));
 
   const size_t c                   = bo_array_size(assembly->utest_methods);
-  bl_utest_t * utest               = NULL;
+  bl_node_t * utest               = NULL;
   bl_src_t *   src                 = NULL;
   bool         status              = false;
   char         tmp[MAX_REPORT_LEN] = {0};
@@ -49,21 +49,29 @@ bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   for (size_t i = 0; i < c; ++i) {
-    utest = &bo_array_at(assembly->utest_methods, i, bl_utest_t);
-    src   = utest->func->src;
-    LLVMGenericValueRef result =
-        LLVMRunFunction(assembly->llvm_compiletime_engine, utest->llvm_func, 0, NULL);
+    utest = bo_array_at(assembly->utest_methods, i, bl_node_t *);
+    src   = utest->src;
+
+    LLVMValueRef llvm_utest;
+    LLVMGenericValueRef result;
+
+    if (!LLVMFindFunction(assembly->llvm_jit, bl_peek_decl_func(utest)->uname, &llvm_utest)) {
+      result = LLVMRunFunction(assembly->llvm_jit, llvm_utest, 0, NULL);
+    } else {
+      bl_abort("unknown function");
+    }
+
     status = !(int)LLVMGenericValueToInt(result, 0);
 
-    snprintf(tmp, MAX_REPORT_LEN, "  %s::" BL_GREEN("%s"), src->unit->name,
-             bl_peek_decl_func(utest->func)->id.str);
+    snprintf(tmp, MAX_REPORT_LEN, "  %s::" BL_GREEN("%s "), src->unit->name,
+             bl_peek_decl_func(utest)->id.str);
 
     const int dcount = REPORT_COL_W - strlen(tmp) - 6 + 2 * strlen(BL_GREEN_BEGIN);
     for (int j = 0; j < dcount; ++j) {
       sprintf(tmp + strlen(tmp), ".");
     }
 
-    bl_msg_log("%s%s", tmp, status ? "[" BL_GREEN(" OK ") "]" : "[" BL_RED("FAIL") "]");
+    bl_msg_log("%s %s", tmp, status ? BL_GREEN("OK") : BL_RED("FAIL"));
   }
 
   return BL_NO_ERR;

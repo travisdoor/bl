@@ -131,7 +131,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   bl_visitor_walk_func(visitor, func);
   cnt->curr_func = NULL;
 
-  if (_func->modif & BL_MODIF_ENTRY || _func->used)
+  if (_func->modif & BL_MODIF_ENTRY || _func->modif & BL_MODIF_UTEST || _func->used)
     bo_list_push_back(cnt->assembly->func_queue, *func);
 
   /* create function unique name */

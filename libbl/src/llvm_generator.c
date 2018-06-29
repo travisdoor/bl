@@ -263,7 +263,6 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     bl_node_t *         callee       = bl_peek_expr_call(size_expr)->ref;
     LLVMGenericValueRef size_generic = run_fn(cnt, callee);
     size_t              size         = LLVMGenericValueToInt(size_generic, false);
-    bl_log("size %d", size);
     llvm_type                        = LLVMArrayType(llvm_type, size);
   }
 
@@ -1257,11 +1256,6 @@ generate(bl_visitor_t *visitor)
 
       LLVMValueRef llvm_func = gen_func(cnt, fn);
 
-      if (_fn->modif & BL_MODIF_ENTRY) {
-        cnt->assembly->llvm_main_func = llvm_func;
-        cnt->tmp_main                 = fn;
-      }
-
       bl_visitor_walk_func(visitor, &fn);
       reset_cscope();
       reset_gscope();
@@ -1280,6 +1274,15 @@ generate(bl_visitor_t *visitor)
 #undef PRINT_IR
 
       bo_htbl_insert(cnt->llvm_modules, (uint64_t)fn, cnt->llvm_mod);
+
+      if (_fn->modif & BL_MODIF_ENTRY) {
+        cnt->assembly->llvm_main_func = llvm_func;
+        cnt->tmp_main                 = fn;
+      }
+
+      if (_fn->modif & BL_MODIF_UTEST) {
+	bo_array_push_back(cnt->assembly->utest_methods, fn);
+      }
     } else {
       bo_list_push_back(queue, fn);
     }
@@ -1382,15 +1385,23 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.tmp_main);
   }
 
+  /* link all utests */
+  const size_t uc = bo_array_size(assembly->utest_methods);
+  bl_node_t *utest;
+  for (size_t i = 0; i < uc; ++i) {
+    utest = bo_array_at(assembly->utest_methods, i, bl_node_t *);
+    link_into_jit(&cnt, utest);
+  }
+
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
-  LLVMDisposeExecutionEngine(cnt.llvm_jit);
   bo_unref(cnt.gscope);
   bo_unref(cnt.cscope);
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.jit_linked);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
+  assembly->llvm_jit = cnt.llvm_jit;
 
   return BL_NO_ERR;
 }

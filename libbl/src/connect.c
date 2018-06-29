@@ -321,41 +321,6 @@ connect_type(context_t *cnt, bl_node_t *type)
                     "unknown type, struct or enum " BL_YELLOW("'%s'"), bl_ast_get_id(found)->str);
     }
   }
-
-  // TEST
-  bl_node_t **dim = bl_ast_get_type_dim(type);
-  if (*dim) {
-    if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
-      /* For array types (has dimesnsions) we need to generate implicit function running in
-       * compile time which will evaluate final array size needed by LLVM. This solution is kind
-       * of temporary and it can be eventually replaced when we will have const evaluator
-       * implemented, until then we leave evaluation on LLVM compile time module. Calling to
-       * evaluation function has no effect on runtime, in runtime module whole array size
-       * expression will be replaced by constant literal.*/
-
-      char tmp_name[BL_MAX_FUNC_NAME_LEN] = {0};
-      snprintf(tmp_name, BL_MAX_FUNC_NAME_LEN, "__arr_count_%d__", cnt->name_counter++);
-      BString *stmp = bl_tokens_create_cached_str(&cnt->unit->tokens);
-      bo_string_append(stmp, tmp_name);
-
-      bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
-      bl_node_t *func  = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
-                                             BL_MODIF_NONE, cnt->curr_mod, true);
-      bl_node_t *block = bl_ast_add_decl_block(cnt->ast, NULL, func);
-      bl_peek_decl_func(func)->block   = block;
-      bl_peek_decl_func(func)->used    = 1;
-      bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
-
-      func->next = bl_peek_decl_module(cnt->curr_mod)->nodes;
-      func->prev = NULL;
-
-      bl_peek_decl_module(cnt->curr_mod)->nodes = func;
-
-      bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
-
-      *dim = call;
-    }
-  }
 }
 
 void
@@ -764,6 +729,40 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
   }
 
   bl_visitor_walk_type(visitor, type);
+
+  bl_node_t **dim = bl_ast_get_type_dim(*type);
+  if (*dim) {
+    if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
+      /* For array types (has dimesnsions) we need to generate implicit function running in
+       * compile time which will evaluate final array size needed by LLVM. This solution is kind
+       * of temporary and it can be eventually replaced when we will have const evaluator
+       * implemented, until then we leave evaluation on LLVM compile time module. Calling to
+       * evaluation function has no effect on runtime, in runtime module whole array size
+       * expression will be replaced by constant literal.*/
+
+      char tmp_name[BL_MAX_FUNC_NAME_LEN] = {0};
+      snprintf(tmp_name, BL_MAX_FUNC_NAME_LEN, "__arr_count_%d__", cnt->name_counter++);
+      BString *stmp = bl_tokens_create_cached_str(&cnt->unit->tokens);
+      bo_string_append(stmp, tmp_name);
+
+      bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
+      bl_node_t *func  = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
+                                             BL_MODIF_NONE, cnt->curr_mod, true);
+      bl_node_t *block = bl_ast_add_decl_block(cnt->ast, NULL, func);
+      bl_peek_decl_func(func)->block   = block;
+      bl_peek_decl_func(func)->used    = 1;
+      bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
+
+      func->next = bl_peek_decl_module(cnt->curr_mod)->nodes;
+      func->prev = NULL;
+
+      bl_peek_decl_module(cnt->curr_mod)->nodes = func;
+
+      bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
+
+      *dim = call;
+    }
+  }
 }
 
 void
