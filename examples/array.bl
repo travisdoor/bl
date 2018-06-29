@@ -6,7 +6,7 @@ module c {
 
 fn main() {
   mut arr i32[256];
-  mut i i32 = 0;
+  mut i = 0;
 
   while i < 256 {
     arr[i] = i;

@@ -492,6 +492,7 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   context_t cnt = {
       .builder = builder, .assembly = assembly, .entry_fn = NULL, .prev_enum_variant = NULL};
 
+  void *a = &cnt;
   int error = 0;
   if ((error = setjmp(cnt.jmp_error))) {
     return (bl_error_e)error;

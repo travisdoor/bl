@@ -5,8 +5,9 @@ module c {
 }
 
 fn main() {
-  mut a i32 = 20;
-  mut b i32 = 10; 
+  mut a = 20;
+  mut b i32; 
+  b = 10;
 
   c::printf("a + b = %d\n", a + b);
 }

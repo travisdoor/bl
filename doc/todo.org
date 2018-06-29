@@ -133,10 +133,10 @@
   - [X] Finalize 
   - [X] Add assembly root module and link it to all unit global modules
 
-* BUGS [4/14]
+* BUGS [5/14]
 - [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
 - [X] Cannot evaluate array size inside structures. 
-- [ ] Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
+- [X] Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
 - [X] Invalid copying of: rect_src.w = e->rect.w;
 - [X] Wrong parsing of cast expressions cast(i32) foo->i;  
 - [X] Unable to return struct member copy from the function
@@ -148,6 +148,7 @@
       units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
 - [ ] Direct dereferencing before return cause llvm backend error
       return *get_elem_ptr(arr, i); 
+- [ ] Invalid type detection for structure from other files (tests/api/std/file.bl -> remove file_f from mut declaration)  
 - [ ] Casting from size_t to i32 generates llvm backend error
 
 * PIPELINE

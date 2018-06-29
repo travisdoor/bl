@@ -27,6 +27,12 @@
 //************************************************************************************************
 
 public module libc {
+  public enum seek_e i32 {
+    Set = 0,
+    Cur = 1,
+    End = 2
+  }
+  
   public extern fn abort();
   public extern fn exit(status i32); 
   public extern fn puts(str string) i32; 
@@ -42,4 +48,14 @@ public module libc {
 
   public extern fn strlen(str string) size_t;
   public extern fn strcpy(dest string, source string) string;
+  public extern fn strdup(s string) string;
+  public extern fn strcmp(str1 string, str2 string) i32;
+
+  public extern fn fopen(filename string, mode string) *void;
+  public extern fn fclose(stream *void);
+  public extern fn remove(filename string) i32;
+  public extern fn fseek(file *void, offset i32, origin i32) i32;
+  public extern fn ftell(file *void) i32;
+  public extern fn fwrite(ptr *void, size size_t, count size_t, stream *void) size_t;
+  public extern fn fread(ptr *void, size size_t, count size_t, stream *void) size_t;
 }

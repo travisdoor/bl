@@ -144,6 +144,9 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t **using);
 static void
 second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct);
 
+static void
+second_pass_func(bl_visitor_t *visitor, bl_node_t **func);
+
 /*************************************************************************************************
  * Third pass
  * - connect everything in function scopes
@@ -306,6 +309,8 @@ connect_type(context_t *cnt, bl_node_t *type)
 {
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
+    if (bl_peek_type_ref(type)->ref)
+      return;
     found                       = lookup(cnt, bl_peek_type_ref(type)->path, validate_type, NULL);
     bl_peek_type_ref(type)->ref = found;
 
@@ -434,6 +439,7 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
   }
 
   type = bl_peek_type_ref(type)->ref;
+  bl_assert(type, "invalid type ref");
 
   if (bl_node_is_not(type, BL_DECL_STRUCT)) {
     connect_error(cnt, BL_ERR_INVALID_TYPE, _member_ref->next, BL_BUILDER_CUR_WORD,
@@ -633,11 +639,10 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
     conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
-      connect_error(
-          cnt, BL_ERR_DUPLICATE_SYMBOL, member, BL_BUILDER_CUR_WORD,
-          "duplicate struct memeber " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-          bl_peek_decl_struct_member(member)->id.str, conflict->src->unit->filepath,
-          conflict->src->line, conflict->src->col);
+      connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, member, BL_BUILDER_CUR_WORD,
+                    "duplicate struct member " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                    bl_peek_decl_struct_member(member)->id.str, conflict->src->unit->filepath,
+                    conflict->src->line, conflict->src->col);
     }
 
     bl_scope_insert_node(scope, member);
@@ -692,6 +697,15 @@ second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
     connect_type(cnt, _member->type);
     member = member->next;
   }
+}
+
+void
+second_pass_func(bl_visitor_t *visitor, bl_node_t **func)
+{
+  context_t *cnt = peek_cnt(visitor);
+  bl_decl_func_t *_func = bl_peek_decl_func(*func);
+  connect_type(cnt, _func->ret_type);
+  /* terminal */
 }
 
 /*************************************************************************************************
@@ -1178,9 +1192,9 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_second, second_pass_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_second, second_pass_using, BL_VISIT_USING);
   bl_visitor_add(&visitor_second, second_pass_struct, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor_second, second_pass_func, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_ENUM);
-  bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_FUNC);
   // bl_visitor_add(&visitor_second, second_pass_mut, BL_VISIT_mut);
   // bl_visitor_add(&visitor_second, second_pass_expr, BL_VISIT_EXPR);
 

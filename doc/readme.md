@@ -183,7 +183,7 @@ Only public symbols are exposed via using directive.
 	}
 	
 ## Variables
-Variable (mutable) can be declared with 'mut' key-word. They are alocated only with no default value set.
+Variable (mutable) can be declared with 'mut' key-word. They are alocated only with no default value set. Mutables can be initialized with some value.
     
     /* EXAMPLE: Mut */
 
@@ -192,8 +192,10 @@ Variable (mutable) can be declared with 'mut' key-word. They are alocated only w
     }
 
     fn main() {
-      mut a i32 = 20;
-      mut b i32 = 10; 
+      mut a i32;
+      a = 10;
+      
+      mut b = 10; // mutable type is i32 (based on init-expr type) 
 
       c::printf("a + b = %d\n", a + b);
     }
@@ -238,12 +240,12 @@ String and char typed enumerators must have explicit const-expr value set for ev
 
     // by default i32
 	enum foo {
-	  A = 0,               // 0
-	  B,                   // 1
-	  C,                   // 2
-	  D = 10,              // 10
-	  E = cast(i32) D + 1, // 11
-	  F                    // 12
+	  A = 0,              
+	  B,                  
+	  C,         
+	  D = 10,
+	  E = D + 1,
+	  F                  
 	}
 
     // string enum (all variants must be explicitly set)
@@ -254,7 +256,7 @@ String and char typed enumerators must have explicit const-expr value set for ev
 	}
 
 ## Array
-
+Only one dimensional arrays are supported for now.
 
     /* EXAMPLE: Array */
 
@@ -264,7 +266,7 @@ String and char typed enumerators must have explicit const-expr value set for ev
 
     fn main() {
       mut arr i32[256];
-      mut i i32 = 0;
+      mut i = 0;
 
       while i < 256 {
         arr[i] = i;
@@ -289,6 +291,19 @@ You can use relative path to files in current folder or in PATH environment vari
 	
 	fn main() i32 {
 	  return 0;
+	}
+	
+### Run
+Run directive can be used for execution of any function in compile-time. Result of function call will be baked into runtime code as constant literal.
+
+	/* this function is used only in compile-time 
+	   (will not exist in final executable */
+	fn get_count() i32 {
+	  return 256;
+	}
+	
+	fn main() {
+	  mut arr i32 [#run get_count()]; // #run will be replaced with 256 literal
 	}
 	
 ### Link

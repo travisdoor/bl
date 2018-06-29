@@ -1,0 +1,20 @@
+#load "std/file.bl"
+#load "std/memory.bl"
+
+fn main () {
+  using std;
+
+  mut f = file::open("test.txt", "r");
+  if f.is_open {
+    mut content = cast(string) memory::malloc(sizeof(char) * f.size);
+
+    file::sread(&f, content, f.size);
+
+    libc::puts("file content: ");
+    libc::puts(content);
+    file::close(&f);
+    memory::free(cast(*void) content);
+  } else {
+    libc::puts("unable to open file test.txt");
+  }
+}

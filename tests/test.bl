@@ -4,11 +4,17 @@ extern fn puts(s string) i32;
 extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
-  mut arr i32 [10];
-
-  for i in 0 .. arr.count {
-     
-  }
+  mut foo = get();
+  foo.i = 0;
 
   return 0;
+}
+
+fn get() foo_t {
+  mut f foo_t;
+  return f;
+}
+
+struct foo_t {
+  i i32
 }
