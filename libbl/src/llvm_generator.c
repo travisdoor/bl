@@ -1383,6 +1383,8 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   if (cnt.tmp_main) {
     assembly->llvm_module = link(&cnt, cnt.tmp_main);
     bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.tmp_main);
+  } else {
+    assembly->llvm_module = cnt.llvm_mod;
   }
 
   /* link all utests */

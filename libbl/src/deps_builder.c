@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "visitor_impl.h"
 
-#define PRINT_DEPS
+//#define PRINT_DEPS
 
 #define EXPECTED_DEPS_COUNT 512
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
