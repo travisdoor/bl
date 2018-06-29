@@ -67,6 +67,8 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_FUNC:
     bl_scopes_terminate(&bl_peek_decl_func(node)->scopes);
+    bo_unref(bl_peek_decl_func(node)->deps);
+    free(bl_peek_decl_func(node)->uname);
     break;
   case BL_DECL_BLOCK:
     bl_scopes_terminate(&bl_peek_decl_block(node)->scopes);
@@ -76,6 +78,7 @@ node_terminate(bl_node_t *node)
     break;
   case BL_DECL_STRUCT:
     bl_scopes_terminate(&bl_peek_decl_struct(node)->scopes);
+    bo_unref(bl_peek_decl_struct(node)->deps);
     break;
   default:
     break;
@@ -975,7 +978,7 @@ bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src)
     return;
 
   bl_node_t *tmp = *dest;
-  *dest = bl_ast_dup_node(ast, src);
+  *dest          = bl_ast_dup_node(ast, src);
 
   (*dest)->next = tmp->next;
   (*dest)->prev = tmp->prev;
@@ -1174,6 +1177,45 @@ bool
 bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t)
 {
   return id->hash == bl_ast_buildin_hash(t);
+}
+
+static BList **
+get_deps(bl_node_t *node)
+{
+  switch (bl_node_code(node)) {
+  case BL_DECL_FUNC:
+    return &bl_peek_decl_func(node)->deps;
+    break;
+  case BL_DECL_STRUCT:
+    return &bl_peek_decl_struct(node)->deps;
+    break;
+  default:
+    bl_abort("AST node type %s cannot have dependencies", bl_node_name(node));
+  }
+
+  return NULL;
+}
+
+BList *
+bl_ast_get_deps(bl_node_t *node)
+{
+  return *get_deps(node);
+}
+
+bl_dependency_t *
+bl_ast_add_dep(bl_node_t *node, bl_node_t *dep, int type)
+{
+  bl_assert(dep, "invalid dependency");
+  BList **deps = get_deps(node);
+
+  if (!*deps) {
+    *deps = bo_list_new(sizeof(bl_dependency_t));
+  }
+
+  bl_dependency_t tmp = {.node = dep, .type = type};
+
+  bo_list_push_back(*deps, tmp);
+  return &bo_list_back(*deps, bl_dependency_t);
 }
 
 /**************************************************************************************************/

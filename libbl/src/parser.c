@@ -78,6 +78,12 @@ static bl_node_t *
 parse_pre_link_maybe(context_t *cnt);
 
 static bl_node_t *
+parse_pre_line_maybe(context_t *cnt);
+
+static bl_node_t *
+parse_pre_file_maybe(context_t *cnt);
+
+static bl_node_t *
 parse_pre_test_maybe(context_t *cnt, int modif, bl_node_t *parent);
 
 static bl_node_t *
@@ -381,6 +387,29 @@ parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
+parse_pre_line_maybe(context_t *cnt)
+{
+  bl_token_t *tok_line = bl_tokens_consume_if(cnt->tokens, BL_SYM_LINE);
+  if (!tok_line)
+    return NULL;
+
+  bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok_line, BL_FTYPE_I32, 0);
+  return bl_ast_add_expr_literal_signed(cnt->ast, tok_line, type, tok_line->src.line);
+}
+
+bl_node_t *
+parse_pre_file_maybe(context_t *cnt)
+{
+  bl_token_t *tok_file = bl_tokens_consume_if(cnt->tokens, BL_SYM_FILE);
+  if (!tok_file)
+    return NULL;
+
+  bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok_file, BL_FTYPE_STRING, 0);
+  return bl_ast_add_expr_literal_str(cnt->ast, tok_file, type, tok_file->src.unit->filepath);
+}
+
+
+bl_node_t *
 parse_pre_run_maybe(context_t *cnt)
 {
   bl_token_t *tok_run = bl_tokens_consume_if(cnt->tokens, BL_SYM_RUN);
@@ -666,6 +695,12 @@ parse_atom_expr(context_t *cnt, bl_token_t *op, bool ignore_init_list)
     return expr;
 
   if ((expr = parse_literal_maybe(cnt)))
+    return expr;
+
+  if ((expr = parse_pre_line_maybe(cnt)))
+    return expr;
+
+  if ((expr = parse_pre_file_maybe(cnt)))
     return expr;
 
   path = parse_path_maybe(cnt);

@@ -46,7 +46,8 @@ bl_assembly_new(const char *name)
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache    = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->scope_cache   = bl_scope_cache_new();
-  assembly->utest_methods = bo_array_new(sizeof(bl_utest_t));
+  assembly->utest_methods = bo_array_new(sizeof(bl_node_t *));
+  assembly->func_queue    = bo_list_new(sizeof(bl_node_t *));
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
@@ -59,7 +60,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
   free(assembly->name);
   bl_scope_cache_delete(assembly->scope_cache);
 
-  LLVMDisposeExecutionEngine(assembly->llvm_compiletime_engine);
+  LLVMDisposeExecutionEngine(assembly->llvm_jit);
   if (assembly->llvm_runtime_engine)
     LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
   else
@@ -76,6 +77,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
   bo_unref(assembly->unique_cache);
   bo_unref(assembly->link_cache);
   bo_unref(assembly->utest_methods);
+  bo_unref(assembly->func_queue);
 
   bl_free(assembly);
 }

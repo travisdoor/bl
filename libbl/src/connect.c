@@ -70,6 +70,8 @@ typedef struct
 
   /* Last visited function. */
   bl_node_t *curr_func;
+  bl_node_t *curr_mod;
+  int        name_counter;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -348,9 +350,13 @@ void
 connect_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
-  bl_node_t *     found = lookup(cnt, _call->path, validate_call, NULL);
-  _call->ref            = found;
-  _call->type           = bl_ast_get_type(found);
+
+  if (_call->ref)
+    return;
+
+  bl_node_t *found = lookup(cnt, _call->path, validate_call, NULL);
+  _call->ref       = found;
+  _call->type      = bl_ast_get_type(found);
 
   bl_decl_func_t *_callee = bl_peek_decl_func(found);
   _callee->used++;
@@ -417,7 +423,8 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
 
   /* solve array buildins */
   if (bl_ast_get_type_dim(type) && bl_ast_is_buildin(&_member_ref->id, BL_BUILDIN_ARR_COUNT)) {
-    bl_ast_dup_and_insert(cnt->ast, member_ref, *bl_ast_get_type_dim(type));
+    // bl_ast_dup_and_insert(cnt->ast, member_ref, *bl_ast_get_type_dim(type));
+    *member_ref = *bl_ast_get_type_dim(type);
     return;
   }
 
@@ -500,9 +507,11 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t **module)
   bl_decl_module_t *_module  = bl_peek_decl_module(*module);
   context_t *       cnt      = peek_cnt(visitor);
   bl_node_t *       prev_cmp = cnt->curr_compound;
+  bl_node_t *       prev_mod = cnt->curr_mod;
   bl_node_t *       conflict = lookup_in_scope(cnt, *module, prev_cmp, NULL);
 
   cnt->curr_compound = *module;
+  cnt->curr_mod      = *module;
 
   if (conflict) {
     if (bl_ast_get_modif(*module) != bl_ast_get_modif(conflict)) {
@@ -526,6 +535,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t **module)
   /* non-terminal */
   bl_visitor_walk_module(visitor, module);
   cnt->curr_compound = prev_cmp;
+  cnt->curr_mod      = prev_mod;
 }
 
 void
@@ -648,11 +658,14 @@ second_pass_module(bl_visitor_t *visitor, bl_node_t **module)
 {
   context_t *cnt      = peek_cnt(visitor);
   bl_node_t *prev_cmp = cnt->curr_compound;
+  bl_node_t *prev_mod = cnt->curr_mod;
   cnt->curr_compound  = *module;
+  cnt->curr_mod       = *module;
 
   bl_visitor_walk_module(visitor, module);
 
   cnt->curr_compound = prev_cmp;
+  cnt->curr_mod      = prev_mod;
 }
 
 void
@@ -716,6 +729,40 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
   }
 
   bl_visitor_walk_type(visitor, type);
+
+  bl_node_t **dim = bl_ast_get_type_dim(*type);
+  if (*dim) {
+    if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
+      /* For array types (has dimesnsions) we need to generate implicit function running in
+       * compile time which will evaluate final array size needed by LLVM. This solution is kind
+       * of temporary and it can be eventually replaced when we will have const evaluator
+       * implemented, until then we leave evaluation on LLVM compile time module. Calling to
+       * evaluation function has no effect on runtime, in runtime module whole array size
+       * expression will be replaced by constant literal.*/
+
+      char tmp_name[BL_MAX_FUNC_NAME_LEN] = {0};
+      snprintf(tmp_name, BL_MAX_FUNC_NAME_LEN, "__arr_count_%d__", cnt->name_counter++);
+      BString *stmp = bl_tokens_create_cached_str(&cnt->unit->tokens);
+      bo_string_append(stmp, tmp_name);
+
+      bl_node_t *size_type = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, false);
+      bl_node_t *func  = bl_ast_add_decl_func(cnt->ast, NULL, bo_string_get(stmp), NULL, size_type,
+                                             BL_MODIF_NONE, cnt->curr_mod, true);
+      bl_node_t *block = bl_ast_add_decl_block(cnt->ast, NULL, func);
+      bl_peek_decl_func(func)->block   = block;
+      bl_peek_decl_func(func)->used    = 1;
+      bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
+
+      func->next = bl_peek_decl_module(cnt->curr_mod)->nodes;
+      func->prev = NULL;
+
+      bl_peek_decl_module(cnt->curr_mod)->nodes = func;
+
+      bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
+
+      *dim = call;
+    }
+  }
 }
 
 void
@@ -739,11 +786,14 @@ third_pass_module(bl_visitor_t *visitor, bl_node_t **module)
 {
   context_t *cnt      = peek_cnt(visitor);
   bl_node_t *prev_cmp = cnt->curr_compound;
+  bl_node_t *prev_mod = cnt->curr_mod;
   cnt->curr_compound  = *module;
+  cnt->curr_mod       = *module;
 
   bl_visitor_walk_module(visitor, module);
 
   cnt->curr_compound = prev_cmp;
+  cnt->curr_mod      = prev_mod;
 }
 
 void
@@ -1088,6 +1138,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {.builder       = builder,
                    .assembly      = assembly,
+                   .name_counter  = 0,
                    .curr_compound = NULL,
                    .curr_lvalue   = NULL,
                    .curr_func     = NULL};
@@ -1117,6 +1168,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.curr_lvalue   = NULL;
     cnt.curr_func     = NULL;
     cnt.curr_decl     = NULL;
+    cnt.curr_mod      = NULL;
+    cnt.ast           = &cnt.unit->ast;
     bl_visitor_walk_module(&visitor_first, &cnt.unit->ast.root);
   }
 
@@ -1136,6 +1189,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.curr_lvalue = NULL;
     cnt.curr_func   = NULL;
     cnt.curr_decl   = NULL;
+    cnt.curr_mod    = NULL;
+    cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_second, &cnt.unit->ast.root);
   }
 
@@ -1158,6 +1213,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.curr_lvalue = NULL;
     cnt.curr_func   = NULL;
     cnt.curr_decl   = NULL;
+    cnt.curr_mod    = NULL;
     cnt.ast         = &cnt.unit->ast;
     bl_visitor_walk_gscope(&visitor_third, &cnt.unit->ast.root);
   }

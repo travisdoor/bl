@@ -64,6 +64,7 @@ typedef struct
   jmp_buf    jmp_error;
   bl_node_t *entry_fn;
   bl_node_t *prev_enum_variant;
+  bl_node_t *curr_module;
 } context_t;
 
 static void
@@ -295,6 +296,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
   }
 
   check_expr(cnt, &bl_peek_decl_mut(*mut)->init_expr, bl_peek_decl_mut(*mut)->type, false);
+  bl_visitor_walk_mut(visitor, mut);
 }
 
 static void
@@ -302,6 +304,7 @@ visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *cnt = peek_cnt(visitor);
   check_expr(cnt, &bl_peek_decl_const(*cnst)->init_expr, bl_peek_decl_const(*cnst)->type, true);
+  bl_visitor_walk_const(visitor, cnst);
 }
 
 static void
@@ -362,11 +365,11 @@ visit_struct(bl_visitor_t *visitor, bl_node_t **strct)
   }
 
   /* check all memebrs of structure */
-  bl_node_t *              member  = _strct->members;
+  bl_node_t **             member  = &_strct->members;
   bl_decl_struct_member_t *_member = NULL;
 
-  while (member) {
-    _member = bl_peek_decl_struct_member(member);
+  while (*member) {
+    _member = bl_peek_decl_struct_member(*member);
 
     if (bl_node_is(_member->type, BL_TYPE_REF) && bl_peek_type_ref(_member->type)->ref == *strct) {
       check_error(cnt, BL_ERR_INVALID_TYPE, _member->type, BL_BUILDER_CUR_WORD,
@@ -374,7 +377,8 @@ visit_struct(bl_visitor_t *visitor, bl_node_t **strct)
                   _member->id.str);
     }
 
-    member = member->next;
+    bl_visitor_walk_struct_member(visitor, member);
+    member = &(*member)->next;
   }
 }
 
@@ -453,6 +457,31 @@ visit_return(bl_visitor_t *visitor, bl_node_t **ret)
   check_expr(cnt, &_ret->expr, bl_ast_get_type(_ret->func), false);
 }
 
+static void
+visit_module(bl_visitor_t *visitor, bl_node_t **module)
+{
+  context_t *cnt         = peek_cnt(visitor);
+  bl_node_t *prev_module = cnt->curr_module;
+  cnt->curr_module       = *module;
+  bl_visitor_walk_module(visitor, module);
+  cnt->curr_module = prev_module;
+}
+
+static void
+visit_type(bl_visitor_t *visitor, bl_node_t **type)
+{
+  context_t * cnt = peek_cnt(visitor);
+  bl_node_t **dim = bl_ast_get_type_dim(*type);
+  if (*dim) {
+    static bl_node_t static_ftype_size_t = {.code               = BL_TYPE_FUND,
+                                            .n.type_fund.type   = BL_FTYPE_SIZE,
+                                            .n.type_fund.dim    = NULL,
+                                            .n.type_fund.is_ptr = false};
+
+    check_expr(cnt, dim, &static_ftype_size_t, true);
+  }
+}
+
 /*************************************************************************************************
  * main entry function
  *************************************************************************************************/
@@ -477,6 +506,8 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor, visit_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor, visit_enum, BL_VISIT_ENUM);
   bl_visitor_add(&visitor, visit_return, BL_VISIT_RETURN);
+  bl_visitor_add(&visitor, visit_type, BL_VISIT_TYPE);
+  bl_visitor_add(&visitor, visit_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor, visit_enum_variant, BL_VISIT_ENUM_VARIANT);
   bl_visitor_add(&visitor, BL_SKIP_VISIT, BL_VISIT_ARG);
 
@@ -484,9 +515,10 @@ bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_unit_t *unit = NULL;
 
   for (int i = 0; i < c; ++i) {
-    unit     = bl_assembly_get_unit(assembly, i);
-    cnt.unit = unit;
-    cnt.ast  = &unit->ast;
+    unit            = bl_assembly_get_unit(assembly, i);
+    cnt.unit        = unit;
+    cnt.ast         = &unit->ast;
+    cnt.curr_module = unit->ast.root;
     bl_visitor_walk_module(&visitor, &unit->ast.root);
   }
 

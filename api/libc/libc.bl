@@ -35,6 +35,7 @@ public module libc {
   public extern fn malloc(count size_t) *void;
   public extern fn realloc(p *void, new_size size_t) *void;
   public extern fn free(p *void);
+  public extern fn memcpy(dest *void, src *void, n size_t) *void;
 
   public extern fn rand() i32;
   public extern fn time(timer *void) *void;

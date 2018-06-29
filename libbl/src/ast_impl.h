@@ -31,6 +31,7 @@
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <bobject/containers/list.h>
 #include "id_impl.h"
 #include "token_impl.h"
 #include "scope_impl.h"
@@ -156,6 +157,18 @@ enum bl_node_code
 #define bl_node_is_not(n, c) ((n)->code != (c))
 #define bl_node_code(n) (n)->code
 #define bl_node_name(n) bl_node_type_strings[(n)->code]
+
+typedef enum
+{
+  BL_DEP_LAX    = 0b01,
+  BL_DEP_STRICT = 0b10,
+} bl_dep_e;
+
+typedef struct
+{
+  bl_node_t *node; /* dependency node */
+  bl_dep_e   type; /* is dependency strict (ex.: caused by #run directive) */
+} bl_dependency_t;
 
 struct chunk;
 
@@ -294,7 +307,9 @@ struct bl_decl_func
   bl_node_t * block;              /* function block (for extern function is NULL) */
   bl_node_t * ret_type;           /* return type */
   bl_scopes_t scopes;             /* scope cache */
-  bool        gen_in_compiletime; /* true when function is called via #run directive */
+  bool        gen_in_compiletime; /* TODO: remove */
+  BList *     deps;  /* linked-list of dependencies (function called from this function) */
+  char *      uname; /* function unique name */
 };
 
 struct bl_decl_struct
@@ -305,6 +320,7 @@ struct bl_decl_struct
   bl_node_t * members;  /* pointer to list of members */
   int         membersc; /* member count */
   bl_scopes_t scopes;   /* scope cache */
+  BList *     deps; /* linked-list of dependencies (function called from during initialization) */
 };
 
 struct bl_decl_struct_member
@@ -675,6 +691,13 @@ bl_ast_buildin_hash(bl_buildin_e t);
 
 bool
 bl_ast_is_buildin(bl_id_t *id, bl_buildin_e t);
+
+BList *
+bl_ast_get_deps(bl_node_t *node);
+
+bl_dependency_t *
+bl_ast_add_dep(bl_node_t *node, bl_node_t *dep, int type);
+
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

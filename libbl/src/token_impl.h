@@ -59,6 +59,8 @@
   sm(TEST,        "#test") \
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
+  sm(LINE,        "#line") \
+  sm(FILE,        "#file") \
   sm(PUBLIC,      "public")\
   sm(EXTERN,      "extern") \
   sm(MODULE,      "module") \

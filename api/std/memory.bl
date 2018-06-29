@@ -51,5 +51,9 @@ public module std {
     public fn realloc(p *void, new_size size_t) *void {
       return libc::realloc(p, new_size);
     }
+
+    public fn memcpy(dest *void, src *void, n size_t) *void {
+      return libc::memcpy(dest, src, n);
+    }
   } 
 }
