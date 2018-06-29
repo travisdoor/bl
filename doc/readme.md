@@ -91,8 +91,8 @@ Pointer to storage of any type can be defined with asterix prefix before type de
 	  i i32
 	}
 	
-	mut a A;
-	mut b B = cast(A) a;
+	mut a *A;
+	mut b *B = cast(*B) a; // explicit cast A to B
 
 	
 ## Functions
