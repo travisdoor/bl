@@ -81,7 +81,18 @@ Pointer to storage of any type can be defined with asterix prefix before type de
 ### Type casting
 
 	mut a i32;
-	mut b i64 = cast(i63) a; 
+	mut b i64 = a; // implicit cast to i64
+	
+	struct A {
+	  i i32
+	}
+	
+	struct B {
+	  i i32
+	}
+	
+	mut a A;
+	mut b B = cast(A) a;
 
 	
 ## Functions
