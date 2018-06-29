@@ -4,6 +4,7 @@ extern fn puts(s string) i32;
 extern fn printf(s string, i i32) i32;
 
 fn main() i32 {
+  printf("hello = %d\n", #run hello());
   return 0;
 }
 
@@ -16,7 +17,12 @@ fn test() i32 {
 
   printf("arr.count = %d\n", arr.count);
   printf("foo.arr.count = %d\n", foo.arr.count);
+  printf("hello = %d\n", #run hello());
   return 0;
+}
+
+fn hello() i32 {
+  return 666;
 }
 
 struct foo_t {

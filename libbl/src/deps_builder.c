@@ -31,7 +31,7 @@
 #include "stages_impl.h"
 #include "visitor_impl.h"
 
-//#define PRINT_DEPS
+#define PRINT_DEPS
 
 #define EXPECTED_DEPS_COUNT 512
 #define peek_cnt(visitor) ((context_t *)(visitor)->context)
@@ -166,10 +166,11 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
   if (bl_node_is(*expr, BL_EXPR_CALL)) {
     bl_expr_call_t *_call = bl_peek_expr_call(*expr);
     bl_assert(_call->ref, "invalid callee");
+    bl_decl_func_t *_callee = bl_peek_decl_func(_call->ref);
 
     /* Store dependency of current processed function on another callee. Later during generation we
      * need to know which function should go first. */
-    if (_call->ref != cnt->curr_func)
+    if (_call->ref != cnt->curr_func && !(_callee->modif & BL_MODIF_EXTERN))
       add_dependency(cnt, _call->ref, _call->run_in_compile_time ? BL_DEP_STRICT : BL_DEP_LAX);
   }
 
