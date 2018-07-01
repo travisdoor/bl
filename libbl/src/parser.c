@@ -1612,87 +1612,79 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
 void
 parse_module_body(context_t *cnt, bl_node_t *module)
 {
-#define iterate                                                                                    \
-  {                                                                                                \
-    (*node)->prev = prev;                                                                          \
-    prev          = *node;                                                                         \
-    node          = &(*node)->next;                                                                \
-  }
-
   cnt->curr_module          = module;
   int               modif   = BL_MODIF_NONE;
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
-  bl_node_t * prev = NULL;
-  bl_node_t **node = &_module->nodes;
+  bl_node_t *node;
 decl:
   modif = parse_modifs_maybe(cnt);
 
-  *node = parse_module_maybe(cnt, module, false, modif);
-  if (*node) {
-    iterate;
+  node = parse_module_maybe(cnt, module, false, modif);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "module can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
     goto decl;
   }
 
-  *node = parse_fn_maybe(cnt, modif, module);
-  if (*node) {
-    iterate;
+  node = parse_fn_maybe(cnt, modif, module);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     goto decl;
   }
 
-  *node = parse_pre_test_maybe(cnt, modif, module);
-  if (*node) {
-    iterate;
+  node = parse_pre_test_maybe(cnt, modif, module);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     goto decl;
   }
 
-  *node = parse_pre_load_maybe(cnt);
-  if (*node) {
-    iterate;
+  node = parse_pre_load_maybe(cnt);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     goto decl;
   }
 
-  *node = parse_pre_link_maybe(cnt);
-  if (*node) {
-    iterate;
+  node = parse_pre_link_maybe(cnt);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     goto decl;
   }
 
-  *node = parse_const_maybe(cnt, modif);
-  if (*node) {
-    iterate;
+  node = parse_const_maybe(cnt, modif);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     parse_semicolon_rq(cnt);
     goto decl;
   }
 
-  *node = parse_using_maybe(cnt);
-  if (*node) {
-    iterate;
+  node = parse_using_maybe(cnt);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     parse_semicolon_rq(cnt);
     goto decl;
   }
 
-  *node = parse_struct_maybe(cnt, modif);
-  if (*node) {
-    iterate;
+  node = parse_struct_maybe(cnt, modif);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "struct can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
     goto decl;
   }
 
-  *node = parse_enum_maybe(cnt, modif, module);
-  if (*node) {
-    iterate;
+  node = parse_enum_maybe(cnt, modif, module);
+  if (node) {
+    bl_ast_insert(&_module->nodes, node);
     if (modif & BL_MODIF_EXTERN) {
-      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, *node, BL_BUILDER_CUR_WORD,
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, node, BL_BUILDER_CUR_WORD,
                        "enum can't be declared as " BL_YELLOW("'%s'"),
                        bl_sym_strings[BL_SYM_EXTERN]);
     }
