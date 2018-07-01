@@ -3,7 +3,7 @@ AccessModifierOffset: -2
 IndentWidth: 2
 UseTab: Never
 BreakBeforeBraces: Mozilla 
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
 IndentCaseLabels: false
 SortIncludes: false
 AlwaysBreakTemplateDeclarations: true

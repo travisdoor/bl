@@ -69,7 +69,6 @@ typedef struct
   bl_node_t *curr_decl;
 
   /* Last visited function. */
-  bl_node_t *curr_func;
   bl_node_t *curr_mod;
   int        name_counter;
 } context_t;
@@ -204,8 +203,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
   bool       in_curr_branch = false;
   bl_node_t *found = lookup_in_tree(cnt, path, cnt->curr_compound, &linked_by, &in_curr_branch);
 
-  if (validator)
-    validator(cnt, path, found, !path->next);
+  if (validator) validator(cnt, path, found, !path->next);
   bl_assert(found, "null found symbol unhandled by validator");
 
   if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
@@ -218,8 +216,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
   while (path) {
     found = lookup_in_scope(cnt, path, found, &linked_by);
 
-    if (validator)
-      validator(cnt, path, found, !path->next);
+    if (validator) validator(cnt, path, found, !path->next);
     bl_assert(found, "null found symbol unhandled by validator");
 
     if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
@@ -231,8 +228,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
     path = path->next;
   }
 
-  if (found_in_curr_branch)
-    (*found_in_curr_branch) = in_curr_branch;
+  if (found_in_curr_branch) (*found_in_curr_branch) = in_curr_branch;
 
   return found;
 }
@@ -245,8 +241,7 @@ lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node
   bl_node_t *tmp_curr_compound = curr_compound;
   bl_node_t *prev_compound     = NULL;
 
-  if (found_in_curr_branch)
-    (*found_in_curr_branch) = false;
+  if (found_in_curr_branch) (*found_in_curr_branch) = false;
 
   while (found == NULL && tmp_curr_compound != NULL) {
     if (bl_node_is(tmp_curr_compound, BL_STMT_IF) || bl_node_is(tmp_curr_compound, BL_STMT_LOOP))
@@ -254,15 +249,13 @@ lookup_in_tree(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node
 
     found = lookup_in_scope(cnt, ref, tmp_curr_compound, linked_by);
 
-    if (found == NULL)
-      prev_compound = tmp_curr_compound;
+    if (found == NULL) prev_compound = tmp_curr_compound;
 
   skip:
     tmp_curr_compound = bl_ast_get_parent(tmp_curr_compound);
   }
 
-  if (found_in_curr_branch)
-    (*found_in_curr_branch) = prev_compound == found;
+  if (found_in_curr_branch) (*found_in_curr_branch) = prev_compound == found;
 
   return found;
 }
@@ -293,14 +286,12 @@ lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_nod
   }
 
   if (c) {
-    if (linked_by)
-      (*linked_by) = found[0].linked_by;
+    if (linked_by) (*linked_by) = found[0].linked_by;
 
     return found[0].node;
   }
 
-  if (linked_by)
-    (*linked_by) = NULL;
+  if (linked_by) (*linked_by) = NULL;
   return NULL;
 }
 
@@ -309,8 +300,7 @@ connect_type(context_t *cnt, bl_node_t *type)
 {
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
-    if (bl_peek_type_ref(type)->ref)
-      return;
+    if (bl_peek_type_ref(type)->ref) return;
     found                       = lookup(cnt, bl_peek_type_ref(type)->path, validate_type, NULL);
     bl_peek_type_ref(type)->ref = found;
 
@@ -356,8 +346,7 @@ connect_call(context_t *cnt, bl_node_t *call)
 {
   bl_expr_call_t *_call = bl_peek_expr_call(call);
 
-  if (_call->ref)
-    return;
+  if (_call->ref) return;
 
   bl_node_t *found = lookup(cnt, _call->path, validate_call, NULL);
   _call->ref       = found;
@@ -420,8 +409,7 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
   bl_expr_member_ref_t *_member_ref = bl_peek_expr_member_ref(*member_ref);
 
   /* anonymous members can be already linked */
-  if (_member_ref->ref)
-    return;
+  if (_member_ref->ref) return;
 
   bl_node_t *type = bl_ast_get_type(_member_ref->next);
   bl_assert(type, "invalid member ref type");
@@ -548,8 +536,7 @@ void
 first_pass_const(bl_visitor_t *visitor, bl_node_t **cnst)
 {
   context_t *cnt = peek_cnt(visitor);
-  if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE))
-    return;
+  if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE)) return;
 
   connect_const(cnt, *cnst);
   /* terminal */
@@ -678,8 +665,7 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t **using)
 {
   /* solve only usings inside global scope */
   context_t *cnt = peek_cnt(visitor);
-  if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE))
-    return;
+  if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE)) return;
 
   include_using(cnt, *using);
 }
@@ -702,7 +688,7 @@ second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
 void
 second_pass_func(bl_visitor_t *visitor, bl_node_t **func)
 {
-  context_t *cnt = peek_cnt(visitor);
+  context_t *     cnt   = peek_cnt(visitor);
   bl_decl_func_t *_func = bl_peek_decl_func(*func);
   connect_type(cnt, _func->ret_type);
   /* terminal */
@@ -716,8 +702,7 @@ third_pass_using(bl_visitor_t *visitor, bl_node_t **using)
 {
   /* solve only usings in other scopes than modules */
   context_t *cnt = peek_cnt(visitor);
-  if (bl_node_is(cnt->curr_compound, BL_DECL_MODULE))
-    return;
+  if (bl_node_is(cnt->curr_compound, BL_DECL_MODULE)) return;
 
   include_using(cnt, *using);
 }
@@ -744,6 +729,7 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
 
   bl_visitor_walk_type(visitor, type);
 
+#if 0
   bl_node_t **dim = bl_ast_get_type_dim(*type);
   if (*dim) {
     if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
@@ -777,6 +763,7 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
       *dim = call;
     }
   }
+#endif
 }
 
 void
@@ -1004,10 +991,10 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t **func)
   bl_decl_func_t *_func    = bl_peek_decl_func(*func);
   context_t *     cnt      = peek_cnt(visitor);
   bl_node_t *     prev_cmp = cnt->curr_compound;
-  bl_node_t *     prev_fn  = cnt->curr_func;
 
   cnt->curr_compound = *func;
-  cnt->curr_func     = *func;
+
+  bl_log("visiting function %s", _func->id.str);
 
   // TODO can be solved via visitor because we use walk later
   bl_node_t *arg = _func->args;
@@ -1026,7 +1013,6 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t **func)
 
   bl_visitor_walk_func(visitor, func);
   cnt->curr_compound = prev_cmp;
-  cnt->curr_func     = prev_fn;
 }
 
 void
@@ -1154,8 +1140,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .assembly      = assembly,
                    .name_counter  = 0,
                    .curr_compound = NULL,
-                   .curr_lvalue   = NULL,
-                   .curr_func     = NULL};
+                   .curr_lvalue   = NULL};
   const int c   = bl_assembly_get_unit_count(assembly);
   /* all anonymous global modules needs shared cache */
   bl_scope_t *gscope = bl_scope_new(assembly->scope_cache);
@@ -1180,7 +1165,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
                            cnt.unit->ast.root);
     cnt.curr_compound = cnt.unit->ast.root;
     cnt.curr_lvalue   = NULL;
-    cnt.curr_func     = NULL;
     cnt.curr_decl     = NULL;
     cnt.curr_mod      = NULL;
     cnt.ast           = &cnt.unit->ast;
@@ -1201,7 +1185,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   for (int i = 0; i < c; ++i) {
     cnt.unit        = bl_assembly_get_unit(assembly, i);
     cnt.curr_lvalue = NULL;
-    cnt.curr_func   = NULL;
     cnt.curr_decl   = NULL;
     cnt.curr_mod    = NULL;
     cnt.ast         = &cnt.unit->ast;
@@ -1225,7 +1208,6 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   for (int i = 0; i < c; ++i) {
     cnt.unit        = bl_assembly_get_unit(assembly, i);
     cnt.curr_lvalue = NULL;
-    cnt.curr_func   = NULL;
     cnt.curr_decl   = NULL;
     cnt.curr_mod    = NULL;
     cnt.ast         = &cnt.unit->ast;

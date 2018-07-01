@@ -69,6 +69,7 @@ typedef struct
 
   bl_node_t *curr_init_list;
   bl_node_t *curr_func;
+  bl_node_t *curr_module;
 } context_t;
 
 static bl_node_t *
@@ -99,7 +100,7 @@ static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
-parse_struct_member_maybe(context_t *cnt);
+parse_struct_member_maybe(context_t *cnt, int order);
 
 static bl_node_t *
 parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent);
@@ -326,8 +327,7 @@ parse_continue_maybe(context_t *cnt)
 bl_node_t *
 parse_decl_ref_maybe(context_t *cnt, bl_node_t *path)
 {
-  if (!path)
-    return NULL;
+  if (!path) return NULL;
 
   bl_node_t * decl_ref = NULL;
   bl_token_t *tok_id   = bl_tokens_peek_prev(cnt->tokens);
@@ -340,8 +340,7 @@ parse_decl_ref_maybe(context_t *cnt, bl_node_t *path)
 bl_node_t *
 parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
 {
-  if (!op)
-    return NULL;
+  if (!op) return NULL;
 
   bl_node_t *member_ref = NULL;
   bool       is_ptr_ref = bl_token_is(op, BL_SYM_ARROW);
@@ -364,8 +363,7 @@ parse_member_ref_maybe(context_t *cnt, bl_token_t *op)
 bl_node_t *
 parse_array_ref_maybe(context_t *cnt, bl_token_t *op)
 {
-  if (!op)
-    return NULL;
+  if (!op) return NULL;
 
   bl_node_t *array_ref = NULL;
   if (bl_token_is(op, BL_SYM_LBRACKET)) {
@@ -390,8 +388,7 @@ bl_node_t *
 parse_pre_line_maybe(context_t *cnt)
 {
   bl_token_t *tok_line = bl_tokens_consume_if(cnt->tokens, BL_SYM_LINE);
-  if (!tok_line)
-    return NULL;
+  if (!tok_line) return NULL;
 
   bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok_line, BL_FTYPE_I32, 0);
   return bl_ast_add_expr_literal_signed(cnt->ast, tok_line, type, tok_line->src.line);
@@ -401,20 +398,17 @@ bl_node_t *
 parse_pre_file_maybe(context_t *cnt)
 {
   bl_token_t *tok_file = bl_tokens_consume_if(cnt->tokens, BL_SYM_FILE);
-  if (!tok_file)
-    return NULL;
+  if (!tok_file) return NULL;
 
   bl_node_t *type = bl_ast_add_type_fund(cnt->ast, tok_file, BL_FTYPE_STRING, 0);
   return bl_ast_add_expr_literal_str(cnt->ast, tok_file, type, tok_file->src.unit->filepath);
 }
 
-
 bl_node_t *
 parse_pre_run_maybe(context_t *cnt)
 {
   bl_token_t *tok_run = bl_tokens_consume_if(cnt->tokens, BL_SYM_RUN);
-  if (!tok_run)
-    return NULL;
+  if (!tok_run) return NULL;
 
   bl_node_t *path = parse_path_maybe(cnt);
   bl_node_t *call = parse_call_maybe(cnt, path, true);
@@ -431,8 +425,7 @@ parse_pre_run_maybe(context_t *cnt)
 bl_node_t *
 parse_call_maybe(context_t *cnt, bl_node_t *path, bool run_in_compile_time)
 {
-  if (!path)
-    return NULL;
+  if (!path) return NULL;
 
   bl_node_t *call = NULL;
   if (path > 0 && bl_tokens_current_is(cnt->tokens, BL_SYM_LPAREN)) {
@@ -673,46 +666,33 @@ parse_atom_expr(context_t *cnt, bl_token_t *op, bool ignore_init_list)
   bl_node_t *expr = NULL;
   bl_node_t *path = NULL;
 
-  if ((expr = parse_array_ref_maybe(cnt, op)))
-    return expr;
+  if ((expr = parse_array_ref_maybe(cnt, op))) return expr;
 
-  if ((expr = parse_member_ref_maybe(cnt, op)))
-    return expr;
+  if ((expr = parse_member_ref_maybe(cnt, op))) return expr;
 
-  if ((expr = parse_unary_expr_maybe(cnt)))
-    return expr;
+  if ((expr = parse_unary_expr_maybe(cnt))) return expr;
 
-  if ((expr = parse_nested_expr_maybe(cnt)))
-    return expr;
+  if ((expr = parse_nested_expr_maybe(cnt))) return expr;
 
-  if ((expr = parse_cast_expr_maybe(cnt)))
-    return expr;
+  if ((expr = parse_cast_expr_maybe(cnt))) return expr;
 
-  if ((expr = parse_sizeof_maybe(cnt)))
-    return expr;
+  if ((expr = parse_sizeof_maybe(cnt))) return expr;
 
-  if ((expr = parse_pre_run_maybe(cnt)))
-    return expr;
+  if ((expr = parse_pre_run_maybe(cnt))) return expr;
 
-  if ((expr = parse_literal_maybe(cnt)))
-    return expr;
+  if ((expr = parse_literal_maybe(cnt))) return expr;
 
-  if ((expr = parse_pre_line_maybe(cnt)))
-    return expr;
+  if ((expr = parse_pre_line_maybe(cnt))) return expr;
 
-  if ((expr = parse_pre_file_maybe(cnt)))
-    return expr;
+  if ((expr = parse_pre_file_maybe(cnt))) return expr;
 
   path = parse_path_maybe(cnt);
 
-  if (!ignore_init_list && (expr = parse_init_expr_maybe(cnt, path)))
-    return expr;
+  if (!ignore_init_list && (expr = parse_init_expr_maybe(cnt, path))) return expr;
 
-  if ((expr = parse_call_maybe(cnt, path, false)))
-    return expr;
+  if ((expr = parse_call_maybe(cnt, path, false))) return expr;
 
-  if ((expr = parse_decl_ref_maybe(cnt, path)))
-    return expr;
+  if ((expr = parse_decl_ref_maybe(cnt, path))) return expr;
 
   return expr;
 }
@@ -890,8 +870,7 @@ parse_type_maybe(context_t *cnt, bl_node_t *path)
     ++is_ptr;
   }
 
-  if (!path)
-    path = parse_path_maybe(cnt);
+  if (!path) path = parse_path_maybe(cnt);
 
   bl_node_t * last_path_elem = NULL;
   bl_token_t *prev_tok       = NULL;
@@ -911,6 +890,33 @@ parse_type_maybe(context_t *cnt, bl_node_t *path)
     }
 
     bl_node_t *expr_dim = parse_array_dim_maybe(cnt);
+
+    /* generate array representation of array */
+    if (expr_dim) {
+      bl_log("generating array struct");
+      bl_node_t *strct = bl_ast_add_decl_struct(cnt->ast, NULL, "_arr", BL_MODIF_PUBLIC);
+
+      { /* count */
+        bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, 0);
+        bl_node_t *count =
+            bl_ast_add_decl_struct_member(cnt->ast, NULL, "count", t, 1, BL_MODIF_PUBLIC);
+        bl_ast_insert(&bl_peek_decl_struct(strct)->members, count);
+      }
+
+      { /* elems */
+        bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_I32, 1);
+        bl_node_t *elem =
+            bl_ast_add_decl_struct_member(cnt->ast, NULL, "elems", t, 0, BL_MODIF_PUBLIC);
+        bl_ast_insert(&bl_peek_decl_struct(strct)->members, elem);
+      }
+
+      bl_peek_decl_struct(strct)->membersc = 2;
+
+      bl_ast_insert(&bl_peek_decl_module(cnt->curr_module)->nodes, strct);
+
+      //bl_node_t *t = bl_ast_add_type_ref(cnt->ast, NULL, NULL, strct, NULL, 0);
+      //*type        = t;
+    }
 
     if (found > -1) {
       type = bl_ast_add_type_fund(cnt->ast, prev_tok, (bl_fund_type_e)found, is_ptr);
@@ -1019,8 +1025,7 @@ bl_node_t *
 parse_pre_test_maybe(context_t *cnt, int modif, bl_node_t *parent)
 {
   bl_token_t *tok_test = bl_tokens_consume_if(cnt->tokens, BL_SYM_TEST);
-  if (!tok_test)
-    return NULL;
+  if (!tok_test) return NULL;
 
   modif |= BL_MODIF_UTEST;
 
@@ -1332,8 +1337,7 @@ bl_node_t *
 parse_using_maybe(context_t *cnt)
 {
   bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_USING);
-  if (tok == NULL)
-    return NULL;
+  if (tok == NULL) return NULL;
 
   bl_node_t *path = parse_path_maybe(cnt);
   if (path == NULL) {
@@ -1351,8 +1355,7 @@ parse_init_expr_maybe(context_t *cnt, bl_node_t *path)
   bl_node_t *type = NULL;
 
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
-  if (!tok_begin)
-    return NULL;
+  if (!tok_begin) return NULL;
 
   /* Initialization list can have explicitly defined resulting type of initialization. */
   if (path) {
@@ -1403,7 +1406,7 @@ next_expr:
 }
 
 bl_node_t *
-parse_struct_member_maybe(context_t *cnt)
+parse_struct_member_maybe(context_t *cnt, int order)
 {
   bl_node_t *type  = NULL;
   bl_modif_e modif = parse_modifs_maybe(cnt);
@@ -1420,7 +1423,7 @@ parse_struct_member_maybe(context_t *cnt)
                 "expected type name after member name");
   }
 
-  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, modif);
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, order, modif);
 }
 
 bl_node_t *
@@ -1473,9 +1476,8 @@ parse_struct_maybe(context_t *cnt, int modif)
     bl_node_t **member = &_strct->members;
   member:
     /* eat ident */
-    *member = parse_struct_member_maybe(cnt);
+    *member = parse_struct_member_maybe(cnt, order++);
     if (*member) {
-      bl_peek_decl_struct_member(*member)->order = order++;
       _strct->membersc++;
       (*member)->prev = prev;
       prev            = *member;
@@ -1617,6 +1619,7 @@ parse_module_body(context_t *cnt, bl_node_t *module)
     node          = &(*node)->next;                                                                \
   }
 
+  cnt->curr_module          = module;
   int               modif   = BL_MODIF_NONE;
   bl_decl_module_t *_module = bl_peek_decl_module(module);
 
@@ -1713,6 +1716,7 @@ bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
                    .tokens         = &unit->tokens,
                    .curr_init_list = NULL,
                    .curr_func      = NULL,
+                   .curr_module    = NULL,
                    .inside_loop    = false};
 
   int error = 0;

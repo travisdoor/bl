@@ -39,8 +39,7 @@
 static void
 walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt)
 {
-  if (*stmt == NULL)
-    return;
+  if (*stmt == NULL) return;
 
   switch (bl_node_code(*stmt)) {
   case BL_DECL_BLOCK: {
@@ -267,8 +266,10 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t **module)
 {
   visitor->nesting++;
   bl_decl_module_t *_module = bl_peek_decl_module(*module);
-  bl_node_t **       node    = &_module->nodes;
+  bl_node_t **      node    = &_module->nodes;
+  bl_node_t *       visited_node;
   while (*node) {
+    visited_node = *node;
     switch (bl_node_code(*node)) {
     case BL_DECL_MODULE: {
       call_visit(visitor, node, BL_VISIT_MODULE);
@@ -353,8 +354,7 @@ bl_visitor_walk_type(bl_visitor_t *visitor, bl_node_t **type)
   visitor->nesting++;
   bl_node_t **dim = bl_ast_get_type_dim(*type);
 
-  if (*dim)
-    call_visit(visitor, dim, BL_VISIT_EXPR);
+  if (*dim) call_visit(visitor, dim, BL_VISIT_EXPR);
   visitor->nesting--;
 }
 
@@ -371,7 +371,7 @@ bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t **strct)
 {
   visitor->nesting++;
   bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
-  bl_node_t **       member = &_strct->members;
+  bl_node_t **      member = &_strct->members;
   while (*member) {
     call_visit(visitor, member, BL_VISIT_STRUCT_MEMBER);
     member = &(*member)->next;
@@ -403,8 +403,7 @@ bl_visitor_walk_mut(bl_visitor_t *visitor, bl_node_t **mut)
   visitor->nesting++;
 
   bl_decl_mut_t *_mut = bl_peek_decl_mut(*mut);
-  if (_mut->type)
-    call_visit(visitor, &_mut->type, BL_VISIT_TYPE);
+  if (_mut->type) call_visit(visitor, &_mut->type, BL_VISIT_TYPE);
 
   if (_mut->init_expr) {
     call_visit(visitor, &bl_peek_decl_mut(*mut)->init_expr, BL_VISIT_EXPR);
@@ -433,7 +432,7 @@ bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t **block)
 {
   visitor->nesting++;
   bl_decl_block_t *_block = bl_peek_decl_block(*block);
-  bl_node_t **      node   = &_block->nodes;
+  bl_node_t **     node   = &_block->nodes;
 
   while (*node) {
     walk_block_content(visitor, node);
@@ -486,8 +485,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr)
   case BL_EXPR_INIT: {
     bl_expr_init_t *_init = bl_peek_expr_init(*expr);
 
-    if (_init->type)
-      call_visit(visitor, &_init->type, BL_VISIT_TYPE);
+    if (_init->type) call_visit(visitor, &_init->type, BL_VISIT_TYPE);
 
     bl_node_t **expr = &_init->exprs;
     while (*expr) {
@@ -499,7 +497,7 @@ bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
   case BL_EXPR_CALL: {
     bl_expr_call_t *_call = bl_peek_expr_call(*expr);
-    bl_node_t **     arg   = &_call->args;
+    bl_node_t **    arg   = &_call->args;
 
     while (*arg) {
       call_visit(visitor, arg, BL_VISIT_EXPR);
