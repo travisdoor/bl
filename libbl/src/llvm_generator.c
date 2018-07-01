@@ -523,6 +523,7 @@ create_jit(context_t *cnt)
   LLVMModuleRef          module = LLVMModuleCreateWithNameInContext("run", cnt->llvm_cnt);
   LLVMExecutionEngineRef jit;
   char *                 llvm_error = NULL;
+
   if (LLVMCreateJITCompilerForModule(&jit, module, 3, &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 

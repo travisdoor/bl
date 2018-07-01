@@ -1,20 +1,19 @@
 /* testing playground */
 
 extern fn puts(s string) i32;
-extern fn printf(s string, i i32) i32;
+extern fn printf(s string, i size_t) i32;
 
 fn main() i32 {
-  mut foo = get();
-  foo.i = 0;
-
+  mut arr i32 [10];
+  take_array(arr);
   return 0;
 }
 
-fn get() foo_t {
-  mut f foo_t;
-  return f;
-}
+/*fn take_array(arr i32 []) {
+  printf("passed arr.count = %d\n", arr.count);
+}*/
 
-struct foo_t {
-  i i32
+struct _1 {
+  data  *i32,
+  count size_t
 }
