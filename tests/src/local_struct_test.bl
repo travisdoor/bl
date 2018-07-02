@@ -1,0 +1,25 @@
+#load "std/utest.bl"
+using std::utest;
+
+module local_struct {
+  #test
+  fn strct() i32 {
+    struct bar_t {
+      i i32
+    }
+
+    struct foo_t {
+      bar bar_t,
+      i i32
+    }
+
+    mut foo foo_t;
+    foo.i = 666;
+    foo.bar.i = 666;
+
+    if foo.i != 666 { return FAIL; }
+    if foo.bar.i != 666 { return FAIL; }
+    
+    return SUCCESS;
+  }
+}

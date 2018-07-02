@@ -13,6 +13,8 @@
 #load "src/sizeof_test.bl"
 #load "src/impl_type_mut_test.bl"
 #load "src/local_func_test.bl"
+#load "src/local_enum_test.bl"
+#load "src/local_struct_test.bl"
 
 // api
 #load "api/std/file.bl"

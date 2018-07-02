@@ -4,17 +4,13 @@ extern fn puts(s string) i32;
 //extern fn printf(s string, i size_t) i32;
 
 fn main() i32 {
-  fn local() {
-    puts("hello from local function");    
-
-    fn local2() {
-      puts("hello from local2 function");    
-    }
-
-    local2();
+  enum E {
+    A, B, C
   }
 
-  local();
+  mut e = E::A;
 
   return 0;
 }
+
+

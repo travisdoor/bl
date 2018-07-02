@@ -1159,6 +1159,14 @@ parse_block_content_maybe(context_t *cnt, bl_node_t *parent)
     goto done;
   }
 
+  if ((stmt = parse_struct_maybe(cnt, 0))) {
+    goto done;
+  }
+
+  if ((stmt = parse_enum_maybe(cnt, 0, parent))) {
+    goto done;
+  }
+
 done:
   return stmt;
 }

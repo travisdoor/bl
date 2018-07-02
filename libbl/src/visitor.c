@@ -74,6 +74,16 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt, bl_node_code_e *igno
     break;
   }
 
+  case BL_DECL_STRUCT: {
+    call_visit(visitor, stmt, BL_VISIT_STRUCT);
+    break;
+  }
+
+  case BL_DECL_ENUM: {
+    call_visit(visitor, stmt, BL_VISIT_ENUM);
+    break;
+  }
+
   case BL_EXPR_CALL:
   case BL_EXPR_DECL_REF:
   case BL_EXPR_MEMBER_REF:
