@@ -5,7 +5,9 @@
 
 fn main() i32 {
   mut arr i32 [10];
-
+  mut b i32;
+  mut c i32;
+  
   return 0;
 }
 

@@ -959,6 +959,22 @@ bl_ast_insert(bl_node_t **dest, bl_node_t *src)
   *dest = src;
 }
 
+void
+bl_ast_insert_after(bl_node_t **dest, bl_node_t *src)
+{
+  if (!dest || !src) return;
+
+  if (*dest) {
+    const bl_node_t *tmp_next = (*dest)->next;
+    if (tmp_next) tmp_next->prev = src;
+    (*dest)->next = src;
+    src->prev  = *dest;
+    src->next  = tmp_next;
+  } else {
+    *dest = src;
+  }
+}
+
 bl_type_kind_e
 bl_ast_type_get_kind(bl_node_t *type)
 {
