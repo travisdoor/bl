@@ -730,6 +730,36 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
   bl_visitor_walk_type(visitor, type);
 
 #if 0
+  /* generate array representation of array */
+  bl_node_t **dim = bl_ast_get_type_dim(*type);
+  if (*dim) {
+    bl_log("generating array struct");
+    bl_node_t *strct = bl_ast_add_decl_struct(cnt->ast, NULL, "_arr", BL_MODIF_PUBLIC);
+
+    { /* count */
+      bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, 0);
+      bl_node_t *count =
+          bl_ast_add_decl_struct_member(cnt->ast, NULL, "count", t, 1, BL_MODIF_PUBLIC);
+      bl_ast_insert(&bl_peek_decl_struct(strct)->members, count);
+    }
+
+    { /* elems */
+      bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_I32, 1);
+      bl_node_t *elem =
+          bl_ast_add_decl_struct_member(cnt->ast, NULL, "elems", t, 0, BL_MODIF_PUBLIC);
+      bl_ast_insert(&bl_peek_decl_struct(strct)->members, elem);
+    }
+
+    bl_peek_decl_struct(strct)->membersc = 2;
+
+    bl_ast_insert(&bl_peek_decl_module(cnt->curr_mod)->nodes, strct);
+
+    bl_node_t *t = bl_ast_add_type_ref(cnt->ast, NULL, NULL, strct, NULL, 0);
+    *type        = t;
+  }
+#endif
+
+#if 1
   bl_node_t **dim = bl_ast_get_type_dim(*type);
   if (*dim) {
     if (bl_node_is_not(*dim, BL_EXPR_CALL)) {
@@ -753,10 +783,7 @@ third_pass_type(bl_visitor_t *visitor, bl_node_t **type)
       bl_peek_decl_func(func)->used    = 1;
       bl_peek_decl_block(block)->nodes = bl_ast_add_stmt_return(cnt->ast, NULL, *dim, func);
 
-      func->next = bl_peek_decl_module(cnt->curr_mod)->nodes;
-      func->prev = NULL;
-
-      bl_peek_decl_module(cnt->curr_mod)->nodes = func;
+      bl_ast_insert(&bl_peek_decl_module(cnt->curr_mod)->nodes, func);
 
       bl_node_t *call = bl_ast_add_expr_call(cnt->ast, NULL, func, NULL, true);
 

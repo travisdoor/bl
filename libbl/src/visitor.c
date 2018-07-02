@@ -315,7 +315,8 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t **module)
       bl_abort("unknown node in module");
     }
 
-    node = &(*node)->next;
+    //node = &(*node)->next;
+    node = &visited_node->next;
   }
   visitor->nesting--;
 }

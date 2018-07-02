@@ -891,33 +891,6 @@ parse_type_maybe(context_t *cnt, bl_node_t *path)
 
     bl_node_t *expr_dim = parse_array_dim_maybe(cnt);
 
-    /* generate array representation of array */
-    if (expr_dim) {
-      bl_log("generating array struct");
-      bl_node_t *strct = bl_ast_add_decl_struct(cnt->ast, NULL, "_arr", BL_MODIF_PUBLIC);
-
-      { /* count */
-        bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_SIZE, 0);
-        bl_node_t *count =
-            bl_ast_add_decl_struct_member(cnt->ast, NULL, "count", t, 1, BL_MODIF_PUBLIC);
-        bl_ast_insert(&bl_peek_decl_struct(strct)->members, count);
-      }
-
-      { /* elems */
-        bl_node_t *t = bl_ast_add_type_fund(cnt->ast, NULL, BL_FTYPE_I32, 1);
-        bl_node_t *elem =
-            bl_ast_add_decl_struct_member(cnt->ast, NULL, "elems", t, 0, BL_MODIF_PUBLIC);
-        bl_ast_insert(&bl_peek_decl_struct(strct)->members, elem);
-      }
-
-      bl_peek_decl_struct(strct)->membersc = 2;
-
-      bl_ast_insert(&bl_peek_decl_module(cnt->curr_module)->nodes, strct);
-
-      //bl_node_t *t = bl_ast_add_type_ref(cnt->ast, NULL, NULL, strct, NULL, 0);
-      //*type        = t;
-    }
-
     if (found > -1) {
       type = bl_ast_add_type_fund(cnt->ast, prev_tok, (bl_fund_type_e)found, is_ptr);
       bl_peek_type_fund(type)->dim = expr_dim;
