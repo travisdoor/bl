@@ -1,14 +1,9 @@
 /* testing playground */
 
-extern fn puts(s string) i32;
-//extern fn printf(s string, i size_t) i32;
+#load "print.bl"
 
 fn main() i32 {
-  enum E {
-    A, B, C
-  }
-
-  mut e = E::A;
+  std::print("hello world\n"); 
 
   return 0;
 }

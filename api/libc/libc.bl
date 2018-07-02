@@ -58,4 +58,6 @@ public module libc {
   public extern fn ftell(file *void) i32;
   public extern fn fwrite(ptr *void, size size_t, count size_t, stream *void) size_t;
   public extern fn fread(ptr *void, size size_t, count size_t, stream *void) size_t;
+
+  public extern fn write(fildes i32, buf *void, nbytes size_t) size_t;
 }

@@ -1,0 +1,13 @@
+#load "libc/libc.bl"
+
+public module std {
+  enum out_e i32 {
+    StdIn,
+    StdOut,
+    StdErr
+  }
+
+  public fn print(s string) {
+    libc::write(out_e::StdOut, cast(*void) s, libc::strlen(s));
+  }
+}

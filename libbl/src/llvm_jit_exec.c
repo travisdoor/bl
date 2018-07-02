@@ -38,6 +38,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
                                      &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
+  bl_msg_log("\nRunning:");
   LLVMGenericValueRef result =
       LLVMRunFunction(assembly->llvm_runtime_engine, assembly->llvm_main_func, 0, NULL);
   int ires = (int)LLVMGenericValueToInt(result, 0);
@@ -45,6 +46,7 @@ bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bl_builder_error(builder, assembly->name, "executed unit return %i", ires);
     return BL_ERR_INVALID_RESULT;
   }
+  bl_msg_log("");
 
   return BL_NO_ERR;
 }
