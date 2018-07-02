@@ -59,19 +59,19 @@ public module std {
     }
 
     public fn close(f *file_t) {
-      if f->is_open == false { return; }
+      if !f->is_open { return; }
       libc::fclose(f->handle);
       memory::free(cast(*void) f->filename);
       f->is_open = false;
     }
 
     public fn swrite(f *file_t, s string, count size_t) size_t {
-      if f->is_open == false { return 0; }
+      if !f->is_open { return 0; }
       return libc::fwrite(cast(*void) s, sizeof(char), count, f->handle);
     }
 
     public fn sread(f *file_t, s string, count size_t) size_t {
-      if f->is_open == false { return 0; }
+      if !f->is_open { return 0; }
       return libc::fread(cast(*void) s, sizeof(char), count, f->handle);
     }
 

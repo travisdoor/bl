@@ -454,8 +454,7 @@ gen_func(context_t *cnt, bl_node_t *func)
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
     llvm_func            = LLVMAddFunction(cnt->llvm_mod, uname, ret_type);
 
-    if (!(_func->modif & BL_MODIF_EXTERN))
-      push_value_gscope(func, llvm_func);
+    if (!(_func->modif & BL_MODIF_EXTERN)) push_value_gscope(func, llvm_func);
   }
 
   return llvm_func;
@@ -488,8 +487,7 @@ gen_call_args(context_t *cnt, bl_node_t *call, LLVMValueRef *out)
 static void
 link_into_jit(context_t *cnt, bl_node_t *fn)
 {
-  if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn))
-    return;
+  if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn)) return;
 
   bl_decl_func_t *_fn = bl_peek_decl_func(fn);
   bl_assert(bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn),
@@ -501,8 +499,7 @@ link_into_jit(context_t *cnt, bl_node_t *fn)
   LLVMAddModule(cnt->llvm_jit, module);
   bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
 
-  if (!_fn->deps)
-    return;
+  if (!_fn->deps) return;
 
   bo_iterator_t    iter = bo_list_begin(_fn->deps);
   bo_iterator_t    end  = bo_list_end(_fn->deps);
@@ -600,8 +597,7 @@ get_or_create_const_string(context_t *cnt, const char *str)
   snprintf(&name_tmp[0], max_len, "str_%u", hash);
 
   LLVMValueRef s = LLVMGetNamedGlobal(cnt->llvm_mod, name_tmp);
-  if (!s)
-    s = LLVMBuildGlobalString(cnt->llvm_builder, str, name_tmp);
+  if (!s) s = LLVMBuildGlobalString(cnt->llvm_builder, str, name_tmp);
 
   s = LLVMConstPointerCast(s, LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0));
   return s;
@@ -618,7 +614,9 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
   LLVMValueRef next_val  = gen_expr(cnt, _unary->next);
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
-  if (_unary->op == BL_SYM_MINUS || _unary->op == BL_SYM_PLUS) {
+  switch (_unary->op) {
+  case BL_SYM_MINUS:
+  case BL_SYM_PLUS: {
     if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
@@ -646,15 +644,30 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
 
     LLVMValueRef cnst = LLVMConstInt(next_type, mult, false);
     return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
-  } else if (_unary->op == BL_SYM_AND) {
+  }
+
+  case BL_SYM_NOT: {
+    if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
+      next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+    }
+
+    next_val = LLVMBuildNot(cnt->llvm_builder, next_val, gname("tmp"));
+    return next_val;
+  }
+
+  case BL_SYM_AND: {
     /* unary operation is getting address of something "&foo" */
     LLVMValueRef indices[1];
     indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
     return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, BL_ARRAY_SIZE(indices), gname("tmp"));
-  } else if (_unary->op == BL_SYM_ASTERISK) {
+  }
+
+  case BL_SYM_ASTERISK: {
     next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     return next_val;
-  } else {
+  }
+
+  default:
     bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
   }
 }
@@ -850,57 +863,47 @@ gen_binop(context_t *cnt, bl_node_t *binop)
 
   switch (_binop->op) {
   case BL_SYM_PLUS:
-    if (float_kind)
-      return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
     return LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_MINUS:
-    if (float_kind)
-      return LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_ASTERISK:
-    if (float_kind)
-      return LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_SLASH:
-    if (float_kind)
-      return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_MODULO:
     return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_EQ:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, gname("tmp"));
 
   case BL_SYM_NEQ:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, gname("tmp"));
 
   case BL_SYM_GREATER:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, gname("tmp"));
 
   case BL_SYM_LESS:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, gname("tmp"));
 
   case BL_SYM_GREATER_EQ:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, gname("tmp"));
 
   case BL_SYM_LESS_EQ:
-    if (float_kind)
-      return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
+    if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, gname("tmp"));
 
   case BL_SYM_LOGIC_AND:
@@ -925,8 +928,7 @@ gen_member_ref(context_t *cnt, bl_node_t *member_ref)
   bl_decl_struct_member_t *_member     = bl_peek_decl_struct_member(_member_ref->ref);
   ptr                                  = gen_expr(cnt, _member_ref->next);
 
-  if (_member_ref->is_ptr_ref)
-    ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
+  if (_member_ref->is_ptr_ref) ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
 
   ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_member->order,
                            gname(_member->id.str));
@@ -1216,8 +1218,7 @@ static inline bool
 has_satysfied_deps(context_t *cnt, bl_node_t *fn)
 {
   BList *deps = bl_ast_get_deps(fn);
-  if (!deps)
-    return true;
+  if (!deps) return true;
 
   bo_iterator_t    iter = bo_list_begin(deps);
   bo_iterator_t    end  = bo_list_end(deps);
@@ -1226,8 +1227,7 @@ has_satysfied_deps(context_t *cnt, bl_node_t *fn)
     dep = &bo_list_iter_peek(deps, &iter, bl_dependency_t);
 
     if (bl_node_is(dep->node, BL_DECL_STRUCT)) {
-      if (!has_satysfied_deps(cnt, dep->node))
-	return false;
+      if (!has_satysfied_deps(cnt, dep->node)) return false;
     } else if (dep->type & BL_DEP_STRICT &&
                !bo_htbl_has_key(cnt->llvm_modules, (uint64_t)dep->node)) {
       return false;
@@ -1282,7 +1282,7 @@ generate(bl_visitor_t *visitor)
       }
 
       if (_fn->modif & BL_MODIF_UTEST) {
-	bo_array_push_back(cnt->assembly->utest_methods, fn);
+        bo_array_push_back(cnt->assembly->utest_methods, fn);
       }
     } else {
       bo_list_push_back(queue, fn);
@@ -1295,13 +1295,11 @@ _link(context_t *cnt, bl_node_t *entry)
 {
   bl_decl_func_t *_entry = bl_peek_decl_func(entry);
 
-  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry))
-    return NULL;
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry)) return NULL;
 
   LLVMModuleRef dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
   bl_assert("invalid llvm module for function %s", _entry->id.str);
-  if (!_entry->deps)
-    return dest_module;
+  if (!_entry->deps) return dest_module;
 
   bo_iterator_t    iter = bo_list_begin(_entry->deps);
   bo_iterator_t    end  = bo_list_end(_entry->deps);
@@ -1316,8 +1314,7 @@ _link(context_t *cnt, bl_node_t *entry)
       LLVMModuleRef src_module = _link(cnt, dep->node);
 
       if (src_module) {
-        if (LLVMLinkModules2(dest_module, src_module))
-          bl_abort("unable to link modules");
+        if (LLVMLinkModules2(dest_module, src_module)) bl_abort("unable to link modules");
 
         bo_htbl_erase_key(cnt->llvm_modules, (uint64_t)dep->node);
       }
@@ -1330,8 +1327,7 @@ _link(context_t *cnt, bl_node_t *entry)
 LLVMModuleRef
 link(context_t *cnt, bl_node_t *entry)
 {
-  if (!entry)
-    return NULL;
+  if (!entry) return NULL;
 
   LLVMModuleRef dest_module = _link(cnt, entry);
 
@@ -1390,7 +1386,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   /* link all utests */
   const size_t uc = bo_array_size(assembly->utest_methods);
-  bl_node_t *utest;
+  bl_node_t *  utest;
   for (size_t i = 0; i < uc; ++i) {
     utest = bo_array_at(assembly->utest_methods, i, bl_node_t *);
     link_into_jit(&cnt, utest);

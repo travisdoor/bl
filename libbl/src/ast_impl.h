@@ -587,7 +587,7 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
 
 bl_node_t *
 bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,
-                              int modif);
+                              int order, int modif);
 
 bl_node_t *
 bl_ast_add_decl_enum(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type, int modif,
@@ -679,6 +679,9 @@ bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node);
 
 void
 bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src);
+
+void
+bl_ast_insert(bl_node_t **dest, bl_node_t *src);
 
 void
 bl_ast_dup_node_buf(bl_node_t *dest, bl_node_t *node);

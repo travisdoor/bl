@@ -91,9 +91,10 @@
   sm(AND,         "&") \
   sm(OR,          "|") \
   sm(XOR,         "^") \
+  sm(NOT,         "!") \
   sm(SLASH,       "/") \
   sm(MODULO,      "%") \
-  sm(ASSIGN,       "=") \
+  sm(ASSIGN,      "=") \
   sm(PLUS,        "+") \
   sm(MINUS,       "-")\
   sm(ASTERISK,    "*") \
