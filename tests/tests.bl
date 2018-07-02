@@ -12,6 +12,7 @@
 #load "src/simple_array_test.bl"
 #load "src/sizeof_test.bl"
 #load "src/impl_type_mut_test.bl"
+#load "src/local_func_test.bl"
 
 // api
 #load "api/std/file.bl"

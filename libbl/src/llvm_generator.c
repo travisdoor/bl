@@ -1010,7 +1010,8 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
     skip_if_terminated(cnt);
   };
 
-  bl_visitor_walk_block(visitor, block);
+  bl_node_code_e ignore[1] = {BL_DECL_FUNC};
+  bl_visitor_walk_block(visitor, block, &ignore[0], BL_ARRAY_SIZE(ignore));
 
   if (bl_node_is(_block->parent, BL_DECL_FUNC)) {
     LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);

@@ -346,7 +346,7 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   }
 
   if (_func->block)
-    bl_visitor_walk_block(visitor, &_func->block);
+    bl_visitor_walk_block(visitor, &_func->block, NULL, 0);
 }
 
 static void

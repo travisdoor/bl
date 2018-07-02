@@ -51,14 +51,19 @@ get_uname(char *out_buf, int max_len, bl_node_t *node)
   int l      = 0;
   out_buf[0] = '\0';
 
+  if (bl_node_is(bl_ast_get_parent(node), BL_DECL_BLOCK)) {
+    /* local function? */
+    const uint64_t tmp = bl_ast_get_id(node)->hash;
+    snprintf(out_buf, max_len, "_%llu", tmp);
+    return;
+  }
+
   while (node) {
     const char *tmp = bl_ast_get_id(node)->str;
-    if (!tmp)
-      break;
+    if (!tmp) break;
     int tmp_len = strlen(tmp) + 1;
 
-    if (tmp_len + l + 1 > max_len)
-      break;
+    if (tmp_len + l + 1 > max_len) break;
 
     sprintf(out_buf + l, "_%s", tmp);
     l += tmp_len;
@@ -85,7 +90,7 @@ add_dependency(context_t *cnt, bl_node_t *dep, int type)
 
   if (cnt->curr_func)
     tmp = bl_ast_add_dep(cnt->curr_func, dep, type);
-  else if (cnt->curr_struct) 
+  else if (cnt->curr_struct)
     tmp = bl_ast_add_dep(cnt->curr_struct, dep, type);
   else
     bl_abort("we have no current function or structure");
@@ -126,10 +131,11 @@ visit_func(bl_visitor_t *visitor, bl_node_t **func)
   context_t *     cnt   = peek_cnt(visitor);
   bl_decl_func_t *_func = bl_peek_decl_func(*func);
 
-  cnt->curr_func = *func;
+  bl_node_t *prev_func = cnt->curr_func;
+  cnt->curr_func       = *func;
   reset_unique_deps_cache(cnt);
   bl_visitor_walk_func(visitor, func);
-  cnt->curr_func = NULL;
+  cnt->curr_func = prev_func;
 
   if (_func->modif & BL_MODIF_ENTRY || _func->modif & BL_MODIF_UTEST || _func->used)
     bo_list_push_back(cnt->assembly->func_queue, *func);

@@ -36,10 +36,22 @@
     (visitor)->visitors[(type)]((visitor), (node));                                                \
   }
 
+static inline bool
+is_ignored(bl_node_code_e c, bl_node_code_e *ignored, int ignoredc)
+{
+  if (!ignored) return false;
+  for (int i = 0; i < ignoredc; ++i) {
+    if (ignored[i] == c) return true;
+  }
+
+  return false;
+}
+
 static void
-walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt)
+walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt, bl_node_code_e *ignore, int ignorec)
 {
   if (*stmt == NULL) return;
+  if (is_ignored(bl_node_code(*stmt), ignore, ignorec)) return;
 
   switch (bl_node_code(*stmt)) {
   case BL_DECL_BLOCK: {
@@ -54,6 +66,11 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt)
 
   case BL_DECL_CONST: {
     call_visit(visitor, stmt, BL_VISIT_CONST);
+    break;
+  }
+
+  case BL_DECL_FUNC: {
+    call_visit(visitor, stmt, BL_VISIT_FUNC);
     break;
   }
 
@@ -105,7 +122,7 @@ walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt)
 }
 
 static void
-walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt);
+walk_block_content(bl_visitor_t *visitor, bl_node_t **stmt, bl_node_code_e *ignore, int ignorec);
 
 static void
 visit_module(bl_visitor_t *visitor, bl_node_t **module)
@@ -158,7 +175,7 @@ visit_const(bl_visitor_t *visitor, bl_node_t **cnst)
 static void
 visit_block(bl_visitor_t *visitor, bl_node_t **block)
 {
-  bl_visitor_walk_block(visitor, block);
+  bl_visitor_walk_block(visitor, block, NULL, 0);
 }
 
 static void
@@ -315,7 +332,7 @@ bl_visitor_walk_module(bl_visitor_t *visitor, bl_node_t **module)
       bl_abort("unknown node in module");
     }
 
-    //node = &(*node)->next;
+    // node = &(*node)->next;
     node = &visited_node->next;
   }
   visitor->nesting--;
@@ -429,14 +446,14 @@ bl_visitor_walk_const(bl_visitor_t *visitor, bl_node_t **cnst)
 }
 
 void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t **block)
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t **block, bl_node_code_e *ignore, int ignorec)
 {
   visitor->nesting++;
   bl_decl_block_t *_block = bl_peek_decl_block(*block);
   bl_node_t **     node   = &_block->nodes;
 
   while (*node) {
-    walk_block_content(visitor, node);
+    walk_block_content(visitor, node, ignore, ignorec);
     node = &(*node)->next;
   }
 
@@ -524,8 +541,8 @@ bl_visitor_walk_if(bl_visitor_t *visitor, bl_node_t **if_stmt)
 {
   visitor->nesting++;
   call_visit(visitor, &bl_peek_stmt_if(*if_stmt)->test, BL_VISIT_EXPR);
-  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->true_stmt);
-  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->false_stmt);
+  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->true_stmt, NULL, 0);
+  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->false_stmt, NULL, 0);
   visitor->nesting--;
 }
 
@@ -533,7 +550,7 @@ void
 bl_visitor_walk_if_true(bl_visitor_t *visitor, bl_node_t **if_stmt)
 {
   visitor->nesting++;
-  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->true_stmt);
+  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->true_stmt, NULL, 0);
   visitor->nesting--;
 }
 
@@ -541,7 +558,7 @@ void
 bl_visitor_walk_if_false(bl_visitor_t *visitor, bl_node_t **if_stmt)
 {
   visitor->nesting++;
-  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->false_stmt);
+  walk_block_content(visitor, &bl_peek_stmt_if(*if_stmt)->false_stmt, NULL, 0);
   visitor->nesting--;
 }
 
@@ -550,7 +567,7 @@ bl_visitor_walk_loop(bl_visitor_t *visitor, bl_node_t **stmt_loop)
 {
   visitor->nesting++;
   call_visit(visitor, &bl_peek_stmt_loop(*stmt_loop)->test, BL_VISIT_EXPR);
-  walk_block_content(visitor, &bl_peek_stmt_loop(*stmt_loop)->true_stmt);
+  walk_block_content(visitor, &bl_peek_stmt_loop(*stmt_loop)->true_stmt, NULL, 0);
   visitor->nesting--;
 }
 
@@ -558,7 +575,7 @@ void
 bl_visitor_walk_loop_body(bl_visitor_t *visitor, bl_node_t **stmt_loop)
 {
   visitor->nesting++;
-  walk_block_content(visitor, &bl_peek_stmt_loop(*stmt_loop)->true_stmt);
+  walk_block_content(visitor, &bl_peek_stmt_loop(*stmt_loop)->true_stmt, NULL, 0);
   visitor->nesting--;
 }
 

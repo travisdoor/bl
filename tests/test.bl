@@ -1,17 +1,20 @@
 /* testing playground */
 
-//extern fn puts(s string) i32;
+extern fn puts(s string) i32;
 //extern fn printf(s string, i size_t) i32;
 
 fn main() i32 {
-  mut a foo;  
-  a.b = false;
+  fn local() {
+    puts("hello from local function");    
 
-  mut c = !a.b;
-  
+    fn local2() {
+      puts("hello from local2 function");    
+    }
+
+    local2();
+  }
+
+  local();
+
   return 0;
-}
-
-struct foo {
-  b bool
 }

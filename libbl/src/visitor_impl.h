@@ -109,7 +109,7 @@ void
 bl_visitor_walk_const(bl_visitor_t *visitor, bl_node_t **cnst);
 
 void
-bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t **block);
+bl_visitor_walk_block(bl_visitor_t *visitor, bl_node_t **block, bl_node_code_e *ignore, int ignorec);
 
 void
 bl_visitor_walk_expr(bl_visitor_t *visitor, bl_node_t **expr);

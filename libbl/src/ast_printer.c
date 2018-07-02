@@ -186,7 +186,7 @@ static void
 visit_block(bl_visitor_t *visitor, bl_node_t **block)
 {
   print_head("block", bl_peek_src(*block), *block, visitor->nesting);
-  bl_visitor_walk_block(visitor, block);
+  bl_visitor_walk_block(visitor, block, NULL, 0);
 }
 
 static void

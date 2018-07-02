@@ -1,0 +1,17 @@
+#load "std/utest.bl"
+using std::utest;
+
+module local_func {
+  #test
+  fn call() i32 {
+    fn local1() i32 {
+      fn local2() i32 {
+        return SUCCESS;
+      }
+
+      return local2();
+    }
+
+    return local1();
+  }
+}

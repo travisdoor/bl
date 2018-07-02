@@ -94,6 +94,9 @@ static bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by);
 
 static void
+insert_into_scope(context_t *cnt, bl_node_t *node);
+
+static void
 connect_type(context_t *cnt, bl_node_t *type);
 
 static void
@@ -293,6 +296,22 @@ lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_nod
 
   if (linked_by) (*linked_by) = NULL;
   return NULL;
+}
+
+void
+insert_into_scope(context_t *cnt, bl_node_t *node)
+{
+  bl_node_t *conflict = lookup_in_scope(cnt, node, cnt->curr_compound, NULL);
+
+  if (conflict) {
+    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, node, BL_BUILDER_CUR_WORD,
+                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
+                  bl_ast_get_id(node)->str, conflict->src->unit->filepath, conflict->src->line,
+                  conflict->src->col);
+  }
+
+  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
+  bl_scopes_insert_node(scopes, node);
 }
 
 void
@@ -545,16 +564,10 @@ first_pass_const(bl_visitor_t *visitor, bl_node_t **cnst)
 void
 first_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
 {
-  bl_decl_enum_t *_enm     = bl_peek_decl_enum(*enm);
-  context_t *     cnt      = peek_cnt(visitor);
-  bl_node_t *     conflict = lookup_in_tree(cnt, *enm, cnt->curr_compound, NULL, NULL);
+  bl_decl_enum_t *_enm = bl_peek_decl_enum(*enm);
+  context_t *     cnt  = peek_cnt(visitor);
 
-  if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, *enm, BL_BUILDER_CUR_WORD,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _enm->id.str, conflict->src->unit->filepath, conflict->src->line,
-                  conflict->src->col);
-  }
+  insert_into_scope(cnt, *enm);
 
   /* check for duplicit members and prepare lookup scope cache */
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
@@ -562,7 +575,7 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
 
   bl_node_t *variant = _enm->variants;
   while (variant) {
-    conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
+    bl_node_t *conflict = bl_scope_get_node(scope, &bl_peek_decl_enum_variant(variant)->id);
 
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, variant, BL_BUILDER_CUR_WORD,
@@ -573,48 +586,28 @@ first_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
     bl_scope_insert_node(scope, variant);
     variant = variant->next;
   }
-
-  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
-  bl_scopes_insert_node(scopes, *enm);
   /* terminal */
 }
 
 void
 first_pass_func(bl_visitor_t *visitor, bl_node_t **func)
 {
-  context_t *     cnt      = peek_cnt(visitor);
-  bl_decl_func_t *_func    = bl_peek_decl_func(*func);
-  bl_node_t *     conflict = lookup_in_scope(cnt, *func, cnt->curr_compound, NULL);
-
-  if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, *func, BL_BUILDER_CUR_WORD,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _func->id.str, conflict->src->unit->filepath, conflict->src->line,
-                  conflict->src->col);
-  }
+  context_t *     cnt   = peek_cnt(visitor);
+  bl_decl_func_t *_func = bl_peek_decl_func(*func);
+  insert_into_scope(cnt, *func);
 
   /* create new scope for function declaration */
   bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
   bl_scopes_include_main(&_func->scopes, main_scope, *func);
-
-  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
-  bl_scopes_insert_node(scopes, *func);
   /* terminal */
 }
 
 void
 first_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
 {
-  bl_decl_struct_t *_strct   = bl_peek_decl_struct(*strct);
-  context_t *       cnt      = peek_cnt(visitor);
-  bl_node_t *       conflict = lookup_in_scope(cnt, *strct, cnt->curr_compound, NULL);
-
-  if (conflict) {
-    connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, *strct, BL_BUILDER_CUR_WORD,
-                  "duplicate symbol " BL_YELLOW("'%s'") " already declared here: %s:%d:%d",
-                  _strct->id.str, conflict->src->unit->filepath, conflict->src->line,
-                  conflict->src->col);
-  }
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
+  context_t *       cnt    = peek_cnt(visitor);
+  insert_into_scope(cnt, *strct);
 
   /* check for duplicit members */
   bl_scope_t *scope = bl_scope_new(cnt->assembly->scope_cache);
@@ -623,7 +616,7 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
   bl_node_t *member = _strct->members;
 
   while (member) {
-    conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
+    bl_node_t *conflict = bl_scope_get_node(scope, &bl_peek_decl_struct_member(member)->id);
 
     if (conflict) {
       connect_error(cnt, BL_ERR_DUPLICATE_SYMBOL, member, BL_BUILDER_CUR_WORD,
@@ -635,10 +628,6 @@ first_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
     bl_scope_insert_node(scope, member);
     member = member->next;
   }
-
-  bl_scopes_t *scopes = bl_ast_get_scopes(cnt->curr_compound);
-  bl_scopes_insert_node(scopes, *strct);
-
   /* terminal */
 }
 
@@ -835,7 +824,7 @@ third_pass_block(bl_visitor_t *visitor, bl_node_t **block)
   bl_scopes_include_main(&_block->scopes, main_scope, *block);
   cnt->curr_compound = *block;
 
-  bl_visitor_walk_block(visitor, block);
+  bl_visitor_walk_block(visitor, block, NULL, 0);
 
   cnt->curr_compound = prev_cmp;
 }
@@ -1018,6 +1007,11 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t **func)
   bl_decl_func_t *_func    = bl_peek_decl_func(*func);
   context_t *     cnt      = peek_cnt(visitor);
   bl_node_t *     prev_cmp = cnt->curr_compound;
+
+  if (bl_node_is(cnt->curr_compound, BL_DECL_BLOCK)) {
+    bl_log("nested function");
+    insert_into_scope(cnt, *func);
+  }
 
   cnt->curr_compound = *func;
 
