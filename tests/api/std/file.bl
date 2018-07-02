@@ -11,7 +11,7 @@ public module std {
     fn create_close() i32 {
       mut f = open(filename, "w+");
     
-      if f.is_open == false { return FAIL; }
+      if !f.is_open { return FAIL; }
       if libc::strcmp(f.filename, filename) != 0 { return FAIL; }
     
       close(&f);

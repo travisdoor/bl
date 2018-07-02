@@ -48,6 +48,7 @@ bl_token_is_unary(bl_token_t *token)
   case BL_SYM_ASTERISK:
   case BL_SYM_MINUS:
   case BL_SYM_PLUS:
+  case BL_SYM_NOT:
     return true;
   default:
     return false;
@@ -96,6 +97,7 @@ bl_token_prec(bl_token_t *token)
 
   case BL_SYM_PLUS:
   case BL_SYM_MINUS:
+  case BL_SYM_NOT:
     return 20;
 
   case BL_SYM_LESS:

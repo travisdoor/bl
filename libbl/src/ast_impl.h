@@ -684,9 +684,6 @@ void
 bl_ast_insert(bl_node_t **dest, bl_node_t *src);
 
 void
-bl_ast_insert_after(bl_node_t **dest, bl_node_t *src);
-
-void
 bl_ast_dup_node_buf(bl_node_t *dest, bl_node_t *node);
 
 bool

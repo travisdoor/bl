@@ -1021,8 +1021,6 @@ third_pass_func(bl_visitor_t *visitor, bl_node_t **func)
 
   cnt->curr_compound = *func;
 
-  bl_log("visiting function %s", _func->id.str);
-
   // TODO can be solved via visitor because we use walk later
   bl_node_t *arg = _func->args;
   while (arg) {
