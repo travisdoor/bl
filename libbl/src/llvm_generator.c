@@ -648,7 +648,7 @@ gen_unary_expr(context_t *cnt, bl_node_t *expr)
 
   case BL_SYM_NOT: {
     if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
-      next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+      next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     }
 
     next_val = LLVMBuildNot(cnt->llvm_builder, next_val, gname("tmp"));

@@ -53,8 +53,8 @@ typedef struct bl_assembly
 
   BList *func_queue; /* queue of functions to be generated created by deps_builder */
 
-  LLVMExecutionEngineRef llvm_runtime_engine;     /* LLVM execution engine for runtime module */
-  LLVMExecutionEngineRef llvm_jit; /* LLVM execution engine for compiletime module */
+  LLVMExecutionEngineRef llvm_runtime_engine; /* LLVM execution engine for runtime module */
+  LLVMExecutionEngineRef llvm_jit;            /* LLVM execution engine for compiletime module */
 } bl_assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

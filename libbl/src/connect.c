@@ -1104,8 +1104,8 @@ fourth_pass_enum(bl_visitor_t *visitor, bl_node_t **enm)
     /* local enum */
     connect_enum(cnt, *enm);
   }
-  
-  cnt->curr_compound  = *enm;
+
+  cnt->curr_compound = *enm;
   bl_visitor_walk_enum(visitor, enm);
   cnt->curr_compound = prev_cmp;
 }
