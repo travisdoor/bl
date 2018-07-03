@@ -30,11 +30,11 @@
 #include "visitor_impl.h"
 #include "common_impl.h"
 
-/* call visit method if it's not set to NULL */
-#define call_visit(visitor, node, type)                                                            \
-  if ((visitor)->visitors[(type)] != NULL) {                                                       \
-    (visitor)->visitors[(type)]((visitor), (node));                                                \
-  }
+static inline void
+call_visit(bl_visitor_t *visitor, bl_node_t **node, bl_visit_e type)
+{
+  if (visitor->visitors[type] != NULL) visitor->visitors[type](visitor, node);
+}
 
 static inline bool
 is_ignored(bl_node_code_e c, bl_node_code_e *ignored, int ignoredc)
@@ -399,6 +399,10 @@ bl_visitor_walk_struct(bl_visitor_t *visitor, bl_node_t **strct)
 {
   visitor->nesting++;
   bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
+
+  if (_strct->base)
+    call_visit(visitor, &_strct->base, BL_VISIT_TYPE);
+  
   bl_node_t **      member = &_strct->members;
   while (*member) {
     call_visit(visitor, member, BL_VISIT_STRUCT_MEMBER);

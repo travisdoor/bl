@@ -2,12 +2,26 @@
 
 extern fn printf(format string, _1 i32) i32;
 
-fn main() i32 {
-  fn local(i i32) i32 {
-    return i;
-  }
+struct base_t {
+  i i32,
+  j i32
+}
 
-  printf("%d\n", local(10));
+struct child_t : base_t {
+  k i32
+}
+
+struct A : i32 {
+  k i32
+}
+
+
+fn main() i32 {
+  mut child child_t;
+
+  //child.i;
+  //child.j;
+  child.k;
 
   return 0;
 }

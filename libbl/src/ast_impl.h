@@ -321,6 +321,7 @@ struct bl_decl_struct
   int         membersc; /* member count */
   bl_scopes_t scopes;   /* scope cache */
   BList *     deps; /* linked-list of dependencies (function called from during initialization) */
+  bl_node_t * base; /* base structure if there is one */
 };
 
 struct bl_decl_struct_member
@@ -583,7 +584,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
                      bl_node_t *ret_type, int modif, bl_node_t *parent, bool gen_in_compiletime);
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif);
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif, bl_node_t *base);
 
 bl_node_t *
 bl_ast_add_decl_struct_member(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t *type,

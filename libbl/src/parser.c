@@ -1445,7 +1445,18 @@ parse_struct_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected struct name");
     }
 
-    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
+    bl_node_t * base     = NULL;
+    bl_token_t *tok_base = bl_tokens_consume_if(cnt->tokens, BL_SYM_COLON);
+    if (tok_base) {
+      bl_log("struct has base struct");
+      base = parse_type_maybe(cnt, NULL);
+      if (!base) {
+        parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_base, BL_BUILDER_CUR_AFTER,
+                    "expected base structure type name after" BL_YELLOW("':'"));
+      }
+    }
+
+    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif, base);
     bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
     /* eat '{' */

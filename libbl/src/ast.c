@@ -504,7 +504,7 @@ bl_ast_add_decl_func(bl_ast_t *ast, bl_token_t *tok, const char *name, bl_node_t
 }
 
 bl_node_t *
-bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif)
+bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int modif, bl_node_t *base)
 {
   bl_node_t *strct = alloc_node(ast);
   if (tok) strct->src = &tok->src;
@@ -514,6 +514,7 @@ bl_ast_add_decl_struct(bl_ast_t *ast, bl_token_t *tok, const char *name, int mod
   bl_id_init(&_strct->id, name);
   bl_scopes_init(&_strct->scopes);
   _strct->modif = modif;
+  _strct->base  = base;
 
   return strct;
 }
