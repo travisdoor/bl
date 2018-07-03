@@ -186,6 +186,16 @@
     for i = 0..10 {
       arr[i];
     }
+
+    // simple inheritance on data
+    struct base {
+      i i32
+    }
+
+    struct child : base {
+      j i32
+    }
+
 * NOTES
 ** global using search return array of all founds references???
 ** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625

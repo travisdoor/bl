@@ -1,8 +1,14 @@
 /* testing playground */
 
-extern fn printf(s string, s2 string) i32;
+extern fn printf(format string, _1 i32) i32;
 
 fn main() i32 {
+  fn local(i i32) i32 {
+    return i;
+  }
+
+  printf("%d\n", local(10));
+
   return 0;
 }
 

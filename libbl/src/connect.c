@@ -32,8 +32,6 @@
 #include "stages_impl.h"
 #include "visitor_impl.h"
 
-#define peek_cnt(visitor) ((context_t *)(visitor)->context)
-
 #define connect_error(cnt, code, node, pos, format, ...)                                           \
   {                                                                                                \
     bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
@@ -82,6 +80,12 @@ typedef void (*lookup_elem_valid_f)(_VALIDATE_ARGS);
 /*************************************************************************************************
  * helpers
  *************************************************************************************************/
+static inline context_t *
+peek_cnt(bl_visitor_t *visitor)
+{
+  return (context_t *)visitor->context;
+}
+
 static void
 include_using(context_t *cnt, bl_node_t *using);
 
@@ -1069,6 +1073,10 @@ fourth_pass_func(bl_visitor_t *visitor, bl_node_t **func)
 
   if (bl_node_is(cnt->curr_compound, BL_DECL_BLOCK)) {
     insert_into_scope(cnt, *func);
+
+    /* create new scope for function declaration */
+    bl_scope_t *main_scope = bl_scope_new(cnt->assembly->scope_cache);
+    bl_scopes_include_main(&_func->scopes, main_scope, *func);
   }
 
   cnt->curr_compound = *func;
