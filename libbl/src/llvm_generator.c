@@ -59,12 +59,8 @@ typedef struct
   /* llvm context */
   LLVMContextRef llvm_cnt;
 
-  /* mapping ast node pointers to LLVMValues for symbols in global scope */
-  BHashTable *gscope;
-
-  /* mapping ast node pointers to LLVMValues for symbols in current function scope, functions can be
-   * later located by node pointer */
-  BHashTable *cscope;
+  /* mapping ast node pointers to LLVMValues */
+  BHashTable *scope;
 
   BHashTable *llvm_modules;
 
@@ -78,9 +74,11 @@ typedef struct
   /* LLVMValueRef to current return tmp */
   LLVMValueRef ret_value;
 
+  /* JIT execution engine for #run called methods */
   LLVMExecutionEngineRef llvm_jit;
   BHashTable *           jit_linked;
 
+  /* main function node if there is one */
   bl_node_t *tmp_main;
 } context_t;
 
@@ -104,51 +102,27 @@ is_deref(bl_node_t *node)
 }
 
 static inline void
-push_cscope(context_t *cnt, bl_node_t *node, void *val)
+push_scope(context_t *cnt, bl_node_t *node, void *val)
 {
-  bo_htbl_insert(cnt->cscope, (uint64_t)node, val);
-}
-
-static inline void
-push_gscope(context_t *cnt, bl_node_t *node, void *val)
-{
-  bo_htbl_insert(cnt->gscope, (uint64_t)node, val);
+  bo_htbl_insert(cnt->scope, (uint64_t)node, val);
 }
 
 static inline void *
-get_cscope(context_t *cnt, bl_node_t *node)
+get_scope(context_t *cnt, bl_node_t *node)
 {
-  return bo_htbl_at(cnt->cscope, (uint64_t)node, void *);
-}
-
-static inline void *
-get_gscope(context_t *cnt, bl_node_t *node)
-{
-  return bo_htbl_at(cnt->gscope, (uint64_t)node, void *);
+  return bo_htbl_at(cnt->scope, (uint64_t)node, void *);
 }
 
 static inline bool
-is_in_gscope(context_t *cnt, bl_node_t *node)
+is_in_scope(context_t *cnt, bl_node_t *node)
 {
-  return bo_htbl_has_key(cnt->gscope, (uint64_t)node);
-}
-
-static inline bool
-is_in_cscope(context_t *cnt, bl_node_t *node)
-{
-  return bo_htbl_has_key(cnt->cscope, (uint64_t)node);
+  return bo_htbl_has_key(cnt->scope, (uint64_t)node);
 }
 
 static inline void
-reset_cscope(context_t *cnt)
+reset_scope(context_t *cnt)
 {
-  bo_htbl_clear(cnt->cscope);
-}
-
-static inline void
-reset_gscope(context_t *cnt)
-{
-  bo_htbl_clear(cnt->gscope);
+  bo_htbl_clear(cnt->scope);
 }
 
 static LLVMValueRef
@@ -322,7 +296,7 @@ gen_init(context_t *cnt, bl_node_t *init)
   LLVMValueRef result =
       LLVMBuildAlloca(cnt->llvm_builder, to_llvm_type(cnt, _init->type), gname("tmp"));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_cscope(cnt, init, result);
+  push_scope(cnt, init, result);
 
   bl_node_t *expr = _init->exprs;
   while (expr) {
@@ -340,13 +314,13 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   LLVMTypeRef       type   = NULL;
 
   /* structure can be already generated -> check cache */
-  if (is_in_gscope(cnt, strct)) {
-    type = (LLVMTypeRef)get_gscope(cnt, strct);
+  if (is_in_scope(cnt, strct)) {
+    type = (LLVMTypeRef)get_scope(cnt, strct);
     return type;
   }
 
   type = LLVMStructCreateNamed(cnt->llvm_cnt, _strct->id.str);
-  push_gscope(cnt, strct, type);
+  push_scope(cnt, strct, type);
 
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * _strct->membersc);
   bl_node_t *  member  = _strct->members;
@@ -471,8 +445,8 @@ gen_func(context_t *cnt, bl_node_t *func)
   /* find extern functions by name in current module */
   if (_func->modif & BL_MODIF_EXTERN) {
     llvm_func = LLVMGetNamedFunction(cnt->llvm_mod, _func->id.str);
-  } else if (is_in_gscope(cnt, func)) {
-    llvm_func = get_gscope(cnt, func);
+  } else if (is_in_scope(cnt, func)) {
+    llvm_func = get_scope(cnt, func);
   }
 
   /* args */
@@ -490,7 +464,7 @@ gen_func(context_t *cnt, bl_node_t *func)
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
     llvm_func            = LLVMAddFunction(cnt->llvm_mod, uname, ret_type);
 
-    if (!(_func->modif & BL_MODIF_EXTERN)) push_gscope(cnt, func, llvm_func);
+    if (!(_func->modif & BL_MODIF_EXTERN)) push_scope(cnt, func, llvm_func);
   }
 
   return llvm_func;
@@ -812,7 +786,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     case BL_EXPR_INIT:
     case BL_DECL_MUT:
     case BL_DECL_ARG: {
-      val = get_cscope(cnt, ref);
+      val = get_scope(cnt, ref);
       break;
     }
 
@@ -1004,7 +978,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
   bl_assert(_block->parent, "block has no parent");
 
   if (bl_node_is(_block->parent, BL_DECL_FUNC)) {
-    LLVMValueRef    llvm_func = get_gscope(cnt, _block->parent);
+    LLVMValueRef    llvm_func = get_scope(cnt, _block->parent);
     bl_decl_func_t *func      = bl_peek_decl_func(_block->parent);
     bl_assert(llvm_func, "cannot find llvm function representation");
 
@@ -1027,7 +1001,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
           LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_arg(arg)->id.str));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
 
-      push_cscope(cnt, arg, p_tmp);
+      push_scope(cnt, arg, p_tmp);
       arg = arg->next;
     }
 
@@ -1082,7 +1056,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef llvm_mut = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_mut->id.str));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_cscope(cnt, *mut, llvm_mut);
+  push_scope(cnt, *mut, llvm_mut);
 
   if (_mut->init_expr) {
     LLVMValueRef init = gen_expr(cnt, _mut->init_expr);
@@ -1295,8 +1269,7 @@ generate(bl_visitor_t *visitor)
       LLVMValueRef llvm_func = gen_func(cnt, fn);
 
       bl_visitor_walk_func(visitor, &fn);
-      reset_cscope(cnt);
-      reset_gscope(cnt);
+      reset_scope(cnt);
 
       //#define PRINT_IR
 #ifdef PRINT_IR
@@ -1392,8 +1365,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   cnt.assembly     = assembly;
   cnt.llvm_cnt     = LLVMContextCreate();
   cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.cscope       = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.gscope       = bo_htbl_new(sizeof(LLVMValueRef), 2048);
+  cnt.scope        = bo_htbl_new(sizeof(LLVMValueRef), 512);
   cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->func_queue));
   cnt.jit_linked   = bo_htbl_new(0, bo_list_size(assembly->func_queue));
   cnt.llvm_jit     = create_jit(&cnt);
@@ -1431,8 +1403,7 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   /* context destruction */
   LLVMDisposeBuilder(cnt.llvm_builder);
-  bo_unref(cnt.gscope);
-  bo_unref(cnt.cscope);
+  bo_unref(cnt.scope);
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.jit_linked);
 
