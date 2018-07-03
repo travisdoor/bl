@@ -82,6 +82,7 @@
   sm(RPAREN,      ")") \
   sm(COMMA,       ",")\
   sm(SEMICOLON,   ";") \
+  sm(COLON,       ":") \
   sm(EQ,          "==") /* logical begin */ \
   sm(NEQ,         "!=") \
   sm(GREATER_EQ,  ">=") \

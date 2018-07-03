@@ -37,4 +37,10 @@
 
 #define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
+#define bl_array_foreach(arr, it)                                                                  \
+  for (size_t i = 0; (it) = bo_array_at((arr), i, void *), i < bo_array_size((arr)); ++i)
+
+#define bl_array_foreach_t(arr, it, t)                                                             \
+  for (size_t i = 0; (it) = bo_array_at((arr), i, (t)), i < bo_array_size((arr)); ++i)
+
 #endif // BL_COMMON_IMPL_H

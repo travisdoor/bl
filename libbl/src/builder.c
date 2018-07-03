@@ -68,8 +68,7 @@ static bool llvm_initialized = false;
 static void
 llvm_init(void)
 {
-  if (llvm_initialized)
-    return;
+  if (llvm_initialized) return;
 
   LLVMInitializeAllTargetInfos();
   LLVMInitializeAllTargets();
@@ -88,17 +87,14 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, ui
   if (flags & BL_BUILDER_LOAD_FROM_FILE && (error = bl_file_loader_run(builder, unit)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_lexer_run(builder, unit)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_lexer_run(builder, unit)) != BL_NO_ERR) return error;
 
   if (flags & BL_BUILDER_PRINT_TOKENS && (error = bl_token_printer_run(unit)) != BL_NO_ERR)
     return error;
 
-  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_parser_run(builder, unit)) != BL_NO_ERR) return error;
 
-  if ((error = bl_preproc_run(builder, unit, assembly)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_preproc_run(builder, unit, assembly)) != BL_NO_ERR) return error;
 
   return BL_NO_ERR;
 }
@@ -108,21 +104,17 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_error_e error;
 
-  if ((error = bl_connect_run(builder, assembly)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_connect_run(builder, assembly)) != BL_NO_ERR) return error;
 
-  if ((error = bl_check_run(builder, assembly)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_check_run(builder, assembly)) != BL_NO_ERR) return error;
 
-  if ((error = bl_deps_builder_run(builder, assembly)) != BL_NO_ERR)
-    return error;
+  if ((error = bl_deps_builder_run(builder, assembly)) != BL_NO_ERR) return error;
 
   if (flags & BL_BUILDER_PRINT_AST && (error = bl_ast_printer_run(assembly)) != BL_NO_ERR)
     return error;
 
   if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
-    if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR)
-      return error;
+    if ((error = bl_llvm_gen_run(builder, assembly)) != BL_NO_ERR) return error;
 
     if (flags & BL_BUILDER_RUN_TESTS &&
         (error = bl_test_runner_run(builder, assembly)) != BL_NO_ERR)
@@ -136,11 +128,9 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
       return error;
 
     if (!(flags & BL_BUILDER_NO_BIN)) {
-      if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR)
-        return error;
+      if ((error = bl_llvm_linker_run(builder, assembly)) != BL_NO_ERR) return error;
 
-      if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR)
-        return error;
+      if ((error = bl_llvm_native_bin_run(builder, assembly)) != BL_NO_ERR) return error;
     }
   }
 
@@ -247,8 +237,7 @@ void
 bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
                bl_builder_msg_cur_pos pos, const char *format, ...)
 {
-  if (builder->no_warn && type == BL_BUILDER_WARNING)
-    return;
+  if (builder->no_warn && type == BL_BUILDER_WARNING) return;
 
   bl_assert(src, "invalid source");
   bl_assert(src->unit, "invalid unit attached to source location");
@@ -323,4 +312,8 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
   else
     builder->on_warning(bo_string_get(tmp), builder->on_error_cnt);
   bo_unref(tmp);
+
+#if BL_ASSERT_ON_CMP_ERROR
+  if (type == BL_BUILDER_ERROR) assert(false);
+#endif
 }

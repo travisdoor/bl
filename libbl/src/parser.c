@@ -100,7 +100,7 @@ static bl_node_t *
 parse_struct_maybe(context_t *cnt, int modif);
 
 static bl_node_t *
-parse_struct_member_maybe(context_t *cnt, int order);
+parse_struct_member_maybe(context_t *cnt);
 
 static bl_node_t *
 parse_enum_variant_maybe(context_t *cnt, bl_node_t *parent);
@@ -1391,7 +1391,7 @@ next_expr:
 }
 
 bl_node_t *
-parse_struct_member_maybe(context_t *cnt, int order)
+parse_struct_member_maybe(context_t *cnt)
 {
   bl_node_t *type  = NULL;
   bl_modif_e modif = parse_modifs_maybe(cnt);
@@ -1408,7 +1408,7 @@ parse_struct_member_maybe(context_t *cnt, int order)
                 "expected type name after member name");
   }
 
-  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, order, modif);
+  return bl_ast_add_decl_struct_member(cnt->ast, tok_id, tok_id->value.str, type, -1, modif);
 }
 
 bl_node_t *
@@ -1445,7 +1445,17 @@ parse_struct_maybe(context_t *cnt, int modif)
       parse_error(cnt, BL_ERR_EXPECTED_NAME, tok, BL_BUILDER_CUR_WORD, "expected struct name");
     }
 
-    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif);
+    bl_node_t * base     = NULL;
+    bl_token_t *tok_base = bl_tokens_consume_if(cnt->tokens, BL_SYM_COLON);
+    if (tok_base) {
+      base = parse_type_maybe(cnt, NULL);
+      if (!base) {
+        parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_base, BL_BUILDER_CUR_AFTER,
+                    "expected base structure type name after" BL_YELLOW("':'"));
+      }
+    }
+
+    strct                    = bl_ast_add_decl_struct(cnt->ast, tok, tok->value.str, modif, base);
     bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
 
     /* eat '{' */
@@ -1456,12 +1466,11 @@ parse_struct_maybe(context_t *cnt, int modif)
                   "expected struct body " BL_YELLOW("'{'"));
     }
 
-    int         order  = 0;
-    bl_node_t * prev   = strct;
+    bl_node_t * prev   = NULL;
     bl_node_t **member = &_strct->members;
   member:
     /* eat ident */
-    *member = parse_struct_member_maybe(cnt, order++);
+    *member = parse_struct_member_maybe(cnt);
     if (*member) {
       _strct->membersc++;
       (*member)->prev = prev;
@@ -1519,7 +1528,7 @@ parse_enum_maybe(context_t *cnt, int modif, bl_node_t *parent)
                   "expected enum body " BL_YELLOW("'{'"));
     }
 
-    bl_node_t * prev    = enm;
+    bl_node_t * prev    = NULL;
     bl_node_t **variant = &_enm->variants;
 
   variant:

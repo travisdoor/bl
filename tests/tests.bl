@@ -15,6 +15,7 @@
 #load "src/local_func_test.bl"
 #load "src/local_enum_test.bl"
 #load "src/local_struct_test.bl"
+#load "src/inheritance_test.bl"
 
 // api
 #load "api/std/file.bl"
