@@ -54,7 +54,7 @@ get_uname(char *out_buf, int max_len, bl_node_t *node)
   if (bl_node_is(bl_ast_get_parent(node), BL_DECL_BLOCK)) {
     /* local function? */
     const uint64_t tmp = bl_ast_get_id(node)->hash;
-    snprintf(out_buf, max_len, "_%llu", tmp);
+    snprintf(out_buf, max_len, "_%lu", tmp);
     return;
   }
 

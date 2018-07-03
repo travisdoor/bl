@@ -36,31 +36,6 @@
 #include "stages_impl.h"
 #include "visitor_impl.h"
 
-#define push_value_cscope(ptr, llvm_value_ref)                                                     \
-  (bo_htbl_insert(cnt->cscope, (uint64_t)(ptr), (llvm_value_ref)))
-
-#define push_value_gscope(ptr, llvm_value_ref)                                                     \
-  (bo_htbl_insert(cnt->gscope, (uint64_t)(ptr), (llvm_value_ref)))
-
-#define get_value_cscope(ptr) (bo_htbl_at(cnt->cscope, (uint64_t)(ptr), LLVMValueRef))
-
-#define get_value_gscope(ptr) (bo_htbl_at(cnt->gscope, (uint64_t)(ptr), LLVMValueRef))
-
-#define is_in_gscope(ptr) (bo_htbl_has_key(cnt->gscope, (uint64_t)ptr))
-
-#define is_in_cscope(ptr) (bo_htbl_has_key(cnt->cscope, (uint64_t)ptr))
-
-#define reset_cscope() (bo_htbl_clear(cnt->cscope))
-#define reset_gscope() (bo_htbl_clear(cnt->gscope))
-
-#define skip_if_terminated(cnt)                                                                    \
-  if (LLVMGetInsertBlock((cnt)->llvm_builder) &&                                                   \
-      LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL)                \
-    return;
-
-#define is_deref(node)                                                                             \
-  ((bl_node_is((node), BL_EXPR_UNARY) && bl_peek_expr_unary((node))->op == BL_SYM_ASTERISK))
-
 #if BL_DEBUG
 #define gname(s) s
 #else
@@ -113,6 +88,67 @@ static inline context_t *
 peek_cnt(bl_visitor_t *visitor)
 {
   return (context_t *)visitor->context;
+}
+
+static inline bool
+is_terminated(context_t *cnt)
+{
+  return (LLVMGetInsertBlock((cnt)->llvm_builder) &&
+          LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL);
+}
+
+static inline bool
+is_deref(bl_node_t *node)
+{
+  return bl_node_is(node, BL_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK;
+}
+
+static inline void
+push_cscope(context_t *cnt, bl_node_t *node, void *val)
+{
+  bo_htbl_insert(cnt->cscope, (uint64_t)node, val);
+}
+
+static inline void
+push_gscope(context_t *cnt, bl_node_t *node, void *val)
+{
+  bo_htbl_insert(cnt->gscope, (uint64_t)node, val);
+}
+
+static inline void *
+get_cscope(context_t *cnt, bl_node_t *node)
+{
+  return bo_htbl_at(cnt->cscope, (uint64_t)node, void *);
+}
+
+static inline void *
+get_gscope(context_t *cnt, bl_node_t *node)
+{
+  return bo_htbl_at(cnt->gscope, (uint64_t)node, void *);
+}
+
+static inline bool
+is_in_gscope(context_t *cnt, bl_node_t *node)
+{
+  return bo_htbl_has_key(cnt->gscope, (uint64_t)node);
+}
+
+static inline bool
+is_in_cscope(context_t *cnt, bl_node_t *node)
+{
+  return bo_htbl_has_key(cnt->cscope, (uint64_t)node);
+}
+
+static inline void
+reset_cscope(context_t *cnt)
+{
+  bo_htbl_clear(cnt->cscope);
+}
+
+static inline void
+reset_gscope(context_t *cnt)
+{
+  bo_htbl_clear(cnt->gscope);
 }
 
 static LLVMValueRef
@@ -286,7 +322,7 @@ gen_init(context_t *cnt, bl_node_t *init)
   LLVMValueRef result =
       LLVMBuildAlloca(cnt->llvm_builder, to_llvm_type(cnt, _init->type), gname("tmp"));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_value_cscope(init, result);
+  push_cscope(cnt, init, result);
 
   bl_node_t *expr = _init->exprs;
   while (expr) {
@@ -304,13 +340,13 @@ gen_struct(context_t *cnt, bl_node_t *strct)
   LLVMTypeRef       type   = NULL;
 
   /* structure can be already generated -> check cache */
-  if (is_in_gscope(strct)) {
-    type = (LLVMTypeRef)get_value_gscope(strct);
+  if (is_in_gscope(cnt, strct)) {
+    type = (LLVMTypeRef)get_gscope(cnt, strct);
     return type;
   }
 
   type = LLVMStructCreateNamed(cnt->llvm_cnt, _strct->id.str);
-  push_value_gscope(strct, type);
+  push_gscope(cnt, strct, type);
 
   LLVMTypeRef *members = bl_malloc(sizeof(LLVMTypeRef) * _strct->membersc);
   bl_node_t *  member  = _strct->members;
@@ -435,8 +471,8 @@ gen_func(context_t *cnt, bl_node_t *func)
   /* find extern functions by name in current module */
   if (_func->modif & BL_MODIF_EXTERN) {
     llvm_func = LLVMGetNamedFunction(cnt->llvm_mod, _func->id.str);
-  } else if (is_in_gscope(func)) {
-    llvm_func = get_value_gscope(func);
+  } else if (is_in_gscope(cnt, func)) {
+    llvm_func = get_gscope(cnt, func);
   }
 
   /* args */
@@ -454,7 +490,7 @@ gen_func(context_t *cnt, bl_node_t *func)
     LLVMTypeRef ret_type = LLVMFunctionType(ret, param_types, (unsigned int)pc, false);
     llvm_func            = LLVMAddFunction(cnt->llvm_mod, uname, ret_type);
 
-    if (!(_func->modif & BL_MODIF_EXTERN)) push_value_gscope(func, llvm_func);
+    if (!(_func->modif & BL_MODIF_EXTERN)) push_gscope(cnt, func, llvm_func);
   }
 
   return llvm_func;
@@ -776,7 +812,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
     case BL_EXPR_INIT:
     case BL_DECL_MUT:
     case BL_DECL_ARG: {
-      val = get_value_cscope(ref);
+      val = get_cscope(cnt, ref);
       break;
     }
 
@@ -968,7 +1004,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
   bl_assert(_block->parent, "block has no parent");
 
   if (bl_node_is(_block->parent, BL_DECL_FUNC)) {
-    LLVMValueRef    llvm_func = get_value_gscope(_block->parent);
+    LLVMValueRef    llvm_func = get_gscope(cnt, _block->parent);
     bl_decl_func_t *func      = bl_peek_decl_func(_block->parent);
     bl_assert(llvm_func, "cannot find llvm function representation");
 
@@ -991,7 +1027,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
           LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(bl_peek_decl_arg(arg)->id.str));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
 
-      push_value_cscope(arg, p_tmp);
+      push_cscope(cnt, arg, p_tmp);
       arg = arg->next;
     }
 
@@ -1007,7 +1043,7 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
 
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_entry_block);
   } else {
-    skip_if_terminated(cnt);
+    if (is_terminated(cnt)) return;
   };
 
   bl_node_code_e ignore[1] = {BL_DECL_FUNC};
@@ -1038,7 +1074,7 @@ static void
 visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
   bl_decl_mut_t *   _mut       = bl_peek_decl_mut(*mut);
   LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMTypeRef       t          = to_llvm_type(cnt, _mut->type);
@@ -1046,7 +1082,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->func_init_block);
   LLVMValueRef llvm_mut = LLVMBuildAlloca(cnt->llvm_builder, t, gname(_mut->id.str));
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
-  push_value_cscope(*mut, llvm_mut);
+  push_cscope(cnt, *mut, llvm_mut);
 
   if (_mut->init_expr) {
     LLVMValueRef init = gen_expr(cnt, _mut->init_expr);
@@ -1059,7 +1095,7 @@ visit_mut(bl_visitor_t *visitor, bl_node_t **mut)
 static void
 visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 {
-  skip_if_terminated(peek_cnt(visitor));
+  if (is_terminated(peek_cnt(visitor))) return;
   gen_expr(peek_cnt(visitor), *expr);
 }
 
@@ -1067,7 +1103,7 @@ static void
 visit_return(bl_visitor_t *visitor, bl_node_t **ret)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
   bl_stmt_return_t *_ret = bl_peek_stmt_return(*ret);
   if (!_ret->expr) {
     return;
@@ -1086,7 +1122,7 @@ static void
 visit_if(bl_visitor_t *visitor, bl_node_t **if_stmt)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
 
   bl_stmt_if_t *    _if_stmt     = bl_peek_stmt_if(*if_stmt);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -1142,7 +1178,7 @@ static void
 visit_loop(bl_visitor_t *visitor, bl_node_t **loop)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
   bl_stmt_loop_t *  _loop        = bl_peek_stmt_loop(*loop);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
@@ -1188,7 +1224,7 @@ static void
 visit_break(bl_visitor_t *visitor, bl_node_t **brk)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
   LLVMBuildBr(cnt->llvm_builder, cnt->break_block);
 }
 
@@ -1196,7 +1232,7 @@ static void
 visit_continue(bl_visitor_t *visitor, bl_node_t **cont)
 {
   context_t *cnt = peek_cnt(visitor);
-  skip_if_terminated(cnt);
+  if (is_terminated(cnt)) return;
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
 
@@ -1259,8 +1295,8 @@ generate(bl_visitor_t *visitor)
       LLVMValueRef llvm_func = gen_func(cnt, fn);
 
       bl_visitor_walk_func(visitor, &fn);
-      reset_cscope();
-      reset_gscope();
+      reset_cscope(cnt);
+      reset_gscope(cnt);
 
       //#define PRINT_IR
 #ifdef PRINT_IR
