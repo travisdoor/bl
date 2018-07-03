@@ -83,6 +83,7 @@ typedef enum
   BL_ERR_MULTIPLE_MAIN           = 44,
   BL_ERR_EXPECTED_INITIALIZATION = 45,
   BL_ERR_EXPECTED_TYPE_REF       = 46,
+  BL_ERR_EXPECTED_TYPE_STRUCT    = 47,
 } bl_error_e;
 
 BO_END_DECLS

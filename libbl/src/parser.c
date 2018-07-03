@@ -1448,7 +1448,6 @@ parse_struct_maybe(context_t *cnt, int modif)
     bl_node_t * base     = NULL;
     bl_token_t *tok_base = bl_tokens_consume_if(cnt->tokens, BL_SYM_COLON);
     if (tok_base) {
-      bl_log("struct has base struct");
       base = parse_type_maybe(cnt, NULL);
       if (!base) {
         parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_base, BL_BUILDER_CUR_AFTER,
@@ -1468,7 +1467,7 @@ parse_struct_maybe(context_t *cnt, int modif)
     }
 
     int         order  = 0;
-    bl_node_t * prev   = strct;
+    bl_node_t * prev   = NULL;
     bl_node_t **member = &_strct->members;
   member:
     /* eat ident */

@@ -937,13 +937,11 @@ bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
 void
 bl_ast_dup_and_insert(bl_ast_t *ast, bl_node_t **dest, bl_node_t *src)
 {
-  if (!dest || !src) return;
+  bl_log("here");
+  if (!*dest || !src) return;
 
-  bl_node_t *tmp = *dest;
-  *dest          = bl_ast_dup_node(ast, src);
-
-  (*dest)->next = tmp->next;
-  (*dest)->prev = tmp->prev;
+  src = bl_ast_dup_node(ast, src);
+  bl_ast_insert(dest, src);
 }
 
 void

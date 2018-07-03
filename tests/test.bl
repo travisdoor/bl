@@ -2,26 +2,26 @@
 
 extern fn printf(format string, _1 i32) i32;
 
-struct base_t {
+struct A {
   i i32,
   j i32
 }
 
-struct child_t : base_t {
+struct B : A {
+//i i32,
+//j i32,
   k i32
 }
 
-struct A : i32 {
-  k i32
+struct C : B {
+//i i32,
+//j i32,
+//k i32,
+  l i32
 }
-
 
 fn main() i32 {
-  mut child child_t;
-
-  //child.i;
-  //child.j;
-  child.k;
+  mut c C;
 
   return 0;
 }

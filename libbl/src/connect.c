@@ -71,6 +71,10 @@ typedef struct
 
   bl_node_t *curr_func;
   int        name_counter;
+
+  /* Cache of already inherited structures. Solves joining of including base members multiple times.
+   */
+  BHashTable *inherited;
 } context_t;
 
 #define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
@@ -123,6 +127,9 @@ connect_struct(context_t *cnt, bl_node_t *strct);
 static void
 connect_enum(context_t *cnt, bl_node_t *enm);
 
+static void
+inherit_members(context_t *cnt, bl_node_t *strct);
+
 /*************************************************************************************************
  * First pass
  * - join all modules in one (in context meaning)
@@ -168,6 +175,9 @@ second_pass_module(bl_visitor_t *visitor, bl_node_t **module);
 
 static void
 second_pass_using(bl_visitor_t *visitor, bl_node_t **using);
+
+static void
+second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct);
 
 /*************************************************************************************************
  * Fourth pass
@@ -342,6 +352,7 @@ connect_type(context_t *cnt, bl_node_t *type)
 {
   bl_node_t *found = NULL;
   if (bl_node_is(type, BL_TYPE_REF)) {
+    /* skip if type has been already connected */
     if (bl_peek_type_ref(type)->ref) return;
     found                       = lookup(cnt, bl_peek_type_ref(type)->path, validate_type, NULL);
     bl_peek_type_ref(type)->ref = found;
@@ -585,6 +596,34 @@ include_using(context_t *cnt, bl_node_t *using)
   bl_scopes_include(curr_scopes, found_scopes->main, using);
 }
 
+void
+inherit_members(context_t *cnt, bl_node_t *strct)
+{
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  if (!_strct->base) return;
+  if (bo_htbl_has_key(cnt->inherited, (uint64_t)strct)) return;
+
+  bl_node_t *base = bl_peek_type_ref(_strct->base)->ref;
+  bl_assert(base, "base type not linked for structure %s", _strct->id.str);
+
+  if (!bo_htbl_has_key(cnt->inherited, (uint64_t)base)) {
+    inherit_members(cnt, base);
+  }
+
+  bl_decl_struct_t *_base  = bl_peek_decl_struct(base);
+  bl_node_t *       member = _base->members;
+  while (member) {
+    bl_log("include into %s member %s", _strct->id.str, bl_peek_decl_struct_member(member)->id.str);
+
+    bl_ast_dup_and_insert(cnt->ast, &_strct->members, member);
+    _strct->membersc++;
+
+    member = member->next;
+  }
+
+  bo_htbl_insert_empty(cnt->inherited, (uint64_t)strct);
+}
+
 /*************************************************************************************************
  * First pass
  *************************************************************************************************/
@@ -689,6 +728,10 @@ third_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
   context_t *       cnt    = peek_cnt(visitor);
   bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
 
+  if (_strct->base) {
+    inherit_members(cnt, *strct);
+  }
+
   bl_node_t *              member = _strct->members;
   bl_decl_struct_member_t *_member;
   while (member) {
@@ -732,6 +775,24 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t **using)
   if (bl_node_is_not(cnt->curr_compound, BL_DECL_MODULE)) return;
 
   include_using(cnt, *using);
+}
+
+void
+second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
+{
+  context_t *       cnt    = peek_cnt(visitor);
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
+
+  if (_strct->base) {
+    connect_type(cnt, _strct->base);
+    if (bl_node_is_not(_strct->base, BL_TYPE_REF) ||
+        (bl_node_is(_strct->base, BL_TYPE_REF) &&
+         bl_node_is_not(bl_peek_type_ref(_strct->base)->ref, BL_DECL_STRUCT))) {
+
+      connect_error(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _strct->base, BL_BUILDER_CUR_WORD,
+                    "expected structure type as base of %s", _strct->id.str);
+    }
+  }
 }
 
 /*************************************************************************************************
@@ -1242,6 +1303,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .assembly      = assembly,
                    .name_counter  = 0,
                    .curr_compound = NULL,
+                   .inherited     = bo_htbl_new(0, 1024),
                    .curr_lvalue   = NULL};
   const int c   = bl_assembly_get_unit_count(assembly);
   /* all anonymous global modules needs shared cache */
@@ -1279,7 +1341,7 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_init(&visitor_second, &cnt);
   bl_visitor_add(&visitor_second, second_pass_module, BL_VISIT_MODULE);
   bl_visitor_add(&visitor_second, second_pass_using, BL_VISIT_USING);
-  bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_STRUCT);
+  bl_visitor_add(&visitor_second, second_pass_struct, BL_VISIT_STRUCT);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_FUNC);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_CONST);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_ENUM);
@@ -1336,6 +1398,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
     reset_tmps(&cnt);
     bl_visitor_walk_gscope(&visitor_fourth, &cnt.unit->ast.root);
   }
+
+  bo_unref(cnt.inherited);
 
   return BL_NO_ERR;
 }
