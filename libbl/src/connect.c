@@ -77,9 +77,7 @@ typedef struct
   BHashTable *inherited;
 } context_t;
 
-#define _VALIDATE_ARGS context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last
-typedef void (*lookup_elem_valid_f)(_VALIDATE_ARGS);
-#define VALIDATE_F(name) void validate_##name(_VALIDATE_ARGS)
+typedef void (*lookup_elem_valid_f)(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
 
 /*************************************************************************************************
  * helpers
@@ -126,6 +124,9 @@ connect_struct(context_t *cnt, bl_node_t *strct);
 
 static void
 connect_enum(context_t *cnt, bl_node_t *enm);
+
+static void
+connect_struct_base_type(context_t *cnt, bl_node_t *strct);
 
 static void
 inherit_members(context_t *cnt, bl_node_t *strct);
@@ -223,10 +224,17 @@ fourth_pass_struct(bl_visitor_t *visitor, bl_node_t **strct);
  * Validation
  *************************************************************************************************/
 
-static VALIDATE_F(decl_ref);
-static VALIDATE_F(call);
-static VALIDATE_F(using);
-static VALIDATE_F(type);
+static void
+validate_decl_ref(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
+static void
+validate_call(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
+static void
+validate_using(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
+
+static void
+validate_type(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
 
 /*************************************************************************************************
  * Helpers impl
@@ -603,6 +611,9 @@ inherit_members(context_t *cnt, bl_node_t *strct)
   if (!_strct->base) return;
   if (bo_htbl_has_key(cnt->inherited, (uint64_t)strct)) return;
 
+  bl_node_t *prev_cmp = cnt->curr_compound;
+  cnt->curr_compound  = strct;
+
   bl_node_t *base = bl_peek_type_ref(_strct->base)->ref;
   bl_assert(base, "base type not linked for structure %s", _strct->id.str);
 
@@ -610,18 +621,63 @@ inherit_members(context_t *cnt, bl_node_t *strct)
     inherit_members(cnt, base);
   }
 
+  /* little tricky, we need to keep same ordering of structure layout */
   bl_decl_struct_t *_base  = bl_peek_decl_struct(base);
   bl_node_t *       member = _base->members;
+  bl_node_t *       first  = NULL;
+  bl_node_t *       last;
+  bl_node_t *       dup;
   while (member) {
     bl_log("include into %s member %s", _strct->id.str, bl_peek_decl_struct_member(member)->id.str);
+    dup = bl_ast_dup_node(cnt->ast, member);
 
-    bl_ast_dup_and_insert(cnt->ast, &_strct->members, member);
+#if BL_DEBUG
+    if (bl_node_is(bl_peek_decl_struct_member(dup)->type, BL_TYPE_REF)) {
+      bl_type_ref_t *_type = bl_peek_type_ref(bl_peek_decl_struct_member(dup)->type);
+      bl_assert(_type->ref, "inherited member must have connected type!!! Invalid %s.",
+                bl_ast_get_id(dup)->str);
+    }
+#endif
+
+    insert_into_scope(cnt, dup);
+
+    if (!first) {
+      first = dup;
+      last  = dup;
+    } else {
+      last->next = dup;
+      dup->prev  = last;
+      last       = dup;
+    }
     _strct->membersc++;
 
     member = member->next;
   }
 
+  if (first) {
+    last->next = _strct->members;
+    if (_strct->members) _strct->members->prev = last;
+    _strct->members = first;
+  }
+
   bo_htbl_insert_empty(cnt->inherited, (uint64_t)strct);
+  cnt->curr_compound = prev_cmp;
+}
+
+void
+connect_struct_base_type(context_t *cnt, bl_node_t *strct)
+{
+  bl_decl_struct_t *_strct = bl_peek_decl_struct(strct);
+  if (_strct->base) {
+    connect_type(cnt, _strct->base);
+    if (bl_node_is_not(_strct->base, BL_TYPE_REF) ||
+        (bl_node_is(_strct->base, BL_TYPE_REF) &&
+         bl_node_is_not(bl_peek_type_ref(_strct->base)->ref, BL_DECL_STRUCT))) {
+
+      connect_error(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _strct->base, BL_BUILDER_CUR_WORD,
+                    "expected structure type as base of %s", _strct->id.str);
+    }
+  }
 }
 
 /*************************************************************************************************
@@ -732,10 +788,12 @@ third_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
     inherit_members(cnt, *strct);
   }
 
+  int                      order  = 0;
   bl_node_t *              member = _strct->members;
   bl_decl_struct_member_t *_member;
   while (member) {
-    _member = bl_peek_decl_struct_member(member);
+    _member        = bl_peek_decl_struct_member(member);
+    _member->order = order++;
     connect_type(cnt, _member->type);
     member = member->next;
   }
@@ -780,19 +838,8 @@ second_pass_using(bl_visitor_t *visitor, bl_node_t **using)
 void
 second_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
 {
-  context_t *       cnt    = peek_cnt(visitor);
-  bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
-
-  if (_strct->base) {
-    connect_type(cnt, _strct->base);
-    if (bl_node_is_not(_strct->base, BL_TYPE_REF) ||
-        (bl_node_is(_strct->base, BL_TYPE_REF) &&
-         bl_node_is_not(bl_peek_type_ref(_strct->base)->ref, BL_DECL_STRUCT))) {
-
-      connect_error(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _strct->base, BL_BUILDER_CUR_WORD,
-                    "expected structure type as base of %s", _strct->id.str);
-    }
-  }
+  context_t *cnt = peek_cnt(visitor);
+  connect_struct_base_type(cnt, *strct);
 }
 
 /*************************************************************************************************
@@ -900,6 +947,23 @@ fourth_pass_struct(bl_visitor_t *visitor, bl_node_t **strct)
   if (cnt->curr_func) {
     context_t *cnt = peek_cnt(visitor);
     connect_struct(cnt, *strct);
+    connect_struct_base_type(cnt, *strct);
+
+    bl_decl_struct_t *_strct = bl_peek_decl_struct(*strct);
+
+    if (_strct->base) {
+      inherit_members(cnt, *strct);
+    }
+
+    int                      order  = 0;
+    bl_node_t *              member = _strct->members;
+    bl_decl_struct_member_t *_member;
+    while (member) {
+      _member        = bl_peek_decl_struct_member(member);
+      _member->order = order++;
+      connect_type(cnt, _member->type);
+      member = member->next;
+    }
   }
 
   bl_visitor_walk_struct(visitor, strct);
@@ -1191,7 +1255,8 @@ fourth_pass_enum_variant(bl_visitor_t *visitor, bl_node_t **variant)
 /*************************************************************************************************
  * Validate impl
  *************************************************************************************************/
-VALIDATE_F(using)
+void
+validate_using(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
 {
   if (found == NULL) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
@@ -1211,7 +1276,8 @@ VALIDATE_F(using)
   }
 }
 
-VALIDATE_F(decl_ref)
+void
+validate_decl_ref(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
 {
   if (found == NULL) {
     connect_error(cnt, BL_ERR_UNKNOWN_SYMBOL, elem, BL_BUILDER_CUR_WORD,
@@ -1232,7 +1298,8 @@ VALIDATE_F(decl_ref)
   }
 }
 
-VALIDATE_F(call)
+void
+validate_call(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
 {
   if (last) {
     if (found == NULL) {
@@ -1254,7 +1321,8 @@ VALIDATE_F(call)
   }
 }
 
-VALIDATE_F(type)
+void
+validate_type(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last)
 {
   if (last) {
     if (found == NULL) {
@@ -1305,7 +1373,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .curr_compound = NULL,
                    .inherited     = bo_htbl_new(0, 1024),
                    .curr_lvalue   = NULL};
-  const int c   = bl_assembly_get_unit_count(assembly);
+
+  bl_unit_t *unit;
   /* all anonymous global modules needs shared cache */
   bl_scope_t *gscope = bl_scope_new(assembly->scope_cache);
 
@@ -1325,8 +1394,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_first, BL_SKIP_VISIT, BL_VISIT_LOAD);
   bl_visitor_add(&visitor_first, BL_SKIP_VISIT, BL_VISIT_LINK);
 
-  for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+  bl_array_foreach(assembly->units, unit) {
+    cnt.unit = unit;
     /* set shared global scope for all anonymous root modules of all units */
     bl_scopes_include_main(&bl_peek_decl_module(cnt.unit->ast.root)->scopes, gscope,
                            cnt.unit->ast.root);
@@ -1348,8 +1417,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_LOAD);
   bl_visitor_add(&visitor_second, BL_SKIP_VISIT, BL_VISIT_LINK);
 
-  for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+  bl_array_foreach(assembly->units, unit) {
+    cnt.unit = unit;
     cnt.ast  = &cnt.unit->ast;
     reset_tmps(&cnt);
     bl_visitor_walk_gscope(&visitor_second, &cnt.unit->ast.root);
@@ -1367,8 +1436,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_third, BL_SKIP_VISIT, BL_VISIT_LOAD);
   bl_visitor_add(&visitor_third, BL_SKIP_VISIT, BL_VISIT_LINK);
 
-  for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+  bl_array_foreach(assembly->units, unit) {
+    cnt.unit = unit;
     cnt.ast  = &cnt.unit->ast;
     reset_tmps(&cnt);
     bl_visitor_walk_gscope(&visitor_third, &cnt.unit->ast.root);
@@ -1392,8 +1461,8 @@ bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_add(&visitor_fourth, BL_SKIP_VISIT, BL_VISIT_LOAD);
   bl_visitor_add(&visitor_fourth, BL_SKIP_VISIT, BL_VISIT_LINK);
 
-  for (int i = 0; i < c; ++i) {
-    cnt.unit = bl_assembly_get_unit(assembly, i);
+  bl_array_foreach(assembly->units, unit) {
+    cnt.unit = unit;
     cnt.ast  = &cnt.unit->ast;
     reset_tmps(&cnt);
     bl_visitor_walk_gscope(&visitor_fourth, &cnt.unit->ast.root);

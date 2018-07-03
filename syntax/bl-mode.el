@@ -48,6 +48,7 @@
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
     ("\\(struct \\)\\(\\w+\\)" 2 font-lock-type-face)
+    ("\\(: \\)\\(\\w+\\)" 2 font-lock-type-face)
 
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
