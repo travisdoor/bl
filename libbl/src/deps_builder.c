@@ -54,7 +54,7 @@ get_uname(char *out_buf, int max_len, bl_node_t *node)
   if (bl_node_is(bl_ast_get_parent(node), BL_DECL_BLOCK)) {
     /* local function? */
     const uint64_t tmp = bl_ast_get_id(node)->hash;
-    snprintf(out_buf, max_len, "_%llu", tmp);
+    snprintf(out_buf, max_len, "_%llu", (unsigned long long) tmp);
     return;
   }
 
@@ -171,7 +171,7 @@ visit_expr(bl_visitor_t *visitor, bl_node_t **expr)
 
   if (bl_node_is(*expr, BL_EXPR_CALL)) {
     bl_expr_call_t *_call = bl_peek_expr_call(*expr);
-    bl_assert(_call->ref, "invalid callee");
+    assert(_call->ref);
     bl_decl_func_t *_callee = bl_peek_decl_func(_call->ref);
 
     /* Store dependency of current processed function on another callee. Later during generation we
@@ -190,7 +190,7 @@ visit_type(bl_visitor_t *visitor, bl_node_t **type)
 
   if (bl_node_is(*type, BL_TYPE_REF)) {
     bl_type_ref_t *_ref = bl_peek_type_ref(*type);
-    bl_assert(_ref->ref, "invalid ref type");
+    assert(_ref->ref);
     add_dependency(cnt, _ref->ref, BL_DEP_STRICT);
   }
 

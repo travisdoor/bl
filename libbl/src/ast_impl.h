@@ -483,8 +483,7 @@ bl_ast_terminate(bl_ast_t *ast);
 #define nt(code, name)                                                                             \
   static inline bl_##name##_t *bl_peek_##name(bl_node_t *n)                                        \
   {                                                                                                \
-    bl_assert(bl_node_is(n, BL_##code), "invalid node type, expected: " #name " not %s",           \
-              bl_node_name(n));                                                                    \
+    assert(bl_node_is(n, BL_##code));                                                              \
     return &(n->n.name);                                                                           \
   }
 BL_NODE_TYPE_LIST

@@ -36,7 +36,7 @@
 bl_error_e
 bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  bl_assert(assembly->llvm_module, "invalid llvm module");
+  assert(assembly->llvm_module);
 
   char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
   strcpy(export_file, assembly->name);

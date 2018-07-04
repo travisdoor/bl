@@ -251,7 +251,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     /* here we solve custom user defined types like structures and enumerators which are described
      * by reference to definition node */
     bl_type_ref_t *_type = bl_peek_type_ref(type);
-    bl_assert(_type, "invalid type reference");
+    assert(_type);
     is_ptr = _type->is_ptr;
     switch (bl_node_code(_type->ref)) {
     case BL_DECL_STRUCT:
@@ -269,7 +269,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   /* type is array */
   if (size_expr) {
-    bl_assert(bl_node_is(size_expr, BL_EXPR_CALL), "expected call");
+    assert(bl_node_is(size_expr, BL_EXPR_CALL));
     bl_node_t *         callee       = bl_peek_expr_call(size_expr)->ref;
     LLVMGenericValueRef size_generic = run_fn(cnt, callee);
     size_t              size         = LLVMGenericValueToInt(size_generic, false);
@@ -288,7 +288,7 @@ gen_init(context_t *cnt, bl_node_t *init)
 {
   bl_expr_init_t *_init = bl_peek_expr_init(init);
 
-  bl_assert(_init->type, "invalid type for initialization list");
+  assert(_init->type);
 
   LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
 
@@ -500,11 +500,10 @@ link_into_jit(context_t *cnt, bl_node_t *fn)
   if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn)) return;
 
   bl_decl_func_t *_fn = bl_peek_decl_func(fn);
-  bl_assert(bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn),
-            "function %s has no llvm module generated yet!!!", _fn->id.str) LLVMModuleRef module =
-      bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
-  bl_assert("invalid llvm module for function %s", _fn->id.str);
+  assert(bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn));
+  assert("invalid llvm module for function %s");
 
+  LLVMModuleRef module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
   module = LLVMCloneModule(module);
   LLVMAddModule(cnt->llvm_jit, module);
   bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
@@ -620,7 +619,7 @@ LLVMValueRef
 gen_unary_expr(context_t *cnt, bl_node_t *expr)
 {
   bl_expr_unary_t *_unary = bl_peek_expr_unary(expr);
-  bl_assert(_unary->next, "invalid unary expression, next is NULL");
+  assert(_unary->next);
   LLVMValueRef next_val  = gen_expr(cnt, _unary->next);
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
@@ -806,7 +805,7 @@ gen_expr(context_t *cnt, bl_node_t *expr)
       bl_abort("cannot generate reference to %s", bl_node_name(ref));
     }
 
-    bl_assert(val, "unknown symbol");
+    assert(val);
     break;
   }
 
@@ -836,8 +835,7 @@ LLVMValueRef
 gen_null(context_t *cnt, bl_node_t *nl)
 {
   bl_expr_null_t *_null = bl_peek_expr_null(nl);
-  bl_assert(_null->type, "invalid null type %s:%d:%d", nl->src->unit->filepath, nl->src->line,
-            nl->src->col);
+  assert(_null->type);
   LLVMTypeRef type = to_llvm_type(cnt, _null->type);
   return LLVMConstPointerNull(type);
 }
@@ -868,7 +866,7 @@ gen_binop(context_t *cnt, bl_node_t *binop)
   LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
   LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
 
-  bl_assert(lhs_kind == rhs_kind, "both operands of binary operation must be same type");
+  assert(lhs_kind == rhs_kind);
   bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
@@ -975,12 +973,12 @@ visit_block(bl_visitor_t *visitor, bl_node_t **block)
 {
   context_t *      cnt    = peek_cnt(visitor);
   bl_decl_block_t *_block = bl_peek_decl_block(*block);
-  bl_assert(_block->parent, "block has no parent");
+  assert(_block->parent);
 
   if (bl_node_is(_block->parent, BL_DECL_FUNC)) {
     LLVMValueRef    llvm_func = get_scope(cnt, _block->parent);
     bl_decl_func_t *func      = bl_peek_decl_func(_block->parent);
-    bl_assert(llvm_func, "cannot find llvm function representation");
+    assert(llvm_func);
 
     cnt->func_init_block  = LLVMAppendBasicBlock(llvm_func, gname("init"));
     cnt->func_entry_block = LLVMAppendBasicBlock(llvm_func, gname("entry"));
@@ -1101,7 +1099,7 @@ visit_if(bl_visitor_t *visitor, bl_node_t **if_stmt)
   bl_stmt_if_t *    _if_stmt     = bl_peek_stmt_if(*if_stmt);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
-  bl_assert(LLVMIsAFunction(parent), "invalid parent");
+  assert(LLVMIsAFunction(parent));
 
   LLVMBasicBlockRef if_then = LLVMAppendBasicBlock(parent, gname("if_then"));
   LLVMBasicBlockRef if_else = LLVMAppendBasicBlock(parent, gname("if_else"));
@@ -1156,7 +1154,7 @@ visit_loop(bl_visitor_t *visitor, bl_node_t **loop)
   bl_stmt_loop_t *  _loop        = bl_peek_stmt_loop(*loop);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
-  bl_assert(LLVMIsAFunction(parent), "invalid parent");
+  assert(LLVMIsAFunction(parent));
 
   LLVMBasicBlockRef loop_decide         = LLVMAppendBasicBlock(parent, gname("loop_decide"));
   LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop"));
@@ -1308,7 +1306,7 @@ _link(context_t *cnt, bl_node_t *entry)
   if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry)) return NULL;
 
   LLVMModuleRef dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
-  bl_assert("invalid llvm module for function %s", _entry->id.str);
+  assert(dest_module);
   if (!_entry->deps) return dest_module;
 
   bo_iterator_t    iter = bo_list_begin(_entry->deps);
@@ -1394,10 +1392,8 @@ bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   /* link all utests */
-  const size_t uc = bo_array_size(assembly->utest_methods);
   bl_node_t *  utest;
-  for (size_t i = 0; i < uc; ++i) {
-    utest = bo_array_at(assembly->utest_methods, i, bl_node_t *);
+  bl_array_foreach(assembly->utest_methods, utest) {
     link_into_jit(&cnt, utest);
   }
 

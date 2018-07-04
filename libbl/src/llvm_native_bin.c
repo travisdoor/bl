@@ -50,14 +50,12 @@ bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
   char buf[1024];
   sprintf(buf, cmd, assembly->name, assembly->name);
 
-  bo_iterator_t iter = bo_htbl_begin(assembly->link_cache);
-  bo_iterator_t end  = bo_htbl_end(assembly->link_cache);
-  const char *  lib  = NULL;
-  while (!bo_iterator_equal(&iter, &end)) {
+  const char *  lib;
+  bo_iterator_t iter;
+  bl_htbl_foreach(assembly->link_cache, iter) {
     lib = bo_htbl_iter_peek_value(assembly->link_cache, &iter, const char *);
     strcat(&buf[0], " -l");
     strcat(&buf[0], lib);
-    bo_htbl_iter_next(assembly->link_cache, &iter);
   }
 
   bl_log("cmd %s", buf);

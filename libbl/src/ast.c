@@ -730,8 +730,8 @@ bl_ast_type_compatible(bl_node_t *first, bl_node_t *second)
 {
   if (!first || !second) return false;
 
-  bl_assert(bl_node_is(first, BL_TYPE_REF) || bl_node_is(first, BL_TYPE_FUND), "not type");
-  bl_assert(bl_node_is(second, BL_TYPE_REF) || bl_node_is(second, BL_TYPE_FUND), "not type");
+  assert(bl_node_is(first, BL_TYPE_REF) || bl_node_is(first, BL_TYPE_FUND));
+  assert(bl_node_is(second, BL_TYPE_REF) || bl_node_is(second, BL_TYPE_FUND));
 
   if (first->code != second->code) return false;
 
@@ -751,8 +751,8 @@ bl_ast_type_compatible(bl_node_t *first, bl_node_t *second)
 void
 bl_ast_get_type_name(bl_node_t *type, char *out_name, int max_len)
 {
-  bl_assert(max_len, "invalid max_len of buffer");
-  bl_assert(out_name, "invalid out_name buffer");
+  assert(max_len);
+  assert(out_name);
 
   const char *tmp = NULL;
   int         is_ptr;
@@ -781,7 +781,7 @@ bl_ast_get_type_name(bl_node_t *type, char *out_name, int max_len)
     bl_abort("invalid node %s", bl_node_name(type));
   }
 
-  bl_assert(tmp, "invalid tmp name");
+  assert(tmp);
   if (strlen(tmp) + is_ptr + 1 > max_len) {
     snprintf(out_name, max_len, "%s", tmp);
     return;
@@ -928,7 +928,7 @@ bl_ast_get_type(bl_node_t *node)
 bl_node_t *
 bl_ast_dup_node(bl_ast_t *ast, bl_node_t *node)
 {
-  bl_assert(node, "cannot duplicate node");
+  assert(node);
   bl_node_t *dup = alloc_node(ast);
   memcpy(dup, node, sizeof(bl_node_t));
   return dup;
@@ -1164,7 +1164,7 @@ bl_ast_get_deps(bl_node_t *node)
 bl_dependency_t *
 bl_ast_add_dep(bl_node_t *node, bl_node_t *dep, int type)
 {
-  bl_assert(dep, "invalid dependency");
+  assert(dep);
   BList **deps = get_deps(node);
 
   if (!*deps) {

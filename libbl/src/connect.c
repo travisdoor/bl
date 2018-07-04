@@ -242,13 +242,13 @@ validate_type(context_t *cnt, bl_node_t *elem, bl_node_t *found, bool last);
 bl_node_t *
 lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *found_in_curr_branch)
 {
-  bl_assert(path, "invalid path");
+  assert(path);
   bl_node_t *linked_by      = NULL;
   bool       in_curr_branch = false;
   bl_node_t *found = lookup_in_tree(cnt, path, cnt->curr_compound, &linked_by, &in_curr_branch);
 
   if (validator) validator(cnt, path, found, !path->next);
-  bl_assert(found, "null found symbol unhandled by validator");
+  assert(found);
 
   if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && bl_node_is(linked_by, BL_STMT_USING)) {
     connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
@@ -261,7 +261,7 @@ lookup(context_t *cnt, bl_node_t *path, lookup_elem_valid_f validator, bool *fou
     found = lookup_in_scope(cnt, path, found, &linked_by);
 
     if (validator) validator(cnt, path, found, !path->next);
-    bl_assert(found, "null found symbol unhandled by validator");
+    assert(found);
 
     if (!(bl_ast_get_modif(found) & BL_MODIF_PUBLIC) && !in_curr_branch) {
       connect_error(cnt, BL_ERR_PRIVATE, path, BL_BUILDER_CUR_WORD,
@@ -308,10 +308,10 @@ bl_node_t *
 lookup_in_scope(context_t *cnt, bl_node_t *ref, bl_node_t *curr_compound, bl_node_t **linked_by)
 {
   bl_scopes_t *scopes = bl_ast_get_scopes(curr_compound);
-  bl_assert(scopes, "invalid scopes");
+  assert(scopes);
 
   bl_id_t *id = bl_ast_get_id(ref);
-  bl_assert(id, "invalid id for node %s", bl_node_name(ref));
+  assert(id);
 
   /* test */
   bl_found_node_tuple_t found[5];
@@ -488,7 +488,7 @@ connect_decl_ref(context_t *cnt, bl_node_t *ref)
                   "cannot use reference to currently initialized declaration");
   }
 
-  bl_assert(_ref->type, "cannot get type of decl ref");
+  assert(_ref->type);
 
   switch (bl_node_code(_ref->ref)) {
   case BL_DECL_MUT:
@@ -525,7 +525,7 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
   if (_member_ref->ref) return;
 
   bl_node_t *type = bl_ast_get_type(_member_ref->next);
-  bl_assert(type, "invalid member ref type");
+  assert(type);
 
   /* solve array buildins */
   if (bl_ast_get_type_dim(type) && bl_ast_is_buildin(&_member_ref->id, BL_BUILDIN_ARR_COUNT)) {
@@ -540,7 +540,7 @@ connect_member_ref(context_t *cnt, bl_node_t **member_ref)
   }
 
   type = bl_peek_type_ref(type)->ref;
-  bl_assert(type, "invalid type ref");
+  assert(type);
 
   if (bl_node_is_not(type, BL_DECL_STRUCT)) {
     connect_error(cnt, BL_ERR_INVALID_TYPE, _member_ref->next, BL_BUILDER_CUR_WORD,
@@ -588,8 +588,8 @@ include_using(context_t *cnt, bl_node_t *using)
 
   bl_scopes_t *found_scopes = bl_ast_get_scopes(found);
   bl_scopes_t *curr_scopes  = bl_ast_get_scopes(cnt->curr_compound);
-  bl_assert(found_scopes, "invalid scopes");
-  bl_assert(curr_scopes, "invalid scopes");
+  assert(found_scopes);
+  assert(curr_scopes);
 
   /* check for scope conflicts */
   conflict = bl_scopes_get_linked_by(curr_scopes, found_scopes->main);
@@ -615,7 +615,7 @@ inherit_members(context_t *cnt, bl_node_t *strct)
   cnt->curr_compound  = strct;
 
   bl_node_t *base = bl_peek_type_ref(_strct->base)->ref;
-  bl_assert(base, "base type not linked for structure %s", _strct->id.str);
+  assert(base);
 
   if (!bo_htbl_has_key(cnt->inherited, (uint64_t)base)) {
     inherit_members(cnt, base);
@@ -634,8 +634,7 @@ inherit_members(context_t *cnt, bl_node_t *strct)
 #if BL_DEBUG
     if (bl_node_is(bl_peek_decl_struct_member(dup)->type, BL_TYPE_REF)) {
       bl_type_ref_t *_type = bl_peek_type_ref(bl_peek_decl_struct_member(dup)->type);
-      bl_assert(_type->ref, "inherited member must have connected type!!! Invalid %s.",
-                bl_ast_get_id(dup)->str);
+      assert(_type->ref);
     }
 #endif
 
@@ -706,7 +705,7 @@ first_pass_module(bl_visitor_t *visitor, bl_node_t **module)
     }
 
     bl_scopes_t *conflict_scopes = bl_ast_get_scopes(conflict);
-    bl_assert(conflict_scopes->main, "invalid main scope");
+    assert(conflict_scopes->main);
     bl_scopes_include_main(&_module->scopes, conflict_scopes->main, *module);
   } else {
     bl_scopes_t *prev_scopes = bl_ast_get_scopes(prev_cmp);
@@ -1042,7 +1041,7 @@ fourth_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
   case BL_EXPR_INIT: {
     bl_expr_init_t *_init = bl_peek_expr_init(*expr);
     if (!_init->type) {
-      bl_assert(cnt->curr_lvalue, "invalid lvalue");
+      assert(cnt->curr_lvalue);
       _init->type = bl_ast_get_type(cnt->curr_lvalue);
       if (!_init->type) {
         connect_error(cnt, BL_ERR_INVALID_TYPE, *expr, BL_BUILDER_CUR_BEFORE,
@@ -1077,7 +1076,7 @@ fourth_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
   case BL_EXPR_UNARY: {
     bl_expr_unary_t *_unary = bl_peek_expr_unary(*expr);
     bl_node_t *      type   = bl_ast_get_type(_unary->next);
-    bl_assert(type, "invalid type of next expression of unary expression");
+    assert(type);
 
     _unary->type = bl_ast_dup_node(cnt->ast, type);
 
@@ -1098,7 +1097,7 @@ fourth_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
     bl_expr_array_ref_t *_arr_ref = bl_peek_expr_array_ref(*expr);
     if (!_arr_ref->type) {
       _arr_ref->type = bl_ast_get_type(_arr_ref->next);
-      bl_assert(_arr_ref->type, "invalid type of array reference expression");
+      assert(_arr_ref->type);
       _arr_ref->type = bl_ast_dup_node(cnt->ast, _arr_ref->type);
       bl_ast_type_remove_dim(_arr_ref->type);
     }
@@ -1109,7 +1108,7 @@ fourth_pass_expr(bl_visitor_t *visitor, bl_node_t **expr)
     bl_expr_binop_t *_binop = bl_peek_expr_binop(*expr);
     if (!_binop->type) {
       _binop->type = bl_ast_get_type(_binop->lhs);
-      bl_assert(_binop->type, "invalid type of binop expression");
+      assert(_binop->type);
     }
     break;
   }

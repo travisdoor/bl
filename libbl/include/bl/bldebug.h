@@ -76,12 +76,6 @@ extern BO_EXPORT void
 _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 
 #ifdef BL_DEBUG
-#define bl_assert(expr, format, ...)                                                               \
-  if ((expr) == 0) {                                                                               \
-    _bl_log(BL_LOG_ASSERT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                         \
-    assert(false);                                                                                 \
-  }
-
 #define bl_log(format, ...)                                                                        \
   {                                                                                                \
     _bl_log(BL_LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
@@ -93,10 +87,6 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
   }
 
 #else
-#define bl_assert(expr, format, ...)                                                               \
-  while (0) {                                                                                      \
-  }
-
 #define bl_log(format, ...)                                                                        \
   while (0) {                                                                                      \
   }

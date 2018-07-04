@@ -724,7 +724,7 @@ parse_expr_1(context_t *cnt, bl_node_t *lhs, int min_precedence, bool ignore_ini
         lhs = bl_ast_add_expr_decl_ref(cnt->ast, op, cnt->curr_init_list, NULL);
       }
 
-      // bl_assert(lhs, "invalid next node in member reference");
+      // assert(lhs, "invalid next node in member reference");
       bl_peek_expr_member_ref(rhs)->next = lhs;
       lhs                                = rhs;
     } else if (bl_token_is_binop(op)) {
@@ -879,7 +879,7 @@ parse_type_maybe(context_t *cnt, bl_node_t *path)
     last_path_elem = bl_ast_path_get_last(path);
     prev_tok       = bl_tokens_peek_prev(cnt->tokens);
 
-    bl_assert(last_path_elem, "invalid last path elem in type parsing");
+    assert(last_path_elem);
 
     int found = -1;
     for (int i = 0; i < BL_FUND_TYPE_COUNT; ++i) {
@@ -1345,7 +1345,7 @@ parse_init_expr_maybe(context_t *cnt, bl_node_t *path)
   /* Initialization list can have explicitly defined resulting type of initialization. */
   if (path) {
     type = parse_type_maybe(cnt, path);
-    bl_assert(type, "invalid init expression type");
+    assert(type);
   }
 
   /* When type is not explicitly defined for init. list we need to fill them later during linking.
@@ -1571,7 +1571,7 @@ parse_module_maybe(context_t *cnt, bl_node_t *parent, bool global, int modif)
   bl_token_t *tok_id          = NULL;
   bl_token_t *tok_begin_block = NULL;
 
-  bl_assert(parent, "invalid module parent");
+  assert(parent);
 
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_MODULE) == NULL) {
     return NULL;

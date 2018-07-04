@@ -67,10 +67,8 @@ bl_assembly_delete(bl_assembly_t *assembly)
     LLVMDisposeModule(assembly->llvm_module);
   LLVMContextDispose(assembly->llvm_cnt);
 
-  const size_t c = bo_array_size(assembly->units);
   bl_unit_t *  unit;
-  for (size_t i = 0; i < c; ++i) {
-    unit = bo_array_at(assembly->units, i, bl_unit_t *);
+  bl_array_foreach(assembly->units, unit){
     bl_unit_delete(unit);
   }
   bo_unref(assembly->units);

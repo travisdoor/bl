@@ -167,9 +167,7 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
 
   builder->no_warn = flags & BL_BUILDER_NO_WARN;
 
-  for (size_t i = 0; i < bo_array_size(assembly->units); ++i) {
-    unit = bo_array_at(assembly->units, i, bl_unit_t *);
-
+  bl_array_foreach(assembly->units, unit) {
     /* IDEA: can run in separate thread */
     if ((error = compile_unit(builder, unit, assembly, flags)) != BL_NO_ERR) {
       return error;
@@ -239,8 +237,8 @@ bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct
 {
   if (builder->no_warn && type == BL_BUILDER_WARNING) return;
 
-  bl_assert(src, "invalid source");
-  bl_assert(src->unit, "invalid unit attached to source location");
+  assert(src);
+  assert(src->unit);
   BString *tmp              = bo_string_new(MAX_MSG_LEN);
   char     msg[MAX_MSG_LEN] = {0};
 

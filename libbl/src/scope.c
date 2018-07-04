@@ -42,10 +42,8 @@ bl_scope_cache_new(void)
 void
 bl_scope_cache_delete(bl_scope_cache_t *cache)
 {
-  const size_t c     = bo_array_size(cache);
   bl_scope_t * scope = NULL;
-  for (size_t i = 0; i < c; ++i) {
-    scope = bo_array_at(cache, i, bl_scope_t *);
+  bl_array_foreach(cache, scope) {
     bo_unref(scope);
   }
 
@@ -68,14 +66,14 @@ void
 bl_scope_insert_node(bl_scope_t *scope, bl_node_t *node)
 {
   bl_id_t *id = bl_ast_get_id(node);
-  bl_assert(id, "invalid id");
+  assert(id);
   bo_htbl_insert(scope, id->hash, node);
 }
 
 bl_node_t *
 bl_scope_get_node(bl_scope_t *scope, bl_id_t *id)
 {
-  bl_assert(id, "invalid id");
+  assert(id);
   if (bo_htbl_has_key(scope, id->hash)) {
     return bo_htbl_at(scope, id->hash, bl_node_t *);
   }
@@ -107,7 +105,7 @@ bl_scopes_terminate(bl_scopes_t *scopes)
 void
 bl_scopes_insert_node(bl_scopes_t *scopes, bl_node_t *node)
 {
-  bl_assert(scopes->main, "compound block has no main scope set");
+  assert(scopes->main);
   bl_scope_insert_node(scopes->main, node);
 }
 
