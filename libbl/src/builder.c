@@ -108,6 +108,9 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, ui
 int
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
+  bl_checker_run(builder, assembly);
+  interrupt_on_error(builder);
+
   if (flags & BL_BUILDER_PRINT_AST) {
     bl_ast_printer_run(assembly);
   }

@@ -97,6 +97,9 @@ print_stmt_bad(bl_node_t *node, int pad);
 static void
 print_if(bl_node_t *node, int pad);
 
+static void
+print_loop(bl_node_t *node, int pad);
+
 void
 print_stmt_bad(bl_node_t *node, int pad)
 {
@@ -111,6 +114,15 @@ print_if(bl_node_t *node, int pad)
   print_node(_if->test, pad + 1);
   print_node(_if->true_stmt, pad + 1);
   print_node(_if->false_stmt, pad + 1);
+}
+
+void
+print_loop(bl_node_t *node, int pad)
+{
+  print_head("loop", node->src, node, pad);
+  bl_node_stmt_loop_t *_loop = bl_peek_stmt_loop(node);
+  print_node(_loop->test, pad + 1);
+  print_node(_loop->true_stmt, pad + 1);
 }
 
 void
@@ -284,6 +296,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_STMT_IF:
     print_if(node, pad);
+    break;
+  case BL_NODE_STMT_LOOP:
+    print_loop(node, pad);
     break;
   case BL_NODE_STMT_BAD:
     print_stmt_bad(node, pad);

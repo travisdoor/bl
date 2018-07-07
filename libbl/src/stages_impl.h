@@ -55,4 +55,7 @@ bl_parser_run(bl_builder_t *builder, bl_unit_t *unit);
 void
 bl_ast_printer_run(bl_assembly_t *assembly);
 
+void
+bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
 #endif // BL_STAGES_IMPL_H

@@ -70,6 +70,7 @@ typedef struct
 
   /* tmps */
   bl_node_t *curr_fn;
+  bool       inside_loop;
 } context_t;
 
 static void
@@ -129,6 +130,8 @@ parse_stmt_return(context_t *cnt);
 static bl_node_t *
 parse_stmt_if(context_t *cnt);
 
+static bl_node_t *
+parse_stmt_while(context_t *cnt);
 // impl
 
 bool
@@ -190,6 +193,36 @@ parse_stmt_if(context_t *cnt)
   }
 
   return bl_ast_stmt_if(cnt->ast, tok_begin, test, true_stmt, false_stmt);
+}
+
+bl_node_t *
+parse_stmt_while(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_WHILE);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop            = true;
+
+  bl_node_t *test = parse_expr(cnt);
+  if (!test) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                "expected expression for the while statement");
+    return bl_ast_stmt_bad(cnt->ast, err_tok);
+  }
+
+  bl_node_t *true_stmt = parse_block(cnt);
+  if (!true_stmt) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD, "expected loop body");
+    return bl_ast_stmt_bad(cnt->ast, err_tok);
+  }
+
+  cnt->inside_loop = prev_inside_loop;
+  return bl_ast_stmt_loop(cnt->ast, tok_begin, test, true_stmt);
 }
 
 bl_node_t *
@@ -596,6 +629,11 @@ next:
     goto next;
   }
 
+  if ((*node = parse_stmt_while(cnt))) {
+    push(node, prev);
+    goto next;
+  }
+
   if ((*node = parse_decl_value(cnt))) {
     push(node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
@@ -604,6 +642,11 @@ next:
   if ((*node = parse_expr(cnt))) {
     push(node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
+  }
+
+  if ((*node = parse_block(cnt))) {
+    push(node, prev);
+    goto next;
   }
 
   tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
@@ -640,11 +683,12 @@ decl:
 void
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
 {
-  context_t cnt = {.builder = builder,
-                   .unit    = unit,
-                   .ast     = &unit->ast,
-                   .tokens  = &unit->tokens,
-                   .curr_fn = NULL};
+  context_t cnt = {.builder     = builder,
+                   .unit        = unit,
+                   .ast         = &unit->ast,
+                   .tokens      = &unit->tokens,
+                   .curr_fn     = NULL,
+                   .inside_loop = false};
 
   unit->ast.root = bl_ast_ublock(&unit->ast, NULL);
   parse_ublock_content(&cnt, unit->ast.root);
