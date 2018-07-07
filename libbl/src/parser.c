@@ -244,8 +244,8 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       /* Set result type to bool for logical binary operations, this is used for type checking later
        * in the compiler pipeline. Other types are checked recursively. */
       if (bl_token_is_logic_op(op)) {
-        // IDEA use ident reference instead???
-        result_type = &bl_ftypes[BL_FTYPE_BOOL];
+	// IDEA use ident reference instead???
+	result_type = &bl_ftypes[BL_FTYPE_BOOL];
       }
 
       lhs = bl_ast_expr_binop(cnt->ast, op, tmp, rhs, result_type, op->sym);
@@ -331,9 +331,9 @@ next:
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
       if (_arg_decl->value) {
-        parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
-                         "function arguments cannot have value binding");
-        *arg_type = bl_ast_decl_bad(cnt->ast, NULL);
+	parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
+	                 "function arguments cannot have value binding");
+	*arg_type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
     push(arg_type, prev);
@@ -387,9 +387,9 @@ next:
     if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
       if (_member_decl->value) {
-        parse_error_node(cnt, BL_ERR_INVALID_TYPE, *type, BL_BUILDER_CUR_WORD,
-                         "struct types expected");
-        *type = bl_ast_decl_bad(cnt->ast, NULL);
+	parse_error_node(cnt, BL_ERR_INVALID_TYPE, *type, BL_BUILDER_CUR_WORD,
+	                 "struct types expected");
+	*type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
     push(type, prev);
