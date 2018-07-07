@@ -44,6 +44,14 @@ print_head(const char *name, bl_src_t *src, void *ptr, int pad)
             ptr);
 }
 
+static inline void
+print_type(bl_node_t *type)
+{
+  char tmp[MAX_STR_BUF];
+  bl_ast_type_to_string(tmp, MAX_STR_BUF, type);
+  fprintf(stdout, BL_CYAN("{%s}"), tmp);
+}
+
 static void
 print_node(bl_node_t *node, int pad);
 
@@ -66,6 +74,9 @@ static void
 print_expr_binop(bl_node_t *node, int pad);
 
 static void
+print_expr_call(bl_node_t *node, int pad);
+
+static void
 print_lit(bl_node_t *node, int pad);
 
 static void
@@ -79,13 +90,10 @@ print_decl_value(bl_node_t *node, int pad)
 {
   print_head("declaration", node->src, node, pad);
   bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-  fprintf(stdout, "%s (%s)", bl_peek_ident(_decl->name)->str,
+  fprintf(stdout, "%s (%s) ", bl_peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable");
 
-  char tmp[MAX_STR_BUF];
-  bl_ast_type_to_string(tmp, MAX_STR_BUF, _decl->type);
-
-  if (_decl->type) fprintf(stdout, " %s", tmp);
+  if (_decl->type) print_type(_decl->type);
   print_node(_decl->value, pad + 1);
 }
 
@@ -139,11 +147,8 @@ print_expr_binop(bl_node_t *node, int pad)
 {
   print_head("binop", node->src, node, pad);
   bl_node_expr_binop_t *_binop = bl_peek_expr_binop(node);
-
-  char tmp[MAX_STR_BUF];
-  bl_ast_type_to_string(tmp, MAX_STR_BUF, _binop->type);
-
-  fprintf(stdout, "%s %s", bl_sym_strings[_binop->op], tmp);
+  fprintf(stdout, "%s ", bl_sym_strings[_binop->op]);
+  print_type(_binop->type);
   print_node(_binop->lhs, pad + 1);
   print_node(_binop->rhs, pad + 1);
 }
@@ -155,9 +160,6 @@ print_lit(bl_node_t *node, int pad)
   bl_node_lit_t *_lit = bl_peek_lit(node);
   assert(_lit->type);
 
-  char tmp[MAX_STR_BUF];
-  bl_ast_type_to_string(tmp, MAX_STR_BUF, _lit->type);
-  
   bl_node_type_fund_t *_type = bl_peek_type_fund(_lit->type);
   switch (_type->code) {
   case BL_FTYPE_I8:
@@ -187,7 +189,7 @@ print_lit(bl_node_t *node, int pad)
   default:
     break;
   }
-  fprintf(stdout, "%s", tmp);
+  print_type(_lit->type);
 }
 
 void
@@ -196,11 +198,25 @@ print_lit_fn(bl_node_t *node, int pad)
   print_head("function", node->src, node, pad);
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
 
-  char tmp[MAX_STR_BUF];
-  bl_ast_type_to_string(tmp, MAX_STR_BUF, _fn->type);
-
-  if (_fn->type) fprintf(stdout, "%s", tmp);
+  if (_fn->type) print_type(_fn->type);
   print_node(_fn->block, pad + 1);
+}
+
+void
+print_expr_call(bl_node_t *node, int pad)
+{
+  print_head("call", node->src, node, pad);
+  bl_node_expr_call_t *_call = bl_peek_expr_call(node);
+  assert(_call->ident);
+  bl_node_ident_t *_ident = bl_peek_ident(_call->ident);
+
+  fprintf(stdout, "%s ", _ident->str);
+  print_type(_call->type);
+  bl_node_t *arg = _call->args;
+  while (arg) {
+    print_node(arg, pad + 1);
+    arg = arg->next;
+  }
 }
 
 void
@@ -235,6 +251,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_EXPR_BINOP:
     print_expr_binop(node, pad);
+    break;
+  case BL_NODE_EXPR_CALL:
+    print_expr_call(node, pad);
     break;
   default:
     bl_abort("invalid node %s", bl_node_name(node));

@@ -1,6 +1,5 @@
 /* testing playground */
 
-
 hello i32; 	      // global mutable
 text string;
 hello := 10 + 1;
@@ -15,7 +14,7 @@ main : fn () i32 {
   a = 0;
   a := 0;
   a : 10 + 66 / 12 * 32 + 1;
-  //foo();
+  foo(12, 23 * a + 67, "hello world");
 
   name : "hello";
   float := 21.3f;
@@ -25,5 +24,5 @@ main : fn () i32 {
   False : false;
 };
 
-foo : fn () {
+foo : fn (a i32, b i32, c string) {
 };

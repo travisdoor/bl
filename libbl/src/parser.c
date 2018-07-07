@@ -54,6 +54,13 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
+#define push(_curr, _prev)                                                                         \
+  {                                                                                                \
+    (*(_curr))->prev = (_prev);                                                                    \
+    (_prev)          = *(_curr);                                                                   \
+    (_curr)          = &(*(_curr))->next;                                                          \
+  }
+
 typedef struct
 {
   bl_builder_t *builder;
@@ -97,6 +104,9 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence);
 
 static inline bl_node_t *
 parse_expr(context_t *cnt);
+
+static bl_node_t *
+parse_expr_call(context_t *cnt);
 
 static bl_node_t *
 parse_value(context_t *cnt);
@@ -200,6 +210,7 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
+  if ((expr = parse_expr_call(cnt))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_ident(cnt))) return expr;
   return expr;
@@ -308,13 +319,6 @@ parse_type_fn(context_t *cnt, bool named_args)
   bl_node_t * prev     = NULL;
   bl_node_t **arg_type = &arg_types;
 
-#define push(_curr, _prev)                                                                         \
-  {                                                                                                \
-    (*(_curr))->prev = _prev;                                                                      \
-    (_prev)          = *(_curr);                                                                   \
-    (_curr)          = &(*(_curr))->next;                                                          \
-  }
-
 next:
   *arg_type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
   if (*arg_type) {
@@ -347,7 +351,6 @@ next:
                 "expected end of argument type list  ')'  or another type separated by comma");
     return bl_ast_type_bad(cnt->ast, tok_fn);
   }
-#undef push
 
   bl_node_t *ret_type = parse_type(cnt);
   return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, ret_type);
@@ -403,19 +406,59 @@ parse_decl_value(context_t *cnt)
 }
 
 bl_node_t *
+parse_expr_call(context_t *cnt)
+{
+  if (!bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) return NULL;
+
+  bl_token_t *tok_id = bl_tokens_peek(cnt->tokens);
+  bl_node_t * ident  = parse_ident(cnt);
+  bl_token_t *tok    = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_LPAREN) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "expected function parameter list");
+    return bl_ast_expr_bad(cnt->ast, tok_id);
+  }
+
+  /* parse args */
+  bool        rq = false;
+  bl_node_t * args;
+  bl_node_t * prev  = NULL;
+  bl_node_t **arg   = &args;
+  int         argsc = 0;
+arg:
+  *arg = parse_expr(cnt);
+  if (*arg) {
+    ++argsc;
+    push(arg, prev);
+
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+      rq = true;
+      goto arg;
+    }
+  } else if (rq) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                "expected function argument after comma ','");
+    // return bl_ast_expr_bad(cnt->ast, tok_id);
+  }
+
+  tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_RPAREN) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "expected end of parameter list ')' or another parameter separated by comma");
+    // return bl_ast_expr_bad(cnt->ast, tok_id);
+  }
+
+  return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL);
+}
+
+bl_node_t *
 parse_block(context_t *cnt)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
 
   if (tok_begin == NULL) {
     return NULL;
-  }
-
-#define push(_curr, _prev)                                                                         \
-  {                                                                                                \
-    (*(_curr))->prev = (_prev);                                                                    \
-    (_prev)          = *(_curr);                                                                   \
-    (_curr)          = &(*(_curr))->next;                                                          \
   }
 
   bl_node_t * nodes;
@@ -446,7 +489,6 @@ next:
                 "expected '}', starting %d:%d", tok_begin->src.line, tok_begin->src.col);
     return bl_ast_decl_bad(cnt->ast, tok_begin);
   }
-#undef push
 
   return bl_ast_block(cnt->ast, tok_begin, nodes);
 }
@@ -454,17 +496,9 @@ next:
 void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
-
-#define push(_curr, _prev)                                                                         \
-  {                                                                                                \
-    (*(_curr))->prev = (_prev);                                                                    \
-    (_prev)          = *(_curr);                                                                   \
-    (_curr)          = &(*(_curr))->next;                                                          \
-  }
-
   bl_node_ublock_t *_ublock = bl_peek_ublock(ublock);
-  bl_node_t * prev = NULL;
-  bl_node_t **node = &_ublock->nodes;
+  bl_node_t *       prev    = NULL;
+  bl_node_t **      node    = &_ublock->nodes;
 decl:
   if ((*node = parse_decl_value(cnt))) {
     push(node, prev);
@@ -477,7 +511,6 @@ decl:
     parse_error(cnt, BL_ERR_UNEXPECTED_SYMBOL, tok, BL_BUILDER_CUR_WORD,
                 "unexpected symbol in module body");
   }
-#undef push
 }
 
 void

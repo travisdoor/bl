@@ -236,6 +236,16 @@ _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sy
   return (bl_node_t *)_expr_binop;
 }
 
+_BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type)
+{
+  bl_node_expr_call_t *_expr_call = alloc_node(ast, BL_NODE_EXPR_CALL, tok, bl_node_expr_call_t *);
+  _expr_call->ident               = ident;
+  _expr_call->args                = args;
+  _expr_call->argsc               = argsc;
+  _expr_call->type                = type;
+  return (bl_node_t *)_expr_call;
+}
+
 /*************************************************************************************************
  * other
  *************************************************************************************************/

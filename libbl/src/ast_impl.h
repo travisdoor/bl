@@ -98,6 +98,12 @@
     bl_node_t *type; \
     bl_sym_e   op; \
   }) \
+  nt(EXPR_CALL, expr_call, struct { \
+    bl_node_t *ident; \
+    bl_node_t *args; \
+    int        argsc; \
+    bl_node_t *type; \
+  }) \
   nt(EXPR_BAD, expr_bad, struct { \
   })
 
@@ -213,6 +219,7 @@ _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block);
 _BL_AST_NCTOR(lit, bl_node_t *type);
 _BL_AST_NCTOR(expr_bad);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
+_BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);
 
 /*************************************************************************************************
  * other
