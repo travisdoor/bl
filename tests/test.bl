@@ -26,3 +26,5 @@ main : fn () i32 {
 
 foo : fn (a i32, b i32, c string) {
 };
+
+data_t struct {i32, i32};

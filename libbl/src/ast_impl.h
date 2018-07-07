@@ -82,6 +82,9 @@
     bl_node_t *arg_types; \
     bl_node_t *ret_type; \
   }) \
+  nt(TYPE_STRUCT, type_struct, struct { \
+    bl_node_t *types; \
+  }) \
   nt(TYPE_BAD, type_bad, struct { \
   }) \
   nt(LIT_FN, lit_fn, struct { \
@@ -214,6 +217,7 @@ _BL_AST_NCTOR(block, bl_node_t *nodes);
 _BL_AST_NCTOR(decl, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable);
 _BL_AST_NCTOR(decl_bad);
 _BL_AST_NCTOR(type_bad);
+_BL_AST_NCTOR(type_struct, bl_node_t *types);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, bl_node_t *ret_type);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block);
 _BL_AST_NCTOR(lit, bl_node_t *type);

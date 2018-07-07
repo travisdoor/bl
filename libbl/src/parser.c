@@ -94,6 +94,9 @@ static bl_node_t *
 parse_type_fn(context_t *cnt, bool named_args);
 
 static bl_node_t *
+parse_type_struct(context_t *cnt, bool named_args);
+
+static bl_node_t *
 parse_unary_expr(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
@@ -277,6 +280,7 @@ parse_type(context_t *cnt)
 {
   bl_node_t *type = NULL;
   if ((type = parse_type_fn(cnt, false))) return type;
+  if ((type = parse_type_struct(cnt, false))) return type;
   if ((type = parse_type_fund(cnt))) return type;
   return type;
 }
@@ -353,7 +357,62 @@ next:
   }
 
   bl_node_t *ret_type = parse_type(cnt);
+  if (!ret_type) ret_type = &bl_ftypes[BL_FTYPE_VOID];
   return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, ret_type);
+}
+
+bl_node_t *
+parse_type_struct(context_t *cnt, bool named_args)
+{
+  bl_token_t *tok_struct = bl_tokens_consume_if(cnt->tokens, BL_SYM_STRUCT);
+  if (!tok_struct) return NULL;
+
+  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_LBLOCK) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "expected struct member list");
+    return bl_ast_type_bad(cnt->ast, tok_struct);
+  }
+
+  /* parse arg types */
+  bl_node_t * types;
+  bool        rq   = false;
+  bl_node_t * prev = NULL;
+  bl_node_t **type = &types;
+
+next:
+  *type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
+  if (*type) {
+    /* validate argument */
+    if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
+      bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
+      if (_member_decl->value) {
+        parse_error_node(cnt, BL_ERR_INVALID_TYPE, *type, BL_BUILDER_CUR_WORD,
+                         "struct types expected");
+        *type = bl_ast_decl_bad(cnt->ast, NULL);
+      }
+    }
+    push(type, prev);
+
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+      rq = true;
+      goto next;
+    }
+  } else if (rq) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                "expected member after comma ','");
+    return bl_ast_type_bad(cnt->ast, tok_struct);
+  }
+
+  tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_RBLOCK) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "expected end of member list  '}'  or another memeber separated by comma");
+    return bl_ast_type_bad(cnt->ast, tok_struct);
+  }
+
+  return bl_ast_type_struct(cnt->ast, tok_struct, types);
 }
 
 bl_node_t *

@@ -204,6 +204,14 @@ _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, bl_node_t *ret_type)
   return (bl_node_t *)_type_fn;
 }
 
+_BL_AST_NCTOR(type_struct, bl_node_t *types)
+{
+  bl_node_type_struct_t *_type_struct =
+      alloc_node(ast, BL_NODE_TYPE_STRUCT, tok, bl_node_type_struct_t *);
+  _type_struct->types = types;
+  return (bl_node_t *)_type_struct;
+}
+
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block)
 {
   bl_node_lit_fn_t *_lit_fn = alloc_node(ast, BL_NODE_LIT_FN, tok, bl_node_lit_fn_t *);
@@ -307,11 +315,10 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     break;
   }
 
-#if 0
-  case BL_TYPE_STRUCT: {
+  case BL_NODE_TYPE_STRUCT: {
     append_buf(buf, len, "struct {");
-    bl_type_struct_t *_struct = bl_peek_type_struct(type);
-    bl_node_t *       t       = _struct->types;
+    bl_node_type_struct_t *_struct = bl_peek_type_struct(type);
+    bl_node_t *            t       = _struct->types;
     while (t) {
       _type_to_string(buf, len, t);
       t = t->next;
@@ -320,7 +327,6 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     append_buf(buf, len, "}");
     break;
   }
-#endif
 
   default:
     bl_abort("node is not valid type");
