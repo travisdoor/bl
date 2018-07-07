@@ -69,6 +69,7 @@
   sm(STRUCT,      "struct") \
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
+  sm(MDECL,       ":=")	\
   sm(PATH,        "::") \
   sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \
@@ -82,7 +83,7 @@
   sm(RPAREN,      ")") \
   sm(COMMA,       ",")\
   sm(SEMICOLON,   ";") \
-  sm(COLON,       ":") \
+  sm(IMMDECL,     ":") \
   sm(EQ,          "==") /* logical begin */ \
   sm(NEQ,         "!=") \
   sm(GREATER_EQ,  ">=") \
@@ -141,6 +142,9 @@ bl_token_is_binop(bl_token_t *token);
 
 bool
 bl_token_is(bl_token_t *token, bl_sym_e sym);
+
+bool
+bl_token_is_not(bl_token_t *token, bl_sym_e sym);
 
 /* is token logical operation which result type should be boolean */
 bool

@@ -37,52 +37,22 @@
 /*
  * per unit
  */
-bl_error_e
+void
 bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit);
 
-bl_error_e
+void
 bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit);
 
-bl_error_e
+void
 bl_token_printer_run(bl_unit_t *unit);
 
-bl_error_e
+void
 bl_parser_run(bl_builder_t *builder, bl_unit_t *unit);
-
-bl_error_e
-bl_preproc_run(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly);
 
 /*
  * per assembly
  */
-bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_connect_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_check_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_deps_builder_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_llvm_gen_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
+void
 bl_ast_printer_run(bl_assembly_t *assembly);
-
-bl_error_e
-bl_llvm_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_llvm_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly);
-
-bl_error_e
-bl_test_runner_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 #endif // BL_STAGES_IMPL_H

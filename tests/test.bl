@@ -1,11 +1,29 @@
 /* testing playground */
 
-fn main() i32 {
-  hello() + 10;
-  return 0;
-}
 
-fn hello() {
-}
+hello i32; 	      // global mutable
+text string;
+hello := 10 + 1;
 
-// main, i32, block, +, hello, 10, return, 0, hello, block
+hello : 10; // immutable
+
+main : fn () i32 {
+  hello : 10;
+  Integer : i32;
+
+  10 + 1;
+  a = 0;
+  a := 0;
+  a : 10 + 66 / 12 * 32 + 1;
+  //foo();
+
+  name : "hello";
+  float := 21.3f;
+  double := 32.2412;
+
+  True : true;
+  False : false;
+};
+
+foo : fn () {
+};

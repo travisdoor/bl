@@ -421,7 +421,7 @@ push_token:
   goto scan;
 }
 
-bl_error_e
+void
 bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
 {
   context_t cnt = {
@@ -435,11 +435,9 @@ bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
 
   int error = 0;
   if ((error = setjmp(cnt.jmp_error)))
-    return (bl_error_e)error;
+    return;
 
   scan(&cnt);
 
   builder->total_lines += cnt.line;
-
-  return BL_NO_ERR;
 }

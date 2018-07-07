@@ -139,3 +139,9 @@ bl_token_is(bl_token_t *token, bl_sym_e sym)
     return false;
   return token->sym == sym;
 }
+
+bool
+bl_token_is_not(bl_token_t *token, bl_sym_e sym)
+{
+  return !bl_token_is(token, sym);
+}

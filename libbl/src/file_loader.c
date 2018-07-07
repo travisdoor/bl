@@ -32,14 +32,14 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 
-bl_error_e
+void
 bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
 {
   FILE *f = fopen(unit->filepath, "r");
 
   if (f == NULL) {
     bl_builder_error(builder, "file not found %s", unit->name);
-    return BL_ERR_FILE_NOT_FOUND;
+    return;
   }
 
   fseek(f, 0, SEEK_END);
@@ -47,7 +47,7 @@ bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
   if (fsize == 0) {
     fclose(f);
     bl_builder_error(builder, "invalid source file %s", unit->name);
-    return BL_ERR_INVALID_SOURCE;
+    return;
   }
 
   fseek(f, 0, SEEK_SET);
@@ -62,5 +62,4 @@ bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
   fclose(f);
 
   unit->src = src;
-  return BL_NO_ERR;
 }

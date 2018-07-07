@@ -99,12 +99,10 @@ main(int argc, char *argv[])
     argv++;
   }
 
-  bl_error_e state = bl_builder_compile(builder, assembly, build_flags);
-  if (state == BL_NO_ERR) {
+  int state = bl_builder_compile(builder, assembly, build_flags);
+  if (state == BL_COMPILE_OK) {
     bl_msg_log(BL_GREEN("done"));
-  } else {
-    bl_msg_error("exiting with status: %d", state);
-  }
+  } 
 
   bl_assembly_delete(assembly);
   bl_builder_delete(builder);

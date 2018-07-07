@@ -28,37 +28,21 @@ set(HEADER_FILES_IMPL
         src/unit_impl.h
         src/stages_impl.h
         src/common_impl.h 
-        src/scope_impl.h
-        src/id_impl.h  
-        src/visitor_impl.h
         src/ast_impl.h)
 
 set(SOURCE_FILES
         src/tokens.c
-        src/preproc.c
         src/file_loader.c
         src/unit.c
+        src/ast_printer.c
         src/token.c
         src/token_printer.c
         src/assembly.c
         src/builder.c
         src/lexer.c
-        src/check.c
-        src/connect.c
         src/bldebug.c
-        src/ast_printer.c
-        src/llvm_jit_exec.c
-        src/llvm_bc_writer.c
-        src/llvm_native_bin.c
-        src/llvm_linker.c 
-        src/llvm_generator.c 
-        src/scope.c 
-        src/test_runner.c 
-        src/id.c
         src/parser.c
-        src/deps_builder.c
-        src/ast.c
-        src/visitor.c)
+        src/ast.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
 
