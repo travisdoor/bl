@@ -1,30 +1,22 @@
 /* testing playground */
 
-hello i32; 	      // global mutable
-text string;
-hello := 10 + 1;
-
-hello : 10; // immutable
-
 main : fn () i32 {
-  hello : 10;
-  Integer : i32;
+  i := 0;
 
-  10 + 1;
-  a = 0;
-  a := 0;
-  a : 10 + 66 / 12 * 32 + 1;
-  foo(12, 23 * a + 67, "hello world");
+  if i + 1 < 0 {
+    a = 1;
+  } else {
+    i = 0;
+  }
 
-  name : "hello";
-  float := 21.3f;
-  double := 32.2412;
-
-  True : true;
-  False : false;
+  return 0;
 };
 
-foo : fn (a i32, b i32, c string) {
+foo : fn (a i32, b i32, c string) i32 {
+  return 0;
 };
 
-data_t struct {i32, i32};
+data_t : struct {
+  i i32,
+  j i32
+};

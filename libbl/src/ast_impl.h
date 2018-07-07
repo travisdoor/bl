@@ -64,6 +64,22 @@
     uint64_t    hash; \
     bl_node_t  *ref; \
   }) \
+  nt(STMT_BAD, stmt_bad, struct { \
+    void *_; \
+  }) \
+  nt(STMT_RETURN, stmt_return, struct { \
+    bl_node_t *expr; \
+    bl_node_t *fn; \
+  }) \
+  nt(STMT_IF, stmt_if, struct { \
+    bl_node_t *test; \
+    bl_node_t *true_stmt; \
+    bl_node_t *false_stmt; \
+  }) \
+  nt(STMT_LOOP, stmt_loop, struct { \
+    bl_node_t *test; \
+    bl_node_t *true_stmt; \
+  }) \
   nt(DECL_VALUE, decl_value, struct { \
     bl_node_t  *name; \
     bl_node_t  *type; \
@@ -74,6 +90,7 @@
     bl_node_t  *nodes; \
   }) \
   nt(DECL_BAD, decl_bad, struct { \
+    void *_; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
@@ -86,6 +103,7 @@
     bl_node_t *types; \
   }) \
   nt(TYPE_BAD, type_bad, struct { \
+    void *_; \
   }) \
   nt(LIT_FN, lit_fn, struct { \
     bl_node_t *type; \
@@ -108,6 +126,7 @@
     bl_node_t *type; \
   }) \
   nt(EXPR_BAD, expr_bad, struct { \
+    void *_; \
   })
 
 // clang-format on
@@ -213,6 +232,10 @@ _BL_NODE_TYPE_LIST
 
 _BL_AST_NCTOR(ublock);
 _BL_AST_NCTOR(ident, bl_node_t *ref);
+_BL_AST_NCTOR(stmt_bad);
+_BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
+_BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
+_BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(block, bl_node_t *nodes);
 _BL_AST_NCTOR(decl, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable);
 _BL_AST_NCTOR(decl_bad);

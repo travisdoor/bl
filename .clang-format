@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM 
 AccessModifierOffset: -2
 IndentWidth: 2
-UseTab: ForIndentation
+UseTab: Never
 BreakBeforeBraces: Mozilla 
 AllowShortIfStatementsOnASingleLine: true
 IndentCaseLabels: false

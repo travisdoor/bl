@@ -169,6 +169,36 @@ _BL_AST_NCTOR(ident, bl_node_t *ref)
   return (bl_node_t *)_ident;
 }
 
+_BL_AST_NCTOR(stmt_bad)
+{
+  return alloc_node(ast, BL_NODE_STMT_BAD, tok, bl_node_t *);
+}
+
+_BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn)
+{
+  bl_node_stmt_return_t *_ret = alloc_node(ast, BL_NODE_STMT_RETURN, tok, bl_node_stmt_return_t *);
+  _ret->expr                  = expr;
+  _ret->fn                    = fn;
+  return (bl_node_t *)_ret;
+}
+
+_BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt)
+{
+  bl_node_stmt_if_t *_if = alloc_node(ast, BL_NODE_STMT_IF, tok, bl_node_stmt_if_t *);
+  _if->test              = test;
+  _if->true_stmt         = true_stmt;
+  _if->false_stmt        = false_stmt;
+  return (bl_node_t *)_if;
+}
+
+_BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt)
+{
+  bl_node_stmt_loop_t *_loop = alloc_node(ast, BL_NODE_STMT_LOOP, tok, bl_node_stmt_loop_t *);
+  _loop->test                = test;
+  _loop->true_stmt           = true_stmt;
+  return (bl_node_t *)_loop;
+}
+
 _BL_AST_NCTOR(block, bl_node_t *nodes)
 {
   bl_node_decl_block_t *_block = alloc_node(ast, BL_NODE_DECL_BLOCK, tok, bl_node_decl_block_t *);

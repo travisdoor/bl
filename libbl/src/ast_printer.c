@@ -59,6 +59,9 @@ static void
 print_ublock(bl_node_t *node, int pad);
 
 static void
+print_type_struct(bl_node_t *node, int pad);
+
+static void
 print_decl_value(bl_node_t *node, int pad);
 
 static void
@@ -85,6 +88,31 @@ print_lit_fn(bl_node_t *node, int pad);
 static void
 print_ident(bl_node_t *node, int pad);
 
+static void
+print_return(bl_node_t *node, int pad);
+
+static void
+print_stmt_bad(bl_node_t *node, int pad);
+
+static void
+print_if(bl_node_t *node, int pad);
+
+void
+print_stmt_bad(bl_node_t *node, int pad)
+{
+  print_head("INVALID", node->src, node, pad);
+}
+
+void
+print_if(bl_node_t *node, int pad)
+{
+  print_head("if", node->src, node, pad);
+  bl_node_stmt_if_t *_if = bl_peek_stmt_if(node);
+  print_node(_if->test, pad + 1);
+  print_node(_if->true_stmt, pad + 1);
+  print_node(_if->false_stmt, pad + 1);
+}
+
 void
 print_decl_value(bl_node_t *node, int pad)
 {
@@ -95,6 +123,18 @@ print_decl_value(bl_node_t *node, int pad)
 
   if (_decl->type) print_type(_decl->type);
   print_node(_decl->value, pad + 1);
+}
+
+void
+print_type_struct(bl_node_t *node, int pad)
+{
+  print_head("struct", node->src, node, pad);
+  bl_node_type_struct_t *_block = bl_peek_type_struct(node);
+  bl_node_t *            n      = _block->types;
+  while (n) {
+    print_node(n, pad + 1);
+    n = n->next;
+  }
 }
 
 void
@@ -121,6 +161,14 @@ print_ident(bl_node_t *node, int pad)
   print_head("ident", node->src, node, pad);
   bl_node_ident_t *_ident = bl_peek_ident(node);
   fprintf(stdout, "%s -> %p", _ident->str, _ident->ref);
+}
+
+void
+print_return(bl_node_t *node, int pad)
+{
+  print_head("return", node->src, node, pad);
+  bl_node_stmt_return_t *_return = bl_peek_stmt_return(node);
+  print_node(_return->expr, pad + 1);
 }
 
 void
@@ -230,6 +278,18 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_IDENT:
     print_ident(node, pad);
+    break;
+  case BL_NODE_STMT_RETURN:
+    print_return(node, pad);
+    break;
+  case BL_NODE_STMT_IF:
+    print_if(node, pad);
+    break;
+  case BL_NODE_STMT_BAD:
+    print_stmt_bad(node, pad);
+    break;
+  case BL_NODE_TYPE_STRUCT:
+    print_type_struct(node, pad);
     break;
   case BL_NODE_DECL_VALUE:
     print_decl_value(node, pad);

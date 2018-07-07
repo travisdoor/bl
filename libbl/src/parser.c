@@ -123,6 +123,12 @@ parse_literal_fn(context_t *cnt);
 static inline bool
 parse_semicolon_rq(context_t *cnt);
 
+static bl_node_t *
+parse_stmt_return(context_t *cnt);
+
+static bl_node_t *
+parse_stmt_if(context_t *cnt);
+
 // impl
 
 bool
@@ -136,6 +142,54 @@ parse_semicolon_rq(context_t *cnt)
     return false;
   }
   return true;
+}
+
+bl_node_t *
+parse_stmt_return(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_RETURN);
+  if (!tok_begin) {
+    return NULL;
+  }
+
+  bl_node_t *expr = parse_expr(cnt);
+  return bl_ast_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_fn);
+}
+
+bl_node_t *
+parse_stmt_if(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_IF);
+  if (!tok_begin) return NULL;
+
+  bl_node_t *test = parse_expr(cnt);
+  if (test == NULL) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                "expected expression for the if statement");
+    return bl_ast_stmt_bad(cnt->ast, err_tok);
+  }
+
+  bl_node_t *true_stmt = parse_block(cnt);
+  if (!true_stmt) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD,
+                "expected compound statement for true result of the if expression test");
+    return bl_ast_stmt_bad(cnt->ast, err_tok);
+  }
+
+  bl_node_t *false_stmt = NULL;
+  if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ELSE)) {
+    false_stmt = parse_block(cnt);
+    if (false_stmt == NULL) {
+      bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD,
+                  "expected statement for false result of the if expression test");
+      return bl_ast_stmt_bad(cnt->ast, err_tok);
+    }
+  }
+
+  return bl_ast_stmt_if(cnt->ast, tok_begin, test, true_stmt, false_stmt);
 }
 
 bl_node_t *
@@ -244,8 +298,8 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       /* Set result type to bool for logical binary operations, this is used for type checking later
        * in the compiler pipeline. Other types are checked recursively. */
       if (bl_token_is_logic_op(op)) {
-	// IDEA use ident reference instead???
-	result_type = &bl_ftypes[BL_FTYPE_BOOL];
+        // IDEA use ident reference instead???
+        result_type = &bl_ftypes[BL_FTYPE_BOOL];
       }
 
       lhs = bl_ast_expr_binop(cnt->ast, op, tmp, rhs, result_type, op->sym);
@@ -270,6 +324,7 @@ bl_node_t *
 parse_value(context_t *cnt)
 {
   bl_node_t *value = NULL;
+  if ((value = parse_type_struct(cnt, true))) return value;
   if ((value = parse_literal_fn(cnt))) return value;
   if ((value = parse_expr(cnt))) return value;
   return value;
@@ -331,9 +386,9 @@ next:
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
       if (_arg_decl->value) {
-	parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
-	                 "function arguments cannot have value binding");
-	*arg_type = bl_ast_decl_bad(cnt->ast, NULL);
+        parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
+                         "function arguments cannot have value binding");
+        *arg_type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
     push(arg_type, prev);
@@ -387,9 +442,9 @@ next:
     if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
       if (_member_decl->value) {
-	parse_error_node(cnt, BL_ERR_INVALID_TYPE, *type, BL_BUILDER_CUR_WORD,
-	                 "struct types expected");
-	*type = bl_ast_decl_bad(cnt->ast, NULL);
+        parse_error_node(cnt, BL_ERR_INVALID_TYPE, _member_decl->value, BL_BUILDER_CUR_WORD,
+                         "struct member cannot have initialization");
+        *type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
     push(type, prev);
@@ -528,6 +583,16 @@ next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
     parse_warning(cnt, tok, BL_BUILDER_CUR_WORD, "extra semicolon can be removed ';'");
+    goto next;
+  }
+
+  if ((*node = parse_stmt_return(cnt))) {
+    push(node, prev);
+    if (parse_semicolon_rq(cnt)) goto next;
+  }
+
+  if ((*node = parse_stmt_if(cnt))) {
+    push(node, prev);
     goto next;
   }
 
