@@ -1,9 +1,9 @@
 //************************************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   assembly_impl.h
+// File:   scope.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,28 +26,46 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
-
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
 #include "scope_impl.h"
+#include "common_impl.h"
+#include "ast_impl.h"
 
-struct bl_node;
-
-typedef struct bl_assembly
+void
+bl_scope_cache_init(bl_scope_cache_t *cache)
 {
-  BArray *    units;        /* array of all units in assembly */
-  BHashTable *unique_cache; /* cache for loading only unique units */
-  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
-  char *      name;         /* assembly name */
+  cache = bo_array_new(sizeof(bl_scope_t *));
+}
 
-  bl_scope_cache_t *scope_cache;
-  bl_scope_t *     gscope;
-} bl_assembly_t;
+void
+bl_scope_cache_terminate(bl_scope_cache_t *cache)
+{
+  bl_scope_t *scope;
+  bl_barray_foreach(cache, scope)
+  {
+    bo_unref(scope);
+  }
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  bo_unref(cache);
+}
+
+bl_scope_t *
+bl_scope_new(bl_scope_cache_t *cache, size_t size)
+{
+  bl_scope_t *scope = bo_htbl_new(sizeof(bl_node_t *), size);
+  bo_array_push_back(cache, scope);
+  return scope;
+}
+
+void
+bl_scope_delete(bl_scope_t *scope)
+{
+  bo_unref(scope);
+}
+
+void
+bl_scope_insert(bl_scope_t *scope, bl_node_t *ident)
+{
+  assert(scope);
+  const bl_node_ident_t *_ident = bl_peek_ident(ident);
+  bo_htbl_insert(scope, _ident->hash, ident);
+}

@@ -34,6 +34,7 @@
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
+#define EXPECTED_GSCOPE_SIZE 4096
 
 /* public */
 
@@ -45,6 +46,9 @@ bl_assembly_new(const char *name)
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
 
+  bl_scope_cache_init(assembly->scope_cache);
+  assembly->gscope = bl_scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
+
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
   return assembly;
@@ -55,12 +59,15 @@ bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
 
-  bl_unit_t *  unit;
-  bl_barray_foreach(assembly->units, unit){
+  bl_unit_t *unit;
+  bl_barray_foreach(assembly->units, unit)
+  {
     bl_unit_delete(unit);
   }
   bo_unref(assembly->units);
   bo_unref(assembly->unique_cache);
+
+  bl_scope_cache_terminate(assembly->scope_cache);
 
   bl_free(assembly);
 }
@@ -80,8 +87,7 @@ bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
   else
     hash = bo_hash_from_str(unit->name);
 
-  if (bo_htbl_has_key(assembly->unique_cache, hash))
-    return false;
+  if (bo_htbl_has_key(assembly->unique_cache, hash)) return false;
 
   bo_htbl_insert_empty(assembly->unique_cache, hash);
   bl_assembly_add_unit(assembly, unit);
@@ -91,11 +97,9 @@ bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
 void
 bl_assembly_add_link(bl_assembly_ref assembly, const char *lib)
 {
-  if (!lib)
-    return;
+  if (!lib) return;
   uint64_t hash = bo_hash_from_str(lib);
-  if (bo_htbl_has_key(assembly->link_cache, hash))
-    return;
+  if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
   bo_htbl_insert(assembly->link_cache, hash, lib);
 }

@@ -1,9 +1,9 @@
 //************************************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   assembly_impl.h
+// File:   scope_impl.h
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   15/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,28 +26,42 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
+#ifndef BL_SCOPE_IMPL_H
+#define BL_SCOPE_IMPL_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
+#include <assert.h>
+
+typedef BHashTable bl_scope_t;
+typedef BArray     bl_scope_cache_t;
 
 struct bl_node;
 
-typedef struct bl_assembly
+void
+bl_scope_cache_init(bl_scope_cache_t *cache);
+
+void
+bl_scope_cache_terminate(bl_scope_cache_t *cache);
+
+bl_scope_t *
+bl_scope_new(bl_scope_cache_t *cache, size_t size);
+
+void
+bl_scope_insert(bl_scope_t *scope, struct bl_node *ident);
+
+inline struct bl_node *
+bl_scope_get(bl_scope_t *scope, uint64_t hash)
 {
-  BArray *    units;        /* array of all units in assembly */
-  BHashTable *unique_cache; /* cache for loading only unique units */
-  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
-  char *      name;         /* assembly name */
+  assert(scope);
+  return bo_htbl_at(scope, hash, struct bl_node *);
+}
 
-  bl_scope_cache_t *scope_cache;
-  bl_scope_t *     gscope;
-} bl_assembly_t;
+inline bool
+bl_scope_has_symbol(bl_scope_t *scope, uint64_t hash)
+{
+  assert(scope);
+  return bo_htbl_has_key(scope, hash);
+}
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+#endif

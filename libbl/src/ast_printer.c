@@ -141,11 +141,12 @@ void
 print_type_struct(bl_node_t *node, int pad)
 {
   print_head("struct", node->src, node, pad);
-  bl_node_type_struct_t *_block = bl_peek_type_struct(node);
-  bl_node_t *            n      = _block->types;
-  while (n) {
-    print_node(n, pad + 1);
-    n = n->next;
+  bl_node_type_struct_t *_ts = bl_peek_type_struct(node);
+
+  bl_node_t *it;
+  bl_node_foreach(_ts->types, it)
+  {
+    print_node(it, pad + 1);
   }
 }
 
@@ -154,10 +155,11 @@ print_decl_block(bl_node_t *node, int pad)
 {
   print_head("block", node->src, node, pad);
   bl_node_decl_block_t *_block = bl_peek_decl_block(node);
-  bl_node_t *           n      = _block->nodes;
-  while (n) {
-    print_node(n, pad + 1);
-    n = n->next;
+
+  bl_node_t *it;
+  bl_node_foreach(_block->nodes, it)
+  {
+    print_node(it, pad + 1);
   }
 }
 
@@ -188,11 +190,11 @@ print_ublock(bl_node_t *node, int pad)
 {
   print_head("unit", node->src, node, pad);
   bl_node_ublock_t *_ublock = bl_peek_ublock(node);
-  bl_node_t *       tmp     = _ublock->nodes;
-  ++pad;
-  while (tmp) {
-    print_node(tmp, pad);
-    tmp = tmp->next;
+
+  bl_node_t *it;
+  bl_node_foreach(_ublock->nodes, it)
+  {
+    print_node(it, pad + 1);
   }
 }
 
@@ -272,10 +274,11 @@ print_expr_call(bl_node_t *node, int pad)
 
   fprintf(stdout, "%s ", _ident->str);
   print_type(_call->type);
-  bl_node_t *arg = _call->args;
-  while (arg) {
-    print_node(arg, pad + 1);
-    arg = arg->next;
+
+  bl_node_t *it;
+  bl_node_foreach(_call->args, it)
+  {
+    print_node(it, pad + 1);
   }
 }
 

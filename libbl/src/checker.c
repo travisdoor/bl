@@ -69,6 +69,12 @@ check_linearize_ast(context_t *cnt);
 static void
 check_linearize_node(context_t *cnt, bl_node_t **node);
 
+static void
+check(context_t *cnt, bl_node_t **node);
+
+static void
+check_decl_value(context_t *cnt, bl_node_t **node);
+
 // impl
 
 void
@@ -81,12 +87,8 @@ check_linearize_ast(context_t *cnt)
 void
 check_linearize_node(context_t *cnt, bl_node_t **node)
 {
-  if (!*node) {
-    bl_log("unknown: %p", node);
-    return;
-  }
+  if (!*node) return;
   bo_array_push_back(cnt->ast_lin, node);
-  bl_log("push: %p", node);
 
 #define CASE(_NAME, _name, _stmts)                                                                 \
   case BL_NODE_##_NAME: {                                                                          \
@@ -116,7 +118,7 @@ check_linearize_node(context_t *cnt, bl_node_t **node)
     CASE(DECL_BLOCK, decl_block, { LINEARIZE_ALL(_decl_block->nodes); })
 
     CASE(DECL_VALUE, decl_value, {
-      check_linearize_node(cnt, &_decl_value->name);
+      // check_linearize_node(cnt, &_decl_value->name);
       check_linearize_node(cnt, &_decl_value->type);
       check_linearize_node(cnt, &_decl_value->value);
     })
@@ -171,6 +173,42 @@ check_linearize_node(context_t *cnt, bl_node_t **node)
 }
 
 void
+check(context_t *cnt, bl_node_t **node)
+{
+  assert(*node);
+  switch (bl_node_code(*node)) {
+  case BL_NODE_UBLOCK:
+  case BL_NODE_IDENT:
+  case BL_NODE_STMT_BAD:
+  case BL_NODE_STMT_RETURN:
+  case BL_NODE_STMT_IF:
+  case BL_NODE_STMT_LOOP:
+  case BL_NODE_DECL_VALUE:
+    check_decl_value(cnt, node);
+    break;
+  case BL_NODE_DECL_BLOCK:
+  case BL_NODE_DECL_BAD:
+  case BL_NODE_TYPE_FUND:
+  case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_STRUCT:
+  case BL_NODE_TYPE_BAD:
+  case BL_NODE_LIT_FN:
+  case BL_NODE_LIT:
+  case BL_NODE_EXPR_BINOP:
+  case BL_NODE_EXPR_CALL:
+  case BL_NODE_EXPR_BAD:
+  case BL_NODE_COUNT:
+    break;
+  }
+}
+
+void
+check_decl_value(context_t *cnt, bl_node_t **node)
+{
+  
+}
+
+void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {
@@ -189,7 +227,8 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_node_t **node;
   bl_barray_foreach(cnt.ast_lin, node)
   {
-    bl_log("get  %p", node);
+    bl_log("check: %s", bl_node_name(*node));
+    check(&cnt, node);
   }
 
   bo_unref(cnt.ast_lin);

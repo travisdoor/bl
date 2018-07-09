@@ -35,6 +35,7 @@
 #include <bobject/containers/hash.h>
 #include "token_impl.h"
 #include "common_impl.h"
+#include "scope_impl.h"
 
 // clang-format off
 #define _BL_FTYPE_LIST                                                                         \
@@ -146,6 +147,8 @@ typedef enum
 extern const char *bl_ftype_strings[];
 extern uint64_t    bl_ftype_hashes[BL_FTYPE_COUNT];
 extern const char *bl_node_type_strings[];
+
+#define bl_node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 
 /*************************************************************************************************
  * generation of node typedefs and code enum
