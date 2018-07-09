@@ -39,7 +39,7 @@ typedef BArray     bl_scope_cache_t;
 struct bl_node;
 
 void
-bl_scope_cache_init(bl_scope_cache_t *cache);
+bl_scope_cache_init(bl_scope_cache_t **cache);
 
 void
 bl_scope_cache_terminate(bl_scope_cache_t *cache);
@@ -48,20 +48,12 @@ bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache, size_t size);
 
 void
-bl_scope_insert(bl_scope_t *scope, struct bl_node *ident);
+bl_scope_insert(bl_scope_t *scope, struct bl_node *ident, struct bl_node *node);
 
-inline struct bl_node *
-bl_scope_get(bl_scope_t *scope, uint64_t hash)
-{
-  assert(scope);
-  return bo_htbl_at(scope, hash, struct bl_node *);
-}
+struct bl_node *
+bl_scope_get(bl_scope_t *scope, struct bl_node *ident);
 
-inline bool
-bl_scope_has_symbol(bl_scope_t *scope, uint64_t hash)
-{
-  assert(scope);
-  return bo_htbl_has_key(scope, hash);
-}
+bool
+bl_scope_has_symbol(bl_scope_t *scope, struct bl_node *ident);
 
 #endif

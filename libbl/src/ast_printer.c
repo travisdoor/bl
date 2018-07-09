@@ -189,7 +189,7 @@ void
 print_ublock(bl_node_t *node, int pad)
 {
   print_head("unit", node->src, node, pad);
-  bl_node_ublock_t *_ublock = bl_peek_ublock(node);
+  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
 
   bl_node_t *it;
   bl_node_foreach(_ublock->nodes, it)
@@ -288,7 +288,7 @@ print_node(bl_node_t *node, int pad)
   if (!node) return;
 
   switch (node->code) {
-  case BL_NODE_UBLOCK:
+  case BL_NODE_DECL_UBLOCK:
     print_ublock(node, pad);
     break;
   case BL_NODE_IDENT:

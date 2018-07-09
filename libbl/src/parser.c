@@ -350,6 +350,7 @@ parse_ident(context_t *cnt)
 {
   bl_token_t *tok_ident = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (!tok_ident) return NULL;
+
   return bl_ast_ident(cnt->ast, tok_ident, NULL);
 }
 
@@ -525,6 +526,11 @@ parse_decl_value(context_t *cnt)
   bl_node_t *ident = parse_ident(cnt);
   if (!ident) return NULL;
 
+  if (bl_ast_is_buildin_type(ident) != -1) {
+    parse_error_node(cnt, BL_ERR_INVALID_NAME, ident, BL_BUILDER_CUR_WORD,
+                     "'%s' is reserved name of buildin type", tok_ident->value.str);
+  }
+
   bool mutable           = true;
   bl_node_t * type       = parse_type(cnt);
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_MDECL);
@@ -549,7 +555,7 @@ parse_decl_value(context_t *cnt)
     }
   }
 
-  return bl_ast_decl(cnt->ast, tok_ident, ident, type, value, mutable);
+  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, false);
 }
 
 bl_node_t *
@@ -663,9 +669,9 @@ next:
 void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
-  bl_node_ublock_t *_ublock = bl_peek_ublock(ublock);
-  bl_node_t *       prev    = NULL;
-  bl_node_t **      node    = &_ublock->nodes;
+  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
+  bl_node_t *            prev    = NULL;
+  bl_node_t **           node    = &_ublock->nodes;
 decl:
   if ((*node = parse_decl_value(cnt))) {
     push(node, prev);

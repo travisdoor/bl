@@ -57,8 +57,9 @@
     ft(BOOL,   "bool")
 
 #define _BL_NODE_TYPE_LIST \
-  nt(UBLOCK, ublock, struct { \
+  nt(DECL_UBLOCK, decl_ublock, struct { \
     bl_node_t *nodes; \
+    bl_scope_t *scope; \
   }) \
   nt(IDENT, ident, struct { \
     const char *str; \
@@ -86,6 +87,7 @@
     bl_node_t  *type; \
     bl_node_t  *value; \
     bool        mutable; \
+    bool        in_scope; \
   }) \
   nt(DECL_BLOCK, decl_block, struct { \
     bl_node_t  *nodes; \
@@ -240,7 +242,8 @@ _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(block, bl_node_t *nodes);
-_BL_AST_NCTOR(decl, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable);
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
+              bool in_scope);
 _BL_AST_NCTOR(decl_bad);
 _BL_AST_NCTOR(type_bad);
 _BL_AST_NCTOR(type_struct, bl_node_t *types);
@@ -261,6 +264,15 @@ bl_ast_insert(bl_node_t **dest, bl_node_t *src);
 
 void
 bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type);
+
+bl_scope_t *
+bl_ast_get_scope(bl_node_t *node);
+
+bl_node_t *
+bl_ast_get_type(bl_node_t *node);
+
+bl_ftype_e
+bl_ast_is_buildin_type(bl_node_t *ident);
 
 /**************************************************************************************************/
 

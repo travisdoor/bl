@@ -85,6 +85,7 @@ typedef enum
   BL_ERR_EXPECTED_TYPE_REF       = 46,
   BL_ERR_EXPECTED_TYPE_STRUCT    = 47,
   BL_ERR_INVALID_MUTABILITY      = 48,
+  BL_ERR_INVALID_NAME            = 49,
 } bl_error_e;
 
 BO_END_DECLS

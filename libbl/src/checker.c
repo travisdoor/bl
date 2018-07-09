@@ -54,13 +54,23 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
+typedef enum
+{
+  FIRST_PASS,
+  SECOND_PASS
+} pass_e;
+
 typedef struct
 {
-  bl_builder_t *builder;
-  bl_unit_t *   unit;
-  bl_ast_t *    ast;
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+  bl_unit_t *    unit;
+  bl_ast_t *     ast;
+  pass_e         pass;
+  BArray *       ast_lin;
+  BArray *       ast_waiting;
 
-  BArray *ast_lin;
+  bl_node_t *curr_compound;
 } context_t;
 
 static void
@@ -70,10 +80,19 @@ static void
 check_linearize_node(context_t *cnt, bl_node_t **node);
 
 static void
-check(context_t *cnt, bl_node_t **node);
+check(context_t *cnt);
 
-static void
+static bool
+check_node(context_t *cnt, bl_node_t **node);
+
+static bool
 check_decl_value(context_t *cnt, bl_node_t **node);
+
+static bool
+check_decl_ublock(context_t *cnt, bl_node_t **node);
+
+static bool
+check_ident(context_t *cnt, bl_node_t **node);
 
 // impl
 
@@ -111,14 +130,13 @@ check_linearize_node(context_t *cnt, bl_node_t **node)
   }
 
   switch (bl_node_code(*node)) {
-    CASE(UBLOCK, ublock, { LINEARIZE_ALL(_ublock->nodes); })
+    CASE(DECL_UBLOCK, decl_ublock, { LINEARIZE_ALL(_decl_ublock->nodes); })
 
     CASE(IDENT, ident, { check_linearize_node(cnt, &_ident->ref); })
 
     CASE(DECL_BLOCK, decl_block, { LINEARIZE_ALL(_decl_block->nodes); })
 
     CASE(DECL_VALUE, decl_value, {
-      // check_linearize_node(cnt, &_decl_value->name);
       check_linearize_node(cnt, &_decl_value->type);
       check_linearize_node(cnt, &_decl_value->value);
     })
@@ -173,19 +191,44 @@ check_linearize_node(context_t *cnt, bl_node_t **node)
 }
 
 void
-check(context_t *cnt, bl_node_t **node)
+check(context_t *cnt)
+{
+  cnt->pass = FIRST_PASS;
+  bl_node_t **node;
+  bl_barray_foreach(cnt->ast_lin, node)
+  {
+    if (!check_node(cnt, node)) {
+      bo_array_push_back(cnt->ast_waiting, i);
+      bl_log("delayed %s (%p)", bl_node_name(*node), *node);
+    }
+  }
+
+  cnt->pass = SECOND_PASS;
+  for (size_t i = 0; i < bo_array_size(cnt->ast_waiting); ++i) {
+    const size_t ilin = bo_array_at(cnt->ast_waiting, i, size_t);
+    node              = bo_array_at(cnt->ast_lin, ilin, bl_node_t **);
+    if (!check_node(cnt, node)) {
+      bl_log("unknown symbol");
+    }
+  }
+}
+
+bool
+check_node(context_t *cnt, bl_node_t **node)
 {
   assert(*node);
+
   switch (bl_node_code(*node)) {
-  case BL_NODE_UBLOCK:
+  case BL_NODE_DECL_UBLOCK:
+    return check_decl_ublock(cnt, node);
+  case BL_NODE_DECL_VALUE:
+    return check_decl_value(cnt, node);
   case BL_NODE_IDENT:
+    return check_ident(cnt, node);
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_RETURN:
   case BL_NODE_STMT_IF:
   case BL_NODE_STMT_LOOP:
-  case BL_NODE_DECL_VALUE:
-    check_decl_value(cnt, node);
-    break;
   case BL_NODE_DECL_BLOCK:
   case BL_NODE_DECL_BAD:
   case BL_NODE_TYPE_FUND:
@@ -200,19 +243,91 @@ check(context_t *cnt, bl_node_t **node)
   case BL_NODE_COUNT:
     break;
   }
+
+  return true;
 }
 
-void
+bool
+check_decl_ublock(context_t *cnt, bl_node_t **node)
+{
+  assert(*node);
+  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(*node);
+  _ublock->scope                 = cnt->assembly->gscope;
+  cnt->curr_compound             = *node;
+  return true;
+}
+
+bool
 check_decl_value(context_t *cnt, bl_node_t **node)
 {
-  
+  assert(cnt->curr_compound);
+  assert(*node);
+
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(*node);
+  bl_scope_t *          scope = bl_ast_get_scope(cnt->curr_compound);
+  assert(scope);
+
+  /* push declaration into scope or report error if there is one with same name */
+  if (!_decl->in_scope) {
+    bl_node_t *conflict = bl_scope_get(scope, _decl->name);
+    if (conflict) {
+      check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, *node, BL_BUILDER_CUR_WORD,
+                       "duplicate symbol, already declared here: %s:%d",
+                       conflict->src->unit->filepath, conflict->src->line);
+      _decl->in_scope = true;
+      return true;
+    }
+
+    bl_scope_insert(scope, _decl->name, *node);
+    _decl->in_scope = true;
+  }
+
+  bl_node_t *val_type = bl_ast_get_type(_decl->value);
+  if (!val_type) return false;
+
+  _decl->type = val_type;
+
+  return true;
+}
+
+bool
+check_ident(context_t *cnt, bl_node_t **node)
+{
+  assert(*node);
+  bl_node_ident_t *_ident = bl_peek_ident(*node);
+  if (_ident->ref) return true;
+
+  /* is buildin? */
+  bl_ftype_e ftype_code;
+  if ((ftype_code = bl_ast_is_buildin_type(*node)) != -1) {
+    _ident->ref = &bl_ftypes[ftype_code];
+    return true;
+  }
+
+  bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
+  assert(scope);
+
+  bl_node_t *found = bl_scope_get(scope, *node);
+  if (!found) {
+    bl_log("symbol %s not found, need to be checked later", _ident->str);
+    return false;
+  }
+
+  _ident->ref = found;
+  return true;
 }
 
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {
-      .builder = builder, .unit = NULL, .ast = NULL, .ast_lin = bo_array_new(sizeof(bl_node_t **))};
+  context_t cnt = {.builder       = builder,
+                   .unit          = NULL,
+                   .assembly      = assembly,
+                   .ast           = NULL,
+                   .ast_lin       = bo_array_new(sizeof(bl_node_t **)),
+                   .ast_waiting   = bo_array_new(sizeof(size_t)),
+                   .curr_compound = NULL};
+
   bo_array_reserve(cnt.ast_lin, 2048);
 
   bl_unit_t *unit;
@@ -223,13 +338,8 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     check_linearize_ast(&cnt);
   }
 
-  bl_log("");
-  bl_node_t **node;
-  bl_barray_foreach(cnt.ast_lin, node)
-  {
-    bl_log("check: %s", bl_node_name(*node));
-    check(&cnt, node);
-  }
+  check(&cnt);
 
   bo_unref(cnt.ast_lin);
+  bo_unref(cnt.ast_waiting);
 }

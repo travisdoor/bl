@@ -1,8 +1,9 @@
 /* testing playground */
 
-main : fn () i32 {
+//global := 10;
+Integer : i32;
+
+/*main : fn () i32 {
   i := global;
   return 0;
-};
-
-global := 10;
+};*/

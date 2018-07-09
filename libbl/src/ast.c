@@ -144,7 +144,7 @@ bl_ast_terminate(bl_ast_t *ast)
 
 _BL_AST_NCTOR(ublock)
 {
-  return alloc_node(ast, BL_NODE_UBLOCK, tok, bl_node_t *);
+  return alloc_node(ast, BL_NODE_DECL_UBLOCK, tok, bl_node_t *);
 }
 
 _BL_AST_NCTOR(ident, bl_node_t *ref)
@@ -193,13 +193,15 @@ _BL_AST_NCTOR(block, bl_node_t *nodes)
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable)
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
+              bool in_scope)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
   _decl->type                 = type;
   _decl->name                 = name;
   _decl->value                = value;
   _decl->mutable              = mutable;
+  _decl->in_scope             = in_scope;
   return (bl_node_t *)_decl;
 }
 
@@ -360,4 +362,50 @@ bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type)
   _type_to_string(buf, len, type);
 }
 
-/**************************************************************************************************/
+bl_scope_t *
+bl_ast_get_scope(bl_node_t *node)
+{
+  assert(node);
+  switch (bl_node_code(node)) {
+  case BL_NODE_DECL_UBLOCK:
+    return bl_peek_decl_ublock(node)->scope;
+    break;
+  default:
+    bl_abort("node %s has no scope", bl_node_name(node));
+  }
+}
+
+bl_node_t *
+bl_ast_get_type(bl_node_t *node)
+{
+  if (!node) return NULL;
+  switch (bl_node_code(node)) {
+  case BL_NODE_DECL_VALUE:
+    return bl_peek_decl_value(node)->type;
+  case BL_NODE_LIT:
+    return bl_peek_lit(node)->type;
+  case BL_NODE_LIT_FN:
+    return bl_peek_lit_fn(node)->type;
+  case BL_NODE_IDENT:
+    return bl_ast_get_type(bl_peek_ident(node)->ref);
+  case BL_NODE_TYPE_FUND:
+    return &bl_ftypes[BL_FTYPE_TYPE];
+  default:
+    bl_abort("node %s has no type", bl_node_name(node));
+  }
+}
+
+bl_ftype_e
+bl_ast_is_buildin_type(bl_node_t *ident)
+{
+  assert(ident);
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+
+  uint64_t hash;
+  bl_array_foreach(bl_ftype_hashes, hash)
+  {
+    if (_ident->hash == hash) return i;
+  }
+
+  return -1;
+}

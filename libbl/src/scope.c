@@ -31,9 +31,9 @@
 #include "ast_impl.h"
 
 void
-bl_scope_cache_init(bl_scope_cache_t *cache)
+bl_scope_cache_init(bl_scope_cache_t **cache)
 {
-  cache = bo_array_new(sizeof(bl_scope_t *));
+  *cache = bo_array_new(sizeof(bl_scope_t *));
 }
 
 void
@@ -63,9 +63,26 @@ bl_scope_delete(bl_scope_t *scope)
 }
 
 void
-bl_scope_insert(bl_scope_t *scope, bl_node_t *ident)
+bl_scope_insert(bl_scope_t *scope, struct bl_node *ident, struct bl_node *node)
 {
   assert(scope);
   const bl_node_ident_t *_ident = bl_peek_ident(ident);
-  bo_htbl_insert(scope, _ident->hash, ident);
+  bo_htbl_insert(scope, _ident->hash, node);
+}
+
+bl_node_t *
+bl_scope_get(bl_scope_t *scope, bl_node_t *ident)
+{
+  assert(scope);
+  const bl_node_ident_t *_ident = bl_peek_ident(ident);
+  if (bl_scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, bl_node_t *);
+  return NULL;
+}
+
+bool
+bl_scope_has_symbol(bl_scope_t *scope, bl_node_t *ident)
+{
+  assert(scope);
+  const bl_node_ident_t *_ident = bl_peek_ident(ident);
+  return bo_htbl_has_key(scope, _ident->hash);
 }

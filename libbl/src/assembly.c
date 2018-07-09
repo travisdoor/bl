@@ -46,7 +46,7 @@ bl_assembly_new(const char *name)
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
 
-  bl_scope_cache_init(assembly->scope_cache);
+  bl_scope_cache_init(&assembly->scope_cache);
   assembly->gscope = bl_scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
