@@ -2,6 +2,7 @@
 
 //global := 10;
 Integer : i32;
+Number : Integer;
 
 /*main : fn () i32 {
   i := global;

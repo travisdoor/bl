@@ -54,19 +54,12 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
-typedef enum
-{
-  FIRST_PASS,
-  SECOND_PASS
-} pass_e;
-
 typedef struct
 {
   bl_builder_t * builder;
   bl_assembly_t *assembly;
   bl_unit_t *    unit;
   bl_ast_t *     ast;
-  pass_e         pass;
   BArray *       ast_lin;
   BArray *       ast_waiting;
 
@@ -193,7 +186,6 @@ check_linearize_node(context_t *cnt, bl_node_t **node)
 void
 check(context_t *cnt)
 {
-  cnt->pass = FIRST_PASS;
   bl_node_t **node;
   bl_barray_foreach(cnt->ast_lin, node)
   {
@@ -203,12 +195,12 @@ check(context_t *cnt)
     }
   }
 
-  cnt->pass = SECOND_PASS;
   for (size_t i = 0; i < bo_array_size(cnt->ast_waiting); ++i) {
     const size_t ilin = bo_array_at(cnt->ast_waiting, i, size_t);
     node              = bo_array_at(cnt->ast_lin, ilin, bl_node_t **);
     if (!check_node(cnt, node)) {
-      bl_log("unknown symbol");
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, *node, BL_BUILDER_CUR_WORD,
+                       "unknown symbol");
     }
   }
 }
