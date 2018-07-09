@@ -43,6 +43,7 @@ set(SOURCE_FILES
         src/bldebug.c
         src/parser.c
         src/checker.c
+        src/scope.c
         src/ast.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
