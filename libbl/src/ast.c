@@ -389,13 +389,15 @@ bl_ast_get_type(bl_node_t *node)
   case BL_NODE_IDENT:
     return bl_ast_get_type(bl_peek_ident(node)->ref);
   case BL_NODE_TYPE_FUND:
+  case BL_NODE_TYPE_STRUCT:
+  case BL_NODE_TYPE_FN:
     return &bl_ftypes[BL_FTYPE_TYPE];
   default:
     bl_abort("node %s has no type", bl_node_name(node));
   }
 }
 
-bl_ftype_e
+int
 bl_ast_is_buildin_type(bl_node_t *ident)
 {
   assert(ident);
@@ -408,4 +410,70 @@ bl_ast_is_buildin_type(bl_node_t *ident)
   }
 
   return -1;
+}
+
+bool
+bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
+{
+  if (bl_node_code(first) != bl_node_code(second)) return false;
+
+  // same nodes
+  switch (bl_node_code(first)) {
+  case BL_NODE_TYPE_FUND:
+    if (bl_peek_type_fund(first)->code != bl_peek_type_fund(second)->code) return false;
+    break;
+  default:
+    bl_abort("missing comparation of %s type", bl_node_name(first));
+  }
+
+  return true;
+}
+
+bl_type_kind_e
+bl_ast_get_type_kind(bl_node_t *type)
+{
+  assert(type);
+  switch (bl_node_code(type)) {
+  case BL_NODE_TYPE_FUND: {
+    bl_node_type_fund_t *_ftype = bl_peek_type_fund(type);
+    switch (_ftype->code) {
+    case BL_FTYPE_TYPE:
+      return BL_KIND_TYPE;
+    case BL_FTYPE_VOID:
+      return BL_KIND_VOID;
+    case BL_FTYPE_I8:
+    case BL_FTYPE_I16:
+    case BL_FTYPE_I32:
+    case BL_FTYPE_I64:
+      return BL_KIND_SINT;
+    case BL_FTYPE_U8:
+    case BL_FTYPE_U16:
+    case BL_FTYPE_U32:
+    case BL_FTYPE_U64:
+      return BL_KIND_UINT;
+    case BL_FTYPE_SIZE:
+      return BL_KIND_SIZE;
+    case BL_FTYPE_F32:
+    case BL_FTYPE_F64:
+      return BL_KIND_REAL;
+    case BL_FTYPE_CHAR:
+      return BL_KIND_CHAR;
+    case BL_FTYPE_STRING:
+      return BL_KIND_STRING;
+    case BL_FTYPE_BOOL:
+      return BL_KIND_BOOL;
+    case BL_FTYPE_COUNT:
+      break;
+    }
+    break;
+  }
+  case BL_NODE_TYPE_FN:
+    return BL_KIND_FN;
+  case BL_NODE_TYPE_STRUCT:
+    return BL_KIND_STRUCT;
+  default:
+    bl_abort("node %s is not a type", bl_node_code(type));
+  }
+
+  return BL_KIND_UNKNOWN;
 }

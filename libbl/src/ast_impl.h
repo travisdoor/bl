@@ -134,6 +134,23 @@
 
 // clang-format on
 
+typedef enum
+{
+  BL_KIND_UNKNOWN = 0,
+  BL_KIND_SINT,   /* i8, i16, i32, i64 */
+  BL_KIND_UINT,   /* u8, i16, u32, u64 */
+  BL_KIND_SIZE,   /* size_t */
+  BL_KIND_PTR,    /* pointers */
+  BL_KIND_STRUCT, /* structs */
+  BL_KIND_FN,     /* function */
+  BL_KIND_REAL,   /* f32, f64 */
+  BL_KIND_STRING, /* string */
+  BL_KIND_CHAR,   /* char */
+  BL_KIND_BOOL,   /* bool */
+  BL_KIND_VOID,   /* void */
+  BL_KIND_TYPE,   /* type_t */
+} bl_type_kind_e;
+
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
@@ -271,8 +288,14 @@ bl_ast_get_scope(bl_node_t *node);
 bl_node_t *
 bl_ast_get_type(bl_node_t *node);
 
-bl_ftype_e
+int
 bl_ast_is_buildin_type(bl_node_t *ident);
+
+bool
+bl_ast_type_cmp(bl_node_t *first, bl_node_t *second);
+
+bl_type_kind_e
+bl_ast_get_type_kind(bl_node_t *type);
 
 /**************************************************************************************************/
 

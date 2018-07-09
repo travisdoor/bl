@@ -202,6 +202,7 @@ bl_builder_error(bl_builder_t *builder, const char *format, ...)
   va_end(args);
 
   builder->on_error(&error[0], builder->on_error_cnt);
+  builder->errorc++;
 }
 
 void

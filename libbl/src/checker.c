@@ -198,9 +198,8 @@ check(context_t *cnt)
   for (size_t i = 0; i < bo_array_size(cnt->ast_waiting); ++i) {
     const size_t ilin = bo_array_at(cnt->ast_waiting, i, size_t);
     node              = bo_array_at(cnt->ast_lin, ilin, bl_node_t **);
-    if (!check_node(cnt, node)) {
-      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, *node, BL_BUILDER_CUR_WORD,
-                       "unknown symbol");
+    if (!check_node(cnt, node) && bl_node_is(*node, BL_NODE_IDENT)) {
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, *node, BL_BUILDER_CUR_WORD, "unknown symbol");
     }
   }
 }
@@ -274,10 +273,30 @@ check_decl_value(context_t *cnt, bl_node_t **node)
     _decl->in_scope = true;
   }
 
-  bl_node_t *val_type = bl_ast_get_type(_decl->value);
-  if (!val_type) return false;
+  bl_node_t *val_type = NULL;
+  if (_decl->value) {
+    val_type = bl_ast_get_type(_decl->value);
+    if (!val_type) return false;
+  }
+  assert(_decl->value || val_type);
+
+  if (_decl->type) {
+    if (bl_node_is(_decl->type, BL_NODE_IDENT)) _decl->type = bl_peek_ident(_decl->type)->ref;
+    assert(_decl->type);
+    if (!bl_ast_type_cmp(_decl->type, val_type)) {
+      /* invalid explicit type of declaration and infered type of value */
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "incompatible type of declaration value");
+    }
+  }
 
   _decl->type = val_type;
+
+  if (_decl->mutable && bl_node_is(_decl->type, BL_NODE_TYPE_FUND) &&
+      bl_peek_type_fund(_decl->type)->code == BL_FTYPE_TYPE) {
+    check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, _decl->value, BL_BUILDER_CUR_WORD,
+                     "cannot create instance of %s", bl_ftype_strings[BL_FTYPE_TYPE]);
+  }
 
   return true;
 }
@@ -290,8 +309,8 @@ check_ident(context_t *cnt, bl_node_t **node)
   if (_ident->ref) return true;
 
   /* is buildin? */
-  bl_ftype_e ftype_code;
-  if ((ftype_code = bl_ast_is_buildin_type(*node)) != -1) {
+  int ftype_code = bl_ast_is_buildin_type(*node);
+  if (ftype_code != -1) {
     _ident->ref = &bl_ftypes[ftype_code];
     return true;
   }

@@ -126,6 +126,7 @@ typedef enum
   BL_SIZE_KIND,   /* size_t */
   BL_PTR_KIND,    /* pointers */
   BL_STRUCT_KIND, /* structs */
+  BL_FN_KIND,     /* function */
   BL_REAL_KIND,   /* f32, f64 */
   BL_STR_KIND,    /* string */
   BL_CHAR_KIND,   /* char */
