@@ -228,7 +228,10 @@ struct bl_node
   bl_node_code_e code;
 
   bl_node_t *next;
-  bl_node_t *prev_in_context;
+
+#if BL_DEBUG
+  int _serial;
+#endif
 };
 
 /*************************************************************************************************

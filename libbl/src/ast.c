@@ -47,7 +47,6 @@ bl_node_t bl_ftypes[] = {
   (bl_node_t){.code             = BL_NODE_TYPE_FUND,                                               \
               .src              = NULL,                                                            \
               .next             = NULL,                                                            \
-              .prev_in_context  = NULL,                                                            \
               .n.type_fund.code = BL_FTYPE_##name},
 
     _BL_FTYPE_LIST
@@ -125,6 +124,10 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
 
   node->code = c;
   node->src  = tok ? &tok->src : NULL;
+#if BL_DEBUG
+  static int serial = 0;
+  node->_serial     = serial++;
+#endif
 
   return node;
 }
