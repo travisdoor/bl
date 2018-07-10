@@ -62,7 +62,7 @@ const char *bl_node_type_strings[] = {
 
 uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
 
-static void
+/*static void
 node_terminate(bl_node_t *node)
 {
   switch (node->code) {
@@ -72,7 +72,7 @@ node_terminate(bl_node_t *node)
   default:
     break;
   }
-}
+}*/
 
 static inline bl_node_t *
 get_node_in_chunk(chunk_t *chunk, int i)
@@ -96,9 +96,9 @@ free_chunk(chunk_t *chunk)
   if (!chunk) return NULL;
 
   chunk_t *next = chunk->next;
-  for (int i = 0; i < chunk->count - 1; ++i) {
+  /*for (int i = 0; i < chunk->count - 1; ++i) {
     node_terminate(get_node_in_chunk(chunk, i + 1));
-  }
+  }*/
   bl_free(chunk);
   return next;
 }

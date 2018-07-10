@@ -87,7 +87,6 @@
     bl_node_t    *type; \
     bl_node_t    *value; \
     bool          mutable; \
-    bl_flatten_t  flatten; \
   }) \
   nt(DECL_BLOCK, decl_block, struct { \
     bl_node_t  *nodes; \
@@ -154,13 +153,6 @@ typedef enum
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
-
-/* map flatten arrays to decl nodes */
-typedef struct
-{
-  BArray *stack;
-  int     last;
-} bl_flatten_t;
 
 typedef enum
 {
@@ -236,7 +228,7 @@ struct bl_node
   bl_node_code_e code;
 
   bl_node_t *next;
-  bl_node_t *prev;
+  bl_node_t *prev_in_context;
 };
 
 /*************************************************************************************************

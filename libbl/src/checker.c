@@ -62,62 +62,16 @@ typedef struct
   bl_ast_t *     ast;
 
   bl_node_t *curr_compound;
+  BArray *   waiting_decls;
 } context_t;
-
-static void
-check_flatten_node(bl_flatten_t *fcache, bl_node_t **node);
 
 static void
 check_ublock(context_t *cnt, bl_node_t **node);
 
-static void
+static bool
 check_decl_value(context_t *cnt, bl_node_t **decl);
 
 // impl
-void
-check_flatten_node(bl_flatten_t *fcache, bl_node_t **node)
-{
-  if (!*node) return;
-
-#define CASE(_NAME, _name, _stmts)                                                                 \
-  case BL_NODE_##_NAME: {                                                                          \
-    bl_node_##_name##_t *_##_name = bl_peek_##_name(*node);                                        \
-    (_stmts);                                                                                      \
-    break;                                                                                         \
-  }
-
-#define CASE_IGNORE(_NAME)                                                                         \
-  case BL_NODE_##_NAME:                                                                            \
-    break;
-
-#define FLATTEN_ALL(_root)                                                                         \
-  {                                                                                                \
-    bl_node_t **tmp = &(_root);                                                                    \
-    while (*tmp) {                                                                                 \
-      check_flatten_node(fcache, tmp);                                                                \
-      tmp = &(*tmp)->next;                                                                         \
-    };                                                                                             \
-  }
-
-  switch (bl_node_code(*node)) {
-    CASE(IDENT, ident, { check_flatten_node(fcache, &_ident->ref); })
-
-    CASE(DECL_VALUE, decl_value, {
-      check_flatten_node(fcache, &_decl_value->type);
-      check_flatten_node(fcache, &_decl_value->value);
-    })
-
-  default:
-    bl_abort("cannot flatten node %s", bl_node_name(*node));
-  }
-#undef CASE
-#undef CASE_IGNORE
-#undef FLATTEN_ALL
-
-  bl_log("flatten node %s", bl_node_name(*node));
-  bo_array_push_back(fcache->stack, node);
-}
-
 void
 check_ublock(context_t *cnt, bl_node_t **node)
 {
@@ -125,7 +79,7 @@ check_ublock(context_t *cnt, bl_node_t **node)
   _ublock->scope                 = cnt->assembly->gscope;
   cnt->curr_compound             = *node;
 
-  bl_node_t **it;
+  bl_node_t **it = &_ublock->nodes;
   while (*it) {
     check_decl_value(cnt, it);
     it = &(*it)->next;
@@ -136,20 +90,23 @@ void
 check_decl_value(context_t *cnt, bl_node_t **decl)
 {
   bl_log("check decl-value");
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(*decl);
+  //bl_node_decl_value_t *_decl = bl_peek_decl_value(*decl);
 
-  bl_flatten_t *fcache = &_decl->flatten;
-  if (!fcache->stack) {
-    // perform flattening
-    fcache->stack = bo_array_new(sizeof(bl_node_t **));
-  }
+  bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
+  assert(scope);
+
+  
 }
 
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {
-      .builder = builder, .unit = NULL, .assembly = assembly, .ast = NULL, .curr_compound = NULL};
+  context_t cnt = {.builder       = builder,
+                   .unit          = NULL,
+                   .assembly      = assembly,
+                   .ast           = NULL,
+                   .curr_compound = NULL,
+                   .waiting_decls = bo_array_new(sizeof(bl_node_t *))};
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
@@ -158,4 +115,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     cnt.ast  = &unit->ast;
     check_ublock(&cnt, &unit->ast.root);
   }
+
+  bo_unref(cnt.waiting_decls);
 }

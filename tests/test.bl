@@ -2,7 +2,6 @@
 
 //global := 10;
 
-A i32 : B;
-B : C;
-C : 123;
-
+A : B; // waiting on B
+B : C; // waiting on C
+C : 123; 
