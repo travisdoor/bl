@@ -1,11 +1,8 @@
 /* testing playground */
 
 //global := 10;
-Number : Integer;
-Integer type_t : i32;
-Foo : Number;
 
-/*main : fn () i32 {
-  i := global;
-  return 0;
-};*/
+A i32 : B;
+B : C;
+C : 123;
+

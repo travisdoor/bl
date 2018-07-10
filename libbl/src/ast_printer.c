@@ -47,6 +47,10 @@ print_head(const char *name, bl_src_t *src, void *ptr, int pad)
 static inline void
 print_type(bl_node_t *type)
 {
+  if (!type) {
+    fprintf(stdout, BL_RED("{?}"));
+    return;
+  }
   char tmp[MAX_STR_BUF];
   bl_ast_type_to_string(tmp, MAX_STR_BUF, type);
   fprintf(stdout, BL_CYAN("{%s}"), tmp);
@@ -133,7 +137,7 @@ print_decl_value(bl_node_t *node, int pad)
   fprintf(stdout, "%s (%s) ", bl_peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable");
 
-  if (_decl->type) print_type(_decl->type);
+  print_type(_decl->type);
   print_node(_decl->value, pad + 1);
 }
 
@@ -260,7 +264,7 @@ print_lit_fn(bl_node_t *node, int pad)
   print_head("function", node->src, node, pad);
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
 
-  if (_fn->type) print_type(_fn->type);
+  print_type(_fn->type);
   print_node(_fn->block, pad + 1);
 }
 

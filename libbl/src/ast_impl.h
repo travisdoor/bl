@@ -58,8 +58,8 @@
 
 #define _BL_NODE_TYPE_LIST \
   nt(DECL_UBLOCK, decl_ublock, struct { \
-    bl_node_t *nodes; \
-    bl_scope_t *scope; \
+    bl_node_t    *nodes; \
+    bl_scope_t   *scope; \
   }) \
   nt(IDENT, ident, struct { \
     const char *str; \
@@ -83,11 +83,11 @@
     bl_node_t *true_stmt; \
   }) \
   nt(DECL_VALUE, decl_value, struct { \
-    bl_node_t  *name; \
-    bl_node_t  *type; \
-    bl_node_t  *value; \
-    bool        mutable; \
-    bool        in_scope; \
+    bl_node_t    *name; \
+    bl_node_t    *type; \
+    bl_node_t    *value; \
+    bool          mutable; \
+    bl_flatten_t  flatten; \
   }) \
   nt(DECL_BLOCK, decl_block, struct { \
     bl_node_t  *nodes; \
@@ -154,6 +154,13 @@ typedef enum
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
+
+/* map flatten arrays to decl nodes */
+typedef struct
+{
+  BArray *stack;
+  int     last;
+} bl_flatten_t;
 
 typedef enum
 {
@@ -259,8 +266,7 @@ _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(block, bl_node_t *nodes);
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              bool in_scope);
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable);
 _BL_AST_NCTOR(decl_bad);
 _BL_AST_NCTOR(type_bad);
 _BL_AST_NCTOR(type_struct, bl_node_t *types);
@@ -286,7 +292,7 @@ bl_scope_t *
 bl_ast_get_scope(bl_node_t *node);
 
 bl_node_t *
-bl_ast_get_type(bl_node_t *node);
+bl_ast_type_of(bl_node_t *node);
 
 int
 bl_ast_is_buildin_type(bl_node_t *ident);

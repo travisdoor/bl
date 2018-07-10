@@ -702,6 +702,9 @@ bl_ast_get_deps(bl_node_t *node);
 bl_dependency_t *
 bl_ast_add_dep(bl_node_t *node, bl_node_t *dep, int type);
 
+bl_flatten_t *
+bl_ast_fetch_flatten(bl_node_t *decl)
+
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

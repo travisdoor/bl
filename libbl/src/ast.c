@@ -62,6 +62,18 @@ const char *bl_node_type_strings[] = {
 
 uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
 
+static void
+node_terminate(bl_node_t *node)
+{
+  switch (node->code) {
+  case BL_NODE_DECL_VALUE:
+    bo_unref(bl_peek_decl_value(node)->flatten.stack);
+    break;
+  default:
+    break;
+  }
+}
+
 static inline bl_node_t *
 get_node_in_chunk(chunk_t *chunk, int i)
 {
@@ -84,6 +96,9 @@ free_chunk(chunk_t *chunk)
   if (!chunk) return NULL;
 
   chunk_t *next = chunk->next;
+  for (int i = 0; i < chunk->count - 1; ++i) {
+    node_terminate(get_node_in_chunk(chunk, i + 1));
+  }
   bl_free(chunk);
   return next;
 }
@@ -193,15 +208,13 @@ _BL_AST_NCTOR(block, bl_node_t *nodes)
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              bool in_scope)
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
   _decl->type                 = type;
   _decl->name                 = name;
   _decl->value                = value;
   _decl->mutable              = mutable;
-  _decl->in_scope             = in_scope;
   return (bl_node_t *)_decl;
 }
 
@@ -376,7 +389,7 @@ bl_ast_get_scope(bl_node_t *node)
 }
 
 bl_node_t *
-bl_ast_get_type(bl_node_t *node)
+bl_ast_type_of(bl_node_t *node)
 {
   if (!node) return NULL;
   switch (bl_node_code(node)) {
@@ -387,7 +400,7 @@ bl_ast_get_type(bl_node_t *node)
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->type;
   case BL_NODE_IDENT:
-    return bl_ast_get_type(bl_peek_ident(node)->ref);
+    return bl_ast_type_of(bl_peek_ident(node)->ref);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:

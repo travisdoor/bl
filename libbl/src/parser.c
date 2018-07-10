@@ -555,7 +555,7 @@ parse_decl_value(context_t *cnt)
     }
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, false);
+  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable);
 }
 
 bl_node_t *
