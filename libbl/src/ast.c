@@ -47,7 +47,7 @@ bl_node_t bl_ftypes[] = {
   (bl_node_t){.code             = BL_NODE_TYPE_FUND,                                               \
               .src              = NULL,                                                            \
               .next             = NULL,                                                            \
-              .prev             = NULL,                                                            \
+              .prev_in_context  = NULL,                                                            \
               .n.type_fund.code = BL_FTYPE_##name},
 
     _BL_FTYPE_LIST
@@ -289,20 +289,6 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
 /*************************************************************************************************
  * other
  *************************************************************************************************/
-
-void
-bl_ast_insert(bl_node_t **dest, bl_node_t *src)
-{
-  if (!dest || !src) return;
-
-  if (*dest) {
-    if ((*dest)->prev) (*dest)->prev->next = src;
-    src->prev     = (*dest)->prev;
-    src->next     = (*dest);
-    (*dest)->prev = src;
-  }
-  *dest = src;
-}
 
 static void
 _type_to_string(char *buf, size_t len, bl_node_t *type)

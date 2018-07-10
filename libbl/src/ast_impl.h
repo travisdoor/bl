@@ -275,9 +275,6 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
 extern bl_node_t bl_ftypes[];
 
 void
-bl_ast_insert(bl_node_t **dest, bl_node_t *src);
-
-void
 bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type);
 
 bl_scope_t *

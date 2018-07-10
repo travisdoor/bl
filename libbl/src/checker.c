@@ -68,7 +68,7 @@ typedef struct
 static void
 check_ublock(context_t *cnt, bl_node_t **node);
 
-static bool
+static void
 check_decl_value(context_t *cnt, bl_node_t **decl);
 
 // impl

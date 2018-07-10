@@ -54,13 +54,6 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
-#define push(_curr, _prev)                                                                         \
-  {                                                                                                \
-    (*(_curr))->prev = (_prev);                                                                    \
-    (_prev)          = *(_curr);                                                                   \
-    (_curr)          = &(*(_curr))->next;                                                          \
-  }
-
 typedef struct
 {
   bl_builder_t *builder;
@@ -409,7 +402,6 @@ parse_type_fn(context_t *cnt, bool named_args)
   /* parse arg types */
   bl_node_t * arg_types;
   bool        rq       = false;
-  bl_node_t * prev     = NULL;
   bl_node_t **arg_type = &arg_types;
 
 next:
@@ -425,7 +417,7 @@ next:
         *arg_type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
-    push(arg_type, prev);
+    arg_type = &(*arg_type)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
@@ -466,7 +458,6 @@ parse_type_struct(context_t *cnt, bool named_args)
   /* parse arg types */
   bl_node_t * types;
   bool        rq   = false;
-  bl_node_t * prev = NULL;
   bl_node_t **type = &types;
 
 next:
@@ -481,7 +472,7 @@ next:
         *type = bl_ast_decl_bad(cnt->ast, NULL);
       }
     }
-    push(type, prev);
+    type = &(*type)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
@@ -575,14 +566,13 @@ parse_expr_call(context_t *cnt)
   /* parse args */
   bool        rq = false;
   bl_node_t * args;
-  bl_node_t * prev  = NULL;
   bl_node_t **arg   = &args;
   int         argsc = 0;
 arg:
   *arg = parse_expr(cnt);
   if (*arg) {
     ++argsc;
-    push(arg, prev);
+    arg = &(*arg)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
@@ -616,7 +606,6 @@ parse_block(context_t *cnt)
 
   bl_node_t * nodes;
   bl_token_t *tok;
-  bl_node_t * prev = NULL;
   bl_node_t **node = &nodes;
 next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -626,32 +615,32 @@ next:
   }
 
   if ((*node = parse_stmt_return(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_stmt_if(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     goto next;
   }
 
   if ((*node = parse_stmt_while(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     goto next;
   }
 
   if ((*node = parse_decl_value(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_expr(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_block(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     goto next;
   }
 
@@ -670,11 +659,10 @@ void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
-  bl_node_t *            prev    = NULL;
   bl_node_t **           node    = &_ublock->nodes;
 decl:
   if ((*node = parse_decl_value(cnt))) {
-    push(node, prev);
+    node = &(*node)->next;
     parse_semicolon_rq(cnt);
     goto decl;
   }
