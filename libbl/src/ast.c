@@ -44,10 +44,8 @@ const char *bl_ftype_strings[] = {
 
 bl_node_t bl_ftypes[] = {
 #define ft(name, str)                                                                              \
-  (bl_node_t){.code             = BL_NODE_TYPE_FUND,                                               \
-              .src              = NULL,                                                            \
-              .next             = NULL,                                                            \
-              .n.type_fund.code = BL_FTYPE_##name},
+  (bl_node_t){                                                                                     \
+      .code = BL_NODE_TYPE_FUND, .src = NULL, .next = NULL, .n.type_fund.code = BL_FTYPE_##name},
 
     _BL_FTYPE_LIST
 #undef ft
@@ -231,19 +229,21 @@ _BL_AST_NCTOR(type_bad)
   return alloc_node(ast, BL_NODE_TYPE_BAD, tok, bl_node_t *);
 }
 
-_BL_AST_NCTOR(type_fn, bl_node_t *arg_types, bl_node_t *ret_type)
+_BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type)
 {
   bl_node_type_fn_t *_type_fn = alloc_node(ast, BL_NODE_TYPE_FN, tok, bl_node_type_fn_t *);
   _type_fn->arg_types         = arg_types;
+  _type_fn->argc_types        = argc_types;
   _type_fn->ret_type          = ret_type;
   return (bl_node_t *)_type_fn;
 }
 
-_BL_AST_NCTOR(type_struct, bl_node_t *types)
+_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc)
 {
   bl_node_type_struct_t *_type_struct =
       alloc_node(ast, BL_NODE_TYPE_STRUCT, tok, bl_node_type_struct_t *);
-  _type_struct->types = types;
+  _type_struct->types  = types;
+  _type_struct->typesc = typesc;
   return (bl_node_t *)_type_struct;
 }
 
@@ -296,12 +296,16 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
 static void
 _type_to_string(char *buf, size_t len, bl_node_t *type)
 {
-  if (!buf || !type) return;
-
 #define append_buf(buf, len, str)                                                                  \
   {                                                                                                \
     const size_t filled = strlen(buf);                                                             \
     snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
+  }
+
+  if (!buf) return;
+  if (!type) {
+    append_buf(buf, len, "?");
+    return;
   }
 
   switch (bl_node_code(type)) {
@@ -378,22 +382,22 @@ bl_ast_get_scope(bl_node_t *node)
 }
 
 bl_node_t *
-bl_ast_type_of(bl_node_t *node)
+bl_ast_get_type(bl_node_t *node)
 {
   if (!node) return NULL;
   switch (bl_node_code(node)) {
   case BL_NODE_DECL_VALUE:
-    return bl_peek_decl_value(node)->type;
+    return bl_ast_get_type(bl_peek_decl_value(node)->type);
   case BL_NODE_LIT:
     return bl_peek_lit(node)->type;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->type;
   case BL_NODE_IDENT:
-    return bl_ast_type_of(bl_peek_ident(node)->ref);
+    return bl_ast_get_type(bl_peek_ident(node)->ref);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
-    return &bl_ftypes[BL_FTYPE_TYPE];
+    return node;
   default:
     bl_abort("node %s has no type", bl_node_name(node));
   }
@@ -417,13 +421,55 @@ bl_ast_is_buildin_type(bl_node_t *ident)
 bool
 bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
 {
+  first  = bl_ast_get_type(first);
+  second = bl_ast_get_type(second);
+
   if (bl_node_code(first) != bl_node_code(second)) return false;
 
   // same nodes
   switch (bl_node_code(first)) {
-  case BL_NODE_TYPE_FUND:
+
+  case BL_NODE_TYPE_FUND: {
     if (bl_peek_type_fund(first)->code != bl_peek_type_fund(second)->code) return false;
     break;
+  }
+
+  case BL_NODE_TYPE_FN: {
+    bl_node_type_fn_t *_first  = bl_peek_type_fn(first);
+    bl_node_type_fn_t *_second = bl_peek_type_fn(second);
+
+    if (_first->argc_types != _second->argc_types) return false;
+    if (!bl_ast_type_cmp(_first->ret_type, _second->ret_type)) return false;
+
+    bl_node_t *argt1 = _first->arg_types;
+    bl_node_t *argt2 = _second->arg_types;
+    while (argt1 && argt2) {
+      if (!bl_ast_type_cmp(argt1, argt2)) return false;
+
+      argt1 = argt1->next;
+      argt2 = argt2->next;
+    }
+
+    break;
+  }
+
+  case BL_NODE_TYPE_STRUCT: {
+    bl_node_type_struct_t *_first  = bl_peek_type_struct(first);
+    bl_node_type_struct_t *_second = bl_peek_type_struct(second);
+
+    if (_first->typesc != _second->typesc) return false;
+
+    bl_node_t *type1 = _first->types;
+    bl_node_t *type2 = _second->types;
+    while (type1 && type2) {
+      if (!bl_ast_type_cmp(type1, type2)) return false;
+
+      type1 = type1->next;
+      type2 = type2->next;
+    }
+    break;
+  }
+
   default:
     bl_abort("missing comparation of %s type", bl_node_name(first));
   }

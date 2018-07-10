@@ -40,6 +40,7 @@
 #include "token_impl.h"
 
 #define MAX_MSG_LEN 1024
+#define MAX_ERROR_REPORTED 10
 
 static int
 compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, uint32_t flags);
@@ -109,11 +110,11 @@ int
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   bl_checker_run(builder, assembly);
-  interrupt_on_error(builder);
 
   if (flags & BL_BUILDER_PRINT_AST) {
     bl_ast_printer_run(assembly);
   }
+  interrupt_on_error(builder);
 
   return BL_COMPILE_OK;
 }
@@ -194,6 +195,7 @@ bl_diag_delete_msg(char *msg)
 void
 bl_builder_error(bl_builder_t *builder, const char *format, ...)
 {
+  if (builder->errorc > MAX_ERROR_REPORTED) return;
   char error[MAX_MSG_LEN] = {0};
 
   va_list args;
@@ -222,6 +224,7 @@ void
 bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
                bl_builder_msg_cur_pos pos, const char *format, ...)
 {
+  if (type == BL_BUILDER_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
   if (builder->no_warn && type == BL_BUILDER_WARNING) return;
 
   assert(src);

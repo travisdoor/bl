@@ -54,9 +54,10 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
-typedef BArray flatten_t;
-typedef BArray waiting_t;
-typedef BArray flatten_cache_t;
+typedef BHashTable waiting_t;
+typedef BArray     waiting_queue_t;
+typedef BArray     flatten_cache_t;
+typedef BArray     flatten_t;
 
 typedef struct
 {
@@ -83,7 +84,10 @@ static void
 waiting_delete(waiting_t *waiting);
 
 static inline void
-waiting_push(waiting_t *waiting, fiter_t fiter);
+waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter);
+
+static void
+waiting_restore(context_t *cnt, uint64_t hash);
 
 static flatten_cache_t *
 flatten_cache_new(void);
@@ -98,13 +102,10 @@ static inline void
 flatten_push(flatten_t *flatten, bl_node_t *node);
 
 static void
-flatten_node(flatten_t *flatten, bl_node_t *node);
+flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
 
 static void
 check_ublock(context_t *cnt, bl_node_t *node);
-
-static void
-check_waiting(context_t *cnt);
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -115,23 +116,90 @@ check_ident(context_t *cnt, bl_node_t *ident);
 static bool
 check_decl_value(context_t *cnt, bl_node_t *decl);
 
+static bool
+check_lit_fn(context_t *cnt, bl_node_t *fn);
+
+static void
+check_unresolved(context_t *cnt);
+
 // impl
 waiting_t *
 waiting_new(void)
 {
-  return bo_array_new(sizeof(fiter_t));
+  return bo_htbl_new(sizeof(waiting_queue_t *), 2048);
 }
 
-static void
+void
 waiting_delete(waiting_t *waiting)
 {
+  bo_iterator_t it;
+  bl_bhtbl_foreach(waiting, it)
+  {
+    waiting_queue_t *q = bo_htbl_iter_peek_value(waiting, &it, waiting_queue_t *);
+    bo_unref(q);
+  }
   bo_unref(waiting);
 }
 
 void
-waiting_push(waiting_t *waiting, fiter_t fiter)
+waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter)
 {
-  bo_array_push_back(waiting, fiter);
+  waiting_queue_t *queue = NULL;
+  if (bo_htbl_has_key(waiting, hash)) {
+    queue = bo_htbl_at(waiting, hash, waiting_queue_t *);
+  } else {
+    queue = bo_array_new(sizeof(fiter_t));
+    bo_htbl_insert(waiting, hash, queue);
+  }
+
+  bo_array_push_back(queue, fiter);
+}
+
+void
+waiting_restore(context_t *cnt, uint64_t hash)
+{
+  if (!bo_htbl_has_key(cnt->waiting, hash)) return;
+  waiting_queue_t *q = bo_htbl_at(cnt->waiting, hash, waiting_queue_t *);
+  assert(q);
+
+  fiter_t fit;
+  for (size_t i = bo_array_size(q); i-- > 0;) {
+    fit = bo_array_at(q, i, fiter_t);
+    /* resume here */
+    bl_node_t *tmp;
+    for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
+      tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+      // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
+      if (!check_node(cnt, tmp)) {
+        bl_abort("invalid check");
+      }
+    }
+  }
+  bo_htbl_erase_key(cnt->waiting, hash);
+}
+
+void
+check_unresolved(context_t *cnt)
+{
+  bo_iterator_t    iter;
+  waiting_queue_t *q;
+  fiter_t          tmp;
+  bl_node_t *      tmp_node;
+  bl_scope_t *     scope = bl_ast_get_scope(cnt->curr_compound);
+
+  bl_bhtbl_foreach(cnt->waiting, iter)
+  {
+    q = bo_htbl_iter_peek_value(cnt->waiting, &iter, waiting_queue_t *);
+    assert(q);
+
+    for (size_t i = 0; i < bo_array_size(q); ++i) {
+      tmp      = bo_array_at(q, i, fiter_t);
+      tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
+      if (!bl_scope_has_symbol(scope, tmp_node))
+        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
+                         "unknown symbol");
+    }
+  }
 }
 
 flatten_cache_t *
@@ -168,49 +236,62 @@ flatten_push(flatten_t *flatten, bl_node_t *node)
 }
 
 void
-flatten_node(flatten_t *flatten, bl_node_t *node)
+flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
 {
   if (!node) return;
 
   switch (bl_node_code(node)) {
-  case BL_NODE_IDENT:
-    break;
-  case BL_NODE_STMT_BAD:
-    break;
-  case BL_NODE_STMT_RETURN:
-    break;
-  case BL_NODE_STMT_IF:
-    break;
-  case BL_NODE_STMT_LOOP:
-    break;
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-    flatten_node(flatten, _decl->type);
-    flatten_node(flatten, _decl->value);
+
+    bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
+    assert(scope);
+    bl_node_t *conflict = bl_scope_get(scope, _decl->name);
+    if (conflict) {
+      check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node, BL_BUILDER_CUR_WORD,
+                       "symbol with same name already declared");
+    } else {
+      bl_scope_insert(scope, _decl->name, node);
+
+      /* restore all checks waiting for this symbol */
+    }
+
+    flatten_node(cnt, flatten, _decl->type);
+    flatten_node(cnt, flatten, _decl->value);
     break;
   }
+
+  case BL_NODE_TYPE_FN: {
+    bl_node_type_fn_t *_type_fn = bl_peek_type_fn(node);
+    flatten_node(cnt, flatten, _type_fn->ret_type);
+    bl_node_t *sub_type;
+    bl_node_foreach(_type_fn->arg_types, sub_type)
+    {
+      flatten_node(cnt, flatten, sub_type);
+    }
+    break;
+  }
+
+  case BL_NODE_LIT_FN: {
+    bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
+    flatten_node(cnt, flatten, _fn->type);
+    break;
+  }
+
+  case BL_NODE_IDENT:
+  case BL_NODE_STMT_BAD:
+  case BL_NODE_STMT_RETURN:
+  case BL_NODE_STMT_IF:
+  case BL_NODE_STMT_LOOP:
   case BL_NODE_DECL_BLOCK:
-    break;
   case BL_NODE_DECL_BAD:
-    break;
   case BL_NODE_TYPE_FUND:
-    break;
-  case BL_NODE_TYPE_FN:
-    break;
   case BL_NODE_TYPE_STRUCT:
-    break;
   case BL_NODE_TYPE_BAD:
-    break;
-  case BL_NODE_LIT_FN:
-    break;
   case BL_NODE_LIT:
-    break;
   case BL_NODE_EXPR_BINOP:
-    break;
   case BL_NODE_EXPR_CALL:
-    break;
   case BL_NODE_EXPR_BAD:
-    break;
   case BL_NODE_COUNT:
     break;
   default:
@@ -234,38 +315,18 @@ check_ublock(context_t *cnt, bl_node_t *node)
     fit.flatten = flatten_new(cnt->flatten_cache);
     fit.i       = 0;
 
-    flatten_node(fit.flatten, child);
+    flatten_node(cnt, fit.flatten, child);
 
     bl_node_t *tmp;
     for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
       tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-      bl_log("check %s (%p)", bl_node_name(tmp), tmp);
+      // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
       if (!check_node(cnt, tmp)) {
         /* node has not been satisfied and need to be checked later when all it's references comes
          * out */
-        bl_log("node not satisfied");
-        waiting_push(cnt->waiting, fit);
+        bl_node_ident_t *_ident = bl_peek_ident(tmp);
+        waiting_push(cnt->waiting, _ident->hash, fit);
         break;
-      }
-    }
-  }
-}
-
-void
-check_waiting(context_t *cnt)
-{
-  fiter_t fit;
-  for (size_t i = bo_array_size(cnt->waiting); i-- > 0;) {
-    fit = bo_array_at(cnt->waiting, i, fiter_t);
-    /* resume here */
-    bl_node_t *tmp;
-    for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-      tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-      bl_log("check %s (%p)", bl_node_name(tmp), tmp);
-      if (!check_node(cnt, tmp)) {
-        /* node has not been satisfied and need to be checked later when all it's references comes
-         * out */
-        bl_log("unknown symbol");
       }
     }
   }
@@ -276,42 +337,30 @@ check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
   switch (bl_node_code(node)) {
-  case BL_NODE_DECL_UBLOCK:
-    break;
   case BL_NODE_IDENT:
     return check_ident(cnt, node);
-  case BL_NODE_STMT_BAD:
-    break;
-  case BL_NODE_STMT_RETURN:
-    break;
-  case BL_NODE_STMT_IF:
-    break;
-  case BL_NODE_STMT_LOOP:
-    break;
+
   case BL_NODE_DECL_VALUE:
     return check_decl_value(cnt, node);
-  case BL_NODE_DECL_BLOCK:
-    break;
-  case BL_NODE_DECL_BAD:
-    break;
-  case BL_NODE_TYPE_FUND:
-    break;
-  case BL_NODE_TYPE_FN:
-    break;
-  case BL_NODE_TYPE_STRUCT:
-    break;
-  case BL_NODE_TYPE_BAD:
-    break;
+
   case BL_NODE_LIT_FN:
-    break;
+    return check_lit_fn(cnt, node);
+
+  case BL_NODE_DECL_UBLOCK:
+  case BL_NODE_STMT_BAD:
+  case BL_NODE_STMT_RETURN:
+  case BL_NODE_STMT_IF:
+  case BL_NODE_STMT_LOOP:
+  case BL_NODE_DECL_BLOCK:
+  case BL_NODE_DECL_BAD:
+  case BL_NODE_TYPE_FUND:
+  case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_STRUCT:
+  case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
-    break;
   case BL_NODE_EXPR_BINOP:
-    break;
   case BL_NODE_EXPR_CALL:
-    break;
   case BL_NODE_EXPR_BAD:
-    break;
   case BL_NODE_COUNT:
     break;
   }
@@ -320,16 +369,29 @@ check_node(context_t *cnt, bl_node_t *node)
 }
 
 bool
+check_lit_fn(context_t *cnt, bl_node_t *fn)
+{
+  return true;
+}
+
+bool
 check_ident(context_t *cnt, bl_node_t *ident)
 {
   bl_node_ident_t *_ident = bl_peek_ident(ident);
-  if (_ident->ref) return false;
+  if (_ident->ref) return true;
 
   bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
   assert(scope);
 
-  bl_node_t *found = bl_scope_get(scope, ident);
-  if (!found) return false;
+  bl_node_t *found;
+  const int  buildin = bl_ast_is_buildin_type(ident);
+  if (buildin != -1) {
+    found = &bl_ftypes[buildin];
+  } else {
+    found = bl_scope_get(scope, ident);
+    if (!found) return false;
+    if (!found->checked) return false;
+  }
   _ident->ref = found;
 
   return true;
@@ -338,21 +400,31 @@ check_ident(context_t *cnt, bl_node_t *ident)
 bool
 check_decl_value(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
-  bl_scope_t *          scope = bl_ast_get_scope(cnt->curr_compound);
-  assert(scope);
+  if (decl->checked) return true;
+  bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
+  bl_node_t *           value_type = NULL;
 
-  _decl->type = bl_ast_type_of(_decl->value);
-  assert(_decl->type);
+  assert(_decl->type || _decl->value);
 
-  bl_node_t *conflict = bl_scope_get(scope, _decl->name);
-  if (conflict) {
-    check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
-                     "symbol with same name already declared");
-  } else {
-    bl_scope_insert(scope, _decl->name, decl);
+  if (_decl->value) value_type = bl_ast_get_type(_decl->value);
+  if (_decl->type) _decl->type = bl_ast_get_type(_decl->type);
+
+  if (value_type && _decl->type && !bl_ast_type_cmp(value_type, _decl->type)) {
+    char tmp_value[256];
+    char tmp_decl[256];
+    bl_ast_type_to_string(tmp_decl, 256, _decl->type);
+    bl_ast_type_to_string(tmp_value, 256, value_type);
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                     "no implicit cast for types '%s' and '%s'", tmp_decl, tmp_value);
   }
 
+  if (value_type) {
+    _decl->type = value_type;
+  }
+
+  assert(_decl->type);
+  decl->checked = true;
+  waiting_restore(cnt, bl_peek_ident(_decl->name)->hash);
   return true;
 }
 
@@ -375,8 +447,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     check_ublock(&cnt, unit->ast.root);
   }
 
-  bl_log("*************************************");
-  check_waiting(&cnt);
+  check_unresolved(&cnt);
 
   flatten_cache_delete(cnt.flatten_cache);
   waiting_delete(cnt.waiting);

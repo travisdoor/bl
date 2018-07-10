@@ -1,7 +1,19 @@
 /* testing playground */
 
-//global := 10;
+// global := 10;
 
 A : B; // waiting on B
 B : C; // waiting on C
-C : 123; 
+C : 123;
+
+global := 1024;
+global2 i32 := 1024;
+global3 i32;
+
+main : fn (i data_ts, j f32) i32 {
+};
+
+data_t : struct {
+  i i32,
+  j i32
+};

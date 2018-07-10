@@ -401,13 +401,13 @@ parse_type_fn(context_t *cnt, bool named_args)
 
   /* parse arg types */
   bl_node_t * arg_types;
-  bool        rq       = false;
-  bl_node_t **arg_type = &arg_types;
+  bool        rq         = false;
+  bl_node_t **arg_type   = &arg_types;
+  int         argc_types = 0;
 
 next:
   *arg_type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
   if (*arg_type) {
-
     /* validate argument */
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
@@ -418,6 +418,7 @@ next:
       }
     }
     arg_type = &(*arg_type)->next;
+    ++argc_types;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
@@ -439,7 +440,7 @@ next:
 
   bl_node_t *ret_type = parse_type(cnt);
   if (!ret_type) ret_type = &bl_ftypes[BL_FTYPE_VOID];
-  return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, ret_type);
+  return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type);
 }
 
 bl_node_t *
@@ -457,8 +458,9 @@ parse_type_struct(context_t *cnt, bool named_args)
 
   /* parse arg types */
   bl_node_t * types;
-  bool        rq   = false;
-  bl_node_t **type = &types;
+  bool        rq     = false;
+  bl_node_t **type   = &types;
+  int         typesc = 0;
 
 next:
   *type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
@@ -473,6 +475,7 @@ next:
       }
     }
     type = &(*type)->next;
+    ++typesc;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
@@ -492,7 +495,7 @@ next:
     return bl_ast_type_bad(cnt->ast, tok_struct);
   }
 
-  return bl_ast_type_struct(cnt->ast, tok_struct, types);
+  return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc);
 }
 
 bl_node_t *
