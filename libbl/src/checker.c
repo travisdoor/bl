@@ -119,8 +119,10 @@ check_flatten(context_t *cnt, bl_node_t *node);
 static void
 check_ublock(context_t *cnt, bl_node_t *node);
 
+#if 0
 static void
 check_block(context_t *cnt, bl_node_t *node);
+#endif
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -174,6 +176,7 @@ provide(bl_node_t *ident, bl_node_t *provided)
   bl_scope_t *scope = bl_ast_get_scope(compound);
   assert(scope);
 
+  /* bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->serial) */
   bl_scope_insert(scope, ident, provided);
 }
 
@@ -223,9 +226,10 @@ waiting_resume(context_t *cnt, uint64_t hash)
     bl_node_t *tmp;
     for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
       tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-      // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
       if (!check_node(cnt, tmp)) {
-        bl_abort("invalid check");
+        bl_node_ident_t *_ident = bl_peek_ident(tmp);
+        waiting_push(cnt->waiting, _ident->hash, fit);
+        break;
       }
     }
   }
@@ -248,16 +252,7 @@ check_unresolved(context_t *cnt)
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp      = bo_array_at(q, i, fiter_t);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
-      bl_scope_t *found_in_scope;
-      bl_node_t * found = lookup(tmp_node, &found_in_scope);
-      if (!found) {
-        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
-                         "unknown symbol");
-      } else if ((found_in_scope != cnt->assembly->gscope) && found->serial > tmp_node->serial) {
-        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
-                         "symbol defined after place where it is used, declarations in local scope "
-                         "must come before they are used");
-      }
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD, "unknown symbol");
     }
   }
 }
@@ -304,15 +299,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
 
-    bl_node_t *conflict = lookup(_decl->name, NULL);
-    if (conflict) {
-      check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node, BL_BUILDER_CUR_WORD,
-                       "symbol with same name already declared here: %s:%d",
-                       conflict->src->unit->filepath, conflict->src->line);
-    } else {
-      provide(_decl->name, node);
-    }
-
     flatten_node(cnt, flatten, _decl->type);
     flatten_node(cnt, flatten, _decl->value);
     break;
@@ -337,7 +323,13 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   }
 
   case BL_NODE_DECL_BLOCK: {
-    check_block(cnt, node);
+    // check_block(cnt, node);
+    bl_node_decl_block_t *_block = bl_peek_decl_block(node);
+    bl_node_t *           tmp;
+    bl_node_foreach(_block->nodes, tmp)
+    {
+      flatten_node(cnt, flatten, tmp);
+    }
     return;
   }
 
@@ -375,7 +367,6 @@ check_flatten(context_t *cnt, bl_node_t *node)
   bl_node_t *tmp;
   for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
     tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-    // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
     if (!check_node(cnt, tmp)) {
       /* node has not been satisfied and need to be checked later when all it's references comes
        * out */
@@ -386,6 +377,7 @@ check_flatten(context_t *cnt, bl_node_t *node)
   }
 }
 
+#if 0
 void
 check_block(context_t *cnt, bl_node_t *node)
 {
@@ -399,6 +391,7 @@ check_block(context_t *cnt, bl_node_t *node)
     check_flatten(cnt, child);
   }
 }
+#endif
 
 void
 check_ublock(context_t *cnt, bl_node_t *node)
@@ -417,6 +410,11 @@ bool
 check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
+
+  /* bl_log("check %s (%d): %d", */
+  /*        bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node), */
+  /*        node->serial, node->src->line); */
+
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
     return check_ident(cnt, node);
@@ -452,8 +450,6 @@ check_node(context_t *cnt, bl_node_t *node)
 bool
 check_lit_fn(context_t *cnt, bl_node_t *fn)
 {
-  if (fn->checked) return true;
-  fn->checked = true;
   return true;
 }
 
@@ -470,7 +466,6 @@ check_ident(context_t *cnt, bl_node_t *ident)
   } else {
     found = lookup(ident, NULL);
     if (!found) return false;
-    if (!found->checked) return false;
   }
   _ident->ref = found;
 
@@ -480,7 +475,6 @@ check_ident(context_t *cnt, bl_node_t *ident)
 bool
 check_decl_value(context_t *cnt, bl_node_t *decl)
 {
-  if (decl->checked) return true;
   bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
   bl_node_t *           value_type = NULL;
 
@@ -507,20 +501,29 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   }
 
   assert(_decl->type);
-  decl->checked = true;
-  if (is_in_gscope) waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
+
+  bl_node_t *conflict = lookup(_decl->name, NULL);
+  if (conflict) {
+    check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
+                     "symbol with same name already declared here: %s:%d",
+                     conflict->src->unit->filepath, conflict->src->line);
+  } else {
+    provide(_decl->name, decl);
+    if (is_in_gscope) waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
+  }
+
   return true;
 }
 
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder       = builder,
-                   .unit          = NULL,
-                   .assembly      = assembly,
-                   .ast           = NULL,
-                   .waiting       = waiting_new(),
-                   .flatten_cache = flatten_cache_new()};
+  context_t cnt = {.builder               = builder,
+                   .unit                  = NULL,
+                   .assembly              = assembly,
+                   .ast                   = NULL,
+                   .waiting               = waiting_new(),
+                   .flatten_cache         = flatten_cache_new()};
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)

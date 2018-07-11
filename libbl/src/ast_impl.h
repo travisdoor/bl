@@ -240,8 +240,9 @@ struct bl_node
   bl_node_code_e code;
 
   bl_node_t *next;
-  bool       checked;
+#if BL_DEBUG
   int        serial;
+#endif
 };
 
 /*************************************************************************************************

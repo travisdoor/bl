@@ -123,8 +123,10 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
   node->code = c;
   node->src  = tok ? &tok->src : NULL;
 
+#if BL_DEBUG
   static int serial = 0;
   node->serial      = serial++;
+#endif
 
   return node;
 }
