@@ -205,6 +205,7 @@ print_ublock(bl_node_t *node, int pad)
 {
   print_head("unit", node->src, node, pad);
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
+  fprintf(stdout, "%s", _ublock->unit->name);
 
   bl_node_t *it;
   bl_node_foreach(_ublock->nodes, it)

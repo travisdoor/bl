@@ -159,11 +159,12 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 
-_BL_AST_NCTOR(decl_ublock, bl_scope_t *scope)
+_BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
 {
   bl_node_decl_ublock_t *_ublock =
       alloc_node(ast, BL_NODE_DECL_UBLOCK, tok, bl_node_decl_ublock_t *);
   _ublock->scope = scope;
+  _ublock->unit  = unit;
   return (bl_node_t *)_ublock;
 }
 
@@ -411,6 +412,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_lit_fn(node)->type;
   case BL_NODE_IDENT:
     return bl_ast_get_type(bl_peek_ident(node)->ref);
+  case BL_NODE_EXPR_CALL:
+    return bl_ast_get_type(bl_peek_expr_call(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:

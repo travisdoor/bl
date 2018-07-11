@@ -69,6 +69,7 @@ typedef struct
 
   flatten_cache_t *flatten_cache;
   waiting_t *      waiting;
+  bl_scope_t *     provided_in_gscope;
 } context_t;
 
 typedef struct
@@ -119,11 +120,6 @@ check_flatten(context_t *cnt, bl_node_t *node);
 static void
 check_ublock(context_t *cnt, bl_node_t *node);
 
-#if 0
-static void
-check_block(context_t *cnt, bl_node_t *node);
-#endif
-
 static bool
 check_node(context_t *cnt, bl_node_t *node);
 
@@ -135,6 +131,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl);
 
 static bool
 check_lit_fn(context_t *cnt, bl_node_t *fn);
+
+static bool
+check_call(context_t *cnt, bl_node_t *call);
 
 static void
 check_unresolved(context_t *cnt);
@@ -252,7 +251,9 @@ check_unresolved(context_t *cnt)
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp      = bo_array_at(q, i, fiter_t);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
-      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD, "unknown symbol");
+      if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
+        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
+                         "unknown symbol");
     }
   }
 }
@@ -299,6 +300,15 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
 
+    {
+      /* store declaration for temporary use here, this scope is used unly for searching truely
+       * undefined symbols later */
+      const bool is_in_gscope =
+          bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+      if (is_in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
+        bl_scope_insert(cnt->provided_in_gscope, _decl->name, node);
+    }
+
     flatten_node(cnt, flatten, _decl->type);
     flatten_node(cnt, flatten, _decl->value);
     break;
@@ -333,6 +343,18 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     return;
   }
 
+  case BL_NODE_EXPR_CALL: {
+    bl_node_expr_call_t *_call = bl_peek_expr_call(node);
+    flatten_node(cnt, flatten, _call->ident);
+
+    bl_node_t *tmp;
+    bl_node_foreach(_call->args, tmp)
+    {
+      flatten_node(cnt, flatten, tmp);
+    }
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_RETURN:
@@ -344,7 +366,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
   case BL_NODE_EXPR_BINOP:
-  case BL_NODE_EXPR_CALL:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
     break;
@@ -377,22 +398,6 @@ check_flatten(context_t *cnt, bl_node_t *node)
   }
 }
 
-#if 0
-void
-check_block(context_t *cnt, bl_node_t *node)
-{
-  /* entry point */
-
-  bl_node_decl_block_t *_block = bl_peek_decl_block(node);
-
-  bl_node_t *child;
-  bl_node_foreach(_block->nodes, child)
-  {
-    check_flatten(cnt, child);
-  }
-}
-#endif
-
 void
 check_ublock(context_t *cnt, bl_node_t *node)
 {
@@ -407,13 +412,63 @@ check_ublock(context_t *cnt, bl_node_t *node)
 }
 
 bool
+check_call(context_t *cnt, bl_node_t *call)
+{
+  bl_node_expr_call_t *_call = bl_peek_expr_call(call);
+
+  bl_node_t *callee = bl_peek_ident(_call->ident)->ref;
+  assert(callee);
+  bl_node_t *        callee_type  = bl_peek_decl_value(callee)->type;
+  bl_node_type_fn_t *_callee_type = bl_peek_type_fn(callee_type);
+
+  if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, call, BL_BUILDER_CUR_WORD, "expected function name");
+    return true;
+  }
+
+  _call->type = _callee_type->ret_type;
+
+  if (_call->argsc != _callee_type->argc_types) {
+    check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
+                     "expected %d arguments, but called with %d", _callee_type->argc_types,
+                     _call->argsc);
+    return true;
+  }
+
+  bl_node_t *call_arg   = _call->args;
+  bl_node_t *callee_arg = _callee_type->arg_types;
+
+  while (call_arg) {
+    if (!bl_ast_type_cmp(call_arg, callee_arg)) {
+      char tmp1[256];
+      char tmp2[256];
+      bl_ast_type_to_string(tmp1, 256, bl_ast_get_type(call_arg));
+      bl_ast_type_to_string(tmp2, 256, bl_ast_get_type(callee_arg));
+
+      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, call_arg, BL_BUILDER_CUR_WORD,
+                       "invalid call argument type, expected is '%s' but called with '%s'", tmp2,
+                       tmp1);
+
+      break;
+    }
+
+    call_arg   = call_arg->next;
+    callee_arg = callee_arg->next;
+  }
+
+  return true;
+}
+
+bool
 check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
 
-  /* bl_log("check %s (%d): %d", */
-  /*        bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node), */
-  /*        node->serial, node->src->line); */
+  /*
+  bl_log("check %s (%d): %d",
+         bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
+         node->serial, node->src->line);
+  */
 
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
@@ -424,6 +479,9 @@ check_node(context_t *cnt, bl_node_t *node)
 
   case BL_NODE_LIT_FN:
     return check_lit_fn(cnt, node);
+
+  case BL_NODE_EXPR_CALL:
+    return check_call(cnt, node);
 
   case BL_NODE_DECL_UBLOCK:
   case BL_NODE_STMT_BAD:
@@ -438,7 +496,6 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
   case BL_NODE_EXPR_BINOP:
-  case BL_NODE_EXPR_CALL:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
     break;
@@ -468,7 +525,6 @@ check_ident(context_t *cnt, bl_node_t *ident)
     if (!found) return false;
   }
   _ident->ref = found;
-
   return true;
 }
 
@@ -518,12 +574,13 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder               = builder,
-                   .unit                  = NULL,
-                   .assembly              = assembly,
-                   .ast                   = NULL,
-                   .waiting               = waiting_new(),
-                   .flatten_cache         = flatten_cache_new()};
+  context_t cnt = {.builder            = builder,
+                   .unit               = NULL,
+                   .assembly           = assembly,
+                   .ast                = NULL,
+                   .waiting            = waiting_new(),
+                   .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
+                   .flatten_cache      = flatten_cache_new()};
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)

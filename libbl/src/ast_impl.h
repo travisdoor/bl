@@ -80,8 +80,9 @@
     bl_node_t *true_stmt; \
   }) \
   nt(DECL_UBLOCK, decl_ublock, struct { \
-    bl_node_t    *nodes; \
-    bl_scope_t   *scope; \
+    bl_node_t      *nodes; \
+    bl_scope_t     *scope; \
+    struct bl_unit *unit; \
   }) \
   nt(DECL_BLOCK, decl_block, struct { \
     bl_node_t  *nodes; \
@@ -158,7 +159,8 @@ typedef enum
   BL_KIND_TYPE,   /* type_t */
 } bl_type_kind_e;
 
-typedef enum {
+typedef enum
+{
   BL_FLAG_EXTERN = 1
 } bl_node_flag_e;
 
@@ -241,7 +243,7 @@ struct bl_node
 
   bl_node_t *next;
 #if BL_DEBUG
-  int        serial;
+  int serial;
 #endif
 };
 
@@ -265,14 +267,15 @@ _BL_NODE_TYPE_LIST
 #define _BL_AST_NCTOR(name, ...)                                                                   \
   bl_node_t *bl_ast_##name(bl_ast_t *ast, bl_token_t *tok, ##__VA_ARGS__)
 
-_BL_AST_NCTOR(decl_ublock, bl_scope_t *scope);
+_BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
 _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound);
 _BL_AST_NCTOR(stmt_bad);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable, int flags);
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
+              int flags);
 _BL_AST_NCTOR(decl_bad);
 _BL_AST_NCTOR(type_bad);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc);

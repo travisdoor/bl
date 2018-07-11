@@ -52,7 +52,6 @@
   sm(LOOP,        "loop")\
   sm(RUN,         "#run")\
   sm(FALSE,       "false") \
-  sm(USING,       "using") \
   sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
@@ -61,16 +60,12 @@
   sm(LINK,        "#link") \
   sm(LINE,        "#line") \
   sm(FILE,        "#file") \
-  sm(PUBLIC,      "public")\
   sm(EXTERN,      "extern") \
-  sm(MODULE,      "module") \
-  sm(EXPORT,      "export") \
   sm(RETURN,      "return") \
   sm(STRUCT,      "struct") \
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
   sm(MDECL,       ":=")	\
-  sm(PATH,        "::") \
   sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \
   sm(LBCOMMENT,   "/*") \

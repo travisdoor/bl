@@ -267,7 +267,8 @@ parse_literal_fn(context_t *cnt)
   bl_token_t *tok_fn = bl_tokens_peek(cnt->tokens);
   if (bl_token_is_not(tok_fn, BL_SYM_FN)) return NULL;
 
-  bl_node_t *       fn  = bl_ast_lit_fn(cnt->ast, tok_fn, NULL, NULL, cnt->curr_compound,
+  bl_node_t *       fn  = bl_ast_lit_fn(cnt->ast, tok_fn, NULL, NULL,
+                                cnt->curr_fn ? cnt->unit->ast.root : cnt->curr_compound,
                                 bl_scope_new(cnt->assembly->scope_cache, 32));
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(fn);
 
@@ -745,6 +746,6 @@ bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
                    .curr_compound = NULL,
                    .inside_loop   = false};
 
-  unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, assembly->gscope);
+  unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, unit, assembly->gscope);
   parse_ublock_content(&cnt, unit->ast.root);
 }

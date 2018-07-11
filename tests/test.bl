@@ -1,10 +1,13 @@
 /* testing playground */
 
-//printf fn (string) i32 : extern;
-//puts fn (string) i32 : extern;
+printf fn (string) i32 : extern;
+puts fn (string) i32 : extern;
 
 main : fn () i32 {
   printf("hello");
+  i := 23;
+  o := add(i, 12);
+  say_hello("hello");
 
   a : global; // waiting global
 
@@ -13,6 +16,6 @@ main : fn () i32 {
 
 global : 10;
 
-C : D;
-B : C;
-A : B;
+add : fn (a i32, b i32) i32 {
+  return a + b;
+};
