@@ -56,18 +56,23 @@
 
 typedef struct
 {
-  bl_builder_t *builder;
-  bl_unit_t *   unit;
-  bl_ast_t *    ast;
-  bl_tokens_t * tokens;
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+  bl_unit_t *    unit;
+  bl_ast_t *     ast;
+  bl_tokens_t *  tokens;
 
   /* tmps */
   bl_node_t *curr_fn;
+  bl_node_t *curr_compound;
   bool       inside_loop;
 } context_t;
 
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
+
+static int
+parse_flags(context_t *cnt, int allowed);
 
 static bl_node_t *
 parse_ident(context_t *cnt);
@@ -260,18 +265,26 @@ bl_node_t *
 parse_literal_fn(context_t *cnt)
 {
   bl_token_t *tok_fn = bl_tokens_peek(cnt->tokens);
-  bl_node_t * type   = parse_type_fn(cnt, true);
-  if (!type) return NULL;
-  bl_node_t *       fn  = bl_ast_lit_fn(cnt->ast, tok_fn, type, NULL);
+  if (bl_token_is_not(tok_fn, BL_SYM_FN)) return NULL;
+
+  bl_node_t *       fn  = bl_ast_lit_fn(cnt->ast, tok_fn, NULL, NULL, cnt->curr_compound,
+                                bl_scope_new(cnt->assembly->scope_cache, 32));
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(fn);
 
-  bl_node_t *prev_fn = cnt->curr_fn;
-  cnt->curr_fn       = fn;
+  bl_node_t *prev_fn       = cnt->curr_fn;
+  bl_node_t *prev_compound = cnt->curr_compound;
+  cnt->curr_fn             = fn;
+  cnt->curr_compound       = fn;
 
+  _fn->type = parse_type_fn(cnt, true);
+  assert(_fn->type);
+
+  /* parse block */
   _fn->block = parse_block(cnt);
   assert(_fn->block);
 
-  cnt->curr_fn = prev_fn;
+  cnt->curr_fn       = prev_fn;
+  cnt->curr_compound = prev_compound;
   return fn;
 }
 
@@ -344,7 +357,8 @@ parse_ident(context_t *cnt)
   bl_token_t *tok_ident = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (!tok_ident) return NULL;
 
-  return bl_ast_ident(cnt->ast, tok_ident, NULL);
+  assert(cnt->curr_compound);
+  return bl_ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound);
 }
 
 bl_node_t *
@@ -501,6 +515,7 @@ next:
 bl_node_t *
 parse_decl_value(context_t *cnt)
 {
+  int         flags     = 0;
   bl_token_t *tok_ident = bl_tokens_peek(cnt->tokens);
   if (bl_token_is_not(tok_ident, BL_SYM_IDENT)) return NULL;
   /* is value declaration? */
@@ -539,17 +554,26 @@ parse_decl_value(context_t *cnt)
 
   bl_node_t *value = NULL;
   if (tok_assign) {
-    value   = parse_value(cnt);
     mutable = bl_token_is(tok_assign, BL_SYM_MDECL);
+    flags   = parse_flags(cnt, BL_FLAG_EXTERN);
+    if (!flags) {
+      value = parse_value(cnt);
 
-    if (!value) {
-      parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_assign, BL_BUILDER_CUR_AFTER,
-                  "expected binding of declaration to some value");
+      if (!value) {
+        parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_assign, BL_BUILDER_CUR_AFTER,
+                    "expected binding of declaration to some value");
+        return bl_ast_decl_bad(cnt->ast, tok_assign);
+      }
+    }
+
+    if (flags & BL_FLAG_EXTERN && mutable) {
+      parse_error(cnt, BL_ERR_INVALID_MUTABILITY, tok_assign, BL_BUILDER_CUR_WORD,
+                  "extern declaration cannot be mutable");
       return bl_ast_decl_bad(cnt->ast, tok_assign);
     }
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable);
+  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, flags);
 }
 
 bl_node_t *
@@ -598,24 +622,51 @@ arg:
   return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL);
 }
 
+int
+parse_flags(context_t *cnt, int allowed)
+{
+  int         flags = 0;
+  bl_token_t *tok;
+next:
+  tok = bl_tokens_peek(cnt->tokens);
+  switch (tok->sym) {
+  case BL_SYM_EXTERN:
+    bl_tokens_consume(cnt->tokens);
+    if (!(allowed & BL_FLAG_EXTERN)) {
+      parse_error(cnt, BL_ERR_UNEXPECTED_MODIF, tok, BL_BUILDER_CUR_WORD, "unexpected flag");
+    } else {
+      flags |= BL_FLAG_EXTERN;
+    }
+    goto next;
+  default:
+    break;
+  }
+
+  return flags;
+}
+
 bl_node_t *
 parse_block(context_t *cnt)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+  if (!tok_begin) return NULL;
 
-  if (tok_begin == NULL) {
-    return NULL;
-  }
+  bl_node_t *           prev_compound = cnt->curr_compound;
+  bl_node_t *           block  = bl_ast_decl_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
+                                       bl_scope_new(cnt->assembly->scope_cache, 1024));
+  bl_node_decl_block_t *_block = bl_peek_decl_block(block);
+  cnt->curr_compound           = block;
 
-  bl_node_t * nodes;
   bl_token_t *tok;
-  bl_node_t **node = &nodes;
+  bl_node_t **node = &_block->nodes;
 next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
     tok = bl_tokens_consume(cnt->tokens);
     parse_warning(cnt, tok, BL_BUILDER_CUR_WORD, "extra semicolon can be removed ';'");
     goto next;
   }
+
+  parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
     node = &(*node)->next;
@@ -652,18 +703,23 @@ next:
     tok = bl_tokens_peek_prev(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_BODY_END, tok, BL_BUILDER_CUR_AFTER,
                 "expected '}', starting %d:%d", tok_begin->src.line, tok_begin->src.col);
+    cnt->curr_compound = prev_compound;
     return bl_ast_decl_bad(cnt->ast, tok_begin);
   }
 
-  return bl_ast_block(cnt->ast, tok_begin, nodes);
+  cnt->curr_compound = prev_compound;
+  return block;
 }
 
 void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
+  cnt->curr_compound             = ublock;
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
   bl_node_t **           node    = &_ublock->nodes;
 decl:
+  parse_flags(cnt, 0);
+
   if ((*node = parse_decl_value(cnt))) {
     node = &(*node)->next;
     parse_semicolon_rq(cnt);
@@ -678,15 +734,17 @@ decl:
 }
 
 void
-bl_parser_run(bl_builder_t *builder, bl_unit_t *unit)
+bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
 {
-  context_t cnt = {.builder     = builder,
-                   .unit        = unit,
-                   .ast         = &unit->ast,
-                   .tokens      = &unit->tokens,
-                   .curr_fn     = NULL,
-                   .inside_loop = false};
+  context_t cnt = {.builder       = builder,
+                   .assembly      = assembly,
+                   .unit          = unit,
+                   .ast           = &unit->ast,
+                   .tokens        = &unit->tokens,
+                   .curr_fn       = NULL,
+                   .curr_compound = NULL,
+                   .inside_loop   = false};
 
-  unit->ast.root = bl_ast_ublock(&unit->ast, NULL);
+  unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, assembly->gscope);
   parse_ublock_content(&cnt, unit->ast.root);
 }

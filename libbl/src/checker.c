@@ -29,6 +29,7 @@
 #include <setjmp.h>
 #include "stages_impl.h"
 #include "common_impl.h"
+#include "ast_impl.h"
 
 #define check_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
@@ -66,7 +67,6 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
-  bl_node_t *      curr_compound;
   flatten_cache_t *flatten_cache;
   waiting_t *      waiting;
 } context_t;
@@ -76,6 +76,15 @@ typedef struct
   flatten_t *flatten;
   size_t     i;
 } fiter_t;
+
+static bl_node_t *
+lookup(bl_node_t *ident, bl_scope_t **out_scope);
+
+static bl_node_t *
+_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope);
+
+static void
+provide(bl_node_t *ident, bl_node_t *provided);
 
 static waiting_t *
 waiting_new(void);
@@ -87,7 +96,7 @@ static inline void
 waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter);
 
 static void
-waiting_restore(context_t *cnt, uint64_t hash);
+waiting_resume(context_t *cnt, uint64_t hash);
 
 static flatten_cache_t *
 flatten_cache_new(void);
@@ -105,7 +114,13 @@ static void
 flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
 
 static void
+check_flatten(context_t *cnt, bl_node_t *node);
+
+static void
 check_ublock(context_t *cnt, bl_node_t *node);
+
+static void
+check_block(context_t *cnt, bl_node_t *node);
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -123,6 +138,45 @@ static void
 check_unresolved(context_t *cnt);
 
 // impl
+bl_node_t *
+lookup(bl_node_t *ident, bl_scope_t **out_scope)
+{
+  assert(ident);
+  bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
+  assert(compound);
+  return _lookup(compound, ident, out_scope);
+}
+
+bl_node_t *
+_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope)
+{
+  bl_node_t * found = NULL;
+  bl_scope_t *scope;
+
+  while (compound && !found) {
+    scope = bl_ast_get_scope(compound);
+    assert(scope);
+
+    found    = bl_scope_get(scope, ident);
+    compound = bl_ast_get_parent_compound(compound);
+  }
+
+  if (out_scope) *out_scope = scope;
+  return found;
+}
+
+void
+provide(bl_node_t *ident, bl_node_t *provided)
+{
+  assert(ident && provided);
+  bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
+  assert(compound);
+  bl_scope_t *scope = bl_ast_get_scope(compound);
+  assert(scope);
+
+  bl_scope_insert(scope, ident, provided);
+}
+
 waiting_t *
 waiting_new(void)
 {
@@ -156,14 +210,14 @@ waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter)
 }
 
 void
-waiting_restore(context_t *cnt, uint64_t hash)
+waiting_resume(context_t *cnt, uint64_t hash)
 {
   if (!bo_htbl_has_key(cnt->waiting, hash)) return;
   waiting_queue_t *q = bo_htbl_at(cnt->waiting, hash, waiting_queue_t *);
   assert(q);
 
   fiter_t fit;
-  for (size_t i = bo_array_size(q); i-- > 0;) {
+  for (size_t i = 0; i < bo_array_size(q); ++i) {
     fit = bo_array_at(q, i, fiter_t);
     /* resume here */
     bl_node_t *tmp;
@@ -185,7 +239,6 @@ check_unresolved(context_t *cnt)
   waiting_queue_t *q;
   fiter_t          tmp;
   bl_node_t *      tmp_node;
-  bl_scope_t *     scope = bl_ast_get_scope(cnt->curr_compound);
 
   bl_bhtbl_foreach(cnt->waiting, iter)
   {
@@ -195,9 +248,16 @@ check_unresolved(context_t *cnt)
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp      = bo_array_at(q, i, fiter_t);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
-      if (!bl_scope_has_symbol(scope, tmp_node))
+      bl_scope_t *found_in_scope;
+      bl_node_t * found = lookup(tmp_node, &found_in_scope);
+      if (!found) {
         check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
                          "unknown symbol");
+      } else if ((found_in_scope != cnt->assembly->gscope) && found->serial > tmp_node->serial) {
+        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
+                         "symbol defined after place where it is used, declarations in local scope "
+                         "must come before they are used");
+      }
     }
   }
 }
@@ -244,16 +304,13 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
 
-    bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
-    assert(scope);
-    bl_node_t *conflict = bl_scope_get(scope, _decl->name);
+    bl_node_t *conflict = lookup(_decl->name, NULL);
     if (conflict) {
       check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, node, BL_BUILDER_CUR_WORD,
-                       "symbol with same name already declared");
+                       "symbol with same name already declared here: %s:%d",
+                       conflict->src->unit->filepath, conflict->src->line);
     } else {
-      bl_scope_insert(scope, _decl->name, node);
-
-      /* restore all checks waiting for this symbol */
+      provide(_decl->name, node);
     }
 
     flatten_node(cnt, flatten, _decl->type);
@@ -275,7 +332,13 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
     flatten_node(cnt, flatten, _fn->type);
+    flatten_node(cnt, flatten, _fn->block);
     break;
+  }
+
+  case BL_NODE_DECL_BLOCK: {
+    check_block(cnt, node);
+    return;
   }
 
   case BL_NODE_IDENT:
@@ -283,7 +346,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_STMT_RETURN:
   case BL_NODE_STMT_IF:
   case BL_NODE_STMT_LOOP:
-  case BL_NODE_DECL_BLOCK:
   case BL_NODE_DECL_BAD:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
@@ -302,33 +364,52 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
 }
 
 void
+check_flatten(context_t *cnt, bl_node_t *node)
+{
+  fiter_t fit;
+  fit.flatten = flatten_new(cnt->flatten_cache);
+  fit.i       = 0;
+
+  flatten_node(cnt, fit.flatten, node);
+
+  bl_node_t *tmp;
+  for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
+    tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+    // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
+    if (!check_node(cnt, tmp)) {
+      /* node has not been satisfied and need to be checked later when all it's references comes
+       * out */
+      bl_node_ident_t *_ident = bl_peek_ident(tmp);
+      waiting_push(cnt->waiting, _ident->hash, fit);
+      break;
+    }
+  }
+}
+
+void
+check_block(context_t *cnt, bl_node_t *node)
+{
+  /* entry point */
+
+  bl_node_decl_block_t *_block = bl_peek_decl_block(node);
+
+  bl_node_t *child;
+  bl_node_foreach(_block->nodes, child)
+  {
+    check_flatten(cnt, child);
+  }
+}
+
+void
 check_ublock(context_t *cnt, bl_node_t *node)
 {
+  /* entry point */
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
-  _ublock->scope                 = cnt->assembly->gscope;
-  cnt->curr_compound             = node;
 
-  fiter_t    fit;
   bl_node_t *child;
   bl_node_foreach(_ublock->nodes, child)
   {
-    fit.flatten = flatten_new(cnt->flatten_cache);
-    fit.i       = 0;
-
-    flatten_node(cnt, fit.flatten, child);
-
-    bl_node_t *tmp;
-    for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-      tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-      // bl_log("check %s (%p)", bl_node_name(tmp), tmp);
-      if (!check_node(cnt, tmp)) {
-        /* node has not been satisfied and need to be checked later when all it's references comes
-         * out */
-        bl_node_ident_t *_ident = bl_peek_ident(tmp);
-        waiting_push(cnt->waiting, _ident->hash, fit);
-        break;
-      }
-    }
+    check_flatten(cnt, child);
   }
 }
 
@@ -371,6 +452,8 @@ check_node(context_t *cnt, bl_node_t *node)
 bool
 check_lit_fn(context_t *cnt, bl_node_t *fn)
 {
+  if (fn->checked) return true;
+  fn->checked = true;
   return true;
 }
 
@@ -380,15 +463,12 @@ check_ident(context_t *cnt, bl_node_t *ident)
   bl_node_ident_t *_ident = bl_peek_ident(ident);
   if (_ident->ref) return true;
 
-  bl_scope_t *scope = bl_ast_get_scope(cnt->curr_compound);
-  assert(scope);
-
   bl_node_t *found;
   const int  buildin = bl_ast_is_buildin_type(ident);
   if (buildin != -1) {
     found = &bl_ftypes[buildin];
   } else {
-    found = bl_scope_get(scope, ident);
+    found = lookup(ident, NULL);
     if (!found) return false;
     if (!found->checked) return false;
   }
@@ -403,6 +483,10 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   if (decl->checked) return true;
   bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
   bl_node_t *           value_type = NULL;
+
+  assert(_decl->name);
+  const bool is_in_gscope =
+      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
   assert(_decl->type || _decl->value);
 
@@ -424,7 +508,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
   assert(_decl->type);
   decl->checked = true;
-  waiting_restore(cnt, bl_peek_ident(_decl->name)->hash);
+  if (is_in_gscope) waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
   return true;
 }
 
@@ -435,7 +519,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
                    .unit          = NULL,
                    .assembly      = assembly,
                    .ast           = NULL,
-                   .curr_compound = NULL,
                    .waiting       = waiting_new(),
                    .flatten_cache = flatten_cache_new()};
 

@@ -122,10 +122,9 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
 
   node->code = c;
   node->src  = tok ? &tok->src : NULL;
-#if BL_DEBUG
+
   static int serial = 0;
-  node->_serial     = serial++;
-#endif
+  node->serial      = serial++;
 
   return node;
 }
@@ -158,17 +157,21 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 
-_BL_AST_NCTOR(ublock)
+_BL_AST_NCTOR(decl_ublock, bl_scope_t *scope)
 {
-  return alloc_node(ast, BL_NODE_DECL_UBLOCK, tok, bl_node_t *);
+  bl_node_decl_ublock_t *_ublock =
+      alloc_node(ast, BL_NODE_DECL_UBLOCK, tok, bl_node_decl_ublock_t *);
+  _ublock->scope = scope;
+  return (bl_node_t *)_ublock;
 }
 
-_BL_AST_NCTOR(ident, bl_node_t *ref)
+_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound)
 {
   bl_node_ident_t *_ident = alloc_node(ast, BL_NODE_IDENT, tok, bl_node_ident_t *);
   _ident->hash            = bo_hash_from_str(tok->value.str);
   _ident->str             = tok->value.str;
   _ident->ref             = ref;
+  _ident->parent_compound = parent_compound;
   return (bl_node_t *)_ident;
 }
 
@@ -202,20 +205,24 @@ _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt)
   return (bl_node_t *)_loop;
 }
 
-_BL_AST_NCTOR(block, bl_node_t *nodes)
+_BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope)
 {
   bl_node_decl_block_t *_block = alloc_node(ast, BL_NODE_DECL_BLOCK, tok, bl_node_decl_block_t *);
   _block->nodes                = nodes;
+  _block->parent_compound      = parent_compound;
+  _block->scope                = scope;
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable)
+_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
+              int flags)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
   _decl->type                 = type;
   _decl->name                 = name;
   _decl->value                = value;
   _decl->mutable              = mutable;
+  _decl->flags                = flags;
   return (bl_node_t *)_decl;
 }
 
@@ -247,11 +254,14 @@ _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc)
   return (bl_node_t *)_type_struct;
 }
 
-_BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block)
+_BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
+              bl_scope_t *scope)
 {
   bl_node_lit_fn_t *_lit_fn = alloc_node(ast, BL_NODE_LIT_FN, tok, bl_node_lit_fn_t *);
   _lit_fn->type             = type;
   _lit_fn->block            = block;
+  _lit_fn->parent_compound  = parent_compound;
+  _lit_fn->scope            = scope;
   return (bl_node_t *)_lit_fn;
 }
 
@@ -373,9 +383,14 @@ bl_ast_get_scope(bl_node_t *node)
 {
   assert(node);
   switch (bl_node_code(node)) {
+
   case BL_NODE_DECL_UBLOCK:
     return bl_peek_decl_ublock(node)->scope;
-    break;
+  case BL_NODE_DECL_BLOCK:
+    return bl_peek_decl_block(node)->scope;
+  case BL_NODE_LIT_FN:
+    return bl_peek_lit_fn(node)->scope;
+
   default:
     bl_abort("node %s has no scope", bl_node_name(node));
   }
@@ -524,4 +539,22 @@ bl_ast_get_type_kind(bl_node_t *type)
   }
 
   return BL_KIND_UNKNOWN;
+}
+
+bl_node_t *
+bl_ast_get_parent_compound(bl_node_t *node)
+{
+  assert(node);
+  switch (bl_node_code(node)) {
+  case BL_NODE_IDENT:
+    return bl_peek_ident(node)->parent_compound;
+  case BL_NODE_DECL_UBLOCK:
+    return NULL;
+  case BL_NODE_DECL_BLOCK:
+    return bl_peek_decl_block(node)->parent_compound;
+  case BL_NODE_LIT_FN:
+    return bl_peek_lit_fn(node)->parent_compound;
+  default:
+    bl_abort("node %s has no parent compound", bl_node_name(node));
+  }
 }

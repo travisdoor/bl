@@ -56,6 +56,16 @@ print_type(bl_node_t *type)
   fprintf(stdout, BL_CYAN("{%s}"), tmp);
 }
 
+static inline void
+print_flags(int flags)
+{
+  if (flags)
+    fprintf(stdout, " #");
+  else
+    return;
+  if (flags & BL_FLAG_EXTERN) fprintf(stdout, "E");
+}
+
 static void
 print_node(bl_node_t *node, int pad);
 
@@ -138,6 +148,7 @@ print_decl_value(bl_node_t *node, int pad)
           _decl->mutable ? "mutable" : "immutable");
 
   print_type(_decl->type);
+  print_flags(_decl->flags);
   print_node(_decl->value, pad + 1);
 }
 

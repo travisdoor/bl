@@ -47,7 +47,7 @@ void
 bl_token_printer_run(bl_unit_t *unit);
 
 void
-bl_parser_run(bl_builder_t *builder, bl_unit_t *unit);
+bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit);
 
 /*
  * per assembly

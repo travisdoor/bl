@@ -100,8 +100,7 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, ui
     interrupt_on_error(builder);
   }
 
-  bl_parser_run(builder, unit);
-  interrupt_on_error(builder);
+  bl_parser_run(builder, assembly, unit);
 
   return BL_COMPILE_OK;
 }
@@ -109,7 +108,7 @@ compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, ui
 int
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
-  bl_checker_run(builder, assembly);
+  if (!builder->errorc) bl_checker_run(builder, assembly);
 
   if (flags & BL_BUILDER_PRINT_AST) {
     bl_ast_printer_run(assembly);
