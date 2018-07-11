@@ -135,6 +135,9 @@ check_lit_fn(context_t *cnt, bl_node_t *fn);
 static bool
 check_call(context_t *cnt, bl_node_t *call);
 
+static bool
+check_binop(context_t *cnt, bl_node_t *binop);
+
 static void
 check_unresolved(context_t *cnt);
 
@@ -362,9 +365,14 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_STMT_RETURN: {
+    bl_node_stmt_return_t *_return = bl_peek_stmt_return(node);
+    flatten_node(cnt, flatten, _return->expr);
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_STMT_BAD:
-  case BL_NODE_STMT_RETURN:
   case BL_NODE_STMT_IF:
   case BL_NODE_STMT_LOOP:
   case BL_NODE_DECL_BAD:
@@ -436,8 +444,8 @@ check_call(context_t *cnt, bl_node_t *call)
 
   if (_call->argsc != _callee_type->argc_types) {
     check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, call, BL_BUILDER_CUR_WORD,
-                     "expected %d arguments, but called with %d", _callee_type->argc_types,
-                     _call->argsc);
+                     "expected %d %s, but called with %d", _callee_type->argc_types,
+                     _callee_type->argc_types == 1 ? "argument" : "arguments", _call->argsc);
     return true;
   }
 
@@ -489,6 +497,9 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_EXPR_CALL:
     return check_call(cnt, node);
 
+  case BL_NODE_EXPR_BINOP:
+    return check_binop(cnt, node);
+
   case BL_NODE_DECL_UBLOCK:
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_RETURN:
@@ -501,7 +512,6 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
-  case BL_NODE_EXPR_BINOP:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
     break;
@@ -531,6 +541,48 @@ check_ident(context_t *cnt, bl_node_t *ident)
     if (!found) return false;
   }
   _ident->ref = found;
+  return true;
+}
+
+bool
+check_binop(context_t *cnt, bl_node_t *binop)
+{
+  bl_node_expr_binop_t *_binop = bl_peek_expr_binop(binop);
+
+  assert(_binop->lhs);
+  assert(_binop->rhs);
+
+  if (_binop->op == BL_SYM_ASSIGN) {
+    if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT)) {
+      check_error_node(
+          cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
+          "left-hand side of assignment does not refer to any declaration and cannot be assigned");
+    } else {
+      bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
+      assert(_lhs->ref);
+      assert(bl_node_is(_lhs->ref, BL_NODE_DECL_VALUE));
+
+      if (!bl_peek_decl_value(_lhs->ref)->mutable) {
+        check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, _binop->lhs, BL_BUILDER_CUR_WORD,
+                         "declaration is not mutable and cannot be assigned");
+      }
+    }
+  }
+
+  bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
+  bl_node_t *rhs_type = bl_ast_get_type(_binop->rhs);
+
+  if (!bl_ast_type_cmp(lhs_type, rhs_type)) {
+    char tmp_lhs[256];
+    char tmp_rhs[256];
+    bl_ast_type_to_string(tmp_lhs, 256, lhs_type);
+    bl_ast_type_to_string(tmp_rhs, 256, rhs_type);
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, binop, BL_BUILDER_CUR_WORD,
+                     "no implicit cast for types '%s' and '%s'", tmp_lhs, tmp_rhs);
+  }
+
+  if (!_binop->type) _binop->type = lhs_type;
+
   return true;
 }
 

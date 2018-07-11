@@ -11,6 +11,18 @@ main : fn () i32 {
 
   a : global; // waiting global
 
+  lambda := fn (i i32) {
+    i + 10;
+  };
+
+  lambda(); // wrong
+  global = 10; // wrong
+  12 = 2; // wrong
+
+  lambda = fn (i i32, u i32) {
+    i - 10;
+  };
+
   return 0;
 };
 

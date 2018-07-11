@@ -307,6 +307,8 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
+  if ((expr = parse_literal_fn(cnt))) return expr;
+  if ((expr = parse_type_struct(cnt, true))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_ident(cnt))) return expr;
