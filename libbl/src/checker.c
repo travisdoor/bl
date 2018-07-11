@@ -355,6 +355,13 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_BINOP: {
+    bl_node_expr_binop_t *_binop = bl_peek_expr_binop(node);
+    flatten_node(cnt, flatten, _binop->lhs);
+    flatten_node(cnt, flatten, _binop->rhs);
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_RETURN:
@@ -365,7 +372,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
-  case BL_NODE_EXPR_BINOP:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
     break;
