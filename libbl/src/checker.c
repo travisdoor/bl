@@ -329,9 +329,12 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
 
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
-    flatten_node(cnt, flatten, _fn->type);
-    flatten_node(cnt, flatten, _fn->block);
-    break;
+    //flatten_node(cnt, flatten, _fn->type);
+    //flatten_node(cnt, flatten, _fn->block);
+    //break;
+    check_flatten(cnt, _fn->type);
+    check_flatten(cnt, _fn->block);
+    return;
   }
 
   case BL_NODE_DECL_BLOCK: {
