@@ -1,16 +1,16 @@
 /* testing playground */
 
 printf fn (string) i32 : extern;
-foo : main;
 
 // lax dependency on printf
-main : fn () i32 {
+/*main : fn () i32 {
   printf("hello");
-  bar : foo;
   return 0;
-};
+};*/
 
-bar : fn (i Sub) i32 {
+main : extern;
+
+/*bar : fn (i Sub) i32 {
   return i;
 };
 
@@ -29,3 +29,4 @@ get : fn (type i32) fn (i32, i32) i32 {
   if type == Add { return fn (a i32, b i32) { return a + b; }; }
   if type == Sub { return fn (a i32, b i32) { return a - b; }; }
 };
+*/
