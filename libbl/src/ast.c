@@ -132,7 +132,7 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
 
 #if BL_DEBUG
   static int serial = 0;
-  node->serial      = serial++;
+  node->_serial      = serial++;
 #endif
 
   return node;
@@ -536,10 +536,10 @@ bl_ast_get_type_kind(bl_node_t *type)
       return BL_KIND_TYPE;
     case BL_FTYPE_VOID:
       return BL_KIND_VOID;
-    case BL_FTYPE_I8:
-    case BL_FTYPE_I16:
-    case BL_FTYPE_I32:
-    case BL_FTYPE_I64:
+    case BL_FTYPE_S8:
+    case BL_FTYPE_S16:
+    case BL_FTYPE_S32:
+    case BL_FTYPE_S64:
       return BL_KIND_SINT;
     case BL_FTYPE_U8:
     case BL_FTYPE_U16:

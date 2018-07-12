@@ -1,3 +1,0 @@
-say_hello : fn (msg string) {
-  a : global;
-};

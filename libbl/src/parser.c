@@ -231,7 +231,7 @@ parse_literal(context_t *cnt)
 
   switch (tok->sym) {
   case BL_SYM_NUM:
-    type = &bl_ftypes[BL_FTYPE_I32];
+    type = &bl_ftypes[BL_FTYPE_S32];
     break;
   case BL_SYM_CHAR:
     type = &bl_ftypes[BL_FTYPE_CHAR];
@@ -428,6 +428,7 @@ next:
     /* validate argument */
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
+      _arg_decl->flags |= BL_FLAG_ARG;
       if (_arg_decl->value) {
         parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
                          "function arguments cannot have value binding");
@@ -582,8 +583,20 @@ parse_decl_value(context_t *cnt)
   if (flags & BL_FLAG_MAIN) {
     /* main function */
     if (mutable) {
-      parse_error_node(cnt, BL_ERR_INVALID_MUTABILITY, ident, BL_BUILDER_CUR_WORD,
-                  "main function cannot be mutable");
+      if (tok_assign) {
+        parse_error(cnt, BL_ERR_INVALID_MUTABILITY, tok_assign, BL_BUILDER_CUR_WORD,
+                    "'main' is expected to be immutable function");
+      } else {
+        parse_error_node(cnt, BL_ERR_INVALID_MUTABILITY, ident, BL_BUILDER_CUR_WORD,
+                         "'main' is expected to be immutable function");
+      }
+
+      return bl_ast_decl_bad(cnt->ast, tok_assign);
+    }
+
+    if (flags & BL_FLAG_EXTERN) {
+      parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, ident, BL_BUILDER_CUR_WORD,
+                       "main function cannot be extern");
       return bl_ast_decl_bad(cnt->ast, tok_assign);
     }
   }

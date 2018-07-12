@@ -56,8 +56,14 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     return;
   }
 
+#if BL_DEBUG
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelNone;
+#else
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
+#endif
+
   LLVMTargetMachineRef target_machine =
-      LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelAggressive,
+      LLVMCreateTargetMachine(target, triple, cpu, features, opt_lvl,
                               LLVMRelocDefault, LLVMCodeModelDefault);
 
   if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,

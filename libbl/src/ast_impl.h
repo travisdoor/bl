@@ -41,11 +41,11 @@
 #define _BL_FTYPE_LIST                                                                         \
     ft(TYPE,   type_t) \
     ft(VOID,   void) \
-    ft(I8,     i8) \
-    ft(I16,    i16) \
-    ft(I32,    i32) \
-    ft(I64,    i64) \
-    ft(U8,     u8) \
+    ft(S8,     s8) \
+    ft(S16,    s16) \
+    ft(S32,    s32) \
+    ft(S64,    s64) \
+    ft(U8,     su8) \
     ft(U16,    u16) \
     ft(U32,    u32) \
     ft(U64,    u64) \
@@ -166,7 +166,8 @@ typedef enum
 typedef enum
 {
   BL_FLAG_EXTERN = 1 << 0,
-  BL_FLAG_MAIN   = 1 << 1
+  BL_FLAG_MAIN   = 1 << 1,
+  BL_FLAG_ARG    = 1 << 2
 } bl_node_flag_e;
 
 typedef struct bl_ast     bl_ast_t;
@@ -259,7 +260,7 @@ struct bl_node
 
   bl_node_t *next;
 #if BL_DEBUG
-  int serial;
+  int _serial;
 #endif
 };
 

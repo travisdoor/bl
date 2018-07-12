@@ -1,16 +1,17 @@
 /* testing playground */
 
-printf fn (string) i32 : extern;
+printf fn (string) s32 : extern;
 
-// lax dependency on printf
-/*main : fn () i32 {
-  printf("hello");
+main : fn () s32 {
+  printf("hello\n");
   return 0;
-};*/
+};
 
-main : extern;
+say_msg : fn (s string) {
+  //printf(s);
+};
 
-/*bar : fn (i Sub) i32 {
+/*bar : fn (i Sub) s32 {
   return i;
 };
 
@@ -25,8 +26,8 @@ lambdas_test : fn () {
   i(10, 20);
 };
 
-get : fn (type i32) fn (i32, i32) i32 {
-  if type == Add { return fn (a i32, b i32) { return a + b; }; }
-  if type == Sub { return fn (a i32, b i32) { return a - b; }; }
+get : fn (type s32) fn (s32, s32) s32 {
+  if type == Add { return fn (a s32, b s32) { return a + b; }; }
+  if type == Sub { return fn (a s32, b s32) { return a - b; }; }
 };
 */

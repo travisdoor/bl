@@ -121,9 +121,6 @@ static bool
 check_decl_value(context_t *cnt, bl_node_t *decl);
 
 static bool
-check_lit_fn(context_t *cnt, bl_node_t *fn);
-
-static bool
 check_call(context_t *cnt, bl_node_t *call);
 
 static bool
@@ -146,7 +143,7 @@ bl_node_t *
 _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope)
 {
   bl_node_t * found = NULL;
-  bl_scope_t *scope;
+  bl_scope_t *scope = NULL;
 
   while (compound && !found) {
     scope = bl_ast_get_scope(compound);
@@ -169,7 +166,7 @@ provide(bl_node_t *ident, bl_node_t *provided)
   bl_scope_t *scope = bl_ast_get_scope(compound);
   assert(scope);
 
-  /* bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->serial) */
+  /* bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->_serial) */
   bl_scope_insert(scope, ident, provided);
 }
 
@@ -488,7 +485,7 @@ check_node(context_t *cnt, bl_node_t *node)
   /*
   bl_log("check %s (%d): %d",
          bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
-         node->serial, node->src->line);
+         node->_serial, node->src->line);
   */
 
   switch (bl_node_code(node)) {
@@ -497,9 +494,6 @@ check_node(context_t *cnt, bl_node_t *node)
 
   case BL_NODE_DECL_VALUE:
     return check_decl_value(cnt, node);
-
-  case BL_NODE_LIT_FN:
-    return check_lit_fn(cnt, node);
 
   case BL_NODE_EXPR_CALL:
     return check_call(cnt, node);
@@ -519,18 +513,13 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
+  case BL_NODE_LIT_FN:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
     break;
   }
 
   return true; /* assert later? */
-}
-
-bool
-check_lit_fn(context_t *cnt, bl_node_t *fn)
-{
-  return true;
 }
 
 bool
@@ -641,6 +630,15 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     _decl->type = value_type;
   }
 
+  const bool is_function = bl_node_is(_decl->type, BL_NODE_TYPE_FN);
+  const bool is_in_gscope =
+      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+
+  if (_decl->flags & BL_FLAG_MAIN && !is_function) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, decl, BL_BUILDER_CUR_WORD,
+                     "main is expected to be function");
+  }
+
   /* provide symbol into scope if there is no conflict */
   bl_node_t *conflict = lookup(_decl->name, NULL);
   if (conflict) {
@@ -651,13 +649,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     provide(_decl->name, decl);
 
     /* insert into ir queue */
-    bl_assembly_add_into_ir(cnt->assembly, decl);
+    if (is_function && is_in_gscope && !_decl->mutable && !(_decl->flags & BL_FLAG_EXTERN))
+      bl_assembly_add_into_ir(cnt->assembly, decl);
 
-    /*
-    const bool is_in_gscope =
-        bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
-
-        if (is_in_gscope) */
     waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
   }
 

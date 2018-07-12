@@ -34,14 +34,25 @@
 #define MAX_STR_BUF 256
 
 static inline void
-print_head(const char *name, bl_src_t *src, void *ptr, int pad)
+print_address(bl_node_t *node)
+{
+#if BL_DEBUG
+  fprintf(stdout, BL_YELLOW(" %d "), node->_serial);
+#else
+  fprintf(stdout, BL_YELLOW(" %p "), node);
+#endif
+}
+
+static inline void
+print_head(const char *name, bl_src_t *src, bl_node_t *ptr, int pad)
 {
   if (src)
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>") BL_YELLOW(" %p "), pad * 2, "", name,
-            src->line, src->col, ptr);
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>"), pad * 2, "", name, src->line,
+            src->col);
   else
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<?>") BL_YELLOW(" %p "), pad * 2, "", name,
-            ptr);
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<?>"), pad * 2, "", name);
+
+  print_address(ptr);
 }
 
 static inline void
@@ -65,6 +76,7 @@ print_flags(int flags)
     return;
   if (flags & BL_FLAG_EXTERN) fprintf(stdout, "E");
   if (flags & BL_FLAG_MAIN) fprintf(stdout, "M");
+  if (flags & BL_FLAG_ARG) fprintf(stdout, "A");
 }
 
 static void
@@ -190,7 +202,8 @@ print_ident(bl_node_t *node, int pad)
 {
   print_head("ident", node->src, node, pad);
   bl_node_ident_t *_ident = bl_peek_ident(node);
-  fprintf(stdout, "%s -> %p", _ident->str, _ident->ref);
+  fprintf(stdout, "%s ->", _ident->str);
+  print_address(_ident->ref);
 }
 
 void
@@ -241,10 +254,10 @@ print_lit(bl_node_t *node, int pad)
 
   bl_node_type_fund_t *_type = bl_peek_type_fund(_lit->type);
   switch (_type->code) {
-  case BL_FTYPE_I8:
-  case BL_FTYPE_I16:
-  case BL_FTYPE_I32:
-  case BL_FTYPE_I64:
+  case BL_FTYPE_S8:
+  case BL_FTYPE_S16:
+  case BL_FTYPE_S32:
+  case BL_FTYPE_S64:
   case BL_FTYPE_U8:
   case BL_FTYPE_U16:
   case BL_FTYPE_U32:
@@ -280,10 +293,11 @@ print_lit_fn(bl_node_t *node, int pad)
   print_type(_fn->type);
 
   bl_node_t *arg;
-  bl_node_foreach(bl_peek_type_fn(_fn->type)->arg_types, arg) {
+  bl_node_foreach(bl_peek_type_fn(_fn->type)->arg_types, arg)
+  {
     print_node(arg, pad + 1);
   }
-  
+
   print_node(_fn->block, pad + 1);
 }
 
