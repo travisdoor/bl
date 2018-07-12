@@ -56,7 +56,6 @@
 
 typedef BHashTable waiting_t;
 typedef BArray     waiting_queue_t;
-typedef BArray     flatten_cache_t;
 typedef BArray     flatten_t;
 
 typedef struct
@@ -66,9 +65,8 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
-  flatten_cache_t *flatten_cache;
-  waiting_t *      waiting;
-  bl_scope_t *     provided_in_gscope;
+  waiting_t * waiting;
+  bl_scope_t *provided_in_gscope;
 } context_t;
 
 typedef struct
@@ -98,14 +96,11 @@ waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter);
 static void
 waiting_resume(context_t *cnt, uint64_t hash);
 
-static flatten_cache_t *
-flatten_cache_new(void);
+static flatten_t *
+flatten_new(void);
 
 static void
-flatten_cache_delete(flatten_cache_t *cache);
-
-static flatten_t *
-flatten_new(flatten_cache_t *cache);
+flatten_delete(flatten_t *flatten);
 
 static inline void
 flatten_push(flatten_t *flatten, bl_node_t *node);
@@ -115,9 +110,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
 
 static void
 check_flatten(context_t *cnt, bl_node_t *node);
-
-static void
-check_ublock(context_t *cnt, bl_node_t *node);
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -221,8 +213,10 @@ waiting_resume(context_t *cnt, uint64_t hash)
   assert(q);
 
   fiter_t fit;
-  for (size_t i = 0; i < bo_array_size(q); ++i) {
+  for (size_t i = 0; i < bo_array_size(q);) {
     fit = bo_array_at(q, i, fiter_t);
+
+    bool interrupted = false;
     /* resume here */
     bl_node_t *tmp;
     for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
@@ -230,11 +224,19 @@ waiting_resume(context_t *cnt, uint64_t hash)
       if (!check_node(cnt, tmp)) {
         bl_node_ident_t *_ident = bl_peek_ident(tmp);
         waiting_push(cnt->waiting, _ident->hash, fit);
+        interrupted = true;
         break;
       }
     }
+
+    if (!interrupted) {
+      flatten_delete(fit.flatten);
+      bo_array_erase(q, i);
+    } else {
+      ++i;
+    }
   }
-  bo_htbl_erase_key(cnt->waiting, hash);
+  if (!bo_array_size(q)) bo_htbl_erase_key(cnt->waiting, hash);
 }
 
 void
@@ -256,35 +258,30 @@ check_unresolved(context_t *cnt)
       if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
         check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
                          "unknown symbol");
+      flatten_delete(tmp.flatten);
     }
   }
 }
 
-flatten_cache_t *
-flatten_cache_new(void)
+#if BL_DEBUG
+static int _flatten = 0;
+#endif
+flatten_t *
+flatten_new(void)
 {
-  return bo_array_new(sizeof(flatten_t *));
+#if BL_DEBUG
+  ++_flatten;
+#endif
+  return bo_array_new(sizeof(bl_node_t *));
 }
 
 void
-flatten_cache_delete(flatten_cache_t *cache)
+flatten_delete(flatten_t *flatten)
 {
-  flatten_t *it;
-
-  bl_barray_foreach(cache, it)
-  {
-    bo_unref(it);
-  }
-
-  bo_unref(cache);
-}
-
-flatten_t *
-flatten_new(flatten_cache_t *cache)
-{
-  flatten_t *tmp = bo_array_new(sizeof(bl_node_t *));
-  bo_array_push_back(cache, tmp);
-  return tmp;
+#if BL_DEBUG
+  --_flatten;
+#endif
+  bo_unref(flatten);
 }
 
 void
@@ -307,6 +304,7 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
        * undefined symbols later */
       const bool is_in_gscope =
           bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+
       if (is_in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
         bl_scope_insert(cnt->provided_in_gscope, _decl->name, node);
     }
@@ -329,21 +327,30 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
 
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
-    //flatten_node(cnt, flatten, _fn->type);
-    //flatten_node(cnt, flatten, _fn->block);
-    //break;
+    // flatten_node(cnt, flatten, _fn->type);
+    // flatten_node(cnt, flatten, _fn->block);
+    // break;
     check_flatten(cnt, _fn->type);
     check_flatten(cnt, _fn->block);
     return;
   }
 
   case BL_NODE_DECL_BLOCK: {
-    // check_block(cnt, node);
     bl_node_decl_block_t *_block = bl_peek_decl_block(node);
     bl_node_t *           tmp;
     bl_node_foreach(_block->nodes, tmp)
     {
       flatten_node(cnt, flatten, tmp);
+    }
+    return;
+  }
+
+  case BL_NODE_DECL_UBLOCK: {
+    bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
+    bl_node_t *            tmp;
+    bl_node_foreach(_ublock->nodes, tmp)
+    {
+      check_flatten(cnt, tmp);
     }
     return;
   }
@@ -373,9 +380,16 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_STMT_IF: {
+    bl_node_stmt_if_t *_if = bl_peek_stmt_if(node);
+    flatten_node(cnt, flatten, _if->test);
+    flatten_node(cnt, flatten, _if->true_stmt);
+    flatten_node(cnt, flatten, _if->false_stmt);
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_STMT_BAD:
-  case BL_NODE_STMT_IF:
   case BL_NODE_STMT_LOOP:
   case BL_NODE_DECL_BAD:
   case BL_NODE_TYPE_FUND:
@@ -396,10 +410,11 @@ void
 check_flatten(context_t *cnt, bl_node_t *node)
 {
   fiter_t fit;
-  fit.flatten = flatten_new(cnt->flatten_cache);
+  fit.flatten = flatten_new();
   fit.i       = 0;
 
   flatten_node(cnt, fit.flatten, node);
+  bool interrupted = false;
 
   bl_node_t *tmp;
   for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
@@ -409,22 +424,12 @@ check_flatten(context_t *cnt, bl_node_t *node)
        * out */
       bl_node_ident_t *_ident = bl_peek_ident(tmp);
       waiting_push(cnt->waiting, _ident->hash, fit);
+      interrupted = true;
       break;
     }
   }
-}
 
-void
-check_ublock(context_t *cnt, bl_node_t *node)
-{
-  /* entry point */
-  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
-
-  bl_node_t *child;
-  bl_node_foreach(_ublock->nodes, child)
-  {
-    check_flatten(cnt, child);
-  }
+  if (!interrupted) flatten_delete(fit.flatten);
 }
 
 bool
@@ -600,8 +605,6 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   bl_node_t *           value_type = NULL;
 
   assert(_decl->name);
-  const bool is_in_gscope =
-      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
   if (_decl->value) {
     if (bl_ast_type_cmp(bl_ast_get_type(_decl->value), &bl_ftypes[BL_FTYPE_VOID])) {
@@ -649,7 +652,13 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
     /* insert into ir queue */
     bl_assembly_add_into_ir(cnt->assembly, decl);
-    if (is_in_gscope) waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
+
+    /*
+    const bool is_in_gscope =
+        bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+
+        if (is_in_gscope) */
+    waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
   }
 
   return true;
@@ -658,24 +667,26 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
-  context_t cnt = {.builder            = builder,
-                   .assembly           = assembly,
-                   .unit               = NULL,
-                   .ast                = NULL,
-                   .waiting            = waiting_new(),
-                   .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
-                   .flatten_cache      = flatten_cache_new()};
+  context_t cnt = {
+      .builder            = builder,
+      .assembly           = assembly,
+      .unit               = NULL,
+      .ast                = NULL,
+      .waiting            = waiting_new(),
+      .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
+  };
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
     cnt.ast  = &unit->ast;
-    check_ublock(&cnt, unit->ast.root);
+    check_flatten(&cnt, unit->ast.root);
   }
 
   check_unresolved(&cnt);
-
-  flatten_cache_delete(cnt.flatten_cache);
   waiting_delete(cnt.waiting);
+#if BL_DEBUG
+  if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);
+#endif
 }

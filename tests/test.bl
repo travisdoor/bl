@@ -10,7 +10,7 @@ main : fn () i32 {
   return 0;
 };
 
-bar : fn (i i32) i32 {
+bar : fn (i Sub) i32 {
   return i;
 };
 

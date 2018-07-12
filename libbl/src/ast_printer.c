@@ -278,6 +278,12 @@ print_lit_fn(bl_node_t *node, int pad)
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
 
   print_type(_fn->type);
+
+  bl_node_t *arg;
+  bl_node_foreach(bl_peek_type_fn(_fn->type)->arg_types, arg) {
+    print_node(arg, pad + 1);
+  }
+  
   print_node(_fn->block, pad + 1);
 }
 
