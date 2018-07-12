@@ -566,7 +566,7 @@ parse_decl_value(context_t *cnt)
   bl_node_t *value = NULL;
   if (tok_assign) {
     mutable = bl_token_is(tok_assign, BL_SYM_MDECL);
-    flags |= parse_flags(cnt, flags & BL_FLAG_MAIN ? 0 : BL_FLAG_EXTERN);
+    flags |= parse_flags(cnt, BL_FLAG_EXTERN);
 
     if (!(flags & BL_FLAG_EXTERN)) {
       value = parse_value(cnt);

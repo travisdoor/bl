@@ -10,7 +10,7 @@ foo : main;
   return 0;
 };*/
 
-main i32;
+main : extern;
 
 /*
 Add : 0;
