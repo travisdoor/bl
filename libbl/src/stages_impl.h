@@ -58,4 +58,16 @@ bl_ast_printer_run(bl_assembly_t *assembly);
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
+void
+bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+void
+bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+void
+bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+void
+bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
 #endif // BL_STAGES_IMPL_H

@@ -543,6 +543,14 @@ parse_decl_value(context_t *cnt)
                      "'%s' is reserved name of buildin type", tok_ident->value.str);
   }
 
+  {
+    int buildin = bl_ast_is_buildin(ident);
+    if (buildin == BL_BUILDIN_MAIN) {
+      /* main function */
+      flags |= BL_FLAG_MAIN;
+    }
+  }
+
   bool mutable           = true;
   bl_node_t * type       = parse_type(cnt);
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_MDECL);
@@ -558,8 +566,9 @@ parse_decl_value(context_t *cnt)
   bl_node_t *value = NULL;
   if (tok_assign) {
     mutable = bl_token_is(tok_assign, BL_SYM_MDECL);
-    flags   = parse_flags(cnt, BL_FLAG_EXTERN);
-    if (!flags) {
+    flags |= parse_flags(cnt, flags & BL_FLAG_MAIN ? 0 : BL_FLAG_EXTERN);
+
+    if (!(flags & BL_FLAG_EXTERN)) {
       value = parse_value(cnt);
 
       if (!value) {
@@ -568,10 +577,27 @@ parse_decl_value(context_t *cnt)
         return bl_ast_decl_bad(cnt->ast, tok_assign);
       }
     }
+  }
 
-    if (flags & BL_FLAG_EXTERN && mutable) {
+  if (flags & BL_FLAG_MAIN) {
+    /* main function */
+    if (mutable) {
+      parse_error_node(cnt, BL_ERR_INVALID_MUTABILITY, ident, BL_BUILDER_CUR_WORD,
+                  "main function cannot be mutable");
+      return bl_ast_decl_bad(cnt->ast, tok_assign);
+    }
+  }
+
+  if (flags & BL_FLAG_EXTERN) {
+    if (mutable) {
       parse_error(cnt, BL_ERR_INVALID_MUTABILITY, tok_assign, BL_BUILDER_CUR_WORD,
                   "extern declaration cannot be mutable");
+      return bl_ast_decl_bad(cnt->ast, tok_assign);
+    }
+
+    if (!type) {
+      parse_error_node(cnt, BL_ERR_EXPECTED_TYPE, ident, BL_BUILDER_CUR_AFTER,
+                       "extern declaration must have type specified");
       return bl_ast_decl_bad(cnt->ast, tok_assign);
     }
   }

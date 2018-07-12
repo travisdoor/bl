@@ -26,7 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <setjmp.h>
 #include "stages_impl.h"
 #include "common_impl.h"
 #include "ast_impl.h"
@@ -540,6 +539,11 @@ check_ident(context_t *cnt, bl_node_t *ident)
     found = lookup(ident, NULL);
     if (!found) return false;
   }
+
+  if (bl_node_is(found, BL_NODE_DECL_VALUE)) {
+    bl_peek_decl_value(found)->used++;
+  }
+
   _ident->ref = found;
   return true;
 }
@@ -596,10 +600,27 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   const bool is_in_gscope =
       bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
-  assert(_decl->type || _decl->value);
+  if (_decl->value) {
+    if (bl_ast_type_cmp(bl_ast_get_type(_decl->value), &bl_ftypes[BL_FTYPE_VOID])) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->value));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "invalid type %s", tmp);
+    }
 
-  if (_decl->value) value_type = bl_ast_get_type(_decl->value);
-  if (_decl->type) _decl->type = bl_ast_get_type(_decl->type);
+    value_type = bl_ast_get_type(_decl->value);
+  }
+
+  if (_decl->type) {
+    if (bl_ast_type_cmp(bl_ast_get_type(_decl->type), &bl_ftypes[BL_FTYPE_VOID])) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->type, BL_BUILDER_CUR_WORD,
+                       "invalid type %s", tmp);
+    }
+
+    _decl->type = bl_ast_get_type(_decl->type);
+  }
 
   if (value_type && _decl->type && !bl_ast_type_cmp(value_type, _decl->type)) {
     char tmp_value[256];
@@ -614,8 +635,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     _decl->type = value_type;
   }
 
-  assert(_decl->type);
-
+  /* provide symbol into scope if there is no conflict */
   bl_node_t *conflict = lookup(_decl->name, NULL);
   if (conflict) {
     check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
@@ -623,6 +643,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
     provide(_decl->name, decl);
+
+    /* insert into ir queue */
+    bl_assembly_add_into_ir(cnt->assembly, decl);
     if (is_in_gscope) waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
   }
 
@@ -633,8 +656,8 @@ void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {.builder            = builder,
-                   .unit               = NULL,
                    .assembly           = assembly,
+                   .unit               = NULL,
                    .ast                = NULL,
                    .waiting            = waiting_new(),
                    .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),

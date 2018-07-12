@@ -1,33 +1,33 @@
 /* testing playground */
 
 printf fn (string) i32 : extern;
-puts fn (string) i32 : extern;
+foo : main;
 
-main : fn () i32 {
+// lax dependency on printf
+/*main : fn () i32 {
   printf("hello");
-  i := 23;
-  o := add(i, 12);
-  say_hello("hello");
-
-  a : global; // waiting global
-
-  lambda := fn (i i32) {
-    i + 10;
-  };
-
-  lambda(); // wrong
-  global = 10; // wrong
-  12 = 2; // wrong
-
-  lambda = fn (i i32, u i32) {
-    i - 10;
-  };
-
+  //bar : foo;
   return 0;
+};*/
+
+main i32;
+
+/*
+Add : 0;
+Sub : 1;
+
+lambdas_test : fn () {
+  i := get(Add);
+  i(10, 20);
+
+  i = get(Sub);
+  i(10, 20);
 };
 
-global : 10;
-
-add : fn (a i32, b i32) i32 {
-  return a + b;
+get : fn (type i32) fn (i32, i32) i32 {
+  if type == Add { return fn (a i32, b i32) { return a + b; }; }
+  if type == Sub { return fn (a i32, b i32) { return a - b; }; }
+  return null;
 };
+*/
+

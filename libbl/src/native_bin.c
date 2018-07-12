@@ -1,9 +1,9 @@
 //************************************************************************************************
-// Biscuit Engine
+// bl 
 //
-// File:   assembly_impl.h
+// File:   native_bin.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   10/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,36 +26,42 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
-
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
-
-struct bl_node;
-
-typedef struct bl_assembly
-{
-  BArray *    units;        /* array of all units in assembly */
-  BHashTable *unique_cache; /* cache for loading only unique units */
-  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
-  char *      name;         /* assembly name */
-
-  bl_scope_cache_t *scope_cache;
-  bl_scope_t *      gscope;
-  BList *           ir_queue; /* generated into IR */
-
-  /* LLVM */
-  LLVMContextRef llvm_cnt;
-  LLVMModuleRef  llvm_module;
-} bl_assembly_t;
+#include "stages_impl.h"
+#include "bl/config.h"
 
 void
-bl_assembly_add_into_ir(bl_assembly_t *assembly, struct bl_node *node);
+bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+#if defined(BL_PLATFORM_LINUX)
+  const char *cmd =
+      "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker "
+      "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
+      "/usr/lib64/crt1.o "
+      "/usr/lib64/crti.o "
+      "-L/usr/bin "
+      "-L/usr/lib64 "
+      "/usr/lib64/crtn.o "
+      "-lc ";
+#elif defined(BL_PLATFORM_MACOS)
+  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
+#endif
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  // TODO: use dynamic buffer
+  char buf[1024];
+  sprintf(buf, cmd, assembly->name, assembly->name);
+
+  const char *  lib;
+  bo_iterator_t iter;
+  bl_bhtbl_foreach(assembly->link_cache, iter) {
+    lib = bo_htbl_iter_peek_value(assembly->link_cache, &iter, const char *);
+    strcat(&buf[0], " -l");
+    strcat(&buf[0], lib);
+  }
+
+  bl_log("cmd %s", buf);
+  /* TODO: handle error */
+  int result = system(buf);
+  if (result != 0) {
+    return;
+  }
+}

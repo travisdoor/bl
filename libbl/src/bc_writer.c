@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   common_impl.h
+// File:   bc_writer.c
 // Author: Martin Dorazil
-// Date:   03/03/2018
+// Date:   14.2.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,31 +26,35 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_COMMON_IMPL_H
-#define BL_COMMON_IMPL_H
-
+#include <llvm-c/BitWriter.h>
+#include <string.h>
+#include "stages_impl.h"
+#include "assembly_impl.h"
 #include "bl/bldebug.h"
-#include "bl/config.h"
 #include "bl/error.h"
-#include "bl/messages.h"
-#include "blmemory_impl.h"
 
-#define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+void
+bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+  assert(assembly->llvm_module);
 
-#define bl_barray_foreach(arr, it)                                                                 \
-  if (bo_array_size((arr)))                                                                        \
-    for (size_t i = 0; (it) = bo_array_at((arr), i, void *), i < bo_array_size((arr)); ++i)
+  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+  strcpy(export_file, assembly->name);
+  strcat(export_file, ".ll");
 
-#define bl_array_foreach(arr, it) for (size_t i = 0; (it) = (arr)[i], i < BL_ARRAY_SIZE(arr); ++i)
+  char *str = LLVMPrintModuleToString(assembly->llvm_module);
 
-#define bl_bhtbl_foreach(htbl, it)                                                                 \
-  (it) = bo_htbl_begin((htbl));                                                                    \
-  for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);                   \
-       bo_htbl_iter_next((htbl), &(it)))
+  FILE *f = fopen(export_file, "w");
+  if (f == NULL) {
+    bl_builder_error(builder, "cannot open file %s", export_file);
+    free(export_file);
+    return;
+  }
+  fprintf(f, "%s\n", str);
+  fclose(f);
+  LLVMDisposeMessage(str);
 
-#define bl_blist_foreach(list, it)                                                                 \
-  (it) = bo_list_begin((list));                                                                    \
-  for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
-       bo_list_iter_next((list), &(it)))
+  bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
 
-#endif // BL_COMMON_IMPL_H
+  free(export_file);
+}

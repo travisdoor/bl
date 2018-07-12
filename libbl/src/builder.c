@@ -115,6 +115,22 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
   }
   interrupt_on_error(builder);
 
+  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
+    bl_ir_run(builder, assembly);
+
+    if (flags & BL_BUILDER_EMIT_LLVM) {
+      bl_bc_writer_run(builder, assembly);
+      interrupt_on_error(builder);
+    }
+
+    if (!(flags & BL_BUILDER_NO_BIN)) {
+      bl_linker_run(builder, assembly);
+      interrupt_on_error(builder);
+      bl_native_bin_run(builder, assembly);
+      interrupt_on_error(builder);
+    }
+  }
+
   return BL_COMPILE_OK;
 }
 

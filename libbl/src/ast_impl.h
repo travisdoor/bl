@@ -39,22 +39,25 @@
 
 // clang-format off
 #define _BL_FTYPE_LIST                                                                         \
-    ft(TYPE,   "type_t") \
-    ft(VOID,   "void") \
-    ft(I8,     "i8") \
-    ft(I16,    "i16") \
-    ft(I32,    "i32") \
-    ft(I64,    "i64") \
-    ft(U8,     "u8") \
-    ft(U16,    "u16") \
-    ft(U32,    "u32") \
-    ft(U64,    "u64") \
-    ft(SIZE,   "size_t") \
-    ft(F32,    "f32") \
-    ft(F64,    "f64") \
-    ft(CHAR,   "char") \
-    ft(STRING, "string") \
-    ft(BOOL,   "bool")
+    ft(TYPE,   type_t) \
+    ft(VOID,   void) \
+    ft(I8,     i8) \
+    ft(I16,    i16) \
+    ft(I32,    i32) \
+    ft(I64,    i64) \
+    ft(U8,     u8) \
+    ft(U16,    u16) \
+    ft(U32,    u32) \
+    ft(U64,    u64) \
+    ft(SIZE,   size_t) \
+    ft(F32,    f32) \
+    ft(F64,    f64) \
+    ft(CHAR,   char) \
+    ft(STRING, string) \
+    ft(BOOL,   bool)
+
+#define _BL_BUILDINS_LIST \
+    bt(MAIN,    main) \
 
 #define _BL_NODE_TYPE_LIST \
   nt(IDENT, ident, struct { \
@@ -95,6 +98,7 @@
     bl_node_t    *value; \
     bool          mutable; \
     int           flags; \
+    int           used; \
   }) \
   nt(DECL_BAD, decl_bad, struct { \
     void *_; \
@@ -161,7 +165,8 @@ typedef enum
 
 typedef enum
 {
-  BL_FLAG_EXTERN = 1
+  BL_FLAG_EXTERN = 1 << 0,
+  BL_FLAG_MAIN   = 1 << 1
 } bl_node_flag_e;
 
 typedef struct bl_ast     bl_ast_t;
@@ -176,9 +181,20 @@ typedef enum
       BL_FTYPE_COUNT
 } bl_ftype_e;
 
+typedef enum
+{
+#define bt(name, str) BL_BUILDIN_##name,
+  _BL_BUILDINS_LIST
+#undef bt
+      BL_BUILDIN_COUNT
+} bl_buildin_e;
+
 extern const char *bl_ftype_strings[];
-extern uint64_t    bl_ftype_hashes[BL_FTYPE_COUNT];
 extern const char *bl_node_type_strings[];
+extern const char *bl_buildin_strings[];
+
+extern uint64_t    bl_ftype_hashes[BL_FTYPE_COUNT];
+extern uint64_t    bl_buildin_hashes[BL_BUILDIN_COUNT];
 
 #define bl_node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 
@@ -306,6 +322,9 @@ bl_ast_get_type(bl_node_t *node);
 
 int
 bl_ast_is_buildin_type(bl_node_t *ident);
+
+int
+bl_ast_is_buildin(bl_node_t *ident);
 
 bool
 bl_ast_type_cmp(bl_node_t *first, bl_node_t *second);

@@ -43,6 +43,10 @@ set(SOURCE_FILES
         src/lexer.c
         src/bldebug.c
         src/parser.c
+        src/ir.c
+        src/linker.c
+        src/bc_writer.c
+        src/native_bin.c
         src/checker.c
         src/scope.c
         src/ast.c)

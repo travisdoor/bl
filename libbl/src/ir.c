@@ -1,9 +1,9 @@
 //************************************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   assembly_impl.h
+// File:   ir.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   12/7/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,36 +26,32 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
+#include "stages_impl.h"
+#include "common_impl.h"
+#include "ast_impl.h"
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
-
-struct bl_node;
-
-typedef struct bl_assembly
+typedef struct
 {
-  BArray *    units;        /* array of all units in assembly */
-  BHashTable *unique_cache; /* cache for loading only unique units */
-  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
-  char *      name;         /* assembly name */
-
-  bl_scope_cache_t *scope_cache;
-  bl_scope_t *      gscope;
-  BList *           ir_queue; /* generated into IR */
-
-  /* LLVM */
-  LLVMContextRef llvm_cnt;
-  LLVMModuleRef  llvm_module;
-} bl_assembly_t;
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+} context_t;
 
 void
-bl_assembly_add_into_ir(bl_assembly_t *assembly, struct bl_node *node);
+bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+  bo_iterator_t it  = bo_list_begin(assembly->ir_queue);
+  bo_iterator_t end = bo_list_end(assembly->ir_queue);
+  bl_node_t *   node;
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  while (!bo_iterator_equal(&it, &end)) {
+    node = bo_list_iter_peek(assembly->ir_queue, &it, bl_node_t *);
+    assert(bl_node_is(node, BL_NODE_DECL_VALUE));
+
+    if (!bl_peek_decl_value(node)->used) {
+      bo_list_erase(assembly->ir_queue, &it);
+    } else {
+      bl_log("excluded %s", bl_node_name(node));
+      bo_list_iter_next(assembly->ir_queue, &it);
+    }
+  }
+}

@@ -64,6 +64,7 @@ print_flags(int flags)
   else
     return;
   if (flags & BL_FLAG_EXTERN) fprintf(stdout, "E");
+  if (flags & BL_FLAG_MAIN) fprintf(stdout, "M");
 }
 
 static void
@@ -144,8 +145,8 @@ print_decl_value(bl_node_t *node, int pad)
 {
   print_head("declaration", node->src, node, pad);
   bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-  fprintf(stdout, "%s (%s) ", bl_peek_ident(_decl->name)->str,
-          _decl->mutable ? "mutable" : "immutable");
+  fprintf(stdout, "%s (%s) used: %d ", bl_peek_ident(_decl->name)->str,
+          _decl->mutable ? "mutable" : "immutable", _decl->used);
 
   print_type(_decl->type);
   print_flags(_decl->flags);

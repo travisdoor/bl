@@ -36,12 +36,6 @@ typedef struct chunk
   int           count;
 } chunk_t;
 
-const char *bl_ftype_strings[] = {
-#define ft(tok, str) str,
-    _BL_FTYPE_LIST
-#undef ft
-};
-
 bl_node_t bl_ftypes[] = {
 #define ft(name, str)                                                                              \
   (bl_node_t){                                                                                     \
@@ -51,6 +45,18 @@ bl_node_t bl_ftypes[] = {
 #undef ft
 };
 
+const char *bl_ftype_strings[] = {
+#define ft(code, name) #name,
+    _BL_FTYPE_LIST
+#undef ft
+};
+
+const char *bl_buildin_strings[] = {
+#define bt(code, name) #name,
+    _BL_BUILDINS_LIST
+#undef bt
+};
+
 const char *bl_node_type_strings[] = {
 #define nt(code, name, data) #name,
     _BL_NODE_TYPE_LIST
@@ -58,13 +64,14 @@ const char *bl_node_type_strings[] = {
 };
 
 uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
+uint64_t bl_buildin_hashes[BL_BUILDIN_COUNT];
 
 /*static void
 node_terminate(bl_node_t *node)
 {
   switch (node->code) {
-  case BL_NODE_DECL_VALUE:
-    bo_unref(bl_peek_decl_value(node)->flatten.stack);
+  case BL_NODE_LIT_FN:
+    bo_unref(bl_peek_lit_fn(node)->deps);
     break;
   default:
     break;
@@ -95,7 +102,7 @@ free_chunk(chunk_t *chunk)
   chunk_t *next = chunk->next;
   /*for (int i = 0; i < chunk->count - 1; ++i) {
     node_terminate(get_node_in_chunk(chunk, i + 1));
-  }*/
+    }*/
   bl_free(chunk);
   return next;
 }
@@ -143,6 +150,11 @@ bl_ast_init(bl_ast_t *ast)
   bl_array_foreach(bl_ftype_strings, it)
   {
     bl_ftype_hashes[i] = bo_hash_from_str(it);
+  }
+
+  bl_array_foreach(bl_buildin_strings, it)
+  {
+    bl_buildin_hashes[i] = bo_hash_from_str(it);
   }
 }
 
@@ -431,6 +443,21 @@ bl_ast_is_buildin_type(bl_node_t *ident)
 
   uint64_t hash;
   bl_array_foreach(bl_ftype_hashes, hash)
+  {
+    if (_ident->hash == hash) return i;
+  }
+
+  return -1;
+}
+
+int
+bl_ast_is_buildin(bl_node_t *ident)
+{
+  assert(ident);
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+
+  uint64_t hash;
+  bl_array_foreach(bl_buildin_hashes, hash)
   {
     if (_ident->hash == hash) return i;
   }
