@@ -1,15 +1,24 @@
 /* testing playground */
 
-printf fn (string) s32 : extern;
+printf fn (string, size_t) s32 : extern;
 
 main : fn () s32 {
-  printf("hello world\n");
+  printf("hello world\n", cast(size_t) 0);
 
-  i := 0;
+  i s64 := 0;
   i = 1 + 2 * 15 / 3;
 
-  a s64 := cast(s64) 0;
   b s64 := 0;
+  c s8 := 500;
+
+  loop {
+    break;
+    continue;
+  }
+
+
+  if true {} else {}
+  return "hello";
 };
 
 /*

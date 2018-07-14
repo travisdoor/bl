@@ -93,6 +93,9 @@ ir_ident(context_t *cnt, bl_node_t *ident);
 static LLVMValueRef
 ir_cast(context_t *cnt, bl_node_t *cast);
 
+static inline LLVMValueRef
+ir_sizeof(context_t *cnt, bl_node_t *szof);
+
 static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
 
@@ -223,10 +226,10 @@ ir_lit(context_t *cnt, bl_node_t *lit)
   LLVMValueRef   result = NULL;
   bl_node_lit_t *_lit   = bl_peek_lit(lit);
 
-#define PEEK_ULL _lit->token->value.u
-#define PEEK_REAL _lit->token->value.d
-#define PEEK_STR _lit->token->value.str
-#define PEEK_CHAR (unsigned long long int)_lit->token->value.c
+#define PEEK_ULL _lit->value.u
+#define PEEK_REAL _lit->value.d
+#define PEEK_STR _lit->value.str
+#define PEEK_CHAR (unsigned long long int)_lit->value.c
 
   switch (bl_peek_type_fund(_lit->type)->code) {
   case BL_FTYPE_S8:
@@ -497,6 +500,13 @@ ir_binop(context_t *cnt, bl_node_t *binop)
 }
 
 LLVMValueRef
+ir_sizeof(context_t *cnt, bl_node_t *szof)
+{
+  assert(szof);
+  return LLVMSizeOf(to_llvm_type(cnt, bl_peek_expr_sizeof(szof)->in));
+}
+
+LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr)
 {
   LLVMValueRef result = NULL;
@@ -512,6 +522,9 @@ ir_expr(context_t *cnt, bl_node_t *expr)
     break;
   case BL_NODE_LIT:
     result = ir_lit(cnt, expr);
+    break;
+  case BL_NODE_EXPR_SIZEOF:
+    result = ir_sizeof(cnt, expr);
     break;
   case BL_NODE_IDENT:
     result = ir_ident(cnt, expr);

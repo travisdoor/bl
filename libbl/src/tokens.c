@@ -85,8 +85,7 @@ bl_token_t *
 bl_tokens_peek_nth(bl_tokens_t *tokens, size_t n)
 {
   const size_t i = tokens->iter + n - 1;
-  if (i < bo_array_size(tokens->buf))
-    return &bo_array_at(tokens->buf, i, bl_token_t);
+  if (i < bo_array_size(tokens->buf)) return &bo_array_at(tokens->buf, i, bl_token_t);
 
   return NULL;
 }
@@ -150,8 +149,8 @@ bl_tokens_next_is_not(bl_tokens_t *tokens, bl_sym_e sym)
 bool
 bl_tokens_is_seq(bl_tokens_t *tokens, int cnt, ...)
 {
-  bool ret     = true;
-  size_t c     = bo_array_size(tokens->buf);
+  bool     ret = true;
+  size_t   c   = bo_array_size(tokens->buf);
   bl_sym_e sym = BL_SYM_EOF;
   cnt += tokens->iter;
 
@@ -206,4 +205,12 @@ bl_tokens_create_cached_str(bl_tokens_t *tokens)
   BString *str = bo_string_new(64);
   bo_array_push_back(tokens->string_cache, str);
   return str;
+}
+
+void
+bl_tokens_consume_till(bl_tokens_t *tokens, bl_sym_e sym)
+{
+  while (bl_tokens_current_is_not(tokens, sym) && bl_tokens_current_is_not(tokens, BL_SYM_EOF)) {
+    bl_tokens_consume(tokens);
+  }
 }

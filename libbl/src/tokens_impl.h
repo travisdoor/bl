@@ -105,6 +105,9 @@ bl_tokens_set_marker(bl_tokens_t *tokens);
 void
 bl_tokens_back_to_marker(bl_tokens_t *tokens);
 
+void
+bl_tokens_consume_till(bl_tokens_t *tokens, bl_sym_e sym);
+
 BArray *
 bl_tokens_get_all(bl_tokens_t *tokens);
 

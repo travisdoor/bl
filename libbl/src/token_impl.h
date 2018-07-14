@@ -118,17 +118,20 @@ typedef struct bl_src
   struct bl_unit *unit;
 } bl_src_t;
 
+typedef union
+{
+  const char *       str;
+  char               c;
+  double             d;
+  unsigned long long u;
+} bl_token_value_u;
+
 typedef struct bl_token
 {
-  bl_sym_e sym;
-  bl_src_t src;
-  union
-  {
-    const char *       str;
-    char               c;
-    double             d;
-    unsigned long long u;
-  } value;
+  bl_sym_e         sym;
+  bl_src_t         src;
+  bl_token_value_u value;
+  
 } bl_token_t;
 
 /* is token any known binary operation? */

@@ -45,7 +45,7 @@
     ft(S16,    s16) \
     ft(S32,    s32) \
     ft(S64,    s64) \
-    ft(U8,     su8) \
+    ft(U8,     u8) \
     ft(U16,    u16) \
     ft(U32,    u32) \
     ft(U64,    u64) \
@@ -60,14 +60,14 @@
     bt(MAIN,    main) \
 
 #define _BL_NODE_TYPE_LIST \
+  nt(BAD, bad, struct { \
+    void *_; \
+  }) \
   nt(IDENT, ident, struct { \
     const char *str; \
     uint64_t    hash; \
     bl_node_t  *ref; \
     bl_node_t  *parent_compound; \
-  }) \
-  nt(STMT_BAD, stmt_bad, struct { \
-    void *_; \
   }) \
   nt(STMT_RETURN, stmt_return, struct { \
     bl_node_t *expr; \
@@ -81,6 +81,12 @@
   nt(STMT_LOOP, stmt_loop, struct { \
     bl_node_t *test; \
     bl_node_t *true_stmt; \
+  }) \
+  nt(STMT_BREAK, stmt_break, struct { \
+    void *_; \
+  }) \
+  nt(STMT_CONTINUE, stmt_continue, struct { \
+    void *_; \
   }) \
   nt(DECL_UBLOCK, decl_ublock, struct { \
     bl_node_t      *nodes; \
@@ -100,9 +106,6 @@
     int           flags; \
     int           used; \
   }) \
-  nt(DECL_BAD, decl_bad, struct { \
-    void *_; \
-  }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
   }) \
@@ -115,9 +118,6 @@
     bl_node_t *types; \
     int        typesc; \
   }) \
-  nt(TYPE_BAD, type_bad, struct { \
-    void *_; \
-  }) \
   nt(LIT_FN, lit_fn, struct { \
     bl_node_t  *type; \
     bl_node_t  *block; \
@@ -125,8 +125,8 @@
     bl_node_t  *parent_compound; \
   }) \
   nt(LIT, lit, struct { \
-    bl_node_t  *type; \
-    bl_token_t *token; \
+    bl_node_t       *type; \
+    bl_token_value_u value; \
   }) \
   nt(EXPR_CAST, expr_cast, struct { \
     bl_node_t *type; \
@@ -147,9 +147,6 @@
   nt(EXPR_SIZEOF, expr_sizeof, struct { \
     bl_node_t *in; \
     bl_node_t *type; \
-  }) \
-  nt(EXPR_BAD, expr_bad, struct { \
-    void *_; \
   })
 
 // clang-format on
@@ -201,8 +198,8 @@ extern const char *bl_ftype_strings[];
 extern const char *bl_node_type_strings[];
 extern const char *bl_buildin_strings[];
 
-extern uint64_t    bl_ftype_hashes[BL_FTYPE_COUNT];
-extern uint64_t    bl_buildin_hashes[BL_BUILDIN_COUNT];
+extern uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
+extern uint64_t bl_buildin_hashes[BL_BUILDIN_COUNT];
 
 #define bl_node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 
@@ -291,23 +288,22 @@ _BL_NODE_TYPE_LIST
 #define _BL_AST_NCTOR(name, ...)                                                                   \
   bl_node_t *bl_ast_##name(bl_ast_t *ast, bl_token_t *tok, ##__VA_ARGS__)
 
+_BL_AST_NCTOR(bad);
 _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
 _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound);
-_BL_AST_NCTOR(stmt_bad);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
+_BL_AST_NCTOR(stmt_break);
+_BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
               int flags);
-_BL_AST_NCTOR(decl_bad);
-_BL_AST_NCTOR(type_bad);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
               bl_scope_t *scope);
-_BL_AST_NCTOR(lit, bl_node_t *type);
-_BL_AST_NCTOR(expr_bad);
+_BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
 _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);

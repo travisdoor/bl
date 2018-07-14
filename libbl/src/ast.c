@@ -171,6 +171,11 @@ bl_ast_terminate(bl_ast_t *ast)
  * node constructors
  *************************************************************************************************/
 
+_BL_AST_NCTOR(bad)
+{
+  return alloc_node(ast, BL_NODE_BAD, tok, bl_node_t *);
+}
+
 _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
 {
   bl_node_decl_ublock_t *_ublock =
@@ -190,17 +195,22 @@ _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound)
   return (bl_node_t *)_ident;
 }
 
-_BL_AST_NCTOR(stmt_bad)
-{
-  return alloc_node(ast, BL_NODE_STMT_BAD, tok, bl_node_t *);
-}
-
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn)
 {
   bl_node_stmt_return_t *_ret = alloc_node(ast, BL_NODE_STMT_RETURN, tok, bl_node_stmt_return_t *);
   _ret->expr                  = expr;
   _ret->fn                    = fn;
   return (bl_node_t *)_ret;
+}
+
+_BL_AST_NCTOR(stmt_break)
+{
+  return alloc_node(ast, BL_NODE_STMT_BREAK, tok, bl_node_t *);
+}
+
+_BL_AST_NCTOR(stmt_continue)
+{
+  return alloc_node(ast, BL_NODE_STMT_CONTINUE, tok, bl_node_t *);
 }
 
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt)
@@ -241,16 +251,6 @@ _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bo
   return (bl_node_t *)_decl;
 }
 
-_BL_AST_NCTOR(decl_bad)
-{
-  return alloc_node(ast, BL_NODE_DECL_BAD, tok, bl_node_t *);
-}
-
-_BL_AST_NCTOR(type_bad)
-{
-  return alloc_node(ast, BL_NODE_TYPE_BAD, tok, bl_node_t *);
-}
-
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type)
 {
   bl_node_type_fn_t *_type_fn = alloc_node(ast, BL_NODE_TYPE_FN, tok, bl_node_type_fn_t *);
@@ -280,16 +280,11 @@ _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compo
   return (bl_node_t *)_lit_fn;
 }
 
-_BL_AST_NCTOR(expr_bad)
-{
-  return alloc_node(ast, BL_NODE_EXPR_BAD, tok, bl_node_t *);
-}
-
-_BL_AST_NCTOR(lit, bl_node_t *type)
+_BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value)
 {
   bl_node_lit_t *_lit = alloc_node(ast, BL_NODE_LIT, tok, bl_node_lit_t *);
   _lit->type          = type;
-  _lit->token         = tok;
+  _lit->value         = value;
   return (bl_node_t *)_lit;
 }
 
@@ -655,5 +650,5 @@ bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
   assert(dest);
 
   node->next = *dest;
-  *dest = node;
+  *dest      = node;
 }

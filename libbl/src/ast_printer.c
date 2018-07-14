@@ -40,7 +40,7 @@ print_address(bl_node_t *node)
   if (node)
     fprintf(stdout, BL_YELLOW(" %d "), node->_serial);
   else
-    fprintf(stdout, BL_YELLOW(" (null) "));
+    fprintf(stdout, BL_RED(" (null) "));
 #else
   fprintf(stdout, BL_YELLOW(" %p "), node);
 #endif
@@ -53,7 +53,7 @@ print_head(const char *name, bl_src_t *src, bl_node_t *ptr, int pad)
     fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>"), pad * 2, "", name, src->line,
             src->col);
   else
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<?>"), pad * 2, "", name);
+    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<IMPLICIT>"), pad * 2, "", name);
 
   print_address(ptr);
 }
@@ -88,6 +88,12 @@ static void
 print_expr_sizeof(bl_node_t *node, int pad);
 
 static void
+print_break(bl_node_t *node, int pad);
+
+static void
+print_continue(bl_node_t *node, int pad);
+
+static void
 print_ublock(bl_node_t *node, int pad);
 
 static void
@@ -100,10 +106,7 @@ static void
 print_decl_block(bl_node_t *node, int pad);
 
 static void
-print_decl_bad(bl_node_t *node, int pad);
-
-static void
-print_expr_bad(bl_node_t *node, int pad);
+print_bad(bl_node_t *node, int pad);
 
 static void
 print_expr_binop(bl_node_t *node, int pad);
@@ -124,9 +127,6 @@ static void
 print_return(bl_node_t *node, int pad);
 
 static void
-print_stmt_bad(bl_node_t *node, int pad);
-
-static void
 print_if(bl_node_t *node, int pad);
 
 static void
@@ -145,18 +145,24 @@ print_expr_sizeof(bl_node_t *node, int pad)
 }
 
 void
+print_break(bl_node_t *node, int pad)
+{
+  print_head("break", node->src, node, pad);
+}
+
+void
+print_continue(bl_node_t *node, int pad)
+{
+  print_head("continue", node->src, node, pad);
+}
+
+void
 print_expr_cast(bl_node_t *node, int pad)
 {
   print_head("cast", node->src, node, pad);
   bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
   print_type(_cast->type);
   print_node(_cast->next, pad + 1);
-}
-
-void
-print_stmt_bad(bl_node_t *node, int pad)
-{
-  print_head("INVALID", node->src, node, pad);
 }
 
 void
@@ -218,12 +224,6 @@ print_decl_block(bl_node_t *node, int pad)
 }
 
 void
-print_decl_bad(bl_node_t *node, int pad)
-{
-  print_head("INVALID", node->src, node, pad);
-}
-
-void
 print_ident(bl_node_t *node, int pad)
 {
   print_head("ident", node->src, node, pad);
@@ -255,7 +255,7 @@ print_ublock(bl_node_t *node, int pad)
 }
 
 void
-print_expr_bad(bl_node_t *node, int pad)
+print_bad(bl_node_t *node, int pad)
 {
   print_head("INVALID", node->src, node, pad);
 }
@@ -289,17 +289,17 @@ print_lit(bl_node_t *node, int pad)
   case BL_FTYPE_U32:
   case BL_FTYPE_U64:
   case BL_FTYPE_SIZE:
-    fprintf(stdout, "%llu ", _lit->token->value.u);
+    fprintf(stdout, "%llu ", _lit->value.u);
     break;
   case BL_FTYPE_F32:
   case BL_FTYPE_F64:
-    fprintf(stdout, "%f ", _lit->token->value.d);
+    fprintf(stdout, "%f ", _lit->value.d);
     break;
   case BL_FTYPE_CHAR:
-    fprintf(stdout, "%c ", _lit->token->value.c);
+    fprintf(stdout, "%c ", _lit->value.c);
     break;
   case BL_FTYPE_STRING: {
-    char *tmp = strdup(_lit->token->value.str);
+    char *tmp = strdup(_lit->value.str);
     fprintf(stdout, "%s ", strtok(tmp, "\n"));
     char *next = strtok(NULL, "\n");
     if (next && strlen(next)) fprintf(stdout, "... ");
@@ -307,7 +307,7 @@ print_lit(bl_node_t *node, int pad)
     break;
   }
   case BL_FTYPE_BOOL:
-    fprintf(stdout, "%s ", _lit->token->value.u ? "true" : "false");
+    fprintf(stdout, "%s ", _lit->value.u ? "true" : "false");
     break;
   default:
     break;
@@ -372,9 +372,6 @@ print_node(bl_node_t *node, int pad)
   case BL_NODE_STMT_LOOP:
     print_loop(node, pad);
     break;
-  case BL_NODE_STMT_BAD:
-    print_stmt_bad(node, pad);
-    break;
   case BL_NODE_TYPE_STRUCT:
     print_type_struct(node, pad);
     break;
@@ -384,17 +381,14 @@ print_node(bl_node_t *node, int pad)
   case BL_NODE_DECL_BLOCK:
     print_decl_block(node, pad);
     break;
-  case BL_NODE_DECL_BAD:
-    print_decl_bad(node, pad);
-    break;
   case BL_NODE_LIT:
     print_lit(node, pad);
     break;
   case BL_NODE_LIT_FN:
     print_lit_fn(node, pad);
     break;
-  case BL_NODE_EXPR_BAD:
-    print_expr_bad(node, pad);
+  case BL_NODE_BAD:
+    print_bad(node, pad);
     break;
   case BL_NODE_EXPR_BINOP:
     print_expr_binop(node, pad);
@@ -407,6 +401,12 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_EXPR_CAST:
     print_expr_cast(node, pad);
+    break;
+  case BL_NODE_STMT_BREAK:
+    print_break(node, pad);
+    break;
+  case BL_NODE_STMT_CONTINUE:
+    print_continue(node, pad);
     break;
   default:
     bl_warning("missing print of node type %s", bl_node_name(node));

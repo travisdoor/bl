@@ -1,8 +1,3 @@
-//************************************************************************************************
-// bl
-//
-// File:   checker.c
-// Author: Martin Dorazil
 // Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
@@ -113,7 +108,11 @@ static void
 flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
 
 static bool
-implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *from_type, bl_node_t *to_type);
+implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type);
+
+static inline void
+check_error_invalid_types(context_t *cnt, bl_node_t *first_type, bl_node_t *second_type,
+                          bl_node_t *err_pos);
 
 static void
 check_flatten(context_t *cnt, bl_node_t *node);
@@ -135,6 +134,15 @@ check_binop(context_t *cnt, bl_node_t *binop);
 
 static bool
 check_cast(context_t *cnt, bl_node_t *cast);
+
+static bool
+check_sizeof(context_t *cnt, bl_node_t *szof);
+
+static bool
+check_if(context_t *cnt, bl_node_t *stmt_if);
+
+static bool
+check_return(context_t *cnt, bl_node_t *ret);
 
 static void
 check_unresolved(context_t *cnt);
@@ -346,9 +354,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
 
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
-    // flatten_node(cnt, flatten, _fn->type);
-    // flatten_node(cnt, flatten, _fn->block);
-    // break;
     check_flatten(cnt, _fn->type);
     check_flatten(cnt, _fn->block);
     return;
@@ -374,6 +379,40 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     return;
   }
 
+  case BL_NODE_STMT_RETURN: {
+    bl_node_stmt_return_t *_return = bl_peek_stmt_return(node);
+    flatten_node(cnt, flatten, _return->expr);
+    break;
+  }
+
+  case BL_NODE_STMT_IF: {
+    bl_node_stmt_if_t *_if = bl_peek_stmt_if(node);
+    flatten_node(cnt, flatten, _if->test);
+    flatten_node(cnt, flatten, _if->true_stmt);
+    flatten_node(cnt, flatten, _if->false_stmt);
+    break;
+  }
+
+  case BL_NODE_STMT_LOOP: {
+    bl_node_stmt_loop_t *_loop = bl_peek_stmt_loop(node);
+    flatten_node(cnt, flatten, _loop->test);
+    flatten_node(cnt, flatten, _loop->true_stmt);
+    break;
+  }
+
+  case BL_NODE_EXPR_CAST: {
+    bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
+    flatten_node(cnt, flatten, _cast->type);
+    flatten_node(cnt, flatten, _cast->next);
+    break;
+  }
+
+  case BL_NODE_EXPR_SIZEOF: {
+    bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
+    flatten_node(cnt, flatten, _sizeof->type);
+    break;
+  }
+
   case BL_NODE_EXPR_CALL: {
     bl_node_expr_call_t *_call = bl_peek_expr_call(node);
     flatten_node(cnt, flatten, _call->ident);
@@ -393,45 +432,15 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     break;
   }
 
-  case BL_NODE_STMT_RETURN: {
-    bl_node_stmt_return_t *_return = bl_peek_stmt_return(node);
-    flatten_node(cnt, flatten, _return->expr);
-    break;
-  }
-
-  case BL_NODE_STMT_IF: {
-    bl_node_stmt_if_t *_if = bl_peek_stmt_if(node);
-    flatten_node(cnt, flatten, _if->test);
-    flatten_node(cnt, flatten, _if->true_stmt);
-    flatten_node(cnt, flatten, _if->false_stmt);
-    break;
-  }
-
-  case BL_NODE_EXPR_CAST: {
-    bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
-    flatten_node(cnt, flatten, _cast->type);
-    flatten_node(cnt, flatten, _cast->next);
-    break;
-  }
-
-  case BL_NODE_EXPR_SIZEOF: {
-    bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
-    flatten_node(cnt, flatten, _sizeof->type);
-    break;
-  }
-
+  case BL_NODE_STMT_BREAK:
+  case BL_NODE_STMT_CONTINUE:
   case BL_NODE_IDENT:
-  case BL_NODE_STMT_BAD:
-  case BL_NODE_STMT_LOOP:
-  case BL_NODE_DECL_BAD:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
-  case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
-  case BL_NODE_EXPR_BAD:
     break;
   default:
-    bl_abort("invalid node %s", bl_node_name(node));
+    bl_warning("missing flattening for node %s", bl_node_name(node));
   }
 
   flatten_push(flatten, node);
@@ -464,17 +473,29 @@ check_flatten(context_t *cnt, bl_node_t *node)
 }
 
 bool
-implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *from_type, bl_node_t *to_type)
+implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type)
 {
+  bl_node_t *from_type = bl_ast_get_type(*node);
   if (!bl_ast_can_impl_cast(from_type, to_type)) return false;
-  bl_log("can build impl cast");
 
   bl_node_t *type_dup = bl_ast_node_dup(cnt->ast, to_type);
-  bl_node_t *cast = bl_ast_expr_cast(cnt->ast, NULL, type_dup, *node);
+  bl_node_t *cast     = bl_ast_expr_cast(cnt->ast, NULL, type_dup, *node);
 
   bl_ast_node_insert(node, cast);
-  
+
   return true;
+}
+
+void
+check_error_invalid_types(context_t *cnt, bl_node_t *first_type, bl_node_t *second_type,
+                          bl_node_t *err_pos)
+{
+  char tmp_first[256];
+  char tmp_second[256];
+  bl_ast_type_to_string(tmp_first, 256, first_type);
+  bl_ast_type_to_string(tmp_second, 256, second_type);
+  check_error_node(cnt, BL_ERR_INVALID_TYPE, err_pos, BL_BUILDER_CUR_WORD,
+                   "no implicit cast for types '%s' and '%s'", tmp_first, tmp_second);
 }
 
 bool
@@ -552,23 +573,24 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_EXPR_CAST:
     return check_cast(cnt, node);
 
-  case BL_NODE_DECL_UBLOCK:
-  case BL_NODE_STMT_BAD:
-  case BL_NODE_STMT_RETURN:
-  case BL_NODE_STMT_IF:
-  case BL_NODE_STMT_LOOP:
-  case BL_NODE_DECL_BLOCK:
-  case BL_NODE_DECL_BAD:
-  case BL_NODE_TYPE_FUND:
-  case BL_NODE_TYPE_FN:
-  case BL_NODE_TYPE_STRUCT:
-  case BL_NODE_TYPE_BAD:
-  case BL_NODE_LIT:
-  case BL_NODE_LIT_FN:
-  case BL_NODE_EXPR_BAD:
-  case BL_NODE_COUNT:
   case BL_NODE_EXPR_SIZEOF:
+    return check_sizeof(cnt, node);
+
+  case BL_NODE_STMT_IF:
+    return check_if(cnt, node);
+
+  case BL_NODE_STMT_RETURN:
+    return check_return(cnt, node);
+
+  case BL_NODE_LIT:
+  case BL_NODE_STMT_BREAK:
+  case BL_NODE_STMT_CONTINUE:
+  case BL_NODE_STMT_LOOP:
+  case BL_NODE_TYPE_FN:
     break;
+
+  default:
+    bl_warning("missing check for node type %s", bl_node_name(node));
   }
 
   return true; /* assert later? */
@@ -598,6 +620,24 @@ check_ident(context_t *cnt, bl_node_t *ident)
 }
 
 bool
+check_return(context_t *cnt, bl_node_t *ret)
+{
+  bl_node_stmt_return_t *_ret = bl_peek_stmt_return(ret);
+  assert(_ret->expr);
+  assert(_ret->fn);
+
+  bl_node_lit_fn_t *_callee = bl_peek_lit_fn(_ret->fn);
+
+  bl_node_t *expr_type   = bl_ast_get_type(_ret->expr);
+  bl_node_t *fn_ret_type = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
+
+  if (!bl_ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
+    check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+  }
+  return true;
+}
+
+bool
 check_binop(context_t *cnt, bl_node_t *binop)
 {
   bl_node_expr_binop_t *_binop = bl_peek_expr_binop(binop);
@@ -607,6 +647,7 @@ check_binop(context_t *cnt, bl_node_t *binop)
 
   if (_binop->op == BL_SYM_ASSIGN) {
     if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT)) {
+      // TODO: temporary solution, what about (some_pointer + 1) = ...
       check_error_node(
           cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
           "left-hand side of assignment does not refer to any declaration and cannot be assigned");
@@ -625,13 +666,8 @@ check_binop(context_t *cnt, bl_node_t *binop)
   bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
   bl_node_t *rhs_type = bl_ast_get_type(_binop->rhs);
 
-  if (!bl_ast_type_cmp(lhs_type, rhs_type)) {
-    char tmp_lhs[256];
-    char tmp_rhs[256];
-    bl_ast_type_to_string(tmp_lhs, 256, lhs_type);
-    bl_ast_type_to_string(tmp_rhs, 256, rhs_type);
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, binop, BL_BUILDER_CUR_WORD,
-                     "no implicit cast for types '%s' and '%s'", tmp_lhs, tmp_rhs);
+  if (!bl_ast_type_cmp(lhs_type, rhs_type) && !implicit_cast(cnt, &_binop->rhs, lhs_type)) {
+    check_error_invalid_types(cnt, lhs_type, rhs_type, binop);
   }
 
   if (!_binop->type) _binop->type = lhs_type;
@@ -645,6 +681,28 @@ check_cast(context_t *cnt, bl_node_t *cast)
   bl_node_expr_cast_t *_cast = bl_peek_expr_cast(cast);
   assert(_cast->type);
   _cast->type = bl_ast_get_type(_cast->type);
+  return true;
+}
+
+bool
+check_sizeof(context_t *cnt, bl_node_t *szof)
+{
+  bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(szof);
+  _sizeof->in                    = bl_ast_get_type(_sizeof->in);
+  return true;
+}
+
+bool
+check_if(context_t *cnt, bl_node_t *stmt_if)
+{
+  bl_node_stmt_if_t *_if = bl_peek_stmt_if(stmt_if);
+  assert(_if->test);
+  assert(_if->true_stmt);
+
+  bl_node_t *test_type = bl_ast_get_type(_if->test);
+  if (!bl_ast_type_cmp(test_type, &bl_ftypes[BL_FTYPE_BOOL])) {
+    check_error_invalid_types(cnt, test_type, &bl_ftypes[BL_FTYPE_BOOL], _if->test);
+  }
   return true;
 }
 
@@ -680,13 +738,8 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
   if (value_type && _decl->type) {
     if (!bl_ast_type_cmp(value_type, _decl->type) &&
-        !implicit_cast(cnt, &_decl->value, value_type, _decl->type)) {
-      char tmp_value[256];
-      char tmp_decl[256];
-      bl_ast_type_to_string(tmp_decl, 256, _decl->type);
-      bl_ast_type_to_string(tmp_value, 256, value_type);
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
-                       "no implicit cast for types '%s' and '%s'", tmp_decl, tmp_value);
+        !implicit_cast(cnt, &_decl->value, _decl->type)) {
+      check_error_invalid_types(cnt, _decl->type, value_type, _decl->value);
     }
   } else if (value_type) {
     _decl->type = value_type;
