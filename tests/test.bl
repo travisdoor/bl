@@ -3,18 +3,16 @@
 printf fn (string) s32 : extern;
 
 main : fn () s32 {
-  printf("hello\n");
-  return 0;
+  printf("hello world\n");
+
+  i := 0;
+  i = 1 + 2 * 15 / 3;
+
+  a s64 := cast(s64) 0;
+  b s64 := 0;
 };
 
-say_msg : fn (s string) {
-  //printf(s);
-};
-
-/*bar : fn (i Sub) s32 {
-  return i;
-};
-
+/*
 Add : 0;
 Sub : 1;
 

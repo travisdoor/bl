@@ -37,7 +37,10 @@ static inline void
 print_address(bl_node_t *node)
 {
 #if BL_DEBUG
-  fprintf(stdout, BL_YELLOW(" %d "), node->_serial);
+  if (node)
+    fprintf(stdout, BL_YELLOW(" %d "), node->_serial);
+  else
+    fprintf(stdout, BL_YELLOW(" (null) "));
 #else
   fprintf(stdout, BL_YELLOW(" %p "), node);
 #endif
@@ -76,11 +79,13 @@ print_flags(int flags)
     return;
   if (flags & BL_FLAG_EXTERN) fprintf(stdout, "E");
   if (flags & BL_FLAG_MAIN) fprintf(stdout, "M");
-  if (flags & BL_FLAG_ARG) fprintf(stdout, "A");
 }
 
 static void
 print_node(bl_node_t *node, int pad);
+
+static void
+print_expr_sizeof(bl_node_t *node, int pad);
 
 static void
 print_ublock(bl_node_t *node, int pad);
@@ -126,6 +131,27 @@ print_if(bl_node_t *node, int pad);
 
 static void
 print_loop(bl_node_t *node, int pad);
+
+static void
+print_expr_cast(bl_node_t *node, int pad);
+
+// impl
+void
+print_expr_sizeof(bl_node_t *node, int pad)
+{
+  print_head("sizeof", node->src, node, pad);
+  bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
+  print_type(_sizeof->in);
+}
+
+void
+print_expr_cast(bl_node_t *node, int pad)
+{
+  print_head("cast", node->src, node, pad);
+  bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
+  print_type(_cast->type);
+  print_node(_cast->next, pad + 1);
+}
 
 void
 print_stmt_bad(bl_node_t *node, int pad)
@@ -272,9 +298,14 @@ print_lit(bl_node_t *node, int pad)
   case BL_FTYPE_CHAR:
     fprintf(stdout, "%c ", _lit->token->value.c);
     break;
-  case BL_FTYPE_STRING:
-    fprintf(stdout, "%s ", _lit->token->value.str);
+  case BL_FTYPE_STRING: {
+    char *tmp = strdup(_lit->token->value.str);
+    fprintf(stdout, "%s ", strtok(tmp, "\n"));
+    char *next = strtok(NULL, "\n");
+    if (next && strlen(next)) fprintf(stdout, "... ");
+    free(tmp);
     break;
+  }
   case BL_FTYPE_BOOL:
     fprintf(stdout, "%s ", _lit->token->value.u ? "true" : "false");
     break;
@@ -309,7 +340,8 @@ print_expr_call(bl_node_t *node, int pad)
   assert(_call->ident);
   bl_node_ident_t *_ident = bl_peek_ident(_call->ident);
 
-  fprintf(stdout, "%s ", _ident->str);
+  fprintf(stdout, "%s ->", _ident->str);
+  print_address(_ident->ref);
   print_type(_call->type);
 
   bl_node_t *it;
@@ -370,8 +402,14 @@ print_node(bl_node_t *node, int pad)
   case BL_NODE_EXPR_CALL:
     print_expr_call(node, pad);
     break;
+  case BL_NODE_EXPR_SIZEOF:
+    print_expr_sizeof(node, pad);
+    break;
+  case BL_NODE_EXPR_CAST:
+    print_expr_cast(node, pad);
+    break;
   default:
-    bl_abort("invalid node %s", bl_node_name(node));
+    bl_warning("missing print of node type %s", bl_node_name(node));
   }
 }
 

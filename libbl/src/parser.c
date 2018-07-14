@@ -130,7 +130,80 @@ parse_stmt_if(context_t *cnt);
 
 static bl_node_t *
 parse_stmt_while(context_t *cnt);
+
+static bl_node_t *
+parse_expr_sizeof(context_t *cnt);
+
+static bl_node_t *
+parse_expr_cast(context_t *cnt);
+
 // impl
+
+bl_node_t *
+parse_expr_cast(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_CAST);
+  if (!tok_begin) return NULL;
+
+  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  if (!bl_token_is(tok, BL_SYM_LPAREN)) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin, BL_BUILDER_CUR_WORD,
+                "expected '(' after cast expression");
+  }
+
+  bl_node_t *to_type = parse_type(cnt);
+  if (to_type == NULL) {
+    tok = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, BL_BUILDER_CUR_WORD,
+                "expected type name as cast parameter");
+  }
+
+  tok = bl_tokens_consume(cnt->tokens);
+  if (!bl_token_is(tok, BL_SYM_RPAREN)) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_begin, BL_BUILDER_CUR_WORD,
+                "expected ')' after cast expression");
+  }
+
+  bl_node_t *next = _parse_expr(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin));
+  if (!next) {
+    tok = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, BL_BUILDER_CUR_WORD,
+                "expected expression after cast");
+  }
+
+  return bl_ast_expr_cast(cnt->ast, tok_begin, to_type, next);
+}
+
+bl_node_t *
+parse_expr_sizeof(context_t *cnt)
+{
+
+  bl_token_t *tok_id = bl_tokens_consume_if(cnt->tokens, BL_SYM_SIZEOF);
+  if (!tok_id) return NULL;
+
+  /* eat ( */
+  if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN)) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok, BL_BUILDER_CUR_WORD,
+                "expected '(' after sizeof buildin");
+  }
+
+  bl_node_t *in = parse_type(cnt);
+  if (in == NULL) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_err, BL_BUILDER_CUR_WORD,
+                "expected type name as parameter");
+  }
+
+  /* eat ) */
+  if (!bl_tokens_consume_if(cnt->tokens, BL_SYM_RPAREN)) {
+    bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, err_tok, BL_BUILDER_CUR_WORD,
+                "expected ')' after sizeof buildin argument");
+  }
+
+  return bl_ast_expr_sizeof(cnt->ast, tok_id, in, &bl_ftypes[BL_FTYPE_SIZE]);
+}
 
 bool
 parse_semicolon_rq(context_t *cnt)
@@ -307,6 +380,8 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
+  if ((expr = parse_expr_sizeof(cnt))) return expr;
+  if ((expr = parse_expr_cast(cnt))) return expr;
   if ((expr = parse_literal_fn(cnt))) return expr;
   if ((expr = parse_type_struct(cnt, true))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
@@ -428,7 +503,6 @@ next:
     /* validate argument */
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
-      _arg_decl->flags |= BL_FLAG_ARG;
       if (_arg_decl->value) {
         parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
                          "function arguments cannot have value binding");

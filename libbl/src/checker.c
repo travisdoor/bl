@@ -65,6 +65,7 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
+  BArray *    waiting_resumed;
   waiting_t * waiting;
   bl_scope_t *provided_in_gscope;
 } context_t;
@@ -96,6 +97,9 @@ waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter);
 static void
 waiting_resume(context_t *cnt, uint64_t hash);
 
+static void
+waiting_resume_all(context_t *cnt);
+
 static flatten_t *
 flatten_new(void);
 
@@ -107,6 +111,9 @@ flatten_push(flatten_t *flatten, bl_node_t *node);
 
 static void
 flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
+
+static bool
+implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *from_type, bl_node_t *to_type);
 
 static void
 check_flatten(context_t *cnt, bl_node_t *node);
@@ -125,6 +132,9 @@ check_call(context_t *cnt, bl_node_t *call);
 
 static bool
 check_binop(context_t *cnt, bl_node_t *binop);
+
+static bool
+check_cast(context_t *cnt, bl_node_t *cast);
 
 static void
 check_unresolved(context_t *cnt);
@@ -206,34 +216,46 @@ void
 waiting_resume(context_t *cnt, uint64_t hash)
 {
   if (!bo_htbl_has_key(cnt->waiting, hash)) return;
-  waiting_queue_t *q = bo_htbl_at(cnt->waiting, hash, waiting_queue_t *);
-  assert(q);
+  bo_array_push_back(cnt->waiting_resumed, hash);
+}
 
-  fiter_t fit;
-  for (size_t i = 0; i < bo_array_size(q);) {
-    fit = bo_array_at(q, i, fiter_t);
+void
+waiting_resume_all(context_t *cnt)
+{
+  bo_iterator_t it = bo_array_begin(cnt->waiting_resumed);
+  for (; !bo_array_empty(cnt->waiting_resumed); it = bo_array_begin(cnt->waiting_resumed)) {
+    uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
+    bo_array_erase(cnt->waiting_resumed, 0);
 
-    bool interrupted = false;
-    /* resume here */
-    bl_node_t *tmp;
-    for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-      tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-      if (!check_node(cnt, tmp)) {
-        bl_node_ident_t *_ident = bl_peek_ident(tmp);
-        waiting_push(cnt->waiting, _ident->hash, fit);
-        interrupted = true;
-        break;
+    waiting_queue_t *q = bo_htbl_at(cnt->waiting, hash, waiting_queue_t *);
+    assert(q);
+
+    fiter_t fit;
+    for (size_t i = 0; i < bo_array_size(q);) {
+      fit = bo_array_at(q, i, fiter_t);
+
+      bool interrupted = false;
+      /* resume here */
+      bl_node_t *tmp;
+      for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
+        tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+        if (!check_node(cnt, tmp)) {
+          bl_node_ident_t *_ident = bl_peek_ident(tmp);
+          waiting_push(cnt->waiting, _ident->hash, fit);
+          interrupted = true;
+          break;
+        }
+      }
+
+      if (!interrupted) {
+        flatten_delete(fit.flatten);
+        bo_array_erase(q, i);
+      } else {
+        ++i;
       }
     }
-
-    if (!interrupted) {
-      flatten_delete(fit.flatten);
-      bo_array_erase(q, i);
-    } else {
-      ++i;
-    }
+    if (!bo_array_size(q)) bo_htbl_erase_key(cnt->waiting, hash);
   }
-  if (!bo_array_size(q)) bo_htbl_erase_key(cnt->waiting, hash);
 }
 
 void
@@ -385,6 +407,19 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_CAST: {
+    bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
+    flatten_node(cnt, flatten, _cast->type);
+    flatten_node(cnt, flatten, _cast->next);
+    break;
+  }
+
+  case BL_NODE_EXPR_SIZEOF: {
+    bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
+    flatten_node(cnt, flatten, _sizeof->type);
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_LOOP:
@@ -394,7 +429,6 @@ flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node)
   case BL_NODE_TYPE_BAD:
   case BL_NODE_LIT:
   case BL_NODE_EXPR_BAD:
-  case BL_NODE_COUNT:
     break;
   default:
     bl_abort("invalid node %s", bl_node_name(node));
@@ -427,6 +461,20 @@ check_flatten(context_t *cnt, bl_node_t *node)
   }
 
   if (!interrupted) flatten_delete(fit.flatten);
+}
+
+bool
+implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *from_type, bl_node_t *to_type)
+{
+  if (!bl_ast_can_impl_cast(from_type, to_type)) return false;
+  bl_log("can build impl cast");
+
+  bl_node_t *type_dup = bl_ast_node_dup(cnt->ast, to_type);
+  bl_node_t *cast = bl_ast_expr_cast(cnt->ast, NULL, type_dup, *node);
+
+  bl_ast_node_insert(node, cast);
+  
+  return true;
 }
 
 bool
@@ -501,6 +549,9 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_EXPR_BINOP:
     return check_binop(cnt, node);
 
+  case BL_NODE_EXPR_CAST:
+    return check_cast(cnt, node);
+
   case BL_NODE_DECL_UBLOCK:
   case BL_NODE_STMT_BAD:
   case BL_NODE_STMT_RETURN:
@@ -516,6 +567,7 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_LIT_FN:
   case BL_NODE_EXPR_BAD:
   case BL_NODE_COUNT:
+  case BL_NODE_EXPR_SIZEOF:
     break;
   }
 
@@ -588,6 +640,15 @@ check_binop(context_t *cnt, bl_node_t *binop)
 }
 
 bool
+check_cast(context_t *cnt, bl_node_t *cast)
+{
+  bl_node_expr_cast_t *_cast = bl_peek_expr_cast(cast);
+  assert(_cast->type);
+  _cast->type = bl_ast_get_type(_cast->type);
+  return true;
+}
+
+bool
 check_decl_value(context_t *cnt, bl_node_t *decl)
 {
   bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
@@ -617,16 +678,17 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     _decl->type = bl_ast_get_type(_decl->type);
   }
 
-  if (value_type && _decl->type && !bl_ast_type_cmp(value_type, _decl->type)) {
-    char tmp_value[256];
-    char tmp_decl[256];
-    bl_ast_type_to_string(tmp_decl, 256, _decl->type);
-    bl_ast_type_to_string(tmp_value, 256, value_type);
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
-                     "no implicit cast for types '%s' and '%s'", tmp_decl, tmp_value);
-  }
-
-  if (value_type) {
+  if (value_type && _decl->type) {
+    if (!bl_ast_type_cmp(value_type, _decl->type) &&
+        !implicit_cast(cnt, &_decl->value, value_type, _decl->type)) {
+      char tmp_value[256];
+      char tmp_decl[256];
+      bl_ast_type_to_string(tmp_decl, 256, _decl->type);
+      bl_ast_type_to_string(tmp_value, 256, value_type);
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "no implicit cast for types '%s' and '%s'", tmp_decl, tmp_value);
+    }
+  } else if (value_type) {
     _decl->type = value_type;
   }
 
@@ -667,6 +729,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .unit               = NULL,
       .ast                = NULL,
       .waiting            = waiting_new(),
+      .waiting_resumed    = bo_array_new(sizeof(uint64_t)),
       .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
   };
 
@@ -678,8 +741,10 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     check_flatten(&cnt, unit->ast.root);
   }
 
+  waiting_resume_all(&cnt);
   check_unresolved(&cnt);
   waiting_delete(cnt.waiting);
+  bo_unref(cnt.waiting_resumed);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);
 #endif

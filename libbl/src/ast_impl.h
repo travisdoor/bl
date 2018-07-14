@@ -128,6 +128,10 @@
     bl_node_t  *type; \
     bl_token_t *token; \
   }) \
+  nt(EXPR_CAST, expr_cast, struct { \
+    bl_node_t *type; \
+    bl_node_t *next; \
+  }) \
   nt(EXPR_BINOP, expr_binop, struct { \
     bl_node_t *lhs; \
     bl_node_t *rhs; \
@@ -138,6 +142,10 @@
     bl_node_t *ident; \
     bl_node_t *args; \
     int        argsc; \
+    bl_node_t *type; \
+  }) \
+  nt(EXPR_SIZEOF, expr_sizeof, struct { \
+    bl_node_t *in; \
     bl_node_t *type; \
   }) \
   nt(EXPR_BAD, expr_bad, struct { \
@@ -166,8 +174,7 @@ typedef enum
 typedef enum
 {
   BL_FLAG_EXTERN = 1 << 0,
-  BL_FLAG_MAIN   = 1 << 1,
-  BL_FLAG_ARG    = 1 << 2
+  BL_FLAG_MAIN   = 1 << 1
 } bl_node_flag_e;
 
 typedef struct bl_ast     bl_ast_t;
@@ -303,6 +310,8 @@ _BL_AST_NCTOR(lit, bl_node_t *type);
 _BL_AST_NCTOR(expr_bad);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
 _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);
+_BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);
+_BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next);
 
 /*************************************************************************************************
  * other
@@ -332,6 +341,15 @@ bl_ast_type_cmp(bl_node_t *first, bl_node_t *second);
 
 bl_type_kind_e
 bl_ast_get_type_kind(bl_node_t *type);
+
+bool
+bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type);
+
+bl_node_t *
+bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
+
+void
+bl_ast_node_insert(bl_node_t **dest, bl_node_t *node);
 
 /**************************************************************************************************/
 

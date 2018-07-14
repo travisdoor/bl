@@ -132,7 +132,7 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
 
 #if BL_DEBUG
   static int serial = 0;
-  node->_serial      = serial++;
+  node->_serial     = serial++;
 #endif
 
   return node;
@@ -314,6 +314,23 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
   return (bl_node_t *)_expr_call;
 }
 
+_BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type)
+{
+  bl_node_expr_sizeof_t *_expr_sizeof =
+      alloc_node(ast, BL_NODE_EXPR_SIZEOF, tok, bl_node_expr_sizeof_t *);
+  _expr_sizeof->in   = in;
+  _expr_sizeof->type = type;
+  return (bl_node_t *)_expr_sizeof;
+}
+
+_BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next)
+{
+  bl_node_expr_cast_t *_expr_cast = alloc_node(ast, BL_NODE_EXPR_CAST, tok, bl_node_expr_cast_t *);
+  _expr_cast->type                = type;
+  _expr_cast->next                = next;
+  return (bl_node_t *)_expr_cast;
+}
+
 /*************************************************************************************************
  * other
  *************************************************************************************************/
@@ -426,6 +443,12 @@ bl_ast_get_type(bl_node_t *node)
     return bl_ast_get_type(bl_peek_ident(node)->ref);
   case BL_NODE_EXPR_CALL:
     return bl_ast_get_type(bl_peek_expr_call(node)->type);
+  case BL_NODE_EXPR_BINOP:
+    return bl_ast_get_type(bl_peek_expr_binop(node)->type);
+  case BL_NODE_EXPR_SIZEOF:
+    return bl_ast_get_type(bl_peek_expr_sizeof(node)->type);
+  case BL_NODE_EXPR_CAST:
+    return bl_ast_get_type(bl_peek_expr_cast(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
@@ -589,4 +612,48 @@ bl_ast_get_parent_compound(bl_node_t *node)
   default:
     bl_abort("node %s has no parent compound", bl_node_name(node));
   }
+}
+
+bool
+bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
+{
+  assert(from_type);
+  assert(to_type);
+
+  from_type = bl_ast_get_type(from_type);
+  to_type   = bl_ast_get_type(to_type);
+
+  bl_type_kind_e fkind = bl_ast_get_type_kind(from_type);
+  bl_type_kind_e tkind = bl_ast_get_type_kind(to_type);
+
+  if (fkind != tkind) return false;
+
+  return true;
+}
+
+bl_node_t *
+bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node)
+{
+  bl_node_t *tmp = alloc_node(ast, -1, NULL, bl_node_t *);
+#if BL_DEBUG
+  int tmp_serial = tmp->_serial;
+#endif
+
+  memcpy(tmp, node, sizeof(bl_node_t));
+  node->next = NULL;
+#if BL_DEBUG
+  tmp->_serial = tmp_serial;
+#endif
+
+  return tmp;
+}
+
+void
+bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
+{
+  assert(node);
+  assert(dest);
+
+  node->next = *dest;
+  *dest = node;
 }
