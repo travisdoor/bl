@@ -11,14 +11,19 @@ main : fn () s32 {
   b s64 := 0;
   c s8 := 500;
 
+  if true {} else {}
+
   loop {
     break;
     continue;
   }
 
+  while true {
+    break;
+    continue;
+  }
 
-  if true {} else {}
-  return "hello";
+  return 0;
 };
 
 /*
