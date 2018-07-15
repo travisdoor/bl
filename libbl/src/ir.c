@@ -85,6 +85,9 @@ static LLVMValueRef
 ir_binop(context_t *cnt, bl_node_t *binop);
 
 static LLVMValueRef
+ir_unary(context_t *cnt, bl_node_t *unary);
+
+static LLVMValueRef
 ir_call(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
@@ -500,6 +503,72 @@ ir_binop(context_t *cnt, bl_node_t *binop)
 }
 
 LLVMValueRef
+ir_unary(context_t *cnt, bl_node_t *expr)
+{
+  bl_node_expr_unary_t *_unary = bl_peek_expr_unary(expr);
+  assert(_unary->next);
+  LLVMValueRef next_val  = ir_expr(cnt, _unary->next);
+  LLVMTypeRef  next_type = LLVMTypeOf(next_val);
+
+  switch (_unary->op) {
+  case BL_SYM_MINUS:
+  case BL_SYM_PLUS: {
+    if (LLVMIsAAllocaInst(next_val)) {
+      next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+      next_type = LLVMTypeOf(next_val);
+    }
+
+    /* TODO use BL_KIND */
+    LLVMTypeKind next_type_kind = LLVMGetTypeKind(next_type);
+
+    int mult = 1;
+    switch (_unary->op) {
+    case BL_SYM_MINUS:
+      mult = -1;
+      break;
+    case BL_SYM_PLUS:
+      mult = 1;
+      break;
+    default:
+      bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+    }
+
+    if (next_type_kind == LLVMFloatTypeKind || next_type_kind == LLVMDoubleTypeKind) {
+      LLVMValueRef cnst = LLVMConstReal(next_type, (double)mult);
+      return LLVMBuildFMul(cnt->llvm_builder, cnst, next_val, "");
+    }
+
+    LLVMValueRef cnst = LLVMConstInt(next_type, mult, false);
+    return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
+  }
+
+  case BL_SYM_NOT: {
+    if (LLVMIsAAllocaInst(next_val)) {
+      next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+    }
+
+    next_val = LLVMBuildNot(cnt->llvm_builder, next_val, gname("tmp"));
+    return next_val;
+  }
+
+  case BL_SYM_AND: {
+    /* unary operation is getting address of something "&foo" */
+    LLVMValueRef indices[1];
+    indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+    return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, BL_ARRAY_SIZE(indices), gname("tmp"));
+  }
+
+  case BL_SYM_ASTERISK: {
+    next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
+    return next_val;
+  }
+
+  default:
+    bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+  }
+}
+
+LLVMValueRef
 ir_sizeof(context_t *cnt, bl_node_t *szof)
 {
   assert(szof);
@@ -519,6 +588,9 @@ ir_expr(context_t *cnt, bl_node_t *expr)
     break;
   case BL_NODE_EXPR_CAST:
     result = ir_cast(cnt, expr);
+    break;
+  case BL_NODE_EXPR_UNARY:
+    result = ir_unary(cnt, expr);
     break;
   case BL_NODE_LIT:
     result = ir_lit(cnt, expr);

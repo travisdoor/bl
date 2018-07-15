@@ -326,6 +326,16 @@ _BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next)
   return (bl_node_t *)_expr_cast;
 }
 
+_BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type)
+{
+  bl_node_expr_unary_t *_expr_unary =
+      alloc_node(ast, BL_NODE_EXPR_UNARY, tok, bl_node_expr_unary_t *);
+  _expr_unary->next = next;
+  _expr_unary->type = type;
+  _expr_unary->op   = op;
+  return (bl_node_t *)_expr_unary;
+}
+
 /*************************************************************************************************
  * other
  *************************************************************************************************/
@@ -444,6 +454,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_ast_get_type(bl_peek_expr_sizeof(node)->type);
   case BL_NODE_EXPR_CAST:
     return bl_ast_get_type(bl_peek_expr_cast(node)->type);
+  case BL_NODE_EXPR_UNARY:
+    return bl_ast_get_type(bl_peek_expr_unary(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:

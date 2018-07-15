@@ -151,10 +151,7 @@ bl_token_is_logic_op(bl_token_t *token);
 bool
 bl_token_is_unary(bl_token_t *token);
 
-/*
- * Return token precedence or -1 when token is not binary operation, identifier or constant.
- */
 int
-bl_token_prec(bl_token_t *token);
+bl_token_prec(bl_token_t *token, bool unary);
 
 #endif // BL_TOKEN_H

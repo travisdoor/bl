@@ -179,7 +179,7 @@ parse_expr_cast(context_t *cnt)
     return bl_ast_bad(cnt->ast, tok);
   }
 
-  bl_node_t *next = _parse_expr(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin));
+  bl_node_t *next = _parse_expr(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(tok_begin, false));
   if (!next) {
     tok = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, BL_BUILDER_CUR_WORD,
@@ -447,9 +447,23 @@ parse_expr(context_t *cnt)
 bl_node_t *
 parse_unary_expr(context_t *cnt, bl_token_t *op)
 {
-  // bl_node_t *expr = NULL;
-  // if ((expr = parse_array_ref_maybe(cnt, op))) return expr;
-  return parse_atom_expr(cnt, op);
+  bl_token_t *curr_op = bl_tokens_peek(cnt->tokens);
+  if (bl_token_is_unary(curr_op)) {
+    bl_tokens_consume(cnt->tokens);
+    bl_node_t *next = _parse_expr(cnt, parse_atom_expr(cnt, NULL), bl_token_prec(curr_op, true));
+
+    if (next == NULL) {
+      bl_token_t *err_tok = bl_tokens_peek(cnt->tokens);
+      parse_error(cnt, BL_ERR_EXPECTED_EXPR, err_tok, BL_BUILDER_CUR_WORD,
+                  "expected expression after unary operator");
+      bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
+      return bl_ast_bad(cnt->ast, curr_op);
+    }
+
+    return bl_ast_expr_unary(cnt->ast, curr_op, curr_op->sym, next, NULL);
+  } else {
+    return parse_atom_expr(cnt, op);
+  }
 }
 
 bl_node_t *
@@ -473,14 +487,14 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
   bl_token_t *lookahead = bl_tokens_peek(cnt->tokens);
   bl_token_t *op        = NULL;
 
-  while (bl_token_prec(lookahead) >= min_precedence) {
+  while (bl_token_prec(lookahead, false) >= min_precedence) {
     op = lookahead;
     bl_tokens_consume(cnt->tokens);
     rhs       = parse_unary_expr(cnt, op);
     lookahead = bl_tokens_peek(cnt->tokens);
 
-    while (bl_token_prec(lookahead) > bl_token_prec(op)) {
-      rhs       = _parse_expr(cnt, rhs, bl_token_prec(lookahead));
+    while (bl_token_prec(lookahead, false) > bl_token_prec(op, false)) {
+      rhs       = _parse_expr(cnt, rhs, bl_token_prec(lookahead, false));
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 

@@ -133,6 +133,9 @@ static bool
 check_call(context_t *cnt, bl_node_t *call);
 
 static bool
+check_unary(context_t *cnt, bl_node_t *unary);
+
+static bool
 check_binop(context_t *cnt, bl_node_t *binop);
 
 static bool
@@ -437,6 +440,12 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_UNARY: {
+    bl_node_expr_unary_t *_unary = bl_peek_expr_unary(node);
+    flatten(_unary->next);
+    break;
+  }
+
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
   case BL_NODE_IDENT:
@@ -553,6 +562,17 @@ check_call(context_t *cnt, bl_node_t *call)
 }
 
 bool
+check_unary(context_t *cnt, bl_node_t *unary)
+{
+  bl_node_expr_unary_t *_unary = bl_peek_expr_unary(unary);
+  assert(_unary->next);
+
+  _unary->type = bl_ast_get_type(_unary->next);
+
+  FINISH;
+}
+
+bool
 check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
@@ -581,6 +601,9 @@ check_node(context_t *cnt, bl_node_t *node)
 
   case BL_NODE_EXPR_SIZEOF:
     return check_sizeof(cnt, node);
+
+  case BL_NODE_EXPR_UNARY:
+    return check_unary(cnt, node);
 
   case BL_NODE_STMT_IF:
     return check_if(cnt, node);
