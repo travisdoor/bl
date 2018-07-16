@@ -3,42 +3,28 @@
 printf fn (string, s32) s32 : extern;
 
 main : fn () s32 {
-  printf("hello world\n", 0);
+  if false {
+  } else {
+  }
 
-  i := 1 + -15 * 2;
-  printf("%d\n", i);
-
-  b := -15;
-
-  if true {} else {}
-
+  i := 0;
   loop {
-    break;
-    continue;
+    printf("get() = %d\n", get(i));
+    if i < 100 {
+      i = i + 1;
+      continue;
+    } else {
+      break;
+    }
   }
 
-  while true {
-    break;
-    continue;
+  i = 0;
+  while i < 100 {
+    printf("get() = %d\n", get(i));
+    i = i + 1;
   }
-
-  return 0;
 };
 
-/*
-Add : 0;
-Sub : 1;
-
-lambdas_test : fn () {
-  i := get(Add);
-  i(10, 20);
-
-  i = get(Sub);
-  i(10, 20);
+get : fn (i s32) s32 {
+  return i;
 };
-
-get : fn (type s32) fn (s32, s32) s32 {
-  if type == Add { return fn (a s32, b s32) { return a + b; }; }
-  if type == Sub { return fn (a s32, b s32) { return a - b; }; }
-};
-*/

@@ -34,7 +34,7 @@
 #include "ast_impl.h"
 
 #if BL_DEBUG
-#define gname(s) ""
+#define gname(s) s
 #else
 #define gname(s) ""
 #endif
@@ -45,12 +45,15 @@ typedef struct
   bl_assembly_t *assembly;
 
   BHashTable *llvm_values;
+  bool        is_gscope;
 
   LLVMModuleRef  llvm_module;
   LLVMBuilderRef llvm_builder;
   LLVMContextRef llvm_cnt;
   BHashTable *   llvm_modules;
 
+  LLVMBasicBlockRef break_block;
+  LLVMBasicBlockRef continue_block;
   LLVMBasicBlockRef fn_init_block;
   LLVMBasicBlockRef fn_ret_block;
   LLVMBasicBlockRef fn_entry_block;
@@ -73,7 +76,7 @@ static void
 ir_decl_mut(context_t *cnt, bl_node_t *decl);
 
 static void
-ir_block(context_t *cnt, bl_node_t *block);
+ir_decl_block(context_t *cnt, bl_node_t *block);
 
 static LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr);
@@ -82,22 +85,37 @@ static LLVMValueRef
 ir_lit(context_t *cnt, bl_node_t *lit);
 
 static LLVMValueRef
-ir_binop(context_t *cnt, bl_node_t *binop);
+ir_expr_binop(context_t *cnt, bl_node_t *binop);
 
 static LLVMValueRef
-ir_unary(context_t *cnt, bl_node_t *unary);
+ir_expr_unary(context_t *cnt, bl_node_t *unary);
 
 static LLVMValueRef
-ir_call(context_t *cnt, bl_node_t *call);
+ir_expr_call(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
 ir_ident(context_t *cnt, bl_node_t *ident);
 
 static LLVMValueRef
-ir_cast(context_t *cnt, bl_node_t *cast);
+ir_expr_cast(context_t *cnt, bl_node_t *cast);
 
 static inline LLVMValueRef
-ir_sizeof(context_t *cnt, bl_node_t *szof);
+ir_expr_sizeof(context_t *cnt, bl_node_t *szof);
+
+static void
+ir_stmt_if(context_t *cnt, bl_node_t *stmt_if);
+
+static void
+ir_stmt_return(context_t *cnt, bl_node_t *ret);
+
+static void
+ir_stmt_loop(context_t *cnt, bl_node_t *loop);
+
+static inline void
+ir_stmt_break(context_t *cnt, bl_node_t *brk);
+
+static inline void
+ir_stmt_continue(context_t *cnt, bl_node_t *cont);
 
 static LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type);
@@ -131,6 +149,13 @@ static inline void
 llvm_values_reset(context_t *cnt)
 {
   bo_htbl_clear(cnt->llvm_values);
+}
+
+static inline bool
+is_terminated(context_t *cnt)
+{
+  return (!cnt->is_gscope && LLVMGetInsertBlock((cnt)->llvm_builder) &&
+          LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL);
 }
 
 LLVMTypeRef
@@ -290,7 +315,7 @@ ir_lit(context_t *cnt, bl_node_t *lit)
 }
 
 LLVMValueRef
-ir_call(context_t *cnt, bl_node_t *call)
+ir_expr_call(context_t *cnt, bl_node_t *call)
 {
   LLVMValueRef         result        = NULL;
   bl_node_expr_call_t *_call         = bl_peek_expr_call(call);
@@ -326,7 +351,7 @@ ir_call(context_t *cnt, bl_node_t *call)
 }
 
 LLVMValueRef
-ir_cast(context_t *cnt, bl_node_t *cast)
+ir_expr_cast(context_t *cnt, bl_node_t *cast)
 {
   bl_node_expr_cast_t *_cast     = bl_peek_expr_cast(cast);
   LLVMTypeRef          dest_type = to_llvm_type(cnt, _cast->type);
@@ -418,7 +443,7 @@ ir_ident(context_t *cnt, bl_node_t *ident)
 }
 
 LLVMValueRef
-ir_binop(context_t *cnt, bl_node_t *binop)
+ir_expr_binop(context_t *cnt, bl_node_t *binop)
 {
 
   bl_node_expr_binop_t *_binop = bl_peek_expr_binop(binop);
@@ -503,7 +528,7 @@ ir_binop(context_t *cnt, bl_node_t *binop)
 }
 
 LLVMValueRef
-ir_unary(context_t *cnt, bl_node_t *expr)
+ir_expr_unary(context_t *cnt, bl_node_t *expr)
 {
   bl_node_expr_unary_t *_unary = bl_peek_expr_unary(expr);
   assert(_unary->next);
@@ -569,7 +594,7 @@ ir_unary(context_t *cnt, bl_node_t *expr)
 }
 
 LLVMValueRef
-ir_sizeof(context_t *cnt, bl_node_t *szof)
+ir_expr_sizeof(context_t *cnt, bl_node_t *szof)
 {
   assert(szof);
   return LLVMSizeOf(to_llvm_type(cnt, bl_peek_expr_sizeof(szof)->in));
@@ -578,25 +603,26 @@ ir_sizeof(context_t *cnt, bl_node_t *szof)
 LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr)
 {
+  if (is_terminated(cnt)) return NULL;
   LLVMValueRef result = NULL;
   switch (bl_node_code(expr)) {
   case BL_NODE_EXPR_BINOP:
-    result = ir_binop(cnt, expr);
+    result = ir_expr_binop(cnt, expr);
     break;
   case BL_NODE_EXPR_CALL:
-    result = ir_call(cnt, expr);
+    result = ir_expr_call(cnt, expr);
     break;
   case BL_NODE_EXPR_CAST:
-    result = ir_cast(cnt, expr);
+    result = ir_expr_cast(cnt, expr);
     break;
   case BL_NODE_EXPR_UNARY:
-    result = ir_unary(cnt, expr);
+    result = ir_expr_unary(cnt, expr);
     break;
   case BL_NODE_LIT:
     result = ir_lit(cnt, expr);
     break;
   case BL_NODE_EXPR_SIZEOF:
-    result = ir_sizeof(cnt, expr);
+    result = ir_expr_sizeof(cnt, expr);
     break;
   case BL_NODE_IDENT:
     result = ir_ident(cnt, expr);
@@ -609,8 +635,12 @@ ir_expr(context_t *cnt, bl_node_t *expr)
 }
 
 void
-ir_block(context_t *cnt, bl_node_t *block)
+ir_decl_block(context_t *cnt, bl_node_t *block)
 {
+  if (is_terminated(cnt)) return;
+  bool prev_is_gscope = cnt->is_gscope;
+  cnt->is_gscope      = false;
+
   bl_node_decl_block_t *_block = bl_peek_decl_block(block);
   bl_node_t *           stmt;
 
@@ -622,10 +652,27 @@ ir_block(context_t *cnt, bl_node_t *block)
     case BL_NODE_DECL_VALUE:
       ir_decl(cnt, stmt);
       break;
+    case BL_NODE_STMT_IF:
+      ir_stmt_if(cnt, stmt);
+      break;
+    case BL_NODE_STMT_LOOP:
+      ir_stmt_loop(cnt, stmt);
+      break;
+    case BL_NODE_STMT_BREAK:
+      ir_stmt_break(cnt, stmt);
+      break;
+    case BL_NODE_STMT_CONTINUE:
+      ir_stmt_continue(cnt, stmt);
+      break;
+    case BL_NODE_STMT_RETURN:
+      ir_stmt_return(cnt, stmt);
+      break;
     default:
       break;
     }
   }
+
+  cnt->is_gscope = prev_is_gscope;
 }
 
 void
@@ -704,7 +751,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
   }
 
   /* generate function body */
-  ir_block(cnt, _fn->block);
+  ir_decl_block(cnt, _fn->block);
 
   {
     LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -731,6 +778,8 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
   cnt->fn_init_block  = NULL;
   cnt->fn_ret_block   = NULL;
   cnt->fn_ret_val     = NULL;
+  cnt->break_block    = NULL;
+  cnt->continue_block = NULL;
 
   return result;
 }
@@ -738,6 +787,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
 void
 ir_decl(context_t *cnt, bl_node_t *decl)
 {
+  if (is_terminated(cnt)) return;
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
   assert(_decl->type);
 
@@ -752,6 +802,137 @@ ir_decl(context_t *cnt, bl_node_t *decl)
       bl_abort("invalid type");
     }
   }
+}
+
+void
+ir_stmt_if(context_t *cnt, bl_node_t *stmt_if)
+{
+  if (is_terminated(cnt)) return;
+
+  bl_node_stmt_if_t *_stmt_if     = bl_peek_stmt_if(stmt_if);
+  LLVMBasicBlockRef  insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMValueRef       parent       = LLVMGetBasicBlockParent(insert_block);
+  assert(LLVMIsAFunction(parent));
+
+  LLVMBasicBlockRef if_then = LLVMAppendBasicBlock(parent, gname("if_then"));
+  LLVMBasicBlockRef if_else = LLVMAppendBasicBlock(parent, gname("if_else"));
+  LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
+  LLVMValueRef      expr    = ir_expr(cnt, _stmt_if->test);
+
+  if (LLVMIsAAllocaInst(expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+
+  expr =
+      LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1TypeInContext(cnt->llvm_cnt), gname("tmp"));
+
+  /*
+   * If condition break generation.
+   */
+  LLVMBuildCondBr(cnt->llvm_builder, expr, if_then, if_else);
+
+  if (_stmt_if->false_stmt == NULL) {
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
+    LLVMBuildBr(cnt->llvm_builder, if_cont);
+  }
+
+  /* then block */
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_then);
+  ir_decl_block(cnt, _stmt_if->true_stmt);
+
+  LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+    LLVMBuildBr(cnt->llvm_builder, if_cont);
+  }
+
+  /* else if */
+  if (_stmt_if->false_stmt != NULL) {
+    /* else */
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
+    ir_decl_block(cnt, _stmt_if->false_stmt);
+
+    curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+    if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+      LLVMBuildBr(cnt->llvm_builder, if_cont);
+    }
+  }
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_cont);
+}
+
+void
+ir_stmt_return(context_t *cnt, bl_node_t *stmt_return)
+{
+  if (is_terminated(cnt)) return;
+  bl_node_stmt_return_t *_ret = bl_peek_stmt_return(stmt_return);
+  if (!_ret->expr) {
+    return;
+  }
+
+  LLVMValueRef val = ir_expr(cnt, _ret->expr);
+
+  if (LLVMIsAAllocaInst(val)) val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
+
+  assert(cnt->fn_ret_val);
+  assert(cnt->fn_ret_block);
+  LLVMBuildStore(cnt->llvm_builder, val, cnt->fn_ret_val);
+  LLVMBuildBr(cnt->llvm_builder, cnt->fn_ret_block);
+}
+
+void
+ir_stmt_loop(context_t *cnt, bl_node_t *loop)
+{
+  if (is_terminated(cnt)) return;
+  bl_node_stmt_loop_t *_loop        = bl_peek_stmt_loop(loop);
+  LLVMBasicBlockRef    insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMValueRef         parent       = LLVMGetBasicBlockParent(insert_block);
+  assert(LLVMIsAFunction(parent));
+
+  LLVMBasicBlockRef loop_decide         = LLVMAppendBasicBlock(parent, gname("loop_decide"));
+  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_cont           = LLVMAppendBasicBlock(parent, gname("loop_cont"));
+  LLVMValueRef      expr                = NULL;
+  LLVMBasicBlockRef prev_break_block    = cnt->break_block;
+  LLVMBasicBlockRef prev_continue_block = cnt->continue_block;
+  cnt->break_block                      = loop_cont;
+  cnt->continue_block                   = loop_decide;
+
+  LLVMBuildBr(cnt->llvm_builder, loop_decide);
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
+
+  if (_loop->test) {
+    expr = ir_expr(cnt, _loop->test);
+
+    if (LLVMIsAAllocaInst(expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+  } else {
+    expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
+  }
+
+  LLVMBuildCondBr(cnt->llvm_builder, expr, loop_block, loop_cont);
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_block);
+  ir_decl_block(cnt, _loop->true_stmt);
+
+  LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+    LLVMBuildBr(cnt->llvm_builder, loop_decide);
+  }
+
+  cnt->break_block    = prev_break_block;
+  cnt->continue_block = prev_continue_block;
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_cont);
+}
+
+void
+ir_stmt_break(context_t *cnt, bl_node_t *brk)
+{
+  if (is_terminated(cnt)) return;
+  LLVMBuildBr(cnt->llvm_builder, cnt->break_block);
+}
+
+void
+ir_stmt_continue(context_t *cnt, bl_node_t *cont)
+{
+  if (is_terminated(cnt)) return;
+  LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
 
 void
@@ -788,6 +969,9 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
   cnt.fn_init_block  = NULL;
   cnt.fn_ret_block   = NULL;
   cnt.fn_ret_val     = NULL;
+  cnt.break_block    = NULL;
+  cnt.continue_block = NULL;
+  cnt.is_gscope      = true;
   cnt.llvm_cnt       = LLVMContextCreate();
   cnt.llvm_builder   = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
