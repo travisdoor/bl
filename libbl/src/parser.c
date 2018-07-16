@@ -562,7 +562,10 @@ parse_type_fund(context_t *cnt)
   bl_array_foreach(bl_ftype_hashes, hash)
   {
     if (hash == _ident->hash) {
-      _ident->ref = &bl_ftypes[i];
+      /* here we create new type instance instead of using pointer to static ftypes (fundamental
+       * types used written by user can be pointers */
+      bl_node_t *type = bl_ast_type_fund(cnt->ast, NULL, i, 0);
+      _ident->ref     = type;
       return type_ident;
     }
   }

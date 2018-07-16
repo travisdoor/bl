@@ -307,7 +307,7 @@ _BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
               int flags);
-_BL_AST_NCTOR(type_fund, bl_ftype_e code);
+_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,

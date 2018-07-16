@@ -254,10 +254,11 @@ _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bo
   return (bl_node_t *)_decl;
 }
 
-_BL_AST_NCTOR(type_fund, bl_ftype_e code)
+_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr)
 {
   bl_node_type_fund_t *_type_fund = alloc_node(ast, BL_NODE_TYPE_FUND, tok, bl_node_type_fund_t *);
   _type_fund->code                = code;
+  _type_fund->ptr                 = ptr;
   return (bl_node_t *)_type_fund;
 }
 
