@@ -1,11 +1,11 @@
 //************************************************************************************************
-// Biscuit Engine
+// blc
 //
-// File:   assembly_impl.h
+// File:   jit_exec.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   14/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,37 +26,25 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
-
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
-
-struct bl_node;
-
-typedef struct bl_assembly
-{
-  BArray *    units;        /* array of all units in assembly */
-  BHashTable *unique_cache; /* cache for loading only unique units */
-  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
-  char *      name;         /* assembly name */
-
-  bl_scope_cache_t *scope_cache;
-  bl_scope_t *      gscope;
-  BList *           ir_queue; /* generated into IR */
-
-  /* LLVM */
-  LLVMContextRef llvm_cnt;
-  LLVMModuleRef  llvm_module;
-  LLVMExecutionEngineRef llvm_runtime_engine;
-} bl_assembly_t;
+//#include <llvm-c/Core.h>
+#include "stages_impl.h"
+#include "bl/bldebug.h"
 
 void
-bl_assembly_add_into_ir(bl_assembly_t *assembly, struct bl_node *node);
+bl_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+  char *llvm_error = NULL;
+  if (LLVMCreateJITCompilerForModule(&assembly->llvm_runtime_engine, assembly->llvm_module, 0,
+                                     &llvm_error) != 0)
+    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  bl_msg_log("\nRunning:");
+  LLVMValueRef        llvm_fn = LLVMGetNamedFunction(assembly->llvm_module, "main");
+  LLVMGenericValueRef result  = LLVMRunFunction(assembly->llvm_runtime_engine, llvm_fn, 0, NULL);
+  int                 ires    = (int)LLVMGenericValueToInt(result, 0);
+
+  if (ires != 0) {
+    bl_builder_warning(builder, "executed unit return %i", ires);
+  }
+  bl_msg_log("");
+}

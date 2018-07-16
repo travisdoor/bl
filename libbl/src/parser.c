@@ -277,7 +277,8 @@ parse_stmt_if(context_t *cnt)
 
   bl_node_t *false_stmt = NULL;
   if (bl_tokens_consume_if(cnt->tokens, BL_SYM_ELSE)) {
-    false_stmt = parse_block(cnt);
+    false_stmt = parse_stmt_if(cnt);
+    if (!false_stmt) false_stmt = parse_block(cnt);
     if (false_stmt == NULL) {
       bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
       parse_error(cnt, BL_ERR_EXPECTED_STMT, err_tok, BL_BUILDER_CUR_WORD,
@@ -354,7 +355,7 @@ parse_stmt_break(context_t *cnt)
 
   if (!cnt->inside_loop) {
     parse_error(cnt, BL_ERR_BREAK_OUTSIDE_LOOP, tok, BL_BUILDER_CUR_WORD,
-                "break statement outside loop");
+                "break statement outside a loop");
   }
   return bl_ast_stmt_break(cnt->ast, tok);
 }
@@ -367,7 +368,7 @@ parse_stmt_continue(context_t *cnt)
 
   if (!cnt->inside_loop) {
     parse_error(cnt, BL_ERR_CONTINUE_OUTSIDE_LOOP, tok, BL_BUILDER_CUR_WORD,
-                "continue statement outside loop");
+                "continue statement outside a loop");
   }
   return bl_ast_stmt_continue(cnt->ast, tok);
 }

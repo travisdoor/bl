@@ -74,7 +74,12 @@ bl_assembly_delete(bl_assembly_t *assembly)
   bl_scope_cache_terminate(assembly->scope_cache);
 
   /* LLVM cleanup */
-  LLVMDisposeModule(assembly->llvm_module);
+  /* execution engine owns llvm_module after creation */
+  if (assembly->llvm_runtime_engine)
+    LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
+  else
+    LLVMDisposeModule(assembly->llvm_module);
+
   LLVMContextDispose(assembly->llvm_cnt);
 
   bl_free(assembly);

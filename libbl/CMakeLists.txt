@@ -45,6 +45,7 @@ set(SOURCE_FILES
         src/parser.c
         src/ir.c
         src/linker.c
+        src/jit_exec.c
         src/bc_writer.c
         src/native_bin.c
         src/checker.c

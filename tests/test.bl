@@ -4,7 +4,7 @@ printf fn (string, s32) s32 : extern;
 
 main : fn () s32 {
   if false {
-  } else {
+  } else if true {
   }
 
   i := 0;
@@ -23,6 +23,7 @@ main : fn () s32 {
     printf("get() = %d\n", get(i));
     i = i + 1;
   }
+  return 0;
 };
 
 get : fn (i s32) s32 {

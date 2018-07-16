@@ -847,7 +847,10 @@ ir_stmt_if(context_t *cnt, bl_node_t *stmt_if)
   if (_stmt_if->false_stmt != NULL) {
     /* else */
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
-    ir_decl_block(cnt, _stmt_if->false_stmt);
+    if (bl_node_is(_stmt_if->false_stmt, BL_NODE_STMT_IF))
+      ir_stmt_if(cnt, _stmt_if->false_stmt);
+    else
+      ir_decl_block(cnt, _stmt_if->false_stmt);
 
     curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
     if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
