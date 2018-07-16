@@ -38,8 +38,11 @@ typedef struct chunk
 
 bl_node_t bl_ftypes[] = {
 #define ft(name, str)                                                                              \
-  (bl_node_t){                                                                                     \
-      .code = BL_NODE_TYPE_FUND, .src = NULL, .next = NULL, .n.type_fund.code = BL_FTYPE_##name},
+  (bl_node_t){.code             = BL_NODE_TYPE_FUND,                                               \
+              .src              = NULL,                                                            \
+              .next             = NULL,                                                            \
+              .n.type_fund.code = BL_FTYPE_##name,                                                 \
+              .n.type_fund.ptr  = 0},
 
     _BL_FTYPE_LIST
 #undef ft
@@ -251,6 +254,13 @@ _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bo
   return (bl_node_t *)_decl;
 }
 
+_BL_AST_NCTOR(type_fund, bl_ftype_e code)
+{
+  bl_node_type_fund_t *_type_fund = alloc_node(ast, BL_NODE_TYPE_FUND, tok, bl_node_type_fund_t *);
+  _type_fund->code                = code;
+  return (bl_node_t *)_type_fund;
+}
+
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type)
 {
   bl_node_type_fn_t *_type_fn = alloc_node(ast, BL_NODE_TYPE_FN, tok, bl_node_type_fn_t *);
@@ -363,12 +373,15 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
   }
 
   case BL_NODE_DECL_VALUE: {
-    // identificator can lead to type
     _type_to_string(buf, len, bl_peek_decl_value(type)->type);
     break;
   }
 
   case BL_NODE_TYPE_FUND: {
+    bl_node_type_fund_t *_type = bl_peek_type_fund(type);
+    for (int i = 0; i < _type->ptr; ++i) {
+      append_buf(buf, len, "*");
+    }
     append_buf(buf, len, bl_ftype_strings[bl_peek_type_fund(type)->code]);
     break;
   }

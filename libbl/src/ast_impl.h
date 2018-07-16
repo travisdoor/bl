@@ -108,15 +108,18 @@
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
+    int        ptr; \
   }) \
   nt(TYPE_FN, type_fn, struct { \
     bl_node_t *arg_types; \
     bl_node_t *ret_type; \
     int        argc_types; \
+    int        ptr; \
   }) \
   nt(TYPE_STRUCT, type_struct, struct { \
     bl_node_t *types; \
     int        typesc; \
+    int        ptr; \
   }) \
   nt(LIT_FN, lit_fn, struct { \
     bl_node_t  *type; \
@@ -304,6 +307,7 @@ _BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
               int flags);
+_BL_AST_NCTOR(type_fund, bl_ftype_e code);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
