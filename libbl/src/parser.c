@@ -545,6 +545,7 @@ bl_node_t *
 parse_type(context_t *cnt)
 {
   bl_node_t *type = NULL;
+  // TODO: parse pointers
   if ((type = parse_type_fn(cnt, false))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
   if ((type = parse_type_fund(cnt))) return type;
