@@ -555,8 +555,6 @@ parse_type(context_t *cnt)
     ++ptr;
   }
 
-  if (ptr) bl_log("ptr %d", ptr);
-
   if ((type = parse_type_fn(cnt, false))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
   if ((type = parse_type_fund(cnt, ptr))) return type;

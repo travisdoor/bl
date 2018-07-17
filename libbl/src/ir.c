@@ -161,6 +161,12 @@ is_terminated(context_t *cnt)
           LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL);
 }
 
+static inline bool
+should_load(bl_node_t *node)
+{
+  return bl_node_is(node, BL_NODE_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK;
+}
+
 LLVMTypeRef
 to_llvm_type(context_t *cnt, bl_node_t *type)
 {
@@ -348,7 +354,7 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
     llvm_args[i] = ir_expr(cnt, arg);
     assert(llvm_args[i]);
 
-    if (LLVMIsAAllocaInst(llvm_args[i]))
+    if (should_load(arg) || LLVMIsAAllocaInst(llvm_args[i]))
       llvm_args[i] = LLVMBuildLoad(cnt->llvm_builder, llvm_args[i], gname("tmp"));
 
     ++i;

@@ -702,12 +702,16 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   assert(_binop->rhs);
 
   if (_binop->op == BL_SYM_ASSIGN) {
-    if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT)) {
+    if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
                        "left-hand side of assignment does not refer to any declaration and "
                        "cannot be assigned");
-    } else {
+      FINISH;
+    }
+
+    if (bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
       assert(bl_node_is(_lhs->ref, BL_NODE_DECL_VALUE));

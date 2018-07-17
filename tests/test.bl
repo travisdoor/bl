@@ -1,34 +1,11 @@
 /* testing playground */
 
 printf fn (string, s32) s32 : extern;
+puts fn (string) s32 : extern;
 
 main : fn () s32 {
-  if false {
-  } else if true {
-  }
-
-  i := 0;
-  loop {
-    printf("get() = %d\n", get(i));
-    if i < 100 {
-      i = i + 1;
-      continue;
-    } else {
-      break;
-    }
-  }
-
-  i = 0;
-  while i < 100 {
-    printf("get() = %d\n", get(i));
-    i = i + 1;
-  }
-
+  pointers();
   return 0;
-};
-
-get : fn (i s32) s32 {
-  return i;
 };
 
 pointers : fn () {
@@ -36,10 +13,14 @@ pointers : fn () {
   ptr *s32 := &data;
   ptr = &data;
 
-  ptr = null;
-  call(null);
-};
+  if ptr == null {
+    puts("ptr is null\n");
+  } else {
+    puts("ptr is not null\n");
+  }
 
-call : fn (ptr *s32) {
-  ptr = null;
+  *ptr = 666;
+
+  printf("*ptr = %d\n", *ptr); // implement should load in ir
+  printf("data = %d\n", data);
 };
