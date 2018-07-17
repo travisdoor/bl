@@ -23,6 +23,9 @@ main : fn () s32 {
     printf("get() = %d\n", get(i));
     i = i + 1;
   }
+
+  num s32;
+
   return 0;
 };
 

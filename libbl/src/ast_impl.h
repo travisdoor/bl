@@ -324,6 +324,10 @@ _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);
  *************************************************************************************************/
 extern bl_node_t bl_ftypes[];
 
+typedef void(*bl_visit_f)(void *, bl_node_t *);
+void
+bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt);
+
 void
 bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type);
 

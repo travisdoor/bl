@@ -351,6 +351,19 @@ _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type)
  * other
  *************************************************************************************************/
 
+void
+bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt)
+{
+  assert(visit);
+  chunk_t *chunk = ast->first_chunk;
+  while (chunk) {
+    for (int i = 0; i < chunk->count - 1; ++i) {
+      visit(cnt, get_node_in_chunk(chunk, i + 1));
+    }
+    chunk = chunk->next;
+  }
+}
+
 static void
 _type_to_string(char *buf, size_t len, bl_node_t *type)
 {

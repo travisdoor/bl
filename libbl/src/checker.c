@@ -153,6 +153,12 @@ check_return(context_t *cnt, bl_node_t *ret);
 static void
 check_unresolved(context_t *cnt);
 
+static void
+_check_unused(context_t *cnt, bl_node_t *node);
+
+static void
+check_unused(context_t *cnt);
+
 // impl
 bl_node_t *
 lookup(bl_node_t *ident, bl_scope_t **out_scope)
@@ -794,7 +800,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
     /* insert into ir queue */
     if (is_function && is_in_gscope && !_decl->mutable && !(_decl->flags & BL_FLAG_EXTERN)) {
-      //bl_log("generate %s", bl_peek_ident(_decl->name)->str);
+      // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
       bl_assembly_add_into_ir(cnt->assembly, decl);
     }
 
@@ -802,6 +808,31 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   }
 
   FINISH;
+}
+
+void
+_check_unused(context_t *cnt, bl_node_t *node)
+{
+  assert(node);
+  switch (bl_node_code(node)) {
+  case BL_NODE_DECL_VALUE: {
+    bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
+    if (!_decl->used && !(_decl->flags & BL_FLAG_EXTERN) && !(_decl->flags & BL_FLAG_MAIN)) {
+      check_warning_node(cnt, node, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
+    }
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+void
+check_unused(context_t *cnt)
+{
+  /* for unused declaration check we need to do additional pass after general checking pass,
+   * unordered linear iteration is used on AST */
+  bl_ast_visit_every_node(cnt->ast, (bl_visit_f)_check_unused, cnt);
 }
 
 void
@@ -827,6 +858,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   waiting_resume_all(&cnt);
   check_unresolved(&cnt);
+  check_unused(&cnt);
   waiting_delete(cnt.waiting);
   bo_unref(cnt.waiting_resumed);
 #if BL_DEBUG

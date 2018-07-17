@@ -545,7 +545,14 @@ bl_node_t *
 parse_type(context_t *cnt)
 {
   bl_node_t *type = NULL;
-  // TODO: parse pointers
+  int        ptr  = 0;
+
+  while (bl_tokens_consume_if(cnt->tokens, BL_SYM_ASTERISK)) {
+    ++ptr;
+  }
+
+  if (ptr) bl_log("ptr %d", ptr);
+
   if ((type = parse_type_fn(cnt, false))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
   if ((type = parse_type_fund(cnt))) return type;
@@ -693,9 +700,11 @@ parse_decl_value(context_t *cnt)
   bl_token_t *tok_ident = bl_tokens_peek(cnt->tokens);
   if (bl_token_is_not(tok_ident, BL_SYM_IDENT)) return NULL;
   /* is value declaration? */
+  if (bl_token_is(bl_tokens_peek_2nd(cnt->tokens), BL_SYM_ASSIGN)) return NULL;
   bl_token_t *tok_lookehead = bl_tokens_peek_2nd(cnt->tokens);
   switch (tok_lookehead->sym) {
   case BL_SYM_IDENT:
+  case BL_SYM_ASTERISK:
   case BL_SYM_FN:
   case BL_SYM_STRUCT:
   case BL_SYM_ENUM:
