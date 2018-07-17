@@ -87,7 +87,7 @@ static bl_node_t *
 parse_type(context_t *cnt);
 
 static bl_node_t *
-parse_type_fund(context_t *cnt);
+parse_type_fund(context_t *cnt, int ptr);
 
 static bl_node_t *
 parse_type_fn(context_t *cnt, bool named_args);
@@ -109,6 +109,9 @@ parse_expr(context_t *cnt);
 
 static bl_node_t *
 parse_expr_call(context_t *cnt);
+
+static bl_node_t *
+parse_expr_null(context_t *cnt);
 
 static bl_node_t *
 parse_value(context_t *cnt);
@@ -471,6 +474,7 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
+  if ((expr = parse_expr_null(cnt))) return expr;
   if ((expr = parse_expr_sizeof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
   if ((expr = parse_literal_fn(cnt))) return expr;
@@ -555,15 +559,16 @@ parse_type(context_t *cnt)
 
   if ((type = parse_type_fn(cnt, false))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
-  if ((type = parse_type_fund(cnt))) return type;
+  if ((type = parse_type_fund(cnt, ptr))) return type;
   return type;
 }
 
 bl_node_t *
-parse_type_fund(context_t *cnt)
+parse_type_fund(context_t *cnt, int ptr)
 {
   bl_node_t *type_ident = parse_ident(cnt);
   if (!type_ident) return NULL;
+  assert(ptr >= 0);
 
   bl_node_ident_t *_ident = bl_peek_ident(type_ident);
   uint64_t         hash;
@@ -572,7 +577,7 @@ parse_type_fund(context_t *cnt)
     if (hash == _ident->hash) {
       /* here we create new type instance instead of using pointer to static ftypes (fundamental
        * types written by user can be pointers */
-      bl_node_t *type = bl_ast_type_fund(cnt->ast, NULL, i, 0);
+      bl_node_t *type = bl_ast_type_fund(cnt->ast, NULL, i, ptr);
       _ident->ref     = type;
       return type_ident;
     }
@@ -841,6 +846,14 @@ arg:
   }
 
   return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL);
+}
+
+bl_node_t *
+parse_expr_null(context_t *cnt)
+{
+  bl_token_t *tok_null = bl_tokens_consume_if(cnt->tokens, BL_SYM_NULL);
+  if (!tok_null) return NULL;
+  return bl_ast_expr_null(cnt->ast, tok_null, NULL);
 }
 
 int

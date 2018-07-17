@@ -347,6 +347,13 @@ _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type)
   return (bl_node_t *)_expr_unary;
 }
 
+_BL_AST_NCTOR(expr_null, bl_node_t *type)
+{
+  bl_node_expr_null_t *_expr_null = alloc_node(ast, BL_NODE_EXPR_NULL, tok, bl_node_expr_null_t *);
+  _expr_null->type                = type;
+  return (bl_node_t *)_expr_null;
+}
+
 /*************************************************************************************************
  * other
  *************************************************************************************************/
@@ -483,6 +490,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_ast_get_type(bl_peek_expr_cast(node)->type);
   case BL_NODE_EXPR_UNARY:
     return bl_ast_get_type(bl_peek_expr_unary(node)->type);
+  case BL_NODE_EXPR_NULL:
+    return bl_ast_get_type(bl_peek_expr_null(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
@@ -529,6 +538,7 @@ bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
   second = bl_ast_get_type(second);
 
   if (bl_node_code(first) != bl_node_code(second)) return false;
+  if (bl_ast_get_type_kind(first) != bl_ast_get_type_kind(second)) return false;
 
   // same nodes
   switch (bl_node_code(first)) {
@@ -588,6 +598,9 @@ bl_ast_get_type_kind(bl_node_t *type)
   switch (bl_node_code(type)) {
   case BL_NODE_TYPE_FUND: {
     bl_node_type_fund_t *_ftype = bl_peek_type_fund(type);
+
+    if (_ftype->ptr) return BL_KIND_PTR;
+
     switch (_ftype->code) {
     case BL_FTYPE_TYPE:
       return BL_KIND_TYPE;
@@ -690,4 +703,27 @@ bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
 
   node->next = *dest;
   *dest      = node;
+}
+
+int
+bl_ast_type_get_ptr(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_NODE_TYPE_FUND:
+    return bl_peek_type_fund(type)->ptr;
+  default:
+    bl_abort("invlid type");
+  }
+}
+
+void
+bl_ast_type_set_ptr(bl_node_t *type, int ptr)
+{
+  switch (bl_node_code(type)) {
+  case BL_NODE_TYPE_FUND:
+    bl_peek_type_fund(type)->ptr = ptr;
+    break;
+  default:
+    bl_abort("invlid type");
+  }
 }

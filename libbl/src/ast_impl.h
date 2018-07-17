@@ -155,6 +155,9 @@
     bl_sym_e   op; \
     bl_node_t *next; \
     bl_node_t *type; \
+  }) \
+  nt(EXPR_NULL, expr_null, struct { \
+    bl_node_t *type;		    \
   })
 
 // clang-format on
@@ -318,13 +321,14 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);
 _BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next);
 _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);
+_BL_AST_NCTOR(expr_null, bl_node_t *type);
 
 /*************************************************************************************************
  * other
  *************************************************************************************************/
 extern bl_node_t bl_ftypes[];
 
-typedef void(*bl_visit_f)(void *, bl_node_t *);
+typedef void (*bl_visit_f)(void *, bl_node_t *);
 void
 bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt);
 
@@ -348,6 +352,12 @@ bl_ast_is_buildin(bl_node_t *ident);
 
 bool
 bl_ast_type_cmp(bl_node_t *first, bl_node_t *second);
+
+int
+bl_ast_type_get_ptr(bl_node_t *type);
+
+void
+bl_ast_type_set_ptr(bl_node_t *type, int ptr);
 
 bl_type_kind_e
 bl_ast_get_type_kind(bl_node_t *type);

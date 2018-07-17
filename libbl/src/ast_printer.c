@@ -138,6 +138,9 @@ print_loop(bl_node_t *node, int pad);
 static void
 print_expr_cast(bl_node_t *node, int pad);
 
+static void
+print_expr_null(bl_node_t *node, int pad);
+
 // impl
 void
 print_expr_sizeof(bl_node_t *node, int pad)
@@ -166,6 +169,14 @@ print_expr_cast(bl_node_t *node, int pad)
   bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
   print_type(_cast->type);
   print_node(_cast->next, pad + 1);
+}
+
+void
+print_expr_null(bl_node_t *node, int pad)
+{
+  print_head("null", node->src, node, pad);
+  bl_node_expr_null_t *_null = bl_peek_expr_null(node);
+  print_type(_null->type);
 }
 
 void
@@ -408,6 +419,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_EXPR_CALL:
     print_expr_call(node, pad);
+    break;
+  case BL_NODE_EXPR_NULL:
+    print_expr_null(node, pad);
     break;
   case BL_NODE_EXPR_SIZEOF:
     print_expr_sizeof(node, pad);

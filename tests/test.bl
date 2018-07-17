@@ -24,11 +24,22 @@ main : fn () s32 {
     i = i + 1;
   }
 
-  num s32;
-
   return 0;
 };
 
 get : fn (i s32) s32 {
   return i;
+};
+
+pointers : fn () {
+  data s32;
+  ptr *s32 := &data;
+  ptr = &data;
+
+  ptr = null;
+  call(null);
+};
+
+call : fn (ptr *s32) {
+  ptr = null;
 };

@@ -94,6 +94,9 @@ static LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
+ir_expr_null(context_t *cnt, bl_node_t *nl);
+
+static LLVMValueRef
 ir_ident(context_t *cnt, bl_node_t *ident);
 
 static LLVMValueRef
@@ -163,10 +166,12 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
+  int         ptr    = 0;
 
   switch (bl_node_code(type)) {
   case BL_NODE_TYPE_FUND: {
     bl_node_type_fund_t *_type = bl_peek_type_fund(type);
+    ptr                        = _type->ptr;
     switch (_type->code) {
     case BL_FTYPE_VOID:
       result = LLVMVoidTypeInContext(cnt->llvm_cnt);
@@ -243,6 +248,10 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   default:
     bl_abort("invalid node type %s", bl_node_name(type));
+  }
+
+  if (ptr) {
+    result = LLVMPointerType(result, 0);
   }
 
   return result;
@@ -601,6 +610,15 @@ ir_expr_sizeof(context_t *cnt, bl_node_t *szof)
 }
 
 LLVMValueRef
+ir_expr_null(context_t *cnt, bl_node_t *nl)
+{
+  bl_node_expr_null_t *_null = bl_peek_expr_null(nl);
+  assert(_null->type);
+  LLVMTypeRef type = to_llvm_type(cnt, _null->type);
+  return LLVMConstPointerNull(type);
+}
+
+LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr)
 {
   if (is_terminated(cnt)) return NULL;
@@ -623,6 +641,9 @@ ir_expr(context_t *cnt, bl_node_t *expr)
     break;
   case BL_NODE_EXPR_SIZEOF:
     result = ir_expr_sizeof(cnt, expr);
+    break;
+  case BL_NODE_EXPR_NULL:
+    result = ir_expr_null(cnt, expr);
     break;
   case BL_NODE_IDENT:
     result = ir_ident(cnt, expr);

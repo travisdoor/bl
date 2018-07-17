@@ -130,25 +130,25 @@ static bool
 check_decl_value(context_t *cnt, bl_node_t *decl);
 
 static bool
-check_call(context_t *cnt, bl_node_t *call);
+check_expr_call(context_t *cnt, bl_node_t *call);
 
 static bool
-check_unary(context_t *cnt, bl_node_t *unary);
+check_expr_unary(context_t *cnt, bl_node_t *unary);
 
 static bool
-check_binop(context_t *cnt, bl_node_t *binop);
+check_expr_binop(context_t *cnt, bl_node_t *binop);
 
 static bool
-check_cast(context_t *cnt, bl_node_t *cast);
+check_expr_cast(context_t *cnt, bl_node_t *cast);
 
 static bool
-check_sizeof(context_t *cnt, bl_node_t *szof);
+check_expr_sizeof(context_t *cnt, bl_node_t *szof);
 
 static bool
-check_if(context_t *cnt, bl_node_t *stmt_if);
+check_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 
 static bool
-check_return(context_t *cnt, bl_node_t *ret);
+check_stmt_return(context_t *cnt, bl_node_t *ret);
 
 static void
 check_unresolved(context_t *cnt);
@@ -452,6 +452,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_NULL:
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
   case BL_NODE_IDENT:
@@ -520,7 +521,7 @@ check_error_invalid_types(context_t *cnt, bl_node_t *first_type, bl_node_t *seco
 }
 
 bool
-check_call(context_t *cnt, bl_node_t *call)
+check_expr_call(context_t *cnt, bl_node_t *call)
 {
   bl_node_expr_call_t *_call = bl_peek_expr_call(call);
 
@@ -547,7 +548,9 @@ check_call(context_t *cnt, bl_node_t *call)
   bl_node_t *callee_arg = _callee_type->arg_types;
 
   while (call_arg) {
-    if (!bl_ast_type_cmp(call_arg, callee_arg)) {
+    if (bl_node_is(call_arg, BL_NODE_EXPR_NULL)) {
+      bl_peek_expr_null(call_arg)->type = bl_ast_get_type(callee_arg);
+    } else if (!bl_ast_type_cmp(call_arg, callee_arg)) {
       char tmp1[256];
       char tmp2[256];
       bl_ast_type_to_string(tmp1, 256, bl_ast_get_type(call_arg));
@@ -568,12 +571,28 @@ check_call(context_t *cnt, bl_node_t *call)
 }
 
 bool
-check_unary(context_t *cnt, bl_node_t *unary)
+check_expr_unary(context_t *cnt, bl_node_t *unary)
 {
   bl_node_expr_unary_t *_unary = bl_peek_expr_unary(unary);
   assert(_unary->next);
 
-  _unary->type = bl_ast_get_type(_unary->next);
+  if (_unary->op == BL_SYM_AND) {
+    _unary->type = bl_ast_node_dup(cnt->ast, bl_ast_get_type(_unary->next));
+    int ptr      = bl_ast_type_get_ptr(_unary->type) + 1;
+    bl_ast_type_set_ptr(_unary->type, ptr);
+  } else if (_unary->op == BL_SYM_ASTERISK) {
+    _unary->type = bl_ast_node_dup(cnt->ast, bl_ast_get_type(_unary->next));
+    int ptr      = bl_ast_type_get_ptr(_unary->type) - 1;
+
+    if (ptr < 0) {
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _unary->next, BL_BUILDER_CUR_WORD,
+                       "cannot dereference non-pointer type");
+    } else {
+      bl_ast_type_set_ptr(_unary->type, ptr);
+    }
+  } else {
+    _unary->type = bl_ast_get_type(_unary->next);
+  }
 
   FINISH;
 }
@@ -597,31 +616,33 @@ check_node(context_t *cnt, bl_node_t *node)
     return check_decl_value(cnt, node);
 
   case BL_NODE_EXPR_CALL:
-    return check_call(cnt, node);
+    return check_expr_call(cnt, node);
 
   case BL_NODE_EXPR_BINOP:
-    return check_binop(cnt, node);
+    return check_expr_binop(cnt, node);
 
   case BL_NODE_EXPR_CAST:
-    return check_cast(cnt, node);
-
-  case BL_NODE_EXPR_SIZEOF:
-    return check_sizeof(cnt, node);
+    return check_expr_cast(cnt, node);
 
   case BL_NODE_EXPR_UNARY:
-    return check_unary(cnt, node);
+    return check_expr_unary(cnt, node);
+
+  case BL_NODE_EXPR_SIZEOF:
+    return check_expr_sizeof(cnt, node);
 
   case BL_NODE_STMT_IF:
-    return check_if(cnt, node);
+    return check_stmt_if(cnt, node);
 
   case BL_NODE_STMT_RETURN:
-    return check_return(cnt, node);
+    return check_stmt_return(cnt, node);
 
+  case BL_NODE_EXPR_NULL:
   case BL_NODE_LIT:
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
   case BL_NODE_STMT_LOOP:
   case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_FUND:
     break;
 
   default:
@@ -655,7 +676,7 @@ check_ident(context_t *cnt, bl_node_t *ident)
 }
 
 bool
-check_return(context_t *cnt, bl_node_t *ret)
+check_stmt_return(context_t *cnt, bl_node_t *ret)
 {
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(ret);
   assert(_ret->expr);
@@ -673,7 +694,7 @@ check_return(context_t *cnt, bl_node_t *ret)
 }
 
 bool
-check_binop(context_t *cnt, bl_node_t *binop)
+check_expr_binop(context_t *cnt, bl_node_t *binop)
 {
   bl_node_expr_binop_t *_binop = bl_peek_expr_binop(binop);
 
@@ -683,9 +704,9 @@ check_binop(context_t *cnt, bl_node_t *binop)
   if (_binop->op == BL_SYM_ASSIGN) {
     if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
-      check_error_node(
-          cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
-          "left-hand side of assignment does not refer to any declaration and cannot be assigned");
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
+                       "left-hand side of assignment does not refer to any declaration and "
+                       "cannot be assigned");
     } else {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
@@ -699,6 +720,12 @@ check_binop(context_t *cnt, bl_node_t *binop)
   }
 
   bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
+  if (bl_node_is(_binop->rhs, BL_NODE_EXPR_NULL)) {
+    bl_peek_expr_null(_binop->rhs)->type = lhs_type;
+    if (!_binop->type) _binop->type = lhs_type;
+    FINISH;
+  }
+
   bl_node_t *rhs_type = bl_ast_get_type(_binop->rhs);
 
   if (!bl_ast_type_cmp(lhs_type, rhs_type) && !implicit_cast(cnt, &_binop->rhs, lhs_type)) {
@@ -711,7 +738,7 @@ check_binop(context_t *cnt, bl_node_t *binop)
 }
 
 bool
-check_cast(context_t *cnt, bl_node_t *cast)
+check_expr_cast(context_t *cnt, bl_node_t *cast)
 {
   bl_node_expr_cast_t *_cast = bl_peek_expr_cast(cast);
   assert(_cast->type);
@@ -720,7 +747,7 @@ check_cast(context_t *cnt, bl_node_t *cast)
 }
 
 bool
-check_sizeof(context_t *cnt, bl_node_t *szof)
+check_expr_sizeof(context_t *cnt, bl_node_t *szof)
 {
   bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(szof);
   _sizeof->in                    = bl_ast_get_type(_sizeof->in);
@@ -728,7 +755,7 @@ check_sizeof(context_t *cnt, bl_node_t *szof)
 }
 
 bool
-check_if(context_t *cnt, bl_node_t *stmt_if)
+check_stmt_if(context_t *cnt, bl_node_t *stmt_if)
 {
   bl_node_stmt_if_t *_if = bl_peek_stmt_if(stmt_if);
   assert(_if->test);
