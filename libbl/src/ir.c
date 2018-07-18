@@ -39,7 +39,7 @@
 #define gname(s) ""
 #endif
 
-//#define PRINT_IR
+#define PRINT_IR
 
 typedef struct
 {
@@ -70,6 +70,9 @@ ir_decl(context_t *cnt, bl_node_t *decl);
 
 static LLVMValueRef
 ir_fn_get(context_t *cnt, bl_node_t *fn);
+
+static LLVMValueRef
+ir_global_get(context_t *cnt, bl_node_t *global);
 
 static LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl);
@@ -452,8 +455,11 @@ ir_ident(context_t *cnt, bl_node_t *ident)
     result = ir_fn_get(cnt, _ident->ref);
     // LLVMTypeRef llvm_fptr = LLVMPointerType(LLVMTypeOf(result), 0);
     // result = LLVMBuildCast(cnt->llvm_builder, LLVMBitCast, result, llvm_fptr, gname("tmp"));
-  } else
+  } else {
     result = llvm_values_get(cnt, _ident->ref);
+  }
+
+  if (!result) result = ir_global_get(cnt, _ident->ref);
 
   assert(result);
   return result;
@@ -580,7 +586,7 @@ ir_expr_unary(context_t *cnt, bl_node_t *unary)
       return LLVMBuildFMul(cnt->llvm_builder, cnst, next_val, "");
     }
 
-    LLVMValueRef cnst = LLVMConstInt(next_type, (unsigned long long int) mult, false);
+    LLVMValueRef cnst = LLVMConstInt(next_type, (unsigned long long int)mult, false);
     return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
   }
 
@@ -714,12 +720,20 @@ ir_decl_mut(context_t *cnt, bl_node_t *decl)
 
   if (bl_node_is(_decl->type, BL_NODE_TYPE_FN)) llvm_type = LLVMPointerType(llvm_type, 0);
 
-  result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(bl_peek_ident(_decl->name)->str));
-  llvm_values_insert(cnt, decl, result);
+  if (cnt->is_gscope) {
+    result = ir_global_get(cnt, decl);
+    assert(result);
+    LLVMValueRef init = ir_expr(cnt, _decl->value);
+    assert(init);
+    LLVMSetInitializer(result, init);
+  } else {
+    result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(bl_peek_ident(_decl->name)->str));
+    llvm_values_insert(cnt, decl, result);
 
-  if (!_decl->value) return result;
-  // result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
-  LLVMBuildStore(cnt->llvm_builder, ir_expr(cnt, _decl->value), result);
+    if (!_decl->value) return result;
+    // result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
+    LLVMBuildStore(cnt->llvm_builder, ir_expr(cnt, _decl->value), result);
+  }
   return result;
 }
 
@@ -734,6 +748,21 @@ ir_fn_get(context_t *cnt, bl_node_t *fn)
 
     LLVMTypeRef llvm_type = to_llvm_type(cnt, _fn->type);
     result                = LLVMAddFunction(cnt->llvm_module, fn_name, llvm_type);
+  }
+
+  return result;
+}
+
+LLVMValueRef
+ir_global_get(context_t *cnt, bl_node_t *global)
+{
+  bl_node_decl_value_t *_global = bl_peek_decl_value(global);
+  const char *          g_name  = bl_peek_ident(_global->name)->str;
+
+  LLVMValueRef result = LLVMGetNamedGlobal(cnt->llvm_module, g_name);
+  if (!result) {
+    LLVMTypeRef llvm_type = to_llvm_type(cnt, _global->type);
+    result                = LLVMAddGlobal(cnt->llvm_module, llvm_type, g_name);
   }
 
   return result;
@@ -771,7 +800,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
     int        i = 0;
     bl_node_foreach(_fn_type->arg_types, arg)
     {
-      llvm_values_insert(cnt, arg, LLVMGetParam(result, (unsigned int) i++));
+      llvm_values_insert(cnt, arg, LLVMGetParam(result, (unsigned int)i++));
     }
 
     /*

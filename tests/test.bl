@@ -3,16 +3,13 @@
 printf fn (string, s32) s32 : extern;
 puts fn (string) s32 : extern;
 
-global := 10;
-
 main : fn () s32 {
   pointers();
   ifs();
   loops();
   local_fn();
   structs();
-
-  //global = 0;
+  globals();
 
   return 0;
 };
@@ -81,4 +78,16 @@ structs : fn () {
     i s32,
     j s32
   };*/
+};
+
+
+_global1 := 10;
+_global2 := 10 + 15;
+
+globals : fn () {
+  //printf("_global1 = %d\n", _global1);
+  _globals();
+};
+
+_globals : fn () {
 };
