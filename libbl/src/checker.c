@@ -108,7 +108,7 @@ static inline void
 flatten_push(flatten_t *flatten, bl_node_t *node);
 
 static void
-flatten_node(context_t *cnt, flatten_t *flatten, bl_node_t *node);
+flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node);
 
 static bool
 implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type);
@@ -830,18 +830,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     provide(_decl->name, decl);
 
     /* insert into ir queue */
-    if (is_function && is_in_gscope && !_decl->mutable && !(_decl->flags & BL_FLAG_EXTERN)) {
+    if (is_in_gscope && !_decl->mutable && !(_decl->flags & BL_FLAG_EXTERN)) {
       // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
       bl_assembly_add_into_ir(cnt->assembly, decl);
-    }
-
-    /* if a function is local (nested in other compound block) it must be implicitly moved into
-     * global scope due to later IR generation (we can't generate function during generation of
-     * other function) */
-    if (!is_in_gscope && is_function) {
-      bl_log("move from local scope: %s", bl_peek_ident(_decl->name)->str);
-      //bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(cnt->ast->root);
-      // TODO
     }
 
     waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);

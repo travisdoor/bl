@@ -111,7 +111,7 @@ static void
 ir_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 
 static void
-ir_stmt_return(context_t *cnt, bl_node_t *ret);
+ir_stmt_return(context_t *cnt, bl_node_t *stmt_return);
 
 static void
 ir_stmt_loop(context_t *cnt, bl_node_t *loop);
@@ -542,14 +542,12 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
   default:
     bl_abort("unknown binop");
   }
-
-  return NULL;
 }
 
 LLVMValueRef
-ir_expr_unary(context_t *cnt, bl_node_t *expr)
+ir_expr_unary(context_t *cnt, bl_node_t *unary)
 {
-  bl_node_expr_unary_t *_unary = bl_peek_expr_unary(expr);
+  bl_node_expr_unary_t *_unary = bl_peek_expr_unary(unary);
   assert(_unary->next);
   LLVMValueRef next_val  = ir_expr(cnt, _unary->next);
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
@@ -582,7 +580,7 @@ ir_expr_unary(context_t *cnt, bl_node_t *expr)
       return LLVMBuildFMul(cnt->llvm_builder, cnst, next_val, "");
     }
 
-    LLVMValueRef cnst = LLVMConstInt(next_type, mult, false);
+    LLVMValueRef cnst = LLVMConstInt(next_type, (unsigned long long int) mult, false);
     return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
   }
 
@@ -744,13 +742,13 @@ ir_fn_get(context_t *cnt, bl_node_t *fn)
 LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
-  /* is declaration alias to another declaration ? */
-  if (bl_node_is(_decl->value, BL_NODE_IDENT)) {
-    bl_node_ident_t *_ident = bl_peek_ident(_decl->value);
-    assert(_ident->ref);
-    return ir_fn_get(cnt, _ident->ref);
+  if (!cnt->is_gscope) {
+    /* local function */
+    bl_assembly_add_into_ir(cnt->assembly, decl);
+    return NULL;
   }
+
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
 
   LLVMValueRef      result = ir_fn_get(cnt, decl);
   bl_node_lit_fn_t *_fn    = bl_peek_lit_fn(_decl->value);
@@ -773,7 +771,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
     int        i = 0;
     bl_node_foreach(_fn_type->arg_types, arg)
     {
-      llvm_values_insert(cnt, arg, LLVMGetParam(result, i++));
+      llvm_values_insert(cnt, arg, LLVMGetParam(result, (unsigned int) i++));
     }
 
     /*
@@ -840,9 +838,6 @@ ir_decl(context_t *cnt, bl_node_t *decl)
       bl_abort("invalid type");
     }
   }
-
-  /* should not be reached anyway... */
-  return NULL;
 }
 
 void
