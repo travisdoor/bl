@@ -372,6 +372,9 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 void
 bl_ast_node_insert(bl_node_t **dest, bl_node_t *node);
 
+void
+bl_ast_node_remove(bl_node_t *node);
+
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

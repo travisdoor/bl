@@ -710,6 +710,14 @@ bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
   *dest = node;
 }
 
+void
+bl_ast_node_remove(bl_node_t *node)
+{
+  assert(node);
+  if (node->prev) node->prev->next = node->next;
+  if (node->next) node->next->prev = node->prev;
+}
+
 int
 bl_ast_type_get_ptr(bl_node_t *type)
 {

@@ -840,11 +840,8 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
      * other function) */
     if (!is_in_gscope && is_function) {
       bl_log("move from local scope: %s", bl_peek_ident(_decl->name)->str);
-      bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(cnt->ast->root);
-
+      //bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(cnt->ast->root);
       // TODO
-      decl->next     = _ublock->nodes;
-      _ublock->nodes = decl;
     }
 
     waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
