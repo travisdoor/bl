@@ -701,8 +701,13 @@ bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
   assert(node);
   assert(dest);
 
-  node->next = *dest;
-  *dest      = node;
+  if (*dest) {
+    if ((*dest)->prev) (*dest)->prev->next = node;
+    node->prev    = (*dest)->prev;
+    node->next    = (*dest);
+    (*dest)->prev = node;
+  }
+  *dest = node;
 }
 
 int

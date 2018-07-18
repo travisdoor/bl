@@ -1,4 +1,4 @@
-* TASKS
+*next TASKS
 - [X] Enum [10/10]
   - [X] Enum declaration
   - [X] Enum variant node

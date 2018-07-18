@@ -68,6 +68,17 @@ typedef struct
   bool       inside_loop;
 } context_t;
 
+/* helpers */
+static inline bl_node_t *
+insert_node(bl_node_t ***node, bl_node_t *prev)
+{
+  (**node)->prev = prev;
+  prev           = **node;
+  *node          = &(**node)->next;
+  return prev;
+}
+
+/* fw decls */
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
 
@@ -890,6 +901,7 @@ parse_block(context_t *cnt)
   cnt->curr_compound           = block;
 
   bl_token_t *tok;
+  bl_node_t * prev = NULL;
   bl_node_t **node = &_block->nodes;
 next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -901,47 +913,47 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_stmt_if(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     goto next;
   }
 
   if ((*node = parse_stmt_while(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     goto next;
   }
 
   if ((*node = parse_stmt_loop(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     goto next;
   }
 
   if ((*node = parse_stmt_break(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_decl_value(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_expr(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_block(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     goto next;
   }
 
@@ -963,12 +975,13 @@ parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
   cnt->curr_compound             = ublock;
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
+  bl_node_t *            prev    = NULL;
   bl_node_t **           node    = &_ublock->nodes;
 decl:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl_value(cnt))) {
-    node = &(*node)->next;
+    prev = insert_node(&node, prev);
     parse_semicolon_rq(cnt);
     goto decl;
   }

@@ -39,6 +39,8 @@
 #define gname(s) ""
 #endif
 
+//#define PRINT_IR
+
 typedef struct
 {
   bl_builder_t * builder;
@@ -63,7 +65,7 @@ typedef struct
 static void
 generate(context_t *cnt);
 
-static void
+static LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl);
 
 static LLVMValueRef
@@ -72,7 +74,7 @@ ir_fn_get(context_t *cnt, bl_node_t *fn);
 static LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl);
 
-static void
+static LLVMValueRef
 ir_decl_mut(context_t *cnt, bl_node_t *decl);
 
 static void
@@ -372,7 +374,7 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeRef          dest_type = to_llvm_type(cnt, _cast->type);
   LLVMValueRef         next      = ir_expr(cnt, _cast->next);
 
-  if (LLVMIsAAllocaInst(next)) {
+  if (should_load(_cast->next) || LLVMIsAAllocaInst(next)) {
     next = LLVMBuildLoad(cnt->llvm_builder, next, gname("tmp"));
   }
 
@@ -468,15 +470,17 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
   if (_binop->op == BL_SYM_ASSIGN) {
     /* special case for dereferencing on the right side, we need to perform additional load
      * because we use pointer to data not real data. */
-    if (LLVMIsAAllocaInst(rhs)) {
+    if (should_load(_binop->rhs) || LLVMIsAAllocaInst(rhs)) {
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
     }
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return NULL;
   }
 
-  if (LLVMIsAAllocaInst(lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
-  if (LLVMIsAAllocaInst(rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
+  if (should_load(_binop->rhs) || LLVMIsAAllocaInst(lhs))
+    lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+  if (should_load(_binop->lhs) || LLVMIsAAllocaInst(rhs))
+    rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
   LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
@@ -553,7 +557,7 @@ ir_expr_unary(context_t *cnt, bl_node_t *expr)
   switch (_unary->op) {
   case BL_SYM_MINUS:
   case BL_SYM_PLUS: {
-    if (LLVMIsAAllocaInst(next_val)) {
+    if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
     }
@@ -583,7 +587,7 @@ ir_expr_unary(context_t *cnt, bl_node_t *expr)
   }
 
   case BL_SYM_NOT: {
-    if (LLVMIsAAllocaInst(next_val)) {
+    if (should_load(_unary->next) || LLVMIsAAllocaInst(next_val)) {
       next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     }
 
@@ -702,7 +706,7 @@ ir_decl_block(context_t *cnt, bl_node_t *block)
   cnt->is_gscope = prev_is_gscope;
 }
 
-void
+LLVMValueRef
 ir_decl_mut(context_t *cnt, bl_node_t *decl)
 {
   LLVMValueRef          result    = NULL;
@@ -715,9 +719,10 @@ ir_decl_mut(context_t *cnt, bl_node_t *decl)
   result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(bl_peek_ident(_decl->name)->str));
   llvm_values_insert(cnt, decl, result);
 
-  if (!_decl->value) return;
+  if (!_decl->value) return result;
   // result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
   LLVMBuildStore(cnt->llvm_builder, ir_expr(cnt, _decl->value), result);
+  return result;
 }
 
 LLVMValueRef
@@ -739,9 +744,16 @@ ir_fn_get(context_t *cnt, bl_node_t *fn)
 LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl)
 {
-  LLVMValueRef          result = ir_fn_get(cnt, decl);
-  bl_node_decl_value_t *_decl  = bl_peek_decl_value(decl);
-  bl_node_lit_fn_t *    _fn    = bl_peek_lit_fn(_decl->value);
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  /* is declaration alias to another declaration ? */
+  if (bl_node_is(_decl->value, BL_NODE_IDENT)) {
+    bl_node_ident_t *_ident = bl_peek_ident(_decl->value);
+    assert(_ident->ref);
+    return ir_fn_get(cnt, _ident->ref);
+  }
+
+  LLVMValueRef      result = ir_fn_get(cnt, decl);
+  bl_node_lit_fn_t *_fn    = bl_peek_lit_fn(_decl->value);
 
   {
     assert(_decl->value);
@@ -811,24 +823,26 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
   return result;
 }
 
-void
+LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl)
 {
-  if (is_terminated(cnt)) return;
+  if (is_terminated(cnt)) return NULL;
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
   assert(_decl->type);
 
   if (_decl->mutable) {
-    ir_decl_mut(cnt, decl);
+    return ir_decl_mut(cnt, decl);
   } else {
     switch (bl_node_code(_decl->type)) {
     case BL_NODE_TYPE_FN:
-      ir_decl_fn(cnt, decl);
-      break;
+      return ir_decl_fn(cnt, decl);
     default:
       bl_abort("invalid type");
     }
   }
+
+  /* should not be reached anyway... */
+  return NULL;
 }
 
 void
@@ -846,7 +860,8 @@ ir_stmt_if(context_t *cnt, bl_node_t *stmt_if)
   LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
   LLVMValueRef      expr    = ir_expr(cnt, _stmt_if->test);
 
-  if (LLVMIsAAllocaInst(expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+  if (should_load(_stmt_if->test) || LLVMIsAAllocaInst(expr))
+    expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
 
   expr =
       LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1TypeInContext(cnt->llvm_cnt), gname("tmp"));
@@ -899,7 +914,8 @@ ir_stmt_return(context_t *cnt, bl_node_t *stmt_return)
 
   LLVMValueRef val = ir_expr(cnt, _ret->expr);
 
-  if (LLVMIsAAllocaInst(val)) val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
+  if (should_load(_ret->expr) || LLVMIsAAllocaInst(val))
+    val = LLVMBuildLoad(cnt->llvm_builder, val, gname("tmp"));
 
   assert(cnt->fn_ret_val);
   assert(cnt->fn_ret_block);
@@ -931,7 +947,8 @@ ir_stmt_loop(context_t *cnt, bl_node_t *loop)
   if (_loop->test) {
     expr = ir_expr(cnt, _loop->test);
 
-    if (LLVMIsAAllocaInst(expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+    if (should_load(_loop->test) || LLVMIsAAllocaInst(expr))
+      expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
   } else {
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
   }
@@ -986,8 +1003,6 @@ generate(context_t *cnt)
     llvm_values_reset(cnt);
   }
 }
-
-//#define PRINT_IR
 
 void
 bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)

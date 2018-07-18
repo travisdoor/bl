@@ -5,6 +5,10 @@ puts fn (string) s32 : extern;
 
 main : fn () s32 {
   pointers();
+  ifs();
+  loops();
+  local_fn();
+
   return 0;
 };
 
@@ -23,4 +27,47 @@ pointers : fn () {
 
   printf("*ptr = %d\n", *ptr); // implement should load in ir
   printf("data = %d\n", data);
+};
+
+ifs : fn () {
+  a := true;
+  if a {
+    puts("ok");
+    if !a {
+      puts("invalid");
+    } else {
+      puts("ok");
+    }
+  } else {
+    puts("invalid");
+  }
+};
+
+loops : fn () {
+  i := 0;
+  loop {
+    if i > 9 { break; }
+    printf("i = %d, ", i);
+    i = i + 1;
+    continue;
+  }
+  puts("done");
+
+  i = 0;
+  while i < 10 {
+    printf("i = %d, ", i);
+    i = i + 1;
+    continue;
+  }
+  puts("done");
+};
+
+add : fn (a s32, b s32) s32 {
+  return a + b; 
+};
+
+local_fn : fn () {
+
+  result := add(10, 20);
+  printf("result = %d\n", result);
 };
