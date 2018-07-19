@@ -452,12 +452,21 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_TYPE_STRUCT: {
+    bl_node_type_struct_t *_struct_type = bl_peek_type_struct(node);
+    bl_node_t *            tmp;
+    bl_node_foreach(_struct_type->types, tmp)
+    {
+      flatten(tmp);
+    }
+    break;
+  }
+
   case BL_NODE_EXPR_NULL:
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
   case BL_NODE_IDENT:
   case BL_NODE_TYPE_FUND:
-  case BL_NODE_TYPE_STRUCT:
   case BL_NODE_LIT:
     break;
   default:

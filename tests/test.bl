@@ -84,12 +84,27 @@ local_fn : fn () {
 
 
 
-structs : fn () {
-  /*data_t : struct {
-    i s32,
-    j s32
-  };*/
+
+B_t : struct {
+  i s32,
+  j s32
 };
+
+A_t : struct {
+  i s32,
+  j s32,
+  a A_t
+};
+
+
+structs : fn () {
+  _d1 A_t;
+  _d2 A_t;
+  _d1 = _d2;
+
+  _d3 B_t;
+};
+
 
 
 

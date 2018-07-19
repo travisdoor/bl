@@ -246,19 +246,37 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
     bl_node_t *arg;
     bl_node_t *tmp_type;
-    int        i = 0;
+    unsigned   i = 0;
     bl_node_foreach(_fn_type->arg_types, arg)
     {
       tmp_type            = bl_ast_get_type(arg);
       llvm_arg_types[i++] = to_llvm_type(cnt, tmp_type);
     }
 
-    result = LLVMFunctionType(llvm_ret, llvm_arg_types, (unsigned int)i, false);
+    result = LLVMFunctionType(llvm_ret, llvm_arg_types, i, false);
     bl_free(llvm_arg_types);
     break;
   }
 
   case BL_NODE_TYPE_STRUCT: {
+    bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
+
+    LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
+
+    bl_node_t *member;
+    bl_node_t *tmp_type;
+    unsigned   i = 0;
+
+    bl_node_foreach(_struct_type->types, member)
+    {
+      tmp_type               = bl_ast_get_type(member);
+      llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
+    }
+
+    /* IDEA: use named structure types instead? Maybe anonymous structure type declaration can
+     * affect effectivity of IR optimizations? */
+    result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
+    bl_free(llvm_member_types);
     break;
   }
 
@@ -871,6 +889,9 @@ ir_decl(context_t *cnt, bl_node_t *decl)
       return ir_decl_fn(cnt, decl);
     case BL_NODE_TYPE_FUND:
       return ir_decl_immut(cnt, decl);
+      break;
+    case BL_NODE_TYPE_STRUCT:
+      return NULL;
       break;
     default:
       bl_abort("invalid type");
