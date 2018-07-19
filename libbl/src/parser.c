@@ -101,7 +101,7 @@ static bl_node_t *
 parse_type_fund(context_t *cnt, int ptr);
 
 static bl_node_t *
-parse_type_fn(context_t *cnt, bool named_args);
+parse_type_fn(context_t *cnt, bool named_args, int ptr);
 
 static bl_node_t *
 parse_type_struct(context_t *cnt, bool named_args);
@@ -444,7 +444,7 @@ parse_literal_fn(context_t *cnt)
   cnt->curr_fn             = fn;
   cnt->curr_compound       = fn;
 
-  _fn->type = parse_type_fn(cnt, true);
+  _fn->type = parse_type_fn(cnt, true, 0);
   assert(_fn->type);
 
   /* parse block */
@@ -589,7 +589,7 @@ parse_type(context_t *cnt)
     ++ptr;
   }
 
-  if ((type = parse_type_fn(cnt, false))) return type;
+  if ((type = parse_type_fn(cnt, false, ptr))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
   if ((type = parse_type_fund(cnt, ptr))) return type;
   return type;
@@ -619,7 +619,7 @@ parse_type_fund(context_t *cnt, int ptr)
 }
 
 bl_node_t *
-parse_type_fn(context_t *cnt, bool named_args)
+parse_type_fn(context_t *cnt, bool named_args, int ptr)
 {
   bl_token_t *tok_fn = bl_tokens_consume_if(cnt->tokens, BL_SYM_FN);
   if (!tok_fn) return NULL;
@@ -672,7 +672,7 @@ next:
 
   bl_node_t *ret_type = parse_type(cnt);
   if (!ret_type) ret_type = &bl_ftypes[BL_FTYPE_VOID];
-  return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type);
+  return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type, ptr);
 }
 
 bl_node_t *

@@ -174,7 +174,7 @@ should_load(bl_node_t *node, LLVMValueRef llvm_value)
 {
   return (bl_node_is(node, BL_NODE_EXPR_UNARY) &&
           bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK) ||
-         LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalObject(llvm_value);
+         LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value);
 }
 
 LLVMTypeRef
@@ -240,6 +240,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   case BL_NODE_TYPE_FN: {
     /* args */
     bl_node_type_fn_t *_fn_type = bl_peek_type_fn(type);
+    ptr                         = _fn_type->ptr;
 
     LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
@@ -368,8 +369,9 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   if (bl_peek_decl_value(_callee_ident->ref)->mutable) {
     llvm_fn = llvm_values_get(cnt, _callee_ident->ref);
     llvm_fn = LLVMBuildLoad(cnt->llvm_builder, llvm_fn, gname("tmp"));
-  } else
+  } else {
     llvm_fn = ir_fn_get(cnt, bl_peek_ident(_call->ident)->ref);
+  }
 
   assert(llvm_fn);
 
@@ -473,8 +475,9 @@ ir_ident(context_t *cnt, bl_node_t *ident)
   bl_node_ident_t *_ident = bl_peek_ident(ident);
   assert(_ident->ref);
 
-  result = llvm_values_get(cnt, _ident->ref);
-
+  if (bl_node_is(bl_ast_get_type(ident), BL_NODE_TYPE_FN))
+    result = ir_fn_get(cnt, bl_ast_unroll_ident(ident));
+  if (!result) result = llvm_values_get(cnt, _ident->ref);
   if (!result) result = ir_global_get(cnt, _ident->ref);
 
   assert(result);
@@ -732,8 +735,6 @@ ir_decl_mut(context_t *cnt, bl_node_t *decl)
   LLVMTypeRef           llvm_type = to_llvm_type(cnt, _decl->type);
   assert(llvm_type);
 
-  if (bl_node_is(_decl->type, BL_NODE_TYPE_FN)) llvm_type = LLVMPointerType(llvm_type, 0);
-
   if (cnt->is_gscope) {
     result = ir_global_get(cnt, decl);
     assert(result);
@@ -795,12 +796,7 @@ ir_global_get(context_t *cnt, bl_node_t *global)
 LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl)
 {
-  if (!cnt->is_gscope) {
-    /* local function */
-    bl_assembly_add_into_ir(cnt->assembly, decl);
-    return NULL;
-  }
-
+  if (!cnt->is_gscope) return NULL;
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
 
   LLVMValueRef      result = ir_fn_get(cnt, decl);

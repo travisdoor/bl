@@ -11,6 +11,7 @@ main : fn () s32 {
   globals();
   constants();
   structs();
+  lambdas();
 
   return 0;
 };
@@ -122,10 +123,20 @@ constants : fn () {
 
 
 
+structs : fn () {
+  Local : struct {
+    i s32,
+    bar Bar
+  };
+
+  foo Foo;
+  local Local;
+};
+
 Foo : struct {
   i s32,
   j s32,
-  bar Bar
+  bar *Bar
 };
 
 Bar : struct {
@@ -133,12 +144,21 @@ Bar : struct {
   j s32
 };
 
-structs : fn () {
-  Local : struct {
-    i s32
+
+
+
+lambdas : fn () {
+  hello : fn () {
+    puts("hello!!!");
   };
 
-  foo Foo;
-  local Local;
-};
+  bye : fn () {
+    puts("bye!!!");
+  };
 
+  lambda := &hello;
+  lambda();
+
+  lambda = &bye; // TODO: does not override pointer
+  lambda();
+};

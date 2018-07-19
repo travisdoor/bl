@@ -262,12 +262,13 @@ _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr)
   return (bl_node_t *)_type_fund;
 }
 
-_BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type)
+_BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr)
 {
   bl_node_type_fn_t *_type_fn = alloc_node(ast, BL_NODE_TYPE_FN, tok, bl_node_type_fn_t *);
   _type_fn->arg_types         = arg_types;
   _type_fn->argc_types        = argc_types;
   _type_fn->ret_type          = ret_type;
+  _type_fn->ptr               = ptr;
   return (bl_node_t *)_type_fn;
 }
 
@@ -418,9 +419,13 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
   }
 
   case BL_NODE_TYPE_FN: {
-    append_buf(buf, len, "fn (");
     bl_node_type_fn_t *_fn = bl_peek_type_fn(type);
-    bl_node_t *        arg = _fn->arg_types;
+    for (int i = 0; i < _fn->ptr; ++i) {
+      append_buf(buf, len, "*");
+    }
+
+    append_buf(buf, len, "fn (");
+    bl_node_t *arg = _fn->arg_types;
     while (arg) {
       _type_to_string(buf, len, arg);
       arg = arg->next;
@@ -741,8 +746,10 @@ bl_ast_type_get_ptr(bl_node_t *type)
   switch (bl_node_code(type)) {
   case BL_NODE_TYPE_FUND:
     return bl_peek_type_fund(type)->ptr;
+  case BL_NODE_TYPE_FN:
+    return bl_peek_type_fn(type)->ptr;
   default:
-    bl_abort("invlid type");
+    bl_abort("invalid type");
   }
 }
 
@@ -753,7 +760,23 @@ bl_ast_type_set_ptr(bl_node_t *type, int ptr)
   case BL_NODE_TYPE_FUND:
     bl_peek_type_fund(type)->ptr = ptr;
     break;
+  case BL_NODE_TYPE_FN:
+    bl_peek_type_fn(type)->ptr = ptr;
+    break;
   default:
-    bl_abort("invlid type");
+    bl_abort("invalid type");
   }
+}
+
+bl_node_t *
+bl_ast_unroll_ident(bl_node_t *ident)
+{
+  assert(ident);
+  if (bl_node_is(ident, BL_NODE_IDENT)) {
+    bl_node_ident_t *_ident = bl_peek_ident(ident);
+    assert(_ident->ref);
+    return bl_ast_unroll_ident(_ident->ref);
+  }
+
+  return ident;
 }
