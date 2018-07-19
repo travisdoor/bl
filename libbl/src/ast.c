@@ -690,6 +690,7 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
   bl_type_kind_e tkind = bl_ast_get_type_kind(to_type);
 
   if (fkind != tkind) return false;
+  if (fkind == BL_KIND_STRUCT || fkind == BL_KIND_FN) return false;
 
   return true;
 }

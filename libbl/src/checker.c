@@ -74,11 +74,11 @@ typedef struct
   size_t     i;
 } fiter_t;
 
-static bl_node_t *
-lookup(bl_node_t *ident, bl_scope_t **out_scope);
+static inline bl_node_t *
+lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 
 static bl_node_t *
-_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope);
+_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 
 static void
 provide(bl_node_t *ident, bl_node_t *provided);
@@ -161,16 +161,16 @@ check_unused(context_t *cnt);
 
 // impl
 bl_node_t *
-lookup(bl_node_t *ident, bl_scope_t **out_scope)
+lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree)
 {
   assert(ident);
   bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
   assert(compound);
-  return _lookup(compound, ident, out_scope);
+  return _lookup(compound, ident, out_scope, walk_tree);
 }
 
 bl_node_t *
-_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope)
+_lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree)
 {
   bl_node_t * found = NULL;
   bl_scope_t *scope = NULL;
@@ -179,7 +179,8 @@ _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope)
     scope = bl_ast_get_scope(compound);
     assert(scope);
 
-    found    = bl_scope_get(scope, ident);
+    found = bl_scope_get(scope, ident);
+    if (!walk_tree) break;
     compound = bl_ast_get_parent_compound(compound);
   }
 
@@ -657,6 +658,7 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_STMT_CONTINUE:
   case BL_NODE_STMT_LOOP:
   case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FUND:
     break;
 
@@ -678,7 +680,7 @@ check_ident(context_t *cnt, bl_node_t *ident)
   if (buildin != -1) {
     found = &bl_ftypes[buildin];
   } else {
-    found = lookup(ident, NULL);
+    found = lookup(ident, NULL, true);
     if (!found) WAIT;
   }
 
@@ -826,7 +828,10 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     _decl->type = value_type;
   }
 
-  const bool is_function = bl_node_is(_decl->type, BL_NODE_TYPE_FN);
+  const bool is_function    = bl_node_is(_decl->type, BL_NODE_TYPE_FN);
+  const bool is_struct_decl = _decl->value && bl_node_is(_decl->value, BL_NODE_LIT_STRUCT);
+  const bool is_struct_member =
+      bl_node_is(bl_peek_ident(_decl->name)->parent_compound, BL_NODE_LIT_STRUCT);
   const bool is_in_gscope =
       bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
@@ -835,8 +840,14 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                      "main is expected to be function");
   }
 
+  if (is_struct_decl && _decl->mutable) {
+    check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
+                     "structure declaration cannot be mutable");
+  }
+
   /* provide symbol into scope if there is no conflict */
-  bl_node_t *conflict = lookup(_decl->name, NULL);
+
+  bl_node_t *conflict = lookup(_decl->name, NULL, !is_struct_member);
   if (conflict) {
     check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
                      "symbol with same name already declared here: %s:%d",
