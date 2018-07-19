@@ -830,7 +830,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     provide(_decl->name, decl);
 
     /* insert into ir queue */
-    if (is_in_gscope && !(_decl->flags & BL_FLAG_EXTERN)) {
+    if (is_in_gscope && !(_decl->flags & BL_FLAG_EXTERN) && (is_function || _decl->mutable)) {
       // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
       bl_assembly_add_into_ir(cnt->assembly, decl);
     }

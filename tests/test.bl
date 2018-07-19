@@ -10,9 +10,12 @@ main : fn () s32 {
   local_fn();
   structs();
   globals();
+  constants();
 
   return 0;
 };
+
+
 
 pointers : fn () {
   data s32;
@@ -31,19 +34,23 @@ pointers : fn () {
   printf("data = %d\n", data);
 };
 
+
+
 ifs : fn () {
   a := true;
   if a {
     puts("ok");
     if !a {
-      puts("invalid");
+      puts("INVALID");
     } else {
       puts("ok");
     }
   } else {
-    puts("invalid");
+    puts("INVALID");
   }
 };
+
+
 
 loops : fn () {
   i := 0;
@@ -64,6 +71,8 @@ loops : fn () {
   puts("done");
 };
 
+
+
 local_fn : fn () {
   add : fn (a s32, b s32) s32 {
     return a + b; 
@@ -73,6 +82,8 @@ local_fn : fn () {
   printf("result = %d\n", result);
 };
 
+
+
 structs : fn () {
   /*data_t : struct {
     i s32,
@@ -81,13 +92,38 @@ structs : fn () {
 };
 
 
+
 _global1 := 10;
 _global2 := 10 + 15;
 
 globals : fn () {
-  //printf("_global1 = %d\n", _global1);
+  printf("_global1 = %d\n", _global1);
+  printf("_global2 = %d\n", _global2);
+
+  _global1 = 100;
+
   _globals();
 };
 
 _globals : fn () {
+  printf("_global1 = %d\n", _global1);
+  printf("_global2 = %d\n", _global2);
+};
+
+
+
+constants : fn () {
+  A : 666;
+  B : A;
+  C : B;
+
+  True : true;
+
+  if True {
+    printf("A = %d\n", A);
+    printf("B = %d\n", B);
+    printf("C = %d\n", C);
+  } else {
+    puts("INVALID");
+  }
 };
