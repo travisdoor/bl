@@ -4,19 +4,19 @@ printf fn (string, s32) s32 : extern;
 puts fn (string) s32 : extern;
 
 main : fn () s32 {
-  pointers();
-  ifs();
-  loops();
-  local_fn();
+  //pointers();
+  //ifs();
+  //loops();
+  //local_fn();
+  //globals();
+  //constants();
   structs();
-  globals();
-  constants();
 
   return 0;
 };
 
 
-
+/*
 pointers : fn () {
   data s32;
   ptr *s32 := &data;
@@ -85,29 +85,6 @@ local_fn : fn () {
 
 
 
-B_t : struct {
-  i s32,
-  j s32
-};
-
-A_t : struct {
-  i s32,
-  j s32,
-  a A_t
-};
-
-
-structs : fn () {
-  _d1 A_t;
-  _d2 A_t;
-  _d1 = _d2;
-
-  _d3 B_t;
-};
-
-
-
-
 _global1 := 10;
 _global2 := 10 + 15;
 
@@ -142,3 +119,17 @@ constants : fn () {
     puts("INVALID");
   }
 };
+*/
+
+
+i : 0;
+
+A_t struct {s32, s32} : struct {
+  i s32,
+  j s32
+};
+
+
+structs : fn () {
+};
+

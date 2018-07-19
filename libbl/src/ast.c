@@ -291,6 +291,16 @@ _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compo
   return (bl_node_t *)_lit_fn;
 }
 
+_BL_AST_NCTOR(lit_struct, bl_node_t *type, bl_node_t *parent_compound, bl_scope_t *scope)
+{
+  bl_node_lit_struct_t *_lit_struct =
+      alloc_node(ast, BL_NODE_LIT_STRUCT, tok, bl_node_lit_struct_t *);
+  _lit_struct->type            = type;
+  _lit_struct->parent_compound = parent_compound;
+  _lit_struct->scope           = scope;
+  return (bl_node_t *)_lit_struct;
+}
+
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value)
 {
   bl_node_lit_t *_lit = alloc_node(ast, BL_NODE_LIT, tok, bl_node_lit_t *);
@@ -461,6 +471,8 @@ bl_ast_get_scope(bl_node_t *node)
     return bl_peek_decl_block(node)->scope;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->scope;
+  case BL_NODE_LIT_STRUCT:
+    return bl_peek_lit_struct(node)->scope;
 
   default:
     bl_abort("node %s has no scope", bl_node_name(node));
@@ -478,6 +490,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_lit(node)->type;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->type;
+  case BL_NODE_LIT_STRUCT:
+    return bl_peek_lit_struct(node)->type;
   case BL_NODE_IDENT:
     return bl_ast_get_type(bl_peek_ident(node)->ref);
   case BL_NODE_EXPR_CALL:
@@ -656,6 +670,8 @@ bl_ast_get_parent_compound(bl_node_t *node)
     return bl_peek_decl_block(node)->parent_compound;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->parent_compound;
+  case BL_NODE_LIT_STRUCT:
+    return bl_peek_lit_struct(node)->parent_compound;
   default:
     bl_abort("node %s has no parent compound", bl_node_name(node));
   }

@@ -121,6 +121,11 @@
     int        typesc; \
     int        ptr; \
   }) \
+  nt(LIT_STRUCT, lit_struct, struct { \
+    bl_node_t  *type; \
+    bl_scope_t *scope; \
+    bl_node_t  *parent_compound; \
+  }) \
   nt(LIT_FN, lit_fn, struct { \
     bl_node_t  *type; \
     bl_node_t  *block; \
@@ -316,6 +321,7 @@ _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
               bl_scope_t *scope);
+_BL_AST_NCTOR(lit_struct, bl_node_t *type, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
 _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);

@@ -133,6 +133,9 @@ parse_literal(context_t *cnt);
 static bl_node_t *
 parse_literal_fn(context_t *cnt);
 
+static bl_node_t *
+parse_literal_struct(context_t *cnt);
+
 static inline bool
 parse_semicolon_rq(context_t *cnt);
 
@@ -454,6 +457,26 @@ parse_literal_fn(context_t *cnt)
 }
 
 bl_node_t *
+parse_literal_struct(context_t *cnt)
+{
+  bl_token_t *tok_struct = bl_tokens_peek(cnt->tokens);
+  if (bl_token_is_not(tok_struct, BL_SYM_STRUCT)) return NULL;
+
+  bl_node_t *prev_compound = cnt->curr_compound;
+
+  bl_node_t *           result = bl_ast_lit_struct(cnt->ast, tok_struct, NULL, cnt->curr_compound,
+                                        bl_scope_new(cnt->assembly->scope_cache, 64));
+  bl_node_lit_struct_t *_lit_struct = bl_peek_lit_struct(result);
+
+  cnt->curr_compound = result;
+  _lit_struct->type  = parse_type_struct(cnt, true);
+  cnt->curr_compound = prev_compound;
+  assert(_lit_struct->type);
+
+  return result;
+}
+
+bl_node_t *
 parse_expr(context_t *cnt)
 {
   return _parse_expr(cnt, parse_unary_expr(cnt, NULL), 0);
@@ -489,7 +512,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_expr_sizeof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
   if ((expr = parse_literal_fn(cnt))) return expr;
-  if ((expr = parse_type_struct(cnt, true))) return expr;
+  if ((expr = parse_literal_struct(cnt))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_ident(cnt))) return expr;
@@ -550,7 +573,7 @@ bl_node_t *
 parse_value(context_t *cnt)
 {
   bl_node_t *value = NULL;
-  if ((value = parse_type_struct(cnt, true))) return value;
+  if ((value = parse_literal_struct(cnt))) return value;
   if ((value = parse_literal_fn(cnt))) return value;
   if ((value = parse_expr(cnt))) return value;
   return value;
@@ -682,6 +705,8 @@ next:
                          "struct member cannot have initialization");
         *type = bl_ast_bad(cnt->ast, NULL);
       }
+
+      _member_decl->used = 1;
     }
     type = &(*type)->next;
     ++typesc;

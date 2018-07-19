@@ -373,6 +373,12 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     return;
   }
 
+  case BL_NODE_LIT_STRUCT: {
+    bl_node_lit_struct_t *_struct = bl_peek_lit_struct(node);
+    check_flatten(cnt, _struct->type);
+    return;
+  }
+
   case BL_NODE_DECL_BLOCK: {
     bl_node_decl_block_t *_block = bl_peek_decl_block(node);
     bl_node_t *           tmp;

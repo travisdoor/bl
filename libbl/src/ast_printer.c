@@ -124,6 +124,9 @@ static void
 print_lit_fn(bl_node_t *node, int pad);
 
 static void
+print_lit_struct(bl_node_t *node, int pad);
+
+static void
 print_ident(bl_node_t *node, int pad);
 
 static void
@@ -148,6 +151,21 @@ print_expr_sizeof(bl_node_t *node, int pad)
   print_head("sizeof", node->src, node, pad);
   bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
   print_type(_sizeof->in);
+}
+
+void
+print_lit_struct(bl_node_t *node, int pad)
+{
+  print_head("struct", node->src, node, pad);
+  bl_node_lit_struct_t *_lit_struct = bl_peek_lit_struct(node);
+  assert(_lit_struct->type);
+  bl_node_type_struct_t *_type_struct = bl_peek_type_struct(_lit_struct->type);
+
+  bl_node_t *tmp;
+  bl_node_foreach(_type_struct->types, tmp)
+  {
+    print_node(tmp, pad + 1);
+  }
 }
 
 void
@@ -410,6 +428,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_LIT_FN:
     print_lit_fn(node, pad);
+    break;
+  case BL_NODE_LIT_STRUCT:
+    print_lit_struct(node, pad);
     break;
   case BL_NODE_BAD:
     print_bad(node, pad);
