@@ -331,6 +331,17 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
   return (bl_node_t *)_expr_call;
 }
 
+_BL_AST_NCTOR(expr_member, bl_node_t *ident, bl_node_t *next, bl_node_t *type, bool ptr_ref)
+{
+  bl_node_expr_member_t *_expr_member =
+      alloc_node(ast, BL_NODE_EXPR_MEMBER, tok, bl_node_expr_member_t *);
+  _expr_member->ident   = ident;
+  _expr_member->next    = next;
+  _expr_member->type    = type;
+  _expr_member->ptr_ref = ptr_ref;
+  return (bl_node_t *)_expr_member;
+}
+
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type)
 {
   bl_node_expr_sizeof_t *_expr_sizeof =

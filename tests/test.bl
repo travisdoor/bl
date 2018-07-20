@@ -16,7 +16,6 @@ main : fn () s32 {
   return 0;
 };
 
-
 pointers : fn () {
   data s32;
   ptr *s32 := &data;
@@ -131,6 +130,9 @@ structs : fn () {
 
   foo Foo;
   local Local;
+
+  //foo.i = 0;
+  //foo.j = 0;
 };
 
 Foo : struct {
@@ -146,7 +148,6 @@ Bar : struct {
 
 
 
-
 lambdas : fn () {
   hello : fn () {
     puts("hello!!!");
@@ -159,6 +160,7 @@ lambdas : fn () {
   lambda := &hello;
   lambda();
 
-  lambda = &bye; // TODO: does not override pointer
+  lambda = &bye;
   lambda();
 };
+

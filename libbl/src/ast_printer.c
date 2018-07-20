@@ -88,6 +88,9 @@ static void
 print_expr_sizeof(bl_node_t *node, int pad);
 
 static void
+print_expr_member(bl_node_t *node, int pad);
+
+static void
 print_expr_unary(bl_node_t *node, int pad);
 
 static void
@@ -151,6 +154,14 @@ print_expr_sizeof(bl_node_t *node, int pad)
   print_head("sizeof", node->src, node, pad);
   bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
   print_type(_sizeof->in);
+}
+
+void
+print_expr_member(bl_node_t *node, int pad)
+{
+  print_head("member", node->src, node, pad);
+  bl_node_expr_member_t *_member = bl_peek_expr_member(node);
+  print_node(_member->next, pad + 1);
 }
 
 void
@@ -452,6 +463,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_EXPR_UNARY:
     print_expr_unary(node, pad);
+    break;
+  case BL_NODE_EXPR_MEMBER:
+    print_expr_member(node, pad);
     break;
   case BL_NODE_STMT_BREAK:
     print_break(node, pad);

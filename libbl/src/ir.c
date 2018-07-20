@@ -475,9 +475,9 @@ ir_ident(context_t *cnt, bl_node_t *ident)
   bl_node_ident_t *_ident = bl_peek_ident(ident);
   assert(_ident->ref);
 
-  if (bl_node_is(bl_ast_get_type(ident), BL_NODE_TYPE_FN))
+  result = llvm_values_get(cnt, _ident->ref);
+  if (!result && bl_node_is(bl_ast_get_type(ident), BL_NODE_TYPE_FN))
     result = ir_fn_get(cnt, bl_ast_unroll_ident(ident));
-  if (!result) result = llvm_values_get(cnt, _ident->ref);
   if (!result) result = ir_global_get(cnt, _ident->ref);
 
   assert(result);
@@ -499,7 +499,7 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
       rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
     }
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
-    return NULL;
+    return lhs;
   }
 
   if (should_load(_binop->rhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
@@ -796,7 +796,11 @@ ir_global_get(context_t *cnt, bl_node_t *global)
 LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl)
 {
-  if (!cnt->is_gscope) return NULL;
+  if (!cnt->is_gscope) {
+    bl_assembly_add_into_ir(cnt->assembly, decl);
+    return NULL;
+  }
+
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
 
   LLVMValueRef      result = ir_fn_get(cnt, decl);
@@ -885,10 +889,8 @@ ir_decl(context_t *cnt, bl_node_t *decl)
       return ir_decl_fn(cnt, decl);
     case BL_NODE_TYPE_FUND:
       return ir_decl_immut(cnt, decl);
-      break;
     case BL_NODE_TYPE_STRUCT:
       return NULL;
-      break;
     default:
       bl_abort("invalid type");
     }
@@ -1043,6 +1045,7 @@ generate(context_t *cnt)
 
     _decl = bl_peek_decl_value(decl);
     // if (!_decl->used) continue;
+    if (_decl->flags & BL_FLAG_EXTERN) continue;
 
     cnt->llvm_module =
         LLVMModuleCreateWithNameInContext(bl_peek_ident(_decl->name)->str, cnt->llvm_cnt);
