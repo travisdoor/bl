@@ -102,6 +102,9 @@ static LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
+ir_expr_member(context_t *cnt, bl_node_t *member);
+
+static LLVMValueRef
 ir_expr_null(context_t *cnt, bl_node_t *nl);
 
 static LLVMValueRef
@@ -174,7 +177,8 @@ should_load(bl_node_t *node, LLVMValueRef llvm_value)
 {
   return (bl_node_is(node, BL_NODE_EXPR_UNARY) &&
           bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK) ||
-         LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value);
+         bl_node_is(node, BL_NODE_EXPR_MEMBER) || LLVMIsAAllocaInst(llvm_value) ||
+         LLVMIsAGlobalVariable(llvm_value);
 }
 
 LLVMTypeRef
@@ -261,6 +265,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   case BL_NODE_TYPE_STRUCT: {
     bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
+    ptr                                 = _struct_type->ptr;
 
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
 
@@ -274,9 +279,24 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
     }
 
-    /* IDEA: use named structure types instead? Maybe anonymous structure type declaration can
-     * affect effectivity of IR optimizations? */
-    result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
+    if (_struct_type->base_decl) {
+      result = llvm_values_get(cnt, type);
+      if (!result) {
+        bl_node_decl_value_t *_base_decl = bl_peek_decl_value(_struct_type->base_decl);
+        assert(_base_decl->value);
+        const char *name = bl_peek_ident(_base_decl->name)->str;
+        assert(name);
+
+        /* create new one named structure */
+        result = LLVMStructCreateNamed(cnt->llvm_cnt, name);
+        llvm_values_insert(cnt, type, result);
+
+        LLVMStructSetBody(result, llvm_member_types, i, false);
+      }
+    } else {
+      /* anonymous structure type */
+      result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
+    }
     bl_free(llvm_member_types);
     break;
   }
@@ -393,6 +413,22 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, "");
   bl_free(llvm_args);
   return result;
+}
+
+LLVMValueRef
+ir_expr_member(context_t *cnt, bl_node_t *member)
+{
+  bl_node_expr_member_t *_member      = bl_peek_expr_member(member);
+  bl_node_ident_t *      _ident       = bl_peek_ident(_member->ident);
+  bl_node_decl_value_t * _decl_member = bl_peek_decl_value(_ident->ref);
+
+  LLVMValueRef ptr = ir_expr(cnt, _member->next);
+
+  if (_member->ptr_ref) ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
+
+  ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_decl_member->order,
+                           gname(_ident->str));
+  return ptr;
 }
 
 LLVMValueRef
@@ -660,6 +696,9 @@ ir_expr(context_t *cnt, bl_node_t *expr)
     break;
   case BL_NODE_EXPR_CALL:
     result = ir_expr_call(cnt, expr);
+    break;
+  case BL_NODE_EXPR_MEMBER:
+    result = ir_expr_member(cnt, expr);
     break;
   case BL_NODE_EXPR_CAST:
     result = ir_expr_cast(cnt, expr);

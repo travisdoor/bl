@@ -145,6 +145,9 @@ static bool
 check_expr_sizeof(context_t *cnt, bl_node_t *szof);
 
 static bool
+check_expr_member(context_t *cnt, bl_node_t *member);
+
+static bool
 check_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 
 static bool
@@ -342,7 +345,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
 
     {
-      /* store declaration for temporary use here, this scope is used unly for searching truely
+      /* store declaration for temporary use here, this scope is used only for searching truly
        * undefined symbols later */
       const bool is_in_gscope =
           bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
@@ -418,6 +421,12 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     bl_node_stmt_loop_t *_loop = bl_peek_stmt_loop(node);
     flatten(_loop->test);
     flatten(_loop->true_stmt);
+    break;
+  }
+
+  case BL_NODE_EXPR_MEMBER: {
+    bl_node_expr_member_t *_member = bl_peek_expr_member(node);
+    flatten(_member->next);
     break;
   }
 
@@ -621,7 +630,7 @@ check_node(context_t *cnt, bl_node_t *node)
   /*
   bl_log("check %s (%d): %d",
          bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
-         node->_serial, node->src->line);
+         node->_serial, node->src ? node->src->line : 0);
   */
 
   switch (bl_node_code(node)) {
@@ -645,6 +654,9 @@ check_node(context_t *cnt, bl_node_t *node)
 
   case BL_NODE_EXPR_SIZEOF:
     return check_expr_sizeof(cnt, node);
+
+  case BL_NODE_EXPR_MEMBER:
+    return check_expr_member(cnt, node);
 
   case BL_NODE_STMT_IF:
     return check_stmt_if(cnt, node);
@@ -720,7 +732,8 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
 
   if (_binop->op == BL_SYM_ASSIGN) {
     if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT) &&
-        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY)) {
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
                        "left-hand side of assignment does not refer to any declaration and "
@@ -728,7 +741,8 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
       FINISH;
     }
 
-    if (bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY)) {
+    if (bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
       assert(bl_node_is(_lhs->ref, BL_NODE_DECL_VALUE));
@@ -776,6 +790,45 @@ check_expr_sizeof(context_t *cnt, bl_node_t *szof)
 }
 
 bool
+check_expr_member(context_t *cnt, bl_node_t *member)
+{
+  bl_node_expr_member_t *_member = bl_peek_expr_member(member);
+  assert(_member->next);
+  assert(_member->ident);
+
+  bl_node_t *lhs_type = bl_ast_get_type(_member->next);
+  if (!lhs_type) FINISH;
+
+  if (bl_node_is_not(lhs_type, BL_NODE_TYPE_STRUCT)) {
+    check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
+                     "expected structure");
+  }
+
+  bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
+  /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
+  assert(_lhs_type->base_decl);
+
+  bl_node_t *found =
+      _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+  if (!found) {
+    check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
+                     "unknown structure member");
+    FINISH;
+  }
+
+  if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
+    check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
+                     "invalid member access, use %s",
+                     _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+  }
+
+  _member->type                      = bl_ast_get_type(found);
+  bl_peek_ident(_member->ident)->ref = found;
+
+  FINISH;
+}
+
+bool
 check_stmt_if(context_t *cnt, bl_node_t *stmt_if)
 {
   bl_node_stmt_if_t *_if = bl_peek_stmt_if(stmt_if);
@@ -806,6 +859,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     }
 
     value_type = bl_ast_get_type(_decl->value);
+    if (bl_node_is(value_type, BL_NODE_TYPE_STRUCT)) {
+      bl_peek_type_struct(value_type)->base_decl = decl;
+    }
   }
 
   if (_decl->type) {
@@ -816,7 +872,14 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                        "invalid type %s", tmp);
     }
 
-    _decl->type = bl_ast_get_type(_decl->type);
+    if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
+      bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
+      _decl->type                  = bl_ast_get_type(_decl->type);
+      _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
+      bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
+    } else {
+      _decl->type = bl_ast_get_type(_decl->type);
+    }
   }
 
   if (value_type && _decl->type) {
@@ -857,7 +920,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
     /* insert into ir queue */
     if (is_in_gscope) {
-      //bl_log("generate %s", bl_peek_ident(_decl->name)->str);
+      // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
       bl_assembly_add_into_ir(cnt->assembly, decl);
     }
 

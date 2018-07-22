@@ -188,12 +188,13 @@ _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
   return (bl_node_t *)_ublock;
 }
 
-_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound)
+_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr)
 {
   bl_node_ident_t *_ident = alloc_node(ast, BL_NODE_IDENT, tok, bl_node_ident_t *);
   _ident->hash            = bo_hash_from_str(tok->value.str);
   _ident->str             = tok->value.str;
   _ident->ref             = ref;
+  _ident->ptr             = ptr;
   _ident->parent_compound = parent_compound;
   return (bl_node_t *)_ident;
 }
@@ -243,7 +244,7 @@ _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope
 }
 
 _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              int flags)
+              int flags, int order)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
   _decl->type                 = type;
@@ -251,6 +252,7 @@ _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bo
   _decl->value                = value;
   _decl->mutable              = mutable;
   _decl->flags                = flags;
+  _decl->order                = order;
   return (bl_node_t *)_decl;
 }
 
@@ -272,12 +274,13 @@ _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type
   return (bl_node_t *)_type_fn;
 }
 
-_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc)
+_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl)
 {
   bl_node_type_struct_t *_type_struct =
       alloc_node(ast, BL_NODE_TYPE_STRUCT, tok, bl_node_type_struct_t *);
-  _type_struct->types  = types;
-  _type_struct->typesc = typesc;
+  _type_struct->types     = types;
+  _type_struct->typesc    = typesc;
+  _type_struct->base_decl = base_decl;
   return (bl_node_t *)_type_struct;
 }
 
@@ -448,9 +451,14 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
   }
 
   case BL_NODE_TYPE_STRUCT: {
-    append_buf(buf, len, "struct {");
     bl_node_type_struct_t *_struct = bl_peek_type_struct(type);
-    bl_node_t *            t       = _struct->types;
+
+    for (int i = 0; i < _struct->ptr; ++i) {
+      append_buf(buf, len, "*");
+    }
+    append_buf(buf, len, "struct {");
+
+    bl_node_t *t = _struct->types;
     while (t) {
       _type_to_string(buf, len, t);
       t = t->next;
@@ -522,6 +530,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_ast_get_type(bl_peek_expr_unary(node)->type);
   case BL_NODE_EXPR_NULL:
     return bl_ast_get_type(bl_peek_expr_null(node)->type);
+  case BL_NODE_EXPR_MEMBER:
+    return bl_ast_get_type(bl_peek_expr_member(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
@@ -759,6 +769,8 @@ bl_ast_type_get_ptr(bl_node_t *type)
     return bl_peek_type_fund(type)->ptr;
   case BL_NODE_TYPE_FN:
     return bl_peek_type_fn(type)->ptr;
+  case BL_NODE_TYPE_STRUCT:
+    return bl_peek_type_struct(type)->ptr;
   default:
     bl_abort("invalid type");
   }
@@ -773,6 +785,9 @@ bl_ast_type_set_ptr(bl_node_t *type, int ptr)
     break;
   case BL_NODE_TYPE_FN:
     bl_peek_type_fn(type)->ptr = ptr;
+    break;
+  case BL_NODE_TYPE_STRUCT:
+    bl_peek_type_struct(type)->ptr = ptr;
     break;
   default:
     bl_abort("invalid type");

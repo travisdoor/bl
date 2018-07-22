@@ -161,6 +161,8 @@ print_expr_member(bl_node_t *node, int pad)
 {
   print_head("member", node->src, node, pad);
   bl_node_expr_member_t *_member = bl_peek_expr_member(node);
+  print_type(_member->type);
+  fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
   print_node(_member->next, pad + 1);
 }
 

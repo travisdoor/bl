@@ -86,7 +86,7 @@ static int
 parse_flags(context_t *cnt, int allowed);
 
 static bl_node_t *
-parse_ident(context_t *cnt);
+parse_ident(context_t *cnt, int ptr);
 
 static bl_node_t *
 parse_block(context_t *cnt);
@@ -108,6 +108,9 @@ parse_type_struct(context_t *cnt, bool named_args);
 
 static bl_node_t *
 parse_unary_expr(context_t *cnt, bl_token_t *op);
+
+static bl_node_t *
+parse_expr_member(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op);
@@ -505,6 +508,23 @@ parse_unary_expr(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
+parse_expr_member(context_t *cnt, bl_token_t *op)
+{
+  if (!op) return NULL;
+  bool is_ptr_ref = bl_token_is(op, BL_SYM_ARROW);
+
+  if (bl_token_is_not(op, BL_SYM_DOT) && !is_ptr_ref) return NULL;
+
+  bl_node_t *ident = parse_ident(cnt, 0);
+  if (!ident) {
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, op, BL_BUILDER_CUR_WORD,
+                "expected structure member name");
+  }
+
+  return bl_ast_expr_member(cnt->ast, op, ident, NULL, NULL, is_ptr_ref);
+}
+
+bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
@@ -515,7 +535,8 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_literal_struct(cnt))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
-  if ((expr = parse_ident(cnt))) return expr;
+  if ((expr = parse_expr_member(cnt, op))) return expr;
+  if ((expr = parse_ident(cnt, 0))) return expr;
   return expr;
 }
 
@@ -537,7 +558,10 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       lookahead = bl_tokens_peek(cnt->tokens);
     }
 
-    if (bl_token_is_binop(op)) {
+    if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
+      bl_peek_expr_member(rhs)->next = lhs;
+      lhs                            = rhs;
+    } else if (bl_token_is_binop(op)) {
       bl_node_t *result_type = NULL;
       bl_node_t *tmp         = lhs;
 
@@ -560,13 +584,13 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
 }
 
 bl_node_t *
-parse_ident(context_t *cnt)
+parse_ident(context_t *cnt, int ptr)
 {
   bl_token_t *tok_ident = bl_tokens_consume_if(cnt->tokens, BL_SYM_IDENT);
   if (!tok_ident) return NULL;
 
   assert(cnt->curr_compound);
-  return bl_ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound);
+  return bl_ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound, ptr);
 }
 
 bl_node_t *
@@ -598,7 +622,7 @@ parse_type(context_t *cnt)
 bl_node_t *
 parse_type_fund(context_t *cnt, int ptr)
 {
-  bl_node_t *type_ident = parse_ident(cnt);
+  bl_node_t *type_ident = parse_ident(cnt, ptr);
   if (!type_ident) return NULL;
   assert(ptr >= 0);
 
@@ -706,6 +730,7 @@ next:
         *type = bl_ast_bad(cnt->ast, NULL);
       }
 
+      _member_decl->order = typesc;
       _member_decl->used = 1;
     }
     type = &(*type)->next;
@@ -729,7 +754,7 @@ next:
     return bl_ast_bad(cnt->ast, tok_struct);
   }
 
-  return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc);
+  return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL);
 }
 
 bl_node_t *
@@ -754,7 +779,7 @@ parse_decl_value(context_t *cnt)
     return NULL;
   }
 
-  bl_node_t *ident = parse_ident(cnt);
+  bl_node_t *ident = parse_ident(cnt, 0);
   if (!ident) return NULL;
 
   if (bl_ast_is_buildin_type(ident) != -1) {
@@ -833,7 +858,7 @@ parse_decl_value(context_t *cnt)
     }
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, flags);
+  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, flags, 0);
 }
 
 bl_node_t *
@@ -842,7 +867,7 @@ parse_expr_call(context_t *cnt)
   if (!bl_tokens_is_seq(cnt->tokens, 2, BL_SYM_IDENT, BL_SYM_LPAREN)) return NULL;
 
   bl_token_t *tok_id = bl_tokens_peek(cnt->tokens);
-  bl_node_t * ident  = parse_ident(cnt);
+  bl_node_t * ident  = parse_ident(cnt, 0);
   bl_token_t *tok    = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_LPAREN) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
