@@ -110,6 +110,9 @@ static bl_node_t *
 parse_type_struct(context_t *cnt, bool named_args);
 
 static bl_node_t *
+parse_type_enum(context_t *cnt);
+
+static bl_node_t *
 parse_unary_expr(context_t *cnt, bl_token_t *op);
 
 static bl_node_t *
@@ -645,6 +648,7 @@ parse_type(context_t *cnt)
 
   if ((type = parse_type_fn(cnt, false, ptr))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
+  if ((type = parse_type_enum(cnt, true))) return type;
   if ((type = parse_type_fund(cnt, ptr))) return type;
   return type;
 }
@@ -785,6 +789,33 @@ next:
   }
 
   return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL);
+}
+
+bl_node_t *
+parse_type_enum(context_t *cnt)
+{
+  bl_token_t *tok_enum = bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM);
+  if (!tok_enum) return NULL;
+
+  bl_node_t *type = parse_type(cnt);
+  if (!type) {
+    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_enum, BL_BUILDER_CUR_AFTER,
+                "expected enum base type");
+    return bl_ast_bad(cnt->ast, tok_enum);
+  }
+
+  if (bl_node_is_not(type, BL_NODE_TYPE_FUND)) {
+    parse_error_node(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
+                "enum base type must be integer type");
+    return bl_ast_bad(cnt->ast, tok_enum);
+  }
+
+  switch (bl_peek_type_fund(type)->code) {
+  }
+    parse_error_node(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
+                "enum base type must be integer type");
+    return bl_ast_bad(cnt->ast, tok_enum);
+  }
 }
 
 bl_node_t *

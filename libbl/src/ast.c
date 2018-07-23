@@ -291,6 +291,13 @@ _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl)
   return (bl_node_t *)_type_struct;
 }
 
+_BL_AST_NCTOR(type_enum, bl_node_t *base_decl)
+{
+  bl_node_type_enum_t *_type_enum = alloc_node(ast, BL_NODE_TYPE_ENUM, tok, bl_node_type_enum_t *);
+  _type_enum->base_decl           = base_decl;
+  return (bl_node_t *)_type_enum;
+}
+
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
               bl_scope_t *scope)
 {
@@ -310,6 +317,17 @@ _BL_AST_NCTOR(lit_struct, bl_node_t *type, bl_node_t *parent_compound, bl_scope_
   _lit_struct->parent_compound = parent_compound;
   _lit_struct->scope           = scope;
   return (bl_node_t *)_lit_struct;
+}
+
+_BL_AST_NCTOR(lit_enum, bl_node_t *type, bl_node_t *variants, bl_node_t *parent_compound,
+              bl_scope_t *scope)
+{
+  bl_node_lit_enum_t *_lit_enum = alloc_node(ast, BL_NODE_LIT_ENUM, tok, bl_node_lit_enum_t *);
+  _lit_enum->type               = type;
+  _lit_enum->parent_compound    = parent_compound;
+  _lit_enum->scope              = scope;
+  _lit_enum->variants           = variants;
+  return (bl_node_t *)_lit_enum;
 }
 
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value)
