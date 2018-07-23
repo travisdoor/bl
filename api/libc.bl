@@ -33,3 +33,5 @@ malloc 	fn (size_t) *void : extern;
 free 	fn (*void) : extern;
 calloc 	fn (size_t, size_t) *void : extern;
 realloc fn (*void, size_t) *void : extern;
+
+abort 	fn () : extern;
