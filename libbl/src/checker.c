@@ -859,7 +859,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     }
 
     value_type = bl_ast_get_type(_decl->value);
-    if (bl_node_is(value_type, BL_NODE_TYPE_STRUCT)) {
+    if (bl_node_is(_decl->value, BL_NODE_LIT_STRUCT)) {
       bl_peek_type_struct(value_type)->base_decl = decl;
     }
   }
