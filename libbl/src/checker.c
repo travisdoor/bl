@@ -484,6 +484,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
   case BL_NODE_IDENT:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LIT:
+  case BL_NODE_LOAD:
     break;
   default:
     bl_warning("missing flattening for node %s", bl_node_name(node));
@@ -672,6 +673,7 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_TYPE_FN:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FUND:
+  case BL_NODE_LOAD:
     break;
 
   default:

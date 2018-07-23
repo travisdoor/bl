@@ -79,6 +79,9 @@ insert_node(bl_node_t ***node, bl_node_t *prev)
 }
 
 /* fw decls */
+static bl_node_t *
+parse_load(context_t *cnt);
+
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
 
@@ -120,6 +123,9 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence);
 
 static inline bl_node_t *
 parse_expr(context_t *cnt);
+
+static bl_node_t *
+parse_expr_nested(context_t *cnt);
 
 static bl_node_t *
 parse_expr_call(context_t *cnt);
@@ -508,6 +514,29 @@ parse_unary_expr(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
+parse_expr_nested(context_t *cnt)
+{
+  bl_node_t * expr      = NULL;
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LPAREN);
+  if (!tok_begin) return NULL;
+
+  expr = parse_expr(cnt);
+  if (expr == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_begin, BL_BUILDER_CUR_WORD, "expected expression.");
+  }
+
+  /* eat ) */
+  bl_token_t *tok_end = bl_tokens_consume(cnt->tokens);
+  if (tok_end->sym != BL_SYM_RPAREN) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end, BL_BUILDER_CUR_WORD,
+                "unterminated sub-expression, missing " BL_YELLOW("')'") ", started %d:%d",
+                tok_begin->src.line, tok_begin->src.col);
+  }
+
+  return expr;
+}
+
+bl_node_t *
 parse_expr_member(context_t *cnt, bl_token_t *op)
 {
   if (!op) return NULL;
@@ -528,6 +557,7 @@ bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
+  if ((expr = parse_expr_nested(cnt))) return expr;
   if ((expr = parse_expr_null(cnt))) return expr;
   if ((expr = parse_expr_sizeof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
@@ -731,7 +761,7 @@ next:
       }
 
       _member_decl->order = typesc;
-      _member_decl->used = 1;
+      _member_decl->used  = 1;
     }
     type = &(*type)->next;
     ++typesc;
@@ -894,14 +924,16 @@ arg:
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
                 "expected function argument after comma ','");
-    // return bl_ast_bad(cnt->ast, tok_id);
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
+    return bl_ast_bad(cnt->ast, tok_id);
   }
 
   tok = bl_tokens_consume(cnt->tokens);
   if (tok->sym != BL_SYM_RPAREN) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                 "expected end of parameter list ')' or another parameter separated by comma");
-    // return bl_ast_bad(cnt->ast, tok_id);
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
+    return bl_ast_bad(cnt->ast, tok_id);
   }
 
   return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL);
@@ -936,6 +968,28 @@ next:
   }
 
   return flags;
+}
+
+bl_node_t *
+parse_load(context_t *cnt)
+{
+  bl_token_t *tok_id = bl_tokens_consume_if(cnt->tokens, BL_SYM_LOAD);
+  if (!tok_id) return NULL;
+
+  bl_token_t *tok_path = bl_tokens_consume(cnt->tokens);
+  if (!bl_token_is(tok_path, BL_SYM_STRING)) {
+    parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path, BL_BUILDER_CUR_WORD,
+                "expected path string after load preprocessor directive");
+  }
+
+  const char *filepath = tok_path->value.str;
+
+  bl_unit_t *unit = bl_unit_new_file(filepath);
+  if (!bl_assembly_add_unit_unique(cnt->assembly, unit)) {
+    bl_unit_delete(unit);
+  }
+
+  return bl_ast_load(cnt->ast, tok_id, filepath);
 }
 
 bl_node_t *
@@ -1007,6 +1061,11 @@ next:
     goto next;
   }
 
+  if ((*node = parse_load(cnt))) {
+    prev = insert_node(&node, prev);
+    goto next;
+  }
+
   tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
   if (!tok) {
     tok = bl_tokens_peek_prev(cnt->tokens);
@@ -1027,13 +1086,18 @@ parse_ublock_content(context_t *cnt, bl_node_t *ublock)
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
   bl_node_t *            prev    = NULL;
   bl_node_t **           node    = &_ublock->nodes;
-decl:
+next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl_value(cnt))) {
     prev = insert_node(&node, prev);
     parse_semicolon_rq(cnt);
-    goto decl;
+    goto next;
+  }
+
+  if ((*node = parse_load(cnt))) {
+    prev = insert_node(&node, prev);
+    goto next;
   }
 
   bl_token_t *tok = bl_tokens_peek(cnt->tokens);

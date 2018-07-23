@@ -85,6 +85,9 @@ static void
 print_node(bl_node_t *node, int pad);
 
 static void
+print_load(bl_node_t *node, int pad);
+
+static void
 print_expr_sizeof(bl_node_t *node, int pad);
 
 static void
@@ -164,6 +167,14 @@ print_expr_member(bl_node_t *node, int pad)
   print_type(_member->type);
   fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
   print_node(_member->next, pad + 1);
+}
+
+void
+print_load(bl_node_t *node, int pad)
+{
+  print_head("load", node->src, node, pad);
+  bl_node_load_t *_load = bl_peek_load(node);
+  fprintf(stdout, "'%s'", _load->filepath);
 }
 
 void
@@ -474,6 +485,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_STMT_CONTINUE:
     print_continue(node, pad);
+    break;
+  case BL_NODE_LOAD:
+    print_load(node, pad);
     break;
   default:
     bl_warning("missing print of node type %s", bl_node_name(node));

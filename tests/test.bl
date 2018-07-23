@@ -1,7 +1,6 @@
 /* testing playground */
 
-printf fn (string, s32) s32 : extern;
-puts fn (string) s32 : extern;
+#load "libc.bl"
 
 main : fn () s32 {
   pointers();
@@ -142,10 +141,12 @@ structs : fn () {
   printf("local.bar.i = %d\n", local.bar.i);
   printf("local.bar.j = %d\n", local.bar.j);
 
-  // not working
   foo_ptr := &foo;
   printf("foo_ptr->i = %d\n", foo_ptr->i);
   printf("foo_ptr->j = %d\n", foo_ptr->j);
+
+  printf("(*foo_ptr).i = %d\n", (*foo_ptr).i);
+  printf("(*foo_ptr).j = %d\n", (*foo_ptr).j);
 };
 
 Foo : struct {
