@@ -148,6 +148,12 @@ parse_literal_fn(context_t *cnt);
 static bl_node_t *
 parse_literal_struct(context_t *cnt);
 
+static bl_node_t *
+parse_literal_enum(context_t *cnt);
+
+static bl_node_t *
+parse_variant_enum(context_t *cnt);
+
 static inline bool
 parse_semicolon_rq(context_t *cnt);
 
@@ -489,6 +495,69 @@ parse_literal_struct(context_t *cnt)
 }
 
 bl_node_t *
+parse_literal_enum(context_t *cnt)
+{
+  bl_token_t *tok_enum = bl_tokens_peek(cnt->tokens);
+  bl_node_t * type     = parse_type_enum(cnt);
+  if (!type) return NULL;
+
+  bl_node_t *enm = bl_ast_lit_enum(cnt->ast, tok_enum, type, NULL, cnt->curr_compound,
+                                   bl_scope_new(cnt->assembly->scope_cache, 256));
+
+  bl_node_lit_enum_t *_enm = bl_peek_lit_enum(enm);
+
+  bl_node_t *prev_compound = cnt->curr_compound;
+  cnt->curr_compound       = enm;
+
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
+  if (!tok) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD, "expected enm member list");
+    return bl_ast_bad(cnt->ast, tok);
+  }
+
+  /* parse enum varinats */
+  bool        rq      = false;
+  bl_node_t **variant = &_enm->variants;
+
+next:
+  *variant = parse_variant_enum(cnt);
+  if (*variant) {
+    // TODO: set variant type
+    variant = &(*variant)->next;
+
+    if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
+      rq = true;
+      goto next;
+    }
+  } else if (rq) {
+    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
+    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                "expected variant after comma ','");
+    return bl_ast_bad(cnt->ast, tok);
+  }
+
+  tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_RBLOCK) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "expected end of variant list  '}'  or another variant separated by comma");
+    return bl_ast_bad(cnt->ast, tok);
+  }
+
+  cnt->curr_compound = prev_compound;
+  return enm;
+}
+
+bl_node_t *
+parse_variant_enum(context_t *cnt)
+{
+  bl_token_t *tok   = bl_tokens_peek(cnt->tokens);
+  bl_node_t * ident = parse_ident(cnt, 0);
+  if (!ident) return NULL;
+
+  return bl_ast_decl_value(cnt->ast, tok, ident, NULL, NULL, false, 0, 0);
+}
+
+bl_node_t *
 parse_expr(context_t *cnt)
 {
   return _parse_expr(cnt, parse_unary_expr(cnt, NULL), 0);
@@ -566,6 +635,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_expr_cast(cnt))) return expr;
   if ((expr = parse_literal_fn(cnt))) return expr;
   if ((expr = parse_literal_struct(cnt))) return expr;
+  if ((expr = parse_literal_enum(cnt))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_expr_member(cnt, op))) return expr;
@@ -648,7 +718,7 @@ parse_type(context_t *cnt)
 
   if ((type = parse_type_fn(cnt, false, ptr))) return type;
   if ((type = parse_type_struct(cnt, false))) return type;
-  if ((type = parse_type_enum(cnt, true))) return type;
+  if ((type = parse_type_enum(cnt))) return type;
   if ((type = parse_type_fund(cnt, ptr))) return type;
   return type;
 }
@@ -801,21 +871,11 @@ parse_type_enum(context_t *cnt)
   if (!type) {
     parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_enum, BL_BUILDER_CUR_AFTER,
                 "expected enum base type");
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
     return bl_ast_bad(cnt->ast, tok_enum);
   }
 
-  if (bl_node_is_not(type, BL_NODE_TYPE_FUND)) {
-    parse_error_node(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
-                "enum base type must be integer type");
-    return bl_ast_bad(cnt->ast, tok_enum);
-  }
-
-  switch (bl_peek_type_fund(type)->code) {
-  }
-    parse_error_node(cnt, BL_ERR_INVALID_TYPE, type, BL_BUILDER_CUR_WORD,
-                "enum base type must be integer type");
-    return bl_ast_bad(cnt->ast, tok_enum);
-  }
+  return bl_ast_type_enum(cnt->ast, tok_enum, type, NULL);
 }
 
 bl_node_t *

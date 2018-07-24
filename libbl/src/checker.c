@@ -153,6 +153,9 @@ check_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 static bool
 check_stmt_return(context_t *cnt, bl_node_t *ret);
 
+static bool
+check_type_enum(context_t *cnt, bl_node_t *type);
+
 static void
 check_unresolved(context_t *cnt);
 
@@ -478,6 +481,12 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_TYPE_ENUM: {
+    bl_node_type_enum_t *_enum_type = bl_peek_type_enum(node);
+    flatten(_enum_type->type);
+    break;
+  }
+
   case BL_NODE_EXPR_NULL:
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
@@ -665,6 +674,9 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_STMT_RETURN:
     return check_stmt_return(cnt, node);
 
+  case BL_NODE_TYPE_ENUM:
+    return check_type_enum(cnt, node);
+
   case BL_NODE_EXPR_NULL:
   case BL_NODE_LIT:
   case BL_NODE_STMT_BREAK:
@@ -788,6 +800,47 @@ check_expr_sizeof(context_t *cnt, bl_node_t *szof)
 {
   bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(szof);
   _sizeof->in                    = bl_ast_get_type(_sizeof->in);
+  FINISH;
+}
+
+bool
+check_type_enum(context_t *cnt, bl_node_t *type)
+{
+  bl_node_type_enum_t *_type = bl_peek_type_enum(type);
+  assert(_type->type);
+  bl_node_t *tmp = bl_ast_get_type(_type->type);
+
+  if (bl_node_is_not(tmp, BL_NODE_TYPE_FUND)) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+                     "enum base type must be an integer type");
+    FINISH;
+  }
+
+  switch (bl_peek_type_fund(tmp)->code) {
+  case BL_FTYPE_S8:
+  case BL_FTYPE_S16:
+  case BL_FTYPE_S32:
+  case BL_FTYPE_S64:
+  case BL_FTYPE_U8:
+  case BL_FTYPE_U16:
+  case BL_FTYPE_U32:
+  case BL_FTYPE_U64:
+  case BL_FTYPE_SIZE:
+  case BL_FTYPE_CHAR:
+    break;
+  default: {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+                     "enum base type must be an integer type");
+  }
+  }
+
+  if (bl_ast_type_get_ptr(tmp)) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+                     "enum base type cannot be a pointer");
+  }
+
+  _type->type = tmp;
+
   FINISH;
 }
 

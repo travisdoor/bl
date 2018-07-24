@@ -291,10 +291,11 @@ _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl)
   return (bl_node_t *)_type_struct;
 }
 
-_BL_AST_NCTOR(type_enum, bl_node_t *base_decl)
+_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl)
 {
   bl_node_type_enum_t *_type_enum = alloc_node(ast, BL_NODE_TYPE_ENUM, tok, bl_node_type_enum_t *);
   _type_enum->base_decl           = base_decl;
+  _type_enum->type                = type;
   return (bl_node_t *)_type_enum;
 }
 
@@ -493,6 +494,13 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     break;
   }
 
+  case BL_NODE_TYPE_ENUM: {
+    bl_node_type_enum_t *_enum = bl_peek_type_enum(type);
+    append_buf(buf, len, "enum ");
+    _type_to_string(buf, len, _enum->type);
+    break;
+  }
+
   default:
     bl_abort("node is not valid type");
   }
@@ -541,6 +549,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_peek_lit_fn(node)->type;
   case BL_NODE_LIT_STRUCT:
     return bl_peek_lit_struct(node)->type;
+  case BL_NODE_LIT_ENUM:
+    return bl_peek_lit_enum(node)->type;
   case BL_NODE_IDENT:
     return bl_ast_get_type(bl_peek_ident(node)->ref);
   case BL_NODE_EXPR_CALL:
@@ -560,6 +570,7 @@ bl_ast_get_type(bl_node_t *node)
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_ENUM:
     return node;
   default:
     bl_abort("node %s has no type", bl_node_name(node));
@@ -610,6 +621,14 @@ bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
 
   case BL_NODE_TYPE_FUND: {
     if (bl_peek_type_fund(first)->code != bl_peek_type_fund(second)->code) return false;
+    break;
+  }
+
+  case BL_NODE_TYPE_ENUM: {
+    bl_node_type_enum_t *_first  = bl_peek_type_enum(first);
+    bl_node_type_enum_t *_second = bl_peek_type_enum(second);
+    if (bl_peek_type_fund(_first->type)->code != bl_peek_type_fund(_second->type)->code)
+      return false;
     break;
   }
 
@@ -701,6 +720,8 @@ bl_ast_get_type_kind(bl_node_t *type)
     return BL_KIND_FN;
   case BL_NODE_TYPE_STRUCT:
     return BL_KIND_STRUCT;
+  case BL_NODE_TYPE_ENUM:
+    return BL_KIND_ENUM;
   default:
     bl_abort("node %s is not a type", bl_node_code(type));
   }

@@ -197,6 +197,7 @@ typedef enum
   BL_KIND_SIZE,   /* size_t */
   BL_KIND_PTR,    /* pointers */
   BL_KIND_STRUCT, /* structs */
+  BL_KIND_ENUM,   /* enums */
   BL_KIND_FN,     /* function */
   BL_KIND_REAL,   /* f32, f64 */
   BL_KIND_STRING, /* string */
@@ -342,7 +343,7 @@ _BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bo
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl);
-_BL_AST_NCTOR(type_enum, bl_node_t *base_decl);
+_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
               bl_scope_t *scope);
 _BL_AST_NCTOR(lit_struct, bl_node_t *type, bl_node_t *parent_compound, bl_scope_t *scope);

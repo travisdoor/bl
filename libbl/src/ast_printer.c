@@ -133,6 +133,9 @@ static void
 print_lit_struct(bl_node_t *node, int pad);
 
 static void
+print_lit_enum(bl_node_t *node, int pad);
+
+static void
 print_ident(bl_node_t *node, int pad);
 
 static void
@@ -187,6 +190,19 @@ print_lit_struct(bl_node_t *node, int pad)
 
   bl_node_t *tmp;
   bl_node_foreach(_type_struct->types, tmp)
+  {
+    print_node(tmp, pad + 1);
+  }
+}
+
+void
+print_lit_enum(bl_node_t *node, int pad)
+{
+  print_head("enum", node->src, node, pad);
+  bl_node_lit_enum_t *_lit_enum = bl_peek_lit_enum(node);
+
+  bl_node_t *tmp;
+  bl_node_foreach(_lit_enum->variants, tmp)
   {
     print_node(tmp, pad + 1);
   }
@@ -455,6 +471,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_LIT_STRUCT:
     print_lit_struct(node, pad);
+    break;
+  case BL_NODE_LIT_ENUM:
+    print_lit_enum(node, pad);
     break;
   case BL_NODE_BAD:
     print_bad(node, pad);
