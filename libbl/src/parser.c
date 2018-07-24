@@ -522,7 +522,6 @@ parse_literal_enum(context_t *cnt)
 next:
   *variant = parse_variant_enum(cnt);
   if (*variant) {
-    // TODO: set variant type
     variant = &(*variant)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
