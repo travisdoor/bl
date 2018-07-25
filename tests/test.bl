@@ -1,11 +1,189 @@
 /* testing playground */
 
-fn main() i32 {
-  hello() + 10;
+#load "libc.bl"
+
+main : fn () s32 {
+  pointers();
+  ifs();
+  loops();
+  local_fn();
+  globals();
+  constants();
+  lambdas();
+  structs();
+  //enums();
+
   return 0;
-}
+};
 
-fn hello() {
-}
+pointers : fn () {
+  data s32;
+  ptr *s32 := &data;
+  ptr = &data;
 
-// main, i32, block, +, hello, 10, return, 0, hello, block
+  if ptr == null {
+    puts("ptr is null\n");
+  } else {
+    puts("ptr is not null\n");
+  }
+
+  *ptr = 666;
+
+  printf("*ptr = %d\n", *ptr); // implement should load in ir
+  printf("data = %d\n", data);
+};
+
+
+
+ifs : fn () {
+  a := true;
+  if a {
+    puts("ok");
+    if !a {
+      puts("INVALID");
+    } else {
+      puts("ok");
+    }
+  } else {
+    puts("INVALID");
+  }
+};
+
+
+
+loops : fn () {
+  i := 0;
+  loop {
+    if i > 9 { break; }
+    printf("i = %d, ", i);
+    i = i + 1;
+    continue;
+  }
+  puts("done");
+
+  i = 0;
+  while i < 10 {
+    printf("i = %d, ", i);
+    i = i + 1;
+    continue;
+  }
+  puts("done");
+};
+
+
+
+local_fn : fn () {
+  add : fn (a s32, b s32) s32 {
+    return a + b; 
+  };
+
+  result := add(10, 20);
+  printf("result = %d\n", result);
+};
+
+
+
+
+_global1 := 10;
+_global2 := 10 + 15;
+
+globals : fn () {
+  printf("_global1 = %d\n", _global1);
+  printf("_global2 = %d\n", _global2);
+
+  _global1 = 100;
+
+  _globals();
+};
+
+_globals : fn () {
+  printf("_global1 = %d\n", _global1);
+  printf("_global2 = %d\n", _global2);
+};
+
+
+
+constants : fn () {
+  A : 666;
+  B : A;
+  C : B;
+
+  True : true;
+
+  if True {
+    printf("A = %d\n", A);
+    printf("B = %d\n", B);
+    printf("C = %d\n", C);
+  } else {
+    puts("INVALID");
+  }
+};
+
+
+structs : fn () {
+  Local : struct {
+    i s32,
+    bar Bar
+  };
+
+  foo Foo;
+  local Local;
+
+  foo.i = 10;
+  foo.j = 20;
+
+  printf("foo.i = %d\n", foo.i);
+  printf("foo.j = %d\n", foo.j);
+
+  local.i = 666;
+  local.bar.i = 10;
+  local.bar.j = 20;
+  printf("local.i = %d\n", local.i);
+  printf("local.bar.i = %d\n", local.bar.i);
+  printf("local.bar.j = %d\n", local.bar.j);
+
+  foo_ptr := &foo;
+  printf("foo_ptr->i = %d\n", foo_ptr->i);
+  printf("foo_ptr->j = %d\n", foo_ptr->j);
+
+  printf("(*foo_ptr).i = %d\n", (*foo_ptr).i);
+  printf("(*foo_ptr).j = %d\n", (*foo_ptr).j);
+};
+
+Foo : struct {
+  i s32,
+  j s32,
+  bar *Bar 
+};
+
+Bar : struct {
+  i s32,
+  j s32
+};
+
+
+lambdas : fn () {
+  hello : fn () {
+    puts("hello!!!");
+  };
+
+  bye : fn () {
+    puts("bye!!!");
+  };
+
+  lambda := &hello;
+  lambda();
+
+  lambda = &bye;
+  lambda();
+};
+
+/*
+enums : fn () {
+  State : enum s32 {
+    A,
+    B,
+    C
+  };
+};
+*/

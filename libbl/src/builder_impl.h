@@ -40,6 +40,7 @@ typedef struct bl_builder
   void *on_warning_cnt;
   int   total_lines;
   bool  no_warn;
+  int   errorc;
 } bl_builder_t;
 
 typedef enum

@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   llvm_bc_writer.c
+// File:   bc_writer.c
 // Author: Martin Dorazil
 // Date:   14.2.18
 //
@@ -33,8 +33,8 @@
 #include "bl/bldebug.h"
 #include "bl/error.h"
 
-bl_error_e
-bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
+void
+bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   assert(assembly->llvm_module);
 
@@ -48,7 +48,7 @@ bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
   if (f == NULL) {
     bl_builder_error(builder, "cannot open file %s", export_file);
     free(export_file);
-    return BL_ERR_CANNOT_WRITE_BC;
+    return;
   }
   fprintf(f, "%s\n", str);
   fclose(f);
@@ -57,5 +57,4 @@ bl_llvm_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
 
   free(export_file);
-  return BL_NO_ERR;
 }

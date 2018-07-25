@@ -52,7 +52,6 @@
   sm(LOOP,        "loop")\
   sm(RUN,         "#run")\
   sm(FALSE,       "false") \
-  sm(USING,       "using") \
   sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
@@ -61,15 +60,12 @@
   sm(LINK,        "#link") \
   sm(LINE,        "#line") \
   sm(FILE,        "#file") \
-  sm(PUBLIC,      "public")\
   sm(EXTERN,      "extern") \
-  sm(MODULE,      "module") \
-  sm(EXPORT,      "export") \
   sm(RETURN,      "return") \
   sm(STRUCT,      "struct") \
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
-  sm(PATH,        "::") \
+  sm(MDECL,       ":=")	\
   sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \
   sm(LBCOMMENT,   "/*") \
@@ -82,7 +78,7 @@
   sm(RPAREN,      ")") \
   sm(COMMA,       ",")\
   sm(SEMICOLON,   ";") \
-  sm(COLON,       ":") \
+  sm(IMMDECL,     ":") \
   sm(EQ,          "==") /* logical begin */ \
   sm(NEQ,         "!=") \
   sm(GREATER_EQ,  ">=") \
@@ -122,17 +118,20 @@ typedef struct bl_src
   struct bl_unit *unit;
 } bl_src_t;
 
+typedef union
+{
+  const char *       str;
+  char               c;
+  double             d;
+  unsigned long long u;
+} bl_token_value_u;
+
 typedef struct bl_token
 {
-  bl_sym_e sym;
-  bl_src_t src;
-  union
-  {
-    const char *       str;
-    char               c;
-    double             d;
-    unsigned long long u;
-  } value;
+  bl_sym_e         sym;
+  bl_src_t         src;
+  bl_token_value_u value;
+  
 } bl_token_t;
 
 /* is token any known binary operation? */
@@ -142,6 +141,9 @@ bl_token_is_binop(bl_token_t *token);
 bool
 bl_token_is(bl_token_t *token, bl_sym_e sym);
 
+bool
+bl_token_is_not(bl_token_t *token, bl_sym_e sym);
+
 /* is token logical operation which result type should be boolean */
 bool
 bl_token_is_logic_op(bl_token_t *token);
@@ -149,10 +151,7 @@ bl_token_is_logic_op(bl_token_t *token);
 bool
 bl_token_is_unary(bl_token_t *token);
 
-/*
- * Return token precedence or -1 when token is not binary operation, identifier or constant.
- */
 int
-bl_token_prec(bl_token_t *token);
+bl_token_prec(bl_token_t *token, bool unary);
 
 #endif // BL_TOKEN_H

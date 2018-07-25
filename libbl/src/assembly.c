@@ -34,6 +34,7 @@
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
+#define EXPECTED_GSCOPE_SIZE 4096
 
 /* public */
 
@@ -44,10 +45,11 @@ bl_assembly_new(const char *name)
   assembly->name          = strdup(name);
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
+  assembly->ir_queue      = bo_list_new(sizeof(bl_node_t *));
   assembly->link_cache    = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
-  assembly->scope_cache   = bl_scope_cache_new();
-  assembly->utest_methods = bo_array_new(sizeof(bl_node_t *));
-  assembly->func_queue    = bo_list_new(sizeof(bl_node_t *));
+
+  bl_scope_cache_init(&assembly->scope_cache);
+  assembly->gscope = bl_scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
@@ -58,24 +60,27 @@ void
 bl_assembly_delete(bl_assembly_t *assembly)
 {
   free(assembly->name);
-  bl_scope_cache_delete(assembly->scope_cache);
 
-  LLVMDisposeExecutionEngine(assembly->llvm_jit);
-  if (assembly->llvm_runtime_engine)
-    LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
-  else
-    LLVMDisposeModule(assembly->llvm_module);
-  LLVMContextDispose(assembly->llvm_cnt);
-
-  bl_unit_t *  unit;
-  bl_array_foreach(assembly->units, unit){
+  bl_unit_t *unit;
+  bl_barray_foreach(assembly->units, unit)
+  {
     bl_unit_delete(unit);
   }
   bo_unref(assembly->units);
   bo_unref(assembly->unique_cache);
+  bo_unref(assembly->ir_queue);
   bo_unref(assembly->link_cache);
-  bo_unref(assembly->utest_methods);
-  bo_unref(assembly->func_queue);
+
+  bl_scope_cache_terminate(assembly->scope_cache);
+
+  /* LLVM cleanup */
+  /* execution engine owns llvm_module after creation */
+  if (assembly->llvm_runtime_engine)
+    LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
+  else
+    LLVMDisposeModule(assembly->llvm_module);
+
+  LLVMContextDispose(assembly->llvm_cnt);
 
   bl_free(assembly);
 }
@@ -95,8 +100,7 @@ bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
   else
     hash = bo_hash_from_str(unit->name);
 
-  if (bo_htbl_has_key(assembly->unique_cache, hash))
-    return false;
+  if (bo_htbl_has_key(assembly->unique_cache, hash)) return false;
 
   bo_htbl_insert_empty(assembly->unique_cache, hash);
   bl_assembly_add_unit(assembly, unit);
@@ -106,11 +110,9 @@ bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
 void
 bl_assembly_add_link(bl_assembly_ref assembly, const char *lib)
 {
-  if (!lib)
-    return;
+  if (!lib) return;
   uint64_t hash = bo_hash_from_str(lib);
-  if (bo_htbl_has_key(assembly->link_cache, hash))
-    return;
+  if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
   bo_htbl_insert(assembly->link_cache, hash, lib);
 }
@@ -131,4 +133,11 @@ bl_unit_t *
 bl_assembly_get_unit(bl_assembly_t *assembly, int i)
 {
   return bo_array_at(assembly->units, (size_t)i, bl_unit_t *);
+}
+
+void
+bl_assembly_add_into_ir(bl_assembly_t *assembly, bl_node_t *node)
+{
+  assert(node);
+  bo_list_push_back(assembly->ir_queue, node);
 }

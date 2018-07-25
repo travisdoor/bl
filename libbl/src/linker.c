@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   llvm_linker.c
+// File:   linker.c
 // Author: Martin Dorazil
 // Date:   28/02/2018
 //
@@ -33,9 +33,10 @@
 #include "common_impl.h"
 #include "bl/error.h"
 
-bl_error_e
-bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
+void
+bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
+  assert(assembly->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + 3));
   strcpy(filename, assembly->name);
   strcat(filename, ".o");
@@ -52,11 +53,17 @@ bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     bl_msg_error("cannot get target with error: %s", error_msg);
     LLVMDisposeMessage(error_msg);
     bl_free(filename);
-    return BL_ERR_CANNOT_LINK;
+    return;
   }
 
+#if BL_DEBUG
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelNone;
+#else
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
+#endif
+
   LLVMTargetMachineRef target_machine =
-      LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelAggressive,
+      LLVMCreateTargetMachine(target, triple, cpu, features, opt_lvl,
                               LLVMRelocDefault, LLVMCodeModelDefault);
 
   if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
@@ -66,11 +73,9 @@ bl_llvm_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     LLVMDisposeMessage(error_msg);
     LLVMDisposeTargetMachine(target_machine);
     bl_free(filename);
-    return BL_ERR_CANNOT_LINK;
+    return;
   }
 
   LLVMDisposeTargetMachine(target_machine);
   bl_free(filename);
-
-  return BL_NO_ERR;
 }

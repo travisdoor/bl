@@ -1,9 +1,9 @@
 //************************************************************************************************
-// BL - STD 
+// bl
 //
-// File:   std.bl
+// File:   libc.bl
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   7/23/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,6 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/debug.bl"
-#load "std/memory.bl"
-#load "std/random.bl"
+printf	fn (string, s32) s32 : extern;
+puts 	fn (string) s32 : extern;
+
+malloc 	fn (size_t) *void : extern;
+free 	fn (*void) : extern;
+calloc 	fn (size_t, size_t) *void : extern;
+realloc fn (*void, size_t) *void : extern;
+
+abort 	fn () : extern;

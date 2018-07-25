@@ -41,20 +41,22 @@ struct bl_node;
 
 typedef struct bl_assembly
 {
-  BArray *          units;          /* array of all units in assembly */
-  BHashTable *      unique_cache;   /* cache for loading only unique units */
-  BHashTable *      link_cache;     /* all linked externals libraries passed to linker */
-  char *            name;           /* assembly name */
-  LLVMValueRef      llvm_main_func; /* LLVM representation of main function */
-  LLVMModuleRef     llvm_module;    /* main llvm module */
-  LLVMContextRef    llvm_cnt;       /* llvm generation context */
-  bl_scope_cache_t *scope_cache;    /* global scope cache */
-  BArray *          utest_methods; /* LLVMValues to test methods which should run in compile time */
+  BArray *    units;        /* array of all units in assembly */
+  BHashTable *unique_cache; /* cache for loading only unique units */
+  BHashTable *link_cache;   /* all linked externals libraries passed to linker */
+  char *      name;         /* assembly name */
 
-  BList *func_queue; /* queue of functions to be generated created by deps_builder */
+  bl_scope_cache_t *scope_cache;
+  bl_scope_t *      gscope;
+  BList *           ir_queue; /* generated into IR */
 
-  LLVMExecutionEngineRef llvm_runtime_engine; /* LLVM execution engine for runtime module */
-  LLVMExecutionEngineRef llvm_jit;            /* LLVM execution engine for compiletime module */
+  /* LLVM */
+  LLVMContextRef llvm_cnt;
+  LLVMModuleRef  llvm_module;
+  LLVMExecutionEngineRef llvm_runtime_engine;
 } bl_assembly_t;
+
+void
+bl_assembly_add_into_ir(bl_assembly_t *assembly, struct bl_node *node);
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

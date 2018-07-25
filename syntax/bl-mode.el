@@ -15,12 +15,12 @@
 (add-to-list 'auto-mode-alist '("\\.bl\\'" . bl-mode))
 
 (defconst bl-keywords
-  '("const" "mut" "if" "while" "loop" "break" "continue" "else" "extern"
-    "module" "public" "struct" "enum" "fn" "return" "using" "cast" "for" "in")) 
+  '("if" "while" "loop" "break" "continue" "else" "extern" "sizeof"
+    "struct" "enum" "fn" "return" "using" "cast" "for")) 
 
 (defconst bl-types
-  '("i8" "i16" "i32" "i64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "size_t" "void"
-    "char" "string"))
+  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "size_t" "void" 
+    "char" "string" "type_t"))
 
 (defconst bl-constants
   '("true" "false" "null"))
