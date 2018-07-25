@@ -530,6 +530,8 @@ bl_ast_get_scope(bl_node_t *node)
     return bl_peek_lit_fn(node)->scope;
   case BL_NODE_LIT_STRUCT:
     return bl_peek_lit_struct(node)->scope;
+  case BL_NODE_LIT_ENUM:
+    return bl_peek_lit_enum(node)->scope;
 
   default:
     bl_abort("node %s has no scope", bl_node_name(node));

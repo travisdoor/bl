@@ -386,6 +386,17 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
     return;
   }
 
+  case BL_NODE_LIT_ENUM: {
+    bl_node_lit_enum_t *_enum = bl_peek_lit_enum(node);
+    flatten(_enum->type);
+    bl_node_t *variant;
+    bl_node_foreach(_enum->variants, variant)
+    {
+      flatten(variant);
+    }
+    return;
+  }
+
   case BL_NODE_DECL_BLOCK: {
     bl_node_decl_block_t *_block = bl_peek_decl_block(node);
     bl_node_t *           tmp;
@@ -906,7 +917,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   assert(_decl->name);
 
   if (_decl->value) {
-    if (bl_ast_type_cmp(bl_ast_get_type(_decl->value), &bl_ftypes[BL_FTYPE_VOID])) {
+    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->value)) == BL_KIND_VOID) {
       char tmp[256];
       bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->value));
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
@@ -943,6 +954,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
       check_error_invalid_types(cnt, _decl->type, value_type, _decl->value);
     }
   } else if (value_type) {
+    /* infer type from value */
     _decl->type = value_type;
   }
 

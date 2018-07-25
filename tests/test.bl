@@ -3,20 +3,19 @@
 #load "libc.bl"
 
 main : fn () s32 {
-  /*pointers();
+  pointers();
   ifs();
   loops();
   local_fn();
   globals();
   constants();
   lambdas();
-  structs();*/
-  enums();
+  structs();
+  //enums();
 
   return 0;
 };
 
-/*
 pointers : fn () {
   data s32;
   ptr *s32 := &data;
@@ -178,17 +177,13 @@ lambdas : fn () {
   lambda = &bye;
   lambda();
 };
-*/
 
-
+/*
 enums : fn () {
   State : enum s32 {
     A,
     B,
     C
   };
-
-  /*State.A; 
-  State.B;
-  State.C;*/
 };
+*/
