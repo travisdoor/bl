@@ -974,12 +974,20 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     break;
   }
 
-  case BL_DECL_KIND_FIELD:
+  case BL_DECL_KIND_FIELD: {
+    assert(_decl->mutable);
+    break;
+  }
+
+  case BL_DECL_KIND_CONSTANT: {
+    assert(!_decl->mutable);
+    break;
+  }
+
   case BL_DECL_KIND_FN:
   case BL_DECL_KIND_ARG:
   case BL_DECL_KIND_ENUM:
   case BL_DECL_KIND_VARIANT:
-  case BL_DECL_KIND_CONSTANT:
     break;
   case BL_DECL_KIND_TYPE:
     bl_abort("unimplemented");
