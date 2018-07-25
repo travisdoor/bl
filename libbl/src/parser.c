@@ -829,9 +829,9 @@ next:
     /* validate argument */
     if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
-      _member_decl->order = typesc;
-      _member_decl->used  = 1;
-      _member_decl->kind  = BL_DECL_KIND_MEMBER;
+      _member_decl->order                = typesc;
+      _member_decl->used                 = 1;
+      _member_decl->kind                 = BL_DECL_KIND_MEMBER;
     }
     type = &(*type)->next;
     ++typesc;
@@ -990,7 +990,7 @@ parse_decl_value(context_t *cnt)
       kind = BL_DECL_KIND_STRUCT;
       break;
     default:
-      kind = BL_DECL_KIND_FIELD;
+      kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
       break;
     }
   } else {
