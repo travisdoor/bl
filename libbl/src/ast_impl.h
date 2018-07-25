@@ -209,6 +209,19 @@ typedef enum
 
 typedef enum
 {
+  BL_DECL_KIND_FIELD = 0, /* foo s32; foo := 0; */
+  BL_DECL_KIND_FN,        /* foo : fn () {} */
+  BL_DECL_KIND_STRUCT,    /* foo : struct {} */
+  BL_DECL_KIND_MEMBER,    /* structure member */
+  BL_DECL_KIND_ARG,       /* function argument */
+  BL_DECL_KIND_ENUM,      /* foo : enum {} */
+  BL_DECL_KIND_VARIANT,   /* enum variant */
+  BL_DECL_KIND_CONSTANT,  /* foo : 10; foo : bar; */
+  BL_DECL_KIND_TYPE,      /* foo : s32; foo : bar; */
+} bl_decl_kind_e;
+
+typedef enum
+{
   BL_FLAG_EXTERN = 1 << 0,
   BL_FLAG_MAIN   = 1 << 1
 } bl_node_flag_e;
