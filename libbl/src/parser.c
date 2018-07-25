@@ -553,7 +553,7 @@ parse_variant_enum(context_t *cnt)
   bl_node_t * ident = parse_ident(cnt, 0);
   if (!ident) return NULL;
 
-  return bl_ast_decl_value(cnt->ast, tok, ident, NULL, NULL, false, 0, 0);
+  return bl_ast_decl_value(cnt->ast, tok, BL_DECL_KIND_VARIANT, ident, NULL, NULL, false, 0, 0);
 }
 
 bl_node_t *
@@ -770,7 +770,9 @@ next:
     /* validate argument */
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
+      _arg_decl->kind                 = BL_DECL_KIND_ARG;
       if (_arg_decl->value) {
+        // TODO: move to checker
         parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
                          "function arguments cannot have value binding");
         *arg_type = bl_ast_bad(cnt->ast, NULL);
@@ -827,14 +829,9 @@ next:
     /* validate argument */
     if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
-      if (_member_decl->value) {
-        parse_error_node(cnt, BL_ERR_INVALID_TYPE, _member_decl->value, BL_BUILDER_CUR_WORD,
-                         "struct member cannot have initialization");
-        *type = bl_ast_bad(cnt->ast, NULL);
-      }
-
       _member_decl->order = typesc;
       _member_decl->used  = 1;
+      _member_decl->kind  = BL_DECL_KIND_MEMBER;
     }
     type = &(*type)->next;
     ++typesc;
@@ -978,7 +975,30 @@ parse_decl_value(context_t *cnt)
     }
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, flags, 0);
+  bl_decl_kind_e kind = BL_DECL_KIND_UNKNOWN;
+  if (flags & BL_FLAG_EXTERN) {
+    kind = BL_DECL_KIND_FN;
+  } else if (value) {
+    switch (bl_node_code(value)) {
+    case BL_NODE_LIT_FN:
+      kind = BL_DECL_KIND_FN;
+      break;
+    case BL_NODE_LIT_ENUM:
+      kind = BL_DECL_KIND_ENUM;
+      break;
+    case BL_NODE_LIT_STRUCT:
+      kind = BL_DECL_KIND_STRUCT;
+      break;
+    default:
+      kind = BL_DECL_KIND_FIELD;
+      break;
+    }
+  } else {
+    kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
+  }
+
+  return bl_ast_decl_value(cnt->ast, tok_assign ? tok_assign : tok_ident, kind, ident, type, value,
+                           mutable, flags, 0);
 }
 
 bl_node_t *

@@ -250,10 +250,11 @@ _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              int flags, int order)
+_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+              bool mutable, int flags, int order)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
+  _decl->kind                 = kind;
   _decl->type                 = type;
   _decl->name                 = name;
   _decl->value                = value;

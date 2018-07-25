@@ -80,6 +80,9 @@ lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 static bl_node_t *
 _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 
+static bool
+infer_type(context_t *cnt, bl_node_t *decl);
+
 static void
 provide(bl_node_t *ident, bl_node_t *provided);
 
@@ -909,81 +912,108 @@ check_stmt_if(context_t *cnt, bl_node_t *stmt_if)
 }
 
 bool
+infer_type(context_t *cnt, bl_node_t *decl)
+{
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  if (!_decl->value) return false;
+  bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
+  assert(inferred_type);
+
+  if (bl_ast_get_type_kind(inferred_type) == BL_KIND_VOID) {
+    char tmp[256];
+    bl_ast_type_to_string(tmp, 256, inferred_type);
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD, "invalid type %s",
+                     tmp);
+  }
+
+  if (_decl->type && !bl_ast_type_cmp(inferred_type, _decl->type) &&
+      !implicit_cast(cnt, &_decl->value, _decl->type)) {
+    check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
+    return false;
+  }
+  /* infer type from value */
+  _decl->type = inferred_type;
+  return true;
+}
+
+bool
 check_decl_value(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
-  bl_node_t *           value_type = NULL;
+  bl_node_decl_value_t *_decl          = bl_peek_decl_value(decl);
+  bool                  lookup_in_tree = true;
 
   assert(_decl->name);
+  infer_type(cnt, decl);
 
-  if (_decl->value) {
-    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->value)) == BL_KIND_VOID) {
-      char tmp[256];
-      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->value));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
-                       "invalid type %s", tmp);
-    }
-
-    value_type = bl_ast_get_type(_decl->value);
-    if (bl_node_is(_decl->value, BL_NODE_LIT_STRUCT)) {
-      bl_peek_type_struct(value_type)->base_decl = decl;
-    }
-  }
-
-  if (_decl->type) {
-    if (bl_ast_type_cmp(bl_ast_get_type(_decl->type), &bl_ftypes[BL_FTYPE_VOID])) {
-      char tmp[256];
-      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->type, BL_BUILDER_CUR_WORD,
-                       "invalid type %s", tmp);
-    }
-
-    if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
-      bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
-      _decl->type                  = bl_ast_get_type(_decl->type);
-      _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
-      bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
-    } else {
-      _decl->type = bl_ast_get_type(_decl->type);
-    }
-  }
-
-  if (value_type && _decl->type) {
-    if (!bl_ast_type_cmp(value_type, _decl->type) &&
-        !implicit_cast(cnt, &_decl->value, _decl->type)) {
-      check_error_invalid_types(cnt, _decl->type, value_type, _decl->value);
-    }
-  } else if (value_type) {
-    /* infer type from value */
-    _decl->type = value_type;
-  }
-
-  const bool is_function    = bl_node_is(_decl->type, BL_NODE_TYPE_FN);
-  const bool is_struct_decl = _decl->value && bl_node_is(_decl->value, BL_NODE_LIT_STRUCT);
-  const bool is_struct_member =
-      bl_node_is(bl_peek_ident(_decl->name)->parent_compound, BL_NODE_LIT_STRUCT);
-  const bool is_in_gscope =
-      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
-
-  if (_decl->flags & BL_FLAG_MAIN && !is_function) {
+  if (_decl->flags & BL_FLAG_MAIN && _decl->kind != BL_DECL_KIND_FN) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, decl, BL_BUILDER_CUR_WORD,
                      "main is expected to be function");
   }
 
-  if (is_struct_decl && _decl->mutable) {
-    check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
-                     "structure declaration cannot be mutable");
+  switch (_decl->kind) {
+  case BL_DECL_KIND_STRUCT: {
+    bl_node_t *value_type                      = bl_ast_get_type(_decl->value);
+    bl_peek_type_struct(value_type)->base_decl = decl;
+
+    if (_decl->mutable) {
+      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
+                       "structure declaration cannot be mutable");
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_MEMBER: {
+    /* Structure members cannot be initialized with default value (foo s32 := 10), when implicit
+     * structure initialization will be implemented in future, mutablility checking will be
+     * required. In this case assignment of any kind will cause error */
+    if (_decl->value) {
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "struct member cannot have value binding");
+    }
+    lookup_in_tree = false;
+    break;
+  }
+
+  case BL_DECL_KIND_FIELD:
+  case BL_DECL_KIND_FN:
+  case BL_DECL_KIND_ARG:
+  case BL_DECL_KIND_ENUM:
+  case BL_DECL_KIND_VARIANT:
+  case BL_DECL_KIND_CONSTANT:
+    break;
+  case BL_DECL_KIND_TYPE:
+    bl_abort("unimplemented");
+  case BL_DECL_KIND_UNKNOWN:
+    bl_abort("unknown declaration kind");
+  }
+
+  if (bl_ast_type_cmp(bl_ast_get_type(_decl->type), &bl_ftypes[BL_FTYPE_VOID])) {
+    char tmp[256];
+    bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->type, BL_BUILDER_CUR_WORD, "invalid type %s",
+                     tmp);
+  }
+
+  if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
+    bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
+    _decl->type                  = bl_ast_get_type(_decl->type);
+    _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
+    bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
+  } else {
+    _decl->type = bl_ast_get_type(_decl->type);
   }
 
   /* provide symbol into scope if there is no conflict */
-
-  bl_node_t *conflict = lookup(_decl->name, NULL, !is_struct_member);
+  bl_node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
     check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
                      "symbol with same name already declared here: %s:%d",
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
     provide(_decl->name, decl);
+
+    const bool is_in_gscope =
+        bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
     /* insert into ir queue */
     if (is_in_gscope) {
