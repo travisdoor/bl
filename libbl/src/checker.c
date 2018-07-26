@@ -984,8 +984,15 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     break;
   }
 
+  case BL_DECL_KIND_ARG: {
+    if (_decl->value) {
+      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, decl, BL_BUILDER_CUR_WORD,
+                       "function arguments cannot have value binding");
+    }
+    break;
+  }
+
   case BL_DECL_KIND_FN:
-  case BL_DECL_KIND_ARG:
   case BL_DECL_KIND_ENUM:
   case BL_DECL_KIND_VARIANT:
     break;

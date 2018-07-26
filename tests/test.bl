@@ -177,9 +177,8 @@ lambdas : fn () {
   lambda = &bye;
   lambda();
 
-  /*
   oko : fn (i s32 := 0) {
-  };*/
+  };
 };
 
 /*

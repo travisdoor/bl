@@ -771,12 +771,6 @@ next:
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
       _arg_decl->kind                 = BL_DECL_KIND_ARG;
-      if (_arg_decl->value) {
-        // TODO: move to checker
-        parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
-                         "function arguments cannot have value binding");
-        *arg_type = bl_ast_bad(cnt->ast, NULL);
-      }
     }
     arg_type = &(*arg_type)->next;
     ++argc_types;
