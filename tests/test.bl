@@ -13,6 +13,10 @@ main : fn () s32 {
   structs();
   //enums();
 
+  gimme : fn () s32 {
+    return 0;
+  };
+
   return 0;
 };
 
@@ -176,9 +180,6 @@ lambdas : fn () {
 
   lambda = &bye;
   lambda();
-
-  oko : fn (i s32 := 0) {
-  };
 };
 
 /*

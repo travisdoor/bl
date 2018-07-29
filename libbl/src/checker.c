@@ -577,12 +577,13 @@ check_expr_call(context_t *cnt, bl_node_t *call)
   bl_node_t *callee = bl_peek_ident(_call->ident)->ref;
   assert(callee);
   bl_node_t *        callee_type  = bl_peek_decl_value(callee)->type;
-  bl_node_type_fn_t *_callee_type = bl_peek_type_fn(callee_type);
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, call, BL_BUILDER_CUR_WORD, "expected function name");
     FINISH;
   }
+
+  bl_node_type_fn_t *_callee_type = bl_peek_type_fn(callee_type);
 
   _call->type = _callee_type->ret_type;
 
@@ -919,13 +920,6 @@ infer_type(context_t *cnt, bl_node_t *decl)
   bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
   assert(inferred_type);
 
-  if (bl_ast_get_type_kind(inferred_type) == BL_KIND_VOID) {
-    char tmp[256];
-    bl_ast_type_to_string(tmp, 256, inferred_type);
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD, "invalid type %s",
-                     tmp);
-  }
-
   if (_decl->type && !bl_ast_type_cmp(inferred_type, _decl->type) &&
       !implicit_cast(cnt, &_decl->value, _decl->type)) {
     check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
@@ -976,11 +970,26 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
 
   case BL_DECL_KIND_FIELD: {
     assert(_decl->mutable);
+
+    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_FN) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                       "invalid type of variable '%s'", tmp);
+    }
     break;
   }
 
   case BL_DECL_KIND_CONSTANT: {
     assert(!_decl->mutable);
+
+    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_FN ||
+        bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_STRUCT) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                       "invalid type of constant '%s'", tmp);
+    }
     break;
   }
 
@@ -995,6 +1004,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   case BL_DECL_KIND_FN:
   case BL_DECL_KIND_ENUM:
   case BL_DECL_KIND_VARIANT:
+    bl_log("check enum variant");
     break;
   case BL_DECL_KIND_TYPE:
     bl_abort("unimplemented");
@@ -1002,11 +1012,13 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     bl_abort("unknown declaration kind");
   }
 
-  if (bl_ast_type_cmp(bl_ast_get_type(_decl->type), &bl_ftypes[BL_FTYPE_VOID])) {
+  assert(_decl->type);
+
+  if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_VOID) {
     char tmp[256];
     bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->type, BL_BUILDER_CUR_WORD, "invalid type %s",
-                     tmp);
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                     "declaration has invalid type '%s'", tmp);
   }
 
   if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {

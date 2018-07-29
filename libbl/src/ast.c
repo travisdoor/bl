@@ -719,12 +719,19 @@ bl_ast_get_type_kind(bl_node_t *type)
     }
     break;
   }
-  case BL_NODE_TYPE_FN:
+
+  case BL_NODE_TYPE_FN: {
+    bl_node_type_fn_t *_fn_type = bl_peek_type_fn(type);
+    if (_fn_type->ptr) return BL_KIND_PTR;
     return BL_KIND_FN;
+  }
+
   case BL_NODE_TYPE_STRUCT:
     return BL_KIND_STRUCT;
+
   case BL_NODE_TYPE_ENUM:
     return BL_KIND_ENUM;
+
   default:
     bl_abort("node %s is not a type", bl_node_code(type));
   }
