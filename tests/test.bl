@@ -11,7 +11,7 @@ main : fn () s32 {
   constants();
   lambdas();
   structs();
-  //enums();
+  enums();
 
   gimme : fn () s32 {
     return 0;
@@ -182,12 +182,12 @@ lambdas : fn () {
   lambda();
 };
 
-/*
 enums : fn () {
   State : enum s32 {
-    A,
-    B,
-    C
+    A : 123,
+    B : 2,
+    C : 3
   };
+
+  State.A;
 };
-*/

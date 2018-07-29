@@ -130,7 +130,7 @@
   }) \
   nt(TYPE_ENUM, type_enum, struct { \
     bl_node_t *base_decl; \
-    bl_node_t *type; \
+    bl_node_t *base_type; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
     bl_node_t  *type; \

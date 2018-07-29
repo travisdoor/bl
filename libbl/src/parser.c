@@ -151,9 +151,6 @@ parse_literal_struct(context_t *cnt);
 static bl_node_t *
 parse_literal_enum(context_t *cnt);
 
-static bl_node_t *
-parse_variant_enum(context_t *cnt);
-
 static inline bool
 parse_semicolon_rq(context_t *cnt);
 
@@ -500,6 +497,7 @@ parse_literal_enum(context_t *cnt)
   bl_token_t *tok_enum = bl_tokens_peek(cnt->tokens);
   bl_node_t * type     = parse_type_enum(cnt);
   if (!type) return NULL;
+  bl_node_type_enum_t *_type = bl_peek_type_enum(type);
 
   bl_node_t *enm = bl_ast_lit_enum(cnt->ast, tok_enum, type, NULL, cnt->curr_compound,
                                    bl_scope_new(cnt->assembly->scope_cache, 256));
@@ -520,8 +518,12 @@ parse_literal_enum(context_t *cnt)
   bl_node_t **variant = &_enm->variants;
 
 next:
-  *variant = parse_variant_enum(cnt);
+  *variant = parse_decl_value(cnt);
   if (*variant) {
+    bl_node_decl_value_t *_variant = bl_peek_decl_value(*variant);
+    _variant->kind                 = BL_DECL_KIND_VARIANT;
+    _variant->type                 = _type->base_type;
+    if (!_variant->value) _variant->mutable = false;
     variant = &(*variant)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
@@ -544,16 +546,6 @@ next:
 
   cnt->curr_compound = prev_compound;
   return enm;
-}
-
-bl_node_t *
-parse_variant_enum(context_t *cnt)
-{
-  bl_token_t *tok   = bl_tokens_peek(cnt->tokens);
-  bl_node_t * ident = parse_ident(cnt, 0);
-  if (!ident) return NULL;
-
-  return bl_ast_decl_value(cnt->ast, tok, BL_DECL_KIND_VARIANT, ident, NULL, NULL, false, 0, 0);
 }
 
 bl_node_t *
@@ -885,6 +877,8 @@ parse_decl_value(context_t *cnt)
   case BL_SYM_ENUM:
   case BL_SYM_IMMDECL:
   case BL_SYM_MDECL:
+  case BL_SYM_COMMA:
+  case BL_SYM_RBLOCK:
     break;
   default:
     return NULL;
@@ -911,12 +905,12 @@ parse_decl_value(context_t *cnt)
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_MDECL);
   if (!tok_assign) tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_IMMDECL);
 
-  if (!type && !tok_assign) {
+  /*if (!type && !tok_assign) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_err, BL_BUILDER_CUR_WORD,
                 "expected binding of declaration to some value when type is not specified");
     return bl_ast_bad(cnt->ast, tok_err);
-  }
+  }*/
 
   bl_node_t *value = NULL;
   if (tok_assign) {

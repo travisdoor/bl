@@ -497,7 +497,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
 
   case BL_NODE_TYPE_ENUM: {
     bl_node_type_enum_t *_enum_type = bl_peek_type_enum(node);
-    flatten(_enum_type->type);
+    flatten(_enum_type->base_type);
     break;
   }
 
@@ -576,7 +576,7 @@ check_expr_call(context_t *cnt, bl_node_t *call)
 
   bl_node_t *callee = bl_peek_ident(_call->ident)->ref;
   assert(callee);
-  bl_node_t *        callee_type  = bl_peek_decl_value(callee)->type;
+  bl_node_t *callee_type = bl_peek_decl_value(callee)->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, call, BL_BUILDER_CUR_WORD, "expected function name");
@@ -822,11 +822,11 @@ bool
 check_type_enum(context_t *cnt, bl_node_t *type)
 {
   bl_node_type_enum_t *_type = bl_peek_type_enum(type);
-  assert(_type->type);
-  bl_node_t *tmp = bl_ast_get_type(_type->type);
+  assert(_type->base_type);
+  bl_node_t *tmp = bl_ast_get_type(_type->base_type);
 
   if (bl_node_is_not(tmp, BL_NODE_TYPE_FUND)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
     FINISH;
   }
@@ -844,17 +844,17 @@ check_type_enum(context_t *cnt, bl_node_t *type)
   case BL_FTYPE_CHAR:
     break;
   default: {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
   }
   }
 
   if (bl_ast_type_get_ptr(tmp)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type cannot be a pointer");
   }
 
-  _type->type = tmp;
+  _type->base_type = tmp;
 
   FINISH;
 }
@@ -863,33 +863,38 @@ bool
 check_expr_member(context_t *cnt, bl_node_t *member)
 {
   bl_node_expr_member_t *_member = bl_peek_expr_member(member);
+  bl_node_t *            found   = NULL;
   assert(_member->next);
   assert(_member->ident);
 
   bl_node_t *lhs_type = bl_ast_get_type(_member->next);
   if (!lhs_type) FINISH;
 
-  if (bl_node_is_not(lhs_type, BL_NODE_TYPE_STRUCT)) {
+  if (bl_node_is(lhs_type, BL_NODE_TYPE_STRUCT)) {
+    /* structure member */
+
+    bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
+    /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
+    assert(_lhs_type->base_decl);
+
+    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    if (!found) {
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
+                       "unknown structure member");
+      FINISH;
+    }
+
+    if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
+      check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
+                       "invalid member access, use %s",
+                       _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+    }
+  } else if (bl_node_is(lhs_type, BL_NODE_TYPE_ENUM)) {
+    /* enum variant */
+    bl_abort("lookup enum variant unimplemented");
+  } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
-                     "expected structure");
-  }
-
-  bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
-  /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
-  assert(_lhs_type->base_decl);
-
-  bl_node_t *found =
-      _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-  if (!found) {
-    check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
-                     "unknown structure member");
-    FINISH;
-  }
-
-  if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
-    check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
-                     "invalid member access, use %s",
-                     _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+                     "expected structure or enum");
   }
 
   _member->type                      = bl_ast_get_type(found);
@@ -1001,10 +1006,16 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     break;
   }
 
+  case BL_DECL_KIND_VARIANT: {
+    if (_decl->mutable) {
+      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
+                       "an enum variant cannot be mutable");
+    }
+    break;
+  }
+
   case BL_DECL_KIND_FN:
   case BL_DECL_KIND_ENUM:
-  case BL_DECL_KIND_VARIANT:
-    bl_log("check enum variant");
     break;
   case BL_DECL_KIND_TYPE:
     bl_abort("unimplemented");

@@ -919,21 +919,29 @@ ir_decl(context_t *cnt, bl_node_t *decl)
   if (is_terminated(cnt)) return NULL;
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
   assert(_decl->type);
+  assert(_decl->name);
 
-  if (_decl->mutable) {
+  switch (_decl->kind) {
+  case BL_DECL_KIND_FIELD:
     return ir_decl_mut(cnt, decl);
-  } else {
-    switch (bl_node_code(_decl->type)) {
-    case BL_NODE_TYPE_FN:
-      return ir_decl_fn(cnt, decl);
-    case BL_NODE_TYPE_FUND:
-      return ir_decl_immut(cnt, decl);
-    case BL_NODE_TYPE_STRUCT:
-      return NULL;
-    default:
-      bl_abort("invalid type");
-    }
+  case BL_DECL_KIND_FN:
+    return ir_decl_fn(cnt, decl);
+  case BL_DECL_KIND_MEMBER:
+    return ir_decl_mut(cnt, decl);
+  case BL_DECL_KIND_ARG:
+    return ir_decl_mut(cnt, decl);
+  case BL_DECL_KIND_CONSTANT:
+    return ir_decl_immut(cnt, decl);
+  case BL_DECL_KIND_STRUCT:
+  case BL_DECL_KIND_ENUM:
+  case BL_DECL_KIND_VARIANT:
+  case BL_DECL_KIND_TYPE:
+    break;
+  default:
+    bl_abort("unknown declaration kind");
   }
+
+  return NULL;
 }
 
 void
