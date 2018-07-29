@@ -151,9 +151,6 @@ parse_literal_struct(context_t *cnt);
 static bl_node_t *
 parse_literal_enum(context_t *cnt);
 
-static bl_node_t *
-parse_variant_enum(context_t *cnt);
-
 static inline bool
 parse_semicolon_rq(context_t *cnt);
 
@@ -500,6 +497,7 @@ parse_literal_enum(context_t *cnt)
   bl_token_t *tok_enum = bl_tokens_peek(cnt->tokens);
   bl_node_t * type     = parse_type_enum(cnt);
   if (!type) return NULL;
+  bl_node_type_enum_t *_type = bl_peek_type_enum(type);
 
   bl_node_t *enm = bl_ast_lit_enum(cnt->ast, tok_enum, type, NULL, cnt->curr_compound,
                                    bl_scope_new(cnt->assembly->scope_cache, 256));
@@ -520,8 +518,12 @@ parse_literal_enum(context_t *cnt)
   bl_node_t **variant = &_enm->variants;
 
 next:
-  *variant = parse_variant_enum(cnt);
+  *variant = parse_decl_value(cnt);
   if (*variant) {
+    bl_node_decl_value_t *_variant = bl_peek_decl_value(*variant);
+    _variant->kind                 = BL_DECL_KIND_VARIANT;
+    _variant->type                 = _type->base_type;
+    if (!_variant->value) _variant->mutable = false;
     variant = &(*variant)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
@@ -544,16 +546,6 @@ next:
 
   cnt->curr_compound = prev_compound;
   return enm;
-}
-
-bl_node_t *
-parse_variant_enum(context_t *cnt)
-{
-  bl_token_t *tok   = bl_tokens_peek(cnt->tokens);
-  bl_node_t * ident = parse_ident(cnt, 0);
-  if (!ident) return NULL;
-
-  return bl_ast_decl_value(cnt->ast, tok, ident, NULL, NULL, false, 0, 0);
 }
 
 bl_node_t *
@@ -770,11 +762,7 @@ next:
     /* validate argument */
     if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
-      if (_arg_decl->value) {
-        parse_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *arg_type, BL_BUILDER_CUR_WORD,
-                         "function arguments cannot have value binding");
-        *arg_type = bl_ast_bad(cnt->ast, NULL);
-      }
+      _arg_decl->kind                 = BL_DECL_KIND_ARG;
     }
     arg_type = &(*arg_type)->next;
     ++argc_types;
@@ -827,14 +815,9 @@ next:
     /* validate argument */
     if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
       bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
-      if (_member_decl->value) {
-        parse_error_node(cnt, BL_ERR_INVALID_TYPE, _member_decl->value, BL_BUILDER_CUR_WORD,
-                         "struct member cannot have initialization");
-        *type = bl_ast_bad(cnt->ast, NULL);
-      }
-
-      _member_decl->order = typesc;
-      _member_decl->used  = 1;
+      _member_decl->order                = typesc;
+      _member_decl->used                 = 1;
+      _member_decl->kind                 = BL_DECL_KIND_MEMBER;
     }
     type = &(*type)->next;
     ++typesc;
@@ -894,6 +877,8 @@ parse_decl_value(context_t *cnt)
   case BL_SYM_ENUM:
   case BL_SYM_IMMDECL:
   case BL_SYM_MDECL:
+  case BL_SYM_COMMA:
+  case BL_SYM_RBLOCK:
     break;
   default:
     return NULL;
@@ -920,12 +905,12 @@ parse_decl_value(context_t *cnt)
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_MDECL);
   if (!tok_assign) tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_IMMDECL);
 
-  if (!type && !tok_assign) {
+  /*if (!type && !tok_assign) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_err, BL_BUILDER_CUR_WORD,
                 "expected binding of declaration to some value when type is not specified");
     return bl_ast_bad(cnt->ast, tok_err);
-  }
+  }*/
 
   bl_node_t *value = NULL;
   if (tok_assign) {
@@ -978,7 +963,30 @@ parse_decl_value(context_t *cnt)
     }
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_ident, ident, type, value, mutable, flags, 0);
+  bl_decl_kind_e kind = BL_DECL_KIND_UNKNOWN;
+  if (flags & BL_FLAG_EXTERN) {
+    kind = BL_DECL_KIND_FN;
+  } else if (value) {
+    switch (bl_node_code(value)) {
+    case BL_NODE_LIT_FN:
+      kind = BL_DECL_KIND_FN;
+      break;
+    case BL_NODE_LIT_ENUM:
+      kind = BL_DECL_KIND_ENUM;
+      break;
+    case BL_NODE_LIT_STRUCT:
+      kind = BL_DECL_KIND_STRUCT;
+      break;
+    default:
+      kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
+      break;
+    }
+  } else {
+    kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
+  }
+
+  return bl_ast_decl_value(cnt->ast, tok_assign ? tok_assign : tok_ident, kind, ident, type, value,
+                           mutable, flags, 0);
 }
 
 bl_node_t *

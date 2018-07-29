@@ -250,10 +250,11 @@ _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              int flags, int order)
+_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+              bool mutable, int flags, int order)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
+  _decl->kind                 = kind;
   _decl->type                 = type;
   _decl->name                 = name;
   _decl->value                = value;
@@ -295,7 +296,7 @@ _BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl)
 {
   bl_node_type_enum_t *_type_enum = alloc_node(ast, BL_NODE_TYPE_ENUM, tok, bl_node_type_enum_t *);
   _type_enum->base_decl           = base_decl;
-  _type_enum->type                = type;
+  _type_enum->base_type                = type;
   return (bl_node_t *)_type_enum;
 }
 
@@ -497,7 +498,7 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
   case BL_NODE_TYPE_ENUM: {
     bl_node_type_enum_t *_enum = bl_peek_type_enum(type);
     append_buf(buf, len, "enum ");
-    _type_to_string(buf, len, _enum->type);
+    _type_to_string(buf, len, _enum->base_type);
     break;
   }
 
@@ -629,7 +630,7 @@ bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
   case BL_NODE_TYPE_ENUM: {
     bl_node_type_enum_t *_first  = bl_peek_type_enum(first);
     bl_node_type_enum_t *_second = bl_peek_type_enum(second);
-    if (bl_peek_type_fund(_first->type)->code != bl_peek_type_fund(_second->type)->code)
+    if (bl_peek_type_fund(_first->base_type)->code != bl_peek_type_fund(_second->base_type)->code)
       return false;
     break;
   }
@@ -718,12 +719,19 @@ bl_ast_get_type_kind(bl_node_t *type)
     }
     break;
   }
-  case BL_NODE_TYPE_FN:
+
+  case BL_NODE_TYPE_FN: {
+    bl_node_type_fn_t *_fn_type = bl_peek_type_fn(type);
+    if (_fn_type->ptr) return BL_KIND_PTR;
     return BL_KIND_FN;
+  }
+
   case BL_NODE_TYPE_STRUCT:
     return BL_KIND_STRUCT;
+
   case BL_NODE_TYPE_ENUM:
     return BL_KIND_ENUM;
+
   default:
     bl_abort("node %s is not a type", bl_node_code(type));
   }
@@ -746,6 +754,8 @@ bl_ast_get_parent_compound(bl_node_t *node)
     return bl_peek_lit_fn(node)->parent_compound;
   case BL_NODE_LIT_STRUCT:
     return bl_peek_lit_struct(node)->parent_compound;
+  case BL_NODE_LIT_ENUM:
+    return bl_peek_lit_enum(node)->parent_compound;
   default:
     bl_abort("node %s has no parent compound", bl_node_name(node));
   }

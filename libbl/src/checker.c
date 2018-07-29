@@ -80,6 +80,9 @@ lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 static bl_node_t *
 _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 
+static bool
+infer_type(context_t *cnt, bl_node_t *decl);
+
 static void
 provide(bl_node_t *ident, bl_node_t *provided);
 
@@ -494,7 +497,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
 
   case BL_NODE_TYPE_ENUM: {
     bl_node_type_enum_t *_enum_type = bl_peek_type_enum(node);
-    flatten(_enum_type->type);
+    flatten(_enum_type->base_type);
     break;
   }
 
@@ -573,13 +576,14 @@ check_expr_call(context_t *cnt, bl_node_t *call)
 
   bl_node_t *callee = bl_peek_ident(_call->ident)->ref;
   assert(callee);
-  bl_node_t *        callee_type  = bl_peek_decl_value(callee)->type;
-  bl_node_type_fn_t *_callee_type = bl_peek_type_fn(callee_type);
+  bl_node_t *callee_type = bl_peek_decl_value(callee)->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, call, BL_BUILDER_CUR_WORD, "expected function name");
     FINISH;
   }
+
+  bl_node_type_fn_t *_callee_type = bl_peek_type_fn(callee_type);
 
   _call->type = _callee_type->ret_type;
 
@@ -818,11 +822,11 @@ bool
 check_type_enum(context_t *cnt, bl_node_t *type)
 {
   bl_node_type_enum_t *_type = bl_peek_type_enum(type);
-  assert(_type->type);
-  bl_node_t *tmp = bl_ast_get_type(_type->type);
+  assert(_type->base_type);
+  bl_node_t *tmp = bl_ast_get_type(_type->base_type);
 
   if (bl_node_is_not(tmp, BL_NODE_TYPE_FUND)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
     FINISH;
   }
@@ -840,17 +844,17 @@ check_type_enum(context_t *cnt, bl_node_t *type)
   case BL_FTYPE_CHAR:
     break;
   default: {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
   }
   }
 
   if (bl_ast_type_get_ptr(tmp)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type cannot be a pointer");
   }
 
-  _type->type = tmp;
+  _type->base_type = tmp;
 
   FINISH;
 }
@@ -859,33 +863,38 @@ bool
 check_expr_member(context_t *cnt, bl_node_t *member)
 {
   bl_node_expr_member_t *_member = bl_peek_expr_member(member);
+  bl_node_t *            found   = NULL;
   assert(_member->next);
   assert(_member->ident);
 
   bl_node_t *lhs_type = bl_ast_get_type(_member->next);
   if (!lhs_type) FINISH;
 
-  if (bl_node_is_not(lhs_type, BL_NODE_TYPE_STRUCT)) {
+  if (bl_node_is(lhs_type, BL_NODE_TYPE_STRUCT)) {
+    /* structure member */
+
+    bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
+    /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
+    assert(_lhs_type->base_decl);
+
+    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    if (!found) {
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
+                       "unknown structure member");
+      FINISH;
+    }
+
+    if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
+      check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
+                       "invalid member access, use %s",
+                       _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+    }
+  } else if (bl_node_is(lhs_type, BL_NODE_TYPE_ENUM)) {
+    /* enum variant */
+    bl_abort("lookup enum variant unimplemented");
+  } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
-                     "expected structure");
-  }
-
-  bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
-  /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
-  assert(_lhs_type->base_decl);
-
-  bl_node_t *found =
-      _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-  if (!found) {
-    check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
-                     "unknown structure member");
-    FINISH;
-  }
-
-  if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
-    check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
-                     "invalid member access, use %s",
-                     _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+                     "expected structure or enum");
   }
 
   _member->type                      = bl_ast_get_type(found);
@@ -909,81 +918,140 @@ check_stmt_if(context_t *cnt, bl_node_t *stmt_if)
 }
 
 bool
+infer_type(context_t *cnt, bl_node_t *decl)
+{
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  if (!_decl->value) return false;
+  bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
+  assert(inferred_type);
+
+  if (_decl->type && !bl_ast_type_cmp(inferred_type, _decl->type) &&
+      !implicit_cast(cnt, &_decl->value, _decl->type)) {
+    check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
+    return false;
+  }
+  /* infer type from value */
+  _decl->type = inferred_type;
+  return true;
+}
+
+bool
 check_decl_value(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl      = bl_peek_decl_value(decl);
-  bl_node_t *           value_type = NULL;
+  bl_node_decl_value_t *_decl          = bl_peek_decl_value(decl);
+  bool                  lookup_in_tree = true;
 
   assert(_decl->name);
+  infer_type(cnt, decl);
 
-  if (_decl->value) {
-    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->value)) == BL_KIND_VOID) {
-      char tmp[256];
-      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->value));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
-                       "invalid type %s", tmp);
-    }
-
-    value_type = bl_ast_get_type(_decl->value);
-    if (bl_node_is(_decl->value, BL_NODE_LIT_STRUCT)) {
-      bl_peek_type_struct(value_type)->base_decl = decl;
-    }
-  }
-
-  if (_decl->type) {
-    if (bl_ast_type_cmp(bl_ast_get_type(_decl->type), &bl_ftypes[BL_FTYPE_VOID])) {
-      char tmp[256];
-      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->type, BL_BUILDER_CUR_WORD,
-                       "invalid type %s", tmp);
-    }
-
-    if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
-      bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
-      _decl->type                  = bl_ast_get_type(_decl->type);
-      _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
-      bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
-    } else {
-      _decl->type = bl_ast_get_type(_decl->type);
-    }
-  }
-
-  if (value_type && _decl->type) {
-    if (!bl_ast_type_cmp(value_type, _decl->type) &&
-        !implicit_cast(cnt, &_decl->value, _decl->type)) {
-      check_error_invalid_types(cnt, _decl->type, value_type, _decl->value);
-    }
-  } else if (value_type) {
-    /* infer type from value */
-    _decl->type = value_type;
-  }
-
-  const bool is_function    = bl_node_is(_decl->type, BL_NODE_TYPE_FN);
-  const bool is_struct_decl = _decl->value && bl_node_is(_decl->value, BL_NODE_LIT_STRUCT);
-  const bool is_struct_member =
-      bl_node_is(bl_peek_ident(_decl->name)->parent_compound, BL_NODE_LIT_STRUCT);
-  const bool is_in_gscope =
-      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
-
-  if (_decl->flags & BL_FLAG_MAIN && !is_function) {
+  if (_decl->flags & BL_FLAG_MAIN && _decl->kind != BL_DECL_KIND_FN) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, decl, BL_BUILDER_CUR_WORD,
                      "main is expected to be function");
   }
 
-  if (is_struct_decl && _decl->mutable) {
-    check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
-                     "structure declaration cannot be mutable");
+  switch (_decl->kind) {
+  case BL_DECL_KIND_STRUCT: {
+    bl_node_t *value_type                      = bl_ast_get_type(_decl->value);
+    bl_peek_type_struct(value_type)->base_decl = decl;
+
+    if (_decl->mutable) {
+      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
+                       "structure declaration cannot be mutable");
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_MEMBER: {
+    /* Structure members cannot be initialized with default value (foo s32 := 10), when implicit
+     * structure initialization will be implemented in future, mutablility checking will be
+     * required. In this case assignment of any kind will cause error */
+    if (_decl->value) {
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "struct member cannot have value binding");
+    }
+    lookup_in_tree = false;
+    break;
+  }
+
+  case BL_DECL_KIND_FIELD: {
+    assert(_decl->mutable);
+
+    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_FN) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                       "invalid type of variable '%s'", tmp);
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_CONSTANT: {
+    assert(!_decl->mutable);
+
+    if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_FN ||
+        bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_STRUCT) {
+      char tmp[256];
+      bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                       "invalid type of constant '%s'", tmp);
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_ARG: {
+    if (_decl->value) {
+      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, decl, BL_BUILDER_CUR_WORD,
+                       "function arguments cannot have value binding");
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_VARIANT: {
+    if (_decl->mutable) {
+      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
+                       "an enum variant cannot be mutable");
+    }
+    break;
+  }
+
+  case BL_DECL_KIND_FN:
+  case BL_DECL_KIND_ENUM:
+    break;
+  case BL_DECL_KIND_TYPE:
+    bl_abort("unimplemented");
+  case BL_DECL_KIND_UNKNOWN:
+    bl_abort("unknown declaration kind");
+  }
+
+  assert(_decl->type);
+
+  if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_VOID) {
+    char tmp[256];
+    bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+                     "declaration has invalid type '%s'", tmp);
+  }
+
+  if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
+    bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
+    _decl->type                  = bl_ast_get_type(_decl->type);
+    _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
+    bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
+  } else {
+    _decl->type = bl_ast_get_type(_decl->type);
   }
 
   /* provide symbol into scope if there is no conflict */
-
-  bl_node_t *conflict = lookup(_decl->name, NULL, !is_struct_member);
+  bl_node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
     check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, decl, BL_BUILDER_CUR_WORD,
                      "symbol with same name already declared here: %s:%d",
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
     provide(_decl->name, decl);
+
+    const bool is_in_gscope =
+        bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
     /* insert into ir queue */
     if (is_in_gscope) {

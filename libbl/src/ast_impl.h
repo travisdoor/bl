@@ -103,13 +103,14 @@
     bl_node_t  *parent_compound; \
   }) \
   nt(DECL_VALUE, decl_value, struct { \
-    bl_node_t    *name; \
-    bl_node_t    *type; \
-    bl_node_t    *value; \
-    bool          mutable; \
-    int           flags; \
-    int           used; \
-    int           order; \
+    bl_decl_kind_e kind; \
+    bl_node_t     *name; \
+    bl_node_t     *type; \
+    bl_node_t     *value; \
+    bool           mutable; \
+    int            flags; \
+    int            used; \
+    int            order; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
@@ -129,7 +130,7 @@
   }) \
   nt(TYPE_ENUM, type_enum, struct { \
     bl_node_t *base_decl; \
-    bl_node_t *type; \
+    bl_node_t *base_type; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
     bl_node_t  *type; \
@@ -206,6 +207,20 @@ typedef enum
   BL_KIND_VOID,   /* void */
   BL_KIND_TYPE,   /* type_t */
 } bl_type_kind_e;
+
+typedef enum
+{
+  BL_DECL_KIND_UNKNOWN  = -1,
+  BL_DECL_KIND_FIELD    = 0, /* foo s32; foo := 0; */
+  BL_DECL_KIND_FN       = 2, /* foo : fn () {} */
+  BL_DECL_KIND_STRUCT   = 3, /* foo : struct {} */
+  BL_DECL_KIND_MEMBER   = 4, /* structure member */
+  BL_DECL_KIND_ARG      = 5, /* function argument */
+  BL_DECL_KIND_ENUM     = 6, /* foo : enum {} */
+  BL_DECL_KIND_VARIANT  = 7, /* enum variant */
+  BL_DECL_KIND_CONSTANT = 8, /* foo : 10; foo : bar; */
+  BL_DECL_KIND_TYPE     = 9, /* foo : s32; foo : bar; */
+} bl_decl_kind_e;
 
 typedef enum
 {
@@ -338,8 +353,8 @@ _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(stmt_break);
 _BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
-_BL_AST_NCTOR(decl_value, bl_node_t *name, bl_node_t *type, bl_node_t *value, bool mutable,
-              int flags, int order);
+_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+              bool mutable, int flags, int order);
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl);
