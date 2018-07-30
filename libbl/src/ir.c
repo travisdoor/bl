@@ -561,13 +561,13 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
     return lhs;
   }
 
-  if (should_load(_binop->rhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
-  if (should_load(_binop->lhs, rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
+  if (should_load(_binop->lhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+  if (should_load(_binop->rhs, rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
-  LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
+  //LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
 
-  assert(lhs_kind == rhs_kind);
+  //assert(lhs_kind == rhs_kind);
   bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
@@ -780,6 +780,9 @@ ir_decl_block(context_t *cnt, bl_node_t *block)
       break;
     case BL_NODE_STMT_RETURN:
       ir_stmt_return(cnt, stmt);
+      break;
+    case BL_NODE_DECL_BLOCK:
+      ir_decl_block(cnt, stmt);
       break;
     default:
       break;

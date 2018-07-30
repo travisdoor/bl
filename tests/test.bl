@@ -1,9 +1,10 @@
 /* testing playground */
 
 #load "libc.bl"
+#load "file.bl"
 
 main : fn () s32 {
-  pointers();
+  /*pointers();
   ifs();
   loops();
   local_fn();
@@ -11,11 +12,13 @@ main : fn () s32 {
   constants();
   lambdas();
   structs();
-  enums();
+  enums();*/
+  files();
 
   return 0;
 };
 
+/*
 pointers : fn () {
   data s32;
   ptr *s32 := &data;
@@ -179,37 +182,52 @@ lambdas : fn () {
 };
 
 enums : fn () {
-  State : enum s32 {
-    A : 123,
-    B : 2,
-    C : 3
-  };
+  {
+    State : enum s32 {
+      A : 123,
+      B : 2,
+      C : 3
+    };
 
-  printf("State.A = %d\n", State.A);
-  printf("State.B = %d\n", State.B);
-  printf("State.C = %d\n", State.C);
+    printf("State.A = %d\n", State.A);
+    printf("State.B = %d\n", State.B);
+    printf("State.C = %d\n", State.C);
+  }
 
-  State2 : enum {
-    A : 123,
-    B : 2,
-    C : 3
-  };
+  {
+    State : enum {
+      A : 123,
+      B : 2,
+      C : 3
+    };
 
-  printf("State2.A = %d\n", State2.A);
-  printf("State2.B = %d\n", State2.B);
-  printf("State2.C = %d\n", State2.C);
+    printf("State.A = %d\n", State.A);
+    printf("State.B = %d\n", State.B);
+    printf("State.C = %d\n", State.C);
+  }
 
-  State3 : enum {
-    A : 2,
-    B : 5,
-    C,
-    D,
-    E : 100
-  };
+  printf("StateGlobal.A = %d\n", StateGlobal.A);
+  printf("StateGlobal.B = %d\n", StateGlobal.B);
+  printf("StateGlobal.C = %d\n", StateGlobal.C);
+  printf("StateGlobal.D = %d\n", StateGlobal.D);
+  printf("StateGlobal.E = %d\n", StateGlobal.E);
+};
 
-  printf("State3.A = %d\n", State3.A);
-  printf("State3.B = %d\n", State3.B);
-  printf("State3.C = %d\n", State3.C);
-  printf("State3.D = %d\n", State3.D);
-  printf("State3.E = %d\n", State3.E);
+StateGlobal : enum {
+  A : 2,
+  B : 5,
+  C,
+  D,
+  E : 100
+};
+*/
+
+files : fn () {
+  f := file_open("test.bl");
+  if f->valid {
+    puts("file 'test.bl' found");
+    file_close(f);
+  } else {
+    puts("file 'test.bl' not found");
+  }
 };

@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   libc.bl
+// File:   file.bl
 // Author: Martin Dorazil
-// Date:   7/23/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,15 +26,29 @@
 // SOFTWARE.
 //************************************************************************************************
 
-printf	fn (string, s32) s32 : extern;
-puts 	fn (string) s32 : extern;
+#load "libc.bl"
 
-malloc 	fn (size_t) *void : extern;
-free 	fn (*void) : extern;
-calloc 	fn (size_t, size_t) *void : extern;
-realloc fn (*void, size_t) *void : extern;
+File : struct {
+  handle *void,
+  size 	  size_t,
+  valid   bool
+};
 
-abort 	fn () : extern;
-
-fopen   fn (string, string) *void : extern;
-fclose  fn (*void) s32 : extern;
+file_open : fn (filepath string) *File {
+  read : "r";
+  tmp := cast(*File) malloc(sizeof(File));
+  tmp->handle = fopen(filepath, read);
+  if tmp->handle == null {
+    tmp->valid = false;
+    tmp->size = cast(size_t) 0;
+  } else {
+    tmp->valid = true;
+    tmp->size = cast(size_t) 666;
+  }
+  return tmp;
+};
+	    
+file_close : fn (file *File) {
+  //if file == null { return; }
+  //fclose(file->handle);
+};

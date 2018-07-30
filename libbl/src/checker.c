@@ -456,6 +456,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
 
   case BL_NODE_EXPR_SIZEOF: {
     bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
+    flatten(_sizeof->in);
     flatten(_sizeof->type);
     break;
   }
@@ -729,7 +730,14 @@ check_ident(context_t *cnt, bl_node_t *ident)
     bl_peek_decl_value(found)->used++;
   }
 
-  _ident->ref = found;
+  if (_ident->ptr) {
+    _ident->ref     = bl_ast_node_dup(cnt->ast, found);
+    bl_node_t *type = bl_ast_get_type(_ident->ref);
+    bl_ast_type_set_ptr(type, _ident->ptr);
+  } else {
+    _ident->ref = found;
+  }
+
   FINISH;
 }
 
@@ -1052,14 +1060,15 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                      "declaration has invalid type '%s'", tmp);
   }
 
-  if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
+  /*if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
     bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
     _decl->type                  = bl_ast_get_type(_decl->type);
     _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
     bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
   } else {
     _decl->type = bl_ast_get_type(_decl->type);
-  }
+    }*/
+  _decl->type = bl_ast_get_type(_decl->type);
 
   /* provide symbol into scope if there is no conflict */
   bl_node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
@@ -1093,7 +1102,8 @@ _check_unused(context_t *cnt, bl_node_t *node)
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
     if (!_decl->used && !(_decl->flags & BL_FLAG_EXTERN) && !(_decl->flags & BL_FLAG_MAIN)) {
-      check_warning_node(cnt, node, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
+      check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
+                         "symbol is declared but never used");
     }
     break;
   }

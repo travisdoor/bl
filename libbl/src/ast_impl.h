@@ -131,6 +131,7 @@
   nt(TYPE_ENUM, type_enum, struct { \
     bl_node_t *base_decl; \
     bl_node_t *base_type; \
+    int        ptr; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
     bl_node_t  *type; \
@@ -365,8 +366,8 @@ _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type,
               bool mutable, int flags, int order);
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
-_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl);
-_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl);
+_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl, int ptr);
+_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl, int ptr);
 _BL_AST_NCTOR(lit_fn, bl_node_t *type, bl_node_t *block, bl_node_t *parent_compound,
               bl_scope_t *scope);
 _BL_AST_NCTOR(lit_struct, bl_node_t *type, bl_node_t *parent_compound, bl_scope_t *scope);

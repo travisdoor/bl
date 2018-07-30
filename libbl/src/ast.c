@@ -282,21 +282,23 @@ _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type
   return (bl_node_t *)_type_fn;
 }
 
-_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl)
+_BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl, int ptr)
 {
   bl_node_type_struct_t *_type_struct =
       alloc_node(ast, BL_NODE_TYPE_STRUCT, tok, bl_node_type_struct_t *);
   _type_struct->types     = types;
   _type_struct->typesc    = typesc;
   _type_struct->base_decl = base_decl;
+  _type_struct->ptr       = ptr;
   return (bl_node_t *)_type_struct;
 }
 
-_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl)
+_BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl, int ptr)
 {
   bl_node_type_enum_t *_type_enum = alloc_node(ast, BL_NODE_TYPE_ENUM, tok, bl_node_type_enum_t *);
   _type_enum->base_decl           = base_decl;
   _type_enum->base_type           = type;
+  _type_enum->ptr                 = ptr;
   return (bl_node_t *)_type_enum;
 }
 
@@ -499,6 +501,9 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
 
   case BL_NODE_TYPE_ENUM: {
     bl_node_type_enum_t *_enum = bl_peek_type_enum(type);
+    for (int i = 0; i < _enum->ptr; ++i) {
+      append_buf(buf, len, "*");
+    }
     append_buf(buf, len, "enum ");
     _type_to_string(buf, len, _enum->base_type);
     break;

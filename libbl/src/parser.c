@@ -107,10 +107,10 @@ static bl_node_t *
 parse_type_fn(context_t *cnt, bool named_args, int ptr);
 
 static bl_node_t *
-parse_type_struct(context_t *cnt, bool named_args);
+parse_type_struct(context_t *cnt, bool named_args, int ptr);
 
 static bl_node_t *
-parse_type_enum(context_t *cnt);
+parse_type_enum(context_t *cnt, int ptr);
 
 static bl_node_t *
 parse_unary_expr(context_t *cnt, bl_token_t *op);
@@ -484,7 +484,7 @@ parse_literal_struct(context_t *cnt)
   bl_node_lit_struct_t *_lit_struct = bl_peek_lit_struct(result);
 
   cnt->curr_compound = result;
-  _lit_struct->type  = parse_type_struct(cnt, true);
+  _lit_struct->type  = parse_type_struct(cnt, true, 0);
   cnt->curr_compound = prev_compound;
   assert(_lit_struct->type);
 
@@ -495,7 +495,7 @@ bl_node_t *
 parse_literal_enum(context_t *cnt)
 {
   bl_token_t *tok_enum = bl_tokens_peek(cnt->tokens);
-  bl_node_t * type     = parse_type_enum(cnt);
+  bl_node_t * type     = parse_type_enum(cnt, 0);
   if (!type) return NULL;
   bl_node_type_enum_t *_type = bl_peek_type_enum(type);
 
@@ -738,8 +738,8 @@ parse_type(context_t *cnt)
   }
 
   if ((type = parse_type_fn(cnt, false, ptr))) return type;
-  if ((type = parse_type_struct(cnt, false))) return type;
-  if ((type = parse_type_enum(cnt))) return type;
+  if ((type = parse_type_struct(cnt, false, ptr))) return type;
+  if ((type = parse_type_enum(cnt, ptr))) return type;
   if ((type = parse_type_fund(cnt, ptr))) return type;
   return type;
 }
@@ -821,7 +821,7 @@ next:
 }
 
 bl_node_t *
-parse_type_struct(context_t *cnt, bool named_args)
+parse_type_struct(context_t *cnt, bool named_args, int ptr)
 {
   bl_token_t *tok_struct = bl_tokens_consume_if(cnt->tokens, BL_SYM_STRUCT);
   if (!tok_struct) return NULL;
@@ -870,11 +870,11 @@ next:
     return bl_ast_bad(cnt->ast, tok_struct);
   }
 
-  return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL);
+  return bl_ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL, ptr);
 }
 
 bl_node_t *
-parse_type_enum(context_t *cnt)
+parse_type_enum(context_t *cnt, int ptr)
 {
   bl_token_t *tok_enum = bl_tokens_consume_if(cnt->tokens, BL_SYM_ENUM);
   if (!tok_enum) return NULL;
@@ -883,7 +883,7 @@ parse_type_enum(context_t *cnt)
   /* implicit type s32 when enum base type has not been specified */
   if (!type) type = bl_ast_type_fund(cnt->ast, NULL, BL_FTYPE_S32, 0);
 
-  return bl_ast_type_enum(cnt->ast, tok_enum, type, NULL);
+  return bl_ast_type_enum(cnt->ast, tok_enum, type, NULL, ptr);
 }
 
 bl_node_t *
