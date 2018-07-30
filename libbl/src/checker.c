@@ -730,12 +730,12 @@ check_ident(context_t *cnt, bl_node_t *ident)
     bl_peek_decl_value(found)->used++;
   }
 
+  _ident->ref = found;
+
   if (_ident->ptr) {
     _ident->ref     = bl_ast_node_dup(cnt->ast, found);
     bl_node_t *type = bl_ast_get_type(_ident->ref);
     bl_ast_type_set_ptr(type, _ident->ptr);
-  } else {
-    _ident->ref = found;
   }
 
   FINISH;
@@ -745,16 +745,22 @@ bool
 check_stmt_return(context_t *cnt, bl_node_t *ret)
 {
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(ret);
-  assert(_ret->expr);
   assert(_ret->fn);
 
-  bl_node_lit_fn_t *_callee = bl_peek_lit_fn(_ret->fn);
+  bl_node_lit_fn_t *_callee     = bl_peek_lit_fn(_ret->fn);
+  bl_node_t *       fn_ret_type = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
 
-  bl_node_t *expr_type   = bl_ast_get_type(_ret->expr);
-  bl_node_t *fn_ret_type = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
+  if (_ret->expr) {
+    bl_node_t *expr_type = bl_ast_get_type(_ret->expr);
 
-  if (!bl_ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
-    check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+    if (!bl_ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
+      check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+    }
+  } else {
+    if (!bl_ast_type_cmp(&bl_ftypes[BL_FTYPE_VOID], fn_ret_type)) {
+      check_error_node(cnt, BL_ERR_EXPECTED_EXPR, ret, BL_BUILDER_CUR_AFTER,
+                       "expected return value");
+    }
   }
   FINISH;
 }
@@ -1060,14 +1066,6 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                      "declaration has invalid type '%s'", tmp);
   }
 
-  /*if (bl_node_is(_decl->type, BL_NODE_IDENT) && bl_peek_ident(_decl->type)->ptr) {
-    bl_node_ident_t *_type_ident = bl_peek_ident(_decl->type);
-    _decl->type                  = bl_ast_get_type(_decl->type);
-    _decl->type                  = bl_ast_node_dup(cnt->ast, _decl->type);
-    bl_ast_type_set_ptr(_decl->type, _type_ident->ptr);
-  } else {
-    _decl->type = bl_ast_get_type(_decl->type);
-    }*/
   _decl->type = bl_ast_get_type(_decl->type);
 
   /* provide symbol into scope if there is no conflict */
@@ -1079,11 +1077,11 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   } else {
     provide(_decl->name, decl);
 
-    const bool is_in_gscope =
+    _decl->in_gscope =
         bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
     /* insert into ir queue */
-    if (is_in_gscope) {
+    if (_decl->in_gscope && (_decl->kind != BL_DECL_KIND_CONSTANT)) {
       // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
       bl_assembly_add_into_ir(cnt->assembly, decl);
     }

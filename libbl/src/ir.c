@@ -439,8 +439,8 @@ ir_expr_member(context_t *cnt, bl_node_t *member)
 
   if (_member->kind == BL_MEM_KIND_STRUCT) {
     result = ir_expr(cnt, _member->next);
+    assert(result);
     if (_member->ptr_ref) result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
-
     result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)_decl_member->order,
                                 gname(_ident->str));
   } else if (_member->kind == BL_MEM_KIND_ENUM) {
@@ -534,10 +534,41 @@ ir_ident(context_t *cnt, bl_node_t *ident)
   bl_node_ident_t *_ident = bl_peek_ident(ident);
   assert(_ident->ref);
 
-  result = llvm_values_get(cnt, _ident->ref);
-  if (!result && bl_node_is(bl_ast_get_type(ident), BL_NODE_TYPE_FN))
+  bl_node_t *ref = bl_ast_unroll_ident(_ident->ref);
+  assert(bl_node_is(ref, BL_NODE_DECL_VALUE));
+  bl_node_decl_value_t *_ref = bl_peek_decl_value(ref);
+
+  switch (_ref->kind) {
+  case BL_DECL_KIND_FIELD:
+    if (_ref->in_gscope)
+      ir_global_get(cnt, _ident->ref);
+    else
+      result = llvm_values_get(cnt, _ident->ref);
+    break;
+
+  case BL_DECL_KIND_FN:
     result = ir_fn_get(cnt, bl_ast_unroll_ident(ident));
-  if (!result) result = ir_global_get(cnt, _ident->ref);
+    break;
+
+  case BL_DECL_KIND_STRUCT:
+    break;
+
+  case BL_DECL_KIND_ARG:
+    result = llvm_values_get(cnt, _ident->ref);
+    break;
+
+  case BL_DECL_KIND_CONSTANT:
+    result = ir_expr(cnt, _ref->value);
+    break;
+
+  case BL_DECL_KIND_MEMBER:
+  case BL_DECL_KIND_VARIANT:
+  case BL_DECL_KIND_ENUM:
+  case BL_DECL_KIND_TYPE:
+    bl_abort("unimplemented");
+  case BL_DECL_KIND_UNKNOWN:
+    bl_abort("unknown declaration kind");
+  }
 
   assert(result);
   return result;
@@ -565,9 +596,9 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
   if (should_load(_binop->rhs, rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
 
   LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
-  //LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
+  // LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
 
-  //assert(lhs_kind == rhs_kind);
+  // assert(lhs_kind == rhs_kind);
   bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {

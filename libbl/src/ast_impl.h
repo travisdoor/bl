@@ -111,6 +111,7 @@
     int            flags; \
     int            used; \
     int            order; \
+    bool           in_gscope; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
@@ -363,7 +364,7 @@ _BL_AST_NCTOR(stmt_break);
 _BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
-              bool mutable, int flags, int order);
+              bool mutable, int flags, int order, bool in_gscope);
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl, int ptr);

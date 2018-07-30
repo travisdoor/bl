@@ -251,7 +251,7 @@ _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope
 }
 
 _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
-              bool mutable, int flags, int order)
+              bool mutable, int flags, int order, bool in_gscope)
 {
   bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
   _decl->kind                 = kind;
@@ -261,6 +261,7 @@ _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type,
   _decl->mutable              = mutable;
   _decl->flags                = flags;
   _decl->order                = order;
+  _decl->in_gscope            = in_gscope;
   return (bl_node_t *)_decl;
 }
 
@@ -795,7 +796,7 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node)
 #endif
 
   memcpy(tmp, node, sizeof(bl_node_t));
-  node->next = NULL;
+  tmp->next = NULL;
 #if BL_DEBUG
   tmp->_serial = tmp_serial;
 #endif

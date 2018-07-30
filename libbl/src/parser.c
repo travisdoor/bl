@@ -1012,7 +1012,7 @@ parse_decl_value(context_t *cnt)
   }
 
   return bl_ast_decl_value(cnt->ast, tok_assign ? tok_assign : tok_ident, kind, ident, type, value,
-                           mutable, flags, 0);
+                           mutable, flags, 0, false);
 }
 
 bl_node_t *

@@ -36,6 +36,15 @@ File : struct {
 
 file_open : fn (filepath string) *File {
   read : "r";
+
+  // get size of file stream in bytes */
+  fsize : fn (handle *void) size_t {
+    fseek(handle, 0, SEEK_END); 
+    size := ftell(handle);
+    fseek(handle, 0, SEEK_SET); 
+    return size;
+  };
+
   tmp := cast(*File) malloc(sizeof(File));
   tmp->handle = fopen(filepath, read);
   if tmp->handle == null {
@@ -43,12 +52,20 @@ file_open : fn (filepath string) *File {
     tmp->size = cast(size_t) 0;
   } else {
     tmp->valid = true;
-    tmp->size = cast(size_t) 666;
+    tmp->size = fsize(tmp->handle);
   }
   return tmp;
 };
+
+file_read_str : fn (file *File) string {
+  if file == null { return ""; }
+  if !file->valid { return ""; }
+  //tmp := cast(string) malloc(sizeof(char) * file->size);
+
+};
 	    
 file_close : fn (file *File) {
-  //if file == null { return; }
+  if file == null { return; }
   //fclose(file->handle);
 };
+
