@@ -198,4 +198,18 @@ enums : fn () {
   printf("State2.A = %d\n", State2.A);
   printf("State2.B = %d\n", State2.B);
   printf("State2.C = %d\n", State2.C);
+
+  State3 : enum {
+    A : 2,
+    B : 5,
+    C,
+    D,
+    E : 100
+  };
+
+  printf("State3.A = %d\n", State3.A);
+  printf("State3.B = %d\n", State3.B);
+  printf("State3.C = %d\n", State3.C);
+  printf("State3.D = %d\n", State3.D);
+  printf("State3.E = %d\n", State3.E);
 };

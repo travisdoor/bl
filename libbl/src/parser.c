@@ -514,8 +514,9 @@ parse_literal_enum(context_t *cnt)
   }
 
   /* parse enum varinats */
-  bool        rq      = false;
-  bl_node_t **variant = &_enm->variants;
+  bool        rq           = false;
+  bl_node_t **variant      = &_enm->variants;
+  bl_node_t * prev_variant = NULL;
 
 next:
   *variant = parse_decl_value(cnt);
@@ -531,8 +532,29 @@ next:
     }
 
     _variant->type = _type->base_type;
-    if (!_variant->value) _variant->mutable = false;
-    variant = &(*variant)->next;
+    if (!_variant->value) {
+      _variant->mutable = false;
+
+      /* implicitly infer value from previous enum varaint if there is one */
+      if (prev_variant) {
+        bl_node_decl_value_t *_prev_variant = bl_peek_decl_value(prev_variant);
+
+        bl_token_value_u value;
+        value.u             = 1;
+        bl_node_t *addition = bl_ast_lit(cnt->ast, NULL, _variant->type, value);
+
+        _variant->value = bl_ast_expr_binop(cnt->ast, NULL, _prev_variant->value, addition,
+                                            _variant->type, BL_SYM_PLUS);
+      } else {
+        /* first variant is allways 0 */
+        bl_token_value_u value;
+        value.u         = 0;
+        _variant->value = bl_ast_lit(cnt->ast, NULL, _variant->type, value);
+      }
+    }
+
+    prev_variant = *variant;
+    variant      = &(*variant)->next;
 
     if (bl_tokens_consume_if(cnt->tokens, BL_SYM_COMMA)) {
       rq = true;
