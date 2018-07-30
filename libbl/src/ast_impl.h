@@ -429,12 +429,6 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type);
 bl_node_t *
 bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 
-void
-bl_ast_node_insert(bl_node_t **dest, bl_node_t *node);
-
-void
-bl_ast_node_remove(bl_node_t *node);
-
 bl_node_t *
 bl_ast_unroll_ident(bl_node_t *ident);
 

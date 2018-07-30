@@ -44,4 +44,4 @@ fopen   fn (string, string) *void : extern;
 fclose  fn (*void) s32 : extern;
 fseek   fn (*void, s32, s32) s32 : extern;
 ftell   fn (*void) size_t : extern;
-fread   fn (*void, size_t, size_t, *void) : extern;
+fread   fn (string, size_t, size_t, *void) : extern;

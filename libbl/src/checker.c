@@ -547,13 +547,25 @@ check_flatten(context_t *cnt, bl_node_t *node)
 bool
 implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type)
 {
+  to_type              = bl_ast_get_type(to_type);
   bl_node_t *from_type = bl_ast_get_type(*node);
+
+  bl_type_kind_e to_kind = bl_ast_get_type_kind(to_type);
+  if (bl_node_is(*node, BL_NODE_LIT) &&
+      (to_kind == BL_KIND_SIZE || to_kind == BL_KIND_UINT || to_kind == BL_KIND_SINT)) {
+    bl_peek_lit(*node)->type = bl_ast_node_dup(cnt->ast, to_type);
+    return true;
+  }
+
   if (!bl_ast_can_impl_cast(from_type, to_type)) return false;
 
+  bl_node_t *tmp_prev = (*node)->prev;
+  bl_node_t *tmp_next = (*node)->next;
   bl_node_t *type_dup = bl_ast_node_dup(cnt->ast, to_type);
   bl_node_t *cast     = bl_ast_expr_cast(cnt->ast, NULL, type_dup, *node);
-
-  bl_ast_node_insert(node, cast);
+  cast->prev          = tmp_prev;
+  cast->next          = tmp_next;
+  *node               = cast;
 
   return true;
 }
@@ -595,26 +607,27 @@ check_expr_call(context_t *cnt, bl_node_t *call)
     FINISH;
   }
 
-  bl_node_t *call_arg   = _call->args;
-  bl_node_t *callee_arg = _callee_type->arg_types;
+  bl_node_t **call_arg   = &_call->args;
+  bl_node_t * callee_arg = _callee_type->arg_types;
 
-  while (call_arg) {
-    if (bl_node_is(call_arg, BL_NODE_EXPR_NULL)) {
-      bl_peek_expr_null(call_arg)->type = bl_ast_get_type(callee_arg);
-    } else if (!bl_ast_type_cmp(call_arg, callee_arg)) {
+  while (*call_arg) {
+    if (bl_node_is(*call_arg, BL_NODE_EXPR_NULL)) {
+      bl_peek_expr_null(*call_arg)->type = bl_ast_get_type(callee_arg);
+    } else if (!bl_ast_type_cmp(*call_arg, callee_arg) &&
+               !implicit_cast(cnt, call_arg, callee_arg)) {
       char tmp1[256];
       char tmp2[256];
-      bl_ast_type_to_string(tmp1, 256, bl_ast_get_type(call_arg));
+      bl_ast_type_to_string(tmp1, 256, bl_ast_get_type(*call_arg));
       bl_ast_type_to_string(tmp2, 256, bl_ast_get_type(callee_arg));
 
-      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, call_arg, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *call_arg, BL_BUILDER_CUR_WORD,
                        "invalid call argument type, expected is '%s' but called with '%s'", tmp2,
                        tmp1);
 
       break;
     }
 
-    call_arg   = call_arg->next;
+    call_arg   = &(*call_arg)->next;
     callee_arg = callee_arg->next;
   }
 

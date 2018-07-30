@@ -734,8 +734,11 @@ bl_ast_get_type_kind(bl_node_t *type)
     return BL_KIND_FN;
   }
 
-  case BL_NODE_TYPE_STRUCT:
+  case BL_NODE_TYPE_STRUCT: {
+    bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
+    if (_struct_type->ptr) return BL_KIND_PTR;
     return BL_KIND_STRUCT;
+  }
 
   case BL_NODE_TYPE_ENUM:
     return BL_KIND_ENUM;
@@ -802,29 +805,6 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node)
 #endif
 
   return tmp;
-}
-
-void
-bl_ast_node_insert(bl_node_t **dest, bl_node_t *node)
-{
-  assert(node);
-  assert(dest);
-
-  if (*dest) {
-    if ((*dest)->prev) (*dest)->prev->next = node;
-    node->prev    = (*dest)->prev;
-    node->next    = (*dest);
-    (*dest)->prev = node;
-  }
-  *dest = node;
-}
-
-void
-bl_ast_node_remove(bl_node_t *node)
-{
-  assert(node);
-  if (node->prev) node->prev->next = node->next;
-  if (node->next) node->next->prev = node->prev;
 }
 
 int

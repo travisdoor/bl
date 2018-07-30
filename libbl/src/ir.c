@@ -178,11 +178,15 @@ should_load(bl_node_t *node, LLVMValueRef llvm_value)
   if ((bl_node_is(node, BL_NODE_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK))
     return true;
 
+  if (LLVMIsAArgument(llvm_value))
+    return false;
+
   if ((bl_node_is(node, BL_NODE_EXPR_MEMBER) &&
        bl_peek_expr_member(node)->kind == BL_MEM_KIND_STRUCT))
     return true;
 
-  if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value)) return true;
+  if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value))
+    return true;
 
   return false;
 }
@@ -440,7 +444,8 @@ ir_expr_member(context_t *cnt, bl_node_t *member)
   if (_member->kind == BL_MEM_KIND_STRUCT) {
     result = ir_expr(cnt, _member->next);
     assert(result);
-    if (_member->ptr_ref) result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
+    if (_member->ptr_ref && should_load(member, result))
+      result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
     result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)_decl_member->order,
                                 gname(_ident->str));
   } else if (_member->kind == BL_MEM_KIND_ENUM) {
@@ -551,6 +556,7 @@ ir_ident(context_t *cnt, bl_node_t *ident)
     break;
 
   case BL_DECL_KIND_STRUCT:
+    bl_log("here");
     break;
 
   case BL_DECL_KIND_ARG:
