@@ -872,6 +872,7 @@ check_expr_member(context_t *cnt, bl_node_t *member)
 
   if (bl_node_is(lhs_type, BL_NODE_TYPE_STRUCT)) {
     /* structure member */
+    _member->kind = BL_MEM_KIND_STRUCT;
 
     bl_node_type_struct_t *_lhs_type = bl_peek_type_struct(lhs_type);
     /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
@@ -891,7 +892,21 @@ check_expr_member(context_t *cnt, bl_node_t *member)
     }
   } else if (bl_node_is(lhs_type, BL_NODE_TYPE_ENUM)) {
     /* enum variant */
-    bl_abort("lookup enum variant unimplemented");
+    _member->kind                  = BL_MEM_KIND_ENUM;
+    bl_node_type_enum_t *_lhs_type = bl_peek_type_enum(lhs_type);
+    assert(_lhs_type->base_decl);
+
+    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    if (!found) {
+      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
+                       "unknown enum variant");
+      FINISH;
+    }
+
+    if (_member->ptr_ref) {
+      check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
+                       "use '.' for access to enum variants");
+    }
   } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
                      "expected structure or enum");
@@ -1014,8 +1029,13 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     break;
   }
 
+  case BL_DECL_KIND_ENUM: {
+    bl_node_t *value_type                    = bl_ast_get_type(_decl->value);
+    bl_peek_type_enum(value_type)->base_decl = decl;
+    break;
+  }
+
   case BL_DECL_KIND_FN:
-  case BL_DECL_KIND_ENUM:
     break;
   case BL_DECL_KIND_TYPE:
     bl_abort("unimplemented");

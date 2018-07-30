@@ -13,10 +13,6 @@ main : fn () s32 {
   structs();
   enums();
 
-  gimme : fn () s32 {
-    return 0;
-  };
-
   return 0;
 };
 
@@ -189,5 +185,17 @@ enums : fn () {
     C : 3
   };
 
-  State.A;
+  printf("State.A = %d\n", State.A);
+  printf("State.B = %d\n", State.B);
+  printf("State.C = %d\n", State.C);
+
+  State2 : enum {
+    A : 123,
+    B : 2,
+    C : 3
+  };
+
+  printf("State2.A = %d\n", State2.A);
+  printf("State2.B = %d\n", State2.B);
+  printf("State2.C = %d\n", State2.C);
 };

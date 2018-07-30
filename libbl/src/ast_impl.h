@@ -170,10 +170,11 @@
     bl_node_t *type; \
   }) \
   nt(EXPR_MEMBER, expr_member, struct { \
-    bl_node_t *ident; \
-    bl_node_t *next; \
-    bl_node_t *type; \
-    bool       ptr_ref; \
+    bl_member_kind_e kind; \
+    bl_node_t       *ident; \
+    bl_node_t       *next; \
+    bl_node_t       *type; \
+    bool             ptr_ref; \
   }) \
   nt(EXPR_SIZEOF, expr_sizeof, struct { \
     bl_node_t *in; \
@@ -212,15 +213,22 @@ typedef enum
 {
   BL_DECL_KIND_UNKNOWN  = -1,
   BL_DECL_KIND_FIELD    = 0, /* foo s32; foo := 0; */
-  BL_DECL_KIND_FN       = 2, /* foo : fn () {} */
-  BL_DECL_KIND_STRUCT   = 3, /* foo : struct {} */
-  BL_DECL_KIND_MEMBER   = 4, /* structure member */
-  BL_DECL_KIND_ARG      = 5, /* function argument */
-  BL_DECL_KIND_ENUM     = 6, /* foo : enum {} */
-  BL_DECL_KIND_VARIANT  = 7, /* enum variant */
-  BL_DECL_KIND_CONSTANT = 8, /* foo : 10; foo : bar; */
-  BL_DECL_KIND_TYPE     = 9, /* foo : s32; foo : bar; */
+  BL_DECL_KIND_FN       = 1, /* foo : fn () {} */
+  BL_DECL_KIND_STRUCT   = 2, /* foo : struct {} */
+  BL_DECL_KIND_MEMBER   = 3, /* structure member */
+  BL_DECL_KIND_ARG      = 4, /* function argument */
+  BL_DECL_KIND_ENUM     = 5, /* foo : enum {} */
+  BL_DECL_KIND_VARIANT  = 6, /* enum variant */
+  BL_DECL_KIND_CONSTANT = 7, /* foo : 10; foo : bar; */
+  BL_DECL_KIND_TYPE     = 8, /* foo : s32; foo : bar; */
 } bl_decl_kind_e;
+
+typedef enum
+{
+  BL_MEM_KIND_UNKNOWN = -1,
+  BL_MEM_KIND_STRUCT  = 0, /* structure.bar; structure->bar; */
+  BL_MEM_KIND_ENUM    = 1, /* enum.A; */
+} bl_member_kind_e;
 
 typedef enum
 {
@@ -367,7 +375,8 @@ _BL_AST_NCTOR(lit_enum, bl_node_t *type, bl_node_t *variants, bl_node_t *parent_
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
 _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);
-_BL_AST_NCTOR(expr_member, bl_node_t *ident, bl_node_t *next, bl_node_t *type, bool ptr_ref);
+_BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
+              bl_node_t *type, bool ptr_ref);
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);
 _BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next);
 _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);

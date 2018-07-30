@@ -296,7 +296,7 @@ _BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl)
 {
   bl_node_type_enum_t *_type_enum = alloc_node(ast, BL_NODE_TYPE_ENUM, tok, bl_node_type_enum_t *);
   _type_enum->base_decl           = base_decl;
-  _type_enum->base_type                = type;
+  _type_enum->base_type           = type;
   return (bl_node_t *)_type_enum;
 }
 
@@ -361,10 +361,12 @@ _BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t
   return (bl_node_t *)_expr_call;
 }
 
-_BL_AST_NCTOR(expr_member, bl_node_t *ident, bl_node_t *next, bl_node_t *type, bool ptr_ref)
+_BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
+              bl_node_t *type, bool ptr_ref)
 {
   bl_node_expr_member_t *_expr_member =
       alloc_node(ast, BL_NODE_EXPR_MEMBER, tok, bl_node_expr_member_t *);
+  _expr_member->kind    = kind;
   _expr_member->ident   = ident;
   _expr_member->next    = next;
   _expr_member->type    = type;

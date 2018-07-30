@@ -175,10 +175,16 @@ is_terminated(context_t *cnt)
 static inline bool
 should_load(bl_node_t *node, LLVMValueRef llvm_value)
 {
-  return (bl_node_is(node, BL_NODE_EXPR_UNARY) &&
-          bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK) ||
-         bl_node_is(node, BL_NODE_EXPR_MEMBER) || LLVMIsAAllocaInst(llvm_value) ||
-         LLVMIsAGlobalVariable(llvm_value);
+  if ((bl_node_is(node, BL_NODE_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK))
+    return true;
+
+  if ((bl_node_is(node, BL_NODE_EXPR_MEMBER) &&
+       bl_peek_expr_member(node)->kind == BL_MEM_KIND_STRUCT))
+    return true;
+
+  if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value)) return true;
+
+  return false;
 }
 
 LLVMTypeRef
@@ -298,6 +304,13 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
       result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
     }
     bl_free(llvm_member_types);
+    break;
+  }
+
+  case BL_NODE_TYPE_ENUM: {
+    bl_node_type_enum_t *_enum_type = bl_peek_type_enum(type);
+    assert(_enum_type->base_type);
+    result = to_llvm_type(cnt, _enum_type->base_type);
     break;
   }
 
@@ -422,13 +435,23 @@ ir_expr_member(context_t *cnt, bl_node_t *member)
   bl_node_ident_t *      _ident       = bl_peek_ident(_member->ident);
   bl_node_decl_value_t * _decl_member = bl_peek_decl_value(_ident->ref);
 
-  LLVMValueRef ptr = ir_expr(cnt, _member->next);
+  LLVMValueRef result = NULL;
 
-  if (_member->ptr_ref) ptr = LLVMBuildLoad(cnt->llvm_builder, ptr, gname("tmp"));
+  if (_member->kind == BL_MEM_KIND_STRUCT) {
+    result = ir_expr(cnt, _member->next);
+    if (_member->ptr_ref) result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
 
-  ptr = LLVMBuildStructGEP(cnt->llvm_builder, ptr, (unsigned int)_decl_member->order,
-                           gname(_ident->str));
-  return ptr;
+    result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)_decl_member->order,
+                                gname(_ident->str));
+  } else if (_member->kind == BL_MEM_KIND_ENUM) {
+    assert(!_member->ptr_ref);
+    assert(_decl_member->value);
+    result = ir_expr(cnt, _decl_member->value);
+  } else {
+    bl_abort("unknown member kind");
+  }
+  assert(result);
+  return result;
 }
 
 LLVMValueRef

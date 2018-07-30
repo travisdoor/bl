@@ -522,7 +522,15 @@ next:
   if (*variant) {
     bl_node_decl_value_t *_variant = bl_peek_decl_value(*variant);
     _variant->kind                 = BL_DECL_KIND_VARIANT;
-    _variant->type                 = _type->base_type;
+
+    if (_variant->type) {
+      parse_warning_node(
+          cnt, _variant->type, BL_BUILDER_CUR_WORD,
+          "explicitly written type of enum varaint declaration will be overriden by enum "
+          "base type");
+    }
+
+    _variant->type = _type->base_type;
     if (!_variant->value) _variant->mutable = false;
     variant = &(*variant)->next;
 
@@ -613,7 +621,7 @@ parse_expr_member(context_t *cnt, bl_token_t *op)
                 "expected structure member name");
   }
 
-  return bl_ast_expr_member(cnt->ast, op, ident, NULL, NULL, is_ptr_ref);
+  return bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_UNKNOWN, ident, NULL, NULL, is_ptr_ref);
 }
 
 bl_node_t *
@@ -850,12 +858,8 @@ parse_type_enum(context_t *cnt)
   if (!tok_enum) return NULL;
 
   bl_node_t *type = parse_type(cnt);
-  if (!type) {
-    parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok_enum, BL_BUILDER_CUR_AFTER,
-                "expected enum base type");
-    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
-    return bl_ast_bad(cnt->ast, tok_enum);
-  }
+  /* implicit type s32 when enum base type has not been specified */
+  if (!type) type = bl_ast_type_fund(cnt->ast, NULL, BL_FTYPE_S32, 0);
 
   return bl_ast_type_enum(cnt->ast, tok_enum, type, NULL);
 }
