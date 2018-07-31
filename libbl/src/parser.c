@@ -69,13 +69,10 @@ typedef struct
 } context_t;
 
 /* helpers */
-static inline bl_node_t *
-insert_node(bl_node_t ***node, bl_node_t *prev)
+static inline void
+insert_node(bl_node_t ***node)
 {
-  (**node)->prev = prev;
-  prev           = **node;
   *node          = &(**node)->next;
-  return prev;
 }
 
 /* fw decls */
@@ -1129,7 +1126,6 @@ parse_block(context_t *cnt)
   cnt->curr_compound           = block;
 
   bl_token_t *tok;
-  bl_node_t * prev = NULL;
   bl_node_t **node = &_block->nodes;
 next:
   if (bl_tokens_current_is(cnt->tokens, BL_SYM_SEMICOLON)) {
@@ -1141,52 +1137,52 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_stmt_if(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_while(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_loop(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_break(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_decl_value(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_expr(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
   if ((*node = parse_block(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_load(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 
@@ -1208,19 +1204,18 @@ parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
   cnt->curr_compound             = ublock;
   bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
-  bl_node_t *            prev    = NULL;
   bl_node_t **           node    = &_ublock->nodes;
 next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl_value(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     parse_semicolon_rq(cnt);
     goto next;
   }
 
   if ((*node = parse_load(cnt))) {
-    prev = insert_node(&node, prev);
+    insert_node(&node);
     goto next;
   }
 

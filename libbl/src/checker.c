@@ -559,11 +559,9 @@ implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type)
 
   if (!bl_ast_can_impl_cast(from_type, to_type)) return false;
 
-  bl_node_t *tmp_prev = (*node)->prev;
   bl_node_t *tmp_next = (*node)->next;
   bl_node_t *type_dup = bl_ast_node_dup(cnt->ast, to_type);
   bl_node_t *cast     = bl_ast_expr_cast(cnt->ast, NULL, type_dup, *node);
-  cast->prev          = tmp_prev;
   cast->next          = tmp_next;
   *node               = cast;
 
