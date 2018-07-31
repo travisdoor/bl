@@ -1,10 +1,31 @@
 #load "file.bl"
 #load "libc.bl"
 
-TmpSize size_t : 256;
+TestFileSize size_t : 256;
+TmpCmdSize size_t : 256;
+MaxTestCount size_t : 256;
+BaseCmd : "blc -run -no-bin ";
+
+Test : struct {
+  file *char,
+  state bool
+};
 
 main : fn () {
-  puts("Biscuit UTester");
+  // helpers
+  get_test : fn (t *Test, i size_t) *Test {
+    tmp := cast(*Test) (cast(size_t) t + sizeof(Test) * i);
+    return tmp;
+  };
+
+  build_command : fn (out *char, base string, test_file *char) {
+    strcat(out, cast(*char) base); 
+    strcat(out, test_file); 
+  };
+
+  puts("------------------------------------------------------------------------------------------------");
+  puts("|                                      Biscuit UTester                                         |");
+  puts("------------------------------------------------------------------------------------------------");
 
   file File;
   if !file_open(&file, ".config.utest") {
@@ -12,16 +33,90 @@ main : fn () {
     return;
   } 
 
-  config *char := malloc(sizeof(char) * (file.size + 1));
+  curr_test size_t := 0;
+  tests *Test := malloc(sizeof(Test) * MaxTestCount);
+  memset(tests, 0, sizeof(Test) * MaxTestCount);
+
+  ConfigSize : file.size + 1;
+  config *char := malloc(sizeof(char) * ConfigSize);
+  memset(config, 0, ConfigSize);
   file_read_buf(&file, config);
 
-  tmp char[TmpSize];
-  tmp[0] = '\0';
-
   i size_t := 0;
-  while i < TmpSize {
+  while i < file.size {
+    test := get_test(tests, curr_test);
+    curr_test = curr_test + 1;
+
+    test->file = malloc(sizeof(char) * TestFileSize);
+    i = get_line(config, test->file, i);  
   }
 
+  tmp *char := malloc(sizeof(char) * TmpCmdSize);
+
+  i = 0;
+  while i < curr_test {
+    test := get_test(tests, i);
+    i = i + 1;
+    memset(tmp, 0, sizeof(char) * TmpCmdSize);
+    build_command(tmp, BaseCmd, test->file);
+    state := system(tmp);
+    if state == 0 {
+      test->state = true;
+    } else {
+      test->state = false;
+    }
+  }
+
+  puts("------------------------------------------------------------------------------------------------");
+  puts("|                                         RESULTS                                              |");
+
+  i = 0;
+  while i < curr_test {
+    test := get_test(tests, i);
+    i = i + 1;
+
+    memset(tmp, 0, sizeof(char) * TmpCmdSize);
+    strcat(tmp, cast(*char) "| ");
+    strcat(tmp, test->file);
+    strcat(tmp, cast(*char) " ");
+    len := strlen(tmp);
+
+    while len < 89 {
+      strcat(tmp, cast(*char) ".");
+      len = len + 1;
+    }
+
+    if test->state {
+      strcat(tmp, cast(*char) "  OK  |");
+    } else {
+      strcat(tmp, cast(*char) " FAIL |");
+    }
+    puts(cast(string) tmp);
+
+    free(test->file);
+  }
+  puts("------------------------------------------------------------------------------------------------");
+
+  free(tmp);
+  free(tests);
   free(cast(*void) config);
   file_close(&file);
+};
+
+get_line : fn (str *char, out *char, start size_t) size_t {
+  get_char_ptr : fn (str *char, i size_t) *char {
+    tmp := cast(*char) (cast(size_t) str + i);
+    return tmp;
+  };
+
+  i size_t := 0;
+  loop {
+    c := *get_char_ptr(str, start + i);   
+    if c == '\n' || c == '\0' { break; }
+    c_out_ptr := get_char_ptr(out, i);
+    *c_out_ptr = c;
+    i = i + 1;
+  }
+
+  return start + i + 1;
 };
