@@ -30,13 +30,14 @@ SEEK_SET : 0;
 SEEK_CUR : 1;
 SEEK_END : 2;
 
-printf	fn (string, s32) s32 : extern;
+//printf	fn (string, s32) s32 : extern;
 puts 	fn (string) s32 : extern;
 
 malloc 	fn (size_t) *void : extern;
 free 	fn (*void) : extern;
 calloc 	fn (size_t, size_t) *void : extern;
 realloc fn (*void, size_t) *void : extern;
+memset  fn (*void, s32, size_t) *void : extern;
 
 abort 	fn () : extern;
 
@@ -44,4 +45,4 @@ fopen   fn (string, string) *void : extern;
 fclose  fn (*void) s32 : extern;
 fseek   fn (*void, s32, s32) s32 : extern;
 ftell   fn (*void) size_t : extern;
-fread   fn (string, size_t, size_t, *void) : extern;
+fread   fn (*char, size_t, size_t, *void) : extern;

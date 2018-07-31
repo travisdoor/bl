@@ -978,8 +978,9 @@ infer_type(context_t *cnt, bl_node_t *decl)
     check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
     return false;
   }
+
   /* infer type from value */
-  _decl->type = inferred_type;
+  _decl->type = bl_ast_get_type(_decl->value);
   return true;
 }
 
@@ -1118,7 +1119,8 @@ _check_unused(context_t *cnt, bl_node_t *node)
   switch (bl_node_code(node)) {
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-    if (!_decl->used && !(_decl->flags & BL_FLAG_EXTERN) && !(_decl->flags & BL_FLAG_MAIN)) {
+    if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
+        !(_decl->flags & BL_FLAG_MAIN)) {
       check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
                          "symbol is declared but never used");
     }

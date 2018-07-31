@@ -28,12 +28,7 @@
 
 #load "libc.bl"
 
-Foo : struct {
-  s s32
-};
-
 File : struct {
-  foo Foo,
   handle *void,		
   size 	  size_t	// file size in bytes
 };
@@ -59,7 +54,7 @@ file_open : fn (file *File, filepath string) bool {
   return true;
 };
 
-file_read_buf : fn (file *File, buf string) bool {
+file_read_buf : fn (file *File, buf *char) bool {
   if file == null || file->size == 0 { return false; }
   fread(buf, file->size, 1, file->handle); 
   return true;
@@ -69,22 +64,3 @@ file_close : fn (file *File) {
   if file == null { return; }
   fclose(file->handle);
 };
-
-
-main : fn () {
-  f File;
-  if file_open(&f, "test.bl") {
-    puts("file 'test.bl' found");
-
-    str := cast(string) malloc(sizeof(char) * (f.size + 1));
-    if file_read_buf(&f, str) {
-      puts(str);
-    }
-
-    free(cast(*void) str);
-    file_close(&f);
-  } else {
-    puts("file 'test.bl' not found");
-  }
-};
-

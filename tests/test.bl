@@ -1,10 +1,9 @@
 /* testing playground */
 
 #load "libc.bl"
-#load "file.bl"
 
 main : fn () s32 {
-  /*pointers();
+  pointers();
   ifs();
   loops();
   local_fn();
@@ -12,13 +11,11 @@ main : fn () s32 {
   constants();
   lambdas();
   structs();
-  enums();*/
-  files();
+  enums();
 
   return 0;
 };
 
-/*
 pointers : fn () {
   data s32;
   ptr *s32 := &data;
@@ -219,15 +216,4 @@ StateGlobal : enum {
   C,
   D,
   E : 100
-};
-*/
-
-files : fn () {
-  f := file_open("test.bl");
-  if f->valid {
-    puts("file 'test.bl' found");
-    file_close(f);
-  } else {
-    puts("file 'test.bl' not found");
-  }
 };
