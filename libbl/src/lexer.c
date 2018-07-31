@@ -65,6 +65,9 @@ static bool
 scan_string(context_t *cnt, bl_token_t *tok);
 
 static bool
+scan_char(context_t *cnt, bl_token_t *tok);
+
+static bool
 scan_number(context_t *cnt, bl_token_t *tok);
 
 static inline int
@@ -102,9 +105,9 @@ scan_comment(context_t *cnt, const char *term)
 bool
 scan_ident(context_t *cnt, bl_token_t *tok)
 {
-  tok->src.line    = cnt->line;
-  tok->src.col     = cnt->col;
-  tok->sym         = BL_SYM_IDENT;
+  tok->src.line = cnt->line;
+  tok->src.col  = cnt->col;
+  tok->sym      = BL_SYM_IDENT;
 
   char *begin = cnt->c;
 
@@ -118,8 +121,7 @@ scan_ident(context_t *cnt, bl_token_t *tok)
     cnt->c++;
   }
 
-  if (len == 0)
-    return false;
+  if (len == 0) return false;
 
   BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
   bo_string_appendn(cstr, begin, len);
@@ -138,6 +140,14 @@ scan_specch(char c)
     return '\n';
   case 't':
     return '\t';
+  case '0':
+    return '\0';
+  case '\"':
+    return '\"';
+  case '\'':
+    return '\'';
+  case '\\':
+    return '\\';
   default:
     return c;
   }
@@ -150,9 +160,9 @@ scan_string(context_t *cnt, bl_token_t *tok)
     return false;
   }
 
-  tok->src.line    = cnt->line;
-  tok->src.col     = cnt->col;
-  tok->sym         = BL_SYM_STRING;
+  tok->src.line = cnt->line;
+  tok->src.col  = cnt->col;
+  tok->sym      = BL_SYM_STRING;
 
   /* eat " */
   cnt->c++;
@@ -200,8 +210,51 @@ scan:
 exit:
   tok->value.str = bo_string_get(cstr);
   tok->src.len   = len;
-  tok->src.col = tok->src.col + 1;
+  tok->src.col   = tok->src.col + 1;
   cnt->col += len + 2;
+  return true;
+}
+
+bool
+scan_char(context_t *cnt, bl_token_t *tok)
+{
+  if (*cnt->c != '\'') return false;
+  tok->src.line = cnt->line;
+  tok->src.col  = cnt->col;
+  tok->src.len  = 0;
+  tok->sym      = BL_SYM_CHAR;
+
+  /* eat ' */
+  cnt->c++;
+
+  switch (*cnt->c) {
+  case '\'': {
+    scan_error(cnt, BL_ERR_EMPTY, "%s %d:%d expected character in ''.", cnt->unit->name, cnt->line,
+               cnt->col);
+  }
+  case '\0': {
+    scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character.", cnt->unit->name,
+               cnt->line, cnt->col);
+  }
+  case '\\':
+    /* special character */
+    tok->value.c = scan_specch(*(cnt->c + 1));
+    cnt->c += 2;
+    tok->src.len = 2;
+    break;
+  default:
+    tok->value.c = *cnt->c;
+    tok->src.len = 1;
+    cnt->c++;
+  }
+
+  /* eat ' */
+  if (*cnt->c != '\'') {
+    scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character expected '.",
+               cnt->unit->name, cnt->line, cnt->col);
+  }
+  cnt->c++;
+
   return true;
 }
 
@@ -236,9 +289,9 @@ c_to_number(char c, int base)
 bool
 scan_number(context_t *cnt, bl_token_t *tok)
 {
-  tok->src.line    = cnt->line;
-  tok->src.col     = cnt->col;
-  tok->value.str   = cnt->c;
+  tok->src.line  = cnt->line;
+  tok->src.col   = cnt->col;
+  tok->value.str = cnt->c;
 
   unsigned long n    = 0;
   int           len  = 0;
@@ -278,8 +331,7 @@ scan_number(context_t *cnt, bl_token_t *tok)
     cnt->c++;
   }
 
-  if (len == 0)
-    return false;
+  if (len == 0) return false;
 
   tok->src.len = len;
   cnt->col += len;
@@ -305,8 +357,7 @@ scan_double : {
   /*
    * valid d. or .d -> minimal 2 characters
    */
-  if (len < 2)
-    return false;
+  if (len < 2) return false;
 
   if (*(cnt->c) == 'f') {
     len++;
@@ -330,8 +381,8 @@ scan(context_t *cnt)
 {
   bl_token_t tok;
 scan:
-  tok.src.line    = cnt->line;
-  tok.src.col     = cnt->col;
+  tok.src.line = cnt->line;
+  tok.src.col  = cnt->col;
 
   /*
    * Ignored characters
@@ -368,7 +419,7 @@ scan:
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym      = (bl_sym_e)i;
+      tok.sym     = (bl_sym_e)i;
       tok.src.len = len;
 
       /*
@@ -403,14 +454,10 @@ scan:
   /*
    * Scan special tokens.
    */
-  if (scan_number(cnt, &tok))
-    goto push_token;
-
-  if (scan_ident(cnt, &tok))
-    goto push_token;
-
-  if (scan_string(cnt, &tok))
-    goto push_token;
+  if (scan_number(cnt, &tok)) goto push_token;
+  if (scan_ident(cnt, &tok)) goto push_token;
+  if (scan_string(cnt, &tok)) goto push_token;
+  if (scan_char(cnt, &tok)) goto push_token;
 
   /* When symbol is unknown report error */
   scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
@@ -434,8 +481,7 @@ bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
   };
 
   int error = 0;
-  if ((error = setjmp(cnt.jmp_error)))
-    return;
+  if ((error = setjmp(cnt.jmp_error))) return;
 
   scan(&cnt);
 

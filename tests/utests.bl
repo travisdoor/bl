@@ -15,15 +15,13 @@ main : fn () {
   config *char := malloc(sizeof(char) * (file.size + 1));
   file_read_buf(&file, config);
 
-  tmp *char := malloc(sizeof(char) * TmpSize);
-  memset(tmp, 0, TmpSize);
+  tmp char[TmpSize];
+  tmp[0] = '\0';
 
   i size_t := 0;
   while i < TmpSize {
-     
   }
 
-  free(cast(*void) tmp);
   free(cast(*void) config);
   file_close(&file);
 };
