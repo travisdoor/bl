@@ -23,9 +23,7 @@ main : fn () {
     strcat(out, test_file); 
   };
 
-  puts("------------------------------------------------------------------------------------------------");
-  puts("|                                      Biscuit UTester                                         |");
-  puts("------------------------------------------------------------------------------------------------");
+  puts("Biscuit UTester");
 
   file File;
   if !file_open(&file, ".config.utest") {
@@ -67,8 +65,7 @@ main : fn () {
     }
   }
 
-  puts("------------------------------------------------------------------------------------------------");
-  puts("|                                         RESULTS                                              |");
+  puts("");
 
   i = 0;
   while i < curr_test {
@@ -76,26 +73,24 @@ main : fn () {
     i = i + 1;
 
     memset(tmp, 0, sizeof(char) * TmpCmdSize);
-    strcat(tmp, cast(*char) "| ");
     strcat(tmp, test->file);
     strcat(tmp, cast(*char) " ");
     len := strlen(tmp);
 
-    while len < 89 {
+    while len < 74 {
       strcat(tmp, cast(*char) ".");
       len = len + 1;
     }
 
     if test->state {
-      strcat(tmp, cast(*char) "  OK  |");
+      strcat(tmp, cast(*char) "  OK ");
     } else {
-      strcat(tmp, cast(*char) " FAIL |");
+      strcat(tmp, cast(*char) " FAIL");
     }
     puts(cast(string) tmp);
 
     free(test->file);
   }
-  puts("------------------------------------------------------------------------------------------------");
 
   free(tmp);
   free(tests);
