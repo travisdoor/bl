@@ -25,6 +25,8 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
+#define VERBOSE 1
+
 #define FINISH return true
 #define WAIT return false
 
@@ -291,6 +293,9 @@ waiting_resume_all(context_t *cnt)
 void
 check_unresolved(context_t *cnt)
 {
+  bl_log("waiting %d", bo_htbl_size(cnt->waiting));
+  return;
+  
   bo_iterator_t    iter;
   waiting_queue_t *q;
   fiter_t          tmp;
@@ -301,8 +306,10 @@ check_unresolved(context_t *cnt)
     q = bo_htbl_iter_peek_value(cnt->waiting, &iter, waiting_queue_t *);
     assert(q);
 
+    bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp      = bo_array_at(q, i, fiter_t);
+      bl_log("# %p index: %d", tmp.flatten, i);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
       if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
         check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
@@ -318,10 +325,11 @@ static int _flatten = 0;
 flatten_t *
 flatten_new(void)
 {
+  flatten_t *tmp = bo_array_new(sizeof(bl_node_t *));
 #if BL_DEBUG
   ++_flatten;
 #endif
-  return bo_array_new(sizeof(bl_node_t *));
+  return tmp;
 }
 
 void
@@ -385,7 +393,7 @@ flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
 
   case BL_NODE_LIT_STRUCT: {
     bl_node_lit_struct_t *_struct = bl_peek_lit_struct(node);
-    check_flatten(cnt, _struct->type);
+    flatten(_struct->type);
     return;
   }
 
@@ -663,44 +671,52 @@ bool
 check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
-
-  bl_log("check %s (%d): %d",
-         bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
-         node->_serial, node->src ? node->src->line : 0);
+  bool result = true;
 
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
-    return check_ident(cnt, node);
+    result = check_ident(cnt, node);
+    break;
 
   case BL_NODE_DECL_VALUE:
-    return check_decl_value(cnt, node);
+    result = check_decl_value(cnt, node);
+    break;
 
   case BL_NODE_EXPR_CALL:
-    return check_expr_call(cnt, node);
+    result = check_expr_call(cnt, node);
+    break;
 
   case BL_NODE_EXPR_BINOP:
-    return check_expr_binop(cnt, node);
+    result = check_expr_binop(cnt, node);
+    break;
 
   case BL_NODE_EXPR_CAST:
-    return check_expr_cast(cnt, node);
+    result = check_expr_cast(cnt, node);
+    break;
 
   case BL_NODE_EXPR_UNARY:
-    return check_expr_unary(cnt, node);
+    result = check_expr_unary(cnt, node);
+    break;
 
   case BL_NODE_EXPR_SIZEOF:
-    return check_expr_sizeof(cnt, node);
+    result = check_expr_sizeof(cnt, node);
+    break;
 
   case BL_NODE_EXPR_MEMBER:
-    return check_expr_member(cnt, node);
+    result = check_expr_member(cnt, node);
+    break;
 
   case BL_NODE_STMT_IF:
-    return check_stmt_if(cnt, node);
+    result = check_stmt_if(cnt, node);
+    break;
 
   case BL_NODE_STMT_RETURN:
-    return check_stmt_return(cnt, node);
+    result = check_stmt_return(cnt, node);
+    break;
 
   case BL_NODE_TYPE_ENUM:
-    return check_type_enum(cnt, node);
+    result = check_type_enum(cnt, node);
+    break;
 
   case BL_NODE_EXPR_NULL:
   case BL_NODE_LIT:
@@ -717,7 +733,13 @@ check_node(context_t *cnt, bl_node_t *node)
     bl_warning("missing check for node type %s", bl_node_name(node));
   }
 
-  FINISH;
+#if VERBOSE
+  bl_log("checked [%s] %s (%d) on line: %d", result ? BL_GREEN(" OK ") : BL_RED("WAIT"),
+         bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
+         node->_serial, node->src ? node->src->line : 0);
+#endif
+
+  return result;
 }
 
 bool

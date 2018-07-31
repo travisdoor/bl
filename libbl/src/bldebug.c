@@ -50,7 +50,7 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...)
     fprintf(stderr, BL_YELLOW("warning [%s:%d]: %s") "\n", file, line, buffer);
     break;
   case BL_LOG_MSG:
-    fprintf(stderr, "log [%s:%d]: %s\n", file, line, buffer);
+    fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer);
     break;
   default:
     break;
