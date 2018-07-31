@@ -123,8 +123,9 @@ compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
       interrupt_on_error(builder);
     }
 
+    if (flags & BL_BUILDER_RUN) bl_jit_exec_run(builder, assembly);
+
     if (!(flags & BL_BUILDER_NO_BIN)) {
-      if (flags & BL_BUILDER_RUN) bl_jit_exec_run(builder, assembly);
       bl_linker_run(builder, assembly);
       interrupt_on_error(builder);
       bl_native_bin_run(builder, assembly);

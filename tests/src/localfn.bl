@@ -1,0 +1,11 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  add : fn (a s32, b s32) s32 {
+    return a + b; 
+  };
+
+  result := add(10, 20);
+  printf("result = %d\n", result);
+  return 0;
+};

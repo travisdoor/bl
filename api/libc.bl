@@ -30,7 +30,7 @@ SEEK_SET : 0;
 SEEK_CUR : 1;
 SEEK_END : 2;
 
-//printf	fn (string, s32) s32 : extern;
+printf	fn (string, s32) s32 : extern;
 puts 	fn (string) s32 : extern;
 
 malloc 	fn (size_t) *void : extern;

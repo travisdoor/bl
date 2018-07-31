@@ -56,13 +56,11 @@
     ;; Functions
     ("\\(\\w+\\)\\((\\)" 1 font-lock-function-name-face)
 
-    ;; Modules
-    ("\\(\\w+\\)\\(::\\)" 1 font-lock-reference-face)
-    ("\\(using \\)\\(\\w+\\)" 2 font-lock-reference-face)
-    ("\\(module \\)\\(\\w+\\)" 2 font-lock-reference-face)
-
     ;; Hash directives
     ("#\\w+" . font-lock-preprocessor-face)
+
+    ;; Chars 
+    ("\\\'.*\\\'" . font-lock-string-face)
 
     ;; Strings
     ("\\\".*\\\"" . font-lock-string-face)

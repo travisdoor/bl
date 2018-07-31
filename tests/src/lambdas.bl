@@ -1,0 +1,18 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  hello : fn () {
+    puts("hello!!!");
+  };
+
+  bye : fn () {
+    puts("bye!!!");
+  };
+
+  lambda := &hello;
+  lambda();
+
+  lambda = &bye;
+  lambda();
+  return 0;
+};
