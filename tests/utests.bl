@@ -1,10 +1,11 @@
 #load "file.bl"
 #load "libc.bl"
+#load "string.bl"
 
 TestFileSize size_t : 256;
-TmpCmdSize size_t : 256;
+TmpCmdSize size_t   : 256;
 MaxTestCount size_t : 256;
-BaseCmd : "blc -run -no-bin ";
+BaseCmd      	    : "blc -run -no-bin ";
 
 Test : struct {
   file *char,
@@ -16,11 +17,6 @@ main : fn () {
   get_test : fn (t *Test, i size_t) *Test {
     tmp := cast(*Test) (cast(size_t) t + sizeof(Test) * i);
     return tmp;
-  };
-
-  build_command : fn (out *char, base string, test_file *char) {
-    strcat(out, cast(*char) base); 
-    strcat(out, test_file); 
   };
 
   puts("Biscuit UTester");
@@ -49,15 +45,18 @@ main : fn () {
     i = get_line(config, test->file, i);  
   }
 
-  tmp *char := malloc(sizeof(char) * TmpCmdSize);
+  tmp *String := str_new();
 
   i = 0;
   while i < curr_test {
     test := get_test(tests, i);
     i = i + 1;
-    memset(tmp, 0, sizeof(char) * TmpCmdSize);
-    build_command(tmp, BaseCmd, test->file);
-    state := system(tmp);
+
+    str_clear(tmp);
+    str_ccat(tmp, BaseCmd);
+    str_ccat(tmp, test->file);
+    state := system(tmp->data);
+
     if state == 0 {
       test->state = true;
     } else {
@@ -72,27 +71,24 @@ main : fn () {
     test := get_test(tests, i);
     i = i + 1;
 
-    memset(tmp, 0, sizeof(char) * TmpCmdSize);
-    strcat(tmp, test->file);
-    strcat(tmp, cast(*char) " ");
-    len := strlen(tmp);
+    str_clear(tmp);
+    str_ccat(tmp, test->file);
+    str_ccat(tmp, " ");
 
-    while len < 74 {
-      strcat(tmp, cast(*char) ".");
-      len = len + 1;
+    while tmp->len < 74 {
+      str_ccat(tmp, ".");
     }
 
     if test->state {
-      strcat(tmp, cast(*char) "  OK ");
+      str_ccat(tmp, "  OK ");
     } else {
-      strcat(tmp, cast(*char) " FAIL");
+      str_ccat(tmp, " FAIL");
     }
-    puts(cast(string) tmp);
-
+    puts(tmp->data);
     free(test->file);
   }
 
-  free(tmp);
+  str_delete(tmp);
   free(tests);
   free(cast(*void) config);
   file_close(&file);

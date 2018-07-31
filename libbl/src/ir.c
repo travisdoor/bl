@@ -178,15 +178,11 @@ should_load(bl_node_t *node, LLVMValueRef llvm_value)
   if ((bl_node_is(node, BL_NODE_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK))
     return true;
 
-  if (LLVMIsAArgument(llvm_value))
-    return false;
-
   if ((bl_node_is(node, BL_NODE_EXPR_MEMBER) &&
        bl_peek_expr_member(node)->kind == BL_MEM_KIND_STRUCT))
     return true;
 
-  if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value))
-    return true;
+  if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value)) return true;
 
   return false;
 }
@@ -546,7 +542,7 @@ ir_ident(context_t *cnt, bl_node_t *ident)
   switch (_ref->kind) {
   case BL_DECL_KIND_FIELD:
     if (_ref->in_gscope)
-      ir_global_get(cnt, _ident->ref);
+      result = ir_global_get(cnt, _ident->ref);
     else
       result = llvm_values_get(cnt, _ident->ref);
     break;
@@ -926,7 +922,12 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
     int        i = 0;
     bl_node_foreach(_fn_type->arg_types, arg)
     {
-      llvm_values_insert(cnt, arg, LLVMGetParam(result, (unsigned int)i++));
+      const char * name  = bl_peek_ident(bl_peek_decl_value(arg)->name)->str;
+      LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
+      LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
+      LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
+
+      llvm_values_insert(cnt, arg, p_tmp);
     }
 
     /*

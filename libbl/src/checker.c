@@ -666,11 +666,9 @@ check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
 
-  /*
   bl_log("check %s (%d): %d",
          bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
          node->_serial, node->src ? node->src->line : 0);
-  */
 
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
@@ -747,8 +745,8 @@ check_ident(context_t *cnt, bl_node_t *ident)
   assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
 
   if (_ident->ptr) {
-    /* when identificator reference is pointer we need to create copy of declaration with different
-     * type, mabye there is some better solution ??? */
+    /* when ident reference is pointer we need to create copy of declaration with different
+     * type, maybe there is some better solution ??? */
     _ident->ref     = bl_ast_node_dup(cnt->ast, found);
     bl_node_t *type = bl_ast_get_type(_ident->ref);
     assert(type);
@@ -817,6 +815,7 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   }
 
   bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
+  assert(lhs_type);
   if (bl_node_is(_binop->rhs, BL_NODE_EXPR_NULL)) {
     bl_peek_expr_null(_binop->rhs)->type = lhs_type;
     if (!_binop->type) _binop->type = lhs_type;

@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   libc.bl
+// File:   string.bl
 // Author: Martin Dorazil
-// Date:   7/23/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,32 +26,53 @@
 // SOFTWARE.
 //************************************************************************************************
 
-SEEK_SET : 0;
-SEEK_CUR : 1;
-SEEK_END : 2;
+#load "libc.bl"
 
-printf	fn (string, s32) s32 : extern;
-puts 	fn (string) s32 : extern;
-putchar fn (char) s32 : extern;
+StrChunkSize size_t : 256;
 
-malloc 	fn (size_t) *void : extern;
-free 	fn (*void) : extern;
-calloc 	fn (size_t, size_t) *void : extern;
-realloc fn (*void, size_t) *void : extern;
-memset  fn (*void, s32, size_t) *void : extern;
-memcpy  fn (*void, *void, size_t) *void : extern;
+String : struct {
+  data *char,
+  len size_t,
+  _allocated size_t
+};
 
-abort 	fn () : extern;
+str_new : fn () *String {
+  tmp *String := malloc(sizeof(String));
+  tmp->data   	  = malloc(StrChunkSize);
+  tmp->_allocated = StrChunkSize;
+  tmp->len 	  = 0;
+  *tmp->data 	  = '\0';
+  return tmp;
+};
 
-fopen   fn (string, string) *void : extern;
-fclose  fn (*void) s32 : extern;
-fseek   fn (*void, s32, s32) s32 : extern;
-ftell   fn (*void) size_t : extern;
-fread   fn (*char, size_t, size_t, *void) : extern;
+str_delete : fn (s *String) {
+  if s == null { return; }
+  free(s->data);
+  free(s);
+};
 
-strcat  fn (*char, *char) *char : extern;
-strlen  fn (*char) size_t : extern;
-strcpy  fn (*char, *char) *char : extern;
-strdup  fn (*char) *char : extern;
+str_cat : fn (s *String, other *String) {
+  str_ccat(s, other->data);
+};
 
-system  fn (*char) s32 : extern;
+str_ccat : fn (s *String, cs *char) {
+  alloc_if_needed : fn (s *String, expected_len size_t) {
+    expected_len = expected_len + 1; // adding one cell for \0
+    if expected_len > s->_allocated {
+       s->_allocated = (expected_len / StrChunkSize + 1) * StrChunkSize; 
+       s->data = realloc(s->data, s->_allocated);
+    }
+  };
+
+  if s == null || cs == null { return; }
+
+  s->len = s->len + strlen(cs);
+  alloc_if_needed(s, s->len);    
+  strcat(s->data, cs);
+};
+
+str_clear : fn (s *String) {
+  if s == null || s->data == null { return; }
+  s->len = 0;
+  *s->data = '\0';
+};
