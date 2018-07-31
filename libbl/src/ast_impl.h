@@ -405,6 +405,9 @@ bl_ast_get_parent_compound(bl_node_t *node);
 bl_node_t *
 bl_ast_get_type(bl_node_t *node);
 
+void
+bl_ast_set_type(bl_node_t *node, bl_node_t *type);
+
 int
 bl_ast_is_buildin_type(bl_node_t *ident);
 

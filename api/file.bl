@@ -28,22 +28,20 @@
 
 #load "libc.bl"
 
-/*
- * File handler
- */
-File : struct {
-  handle *void,		
-  size 	  size_t,	// file size in bytes
-  valid   bool		// true when file is valid
+Foo : struct {
+  s s32
 };
 
-/*
- * Open file. 
- */
-file_open : fn (filepath string) *File {
+File : struct {
+  foo Foo,
+  handle *void,		
+  size 	  size_t	// file size in bytes
+};
+
+file_open : fn (file *File, filepath string) bool {
   read : "r";
 
-  // get size of file stream in bytes */
+  // get size of file stream in bytes
   fsize : fn (handle *void) size_t {
     fseek(handle, 0, SEEK_END); 
     size := ftell(handle);
@@ -51,52 +49,40 @@ file_open : fn (filepath string) *File {
     return size;
   };
 
-  tmp := cast(*File) malloc(sizeof(File));
-  tmp->handle = fopen(filepath, read);
-  if tmp->handle == null {
-    tmp->valid = false;
-    tmp->size = 0;
-  } else {
-    tmp->valid = true;
-    tmp->size = fsize(tmp->handle);
-  }
-  return tmp;
+  file->handle = fopen(filepath, read);
+  if file->handle == null {
+    file->size = 0;
+    return false;
+  } 
+
+  file->size = fsize(file->handle);
+  return true;
 };
 
-/*
- * Read whole file into the preallocated buffer.
- */
 file_read_buf : fn (file *File, buf string) bool {
-  if file == null { return false; }
-  if !file->valid { return false; }
-  if file->size == 0 { return false; }
+  if file == null || file->size == 0 { return false; }
   fread(buf, file->size, 1, file->handle); 
   return true;
 };
 	    
-/*
- * Close file. 
- */
 file_close : fn (file *File) {
   if file == null { return; }
   fclose(file->handle);
-  free(file);
 };
 
 
 main : fn () {
-  f := file_open("test.bl");
-
-  if f->valid {
+  f File;
+  if file_open(&f, "test.bl") {
     puts("file 'test.bl' found");
 
-    str := cast(string) malloc(sizeof(char) * (f->size + 1));
-    if file_read_buf(f, str) {
+    str := cast(string) malloc(sizeof(char) * (f.size + 1));
+    if file_read_buf(&f, str) {
       puts(str);
     }
 
     free(cast(*void) str);
-    file_close(f);
+    file_close(&f);
   } else {
     puts("file 'test.bl' not found");
   }

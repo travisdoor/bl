@@ -743,12 +743,18 @@ check_ident(context_t *cnt, bl_node_t *ident)
     bl_peek_decl_value(found)->used++;
   }
 
-  _ident->ref = found;
+  _ident->ref = bl_ast_unroll_ident(found);
+  assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
 
   if (_ident->ptr) {
+    /* when identificator reference is pointer we need to create copy of declaration with different
+     * type, mabye there is some better solution ??? */
     _ident->ref     = bl_ast_node_dup(cnt->ast, found);
     bl_node_t *type = bl_ast_get_type(_ident->ref);
+    assert(type);
+    type = bl_ast_node_dup(cnt->ast, type);
     bl_ast_type_set_ptr(type, _ident->ptr);
+    bl_ast_set_type(_ident->ref, type);
   }
 
   FINISH;

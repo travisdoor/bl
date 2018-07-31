@@ -484,10 +484,18 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
 
   case BL_NODE_TYPE_STRUCT: {
     bl_node_type_struct_t *_struct = bl_peek_type_struct(type);
-
     for (int i = 0; i < _struct->ptr; ++i) {
       append_buf(buf, len, "*");
     }
+
+    if (_struct->base_decl) {
+      bl_node_t *name = bl_peek_decl_value(_struct->base_decl)->name;
+      assert(name);
+
+      append_buf(buf, len, bl_peek_ident(name)->str);
+      break;
+    }
+
     append_buf(buf, len, "struct {");
 
     bl_node_t *t = _struct->types;
@@ -583,6 +591,52 @@ bl_ast_get_type(bl_node_t *node)
   case BL_NODE_TYPE_FN:
   case BL_NODE_TYPE_ENUM:
     return node;
+  default:
+    bl_abort("node %s has no type", bl_node_name(node));
+  }
+}
+
+void
+bl_ast_set_type(bl_node_t *node, bl_node_t *type)
+{
+  assert(node && type);
+  switch (bl_node_code(node)) {
+  case BL_NODE_DECL_VALUE:
+    bl_peek_decl_value(node)->type = type;
+    break;
+  case BL_NODE_LIT:
+    bl_peek_lit(node)->type = type;
+    break;
+  case BL_NODE_LIT_FN:
+    bl_peek_lit_fn(node)->type = type;
+    break;
+  case BL_NODE_LIT_STRUCT:
+    bl_peek_lit_struct(node)->type = type;
+    break;
+  case BL_NODE_LIT_ENUM:
+    bl_peek_lit_enum(node)->type = type;
+    break;
+  case BL_NODE_EXPR_CALL:
+    bl_peek_expr_call(node)->type = type;
+    break;
+  case BL_NODE_EXPR_BINOP:
+    bl_peek_expr_binop(node)->type = type;
+    break;
+  case BL_NODE_EXPR_SIZEOF:
+    bl_peek_expr_sizeof(node)->type = type;
+    break;
+  case BL_NODE_EXPR_CAST:
+    bl_peek_expr_cast(node)->type = type;
+    break;
+  case BL_NODE_EXPR_UNARY:
+    bl_peek_expr_unary(node)->type = type;
+    break;
+  case BL_NODE_EXPR_NULL:
+    bl_peek_expr_null(node)->type = type;
+    break;
+  case BL_NODE_EXPR_MEMBER:
+    bl_peek_expr_member(node)->type = type;
+    break;
   default:
     bl_abort("node %s has no type", bl_node_name(node));
   }
