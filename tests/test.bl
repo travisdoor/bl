@@ -1,6 +1,7 @@
 /* testing playground */
 
 #load "libc.bl"
+#load "sdl2.bl"
 
 main : fn () s32 {
   return 0;
