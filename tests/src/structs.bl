@@ -17,10 +17,10 @@ main : fn () s32 {
 
   local.i = 666;
   local.bar.i = 10;
-  //local.bar.j = 20;
+  local.bar.j = 20;
   printf("local.i = %d\n", local.i);
-  //printf("local.bar.i = %d\n", local.bar.i);
-  //printf("local.bar.j = %d\n", local.bar.j);
+  printf("local.bar.i = %d\n", local.bar.i);
+  printf("local.bar.j = %d\n", local.bar.j);
 
   foo_ptr := &foo;
   printf("foo_ptr->i = %d\n", foo_ptr->i);

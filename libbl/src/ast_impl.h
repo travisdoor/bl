@@ -326,7 +326,6 @@ struct bl_node
   bl_src_t *     src;
   bl_node_code_e code;
 
-  bl_node_t *prev;
   bl_node_t *next;
 #if BL_DEBUG
   int _serial;
