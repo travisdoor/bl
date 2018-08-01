@@ -66,6 +66,9 @@
   nt(LOAD, load, struct { \
     const char *filepath; \
   }) \
+  nt(LINK, link, struct { \
+    const char *lib; \
+  }) \
   nt(IDENT, ident, struct { \
     const char *str; \
     uint64_t    hash; \
@@ -354,6 +357,7 @@ _BL_NODE_TYPE_LIST
 
 _BL_AST_NCTOR(bad);
 _BL_AST_NCTOR(load, const char *filepath);
+_BL_AST_NCTOR(link, const char *lib);
 _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
 _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);

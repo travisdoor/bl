@@ -79,6 +79,9 @@ insert_node(bl_node_t ***node)
 static bl_node_t *
 parse_load(context_t *cnt);
 
+static bl_node_t *
+parse_link(context_t *cnt);;
+
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
 
@@ -1114,6 +1117,24 @@ parse_load(context_t *cnt)
 }
 
 bl_node_t *
+parse_link(context_t *cnt)
+{
+  bl_token_t *tok_id = bl_tokens_consume_if(cnt->tokens, BL_SYM_LINK);
+  if (!tok_id) return NULL;
+
+  bl_token_t *tok_path = bl_tokens_consume(cnt->tokens);
+  if (!bl_token_is(tok_path, BL_SYM_STRING)) {
+    parse_error(cnt, BL_ERR_EXPECTED_STRING, tok_path, BL_BUILDER_CUR_WORD,
+                "expected path string after link preprocessor directive");
+  }
+
+  const char *lib = tok_path->value.str;
+  bl_assembly_add_link(cnt->assembly, lib);
+
+  return bl_ast_link(cnt->ast, tok_id, lib);
+}
+
+bl_node_t *
 parse_block(context_t *cnt)
 {
   bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
@@ -1186,6 +1207,11 @@ next:
     goto next;
   }
 
+  if ((*node = parse_link(cnt))) {
+    insert_node(&node);
+    goto next;
+  }
+
   tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBLOCK);
   if (!tok) {
     tok = bl_tokens_peek_prev(cnt->tokens);
@@ -1215,6 +1241,11 @@ next:
   }
 
   if ((*node = parse_load(cnt))) {
+    insert_node(&node);
+    goto next;
+  }
+
+  if ((*node = parse_link(cnt))) {
     insert_node(&node);
     goto next;
   }

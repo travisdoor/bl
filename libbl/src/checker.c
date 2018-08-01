@@ -69,7 +69,7 @@ typedef struct
 typedef struct
 {
   BArray *flatten;
-  size_t     i;
+  size_t  i;
 } fiter_t;
 
 static inline bl_node_t *
@@ -234,7 +234,7 @@ waiting_resume_all(context_t *cnt)
     BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
     assert(q);
 
-    //bl_log("q.len = %d", bo_array_size(q));
+    // bl_log("q.len = %d", bo_array_size(q));
     fiter_t fit;
     for (size_t i = 0; i < bo_array_size(q);) {
       fit = bo_array_at(q, i, fiter_t);
@@ -268,10 +268,10 @@ waiting_resume_all(context_t *cnt)
 void
 check_unresolved(context_t *cnt)
 {
-  bo_iterator_t    iter;
-  BArray *q;
-  fiter_t          tmp;
-  bl_node_t *      tmp_node;
+  bo_iterator_t iter;
+  BArray *      q;
+  fiter_t       tmp;
+  bl_node_t *   tmp_node;
 
   bl_bhtbl_foreach(cnt->waiting, iter)
   {
@@ -489,6 +489,7 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LIT:
   case BL_NODE_LOAD:
+  case BL_NODE_LINK:
     break;
   default:
     bl_warning("missing flattening for node %s", bl_node_name(node));
@@ -699,6 +700,7 @@ check_node(context_t *cnt, bl_node_t *node)
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LOAD:
+  case BL_NODE_LINK:
     break;
 
   default:
@@ -1111,7 +1113,7 @@ _check_unused(context_t *cnt, bl_node_t *node)
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
     if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
-        !(_decl->flags & BL_FLAG_MAIN)) {
+        !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
       check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
                          "symbol is declared but never used");
     }

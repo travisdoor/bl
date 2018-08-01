@@ -186,6 +186,13 @@ _BL_AST_NCTOR(load, const char *filepath)
   return (bl_node_t *)_load;
 }
 
+_BL_AST_NCTOR(link, const char *lib)
+{
+  bl_node_link_t *_link = alloc_node(ast, BL_NODE_LINK, tok, bl_node_link_t *);
+  _link->lib            = lib;
+  return (bl_node_t *)_link;
+}
+
 _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
 {
   bl_node_decl_ublock_t *_ublock =
