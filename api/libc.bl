@@ -41,8 +41,6 @@ realloc fn (*void, size_t) *void : extern;
 memset  fn (*void, s32, size_t) *void : extern;
 memcpy  fn (*void, *void, size_t) *void : extern;
 
-abort 	fn () : extern;
-
 fopen   fn (string, string) *void : extern;
 fclose  fn (*void) s32 : extern;
 fseek   fn (*void, s32, s32) s32 : extern;
@@ -55,3 +53,4 @@ strcpy  fn (*char, *char) *char : extern;
 strdup  fn (*char) *char : extern;
 
 system  fn (*char) s32 : extern;
+abort   fn () : extern;

@@ -28,7 +28,7 @@
 
 #link "SDL2"
 
-SdlInitFlags : enum s32 {
+SdlInitFlags : enum u32 {
   Timer          : 0x00000001,
   Audio 	 : 0x00000010,
   Video 	 : 0x00000020,
@@ -40,7 +40,7 @@ SdlInitFlags : enum s32 {
   Everything 	 : Timer | Audio | Video | Joystick | Haptic | GameController | Events
 };
 
-SdlWindowFlags : enum s32 {
+SdlWindowFlags : enum u32 {
   Fullscreen        : 0x00000001,
   OpenGL            : 0x00000002,
   Shown             : 0x00000004,

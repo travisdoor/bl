@@ -4,5 +4,12 @@
 #load "sdl2.bl"
 
 main : fn () s32 {
+  if SDL_Init(SdlInitFlags.Video) != 0 {
+    puts("Unable to initialize SDL2");
+    abort(); 
+  }
+
+
+  SDL_Quit();
   return 0;
 };
