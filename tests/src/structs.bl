@@ -9,11 +9,11 @@ main : fn () s32 {
   foo Foo;
   local Local;
 
-  //foo.i = 10;
-  //foo.j = 20;
+  foo.i = 10;
+  foo.j = 20;
 
-  //printf("foo.i = %d\n", foo.i);
-  //printf("foo.j = %d\n", foo.j);
+  printf("foo.i = %d\n", foo.i);
+  printf("foo.j = %d\n", foo.j);
 
   local.i = 666;
   local.bar.i = 10;
@@ -22,12 +22,12 @@ main : fn () s32 {
   printf("local.bar.i = %d\n", local.bar.i);
   printf("local.bar.j = %d\n", local.bar.j);
 
-  //foo_ptr := &foo;
-  //printf("foo_ptr->i = %d\n", foo_ptr->i);
-  //printf("foo_ptr->j = %d\n", foo_ptr->j);
+  foo_ptr := &foo;
+  printf("foo_ptr->i = %d\n", foo_ptr->i);
+  printf("foo_ptr->j = %d\n", foo_ptr->j);
 
-  //printf("(*foo_ptr).i = %d\n", (*foo_ptr).i);
-  //printf("(*foo_ptr).j = %d\n", (*foo_ptr).j);
+  printf("(*foo_ptr).i = %d\n", (*foo_ptr).i);
+  printf("(*foo_ptr).j = %d\n", (*foo_ptr).j);
   return 0;
 };
 

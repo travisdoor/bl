@@ -25,7 +25,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 #define FINISH return true
 #define WAIT return false
@@ -54,10 +54,6 @@
                    ##__VA_ARGS__);                                                                 \
   }
 
-typedef BHashTable waiting_t;
-typedef BArray     waiting_queue_t;
-typedef BArray     flatten_t;
-
 typedef struct
 {
   bl_builder_t * builder;
@@ -66,13 +62,13 @@ typedef struct
   bl_ast_t *     ast;
 
   BArray *    waiting_resumed;
-  waiting_t * waiting;
+  BHashTable *waiting;
   bl_scope_t *provided_in_gscope;
 } context_t;
 
 typedef struct
 {
-  flatten_t *flatten;
+  BArray *flatten;
   size_t     i;
 } fiter_t;
 
@@ -88,14 +84,8 @@ infer_type(context_t *cnt, bl_node_t *decl);
 static void
 provide(bl_node_t *ident, bl_node_t *provided);
 
-static waiting_t *
-waiting_new(void);
-
-static void
-waiting_delete(waiting_t *waiting);
-
 static inline void
-waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter);
+waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter);
 
 static void
 waiting_resume(context_t *cnt, uint64_t hash);
@@ -103,17 +93,17 @@ waiting_resume(context_t *cnt, uint64_t hash);
 static void
 waiting_resume_all(context_t *cnt);
 
-static flatten_t *
+static BArray *
 flatten_new(void);
 
 static void
-flatten_delete(flatten_t *flatten);
+flatten_delete(BArray *flatten);
 
 static inline void
-flatten_push(flatten_t *flatten, bl_node_t *node);
+flatten_push(BArray *flatten, bl_node_t *node);
 
 static void
-flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node);
+flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node);
 
 static bool
 implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type);
@@ -212,30 +202,12 @@ provide(bl_node_t *ident, bl_node_t *provided)
   bl_scope_insert(scope, ident, provided);
 }
 
-waiting_t *
-waiting_new(void)
-{
-  return bo_htbl_new(sizeof(waiting_queue_t *), 2048);
-}
-
 void
-waiting_delete(waiting_t *waiting)
+waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter)
 {
-  bo_iterator_t it;
-  bl_bhtbl_foreach(waiting, it)
-  {
-    waiting_queue_t *q = bo_htbl_iter_peek_value(waiting, &it, waiting_queue_t *);
-    bo_unref(q);
-  }
-  bo_unref(waiting);
-}
-
-void
-waiting_push(waiting_t *waiting, uint64_t hash, fiter_t fiter)
-{
-  waiting_queue_t *queue = NULL;
+  BArray *queue = NULL;
   if (bo_htbl_has_key(waiting, hash)) {
-    queue = bo_htbl_at(waiting, hash, waiting_queue_t *);
+    queue = bo_htbl_at(waiting, hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(fiter_t));
     bo_htbl_insert(waiting, hash, queue);
@@ -259,12 +231,14 @@ waiting_resume_all(context_t *cnt)
     uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
     bo_array_erase(cnt->waiting_resumed, 0);
 
-    waiting_queue_t *q = bo_htbl_at(cnt->waiting, hash, waiting_queue_t *);
+    BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
     assert(q);
 
+    //bl_log("q.len = %d", bo_array_size(q));
     fiter_t fit;
     for (size_t i = 0; i < bo_array_size(q);) {
       fit = bo_array_at(q, i, fiter_t);
+      bo_array_erase(q, i);
 
       bool interrupted = false;
       /* resume here */
@@ -281,34 +255,32 @@ waiting_resume_all(context_t *cnt)
 
       if (!interrupted) {
         flatten_delete(fit.flatten);
-        bo_array_erase(q, i);
       } else {
-        ++i;
+        //++i;
       }
     }
-    if (!bo_array_size(q)) bo_htbl_erase_key(cnt->waiting, hash);
+    if (!bo_array_size(q)) {
+      bo_htbl_erase_key(cnt->waiting, hash);
+    }
   }
 }
 
 void
 check_unresolved(context_t *cnt)
 {
-  bl_log("waiting %d", bo_htbl_size(cnt->waiting));
-  return;
-  
   bo_iterator_t    iter;
-  waiting_queue_t *q;
+  BArray *q;
   fiter_t          tmp;
   bl_node_t *      tmp_node;
 
   bl_bhtbl_foreach(cnt->waiting, iter)
   {
-    q = bo_htbl_iter_peek_value(cnt->waiting, &iter, waiting_queue_t *);
+    q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
     assert(q);
 
     bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
-      tmp      = bo_array_at(q, i, fiter_t);
+      tmp = bo_array_at(q, i, fiter_t);
       bl_log("# %p index: %d", tmp.flatten, i);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
       if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
@@ -322,10 +294,10 @@ check_unresolved(context_t *cnt)
 #if BL_DEBUG
 static int _flatten = 0;
 #endif
-flatten_t *
+BArray *
 flatten_new(void)
 {
-  flatten_t *tmp = bo_array_new(sizeof(bl_node_t *));
+  BArray *tmp = bo_array_new(sizeof(bl_node_t *));
 #if BL_DEBUG
   ++_flatten;
 #endif
@@ -333,7 +305,7 @@ flatten_new(void)
 }
 
 void
-flatten_delete(flatten_t *flatten)
+flatten_delete(BArray *flatten)
 {
 #if BL_DEBUG
   --_flatten;
@@ -342,13 +314,13 @@ flatten_delete(flatten_t *flatten)
 }
 
 void
-flatten_push(flatten_t *flatten, bl_node_t *node)
+flatten_push(BArray *flatten, bl_node_t *node)
 {
   bo_array_push_back(flatten, node);
 }
 
 void
-flatten_node(context_t *cnt, flatten_t *fbuf, bl_node_t *node)
+flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
 {
   if (!node) return;
 
@@ -540,8 +512,8 @@ check_flatten(context_t *cnt, bl_node_t *node)
   for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
     tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
     if (!check_node(cnt, tmp)) {
-      /* node has not been satisfied and need to be checked later when all it's references comes
-       * out */
+      /* node has not been satisfied and need to be checked later when all it's references become
+       * available */
       bl_node_ident_t *_ident = bl_peek_ident(tmp);
       waiting_push(cnt->waiting, _ident->hash, fit);
       interrupted = true;
@@ -1166,7 +1138,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .assembly           = assembly,
       .unit               = NULL,
       .ast                = NULL,
-      .waiting            = waiting_new(),
+      .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .waiting_resumed    = bo_array_new(sizeof(uint64_t)),
       .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
   };
@@ -1182,7 +1154,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   waiting_resume_all(&cnt);
   check_unresolved(&cnt);
   check_unused(&cnt);
-  waiting_delete(cnt.waiting);
+  bo_unref(cnt.waiting);
   bo_unref(cnt.waiting_resumed);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);
