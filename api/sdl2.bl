@@ -28,7 +28,7 @@
 
 #link "SDL2"
 
-SdlInitFlags : enum u32 {
+SDL_InitFlags : enum u32 {
   Timer          : 0x00000001,
   Audio 	 : 0x00000010,
   Video 	 : 0x00000020,
@@ -40,7 +40,7 @@ SdlInitFlags : enum u32 {
   Everything 	 : Timer | Audio | Video | Joystick | Haptic | GameController | Events
 };
 
-SdlWindowFlags : enum u32 {
+SDL_WindowFlags : enum u32 {
   Fullscreen        : 0x00000001,
   OpenGL            : 0x00000002,
   Shown             : 0x00000004,
@@ -64,12 +64,12 @@ SdlWindowFlags : enum u32 {
   Vulkan            : 0x10000000
 };
 
-SdlWindow : struct {
+SDL_Window : struct {
   _handle *void
 };
 
 SDL_Init	  fn (u32) s32 : extern;
 SDL_Quit 	  fn () : extern;
-SDL_CreateWindow  fn (*char, s32, s32, s32, s32, u32) *SdlWindow : extern;
+SDL_CreateWindow  fn (*char, s32, s32, s32, s32, u32) *SDL_Window : extern;
 SDL_Delay	  fn (u32) : extern;
-SDL_DestroyWindow fn (*SdlWindow) : extern;
+SDL_DestroyWindow fn (*SDL_Window) : extern;
