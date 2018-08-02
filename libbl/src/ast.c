@@ -848,6 +848,10 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
   if (fkind == BL_KIND_STRING && tkind == BL_KIND_PTR) return true;
   if (tkind == BL_KIND_STRING && fkind == BL_KIND_PTR) return true;
 
+  if (tkind == BL_KIND_ENUM) {
+    return bl_ast_can_impl_cast(from_type, bl_peek_type_enum(to_type)->base_type);
+  }
+
   if (fkind != tkind) return false;
   if (fkind == BL_KIND_STRUCT || fkind == BL_KIND_FN) return false;
 

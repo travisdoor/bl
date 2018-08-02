@@ -840,7 +840,10 @@ ir_decl_mut(context_t *cnt, bl_node_t *decl)
     assert(init);
     LLVMSetInitializer(result, init);
   } else {
+    LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
     result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(bl_peek_ident(_decl->name)->str));
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
     llvm_values_insert(cnt, decl, result);
 
     if (!_decl->value) return result;

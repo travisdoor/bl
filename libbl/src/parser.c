@@ -72,7 +72,7 @@ typedef struct
 static inline void
 insert_node(bl_node_t ***node)
 {
-  *node          = &(**node)->next;
+  *node = &(**node)->next;
 }
 
 /* fw decls */
@@ -80,7 +80,8 @@ static bl_node_t *
 parse_load(context_t *cnt);
 
 static bl_node_t *
-parse_link(context_t *cnt);;
+parse_link(context_t *cnt);
+;
 
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
@@ -564,6 +565,7 @@ next:
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
                 "expected variant after comma ','");
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
     return bl_ast_bad(cnt->ast, tok);
   }
 
@@ -867,6 +869,7 @@ next:
   if (tok->sym != BL_SYM_RBLOCK) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                 "expected end of member list  '}'  or another memeber separated by comma");
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
     return bl_ast_bad(cnt->ast, tok_struct);
   }
 
