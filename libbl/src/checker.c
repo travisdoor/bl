@@ -811,8 +811,14 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
   assert(lhs_type);
   if (bl_node_is(_binop->rhs, BL_NODE_EXPR_NULL)) {
-    bl_peek_expr_null(_binop->rhs)->type = lhs_type;
-    if (!_binop->type) _binop->type = lhs_type;
+    if (bl_ast_get_type_kind(lhs_type) != BL_KIND_PTR) {
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
+                       "expected a pointer type");
+    } else {
+      bl_peek_expr_null(_binop->rhs)->type = lhs_type;
+      if (!_binop->type) _binop->type = lhs_type;
+    }
+
     FINISH;
   }
 

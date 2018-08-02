@@ -64,5 +64,12 @@ SdlWindowFlags : enum u32 {
   Vulkan            : 0x10000000
 };
 
-SDL_Init fn (u32) s32 : extern;
-SDL_Quit fn () : extern;
+SdlWindow : struct {
+  _handle *void
+};
+
+SDL_Init	  fn (u32) s32 : extern;
+SDL_Quit 	  fn () : extern;
+SDL_CreateWindow  fn (*char, s32, s32, s32, s32, u32) *SdlWindow : extern;
+SDL_Delay	  fn (u32) : extern;
+SDL_DestroyWindow fn (*SdlWindow) : extern;
