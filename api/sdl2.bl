@@ -387,9 +387,67 @@ SDL_Keysym : struct {
   _padding2 u64
 };
 
-SDL_Init	  fn (u32) s32 : extern;
-SDL_Quit 	  fn () : extern;
-SDL_CreateWindow  fn (*char, s32, s32, s32, s32, u32) *SDL_Window : extern;
-SDL_Delay	  fn (u32) : extern;
-SDL_DestroyWindow fn (*SDL_Window) : extern;
-SDL_PollEvent     fn (*SDL_KeyboardEvent) s32 : extern;
+SDL_RendererFlags : enum {
+  Software      : 0x00000001,
+  Accelerated   : 0x00000002,
+  PresentVSync  : 0x00000004,
+  TargetTexture : 0x00000008
+};
+
+SDL_RendererFlip : enum {
+  None       : 0x00000000,     
+  Horizontal : 0x00000001, 
+  Vertical   : 0x00000002   
+};
+
+SDL_Renderer : struct {
+  _handle *void 
+};
+
+SDL_Texture : struct {
+  _handle *void 
+};
+
+SDL_Surface : struct {
+  flags      s32,
+  format    *void,
+  w          s32,
+  h 	     s32,
+  pitch      s32,
+  pixels    *void,
+  userdata  *void,
+  locked     s32,
+  lock_data *void,
+  clip_rect  SDL_Rect,
+  map       *void,
+  refcount   s32
+};
+
+SDL_Rect : struct {
+  x s32,
+  y s32,
+  w s32,
+  h s32
+};
+
+SDL_Point : struct {
+  x s32,
+  y s32
+};
+
+SDL_Init	             fn (u32) s32 : extern;
+SDL_Quit 	             fn () : extern;
+SDL_CreateWindow             fn (*char, s32, s32, s32, s32, u32) *SDL_Window : extern;
+SDL_Delay	             fn (u32) : extern;
+SDL_DestroyWindow            fn (*SDL_Window) : extern;
+SDL_PollEvent                fn (*SDL_KeyboardEvent) s32 : extern;
+SDL_CreateRenderer           fn (*SDL_Window, s32, u32) *SDL_Renderer : extern;
+SDL_DestroyRenderer          fn (*SDL_Renderer) : extern;
+SDL_CreateTextureFromSurface fn (*SDL_Renderer, *SDL_Surface) : extern;
+SDL_DestroyTexture	     fn (*SDL_Texture) : extern;
+SDL_RenderPresent	     fn (*SDL_Renderer) : extern;
+SDL_SetRenderDrawColor	     fn (*SDL_Renderer, u8, u8, u8, u8) s32 : extern;
+SDL_RenderClear 	     fn (*SDL_Renderer) s32 : extern;
+SDL_RenderCopy		     fn (*SDL_Renderer, *SDL_Texture, *SDL_Rect, *SDL_Rect) s32 : extern;
+SDL_RenderCopyEx	     fn (*SDL_Renderer, *SDL_Texture, *SDL_Rect, *SDL_Rect, f64,
+                     	     	 *SDL_Point, SDL_RendererFlip) s32 : extern;
