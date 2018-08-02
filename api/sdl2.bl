@@ -387,14 +387,14 @@ SDL_Keysym : struct {
   _padding2 u64
 };
 
-SDL_RendererFlags : enum {
+SDL_RendererFlags : enum u32 {
   Software      : 0x00000001,
   Accelerated   : 0x00000002,
   PresentVSync  : 0x00000004,
   TargetTexture : 0x00000008
 };
 
-SDL_RendererFlip : enum {
+SDL_RendererFlip : enum u32 {
   None       : 0x00000000,     
   Horizontal : 0x00000001, 
   Vertical   : 0x00000002   
