@@ -231,6 +231,7 @@ waiting_resume_all(context_t *cnt)
     uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
     bo_array_erase(cnt->waiting_resumed, 0);
 
+    if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
     BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
     assert(q);
 
@@ -246,7 +247,7 @@ waiting_resume_all(context_t *cnt)
       for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
         tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
         if (!check_node(cnt, tmp)) {
-          bl_node_ident_t *_ident = bl_peek_ident(tmp);
+          bl_node_ident_t *_ident = bl_peek_ident(bl_ast_get_ident(tmp));
           waiting_push(cnt->waiting, _ident->hash, fit);
           interrupted = true;
           break;
@@ -283,6 +284,8 @@ check_unresolved(context_t *cnt)
       tmp = bo_array_at(q, i, fiter_t);
       bl_log("# %p index: %d", tmp.flatten, i);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
+      assert(tmp_node);
+      tmp_node = bl_ast_get_ident(tmp_node);
       if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
         check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
                          "unknown symbol");
@@ -329,16 +332,10 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
   switch (bl_node_code(node)) {
   case BL_NODE_DECL_VALUE: {
     bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-
-    {
-      /* store declaration for temporary use here, this scope is used only for searching truly
-       * undefined symbols later */
-      const bool is_in_gscope =
-          bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
-
-      if (is_in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
-        bl_scope_insert(cnt->provided_in_gscope, _decl->name, node);
-    }
+    /* store declaration for temporary use here, this scope is used only for searching truly
+     * undefined symbols later */
+    if (_decl->in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
+      bl_scope_insert(cnt->provided_in_gscope, _decl->name, node);
 
     flatten(_decl->type);
     flatten(_decl->value);
@@ -358,7 +355,7 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
 
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
-    check_flatten(cnt, _fn->type);
+    flatten(_fn->type);
     check_flatten(cnt, _fn->block);
     return;
   }
@@ -482,10 +479,10 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_IDENT:
   case BL_NODE_EXPR_NULL:
   case BL_NODE_STMT_BREAK:
   case BL_NODE_STMT_CONTINUE:
-  case BL_NODE_IDENT:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LIT:
   case BL_NODE_LOAD:
@@ -515,7 +512,7 @@ check_flatten(context_t *cnt, bl_node_t *node)
     if (!check_node(cnt, tmp)) {
       /* node has not been satisfied and need to be checked later when all it's references become
        * available */
-      bl_node_ident_t *_ident = bl_peek_ident(tmp);
+      bl_node_ident_t *_ident = bl_peek_ident(bl_ast_get_ident(tmp));
       waiting_push(cnt->waiting, _ident->hash, fit);
       interrupted = true;
       break;
@@ -713,6 +710,10 @@ check_node(context_t *cnt, bl_node_t *node)
          node->_serial, node->src ? node->src->line : 0);
 #endif
 
+#if BL_DEBUG
+  node->_state = result ? RESOLVED : WAITING;
+#endif
+
   return result;
 }
 
@@ -810,8 +811,10 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
 
   bl_node_t *lhs_type = bl_ast_get_type(_binop->lhs);
   assert(lhs_type);
+  bl_type_kind_e lhs_kind = bl_ast_get_type_kind(lhs_type);
+
   if (bl_node_is(_binop->rhs, BL_NODE_EXPR_NULL)) {
-    if (bl_ast_get_type_kind(lhs_type) != BL_KIND_PTR) {
+    if (lhs_kind != BL_KIND_PTR) {
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
                        "expected a pointer type");
     } else {
@@ -823,12 +826,20 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   }
 
   bl_node_t *rhs_type = bl_ast_get_type(_binop->rhs);
+  assert(rhs_type);
+  bl_type_kind_e rhs_kind = bl_ast_get_type_kind(rhs_type);
 
-  if (!bl_ast_type_cmp(lhs_type, rhs_type) && !implicit_cast(cnt, &_binop->rhs, lhs_type)) {
-    check_error_invalid_types(cnt, lhs_type, rhs_type, binop);
+  if (!bl_ast_type_cmp(lhs_type, rhs_type)) {
+    if (bl_node_is(_binop->lhs, BL_NODE_LIT) &&
+        (lhs_kind == BL_KIND_SIZE || lhs_kind == BL_KIND_UINT || lhs_kind == BL_KIND_SINT) &&
+        (rhs_kind == BL_KIND_SIZE || rhs_kind == BL_KIND_UINT || rhs_kind == BL_KIND_SINT)) {
+      bl_peek_lit(_binop->lhs)->type = bl_ast_node_dup(cnt->ast, rhs_type);
+    } else if (!implicit_cast(cnt, &_binop->rhs, lhs_type)) {
+      check_error_invalid_types(cnt, lhs_type, rhs_type, binop);
+    }
   }
 
-  if (!_binop->type) _binop->type = lhs_type;
+  if (!_binop->type) _binop->type = bl_ast_get_type(_binop->lhs);
 
   FINISH;
 }
@@ -911,11 +922,7 @@ check_expr_member(context_t *cnt, bl_node_t *member)
     assert(_lhs_type->base_decl);
 
     found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-    if (!found) {
-      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
-                       "unknown structure member");
-      FINISH;
-    }
+    if (!found) WAIT;
 
     if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
       check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,
@@ -929,11 +936,7 @@ check_expr_member(context_t *cnt, bl_node_t *member)
     assert(_lhs_type->base_decl);
 
     found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-    if (!found) {
-      check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, _member->ident, BL_BUILDER_CUR_WORD,
-                       "unknown enum variant");
-      FINISH;
-    }
+    if (!found) WAIT;
 
     if (_member->ptr_ref) {
       check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, member, BL_BUILDER_CUR_WORD,

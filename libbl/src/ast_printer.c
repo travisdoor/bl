@@ -361,7 +361,7 @@ print_lit(bl_node_t *node, int pad)
   bl_node_lit_t *_lit = bl_peek_lit(node);
   assert(_lit->type);
 
-  bl_node_type_fund_t *_type = bl_peek_type_fund(_lit->type);
+  bl_node_type_fund_t *_type = bl_peek_type_fund(bl_ast_get_type(_lit->type));
   switch (_type->code) {
   case BL_FTYPE_S8:
   case BL_FTYPE_S16:

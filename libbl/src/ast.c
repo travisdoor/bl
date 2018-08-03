@@ -570,7 +570,7 @@ bl_ast_get_type(bl_node_t *node)
   case BL_NODE_DECL_VALUE:
     return bl_ast_get_type(bl_peek_decl_value(node)->type);
   case BL_NODE_LIT:
-    return bl_peek_lit(node)->type;
+    return bl_ast_get_type(bl_peek_lit(node)->type);
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->type;
   case BL_NODE_LIT_STRUCT:
@@ -684,6 +684,8 @@ bl_ast_type_cmp(bl_node_t *first, bl_node_t *second)
 {
   first  = bl_ast_get_type(first);
   second = bl_ast_get_type(second);
+  assert(first);
+  assert(second);
 
   if (bl_node_code(first) != bl_node_code(second)) return false;
   if (bl_ast_get_type_kind(first) != bl_ast_get_type_kind(second)) return false;
@@ -805,7 +807,7 @@ bl_ast_get_type_kind(bl_node_t *type)
     return BL_KIND_ENUM;
 
   default:
-    bl_abort("node %s is not a type", bl_node_code(type));
+    bl_abort("node %s is not a type", bl_node_name(type));
   }
 
   return BL_KIND_UNKNOWN;
@@ -919,4 +921,18 @@ bl_ast_unroll_ident(bl_node_t *ident)
   }
 
   return ident;
+}
+
+bl_node_t *
+bl_ast_get_ident(bl_node_t *node)
+{
+  assert(node);
+  switch (bl_node_code(node)) {
+  case BL_NODE_IDENT:
+    return node;
+  case BL_NODE_EXPR_MEMBER:
+    return bl_peek_expr_member(node)->ident;
+  default:
+    bl_abort("node %s has no ident", bl_node_name(node));
+  };
 }

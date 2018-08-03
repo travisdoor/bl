@@ -317,6 +317,14 @@ bl_ast_terminate(bl_ast_t *ast);
 /*************************************************************************************************
  * definition node
  *************************************************************************************************/
+#if BL_DEBUG
+typedef enum
+{
+  NOT_CHECKED = 0,
+  RESOLVED,
+  WAITING
+} _bl_check_state_e;
+#endif
 struct bl_node
 {
   union
@@ -331,7 +339,8 @@ struct bl_node
 
   bl_node_t *next;
 #if BL_DEBUG
-  int _serial;
+  int               _serial;
+  _bl_check_state_e _state;
 #endif
 };
 
@@ -437,6 +446,9 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 
 bl_node_t *
 bl_ast_unroll_ident(bl_node_t *ident);
+
+bl_node_t *
+bl_ast_get_ident(bl_node_t *node);
 
 /**************************************************************************************************/
 

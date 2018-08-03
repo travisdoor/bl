@@ -1,7 +1,21 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
+
+Game : struct {
+  a A,
+  b B
+};
 
 main : fn () s32 {
+  game Game;
+  
+  init(&game);
   return 0;
 };
+
+init : fn (game *Game) {
+};
+
+A : struct { i s32 };
+B : struct { i s32 };
