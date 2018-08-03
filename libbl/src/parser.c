@@ -300,6 +300,10 @@ parse_stmt_if(context_t *cnt)
     return bl_ast_bad(cnt->ast, err_tok);
   }
 
+  if (bl_node_is(test, BL_NODE_BAD)) {
+    bl_tokens_consume_till(cnt->tokens, BL_SYM_LBLOCK);
+  }
+
   bl_node_t *true_stmt = parse_block(cnt);
   if (!true_stmt) {
     bl_token_t *err_tok = bl_tokens_consume(cnt->tokens);
@@ -1051,7 +1055,6 @@ arg:
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
     parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
                 "expected function argument after comma ','");
-    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
     return bl_ast_bad(cnt->ast, tok_id);
   }
 
@@ -1059,7 +1062,6 @@ arg:
   if (tok->sym != BL_SYM_RPAREN) {
     parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
                 "expected end of parameter list ')' or another parameter separated by comma");
-    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
     return bl_ast_bad(cnt->ast, tok_id);
   }
 
