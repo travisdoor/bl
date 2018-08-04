@@ -1,0 +1,121 @@
+//************************************************************************************************
+// bl
+//
+// File:   array.bl
+// Author: Martin Dorazil
+// Date:   3/15/18
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "libc.bl"
+
+ArrayDefaultCapacity size_t : 2;
+
+Array : struct {
+  size 	       size_t,
+  capacity     size_t,
+  elem_size    size_t,
+  _data       *void
+};
+
+array_new : fn (elem_size size_t) *Array {
+  arr := cast(*Array) malloc(sizeof(Array));
+  array_init(arr, elem_size);
+  return arr;
+};
+
+array_delete : fn (self *Array) {
+  if self == null { return; }
+  array_terminate(self);
+  free(self);
+};
+
+array_init : fn (self *Array, elem_size size_t) {
+  if self == null { return; }
+  if elem_size == 0 { abort(); }
+  self->size 	 = 0;
+  self->capacity  = 0;
+  self->elem_size = elem_size;
+  self->_data     = null;
+};
+
+array_terminate : fn (self *Array) {
+  if self == null { return; }
+  self->size      = 0;
+  self->capacity  = 0;
+  self->elem_size = 0;
+
+  if self->_data != null {
+    free(self->_data);
+  }
+  self->_data = null;
+};
+
+array_clear : fn (self *Array) {
+  if self == null { return; }
+  self->size = 0; 
+};
+
+array_push_back : fn (self *Array, value *void) {
+  if self == null { return; }
+  if value == null { abort(); }   
+
+  // empty bo_vector
+  if self->_data == null {
+    array_reserve(self, ArrayDefaultCapacity);
+  }
+
+  // double if needed
+  if self->size >= self->capacity {
+    array_reserve(self, self->capacity * 2);
+  }
+
+  new_elem := _elem_ptr(self, self->size);
+  self->size = self->size + 1;
+
+  memcpy(new_elem, value, self->elem_size);
+};
+
+array_at : fn (self *Array, i size_t) *void {
+  if self == null { return null; }
+  if !_valid_index(self, i) { abort(); }
+  return _elem_ptr(self, i);
+};
+
+array_reserve : fn (self *Array, elem_count size_t) {
+  if self == null { return; }
+  if elem_count == 0 || elem_count <= self->capacity { return; }
+
+  self->_data = realloc(self->_data, self->elem_size * elem_count);
+  if self->_data == null { abort(); }
+
+  self->capacity = elem_count;
+};
+
+_elem_ptr : fn (self *Array, i size_t) *void {
+  return cast(*void)(cast(size_t) self->_data + i * self->elem_size);
+};
+
+_valid_index : fn (self *Array, i size_t) bool {
+  return i >= 0 && i < self->size;
+};
+

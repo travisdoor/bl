@@ -7,3 +7,4 @@ src/localfn.bl
 src/loops.bl
 src/pointers.bl
 src/structs.bl
+src/array.bl

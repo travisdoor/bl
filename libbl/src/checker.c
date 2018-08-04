@@ -763,10 +763,20 @@ check_stmt_return(context_t *cnt, bl_node_t *ret)
   bl_node_t *       fn_ret_type = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
 
   if (_ret->expr) {
-    bl_node_t *expr_type = bl_ast_get_type(_ret->expr);
-
-    if (!bl_ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
-      check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+    if (bl_node_is(_ret->expr, BL_NODE_EXPR_NULL)) {
+      bl_node_expr_null_t *_null = bl_peek_expr_null(_ret->expr);
+      _null->type                = fn_ret_type;
+      if (bl_ast_get_type_kind(_null->type) != BL_KIND_PTR) {
+        check_error_node(
+            cnt, BL_ERR_INVALID_TYPE, _ret->expr, BL_BUILDER_CUR_WORD,
+            "'null' cannot be used because the function does not return a pointer value");
+      }
+    } else {
+      bl_node_t *expr_type = bl_ast_get_type(_ret->expr);
+      if (!bl_ast_type_cmp(expr_type, fn_ret_type) &&
+          !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
+        check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+      }
     }
   } else {
     if (!bl_ast_type_cmp(&bl_ftypes[BL_FTYPE_VOID], fn_ret_type)) {
@@ -973,7 +983,7 @@ infer_type(context_t *cnt, bl_node_t *decl)
   bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
   if (!_decl->value) return false;
   bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
-  assert(inferred_type);
+  if (!inferred_type) return false;
 
   if (_decl->type && !bl_ast_type_cmp(inferred_type, _decl->type) &&
       !implicit_cast(cnt, &_decl->value, _decl->type)) {
@@ -995,6 +1005,9 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   assert(_decl->name);
   infer_type(cnt, decl);
 
+  _decl->in_gscope =
+      bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+
   if (_decl->flags & BL_FLAG_MAIN && _decl->kind != BL_DECL_KIND_FN) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, decl, BL_BUILDER_CUR_WORD,
                      "main is expected to be function");
@@ -1009,6 +1022,12 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
       check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, decl, BL_BUILDER_CUR_WORD,
                        "structure declaration cannot be mutable");
     }
+
+    if (bl_peek_type_struct(value_type)->typesc == 0) {
+      check_error_node(cnt, BL_ERR_EMPTY, _decl->name, BL_BUILDER_CUR_WORD, "empty structure");
+    }
+
+
     break;
   }
 
@@ -1032,6 +1051,11 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
       bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
                        "invalid type of variable '%s'", tmp);
+    }
+
+    if (_decl->in_gscope && !_decl->value) {
+      check_error_node(cnt, BL_ERR_EXPECTED_EXPR, _decl->type, BL_BUILDER_CUR_AFTER,
+                       "global variables needs to be initialized");
     }
     break;
   }
@@ -1080,15 +1104,24 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
   }
 
   assert(_decl->type);
-
-  if (bl_ast_get_type_kind(bl_ast_get_type(_decl->type)) == BL_KIND_VOID) {
+  bl_type_kind_e type_kind = bl_ast_get_type_kind(bl_ast_get_type(_decl->type));
+  if (type_kind == BL_KIND_VOID) {
     char tmp[256];
     bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
                      "declaration has invalid type '%s'", tmp);
   }
-
   _decl->type = bl_ast_get_type(_decl->type);
+
+  /* infer type for 'null' value */
+  if (_decl->value && bl_node_is(_decl->value, BL_NODE_EXPR_NULL)) {
+    if (type_kind == BL_KIND_PTR) {
+      bl_peek_expr_null(_decl->value)->type = _decl->type;
+    } else {
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+                       "'null' cannot be used because the declaration is not a pointer");
+    }
+  }
 
   /* provide symbol into scope if there is no conflict */
   bl_node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
@@ -1098,9 +1131,6 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
     provide(_decl->name, decl);
-
-    _decl->in_gscope =
-        bl_ast_get_scope(bl_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
     /* insert into ir queue */
     if (_decl->in_gscope && (_decl->kind != BL_DECL_KIND_CONSTANT)) {

@@ -469,7 +469,7 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMOpcode op = LLVMSExt;
+  LLVMOpcode op = LLVMTrunc;
 
   // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
@@ -744,6 +744,7 @@ ir_expr_null(context_t *cnt, bl_node_t *nl)
 LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr)
 {
+  assert(expr);
   if (is_terminated(cnt)) return NULL;
   LLVMValueRef result = NULL;
   switch (bl_node_code(expr)) {

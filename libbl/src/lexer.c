@@ -198,7 +198,7 @@ scan:
       /* special character */
       c = scan_specch(*(cnt->c + 1));
       cnt->c += 2;
-      len++;
+      len += 2;
       break;
     default:
       c = *cnt->c;

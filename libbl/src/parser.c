@@ -514,7 +514,7 @@ parse_literal_enum(context_t *cnt)
 
   bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBLOCK);
   if (!tok) {
-    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD, "expected enm member list");
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD, "expected enm variant list");
     return bl_ast_bad(cnt->ast, tok);
   }
 
