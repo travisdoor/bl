@@ -8,3 +8,4 @@ src/loops.bl
 src/pointers.bl
 src/structs.bl
 src/array.bl
+src/fibonacci.bl

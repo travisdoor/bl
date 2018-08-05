@@ -78,7 +78,7 @@
   }) \
   nt(STMT_RETURN, stmt_return, struct { \
     bl_node_t *expr; \
-    bl_node_t *fn; \
+    bl_node_t *fn_decl; \
   }) \
   nt(STMT_IF, stmt_if, struct { \
     bl_node_t *test; \

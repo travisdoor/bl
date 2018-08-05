@@ -221,7 +221,7 @@ _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn)
 {
   bl_node_stmt_return_t *_ret = alloc_node(ast, BL_NODE_STMT_RETURN, tok, bl_node_stmt_return_t *);
   _ret->expr                  = expr;
-  _ret->fn                    = fn;
+  _ret->fn_decl               = fn;
   return (bl_node_t *)_ret;
 }
 
@@ -936,6 +936,11 @@ bl_ast_get_ident(bl_node_t *node)
     return node;
   case BL_NODE_EXPR_MEMBER:
     return bl_peek_expr_member(node)->ident;
+  case BL_NODE_STMT_RETURN: {
+    bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
+    assert(decl);
+    return bl_peek_decl_value(decl)->name;
+  }
   default:
     bl_abort("node %s has no ident", bl_node_name(node));
   };

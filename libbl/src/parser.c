@@ -64,6 +64,7 @@ typedef struct
 
   /* tmps */
   bl_node_t *curr_fn;
+  bl_node_t *curr_decl;
   bl_node_t *curr_compound;
   bool       inside_loop;
 } context_t;
@@ -283,7 +284,7 @@ parse_stmt_return(context_t *cnt)
   }
 
   bl_node_t *expr = parse_expr(cnt);
-  return bl_ast_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_fn);
+  return bl_ast_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_decl);
 }
 
 bl_node_t *
@@ -896,7 +897,12 @@ parse_type_enum(context_t *cnt, int ptr)
 bl_node_t *
 parse_decl_value(context_t *cnt)
 {
-  int         flags     = 0;
+#define RETURN_BAD                                                                                 \
+  {                                                                                                \
+    cnt->curr_decl = prev_decl;                                                                    \
+    return bl_ast_bad(cnt->ast, tok_ident);                                                        \
+  }
+
   bl_token_t *tok_ident = bl_tokens_peek(cnt->tokens);
   if (bl_token_is_not(tok_ident, BL_SYM_IDENT)) return NULL;
   /* is value declaration? */
@@ -925,45 +931,42 @@ parse_decl_value(context_t *cnt)
                      "'%s' is reserved name of buildin type", tok_ident->value.str);
   }
 
+  bl_node_t *prev_decl = cnt->curr_decl;
+  bl_node_t *decl = bl_ast_decl_value(cnt->ast, tok_ident, BL_DECL_KIND_UNKNOWN, ident, NULL, NULL,
+                                      true, 0, 0, false);
+  cnt->curr_decl  = decl;
+  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+
   {
     int buildin = bl_ast_is_buildin(ident);
     if (buildin == BL_BUILDIN_MAIN) {
       /* main function */
-      flags |= BL_FLAG_MAIN;
+      _decl->flags |= BL_FLAG_MAIN;
     }
   }
 
-  bool mutable           = true;
-  bl_node_t * type       = parse_type(cnt);
+  _decl->type            = parse_type(cnt);
   bl_token_t *tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_MDECL);
   if (!tok_assign) tok_assign = bl_tokens_consume_if(cnt->tokens, BL_SYM_IMMDECL);
 
-  /*if (!type && !tok_assign) {
-    bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_err, BL_BUILDER_CUR_WORD,
-                "expected binding of declaration to some value when type is not specified");
-    return bl_ast_bad(cnt->ast, tok_err);
-  }*/
-
-  bl_node_t *value = NULL;
   if (tok_assign) {
-    mutable = bl_token_is(tok_assign, BL_SYM_MDECL);
-    flags |= parse_flags(cnt, BL_FLAG_EXTERN);
+    _decl->mutable = bl_token_is(tok_assign, BL_SYM_MDECL);
+    _decl->flags |= parse_flags(cnt, BL_FLAG_EXTERN);
 
-    if (!(flags & BL_FLAG_EXTERN)) {
-      value = parse_value(cnt);
+    if (!(_decl->flags & BL_FLAG_EXTERN)) {
+      _decl->value = parse_value(cnt);
 
-      if (!value) {
+      if (!_decl->value) {
         parse_error(cnt, BL_ERR_EXPECTED_INITIALIZATION, tok_assign, BL_BUILDER_CUR_AFTER,
                     "expected binding of declaration to some value");
-        return bl_ast_bad(cnt->ast, tok_assign);
+        RETURN_BAD;
       }
     }
   }
 
-  if (flags & BL_FLAG_MAIN) {
+  if (_decl->flags & BL_FLAG_MAIN) {
     /* main function */
-    if (mutable) {
+    if (_decl->mutable) {
       if (tok_assign) {
         parse_error(cnt, BL_ERR_INVALID_MUTABILITY, tok_assign, BL_BUILDER_CUR_WORD,
                     "'main' is expected to be immutable function");
@@ -972,54 +975,55 @@ parse_decl_value(context_t *cnt)
                          "'main' is expected to be immutable function");
       }
 
-      return bl_ast_bad(cnt->ast, tok_assign);
+      RETURN_BAD;
     }
 
-    if (flags & BL_FLAG_EXTERN) {
+    if (_decl->flags & BL_FLAG_EXTERN) {
       parse_error_node(cnt, BL_ERR_UNEXPECTED_MODIF, ident, BL_BUILDER_CUR_WORD,
                        "main function cannot be extern");
-      return bl_ast_bad(cnt->ast, tok_assign);
+      RETURN_BAD;
     }
   }
 
-  if (flags & BL_FLAG_EXTERN) {
-    if (mutable) {
+  if (_decl->flags & BL_FLAG_EXTERN) {
+    if (_decl->mutable) {
       parse_error(cnt, BL_ERR_INVALID_MUTABILITY, tok_assign, BL_BUILDER_CUR_WORD,
                   "extern declaration cannot be mutable");
-      return bl_ast_bad(cnt->ast, tok_assign);
+      RETURN_BAD;
     }
 
-    if (!type) {
+    if (!_decl->type) {
       parse_error_node(cnt, BL_ERR_EXPECTED_TYPE, ident, BL_BUILDER_CUR_AFTER,
                        "extern declaration must have type specified");
-      return bl_ast_bad(cnt->ast, tok_assign);
+      RETURN_BAD;
     }
   }
 
-  bl_decl_kind_e kind = BL_DECL_KIND_UNKNOWN;
-  if (flags & BL_FLAG_EXTERN) {
-    kind = BL_DECL_KIND_FN;
-  } else if (value) {
-    switch (bl_node_code(value)) {
+  if (_decl->flags & BL_FLAG_EXTERN) {
+    _decl->kind = BL_DECL_KIND_FN;
+  } else if (_decl->value) {
+    switch (bl_node_code(_decl->value)) {
     case BL_NODE_LIT_FN:
-      kind = BL_DECL_KIND_FN;
+      _decl->kind = BL_DECL_KIND_FN;
       break;
     case BL_NODE_LIT_ENUM:
-      kind = BL_DECL_KIND_ENUM;
+      _decl->kind = BL_DECL_KIND_ENUM;
       break;
     case BL_NODE_LIT_STRUCT:
-      kind = BL_DECL_KIND_STRUCT;
+      _decl->kind = BL_DECL_KIND_STRUCT;
       break;
     default:
-      kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
+      _decl->kind = _decl->mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
       break;
     }
   } else {
-    kind = mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
+    _decl->kind = _decl->mutable ? BL_DECL_KIND_FIELD : BL_DECL_KIND_CONSTANT;
   }
 
-  return bl_ast_decl_value(cnt->ast, tok_assign ? tok_assign : tok_ident, kind, ident, type, value,
-                           mutable, flags, 0, false);
+  cnt->curr_decl = prev_decl;
+  return decl;
+
+#undef RETURN_BAD
 }
 
 bl_node_t *
@@ -1271,6 +1275,7 @@ bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
                    .ast           = &unit->ast,
                    .tokens        = &unit->tokens,
                    .curr_fn       = NULL,
+                   .curr_decl     = NULL,
                    .curr_compound = NULL,
                    .inside_loop   = false};
 

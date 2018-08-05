@@ -757,10 +757,12 @@ bool
 check_stmt_return(context_t *cnt, bl_node_t *ret)
 {
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(ret);
-  assert(_ret->fn);
+  assert(_ret->fn_decl);
 
-  bl_node_lit_fn_t *_callee     = bl_peek_lit_fn(_ret->fn);
+  bl_node_decl_value_t *_callee_decl = bl_peek_decl_value(_ret->fn_decl);
+  bl_node_lit_fn_t *_callee     = bl_peek_lit_fn(_callee_decl->value);
   bl_node_t *       fn_ret_type = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
+  if (fn_ret_type == NULL) WAIT;
 
   if (_ret->expr) {
     if (bl_node_is(_ret->expr, BL_NODE_EXPR_NULL)) {
