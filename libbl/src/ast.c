@@ -145,19 +145,23 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
 void
 bl_ast_init(bl_ast_t *ast)
 {
-  ast->first_chunk   = NULL;
-  ast->current_chunk = NULL;
+  static bool statics_initialized = false;
+  ast->first_chunk                = NULL;
+  ast->current_chunk              = NULL;
 
   /* init ftype hashes */
-  const char *it;
-  bl_array_foreach(bl_ftype_strings, it)
-  {
-    bl_ftype_hashes[i] = bo_hash_from_str(it);
-  }
+  if (!statics_initialized) {
+    statics_initialized = true;
+    const char *it;
+    bl_array_foreach(bl_ftype_strings, it)
+    {
+      bl_ftype_hashes[i] = bo_hash_from_str(it);
+    }
 
-  bl_array_foreach(bl_buildin_strings, it)
-  {
-    bl_buildin_hashes[i] = bo_hash_from_str(it);
+    bl_array_foreach(bl_buildin_strings, it)
+    {
+      bl_buildin_hashes[i] = bo_hash_from_str(it);
+    }
   }
 }
 
