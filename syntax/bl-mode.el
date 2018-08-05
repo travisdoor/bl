@@ -48,19 +48,25 @@
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
     ("\\(struct \\)\\(\\w+\\)" 2 font-lock-type-face)
-    ("\\(: \\)\\(\\w+\\)" 2 font-lock-type-face)
+    ("\\(.*\\)\\(\\:*struct\\)" 1 font-lock-type-face)
+    ("\\(.*\\)\\(\\*struct\\)" 1 font-lock-type-face)
+    ("\\(.*\\)\\(\\:*enum\\)" 1 font-lock-type-face)
+    ("\\(.*\\)\\(\\*enum\\)" 1 font-lock-type-face)
+
+    ;; Functions
+    ("\\(\\w+\\)\\( *(\\)" 1 font-lock-function-name-face)
+    ("\\(.*\\)\\(\\:*fn\\)" 1 font-lock-function-name-face)
+    ("\\(.*\\)\\(\\*fn\\)" 1 font-lock-function-name-face)
 
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
-
-    ;; Functions
-    ("\\(\\w+\\)\\((\\)" 1 font-lock-function-name-face)
+    ("\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
 
     ;; Hash directives
     ("#\\w+" . font-lock-preprocessor-face)
 
     ;; Chars 
-    ("\\\'.*\\\'" . font-lock-string-face)
+    ("\\\\'.*\\\\'" . font-lock-string-face)
 
     ;; Strings
     ("\\\".*\\\"" . font-lock-string-face)
