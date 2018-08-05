@@ -42,7 +42,9 @@
     for (size_t i = 0; (it) = bo_array_at((arr), i, void *), i < bo_array_size((arr)); ++i)
 
 #define bl_array_foreach(arr, it)                                                                  \
-  for (size_t i = 0; i < BL_ARRAY_SIZE(arr), i < BL_ARRAY_SIZE(arr) ? (it) = (arr)[i] : 0; ++i)
+  for (size_t _keep = 1, i = 0, _size = BL_ARRAY_SIZE((arr)); _keep && i != _size;                 \
+       _keep = !_keep, i++)                                                                        \
+    for (it = (arr)[i]; _keep; _keep = !_keep)
 
 #define bl_bhtbl_foreach(htbl, it)                                                                 \
   (it) = bo_htbl_begin((htbl));                                                                    \
