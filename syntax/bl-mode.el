@@ -47,16 +47,9 @@
 
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
-    ("\\(struct \\)\\(\\w+\\)" 2 font-lock-type-face)
-    ("\\(.*\\)\\(\\:*struct\\)" 1 font-lock-type-face)
-    ("\\(.*\\)\\(\\*struct\\)" 1 font-lock-type-face)
-    ("\\(.*\\)\\(\\:*enum\\)" 1 font-lock-type-face)
-    ("\\(.*\\)\\(\\*enum\\)" 1 font-lock-type-face)
 
     ;; Functions
     ("\\(\\w+\\)\\( *(\\)" 1 font-lock-function-name-face)
-    ("\\(.*\\)\\(\\:*fn\\)" 1 font-lock-function-name-face)
-    ("\\(.*\\)\\(\\*fn\\)" 1 font-lock-function-name-face)
 
     ;; Variables 
     ("\\(.*\\)\\(\\:=\\)" 1 font-lock-variable-name-face)
