@@ -58,6 +58,9 @@
     ("\\(.*\\)\\(\\:*fn\\)" 1 font-lock-function-name-face)
     ("\\(.*\\)\\(\\*fn\\)" 1 font-lock-function-name-face)
 
+    ;; Variables 
+    ("\\(.*\\)\\(\\:=\\)" 1 font-lock-variable-name-face)
+
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
     ("\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)

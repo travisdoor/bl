@@ -85,7 +85,7 @@ llvm_init(void)
 int
 compile_unit(bl_builder_t *builder, bl_unit_t *unit, bl_assembly_t *assembly, uint32_t flags)
 {
-  bl_msg_log("processing unit: %s", unit->name);
+  //bl_msg_log("processing unit: %s", unit->name);
 
   if (flags & BL_BUILDER_LOAD_FROM_FILE) {
     bl_file_loader_run(builder, unit);
@@ -166,6 +166,7 @@ bl_builder_compile(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flag
   int        state = BL_COMPILE_OK;
 
   builder->no_warn = flags & BL_BUILDER_NO_WARN;
+  bl_msg_log("compile assembly: %s", assembly->name);
 
   bl_barray_foreach(assembly->units, unit)
   {

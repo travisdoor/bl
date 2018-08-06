@@ -447,9 +447,6 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 bl_node_t *
 bl_ast_unroll_ident(bl_node_t *ident);
 
-bl_node_t *
-bl_ast_get_ident(bl_node_t *node);
-
 /**************************************************************************************************/
 
 #endif // BL_NODE2_IMPL_H

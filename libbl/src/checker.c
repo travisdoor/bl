@@ -80,6 +80,9 @@ lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 static bl_node_t *
 _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree);
 
+static bl_node_t *
+wait_context(bl_node_t *node);
+
 static bool
 infer_type(context_t *cnt, bl_node_t *decl);
 
@@ -194,6 +197,25 @@ _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk
   return found;
 }
 
+bl_node_t *
+wait_context(bl_node_t *node)
+{
+  assert(node);
+  switch (bl_node_code(node)) {
+  case BL_NODE_IDENT:
+    return node;
+  case BL_NODE_EXPR_MEMBER:
+    return bl_peek_expr_member(node)->ident;
+  case BL_NODE_STMT_RETURN: {
+    bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
+    assert(decl);
+    return bl_peek_decl_value(decl)->name;
+  }
+  default:
+    bl_abort("node %s has no ident", bl_node_name(node));
+  };
+}
+
 void
 provide(bl_node_t *ident, bl_node_t *provided)
 {
@@ -252,7 +274,7 @@ waiting_resume_all(context_t *cnt)
       for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
         tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
         if (!check_node(cnt, tmp)) {
-          bl_node_ident_t *_ident = bl_peek_ident(bl_ast_get_ident(tmp));
+          bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
           waiting_push(cnt->waiting, _ident->hash, fit);
           interrupted = true;
           break;
@@ -284,13 +306,13 @@ check_unresolved(context_t *cnt)
     q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
     assert(q);
 
-    //bl_log("size %d", bo_array_size(q));
+    // bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp = bo_array_at(q, i, fiter_t);
-      //bl_log("# %p index: %d", tmp.flatten, i);
+      // bl_log("# %p index: %d", tmp.flatten, i);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
       assert(tmp_node);
-      tmp_node = bl_ast_get_ident(tmp_node);
+      tmp_node = wait_context(tmp_node);
       if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
         check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
                          "unknown symbol");
@@ -535,7 +557,7 @@ check_flatten(context_t *cnt, bl_node_t *node)
     if (!check_node(cnt, tmp)) {
       /* node has not been satisfied and need to be checked later when all it's references become
        * available */
-      bl_node_ident_t *_ident = bl_peek_ident(bl_ast_get_ident(tmp));
+      bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
       waiting_push(cnt->waiting, _ident->hash, fit);
       interrupted = true;
       break;

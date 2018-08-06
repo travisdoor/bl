@@ -926,22 +926,3 @@ bl_ast_unroll_ident(bl_node_t *ident)
 
   return ident;
 }
-
-bl_node_t *
-bl_ast_get_ident(bl_node_t *node)
-{
-  assert(node);
-  switch (bl_node_code(node)) {
-  case BL_NODE_IDENT:
-    return node;
-  case BL_NODE_EXPR_MEMBER:
-    return bl_peek_expr_member(node)->ident;
-  case BL_NODE_STMT_RETURN: {
-    bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
-    assert(decl);
-    return bl_peek_decl_value(decl)->name;
-  }
-  default:
-    bl_abort("node %s has no ident", bl_node_name(node));
-  };
-}
