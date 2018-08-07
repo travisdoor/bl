@@ -698,7 +698,8 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
         bl_node_t *          call  = rhs;
         bl_node_expr_call_t *_call = bl_peek_expr_call(call);
         bl_node_t *          member =
-            bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_STRUCT, _call->ref, NULL, _call->type, 0);
+            bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
+                               bl_token_is(op, BL_SYM_ARROW));
 
         _call->ref                        = member;
         bl_peek_expr_member(member)->next = lhs;
