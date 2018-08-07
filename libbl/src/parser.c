@@ -568,10 +568,11 @@ next:
     }
   } else if (rq) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
-                "expected variant after comma ','");
-    bl_tokens_consume_till(cnt->tokens, BL_SYM_SEMICOLON);
-    return bl_ast_bad(cnt->ast, tok);
+    if (bl_tokens_peek_2nd(cnt->tokens)->sym == BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                  "expected variant after comma ','");
+      return bl_ast_bad(cnt->ast, tok);
+    }
   }
 
   tok = bl_tokens_consume(cnt->tokens);
@@ -690,8 +691,22 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
     }
 
     if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
-      bl_peek_expr_member(rhs)->next = lhs;
-      lhs                            = rhs;
+      if (bl_node_is(rhs, BL_NODE_EXPR_CALL)) {
+        /* rhs is call 'foo.pointer_to_some_fn()' */
+        /* in this case we create new member access expression node and use it instead of call
+         * expression, finally we put this new node into call reference */
+        bl_node_t *          call  = rhs;
+        bl_node_expr_call_t *_call = bl_peek_expr_call(call);
+        bl_node_t *          member =
+            bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_STRUCT, _call->ref, NULL, _call->type, 0);
+
+        _call->ref                        = member;
+        bl_peek_expr_member(member)->next = lhs;
+        lhs                               = call;
+      } else {
+        bl_peek_expr_member(rhs)->next = lhs;
+        lhs                            = rhs;
+      }
     } else if (bl_token_is_binop(op)) {
       bl_node_t *result_type = NULL;
       bl_node_t *tmp         = lhs;
@@ -810,9 +825,11 @@ next:
     }
   } else if (rq) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
-                "expected type after comma ','");
-    return bl_ast_bad(cnt->ast, tok_fn);
+    if (bl_tokens_peek_2nd(cnt->tokens)->sym == BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                  "expected type after comma ','");
+      return bl_ast_bad(cnt->ast, tok_fn);
+    }
   }
 
   tok = bl_tokens_consume(cnt->tokens);
@@ -865,9 +882,11 @@ next:
     }
   } else if (rq) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
-                "expected member after comma ','");
-    return bl_ast_bad(cnt->ast, tok_struct);
+    if (bl_tokens_peek_2nd(cnt->tokens)->sym == BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                  "expected member after comma ','");
+      return bl_ast_bad(cnt->ast, tok_struct);
+    }
   }
 
   tok = bl_tokens_consume(cnt->tokens);
@@ -1057,9 +1076,11 @@ arg:
     }
   } else if (rq) {
     bl_token_t *tok_err = bl_tokens_peek(cnt->tokens);
-    parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
-                "expected function argument after comma ','");
-    return bl_ast_bad(cnt->ast, tok_id);
+    if (bl_tokens_peek_2nd(cnt->tokens)->sym == BL_SYM_RBLOCK) {
+      parse_error(cnt, BL_ERR_EXPECTED_NAME, tok_err, BL_BUILDER_CUR_WORD,
+                  "expected function argument after comma ','");
+      return bl_ast_bad(cnt->ast, tok_id);
+    }
   }
 
   tok = bl_tokens_consume(cnt->tokens);

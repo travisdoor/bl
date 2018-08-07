@@ -485,7 +485,7 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
 
   case BL_NODE_EXPR_CALL: {
     bl_node_expr_call_t *_call = bl_peek_expr_call(node);
-    flatten(_call->ident);
+    flatten(_call->ref);
 
     bl_node_t *tmp;
     bl_node_foreach(_call->args, tmp)
@@ -608,7 +608,10 @@ check_expr_call(context_t *cnt, bl_node_t *call)
 {
   bl_node_expr_call_t *_call = bl_peek_expr_call(call);
 
-  bl_node_t *callee = bl_peek_ident(_call->ident)->ref;
+  bl_node_t *ident =
+      bl_node_is(_call->ref, BL_NODE_IDENT) ? _call->ref : bl_peek_expr_member(_call->ref)->ident;
+
+  bl_node_t *callee = bl_peek_ident(ident)->ref;
   assert(callee);
   bl_node_t *callee_type = bl_peek_decl_value(callee)->type;
 
@@ -1156,6 +1159,14 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
     bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
                      "declaration has invalid type '%s'", tmp);
+  }
+
+  if (type_kind == BL_KIND_FN && _decl->mutable) {
+    char tmp[256];
+    bl_ast_type_to_string(tmp, 256, bl_ast_get_type(_decl->type));
+    check_error_node(
+        cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+        "declaration has invalid type '%s', a function mutable must be referenced by pointer", tmp);
   }
   _decl->type = bl_ast_get_type(_decl->type);
 

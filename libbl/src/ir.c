@@ -396,14 +396,20 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
 {
   LLVMValueRef         result        = NULL;
   bl_node_expr_call_t *_call         = bl_peek_expr_call(call);
-  bl_node_ident_t *    _callee_ident = bl_peek_ident(_call->ident);
+  bl_node_ident_t *    _callee_ident = bl_peek_ident(bl_node_is(_call->ref, BL_NODE_IDENT)
+                                                     ? _call->ref
+                                                     : bl_peek_expr_member(_call->ref)->ident);
 
   LLVMValueRef llvm_fn = NULL;
   if (bl_peek_decl_value(_callee_ident->ref)->mutable) {
-    llvm_fn = llvm_values_get(cnt, _callee_ident->ref);
+    if (bl_node_is(_call->ref, BL_NODE_EXPR_MEMBER)) {
+      llvm_fn = ir_expr_member(cnt, _call->ref);
+    } else {
+      llvm_fn = llvm_values_get(cnt, _callee_ident->ref);
+    }
     llvm_fn = LLVMBuildLoad(cnt->llvm_builder, llvm_fn, gname("tmp"));
   } else {
-    llvm_fn = ir_fn_get(cnt, bl_peek_ident(_call->ident)->ref);
+    llvm_fn = ir_fn_get(cnt, _callee_ident->ref);
   }
 
   assert(llvm_fn);
@@ -469,9 +475,9 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMTargetDataRef data_layout = LLVMGetModuleDataLayout(cnt->llvm_module);
-  unsigned long long src_size = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(next));
-  unsigned long long dest_size = LLVMSizeOfTypeInBits(data_layout, dest_type);
+  LLVMTargetDataRef  data_layout = LLVMGetModuleDataLayout(cnt->llvm_module);
+  unsigned long long src_size    = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(next));
+  unsigned long long dest_size   = LLVMSizeOfTypeInBits(data_layout, dest_type);
 
   LLVMOpcode op = src_size > dest_size ? LLVMTrunc : LLVMSExt;
 

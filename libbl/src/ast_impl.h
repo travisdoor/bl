@@ -169,7 +169,7 @@
     bl_sym_e   op; \
   }) \
   nt(EXPR_CALL, expr_call, struct { \
-    bl_node_t *ident; \
+    bl_node_t *ref; \
     bl_node_t *args; \
     int        argsc; \
     bl_node_t *type; \
@@ -388,7 +388,7 @@ _BL_AST_NCTOR(lit_enum, bl_node_t *type, bl_node_t *variants, bl_node_t *parent_
               bl_scope_t *scope);
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
-_BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type);
+_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type);
 _BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
               bl_node_t *type, bool ptr_ref);
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);

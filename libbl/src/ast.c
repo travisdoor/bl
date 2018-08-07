@@ -365,10 +365,10 @@ _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sy
   return (bl_node_t *)_expr_binop;
 }
 
-_BL_AST_NCTOR(expr_call, bl_node_t *ident, bl_node_t *args, int argsc, bl_node_t *type)
+_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type)
 {
   bl_node_expr_call_t *_expr_call = alloc_node(ast, BL_NODE_EXPR_CALL, tok, bl_node_expr_call_t *);
-  _expr_call->ident               = ident;
+  _expr_call->ref                 = ref;
   _expr_call->args                = args;
   _expr_call->argsc               = argsc;
   _expr_call->type                = type;
@@ -860,6 +860,7 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
 
   if (fkind != tkind) return false;
   if (fkind == BL_KIND_STRUCT || fkind == BL_KIND_FN) return false;
+  if (fkind == BL_KIND_PTR && bl_node_is(from_type, BL_NODE_TYPE_FN)) return false;
 
   return true;
 }
