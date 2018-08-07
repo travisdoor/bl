@@ -469,7 +469,11 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
   LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
-  LLVMOpcode op = LLVMTrunc;
+  LLVMTargetDataRef data_layout = LLVMGetModuleDataLayout(cnt->llvm_module);
+  unsigned long long src_size = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(next));
+  unsigned long long dest_size = LLVMSizeOfTypeInBits(data_layout, dest_type);
+
+  LLVMOpcode op = src_size > dest_size ? LLVMTrunc : LLVMSExt;
 
   // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {

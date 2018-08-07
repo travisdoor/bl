@@ -6,11 +6,27 @@ main : fn () s32 {
     puts("ok");
     if !a {
       puts("INVALID");
+      return 1;
     } else {
       puts("ok");
     }
   } else {
     puts("INVALID");
+    return 2;
   }
-  return 0;
+
+  test();
+  return 3;
+};
+
+Foo : struct {
+  b bool
+};
+
+test : fn () {
+  foo Foo;
+  foo.b = false;
+  if !foo.b { return; }
+  puts("should skip in method!!!");
+  abort();
 };

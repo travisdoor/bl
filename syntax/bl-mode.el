@@ -30,7 +30,7 @@
        symbol-start
        (or (and (+ digit) (opt (and (any "eE") (opt (any "-+")) (+ digit))))
            (and "0" (any "xX") (+ hex-digit)))
-       (opt (and (any "_" "A-Z" "a-z") (* (any "_" "A-Z" "a-z" "0-9"))))
+       (opt (and (any "_" "A-Z" "a-z") (* (any "_" "A-Z" "a-z" "0-9" "."))))
        symbol-end)))
 
 (defun bl-wrap-word-rx (s)
@@ -47,19 +47,19 @@
 
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
-    ("\\(\\w+ \\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
-    ("\\(\\w+ \\)\\(.*\\)\\(\\:*struct\\)" 1 font-lock-function-name-face)
+    ("\\(\\w+\\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
+    ("\\(\\w+\\)\\(.*\\)\\(\\:*struct\\)" 1 font-lock-function-name-face)
 
     ;; Functions
     ("\\(\\w+\\)\\( *(\\)" 1 font-lock-function-name-face)
-    ("\\(\\w+ \\)\\(.*\\)\\(\\:*fn\\)" 1 font-lock-function-name-face)
+    ("\\(\\w+\\)\\(.*\\)\\(\\:*fn\\)" 1 font-lock-function-name-face)
 
     ;; Variables 
     ("\\(\\w+ \\)\\(.*\\)\\(\\:=\\)" 1 font-lock-variable-name-face)
 
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
-    ("\\(\\w+ \\)\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
+    ("\\(\\w+\\)\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
 
     ;; Hash directives
     ("#\\w+" . font-lock-preprocessor-face)
