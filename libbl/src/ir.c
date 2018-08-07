@@ -1080,6 +1080,7 @@ ir_stmt_return(context_t *cnt, bl_node_t *stmt_return)
   if (is_terminated(cnt)) return;
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(stmt_return);
   if (!_ret->expr) {
+    LLVMBuildBr(cnt->llvm_builder, cnt->fn_ret_block);
     return;
   }
 
