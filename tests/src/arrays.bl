@@ -1,0 +1,5 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  return 0;
+};
