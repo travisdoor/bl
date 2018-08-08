@@ -33,11 +33,11 @@ File : struct {
   size 	  size_t	// file size in bytes
 };
 
-file_open : fn (file *File, filepath string) bool {
+file_open : fn (file *File, filepath string) -> bool {
   read : "r";
 
   // get size of file stream in bytes
-  fsize : fn (handle *void) size_t {
+  fsize : fn (handle *void) -> size_t {
     fseek(handle, 0, SEEK_END); 
     size := ftell(handle);
     fseek(handle, 0, SEEK_SET); 
@@ -54,7 +54,7 @@ file_open : fn (file *File, filepath string) bool {
   return true;
 };
 
-file_read_buf : fn (file *File, buf *char) bool {
+file_read_buf : fn (file *File, buf *char) -> bool {
   if file == null || file->size == 0 { return false; }
   fread(buf, file->size, 1, file->handle); 
   return true;
