@@ -1,6 +1,6 @@
 #load "libc.bl"
 
-main : fn () s32 {
+main : fn () -> s32 {
   {
     State : enum s32 {
       A : 123,

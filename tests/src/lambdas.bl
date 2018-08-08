@@ -4,7 +4,7 @@ Foo : struct {
   callback *fn (s32),
 };
 
-main : fn () s32 {
+main : fn () -> s32 {
   hello : fn () {
     puts("hello!!!");
   };

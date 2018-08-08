@@ -697,9 +697,8 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
          * expression, finally we put this new node into call reference */
         bl_node_t *          call  = rhs;
         bl_node_expr_call_t *_call = bl_peek_expr_call(call);
-        bl_node_t *          member =
-            bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
-                               bl_token_is(op, BL_SYM_ARROW));
+        bl_node_t *member = bl_ast_expr_member(cnt->ast, op, BL_MEM_KIND_STRUCT, _call->ref, NULL,
+                                               _call->type, bl_token_is(op, BL_SYM_ARROW));
 
         _call->ref                        = member;
         bl_peek_expr_member(member)->next = lhs;
@@ -840,8 +839,20 @@ next:
     return bl_ast_bad(cnt->ast, tok_fn);
   }
 
-  bl_node_t *ret_type = parse_type(cnt);
-  if (!ret_type) ret_type = &bl_ftypes[BL_FTYPE_VOID];
+  bl_node_t *ret_type = NULL;
+
+  tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_ARROW);
+  if (tok) {
+    ret_type = parse_type(cnt);
+    if (!ret_type) {
+      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, BL_BUILDER_CUR_AFTER,
+                  "expected return type after '->'");
+      return bl_ast_bad(cnt->ast, tok);
+    }
+  } else {
+    ret_type = &bl_ftypes[BL_FTYPE_VOID];
+  }
+
   return bl_ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type, ptr);
 }
 
