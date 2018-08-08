@@ -4,7 +4,7 @@
 TestCaseCount size_t : 1000;
 arr *Array := null;
 
-main : fn () s32 {
+main : fn () -> s32 {
   arr = array_new(sizeof(s32));
 
   i size_t := 0;
