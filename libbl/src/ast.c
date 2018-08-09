@@ -42,6 +42,7 @@ bl_node_t bl_ftypes[] = {
               .src              = NULL,                                                            \
               .next             = NULL,                                                            \
               .n.type_fund.code = BL_FTYPE_##name,                                                 \
+              .n.type_fund.arr  = NULL,                                                            \
               .n.type_fund.ptr  = 0},
 
     _BL_FTYPE_LIST
@@ -206,13 +207,14 @@ _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
   return (bl_node_t *)_ublock;
 }
 
-_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr)
+_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr, bl_node_t *arr)
 {
   bl_node_ident_t *_ident = alloc_node(ast, BL_NODE_IDENT, tok, bl_node_ident_t *);
   _ident->hash            = bo_hash_from_str(tok->value.str);
   _ident->str             = tok->value.str;
   _ident->ref             = ref;
   _ident->ptr             = ptr;
+  _ident->arr             = arr;
   _ident->parent_compound = parent_compound;
   return (bl_node_t *)_ident;
 }
@@ -276,11 +278,12 @@ _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type,
   return (bl_node_t *)_decl;
 }
 
-_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr)
+_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr, bl_node_t *arr)
 {
   bl_node_type_fund_t *_type_fund = alloc_node(ast, BL_NODE_TYPE_FUND, tok, bl_node_type_fund_t *);
   _type_fund->code                = code;
   _type_fund->ptr                 = ptr;
+  _type_fund->arr                 = arr;
   return (bl_node_t *)_type_fund;
 }
 
@@ -531,6 +534,10 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
 
   default:
     bl_abort("node is not valid type");
+  }
+
+  if (bl_ast_type_get_arr(type)) {
+    append_buf(buf, len, " []");
   }
 
 #undef append_buf
@@ -893,7 +900,7 @@ bl_ast_type_get_ptr(bl_node_t *type)
   case BL_NODE_TYPE_STRUCT:
     return bl_peek_type_struct(type)->ptr;
   default:
-    bl_abort("invalid type");
+    bl_abort("invalid type %s", bl_node_name(type));
   }
 }
 
@@ -911,7 +918,59 @@ bl_ast_type_set_ptr(bl_node_t *type, int ptr)
     bl_peek_type_struct(type)->ptr = ptr;
     break;
   default:
-    bl_abort("invalid type");
+    bl_abort("invalid type %s", bl_node_name(type));
+  }
+}
+
+bl_node_t *
+bl_ast_type_get_arr(bl_node_t *type)
+{
+  switch (bl_node_code(type)) {
+  case BL_NODE_IDENT:
+    return bl_peek_ident(type)->arr;
+  case BL_NODE_TYPE_FUND:
+    return bl_peek_type_fund(type)->arr;
+  case BL_NODE_TYPE_FN:
+    return bl_peek_type_fn(type)->arr;
+  case BL_NODE_TYPE_STRUCT:
+    return bl_peek_type_struct(type)->arr;
+  default:
+    bl_abort("invalid type %s", bl_node_name(type));
+  }
+}
+
+void
+bl_ast_type_set_arr(bl_node_t *type, bl_node_t *arr)
+{
+  switch (bl_node_code(type)) {
+  case BL_NODE_IDENT:
+    bl_peek_ident(type)->arr = arr;
+    break;
+  case BL_NODE_TYPE_FUND:
+    bl_peek_type_fund(type)->arr = arr;
+    break;
+  case BL_NODE_TYPE_FN:
+    bl_peek_type_fn(type)->arr = arr;
+    break;
+  case BL_NODE_TYPE_STRUCT:
+    bl_peek_type_struct(type)->arr = arr;
+    break;
+  default:
+    bl_abort("invalid type %s", bl_node_name(type));
+  }
+}
+
+bool
+bl_ast_is_type(bl_node_t *node)
+{
+  switch (bl_node_code(node)) {
+  case BL_NODE_TYPE_FUND:
+  case BL_NODE_TYPE_FN:
+  case BL_NODE_TYPE_STRUCT:
+  case BL_NODE_TYPE_ENUM:
+    return true;
+  default:
+    return false;
   }
 }
 

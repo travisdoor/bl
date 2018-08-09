@@ -192,12 +192,12 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  int         ptr    = 0;
+  bl_node_t * arr    = bl_ast_type_get_arr(type);
+  int         ptr    = bl_ast_type_get_ptr(type);
 
   switch (bl_node_code(type)) {
   case BL_NODE_TYPE_FUND: {
     bl_node_type_fund_t *_type = bl_peek_type_fund(type);
-    ptr                        = _type->ptr;
     switch (_type->code) {
     case BL_FTYPE_VOID:
       result = LLVMVoidTypeInContext(cnt->llvm_cnt);
@@ -250,7 +250,6 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   case BL_NODE_TYPE_FN: {
     /* args */
     bl_node_type_fn_t *_fn_type = bl_peek_type_fn(type);
-    ptr                         = _fn_type->ptr;
 
     LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
@@ -271,7 +270,6 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   case BL_NODE_TYPE_STRUCT: {
     bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
-    ptr                                 = _struct_type->ptr;
 
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
 
@@ -320,6 +318,11 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
   if (ptr) {
     result = LLVMPointerType(result, 0);
+  }
+
+  if (arr) {
+    assert(bl_node_is(arr, BL_NODE_LIT));
+    result = LLVMArrayType(result, bl_peek_lit(arr)->value.u);
   }
 
   return result;
@@ -396,9 +399,8 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
 {
   LLVMValueRef         result        = NULL;
   bl_node_expr_call_t *_call         = bl_peek_expr_call(call);
-  bl_node_ident_t *    _callee_ident = bl_peek_ident(bl_node_is(_call->ref, BL_NODE_IDENT)
-                                                     ? _call->ref
-                                                     : bl_peek_expr_member(_call->ref)->ident);
+  bl_node_ident_t *    _callee_ident = bl_peek_ident(
+      bl_node_is(_call->ref, BL_NODE_IDENT) ? _call->ref : bl_peek_expr_member(_call->ref)->ident);
 
   LLVMValueRef llvm_fn = NULL;
   if (bl_peek_decl_value(_callee_ident->ref)->mutable) {

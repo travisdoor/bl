@@ -100,6 +100,9 @@ static bl_node_t *
 parse_decl_value(context_t *cnt);
 
 static bl_node_t *
+parse_arr(context_t *cnt);
+
+static bl_node_t *
 parse_type(context_t *cnt);
 
 static bl_node_t *
@@ -736,7 +739,7 @@ parse_ident(context_t *cnt, int ptr)
   if (!tok_ident) return NULL;
 
   assert(cnt->curr_compound);
-  return bl_ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound, ptr);
+  return bl_ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound, ptr, NULL);
 }
 
 bl_node_t *
@@ -750,6 +753,29 @@ parse_value(context_t *cnt)
 }
 
 bl_node_t *
+parse_arr(context_t *cnt)
+{
+  bl_token_t *tok_begin = bl_tokens_consume_if(cnt->tokens, BL_SYM_LBRACKET);
+  if (!tok_begin) return NULL;
+
+  bl_node_t *expr = parse_expr(cnt);
+  if (!expr) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok_begin, BL_BUILDER_CUR_AFTER,
+                "expected array size expression");
+    return bl_ast_bad(cnt->ast, tok_begin);
+  }
+
+  bl_token_t *tok_end = bl_tokens_consume_if(cnt->tokens, BL_SYM_RBRACKET);
+  if (!tok_begin) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok_end, BL_BUILDER_CUR_WORD,
+                "expected ']' after array size expression");
+    return bl_ast_bad(cnt->ast, tok_begin);
+  }
+
+  return expr;
+}
+
+bl_node_t *
 parse_type(context_t *cnt)
 {
   bl_node_t *type = NULL;
@@ -759,10 +785,16 @@ parse_type(context_t *cnt)
     ++ptr;
   }
 
-  if ((type = parse_type_fn(cnt, false, ptr))) return type;
-  if ((type = parse_type_struct(cnt, false, ptr))) return type;
-  if ((type = parse_type_enum(cnt, ptr))) return type;
-  if ((type = parse_type_fund(cnt, ptr))) return type;
+  type = parse_type_fn(cnt, false, ptr);
+  if (!type) type = parse_type_struct(cnt, false, ptr);
+  if (!type) type = parse_type_enum(cnt, ptr);
+  if (!type) type = parse_type_fund(cnt, ptr);
+
+  bl_node_t *arr = parse_arr(cnt);
+  if (arr) {
+    bl_ast_type_set_arr(type, arr);
+  }
+
   return type;
 }
 
@@ -772,19 +804,6 @@ parse_type_fund(context_t *cnt, int ptr)
   bl_node_t *type_ident = parse_ident(cnt, ptr);
   if (!type_ident) return NULL;
   assert(ptr >= 0);
-
-  bl_node_ident_t *_ident = bl_peek_ident(type_ident);
-  uint64_t         hash;
-  bl_array_foreach(bl_ftype_hashes, hash)
-  {
-    if (hash == _ident->hash) {
-      /* here we create new type instance instead of using pointer to static ftypes (fundamental
-       * types written by user can be pointers */
-      bl_node_t *type = bl_ast_type_fund(cnt->ast, NULL, i, ptr);
-      _ident->ref     = type;
-      return type_ident;
-    }
-  }
 
   return type_ident;
 }
@@ -911,7 +930,7 @@ parse_type_enum(context_t *cnt, int ptr)
 
   bl_node_t *type = parse_type(cnt);
   /* implicit type s32 when enum base type has not been specified */
-  if (!type) type = bl_ast_type_fund(cnt->ast, NULL, BL_FTYPE_S32, 0);
+  if (!type) type = bl_ast_type_fund(cnt->ast, NULL, BL_FTYPE_S32, 0, NULL);
 
   return bl_ast_type_enum(cnt->ast, tok_enum, type, NULL, ptr);
 }

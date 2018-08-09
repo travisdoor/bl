@@ -74,6 +74,7 @@
     uint64_t    hash; \
     bl_node_t  *ref; \
     bl_node_t  *parent_compound; \
+    bl_node_t  *arr; \
     int         ptr; \
   }) \
   nt(STMT_RETURN, stmt_return, struct { \
@@ -118,23 +119,27 @@
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
+    bl_node_t *arr; \
     int        ptr; \
   }) \
   nt(TYPE_FN, type_fn, struct { \
     bl_node_t *arg_types; \
     bl_node_t *ret_type; \
+    bl_node_t *arr; \
     int        argc_types; \
     int        ptr; \
   }) \
   nt(TYPE_STRUCT, type_struct, struct { \
     bl_node_t *base_decl; /* sometimes we need structure name and scope? */ \
     bl_node_t *types; \
+    bl_node_t *arr; \
     int        typesc; \
     int        ptr; \
   }) \
   nt(TYPE_ENUM, type_enum, struct { \
     bl_node_t *base_decl; \
     bl_node_t *base_type; \
+    bl_node_t *arr; \
     int        ptr; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
@@ -368,7 +373,7 @@ _BL_AST_NCTOR(bad);
 _BL_AST_NCTOR(load, const char *filepath);
 _BL_AST_NCTOR(link, const char *lib);
 _BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
-_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr);
+_BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
@@ -377,7 +382,7 @@ _BL_AST_NCTOR(stmt_continue);
 _BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
               bool mutable, int flags, int order, bool in_gscope);
-_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr);
+_BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
 _BL_AST_NCTOR(type_struct, bl_node_t *types, int typesc, bl_node_t *base_decl, int ptr);
 _BL_AST_NCTOR(type_enum, bl_node_t *type, bl_node_t *base_decl, int ptr);
@@ -414,6 +419,9 @@ bl_ast_get_scope(bl_node_t *node);
 bl_node_t *
 bl_ast_get_parent_compound(bl_node_t *node);
 
+bool
+bl_ast_is_type(bl_node_t *node);
+
 bl_node_t *
 bl_ast_get_type(bl_node_t *node);
 
@@ -434,6 +442,12 @@ bl_ast_type_get_ptr(bl_node_t *type);
 
 void
 bl_ast_type_set_ptr(bl_node_t *type, int ptr);
+
+bl_node_t *
+bl_ast_type_get_arr(bl_node_t *type);
+
+void
+bl_ast_type_set_arr(bl_node_t *type, bl_node_t *arr);
 
 bl_type_kind_e
 bl_ast_get_type_kind(bl_node_t *type);

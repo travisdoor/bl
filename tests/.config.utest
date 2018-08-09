@@ -9,3 +9,4 @@ src/pointers.bl
 src/structs.bl
 src/array.bl
 src/fibonacci.bl
+src/arrays.bl
