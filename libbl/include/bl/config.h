@@ -35,6 +35,8 @@
 #define BL_PLATFORM_MACOS
 #elif __linux__
 #define BL_PLATFORM_LINUX
+#elif __MINGW32__
+#define BL_PLATFORM_WIN
 #else
 #error "Unknown platform"
 #endif
@@ -45,7 +47,6 @@
 #define BL_COMPILER_GNUC
 #ifdef __MINGW32__
 #define BL_COMPILER_GNUC
-#define BL_PLATFORM_WIN
 #elif _MSC_VER
 #define BL_COMPILER_MSVC
 #endif
