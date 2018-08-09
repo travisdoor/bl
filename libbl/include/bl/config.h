@@ -43,6 +43,9 @@
 #define BL_COMPILER_CLANG
 #elif __GNUC__
 #define BL_COMPILER_GNUC
+#ifdef __MINGW32__
+#define BL_COMPILER_GNUC
+#define BL_PLATFORM_WIN
 #elif _MSC_VER
 #define BL_COMPILER_MSVC
 #endif
