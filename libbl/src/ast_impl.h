@@ -419,6 +419,9 @@ bl_ast_get_scope(bl_node_t *node);
 bl_node_t *
 bl_ast_get_parent_compound(bl_node_t *node);
 
+bool
+bl_ast_is_type(bl_node_t *node);
+
 bl_node_t *
 bl_ast_get_type(bl_node_t *node);
 

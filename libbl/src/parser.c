@@ -805,19 +805,6 @@ parse_type_fund(context_t *cnt, int ptr)
   if (!type_ident) return NULL;
   assert(ptr >= 0);
 
-  bl_node_ident_t *_ident = bl_peek_ident(type_ident);
-  uint64_t         hash;
-  bl_array_foreach(bl_ftype_hashes, hash)
-  {
-    if (hash == _ident->hash) {
-      /* here we create new type instance instead of using pointer to static ftypes (fundamental
-       * types written by user can be pointers */
-      bl_node_t *type = bl_ast_type_fund(cnt->ast, NULL, i, ptr, NULL);
-      _ident->ref     = type;
-      return type_ident;
-    }
-  }
-
   return type_ident;
 }
 

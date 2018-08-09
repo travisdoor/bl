@@ -774,6 +774,7 @@ check_ident(context_t *cnt, bl_node_t *ident)
   bl_node_t *found;
   const int  buildin = bl_ast_is_buildin_type(ident);
   if (buildin != -1) {
+    /* connect buildin fundamental types references */
     found = &bl_ftypes[buildin];
   } else {
     found = lookup(ident, NULL, true);
@@ -785,9 +786,9 @@ check_ident(context_t *cnt, bl_node_t *ident)
   }
 
   _ident->ref = bl_ast_unroll_ident(found);
-  assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
+  // assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
 
-  if (_ident->ptr) {
+  if (_ident->ptr || _ident->arr) {
     /* when ident reference is pointer we need to create copy of declaration with different
      * type, maybe there is some better solution ??? */
     _ident->ref     = bl_ast_node_dup(cnt->ast, found);
@@ -795,7 +796,11 @@ check_ident(context_t *cnt, bl_node_t *ident)
     assert(type);
     type = bl_ast_node_dup(cnt->ast, type);
     bl_ast_type_set_ptr(type, _ident->ptr);
-    bl_ast_set_type(_ident->ref, type);
+    bl_ast_type_set_arr(type, _ident->arr);
+    if (bl_ast_is_type(_ident->ref))
+      _ident->ref = type;
+    else
+      bl_ast_set_type(_ident->ref, type);
   }
 
   FINISH;
