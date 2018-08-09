@@ -38,12 +38,12 @@ typedef struct chunk
 
 bl_node_t bl_ftypes[] = {
 #define ft(name, str)                                                                              \
-  (bl_node_t){.code             = BL_NODE_TYPE_FUND,                                               \
-              .src              = NULL,                                                            \
-              .next             = NULL,                                                            \
-              .n.type_fund.code = BL_FTYPE_##name,                                                 \
-              .n.type_fund.arr  = NULL,                                                            \
-              .n.type_fund.ptr  = 0},
+  {.code             = BL_NODE_TYPE_FUND,                                                          \
+   .src              = NULL,                                                                       \
+   .next             = NULL,                                                                       \
+   .n.type_fund.code = BL_FTYPE_##name,                                                            \
+   .n.type_fund.arr  = NULL,                                                                       \
+   .n.type_fund.ptr  = 0},
 
     _BL_FTYPE_LIST
 #undef ft
