@@ -35,7 +35,7 @@
 #define BL_PLATFORM_MACOS
 #elif __linux__
 #define BL_PLATFORM_LINUX
-#elif __MINGW32__
+#elif __CYGWIN__
 #define BL_PLATFORM_WIN
 #else
 #error "Unknown platform"
