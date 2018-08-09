@@ -36,7 +36,7 @@ String : struct {
   _allocated size_t
 };
 
-str_new : fn () -> *String {
+str_new : fn () *String {
   tmp *String := malloc(sizeof(String));
   tmp->data   	  = malloc(StrChunkSize);
   tmp->_allocated = StrChunkSize;

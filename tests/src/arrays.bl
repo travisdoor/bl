@@ -1,0 +1,7 @@
+//#load "libc.bl"
+
+main : fn () s32 {
+  arr s32[10];
+  
+  return 0;
+};
