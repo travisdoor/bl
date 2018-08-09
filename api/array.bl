@@ -37,7 +37,7 @@ Array : struct {
   _data       *void
 };
 
-array_new : fn (elem_size size_t) -> *Array {
+array_new : fn (elem_size size_t) *Array {
   arr := cast(*Array) malloc(sizeof(Array));
   array_init(arr, elem_size);
   return arr;
@@ -95,7 +95,7 @@ array_push_back : fn (self *Array, value *void) {
   memcpy(new_elem, value, self->elem_size);
 };
 
-array_at : fn (self *Array, i size_t) -> *void {
+array_at : fn (self *Array, i size_t) *void {
   if self == null { return null; }
   if !_valid_index(self, i) { abort(); }
   return _elem_ptr(self, i);
@@ -111,11 +111,11 @@ array_reserve : fn (self *Array, elem_count size_t) {
   self->capacity = elem_count;
 };
 
-_elem_ptr : fn (self *Array, i size_t) -> *void {
+_elem_ptr : fn (self *Array, i size_t) *void {
   return cast(*void)(cast(size_t) self->_data + i * self->elem_size);
 };
 
-_valid_index : fn (self *Array, i size_t) -> bool {
+_valid_index : fn (self *Array, i size_t) bool {
   return i >= 0 && i < self->size;
 };
 

@@ -871,17 +871,8 @@ next:
     return bl_ast_bad(cnt->ast, tok_fn);
   }
 
-  bl_node_t *ret_type = NULL;
-
-  tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_ARROW);
-  if (tok) {
-    ret_type = parse_type(cnt);
-    if (!ret_type) {
-      parse_error(cnt, BL_ERR_EXPECTED_TYPE, tok, BL_BUILDER_CUR_AFTER,
-                  "expected return type after '->'");
-      return bl_ast_bad(cnt->ast, tok);
-    }
-  } else {
+  bl_node_t *ret_type = parse_type(cnt);
+  if (!ret_type) {
     ret_type = &bl_ftypes[BL_FTYPE_VOID];
   }
 

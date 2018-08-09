@@ -1,6 +1,6 @@
 #load "libc.bl"
 
-main : fn () -> s32 {
+main : fn () s32 {
   a := true;
   if a {
     puts("ok");
