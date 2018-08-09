@@ -3,7 +3,7 @@
 _global1 := 10;
 _global2 := 10 + 15;
 
-main : fn () s32 {
+main : fn () -> s32 {
   printf("_global1 = %d\n", _global1);
   printf("_global2 = %d\n", _global2);
 

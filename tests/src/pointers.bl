@@ -1,6 +1,6 @@
 #load "libc.bl"
 
-main : fn () s32 {
+main : fn () -> s32 {
   data s32;
   ptr *s32 := &data;
   ptr = &data;

@@ -53,7 +53,7 @@ Examples:
 	};
 
 	// function
-	main : fn () i32 {
+	main : fn () -> i32 {
 	};
 		
 		
@@ -82,19 +82,19 @@ Example:
 
 ### Functions
 
-Functions are special case of immutable declaration with type `fn ([args]) [return type]`. Return type of the function is also optional as the function arguments, when we don't specify return type `void` will be used implicitly.
+Functions are special case of immutable declaration with type `fn ([args]) [-> return type]`. Return type of the function is also optional as the function arguments, when we don't specify return type `void` will be used implicitly.
 
 Example:
 
 	<name> [type] : <value>; 	// immutable declaration
 	
 	// function declaration with explicit type after name
-	add fn (s32, s32) : fn (a s32, b s32) s32 {
+	add fn (s32, s32) -> s32 : fn (a s32, b s32) -> s32 {
 	  return a + b; 
 	};
 
 	// same as previous
-	add : fn (a s32, b s32) s32 {
+	add : fn (a s32, b s32) -> s32 {
 	  return a + b; 
 	};
 		

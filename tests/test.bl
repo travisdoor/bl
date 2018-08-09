@@ -1,12 +1,14 @@
 /* testing playground */
 
-main : () s32 {
+main : fn () -> s32 {
   return 0;
 };
 
-foo :
-fn () *Foo {
+foo : fn () -> *Foo {
   return foo();
+};
+
+bar : fn () {
 };
 
 
