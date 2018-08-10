@@ -32,7 +32,7 @@
 #include "bl/assembly.h"
 #include "bl/error.h"
 
-BO_BEGIN_DECLS
+BL_BEGIN_DECLS
 
 #define BL_BUILDER_RUN 0x00000002
 #define BL_BUILDER_PRINT_TOKENS 0x00000004
@@ -50,22 +50,22 @@ BO_BEGIN_DECLS
 typedef struct bl_builder *bl_builder_ref;
 typedef void (*bl_diag_handler_f)(const char *, void *);
 
-extern BO_EXPORT bl_builder_ref
+extern BL_EXPORT bl_builder_ref
                  bl_builder_new(void);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_builder_delete(bl_builder_ref builder);
 
-extern BO_EXPORT int
+extern BL_EXPORT int
 bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_builder_set_warning_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler,
                                     void *context);
 
-BO_END_DECLS
+BL_END_DECLS
 
 #endif // BL_BUILDER_H

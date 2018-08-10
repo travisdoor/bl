@@ -53,6 +53,7 @@ set(SOURCE_FILES
         src/ast.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
+target_compile_definitions(bl PRIVATE -DBL_COMPILING_DLL)
 
 #llvm_config(bl all)
 target_link_libraries(bl PUBLIC bobject)

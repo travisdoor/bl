@@ -29,9 +29,9 @@
 #ifndef BL_ERROR_H
 #define BL_ERROR_H
 
-#include <bobject/bobject.h>
+#include "bl/config.h"
 
-BO_BEGIN_DECLS
+BL_BEGIN_DECLS
 
 typedef enum
 {
@@ -89,6 +89,6 @@ typedef enum
   BL_ERR_INVALID_MEMBER_ACCESS   = 50,
 } bl_error_e;
 
-BO_END_DECLS
+BL_END_DECLS
 
 #endif // BL_ERROR_H

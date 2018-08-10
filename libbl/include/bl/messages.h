@@ -29,9 +29,9 @@
 #ifndef BL_MESSAGES_H
 #define BL_MESSAGES_H
 
-#include <bobject/bobject.h>
+#include "bl/config.h"
 
-BO_BEGIN_DECLS
+BL_BEGIN_DECLS
 
 #define bl_msg_log(format, ...)                                                                    \
   {                                                                                                \
@@ -48,6 +48,6 @@ BO_BEGIN_DECLS
     fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
   }
 
-BO_END_DECLS
+BL_END_DECLS
 
 #endif // BL_MESSAGES_H
