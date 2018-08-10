@@ -33,6 +33,9 @@
 #include "bl/bldebug.h"
 
 #define ENV_PATH "PATH"
+#ifndef PATH_MAX 
+#define PATH_MAX 1024
+#endif
 
 static void
 init(bl_unit_t *unit)
@@ -48,7 +51,14 @@ search_file(const char *filepath)
     return NULL;
 
   char  tmp_rpath[PATH_MAX];
+#ifdef BL_COMPILER_MSVC
+  char *rpath =
+      GetFullPathNameA(filepath, PATH_MAX, tmp_rpath, NULL);
+  printf("%s\n", rpath);
+#else
   char *rpath = realpath(filepath, tmp_rpath);
+#endif
+
   if (rpath != NULL) {
     return strdup(rpath);
   }
@@ -73,7 +83,12 @@ search_file(const char *filepath)
     strcat(&tmp_env[0], "/");
     strcat(&tmp_env[0], filepath);
 
+#ifdef BL_COMPILER_MSVC
+    rpath = GetFullPathNameA(&tmp_env[0], PATH_MAX, tmp_rpath, NULL);
+    printf("%s\n", rpath);
+#else
     rpath = realpath(&tmp_env[0], tmp_rpath);
+#endif
     s     = p + 1;
   } while (p != NULL && rpath == NULL);
 

@@ -35,6 +35,10 @@
 #include "bl/messages.h"
 #include "blmemory_impl.h"
 
+#ifdef BL_COMPILER_MSVC
+#include <Windows.h>
+#endif
+
 #define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define bl_barray_foreach(arr, it)                                                                 \

@@ -80,10 +80,13 @@ main(int argc, char *argv[])
   }
 
   assembly_name = strdup(assembly_name);
-  char *ext     = rindex(assembly_name, '.');
+#ifdef BL_COMPILER_MSVC
+#else
+  char *ext = rindex(assembly_name, '.');
   if (ext != NULL) {
     (*ext) = '\0';
   }
+#endif
 
   bl_assembly_ref assembly = bl_assembly_new(assembly_name);
   free(assembly_name);
