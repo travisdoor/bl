@@ -1,0 +1,43 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  Local : struct {
+    i s32,
+    bar Bar
+  };
+
+  foo Foo;
+  local Local;
+
+  foo.i = 10;
+  foo.j = 20;
+
+  printf("foo.i = %d\n", foo.i);
+  printf("foo.j = %d\n", foo.j);
+
+  local.i = 666;
+  local.bar.i = 10;
+  local.bar.j = 20;
+  printf("local.i = %d\n", local.i);
+  printf("local.bar.i = %d\n", local.bar.i);
+  printf("local.bar.j = %d\n", local.bar.j);
+
+  foo_ptr := &foo;
+  printf("foo_ptr->i = %d\n", foo_ptr->i);
+  printf("foo_ptr->j = %d\n", foo_ptr->j);
+
+  printf("(*foo_ptr).i = %d\n", (*foo_ptr).i);
+  printf("(*foo_ptr).j = %d\n", (*foo_ptr).j);
+  return 0;
+};
+
+Foo : struct {
+  i s32,
+  j s32,
+  bar *Bar 
+};
+
+Bar : struct {
+  i s32,
+  j s32
+};

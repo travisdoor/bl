@@ -1,0 +1,202 @@
+*next TASKS
+- [X] Enum [10/10]
+  - [X] Enum declaration
+  - [X] Enum variant node
+  - [X] Enum type generation 
+  - [X] Enum instance (unitialized) should have first enum value if there is one 
+  - [X] Enum unit test 
+  - [X] Enum member access 
+  - [X] Enum base expression generation (only numbers accepted for now)
+  - [X] All expressions passed into evaluation must be validated by check as consts 
+  - [X] Pointer enums are invalid!!! 
+  - [X] Check enum non-existing variant expression  
+- [ ] Function overloading [0/1]
+  - [ ] Use rewrite hash generation fn foo(i i32, f f64) i32 -> hash(foo@i32@f64->i32)
+- [-] JIT executed code [5/6]
+  - [X] Testing function #test directive
+  - [X] JIT generation
+  - [X] JIT executor
+  - [ ] Assert buildin function
+  - [X] #line #file buildins
+  - [X] Calling methods evaluated in compile time from runtime #run directive
+- [-] Struct [10/12]
+  - [X] Self containing struct member should generate error: struct a { mem a; } -> leads to endless recursion
+  - [X] Member ref expression node 
+  - [X] Member ref expression node parsing
+  - [X] Struct member node
+  - [X] Public and private struct members parsing.
+  - [X] Struct member access
+  - [X] Handle invalid found types [[file:~/Develop/bl/libbl/src/linker.c::found%20%3D%20satisfy_decl_ref(cnt,%20expr)%3B][here]]
+  - [X] *Member access type checking* [[7][here]]
+  - [X] Check if members are in current scope or public [[file:~/Develop/bl/libbl/src/linker.c::satisfy_member(context_t%20*cnt,%20bl_node_t%20*expr)][here]] -> generate error if member is inaccessible  
+  - [X] Initialization expression for struct [[file:~/Develop/bl/libbl/src/parser.c::/*%20TODO:%20parse%20initialization%20expression%20here%20*/][here]] 
+  - [ ] Check for recursions over multiple structs struct A { b B } struct B { a A } -> generate error
+  - [ ] All public members in structure must have also public types -> print error 
+- [X] Array [8/8]
+  - [X] Parsing
+  - [X] Array elem expression parsing 
+  - [X] LLVM generation 
+  - [X] Type declaration
+  - [X] Array type checking (size and type) 
+  - [X] Use expression reference instead number in [N] 
+  - [X] Array definition size as const expr 
+  - [X] Handle zero sized arrays -> generate error (in check.c)
+- [X] Casting [2/2]
+  - [X] Parsing
+  - [X] Implicit numeric constant casting
+- [ ] For loop [0/1]
+  - [ ] Parsing for (i i32 in 0..10) {}
+- [X] Global/local const [5/5]
+  - [X] Unique node
+  - [X] Parsing
+  - [X] Visitor and linking
+  - [X] Evaluation
+  - [X] LLVM generation
+- [ ] Variable argument type [0/1]
+  - [ ] Parsing
+- [-] Other [12/15]
+  - [X] Check for multiple or missing main function. 
+  - [X] Constant "variable" declaration
+  - [X] i16 and u16
+  - [X] Error when return statement is missing
+  - [ ] Improve error checking of return statement (not all path return value error?) 
+  - [X] Remove 'ptr' type 
+  - [X] Check const = ? -> constants cannot be modified at runtime!!!
+  - [X] Improve unit testing 
+  - [X] Separate node for func params 
+  - [X] Type casting
+  - [ ] Single character parsing ('c') 
+  - [ ] Linux/MacOS installation in CMAKE
+  - [X] Constant expression evaluator
+  - [X] Path parsing fix (last node of path must be parsed also) 
+  - [X] Nodes using path should use token of last path element (simple add method -> not use of previous token)
+- [X] Unary operator (separate expression node in ast) [4/4]
+  - [X] Ast node
+  - [X] Parsing
+  - [X] Check validity (not valid for struct references)
+  - [X] Evaluation
+- [-] Value evaluation [2/3]
+  - [ ] String constant evaluation 
+  - [X] Sizeof evaluation. 
+  - [X] Evaluate const init expressions 
+- [-] Windows port!!! [2/3]
+  - [X] BObject compilation
+  - [X] LLVM instalation
+  - [ ] Linker fix
+- [X] Pointer [4/4]
+  - [X] Parse unary address-of and dereferencing
+  - [X] Pointer type fundamental
+  - [X] Pointer type ref
+  - [X] -> operator
+- [-] Check [1/2]
+  - [X] Only pointers can have null value
+  - [ ] Check numeric limits
+- [ ] Set size of size_t by target machine architecture [[file:~/Develop/bl/libbl/src/llvm_generator.c::if%20(sizeof(size_t)%20%3D%3D%204)%20{][here]]  
+- [X] Preprocesor #load [4/4]
+  - [X] Ast representatio
+  - [X] Parsing
+  - [X] Duplicit load detection 
+  - [X] Search for files in path
+- [-] Using [5/8]
+  - [X] Ast node for using
+  - [X] Duplicity using check 
+  - [X] Parsing
+  - [X] Global usings valid only in module?
+  - [ ] Using inside struct or enum body?
+  - [ ] Symbol colisions handling between modules 
+  - [ ] Symbol colisions handling between current module and used modules
+  - [X] Using must be module or enumerator -> improve checking
+- [X] Sizeof buildin [5/5]
+  - [X] Ast node
+  - [X] Parsing
+  - [X] Generation
+  - [X] Size_t type 32/64 bit
+  - [X] Evaluation
+- [X] Default values [3/3]
+  - [X] Generation of constants for simple types
+  - [X] Alloca in LLVM position. 
+  - [X] Generation of initialization list for custom types
+- [-] Initialization list [3/4]
+  - [X] Parsing
+  - [X] Type prediction
+  - [ ] Error checkings 
+  - [X] IR generation
+- [ ] Threading
+- [X] Better error reporting
+- [X] Cleanup () in statemets like if (true) {} -> if true {}
+- [X] Better linker [7/7]
+  - [X] Create global root module by default in parser
+  - [X] Review module merging
+  - [X] Path element validation via validation methods???
+  - [X] Symbol inserting in current scope without lookup in tree -> possibility to hide members up the tree 
+  - [X] Member access parser + better expression handling 
+  - [X] Finalize 
+  - [X] Add assembly root module and link it to all unit global modules
+
+* BUGS [5/14]
+- [ ] When enumerator variant is used as array size, compiler don't track usage of this enum and warn user about unused declaration.
+- [X] Cannot evaluate array size inside structures. 
+- [X] Invalid typecheck for var initializer of enum 'var e Enum = Enum::Foo;'
+- [X] Invalid copying of: rect_src.w = e->rect.w;
+- [X] Wrong parsing of cast expressions cast(i32) foo->i;  
+- [X] Unable to return struct member copy from the function
+- [ ] Missing checking: some_module./->foo
+- [ ] Invalid publicity detection when we try to access from submodule to private member in upper module
+- [ ] Cannot access members in structure returned from function call directly get_C().x;
+- [ ] Tmp for initialization list should be declared out of the loops in LLVM. 
+- [ ] Structure initializer cannot detect type of array element member.
+      units[0] = { .cmd = "blc decl_def_values_test.bl", .name = "decl def values" };
+- [ ] Direct dereferencing before return cause llvm backend error
+      return *get_elem_ptr(arr, i); 
+- [ ] Invalid type detection for structure from other files (tests/api/std/file.bl -> remove file_f from mut declaration)  
+- [ ] Casting from size_t to i32 generates llvm backend error
+
+* PIPELINE
+** Text (can run in multithread)
+   1. file loader
+   2. lexer
+
+** Tokens (can run in multithread)
+   1. token printer
+   2. parser
+
+** AST
+   1. preprocessor
+   2. merge 
+   3. connection 
+   4. ast printing 
+   5. check
+   6. const-expr evaluation
+
+** LLVM
+   1. llvm generator
+   2. llvm jit execute
+   3. llvm byte-code writer
+   4. llvm linker
+   5. llvm native bin builder
+  
+* IDEAS
+  - for loop:
+    for i in expr .. expr {
+    }
+
+    for i = expr .. expr {
+    }
+
+    for i = 0..10 {
+      arr[i];
+    }
+
+    // simple inheritance on data
+    struct base {
+      i i32
+    }
+
+    struct child : base {
+      j i32
+    }
+
+* NOTES
+** global using search return array of all founds references???
+** http://www.drdobbs.com/architecture-and-design/cs-biggest-mistake/228701625
+   

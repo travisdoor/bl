@@ -1,0 +1,17 @@
+/* testing playground */
+
+main : fn () -> s32 {
+  return 0;
+};
+
+foo : fn () -> *Foo {
+  return foo();
+};
+
+bar : fn () {
+};
+
+
+Foo : struct {
+  a s32
+};

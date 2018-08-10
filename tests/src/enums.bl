@@ -1,0 +1,42 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  {
+    State : enum s32 {
+      A : 123,
+      B : 2,
+      C : 3
+    };
+
+    printf("State.A = %d\n", State.A);
+    printf("State.B = %d\n", State.B);
+    printf("State.C = %d\n", State.C);
+  }
+
+  {
+    State : enum {
+      A : 123,
+      B : 2,
+      C : 3
+    };
+
+    printf("State.A = %d\n", State.A);
+    printf("State.B = %d\n", State.B);
+    printf("State.C = %d\n", State.C);
+  }
+
+  printf("StateGlobal.A = %d\n", StateGlobal.A);
+  printf("StateGlobal.B = %d\n", StateGlobal.B);
+  printf("StateGlobal.C = %d\n", StateGlobal.C);
+  printf("StateGlobal.D = %d\n", StateGlobal.D);
+  printf("StateGlobal.E = %d\n", StateGlobal.E);
+  return 0;
+};
+
+StateGlobal : enum {
+  A : 2,
+  B : 5,
+  C,
+  D,
+  E : 100
+};

@@ -1,0 +1,12 @@
+src/constants.bl
+src/enums.bl
+src/globals.bl
+src/ifs.bl
+src/lambdas.bl
+src/localfn.bl
+src/loops.bl
+src/pointers.bl
+src/structs.bl
+src/array.bl
+src/fibonacci.bl
+src/arrays.bl

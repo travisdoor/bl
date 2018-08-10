@@ -1,0 +1,78 @@
+//************************************************************************************************
+// bl
+//
+// File:   string.bl
+// Author: Martin Dorazil
+// Date:   3/15/18
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "libc.bl"
+
+StrChunkSize size_t : 256;
+
+String : struct {
+  data *char,
+  len size_t,
+  _allocated size_t
+};
+
+str_new : fn () *String {
+  tmp *String := malloc(sizeof(String));
+  tmp->data   	  = malloc(StrChunkSize);
+  tmp->_allocated = StrChunkSize;
+  tmp->len 	  = 0;
+  *tmp->data 	  = '\0';
+  return tmp;
+};
+
+str_delete : fn (s *String) {
+  if s == null { return; }
+  free(s->data);
+  free(s);
+};
+
+str_cat : fn (s *String, other *String) {
+  str_ccat(s, other->data);
+};
+
+str_ccat : fn (s *String, cs *char) {
+  alloc_if_needed : fn (s *String, expected_len size_t) {
+    expected_len = expected_len + 1; // adding one cell for \0
+    if expected_len > s->_allocated {
+       s->_allocated = (expected_len / StrChunkSize + 1) * StrChunkSize; 
+       s->data = realloc(s->data, s->_allocated);
+    }
+  };
+
+  if s == null || cs == null { return; }
+
+  s->len = s->len + strlen(cs);
+  alloc_if_needed(s, s->len);    
+  strcat(s->data, cs);
+};
+
+str_clear : fn (s *String) {
+  if s == null || s->data == null { return; }
+  s->len = 0;
+  *s->data = '\0';
+};

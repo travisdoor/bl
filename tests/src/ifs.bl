@@ -1,0 +1,32 @@
+#load "libc.bl"
+
+main : fn () s32 {
+  a := true;
+  if a {
+    puts("ok");
+    if !a {
+      puts("INVALID");
+      return 1;
+    } else {
+      puts("ok");
+    }
+  } else {
+    puts("INVALID");
+    return 2;
+  }
+
+  test();
+  return 3;
+};
+
+Foo : struct {
+  b bool
+};
+
+test : fn () {
+  foo Foo;
+  foo.b = false;
+  if !foo.b { return; }
+  puts("should skip in method!!!");
+  abort();
+};
