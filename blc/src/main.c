@@ -69,6 +69,7 @@ main(int argc, char *argv[])
   }
 
   bl_builder_ref builder = bl_builder_new();
+
   /*
    * HACK: use name of first file as assembly name
    */
@@ -94,6 +95,7 @@ main(int argc, char *argv[])
   /* init actors */
   while (*argv != NULL) {
     bl_unit_ref unit  = bl_unit_new_file(*argv);
+
     bool        added = bl_assembly_add_unit_unique(assembly, unit);
     if (added == false) {
       bl_unit_delete(unit);

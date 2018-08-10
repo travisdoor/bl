@@ -85,7 +85,6 @@ search_file(const char *filepath)
 
 #ifdef BL_COMPILER_MSVC
     rpath = GetFullPathNameA(&tmp_env[0], PATH_MAX, tmp_rpath, NULL);
-    printf("%s\n", rpath);
 #else
     rpath = realpath(&tmp_env[0], tmp_rpath);
 #endif
