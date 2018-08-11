@@ -29,6 +29,7 @@
 #ifndef BL_COMMON_IMPL_H
 #define BL_COMMON_IMPL_H
 
+#include <limits.h>
 #include "bl/bldebug.h"
 #include "bl/config.h"
 #include "bl/error.h"
@@ -37,6 +38,17 @@
 
 #ifdef BL_COMPILER_MSVC
 #include <Windows.h>
+#endif
+
+#define ENV_PATH "PATH"
+#ifndef PATH_MAX 
+#define PATH_MAX 1024
+#endif
+
+#ifdef BL_PLATFORM_WIN
+#define BL_FILE_SEPARATOR "\\"
+#else
+#define BL_FILE_SEPARATOR "/"
 #endif
 
 #define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
@@ -59,5 +71,8 @@
   (it) = bo_list_begin((list));                                                                    \
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
+
+const char *
+bl_realpath(const char *file, char *out, int out_len);
 
 #endif // BL_COMMON_IMPL_H

@@ -4,6 +4,7 @@ project(bl VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+SET(LLVM_PATH "" CACHE STRING "Path to LLVM.")
 
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
@@ -18,8 +19,12 @@ find_package(BObject 1.0 REQUIRED)
 
 
 if (MSVC)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7")
+
+    # Link LLVM from custom path
+    include_directories(${LLVM_PATH}/include);
+    link_directories(${LLVM_PATH}/lib);
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wno-missing-braces -O0")
