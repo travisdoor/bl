@@ -1,6 +1,6 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
 
 main : fn () s32 {
   return 0;
