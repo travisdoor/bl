@@ -23,8 +23,8 @@ if (MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7")
 
     # Link LLVM from custom path
-    include_directories(${LLVM_PATH}/include);
-    link_directories(${LLVM_PATH}/lib);
+    include_directories(${LLVM_PATH}/include)
+    link_directories(${LLVM_PATH}/lib)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wno-missing-braces -O0")
