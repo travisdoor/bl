@@ -37,8 +37,9 @@ bl_realpath(const char *file, char *out, int out_len)
   if (!file) return resolved;
 
 #ifdef BL_COMPILER_MSVC
-  GetFullPathNameA(file, out_len, out, &resolved);
-  return resolved;
+  if (GetFullPathNameA(file, out_len, out, NULL)) 
+    return &out[0];
+  return NULL;
 #else
   return realpath(file, out);
 #endif

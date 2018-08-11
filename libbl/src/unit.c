@@ -56,7 +56,7 @@ search_file(const char *filepath)
   char *env          = strdup(getenv(ENV_PATH));
   char *s            = env;
   char *p            = NULL;
-  int   filepath_len = strlen(filepath);
+  size_t   filepath_len = strlen(filepath);
 
   do {
     p = strchr(s, ':');
@@ -148,8 +148,8 @@ bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
 
   if (len) {
     long l = 0;
-    if (iter) l = strchr(iter, '\n') - iter;
-    if (l < 0) l = strlen(iter);
+    if (iter) l = (long) (strchr(iter, '\n') - iter);
+    if (l < 0) l = (long) strlen(iter);
     (*len) = l;
   }
 

@@ -39,7 +39,11 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   assert(assembly->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + 3));
   strcpy(filename, assembly->name);
+#ifdef BL_PLATFORM_WIN
+  strcat(filename, ".lib");
+#else
   strcat(filename, ".o");
+#endif
 
   char *triple    = LLVMGetDefaultTargetTriple();
   char *cpu       = "";
