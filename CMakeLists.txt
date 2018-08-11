@@ -19,8 +19,8 @@ find_package(BObject 1.0 REQUIRED)
 
 
 if (MSVC)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /w4996")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /w4996")
 
     # Link LLVM from custom path
     include_directories(${LLVM_PATH}/include)
