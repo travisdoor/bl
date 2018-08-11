@@ -80,7 +80,7 @@ typedef enum
   BL_LOG_MSG
 } bl_log_msg_type_e;
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 
 #ifdef BL_DEBUG
