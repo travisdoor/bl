@@ -2,10 +2,11 @@
 
 //#load "libc.bl"
 
-puts fn (string) s32 : extern;
+//printf fn (string) s32 : extern;
+malloc fn (size_t) *void : extern; 
 
 main : fn () s32 {
-  puts("hello world");
+  //printf("hello world");
   return 0;
 };
 

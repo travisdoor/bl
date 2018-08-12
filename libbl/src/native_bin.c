@@ -45,7 +45,7 @@ bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
 #elif defined(BL_PLATFORM_MACOS)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
 #elif defined(BL_PLATFORM_WIN)
-  const char *cmd = "link %s.lib /entry:main /subsystem:windows";
+  const char *cmd = "link %s.lib /ENTRY:main /MACHINE:x64 /NOLOGO /INCREMENTAL:NO /OUT:%s";
 #endif
 
   // TODO: use dynamic buffer
