@@ -194,6 +194,7 @@ if (MSVC)
     LLVMXCoreDisassembler      
     LLVMXCoreInfo              
     LLVMXRay  
+    Shlwapi
     )
 else()
   target_link_libraries(bl PUBLIC LLVM)

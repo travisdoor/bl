@@ -61,7 +61,7 @@ search_file(const char *filepath)
   printf("path: %s\n", env);
 
   do {
-    p = strchr(s, ':');
+    p = strchr(s, BL_ENVPATH_SEPARATOR);
     if (p != NULL) {
       p[0] = 0;
     }
