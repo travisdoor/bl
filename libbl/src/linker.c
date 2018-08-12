@@ -70,6 +70,8 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       LLVMCreateTargetMachine(target, triple, cpu, features, opt_lvl,
                               LLVMRelocDefault, LLVMCodeModelDefault);
 
+  // TODO: use tmp file first (cause problems on windows)
+  remove(filename);
   if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
                                   &error_msg)) {
     bl_msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
