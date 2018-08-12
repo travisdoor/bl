@@ -47,8 +47,10 @@
 
 #ifdef BL_PLATFORM_WIN
 #define BL_FILE_SEPARATOR "\\"
+#define BL_ENVPATH_SEPARATOR ';'
 #else
 #define BL_FILE_SEPARATOR "/"
+#define BL_ENVPATH_SEPARATOR ':'
 #endif
 
 #define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))

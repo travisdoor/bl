@@ -60,7 +60,7 @@ search_file(const char *filepath)
   size_t   filepath_len = strlen(filepath);
 
   do {
-    p = strchr(s, ':');
+    p = strchr(s, BL_ENVPATH_SEPARATOR);
     if (p != NULL) {
       p[0] = 0;
     }
