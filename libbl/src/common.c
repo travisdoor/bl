@@ -28,6 +28,20 @@
 
 #include "common_impl.h"
 
+#ifndef BL_COMPILER_MSVC
+#include "unistd.h"
+#endif
+
+bool
+bl_file_exists(const char *filepath)
+{
+#ifdef BL_COMPILER_MSVC
+  return PathFileExistsA(filepath);
+#else
+  return access(filepath, F_OK) != -1;
+#endif
+}
+
 const char *
 bl_realpath(const char *file, char *out, int out_len)
 {
@@ -37,8 +51,7 @@ bl_realpath(const char *file, char *out, int out_len)
   if (!file) return resolved;
 
 #ifdef BL_COMPILER_MSVC
-  if (GetFullPathNameA(file, out_len, out, NULL)) 
-    return &out[0];
+  if (GetFullPathNameA(file, out_len, out, NULL) && bl_file_exists(out)) return &out[0];
   return NULL;
 #else
   return realpath(file, out);

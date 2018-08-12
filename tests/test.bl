@@ -1,6 +1,7 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
+
 
 printf fn (string) s32 : extern;
 
