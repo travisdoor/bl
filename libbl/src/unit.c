@@ -57,6 +57,7 @@ search_file(const char *filepath)
   char *s            = env;
   char *p            = NULL;
   size_t   filepath_len = strlen(filepath);
+  printf("path: %s\n", env);
 
   do {
     p = strchr(s, ':');
@@ -64,13 +65,15 @@ search_file(const char *filepath)
       p[0] = 0;
     }
 
-    if (strlen(s) + filepath_len + strlen("/") >= PATH_MAX) bl_abort("path too long");
+    if (strlen(s) + filepath_len + strlen(BL_PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
 
     strcpy(&tmp_env[0], s);
-    strcat(&tmp_env[0], "/");
+    strcat(&tmp_env[0], BL_PATH_SEPARATOR);
     strcat(&tmp_env[0], filepath);
 
     rpath = bl_realpath(&tmp_env[0], tmp_rpath, PATH_MAX);
+    printf("try: %s\n", rpath);
+
     s     = p + 1;
   } while (p != NULL && rpath == NULL);
 
