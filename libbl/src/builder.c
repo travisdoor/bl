@@ -76,6 +76,7 @@ llvm_init(void)
   LLVMInitializeAllTargetMCs();
   LLVMInitializeAllAsmParsers();
   LLVMInitializeAllAsmPrinters();
+  LLVMLinkInMCJIT();
   llvm_initialized = true;
 }
 
