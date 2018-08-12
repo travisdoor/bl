@@ -47,6 +47,7 @@ search_file(const char *filepath)
   char  tmp_rpath[PATH_MAX];
   const char *rpath = bl_realpath(filepath, tmp_rpath, PATH_MAX);
 
+  bl_log("%s", rpath);
   if (rpath != NULL) {
     return strdup(rpath);
   }

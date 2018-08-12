@@ -72,6 +72,9 @@
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
 
+bool
+bl_file_exists(const char *filepath);
+
 const char *
 bl_realpath(const char *file, char *out, int out_len);
 
