@@ -36,23 +36,6 @@
 #include "bl/messages.h"
 #include "blmemory_impl.h"
 
-#ifdef BL_COMPILER_MSVC
-#include <Windows.h>
-#endif
-
-#define ENV_PATH "PATH"
-#ifndef PATH_MAX 
-#define PATH_MAX 1024
-#endif
-
-#ifdef BL_PLATFORM_WIN
-#define BL_PATH_SEPARATOR "\\"
-#define BL_ENVPATH_SEPARATOR ';'
-#else
-#define BL_PATH_SEPARATOR "/"
-#define BL_ENVPATH_SEPARATOR ':'
-#endif
-
 #define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define bl_barray_foreach(arr, it)                                                                 \

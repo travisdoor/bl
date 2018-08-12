@@ -73,7 +73,7 @@ main(int argc, char *argv[])
   /*
    * HACK: use name of first file as assembly name
    */
-  char *assembly_name = strrchr(*argv, '/');
+  char *assembly_name = strrchr(*argv, BL_PATH_SEPARATORC);
   if (assembly_name == NULL) {
     assembly_name = *argv;
   } else {
@@ -82,6 +82,7 @@ main(int argc, char *argv[])
 
   assembly_name = strdup(assembly_name);
 #ifdef BL_COMPILER_MSVC
+  PathRemoveExtensionA(assembly_name);
 #else
   char *ext = rindex(assembly_name, '.');
   if (ext != NULL) {
