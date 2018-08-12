@@ -32,8 +32,6 @@
 #include "blmemory_impl.h"
 #include "bl/bldebug.h"
 
-#define ENV_PATH "PATH"
-
 static void
 init(bl_unit_t *unit)
 {
@@ -44,11 +42,12 @@ init(bl_unit_t *unit)
 static char *
 search_file(const char *filepath)
 {
-  if (filepath == NULL)
-    return NULL;
+  if (filepath == NULL) return NULL;
 
   char  tmp_rpath[PATH_MAX];
-  char *rpath = realpath(filepath, tmp_rpath);
+  const char *rpath = bl_realpath(filepath, tmp_rpath, PATH_MAX);
+
+  bl_log("%s", rpath);
   if (rpath != NULL) {
     return strdup(rpath);
   }
@@ -58,28 +57,27 @@ search_file(const char *filepath)
   char *env          = strdup(getenv(ENV_PATH));
   char *s            = env;
   char *p            = NULL;
-  int   filepath_len = strlen(filepath);
+  size_t   filepath_len = strlen(filepath);
 
   do {
-    p = strchr(s, ':');
+    p = strchr(s, BL_ENVPATH_SEPARATOR);
     if (p != NULL) {
       p[0] = 0;
     }
 
-    if (strlen(s) + filepath_len + strlen("/") >= PATH_MAX)
-      bl_abort("path too long");
+    if (strlen(s) + filepath_len + strlen(BL_PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
 
     strcpy(&tmp_env[0], s);
-    strcat(&tmp_env[0], "/");
+    strcat(&tmp_env[0], BL_PATH_SEPARATOR);
     strcat(&tmp_env[0], filepath);
 
-    rpath = realpath(&tmp_env[0], tmp_rpath);
+    rpath = bl_realpath(&tmp_env[0], tmp_rpath, PATH_MAX);
+
     s     = p + 1;
   } while (p != NULL && rpath == NULL);
 
   free(env);
-  if (rpath)
-    return strdup(rpath);
+  if (rpath) return strdup(rpath);
   return NULL;
 }
 
@@ -152,10 +150,8 @@ bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
 
   if (len) {
     long l = 0;
-    if (iter)
-       l = strchr(iter, '\n') - iter;
-    if (l < 0)
-      l = strlen(iter);
+    if (iter) l = (long) (strchr(iter, '\n') - iter);
+    if (l < 0) l = (long) strlen(iter);
     (*len) = l;
   }
 

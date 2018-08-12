@@ -1,7 +1,0 @@
-*.ll
-*.bc
-/blc
-/test
-/test_runner
-/file
-/utests

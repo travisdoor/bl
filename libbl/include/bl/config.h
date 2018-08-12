@@ -31,6 +31,7 @@
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
+#define BL_NO_COLOR
 #elif __APPLE__
 #define BL_PLATFORM_MACOS
 #elif __linux__
@@ -58,6 +59,43 @@
 #define BL_ASSERT_ON_CMP_ERROR 0
 #else
 #define BL_ASSERT_ON_CMP_ERROR 0
+#endif
+
+#ifdef BL_COMPILER_MSVC 
+#if BL_COMPILING_DLL
+#define BL_EXPORT __declspec(dllexport)
+#else
+#define BL_EXPORT __declspec(dllimport)
+#endif
+#else
+#define BL_EXPORT __attribute__((__visibility__("default")))
+#endif
+
+#ifdef __cplusplus
+#define BL_BEGIN_DECLS extern "C" {
+#define BL_END_DECLS }
+#else
+#define BL_BEGIN_DECLS
+#define BL_END_DECLS
+#endif
+
+#ifdef BL_COMPILER_MSVC
+#include <Windows.h>
+#endif
+
+#define ENV_PATH "PATH"
+#ifndef PATH_MAX 
+#define PATH_MAX 1024
+#endif
+
+#ifdef BL_PLATFORM_WIN
+#define BL_PATH_SEPARATOR "\\"
+#define BL_PATH_SEPARATORC '\\'
+#define BL_ENVPATH_SEPARATOR ';'
+#else
+#define BL_PATH_SEPARATOR "/"
+#define BL_PATH_SEPARATORC '/'
+#define BL_ENVPATH_SEPARATOR ':'
 #endif
 
 #endif // BL_CONFIG_H

@@ -152,7 +152,7 @@ bl_tokens_is_seq(bl_tokens_t *tokens, int cnt, ...)
   bool     ret = true;
   size_t   c   = bo_array_size(tokens->buf);
   bl_sym_e sym = BL_SYM_EOF;
-  cnt += tokens->iter;
+  cnt += (int) tokens->iter;
 
   va_list valist;
   va_start(valist, cnt);

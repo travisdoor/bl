@@ -1,9 +1,9 @@
 //************************************************************************************************
-// blc
+// bl
 //
-// File:   builder.h
+// File:   common.c
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   11.8.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,46 +26,34 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_BUILDER_H
-#define BL_BUILDER_H
+#include "common_impl.h"
 
-#include "bl/assembly.h"
-#include "bl/error.h"
+#ifndef BL_COMPILER_MSVC
+#include "unistd.h"
+#endif
 
-BL_BEGIN_DECLS
+bool
+bl_file_exists(const char *filepath)
+{
+#ifdef BL_COMPILER_MSVC
+  return PathFileExistsA(filepath);
+#else
+  return access(filepath, F_OK) != -1;
+#endif
+}
 
-#define BL_BUILDER_RUN 0x00000002
-#define BL_BUILDER_PRINT_TOKENS 0x00000004
-#define BL_BUILDER_PRINT_AST 0x00000008
-#define BL_BUILDER_LOAD_FROM_FILE 0x00000010
-#define BL_BUILDER_SYNTAX_ONLY 0x00000020
-#define BL_BUILDER_EMIT_LLVM 0x00000040
-#define BL_BUILDER_RUN_TESTS 0x00000080
-#define BL_BUILDER_NO_BIN 0x00000100
-#define BL_BUILDER_NO_WARN 0x00000200
+const char *
+bl_realpath(const char *file, char *out, int out_len)
+{
+  const char *resolved = NULL;
+  assert(out);
+  assert(out_len);
+  if (!file) return resolved;
 
-#define BL_COMPILE_OK 0
-#define BL_COMPILE_FAIL 1
-
-typedef struct bl_builder *bl_builder_ref;
-typedef void (*bl_diag_handler_f)(const char *, void *);
-
-extern BL_EXPORT bl_builder_ref
-                 bl_builder_new(void);
-
-extern BL_EXPORT void
-bl_builder_delete(bl_builder_ref builder);
-
-extern BL_EXPORT int
-bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
-
-extern BL_EXPORT void
-bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);
-
-extern BL_EXPORT void
-bl_builder_set_warning_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler,
-                                    void *context);
-
-BL_END_DECLS
-
-#endif // BL_BUILDER_H
+#ifdef BL_COMPILER_MSVC
+  if (GetFullPathNameA(file, out_len, out, NULL) && bl_file_exists(out)) return &out[0];
+  return NULL;
+#else
+  return realpath(file, out);
+#endif
+}

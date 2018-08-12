@@ -31,32 +31,33 @@
 
 #include <bobject/bobject.h>
 #include <llvm-c/Core.h>
+#include "bl/config.h"
 
-BO_BEGIN_DECLS
+BL_BEGIN_DECLS
 
 typedef struct bl_unit *bl_unit_ref;
 
-extern BO_EXPORT bl_unit_ref
+extern BL_EXPORT bl_unit_ref
 bl_unit_new_file(const char *filepath);
 
-extern BO_EXPORT bl_unit_ref
+extern BL_EXPORT bl_unit_ref
 bl_unit_new_str(const char *name, const char *src);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_unit_delete(bl_unit_ref unit);
 
-extern BO_EXPORT const char *
+extern BL_EXPORT const char *
 bl_unit_get_src_file(bl_unit_ref unit);
 
-extern BO_EXPORT const char *
+extern BL_EXPORT const char *
 bl_unit_get_src(bl_unit_ref unit);
 
-extern BO_EXPORT const char *
+extern BL_EXPORT const char *
 bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len);
 
-extern BO_EXPORT const char *
+extern BL_EXPORT const char *
 bl_unit_get_name(bl_unit_ref unit);
 
-BO_END_DECLS
+BL_END_DECLS
 
 #endif /* end of include guard: UNIT_H_IDHOJTNW */

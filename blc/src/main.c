@@ -69,10 +69,11 @@ main(int argc, char *argv[])
   }
 
   bl_builder_ref builder = bl_builder_new();
+
   /*
    * HACK: use name of first file as assembly name
    */
-  char *assembly_name = strrchr(*argv, '/');
+  char *assembly_name = strrchr(*argv, BL_PATH_SEPARATORC);
   if (assembly_name == NULL) {
     assembly_name = *argv;
   } else {
@@ -80,10 +81,14 @@ main(int argc, char *argv[])
   }
 
   assembly_name = strdup(assembly_name);
-  char *ext     = rindex(assembly_name, '.');
+#ifdef BL_COMPILER_MSVC
+  PathRemoveExtensionA(assembly_name);
+#else
+  char *ext = rindex(assembly_name, '.');
   if (ext != NULL) {
     (*ext) = '\0';
   }
+#endif
 
   bl_assembly_ref assembly = bl_assembly_new(assembly_name);
   free(assembly_name);
@@ -91,6 +96,7 @@ main(int argc, char *argv[])
   /* init actors */
   while (*argv != NULL) {
     bl_unit_ref unit  = bl_unit_new_file(*argv);
+
     bool        added = bl_assembly_add_unit_unique(assembly, unit);
     if (added == false) {
       bl_unit_delete(unit);

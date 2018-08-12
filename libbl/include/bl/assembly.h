@@ -31,35 +31,36 @@
 
 #include <bobject/bobject.h>
 #include "bl/unit.h"
+#include "bl/config.h"
 
-BO_BEGIN_DECLS
+BL_BEGIN_DECLS
 
 typedef struct bl_assembly *bl_assembly_ref;
 
-extern BO_EXPORT bl_assembly_ref
+extern BL_EXPORT bl_assembly_ref
 bl_assembly_new(const char *name);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_assembly_delete(bl_assembly_ref assembly);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
 
-extern BO_EXPORT void
+extern BL_EXPORT void
 bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
 
-extern BO_EXPORT bool 
+extern BL_EXPORT bool
 bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
 
-extern BO_EXPORT int
+extern BL_EXPORT int
 bl_assembly_get_unit_count(bl_assembly_ref assembly);
 
-extern BO_EXPORT bl_unit_ref
+extern BL_EXPORT bl_unit_ref
 bl_assembly_get_unit(bl_assembly_ref assembly, int i);
 
-extern BO_EXPORT const char *
+extern BL_EXPORT const char *
 bl_assembly_get_name(bl_assembly_ref assembly);
 
-BO_END_DECLS
+BL_END_DECLS
 
 #endif // BL_ASSEMBLY_H

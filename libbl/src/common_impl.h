@@ -29,6 +29,7 @@
 #ifndef BL_COMMON_IMPL_H
 #define BL_COMMON_IMPL_H
 
+#include <limits.h>
 #include "bl/bldebug.h"
 #include "bl/config.h"
 #include "bl/error.h"
@@ -55,5 +56,11 @@
   (it) = bo_list_begin((list));                                                                    \
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
+
+bool
+bl_file_exists(const char *filepath);
+
+const char *
+bl_realpath(const char *file, char *out, int out_len);
 
 #endif // BL_COMMON_IMPL_H
