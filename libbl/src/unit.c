@@ -58,7 +58,6 @@ search_file(const char *filepath)
   char *s            = env;
   char *p            = NULL;
   size_t   filepath_len = strlen(filepath);
-  printf("path: %s\n", env);
 
   do {
     p = strchr(s, BL_ENVPATH_SEPARATOR);
@@ -73,7 +72,6 @@ search_file(const char *filepath)
     strcat(&tmp_env[0], filepath);
 
     rpath = bl_realpath(&tmp_env[0], tmp_rpath, PATH_MAX);
-    printf("try: %s\n", rpath);
 
     s     = p + 1;
   } while (p != NULL && rpath == NULL);

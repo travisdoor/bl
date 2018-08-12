@@ -2,11 +2,8 @@
 
 #load "libc.bl"
 
-
-printf fn (string) s32 : extern;
-
 main : fn () s32 {
-  printf("hello world\n");
+  printf("hello world\n", 0);
   return 0;
 };
 
