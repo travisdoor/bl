@@ -15,6 +15,7 @@ The Biscuit is programming language inspired by C and Rust.
 ## Compilation
 
 ### Requirements
+* git
 * CMake
 * LLVM
 * [bobject](https://github.com/travisdoor/bobject)
@@ -22,7 +23,7 @@ The Biscuit is programming language inspired by C and Rust.
 
 ### MacOS and Linux
 1) Install bobject from [here](https://github.com/travisdoor/bobject).
-2) Install LLVM with `brew install llvm`.
+2) Install LLVM dev packages.
 3) Download and compile bl.
 
 ```
