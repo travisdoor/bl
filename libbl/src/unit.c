@@ -37,7 +37,6 @@ init(bl_unit_t *unit)
 {
   bl_tokens_init(&unit->tokens);
   bl_ast_init(&unit->ast);
-  kokot;
 }
 
 static char *
