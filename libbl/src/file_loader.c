@@ -35,6 +35,11 @@
 void
 bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
 {
+  if (!unit->filepath) {
+    bl_builder_error(builder, "file not found %s", unit->name);
+    return;
+  }
+
   FILE *f = fopen(unit->filepath, "r");
 
   if (f == NULL) {
