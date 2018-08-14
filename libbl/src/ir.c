@@ -317,6 +317,9 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   }
 
   if (ptr) {
+    if (LLVMGetTypeKind(result) == LLVMVoidTypeKind) {
+      result = LLVMInt8TypeInContext(cnt->llvm_cnt);
+    }
     result = LLVMPointerType(result, 0);
   }
 

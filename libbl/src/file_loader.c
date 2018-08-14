@@ -43,7 +43,7 @@ bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit)
   FILE *f = fopen(unit->filepath, "r");
 
   if (f == NULL) {
-    bl_builder_error(builder, "file not found %s", unit->name);
+    bl_builder_error(builder, "cannot read file %s", unit->name);
     return;
   }
 
