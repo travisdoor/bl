@@ -47,9 +47,9 @@ bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
 #elif defined(BL_PLATFORM_WIN)
   const char *cmd =
       "link %s.lib /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
-      "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.13.26128\\lib\\x64\" "
-      "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.16299.0\\um\\x64\" "
-      "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.16299.0\\ucrt\\x64\" "
+      "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.14.26428\\lib\\x64\" "
+      "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\um\\x64\" "
+      "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\ucrt\\x64\" "
       "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib";
 #endif
 
@@ -65,7 +65,7 @@ bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
     strcat(&buf[0], lib);
   }
 
-  bl_msg_log("cmd %s", buf);
+  bl_msg_log("%s", buf);
   /* TODO: handle error */
   int result = system(buf);
   if (result != 0) {

@@ -4,6 +4,7 @@
 
 main : fn () s32 {
   printf("hello world\n", 0);
+  a *void;
   return 0;
 };
 
