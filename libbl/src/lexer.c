@@ -393,6 +393,8 @@ scan:
     bl_tokens_push(cnt->tokens, &tok);
     return;
   case '\r':
+    cnt->c++;
+    goto scan;
   case '\n':
     cnt->line++;
     cnt->col = 1;

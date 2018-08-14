@@ -7,4 +7,3 @@ main : fn () s32 {
   a *void;
   return 0;
 };
-
