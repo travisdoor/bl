@@ -46,7 +46,7 @@ bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
 #elif defined(BL_PLATFORM_WIN)
   const char *cmd =
-      "link %s.lib /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
+      "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
       "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.14.26428\\lib\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\um\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\ucrt\\x64\" "

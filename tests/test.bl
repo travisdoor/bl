@@ -2,7 +2,9 @@
 
 main : fn () s32 {
   f Foo;
-  test(&f);
+  //test(&f);
+  i := 10;
+  test2(i);
   return 0;
 };
 
@@ -11,4 +13,7 @@ Foo : struct {
 };
 
 test : fn (foo *Foo) {
+};
+
+test2 : fn (i s32) {
 };
