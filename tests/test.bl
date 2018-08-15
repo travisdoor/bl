@@ -1,9 +1,14 @@
 /* testing playground */
 
-#load "libc.bl"
-
 main : fn () s32 {
-  printf("hello world\n", 0);
-  a *void;
+  f Foo;
+  test(&f);
   return 0;
+};
+
+Foo : struct {
+  i s32
+};
+
+test : fn (foo *Foo) {
 };

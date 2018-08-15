@@ -434,7 +434,7 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
     ++i;
   }
 
-  result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, "");
+  result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, gname("tmp"));
   bl_free(llvm_args);
   return result;
 }
