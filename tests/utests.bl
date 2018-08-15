@@ -42,7 +42,7 @@ main : fn () {
     curr_test = curr_test + 1;
 
     test->file = malloc(sizeof(char) * TestFileSize);
-    i = get_line(config, test->file, i);  
+    i = get_token(config, test->file, i);  
   }
 
   tmp *String := str_new();
@@ -94,7 +94,7 @@ main : fn () {
   file_close(&file);
 };
 
-get_line : fn (str *char, out *char, start size_t) size_t {
+get_token : fn (str *char, out *char, start size_t) size_t {
   get_char_ptr : fn (str *char, i size_t) *char {
     tmp := cast(*char) (cast(size_t) str + i);
     return tmp;
@@ -103,7 +103,7 @@ get_line : fn (str *char, out *char, start size_t) size_t {
   i size_t := 0;
   loop {
     c := *get_char_ptr(str, start + i);   
-    if c == '\n' || c == '\0' { break; }
+    if c == ' ' || c == '\0' { break; }
     c_out_ptr := get_char_ptr(out, i);
     *c_out_ptr = c;
     i = i + 1;
