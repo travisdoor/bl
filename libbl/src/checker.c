@@ -172,9 +172,9 @@ check_unused(context_t *cnt);
 bl_node_t *
 lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree)
 {
-  assert(ident);
+  assert(ident && "invalid identificator in lookup");
   bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
-  assert(compound);
+  assert(compound && "ident compound not set");
   return _lookup(compound, ident, out_scope, walk_tree);
 }
 
@@ -200,7 +200,7 @@ _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk
 bl_node_t *
 wait_context(bl_node_t *node)
 {
-  assert(node);
+  assert(node && "invalid wait node");
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
     return node;
@@ -208,7 +208,7 @@ wait_context(bl_node_t *node)
     return bl_peek_expr_member(node)->ident;
   case BL_NODE_STMT_RETURN: {
     bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
-    assert(decl);
+    assert(decl && "return statement without context");
     return bl_peek_decl_value(decl)->name;
   }
   default:
@@ -219,7 +219,7 @@ wait_context(bl_node_t *node)
 void
 provide(bl_node_t *ident, bl_node_t *provided)
 {
-  assert(ident && provided);
+  assert(ident && provided && "trying to provide invalid symbol");
   bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
   assert(compound);
   bl_scope_t *scope = bl_ast_get_scope(compound);
