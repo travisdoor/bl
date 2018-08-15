@@ -103,7 +103,11 @@ get_token : fn (str *char, out *char, start size_t) size_t {
   i size_t := 0;
   loop {
     c := *get_char_ptr(str, start + i);   
-    if c == ' ' || c == '\0' { break; }
+    if c == ' ' || c == '\n' || c == '\0' {
+      c_out_ptr := get_char_ptr(out, i);
+      *c_out_ptr = '\0';
+      break;
+    }
     c_out_ptr := get_char_ptr(out, i);
     *c_out_ptr = c;
     i = i + 1;
