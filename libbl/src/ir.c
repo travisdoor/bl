@@ -284,7 +284,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     }
 
     if (_struct_type->base_decl) {
-      result = llvm_values_get(cnt, type);
+      result = llvm_values_get(cnt, _struct_type->base_decl);
       if (!result) {
         bl_node_decl_value_t *_base_decl = bl_peek_decl_value(_struct_type->base_decl);
         assert(_base_decl->value);
@@ -293,7 +293,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
         /* create new one named structure */
         result = LLVMStructCreateNamed(cnt->llvm_cnt, name);
-        llvm_values_insert(cnt, type, result);
+        llvm_values_insert(cnt, _struct_type->base_decl, result);
 
         LLVMStructSetBody(result, llvm_member_types, i, false);
       }
@@ -426,21 +426,13 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   bl_node_foreach(_call->args, arg)
   {
     llvm_args[i] = ir_expr(cnt, arg);
-    assert(llvm_args[i]);
+    assert(llvm_args[i] && "invalid call argument");
 
     if (should_load(arg, llvm_args[i]))
       llvm_args[i] = LLVMBuildLoad(cnt->llvm_builder, llvm_args[i], gname("tmp"));
 
     ++i;
   }
-
-  char *str = LLVMPrintModuleToString(cnt->llvm_module);
-  printf("\n--------------------------------------------------------------------------------"
-         "\n%s"
-         "\n--------------------------------------------------------------------------------",
-         str);
-  LLVMDisposeMessage(str);
-
 
   result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, "");
   bl_free(llvm_args);
