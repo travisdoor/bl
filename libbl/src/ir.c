@@ -434,6 +434,14 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
     ++i;
   }
 
+  char *str = LLVMPrintModuleToString(cnt->llvm_module);
+  printf("\n--------------------------------------------------------------------------------"
+         "\n%s"
+         "\n--------------------------------------------------------------------------------",
+         str);
+  LLVMDisposeMessage(str);
+
+
   result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, "");
   bl_free(llvm_args);
   return result;
