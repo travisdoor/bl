@@ -138,6 +138,8 @@ scan_specch(char c)
   switch (c) {
   case 'n':
     return '\n';
+  case 'r':
+    return '\r';
   case 't':
     return '\t';
   case '0':
