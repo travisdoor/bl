@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   libc.bl
+// File:   sdl2_net.bl
 // Author: Martin Dorazil
-// Date:   7/23/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,34 +26,31 @@
 // SOFTWARE.
 //************************************************************************************************
 
-SEEK_SET     : 0;
-SEEK_CUR     : 1;
-SEEK_END     : 2;
-EXIT_FAILURE : 1;
-EXIT_SUCCESS : 0;
+#link "SDL2_net"
 
-printf	fn (string, s32) s32 : extern;
-puts 	fn (string) s32 : extern;
-putchar fn (char) s32 : extern;
+IPaddress : struct {
+  host s32,
+  port u16
+};
 
-malloc 	fn (size_t) *void : extern;
-free 	fn (*void) : extern;
-calloc 	fn (size_t, size_t) *void : extern;
-realloc fn (*void, size_t) *void : extern;
-memset  fn (*void, s32, size_t) *void : extern;
-memcpy  fn (*void, *void, size_t) *void : extern;
+UDPsocket : struct {
+  _handle *void
+};
 
-fopen   fn (string, string) *void : extern;
-fclose  fn (*void) s32 : extern;
-fseek   fn (*void, s32, s32) s32 : extern;
-ftell   fn (*void) size_t : extern;
-fread   fn (*char, size_t, size_t, *void) : extern;
+UDPpacket : struct {
+  channel s32,
+  data 	 *u8,
+  len 	  s32,
+  maxlen  s32,
+  status  s32,
+  address IPaddress
+};
 
-strcat  fn (*char, *char) *char : extern;
-strlen  fn (*char) size_t : extern;
-strcpy  fn (*char, *char) *char : extern;
-strdup  fn (*char) *char : extern;
-
-system  fn (*char) s32 : extern;
-abort   fn () : extern;
-exit	fn (s32) : extern;
+SDLNet_Init	   fn () s32 : extern;
+SDLNet_Quit 	   fn () : extern;
+SDLNet_GetError    fn () *char : extern;
+SDLNet_ResolveHost fn (*IPaddress, *char, u16) s32 : extern;
+SDLNet_UDP_Open    fn (u16) *UDPsocket : extern;
+SDLNet_AllocPacket fn (s32) *UDPpacket : extern;
+SDLNet_FreePacket  fn (*UDPpacket) : extern;
+SDLNet_UDP_Recv    fn (*UDPsocket, *UDPpacket) s32 : extern;

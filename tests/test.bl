@@ -1,14 +1,24 @@
 /* testing playground */
 
+#load "libc.bl"
+#load "sdl2_net.bl"
+
+Port u16 : 6666; 
+
 main : fn () s32 {
-  f Foo;
-  test(&f);
+  if SDLNet_Init() < 0 {
+    puts(SDLNet_GetError());
+    abort();
+  }
+
+  udpsock := SDLNet_UDP_Open(Port);
+  if udpsock == null {
+    puts(SDLNet_GetError());
+    abort();
+  }
+
+  puts("Initialized...");
+
+  SDLNet_Quit();
   return 0;
-};
-
-Foo : struct {
-  i s32
-};
-
-test : fn (foo *Foo) {
 };
