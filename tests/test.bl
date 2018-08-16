@@ -1,14 +1,8 @@
 /* testing playground */
 
+printf fn (string) s32 : extern;
+
 main : fn () s32 {
-  f Foo;
-  test(&f);
+  printf("hello world\n");
   return 0;
-};
-
-Foo : struct {
-  i s32
-};
-
-test : fn (foo *Foo) {
 };
