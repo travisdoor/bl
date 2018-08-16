@@ -899,6 +899,8 @@ bl_ast_type_get_ptr(bl_node_t *type)
     return bl_peek_type_fn(type)->ptr;
   case BL_NODE_TYPE_STRUCT:
     return bl_peek_type_struct(type)->ptr;
+  case BL_NODE_TYPE_ENUM:
+    return bl_peek_type_enum(type)->ptr;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -917,6 +919,9 @@ bl_ast_type_set_ptr(bl_node_t *type, int ptr)
   case BL_NODE_TYPE_STRUCT:
     bl_peek_type_struct(type)->ptr = ptr;
     break;
+  case BL_NODE_TYPE_ENUM:
+    bl_peek_type_enum(type)->ptr = ptr;
+    break;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -934,6 +939,8 @@ bl_ast_type_get_arr(bl_node_t *type)
     return bl_peek_type_fn(type)->arr;
   case BL_NODE_TYPE_STRUCT:
     return bl_peek_type_struct(type)->arr;
+  case BL_NODE_TYPE_ENUM:
+    return bl_peek_type_enum(type)->arr;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -954,6 +961,9 @@ bl_ast_type_set_arr(bl_node_t *type, bl_node_t *arr)
     break;
   case BL_NODE_TYPE_STRUCT:
     bl_peek_type_struct(type)->arr = arr;
+    break;
+  case BL_NODE_TYPE_ENUM:
+    bl_peek_type_enum(type)->arr = arr;
     break;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
