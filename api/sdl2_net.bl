@@ -33,11 +33,19 @@ IPaddress : struct {
   port u16
 };
 
-UDPsocket : struct {
+SDLNet_GenericSocket : struct {
   _handle *void
 };
 
+UDPsocket : struct {
+  base SDLNet_GenericSocket
+};
+
 TCPsocket : struct {
+  base SDLNet_GenericSocket
+};
+
+SDLNet_SocketSet : struct {
   _handle *void
 };
 
@@ -48,6 +56,23 @@ UDPpacket : struct {
   maxlen  s32,
   status  s32,
   address IPaddress
+};
+
+// utils
+SDLNet_TCP_AddSocket : fn (set *SDLNet_SocketSet, sock *TCPsocket) s32 {
+  return SDLNet_AddSocket(set, cast(*SDLNet_GenericSocket) sock);
+};
+
+SDLNet_UDP_AddSocket : fn (set *SDLNet_SocketSet, sock *UDPsocket) s32 {
+  return SDLNet_AddSocket(set, cast(*SDLNet_GenericSocket) sock);
+};
+
+SDLNet_TCP_DelSocket : fn (set *SDLNet_SocketSet, sock *TCPsocket) s32 {
+  return SDLNet_DelSocket(set, cast(*SDLNet_GenericSocket) sock);
+};
+
+SDLNet_UDP_DelSocket : fn (set *SDLNet_SocketSet, sock *UDPsocket) s32 {
+  return SDLNet_DelSocket(set, cast(*SDLNet_GenericSocket) sock);
 };
 
 SDLNet_Init	          fn () s32 : extern;
@@ -67,3 +92,8 @@ SDLNet_TCP_Accept         fn (*TCPsocket) *TCPsocket : extern;
 SDLNet_TCP_GetPeerAddress fn (*TCPsocket) *IPaddress : extern;
 SDLNet_TCP_Recv 	  fn (*TCPsocket, *void, s32) s32 : extern;
 SDLNet_TCP_Send 	  fn (*TCPsocket, *void, s32) s32 : extern;
+SDLNet_AllocSocketSet 	  fn (s32) *SDLNet_SocketSet : extern;
+SDLNet_FreeSocketSet 	  fn (*SDLNet_SocketSet) : extern;
+SDLNet_AddSocket 	  fn (*SDLNet_SocketSet, *SDLNet_GenericSocket) s32 : extern;
+SDLNet_DelSocket	  fn (*SDLNet_SocketSet, *SDLNet_GenericSocket) s32 : extern;
+SDLNet_CheckSockets	  fn (*SDLNet_SocketSet, s32) s32 : extern;

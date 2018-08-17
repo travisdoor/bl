@@ -25,7 +25,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 0
+#define VERBOSE 1
 
 #define FINISH return true
 #define WAIT return false
@@ -753,9 +753,13 @@ check_node(context_t *cnt, bl_node_t *node)
   }
 
 #if VERBOSE
-  bl_log("checked [%s] %s (%d) on line: %d", result ? BL_GREEN(" OK ") : BL_RED("WAIT"),
+  const char *file = node->src ? node->src->unit->name : "UNKNOWN";
+  const int   line = node->src ? node->src->line : -1;
+
+  bl_log("checked [%s] %s (%d) file: " BL_YELLOW("%s") " line: " BL_CYAN("%d"),
+         result ? BL_GREEN(" OK ") : BL_RED("WAIT"),
          bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
-         node->_serial, node->src ? node->src->line : 0);
+         node->_serial, file, line);
 #endif
 
 #if BL_DEBUG
