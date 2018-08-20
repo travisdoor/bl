@@ -1,3 +1,8 @@
+//************************************************************************************************
+// bl
+//
+// File:   checker.c
+// Author: Martin Dorazil
 // Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
@@ -25,7 +30,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 #define FINISH return true
 #define WAIT return false
@@ -253,6 +258,7 @@ waiting_resume(context_t *cnt, uint64_t hash)
 void
 waiting_resume_all(context_t *cnt)
 {
+#if 0
   bo_iterator_t it = bo_array_begin(cnt->waiting_resumed);
   for (; !bo_array_empty(cnt->waiting_resumed); it = bo_array_begin(cnt->waiting_resumed)) {
     uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
@@ -291,6 +297,7 @@ waiting_resume_all(context_t *cnt)
       bo_htbl_erase_key(cnt->waiting, hash);
     }
   }
+#endif
 }
 
 void
