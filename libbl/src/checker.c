@@ -30,7 +30,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 0
+#define VERBOSE 1
 
 #define FINISH return true
 #define WAIT return false
@@ -217,7 +217,7 @@ wait_context(bl_node_t *node)
     return bl_peek_decl_value(decl)->name;
   }
   default:
-    bl_abort("node %s has no ident", bl_node_name(node));
+    return NULL;
   };
 }
 
@@ -251,8 +251,52 @@ waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter)
 void
 waiting_resume(context_t *cnt, uint64_t hash)
 {
+#if 0
   if (!bo_htbl_has_key(cnt->waiting, hash)) return;
   bo_array_push_back(cnt->waiting_resumed, hash);
+#else
+
+  if (!bo_htbl_has_key(cnt->waiting, hash)) return;
+
+  BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
+  assert(q);
+
+  fiter_t *fit;
+  for (size_t i = 0; i < bo_array_size(q);) {
+    bool release_fit = true;
+    fit              = _bo_array_at(q, i);
+    assert(fit);
+
+    /* resume here */
+    bl_node_t *tmp;
+    for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
+      tmp                = bo_array_at(fit->flatten, fit->i, bl_node_t *);
+#if VERBOSE
+      bl_node_t *resumed = wait_context(tmp);
+      if (resumed) {
+        bl_node_ident_t *_resumed = bl_peek_ident(resumed);
+        bl_log(BL_BLUE("resumed %s"), _resumed->str);
+      }
+#endif
+      if (!check_node(cnt, tmp)) {
+        release_fit = false;
+        break;
+      }
+    }
+
+    if (release_fit) {
+      flatten_put(cnt->flatten_cache, fit->flatten);
+      bo_array_erase(q, i);
+    } else {
+      ++i;
+    }
+  }
+
+  if (!bo_array_size(q)) {
+    bo_htbl_erase_key(cnt->waiting, hash);
+  }
+
+#endif
 }
 
 void
