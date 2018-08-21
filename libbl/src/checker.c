@@ -66,7 +66,8 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
-  BArray *    waiting_resumed;
+  BArray *    waiting_resumed[2];
+  int         currwr;
   BHashTable *waiting;
   bl_scope_t *provided_in_gscope;
 
@@ -255,47 +256,53 @@ waiting_resume(context_t *cnt, bl_node_t *ident)
 {
   bl_node_ident_t *_ident = bl_peek_ident(ident);
   if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
-  bo_array_push_back(cnt->waiting_resumed, _ident->hash);
+  bo_array_push_back(cnt->waiting_resumed[cnt->currwr], _ident->hash);
 }
 
 void
 waiting_resume_all(context_t *cnt)
 {
-  bo_iterator_t it = bo_array_begin(cnt->waiting_resumed);
-  for (; !bo_array_empty(cnt->waiting_resumed); it = bo_array_begin(cnt->waiting_resumed)) {
-    uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
-    bo_array_erase(cnt->waiting_resumed, 0);
+  /* Dual buffer is used for caching resumed flatten checks. */
+  while (bo_array_size(cnt->waiting_resumed[cnt->currwr])) {
+    BArray *resumed = cnt->waiting_resumed[cnt->currwr];
+    cnt->currwr     = cnt->currwr == 0 ? 1 : 0;
 
-    if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
-    BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
-    assert(q);
+    bo_iterator_t it = bo_array_begin(resumed);
+    for (; !bo_array_empty(resumed); it = bo_array_begin(resumed)) {
+      uint64_t hash = bo_array_iter_peek(resumed, &it, uint64_t);
+      bo_array_erase(resumed, 0);
 
-    // bl_log("q.len = %d", bo_array_size(q));
-    fiter_t fit;
-    for (size_t i = 0; i < bo_array_size(q);) {
-      fit = bo_array_at(q, i, fiter_t);
-      bo_array_erase(q, i);
+      if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
+      BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
+      assert(q);
 
-      bool interrupted = false;
-      /* resume here */
-      bl_node_t *tmp;
-      for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-        tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-        if (!check_node(cnt, tmp)) {
-          bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-          bo_htbl_erase_key(cnt->waiting, hash);
-          waiting_push(cnt->waiting, _ident->hash, fit);
-          interrupted = true;
-          break;
+      // bl_log("q.len = %d", bo_array_size(q));
+      fiter_t fit;
+      for (size_t i = 0; i < bo_array_size(q);) {
+        fit = bo_array_at(q, i, fiter_t);
+        bo_array_erase(q, i);
+
+        bool interrupted = false;
+        /* resume here */
+        bl_node_t *tmp;
+        for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
+          tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+          if (!check_node(cnt, tmp)) {
+            bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
+            bo_htbl_erase_key(cnt->waiting, hash);
+            waiting_push(cnt->waiting, _ident->hash, fit);
+            interrupted = true;
+            break;
+          }
+        }
+
+        if (!interrupted) {
+          flatten_put(cnt->flatten_cache, fit.flatten);
         }
       }
-
-      if (!interrupted) {
-        flatten_put(cnt->flatten_cache, fit.flatten);
+      if (!bo_array_size(q)) {
+        bo_htbl_erase_key(cnt->waiting, hash);
       }
-    }
-    if (!bo_array_size(q)) {
-      bo_htbl_erase_key(cnt->waiting, hash);
     }
   }
 }
@@ -393,7 +400,7 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     flatten(_decl->value);
     break;
   }
-  
+
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
     flatten(_fn->type);
@@ -766,16 +773,12 @@ check_node(context_t *cnt, bl_node_t *node)
     const int   line         = node->src ? node->src->line : -1;
     bl_node_t * checked      = wait_context(node);
     const char *name         = checked ? bl_peek_ident(checked)->str : "?";
-
-    if (strcmp(file, "server_app.bl") == 0) {
-
-      bl_log("checked [%s] " BL_MAGENTA("'%s'") " (%s, %d) file: " BL_YELLOW(
-                 "%s") " line: " BL_CYAN("%d"),
-             result ? BL_GREEN(" OK ") : BL_RED("WAIT"), name, bl_node_name(node), node->_serial,
-             file, line);
-      assert(prev_checked != node->_serial && "Looping checker!!!");
-      prev_checked = node->_serial;
-    }
+    bl_log("checked [%s] " BL_MAGENTA("'%s'") " (%s, %d) file: " BL_YELLOW("%s") " line: " BL_CYAN(
+               "%d"),
+           result ? BL_GREEN(" OK ") : BL_RED("WAIT"), name, bl_node_name(node), node->_serial,
+           file, line);
+    assert(prev_checked != node->_serial && "Looping checker!!!");
+    prev_checked = node->_serial;
   }
 #endif
 
@@ -1263,7 +1266,9 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .unit               = NULL,
       .ast                = NULL,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
-      .waiting_resumed    = bo_array_new(sizeof(uint64_t)),
+      .waiting_resumed[0] = bo_array_new(sizeof(uint64_t)),
+      .waiting_resumed[1] = bo_array_new(sizeof(uint64_t)),
+      .currwr             = 0,
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
   };
@@ -1283,7 +1288,8 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   flatten_free_cache(cnt.flatten_cache);
 
   bo_unref(cnt.waiting);
-  bo_unref(cnt.waiting_resumed);
+  bo_unref(cnt.waiting_resumed[0]);
+  bo_unref(cnt.waiting_resumed[1]);
   bo_unref(cnt.flatten_cache);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);
