@@ -264,19 +264,17 @@ waiting_resume_all(context_t *cnt)
 {
   /* Dual buffer is used for caching resumed flatten checks. */
   while (bo_array_size(cnt->waiting_resumed[cnt->currwr])) {
+    bl_log("!!! LOOP !!!");
     BArray *resumed = cnt->waiting_resumed[cnt->currwr];
-    cnt->currwr     = cnt->currwr == 0 ? 1 : 0;
+    cnt->currwr     = cnt->currwr ? 0 : 1;
 
-    bo_iterator_t it = bo_array_begin(resumed);
-    for (; !bo_array_empty(resumed); it = bo_array_begin(resumed)) {
-      uint64_t hash = bo_array_iter_peek(resumed, &it, uint64_t);
-      bo_array_erase(resumed, 0);
+    for (size_t j = 0; j < bo_array_size(resumed); ++j) {
+      uint64_t hash = bo_array_at(resumed, j, uint64_t);
 
       if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
       BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
       assert(q);
 
-      // bl_log("q.len = %d", bo_array_size(q));
       fiter_t fit;
       for (size_t i = 0; i < bo_array_size(q);) {
         fit = bo_array_at(q, i, fiter_t);
@@ -304,6 +302,8 @@ waiting_resume_all(context_t *cnt)
         bo_htbl_erase_key(cnt->waiting, hash);
       }
     }
+
+    bo_array_clear(resumed);
   }
 }
 
