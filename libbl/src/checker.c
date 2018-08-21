@@ -30,7 +30,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 #define FINISH return true
 #define WAIT return false
@@ -233,8 +233,10 @@ provide(bl_node_t *ident, bl_node_t *provided)
   bl_scope_t *scope = bl_ast_get_scope(compound);
   assert(scope);
 
-  bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->_serial)
-      bl_scope_insert(scope, ident, provided);
+#if VERBOSE
+  bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->_serial);
+#endif
+  bl_scope_insert(scope, ident, provided);
 }
 
 void
@@ -264,7 +266,6 @@ waiting_resume_all(context_t *cnt)
 {
   /* Dual buffer is used for caching resumed flatten checks. */
   while (bo_array_size(cnt->waiting_resumed[cnt->currwr])) {
-    bl_log("!!! LOOP !!!");
     BArray *resumed = cnt->waiting_resumed[cnt->currwr];
     cnt->currwr     = cnt->currwr ? 0 : 1;
 
@@ -287,7 +288,6 @@ waiting_resume_all(context_t *cnt)
           tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
           if (!check_node(cnt, tmp)) {
             bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-            bo_htbl_erase_key(cnt->waiting, hash);
             waiting_push(cnt->waiting, _ident->hash, fit);
             interrupted = true;
             break;
@@ -298,9 +298,8 @@ waiting_resume_all(context_t *cnt)
           flatten_put(cnt->flatten_cache, fit.flatten);
         }
       }
-      if (!bo_array_size(q)) {
-        bo_htbl_erase_key(cnt->waiting, hash);
-      }
+
+      bo_htbl_erase_key(cnt->waiting, hash);
     }
 
     bo_array_clear(resumed);
