@@ -26,11 +26,21 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*
+ * Flatten checking structure:
+ * Symbols in this language can be defined in any order in global scope, so we need some kind of
+ * 'lazy' reference connecting. For example we can call function 'foo' before it is declared, when
+ * checker reaches such call it need to be interrupted and resumed later when definition of the
+ * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided into
+ * smaller flatten queues which are later solved backwards. When compiler gets to unknown symbol we
+ * take note about position in queue and push it into waiting cache.
+ */
+
 #include "stages_impl.h"
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 0
+#define VERBOSE 1
 
 #define FINISH return true
 #define WAIT return false
@@ -96,7 +106,7 @@ static void
 provide(bl_node_t *ident, bl_node_t *provided);
 
 static inline void
-waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter);
+waiting_push(BHashTable *waiting, bl_node_t *ident, fiter_t fiter);
 
 static void
 waiting_resume(context_t *cnt, bl_node_t *ident);
@@ -240,16 +250,19 @@ provide(bl_node_t *ident, bl_node_t *provided)
 }
 
 void
-waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter)
+waiting_push(BHashTable *waiting, bl_node_t *ident, fiter_t fiter)
 {
-  BArray *queue = NULL;
-  if (bo_htbl_has_key(waiting, hash)) {
-    queue = bo_htbl_at(waiting, hash, BArray *);
+  if (ident->state == BL_WAITING) return;
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+  BArray *         queue  = NULL;
+  if (bo_htbl_has_key(waiting, _ident->hash)) {
+    queue = bo_htbl_at(waiting, _ident->hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(fiter_t));
-    bo_htbl_insert(waiting, hash, queue);
+    bo_htbl_insert(waiting, _ident->hash, queue);
   }
 
+  bl_log("push %s", _ident->str);
   bo_array_push_back(queue, fiter);
 }
 
@@ -287,8 +300,9 @@ waiting_resume_all(context_t *cnt)
         for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
           tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
           if (!check_node(cnt, tmp)) {
-            bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-            waiting_push(cnt->waiting, _ident->hash, fit);
+            tmp = wait_context(tmp);
+            assert(tmp && "invalid wait context");
+            waiting_push(cnt->waiting, tmp, fit);
             interrupted = true;
             break;
           }
@@ -570,8 +584,9 @@ check_flatten(context_t *cnt, bl_node_t *node)
     if (!check_node(cnt, tmp)) {
       /* node has not been satisfied and need to be checked later when all it's references become
        * available */
-      bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-      waiting_push(cnt->waiting, _ident->hash, fit);
+      tmp = wait_context(tmp);
+      assert(tmp && "invalid wait context");
+      waiting_push(cnt->waiting, tmp, fit);
       interrupted = true;
       break;
     }
@@ -781,10 +796,7 @@ check_node(context_t *cnt, bl_node_t *node)
   }
 #endif
 
-#if BL_DEBUG
-  node->_state = result ? RESOLVED : WAITING;
-#endif
-
+  node->state = result ? BL_RESOLVED : BL_CHECKED;
   return result;
 }
 
@@ -826,6 +838,7 @@ check_ident(context_t *cnt, bl_node_t *ident)
       bl_ast_set_type(_ident->ref, type);
   }
 
+  ident->state = BL_RESOLVED;
   FINISH;
 }
 
