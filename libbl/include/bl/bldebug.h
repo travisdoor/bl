@@ -44,12 +44,14 @@ BL_BEGIN_DECLS
 #define BL_RED_BEGIN
 #define BL_YELLOW_BEGIN
 #define BL_GREEN_BEGIN
+#define BL_BLUE_BEGIN
 #else
 #define BL_COLOR_END "\x1b[0m"
 #define BL_MAGENTA_BEGIN "\x1b[35m"
 #define BL_CYAN_BEGIN "\x1b[36m"
 #define BL_RED_BEGIN "\x1b[31m"
 #define BL_YELLOW_BEGIN "\x1b[33m"
+#define BL_BLUE_BEGIN "\x1b[34m"
 #define BL_GREEN_BEGIN "\x1b[32m"
 #endif
 
@@ -58,6 +60,7 @@ BL_BEGIN_DECLS
 #define BL_GREEN(str) BL_GREEN_BEGIN str BL_COLOR_END
 #define BL_MAGENTA(str) BL_MAGENTA_BEGIN str BL_COLOR_END
 #define BL_CYAN(str) BL_CYAN_BEGIN str BL_COLOR_END
+#define BL_BLUE(str) BL_BLUE_BEGIN str BL_COLOR_END
 
 #if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
 #ifndef __FILENAME__

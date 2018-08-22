@@ -322,14 +322,13 @@ bl_ast_terminate(bl_ast_t *ast);
 /*************************************************************************************************
  * definition node
  *************************************************************************************************/
-#if BL_DEBUG
 typedef enum
 {
-  NOT_CHECKED = 0,
-  RESOLVED,
-  WAITING
-} _bl_check_state_e;
-#endif
+  BL_NOT_CHECKED = 0, /* not checked node */
+  BL_WAITING,         /* waiting for later check */
+  BL_CHECKED          /* checked node */
+} bl_check_state_e;
+
 struct bl_node
 {
   union
@@ -342,10 +341,10 @@ struct bl_node
   bl_src_t *     src;
   bl_node_code_e code;
 
-  bl_node_t *next;
+  bl_node_t *      next;
+  bl_check_state_e state;
 #if BL_DEBUG
-  int               _serial;
-  _bl_check_state_e _state;
+  int _serial;
 #endif
 };
 
