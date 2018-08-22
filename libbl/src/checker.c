@@ -110,9 +110,6 @@ waiting_push(BHashTable *waiting, bl_node_t *ident, fiter_t fiter);
 static void
 waiting_resume(context_t *cnt, bl_node_t *ident);
 
-static void
-waiting_resume_all(context_t *cnt);
-
 static BArray *
 flatten_get(BArray *cache);
 
@@ -293,12 +290,32 @@ waiting_resume(context_t *cnt, bl_node_t *ident)
 }
 
 void
-waiting_resume_all(context_t *cnt)
-{}
-
-void
 check_unresolved(context_t *cnt)
-{}
+{
+  bo_iterator_t iter;
+  BArray *      q;
+  fiter_t       tmp;
+  bl_node_t *   tmp_node;
+
+  bl_bhtbl_foreach(cnt->waiting, iter)
+  {
+    q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
+    assert(q);
+
+    // bl_log("size %d", bo_array_size(q));
+    for (size_t i = 0; i < bo_array_size(q); ++i) {
+      tmp = bo_array_at(q, i, fiter_t);
+      // bl_log("# %p index: %d", tmp.flatten, i);
+      tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
+      assert(tmp_node);
+      tmp_node = wait_context(tmp_node);
+      if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
+        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
+                         "unknown symbol");
+      flatten_put(cnt->flatten_cache, tmp.flatten);
+    }
+  }
+}
 
 #if BL_DEBUG
 static int _flatten = 0;
@@ -1254,7 +1271,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     check_flatten(&cnt, unit->ast.root);
   }
 
-  waiting_resume_all(&cnt);
   check_unresolved(&cnt);
   check_unused(&cnt);
 
