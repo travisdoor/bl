@@ -41,6 +41,7 @@
 #include "ast_impl.h"
 
 #define VERBOSE 1
+#define VERBOSE_MULTIPLE_CHECK 1
 
 #define FINISH return true
 #define WAIT return false
@@ -76,8 +77,6 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
-  BArray *    waiting_resumed[2];
-  int         currwr;
   BHashTable *waiting;
   bl_scope_t *provided_in_gscope;
 
@@ -138,6 +137,9 @@ check_error_invalid_types(context_t *cnt, bl_node_t *first_type, bl_node_t *seco
 
 static void
 check_flatten(context_t *cnt, bl_node_t *node);
+
+static void
+process_flatten(context_t *cnt, fiter_t *fit);
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -244,25 +246,25 @@ provide(bl_node_t *ident, bl_node_t *provided)
   assert(scope);
 
 #if VERBOSE
-  bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->_serial);
+  bl_log("providing " BL_MAGENTA("'%s'") " (%d)", bl_peek_ident(ident)->str, ident->_serial);
 #endif
   bl_scope_insert(scope, ident, provided);
 }
 
 void
-waiting_push(BHashTable *waiting, bl_node_t *ident, fiter_t fiter)
+waiting_push(BHashTable *waiting, bl_node_t *node, fiter_t fiter)
 {
-  if (ident->state == BL_WAITING) return;
+  bl_node_t *ident = wait_context(node);
+  assert(ident);
   bl_node_ident_t *_ident = bl_peek_ident(ident);
-  BArray *         queue  = NULL;
+  BArray *         queue;
   if (bo_htbl_has_key(waiting, _ident->hash)) {
     queue = bo_htbl_at(waiting, _ident->hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(fiter_t));
     bo_htbl_insert(waiting, _ident->hash, queue);
   }
-
-  bl_log("push %s", _ident->str);
+  assert(queue);
   bo_array_push_back(queue, fiter);
 }
 
@@ -270,83 +272,30 @@ void
 waiting_resume(context_t *cnt, bl_node_t *ident)
 {
   bl_node_ident_t *_ident = bl_peek_ident(ident);
+  /* is there some flattens waiting for this symbol??? */
   if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
-  bo_array_push_back(cnt->waiting_resumed[cnt->currwr], _ident->hash);
+
+  /* resume all waiting flattens */
+  BArray *q = bo_htbl_at(cnt->waiting, _ident->hash, BArray *);
+  assert(q && "invalid flattens queue");
+
+  fiter_t fit;
+  while (!bo_array_empty(q)) {
+    fit = bo_array_at(q, 0, fiter_t);
+    bo_array_erase(q, 0);
+    process_flatten(cnt, &fit);
+  }
+
+  bo_htbl_erase_key(cnt->waiting, _ident->hash);
 }
 
 void
 waiting_resume_all(context_t *cnt)
-{
-  /* Dual buffer is used for caching resumed flatten checks. */
-  while (bo_array_size(cnt->waiting_resumed[cnt->currwr])) {
-    BArray *resumed = cnt->waiting_resumed[cnt->currwr];
-    cnt->currwr     = cnt->currwr ? 0 : 1;
-
-    for (size_t j = 0; j < bo_array_size(resumed); ++j) {
-      uint64_t hash = bo_array_at(resumed, j, uint64_t);
-
-      if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
-      BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
-      assert(q);
-
-      fiter_t fit;
-      for (size_t i = 0; i < bo_array_size(q);) {
-        fit = bo_array_at(q, i, fiter_t);
-        bo_array_erase(q, i);
-
-        bool interrupted = false;
-        /* resume here */
-        bl_node_t *tmp;
-        for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-          tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-          if (!check_node(cnt, tmp)) {
-            tmp = wait_context(tmp);
-            assert(tmp && "invalid wait context");
-            waiting_push(cnt->waiting, tmp, fit);
-            interrupted = true;
-            break;
-          }
-        }
-
-        if (!interrupted) {
-          flatten_put(cnt->flatten_cache, fit.flatten);
-        }
-      }
-
-      bo_htbl_erase_key(cnt->waiting, hash);
-    }
-
-    bo_array_clear(resumed);
-  }
-}
+{}
 
 void
 check_unresolved(context_t *cnt)
-{
-  bo_iterator_t iter;
-  BArray *      q;
-  fiter_t       tmp;
-  bl_node_t *   tmp_node;
-
-  bl_bhtbl_foreach(cnt->waiting, iter)
-  {
-    q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
-    assert(q);
-
-    // bl_log("size %d", bo_array_size(q));
-    for (size_t i = 0; i < bo_array_size(q); ++i) {
-      tmp = bo_array_at(q, i, fiter_t);
-      // bl_log("# %p index: %d", tmp.flatten, i);
-      tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
-      assert(tmp_node);
-      tmp_node = wait_context(tmp_node);
-      if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
-        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
-                         "unknown symbol");
-      flatten_put(cnt->flatten_cache, tmp.flatten);
-    }
-  }
-}
+{}
 
 #if BL_DEBUG
 static int _flatten = 0;
@@ -576,23 +525,30 @@ check_flatten(context_t *cnt, bl_node_t *node)
   fit.i       = 0;
 
   flatten_node(cnt, fit.flatten, node);
+  process_flatten(cnt, &fit);
+}
+
+void
+process_flatten(context_t *cnt, fiter_t *fit)
+{
+  assert(fit);
+  assert(fit->flatten && "invalid flatten");
   bool interrupted = false;
 
   bl_node_t *tmp;
-  for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-    tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+  for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
+    tmp = bo_array_at(fit->flatten, fit->i, bl_node_t *);
     if (!check_node(cnt, tmp)) {
-      /* node has not been satisfied and need to be checked later when all it's references become
-       * available */
-      tmp = wait_context(tmp);
-      assert(tmp && "invalid wait context");
-      waiting_push(cnt->waiting, tmp, fit);
+      waiting_push(cnt->waiting, tmp, *fit);
       interrupted = true;
       break;
     }
   }
 
-  if (!interrupted) flatten_put(cnt->flatten_cache, fit.flatten);
+  if (!interrupted) {
+    flatten_put(cnt->flatten_cache, fit->flatten);
+    fit->flatten = NULL;
+  }
 }
 
 bool
@@ -718,6 +674,10 @@ check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
   bool result = true;
+#if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
+  if (node->state == BL_CHECKED)
+    bl_msg_warning("unnecessary node check %s (%d)", bl_node_name(node), node->_serial);
+#endif
 
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
@@ -796,7 +756,7 @@ check_node(context_t *cnt, bl_node_t *node)
   }
 #endif
 
-  node->state = result ? BL_RESOLVED : BL_CHECKED;
+  node->state = result ? BL_CHECKED : BL_WAITING;
   return result;
 }
 
@@ -804,7 +764,9 @@ bool
 check_ident(context_t *cnt, bl_node_t *ident)
 {
   bl_node_ident_t *_ident = bl_peek_ident(ident);
-  if (_ident->ref) FINISH;
+  if (_ident->ref) {
+    FINISH;
+  }
 
   bl_node_t *found;
   const int  buildin = bl_ast_is_buildin_type(ident);
@@ -838,7 +800,6 @@ check_ident(context_t *cnt, bl_node_t *ident)
       bl_ast_set_type(_ident->ref, type);
   }
 
-  ident->state = BL_RESOLVED;
   FINISH;
 }
 
@@ -1278,9 +1239,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .unit               = NULL,
       .ast                = NULL,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
-      .waiting_resumed[0] = bo_array_new(sizeof(uint64_t)),
-      .waiting_resumed[1] = bo_array_new(sizeof(uint64_t)),
-      .currwr             = 0,
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
   };
@@ -1300,8 +1258,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   flatten_free_cache(cnt.flatten_cache);
 
   bo_unref(cnt.waiting);
-  bo_unref(cnt.waiting_resumed[0]);
-  bo_unref(cnt.waiting_resumed[1]);
   bo_unref(cnt.flatten_cache);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);

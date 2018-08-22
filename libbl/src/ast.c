@@ -43,7 +43,8 @@ bl_node_t bl_ftypes[] = {
    .next             = NULL,                                                                       \
    .n.type_fund.code = BL_FTYPE_##name,                                                            \
    .n.type_fund.arr  = NULL,                                                                       \
-   .n.type_fund.ptr  = 0},
+   .n.type_fund.ptr  = 0,                                                                          \
+   .state            = BL_CHECKED},
 
     _BL_FTYPE_LIST
 #undef ft
