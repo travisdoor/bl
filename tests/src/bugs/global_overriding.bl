@@ -1,0 +1,5 @@
+foo := 0;
+
+main : fn () s32 {
+  foo := 10; // should be legal, local 'foo' can override global 'foo'
+};

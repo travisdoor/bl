@@ -40,8 +40,8 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 1
-#define VERBOSE_MULTIPLE_CHECK 1
+#define VERBOSE 0
+#define VERBOSE_MULTIPLE_CHECK 0
 
 #define FINISH return true
 #define WAIT return false
@@ -279,14 +279,17 @@ waiting_resume(context_t *cnt, bl_node_t *ident)
   BArray *q = bo_htbl_at(cnt->waiting, _ident->hash, BArray *);
   assert(q && "invalid flattens queue");
 
-  fiter_t fit;
-  while (!bo_array_empty(q)) {
-    fit = bo_array_at(q, 0, fiter_t);
-    bo_array_erase(q, 0);
+  /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
+   * 'process_flatten' method */
+  fiter_t   fit;
+  const int c = (int)bo_array_size(q);
+  for (int i = c - 1; i >= 0; --i) {
+    fit = bo_array_at(q, i, fiter_t);
+    bo_array_erase(q, i);
     process_flatten(cnt, &fit);
   }
 
-  bo_htbl_erase_key(cnt->waiting, _ident->hash);
+  if (bo_array_empty(q)) bo_htbl_erase_key(cnt->waiting, _ident->hash);
 }
 
 void

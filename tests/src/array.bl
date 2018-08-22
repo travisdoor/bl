@@ -2,26 +2,26 @@
 #load "array.bl"
 
 TestCaseCount size_t : 1000;
-arr *Array := null;
+g_arr *Array := null;
 
 main : fn () s32 {
-  arr = array_new(sizeof(s32));
+  g_arr = array_new(sizeof(s32));
 
   i size_t := 0;
   while i < TestCaseCount {
-    array_push_back(arr, &i);
+    array_push_back(g_arr, &i);
     i = i + 1;
   }
 
-  if arr->size != TestCaseCount { return 1; }
+  if g_arr->size != TestCaseCount { return 1; }
 
   i = 0;
   while i < TestCaseCount {
-    tmp := *(cast(*s32) array_at(arr, i));
+    tmp := *(cast(*s32) array_at(g_arr, i));
     if tmp != cast(s32) i { return 2; }
     i = i + 1;
   }
 
-  array_delete(arr);
+  array_delete(g_arr);
   return 0;
 };
