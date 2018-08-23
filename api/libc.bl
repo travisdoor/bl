@@ -35,6 +35,7 @@ EXIT_SUCCESS : 0;
 printf	fn (string, s32) s32 : extern;
 puts 	fn (string) s32 : extern;
 putchar fn (char) s32 : extern;
+getchar fn () s32 : extern;
 
 malloc 	fn (size_t) *void : extern;
 free 	fn (*void) : extern;

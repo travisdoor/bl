@@ -1,9 +1,25 @@
 /* testing playground */
 
 #load "libc.bl"
+#load "sdl2.bl"
+
+looper : fn (data *void) {
+  i := 0;
+  while i < 10 {
+    puts("hello wrom thread");
+    SDL_Delay(1000);
+    i = i + 1;
+  }
+};
 
 main : fn () s32 {
-  printf("OS = %d\n", OS); 
-  puts(OS_NAME);
+  puts("starting thread");
+  thread := SDL_CreateThread(&looper, "loop", null);
+  if thread == null {
+    puts(SDL_GetError());
+  } else {
+    SDL_WaitThread(thread, null);
+  }
+
   return 0;
 };
