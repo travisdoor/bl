@@ -36,7 +36,7 @@ main(int argc, char *argv[])
 {
   setlocale(LC_ALL, "C");
   unsigned int build_flags = BL_BUILDER_LOAD_FROM_FILE;
-  puts("compiler version: 0.3.0");
+  puts("compiler version: " BL_VERSION);
 
   size_t optind;
   for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {

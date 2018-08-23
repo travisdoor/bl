@@ -205,3 +205,4 @@ endif()
 target_include_directories(bl PUBLIC include)
 target_include_directories(bl PRIVATE src)
 
+configure_file(${CMAKE_SOURCE_DIR}/libbl/include/bl/version.h.in ${CMAKE_SOURCE_DIR}/libbl/include/bl/version.h)

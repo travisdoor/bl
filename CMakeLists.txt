@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.2.0 LANGUAGES C)
+project(bl VERSION 0.3.1 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(HAVE_64_BIT 1)

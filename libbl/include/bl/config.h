@@ -29,6 +29,8 @@
 #ifndef BL_CONFIG_H
 #define BL_CONFIG_H
 
+#include "bl/version.h"
+
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
 #define BL_NO_COLOR
