@@ -186,6 +186,9 @@ parse_expr_sizeof(context_t *cnt);
 static bl_node_t *
 parse_expr_cast(context_t *cnt);
 
+static bl_node_t *
+parse_expr_elem(context_t *cnt, bl_token_t *op);
+
 // impl
 
 bl_node_t *
@@ -661,6 +664,27 @@ parse_expr_member(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
+parse_expr_elem(context_t *cnt, bl_token_t *op)
+{
+  if (!op) return NULL;
+  if (bl_token_is_not(op, BL_SYM_LBRACKET)) return NULL;
+
+  bl_node_t *index = parse_expr(cnt);
+  if (index == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, op, BL_BUILDER_CUR_WORD,
+                "expected array index expression");
+  }
+
+  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_RBRACKET) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "missing bracket " BL_YELLOW("']'"));
+  }
+
+  return bl_ast_expr_elem(cnt->ast, op, NULL, NULL, index);
+}
+
+bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
@@ -672,6 +696,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_literal_struct(cnt))) return expr;
   if ((expr = parse_literal_enum(cnt))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
+  if ((expr = parse_expr_elem(cnt, op))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_expr_member(cnt, op))) return expr;
   if ((expr = parse_ident(cnt, 0))) return expr;
@@ -696,7 +721,8 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       lookahead = bl_tokens_peek(cnt->tokens);
     }
     if (op->sym == BL_SYM_LBRACKET) {
-      bl_log("array ref!!!");
+      bl_peek_expr_elem(rhs)->next = lhs;
+      lhs                          = rhs;
     } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
       if (bl_node_is(rhs, BL_NODE_EXPR_CALL)) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
