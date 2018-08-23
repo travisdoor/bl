@@ -695,8 +695,9 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       rhs       = _parse_expr(cnt, rhs, bl_token_prec(lookahead, false));
       lookahead = bl_tokens_peek(cnt->tokens);
     }
-
-    if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
+    if (op->sym == BL_SYM_LBRACKET) {
+      bl_log("array ref!!!");
+    } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
       if (bl_node_is(rhs, BL_NODE_EXPR_CALL)) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
