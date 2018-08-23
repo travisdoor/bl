@@ -43,7 +43,8 @@ bl_node_t bl_ftypes[] = {
    .next             = NULL,                                                                       \
    .n.type_fund.code = BL_FTYPE_##name,                                                            \
    .n.type_fund.arr  = NULL,                                                                       \
-   .n.type_fund.ptr  = 0},
+   .n.type_fund.ptr  = 0,                                                                          \
+   .state            = BL_CHECKED},
 
     _BL_FTYPE_LIST
 #undef ft
@@ -391,6 +392,15 @@ _BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *n
   return (bl_node_t *)_expr_member;
 }
 
+_BL_AST_NCTOR(expr_elem, bl_node_t *next, bl_node_t *type, bl_node_t *index)
+{
+  bl_node_expr_elem_t *_expr_elem = alloc_node(ast, BL_NODE_EXPR_ELEM, tok, bl_node_expr_elem_t *);
+  _expr_elem->next                = next;
+  _expr_elem->type                = type;
+  _expr_elem->index               = index;
+  return (bl_node_t *)_expr_elem;
+}
+
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type)
 {
   bl_node_expr_sizeof_t *_expr_sizeof =
@@ -604,6 +614,8 @@ bl_ast_get_type(bl_node_t *node)
     return bl_ast_get_type(bl_peek_expr_null(node)->type);
   case BL_NODE_EXPR_MEMBER:
     return bl_ast_get_type(bl_peek_expr_member(node)->type);
+  case BL_NODE_EXPR_ELEM:
+    return bl_ast_get_type(bl_peek_expr_elem(node)->type);
   case BL_NODE_TYPE_FUND:
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FN:
@@ -654,6 +666,9 @@ bl_ast_set_type(bl_node_t *node, bl_node_t *type)
     break;
   case BL_NODE_EXPR_MEMBER:
     bl_peek_expr_member(node)->type = type;
+    break;
+  case BL_NODE_EXPR_ELEM:
+    bl_peek_expr_elem(node)->type = type;
     break;
   default:
     bl_abort("node %s has no type", bl_node_name(node));
@@ -861,6 +876,9 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
   if (fkind == BL_KIND_STRING && tkind == BL_KIND_PTR) return true;
   if (tkind == BL_KIND_STRING && fkind == BL_KIND_PTR) return true;
 
+  if ((fkind == BL_KIND_SINT || fkind == BL_KIND_UINT || fkind == BL_KIND_SIZE) &&
+      (tkind == BL_KIND_SINT || tkind == BL_KIND_UINT || tkind == BL_KIND_SIZE)) return true;
+
   if (tkind == BL_KIND_ENUM) {
     return bl_ast_can_impl_cast(from_type, bl_peek_type_enum(to_type)->base_type);
   }
@@ -899,6 +917,8 @@ bl_ast_type_get_ptr(bl_node_t *type)
     return bl_peek_type_fn(type)->ptr;
   case BL_NODE_TYPE_STRUCT:
     return bl_peek_type_struct(type)->ptr;
+  case BL_NODE_TYPE_ENUM:
+    return bl_peek_type_enum(type)->ptr;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -917,6 +937,9 @@ bl_ast_type_set_ptr(bl_node_t *type, int ptr)
   case BL_NODE_TYPE_STRUCT:
     bl_peek_type_struct(type)->ptr = ptr;
     break;
+  case BL_NODE_TYPE_ENUM:
+    bl_peek_type_enum(type)->ptr = ptr;
+    break;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -934,6 +957,8 @@ bl_ast_type_get_arr(bl_node_t *type)
     return bl_peek_type_fn(type)->arr;
   case BL_NODE_TYPE_STRUCT:
     return bl_peek_type_struct(type)->arr;
+  case BL_NODE_TYPE_ENUM:
+    return bl_peek_type_enum(type)->arr;
   default:
     bl_abort("invalid type %s", bl_node_name(type));
   }
@@ -954,6 +979,9 @@ bl_ast_type_set_arr(bl_node_t *type, bl_node_t *arr)
     break;
   case BL_NODE_TYPE_STRUCT:
     bl_peek_type_struct(type)->arr = arr;
+    break;
+  case BL_NODE_TYPE_ENUM:
+    bl_peek_type_enum(type)->arr = arr;
     break;
   default:
     bl_abort("invalid type %s", bl_node_name(type));

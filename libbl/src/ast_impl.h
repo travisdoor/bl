@@ -186,6 +186,11 @@
     bl_node_t       *type; \
     bool             ptr_ref; \
   }) \
+  nt(EXPR_ELEM, expr_elem, struct { \
+    bl_node_t       *next; \
+    bl_node_t       *type; \
+    bl_node_t       *index; \
+  }) \
   nt(EXPR_SIZEOF, expr_sizeof, struct { \
     bl_node_t *in; \
     bl_node_t *type; \
@@ -322,14 +327,13 @@ bl_ast_terminate(bl_ast_t *ast);
 /*************************************************************************************************
  * definition node
  *************************************************************************************************/
-#if BL_DEBUG
 typedef enum
 {
-  NOT_CHECKED = 0,
-  RESOLVED,
-  WAITING
-} _bl_check_state_e;
-#endif
+  BL_NOT_CHECKED = 0, /* not checked node */
+  BL_WAITING,         /* waiting for later check */
+  BL_CHECKED          /* checked node */
+} bl_check_state_e;
+
 struct bl_node
 {
   union
@@ -342,10 +346,10 @@ struct bl_node
   bl_src_t *     src;
   bl_node_code_e code;
 
-  bl_node_t *next;
+  bl_node_t *      next;
+  bl_check_state_e state;
 #if BL_DEBUG
-  int               _serial;
-  _bl_check_state_e _state;
+  int _serial;
 #endif
 };
 
@@ -396,6 +400,7 @@ _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sy
 _BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type);
 _BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
               bl_node_t *type, bool ptr_ref);
+_BL_AST_NCTOR(expr_elem, bl_node_t *next, bl_node_t *type, bl_node_t *index);
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);
 _BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next);
 _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);

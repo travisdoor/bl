@@ -1,3 +1,8 @@
+//************************************************************************************************
+// bl
+//
+// File:   checker.c
+// Author: Martin Dorazil
 // Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
@@ -21,11 +26,22 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*
+ * Flatten checking structure:
+ * Symbols in this language can be defined in any order in global scope, so we need some kind of
+ * 'lazy' reference connecting. For example we can call function 'foo' before it is declared, when
+ * checker reaches such call it need to be interrupted and resumed later when definition of the
+ * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided into
+ * smaller flatten queues which are later solved backwards. When compiler gets to unknown symbol we
+ * take note about position in queue and push it into waiting cache.
+ */
+
 #include "stages_impl.h"
 #include "common_impl.h"
 #include "ast_impl.h"
 
 #define VERBOSE 0
+#define VERBOSE_MULTIPLE_CHECK 0
 
 #define FINISH return true
 #define WAIT return false
@@ -61,7 +77,6 @@ typedef struct
   bl_unit_t *    unit;
   bl_ast_t *     ast;
 
-  BArray *    waiting_resumed;
   BHashTable *waiting;
   bl_scope_t *provided_in_gscope;
 
@@ -90,13 +105,10 @@ static void
 provide(bl_node_t *ident, bl_node_t *provided);
 
 static inline void
-waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter);
+waiting_push(BHashTable *waiting, bl_node_t *ident, fiter_t fiter);
 
 static void
-waiting_resume(context_t *cnt, uint64_t hash);
-
-static void
-waiting_resume_all(context_t *cnt);
+waiting_resume(context_t *cnt, bl_node_t *ident);
 
 static BArray *
 flatten_get(BArray *cache);
@@ -122,6 +134,9 @@ check_error_invalid_types(context_t *cnt, bl_node_t *first_type, bl_node_t *seco
 
 static void
 check_flatten(context_t *cnt, bl_node_t *node);
+
+static void
+process_flatten(context_t *cnt, fiter_t *fit);
 
 static bool
 check_node(context_t *cnt, bl_node_t *node);
@@ -151,6 +166,9 @@ static bool
 check_expr_member(context_t *cnt, bl_node_t *member);
 
 static bool
+check_expr_elem(context_t *cnt, bl_node_t *elem);
+
+static bool
 check_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 
 static bool
@@ -172,9 +190,9 @@ check_unused(context_t *cnt);
 bl_node_t *
 lookup(bl_node_t *ident, bl_scope_t **out_scope, bool walk_tree)
 {
-  assert(ident);
+  assert(ident && "invalid identificator in lookup");
   bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
-  assert(compound);
+  assert(compound && "ident compound not set");
   return _lookup(compound, ident, out_scope, walk_tree);
 }
 
@@ -200,97 +218,78 @@ _lookup(bl_node_t *compound, bl_node_t *ident, bl_scope_t **out_scope, bool walk
 bl_node_t *
 wait_context(bl_node_t *node)
 {
-  assert(node);
+  assert(node && "invalid wait node");
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
     return node;
   case BL_NODE_EXPR_MEMBER:
     return bl_peek_expr_member(node)->ident;
+  case BL_NODE_DECL_VALUE:
+    return bl_peek_decl_value(node)->name;
   case BL_NODE_STMT_RETURN: {
     bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
-    assert(decl);
+    assert(decl && "return statement without context");
     return bl_peek_decl_value(decl)->name;
   }
   default:
-    bl_abort("node %s has no ident", bl_node_name(node));
+    return NULL;
   };
 }
 
 void
 provide(bl_node_t *ident, bl_node_t *provided)
 {
-  assert(ident && provided);
+  assert(ident && provided && "trying to provide invalid symbol");
   bl_node_t *compound = bl_peek_ident(ident)->parent_compound;
   assert(compound);
   bl_scope_t *scope = bl_ast_get_scope(compound);
   assert(scope);
 
-  /* bl_log("providing: %s (%d)", bl_peek_ident(ident)->str, ident->_serial) */
+#if VERBOSE
+  bl_log("providing " BL_MAGENTA("'%s'") " (%d)", bl_peek_ident(ident)->str, ident->_serial);
+#endif
   bl_scope_insert(scope, ident, provided);
 }
 
 void
-waiting_push(BHashTable *waiting, uint64_t hash, fiter_t fiter)
+waiting_push(BHashTable *waiting, bl_node_t *node, fiter_t fiter)
 {
-  BArray *queue = NULL;
-  if (bo_htbl_has_key(waiting, hash)) {
-    queue = bo_htbl_at(waiting, hash, BArray *);
+  bl_node_t *ident = wait_context(node);
+  assert(ident);
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+  BArray *         queue;
+  if (bo_htbl_has_key(waiting, _ident->hash)) {
+    queue = bo_htbl_at(waiting, _ident->hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(fiter_t));
-    bo_htbl_insert(waiting, hash, queue);
+    bo_htbl_insert(waiting, _ident->hash, queue);
   }
-
+  assert(queue);
   bo_array_push_back(queue, fiter);
 }
 
 void
-waiting_resume(context_t *cnt, uint64_t hash)
+waiting_resume(context_t *cnt, bl_node_t *ident)
 {
-  if (!bo_htbl_has_key(cnt->waiting, hash)) return;
-  bo_array_push_back(cnt->waiting_resumed, hash);
-}
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+  /* is there some flattens waiting for this symbol??? */
+  if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
 
-void
-waiting_resume_all(context_t *cnt)
-{
-  bo_iterator_t it = bo_array_begin(cnt->waiting_resumed);
-  for (; !bo_array_empty(cnt->waiting_resumed); it = bo_array_begin(cnt->waiting_resumed)) {
-    uint64_t hash = bo_array_iter_peek(cnt->waiting_resumed, &it, uint64_t);
-    bo_array_erase(cnt->waiting_resumed, 0);
+  /* resume all waiting flattens */
+  BArray *q = bo_htbl_at(cnt->waiting, _ident->hash, BArray *);
+  assert(q && "invalid flattens queue");
 
-    if (!bo_htbl_has_key(cnt->waiting, hash)) continue;
-    BArray *q = bo_htbl_at(cnt->waiting, hash, BArray *);
-    assert(q);
-
-    // bl_log("q.len = %d", bo_array_size(q));
-    fiter_t fit;
-    for (size_t i = 0; i < bo_array_size(q);) {
-      fit = bo_array_at(q, i, fiter_t);
-      bo_array_erase(q, i);
-
-      bool interrupted = false;
-      /* resume here */
-      bl_node_t *tmp;
-      for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-        tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
-        if (!check_node(cnt, tmp)) {
-          bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-          waiting_push(cnt->waiting, _ident->hash, fit);
-          interrupted = true;
-          break;
-        }
-      }
-
-      if (!interrupted) {
-        flatten_put(cnt->flatten_cache, fit.flatten);
-      } else {
-        //++i;
-      }
-    }
-    if (!bo_array_size(q)) {
-      bo_htbl_erase_key(cnt->waiting, hash);
-    }
+  /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
+   * 'process_flatten' method */
+  fiter_t   fit;
+  const int c = (int)bo_array_size(q);
+  for (int i = c - 1; i >= 0; --i) {
+    fit = bo_array_at(q, i, fiter_t);
+    bo_array_erase(q, i);
+    process_flatten(cnt, &fit);
   }
+
+  if (bo_array_empty(q)) bo_htbl_erase_key(cnt->waiting, _ident->hash);
 }
 
 void
@@ -387,17 +386,6 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     break;
   }
 
-  case BL_NODE_TYPE_FN: {
-    bl_node_type_fn_t *_type_fn = bl_peek_type_fn(node);
-    flatten(_type_fn->ret_type);
-    bl_node_t *sub_type;
-    bl_node_foreach(_type_fn->arg_types, sub_type)
-    {
-      flatten(sub_type);
-    }
-    break;
-  }
-
   case BL_NODE_LIT_FN: {
     bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
     flatten(_fn->type);
@@ -469,6 +457,13 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_ELEM: {
+    bl_node_expr_elem_t *_elem = bl_peek_expr_elem(node);
+    flatten(_elem->next);
+    flatten(_elem->index);
+    break;
+  }
+
   case BL_NODE_EXPR_CAST: {
     bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
     flatten(_cast->type);
@@ -524,6 +519,17 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_TYPE_FN: {
+    bl_node_type_fn_t *_type_fn = bl_peek_type_fn(node);
+    flatten(_type_fn->ret_type);
+    bl_node_t *sub_type;
+    bl_node_foreach(_type_fn->arg_types, sub_type)
+    {
+      flatten(sub_type);
+    }
+    break;
+  }
+
   case BL_NODE_IDENT:
   case BL_NODE_EXPR_NULL:
   case BL_NODE_STMT_BREAK:
@@ -549,22 +555,30 @@ check_flatten(context_t *cnt, bl_node_t *node)
   fit.i       = 0;
 
   flatten_node(cnt, fit.flatten, node);
+  process_flatten(cnt, &fit);
+}
+
+void
+process_flatten(context_t *cnt, fiter_t *fit)
+{
+  assert(fit);
+  assert(fit->flatten && "invalid flatten");
   bool interrupted = false;
 
   bl_node_t *tmp;
-  for (; fit.i < bo_array_size(fit.flatten); ++fit.i) {
-    tmp = bo_array_at(fit.flatten, fit.i, bl_node_t *);
+  for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
+    tmp = bo_array_at(fit->flatten, fit->i, bl_node_t *);
     if (!check_node(cnt, tmp)) {
-      /* node has not been satisfied and need to be checked later when all it's references become
-       * available */
-      bl_node_ident_t *_ident = bl_peek_ident(wait_context(tmp));
-      waiting_push(cnt->waiting, _ident->hash, fit);
+      waiting_push(cnt->waiting, tmp, *fit);
       interrupted = true;
       break;
     }
   }
 
-  if (!interrupted) flatten_put(cnt->flatten_cache, fit.flatten);
+  if (!interrupted) {
+    flatten_put(cnt->flatten_cache, fit->flatten);
+    fit->flatten = NULL;
+  }
 }
 
 bool
@@ -573,8 +587,10 @@ implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type)
   to_type              = bl_ast_get_type(to_type);
   bl_node_t *from_type = bl_ast_get_type(*node);
 
-  bl_type_kind_e to_kind = bl_ast_get_type_kind(to_type);
-  if (bl_node_is(*node, BL_NODE_LIT) &&
+  bl_type_kind_e from_kind = bl_ast_get_type_kind(from_type);
+  bl_type_kind_e to_kind   = bl_ast_get_type_kind(to_type);
+  if (bl_node_is(*node, BL_NODE_LIT) && from_kind != BL_KIND_STRING && from_kind != BL_KIND_CHAR &&
+      from_kind != BL_KIND_REAL &&
       (to_kind == BL_KIND_SIZE || to_kind == BL_KIND_UINT || to_kind == BL_KIND_SINT)) {
     bl_peek_lit(*node)->type = bl_ast_node_dup(cnt->ast, to_type);
     return true;
@@ -690,6 +706,10 @@ check_node(context_t *cnt, bl_node_t *node)
 {
   assert(node);
   bool result = true;
+#if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
+  if (node->state == BL_CHECKED)
+    bl_msg_warning("unnecessary node check %s (%d)", bl_node_name(node), node->_serial);
+#endif
 
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
@@ -724,6 +744,10 @@ check_node(context_t *cnt, bl_node_t *node)
     result = check_expr_member(cnt, node);
     break;
 
+  case BL_NODE_EXPR_ELEM:
+    result = check_expr_elem(cnt, node);
+    break;
+
   case BL_NODE_STMT_IF:
     result = check_stmt_if(cnt, node);
     break;
@@ -752,16 +776,23 @@ check_node(context_t *cnt, bl_node_t *node)
     bl_warning("missing check for node type %s", bl_node_name(node));
   }
 
-#if VERBOSE
-  bl_log("checked [%s] %s (%d) on line: %d", result ? BL_GREEN(" OK ") : BL_RED("WAIT"),
-         bl_node_is(node, BL_NODE_IDENT) ? bl_peek_ident(node)->str : bl_node_name(node),
-         node->_serial, node->src ? node->src->line : 0);
+#if VERBOSE && defined(BL_DEBUG)
+  {
+    static int  prev_checked = -1;
+    const char *file         = node->src ? node->src->unit->name : "UNKNOWN";
+    const int   line         = node->src ? node->src->line : -1;
+    bl_node_t * checked      = wait_context(node);
+    const char *name         = checked ? bl_peek_ident(checked)->str : "?";
+    bl_log("checked [%s] " BL_MAGENTA("'%s'") " (%s, %d) file: " BL_YELLOW("%s") " line: " BL_CYAN(
+               "%d"),
+           result ? BL_GREEN(" OK ") : BL_RED("WAIT"), name, bl_node_name(node), node->_serial,
+           file, line);
+    assert(prev_checked != node->_serial && "Looping checker!!!");
+    prev_checked = node->_serial;
+  }
 #endif
 
-#if BL_DEBUG
-  node->_state = result ? RESOLVED : WAITING;
-#endif
-
+  node->state = result ? BL_CHECKED : BL_WAITING;
   return result;
 }
 
@@ -769,7 +800,9 @@ bool
 check_ident(context_t *cnt, bl_node_t *ident)
 {
   bl_node_ident_t *_ident = bl_peek_ident(ident);
-  if (_ident->ref) FINISH;
+  if (_ident->ref) {
+    FINISH;
+  }
 
   bl_node_t *found;
   const int  buildin = bl_ast_is_buildin_type(ident);
@@ -853,6 +886,7 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   if (_binop->op == BL_SYM_ASSIGN) {
     if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_ELEM) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
@@ -862,6 +896,7 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
     }
 
     if (bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_ELEM) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
@@ -1014,6 +1049,30 @@ check_expr_member(context_t *cnt, bl_node_t *member)
 
   _member->type                      = bl_ast_get_type(found);
   bl_peek_ident(_member->ident)->ref = found;
+
+  FINISH;
+}
+
+bool
+check_expr_elem(context_t *cnt, bl_node_t *elem)
+{
+  bl_node_expr_elem_t *_elem = bl_peek_expr_elem(elem);
+  assert(_elem->index);
+  assert(_elem->next);
+
+  _elem->type = bl_ast_get_type(_elem->next);
+  if (!bl_ast_type_get_arr(_elem->type)) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, elem, BL_BUILDER_CUR_WORD, "expected array");
+  }
+
+  _elem->type = bl_ast_node_dup(cnt->ast, _elem->type);
+  bl_ast_type_set_arr(_elem->type, NULL);
+
+  bl_node_t *index_type = bl_ast_get_type(_elem->index);
+
+  if (!implicit_cast(cnt, &_elem->index, &bl_ftypes[BL_FTYPE_SIZE])) {
+    check_error_invalid_types(cnt, index_type, &bl_ftypes[BL_FTYPE_SIZE], _elem->index);
+  }
 
   FINISH;
 }
@@ -1200,7 +1259,7 @@ check_decl_value(context_t *cnt, bl_node_t *decl)
       bl_assembly_add_into_ir(cnt->assembly, decl);
     }
 
-    waiting_resume(cnt, bl_peek_ident(_decl->name)->hash);
+    waiting_resume(cnt, _decl->name);
   }
 
   FINISH;
@@ -1242,7 +1301,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .unit               = NULL,
       .ast                = NULL,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
-      .waiting_resumed    = bo_array_new(sizeof(uint64_t)),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .provided_in_gscope = bl_scope_new(assembly->scope_cache, 4092),
   };
@@ -1255,14 +1313,12 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
     check_flatten(&cnt, unit->ast.root);
   }
 
-  waiting_resume_all(&cnt);
   check_unresolved(&cnt);
   check_unused(&cnt);
 
   flatten_free_cache(cnt.flatten_cache);
 
   bo_unref(cnt.waiting);
-  bo_unref(cnt.waiting_resumed);
   bo_unref(cnt.flatten_cache);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);

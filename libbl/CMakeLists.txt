@@ -4,6 +4,7 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 # setup output directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # deps
 find_package(BObject 1.0 REQUIRED)
@@ -204,3 +205,4 @@ endif()
 target_include_directories(bl PUBLIC include)
 target_include_directories(bl PRIVATE src)
 
+configure_file(${CMAKE_SOURCE_DIR}/libbl/include/bl/version.h.in ${CMAKE_SOURCE_DIR}/libbl/include/bl/version.h)

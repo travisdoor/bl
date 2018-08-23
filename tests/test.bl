@@ -1,9 +1,9 @@
 /* testing playground */
 
-#load "libc.bl"
 
 main : fn () s32 {
-  printf("hello world\n", 0);
+  arr s32[64];
+  arr[0] = 10;
+  arr[10 + 1] = 10;
   return 0;
 };
-

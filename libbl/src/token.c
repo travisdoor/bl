@@ -80,10 +80,11 @@ int
 bl_token_prec(bl_token_t *token, bool unary)
 {
   switch (token->sym) {
-    // . -> (
+    // . -> [ (
   case BL_SYM_DOT:
   case BL_SYM_ARROW:
   case BL_SYM_LBRACKET:
+  case BL_SYM_LPAREN:
     return 60;
 
     // ident number cast + -

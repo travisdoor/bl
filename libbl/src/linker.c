@@ -33,17 +33,20 @@
 #include "common_impl.h"
 #include "bl/error.h"
 
+#ifdef BL_PLATFORM_WIN
+#define OBJ_EXT ".obj"
+#else
+#define OBJ_EXT ".o"
+#endif
+
+
 void
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   assert(assembly->llvm_module);
-  char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + 3));
+  char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
   strcpy(filename, assembly->name);
-#ifdef BL_PLATFORM_WIN
-  strcat(filename, ".lib");
-#else
-  strcat(filename, ".o");
-#endif
+  strcat(filename, OBJ_EXT);
 
   char *triple    = LLVMGetDefaultTargetTriple();
   char *cpu       = "";

@@ -67,6 +67,7 @@ typedef struct
   bl_node_t *curr_decl;
   bl_node_t *curr_compound;
   bool       inside_loop;
+  bool       core_loaded;
 } context_t;
 
 /* helpers */
@@ -78,11 +79,13 @@ insert_node(bl_node_t ***node)
 
 /* fw decls */
 static bl_node_t *
+load_core(context_t *cnt);
+
+static bl_node_t *
 parse_load(context_t *cnt);
 
 static bl_node_t *
 parse_link(context_t *cnt);
-;
 
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
@@ -182,6 +185,9 @@ parse_expr_sizeof(context_t *cnt);
 
 static bl_node_t *
 parse_expr_cast(context_t *cnt);
+
+static bl_node_t *
+parse_expr_elem(context_t *cnt, bl_token_t *op);
 
 // impl
 
@@ -658,6 +664,27 @@ parse_expr_member(context_t *cnt, bl_token_t *op)
 }
 
 bl_node_t *
+parse_expr_elem(context_t *cnt, bl_token_t *op)
+{
+  if (!op) return NULL;
+  if (bl_token_is_not(op, BL_SYM_LBRACKET)) return NULL;
+
+  bl_node_t *index = parse_expr(cnt);
+  if (index == NULL) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, op, BL_BUILDER_CUR_WORD,
+                "expected array index expression");
+  }
+
+  bl_token_t *tok = bl_tokens_consume(cnt->tokens);
+  if (tok->sym != BL_SYM_RBRACKET) {
+    parse_error(cnt, BL_ERR_MISSING_BRACKET, tok, BL_BUILDER_CUR_WORD,
+                "missing bracket " BL_YELLOW("']'"));
+  }
+
+  return bl_ast_expr_elem(cnt->ast, op, NULL, NULL, index);
+}
+
+bl_node_t *
 parse_atom_expr(context_t *cnt, bl_token_t *op)
 {
   bl_node_t *expr = NULL;
@@ -669,6 +696,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_literal_struct(cnt))) return expr;
   if ((expr = parse_literal_enum(cnt))) return expr;
   if ((expr = parse_expr_call(cnt))) return expr;
+  if ((expr = parse_expr_elem(cnt, op))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_expr_member(cnt, op))) return expr;
   if ((expr = parse_ident(cnt, 0))) return expr;
@@ -692,8 +720,10 @@ _parse_expr(context_t *cnt, bl_node_t *lhs, int min_precedence)
       rhs       = _parse_expr(cnt, rhs, bl_token_prec(lookahead, false));
       lookahead = bl_tokens_peek(cnt->tokens);
     }
-
-    if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
+    if (op->sym == BL_SYM_LBRACKET) {
+      bl_peek_expr_elem(rhs)->next = lhs;
+      lhs                          = rhs;
+    } else if (op->sym == BL_SYM_DOT || op->sym == BL_SYM_ARROW) {
       if (bl_node_is(rhs, BL_NODE_EXPR_CALL)) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
@@ -1292,6 +1322,12 @@ next:
     goto next;
   }
 
+  if (!cnt->core_loaded && (*node = load_core(cnt))) {
+    insert_node(&node);
+    cnt->core_loaded = true;
+    goto next;
+  }
+
   if ((*node = parse_load(cnt))) {
     insert_node(&node);
     goto next;
@@ -1309,6 +1345,17 @@ next:
   }
 }
 
+bl_node_t *
+load_core(context_t *cnt)
+{
+  bl_unit_t *unit = bl_unit_new_file(BL_CORE_SOURCE_FILE);
+  if (!bl_assembly_add_unit_unique(cnt->assembly, unit)) {
+    bl_unit_delete(unit);
+  }
+
+  return bl_ast_load(cnt->ast, NULL, BL_CORE_SOURCE_FILE);
+}
+
 void
 bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
 {
@@ -1320,6 +1367,7 @@ bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
                    .curr_fn       = NULL,
                    .curr_decl     = NULL,
                    .curr_compound = NULL,
+                   .core_loaded   = false,
                    .inside_loop   = false};
 
   unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, unit, assembly->gscope);

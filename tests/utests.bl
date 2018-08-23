@@ -5,6 +5,8 @@
 TestFileSize size_t : 256;
 TmpCmdSize size_t   : 256;
 MaxTestCount size_t : 256;
+Ok  	     	    : 0;
+Fail    	    : 1;
 BaseCmd      	    : "blc -run -no-bin ";
 
 Test : struct {
@@ -12,7 +14,7 @@ Test : struct {
   state bool
 };
 
-main : fn () {
+main : fn () s32 {
   // helpers
   get_test : fn (t *Test, i size_t) *Test {
     tmp := cast(*Test) (cast(size_t) t + sizeof(Test) * i);
@@ -24,7 +26,7 @@ main : fn () {
   file File;
   if !file_open(&file, ".config.utest") {
     puts("unable to open '.config.utest' file");
-    return;
+    return Fail;
   } 
 
   curr_test size_t := 0;
@@ -42,7 +44,7 @@ main : fn () {
     curr_test = curr_test + 1;
 
     test->file = malloc(sizeof(char) * TestFileSize);
-    i = get_line(config, test->file, i);  
+    i = get_token(config, test->file, i);  
   }
 
   tmp *String := str_new();
@@ -66,6 +68,7 @@ main : fn () {
 
   puts("");
 
+  result := Ok;
   i = 0;
   while i < curr_test {
     test := get_test(tests, i);
@@ -83,6 +86,7 @@ main : fn () {
       str_ccat(tmp, "  OK ");
     } else {
       str_ccat(tmp, " FAIL");
+      result = Fail;
     }
     puts(tmp->data);
     free(test->file);
@@ -92,9 +96,10 @@ main : fn () {
   free(tests);
   free(cast(*void) config);
   file_close(&file);
+  return result;
 };
 
-get_line : fn (str *char, out *char, start size_t) size_t {
+get_token : fn (str *char, out *char, start size_t) size_t {
   get_char_ptr : fn (str *char, i size_t) *char {
     tmp := cast(*char) (cast(size_t) str + i);
     return tmp;
@@ -103,7 +108,11 @@ get_line : fn (str *char, out *char, start size_t) size_t {
   i size_t := 0;
   loop {
     c := *get_char_ptr(str, start + i);   
-    if c == '\n' || c == '\0' { break; }
+    if c == ' ' || c == '\n' || c == '\0' {
+      c_out_ptr := get_char_ptr(out, i);
+      *c_out_ptr = '\0';
+      break;
+    }
     c_out_ptr := get_char_ptr(out, i);
     *c_out_ptr = c;
     i = i + 1;
