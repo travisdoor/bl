@@ -186,6 +186,11 @@
     bl_node_t       *type; \
     bool             ptr_ref; \
   }) \
+  nt(EXPR_ELEM, expr_elem, struct { \
+    bl_node_t       *next; \
+    bl_node_t       *type; \
+    bl_node_t       *index; \
+  }) \
   nt(EXPR_SIZEOF, expr_sizeof, struct { \
     bl_node_t *in; \
     bl_node_t *type; \
@@ -395,6 +400,7 @@ _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sy
 _BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type);
 _BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
               bl_node_t *type, bool ptr_ref);
+_BL_AST_NCTOR(expr_elem, bl_node_t *next, bl_node_t *type, bl_node_t *index);
 _BL_AST_NCTOR(expr_sizeof, bl_node_t *in, bl_node_t *type);
 _BL_AST_NCTOR(expr_cast, bl_node_t *type, bl_node_t *next);
 _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);

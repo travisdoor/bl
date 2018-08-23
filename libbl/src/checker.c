@@ -166,6 +166,9 @@ static bool
 check_expr_member(context_t *cnt, bl_node_t *member);
 
 static bool
+check_expr_elem(context_t *cnt, bl_node_t *elem);
+
+static bool
 check_stmt_if(context_t *cnt, bl_node_t *stmt_if);
 
 static bool
@@ -454,6 +457,13 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t *node)
     break;
   }
 
+  case BL_NODE_EXPR_ELEM: {
+    bl_node_expr_elem_t *_elem = bl_peek_expr_elem(node);
+    flatten(_elem->next);
+    flatten(_elem->index);
+    break;
+  }
+
   case BL_NODE_EXPR_CAST: {
     bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
     flatten(_cast->type);
@@ -577,8 +587,10 @@ implicit_cast(context_t *cnt, bl_node_t **node, bl_node_t *to_type)
   to_type              = bl_ast_get_type(to_type);
   bl_node_t *from_type = bl_ast_get_type(*node);
 
-  bl_type_kind_e to_kind = bl_ast_get_type_kind(to_type);
-  if (bl_node_is(*node, BL_NODE_LIT) &&
+  bl_type_kind_e from_kind = bl_ast_get_type_kind(from_type);
+  bl_type_kind_e to_kind   = bl_ast_get_type_kind(to_type);
+  if (bl_node_is(*node, BL_NODE_LIT) && from_kind != BL_KIND_STRING && from_kind != BL_KIND_CHAR &&
+      from_kind != BL_KIND_REAL &&
       (to_kind == BL_KIND_SIZE || to_kind == BL_KIND_UINT || to_kind == BL_KIND_SINT)) {
     bl_peek_lit(*node)->type = bl_ast_node_dup(cnt->ast, to_type);
     return true;
@@ -732,6 +744,10 @@ check_node(context_t *cnt, bl_node_t *node)
     result = check_expr_member(cnt, node);
     break;
 
+  case BL_NODE_EXPR_ELEM:
+    result = check_expr_elem(cnt, node);
+    break;
+
   case BL_NODE_STMT_IF:
     result = check_stmt_if(cnt, node);
     break;
@@ -870,6 +886,7 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
   if (_binop->op == BL_SYM_ASSIGN) {
     if (bl_node_is_not(_binop->lhs, BL_NODE_IDENT) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_ELEM) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
@@ -879,6 +896,7 @@ check_expr_binop(context_t *cnt, bl_node_t *binop)
     }
 
     if (bl_node_is_not(_binop->lhs, BL_NODE_EXPR_UNARY) &&
+        bl_node_is_not(_binop->lhs, BL_NODE_EXPR_ELEM) &&
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
@@ -1031,6 +1049,30 @@ check_expr_member(context_t *cnt, bl_node_t *member)
 
   _member->type                      = bl_ast_get_type(found);
   bl_peek_ident(_member->ident)->ref = found;
+
+  FINISH;
+}
+
+bool
+check_expr_elem(context_t *cnt, bl_node_t *elem)
+{
+  bl_node_expr_elem_t *_elem = bl_peek_expr_elem(elem);
+  assert(_elem->index);
+  assert(_elem->next);
+
+  _elem->type = bl_ast_get_type(_elem->next);
+  if (!bl_ast_type_get_arr(_elem->type)) {
+    check_error_node(cnt, BL_ERR_INVALID_TYPE, elem, BL_BUILDER_CUR_WORD, "expected array");
+  }
+
+  _elem->type = bl_ast_node_dup(cnt->ast, _elem->type);
+  bl_ast_type_set_arr(_elem->type, NULL);
+
+  bl_node_t *index_type = bl_ast_get_type(_elem->index);
+
+  if (!implicit_cast(cnt, &_elem->index, &bl_ftypes[BL_FTYPE_SIZE])) {
+    check_error_invalid_types(cnt, index_type, &bl_ftypes[BL_FTYPE_SIZE], _elem->index);
+  }
 
   FINISH;
 }

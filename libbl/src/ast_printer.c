@@ -94,6 +94,9 @@ static void
 print_expr_member(bl_node_t *node, int pad);
 
 static void
+print_expr_elem(bl_node_t *node, int pad);
+
+static void
 print_expr_unary(bl_node_t *node, int pad);
 
 static void
@@ -170,6 +173,16 @@ print_expr_member(bl_node_t *node, int pad)
   print_type(_member->type);
   fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
   print_node(_member->next, pad + 1);
+}
+
+void
+print_expr_elem(bl_node_t *node, int pad)
+{
+  print_head("elem", node->src, node, pad);
+  bl_node_expr_elem_t *_elem = bl_peek_expr_elem(node);
+  print_type(_elem->type);
+  print_node(_elem->index, pad + 1);
+  print_node(_elem->next, pad + 1);
 }
 
 void
@@ -505,6 +518,9 @@ print_node(bl_node_t *node, int pad)
     break;
   case BL_NODE_EXPR_MEMBER:
     print_expr_member(node, pad);
+    break;
+  case BL_NODE_EXPR_ELEM:
+    print_expr_elem(node, pad);
     break;
   case BL_NODE_STMT_BREAK:
     print_break(node, pad);

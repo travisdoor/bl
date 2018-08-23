@@ -106,7 +106,7 @@
 #define BL_CORE_SOURCE_FILE "os/os_linux.bl"
 #endif
 
-#ifdef BL_PLATFORM_WINDOWS
+#ifdef BL_PLATFORM_WIN
 #define BL_CORE_SOURCE_FILE "os/os_windows.bl"
 #endif
 
