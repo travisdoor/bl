@@ -53,7 +53,7 @@
 #endif
 
 #define BL_MAX_FUNC_ARG_COUNT 32
-#define BL_MAX_FUNC_NAME_LEN  512
+#define BL_MAX_FUNC_NAME_LEN 512
 
 #if BL_DEBUG
 #define BL_ASSERT_ON_CMP_ERROR 0
@@ -61,7 +61,7 @@
 #define BL_ASSERT_ON_CMP_ERROR 0
 #endif
 
-#ifdef BL_COMPILER_MSVC 
+#ifdef BL_COMPILER_MSVC
 #if BL_COMPILING_DLL
 #define BL_EXPORT __declspec(dllexport)
 #else
@@ -72,7 +72,9 @@
 #endif
 
 #ifdef __cplusplus
-#define BL_BEGIN_DECLS extern "C" {
+#define BL_BEGIN_DECLS                                                                             \
+  extern "C"                                                                                       \
+  {
 #define BL_END_DECLS }
 #else
 #define BL_BEGIN_DECLS
@@ -84,7 +86,7 @@
 #endif
 
 #define ENV_PATH "PATH"
-#ifndef PATH_MAX 
+#ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
 
@@ -96,6 +98,18 @@
 #define BL_PATH_SEPARATOR "/"
 #define BL_PATH_SEPARATORC '/'
 #define BL_ENVPATH_SEPARATOR ':'
+#endif
+
+#ifdef BL_PLATFORM_LINUX
+#define BL_CORE_SOURCE_FILE "os/os_linux.bl"
+#endif
+
+#ifdef BL_PLATFORM_WINDOWS
+#define BL_CORE_SOURCE_FILE "os/os_windows.bl"
+#endif
+
+#ifdef BL_PLATFORM_MACOS
+#define BL_CORE_SOURCE_FILE "os/os_macos.bl"
 #endif
 
 #endif // BL_CONFIG_H

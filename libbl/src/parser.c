@@ -67,6 +67,7 @@ typedef struct
   bl_node_t *curr_decl;
   bl_node_t *curr_compound;
   bool       inside_loop;
+  bool       core_loaded;
 } context_t;
 
 /* helpers */
@@ -78,11 +79,13 @@ insert_node(bl_node_t ***node)
 
 /* fw decls */
 static bl_node_t *
+load_core(context_t *cnt);
+
+static bl_node_t *
 parse_load(context_t *cnt);
 
 static bl_node_t *
 parse_link(context_t *cnt);
-;
 
 static void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock);
@@ -1292,6 +1295,12 @@ next:
     goto next;
   }
 
+  if (!cnt->core_loaded && (*node = load_core(cnt))) {
+    insert_node(&node);
+    cnt->core_loaded = true;
+    goto next;
+  }
+
   if ((*node = parse_load(cnt))) {
     insert_node(&node);
     goto next;
@@ -1309,6 +1318,17 @@ next:
   }
 }
 
+bl_node_t *
+load_core(context_t *cnt)
+{
+  bl_unit_t *unit = bl_unit_new_file(BL_CORE_SOURCE_FILE);
+  if (!bl_assembly_add_unit_unique(cnt->assembly, unit)) {
+    bl_unit_delete(unit);
+  }
+
+  return bl_ast_load(cnt->ast, NULL, BL_CORE_SOURCE_FILE);
+}
+
 void
 bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
 {
@@ -1320,6 +1340,7 @@ bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
                    .curr_fn       = NULL,
                    .curr_decl     = NULL,
                    .curr_compound = NULL,
+                   .core_loaded   = false,
                    .inside_loop   = false};
 
   unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, unit, assembly->gscope);
