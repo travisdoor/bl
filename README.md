@@ -1,5 +1,7 @@
 # ![alt text](doc/biscuit_logo.png "logo") The Biscuit Language
-[!http://89.177.170.156:8080/buildStatus/icon?job=biscuit!|http://89.177.170.156:8080/job/biscuit/]
+<dl>
+<a href='http://89.177.170.156:8080/job/biscuit'><img src='http://89.177.170.156:8080/buildStatus/icon?job=biscuit'></a>
+</dl>
 
 ## About
 The Biscuit is programming language inspired by C and Rust.
