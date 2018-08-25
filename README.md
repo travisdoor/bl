@@ -1,4 +1,5 @@
-# ![alt text](doc/biscuit_logo.png "logo") 
+# ![alt text](doc/biscuit_logo.png "logo") The Biscuit Language
+
 [![Build Status](http://89.177.170.156:8080/job/biscuit/badge/icon)](http://89.177.170.156:8080/job/biscuit/)
 
 ## About
