@@ -58,6 +58,7 @@
 
 #define _BL_BUILDINS_LIST \
     bt(MAIN,    main) \
+    bt(ARR_COUNT,   count) \
 
 #define _BL_NODE_TYPE_LIST \
   nt(BAD, bad, struct { \

@@ -14,6 +14,11 @@ main : fn () s32 {
     printf("arr[i] = %d\n", arr[i]);
     i = i + 1;
   }
+
+  // arr.count -> pointing to constant 10
+  arr.count;
   
   return 0;
 };
+
+count : fn () {};
