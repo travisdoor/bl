@@ -2,8 +2,7 @@
 
 main : fn () s32 {
   arr s32[10];
-  // BUG!!!
-  // if arr.count != 10 { return EXIT_FAILTURE; }
+  if arr.count != 10 { return EXIT_FAILURE; }
 
   i := 0;
   while i < arr.count {

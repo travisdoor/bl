@@ -1049,7 +1049,10 @@ check_expr_member(context_t *cnt, bl_node_t **member)
   } else if (bl_ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
     if (bl_ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
-      *member = bl_ast_node_dup(cnt->ast, bl_ast_type_get_arr(lhs_type));
+      bl_node_t *tmp_next = (*member)->next;
+      *member             = bl_ast_node_dup(cnt->ast, bl_ast_type_get_arr(lhs_type));
+      (*member)->next     = tmp_next;
+
       // TODO: set next node???
 
       FINISH;
