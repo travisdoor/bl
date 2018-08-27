@@ -105,6 +105,9 @@ static LLVMValueRef
 ir_expr_member(context_t *cnt, bl_node_t *member);
 
 static LLVMValueRef
+ir_expr_elem(context_t *cnt, bl_node_t *elem);
+
+static LLVMValueRef
 ir_expr_null(context_t *cnt, bl_node_t *nl);
 
 static LLVMValueRef
@@ -178,10 +181,11 @@ should_load(bl_node_t *node, LLVMValueRef llvm_value)
   if ((bl_node_is(node, BL_NODE_EXPR_UNARY) && bl_peek_expr_unary(node)->op == BL_SYM_ASTERISK))
     return true;
 
-  if ((bl_node_is(node, BL_NODE_EXPR_MEMBER) &&
-       bl_peek_expr_member(node)->kind == BL_MEM_KIND_STRUCT))
+  if (bl_node_is(node, BL_NODE_EXPR_MEMBER) &&
+      bl_peek_expr_member(node)->kind == BL_MEM_KIND_STRUCT)
     return true;
 
+  if (bl_node_is(node, BL_NODE_EXPR_ELEM)) return true;
   if (LLVMIsAAllocaInst(llvm_value) || LLVMIsAGlobalVariable(llvm_value)) return true;
 
   return false;
@@ -409,6 +413,8 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   if (bl_peek_decl_value(_callee_ident->ref)->mutable) {
     if (bl_node_is(_call->ref, BL_NODE_EXPR_MEMBER)) {
       llvm_fn = ir_expr_member(cnt, _call->ref);
+    } else if (bl_node_is(_call->ref, BL_NODE_EXPR_ELEM)) {
+      llvm_fn = ir_expr_elem(cnt, _call->ref);
     } else {
       llvm_fn = llvm_values_get(cnt, _callee_ident->ref);
     }
@@ -464,6 +470,25 @@ ir_expr_member(context_t *cnt, bl_node_t *member)
   }
   assert(result);
   return result;
+}
+
+LLVMValueRef
+ir_expr_elem(context_t *cnt, bl_node_t *elem)
+{
+  bl_node_expr_elem_t *_elem = bl_peek_expr_elem(elem);
+  LLVMValueRef         ptr   = ir_expr(cnt, _elem->next);
+
+  assert(_elem->index && "invalid array element index");
+  LLVMValueRef index = ir_expr(cnt, _elem->index);
+
+  if (should_load(_elem->index, index))
+    index = LLVMBuildLoad(cnt->llvm_builder, index, gname("tmp"));
+
+  LLVMValueRef indices[2];
+  indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+  indices[1] = index;
+
+  return LLVMBuildGEP(cnt->llvm_builder, ptr, indices, BL_ARRAY_SIZE(indices), "");
 }
 
 LLVMValueRef
@@ -771,6 +796,9 @@ ir_expr(context_t *cnt, bl_node_t *expr)
     break;
   case BL_NODE_EXPR_MEMBER:
     result = ir_expr_member(cnt, expr);
+    break;
+  case BL_NODE_EXPR_ELEM:
+    result = ir_expr_elem(cnt, expr);
     break;
   case BL_NODE_EXPR_CAST:
     result = ir_expr_cast(cnt, expr);
