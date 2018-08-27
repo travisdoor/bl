@@ -1,6 +1,5 @@
 /* testing playground */
 
-
 main : fn () s32 {
   arr s32[64];
   arr[0] = 10;
