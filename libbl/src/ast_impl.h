@@ -280,6 +280,7 @@ extern uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
 extern uint64_t bl_buildin_hashes[BL_BUILDIN_COUNT];
 
 #define bl_node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
+#define bl_node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
 /*************************************************************************************************
  * generation of node typedefs and code enum
