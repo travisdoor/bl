@@ -1049,8 +1049,10 @@ check_expr_member(context_t *cnt, bl_node_t **member)
   } else if (bl_ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
     if (bl_ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
-      bl_log("arr.count!!!");
-      // TODO: create reference to array size and replace this node
+      *member = bl_ast_node_dup(cnt->ast, bl_ast_type_get_arr(lhs_type));
+      // TODO: set next node???
+
+      FINISH;
     }
   } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
