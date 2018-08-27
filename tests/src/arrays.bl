@@ -15,6 +15,13 @@ main : fn () s32 {
     printf("arr[i] = %d\n", arr[i]);
     i = i + 1;
   }
+
+
+  foos Foo[10];
   
   return EXIT_SUCCESS;
+};
+
+Foo : struct {
+  i s32
 };
