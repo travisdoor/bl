@@ -507,8 +507,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
 
   case BL_NODE_TYPE_STRUCT: {
     bl_node_type_struct_t *_struct_type = bl_peek_type_struct(*node);
-    
-    bl_node_t **            tmp;
+
+    bl_node_t **tmp;
     bl_node_foreach_ref(_struct_type->types, tmp)
     {
       flatten(tmp);
@@ -1050,6 +1050,7 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     /* is member array 'count'??? */
     if (bl_ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
       bl_log("arr.count!!!");
+      // TODO: create reference to array size and replace this node
     }
   } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
