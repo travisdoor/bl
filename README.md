@@ -7,7 +7,7 @@ Visit [wiki](https://github.com/travisdoor/bl/wiki) for more informations...
 
 ## Example
 
-```C
+```rust
 #load "libc.bl"
 
 main : fn () s32 {
