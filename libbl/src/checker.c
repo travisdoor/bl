@@ -298,7 +298,8 @@ check_unresolved(context_t *cnt)
   bo_iterator_t iter;
   BArray *      q;
   fiter_t       tmp;
-  bl_node_t *   tmp_node;
+  bl_node_t **  tmp_node;
+  bl_node_t *   tmp_ident;
 
   bl_bhtbl_foreach(cnt->waiting, iter)
   {
@@ -309,11 +310,11 @@ check_unresolved(context_t *cnt)
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp = bo_array_at(q, i, fiter_t);
       // bl_log("# %p index: %d", tmp.flatten, i);
-      tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t *);
-      assert(tmp_node);
-      tmp_node = wait_context(tmp_node);
-      if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_node))
-        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_node, BL_BUILDER_CUR_WORD,
+      tmp_node = bo_array_at(tmp.flatten, tmp.i, bl_node_t **);
+      assert(*tmp_node);
+      tmp_ident = wait_context(*tmp_node);
+      if (!bl_scope_has_symbol(cnt->provided_in_gscope, tmp_ident))
+        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_ident, BL_BUILDER_CUR_WORD,
                          "unknown symbol");
       flatten_put(cnt->flatten_cache, tmp.flatten);
     }
