@@ -21,16 +21,16 @@ main : fn () s32 {
   foos.count;
 
   i = 0;
-  /*while i < foos.count {
+  while i < foos.count {
     foos[i].i = i;
     i = i + 1;
-  }*/
+  }
 
-  /*i = 0;
+  i = 0;
   while i < foos.count {
     printf("foos[i].i = %d\n", foos[i].i);
     i = i + 1;
-  }*/
+  }
   
   return EXIT_SUCCESS;
 };

@@ -1017,8 +1017,18 @@ check_expr_member(context_t *cnt, bl_node_t **member)
 
   bl_node_t *lhs_type = bl_ast_get_type(_member->next);
   if (!lhs_type) FINISH;
+  if (bl_ast_type_get_arr(lhs_type)) {
+    /* is member array 'count'??? */
+    if (bl_ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
+      bl_node_t *tmp_next = (*member)->next;
+      *member             = bl_ast_node_dup(cnt->ast, bl_ast_type_get_arr(lhs_type));
+      (*member)->next     = tmp_next;
 
-  if (bl_node_is(lhs_type, BL_NODE_TYPE_STRUCT)) {
+      // TODO: set next node???
+
+      FINISH;
+    }
+  } else if (bl_node_is(lhs_type, BL_NODE_TYPE_STRUCT)) {
     /* structure member */
     _member->kind = BL_MEM_KIND_STRUCT;
 
@@ -1046,17 +1056,6 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     if (_member->ptr_ref) {
       check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, *member, BL_BUILDER_CUR_WORD,
                        "use '.' for access to enum variants");
-    }
-  } else if (bl_ast_type_get_arr(lhs_type)) {
-    /* is member array 'count'??? */
-    if (bl_ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
-      bl_node_t *tmp_next = (*member)->next;
-      *member             = bl_ast_node_dup(cnt->ast, bl_ast_type_get_arr(lhs_type));
-      (*member)->next     = tmp_next;
-
-      // TODO: set next node???
-
-      FINISH;
     }
   } else {
     check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
