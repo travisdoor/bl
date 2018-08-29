@@ -85,6 +85,9 @@ static bl_node_t *
 parse_load(context_t *cnt);
 
 static bl_node_t *
+parse_run(context_t *cnt);
+
+static bl_node_t *
 parse_link(context_t *cnt);
 
 static void
@@ -692,6 +695,7 @@ parse_atom_expr(context_t *cnt, bl_token_t *op)
   if ((expr = parse_expr_null(cnt))) return expr;
   if ((expr = parse_expr_sizeof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
+  if ((expr = parse_run(cnt))) return expr;
   if ((expr = parse_literal_fn(cnt))) return expr;
   if ((expr = parse_literal_struct(cnt))) return expr;
   if ((expr = parse_literal_enum(cnt))) return expr;
@@ -1214,6 +1218,22 @@ parse_link(context_t *cnt)
   bl_assembly_add_link(cnt->assembly, lib);
 
   return bl_ast_link(cnt->ast, tok_id, lib);
+}
+
+bl_node_t *
+parse_run(context_t *cnt)
+{
+  bl_token_t *tok = bl_tokens_consume_if(cnt->tokens, BL_SYM_RUN);
+  if (!tok) return NULL;
+
+  bl_node_t *call = parse_expr(cnt);
+  if (!call || bl_node_is_not(call, BL_NODE_EXPR_CALL)) {
+    parse_error(cnt, BL_ERR_EXPECTED_EXPR, tok, BL_BUILDER_CUR_AFTER,
+                "expected call after '#run' directive");
+    return bl_ast_bad(cnt->ast, tok);
+  }
+
+  return call;
 }
 
 bl_node_t *
