@@ -1,8 +1,8 @@
 /* testing playground */
 
+MyInt : s32;
+
 main : fn () s32 {
-  arr s32[64];
-  arr[0] = 10;
-  arr[10 + 1] = 10;
+  i MyInt;
   return 0;
 };
