@@ -26,9 +26,13 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <math.h>
 #include "ast_impl.h"
 
 #define CHUNK_SIZE 256
+#define MAX_ALIGNMENT 16
+
+#define NODE_SIZE (sizeof(bl_node_t) + MAX_ALIGNMENT)
 
 typedef struct chunk
 {
@@ -71,6 +75,28 @@ const char *bl_node_type_strings[] = {
 uint64_t bl_ftype_hashes[BL_FTYPE_COUNT];
 uint64_t bl_buildin_hashes[BL_BUILDIN_COUNT];
 
+static inline bool
+is_aligned(const void *p, size_t size)
+{
+  return (uintptr_t)p % size == 0;
+}
+
+static void
+align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
+{
+  if (is_aligned(*p, alignment)) {
+    *adjustment = 0;
+    return;
+  }
+
+  const size_t mask = alignment - 1;
+  assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+  const uintptr_t i_unaligned  = (uintptr_t)(*p);
+  const uintptr_t misalignment = i_unaligned & mask;
+  *adjustment                  = alignment - misalignment;
+  *p                           = (void *)(i_unaligned + *adjustment);
+}
+
 /*static void
 node_terminate(bl_node_t *node)
 {
@@ -86,13 +112,19 @@ node_terminate(bl_node_t *node)
 static inline bl_node_t *
 get_node_in_chunk(chunk_t *chunk, int i)
 {
-  return (bl_node_t *)((char *)chunk + (i * sizeof(bl_node_t)));
+  void *node = (void *)((char *)chunk + (i * NODE_SIZE));
+  /* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
+   * sizeof(bl_node_t) + MAX_ALIGNMENT) */
+  ptrdiff_t adj;
+  align_ptr_up(&node, MAX_ALIGNMENT, &adj);
+  assert(adj < MAX_ALIGNMENT);
+  return node;
 }
 
 static inline chunk_t *
 alloc_chunk(void)
 {
-  const size_t size_in_bytes = sizeof(bl_node_t) * CHUNK_SIZE;
+  const size_t size_in_bytes = NODE_SIZE * CHUNK_SIZE;
   chunk_t *    chunk         = bl_malloc(size_in_bytes);
   memset(chunk, 0, size_in_bytes);
   chunk->count = 1;
@@ -139,6 +171,8 @@ _alloc_node(bl_ast_t *ast, bl_node_code_e c, bl_token_t *tok)
   static int serial = 0;
   node->_serial     = serial++;
 #endif
+
+  assert(is_aligned(node, MAX_ALIGNMENT) && "unaligned allocation of node");
 
   return node;
 }
@@ -369,13 +403,14 @@ _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sy
   return (bl_node_t *)_expr_binop;
 }
 
-_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type)
+_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type, bool run)
 {
   bl_node_expr_call_t *_expr_call = alloc_node(ast, BL_NODE_EXPR_CALL, tok, bl_node_expr_call_t *);
   _expr_call->ref                 = ref;
   _expr_call->args                = args;
   _expr_call->argsc               = argsc;
   _expr_call->type                = type;
+  _expr_call->run                 = run;
   return (bl_node_t *)_expr_call;
 }
 
@@ -460,7 +495,6 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     const size_t filled = strlen(buf);                                                             \
     snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
   }
-
   if (!buf) return;
   if (!type) {
     append_buf(buf, len, "?");
@@ -877,7 +911,8 @@ bl_ast_can_impl_cast(bl_node_t *from_type, bl_node_t *to_type)
   if (tkind == BL_KIND_STRING && fkind == BL_KIND_PTR) return true;
 
   if ((fkind == BL_KIND_SINT || fkind == BL_KIND_UINT || fkind == BL_KIND_SIZE) &&
-      (tkind == BL_KIND_SINT || tkind == BL_KIND_UINT || tkind == BL_KIND_SIZE)) return true;
+      (tkind == BL_KIND_SINT || tkind == BL_KIND_UINT || tkind == BL_KIND_SIZE))
+    return true;
 
   if (tkind == BL_KIND_ENUM) {
     return bl_ast_can_impl_cast(from_type, bl_peek_type_enum(to_type)->base_type);

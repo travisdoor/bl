@@ -435,12 +435,12 @@ print_expr_call(bl_node_t *node, int pad)
   bl_node_expr_call_t *_call = bl_peek_expr_call(node);
   assert(_call->ref);
   if (bl_node_is(_call->ref, BL_NODE_IDENT)) {
-     bl_node_ident_t *_ident = bl_peek_ident(_call->ref);
+    bl_node_ident_t *_ident = bl_peek_ident(_call->ref);
     fprintf(stdout, "%s ->", _ident->str);
     print_address(_ident->ref);
   }
-
   print_type(_call->type);
+  if (_call->run) fprintf(stdout, " #run");
 
   bl_node_t *it;
   bl_node_foreach(_call->args, it)

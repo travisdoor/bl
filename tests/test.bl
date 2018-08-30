@@ -1,8 +1,12 @@
 /* testing playground */
 
-MyInt : s32;
+#load "libc.bl"
+
+test : fn () {
+  puts("hello");
+};
 
 main : fn () s32 {
-  i MyInt;
-  return 0;
+  #run test();
+  return EXIT_SUCCESS;
 };
