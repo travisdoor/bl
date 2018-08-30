@@ -1049,3 +1049,20 @@ bl_ast_unroll_ident(bl_node_t *ident)
 
   return ident;
 }
+
+bl_dependency_t *
+bl_ast_add_dep_uq(bl_node_t *decl, bl_node_t *dep, int type)
+{
+  assert(dep && "invalid dep");
+  BHashTable **   deps = &bl_peek_decl_value(decl)->deps;
+  bl_dependency_t tmp  = {.node = dep, .type = type};
+
+  if (!*deps) {
+    *deps = bo_htbl_new(sizeof(bl_dependency_t), 64);
+    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
+  } else if (!bo_htbl_has_key(*deps, (uint64_t)dep)) {
+    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
+  }
+
+  return &bo_htbl_at(*deps, (uint64_t)dep, bl_dependency_t);
+}

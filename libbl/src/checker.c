@@ -633,7 +633,8 @@ check_expr_call(context_t *cnt, bl_node_t **call)
 
   bl_node_t *callee = bl_peek_ident(ident)->ref;
   assert(callee);
-  bl_node_t *callee_type = bl_peek_decl_value(callee)->type;
+  bl_node_decl_value_t *_callee = bl_peek_decl_value(callee);
+  bl_node_t *callee_type = _callee->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
@@ -675,6 +676,9 @@ check_expr_call(context_t *cnt, bl_node_t **call)
     call_arg   = &(*call_arg)->next;
     callee_arg = callee_arg->next;
   }
+
+  /* set dependency to current function */
+  
 
   FINISH;
 }

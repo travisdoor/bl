@@ -117,7 +117,7 @@
     int            used; \
     int            order; \
     bool           in_gscope; \
-    BList         *deps; \
+    BHashTable    *deps; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
@@ -180,6 +180,7 @@
     bl_node_t *args; \
     int        argsc; \
     bl_node_t *type; \
+    bl_node_t *parent_fn; \
     bool       run; \
   }) \
   nt(EXPR_MEMBER, expr_member, struct { \
@@ -250,14 +251,14 @@ typedef enum
 
 typedef enum
 {
-  BL_FLAG_EXTERN = 1 << 0,
-  BL_FLAG_MAIN   = 1 << 1
+  BL_FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  BL_FLAG_MAIN   = 1 << 1  /* main method */
 } bl_node_flag_e;
 
 typedef enum
 {
-  BL_DEP_LAX    = 1 << 0,
-  BL_DEP_STRICT = 1 << 1,
+  BL_DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
+  BL_DEP_STRICT = 1 << 1, /* dependency must be linked for sucessful IR construction */
 } bl_dep_e;
 
 typedef struct bl_ast     bl_ast_t;
@@ -428,6 +429,7 @@ _BL_AST_NCTOR(expr_null, bl_node_t *type);
 extern bl_node_t bl_ftypes[];
 
 typedef void (*bl_visit_f)(void *, bl_node_t *);
+
 void
 bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt);
 
@@ -481,6 +483,9 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 
 bl_node_t *
 bl_ast_unroll_ident(bl_node_t *ident);
+
+bl_dependency_t *
+bl_ast_add_dep_uq(bl_node_t *decl, bl_node_t *dep, int type);
 
 /**************************************************************************************************/
 

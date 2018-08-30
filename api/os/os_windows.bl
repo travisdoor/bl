@@ -28,5 +28,16 @@
 
 #load "os/os.bl"
 
+/*
+ * This file contains OS-depend implementation and it's loaded by default by every assembly.
+ */
+
+/*
+ * Operating system type.
+ */
 OS	: OS_WINDOWS;
+
+/*
+ * Operating system name.
+ */
 OS_NAME : "windows";
