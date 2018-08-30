@@ -97,17 +97,17 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
   *p                           = (void *)(i_unaligned + *adjustment);
 }
 
-/*static void
+static void
 node_terminate(bl_node_t *node)
 {
   switch (node->code) {
-  case BL_NODE_LIT_FN:
-    bo_unref(bl_peek_lit_fn(node)->deps);
+  case BL_NODE_DECL_VALUE:
+    bo_unref(bl_peek_decl_value(node)->deps);
     break;
   default:
     break;
   }
-}*/
+}
 
 static inline bl_node_t *
 get_node_in_chunk(chunk_t *chunk, int i)
@@ -137,9 +137,9 @@ free_chunk(chunk_t *chunk)
   if (!chunk) return NULL;
 
   chunk_t *next = chunk->next;
-  /*for (int i = 0; i < chunk->count - 1; ++i) {
+  for (int i = 0; i < chunk->count - 1; ++i) {
     node_terminate(get_node_in_chunk(chunk, i + 1));
-    }*/
+  }
   bl_free(chunk);
   return next;
 }

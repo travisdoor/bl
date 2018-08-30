@@ -117,6 +117,7 @@
     int            used; \
     int            order; \
     bool           in_gscope; \
+    BList         *deps; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
