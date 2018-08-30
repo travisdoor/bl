@@ -1146,7 +1146,7 @@ arg:
     return bl_ast_bad(cnt->ast, tok_id);
   }
 
-  return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL);
+  return bl_ast_expr_call(cnt->ast, tok_id, ident, args, argsc, NULL, false);
 }
 
 bl_node_t *
@@ -1232,6 +1232,8 @@ parse_run(context_t *cnt)
                 "expected call after '#run' directive");
     return bl_ast_bad(cnt->ast, tok);
   }
+
+  bl_peek_expr_call(call)->run = true;
 
   return call;
 }

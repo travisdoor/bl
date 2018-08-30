@@ -57,8 +57,8 @@
     ft(BOOL,   bool)
 
 #define _BL_BUILDINS_LIST \
-    bt(MAIN,    main) \
-    bt(ARR_COUNT,   count) \
+    bt(MAIN,      main) \
+    bt(ARR_COUNT, count) \
 
 #define _BL_NODE_TYPE_LIST \
   nt(BAD, bad, struct { \
@@ -179,6 +179,7 @@
     bl_node_t *args; \
     int        argsc; \
     bl_node_t *type; \
+    bool       run; \
   }) \
   nt(EXPR_MEMBER, expr_member, struct { \
     bl_member_kind_e kind; \
@@ -252,9 +253,21 @@ typedef enum
   BL_FLAG_MAIN   = 1 << 1
 } bl_node_flag_e;
 
+typedef enum
+{
+  BL_DEP_LAX    = 1 << 0,
+  BL_DEP_STRICT = 1 << 1,
+} bl_dep_e;
+
 typedef struct bl_ast     bl_ast_t;
 typedef struct bl_node    bl_node_t;
 typedef enum bl_node_code bl_node_code_e;
+
+typedef struct
+{
+  bl_node_t *node; /* dependent node */
+  bl_dep_e   type; /* is dependency strict (ex.: caused by #run directive) */
+} bl_dependency_t;
 
 typedef enum
 {
@@ -399,7 +412,7 @@ _BL_AST_NCTOR(lit_enum, bl_node_t *type, bl_node_t *variants, bl_node_t *parent_
               bl_scope_t *scope);
 _BL_AST_NCTOR(lit, bl_node_t *type, bl_token_value_u value);
 _BL_AST_NCTOR(expr_binop, bl_node_t *lhs, bl_node_t *rhs, bl_node_t *type, bl_sym_e op);
-_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type);
+_BL_AST_NCTOR(expr_call, bl_node_t *ref, bl_node_t *args, int argsc, bl_node_t *type, bool run);
 _BL_AST_NCTOR(expr_member, bl_member_kind_e kind, bl_node_t *ident, bl_node_t *next,
               bl_node_t *type, bool ptr_ref);
 _BL_AST_NCTOR(expr_elem, bl_node_t *next, bl_node_t *type, bl_node_t *index);
