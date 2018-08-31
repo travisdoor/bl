@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   os.bl
+// File:   visitor_impl.h
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   31/8/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,10 +26,40 @@
 // SOFTWARE.
 //************************************************************************************************
 
-// All supported platforms
-OS_WINDOWS : 0;
-OS_MACOS   : 1; 
-OS_LINUX   : 2;
+#ifndef BL_VISITOR_IMPL_H
+#define BL_VISITOR_IMPL_H
 
-EXIT_FAILURE : 1;
-EXIT_SUCCESS : 0;
+#include "ast_impl.h"
+
+typedef struct bl_visitor bl_visitor_t;
+
+#define BL_VISIT_SKIP NULL
+
+typedef enum
+{
+  BL_VISIT_DECL_VALUE,
+  BL_VISIT_COUNT
+} bl_visit_e;
+
+typedef void (*bl_visit_f)(bl_visitor_t *visitor, bl_node_t *node);
+
+struct bl_visitor
+{
+  bl_visit_f visitors[BL_VISIT_COUNT];
+  void *     context;
+  int        nesting;
+};
+
+void
+bl_visitor_init(bl_visitor_t *visitor, void *context);
+
+void
+bl_visitor_add(bl_visitor_t *visitor, bl_visit_f callback, bl_visit_e type);
+
+void
+bl_visitor_walk_decl_ublock(bl_visitor_t *visitor, bl_node_t *ublock);
+
+void
+bl_visitor_walk_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value);
+
+#endif

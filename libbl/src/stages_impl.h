@@ -59,6 +59,9 @@ void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 void
+bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly);
+
+void
 bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
 
 void

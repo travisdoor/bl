@@ -180,7 +180,6 @@
     bl_node_t *args; \
     int        argsc; \
     bl_node_t *type; \
-    bl_node_t *parent_fn; \
     bool       run; \
   }) \
   nt(EXPR_MEMBER, expr_member, struct { \
@@ -427,11 +426,6 @@ _BL_AST_NCTOR(expr_null, bl_node_t *type);
  * other
  *************************************************************************************************/
 extern bl_node_t bl_ftypes[];
-
-typedef void (*bl_visit_f)(void *, bl_node_t *);
-
-void
-bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt);
 
 void
 bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type);

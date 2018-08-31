@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   os.bl
+// File:   post.c
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   31/8/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,10 +26,48 @@
 // SOFTWARE.
 //************************************************************************************************
 
-// All supported platforms
-OS_WINDOWS : 0;
-OS_MACOS   : 1; 
-OS_LINUX   : 2;
+#include "stages_impl.h"
+#include "common_impl.h"
+#include "ast_impl.h"
+#include "visitor_impl.h"
 
-EXIT_FAILURE : 1;
-EXIT_SUCCESS : 0;
+#define peek_cnt(visitor) ((context_t)(visitor)->context)
+
+typedef struct
+{
+  bl_builder_t * builder;
+  bl_assembly_t *assembly;
+  bl_unit_t *    unit;
+} context_t;
+
+static void
+visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value);
+
+void
+visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+{
+  bl_log("decl value");
+  bl_visitor_walk_decl_value(visitor, decl_value);
+}
+
+void
+bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+  context_t cnt = {
+      .builder  = builder,
+      .assembly = assembly,
+      .unit     = NULL,
+  };
+
+  bl_visitor_t visitor;
+  bl_visitor_init(&visitor, &cnt);
+
+  bl_visitor_add(&visitor, visit_decl_value, BL_VISIT_DECL_VALUE);
+
+  bl_unit_t *unit;
+  bl_barray_foreach(assembly->units, unit)
+  {
+    cnt.unit = unit;
+    bl_visitor_walk_decl_ublock(&visitor, unit->ast.root);
+  }
+}

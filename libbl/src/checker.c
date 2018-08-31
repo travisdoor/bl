@@ -180,11 +180,13 @@ check_type_enum(context_t *cnt, bl_node_t **type);
 static void
 check_unresolved(context_t *cnt);
 
+#if 0
 static void
 _check_unused(context_t *cnt, bl_node_t *node);
 
 static void
 check_unused(context_t *cnt);
+#endif
 
 // impl
 bl_node_t *
@@ -633,8 +635,8 @@ check_expr_call(context_t *cnt, bl_node_t **call)
 
   bl_node_t *callee = bl_peek_ident(ident)->ref;
   assert(callee);
-  bl_node_decl_value_t *_callee = bl_peek_decl_value(callee);
-  bl_node_t *callee_type = _callee->type;
+  bl_node_decl_value_t *_callee     = bl_peek_decl_value(callee);
+  bl_node_t *           callee_type = _callee->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
@@ -676,9 +678,6 @@ check_expr_call(context_t *cnt, bl_node_t **call)
     call_arg   = &(*call_arg)->next;
     callee_arg = callee_arg->next;
   }
-
-  /* set dependency to current function */
-  
 
   FINISH;
 }
@@ -1284,6 +1283,7 @@ check_decl_value(context_t *cnt, bl_node_t **decl)
   FINISH;
 }
 
+#if 0
 void
 _check_unused(context_t *cnt, bl_node_t *node)
 {
@@ -1296,6 +1296,20 @@ _check_unused(context_t *cnt, bl_node_t *node)
       check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
                          "symbol is declared but never used");
     }
+
+#if VERBOSE
+    bl_log("*** DEPENDENCIES ***");
+    if (_decl->deps) {
+      bl_log("%s", bl_peek_ident(_decl->name)->str);
+      bo_iterator_t         i;
+      //bl_node_decl_value_t *_tmp;
+      bl_bhtbl_foreach(_decl->deps, i)
+      {
+        //_tmp = bl_peek_decl_value(bo_htbl_iter_peek_value(_decl->deps, &i, bl_node_t *));
+	//bl_log("  %s", bl_peek_ident(_tmp->name)->str);
+      }
+    }
+#endif
     break;
   }
   default:
@@ -1310,6 +1324,7 @@ check_unused(context_t *cnt)
    * unordered linear iteration is used on AST */
   bl_ast_visit_every_node(cnt->ast, (bl_visit_f)_check_unused, cnt);
 }
+#endif
 
 void
 bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
@@ -1333,7 +1348,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   check_unresolved(&cnt);
-  check_unused(&cnt);
+  //check_unused(&cnt);
 
   flatten_free_cache(cnt.flatten_cache);
 

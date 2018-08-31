@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   os.bl
+// File:   visitor.c
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   31/8/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,10 +26,62 @@
 // SOFTWARE.
 //************************************************************************************************
 
-// All supported platforms
-OS_WINDOWS : 0;
-OS_MACOS   : 1; 
-OS_LINUX   : 2;
+#include "visitor_impl.h"
 
-EXIT_FAILURE : 1;
-EXIT_SUCCESS : 0;
+static inline void
+call_visit(bl_visitor_t *visitor, bl_node_t *node, bl_visit_e type)
+{
+  if (visitor->visitors[type] != NULL) visitor->visitors[type](visitor, node);
+}
+
+static void
+visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+{
+  bl_visitor_walk_decl_value(visitor, decl_value);
+}
+
+void
+bl_visitor_init(bl_visitor_t *visitor, void *context)
+{
+  visitor->context = context;
+  visitor->nesting = 0;
+
+  visitor->visitors[BL_VISIT_DECL_VALUE]  = visit_decl_value;
+}
+
+void
+bl_visitor_add(bl_visitor_t *visitor, bl_visit_f callback, bl_visit_e type)
+{
+  visitor->visitors[type] = callback;
+}
+
+void
+bl_visitor_walk_decl_ublock(bl_visitor_t *visitor, bl_node_t *ublock)
+{
+  assert(ublock);
+  visitor->nesting++;
+  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
+
+  bl_node_t *node;
+  bl_node_foreach(_ublock->nodes, node)
+  {
+    switch (bl_node_code(node)) {
+    case BL_NODE_DECL_VALUE:
+      call_visit(visitor, node, BL_VISIT_DECL_VALUE);
+      break;
+    case BL_NODE_LINK:
+    case BL_NODE_LOAD:
+      break;
+
+    default:
+      bl_abort("invalid node in ublock");
+    }
+  }
+}
+
+void
+bl_visitor_walk_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+{
+  assert(decl_value);
+  //bl_node_decl_value_t *_decl = bl_peek_decl_value(decl_value);
+}

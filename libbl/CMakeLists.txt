@@ -30,6 +30,7 @@ set(HEADER_FILES_IMPL
         src/stages_impl.h
         src/common_impl.h 
         src/scope_impl.h
+        src/visitor_impl.h
         src/ast_impl.h)
 
 set(SOURCE_FILES
@@ -52,6 +53,8 @@ set(SOURCE_FILES
         src/checker.c
         src/scope.c
         src/common.c 
+        src/post.c 
+        src/visitor.c 
         src/ast.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})
