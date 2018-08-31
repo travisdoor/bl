@@ -103,7 +103,7 @@ static bl_node_t *
 parse_block(context_t *cnt);
 
 static bl_node_t *
-parse_decl_value(context_t *cnt);
+parse_decl(context_t *cnt);
 
 static bl_node_t *
 parse_arr(context_t *cnt);
@@ -537,9 +537,9 @@ parse_literal_enum(context_t *cnt)
   bl_node_t * prev_variant = NULL;
 
 next:
-  *variant = parse_decl_value(cnt);
+  *variant = parse_decl(cnt);
   if (*variant) {
-    bl_node_decl_value_t *_variant = bl_peek_decl_value(*variant);
+    bl_node_decl_t *_variant = bl_peek_decl(*variant);
     _variant->kind                 = BL_DECL_KIND_VARIANT;
 
     if (_variant->type) {
@@ -555,7 +555,7 @@ next:
 
       /* implicitly infer value from previous enum varaint if there is one */
       if (prev_variant) {
-        bl_node_decl_value_t *_prev_variant = bl_peek_decl_value(prev_variant);
+        bl_node_decl_t *_prev_variant = bl_peek_decl(prev_variant);
 
         bl_token_value_u value;
         value.u             = 1;
@@ -862,11 +862,11 @@ parse_type_fn(context_t *cnt, bool named_args, int ptr)
   int         argc_types = 0;
 
 next:
-  *arg_type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
+  *arg_type = named_args ? parse_decl(cnt) : parse_type(cnt);
   if (*arg_type) {
     /* validate argument */
-    if (bl_node_is(*arg_type, BL_NODE_DECL_VALUE)) {
-      bl_node_decl_value_t *_arg_decl = bl_peek_decl_value(*arg_type);
+    if (bl_node_is(*arg_type, BL_NODE_DECL)) {
+      bl_node_decl_t *_arg_decl = bl_peek_decl(*arg_type);
       _arg_decl->kind                 = BL_DECL_KIND_ARG;
     }
     arg_type = &(*arg_type)->next;
@@ -920,11 +920,11 @@ parse_type_struct(context_t *cnt, bool named_args, int ptr)
   int         typesc = 0;
 
 next:
-  *type = named_args ? parse_decl_value(cnt) : parse_type(cnt);
+  *type = named_args ? parse_decl(cnt) : parse_type(cnt);
   if (*type) {
     /* validate argument */
-    if (bl_node_is(*type, BL_NODE_DECL_VALUE)) {
-      bl_node_decl_value_t *_member_decl = bl_peek_decl_value(*type);
+    if (bl_node_is(*type, BL_NODE_DECL)) {
+      bl_node_decl_t *_member_decl = bl_peek_decl(*type);
       _member_decl->order                = typesc;
       _member_decl->used                 = 1;
       _member_decl->kind                 = BL_DECL_KIND_MEMBER;
@@ -970,7 +970,7 @@ parse_type_enum(context_t *cnt, int ptr)
 }
 
 bl_node_t *
-parse_decl_value(context_t *cnt)
+parse_decl(context_t *cnt)
 {
 #define RETURN_BAD                                                                                 \
   {                                                                                                \
@@ -1007,10 +1007,10 @@ parse_decl_value(context_t *cnt)
   }
 
   bl_node_t *prev_decl = cnt->curr_decl;
-  bl_node_t *decl = bl_ast_decl_value(cnt->ast, tok_ident, BL_DECL_KIND_UNKNOWN, ident, NULL, NULL,
+  bl_node_t *decl = bl_ast_decl(cnt->ast, tok_ident, BL_DECL_KIND_UNKNOWN, ident, NULL, NULL,
                                       true, 0, 0, false);
   cnt->curr_decl  = decl;
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
 
   {
     int buildin = bl_ast_is_buildin(ident);
@@ -1245,9 +1245,9 @@ parse_block(context_t *cnt)
   if (!tok_begin) return NULL;
 
   bl_node_t *           prev_compound = cnt->curr_compound;
-  bl_node_t *           block  = bl_ast_decl_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
+  bl_node_t *           block  = bl_ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
                                        bl_scope_new(cnt->assembly->scope_cache, 1024));
-  bl_node_decl_block_t *_block = bl_peek_decl_block(block);
+  bl_node_block_t *_block = bl_peek_block(block);
   cnt->curr_compound           = block;
 
   bl_token_t *tok;
@@ -1291,7 +1291,7 @@ next:
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
-  if ((*node = parse_decl_value(cnt))) {
+  if ((*node = parse_decl(cnt))) {
     insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }
@@ -1333,12 +1333,12 @@ void
 parse_ublock_content(context_t *cnt, bl_node_t *ublock)
 {
   cnt->curr_compound             = ublock;
-  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
+  bl_node_ublock_t *_ublock = bl_peek_ublock(ublock);
   bl_node_t **           node    = &_ublock->nodes;
 next:
   parse_flags(cnt, 0);
 
-  if ((*node = parse_decl_value(cnt))) {
+  if ((*node = parse_decl(cnt))) {
     insert_node(&node);
     parse_semicolon_rq(cnt);
     goto next;
@@ -1392,6 +1392,6 @@ bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit)
                    .core_loaded   = false,
                    .inside_loop   = false};
 
-  unit->ast.root = bl_ast_decl_ublock(&unit->ast, NULL, unit, assembly->gscope);
+  unit->ast.root = bl_ast_ublock(&unit->ast, NULL, unit, assembly->gscope);
   parse_ublock_content(&cnt, unit->ast.root);
 }

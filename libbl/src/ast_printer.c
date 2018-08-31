@@ -112,10 +112,10 @@ static void
 print_type_struct(bl_node_t *node, int pad);
 
 static void
-print_decl_value(bl_node_t *node, int pad);
+print_decl(bl_node_t *node, int pad);
 
 static void
-print_decl_block(bl_node_t *node, int pad);
+print_block(bl_node_t *node, int pad);
 
 static void
 print_bad(bl_node_t *node, int pad);
@@ -280,10 +280,10 @@ print_loop(bl_node_t *node, int pad)
 }
 
 void
-print_decl_value(bl_node_t *node, int pad)
+print_decl(bl_node_t *node, int pad)
 {
   print_head("declaration", node->src, node, pad);
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
+  bl_node_decl_t *_decl = bl_peek_decl(node);
   fprintf(stdout, "[%d] ", _decl->kind);
   fprintf(stdout, "%s (%s) used: %d ", bl_peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable", _decl->used);
@@ -307,10 +307,10 @@ print_type_struct(bl_node_t *node, int pad)
 }
 
 void
-print_decl_block(bl_node_t *node, int pad)
+print_block(bl_node_t *node, int pad)
 {
   print_head("block", node->src, node, pad);
-  bl_node_decl_block_t *_block = bl_peek_decl_block(node);
+  bl_node_block_t *_block = bl_peek_block(node);
 
   bl_node_t *it;
   bl_node_foreach(_block->nodes, it)
@@ -340,7 +340,7 @@ void
 print_ublock(bl_node_t *node, int pad)
 {
   print_head("unit", node->src, node, pad);
-  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(node);
+  bl_node_ublock_t *_ublock = bl_peek_ublock(node);
   fprintf(stdout, "%s", _ublock->unit->name);
 
   bl_node_t *it;
@@ -459,8 +459,11 @@ print_node(bl_node_t *node, int pad)
   if (!node) return;
 
   switch (node->code) {
-  case BL_NODE_DECL_UBLOCK:
+  case BL_NODE_UBLOCK:
     print_ublock(node, pad);
+    break;
+  case BL_NODE_BLOCK:
+    print_block(node, pad);
     break;
   case BL_NODE_IDENT:
     print_ident(node, pad);
@@ -477,11 +480,8 @@ print_node(bl_node_t *node, int pad)
   case BL_NODE_TYPE_STRUCT:
     print_type_struct(node, pad);
     break;
-  case BL_NODE_DECL_VALUE:
-    print_decl_value(node, pad);
-    break;
-  case BL_NODE_DECL_BLOCK:
-    print_decl_block(node, pad);
+  case BL_NODE_DECL:
+    print_decl(node, pad);
     break;
   case BL_NODE_LIT:
     print_lit(node, pad);

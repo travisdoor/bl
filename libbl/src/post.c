@@ -41,13 +41,13 @@ typedef struct
 } context_t;
 
 static void
-visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value);
+visit_decl(bl_visitor_t *visitor, bl_node_t *decl);
 
 void
-visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+visit_decl(bl_visitor_t *visitor, bl_node_t *decl)
 {
   bl_log("decl value");
-  bl_visitor_walk_decl_value(visitor, decl_value);
+  bl_visitor_walk_decl(visitor, decl);
 }
 
 void
@@ -62,12 +62,12 @@ bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
   bl_visitor_t visitor;
   bl_visitor_init(&visitor, &cnt);
 
-  bl_visitor_add(&visitor, visit_decl_value, BL_VISIT_DECL_VALUE);
+  bl_visitor_add(&visitor, visit_decl, BL_VISIT_DECL);
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    bl_visitor_walk_decl_ublock(&visitor, unit->ast.root);
+    bl_visitor_walk_ublock(&visitor, unit->ast.root);
   }
 }

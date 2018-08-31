@@ -35,9 +35,9 @@ call_visit(bl_visitor_t *visitor, bl_node_t *node, bl_visit_e type)
 }
 
 static void
-visit_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+visit_decl(bl_visitor_t *visitor, bl_node_t *decl)
 {
-  bl_visitor_walk_decl_value(visitor, decl_value);
+  bl_visitor_walk_decl(visitor, decl);
 }
 
 void
@@ -46,7 +46,7 @@ bl_visitor_init(bl_visitor_t *visitor, void *context)
   visitor->context = context;
   visitor->nesting = 0;
 
-  visitor->visitors[BL_VISIT_DECL_VALUE]  = visit_decl_value;
+  visitor->visitors[BL_VISIT_DECL]  = visit_decl;
 }
 
 void
@@ -56,18 +56,18 @@ bl_visitor_add(bl_visitor_t *visitor, bl_visit_f callback, bl_visit_e type)
 }
 
 void
-bl_visitor_walk_decl_ublock(bl_visitor_t *visitor, bl_node_t *ublock)
+bl_visitor_walk_ublock(bl_visitor_t *visitor, bl_node_t *ublock)
 {
   assert(ublock);
   visitor->nesting++;
-  bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(ublock);
+  bl_node_ublock_t *_ublock = bl_peek_ublock(ublock);
 
   bl_node_t *node;
   bl_node_foreach(_ublock->nodes, node)
   {
     switch (bl_node_code(node)) {
-    case BL_NODE_DECL_VALUE:
-      call_visit(visitor, node, BL_VISIT_DECL_VALUE);
+    case BL_NODE_DECL:
+      call_visit(visitor, node, BL_VISIT_DECL);
       break;
     case BL_NODE_LINK:
     case BL_NODE_LOAD:
@@ -80,8 +80,8 @@ bl_visitor_walk_decl_ublock(bl_visitor_t *visitor, bl_node_t *ublock)
 }
 
 void
-bl_visitor_walk_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value)
+bl_visitor_walk_decl(bl_visitor_t *visitor, bl_node_t *decl)
 {
-  assert(decl_value);
-  //bl_node_decl_value_t *_decl = bl_peek_decl_value(decl_value);
+  assert(decl);
+  //bl_node_decl_t *_decl = bl_peek_decl(decl);
 }

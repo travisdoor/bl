@@ -37,7 +37,7 @@ typedef struct bl_visitor bl_visitor_t;
 
 typedef enum
 {
-  BL_VISIT_DECL_VALUE,
+  BL_VISIT_DECL,
   BL_VISIT_COUNT
 } bl_visit_e;
 
@@ -57,9 +57,9 @@ void
 bl_visitor_add(bl_visitor_t *visitor, bl_visit_f callback, bl_visit_e type);
 
 void
-bl_visitor_walk_decl_ublock(bl_visitor_t *visitor, bl_node_t *ublock);
+bl_visitor_walk_ublock(bl_visitor_t *visitor, bl_node_t *ublock);
 
 void
-bl_visitor_walk_decl_value(bl_visitor_t *visitor, bl_node_t *decl_value);
+bl_visitor_walk_decl(bl_visitor_t *visitor, bl_node_t *decl);
 
 #endif

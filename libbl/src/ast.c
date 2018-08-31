@@ -101,8 +101,8 @@ static void
 node_terminate(bl_node_t *node)
 {
   switch (node->code) {
-  case BL_NODE_DECL_VALUE:
-    bo_unref(bl_peek_decl_value(node)->deps);
+  case BL_NODE_DECL:
+    bo_unref(bl_peek_decl(node)->deps);
     break;
   default:
     break;
@@ -233,10 +233,10 @@ _BL_AST_NCTOR(link, const char *lib)
   return (bl_node_t *)_link;
 }
 
-_BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope)
+_BL_AST_NCTOR(ublock, struct bl_unit *unit, bl_scope_t *scope)
 {
-  bl_node_decl_ublock_t *_ublock =
-      alloc_node(ast, BL_NODE_DECL_UBLOCK, tok, bl_node_decl_ublock_t *);
+  bl_node_ublock_t *_ublock =
+      alloc_node(ast, BL_NODE_UBLOCK, tok, bl_node_ublock_t *);
   _ublock->scope = scope;
   _ublock->unit  = unit;
   return (bl_node_t *)_ublock;
@@ -289,19 +289,19 @@ _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt)
   return (bl_node_t *)_loop;
 }
 
-_BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope)
+_BL_AST_NCTOR(block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope)
 {
-  bl_node_decl_block_t *_block = alloc_node(ast, BL_NODE_DECL_BLOCK, tok, bl_node_decl_block_t *);
+  bl_node_block_t *_block = alloc_node(ast, BL_NODE_BLOCK, tok, bl_node_block_t *);
   _block->nodes                = nodes;
   _block->parent_compound      = parent_compound;
   _block->scope                = scope;
   return (bl_node_t *)_block;
 }
 
-_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+_BL_AST_NCTOR(decl, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
               bool mutable, int flags, int order, bool in_gscope)
 {
-  bl_node_decl_value_t *_decl = alloc_node(ast, BL_NODE_DECL_VALUE, tok, bl_node_decl_value_t *);
+  bl_node_decl_t *_decl = alloc_node(ast, BL_NODE_DECL, tok, bl_node_decl_t *);
   _decl->kind                 = kind;
   _decl->type                 = type;
   _decl->name                 = name;
@@ -495,8 +495,8 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     break;
   }
 
-  case BL_NODE_DECL_VALUE: {
-    _type_to_string(buf, len, bl_peek_decl_value(type)->type);
+  case BL_NODE_DECL: {
+    _type_to_string(buf, len, bl_peek_decl(type)->type);
     break;
   }
 
@@ -534,7 +534,7 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
     }
 
     if (_struct->base_decl) {
-      bl_node_t *name = bl_peek_decl_value(_struct->base_decl)->name;
+      bl_node_t *name = bl_peek_decl(_struct->base_decl)->name;
       assert(name);
 
       append_buf(buf, len, bl_peek_ident(name)->str);
@@ -588,10 +588,10 @@ bl_ast_get_scope(bl_node_t *node)
   assert(node);
   switch (bl_node_code(node)) {
 
-  case BL_NODE_DECL_UBLOCK:
-    return bl_peek_decl_ublock(node)->scope;
-  case BL_NODE_DECL_BLOCK:
-    return bl_peek_decl_block(node)->scope;
+  case BL_NODE_UBLOCK:
+    return bl_peek_ublock(node)->scope;
+  case BL_NODE_BLOCK:
+    return bl_peek_block(node)->scope;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->scope;
   case BL_NODE_LIT_STRUCT:
@@ -609,8 +609,8 @@ bl_ast_get_type(bl_node_t *node)
 {
   if (!node) return NULL;
   switch (bl_node_code(node)) {
-  case BL_NODE_DECL_VALUE:
-    return bl_ast_get_type(bl_peek_decl_value(node)->type);
+  case BL_NODE_DECL:
+    return bl_ast_get_type(bl_peek_decl(node)->type);
   case BL_NODE_LIT:
     return bl_ast_get_type(bl_peek_lit(node)->type);
   case BL_NODE_LIT_FN:
@@ -652,8 +652,8 @@ bl_ast_set_type(bl_node_t *node, bl_node_t *type)
 {
   assert(node && type);
   switch (bl_node_code(node)) {
-  case BL_NODE_DECL_VALUE:
-    bl_peek_decl_value(node)->type = type;
+  case BL_NODE_DECL:
+    bl_peek_decl(node)->type = type;
     break;
   case BL_NODE_LIT:
     bl_peek_lit(node)->type = type;
@@ -867,10 +867,10 @@ bl_ast_get_parent_compound(bl_node_t *node)
   switch (bl_node_code(node)) {
   case BL_NODE_IDENT:
     return bl_peek_ident(node)->parent_compound;
-  case BL_NODE_DECL_UBLOCK:
+  case BL_NODE_UBLOCK:
     return NULL;
-  case BL_NODE_DECL_BLOCK:
-    return bl_peek_decl_block(node)->parent_compound;
+  case BL_NODE_BLOCK:
+    return bl_peek_block(node)->parent_compound;
   case BL_NODE_LIT_FN:
     return bl_peek_lit_fn(node)->parent_compound;
   case BL_NODE_LIT_STRUCT:
@@ -1041,7 +1041,7 @@ bl_dependency_t *
 bl_ast_add_dep_uq(bl_node_t *decl, bl_node_t *dep, int type)
 {
   assert(dep && "invalid dep");
-  BHashTable **   deps = &bl_peek_decl_value(decl)->deps;
+  BHashTable **   deps = &bl_peek_decl(decl)->deps;
   bl_dependency_t tmp  = {.node = dep, .type = type};
 
   if (!*deps) {

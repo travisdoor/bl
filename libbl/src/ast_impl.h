@@ -78,6 +78,16 @@
     bl_node_t  *arr; \
     int         ptr; \
   }) \
+  nt(UBLOCK, ublock, struct { \
+    bl_node_t      *nodes; \
+    bl_scope_t     *scope; \
+    struct bl_unit *unit; \
+  }) \
+  nt(BLOCK, block, struct { \
+    bl_node_t  *nodes; \
+    bl_scope_t *scope; \
+    bl_node_t  *parent_compound; \
+  }) \
   nt(STMT_RETURN, stmt_return, struct { \
     bl_node_t *expr; \
     bl_node_t *fn_decl; \
@@ -97,17 +107,7 @@
   nt(STMT_CONTINUE, stmt_continue, struct { \
     void *_; \
   }) \
-  nt(DECL_UBLOCK, decl_ublock, struct { \
-    bl_node_t      *nodes; \
-    bl_scope_t     *scope; \
-    struct bl_unit *unit; \
-  }) \
-  nt(DECL_BLOCK, decl_block, struct { \
-    bl_node_t  *nodes; \
-    bl_scope_t *scope; \
-    bl_node_t  *parent_compound; \
-  }) \
-  nt(DECL_VALUE, decl_value, struct { \
+  nt(DECL, decl, struct { \
     bl_decl_kind_e kind; \
     bl_node_t     *name; \
     bl_node_t     *type; \
@@ -392,15 +392,15 @@ _BL_NODE_TYPE_LIST
 _BL_AST_NCTOR(bad);
 _BL_AST_NCTOR(load, const char *filepath);
 _BL_AST_NCTOR(link, const char *lib);
-_BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
+_BL_AST_NCTOR(ublock, struct bl_unit *unit, bl_scope_t *scope);
+_BL_AST_NCTOR(block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(stmt_break);
 _BL_AST_NCTOR(stmt_continue);
-_BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
-_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+_BL_AST_NCTOR(decl, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
               bool mutable, int flags, int order, bool in_gscope);
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);

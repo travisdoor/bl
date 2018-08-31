@@ -145,7 +145,7 @@ static bool
 check_ident(context_t *cnt, bl_node_t **ident);
 
 static bool
-check_decl_value(context_t *cnt, bl_node_t **decl);
+check_decl(context_t *cnt, bl_node_t **decl);
 
 static bool
 check_expr_call(context_t *cnt, bl_node_t **call);
@@ -226,12 +226,12 @@ wait_context(bl_node_t *node)
     return node;
   case BL_NODE_EXPR_MEMBER:
     return bl_peek_expr_member(node)->ident;
-  case BL_NODE_DECL_VALUE:
-    return bl_peek_decl_value(node)->name;
+  case BL_NODE_DECL:
+    return bl_peek_decl(node)->name;
   case BL_NODE_STMT_RETURN: {
     bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
     assert(decl && "return statement without context");
-    return bl_peek_decl_value(decl)->name;
+    return bl_peek_decl(decl)->name;
   }
   default:
     return NULL;
@@ -377,8 +377,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
 #define flatten(_node) flatten_node(cnt, fbuf, (_node))
 
   switch (bl_node_code(*node)) {
-  case BL_NODE_DECL_VALUE: {
-    bl_node_decl_value_t *_decl = bl_peek_decl_value(*node);
+  case BL_NODE_DECL: {
+    bl_node_decl_t *_decl = bl_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
     if (_decl->in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
@@ -413,8 +413,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
     return;
   }
 
-  case BL_NODE_DECL_BLOCK: {
-    bl_node_decl_block_t *_block = bl_peek_decl_block(*node);
+  case BL_NODE_BLOCK: {
+    bl_node_block_t *_block = bl_peek_block(*node);
 
     bl_node_t **tmp;
     bl_node_foreach_ref(_block->nodes, tmp)
@@ -424,8 +424,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
     return;
   }
 
-  case BL_NODE_DECL_UBLOCK: {
-    bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(*node);
+  case BL_NODE_UBLOCK: {
+    bl_node_ublock_t *_ublock = bl_peek_ublock(*node);
 
     bl_node_t **tmp;
     bl_node_foreach_ref(_ublock->nodes, tmp)
@@ -635,8 +635,8 @@ check_expr_call(context_t *cnt, bl_node_t **call)
 
   bl_node_t *callee = bl_peek_ident(ident)->ref;
   assert(callee);
-  bl_node_decl_value_t *_callee     = bl_peek_decl_value(callee);
-  bl_node_t *           callee_type = _callee->type;
+  bl_node_decl_t *_callee     = bl_peek_decl(callee);
+  bl_node_t *     callee_type = _callee->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
@@ -724,8 +724,8 @@ check_node(context_t *cnt, bl_node_t **node)
     result = check_ident(cnt, node);
     break;
 
-  case BL_NODE_DECL_VALUE:
-    result = check_decl_value(cnt, node);
+  case BL_NODE_DECL:
+    result = check_decl(cnt, node);
     break;
 
   case BL_NODE_EXPR_CALL:
@@ -822,12 +822,12 @@ check_ident(context_t *cnt, bl_node_t **ident)
     if (!found) WAIT;
   }
 
-  if (bl_node_is(found, BL_NODE_DECL_VALUE)) {
-    bl_peek_decl_value(found)->used++;
+  if (bl_node_is(found, BL_NODE_DECL)) {
+    bl_peek_decl(found)->used++;
   }
 
   _ident->ref = bl_ast_unroll_ident(found);
-  // assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
+  // assert(bl_node_is(_ident->ref, BL_NODE_DECL));
 
   if (_ident->ptr || _ident->arr) {
     /* when ident reference is pointer we need to create copy of declaration with different
@@ -853,9 +853,9 @@ check_stmt_return(context_t *cnt, bl_node_t **ret)
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(*ret);
   assert(_ret->fn_decl);
 
-  bl_node_decl_value_t *_callee_decl = bl_peek_decl_value(_ret->fn_decl);
-  bl_node_lit_fn_t *    _callee      = bl_peek_lit_fn(_callee_decl->value);
-  bl_node_t *           fn_ret_type  = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
+  bl_node_decl_t *  _callee_decl = bl_peek_decl(_ret->fn_decl);
+  bl_node_lit_fn_t *_callee      = bl_peek_lit_fn(_callee_decl->value);
+  bl_node_t *       fn_ret_type  = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
   if (fn_ret_type == NULL) WAIT;
 
   if (_ret->expr) {
@@ -908,9 +908,9 @@ check_expr_binop(context_t *cnt, bl_node_t **binop)
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
-      assert(bl_node_is(_lhs->ref, BL_NODE_DECL_VALUE));
+      assert(bl_node_is(_lhs->ref, BL_NODE_DECL));
 
-      if (!bl_peek_decl_value(_lhs->ref)->mutable) {
+      if (!bl_peek_decl(_lhs->ref)->mutable) {
         check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, _binop->lhs, BL_BUILDER_CUR_WORD,
                          "declaration is not mutable and cannot be assigned");
       }
@@ -1039,7 +1039,7 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
     assert(_lhs_type->base_decl);
 
-    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    found = _lookup(bl_peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
     if (!found) WAIT;
 
     if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
@@ -1053,7 +1053,7 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     bl_node_type_enum_t *_lhs_type = bl_peek_type_enum(lhs_type);
     assert(_lhs_type->base_decl);
 
-    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    found = _lookup(bl_peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
     if (!found) WAIT;
 
     if (_member->ptr_ref) {
@@ -1112,7 +1112,7 @@ check_stmt_if(context_t *cnt, bl_node_t **stmt_if)
 bool
 infer_type(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
   if (!_decl->value) return false;
   bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
   if (!inferred_type) return false;
@@ -1129,10 +1129,10 @@ infer_type(context_t *cnt, bl_node_t *decl)
 }
 
 bool
-check_decl_value(context_t *cnt, bl_node_t **decl)
+check_decl(context_t *cnt, bl_node_t **decl)
 {
-  bl_node_decl_value_t *_decl          = bl_peek_decl_value(*decl);
-  bool                  lookup_in_tree = true;
+  bl_node_decl_t *_decl          = bl_peek_decl(*decl);
+  bool            lookup_in_tree = true;
 
   assert(_decl->name);
   infer_type(cnt, *decl);
@@ -1289,8 +1289,8 @@ _check_unused(context_t *cnt, bl_node_t *node)
 {
   assert(node);
   switch (bl_node_code(node)) {
-  case BL_NODE_DECL_VALUE: {
-    bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
+  case BL_NODE_DECL: {
+    bl_node_decl_t *_decl = bl_peek_decl(node);
     if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
         !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
       check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
@@ -1302,10 +1302,10 @@ _check_unused(context_t *cnt, bl_node_t *node)
     if (_decl->deps) {
       bl_log("%s", bl_peek_ident(_decl->name)->str);
       bo_iterator_t         i;
-      //bl_node_decl_value_t *_tmp;
+      //bl_node_decl_t *_tmp;
       bl_bhtbl_foreach(_decl->deps, i)
       {
-        //_tmp = bl_peek_decl_value(bo_htbl_iter_peek_value(_decl->deps, &i, bl_node_t *));
+        //_tmp = bl_peek_decl(bo_htbl_iter_peek_value(_decl->deps, &i, bl_node_t *));
 	//bl_log("  %s", bl_peek_ident(_tmp->name)->str);
       }
     }
@@ -1348,7 +1348,7 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   check_unresolved(&cnt);
-  //check_unused(&cnt);
+  // check_unused(&cnt);
 
   flatten_free_cache(cnt.flatten_cache);
 
