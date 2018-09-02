@@ -30,6 +30,8 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
+#define VERBOSE 1
+
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
   {                                                                                                \
     bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
@@ -55,28 +57,49 @@ post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt);
 void
 post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
 {
+  context_t *_cnt = (context_t *)cnt;
   assert(decl);
   bl_node_decl_t *_decl = bl_peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
       !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
-    post_warning_node((context_t *)cnt, _decl->name, BL_BUILDER_CUR_WORD,
-                      "symbol is declared but never used");
+    post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
+  bl_node_t *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
-  case BL_DECL_KIND_FN: break;
+  case BL_DECL_KIND_FN: _cnt->curr_dependent = decl; break;
   default: break;
   }
 
   bl_ast_walk(visitor, decl, cnt);
+  _cnt->curr_dependent = prev_dependent;
+
+#if VERBOSE
+  if (_decl->deps) {
+    bl_log(BL_YELLOW("'%s'") " depends on:", bl_peek_ident(_decl->name)->str);
+    bo_iterator_t   it;
+    bl_dependency_t tmp;
+    bl_bhtbl_foreach(_decl->deps, it)
+    {
+      tmp = bo_htbl_iter_peek_value(_decl->deps, &it, bl_dependency_t);
+      bl_log(BL_GREEN("[%s]") " %s", tmp.type == BL_DEP_STRICT ? "STRICT" : " LAX ",
+             bl_peek_ident(bl_peek_decl(tmp.node)->name)->str);
+    }
+  }
+#endif
 }
 
 void
 post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt)
 {
+  context_t *_cnt = (context_t *)cnt;
   assert(call);
   bl_node_expr_call_t *_call = bl_peek_expr_call(call);
-  if (_call->run) bl_log("call in compile time");
+
+  assert(_cnt->curr_dependent);
+  bl_node_t *callee = bl_ast_unroll_ident(_call->ref);
+  if (bl_node_is(callee, BL_NODE_DECL))
+    bl_ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? BL_DEP_STRICT : BL_DEP_LAX);
 
   bl_ast_walk(visitor, call, cnt);
 }
