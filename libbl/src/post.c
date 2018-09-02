@@ -29,45 +29,78 @@
 #include "stages_impl.h"
 #include "common_impl.h"
 #include "ast_impl.h"
-#include "visitor_impl.h"
 
-#define peek_cnt(visitor) ((context_t)(visitor)->context)
+#define post_warning_node(cnt, node, pos, format, ...)                                             \
+  {                                                                                                \
+    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
+                   ##__VA_ARGS__);                                                                 \
+  }
+
+#define peek_cnt(v) ((context_t *)(v->cnt))
 
 typedef struct
 {
   bl_builder_t * builder;
   bl_assembly_t *assembly;
   bl_unit_t *    unit;
+  bl_node_t *    curr_dependent;
 } context_t;
 
 static void
-visit_decl(bl_visitor_t *visitor, bl_node_t *decl);
+post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt);
+
+static void
+post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt);
 
 void
-visit_decl(bl_visitor_t *visitor, bl_node_t *decl)
+post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
 {
-  bl_log("decl value");
-  bl_visitor_walk_decl(visitor, decl);
+  assert(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
+  if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
+      !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
+    post_warning_node((context_t *)cnt, _decl->name, BL_BUILDER_CUR_WORD,
+                      "symbol is declared but never used");
+  }
+
+  switch (_decl->kind) {
+  case BL_DECL_KIND_FN: break;
+  default: break;
+  }
+
+  bl_ast_walk(visitor, decl, cnt);
+}
+
+void
+post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt)
+{
+  assert(call);
+  bl_node_expr_call_t *_call = bl_peek_expr_call(call);
+  if (_call->run) bl_log("call in compile time");
+
+  bl_ast_walk(visitor, call, cnt);
 }
 
 void
 bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {
-      .builder  = builder,
-      .assembly = assembly,
-      .unit     = NULL,
+      .builder        = builder,
+      .assembly       = assembly,
+      .unit           = NULL,
+      .curr_dependent = NULL,
   };
 
-  bl_visitor_t visitor;
-  bl_visitor_init(&visitor, &cnt);
+  bl_ast_visitor_t visitor;
+  bl_ast_visitor_init(&visitor);
 
-  bl_visitor_add(&visitor, visit_decl, BL_VISIT_DECL);
+  bl_ast_visitor_add(&visitor, post_decl, BL_NODE_DECL);
+  bl_ast_visitor_add(&visitor, post_call, BL_NODE_EXPR_CALL);
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    bl_visitor_walk_ublock(&visitor, unit->ast.root);
+    bl_ast_visit(&visitor, unit->ast.root, &cnt);
   }
 }

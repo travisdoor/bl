@@ -423,8 +423,34 @@ _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);
 _BL_AST_NCTOR(expr_null, bl_node_t *type);
 
 /*************************************************************************************************
+ * AST visiting
+ *************************************************************************************************/
+
+typedef struct bl_ast_visitor bl_ast_visitor_t;
+typedef void (*bl_ast_visit_f)(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+struct bl_ast_visitor
+{
+  bl_ast_visit_f visitors[BL_NODE_COUNT];
+};
+
+void
+bl_ast_visitor_init(bl_ast_visitor_t *visitor);
+
+void
+bl_ast_visitor_add(bl_ast_visitor_t *visitor, bl_ast_visit_f fn, bl_node_code_e code);
+
+void
+bl_ast_visit(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+void
+bl_ast_walk(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+/*************************************************************************************************
  * other
  *************************************************************************************************/
+
+/* static fundamental type nodes */
 extern bl_node_t bl_ftypes[];
 
 void
