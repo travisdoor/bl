@@ -157,7 +157,7 @@ print_null(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad);
 void
 print_sizeof(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("sizeof", node->src, node, (int)pad);
+  print_head("sizeof", node->src, node, (intptr_t)pad);
   bl_node_expr_sizeof_t *_sizeof = bl_peek_expr_sizeof(node);
   print_type(_sizeof->in);
 }
@@ -165,7 +165,7 @@ print_sizeof(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_member(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("member", node->src, node, (int)pad);
+  print_head("member", node->src, node, (intptr_t)pad);
   bl_node_expr_member_t *_member = bl_peek_expr_member(node);
   print_type(_member->type);
   fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
@@ -175,7 +175,7 @@ print_member(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_elem(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("elem", node->src, node, (int)pad);
+  print_head("elem", node->src, node, (intptr_t)pad);
   bl_node_expr_elem_t *_elem = bl_peek_expr_elem(node);
   print_type(_elem->type);
   bl_ast_walk(visitor, node, pad + 1);
@@ -184,7 +184,7 @@ print_elem(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_load(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("load", node->src, node, (int)pad);
+  print_head("load", node->src, node, (intptr_t)pad);
   bl_node_load_t *_load = bl_peek_load(node);
   fprintf(stdout, "'%s'", _load->filepath);
 }
@@ -192,33 +192,33 @@ print_load(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_lit_struct(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("struct", node->src, node, (int)pad);
+  print_head("struct", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_lit_enum(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("enum", node->src, node, (int)pad);
+  print_head("enum", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_break(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("break", node->src, node, (int)pad);
+  print_head("break", node->src, node, (intptr_t)pad);
 }
 
 void
 print_continue(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("continue", node->src, node, (int)pad);
+  print_head("continue", node->src, node, (intptr_t)pad);
 }
 
 void
 print_cast(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("cast", node->src, node, (int)pad);
+  print_head("cast", node->src, node, (intptr_t)pad);
   bl_node_expr_cast_t *_cast = bl_peek_expr_cast(node);
   print_type(_cast->type);
   bl_ast_walk(visitor, node, pad + 1);
@@ -227,7 +227,7 @@ print_cast(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_null(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("null", node->src, node, (int)pad);
+  print_head("null", node->src, node, (intptr_t)pad);
   bl_node_expr_null_t *_null = bl_peek_expr_null(node);
   print_type(_null->type);
 }
@@ -235,7 +235,7 @@ print_null(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_unary(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("unary", node->src, node, (int)pad);
+  print_head("unary", node->src, node, (intptr_t)pad);
   bl_node_expr_unary_t *_unary = bl_peek_expr_unary(node);
   fprintf(stdout, "%s ", bl_sym_strings[_unary->op]);
   print_type(_unary->type);
@@ -245,21 +245,21 @@ print_unary(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_if(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("if", node->src, node, (int)pad);
+  print_head("if", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_loop(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("loop", node->src, node, (int)pad);
+  print_head("loop", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_decl(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("declaration", node->src, node, (int)pad);
+  print_head("declaration", node->src, node, (intptr_t)pad);
   bl_node_decl_t *_decl = bl_peek_decl(node);
   fprintf(stdout, "[%d] ", _decl->kind);
   fprintf(stdout, "%s (%s) used: %d ", bl_peek_ident(_decl->name)->str,
@@ -273,21 +273,21 @@ print_decl(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_type_struct(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("struct", node->src, node, (int)pad);
+  print_head("struct", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_block(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("block", node->src, node, (int)pad);
+  print_head("block", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad);
 }
 
 void
 print_ident(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("ident", node->src, node, (int)pad);
+  print_head("ident", node->src, node, (intptr_t)pad);
   bl_node_ident_t *_ident = bl_peek_ident(node);
   fprintf(stdout, "%s ->", _ident->str);
   print_address(_ident->ref);
@@ -296,14 +296,14 @@ print_ident(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_return(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("return", node->src, node, (int)pad);
+  print_head("return", node->src, node, (intptr_t)pad);
   bl_ast_walk(visitor, node, pad + 1);
 }
 
 void
 print_ublock(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("unit", node->src, node, (int)pad);
+  print_head("unit", node->src, node, (intptr_t)pad);
   bl_node_ublock_t *_ublock = bl_peek_ublock(node);
   fprintf(stdout, "%s", _ublock->unit->name);
   bl_ast_walk(visitor, node, pad + 1);
@@ -312,13 +312,13 @@ print_ublock(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_bad(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("INVALID", node->src, node, (int)pad);
+  print_head("INVALID", node->src, node, (intptr_t)pad);
 }
 
 void
 print_binop(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("binop", node->src, node, (int)pad);
+  print_head("binop", node->src, node, (intptr_t)pad);
   bl_node_expr_binop_t *_binop = bl_peek_expr_binop(node);
   fprintf(stdout, "%s ", bl_sym_strings[_binop->op]);
   print_type(_binop->type);
@@ -328,7 +328,7 @@ print_binop(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_lit(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("literal", node->src, node, (int)pad);
+  print_head("literal", node->src, node, (intptr_t)pad);
   bl_node_lit_t *_lit = bl_peek_lit(node);
   assert(_lit->type);
 
@@ -364,7 +364,7 @@ print_lit(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_lit_fn(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("function", node->src, node, (int)pad);
+  print_head("function", node->src, node, (intptr_t)pad);
   bl_node_lit_fn_t *_fn = bl_peek_lit_fn(node);
 
   print_type(_fn->type);
@@ -374,7 +374,7 @@ print_lit_fn(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 void
 print_call(bl_ast_visitor_t *visitor, bl_node_t *node, void *pad)
 {
-  print_head("call", node->src, node, (int)pad);
+  print_head("call", node->src, node, (intptr_t)pad);
   bl_node_expr_call_t *_call = bl_peek_expr_call(node);
   assert(_call->ref);
   if (bl_node_is(_call->ref, BL_NODE_IDENT)) {

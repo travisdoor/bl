@@ -10,7 +10,13 @@ main : fn () s32 {
   #run test();
 
   hello : fn () {
+    foo : fn () {
+    };
+
+    foo();
   };
+
+  hello();
 
   return EXIT_SUCCESS;
 };

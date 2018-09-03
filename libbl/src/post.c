@@ -82,7 +82,7 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
     bl_bhtbl_foreach(_decl->deps, it)
     {
       tmp = bo_htbl_iter_peek_value(_decl->deps, &it, bl_dependency_t);
-      bl_log(BL_GREEN("[%s]") " %s", tmp.type == BL_DEP_STRICT ? "STRICT" : " LAX ",
+      bl_log("  [%s] %s", tmp.type == BL_DEP_STRICT ? BL_RED("STRICT") : BL_GREEN(" LAX "),
              bl_peek_ident(bl_peek_decl(tmp.node)->name)->str);
     }
   }
