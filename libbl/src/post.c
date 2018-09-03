@@ -65,10 +65,9 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
     post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
-  /* store main method into assembly, it is used as starting point for IR generation later */
+  /* insert main function into ir_queue */
   if (_decl->flags & BL_FLAG_MAIN) {
-    assert(!_cnt->assembly->main);
-    _cnt->assembly->main = decl;
+    bl_assembly_add_into_ir(_cnt->assembly, decl);
   }
 
   bl_node_t *prev_dependent = _cnt->curr_dependent;

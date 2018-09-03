@@ -80,7 +80,7 @@ static void
 link_into_jit(context_t *cnt, bl_node_t *fn);
 
 static bool
-has_satysfied_deps(context_t *cnt, bl_node_t *fn);
+satysfy_deps(context_t *cnt, bl_node_t *fn);
 
 static LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl);
@@ -1141,7 +1141,6 @@ link(context_t *cnt, bl_node_t *entry)
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
 
-  //#define PRINT_IR
 #ifdef PRINT_IR
   {
     char *str = LLVMPrintModuleToString(dest_module);
@@ -1152,7 +1151,6 @@ link(context_t *cnt, bl_node_t *entry)
     LLVMDisposeMessage(str);
   }
 #endif
-#undef PRINT_IR
   return dest_module;
 }
 
@@ -1218,10 +1216,10 @@ link_into_jit(context_t *cnt, bl_node_t *fn)
 }
 
 static bool
-has_satysfied_deps(context_t *cnt, bl_node_t *fn)
+satysfied_deps(context_t *cnt, bl_node_t *fn)
 {
-  BHashTable *deps = bl_peek_decl(fn)->deps;
-  if (!deps) return true;
+  bool        result = true;
+  BHashTable *deps   = bl_peek_decl(fn)->deps;
 
   bo_iterator_t   iter;
   bl_dependency_t dep;
@@ -1230,16 +1228,19 @@ has_satysfied_deps(context_t *cnt, bl_node_t *fn)
     dep = bo_htbl_iter_peek_value(deps, &iter, bl_dependency_t);
 
     if (dep.type & BL_DEP_STRICT && !bo_htbl_has_key(cnt->llvm_modules, (uint64_t)dep.node)) {
-      return false;
+      /* unsatisfyed dependency -> insert into ir queue */
+      result = false;
+      bl_assembly_add_into_ir(cnt->assembly, dep.node);
     }
   }
 
-  return true;
+  return result;
 }
 
 void
 bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
+  asssert(bo_list_empty(assembly->ir_queue) && "nothig to generate");
   context_t cnt;
   cnt.builder        = builder;
   cnt.assembly       = assembly;
@@ -1259,41 +1260,7 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   generate(&cnt);
 
-  /* temporary link all generated modules until we will have dependency stuff */
-  assembly->llvm_module = LLVMModuleCreateWithNameInContext("main", cnt.llvm_cnt);
-
-  LLVMModuleRef llvm_module;
-  bo_iterator_t it;
-  bl_bhtbl_foreach(cnt.llvm_modules, it)
-  {
-    llvm_module = bo_htbl_iter_peek_value(cnt.llvm_modules, &it, LLVMModuleRef);
-    assert(llvm_module);
-
-#ifdef PRINT_IR
-    {
-      char *str = LLVMPrintModuleToString(llvm_module);
-      bl_log("\n--------------------------------------------------------------------------------"
-             "\n%s"
-             "\n--------------------------------------------------------------------------------",
-             str);
-      LLVMDisposeMessage(str);
-    }
-#endif
-
-    LLVMLinkModules2(assembly->llvm_module, llvm_module);
-  }
-
-#ifdef PRINT_IR
-  {
-    char *str = LLVMPrintModuleToString(assembly->llvm_module);
-    bl_log("\n--------------------------------------------------------------------------------"
-           "\n%s"
-           "\n--------------------------------------------------------------------------------",
-           str);
-    LLVMDisposeMessage(str);
-  }
-#endif
-
+  // assembly->llvm_module = LLVMModuleCreateWithNameInContext("main", cnt.llvm_cnt);
   ir_validate(assembly->llvm_module);
 
   assembly->llvm_cnt = cnt.llvm_cnt;

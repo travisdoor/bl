@@ -50,8 +50,6 @@ typedef struct bl_assembly
   bl_scope_t *      gscope;
   BList *           ir_queue; /* generated into IR (entry functions 'main' etc.)*/
 
-  struct bl_node *main;
-
   /* LLVM */
   LLVMContextRef         llvm_cnt;
   LLVMModuleRef          llvm_module;
