@@ -48,11 +48,13 @@ typedef struct bl_assembly
 
   bl_scope_cache_t *scope_cache;
   bl_scope_t *      gscope;
-  BList *           ir_queue; /* generated into IR */
+  BList *           ir_queue; /* generated into IR (entry functions 'main' etc.)*/
+
+  struct bl_node *main;
 
   /* LLVM */
-  LLVMContextRef llvm_cnt;
-  LLVMModuleRef  llvm_module;
+  LLVMContextRef         llvm_cnt;
+  LLVMModuleRef          llvm_module;
   LLVMExecutionEngineRef llvm_runtime_engine;
 } bl_assembly_t;
 
