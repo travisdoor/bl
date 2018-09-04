@@ -39,7 +39,8 @@
 #define gname(s) ""
 #endif
 
-//#define PRINT_IR
+#define VERBOSE 1
+#define PRINT_IR 1
 
 typedef struct
 {
@@ -57,7 +58,6 @@ typedef struct
   /* JIT execution engine for #run called methods */
   LLVMExecutionEngineRef llvm_jit;
   BHashTable *           jit_linked;
-  BHashTable *           in_queue;
   bl_node_t *            main_tmp;
 
   LLVMBasicBlockRef break_block;
@@ -81,13 +81,19 @@ link(context_t *cnt, bl_node_t *entry);
 static LLVMModuleRef
 _link(context_t *cnt, bl_node_t *entry);
 
-#if 0
+static LLVMExecutionEngineRef
+create_jit(LLVMContextRef llvm_cnt);
+
 static void
 link_into_jit(context_t *cnt, bl_node_t *fn);
-#endif
 
+/* check if declaration has all it's dependencies already generated in LLVM Modules, by
+ * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
 static bool
-satisfy_deps(context_t *cnt, bl_node_t *decl);
+is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only);
+
+static LLVMGenericValueRef
+run(context_t *cnt, bl_node_t *fn);
 
 static LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl);
@@ -124,6 +130,12 @@ ir_expr_unary(context_t *cnt, bl_node_t *unary);
 
 static LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call);
+
+static LLVMValueRef
+ir_expr_call_rt(context_t *cnt, bl_node_t *call);
+
+static LLVMValueRef
+ir_expr_call_ct(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
 ir_expr_member(context_t *cnt, bl_node_t *member);
@@ -407,6 +419,15 @@ ir_lit(context_t *cnt, bl_node_t *lit)
 LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call)
 {
+  assert(call);
+  /* run in compile time or in runtime */
+  if (bl_peek_expr_call(call)->run) return ir_expr_call_ct(cnt, call);
+  return ir_expr_call_rt(cnt, call);
+}
+
+LLVMValueRef
+ir_expr_call_rt(context_t *cnt, bl_node_t *call)
+{
   LLVMValueRef         result        = NULL;
   bl_node_expr_call_t *_call         = bl_peek_expr_call(call);
   bl_node_ident_t *    _callee_ident = bl_peek_ident(
@@ -446,6 +467,15 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)_call->argsc, "");
   bl_free(llvm_args);
   return result;
+}
+
+LLVMValueRef
+ir_expr_call_ct(context_t *cnt, bl_node_t *call)
+{
+  bl_node_expr_call_t *_call = bl_peek_expr_call(call);
+  // TODO: handle return values
+  run(cnt, _call->ref);
+  return NULL;
 }
 
 LLVMValueRef
@@ -514,7 +544,6 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
 
   LLVMOpcode op = src_size > dest_size ? LLVMTrunc : LLVMSExt;
 
-  // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
 
   case LLVMPointerTypeKind: {
@@ -539,10 +568,7 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   case LLVMFloatTypeKind:
   case LLVMDoubleTypeKind: {
     switch (src_kind) {
-    case LLVMIntegerTypeKind:
-      op = LLVMSIToFP;
-      // bl_log("si -> fp");
-      break;
+    case LLVMIntegerTypeKind: op = LLVMSIToFP; break;
     case LLVMFloatTypeKind:
     case LLVMDoubleTypeKind: {
       op = LLVMFPExt;
@@ -1117,6 +1143,40 @@ ir_stmt_continue(context_t *cnt, bl_node_t *cont)
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
 
+LLVMExecutionEngineRef
+create_jit(LLVMContextRef llvm_cnt)
+{
+  LLVMModuleRef          module = LLVMModuleCreateWithNameInContext("run", llvm_cnt);
+  LLVMExecutionEngineRef jit;
+  char *                 llvm_error = NULL;
+
+  if (LLVMCreateJITCompilerForModule(&jit, module, 3, &llvm_error) != 0)
+    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
+
+  return jit;
+}
+
+LLVMGenericValueRef
+run(context_t *cnt, bl_node_t *fn)
+{
+  bl_node_t *decl = bl_ast_unroll_ident(fn);
+  link_into_jit(cnt, decl);
+  LLVMValueRef        llvm_fn;
+  LLVMGenericValueRef result;
+
+  bl_node_decl_t *_decl     = bl_peek_decl(decl);
+  const char *    decl_name = bl_peek_ident(_decl->name)->str;
+  assert(decl_name);
+
+  if (!LLVMFindFunction(cnt->llvm_jit, decl_name, &llvm_fn)) {
+    result = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+  } else {
+    bl_abort("unknown function %s", decl_name);
+  }
+
+  return result;
+}
+
 void
 generate(context_t *cnt)
 {
@@ -1131,7 +1191,7 @@ generate(context_t *cnt)
     _decl = bl_peek_decl(decl);
     if (_decl->flags & BL_FLAG_EXTERN) continue;
 
-    if (satisfy_deps(cnt, decl)) {
+    if (is_satisfied(cnt, decl, true)) {
       generate_decl(cnt, decl);
 
       if (_decl->flags & BL_FLAG_MAIN) {
@@ -1141,6 +1201,9 @@ generate(context_t *cnt)
     } else {
       /* declaration is waiting for it's dependencies and need to be processed later */
       bo_list_push_back(queue, decl);
+#if VERBOSE
+      bl_log(BL_RED("defered: '%s'"), bl_peek_ident(bl_peek_decl(decl)->name)->str);
+#endif
     }
   }
 }
@@ -1149,8 +1212,10 @@ void
 generate_decl(context_t *cnt, bl_node_t *decl)
 {
   assert(decl);
-  bl_log("generate: %s", bl_peek_ident(bl_peek_decl(decl)->name)->str);
   bl_node_decl_t *_decl = bl_peek_decl(decl);
+#if VERBOSE
+  bl_log(BL_GREEN("generate: '%s'"), bl_peek_ident(_decl->name)->str);
+#endif
   cnt->llvm_module =
       LLVMModuleCreateWithNameInContext(bl_peek_ident(_decl->name)->str, cnt->llvm_cnt);
   ir_decl(cnt, decl);
@@ -1164,7 +1229,7 @@ link(context_t *cnt, bl_node_t *entry)
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
 
-#ifdef PRINT_IR
+#if PRINT_IR
   {
     char *str = LLVMPrintModuleToString(dest_module);
     bl_log("\n--------------------------------------------------------------------------------"
@@ -1210,15 +1275,16 @@ _link(context_t *cnt, bl_node_t *entry)
   return dest_module;
 }
 
-#if 0
 static void
 link_into_jit(context_t *cnt, bl_node_t *fn)
 {
+  assert(fn);
   if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn)) return;
 
   bl_node_decl_t *_fn = bl_peek_decl(fn);
-  assert(bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn));
-  assert("invalid llvm module for function %s");
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn))
+    bl_abort("Missing llvm module for '%s', this is usualy caused by #run directive.",
+             bl_peek_ident(_fn->name)->str);
 
   LLVMModuleRef module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
   module               = LLVMCloneModule(module);
@@ -1238,15 +1304,6 @@ link_into_jit(context_t *cnt, bl_node_t *fn)
     }
   }
 }
-#endif
-
-static inline void
-schedule_generate(context_t *cnt, bl_node_t *decl)
-{
-  if (bo_htbl_has_key(cnt->in_queue, (uint64_t)decl)) return;
-  bo_list_push_back(cnt->assembly->ir_queue, decl);
-  bo_htbl_insert_empty(cnt->in_queue, (uint64_t)decl);
-}
 
 static inline bool
 generated(context_t *cnt, bl_node_t *decl)
@@ -1255,11 +1312,10 @@ generated(context_t *cnt, bl_node_t *decl)
 }
 
 bool
-satisfy_deps(context_t *cnt, bl_node_t *decl)
+is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only)
 {
-  bool        result = true;
-  BHashTable *deps   = bl_peek_decl(decl)->deps;
-  if (!deps) return result;
+  BHashTable *deps = bl_peek_decl(decl)->deps;
+  if (!deps) return true;
 
   bo_iterator_t   iter;
   bl_dependency_t dep;
@@ -1267,21 +1323,23 @@ satisfy_deps(context_t *cnt, bl_node_t *decl)
   {
     dep = bo_htbl_iter_peek_value(deps, &iter, bl_dependency_t);
 
-    schedule_generate(cnt, dep.node);
-    if (dep.type & BL_DEP_STRICT && !generated(cnt, dep.node)) {
-      /* unsatisfied dependency -> insert into ir queue */
-      result = false;
+    // PERFORMANCE: is there some better solution than check whole tree???
+    if (dep.type & BL_DEP_STRICT || !strict_only) {
+      if (!generated(cnt, dep.node)) {
+        return false;
+      } else {
+        return is_satisfied(cnt, dep.node, false);
+      }
     }
   }
 
-  return result;
+  return true;
 }
 
 void
 bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
-  bl_log("generated %d declarations", assembly->gdecl_count);
   context_t cnt;
   cnt.builder        = builder;
   cnt.assembly       = assembly;
@@ -1293,13 +1351,13 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
   cnt.continue_block = NULL;
   cnt.main_tmp       = NULL;
   cnt.is_gscope      = true;
-  cnt.jit_linked     = bo_htbl_new(0, assembly->gdecl_count);
-  cnt.in_queue       = bo_htbl_new(0, assembly->gdecl_count);
+  cnt.jit_linked     = bo_htbl_new(0, bo_list_size(assembly->ir_queue));
   cnt.llvm_cnt       = LLVMContextCreate();
   cnt.llvm_builder   = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), assembly->gdecl_count);
+  cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
   cnt.llvm_values    = bo_htbl_new(sizeof(LLVMValueRef), 256);
   cnt.llvm_module    = NULL;
+  cnt.llvm_jit       = create_jit(cnt.llvm_cnt);
 
   generate(&cnt);
 
@@ -1311,8 +1369,8 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
   ir_validate(assembly->llvm_module);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
+  assembly->llvm_jit = cnt.llvm_jit;
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.llvm_values);
   bo_unref(cnt.jit_linked);
-  bo_unref(cnt.in_queue);
 }

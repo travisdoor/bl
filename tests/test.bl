@@ -2,21 +2,23 @@
 
 #load "libc.bl"
 
+foo : fn () {
+  puts("hello from foo");
+  bar();
+};
+
 test : fn () {
   puts("hello");
+  foo();
+  bar();
 };
 
 main : fn () s32 {
   #run test();
-
-  hello : fn () {
-    foo : fn () {
-    };
-
-    foo();
-  };
-
-  hello();
-
+  bar();
   return EXIT_SUCCESS;
+};
+
+bar : fn () {
+  puts("hello from bar");
 };

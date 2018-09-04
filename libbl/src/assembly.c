@@ -75,8 +75,8 @@ bl_assembly_delete(bl_assembly_t *assembly)
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */
-  if (assembly->llvm_runtime_engine)
-    LLVMDisposeExecutionEngine(assembly->llvm_runtime_engine);
+  if (assembly->llvm_jit)
+    LLVMDisposeExecutionEngine(assembly->llvm_jit);
   else
     LLVMDisposeModule(assembly->llvm_module);
 

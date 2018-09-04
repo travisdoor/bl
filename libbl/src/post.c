@@ -65,16 +65,14 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
     post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
-  /* insert main function into ir_queue */
-  if (_decl->flags & BL_FLAG_MAIN) {
-    bo_list_push_back(_cnt->assembly->ir_queue, decl);
-  }
-
   bl_node_t *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
   case BL_DECL_KIND_FN:
     _cnt->curr_dependent = decl;
-    _cnt->assembly->gdecl_count++;
+    bo_list_push_back(_cnt->assembly->ir_queue, decl);
+    break;
+  case BL_DECL_KIND_FIELD:
+    if (_decl->in_gscope) bo_list_push_back(_cnt->assembly->ir_queue, decl);
     break;
   default: break;
   }
@@ -106,7 +104,7 @@ post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt)
 
   assert(_cnt->curr_dependent);
   bl_node_t *callee = bl_ast_unroll_ident(_call->ref);
-  if (bl_node_is(callee, BL_NODE_DECL))
+  if (bl_node_is(callee, BL_NODE_DECL) && !(bl_peek_decl(callee)->flags & BL_FLAG_EXTERN))
     bl_ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? BL_DEP_STRICT : BL_DEP_LAX);
 
   bl_ast_walk(visitor, call, cnt);
