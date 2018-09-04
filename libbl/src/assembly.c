@@ -134,10 +134,3 @@ bl_assembly_get_unit(bl_assembly_t *assembly, int i)
 {
   return bo_array_at(assembly->units, (size_t)i, bl_unit_t *);
 }
-
-void
-bl_assembly_add_into_ir(bl_assembly_t *assembly, bl_node_t *node)
-{
-  assert(node);
-  bo_list_push_back(assembly->ir_queue, node);
-}

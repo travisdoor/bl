@@ -67,12 +67,15 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
 
   /* insert main function into ir_queue */
   if (_decl->flags & BL_FLAG_MAIN) {
-    bl_assembly_add_into_ir(_cnt->assembly, decl);
+    bo_list_push_back(_cnt->assembly->ir_queue, decl);
   }
 
   bl_node_t *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
-  case BL_DECL_KIND_FN: _cnt->curr_dependent = decl; break;
+  case BL_DECL_KIND_FN:
+    _cnt->curr_dependent = decl;
+    _cnt->assembly->gdecl_count++;
+    break;
   default: break;
   }
 

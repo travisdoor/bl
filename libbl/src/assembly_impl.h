@@ -49,14 +49,12 @@ typedef struct bl_assembly
   bl_scope_cache_t *scope_cache;
   bl_scope_t *      gscope;
   BList *           ir_queue; /* generated into IR (entry functions 'main' etc.)*/
+  size_t            gdecl_count; /* count of declarations to be generated */
 
   /* LLVM */
   LLVMContextRef         llvm_cnt;
   LLVMModuleRef          llvm_module;
   LLVMExecutionEngineRef llvm_runtime_engine;
 } bl_assembly_t;
-
-void
-bl_assembly_add_into_ir(bl_assembly_t *assembly, struct bl_node *node);
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
