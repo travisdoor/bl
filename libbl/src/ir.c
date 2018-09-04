@@ -1341,22 +1341,15 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
   context_t cnt;
+  memset(&cnt, 0, sizeof(cnt));
   cnt.builder        = builder;
   cnt.assembly       = assembly;
-  cnt.fn_entry_block = NULL;
-  cnt.fn_init_block  = NULL;
-  cnt.fn_ret_block   = NULL;
-  cnt.fn_ret_val     = NULL;
-  cnt.break_block    = NULL;
-  cnt.continue_block = NULL;
-  cnt.main_tmp       = NULL;
   cnt.is_gscope      = true;
   cnt.jit_linked     = bo_htbl_new(0, bo_list_size(assembly->ir_queue));
   cnt.llvm_cnt       = LLVMContextCreate();
   cnt.llvm_builder   = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
   cnt.llvm_values    = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.llvm_module    = NULL;
   cnt.llvm_jit       = create_jit(cnt.llvm_cnt);
 
   generate(&cnt);
