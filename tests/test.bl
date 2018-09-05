@@ -13,9 +13,19 @@ test : fn () {
   bar();
 };
 
+gimme : fn () s32 {
+  return bang(665);
+};
+
+bang : fn (i s32) s32 {
+  return i + 1;
+};
+
 main : fn () s32 {
   #run test();
+  a := #run gimme();
   bar();
+  printf("a = %d\n", a);
   return EXIT_SUCCESS;
 };
 

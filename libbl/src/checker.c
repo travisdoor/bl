@@ -665,6 +665,25 @@ check_expr_call(context_t *cnt, bl_node_t **call)
     callee_arg = callee_arg->next;
   }
 
+  if (_call->run) {
+    bl_type_kind_e callee_ret_tkind =
+        bl_ast_get_type_kind(bl_ast_unroll_ident(_callee_type->ret_type));
+    switch (callee_ret_tkind) {
+    case BL_KIND_FN:
+    case BL_KIND_PTR:
+    case BL_KIND_STRING:
+    case BL_KIND_STRUCT:
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
+                       "method called in compile time can return fundamental types only");
+    default: break;
+    }
+
+    if (_call->argsc) {
+      check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, *call, BL_BUILDER_CUR_WORD,
+                       "method called in compile time cannot take arguments, remove '#run'?");
+    }
+  }
+
   FINISH;
 }
 

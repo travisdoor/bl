@@ -40,7 +40,6 @@
 #endif
 
 #define VERBOSE 1
-#define PRINT_IR 1
 
 typedef struct
 {
@@ -474,7 +473,24 @@ ir_expr_call_ct(context_t *cnt, bl_node_t *call)
 {
   bl_node_expr_call_t *_call = bl_peek_expr_call(call);
   // TODO: handle return values
-  run(cnt, _call->ref);
+  LLVMGenericValueRef generic = run(cnt, _call->ref);
+  if (!generic) return NULL;
+
+  LLVMTypeRef llvm_type = to_llvm_type(cnt, bl_ast_unroll_ident(_call->type));
+  assert(llvm_type);
+
+  LLVMTypeKind kind = LLVMGetTypeKind(llvm_type);
+
+  switch (kind) {
+  case LLVMVoidTypeKind: return NULL;
+  case LLVMIntegerTypeKind:
+    return LLVMConstInt(llvm_type, LLVMGenericValueToInt(generic, false), false);
+  case LLVMFloatTypeKind:
+  case LLVMDoubleTypeKind:
+    return LLVMConstReal(llvm_type, LLVMGenericValueToFloat(llvm_type, generic));
+  default: bl_abort("unsupported type of run result");
+  }
+
   return NULL;
 }
 
@@ -1229,7 +1245,7 @@ link(context_t *cnt, bl_node_t *entry)
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
 
-#if PRINT_IR
+#if VERBOSE
   {
     char *str = LLVMPrintModuleToString(dest_module);
     bl_log("\n--------------------------------------------------------------------------------"
@@ -1314,6 +1330,10 @@ generated(context_t *cnt, bl_node_t *decl)
 bool
 is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only)
 {
+#if VERBOSE
+  if (!strict_only) bl_log(BL_YELLOW("checking non-strict dependencies"));
+#endif
+  assert(decl);
   BHashTable *deps = bl_peek_decl(decl)->deps;
   if (!deps) return true;
 
@@ -1324,11 +1344,12 @@ is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only)
     dep = bo_htbl_iter_peek_value(deps, &iter, bl_dependency_t);
 
     // PERFORMANCE: is there some better solution than check whole tree???
-    if (dep.type & BL_DEP_STRICT || !strict_only) {
+    bool check_tree = strict_only ? dep.type & BL_DEP_STRICT : true;
+    if (check_tree) {
       if (!generated(cnt, dep.node)) {
         return false;
-      } else {
-        return is_satisfied(cnt, dep.node, false);
+      } else if (check_tree && !is_satisfied(cnt, dep.node, false)) {
+        return false;
       }
     }
   }
@@ -1342,15 +1363,15 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
   context_t cnt;
   memset(&cnt, 0, sizeof(cnt));
-  cnt.builder        = builder;
-  cnt.assembly       = assembly;
-  cnt.is_gscope      = true;
-  cnt.jit_linked     = bo_htbl_new(0, bo_list_size(assembly->ir_queue));
-  cnt.llvm_cnt       = LLVMContextCreate();
-  cnt.llvm_builder   = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
-  cnt.llvm_values    = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.llvm_jit       = create_jit(cnt.llvm_cnt);
+  cnt.builder      = builder;
+  cnt.assembly     = assembly;
+  cnt.is_gscope    = true;
+  cnt.jit_linked   = bo_htbl_new(0, bo_list_size(assembly->ir_queue));
+  cnt.llvm_cnt     = LLVMContextCreate();
+  cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
+  cnt.llvm_values  = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.llvm_jit     = create_jit(cnt.llvm_cnt);
 
   generate(&cnt);
 
