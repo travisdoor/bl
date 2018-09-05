@@ -273,6 +273,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
     LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
+    if (!llvm_arg_types) bl_abort("bad alloc");
 
     bl_node_t *arg;
     bl_node_t *tmp_type;
@@ -292,6 +293,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
 
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
+    if (!llvm_member_types) bl_abort("bad alloc");
 
     bl_node_t *member;
     bl_node_t *tmp_type;
@@ -449,6 +451,7 @@ ir_expr_call_rt(context_t *cnt, bl_node_t *call)
   assert(llvm_fn);
 
   LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * _call->argsc);
+  if (!llvm_args) bl_abort("bad alloc");
 
   bl_node_t *arg;
   int        i = 0;

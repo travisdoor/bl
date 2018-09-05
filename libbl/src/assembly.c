@@ -42,6 +42,7 @@ bl_assembly_t *
 bl_assembly_new(const char *name)
 {
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
+  if (!assembly) bl_abort("bad alloc");
   assembly->name          = strdup(name);
   assembly->units         = bo_array_new(sizeof(bl_unit_t *));
   assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);

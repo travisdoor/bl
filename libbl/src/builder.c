@@ -143,6 +143,7 @@ bl_builder_t *
 bl_builder_new(void)
 {
   bl_builder_t *builder = bl_calloc(1, sizeof(bl_builder_t));
+  if (!builder) bl_abort("bad alloc");
 
   builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;

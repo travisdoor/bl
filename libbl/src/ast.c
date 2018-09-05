@@ -123,6 +123,7 @@ alloc_chunk(void)
 {
   const size_t size_in_bytes = NODE_SIZE * CHUNK_SIZE;
   chunk_t *    chunk         = bl_malloc(size_in_bytes);
+  if (!chunk) bl_abort("bad alloc");
   memset(chunk, 0, size_in_bytes);
   chunk->count = 1;
   return chunk;

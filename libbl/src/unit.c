@@ -44,7 +44,7 @@ search_file(const char *filepath)
 {
   if (filepath == NULL) return NULL;
 
-  char  tmp_rpath[PATH_MAX];
+  char        tmp_rpath[PATH_MAX];
   const char *rpath = bl_realpath(filepath, tmp_rpath, PATH_MAX);
 
   if (rpath != NULL) {
@@ -52,11 +52,11 @@ search_file(const char *filepath)
   }
 
   /* file has not been found in current working direcotry -> search in PATH */
-  char  tmp_env[PATH_MAX];
-  char *env          = strdup(getenv(ENV_PATH));
-  char *s            = env;
-  char *p            = NULL;
-  size_t   filepath_len = strlen(filepath);
+  char   tmp_env[PATH_MAX];
+  char * env          = strdup(getenv(ENV_PATH));
+  char * s            = env;
+  char * p            = NULL;
+  size_t filepath_len = strlen(filepath);
 
   do {
     p = strchr(s, BL_ENVPATH_SEPARATOR);
@@ -72,7 +72,7 @@ search_file(const char *filepath)
 
     rpath = bl_realpath(&tmp_env[0], tmp_rpath, PATH_MAX);
 
-    s     = p + 1;
+    s = p + 1;
   } while (p != NULL && rpath == NULL);
 
   free(env);
@@ -85,8 +85,9 @@ bl_unit_t *
 bl_unit_new_file(const char *filepath)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
-  unit->filepath  = search_file(filepath);
-  unit->name      = strdup(filepath);
+  if (!unit) bl_abort("bad alloc");
+  unit->filepath = search_file(filepath);
+  unit->name     = strdup(filepath);
   init(unit);
   return unit;
 }
@@ -95,8 +96,9 @@ bl_unit_t *
 bl_unit_new_str(const char *name, const char *src)
 {
   bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
-  unit->filepath  = strdup(name);
-  unit->name      = strdup(name);
+  if (!unit) bl_abort("bad alloc");
+  unit->filepath = strdup(name);
+  unit->name     = strdup(name);
 
   if (src)
     unit->src = strdup(src);
@@ -149,8 +151,8 @@ bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
 
   if (len) {
     long l = 0;
-    if (iter) l = (long) (strchr(iter, '\n') - iter);
-    if (l < 0) l = (long) strlen(iter);
+    if (iter) l = (long)(strchr(iter, '\n') - iter);
+    if (l < 0) l = (long)strlen(iter);
     (*len) = l;
   }
 
