@@ -43,9 +43,9 @@
 
 typedef struct context
 {
-  bl_builder_t *builder;
-  bl_unit_t *   unit;
-  bl_tokens_t * tokens;
+  builder_t *builder;
+  unit_t *   unit;
+  tokens_t * tokens;
   jmp_buf       jmp_error;
   char *        c;
   int           line;
@@ -59,16 +59,16 @@ static bool
 scan_comment(context_t *cnt, const char *term);
 
 static bool
-scan_ident(context_t *cnt, bl_token_t *tok);
+scan_ident(context_t *cnt, token_t *tok);
 
 static bool
-scan_string(context_t *cnt, bl_token_t *tok);
+scan_string(context_t *cnt, token_t *tok);
 
 static bool
-scan_char(context_t *cnt, bl_token_t *tok);
+scan_char(context_t *cnt, token_t *tok);
 
 static bool
-scan_number(context_t *cnt, bl_token_t *tok);
+scan_number(context_t *cnt, token_t *tok);
 
 static inline int
 c_to_number(char c, int base);
@@ -103,7 +103,7 @@ scan_comment(context_t *cnt, const char *term)
 }
 
 bool
-scan_ident(context_t *cnt, bl_token_t *tok)
+scan_ident(context_t *cnt, token_t *tok)
 {
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
@@ -156,7 +156,7 @@ scan_specch(char c)
 }
 
 bool
-scan_string(context_t *cnt, bl_token_t *tok)
+scan_string(context_t *cnt, token_t *tok)
 {
   if (*cnt->c != '\"') {
     return false;
@@ -218,7 +218,7 @@ exit:
 }
 
 bool
-scan_char(context_t *cnt, bl_token_t *tok)
+scan_char(context_t *cnt, token_t *tok)
 {
   if (*cnt->c != '\'') return false;
   tok->src.line = cnt->line;
@@ -289,7 +289,7 @@ c_to_number(char c, int base)
 }
 
 bool
-scan_number(context_t *cnt, bl_token_t *tok)
+scan_number(context_t *cnt, token_t *tok)
 {
   tok->src.line  = cnt->line;
   tok->src.col   = cnt->col;
@@ -381,7 +381,7 @@ scan_double : {
 void
 scan(context_t *cnt)
 {
-  bl_token_t tok;
+  token_t tok;
 scan:
   tok.src.line = cnt->line;
   tok.src.col  = cnt->col;
@@ -423,7 +423,7 @@ scan:
     len = strlen(bl_sym_strings[i]);
     if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym     = (bl_sym_e)i;
+      tok.sym     = (sym_e)i;
       tok.src.len = len;
 
       /*
@@ -473,7 +473,7 @@ push_token:
 }
 
 void
-bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
+lexer_run(builder_t *builder, unit_t *unit)
 {
   context_t cnt = {
       .builder = builder,

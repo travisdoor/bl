@@ -26,34 +26,34 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_SCOPE_IMPL_H
-#define BL_SCOPE_IMPL_H
+#ifndef SCOPE_IMPL_H
+#define SCOPE_IMPL_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <assert.h>
 
-typedef BHashTable bl_scope_t;
-typedef BArray     bl_scope_cache_t;
+typedef BHashTable scope_t;
+typedef BArray     scope_cache_t;
 
 struct node;
 
 void
-bl_scope_cache_init(bl_scope_cache_t **cache);
+scope_cache_init(scope_cache_t **cache);
 
 void
-bl_scope_cache_terminate(bl_scope_cache_t *cache);
+scope_cache_terminate(scope_cache_t *cache);
 
-bl_scope_t *
-bl_scope_new(bl_scope_cache_t *cache, size_t size);
+scope_t *
+scope_new(scope_cache_t *cache, size_t size);
 
 void
-bl_scope_insert(bl_scope_t *scope, struct node *ident, struct node *node);
+scope_insert(scope_t *scope, struct node *ident, struct node *node);
 
 struct node *
-bl_scope_get(bl_scope_t *scope, struct node *ident);
+scope_get(scope_t *scope, struct node *ident);
 
 bool
-bl_scope_has_symbol(bl_scope_t *scope, struct node *ident);
+scope_has_symbol(scope_t *scope, struct node *ident);
 
 #endif

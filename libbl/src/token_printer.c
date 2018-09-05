@@ -30,17 +30,17 @@
 #include "common_impl.h"
 
 void
-bl_token_printer_run(bl_unit_t *unit)
+token_printer_run(unit_t *unit)
 {
   BArray *tokens_arr = unit->tokens.buf;
 
   fprintf(stdout, "Tokens: \n");
 
   const size_t c = bo_array_size(tokens_arr);
-  bl_token_t *tok;
+  token_t *tok;
   int line = -1;
   for (size_t i = 0; i < c; ++i) {
-    tok = &bo_array_at(tokens_arr, i, bl_token_t);
+    tok = &bo_array_at(tokens_arr, i, token_t);
 
     if (line == -1) {
       line = tok->src.line;

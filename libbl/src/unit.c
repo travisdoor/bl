@@ -33,10 +33,10 @@
 #include "bl/bldebug.h"
 
 static void
-init(bl_unit_t *unit)
+init(unit_t *unit)
 {
   bl_tokens_init(&unit->tokens);
-  bl_ast_init(&unit->ast);
+  ast_init(&unit->ast);
 }
 
 static char *
@@ -81,10 +81,10 @@ search_file(const char *filepath)
 }
 
 /* public */
-bl_unit_t *
+unit_t *
 bl_unit_new_file(const char *filepath)
 {
-  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit_t *unit = bl_calloc(1, sizeof(unit_t));
   if (!unit) bl_abort("bad alloc");
   unit->filepath = search_file(filepath);
   unit->name     = strdup(filepath);
@@ -92,10 +92,10 @@ bl_unit_new_file(const char *filepath)
   return unit;
 }
 
-bl_unit_t *
+unit_t *
 bl_unit_new_str(const char *name, const char *src)
 {
-  bl_unit_t *unit = bl_calloc(1, sizeof(bl_unit_t));
+  unit_t *unit = bl_calloc(1, sizeof(unit_t));
   if (!unit) bl_abort("bad alloc");
   unit->filepath = strdup(name);
   unit->name     = strdup(name);
@@ -110,30 +110,30 @@ bl_unit_new_str(const char *name, const char *src)
 }
 
 void
-bl_unit_delete(bl_unit_t *unit)
+bl_unit_delete(unit_t *unit)
 {
   free(unit->filepath);
   free(unit->src);
   free(unit->name);
   bl_tokens_terminate(&unit->tokens);
-  bl_ast_terminate(&unit->ast);
+  ast_terminate(&unit->ast);
   bl_free(unit);
 }
 
 const char *
-bl_unit_get_src_file(bl_unit_t *unit)
+bl_unit_get_src_file(unit_t *unit)
 {
   return unit->filepath;
 }
 
 const char *
-bl_unit_get_src(bl_unit_t *unit)
+bl_unit_get_src(unit_t *unit)
 {
   return unit->src;
 }
 
 const char *
-bl_unit_get_name(bl_unit_t *unit)
+bl_unit_get_name(unit_t *unit)
 {
   return unit->name;
 }

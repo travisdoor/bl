@@ -38,19 +38,19 @@
 
 /* public */
 
-bl_assembly_t *
+assembly_t *
 bl_assembly_new(const char *name)
 {
-  bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
+  assembly_t *assembly = bl_calloc(1, sizeof(assembly_t));
   if (!assembly) bl_abort("bad alloc");
   assembly->name         = strdup(name);
-  assembly->units        = bo_array_new(sizeof(bl_unit_t *));
+  assembly->units        = bo_array_new(sizeof(unit_t *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->ir_queue     = bo_list_new(sizeof(node_t *));
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
 
-  bl_scope_cache_init(&assembly->scope_cache);
-  assembly->gscope = bl_scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
+  scope_cache_init(&assembly->scope_cache);
+  assembly->gscope = scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
@@ -58,11 +58,11 @@ bl_assembly_new(const char *name)
 }
 
 void
-bl_assembly_delete(bl_assembly_t *assembly)
+bl_assembly_delete(assembly_t *assembly)
 {
   free(assembly->name);
 
-  bl_unit_t *unit;
+  unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
   {
     bl_unit_delete(unit);
@@ -72,7 +72,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
   bo_unref(assembly->ir_queue);
   bo_unref(assembly->link_cache);
 
-  bl_scope_cache_terminate(assembly->scope_cache);
+  scope_cache_terminate(assembly->scope_cache);
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */
@@ -88,7 +88,7 @@ bl_assembly_delete(bl_assembly_t *assembly)
 }
 
 void
-bl_assembly_add_unit(bl_assembly_t *assembly, bl_unit_t *unit)
+bl_assembly_add_unit(assembly_t *assembly, unit_t *unit)
 {
   bo_array_push_back(assembly->units, unit);
 }
@@ -120,19 +120,19 @@ bl_assembly_add_link(bl_assembly_ref assembly, const char *lib)
 }
 
 const char *
-bl_assembly_get_name(bl_assembly_t *assembly)
+bl_assembly_get_name(assembly_t *assembly)
 {
   return assembly->name;
 }
 
 int
-bl_assembly_get_unit_count(bl_assembly_t *assembly)
+bl_assembly_get_unit_count(assembly_t *assembly)
 {
   return (int)bo_array_size(assembly->units);
 }
 
-bl_unit_t *
-bl_assembly_get_unit(bl_assembly_t *assembly, int i)
+unit_t *
+bl_assembly_get_unit(assembly_t *assembly, int i)
 {
-  return bo_array_at(assembly->units, (size_t)i, bl_unit_t *);
+  return bo_array_at(assembly->units, (size_t)i, unit_t *);
 }

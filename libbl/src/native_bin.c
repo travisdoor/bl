@@ -30,7 +30,7 @@
 #include "bl/config.h"
 
 void
-bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly)
+bl_native_bin_run(builder_t *builder, assembly_t *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
   const char *cmd =

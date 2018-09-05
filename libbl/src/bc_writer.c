@@ -34,7 +34,7 @@
 #include "bl/error.h"
 
 void
-bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
+bl_bc_writer_run(builder_t *builder, assembly_t *assembly)
 {
   assert(assembly->llvm_module);
 

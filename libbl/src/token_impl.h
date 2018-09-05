@@ -104,7 +104,7 @@ typedef enum {
 #define sm(tok, str) BL_SYM_##tok,
   BL_SYMBOLS_LIST
 #undef sm
-} bl_sym_e;
+} sym_e;
 // clang-format on
 
 extern char *bl_sym_strings[];
@@ -116,7 +116,7 @@ typedef struct bl_src
   int             col;
   int             len;
   struct bl_unit *unit;
-} bl_src_t;
+} src_t;
 
 typedef union
 {
@@ -124,34 +124,34 @@ typedef union
   char               c;
   double             d;
   unsigned long long u;
-} bl_token_value_u;
+} token_value_u;
 
 typedef struct bl_token
 {
-  bl_sym_e         sym;
-  bl_src_t         src;
-  bl_token_value_u value;
+  sym_e         sym;
+  src_t         src;
+  token_value_u value;
   
-} bl_token_t;
+} token_t;
 
 /* is token any known binary operation? */
 bool
-bl_token_is_binop(bl_token_t *token);
+bl_token_is_binop(token_t *token);
 
 bool
-bl_token_is(bl_token_t *token, bl_sym_e sym);
+bl_token_is(token_t *token, sym_e sym);
 
 bool
-bl_token_is_not(bl_token_t *token, bl_sym_e sym);
+bl_token_is_not(token_t *token, sym_e sym);
 
 /* is token logical operation which result type should be boolean */
 bool
-bl_token_is_logic_op(bl_token_t *token);
+bl_token_is_logic_op(token_t *token);
 
 bool
-bl_token_is_unary(bl_token_t *token);
+bl_token_is_unary(token_t *token);
 
 int
-bl_token_prec(bl_token_t *token, bool unary);
+bl_token_prec(token_t *token, bool unary);
 
 #endif // BL_TOKEN_H

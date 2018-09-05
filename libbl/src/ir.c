@@ -43,8 +43,8 @@
 
 typedef struct
 {
-  bl_builder_t * builder;
-  bl_assembly_t *assembly;
+  builder_t * builder;
+  assembly_t *assembly;
 
   BHashTable *llvm_values;
   bool        is_gscope;
@@ -229,8 +229,8 @@ to_llvm_type(context_t *cnt, node_t *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  node_t *    arr    = bl_ast_type_get_arr(type);
-  int         ptr    = bl_ast_type_get_ptr(type);
+  node_t *    arr    = ast_type_get_arr(type);
+  int         ptr    = ast_type_get_ptr(type);
 
   switch (node_code(type)) {
   case NODE_TYPE_FUND: {
@@ -269,7 +269,7 @@ to_llvm_type(context_t *cnt, node_t *type)
     /* args */
     node_type_fn_t *_fn_type = peek_type_fn(type);
 
-    LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
+    LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, ast_get_type(_fn_type->ret_type));
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
@@ -278,7 +278,7 @@ to_llvm_type(context_t *cnt, node_t *type)
     unsigned i = 0;
     node_foreach(_fn_type->arg_types, arg)
     {
-      tmp_type            = bl_ast_get_type(arg);
+      tmp_type            = ast_get_type(arg);
       llvm_arg_types[i++] = to_llvm_type(cnt, tmp_type);
     }
 
@@ -299,7 +299,7 @@ to_llvm_type(context_t *cnt, node_t *type)
 
     node_foreach(_struct_type->types, member)
     {
-      tmp_type               = bl_ast_get_type(member);
+      tmp_type               = ast_get_type(member);
       llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
     }
 
@@ -476,7 +476,7 @@ ir_expr_call_ct(context_t *cnt, node_t *call)
   LLVMGenericValueRef generic = run(cnt, _call->ref);
   if (!generic) return NULL;
 
-  LLVMTypeRef llvm_type = to_llvm_type(cnt, bl_ast_unroll_ident(_call->type));
+  LLVMTypeRef llvm_type = to_llvm_type(cnt, ast_unroll_ident(_call->type));
   assert(llvm_type);
 
   LLVMTypeKind kind = LLVMGetTypeKind(llvm_type);
@@ -608,7 +608,7 @@ ir_ident(context_t *cnt, node_t *ident)
   node_ident_t *_ident = peek_ident(ident);
   assert(_ident->ref);
 
-  node_t *ref = bl_ast_unroll_ident(_ident->ref);
+  node_t *ref = ast_unroll_ident(_ident->ref);
   assert(node_is(ref, NODE_DECL));
   node_decl_t *_ref = peek_decl(ref);
 
@@ -620,7 +620,7 @@ ir_ident(context_t *cnt, node_t *ident)
       result = llvm_values_get(cnt, _ident->ref);
     break;
 
-  case DECL_KIND_FN: result = ir_fn_get(cnt, bl_ast_unroll_ident(ident)); break;
+  case DECL_KIND_FN: result = ir_fn_get(cnt, ast_unroll_ident(ident)); break;
 
   case DECL_KIND_STRUCT: bl_log("here"); break;
 
@@ -955,7 +955,7 @@ ir_decl_fn(context_t *cnt, node_t *decl)
     /*
      * Prepare return value.
      */
-    LLVMTypeRef llvm_ret_type = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
+    LLVMTypeRef llvm_ret_type = to_llvm_type(cnt, ast_get_type(_fn_type->ret_type));
     if (llvm_ret_type != LLVMVoidTypeInContext(cnt->llvm_cnt)) {
       cnt->fn_ret_val = LLVMBuildAlloca(cnt->llvm_builder, llvm_ret_type, gname("ret"));
     } else {
@@ -1175,7 +1175,7 @@ create_jit(LLVMContextRef llvm_cnt)
 LLVMGenericValueRef
 run(context_t *cnt, node_t *fn)
 {
-  node_t *decl = bl_ast_unroll_ident(fn);
+  node_t *decl = ast_unroll_ident(fn);
   link_into_jit(cnt, decl);
   LLVMValueRef        llvm_fn;
   LLVMGenericValueRef result;
@@ -1268,11 +1268,11 @@ _link(context_t *cnt, node_t *entry)
   assert(dest_module);
   if (!_entry->deps) return dest_module;
 
-  bl_dependency_t dep;
+  dependency_t dep;
   bo_iterator_t   it;
   bl_bhtbl_foreach(_entry->deps, it)
   {
-    dep = bo_htbl_iter_peek_value(_entry->deps, &it, bl_dependency_t);
+    dep = bo_htbl_iter_peek_value(_entry->deps, &it, dependency_t);
 
     /* link all lax dependencies */
     if (dep.type & DEP_LAX) {
@@ -1309,10 +1309,10 @@ link_into_jit(context_t *cnt, node_t *fn)
   if (!_fn->deps) return;
 
   bo_iterator_t   iter;
-  bl_dependency_t dep;
+  dependency_t dep;
   bl_bhtbl_foreach(_fn->deps, iter)
   {
-    dep = bo_htbl_iter_peek_value(_fn->deps, &iter, bl_dependency_t);
+    dep = bo_htbl_iter_peek_value(_fn->deps, &iter, dependency_t);
 
     if (dep.type & DEP_LAX) {
       link_into_jit(cnt, dep.node);
@@ -1337,10 +1337,10 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
   if (!deps) return true;
 
   bo_iterator_t   iter;
-  bl_dependency_t dep;
+  dependency_t dep;
   bl_bhtbl_foreach(deps, iter)
   {
-    dep = bo_htbl_iter_peek_value(deps, &iter, bl_dependency_t);
+    dep = bo_htbl_iter_peek_value(deps, &iter, dependency_t);
 
     // PERFORMANCE: is there some better solution than check whole tree???
     bool check_tree = strict_only ? dep.type & DEP_STRICT : true;
@@ -1357,7 +1357,7 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
 }
 
 void
-bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
+bl_ir_run(builder_t *builder, assembly_t *assembly)
 {
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
   context_t cnt;

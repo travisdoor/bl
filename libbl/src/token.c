@@ -35,13 +35,13 @@ char *bl_sym_strings[] = {
 };
 
 bool
-bl_token_is_binop(bl_token_t *token)
+bl_token_is_binop(token_t *token)
 {
   return token->sym >= BL_SYM_EQ && token->sym <= BL_SYM_LESS;
 }
 
 bool
-bl_token_is_unary(bl_token_t *token)
+bl_token_is_unary(token_t *token)
 {
   switch (token->sym) {
   case BL_SYM_AND:
@@ -58,7 +58,7 @@ bl_token_is_unary(bl_token_t *token)
 }
 
 bool
-bl_token_is_logic_op(bl_token_t *token)
+bl_token_is_logic_op(token_t *token)
 {
   switch (token->sym) {
   case BL_SYM_LESS:
@@ -77,7 +77,7 @@ bl_token_is_logic_op(bl_token_t *token)
 }
 
 int
-bl_token_prec(bl_token_t *token, bool unary)
+bl_token_prec(token_t *token, bool unary)
 {
   switch (token->sym) {
     // . -> [ (
@@ -149,14 +149,14 @@ bl_token_prec(bl_token_t *token, bool unary)
 }
 
 bool
-bl_token_is(bl_token_t *token, bl_sym_e sym)
+bl_token_is(token_t *token, sym_e sym)
 {
   if (!token) return false;
   return token->sym == sym;
 }
 
 bool
-bl_token_is_not(bl_token_t *token, bl_sym_e sym)
+bl_token_is_not(token_t *token, sym_e sym)
 {
   return !bl_token_is(token, sym);
 }

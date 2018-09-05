@@ -42,20 +42,20 @@
 
 typedef struct
 {
-  bl_builder_t * builder;
-  bl_assembly_t *assembly;
-  bl_unit_t *    unit;
+  builder_t * builder;
+  assembly_t *assembly;
+  unit_t *    unit;
   node_t *       curr_dependent;
 } context_t;
 
 static void
-post_decl(bl_ast_visitor_t *visitor, node_t *decl, void *cnt);
+post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt);
 
 static void
-post_call(bl_ast_visitor_t *visitor, node_t *call, void *cnt);
+post_call(ast_visitor_t *visitor, node_t *call, void *cnt);
 
 static void
-post_ident(bl_ast_visitor_t *visitor, node_t *ident, void *cnt);
+post_ident(ast_visitor_t *visitor, node_t *ident, void *cnt);
 
 static inline void
 schedule_generation(context_t *cnt, node_t *decl)
@@ -66,7 +66,7 @@ schedule_generation(context_t *cnt, node_t *decl)
 }
 
 void
-post_decl(bl_ast_visitor_t *visitor, node_t *decl, void *cnt)
+post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(decl);
@@ -93,7 +93,7 @@ post_decl(bl_ast_visitor_t *visitor, node_t *decl, void *cnt)
   default: break;
   }
 
-  bl_ast_walk(visitor, decl, cnt);
+  ast_walk(visitor, decl, cnt);
   _cnt->curr_dependent = prev_dependent;
 
 #if VERBOSE
@@ -112,40 +112,40 @@ post_decl(bl_ast_visitor_t *visitor, node_t *decl, void *cnt)
 }
 
 void
-post_call(bl_ast_visitor_t *visitor, node_t *call, void *cnt)
+post_call(ast_visitor_t *visitor, node_t *call, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(call);
   node_expr_call_t *_call = peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  node_t *callee = bl_ast_unroll_ident(_call->ref);
+  node_t *callee = ast_unroll_ident(_call->ref);
   if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN))
-    bl_ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
+    ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
 
-  bl_ast_walk(visitor, call, cnt);
+  ast_walk(visitor, call, cnt);
 }
 
 void
-post_ident(bl_ast_visitor_t *visitor, node_t *ident, void *cnt)
+post_ident(ast_visitor_t *visitor, node_t *ident, void *cnt)
 {
   assert(ident);
   context_t *   _cnt   = (context_t *)cnt;
   node_ident_t *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
-    bl_ast_walk(visitor, ident, cnt);
+    ast_walk(visitor, ident, cnt);
     return;
   }
 
   node_decl_t *_decl = peek_decl(_ident->ref);
   if (_decl->in_gscope || _decl->kind == DECL_KIND_FN)
-    bl_ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
-  bl_ast_walk(visitor, ident, cnt);
+    ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
+  ast_walk(visitor, ident, cnt);
 }
 
 void
-bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
+bl_post_run(builder_t *builder, assembly_t *assembly)
 {
   context_t cnt = {
       .builder        = builder,
@@ -154,17 +154,17 @@ bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .curr_dependent = NULL,
   };
 
-  bl_ast_visitor_t visitor;
-  bl_ast_visitor_init(&visitor);
+  ast_visitor_t visitor;
+  ast_visitor_init(&visitor);
 
-  bl_ast_visitor_add(&visitor, post_decl, NODE_DECL);
-  bl_ast_visitor_add(&visitor, post_call, NODE_EXPR_CALL);
-  bl_ast_visitor_add(&visitor, post_ident, NODE_IDENT);
+  ast_visitor_add(&visitor, post_decl, NODE_DECL);
+  ast_visitor_add(&visitor, post_call, NODE_EXPR_CALL);
+  ast_visitor_add(&visitor, post_ident, NODE_IDENT);
 
-  bl_unit_t *unit;
+  unit_t *unit;
   bl_barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    bl_ast_visit(&visitor, unit->ast.root, &cnt);
+    ast_visit(&visitor, unit->ast.root, &cnt);
   }
 }

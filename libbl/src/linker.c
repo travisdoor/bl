@@ -41,7 +41,7 @@
 
 
 void
-bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
+bl_linker_run(builder_t *builder, assembly_t *assembly)
 {
   assert(assembly->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
