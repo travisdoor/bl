@@ -30,7 +30,7 @@
 #include "common_impl.h"
 #include "ast_impl.h"
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
   {                                                                                                \

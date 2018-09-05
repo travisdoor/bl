@@ -39,7 +39,7 @@
 #define gname(s) ""
 #endif
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 typedef struct
 {
