@@ -720,7 +720,7 @@ _type_to_string(char *buf, size_t len, bl_node_t *type)
   default: bl_abort("node is not valid type");
   }
 
-  if (bl_ast_type_get_arr(type)) {
+  if (bl_ast_type_get_arr(bl_node_is(type, BL_NODE_DECL) ? bl_peek_decl(type)->type : type)) {
     append_buf(buf, len, " []");
   }
 

@@ -474,9 +474,8 @@ ir_expr_call_rt(context_t *cnt, bl_node_t *call)
 LLVMValueRef
 ir_expr_call_ct(context_t *cnt, bl_node_t *call)
 {
-  bl_node_expr_call_t *_call = bl_peek_expr_call(call);
-  // TODO: handle return values
-  LLVMGenericValueRef generic = run(cnt, _call->ref);
+  bl_node_expr_call_t *_call   = bl_peek_expr_call(call);
+  LLVMGenericValueRef  generic = run(cnt, _call->ref);
   if (!generic) return NULL;
 
   LLVMTypeRef llvm_type = to_llvm_type(cnt, bl_ast_unroll_ident(_call->type));
@@ -1382,8 +1381,10 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
   assembly->llvm_module = link(&cnt, cnt.main_tmp);
   bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
 
-  // assembly->llvm_module = LLVMModuleCreateWithNameInContext("main", cnt.llvm_cnt);
   ir_validate(assembly->llvm_module);
+
+  if (bo_htbl_size(cnt.llvm_modules))
+    bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
 
   assembly->llvm_cnt = cnt.llvm_cnt;
   assembly->llvm_jit = cnt.llvm_jit;

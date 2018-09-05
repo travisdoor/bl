@@ -54,6 +54,17 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt);
 static void
 post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt);
 
+static void
+post_ident(bl_ast_visitor_t *visitor, bl_node_t *ident, void *cnt);
+
+static inline void
+schedule_generation(context_t *cnt, bl_node_t *decl)
+{
+  assert(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
+  if (_decl->used) bo_list_push_back(cnt->assembly->ir_queue, decl);
+}
+
 void
 post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
 {
@@ -65,14 +76,19 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
     post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
+  if (_decl->flags & BL_FLAG_MAIN) _decl->used++;
+
   bl_node_t *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
   case BL_DECL_KIND_FN:
     _cnt->curr_dependent = decl;
-    bo_list_push_back(_cnt->assembly->ir_queue, decl);
+    schedule_generation(cnt, decl);
     break;
   case BL_DECL_KIND_FIELD:
-    if (_decl->in_gscope) bo_list_push_back(_cnt->assembly->ir_queue, decl);
+    if (_decl->in_gscope) {
+      _cnt->curr_dependent = decl;
+      schedule_generation(cnt, decl);
+    }
     break;
   default: break;
   }
@@ -111,6 +127,24 @@ post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt)
 }
 
 void
+post_ident(bl_ast_visitor_t *visitor, bl_node_t *ident, void *cnt)
+{
+  assert(ident);
+  context_t *      _cnt   = (context_t *)cnt;
+  bl_node_ident_t *_ident = bl_peek_ident(ident);
+
+  if (!_ident->ref || !_cnt->curr_dependent) {
+    bl_ast_walk(visitor, ident, cnt);
+    return;
+  }
+
+  bl_node_decl_t *_decl = bl_peek_decl(_ident->ref);
+  if (_decl->in_gscope || _decl->kind == BL_DECL_KIND_FN) 
+    bl_ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, BL_DEP_LAX);
+  bl_ast_walk(visitor, ident, cnt);
+}
+
+void
 bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
 {
   context_t cnt = {
@@ -125,6 +159,7 @@ bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
 
   bl_ast_visitor_add(&visitor, post_decl, BL_NODE_DECL);
   bl_ast_visitor_add(&visitor, post_call, BL_NODE_EXPR_CALL);
+  bl_ast_visitor_add(&visitor, post_ident, BL_NODE_IDENT);
 
   bl_unit_t *unit;
   bl_barray_foreach(assembly->units, unit)

@@ -43,11 +43,11 @@ bl_assembly_new(const char *name)
 {
   bl_assembly_t *assembly = bl_calloc(1, sizeof(bl_assembly_t));
   if (!assembly) bl_abort("bad alloc");
-  assembly->name          = strdup(name);
-  assembly->units         = bo_array_new(sizeof(bl_unit_t *));
-  assembly->unique_cache  = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-  assembly->ir_queue      = bo_list_new(sizeof(bl_node_t *));
-  assembly->link_cache    = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
+  assembly->name         = strdup(name);
+  assembly->units        = bo_array_new(sizeof(bl_unit_t *));
+  assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
+  assembly->ir_queue     = bo_list_new(sizeof(bl_node_t *));
+  assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
 
   bl_scope_cache_init(&assembly->scope_cache);
   assembly->gscope = bl_scope_new(assembly->scope_cache, EXPECTED_GSCOPE_SIZE);
@@ -76,8 +76,9 @@ bl_assembly_delete(bl_assembly_t *assembly)
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */
-  if (assembly->llvm_jit)
-    LLVMDisposeExecutionEngine(assembly->llvm_jit);
+  LLVMDisposeExecutionEngine(assembly->llvm_jit);
+  if (assembly->llvm_run_engine)
+    LLVMDisposeExecutionEngine(assembly->llvm_run_engine);
   else
     LLVMDisposeModule(assembly->llvm_module);
 

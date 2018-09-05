@@ -1,6 +1,8 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
+puts fn (string) s32 : extern;
+printf fn (string, s32) s32 : extern;
 
 foo : fn () {
   puts("hello from foo");
