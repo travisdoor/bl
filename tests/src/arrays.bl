@@ -31,10 +31,27 @@ main : fn () s32 {
     printf("foos[i].i = %d\n", foos[i].i);
     i = i + 1;
   }
+
+  bar Bar;
+  i = 0;
+  while i < bar.is.count {
+    bar.is[i] = i;
+    i = i + 1;
+  }
+
+  i = 0;
+  while i < bar.is.count {
+    printf("bar.is[i] = %d\n", bar.is[i]);
+    i = i + 1;
+  }
   
   return EXIT_SUCCESS;
 };
 
 Foo : struct {
   i s32
+};
+
+Bar : struct {
+  is s32[32]
 };

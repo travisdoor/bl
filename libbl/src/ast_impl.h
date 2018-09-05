@@ -78,6 +78,16 @@
     bl_node_t  *arr; \
     int         ptr; \
   }) \
+  nt(UBLOCK, ublock, struct { \
+    bl_node_t      *nodes; \
+    bl_scope_t     *scope; \
+    struct bl_unit *unit; \
+  }) \
+  nt(BLOCK, block, struct { \
+    bl_node_t  *nodes; \
+    bl_scope_t *scope; \
+    bl_node_t  *parent_compound; \
+  }) \
   nt(STMT_RETURN, stmt_return, struct { \
     bl_node_t *expr; \
     bl_node_t *fn_decl; \
@@ -97,17 +107,7 @@
   nt(STMT_CONTINUE, stmt_continue, struct { \
     void *_; \
   }) \
-  nt(DECL_UBLOCK, decl_ublock, struct { \
-    bl_node_t      *nodes; \
-    bl_scope_t     *scope; \
-    struct bl_unit *unit; \
-  }) \
-  nt(DECL_BLOCK, decl_block, struct { \
-    bl_node_t  *nodes; \
-    bl_scope_t *scope; \
-    bl_node_t  *parent_compound; \
-  }) \
-  nt(DECL_VALUE, decl_value, struct { \
+  nt(DECL, decl, struct { \
     bl_decl_kind_e kind; \
     bl_node_t     *name; \
     bl_node_t     *type; \
@@ -117,6 +117,7 @@
     int            used; \
     int            order; \
     bool           in_gscope; \
+    BHashTable    *deps; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     bl_ftype_e code; \
@@ -249,14 +250,14 @@ typedef enum
 
 typedef enum
 {
-  BL_FLAG_EXTERN = 1 << 0,
-  BL_FLAG_MAIN   = 1 << 1
+  BL_FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  BL_FLAG_MAIN   = 1 << 1  /* main method */
 } bl_node_flag_e;
 
 typedef enum
 {
-  BL_DEP_LAX    = 1 << 0,
-  BL_DEP_STRICT = 1 << 1,
+  BL_DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
+  BL_DEP_STRICT = 1 << 1, /* dependency must be linked for sucessful IR construction */
 } bl_dep_e;
 
 typedef struct bl_ast     bl_ast_t;
@@ -391,15 +392,15 @@ _BL_NODE_TYPE_LIST
 _BL_AST_NCTOR(bad);
 _BL_AST_NCTOR(load, const char *filepath);
 _BL_AST_NCTOR(link, const char *lib);
-_BL_AST_NCTOR(decl_ublock, struct bl_unit *unit, bl_scope_t *scope);
+_BL_AST_NCTOR(ublock, struct bl_unit *unit, bl_scope_t *scope);
+_BL_AST_NCTOR(block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
 _BL_AST_NCTOR(ident, bl_node_t *ref, bl_node_t *parent_compound, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(stmt_return, bl_node_t *expr, bl_node_t *fn);
 _BL_AST_NCTOR(stmt_if, bl_node_t *test, bl_node_t *true_stmt, bl_node_t *false_stmt);
 _BL_AST_NCTOR(stmt_loop, bl_node_t *test, bl_node_t *true_stmt);
 _BL_AST_NCTOR(stmt_break);
 _BL_AST_NCTOR(stmt_continue);
-_BL_AST_NCTOR(decl_block, bl_node_t *nodes, bl_node_t *parent_compound, bl_scope_t *scope);
-_BL_AST_NCTOR(decl_value, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
+_BL_AST_NCTOR(decl, bl_decl_kind_e kind, bl_node_t *name, bl_node_t *type, bl_node_t *value,
               bool mutable, int flags, int order, bool in_gscope);
 _BL_AST_NCTOR(type_fund, bl_ftype_e code, int ptr, bl_node_t *arr);
 _BL_AST_NCTOR(type_fn, bl_node_t *arg_types, int argc_types, bl_node_t *ret_type, int ptr);
@@ -422,13 +423,35 @@ _BL_AST_NCTOR(expr_unary, bl_sym_e op, bl_node_t *next, bl_node_t *type);
 _BL_AST_NCTOR(expr_null, bl_node_t *type);
 
 /*************************************************************************************************
+ * AST visiting
+ *************************************************************************************************/
+
+typedef struct bl_ast_visitor bl_ast_visitor_t;
+typedef void (*bl_ast_visit_f)(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+struct bl_ast_visitor
+{
+  bl_ast_visit_f visitors[BL_NODE_COUNT];
+};
+
+void
+bl_ast_visitor_init(bl_ast_visitor_t *visitor);
+
+void
+bl_ast_visitor_add(bl_ast_visitor_t *visitor, bl_ast_visit_f fn, bl_node_code_e code);
+
+void
+bl_ast_visit(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+void
+bl_ast_walk(bl_ast_visitor_t *visitor, bl_node_t *node, void *cnt);
+
+/*************************************************************************************************
  * other
  *************************************************************************************************/
-extern bl_node_t bl_ftypes[];
 
-typedef void (*bl_visit_f)(void *, bl_node_t *);
-void
-bl_ast_visit_every_node(bl_ast_t *ast, bl_visit_f visit, void *cnt);
+/* static fundamental type nodes */
+extern bl_node_t bl_ftypes[];
 
 void
 bl_ast_type_to_string(char *buf, size_t len, bl_node_t *type);
@@ -480,6 +503,9 @@ bl_ast_node_dup(bl_ast_t *ast, bl_node_t *node);
 
 bl_node_t *
 bl_ast_unroll_ident(bl_node_t *ident);
+
+bl_dependency_t *
+bl_ast_add_dep_uq(bl_node_t *decl, bl_node_t *dep, int type);
 
 /**************************************************************************************************/
 

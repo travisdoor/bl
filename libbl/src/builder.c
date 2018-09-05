@@ -110,6 +110,7 @@ int
 compile_assembly(bl_builder_t *builder, bl_assembly_t *assembly, uint32_t flags)
 {
   if (!builder->errorc) bl_checker_run(builder, assembly);
+  if (!builder->errorc) bl_post_run(builder, assembly);
 
   if (flags & BL_BUILDER_PRINT_AST) {
     bl_ast_printer_run(assembly);
@@ -142,6 +143,7 @@ bl_builder_t *
 bl_builder_new(void)
 {
   bl_builder_t *builder = bl_calloc(1, sizeof(bl_builder_t));
+  if (!builder) bl_abort("bad alloc");
 
   builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;

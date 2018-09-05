@@ -39,6 +39,7 @@ bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly)
   assert(assembly->llvm_module);
 
   char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+  if (!export_file) bl_abort("bad alloc");
   strcpy(export_file, assembly->name);
   strcat(export_file, ".ll");
 

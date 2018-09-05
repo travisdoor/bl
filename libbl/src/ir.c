@@ -39,7 +39,7 @@
 #define gname(s) ""
 #endif
 
-//#define PRINT_IR
+#define VERBOSE 1
 
 typedef struct
 {
@@ -54,6 +54,11 @@ typedef struct
   LLVMContextRef llvm_cnt;
   BHashTable *   llvm_modules;
 
+  /* JIT execution engine for #run called methods */
+  LLVMExecutionEngineRef llvm_jit;
+  BHashTable *           jit_linked;
+  bl_node_t *            main_tmp;
+
   LLVMBasicBlockRef break_block;
   LLVMBasicBlockRef continue_block;
   LLVMBasicBlockRef fn_init_block;
@@ -64,6 +69,30 @@ typedef struct
 
 static void
 generate(context_t *cnt);
+
+static void
+generate_decl(context_t *cnt, bl_node_t *decl);
+
+static LLVMModuleRef
+link(context_t *cnt, bl_node_t *entry);
+
+/* resursive version */
+static LLVMModuleRef
+_link(context_t *cnt, bl_node_t *entry);
+
+static LLVMExecutionEngineRef
+create_jit(LLVMContextRef llvm_cnt);
+
+static void
+link_into_jit(context_t *cnt, bl_node_t *fn);
+
+/* check if declaration has all it's dependencies already generated in LLVM Modules, by
+ * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
+static bool
+is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only);
+
+static LLVMGenericValueRef
+run(context_t *cnt, bl_node_t *fn);
 
 static LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl);
@@ -84,7 +113,7 @@ static LLVMValueRef
 ir_decl_immut(context_t *cnt, bl_node_t *decl);
 
 static void
-ir_decl_block(context_t *cnt, bl_node_t *block);
+ir_block(context_t *cnt, bl_node_t *block);
 
 static LLVMValueRef
 ir_expr(context_t *cnt, bl_node_t *expr);
@@ -100,6 +129,12 @@ ir_expr_unary(context_t *cnt, bl_node_t *unary);
 
 static LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call);
+
+static LLVMValueRef
+ir_expr_call_rt(context_t *cnt, bl_node_t *call);
+
+static LLVMValueRef
+ir_expr_call_ct(context_t *cnt, bl_node_t *call);
 
 static LLVMValueRef
 ir_expr_member(context_t *cnt, bl_node_t *member);
@@ -203,38 +238,20 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
   case BL_NODE_TYPE_FUND: {
     bl_node_type_fund_t *_type = bl_peek_type_fund(type);
     switch (_type->code) {
-    case BL_FTYPE_VOID:
-      result = LLVMVoidTypeInContext(cnt->llvm_cnt);
-      break;
+    case BL_FTYPE_VOID: result = LLVMVoidTypeInContext(cnt->llvm_cnt); break;
     case BL_FTYPE_CHAR:
     case BL_FTYPE_S8:
-    case BL_FTYPE_U8:
-      result = LLVMInt8TypeInContext(cnt->llvm_cnt);
-      break;
+    case BL_FTYPE_U8: result = LLVMInt8TypeInContext(cnt->llvm_cnt); break;
     case BL_FTYPE_S16:
-    case BL_FTYPE_U16:
-      result = LLVMInt16TypeInContext(cnt->llvm_cnt);
-      break;
+    case BL_FTYPE_U16: result = LLVMInt16TypeInContext(cnt->llvm_cnt); break;
     case BL_FTYPE_S32:
-    case BL_FTYPE_U32:
-      result = LLVMInt32TypeInContext(cnt->llvm_cnt);
-      break;
+    case BL_FTYPE_U32: result = LLVMInt32TypeInContext(cnt->llvm_cnt); break;
     case BL_FTYPE_S64:
-    case BL_FTYPE_U64:
-      result = LLVMInt64TypeInContext(cnt->llvm_cnt);
-      break;
-    case BL_FTYPE_F32:
-      result = LLVMFloatTypeInContext(cnt->llvm_cnt);
-      break;
-    case BL_FTYPE_F64:
-      result = LLVMDoubleTypeInContext(cnt->llvm_cnt);
-      break;
-    case BL_FTYPE_STRING:
-      result = LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0);
-      break;
-    case BL_FTYPE_BOOL:
-      result = LLVMInt1TypeInContext(cnt->llvm_cnt);
-      break;
+    case BL_FTYPE_U64: result = LLVMInt64TypeInContext(cnt->llvm_cnt); break;
+    case BL_FTYPE_F32: result = LLVMFloatTypeInContext(cnt->llvm_cnt); break;
+    case BL_FTYPE_F64: result = LLVMDoubleTypeInContext(cnt->llvm_cnt); break;
+    case BL_FTYPE_STRING: result = LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0); break;
+    case BL_FTYPE_BOOL: result = LLVMInt1TypeInContext(cnt->llvm_cnt); break;
     case BL_FTYPE_SIZE:
       /* TODO: use target setup later */
       if (sizeof(size_t) == 4) {
@@ -245,8 +262,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
         bl_abort("unsupported architecture");
       }
       break;
-    default:
-      bl_abort("unknown fundamenetal type %s", bl_node_name(type));
+    default: bl_abort("unknown fundamenetal type %s", bl_node_name(type));
     }
     break;
   }
@@ -257,6 +273,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
 
     LLVMTypeRef  llvm_ret       = to_llvm_type(cnt, bl_ast_get_type(_fn_type->ret_type));
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
+    if (!llvm_arg_types) bl_abort("bad alloc");
 
     bl_node_t *arg;
     bl_node_t *tmp_type;
@@ -276,6 +293,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     bl_node_type_struct_t *_struct_type = bl_peek_type_struct(type);
 
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
+    if (!llvm_member_types) bl_abort("bad alloc");
 
     bl_node_t *member;
     bl_node_t *tmp_type;
@@ -290,7 +308,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     if (_struct_type->base_decl) {
       result = llvm_values_get(cnt, _struct_type->base_decl);
       if (!result) {
-        bl_node_decl_value_t *_base_decl = bl_peek_decl_value(_struct_type->base_decl);
+        bl_node_decl_t *_base_decl = bl_peek_decl(_struct_type->base_decl);
         assert(_base_decl->value);
         const char *name = bl_peek_ident(_base_decl->name)->str;
         assert(name);
@@ -316,8 +334,7 @@ to_llvm_type(context_t *cnt, bl_node_t *type)
     break;
   }
 
-  default:
-    bl_abort("invalid node type %s", bl_node_name(type));
+  default: bl_abort("invalid node type %s", bl_node_name(type));
   }
 
   if (ptr) {
@@ -389,8 +406,7 @@ ir_lit(context_t *cnt, bl_node_t *lit)
   case BL_FTYPE_CHAR:
     result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_CHAR, false);
     break;
-  default:
-    bl_abort("invalid constant type %s", bl_node_name(lit));
+  default: bl_abort("invalid constant type %s", bl_node_name(lit));
   }
 
 #undef PEEK_ULL
@@ -404,13 +420,22 @@ ir_lit(context_t *cnt, bl_node_t *lit)
 LLVMValueRef
 ir_expr_call(context_t *cnt, bl_node_t *call)
 {
+  assert(call);
+  /* run in compile time or in runtime */
+  if (bl_peek_expr_call(call)->run) return ir_expr_call_ct(cnt, call);
+  return ir_expr_call_rt(cnt, call);
+}
+
+LLVMValueRef
+ir_expr_call_rt(context_t *cnt, bl_node_t *call)
+{
   LLVMValueRef         result        = NULL;
   bl_node_expr_call_t *_call         = bl_peek_expr_call(call);
   bl_node_ident_t *    _callee_ident = bl_peek_ident(
       bl_node_is(_call->ref, BL_NODE_IDENT) ? _call->ref : bl_peek_expr_member(_call->ref)->ident);
 
   LLVMValueRef llvm_fn = NULL;
-  if (bl_peek_decl_value(_callee_ident->ref)->mutable) {
+  if (bl_peek_decl(_callee_ident->ref)->mutable) {
     if (bl_node_is(_call->ref, BL_NODE_EXPR_MEMBER)) {
       llvm_fn = ir_expr_member(cnt, _call->ref);
     } else if (bl_node_is(_call->ref, BL_NODE_EXPR_ELEM)) {
@@ -426,6 +451,7 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
   assert(llvm_fn);
 
   LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * _call->argsc);
+  if (!llvm_args) bl_abort("bad alloc");
 
   bl_node_t *arg;
   int        i = 0;
@@ -446,11 +472,36 @@ ir_expr_call(context_t *cnt, bl_node_t *call)
 }
 
 LLVMValueRef
+ir_expr_call_ct(context_t *cnt, bl_node_t *call)
+{
+  bl_node_expr_call_t *_call   = bl_peek_expr_call(call);
+  LLVMGenericValueRef  generic = run(cnt, _call->ref);
+  if (!generic) return NULL;
+
+  LLVMTypeRef llvm_type = to_llvm_type(cnt, bl_ast_unroll_ident(_call->type));
+  assert(llvm_type);
+
+  LLVMTypeKind kind = LLVMGetTypeKind(llvm_type);
+
+  switch (kind) {
+  case LLVMVoidTypeKind: return NULL;
+  case LLVMIntegerTypeKind:
+    return LLVMConstInt(llvm_type, LLVMGenericValueToInt(generic, false), false);
+  case LLVMFloatTypeKind:
+  case LLVMDoubleTypeKind:
+    return LLVMConstReal(llvm_type, LLVMGenericValueToFloat(llvm_type, generic));
+  default: bl_abort("unsupported type of run result");
+  }
+
+  return NULL;
+}
+
+LLVMValueRef
 ir_expr_member(context_t *cnt, bl_node_t *member)
 {
   bl_node_expr_member_t *_member      = bl_peek_expr_member(member);
   bl_node_ident_t *      _ident       = bl_peek_ident(_member->ident);
-  bl_node_decl_value_t * _decl_member = bl_peek_decl_value(_ident->ref);
+  bl_node_decl_t *       _decl_member = bl_peek_decl(_ident->ref);
 
   LLVMValueRef result = NULL;
 
@@ -511,19 +562,13 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
 
   LLVMOpcode op = src_size > dest_size ? LLVMTrunc : LLVMSExt;
 
-  // bl_log("from %d to %d", src_kind, dest_kind);
   switch (dest_kind) {
 
   case LLVMPointerTypeKind: {
     switch (src_kind) {
-    case LLVMPointerTypeKind:
-      op = LLVMBitCast;
-      break;
-    case LLVMIntegerTypeKind:
-      op = LLVMIntToPtr;
-      break;
-    default:
-      break;
+    case LLVMPointerTypeKind: op = LLVMBitCast; break;
+    case LLVMIntegerTypeKind: op = LLVMIntToPtr; break;
+    default: break;
     }
     break;
   }
@@ -531,14 +576,9 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   case LLVMIntegerTypeKind: {
     switch (src_kind) {
     case LLVMFloatTypeKind:
-    case LLVMDoubleTypeKind:
-      op = LLVMFPToSI;
-      break;
-    case LLVMPointerTypeKind:
-      op = LLVMPtrToInt;
-      break;
-    default:
-      break;
+    case LLVMDoubleTypeKind: op = LLVMFPToSI; break;
+    case LLVMPointerTypeKind: op = LLVMPtrToInt; break;
+    default: break;
     }
     break;
   }
@@ -546,23 +586,18 @@ ir_expr_cast(context_t *cnt, bl_node_t *cast)
   case LLVMFloatTypeKind:
   case LLVMDoubleTypeKind: {
     switch (src_kind) {
-    case LLVMIntegerTypeKind:
-      op = LLVMSIToFP;
-      // bl_log("si -> fp");
-      break;
+    case LLVMIntegerTypeKind: op = LLVMSIToFP; break;
     case LLVMFloatTypeKind:
     case LLVMDoubleTypeKind: {
       op = LLVMFPExt;
       break;
     }
-    default:
-      break;
+    default: break;
     }
     break;
   }
 
-  default:
-    bl_abort("invalid cast combination");
+  default: bl_abort("invalid cast combination");
   }
 
   return LLVMBuildCast(cnt->llvm_builder, op, next, dest_type, gname("tmp"));
@@ -576,8 +611,8 @@ ir_ident(context_t *cnt, bl_node_t *ident)
   assert(_ident->ref);
 
   bl_node_t *ref = bl_ast_unroll_ident(_ident->ref);
-  assert(bl_node_is(ref, BL_NODE_DECL_VALUE));
-  bl_node_decl_value_t *_ref = bl_peek_decl_value(ref);
+  assert(bl_node_is(ref, BL_NODE_DECL));
+  bl_node_decl_t *_ref = bl_peek_decl(ref);
 
   switch (_ref->kind) {
   case BL_DECL_KIND_FIELD:
@@ -587,29 +622,19 @@ ir_ident(context_t *cnt, bl_node_t *ident)
       result = llvm_values_get(cnt, _ident->ref);
     break;
 
-  case BL_DECL_KIND_FN:
-    result = ir_fn_get(cnt, bl_ast_unroll_ident(ident));
-    break;
+  case BL_DECL_KIND_FN: result = ir_fn_get(cnt, bl_ast_unroll_ident(ident)); break;
 
-  case BL_DECL_KIND_STRUCT:
-    bl_log("here");
-    break;
+  case BL_DECL_KIND_STRUCT: bl_log("here"); break;
 
-  case BL_DECL_KIND_ARG:
-    result = llvm_values_get(cnt, _ident->ref);
-    break;
+  case BL_DECL_KIND_ARG: result = llvm_values_get(cnt, _ident->ref); break;
 
-  case BL_DECL_KIND_CONSTANT:
-    result = ir_expr(cnt, _ref->value);
-    break;
+  case BL_DECL_KIND_CONSTANT: result = ir_expr(cnt, _ref->value); break;
 
   case BL_DECL_KIND_MEMBER:
   case BL_DECL_KIND_VARIANT:
   case BL_DECL_KIND_ENUM:
-  case BL_DECL_KIND_TYPE:
-    bl_abort("unimplemented");
-  case BL_DECL_KIND_UNKNOWN:
-    bl_abort("unknown declaration kind");
+  case BL_DECL_KIND_TYPE: bl_abort("unimplemented");
+  case BL_DECL_KIND_UNKNOWN: bl_abort("unknown declaration kind");
   }
 
   assert(result);
@@ -661,8 +686,7 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
     if (float_kind) return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_MODULO:
-    return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+  case BL_SYM_MODULO: return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case BL_SYM_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
@@ -688,14 +712,11 @@ ir_expr_binop(context_t *cnt, bl_node_t *binop)
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LOGIC_AND:
-    return LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+  case BL_SYM_LOGIC_AND: return LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LOGIC_OR:
-    return LLVMBuildOr(cnt->llvm_builder, lhs, rhs, gname("tmp"));
+  case BL_SYM_LOGIC_OR: return LLVMBuildOr(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  default:
-    bl_abort("unknown binop");
+  default: bl_abort("unknown binop");
   }
 }
 
@@ -720,14 +741,9 @@ ir_expr_unary(context_t *cnt, bl_node_t *unary)
 
     int mult = 1;
     switch (_unary->op) {
-    case BL_SYM_MINUS:
-      mult = -1;
-      break;
-    case BL_SYM_PLUS:
-      mult = 1;
-      break;
-    default:
-      bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+    case BL_SYM_MINUS: mult = -1; break;
+    case BL_SYM_PLUS: mult = 1; break;
+    default: bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
     }
 
     if (next_type_kind == LLVMFloatTypeKind || next_type_kind == LLVMDoubleTypeKind) {
@@ -760,8 +776,7 @@ ir_expr_unary(context_t *cnt, bl_node_t *unary)
     return next_val;
   }
 
-  default:
-    bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+  default: bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
   }
 }
 
@@ -788,81 +803,45 @@ ir_expr(context_t *cnt, bl_node_t *expr)
   if (is_terminated(cnt)) return NULL;
   LLVMValueRef result = NULL;
   switch (bl_node_code(expr)) {
-  case BL_NODE_EXPR_BINOP:
-    result = ir_expr_binop(cnt, expr);
-    break;
-  case BL_NODE_EXPR_CALL:
-    result = ir_expr_call(cnt, expr);
-    break;
-  case BL_NODE_EXPR_MEMBER:
-    result = ir_expr_member(cnt, expr);
-    break;
-  case BL_NODE_EXPR_ELEM:
-    result = ir_expr_elem(cnt, expr);
-    break;
-  case BL_NODE_EXPR_CAST:
-    result = ir_expr_cast(cnt, expr);
-    break;
-  case BL_NODE_EXPR_UNARY:
-    result = ir_expr_unary(cnt, expr);
-    break;
-  case BL_NODE_LIT:
-    result = ir_lit(cnt, expr);
-    break;
-  case BL_NODE_EXPR_SIZEOF:
-    result = ir_expr_sizeof(cnt, expr);
-    break;
-  case BL_NODE_EXPR_NULL:
-    result = ir_expr_null(cnt, expr);
-    break;
-  case BL_NODE_IDENT:
-    result = ir_ident(cnt, expr);
-    break;
-  default:
-    break;
+  case BL_NODE_EXPR_BINOP: result = ir_expr_binop(cnt, expr); break;
+  case BL_NODE_EXPR_CALL: result = ir_expr_call(cnt, expr); break;
+  case BL_NODE_EXPR_MEMBER: result = ir_expr_member(cnt, expr); break;
+  case BL_NODE_EXPR_ELEM: result = ir_expr_elem(cnt, expr); break;
+  case BL_NODE_EXPR_CAST: result = ir_expr_cast(cnt, expr); break;
+  case BL_NODE_EXPR_UNARY: result = ir_expr_unary(cnt, expr); break;
+  case BL_NODE_LIT: result = ir_lit(cnt, expr); break;
+  case BL_NODE_EXPR_SIZEOF: result = ir_expr_sizeof(cnt, expr); break;
+  case BL_NODE_EXPR_NULL: result = ir_expr_null(cnt, expr); break;
+  case BL_NODE_IDENT: result = ir_ident(cnt, expr); break;
+  default: break;
   }
 
   return result;
 }
 
 void
-ir_decl_block(context_t *cnt, bl_node_t *block)
+ir_block(context_t *cnt, bl_node_t *block)
 {
   if (is_terminated(cnt)) return;
   bool prev_is_gscope = cnt->is_gscope;
   cnt->is_gscope      = false;
 
-  bl_node_decl_block_t *_block = bl_peek_decl_block(block);
-  bl_node_t *           stmt;
+  bl_node_block_t *_block = bl_peek_block(block);
+  bl_node_t *      stmt;
 
   bl_node_foreach(_block->nodes, stmt)
   {
     if (ir_expr(cnt, stmt)) continue;
 
     switch (bl_node_code(stmt)) {
-    case BL_NODE_DECL_VALUE:
-      ir_decl(cnt, stmt);
-      break;
-    case BL_NODE_STMT_IF:
-      ir_stmt_if(cnt, stmt);
-      break;
-    case BL_NODE_STMT_LOOP:
-      ir_stmt_loop(cnt, stmt);
-      break;
-    case BL_NODE_STMT_BREAK:
-      ir_stmt_break(cnt, stmt);
-      break;
-    case BL_NODE_STMT_CONTINUE:
-      ir_stmt_continue(cnt, stmt);
-      break;
-    case BL_NODE_STMT_RETURN:
-      ir_stmt_return(cnt, stmt);
-      break;
-    case BL_NODE_DECL_BLOCK:
-      ir_decl_block(cnt, stmt);
-      break;
-    default:
-      break;
+    case BL_NODE_DECL: ir_decl(cnt, stmt); break;
+    case BL_NODE_STMT_IF: ir_stmt_if(cnt, stmt); break;
+    case BL_NODE_STMT_LOOP: ir_stmt_loop(cnt, stmt); break;
+    case BL_NODE_STMT_BREAK: ir_stmt_break(cnt, stmt); break;
+    case BL_NODE_STMT_CONTINUE: ir_stmt_continue(cnt, stmt); break;
+    case BL_NODE_STMT_RETURN: ir_stmt_return(cnt, stmt); break;
+    case BL_NODE_BLOCK: ir_block(cnt, stmt); break;
+    default: break;
     }
   }
 
@@ -872,9 +851,9 @@ ir_decl_block(context_t *cnt, bl_node_t *block)
 LLVMValueRef
 ir_decl_mut(context_t *cnt, bl_node_t *decl)
 {
-  LLVMValueRef          result    = NULL;
-  bl_node_decl_value_t *_decl     = bl_peek_decl_value(decl);
-  LLVMTypeRef           llvm_type = to_llvm_type(cnt, _decl->type);
+  LLVMValueRef    result    = NULL;
+  bl_node_decl_t *_decl     = bl_peek_decl(decl);
+  LLVMTypeRef     llvm_type = to_llvm_type(cnt, _decl->type);
   assert(llvm_type);
 
   if (cnt->is_gscope) {
@@ -900,7 +879,7 @@ ir_decl_mut(context_t *cnt, bl_node_t *decl)
 LLVMValueRef
 ir_decl_immut(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
   assert(_decl->value);
   LLVMValueRef result = ir_expr(cnt, _decl->value);
   llvm_values_insert(cnt, decl, result);
@@ -910,8 +889,8 @@ ir_decl_immut(context_t *cnt, bl_node_t *decl)
 LLVMValueRef
 ir_fn_get(context_t *cnt, bl_node_t *fn)
 {
-  bl_node_decl_value_t *_fn     = bl_peek_decl_value(fn);
-  const char *          fn_name = bl_peek_ident(_fn->name)->str;
+  bl_node_decl_t *_fn     = bl_peek_decl(fn);
+  const char *    fn_name = bl_peek_ident(_fn->name)->str;
 
   LLVMValueRef result = LLVMGetNamedFunction(cnt->llvm_module, fn_name);
   if (!result) {
@@ -926,8 +905,8 @@ ir_fn_get(context_t *cnt, bl_node_t *fn)
 LLVMValueRef
 ir_global_get(context_t *cnt, bl_node_t *global)
 {
-  bl_node_decl_value_t *_global = bl_peek_decl_value(global);
-  const char *          g_name  = bl_peek_ident(_global->name)->str;
+  bl_node_decl_t *_global = bl_peek_decl(global);
+  const char *    g_name  = bl_peek_ident(_global->name)->str;
 
   LLVMValueRef result = LLVMGetNamedGlobal(cnt->llvm_module, g_name);
   if (!result) {
@@ -941,12 +920,10 @@ ir_global_get(context_t *cnt, bl_node_t *global)
 LLVMValueRef
 ir_decl_fn(context_t *cnt, bl_node_t *decl)
 {
-  if (!cnt->is_gscope) {
-    bl_assembly_add_into_ir(cnt->assembly, decl);
-    return NULL;
-  }
+  /* local functions will be generated in separate module */
+  if (!cnt->is_gscope) return NULL;
 
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
 
   LLVMValueRef      result = ir_fn_get(cnt, decl);
   bl_node_lit_fn_t *_fn    = bl_peek_lit_fn(_decl->value);
@@ -969,7 +946,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
     int        i = 0;
     bl_node_foreach(_fn_type->arg_types, arg)
     {
-      const char * name  = bl_peek_ident(bl_peek_decl_value(arg)->name)->str;
+      const char * name  = bl_peek_ident(bl_peek_decl(arg)->name)->str;
       LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
       LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
@@ -991,7 +968,7 @@ ir_decl_fn(context_t *cnt, bl_node_t *decl)
   }
 
   /* generate function body */
-  ir_decl_block(cnt, _fn->block);
+  ir_block(cnt, _fn->block);
 
   {
     LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -1028,28 +1005,21 @@ LLVMValueRef
 ir_decl(context_t *cnt, bl_node_t *decl)
 {
   if (is_terminated(cnt)) return NULL;
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
   assert(_decl->type);
   assert(_decl->name);
 
   switch (_decl->kind) {
-  case BL_DECL_KIND_FIELD:
-    return ir_decl_mut(cnt, decl);
-  case BL_DECL_KIND_FN:
-    return ir_decl_fn(cnt, decl);
-  case BL_DECL_KIND_MEMBER:
-    return ir_decl_mut(cnt, decl);
-  case BL_DECL_KIND_ARG:
-    return ir_decl_mut(cnt, decl);
-  case BL_DECL_KIND_CONSTANT:
-    return ir_decl_immut(cnt, decl);
+  case BL_DECL_KIND_FIELD: return ir_decl_mut(cnt, decl);
+  case BL_DECL_KIND_FN: return ir_decl_fn(cnt, decl);
+  case BL_DECL_KIND_MEMBER: return ir_decl_mut(cnt, decl);
+  case BL_DECL_KIND_ARG: return ir_decl_mut(cnt, decl);
+  case BL_DECL_KIND_CONSTANT: return ir_decl_immut(cnt, decl);
   case BL_DECL_KIND_STRUCT:
   case BL_DECL_KIND_ENUM:
   case BL_DECL_KIND_VARIANT:
-  case BL_DECL_KIND_TYPE:
-    break;
-  default:
-    bl_abort("unknown declaration kind");
+  case BL_DECL_KIND_TYPE: break;
+  default: bl_abort("unknown declaration kind");
   }
 
   return NULL;
@@ -1088,7 +1058,7 @@ ir_stmt_if(context_t *cnt, bl_node_t *stmt_if)
 
   /* then block */
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_then);
-  ir_decl_block(cnt, _stmt_if->true_stmt);
+  ir_block(cnt, _stmt_if->true_stmt);
 
   LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
   if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
@@ -1102,7 +1072,7 @@ ir_stmt_if(context_t *cnt, bl_node_t *stmt_if)
     if (bl_node_is(_stmt_if->false_stmt, BL_NODE_STMT_IF))
       ir_stmt_if(cnt, _stmt_if->false_stmt);
     else
-      ir_decl_block(cnt, _stmt_if->false_stmt);
+      ir_block(cnt, _stmt_if->false_stmt);
 
     curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
     if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
@@ -1165,7 +1135,7 @@ ir_stmt_loop(context_t *cnt, bl_node_t *loop)
   LLVMBuildCondBr(cnt->llvm_builder, expr, loop_block, loop_cont);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_block);
-  ir_decl_block(cnt, _loop->true_stmt);
+  ir_block(cnt, _loop->true_stmt);
 
   LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
   if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
@@ -1191,77 +1161,95 @@ ir_stmt_continue(context_t *cnt, bl_node_t *cont)
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
 }
 
+LLVMExecutionEngineRef
+create_jit(LLVMContextRef llvm_cnt)
+{
+  LLVMModuleRef          module = LLVMModuleCreateWithNameInContext("run", llvm_cnt);
+  LLVMExecutionEngineRef jit;
+  char *                 llvm_error = NULL;
+
+  if (LLVMCreateJITCompilerForModule(&jit, module, 3, &llvm_error) != 0)
+    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
+
+  return jit;
+}
+
+LLVMGenericValueRef
+run(context_t *cnt, bl_node_t *fn)
+{
+  bl_node_t *decl = bl_ast_unroll_ident(fn);
+  link_into_jit(cnt, decl);
+  LLVMValueRef        llvm_fn;
+  LLVMGenericValueRef result;
+
+  bl_node_decl_t *_decl     = bl_peek_decl(decl);
+  const char *    decl_name = bl_peek_ident(_decl->name)->str;
+  assert(decl_name);
+
+  if (!LLVMFindFunction(cnt->llvm_jit, decl_name, &llvm_fn)) {
+    result = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+  } else {
+    bl_abort("unknown function %s", decl_name);
+  }
+
+  return result;
+}
+
 void
 generate(context_t *cnt)
 {
-  BList *               queue = cnt->assembly->ir_queue;
-  bl_node_t *           decl;
-  bl_node_decl_value_t *_decl;
+  BList *         queue = cnt->assembly->ir_queue;
+  bl_node_t *     decl;
+  bl_node_decl_t *_decl;
 
   while (!bo_list_empty(queue)) {
     decl = bo_list_front(queue, bl_node_t *);
     bo_list_pop_front(queue);
 
-    _decl = bl_peek_decl_value(decl);
-    // if (!_decl->used) continue;
+    _decl = bl_peek_decl(decl);
     if (_decl->flags & BL_FLAG_EXTERN) continue;
 
-    cnt->llvm_module =
-        LLVMModuleCreateWithNameInContext(bl_peek_ident(_decl->name)->str, cnt->llvm_cnt);
-    ir_decl(cnt, decl);
-    bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
-    llvm_values_reset(cnt);
+    if (is_satisfied(cnt, decl, true)) {
+      generate_decl(cnt, decl);
+
+      if (_decl->flags & BL_FLAG_MAIN) {
+        assert(!cnt->main_tmp);
+        cnt->main_tmp = decl;
+      }
+    } else {
+      /* declaration is waiting for it's dependencies and need to be processed later */
+      bo_list_push_back(queue, decl);
+#if VERBOSE
+      bl_log(BL_RED("defered: '%s'"), bl_peek_ident(bl_peek_decl(decl)->name)->str);
+#endif
+    }
   }
 }
 
 void
-bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
+generate_decl(context_t *cnt, bl_node_t *decl)
 {
-  context_t cnt;
-  cnt.builder        = builder;
-  cnt.assembly       = assembly;
-  cnt.fn_entry_block = NULL;
-  cnt.fn_init_block  = NULL;
-  cnt.fn_ret_block   = NULL;
-  cnt.fn_ret_val     = NULL;
-  cnt.break_block    = NULL;
-  cnt.continue_block = NULL;
-  cnt.is_gscope      = true;
-  cnt.llvm_cnt       = LLVMContextCreate();
-  cnt.llvm_builder   = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.llvm_modules   = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
-  cnt.llvm_values    = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.llvm_module    = NULL;
-
-  generate(&cnt);
-
-  /* temporary link all generated modules until we will have dependency stuff */
-  assembly->llvm_module = LLVMModuleCreateWithNameInContext("main", cnt.llvm_cnt);
-
-  LLVMModuleRef llvm_module;
-  bo_iterator_t it;
-  bl_bhtbl_foreach(cnt.llvm_modules, it)
-  {
-    llvm_module = bo_htbl_iter_peek_value(cnt.llvm_modules, &it, LLVMModuleRef);
-    assert(llvm_module);
-
-#ifdef PRINT_IR
-    {
-      char *str = LLVMPrintModuleToString(llvm_module);
-      bl_log("\n--------------------------------------------------------------------------------"
-             "\n%s"
-             "\n--------------------------------------------------------------------------------",
-             str);
-      LLVMDisposeMessage(str);
-    }
+  assert(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
+#if VERBOSE
+  bl_log(BL_GREEN("generate: '%s'"), bl_peek_ident(_decl->name)->str);
 #endif
+  cnt->llvm_module =
+      LLVMModuleCreateWithNameInContext(bl_peek_ident(_decl->name)->str, cnt->llvm_cnt);
+  ir_decl(cnt, decl);
+  bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
+  llvm_values_reset(cnt);
+}
 
-    LLVMLinkModules2(assembly->llvm_module, llvm_module);
-  }
+LLVMModuleRef
+link(context_t *cnt, bl_node_t *entry)
+{
+  if (!entry) return NULL;
+  LLVMModuleRef dest_module = _link(cnt, entry);
 
-#ifdef PRINT_IR
+#if VERBOSE
   {
-    char *str = LLVMPrintModuleToString(assembly->llvm_module);
+    char *str = LLVMPrintModuleToString(dest_module);
     bl_log("\n--------------------------------------------------------------------------------"
            "\n%s"
            "\n--------------------------------------------------------------------------------",
@@ -1269,10 +1257,138 @@ bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
     LLVMDisposeMessage(str);
   }
 #endif
+  return dest_module;
+}
+
+LLVMModuleRef
+_link(context_t *cnt, bl_node_t *entry)
+{
+  bl_node_decl_t *_entry = bl_peek_decl(entry);
+
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry)) return NULL;
+
+  LLVMModuleRef dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
+  assert(dest_module);
+  if (!_entry->deps) return dest_module;
+
+  bl_dependency_t dep;
+  bo_iterator_t   it;
+  bl_bhtbl_foreach(_entry->deps, it)
+  {
+    dep = bo_htbl_iter_peek_value(_entry->deps, &it, bl_dependency_t);
+
+    /* link all lax dependencies */
+    if (dep.type & BL_DEP_LAX) {
+      /* must be linked */
+      LLVMModuleRef src_module = _link(cnt, dep.node);
+
+      if (src_module) {
+        if (LLVMLinkModules2(dest_module, src_module)) bl_abort("unable to link modules");
+
+        bo_htbl_erase_key(cnt->llvm_modules, (uint64_t)dep.node);
+      }
+    }
+  }
+
+  return dest_module;
+}
+
+static void
+link_into_jit(context_t *cnt, bl_node_t *fn)
+{
+  assert(fn);
+  if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn)) return;
+
+  bl_node_decl_t *_fn = bl_peek_decl(fn);
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)fn))
+    bl_abort("Missing llvm module for '%s', this is usualy caused by #run directive.",
+             bl_peek_ident(_fn->name)->str);
+
+  LLVMModuleRef module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
+  module               = LLVMCloneModule(module);
+  LLVMAddModule(cnt->llvm_jit, module);
+  bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
+
+  if (!_fn->deps) return;
+
+  bo_iterator_t   iter;
+  bl_dependency_t dep;
+  bl_bhtbl_foreach(_fn->deps, iter)
+  {
+    dep = bo_htbl_iter_peek_value(_fn->deps, &iter, bl_dependency_t);
+
+    if (dep.type & BL_DEP_LAX) {
+      link_into_jit(cnt, dep.node);
+    }
+  }
+}
+
+static inline bool
+generated(context_t *cnt, bl_node_t *decl)
+{
+  return bo_htbl_has_key(cnt->llvm_modules, (uint64_t)decl);
+}
+
+bool
+is_satisfied(context_t *cnt, bl_node_t *decl, bool strict_only)
+{
+#if VERBOSE
+  if (!strict_only) bl_log(BL_YELLOW("checking non-strict dependencies"));
+#endif
+  assert(decl);
+  BHashTable *deps = bl_peek_decl(decl)->deps;
+  if (!deps) return true;
+
+  bo_iterator_t   iter;
+  bl_dependency_t dep;
+  bl_bhtbl_foreach(deps, iter)
+  {
+    dep = bo_htbl_iter_peek_value(deps, &iter, bl_dependency_t);
+
+    // PERFORMANCE: is there some better solution than check whole tree???
+    bool check_tree = strict_only ? dep.type & BL_DEP_STRICT : true;
+    if (check_tree) {
+      if (!generated(cnt, dep.node)) {
+        return false;
+      } else if (check_tree && !is_satisfied(cnt, dep.node, false)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+void
+bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly)
+{
+  assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
+  context_t cnt;
+  memset(&cnt, 0, sizeof(cnt));
+  cnt.builder      = builder;
+  cnt.assembly     = assembly;
+  cnt.is_gscope    = true;
+  cnt.jit_linked   = bo_htbl_new(0, bo_list_size(assembly->ir_queue));
+  cnt.llvm_cnt     = LLVMContextCreate();
+  cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
+  cnt.llvm_values  = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.llvm_jit     = create_jit(cnt.llvm_cnt);
+
+  generate(&cnt);
+
+  assert(cnt.main_tmp);
+  assembly->llvm_module = link(&cnt, cnt.main_tmp);
+  bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
 
   ir_validate(assembly->llvm_module);
 
+  if (bo_htbl_size(cnt.llvm_modules))
+    bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
+
   assembly->llvm_cnt = cnt.llvm_cnt;
+  assembly->llvm_jit = cnt.llvm_jit;
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.llvm_values);
+  bo_unref(cnt.jit_linked);
 }

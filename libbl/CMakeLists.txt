@@ -52,6 +52,7 @@ set(SOURCE_FILES
         src/checker.c
         src/scope.c
         src/common.c 
+        src/post.c 
         src/ast.c)
 
 add_library(bl SHARED ${SOURCE_FILES} ${HEADER_FILES} ${HEADER_FILES_IMPL})

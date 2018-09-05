@@ -145,7 +145,7 @@ static bool
 check_ident(context_t *cnt, bl_node_t **ident);
 
 static bool
-check_decl_value(context_t *cnt, bl_node_t **decl);
+check_decl(context_t *cnt, bl_node_t **decl);
 
 static bool
 check_expr_call(context_t *cnt, bl_node_t **call);
@@ -179,12 +179,6 @@ check_type_enum(context_t *cnt, bl_node_t **type);
 
 static void
 check_unresolved(context_t *cnt);
-
-static void
-_check_unused(context_t *cnt, bl_node_t *node);
-
-static void
-check_unused(context_t *cnt);
 
 // impl
 bl_node_t *
@@ -220,19 +214,15 @@ wait_context(bl_node_t *node)
 {
   assert(node && "invalid wait node");
   switch (bl_node_code(node)) {
-  case BL_NODE_IDENT:
-    return node;
-  case BL_NODE_EXPR_MEMBER:
-    return bl_peek_expr_member(node)->ident;
-  case BL_NODE_DECL_VALUE:
-    return bl_peek_decl_value(node)->name;
+  case BL_NODE_IDENT: return node;
+  case BL_NODE_EXPR_MEMBER: return bl_peek_expr_member(node)->ident;
+  case BL_NODE_DECL: return bl_peek_decl(node)->name;
   case BL_NODE_STMT_RETURN: {
     bl_node_t *decl = bl_peek_stmt_return(node)->fn_decl;
     assert(decl && "return statement without context");
-    return bl_peek_decl_value(decl)->name;
+    return bl_peek_decl(decl)->name;
   }
-  default:
-    return NULL;
+  default: return NULL;
   };
 }
 
@@ -375,8 +365,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
 #define flatten(_node) flatten_node(cnt, fbuf, (_node))
 
   switch (bl_node_code(*node)) {
-  case BL_NODE_DECL_VALUE: {
-    bl_node_decl_value_t *_decl = bl_peek_decl_value(*node);
+  case BL_NODE_DECL: {
+    bl_node_decl_t *_decl = bl_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
     if (_decl->in_gscope && !bl_scope_has_symbol(cnt->provided_in_gscope, _decl->name))
@@ -411,8 +401,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
     return;
   }
 
-  case BL_NODE_DECL_BLOCK: {
-    bl_node_decl_block_t *_block = bl_peek_decl_block(*node);
+  case BL_NODE_BLOCK: {
+    bl_node_block_t *_block = bl_peek_block(*node);
 
     bl_node_t **tmp;
     bl_node_foreach_ref(_block->nodes, tmp)
@@ -422,8 +412,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
     return;
   }
 
-  case BL_NODE_DECL_UBLOCK: {
-    bl_node_decl_ublock_t *_ublock = bl_peek_decl_ublock(*node);
+  case BL_NODE_UBLOCK: {
+    bl_node_ublock_t *_ublock = bl_peek_ublock(*node);
 
     bl_node_t **tmp;
     bl_node_foreach_ref(_ublock->nodes, tmp)
@@ -541,10 +531,8 @@ flatten_node(context_t *cnt, BArray *fbuf, bl_node_t **node)
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LIT:
   case BL_NODE_LOAD:
-  case BL_NODE_LINK:
-    break;
-  default:
-    bl_warning("missing flattening for node %s", bl_node_name(*node));
+  case BL_NODE_LINK: break;
+  default: bl_warning("missing flattening for node %s", bl_node_name(*node));
   }
 
   flatten_push(fbuf, node);
@@ -633,7 +621,8 @@ check_expr_call(context_t *cnt, bl_node_t **call)
 
   bl_node_t *callee = bl_peek_ident(ident)->ref;
   assert(callee);
-  bl_node_t *callee_type = bl_peek_decl_value(callee)->type;
+  bl_node_decl_t *_callee     = bl_peek_decl(callee);
+  bl_node_t *     callee_type = _callee->type;
 
   if (bl_node_is_not(callee_type, BL_NODE_TYPE_FN)) {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
@@ -674,6 +663,25 @@ check_expr_call(context_t *cnt, bl_node_t **call)
 
     call_arg   = &(*call_arg)->next;
     callee_arg = callee_arg->next;
+  }
+
+  if (_call->run) {
+    bl_type_kind_e callee_ret_tkind =
+        bl_ast_get_type_kind(bl_ast_unroll_ident(_callee_type->ret_type));
+    switch (callee_ret_tkind) {
+    case BL_KIND_FN:
+    case BL_KIND_PTR:
+    case BL_KIND_STRING:
+    case BL_KIND_STRUCT:
+      check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
+                       "method called in compile time can return fundamental types only");
+    default: break;
+    }
+
+    if (_call->argsc) {
+      check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, *call, BL_BUILDER_CUR_WORD,
+                       "method called in compile time cannot take arguments, remove '#run'?");
+    }
   }
 
   FINISH;
@@ -717,53 +725,29 @@ check_node(context_t *cnt, bl_node_t **node)
 #endif
 
   switch (bl_node_code(*node)) {
-  case BL_NODE_IDENT:
-    result = check_ident(cnt, node);
-    break;
+  case BL_NODE_IDENT: result = check_ident(cnt, node); break;
 
-  case BL_NODE_DECL_VALUE:
-    result = check_decl_value(cnt, node);
-    break;
+  case BL_NODE_DECL: result = check_decl(cnt, node); break;
 
-  case BL_NODE_EXPR_CALL:
-    result = check_expr_call(cnt, node);
-    break;
+  case BL_NODE_EXPR_CALL: result = check_expr_call(cnt, node); break;
 
-  case BL_NODE_EXPR_BINOP:
-    result = check_expr_binop(cnt, node);
-    break;
+  case BL_NODE_EXPR_BINOP: result = check_expr_binop(cnt, node); break;
 
-  case BL_NODE_EXPR_CAST:
-    result = check_expr_cast(cnt, node);
-    break;
+  case BL_NODE_EXPR_CAST: result = check_expr_cast(cnt, node); break;
 
-  case BL_NODE_EXPR_UNARY:
-    result = check_expr_unary(cnt, node);
-    break;
+  case BL_NODE_EXPR_UNARY: result = check_expr_unary(cnt, node); break;
 
-  case BL_NODE_EXPR_SIZEOF:
-    result = check_expr_sizeof(cnt, node);
-    break;
+  case BL_NODE_EXPR_SIZEOF: result = check_expr_sizeof(cnt, node); break;
 
-  case BL_NODE_EXPR_MEMBER:
-    result = check_expr_member(cnt, node);
-    break;
+  case BL_NODE_EXPR_MEMBER: result = check_expr_member(cnt, node); break;
 
-  case BL_NODE_EXPR_ELEM:
-    result = check_expr_elem(cnt, node);
-    break;
+  case BL_NODE_EXPR_ELEM: result = check_expr_elem(cnt, node); break;
 
-  case BL_NODE_STMT_IF:
-    result = check_stmt_if(cnt, node);
-    break;
+  case BL_NODE_STMT_IF: result = check_stmt_if(cnt, node); break;
 
-  case BL_NODE_STMT_RETURN:
-    result = check_stmt_return(cnt, node);
-    break;
+  case BL_NODE_STMT_RETURN: result = check_stmt_return(cnt, node); break;
 
-  case BL_NODE_TYPE_ENUM:
-    result = check_type_enum(cnt, node);
-    break;
+  case BL_NODE_TYPE_ENUM: result = check_type_enum(cnt, node); break;
 
   case BL_NODE_EXPR_NULL:
   case BL_NODE_LIT:
@@ -774,11 +758,9 @@ check_node(context_t *cnt, bl_node_t **node)
   case BL_NODE_TYPE_STRUCT:
   case BL_NODE_TYPE_FUND:
   case BL_NODE_LOAD:
-  case BL_NODE_LINK:
-    break;
+  case BL_NODE_LINK: break;
 
-  default:
-    bl_warning("missing check for node type %s", bl_node_name(*node));
+  default: bl_warning("missing check for node type %s", bl_node_name(*node));
   }
 
 #if VERBOSE && defined(BL_DEBUG)
@@ -819,12 +801,12 @@ check_ident(context_t *cnt, bl_node_t **ident)
     if (!found) WAIT;
   }
 
-  if (bl_node_is(found, BL_NODE_DECL_VALUE)) {
-    bl_peek_decl_value(found)->used++;
+  if (bl_node_is(found, BL_NODE_DECL)) {
+    bl_peek_decl(found)->used++;
   }
 
   _ident->ref = bl_ast_unroll_ident(found);
-  // assert(bl_node_is(_ident->ref, BL_NODE_DECL_VALUE));
+  // assert(bl_node_is(_ident->ref, BL_NODE_DECL));
 
   if (_ident->ptr || _ident->arr) {
     /* when ident reference is pointer we need to create copy of declaration with different
@@ -850,9 +832,9 @@ check_stmt_return(context_t *cnt, bl_node_t **ret)
   bl_node_stmt_return_t *_ret = bl_peek_stmt_return(*ret);
   assert(_ret->fn_decl);
 
-  bl_node_decl_value_t *_callee_decl = bl_peek_decl_value(_ret->fn_decl);
-  bl_node_lit_fn_t *    _callee      = bl_peek_lit_fn(_callee_decl->value);
-  bl_node_t *           fn_ret_type  = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
+  bl_node_decl_t *  _callee_decl = bl_peek_decl(_ret->fn_decl);
+  bl_node_lit_fn_t *_callee      = bl_peek_lit_fn(_callee_decl->value);
+  bl_node_t *       fn_ret_type  = bl_ast_get_type(bl_peek_type_fn(_callee->type)->ret_type);
   if (fn_ret_type == NULL) WAIT;
 
   if (_ret->expr) {
@@ -905,9 +887,9 @@ check_expr_binop(context_t *cnt, bl_node_t **binop)
         bl_node_is_not(_binop->lhs, BL_NODE_EXPR_MEMBER)) {
       bl_node_ident_t *_lhs = bl_peek_ident(_binop->lhs);
       assert(_lhs->ref);
-      assert(bl_node_is(_lhs->ref, BL_NODE_DECL_VALUE));
+      assert(bl_node_is(_lhs->ref, BL_NODE_DECL));
 
-      if (!bl_peek_decl_value(_lhs->ref)->mutable) {
+      if (!bl_peek_decl(_lhs->ref)->mutable) {
         check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, _binop->lhs, BL_BUILDER_CUR_WORD,
                          "declaration is not mutable and cannot be assigned");
       }
@@ -989,8 +971,7 @@ check_type_enum(context_t *cnt, bl_node_t **type)
   case BL_FTYPE_U32:
   case BL_FTYPE_U64:
   case BL_FTYPE_SIZE:
-  case BL_FTYPE_CHAR:
-    break;
+  case BL_FTYPE_CHAR: break;
   default: {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
@@ -1036,7 +1017,7 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
     assert(_lhs_type->base_decl);
 
-    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    found = _lookup(bl_peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
     if (!found) WAIT;
 
     if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
@@ -1050,7 +1031,7 @@ check_expr_member(context_t *cnt, bl_node_t **member)
     bl_node_type_enum_t *_lhs_type = bl_peek_type_enum(lhs_type);
     assert(_lhs_type->base_decl);
 
-    found = _lookup(bl_peek_decl_value(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+    found = _lookup(bl_peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
     if (!found) WAIT;
 
     if (_member->ptr_ref) {
@@ -1109,7 +1090,7 @@ check_stmt_if(context_t *cnt, bl_node_t **stmt_if)
 bool
 infer_type(context_t *cnt, bl_node_t *decl)
 {
-  bl_node_decl_value_t *_decl = bl_peek_decl_value(decl);
+  bl_node_decl_t *_decl = bl_peek_decl(decl);
   if (!_decl->value) return false;
   bl_node_t *inferred_type = bl_ast_get_type(_decl->value);
   if (!inferred_type) return false;
@@ -1126,10 +1107,10 @@ infer_type(context_t *cnt, bl_node_t *decl)
 }
 
 bool
-check_decl_value(context_t *cnt, bl_node_t **decl)
+check_decl(context_t *cnt, bl_node_t **decl)
 {
-  bl_node_decl_value_t *_decl          = bl_peek_decl_value(*decl);
-  bool                  lookup_in_tree = true;
+  bl_node_decl_t *_decl          = bl_peek_decl(*decl);
+  bool            lookup_in_tree = true;
 
   assert(_decl->name);
   infer_type(cnt, *decl);
@@ -1223,12 +1204,9 @@ check_decl_value(context_t *cnt, bl_node_t **decl)
     break;
   }
 
-  case BL_DECL_KIND_FN:
-    break;
-  case BL_DECL_KIND_TYPE:
-    bl_abort("unimplemented");
-  case BL_DECL_KIND_UNKNOWN:
-    bl_abort("unknown declaration kind");
+  case BL_DECL_KIND_FN: break;
+  case BL_DECL_KIND_TYPE: bl_abort("unimplemented");
+  case BL_DECL_KIND_UNKNOWN: bl_abort("unknown declaration kind");
   }
 
   assert(_decl->type);
@@ -1267,44 +1245,10 @@ check_decl_value(context_t *cnt, bl_node_t **decl)
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
     provide(_decl->name, *decl);
-
-    /* insert into ir queue */
-    if (_decl->in_gscope && (_decl->kind != BL_DECL_KIND_CONSTANT)) {
-      // bl_log("generate %s", bl_peek_ident(_decl->name)->str);
-      bl_assembly_add_into_ir(cnt->assembly, *decl);
-    }
-
     waiting_resume(cnt, _decl->name);
   }
 
   FINISH;
-}
-
-void
-_check_unused(context_t *cnt, bl_node_t *node)
-{
-  assert(node);
-  switch (bl_node_code(node)) {
-  case BL_NODE_DECL_VALUE: {
-    bl_node_decl_value_t *_decl = bl_peek_decl_value(node);
-    if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
-        !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
-      check_warning_node(cnt, _decl->name, BL_BUILDER_CUR_WORD,
-                         "symbol is declared but never used");
-    }
-    break;
-  }
-  default:
-    break;
-  }
-}
-
-void
-check_unused(context_t *cnt)
-{
-  /* for unused declaration check we need to do additional pass after general checking pass,
-   * unordered linear iteration is used on AST */
-  bl_ast_visit_every_node(cnt->ast, (bl_visit_f)_check_unused, cnt);
 }
 
 void
@@ -1329,7 +1273,6 @@ bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   }
 
   check_unresolved(&cnt);
-  check_unused(&cnt);
 
   flatten_free_cache(cnt.flatten_cache);
 
