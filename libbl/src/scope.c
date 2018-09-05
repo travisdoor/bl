@@ -51,7 +51,7 @@ bl_scope_cache_terminate(bl_scope_cache_t *cache)
 bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache, size_t size)
 {
-  bl_scope_t *scope = bo_htbl_new(sizeof(bl_node_t *), size);
+  bl_scope_t *scope = bo_htbl_new(sizeof(node_t *), size);
   bo_array_push_back(cache, scope);
   return scope;
 }
@@ -63,26 +63,26 @@ bl_scope_delete(bl_scope_t *scope)
 }
 
 void
-bl_scope_insert(bl_scope_t *scope, struct bl_node *ident, struct bl_node *node)
+bl_scope_insert(bl_scope_t *scope, struct node *ident, struct node *node)
 {
   assert(scope);
-  const bl_node_ident_t *_ident = bl_peek_ident(ident);
+  const node_ident_t *_ident = peek_ident(ident);
   bo_htbl_insert(scope, _ident->hash, node);
 }
 
-bl_node_t *
-bl_scope_get(bl_scope_t *scope, bl_node_t *ident)
+node_t *
+bl_scope_get(bl_scope_t *scope, node_t *ident)
 {
   assert(scope);
-  const bl_node_ident_t *_ident = bl_peek_ident(ident);
-  if (bl_scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, bl_node_t *);
+  const node_ident_t *_ident = peek_ident(ident);
+  if (bl_scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, node_t *);
   return NULL;
 }
 
 bool
-bl_scope_has_symbol(bl_scope_t *scope, bl_node_t *ident)
+bl_scope_has_symbol(bl_scope_t *scope, node_t *ident)
 {
   assert(scope);
-  const bl_node_ident_t *_ident = bl_peek_ident(ident);
+  const node_ident_t *_ident = peek_ident(ident);
   return bo_htbl_has_key(scope, _ident->hash);
 }

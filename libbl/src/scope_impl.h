@@ -36,7 +36,7 @@
 typedef BHashTable bl_scope_t;
 typedef BArray     bl_scope_cache_t;
 
-struct bl_node;
+struct node;
 
 void
 bl_scope_cache_init(bl_scope_cache_t **cache);
@@ -48,12 +48,12 @@ bl_scope_t *
 bl_scope_new(bl_scope_cache_t *cache, size_t size);
 
 void
-bl_scope_insert(bl_scope_t *scope, struct bl_node *ident, struct bl_node *node);
+bl_scope_insert(bl_scope_t *scope, struct node *ident, struct node *node);
 
-struct bl_node *
-bl_scope_get(bl_scope_t *scope, struct bl_node *ident);
+struct node *
+bl_scope_get(bl_scope_t *scope, struct node *ident);
 
 bool
-bl_scope_has_symbol(bl_scope_t *scope, struct bl_node *ident);
+bl_scope_has_symbol(bl_scope_t *scope, struct node *ident);
 
 #endif
