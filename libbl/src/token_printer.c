@@ -37,8 +37,8 @@ token_printer_run(unit_t *unit)
   fprintf(stdout, "Tokens: \n");
 
   const size_t c = bo_array_size(tokens_arr);
-  token_t *tok;
-  int line = -1;
+  token_t *    tok;
+  int          line = -1;
   for (size_t i = 0; i < c; ++i) {
     tok = &bo_array_at(tokens_arr, i, token_t);
 
@@ -50,7 +50,7 @@ token_printer_run(unit_t *unit)
       fprintf(stdout, "\n%d: ", line);
     }
 
-    fprintf(stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", bl_sym_strings[tok->sym], tok->src.line,
+    fprintf(stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", sym_strings[tok->sym], tok->src.line,
             tok->src.col);
   }
 

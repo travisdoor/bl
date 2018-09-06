@@ -35,7 +35,7 @@
 static void
 init(unit_t *unit)
 {
-  bl_tokens_init(&unit->tokens);
+  tokens_init(&unit->tokens);
   ast_init(&unit->ast);
 }
 
@@ -45,7 +45,7 @@ search_file(const char *filepath)
   if (filepath == NULL) return NULL;
 
   char        tmp_rpath[PATH_MAX];
-  const char *rpath = bl_realpath(filepath, tmp_rpath, PATH_MAX);
+  const char *rpath = brealpath(filepath, tmp_rpath, PATH_MAX);
 
   if (rpath != NULL) {
     return strdup(rpath);
@@ -70,7 +70,7 @@ search_file(const char *filepath)
     strcat(&tmp_env[0], BL_PATH_SEPARATOR);
     strcat(&tmp_env[0], filepath);
 
-    rpath = bl_realpath(&tmp_env[0], tmp_rpath, PATH_MAX);
+    rpath = brealpath(&tmp_env[0], tmp_rpath, PATH_MAX);
 
     s = p + 1;
   } while (p != NULL && rpath == NULL);
@@ -115,7 +115,7 @@ bl_unit_delete(unit_t *unit)
   free(unit->filepath);
   free(unit->src);
   free(unit->name);
-  bl_tokens_terminate(&unit->tokens);
+  tokens_terminate(&unit->tokens);
   ast_terminate(&unit->ast);
   bl_free(unit);
 }

@@ -36,14 +36,14 @@ void
 file_loader_run(builder_t *builder, unit_t *unit)
 {
   if (!unit->filepath) {
-    bl_builder_error(builder, "file not found %s", unit->name);
+    builder_error(builder, "file not found %s", unit->name);
     return;
   }
 
   FILE *f = fopen(unit->filepath, "r");
 
   if (f == NULL) {
-    bl_builder_error(builder, "cannot read file %s", unit->name);
+    builder_error(builder, "cannot read file %s", unit->name);
     return;
   }
 
@@ -51,16 +51,15 @@ file_loader_run(builder_t *builder, unit_t *unit)
   size_t fsize = (size_t)ftell(f);
   if (fsize == 0) {
     fclose(f);
-    bl_builder_error(builder, "invalid source file %s", unit->name);
+    builder_error(builder, "invalid source file %s", unit->name);
     return;
   }
 
   fseek(f, 0, SEEK_SET);
 
-  char * src    = calloc(fsize + 1, sizeof(char));
+  char *src = calloc(fsize + 1, sizeof(char));
   if (src == NULL) bl_abort("bad alloc");
-  if (!fread(src, sizeof(char), fsize, f))
-    bl_abort("cannot read file %s", unit->name);
+  if (!fread(src, sizeof(char), fsize, f)) bl_abort("cannot read file %s", unit->name);
 
   src[fsize] = '\0';
   fclose(f);

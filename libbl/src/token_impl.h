@@ -107,10 +107,10 @@ typedef enum {
 } sym_e;
 // clang-format on
 
-extern char *bl_sym_strings[];
+extern char *sym_strings[];
 
 struct bl_unit;
-typedef struct bl_src
+typedef struct src
 {
   int             line;
   int             col;
@@ -131,27 +131,27 @@ typedef struct bl_token
   sym_e         sym;
   src_t         src;
   token_value_u value;
-  
+
 } token_t;
 
 /* is token any known binary operation? */
 bool
-bl_token_is_binop(token_t *token);
+token_is_binop(token_t *token);
 
 bool
-bl_token_is(token_t *token, sym_e sym);
+token_is(token_t *token, sym_e sym);
 
 bool
-bl_token_is_not(token_t *token, sym_e sym);
+token_is_not(token_t *token, sym_e sym);
 
 /* is token logical operation which result type should be boolean */
 bool
-bl_token_is_logic_op(token_t *token);
+token_is_logic_op(token_t *token);
 
 bool
-bl_token_is_unary(token_t *token);
+token_is_unary(token_t *token);
 
 int
-bl_token_prec(token_t *token, bool unary);
+token_prec(token_t *token, bool unary);
 
 #endif // BL_TOKEN_H

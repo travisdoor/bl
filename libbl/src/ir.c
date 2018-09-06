@@ -537,7 +537,7 @@ ir_expr_elem(context_t *cnt, node_t *elem)
   indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
   indices[1] = index;
 
-  return LLVMBuildGEP(cnt->llvm_builder, ptr, indices, BL_ARRAY_SIZE(indices), "");
+  return LLVMBuildGEP(cnt->llvm_builder, ptr, indices, ARRAY_SIZE(indices), "");
 }
 
 LLVMValueRef
@@ -741,7 +741,7 @@ ir_expr_unary(context_t *cnt, node_t *unary)
     switch (_unary->op) {
     case BL_SYM_MINUS: mult = -1; break;
     case BL_SYM_PLUS: mult = 1; break;
-    default: bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+    default: bl_abort("invalid unary operation %s", sym_strings[_unary->op]);
     }
 
     if (next_type_kind == LLVMFloatTypeKind || next_type_kind == LLVMDoubleTypeKind) {
@@ -766,7 +766,7 @@ ir_expr_unary(context_t *cnt, node_t *unary)
     /* unary operation is getting address of something "&foo" */
     LLVMValueRef indices[1];
     indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
-    return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, BL_ARRAY_SIZE(indices), gname("tmp"));
+    return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, ARRAY_SIZE(indices), gname("tmp"));
   }
 
   case BL_SYM_ASTERISK: {
@@ -774,7 +774,7 @@ ir_expr_unary(context_t *cnt, node_t *unary)
     return next_val;
   }
 
-  default: bl_abort("invalid unary operation %s", bl_sym_strings[_unary->op]);
+  default: bl_abort("invalid unary operation %s", sym_strings[_unary->op]);
   }
 }
 
@@ -1268,9 +1268,9 @@ _link(context_t *cnt, node_t *entry)
   assert(dest_module);
   if (!_entry->deps) return dest_module;
 
-  dependency_t dep;
-  bo_iterator_t   it;
-  bl_bhtbl_foreach(_entry->deps, it)
+  dependency_t  dep;
+  bo_iterator_t it;
+  bhtbl_foreach(_entry->deps, it)
   {
     dep = bo_htbl_iter_peek_value(_entry->deps, &it, dependency_t);
 
@@ -1308,9 +1308,9 @@ link_into_jit(context_t *cnt, node_t *fn)
 
   if (!_fn->deps) return;
 
-  bo_iterator_t   iter;
-  dependency_t dep;
-  bl_bhtbl_foreach(_fn->deps, iter)
+  bo_iterator_t iter;
+  dependency_t  dep;
+  bhtbl_foreach(_fn->deps, iter)
   {
     dep = bo_htbl_iter_peek_value(_fn->deps, &iter, dependency_t);
 
@@ -1336,9 +1336,9 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
   BHashTable *deps = peek_decl(decl)->deps;
   if (!deps) return true;
 
-  bo_iterator_t   iter;
-  dependency_t dep;
-  bl_bhtbl_foreach(deps, iter)
+  bo_iterator_t iter;
+  dependency_t  dep;
+  bhtbl_foreach(deps, iter)
   {
     dep = bo_htbl_iter_peek_value(deps, &iter, dependency_t);
 
@@ -1357,7 +1357,7 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
 }
 
 void
-bl_ir_run(builder_t *builder, assembly_t *assembly)
+ir_run(builder_t *builder, assembly_t *assembly)
 {
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
   context_t cnt;

@@ -34,7 +34,7 @@
 #include "bl/error.h"
 
 void
-bl_bc_writer_run(builder_t *builder, assembly_t *assembly)
+bc_writer_run(builder_t *builder, assembly_t *assembly)
 {
   assert(assembly->llvm_module);
 
@@ -47,7 +47,7 @@ bl_bc_writer_run(builder_t *builder, assembly_t *assembly)
 
   FILE *f = fopen(export_file, "w");
   if (f == NULL) {
-    bl_builder_error(builder, "cannot open file %s", export_file);
+    builder_error(builder, "cannot open file %s", export_file);
     free(export_file);
     return;
   }

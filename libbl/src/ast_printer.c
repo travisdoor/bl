@@ -237,7 +237,7 @@ print_unary(ast_visitor_t *visitor, node_t *node, void *pad)
 {
   print_head("unary", node->src, node, (intptr_t)pad);
   node_expr_unary_t *_unary = peek_expr_unary(node);
-  fprintf(stdout, "%s ", bl_sym_strings[_unary->op]);
+  fprintf(stdout, "%s ", sym_strings[_unary->op]);
   print_type(_unary->type);
   ast_walk(visitor, node, pad + 1);
 }
@@ -320,7 +320,7 @@ print_binop(ast_visitor_t *visitor, node_t *node, void *pad)
 {
   print_head("binop", node->src, node, (intptr_t)pad);
   node_expr_binop_t *_binop = peek_expr_binop(node);
-  fprintf(stdout, "%s ", bl_sym_strings[_binop->op]);
+  fprintf(stdout, "%s ", sym_strings[_binop->op]);
   print_type(_binop->type);
   ast_walk(visitor, node, pad + 1);
 }
@@ -424,7 +424,7 @@ ast_printer_run(assembly_t *assembly)
   ast_visitor_add(&visitor, print_type_struct, NODE_TYPE_STRUCT);
 
   unit_t *unit;
-  bl_barray_foreach(assembly->units, unit)
+  barray_foreach(assembly->units, unit)
   {
     ast_visit(&visitor, unit->ast.root, 0);
   }

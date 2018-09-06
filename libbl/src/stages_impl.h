@@ -59,21 +59,21 @@ void
 checker_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_post_run(builder_t *builder, assembly_t *assembly);
+post_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_linker_run(builder_t *builder, assembly_t *assembly);
+linker_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_bc_writer_run(builder_t *builder, assembly_t *assembly);
+bc_writer_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_native_bin_run(builder_t *builder, assembly_t *assembly);
+native_bin_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_ir_run(builder_t *builder, assembly_t *assembly);
+ir_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_jit_exec_run(builder_t *builder, assembly_t *assembly);
+jit_exec_run(builder_t *builder, assembly_t *assembly);
 
 #endif // BL_STAGES_IMPL_H

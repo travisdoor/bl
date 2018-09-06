@@ -28,37 +28,35 @@
 
 #include "token_impl.h"
 
-char *bl_sym_strings[] = {
+char *sym_strings[] = {
 #define sm(tok, str) str,
     BL_SYMBOLS_LIST
 #undef sm
 };
 
 bool
-bl_token_is_binop(token_t *token)
+token_is_binop(token_t *token)
 {
   return token->sym >= BL_SYM_EQ && token->sym <= BL_SYM_LESS;
 }
 
 bool
-bl_token_is_unary(token_t *token)
+token_is_unary(token_t *token)
 {
   switch (token->sym) {
   case BL_SYM_AND:
   case BL_SYM_ASTERISK:
   case BL_SYM_MINUS:
   case BL_SYM_PLUS:
-  case BL_SYM_NOT:
-    return true;
-  default:
-    return false;
+  case BL_SYM_NOT: return true;
+  default: return false;
   }
 
   return false;
 }
 
 bool
-bl_token_is_logic_op(token_t *token)
+token_is_logic_op(token_t *token)
 {
   switch (token->sym) {
   case BL_SYM_LESS:
@@ -68,16 +66,14 @@ bl_token_is_logic_op(token_t *token)
   case BL_SYM_EQ:
   case BL_SYM_NEQ:
   case BL_SYM_LOGIC_AND:
-  case BL_SYM_LOGIC_OR:
-    return true;
+  case BL_SYM_LOGIC_OR: return true;
 
-  default:
-    return false;
+  default: return false;
   }
 }
 
 int
-bl_token_prec(token_t *token, bool unary)
+token_prec(token_t *token, bool unary)
 {
   switch (token->sym) {
     // . -> [ (
@@ -141,22 +137,20 @@ bl_token_prec(token_t *token, bool unary)
     return 5;
 
     // =
-  case BL_SYM_ASSIGN:
-    return 4;
-  default:
-    return -1;
+  case BL_SYM_ASSIGN: return 4;
+  default: return -1;
   }
 }
 
 bool
-bl_token_is(token_t *token, sym_e sym)
+token_is(token_t *token, sym_e sym)
 {
   if (!token) return false;
   return token->sym == sym;
 }
 
 bool
-bl_token_is_not(token_t *token, sym_e sym)
+token_is_not(token_t *token, sym_e sym)
 {
-  return !bl_token_is(token, sym);
+  return !token_is(token, sym);
 }

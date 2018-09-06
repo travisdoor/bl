@@ -187,12 +187,12 @@ ast_init(ast_t *ast)
   if (!statics_initialized) {
     statics_initialized = true;
     const char *it;
-    bl_array_foreach(bl_ftype_strings, it)
+    array_foreach(bl_ftype_strings, it)
     {
       ftype_hashes[i] = bo_hash_from_str(it);
     }
 
-    bl_array_foreach(bl_buildin_strings, it)
+    array_foreach(bl_buildin_strings, it)
     {
       buildin_hashes[i] = bo_hash_from_str(it);
     }
@@ -799,7 +799,7 @@ ast_is_buildin_type(node_t *ident)
   node_ident_t *_ident = peek_ident(ident);
 
   uint64_t hash;
-  bl_array_foreach(ftype_hashes, hash)
+  array_foreach(ftype_hashes, hash)
   {
     if (_ident->hash == hash) return i;
   }
@@ -814,7 +814,7 @@ ast_is_buildin(node_t *ident)
   node_ident_t *_ident = peek_ident(ident);
 
   uint64_t hash;
-  bl_array_foreach(buildin_hashes, hash)
+  array_foreach(buildin_hashes, hash)
   {
     if (_ident->hash == hash) return i;
   }
@@ -1084,7 +1084,7 @@ dependency_t *
 ast_add_dep_uq(node_t *decl, node_t *dep, int type)
 {
   assert(dep && "invalid dep");
-  BHashTable **   deps = &peek_decl(decl)->deps;
+  BHashTable **deps = &peek_decl(decl)->deps;
   dependency_t tmp  = {.node = dep, .type = type};
 
   if (!*deps) {

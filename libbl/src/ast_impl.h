@@ -112,37 +112,37 @@
     node_t     *name; \
     node_t     *type; \
     node_t     *value; \
-    bool           mutable; \
-    int            flags; \
-    int            used; \
-    int            order; \
-    bool           in_gscope; \
-    BHashTable    *deps; \
+    bool        mutable; \
+    int         flags; \
+    int         used; \
+    int         order; \
+    bool        in_gscope; \
+    BHashTable *deps; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
     ftype_e code; \
     node_t *arr; \
-    int        ptr; \
+    int     ptr;				\
   }) \
   nt(TYPE_FN, type_fn, struct { \
     node_t *arg_types; \
     node_t *ret_type; \
     node_t *arr; \
-    int        argc_types; \
-    int        ptr; \
+    int     argc_types; \
+    int     ptr; \
   }) \
   nt(TYPE_STRUCT, type_struct, struct { \
     node_t *base_decl; /* sometimes we need structure name and scope? */ \
     node_t *types; \
     node_t *arr; \
-    int        typesc; \
-    int        ptr; \
+    int     typesc; \
+    int     ptr; \
   }) \
   nt(TYPE_ENUM, type_enum, struct { \
     node_t *base_decl; \
     node_t *base_type; \
     node_t *arr; \
-    int        ptr; \
+    int     ptr; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
     node_t  *type; \
@@ -187,7 +187,7 @@
     node_t       *ident; \
     node_t       *next; \
     node_t       *type; \
-    bool             ptr_ref; \
+    bool          ptr_ref; \
   }) \
   nt(EXPR_ELEM, expr_elem, struct { \
     node_t       *next; \
@@ -267,8 +267,8 @@ typedef enum node_code node_code_e;
 
 typedef struct
 {
-  node_t * node; /* dependent node */
-  dep_e type; /* is dependency strict (ex.: caused by #run directive) */
+  node_t *node; /* dependent node */
+  dep_e   type; /* is dependency strict (ex.: caused by #run directive) */
 } dependency_t;
 
 typedef enum
@@ -360,7 +360,7 @@ struct node
 #undef nt
   } n;
 
-  src_t *  src;
+  src_t *     src;
   node_code_e code;
 
   node_t *      next;

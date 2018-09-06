@@ -36,31 +36,31 @@
 #include "bl/messages.h"
 #include "blmemory_impl.h"
 
-#define BL_ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-#define bl_barray_foreach(arr, it)                                                                 \
+#define barray_foreach(arr, it)                                                                    \
   if (bo_array_size((arr)))                                                                        \
     for (size_t i = 0; (it) = bo_array_at((arr), i, void *), i < bo_array_size((arr)); ++i)
 
-#define bl_array_foreach(arr, it)                                                                  \
-  for (size_t _keep = 1, i = 0, _size = BL_ARRAY_SIZE((arr)); _keep && i != _size;                 \
+#define array_foreach(arr, it)                                                                     \
+  for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                    \
        _keep = !_keep, i++)                                                                        \
     for (it = (arr)[i]; _keep; _keep = !_keep)
 
-#define bl_bhtbl_foreach(htbl, it)                                                                 \
+#define bhtbl_foreach(htbl, it)                                                                    \
   (it) = bo_htbl_begin((htbl));                                                                    \
   for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);                   \
        bo_htbl_iter_next((htbl), &(it)))
 
-#define bl_blist_foreach(list, it)                                                                 \
+#define blist_foreach(list, it)                                                                    \
   (it) = bo_list_begin((list));                                                                    \
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
 
 bool
-bl_file_exists(const char *filepath);
+file_exists(const char *filepath);
 
 const char *
-bl_realpath(const char *file, char *out, int out_len);
+brealpath(const char *file, char *out, int out_len);
 
 #endif // BL_COMMON_IMPL_H

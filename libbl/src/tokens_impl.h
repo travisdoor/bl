@@ -38,77 +38,77 @@ typedef struct bl_tokens
 {
   BArray *buf;
   BArray *string_cache;
-  size_t iter;
-  size_t marker;
+  size_t  iter;
+  size_t  marker;
 } tokens_t;
 
 void
-bl_tokens_init(tokens_t *tokens);
+tokens_init(tokens_t *tokens);
 
 void
-bl_tokens_terminate(tokens_t *tokens);
+tokens_terminate(tokens_t *tokens);
 
 BString *
-bl_tokens_create_cached_str(tokens_t *tokens);
+tokens_create_cached_str(tokens_t *tokens);
 
 int
-bl_tokens_count(tokens_t *tokens);
+tokens_count(tokens_t *tokens);
 
 void
-bl_tokens_push(tokens_t *tokens, token_t *t);
+tokens_push(tokens_t *tokens, token_t *t);
 
 token_t *
-bl_tokens_peek(tokens_t *tokens);
+tokens_peek(tokens_t *tokens);
 
 token_t *
-bl_tokens_peek_last(tokens_t *tokens);
+tokens_peek_last(tokens_t *tokens);
 
 token_t *
-bl_tokens_peek_2nd(tokens_t *tokens);
+tokens_peek_2nd(tokens_t *tokens);
 
 token_t *
-bl_tokens_peek_nth(tokens_t *tokens, size_t n);
+tokens_peek_nth(tokens_t *tokens, size_t n);
 
 token_t *
-bl_tokens_peek_prev(tokens_t *tokens);
+tokens_peek_prev(tokens_t *tokens);
 
 token_t *
-bl_tokens_consume(tokens_t *tokens);
+tokens_consume(tokens_t *tokens);
 
 token_t *
-bl_tokens_consume_if(tokens_t *tokens, sym_e sym);
+tokens_consume_if(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_current_is(tokens_t *tokens, sym_e sym);
+tokens_current_is(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_previous_is(tokens_t *tokens, sym_e sym);
+tokens_previous_is(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_next_is(tokens_t *tokens, sym_e sym);
+tokens_next_is(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_current_is_not(tokens_t *tokens, sym_e sym);
+tokens_current_is_not(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_next_is_not(tokens_t *tokens, sym_e sym);
+tokens_next_is_not(tokens_t *tokens, sym_e sym);
 
 bool
-bl_tokens_is_seq(tokens_t *tokens, int cnt, ...);
+tokens_is_seq(tokens_t *tokens, int cnt, ...);
 
 void
-bl_tokens_reset_iter(tokens_t *tokens);
+tokens_reset_iter(tokens_t *tokens);
 
 void
-bl_tokens_set_marker(tokens_t *tokens);
+tokens_set_marker(tokens_t *tokens);
 
 void
-bl_tokens_back_to_marker(tokens_t *tokens);
+tokens_back_to_marker(tokens_t *tokens);
 
 void
-bl_tokens_consume_till(tokens_t *tokens, sym_e sym);
+tokens_consume_till(tokens_t *tokens, sym_e sym);
 
 BArray *
-bl_tokens_get_all(tokens_t *tokens);
+tokens_get_all(tokens_t *tokens);
 
 #endif /* end of include guard: TOKENS_H_Z3NM7BJC */

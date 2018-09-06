@@ -34,8 +34,8 @@
 
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),               \
+                ##__VA_ARGS__);                                                                    \
   }
 
 #define peek_cnt(v) ((context_t *)(v->cnt))
@@ -45,7 +45,7 @@ typedef struct
   builder_t * builder;
   assembly_t *assembly;
   unit_t *    unit;
-  node_t *       curr_dependent;
+  node_t *    curr_dependent;
 } context_t;
 
 static void
@@ -101,7 +101,7 @@ post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt)
     bl_log(BL_YELLOW("'%s'") " depends on:", peek_ident(_decl->name)->str);
     bo_iterator_t   it;
     bl_dependency_t tmp;
-    bl_bhtbl_foreach(_decl->deps, it)
+    bhtbl_foreach(_decl->deps, it)
     {
       tmp = bo_htbl_iter_peek_value(_decl->deps, &it, bl_dependency_t);
       bl_log("  [%s] %s", tmp.type == DEP_STRICT ? BL_RED("STRICT") : BL_GREEN(" LAX "),
@@ -145,7 +145,7 @@ post_ident(ast_visitor_t *visitor, node_t *ident, void *cnt)
 }
 
 void
-bl_post_run(builder_t *builder, assembly_t *assembly)
+post_run(builder_t *builder, assembly_t *assembly)
 {
   context_t cnt = {
       .builder        = builder,
@@ -162,7 +162,7 @@ bl_post_run(builder_t *builder, assembly_t *assembly)
   ast_visitor_add(&visitor, post_ident, NODE_IDENT);
 
   unit_t *unit;
-  bl_barray_foreach(assembly->units, unit)
+  barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
     ast_visit(&visitor, unit->ast.root, &cnt);

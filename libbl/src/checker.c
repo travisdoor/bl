@@ -48,26 +48,26 @@
 
 #define check_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), &(tok)->src, (pos), (format),         \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), &(tok)->src, (pos), (format),            \
+                ##__VA_ARGS__);                                                                    \
   }
 
 #define check_error_node(cnt, code, node, pos, format, ...)                                        \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),         \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),            \
+                ##__VA_ARGS__);                                                                    \
   }
 
 #define check_warning(cnt, tok, pos, format, ...)                                                  \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, &(tok)->src, (pos), (format),            \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, &(tok)->src, (pos), (format),               \
+                ##__VA_ARGS__);                                                                    \
   }
 
 #define check_warning_node(cnt, node, pos, format, ...)                                            \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),               \
+                ##__VA_ARGS__);                                                                    \
   }
 
 typedef struct
@@ -75,7 +75,7 @@ typedef struct
   builder_t * builder;
   assembly_t *assembly;
   unit_t *    unit;
-  ast_t *        ast;
+  ast_t *     ast;
 
   BHashTable *waiting;
   scope_t *   provided_in_gscope;
@@ -290,7 +290,7 @@ check_unresolved(context_t *cnt)
   node_t **     tmp_node;
   node_t *      tmp_ident;
 
-  bl_bhtbl_foreach(cnt->waiting, iter)
+  bhtbl_foreach(cnt->waiting, iter)
   {
     q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
     assert(q);
@@ -344,7 +344,7 @@ void
 flatten_free_cache(BArray *cache)
 {
   BArray *it;
-  bl_barray_foreach(cache, it)
+  barray_foreach(cache, it)
   {
     bo_unref(it);
   }
@@ -722,29 +722,17 @@ check_node(context_t *cnt, node_t **node)
 
   switch (node_code(*node)) {
   case NODE_IDENT: result = check_ident(cnt, node); break;
-
   case NODE_DECL: result = check_decl(cnt, node); break;
-
   case NODE_EXPR_CALL: result = check_expr_call(cnt, node); break;
-
   case NODE_EXPR_BINOP: result = check_expr_binop(cnt, node); break;
-
   case NODE_EXPR_CAST: result = check_expr_cast(cnt, node); break;
-
   case NODE_EXPR_UNARY: result = check_expr_unary(cnt, node); break;
-
   case NODE_EXPR_SIZEOF: result = check_expr_sizeof(cnt, node); break;
-
   case NODE_EXPR_MEMBER: result = check_expr_member(cnt, node); break;
-
   case NODE_EXPR_ELEM: result = check_expr_elem(cnt, node); break;
-
   case NODE_STMT_IF: result = check_stmt_if(cnt, node); break;
-
   case NODE_STMT_RETURN: result = check_stmt_return(cnt, node); break;
-
   case NODE_TYPE_ENUM: result = check_type_enum(cnt, node); break;
-
   case NODE_EXPR_NULL:
   case NODE_LIT:
   case NODE_STMT_BREAK:
@@ -1257,7 +1245,7 @@ checker_run(builder_t *builder, assembly_t *assembly)
   };
 
   unit_t *unit;
-  bl_barray_foreach(assembly->units, unit)
+  barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
     cnt.ast  = &unit->ast;

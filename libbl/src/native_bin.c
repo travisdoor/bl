@@ -1,5 +1,5 @@
 //************************************************************************************************
-// bl 
+// bl
 //
 // File:   native_bin.c
 // Author: Martin Dorazil
@@ -30,7 +30,7 @@
 #include "bl/config.h"
 
 void
-bl_native_bin_run(builder_t *builder, assembly_t *assembly)
+native_bin_run(builder_t *builder, assembly_t *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
   const char *cmd =
@@ -47,10 +47,12 @@ bl_native_bin_run(builder_t *builder, assembly_t *assembly)
 #elif defined(BL_PLATFORM_WIN)
   const char *cmd =
       "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
-      "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.14.26428\\lib\\x64\" "
+      "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual "
+      "Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.14.26428\\lib\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\um\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17134.0\\ucrt\\x64\" "
-      "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib";
+      "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib "
+      "Msvcrt.lib";
 #endif
 
   // TODO: use dynamic buffer
@@ -59,7 +61,8 @@ bl_native_bin_run(builder_t *builder, assembly_t *assembly)
 
   const char *  lib;
   bo_iterator_t iter;
-  bl_bhtbl_foreach(assembly->link_cache, iter) {
+  bhtbl_foreach(assembly->link_cache, iter)
+  {
     lib = bo_htbl_iter_peek_value(assembly->link_cache, &iter, const char *);
     strcat(&buf[0], " -l");
     strcat(&buf[0], lib);

@@ -33,7 +33,7 @@
 #endif
 
 bool
-bl_file_exists(const char *filepath)
+file_exists(const char *filepath)
 {
 #ifdef BL_COMPILER_MSVC
   return PathFileExistsA(filepath);
@@ -43,7 +43,7 @@ bl_file_exists(const char *filepath)
 }
 
 const char *
-bl_realpath(const char *file, char *out, int out_len)
+brealpath(const char *file, char *out, int out_len)
 {
   const char *resolved = NULL;
   assert(out);

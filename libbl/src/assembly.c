@@ -63,7 +63,7 @@ bl_assembly_delete(assembly_t *assembly)
   free(assembly->name);
 
   unit_t *unit;
-  bl_barray_foreach(assembly->units, unit)
+  barray_foreach(assembly->units, unit)
   {
     bl_unit_delete(unit);
   }

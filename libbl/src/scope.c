@@ -40,7 +40,7 @@ void
 scope_cache_terminate(scope_cache_t *cache)
 {
   scope_t *scope;
-  bl_barray_foreach(cache, scope)
+  barray_foreach(cache, scope)
   {
     bo_unref(scope);
   }

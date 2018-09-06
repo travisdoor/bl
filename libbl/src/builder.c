@@ -86,7 +86,7 @@ llvm_init(void)
 int
 compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t flags)
 {
-  //bl_msg_log("processing unit: %s", unit->name);
+  // bl_msg_log("processing unit: %s", unit->name);
 
   if (flags & BL_BUILDER_LOAD_FROM_FILE) {
     file_loader_run(builder, unit);
@@ -110,7 +110,7 @@ int
 compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
 {
   if (!builder->errorc) checker_run(builder, assembly);
-  if (!builder->errorc) bl_post_run(builder, assembly);
+  if (!builder->errorc) post_run(builder, assembly);
 
   if (flags & BL_BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
@@ -118,19 +118,19 @@ compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
   interrupt_on_error(builder);
 
   if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
-    bl_ir_run(builder, assembly);
+    ir_run(builder, assembly);
 
     if (flags & BL_BUILDER_EMIT_LLVM) {
-      bl_bc_writer_run(builder, assembly);
+      bc_writer_run(builder, assembly);
       interrupt_on_error(builder);
     }
 
-    if (flags & BL_BUILDER_RUN) bl_jit_exec_run(builder, assembly);
+    if (flags & BL_BUILDER_RUN) jit_exec_run(builder, assembly);
 
     if (!(flags & BL_BUILDER_NO_BIN)) {
-      bl_linker_run(builder, assembly);
+      linker_run(builder, assembly);
       interrupt_on_error(builder);
-      bl_native_bin_run(builder, assembly);
+      native_bin_run(builder, assembly);
       interrupt_on_error(builder);
     }
   }
@@ -164,14 +164,14 @@ bl_builder_delete(builder_t *builder)
 int
 bl_builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
 {
-  clock_t    begin = clock();
+  clock_t begin = clock();
   unit_t *unit;
-  int        state = BL_COMPILE_OK;
+  int     state = BL_COMPILE_OK;
 
   builder->no_warn = flags & BL_BUILDER_NO_WARN;
   bl_msg_log("compile assembly: %s", assembly->name);
 
-  bl_barray_foreach(assembly->units, unit)
+  barray_foreach(assembly->units, unit)
   {
     /* IDEA: can run in separate thread */
     if ((state = compile_unit(builder, unit, assembly, flags)) != BL_COMPILE_OK) {
@@ -214,7 +214,7 @@ bl_diag_delete_msg(char *msg)
 }
 
 void
-bl_builder_error(builder_t *builder, const char *format, ...)
+builder_error(builder_t *builder, const char *format, ...)
 {
   if (builder->errorc > MAX_ERROR_REPORTED) return;
   char error[MAX_MSG_LEN] = {0};
@@ -229,7 +229,7 @@ bl_builder_error(builder_t *builder, const char *format, ...)
 }
 
 void
-bl_builder_warning(builder_t *builder, const char *format, ...)
+builder_warning(builder_t *builder, const char *format, ...)
 {
   char warning[MAX_MSG_LEN] = {0};
 
@@ -242,8 +242,8 @@ bl_builder_warning(builder_t *builder, const char *format, ...)
 }
 
 void
-bl_builder_msg(builder_t *builder, builder_msg_type type, int code, struct bl_src *src,
-               builder_msg_cur_pos pos, const char *format, ...)
+builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
+            builder_msg_cur_pos pos, const char *format, ...)
 {
   if (type == BL_BUILDER_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
   if (builder->no_warn && type == BL_BUILDER_WARNING) return;
@@ -263,8 +263,7 @@ bl_builder_msg(builder_t *builder, builder_msg_type type, int code, struct bl_sr
     len = 1;
     break;
 
-  case BL_BUILDER_CUR_WORD:
-    break;
+  case BL_BUILDER_CUR_WORD: break;
 
   case BL_BUILDER_CUR_BEFORE:
     col -= col < 1 ? 0 : 1;
