@@ -32,18 +32,18 @@
 #include "assembly.h"
 #include "error.h"
 
-#define BL_BUILDER_RUN 0x00000002
-#define BL_BUILDER_PRINT_TOKENS 0x00000004
-#define BL_BUILDER_PRINT_AST 0x00000008
-#define BL_BUILDER_LOAD_FROM_FILE 0x00000010
-#define BL_BUILDER_SYNTAX_ONLY 0x00000020
-#define BL_BUILDER_EMIT_LLVM 0x00000040
-#define BL_BUILDER_RUN_TESTS 0x00000080
-#define BL_BUILDER_NO_BIN 0x00000100
-#define BL_BUILDER_NO_WARN 0x00000200
+#define BUILDER_RUN 0x00000002
+#define BUILDER_PRINT_TOKENS 0x00000004
+#define BUILDER_PRINT_AST 0x00000008
+#define BUILDER_LOAD_FROM_FILE 0x00000010
+#define BUILDER_SYNTAX_ONLY 0x00000020
+#define BUILDER_EMIT_LLVM 0x00000040
+#define BUILDER_RUN_TESTS 0x00000080
+#define BUILDER_NO_BIN 0x00000100
+#define BUILDER_NO_WARN 0x00000200
 
-#define BL_COMPILE_OK 0
-#define BL_COMPILE_FAIL 1
+#define COMPILE_OK 0
+#define COMPILE_FAIL 1
 
 typedef struct bl_builder *bl_builder_ref;
 typedef void (*bl_diag_handler_f)(const char *, void *);
@@ -101,4 +101,4 @@ void
 builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
             builder_msg_cur_pos pos, const char *format, ...);
 
-#endif 
+#endif

@@ -79,14 +79,14 @@ llvm_init(void)
 }
 
 #define interrupt_on_error(_builder)                                                               \
-  if ((_builder)->errorc) return BL_COMPILE_FAIL;
+  if ((_builder)->errorc) return COMPILE_FAIL;
 
 int
 compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t flags)
 {
   // bl_msg_log("processing unit: %s", unit->name);
 
-  if (flags & BL_BUILDER_LOAD_FROM_FILE) {
+  if (flags & BUILDER_LOAD_FROM_FILE) {
     file_loader_run(builder, unit);
     interrupt_on_error(builder);
   }
@@ -94,14 +94,14 @@ compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t fl
   lexer_run(builder, unit);
   interrupt_on_error(builder);
 
-  if (flags & BL_BUILDER_PRINT_TOKENS) {
+  if (flags & BUILDER_PRINT_TOKENS) {
     token_printer_run(unit);
     interrupt_on_error(builder);
   }
 
   parser_run(builder, assembly, unit);
 
-  return BL_COMPILE_OK;
+  return COMPILE_OK;
 }
 
 int
@@ -110,22 +110,22 @@ compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
   if (!builder->errorc) checker_run(builder, assembly);
   if (!builder->errorc) post_run(builder, assembly);
 
-  if (flags & BL_BUILDER_PRINT_AST) {
+  if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
   }
   interrupt_on_error(builder);
 
-  if (!(flags & BL_BUILDER_SYNTAX_ONLY)) {
+  if (!(flags & BUILDER_SYNTAX_ONLY)) {
     ir_run(builder, assembly);
 
-    if (flags & BL_BUILDER_EMIT_LLVM) {
+    if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
       interrupt_on_error(builder);
     }
 
-    if (flags & BL_BUILDER_RUN) jit_exec_run(builder, assembly);
+    if (flags & BUILDER_RUN) jit_exec_run(builder, assembly);
 
-    if (!(flags & BL_BUILDER_NO_BIN)) {
+    if (!(flags & BUILDER_NO_BIN)) {
       linker_run(builder, assembly);
       interrupt_on_error(builder);
       native_bin_run(builder, assembly);
@@ -133,7 +133,7 @@ compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
     }
   }
 
-  return BL_COMPILE_OK;
+  return COMPILE_OK;
 }
 
 /* public */
@@ -164,25 +164,25 @@ bl_builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
 {
   clock_t begin = clock();
   unit_t *unit;
-  int     state = BL_COMPILE_OK;
+  int     state = COMPILE_OK;
 
-  builder->no_warn = flags & BL_BUILDER_NO_WARN;
+  builder->no_warn = flags & BUILDER_NO_WARN;
   bl_msg_log("compile assembly: %s", assembly->name);
 
   barray_foreach(assembly->units, unit)
   {
     /* IDEA: can run in separate thread */
-    if ((state = compile_unit(builder, unit, assembly, flags)) != BL_COMPILE_OK) {
+    if ((state = compile_unit(builder, unit, assembly, flags)) != COMPILE_OK) {
       break;
     }
   }
 
-  if (state == BL_COMPILE_OK) state = compile_assembly(builder, assembly, flags);
+  if (state == COMPILE_OK) state = compile_assembly(builder, assembly, flags);
 
   clock_t end        = clock();
   double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  if (state == BL_COMPILE_OK) {
+  if (state == COMPILE_OK) {
     bl_msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
   } else {
     bl_msg_log("there were errors, sorry...");

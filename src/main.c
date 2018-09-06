@@ -40,27 +40,27 @@ int
 main(int argc, char *argv[])
 {
   setlocale(LC_ALL, "C");
-  unsigned int build_flags = BL_BUILDER_LOAD_FROM_FILE;
+  unsigned int build_flags = BUILDER_LOAD_FROM_FILE;
   puts("compiler version: " BL_VERSION);
 
   size_t optind;
   for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
     if (strcmp(&argv[optind][1], "ast-dump") == 0) {
-      build_flags |= BL_BUILDER_PRINT_AST;
+      build_flags |= BUILDER_PRINT_AST;
     } else if (strcmp(&argv[optind][1], "lex-dump") == 0) {
-      build_flags |= BL_BUILDER_PRINT_TOKENS;
+      build_flags |= BUILDER_PRINT_TOKENS;
     } else if (strcmp(&argv[optind][1], "syntax-only") == 0) {
-      build_flags |= BL_BUILDER_SYNTAX_ONLY;
+      build_flags |= BUILDER_SYNTAX_ONLY;
     } else if (strcmp(&argv[optind][1], "emit-llvm") == 0) {
-      build_flags |= BL_BUILDER_EMIT_LLVM;
+      build_flags |= BUILDER_EMIT_LLVM;
     } else if (strcmp(&argv[optind][1], "run") == 0) {
-      build_flags |= BL_BUILDER_RUN;
+      build_flags |= BUILDER_RUN;
     } else if (strcmp(&argv[optind][1], "run-tests") == 0) {
-      build_flags |= BL_BUILDER_RUN_TESTS;
+      build_flags |= BUILDER_RUN_TESTS;
     } else if (strcmp(&argv[optind][1], "no-bin") == 0) {
-      build_flags |= BL_BUILDER_NO_BIN;
+      build_flags |= BUILDER_NO_BIN;
     } else if (strcmp(&argv[optind][1], "no-warning") == 0) {
-      build_flags |= BL_BUILDER_NO_WARN;
+      build_flags |= BUILDER_NO_WARN;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);
@@ -111,7 +111,7 @@ main(int argc, char *argv[])
   }
 
   int state = bl_builder_compile(builder, assembly, build_flags);
-  if (state == BL_COMPILE_OK) {
+  if (state == COMPILE_OK) {
     bl_msg_log(BL_GREEN("done"));
   } 
 
