@@ -30,14 +30,12 @@
 #include <time.h>
 #include <bobject/containers/string.h>
 
-#include "common_impl.h"
-
-#include "builder_impl.h"
-#include "assembly_impl.h"
-#include "unit_impl.h"
-
-#include "stages_impl.h"
-#include "token_impl.h"
+#include "common.h"
+#include "builder.h"
+#include "assembly.h"
+#include "unit.h"
+#include "stages.h"
+#include "token.h"
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10

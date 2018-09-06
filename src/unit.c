@@ -28,8 +28,8 @@
 
 #include <string.h>
 #include <limits.h>
-#include "unit_impl.h"
-#include "blmemory_impl.h"
+#include "unit.h"
+#include "blmemory.h"
 #include "bldebug.h"
 
 static void

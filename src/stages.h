@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   stages_impl.h
+// File:   stages.h
 // Author: Martin Dorazil
 // Date:   02/03/2018
 //
@@ -26,12 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_STAGES_IMPL_H
-#define BL_STAGES_IMPL_H
+#ifndef BL_STAGES_H
+#define BL_STAGES_H
 
-#include "builder_impl.h"
-#include "unit_impl.h"
-#include "assembly_impl.h"
+#include "builder.h"
+#include "unit.h"
+#include "assembly.h"
 #include "error.h"
 
 /*
@@ -76,4 +76,4 @@ ir_run(builder_t *builder, assembly_t *assembly);
 void
 jit_exec_run(builder_t *builder, assembly_t *assembly);
 
-#endif // BL_STAGES_IMPL_H
+#endif

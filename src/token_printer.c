@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "stages_impl.h"
-#include "common_impl.h"
+#include "stages.h"
+#include "common.h"
 
 void
 token_printer_run(unit_t *unit)

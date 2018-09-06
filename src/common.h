@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   common_impl.h
+// File:   common.h
 // Author: Martin Dorazil
 // Date:   03/03/2018
 //
@@ -26,15 +26,15 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_COMMON_IMPL_H
-#define BL_COMMON_IMPL_H
+#ifndef BL_COMMON_H
+#define BL_COMMON_H
 
 #include <limits.h>
 #include "bldebug.h"
 #include "config.h"
 #include "error.h"
 #include "messages.h"
-#include "blmemory_impl.h"
+#include "blmemory.h"
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
@@ -63,4 +63,4 @@ file_exists(const char *filepath);
 const char *
 brealpath(const char *file, char *out, int out_len);
 
-#endif // BL_COMMON_IMPL_H
+#endif 

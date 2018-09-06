@@ -26,13 +26,13 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef TOKENS_H_Z3NM7BJC
-#define TOKENS_H_Z3NM7BJC
+#ifndef BL_TOKENS_H
+#define BL_TOKENS_H
 
 #include <bobject/bobject.h>
 #include <bobject/containers/string.h>
 #include <bobject/containers/array.h>
-#include "token_impl.h"
+#include "token.h"
 
 typedef struct bl_tokens
 {
@@ -111,4 +111,4 @@ tokens_consume_till(tokens_t *tokens, sym_e sym);
 BArray *
 tokens_get_all(tokens_t *tokens);
 
-#endif /* end of include guard: TOKENS_H_Z3NM7BJC */
+#endif 

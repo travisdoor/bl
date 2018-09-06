@@ -31,8 +31,6 @@
 
 #include "config.h"
 
-BL_BEGIN_DECLS
-
 typedef enum
 {
   BL_NO_ERR = 0,
@@ -88,7 +86,5 @@ typedef enum
   BL_ERR_INVALID_NAME            = 49,
   BL_ERR_INVALID_MEMBER_ACCESS   = 50,
 } bl_error_e;
-
-BL_END_DECLS
 
 #endif // BL_ERROR_H

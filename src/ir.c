@@ -29,9 +29,9 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Linker.h>
-#include "stages_impl.h"
-#include "common_impl.h"
-#include "ast_impl.h"
+#include "stages.h"
+#include "common.h"
+#include "ast.h"
 
 #if BL_DEBUG
 #define gname(s) s

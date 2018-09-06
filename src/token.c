@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "token_impl.h"
+#include "token.h"
 
 char *sym_strings[] = {
 #define sm(tok, str) str,

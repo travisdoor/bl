@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "stages_impl.h"
+#include "stages.h"
 #include "config.h"
 
 void

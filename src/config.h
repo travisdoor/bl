@@ -64,26 +64,6 @@
 #endif
 
 #ifdef BL_COMPILER_MSVC
-#if BL_COMPILING_DLL
-#define BL_EXPORT __declspec(dllexport)
-#else
-#define BL_EXPORT __declspec(dllimport)
-#endif
-#else
-#define BL_EXPORT __attribute__((__visibility__("default")))
-#endif
-
-#ifdef __cplusplus
-#define BL_BEGIN_DECLS                                                                             \
-  extern "C"                                                                                       \
-  {
-#define BL_END_DECLS }
-#else
-#define BL_BEGIN_DECLS
-#define BL_END_DECLS
-#endif
-
-#ifdef BL_COMPILER_MSVC
 #include <Windows.h>
 #endif
 

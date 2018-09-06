@@ -1,11 +1,11 @@
 //************************************************************************************************
-// blc
+// Biscuit Engine
 //
 // File:   assembly.h
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   02/03/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,41 +26,56 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_ASSEMBLY_H
-#define BL_ASSEMBLY_H
+#ifndef BL_ASSEMBLY_BL
+#define BL_ASSEMBLY_BL
 
-#include <bobject/bobject.h>
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include <bobject/containers/list.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Core.h>
+#include "scope.h"
 #include "unit.h"
-#include "config.h"
 
-BL_BEGIN_DECLS
+typedef struct bl_assembly
+{
+  BArray *               units;           /* array of all units in assembly */
+  BHashTable *           unique_cache;    /* cache for loading only unique units */
+  BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
+  char *                 name;            /* assembly name */
+  scope_cache_t *        scope_cache;     /* cache for scopes */
+  scope_t *              gscope;          /* cache for global scope */
+  BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
+  LLVMContextRef         llvm_cnt;        /* llvm context */
+  LLVMModuleRef          llvm_module;     /* final llvm module */
+  LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
+  LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
+} assembly_t;
 
 typedef struct bl_assembly *bl_assembly_ref;
 
-extern BL_EXPORT bl_assembly_ref
+bl_assembly_ref
 bl_assembly_new(const char *name);
 
-extern BL_EXPORT void
+void
 bl_assembly_delete(bl_assembly_ref assembly);
 
-extern BL_EXPORT void
+void
 bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
 
-extern BL_EXPORT void
+void
 bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
 
-extern BL_EXPORT bool
+bool
 bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
 
-extern BL_EXPORT int
+int
 bl_assembly_get_unit_count(bl_assembly_ref assembly);
 
-extern BL_EXPORT bl_unit_ref
+bl_unit_ref
 bl_assembly_get_unit(bl_assembly_ref assembly, int i);
 
-extern BL_EXPORT const char *
+const char *
 bl_assembly_get_name(bl_assembly_ref assembly);
 
-BL_END_DECLS
-
-#endif // BL_ASSEMBLY_H
+#endif

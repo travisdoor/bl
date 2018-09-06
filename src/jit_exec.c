@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 //#include <llvm-c/Core.h>
-#include "stages_impl.h"
+#include "stages.h"
 #include "bldebug.h"
 
 void

@@ -28,9 +28,9 @@
 
 #include <string.h>
 #include <bobject/containers/hash.h>
-#include "blmemory_impl.h"
-#include "assembly_impl.h"
-#include "unit_impl.h"
+#include "blmemory.h"
+#include "assembly.h"
+#include "unit.h"
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32

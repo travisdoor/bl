@@ -31,8 +31,6 @@
 
 #include "config.h"
 
-BL_BEGIN_DECLS
-
 #define bl_msg_log(format, ...)                                                                    \
   {                                                                                                \
     fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
@@ -47,7 +45,5 @@ BL_BEGIN_DECLS
   {                                                                                                \
     fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
   }
-
-BL_END_DECLS
 
 #endif // BL_MESSAGES_H

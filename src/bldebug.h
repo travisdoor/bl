@@ -26,16 +26,14 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BLDEBUG_H_VYI9AXGT
-#define BLDEBUG_H_VYI9AXGT
+#ifndef BL_DEBUG_H
+#define BL_DEBUG_H
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include <bobject/bobject.h>
 #include "config.h"
-
-BL_BEGIN_DECLS
 
 #ifdef BL_NO_COLOR
 #define BL_COLOR_END
@@ -83,7 +81,7 @@ typedef enum
   BL_LOG_MSG
 } bl_log_msg_type_e;
 
-extern BL_EXPORT void
+void
 _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 
 #ifdef BL_DEBUG
@@ -113,6 +111,4 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
     abort();                                                                                       \
   }
 
-BL_END_DECLS
-
-#endif /* end of include guard: BLDEBUG_H_VYI9AXGT */
+#endif 

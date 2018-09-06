@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include <math.h>
-#include "ast_impl.h"
+#include "ast.h"
 
 #define CHUNK_SIZE 256
 #define MAX_ALIGNMENT 16

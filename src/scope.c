@@ -26,9 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "scope_impl.h"
-#include "common_impl.h"
-#include "ast_impl.h"
+#include "scope.h"
+#include "common.h"
+#include "ast.h"
 
 void
 scope_cache_init(scope_cache_t **cache)

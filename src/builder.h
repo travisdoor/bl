@@ -1,9 +1,9 @@
 //************************************************************************************************
-// blc
+// bl
 //
 // File:   builder.h
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -32,8 +32,6 @@
 #include "assembly.h"
 #include "error.h"
 
-BL_BEGIN_DECLS
-
 #define BL_BUILDER_RUN 0x00000002
 #define BL_BUILDER_PRINT_TOKENS 0x00000004
 #define BL_BUILDER_PRINT_AST 0x00000008
@@ -50,22 +48,57 @@ BL_BEGIN_DECLS
 typedef struct bl_builder *bl_builder_ref;
 typedef void (*bl_diag_handler_f)(const char *, void *);
 
-extern BL_EXPORT bl_builder_ref
-                 bl_builder_new(void);
+typedef struct bl_builder
+{
+  bl_diag_handler_f on_error;
+  bl_diag_handler_f on_warning;
 
-extern BL_EXPORT void
+  void *on_error_cnt;
+  void *on_warning_cnt;
+  int   total_lines;
+  bool  no_warn;
+  int   errorc;
+} builder_t;
+
+typedef enum
+{
+  BL_BUILDER_ERROR,
+  BL_BUILDER_WARNING,
+} builder_msg_type;
+
+typedef enum
+{
+  BL_BUILDER_CUR_AFTER,
+  BL_BUILDER_CUR_WORD,
+  BL_BUILDER_CUR_BEFORE
+} builder_msg_cur_pos;
+
+struct src;
+
+bl_builder_ref
+bl_builder_new(void);
+
+void
 bl_builder_delete(bl_builder_ref builder);
 
-extern BL_EXPORT int
+int
 bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
 
-extern BL_EXPORT void
+void
 bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);
 
-extern BL_EXPORT void
+void
 bl_builder_set_warning_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler,
                                     void *context);
 
-BL_END_DECLS
+void
+builder_error(builder_t *builder, const char *format, ...);
 
-#endif // BL_BUILDER_H
+void
+builder_warning(builder_t *builder, const char *format, ...);
+
+void
+builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
+            builder_msg_cur_pos pos, const char *format, ...);
+
+#endif 

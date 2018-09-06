@@ -1,9 +1,9 @@
 //************************************************************************************************
-// blc
+// bl
 //
 // File:   unit.h
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   3/1/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,38 +26,50 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef UNIT_H_IDHOJTNW
-#define UNIT_H_IDHOJTNW
+#ifndef BL_UNIT_H
+#define BL_UNIT_H
 
-#include <bobject/bobject.h>
 #include <llvm-c/Core.h>
 #include "config.h"
+#include "ast.h"
+#include "tokens.h"
 
-BL_BEGIN_DECLS
+/* class Unit object members */
+typedef struct bl_unit
+{
+  /* output of lexer */
+  tokens_t tokens;
+  /* abstract syntax tree as output of parser */
+  ast_t   ast;
+  BArray *globals;
+  /* source file name with path */
+  char *filepath;
+  char *name;
+  /* source data */
+  char *src;
+} unit_t;
 
 typedef struct bl_unit *bl_unit_ref;
 
-extern BL_EXPORT bl_unit_ref
+bl_unit_ref
 bl_unit_new_file(const char *filepath);
 
-extern BL_EXPORT bl_unit_ref
+bl_unit_ref
 bl_unit_new_str(const char *name, const char *src);
 
-extern BL_EXPORT void
+void
 bl_unit_delete(bl_unit_ref unit);
 
-extern BL_EXPORT const char *
+const char *
 bl_unit_get_src_file(bl_unit_ref unit);
 
-extern BL_EXPORT const char *
+const char *
 bl_unit_get_src(bl_unit_ref unit);
 
-extern BL_EXPORT const char *
+const char *
 bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len);
 
-extern BL_EXPORT const char *
+const char *
 bl_unit_get_name(bl_unit_ref unit);
 
-BL_END_DECLS
-
-#endif /* end of include guard: UNIT_H_IDHOJTNW */
+#endif 

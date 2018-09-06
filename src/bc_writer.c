@@ -28,8 +28,8 @@
 
 #include <llvm-c/BitWriter.h>
 #include <string.h>
-#include "stages_impl.h"
-#include "assembly_impl.h"
+#include "stages.h"
+#include "assembly.h"
 #include "bldebug.h"
 #include "error.h"
 

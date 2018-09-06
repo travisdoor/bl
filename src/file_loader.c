@@ -29,8 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "unit.h"
-#include "stages_impl.h"
-#include "common_impl.h"
+#include "stages.h"
+#include "common.h"
 
 void
 file_loader_run(builder_t *builder, unit_t *unit)

@@ -27,9 +27,9 @@
 //************************************************************************************************
 
 #include <stdio.h>
-#include "stages_impl.h"
-#include "common_impl.h"
-#include "ast_impl.h"
+#include "stages.h"
+#include "common.h"
+#include "ast.h"
 
 #define MAX_STR_BUF 256
 

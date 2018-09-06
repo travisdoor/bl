@@ -26,8 +26,8 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#ifndef VERSION_H_IN_N0PFZT16
-#define VERSION_H_IN_N0PFZT16
+#ifndef BL_VERSION_H
+#define BL_VERSION_H
 
 /*
  * Values set automatically during build by cmake.

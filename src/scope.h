@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   unit_impl.h
+// File:   scope.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   15/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,26 +26,34 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_IMPL_H
-#define BL_UNIT_IMPL_H
+#ifndef BL_SCOPE_H
+#define BL_SCOPE_H
 
-#include "unit.h"
-#include "ast_impl.h"
-#include "tokens_impl.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include <assert.h>
 
-/* class Unit object members */
-typedef struct bl_unit
-{
-  /* output of lexer */
-  tokens_t tokens;
-  /* abstract syntax tree as output of parser */
-  ast_t   ast;
-  BArray *globals;
-  /* source file name with path */
-  char *filepath;
-  char *name;
-  /* source data */
-  char *src;
-} unit_t;
+typedef BHashTable scope_t;
+typedef BArray     scope_cache_t;
 
-#endif // BL_UNIT_IMPL_H
+struct node;
+
+void
+scope_cache_init(scope_cache_t **cache);
+
+void
+scope_cache_terminate(scope_cache_t *cache);
+
+scope_t *
+scope_new(scope_cache_t *cache, size_t size);
+
+void
+scope_insert(scope_t *scope, struct node *ident, struct node *node);
+
+struct node *
+scope_get(scope_t *scope, struct node *ident);
+
+bool
+scope_has_symbol(scope_t *scope, struct node *ident);
+
+#endif

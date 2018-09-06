@@ -28,8 +28,8 @@
 
 #include <string.h>
 #include <setjmp.h>
-#include "stages_impl.h"
-#include "common_impl.h"
+#include "stages.h"
+#include "common.h"
 
 #define is_intend_c(c)                                                                             \
   (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||       \

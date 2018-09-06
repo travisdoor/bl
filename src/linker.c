@@ -29,8 +29,8 @@
 #include <llvm-c/Linker.h>
 #include <llvm-c/TargetMachine.h>
 
-#include "stages_impl.h"
-#include "common_impl.h"
+#include "stages.h"
+#include "common.h"
 #include "error.h"
 
 #ifdef BL_PLATFORM_WIN

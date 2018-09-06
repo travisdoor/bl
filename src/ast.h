@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   ast_impl.h
+// File:   ast.h
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -26,16 +26,16 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_NODE_IMPL_H
-#define BL_NODE_IMPL_H
+#ifndef BL_AST_H
+#define BL_AST_H
 
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/list.h>
 #include <bobject/containers/hash.h>
-#include "token_impl.h"
-#include "common_impl.h"
-#include "scope_impl.h"
+#include "token.h"
+#include "common.h"
+#include "scope.h"
 
 // clang-format off
 #define _FTYPE_LIST                                                                         \
@@ -505,4 +505,4 @@ ast_add_dep_uq(node_t *decl, node_t *dep, int type);
 
 /**************************************************************************************************/
 
-#endif // NODE2_IMPL_H
+#endif

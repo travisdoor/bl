@@ -27,8 +27,8 @@
 //************************************************************************************************
 
 #include <setjmp.h>
-#include "stages_impl.h"
-#include "common_impl.h"
+#include "stages.h"
+#include "common.h"
 
 #define parse_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \

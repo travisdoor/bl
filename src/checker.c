@@ -36,9 +36,9 @@
  * take note about position in queue and push it into waiting cache.
  */
 
-#include "stages_impl.h"
-#include "common_impl.h"
-#include "ast_impl.h"
+#include "stages.h"
+#include "common.h"
+#include "ast.h"
 
 #define VERBOSE 0
 #define VERBOSE_MULTIPLE_CHECK 0

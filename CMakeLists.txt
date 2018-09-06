@@ -23,23 +23,20 @@ find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
-        src/unit.h
-        src/assembly.h
-        src/builder.h
         src/bldebug.h
         src/error.h 
         src/config.h
 	src/messages.h
-        src/builder_impl.h
-        src/blmemory_impl.h
-        src/assembly_impl.h
-        src/token_impl.h
-        src/tokens_impl.h
-        src/unit_impl.h
-        src/stages_impl.h
-        src/common_impl.h 
-        src/scope_impl.h
-        src/ast_impl.h)
+        src/builder.h
+        src/blmemory.h
+        src/assembly.h
+        src/token.h
+        src/tokens.h
+        src/unit.h
+        src/stages.h
+        src/common.h 
+        src/scope.h
+        src/ast.h)
 
 set(SOURCE_FILES
         src/main.c
