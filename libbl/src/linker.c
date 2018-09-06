@@ -39,9 +39,8 @@
 #define OBJ_EXT ".o"
 #endif
 
-
 void
-bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
+linker_run(builder_t *builder, assembly_t *assembly)
 {
   assert(assembly->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
@@ -70,9 +69,8 @@ bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly)
   LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
 #endif
 
-  LLVMTargetMachineRef target_machine =
-      LLVMCreateTargetMachine(target, triple, cpu, features, opt_lvl,
-                              LLVMRelocDefault, LLVMCodeModelDefault);
+  LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
+      target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
 
   // TODO: use tmp file first (cause problems on windows)
   remove(filename);

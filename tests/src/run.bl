@@ -1,0 +1,23 @@
+#load "libc.bl"
+
+test1 : fn () {
+  puts("hello from test1"); 
+};
+
+test2 : fn () s32 {
+  test1();
+  return 666;
+};
+
+main : fn () s32 {
+  #run test1(); 
+  a := #run test2();
+  printf("a = %d\n", a);
+  if a != 666 { return EXIT_FAILURE; } 
+
+  b : #run test2();
+  printf("b = %d\n", a);
+  if b != 666 { return EXIT_FAILURE; } 
+
+  return EXIT_SUCCESS;
+};

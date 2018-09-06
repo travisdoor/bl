@@ -37,21 +37,19 @@
 #include "bl/assembly.h"
 #include "scope_impl.h"
 
-struct bl_node;
-
 typedef struct bl_assembly
 {
   BArray *               units;           /* array of all units in assembly */
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
   char *                 name;            /* assembly name */
-  bl_scope_cache_t *     scope_cache;     /* cache for scopes */
-  bl_scope_t *           gscope;          /* cache for global scope */
+  scope_cache_t *        scope_cache;     /* cache for scopes */
+  scope_t *              gscope;          /* cache for global scope */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */
   LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
   LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
-} bl_assembly_t;
+} assembly_t;
 
 #endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

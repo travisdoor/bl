@@ -38,42 +38,42 @@
  * per unit
  */
 void
-bl_file_loader_run(bl_builder_t *builder, bl_unit_t *unit);
+file_loader_run(builder_t *builder, unit_t *unit);
 
 void
-bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit);
+lexer_run(builder_t *builder, unit_t *unit);
 
 void
-bl_token_printer_run(bl_unit_t *unit);
+token_printer_run(unit_t *unit);
 
 void
-bl_parser_run(bl_builder_t *builder, bl_assembly_t *assembly, bl_unit_t *unit);
+parser_run(builder_t *builder, assembly_t *assembly, unit_t *unit);
 
 /*
  * per assembly
  */
 void
-bl_ast_printer_run(bl_assembly_t *assembly);
+ast_printer_run(assembly_t *assembly);
 
 void
-bl_checker_run(bl_builder_t *builder, bl_assembly_t *assembly);
+checker_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly);
+post_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_linker_run(bl_builder_t *builder, bl_assembly_t *assembly);
+linker_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_bc_writer_run(bl_builder_t *builder, bl_assembly_t *assembly);
+bc_writer_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_native_bin_run(bl_builder_t *builder, bl_assembly_t *assembly);
+native_bin_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_ir_run(bl_builder_t *builder, bl_assembly_t *assembly);
+ir_run(builder_t *builder, assembly_t *assembly);
 
 void
-bl_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly);
+jit_exec_run(builder_t *builder, assembly_t *assembly);
 
 #endif // BL_STAGES_IMPL_H

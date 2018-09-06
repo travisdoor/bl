@@ -37,19 +37,19 @@
 
 #define scan_error(cnt, code, format, ...)                                                         \
   {                                                                                                \
-    bl_builder_error((cnt)->builder, (format), ##__VA_ARGS__);                                     \
+    builder_error((cnt)->builder, (format), ##__VA_ARGS__);                                        \
     longjmp((cnt)->jmp_error, code);                                                               \
   }
 
 typedef struct context
 {
-  bl_builder_t *builder;
-  bl_unit_t *   unit;
-  bl_tokens_t * tokens;
-  jmp_buf       jmp_error;
-  char *        c;
-  int           line;
-  int           col;
+  builder_t *builder;
+  unit_t *   unit;
+  tokens_t * tokens;
+  jmp_buf    jmp_error;
+  char *     c;
+  int        line;
+  int        col;
 } context_t;
 
 static void
@@ -59,16 +59,16 @@ static bool
 scan_comment(context_t *cnt, const char *term);
 
 static bool
-scan_ident(context_t *cnt, bl_token_t *tok);
+scan_ident(context_t *cnt, token_t *tok);
 
 static bool
-scan_string(context_t *cnt, bl_token_t *tok);
+scan_string(context_t *cnt, token_t *tok);
 
 static bool
-scan_char(context_t *cnt, bl_token_t *tok);
+scan_char(context_t *cnt, token_t *tok);
 
 static bool
-scan_number(context_t *cnt, bl_token_t *tok);
+scan_number(context_t *cnt, token_t *tok);
 
 static inline int
 c_to_number(char c, int base);
@@ -103,7 +103,7 @@ scan_comment(context_t *cnt, const char *term)
 }
 
 bool
-scan_ident(context_t *cnt, bl_token_t *tok)
+scan_ident(context_t *cnt, token_t *tok)
 {
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
@@ -123,7 +123,7 @@ scan_ident(context_t *cnt, bl_token_t *tok)
 
   if (len == 0) return false;
 
-  BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
+  BString *cstr = tokens_create_cached_str(cnt->tokens);
   bo_string_appendn(cstr, begin, len);
   tok->value.str = bo_string_get(cstr);
 
@@ -136,27 +136,19 @@ char
 scan_specch(char c)
 {
   switch (c) {
-  case 'n':
-    return '\n';
-  case 'r':
-    return '\r';
-  case 't':
-    return '\t';
-  case '0':
-    return '\0';
-  case '\"':
-    return '\"';
-  case '\'':
-    return '\'';
-  case '\\':
-    return '\\';
-  default:
-    return c;
+  case 'n': return '\n';
+  case 'r': return '\r';
+  case 't': return '\t';
+  case '0': return '\0';
+  case '\"': return '\"';
+  case '\'': return '\'';
+  case '\\': return '\\';
+  default: return c;
   }
 }
 
 bool
-scan_string(context_t *cnt, bl_token_t *tok)
+scan_string(context_t *cnt, token_t *tok)
 {
   if (*cnt->c != '\"') {
     return false;
@@ -169,7 +161,7 @@ scan_string(context_t *cnt, bl_token_t *tok)
   /* eat " */
   cnt->c++;
 
-  BString *cstr = bl_tokens_create_cached_str(cnt->tokens);
+  BString *cstr = tokens_create_cached_str(cnt->tokens);
   char     c;
   int      len = 0;
 
@@ -218,7 +210,7 @@ exit:
 }
 
 bool
-scan_char(context_t *cnt, bl_token_t *tok)
+scan_char(context_t *cnt, token_t *tok)
 {
   if (*cnt->c != '\'') return false;
   tok->src.line = cnt->line;
@@ -281,15 +273,14 @@ c_to_number(char c, int base)
       return c - '0';
     }
     break;
-  default:
-    bl_abort("invalid number base");
+  default: bl_abort("invalid number base");
   }
 
   return -1;
 }
 
 bool
-scan_number(context_t *cnt, bl_token_t *tok)
+scan_number(context_t *cnt, token_t *tok)
 {
   tok->src.line  = cnt->line;
   tok->src.col   = cnt->col;
@@ -381,7 +372,7 @@ scan_double : {
 void
 scan(context_t *cnt)
 {
-  bl_token_t tok;
+  token_t tok;
 scan:
   tok.src.line = cnt->line;
   tok.src.col  = cnt->col;
@@ -392,11 +383,9 @@ scan:
   switch (*cnt->c) {
   case '\0':
     tok.sym = BL_SYM_EOF;
-    bl_tokens_push(cnt->tokens, &tok);
+    tokens_push(cnt->tokens, &tok);
     return;
-  case '\r':
-    cnt->c++;
-    goto scan;
+  case '\r': cnt->c++; goto scan;
   case '\n':
     cnt->line++;
     cnt->col = 1;
@@ -411,8 +400,7 @@ scan:
     cnt->col++;
     cnt->c++;
     goto scan;
-  default:
-    break;
+  default: break;
   }
 
   /*
@@ -420,10 +408,10 @@ scan:
    */
   size_t len = 0;
   for (int i = BL_SYM_IF; i < BL_SYM_NONE; ++i) {
-    len = strlen(bl_sym_strings[i]);
-    if (strncmp(cnt->c, bl_sym_strings[i], len) == 0) {
+    len = strlen(sym_strings[i]);
+    if (strncmp(cnt->c, sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym     = (bl_sym_e)i;
+      tok.sym     = (sym_e)i;
       tok.src.len = len;
 
       /*
@@ -442,15 +430,13 @@ scan:
         goto scan;
       case BL_SYM_LBCOMMENT:
         /* begin of block comment */
-        scan_comment(cnt, bl_sym_strings[BL_SYM_RBCOMMENT]);
+        scan_comment(cnt, sym_strings[BL_SYM_RBCOMMENT]);
         goto scan;
       case BL_SYM_RBCOMMENT: {
         scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name,
                    cnt->line, cnt->col);
       }
-      default:
-        cnt->col += len;
-        goto push_token;
+      default: cnt->col += len; goto push_token;
       }
     }
   }
@@ -468,12 +454,12 @@ scan:
              cnt->col);
 push_token:
   tok.src.unit = cnt->unit;
-  bl_tokens_push(cnt->tokens, &tok);
+  tokens_push(cnt->tokens, &tok);
   goto scan;
 }
 
 void
-bl_lexer_run(bl_builder_t *builder, bl_unit_t *unit)
+lexer_run(builder_t *builder, unit_t *unit)
 {
   context_t cnt = {
       .builder = builder,

@@ -34,57 +34,57 @@
 
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
   {                                                                                                \
-    bl_builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),            \
-                   ##__VA_ARGS__);                                                                 \
+    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),               \
+                ##__VA_ARGS__);                                                                    \
   }
 
 #define peek_cnt(v) ((context_t *)(v->cnt))
 
 typedef struct
 {
-  bl_builder_t * builder;
-  bl_assembly_t *assembly;
-  bl_unit_t *    unit;
-  bl_node_t *    curr_dependent;
+  builder_t * builder;
+  assembly_t *assembly;
+  unit_t *    unit;
+  node_t *    curr_dependent;
 } context_t;
 
 static void
-post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt);
+post_decl(visitor_t *visitor, node_t *decl, void *cnt);
 
 static void
-post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt);
+post_call(visitor_t *visitor, node_t *call, void *cnt);
 
 static void
-post_ident(bl_ast_visitor_t *visitor, bl_node_t *ident, void *cnt);
+post_ident(visitor_t *visitor, node_t *ident, void *cnt);
 
 static inline void
-schedule_generation(context_t *cnt, bl_node_t *decl)
+schedule_generation(context_t *cnt, node_t *decl)
 {
   assert(decl);
-  bl_node_decl_t *_decl = bl_peek_decl(decl);
+  node_decl_t *_decl = peek_decl(decl);
   if (_decl->used) bo_list_push_back(cnt->assembly->ir_queue, decl);
 }
 
 void
-post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
+post_decl(visitor_t *visitor, node_t *decl, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(decl);
-  bl_node_decl_t *_decl = bl_peek_decl(decl);
-  if (!_decl->in_gscope && !_decl->used && !(_decl->flags & BL_FLAG_EXTERN) &&
-      !(_decl->flags & BL_FLAG_MAIN) && _decl->kind != BL_DECL_KIND_VARIANT) {
+  node_decl_t *_decl = peek_decl(decl);
+  if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
+      !(_decl->flags & FLAG_MAIN) && _decl->kind != DECL_KIND_VARIANT) {
     post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
-  if (_decl->flags & BL_FLAG_MAIN) _decl->used++;
+  if (_decl->flags & FLAG_MAIN) _decl->used++;
 
-  bl_node_t *prev_dependent = _cnt->curr_dependent;
+  node_t *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
-  case BL_DECL_KIND_FN:
+  case DECL_KIND_FN:
     _cnt->curr_dependent = decl;
     schedule_generation(cnt, decl);
     break;
-  case BL_DECL_KIND_FIELD:
+  case DECL_KIND_FIELD:
     if (_decl->in_gscope) {
       _cnt->curr_dependent = decl;
       schedule_generation(cnt, decl);
@@ -93,59 +93,62 @@ post_decl(bl_ast_visitor_t *visitor, bl_node_t *decl, void *cnt)
   default: break;
   }
 
-  bl_ast_walk(visitor, decl, cnt);
+    visitor_walk(visitor, decl, cnt);
   _cnt->curr_dependent = prev_dependent;
 
 #if VERBOSE
   if (_decl->deps) {
-    bl_log(BL_YELLOW("'%s'") " depends on:", bl_peek_ident(_decl->name)->str);
+    bl_log(BL_YELLOW("'%s'") " depends on:", peek_ident(_decl->name)->str);
     bo_iterator_t   it;
     bl_dependency_t tmp;
-    bl_bhtbl_foreach(_decl->deps, it)
+    bhtbl_foreach(_decl->deps, it)
     {
       tmp = bo_htbl_iter_peek_value(_decl->deps, &it, bl_dependency_t);
-      bl_log("  [%s] %s", tmp.type == BL_DEP_STRICT ? BL_RED("STRICT") : BL_GREEN(" LAX "),
-             bl_peek_ident(bl_peek_decl(tmp.node)->name)->str);
+      bl_log("  [%s] %s", tmp.type == DEP_STRICT ? BL_RED("STRICT") : BL_GREEN(" LAX "),
+             peek_ident(peek_decl(tmp.node)->name)->str);
     }
   }
 #endif
 }
 
 void
-post_call(bl_ast_visitor_t *visitor, bl_node_t *call, void *cnt)
+post_call(visitor_t *visitor, node_t *call, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(call);
-  bl_node_expr_call_t *_call = bl_peek_expr_call(call);
+  node_expr_call_t *_call = peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  bl_node_t *callee = bl_ast_unroll_ident(_call->ref);
-  if (bl_node_is(callee, BL_NODE_DECL) && !(bl_peek_decl(callee)->flags & BL_FLAG_EXTERN))
-    bl_ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? BL_DEP_STRICT : BL_DEP_LAX);
+  node_t *callee = ast_unroll_ident(_call->ref);
+  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN)) {
+    ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
+  }
 
-  bl_ast_walk(visitor, call, cnt);
+  visitor_walk(visitor, call, cnt);
 }
 
 void
-post_ident(bl_ast_visitor_t *visitor, bl_node_t *ident, void *cnt)
+post_ident(visitor_t *visitor, node_t *ident, void *cnt)
 {
   assert(ident);
-  context_t *      _cnt   = (context_t *)cnt;
-  bl_node_ident_t *_ident = bl_peek_ident(ident);
+  context_t *   _cnt   = (context_t *)cnt;
+  node_ident_t *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
-    bl_ast_walk(visitor, ident, cnt);
+      visitor_walk(visitor, ident, cnt);
     return;
   }
 
-  bl_node_decl_t *_decl = bl_peek_decl(_ident->ref);
-  if (_decl->in_gscope || _decl->kind == BL_DECL_KIND_FN) 
-    bl_ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, BL_DEP_LAX);
-  bl_ast_walk(visitor, ident, cnt);
+  node_decl_t *_decl = peek_decl(_ident->ref);
+  if (_decl->in_gscope || _decl->kind == DECL_KIND_FN) {
+    ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
+  }
+
+  visitor_walk(visitor, ident, cnt);
 }
 
 void
-bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
+post_run(builder_t *builder, assembly_t *assembly)
 {
   context_t cnt = {
       .builder        = builder,
@@ -154,17 +157,17 @@ bl_post_run(bl_builder_t *builder, bl_assembly_t *assembly)
       .curr_dependent = NULL,
   };
 
-  bl_ast_visitor_t visitor;
-  bl_ast_visitor_init(&visitor);
+  visitor_t visitor;
+    visitor_init(&visitor);
 
-  bl_ast_visitor_add(&visitor, post_decl, BL_NODE_DECL);
-  bl_ast_visitor_add(&visitor, post_call, BL_NODE_EXPR_CALL);
-  bl_ast_visitor_add(&visitor, post_ident, BL_NODE_IDENT);
+    visitor_add(&visitor, post_decl, NODE_DECL);
+    visitor_add(&visitor, post_call, NODE_EXPR_CALL);
+    visitor_add(&visitor, post_ident, NODE_IDENT);
 
-  bl_unit_t *unit;
-  bl_barray_foreach(assembly->units, unit)
+  unit_t *unit;
+  barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    bl_ast_visit(&visitor, unit->ast.root, &cnt);
+      visitor_visit(&visitor, unit->ast.root, &cnt);
   }
 }

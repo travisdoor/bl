@@ -31,7 +31,7 @@
 #include "bl/bldebug.h"
 
 void
-bl_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
+jit_exec_run(builder_t *builder, assembly_t *assembly)
 {
   LLVMExecutionEngineRef jit;
   char *                 llvm_error = NULL;
@@ -45,7 +45,7 @@ bl_jit_exec_run(bl_builder_t *builder, bl_assembly_t *assembly)
   int                 ires    = (int)LLVMGenericValueToInt(result, 0);
 
   if (ires != 0) {
-    bl_builder_warning(builder, "executed unit return %i", ires);
+    builder_warning(builder, "executed unit return %i", ires);
   }
   bl_msg_log("");
 

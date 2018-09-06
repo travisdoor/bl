@@ -41,31 +41,31 @@ typedef struct bl_builder
   int   total_lines;
   bool  no_warn;
   int   errorc;
-} bl_builder_t;
+} builder_t;
 
 typedef enum
 {
   BL_BUILDER_ERROR,
   BL_BUILDER_WARNING,
-} bl_builder_msg_type;
+} builder_msg_type;
 
 typedef enum
 {
   BL_BUILDER_CUR_AFTER,
   BL_BUILDER_CUR_WORD,
   BL_BUILDER_CUR_BEFORE
-} bl_builder_msg_cur_pos;
+} builder_msg_cur_pos;
 
-struct bl_src;
-
-void
-bl_builder_error(bl_builder_t *builder, const char *format, ...);
+struct src;
 
 void
-bl_builder_warning(bl_builder_t *builder, const char *format, ...);
+builder_error(builder_t *builder, const char *format, ...);
 
 void
-bl_builder_msg(bl_builder_t *builder, bl_builder_msg_type type, int code, struct bl_src *src,
-               bl_builder_msg_cur_pos pos, const char *format, ...);
+builder_warning(builder_t *builder, const char *format, ...);
+
+void
+builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
+            builder_msg_cur_pos pos, const char *format, ...);
 
 #endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */
