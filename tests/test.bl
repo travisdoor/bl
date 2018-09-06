@@ -1,36 +1,16 @@
 /* testing playground */
 
 //#load "libc.bl"
-puts fn (string) s32 : extern;
-printf fn (string, s32) s32 : extern;
 
-foo : fn () {
-  puts("hello from foo");
-  bar();
-};
-
-test : fn () {
-  puts("hello");
-  foo();
-  bar();
-};
-
-gimme : fn () s32 {
-  return bang(665);
-};
-
-bang : fn (i s32) s32 {
-  return i + 1;
+get : fn () s32 {
+  return 10;
 };
 
 main : fn () s32 {
-  #run test();
-  a := #run gimme();
-  bar();
-  printf("a = %d\n", a);
-  return EXIT_SUCCESS;
-};
+  A : get(); // should be invalid, we don't now result of A and also arguments passed to function
 
-bar : fn () {
-  puts("hello from bar");
+  a := 10;
+  B : a;
+  C : 10 + 11;
+  return EXIT_SUCCESS;
 };
