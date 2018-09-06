@@ -1,11 +1,11 @@
-//************************************************************************************************
-// blc
+//*****************************************************************************
+// bc
 //
-// File:   bldebug.c
+// File:   version.h.in
 // Author: Martin Dorazil
-// Date:   26.1.18
+// Date:   27/10/2017
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,30 +24,17 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+//*****************************************************************************
 
-#include <stdarg.h>
-#include "bl/bldebug.h"
+#ifndef VERSION_H_IN_N0PFZT16
+#define VERSION_H_IN_N0PFZT16
 
-#define MAX_LOG_MSG_SIZE 2048
+/*
+ * Values set automatically during build by cmake.
+ */
+#define BL_VERSION       "0.3.2"
+#define BL_VERSION_MAJOR 0
+#define BL_VERSION_MINOR 3
+#define BL_VERSION_PATCH 2
 
-void
-_bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...)
-{
-  char    buffer[MAX_LOG_MSG_SIZE];
-  va_list args;
-  va_start(args, msg);
-  vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);
-
-  switch (t) {
-  case BL_LOG_ASSERT: fprintf(stderr, BL_RED("assert [%s:%d]: %s") "\n", file, line, buffer); break;
-  case BL_LOG_ABORT: fprintf(stderr, BL_RED("abort [%s:%d]: %s") "\n", file, line, buffer); break;
-  case BL_LOG_WARNING:
-    fprintf(stderr, BL_YELLOW("warning [%s:%d]: %s") "\n", file, line, buffer);
-    break;
-  case BL_LOG_MSG: fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer); break;
-  default: break;
-  }
-
-  va_end(args);
-}
+#endif

@@ -1,9 +1,9 @@
 //************************************************************************************************
-// blc
+// Biscuit Engine
 //
-// File:   blc.h
+// File:   assembly_impl.h
 // Author: Martin Dorazil
-// Date:   04/02/2018
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,14 +26,30 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_H_JCNFO1PQ
-#define BL_H_JCNFO1PQ
+#ifndef BISCUIT_ASSEMBLY_IMPL_H
+#define BISCUIT_ASSEMBLY_IMPL_H
 
-#include "bl/bldebug.h"
-#include "bl/unit.h"
-#include "bl/assembly.h"
-#include "bl/builder.h"
-#include "bl/error.h"
-#include "bl/messages.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
+#include <bobject/containers/list.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Core.h>
+#include "assembly.h"
+#include "scope_impl.h"
 
-#endif /* end of include guard: BL_H_JCNFO1PQ */
+typedef struct bl_assembly
+{
+  BArray *               units;           /* array of all units in assembly */
+  BHashTable *           unique_cache;    /* cache for loading only unique units */
+  BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
+  char *                 name;            /* assembly name */
+  scope_cache_t *        scope_cache;     /* cache for scopes */
+  scope_t *              gscope;          /* cache for global scope */
+  BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
+  LLVMContextRef         llvm_cnt;        /* llvm context */
+  LLVMModuleRef          llvm_module;     /* final llvm module */
+  LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
+  LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
+} assembly_t;
+
+#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */

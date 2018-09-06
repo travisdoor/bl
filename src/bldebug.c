@@ -1,9 +1,9 @@
 //************************************************************************************************
-// bl
+// blc
 //
-// File:   builder_impl.h
+// File:   bldebug.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   26.1.18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,46 +26,28 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_BUILDER_IMPL_H
-#define BISCUIT_BUILDER_IMPL_H
+#include <stdarg.h>
+#include "bldebug.h"
 
-#include "bl/builder.h"
-
-typedef struct bl_builder
-{
-  bl_diag_handler_f on_error;
-  bl_diag_handler_f on_warning;
-
-  void *on_error_cnt;
-  void *on_warning_cnt;
-  int   total_lines;
-  bool  no_warn;
-  int   errorc;
-} builder_t;
-
-typedef enum
-{
-  BL_BUILDER_ERROR,
-  BL_BUILDER_WARNING,
-} builder_msg_type;
-
-typedef enum
-{
-  BL_BUILDER_CUR_AFTER,
-  BL_BUILDER_CUR_WORD,
-  BL_BUILDER_CUR_BEFORE
-} builder_msg_cur_pos;
-
-struct src;
+#define MAX_LOG_MSG_SIZE 2048
 
 void
-builder_error(builder_t *builder, const char *format, ...);
+_bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...)
+{
+  char    buffer[MAX_LOG_MSG_SIZE];
+  va_list args;
+  va_start(args, msg);
+  vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);
 
-void
-builder_warning(builder_t *builder, const char *format, ...);
+  switch (t) {
+  case BL_LOG_ASSERT: fprintf(stderr, BL_RED("assert [%s:%d]: %s") "\n", file, line, buffer); break;
+  case BL_LOG_ABORT: fprintf(stderr, BL_RED("abort [%s:%d]: %s") "\n", file, line, buffer); break;
+  case BL_LOG_WARNING:
+    fprintf(stderr, BL_YELLOW("warning [%s:%d]: %s") "\n", file, line, buffer);
+    break;
+  case BL_LOG_MSG: fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer); break;
+  default: break;
+  }
 
-void
-builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
-            builder_msg_cur_pos pos, const char *format, ...);
-
-#endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */
+  va_end(args);
+}

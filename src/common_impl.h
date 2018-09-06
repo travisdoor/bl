@@ -30,10 +30,10 @@
 #define BL_COMMON_IMPL_H
 
 #include <limits.h>
-#include "bl/bldebug.h"
-#include "bl/config.h"
-#include "bl/error.h"
-#include "bl/messages.h"
+#include "bldebug.h"
+#include "config.h"
+#include "error.h"
+#include "messages.h"
 #include "blmemory_impl.h"
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))

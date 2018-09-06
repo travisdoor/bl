@@ -29,7 +29,7 @@
 #ifndef BL_ERROR_H
 #define BL_ERROR_H
 
-#include "bl/config.h"
+#include "config.h"
 
 BL_BEGIN_DECLS
 

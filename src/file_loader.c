@@ -1,11 +1,11 @@
 //************************************************************************************************
-// blc
+// bl
 //
-// File:   assembly.h
+// File:   file_loader.c
 // Author: Martin Dorazil
-// Date:   09/02/2018
+// Date:   04/02/2018
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,41 +26,43 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_ASSEMBLY_H
-#define BL_ASSEMBLY_H
+#include <stdio.h>
+#include <string.h>
+#include "unit.h"
+#include "stages_impl.h"
+#include "common_impl.h"
 
-#include <bobject/bobject.h>
-#include "bl/unit.h"
-#include "bl/config.h"
+void
+file_loader_run(builder_t *builder, unit_t *unit)
+{
+  if (!unit->filepath) {
+    builder_error(builder, "file not found %s", unit->name);
+    return;
+  }
 
-BL_BEGIN_DECLS
+  FILE *f = fopen(unit->filepath, "r");
 
-typedef struct bl_assembly *bl_assembly_ref;
+  if (f == NULL) {
+    builder_error(builder, "cannot read file %s", unit->name);
+    return;
+  }
 
-extern BL_EXPORT bl_assembly_ref
-bl_assembly_new(const char *name);
+  fseek(f, 0, SEEK_END);
+  size_t fsize = (size_t)ftell(f);
+  if (fsize == 0) {
+    fclose(f);
+    builder_error(builder, "invalid source file %s", unit->name);
+    return;
+  }
 
-extern BL_EXPORT void
-bl_assembly_delete(bl_assembly_ref assembly);
+  fseek(f, 0, SEEK_SET);
 
-extern BL_EXPORT void
-bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
+  char *src = calloc(fsize + 1, sizeof(char));
+  if (src == NULL) bl_abort("bad alloc");
+  if (!fread(src, sizeof(char), fsize, f)) bl_abort("cannot read file %s", unit->name);
 
-extern BL_EXPORT void
-bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
+  src[fsize] = '\0';
+  fclose(f);
 
-extern BL_EXPORT bool
-bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
-
-extern BL_EXPORT int
-bl_assembly_get_unit_count(bl_assembly_ref assembly);
-
-extern BL_EXPORT bl_unit_ref
-bl_assembly_get_unit(bl_assembly_ref assembly, int i);
-
-extern BL_EXPORT const char *
-bl_assembly_get_name(bl_assembly_ref assembly);
-
-BL_END_DECLS
-
-#endif // BL_ASSEMBLY_H
+  unit->src = src;
+}

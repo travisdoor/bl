@@ -1,11 +1,11 @@
 //************************************************************************************************
-// blc
+// bl
 //
-// File:   jit_exec.c
+// File:   bc_writer.c
 // Author: Martin Dorazil
-// Date:   14/02/2018
+// Date:   14.2.18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,28 +26,36 @@
 // SOFTWARE.
 //************************************************************************************************
 
-//#include <llvm-c/Core.h>
+#include <llvm-c/BitWriter.h>
+#include <string.h>
 #include "stages_impl.h"
-#include "bl/bldebug.h"
+#include "assembly_impl.h"
+#include "bldebug.h"
+#include "error.h"
 
 void
-jit_exec_run(builder_t *builder, assembly_t *assembly)
+bc_writer_run(builder_t *builder, assembly_t *assembly)
 {
-  LLVMExecutionEngineRef jit;
-  char *                 llvm_error = NULL;
+  assert(assembly->llvm_module);
 
-  if (LLVMCreateJITCompilerForModule(&jit, assembly->llvm_module, 3, &llvm_error) != 0)
-    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
+  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+  if (!export_file) bl_abort("bad alloc");
+  strcpy(export_file, assembly->name);
+  strcat(export_file, ".ll");
 
-  bl_msg_log("\nRunning:");
-  LLVMValueRef        llvm_fn = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  LLVMGenericValueRef result  = LLVMRunFunction(jit, llvm_fn, 0, NULL);
-  int                 ires    = (int)LLVMGenericValueToInt(result, 0);
+  char *str = LLVMPrintModuleToString(assembly->llvm_module);
 
-  if (ires != 0) {
-    builder_warning(builder, "executed unit return %i", ires);
+  FILE *f = fopen(export_file, "w");
+  if (f == NULL) {
+    builder_error(builder, "cannot open file %s", export_file);
+    free(export_file);
+    return;
   }
-  bl_msg_log("");
+  fprintf(f, "%s\n", str);
+  fclose(f);
+  LLVMDisposeMessage(str);
 
-  assembly->llvm_run_engine = jit;
+  bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
+
+  free(export_file);
 }

@@ -29,7 +29,12 @@
 #include <stdio.h>
 #include <locale.h>
 #include <string.h>
-#include "bl/bl.h"
+#include "bldebug.h"
+#include "unit.h"
+#include "assembly.h"
+#include "builder.h"
+#include "error.h"
+#include "messages.h"
 
 int
 main(int argc, char *argv[])

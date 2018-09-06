@@ -29,7 +29,7 @@
 #ifndef BL_CONFIG_H
 #define BL_CONFIG_H
 
-#include "bl/version.h"
+#include "version.h"
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN

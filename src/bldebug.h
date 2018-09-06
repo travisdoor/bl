@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <bobject/bobject.h>
-#include "bl/config.h"
+#include "config.h"
 
 BL_BEGIN_DECLS
 

@@ -31,7 +31,7 @@
 
 #include "stages_impl.h"
 #include "common_impl.h"
-#include "bl/error.h"
+#include "error.h"
 
 #ifdef BL_PLATFORM_WIN
 #define OBJ_EXT ".obj"

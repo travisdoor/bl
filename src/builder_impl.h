@@ -1,7 +1,7 @@
 //************************************************************************************************
-// Biscuit Engine
+// bl
 //
-// File:   assembly_impl.h
+// File:   builder_impl.h
 // Author: Martin Dorazil
 // Date:   02/03/2018
 //
@@ -26,30 +26,46 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BISCUIT_ASSEMBLY_IMPL_H
-#define BISCUIT_ASSEMBLY_IMPL_H
+#ifndef BISCUIT_BUILDER_IMPL_H
+#define BISCUIT_BUILDER_IMPL_H
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Core.h>
-#include "bl/assembly.h"
-#include "scope_impl.h"
+#include "builder.h"
 
-typedef struct bl_assembly
+typedef struct bl_builder
 {
-  BArray *               units;           /* array of all units in assembly */
-  BHashTable *           unique_cache;    /* cache for loading only unique units */
-  BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
-  char *                 name;            /* assembly name */
-  scope_cache_t *        scope_cache;     /* cache for scopes */
-  scope_t *              gscope;          /* cache for global scope */
-  BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
-  LLVMContextRef         llvm_cnt;        /* llvm context */
-  LLVMModuleRef          llvm_module;     /* final llvm module */
-  LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
-  LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
-} assembly_t;
+  bl_diag_handler_f on_error;
+  bl_diag_handler_f on_warning;
 
-#endif /* end of include guard: BISCUIT_ASSEMBLY_IMPL_H */
+  void *on_error_cnt;
+  void *on_warning_cnt;
+  int   total_lines;
+  bool  no_warn;
+  int   errorc;
+} builder_t;
+
+typedef enum
+{
+  BL_BUILDER_ERROR,
+  BL_BUILDER_WARNING,
+} builder_msg_type;
+
+typedef enum
+{
+  BL_BUILDER_CUR_AFTER,
+  BL_BUILDER_CUR_WORD,
+  BL_BUILDER_CUR_BEFORE
+} builder_msg_cur_pos;
+
+struct src;
+
+void
+builder_error(builder_t *builder, const char *format, ...);
+
+void
+builder_warning(builder_t *builder, const char *format, ...);
+
+void
+builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
+            builder_msg_cur_pos pos, const char *format, ...);
+
+#endif /* end of include guard: BISCUIT_BUILDER_IMPL_H */

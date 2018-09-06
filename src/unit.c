@@ -30,7 +30,7 @@
 #include <limits.h>
 #include "unit_impl.h"
 #include "blmemory_impl.h"
-#include "bl/bldebug.h"
+#include "bldebug.h"
 
 static void
 init(unit_t *unit)

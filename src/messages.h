@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   bc_writer.c
+// File:   messages.h
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   13/04/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,36 +26,28 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <llvm-c/BitWriter.h>
-#include <string.h>
-#include "stages_impl.h"
-#include "assembly_impl.h"
-#include "bl/bldebug.h"
-#include "bl/error.h"
+#ifndef BL_MESSAGES_H
+#define BL_MESSAGES_H
 
-void
-bc_writer_run(builder_t *builder, assembly_t *assembly)
-{
-  assert(assembly->llvm_module);
+#include "config.h"
 
-  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-  if (!export_file) bl_abort("bad alloc");
-  strcpy(export_file, assembly->name);
-  strcat(export_file, ".ll");
+BL_BEGIN_DECLS
 
-  char *str = LLVMPrintModuleToString(assembly->llvm_module);
-
-  FILE *f = fopen(export_file, "w");
-  if (f == NULL) {
-    builder_error(builder, "cannot open file %s", export_file);
-    free(export_file);
-    return;
+#define bl_msg_log(format, ...)                                                                    \
+  {                                                                                                \
+    fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
   }
-  fprintf(f, "%s\n", str);
-  fclose(f);
-  LLVMDisposeMessage(str);
 
-  bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
+#define bl_msg_error(format, ...)                                                                  \
+  {                                                                                                \
+    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
+  }
 
-  free(export_file);
-}
+#define bl_msg_warning(format, ...)                                                                \
+  {                                                                                                \
+    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
+  }
+
+BL_END_DECLS
+
+#endif // BL_MESSAGES_H

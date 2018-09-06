@@ -1,11 +1,11 @@
 //************************************************************************************************
-// bl
+// blc
 //
-// File:   messages.h
+// File:   assembly.h
 // Author: Martin Dorazil
-// Date:   13/04/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,28 +26,41 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_MESSAGES_H
-#define BL_MESSAGES_H
+#ifndef BL_ASSEMBLY_H
+#define BL_ASSEMBLY_H
 
-#include "bl/config.h"
+#include <bobject/bobject.h>
+#include "unit.h"
+#include "config.h"
 
 BL_BEGIN_DECLS
 
-#define bl_msg_log(format, ...)                                                                    \
-  {                                                                                                \
-    fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
-  }
+typedef struct bl_assembly *bl_assembly_ref;
 
-#define bl_msg_error(format, ...)                                                                  \
-  {                                                                                                \
-    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
-  }
+extern BL_EXPORT bl_assembly_ref
+bl_assembly_new(const char *name);
 
-#define bl_msg_warning(format, ...)                                                                \
-  {                                                                                                \
-    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
-  }
+extern BL_EXPORT void
+bl_assembly_delete(bl_assembly_ref assembly);
+
+extern BL_EXPORT void
+bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
+
+extern BL_EXPORT void
+bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
+
+extern BL_EXPORT bool
+bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
+
+extern BL_EXPORT int
+bl_assembly_get_unit_count(bl_assembly_ref assembly);
+
+extern BL_EXPORT bl_unit_ref
+bl_assembly_get_unit(bl_assembly_ref assembly, int i);
+
+extern BL_EXPORT const char *
+bl_assembly_get_name(bl_assembly_ref assembly);
 
 BL_END_DECLS
 
-#endif // BL_MESSAGES_H
+#endif // BL_ASSEMBLY_H

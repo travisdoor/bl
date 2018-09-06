@@ -29,7 +29,7 @@
 #ifndef BL_UNIT_IMPL_H
 #define BL_UNIT_IMPL_H
 
-#include "bl/unit.h"
+#include "unit.h"
 #include "ast_impl.h"
 #include "tokens_impl.h"
 
