@@ -5,7 +5,6 @@ UseTab: Never
 BreakBeforeBraces: Mozilla 
 AllowShortIfStatementsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: true
 IndentCaseLabels: false
 SortIncludes: false
 AlwaysBreakTemplateDeclarations: true

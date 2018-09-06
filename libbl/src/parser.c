@@ -430,9 +430,15 @@ parse_literal(context_t *cnt)
   node_t * type = NULL;
 
   switch (tok->sym) {
-  case BL_SYM_NUM: type = &ftypes[FTYPE_S32]; break;
-  case BL_SYM_CHAR: type = &ftypes[FTYPE_CHAR]; break;
-  case BL_SYM_STRING: type = &ftypes[FTYPE_STRING]; break;
+  case BL_SYM_NUM:
+    type = &ftypes[FTYPE_S32];
+    break;
+  case BL_SYM_CHAR:
+    type = &ftypes[FTYPE_CHAR];
+    break;
+  case BL_SYM_STRING:
+    type = &ftypes[FTYPE_STRING];
+    break;
   case BL_SYM_TRUE:
     tok->value.u = true;
     type         = &ftypes[FTYPE_BOOL];
@@ -441,9 +447,14 @@ parse_literal(context_t *cnt)
     tok->value.u = false;
     type         = &ftypes[FTYPE_BOOL];
     break;
-  case BL_SYM_FLOAT: type = &ftypes[FTYPE_F32]; break;
-  case BL_SYM_DOUBLE: type = &ftypes[FTYPE_F64]; break;
-  default: return NULL;
+  case BL_SYM_FLOAT:
+    type = &ftypes[FTYPE_F32];
+    break;
+  case BL_SYM_DOUBLE:
+    type = &ftypes[FTYPE_F64];
+    break;
+  default:
+    return NULL;
   }
 
   tokens_consume(cnt->tokens);
@@ -981,8 +992,10 @@ parse_decl(context_t *cnt)
   case BL_SYM_IMMDECL:
   case BL_SYM_MDECL:
   case BL_SYM_COMMA:
-  case BL_SYM_RBLOCK: break;
-  default: return NULL;
+  case BL_SYM_RBLOCK:
+    break;
+  default:
+    return NULL;
   }
 
   node_t *ident = parse_ident(cnt, 0);
@@ -1065,10 +1078,18 @@ parse_decl(context_t *cnt)
     _decl->kind = DECL_KIND_FN;
   } else if (_decl->value) {
     switch (node_code(_decl->value)) {
-    case NODE_LIT_FN: _decl->kind = DECL_KIND_FN; break;
-    case NODE_LIT_ENUM: _decl->kind = DECL_KIND_ENUM; break;
-    case NODE_LIT_STRUCT: _decl->kind = DECL_KIND_STRUCT; break;
-    default: _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT; break;
+    case NODE_LIT_FN:
+      _decl->kind = DECL_KIND_FN;
+      break;
+    case NODE_LIT_ENUM:
+      _decl->kind = DECL_KIND_ENUM;
+      break;
+    case NODE_LIT_STRUCT:
+      _decl->kind = DECL_KIND_STRUCT;
+      break;
+    default:
+      _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT;
+      break;
     }
   } else {
     _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT;
@@ -1152,7 +1173,8 @@ next:
       flags |= FLAG_EXTERN;
     }
     goto next;
-  default: break;
+  default:
+    break;
   }
 
   return flags;

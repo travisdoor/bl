@@ -342,10 +342,16 @@ print_lit(visitor_t *visitor, node_t *node, void *pad)
   case FTYPE_U16:
   case FTYPE_U32:
   case FTYPE_U64:
-  case FTYPE_SIZE: fprintf(stdout, "%llu ", _lit->value.u); break;
+  case FTYPE_SIZE:
+    fprintf(stdout, "%llu ", _lit->value.u);
+    break;
   case FTYPE_F32:
-  case FTYPE_F64: fprintf(stdout, "%f ", _lit->value.d); break;
-  case FTYPE_CHAR: fprintf(stdout, "%c ", _lit->value.c); break;
+  case FTYPE_F64:
+    fprintf(stdout, "%f ", _lit->value.d);
+    break;
+  case FTYPE_CHAR:
+    fprintf(stdout, "%c ", _lit->value.c);
+    break;
   case FTYPE_STRING: {
     char *tmp = strdup(_lit->value.str);
     fprintf(stdout, "%s ", strtok(tmp, "\n"));
@@ -354,8 +360,11 @@ print_lit(visitor_t *visitor, node_t *node, void *pad)
     free(tmp);
     break;
   }
-  case FTYPE_BOOL: fprintf(stdout, "%s ", _lit->value.u ? "true" : "false"); break;
-  default: break;
+  case FTYPE_BOOL:
+    fprintf(stdout, "%s ", _lit->value.u ? "true" : "false");
+    break;
+  default:
+    break;
   }
 
   print_type(_lit->type);

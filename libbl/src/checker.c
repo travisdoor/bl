@@ -213,15 +213,19 @@ wait_context(node_t *node)
 {
   assert(node && "invalid wait node");
   switch (node_code(node)) {
-  case NODE_IDENT: return node;
-  case NODE_EXPR_MEMBER: return peek_expr_member(node)->ident;
-  case NODE_DECL: return peek_decl(node)->name;
+  case NODE_IDENT:
+    return node;
+  case NODE_EXPR_MEMBER:
+    return peek_expr_member(node)->ident;
+  case NODE_DECL:
+    return peek_decl(node)->name;
   case NODE_STMT_RETURN: {
     node_t *decl = peek_stmt_return(node)->fn_decl;
     assert(decl && "return statement without context");
     return peek_decl(decl)->name;
   }
-  default: return NULL;
+  default:
+    return NULL;
   };
 }
 
@@ -530,8 +534,10 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_TYPE_FUND:
   case NODE_LIT:
   case NODE_LOAD:
-  case NODE_LINK: break;
-  default: bl_warning("missing flattening for node %s", node_name(*node));
+  case NODE_LINK:
+    break;
+  default:
+    bl_warning("missing flattening for node %s", node_name(*node));
   }
 
   flatten_push(fbuf, node);
@@ -671,7 +677,8 @@ check_expr_call(context_t *cnt, node_t **call)
     case TYPE_KIND_STRUCT:
       check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
                        "method called in compile time can return fundamental types only");
-    default: break;
+    default:
+      break;
     }
 
     if (_call->argsc) {
@@ -721,18 +728,42 @@ check_node(context_t *cnt, node_t **node)
 #endif
 
   switch (node_code(*node)) {
-  case NODE_IDENT: result = check_ident(cnt, node); break;
-  case NODE_DECL: result = check_decl(cnt, node); break;
-  case NODE_EXPR_CALL: result = check_expr_call(cnt, node); break;
-  case NODE_EXPR_BINOP: result = check_expr_binop(cnt, node); break;
-  case NODE_EXPR_CAST: result = check_expr_cast(cnt, node); break;
-  case NODE_EXPR_UNARY: result = check_expr_unary(cnt, node); break;
-  case NODE_EXPR_SIZEOF: result = check_expr_sizeof(cnt, node); break;
-  case NODE_EXPR_MEMBER: result = check_expr_member(cnt, node); break;
-  case NODE_EXPR_ELEM: result = check_expr_elem(cnt, node); break;
-  case NODE_STMT_IF: result = check_stmt_if(cnt, node); break;
-  case NODE_STMT_RETURN: result = check_stmt_return(cnt, node); break;
-  case NODE_TYPE_ENUM: result = check_type_enum(cnt, node); break;
+  case NODE_IDENT:
+    result = check_ident(cnt, node);
+    break;
+  case NODE_DECL:
+    result = check_decl(cnt, node);
+    break;
+  case NODE_EXPR_CALL:
+    result = check_expr_call(cnt, node);
+    break;
+  case NODE_EXPR_BINOP:
+    result = check_expr_binop(cnt, node);
+    break;
+  case NODE_EXPR_CAST:
+    result = check_expr_cast(cnt, node);
+    break;
+  case NODE_EXPR_UNARY:
+    result = check_expr_unary(cnt, node);
+    break;
+  case NODE_EXPR_SIZEOF:
+    result = check_expr_sizeof(cnt, node);
+    break;
+  case NODE_EXPR_MEMBER:
+    result = check_expr_member(cnt, node);
+    break;
+  case NODE_EXPR_ELEM:
+    result = check_expr_elem(cnt, node);
+    break;
+  case NODE_STMT_IF:
+    result = check_stmt_if(cnt, node);
+    break;
+  case NODE_STMT_RETURN:
+    result = check_stmt_return(cnt, node);
+    break;
+  case NODE_TYPE_ENUM:
+    result = check_type_enum(cnt, node);
+    break;
   case NODE_EXPR_NULL:
   case NODE_LIT:
   case NODE_STMT_BREAK:
@@ -742,9 +773,11 @@ check_node(context_t *cnt, node_t **node)
   case NODE_TYPE_STRUCT:
   case NODE_TYPE_FUND:
   case NODE_LOAD:
-  case NODE_LINK: break;
+  case NODE_LINK:
+    break;
 
-  default: bl_warning("missing check for node type %s", node_name(*node));
+  default:
+    bl_warning("missing check for node type %s", node_name(*node));
   }
 
 #if VERBOSE && defined(BL_DEBUG)
@@ -951,7 +984,8 @@ check_type_enum(context_t *cnt, node_t **type)
   case FTYPE_U32:
   case FTYPE_U64:
   case FTYPE_SIZE:
-  case FTYPE_CHAR: break;
+  case FTYPE_CHAR:
+    break;
   default: {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
@@ -1184,9 +1218,12 @@ check_decl(context_t *cnt, node_t **decl)
     break;
   }
 
-  case DECL_KIND_FN: break;
-  case DECL_KIND_TYPE: bl_abort("unimplemented");
-  case DECL_KIND_UNKNOWN: bl_abort("unknown declaration kind");
+  case DECL_KIND_FN:
+    break;
+  case DECL_KIND_TYPE:
+    bl_abort("unimplemented");
+  case DECL_KIND_UNKNOWN:
+    bl_abort("unknown declaration kind");
   }
 
   assert(_decl->type);
