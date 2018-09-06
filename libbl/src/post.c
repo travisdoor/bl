@@ -49,13 +49,13 @@ typedef struct
 } context_t;
 
 static void
-post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt);
+post_decl(visitor_t *visitor, node_t *decl, void *cnt);
 
 static void
-post_call(ast_visitor_t *visitor, node_t *call, void *cnt);
+post_call(visitor_t *visitor, node_t *call, void *cnt);
 
 static void
-post_ident(ast_visitor_t *visitor, node_t *ident, void *cnt);
+post_ident(visitor_t *visitor, node_t *ident, void *cnt);
 
 static inline void
 schedule_generation(context_t *cnt, node_t *decl)
@@ -66,7 +66,7 @@ schedule_generation(context_t *cnt, node_t *decl)
 }
 
 void
-post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt)
+post_decl(visitor_t *visitor, node_t *decl, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(decl);
@@ -93,7 +93,7 @@ post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt)
   default: break;
   }
 
-  ast_walk(visitor, decl, cnt);
+    visitor_walk(visitor, decl, cnt);
   _cnt->curr_dependent = prev_dependent;
 
 #if VERBOSE
@@ -112,7 +112,7 @@ post_decl(ast_visitor_t *visitor, node_t *decl, void *cnt)
 }
 
 void
-post_call(ast_visitor_t *visitor, node_t *call, void *cnt)
+post_call(visitor_t *visitor, node_t *call, void *cnt)
 {
   context_t *_cnt = (context_t *)cnt;
   assert(call);
@@ -120,28 +120,31 @@ post_call(ast_visitor_t *visitor, node_t *call, void *cnt)
 
   assert(_cnt->curr_dependent);
   node_t *callee = ast_unroll_ident(_call->ref);
-  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN))
+  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN)) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
+  }
 
-  ast_walk(visitor, call, cnt);
+  visitor_walk(visitor, call, cnt);
 }
 
 void
-post_ident(ast_visitor_t *visitor, node_t *ident, void *cnt)
+post_ident(visitor_t *visitor, node_t *ident, void *cnt)
 {
   assert(ident);
   context_t *   _cnt   = (context_t *)cnt;
   node_ident_t *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
-    ast_walk(visitor, ident, cnt);
+      visitor_walk(visitor, ident, cnt);
     return;
   }
 
   node_decl_t *_decl = peek_decl(_ident->ref);
-  if (_decl->in_gscope || _decl->kind == DECL_KIND_FN)
+  if (_decl->in_gscope || _decl->kind == DECL_KIND_FN) {
     ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
-  ast_walk(visitor, ident, cnt);
+  }
+
+  visitor_walk(visitor, ident, cnt);
 }
 
 void
@@ -154,17 +157,17 @@ post_run(builder_t *builder, assembly_t *assembly)
       .curr_dependent = NULL,
   };
 
-  ast_visitor_t visitor;
-  ast_visitor_init(&visitor);
+  visitor_t visitor;
+    visitor_init(&visitor);
 
-  ast_visitor_add(&visitor, post_decl, NODE_DECL);
-  ast_visitor_add(&visitor, post_call, NODE_EXPR_CALL);
-  ast_visitor_add(&visitor, post_ident, NODE_IDENT);
+    visitor_add(&visitor, post_decl, NODE_DECL);
+    visitor_add(&visitor, post_call, NODE_EXPR_CALL);
+    visitor_add(&visitor, post_ident, NODE_IDENT);
 
   unit_t *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    ast_visit(&visitor, unit->ast.root, &cnt);
+      visitor_visit(&visitor, unit->ast.root, &cnt);
   }
 }

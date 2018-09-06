@@ -209,23 +209,22 @@
 
 // clang-format on
 
-// TODO: TYPE prefix???
 typedef enum
 {
-  KIND_UNKNOWN = 0,
-  KIND_SINT,   /* i8, i16, i32, i64 */
-  KIND_UINT,   /* u8, i16, u32, u64 */
-  KIND_SIZE,   /* size_t */
-  KIND_PTR,    /* pointers */
-  KIND_STRUCT, /* structs */
-  KIND_ENUM,   /* enums */
-  KIND_FN,     /* function */
-  KIND_REAL,   /* f32, f64 */
-  KIND_STRING, /* string */
-  KIND_CHAR,   /* char */
-  KIND_BOOL,   /* bool */
-  KIND_VOID,   /* void */
-  KIND_TYPE,   /* type_t */
+  TYPE_KIND_UNKNOWN = 0,
+  TYPE_KIND_SINT,   /* i8, i16, i32, i64 */
+  TYPE_KIND_UINT,   /* u8, i16, u32, u64 */
+  TYPE_KIND_SIZE,   /* size_t */
+  TYPE_KIND_PTR,    /* pointers */
+  TYPE_KIND_STRUCT, /* structs */
+  TYPE_KIND_ENUM,   /* enums */
+  TYPE_KIND_FN,     /* function */
+  TYPE_KIND_REAL,   /* f32, f64 */
+  TYPE_KIND_STRING, /* string */
+  TYPE_KIND_CHAR,   /* char */
+  TYPE_KIND_BOOL,   /* bool */
+  TYPE_KIND_VOID,   /* void */
+  TYPE_KIND_TYPE,   /* type_t */
 } type_kind_e;
 
 typedef enum
@@ -273,26 +272,26 @@ typedef struct
 
 typedef enum
 {
-#define ft(tok, str) BL_FTYPE_##tok,
+#define ft(tok, str) FTYPE_##tok,
   _FTYPE_LIST
 #undef ft
-      BL_FTYPE_COUNT
+      FTYPE_COUNT
 } ftype_e;
 
 typedef enum
 {
-#define bt(name, str) BL_BUILDIN_##name,
+#define bt(name, str) BUILDIN_##name,
   _BUILDINS_LIST
 #undef bt
-      BL_BUILDIN_COUNT
+      BUILDIN_COUNT
 } buildin_e;
 
-extern const char *bl_ftype_strings[];
+extern const char *ftype_strings[];
 extern const char *node_type_strings[];
-extern const char *bl_buildin_strings[];
+extern const char *buildin_strings[];
 
-extern uint64_t ftype_hashes[BL_FTYPE_COUNT];
-extern uint64_t buildin_hashes[BL_BUILDIN_COUNT];
+extern uint64_t ftype_hashes[FTYPE_COUNT];
+extern uint64_t buildin_hashes[BUILDIN_COUNT];
 
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
@@ -360,9 +359,8 @@ struct node
 #undef nt
   } n;
 
-  src_t *     src;
-  node_code_e code;
-
+  src_t *       src;
+  node_code_e   code;
   node_t *      next;
   check_state_e state;
 #if BL_DEBUG
@@ -424,32 +422,32 @@ _NODE_NCTOR(expr_null, node_t *type);
  * AST visiting
  *************************************************************************************************/
 
-typedef struct ast_visitor ast_visitor_t;
-typedef void (*ast_visit_f)(ast_visitor_t *visitor, node_t *node, void *cnt);
+typedef struct visitor visitor_t;
+typedef void (*visit_f)(visitor_t *visitor, node_t *node, void *cnt);
 
-struct ast_visitor
+struct visitor
 {
-  ast_visit_f visitors[NODE_COUNT];
+  visit_f visitors[NODE_COUNT];
 };
 
 void
-ast_visitor_init(ast_visitor_t *visitor);
+visitor_init(visitor_t *visitor);
 
 void
-ast_visitor_add(ast_visitor_t *visitor, ast_visit_f fn, node_code_e code);
+visitor_add(visitor_t *visitor, visit_f fn, node_code_e code);
 
 void
-ast_visit(ast_visitor_t *visitor, node_t *node, void *cnt);
+visitor_visit(visitor_t *visitor, node_t *node, void *cnt);
 
 void
-ast_walk(ast_visitor_t *visitor, node_t *node, void *cnt);
+visitor_walk(visitor_t *visitor, node_t *node, void *cnt);
 
 /*************************************************************************************************
  * other
  *************************************************************************************************/
 
 /* static fundamental type nodes */
-extern node_t bl_ftypes[];
+extern node_t ftypes[];
 
 void
 ast_type_to_string(char *buf, size_t len, node_t *type);

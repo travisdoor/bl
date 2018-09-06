@@ -272,7 +272,7 @@ parse_expr_sizeof(context_t *cnt)
     return ast_bad(cnt->ast, tok_err);
   }
 
-  return ast_expr_sizeof(cnt->ast, tok_id, in, &bl_ftypes[BL_FTYPE_SIZE]);
+  return ast_expr_sizeof(cnt->ast, tok_id, in, &ftypes[FTYPE_SIZE]);
 }
 
 bool
@@ -381,7 +381,7 @@ parse_stmt_loop(context_t *cnt)
 
   token_value_u value;
   value.u           = true;
-  node_t *test      = ast_lit(cnt->ast, NULL, &bl_ftypes[BL_FTYPE_BOOL], value);
+  node_t *test      = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_BOOL], value);
   node_t *loop      = ast_stmt_loop(cnt->ast, tok_begin, test, NULL);
   node_t *true_stmt = parse_block(cnt);
   if (!true_stmt) {
@@ -430,19 +430,19 @@ parse_literal(context_t *cnt)
   node_t * type = NULL;
 
   switch (tok->sym) {
-  case BL_SYM_NUM: type = &bl_ftypes[BL_FTYPE_S32]; break;
-  case BL_SYM_CHAR: type = &bl_ftypes[BL_FTYPE_CHAR]; break;
-  case BL_SYM_STRING: type = &bl_ftypes[BL_FTYPE_STRING]; break;
+  case BL_SYM_NUM: type = &ftypes[FTYPE_S32]; break;
+  case BL_SYM_CHAR: type = &ftypes[FTYPE_CHAR]; break;
+  case BL_SYM_STRING: type = &ftypes[FTYPE_STRING]; break;
   case BL_SYM_TRUE:
     tok->value.u = true;
-    type         = &bl_ftypes[BL_FTYPE_BOOL];
+    type         = &ftypes[FTYPE_BOOL];
     break;
   case BL_SYM_FALSE:
     tok->value.u = false;
-    type         = &bl_ftypes[BL_FTYPE_BOOL];
+    type         = &ftypes[FTYPE_BOOL];
     break;
-  case BL_SYM_FLOAT: type = &bl_ftypes[BL_FTYPE_F32]; break;
-  case BL_SYM_DOUBLE: type = &bl_ftypes[BL_FTYPE_F64]; break;
+  case BL_SYM_FLOAT: type = &ftypes[FTYPE_F32]; break;
+  case BL_SYM_DOUBLE: type = &ftypes[FTYPE_F64]; break;
   default: return NULL;
   }
 
@@ -741,7 +741,7 @@ _parse_expr(context_t *cnt, node_t *lhs, int min_precedence)
        * in the compiler pipeline. Other types are checked recursively. */
       if (token_is_logic_op(op)) {
         // IDEA use ident reference instead???
-        result_type = &bl_ftypes[BL_FTYPE_BOOL];
+        result_type = &ftypes[FTYPE_BOOL];
       }
 
       lhs = ast_expr_binop(cnt->ast, op, tmp, rhs, result_type, op->sym);
@@ -883,7 +883,7 @@ next:
 
   node_t *ret_type = parse_type(cnt);
   if (!ret_type) {
-    ret_type = &bl_ftypes[BL_FTYPE_VOID];
+    ret_type = &ftypes[FTYPE_VOID];
   }
 
   return ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type, ptr);
@@ -953,7 +953,7 @@ parse_type_enum(context_t *cnt, int ptr)
 
   node_t *type = parse_type(cnt);
   /* implicit type s32 when enum base type has not been specified */
-  if (!type) type = ast_type_fund(cnt->ast, NULL, BL_FTYPE_S32, 0, NULL);
+  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32, 0, NULL);
 
   return ast_type_enum(cnt->ast, tok_enum, type, NULL, ptr);
 }
@@ -1001,7 +1001,7 @@ parse_decl(context_t *cnt)
 
   {
     int buildin = ast_is_buildin(ident);
-    if (buildin == BL_BUILDIN_MAIN) {
+    if (buildin == BUILDIN_MAIN) {
       /* main function */
       _decl->flags |= FLAG_MAIN;
     }

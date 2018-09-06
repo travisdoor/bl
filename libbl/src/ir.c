@@ -236,21 +236,21 @@ to_llvm_type(context_t *cnt, node_t *type)
   case NODE_TYPE_FUND: {
     node_type_fund_t *_type = peek_type_fund(type);
     switch (_type->code) {
-    case BL_FTYPE_VOID: result = LLVMVoidTypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_CHAR:
-    case BL_FTYPE_S8:
-    case BL_FTYPE_U8: result = LLVMInt8TypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_S16:
-    case BL_FTYPE_U16: result = LLVMInt16TypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_S32:
-    case BL_FTYPE_U32: result = LLVMInt32TypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_S64:
-    case BL_FTYPE_U64: result = LLVMInt64TypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_F32: result = LLVMFloatTypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_F64: result = LLVMDoubleTypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_STRING: result = LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0); break;
-    case BL_FTYPE_BOOL: result = LLVMInt1TypeInContext(cnt->llvm_cnt); break;
-    case BL_FTYPE_SIZE:
+    case FTYPE_VOID: result = LLVMVoidTypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_CHAR:
+    case FTYPE_S8:
+    case FTYPE_U8: result = LLVMInt8TypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_S16:
+    case FTYPE_U16: result = LLVMInt16TypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_S32:
+    case FTYPE_U32: result = LLVMInt32TypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_S64:
+    case FTYPE_U64: result = LLVMInt64TypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_F32: result = LLVMFloatTypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_F64: result = LLVMDoubleTypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_STRING: result = LLVMPointerType(LLVMInt8TypeInContext(cnt->llvm_cnt), 0); break;
+    case FTYPE_BOOL: result = LLVMInt1TypeInContext(cnt->llvm_cnt); break;
+    case FTYPE_SIZE:
       /* TODO: use target setup later */
       if (sizeof(size_t) == 4) {
         result = LLVMInt32TypeInContext(cnt->llvm_cnt);
@@ -362,46 +362,40 @@ ir_lit(context_t *cnt, node_t *lit)
 #define PEEK_CHAR (unsigned long long int)_lit->value.c
 
   switch (peek_type_fund(_lit->type)->code) {
-  case BL_FTYPE_S8:
-    result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_ULL, true);
-    break;
-  case BL_FTYPE_S16:
+  case FTYPE_S8: result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_ULL, true); break;
+  case FTYPE_S16:
     result = LLVMConstInt(LLVMInt16TypeInContext(cnt->llvm_cnt), PEEK_ULL, true);
     break;
-  case BL_FTYPE_S32:
+  case FTYPE_S32:
     result = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), PEEK_ULL, true);
     break;
-  case BL_FTYPE_S64:
+  case FTYPE_S64:
     result = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), PEEK_ULL, true);
     break;
-  case BL_FTYPE_U8:
+  case FTYPE_U8:
     result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case BL_FTYPE_U16:
+  case FTYPE_U16:
     result = LLVMConstInt(LLVMInt16TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case BL_FTYPE_U32:
+  case FTYPE_U32:
     result = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case BL_FTYPE_U64:
-  case BL_FTYPE_SIZE:
+  case FTYPE_U64:
+  case FTYPE_SIZE:
     result = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case BL_FTYPE_F32:
-    result = LLVMConstReal(LLVMFloatTypeInContext(cnt->llvm_cnt), PEEK_REAL);
-    break;
-  case BL_FTYPE_F64:
-    result = LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), PEEK_REAL);
-    break;
-  case BL_FTYPE_BOOL:
+  case FTYPE_F32: result = LLVMConstReal(LLVMFloatTypeInContext(cnt->llvm_cnt), PEEK_REAL); break;
+  case FTYPE_F64: result = LLVMConstReal(LLVMDoubleTypeInContext(cnt->llvm_cnt), PEEK_REAL); break;
+  case FTYPE_BOOL:
     result = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case BL_FTYPE_STRING:
+  case FTYPE_STRING:
     // TODO
     result = LLVMBuildGlobalStringPtr(cnt->llvm_builder, PEEK_STR, "str");
     // result = get_or_create_const_string(cnt, _lit->value.str);
     break;
-  case BL_FTYPE_CHAR:
+  case FTYPE_CHAR:
     result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_CHAR, false);
     break;
   default: bl_abort("invalid constant type %s", node_name(lit));

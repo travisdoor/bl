@@ -40,12 +40,12 @@ typedef struct chunk
   int           count;
 } chunk_t;
 
-node_t bl_ftypes[] = {
+node_t ftypes[] = {
 #define ft(name, str)                                                                              \
   {.code             = NODE_TYPE_FUND,                                                             \
    .src              = NULL,                                                                       \
    .next             = NULL,                                                                       \
-   .n.type_fund.code = BL_FTYPE_##name,                                                            \
+   .n.type_fund.code = FTYPE_##name,                                                               \
    .n.type_fund.arr  = NULL,                                                                       \
    .n.type_fund.ptr  = 0,                                                                          \
    .state            = CHECKED},
@@ -54,13 +54,13 @@ node_t bl_ftypes[] = {
 #undef ft
 };
 
-const char *bl_ftype_strings[] = {
+const char *ftype_strings[] = {
 #define ft(code, name) #name,
     _FTYPE_LIST
 #undef ft
 };
 
-const char *bl_buildin_strings[] = {
+const char *buildin_strings[] = {
 #define bt(code, name) #name,
     _BUILDINS_LIST
 #undef bt
@@ -72,8 +72,8 @@ const char *node_type_strings[] = {
 #undef nt
 };
 
-uint64_t ftype_hashes[BL_FTYPE_COUNT];
-uint64_t buildin_hashes[BL_BUILDIN_COUNT];
+uint64_t ftype_hashes[FTYPE_COUNT];
+uint64_t buildin_hashes[BUILDIN_COUNT];
 
 static inline bool
 is_aligned(const void *p, size_t size)
@@ -187,12 +187,12 @@ ast_init(ast_t *ast)
   if (!statics_initialized) {
     statics_initialized = true;
     const char *it;
-    array_foreach(bl_ftype_strings, it)
+    array_foreach(ftype_strings, it)
     {
       ftype_hashes[i] = bo_hash_from_str(it);
     }
 
-    array_foreach(bl_buildin_strings, it)
+    array_foreach(buildin_strings, it)
     {
       buildin_hashes[i] = bo_hash_from_str(it);
     }
@@ -464,32 +464,32 @@ _NODE_NCTOR(expr_null, node_t *type)
  *************************************************************************************************/
 
 void
-ast_visitor_init(ast_visitor_t *visitor)
+visitor_init(visitor_t *visitor)
 {
   /* default value for all visitor callbacks */
-  memset(visitor->visitors, 0, sizeof(ast_visit_f) * NODE_COUNT);
+  memset(visitor->visitors, 0, sizeof(visit_f) * NODE_COUNT);
 }
 
 void
-ast_visitor_add(ast_visitor_t *visitor, ast_visit_f fn, node_code_e code)
+visitor_add(visitor_t *visitor, visit_f fn, node_code_e code)
 {
   visitor->visitors[code] = fn;
 }
 
 void
-ast_visit(ast_visitor_t *visitor, node_t *node, void *cnt)
+visitor_visit(visitor_t *visitor, node_t *node, void *cnt)
 {
   if (!node) return;
   if (visitor->visitors[node_code(node)])
     visitor->visitors[node_code(node)](visitor, node, cnt);
   else
-    ast_walk(visitor, node, cnt);
+    visitor_walk(visitor, node, cnt);
 }
 
 void
-ast_walk(ast_visitor_t *visitor, node_t *node, void *cnt)
+visitor_walk(visitor_t *visitor, node_t *node, void *cnt)
 {
-#define visit(node) ast_visit(visitor, node, cnt)
+#define visit(node) visitor_visit(visitor, node, cnt)
   if (!node) return;
   node_t *tmp = NULL;
 
@@ -651,7 +651,7 @@ _type_to_string(char *buf, size_t len, node_t *type)
     for (int i = 0; i < _type->ptr; ++i) {
       append_buf(buf, len, "*");
     }
-    append_buf(buf, len, bl_ftype_strings[peek_type_fund(type)->code]);
+    append_buf(buf, len, ftype_strings[peek_type_fund(type)->code]);
     break;
   }
 
@@ -899,48 +899,48 @@ ast_get_type_kind(node_t *type)
   case NODE_TYPE_FUND: {
     node_type_fund_t *_ftype = peek_type_fund(type);
 
-    if (_ftype->ptr) return KIND_PTR;
+    if (_ftype->ptr) return TYPE_KIND_PTR;
 
     switch (_ftype->code) {
-    case BL_FTYPE_TYPE: return KIND_TYPE;
-    case BL_FTYPE_VOID: return KIND_VOID;
-    case BL_FTYPE_S8:
-    case BL_FTYPE_S16:
-    case BL_FTYPE_S32:
-    case BL_FTYPE_S64: return KIND_SINT;
-    case BL_FTYPE_U8:
-    case BL_FTYPE_U16:
-    case BL_FTYPE_U32:
-    case BL_FTYPE_U64: return KIND_UINT;
-    case BL_FTYPE_SIZE: return KIND_SIZE;
-    case BL_FTYPE_F32:
-    case BL_FTYPE_F64: return KIND_REAL;
-    case BL_FTYPE_CHAR: return KIND_CHAR;
-    case BL_FTYPE_STRING: return KIND_STRING;
-    case BL_FTYPE_BOOL: return KIND_BOOL;
-    case BL_FTYPE_COUNT: break;
+    case FTYPE_TYPE: return TYPE_KIND_TYPE;
+    case FTYPE_VOID: return TYPE_KIND_VOID;
+    case FTYPE_S8:
+    case FTYPE_S16:
+    case FTYPE_S32:
+    case FTYPE_S64: return TYPE_KIND_SINT;
+    case FTYPE_U8:
+    case FTYPE_U16:
+    case FTYPE_U32:
+    case FTYPE_U64: return TYPE_KIND_UINT;
+    case FTYPE_SIZE: return TYPE_KIND_SIZE;
+    case FTYPE_F32:
+    case FTYPE_F64: return TYPE_KIND_REAL;
+    case FTYPE_CHAR: return TYPE_KIND_CHAR;
+    case FTYPE_STRING: return TYPE_KIND_STRING;
+    case FTYPE_BOOL: return TYPE_KIND_BOOL;
+    case FTYPE_COUNT: break;
     }
     break;
   }
 
   case NODE_TYPE_FN: {
     node_type_fn_t *_fn_type = peek_type_fn(type);
-    if (_fn_type->ptr) return KIND_PTR;
-    return KIND_FN;
+    if (_fn_type->ptr) return TYPE_KIND_PTR;
+    return TYPE_KIND_FN;
   }
 
   case NODE_TYPE_STRUCT: {
     node_type_struct_t *_struct_type = peek_type_struct(type);
-    if (_struct_type->ptr) return KIND_PTR;
-    return KIND_STRUCT;
+    if (_struct_type->ptr) return TYPE_KIND_PTR;
+    return TYPE_KIND_STRUCT;
   }
 
-  case NODE_TYPE_ENUM: return KIND_ENUM;
+  case NODE_TYPE_ENUM: return TYPE_KIND_ENUM;
 
   default: bl_abort("node %s is not a type", node_name(type));
   }
 
-  return KIND_UNKNOWN;
+  return TYPE_KIND_UNKNOWN;
 }
 
 node_t *
@@ -970,20 +970,20 @@ ast_can_impl_cast(node_t *from_type, node_t *to_type)
   type_kind_e fkind = ast_get_type_kind(from_type);
   type_kind_e tkind = ast_get_type_kind(to_type);
 
-  if (fkind == KIND_STRING && tkind == KIND_PTR) return true;
-  if (tkind == KIND_STRING && fkind == KIND_PTR) return true;
+  if (fkind == TYPE_KIND_STRING && tkind == TYPE_KIND_PTR) return true;
+  if (tkind == TYPE_KIND_STRING && fkind == TYPE_KIND_PTR) return true;
 
-  if ((fkind == KIND_SINT || fkind == KIND_UINT || fkind == KIND_SIZE) &&
-      (tkind == KIND_SINT || tkind == KIND_UINT || tkind == KIND_SIZE))
+  if ((fkind == TYPE_KIND_SINT || fkind == TYPE_KIND_UINT || fkind == TYPE_KIND_SIZE) &&
+      (tkind == TYPE_KIND_SINT || tkind == TYPE_KIND_UINT || tkind == TYPE_KIND_SIZE))
     return true;
 
-  if (tkind == KIND_ENUM) {
+  if (tkind == TYPE_KIND_ENUM) {
     return ast_can_impl_cast(from_type, peek_type_enum(to_type)->base_type);
   }
 
   if (fkind != tkind) return false;
-  if (fkind == KIND_STRUCT || fkind == KIND_FN) return false;
-  if (fkind == KIND_PTR && node_is(from_type, NODE_TYPE_FN)) return false;
+  if (fkind == TYPE_KIND_STRUCT || fkind == TYPE_KIND_FN) return false;
+  if (fkind == TYPE_KIND_PTR && node_is(from_type, NODE_TYPE_FN)) return false;
 
   return true;
 }

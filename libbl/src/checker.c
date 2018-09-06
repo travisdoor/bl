@@ -580,9 +580,9 @@ implicit_cast(context_t *cnt, node_t **node, node_t *to_type)
 
   type_kind_e from_kind = ast_get_type_kind(from_type);
   type_kind_e to_kind   = ast_get_type_kind(to_type);
-  if (node_is(*node, NODE_LIT) && from_kind != KIND_STRING && from_kind != KIND_CHAR &&
-      from_kind != KIND_REAL &&
-      (to_kind == KIND_SIZE || to_kind == KIND_UINT || to_kind == KIND_SINT)) {
+  if (node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING && from_kind != TYPE_KIND_CHAR &&
+      from_kind != TYPE_KIND_REAL &&
+      (to_kind == TYPE_KIND_SIZE || to_kind == TYPE_KIND_UINT || to_kind == TYPE_KIND_SINT)) {
     peek_lit(*node)->type = ast_node_dup(cnt->ast, to_type);
     return true;
   }
@@ -665,10 +665,10 @@ check_expr_call(context_t *cnt, node_t **call)
   if (_call->run) {
     type_kind_e callee_ret_tkind = ast_get_type_kind(ast_unroll_ident(_callee_type->ret_type));
     switch (callee_ret_tkind) {
-    case KIND_FN:
-    case KIND_PTR:
-    case KIND_STRING:
-    case KIND_STRUCT:
+    case TYPE_KIND_FN:
+    case TYPE_KIND_PTR:
+    case TYPE_KIND_STRING:
+    case TYPE_KIND_STRUCT:
       check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
                        "method called in compile time can return fundamental types only");
     default: break;
@@ -779,7 +779,7 @@ check_ident(context_t *cnt, node_t **ident)
   const int buildin = ast_is_buildin_type(*ident);
   if (buildin != -1) {
     /* connect buildin fundamental types references */
-    found = &bl_ftypes[buildin];
+    found = &ftypes[buildin];
   } else {
     found = lookup(*ident, NULL, true);
     if (!found) WAIT;
@@ -825,7 +825,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
     if (node_is(_ret->expr, NODE_EXPR_NULL)) {
       node_expr_null_t *_null = peek_expr_null(_ret->expr);
       _null->type             = fn_ret_type;
-      if (ast_get_type_kind(_null->type) != KIND_PTR) {
+      if (ast_get_type_kind(_null->type) != TYPE_KIND_PTR) {
         check_error_node(
             cnt, BL_ERR_INVALID_TYPE, _ret->expr, BL_BUILDER_CUR_WORD,
             "'null' cannot be used because the function does not return a pointer value");
@@ -837,7 +837,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
       }
     }
   } else {
-    if (!ast_type_cmp(&bl_ftypes[BL_FTYPE_VOID], fn_ret_type)) {
+    if (!ast_type_cmp(&ftypes[FTYPE_VOID], fn_ret_type)) {
       check_error_node(cnt, BL_ERR_EXPECTED_EXPR, *ret, BL_BUILDER_CUR_AFTER,
                        "expected return value");
     }
@@ -881,7 +881,7 @@ check_expr_binop(context_t *cnt, node_t **binop)
   type_kind_e lhs_kind = ast_get_type_kind(lhs_type);
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
-    if (lhs_kind != KIND_PTR) {
+    if (lhs_kind != TYPE_KIND_PTR) {
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
                        "expected a pointer type");
     } else {
@@ -898,8 +898,8 @@ check_expr_binop(context_t *cnt, node_t **binop)
 
   if (!ast_type_cmp(lhs_type, rhs_type)) {
     if (node_is(_binop->lhs, NODE_LIT) &&
-        (lhs_kind == KIND_SIZE || lhs_kind == KIND_UINT || lhs_kind == KIND_SINT) &&
-        (rhs_kind == KIND_SIZE || rhs_kind == KIND_UINT || rhs_kind == KIND_SINT)) {
+        (lhs_kind == TYPE_KIND_SIZE || lhs_kind == TYPE_KIND_UINT || lhs_kind == TYPE_KIND_SINT) &&
+        (rhs_kind == TYPE_KIND_SIZE || rhs_kind == TYPE_KIND_UINT || rhs_kind == TYPE_KIND_SINT)) {
       peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast, rhs_type);
     } else if (!implicit_cast(cnt, &_binop->rhs, lhs_type)) {
       check_error_invalid_types(cnt, lhs_type, rhs_type, *binop);
@@ -942,16 +942,16 @@ check_type_enum(context_t *cnt, node_t **type)
   }
 
   switch (peek_type_fund(tmp)->code) {
-  case BL_FTYPE_S8:
-  case BL_FTYPE_S16:
-  case BL_FTYPE_S32:
-  case BL_FTYPE_S64:
-  case BL_FTYPE_U8:
-  case BL_FTYPE_U16:
-  case BL_FTYPE_U32:
-  case BL_FTYPE_U64:
-  case BL_FTYPE_SIZE:
-  case BL_FTYPE_CHAR: break;
+  case FTYPE_S8:
+  case FTYPE_S16:
+  case FTYPE_S32:
+  case FTYPE_S64:
+  case FTYPE_U8:
+  case FTYPE_U16:
+  case FTYPE_U32:
+  case FTYPE_U64:
+  case FTYPE_SIZE:
+  case FTYPE_CHAR: break;
   default: {
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
@@ -980,7 +980,7 @@ check_expr_member(context_t *cnt, node_t **member)
   if (!lhs_type) FINISH;
   if (ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
-    if (ast_is_buildin(_member->ident) == BL_BUILDIN_ARR_COUNT) {
+    if (ast_is_buildin(_member->ident) == BUILDIN_ARR_COUNT) {
       node_t *tmp_next = (*member)->next;
       *member          = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
       (*member)->next  = tmp_next;
@@ -1046,8 +1046,8 @@ check_expr_elem(context_t *cnt, node_t **elem)
 
   node_t *index_type = ast_get_type(_elem->index);
 
-  if (!implicit_cast(cnt, &_elem->index, &bl_ftypes[BL_FTYPE_SIZE])) {
-    check_error_invalid_types(cnt, index_type, &bl_ftypes[BL_FTYPE_SIZE], _elem->index);
+  if (!implicit_cast(cnt, &_elem->index, &ftypes[FTYPE_SIZE])) {
+    check_error_invalid_types(cnt, index_type, &ftypes[FTYPE_SIZE], _elem->index);
   }
 
   FINISH;
@@ -1061,8 +1061,8 @@ check_stmt_if(context_t *cnt, node_t **stmt_if)
   assert(_if->true_stmt);
 
   node_t *test_type = ast_get_type(_if->test);
-  if (!ast_type_cmp(test_type, &bl_ftypes[BL_FTYPE_BOOL])) {
-    check_error_invalid_types(cnt, test_type, &bl_ftypes[BL_FTYPE_BOOL], _if->test);
+  if (!ast_type_cmp(test_type, &ftypes[FTYPE_BOOL])) {
+    check_error_invalid_types(cnt, test_type, &ftypes[FTYPE_BOOL], _if->test);
   }
   FINISH;
 }
@@ -1135,7 +1135,7 @@ check_decl(context_t *cnt, node_t **decl)
   case DECL_KIND_FIELD: {
     assert(_decl->mutable);
 
-    if (ast_get_type_kind(ast_get_type(_decl->type)) == KIND_FN) {
+    if (ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
@@ -1152,8 +1152,8 @@ check_decl(context_t *cnt, node_t **decl)
   case DECL_KIND_CONSTANT: {
     assert(!_decl->mutable);
 
-    if (ast_get_type_kind(ast_get_type(_decl->type)) == KIND_FN ||
-        ast_get_type_kind(ast_get_type(_decl->type)) == KIND_STRUCT) {
+    if (ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN ||
+        ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_STRUCT) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
@@ -1191,14 +1191,14 @@ check_decl(context_t *cnt, node_t **decl)
 
   assert(_decl->type);
   type_kind_e type_kind = ast_get_type_kind(ast_get_type(_decl->type));
-  if (type_kind == KIND_VOID) {
+  if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
     check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
                      "declaration has invalid type '%s'", tmp);
   }
 
-  if (type_kind == KIND_FN && _decl->mutable) {
+  if (type_kind == TYPE_KIND_FN && _decl->mutable) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
     check_error_node(
@@ -1209,7 +1209,7 @@ check_decl(context_t *cnt, node_t **decl)
 
   /* infer type for 'null' value */
   if (_decl->value && node_is(_decl->value, NODE_EXPR_NULL)) {
-    if (type_kind == KIND_PTR) {
+    if (type_kind == TYPE_KIND_PTR) {
       peek_expr_null(_decl->value)->type = _decl->type;
     } else {
       check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
