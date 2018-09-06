@@ -903,8 +903,8 @@ check_expr_binop(context_t *cnt, node_t **binop)
       assert(node_is(_lhs->ref, NODE_DECL));
 
       if (!peek_decl(_lhs->ref)->mutable) {
-        check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, _binop->lhs, BL_BUILDER_CUR_WORD,
-                         "declaration is not mutable and cannot be assigned");
+        check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, *binop, BL_BUILDER_CUR_WORD,
+                         "left-hand side declaration is not mutable and cannot be assigned");
       }
     }
   }

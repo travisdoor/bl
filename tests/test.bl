@@ -12,5 +12,6 @@ main : fn () s32 {
   a := 10;
   B : a;
   C : 10 + 11;
+  C = 2;
   return EXIT_SUCCESS;
 };
