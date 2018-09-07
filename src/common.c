@@ -51,7 +51,7 @@ brealpath(const char *file, char *out, int out_len)
   if (!file) return resolved;
 
 #ifdef BL_COMPILER_MSVC
-  if (GetFullPathNameA(file, out_len, out, NULL) && bl_file_exists(out)) return &out[0];
+  if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) return &out[0];
   return NULL;
 #else
   return realpath(file, out);
