@@ -33,7 +33,7 @@
 #include <bobject/bobject.h>
 
 // clang-format off
-#define BL_SYMBOLS_LIST \
+#define _SYMBOLS_LIST \
   sm(EOF = 0,     "end") \
   sm(IDENT,       "identifier") \
   sm(STRING,      "string") \
@@ -101,21 +101,21 @@
   sm(NONE,        "")\
 
 typedef enum {
-#define sm(tok, str) BL_SYM_##tok,
-  BL_SYMBOLS_LIST
+#define sm(tok, str) SYM_##tok,
+  _SYMBOLS_LIST
 #undef sm
 } sym_e;
 // clang-format on
 
 extern char *sym_strings[];
 
-struct bl_unit;
+struct unit;
 typedef struct src
 {
-  int             line;
-  int             col;
-  int             len;
-  struct bl_unit *unit;
+  int          line;
+  int          col;
+  int          len;
+  struct unit *unit;
 } src_t;
 
 typedef union

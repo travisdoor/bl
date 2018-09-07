@@ -208,7 +208,7 @@ is_terminated(context_t *cnt)
 static inline bool
 should_load(node_t *node, LLVMValueRef llvm_value)
 {
-  if ((node_is(node, NODE_EXPR_UNARY) && peek_expr_unary(node)->op == BL_SYM_ASTERISK)) return true;
+  if ((node_is(node, NODE_EXPR_UNARY) && peek_expr_unary(node)->op == SYM_ASTERISK)) return true;
 
   if (node_is(node, NODE_EXPR_MEMBER) && peek_expr_member(node)->kind == MEM_KIND_STRUCT)
     return true;
@@ -689,7 +689,7 @@ ir_expr_binop(context_t *cnt, node_t *binop)
   LLVMValueRef       lhs    = ir_node(cnt, _binop->lhs);
   LLVMValueRef       rhs    = ir_node(cnt, _binop->rhs);
 
-  if (_binop->op == BL_SYM_ASSIGN) {
+  if (_binop->op == SYM_ASSIGN) {
     /* special case for dereferencing on the right side, we need to perform additional load
      * because we use pointer to data not real data. */
     if (should_load(_binop->rhs, rhs)) {
@@ -709,54 +709,54 @@ ir_expr_binop(context_t *cnt, node_t *binop)
   bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
-  case BL_SYM_PLUS:
+  case SYM_PLUS:
     if (float_kind) return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
     return LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_MINUS:
+  case SYM_MINUS:
     if (float_kind) return LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_ASTERISK:
+  case SYM_ASTERISK:
     if (float_kind) return LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_SLASH:
+  case SYM_SLASH:
     if (float_kind) return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_MODULO:
+  case SYM_MODULO:
     return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_EQ:
+  case SYM_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_NEQ:
+  case SYM_NEQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_GREATER:
+  case SYM_GREATER:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LESS:
+  case SYM_LESS:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_GREATER_EQ:
+  case SYM_GREATER_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LESS_EQ:
+  case SYM_LESS_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LOGIC_AND:
+  case SYM_LOGIC_AND:
     return LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case BL_SYM_LOGIC_OR:
+  case SYM_LOGIC_OR:
     return LLVMBuildOr(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   default:
@@ -773,8 +773,8 @@ ir_expr_unary(context_t *cnt, node_t *unary)
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
   switch (_unary->op) {
-  case BL_SYM_MINUS:
-  case BL_SYM_PLUS: {
+  case SYM_MINUS:
+  case SYM_PLUS: {
     if (should_load(_unary->next, next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
@@ -785,10 +785,10 @@ ir_expr_unary(context_t *cnt, node_t *unary)
 
     int mult = 1;
     switch (_unary->op) {
-    case BL_SYM_MINUS:
+    case SYM_MINUS:
       mult = -1;
       break;
-    case BL_SYM_PLUS:
+    case SYM_PLUS:
       mult = 1;
       break;
     default:
@@ -804,7 +804,7 @@ ir_expr_unary(context_t *cnt, node_t *unary)
     return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
   }
 
-  case BL_SYM_NOT: {
+  case SYM_NOT: {
     if (should_load(_unary->next, next_val)) {
       next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     }
@@ -813,14 +813,14 @@ ir_expr_unary(context_t *cnt, node_t *unary)
     return next_val;
   }
 
-  case BL_SYM_AND: {
+  case SYM_AND: {
     /* unary operation is getting address of something "&foo" */
     LLVMValueRef indices[1];
     indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
     return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, ARRAY_SIZE(indices), gname("tmp"));
   }
 
-  case BL_SYM_ASTERISK: {
+  case SYM_ASTERISK: {
     next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     return next_val;
   }

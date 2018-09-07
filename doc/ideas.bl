@@ -1,0 +1,15 @@
+// some syntax and feature ideas
+
+// switch statement
+
+switch a {
+  case A:
+    puts("A"); // no need to have break
+  case B:
+    puts("B"); 
+  case C, D: // multiple cases
+    puts("C, D"); 
+  default: 
+    puts("default"); 
+}
+

@@ -39,7 +39,7 @@
 /* public */
 
 assembly_t *
-bl_assembly_new(const char *name)
+assembly_new(const char *name)
 {
   assembly_t *assembly = bl_calloc(1, sizeof(assembly_t));
   if (!assembly) bl_abort("bad alloc");
@@ -58,14 +58,14 @@ bl_assembly_new(const char *name)
 }
 
 void
-bl_assembly_delete(assembly_t *assembly)
+assembly_delete(assembly_t *assembly)
 {
   free(assembly->name);
 
   unit_t *unit;
   barray_foreach(assembly->units, unit)
   {
-    bl_unit_delete(unit);
+    unit_delete(unit);
   }
   bo_unref(assembly->units);
   bo_unref(assembly->unique_cache);
@@ -88,13 +88,13 @@ bl_assembly_delete(assembly_t *assembly)
 }
 
 void
-bl_assembly_add_unit(assembly_t *assembly, unit_t *unit)
+assembly_add_unit(assembly_t *assembly, unit_t *unit)
 {
   bo_array_push_back(assembly->units, unit);
 }
 
 bool
-bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
+assembly_add_unit_unique(assembly_t *assembly, unit_t *unit)
 {
   uint64_t hash = 0;
   if (unit->filepath)
@@ -105,34 +105,16 @@ bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit)
   if (bo_htbl_has_key(assembly->unique_cache, hash)) return false;
 
   bo_htbl_insert_empty(assembly->unique_cache, hash);
-  bl_assembly_add_unit(assembly, unit);
+  assembly_add_unit(assembly, unit);
   return true;
 }
 
 void
-bl_assembly_add_link(bl_assembly_ref assembly, const char *lib)
+assembly_add_link(assembly_t *assembly, const char *lib)
 {
   if (!lib) return;
   uint64_t hash = bo_hash_from_str(lib);
   if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
   bo_htbl_insert(assembly->link_cache, hash, lib);
-}
-
-const char *
-bl_assembly_get_name(assembly_t *assembly)
-{
-  return assembly->name;
-}
-
-int
-bl_assembly_get_unit_count(assembly_t *assembly)
-{
-  return (int)bo_array_size(assembly->units);
-}
-
-unit_t *
-bl_assembly_get_unit(assembly_t *assembly, int i)
-{
-  return bo_array_at(assembly->units, (size_t)i, unit_t *);
 }

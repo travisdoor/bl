@@ -68,7 +68,7 @@ native_bin_run(builder_t *builder, assembly_t *assembly)
     strcat(&buf[0], lib);
   }
 
-  bl_msg_log("%s", buf);
+  msg_log("%s", buf);
   /* TODO: handle error */
   int result = system(buf);
   if (result != 0) {

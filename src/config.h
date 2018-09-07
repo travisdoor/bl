@@ -54,15 +54,6 @@
 #define BL_COMPILER_MSVC
 #endif
 
-#define BL_MAX_FUNC_ARG_COUNT 32
-#define BL_MAX_FUNC_NAME_LEN 512
-
-#if BL_DEBUG
-#define BL_ASSERT_ON_CMP_ERROR 0
-#else
-#define BL_ASSERT_ON_CMP_ERROR 0
-#endif
-
 #ifdef BL_COMPILER_MSVC
 #include <Windows.h>
 #endif
@@ -73,25 +64,31 @@
 #endif
 
 #ifdef BL_PLATFORM_WIN
-#define BL_PATH_SEPARATOR "\\"
-#define BL_PATH_SEPARATORC '\\'
-#define BL_ENVPATH_SEPARATOR ';'
+#define PATH_SEPARATOR "\\"
+#define PATH_SEPARATORC '\\'
+#define ENVPATH_SEPARATOR ';'
 #else
-#define BL_PATH_SEPARATOR "/"
-#define BL_PATH_SEPARATORC '/'
-#define BL_ENVPATH_SEPARATOR ':'
+#define PATH_SEPARATOR "/"
+#define PATH_SEPARATORC '/'
+#define ENVPATH_SEPARATOR ':'
 #endif
 
 #ifdef BL_PLATFORM_LINUX
-#define BL_CORE_SOURCE_FILE "os/os_linux.bl"
+#define CORE_SOURCE_FILE "os/os_linux.bl"
 #endif
 
 #ifdef BL_PLATFORM_WIN
-#define BL_CORE_SOURCE_FILE "os/os_windows.bl"
+#define CORE_SOURCE_FILE "os/os_windows.bl"
 #endif
 
 #ifdef BL_PLATFORM_MACOS
-#define BL_CORE_SOURCE_FILE "os/os_macos.bl"
+#define CORE_SOURCE_FILE "os/os_macos.bl"
+#endif
+
+#if BL_DEBUG
+#define ASSERT_ON_CMP_ERROR 0
+#else
+#define ASSERT_ON_CMP_ERROR 0
 #endif
 
 #endif // BL_CONFIG_H

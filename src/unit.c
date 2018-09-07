@@ -59,15 +59,15 @@ search_file(const char *filepath)
   size_t filepath_len = strlen(filepath);
 
   do {
-    p = strchr(s, BL_ENVPATH_SEPARATOR);
+    p = strchr(s, ENVPATH_SEPARATOR);
     if (p != NULL) {
       p[0] = 0;
     }
 
-    if (strlen(s) + filepath_len + strlen(BL_PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
+    if (strlen(s) + filepath_len + strlen(PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
 
     strcpy(&tmp_env[0], s);
-    strcat(&tmp_env[0], BL_PATH_SEPARATOR);
+    strcat(&tmp_env[0], PATH_SEPARATOR);
     strcat(&tmp_env[0], filepath);
 
     rpath = brealpath(&tmp_env[0], tmp_rpath, PATH_MAX);
@@ -82,7 +82,7 @@ search_file(const char *filepath)
 
 /* public */
 unit_t *
-bl_unit_new_file(const char *filepath)
+unit_new_file(const char *filepath)
 {
   unit_t *unit = bl_calloc(1, sizeof(unit_t));
   if (!unit) bl_abort("bad alloc");
@@ -93,7 +93,7 @@ bl_unit_new_file(const char *filepath)
 }
 
 unit_t *
-bl_unit_new_str(const char *name, const char *src)
+unit_new_str(const char *name, const char *src)
 {
   unit_t *unit = bl_calloc(1, sizeof(unit_t));
   if (!unit) bl_abort("bad alloc");
@@ -110,7 +110,7 @@ bl_unit_new_str(const char *name, const char *src)
 }
 
 void
-bl_unit_delete(unit_t *unit)
+unit_delete(unit_t *unit)
 {
   free(unit->filepath);
   free(unit->src);
@@ -121,25 +121,25 @@ bl_unit_delete(unit_t *unit)
 }
 
 const char *
-bl_unit_get_src_file(unit_t *unit)
+unit_get_src_file(unit_t *unit)
 {
   return unit->filepath;
 }
 
 const char *
-bl_unit_get_src(unit_t *unit)
+unit_get_src(unit_t *unit)
 {
   return unit->src;
 }
 
 const char *
-bl_unit_get_name(unit_t *unit)
+unit_get_name(unit_t *unit)
 {
   return unit->name;
 }
 
 const char *
-bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len)
+unit_get_src_ln(unit_t *unit, int line, long *len)
 {
   int         l    = 1;
   const char *iter = unit->src;

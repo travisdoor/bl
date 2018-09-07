@@ -30,26 +30,28 @@
 
 char *sym_strings[] = {
 #define sm(tok, str) str,
-    BL_SYMBOLS_LIST
+    _SYMBOLS_LIST
 #undef sm
 };
 
 bool
 token_is_binop(token_t *token)
 {
-  return token->sym >= BL_SYM_EQ && token->sym <= BL_SYM_LESS;
+  return token->sym >= SYM_EQ && token->sym <= SYM_LESS;
 }
 
 bool
 token_is_unary(token_t *token)
 {
   switch (token->sym) {
-  case BL_SYM_AND:
-  case BL_SYM_ASTERISK:
-  case BL_SYM_MINUS:
-  case BL_SYM_PLUS:
-  case BL_SYM_NOT: return true;
-  default: return false;
+  case SYM_AND:
+  case SYM_ASTERISK:
+  case SYM_MINUS:
+  case SYM_PLUS:
+  case SYM_NOT:
+    return true;
+  default:
+    return false;
   }
 
   return false;
@@ -59,16 +61,18 @@ bool
 token_is_logic_op(token_t *token)
 {
   switch (token->sym) {
-  case BL_SYM_LESS:
-  case BL_SYM_GREATER:
-  case BL_SYM_LESS_EQ:
-  case BL_SYM_GREATER_EQ:
-  case BL_SYM_EQ:
-  case BL_SYM_NEQ:
-  case BL_SYM_LOGIC_AND:
-  case BL_SYM_LOGIC_OR: return true;
+  case SYM_LESS:
+  case SYM_GREATER:
+  case SYM_LESS_EQ:
+  case SYM_GREATER_EQ:
+  case SYM_EQ:
+  case SYM_NEQ:
+  case SYM_LOGIC_AND:
+  case SYM_LOGIC_OR:
+    return true;
 
-  default: return false;
+  default:
+    return false;
   }
 }
 
@@ -77,68 +81,70 @@ token_prec(token_t *token, bool unary)
 {
   switch (token->sym) {
     // . -> [ (
-  case BL_SYM_DOT:
-  case BL_SYM_ARROW:
-  case BL_SYM_LBRACKET:
-  case BL_SYM_LPAREN:
+  case SYM_DOT:
+  case SYM_ARROW:
+  case SYM_LBRACKET:
+  case SYM_LPAREN:
     return 60;
 
     // ident number cast + -
-  case BL_SYM_IDENT:
-  case BL_SYM_NUM:
-  case BL_SYM_CAST:
+  case SYM_IDENT:
+  case SYM_NUM:
+  case SYM_CAST:
     return 50;
 
     // * / %
-  case BL_SYM_ASTERISK:
-  case BL_SYM_SLASH:
-  case BL_SYM_MODULO:
+  case SYM_ASTERISK:
+  case SYM_SLASH:
+  case SYM_MODULO:
     return 40;
 
     // + -
-  case BL_SYM_PLUS:
-  case BL_SYM_MINUS:
+  case SYM_PLUS:
+  case SYM_MINUS:
     return unary ? 50 : 20;
 
     // .
-  case BL_SYM_NOT:
+  case SYM_NOT:
     return 20;
 
     // < > <= >=
-  case BL_SYM_LESS:
-  case BL_SYM_GREATER:
-  case BL_SYM_LESS_EQ:
-  case BL_SYM_GREATER_EQ:
+  case SYM_LESS:
+  case SYM_GREATER:
+  case SYM_LESS_EQ:
+  case SYM_GREATER_EQ:
     return 15;
 
     // == !=
-  case BL_SYM_EQ:
-  case BL_SYM_NEQ:
+  case SYM_EQ:
+  case SYM_NEQ:
     return 10;
 
     // &
-  case BL_SYM_AND:
+  case SYM_AND:
     return 9;
 
     // ~
-  case BL_SYM_XOR:
+  case SYM_XOR:
     return 8;
 
     // |
-  case BL_SYM_OR:
+  case SYM_OR:
     return 7;
 
     // &&
-  case BL_SYM_LOGIC_AND:
+  case SYM_LOGIC_AND:
     return 6;
 
     // ||
-  case BL_SYM_LOGIC_OR:
+  case SYM_LOGIC_OR:
     return 5;
 
     // =
-  case BL_SYM_ASSIGN: return 4;
-  default: return -1;
+  case SYM_ASSIGN:
+    return 4;
+  default:
+    return -1;
   }
 }
 

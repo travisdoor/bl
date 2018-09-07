@@ -39,7 +39,7 @@ jit_exec_run(builder_t *builder, assembly_t *assembly)
   if (LLVMCreateJITCompilerForModule(&jit, assembly->llvm_module, 3, &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 
-  bl_msg_log("\nRunning:");
+  msg_log("\nRunning:");
   LLVMValueRef        llvm_fn = LLVMGetNamedFunction(assembly->llvm_module, "main");
   LLVMGenericValueRef result  = LLVMRunFunction(jit, llvm_fn, 0, NULL);
   int                 ires    = (int)LLVMGenericValueToInt(result, 0);
@@ -47,7 +47,7 @@ jit_exec_run(builder_t *builder, assembly_t *assembly)
   if (ires != 0) {
     builder_warning(builder, "executed unit return %i", ires);
   }
-  bl_msg_log("");
+  msg_log("");
 
   assembly->llvm_run_engine = jit;
 }

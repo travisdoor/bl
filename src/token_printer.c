@@ -50,7 +50,7 @@ token_printer_run(unit_t *unit)
       fprintf(stdout, "\n%d: ", line);
     }
 
-    fprintf(stdout, "[" BL_YELLOW("'%s'") " %i:%i], ", sym_strings[tok->sym], tok->src.line,
+    fprintf(stdout, "[" YELLOW("'%s'") " %i:%i], ", sym_strings[tok->sym], tok->src.line,
             tok->src.col);
   }
 

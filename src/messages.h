@@ -31,19 +31,19 @@
 
 #include "config.h"
 
-#define bl_msg_log(format, ...)                                                                    \
+#define msg_log(format, ...)                                                                       \
   {                                                                                                \
     fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
   }
 
-#define bl_msg_error(format, ...)                                                                  \
+#define msg_error(format, ...)                                                                     \
   {                                                                                                \
-    fprintf(stderr, BL_RED("error: ") format "\n", ##__VA_ARGS__);                                 \
+    fprintf(stderr, RED("error: ") format "\n", ##__VA_ARGS__);                                    \
   }
 
-#define bl_msg_warning(format, ...)                                                                \
+#define msg_warning(format, ...)                                                                   \
   {                                                                                                \
-    fprintf(stdout, BL_YELLOW("warning: ") format "\n", ##__VA_ARGS__);                            \
+    fprintf(stdout, YELLOW("bl_warning: ") format "\n", ##__VA_ARGS__);                            \
   }
 
 #endif // BL_MESSAGES_H

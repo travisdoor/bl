@@ -35,7 +35,7 @@
 #include "tokens.h"
 
 /* class Unit object members */
-typedef struct bl_unit
+typedef struct unit
 {
   /* output of lexer */
   tokens_t tokens;
@@ -49,27 +49,25 @@ typedef struct bl_unit
   char *src;
 } unit_t;
 
-typedef struct bl_unit *bl_unit_ref;
+unit_t *
+unit_new_file(const char *filepath);
 
-bl_unit_ref
-bl_unit_new_file(const char *filepath);
-
-bl_unit_ref
-bl_unit_new_str(const char *name, const char *src);
+unit_t *
+unit_new_str(const char *name, const char *src);
 
 void
-bl_unit_delete(bl_unit_ref unit);
+unit_delete(unit_t *unit);
 
 const char *
-bl_unit_get_src_file(bl_unit_ref unit);
+unit_get_src_file(unit_t *unit);
 
 const char *
-bl_unit_get_src(bl_unit_ref unit);
+unit_get_src(unit_t *unit);
 
 const char *
-bl_unit_get_src_ln(bl_unit_ref unit, int line, long *len);
+unit_get_src_ln(unit_t *unit, int line, long *len);
 
 const char *
-bl_unit_get_name(bl_unit_ref unit);
+unit_get_name(unit_t *unit);
 
-#endif 
+#endif

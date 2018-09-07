@@ -52,30 +52,19 @@ typedef struct bl_assembly
   LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
 } assembly_t;
 
-typedef struct bl_assembly *bl_assembly_ref;
-
-bl_assembly_ref
-bl_assembly_new(const char *name);
+assembly_t *
+assembly_new(const char *name);
 
 void
-bl_assembly_delete(bl_assembly_ref assembly);
+assembly_delete(assembly_t *assembly);
 
 void
-bl_assembly_add_unit(bl_assembly_ref assembly, bl_unit_ref unit);
+assembly_add_unit(assembly_t *assembly, unit_t *unit);
 
 void
-bl_assembly_add_link(bl_assembly_ref assembly, const char *lib);
+assembly_add_link(assembly_t *assembly, const char *lib);
 
 bool
-bl_assembly_add_unit_unique(bl_assembly_ref assembly, bl_unit_ref unit);
-
-int
-bl_assembly_get_unit_count(bl_assembly_ref assembly);
-
-bl_unit_ref
-bl_assembly_get_unit(bl_assembly_ref assembly, int i);
-
-const char *
-bl_assembly_get_name(bl_assembly_ref assembly);
+assembly_add_unit_unique(assembly_t *assembly, unit_t *unit);
 
 #endif

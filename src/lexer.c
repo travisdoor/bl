@@ -88,7 +88,7 @@ scan_comment(context_t *cnt, const char *term)
       /*
        * Unterminated comment
        */
-      scan_error(cnt, BL_ERR_UNTERMINATED_COMMENT, "%s %d:%d unterminated comment block.",
+      scan_error(cnt, ERR_UNTERMINATED_COMMENT, "%s %d:%d unterminated comment block.",
                  cnt->unit->name, cnt->line, cnt->col);
     }
     if (strncmp(cnt->c, term, len) == 0) {
@@ -107,7 +107,7 @@ scan_ident(context_t *cnt, token_t *tok)
 {
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
-  tok->sym      = BL_SYM_IDENT;
+  tok->sym      = SYM_IDENT;
 
   char *begin = cnt->c;
 
@@ -136,14 +136,22 @@ char
 scan_specch(char c)
 {
   switch (c) {
-  case 'n': return '\n';
-  case 'r': return '\r';
-  case 't': return '\t';
-  case '0': return '\0';
-  case '\"': return '\"';
-  case '\'': return '\'';
-  case '\\': return '\\';
-  default: return c;
+  case 'n':
+    return '\n';
+  case 'r':
+    return '\r';
+  case 't':
+    return '\t';
+  case '0':
+    return '\0';
+  case '\"':
+    return '\"';
+  case '\'':
+    return '\'';
+  case '\\':
+    return '\\';
+  default:
+    return c;
   }
 }
 
@@ -156,7 +164,7 @@ scan_string(context_t *cnt, token_t *tok)
 
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
-  tok->sym      = BL_SYM_STRING;
+  tok->sym      = SYM_STRING;
 
   /* eat " */
   cnt->c++;
@@ -185,7 +193,7 @@ scan:
       }
     }
     case '\0': {
-      scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated string.", cnt->unit->name,
+      scan_error(cnt, ERR_UNTERMINATED_STRING, "%s %d:%d unterminated string.", cnt->unit->name,
                  cnt->line, cnt->col);
     }
     case '\\':
@@ -216,18 +224,18 @@ scan_char(context_t *cnt, token_t *tok)
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
   tok->src.len  = 0;
-  tok->sym      = BL_SYM_CHAR;
+  tok->sym      = SYM_CHAR;
 
   /* eat ' */
   cnt->c++;
 
   switch (*cnt->c) {
   case '\'': {
-    scan_error(cnt, BL_ERR_EMPTY, "%s %d:%d expected character in ''.", cnt->unit->name, cnt->line,
+    scan_error(cnt, ERR_EMPTY, "%s %d:%d expected character in ''.", cnt->unit->name, cnt->line,
                cnt->col);
   }
   case '\0': {
-    scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character.", cnt->unit->name,
+    scan_error(cnt, ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character.", cnt->unit->name,
                cnt->line, cnt->col);
   }
   case '\\':
@@ -244,7 +252,7 @@ scan_char(context_t *cnt, token_t *tok)
 
   /* eat ' */
   if (*cnt->c != '\'') {
-    scan_error(cnt, BL_ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character expected '.",
+    scan_error(cnt, ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character expected '.",
                cnt->unit->name, cnt->line, cnt->col);
   }
   cnt->c++;
@@ -273,7 +281,8 @@ c_to_number(char c, int base)
       return c - '0';
     }
     break;
-  default: bl_abort("invalid number base");
+  default:
+    bl_abort("invalid number base");
   }
 
   return -1;
@@ -305,8 +314,8 @@ scan_number(context_t *cnt, token_t *tok)
     if (*(cnt->c) == '.') {
 
       if (base != 10) {
-        scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d invalid suffix.", cnt->unit->name,
-                   cnt->line, cnt->col + len);
+        scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d invalid suffix.", cnt->unit->name, cnt->line,
+                   cnt->col + len);
       }
 
       len++;
@@ -328,7 +337,7 @@ scan_number(context_t *cnt, token_t *tok)
 
   tok->src.len = len;
   cnt->col += len;
-  tok->sym     = BL_SYM_NUM;
+  tok->sym     = SYM_NUM;
   tok->value.u = n;
   return true;
 
@@ -355,9 +364,9 @@ scan_double : {
   if (*(cnt->c) == 'f') {
     len++;
     cnt->c++;
-    tok->sym = BL_SYM_FLOAT;
+    tok->sym = SYM_FLOAT;
   } else {
-    tok->sym = BL_SYM_DOUBLE;
+    tok->sym = SYM_DOUBLE;
   }
 
   tok->value.d = n / (double)e;
@@ -382,10 +391,12 @@ scan:
    */
   switch (*cnt->c) {
   case '\0':
-    tok.sym = BL_SYM_EOF;
+    tok.sym = SYM_EOF;
     tokens_push(cnt->tokens, &tok);
     return;
-  case '\r': cnt->c++; goto scan;
+  case '\r':
+    cnt->c++;
+    goto scan;
   case '\n':
     cnt->line++;
     cnt->col = 1;
@@ -400,14 +411,15 @@ scan:
     cnt->col++;
     cnt->c++;
     goto scan;
-  default: break;
+  default:
+    break;
   }
 
   /*
    * Scan symbols described directly as strings.
    */
   size_t len = 0;
-  for (int i = BL_SYM_IF; i < BL_SYM_NONE; ++i) {
+  for (int i = SYM_IF; i < SYM_NONE; ++i) {
     len = strlen(sym_strings[i]);
     if (strncmp(cnt->c, sym_strings[i], len) == 0) {
       cnt->c += len;
@@ -417,26 +429,28 @@ scan:
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= BL_SYM_IF && i <= BL_SYM_CONTINUE && is_intend_c(*cnt->c)) {
+      if (i >= SYM_IF && i <= SYM_CONTINUE && is_intend_c(*cnt->c)) {
         /* roll back */
         cnt->c -= len;
         break;
       }
 
       switch (tok.sym) {
-      case BL_SYM_LCOMMENT:
+      case SYM_LCOMMENT:
         /* begin of line comment */
         scan_comment(cnt, "\n");
         goto scan;
-      case BL_SYM_LBCOMMENT:
+      case SYM_LBCOMMENT:
         /* begin of block comment */
-        scan_comment(cnt, sym_strings[BL_SYM_RBCOMMENT]);
+        scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
         goto scan;
-      case BL_SYM_RBCOMMENT: {
-        scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name,
-                   cnt->line, cnt->col);
+      case SYM_RBCOMMENT: {
+        scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
+                   cnt->col);
       }
-      default: cnt->col += len; goto push_token;
+      default:
+        cnt->col += len;
+        goto push_token;
       }
     }
   }
@@ -450,7 +464,7 @@ scan:
   if (scan_char(cnt, &tok)) goto push_token;
 
   /* When symbol is unknown report error */
-  scan_error(cnt, BL_ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
+  scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
              cnt->col);
 push_token:
   tok.src.unit = cnt->unit;

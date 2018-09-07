@@ -53,11 +53,11 @@ linker_run(builder_t *builder, assembly_t *assembly)
   char *features  = "";
   char *error_msg = NULL;
 
-  bl_msg_log("target: %s", triple);
+  msg_log("target: %s", triple);
 
   LLVMTargetRef target = NULL;
   if (LLVMGetTargetFromTriple(triple, &target, &error_msg)) {
-    bl_msg_error("cannot get target with error: %s", error_msg);
+    msg_error("cannot get target with error: %s", error_msg);
     LLVMDisposeMessage(error_msg);
     bl_free(filename);
     return;
@@ -76,7 +76,7 @@ linker_run(builder_t *builder, assembly_t *assembly)
   remove(filename);
   if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
                                   &error_msg)) {
-    bl_msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
+    msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
     LLVMDisposeMessage(error_msg);
     LLVMDisposeTargetMachine(target_machine);

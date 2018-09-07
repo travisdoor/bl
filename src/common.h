@@ -63,4 +63,4 @@ file_exists(const char *filepath);
 const char *
 brealpath(const char *file, char *out, int out_len);
 
-#endif 
+#endif

@@ -34,7 +34,7 @@
 
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
   {                                                                                                \
-    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),               \
+    builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, (node)->src, (pos), (format),              \
                 ##__VA_ARGS__);                                                                    \
   }
 
@@ -73,7 +73,7 @@ post_decl(visitor_t *visitor, node_t *decl, void *cnt)
   node_decl_t *_decl = peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
       !(_decl->flags & FLAG_MAIN) && _decl->kind != DECL_KIND_VARIANT) {
-    post_warning_node(_cnt, _decl->name, BL_BUILDER_CUR_WORD, "symbol is declared but never used");
+    post_warning_node(_cnt, _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
   if (_decl->flags & FLAG_MAIN) _decl->used++;
@@ -90,10 +90,11 @@ post_decl(visitor_t *visitor, node_t *decl, void *cnt)
       schedule_generation(cnt, decl);
     }
     break;
-  default: break;
+  default:
+    break;
   }
 
-    visitor_walk(visitor, decl, cnt);
+  visitor_walk(visitor, decl, cnt);
   _cnt->curr_dependent = prev_dependent;
 
 #if VERBOSE
@@ -135,7 +136,7 @@ post_ident(visitor_t *visitor, node_t *ident, void *cnt)
   node_ident_t *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
-      visitor_walk(visitor, ident, cnt);
+    visitor_walk(visitor, ident, cnt);
     return;
   }
 
@@ -158,16 +159,16 @@ post_run(builder_t *builder, assembly_t *assembly)
   };
 
   visitor_t visitor;
-    visitor_init(&visitor);
+  visitor_init(&visitor);
 
-    visitor_add(&visitor, post_decl, NODE_DECL);
-    visitor_add(&visitor, post_call, NODE_EXPR_CALL);
-    visitor_add(&visitor, post_ident, NODE_IDENT);
+  visitor_add(&visitor, post_decl, NODE_DECL);
+  visitor_add(&visitor, post_call, NODE_EXPR_CALL);
+  visitor_add(&visitor, post_ident, NODE_IDENT);
 
   unit_t *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-      visitor_visit(&visitor, unit->ast.root, &cnt);
+    visitor_visit(&visitor, unit->ast.root, &cnt);
   }
 }

@@ -150,7 +150,7 @@ tokens_is_seq(tokens_t *tokens, int cnt, ...)
 {
   bool   ret = true;
   size_t c   = bo_array_size(tokens->buf);
-  sym_e  sym = BL_SYM_EOF;
+  sym_e  sym = SYM_EOF;
   cnt += (int)tokens->iter;
 
   va_list valist;
@@ -209,7 +209,7 @@ tokens_create_cached_str(tokens_t *tokens)
 void
 tokens_consume_till(tokens_t *tokens, sym_e sym)
 {
-  while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, BL_SYM_EOF)) {
+  while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
     tokens_consume(tokens);
   }
 }

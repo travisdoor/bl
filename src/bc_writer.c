@@ -55,7 +55,7 @@ bc_writer_run(builder_t *builder, assembly_t *assembly)
   fclose(f);
   LLVMDisposeMessage(str);
 
-  bl_msg_log("byte code written into " BL_GREEN("%s"), export_file);
+  msg_log("byte code written into " GREEN("%s"), export_file);
 
   free(export_file);
 }

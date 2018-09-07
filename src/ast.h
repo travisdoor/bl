@@ -81,7 +81,7 @@
   nt(UBLOCK, ublock, struct { \
     node_t      *nodes; \
     scope_t     *scope; \
-    struct bl_unit *unit; \
+    struct unit *unit; \
   }) \
   nt(BLOCK, block, struct { \
     node_t  *nodes; \
@@ -390,7 +390,7 @@ _NODE_TYPE_LIST
 _NODE_NCTOR(bad);
 _NODE_NCTOR(load, const char *filepath);
 _NODE_NCTOR(link, const char *lib);
-_NODE_NCTOR(ublock, struct bl_unit *unit, scope_t *scope);
+_NODE_NCTOR(ublock, struct unit *unit, scope_t *scope);
 _NODE_NCTOR(block, node_t *nodes, node_t *parent_compound, scope_t *scope);
 _NODE_NCTOR(ident, node_t *ref, node_t *parent_compound, int ptr, node_t *arr);
 _NODE_NCTOR(stmt_return, node_t *expr, node_t *fn);

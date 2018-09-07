@@ -36,29 +36,29 @@
 #include "config.h"
 
 #ifdef BL_NO_COLOR
-#define BL_COLOR_END
-#define BL_MAGENTA_BEGIN
-#define BL_CYAN_BEGIN
-#define BL_RED_BEGIN
-#define BL_YELLOW_BEGIN
-#define BL_GREEN_BEGIN
-#define BL_BLUE_BEGIN
+#define COLOR_END
+#define MAGENTA_BEGIN
+#define CYAN_BEGIN
+#define RED_BEGIN
+#define YELLOW_BEGIN
+#define GREEN_BEGIN
+#define BLUE_BEGIN
 #else
-#define BL_COLOR_END "\x1b[0m"
-#define BL_MAGENTA_BEGIN "\x1b[35m"
-#define BL_CYAN_BEGIN "\x1b[36m"
-#define BL_RED_BEGIN "\x1b[31m"
-#define BL_YELLOW_BEGIN "\x1b[33m"
-#define BL_BLUE_BEGIN "\x1b[34m"
-#define BL_GREEN_BEGIN "\x1b[32m"
+#define COLOR_END "\x1b[0m"
+#define MAGENTA_BEGIN "\x1b[35m"
+#define CYAN_BEGIN "\x1b[36m"
+#define RED_BEGIN "\x1b[31m"
+#define YELLOW_BEGIN "\x1b[33m"
+#define BLUE_BEGIN "\x1b[34m"
+#define GREEN_BEGIN "\x1b[32m"
 #endif
 
-#define BL_YELLOW(str) BL_YELLOW_BEGIN str BL_COLOR_END
-#define BL_RED(str) BL_RED_BEGIN str BL_COLOR_END
-#define BL_GREEN(str) BL_GREEN_BEGIN str BL_COLOR_END
-#define BL_MAGENTA(str) BL_MAGENTA_BEGIN str BL_COLOR_END
-#define BL_CYAN(str) BL_CYAN_BEGIN str BL_COLOR_END
-#define BL_BLUE(str) BL_BLUE_BEGIN str BL_COLOR_END
+#define YELLOW(str) YELLOW_BEGIN str COLOR_END
+#define RED(str) RED_BEGIN str COLOR_END
+#define GREEN(str) GREEN_BEGIN str COLOR_END
+#define MAGENTA(str) MAGENTA_BEGIN str COLOR_END
+#define CYAN(str) CYAN_BEGIN str COLOR_END
+#define BLUE(str) BLUE_BEGIN str COLOR_END
 
 #if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
 #ifndef __FILENAME__
@@ -75,24 +75,24 @@
 
 typedef enum
 {
-  BL_LOG_ASSERT,
-  BL_LOG_ABORT,
-  BL_LOG_WARNING,
-  BL_LOG_MSG
+  LOG_ASSERT,
+  LOG_ABORT,
+  LOG_WARNING,
+  LOG_MSG
 } bl_log_msg_type_e;
 
 void
-_bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
+_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 
 #ifdef BL_DEBUG
 #define bl_log(format, ...)                                                                        \
   {                                                                                                \
-    _bl_log(BL_LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
+    _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                                  \
   }
 
 #define bl_warning(format, ...)                                                                    \
   {                                                                                                \
-    _bl_log(BL_LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
+    _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
   }
 
 #else
@@ -107,8 +107,8 @@ _bl_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
 
 #define bl_abort(format, ...)                                                                      \
   {                                                                                                \
-    _bl_log(BL_LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
+    _log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                                \
     abort();                                                                                       \
   }
 
-#endif 
+#endif

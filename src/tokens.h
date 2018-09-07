@@ -34,7 +34,7 @@
 #include <bobject/containers/array.h>
 #include "token.h"
 
-typedef struct bl_tokens
+typedef struct tokens
 {
   BArray *buf;
   BArray *string_cache;
@@ -111,4 +111,4 @@ tokens_consume_till(tokens_t *tokens, sym_e sym);
 BArray *
 tokens_get_all(tokens_t *tokens);
 
-#endif 
+#endif

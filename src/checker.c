@@ -54,7 +54,7 @@
 
 #define check_error_node(cnt, code, node, pos, format, ...)                                        \
   {                                                                                                \
-    builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), (node)->src, (pos), (format),            \
+    builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (code), (node)->src, (pos), (format),           \
                 ##__VA_ARGS__);                                                                    \
   }
 
@@ -307,8 +307,7 @@ check_unresolved(context_t *cnt)
       assert(*tmp_node);
       tmp_ident = wait_context(*tmp_node);
       if (!scope_has_symbol(cnt->provided_in_gscope, tmp_ident))
-        check_error_node(cnt, BL_ERR_UNKNOWN_SYMBOL, tmp_ident, BL_BUILDER_CUR_WORD,
-                         "unknown symbol");
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, tmp_ident, BUILDER_CUR_WORD, "unknown symbol");
       flatten_put(cnt->flatten_cache, tmp.flatten);
     }
   }
@@ -611,7 +610,7 @@ check_error_invalid_types(context_t *cnt, node_t *first_type, node_t *second_typ
   char tmp_second[256];
   ast_type_to_string(tmp_first, 256, first_type);
   ast_type_to_string(tmp_second, 256, second_type);
-  check_error_node(cnt, BL_ERR_INVALID_TYPE, err_pos, BL_BUILDER_CUR_WORD,
+  check_error_node(cnt, ERR_INVALID_TYPE, err_pos, BUILDER_CUR_WORD,
                    "no implicit cast for types '%s' and '%s'", tmp_first, tmp_second);
 }
 
@@ -629,8 +628,7 @@ check_expr_call(context_t *cnt, node_t **call)
   node_t *     callee_type = _callee->type;
 
   if (node_is_not(callee_type, NODE_TYPE_FN)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
-                     "expected function name");
+    check_error_node(cnt, ERR_INVALID_TYPE, *call, BUILDER_CUR_WORD, "expected function name");
     FINISH;
   }
 
@@ -639,7 +637,7 @@ check_expr_call(context_t *cnt, node_t **call)
   _call->type = _callee_type->ret_type;
 
   if (_call->argsc != _callee_type->argc_types) {
-    check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, *call, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_ARG_COUNT, *call, BUILDER_CUR_WORD,
                      "expected %d %s, but called with %d", _callee_type->argc_types,
                      _callee_type->argc_types == 1 ? "argument" : "arguments", _call->argsc);
     FINISH;
@@ -657,7 +655,7 @@ check_expr_call(context_t *cnt, node_t **call)
       ast_type_to_string(tmp1, 256, ast_get_type(*call_arg));
       ast_type_to_string(tmp2, 256, ast_get_type(callee_arg));
 
-      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *call_arg, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_ARG_TYPE, *call_arg, BUILDER_CUR_WORD,
                        "invalid call argument type, expected is '%s' but called with '%s'", tmp2,
                        tmp1);
 
@@ -675,14 +673,14 @@ check_expr_call(context_t *cnt, node_t **call)
     case TYPE_KIND_PTR:
     case TYPE_KIND_STRING:
     case TYPE_KIND_STRUCT:
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, *call, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, *call, BUILDER_CUR_WORD,
                        "method called in compile time can return fundamental types only");
     default:
       break;
     }
 
     if (_call->argsc) {
-      check_error_node(cnt, BL_ERR_INVALID_ARG_COUNT, *call, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_ARG_COUNT, *call, BUILDER_CUR_WORD,
                        "method called in compile time cannot take arguments, remove '#run'?");
     }
   }
@@ -696,16 +694,16 @@ check_expr_unary(context_t *cnt, node_t **unary)
   node_expr_unary_t *_unary = peek_expr_unary(*unary);
   assert(_unary->next);
 
-  if (_unary->op == BL_SYM_AND) {
+  if (_unary->op == SYM_AND) {
     _unary->type = ast_node_dup(cnt->ast, ast_get_type(_unary->next));
     int ptr      = ast_type_get_ptr(_unary->type) + 1;
     ast_type_set_ptr(_unary->type, ptr);
-  } else if (_unary->op == BL_SYM_ASTERISK) {
+  } else if (_unary->op == SYM_ASTERISK) {
     _unary->type = ast_node_dup(cnt->ast, ast_get_type(_unary->next));
     int ptr      = ast_type_get_ptr(_unary->type) - 1;
 
     if (ptr < 0) {
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _unary->next, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _unary->next, BUILDER_CUR_WORD,
                        "cannot dereference non-pointer type");
     } else {
       ast_type_set_ptr(_unary->type, ptr);
@@ -860,7 +858,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
       _null->type             = fn_ret_type;
       if (ast_get_type_kind(_null->type) != TYPE_KIND_PTR) {
         check_error_node(
-            cnt, BL_ERR_INVALID_TYPE, _ret->expr, BL_BUILDER_CUR_WORD,
+            cnt, ERR_INVALID_TYPE, _ret->expr, BUILDER_CUR_WORD,
             "'null' cannot be used because the function does not return a pointer value");
       }
     } else {
@@ -871,8 +869,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
     }
   } else {
     if (!ast_type_cmp(&ftypes[FTYPE_VOID], fn_ret_type)) {
-      check_error_node(cnt, BL_ERR_EXPECTED_EXPR, *ret, BL_BUILDER_CUR_AFTER,
-                       "expected return value");
+      check_error_node(cnt, ERR_EXPECTED_EXPR, *ret, BUILDER_CUR_AFTER, "expected return value");
     }
   }
   FINISH;
@@ -886,11 +883,11 @@ check_expr_binop(context_t *cnt, node_t **binop)
   assert(_binop->lhs);
   assert(_binop->rhs);
 
-  if (_binop->op == BL_SYM_ASSIGN) {
+  if (_binop->op == SYM_ASSIGN) {
     if (node_is_not(_binop->lhs, NODE_IDENT) && node_is_not(_binop->lhs, NODE_EXPR_UNARY) &&
         node_is_not(_binop->lhs, NODE_EXPR_ELEM) && node_is_not(_binop->lhs, NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _binop->lhs, BUILDER_CUR_WORD,
                        "left-hand side of assignment does not refer to any declaration and "
                        "cannot be assigned");
       FINISH;
@@ -903,7 +900,7 @@ check_expr_binop(context_t *cnt, node_t **binop)
       assert(node_is(_lhs->ref, NODE_DECL));
 
       if (!peek_decl(_lhs->ref)->mutable) {
-        check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, *binop, BL_BUILDER_CUR_WORD,
+        check_error_node(cnt, ERR_INVALID_MUTABILITY, *binop, BUILDER_CUR_WORD,
                          "left-hand side declaration is not mutable and cannot be assigned");
       }
     }
@@ -915,7 +912,7 @@ check_expr_binop(context_t *cnt, node_t **binop)
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
     if (lhs_kind != TYPE_KIND_PTR) {
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _binop->lhs, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _binop->lhs, BUILDER_CUR_WORD,
                        "expected a pointer type");
     } else {
       peek_expr_null(_binop->rhs)->type = lhs_type;
@@ -969,7 +966,7 @@ check_type_enum(context_t *cnt, node_t **type)
   node_t *tmp = ast_get_type(_type->base_type);
 
   if (node_is_not(tmp, NODE_TYPE_FUND)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_TYPE, _type->base_type, BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
     FINISH;
   }
@@ -987,13 +984,13 @@ check_type_enum(context_t *cnt, node_t **type)
   case FTYPE_CHAR:
     break;
   default: {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_TYPE, _type->base_type, BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
   }
   }
 
   if (ast_type_get_ptr(tmp)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _type->base_type, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_TYPE, _type->base_type, BUILDER_CUR_WORD,
                      "enum base type cannot be a pointer");
   }
 
@@ -1035,7 +1032,7 @@ check_expr_member(context_t *cnt, node_t **member)
     if (!found) WAIT;
 
     if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
-      check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, *member, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
                        "invalid member access, use %s",
                        _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
     }
@@ -1049,11 +1046,11 @@ check_expr_member(context_t *cnt, node_t **member)
     if (!found) WAIT;
 
     if (_member->ptr_ref) {
-      check_error_node(cnt, BL_ERR_INVALID_MEMBER_ACCESS, *member, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
                        "use '.' for access to enum variants");
     }
   } else {
-    check_error_node(cnt, BL_ERR_EXPECTED_TYPE_STRUCT, _member->next, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_EXPECTED_TYPE_STRUCT, _member->next, BUILDER_CUR_WORD,
                      "expected structure or enum");
   }
 
@@ -1072,7 +1069,7 @@ check_expr_elem(context_t *cnt, node_t **elem)
 
   _elem->type = ast_get_type(_elem->next);
   if (!ast_type_get_arr(_elem->type)) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, *elem, BL_BUILDER_CUR_WORD, "expected array");
+    check_error_node(cnt, ERR_INVALID_TYPE, *elem, BUILDER_CUR_WORD, "expected array");
   }
 
   _elem->type = ast_node_dup(cnt->ast, _elem->type);
@@ -1133,7 +1130,7 @@ check_decl(context_t *cnt, node_t **decl)
       ast_get_scope(peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
   if (_decl->flags & FLAG_MAIN && _decl->kind != DECL_KIND_FN) {
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, *decl, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_TYPE, *decl, BUILDER_CUR_WORD,
                      "main is expected to be function");
   }
 
@@ -1143,12 +1140,12 @@ check_decl(context_t *cnt, node_t **decl)
     peek_type_struct(value_type)->base_decl = *decl;
 
     if (_decl->mutable) {
-      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, *decl, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
                        "structure declaration cannot be mutable");
     }
 
     if (peek_type_struct(value_type)->typesc == 0) {
-      check_error_node(cnt, BL_ERR_EMPTY, _decl->name, BL_BUILDER_CUR_WORD, "empty structure");
+      check_error_node(cnt, ERR_EMPTY, _decl->name, BUILDER_CUR_WORD, "empty structure");
     }
 
     break;
@@ -1159,7 +1156,7 @@ check_decl(context_t *cnt, node_t **decl)
      * structure initialization will be implemented in future, mutablility checking will be
      * required. In this case assignment of any kind will cause error */
     if (_decl->value) {
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _decl->value, BUILDER_CUR_WORD,
                        "struct member cannot have value binding");
     }
     lookup_in_tree = false;
@@ -1172,12 +1169,12 @@ check_decl(context_t *cnt, node_t **decl)
     if (ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
                        "invalid type of variable '%s'", tmp);
     }
 
     if (_decl->in_gscope && !_decl->value) {
-      check_error_node(cnt, BL_ERR_EXPECTED_EXPR, _decl->type, BL_BUILDER_CUR_AFTER,
+      check_error_node(cnt, ERR_EXPECTED_EXPR, _decl->type, BUILDER_CUR_AFTER,
                        "global variables needs to be initialized");
     }
     break;
@@ -1190,7 +1187,7 @@ check_decl(context_t *cnt, node_t **decl)
         ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_STRUCT) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
                        "invalid type of constant '%s'", tmp);
     }
     break;
@@ -1198,7 +1195,7 @@ check_decl(context_t *cnt, node_t **decl)
 
   case DECL_KIND_ARG: {
     if (_decl->value) {
-      check_error_node(cnt, BL_ERR_INVALID_ARG_TYPE, *decl, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_ARG_TYPE, *decl, BUILDER_CUR_WORD,
                        "function arguments cannot have value binding");
     }
     break;
@@ -1206,7 +1203,7 @@ check_decl(context_t *cnt, node_t **decl)
 
   case DECL_KIND_VARIANT: {
     if (_decl->mutable) {
-      check_error_node(cnt, BL_ERR_INVALID_MUTABILITY, *decl, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
                        "an enum variant cannot be mutable");
     }
     break;
@@ -1231,7 +1228,7 @@ check_decl(context_t *cnt, node_t **decl)
   if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
-    check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
                      "declaration has invalid type '%s'", tmp);
   }
 
@@ -1239,7 +1236,7 @@ check_decl(context_t *cnt, node_t **decl)
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
     check_error_node(
-        cnt, BL_ERR_INVALID_TYPE, _decl->name, BL_BUILDER_CUR_WORD,
+        cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
         "declaration has invalid type '%s', a function mutable must be referenced by pointer", tmp);
   }
   _decl->type = ast_get_type(_decl->type);
@@ -1249,7 +1246,7 @@ check_decl(context_t *cnt, node_t **decl)
     if (type_kind == TYPE_KIND_PTR) {
       peek_expr_null(_decl->value)->type = _decl->type;
     } else {
-      check_error_node(cnt, BL_ERR_INVALID_TYPE, _decl->value, BL_BUILDER_CUR_WORD,
+      check_error_node(cnt, ERR_INVALID_TYPE, _decl->value, BUILDER_CUR_WORD,
                        "'null' cannot be used because the declaration is not a pointer");
     }
   }
@@ -1257,7 +1254,7 @@ check_decl(context_t *cnt, node_t **decl)
   /* provide symbol into scope if there is no conflict */
   node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
-    check_error_node(cnt, BL_ERR_DUPLICATE_SYMBOL, *decl, BL_BUILDER_CUR_WORD,
+    check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *decl, BUILDER_CUR_WORD,
                      "symbol with same name already declared here: %s:%d",
                      conflict->src->unit->filepath, conflict->src->line);
   } else {
@@ -1296,6 +1293,6 @@ checker_run(builder_t *builder, assembly_t *assembly)
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
 #if BL_DEBUG
-  if (_flatten != 0) bl_log(BL_RED("leaking flatten cache: %d"), _flatten);
+  if (_flatten != 0) bl_log(RED("leaking flatten cache: %d"), _flatten);
 #endif
 }

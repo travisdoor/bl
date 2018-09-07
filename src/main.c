@@ -59,7 +59,7 @@ main(int argc, char *argv[])
       build_flags |= BUILDER_RUN_TESTS;
     } else if (strcmp(&argv[optind][1], "no-bin") == 0) {
       build_flags |= BUILDER_NO_BIN;
-    } else if (strcmp(&argv[optind][1], "no-warning") == 0) {
+    } else if (strcmp(&argv[optind][1], "no-bl_warning") == 0) {
       build_flags |= BUILDER_NO_WARN;
     } else {
       fprintf(stderr, "invalid params\n");
@@ -69,16 +69,16 @@ main(int argc, char *argv[])
   argv += optind;
 
   if (*argv == NULL) {
-    bl_msg_warning("nothing to do, no input files, sorry :(");
+    msg_warning("nothing to do, no input files, sorry :(");
     exit(EXIT_SUCCESS);
   }
 
-  bl_builder_ref builder = bl_builder_new();
+  builder_t *builder = builder_new();
 
   /*
    * HACK: use name of first file as assembly name
    */
-  char *assembly_name = strrchr(*argv, BL_PATH_SEPARATORC);
+  char *assembly_name = strrchr(*argv, PATH_SEPARATORC);
   if (assembly_name == NULL) {
     assembly_name = *argv;
   } else {
@@ -95,28 +95,28 @@ main(int argc, char *argv[])
   }
 #endif
 
-  bl_assembly_ref assembly = bl_assembly_new(assembly_name);
+  assembly_t *assembly = assembly_new(assembly_name);
   free(assembly_name);
 
   /* init actors */
   while (*argv != NULL) {
-    bl_unit_ref unit  = bl_unit_new_file(*argv);
+    unit_t *unit = unit_new_file(*argv);
 
-    bool        added = bl_assembly_add_unit_unique(assembly, unit);
+    bool added = assembly_add_unit_unique(assembly, unit);
     if (added == false) {
-      bl_unit_delete(unit);
+      unit_delete(unit);
     }
 
     argv++;
   }
 
-  int state = bl_builder_compile(builder, assembly, build_flags);
+  int state = builder_compile(builder, assembly, build_flags);
   if (state == COMPILE_OK) {
-    bl_msg_log(BL_GREEN("done"));
-  } 
+    msg_log(GREEN("done"));
+  }
 
-  bl_assembly_delete(assembly);
-  bl_builder_delete(builder);
+  assembly_delete(assembly);
+  builder_delete(builder);
 
   return state;
 }

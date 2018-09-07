@@ -45,13 +45,12 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-typedef struct bl_builder *bl_builder_ref;
-typedef void (*bl_diag_handler_f)(const char *, void *);
+typedef void (*diag_handler_f)(const char *, void *);
 
 typedef struct bl_builder
 {
-  bl_diag_handler_f on_error;
-  bl_diag_handler_f on_warning;
+  diag_handler_f on_error;
+  diag_handler_f on_warning;
 
   void *on_error_cnt;
   void *on_warning_cnt;
@@ -62,34 +61,33 @@ typedef struct bl_builder
 
 typedef enum
 {
-  BL_BUILDER_ERROR,
-  BL_BUILDER_WARNING,
+  BUILDER_MSG_ERROR,
+  BUILDER_MSG_WARNING,
 } builder_msg_type;
 
 typedef enum
 {
-  BL_BUILDER_CUR_AFTER,
-  BL_BUILDER_CUR_WORD,
-  BL_BUILDER_CUR_BEFORE
+  BUILDER_CUR_AFTER,
+  BUILDER_CUR_WORD,
+  BUILDER_CUR_BEFORE
 } builder_msg_cur_pos;
 
 struct src;
 
-bl_builder_ref
-bl_builder_new(void);
+builder_t *
+builder_new(void);
 
 void
-bl_builder_delete(bl_builder_ref builder);
+builder_delete(builder_t *builder);
 
 int
-bl_builder_compile(bl_builder_ref builder, bl_assembly_ref assembly, uint32_t flags);
+builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags);
 
 void
-bl_builder_set_error_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler, void *context);
+builder_set_error_diag_handler(builder_t *builder, diag_handler_f handler, void *context);
 
 void
-bl_builder_set_warning_diag_handler(bl_builder_ref builder, bl_diag_handler_f handler,
-                                    void *context);
+builder_set_warning_diag_handler(builder_t *builder, diag_handler_f handler, void *context);
 
 void
 builder_error(builder_t *builder, const char *format, ...);

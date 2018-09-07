@@ -234,7 +234,7 @@ _NODE_NCTOR(link, const char *lib)
   return (node_t *)_link;
 }
 
-_NODE_NCTOR(ublock, struct bl_unit *unit, scope_t *scope)
+_NODE_NCTOR(ublock, struct unit *unit, scope_t *scope)
 {
   node_ublock_t *_ublock = alloc_node(ast, NODE_UBLOCK, tok, node_ublock_t *);
   _ublock->scope         = scope;

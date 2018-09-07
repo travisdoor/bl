@@ -52,14 +52,14 @@ default_error_handler(const char *msg, void *context)
 #if BL_ABORT_ON_CMP_ERROR
   bl_abort(false, "%s", msg);
 #else
-  bl_msg_error("%s", msg);
+  msg_error("%s", msg);
 #endif
 }
 
 static void
 default_warning_handler(const char *msg, void *context)
 {
-  bl_msg_warning("%s", msg);
+  msg_warning("%s", msg);
 }
 
 static bool llvm_initialized = false;
@@ -138,7 +138,7 @@ compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
 
 /* public */
 builder_t *
-bl_builder_new(void)
+builder_new(void)
 {
   builder_t *builder = bl_calloc(1, sizeof(builder_t));
   if (!builder) bl_abort("bad alloc");
@@ -154,20 +154,20 @@ bl_builder_new(void)
 }
 
 void
-bl_builder_delete(builder_t *builder)
+builder_delete(builder_t *builder)
 {
   bl_free(builder);
 }
 
 int
-bl_builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
+builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
 {
   clock_t begin = clock();
   unit_t *unit;
   int     state = COMPILE_OK;
 
   builder->no_warn = flags & BUILDER_NO_WARN;
-  bl_msg_log("compile assembly: %s", assembly->name);
+  msg_log("compile assembly: %s", assembly->name);
 
   barray_foreach(assembly->units, unit)
   {
@@ -183,23 +183,23 @@ bl_builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
   double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
   if (state == COMPILE_OK) {
-    bl_msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
+    msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
   } else {
-    bl_msg_log("there were errors, sorry...");
+    msg_log("there were errors, sorry...");
   }
 
   return state;
 }
 
 void
-bl_builder_set_error_diag_handler(builder_t *builder, bl_diag_handler_f handler, void *context)
+builder_set_error_diag_handler(builder_t *builder, diag_handler_f handler, void *context)
 {
   builder->on_error     = handler;
   builder->on_error_cnt = context;
 }
 
 void
-bl_builder_set_warning_diag_handler(builder_t *builder, bl_diag_handler_f handler, void *context)
+builder_set_warning_diag_handler(builder_t *builder, diag_handler_f handler, void *context)
 {
   builder->on_warning     = handler;
   builder->on_warning_cnt = context;
@@ -243,8 +243,8 @@ void
 builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
             builder_msg_cur_pos pos, const char *format, ...)
 {
-  if (type == BL_BUILDER_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
-  if (builder->no_warn && type == BL_BUILDER_WARNING) return;
+  if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
+  if (builder->no_warn && type == BUILDER_MSG_WARNING) return;
 
   assert(src);
   assert(src->unit);
@@ -256,20 +256,21 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
   int len  = src->len;
 
   switch (pos) {
-  case BL_BUILDER_CUR_AFTER:
+  case BUILDER_CUR_AFTER:
     col += len;
     len = 1;
     break;
 
-  case BL_BUILDER_CUR_WORD: break;
+  case BUILDER_CUR_WORD:
+    break;
 
-  case BL_BUILDER_CUR_BEFORE:
+  case BUILDER_CUR_BEFORE:
     col -= col < 1 ? 0 : 1;
     len = 1;
     break;
   }
 
-  snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", type == BL_BUILDER_ERROR ? "E" : "W", code,
+  snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", type == BUILDER_MSG_ERROR ? "E" : "W", code,
            src->unit->filepath, line, col);
   va_list args;
   va_start(args, format);
@@ -279,7 +280,7 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
 
   int         pad      = sprintf(msg, "%d", src->line) + 2;
   long        line_len = 0;
-  const char *line_str = bl_unit_get_src_ln(src->unit, src->line - 1, &line_len);
+  const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
   if (line_str && line_len) {
     sprintf(msg, "\n%*d", pad, src->line - 1);
     bo_string_append(tmp, &msg[0]);
@@ -287,9 +288,9 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
     bo_string_appendn(tmp, line_str, line_len);
   }
 
-  line_str = bl_unit_get_src_ln(src->unit, src->line, &line_len);
+  line_str = unit_get_src_ln(src->unit, src->line, &line_len);
   if (line_str && line_len) {
-    sprintf(msg, BL_CYAN("\n%*d"), pad, src->line);
+    sprintf(msg, CYAN("\n%*d"), pad, src->line);
     bo_string_append(tmp, &msg[0]);
     bo_string_append(tmp, " | ");
     bo_string_appendn(tmp, line_str, line_len);
@@ -302,10 +303,10 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
     if (i < col - 1)
       bo_string_append(tmp, " ");
     else
-      bo_string_append(tmp, type == BL_BUILDER_ERROR ? BL_RED("^") : BL_YELLOW("^"));
+      bo_string_append(tmp, type == BUILDER_MSG_ERROR ? RED("^") : YELLOW("^"));
   }
 
-  line_str = bl_unit_get_src_ln(src->unit, src->line + 1, &line_len);
+  line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
   if (line_str && line_len) {
     sprintf(msg, "\n%*d", pad, src->line + 1);
     bo_string_append(tmp, &msg[0]);
@@ -313,7 +314,7 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
     bo_string_appendn(tmp, line_str, line_len);
   }
 
-  if (type == BL_BUILDER_ERROR) {
+  if (type == BUILDER_MSG_ERROR) {
     builder->errorc++;
     builder->on_error(bo_string_get(tmp), builder->on_error_cnt);
   } else
@@ -321,7 +322,7 @@ builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src
 
   bo_unref(tmp);
 
-#if BL_ASSERT_ON_CMP_ERROR
-  if (type == BL_BUILDER_ERROR) assert(false);
+#if ASSERT_ON_CMP_ERROR
+  if (type == BUILDER_MSG_ERROR) assert(false);
 #endif
 }

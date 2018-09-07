@@ -38,11 +38,11 @@ print_address(node_t *node)
 {
 #if BL_DEBUG
   if (node)
-    fprintf(stdout, BL_YELLOW(" %d "), node->_serial);
+    fprintf(stdout, YELLOW(" %d "), node->_serial);
   else
-    fprintf(stdout, BL_RED(" (null) "));
+    fprintf(stdout, RED(" (null) "));
 #else
-  fprintf(stdout, BL_YELLOW(" %p "), node);
+  fprintf(stdout, YELLOW(" %p "), node);
 #endif
 }
 
@@ -50,10 +50,9 @@ static inline void
 print_head(const char *name, src_t *src, node_t *ptr, int pad)
 {
   if (src)
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<%d:%d>"), pad * 2, "", name, src->line,
-            src->col);
+    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", name, src->line, src->col);
   else
-    fprintf(stdout, "\n%*s" BL_GREEN("%s ") BL_CYAN("<IMPLICIT>"), pad * 2, "", name);
+    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "", name);
 
   print_address(ptr);
 }
@@ -62,12 +61,12 @@ static inline void
 print_type(node_t *type)
 {
   if (!type) {
-    fprintf(stdout, BL_RED("{?}"));
+    fprintf(stdout, RED("{?}"));
     return;
   }
   char tmp[MAX_STR_BUF];
   ast_type_to_string(tmp, MAX_STR_BUF, type);
-  fprintf(stdout, BL_CYAN("{%s}"), tmp);
+  fprintf(stdout, CYAN("{%s}"), tmp);
 }
 
 static inline void
