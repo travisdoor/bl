@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   config.h
+// File:   interp.h
 // Author: Martin Dorazil
-// Date:   3/12/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,72 +26,25 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_CONFIG_H
-#define BL_CONFIG_H
+// EXPERIMENTAL !!!
 
-#include "version.h"
+#ifndef BL_INTERP_H
+#define BL_INTERP_H
 
-#ifdef _WIN32
-#define BL_PLATFORM_WIN
-#define BL_NO_COLOR
-#elif __APPLE__
-#define BL_PLATFORM_MACOS
-#elif __linux__
-#define BL_PLATFORM_LINUX
-#elif __CYGWIN__
-#define BL_PLATFORM_WIN
-#else
-#error "Unknown platform"
+#include "ast.h"
+
+#define INTERP_STACK_SIZE 1024
+
+typedef struct
+{
+  size_t stack[INTERP_STACK_SIZE];
+  size_t pc;
+} interp_t;
+
+void
+interp_init(interp_t *interp);
+
+unsigned long long
+interp_node(interp_t *interp, node_t *node);
+
 #endif
-
-#ifdef __clang__
-#define BL_COMPILER_CLANG
-#elif __GNUC__
-#define BL_COMPILER_GNUC
-#elif __MINGW32__
-#define BL_COMPILER_GNUC
-#elif _MSC_VER
-#define BL_COMPILER_MSVC
-#endif
-
-#ifdef BL_COMPILER_MSVC
-#include <Windows.h>
-#endif
-
-#define ENV_PATH "PATH"
-#ifndef PATH_MAX
-#define PATH_MAX 1024
-#endif
-
-#ifdef BL_PLATFORM_WIN
-#define PATH_SEPARATOR "\\"
-#define PATH_SEPARATORC '\\'
-#define ENVPATH_SEPARATOR ';'
-#else
-#define PATH_SEPARATOR "/"
-#define PATH_SEPARATORC '/'
-#define ENVPATH_SEPARATOR ':'
-#endif
-
-#ifdef BL_PLATFORM_LINUX
-#define CORE_SOURCE_FILE "os/os_linux.bl"
-#endif
-
-#ifdef BL_PLATFORM_WIN
-#define CORE_SOURCE_FILE "os/os_windows.bl"
-#endif
-
-#ifdef BL_PLATFORM_MACOS
-#define CORE_SOURCE_FILE "os/os_macos.bl"
-#endif
-
-#if BL_DEBUG
-#define ASSERT_ON_CMP_ERROR 0
-#else
-#define ASSERT_ON_CMP_ERROR 0
-#endif
-
-/* enable experimental language features */
-#define ENABLE_EXPERIMENTAL 1
-
-#endif // BL_CONFIG_H

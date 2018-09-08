@@ -39,6 +39,7 @@
 #include "stages.h"
 #include "common.h"
 #include "ast.h"
+#include "interp.h"
 
 #define VERBOSE 0
 #define VERBOSE_MULTIPLE_CHECK 0
@@ -762,14 +763,14 @@ check_node(context_t *cnt, node_t **node)
   case NODE_TYPE_ENUM:
     result = check_type_enum(cnt, node);
     break;
+  case NODE_TYPE_FUND:
+  case NODE_TYPE_FN:
+  case NODE_TYPE_STRUCT:
   case NODE_EXPR_NULL:
   case NODE_LIT:
   case NODE_STMT_BREAK:
   case NODE_STMT_CONTINUE:
   case NODE_STMT_LOOP:
-  case NODE_TYPE_FN:
-  case NODE_TYPE_STRUCT:
-  case NODE_TYPE_FUND:
   case NODE_LOAD:
   case NODE_LINK:
     break;
@@ -826,16 +827,28 @@ check_ident(context_t *cnt, node_t **ident)
   if (_ident->ptr || _ident->arr) {
     /* when ident reference is pointer we need to create copy of declaration with different
      * type, maybe there is some better solution ??? */
+#if ENABLE_EXPERIMENTAL
+    if (_ident->arr) {
+      interp_t interp;
+      interp_init(&interp);
+
+      token_value_u value;
+      value.u     = interp_node(&interp, _ident->arr);
+      _ident->arr = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_SIZE], value);
+    }
+#endif
+
     _ident->ref  = ast_node_dup(cnt->ast, found);
     node_t *type = ast_get_type(_ident->ref);
     assert(type);
     type = ast_node_dup(cnt->ast, type);
     ast_type_set_ptr(type, _ident->ptr);
     ast_type_set_arr(type, _ident->arr);
-    if (ast_is_type(_ident->ref))
+    if (ast_is_type(_ident->ref)) {
       _ident->ref = type;
-    else
+    } else {
       ast_set_type(_ident->ref, type);
+    }
   }
 
   FINISH;
@@ -1015,8 +1028,6 @@ check_expr_member(context_t *cnt, node_t **member)
       node_t *tmp_next = (*member)->next;
       *member          = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
       (*member)->next  = tmp_next;
-
-      // TODO: set next node???
 
       FINISH;
     }

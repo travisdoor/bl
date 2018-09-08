@@ -36,6 +36,7 @@ set(HEADER_FILES
         src/stages.h
         src/common.h 
         src/scope.h
+        src/interp.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -60,6 +61,7 @@ set(SOURCE_FILES
         src/scope.c
         src/common.c 
         src/post.c 
+        src/interp.c
         src/ast.c)
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})

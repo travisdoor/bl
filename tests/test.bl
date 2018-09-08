@@ -2,16 +2,8 @@
 
 //#load "libc.bl"
 
-get : fn () s32 {
-  return 10;
-};
-
 main : fn () s32 {
-  A : get(); // should be invalid, we don't now result of A and also arguments passed to function
-
-  a := 10;
-  B : a;
-  C : 10 + 11;
-  C = 2;
+  arr s32[(10 + 2 * 3) * 2];
+  arr2 s32[1000 - 200];
   return EXIT_SUCCESS;
 };
