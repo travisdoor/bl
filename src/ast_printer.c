@@ -158,7 +158,7 @@ void
 print_sizeof(Visitor *visitor, Node *node, int pad)
 {
   print_head("sizeof", node->src, node, pad);
-  node_expr_sizeof_t *_sizeof = peek_expr_sizeof(node);
+  NodeExprSizeof *_sizeof = peek_expr_sizeof(node);
   print_type(_sizeof->in);
 }
 
@@ -166,7 +166,7 @@ void
 print_member(Visitor *visitor, Node *node, int pad)
 {
   print_head("member", node->src, node, pad);
-  node_expr_member_t *_member = peek_expr_member(node);
+  NodeExprMember *_member = peek_expr_member(node);
   print_type(_member->type);
   fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -176,7 +176,7 @@ void
 print_elem(Visitor *visitor, Node *node, int pad)
 {
   print_head("elem", node->src, node, pad);
-  node_expr_elem_t *_elem = peek_expr_elem(node);
+  NodeExprElem *_elem = peek_expr_elem(node);
   print_type(_elem->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -185,7 +185,7 @@ void
 print_load(Visitor *visitor, Node *node, int pad)
 {
   print_head("load", node->src, node, pad);
-  node_load_t *_load = peek_load(node);
+  NodeLoad *_load = peek_load(node);
   fprintf(stdout, "'%s'", _load->filepath);
 }
 
@@ -219,7 +219,7 @@ void
 print_cast(Visitor *visitor, Node *node, int pad)
 {
   print_head("cast", node->src, node, pad);
-  node_expr_cast_t *_cast = peek_expr_cast(node);
+  NodeExprCast *_cast = peek_expr_cast(node);
   print_type(_cast->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -228,7 +228,7 @@ void
 print_null(Visitor *visitor, Node *node, int pad)
 {
   print_head("null", node->src, node, pad);
-  node_expr_null_t *_null = peek_expr_null(node);
+  NodeExprNull *_null = peek_expr_null(node);
   print_type(_null->type);
 }
 
@@ -236,7 +236,7 @@ void
 print_unary(Visitor *visitor, Node *node, int pad)
 {
   print_head("unary", node->src, node, pad);
-  node_expr_unary_t *_unary = peek_expr_unary(node);
+  NodeExprUnary *_unary = peek_expr_unary(node);
   fprintf(stdout, "%s ", sym_strings[_unary->op]);
   print_type(_unary->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -260,7 +260,7 @@ void
 print_decl(Visitor *visitor, Node *node, int pad)
 {
   print_head("declaration", node->src, node, pad);
-  node_decl_t *_decl = peek_decl(node);
+  NodeDecl *_decl = peek_decl(node);
   fprintf(stdout, "[%d] ", _decl->kind);
   fprintf(stdout, "%s (%s) used: %d ", peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable", _decl->used);
@@ -288,7 +288,7 @@ void
 print_ident(Visitor *visitor, Node *node, int pad)
 {
   print_head("ident", node->src, node, pad);
-  node_ident_t *_ident = peek_ident(node);
+  NodeIdent *_ident = peek_ident(node);
   fprintf(stdout, "%s ->", _ident->str);
   print_address(_ident->ref);
 }
@@ -304,7 +304,7 @@ void
 print_ublock(Visitor *visitor, Node *node, int pad)
 {
   print_head("unit", node->src, node, pad);
-  node_ublock_t *_ublock = peek_ublock(node);
+  NodeUBlock *_ublock = peek_ublock(node);
   fprintf(stdout, "%s", _ublock->unit->name);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -319,7 +319,7 @@ void
 print_binop(Visitor *visitor, Node *node, int pad)
 {
   print_head("binop", node->src, node, pad);
-  node_expr_binop_t *_binop = peek_expr_binop(node);
+  NodeExprBinop *_binop = peek_expr_binop(node);
   fprintf(stdout, "%s ", sym_strings[_binop->op]);
   print_type(_binop->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -329,10 +329,10 @@ void
 print_lit(Visitor *visitor, Node *node, int pad)
 {
   print_head("literal", node->src, node, pad);
-  node_lit_t *_lit = peek_lit(node);
+  NodeLit *_lit = peek_lit(node);
   assert(_lit->type);
 
-  node_type_fund_t *_type = peek_type_fund(ast_get_type(_lit->type));
+  NodeTypeFund *_type = peek_type_fund(ast_get_type(_lit->type));
   switch (_type->code) {
   case FTYPE_S8:
   case FTYPE_S16:
@@ -374,7 +374,7 @@ void
 print_lit_fn(Visitor *visitor, Node *node, int pad)
 {
   print_head("function", node->src, node, pad);
-  node_lit_fn_t *_fn = peek_lit_fn(node);
+  NodeLitFn *_fn = peek_lit_fn(node);
 
   print_type(_fn->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -384,10 +384,10 @@ void
 print_call(Visitor *visitor, Node *node, int pad)
 {
   print_head("call", node->src, node, pad);
-  node_expr_call_t *_call = peek_expr_call(node);
+  NodeExprCall *_call = peek_expr_call(node);
   assert(_call->ref);
   if (node_is(_call->ref, NODE_IDENT)) {
-    node_ident_t *_ident = peek_ident(_call->ref);
+    NodeIdent *_ident = peek_ident(_call->ref);
     fprintf(stdout, "%s ->", _ident->str);
     print_address(_ident->ref);
   }

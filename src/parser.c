@@ -56,11 +56,11 @@
 
 typedef struct
 {
-  Builder *builder;
-  Assembly * assembly;
-  Unit *   unit;
-  Ast *    ast;
-  Tokens * tokens;
+  Builder * builder;
+  Assembly *assembly;
+  Unit *    unit;
+  Ast *     ast;
+  Tokens *  tokens;
 
   /* tmps */
   Node *curr_fn;
@@ -426,7 +426,7 @@ Node *
 parse_literal(Context *cnt)
 {
   Token *tok  = tokens_peek(cnt->tokens);
-  Node *   type = NULL;
+  Node * type = NULL;
 
   switch (tok->sym) {
   case SYM_NUM:
@@ -466,10 +466,10 @@ parse_literal_fn(Context *cnt)
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
 
-  Node *         fn  = ast_lit_fn(cnt->ast, tok_fn, NULL, NULL,
+  Node *     fn  = ast_lit_fn(cnt->ast, tok_fn, NULL, NULL,
                         cnt->curr_fn ? cnt->unit->ast.root : cnt->curr_compound,
                         scope_new(cnt->assembly->scope_cache, 32));
-  node_lit_fn_t *_fn = peek_lit_fn(fn);
+  NodeLitFn *_fn = peek_lit_fn(fn);
 
   Node *prev_fn       = cnt->curr_fn;
   Node *prev_compound = cnt->curr_compound;
@@ -496,9 +496,9 @@ parse_literal_struct(Context *cnt)
 
   Node *prev_compound = cnt->curr_compound;
 
-  Node *             result      = ast_lit_struct(cnt->ast, tok_struct, NULL, cnt->curr_compound,
+  Node *         result      = ast_lit_struct(cnt->ast, tok_struct, NULL, cnt->curr_compound,
                                 scope_new(cnt->assembly->scope_cache, 64));
-  node_lit_struct_t *_lit_struct = peek_lit_struct(result);
+  NodeLitStruct *_lit_struct = peek_lit_struct(result);
 
   cnt->curr_compound = result;
   _lit_struct->type  = parse_type_struct(cnt, true, 0);
@@ -512,14 +512,14 @@ Node *
 parse_literal_enum(Context *cnt)
 {
   Token *tok_enum = tokens_peek(cnt->tokens);
-  Node *   type     = parse_type_enum(cnt, 0);
+  Node * type     = parse_type_enum(cnt, 0);
   if (!type) return NULL;
-  node_type_enum_t *_type = peek_type_enum(type);
+  NodeTypeEnum *_type = peek_type_enum(type);
 
   Node *enm = ast_lit_enum(cnt->ast, tok_enum, type, NULL, cnt->curr_compound,
                            scope_new(cnt->assembly->scope_cache, 256));
 
-  node_lit_enum_t *_enm = peek_lit_enum(enm);
+  NodeLitEnum *_enm = peek_lit_enum(enm);
 
   Node *prev_compound = cnt->curr_compound;
   cnt->curr_compound  = enm;
@@ -538,8 +538,8 @@ parse_literal_enum(Context *cnt)
 next:
   *variant = parse_decl(cnt);
   if (*variant) {
-    node_decl_t *_variant = peek_decl(*variant);
-    _variant->kind        = DECL_KIND_VARIANT;
+    NodeDecl *_variant = peek_decl(*variant);
+    _variant->kind     = DECL_KIND_VARIANT;
 
     if (_variant->type) {
       parse_warning_node(
@@ -554,7 +554,7 @@ next:
 
       /* implicitly infer value from previous enum varaint if there is one */
       if (prev_variant) {
-        node_decl_t *_prev_variant = peek_decl(prev_variant);
+        NodeDecl *_prev_variant = peek_decl(prev_variant);
 
         TokenValue value;
         value.u        = 1;
@@ -628,7 +628,7 @@ parse_unary_expr(Context *cnt, Token *op)
 Node *
 parse_expr_nested(Context *cnt)
 {
-  Node *   expr      = NULL;
+  Node * expr      = NULL;
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
   if (!tok_begin) return NULL;
 
@@ -706,7 +706,7 @@ parse_atom_expr(Context *cnt, Token *op)
 Node *
 _parse_expr(Context *cnt, Node *lhs, int min_precedence)
 {
-  Node *   rhs       = NULL;
+  Node * rhs       = NULL;
   Token *lookahead = tokens_peek(cnt->tokens);
   Token *op        = NULL;
 
@@ -728,8 +728,8 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
          * expression, finally we put this new node into call reference */
-        Node *            call  = rhs;
-        node_expr_call_t *_call = peek_expr_call(call);
+        Node *        call  = rhs;
+        NodeExprCall *_call = peek_expr_call(call);
         Node *member = ast_expr_member(cnt->ast, op, MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
                                        token_is(op, SYM_ARROW));
 
@@ -862,8 +862,8 @@ next:
   if (*arg_type) {
     /* validate argument */
     if (node_is(*arg_type, NODE_DECL)) {
-      node_decl_t *_arg_decl = peek_decl(*arg_type);
-      _arg_decl->kind        = DECL_KIND_ARG;
+      NodeDecl *_arg_decl = peek_decl(*arg_type);
+      _arg_decl->kind     = DECL_KIND_ARG;
     }
     arg_type = &(*arg_type)->next;
     ++argc_types;
@@ -919,10 +919,10 @@ next:
   if (*type) {
     /* validate argument */
     if (node_is(*type, NODE_DECL)) {
-      node_decl_t *_member_decl = peek_decl(*type);
-      _member_decl->order       = typesc;
-      _member_decl->used        = 1;
-      _member_decl->kind        = DECL_KIND_MEMBER;
+      NodeDecl *_member_decl = peek_decl(*type);
+      _member_decl->order    = typesc;
+      _member_decl->used     = 1;
+      _member_decl->kind     = DECL_KIND_MEMBER;
     }
     type = &(*type)->next;
     ++typesc;
@@ -1004,8 +1004,8 @@ parse_decl(Context *cnt)
   Node *prev_decl = cnt->curr_decl;
   Node *decl =
       ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, 0, false);
-  cnt->curr_decl     = decl;
-  node_decl_t *_decl = peek_decl(decl);
+  cnt->curr_decl  = decl;
+  NodeDecl *_decl = peek_decl(decl);
 
   {
     int buildin = ast_is_buildin(ident);
@@ -1015,7 +1015,7 @@ parse_decl(Context *cnt)
     }
   }
 
-  _decl->type         = parse_type(cnt);
+  _decl->type       = parse_type(cnt);
   Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_MDECL);
   if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
 
@@ -1102,7 +1102,7 @@ parse_expr_call(Context *cnt)
   if (!tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_LPAREN)) return NULL;
 
   Token *tok_id = tokens_peek(cnt->tokens);
-  Node *   ident  = parse_ident(cnt, 0);
+  Node * ident  = parse_ident(cnt, 0);
   Token *tok    = tokens_consume(cnt->tokens);
   if (tok->sym != SYM_LPAREN) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
@@ -1155,7 +1155,7 @@ parse_expr_null(Context *cnt)
 int
 parse_flags(Context *cnt, int allowed)
 {
-  int      flags = 0;
+  int    flags = 0;
   Token *tok;
 next:
   tok = tokens_peek(cnt->tokens);
@@ -1239,14 +1239,14 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Node *        prev_compound = cnt->curr_compound;
-  Node *        block         = ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
+  Node *     prev_compound = cnt->curr_compound;
+  Node *     block         = ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
                           scope_new(cnt->assembly->scope_cache, 1024));
-  node_block_t *_block        = peek_block(block);
-  cnt->curr_compound          = block;
+  NodeBlock *_block        = peek_block(block);
+  cnt->curr_compound       = block;
 
   Token *tok;
-  Node **  node = &_block->nodes;
+  Node **node = &_block->nodes;
 next:
   if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {
     tok = tokens_consume(cnt->tokens);
@@ -1327,9 +1327,9 @@ next:
 void
 parse_ublock_content(Context *cnt, Node *ublock)
 {
-  cnt->curr_compound     = ublock;
-  node_ublock_t *_ublock = peek_ublock(ublock);
-  Node **        node    = &_ublock->nodes;
+  cnt->curr_compound  = ublock;
+  NodeUBlock *_ublock = peek_ublock(ublock);
+  Node **     node    = &_ublock->nodes;
 next:
   parse_flags(cnt, 0);
 
@@ -1377,15 +1377,15 @@ void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
   Context cnt = {.builder       = builder,
-                   .assembly      = assembly,
-                   .unit          = unit,
-                   .ast           = &unit->ast,
-                   .tokens        = &unit->tokens,
-                   .curr_fn       = NULL,
-                   .curr_decl     = NULL,
-                   .curr_compound = NULL,
-                   .core_loaded   = false,
-                   .inside_loop   = false};
+                 .assembly      = assembly,
+                 .unit          = unit,
+                 .ast           = &unit->ast,
+                 .tokens        = &unit->tokens,
+                 .curr_fn       = NULL,
+                 .curr_decl     = NULL,
+                 .curr_compound = NULL,
+                 .core_loaded   = false,
+                 .inside_loop   = false};
 
   unit->ast.root = ast_ublock(&unit->ast, NULL, unit, assembly->gscope);
   parse_ublock_content(&cnt, unit->ast.root);

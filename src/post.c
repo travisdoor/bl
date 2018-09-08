@@ -42,10 +42,10 @@
 
 typedef struct
 {
-  Builder *builder;
-  Assembly * assembly;
-  Unit *   unit;
-  Node *     curr_dependent;
+  Builder * builder;
+  Assembly *assembly;
+  Unit *    unit;
+  Node *    curr_dependent;
 } Context;
 
 static void
@@ -61,7 +61,7 @@ static inline void
 schedule_generation(Context *cnt, Node *decl)
 {
   assert(decl);
-  node_decl_t *_decl = peek_decl(decl);
+  NodeDecl *_decl = peek_decl(decl);
   if (_decl->used) bo_list_push_back(cnt->assembly->ir_queue, decl);
 }
 
@@ -70,7 +70,7 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(decl);
-  node_decl_t *_decl = peek_decl(decl);
+  NodeDecl *_decl = peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
       !(_decl->flags & FLAG_MAIN) && _decl->kind != DECL_KIND_VARIANT) {
     post_warning_node(_cnt, _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
@@ -117,7 +117,7 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(call);
-  node_expr_call_t *_call = peek_expr_call(call);
+  NodeExprCall *_call = peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
   Node *callee = ast_unroll_ident(_call->ref);
@@ -132,15 +132,15 @@ void
 post_ident(Visitor *visitor, Node *ident, void *cnt)
 {
   assert(ident);
-  Context *   _cnt   = (Context *)cnt;
-  node_ident_t *_ident = peek_ident(ident);
+  Context *  _cnt   = (Context *)cnt;
+  NodeIdent *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
     visitor_walk(visitor, ident, cnt);
     return;
   }
 
-  node_decl_t *_decl = peek_decl(_ident->ref);
+  NodeDecl *_decl = peek_decl(_ident->ref);
   if (_decl->in_gscope || _decl->kind == DECL_KIND_FN) {
     ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
   }

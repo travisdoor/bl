@@ -42,13 +42,13 @@ typedef struct Chunk
 
 Node ftypes[] = {
 #define ft(name, str)                                                                              \
-  {.code             = NODE_TYPE_FUND,                                                             \
-   .src              = NULL,                                                                       \
-   .next             = NULL,                                                                       \
-   .n.type_fund.code = FTYPE_##name,                                                               \
-   .n.type_fund.arr  = NULL,                                                                       \
-   .n.type_fund.ptr  = 0,                                                                          \
-   .state            = CHECKED},
+  {.code           = NODE_TYPE_FUND,                                                               \
+   .src            = NULL,                                                                         \
+   .next           = NULL,                                                                         \
+   .type_fund.code = FTYPE_##name,                                                                 \
+   .type_fund.arr  = NULL,                                                                         \
+   .type_fund.ptr  = 0,                                                                            \
+   .state          = CHECKED},
 
     _FTYPE_LIST
 #undef ft
@@ -67,7 +67,7 @@ const char *buildin_strings[] = {
 };
 
 const char *node_type_strings[] = {
-#define nt(code, name, data) #name,
+#define nt(code, Name, name, data) #Name,
     _NODE_TYPE_LIST
 #undef nt
 };
@@ -222,29 +222,29 @@ _NODE_NCTOR(bad)
 
 _NODE_NCTOR(load, const char *filepath)
 {
-  node_load_t *_load = alloc_node(ast, NODE_LOAD, tok, node_load_t *);
-  _load->filepath    = filepath;
+  NodeLoad *_load = alloc_node(ast, NODE_LOAD, tok, NodeLoad *);
+  _load->filepath = filepath;
   return (Node *)_load;
 }
 
 _NODE_NCTOR(link, const char *lib)
 {
-  node_link_t *_link = alloc_node(ast, NODE_LINK, tok, node_link_t *);
-  _link->lib         = lib;
+  NodeLink *_link = alloc_node(ast, NODE_LINK, tok, NodeLink *);
+  _link->lib      = lib;
   return (Node *)_link;
 }
 
 _NODE_NCTOR(ublock, struct Unit *unit, Scope *scope)
 {
-  node_ublock_t *_ublock = alloc_node(ast, NODE_UBLOCK, tok, node_ublock_t *);
-  _ublock->scope         = scope;
-  _ublock->unit          = unit;
+  NodeUBlock *_ublock = alloc_node(ast, NODE_UBLOCK, tok, NodeUBlock *);
+  _ublock->scope      = scope;
+  _ublock->unit       = unit;
   return (Node *)_ublock;
 }
 
 _NODE_NCTOR(ident, Node *ref, Node *parent_compound, int ptr, Node *arr)
 {
-  node_ident_t *_ident    = alloc_node(ast, NODE_IDENT, tok, node_ident_t *);
+  NodeIdent *_ident       = alloc_node(ast, NODE_IDENT, tok, NodeIdent *);
   _ident->hash            = bo_hash_from_str(tok->value.str);
   _ident->str             = tok->value.str;
   _ident->ref             = ref;
@@ -256,9 +256,9 @@ _NODE_NCTOR(ident, Node *ref, Node *parent_compound, int ptr, Node *arr)
 
 _NODE_NCTOR(stmt_return, Node *expr, Node *fn)
 {
-  node_stmt_return_t *_ret = alloc_node(ast, NODE_STMT_RETURN, tok, node_stmt_return_t *);
-  _ret->expr               = expr;
-  _ret->fn_decl            = fn;
+  NodeStmtReturn *_ret = alloc_node(ast, NODE_STMT_RETURN, tok, NodeStmtReturn *);
+  _ret->expr           = expr;
+  _ret->fn_decl        = fn;
   return (Node *)_ret;
 }
 
@@ -274,24 +274,24 @@ _NODE_NCTOR(stmt_continue)
 
 _NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
 {
-  node_stmt_if_t *_if = alloc_node(ast, NODE_STMT_IF, tok, node_stmt_if_t *);
-  _if->test           = test;
-  _if->true_stmt      = true_stmt;
-  _if->false_stmt     = false_stmt;
+  NodeStmtIf *_if = alloc_node(ast, NODE_STMT_IF, tok, NodeStmtIf *);
+  _if->test       = test;
+  _if->true_stmt  = true_stmt;
+  _if->false_stmt = false_stmt;
   return (Node *)_if;
 }
 
 _NODE_NCTOR(stmt_loop, Node *test, Node *true_stmt)
 {
-  node_stmt_loop_t *_loop = alloc_node(ast, NODE_STMT_LOOP, tok, node_stmt_loop_t *);
-  _loop->test             = test;
-  _loop->true_stmt        = true_stmt;
+  NodeStmtLoop *_loop = alloc_node(ast, NODE_STMT_LOOP, tok, NodeStmtLoop *);
+  _loop->test         = test;
+  _loop->true_stmt    = true_stmt;
   return (Node *)_loop;
 }
 
 _NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
 {
-  node_block_t *_block    = alloc_node(ast, NODE_BLOCK, tok, node_block_t *);
+  NodeBlock *_block       = alloc_node(ast, NODE_BLOCK, tok, NodeBlock *);
   _block->nodes           = nodes;
   _block->parent_compound = parent_compound;
   _block->scope           = scope;
@@ -301,59 +301,59 @@ _NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
 _NODE_NCTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
             int order, bool in_gscope)
 {
-  node_decl_t *_decl = alloc_node(ast, NODE_DECL, tok, node_decl_t *);
-  _decl->kind        = kind;
-  _decl->type        = type;
-  _decl->name        = name;
-  _decl->value       = value;
-  _decl->mutable     = mutable;
-  _decl->flags       = flags;
-  _decl->order       = order;
-  _decl->in_gscope   = in_gscope;
+  NodeDecl *_decl  = alloc_node(ast, NODE_DECL, tok, NodeDecl *);
+  _decl->kind      = kind;
+  _decl->type      = type;
+  _decl->name      = name;
+  _decl->value     = value;
+  _decl->mutable   = mutable;
+  _decl->flags     = flags;
+  _decl->order     = order;
+  _decl->in_gscope = in_gscope;
   return (Node *)_decl;
 }
 
 _NODE_NCTOR(type_fund, FundType code, int ptr, Node *arr)
 {
-  node_type_fund_t *_type_fund = alloc_node(ast, NODE_TYPE_FUND, tok, node_type_fund_t *);
-  _type_fund->code             = code;
-  _type_fund->ptr              = ptr;
-  _type_fund->arr              = arr;
+  NodeTypeFund *_type_fund = alloc_node(ast, NODE_TYPE_FUND, tok, NodeTypeFund *);
+  _type_fund->code         = code;
+  _type_fund->ptr          = ptr;
+  _type_fund->arr          = arr;
   return (Node *)_type_fund;
 }
 
 _NODE_NCTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr)
 {
-  node_type_fn_t *_type_fn = alloc_node(ast, NODE_TYPE_FN, tok, node_type_fn_t *);
-  _type_fn->arg_types      = arg_types;
-  _type_fn->argc_types     = argc_types;
-  _type_fn->ret_type       = ret_type;
-  _type_fn->ptr            = ptr;
+  NodeTypeFn *_type_fn = alloc_node(ast, NODE_TYPE_FN, tok, NodeTypeFn *);
+  _type_fn->arg_types  = arg_types;
+  _type_fn->argc_types = argc_types;
+  _type_fn->ret_type   = ret_type;
+  _type_fn->ptr        = ptr;
   return (Node *)_type_fn;
 }
 
 _NODE_NCTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr)
 {
-  node_type_struct_t *_type_struct = alloc_node(ast, NODE_TYPE_STRUCT, tok, node_type_struct_t *);
-  _type_struct->types              = types;
-  _type_struct->typesc             = typesc;
-  _type_struct->base_decl          = base_decl;
-  _type_struct->ptr                = ptr;
+  NodeTypeStruct *_type_struct = alloc_node(ast, NODE_TYPE_STRUCT, tok, NodeTypeStruct *);
+  _type_struct->types          = types;
+  _type_struct->typesc         = typesc;
+  _type_struct->base_decl      = base_decl;
+  _type_struct->ptr            = ptr;
   return (Node *)_type_struct;
 }
 
 _NODE_NCTOR(type_enum, Node *type, Node *base_decl, int ptr)
 {
-  node_type_enum_t *_type_enum = alloc_node(ast, NODE_TYPE_ENUM, tok, node_type_enum_t *);
-  _type_enum->base_decl        = base_decl;
-  _type_enum->base_type        = type;
-  _type_enum->ptr              = ptr;
+  NodeTypeEnum *_type_enum = alloc_node(ast, NODE_TYPE_ENUM, tok, NodeTypeEnum *);
+  _type_enum->base_decl    = base_decl;
+  _type_enum->base_type    = type;
+  _type_enum->ptr          = ptr;
   return (Node *)_type_enum;
 }
 
 _NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
 {
-  node_lit_fn_t *_lit_fn   = alloc_node(ast, NODE_LIT_FN, tok, node_lit_fn_t *);
+  NodeLitFn *_lit_fn       = alloc_node(ast, NODE_LIT_FN, tok, NodeLitFn *);
   _lit_fn->type            = type;
   _lit_fn->block           = block;
   _lit_fn->parent_compound = parent_compound;
@@ -363,16 +363,16 @@ _NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope
 
 _NODE_NCTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope)
 {
-  node_lit_struct_t *_lit_struct = alloc_node(ast, NODE_LIT_STRUCT, tok, node_lit_struct_t *);
-  _lit_struct->type              = type;
-  _lit_struct->parent_compound   = parent_compound;
-  _lit_struct->scope             = scope;
+  NodeLitStruct *_lit_struct   = alloc_node(ast, NODE_LIT_STRUCT, tok, NodeLitStruct *);
+  _lit_struct->type            = type;
+  _lit_struct->parent_compound = parent_compound;
+  _lit_struct->scope           = scope;
   return (Node *)_lit_struct;
 }
 
 _NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
 {
-  node_lit_enum_t *_lit_enum = alloc_node(ast, NODE_LIT_ENUM, tok, node_lit_enum_t *);
+  NodeLitEnum *_lit_enum     = alloc_node(ast, NODE_LIT_ENUM, tok, NodeLitEnum *);
   _lit_enum->type            = type;
   _lit_enum->parent_compound = parent_compound;
   _lit_enum->scope           = scope;
@@ -382,82 +382,82 @@ _NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *
 
 _NODE_NCTOR(lit, Node *type, TokenValue value)
 {
-  node_lit_t *_lit = alloc_node(ast, NODE_LIT, tok, node_lit_t *);
-  _lit->type       = type;
-  _lit->value      = value;
+  NodeLit *_lit = alloc_node(ast, NODE_LIT, tok, NodeLit *);
+  _lit->type    = type;
+  _lit->value   = value;
   return (Node *)_lit;
 }
 
 _NODE_NCTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op)
 {
-  node_expr_binop_t *_expr_binop = alloc_node(ast, NODE_EXPR_BINOP, tok, node_expr_binop_t *);
-  _expr_binop->lhs               = lhs;
-  _expr_binop->rhs               = rhs;
-  _expr_binop->type              = type;
-  _expr_binop->op                = op;
+  NodeExprBinop *_expr_binop = alloc_node(ast, NODE_EXPR_BINOP, tok, NodeExprBinop *);
+  _expr_binop->lhs           = lhs;
+  _expr_binop->rhs           = rhs;
+  _expr_binop->type          = type;
+  _expr_binop->op            = op;
   return (Node *)_expr_binop;
 }
 
 _NODE_NCTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
 {
-  node_expr_call_t *_expr_call = alloc_node(ast, NODE_EXPR_CALL, tok, node_expr_call_t *);
-  _expr_call->ref              = ref;
-  _expr_call->args             = args;
-  _expr_call->argsc            = argsc;
-  _expr_call->type             = type;
-  _expr_call->run              = run;
+  NodeExprCall *_expr_call = alloc_node(ast, NODE_EXPR_CALL, tok, NodeExprCall *);
+  _expr_call->ref          = ref;
+  _expr_call->args         = args;
+  _expr_call->argsc        = argsc;
+  _expr_call->type         = type;
+  _expr_call->run          = run;
   return (Node *)_expr_call;
 }
 
 _NODE_NCTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref)
 {
-  node_expr_member_t *_expr_member = alloc_node(ast, NODE_EXPR_MEMBER, tok, node_expr_member_t *);
-  _expr_member->kind               = kind;
-  _expr_member->ident              = ident;
-  _expr_member->next               = next;
-  _expr_member->type               = type;
-  _expr_member->ptr_ref            = ptr_ref;
+  NodeExprMember *_expr_member = alloc_node(ast, NODE_EXPR_MEMBER, tok, NodeExprMember *);
+  _expr_member->kind           = kind;
+  _expr_member->ident          = ident;
+  _expr_member->next           = next;
+  _expr_member->type           = type;
+  _expr_member->ptr_ref        = ptr_ref;
   return (Node *)_expr_member;
 }
 
 _NODE_NCTOR(expr_elem, Node *next, Node *type, Node *index)
 {
-  node_expr_elem_t *_expr_elem = alloc_node(ast, NODE_EXPR_ELEM, tok, node_expr_elem_t *);
-  _expr_elem->next             = next;
-  _expr_elem->type             = type;
-  _expr_elem->index            = index;
+  NodeExprElem *_expr_elem = alloc_node(ast, NODE_EXPR_ELEM, tok, NodeExprElem *);
+  _expr_elem->next         = next;
+  _expr_elem->type         = type;
+  _expr_elem->index        = index;
   return (Node *)_expr_elem;
 }
 
 _NODE_NCTOR(expr_sizeof, Node *in, Node *type)
 {
-  node_expr_sizeof_t *_expr_sizeof = alloc_node(ast, NODE_EXPR_SIZEOF, tok, node_expr_sizeof_t *);
-  _expr_sizeof->in                 = in;
-  _expr_sizeof->type               = type;
+  NodeExprSizeof *_expr_sizeof = alloc_node(ast, NODE_EXPR_SIZEOF, tok, NodeExprSizeof *);
+  _expr_sizeof->in             = in;
+  _expr_sizeof->type           = type;
   return (Node *)_expr_sizeof;
 }
 
 _NODE_NCTOR(expr_cast, Node *type, Node *next)
 {
-  node_expr_cast_t *_expr_cast = alloc_node(ast, NODE_EXPR_CAST, tok, node_expr_cast_t *);
-  _expr_cast->type             = type;
-  _expr_cast->next             = next;
+  NodeExprCast *_expr_cast = alloc_node(ast, NODE_EXPR_CAST, tok, NodeExprCast *);
+  _expr_cast->type         = type;
+  _expr_cast->next         = next;
   return (Node *)_expr_cast;
 }
 
 _NODE_NCTOR(expr_unary, Sym op, Node *next, Node *type)
 {
-  node_expr_unary_t *_expr_unary = alloc_node(ast, NODE_EXPR_UNARY, tok, node_expr_unary_t *);
-  _expr_unary->next              = next;
-  _expr_unary->type              = type;
-  _expr_unary->op                = op;
+  NodeExprUnary *_expr_unary = alloc_node(ast, NODE_EXPR_UNARY, tok, NodeExprUnary *);
+  _expr_unary->next          = next;
+  _expr_unary->type          = type;
+  _expr_unary->op            = op;
   return (Node *)_expr_unary;
 }
 
 _NODE_NCTOR(expr_null, Node *type)
 {
-  node_expr_null_t *_expr_null = alloc_node(ast, NODE_EXPR_NULL, tok, node_expr_null_t *);
-  _expr_null->type             = type;
+  NodeExprNull *_expr_null = alloc_node(ast, NODE_EXPR_NULL, tok, NodeExprNull *);
+  _expr_null->type         = type;
   return (Node *)_expr_null;
 }
 
@@ -509,7 +509,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_DECL: {
-    node_decl_t *_decl = peek_decl(node);
+    NodeDecl *_decl = peek_decl(node);
     visit(_decl->name);
     visit(_decl->type);
     visit(_decl->value);
@@ -517,38 +517,38 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_TYPE_FUND: {
-    node_type_fund_t *_fund = peek_type_fund(node);
+    NodeTypeFund *_fund = peek_type_fund(node);
     visit(_fund->arr);
     break;
   }
 
   case NODE_TYPE_FN: {
-    node_type_fn_t *_fn = peek_type_fn(node);
+    NodeTypeFn *_fn = peek_type_fn(node);
     visit(_fn->arr);
     break;
   }
 
   case NODE_TYPE_STRUCT: {
-    node_type_struct_t *_struct = peek_type_struct(node);
+    NodeTypeStruct *_struct = peek_type_struct(node);
     visit(_struct->arr);
     break;
   }
 
   case NODE_TYPE_ENUM: {
-    node_type_enum_t *_enum = peek_type_enum(node);
+    NodeTypeEnum *_enum = peek_type_enum(node);
     visit(_enum->arr);
     break;
   }
 
   case NODE_EXPR_BINOP: {
-    node_expr_binop_t *_binop = peek_expr_binop(node);
+    NodeExprBinop *_binop = peek_expr_binop(node);
     visit(_binop->lhs);
     visit(_binop->rhs);
     break;
   }
 
   case NODE_EXPR_CALL: {
-    node_expr_call_t *_call = peek_expr_call(node);
+    NodeExprCall *_call = peek_expr_call(node);
     node_foreach(_call->args, tmp) visit(tmp);
     break;
   }
@@ -650,7 +650,7 @@ _type_to_string(char *buf, size_t len, Node *type)
   }
 
   case NODE_TYPE_FUND: {
-    node_type_fund_t *_type = peek_type_fund(type);
+    NodeTypeFund *_type = peek_type_fund(type);
     for (int i = 0; i < _type->ptr; ++i) {
       append_buf(buf, len, "*");
     }
@@ -659,7 +659,7 @@ _type_to_string(char *buf, size_t len, Node *type)
   }
 
   case NODE_TYPE_FN: {
-    node_type_fn_t *_fn = peek_type_fn(type);
+    NodeTypeFn *_fn = peek_type_fn(type);
     for (int i = 0; i < _fn->ptr; ++i) {
       append_buf(buf, len, "*");
     }
@@ -677,7 +677,7 @@ _type_to_string(char *buf, size_t len, Node *type)
   }
 
   case NODE_TYPE_STRUCT: {
-    node_type_struct_t *_struct = peek_type_struct(type);
+    NodeTypeStruct *_struct = peek_type_struct(type);
     for (int i = 0; i < _struct->ptr; ++i) {
       append_buf(buf, len, "*");
     }
@@ -703,7 +703,7 @@ _type_to_string(char *buf, size_t len, Node *type)
   }
 
   case NODE_TYPE_ENUM: {
-    node_type_enum_t *_enum = peek_type_enum(type);
+    NodeTypeEnum *_enum = peek_type_enum(type);
     for (int i = 0; i < _enum->ptr; ++i) {
       append_buf(buf, len, "*");
     }
@@ -849,7 +849,7 @@ int
 ast_is_buildin_type(Node *ident)
 {
   assert(ident);
-  node_ident_t *_ident = peek_ident(ident);
+  NodeIdent *_ident = peek_ident(ident);
 
   uint64_t hash;
   array_foreach(ftype_hashes, hash)
@@ -864,7 +864,7 @@ int
 ast_is_buildin(Node *ident)
 {
   assert(ident);
-  node_ident_t *_ident = peek_ident(ident);
+  NodeIdent *_ident = peek_ident(ident);
 
   uint64_t hash;
   array_foreach(buildin_hashes, hash)
@@ -895,16 +895,16 @@ ast_type_cmp(Node *first, Node *second)
   }
 
   case NODE_TYPE_ENUM: {
-    node_type_enum_t *_first  = peek_type_enum(first);
-    node_type_enum_t *_second = peek_type_enum(second);
+    NodeTypeEnum *_first  = peek_type_enum(first);
+    NodeTypeEnum *_second = peek_type_enum(second);
     if (peek_type_fund(_first->base_type)->code != peek_type_fund(_second->base_type)->code)
       return false;
     break;
   }
 
   case NODE_TYPE_FN: {
-    node_type_fn_t *_first  = peek_type_fn(first);
-    node_type_fn_t *_second = peek_type_fn(second);
+    NodeTypeFn *_first  = peek_type_fn(first);
+    NodeTypeFn *_second = peek_type_fn(second);
 
     if (_first->argc_types != _second->argc_types) return false;
     if (!ast_type_cmp(_first->ret_type, _second->ret_type)) return false;
@@ -922,8 +922,8 @@ ast_type_cmp(Node *first, Node *second)
   }
 
   case NODE_TYPE_STRUCT: {
-    node_type_struct_t *_first  = peek_type_struct(first);
-    node_type_struct_t *_second = peek_type_struct(second);
+    NodeTypeStruct *_first  = peek_type_struct(first);
+    NodeTypeStruct *_second = peek_type_struct(second);
 
     if (_first->typesc != _second->typesc) return false;
 
@@ -951,7 +951,7 @@ ast_get_type_kind(Node *type)
   assert(type);
   switch (node_code(type)) {
   case NODE_TYPE_FUND: {
-    node_type_fund_t *_ftype = peek_type_fund(type);
+    NodeTypeFund *_ftype = peek_type_fund(type);
 
     if (_ftype->ptr) return TYPE_KIND_PTR;
 
@@ -988,13 +988,13 @@ ast_get_type_kind(Node *type)
   }
 
   case NODE_TYPE_FN: {
-    node_type_fn_t *_fn_type = peek_type_fn(type);
+    NodeTypeFn *_fn_type = peek_type_fn(type);
     if (_fn_type->ptr) return TYPE_KIND_PTR;
     return TYPE_KIND_FN;
   }
 
   case NODE_TYPE_STRUCT: {
-    node_type_struct_t *_struct_type = peek_type_struct(type);
+    NodeTypeStruct *_struct_type = peek_type_struct(type);
     if (_struct_type->ptr) return TYPE_KIND_PTR;
     return TYPE_KIND_STRUCT;
   }
@@ -1178,7 +1178,7 @@ ast_unroll_ident(Node *ident)
 {
   assert(ident);
   if (node_is(ident, NODE_IDENT)) {
-    node_ident_t *_ident = peek_ident(ident);
+    NodeIdent *_ident = peek_ident(ident);
     assert(_ident->ref);
     return ast_unroll_ident(_ident->ref);
   }

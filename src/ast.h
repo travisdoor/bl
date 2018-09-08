@@ -61,57 +61,57 @@
     bt(ARR_COUNT, count) \
 
 #define _NODE_TYPE_LIST \
-  nt(BAD, bad, struct { \
+  nt(BAD, Bad, bad, struct { \
     void *_; \
   }) \
-  nt(LOAD, load, struct { \
+  nt(LOAD, Load, load, struct { \
     const char *filepath; \
   }) \
-  nt(LINK, link, struct { \
+  nt(LINK, Link, link, struct { \
     const char *lib; \
   }) \
-  nt(IDENT, ident, struct { \
+  nt(IDENT, Ident, ident, struct { \
     const char *str; \
     uint64_t    hash; \
-    Node  *ref; \
-    Node  *parent_compound; \
-    Node  *arr; \
+    Node       *ref; \
+    Node       *parent_compound; \
+    Node       *arr; \
     int         ptr; \
   }) \
-  nt(UBLOCK, ublock, struct { \
+  nt(UBLOCK, UBlock, ublock, struct { \
     Node      *nodes; \
     Scope     *scope; \
     struct Unit *unit; \
   }) \
-  nt(BLOCK, block, struct { \
+  nt(BLOCK, Block, block, struct { \
     Node  *nodes; \
     Scope *scope; \
     Node  *parent_compound; \
   }) \
-  nt(STMT_RETURN, stmt_return, struct { \
+  nt(STMT_RETURN, StmtReturn, stmt_return, struct { \
     Node *expr; \
     Node *fn_decl; \
   }) \
-  nt(STMT_IF, stmt_if, struct { \
+  nt(STMT_IF, StmtIf, stmt_if, struct { \
     Node *test; \
     Node *true_stmt; \
     Node *false_stmt; \
   }) \
-  nt(STMT_LOOP, stmt_loop, struct { \
+  nt(STMT_LOOP, StmtLoop, stmt_loop, struct { \
     Node *test; \
     Node *true_stmt; \
   }) \
-  nt(STMT_BREAK, stmt_break, struct { \
+  nt(STMT_BREAK, StmtBreak, stmt_break, struct { \
     void *_; \
   }) \
-  nt(STMT_CONTINUE, stmt_continue, struct { \
+  nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
     void *_; \
   }) \
-  nt(DECL, decl, struct { \
+  nt(DECL, Decl, decl, struct { \
     DeclKind    kind; \
-    Node     *name; \
-    Node     *type; \
-    Node     *value; \
+    Node       *name; \
+    Node       *type; \
+    Node       *value; \
     bool        mutable; \
     int         flags; \
     int         used; \
@@ -119,91 +119,91 @@
     bool        in_gscope; \
     BHashTable *deps; \
   }) \
-  nt(TYPE_FUND, type_fund, struct { \
+  nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
     Node *arr; \
     int     ptr;				\
   }) \
-  nt(TYPE_FN, type_fn, struct { \
+  nt(TYPE_FN, TypeFn, type_fn, struct { \
     Node *arg_types; \
     Node *ret_type; \
     Node *arr; \
-    int     argc_types; \
-    int     ptr; \
+    int   argc_types; \
+    int   ptr; \
   }) \
-  nt(TYPE_STRUCT, type_struct, struct { \
+  nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
     Node *base_decl; /* sometimes we need structure name and scope? */ \
     Node *types; \
     Node *arr; \
-    int     typesc; \
-    int     ptr; \
+    int   typesc; \
+    int   ptr; \
   }) \
-  nt(TYPE_ENUM, type_enum, struct { \
+  nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
     Node *base_decl; \
     Node *base_type; \
     Node *arr; \
-    int     ptr; \
+    int   ptr; \
   }) \
-  nt(LIT_STRUCT, lit_struct, struct { \
+  nt(LIT_STRUCT, LitStruct, lit_struct, struct { \
     Node  *type; \
     Scope *scope; \
     Node  *parent_compound; \
   }) \
-  nt(LIT_ENUM, lit_enum, struct { \
+  nt(LIT_ENUM, LitEnum, lit_enum, struct { \
     Node  *type; \
     Scope *scope; \
     Node  *parent_compound; \
     Node  *variants; \
   }) \
-  nt(LIT_FN, lit_fn, struct { \
+  nt(LIT_FN, LitFn, lit_fn, struct { \
     Node  *type; \
     Node  *block; \
     Scope *scope; \
     Node  *parent_compound; \
   }) \
-  nt(LIT, lit, struct { \
+  nt(LIT, Lit, lit, struct { \
     Node       *type; \
     TokenValue value; \
   }) \
-  nt(EXPR_CAST, expr_cast, struct { \
+  nt(EXPR_CAST, ExprCast, expr_cast, struct { \
     Node *type; \
     Node *next; \
   }) \
-  nt(EXPR_BINOP, expr_binop, struct { \
+  nt(EXPR_BINOP, ExprBinop, expr_binop, struct { \
     Node *lhs; \
     Node *rhs; \
     Node *type; \
     Sym   op; \
   }) \
-  nt(EXPR_CALL, expr_call, struct { \
+  nt(EXPR_CALL, ExprCall, expr_call, struct { \
     Node *ref; \
     Node *args; \
-    int        argsc; \
+    int   argsc; \
     Node *type; \
-    bool       run; \
+    bool  run; \
   }) \
-  nt(EXPR_MEMBER, expr_member, struct { \
+  nt(EXPR_MEMBER, ExprMember, expr_member, struct { \
     MemberKind kind; \
-    Node    *ident; \
-    Node    *next; \
-    Node    *type; \
+    Node      *ident; \
+    Node      *next; \
+    Node      *type; \
     bool       ptr_ref; \
   }) \
-  nt(EXPR_ELEM, expr_elem, struct { \
+  nt(EXPR_ELEM, ExprElem, expr_elem, struct { \
     Node       *next; \
     Node       *type; \
     Node       *index; \
   }) \
-  nt(EXPR_SIZEOF, expr_sizeof, struct { \
+  nt(EXPR_SIZEOF, ExprSizeof, expr_sizeof, struct { \
     Node *in; \
     Node *type; \
   }) \
-  nt(EXPR_UNARY, expr_unary, struct { \
+  nt(EXPR_UNARY, ExprUnary, expr_unary, struct { \
     Sym   op; \
     Node *next; \
     Node *type; \
   }) \
-  nt(EXPR_NULL, expr_null, struct { \
+  nt(EXPR_NULL, ExprNull, expr_null, struct { \
     Node *type;		    \
   })
 
@@ -300,7 +300,7 @@ extern uint64_t buildin_hashes[BUILDIN_COUNT];
  * generation of node typedefs and code enum
  *************************************************************************************************/
 
-#define nt(code, name, data) NODE_##code,
+#define nt(code, Name, name, data) NODE_##code,
 enum NodeCode
 {
   _NODE_TYPE_LIST NODE_COUNT
@@ -309,7 +309,7 @@ enum NodeCode
 
 // clang-format off
 /* generate notes */
-#define nt(code, name, data) typedef data node_##name##_t;
+#define nt(code, Name, name, data) typedef data Node##Name;
 _NODE_TYPE_LIST
 #undef nt
 
@@ -354,10 +354,10 @@ struct Node
 {
   union
   {
-#define nt(code, name, data) node_##name##_t name;
+#define nt(code, Name, name, data) Node##Name name;
     _NODE_TYPE_LIST
 #undef nt
-  } n;
+  };
 
   Src *      src;
   NodeCode   code;
@@ -372,11 +372,11 @@ struct Node
  * generation of peek function
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
-#define nt(code, name, data)                                                                       \
-  static inline node_##name##_t *peek_##name(Node *n)                                              \
+#define nt(code, Name, name, data)                                                                 \
+  static inline Node##Name *peek_##name(Node *n)                                                   \
   {                                                                                                \
     assert(node_is(n, NODE_##code));                                                               \
-    return &(n->n.name);                                                                           \
+    return &(n->name);                                                                             \
   }
 _NODE_TYPE_LIST
 #undef nt

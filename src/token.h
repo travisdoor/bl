@@ -131,7 +131,6 @@ typedef struct Token
   Sym         sym;
   Src         src;
   TokenValue value;
-
 } Token;
 
 /* is token any known binary operation? */
