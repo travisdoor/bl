@@ -43,8 +43,8 @@
 
 typedef struct
 {
-  builder_t *            builder;
-  assembly_t *           assembly;
+  Builder *            builder;
+  Assembly *             assembly;
   BHashTable *           llvm_values;
   bool                   is_gscope;
   LLVMModuleRef          llvm_module;
@@ -53,119 +53,119 @@ typedef struct
   BHashTable *           llvm_modules;
   LLVMExecutionEngineRef llvm_jit;
   BHashTable *           jit_linked;
-  node_t *               main_tmp;
+  Node *                 main_tmp;
   LLVMBasicBlockRef      break_block;
   LLVMBasicBlockRef      continue_block;
   LLVMBasicBlockRef      fn_init_block;
   LLVMBasicBlockRef      fn_ret_block;
   LLVMBasicBlockRef      fn_entry_block;
   LLVMValueRef           fn_ret_val;
-} context_t;
+} Context;
 
 static void
-generate(context_t *cnt);
+generate(Context *cnt);
 
 static void
-generate_decl(context_t *cnt, node_t *decl);
+generate_decl(Context *cnt, Node *decl);
 
 static LLVMModuleRef
-link(context_t *cnt, node_t *entry);
+link(Context *cnt, Node *entry);
 
 /* resursive version */
 static LLVMModuleRef
-_link(context_t *cnt, node_t *entry);
+_link(Context *cnt, Node *entry);
 
 static LLVMExecutionEngineRef
 create_jit(LLVMContextRef llvm_cnt);
 
 static void
-link_into_jit(context_t *cnt, node_t *fn);
+link_into_jit(Context *cnt, Node *fn);
 
 /* check if declaration has all it's dependencies already generated in LLVM Modules, by
  * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
 static bool
-is_satisfied(context_t *cnt, node_t *decl, bool strict_only);
+is_satisfied(Context *cnt, Node *decl, bool strict_only);
 
 static LLVMGenericValueRef
-run(context_t *cnt, node_t *fn);
+run(Context *cnt, Node *fn);
 
 static LLVMValueRef
-ir_node(context_t *cnt, node_t *node);
+ir_node(Context *cnt, Node *node);
 
 static LLVMValueRef
-ir_decl(context_t *cnt, node_t *decl);
+ir_decl(Context *cnt, Node *decl);
 
 static LLVMValueRef
-ir_fn_get(context_t *cnt, node_t *fn);
+ir_fn_get(Context *cnt, Node *fn);
 
 static LLVMValueRef
-ir_global_get(context_t *cnt, node_t *global);
+ir_global_get(Context *cnt, Node *global);
 
 static LLVMValueRef
-ir_decl_fn(context_t *cnt, node_t *decl);
+ir_decl_fn(Context *cnt, Node *decl);
 
 static LLVMValueRef
-ir_decl_mut(context_t *cnt, node_t *decl);
+ir_decl_mut(Context *cnt, Node *decl);
 
 static LLVMValueRef
-ir_decl_immut(context_t *cnt, node_t *decl);
+ir_decl_immut(Context *cnt, Node *decl);
 
 static LLVMValueRef
-ir_block(context_t *cnt, node_t *block);
+ir_block(Context *cnt, Node *block);
 
 static LLVMValueRef
-ir_lit(context_t *cnt, node_t *lit);
+ir_lit(Context *cnt, Node *lit);
 
 static LLVMValueRef
-ir_expr_binop(context_t *cnt, node_t *binop);
+ir_expr_binop(Context *cnt, Node *binop);
 
 static LLVMValueRef
-ir_expr_unary(context_t *cnt, node_t *unary);
+ir_expr_unary(Context *cnt, Node *unary);
 
 static LLVMValueRef
-ir_expr_call(context_t *cnt, node_t *call);
+ir_expr_call(Context *cnt, Node *call);
 
 static LLVMValueRef
-ir_expr_call_rt(context_t *cnt, node_t *call);
+ir_expr_call_rt(Context *cnt, Node *call);
 
 static LLVMValueRef
-ir_expr_call_ct(context_t *cnt, node_t *call);
+ir_expr_call_ct(Context *cnt, Node *call);
 
 static LLVMValueRef
-ir_expr_member(context_t *cnt, node_t *member);
+ir_expr_member(Context *cnt, Node *member);
 
 static LLVMValueRef
-ir_expr_elem(context_t *cnt, node_t *elem);
+ir_expr_elem(Context *cnt, Node *elem);
 
 static LLVMValueRef
-ir_expr_null(context_t *cnt, node_t *nl);
+ir_expr_null(Context *cnt, Node *nl);
 
 static LLVMValueRef
-ir_ident(context_t *cnt, node_t *ident);
+ir_ident(Context *cnt, Node *ident);
 
 static LLVMValueRef
-ir_expr_cast(context_t *cnt, node_t *cast);
+ir_expr_cast(Context *cnt, Node *cast);
 
 static inline LLVMValueRef
-ir_expr_sizeof(context_t *cnt, node_t *szof);
+ir_expr_sizeof(Context *cnt, Node *szof);
 
 static LLVMValueRef
-ir_stmt_if(context_t *cnt, node_t *stmt_if);
+ir_stmt_if(Context *cnt, Node *stmt_if);
 
 static LLVMValueRef
-ir_stmt_return(context_t *cnt, node_t *stmt_return);
+ir_stmt_return(Context *cnt, Node *stmt_return);
 
 static LLVMValueRef
-ir_stmt_loop(context_t *cnt, node_t *loop);
+ir_stmt_loop(Context *cnt, Node *loop);
 
 static inline LLVMValueRef
-ir_stmt_break(context_t *cnt, node_t *brk);
+ir_stmt_break(Context *cnt, Node *brk);
 
 static inline LLVMValueRef
-ir_stmt_continue(context_t *cnt, node_t *cont);
+ir_stmt_continue(Context *cnt, Node *cont);
 
 static LLVMTypeRef
-to_llvm_type(context_t *cnt, node_t *type);
+to_llvm_type(Context *cnt, Node *type);
 
 // impl
 static void
@@ -179,13 +179,13 @@ ir_validate(LLVMModuleRef module)
 }
 
 static inline void
-llvm_values_insert(context_t *cnt, node_t *node, void *val)
+llvm_values_insert(Context *cnt, Node *node, void *val)
 {
   bo_htbl_insert(cnt->llvm_values, (uint64_t)node, val);
 }
 
 static inline void *
-llvm_values_get(context_t *cnt, node_t *node)
+llvm_values_get(Context *cnt, Node *node)
 {
   if (bo_htbl_has_key(cnt->llvm_values, (uint64_t)node))
     return bo_htbl_at(cnt->llvm_values, (uint64_t)node, void *);
@@ -193,20 +193,20 @@ llvm_values_get(context_t *cnt, node_t *node)
 }
 
 static inline void
-llvm_values_reset(context_t *cnt)
+llvm_values_reset(Context *cnt)
 {
   bo_htbl_clear(cnt->llvm_values);
 }
 
 static inline bool
-is_terminated(context_t *cnt)
+is_terminated(Context *cnt)
 {
   return (!cnt->is_gscope && LLVMGetInsertBlock((cnt)->llvm_builder) &&
           LLVMGetBasicBlockTerminator(LLVMGetInsertBlock((cnt)->llvm_builder)) != NULL);
 }
 
 static inline bool
-should_load(node_t *node, LLVMValueRef llvm_value)
+should_load(Node *node, LLVMValueRef llvm_value)
 {
   if ((node_is(node, NODE_EXPR_UNARY) && peek_expr_unary(node)->op == SYM_ASTERISK)) return true;
 
@@ -220,11 +220,11 @@ should_load(node_t *node, LLVMValueRef llvm_value)
 }
 
 LLVMTypeRef
-to_llvm_type(context_t *cnt, node_t *type)
+to_llvm_type(Context *cnt, Node *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  node_t *    arr    = ast_type_get_arr(type);
+  Node *      arr    = ast_type_get_arr(type);
   int         ptr    = ast_type_get_ptr(type);
 
   switch (node_code(type)) {
@@ -287,8 +287,8 @@ to_llvm_type(context_t *cnt, node_t *type)
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * _fn_type->argc_types);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
-    node_t * arg;
-    node_t * tmp_type;
+    Node *   arg;
+    Node *   tmp_type;
     unsigned i = 0;
     node_foreach(_fn_type->arg_types, arg)
     {
@@ -307,8 +307,8 @@ to_llvm_type(context_t *cnt, node_t *type)
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
     if (!llvm_member_types) bl_abort("bad alloc");
 
-    node_t * member;
-    node_t * tmp_type;
+    Node *   member;
+    Node *   tmp_type;
     unsigned i = 0;
 
     node_foreach(_struct_type->types, member)
@@ -366,7 +366,7 @@ to_llvm_type(context_t *cnt, node_t *type)
 }
 
 LLVMValueRef
-ir_lit(context_t *cnt, node_t *lit)
+ir_lit(Context *cnt, Node *lit)
 {
   LLVMValueRef result = NULL;
   node_lit_t * _lit   = peek_lit(lit);
@@ -432,7 +432,7 @@ ir_lit(context_t *cnt, node_t *lit)
 }
 
 LLVMValueRef
-ir_expr_call(context_t *cnt, node_t *call)
+ir_expr_call(Context *cnt, Node *call)
 {
   assert(call);
   /* run in compile time or in runtime */
@@ -441,7 +441,7 @@ ir_expr_call(context_t *cnt, node_t *call)
 }
 
 LLVMValueRef
-ir_expr_call_rt(context_t *cnt, node_t *call)
+ir_expr_call_rt(Context *cnt, Node *call)
 {
   LLVMValueRef      result        = NULL;
   node_expr_call_t *_call         = peek_expr_call(call);
@@ -467,8 +467,8 @@ ir_expr_call_rt(context_t *cnt, node_t *call)
   LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * _call->argsc);
   if (!llvm_args) bl_abort("bad alloc");
 
-  node_t *arg;
-  int     i = 0;
+  Node *arg;
+  int   i = 0;
   node_foreach(_call->args, arg)
   {
     llvm_args[i] = ir_node(cnt, arg);
@@ -486,7 +486,7 @@ ir_expr_call_rt(context_t *cnt, node_t *call)
 }
 
 LLVMValueRef
-ir_expr_call_ct(context_t *cnt, node_t *call)
+ir_expr_call_ct(Context *cnt, Node *call)
 {
   node_expr_call_t *  _call   = peek_expr_call(call);
   LLVMGenericValueRef generic = run(cnt, _call->ref);
@@ -513,7 +513,7 @@ ir_expr_call_ct(context_t *cnt, node_t *call)
 }
 
 LLVMValueRef
-ir_expr_member(context_t *cnt, node_t *member)
+ir_expr_member(Context *cnt, Node *member)
 {
   node_expr_member_t *_member      = peek_expr_member(member);
   node_ident_t *      _ident       = peek_ident(_member->ident);
@@ -540,7 +540,7 @@ ir_expr_member(context_t *cnt, node_t *member)
 }
 
 LLVMValueRef
-ir_expr_elem(context_t *cnt, node_t *elem)
+ir_expr_elem(Context *cnt, Node *elem)
 {
   node_expr_elem_t *_elem = peek_expr_elem(elem);
   LLVMValueRef      ptr   = ir_node(cnt, _elem->next);
@@ -559,7 +559,7 @@ ir_expr_elem(context_t *cnt, node_t *elem)
 }
 
 LLVMValueRef
-ir_expr_cast(context_t *cnt, node_t *cast)
+ir_expr_cast(Context *cnt, Node *cast)
 {
   node_expr_cast_t *_cast     = peek_expr_cast(cast);
   LLVMTypeRef       dest_type = to_llvm_type(cnt, _cast->type);
@@ -634,13 +634,13 @@ ir_expr_cast(context_t *cnt, node_t *cast)
 }
 
 LLVMValueRef
-ir_ident(context_t *cnt, node_t *ident)
+ir_ident(Context *cnt, Node *ident)
 {
   LLVMValueRef  result = NULL;
   node_ident_t *_ident = peek_ident(ident);
   assert(_ident->ref);
 
-  node_t *ref = ast_unroll_ident(_ident->ref);
+  Node *ref = ast_unroll_ident(_ident->ref);
   assert(node_is(ref, NODE_DECL));
   node_decl_t *_ref = peek_decl(ref);
 
@@ -682,7 +682,7 @@ ir_ident(context_t *cnt, node_t *ident)
 }
 
 LLVMValueRef
-ir_expr_binop(context_t *cnt, node_t *binop)
+ir_expr_binop(Context *cnt, Node *binop)
 {
 
   node_expr_binop_t *_binop = peek_expr_binop(binop);
@@ -765,7 +765,7 @@ ir_expr_binop(context_t *cnt, node_t *binop)
 }
 
 LLVMValueRef
-ir_expr_unary(context_t *cnt, node_t *unary)
+ir_expr_unary(Context *cnt, Node *unary)
 {
   node_expr_unary_t *_unary = peek_expr_unary(unary);
   assert(_unary->next);
@@ -831,14 +831,14 @@ ir_expr_unary(context_t *cnt, node_t *unary)
 }
 
 LLVMValueRef
-ir_expr_sizeof(context_t *cnt, node_t *szof)
+ir_expr_sizeof(Context *cnt, Node *szof)
 {
   assert(szof);
   return LLVMSizeOf(to_llvm_type(cnt, peek_expr_sizeof(szof)->in));
 }
 
 LLVMValueRef
-ir_expr_null(context_t *cnt, node_t *nl)
+ir_expr_null(Context *cnt, Node *nl)
 {
   node_expr_null_t *_null = peek_expr_null(nl);
   assert(_null->type);
@@ -847,13 +847,13 @@ ir_expr_null(context_t *cnt, node_t *nl)
 }
 
 LLVMValueRef
-ir_block(context_t *cnt, node_t *block)
+ir_block(Context *cnt, Node *block)
 {
   bool prev_is_gscope = cnt->is_gscope;
   cnt->is_gscope      = false;
 
   node_block_t *_block = peek_block(block);
-  node_t *      tmp;
+  Node *        tmp;
 
   node_foreach(_block->nodes, tmp)
   {
@@ -865,7 +865,7 @@ ir_block(context_t *cnt, node_t *block)
 }
 
 LLVMValueRef
-ir_decl_mut(context_t *cnt, node_t *decl)
+ir_decl_mut(Context *cnt, Node *decl)
 {
   LLVMValueRef result    = NULL;
   node_decl_t *_decl     = peek_decl(decl);
@@ -893,7 +893,7 @@ ir_decl_mut(context_t *cnt, node_t *decl)
 }
 
 LLVMValueRef
-ir_decl_immut(context_t *cnt, node_t *decl)
+ir_decl_immut(Context *cnt, Node *decl)
 {
   node_decl_t *_decl = peek_decl(decl);
   assert(_decl->value);
@@ -903,7 +903,7 @@ ir_decl_immut(context_t *cnt, node_t *decl)
 }
 
 LLVMValueRef
-ir_fn_get(context_t *cnt, node_t *fn)
+ir_fn_get(Context *cnt, Node *fn)
 {
   node_decl_t *_fn     = peek_decl(fn);
   const char * fn_name = peek_ident(_fn->name)->str;
@@ -919,7 +919,7 @@ ir_fn_get(context_t *cnt, node_t *fn)
 }
 
 LLVMValueRef
-ir_global_get(context_t *cnt, node_t *global)
+ir_global_get(Context *cnt, Node *global)
 {
   node_decl_t *_global = peek_decl(global);
   const char * g_name  = peek_ident(_global->name)->str;
@@ -934,7 +934,7 @@ ir_global_get(context_t *cnt, node_t *global)
 }
 
 LLVMValueRef
-ir_decl_fn(context_t *cnt, node_t *decl)
+ir_decl_fn(Context *cnt, Node *decl)
 {
   /* local functions will be generated in separate module */
   if (!cnt->is_gscope) return NULL;
@@ -958,8 +958,8 @@ ir_decl_fn(context_t *cnt, node_t *decl)
      * can be called by name in function body.
      */
 
-    node_t *arg;
-    int     i = 0;
+    Node *arg;
+    int   i = 0;
     node_foreach(_fn_type->arg_types, arg)
     {
       const char * name  = peek_ident(peek_decl(arg)->name)->str;
@@ -1018,7 +1018,7 @@ ir_decl_fn(context_t *cnt, node_t *decl)
 }
 
 LLVMValueRef
-ir_decl(context_t *cnt, node_t *decl)
+ir_decl(Context *cnt, Node *decl)
 {
   if (is_terminated(cnt)) return NULL;
   node_decl_t *_decl = peek_decl(decl);
@@ -1049,7 +1049,7 @@ ir_decl(context_t *cnt, node_t *decl)
 }
 
 LLVMValueRef
-ir_stmt_if(context_t *cnt, node_t *stmt_if)
+ir_stmt_if(Context *cnt, Node *stmt_if)
 {
   node_stmt_if_t *  _stmt_if     = peek_stmt_if(stmt_if);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -1103,7 +1103,7 @@ ir_stmt_if(context_t *cnt, node_t *stmt_if)
 }
 
 LLVMValueRef
-ir_stmt_return(context_t *cnt, node_t *stmt_return)
+ir_stmt_return(Context *cnt, Node *stmt_return)
 {
   node_stmt_return_t *_ret = peek_stmt_return(stmt_return);
   if (!_ret->expr) {
@@ -1123,7 +1123,7 @@ ir_stmt_return(context_t *cnt, node_t *stmt_return)
 }
 
 LLVMValueRef
-ir_stmt_loop(context_t *cnt, node_t *loop)
+ir_stmt_loop(Context *cnt, Node *loop)
 {
   node_stmt_loop_t *_loop        = peek_stmt_loop(loop);
   LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -1167,21 +1167,21 @@ ir_stmt_loop(context_t *cnt, node_t *loop)
 }
 
 LLVMValueRef
-ir_stmt_break(context_t *cnt, node_t *brk)
+ir_stmt_break(Context *cnt, Node *brk)
 {
   LLVMBuildBr(cnt->llvm_builder, cnt->break_block);
   return NULL;
 }
 
 LLVMValueRef
-ir_stmt_continue(context_t *cnt, node_t *cont)
+ir_stmt_continue(Context *cnt, Node *cont)
 {
   LLVMBuildBr(cnt->llvm_builder, cnt->continue_block);
   return NULL;
 }
 
 LLVMValueRef
-ir_node(context_t *cnt, node_t *node)
+ir_node(Context *cnt, Node *node)
 {
   if (is_terminated(cnt)) return NULL;
   if (!node) return NULL;
@@ -1271,9 +1271,9 @@ create_jit(LLVMContextRef llvm_cnt)
 }
 
 LLVMGenericValueRef
-run(context_t *cnt, node_t *fn)
+run(Context *cnt, Node *fn)
 {
-  node_t *decl = ast_unroll_ident(fn);
+  Node *decl = ast_unroll_ident(fn);
   link_into_jit(cnt, decl);
   LLVMValueRef        llvm_fn;
   LLVMGenericValueRef result;
@@ -1292,14 +1292,14 @@ run(context_t *cnt, node_t *fn)
 }
 
 void
-generate(context_t *cnt)
+generate(Context *cnt)
 {
   BList *      queue = cnt->assembly->ir_queue;
-  node_t *     decl;
+  Node *       decl;
   node_decl_t *_decl;
 
   while (!bo_list_empty(queue)) {
-    decl = bo_list_front(queue, node_t *);
+    decl = bo_list_front(queue, Node *);
     bo_list_pop_front(queue);
 
     _decl = peek_decl(decl);
@@ -1323,7 +1323,7 @@ generate(context_t *cnt)
 }
 
 void
-generate_decl(context_t *cnt, node_t *decl)
+generate_decl(Context *cnt, Node *decl)
 {
   assert(decl);
   node_decl_t *_decl = peek_decl(decl);
@@ -1337,7 +1337,7 @@ generate_decl(context_t *cnt, node_t *decl)
 }
 
 LLVMModuleRef
-link(context_t *cnt, node_t *entry)
+link(Context *cnt, Node *entry)
 {
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
@@ -1356,7 +1356,7 @@ link(context_t *cnt, node_t *entry)
 }
 
 LLVMModuleRef
-_link(context_t *cnt, node_t *entry)
+_link(Context *cnt, Node *entry)
 {
   node_decl_t *_entry = peek_decl(entry);
 
@@ -1366,11 +1366,11 @@ _link(context_t *cnt, node_t *entry)
   assert(dest_module);
   if (!_entry->deps) return dest_module;
 
-  dependency_t  dep;
+  Dependency    dep;
   bo_iterator_t it;
   bhtbl_foreach(_entry->deps, it)
   {
-    dep = bo_htbl_iter_peek_value(_entry->deps, &it, dependency_t);
+    dep = bo_htbl_iter_peek_value(_entry->deps, &it, Dependency);
 
     /* link all lax dependencies */
     if (dep.type & DEP_LAX) {
@@ -1389,7 +1389,7 @@ _link(context_t *cnt, node_t *entry)
 }
 
 static void
-link_into_jit(context_t *cnt, node_t *fn)
+link_into_jit(Context *cnt, Node *fn)
 {
   assert(fn);
   if (bo_htbl_has_key(cnt->jit_linked, (uint64_t)fn)) return;
@@ -1407,10 +1407,10 @@ link_into_jit(context_t *cnt, node_t *fn)
   if (!_fn->deps) return;
 
   bo_iterator_t iter;
-  dependency_t  dep;
+  Dependency    dep;
   bhtbl_foreach(_fn->deps, iter)
   {
-    dep = bo_htbl_iter_peek_value(_fn->deps, &iter, dependency_t);
+    dep = bo_htbl_iter_peek_value(_fn->deps, &iter, Dependency);
 
     if (dep.type & DEP_LAX) {
       link_into_jit(cnt, dep.node);
@@ -1419,13 +1419,13 @@ link_into_jit(context_t *cnt, node_t *fn)
 }
 
 static inline bool
-generated(context_t *cnt, node_t *decl)
+generated(Context *cnt, Node *decl)
 {
   return bo_htbl_has_key(cnt->llvm_modules, (uint64_t)decl);
 }
 
 bool
-is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
+is_satisfied(Context *cnt, Node *decl, bool strict_only)
 {
 #if VERBOSE
   if (!strict_only) bl_log(BL_YELLOW("checking non-strict dependencies"));
@@ -1435,10 +1435,10 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
   if (!deps) return true;
 
   bo_iterator_t iter;
-  dependency_t  dep;
+  Dependency    dep;
   bhtbl_foreach(deps, iter)
   {
-    dep = bo_htbl_iter_peek_value(deps, &iter, dependency_t);
+    dep = bo_htbl_iter_peek_value(deps, &iter, Dependency);
 
     // PERFORMANCE: is there some better solution than check whole tree???
     bool check_tree = strict_only ? dep.type & DEP_STRICT : true;
@@ -1455,10 +1455,10 @@ is_satisfied(context_t *cnt, node_t *decl, bool strict_only)
 }
 
 void
-ir_run(builder_t *builder, assembly_t *assembly)
+ir_run(Builder *builder, Assembly *assembly)
 {
   assert(!bo_list_empty(assembly->ir_queue) && "nothig to generate");
-  context_t cnt;
+  Context cnt;
   memset(&cnt, 0, sizeof(cnt));
   cnt.builder      = builder;
   cnt.assembly     = assembly;

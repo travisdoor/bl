@@ -31,7 +31,7 @@
 #include "bldebug.h"
 
 void
-jit_exec_run(builder_t *builder, assembly_t *assembly)
+jit_exec_run(Builder *builder, Assembly *assembly)
 {
   LLVMExecutionEngineRef jit;
   char *                 llvm_error = NULL;

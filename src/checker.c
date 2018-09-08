@@ -73,43 +73,43 @@
 
 typedef struct
 {
-  builder_t * builder;
-  assembly_t *assembly;
-  unit_t *    unit;
-  ast_t *     ast;
+  Builder *builder;
+  Assembly * assembly;
+  Unit *   unit;
+  Ast *    ast;
 
   BHashTable *waiting;
-  scope_t *   provided_in_gscope;
+  Scope *   provided_in_gscope;
 
   BArray *flatten_cache;
-} context_t;
+} Context;
 
 typedef struct
 {
   BArray *flatten;
   size_t  i;
-} fiter_t;
+} FIter;
 
-static inline node_t *
-lookup(node_t *ident, scope_t **out_scope, bool walk_tree);
+static inline Node *
+lookup(Node *ident, Scope **out_scope, bool walk_tree);
 
-static node_t *
-_lookup(node_t *compound, node_t *ident, scope_t **out_scope, bool walk_tree);
+static Node *
+_lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 
-static node_t *
-wait_context(node_t *node);
+static Node *
+wait_context(Node *node);
 
 static bool
-infer_type(context_t *cnt, node_t *decl);
+infer_type(Context *cnt, Node *decl);
 
 static void
-provide(node_t *ident, node_t *provided);
+provide(Node *ident, Node *provided);
 
 static inline void
-waiting_push(BHashTable *waiting, node_t *ident, fiter_t fiter);
+waiting_push(BHashTable *waiting, Node *ident, FIter fiter);
 
 static void
-waiting_resume(context_t *cnt, node_t *ident);
+waiting_resume(Context *cnt, Node *ident);
 
 static BArray *
 flatten_get(BArray *cache);
@@ -121,80 +121,80 @@ static void
 flatten_free_cache(BArray *cache);
 
 static inline void
-flatten_push(BArray *flatten, node_t **node);
+flatten_push(BArray *flatten, Node **node);
 
 static void
-flatten_node(context_t *cnt, BArray *fbuf, node_t **node);
+flatten_node(Context *cnt, BArray *fbuf, Node **node);
 
 static bool
-implicit_cast(context_t *cnt, node_t **node, node_t *to_type);
+implicit_cast(Context *cnt, Node **node, Node *to_type);
 
 static inline void
-check_error_invalid_types(context_t *cnt, node_t *first_type, node_t *second_type, node_t *err_pos);
+check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos);
 
 static void
-check_flatten(context_t *cnt, node_t **node);
+check_flatten(Context *cnt, Node **node);
 
 static void
-process_flatten(context_t *cnt, fiter_t *fit);
+process_flatten(Context *cnt, FIter *fit);
 
 static bool
-check_node(context_t *cnt, node_t **node);
+check_node(Context *cnt, Node **node);
 
 static bool
-check_ident(context_t *cnt, node_t **ident);
+check_ident(Context *cnt, Node **ident);
 
 static bool
-check_decl(context_t *cnt, node_t **decl);
+check_decl(Context *cnt, Node **decl);
 
 static bool
-check_expr_call(context_t *cnt, node_t **call);
+check_expr_call(Context *cnt, Node **call);
 
 static bool
-check_expr_unary(context_t *cnt, node_t **unary);
+check_expr_unary(Context *cnt, Node **unary);
 
 static bool
-check_expr_binop(context_t *cnt, node_t **binop);
+check_expr_binop(Context *cnt, Node **binop);
 
 static bool
-check_expr_cast(context_t *cnt, node_t **cast);
+check_expr_cast(Context *cnt, Node **cast);
 
 static bool
-check_expr_sizeof(context_t *cnt, node_t **szof);
+check_expr_sizeof(Context *cnt, Node **szof);
 
 static bool
-check_expr_member(context_t *cnt, node_t **member);
+check_expr_member(Context *cnt, Node **member);
 
 static bool
-check_expr_elem(context_t *cnt, node_t **elem);
+check_expr_elem(Context *cnt, Node **elem);
 
 static bool
-check_stmt_if(context_t *cnt, node_t **stmt_if);
+check_stmt_if(Context *cnt, Node **stmt_if);
 
 static bool
-check_stmt_return(context_t *cnt, node_t **ret);
+check_stmt_return(Context *cnt, Node **ret);
 
 static bool
-check_type_enum(context_t *cnt, node_t **type);
+check_type_enum(Context *cnt, Node **type);
 
 static void
-check_unresolved(context_t *cnt);
+check_unresolved(Context *cnt);
 
 // impl
-node_t *
-lookup(node_t *ident, scope_t **out_scope, bool walk_tree)
+Node *
+lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
   assert(ident && "invalid identificator in lookup");
-  node_t *compound = peek_ident(ident)->parent_compound;
+  Node *compound = peek_ident(ident)->parent_compound;
   assert(compound && "ident compound not set");
   return _lookup(compound, ident, out_scope, walk_tree);
 }
 
-node_t *
-_lookup(node_t *compound, node_t *ident, scope_t **out_scope, bool walk_tree)
+Node *
+_lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree)
 {
-  node_t * found = NULL;
-  scope_t *scope = NULL;
+  Node *   found = NULL;
+  Scope *scope = NULL;
 
   while (compound && !found) {
     scope = ast_get_scope(compound);
@@ -209,8 +209,8 @@ _lookup(node_t *compound, node_t *ident, scope_t **out_scope, bool walk_tree)
   return found;
 }
 
-node_t *
-wait_context(node_t *node)
+Node *
+wait_context(Node *node)
 {
   assert(node && "invalid wait node");
   switch (node_code(node)) {
@@ -221,7 +221,7 @@ wait_context(node_t *node)
   case NODE_DECL:
     return peek_decl(node)->name;
   case NODE_STMT_RETURN: {
-    node_t *decl = peek_stmt_return(node)->fn_decl;
+    Node *decl = peek_stmt_return(node)->fn_decl;
     assert(decl && "return statement without context");
     return peek_decl(decl)->name;
   }
@@ -231,12 +231,12 @@ wait_context(node_t *node)
 }
 
 void
-provide(node_t *ident, node_t *provided)
+provide(Node *ident, Node *provided)
 {
   assert(ident && provided && "trying to provide invalid symbol");
-  node_t *compound = peek_ident(ident)->parent_compound;
+  Node *compound = peek_ident(ident)->parent_compound;
   assert(compound);
-  scope_t *scope = ast_get_scope(compound);
+  Scope *scope = ast_get_scope(compound);
   assert(scope);
 
 #if VERBOSE
@@ -246,16 +246,16 @@ provide(node_t *ident, node_t *provided)
 }
 
 void
-waiting_push(BHashTable *waiting, node_t *node, fiter_t fiter)
+waiting_push(BHashTable *waiting, Node *node, FIter fiter)
 {
-  node_t *ident = wait_context(node);
+  Node *ident = wait_context(node);
   assert(ident);
   node_ident_t *_ident = peek_ident(ident);
   BArray *      queue;
   if (bo_htbl_has_key(waiting, _ident->hash)) {
     queue = bo_htbl_at(waiting, _ident->hash, BArray *);
   } else {
-    queue = bo_array_new(sizeof(fiter_t));
+    queue = bo_array_new(sizeof(FIter));
     bo_htbl_insert(waiting, _ident->hash, queue);
   }
   assert(queue);
@@ -263,7 +263,7 @@ waiting_push(BHashTable *waiting, node_t *node, fiter_t fiter)
 }
 
 void
-waiting_resume(context_t *cnt, node_t *ident)
+waiting_resume(Context *cnt, Node *ident)
 {
   node_ident_t *_ident = peek_ident(ident);
   /* is there some flattens waiting for this symbol??? */
@@ -275,10 +275,10 @@ waiting_resume(context_t *cnt, node_t *ident)
 
   /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
    * 'process_flatten' method */
-  fiter_t   fit;
+  FIter   fit;
   const int c = (int)bo_array_size(q);
   for (int i = c - 1; i >= 0; --i) {
-    fit = bo_array_at(q, i, fiter_t);
+    fit = bo_array_at(q, i, FIter);
     bo_array_erase(q, i);
     process_flatten(cnt, &fit);
   }
@@ -287,13 +287,13 @@ waiting_resume(context_t *cnt, node_t *ident)
 }
 
 void
-check_unresolved(context_t *cnt)
+check_unresolved(Context *cnt)
 {
   bo_iterator_t iter;
   BArray *      q;
-  fiter_t       tmp;
-  node_t **     tmp_node;
-  node_t *      tmp_ident;
+  FIter       tmp;
+  Node **       tmp_node;
+  Node *        tmp_ident;
 
   bhtbl_foreach(cnt->waiting, iter)
   {
@@ -302,9 +302,9 @@ check_unresolved(context_t *cnt)
 
     // bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
-      tmp = bo_array_at(q, i, fiter_t);
+      tmp = bo_array_at(q, i, FIter);
       // bl_log("# %p index: %d", tmp.flatten, i);
-      tmp_node = bo_array_at(tmp.flatten, tmp.i, node_t **);
+      tmp_node = bo_array_at(tmp.flatten, tmp.i, Node **);
       assert(*tmp_node);
       tmp_ident = wait_context(*tmp_node);
       if (!scope_has_symbol(cnt->provided_in_gscope, tmp_ident))
@@ -322,7 +322,7 @@ flatten_get(BArray *cache)
 {
   BArray *tmp = NULL;
   if (bo_array_size(cache) == 0) {
-    tmp = bo_array_new(sizeof(node_t *));
+    tmp = bo_array_new(sizeof(Node *));
   } else {
     tmp = bo_array_at(cache, 0, BArray *);
     bo_array_erase(cache, 0);
@@ -355,13 +355,13 @@ flatten_free_cache(BArray *cache)
 }
 
 void
-flatten_push(BArray *flatten, node_t **node)
+flatten_push(BArray *flatten, Node **node)
 {
   bo_array_push_back(flatten, node);
 }
 
 void
-flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
+flatten_node(Context *cnt, BArray *fbuf, Node **node)
 {
   if (!*node) return;
 
@@ -396,7 +396,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_LIT_ENUM: {
     node_lit_enum_t *_enum = peek_lit_enum(*node);
     flatten(&_enum->type);
-    node_t **variant;
+    Node **variant;
     node_foreach_ref(_enum->variants, variant)
     {
       flatten(variant);
@@ -407,7 +407,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_BLOCK: {
     node_block_t *_block = peek_block(*node);
 
-    node_t **tmp;
+    Node **tmp;
     node_foreach_ref(_block->nodes, tmp)
     {
       flatten(tmp);
@@ -418,7 +418,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_UBLOCK: {
     node_ublock_t *_ublock = peek_ublock(*node);
 
-    node_t **tmp;
+    Node **tmp;
     node_foreach_ref(_ublock->nodes, tmp)
     {
       check_flatten(cnt, tmp);
@@ -478,7 +478,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
     node_expr_call_t *_call = peek_expr_call(*node);
     flatten(&_call->ref);
 
-    node_t **tmp;
+    Node **tmp;
     node_foreach_ref(_call->args, tmp)
     {
       flatten(tmp);
@@ -502,7 +502,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_TYPE_STRUCT: {
     node_type_struct_t *_struct_type = peek_type_struct(*node);
 
-    node_t **tmp;
+    Node **tmp;
     node_foreach_ref(_struct_type->types, tmp)
     {
       flatten(tmp);
@@ -519,7 +519,7 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
   case NODE_TYPE_FN: {
     node_type_fn_t *_type_fn = peek_type_fn(*node);
     flatten(&_type_fn->ret_type);
-    node_t **sub_type;
+    Node **sub_type;
     node_foreach_ref(_type_fn->arg_types, sub_type)
     {
       flatten(sub_type);
@@ -545,9 +545,9 @@ flatten_node(context_t *cnt, BArray *fbuf, node_t **node)
 }
 
 void
-check_flatten(context_t *cnt, node_t **node)
+check_flatten(Context *cnt, Node **node)
 {
-  fiter_t fit;
+  FIter fit;
   fit.flatten = flatten_get(cnt->flatten_cache);
   fit.i       = 0;
 
@@ -556,15 +556,15 @@ check_flatten(context_t *cnt, node_t **node)
 }
 
 void
-process_flatten(context_t *cnt, fiter_t *fit)
+process_flatten(Context *cnt, FIter *fit)
 {
   assert(fit);
   assert(fit->flatten && "invalid flatten");
   bool interrupted = false;
 
-  node_t **tmp;
+  Node **tmp;
   for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
-    tmp = bo_array_at(fit->flatten, fit->i, node_t **);
+    tmp = bo_array_at(fit->flatten, fit->i, Node **);
     if (!check_node(cnt, tmp)) {
       waiting_push(cnt->waiting, *tmp, *fit);
       interrupted = true;
@@ -579,13 +579,13 @@ process_flatten(context_t *cnt, fiter_t *fit)
 }
 
 bool
-implicit_cast(context_t *cnt, node_t **node, node_t *to_type)
+implicit_cast(Context *cnt, Node **node, Node *to_type)
 {
-  to_type           = ast_get_type(to_type);
-  node_t *from_type = ast_get_type(*node);
+  to_type         = ast_get_type(to_type);
+  Node *from_type = ast_get_type(*node);
 
-  type_kind_e from_kind = ast_get_type_kind(from_type);
-  type_kind_e to_kind   = ast_get_type_kind(to_type);
+  TypeKind from_kind = ast_get_type_kind(from_type);
+  TypeKind to_kind   = ast_get_type_kind(to_type);
   if (node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING && from_kind != TYPE_KIND_CHAR &&
       from_kind != TYPE_KIND_REAL &&
       (to_kind == TYPE_KIND_SIZE || to_kind == TYPE_KIND_UINT || to_kind == TYPE_KIND_SINT)) {
@@ -595,17 +595,17 @@ implicit_cast(context_t *cnt, node_t **node, node_t *to_type)
 
   if (!ast_can_impl_cast(from_type, to_type)) return false;
 
-  node_t *tmp_next = (*node)->next;
-  node_t *type_dup = ast_node_dup(cnt->ast, to_type);
-  node_t *cast     = ast_expr_cast(cnt->ast, NULL, type_dup, *node);
-  cast->next       = tmp_next;
-  *node            = cast;
+  Node *tmp_next = (*node)->next;
+  Node *type_dup = ast_node_dup(cnt->ast, to_type);
+  Node *cast     = ast_expr_cast(cnt->ast, NULL, type_dup, *node);
+  cast->next     = tmp_next;
+  *node          = cast;
 
   return true;
 }
 
 void
-check_error_invalid_types(context_t *cnt, node_t *first_type, node_t *second_type, node_t *err_pos)
+check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos)
 {
   char tmp_first[256];
   char tmp_second[256];
@@ -616,17 +616,16 @@ check_error_invalid_types(context_t *cnt, node_t *first_type, node_t *second_typ
 }
 
 bool
-check_expr_call(context_t *cnt, node_t **call)
+check_expr_call(Context *cnt, Node **call)
 {
   node_expr_call_t *_call = peek_expr_call(*call);
 
-  node_t *ident =
-      node_is(_call->ref, NODE_IDENT) ? _call->ref : peek_expr_member(_call->ref)->ident;
+  Node *ident = node_is(_call->ref, NODE_IDENT) ? _call->ref : peek_expr_member(_call->ref)->ident;
 
-  node_t *callee = peek_ident(ident)->ref;
+  Node *callee = peek_ident(ident)->ref;
   assert(callee);
   node_decl_t *_callee     = peek_decl(callee);
-  node_t *     callee_type = _callee->type;
+  Node *       callee_type = _callee->type;
 
   if (node_is_not(callee_type, NODE_TYPE_FN)) {
     check_error_node(cnt, ERR_INVALID_TYPE, *call, BUILDER_CUR_WORD, "expected function name");
@@ -644,8 +643,8 @@ check_expr_call(context_t *cnt, node_t **call)
     FINISH;
   }
 
-  node_t **call_arg   = &_call->args;
-  node_t * callee_arg = _callee_type->arg_types;
+  Node **call_arg   = &_call->args;
+  Node * callee_arg = _callee_type->arg_types;
 
   while (*call_arg) {
     if (node_is(*call_arg, NODE_EXPR_NULL)) {
@@ -668,7 +667,7 @@ check_expr_call(context_t *cnt, node_t **call)
   }
 
   if (_call->run) {
-    type_kind_e callee_ret_tkind = ast_get_type_kind(ast_unroll_ident(_callee_type->ret_type));
+    TypeKind callee_ret_tkind = ast_get_type_kind(ast_unroll_ident(_callee_type->ret_type));
     switch (callee_ret_tkind) {
     case TYPE_KIND_FN:
     case TYPE_KIND_PTR:
@@ -690,7 +689,7 @@ check_expr_call(context_t *cnt, node_t **call)
 }
 
 bool
-check_expr_unary(context_t *cnt, node_t **unary)
+check_expr_unary(Context *cnt, Node **unary)
 {
   node_expr_unary_t *_unary = peek_expr_unary(*unary);
   assert(_unary->next);
@@ -717,7 +716,7 @@ check_expr_unary(context_t *cnt, node_t **unary)
 }
 
 bool
-check_node(context_t *cnt, node_t **node)
+check_node(Context *cnt, Node **node)
 {
   assert(node);
   bool result = true;
@@ -784,7 +783,7 @@ check_node(context_t *cnt, node_t **node)
     static int  prev_checked = -1;
     const char *file         = node->src ? node->src->unit->name : "UNKNOWN";
     const int   line         = node->src ? node->src->line : -1;
-    node_t *    checked      = wait_context(node);
+    Node *      checked      = wait_context(node);
     const char *name         = checked ? peek_ident(checked)->str : "?";
     bl_log("checked [%s] " BL_MAGENTA("'%s'") " (%s, %d) file: " BL_YELLOW("%s") " line: " BL_CYAN(
                "%d"),
@@ -800,14 +799,14 @@ check_node(context_t *cnt, node_t **node)
 }
 
 bool
-check_ident(context_t *cnt, node_t **ident)
+check_ident(Context *cnt, Node **ident)
 {
   node_ident_t *_ident = peek_ident(*ident);
   if (_ident->ref) {
     FINISH;
   }
 
-  node_t *  found;
+  Node *    found;
   const int buildin = ast_is_buildin_type(*ident);
   if (buildin != -1) {
     /* connect buildin fundamental types references */
@@ -829,17 +828,14 @@ check_ident(context_t *cnt, node_t **ident)
      * type, maybe there is some better solution ??? */
 #if ENABLE_EXPERIMENTAL
     if (_ident->arr) {
-      interp_t interp;
-      interp_init(&interp);
-
-      token_value_u value;
-      value.u     = interp_node(&interp, _ident->arr);
+      TokenValue value;
+      value.u     = interp_node(_ident->arr);
       _ident->arr = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_SIZE], value);
     }
 #endif
 
-    _ident->ref  = ast_node_dup(cnt->ast, found);
-    node_t *type = ast_get_type(_ident->ref);
+    _ident->ref = ast_node_dup(cnt->ast, found);
+    Node *type  = ast_get_type(_ident->ref);
     assert(type);
     type = ast_node_dup(cnt->ast, type);
     ast_type_set_ptr(type, _ident->ptr);
@@ -855,14 +851,14 @@ check_ident(context_t *cnt, node_t **ident)
 }
 
 bool
-check_stmt_return(context_t *cnt, node_t **ret)
+check_stmt_return(Context *cnt, Node **ret)
 {
   node_stmt_return_t *_ret = peek_stmt_return(*ret);
   assert(_ret->fn_decl);
 
   node_decl_t *  _callee_decl = peek_decl(_ret->fn_decl);
   node_lit_fn_t *_callee      = peek_lit_fn(_callee_decl->value);
-  node_t *       fn_ret_type  = ast_get_type(peek_type_fn(_callee->type)->ret_type);
+  Node *         fn_ret_type  = ast_get_type(peek_type_fn(_callee->type)->ret_type);
   if (fn_ret_type == NULL) WAIT;
 
   if (_ret->expr) {
@@ -875,7 +871,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
             "'null' cannot be used because the function does not return a pointer value");
       }
     } else {
-      node_t *expr_type = ast_get_type(_ret->expr);
+      Node *expr_type = ast_get_type(_ret->expr);
       if (!ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
         check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
       }
@@ -889,7 +885,7 @@ check_stmt_return(context_t *cnt, node_t **ret)
 }
 
 bool
-check_expr_binop(context_t *cnt, node_t **binop)
+check_expr_binop(Context *cnt, Node **binop)
 {
   node_expr_binop_t *_binop = peek_expr_binop(*binop);
 
@@ -919,9 +915,9 @@ check_expr_binop(context_t *cnt, node_t **binop)
     }
   }
 
-  node_t *lhs_type = ast_get_type(_binop->lhs);
+  Node *lhs_type = ast_get_type(_binop->lhs);
   assert(lhs_type);
-  type_kind_e lhs_kind = ast_get_type_kind(lhs_type);
+  TypeKind lhs_kind = ast_get_type_kind(lhs_type);
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
     if (lhs_kind != TYPE_KIND_PTR) {
@@ -935,9 +931,9 @@ check_expr_binop(context_t *cnt, node_t **binop)
     FINISH;
   }
 
-  node_t *rhs_type = ast_get_type(_binop->rhs);
+  Node *rhs_type = ast_get_type(_binop->rhs);
   assert(rhs_type);
-  type_kind_e rhs_kind = ast_get_type_kind(rhs_type);
+  TypeKind rhs_kind = ast_get_type_kind(rhs_type);
 
   if (!ast_type_cmp(lhs_type, rhs_type)) {
     if (node_is(_binop->lhs, NODE_LIT) &&
@@ -955,7 +951,7 @@ check_expr_binop(context_t *cnt, node_t **binop)
 }
 
 bool
-check_expr_cast(context_t *cnt, node_t **cast)
+check_expr_cast(Context *cnt, Node **cast)
 {
   node_expr_cast_t *_cast = peek_expr_cast(*cast);
   assert(_cast->type);
@@ -964,7 +960,7 @@ check_expr_cast(context_t *cnt, node_t **cast)
 }
 
 bool
-check_expr_sizeof(context_t *cnt, node_t **szof)
+check_expr_sizeof(Context *cnt, Node **szof)
 {
   node_expr_sizeof_t *_sizeof = peek_expr_sizeof(*szof);
   _sizeof->in                 = ast_get_type(_sizeof->in);
@@ -972,11 +968,11 @@ check_expr_sizeof(context_t *cnt, node_t **szof)
 }
 
 bool
-check_type_enum(context_t *cnt, node_t **type)
+check_type_enum(Context *cnt, Node **type)
 {
   node_type_enum_t *_type = peek_type_enum(*type);
   assert(_type->base_type);
-  node_t *tmp = ast_get_type(_type->base_type);
+  Node *tmp = ast_get_type(_type->base_type);
 
   if (node_is_not(tmp, NODE_TYPE_FUND)) {
     check_error_node(cnt, ERR_INVALID_TYPE, _type->base_type, BUILDER_CUR_WORD,
@@ -1013,21 +1009,21 @@ check_type_enum(context_t *cnt, node_t **type)
 }
 
 bool
-check_expr_member(context_t *cnt, node_t **member)
+check_expr_member(Context *cnt, Node **member)
 {
   node_expr_member_t *_member = peek_expr_member(*member);
-  node_t *            found   = NULL;
+  Node *              found   = NULL;
   assert(_member->next);
   assert(_member->ident);
 
-  node_t *lhs_type = ast_get_type(_member->next);
+  Node *lhs_type = ast_get_type(_member->next);
   if (!lhs_type) FINISH;
   if (ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
     if (ast_is_buildin(_member->ident) == BUILDIN_ARR_COUNT) {
-      node_t *tmp_next = (*member)->next;
-      *member          = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
-      (*member)->next  = tmp_next;
+      Node *tmp_next  = (*member)->next;
+      *member         = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
+      (*member)->next = tmp_next;
 
       FINISH;
     }
@@ -1072,7 +1068,7 @@ check_expr_member(context_t *cnt, node_t **member)
 }
 
 bool
-check_expr_elem(context_t *cnt, node_t **elem)
+check_expr_elem(Context *cnt, Node **elem)
 {
   node_expr_elem_t *_elem = peek_expr_elem(*elem);
   assert(_elem->index);
@@ -1086,7 +1082,7 @@ check_expr_elem(context_t *cnt, node_t **elem)
   _elem->type = ast_node_dup(cnt->ast, _elem->type);
   ast_type_set_arr(_elem->type, NULL);
 
-  node_t *index_type = ast_get_type(_elem->index);
+  Node *index_type = ast_get_type(_elem->index);
 
   if (!implicit_cast(cnt, &_elem->index, &ftypes[FTYPE_SIZE])) {
     check_error_invalid_types(cnt, index_type, &ftypes[FTYPE_SIZE], _elem->index);
@@ -1096,13 +1092,13 @@ check_expr_elem(context_t *cnt, node_t **elem)
 }
 
 bool
-check_stmt_if(context_t *cnt, node_t **stmt_if)
+check_stmt_if(Context *cnt, Node **stmt_if)
 {
   node_stmt_if_t *_if = peek_stmt_if(*stmt_if);
   assert(_if->test);
   assert(_if->true_stmt);
 
-  node_t *test_type = ast_get_type(_if->test);
+  Node *test_type = ast_get_type(_if->test);
   if (!ast_type_cmp(test_type, &ftypes[FTYPE_BOOL])) {
     check_error_invalid_types(cnt, test_type, &ftypes[FTYPE_BOOL], _if->test);
   }
@@ -1110,11 +1106,11 @@ check_stmt_if(context_t *cnt, node_t **stmt_if)
 }
 
 bool
-infer_type(context_t *cnt, node_t *decl)
+infer_type(Context *cnt, Node *decl)
 {
   node_decl_t *_decl = peek_decl(decl);
   if (!_decl->value) return false;
-  node_t *inferred_type = ast_get_type(_decl->value);
+  Node *inferred_type = ast_get_type(_decl->value);
   if (!inferred_type) return false;
 
   if (_decl->type && !ast_type_cmp(inferred_type, _decl->type) &&
@@ -1129,7 +1125,7 @@ infer_type(context_t *cnt, node_t *decl)
 }
 
 bool
-check_decl(context_t *cnt, node_t **decl)
+check_decl(Context *cnt, Node **decl)
 {
   node_decl_t *_decl          = peek_decl(*decl);
   bool         lookup_in_tree = true;
@@ -1147,7 +1143,7 @@ check_decl(context_t *cnt, node_t **decl)
 
   switch (_decl->kind) {
   case DECL_KIND_STRUCT: {
-    node_t *value_type                      = ast_get_type(_decl->value);
+    Node *value_type                        = ast_get_type(_decl->value);
     peek_type_struct(value_type)->base_decl = *decl;
 
     if (_decl->mutable) {
@@ -1221,7 +1217,7 @@ check_decl(context_t *cnt, node_t **decl)
   }
 
   case DECL_KIND_ENUM: {
-    node_t *value_type                    = ast_get_type(_decl->value);
+    Node *value_type                      = ast_get_type(_decl->value);
     peek_type_enum(value_type)->base_decl = *decl;
     break;
   }
@@ -1235,7 +1231,7 @@ check_decl(context_t *cnt, node_t **decl)
   }
 
   assert(_decl->type);
-  type_kind_e type_kind = ast_get_type_kind(ast_get_type(_decl->type));
+  TypeKind type_kind = ast_get_type_kind(ast_get_type(_decl->type));
   if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
@@ -1263,7 +1259,7 @@ check_decl(context_t *cnt, node_t **decl)
   }
 
   /* provide symbol into scope if there is no conflict */
-  node_t *conflict = lookup(_decl->name, NULL, lookup_in_tree);
+  Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *decl, BUILDER_CUR_WORD,
                      "symbol with same name already declared here: %s:%d",
@@ -1277,9 +1273,9 @@ check_decl(context_t *cnt, node_t **decl)
 }
 
 void
-checker_run(builder_t *builder, assembly_t *assembly)
+checker_run(Builder *builder, Assembly *assembly)
 {
-  context_t cnt = {
+  Context cnt = {
       .builder            = builder,
       .assembly           = assembly,
       .unit               = NULL,
@@ -1289,7 +1285,7 @@ checker_run(builder_t *builder, assembly_t *assembly)
       .provided_in_gscope = scope_new(assembly->scope_cache, 4092),
   };
 
-  unit_t *unit;
+  Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;

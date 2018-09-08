@@ -42,23 +42,23 @@
 
 typedef struct
 {
-  builder_t * builder;
-  assembly_t *assembly;
-  unit_t *    unit;
-  node_t *    curr_dependent;
-} context_t;
+  Builder *builder;
+  Assembly * assembly;
+  Unit *   unit;
+  Node *     curr_dependent;
+} Context;
 
 static void
-post_decl(visitor_t *visitor, node_t *decl, void *cnt);
+post_decl(Visitor *visitor, Node *decl, void *cnt);
 
 static void
-post_call(visitor_t *visitor, node_t *call, void *cnt);
+post_call(Visitor *visitor, Node *call, void *cnt);
 
 static void
-post_ident(visitor_t *visitor, node_t *ident, void *cnt);
+post_ident(Visitor *visitor, Node *ident, void *cnt);
 
 static inline void
-schedule_generation(context_t *cnt, node_t *decl)
+schedule_generation(Context *cnt, Node *decl)
 {
   assert(decl);
   node_decl_t *_decl = peek_decl(decl);
@@ -66,9 +66,9 @@ schedule_generation(context_t *cnt, node_t *decl)
 }
 
 void
-post_decl(visitor_t *visitor, node_t *decl, void *cnt)
+post_decl(Visitor *visitor, Node *decl, void *cnt)
 {
-  context_t *_cnt = (context_t *)cnt;
+  Context *_cnt = (Context *)cnt;
   assert(decl);
   node_decl_t *_decl = peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
@@ -78,7 +78,7 @@ post_decl(visitor_t *visitor, node_t *decl, void *cnt)
 
   if (_decl->flags & FLAG_MAIN) _decl->used++;
 
-  node_t *prev_dependent = _cnt->curr_dependent;
+  Node *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
   case DECL_KIND_FN:
     _cnt->curr_dependent = decl;
@@ -113,14 +113,14 @@ post_decl(visitor_t *visitor, node_t *decl, void *cnt)
 }
 
 void
-post_call(visitor_t *visitor, node_t *call, void *cnt)
+post_call(Visitor *visitor, Node *call, void *cnt)
 {
-  context_t *_cnt = (context_t *)cnt;
+  Context *_cnt = (Context *)cnt;
   assert(call);
   node_expr_call_t *_call = peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  node_t *callee = ast_unroll_ident(_call->ref);
+  Node *callee = ast_unroll_ident(_call->ref);
   if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN)) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }
@@ -129,10 +129,10 @@ post_call(visitor_t *visitor, node_t *call, void *cnt)
 }
 
 void
-post_ident(visitor_t *visitor, node_t *ident, void *cnt)
+post_ident(Visitor *visitor, Node *ident, void *cnt)
 {
   assert(ident);
-  context_t *   _cnt   = (context_t *)cnt;
+  Context *   _cnt   = (Context *)cnt;
   node_ident_t *_ident = peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
@@ -149,23 +149,23 @@ post_ident(visitor_t *visitor, node_t *ident, void *cnt)
 }
 
 void
-post_run(builder_t *builder, assembly_t *assembly)
+post_run(Builder *builder, Assembly *assembly)
 {
-  context_t cnt = {
+  Context cnt = {
       .builder        = builder,
       .assembly       = assembly,
       .unit           = NULL,
       .curr_dependent = NULL,
   };
 
-  visitor_t visitor;
+  Visitor visitor;
   visitor_init(&visitor);
 
   visitor_add(&visitor, post_decl, NODE_DECL);
   visitor_add(&visitor, post_call, NODE_EXPR_CALL);
   visitor_add(&visitor, post_ident, NODE_IDENT);
 
-  unit_t *unit;
+  Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;

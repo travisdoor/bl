@@ -47,7 +47,7 @@
 
 typedef void (*diag_handler_f)(const char *, void *);
 
-typedef struct bl_builder
+typedef struct Builder
 {
   diag_handler_f on_error;
   diag_handler_f on_warning;
@@ -57,46 +57,46 @@ typedef struct bl_builder
   int   total_lines;
   bool  no_warn;
   int   errorc;
-} builder_t;
+} Builder;
 
 typedef enum
 {
   BUILDER_MSG_ERROR,
   BUILDER_MSG_WARNING,
-} builder_msg_type;
+} BuilderMsgType;
 
 typedef enum
 {
   BUILDER_CUR_AFTER,
   BUILDER_CUR_WORD,
   BUILDER_CUR_BEFORE
-} builder_msg_cur_pos;
+} BuilderCurPos;
 
-struct src;
+struct Src;
 
-builder_t *
+Builder *
 builder_new(void);
 
 void
-builder_delete(builder_t *builder);
+builder_delete(Builder *builder);
 
 int
-builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags);
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
 
 void
-builder_set_error_diag_handler(builder_t *builder, diag_handler_f handler, void *context);
+builder_set_error_diag_handler(Builder *builder, diag_handler_f handler, void *context);
 
 void
-builder_set_warning_diag_handler(builder_t *builder, diag_handler_f handler, void *context);
+builder_set_warning_diag_handler(Builder *builder, diag_handler_f handler, void *context);
 
 void
-builder_error(builder_t *builder, const char *format, ...);
+builder_error(Builder *builder, const char *format, ...);
 
 void
-builder_warning(builder_t *builder, const char *format, ...);
+builder_warning(Builder *builder, const char *format, ...);
 
 void
-builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
-            builder_msg_cur_pos pos, const char *format, ...);
+builder_msg(Builder *builder, BuilderMsgType type, int code, struct Src *src,
+            BuilderCurPos pos, const char *format, ...);
 
 #endif

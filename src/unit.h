@@ -35,39 +35,39 @@
 #include "tokens.h"
 
 /* class Unit object members */
-typedef struct unit
+typedef struct Unit
 {
   /* output of lexer */
-  tokens_t tokens;
+  Tokens tokens;
   /* abstract syntax tree as output of parser */
-  ast_t   ast;
+  Ast   ast;
   BArray *globals;
   /* source file name with path */
   char *filepath;
   char *name;
   /* source data */
   char *src;
-} unit_t;
+} Unit;
 
-unit_t *
+Unit *
 unit_new_file(const char *filepath);
 
-unit_t *
+Unit *
 unit_new_str(const char *name, const char *src);
 
 void
-unit_delete(unit_t *unit);
+unit_delete(Unit *unit);
 
 const char *
-unit_get_src_file(unit_t *unit);
+unit_get_src_file(Unit *unit);
 
 const char *
-unit_get_src(unit_t *unit);
+unit_get_src(Unit *unit);
 
 const char *
-unit_get_src_ln(unit_t *unit, int line, long *len);
+unit_get_src_ln(Unit *unit, int line, long *len);
 
 const char *
-unit_get_name(unit_t *unit);
+unit_get_name(Unit *unit);
 
 #endif

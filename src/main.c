@@ -73,7 +73,7 @@ main(int argc, char *argv[])
     exit(EXIT_SUCCESS);
   }
 
-  builder_t *builder = builder_new();
+  Builder *builder = builder_new();
 
   /*
    * HACK: use name of first file as assembly name
@@ -95,12 +95,12 @@ main(int argc, char *argv[])
   }
 #endif
 
-  assembly_t *assembly = assembly_new(assembly_name);
+  Assembly *assembly = assembly_new(assembly_name);
   free(assembly_name);
 
   /* init actors */
   while (*argv != NULL) {
-    unit_t *unit = unit_new_file(*argv);
+    Unit *unit = unit_new_file(*argv);
 
     bool added = assembly_add_unit_unique(assembly, unit);
     if (added == false) {

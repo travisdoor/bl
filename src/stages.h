@@ -38,42 +38,42 @@
  * per unit
  */
 void
-file_loader_run(builder_t *builder, unit_t *unit);
+file_loader_run(Builder *builder, Unit *unit);
 
 void
-lexer_run(builder_t *builder, unit_t *unit);
+lexer_run(Builder *builder, Unit *unit);
 
 void
-token_printer_run(unit_t *unit);
+token_printer_run(Unit *unit);
 
 void
-parser_run(builder_t *builder, assembly_t *assembly, unit_t *unit);
+parser_run(Builder *builder, Assembly *assembly, Unit *unit);
 
 /*
  * per assembly
  */
 void
-ast_printer_run(assembly_t *assembly);
+ast_printer_run(Assembly *assembly);
 
 void
-checker_run(builder_t *builder, assembly_t *assembly);
+checker_run(Builder *builder, Assembly *assembly);
 
 void
-post_run(builder_t *builder, assembly_t *assembly);
+post_run(Builder *builder, Assembly *assembly);
 
 void
-linker_run(builder_t *builder, assembly_t *assembly);
+linker_run(Builder *builder, Assembly *assembly);
 
 void
-bc_writer_run(builder_t *builder, assembly_t *assembly);
+bc_writer_run(Builder *builder, Assembly *assembly);
 
 void
-native_bin_run(builder_t *builder, assembly_t *assembly);
+native_bin_run(Builder *builder, Assembly *assembly);
 
 void
-ir_run(builder_t *builder, assembly_t *assembly);
+ir_run(Builder *builder, Assembly *assembly);
 
 void
-jit_exec_run(builder_t *builder, assembly_t *assembly);
+jit_exec_run(Builder *builder, Assembly *assembly);
 
 #endif

@@ -38,15 +38,15 @@
 
 /* public */
 
-assembly_t *
+Assembly *
 assembly_new(const char *name)
 {
-  assembly_t *assembly = bl_calloc(1, sizeof(assembly_t));
+  Assembly *assembly = bl_calloc(1, sizeof(Assembly));
   if (!assembly) bl_abort("bad alloc");
   assembly->name         = strdup(name);
-  assembly->units        = bo_array_new(sizeof(unit_t *));
+  assembly->units        = bo_array_new(sizeof(Unit *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-  assembly->ir_queue     = bo_list_new(sizeof(node_t *));
+  assembly->ir_queue     = bo_list_new(sizeof(Node *));
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
 
   scope_cache_init(&assembly->scope_cache);
@@ -58,11 +58,11 @@ assembly_new(const char *name)
 }
 
 void
-assembly_delete(assembly_t *assembly)
+assembly_delete(Assembly *assembly)
 {
   free(assembly->name);
 
-  unit_t *unit;
+  Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     unit_delete(unit);
@@ -88,13 +88,13 @@ assembly_delete(assembly_t *assembly)
 }
 
 void
-assembly_add_unit(assembly_t *assembly, unit_t *unit)
+assembly_add_unit(Assembly *assembly, Unit *unit)
 {
   bo_array_push_back(assembly->units, unit);
 }
 
 bool
-assembly_add_unit_unique(assembly_t *assembly, unit_t *unit)
+assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
   uint64_t hash = 0;
   if (unit->filepath)
@@ -110,7 +110,7 @@ assembly_add_unit_unique(assembly_t *assembly, unit_t *unit)
 }
 
 void
-assembly_add_link(assembly_t *assembly, const char *lib)
+assembly_add_link(Assembly *assembly, const char *lib)
 {
   if (!lib) return;
   uint64_t hash = bo_hash_from_str(lib);

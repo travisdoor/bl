@@ -33,18 +33,7 @@
 
 #include "ast.h"
 
-#define INTERP_STACK_SIZE 1024
-
-typedef struct
-{
-  size_t stack[INTERP_STACK_SIZE];
-  size_t pc;
-} interp_t;
-
-void
-interp_init(interp_t *interp);
-
 unsigned long long
-interp_node(interp_t *interp, node_t *node);
+interp_node(Node *node);
 
 #endif

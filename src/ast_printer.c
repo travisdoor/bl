@@ -32,10 +32,10 @@
 #include "ast.h"
 
 #define MAX_STR_BUF 256
-#define int_to_void_ptr(i) (void *)((intptr_t) (i))
+#define int_to_void_ptr(i) (void *)((intptr_t)(i))
 
 static inline void
-print_address(node_t *node)
+print_address(Node *node)
 {
 #if BL_DEBUG
   if (node)
@@ -48,7 +48,7 @@ print_address(node_t *node)
 }
 
 static inline void
-print_head(const char *name, src_t *src, node_t *ptr, int pad)
+print_head(const char *name, Src *src, Node *ptr, int pad)
 {
   if (src)
     fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", name, src->line, src->col);
@@ -59,7 +59,7 @@ print_head(const char *name, src_t *src, node_t *ptr, int pad)
 }
 
 static inline void
-print_type(node_t *type)
+print_type(Node *type)
 {
   if (!type) {
     fprintf(stdout, RED("{?}"));
@@ -82,80 +82,80 @@ print_flags(int flags)
 }
 
 static void
-print_load(visitor_t *visitor, node_t *node, int pad);
+print_load(Visitor *visitor, Node *node, int pad);
 
 static void
-print_sizeof(visitor_t *visitor, node_t *node, int pad);
+print_sizeof(Visitor *visitor, Node *node, int pad);
 
 static void
-print_member(visitor_t *visitor, node_t *node, int pad);
+print_member(Visitor *visitor, Node *node, int pad);
 
 static void
-print_elem(visitor_t *visitor, node_t *node, int pad);
+print_elem(Visitor *visitor, Node *node, int pad);
 
 static void
-print_unary(visitor_t *visitor, node_t *node, int pad);
+print_unary(Visitor *visitor, Node *node, int pad);
 
 static void
-print_break(visitor_t *visitor, node_t *node, int pad);
+print_break(Visitor *visitor, Node *node, int pad);
 
 static void
-print_continue(visitor_t *visitor, node_t *node, int pad);
+print_continue(Visitor *visitor, Node *node, int pad);
 
 static void
-print_ublock(visitor_t *visitor, node_t *node, int pad);
+print_ublock(Visitor *visitor, Node *node, int pad);
 
 static void
-print_type_struct(visitor_t *visitor, node_t *node, int pad);
+print_type_struct(Visitor *visitor, Node *node, int pad);
 
 static void
-print_decl(visitor_t *visitor, node_t *node, int pad);
+print_decl(Visitor *visitor, Node *node, int pad);
 
 static void
-print_block(visitor_t *visitor, node_t *node, int pad);
+print_block(Visitor *visitor, Node *node, int pad);
 
 static void
-print_bad(visitor_t *visitor, node_t *node, int pad);
+print_bad(Visitor *visitor, Node *node, int pad);
 
 static void
-print_binop(visitor_t *visitor, node_t *node, int pad);
+print_binop(Visitor *visitor, Node *node, int pad);
 
 static void
-print_call(visitor_t *visitor, node_t *node, int pad);
+print_call(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit(visitor_t *visitor, node_t *node, int pad);
+print_lit(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit_fn(visitor_t *visitor, node_t *node, int pad);
+print_lit_fn(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit_struct(visitor_t *visitor, node_t *node, int pad);
+print_lit_struct(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit_enum(visitor_t *visitor, node_t *node, int pad);
+print_lit_enum(Visitor *visitor, Node *node, int pad);
 
 static void
-print_ident(visitor_t *visitor, node_t *node, int pad);
+print_ident(Visitor *visitor, Node *node, int pad);
 
 static void
-print_return(visitor_t *visitor, node_t *node, int pad);
+print_return(Visitor *visitor, Node *node, int pad);
 
 static void
-print_if(visitor_t *visitor, node_t *node, int pad);
+print_if(Visitor *visitor, Node *node, int pad);
 
 static void
-print_loop(visitor_t *visitor, node_t *node, int pad);
+print_loop(Visitor *visitor, Node *node, int pad);
 
 static void
-print_cast(visitor_t *visitor, node_t *node, int pad);
+print_cast(Visitor *visitor, Node *node, int pad);
 
 static void
-print_null(visitor_t *visitor, node_t *node, int pad);
+print_null(Visitor *visitor, Node *node, int pad);
 
 // impl
 void
-print_sizeof(visitor_t *visitor, node_t *node, int pad)
+print_sizeof(Visitor *visitor, Node *node, int pad)
 {
   print_head("sizeof", node->src, node, pad);
   node_expr_sizeof_t *_sizeof = peek_expr_sizeof(node);
@@ -163,7 +163,7 @@ print_sizeof(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_member(visitor_t *visitor, node_t *node, int pad)
+print_member(Visitor *visitor, Node *node, int pad)
 {
   print_head("member", node->src, node, pad);
   node_expr_member_t *_member = peek_expr_member(node);
@@ -173,7 +173,7 @@ print_member(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_elem(visitor_t *visitor, node_t *node, int pad)
+print_elem(Visitor *visitor, Node *node, int pad)
 {
   print_head("elem", node->src, node, pad);
   node_expr_elem_t *_elem = peek_expr_elem(node);
@@ -182,7 +182,7 @@ print_elem(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_load(visitor_t *visitor, node_t *node, int pad)
+print_load(Visitor *visitor, Node *node, int pad)
 {
   print_head("load", node->src, node, pad);
   node_load_t *_load = peek_load(node);
@@ -190,33 +190,33 @@ print_load(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_lit_struct(visitor_t *visitor, node_t *node, int pad)
+print_lit_struct(Visitor *visitor, Node *node, int pad)
 {
   print_head("struct", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_lit_enum(visitor_t *visitor, node_t *node, int pad)
+print_lit_enum(Visitor *visitor, Node *node, int pad)
 {
   print_head("enum", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_break(visitor_t *visitor, node_t *node, int pad)
+print_break(Visitor *visitor, Node *node, int pad)
 {
   print_head("break", node->src, node, pad);
 }
 
 void
-print_continue(visitor_t *visitor, node_t *node, int pad)
+print_continue(Visitor *visitor, Node *node, int pad)
 {
   print_head("continue", node->src, node, pad);
 }
 
 void
-print_cast(visitor_t *visitor, node_t *node, int pad)
+print_cast(Visitor *visitor, Node *node, int pad)
 {
   print_head("cast", node->src, node, pad);
   node_expr_cast_t *_cast = peek_expr_cast(node);
@@ -225,7 +225,7 @@ print_cast(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_null(visitor_t *visitor, node_t *node, int pad)
+print_null(Visitor *visitor, Node *node, int pad)
 {
   print_head("null", node->src, node, pad);
   node_expr_null_t *_null = peek_expr_null(node);
@@ -233,7 +233,7 @@ print_null(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_unary(visitor_t *visitor, node_t *node, int pad)
+print_unary(Visitor *visitor, Node *node, int pad)
 {
   print_head("unary", node->src, node, pad);
   node_expr_unary_t *_unary = peek_expr_unary(node);
@@ -243,21 +243,21 @@ print_unary(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_if(visitor_t *visitor, node_t *node, int pad)
+print_if(Visitor *visitor, Node *node, int pad)
 {
   print_head("if", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_loop(visitor_t *visitor, node_t *node, int pad)
+print_loop(Visitor *visitor, Node *node, int pad)
 {
   print_head("loop", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_decl(visitor_t *visitor, node_t *node, int pad)
+print_decl(Visitor *visitor, Node *node, int pad)
 {
   print_head("declaration", node->src, node, pad);
   node_decl_t *_decl = peek_decl(node);
@@ -271,21 +271,21 @@ print_decl(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_type_struct(visitor_t *visitor, node_t *node, int pad)
+print_type_struct(Visitor *visitor, Node *node, int pad)
 {
   print_head("struct", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_block(visitor_t *visitor, node_t *node, int pad)
+print_block(Visitor *visitor, Node *node, int pad)
 {
   print_head("block", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad));
 }
 
 void
-print_ident(visitor_t *visitor, node_t *node, int pad)
+print_ident(Visitor *visitor, Node *node, int pad)
 {
   print_head("ident", node->src, node, pad);
   node_ident_t *_ident = peek_ident(node);
@@ -294,14 +294,14 @@ print_ident(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_return(visitor_t *visitor, node_t *node, int pad)
+print_return(Visitor *visitor, Node *node, int pad)
 {
   print_head("return", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
-print_ublock(visitor_t *visitor, node_t *node, int pad)
+print_ublock(Visitor *visitor, Node *node, int pad)
 {
   print_head("unit", node->src, node, pad);
   node_ublock_t *_ublock = peek_ublock(node);
@@ -310,13 +310,13 @@ print_ublock(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_bad(visitor_t *visitor, node_t *node, int pad)
+print_bad(Visitor *visitor, Node *node, int pad)
 {
   print_head("INVALID", node->src, node, pad);
 }
 
 void
-print_binop(visitor_t *visitor, node_t *node, int pad)
+print_binop(Visitor *visitor, Node *node, int pad)
 {
   print_head("binop", node->src, node, pad);
   node_expr_binop_t *_binop = peek_expr_binop(node);
@@ -326,7 +326,7 @@ print_binop(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_lit(visitor_t *visitor, node_t *node, int pad)
+print_lit(Visitor *visitor, Node *node, int pad)
 {
   print_head("literal", node->src, node, pad);
   node_lit_t *_lit = peek_lit(node);
@@ -371,7 +371,7 @@ print_lit(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_lit_fn(visitor_t *visitor, node_t *node, int pad)
+print_lit_fn(Visitor *visitor, Node *node, int pad)
 {
   print_head("function", node->src, node, pad);
   node_lit_fn_t *_fn = peek_lit_fn(node);
@@ -381,7 +381,7 @@ print_lit_fn(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-print_call(visitor_t *visitor, node_t *node, int pad)
+print_call(Visitor *visitor, Node *node, int pad)
 {
   print_head("call", node->src, node, pad);
   node_expr_call_t *_call = peek_expr_call(node);
@@ -402,37 +402,37 @@ print_call(visitor_t *visitor, node_t *node, int pad)
 }
 
 void
-ast_printer_run(assembly_t *assembly)
+ast_printer_run(Assembly *assembly)
 {
-  visitor_t visitor;
+  Visitor visitor;
   visitor_init(&visitor);
 
-  visitor_add(&visitor, (visit_f)print_bad, NODE_BAD);
-  visitor_add(&visitor, (visit_f)print_ublock, NODE_UBLOCK);
-  visitor_add(&visitor, (visit_f)print_block, NODE_BLOCK);
-  visitor_add(&visitor, (visit_f)print_ident, NODE_IDENT);
-  visitor_add(&visitor, (visit_f)print_decl, NODE_DECL);
-  visitor_add(&visitor, (visit_f)print_load, NODE_LOAD);
-  visitor_add(&visitor, (visit_f)print_lit_fn, NODE_LIT_FN);
-  visitor_add(&visitor, (visit_f)print_lit_struct, NODE_LIT_STRUCT);
-  visitor_add(&visitor, (visit_f)print_lit_enum, NODE_LIT_ENUM);
-  visitor_add(&visitor, (visit_f)print_lit, NODE_LIT);
-  visitor_add(&visitor, (visit_f)print_return, NODE_STMT_RETURN);
-  visitor_add(&visitor, (visit_f)print_if, NODE_STMT_IF);
-  visitor_add(&visitor, (visit_f)print_loop, NODE_STMT_LOOP);
-  visitor_add(&visitor, (visit_f)print_break, NODE_STMT_BREAK);
-  visitor_add(&visitor, (visit_f)print_continue, NODE_STMT_CONTINUE);
-  visitor_add(&visitor, (visit_f)print_call, NODE_EXPR_CALL);
-  visitor_add(&visitor, (visit_f)print_binop, NODE_EXPR_BINOP);
-  visitor_add(&visitor, (visit_f)print_null, NODE_EXPR_NULL);
-  visitor_add(&visitor, (visit_f)print_sizeof, NODE_EXPR_SIZEOF);
-  visitor_add(&visitor, (visit_f)print_cast, NODE_EXPR_CAST);
-  visitor_add(&visitor, (visit_f)print_member, NODE_EXPR_MEMBER);
-  visitor_add(&visitor, (visit_f)print_elem, NODE_EXPR_ELEM);
-  visitor_add(&visitor, (visit_f)print_unary, NODE_EXPR_UNARY);
-  visitor_add(&visitor, (visit_f)print_type_struct, NODE_TYPE_STRUCT);
+  visitor_add(&visitor, (VisitorFunc)print_bad, NODE_BAD);
+  visitor_add(&visitor, (VisitorFunc)print_ublock, NODE_UBLOCK);
+  visitor_add(&visitor, (VisitorFunc)print_block, NODE_BLOCK);
+  visitor_add(&visitor, (VisitorFunc)print_ident, NODE_IDENT);
+  visitor_add(&visitor, (VisitorFunc)print_decl, NODE_DECL);
+  visitor_add(&visitor, (VisitorFunc)print_load, NODE_LOAD);
+  visitor_add(&visitor, (VisitorFunc)print_lit_fn, NODE_LIT_FN);
+  visitor_add(&visitor, (VisitorFunc)print_lit_struct, NODE_LIT_STRUCT);
+  visitor_add(&visitor, (VisitorFunc)print_lit_enum, NODE_LIT_ENUM);
+  visitor_add(&visitor, (VisitorFunc)print_lit, NODE_LIT);
+  visitor_add(&visitor, (VisitorFunc)print_return, NODE_STMT_RETURN);
+  visitor_add(&visitor, (VisitorFunc)print_if, NODE_STMT_IF);
+  visitor_add(&visitor, (VisitorFunc)print_loop, NODE_STMT_LOOP);
+  visitor_add(&visitor, (VisitorFunc)print_break, NODE_STMT_BREAK);
+  visitor_add(&visitor, (VisitorFunc)print_continue, NODE_STMT_CONTINUE);
+  visitor_add(&visitor, (VisitorFunc)print_call, NODE_EXPR_CALL);
+  visitor_add(&visitor, (VisitorFunc)print_binop, NODE_EXPR_BINOP);
+  visitor_add(&visitor, (VisitorFunc)print_null, NODE_EXPR_NULL);
+  visitor_add(&visitor, (VisitorFunc)print_sizeof, NODE_EXPR_SIZEOF);
+  visitor_add(&visitor, (VisitorFunc)print_cast, NODE_EXPR_CAST);
+  visitor_add(&visitor, (VisitorFunc)print_member, NODE_EXPR_MEMBER);
+  visitor_add(&visitor, (VisitorFunc)print_elem, NODE_EXPR_ELEM);
+  visitor_add(&visitor, (VisitorFunc)print_unary, NODE_EXPR_UNARY);
+  visitor_add(&visitor, (VisitorFunc)print_type_struct, NODE_TYPE_STRUCT);
 
-  unit_t *unit;
+  Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     visitor_visit(&visitor, unit->ast.root, 0);

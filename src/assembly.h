@@ -37,34 +37,34 @@
 #include "scope.h"
 #include "unit.h"
 
-typedef struct bl_assembly
+typedef struct
 {
   BArray *               units;           /* array of all units in assembly */
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
   char *                 name;            /* assembly name */
-  scope_cache_t *        scope_cache;     /* cache for scopes */
-  scope_t *              gscope;          /* cache for global scope */
+  ScopeCache *        scope_cache;     /* cache for scopes */
+  Scope *              gscope;          /* cache for global scope */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */
   LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
   LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
-} assembly_t;
+} Assembly;
 
-assembly_t *
+Assembly *
 assembly_new(const char *name);
 
 void
-assembly_delete(assembly_t *assembly);
+assembly_delete(Assembly *assembly);
 
 void
-assembly_add_unit(assembly_t *assembly, unit_t *unit);
+assembly_add_unit(Assembly *assembly, Unit *unit);
 
 void
-assembly_add_link(assembly_t *assembly, const char *lib);
+assembly_add_link(Assembly *assembly, const char *lib);
 
 bool
-assembly_add_unit_unique(assembly_t *assembly, unit_t *unit);
+assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 #endif

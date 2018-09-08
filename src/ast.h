@@ -73,33 +73,33 @@
   nt(IDENT, ident, struct { \
     const char *str; \
     uint64_t    hash; \
-    node_t  *ref; \
-    node_t  *parent_compound; \
-    node_t  *arr; \
+    Node  *ref; \
+    Node  *parent_compound; \
+    Node  *arr; \
     int         ptr; \
   }) \
   nt(UBLOCK, ublock, struct { \
-    node_t      *nodes; \
-    scope_t     *scope; \
-    struct unit *unit; \
+    Node      *nodes; \
+    Scope     *scope; \
+    struct Unit *unit; \
   }) \
   nt(BLOCK, block, struct { \
-    node_t  *nodes; \
-    scope_t *scope; \
-    node_t  *parent_compound; \
+    Node  *nodes; \
+    Scope *scope; \
+    Node  *parent_compound; \
   }) \
   nt(STMT_RETURN, stmt_return, struct { \
-    node_t *expr; \
-    node_t *fn_decl; \
+    Node *expr; \
+    Node *fn_decl; \
   }) \
   nt(STMT_IF, stmt_if, struct { \
-    node_t *test; \
-    node_t *true_stmt; \
-    node_t *false_stmt; \
+    Node *test; \
+    Node *true_stmt; \
+    Node *false_stmt; \
   }) \
   nt(STMT_LOOP, stmt_loop, struct { \
-    node_t *test; \
-    node_t *true_stmt; \
+    Node *test; \
+    Node *true_stmt; \
   }) \
   nt(STMT_BREAK, stmt_break, struct { \
     void *_; \
@@ -108,10 +108,10 @@
     void *_; \
   }) \
   nt(DECL, decl, struct { \
-    decl_kind_e kind; \
-    node_t     *name; \
-    node_t     *type; \
-    node_t     *value; \
+    DeclKind    kind; \
+    Node     *name; \
+    Node     *type; \
+    Node     *value; \
     bool        mutable; \
     int         flags; \
     int         used; \
@@ -120,91 +120,91 @@
     BHashTable *deps; \
   }) \
   nt(TYPE_FUND, type_fund, struct { \
-    ftype_e code; \
-    node_t *arr; \
+    FundType code; \
+    Node *arr; \
     int     ptr;				\
   }) \
   nt(TYPE_FN, type_fn, struct { \
-    node_t *arg_types; \
-    node_t *ret_type; \
-    node_t *arr; \
+    Node *arg_types; \
+    Node *ret_type; \
+    Node *arr; \
     int     argc_types; \
     int     ptr; \
   }) \
   nt(TYPE_STRUCT, type_struct, struct { \
-    node_t *base_decl; /* sometimes we need structure name and scope? */ \
-    node_t *types; \
-    node_t *arr; \
+    Node *base_decl; /* sometimes we need structure name and scope? */ \
+    Node *types; \
+    Node *arr; \
     int     typesc; \
     int     ptr; \
   }) \
   nt(TYPE_ENUM, type_enum, struct { \
-    node_t *base_decl; \
-    node_t *base_type; \
-    node_t *arr; \
+    Node *base_decl; \
+    Node *base_type; \
+    Node *arr; \
     int     ptr; \
   }) \
   nt(LIT_STRUCT, lit_struct, struct { \
-    node_t  *type; \
-    scope_t *scope; \
-    node_t  *parent_compound; \
+    Node  *type; \
+    Scope *scope; \
+    Node  *parent_compound; \
   }) \
   nt(LIT_ENUM, lit_enum, struct { \
-    node_t  *type; \
-    scope_t *scope; \
-    node_t  *parent_compound; \
-    node_t  *variants; \
+    Node  *type; \
+    Scope *scope; \
+    Node  *parent_compound; \
+    Node  *variants; \
   }) \
   nt(LIT_FN, lit_fn, struct { \
-    node_t  *type; \
-    node_t  *block; \
-    scope_t *scope; \
-    node_t  *parent_compound; \
+    Node  *type; \
+    Node  *block; \
+    Scope *scope; \
+    Node  *parent_compound; \
   }) \
   nt(LIT, lit, struct { \
-    node_t       *type; \
-    token_value_u value; \
+    Node       *type; \
+    TokenValue value; \
   }) \
   nt(EXPR_CAST, expr_cast, struct { \
-    node_t *type; \
-    node_t *next; \
+    Node *type; \
+    Node *next; \
   }) \
   nt(EXPR_BINOP, expr_binop, struct { \
-    node_t *lhs; \
-    node_t *rhs; \
-    node_t *type; \
-    sym_e   op; \
+    Node *lhs; \
+    Node *rhs; \
+    Node *type; \
+    Sym   op; \
   }) \
   nt(EXPR_CALL, expr_call, struct { \
-    node_t *ref; \
-    node_t *args; \
+    Node *ref; \
+    Node *args; \
     int        argsc; \
-    node_t *type; \
+    Node *type; \
     bool       run; \
   }) \
   nt(EXPR_MEMBER, expr_member, struct { \
-    member_kind_e kind; \
-    node_t       *ident; \
-    node_t       *next; \
-    node_t       *type; \
-    bool          ptr_ref; \
+    MemberKind kind; \
+    Node    *ident; \
+    Node    *next; \
+    Node    *type; \
+    bool       ptr_ref; \
   }) \
   nt(EXPR_ELEM, expr_elem, struct { \
-    node_t       *next; \
-    node_t       *type; \
-    node_t       *index; \
+    Node       *next; \
+    Node       *type; \
+    Node       *index; \
   }) \
   nt(EXPR_SIZEOF, expr_sizeof, struct { \
-    node_t *in; \
-    node_t *type; \
+    Node *in; \
+    Node *type; \
   }) \
   nt(EXPR_UNARY, expr_unary, struct { \
-    sym_e   op; \
-    node_t *next; \
-    node_t *type; \
+    Sym   op; \
+    Node *next; \
+    Node *type; \
   }) \
   nt(EXPR_NULL, expr_null, struct { \
-    node_t *type;		    \
+    Node *type;		    \
   })
 
 // clang-format on
@@ -225,7 +225,7 @@ typedef enum
   TYPE_KIND_BOOL,   /* bool */
   TYPE_KIND_VOID,   /* void */
   TYPE_KIND_TYPE,   /* type_t */
-} type_kind_e;
+} TypeKind;
 
 typedef enum
 {
@@ -239,36 +239,36 @@ typedef enum
   DECL_KIND_VARIANT  = 6, /* enum variant */
   DECL_KIND_CONSTANT = 7, /* foo : 10; foo : bar; */
   DECL_KIND_TYPE     = 8, /* foo : s32; foo : bar; */
-} decl_kind_e;
+} DeclKind;
 
 typedef enum
 {
   MEM_KIND_UNKNOWN = -1,
   MEM_KIND_STRUCT  = 0, /* structure.bar; structure->bar; */
   MEM_KIND_ENUM    = 1, /* enum.A; */
-} member_kind_e;
+} MemberKind;
 
 typedef enum
 {
   FLAG_EXTERN = 1 << 0, /* methods marked as extern */
   FLAG_MAIN   = 1 << 1  /* main method */
-} node_flag_e;
+} NodeFlag;
 
 typedef enum
 {
   DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
   DEP_STRICT = 1 << 1, /* dependency must be linked for sucessful IR construction */
-} dep_e;
+} DepType;
 
-typedef struct ast     ast_t;
-typedef struct node    node_t;
-typedef enum node_code node_code_e;
+typedef struct Ast    Ast;
+typedef struct Node   Node;
+typedef enum NodeCode NodeCode;
 
 typedef struct
 {
-  node_t *node; /* dependent node */
-  dep_e   type; /* is dependency strict (ex.: caused by #run directive) */
-} dependency_t;
+  Node *  node; /* dependent node */
+  DepType type; /* is dependency strict (ex.: caused by #run directive) */
+} Dependency;
 
 typedef enum
 {
@@ -276,7 +276,7 @@ typedef enum
   _FTYPE_LIST
 #undef ft
       FTYPE_COUNT
-} ftype_e;
+} FundType;
 
 typedef enum
 {
@@ -284,7 +284,7 @@ typedef enum
   _BUILDINS_LIST
 #undef bt
       BUILDIN_COUNT
-} buildin_e;
+} BuildinType;
 
 extern const char *ftype_strings[];
 extern const char *node_type_strings[];
@@ -301,7 +301,7 @@ extern uint64_t buildin_hashes[BUILDIN_COUNT];
  *************************************************************************************************/
 
 #define nt(code, name, data) NODE_##code,
-enum node_code
+enum NodeCode
 {
   _NODE_TYPE_LIST NODE_COUNT
 };
@@ -324,21 +324,21 @@ _NODE_TYPE_LIST
 #define node_code(n) (n)->code
 #define node_name(n) node_type_strings[(n)->code]
 
-struct chunk;
+struct Chunk;
 
-struct ast
+struct Ast
 {
-  node_t *root;
+  Node *root;
 
-  struct chunk *first_chunk;
-  struct chunk *current_chunk;
+  struct Chunk *first_chunk;
+  struct Chunk *current_chunk;
 };
 
 void
-ast_init(ast_t *ast);
+ast_init(Ast *ast);
 
 void
-ast_terminate(ast_t *ast);
+ast_terminate(Ast *ast);
 
 /*************************************************************************************************
  * definition node
@@ -348,9 +348,9 @@ typedef enum
   NOT_CHECKED = 0, /* not checked node */
   WAITING,         /* waiting for later check */
   CHECKED          /* checked node */
-} check_state_e;
+} CheckState;
 
-struct node
+struct Node
 {
   union
   {
@@ -359,10 +359,10 @@ struct node
 #undef nt
   } n;
 
-  src_t *       src;
-  node_code_e   code;
-  node_t *      next;
-  check_state_e state;
+  Src *      src;
+  NodeCode   code;
+  Node *     next;
+  CheckState state;
 #if BL_DEBUG
   int _serial;
 #endif
@@ -373,7 +373,7 @@ struct node
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
 #define nt(code, name, data)                                                                       \
-  static inline node_##name##_t *peek_##name(node_t *n)                                            \
+  static inline node_##name##_t *peek_##name(Node *n)                                              \
   {                                                                                                \
     assert(node_is(n, NODE_##code));                                                               \
     return &(n->n.name);                                                                           \
@@ -385,123 +385,122 @@ _NODE_TYPE_LIST
  * generate constructors definitions
  *************************************************************************************************/
 
-#define _NODE_NCTOR(name, ...) node_t *ast_##name(ast_t *ast, token_t *tok, ##__VA_ARGS__)
+#define _NODE_NCTOR(name, ...) Node *ast_##name(Ast *ast, Token *tok, ##__VA_ARGS__)
 
 _NODE_NCTOR(bad);
 _NODE_NCTOR(load, const char *filepath);
 _NODE_NCTOR(link, const char *lib);
-_NODE_NCTOR(ublock, struct unit *unit, scope_t *scope);
-_NODE_NCTOR(block, node_t *nodes, node_t *parent_compound, scope_t *scope);
-_NODE_NCTOR(ident, node_t *ref, node_t *parent_compound, int ptr, node_t *arr);
-_NODE_NCTOR(stmt_return, node_t *expr, node_t *fn);
-_NODE_NCTOR(stmt_if, node_t *test, node_t *true_stmt, node_t *false_stmt);
-_NODE_NCTOR(stmt_loop, node_t *test, node_t *true_stmt);
+_NODE_NCTOR(ublock, struct Unit *unit, Scope *scope);
+_NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
+_NODE_NCTOR(ident, Node *ref, Node *parent_compound, int ptr, Node *arr);
+_NODE_NCTOR(stmt_return, Node *expr, Node *fn);
+_NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
+_NODE_NCTOR(stmt_loop, Node *test, Node *true_stmt);
 _NODE_NCTOR(stmt_break);
 _NODE_NCTOR(stmt_continue);
-_NODE_NCTOR(decl, decl_kind_e kind, node_t *name, node_t *type, node_t *value, bool mutable,
-            int flags, int order, bool in_gscope);
-_NODE_NCTOR(type_fund, ftype_e code, int ptr, node_t *arr);
-_NODE_NCTOR(type_fn, node_t *arg_types, int argc_types, node_t *ret_type, int ptr);
-_NODE_NCTOR(type_struct, node_t *types, int typesc, node_t *base_decl, int ptr);
-_NODE_NCTOR(type_enum, node_t *type, node_t *base_decl, int ptr);
-_NODE_NCTOR(lit_fn, node_t *type, node_t *block, node_t *parent_compound, scope_t *scope);
-_NODE_NCTOR(lit_struct, node_t *type, node_t *parent_compound, scope_t *scope);
-_NODE_NCTOR(lit_enum, node_t *type, node_t *variants, node_t *parent_compound, scope_t *scope);
-_NODE_NCTOR(lit, node_t *type, token_value_u value);
-_NODE_NCTOR(expr_binop, node_t *lhs, node_t *rhs, node_t *type, sym_e op);
-_NODE_NCTOR(expr_call, node_t *ref, node_t *args, int argsc, node_t *type, bool run);
-_NODE_NCTOR(expr_member, member_kind_e kind, node_t *ident, node_t *next, node_t *type,
-            bool ptr_ref);
-_NODE_NCTOR(expr_elem, node_t *next, node_t *type, node_t *index);
-_NODE_NCTOR(expr_sizeof, node_t *in, node_t *type);
-_NODE_NCTOR(expr_cast, node_t *type, node_t *next);
-_NODE_NCTOR(expr_unary, sym_e op, node_t *next, node_t *type);
-_NODE_NCTOR(expr_null, node_t *type);
+_NODE_NCTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
+            int order, bool in_gscope);
+_NODE_NCTOR(type_fund, FundType code, int ptr, Node *arr);
+_NODE_NCTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
+_NODE_NCTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
+_NODE_NCTOR(type_enum, Node *type, Node *base_decl, int ptr);
+_NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
+_NODE_NCTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope);
+_NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
+_NODE_NCTOR(lit, Node *type, TokenValue value);
+_NODE_NCTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
+_NODE_NCTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
+_NODE_NCTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref);
+_NODE_NCTOR(expr_elem, Node *next, Node *type, Node *index);
+_NODE_NCTOR(expr_sizeof, Node *in, Node *type);
+_NODE_NCTOR(expr_cast, Node *type, Node *next);
+_NODE_NCTOR(expr_unary, Sym op, Node *next, Node *type);
+_NODE_NCTOR(expr_null, Node *type);
 
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
 
-typedef struct visitor visitor_t;
-typedef void (*visit_f)(visitor_t *visitor, node_t *node, void *cnt);
+typedef struct Visitor Visitor;
+typedef void (*VisitorFunc)(Visitor *visitor, Node *node, void *cnt);
 
-struct visitor
+struct Visitor
 {
-  visit_f visitors[NODE_COUNT];
+  VisitorFunc visitors[NODE_COUNT];
 };
 
 void
-visitor_init(visitor_t *visitor);
+visitor_init(Visitor *visitor);
 
 void
-visitor_add(visitor_t *visitor, visit_f fn, node_code_e code);
+visitor_add(Visitor *visitor, VisitorFunc fn, NodeCode code);
 
 void
-visitor_visit(visitor_t *visitor, node_t *node, void *cnt);
+visitor_visit(Visitor *visitor, Node *node, void *cnt);
 
 void
-visitor_walk(visitor_t *visitor, node_t *node, void *cnt);
+visitor_walk(Visitor *visitor, Node *node, void *cnt);
 
 /*************************************************************************************************
  * other
  *************************************************************************************************/
 
 /* static fundamental type nodes */
-extern node_t ftypes[];
+extern Node ftypes[];
 
 void
-ast_type_to_string(char *buf, size_t len, node_t *type);
+ast_type_to_string(char *buf, size_t len, Node *type);
 
-scope_t *
-ast_get_scope(node_t *node);
+Scope *
+ast_get_scope(Node *node);
 
-node_t *
-ast_get_parent_compound(node_t *node);
+Node *
+ast_get_parent_compound(Node *node);
 
 bool
-ast_is_type(node_t *node);
+ast_is_type(Node *node);
 
-node_t *
-ast_get_type(node_t *node);
+Node *
+ast_get_type(Node *node);
 
 void
-ast_set_type(node_t *node, node_t *type);
+ast_set_type(Node *node, Node *type);
 
 int
-ast_is_buildin_type(node_t *ident);
+ast_is_buildin_type(Node *ident);
 
 int
-ast_is_buildin(node_t *ident);
+ast_is_buildin(Node *ident);
 
 bool
-ast_type_cmp(node_t *first, node_t *second);
+ast_type_cmp(Node *first, Node *second);
 
 int
-ast_type_get_ptr(node_t *type);
+ast_type_get_ptr(Node *type);
 
 void
-ast_type_set_ptr(node_t *type, int ptr);
+ast_type_set_ptr(Node *type, int ptr);
 
-node_t *
-ast_type_get_arr(node_t *type);
+Node *
+ast_type_get_arr(Node *type);
 
 void
-ast_type_set_arr(node_t *type, node_t *arr);
+ast_type_set_arr(Node *type, Node *arr);
 
-type_kind_e
-ast_get_type_kind(node_t *type);
+TypeKind
+ast_get_type_kind(Node *type);
 
 bool
-ast_can_impl_cast(node_t *from_type, node_t *to_type);
+ast_can_impl_cast(Node *from_type, Node *to_type);
 
-node_t *
-ast_node_dup(ast_t *ast, node_t *node);
+Node *
+ast_node_dup(Ast *Ast, Node *node);
 
-node_t *
-ast_unroll_ident(node_t *ident);
+Node *
+ast_unroll_ident(Node *ident);
 
-dependency_t *
-ast_add_dep_uq(node_t *decl, node_t *dep, int type);
+Dependency *
+ast_add_dep_uq(Node *decl, Node *dep, int type);
 
 /**************************************************************************************************/
 

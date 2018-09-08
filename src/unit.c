@@ -33,7 +33,7 @@
 #include "bldebug.h"
 
 static void
-init(unit_t *unit)
+init(Unit *unit)
 {
   tokens_init(&unit->tokens);
   ast_init(&unit->ast);
@@ -81,10 +81,10 @@ search_file(const char *filepath)
 }
 
 /* public */
-unit_t *
+Unit *
 unit_new_file(const char *filepath)
 {
-  unit_t *unit = bl_calloc(1, sizeof(unit_t));
+  Unit *unit = bl_calloc(1, sizeof(Unit));
   if (!unit) bl_abort("bad alloc");
   unit->filepath = search_file(filepath);
   unit->name     = strdup(filepath);
@@ -92,10 +92,10 @@ unit_new_file(const char *filepath)
   return unit;
 }
 
-unit_t *
+Unit *
 unit_new_str(const char *name, const char *src)
 {
-  unit_t *unit = bl_calloc(1, sizeof(unit_t));
+  Unit *unit = bl_calloc(1, sizeof(Unit));
   if (!unit) bl_abort("bad alloc");
   unit->filepath = strdup(name);
   unit->name     = strdup(name);
@@ -110,7 +110,7 @@ unit_new_str(const char *name, const char *src)
 }
 
 void
-unit_delete(unit_t *unit)
+unit_delete(Unit *unit)
 {
   free(unit->filepath);
   free(unit->src);
@@ -121,25 +121,25 @@ unit_delete(unit_t *unit)
 }
 
 const char *
-unit_get_src_file(unit_t *unit)
+unit_get_src_file(Unit *unit)
 {
   return unit->filepath;
 }
 
 const char *
-unit_get_src(unit_t *unit)
+unit_get_src(Unit *unit)
 {
   return unit->src;
 }
 
 const char *
-unit_get_name(unit_t *unit)
+unit_get_name(Unit *unit)
 {
   return unit->name;
 }
 
 const char *
-unit_get_src_ln(unit_t *unit, int line, long *len)
+unit_get_src_ln(Unit *unit, int line, long *len)
 {
   int         l    = 1;
   const char *iter = unit->src;

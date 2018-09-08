@@ -41,10 +41,10 @@
 #define MAX_ERROR_REPORTED 10
 
 static int
-compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t flags);
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 
 static int
-compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags);
+compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags);
 
 static void
 default_error_handler(const char *msg, void *context)
@@ -82,7 +82,7 @@ llvm_init(void)
   if ((_builder)->errorc) return COMPILE_FAIL;
 
 int
-compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t flags)
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
   // bl_msg_log("processing unit: %s", unit->name);
 
@@ -105,7 +105,7 @@ compile_unit(builder_t *builder, unit_t *unit, assembly_t *assembly, uint32_t fl
 }
 
 int
-compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
+compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   if (!builder->errorc) checker_run(builder, assembly);
   if (!builder->errorc) post_run(builder, assembly);
@@ -137,10 +137,10 @@ compile_assembly(builder_t *builder, assembly_t *assembly, uint32_t flags)
 }
 
 /* public */
-builder_t *
+Builder *
 builder_new(void)
 {
-  builder_t *builder = bl_calloc(1, sizeof(builder_t));
+  Builder *builder = bl_calloc(1, sizeof(Builder));
   if (!builder) bl_abort("bad alloc");
 
   builder->on_error   = default_error_handler;
@@ -154,16 +154,16 @@ builder_new(void)
 }
 
 void
-builder_delete(builder_t *builder)
+builder_delete(Builder *builder)
 {
   bl_free(builder);
 }
 
 int
-builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   clock_t begin = clock();
-  unit_t *unit;
+  Unit *unit;
   int     state = COMPILE_OK;
 
   builder->no_warn = flags & BUILDER_NO_WARN;
@@ -192,14 +192,14 @@ builder_compile(builder_t *builder, assembly_t *assembly, uint32_t flags)
 }
 
 void
-builder_set_error_diag_handler(builder_t *builder, diag_handler_f handler, void *context)
+builder_set_error_diag_handler(Builder *builder, diag_handler_f handler, void *context)
 {
   builder->on_error     = handler;
   builder->on_error_cnt = context;
 }
 
 void
-builder_set_warning_diag_handler(builder_t *builder, diag_handler_f handler, void *context)
+builder_set_warning_diag_handler(Builder *builder, diag_handler_f handler, void *context)
 {
   builder->on_warning     = handler;
   builder->on_warning_cnt = context;
@@ -212,7 +212,7 @@ bl_diag_delete_msg(char *msg)
 }
 
 void
-builder_error(builder_t *builder, const char *format, ...)
+builder_error(Builder *builder, const char *format, ...)
 {
   if (builder->errorc > MAX_ERROR_REPORTED) return;
   char error[MAX_MSG_LEN] = {0};
@@ -227,7 +227,7 @@ builder_error(builder_t *builder, const char *format, ...)
 }
 
 void
-builder_warning(builder_t *builder, const char *format, ...)
+builder_warning(Builder *builder, const char *format, ...)
 {
   char warning[MAX_MSG_LEN] = {0};
 
@@ -240,8 +240,8 @@ builder_warning(builder_t *builder, const char *format, ...)
 }
 
 void
-builder_msg(builder_t *builder, builder_msg_type type, int code, struct src *src,
-            builder_msg_cur_pos pos, const char *format, ...)
+builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src,
+            BuilderCurPos pos, const char *format, ...)
 {
   if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
   if (builder->no_warn && type == BUILDER_MSG_WARNING) return;

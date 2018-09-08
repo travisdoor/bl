@@ -43,32 +43,32 @@
 
 typedef struct context
 {
-  builder_t *builder;
-  unit_t *   unit;
-  tokens_t * tokens;
+  Builder *builder;
+  Unit *   unit;
+  Tokens * tokens;
   jmp_buf    jmp_error;
   char *     c;
   int        line;
   int        col;
-} context_t;
+} Context;
 
 static void
-scan(context_t *cnt);
+scan(Context *cnt);
 
 static bool
-scan_comment(context_t *cnt, const char *term);
+scan_comment(Context *cnt, const char *term);
 
 static bool
-scan_ident(context_t *cnt, token_t *tok);
+scan_ident(Context *cnt, Token *tok);
 
 static bool
-scan_string(context_t *cnt, token_t *tok);
+scan_string(Context *cnt, Token *tok);
 
 static bool
-scan_char(context_t *cnt, token_t *tok);
+scan_char(Context *cnt, Token *tok);
 
 static bool
-scan_number(context_t *cnt, token_t *tok);
+scan_number(Context *cnt, Token *tok);
 
 static inline int
 c_to_number(char c, int base);
@@ -77,7 +77,7 @@ static char
 scan_specch(char c);
 
 bool
-scan_comment(context_t *cnt, const char *term)
+scan_comment(Context *cnt, const char *term)
 {
   const size_t len = strlen(term);
   while (true) {
@@ -103,7 +103,7 @@ scan_comment(context_t *cnt, const char *term)
 }
 
 bool
-scan_ident(context_t *cnt, token_t *tok)
+scan_ident(Context *cnt, Token *tok)
 {
   tok->src.line = cnt->line;
   tok->src.col  = cnt->col;
@@ -156,7 +156,7 @@ scan_specch(char c)
 }
 
 bool
-scan_string(context_t *cnt, token_t *tok)
+scan_string(Context *cnt, Token *tok)
 {
   if (*cnt->c != '\"') {
     return false;
@@ -218,7 +218,7 @@ exit:
 }
 
 bool
-scan_char(context_t *cnt, token_t *tok)
+scan_char(Context *cnt, Token *tok)
 {
   if (*cnt->c != '\'') return false;
   tok->src.line = cnt->line;
@@ -289,7 +289,7 @@ c_to_number(char c, int base)
 }
 
 bool
-scan_number(context_t *cnt, token_t *tok)
+scan_number(Context *cnt, Token *tok)
 {
   tok->src.line  = cnt->line;
   tok->src.col   = cnt->col;
@@ -379,9 +379,9 @@ scan_double : {
 }
 
 void
-scan(context_t *cnt)
+scan(Context *cnt)
 {
-  token_t tok;
+  Token tok;
 scan:
   tok.src.line = cnt->line;
   tok.src.col  = cnt->col;
@@ -423,7 +423,7 @@ scan:
     len = strlen(sym_strings[i]);
     if (strncmp(cnt->c, sym_strings[i], len) == 0) {
       cnt->c += len;
-      tok.sym     = (sym_e)i;
+      tok.sym     = (Sym)i;
       tok.src.len = len;
 
       /*
@@ -473,9 +473,9 @@ push_token:
 }
 
 void
-lexer_run(builder_t *builder, unit_t *unit)
+lexer_run(Builder *builder, Unit *unit)
 {
-  context_t cnt = {
+  Context cnt = {
       .builder = builder,
       .tokens  = &unit->tokens,
       .unit    = unit,

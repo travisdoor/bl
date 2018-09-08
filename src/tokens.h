@@ -34,81 +34,81 @@
 #include <bobject/containers/array.h>
 #include "token.h"
 
-typedef struct tokens
+typedef struct Tokens
 {
   BArray *buf;
   BArray *string_cache;
   size_t  iter;
   size_t  marker;
-} tokens_t;
+} Tokens;
 
 void
-tokens_init(tokens_t *tokens);
+tokens_init(Tokens *tokens);
 
 void
-tokens_terminate(tokens_t *tokens);
+tokens_terminate(Tokens *tokens);
 
 BString *
-tokens_create_cached_str(tokens_t *tokens);
+tokens_create_cached_str(Tokens *tokens);
 
 int
-tokens_count(tokens_t *tokens);
+tokens_count(Tokens *tokens);
 
 void
-tokens_push(tokens_t *tokens, token_t *t);
+tokens_push(Tokens *tokens, Token *t);
 
-token_t *
-tokens_peek(tokens_t *tokens);
+Token *
+tokens_peek(Tokens *tokens);
 
-token_t *
-tokens_peek_last(tokens_t *tokens);
+Token *
+tokens_peek_last(Tokens *tokens);
 
-token_t *
-tokens_peek_2nd(tokens_t *tokens);
+Token *
+tokens_peek_2nd(Tokens *tokens);
 
-token_t *
-tokens_peek_nth(tokens_t *tokens, size_t n);
+Token *
+tokens_peek_nth(Tokens *tokens, size_t n);
 
-token_t *
-tokens_peek_prev(tokens_t *tokens);
+Token *
+tokens_peek_prev(Tokens *tokens);
 
-token_t *
-tokens_consume(tokens_t *tokens);
+Token *
+tokens_consume(Tokens *tokens);
 
-token_t *
-tokens_consume_if(tokens_t *tokens, sym_e sym);
-
-bool
-tokens_current_is(tokens_t *tokens, sym_e sym);
+Token *
+tokens_consume_if(Tokens *tokens, Sym sym);
 
 bool
-tokens_previous_is(tokens_t *tokens, sym_e sym);
+tokens_current_is(Tokens *tokens, Sym sym);
 
 bool
-tokens_next_is(tokens_t *tokens, sym_e sym);
+tokens_previous_is(Tokens *tokens, Sym sym);
 
 bool
-tokens_current_is_not(tokens_t *tokens, sym_e sym);
+tokens_next_is(Tokens *tokens, Sym sym);
 
 bool
-tokens_next_is_not(tokens_t *tokens, sym_e sym);
+tokens_current_is_not(Tokens *tokens, Sym sym);
 
 bool
-tokens_is_seq(tokens_t *tokens, int cnt, ...);
+tokens_next_is_not(Tokens *tokens, Sym sym);
+
+bool
+tokens_is_seq(Tokens *tokens, int cnt, ...);
 
 void
-tokens_reset_iter(tokens_t *tokens);
+tokens_reset_iter(Tokens *tokens);
 
 void
-tokens_set_marker(tokens_t *tokens);
+tokens_set_marker(Tokens *tokens);
 
 void
-tokens_back_to_marker(tokens_t *tokens);
+tokens_back_to_marker(Tokens *tokens);
 
 void
-tokens_consume_till(tokens_t *tokens, sym_e sym);
+tokens_consume_till(Tokens *tokens, Sym sym);
 
 BArray *
-tokens_get_all(tokens_t *tokens);
+tokens_get_all(Tokens *tokens);
 
 #endif

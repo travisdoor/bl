@@ -31,15 +31,15 @@
 #include "ast.h"
 
 void
-scope_cache_init(scope_cache_t **cache)
+scope_cache_init(ScopeCache **cache)
 {
-  *cache = bo_array_new(sizeof(scope_t *));
+  *cache = bo_array_new(sizeof(Scope *));
 }
 
 void
-scope_cache_terminate(scope_cache_t *cache)
+scope_cache_terminate(ScopeCache *cache)
 {
-  scope_t *scope;
+  Scope *scope;
   barray_foreach(cache, scope)
   {
     bo_unref(scope);
@@ -48,39 +48,39 @@ scope_cache_terminate(scope_cache_t *cache)
   bo_unref(cache);
 }
 
-scope_t *
-scope_new(scope_cache_t *cache, size_t size)
+Scope *
+scope_new(ScopeCache *cache, size_t size)
 {
-  scope_t *scope = bo_htbl_new(sizeof(node_t *), size);
+  Scope *scope = bo_htbl_new(sizeof(Node *), size);
   bo_array_push_back(cache, scope);
   return scope;
 }
 
 void
-scope_delete(scope_t *scope)
+scope_delete(Scope *scope)
 {
   bo_unref(scope);
 }
 
 void
-scope_insert(scope_t *scope, struct node *ident, struct node *node)
+scope_insert(Scope *scope, Node *ident, Node *node)
 {
   assert(scope);
   const node_ident_t *_ident = peek_ident(ident);
   bo_htbl_insert(scope, _ident->hash, node);
 }
 
-node_t *
-scope_get(scope_t *scope, node_t *ident)
+Node *
+scope_get(Scope *scope, Node *ident)
 {
   assert(scope);
   const node_ident_t *_ident = peek_ident(ident);
-  if (scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, node_t *);
+  if (scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, Node *);
   return NULL;
 }
 
 bool
-scope_has_symbol(scope_t *scope, node_t *ident)
+scope_has_symbol(Scope *scope, Node *ident)
 {
   assert(scope);
   const node_ident_t *_ident = peek_ident(ident);

@@ -33,7 +33,7 @@
 #include "common.h"
 
 void
-file_loader_run(builder_t *builder, unit_t *unit)
+file_loader_run(Builder *builder, Unit *unit)
 {
   if (!unit->filepath) {
     builder_error(builder, "file not found %s", unit->name);

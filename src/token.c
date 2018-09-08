@@ -35,13 +35,13 @@ char *sym_strings[] = {
 };
 
 bool
-token_is_binop(token_t *token)
+token_is_binop(Token *token)
 {
   return token->sym >= SYM_EQ && token->sym <= SYM_LESS;
 }
 
 bool
-token_is_unary(token_t *token)
+token_is_unary(Token *token)
 {
   switch (token->sym) {
   case SYM_AND:
@@ -58,7 +58,7 @@ token_is_unary(token_t *token)
 }
 
 bool
-token_is_logic_op(token_t *token)
+token_is_logic_op(Token *token)
 {
   switch (token->sym) {
   case SYM_LESS:
@@ -77,7 +77,7 @@ token_is_logic_op(token_t *token)
 }
 
 int
-token_prec(token_t *token, bool unary)
+token_prec(Token *token, bool unary)
 {
   switch (token->sym) {
     // . -> [ (
@@ -149,14 +149,14 @@ token_prec(token_t *token, bool unary)
 }
 
 bool
-token_is(token_t *token, sym_e sym)
+token_is(Token *token, Sym sym)
 {
   if (!token) return false;
   return token->sym == sym;
 }
 
 bool
-token_is_not(token_t *token, sym_e sym)
+token_is_not(Token *token, Sym sym)
 {
   return !token_is(token, sym);
 }
