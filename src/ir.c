@@ -62,6 +62,25 @@ typedef struct
   LLVMValueRef           fn_ret_val;
 } Context;
 
+typedef enum
+{
+  RR_U64,
+  RR_S64,
+  RR_REAL,
+  RR_VOID,
+} RunResultType;
+
+typedef struct
+{
+  RunResultType type;
+  union
+  {
+    uint64_t u64;
+    int64_t  s64;
+    double   real;
+  };
+} RunResult;
+
 static void
 generate(Context *cnt);
 
@@ -86,7 +105,7 @@ link_into_jit(Context *cnt, Node *fn);
 static bool
 is_satisfied(Context *cnt, Node *decl, bool strict_only);
 
-static LLVMGenericValueRef
+static RunResult
 run(Context *cnt, Node *fn);
 
 static LLVMValueRef
@@ -358,8 +377,28 @@ to_llvm_type(Context *cnt, Node *type)
   }
 
   if (arr) {
-    assert(node_is(arr, NODE_LIT));
-    result = LLVMArrayType(result, peek_lit(arr)->value.u);
+    size_t arr_size = 0;
+    if (node_is(arr, NODE_EXPR_CALL)) {
+      NodeExprCall *_call = peek_expr_call(arr);
+      assert(_call->run);
+      RunResult rr = run(cnt, _call->ref);
+
+      switch (rr.type) {
+      case RR_S64:
+        arr_size = rr.s64;
+        break;
+      case RR_U64:
+        arr_size = rr.u64;
+        break;
+      default:
+        bl_abort("invalid type of array size called function");
+      }
+    } else if (node_is(arr, NODE_LIT)) {
+      arr_size = peek_lit(arr)->value.u;
+    }
+
+    assert(arr_size);
+    result = LLVMArrayType(result, arr_size);
   }
 
   return result;
@@ -488,23 +527,20 @@ ir_expr_call_rt(Context *cnt, Node *call)
 LLVMValueRef
 ir_expr_call_ct(Context *cnt, Node *call)
 {
-  NodeExprCall *      _call   = peek_expr_call(call);
-  LLVMGenericValueRef generic = run(cnt, _call->ref);
-  if (!generic) return NULL;
+  NodeExprCall *_call = peek_expr_call(call);
+  RunResult     rr    = run(cnt, _call->ref);
 
   LLVMTypeRef llvm_type = to_llvm_type(cnt, ast_unroll_ident(_call->type));
-  assert(llvm_type);
 
-  LLVMTypeKind kind = LLVMGetTypeKind(llvm_type);
-
-  switch (kind) {
-  case LLVMVoidTypeKind:
+  switch (rr.type) {
+  case RR_VOID:
     return NULL;
-  case LLVMIntegerTypeKind:
-    return LLVMConstInt(llvm_type, LLVMGenericValueToInt(generic, false), false);
-  case LLVMFloatTypeKind:
-  case LLVMDoubleTypeKind:
-    return LLVMConstReal(llvm_type, LLVMGenericValueToFloat(llvm_type, generic));
+  case RR_S64:
+    return LLVMConstInt(llvm_type, rr.s64, true);
+  case RR_U64:
+    return LLVMConstInt(llvm_type, rr.u64, false);
+  case RR_REAL:
+    return LLVMConstReal(llvm_type, rr.real);
   default:
     bl_abort("unsupported type of run result");
   }
@@ -1270,22 +1306,51 @@ create_jit(LLVMContextRef llvm_cnt)
   return jit;
 }
 
-LLVMGenericValueRef
+RunResult
 run(Context *cnt, Node *fn)
 {
   Node *decl = ast_unroll_ident(fn);
   link_into_jit(cnt, decl);
   LLVMValueRef        llvm_fn;
-  LLVMGenericValueRef result;
+  LLVMGenericValueRef generic;
 
   NodeDecl *  _decl     = peek_decl(decl);
   const char *decl_name = peek_ident(_decl->name)->str;
   assert(decl_name);
 
   if (!LLVMFindFunction(cnt->llvm_jit, decl_name, &llvm_fn)) {
-    result = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+    generic = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
   } else {
     bl_abort("unknown function %s", decl_name);
+  }
+
+  RunResult result = {.type = RR_VOID};
+  if (!generic) return result;
+
+  Node *   ret_type = peek_type_fn(_decl->type)->ret_type;
+  TypeKind kind     = ast_type_kind(ast_unroll_ident(ret_type));
+  switch (kind) {
+  case TYPE_KIND_SINT: {
+    result.type = RR_S64;
+    result.s64  = LLVMGenericValueToInt(generic, true);
+    return result;
+  }
+
+  case TYPE_KIND_UINT:
+  case TYPE_KIND_SIZE: {
+    result.type = RR_U64;
+    result.u64  = LLVMGenericValueToInt(generic, false);
+    return result;
+  }
+
+  case TYPE_KIND_REAL: {
+    LLVMTypeRef llvm_type = to_llvm_type(cnt, ret_type);
+    result.type           = RR_REAL;
+    result.real           = LLVMGenericValueToFloat(llvm_type, generic);
+    return result;
+  }
+  default:
+    bl_abort("unsupported return type of compile time executed function %s", decl_name);
   }
 
   return result;
@@ -1316,7 +1381,7 @@ generate(Context *cnt)
       /* declaration is waiting for it's dependencies and need to be processed later */
       bo_list_push_back(queue, decl);
 #if VERBOSE
-      bl_log(BL_RED("defered: '%s'"), peek_ident(peek_decl(decl)->name)->str);
+      // bl_log(RED("defered: '%s'"), peek_ident(peek_decl(decl)->name)->str);
 #endif
     }
   }
@@ -1328,7 +1393,7 @@ generate_decl(Context *cnt, Node *decl)
   assert(decl);
   NodeDecl *_decl = peek_decl(decl);
 #if VERBOSE
-  bl_log(BL_GREEN("generate: '%s'"), peek_ident(_decl->name)->str);
+  bl_log(GREEN("generate: '%s'"), peek_ident(_decl->name)->str);
 #endif
   cnt->llvm_module = LLVMModuleCreateWithNameInContext(peek_ident(_decl->name)->str, cnt->llvm_cnt);
   ir_node(cnt, decl);
@@ -1428,7 +1493,7 @@ bool
 is_satisfied(Context *cnt, Node *decl, bool strict_only)
 {
 #if VERBOSE
-  if (!strict_only) bl_log(BL_YELLOW("checking non-strict dependencies"));
+  if (!strict_only) bl_log(YELLOW("checking non-strict dependencies"));
 #endif
   assert(decl);
   BHashTable *deps = peek_decl(decl)->deps;
@@ -1478,6 +1543,16 @@ ir_run(Builder *builder, Assembly *assembly)
 
   ir_validate(assembly->llvm_module);
 
+#if 0
+  LLVMModuleRef tmp;
+  bo_iterator_t iter;
+  bhtbl_foreach(cnt.llvm_modules, iter)
+  {
+    tmp = bo_htbl_iter_peek_value(cnt.llvm_modules, &iter, LLVMModuleRef);
+    assert(tmp);
+    LLVMDisposeModule(tmp);
+  }
+#endif
   if (bo_htbl_size(cnt.llvm_modules))
     bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
 

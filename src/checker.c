@@ -47,6 +47,8 @@
 #define FINISH return true
 #define WAIT return false
 
+#define FN_ARR_COUNT_NAME "ARR_COUNT_"
+
 #define check_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
     builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), &(tok)->src, (pos), (format),            \
@@ -61,14 +63,19 @@
 
 #define check_warning(cnt, tok, pos, format, ...)                                                  \
   {                                                                                                \
-    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, &(tok)->src, (pos), (format),               \
+    builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, &(tok)->src, (pos), (format),              \
                 ##__VA_ARGS__);                                                                    \
   }
 
 #define check_warning_node(cnt, node, pos, format, ...)                                            \
   {                                                                                                \
-    builder_msg((cnt)->builder, BL_BUILDER_WARNING, 0, (node)->src, (pos), (format),               \
+    builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, (node)->src, (pos), (format),              \
                 ##__VA_ARGS__);                                                                    \
+  }
+
+#define check_note_node(cnt, node, pos, format, ...)                                               \
+  {                                                                                                \
+    builder_msg((cnt)->builder, BUILDER_MSG_NOTE, 0, (node)->src, (pos), (format), ##__VA_ARGS__); \
   }
 
 typedef struct
@@ -88,6 +95,9 @@ typedef struct
   BArray *flatten;
   size_t  i;
 } FIter;
+
+static inline const char *
+gen_uname(Context *cnt, const char *base);
 
 static inline Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree);
@@ -180,6 +190,19 @@ static void
 check_unresolved(Context *cnt);
 
 // impl
+const char *
+gen_uname(Context *cnt, const char *base)
+{
+  BString *cstr = tokens_create_cached_str(&cnt->unit->tokens);
+  bo_string_append(cstr, "__");
+  bo_string_append(cstr, base);
+  uint64_t ui = builder_get_unique_id(cnt->builder);
+  char     ui_str[21];
+  sprintf(ui_str, "%llu", ui);
+  bo_string_append(cstr, ui_str);
+  return bo_string_get(cstr);
+}
+
 Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
@@ -838,22 +861,55 @@ check_ident(Context *cnt, Node **ident)
       }
 
       if (node_is_not(_ident->arr, NODE_LIT)) {
-        /* TODO try to evaluate exact value of size expression */
-
 #if ENABLE_EXPERIMENTAL
         TokenValue value;
         Node *     eval_err_node;
         value.u = eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
 
         if (eval_err_node) {
+          /* unable to evaluate value */
           if (node_is(eval_err_node, NODE_EXPR_CALL) && peek_expr_call(eval_err_node)->run) {
-            /* expression contains #run executed function call so we must take whole expression and
-             * put it into function generated in global scope */
+            if (eval_err_node != _ident->arr) {
+              /* un-evaluated compile-time call is not a root of the arr expression so we need to
+               * put whole expression into implicit function and replace arr with call to this
+               * functon */
+
+              /* generate unique name */
+              const char *uname = gen_uname(cnt, FN_ARR_COUNT_NAME);
+
+              /* FUNCTION BOILERPLATE */
+              Node *gscope   = cnt->unit->ast.root;
+              Node *fn_name  = ast_ident(cnt->ast, NULL, uname, NULL, gscope, 0, NULL);
+              Node *fn_type  = ast_type_fn(cnt->ast, NULL, NULL, 0, &ftypes[FTYPE_SIZE], 0);
+              Node *fn_block = ast_block(cnt->ast, NULL, NULL, NULL, NULL);
+              Node *fn_value = ast_lit_fn(cnt->ast, NULL, fn_type, fn_block, gscope, NULL);
+              Node *fn_decl  = ast_decl(cnt->ast, NULL, DECL_KIND_FN, fn_name, fn_type, fn_value,
+                                       false, 0, 0, true);
+
+              /* fill body */
+              Node *ret                   = ast_stmt_return(cnt->ast, NULL, _ident->arr, fn_decl);
+              peek_block(fn_block)->nodes = ret;
+
+              /* insert node into top of the global scope */
+              NodeUBlock *_gscope = peek_ublock(gscope);
+              fn_decl->next       = _gscope->nodes;
+              _gscope->nodes      = fn_decl;
+
+              /* genetate call to created function */
+              _ident->arr =
+                  ast_expr_call(cnt->ast, NULL, fn_decl, NULL, 0, &ftypes[FTYPE_SIZE], true);
+              peek_decl(fn_decl)->used = 1;
+            }
           } else {
             check_error_node(cnt, ERR_EXPECTED_CONST, eval_err_node, BUILDER_CUR_WORD,
                              "expected constant known in compile time");
+            if (node_is(eval_err_node, NODE_EXPR_CALL)) {
+              check_note_node(cnt, eval_err_node, BUILDER_CUR_BEFORE,
+                              "#run directive can be used here");
+            }
           }
         } else {
+          /* evalueted value */
           _ident->arr = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_SIZE], value);
         }
 #else

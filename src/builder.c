@@ -62,6 +62,12 @@ default_warning_handler(const char *msg, void *context)
   msg_warning("%s", msg);
 }
 
+static void
+default_note_handler(const char *msg, void *context)
+{
+  msg_note("%s", msg);
+}
+
 static bool llvm_initialized = false;
 
 static void
@@ -145,6 +151,7 @@ builder_new(void)
 
   builder->on_error   = default_error_handler;
   builder->on_warning = default_warning_handler;
+  builder->on_note    = default_note_handler;
   builder->no_warn    = false;
   builder->errorc     = 0;
 
@@ -163,7 +170,7 @@ int
 builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   clock_t begin = clock();
-  Unit *unit;
+  Unit *  unit;
   int     state = COMPILE_OK;
 
   builder->no_warn = flags & BUILDER_NO_WARN;
@@ -206,6 +213,13 @@ builder_set_warning_diag_handler(Builder *builder, diag_handler_f handler, void 
 }
 
 void
+builder_set_note_diag_handler(Builder *builder, diag_handler_f handler, void *context)
+{
+  builder->on_note     = handler;
+  builder->on_note_cnt = context;
+}
+
+void
 bl_diag_delete_msg(char *msg)
 {
   free(msg);
@@ -240,8 +254,8 @@ builder_warning(Builder *builder, const char *format, ...)
 }
 
 void
-builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src,
-            BuilderCurPos pos, const char *format, ...)
+builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCurPos pos,
+            const char *format, ...)
 {
   if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
   if (builder->no_warn && type == BUILDER_MSG_WARNING) return;
@@ -270,8 +284,16 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src,
     break;
   }
 
-  snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", type == BUILDER_MSG_ERROR ? "E" : "W", code,
-           src->unit->filepath, line, col);
+  if (code == 0) {
+    snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
+  } else {
+    const char *mark = "E";
+    if (type == BUILDER_MSG_NOTE) mark = "N";
+    if (type == BUILDER_MSG_WARNING) mark = "W";
+
+    snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code, src->unit->filepath, line, col);
+  }
+
   va_list args;
   va_start(args, format);
   vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
@@ -302,8 +324,12 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src,
   for (int i = 0; i < col + len - 1; ++i) {
     if (i < col - 1)
       bo_string_append(tmp, " ");
-    else
-      bo_string_append(tmp, type == BUILDER_MSG_ERROR ? RED("^") : YELLOW("^"));
+    else {
+      const char *marker = RED("^");
+      if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
+      if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
+      bo_string_append(tmp, marker);
+    }
   }
 
   line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
@@ -317,12 +343,22 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src,
   if (type == BUILDER_MSG_ERROR) {
     builder->errorc++;
     builder->on_error(bo_string_get(tmp), builder->on_error_cnt);
-  } else
-    builder->on_warning(bo_string_get(tmp), builder->on_error_cnt);
+  } else if (type == BUILDER_MSG_WARNING) {
+    builder->on_warning(bo_string_get(tmp), builder->on_warning_cnt);
+  } else {
+    builder->on_note(bo_string_get(tmp), builder->on_note_cnt);
+  }
 
   bo_unref(tmp);
 
 #if ASSERT_ON_CMP_ERROR
   if (type == BUILDER_MSG_ERROR) assert(false);
 #endif
+}
+
+uint64_t
+builder_get_unique_id(Builder *builder)
+{
+  static uint64_t i = 0;
+  return i++;
 }

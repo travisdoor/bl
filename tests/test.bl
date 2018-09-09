@@ -10,10 +10,11 @@ get : fn () s32 {
 main : fn () s32 {
   B : 5;
   C : 20 + B;
+
   arr s32[(10 + 2 * 3) * 2];
   arr2 s32[200 + 1 + C];
   arr3 s32[#run get()];
-  arr4 s32[get()];
+  arr4 s32[1 + #run get()];
 
   return EXIT_SUCCESS;
 };

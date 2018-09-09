@@ -63,6 +63,9 @@ schedule_generation(Context *cnt, Node *decl)
   assert(decl);
   NodeDecl *_decl = peek_decl(decl);
   if (_decl->used) bo_list_push_back(cnt->assembly->ir_queue, decl);
+#if VERBOSE
+  bl_log("schedule generation of: %s", peek_ident(_decl->name)->str);
+#endif
 }
 
 void
@@ -99,13 +102,13 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 
 #if VERBOSE
   if (_decl->deps) {
-    bl_log(BL_YELLOW("'%s'") " depends on:", peek_ident(_decl->name)->str);
-    bo_iterator_t   it;
-    bl_dependency_t tmp;
+    bl_log(YELLOW("'%s'") " depends on:", peek_ident(_decl->name)->str);
+    bo_iterator_t it;
+    Dependency    tmp;
     bhtbl_foreach(_decl->deps, it)
     {
-      tmp = bo_htbl_iter_peek_value(_decl->deps, &it, bl_dependency_t);
-      bl_log("  [%s] %s", tmp.type == DEP_STRICT ? BL_RED("STRICT") : BL_GREEN(" LAX "),
+      tmp = bo_htbl_iter_peek_value(_decl->deps, &it, Dependency);
+      bl_log("  [%s] %s", tmp.type == DEP_STRICT ? RED("STRICT") : GREEN(" LAX "),
              peek_ident(peek_decl(tmp.node)->name)->str);
     }
   }

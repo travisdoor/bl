@@ -106,7 +106,11 @@ eval_ident(Eval *eval, Node *ident)
 {
   NodeIdent *_ident = peek_ident(ident);
   assert(_ident->ref);
-  return eval_node(eval, _ident->ref);
+  if (!eval_node(eval, _ident->ref)) {
+    eval->err_node = ident;
+    return false;
+  }
+  return true;
 }
 
 bool
@@ -114,6 +118,7 @@ eval_decl(Eval *eval, Node *decl)
 {
   NodeDecl *_decl = peek_decl(decl);
   assert(_decl->value);
+  if (_decl->kind != DECL_KIND_CONSTANT) return false;
   return eval_node(eval, _decl->value);
 }
 

@@ -769,7 +769,7 @@ parse_ident(Context *cnt, int ptr)
   if (!tok_ident) return NULL;
 
   assert(cnt->curr_compound);
-  return ast_ident(cnt->ast, tok_ident, NULL, cnt->curr_compound, ptr, NULL);
+  return ast_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound, ptr, NULL);
 }
 
 Node *

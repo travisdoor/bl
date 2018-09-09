@@ -242,11 +242,11 @@ _NODE_NCTOR(ublock, struct Unit *unit, Scope *scope)
   return (Node *)_ublock;
 }
 
-_NODE_NCTOR(ident, Node *ref, Node *parent_compound, int ptr, Node *arr)
+_NODE_NCTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr)
 {
   NodeIdent *_ident       = alloc_node(ast, NODE_IDENT, tok, NodeIdent *);
-  _ident->hash            = bo_hash_from_str(tok->value.str);
-  _ident->str             = tok->value.str;
+  _ident->hash            = bo_hash_from_str(str);
+  _ident->str             = str;
   _ident->ref             = ref;
   _ident->ptr             = ptr;
   _ident->arr             = arr;
@@ -716,8 +716,17 @@ _type_to_string(char *buf, size_t len, Node *type)
     bl_abort("node is not valid type");
   }
 
-  if (ast_type_get_arr(node_is(type, NODE_DECL) ? peek_decl(type)->type : type)) {
-    append_buf(buf, len, " []");
+  Node *arr = ast_type_get_arr(node_is(type, NODE_DECL) ? peek_decl(type)->type : type);
+  if (arr) {
+    append_buf(buf, len, " [");
+    if (node_is(arr, NODE_LIT)) {
+      char tmp[21];
+      sprintf(tmp, "%llu", peek_lit(arr)->value.u);
+      append_buf(buf, len, tmp);
+    } else {
+      append_buf(buf, len, "~");
+    }
+    append_buf(buf, len, "]");
   }
 
 #undef append_buf

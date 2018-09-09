@@ -392,7 +392,7 @@ _NODE_NCTOR(load, const char *filepath);
 _NODE_NCTOR(link, const char *lib);
 _NODE_NCTOR(ublock, struct Unit *unit, Scope *scope);
 _NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
-_NODE_NCTOR(ident, Node *ref, Node *parent_compound, int ptr, Node *arr);
+_NODE_NCTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
 _NODE_NCTOR(stmt_return, Node *expr, Node *fn);
 _NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_NCTOR(stmt_loop, Node *test, Node *true_stmt);
