@@ -884,7 +884,7 @@ ast_type_cmp(Node *first, Node *second)
   assert(second);
 
   if (node_code(first) != node_code(second)) return false;
-  if (ast_get_type_kind(first) != ast_get_type_kind(second)) return false;
+  if (ast_type_kind(first) != ast_type_kind(second)) return false;
 
   // same nodes
   switch (node_code(first)) {
@@ -946,7 +946,7 @@ ast_type_cmp(Node *first, Node *second)
 }
 
 TypeKind
-ast_get_type_kind(Node *type)
+ast_type_kind(Node *type)
 {
   assert(type);
   switch (node_code(type)) {
@@ -1040,8 +1040,8 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
   from_type = ast_get_type(from_type);
   to_type   = ast_get_type(to_type);
 
-  TypeKind fkind = ast_get_type_kind(from_type);
-  TypeKind tkind = ast_get_type_kind(to_type);
+  TypeKind fkind = ast_type_kind(from_type);
+  TypeKind tkind = ast_type_kind(to_type);
 
   if (fkind == TYPE_KIND_STRING && tkind == TYPE_KIND_PTR) return true;
   if (tkind == TYPE_KIND_STRING && fkind == TYPE_KIND_PTR) return true;

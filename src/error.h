@@ -85,6 +85,8 @@ typedef enum
   ERR_INVALID_MUTABILITY      = 48,
   ERR_INVALID_NAME            = 49,
   ERR_INVALID_MEMBER_ACCESS   = 50,
+  ERR_UNIMPLEMENTED           = 51,
+  ERR_EXPECTED_CONST          = 52,
 } Error;
 
 #endif // BL_ERROR_H

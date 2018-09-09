@@ -39,6 +39,7 @@
 #include "stages.h"
 #include "common.h"
 #include "ast.h"
+#include "eval.h"
 
 #define VERBOSE 0
 #define VERBOSE_MULTIPLE_CHECK 0
@@ -72,15 +73,14 @@
 
 typedef struct
 {
-  Builder * builder;
-  Assembly *assembly;
-  Unit *    unit;
-  Ast *     ast;
-
+  Eval        evaluator;
+  Builder *   builder;
+  Assembly *  assembly;
+  Unit *      unit;
+  Ast *       ast;
   BHashTable *waiting;
   Scope *     provided_in_gscope;
-
-  BArray *flatten_cache;
+  BArray *    flatten_cache;
 } Context;
 
 typedef struct
@@ -526,11 +526,16 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
-  case NODE_IDENT:
+  case NODE_IDENT: {
+    NodeIdent *_ident = peek_ident(*node);
+    flatten(&_ident->arr);
+    break;
+  }
+
+  case NODE_TYPE_FUND:
   case NODE_EXPR_NULL:
   case NODE_STMT_BREAK:
   case NODE_STMT_CONTINUE:
-  case NODE_TYPE_FUND:
   case NODE_LIT:
   case NODE_LOAD:
   case NODE_LINK:
@@ -583,8 +588,8 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   to_type         = ast_get_type(to_type);
   Node *from_type = ast_get_type(*node);
 
-  TypeKind from_kind = ast_get_type_kind(from_type);
-  TypeKind to_kind   = ast_get_type_kind(to_type);
+  TypeKind from_kind = ast_type_kind(from_type);
+  TypeKind to_kind   = ast_type_kind(to_type);
   if (node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING && from_kind != TYPE_KIND_CHAR &&
       from_kind != TYPE_KIND_REAL &&
       (to_kind == TYPE_KIND_SIZE || to_kind == TYPE_KIND_UINT || to_kind == TYPE_KIND_SINT)) {
@@ -666,7 +671,7 @@ check_expr_call(Context *cnt, Node **call)
   }
 
   if (_call->run) {
-    TypeKind callee_ret_tkind = ast_get_type_kind(ast_unroll_ident(_callee_type->ret_type));
+    TypeKind callee_ret_tkind = ast_type_kind(ast_unroll_ident(_callee_type->ret_type));
     switch (callee_ret_tkind) {
     case TYPE_KIND_FN:
     case TYPE_KIND_PTR:
@@ -826,6 +831,36 @@ check_ident(Context *cnt, Node **ident)
     /* when ident reference is pointer we need to create copy of declaration with different
      * type, maybe there is some better solution ??? */
     if (_ident->arr) {
+      /* check valid type of array size */
+
+      if (!ast_can_impl_cast(ast_get_type(_ident->arr), &ftypes[FTYPE_SIZE])) {
+        check_error_invalid_types(cnt, ast_get_type(_ident->arr), &ftypes[FTYPE_SIZE], _ident->arr);
+      }
+
+      if (node_is_not(_ident->arr, NODE_LIT)) {
+        /* TODO try to evaluate exact value of size expression */
+
+#if ENABLE_EXPERIMENTAL
+        TokenValue value;
+        Node *     eval_err_node;
+        value.u = eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
+
+        if (eval_err_node) {
+          if (node_is(eval_err_node, NODE_EXPR_CALL) && peek_expr_call(eval_err_node)->run) {
+            /* expression contains #run executed function call so we must take whole expression and
+             * put it into function generated in global scope */
+          } else {
+            check_error_node(cnt, ERR_EXPECTED_CONST, eval_err_node, BUILDER_CUR_WORD,
+                             "expected constant known in compile time");
+          }
+        } else {
+          _ident->arr = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_SIZE], value);
+        }
+#else
+        check_error_node(cnt, ERR_UNIMPLEMENTED, _ident->arr, BUILDER_CUR_WORD,
+                         "unimplemented array size/index evaluation");
+#endif
+      }
     }
 
     _ident->ref = ast_node_dup(cnt->ast, found);
@@ -859,7 +894,7 @@ check_stmt_return(Context *cnt, Node **ret)
     if (node_is(_ret->expr, NODE_EXPR_NULL)) {
       NodeExprNull *_null = peek_expr_null(_ret->expr);
       _null->type         = fn_ret_type;
-      if (ast_get_type_kind(_null->type) != TYPE_KIND_PTR) {
+      if (ast_type_kind(_null->type) != TYPE_KIND_PTR) {
         check_error_node(
             cnt, ERR_INVALID_TYPE, _ret->expr, BUILDER_CUR_WORD,
             "'null' cannot be used because the function does not return a pointer value");
@@ -911,7 +946,7 @@ check_expr_binop(Context *cnt, Node **binop)
 
   Node *lhs_type = ast_get_type(_binop->lhs);
   assert(lhs_type);
-  TypeKind lhs_kind = ast_get_type_kind(lhs_type);
+  TypeKind lhs_kind = ast_type_kind(lhs_type);
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
     if (lhs_kind != TYPE_KIND_PTR) {
@@ -927,7 +962,7 @@ check_expr_binop(Context *cnt, Node **binop)
 
   Node *rhs_type = ast_get_type(_binop->rhs);
   assert(rhs_type);
-  TypeKind rhs_kind = ast_get_type_kind(rhs_type);
+  TypeKind rhs_kind = ast_type_kind(rhs_type);
 
   if (!ast_type_cmp(lhs_type, rhs_type)) {
     if (node_is(_binop->lhs, NODE_LIT) &&
@@ -1167,7 +1202,7 @@ check_decl(Context *cnt, Node **decl)
   case DECL_KIND_FIELD: {
     assert(_decl->mutable);
 
-    if (ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
+    if (ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
       check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
@@ -1184,8 +1219,8 @@ check_decl(Context *cnt, Node **decl)
   case DECL_KIND_CONSTANT: {
     assert(!_decl->mutable);
 
-    if (ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN ||
-        ast_get_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_STRUCT) {
+    if (ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN ||
+        ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_STRUCT) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
       check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
@@ -1225,7 +1260,7 @@ check_decl(Context *cnt, Node **decl)
   }
 
   assert(_decl->type);
-  TypeKind type_kind = ast_get_type_kind(ast_get_type(_decl->type));
+  TypeKind type_kind = ast_type_kind(ast_get_type(_decl->type));
   if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
@@ -1279,6 +1314,9 @@ checker_run(Builder *builder, Assembly *assembly)
       .provided_in_gscope = scope_new(assembly->scope_cache, 4092),
   };
 
+  /* TODO: stack size */
+  eval_init(&cnt.evaluator, 1024);
+
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
@@ -1293,7 +1331,9 @@ checker_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
+  bo_unref(cnt.provided_in_gscope);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(RED("leaking flatten cache: %d"), _flatten);
 #endif
+  eval_terminate(&cnt.evaluator);
 }

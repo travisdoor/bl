@@ -488,7 +488,7 @@ void
 ast_type_set_arr(Node *type, Node *arr);
 
 TypeKind
-ast_get_type_kind(Node *type);
+ast_type_kind(Node *type);
 
 bool
 ast_can_impl_cast(Node *from_type, Node *to_type);

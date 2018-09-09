@@ -36,10 +36,12 @@ set(HEADER_FILES
         src/stages.h
         src/common.h 
         src/scope.h
+        src/eval.h
         src/ast.h)
 
 set(SOURCE_FILES
         src/main.c
+        src/eval.c
         src/tokens.c
         src/file_loader.c
         src/unit.c
