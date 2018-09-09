@@ -47,7 +47,7 @@
 #define FINISH return true
 #define WAIT return false
 
-#define FN_ARR_COUNT_NAME "ARR_COUNT_"
+#define FN_ARR_COUNT_NAME "count@"
 
 #define check_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
@@ -194,7 +194,6 @@ const char *
 gen_uname(Context *cnt, const char *base)
 {
   BString *cstr = tokens_create_cached_str(&cnt->unit->tokens);
-  bo_string_append(cstr, "__");
   bo_string_append(cstr, base);
   uint64_t ui = builder_get_unique_id(cnt->builder);
   char     ui_str[21];
