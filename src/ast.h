@@ -107,6 +107,11 @@
   nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
     void *_; \
   }) \
+  nt(STMT_RANGE, ExprRange, stmt_range, struct { \
+    Node       *type; \
+    Node       *from; \
+    Node       *to; \
+  }) \
   nt(DECL, Decl, decl, struct { \
     DeclKind    kind; \
     Node       *name; \
@@ -206,11 +211,6 @@
   nt(EXPR_NULL, ExprNull, expr_null, struct { \
     Node *type;		    \
   }) \
-  nt(EXPR_RANGE, ExprRange, expr_range, struct { \
-    Node       *type; \
-    Node       *from; \
-    Node       *to; \
-  })
 
 // clang-format on
 
@@ -398,6 +398,7 @@ _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
 _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
 _NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
+_NODE_CTOR(stmt_range, Node *type, Node *from, Node *to);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_CTOR(stmt_loop, Node *test, Node *true_stmt);
@@ -421,7 +422,6 @@ _NODE_CTOR(expr_sizeof, Node *in, Node *type);
 _NODE_CTOR(expr_cast, Node *type, Node *next);
 _NODE_CTOR(expr_unary, Sym op, Node *next, Node *type);
 _NODE_CTOR(expr_null, Node *type);
-_NODE_CTOR(expr_range, Node *type, Node *from, Node *to);
 
 /*************************************************************************************************
  * AST visiting

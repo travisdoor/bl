@@ -43,7 +43,8 @@
   sm(DOUBLE,      "double") \
   sm(IF,          "if") /* must be first */ \
   sm(FN,          "fn") \
-  sm(MUT,         "mut") \
+  sm(IN,          "in") \
+  sm(FOR,         "for") \
   sm(CAST,        "cast") \
   sm(ELSE,        "else") \
   sm(TRUE,        "true") \
@@ -52,10 +53,8 @@
   sm(LOOP,        "loop")\
   sm(RUN,         "#run")\
   sm(FALSE,       "false") \
-  sm(CONST,       "const") \
   sm(WHILE,       "while") \
   sm(BREAK,       "break")\
-  sm(TEST,        "#test") \
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
   sm(LINE,        "#line") \

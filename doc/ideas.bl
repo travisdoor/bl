@@ -23,4 +23,7 @@ for i in 0 .. 10 {
 for i s32 in 0 .. arr.count {
 }
 
+for i in 0 .. 10 by 2 {
+}
+
 // range expression (make sense only in loops???)

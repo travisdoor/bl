@@ -90,6 +90,9 @@ parse_run(Context *cnt);
 static Node *
 parse_link(Context *cnt);
 
+static Node *
+parse_range_rq(Context *cnt);
+
 static void
 parse_ublock_content(Context *cnt, Node *ublock);
 
@@ -172,6 +175,9 @@ static Node *
 parse_stmt_if(Context *cnt);
 
 static Node *
+parse_stmt_for(Context *cnt);
+
+static Node *
 parse_stmt_while(Context *cnt);
 
 static Node *
@@ -193,6 +199,36 @@ static Node *
 parse_expr_elem(Context *cnt, Token *op);
 
 // impl
+Node *
+parse_range_rq(Context *cnt)
+{
+  Node *from = parse_expr(cnt);
+  if (!from) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
+                "expected range begin expression");
+
+    return ast_bad(cnt->ast, err_tok);
+  }
+
+  Token *tok_range = tokens_consume_if(cnt->tokens, SYM_RANGE);
+  if (!tok_range) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_RANGE, err_tok, BUILDER_CUR_WORD, "expected range '..'");
+
+    return ast_bad(cnt->ast, err_tok);
+  }
+
+  Node *to = parse_expr(cnt);
+  if (!to) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD, "expected range end expression");
+
+    return ast_bad(cnt->ast, err_tok);
+  }
+
+  return ast_stmt_range(cnt->ast, tok_range, NULL, from, to);
+}
 
 Node *
 parse_expr_cast(Context *cnt)
@@ -340,12 +376,47 @@ parse_stmt_if(Context *cnt)
 }
 
 Node *
+parse_stmt_for(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FOR);
+  if (!tok_begin) return NULL;
+
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop            = true;
+
+  /* TODO: iterator declaration */
+  tokens_consume(cnt->tokens);
+
+  /* eat 'in' */
+  if (!tokens_consume_if(cnt->tokens, SYM_IN)) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_IN, tok_err, BUILDER_CUR_WORD,
+                "expected range after iterator declaration");
+
+    cnt->inside_loop = prev_inside_loop;
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  Node *range = parse_range_rq(cnt);
+  assert(range);
+
+  Node *true_stmt = parse_block(cnt);
+  if (!true_stmt) {
+    Token *err_tok = tokens_consume(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
+    cnt->inside_loop = prev_inside_loop;
+    return ast_bad(cnt->ast, err_tok);
+  }
+
+  cnt->inside_loop = prev_inside_loop;
+  return ast_stmt_loop(cnt->ast, tok_begin, range, true_stmt);
+}
+
+Node *
 parse_stmt_while(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_WHILE);
-  if (!tok_begin) {
-    return NULL;
-  }
+  if (!tok_begin) return NULL;
 
   const bool prev_inside_loop = cnt->inside_loop;
   cnt->inside_loop            = true;
@@ -355,6 +426,7 @@ parse_stmt_while(Context *cnt)
     Token *err_tok = tokens_consume(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
                 "expected expression for the while statement");
+    cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, err_tok);
   }
 
@@ -362,6 +434,7 @@ parse_stmt_while(Context *cnt)
   if (!true_stmt) {
     Token *err_tok = tokens_consume(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
+    cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, err_tok);
   }
 
@@ -387,6 +460,7 @@ parse_stmt_loop(Context *cnt)
     Token *tok_err = tokens_consume(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD, "expected loop body");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, tok_err);
   }
 
@@ -720,6 +794,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
       rhs       = _parse_expr(cnt, rhs, token_prec(lookahead, false));
       lookahead = tokens_peek(cnt->tokens);
     }
+
     if (op->sym == SYM_LBRACKET) {
       peek_expr_elem(rhs)->next = lhs;
       lhs                       = rhs;
@@ -1262,6 +1337,11 @@ next:
   }
 
   if ((*node = parse_stmt_if(cnt))) {
+    insert_node(&node);
+    goto next;
+  }
+
+  if ((*node = parse_stmt_for(cnt))) {
     insert_node(&node);
     goto next;
   }

@@ -461,13 +461,13 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
-_NODE_CTOR(expr_range, Node *type, Node *from, Node *to)
+_NODE_CTOR(stmt_range, Node *type, Node *from, Node *to)
 {
-  NodeExprRange *_expr_range = alloc_node(ast, NODE_EXPR_RANGE, tok, NodeExprRange *);
-  _expr_range->type          = type;
-  _expr_range->from          = from;
-  _expr_range->to            = to;
-  return (Node *)_expr_range;
+  NodeExprRange *_stmt_range = alloc_node(ast, NODE_STMT_RANGE, tok, NodeExprRange *);
+  _stmt_range->type          = type;
+  _stmt_range->from          = from;
+  _stmt_range->to            = to;
+  return (Node *)_stmt_range;
 }
 
 /*************************************************************************************************
@@ -582,9 +582,9 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
-  case NODE_EXPR_RANGE: {
-    visit(peek_expr_range(node)->from);
-    visit(peek_expr_range(node)->to);
+  case NODE_STMT_RANGE: {
+    visit(peek_stmt_range(node)->from);
+    visit(peek_stmt_range(node)->to);
     break;
   }
 
