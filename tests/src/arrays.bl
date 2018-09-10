@@ -44,6 +44,19 @@ main : fn () s32 {
     printf("bar.is[i] = %d\n", bar.is[i]);
     i = i + 1;
   }
+
+  // check array size expressions
+  B : 5;
+  C : 20 + B;
+  arr2 s32[(10 + 2 * 3) * 2];
+  arr3 s32[200 + 1 + C];
+  arr4 s32[#run get()];
+  arr5 s32[1 + #run get()];
+
+  printf("arr2.count = %d\n", arr2.count);
+  printf("arr3.count = %d\n", arr3.count);
+  printf("arr4.count = %d\n", arr4.count);
+  printf("arr5.count = %d\n", arr5.count);
   
   return EXIT_SUCCESS;
 };
@@ -54,4 +67,8 @@ Foo : struct {
 
 Bar : struct {
   is s32[32]
+};
+
+get : fn () s32 {
+  return 10;
 };

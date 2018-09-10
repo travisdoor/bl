@@ -197,7 +197,7 @@ gen_uname(Context *cnt, const char *base)
   bo_string_append(cstr, base);
   uint64_t ui = builder_get_unique_id(cnt->builder);
   char     ui_str[21];
-  sprintf(ui_str, "%llu", (unsigned long long) ui);
+  sprintf(ui_str, "%llu", (unsigned long long)ui);
   bo_string_append(cstr, ui_str);
   return bo_string_get(cstr);
 }
@@ -261,7 +261,7 @@ provide(Node *ident, Node *provided)
   assert(scope);
 
 #if VERBOSE
-  bl_log("providing " BL_MAGENTA("'%s'") " (%d)", peek_ident(ident)->str, ident->_serial);
+  bl_log("providing " MAGENTA("'%s'") " (%d)", peek_ident(ident)->str, ident->_serial);
 #endif
   scope_insert(scope, ident, provided);
 }
@@ -807,16 +807,14 @@ check_node(Context *cnt, Node **node)
 #if VERBOSE && defined(BL_DEBUG)
   {
     static int  prev_checked = -1;
-    const char *file         = node->src ? node->src->unit->name : "UNKNOWN";
-    const int   line         = node->src ? node->src->line : -1;
-    Node *      checked      = wait_context(node);
+    const char *file         = (*node)->src ? (*node)->src->unit->name : "UNKNOWN";
+    const int   line         = (*node)->src ? (*node)->src->line : -1;
+    Node *      checked      = wait_context(*node);
     const char *name         = checked ? peek_ident(checked)->str : "?";
-    bl_log("checked [%s] " BL_MAGENTA("'%s'") " (%s, %d) file: " BL_YELLOW("%s") " line: " BL_CYAN(
-               "%d"),
-           result ? BL_GREEN(" OK ") : BL_RED("WAIT"), name, node_name(node), node->_serial, file,
-           line);
-    assert(prev_checked != node->_serial && "Looping checker!!!");
-    prev_checked = node->_serial;
+    bl_log("checked [%s] " MAGENTA("'%s'") " (%s, %d) file: " YELLOW("%s") " line: " CYAN("%d"),
+           result ? GREEN(" OK ") : RED("WAIT"), name, node_name(*node), (*node)->_serial, file, line);
+    assert(prev_checked != (*node)->_serial && "Looping checker!!!");
+    prev_checked = (*node)->_serial;
   }
 #endif
 
@@ -863,7 +861,7 @@ check_ident(Context *cnt, Node **ident)
 #if ENABLE_EXPERIMENTAL
         TokenValue value;
         Node *     eval_err_node;
-        value.u = (unsigned long long int) eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
+        value.u = (unsigned long long int)eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
 
         if (eval_err_node) {
           /* unable to evaluate value */

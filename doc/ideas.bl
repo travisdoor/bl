@@ -13,3 +13,20 @@ switch a {
     puts("default"); 
 }
 
+
+
+// for loop
+
+for i s32 := 0 .. 10 {
+}
+
+for i := 0 .. 10 {
+}
+
+for i := 0 .. arr.count {
+}
+
+for arr {
+}
+
+// range expression (make sense only in loops???)

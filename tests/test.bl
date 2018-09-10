@@ -3,10 +3,6 @@
 //#load "libc.bl"
 
 
-get : fn () s32 {
-  return 10;
-};
-
 main : fn () s32 {
   B : 5;
   C : 20 + B;
