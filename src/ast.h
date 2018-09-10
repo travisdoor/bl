@@ -205,6 +205,11 @@
   }) \
   nt(EXPR_NULL, ExprNull, expr_null, struct { \
     Node *type;		    \
+  }) \
+  nt(EXPR_RANGE, ExprRange, expr_range, struct { \
+    Node       *type; \
+    Node       *from; \
+    Node       *to; \
   })
 
 // clang-format on
@@ -385,37 +390,38 @@ _NODE_TYPE_LIST
  * generate constructors definitions
  *************************************************************************************************/
 
-#define _NODE_NCTOR(name, ...) Node *ast_##name(Ast *ast, Token *tok, ##__VA_ARGS__)
+#define _NODE_CTOR(name, ...) Node *ast_##name(Ast *ast, Token *tok, ##__VA_ARGS__)
 
-_NODE_NCTOR(bad);
-_NODE_NCTOR(load, const char *filepath);
-_NODE_NCTOR(link, const char *lib);
-_NODE_NCTOR(ublock, struct Unit *unit, Scope *scope);
-_NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
-_NODE_NCTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
-_NODE_NCTOR(stmt_return, Node *expr, Node *fn);
-_NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
-_NODE_NCTOR(stmt_loop, Node *test, Node *true_stmt);
-_NODE_NCTOR(stmt_break);
-_NODE_NCTOR(stmt_continue);
-_NODE_NCTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
+_NODE_CTOR(bad);
+_NODE_CTOR(load, const char *filepath);
+_NODE_CTOR(link, const char *lib);
+_NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
+_NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
+_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
+_NODE_CTOR(stmt_return, Node *expr, Node *fn);
+_NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
+_NODE_CTOR(stmt_loop, Node *test, Node *true_stmt);
+_NODE_CTOR(stmt_break);
+_NODE_CTOR(stmt_continue);
+_NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
             int order, bool in_gscope);
-_NODE_NCTOR(type_fund, FundType code, int ptr, Node *arr);
-_NODE_NCTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
-_NODE_NCTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
-_NODE_NCTOR(type_enum, Node *type, Node *base_decl, int ptr);
-_NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
-_NODE_NCTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope);
-_NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
-_NODE_NCTOR(lit, Node *type, TokenValue value);
-_NODE_NCTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
-_NODE_NCTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
-_NODE_NCTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref);
-_NODE_NCTOR(expr_elem, Node *next, Node *type, Node *index);
-_NODE_NCTOR(expr_sizeof, Node *in, Node *type);
-_NODE_NCTOR(expr_cast, Node *type, Node *next);
-_NODE_NCTOR(expr_unary, Sym op, Node *next, Node *type);
-_NODE_NCTOR(expr_null, Node *type);
+_NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
+_NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
+_NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
+_NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr);
+_NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
+_NODE_CTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope);
+_NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
+_NODE_CTOR(lit, Node *type, TokenValue value);
+_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
+_NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
+_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref);
+_NODE_CTOR(expr_elem, Node *next, Node *type, Node *index);
+_NODE_CTOR(expr_sizeof, Node *in, Node *type);
+_NODE_CTOR(expr_cast, Node *type, Node *next);
+_NODE_CTOR(expr_unary, Sym op, Node *next, Node *type);
+_NODE_CTOR(expr_null, Node *type);
+_NODE_CTOR(expr_range, Node *type, Node *from, Node *to);
 
 /*************************************************************************************************
  * AST visiting

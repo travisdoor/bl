@@ -65,6 +65,7 @@
   sm(STRUCT,      "struct") \
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
+  sm(RANGE,       "..") \
   sm(MDECL,       ":=")	\
   sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \
