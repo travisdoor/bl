@@ -63,7 +63,8 @@ push(Eval *eval, Object obj)
 static inline Object
 pop(Eval *eval)
 {
-  return eval->stack[--eval->i];
+  assert(eval != 0);
+  return eval->stack[--(eval->i)];
 }
 
 static inline void
@@ -95,7 +96,7 @@ eval_lit(Eval *eval, Node *lit)
   /* TODO: support only signed integers for now! */
   assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
-  Object tmp = obj_new_s64(_lit->value.u);
+  Object tmp = obj_new_s64((int64_t) _lit->value.u);
   push(eval, tmp);
 
   return true;
@@ -190,8 +191,9 @@ eval_init(Eval *eval, int stack_size)
   assert(stack_size > 0);
   eval->i        = 0;
   eval->size     = stack_size;
-  eval->stack    = bl_malloc(sizeof(Object) * stack_size);
   eval->err_node = NULL;
+
+  eval->stack    = bl_malloc(sizeof(Object) * stack_size);
   if (!eval->stack) bl_abort("bad allocation");
 }
 
@@ -209,5 +211,5 @@ eval_expr(Eval *eval, Node *node, Node **err_node)
   reset(eval);
   eval_node(eval, node);
   *err_node = eval->err_node;
-  return pop(eval).s64;
+  return (int) pop(eval).s64;
 }

@@ -197,7 +197,7 @@ gen_uname(Context *cnt, const char *base)
   bo_string_append(cstr, base);
   uint64_t ui = builder_get_unique_id(cnt->builder);
   char     ui_str[21];
-  sprintf(ui_str, "%llu", ui);
+  sprintf(ui_str, "%llu", (unsigned long long) ui);
   bo_string_append(cstr, ui_str);
   return bo_string_get(cstr);
 }
@@ -863,7 +863,7 @@ check_ident(Context *cnt, Node **ident)
 #if ENABLE_EXPERIMENTAL
         TokenValue value;
         Node *     eval_err_node;
-        value.u = eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
+        value.u = (unsigned long long int) eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
 
         if (eval_err_node) {
           /* unable to evaluate value */

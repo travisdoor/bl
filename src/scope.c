@@ -33,18 +33,12 @@
 void
 scope_cache_init(ScopeCache **cache)
 {
-  *cache = bo_array_new(sizeof(Scope *));
+  *cache = bo_array_new_bo(bo_typeof(BHashTable), true);
 }
 
 void
 scope_cache_terminate(ScopeCache *cache)
 {
-  Scope *scope;
-  barray_foreach(cache, scope)
-  {
-    bo_unref(scope);
-  }
-
   bo_unref(cache);
 }
 

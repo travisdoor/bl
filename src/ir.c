@@ -190,11 +190,12 @@ to_llvm_type(Context *cnt, Node *type);
 static void
 ir_validate(LLVMModuleRef module)
 {
-  char *error;
+  char *error = NULL;
   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
     char *str = LLVMPrintModuleToString(module);
     bl_abort("module not verified with error: %s\n%s", error, str);
   }
+  LLVMDisposeMessage(error);
 }
 
 static inline void
@@ -377,7 +378,7 @@ to_llvm_type(Context *cnt, Node *type)
   }
 
   if (arr) {
-    size_t arr_size = 0;
+    unsigned int arr_size = 0;
     if (node_is(arr, NODE_EXPR_CALL)) {
       NodeExprCall *_call = peek_expr_call(arr);
       assert(_call->run);
@@ -385,16 +386,16 @@ to_llvm_type(Context *cnt, Node *type)
 
       switch (rr.type) {
       case RR_S64:
-        arr_size = rr.s64;
+        arr_size = (unsigned int) rr.s64;
         break;
       case RR_U64:
-        arr_size = rr.u64;
+        arr_size = (unsigned int) rr.u64;
         break;
       default:
         bl_abort("invalid type of array size called function");
       }
     } else if (node_is(arr, NODE_LIT)) {
-      arr_size = peek_lit(arr)->value.u;
+      arr_size = (unsigned int) peek_lit(arr)->value.u;
     }
 
     assert(arr_size);
@@ -536,7 +537,7 @@ ir_expr_call_ct(Context *cnt, Node *call)
   case RR_VOID:
     return NULL;
   case RR_S64:
-    return LLVMConstInt(llvm_type, rr.s64, true);
+    return LLVMConstInt(llvm_type, (unsigned long long) rr.s64, true);
   case RR_U64:
     return LLVMConstInt(llvm_type, rr.u64, false);
   case RR_REAL:
@@ -1324,35 +1325,42 @@ run(Context *cnt, Node *fn)
     bl_abort("unknown function %s", decl_name);
   }
 
-  RunResult result = {.type = RR_VOID};
-  if (!generic) return result;
+  if (!generic) bl_abort("invalid result of compile time executed method");
+  RunResult result;
 
   Node *   ret_type = peek_type_fn(_decl->type)->ret_type;
   TypeKind kind     = ast_type_kind(ast_unroll_ident(ret_type));
   switch (kind) {
   case TYPE_KIND_SINT: {
     result.type = RR_S64;
-    result.s64  = LLVMGenericValueToInt(generic, true);
-    return result;
+    result.s64  = (int64_t) LLVMGenericValueToInt(generic, true);
+    break;
   }
 
   case TYPE_KIND_UINT:
   case TYPE_KIND_SIZE: {
     result.type = RR_U64;
     result.u64  = LLVMGenericValueToInt(generic, false);
-    return result;
+    break;
   }
 
   case TYPE_KIND_REAL: {
     LLVMTypeRef llvm_type = to_llvm_type(cnt, ret_type);
     result.type           = RR_REAL;
     result.real           = LLVMGenericValueToFloat(llvm_type, generic);
-    return result;
+    break;
+  }
+
+  case TYPE_KIND_VOID: {
+    result.type = RR_VOID;
+    result.u64  = 0;
+    break;
   }
   default:
     bl_abort("unsupported return type of compile time executed function %s", decl_name);
   }
 
+  LLVMDisposeGenericValue(generic);
   return result;
 }
 
@@ -1506,11 +1514,11 @@ is_satisfied(Context *cnt, Node *decl, bool strict_only)
     dep = bo_htbl_iter_peek_value(deps, &iter, Dependency);
 
     // PERFORMANCE: is there some better solution than check whole tree???
-    bool check_tree = strict_only ? dep.type & DEP_STRICT : true;
+    bool check_tree = (bool) (strict_only ? dep.type & DEP_STRICT : true);
     if (check_tree) {
       if (!generated(cnt, dep.node)) {
         return false;
-      } else if (check_tree && !is_satisfied(cnt, dep.node, false)) {
+      } else if (!is_satisfied(cnt, dep.node, false)) {
         return false;
       }
     }
@@ -1552,13 +1560,15 @@ ir_run(Builder *builder, Assembly *assembly)
     assert(tmp);
     LLVMDisposeModule(tmp);
   }
-#endif
   if (bo_htbl_size(cnt.llvm_modules))
     bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
+#endif
 
   assembly->llvm_cnt = cnt.llvm_cnt;
   assembly->llvm_jit = cnt.llvm_jit;
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.llvm_values);
   bo_unref(cnt.jit_linked);
+
+  LLVMDisposeBuilder(cnt.llvm_builder);
 }

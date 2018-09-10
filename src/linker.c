@@ -80,10 +80,12 @@ linker_run(Builder *builder, Assembly *assembly)
 
     LLVMDisposeMessage(error_msg);
     LLVMDisposeTargetMachine(target_machine);
+    LLVMDisposeMessage(triple);
     bl_free(filename);
     return;
   }
 
   LLVMDisposeTargetMachine(target_machine);
+  LLVMDisposeMessage(triple);
   bl_free(filename);
 }
