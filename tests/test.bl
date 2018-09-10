@@ -6,7 +6,6 @@
 main : fn () s32 {
 
   for i in 0 .. 10 {
-    
   }
 
   return EXIT_SUCCESS;

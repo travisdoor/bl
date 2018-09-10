@@ -385,7 +385,7 @@ parse_stmt_for(Context *cnt)
   cnt->inside_loop            = true;
 
   /* TODO: iterator declaration */
-  tokens_consume(cnt->tokens);
+  Node *iter = parse_decl(cnt);
 
   /* eat 'in' */
   if (!tokens_consume_if(cnt->tokens, SYM_IN)) {
@@ -400,8 +400,8 @@ parse_stmt_for(Context *cnt)
   Node *range = parse_range_rq(cnt);
   assert(range);
 
-  Node *true_stmt = parse_block(cnt);
-  if (!true_stmt) {
+  Node *block = parse_block(cnt);
+  if (!block) {
     Token *err_tok = tokens_consume(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
     cnt->inside_loop = prev_inside_loop;
@@ -409,7 +409,7 @@ parse_stmt_for(Context *cnt)
   }
 
   cnt->inside_loop = prev_inside_loop;
-  return ast_stmt_loop(cnt->ast, tok_begin, range, true_stmt);
+  return ast_stmt_for(cnt->ast, tok_begin, iter, range, block);
 }
 
 Node *
