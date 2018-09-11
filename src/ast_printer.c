@@ -156,9 +156,6 @@ print_cast(Visitor *visitor, Node *node, int pad);
 static void
 print_null(Visitor *visitor, Node *node, int pad);
 
-static void
-print_range(Visitor *visitor, Node *node, int pad);
-
 // impl
 void
 print_sizeof(Visitor *visitor, Node *node, int pad)
@@ -266,13 +263,6 @@ void
 print_for(Visitor *visitor, Node *node, int pad)
 {
   print_head("for", node->src, node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
-}
-
-void
-print_range(Visitor *visitor, Node *node, int pad)
-{
-  print_head("range", node->src, node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
@@ -441,7 +431,6 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_if, NODE_STMT_IF);
   visitor_add(&visitor, (VisitorFunc)print_loop, NODE_STMT_LOOP);
   visitor_add(&visitor, (VisitorFunc)print_for, NODE_STMT_FOR);
-  visitor_add(&visitor, (VisitorFunc)print_range, NODE_STMT_RANGE);
   visitor_add(&visitor, (VisitorFunc)print_break, NODE_STMT_BREAK);
   visitor_add(&visitor, (VisitorFunc)print_continue, NODE_STMT_CONTINUE);
   visitor_add(&visitor, (VisitorFunc)print_call, NODE_EXPR_CALL);

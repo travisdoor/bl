@@ -43,8 +43,6 @@
   sm(DOUBLE,      "double") \
   sm(IF,          "if") /* must be first */ \
   sm(FN,          "fn") \
-  sm(IN,          "in") \
-  sm(BY,          "by") \
   sm(FOR,         "for") \
   sm(CAST,        "cast") \
   sm(ELSE,        "else") \

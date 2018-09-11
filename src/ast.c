@@ -289,12 +289,12 @@ _NODE_CTOR(stmt_loop, Node *test, Node *true_stmt)
   return (Node *)_loop;
 }
 
-_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *step, Node *block)
+_NODE_CTOR(stmt_for, Node *init, Node *condition, Node *increment, Node *block)
 {
   NodeStmtFor *_for = alloc_node(ast, NODE_STMT_FOR, tok, NodeStmtFor *);
-  _for->iter        = iter;
-  _for->range       = range;
-  _for->step        = step;
+  _for->init        = init;
+  _for->condition   = condition;
+  _for->increment   = increment;
   _for->block       = block;
   return (Node *)_for;
 }
@@ -471,15 +471,6 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
-_NODE_CTOR(stmt_range, Node *type, Node *from, Node *to)
-{
-  NodeExprRange *_stmt_range = alloc_node(ast, NODE_STMT_RANGE, tok, NodeExprRange *);
-  _stmt_range->type          = type;
-  _stmt_range->from          = from;
-  _stmt_range->to            = to;
-  return (Node *)_stmt_range;
-}
-
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
@@ -592,12 +583,6 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
-  case NODE_STMT_RANGE: {
-    visit(peek_stmt_range(node)->from);
-    visit(peek_stmt_range(node)->to);
-    break;
-  }
-
   case NODE_STMT_RETURN: {
     visit(peek_stmt_return(node)->expr);
     break;
@@ -617,9 +602,9 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_STMT_FOR: {
-    visit(peek_stmt_for(node)->iter);
-    visit(peek_stmt_for(node)->range);
-    visit(peek_stmt_for(node)->step);
+    visit(peek_stmt_for(node)->init);
+    visit(peek_stmt_for(node)->condition);
+    visit(peek_stmt_for(node)->increment);
     visit(peek_stmt_for(node)->block);
     break;
   }

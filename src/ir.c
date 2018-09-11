@@ -177,6 +177,9 @@ ir_stmt_return(Context *cnt, Node *stmt_return);
 static LLVMValueRef
 ir_stmt_loop(Context *cnt, Node *loop);
 
+static LLVMValueRef
+ir_stmt_for(Context *cnt, Node *loop);
+
 static inline LLVMValueRef
 ir_stmt_break(Context *cnt, Node *brk);
 
@@ -386,16 +389,16 @@ to_llvm_type(Context *cnt, Node *type)
 
       switch (rr.type) {
       case RR_S64:
-        arr_size = (unsigned int) rr.s64;
+        arr_size = (unsigned int)rr.s64;
         break;
       case RR_U64:
-        arr_size = (unsigned int) rr.u64;
+        arr_size = (unsigned int)rr.u64;
         break;
       default:
         bl_abort("invalid type of array size called function");
       }
     } else if (node_is(arr, NODE_LIT)) {
-      arr_size = (unsigned int) peek_lit(arr)->value.u;
+      arr_size = (unsigned int)peek_lit(arr)->value.u;
     }
 
     assert(arr_size);
@@ -537,7 +540,7 @@ ir_expr_call_ct(Context *cnt, Node *call)
   case RR_VOID:
     return NULL;
   case RR_S64:
-    return LLVMConstInt(llvm_type, (unsigned long long) rr.s64, true);
+    return LLVMConstInt(llvm_type, (unsigned long long)rr.s64, true);
   case RR_U64:
     return LLVMConstInt(llvm_type, rr.u64, false);
   case RR_REAL:
@@ -1204,6 +1207,13 @@ ir_stmt_loop(Context *cnt, Node *loop)
 }
 
 LLVMValueRef
+ir_stmt_for(Context *cnt, Node *loop)
+{
+  bl_abort("missing implementation");
+  return NULL;
+}
+
+LLVMValueRef
 ir_stmt_break(Context *cnt, Node *brk)
 {
   LLVMBuildBr(cnt->llvm_builder, cnt->break_block);
@@ -1259,6 +1269,9 @@ ir_node(Context *cnt, Node *node)
 
   case NODE_STMT_LOOP:
     return ir_stmt_loop(cnt, node);
+
+  case NODE_STMT_FOR:
+    return ir_stmt_for(cnt, node);
 
   case NODE_STMT_BREAK:
     return ir_stmt_break(cnt, node);
@@ -1333,7 +1346,7 @@ run(Context *cnt, Node *fn)
   switch (kind) {
   case TYPE_KIND_SINT: {
     result.type = RR_S64;
-    result.s64  = (int64_t) LLVMGenericValueToInt(generic, true);
+    result.s64  = (int64_t)LLVMGenericValueToInt(generic, true);
     break;
   }
 
@@ -1514,7 +1527,7 @@ is_satisfied(Context *cnt, Node *decl, bool strict_only)
     dep = bo_htbl_iter_peek_value(deps, &iter, Dependency);
 
     // PERFORMANCE: is there some better solution than check whole tree???
-    bool check_tree = (bool) (strict_only ? dep.type & DEP_STRICT : true);
+    bool check_tree = (bool)(strict_only ? dep.type & DEP_STRICT : true);
     if (check_tree) {
       if (!generated(cnt, dep.node)) {
         return false;

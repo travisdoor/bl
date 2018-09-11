@@ -102,9 +102,9 @@
     Node *true_stmt; \
   }) \
   nt(STMT_FOR, StmtFor, stmt_for, struct { \
-    Node *iter; \
-    Node *step; \
-    Node *range; \
+    Node *init; \
+    Node *condition; \
+    Node *increment; \
     Node *block; \
   }) \
   nt(STMT_BREAK, StmtBreak, stmt_break, struct { \
@@ -112,11 +112,6 @@
   }) \
   nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
     void *_; \
-  }) \
-  nt(STMT_RANGE, ExprRange, stmt_range, struct { \
-    Node       *type; \
-    Node       *from; \
-    Node       *to; \
   }) \
   nt(DECL, Decl, decl, struct { \
     DeclKind    kind; \
@@ -404,11 +399,10 @@ _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
 _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
 _NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
-_NODE_CTOR(stmt_range, Node *type, Node *from, Node *to);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_CTOR(stmt_loop, Node *test, Node *true_stmt);
-_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *step, Node *block);
+_NODE_CTOR(stmt_for, Node *init, Node *condition, Node *increment, Node *block);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,

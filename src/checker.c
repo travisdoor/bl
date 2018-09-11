@@ -468,6 +468,15 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
+  case NODE_STMT_FOR: {
+    NodeStmtFor *_for = peek_stmt_for(*node);
+    flatten(&_for->init);
+    flatten(&_for->condition);
+    flatten(&_for->increment);
+    flatten(&_for->block);
+    break;
+  }
+
   case NODE_EXPR_MEMBER: {
     NodeExprMember *_member = peek_expr_member(*node);
     flatten(&_member->next);
