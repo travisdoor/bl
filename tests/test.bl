@@ -8,5 +8,14 @@ main : fn () s32 {
   for i in 0 .. 10 {
   }
 
+  for i s32 in 0 .. 10 {
+  }
+
+  for i in 1 + 2 .. 4 - 1 {
+  }
+
+  for i in 0 .. 100 by 2 {
+  }
+
   return EXIT_SUCCESS;
 };

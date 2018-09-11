@@ -103,6 +103,7 @@
   }) \
   nt(STMT_FOR, StmtFor, stmt_for, struct { \
     Node *iter; \
+    Node *step; \
     Node *range; \
     Node *block; \
   }) \
@@ -407,7 +408,7 @@ _NODE_CTOR(stmt_range, Node *type, Node *from, Node *to);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_CTOR(stmt_loop, Node *test, Node *true_stmt);
-_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *block);
+_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *step, Node *block);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,

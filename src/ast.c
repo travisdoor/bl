@@ -289,11 +289,12 @@ _NODE_CTOR(stmt_loop, Node *test, Node *true_stmt)
   return (Node *)_loop;
 }
 
-_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *block)
+_NODE_CTOR(stmt_for, Node *iter, Node *range, Node *step, Node *block)
 {
   NodeStmtFor *_for = alloc_node(ast, NODE_STMT_FOR, tok, NodeStmtFor *);
   _for->iter        = iter;
   _for->range       = range;
+  _for->step        = step;
   _for->block       = block;
   return (Node *)_for;
 }
@@ -618,6 +619,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   case NODE_STMT_FOR: {
     visit(peek_stmt_for(node)->iter);
     visit(peek_stmt_for(node)->range);
+    visit(peek_stmt_for(node)->step);
     visit(peek_stmt_for(node)->block);
     break;
   }

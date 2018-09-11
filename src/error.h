@@ -89,6 +89,7 @@ typedef enum
   ERR_EXPECTED_CONST          = 52,
   ERR_EXPECTED_IN             = 53,
   ERR_EXPECTED_RANGE          = 54,
+  ERR_EXPECTED_DECL           = 55,
 } Error;
 
 #endif // BL_ERROR_H

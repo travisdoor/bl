@@ -381,11 +381,13 @@ parse_stmt_for(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FOR);
   if (!tok_begin) return NULL;
 
-  const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop            = true;
-
-  /* TODO: iterator declaration */
   Node *iter = parse_decl(cnt);
+  if (!iter) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_DECL, tok_err, BUILDER_CUR_WORD, "expected iterator declaration");
+
+    return ast_bad(cnt->ast, tok_err);
+  }
 
   /* eat 'in' */
   if (!tokens_consume_if(cnt->tokens, SYM_IN)) {
@@ -393,23 +395,43 @@ parse_stmt_for(Context *cnt)
     parse_error(cnt, ERR_EXPECTED_IN, tok_err, BUILDER_CUR_WORD,
                 "expected range after iterator declaration");
 
-    cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, tok_err);
   }
 
   Node *range = parse_range_rq(cnt);
   assert(range);
 
+  /* optional step */
+  Node * step   = NULL;
+  Token *tok_by = tokens_consume_if(cnt->tokens, SYM_BY);
+  if (tok_by) {
+    step = parse_expr(cnt);
+    if (!step) {
+      Token *err_tok = tokens_peek(cnt->tokens);
+      parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
+                  "expected step expression after 'by'");
+      return ast_bad(cnt->ast, err_tok);
+    }
+  } else {
+    /* create default step */
+    TokenValue step_value;
+    step_value.u = 1;
+    step         = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], step_value);
+  }
+
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop            = true;
+
   Node *block = parse_block(cnt);
   if (!block) {
-    Token *err_tok = tokens_consume(cnt->tokens);
+    Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
     cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, err_tok);
   }
 
   cnt->inside_loop = prev_inside_loop;
-  return ast_stmt_for(cnt->ast, tok_begin, iter, range, block);
+  return ast_stmt_for(cnt->ast, tok_begin, iter, range, step, block);
 }
 
 Node *
@@ -423,7 +445,7 @@ parse_stmt_while(Context *cnt)
 
   Node *test = parse_expr(cnt);
   if (!test) {
-    Token *err_tok = tokens_consume(cnt->tokens);
+    Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
                 "expected expression for the while statement");
     cnt->inside_loop = prev_inside_loop;
@@ -432,7 +454,7 @@ parse_stmt_while(Context *cnt)
 
   Node *true_stmt = parse_block(cnt);
   if (!true_stmt) {
-    Token *err_tok = tokens_consume(cnt->tokens);
+    Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
     cnt->inside_loop = prev_inside_loop;
     return ast_bad(cnt->ast, err_tok);
@@ -1054,6 +1076,7 @@ parse_decl(Context *cnt)
   if (token_is(tokens_peek_2nd(cnt->tokens), SYM_ASSIGN)) return NULL;
   Token *tok_lookehead = tokens_peek_2nd(cnt->tokens);
   switch (tok_lookehead->sym) {
+  case SYM_IN:
   case SYM_IDENT:
   case SYM_ASTERISK:
   case SYM_FN:
