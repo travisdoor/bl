@@ -38,8 +38,7 @@ main : fn () s32 {
   memset(config, 0, ConfigSize);
   file_read_buf(&file, config);
 
-  i size_t := 0;
-  loop i < file.size {
+  loop i size_t := 0; i < file.size; {
     test := get_test(tests, curr_test);
     curr_test = curr_test + 1;
 
@@ -49,10 +48,8 @@ main : fn () s32 {
 
   tmp *String := str_new();
 
-  i = 0;
-  loop i < curr_test {
+  loop i size_t := 0; i < curr_test; i = i + 1 {
     test := get_test(tests, i);
-    i = i + 1;
 
     str_clear(tmp);
     str_ccat(tmp, BaseCmd);
@@ -69,10 +66,8 @@ main : fn () s32 {
   puts("");
 
   result := Ok;
-  i = 0;
-  loop i < curr_test {
+  loop i size_t := 0; i < curr_test; i = i + 1 {
     test := get_test(tests, i);
-    i = i + 1;
 
     str_clear(tmp);
     str_ccat(tmp, test->file);
