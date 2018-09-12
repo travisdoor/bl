@@ -189,9 +189,8 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
   clock_t end        = clock();
   double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  if (state == COMPILE_OK) {
-    msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
-  } else {
+  msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
+  if (state != COMPILE_OK) {
     msg_log("there were errors, sorry...");
   }
 

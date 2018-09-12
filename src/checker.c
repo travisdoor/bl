@@ -814,7 +814,8 @@ check_node(Context *cnt, Node **node)
     Node *      checked      = wait_context(*node);
     const char *name         = checked ? peek_ident(checked)->str : "?";
     bl_log("checked [%s] " MAGENTA("'%s'") " (%s, %d) file: " YELLOW("%s") " line: " CYAN("%d"),
-           result ? GREEN(" OK ") : RED("WAIT"), name, node_name(*node), (*node)->_serial, file, line);
+           result ? GREEN(" OK ") : RED("WAIT"), name, node_name(*node), (*node)->_serial, file,
+           line);
     assert(prev_checked != (*node)->_serial && "Looping checker!!!");
     prev_checked = (*node)->_serial;
   }
@@ -1346,8 +1347,9 @@ check_decl(Context *cnt, Node **decl)
   Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *decl, BUILDER_CUR_WORD,
-                     "symbol with same name already declared here: %s:%d",
-                     conflict->src->unit->filepath, conflict->src->line);
+                     "symbol with same name is already declared");
+
+    check_note_node(cnt, conflict, BUILDER_CUR_WORD, "previous declaration found here");
   } else {
     provide(_decl->name, *decl);
     waiting_resume(cnt, _decl->name);
