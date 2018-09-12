@@ -281,22 +281,14 @@ _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
   return (Node *)_if;
 }
 
-_NODE_CTOR(stmt_loop, Node *test, Node *true_stmt)
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block)
 {
   NodeStmtLoop *_loop = alloc_node(ast, NODE_STMT_LOOP, tok, NodeStmtLoop *);
-  _loop->test         = test;
-  _loop->true_stmt    = true_stmt;
+  _loop->init        = init;
+  _loop->condition   = condition;
+  _loop->increment   = increment;
+  _loop->block       = block;
   return (Node *)_loop;
-}
-
-_NODE_CTOR(stmt_for, Node *init, Node *condition, Node *increment, Node *block)
-{
-  NodeStmtFor *_for = alloc_node(ast, NODE_STMT_FOR, tok, NodeStmtFor *);
-  _for->init        = init;
-  _for->condition   = condition;
-  _for->increment   = increment;
-  _for->block       = block;
-  return (Node *)_for;
 }
 
 _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
@@ -596,16 +588,10 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_STMT_LOOP: {
-    visit(peek_stmt_loop(node)->test);
-    visit(peek_stmt_loop(node)->true_stmt);
-    break;
-  }
-
-  case NODE_STMT_FOR: {
-    visit(peek_stmt_for(node)->init);
-    visit(peek_stmt_for(node)->condition);
-    visit(peek_stmt_for(node)->increment);
-    visit(peek_stmt_for(node)->block);
+    visit(peek_stmt_loop(node)->init);
+    visit(peek_stmt_loop(node)->condition);
+    visit(peek_stmt_loop(node)->increment);
+    visit(peek_stmt_loop(node)->block);
     break;
   }
 

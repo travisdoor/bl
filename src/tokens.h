@@ -108,6 +108,9 @@ tokens_back_to_marker(Tokens *tokens);
 void
 tokens_consume_till(Tokens *tokens, Sym sym);
 
+bool
+tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
+
 BArray *
 tokens_get_all(Tokens *tokens);
 

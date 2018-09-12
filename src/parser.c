@@ -172,12 +172,6 @@ static Node *
 parse_stmt_if(Context *cnt);
 
 static Node *
-parse_stmt_for(Context *cnt);
-
-static Node *
-parse_stmt_while(Context *cnt);
-
-static Node *
 parse_stmt_loop(Context *cnt);
 
 static Node *
@@ -330,7 +324,7 @@ parse_stmt_if(Context *cnt)
   if (tokens_consume_if(cnt->tokens, SYM_ELSE)) {
     false_stmt = parse_stmt_if(cnt);
     if (!false_stmt) false_stmt = parse_block(cnt);
-    if (false_stmt == NULL) {
+    if (!false_stmt) {
       Token *err_tok = tokens_consume(cnt->tokens);
       parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD,
                   "expected statement for false result of the if expression test");
@@ -342,93 +336,45 @@ parse_stmt_if(Context *cnt)
 }
 
 Node *
-parse_stmt_for(Context *cnt)
-{
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FOR);
-  if (!tok_begin) return NULL;
-
-  Node *init = parse_decl(cnt);
-
-  if (!parse_semicolon_rq(cnt)) {
-    /* bad */
-    return ast_bad(cnt->ast, tok_begin);
-  }
-
-  Node *condition = parse_expr(cnt);
-
-  if (!parse_semicolon_rq(cnt)) {
-    /* bad */
-    return ast_bad(cnt->ast, tok_begin);
-  }
-
-  Node *increment = parse_expr(cnt);
-
-  /* block */
-  const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop            = true;
-  Node *block                 = parse_block(cnt);
-  assert(block);
-
-  cnt->inside_loop = prev_inside_loop;
-  return ast_stmt_for(cnt->ast, tok_begin, init, condition, increment, block);
-}
-
-Node *
-parse_stmt_while(Context *cnt)
-{
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_WHILE);
-  if (!tok_begin) return NULL;
-
-  const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop            = true;
-
-  Node *test = parse_expr(cnt);
-  if (!test) {
-    Token *err_tok = tokens_peek(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-                "expected expression for the while statement");
-    cnt->inside_loop = prev_inside_loop;
-    return ast_bad(cnt->ast, err_tok);
-  }
-
-  Node *block = parse_block(cnt);
-  if (!block) {
-    Token *err_tok = tokens_peek(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_STMT, err_tok, BUILDER_CUR_WORD, "expected loop body");
-    cnt->inside_loop = prev_inside_loop;
-    return ast_bad(cnt->ast, err_tok);
-  }
-
-  cnt->inside_loop = prev_inside_loop;
-  return ast_stmt_loop(cnt->ast, tok_begin, test, block);
-}
-
-Node *
 parse_stmt_loop(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
   if (!tok_begin) return NULL;
 
-  const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop            = true;
+  Node *init      = NULL;
+  Node *condition = NULL;
+  Node *increment = NULL;
 
-  TokenValue value;
-  value.u     = true;
-  Node *test  = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_BOOL], value);
-  Node *loop  = ast_stmt_loop(cnt->ast, tok_begin, test, NULL);
-  Node *block = parse_block(cnt);
-  if (!block) {
-    Token *tok_err = tokens_consume(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD, "expected loop body");
-    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    cnt->inside_loop = prev_inside_loop;
-    return ast_bad(cnt->ast, tok_err);
+  if (tokens_lookahead_till(cnt->tokens, SYM_SEMICOLON, SYM_LBLOCK)) {
+    /* for loop construct loop [init]; [condition]; [increment] {} */
+    init = parse_decl(cnt);
+    if (!parse_semicolon_rq(cnt)) {
+      assert(false);
+    }
+
+    condition = parse_expr(cnt);
+    if (!parse_semicolon_rq(cnt)) {
+      assert(false);
+    }
+
+    increment = parse_expr(cnt);
+  } else {
+    /* while construct with optional condition */
+    condition = parse_expr(cnt);
   }
 
-  peek_stmt_loop(loop)->true_stmt = block;
-  cnt->inside_loop                = prev_inside_loop;
+  /* block */
+  const bool prev_inside_loop = cnt->inside_loop;
+  cnt->inside_loop            = true;
+  Node *block                 = parse_block(cnt);
+  if (!block) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_BODY, err_tok, BUILDER_CUR_WORD, "expected loop body block");
+    return ast_bad(cnt->ast, err_tok);
+  }
 
-  return loop;
+  cnt->inside_loop = prev_inside_loop;
+  return ast_stmt_loop(cnt->ast, tok_begin, init, condition, increment, block);
 }
 
 Node *
@@ -1298,16 +1244,6 @@ next:
   }
 
   if ((*node = parse_stmt_if(cnt))) {
-    insert_node(&node);
-    goto next;
-  }
-
-  if ((*node = parse_stmt_for(cnt))) {
-    insert_node(&node);
-    goto next;
-  }
-
-  if ((*node = parse_stmt_while(cnt))) {
     insert_node(&node);
     goto next;
   }

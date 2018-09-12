@@ -177,9 +177,6 @@ ir_stmt_return(Context *cnt, Node *stmt_return);
 static LLVMValueRef
 ir_stmt_loop(Context *cnt, Node *loop);
 
-static LLVMValueRef
-ir_stmt_for(Context *cnt, Node *loop);
-
 static inline LLVMValueRef
 ir_stmt_break(Context *cnt, Node *brk);
 
@@ -1170,8 +1167,11 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
   assert(LLVMIsAFunction(parent));
 
+  LLVMBasicBlockRef loop_increment =
+      _loop->increment ? LLVMAppendBasicBlock(parent, gname("loop_increment")) : NULL;
+
   LLVMBasicBlockRef loop_decide         = LLVMAppendBasicBlock(parent, gname("loop_decide"));
-  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop_block"));
   LLVMBasicBlockRef loop_cont           = LLVMAppendBasicBlock(parent, gname("loop_cont"));
   LLVMValueRef      expr                = NULL;
   LLVMBasicBlockRef prev_break_block    = cnt->break_block;
@@ -1179,13 +1179,18 @@ ir_stmt_loop(Context *cnt, Node *loop)
   cnt->break_block                      = loop_cont;
   cnt->continue_block                   = loop_decide;
 
+  if (_loop->init) {
+    /* generate ir fo init block */
+    ir_node(cnt, _loop->init);
+  }
+
   LLVMBuildBr(cnt->llvm_builder, loop_decide);
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
 
-  if (_loop->test) {
-    expr = ir_node(cnt, _loop->test);
-
-    if (should_load(_loop->test, expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+  if (_loop->condition) {
+    expr = ir_node(cnt, _loop->condition);
+    if (should_load(_loop->condition, expr))
+      expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
   } else {
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
   }
@@ -1193,23 +1198,22 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMBuildCondBr(cnt->llvm_builder, expr, loop_block, loop_cont);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_block);
-  ir_node(cnt, _loop->true_stmt);
+  ir_node(cnt, _loop->block);
 
   LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
   if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+    LLVMBuildBr(cnt->llvm_builder, _loop->increment ? loop_increment : loop_decide);
+  }
+
+  if (_loop->increment) {
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_increment);
+    ir_node(cnt, _loop->increment);
     LLVMBuildBr(cnt->llvm_builder, loop_decide);
   }
 
   cnt->break_block    = prev_break_block;
   cnt->continue_block = prev_continue_block;
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_cont);
-  return NULL;
-}
-
-LLVMValueRef
-ir_stmt_for(Context *cnt, Node *loop)
-{
-  bl_abort("missing implementation");
   return NULL;
 }
 
@@ -1269,9 +1273,6 @@ ir_node(Context *cnt, Node *node)
 
   case NODE_STMT_LOOP:
     return ir_stmt_loop(cnt, node);
-
-  case NODE_STMT_FOR:
-    return ir_stmt_for(cnt, node);
 
   case NODE_STMT_BREAK:
     return ir_stmt_break(cnt, node);

@@ -11,7 +11,7 @@ main : fn () s32 {
   puts("done");
 
   i = 0;
-  while i < 10 {
+  loop i < 10 {
     printf("i = %d, ", i);
     i = i + 1;
     continue;

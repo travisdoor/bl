@@ -98,10 +98,6 @@
     Node *false_stmt; \
   }) \
   nt(STMT_LOOP, StmtLoop, stmt_loop, struct { \
-    Node *test; \
-    Node *true_stmt; \
-  }) \
-  nt(STMT_FOR, StmtFor, stmt_for, struct { \
     Node *init; \
     Node *condition; \
     Node *increment; \
@@ -401,8 +397,7 @@ _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
 _NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
-_NODE_CTOR(stmt_loop, Node *test, Node *true_stmt);
-_NODE_CTOR(stmt_for, Node *init, Node *condition, Node *increment, Node *block);
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,

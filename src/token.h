@@ -43,7 +43,6 @@
   sm(DOUBLE,      "double") \
   sm(IF,          "if") /* must be first */ \
   sm(FN,          "fn") \
-  sm(FOR,         "for") \
   sm(CAST,        "cast") \
   sm(ELSE,        "else") \
   sm(TRUE,        "true") \
@@ -52,7 +51,6 @@
   sm(LOOP,        "loop")\
   sm(RUN,         "#run")\
   sm(FALSE,       "false") \
-  sm(WHILE,       "while") \
   sm(BREAK,       "break")\
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
