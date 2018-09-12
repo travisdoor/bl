@@ -102,6 +102,8 @@
     Node *condition; \
     Node *increment; \
     Node *block; \
+    Scope *scope; \
+    Node  *parent_compound; \
   }) \
   nt(STMT_BREAK, StmtBreak, stmt_break, struct { \
     void *_; \
@@ -207,7 +209,7 @@
   }) \
   nt(EXPR_NULL, ExprNull, expr_null, struct { \
     Node *type;		    \
-  }) \
+  })
 
 // clang-format on
 
@@ -397,11 +399,12 @@ _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
 _NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
-_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block);
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope,
+           Node *parent_compound);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
-            int order, bool in_gscope);
+           int order, bool in_gscope);
 _NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
 _NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);

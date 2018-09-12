@@ -281,13 +281,16 @@ _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
   return (Node *)_if;
 }
 
-_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block)
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope,
+           Node *parent_compound)
 {
-  NodeStmtLoop *_loop = alloc_node(ast, NODE_STMT_LOOP, tok, NodeStmtLoop *);
-  _loop->init        = init;
-  _loop->condition   = condition;
-  _loop->increment   = increment;
-  _loop->block       = block;
+  NodeStmtLoop *_loop    = alloc_node(ast, NODE_STMT_LOOP, tok, NodeStmtLoop *);
+  _loop->init            = init;
+  _loop->condition       = condition;
+  _loop->increment       = increment;
+  _loop->block           = block;
+  _loop->parent_compound = parent_compound;
+  _loop->scope           = scope;
   return (Node *)_loop;
 }
 
@@ -760,6 +763,8 @@ ast_get_scope(Node *node)
     return peek_lit_struct(node)->scope;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->scope;
+  case NODE_STMT_LOOP:
+    return peek_stmt_loop(node)->scope;
 
   default:
     bl_abort("node %s has no scope", node_name(node));
@@ -1039,6 +1044,8 @@ ast_get_parent_compound(Node *node)
     return peek_lit_struct(node)->parent_compound;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->parent_compound;
+  case NODE_STMT_LOOP:
+    return peek_stmt_loop(node)->parent_compound;
   default:
     bl_abort("node %s has no parent compound", node_name(node));
   }

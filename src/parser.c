@@ -341,40 +341,45 @@ parse_stmt_loop(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
   if (!tok_begin) return NULL;
 
-  Node *init      = NULL;
-  Node *condition = NULL;
-  Node *increment = NULL;
+  Node *loop = ast_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL,
+                             scope_new(cnt->assembly->scope_cache, 8), cnt->curr_compound);
+  NodeStmtLoop *_loop = peek_stmt_loop(loop);
+
+  const bool prev_inside_loop = cnt->inside_loop;
+  Node *     prev_compound    = cnt->curr_compound;
+  cnt->inside_loop            = true;
+  cnt->curr_compound          = loop;
 
   if (tokens_lookahead_till(cnt->tokens, SYM_SEMICOLON, SYM_LBLOCK)) {
     /* for loop construct loop [init]; [condition]; [increment] {} */
-    init = parse_decl(cnt);
+    _loop->init = parse_decl(cnt);
     if (!parse_semicolon_rq(cnt)) {
       assert(false);
     }
 
-    condition = parse_expr(cnt);
+    _loop->condition = parse_expr(cnt);
     if (!parse_semicolon_rq(cnt)) {
       assert(false);
     }
 
-    increment = parse_expr(cnt);
+    _loop->increment = parse_expr(cnt);
   } else {
     /* while construct with optional condition */
-    condition = parse_expr(cnt);
+    _loop->condition = parse_expr(cnt);
   }
 
   /* block */
-  const bool prev_inside_loop = cnt->inside_loop;
-  cnt->inside_loop            = true;
-  Node *block                 = parse_block(cnt);
-  if (!block) {
+  _loop->block = parse_block(cnt);
+  if (!_loop->block) {
     Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY, err_tok, BUILDER_CUR_WORD, "expected loop body block");
     return ast_bad(cnt->ast, err_tok);
   }
 
-  cnt->inside_loop = prev_inside_loop;
-  return ast_stmt_loop(cnt->ast, tok_begin, init, condition, increment, block);
+
+  cnt->inside_loop   = prev_inside_loop;
+  cnt->curr_compound = prev_compound;
+  return loop;
 }
 
 Node *
@@ -462,6 +467,7 @@ parse_literal_fn(Context *cnt)
 
   /* parse block */
   _fn->block = parse_block(cnt);
+  /* TODO: generate error instead? */
   assert(_fn->block);
 
   cnt->curr_fn       = prev_fn;
