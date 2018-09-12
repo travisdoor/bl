@@ -16,17 +16,14 @@ switch a {
 
 
 // for loop
-
-for i s32 := 0 .. 10 {
+// from 0 to 9
+for i in 0 .. 10 {
 }
 
-for i := 0 .. 10 {
+for i s32 in 0 .. arr.count {
 }
 
-for i := 0 .. arr.count {
-}
-
-for arr {
+for i in 0 .. 10 by 2 {
 }
 
 // range expression (make sense only in loops???)

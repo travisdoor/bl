@@ -150,7 +150,7 @@ tokens_is_seq(Tokens *tokens, int cnt, ...)
 {
   bool   ret = true;
   size_t c   = bo_array_size(tokens->buf);
-  Sym  sym = SYM_EOF;
+  Sym    sym = SYM_EOF;
   cnt += (int)tokens->iter;
 
   va_list valist;
@@ -212,4 +212,21 @@ tokens_consume_till(Tokens *tokens, Sym sym)
   while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
     tokens_consume(tokens);
   }
+}
+
+bool
+tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
+{
+  bool found = false;
+  tokens_set_marker(tokens);
+  while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
+    if (tokens_current_is(tokens, lookup)) {
+      found = true;
+      break;
+    }
+
+    tokens_consume(tokens);
+  }
+  tokens_back_to_marker(tokens);
+  return found;
 }

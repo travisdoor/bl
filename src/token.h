@@ -43,7 +43,6 @@
   sm(DOUBLE,      "double") \
   sm(IF,          "if") /* must be first */ \
   sm(FN,          "fn") \
-  sm(MUT,         "mut") \
   sm(CAST,        "cast") \
   sm(ELSE,        "else") \
   sm(TRUE,        "true") \
@@ -52,10 +51,7 @@
   sm(LOOP,        "loop")\
   sm(RUN,         "#run")\
   sm(FALSE,       "false") \
-  sm(CONST,       "const") \
-  sm(WHILE,       "while") \
   sm(BREAK,       "break")\
-  sm(TEST,        "#test") \
   sm(LOAD,        "#load") \
   sm(LINK,        "#link") \
   sm(LINE,        "#line") \
@@ -65,6 +61,7 @@
   sm(STRUCT,      "struct") \
   sm(SIZEOF,      "sizeof") \
   sm(CONTINUE,    "continue") /* must be last */ \
+  sm(RANGE,       "..") \
   sm(MDECL,       ":=")	\
   sm(ARROW,       "->") \
   sm(LCOMMENT,    "//") \

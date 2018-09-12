@@ -1,16 +1,13 @@
 /* testing playground */
 
-//#load "libc.bl"
-
+#load "libc.bl"
 
 main : fn () s32 {
-  B : 5;
-  C : 20 + B;
 
-  arr s32[(10 + 2 * 3) * 2];
-  arr2 s32[200 + 1 + C];
-  arr3 s32[#run get()];
-  arr4 s32[1 + #run get()];
+  loop i := 0; i < 10; i = i + 1 {
+    printf("i = %d, ", i);
+  }
+  puts("");
 
   return EXIT_SUCCESS;
 };

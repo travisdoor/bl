@@ -87,6 +87,7 @@ typedef enum
   ERR_INVALID_MEMBER_ACCESS   = 50,
   ERR_UNIMPLEMENTED           = 51,
   ERR_EXPECTED_CONST          = 52,
+  ERR_EXPECTED_DECL           = 53,
 } Error;
 
 #endif // BL_ERROR_H

@@ -386,16 +386,16 @@ to_llvm_type(Context *cnt, Node *type)
 
       switch (rr.type) {
       case RR_S64:
-        arr_size = (unsigned int) rr.s64;
+        arr_size = (unsigned int)rr.s64;
         break;
       case RR_U64:
-        arr_size = (unsigned int) rr.u64;
+        arr_size = (unsigned int)rr.u64;
         break;
       default:
         bl_abort("invalid type of array size called function");
       }
     } else if (node_is(arr, NODE_LIT)) {
-      arr_size = (unsigned int) peek_lit(arr)->value.u;
+      arr_size = (unsigned int)peek_lit(arr)->value.u;
     }
 
     assert(arr_size);
@@ -537,7 +537,7 @@ ir_expr_call_ct(Context *cnt, Node *call)
   case RR_VOID:
     return NULL;
   case RR_S64:
-    return LLVMConstInt(llvm_type, (unsigned long long) rr.s64, true);
+    return LLVMConstInt(llvm_type, (unsigned long long)rr.s64, true);
   case RR_U64:
     return LLVMConstInt(llvm_type, rr.u64, false);
   case RR_REAL:
@@ -1167,8 +1167,11 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
   assert(LLVMIsAFunction(parent));
 
+  LLVMBasicBlockRef loop_increment =
+      _loop->increment ? LLVMAppendBasicBlock(parent, gname("loop_increment")) : NULL;
+
   LLVMBasicBlockRef loop_decide         = LLVMAppendBasicBlock(parent, gname("loop_decide"));
-  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop"));
+  LLVMBasicBlockRef loop_block          = LLVMAppendBasicBlock(parent, gname("loop_block"));
   LLVMBasicBlockRef loop_cont           = LLVMAppendBasicBlock(parent, gname("loop_cont"));
   LLVMValueRef      expr                = NULL;
   LLVMBasicBlockRef prev_break_block    = cnt->break_block;
@@ -1176,13 +1179,18 @@ ir_stmt_loop(Context *cnt, Node *loop)
   cnt->break_block                      = loop_cont;
   cnt->continue_block                   = loop_decide;
 
+  if (_loop->init) {
+    /* generate ir fo init block */
+    ir_node(cnt, _loop->init);
+  }
+
   LLVMBuildBr(cnt->llvm_builder, loop_decide);
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_decide);
 
-  if (_loop->test) {
-    expr = ir_node(cnt, _loop->test);
-
-    if (should_load(_loop->test, expr)) expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
+  if (_loop->condition) {
+    expr = ir_node(cnt, _loop->condition);
+    if (should_load(_loop->condition, expr))
+      expr = LLVMBuildLoad(cnt->llvm_builder, expr, gname("tmp"));
   } else {
     expr = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), true, false);
   }
@@ -1190,10 +1198,16 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMBuildCondBr(cnt->llvm_builder, expr, loop_block, loop_cont);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_block);
-  ir_node(cnt, _loop->true_stmt);
+  ir_node(cnt, _loop->block);
 
   LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
   if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+    LLVMBuildBr(cnt->llvm_builder, _loop->increment ? loop_increment : loop_decide);
+  }
+
+  if (_loop->increment) {
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, loop_increment);
+    ir_node(cnt, _loop->increment);
     LLVMBuildBr(cnt->llvm_builder, loop_decide);
   }
 
@@ -1333,7 +1347,7 @@ run(Context *cnt, Node *fn)
   switch (kind) {
   case TYPE_KIND_SINT: {
     result.type = RR_S64;
-    result.s64  = (int64_t) LLVMGenericValueToInt(generic, true);
+    result.s64  = (int64_t)LLVMGenericValueToInt(generic, true);
     break;
   }
 
@@ -1514,7 +1528,7 @@ is_satisfied(Context *cnt, Node *decl, bool strict_only)
     dep = bo_htbl_iter_peek_value(deps, &iter, Dependency);
 
     // PERFORMANCE: is there some better solution than check whole tree???
-    bool check_tree = (bool) (strict_only ? dep.type & DEP_STRICT : true);
+    bool check_tree = (bool)(strict_only ? dep.type & DEP_STRICT : true);
     if (check_tree) {
       if (!generated(cnt, dep.node)) {
         return false;

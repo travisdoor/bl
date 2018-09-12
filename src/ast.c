@@ -215,26 +215,26 @@ ast_terminate(Ast *ast)
  * node constructors
  *************************************************************************************************/
 
-_NODE_NCTOR(bad)
+_NODE_CTOR(bad)
 {
   return alloc_node(ast, NODE_BAD, tok, Node *);
 }
 
-_NODE_NCTOR(load, const char *filepath)
+_NODE_CTOR(load, const char *filepath)
 {
   NodeLoad *_load = alloc_node(ast, NODE_LOAD, tok, NodeLoad *);
   _load->filepath = filepath;
   return (Node *)_load;
 }
 
-_NODE_NCTOR(link, const char *lib)
+_NODE_CTOR(link, const char *lib)
 {
   NodeLink *_link = alloc_node(ast, NODE_LINK, tok, NodeLink *);
   _link->lib      = lib;
   return (Node *)_link;
 }
 
-_NODE_NCTOR(ublock, struct Unit *unit, Scope *scope)
+_NODE_CTOR(ublock, struct Unit *unit, Scope *scope)
 {
   NodeUBlock *_ublock = alloc_node(ast, NODE_UBLOCK, tok, NodeUBlock *);
   _ublock->scope      = scope;
@@ -242,7 +242,7 @@ _NODE_NCTOR(ublock, struct Unit *unit, Scope *scope)
   return (Node *)_ublock;
 }
 
-_NODE_NCTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr)
+_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr)
 {
   NodeIdent *_ident       = alloc_node(ast, NODE_IDENT, tok, NodeIdent *);
   _ident->hash            = bo_hash_from_str(str);
@@ -254,7 +254,7 @@ _NODE_NCTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, N
   return (Node *)_ident;
 }
 
-_NODE_NCTOR(stmt_return, Node *expr, Node *fn)
+_NODE_CTOR(stmt_return, Node *expr, Node *fn)
 {
   NodeStmtReturn *_ret = alloc_node(ast, NODE_STMT_RETURN, tok, NodeStmtReturn *);
   _ret->expr           = expr;
@@ -262,17 +262,17 @@ _NODE_NCTOR(stmt_return, Node *expr, Node *fn)
   return (Node *)_ret;
 }
 
-_NODE_NCTOR(stmt_break)
+_NODE_CTOR(stmt_break)
 {
   return alloc_node(ast, NODE_STMT_BREAK, tok, Node *);
 }
 
-_NODE_NCTOR(stmt_continue)
+_NODE_CTOR(stmt_continue)
 {
   return alloc_node(ast, NODE_STMT_CONTINUE, tok, Node *);
 }
 
-_NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
+_NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
 {
   NodeStmtIf *_if = alloc_node(ast, NODE_STMT_IF, tok, NodeStmtIf *);
   _if->test       = test;
@@ -281,15 +281,17 @@ _NODE_NCTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
   return (Node *)_if;
 }
 
-_NODE_NCTOR(stmt_loop, Node *test, Node *true_stmt)
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block)
 {
   NodeStmtLoop *_loop = alloc_node(ast, NODE_STMT_LOOP, tok, NodeStmtLoop *);
-  _loop->test         = test;
-  _loop->true_stmt    = true_stmt;
+  _loop->init        = init;
+  _loop->condition   = condition;
+  _loop->increment   = increment;
+  _loop->block       = block;
   return (Node *)_loop;
 }
 
-_NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
+_NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
 {
   NodeBlock *_block       = alloc_node(ast, NODE_BLOCK, tok, NodeBlock *);
   _block->nodes           = nodes;
@@ -298,8 +300,8 @@ _NODE_NCTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
   return (Node *)_block;
 }
 
-_NODE_NCTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
-            int order, bool in_gscope)
+_NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
+           int order, bool in_gscope)
 {
   NodeDecl *_decl  = alloc_node(ast, NODE_DECL, tok, NodeDecl *);
   _decl->kind      = kind;
@@ -313,7 +315,7 @@ _NODE_NCTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutab
   return (Node *)_decl;
 }
 
-_NODE_NCTOR(type_fund, FundType code, int ptr, Node *arr)
+_NODE_CTOR(type_fund, FundType code, int ptr, Node *arr)
 {
   NodeTypeFund *_type_fund = alloc_node(ast, NODE_TYPE_FUND, tok, NodeTypeFund *);
   _type_fund->code         = code;
@@ -322,7 +324,7 @@ _NODE_NCTOR(type_fund, FundType code, int ptr, Node *arr)
   return (Node *)_type_fund;
 }
 
-_NODE_NCTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr)
+_NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr)
 {
   NodeTypeFn *_type_fn = alloc_node(ast, NODE_TYPE_FN, tok, NodeTypeFn *);
   _type_fn->arg_types  = arg_types;
@@ -332,7 +334,7 @@ _NODE_NCTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr)
   return (Node *)_type_fn;
 }
 
-_NODE_NCTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr)
+_NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr)
 {
   NodeTypeStruct *_type_struct = alloc_node(ast, NODE_TYPE_STRUCT, tok, NodeTypeStruct *);
   _type_struct->types          = types;
@@ -342,7 +344,7 @@ _NODE_NCTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr)
   return (Node *)_type_struct;
 }
 
-_NODE_NCTOR(type_enum, Node *type, Node *base_decl, int ptr)
+_NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr)
 {
   NodeTypeEnum *_type_enum = alloc_node(ast, NODE_TYPE_ENUM, tok, NodeTypeEnum *);
   _type_enum->base_decl    = base_decl;
@@ -351,7 +353,7 @@ _NODE_NCTOR(type_enum, Node *type, Node *base_decl, int ptr)
   return (Node *)_type_enum;
 }
 
-_NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
+_NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
 {
   NodeLitFn *_lit_fn       = alloc_node(ast, NODE_LIT_FN, tok, NodeLitFn *);
   _lit_fn->type            = type;
@@ -361,7 +363,7 @@ _NODE_NCTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope
   return (Node *)_lit_fn;
 }
 
-_NODE_NCTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope)
+_NODE_CTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope)
 {
   NodeLitStruct *_lit_struct   = alloc_node(ast, NODE_LIT_STRUCT, tok, NodeLitStruct *);
   _lit_struct->type            = type;
@@ -370,7 +372,7 @@ _NODE_NCTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope)
   return (Node *)_lit_struct;
 }
 
-_NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
+_NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
 {
   NodeLitEnum *_lit_enum     = alloc_node(ast, NODE_LIT_ENUM, tok, NodeLitEnum *);
   _lit_enum->type            = type;
@@ -380,7 +382,7 @@ _NODE_NCTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *
   return (Node *)_lit_enum;
 }
 
-_NODE_NCTOR(lit, Node *type, TokenValue value)
+_NODE_CTOR(lit, Node *type, TokenValue value)
 {
   NodeLit *_lit = alloc_node(ast, NODE_LIT, tok, NodeLit *);
   _lit->type    = type;
@@ -388,7 +390,7 @@ _NODE_NCTOR(lit, Node *type, TokenValue value)
   return (Node *)_lit;
 }
 
-_NODE_NCTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op)
+_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op)
 {
   NodeExprBinop *_expr_binop = alloc_node(ast, NODE_EXPR_BINOP, tok, NodeExprBinop *);
   _expr_binop->lhs           = lhs;
@@ -398,7 +400,7 @@ _NODE_NCTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op)
   return (Node *)_expr_binop;
 }
 
-_NODE_NCTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
+_NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
 {
   NodeExprCall *_expr_call = alloc_node(ast, NODE_EXPR_CALL, tok, NodeExprCall *);
   _expr_call->ref          = ref;
@@ -409,7 +411,7 @@ _NODE_NCTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
   return (Node *)_expr_call;
 }
 
-_NODE_NCTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref)
+_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref)
 {
   NodeExprMember *_expr_member = alloc_node(ast, NODE_EXPR_MEMBER, tok, NodeExprMember *);
   _expr_member->kind           = kind;
@@ -420,7 +422,7 @@ _NODE_NCTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, b
   return (Node *)_expr_member;
 }
 
-_NODE_NCTOR(expr_elem, Node *next, Node *type, Node *index)
+_NODE_CTOR(expr_elem, Node *next, Node *type, Node *index)
 {
   NodeExprElem *_expr_elem = alloc_node(ast, NODE_EXPR_ELEM, tok, NodeExprElem *);
   _expr_elem->next         = next;
@@ -429,7 +431,7 @@ _NODE_NCTOR(expr_elem, Node *next, Node *type, Node *index)
   return (Node *)_expr_elem;
 }
 
-_NODE_NCTOR(expr_sizeof, Node *in, Node *type)
+_NODE_CTOR(expr_sizeof, Node *in, Node *type)
 {
   NodeExprSizeof *_expr_sizeof = alloc_node(ast, NODE_EXPR_SIZEOF, tok, NodeExprSizeof *);
   _expr_sizeof->in             = in;
@@ -437,7 +439,7 @@ _NODE_NCTOR(expr_sizeof, Node *in, Node *type)
   return (Node *)_expr_sizeof;
 }
 
-_NODE_NCTOR(expr_cast, Node *type, Node *next)
+_NODE_CTOR(expr_cast, Node *type, Node *next)
 {
   NodeExprCast *_expr_cast = alloc_node(ast, NODE_EXPR_CAST, tok, NodeExprCast *);
   _expr_cast->type         = type;
@@ -445,7 +447,7 @@ _NODE_NCTOR(expr_cast, Node *type, Node *next)
   return (Node *)_expr_cast;
 }
 
-_NODE_NCTOR(expr_unary, Sym op, Node *next, Node *type)
+_NODE_CTOR(expr_unary, Sym op, Node *next, Node *type)
 {
   NodeExprUnary *_expr_unary = alloc_node(ast, NODE_EXPR_UNARY, tok, NodeExprUnary *);
   _expr_unary->next          = next;
@@ -454,7 +456,7 @@ _NODE_NCTOR(expr_unary, Sym op, Node *next, Node *type)
   return (Node *)_expr_unary;
 }
 
-_NODE_NCTOR(expr_null, Node *type)
+_NODE_CTOR(expr_null, Node *type)
 {
   NodeExprNull *_expr_null = alloc_node(ast, NODE_EXPR_NULL, tok, NodeExprNull *);
   _expr_null->type         = type;
@@ -586,8 +588,10 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_STMT_LOOP: {
-    visit(peek_stmt_loop(node)->test);
-    visit(peek_stmt_loop(node)->true_stmt);
+    visit(peek_stmt_loop(node)->init);
+    visit(peek_stmt_loop(node)->condition);
+    visit(peek_stmt_loop(node)->increment);
+    visit(peek_stmt_loop(node)->block);
     break;
   }
 

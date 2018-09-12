@@ -463,8 +463,10 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
 
   case NODE_STMT_LOOP: {
     NodeStmtLoop *_loop = peek_stmt_loop(*node);
-    flatten(&_loop->test);
-    flatten(&_loop->true_stmt);
+    flatten(&_loop->init);
+    flatten(&_loop->condition);
+    flatten(&_loop->increment);
+    flatten(&_loop->block);
     break;
   }
 

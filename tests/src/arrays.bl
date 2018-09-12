@@ -5,13 +5,13 @@ main : fn () s32 {
   if arr.count != 10 { return EXIT_FAILURE; }
 
   i := 0;
-  while i < arr.count {
+  loop i < arr.count {
     arr[i] = i;
     i = i + 1;
   }
 
   i = 0;
-  while i < arr.count {
+  loop i < arr.count {
     printf("arr[i] = %d\n", arr[i]);
     i = i + 1;
   }
@@ -21,26 +21,26 @@ main : fn () s32 {
   foos.count;
 
   i = 0;
-  while i < foos.count {
+  loop i < foos.count {
     foos[i].i = i;
     i = i + 1;
   }
 
   i = 0;
-  while i < foos.count {
+  loop i < foos.count {
     printf("foos[i].i = %d\n", foos[i].i);
     i = i + 1;
   }
 
   bar Bar;
   i = 0;
-  while i < bar.is.count {
+  loop i < bar.is.count {
     bar.is[i] = i;
     i = i + 1;
   }
 
   i = 0;
-  while i < bar.is.count {
+  loop i < bar.is.count {
     printf("bar.is[i] = %d\n", bar.is[i]);
     i = i + 1;
   }
