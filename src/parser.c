@@ -341,7 +341,7 @@ parse_stmt_loop(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
   if (!tok_begin) return NULL;
 
-  Node *loop = ast_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL,
+  Node *        loop  = ast_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL,
                              scope_new(cnt->assembly->scope_cache, 8), cnt->curr_compound);
   NodeStmtLoop *_loop = peek_stmt_loop(loop);
 
@@ -375,7 +375,6 @@ parse_stmt_loop(Context *cnt)
     parse_error(cnt, ERR_EXPECTED_BODY, err_tok, BUILDER_CUR_WORD, "expected loop body block");
     return ast_bad(cnt->ast, err_tok);
   }
-
 
   cnt->inside_loop   = prev_inside_loop;
   cnt->curr_compound = prev_compound;
@@ -808,6 +807,8 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_enum(cnt, ptr);
   if (!type) type = parse_type_fund(cnt, ptr);
 
+  if (!type) return NULL;
+  
   Node *arr = parse_arr(cnt);
   if (arr) {
     ast_type_set_arr(type, arr);
@@ -1009,9 +1010,9 @@ parse_decl(Context *cnt)
 
   if (tok_assign) {
     _decl->mutable = token_is(tok_assign, SYM_MDECL);
-    _decl->flags |= parse_flags(cnt, FLAG_EXTERN);
+    _decl->flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_INTERNAL);
 
-    if (!(_decl->flags & FLAG_EXTERN)) {
+    if (!(_decl->flags & (FLAG_EXTERN | FLAG_INTERNAL))) {
       _decl->value = parse_value(cnt);
 
       if (!_decl->value) {
@@ -1151,9 +1152,17 @@ next:
   case SYM_EXTERN:
     tokens_consume(cnt->tokens);
     if (!(allowed & FLAG_EXTERN)) {
-      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag");
+      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag 'extern'");
     } else {
       flags |= FLAG_EXTERN;
+    }
+    goto next;
+  case SYM_INTERNAL:
+    tokens_consume(cnt->tokens);
+    if (!(allowed & FLAG_INTERNAL)) {
+      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag 'internal'");
+    } else {
+      flags |= FLAG_INTERNAL;
     }
     goto next;
   default:

@@ -43,8 +43,9 @@ typedef struct
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
   char *                 name;            /* assembly name */
-  ScopeCache *        scope_cache;     /* cache for scopes */
-  Scope *              gscope;          /* cache for global scope */
+  ScopeCache *           scope_cache;     /* cache for scopes */
+  Scope *                gscope;          /* cache for global scope */
+  BHashTable *           type_table;      /* all types used in assembly */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */

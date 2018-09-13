@@ -254,8 +254,9 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-  FLAG_MAIN   = 1 << 1  /* main method */
+  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
+  FLAG_MAIN     = 1 << 1, /* main method */
+  FLAG_INTERNAL = 1 << 2  /* compiler internals */
 } NodeFlag;
 
 typedef enum

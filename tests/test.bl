@@ -3,15 +3,9 @@
 #load "libc.bl"
 
 main : fn () s32 {
-  loop i := 0; i < 10; i += 1 {
-    printf("i = %d, ", i);
-  }
-  puts("");
-
-  loop i := 0; i < 10; i += 1 {
-    printf("i = %d, ", i);
-  }
-  puts("");
+  a s32; // type s32
+  b := &a; // type pointer -> s32
+  b = null;
 
   return EXIT_SUCCESS;
 };

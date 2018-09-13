@@ -60,6 +60,7 @@
   sm(RETURN,       "return") \
   sm(STRUCT,       "struct") \
   sm(SIZEOF,       "sizeof") \
+  sm(INTERNAL,     "internal") \
   sm(CONTINUE,     "continue") /* must be last */ \
   sm(RANGE,        "..") \
   sm(MDECL,        ":=")	\
