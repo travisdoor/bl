@@ -140,9 +140,14 @@ token_prec(Token *token, bool unary)
   case SYM_LOGIC_OR:
     return 5;
 
-    // =
+    // = += -= *= /=
   case SYM_ASSIGN:
+  case SYM_PLUS_ASSIGN:
+  case SYM_MINUS_ASSIGN:
+  case SYM_MUL_ASSIGN:
+  case SYM_DIV_ASSIGN:
     return 4;
+
   default:
     return -1;
   }

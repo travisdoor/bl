@@ -726,29 +726,66 @@ ir_expr_binop(Context *cnt, Node *binop)
   LLVMValueRef   lhs    = ir_node(cnt, _binop->lhs);
   LLVMValueRef   rhs    = ir_node(cnt, _binop->rhs);
 
-  if (_binop->op == SYM_ASSIGN) {
-    /* special case for dereferencing on the right side, we need to perform additional load
-     * because we use pointer to data not real data. */
-    if (should_load(_binop->rhs, rhs)) {
-      rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
-    }
+  if (should_load(_binop->rhs, rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
+
+  LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
+  bool         float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
+  /* Assignments */
+  switch (_binop->op) {
+  case SYM_ASSIGN:
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return lhs;
+
+  case SYM_PLUS_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    if (float_kind)
+      value = LLVMBuildFAdd(cnt->llvm_builder, value, rhs, gname("tmp"));
+    else
+      value = LLVMBuildAdd(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
+  case SYM_MINUS_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    if (float_kind)
+      value = LLVMBuildFSub(cnt->llvm_builder, value, rhs, gname("tmp"));
+    else
+      value = LLVMBuildSub(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
+  case SYM_MUL_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    if (float_kind)
+      value = LLVMBuildFMul(cnt->llvm_builder, value, rhs, gname("tmp"));
+    else
+      value = LLVMBuildMul(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
+  case SYM_DIV_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    if (float_kind)
+      value = LLVMBuildFDiv(cnt->llvm_builder, value, rhs, gname("tmp"));
+    else
+      value = LLVMBuildSDiv(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
+  default:
+    break;
   }
 
   if (should_load(_binop->lhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
-  if (should_load(_binop->rhs, rhs)) rhs = LLVMBuildLoad(cnt->llvm_builder, rhs, gname("tmp"));
-
-  LLVMTypeKind lhs_kind = LLVMGetTypeKind(LLVMTypeOf(lhs));
-  // LLVMTypeKind rhs_kind = LLVMGetTypeKind(LLVMTypeOf(rhs));
-
-  // assert(lhs_kind == rhs_kind);
-  bool float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
   case SYM_PLUS:
     if (float_kind) return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
-
     return LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   case SYM_MINUS:

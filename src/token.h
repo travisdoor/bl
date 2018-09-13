@@ -34,68 +34,72 @@
 
 // clang-format off
 #define _SYMBOLS_LIST \
-  sm(EOF = 0,     "end") \
-  sm(IDENT,       "identifier") \
-  sm(STRING,      "string") \
-  sm(CHAR,        "char") \
-  sm(NUM,         "number") \
-  sm(FLOAT,       "float") \
-  sm(DOUBLE,      "double") \
-  sm(IF,          "if") /* must be first */ \
-  sm(FN,          "fn") \
-  sm(CAST,        "cast") \
-  sm(ELSE,        "else") \
-  sm(TRUE,        "true") \
-  sm(NULL,        "null") \
-  sm(ENUM,        "enum") \
-  sm(LOOP,        "loop")\
-  sm(RUN,         "#run")\
-  sm(FALSE,       "false") \
-  sm(BREAK,       "break")\
-  sm(LOAD,        "#load") \
-  sm(LINK,        "#link") \
-  sm(LINE,        "#line") \
-  sm(FILE,        "#file") \
-  sm(EXTERN,      "extern") \
-  sm(RETURN,      "return") \
-  sm(STRUCT,      "struct") \
-  sm(SIZEOF,      "sizeof") \
-  sm(CONTINUE,    "continue") /* must be last */ \
-  sm(RANGE,       "..") \
-  sm(MDECL,       ":=")	\
-  sm(ARROW,       "->") \
-  sm(LCOMMENT,    "//") \
-  sm(LBCOMMENT,   "/*") \
-  sm(RBCOMMENT,   "*/") \
-  sm(LBLOCK,      "{") \
-  sm(RBLOCK,      "}")\
-  sm(LBRACKET,    "[") \
-  sm(RBRACKET,    "]")\
-  sm(LPAREN,      "(") \
-  sm(RPAREN,      ")") \
-  sm(COMMA,       ",")\
-  sm(SEMICOLON,   ";") \
-  sm(IMMDECL,     ":") \
-  sm(EQ,          "==") /* logical begin */ \
-  sm(NEQ,         "!=") \
-  sm(GREATER_EQ,  ">=") \
-  sm(LESS_EQ,     "<=")\
-  sm(LOGIC_AND,   "&&") \
-  sm(LOGIC_OR,    "||") /* logical end */ \
-  sm(AND,         "&") \
-  sm(OR,          "|") \
-  sm(XOR,         "^") \
-  sm(NOT,         "!") \
-  sm(SLASH,       "/") \
-  sm(MODULO,      "%") \
-  sm(ASSIGN,      "=") \
-  sm(PLUS,        "+") \
-  sm(MINUS,       "-")\
-  sm(ASTERISK,    "*") \
-  sm(GREATER,     ">") \
-  sm(LESS,        "<") \
-  sm(DOT,         ".") \
-  sm(NONE,        "")\
+  sm(EOF = 0,      "end") \
+  sm(IDENT,        "identifier") \
+  sm(STRING,       "string") \
+  sm(CHAR,         "char") \
+  sm(NUM,          "number") \
+  sm(FLOAT,        "float") \
+  sm(DOUBLE,       "double") \
+  sm(IF,           "if") /* must be first */ \
+  sm(FN,           "fn") \
+  sm(CAST,         "cast") \
+  sm(ELSE,         "else") \
+  sm(TRUE,         "true") \
+  sm(NULL,         "null") \
+  sm(ENUM,         "enum") \
+  sm(LOOP,         "loop")\
+  sm(RUN,          "#run")\
+  sm(FALSE,        "false") \
+  sm(BREAK,        "break")\
+  sm(LOAD,         "#load") \
+  sm(LINK,         "#link") \
+  sm(LINE,         "#line") \
+  sm(FILE,         "#file") \
+  sm(EXTERN,       "extern") \
+  sm(RETURN,       "return") \
+  sm(STRUCT,       "struct") \
+  sm(SIZEOF,       "sizeof") \
+  sm(CONTINUE,     "continue") /* must be last */ \
+  sm(RANGE,        "..") \
+  sm(MDECL,        ":=")	\
+  sm(ARROW,        "->") \
+  sm(LCOMMENT,     "//") \
+  sm(LBCOMMENT,    "/*") \
+  sm(RBCOMMENT,    "*/") \
+  sm(LBLOCK,       "{") \
+  sm(RBLOCK,       "}")\
+  sm(LBRACKET,     "[") \
+  sm(RBRACKET,     "]")\
+  sm(LPAREN,       "(") \
+  sm(RPAREN,       ")") \
+  sm(COMMA,        ",")\
+  sm(SEMICOLON,    ";") \
+  sm(IMMDECL,      ":") \
+  sm(EQ,           "==") /* logical begin */ \
+  sm(NEQ,          "!=") \
+  sm(GREATER_EQ,   ">=") \
+  sm(LESS_EQ,      "<=")\
+  sm(LOGIC_AND,    "&&") \
+  sm(LOGIC_OR,     "||") /* logical end */ \
+  sm(PLUS_ASSIGN,  "+=") \
+  sm(MINUS_ASSIGN, "-=") \
+  sm(MUL_ASSIGN,   "*=") \
+  sm(DIV_ASSIGN,   "/=") \
+  sm(AND,          "&") \
+  sm(OR,           "|") \
+  sm(XOR,          "^") \
+  sm(NOT,          "!") \
+  sm(SLASH,        "/") \
+  sm(MODULO,       "%") \
+  sm(ASSIGN,       "=") \
+  sm(PLUS,         "+") \
+  sm(MINUS,        "-")\
+  sm(ASTERISK,     "*") \
+  sm(GREATER,      ">") \
+  sm(LESS,         "<") \
+  sm(DOT,          ".") \
+  sm(NONE,         "")\
 
 typedef enum {
 #define sm(tok, str) SYM_##tok,
