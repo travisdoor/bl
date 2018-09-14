@@ -466,6 +466,14 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
+_NODE_CTOR(stmt_init, Node *type, Node *fields)
+{
+  NodeStmtInit *_stmt_init = alloc_node(ast, NODE_STMT_INIT, tok, NodeStmtInit *);
+  _stmt_init->type         = type;
+  _stmt_init->fields       = fields;
+  return (Node *)_stmt_init;
+}
+
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
@@ -595,6 +603,12 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     visit(peek_stmt_loop(node)->condition);
     visit(peek_stmt_loop(node)->increment);
     visit(peek_stmt_loop(node)->block);
+    break;
+  }
+
+  case NODE_STMT_INIT: {
+    NodeStmtInit *_init = peek_stmt_init(node);
+    node_foreach(_init->fields, tmp) visit(tmp);
     break;
   }
 

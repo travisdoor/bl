@@ -164,10 +164,12 @@ post_type(Visitor *visitor, Node *type, void *cnt)
     return;
   }
 
+#if VERBOSE
   char buf[256];
   ast_type_to_string(buf, 256, type);
   bl_log("new type: %s", buf);
   bo_htbl_insert_empty(_cnt->assembly->type_table, (uint64_t)type);
+#endif
   _cnt->type_table_size++;
 }
 
@@ -200,5 +202,7 @@ post_run(Builder *builder, Assembly *assembly)
     visitor_visit(&visitor, unit->ast.root, &cnt);
   }
 
+#if VERBOSE
   bl_log("found %d unique types", cnt.type_table_size);
+#endif
 }

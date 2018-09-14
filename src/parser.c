@@ -1010,9 +1010,9 @@ parse_decl(Context *cnt)
 
   if (tok_assign) {
     _decl->mutable = token_is(tok_assign, SYM_MDECL);
-    _decl->flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_INTERNAL);
+    _decl->flags |= parse_flags(cnt, FLAG_EXTERN);
 
-    if (!(_decl->flags & (FLAG_EXTERN | FLAG_INTERNAL))) {
+    if (!(_decl->flags & (FLAG_EXTERN))) {
       _decl->value = parse_value(cnt);
 
       if (!_decl->value) {
@@ -1155,14 +1155,6 @@ next:
       parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag 'extern'");
     } else {
       flags |= FLAG_EXTERN;
-    }
-    goto next;
-  case SYM_INTERNAL:
-    tokens_consume(cnt->tokens);
-    if (!(allowed & FLAG_INTERNAL)) {
-      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag 'internal'");
-    } else {
-      flags |= FLAG_INTERNAL;
     }
     goto next;
   default:

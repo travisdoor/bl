@@ -1,11 +1,10 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
+
+a := 10;
 
 main : fn () s32 {
-  a s32; // type s32
-  b := &a; // type pointer -> s32
-  b = null;
-
+  a = 1; 
   return EXIT_SUCCESS;
 };

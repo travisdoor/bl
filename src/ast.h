@@ -111,6 +111,10 @@
   nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
     void *_; \
   }) \
+  nt(STMT_INIT, StmtInit, stmt_init, struct { \
+    Node *type; \
+    Node *fields; \
+  }) \
   nt(DECL, Decl, decl, struct { \
     DeclKind    kind; \
     Node       *name; \
@@ -254,9 +258,8 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
-  FLAG_MAIN     = 1 << 1, /* main method */
-  FLAG_INTERNAL = 1 << 2  /* compiler internals */
+  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  FLAG_MAIN   = 1 << 1  /* main method */
 } NodeFlag;
 
 typedef enum
@@ -404,6 +407,7 @@ _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block,
            Node *parent_compound);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
+_NODE_CTOR(stmt_init, Node *type, Node *fields);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            int order, bool in_gscope);
 _NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
