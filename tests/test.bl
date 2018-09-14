@@ -2,9 +2,10 @@
 
 //#load "libc.bl"
 
-a := 10;
-
 main : fn () s32 {
-  a = 1; 
+  // [type] <{ elems }>
+  arr := s32 [3] { 0, 1, 2 }; 
+  //arr s32 [3] := { 0, 1, 2 }; 
+
   return EXIT_SUCCESS;
 };

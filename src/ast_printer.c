@@ -432,7 +432,7 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_loop, NODE_STMT_LOOP);
   visitor_add(&visitor, (VisitorFunc)print_break, NODE_STMT_BREAK);
   visitor_add(&visitor, (VisitorFunc)print_continue, NODE_STMT_CONTINUE);
-  visitor_add(&visitor, (VisitorFunc)print_init, NODE_STMT_INIT);
+  visitor_add(&visitor, (VisitorFunc)print_init, NODE_EXPR_INIT);
   visitor_add(&visitor, (VisitorFunc)print_call, NODE_EXPR_CALL);
   visitor_add(&visitor, (VisitorFunc)print_binop, NODE_EXPR_BINOP);
   visitor_add(&visitor, (VisitorFunc)print_null, NODE_EXPR_NULL);

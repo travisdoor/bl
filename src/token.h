@@ -61,7 +61,6 @@
   sm(STRUCT,       "struct") \
   sm(SIZEOF,       "sizeof") \
   sm(CONTINUE,     "continue") /* must be last */ \
-  sm(RANGE,        "..") \
   sm(MDECL,        ":=")	\
   sm(ARROW,        "->") \
   sm(LCOMMENT,     "//") \
@@ -86,6 +85,7 @@
   sm(MINUS_ASSIGN, "-=") \
   sm(MUL_ASSIGN,   "*=") \
   sm(DIV_ASSIGN,   "/=") \
+  sm(MOD_ASSIGN,   "%=") \
   sm(AND,          "&") \
   sm(OR,           "|") \
   sm(XOR,          "^") \

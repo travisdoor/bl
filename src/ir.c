@@ -777,6 +777,13 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
+  case SYM_MOD_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    value = LLVMBuildSRem(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
   default:
     break;
   }

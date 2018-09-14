@@ -146,6 +146,7 @@ token_prec(Token *token, bool unary)
   case SYM_MINUS_ASSIGN:
   case SYM_MUL_ASSIGN:
   case SYM_DIV_ASSIGN:
+  case SYM_MOD_ASSIGN:
     return 4;
 
   default:

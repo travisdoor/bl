@@ -148,6 +148,9 @@ static Node *
 parse_expr_null(Context *cnt);
 
 static Node *
+parse_expr_init(Context *cnt);
+
+static Node *
 parse_value(Context *cnt);
 
 static Node *
@@ -230,6 +233,13 @@ parse_expr_cast(Context *cnt)
   }
 
   return ast_expr_cast(cnt->ast, tok_begin, to_type, next);
+}
+
+Node *
+parse_expr_init(Context *cnt)
+{
+  // TODO
+  return NULL;
 }
 
 Node *
@@ -685,6 +695,7 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_elem(cnt, op))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_expr_member(cnt, op))) return expr;
+  if ((expr = parse_expr_init(cnt))) return expr;
   if ((expr = parse_ident(cnt, 0))) return expr;
   return expr;
 }

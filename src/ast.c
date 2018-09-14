@@ -466,12 +466,12 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
-_NODE_CTOR(stmt_init, Node *type, Node *fields)
+_NODE_CTOR(expr_init, Node *type, Node *fields)
 {
-  NodeStmtInit *_stmt_init = alloc_node(ast, NODE_STMT_INIT, tok, NodeStmtInit *);
-  _stmt_init->type         = type;
-  _stmt_init->fields       = fields;
-  return (Node *)_stmt_init;
+  NodeExprInit *_expr_init = alloc_node(ast, NODE_EXPR_INIT, tok, NodeExprInit *);
+  _expr_init->type         = type;
+  _expr_init->fields       = fields;
+  return (Node *)_expr_init;
 }
 
 /*************************************************************************************************
@@ -606,8 +606,8 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
-  case NODE_STMT_INIT: {
-    NodeStmtInit *_init = peek_stmt_init(node);
+  case NODE_EXPR_INIT: {
+    NodeExprInit *_init = peek_expr_init(node);
     node_foreach(_init->fields, tmp) visit(tmp);
     break;
   }

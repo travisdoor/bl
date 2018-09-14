@@ -111,10 +111,6 @@
   nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
     void *_; \
   }) \
-  nt(STMT_INIT, StmtInit, stmt_init, struct { \
-    Node *type; \
-    Node *fields; \
-  }) \
   nt(DECL, Decl, decl, struct { \
     DeclKind    kind; \
     Node       *name; \
@@ -172,6 +168,10 @@
   nt(LIT, Lit, lit, struct { \
     Node       *type; \
     TokenValue value; \
+  }) \
+  nt(EXPR_INIT, ExprInit, expr_init, struct { \
+    Node *type; \
+    Node *fields; \
   }) \
   nt(EXPR_CAST, ExprCast, expr_cast, struct { \
     Node *type; \
@@ -407,7 +407,7 @@ _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block,
            Node *parent_compound);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
-_NODE_CTOR(stmt_init, Node *type, Node *fields);
+_NODE_CTOR(expr_init, Node *type, Node *fields);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            int order, bool in_gscope);
 _NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
