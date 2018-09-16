@@ -48,3 +48,15 @@ TypeInfoInteger : struct {
 
 // array of type infos initialized from the compiler
 //_type_table *TypeInfo[0] : internal;
+
+print : fn (s string) {
+  __print(s);
+};
+
+print_s32 : fn (n s32) {
+};
+
+print_s_s32 : fn (s string, n s32) {
+};
+
+

@@ -26,53 +26,16 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "libc.bl"
+#load "utils.bl"
 
-StrChunkSize size_t : 256;
+STRING_TERMINATOR : '\0';
 
-String : struct {
-  data *char,
-  len size_t,
-  _allocated size_t
-};
+string_len : fn (s *char) size_t {
+  len size_t := 0;
+  if s == null { return len; }    
+  loop ; *s != STRING_TERMINATOR; s = ptrshift(s, sizeof(char)) {
+    len += 1;
+  }
 
-str_new : fn () *String {
-  tmp *String := malloc(sizeof(String));
-  tmp->data   	  = malloc(StrChunkSize);
-  tmp->_allocated = StrChunkSize;
-  tmp->len 	  = 0;
-  *tmp->data 	  = '\0';
-  return tmp;
-};
-
-str_delete : fn (s *String) {
-  if s == null { return; }
-  free(s->data);
-  free(s);
-};
-
-str_cat : fn (s *String, other *String) {
-  str_ccat(s, other->data);
-};
-
-str_ccat : fn (s *String, cs *char) {
-  alloc_if_needed : fn (s *String, expected_len size_t) {
-    expected_len = expected_len + 1; // adding one cell for \0
-    if expected_len > s->_allocated {
-       s->_allocated = (expected_len / StrChunkSize + 1) * StrChunkSize; 
-       s->data = realloc(s->data, s->_allocated);
-    }
-  };
-
-  if s == null || cs == null { return; }
-
-  s->len = s->len + strlen(cs);
-  alloc_if_needed(s, s->len);    
-  strcat(s->data, cs);
-};
-
-str_clear : fn (s *String) {
-  if s == null || s->data == null { return; }
-  s->len = 0;
-  *s->data = '\0';
+  return len;
 };

@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "os/os.bl"
+#load "string.bl"
 
 /*
  * This file contains OS-depend implementation and it's loaded by default by every assembly.
@@ -41,3 +42,15 @@ OS	: OS_MACOS;
  * Operating system name.
  */
 OS_NAME : "macos";
+
+/*
+ * Print implementation
+ */
+
+STDOUT_FILENO s32 : 1;
+
+syscall fn (s32, s32, *char, size_t) s32 : extern;
+
+__print : fn (s string) {
+  syscall(4, STDOUT_FILENO, s, string_len(s));
+};

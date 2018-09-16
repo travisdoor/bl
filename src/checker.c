@@ -977,7 +977,9 @@ check_expr_binop(Context *cnt, Node **binop)
   assert(_binop->lhs);
   assert(_binop->rhs);
 
-  if (_binop->op == SYM_ASSIGN) {
+  Sym op = _binop->op;
+  if (op == SYM_ASSIGN || op == SYM_PLUS_ASSIGN || op == SYM_MINUS_ASSIGN || op == SYM_MUL_ASSIGN ||
+      op == SYM_DIV_ASSIGN || op == SYM_MOD_ASSIGN) {
     if (node_is_not(_binop->lhs, NODE_IDENT) && node_is_not(_binop->lhs, NODE_EXPR_UNARY) &&
         node_is_not(_binop->lhs, NODE_EXPR_ELEM) && node_is_not(_binop->lhs, NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...

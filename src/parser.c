@@ -238,14 +238,59 @@ parse_expr_cast(Context *cnt)
 Node *
 parse_expr_init(Context *cnt)
 {
-  // TODO
-  return NULL;
+  if (!tokens_lookahead_till(cnt->tokens, SYM_LBLOCK, SYM_SEMICOLON)) return NULL;
+  Node *type = parse_type(cnt);
+
+  /* type can be later optional */
+  assert(type);
+
+  /* eat { */
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+  if (!tok_begin) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected initialization list field block");
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  Node *        init  = ast_expr_init(cnt->ast, tok_begin, type, NULL);
+  NodeExprInit *_init = peek_expr_init(init);
+
+  /* parse init fields */
+  bool   rq         = false;
+  Node **field      = &_init->fields;
+  Node * prev_field = NULL;
+
+next:
+  *field = parse_expr(cnt);
+  if (*field) {
+    prev_field = *field;
+    field      = &(*field)->next;
+
+    if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+      rq = true;
+      goto next;
+    }
+  } else if (rq) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
+      parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
+                  "expected initialization field after comma ','");
+      return ast_bad(cnt->ast, tok_begin);
+    }
+  }
+
+  /* eat } */
+  if (!tokens_consume_if(cnt->tokens, SYM_RBLOCK)) {
+    assert(false);
+  }
+
+  return init;
 }
 
 Node *
 parse_expr_sizeof(Context *cnt)
 {
-
   Token *tok_id = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
   if (!tok_id) return NULL;
 
@@ -819,7 +864,7 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_fund(cnt, ptr);
 
   if (!type) return NULL;
-  
+
   Node *arr = parse_arr(cnt);
   if (arr) {
     ast_type_set_arr(type, arr);

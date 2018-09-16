@@ -2,10 +2,21 @@
 
 //#load "libc.bl"
 
+/*
+ internals:
+ sizeof
+ typeof
+ malloc
+ free
+ memcpy
+*/
+
 main : fn () s32 {
   // [type] <{ elems }>
   arr := s32 [3] { 0, 1, 2 }; 
   //arr s32 [3] := { 0, 1, 2 }; 
+
+  print("hello world");
 
   return EXIT_SUCCESS;
 };
