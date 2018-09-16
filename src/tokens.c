@@ -168,16 +168,16 @@ tokens_is_seq(Tokens *tokens, int cnt, ...)
   return ret;
 }
 
-void
-tokens_set_marker(Tokens *tokens)
+size_t
+tokens_get_marker(Tokens *tokens)
 {
-  tokens->marker = tokens->iter;
+  return tokens->iter;
 }
 
 void
-tokens_back_to_marker(Tokens *tokens)
+tokens_back_to_marker(Tokens *tokens, size_t marker)
 {
-  tokens->iter = tokens->marker;
+  tokens->iter = marker;
 }
 
 void
@@ -218,7 +218,7 @@ bool
 tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 {
   bool found = false;
-  tokens_set_marker(tokens);
+  size_t marker = tokens_get_marker(tokens);
   while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
     if (tokens_current_is(tokens, lookup)) {
       found = true;
@@ -227,6 +227,6 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 
     tokens_consume(tokens);
   }
-  tokens_back_to_marker(tokens);
+  tokens_back_to_marker(tokens, marker);
   return found;
 }

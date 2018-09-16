@@ -39,7 +39,6 @@ typedef struct Tokens
   BArray *buf;
   BArray *string_cache;
   size_t  iter;
-  size_t  marker;
 } Tokens;
 
 void
@@ -99,11 +98,11 @@ tokens_is_seq(Tokens *tokens, int cnt, ...);
 void
 tokens_reset_iter(Tokens *tokens);
 
-void
-tokens_set_marker(Tokens *tokens);
+size_t
+tokens_get_marker(Tokens *tokens);
 
 void
-tokens_back_to_marker(Tokens *tokens);
+tokens_back_to_marker(Tokens *tokens, size_t marker);
 
 void
 tokens_consume_till(Tokens *tokens, Sym sym);
