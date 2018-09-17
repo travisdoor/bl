@@ -235,14 +235,30 @@ parse_expr_cast(Context *cnt)
   return ast_expr_cast(cnt->ast, tok_begin, to_type, next);
 }
 
+static TokensLookaheadState
+cmp_expr_init(Token *curr)
+{
+  if (token_is_binop(curr))
+    return TOK_LOOK_HIT;
+  else if (token_is(curr, SYM_LBLOCK))
+    return TOK_LOOK_TERMINAL;
+
+  return TOK_LOOK_CONTINUE;
+}
+
 Node *
 parse_expr_init(Context *cnt)
 {
-  if (!tokens_lookahead_till(cnt->tokens, SYM_LBLOCK, SYM_SEMICOLON)) return NULL;
+  if (!tokens_lookahead(cnt->tokens, cmp_expr_init)) return NULL;
   Node *type = parse_type(cnt);
 
   /* type can be later optional */
-  assert(type);
+  if (!type) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
+                "expected type of initialization list");
+    return ast_bad(cnt->ast, tok_err);
+  }
 
   /* eat { */
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
@@ -257,15 +273,13 @@ parse_expr_init(Context *cnt)
   NodeExprInit *_init = peek_expr_init(init);
 
   /* parse init fields */
-  bool   rq         = false;
-  Node **field      = &_init->fields;
-  Node * prev_field = NULL;
+  bool   rq    = false;
+  Node **field = &_init->fields;
 
 next:
   *field = parse_expr(cnt);
   if (*field) {
-    prev_field = *field;
-    field      = &(*field)->next;
+    field = &(*field)->next;
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -390,6 +404,17 @@ parse_stmt_if(Context *cnt)
   return ast_stmt_if(cnt->ast, tok_begin, test, true_stmt, false_stmt);
 }
 
+static TokensLookaheadState
+cmp_stmt_loop(Token *curr)
+{
+  if (token_is(curr, SYM_SEMICOLON))
+    return TOK_LOOK_HIT;
+  else if (token_is(curr, SYM_LBLOCK))
+    return TOK_LOOK_TERMINAL;
+
+  return TOK_LOOK_CONTINUE;
+}
+
 Node *
 parse_stmt_loop(Context *cnt)
 {
@@ -405,7 +430,7 @@ parse_stmt_loop(Context *cnt)
   cnt->inside_loop            = true;
   cnt->curr_compound          = loop;
 
-  if (tokens_lookahead_till(cnt->tokens, SYM_SEMICOLON, SYM_LBLOCK)) {
+  if (tokens_lookahead(cnt->tokens, cmp_stmt_loop)) {
     /* for loop construct loop [init]; [condition]; [increment] {} */
     _loop->init = parse_decl(cnt);
     if (!parse_semicolon_rq(cnt)) {

@@ -28,6 +28,7 @@
 
 #include <stdarg.h>
 #include "tokens.h"
+#include "common.h"
 
 void
 tokens_init(Tokens *tokens)
@@ -217,7 +218,7 @@ tokens_consume_till(Tokens *tokens, Sym sym)
 bool
 tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 {
-  bool found = false;
+  bool   found  = false;
   size_t marker = tokens_get_marker(tokens);
   while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
     if (tokens_current_is(tokens, lookup)) {
@@ -225,6 +226,29 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
       break;
     }
 
+    tokens_consume(tokens);
+  }
+  tokens_back_to_marker(tokens, marker);
+  return found;
+}
+
+bool
+tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
+{
+  assert(cmp);
+  bool                 found  = false;
+  size_t               marker = tokens_get_marker(tokens);
+  Token *              curr   = NULL;
+  TokensLookaheadState state  = TOK_LOOK_TERMINAL;
+  while (true) {
+    curr  = tokens_peek(tokens);
+    state = cmp(curr);
+    if (curr->sym == SYM_EOF || state == TOK_LOOK_TERMINAL) {
+      break;
+    } else if (state == TOK_LOOK_HIT) {
+      found = true;
+      break;
+    }
     tokens_consume(tokens);
   }
   tokens_back_to_marker(tokens, marker);

@@ -41,6 +41,15 @@ typedef struct Tokens
   size_t  iter;
 } Tokens;
 
+typedef enum
+{
+  TOK_LOOK_HIT,
+  TOK_LOOK_CONTINUE,
+  TOK_LOOK_TERMINAL,
+} TokensLookaheadState;
+
+typedef TokensLookaheadState (*TokenCmpFunc)(Token *curr);
+
 void
 tokens_init(Tokens *tokens);
 
@@ -109,6 +118,9 @@ tokens_consume_till(Tokens *tokens, Sym sym);
 
 bool
 tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
+
+bool
+tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
 
 BArray *
 tokens_get_all(Tokens *tokens);
