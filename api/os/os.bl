@@ -34,21 +34,6 @@ OS_LINUX   : 2;
 EXIT_FAILURE : 1;
 EXIT_SUCCESS : 0;
 
-TypeKind : enum {
-  Integer : 1
-};
-
-TypeInfo : struct {
-  kind TypeKind
-};
-
-TypeInfoInteger : struct {
-  base TypeInfo
-};
-
-// array of type infos initialized from the compiler
-//_type_table *TypeInfo[0] : internal;
-
 print : fn (s string) {
   __print(s);
 };

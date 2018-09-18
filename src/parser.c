@@ -235,21 +235,11 @@ parse_expr_cast(Context *cnt)
   return ast_expr_cast(cnt->ast, tok_begin, to_type, next);
 }
 
-static TokensLookaheadState
-cmp_expr_init(Token *curr)
-{
-  if (token_is_binop(curr))
-    return TOK_LOOK_HIT;
-  else if (token_is(curr, SYM_LBLOCK))
-    return TOK_LOOK_TERMINAL;
-
-  return TOK_LOOK_CONTINUE;
-}
-
 Node *
 parse_expr_init(Context *cnt)
 {
-  if (!tokens_lookahead(cnt->tokens, cmp_expr_init)) return NULL;
+  if (tokens_current_is_not(cnt->tokens, SYM_LBLOCK)) return NULL;
+#if 0
   Node *type = parse_type(cnt);
 
   /* type can be later optional */
@@ -259,6 +249,9 @@ parse_expr_init(Context *cnt)
                 "expected type of initialization list");
     return ast_bad(cnt->ast, tok_err);
   }
+#else
+  Node *type = NULL;
+#endif
 
   /* eat { */
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);

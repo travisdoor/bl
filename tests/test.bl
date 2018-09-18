@@ -13,14 +13,13 @@
 
 main : fn () s32 {
   // [type] <{ elems }>
-  arr := s32 { 0, 1, 2 }; 
-  a := 0;
-  if a == 0 {}
-  if true {}
-
-  //arr s32 [3] := { 0, 1, 2 }; 
+  //arr s32 [4] := {0, 1, 2, 3};
 
   print("hello world");
 
   return EXIT_SUCCESS;
+};
+
+Foo struct { s32 } : struct {
+  a s32
 };
