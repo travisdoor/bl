@@ -239,19 +239,6 @@ Node *
 parse_expr_init(Context *cnt)
 {
   if (tokens_current_is_not(cnt->tokens, SYM_LBLOCK)) return NULL;
-#if 0
-  Node *type = parse_type(cnt);
-
-  /* type can be later optional */
-  if (!type) {
-    Token *tok_err = tokens_peek(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
-                "expected type of initialization list");
-    return ast_bad(cnt->ast, tok_err);
-  }
-#else
-  Node *type = NULL;
-#endif
 
   /* eat { */
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
@@ -262,7 +249,7 @@ parse_expr_init(Context *cnt)
     return ast_bad(cnt->ast, tok_err);
   }
 
-  Node *        init  = ast_expr_init(cnt->ast, tok_begin, type, NULL);
+  Node *        init  = ast_expr_init(cnt->ast, tok_begin, NULL, NULL);
   NodeExprInit *_init = peek_expr_init(init);
 
   /* parse init fields */
@@ -758,8 +745,8 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_elem(cnt, op))) return expr;
   if ((expr = parse_literal(cnt))) return expr;
   if ((expr = parse_expr_member(cnt, op))) return expr;
-  if ((expr = parse_expr_init(cnt))) return expr;
   if ((expr = parse_ident(cnt, 0))) return expr;
+  if ((expr = parse_expr_init(cnt))) return expr;
   return expr;
 }
 
@@ -781,7 +768,8 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
       lookahead = tokens_peek(cnt->tokens);
     }
 
-    if (op->sym == SYM_LBRACKET) {
+    if (op->sym ==
+	SYM_LBRACKET) {
       peek_expr_elem(rhs)->next = lhs;
       lhs                       = rhs;
     } else if (op->sym == SYM_DOT || op->sym == SYM_ARROW) {

@@ -14,12 +14,21 @@
 main : fn () s32 {
   // [type] <{ elems }>
   //arr s32 [4] := {0, 1, 2, 3};
+  //i := { 0 };
+
+  // use (expr) for if/loop statement???
+  a := 0;
+  if a == { 0 } {
+  }
+
+  if a == a {
+  }
 
   print("hello world");
 
   return EXIT_SUCCESS;
 };
 
-Foo struct { s32 } : struct {
+Foo : struct {
   a s32
 };
