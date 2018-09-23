@@ -88,7 +88,7 @@ static void
 print_sizeof(Visitor *visitor, Node *node, int pad);
 
 static void
-print_init(Visitor *visitor, Node *node, int pad);
+print_lit_cmp(Visitor *visitor, Node *node, int pad);
 
 static void
 print_member(Visitor *visitor, Node *node, int pad);
@@ -158,7 +158,7 @@ print_null(Visitor *visitor, Node *node, int pad);
 
 // impl
 void
-print_init(Visitor *visitor, Node *node, int pad)
+print_lit_cmp(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -291,7 +291,7 @@ void
 print_block(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad));
+  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
@@ -432,7 +432,7 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_loop, NODE_STMT_LOOP);
   visitor_add(&visitor, (VisitorFunc)print_break, NODE_STMT_BREAK);
   visitor_add(&visitor, (VisitorFunc)print_continue, NODE_STMT_CONTINUE);
-  visitor_add(&visitor, (VisitorFunc)print_init, NODE_EXPR_INIT);
+  visitor_add(&visitor, (VisitorFunc)print_lit_cmp, NODE_LIT_CMP);
   visitor_add(&visitor, (VisitorFunc)print_call, NODE_EXPR_CALL);
   visitor_add(&visitor, (VisitorFunc)print_binop, NODE_EXPR_BINOP);
   visitor_add(&visitor, (VisitorFunc)print_null, NODE_EXPR_NULL);

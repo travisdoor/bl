@@ -157,6 +157,9 @@ static bool
 check_decl(Context *cnt, Node **decl);
 
 static bool
+check_lit_cmp(Context *cnt, Node **cmp);
+
+static bool
 check_expr_call(Context *cnt, Node **call);
 
 static bool
@@ -411,6 +414,12 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_LIT_STRUCT: {
     NodeLitStruct *_struct = peek_lit_struct(*node);
     flatten(&_struct->type);
+    return;
+  }
+
+  case NODE_LIT_CMP: {
+    NodeLitCmp *_cmp = peek_lit_cmp(*node);
+    flatten(&_cmp->type);
     return;
   }
 
@@ -789,6 +798,9 @@ check_node(Context *cnt, Node **node)
     break;
   case NODE_TYPE_ENUM:
     result = check_type_enum(cnt, node);
+    break;
+  case NODE_LIT_CMP:
+    result = check_lit_cmp(cnt, node);
     break;
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
@@ -1355,6 +1367,35 @@ check_decl(Context *cnt, Node **decl)
   } else {
     provide(_decl->name, *decl);
     waiting_resume(cnt, _decl->name);
+  }
+
+  FINISH;
+}
+
+bool
+check_lit_cmp(Context *cnt, Node **cmp)
+{
+  // TODO
+  //Node *      tmp  = NULL;
+  NodeLitCmp *_cmp = peek_lit_cmp(*cmp);
+  Node *      type = ast_get_type(_cmp->type);
+  assert(type);
+  type = ast_unroll_ident(type);
+  bl_log("fook");
+
+  if (_cmp->fieldc == 0) {
+    check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
+                     "expected initialization fields");
+    FINISH;
+  }
+
+  switch (node_code(type)) {
+  case NODE_TYPE_FUND: {
+    break;
+  }
+
+  default:
+    bl_abort("unsupported compound literal type");
   }
 
   FINISH;

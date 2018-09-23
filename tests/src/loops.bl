@@ -4,7 +4,7 @@ main : fn () s32 {
   {
     i := 0;
     loop {
-	if i > 9 { break; }
+	if (i > 9) { break; }
 	printf("i = %d, ", i);
 	i = i + 1;
 	continue;
@@ -14,7 +14,7 @@ main : fn () s32 {
 
   {
     i := 0;
-    loop i < 10 {
+    loop (i < 10) {
 	printf("i = %d, ", i);
 	i = i + 1;
 	continue;
@@ -23,7 +23,7 @@ main : fn () s32 {
   }
 
   {
-    loop i := 0; i < 10; i += 1 {
+    loop (i := 0; i < 10; i += 1) {
       printf("i = %d, ", i);
     }
     puts("done");

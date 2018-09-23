@@ -442,7 +442,7 @@ SDL_Point : struct {
 // helpers
 SDL_KeyPressed : fn (scancode SDL_Scancode) bool {
   tmp := SDL_GetKeyboardState(null);
-  if tmp == null {
+  if (tmp == null) {
     return false;
   }
     

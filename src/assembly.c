@@ -64,6 +64,8 @@ assembly_delete(Assembly *assembly)
 {
   free(assembly->name);
 
+  scope_cache_terminate(assembly->scope_cache);
+    
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
@@ -74,8 +76,6 @@ assembly_delete(Assembly *assembly)
   bo_unref(assembly->ir_queue);
   bo_unref(assembly->link_cache);
   bo_unref(assembly->type_table);
-
-  scope_cache_terminate(assembly->scope_cache);
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */

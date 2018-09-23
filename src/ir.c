@@ -789,6 +789,8 @@ ir_expr_binop(Context *cnt, Node *binop)
   }
 
   if (should_load(_binop->lhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+  lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
+  float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
   case SYM_PLUS:
