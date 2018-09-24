@@ -2,21 +2,19 @@
 
 main : fn () s32 {
   a := true;
-  if a {
+  if (a) {
     puts("ok");
-    if !a {
-      puts("INVALID");
-      return 1;
+    if (!a) {
+      abort();
     } else {
       puts("ok");
     }
   } else {
-    puts("INVALID");
-    return 2;
+    abort();
   }
 
   test();
-  return 3;
+  return 0;
 };
 
 Foo : struct {
@@ -26,7 +24,7 @@ Foo : struct {
 test : fn () {
   foo Foo;
   foo.b = false;
-  if !foo.b { return; }
+  if (!foo.b) { return; }
   puts("should skip in method!!!");
   abort();
 };

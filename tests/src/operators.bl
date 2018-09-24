@@ -3,43 +3,43 @@
 main : fn () s32 {
   a := 0;
   a = a + 1;
-  if a != 1 { abort(); }
+  if (a != 1) { abort(); }
 
   a = 0;
   a = a - 1;
-  if a != -1 { abort(); }
+  if (a != -1) { abort(); }
 
   a = 10;
   a = a * 2;
-  if a != 20 { abort(); }
+  if (a != 20) { abort(); }
 
   a = 10;
   a = a / 2;
-  if a != 5 { abort(); }
+  if (a != 5) { abort(); }
 
   a = 10;
   a = a % 2;
-  if a != 0 { abort(); }
+  if (a != 0) { abort(); }
 
   a = 10;
   a += 2;
-  if a != 12 { abort(); }
+  if (a != 12) { abort(); }
 
   a = 10;
   a -= 2;
-  if a != 8 { abort(); }
+  if (a != 8) { abort(); }
 
   a = 10;
   a *= 2;
-  if a != 20 { abort(); }
+  if (a != 20) { abort(); }
 
   a = 10;
   a /= 2;
-  if a != 5 { abort(); }
+  if (a != 5) { abort(); }
 
   a = 10;
   a %= 2;
-  if a != 0 { abort(); }
+  if (a != 0) { abort(); }
 
   return EXIT_SUCCESS;
 };

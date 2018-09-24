@@ -153,7 +153,7 @@ static Node *
 parse_expr_null(Context *cnt);
 
 static Node *
-parse_literal_cmp(Context *cnt, Token *op, Node *type);
+parse_literal_cmp(Context *cnt, Node *prev);
 
 static Node *
 parse_literal(Context *cnt);
@@ -238,19 +238,22 @@ parse_expr_cast(Context *cnt)
 }
 
 Node *
-parse_literal_cmp(Context *cnt, Token *op, Node *type)
+parse_literal_cmp(Context *cnt, Node *prev)
 {
-  if (type == NULL) return NULL;
+  if (prev == NULL) return NULL;
 
-  switch (node_code(type)) {
+  switch (node_code(prev)) {
   case NODE_IDENT:
   case NODE_LIT_STRUCT:
     break;
   default:
-    return type;
+    return NULL;
   }
 
-  Node *      lit_cmp  = ast_lit_cmp(cnt->ast, op, type, NULL, 0);
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+  if (!tok_begin) return NULL;
+
+  Node *      lit_cmp  = ast_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0);
   NodeLitCmp *_lit_cmp = peek_lit_cmp(lit_cmp);
 
   /* parse lit_cmp fields */
@@ -774,21 +777,25 @@ Node *
 parse_atom_expr(Context *cnt, Token *op)
 {
   Node *expr = NULL;
-  if ((expr = parse_expr_nested(cnt))) return expr;
-  if ((expr = parse_expr_null(cnt))) return expr;
-  if ((expr = parse_expr_sizeof(cnt))) return expr;
-  if ((expr = parse_expr_cast(cnt))) return expr;
-  if ((expr = parse_run(cnt))) return expr;
-  if ((expr = parse_literal_fn(cnt))) return expr;
-  if ((expr = parse_literal_struct(cnt))) return expr;
-  if ((expr = parse_literal_enum(cnt))) return expr;
-  if ((expr = parse_expr_call(cnt))) return expr;
-  if ((expr = parse_expr_elem(cnt, op))) return expr;
-  if ((expr = parse_literal(cnt))) return expr;
-  if ((expr = parse_expr_member(cnt, op))) return expr;
-  if ((expr = parse_ident(cnt, 0))) return expr;
+  Node *tmp  = NULL;
 
-  return expr;
+  if ((expr = parse_expr_nested(cnt))) goto done;
+  if ((expr = parse_expr_null(cnt))) goto done;
+  if ((expr = parse_expr_sizeof(cnt))) goto done;
+  if ((expr = parse_expr_cast(cnt))) goto done;
+  if ((expr = parse_run(cnt))) goto done;
+  if ((expr = parse_literal_fn(cnt))) goto done;
+  if ((expr = parse_literal_struct(cnt))) goto done;
+  if ((expr = parse_literal_enum(cnt))) goto done;
+  if ((expr = parse_expr_call(cnt))) goto done;
+  if ((expr = parse_expr_elem(cnt, op))) goto done;
+  if ((expr = parse_literal(cnt))) goto done;
+  if ((expr = parse_expr_member(cnt, op))) goto done;
+  if ((expr = parse_ident(cnt, 0))) goto done;
+
+done:
+  tmp = parse_literal_cmp(cnt, expr);
+  return tmp ? tmp : expr;
 }
 
 Node *
@@ -829,9 +836,6 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
         peek_expr_member(rhs)->next = lhs;
         lhs                         = rhs;
       }
-    } else if (token_is(op, SYM_LBLOCK)) {
-      /* maybe compound literal */
-      lhs = parse_literal_cmp(cnt, op, lhs);
     } else if (token_is_binop(op)) {
       Node *result_type = NULL;
       Node *tmp         = lhs;

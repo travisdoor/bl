@@ -420,7 +420,12 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_LIT_CMP: {
     NodeLitCmp *_cmp = peek_lit_cmp(*node);
     flatten(&_cmp->type);
-    return;
+    Node **field;
+    node_foreach_ref(_cmp->fields, field)
+    {
+      flatten(field);
+    }
+    break;
   }
 
   case NODE_LIT_ENUM: {
@@ -1376,12 +1381,12 @@ bool
 check_lit_cmp(Context *cnt, Node **cmp)
 {
   // TODO
-  //Node *      tmp  = NULL;
+  // Node *      tmp  = NULL;
   NodeLitCmp *_cmp = peek_lit_cmp(*cmp);
   Node *      type = ast_get_type(_cmp->type);
   assert(type);
-  type = ast_unroll_ident(type);
-  bl_log("fook");
+  type               = ast_unroll_ident(type);
+  TypeKind type_kind = ast_type_kind(ast_get_type(type));
 
   if (_cmp->fieldc == 0) {
     check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
@@ -1389,8 +1394,39 @@ check_lit_cmp(Context *cnt, Node **cmp)
     FINISH;
   }
 
-  switch (node_code(type)) {
-  case NODE_TYPE_FUND: {
+  switch (type_kind) {
+  case TYPE_KIND_BOOL:
+  case TYPE_KIND_PTR:
+  case TYPE_KIND_SINT:
+  case TYPE_KIND_STRING:
+  case TYPE_KIND_SIZE:
+  case TYPE_KIND_REAL:
+  case TYPE_KIND_UINT:
+  case TYPE_KIND_TYPE:
+  case TYPE_KIND_CHAR: {
+    if (_cmp->fieldc != 1) {
+      check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
+                       "expected one initialization field for fundamental types");
+      FINISH;
+    }
+
+    if (!ast_type_cmp(_cmp->fields, type) && !implicit_cast(cnt, &_cmp->fields, type)) {
+      check_error_invalid_types(cnt, ast_get_type(_cmp->fields), type, _cmp->fields);
+      FINISH;
+    }
+
+    /* convert simple initialization compound to expression */
+    *cmp = _cmp->fields;
+    break;
+  }
+
+  case TYPE_KIND_STRUCT: 
+  case TYPE_KIND_FN: 
+  case TYPE_KIND_VOID: {
+    char tmp[256];
+    ast_type_to_string(tmp, 256, type);
+    check_error_node(cnt, ERR_INVALID_TYPE, _cmp->type, BUILDER_CUR_WORD,
+                     "initialization has invalid type '%s'", tmp);
     break;
   }
 

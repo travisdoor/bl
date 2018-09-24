@@ -46,7 +46,7 @@ Scope *
 scope_new(ScopeCache *cache, size_t size)
 {
   Scope *scope = bo_htbl_new(sizeof(Node *), size);
-  bo_array_push_back(cache, *scope);
+  bo_array_push_back(cache, scope);
   return scope;
 }
 

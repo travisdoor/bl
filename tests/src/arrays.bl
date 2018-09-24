@@ -2,47 +2,35 @@
 
 main : fn () s32 {
   arr s32[10];
-  if arr.count != 10 { return EXIT_FAILURE; }
+  if (arr.count != 10) { abort(); }
 
-  i := 0;
-  loop i < arr.count {
+  loop (i := 0; i < arr.count; i += 1) {
     arr[i] = i;
-    i = i + 1;
   }
 
-  i = 0;
-  loop i < arr.count {
+  loop (i := 0; i < arr.count; i += 1) {
     printf("arr[i] = %d\n", arr[i]);
-    i = i + 1;
   }
 
 
   foos Foo[10];
   foos.count;
 
-  i = 0;
-  loop i < foos.count {
+  loop (i := 0; i < foos.count; i += 1) {
     foos[i].i = i;
-    i = i + 1;
   }
 
-  i = 0;
-  loop i < foos.count {
+  loop (i := 0; i < foos.count; i += 1) {
     printf("foos[i].i = %d\n", foos[i].i);
-    i = i + 1;
   }
 
   bar Bar;
-  i = 0;
-  loop i < bar.is.count {
+  loop (i := 0; i < bar.is.count; i += 1) {
     bar.is[i] = i;
-    i = i + 1;
   }
 
-  i = 0;
-  loop i < bar.is.count {
+  loop (i := 0; i < bar.is.count; i += 1) {
     printf("bar.is[i] = %d\n", bar.is[i]);
-    i = i + 1;
   }
 
   // check array size expressions

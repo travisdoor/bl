@@ -5,7 +5,7 @@ main : fn () s32 {
   ptr *s32 := &data;
   ptr = &data;
 
-  if ptr == null {
+  if (ptr == null) {
     puts("ptr is null\n");
   } else {
     puts("ptr is not null\n");

@@ -1,6 +1,6 @@
 /* testing playground */
 
-//#load "libc.bl"
+#load "libc.bl"
 
 /*
  internals:
@@ -13,14 +13,12 @@
 
 main : fn () s32 {
   {
-    a := 0;
-    a = s32 { 0 };
-    a = s32 {};
+    a := 1;
+    printf("a = %d\n", a);
+    a = s32 { 0 + 32 };
+    printf("a = %d\n", a);
 
     //b := struct { i s32 } { i = 10 };
-
-    if (a == a) {
-    }
   }
 
   print("hello world");

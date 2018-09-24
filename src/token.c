@@ -80,12 +80,11 @@ int
 token_prec(Token *token, bool unary)
 {
   switch (token->sym) {
-    // . -> [ ( {
+    // . -> [ (
   case SYM_DOT:
   case SYM_ARROW:
   case SYM_LBRACKET:
   case SYM_LPAREN:
-  case SYM_LBLOCK:
     return 60;
 
     // ident number cast + -
