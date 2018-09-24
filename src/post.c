@@ -66,10 +66,12 @@ schedule_generation(Context *cnt, Node *decl)
 {
   assert(decl);
   NodeDecl *_decl = peek_decl(decl);
-  if (_decl->used) bo_list_push_back(cnt->assembly->ir_queue, decl);
+  if (_decl->used) {
+    bo_list_push_back(cnt->assembly->ir_queue, decl);
 #if VERBOSE
-  bl_log("schedule generation of: %s", peek_ident(_decl->name)->str);
+    bl_log("schedule generation of: %s", peek_ident(_decl->name)->str);
 #endif
+  }
 }
 
 void

@@ -47,6 +47,7 @@ typedef struct
   Scope *                gscope;          /* cache for global scope */
   BHashTable *           type_table;      /* all types used in assembly */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
+  BArray *               test_cases;      /* array of all test cases in assembly */
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */
   LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */

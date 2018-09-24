@@ -76,4 +76,7 @@ ir_run(Builder *builder, Assembly *assembly);
 void
 jit_exec_run(Builder *builder, Assembly *assembly);
 
+void
+test_exec_run(Builder *builder, Assembly *assembly);
+
 #endif

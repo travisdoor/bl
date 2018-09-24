@@ -30,6 +30,8 @@
 #include "stages.h"
 #include "common.h"
 
+#define FN_TEST_NAME "test@"
+
 #define parse_error(cnt, code, tok, pos, format, ...)                                              \
   {                                                                                                \
     builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (code), &(tok)->src, (pos), (format),           \
@@ -94,6 +96,9 @@ parse_run(Context *cnt);
 
 static Node *
 parse_link(Context *cnt);
+
+static Node *
+parse_test(Context *cnt);
 
 static void
 parse_ublock_content(Context *cnt, Node *ublock);
@@ -235,6 +240,42 @@ parse_expr_cast(Context *cnt)
   }
 
   return ast_expr_cast(cnt->ast, tok_begin, to_type, next);
+}
+
+Node *
+parse_test(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TEST);
+  if (!tok_begin) return NULL;
+
+  Token *case_name = tokens_consume_if(cnt->tokens, SYM_STRING);
+  if (!case_name) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "expected name of test case");
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  Node *body = parse_block(cnt);
+  if (!body) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected body of test case");
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  assert(cnt->curr_compound);
+  const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
+  Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound, 0, NULL);
+  Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID], 0);
+  Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, body, cnt->curr_compound, NULL);
+  Node *      test =
+      ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, 0, false);
+
+  peek_decl(test)->used++;
+
+  TestCase test_case = {.fn = test, .name = case_name->value.str};
+  bo_array_push_back(cnt->assembly->test_cases, test_case);
+
+  return test;
 }
 
 Node *
@@ -1349,6 +1390,11 @@ next:
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
+  if ((*node = parse_test(cnt))) {
+    insert_node(&node);
+    if (parse_semicolon_rq(cnt)) goto next;
+  }
+
   if ((*node = parse_stmt_if(cnt))) {
     insert_node(&node);
     goto next;
@@ -1417,6 +1463,12 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl(cnt))) {
+    insert_node(&node);
+    parse_semicolon_rq(cnt);
+    goto next;
+  }
+
+  if ((*node = parse_test(cnt))) {
     insert_node(&node);
     parse_semicolon_rq(cnt);
     goto next;

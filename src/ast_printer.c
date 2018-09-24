@@ -79,6 +79,7 @@ print_flags(int flags)
     return;
   if (flags & FLAG_EXTERN) fprintf(stdout, "E");
   if (flags & FLAG_MAIN) fprintf(stdout, "M");
+  if (flags & FLAG_TEST) fprintf(stdout, "T");
 }
 
 static void

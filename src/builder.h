@@ -29,6 +29,7 @@
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
 
+#include <bobject/containers/array.h>
 #include "assembly.h"
 #include "error.h"
 
@@ -52,13 +53,13 @@ typedef struct Builder
   diag_handler_f on_error;
   diag_handler_f on_warning;
   diag_handler_f on_note;
-
-  void *on_error_cnt;
-  void *on_warning_cnt;
-  void *on_note_cnt;
-  int   total_lines;
-  bool  no_warn;
-  int   errorc;
+  void *         on_error_cnt;
+  void *         on_warning_cnt;
+  void *         on_note_cnt;
+  uint32_t       flags;
+  int            total_lines;
+  int            errorc;
+  BArray *       uname_cache;
 } Builder;
 
 typedef enum
@@ -102,10 +103,13 @@ void
 builder_warning(Builder *builder, const char *format, ...);
 
 void
-builder_msg(Builder *builder, BuilderMsgType type, int code, struct Src *src,
-            BuilderCurPos pos, const char *format, ...);
+builder_msg(Builder *builder, BuilderMsgType type, int code, struct Src *src, BuilderCurPos pos,
+            const char *format, ...);
 
 uint64_t
 builder_get_unique_id(Builder *builder);
+
+const char *
+builder_get_unique_name(Builder *builder, const char *base);
 
 #endif

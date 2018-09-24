@@ -50,6 +50,7 @@ assembly_new(const char *name)
   assembly->ir_queue     = bo_list_new(sizeof(Node *));
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->type_table   = bo_htbl_new(0, EXPECTED_TYPE_TABLE_COUNT);
+  assembly->test_cases = bo_array_new(sizeof(TestCase));
 
   scope_cache_init(&assembly->scope_cache);
   assembly->gscope = scope_new(assembly->scope_cache, EXPECTED_GSCOPE_COUNT);
@@ -64,8 +65,6 @@ assembly_delete(Assembly *assembly)
 {
   free(assembly->name);
 
-  scope_cache_terminate(assembly->scope_cache);
-    
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
@@ -76,6 +75,7 @@ assembly_delete(Assembly *assembly)
   bo_unref(assembly->ir_queue);
   bo_unref(assembly->link_cache);
   bo_unref(assembly->type_table);
+  bo_unref(assembly->test_cases);
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */
@@ -86,6 +86,8 @@ assembly_delete(Assembly *assembly)
     LLVMDisposeModule(assembly->llvm_module);
 
   LLVMContextDispose(assembly->llvm_cnt);
+
+  scope_cache_terminate(assembly->scope_cache);
 
   bl_free(assembly);
 }

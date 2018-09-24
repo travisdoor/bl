@@ -12,15 +12,30 @@
 */
 
 main : fn () s32 {
-  {
-    a := 1;
-    printf("a = %d\n", a);
-    a = s32 { 0 + 32 };
-    printf("a = %d\n", a);
-
-    //b := struct { i s32 } { i = 10 };
-  }
-
   print("hello world");
+
+  #test "nested test in main" {
+  };
+
   return EXIT_SUCCESS;
+};
+
+#test "if statements" {
+};
+
+#test "loops" {
+};
+
+#test "arrays" {
+};
+
+#test "append" {
+};
+
+#test "my amazing test" {
+  i := 10;
+  i = 0;
+
+  #test "nested test" {
+  };
 };

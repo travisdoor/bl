@@ -96,9 +96,6 @@ typedef struct
   size_t  i;
 } FIter;
 
-static inline const char *
-gen_uname(Context *cnt, const char *base);
-
 static inline Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree);
 
@@ -193,18 +190,6 @@ static void
 check_unresolved(Context *cnt);
 
 // impl
-const char *
-gen_uname(Context *cnt, const char *base)
-{
-  BString *cstr = tokens_create_cached_str(&cnt->unit->tokens);
-  bo_string_append(cstr, base);
-  uint64_t ui = builder_get_unique_id(cnt->builder);
-  char     ui_str[21];
-  sprintf(ui_str, "%llu", (unsigned long long)ui);
-  bo_string_append(cstr, ui_str);
-  return bo_string_get(cstr);
-}
-
 Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
@@ -892,7 +877,7 @@ check_ident(Context *cnt, Node **ident)
                * functon */
 
               /* generate unique name */
-              const char *uname = gen_uname(cnt, FN_ARR_COUNT_NAME);
+              const char *uname = builder_get_unique_name(cnt->builder, FN_ARR_COUNT_NAME);
 
               /* FUNCTION BOILERPLATE */
               Node *gscope   = cnt->unit->ast.root;
@@ -1362,6 +1347,11 @@ check_decl(Context *cnt, Node **decl)
     }
   }
 
+  /* skip registration of test cases into symbol table */
+  if (_decl->flags & FLAG_TEST) {
+    FINISH;
+  }
+
   /* provide symbol into scope if there is no conflict */
   Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
@@ -1394,16 +1384,16 @@ check_lit_cmp(Context *cnt, Node **cmp)
     FINISH;
   }
 
-  switch (type_kind) {
-  case TYPE_KIND_BOOL:
-  case TYPE_KIND_PTR:
-  case TYPE_KIND_SINT:
-  case TYPE_KIND_STRING:
-  case TYPE_KIND_SIZE:
-  case TYPE_KIND_REAL:
-  case TYPE_KIND_UINT:
-  case TYPE_KIND_TYPE:
-  case TYPE_KIND_CHAR: {
+  if (type_kind == TYPE_KIND_VOID) {
+    char tmp[256];
+    ast_type_to_string(tmp, 256, type);
+    check_error_node(cnt, ERR_INVALID_TYPE, _cmp->type, BUILDER_CUR_WORD,
+                     "initialization has invalid type '%s'", tmp);
+    FINISH;
+  }
+
+  switch (node_code(type)) {
+  case NODE_TYPE_FUND: {
     if (_cmp->fieldc != 1) {
       check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
                        "expected one initialization field for fundamental types");
@@ -1417,16 +1407,6 @@ check_lit_cmp(Context *cnt, Node **cmp)
 
     /* convert simple initialization compound to expression */
     *cmp = _cmp->fields;
-    break;
-  }
-
-  case TYPE_KIND_STRUCT: 
-  case TYPE_KIND_FN: 
-  case TYPE_KIND_VOID: {
-    char tmp[256];
-    ast_type_to_string(tmp, 256, type);
-    check_error_node(cnt, ERR_INVALID_TYPE, _cmp->type, BUILDER_CUR_WORD,
-                     "initialization has invalid type '%s'", tmp);
     break;
   }
 

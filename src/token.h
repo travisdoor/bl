@@ -56,6 +56,7 @@
   sm(LINK,         "#link") \
   sm(LINE,         "#line") \
   sm(FILE,         "#file") \
+  sm(TEST,         "#test") \
   sm(EXTERN,       "extern") \
   sm(RETURN,       "return") \
   sm(STRUCT,       "struct") \
@@ -129,8 +130,8 @@ typedef union
 
 typedef struct Token
 {
-  Sym         sym;
-  Src         src;
+  Sym        sym;
+  Src        src;
   TokenValue value;
 } Token;
 

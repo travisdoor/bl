@@ -130,6 +130,7 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
     }
 
     if (flags & BUILDER_RUN) jit_exec_run(builder, assembly);
+    if (flags & BUILDER_RUN_TESTS) test_exec_run(builder, assembly);
 
     if (!(flags & BUILDER_NO_BIN)) {
       linker_run(builder, assembly);
@@ -149,11 +150,12 @@ builder_new(void)
   Builder *builder = bl_calloc(1, sizeof(Builder));
   if (!builder) bl_abort("bad alloc");
 
-  builder->on_error   = default_error_handler;
-  builder->on_warning = default_warning_handler;
-  builder->on_note    = default_note_handler;
-  builder->no_warn    = false;
-  builder->errorc     = 0;
+  builder->on_error    = default_error_handler;
+  builder->on_warning  = default_warning_handler;
+  builder->on_note     = default_note_handler;
+  builder->flags       = 0;
+  builder->errorc      = 0;
+  builder->uname_cache = bo_array_new_bo(bo_typeof(BString), true);
 
   llvm_init();
 
@@ -163,6 +165,7 @@ builder_new(void)
 void
 builder_delete(Builder *builder)
 {
+  bo_unref(builder->uname_cache);
   bl_free(builder);
 }
 
@@ -173,7 +176,7 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
   Unit *  unit;
   int     state = COMPILE_OK;
 
-  builder->no_warn = flags & BUILDER_NO_WARN;
+  builder->flags = flags;
   msg_log("compile assembly: %s", assembly->name);
 
   barray_foreach(assembly->units, unit)
@@ -257,7 +260,7 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
             const char *format, ...)
 {
   if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
-  if (builder->no_warn && type == BUILDER_MSG_WARNING) return;
+  if ((builder->flags & BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING) return;
 
   assert(src);
   assert(src->unit);
@@ -360,4 +363,18 @@ builder_get_unique_id(Builder *builder)
 {
   static uint64_t i = 0;
   return i++;
+}
+
+const char *
+builder_get_unique_name(Builder *builder, const char *base)
+{
+  BString *s = bo_string_new(64);
+  bo_array_push_back(builder->uname_cache, s);
+
+  bo_string_append(s, base);
+  uint64_t ui = builder_get_unique_id(builder);
+  char     ui_str[21];
+  sprintf(ui_str, "%llu", (unsigned long long)ui);
+  bo_string_append(s, ui_str);
+  return bo_string_get(s);
 }
