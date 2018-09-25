@@ -9,6 +9,7 @@
  malloc
  free
  memcpy
+ assert
 */
 
 main : fn () s32 {
@@ -20,10 +21,15 @@ main : fn () s32 {
   return EXIT_SUCCESS;
 };
 
+foo : fn () {
+};
+
 #test "if statements" {
+  foo();
 };
 
 #test "loops" {
+  printf("line: %d\n", #line);
 };
 
 #test "arrays" {

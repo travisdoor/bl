@@ -92,6 +92,9 @@ static Node *
 parse_load(Context *cnt);
 
 static Node *
+parse_line(Context *cnt);
+
+static Node *
 parse_run(Context *cnt);
 
 static Node *
@@ -1324,6 +1327,17 @@ parse_load(Context *cnt)
   }
 
   return ast_load(cnt->ast, tok_id, filepath);
+}
+
+Node *
+parse_line(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt, SYM_LINE);
+  if (!tok_begin) return NULL;
+
+  TokenValue value;
+  value.u = tok_begin->src.line;
+  return ast_lit(cnt->ast, tok_begin, &ftypes[FTYPE_U32], value);
 }
 
 Node *
