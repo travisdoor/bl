@@ -14,36 +14,9 @@
 
 main : fn () s32 {
   print("hello world");
-
-  #test "nested test in main" {
-  };
-
   return EXIT_SUCCESS;
 };
 
-__assert : fn (expr bool, file string, line s32) {
-  if (!expr) {
-    printf("assertion failed on line: %d\n", line);
-  }
-};
-
-#test "if statements" {
-};
-
-#test "loops" {
-  __assert(false, #file, #line);
-};
-
-#test "arrays" {
-};
-
-#test "append" {
-};
-
-#test "my amazing test" {
-  i := 10;
-  i = 0;
-
-  #test "nested test" {
-  };
+#test "test external decl" {
+  puts("hello");
 };

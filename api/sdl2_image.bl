@@ -36,6 +36,6 @@ IMG_InitFlags : enum {
   WEBP : 0x00000008
 };
 
-IMG_Load fn (string) *SDL_Surface : extern;
-IMG_Init fn (s32) s32 : extern;
-IMG_Quit fn () : extern;
+IMG_Load fn (string) *SDL_Surface : #extern;
+IMG_Init fn (s32) s32 : #extern;
+IMG_Quit fn () : #extern;

@@ -615,10 +615,8 @@ parse_literal_fn(Context *cnt)
   _fn->type = parse_type_fn(cnt, true, 0);
   assert(_fn->type);
 
-  /* parse block */
+  /* parse block (block is optional function body can be external) */
   _fn->block = parse_block(cnt);
-  /* TODO: generate error instead? */
-  assert(_fn->block);
 
   cnt->curr_fn       = prev_fn;
   cnt->curr_compound = prev_compound;
@@ -1157,12 +1155,11 @@ parse_decl(Context *cnt)
   if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
 
   if (tok_assign) {
+    _decl->value   = parse_expr(cnt);
     _decl->mutable = token_is(tok_assign, SYM_MDECL);
     _decl->flags |= parse_flags(cnt, FLAG_EXTERN);
 
     if (!(_decl->flags & (FLAG_EXTERN))) {
-      _decl->value = parse_expr(cnt);
-
       if (!_decl->value) {
         parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
                     "expected binding of declaration to some value");
@@ -1193,21 +1190,12 @@ parse_decl(Context *cnt)
   }
 
   if (_decl->flags & FLAG_EXTERN) {
+    _decl->kind = DECL_KIND_FN;
     if (_decl->mutable) {
       parse_error(cnt, ERR_INVALID_MUTABILITY, tok_assign, BUILDER_CUR_WORD,
                   "extern declaration cannot be mutable");
       RETURN_BAD;
     }
-
-    if (!_decl->type) {
-      parse_error_node(cnt, ERR_EXPECTED_TYPE, ident, BUILDER_CUR_AFTER,
-                       "extern declaration must have type specified");
-      RETURN_BAD;
-    }
-  }
-
-  if (_decl->flags & FLAG_EXTERN) {
-    _decl->kind = DECL_KIND_FN;
   } else if (_decl->value) {
     switch (node_code(_decl->value)) {
     case NODE_LIT_FN:
@@ -1292,24 +1280,31 @@ parse_expr_null(Context *cnt)
 int
 parse_flags(Context *cnt, int allowed)
 {
+#define CASE(_sym, _flag)                                                                          \
+  case _sym: {                                                                                     \
+    tokens_consume(cnt->tokens);                                                                   \
+    if (!(allowed & _flag)) {                                                                      \
+      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag '%s'",        \
+                  sym_strings[_sym]);                                                              \
+    } else {                                                                                       \
+      flags |= _flag;                                                                              \
+    }                                                                                              \
+    goto next;                                                                                     \
+  }
+
   int    flags = 0;
   Token *tok;
 next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {
-  case SYM_EXTERN:
-    tokens_consume(cnt->tokens);
-    if (!(allowed & FLAG_EXTERN)) {
-      parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "unexpected flag 'extern'");
-    } else {
-      flags |= FLAG_EXTERN;
-    }
-    goto next;
+    CASE(SYM_EXTERN, FLAG_EXTERN)
+    CASE(SYM_INTERNAL, FLAG_INTERNAL)
   default:
     break;
   }
 
   return flags;
+#undef CASE
 }
 
 Node *
@@ -1355,7 +1350,6 @@ parse_file(Context *cnt)
   value.str = tok_begin->src.unit->filepath;
   return ast_lit(cnt->ast, tok_begin, &ftypes[FTYPE_STRING], value);
 }
-
 
 Node *
 parse_link(Context *cnt)
