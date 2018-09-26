@@ -21,15 +21,17 @@ main : fn () s32 {
   return EXIT_SUCCESS;
 };
 
-foo : fn () {
+__assert : fn (expr bool, file string, line s32) {
+  if (!expr) {
+    printf("assertion failed on line: %d\n", line);
+  }
 };
 
 #test "if statements" {
-  foo();
 };
 
 #test "loops" {
-  printf("line: %d\n", #line);
+  __assert(false, #file, #line);
 };
 
 #test "arrays" {

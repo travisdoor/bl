@@ -95,6 +95,9 @@ static Node *
 parse_line(Context *cnt);
 
 static Node *
+parse_file(Context *cnt);
+
+static Node *
 parse_run(Context *cnt);
 
 static Node *
@@ -836,6 +839,8 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_literal(cnt))) goto done;
   if ((expr = parse_expr_member(cnt, op))) goto done;
   if ((expr = parse_ident(cnt, 0))) goto done;
+  if ((expr = parse_line(cnt))) goto done;
+  if ((expr = parse_file(cnt))) goto done;
 
 done:
   tmp = parse_literal_cmp(cnt, expr);
@@ -1332,13 +1337,25 @@ parse_load(Context *cnt)
 Node *
 parse_line(Context *cnt)
 {
-  Token *tok_begin = tokens_consume_if(cnt, SYM_LINE);
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LINE);
   if (!tok_begin) return NULL;
 
   TokenValue value;
   value.u = tok_begin->src.line;
   return ast_lit(cnt->ast, tok_begin, &ftypes[FTYPE_U32], value);
 }
+
+Node *
+parse_file(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FILE);
+  if (!tok_begin) return NULL;
+
+  TokenValue value;
+  value.str = tok_begin->src.unit->filepath;
+  return ast_lit(cnt->ast, tok_begin, &ftypes[FTYPE_STRING], value);
+}
+
 
 Node *
 parse_link(Context *cnt)
