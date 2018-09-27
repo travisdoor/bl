@@ -1157,7 +1157,7 @@ parse_decl(Context *cnt)
   if (tok_assign) {
     _decl->value   = parse_expr(cnt);
     _decl->mutable = token_is(tok_assign, SYM_MDECL);
-    _decl->flags |= parse_flags(cnt, FLAG_EXTERN);
+    _decl->flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_INTERNAL);
 
     if (!(_decl->flags & (FLAG_EXTERN))) {
       if (!_decl->value) {
@@ -1298,7 +1298,6 @@ next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {
     CASE(SYM_EXTERN, FLAG_EXTERN)
-    CASE(SYM_INTERNAL, FLAG_INTERNAL)
   default:
     break;
   }

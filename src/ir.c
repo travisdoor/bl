@@ -29,6 +29,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Linker.h>
+#include <llvm-c/DebugInfo.h>
 #include "stages.h"
 #include "common.h"
 #include "ast.h"

@@ -125,8 +125,8 @@
   }) \
   nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
-    Node *arr; \
-    int     ptr;				\
+    Node    *arr; \
+    int      ptr;\
   }) \
   nt(TYPE_FN, TypeFn, type_fn, struct { \
     Node *arg_types; \

@@ -429,7 +429,7 @@ scan:
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= SYM_IF && i <= SYM_INTERNAL && is_intend_c(*cnt->c)) {
+      if (i >= SYM_IF && i <= SYM_CONTINUE && is_intend_c(*cnt->c)) {
         /* roll back */
         cnt->c -= len;
         break;

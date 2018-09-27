@@ -12,10 +12,21 @@
  assert
 */
 
+puts : fn (s string) s32 #extern;
+
 main : fn () s32 {
-  print("hello world");
+  puts("hello world");
+  puts("hello world");
   return EXIT_SUCCESS;
 };
 
+foo : fn () {
+  assert(false);
+};
+
 #test "test external decl" {
+  foo();
+};
+
+#test "test" {
 };

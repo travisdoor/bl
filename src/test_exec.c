@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <setjmp.h>
 #include "stages.h"
 #include "bldebug.h"
 
@@ -36,6 +37,8 @@ typedef struct
   LLVMExecutionEngineRef llvm_jit;
 } Context;
 
+static jmp_buf assert_jmp;
+
 static void
 test_case(Context *cnt, TestCase *tc);
 
@@ -43,6 +46,7 @@ test_case(Context *cnt, TestCase *tc);
 static void
 test_case(Context *cnt, TestCase *tc)
 {
+  bool result = true;
   assert(tc->fn);
   assert(tc->name);
   assert(cnt->llvm_jit);
@@ -56,11 +60,13 @@ test_case(Context *cnt, TestCase *tc)
              fn_name);
   }
 
-  LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+  if (!(result = (bool)setjmp(assert_jmp))) {
+    LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+  }
 
   const char *unit_name = tc->fn->src->unit->name;
   const int   line      = tc->fn->src->line;
-  msg_log("  [%s] %s:%d %s", GREEN("  OK  "), unit_name, line, tc->name);
+  msg_log("[%s] %s:%d %s", result ? RED("FAILURE") : GREEN("  OK  "), unit_name, line, tc->name);
 }
 
 /* public */
@@ -80,4 +86,11 @@ test_exec_run(Builder *builder, Assembly *assembly)
   }
 
   msg_log("testing done\n");
+}
+
+void
+__bl_assert_failure(const char *file, int line)
+{
+  msg_error("assertion failure in %s:%d", file, line);
+  longjmp(assert_jmp, false);
 }

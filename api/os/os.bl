@@ -44,6 +44,14 @@ print_s32 : fn (n s32) {
 print_s_s32 : fn (s string, n s32) {
 };
 
+assert : fn (expr bool) {
+  __bl_assert_failure : fn (file string, line s32) #extern;
+
+  if (!expr) {
+    __bl_assert_failure(#file, #line);
+  }
+};
+
 /*
 assert : fn (expr bool) #internal;
 malloc : fn (count size_t) *void #internal;
