@@ -1,0 +1,16 @@
+#test "simple lambda" {
+  assert(false);
+  /*hello : fn () s32 {
+    return 1;
+  };
+
+  bye : fn () s32 {
+    return 2;
+  };
+
+  lambda := &hello;
+  assert(lambda() == 1);
+
+  lambda = &bye;
+  assert(lambda() == 2);*/
+};

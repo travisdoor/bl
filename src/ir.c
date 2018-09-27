@@ -1613,9 +1613,11 @@ ir_run(Builder *builder, Assembly *assembly)
   create_jit(&cnt);
   generate(&cnt);
 
-  assert(cnt.main_tmp);
-  assembly->llvm_module = link(&cnt, cnt.main_tmp);
-  bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
+  if (cnt.main_tmp) {
+    assert(cnt.main_tmp);
+    assembly->llvm_module = link(&cnt, cnt.main_tmp);
+    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t) cnt.main_tmp);
+  }
 
   /* link all test cases */
   if (builder->flags & BUILDER_RUN_TESTS) {
@@ -1627,7 +1629,8 @@ ir_run(Builder *builder, Assembly *assembly)
     }
   }
 
-  ir_validate(assembly->llvm_module);
+  if (assembly->llvm_module)
+    ir_validate(assembly->llvm_module);
 
 #if 0
   LLVMModuleRef tmp;

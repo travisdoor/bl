@@ -20,13 +20,14 @@ main : fn () s32 {
   return EXIT_SUCCESS;
 };
 
-foo : fn () {
-  assert(false);
+get : fn () bool {
+  return false;
 };
 
 #test "test external decl" {
-  foo();
 };
 
 #test "test" {
+  a := get();  
+  assert(a);
 };

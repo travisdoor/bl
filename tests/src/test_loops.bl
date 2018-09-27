@@ -1,0 +1,29 @@
+#test "while-true like loop" {
+  i := 0;
+  loop {
+    if (i > 9) { break; }
+    i += 1;
+    continue;
+  }
+  assert(i == 10);
+};
+
+#test "while-like loop" {
+  i := 0;
+  loop (i < 10) {
+    i += 1;
+    continue;
+  }
+  assert(i == 10);
+};
+
+#test "for-like loop" {
+  c := 0;
+  loop (i := 0; i < 10; i += 1) {
+    c += 1;
+    assert(c > 10);
+    continue;
+  }
+
+  assert(c == 10);
+};

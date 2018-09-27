@@ -59,6 +59,7 @@
 #define _BUILDINS_LIST \
     bt(MAIN,      main) \
     bt(ARR_COUNT, count) \
+    bt(ASSERT, assert) \
 
 #define _NODE_TYPE_LIST \
   nt(BAD, Bad, bad, struct { \
@@ -262,7 +263,6 @@ typedef enum
   FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
   FLAG_MAIN     = 1 << 1, /* main method */
   FLAG_TEST     = 1 << 2, /* test case */
-  FLAG_INTERNAL = 1 << 3, /* internal declarations */
 } NodeFlag;
 
 typedef enum

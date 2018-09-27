@@ -1,6 +1,0 @@
-main : fn () s32 {
-  arr s32[10];
-  if arr.count != 10 { return oEXIT_FAILURE; } // wrong error report here
-
-  return EXIT_SUCCESS;
-}

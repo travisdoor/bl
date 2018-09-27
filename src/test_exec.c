@@ -66,7 +66,7 @@ test_case(Context *cnt, TestCase *tc)
 
   const char *unit_name = tc->fn->src->unit->name;
   const int   line      = tc->fn->src->line;
-  msg_log("[%s] %s:%d %s", result ? RED("FAILURE") : GREEN("  OK  "), unit_name, line, tc->name);
+  msg_log("[%s] %s:%d %s", result ? RED(" FAIL ") : GREEN("  OK  "), unit_name, line, tc->name);
 }
 
 /* public */
@@ -91,6 +91,6 @@ test_exec_run(Builder *builder, Assembly *assembly)
 void
 __bl_assert_failure(const char *file, int line)
 {
-  msg_error("assertion failure in %s:%d", file, line);
+  msg_error("assertion failed in %s:%d", file, line);
   longjmp(assert_jmp, false);
 }
