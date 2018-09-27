@@ -1,6 +1,6 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
 
 /*
  internals:
@@ -18,5 +18,4 @@ main : fn () s32 {
 };
 
 #test "test external decl" {
-  puts("hello");
 };
