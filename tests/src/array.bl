@@ -7,19 +7,15 @@ g_arr *Array := null;
 main : fn () s32 {
   g_arr = array_new(sizeof(s32));
 
-  i size_t := 0;
-  while i < TestCaseCount {
+  loop (i := 0; i < TestCaseCount; i += 1) {
     array_push_back(g_arr, &i);
-    i = i + 1;
   }
 
-  if g_arr->size != TestCaseCount { return 1; }
+  if (g_arr->size != TestCaseCount) { abort(); }
 
-  i = 0;
-  while i < TestCaseCount {
+  loop (i := 0; i < TestCaseCount; i += 1) {
     tmp := *(cast(*s32) array_at(g_arr, i));
-    if tmp != cast(s32) i { return 2; }
-    i = i + 1;
+    if (tmp != cast(s32) i) { abort(); }
   }
 
   array_delete(g_arr);

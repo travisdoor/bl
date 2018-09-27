@@ -26,4 +26,13 @@ for i s32 in 0 .. arr.count {
 for i in 0 .. 10 by 2 {
 }
 
+Foo : struct {
+  a s32,
+  b s32
+};
+
+foo Foo := { a = 10, b = 20 };
+foo := Foo { a = 10, b = 20 };
+arr s32[2] = {1, 2};
+
 // range expression (make sense only in loops???)

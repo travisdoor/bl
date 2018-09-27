@@ -30,29 +30,25 @@ SEEK_SET     : 0;
 SEEK_CUR     : 1;
 SEEK_END     : 2;
 
-printf	fn (string, s32) s32 : extern;
-puts 	fn (string) s32 : extern;
-putchar fn (char) s32 : extern;
-getchar fn () s32 : extern;
-
-malloc 	fn (size_t) *void : extern;
-free 	fn (*void) : extern;
-calloc 	fn (size_t, size_t) *void : extern;
-realloc fn (*void, size_t) *void : extern;
-memset  fn (*void, s32, size_t) *void : extern;
-memcpy  fn (*void, *void, size_t) *void : extern;
-
-fopen   fn (string, string) *void : extern;
-fclose  fn (*void) s32 : extern;
-fseek   fn (*void, s32, s32) s32 : extern;
-ftell   fn (*void) size_t : extern;
-fread   fn (*char, size_t, size_t, *void) : extern;
-
-strcat  fn (*char, *char) *char : extern;
-strlen  fn (*char) size_t : extern;
-strcpy  fn (*char, *char) *char : extern;
-strdup  fn (*char) *char : extern;
-
-system  fn (*char) s32 : extern;
-abort   fn () : extern;
-exit	fn (s32) : extern;
+printf	: fn (str string, n s32) s32 #extern;
+puts 	: fn (str string) s32 #extern;
+putchar : fn (c char) s32 #extern;
+getchar : fn () s32 #extern;
+malloc 	: fn (count size_t) *void #extern;
+free 	: fn (ptr *void) #extern;
+calloc 	: fn (nitems size_t, size size_t) *void #extern;
+realloc : fn (ptr *void, size size_t) *void #extern;
+memset  : fn (str *void, c s32, n size_t) *void #extern;
+memcpy  : fn (str1 *void, str2 *void, n size_t) *void #extern;
+fopen   : fn (filename string, mode string) *void #extern;
+fclose  : fn (stream *void) s32 #extern;
+fseek   : fn (stream *void, offset s32, whence s32) s32 #extern;
+ftell   : fn (stream *void) size_t #extern;
+fread   : fn (ptr *char, size size_t, nmemb size_t, stream *void) #extern;
+strcat  : fn (str1 *char, str2 *char) *char #extern;
+strlen  : fn (str *char) size_t #extern;
+strcpy  : fn (str1 *char, str2 *char) *char #extern;
+strdup  : fn (str *char) *char #extern;
+system  : fn (cmd *char) s32 #extern;
+abort   : fn () #extern;
+exit	: fn (state s32) #extern;

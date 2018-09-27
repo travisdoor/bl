@@ -45,7 +45,7 @@ file_open : fn (file *File, filepath string) bool {
   };
 
   file->handle = fopen(filepath, read);
-  if file->handle == null {
+  if (file->handle == null) {
     file->size = 0;
     return false;
   } 
@@ -55,12 +55,12 @@ file_open : fn (file *File, filepath string) bool {
 };
 
 file_read_buf : fn (file *File, buf *char) bool {
-  if file == null || file->size == 0 { return false; }
+  if (file == null || file->size == 0) { return false; }
   fread(buf, file->size, 1, file->handle); 
   return true;
 };
 	    
 file_close : fn (file *File) {
-  if file == null { return; }
+  if (file == null) { return; }
   fclose(file->handle);
 };

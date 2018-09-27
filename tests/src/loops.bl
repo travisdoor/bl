@@ -1,21 +1,34 @@
 #load "libc.bl"
 
 main : fn () s32 {
-  i := 0;
-  loop {
-    if i > 9 { break; }
-    printf("i = %d, ", i);
-    i = i + 1;
-    continue;
+  {
+    i := 0;
+    loop {
+	if (i > 9) { break; }
+	printf("i = %d, ", i);
+	i = i + 1;
+	continue;
+    }
+    puts("done");
   }
-  puts("done");
 
-  i = 0;
-  loop i < 10 {
-    printf("i = %d, ", i);
-    i = i + 1;
-    continue;
+  {
+    i := 0;
+    loop (i < 10) {
+	printf("i = %d, ", i);
+	i = i + 1;
+	continue;
+    }
+    puts("done");
   }
-  puts("done");
+
+  {
+    loop (i := 0; i < 10; i += 1) {
+      printf("i = %d, ", i);
+    }
+    puts("done");
+  }
+
   return 0;
 };
+

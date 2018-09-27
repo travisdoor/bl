@@ -45,14 +45,14 @@ array_new : fn (elem_size size_t) *Array {
 };
 
 array_delete : fn (self *Array) {
-  if self == null { return; }
+  if (self == null) { return; }
   array_terminate(self);
   free(self);
 };
 
 array_init : fn (self *Array, elem_size size_t) {
-  if self == null { return; }
-  if elem_size == 0 { abort(); }
+  if (self == null) { return; }
+  if (elem_size == 0) { abort(); }
   self->size 	 = 0;
   self->capacity  = 0;
   self->elem_size = elem_size;
@@ -60,33 +60,33 @@ array_init : fn (self *Array, elem_size size_t) {
 };
 
 array_terminate : fn (self *Array) {
-  if self == null { return; }
+  if (self == null) { return; }
   self->size      = 0;
   self->capacity  = 0;
   self->elem_size = 0;
 
-  if self->_data != null {
+  if (self->_data != null) {
     free(self->_data);
   }
   self->_data = null;
 };
 
 array_clear : fn (self *Array) {
-  if self == null { return; }
+  if (self == null) { return; }
   self->size = 0; 
 };
 
 array_push_back : fn (self *Array, value *void) {
-  if self == null { return; }
-  if value == null { abort(); }   
+  if (self == null) { return; }
+  if (value == null) { abort(); }   
 
   // empty bo_vector
-  if self->_data == null {
+  if (self->_data == null) {
     array_reserve(self, ArrayDefaultCapacity);
   }
 
   // double if needed
-  if self->size >= self->capacity {
+  if (self->size >= self->capacity) {
     array_reserve(self, self->capacity * 2);
   }
 
@@ -97,17 +97,17 @@ array_push_back : fn (self *Array, value *void) {
 };
 
 array_at : fn (self *Array, i size_t) *void {
-  if self == null { return null; }
-  if !_valid_index(self, i) { abort(); }
+  if (self == null) { return null; }
+  if (!_valid_index(self, i)) { abort(); }
   return ptrshift(self->_data, i * self->elem_size);
 };
 
 array_reserve : fn (self *Array, elem_count size_t) {
-  if self == null { return; }
-  if elem_count == 0 || elem_count <= self->capacity { return; }
+  if (self == null) { return; }
+  if ((elem_count == 0) || elem_count <= self->capacity) { return; }
 
   self->_data = realloc(self->_data, self->elem_size * elem_count);
-  if self->_data == null { abort(); }
+  if (self->_data == null) { abort(); }
 
   self->capacity = elem_count;
 };

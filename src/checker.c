@@ -96,9 +96,6 @@ typedef struct
   size_t  i;
 } FIter;
 
-static inline const char *
-gen_uname(Context *cnt, const char *base);
-
 static inline Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree);
 
@@ -157,6 +154,9 @@ static bool
 check_decl(Context *cnt, Node **decl);
 
 static bool
+check_lit_cmp(Context *cnt, Node **cmp);
+
+static bool
 check_expr_call(Context *cnt, Node **call);
 
 static bool
@@ -190,18 +190,6 @@ static void
 check_unresolved(Context *cnt);
 
 // impl
-const char *
-gen_uname(Context *cnt, const char *base)
-{
-  BString *cstr = tokens_create_cached_str(&cnt->unit->tokens);
-  bo_string_append(cstr, base);
-  uint64_t ui = builder_get_unique_id(cnt->builder);
-  char     ui_str[21];
-  sprintf(ui_str, "%llu", (unsigned long long)ui);
-  bo_string_append(cstr, ui_str);
-  return bo_string_get(cstr);
-}
-
 Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
@@ -412,6 +400,17 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     NodeLitStruct *_struct = peek_lit_struct(*node);
     flatten(&_struct->type);
     return;
+  }
+
+  case NODE_LIT_CMP: {
+    NodeLitCmp *_cmp = peek_lit_cmp(*node);
+    flatten(&_cmp->type);
+    Node **field;
+    node_foreach_ref(_cmp->fields, field)
+    {
+      flatten(field);
+    }
+    break;
   }
 
   case NODE_LIT_ENUM: {
@@ -790,6 +789,9 @@ check_node(Context *cnt, Node **node)
   case NODE_TYPE_ENUM:
     result = check_type_enum(cnt, node);
     break;
+  case NODE_LIT_CMP:
+    result = check_lit_cmp(cnt, node);
+    break;
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_STRUCT:
@@ -875,7 +877,7 @@ check_ident(Context *cnt, Node **ident)
                * functon */
 
               /* generate unique name */
-              const char *uname = gen_uname(cnt, FN_ARR_COUNT_NAME);
+              const char *uname = builder_get_unique_name(cnt->builder, FN_ARR_COUNT_NAME);
 
               /* FUNCTION BOILERPLATE */
               Node *gscope   = cnt->unit->ast.root;
@@ -977,7 +979,9 @@ check_expr_binop(Context *cnt, Node **binop)
   assert(_binop->lhs);
   assert(_binop->rhs);
 
-  if (_binop->op == SYM_ASSIGN) {
+  Sym op = _binop->op;
+  if (op == SYM_ASSIGN || op == SYM_PLUS_ASSIGN || op == SYM_MINUS_ASSIGN || op == SYM_MUL_ASSIGN ||
+      op == SYM_DIV_ASSIGN || op == SYM_MOD_ASSIGN) {
     if (node_is_not(_binop->lhs, NODE_IDENT) && node_is_not(_binop->lhs, NODE_EXPR_UNARY) &&
         node_is_not(_binop->lhs, NODE_EXPR_ELEM) && node_is_not(_binop->lhs, NODE_EXPR_MEMBER)) {
       // TODO: temporary solution, what about (some_pointer + 1) = ...
@@ -1343,6 +1347,11 @@ check_decl(Context *cnt, Node **decl)
     }
   }
 
+  /* skip registration of test cases into symbol table */
+  if (_decl->flags & FLAG_TEST) {
+    FINISH;
+  }
+
   /* provide symbol into scope if there is no conflict */
   Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);
   if (conflict) {
@@ -1353,6 +1362,56 @@ check_decl(Context *cnt, Node **decl)
   } else {
     provide(_decl->name, *decl);
     waiting_resume(cnt, _decl->name);
+  }
+
+  FINISH;
+}
+
+bool
+check_lit_cmp(Context *cnt, Node **cmp)
+{
+  // TODO
+  // Node *      tmp  = NULL;
+  NodeLitCmp *_cmp = peek_lit_cmp(*cmp);
+  Node *      type = ast_get_type(_cmp->type);
+  assert(type);
+  type               = ast_unroll_ident(type);
+  TypeKind type_kind = ast_type_kind(ast_get_type(type));
+
+  if (_cmp->fieldc == 0) {
+    check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
+                     "expected initialization fields");
+    FINISH;
+  }
+
+  if (type_kind == TYPE_KIND_VOID) {
+    char tmp[256];
+    ast_type_to_string(tmp, 256, type);
+    check_error_node(cnt, ERR_INVALID_TYPE, _cmp->type, BUILDER_CUR_WORD,
+                     "initialization has invalid type '%s'", tmp);
+    FINISH;
+  }
+
+  switch (node_code(type)) {
+  case NODE_TYPE_FUND: {
+    if (_cmp->fieldc != 1) {
+      check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
+                       "expected one initialization field for fundamental types");
+      FINISH;
+    }
+
+    if (!ast_type_cmp(_cmp->fields, type) && !implicit_cast(cnt, &_cmp->fields, type)) {
+      check_error_invalid_types(cnt, ast_get_type(_cmp->fields), type, _cmp->fields);
+      FINISH;
+    }
+
+    /* convert simple initialization compound to expression */
+    *cmp = _cmp->fields;
+    break;
+  }
+
+  default:
+    bl_abort("unsupported compound literal type");
   }
 
   FINISH;

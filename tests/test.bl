@@ -1,17 +1,21 @@
 /* testing playground */
 
-#load "libc.bl"
+//#load "libc.bl"
+
+/*
+ internals:
+ sizeof
+ typeof
+ malloc
+ free
+ memcpy
+ assert
+*/
 
 main : fn () s32 {
-  loop i := 0; i < 10; i += 1 {
-    printf("i = %d, ", i);
-  }
-  puts("");
-
-  loop i := 0; i < 10; i += 1 {
-    printf("i = %d, ", i);
-  }
-  puts("");
-
+  print("hello world");
   return EXIT_SUCCESS;
+};
+
+#test "test external decl" {
 };

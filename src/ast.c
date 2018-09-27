@@ -466,6 +466,15 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
+_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc)
+{
+  NodeLitCmp *_lit_cmp = alloc_node(ast, NODE_LIT_CMP, tok, NodeLitCmp *);
+  _lit_cmp->type       = type;
+  _lit_cmp->fields     = fields;
+  _lit_cmp->fieldc     = fieldc;
+  return (Node *)_lit_cmp;
+}
+
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
@@ -595,6 +604,12 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     visit(peek_stmt_loop(node)->condition);
     visit(peek_stmt_loop(node)->increment);
     visit(peek_stmt_loop(node)->block);
+    break;
+  }
+
+  case NODE_LIT_CMP: {
+    NodeLitCmp *_lit_cmp = peek_lit_cmp(node);
+    node_foreach(_lit_cmp->fields, tmp) visit(tmp);
     break;
   }
 
@@ -786,6 +801,8 @@ ast_get_type(Node *node)
     return peek_lit_struct(node)->type;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->type;
+  case NODE_LIT_CMP:
+    return ast_get_type(peek_lit_cmp(node)->type);
   case NODE_IDENT:
     return ast_get_type(peek_ident(node)->ref);
   case NODE_EXPR_CALL:

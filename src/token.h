@@ -56,36 +56,38 @@
   sm(LINK,         "#link") \
   sm(LINE,         "#line") \
   sm(FILE,         "#file") \
-  sm(EXTERN,       "extern") \
+  sm(TEST,         "#test") \
   sm(RETURN,       "return") \
   sm(STRUCT,       "struct") \
   sm(SIZEOF,       "sizeof") \
-  sm(CONTINUE,     "continue") /* must be last */ \
-  sm(RANGE,        "..") \
-  sm(MDECL,        ":=")	\
+  sm(EXTERN,       "#extern") \
+  sm(CONTINUE,     "continue") \
+  sm(INTERNAL,     "#internal") /* must be last */ \
+  sm(MDECL,        ":=") \
   sm(ARROW,        "->") \
   sm(LCOMMENT,     "//") \
   sm(LBCOMMENT,    "/*") \
   sm(RBCOMMENT,    "*/") \
   sm(LBLOCK,       "{") \
-  sm(RBLOCK,       "}")\
+  sm(RBLOCK,       "}") \
   sm(LBRACKET,     "[") \
-  sm(RBRACKET,     "]")\
+  sm(RBRACKET,     "]") \
   sm(LPAREN,       "(") \
   sm(RPAREN,       ")") \
-  sm(COMMA,        ",")\
+  sm(COMMA,        ",") \
   sm(SEMICOLON,    ";") \
   sm(IMMDECL,      ":") \
   sm(EQ,           "==") /* logical begin */ \
   sm(NEQ,          "!=") \
   sm(GREATER_EQ,   ">=") \
-  sm(LESS_EQ,      "<=")\
+  sm(LESS_EQ,      "<=") \
   sm(LOGIC_AND,    "&&") \
   sm(LOGIC_OR,     "||") /* logical end */ \
   sm(PLUS_ASSIGN,  "+=") \
   sm(MINUS_ASSIGN, "-=") \
   sm(MUL_ASSIGN,   "*=") \
   sm(DIV_ASSIGN,   "/=") \
+  sm(MOD_ASSIGN,   "%=") \
   sm(AND,          "&") \
   sm(OR,           "|") \
   sm(XOR,          "^") \
@@ -94,12 +96,12 @@
   sm(MODULO,       "%") \
   sm(ASSIGN,       "=") \
   sm(PLUS,         "+") \
-  sm(MINUS,        "-")\
+  sm(MINUS,        "-") \
   sm(ASTERISK,     "*") \
   sm(GREATER,      ">") \
   sm(LESS,         "<") \
   sm(DOT,          ".") \
-  sm(NONE,         "")\
+  sm(NONE,         "") \
 
 typedef enum {
 #define sm(tok, str) SYM_##tok,
@@ -129,8 +131,8 @@ typedef union
 
 typedef struct Token
 {
-  Sym         sym;
-  Src         src;
+  Sym        sym;
+  Src        src;
   TokenValue value;
 } Token;
 

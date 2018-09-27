@@ -34,19 +34,21 @@
 #include "ast.h"
 #include "tokens.h"
 
+typedef struct
+{
+  struct Node *fn;
+  const char * name;
+} TestCase;
+
 /* class Unit object members */
 typedef struct Unit
 {
-  /* output of lexer */
-  Tokens tokens;
-  /* abstract syntax tree as output of parser */
-  Ast   ast;
+  Tokens  tokens;
+  Ast     ast;
   BArray *globals;
-  /* source file name with path */
-  char *filepath;
-  char *name;
-  /* source data */
-  char *src;
+  char *  filepath;
+  char *  name;
+  char *  src;
 } Unit;
 
 Unit *

@@ -39,8 +39,16 @@ typedef struct Tokens
   BArray *buf;
   BArray *string_cache;
   size_t  iter;
-  size_t  marker;
 } Tokens;
+
+typedef enum
+{
+  TOK_LOOK_HIT,
+  TOK_LOOK_CONTINUE,
+  TOK_LOOK_TERMINAL,
+} TokensLookaheadState;
+
+typedef TokensLookaheadState (*TokenCmpFunc)(Token *curr);
 
 void
 tokens_init(Tokens *tokens);
@@ -99,17 +107,20 @@ tokens_is_seq(Tokens *tokens, int cnt, ...);
 void
 tokens_reset_iter(Tokens *tokens);
 
-void
-tokens_set_marker(Tokens *tokens);
+size_t
+tokens_get_marker(Tokens *tokens);
 
 void
-tokens_back_to_marker(Tokens *tokens);
+tokens_back_to_marker(Tokens *tokens, size_t marker);
 
 void
 tokens_consume_till(Tokens *tokens, Sym sym);
 
 bool
 tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
+
+bool
+tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
 
 BArray *
 tokens_get_all(Tokens *tokens);

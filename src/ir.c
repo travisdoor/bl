@@ -82,6 +82,9 @@ typedef struct
 } RunResult;
 
 static void
+print_llvm_module(LLVMModuleRef module);
+
+static void
 generate(Context *cnt);
 
 static void
@@ -94,8 +97,8 @@ link(Context *cnt, Node *entry);
 static LLVMModuleRef
 _link(Context *cnt, Node *entry);
 
-static LLVMExecutionEngineRef
-create_jit(LLVMContextRef llvm_cnt);
+static void
+create_jit(Context *cnt);
 
 static void
 link_into_jit(Context *cnt, Node *fn);
@@ -187,15 +190,32 @@ static LLVMTypeRef
 to_llvm_type(Context *cnt, Node *type);
 
 // impl
+void
+print_llvm_module(LLVMModuleRef module)
+{
+#if VERBOSE
+  {
+    char *str = LLVMPrintModuleToString(module);
+    bl_log("\n--------------------------------------------------------------------------------"
+           "\n%s"
+           "\n--------------------------------------------------------------------------------",
+           str);
+    LLVMDisposeMessage(str);
+  }
+#endif
+}
+
 static void
 ir_validate(LLVMModuleRef module)
 {
+#ifdef BL_DEBUG
   char *error = NULL;
   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
     char *str = LLVMPrintModuleToString(module);
     bl_abort("module not verified with error: %s\n%s", error, str);
   }
   LLVMDisposeMessage(error);
+#endif
 }
 
 static inline void
@@ -777,11 +797,20 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
+  case SYM_MOD_ASSIGN: {
+    LLVMValueRef value = lhs;
+    if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+    value = LLVMBuildSRem(cnt->llvm_builder, value, rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, lhs);
+  }
+
   default:
     break;
   }
 
   if (should_load(_binop->lhs, lhs)) lhs = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
+  lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
+  float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   switch (_binop->op) {
   case SYM_PLUS:
@@ -1345,17 +1374,14 @@ ir_node(Context *cnt, Node *node)
   return NULL;
 }
 
-LLVMExecutionEngineRef
-create_jit(LLVMContextRef llvm_cnt)
+void
+create_jit(Context *cnt)
 {
-  LLVMModuleRef          module = LLVMModuleCreateWithNameInContext("run", llvm_cnt);
-  LLVMExecutionEngineRef jit;
-  char *                 llvm_error = NULL;
+  LLVMModuleRef module     = LLVMModuleCreateWithNameInContext("compile_time", cnt->llvm_cnt);
+  char *        llvm_error = NULL;
 
-  if (LLVMCreateJITCompilerForModule(&jit, module, 3, &llvm_error) != 0)
+  if (LLVMCreateJITCompilerForModule(&cnt->llvm_jit, module, 3, &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
-
-  return jit;
 }
 
 RunResult
@@ -1465,17 +1491,7 @@ link(Context *cnt, Node *entry)
 {
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
-
-#if VERBOSE
-  {
-    char *str = LLVMPrintModuleToString(dest_module);
-    bl_log("\n--------------------------------------------------------------------------------"
-           "\n%s"
-           "\n--------------------------------------------------------------------------------",
-           str);
-    LLVMDisposeMessage(str);
-  }
-#endif
+  print_llvm_module(dest_module);
   return dest_module;
 }
 
@@ -1592,13 +1608,23 @@ ir_run(Builder *builder, Assembly *assembly)
   cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
   cnt.llvm_values  = bo_htbl_new(sizeof(LLVMValueRef), 256);
-  cnt.llvm_jit     = create_jit(cnt.llvm_cnt);
 
+  create_jit(&cnt);
   generate(&cnt);
 
   assert(cnt.main_tmp);
   assembly->llvm_module = link(&cnt, cnt.main_tmp);
   bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
+
+  /* link all test cases */
+  if (builder->flags & BUILDER_RUN_TESTS) {
+    TestCase     tc;
+    const size_t c = bo_array_size(assembly->test_cases);
+    for (size_t i = 0; i < c; ++i) {
+      tc = bo_array_at(assembly->test_cases, i, TestCase);
+      link_into_jit(&cnt, tc.fn);
+    }
+  }
 
   ir_validate(assembly->llvm_module);
 
@@ -1617,6 +1643,7 @@ ir_run(Builder *builder, Assembly *assembly)
 
   assembly->llvm_cnt = cnt.llvm_cnt;
   assembly->llvm_jit = cnt.llvm_jit;
+
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.llvm_values);
   bo_unref(cnt.jit_linked);
