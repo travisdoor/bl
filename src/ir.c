@@ -352,12 +352,6 @@ to_llvm_type(Context *cnt, Node *type)
     Node *   tmp_type;
     unsigned i = 0;
 
-    node_foreach(_struct_type->types, member)
-    {
-      tmp_type               = ast_get_type(member);
-      llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
-    }
-
     if (_struct_type->base_decl) {
       result = llvm_values_get(cnt, _struct_type->base_decl);
       if (!result) {
@@ -370,10 +364,20 @@ to_llvm_type(Context *cnt, Node *type)
         result = LLVMStructCreateNamed(cnt->llvm_cnt, name);
         llvm_values_insert(cnt, _struct_type->base_decl, result);
 
+        node_foreach(_struct_type->types, member)
+        {
+          tmp_type               = ast_get_type(member);
+          llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
+        }
         LLVMStructSetBody(result, llvm_member_types, i, false);
       }
     } else {
       /* anonymous structure type */
+      node_foreach(_struct_type->types, member)
+      {
+        tmp_type               = ast_get_type(member);
+        llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
+      }
       result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
     }
     bl_free(llvm_member_types);

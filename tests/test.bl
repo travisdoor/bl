@@ -6,4 +6,5 @@
   };
 
   foo Foo;
+  foo.foo = &foo;
 };

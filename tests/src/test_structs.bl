@@ -1,5 +1,3 @@
-#load "libc.bl"
-
 #test "simple local structure" {
   Local : struct {
     i s32,
@@ -20,7 +18,7 @@
     j s32
   };
 
-  foo := cast(*Foo) malloc(sizeof(Foo)); 
+  foo := cast(*Foo) alloc(sizeof(Foo)); 
   assert(foo != null);
   foo->i = 1;
   foo->j = 2;
@@ -44,12 +42,11 @@
   assert(foo.bar.i == 1);
 };
 
-#test "self-containing stucture" {
+#test "self-containing structure" {
   Foo : struct {
-    foo *Foo,
-    bar *void
+    foo *Foo
   };
 
   foo Foo;
-  //foo.foo = &foo;
+  foo.foo = &foo;
 };

@@ -3,7 +3,7 @@
 //
 // File:   alloc.bl
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   30/9/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,6 +26,25 @@
 // SOFTWARE.
 //************************************************************************************************
 
-alloc : fn (count size_t) *void {
-  __bl_alloc(count);
+#load "utils.bl"
+
+AllocMeta : struct {
+  size usize,
+  _ *AllocMeta
+};
+
+alloc_free_pool *AllocMeta := null;
+
+alloc : fn (count usize) *void {
+  if (count == 0) { return null; }
+  
+  size : count + sizeof(AllocMeta);
+  mem := cast(*AllocMeta) __bl_alloc(size);
+  mem->size = count;
+
+  mem = ptrshift(mem, sizeof(AllocMeta)); 
+  return mem;
+};
+
+free : fn (prt *void) {
 };

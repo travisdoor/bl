@@ -49,9 +49,9 @@ SIGQUIT : 3;
 SIGILL  : 4;
 SIGABRT : 6;
 
-syscall fn (s32, s32, *char, size_t) s32 : #extern;
+syscall fn (s32, s32, *char, usize) s32 : #extern;
 raise   fn (s32) s32 : #extern;
-sbrk    fn (size_t) *void : #extern;
+sbrk    fn (usize) *void : #extern;
 
 __bl_print : fn (s string) {
   syscall(4, STDOUT_FILENO, s, string_len(s));
@@ -65,7 +65,7 @@ __bl_exit : fn () {
   raise(SIGQUIT);
 };
 
-__bl_alloc : fn (count size_t) *void {
+__bl_alloc : fn (count usize) *void {
   p := sbrk(0); 
   rq := sbrk(count);
 

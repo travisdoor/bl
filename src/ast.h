@@ -49,7 +49,7 @@
     ft(U16,    u16) \
     ft(U32,    u32) \
     ft(U64,    u64) \
-    ft(SIZE,   size_t) \
+    ft(SIZE,   usize) \
     ft(F32,    f32) \
     ft(F64,    f64) \
     ft(CHAR,   char) \

@@ -90,7 +90,13 @@ llvm_init(void)
 int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
-  // bl_msg_log("processing unit: %s", unit->name);
+  if (flags & BUILDER_VERBOSE) {
+    if (unit->loaded_from) {
+      msg_log("compile: %s (loaded from '%s')", unit->name, unit->loaded_from->src.unit->name);
+    } else {
+      msg_log("compile: %s", unit->name);
+    }
+  }
 
   if (flags & BUILDER_LOAD_FROM_FILE) {
     file_loader_run(builder, unit);

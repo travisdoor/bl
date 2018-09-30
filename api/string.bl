@@ -30,8 +30,8 @@
 
 STRING_TERMINATOR : '\0';
 
-string_len : fn (s *char) size_t {
-  len size_t := 0;
+string_len : fn (s *char) usize {
+  len usize := 0;
   if (s == null) { return len; }    
 
   loop (; *s != STRING_TERMINATOR; s = ptrshift(s, sizeof(char))) {

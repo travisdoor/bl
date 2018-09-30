@@ -923,6 +923,7 @@ ast_type_cmp(Node *first, Node *second)
   assert(first);
   assert(second);
 
+  if (first == second) return true;
   if (node_code(first) != node_code(second)) return false;
   if (ast_type_kind(first) != ast_type_kind(second)) return false;
 

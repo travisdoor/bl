@@ -1,5 +1,3 @@
-#load "libc.bl"
-
 #test "operators" {
   a := 0;
   a = a + 1;
