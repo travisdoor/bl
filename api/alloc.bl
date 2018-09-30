@@ -30,7 +30,8 @@
 
 AllocMeta : struct {
   size usize,
-  _ *AllocMeta
+  next *AllocMeta,
+  prev *AllocMeta,
 };
 
 alloc_free_pool *AllocMeta := null;
@@ -41,6 +42,8 @@ alloc : fn (count usize) *void {
   size : count + sizeof(AllocMeta);
   mem := cast(*AllocMeta) __bl_alloc(size);
   mem->size = count;
+  mem->next = null;
+  mem->prev = null;
 
   mem = ptrshift(mem, sizeof(AllocMeta)); 
   return mem;
