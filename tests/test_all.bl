@@ -9,3 +9,4 @@
 #load "src/test_lambdas.bl"
 #load "src/test_pointers.bl"
 #load "src/test_fibonacci.bl"
+#load "src/test_alloc.bl"

@@ -35,7 +35,7 @@ EXIT_FAILURE : 1;
 EXIT_SUCCESS : 0;
 
 print : fn (s string) {
-  __print(s);
+  __bl_print(s);
 };
 
 print_s32 : fn (n s32) {
@@ -50,4 +50,12 @@ __assert : fn (expr bool, file string, line s32) {
   if (!expr) {
     __bl_assert_failure(file, line);
   }
+};
+
+abort : fn () {
+  __bl_abort();
+};
+
+exit : fn () {
+  __bl_exit();
 };

@@ -130,7 +130,7 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 
   assert(_cnt->curr_dependent);
   Node *callee = ast_unroll_ident(_call->ref);
-  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN)) {
+  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN) && !peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }
 
@@ -150,7 +150,7 @@ post_ident(Visitor *visitor, Node *ident, void *cnt)
   }
 
   NodeDecl *_decl = peek_decl(_ident->ref);
-  if (_decl->in_gscope || _decl->kind == DECL_KIND_FN) {
+  if ((_decl->in_gscope && _decl->mutable) || _decl->kind == DECL_KIND_FN) {
     ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
   }
 

@@ -1150,6 +1150,7 @@ parse_decl(Context *cnt)
     if (buildin == BUILDIN_MAIN) {
       /* main function */
       _decl->flags |= FLAG_MAIN;
+      cnt->assembly->has_main = true;
     }
   }
 
@@ -1323,7 +1324,7 @@ parse_load(Context *cnt)
 
   const char *filepath = tok_path->value.str;
 
-  Unit *unit = unit_new_file(filepath);
+  Unit *unit = unit_new_file(filepath, tok_path);
   if (!assembly_add_unit_unique(cnt->assembly, unit)) {
     unit_delete(unit);
   }
@@ -1581,7 +1582,7 @@ next:
 Node *
 load_core(Context *cnt)
 {
-  Unit *unit = unit_new_file(CORE_SOURCE_FILE);
+  Unit *unit = unit_new_file(CORE_SOURCE_FILE, NULL);
   if (!assembly_add_unit_unique(cnt->assembly, unit)) {
     unit_delete(unit);
   }

@@ -545,6 +545,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct = peek_type_struct(node);
     visit(_struct->arr);
+    node_foreach(_struct->types, tmp) visit(tmp);
     break;
   }
 
@@ -623,8 +624,12 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
+  case NODE_LIT_STRUCT: {
+    visit(peek_lit_struct(node)->type);
+    break;
+  }
+
     /* defaults (terminal cases) */
-  case NODE_LIT_STRUCT:
   case NODE_IDENT:
   case NODE_LOAD:
   case NODE_LINK:

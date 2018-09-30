@@ -1,33 +1,9 @@
 /* testing playground */
 
-//#load "libc.bl"
+#test "struct" {
+  Foo : struct {
+    foo *Foo
+  };
 
-/*
- internals:
- sizeof
- typeof
- malloc
- free
- memcpy
- assert
-*/
-
-puts : fn (s string) s32 #extern;
-
-main : fn () s32 {
-  puts("hello world");
-  puts("hello world");
-  return EXIT_SUCCESS;
-};
-
-get : fn () bool {
-  return false;
-};
-
-#test "test external decl" {
-};
-
-#test "test" {
-  a := get();  
-  assert(a);
+  foo Foo;
 };

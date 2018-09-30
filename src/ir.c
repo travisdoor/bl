@@ -1244,7 +1244,7 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMBasicBlockRef prev_break_block    = cnt->break_block;
   LLVMBasicBlockRef prev_continue_block = cnt->continue_block;
   cnt->break_block                      = loop_cont;
-  cnt->continue_block                   = loop_decide;
+  cnt->continue_block                   = loop_increment ? loop_increment : loop_decide;
 
   if (_loop->init) {
     /* generate ir fo init block */
@@ -1613,12 +1613,6 @@ ir_run(Builder *builder, Assembly *assembly)
   create_jit(&cnt);
   generate(&cnt);
 
-  if (cnt.main_tmp) {
-    assert(cnt.main_tmp);
-    assembly->llvm_module = link(&cnt, cnt.main_tmp);
-    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t) cnt.main_tmp);
-  }
-
   /* link all test cases */
   if (builder->flags & BUILDER_RUN_TESTS) {
     TestCase     tc;
@@ -1629,21 +1623,14 @@ ir_run(Builder *builder, Assembly *assembly)
     }
   }
 
-  if (assembly->llvm_module)
-    ir_validate(assembly->llvm_module);
-
-#if 0
-  LLVMModuleRef tmp;
-  bo_iterator_t iter;
-  bhtbl_foreach(cnt.llvm_modules, iter)
-  {
-    tmp = bo_htbl_iter_peek_value(cnt.llvm_modules, &iter, LLVMModuleRef);
-    assert(tmp);
-    LLVMDisposeModule(tmp);
+  /* link runtime */
+  if (cnt.main_tmp) {
+    assert(cnt.main_tmp);
+    assembly->llvm_module = link(&cnt, cnt.main_tmp);
+    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
   }
-  if (bo_htbl_size(cnt.llvm_modules))
-    bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
-#endif
+
+  if (assembly->llvm_module) ir_validate(assembly->llvm_module);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
   assembly->llvm_jit = cnt.llvm_jit;

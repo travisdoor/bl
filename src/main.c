@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 
   /* init actors */
   while (*argv != NULL) {
-    Unit *unit = unit_new_file(*argv);
+    Unit *unit = unit_new_file(*argv, NULL);
 
     bool added = assembly_add_unit_unique(assembly, unit);
     if (added == false) {

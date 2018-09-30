@@ -49,27 +49,9 @@
 
 #define FN_ARR_COUNT_NAME "count@"
 
-#define check_error(cnt, code, tok, pos, format, ...)                                              \
-  {                                                                                                \
-    builder_msg((cnt)->builder, BL_BUILDER_ERROR, (code), &(tok)->src, (pos), (format),            \
-                ##__VA_ARGS__);                                                                    \
-  }
-
 #define check_error_node(cnt, code, node, pos, format, ...)                                        \
   {                                                                                                \
     builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (code), (node)->src, (pos), (format),           \
-                ##__VA_ARGS__);                                                                    \
-  }
-
-#define check_warning(cnt, tok, pos, format, ...)                                                  \
-  {                                                                                                \
-    builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, &(tok)->src, (pos), (format),              \
-                ##__VA_ARGS__);                                                                    \
-  }
-
-#define check_warning_node(cnt, node, pos, format, ...)                                            \
-  {                                                                                                \
-    builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, (node)->src, (pos), (format),              \
                 ##__VA_ARGS__);                                                                    \
   }
 
@@ -527,7 +509,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     Node **tmp;
     node_foreach_ref(_struct_type->types, tmp)
     {
-      flatten(tmp);
+      check_flatten(cnt, tmp);
     }
     break;
   }
@@ -1444,6 +1426,11 @@ checker_run(Builder *builder, Assembly *assembly)
   check_unresolved(&cnt);
 
   flatten_free_cache(cnt.flatten_cache);
+
+  if (!assembly->has_main && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
+    builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
+                "assembly has no 'main' method");
+  }
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);

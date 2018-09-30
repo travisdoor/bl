@@ -43,3 +43,13 @@
   foo.bar.i = 1;
   assert(foo.bar.i == 1);
 };
+
+#test "self-containing stucture" {
+  Foo : struct {
+    foo *Foo,
+    bar *void
+  };
+
+  foo Foo;
+  //foo.foo = &foo;
+};

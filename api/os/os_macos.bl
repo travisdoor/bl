@@ -43,14 +43,36 @@ OS	: OS_MACOS;
  */
 OS_NAME : "macos";
 
-/*
- * Print implementation
- */
+STDOUT_FILENO : 1;
 
-STDOUT_FILENO s32 : 1;
+SIGQUIT : 3;
+SIGILL  : 4;
+SIGABRT : 6;
 
 syscall fn (s32, s32, *char, size_t) s32 : #extern;
+raise   fn (s32) s32 : #extern;
+sbrk    fn (size_t) *void : #extern;
 
-__print : fn (s string) {
+__bl_print : fn (s string) {
   syscall(4, STDOUT_FILENO, s, string_len(s));
+};
+
+__bl_abort : fn () {
+  raise(SIGABRT);
+};
+
+__bl_exit : fn () {
+  raise(SIGQUIT);
+};
+
+__bl_alloc : fn (count size_t) *void {
+  p := sbrk(0); 
+  rq := sbrk(count);
+
+  if (rq == cast(*void) (-1)) {
+    return null; 
+  } 
+
+  if (p != rq) { abort(); }
+  return p;
 };

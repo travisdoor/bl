@@ -1,0 +1,6 @@
+#load "alloc.bl"
+
+#test "alloc" {
+  mem := alloc(128);
+  assert(mem != null);
+};

@@ -20,8 +20,8 @@
 #test "for-like loop" {
   c := 0;
   loop (i := 0; i < 10; i += 1) {
+    assert(c <= 10);
     c += 1;
-    assert(c > 10);
     continue;
   }
 

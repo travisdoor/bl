@@ -32,18 +32,29 @@
 #include "stages.h"
 #include "common.h"
 
+#define load_error(builder, code, tok, pos, format, ...)                                           \
+  {                                                                                                \
+    if (tok)                                                                                       \
+      builder_msg(builder, BUILDER_MSG_ERROR, (code), &(tok)->src, (pos), (format),                \
+                  ##__VA_ARGS__);                                                                  \
+    else                                                                                           \
+      builder_error(builder, "file not found %s", (format), ##__VA_ARGS__);                        \
+  }
+
 void
 file_loader_run(Builder *builder, Unit *unit)
 {
   if (!unit->filepath) {
-    builder_error(builder, "file not found %s", unit->name);
+    load_error(builder, ERR_FILE_NOT_FOUND, unit->loaded_from, BUILDER_CUR_WORD,
+               "file not found %s", unit->name);
     return;
   }
 
   FILE *f = fopen(unit->filepath, "r");
 
   if (f == NULL) {
-    builder_error(builder, "cannot read file %s", unit->name);
+    load_error(builder, ERR_FILE_READ, unit->loaded_from, BUILDER_CUR_WORD, "cannot read file %s",
+               unit->name);
     return;
   }
 
@@ -51,7 +62,8 @@ file_loader_run(Builder *builder, Unit *unit)
   size_t fsize = (size_t)ftell(f);
   if (fsize == 0) {
     fclose(f);
-    builder_error(builder, "invalid source file %s", unit->name);
+    load_error(builder, ERR_FILE_EMPTY, unit->loaded_from, BUILDER_CUR_WORD,
+               "invalid or empty source file %s", unit->name);
     return;
   }
 
