@@ -61,7 +61,8 @@ test_case(Context *cnt, TestCase *tc)
   }
 
   if (!(result = (bool)setjmp(assert_jmp))) {
-    LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+    LLVMGenericValueRef ret = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
+    LLVMDisposeGenericValue(ret);
   }
 
   const char *unit_name = tc->fn->src->unit->name;

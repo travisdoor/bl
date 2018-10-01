@@ -1434,7 +1434,6 @@ checker_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
-  bo_unref(cnt.provided_in_gscope);
 #if BL_DEBUG
   if (_flatten != 0) bl_log(RED("leaking flatten cache: %d"), _flatten);
 #endif

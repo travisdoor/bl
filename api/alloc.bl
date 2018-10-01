@@ -49,5 +49,9 @@ alloc : fn (count usize) *void {
   return mem;
 };
 
-free : fn (prt *void) {
+free : fn (ptr *void) {
+  if (alloc_free_pool == null) {
+    // empty free cache
+    alloc_free_pool = ptr;
+  }
 };

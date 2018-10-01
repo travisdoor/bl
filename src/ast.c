@@ -894,7 +894,7 @@ ast_is_buildin_type(Node *ident)
   uint64_t hash;
   array_foreach(ftype_hashes, hash)
   {
-    if (_ident->hash == hash) return i;
+    if (_ident->hash == hash) return (int) i;
   }
 
   return -1;
@@ -909,7 +909,7 @@ ast_is_buildin(Node *ident)
   uint64_t hash;
   array_foreach(buildin_hashes, hash)
   {
-    if (_ident->hash == hash) return i;
+    if (_ident->hash == hash) return (int) i;
   }
 
   return -1;
