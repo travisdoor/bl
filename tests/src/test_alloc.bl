@@ -1,0 +1,21 @@
+#load "alloc.bl"
+
+#test "allocate structure" {
+  Foo : struct {
+    i s32,
+    j s32
+  };
+
+  mem := cast(*Foo) alloc(sizeof(Foo));
+  assert(mem != null);
+
+  mem->i = 10;
+  mem->j = 20;
+
+  assert(mem->i == 10);
+  assert(mem->j == 20);
+  free(mem);
+
+  mem = cast(*Foo) alloc(sizeof(Foo));
+  mem = null;
+};

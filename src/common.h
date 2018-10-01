@@ -40,7 +40,7 @@
 
 #define barray_foreach(arr, it)                                                                    \
   if (bo_array_size((arr)))                                                                        \
-    for (size_t i = 0; (it) = bo_array_at((arr), i, void *), i < bo_array_size((arr)); ++i)
+    for (size_t i = 0; i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *)); ++i)
 
 #define array_foreach(arr, it)                                                                     \
   for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                    \

@@ -1,0 +1,66 @@
+#test "count buildin" {
+  arr s32[100];
+  assert(arr.count == 100);
+};
+
+#test "fundamental types" {
+  arr s32[100];
+  loop (i := 0; i < arr.count; i += 1) {
+    arr[i] = i;
+  }
+
+  loop (i := 0; i < arr.count; i += 1) {
+    assert(arr[i] == i);
+  }
+};
+
+#test "custom structure types" {
+  Foo : struct {
+    i s32
+  };
+
+  foos Foo[100];
+  foos.count;
+
+  loop (i := 0; i < foos.count; i += 1) {
+    foos[i].i = i;
+  }
+
+  loop (i := 0; i < foos.count; i += 1) {
+    assert(foos[i].i == i);
+  }
+};
+
+#test "nested array" {
+  Bar : struct {
+    is s32[32]
+  };
+
+
+  bar Bar;
+  loop (i := 0; i < bar.is.count; i += 1) {
+    bar.is[i] = i;
+  }
+
+  loop (i := 0; i < bar.is.count; i += 1) {
+    assert(bar.is[i] == i);
+  }
+};
+
+arr_get_size : fn () s32 {
+  return 10;
+};
+
+#test "compile time size" {
+  B : 5;
+  C : 20 + B;
+  arr1 s32[(10 + 2 * 3) * 2];
+  arr2 s32[200 + 1 + C];
+  arr3 s32[#run arr_get_size()];
+  arr4 s32[1 + #run arr_get_size()];
+
+  assert(arr1.count == 32);
+  assert(arr2.count == 226);
+  assert(arr3.count == 10);
+  assert(arr4.count == 11);
+};

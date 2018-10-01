@@ -545,6 +545,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct = peek_type_struct(node);
     visit(_struct->arr);
+    node_foreach(_struct->types, tmp) visit(tmp);
     break;
   }
 
@@ -623,8 +624,12 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
+  case NODE_LIT_STRUCT: {
+    visit(peek_lit_struct(node)->type);
+    break;
+  }
+
     /* defaults (terminal cases) */
-  case NODE_LIT_STRUCT:
   case NODE_IDENT:
   case NODE_LOAD:
   case NODE_LINK:
@@ -889,7 +894,7 @@ ast_is_buildin_type(Node *ident)
   uint64_t hash;
   array_foreach(ftype_hashes, hash)
   {
-    if (_ident->hash == hash) return i;
+    if (_ident->hash == hash) return (int) i;
   }
 
   return -1;
@@ -904,7 +909,7 @@ ast_is_buildin(Node *ident)
   uint64_t hash;
   array_foreach(buildin_hashes, hash)
   {
-    if (_ident->hash == hash) return i;
+    if (_ident->hash == hash) return (int) i;
   }
 
   return -1;
@@ -918,6 +923,7 @@ ast_type_cmp(Node *first, Node *second)
   assert(first);
   assert(second);
 
+  if (first == second) return true;
   if (node_code(first) != node_code(second)) return false;
   if (ast_type_kind(first) != ast_type_kind(second)) return false;
 

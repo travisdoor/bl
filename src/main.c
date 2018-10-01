@@ -59,8 +59,10 @@ main(int argc, char *argv[])
       build_flags |= BUILDER_RUN_TESTS;
     } else if (strcmp(&argv[optind][1], "no-bin") == 0) {
       build_flags |= BUILDER_NO_BIN;
-    } else if (strcmp(&argv[optind][1], "no-bl_warning") == 0) {
+    } else if (strcmp(&argv[optind][1], "no-warning") == 0) {
       build_flags |= BUILDER_NO_WARN;
+    } else if (strcmp(&argv[optind][1], "verbose") == 0) {
+      build_flags |= BUILDER_VERBOSE;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);
@@ -100,7 +102,7 @@ main(int argc, char *argv[])
 
   /* init actors */
   while (*argv != NULL) {
-    Unit *unit = unit_new_file(*argv);
+    Unit *unit = unit_new_file(*argv, NULL);
 
     bool added = assembly_add_unit_unique(assembly, unit);
     if (added == false) {

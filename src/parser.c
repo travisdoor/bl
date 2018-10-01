@@ -92,6 +92,9 @@ static Node *
 parse_load(Context *cnt);
 
 static Node *
+parse_assert(Context *cnt);
+
+static Node *
 parse_line(Context *cnt);
 
 static Node *
@@ -1147,6 +1150,7 @@ parse_decl(Context *cnt)
     if (buildin == BUILDIN_MAIN) {
       /* main function */
       _decl->flags |= FLAG_MAIN;
+      cnt->assembly->has_main = true;
     }
   }
 
@@ -1298,7 +1302,6 @@ next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {
     CASE(SYM_EXTERN, FLAG_EXTERN)
-    CASE(SYM_INTERNAL, FLAG_INTERNAL)
   default:
     break;
   }
@@ -1321,12 +1324,61 @@ parse_load(Context *cnt)
 
   const char *filepath = tok_path->value.str;
 
-  Unit *unit = unit_new_file(filepath);
+  Unit *unit = unit_new_file(filepath, tok_path);
   if (!assembly_add_unit_unique(cnt->assembly, unit)) {
     unit_delete(unit);
   }
 
   return ast_load(cnt->ast, tok_id, filepath);
+}
+
+Node *
+parse_assert(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASSERT);
+  if (!tok_begin) return NULL;
+
+  /* eat ( */
+  if (!tokens_consume_if(cnt->tokens, SYM_LPAREN)) {
+    Token *tok_err = tokens_consume(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected '(' after assert buildin");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  Node *expr = parse_expr(cnt);
+  if (expr == NULL) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
+                "expected assert test expression");
+
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  /* eat ) */
+  if (!tokens_consume_if(cnt->tokens, SYM_RPAREN)) {
+    Token *tok_err = tokens_consume(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected ')' after assert buildin");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  TokenValue tmp;
+
+  Node *callee   = ast_ident(cnt->ast, tok_begin, "__assert", NULL, cnt->curr_compound, 0, NULL);
+  tmp.str        = tok_begin->src.unit->filepath;
+  Node *arg_file = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_STRING], tmp);
+
+  tmp.u          = tok_begin->src.line;
+  Node *arg_line = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], tmp);
+
+  expr->next     = arg_file;
+  arg_file->next = arg_line;
+
+  return ast_expr_call(cnt->ast, tok_begin, callee, expr, 3, &ftypes[FTYPE_VOID], false);
 }
 
 Node *
@@ -1455,6 +1507,11 @@ next:
     if (parse_semicolon_rq(cnt)) goto next;
   }
 
+  if ((*node = parse_assert(cnt))) {
+    insert_node(&node);
+    if (parse_semicolon_rq(cnt)) goto next;
+  }
+
   if ((*node = parse_load(cnt))) {
     insert_node(&node);
     goto next;
@@ -1525,7 +1582,7 @@ next:
 Node *
 load_core(Context *cnt)
 {
-  Unit *unit = unit_new_file(CORE_SOURCE_FILE);
+  Unit *unit = unit_new_file(CORE_SOURCE_FILE, NULL);
   if (!assembly_add_unit_unique(cnt->assembly, unit)) {
     unit_delete(unit);
   }

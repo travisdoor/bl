@@ -34,6 +34,8 @@
 #include "ast.h"
 #include "tokens.h"
 
+struct Token;
+
 typedef struct
 {
   struct Node *fn;
@@ -43,16 +45,17 @@ typedef struct
 /* class Unit object members */
 typedef struct Unit
 {
-  Tokens  tokens;
-  Ast     ast;
-  BArray *globals;
-  char *  filepath;
-  char *  name;
-  char *  src;
+  Tokens        tokens;
+  Ast           ast;
+  BArray *      globals;
+  char *        filepath;
+  char *        name;
+  char *        src;
+  struct Token *loaded_from;
 } Unit;
 
 Unit *
-unit_new_file(const char *filepath);
+unit_new_file(const char *filepath, struct Token *loaded_from);
 
 Unit *
 unit_new_str(const char *name, const char *src);

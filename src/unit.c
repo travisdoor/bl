@@ -31,6 +31,7 @@
 #include "unit.h"
 #include "blmemory.h"
 #include "bldebug.h"
+#include "token.h"
 
 static void
 init(Unit *unit)
@@ -82,12 +83,13 @@ search_file(const char *filepath)
 
 /* public */
 Unit *
-unit_new_file(const char *filepath)
+unit_new_file(const char *filepath, Token *loaded_from)
 {
   Unit *unit = bl_calloc(1, sizeof(Unit));
   if (!unit) bl_abort("bad alloc");
-  unit->filepath = search_file(filepath);
-  unit->name     = strdup(filepath);
+  unit->filepath    = search_file(filepath);
+  unit->name        = strdup(filepath);
+  unit->loaded_from = loaded_from;
   init(unit);
   return unit;
 }

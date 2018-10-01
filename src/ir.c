@@ -29,6 +29,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Linker.h>
+#include <llvm-c/DebugInfo.h>
 #include "stages.h"
 #include "common.h"
 #include "ast.h"
@@ -351,12 +352,6 @@ to_llvm_type(Context *cnt, Node *type)
     Node *   tmp_type;
     unsigned i = 0;
 
-    node_foreach(_struct_type->types, member)
-    {
-      tmp_type               = ast_get_type(member);
-      llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
-    }
-
     if (_struct_type->base_decl) {
       result = llvm_values_get(cnt, _struct_type->base_decl);
       if (!result) {
@@ -369,10 +364,20 @@ to_llvm_type(Context *cnt, Node *type)
         result = LLVMStructCreateNamed(cnt->llvm_cnt, name);
         llvm_values_insert(cnt, _struct_type->base_decl, result);
 
+        node_foreach(_struct_type->types, member)
+        {
+          tmp_type               = ast_get_type(member);
+          llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
+        }
         LLVMStructSetBody(result, llvm_member_types, i, false);
       }
     } else {
       /* anonymous structure type */
+      node_foreach(_struct_type->types, member)
+      {
+        tmp_type               = ast_get_type(member);
+        llvm_member_types[i++] = to_llvm_type(cnt, tmp_type);
+      }
       result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
     }
     bl_free(llvm_member_types);
@@ -1243,7 +1248,7 @@ ir_stmt_loop(Context *cnt, Node *loop)
   LLVMBasicBlockRef prev_break_block    = cnt->break_block;
   LLVMBasicBlockRef prev_continue_block = cnt->continue_block;
   cnt->break_block                      = loop_cont;
-  cnt->continue_block                   = loop_decide;
+  cnt->continue_block                   = loop_increment ? loop_increment : loop_decide;
 
   if (_loop->init) {
     /* generate ir fo init block */
@@ -1612,10 +1617,6 @@ ir_run(Builder *builder, Assembly *assembly)
   create_jit(&cnt);
   generate(&cnt);
 
-  assert(cnt.main_tmp);
-  assembly->llvm_module = link(&cnt, cnt.main_tmp);
-  bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
-
   /* link all test cases */
   if (builder->flags & BUILDER_RUN_TESTS) {
     TestCase     tc;
@@ -1626,20 +1627,14 @@ ir_run(Builder *builder, Assembly *assembly)
     }
   }
 
-  ir_validate(assembly->llvm_module);
-
-#if 0
-  LLVMModuleRef tmp;
-  bo_iterator_t iter;
-  bhtbl_foreach(cnt.llvm_modules, iter)
-  {
-    tmp = bo_htbl_iter_peek_value(cnt.llvm_modules, &iter, LLVMModuleRef);
-    assert(tmp);
-    LLVMDisposeModule(tmp);
+  /* link runtime */
+  if (cnt.main_tmp) {
+    assert(cnt.main_tmp);
+    assembly->llvm_module = link(&cnt, cnt.main_tmp);
+    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)cnt.main_tmp);
   }
-  if (bo_htbl_size(cnt.llvm_modules))
-    bl_warning("leaking %d llvm modules!!!", bo_htbl_size(cnt.llvm_modules));
-#endif
+
+  if (assembly->llvm_module) ir_validate(assembly->llvm_module);
 
   assembly->llvm_cnt = cnt.llvm_cnt;
   assembly->llvm_jit = cnt.llvm_jit;

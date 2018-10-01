@@ -60,9 +60,9 @@
   sm(RETURN,       "return") \
   sm(STRUCT,       "struct") \
   sm(SIZEOF,       "sizeof") \
+  sm(ASSERT,       "assert") \
   sm(EXTERN,       "#extern") \
-  sm(CONTINUE,     "continue") \
-  sm(INTERNAL,     "#internal") /* must be last */ \
+  sm(CONTINUE,     "continue") /* must be last */\
   sm(MDECL,        ":=") \
   sm(ARROW,        "->") \
   sm(LCOMMENT,     "//") \

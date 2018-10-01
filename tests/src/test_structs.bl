@@ -1,0 +1,52 @@
+#test "simple local structure" {
+  Local : struct {
+    i s32,
+    j s32
+  };
+
+  local Local;
+  local.i = 1;
+  local.j = 2;
+
+  assert(local.i == 1);
+  assert(local.j == 2);
+};
+
+#test "struct on heap" {
+  Foo : struct {
+    i s32,
+    j s32
+  };
+
+  foo := cast(*Foo) alloc(sizeof(Foo)); 
+  assert(foo != null);
+  foo->i = 1;
+  foo->j = 2;
+
+  assert(foo->i == 1);
+  assert(foo->j == 2);
+  free(foo);
+};
+
+#test "nested structure" {
+  Bar : struct {
+    i s32
+  };
+
+  Foo : struct {
+    bar Bar
+  };
+
+  foo Foo;
+  foo.bar.i = 1;
+  assert(foo.bar.i == 1);
+};
+
+#test "self-containing structure" {
+  Foo : struct {
+    foo *Foo
+  };
+
+  foo Foo;
+  foo.foo = &foo;
+};

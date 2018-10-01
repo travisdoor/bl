@@ -1,21 +1,14 @@
-/* testing playground */
-
-//#load "libc.bl"
-
-/*
- internals:
- sizeof
- typeof
- malloc
- free
- memcpy
- assert
-*/
-
-main : fn () s32 {
-  print("hello world");
-  return EXIT_SUCCESS;
+#test "this is my amazing test" {
+  a := 0;
+  assert(a == 0);
 };
 
-#test "test external decl" {
+main : fn () s32 {
+  // unit test can be nested into other functions
+  #test "this is my amazing nested test" {
+    a := 0;
+    assert(a != 0);
+  };
+
+  return 0;
 };

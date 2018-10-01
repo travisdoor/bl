@@ -1,0 +1,11 @@
+#test "simple if statements" {
+  a := true;
+  if (a) {
+    if (!a) {
+      assert(false);
+    } else {
+    }
+  } else {
+    assert(false);
+  }
+};

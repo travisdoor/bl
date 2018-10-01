@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   os_linux.bl
+// File:   alloc.bl
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   30/9/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,64 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "os/os.bl"
-#load "string.bl"
+#load "utils.bl"
 
-/*
- * This file contains OS-depend implementation and it's loaded by default by every assembly.
- */
-
-/*
- * Operating system type.
- */
-OS	: OS_LINUX;
-
-/*
- * Operating system name.
- */
-OS_NAME : "linux";
-
-STDOUT_FILENO : 1;
-
-SIGQUIT : 3;
-SIGILL  : 4;
-SIGABRT : 6;
-
-syscall fn (s32, s32, *char, usize) s32 : #extern;
-raise   fn (s32) s32 : #extern;
-sbrk    fn (usize) *void : #extern;
-
-__bl_print : fn (s string) {
-  syscall(1, STDOUT_FILENO, s, string_len(s));
+_AllocMeta : struct {
+  size usize,
+  next *_AllocMeta,
+  prev *_AllocMeta,
 };
 
-__bl_abort : fn () {
-  raise(SIGABRT);
+_alloc_free_pool *_AllocMeta := null;
+
+alloc : fn (count usize) *void {
+  if (count == 0) { return null; }
+  
+  mem := _get_free(count);
+  if (mem == null) {
+    size : count + sizeof(_AllocMeta);
+    mem = cast(*_AllocMeta) __bl_alloc(size);
+    mem->size = count;
+  }
+
+  mem = ptrshift(mem, sizeof(_AllocMeta)); 
+  return mem;
 };
 
-__bl_exit : fn () {
-  raise(SIGQUIT);
+free : fn (ptr *void) {
+  _put_free(ptr);
 };
 
-__bl_alloc : fn (count usize) *void {
-  p := sbrk(0); 
-  rq := sbrk(count);
+_get_free : fn (size usize) *_AllocMeta {
+  unlink : fn (node *_AllocMeta) *_AllocMeta {
+    if (node->next != null) {
+      node->next->prev = node->prev;
+    }
 
-  if (rq == cast(*void) (-1)) {
-    return null; 
-  } 
+    if (node->prev != null) {
+      node->prev->prev = node->next;
+    }
 
-  if (p != rq) { abort(); }
-  return p;
+    node->next = null;
+    node->prev = null;
+
+    return node; 
+  };
+
+  loop (curr := _alloc_free_pool; curr != null; curr = curr->next) {
+    if (curr->size <= size) {
+      print("reuse!!!\n");
+      return unlink(curr);
+    }
+  }
+
+  return null;
+};
+
+_put_free : fn (mem *void) {
+  link : fn (node *_AllocMeta) {
+  };
+
+  meta := cast(*_AllocMeta) ptrshift(mem, -sizeof(_AllocMeta)); 
+  _alloc_free_pool = meta;
 };

@@ -1,0 +1,41 @@
+#test "operators" {
+  a := 0;
+  a = a + 1;
+  assert(a == 1);
+
+  a = 0;
+  a = a - 1;
+  assert(a == -1);
+
+  a = 10;
+  a = a * 2;
+  assert(a == 20);
+
+  a = 10;
+  a = a / 2;
+  assert(a == 5);
+
+  a = 10;
+  a = a % 2;
+  assert(a == 0);
+
+  a = 10;
+  a += 2;
+  assert(a == 12);
+
+  a = 10;
+  a -= 2;
+  assert(a == 8);
+
+  a = 10;
+  a *= 2;
+  assert(a == 20);
+
+  a = 10;
+  a /= 2;
+  assert(a == 5);
+
+  a = 10;
+  a %= 2;
+  assert(a == 0);
+};

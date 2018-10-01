@@ -19,7 +19,7 @@
     "struct" "enum" "fn" "return" "cast" ":" ":=")) 
 
 (defconst bl-types
-  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "size_t" "void" 
+  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" 
     "char" "string" "type_t"))
 
 (defconst bl-constants

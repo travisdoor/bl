@@ -1,0 +1,42 @@
+#test "local enum" {
+  {
+    State : enum s32 {
+      A : 123,
+      B : 2,
+      C : 3
+    };
+
+    assert(State.A == 123);
+    assert(State.B == 2);
+    assert(State.C == 3);
+  }
+
+  {
+    State : enum {
+      A : 123,
+      B,
+      C : 3
+    };
+
+    assert(State.A == 123);
+    assert(State.B == 124);
+    assert(State.C == 3);
+  }
+};
+
+#test "global enum (TODO)" {
+  // TODO: move to global space
+  StateGlobal : enum {
+    A : 2,
+    B : 5,
+    C,
+    D,
+    E : 100
+  };
+
+  assert(StateGlobal.A == 2);
+  assert(StateGlobal.B == 5);
+  assert(StateGlobal.C == 6);
+  assert(StateGlobal.D == 7);
+  assert(StateGlobal.E == 100);
+};

@@ -88,6 +88,8 @@ typedef enum
   ERR_UNIMPLEMENTED           = 51,
   ERR_EXPECTED_CONST          = 52,
   ERR_EXPECTED_DECL           = 53,
+  ERR_FILE_READ               = 54,
+  ERR_FILE_EMPTY              = 55,
 } Error;
 
 #endif // BL_ERROR_H

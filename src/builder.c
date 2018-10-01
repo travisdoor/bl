@@ -90,7 +90,13 @@ llvm_init(void)
 int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
-  // bl_msg_log("processing unit: %s", unit->name);
+  if (flags & BUILDER_VERBOSE) {
+    if (unit->loaded_from) {
+      msg_log("compile: %s (loaded from '%s')", unit->name, unit->loaded_from->src.unit->name);
+    } else {
+      msg_log("compile: %s", unit->name);
+    }
+  }
 
   if (flags & BUILDER_LOAD_FROM_FILE) {
     file_loader_run(builder, unit);
@@ -262,84 +268,90 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
   if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
   if ((builder->flags & BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING) return;
 
-  assert(src);
-  assert(src->unit);
   BString *tmp              = bo_string_new(MAX_MSG_LEN);
   char     msg[MAX_MSG_LEN] = {0};
 
-  int line = src->line;
-  int col  = src->col;
-  int len  = src->len;
+  if (src) {
+    int line = src->line;
+    int col  = src->col;
+    int len  = src->len;
 
-  switch (pos) {
-  case BUILDER_CUR_AFTER:
-    col += len;
-    len = 1;
-    break;
+    switch (pos) {
+    case BUILDER_CUR_AFTER:
+      col += len;
+      len = 1;
+      break;
 
-  case BUILDER_CUR_WORD:
-    break;
+    case BUILDER_CUR_WORD:
+      break;
 
-  case BUILDER_CUR_BEFORE:
-    col -= col < 1 ? 0 : 1;
-    len = 1;
-    break;
-  }
-
-  if (code == 0) {
-    snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
-  } else {
-    const char *mark = "E";
-    if (type == BUILDER_MSG_NOTE) mark = "N";
-    if (type == BUILDER_MSG_WARNING) mark = "W";
-
-    snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code, src->unit->filepath, line, col);
-  }
-
-  va_list args;
-  va_start(args, format);
-  vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
-  va_end(args);
-  bo_string_append(tmp, &msg[0]);
-
-  int         pad      = sprintf(msg, "%d", src->line) + 2;
-  long        line_len = 0;
-  const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
-  if (line_str && line_len) {
-    sprintf(msg, "\n%*d", pad, src->line - 1);
-    bo_string_append(tmp, &msg[0]);
-    bo_string_append(tmp, " | ");
-    bo_string_appendn(tmp, line_str, line_len);
-  }
-
-  line_str = unit_get_src_ln(src->unit, src->line, &line_len);
-  if (line_str && line_len) {
-    sprintf(msg, CYAN("\n%*d"), pad, src->line);
-    bo_string_append(tmp, &msg[0]);
-    bo_string_append(tmp, " | ");
-    bo_string_appendn(tmp, line_str, line_len);
-    sprintf(msg, "\n%*s", pad, "");
-    bo_string_append(tmp, &msg[0]);
-    bo_string_append(tmp, " | ");
-  }
-
-  for (int i = 0; i < col + len - 1; ++i) {
-    if (i < col - 1)
-      bo_string_append(tmp, " ");
-    else {
-      const char *marker = RED("^");
-      if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
-      if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
-      bo_string_append(tmp, marker);
+    case BUILDER_CUR_BEFORE:
+      col -= col < 1 ? 0 : 1;
+      len = 1;
+      break;
     }
-  }
 
-  line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
-  if (line_str && line_len) {
-    sprintf(msg, "\n%*d", pad, src->line + 1);
+    if (code == 0) {
+      snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
+    } else {
+      const char *mark = "E";
+      if (type == BUILDER_MSG_NOTE) mark = "N";
+      if (type == BUILDER_MSG_WARNING) mark = "W";
+
+      snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code, src->unit->filepath, line, col);
+    }
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
+    va_end(args);
     bo_string_append(tmp, &msg[0]);
-    bo_string_append(tmp, " | ");
-    bo_string_appendn(tmp, line_str, line_len);
+
+    int         pad      = sprintf(msg, "%d", src->line) + 2;
+    long        line_len = 0;
+    const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
+    if (line_str && line_len) {
+      sprintf(msg, "\n%*d", pad, src->line - 1);
+      bo_string_append(tmp, &msg[0]);
+      bo_string_append(tmp, " | ");
+      bo_string_appendn(tmp, line_str, line_len);
+    }
+
+    line_str = unit_get_src_ln(src->unit, src->line, &line_len);
+    if (line_str && line_len) {
+      sprintf(msg, CYAN("\n%*d"), pad, src->line);
+      bo_string_append(tmp, &msg[0]);
+      bo_string_append(tmp, " | ");
+      bo_string_appendn(tmp, line_str, line_len);
+      sprintf(msg, "\n%*s", pad, "");
+      bo_string_append(tmp, &msg[0]);
+      bo_string_append(tmp, " | ");
+    }
+
+    for (int i = 0; i < col + len - 1; ++i) {
+      if (i < col - 1)
+        bo_string_append(tmp, " ");
+      else {
+        const char *marker = RED("^");
+        if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
+        if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
+        bo_string_append(tmp, marker);
+      }
+    }
+
+    line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
+    if (line_str && line_len) {
+      sprintf(msg, "\n%*d", pad, src->line + 1);
+      bo_string_append(tmp, &msg[0]);
+      bo_string_append(tmp, " | ");
+      bo_string_appendn(tmp, line_str, line_len);
+    }
+  } else {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
+    va_end(args);
+    bo_string_append(tmp, &msg[0]);
   }
 
   if (type == BUILDER_MSG_ERROR) {

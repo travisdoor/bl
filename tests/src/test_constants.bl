@@ -1,0 +1,12 @@
+#test "constant values" {
+  A : 666;
+  B : A;
+  C : B;
+
+  True : true;
+
+  assert(True);
+  assert(A == 666);
+  assert(B == 666);
+  assert(C == 666);
+};
