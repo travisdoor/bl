@@ -63,7 +63,7 @@ push(Eval *eval, Object obj)
 static inline Object
 pop(Eval *eval)
 {
-  assert(eval != 0);
+  assert(eval->i != 0);
   return eval->stack[--(eval->i)];
 }
 
@@ -211,5 +211,8 @@ eval_expr(Eval *eval, Node *node, Node **err_node)
   reset(eval);
   eval_node(eval, node);
   *err_node = eval->err_node;
+  if (eval->err_node)
+    return 0;
+
   return (int) pop(eval).s64;
 }
