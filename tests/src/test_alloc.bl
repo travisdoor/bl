@@ -15,5 +15,7 @@
   assert(mem->i == 10);
   assert(mem->j == 20);
   free(mem);
+
+  mem = cast(*Foo) alloc(sizeof(Foo));
   mem = null;
 };

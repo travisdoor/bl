@@ -50,11 +50,11 @@ SIGILL  : 4;
 SIGABRT : 6;
 
 syscall fn (s32, s32, *char, usize) s32 : #extern;
-raise fn (s32) s32 : #extern;
+raise   fn (s32) s32 : #extern;
 sbrk    fn (usize) *void : #extern;
 
 __bl_print : fn (s string) {
-  syscall(SIGILL, STDOUT_FILENO, s, string_len(s));
+  syscall(1, STDOUT_FILENO, s, string_len(s));
 };
 
 __bl_abort : fn () {
