@@ -1,21 +1,44 @@
-#load "alloc.bl"
-
-#test "allocate structure" {
+#test "reusing of free node" {
+  count : 10;
   Foo : struct {
     i s32,
     j s32
   };
 
-  mem := cast(*Foo) alloc(sizeof(Foo));
-  assert(mem != null);
+  // not reporting error!!!
+  //prev_mem := null;
+  loop (i := 0; i < count; i += 1) {
+    mem := cast(*Foo) alloc(sizeof(Foo));
+    assert(mem != null);
 
-  mem->i = 10;
-  mem->j = 20;
+    mem->i = 10;
+    mem->j = 20;
 
-  assert(mem->i == 10);
-  assert(mem->j == 20);
-  free(mem);
+    assert(mem->i == 10);
+    assert(mem->j == 20);
+    free(mem);
+  }
+};
 
-  mem = cast(*Foo) alloc(sizeof(Foo));
-  mem = null;
+#test "multiple allocations" {
+  count : 10;
+  Foo : struct {
+    i s32,
+    j s32
+  };
+
+  mem *Foo[count];
+
+  loop (i := 0; i < count; i += 1) {
+    mem[i] = cast(*Foo) alloc(sizeof(Foo));
+    assert(mem[i] != null);
+    mem[i]->i = 10;
+    mem[i]->j = 20;
+  }
+
+  loop (i := 0; i < count; i += 1) {
+    assert(mem[i]->i == 10);
+    assert(mem[i]->j == 20);
+    free(mem[i]);
+  }
 };

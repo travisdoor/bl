@@ -57,3 +57,4 @@ dkms.conf
 *bin/
 .idea/
 /tests/src/test_runner
+*.ll

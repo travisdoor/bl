@@ -28,10 +28,13 @@
 
 #load "utils.bl"
 
+printf : fn (s string, i usize) s32 #extern;
+
 _AllocMeta : struct {
   size usize,
   next *_AllocMeta,
   prev *_AllocMeta,
+  magic s32
 };
 
 _alloc_free_pool *_AllocMeta := null;
@@ -41,16 +44,20 @@ alloc : fn (count usize) *void {
   
   mem := _get_free(count);
   if (mem == null) {
+    print("allocation\n");
     size : count + sizeof(_AllocMeta);
     mem = cast(*_AllocMeta) __bl_alloc(size);
     mem->size = count;
+    mem->magic = 123;
   }
 
-  mem = ptrshift(mem, sizeof(_AllocMeta)); 
-  return mem;
+  if (mem->magic != 123) { abort(); }
+
+  return ptrshift(mem, sizeof(_AllocMeta)); 
 };
 
 free : fn (ptr *void) {
+  if (ptr == null) { return; }
   _put_free(ptr);
 };
 
@@ -70,11 +77,12 @@ _get_free : fn (size usize) *_AllocMeta {
     return node; 
   };
 
-  loop (curr := _alloc_free_pool; curr != null; curr = curr->next) {
-    if (curr->size <= size) {
-      print("reuse!!!\n");
-      return unlink(curr);
+  found := _alloc_free_pool;
+  loop (found != null) {
+    if (found->size <= size) {
+      return unlink(found);
     }
+    found = found->next;
   }
 
   return null;
@@ -82,8 +90,18 @@ _get_free : fn (size usize) *_AllocMeta {
 
 _put_free : fn (mem *void) {
   link : fn (node *_AllocMeta) {
+    if (_alloc_free_pool == null) {
+      node->next = null;
+      node->prev = null;
+      _alloc_free_pool = node;
+    } else {
+      node->next = _alloc_free_pool;
+      node->prev = null;
+      _alloc_free_pool->prev = node;
+      _alloc_free_pool = node;
+    }
   };
 
-  meta := cast(*_AllocMeta) ptrshift(mem, -sizeof(_AllocMeta)); 
-  _alloc_free_pool = meta;
+  meta := cast(*_AllocMeta) ptrshift(mem, - sizeof(_AllocMeta)); 
+  link(meta);
 };

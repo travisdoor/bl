@@ -994,8 +994,11 @@ ir_decl_mut(Context *cnt, Node *decl)
     llvm_values_insert(cnt, decl, result);
 
     if (!_decl->value) return result;
-    // result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
-    LLVMBuildStore(cnt->llvm_builder, ir_node(cnt, _decl->value), result);
+    LLVMValueRef init = ir_node(cnt, _decl->value);
+    if (should_load(_decl->value, init))
+      init = LLVMBuildLoad(cnt->llvm_builder, init, gname("tmp"));
+
+    LLVMBuildStore(cnt->llvm_builder, init, result);
   }
   return result;
 }
