@@ -1,16 +1,4 @@
-Foo : struct {
-  i s32,
-  j s32
-};
-
-g_foo *Foo := null;
-
 main : fn () s32 {
-  martin();
+  a := null;
   return 0;
-};
-
-martin : fn () {
-  g_foo = null;
-  o := g_foo;
 };

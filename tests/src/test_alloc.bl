@@ -5,8 +5,6 @@
     j s32
   };
 
-  // not reporting error!!!
-  //prev_mem := null;
   loop (i := 0; i < count; i += 1) {
     mem := cast(*Foo) alloc(sizeof(Foo));
     assert(mem != null);

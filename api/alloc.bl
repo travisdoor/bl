@@ -28,8 +28,6 @@
 
 #load "utils.bl"
 
-printf : fn (s string, i usize) s32 #extern;
-
 _AllocMeta : struct {
   size usize,
   next *_AllocMeta,
@@ -44,7 +42,7 @@ alloc : fn (count usize) *void {
   
   mem := _get_free(count);
   if (mem == null) {
-    print("allocation\n");
+    //print("allocation\n");
     size : count + sizeof(_AllocMeta);
     mem = cast(*_AllocMeta) __bl_alloc(size);
     mem->size = count;
@@ -69,6 +67,10 @@ _get_free : fn (size usize) *_AllocMeta {
 
     if (node->prev != null) {
       node->prev->prev = node->next;
+    }
+
+    if (node->next == null && node->prev == null) {
+      _alloc_free_pool = null;
     }
 
     node->next = null;
