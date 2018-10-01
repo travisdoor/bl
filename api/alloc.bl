@@ -32,7 +32,6 @@ _AllocMeta : struct {
   size usize,
   next *_AllocMeta,
   prev *_AllocMeta,
-  magic s32
 };
 
 _alloc_free_pool *_AllocMeta := null;
@@ -46,11 +45,7 @@ alloc : fn (count usize) *void {
     size : count + sizeof(_AllocMeta);
     mem = cast(*_AllocMeta) __bl_alloc(size);
     mem->size = count;
-    mem->magic = 123;
   }
-
-  if (mem->magic != 123) { abort(); }
-
   return ptrshift(mem, sizeof(_AllocMeta)); 
 };
 
