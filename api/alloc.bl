@@ -81,6 +81,9 @@ _get_free : fn (size usize) *_AllocMeta {
 };
 
 _put_free : fn (mem *void) {
+  link : fn (node *_AllocMeta) {
+  };
+
   meta := cast(*_AllocMeta) ptrshift(mem, -sizeof(_AllocMeta)); 
   _alloc_free_pool = meta;
 };
