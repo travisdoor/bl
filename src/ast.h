@@ -208,6 +208,10 @@
     Node *in; \
     Node *type; \
   }) \
+  nt(EXPR_TYPEOF, ExprTypeof, expr_typeof, struct { \
+    Node *in; \
+    Node *type; \
+  }) \
   nt(EXPR_UNARY, ExprUnary, expr_unary, struct { \
     Sym   op; \
     Node *next; \
@@ -222,19 +226,19 @@
 typedef enum
 {
   TYPE_KIND_UNKNOWN = 0,
-  TYPE_KIND_SINT,   /* i8, i16, i32, i64 */
-  TYPE_KIND_UINT,   /* u8, i16, u32, u64 */
-  TYPE_KIND_SIZE,   /* size_t */
-  TYPE_KIND_PTR,    /* pointers */
-  TYPE_KIND_STRUCT, /* structs */
-  TYPE_KIND_ENUM,   /* enums */
-  TYPE_KIND_FN,     /* function */
-  TYPE_KIND_REAL,   /* f32, f64 */
-  TYPE_KIND_STRING, /* string */
-  TYPE_KIND_CHAR,   /* char */
-  TYPE_KIND_BOOL,   /* bool */
-  TYPE_KIND_VOID,   /* void */
-  TYPE_KIND_TYPE,   /* type_t */
+  TYPE_KIND_SINT    = 1,  /* i8, i16, i32, i64 */
+  TYPE_KIND_UINT    = 2,  /* u8, i16, u32, u64 */
+  TYPE_KIND_SIZE    = 3,  /* size_t */
+  TYPE_KIND_PTR     = 4,  /* pointers */
+  TYPE_KIND_STRUCT  = 5,  /* structs */
+  TYPE_KIND_ENUM    = 6,  /* enums */
+  TYPE_KIND_FN      = 7,  /* function */
+  TYPE_KIND_REAL    = 8,  /* f32, f64 */
+  TYPE_KIND_STRING  = 9,  /* string */
+  TYPE_KIND_CHAR    = 10, /* char */
+  TYPE_KIND_BOOL    = 11, /* bool */
+  TYPE_KIND_VOID    = 12, /* void */
+  TYPE_KIND_TYPE    = 13, /* type_t */
 } TypeKind;
 
 typedef enum
@@ -260,9 +264,9 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
-  FLAG_MAIN     = 1 << 1, /* main method */
-  FLAG_TEST     = 1 << 2, /* test case */
+  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  FLAG_MAIN   = 1 << 1, /* main method */
+  FLAG_TEST   = 1 << 2, /* test case */
 } NodeFlag;
 
 typedef enum
@@ -426,6 +430,7 @@ _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
 _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref);
 _NODE_CTOR(expr_elem, Node *next, Node *type, Node *index);
 _NODE_CTOR(expr_sizeof, Node *in, Node *type);
+_NODE_CTOR(expr_typeof, Node *in, Node *type);
 _NODE_CTOR(expr_cast, Node *type, Node *next);
 _NODE_CTOR(expr_unary, Sym op, Node *next, Node *type);
 _NODE_CTOR(expr_null, Node *type);

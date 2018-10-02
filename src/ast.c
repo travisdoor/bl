@@ -442,6 +442,14 @@ _NODE_CTOR(expr_sizeof, Node *in, Node *type)
   return (Node *)_expr_sizeof;
 }
 
+_NODE_CTOR(expr_typeof, Node *in, Node *type)
+{
+  NodeExprTypeof *_expr_typeof = alloc_node(ast, NODE_EXPR_TYPEOF, tok, NodeExprTypeof *);
+  _expr_typeof->in             = in;
+  _expr_typeof->type           = type;
+  return (Node *)_expr_typeof;
+}
+
 _NODE_CTOR(expr_cast, Node *type, Node *next)
 {
   NodeExprCast *_expr_cast = alloc_node(ast, NODE_EXPR_CAST, tok, NodeExprCast *);
@@ -636,6 +644,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   case NODE_LIT:
   case NODE_EXPR_NULL:
   case NODE_EXPR_SIZEOF:
+  case NODE_EXPR_TYPEOF:
   case NODE_BAD:
   case NODE_STMT_BREAK:
   case NODE_STMT_CONTINUE:
@@ -816,6 +825,8 @@ ast_get_type(Node *node)
     return ast_get_type(peek_expr_binop(node)->type);
   case NODE_EXPR_SIZEOF:
     return ast_get_type(peek_expr_sizeof(node)->type);
+  case NODE_EXPR_TYPEOF:
+    return ast_get_type(peek_expr_typeof(node)->type);
   case NODE_EXPR_CAST:
     return ast_get_type(peek_expr_cast(node)->type);
   case NODE_EXPR_UNARY:

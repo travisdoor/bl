@@ -60,6 +60,7 @@
   sm(RETURN,       "return") \
   sm(STRUCT,       "struct") \
   sm(SIZEOF,       "sizeof") \
+  sm(TYPEOF,       "typeof") \
   sm(ASSERT,       "assert") \
   sm(EXTERN,       "#extern") \
   sm(CONTINUE,     "continue") /* must be last */\

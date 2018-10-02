@@ -61,3 +61,28 @@ abort : fn () {
 exit : fn () {
   __bl_exit();
 };
+
+Any : struct {
+  value *u8,
+  type TypeKind
+};
+
+TypeKind : enum s32 {
+  SInt   : 1,  /* i8, i16, i32, i64 */
+  UInt   : 2,  /* u8, i16, u32, u64 */
+  Size   : 3,  /* usize */
+  Ptr    : 4,  /* pointers */
+  Struct : 5,  /* structs */
+  Enum   : 6,  /* enums */
+  Fn     : 7,  /* function */
+  Real   : 8,  /* f32, f64 */
+  String : 9,  /* string */
+  Char   : 10, /* char */
+  Bool   : 11, /* bool */
+  Void   : 12, /* void */
+  Type   : 13, /* type_t */
+};
+
+TypeInfo : struct {
+  kind TypeKind 
+};

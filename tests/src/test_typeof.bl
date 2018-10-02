@@ -1,0 +1,4 @@
+#test "fundamental types" {
+  a s32;
+  assert(typeof(a) == TypeKind.SInt);
+};

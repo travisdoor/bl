@@ -154,6 +154,9 @@ static bool
 check_expr_sizeof(Context *cnt, Node **szof);
 
 static bool
+check_expr_typeof(Context *cnt, Node **tpof);
+
+static bool
 check_expr_member(Context *cnt, Node **member);
 
 static bool
@@ -478,6 +481,13 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
+  case NODE_EXPR_TYPEOF: {
+    NodeExprTypeof *_typeof = peek_expr_typeof(*node);
+    flatten(&_typeof->in);
+    flatten(&_typeof->type);
+    break;
+  }
+
   case NODE_EXPR_CALL: {
     NodeExprCall *_call = peek_expr_call(*node);
     flatten(&_call->ref);
@@ -755,6 +765,9 @@ check_node(Context *cnt, Node **node)
     break;
   case NODE_EXPR_SIZEOF:
     result = check_expr_sizeof(cnt, node);
+    break;
+  case NODE_EXPR_TYPEOF:
+    result = check_expr_typeof(cnt, node);
     break;
   case NODE_EXPR_MEMBER:
     result = check_expr_member(cnt, node);
@@ -1035,6 +1048,23 @@ check_expr_sizeof(Context *cnt, Node **szof)
 {
   NodeExprSizeof *_sizeof = peek_expr_sizeof(*szof);
   _sizeof->in             = ast_get_type(_sizeof->in);
+  FINISH;
+}
+
+bool
+check_expr_typeof(Context *cnt, Node **tpof)
+{
+  NodeExprTypeof *_typeof = peek_expr_typeof(*tpof);
+  assert(_typeof->in);
+
+  Node *   type = ast_get_type(_typeof->in);
+  TypeKind kind = ast_type_kind(type);
+  assert(kind != TYPE_KIND_UNKNOWN);
+
+  TokenValue value;
+  value.u = (unsigned long long)kind;
+  *tpof   = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
+
   FINISH;
 }
 

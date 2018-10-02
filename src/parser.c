@@ -203,6 +203,9 @@ static Node *
 parse_expr_sizeof(Context *cnt);
 
 static Node *
+parse_expr_typeof(Context *cnt);
+
+static Node *
 parse_expr_cast(Context *cnt);
 
 static Node *
@@ -355,6 +358,7 @@ parse_expr_sizeof(Context *cnt)
   }
 
   Node *in = parse_type(cnt);
+  if (!in) in = parse_expr(cnt);
   if (in == NULL) {
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
@@ -375,6 +379,45 @@ parse_expr_sizeof(Context *cnt)
 
   return ast_expr_sizeof(cnt->ast, tok_id, in, &ftypes[FTYPE_SIZE]);
 }
+
+Node *
+parse_expr_typeof(Context *cnt)
+{
+  Token *tok_id = tokens_consume_if(cnt->tokens, SYM_TYPEOF);
+  if (!tok_id) return NULL;
+
+  /* eat ( */
+  if (!tokens_consume_if(cnt->tokens, SYM_LPAREN)) {
+    Token *tok_err = tokens_consume(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected '(' after typeof buildin");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  Node *in = parse_type(cnt);
+  if (!in) in = parse_expr(cnt);
+  if (in == NULL) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
+                "expected type name as parameter");
+
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  /* eat ) */
+  if (!tokens_consume_if(cnt->tokens, SYM_RPAREN)) {
+    Token *tok_err = tokens_consume(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected ')' after typeof buildin argument");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_err);
+  }
+
+  return ast_expr_typeof(cnt->ast, tok_id, in, &ftypes[FTYPE_U32]);
+}
+
 
 bool
 parse_semicolon_rq(Context *cnt)
@@ -830,6 +873,7 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_nested(cnt))) goto done;
   if ((expr = parse_expr_null(cnt))) goto done;
   if ((expr = parse_expr_sizeof(cnt))) goto done;
+  if ((expr = parse_expr_typeof(cnt))) goto done;
   if ((expr = parse_expr_cast(cnt))) goto done;
   if ((expr = parse_run(cnt))) goto done;
   if ((expr = parse_literal_fn(cnt))) goto done;
