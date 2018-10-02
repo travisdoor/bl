@@ -13,9 +13,6 @@
   // func(Any { .value = cast(*u8) (&a), .type = typeof(a) });
 
 
-  tmp Any;
-  tmp = Any { .value = cast(*u8) (&a), .type = typeof(a) };
-
-
+  tmp := Any { .value = cast(*u8) (&a), .type = typeof(a) };
   func(tmp);
 };
