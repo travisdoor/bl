@@ -192,9 +192,10 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree)
 
   while (compound && !found) {
     scope = ast_get_scope(compound);
-    assert(scope);
+    if (scope) {
+      found = scope_get(scope, ident);
+    }
 
-    found = scope_get(scope, ident);
     if (!walk_tree) break;
     compound = ast_get_parent_compound(compound);
   }
@@ -858,7 +859,6 @@ check_ident(Context *cnt, Node **ident)
       }
 
       if (node_is_not(_ident->arr, NODE_LIT)) {
-#if ENABLE_EXPERIMENTAL
         TokenValue value;
         Node *     eval_err_node;
         value.u = (unsigned long long int)eval_expr(&cnt->evaluator, _ident->arr, &eval_err_node);
@@ -909,10 +909,6 @@ check_ident(Context *cnt, Node **ident)
           /* evalueted value */
           _ident->arr = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_SIZE], value);
         }
-#else
-        check_error_node(cnt, ERR_UNIMPLEMENTED, _ident->arr, BUILDER_CUR_WORD,
-                         "unimplemented array size/index evaluation");
-#endif
       }
     }
 
@@ -922,6 +918,7 @@ check_ident(Context *cnt, Node **ident)
     type = ast_node_dup(cnt->ast, type);
     ast_type_set_ptr(type, _ident->ptr);
     ast_type_set_arr(type, _ident->arr);
+
     if (ast_is_type(_ident->ref)) {
       _ident->ref = type;
     } else {
@@ -1114,10 +1111,19 @@ check_expr_member(Context *cnt, Node **member)
 {
   NodeExprMember *_member = peek_expr_member(*member);
   Node *          found   = NULL;
-  assert(_member->next);
   assert(_member->ident);
-
   Node *lhs_type = ast_get_type(_member->next);
+
+  if (_member->next) {
+    lhs_type = ast_get_type(_member->next);
+  } else {
+    lhs_type = peek_ident(_member->ident)->parent_compound;
+    assert(lhs_type);
+    /* TODO: valid only for lit_cmp!!! */
+    lhs_type = peek_lit_cmp(lhs_type)->type;
+    lhs_type = ast_get_type(lhs_type);
+  }
+
   if (!lhs_type) FINISH;
   if (ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
@@ -1388,7 +1394,8 @@ check_lit_cmp(Context *cnt, Node **cmp)
   Node *      type = ast_get_type(_cmp->type);
   assert(type);
   type               = ast_unroll_ident(type);
-  TypeKind type_kind = ast_type_kind(ast_get_type(type));
+  _cmp->type         = ast_get_type(type);
+  TypeKind type_kind = ast_type_kind(_cmp->type);
 
   if (_cmp->fieldc == 0) {
     check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
@@ -1419,6 +1426,94 @@ check_lit_cmp(Context *cnt, Node **cmp)
 
     /* convert simple initialization compound to expression */
     *cmp = _cmp->fields;
+    break;
+  }
+
+  case NODE_TYPE_STRUCT: {
+    /* struct-field initializers need to be sorted and only left-hand side of expression can be used
+     * for ir generation
+     */
+    NodeTypeStruct *_type = peek_type_struct(type);
+    Node **         tmp   = bl_calloc((size_t)_type->typesc, sizeof(Node *));
+    if (!tmp) bl_abort("bad alloc");
+
+    Node *field;
+    bool  noerr = true;
+    node_foreach(_cmp->fields, field)
+    {
+      assert(field);
+      if (node_is_not(field, NODE_EXPR_BINOP)) {
+        check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
+                         "expected member initialization");
+        noerr = false;
+        continue;
+      }
+
+      /* is binop */
+      NodeExprBinop *_binop = peek_expr_binop(field);
+      assert(_binop->lhs);
+      if (node_is_not(_binop->lhs, NODE_EXPR_MEMBER)) {
+        check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
+                         "expected member initialization");
+        noerr = false;
+        continue;
+      }
+
+      if (_binop->op != SYM_ASSIGN) {
+        check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
+                         "expected member initialization");
+        noerr = false;
+        continue;
+      }
+
+      NodeExprMember *_member = peek_expr_member(_binop->lhs);
+      if (_member->kind != MEM_KIND_STRUCT) {
+        check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
+                         "expected member initialization");
+        noerr = false;
+        continue;
+      }
+
+      assert(_member->ident);
+      NodeIdent *_ident       = peek_ident(_member->ident);
+      NodeDecl * _decl_member = peek_decl(_ident->ref);
+      assert(_decl_member->order != -1);
+      assert(_decl_member->order < _type->typesc);
+
+      if (tmp[_decl_member->order]) {
+        check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
+                         "structure member alrady initialized");
+
+        check_note_node(cnt, tmp[_decl_member->order], BUILDER_CUR_WORD,
+                        "previous initialization here");
+        noerr = false;
+        continue;
+      }
+
+      tmp[_decl_member->order] = field;
+    }
+
+    /* store initializers in right order and use only right side of field binop */
+    if (noerr) {
+      _cmp->fieldc  = _type->typesc;
+      Node **fields = &_cmp->fields;
+      for (int i = 0; i < _type->typesc; ++i) {
+        if (!tmp[i]) {
+          check_error_node(cnt, ERR_INVALID_INITIALIZER, *cmp, BUILDER_CUR_WORD,
+                           "all structure members must be initialized");
+          break;
+        }
+
+        tmp[i]       = peek_expr_binop(tmp[i])->rhs;
+        tmp[i]->next = NULL;
+        *fields      = tmp[i];
+        fields       = &(*fields)->next;
+      }
+    }
+
+    bl_free(tmp);
+    tmp = NULL;
+
     break;
   }
 

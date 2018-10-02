@@ -8,3 +8,21 @@
   c := bool { true };
   assert(c);
 };
+
+#test "custom types" {
+  Foo : struct {
+    i s32,
+    j s32
+  };
+
+  foo := Foo { .i = 1, .j = 2 };
+  assert(foo.i == 1);
+  assert(foo.j == 2);
+
+  foo = Foo { .j = 1, .i = 2 };
+  assert(foo.i == 2);
+  assert(foo.j == 1);
+
+  a : 1;
+  foo = Foo { .j = a, .i = 2 };
+};

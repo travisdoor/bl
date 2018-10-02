@@ -280,7 +280,7 @@ parse_test(Context *cnt)
   Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID], 0);
   Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, body, cnt->curr_compound, NULL);
   Node *      test =
-      ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, 0, false);
+      ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, -1, false);
 
   peek_decl(test)->used++;
 
@@ -306,8 +306,10 @@ parse_literal_cmp(Context *cnt, Node *prev)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Node *      lit_cmp  = ast_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0);
+  Node *      lit_cmp  = ast_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0, cnt->curr_compound);
   NodeLitCmp *_lit_cmp = peek_lit_cmp(lit_cmp);
+  Node *      prev_cmp = cnt->curr_compound;
+  cnt->curr_compound   = lit_cmp;
 
   /* parse lit_cmp fields */
   bool   rq     = false;
@@ -329,6 +331,7 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected field after comma ','");
+      cnt->curr_compound = prev_cmp;
       return ast_bad(cnt->ast, tok_err);
     }
   }
@@ -339,6 +342,7 @@ next:
     assert(false);
   }
 
+  cnt->curr_compound = prev_cmp;
   return lit_cmp;
 }
 
@@ -417,7 +421,6 @@ parse_expr_typeof(Context *cnt)
 
   return ast_expr_typeof(cnt->ast, tok_id, in, &ftypes[FTYPE_U32]);
 }
-
 
 bool
 parse_semicolon_rq(Context *cnt)
@@ -1185,7 +1188,7 @@ parse_decl(Context *cnt)
 
   Node *prev_decl = cnt->curr_decl;
   Node *decl =
-      ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, 0, false);
+      ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, -1, false);
   cnt->curr_decl  = decl;
   NodeDecl *_decl = peek_decl(decl);
 

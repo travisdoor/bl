@@ -90,6 +90,7 @@ typedef enum
   ERR_EXPECTED_DECL           = 53,
   ERR_FILE_READ               = 54,
   ERR_FILE_EMPTY              = 55,
+  ERR_INVALID_INITIALIZER     = 56,
 } Error;
 
 #endif // BL_ERROR_H

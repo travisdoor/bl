@@ -474,12 +474,13 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
-_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc)
+_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound)
 {
-  NodeLitCmp *_lit_cmp = alloc_node(ast, NODE_LIT_CMP, tok, NodeLitCmp *);
-  _lit_cmp->type       = type;
-  _lit_cmp->fields     = fields;
-  _lit_cmp->fieldc     = fieldc;
+  NodeLitCmp *_lit_cmp      = alloc_node(ast, NODE_LIT_CMP, tok, NodeLitCmp *);
+  _lit_cmp->type            = type;
+  _lit_cmp->fields          = fields;
+  _lit_cmp->fieldc          = fieldc;
+  _lit_cmp->parent_compound = parent_compound;
   return (Node *)_lit_cmp;
 }
 
@@ -618,6 +619,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
 
   case NODE_LIT_CMP: {
     NodeLitCmp *_lit_cmp = peek_lit_cmp(node);
+    visit(_lit_cmp->type);
     node_foreach(_lit_cmp->fields, tmp) visit(tmp);
     break;
   }
@@ -796,7 +798,7 @@ ast_get_scope(Node *node)
     return peek_stmt_loop(node)->scope;
 
   default:
-    bl_abort("node %s has no scope", node_name(node));
+    return NULL;
   }
 }
 
@@ -905,7 +907,7 @@ ast_is_buildin_type(Node *ident)
   uint64_t hash;
   array_foreach(ftype_hashes, hash)
   {
-    if (_ident->hash == hash) return (int) i;
+    if (_ident->hash == hash) return (int)i;
   }
 
   return -1;
@@ -920,7 +922,7 @@ ast_is_buildin(Node *ident)
   uint64_t hash;
   array_foreach(buildin_hashes, hash)
   {
-    if (_ident->hash == hash) return (int) i;
+    if (_ident->hash == hash) return (int)i;
   }
 
   return -1;
@@ -1078,6 +1080,8 @@ ast_get_parent_compound(Node *node)
     return peek_lit_struct(node)->parent_compound;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->parent_compound;
+  case NODE_LIT_CMP:
+    return peek_lit_cmp(node)->parent_compound;
   case NODE_STMT_LOOP:
     return peek_stmt_loop(node)->parent_compound;
   default:

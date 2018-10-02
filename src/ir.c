@@ -43,6 +43,7 @@
 #endif
 
 #define VERBOSE 0
+#define VALIDATE 0
 
 typedef struct
 {
@@ -142,6 +143,9 @@ static LLVMValueRef
 ir_lit(Context *cnt, Node *lit);
 
 static LLVMValueRef
+ir_lit_cmp(Context *cnt, Node *lit);
+
+static LLVMValueRef
 ir_expr_binop(Context *cnt, Node *binop);
 
 static LLVMValueRef
@@ -211,7 +215,7 @@ print_llvm_module(LLVMModuleRef module)
 static void
 ir_validate(LLVMModuleRef module)
 {
-#ifdef BL_DEBUG
+#if VALIDATE 
   char *error = NULL;
   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
     char *str = LLVMPrintModuleToString(module);
@@ -495,6 +499,29 @@ ir_lit(Context *cnt, Node *lit)
 #undef PEEK_STR
 #undef PEEK_CHAR
 
+  return result;
+}
+
+LLVMValueRef
+ir_lit_cmp(Context *cnt, Node *lit)
+{
+  LLVMValueRef result    = NULL;
+  NodeLitCmp * _lit_cmp  = peek_lit_cmp(lit);
+  LLVMTypeRef  llvm_type = to_llvm_type(cnt, _lit_cmp->type);
+
+  assert(_lit_cmp->fieldc);
+  LLVMValueRef *llvm_values = bl_malloc(sizeof(LLVMValueRef) * _lit_cmp->fieldc);
+  if (!llvm_values) bl_abort("bad alloc");
+
+  Node *         val;
+  int            i = 0;
+  node_foreach(_lit_cmp->fields, val)
+  {
+    llvm_values[i++] = ir_node(cnt, val);
+  }
+
+  result = LLVMConstNamedStruct(llvm_type, llvm_values, i);
+  bl_free(llvm_values);
   return result;
 }
 
@@ -1365,6 +1392,9 @@ ir_node(Context *cnt, Node *node)
   case NODE_IDENT:
     return ir_ident(cnt, node);
 
+  case NODE_LIT_CMP:
+    return ir_lit_cmp(cnt, node);
+
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_STRUCT:
@@ -1552,6 +1582,7 @@ link_into_jit(Context *cnt, Node *fn)
   LLVMModuleRef module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
   module               = LLVMCloneModule(module);
   print_llvm_module(module);
+  ir_validate(module);
   LLVMAddModule(cnt->llvm_jit, module);
   bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
 
