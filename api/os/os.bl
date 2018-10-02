@@ -82,7 +82,3 @@ TypeKind : enum s32 {
   Void   : 12, /* void */
   Type   : 13, /* type_t */
 };
-
-TypeInfo : struct {
-  kind TypeKind 
-};

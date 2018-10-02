@@ -10,9 +10,12 @@
   a := 666;
 
   // this must be generated implicitly by compiler
+  // func(Any { value = cast(*u8) (&a), type = typeof(a) });
+
   tmp Any;
   tmp.value = cast(*u8) (&a);
   tmp.type = typeof(a);
+
 
   func(tmp);
 };
