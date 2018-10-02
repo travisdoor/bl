@@ -36,7 +36,6 @@
     is s32[32]
   };
 
-
   bar Bar;
   loop (i := 0; i < bar.is.count; i += 1) {
     bar.is[i] = i;
@@ -47,20 +46,24 @@
   }
 };
 
-arr_get_size : fn () s32 {
-  return 10;
-};
-
-#test "compile time size" {
+#test "constant expr size" {
   B : 5;
   C : 20 + B;
   arr1 s32[(10 + 2 * 3) * 2];
-  arr2 s32[200 + 1 + C];
-  arr3 s32[#run arr_get_size()];
-  arr4 s32[1 + #run arr_get_size()];
+  arr2 s32[200 + 1 + C]; 
 
   assert(arr1.count == 32);
   assert(arr2.count == 226);
-  assert(arr3.count == 10);
-  assert(arr4.count == 11);
+};
+
+#test "size based on function call" {
+  size : fn () s32 {
+    return 10;
+  };
+
+  arr1 s32[#run size()];
+  arr2 s32[#run size() * #run size()];
+
+  assert(arr1.count == 10);
+  assert(arr2.count == 100);
 };

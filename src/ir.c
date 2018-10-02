@@ -36,8 +36,10 @@
 
 #if BL_DEBUG
 #define gname(s) s
+#define JIT_OPT_LEVEL 0
 #else
 #define gname(s) ""
+#define JIT_OPT_LEVEL 3
 #endif
 
 #define VERBOSE 0
@@ -1388,7 +1390,7 @@ create_jit(Context *cnt)
   LLVMModuleRef module     = LLVMModuleCreateWithNameInContext("compile_time", cnt->llvm_cnt);
   char *        llvm_error = NULL;
 
-  if (LLVMCreateJITCompilerForModule(&cnt->llvm_jit, module, 3, &llvm_error) != 0)
+  if (LLVMCreateJITCompilerForModule(&cnt->llvm_jit, module, JIT_OPT_LEVEL, &llvm_error) != 0)
     bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
 }
 
@@ -1549,6 +1551,7 @@ link_into_jit(Context *cnt, Node *fn)
 
   LLVMModuleRef module = bo_htbl_at(cnt->llvm_modules, (uint64_t)fn, LLVMModuleRef);
   module               = LLVMCloneModule(module);
+  print_llvm_module(module);
   LLVMAddModule(cnt->llvm_jit, module);
   bo_htbl_insert_empty(cnt->jit_linked, (uint64_t)fn);
 

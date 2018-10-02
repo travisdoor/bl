@@ -38,7 +38,7 @@
       builder_msg(builder, BUILDER_MSG_ERROR, (code), &(tok)->src, (pos), (format),                \
                   ##__VA_ARGS__);                                                                  \
     else                                                                                           \
-      builder_error(builder, "file not found %s", (format), ##__VA_ARGS__);                        \
+      builder_error(builder, (format), ##__VA_ARGS__);                                             \
   }
 
 void

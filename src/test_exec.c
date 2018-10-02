@@ -60,6 +60,8 @@ test_case(Context *cnt, TestCase *tc)
              fn_name);
   }
 
+  /* asserting in this way is not good idea, LLVMRunFunction never returns result value so this
+   * value cannot be freed later -> cause memory leak */
   if (!(result = (bool)setjmp(assert_jmp))) {
     LLVMGenericValueRef ret = LLVMRunFunction(cnt->llvm_jit, llvm_fn, 0, NULL);
     LLVMDisposeGenericValue(ret);

@@ -1,0 +1,10 @@
+#test "fundamenatal value initializers" {
+  a := s32 { 666 };
+  assert(a == 666);
+
+  b := u32 { 666 };
+  assert(b == 666);
+
+  c := bool { true };
+  assert(c);
+};

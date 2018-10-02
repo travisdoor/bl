@@ -1427,7 +1427,7 @@ parse_run(Context *cnt)
   Token *tok = tokens_consume_if(cnt->tokens, SYM_RUN);
   if (!tok) return NULL;
 
-  Node *call = parse_expr(cnt);
+  Node *call = parse_expr_call(cnt);
   if (!call || node_is_not(call, NODE_EXPR_CALL)) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_AFTER,
                 "expected call after '#run' directive");
