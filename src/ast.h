@@ -59,7 +59,8 @@
 #define _BUILDINS_LIST \
     bt(MAIN,      main) \
     bt(ARR_COUNT, count) \
-    bt(ASSERT, assert) \
+    bt(ASSERT,    assert) \
+    bt(ANY,    Any) \
 
 #define _NODE_TYPE_LIST \
   nt(BAD, Bad, bad, struct { \
