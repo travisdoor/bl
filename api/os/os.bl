@@ -36,14 +36,20 @@ OS_LINUX   : 2;
 EXIT_FAILURE : 1;
 EXIT_SUCCESS : 0;
 
-print : fn (s string) {
-  __bl_print(s);
-};
-
-print_s32 : fn (n s32) {
-};
-
-print_s_s32 : fn (s string, n s32) {
+print : fn (v Any) {
+  if (v.type == TypeKind.String) {  
+    tmp := cast(*string) v.value;
+    __bl_print(tmp);
+  } else if (v.type == TypeKind.Bool) {
+    tmp := cast(*bool) v.value;
+    if (*tmp) {
+      __bl_print("true\n");
+    } else {
+      __bl_print("false\n");
+    }
+  } else if (v.type == TypeKind.SInt) {
+    __bl_print("some number\n");
+  }
 };
 
 __assert : fn (expr bool, file string, line s32) {
@@ -68,17 +74,18 @@ Any : struct {
 };
 
 TypeKind : enum s32 {
-  SInt   : 1,  /* i8, i16, i32, i64 */
-  UInt   : 2,  /* u8, i16, u32, u64 */
-  Size   : 3,  /* usize */
-  Ptr    : 4,  /* pointers */
-  Struct : 5,  /* structs */
-  Enum   : 6,  /* enums */
-  Fn     : 7,  /* function */
-  Real   : 8,  /* f32, f64 */
-  String : 9,  /* string */
-  Char   : 10, /* char */
-  Bool   : 11, /* bool */
-  Void   : 12, /* void */
-  Type   : 13, /* type_t */
+  SInt     : 1,  /* i8, i16, i32, i64 */
+  UInt     : 2,  /* u8, i16, u32, u64 */
+  Size     : 3,  /* usize */
+  Ptr      : 4,  /* pointers */
+  Struct   : 5,  /* structs */
+  Enum     : 6,  /* enums */
+  Fn       : 7,  /* function */
+  Real     : 8,  /* f32, f64 */
+  String   : 9,  /* string */
+  Char     : 10, /* char */
+  Bool     : 11, /* bool */
+  Void     : 12, /* void */
+  Type     : 13, /* type_t */
+  Anything : 14, /* Any */
 };

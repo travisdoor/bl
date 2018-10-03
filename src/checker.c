@@ -601,6 +601,8 @@ process_flatten(Context *cnt, FIter *fit)
 bool
 implicit_cast(Context *cnt, Node **node, Node *to_type)
 {
+  assert(to_type);
+  assert(*node);
   to_type         = ast_get_type(to_type);
   Node *from_type = ast_get_type(*node);
 
@@ -614,6 +616,21 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   }
 
   if (!ast_can_impl_cast(from_type, to_type)) return false;
+
+  if (to_kind == TYPE_KIND_ANY) {
+    /* INITIALIZER BOILERPLATE for Any type */
+    Node *tmp           = *node;
+    Node *val_base_type = ast_node_dup(cnt->ast, from_type);
+    ast_type_set_ptr(val_base_type, 1);
+    Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1, NULL);
+    Node *value  = ast_expr_unary(cnt->ast, NULL, SYM_AND, tmp, val_base_type);
+    value        = ast_expr_cast(cnt->ast, NULL, u8_ptr, value);
+    TokenValue type;
+    type.u      = (unsigned long long)from_kind;
+    value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
+    *node       = ast_lit_cmp(cnt->ast, NULL, to_type, value, 2, NULL);
+    return true;
+  }
 
   Node *tmp_next = (*node)->next;
   Node *type_dup = ast_node_dup(cnt->ast, to_type);

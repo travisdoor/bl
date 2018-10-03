@@ -241,6 +241,7 @@ typedef enum
   TYPE_KIND_BOOL    = 11, /* bool */
   TYPE_KIND_VOID    = 12, /* void */
   TYPE_KIND_TYPE    = 13, /* type_t */
+  TYPE_KIND_ANY     = 14, /* Any */
 } TypeKind;
 
 typedef enum

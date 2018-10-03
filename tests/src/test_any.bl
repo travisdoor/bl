@@ -1,15 +1,32 @@
-#test "simple function" {
+#test "fundamental types" {
   func : fn (in Any) {
-    if (in.type == TypeKind.SInt) {
-      // signed integer value
+    if (in.type == TypeKind.UInt) {
+      val := cast(*u32) in.value;
+      assert(*val == 10);
+    } else if (in.type == TypeKind.SInt) {
       val := cast(*s32) in.value;
-      assert(*val == 666);
+      assert(*val == 11);
+    } else if (in.type == TypeKind.Size) {
+      val := cast(*usize) in.value;
+      assert(*val == 12);
+    } else if (in.type == TypeKind.Real) {
+      val := cast(*f32) in.value;
+      assert(*val == 13.f);
+    } else if (in.type == TypeKind.Bool) {
+      val := cast(*bool) in.value;
+      assert(*val);
     }
   };
 
-  a := 666;
+  a u32   := 10;
+  b s32   := 11;
+  c usize := 12;
+  d f32   := 13.f;
+  e bool  := true;
 
-  // this must be generated implicitly by compiler
-  // func(Any { .value = cast(*u8) (&a), .type = typeof(a) });
   func(a);
+  func(b);
+  func(c);
+  func(d);
+  func(e);
 };

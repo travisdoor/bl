@@ -1050,6 +1050,12 @@ ast_type_kind(Node *type)
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct_type = peek_type_struct(type);
     if (_struct_type->ptr) return TYPE_KIND_PTR;
+
+    if (_struct_type->base_decl &&
+        ast_is_buildin(peek_decl(_struct_type->base_decl)->name) == BUILDIN_ANY) {
+      return TYPE_KIND_ANY;
+    }
+
     return TYPE_KIND_STRUCT;
   }
 
@@ -1101,6 +1107,7 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
   TypeKind fkind = ast_type_kind(from_type);
   TypeKind tkind = ast_type_kind(to_type);
 
+  if (tkind == TYPE_KIND_ANY) return true;
   if (fkind == TYPE_KIND_STRING && tkind == TYPE_KIND_PTR) return true;
   if (tkind == TYPE_KIND_STRING && fkind == TYPE_KIND_PTR) return true;
 

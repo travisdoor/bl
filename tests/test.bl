@@ -1,8 +1,10 @@
 main : fn () s32 {
-  return 0;
-};
+  print("hello\n"); 
 
-#test "pokus" {
-  return;
+  b := true;
+  print(b); 
+
+  print(10);
+  return 0;
 };
 
