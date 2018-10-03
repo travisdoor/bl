@@ -61,6 +61,25 @@
     builder_msg((cnt)->builder, BUILDER_MSG_NOTE, 0, &(tok)->src, (pos), (format), ##__VA_ARGS__); \
   }
 
+/* swap current compound with _cmp and create temporary variable with previous one */
+#define push_curr_compound(_cnt, _cmp)                                                             \
+  Node *const _prev_cmp = (_cnt)->curr_compound;                                                   \
+  (_cnt)->curr_compound = (_cmp);
+
+#define pop_curr_compound(_cnt) (_cnt)->curr_compound = _prev_cmp;
+
+#define push_curr_decl(_cnt, _decl)                                                                \
+  Node *const _prev_decl = (_cnt)->curr_decl;                                                      \
+  (_cnt)->curr_decl      = (_decl);
+
+#define pop_curr_decl(_cnt) (_cnt)->curr_decl = _prev_decl;
+
+#define push_inloop(_cnt)                                                                          \
+  bool _prev_inloop   = (_cnt)->inside_loop;                                                       \
+  (_cnt)->inside_loop = true;
+
+#define pop_inloop(_cnt) (_cnt)->inside_loop = _prev_inloop;
+
 typedef struct
 {
   Builder * builder;
@@ -70,7 +89,6 @@ typedef struct
   Tokens *  tokens;
 
   /* tmps */
-  Node *curr_fn;
   Node *curr_decl;
   Node *curr_compound;
   bool  inside_loop;
@@ -277,14 +295,10 @@ parse_test(Context *cnt)
 
   NodeLitFn *_value = peek_lit_fn(value);
 
-  Node *prev_fn = cnt->curr_fn;
-  cnt->curr_fn  = value;
-
   _value->block = parse_block(cnt);
   if (!_value->block) {
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected body of test case");
-    cnt->curr_fn = prev_fn;
     return ast_bad(cnt->ast, tok_err);
   }
 
@@ -293,7 +307,6 @@ parse_test(Context *cnt)
   TestCase test_case = {.fn = test, .name = case_name->value.str};
   bo_array_push_back(cnt->assembly->test_cases, test_case);
 
-  cnt->curr_fn = prev_fn;
   return test;
 }
 
@@ -315,8 +328,8 @@ parse_literal_cmp(Context *cnt, Node *prev)
 
   Node *      lit_cmp  = ast_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0, cnt->curr_compound);
   NodeLitCmp *_lit_cmp = peek_lit_cmp(lit_cmp);
-  Node *      prev_cmp = cnt->curr_compound;
-  cnt->curr_compound   = lit_cmp;
+
+  push_curr_compound(cnt, lit_cmp);
 
   /* parse lit_cmp fields */
   bool   rq     = false;
@@ -338,7 +351,7 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected field after comma ','");
-      cnt->curr_compound = prev_cmp;
+      pop_curr_compound(cnt);
       return ast_bad(cnt->ast, tok_err);
     }
   }
@@ -349,7 +362,7 @@ next:
     assert(false);
   }
 
-  cnt->curr_compound = prev_cmp;
+  pop_curr_compound(cnt);
   return lit_cmp;
 }
 
@@ -534,10 +547,8 @@ parse_stmt_loop(Context *cnt)
                              scope_new(cnt->assembly->scope_cache, 8), cnt->curr_compound);
   NodeStmtLoop *_loop      = peek_stmt_loop(loop);
 
-  const bool prev_inside_loop = cnt->inside_loop;
-  Node *     prev_compound    = cnt->curr_compound;
-  cnt->inside_loop            = true;
-  cnt->curr_compound          = loop;
+  push_inloop(cnt);
+  push_curr_compound(cnt, loop);
 
   if (!while_true) {
     // eat '('
@@ -571,6 +582,8 @@ parse_stmt_loop(Context *cnt)
       Token *tok_err = tokens_consume(cnt->tokens);
       parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                   "expected closing parent ')'");
+      pop_inloop(cnt);
+      pop_curr_compound(cnt);
       return ast_bad(cnt->ast, tok_err);
     }
   }
@@ -580,11 +593,13 @@ parse_stmt_loop(Context *cnt)
   if (!_loop->block) {
     Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY, err_tok, BUILDER_CUR_WORD, "expected loop body block");
+    pop_inloop(cnt);
+    pop_curr_compound(cnt);
     return ast_bad(cnt->ast, err_tok);
   }
 
-  cnt->inside_loop   = prev_inside_loop;
-  cnt->curr_compound = prev_compound;
+  pop_inloop(cnt);
+  pop_curr_compound(cnt);
   return loop;
 }
 
@@ -658,15 +673,11 @@ parse_literal_fn(Context *cnt)
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
 
-  Node *     fn  = ast_lit_fn(cnt->ast, tok_fn, NULL, NULL,
-                        cnt->curr_fn ? cnt->unit->ast.root : cnt->curr_compound,
+  Node *     fn  = ast_lit_fn(cnt->ast, tok_fn, NULL, NULL, cnt->curr_compound,
                         scope_new(cnt->assembly->scope_cache, 32));
   NodeLitFn *_fn = peek_lit_fn(fn);
 
-  Node *prev_fn       = cnt->curr_fn;
-  Node *prev_compound = cnt->curr_compound;
-  cnt->curr_fn        = fn;
-  cnt->curr_compound  = fn;
+  push_curr_compound(cnt, fn);
 
   _fn->type = parse_type_fn(cnt, true, 0);
   assert(_fn->type);
@@ -674,8 +685,7 @@ parse_literal_fn(Context *cnt)
   /* parse block (block is optional function body can be external) */
   _fn->block = parse_block(cnt);
 
-  cnt->curr_fn       = prev_fn;
-  cnt->curr_compound = prev_compound;
+  pop_curr_compound(cnt);
   return fn;
 }
 
@@ -685,15 +695,13 @@ parse_literal_struct(Context *cnt)
   Token *tok_struct = tokens_peek(cnt->tokens);
   if (token_is_not(tok_struct, SYM_STRUCT)) return NULL;
 
-  Node *prev_compound = cnt->curr_compound;
-
   Node *         result      = ast_lit_struct(cnt->ast, tok_struct, NULL, cnt->curr_compound,
                                 scope_new(cnt->assembly->scope_cache, 64));
   NodeLitStruct *_lit_struct = peek_lit_struct(result);
 
-  cnt->curr_compound = result;
-  _lit_struct->type  = parse_type_struct(cnt, true, 0);
-  cnt->curr_compound = prev_compound;
+  push_curr_compound(cnt, result);
+  _lit_struct->type = parse_type_struct(cnt, true, 0);
+  pop_curr_compound(cnt);
   assert(_lit_struct->type);
 
   return result;
@@ -712,12 +720,12 @@ parse_literal_enum(Context *cnt)
 
   NodeLitEnum *_enm = peek_lit_enum(enm);
 
-  Node *prev_compound = cnt->curr_compound;
-  cnt->curr_compound  = enm;
+  push_curr_compound(cnt, enm);
 
   Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "expected enm variant list");
+    pop_curr_compound(cnt);
     return ast_bad(cnt->ast, tok);
   }
 
@@ -784,7 +792,7 @@ next:
     return ast_bad(cnt->ast, tok);
   }
 
-  cnt->curr_compound = prev_compound;
+  pop_curr_compound(cnt);
   return enm;
 }
 
@@ -1161,7 +1169,7 @@ parse_decl(Context *cnt)
 {
 #define RETURN_BAD                                                                                 \
   {                                                                                                \
-    cnt->curr_decl = prev_decl;                                                                    \
+    pop_curr_decl(cnt);                                                                            \
     return ast_bad(cnt->ast, tok_ident);                                                           \
   }
 
@@ -1193,10 +1201,9 @@ parse_decl(Context *cnt)
                      "'%s' is reserved name of buildin type", tok_ident->value.str);
   }
 
-  Node *prev_decl = cnt->curr_decl;
   Node *decl =
       ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, -1, false);
-  cnt->curr_decl  = decl;
+  push_curr_decl(cnt, decl);
   NodeDecl *_decl = peek_decl(decl);
 
   {
@@ -1273,7 +1280,7 @@ parse_decl(Context *cnt)
     _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT;
   }
 
-  cnt->curr_decl = prev_decl;
+  pop_curr_decl(cnt);
   return decl;
 
 #undef RETURN_BAD
@@ -1426,7 +1433,7 @@ parse_assert(Context *cnt)
   tmp.str        = tok_begin->src.unit->filepath;
   Node *arg_file = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_STRING], tmp);
 
-  tmp.u          = tok_begin->src.line;
+  tmp.u          = (unsigned long long int)tok_begin->src.line;
   Node *arg_line = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], tmp);
 
   expr->next     = arg_file;
@@ -1442,7 +1449,7 @@ parse_line(Context *cnt)
   if (!tok_begin) return NULL;
 
   TokenValue value;
-  value.u = tok_begin->src.line;
+  value.u = (unsigned long long int)tok_begin->src.line;
   return ast_lit(cnt->ast, tok_begin, &ftypes[FTYPE_U32], value);
 }
 
@@ -1499,11 +1506,11 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Node *     prev_compound = cnt->curr_compound;
-  Node *     block         = ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
+  Node *     block  = ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
                           scope_new(cnt->assembly->scope_cache, 1024));
-  NodeBlock *_block        = peek_block(block);
-  cnt->curr_compound       = block;
+  NodeBlock *_block = peek_block(block);
+
+  push_curr_compound(cnt, block);
 
   Token *tok;
   Node **node = &_block->nodes;
@@ -1581,18 +1588,18 @@ next:
     tok = tokens_peek_prev(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "expected end of block '}'");
     parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "block starting here");
-    cnt->curr_compound = prev_compound;
+    pop_curr_compound(cnt);
     return ast_bad(cnt->ast, tok_begin);
   }
 
-  cnt->curr_compound = prev_compound;
+  pop_curr_compound(cnt);
   return block;
 }
 
 void
 parse_ublock_content(Context *cnt, Node *ublock)
 {
-  cnt->curr_compound  = ublock;
+  push_curr_compound(cnt, ublock);
   NodeUBlock *_ublock = peek_ublock(ublock);
   Node **     node    = &_ublock->nodes;
 next:
@@ -1631,6 +1638,7 @@ next:
     parse_error(cnt, ERR_UNEXPECTED_SYMBOL, tok, BUILDER_CUR_WORD,
                 "unexpected symbol in module body");
   }
+  pop_curr_compound(cnt);
 }
 
 Node *
@@ -1648,14 +1656,13 @@ void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
   unit->ast.root = ast_ublock(&unit->ast, NULL, unit, assembly->gscope);
-  Context cnt = {.builder       = builder,
+  Context cnt    = {.builder       = builder,
                  .assembly      = assembly,
                  .unit          = unit,
                  .ast           = &unit->ast,
                  .tokens        = &unit->tokens,
-                 .curr_fn       = NULL,
                  .curr_decl     = NULL,
-                 .curr_compound = NULL,
+                 .curr_compound = unit->ast.root,
                  .core_loaded   = false,
                  .inside_loop   = false};
 
