@@ -63,7 +63,7 @@
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 #define push_curr_compound(_cnt, _cmp)                                                             \
-  Node *const _prev_cmp = (_cnt)->curr_compound;                                                   \
+  Node *_prev_cmp       = (_cnt)->curr_compound;                                                   \
   (_cnt)->curr_compound = (_cmp);
 
 #define pop_curr_compound(_cnt) (_cnt)->curr_compound = _prev_cmp;
@@ -361,8 +361,11 @@ next:
 
   /* eat } */
   if (!tokens_consume_if(cnt->tokens, SYM_RBLOCK)) {
-    // TODO
-    assert(false);
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "expected end of initializer '}'");
+    pop_curr_compound(cnt);
+    return ast_bad(cnt->ast, tok_err);
   }
 
   pop_curr_compound(cnt);
@@ -1568,6 +1571,14 @@ next:
   }
 
   if ((*node = parse_expr(cnt))) {
+    switch (node_code(*node)) {
+    case NODE_EXPR_BINOP:
+    case NODE_EXPR_CALL:
+      break;
+    default:
+      parse_warning_node(cnt, *node, BUILDER_CUR_WORD, "unused expression");
+    }
+
     insert_node(&node);
     if (parse_semicolon_rq(cnt)) goto next;
   }

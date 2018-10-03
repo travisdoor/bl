@@ -43,7 +43,7 @@
 #endif
 
 #define VERBOSE 0
-#define VALIDATE 0
+#define VALIDATE 1
 
 typedef struct
 {
@@ -215,7 +215,7 @@ print_llvm_module(LLVMModuleRef module)
 static void
 ir_validate(LLVMModuleRef module)
 {
-#if VALIDATE 
+#if VALIDATE
   char *error = NULL;
   if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
     char *str = LLVMPrintModuleToString(module);
@@ -509,19 +509,37 @@ ir_lit_cmp(Context *cnt, Node *lit)
   NodeLitCmp * _lit_cmp  = peek_lit_cmp(lit);
   LLVMTypeRef  llvm_type = to_llvm_type(cnt, _lit_cmp->type);
 
-  assert(_lit_cmp->fieldc);
-  LLVMValueRef *llvm_values = bl_malloc(sizeof(LLVMValueRef) * _lit_cmp->fieldc);
-  if (!llvm_values) bl_abort("bad alloc");
+  if (cnt->is_gscope) {
+    assert(_lit_cmp->fieldc);
+    LLVMValueRef *llvm_values = bl_malloc(sizeof(LLVMValueRef) * _lit_cmp->fieldc);
+    if (!llvm_values) bl_abort("bad alloc");
 
-  Node *         val;
-  int            i = 0;
-  node_foreach(_lit_cmp->fields, val)
-  {
-    llvm_values[i++] = ir_node(cnt, val);
+    Node *val;
+    int   i = 0;
+    node_foreach(_lit_cmp->fields, val)
+    {
+      llvm_values[i++] = ir_node(cnt, val);
+    }
+
+    result = LLVMConstNamedStruct(llvm_type, llvm_values, i);
+    bl_free(llvm_values);
+  } else {
+    /* allocate tmp destination storage */
+    LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
+    result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname("init"));
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
+
+    Node *field;
+    int   i = 0;
+    node_foreach(_lit_cmp->fields, field)
+    {
+      LLVMValueRef llvm_field_dest =
+          LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)(i++), gname("elem"));
+      LLVMValueRef llvm_field = ir_node(cnt, field);
+      LLVMBuildStore(cnt->llvm_builder, llvm_field, llvm_field_dest);
+    }
   }
-
-  result = LLVMConstNamedStruct(llvm_type, llvm_values, i);
-  bl_free(llvm_values);
   return result;
 }
 

@@ -25,4 +25,20 @@
 
   a : 1;
   foo = Foo { .j = a, .i = 2 };
+
+
+  Foo { .j = 0, .i = 2 };
+};
+
+g_test_init_Foo : struct {
+  i s32,
+  j s32
+};
+
+// TODO: init list must be constant, this has not been handled yet!!!
+g_test_init_a := g_test_init_Foo { .i = 10, .j = 20 };
+
+#test "global initializers" {
+  assert(g_test_init_a.i == 10);
+  assert(g_test_init_a.j == 20);
 };

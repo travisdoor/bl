@@ -11,7 +11,5 @@
 
   // this must be generated implicitly by compiler
   // func(Any { .value = cast(*u8) (&a), .type = typeof(a) });
-
-  tmp := Any { .value = cast(*u8) (&a), .type = typeof(a) };
-  func(tmp);
+  func(a);
 };

@@ -28,7 +28,8 @@
 };
 
 #test "pointer to pointer" {
-  test : fn (ptr **s32) {
+  assert(false);
+  /*test : fn (ptr **s32) {
     assert(ptr != null);
     assert(*ptr != null);
     *ptr = null;
@@ -38,5 +39,5 @@
   i_ptr := &i;
 
   test(&i_ptr);
-  assert(i_ptr == null);
+  assert(i_ptr == null);*/
 };
