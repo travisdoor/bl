@@ -1,4 +1,8 @@
 main : fn () s32 {
-  a := null;
   return 0;
 };
+
+#test "pokus" {
+  return;
+};
+

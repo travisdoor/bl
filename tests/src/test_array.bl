@@ -57,14 +57,13 @@
 };
 
 #test "size based on function call" {
-  size : fn () s32 {
+/*
+  get_size : fn () usize {
     return 10;
   };
 
-  arr1 s32[#run size()];
-  arr2 s32[#run size() * #run size()];
-
+  arr1 s32[#run get_size()];
+  arr2 s32[#run get_size() * #run get_size()];
   assert(arr1.count == 10);
-  // TODO
-  //assert(arr2.count == 100);
+  assert(arr2.count == 100);*/
 };

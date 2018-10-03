@@ -267,26 +267,33 @@ parse_test(Context *cnt)
     return ast_bad(cnt->ast, tok_err);
   }
 
-  Node *body = parse_block(cnt);
-  if (!body) {
-    Token *tok_err = tokens_peek(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected body of test case");
-    return ast_bad(cnt->ast, tok_err);
-  }
-
   assert(cnt->curr_compound);
+  Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID], 0);
+  Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, NULL, cnt->curr_compound, NULL);
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
   Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound, 0, NULL);
-  Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID], 0);
-  Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, body, cnt->curr_compound, NULL);
   Node *      test =
       ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, -1, false);
+
+  NodeLitFn *_value = peek_lit_fn(value);
+
+  Node *prev_fn = cnt->curr_fn;
+  cnt->curr_fn  = value;
+
+  _value->block = parse_block(cnt);
+  if (!_value->block) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected body of test case");
+    cnt->curr_fn = prev_fn;
+    return ast_bad(cnt->ast, tok_err);
+  }
 
   peek_decl(test)->used++;
 
   TestCase test_case = {.fn = test, .name = case_name->value.str};
   bo_array_push_back(cnt->assembly->test_cases, test_case);
 
+  cnt->curr_fn = prev_fn;
   return test;
 }
 
@@ -1640,6 +1647,7 @@ load_core(Context *cnt)
 void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
+  unit->ast.root = ast_ublock(&unit->ast, NULL, unit, assembly->gscope);
   Context cnt = {.builder       = builder,
                  .assembly      = assembly,
                  .unit          = unit,
@@ -1651,6 +1659,5 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
                  .core_loaded   = false,
                  .inside_loop   = false};
 
-  unit->ast.root = ast_ublock(&unit->ast, NULL, unit, assembly->gscope);
   parse_ublock_content(&cnt, unit->ast.root);
 }

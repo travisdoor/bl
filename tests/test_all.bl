@@ -1,3 +1,4 @@
+#load "src/test_scopes.bl"
 #load "src/test_array.bl"
 #load "src/test_operators.bl"
 #load "src/test_ifs.bl"

@@ -1238,7 +1238,11 @@ check_decl(Context *cnt, Node **decl)
   bool      lookup_in_tree = true;
 
   assert(_decl->name);
-  infer_type(cnt, *decl);
+  if (!infer_type(cnt, *decl) && !_decl->type) {
+    check_error_node(cnt, ERR_INVALID_TYPE, *decl, BUILDER_CUR_WORD,
+                     "cannot infer declaration type");
+    FINISH;
+  }
 
   _decl->in_gscope =
       ast_get_scope(peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
