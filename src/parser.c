@@ -294,11 +294,13 @@ parse_test(Context *cnt)
       ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, -1, false);
 
   NodeLitFn *_value = peek_lit_fn(value);
+  push_curr_decl(cnt, test);
 
   _value->block = parse_block(cnt);
   if (!_value->block) {
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected body of test case");
+    pop_curr_decl(cnt);
     return ast_bad(cnt->ast, tok_err);
   }
 
@@ -307,6 +309,7 @@ parse_test(Context *cnt)
   TestCase test_case = {.fn = test, .name = case_name->value.str};
   bo_array_push_back(cnt->assembly->test_cases, test_case);
 
+  pop_curr_decl(cnt);
   return test;
 }
 
@@ -462,6 +465,7 @@ parse_stmt_return(Context *cnt)
     return NULL;
   }
 
+  assert(cnt->curr_decl);
   Node *expr = parse_expr(cnt);
   return ast_stmt_return(cnt->ast, tok_begin, expr, cnt->curr_decl);
 }
