@@ -84,6 +84,9 @@ lookup(Node *ident, Scope **out_scope, bool walk_tree);
 static Node *
 _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 
+static void
+to_Any(Context *cnt, Node **node, Node *any_type);
+
 static Node *
 wait_context(Node *node);
 
@@ -223,6 +226,27 @@ wait_context(Node *node)
   default:
     return NULL;
   };
+}
+
+void
+to_Any(Context *cnt, Node **node, Node *any_type)
+{
+  /* INITIALIZER BOILERPLATE for Any type */
+  /* Here we convert anything to 'Any { .value = cast(*u8) (&foo), .type = typeof(foo) }' */
+  Node *from_type = ast_get_type(*node);
+
+  Node *tmp           = *node;
+  Node *val_base_type = ast_node_dup(cnt->ast, from_type);
+  ast_type_set_ptr(val_base_type, 1);
+
+  Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1, NULL);
+  Node *value  = ast_expr_unary(cnt->ast, NULL, SYM_AND, tmp, val_base_type);
+  value        = ast_expr_cast(cnt->ast, NULL, u8_ptr, value);
+
+  TokenValue type;
+  type.u      = (unsigned long long)ast_type_kind(from_type);
+  value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
+  *node       = ast_lit_cmp(cnt->ast, NULL, any_type, value, 2, NULL);
 }
 
 void
@@ -385,6 +409,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_LIT_STRUCT: {
     NodeLitStruct *_struct = peek_lit_struct(*node);
     flatten(&_struct->type);
+    // check_flatten(cnt, &_struct->type);
     return;
   }
 
@@ -516,12 +541,31 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
 
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct_type = peek_type_struct(*node);
+#if 0
+    NodeDecl *      _base_decl   = peek_decl(_struct_type->base_decl);
 
+    Node **tmp;
+    bool   solved = false;
+    node_foreach_ref(_struct_type->types, tmp)
+    {
+      /* self containing structure */
+      if (node_is(*tmp, NODE_DECL)) {
+        Node *type_name = peek_decl(*tmp)->type;
+        if (peek_ident(type_name)->hash == peek_ident(_base_decl->name)->hash) {
+          solved = true;
+          check_flatten(cnt, tmp);
+        }
+      }
+      if (!solved) flatten(tmp);
+    }
+#else
     Node **tmp;
     node_foreach_ref(_struct_type->types, tmp)
     {
-      check_flatten(cnt, tmp);
+      flatten(tmp);
     }
+#endif
+
     break;
   }
 
@@ -618,17 +662,7 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   if (!ast_can_impl_cast(from_type, to_type)) return false;
 
   if (to_kind == TYPE_KIND_ANY) {
-    /* INITIALIZER BOILERPLATE for Any type */
-    Node *tmp           = *node;
-    Node *val_base_type = ast_node_dup(cnt->ast, from_type);
-    ast_type_set_ptr(val_base_type, 1);
-    Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1, NULL);
-    Node *value  = ast_expr_unary(cnt->ast, NULL, SYM_AND, tmp, val_base_type);
-    value        = ast_expr_cast(cnt->ast, NULL, u8_ptr, value);
-    TokenValue type;
-    type.u      = (unsigned long long)from_kind;
-    value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
-    *node       = ast_lit_cmp(cnt->ast, NULL, to_type, value, 2, NULL);
+    to_Any(cnt, node, to_type);
     return true;
   }
 
@@ -848,7 +882,7 @@ check_ident(Context *cnt, Node **ident)
     FINISH;
   }
 
-  Node *    found;
+  Node *    found   = NULL;
   const int buildin = ast_is_buildin_type(*ident);
   if (buildin != -1) {
     /* connect buildin fundamental types references */
@@ -1271,8 +1305,11 @@ check_decl(Context *cnt, Node **decl)
 
   switch (_decl->kind) {
   case DECL_KIND_STRUCT: {
-    Node *value_type                        = ast_get_type(_decl->value);
-    peek_type_struct(value_type)->base_decl = *decl;
+    Node *value_type = ast_get_type(_decl->value);
+
+    /* what about anonymous types ??? */
+    assert(peek_type_struct(value_type)->base_decl);
+    // peek_type_struct(value_type)->base_decl = *decl;
 
     if (_decl->mutable) {
       check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
@@ -1345,8 +1382,10 @@ check_decl(Context *cnt, Node **decl)
   }
 
   case DECL_KIND_ENUM: {
-    Node *value_type                      = ast_get_type(_decl->value);
-    peek_type_enum(value_type)->base_decl = *decl;
+    Node *value_type = ast_get_type(_decl->value);
+    /* what about anonymous types ??? */
+    assert(peek_type_enum(value_type)->base_decl);
+    // peek_type_enum(value_type)->base_decl = *decl;
     break;
   }
 

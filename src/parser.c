@@ -1155,7 +1155,7 @@ next:
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  return ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL, ptr);
+  return ast_type_struct(cnt->ast, tok_struct, types, typesc, cnt->curr_decl, ptr);
 }
 
 Node *
@@ -1168,7 +1168,7 @@ parse_type_enum(Context *cnt, int ptr)
   /* implicit type s32 when enum base type has not been specified */
   if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32, 0, NULL);
 
-  return ast_type_enum(cnt->ast, tok_enum, type, NULL, ptr);
+  return ast_type_enum(cnt->ast, tok_enum, type, cnt->curr_decl, ptr);
 }
 
 Node *
@@ -1632,7 +1632,7 @@ next:
     goto next;
   }
 
-  if (!cnt->core_loaded && (*node = load_core(cnt))) {
+  if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (*node = load_core(cnt))) {
     insert_node(&node);
     cnt->core_loaded = true;
     goto next;

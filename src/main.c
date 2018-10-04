@@ -63,6 +63,8 @@ main(int argc, char *argv[])
       build_flags |= BUILDER_NO_WARN;
     } else if (strcmp(&argv[optind][1], "verbose") == 0) {
       build_flags |= BUILDER_VERBOSE;
+    } else if (strcmp(&argv[optind][1], "no-api") == 0) {
+      build_flags |= BUILDER_NO_API;
     } else {
       fprintf(stderr, "invalid params\n");
       exit(EXIT_FAILURE);

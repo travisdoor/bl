@@ -1,0 +1,25 @@
+#test "fundamental types" {
+  a u8 := 10;
+  assert(a == 10);
+  assert(cast(u16) a == 10);
+  assert(cast(u32) a == 10);
+  assert(cast(u64) a == 10);
+
+  b s8 := 10;
+  assert(b == 10);
+  assert(cast(s16) b == 10);
+  assert(cast(s32) b == 10);
+  assert(cast(s64) b == 10);
+
+  c u64 := 10;
+  assert(c == 10);
+  assert(cast(u16) c == 10);
+  assert(cast(u32) c == 10);
+  assert(cast(u64) c == 10);
+
+  d s64 := 10;
+  assert(d == 10);
+  assert(cast(s16) d == 10);
+  assert(cast(s32) d == 10);
+  assert(cast(s64) d == 10);
+};
