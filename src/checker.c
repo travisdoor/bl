@@ -44,8 +44,8 @@
 #define VERBOSE 0
 #define VERBOSE_MULTIPLE_CHECK 0
 
-#define FINISH return true
-#define WAIT return false
+#define finish() return NULL
+#define wait(_n) return (_n)
 
 #define FN_ARR_COUNT_NAME "count@"
 
@@ -87,9 +87,6 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 static void
 to_Any(Context *cnt, Node **node, Node *any_type);
 
-static Node *
-wait_context(Node *node);
-
 static bool
 infer_type(Context *cnt, Node *decl);
 
@@ -97,7 +94,7 @@ static void
 provide(Node *ident, Node *provided);
 
 static inline void
-waiting_push(BHashTable *waiting, Node *ident, FIter fiter);
+waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor);
 
 static void
 waiting_resume(Context *cnt, Node *ident);
@@ -129,49 +126,51 @@ check_flatten(Context *cnt, Node **node);
 static void
 process_flatten(Context *cnt, FIter *fit);
 
-static bool
+/* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
+ * waiting-for node */
+static Node *
 check_node(Context *cnt, Node **node);
 
-static bool
+static Node *
 check_ident(Context *cnt, Node **ident);
 
-static bool
+static Node *
 check_decl(Context *cnt, Node **decl);
 
-static bool
+static Node *
 check_lit_cmp(Context *cnt, Node **cmp);
 
-static bool
+static Node *
 check_expr_call(Context *cnt, Node **call);
 
-static bool
+static Node *
 check_expr_unary(Context *cnt, Node **unary);
 
-static bool
+static Node *
 check_expr_binop(Context *cnt, Node **binop);
 
-static bool
+static Node *
 check_expr_cast(Context *cnt, Node **cast);
 
-static bool
+static Node *
 check_expr_sizeof(Context *cnt, Node **szof);
 
-static bool
+static Node *
 check_expr_typeof(Context *cnt, Node **tpof);
 
-static bool
+static Node *
 check_expr_member(Context *cnt, Node **member);
 
-static bool
+static Node *
 check_expr_elem(Context *cnt, Node **elem);
 
-static bool
+static Node *
 check_stmt_if(Context *cnt, Node **stmt_if);
 
-static bool
+static Node *
 check_stmt_return(Context *cnt, Node **ret);
 
-static bool
+static Node *
 check_type_enum(Context *cnt, Node **type);
 
 static void
@@ -205,27 +204,6 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree)
 
   if (out_scope) *out_scope = scope;
   return found;
-}
-
-Node *
-wait_context(Node *node)
-{
-  assert(node && "invalid wait node");
-  switch (node_code(node)) {
-  case NODE_IDENT:
-    return node;
-  case NODE_EXPR_MEMBER:
-    return peek_expr_member(node)->ident;
-  case NODE_DECL:
-    return peek_decl(node)->name;
-  case NODE_STMT_RETURN: {
-    Node *decl = peek_stmt_return(node)->fn_decl;
-    assert(decl && "return statement without context");
-    return peek_decl(decl)->name;
-  }
-  default:
-    return NULL;
-  };
 }
 
 void
@@ -265,17 +243,15 @@ provide(Node *ident, Node *provided)
 }
 
 void
-waiting_push(BHashTable *waiting, Node *node, FIter fiter)
+waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor)
 {
-  Node *ident = wait_context(node);
-  assert(ident);
-  NodeIdent *_ident = peek_ident(ident);
+  NodeIdent *_waitfor = peek_ident(waitfor);
   BArray *   queue;
-  if (bo_htbl_has_key(waiting, _ident->hash)) {
-    queue = bo_htbl_at(waiting, _ident->hash, BArray *);
+  if (bo_htbl_has_key(waiting, _waitfor->hash)) {
+    queue = bo_htbl_at(waiting, _waitfor->hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(FIter));
-    bo_htbl_insert(waiting, _ident->hash, queue);
+    bo_htbl_insert(waiting, _waitfor->hash, queue);
   }
   assert(queue);
   bo_array_push_back(queue, fiter);
@@ -312,7 +288,6 @@ check_unresolved(Context *cnt)
   BArray *      q;
   FIter         tmp;
   Node **       tmp_node;
-  Node *        tmp_ident;
 
   bhtbl_foreach(cnt->waiting, iter)
   {
@@ -325,9 +300,8 @@ check_unresolved(Context *cnt)
       // bl_log("# %p index: %d", tmp.flatten, i);
       tmp_node = bo_array_at(tmp.flatten, tmp.i, Node **);
       assert(*tmp_node);
-      tmp_ident = wait_context(*tmp_node);
-      if (!scope_has_symbol(cnt->provided_in_gscope, tmp_ident))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, tmp_ident, BUILDER_CUR_WORD, "unknown symbol");
+      if (!scope_has_symbol(cnt->provided_in_gscope, *tmp_node))
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, *tmp_node, BUILDER_CUR_WORD, "unknown symbol");
       flatten_put(cnt->flatten_cache, tmp.flatten);
     }
   }
@@ -394,6 +368,8 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     if (_decl->in_gscope && !scope_has_symbol(cnt->provided_in_gscope, _decl->name))
       scope_insert(cnt->provided_in_gscope, _decl->name, *node);
 
+    _decl->name->state = CHECKED;
+
     flatten(&_decl->type);
     flatten(&_decl->value);
     break;
@@ -403,14 +379,14 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     NodeLitFn *_fn = peek_lit_fn(*node);
     flatten(&_fn->type);
     check_flatten(cnt, &_fn->block);
-    return;
+    break;
   }
 
   case NODE_LIT_STRUCT: {
     NodeLitStruct *_struct = peek_lit_struct(*node);
-    flatten(&_struct->type);
-    // check_flatten(cnt, &_struct->type);
-    return;
+    // flatten(&_struct->type);
+    check_flatten(cnt, &_struct->type);
+    break;
   }
 
   case NODE_LIT_CMP: {
@@ -432,7 +408,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     {
       flatten(variant);
     }
-    return;
+    break;
   }
 
   case NODE_BLOCK: {
@@ -443,7 +419,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     {
       flatten(tmp);
     }
-    return;
+    break;
   }
 
   case NODE_UBLOCK: {
@@ -454,7 +430,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     {
       check_flatten(cnt, tmp);
     }
-    return;
+    break;
   }
 
   case NODE_STMT_RETURN: {
@@ -541,31 +517,11 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
 
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct_type = peek_type_struct(*node);
-#if 0
-    NodeDecl *      _base_decl   = peek_decl(_struct_type->base_decl);
-
-    Node **tmp;
-    bool   solved = false;
-    node_foreach_ref(_struct_type->types, tmp)
-    {
-      /* self containing structure */
-      if (node_is(*tmp, NODE_DECL)) {
-        Node *type_name = peek_decl(*tmp)->type;
-        if (peek_ident(type_name)->hash == peek_ident(_base_decl->name)->hash) {
-          solved = true;
-          check_flatten(cnt, tmp);
-        }
-      }
-      if (!solved) flatten(tmp);
-    }
-#else
-    Node **tmp;
+    Node **         tmp;
     node_foreach_ref(_struct_type->types, tmp)
     {
       flatten(tmp);
     }
-#endif
-
     break;
   }
 
@@ -599,9 +555,9 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_LIT:
   case NODE_LOAD:
   case NODE_LINK:
+  case NODE_BAD:
+  case NODE_COUNT:
     break;
-  default:
-    bl_warning("missing flattening for node %s", node_name(*node));
   }
 
   flatten_push(fbuf, node);
@@ -626,11 +582,15 @@ process_flatten(Context *cnt, FIter *fit)
   assert(fit->flatten && "invalid flatten");
   bool interrupted = false;
 
+  Node * waitfor;
   Node **tmp;
   for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
     tmp = bo_array_at(fit->flatten, fit->i, Node **);
-    if (!check_node(cnt, tmp)) {
-      waiting_push(cnt->waiting, *tmp, *fit);
+    assert(*tmp);
+    /* NULL means successfull check */
+    waitfor = check_node(cnt, tmp);
+    if (waitfor) {
+      waiting_push(cnt->waiting, *tmp, *fit, waitfor);
       interrupted = true;
       break;
     }
@@ -686,7 +646,7 @@ check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Nod
                    "no implicit cast for types '%s' and '%s'", tmp_first, tmp_second);
 }
 
-bool
+Node *
 check_expr_call(Context *cnt, Node **call)
 {
   NodeExprCall *_call = peek_expr_call(*call);
@@ -700,7 +660,7 @@ check_expr_call(Context *cnt, Node **call)
 
   if (node_is_not(callee_type, NODE_TYPE_FN)) {
     check_error_node(cnt, ERR_INVALID_TYPE, *call, BUILDER_CUR_WORD, "expected function name");
-    FINISH;
+    finish();
   }
 
   NodeTypeFn *_callee_type = peek_type_fn(callee_type);
@@ -711,7 +671,7 @@ check_expr_call(Context *cnt, Node **call)
     check_error_node(cnt, ERR_INVALID_ARG_COUNT, *call, BUILDER_CUR_WORD,
                      "expected %d %s, but called with %d", _callee_type->argc_types,
                      _callee_type->argc_types == 1 ? "argument" : "arguments", _call->argsc);
-    FINISH;
+    finish();
   }
 
   Node **call_arg   = &_call->args;
@@ -756,10 +716,10 @@ check_expr_call(Context *cnt, Node **call)
     }
   }
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_unary(Context *cnt, Node **unary)
 {
   NodeExprUnary *_unary = peek_expr_unary(*unary);
@@ -783,14 +743,14 @@ check_expr_unary(Context *cnt, Node **unary)
     _unary->type = ast_get_type(_unary->next);
   }
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_node(Context *cnt, Node **node)
 {
   assert(node);
-  bool result = true;
+  Node *result = NULL;
 #if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
   if (node->state == BL_CHECKED)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
@@ -849,37 +809,41 @@ check_node(Context *cnt, Node **node)
   case NODE_STMT_LOOP:
   case NODE_LOAD:
   case NODE_LINK:
+  case NODE_BAD:
+  case NODE_UBLOCK:
+  case NODE_BLOCK:
+  case NODE_LIT_STRUCT:
+  case NODE_LIT_ENUM:
+  case NODE_LIT_FN:
+  case NODE_COUNT:
     break;
-
-  default:
-    bl_warning("missing check for node type %s", node_name(*node));
   }
 
-#if VERBOSE && defined(BL_DEBUG)
+#if VERBOSE
   {
-    static int  prev_checked = -1;
-    const char *file         = (*node)->src ? (*node)->src->unit->name : "UNKNOWN";
-    const int   line         = (*node)->src ? (*node)->src->line : -1;
-    Node *      checked      = wait_context(*node);
-    const char *name         = checked ? peek_ident(checked)->str : "?";
-    bl_log("checked [%s] " MAGENTA("'%s'") " (%s, %d) file: " YELLOW("%s") " line: " CYAN("%d"),
-           result ? GREEN(" OK ") : RED("WAIT"), name, node_name(*node), (*node)->_serial, file,
-           line);
-    assert(prev_checked != (*node)->_serial && "Looping checker!!!");
-    prev_checked = (*node)->_serial;
+    const char *file = (*node)->src ? (*node)->src->unit->name : "implicit";
+    const int   line = (*node)->src ? (*node)->src->line : 0;
+    const int   col  = (*node)->src ? (*node)->src->col : 0;
+    if (result == NULL) {
+      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), node_name(*node), file, line,
+             col);
+    } else {
+      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"), node_name(*node),
+             file, line, col, peek_ident(result)->str);
+    }
   }
 #endif
 
-  (*node)->state = result ? CHECKED : WAITING;
+  (*node)->state = result ? WAITING : CHECKED;
   return result;
 }
 
-bool
+Node *
 check_ident(Context *cnt, Node **ident)
 {
   NodeIdent *_ident = peek_ident(*ident);
   if (_ident->ref) {
-    FINISH;
+    finish();
   }
 
   Node *    found   = NULL;
@@ -889,7 +853,7 @@ check_ident(Context *cnt, Node **ident)
     found = &ftypes[buildin];
   } else {
     found = lookup(*ident, NULL, true);
-    if (!found) WAIT;
+    if (!found) wait(*ident);
   }
 
   if (node_is(found, NODE_DECL)) {
@@ -977,10 +941,10 @@ check_ident(Context *cnt, Node **ident)
     }
   }
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_stmt_return(Context *cnt, Node **ret)
 {
   NodeStmtReturn *_ret = peek_stmt_return(*ret);
@@ -989,7 +953,7 @@ check_stmt_return(Context *cnt, Node **ret)
   NodeDecl * _callee_decl = peek_decl(_ret->fn_decl);
   NodeLitFn *_callee      = peek_lit_fn(_callee_decl->value);
   Node *     fn_ret_type  = ast_get_type(peek_type_fn(_callee->type)->ret_type);
-  if (fn_ret_type == NULL) WAIT;
+  if (fn_ret_type == NULL) wait(peek_decl(_ret->fn_decl)->name);
 
   if (_ret->expr) {
     if (node_is(_ret->expr, NODE_EXPR_NULL)) {
@@ -1011,10 +975,10 @@ check_stmt_return(Context *cnt, Node **ret)
       check_error_node(cnt, ERR_EXPECTED_EXPR, *ret, BUILDER_CUR_AFTER, "expected return value");
     }
   }
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_binop(Context *cnt, Node **binop)
 {
   NodeExprBinop *_binop = peek_expr_binop(*binop);
@@ -1031,7 +995,7 @@ check_expr_binop(Context *cnt, Node **binop)
       check_error_node(cnt, ERR_INVALID_TYPE, _binop->lhs, BUILDER_CUR_WORD,
                        "left-hand side of assignment does not refer to any declaration and "
                        "cannot be assigned");
-      FINISH;
+      finish();
     }
 
     if (node_is_not(_binop->lhs, NODE_EXPR_UNARY) && node_is_not(_binop->lhs, NODE_EXPR_ELEM) &&
@@ -1060,7 +1024,7 @@ check_expr_binop(Context *cnt, Node **binop)
       if (!_binop->type) _binop->type = lhs_type;
     }
 
-    FINISH;
+    finish();
   }
 
   Node *rhs_type = ast_get_type(_binop->rhs);
@@ -1079,27 +1043,27 @@ check_expr_binop(Context *cnt, Node **binop)
 
   if (!_binop->type) _binop->type = ast_get_type(_binop->lhs);
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_cast(Context *cnt, Node **cast)
 {
   NodeExprCast *_cast = peek_expr_cast(*cast);
   assert(_cast->type);
   _cast->type = ast_get_type(_cast->type);
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_sizeof(Context *cnt, Node **szof)
 {
   NodeExprSizeof *_sizeof = peek_expr_sizeof(*szof);
   _sizeof->in             = ast_get_type(_sizeof->in);
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_typeof(Context *cnt, Node **tpof)
 {
   NodeExprTypeof *_typeof = peek_expr_typeof(*tpof);
@@ -1113,10 +1077,10 @@ check_expr_typeof(Context *cnt, Node **tpof)
   value.u = (unsigned long long)kind;
   *tpof   = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_type_enum(Context *cnt, Node **type)
 {
   NodeTypeEnum *_type = peek_type_enum(*type);
@@ -1126,7 +1090,7 @@ check_type_enum(Context *cnt, Node **type)
   if (node_is_not(tmp, NODE_TYPE_FUND)) {
     check_error_node(cnt, ERR_INVALID_TYPE, _type->base_type, BUILDER_CUR_WORD,
                      "enum base type must be an integer type");
-    FINISH;
+    finish();
   }
 
   switch (peek_type_fund(tmp)->code) {
@@ -1154,10 +1118,10 @@ check_type_enum(Context *cnt, Node **type)
 
   _type->base_type = tmp;
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_member(Context *cnt, Node **member)
 {
   NodeExprMember *_member = peek_expr_member(*member);
@@ -1175,7 +1139,7 @@ check_expr_member(Context *cnt, Node **member)
     lhs_type = ast_get_type(lhs_type);
   }
 
-  if (!lhs_type) FINISH;
+  if (!lhs_type) finish();
   if (ast_type_get_arr(lhs_type)) {
     /* is member array 'count'??? */
     if (ast_is_buildin(_member->ident) == BUILDIN_ARR_COUNT) {
@@ -1183,7 +1147,7 @@ check_expr_member(Context *cnt, Node **member)
       *member         = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
       (*member)->next = tmp_next;
 
-      FINISH;
+      finish();
     }
   } else if (node_is(lhs_type, NODE_TYPE_STRUCT)) {
     /* structure member */
@@ -1194,7 +1158,7 @@ check_expr_member(Context *cnt, Node **member)
     assert(_lhs_type->base_decl);
 
     found = _lookup(peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-    if (!found) WAIT;
+    if (!found) wait(_member->ident);
 
     if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
       check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
@@ -1208,7 +1172,7 @@ check_expr_member(Context *cnt, Node **member)
     assert(_lhs_type->base_decl);
 
     found = _lookup(peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-    if (!found) WAIT;
+    if (!found) wait(_member->ident);
 
     if (_member->ptr_ref) {
       check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
@@ -1222,10 +1186,10 @@ check_expr_member(Context *cnt, Node **member)
   _member->type                   = ast_get_type(found);
   peek_ident(_member->ident)->ref = found;
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_expr_elem(Context *cnt, Node **elem)
 {
   NodeExprElem *_elem = peek_expr_elem(*elem);
@@ -1246,10 +1210,10 @@ check_expr_elem(Context *cnt, Node **elem)
     check_error_invalid_types(cnt, index_type, &ftypes[FTYPE_SIZE], _elem->index);
   }
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_stmt_if(Context *cnt, Node **stmt_if)
 {
   NodeStmtIf *_if = peek_stmt_if(*stmt_if);
@@ -1260,7 +1224,7 @@ check_stmt_if(Context *cnt, Node **stmt_if)
   if (!ast_type_cmp(test_type, &ftypes[FTYPE_BOOL])) {
     check_error_invalid_types(cnt, test_type, &ftypes[FTYPE_BOOL], _if->test);
   }
-  FINISH;
+  finish();
 }
 
 bool
@@ -1282,7 +1246,7 @@ infer_type(Context *cnt, Node *decl)
   return true;
 }
 
-bool
+Node *
 check_decl(Context *cnt, Node **decl)
 {
   NodeDecl *_decl          = peek_decl(*decl);
@@ -1292,7 +1256,7 @@ check_decl(Context *cnt, Node **decl)
   if (!infer_type(cnt, *decl) && !_decl->type) {
     check_error_node(cnt, ERR_INVALID_TYPE, *decl, BUILDER_CUR_WORD,
                      "cannot infer declaration type");
-    FINISH;
+    finish();
   }
 
   _decl->in_gscope =
@@ -1427,7 +1391,7 @@ check_decl(Context *cnt, Node **decl)
 
   /* skip registration of test cases into symbol table */
   if (_decl->flags & FLAG_TEST) {
-    FINISH;
+    finish();
   }
 
   /* provide symbol into scope if there is no conflict */
@@ -1442,10 +1406,10 @@ check_decl(Context *cnt, Node **decl)
     waiting_resume(cnt, _decl->name);
   }
 
-  FINISH;
+  finish();
 }
 
-bool
+Node *
 check_lit_cmp(Context *cnt, Node **cmp)
 {
   // TODO
@@ -1460,7 +1424,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
   if (_cmp->fieldc == 0) {
     check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
                      "expected initialization fields");
-    FINISH;
+    finish();
   }
 
   if (type_kind == TYPE_KIND_VOID) {
@@ -1468,7 +1432,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
     ast_type_to_string(tmp, 256, type);
     check_error_node(cnt, ERR_INVALID_TYPE, _cmp->type, BUILDER_CUR_WORD,
                      "initialization has invalid type '%s'", tmp);
-    FINISH;
+    finish();
   }
 
   switch (node_code(type)) {
@@ -1476,12 +1440,12 @@ check_lit_cmp(Context *cnt, Node **cmp)
     if (_cmp->fieldc != 1) {
       check_error_node(cnt, ERR_EXPECTED_EXPR, *cmp, BUILDER_CUR_AFTER,
                        "expected one initialization field for fundamental types");
-      FINISH;
+      finish();
     }
 
     if (!ast_type_cmp(_cmp->fields, type) && !implicit_cast(cnt, &_cmp->fields, type)) {
       check_error_invalid_types(cnt, ast_get_type(_cmp->fields), type, _cmp->fields);
-      FINISH;
+      finish();
     }
 
     /* convert simple initialization compound to expression */
@@ -1581,7 +1545,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
     bl_abort("unsupported compound literal type");
   }
 
-  FINISH;
+  finish();
 }
 
 void

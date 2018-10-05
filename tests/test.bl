@@ -1,24 +1,14 @@
-#load "sdl2.bl"
-
-Game : struct {
-  window   *SDL_Window,
-  will_quit bool,
-};
-
-Foo : struct {
-  foo *Foo
-};
-
 main : fn () s32 {
-  foo Foo;
-  game Game;
-  init(&game); 
+  a := 10;
+  b := 0;
+
+  a_ptr := &a;
+  b_ptr := &b;
+
+  *b_ptr = *a_ptr;
+
+  printf : fn (s string, n s32) s32 #extern;
+  printf("b = %d\n", b);
+
   return 0;
 };
-
-init : fn (game *Game) {
-};
-
-gimme : fn (foo *Foo) {
-};
-

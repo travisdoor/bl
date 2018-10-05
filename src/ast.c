@@ -493,6 +493,7 @@ visitor_init(Visitor *visitor)
 {
   /* default value for all visitor callbacks */
   memset(visitor->visitors, 0, sizeof(VisitorFunc) * NODE_COUNT);
+  visitor->all_visitor = NULL;
 }
 
 void
@@ -502,9 +503,16 @@ visitor_add(Visitor *visitor, VisitorFunc fn, NodeCode code)
 }
 
 void
+visitor_add_visit_all(Visitor *visitor, VisitorFunc fn)
+{
+  visitor->all_visitor = fn;
+}
+
+void
 visitor_visit(Visitor *visitor, Node *node, void *cnt)
 {
   if (!node) return;
+  if (visitor->all_visitor) visitor->all_visitor(visitor, node, cnt);
   if (visitor->visitors[node_code(node)])
     visitor->visitors[node_code(node)](visitor, node, cnt);
   else
@@ -931,40 +939,37 @@ ast_is_buildin(Node *ident)
 bool
 ast_type_cmp(Node *first, Node *second)
 {
-  first  = ast_get_type(first);
-  second = ast_get_type(second);
-  assert(first);
-  assert(second);
+  Node *f = ast_get_type(first);
+  Node *s = ast_get_type(second);
 
-  if (first == second) return true;
-  if (node_code(first) != node_code(second)) return false;
-  if (ast_type_kind(first) != ast_type_kind(second)) return false;
+  if (f == s) return true;
+  if (node_code(f) != node_code(s)) return false;
+  if (ast_type_kind(f) != ast_type_kind(s)) return false;
 
   // same nodes
-  switch (node_code(first)) {
+  switch (node_code(f)) {
 
   case NODE_TYPE_FUND: {
-    if (peek_type_fund(first)->code != peek_type_fund(second)->code) return false;
+    if (peek_type_fund(f)->code != peek_type_fund(s)->code) return false;
     break;
   }
 
   case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_first  = peek_type_enum(first);
-    NodeTypeEnum *_second = peek_type_enum(second);
-    if (peek_type_fund(_first->base_type)->code != peek_type_fund(_second->base_type)->code)
-      return false;
+    NodeTypeEnum *_f = peek_type_enum(f);
+    NodeTypeEnum *_s = peek_type_enum(s);
+    if (peek_type_fund(_f->base_type)->code != peek_type_fund(_s->base_type)->code) return false;
     break;
   }
 
   case NODE_TYPE_FN: {
-    NodeTypeFn *_first  = peek_type_fn(first);
-    NodeTypeFn *_second = peek_type_fn(second);
+    NodeTypeFn *_f = peek_type_fn(f);
+    NodeTypeFn *_s = peek_type_fn(s);
 
-    if (_first->argc_types != _second->argc_types) return false;
-    if (!ast_type_cmp(_first->ret_type, _second->ret_type)) return false;
+    if (_f->argc_types != _s->argc_types) return false;
+    if (!ast_type_cmp(_f->ret_type, _s->ret_type)) return false;
 
-    Node *argt1 = _first->arg_types;
-    Node *argt2 = _second->arg_types;
+    Node *argt1 = _f->arg_types;
+    Node *argt2 = _s->arg_types;
     while (argt1 && argt2) {
       if (!ast_type_cmp(argt1, argt2)) return false;
 
@@ -976,13 +981,13 @@ ast_type_cmp(Node *first, Node *second)
   }
 
   case NODE_TYPE_STRUCT: {
-    NodeTypeStruct *_first  = peek_type_struct(first);
-    NodeTypeStruct *_second = peek_type_struct(second);
+    NodeTypeStruct *_f = peek_type_struct(f);
+    NodeTypeStruct *_s = peek_type_struct(s);
 
-    if (_first->typesc != _second->typesc) return false;
+    if (_f->typesc != _s->typesc) return false;
 
-    Node *type1 = _first->types;
-    Node *type2 = _second->types;
+    Node *type1 = _f->types;
+    Node *type2 = _s->types;
     while (type1 && type2) {
       if (!ast_type_cmp(type1, type2)) return false;
 

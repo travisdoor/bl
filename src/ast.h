@@ -448,6 +448,7 @@ typedef void (*VisitorFunc)(Visitor *visitor, Node *node, void *cnt);
 struct Visitor
 {
   VisitorFunc visitors[NODE_COUNT];
+  VisitorFunc all_visitor;
 };
 
 void
@@ -455,6 +456,9 @@ visitor_init(Visitor *visitor);
 
 void
 visitor_add(Visitor *visitor, VisitorFunc fn, NodeCode code);
+
+void
+visitor_add_visit_all(Visitor *visitor, VisitorFunc fn);
 
 void
 visitor_visit(Visitor *visitor, Node *node, void *cnt);
