@@ -75,6 +75,7 @@ typedef struct
 typedef struct
 {
   BArray *flatten;
+  Node *  waitfor;
   size_t  i;
 } FIter;
 
@@ -254,6 +255,7 @@ waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor)
     bo_htbl_insert(waiting, _waitfor->hash, queue);
   }
   assert(queue);
+  fiter.waitfor = waitfor;
   bo_array_push_back(queue, fiter);
 }
 
@@ -287,7 +289,6 @@ check_unresolved(Context *cnt)
   bo_iterator_t iter;
   BArray *      q;
   FIter         tmp;
-  Node **       tmp_node;
 
   bhtbl_foreach(cnt->waiting, iter)
   {
@@ -297,11 +298,9 @@ check_unresolved(Context *cnt)
     // bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp = bo_array_at(q, i, FIter);
-      // bl_log("# %p index: %d", tmp.flatten, i);
-      tmp_node = bo_array_at(tmp.flatten, tmp.i, Node **);
-      assert(*tmp_node);
-      if (!scope_has_symbol(cnt->provided_in_gscope, *tmp_node))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, *tmp_node, BUILDER_CUR_WORD, "unknown symbol");
+      assert(tmp.waitfor);
+      if (!scope_has_symbol(cnt->provided_in_gscope, tmp.waitfor))
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, tmp.waitfor, BUILDER_CUR_WORD, "unknown symbol");
       flatten_put(cnt->flatten_cache, tmp.flatten);
     }
   }
@@ -570,6 +569,7 @@ check_flatten(Context *cnt, Node **node)
   FIter fit;
   fit.flatten = flatten_get(cnt->flatten_cache);
   fit.i       = 0;
+  fit.waitfor = NULL;
 
   flatten_node(cnt, fit.flatten, node);
   process_flatten(cnt, &fit);

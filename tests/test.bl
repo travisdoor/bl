@@ -1,14 +1,8 @@
+Foo : struct {
+  a s32
+};
+
 main : fn () s32 {
-  a := 10;
-  b := 0;
-
-  a_ptr := &a;
-  b_ptr := &b;
-
-  *b_ptr = *a_ptr;
-
-  printf : fn (s string, n s32) s32 #extern;
-  printf("b = %d\n", b);
-
+  foo := Foo { .a = 10 };
   return 0;
 };
