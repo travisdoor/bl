@@ -36,7 +36,7 @@ _AllocMeta : struct {
 
 _alloc_free_pool *_AllocMeta := null;
 
-alloc : fn (count usize) *void {
+mem_alloc : fn (count usize) *void {
   if (count == 0) { return null; }
   
   mem := _get_free(count);
@@ -49,9 +49,30 @@ alloc : fn (count usize) *void {
   return ptrshift(mem, sizeof(_AllocMeta)); 
 };
 
-free : fn (ptr *void) {
+mem_realloc : fn (ptr *void, count usize) *void {
+  if (count == 0 || ptr == null) { return null; }
+  mem := mem_alloc(count);
+  mem_copy(mem, ptr, count);
+  mem_free(ptr);
+  return mem;
+};
+
+mem_free : fn (ptr *void) {
   if (ptr == null) { return; }
   _put_free(ptr);
+};
+
+mem_copy : fn (dest *void, src *void, len usize) {
+  if (dest == null || src == null || len == 0) { return; }
+  _d := cast(*u8) dest;
+  _s := cast(*u8) src;
+
+  // PERFORMANCE: copy 8 bytes at once if possible???
+  loop (i := 0; i < len; i += 1) {
+    *_d = *_s;
+    _d = ptrshift(_d, sizeof(u8)); 
+    _s = ptrshift(_s, sizeof(u8)); 
+  }
 };
 
 _get_free : fn (size usize) *_AllocMeta {

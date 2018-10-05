@@ -49,6 +49,11 @@ typedef struct
   size_t    type_table_size;
 } Context;
 
+#if 0
+static void
+post_node(Visitor *visitor, Node *node, void *cnt);
+#endif
+
 static void
 post_decl(Visitor *visitor, Node *decl, void *cnt);
 
@@ -73,6 +78,16 @@ schedule_generation(Context *cnt, Node *decl)
 #endif
   }
 }
+
+#if 0 
+void
+post_node(Visitor *visitor, Node *node, void *cnt)
+{
+  if (node->state == NOT_CHECKED) {
+    bl_warning("%s (%d) has not been checked!!!", node_name(node), node->_serial);
+  }
+}
+#endif
 
 void
 post_decl(Visitor *visitor, Node *decl, void *cnt)
@@ -130,7 +145,8 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 
   assert(_cnt->curr_dependent);
   Node *callee = ast_unroll_ident(_call->ref);
-  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN) && !peek_decl(callee)->mutable) {
+  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN) &&
+      !peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }
 
@@ -160,19 +176,19 @@ post_ident(Visitor *visitor, Node *ident, void *cnt)
 void
 post_type(Visitor *visitor, Node *type, void *cnt)
 {
+#if 0
   Context *_cnt = (Context *)cnt;
   if (bo_htbl_has_key(_cnt->assembly->type_table, (uint64_t)type)) {
     visitor_walk(visitor, type, cnt);
     return;
   }
 
-#if VERBOSE
   char buf[256];
   ast_type_to_string(buf, 256, type);
   bl_log("new type: %s", buf);
   bo_htbl_insert_empty(_cnt->assembly->type_table, (uint64_t)type);
-#endif
   _cnt->type_table_size++;
+#endif
 }
 
 void
@@ -188,6 +204,9 @@ post_run(Builder *builder, Assembly *assembly)
 
   Visitor visitor;
   visitor_init(&visitor);
+#if 0 
+  visitor_add_visit_all(&visitor, post_node);
+#endif
 
   visitor_add(&visitor, post_decl, NODE_DECL);
   visitor_add(&visitor, post_call, NODE_EXPR_CALL);

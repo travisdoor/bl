@@ -26,7 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "libc.bl"
 #load "utils.bl"
 
 ArrayDefaultCapacity usize : 2;
@@ -39,7 +38,7 @@ Array : struct {
 };
 
 array_new : fn (elem_size usize) *Array {
-  arr := cast(*Array) malloc(sizeof(Array));
+  arr := cast(*Array) mem_alloc(sizeof(Array));
   array_init(arr, elem_size);
   return arr;
 };
@@ -47,7 +46,7 @@ array_new : fn (elem_size usize) *Array {
 array_delete : fn (self *Array) {
   if (self == null) { return; }
   array_terminate(self);
-  free(self);
+  mem_free(self);
 };
 
 array_init : fn (self *Array, elem_size usize) {
@@ -66,7 +65,7 @@ array_terminate : fn (self *Array) {
   self->elem_size = 0;
 
   if (self->_data != null) {
-    free(self->_data);
+    mem_free(self->_data);
   }
   self->_data = null;
 };
@@ -93,7 +92,7 @@ array_push_back : fn (self *Array, value *void) {
   new_elem := ptrshift(self->_data, self->size * self->elem_size);
   self->size = self->size + 1;
 
-  memcpy(new_elem, value, self->elem_size);
+  mem_copy(new_elem, value, self->elem_size);
 };
 
 array_at : fn (self *Array, i usize) *void {
@@ -106,7 +105,7 @@ array_reserve : fn (self *Array, elem_count usize) {
   if (self == null) { return; }
   if ((elem_count == 0) || elem_count <= self->capacity) { return; }
 
-  self->_data = realloc(self->_data, self->elem_size * elem_count);
+  self->_data = mem_realloc(self->_data, self->elem_size * elem_count);
   if (self->_data == null) { abort(); }
 
   self->capacity = elem_count;

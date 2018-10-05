@@ -6,7 +6,7 @@
   };
 
   loop (i := 0; i < count; i += 1) {
-    mem := cast(*Foo) alloc(sizeof(Foo));
+    mem := cast(*Foo) mem_alloc(sizeof(Foo));
     assert(mem != null);
 
     mem->i = 10;
@@ -14,7 +14,7 @@
 
     assert(mem->i == 10);
     assert(mem->j == 20);
-    free(mem);
+    mem_free(mem);
   }
 };
 
@@ -28,7 +28,7 @@
   mem *Foo[count];
 
   loop (i := 0; i < count; i += 1) {
-    mem[i] = cast(*Foo) alloc(sizeof(Foo));
+    mem[i] = cast(*Foo) mem_alloc(sizeof(Foo));
     assert(mem[i] != null);
     mem[i]->i = 10;
     mem[i]->j = 20;
@@ -37,6 +37,45 @@
   loop (i := 0; i < count; i += 1) {
     assert(mem[i]->i == 10);
     assert(mem[i]->j == 20);
-    free(mem[i]);
+    mem_free(mem[i]);
   }
+};
+
+#test "copying" {
+  a := 10;
+  b := 0; 
+
+  mem_copy(&b, &a, sizeof(a));
+  assert(b == a);
+
+  Foo : struct {
+    i usize,
+    j usize
+  };
+
+  foo1 := Foo { .i = 10, .j = 20 };
+  foo2 := Foo { .i = 0, .j = 0 };
+
+  mem_copy(&foo2, &foo1, sizeof(foo1));
+  assert(foo1.i == foo2.i);
+  assert(foo1.j == foo2.j);
+};
+
+#test "reallocation" {
+  Foo : struct {
+    i usize,
+    j usize
+  };
+
+  foo := cast(*Foo) mem_alloc(sizeof(Foo));
+  assert(foo != null);
+  foo->i = 10;
+  foo->j = 20;
+
+  foo = mem_realloc(foo, sizeof(Foo));
+  assert(foo != null);
+  assert(foo->i == 10);
+  assert(foo->j == 20);
+
+  mem_free(foo);
 };

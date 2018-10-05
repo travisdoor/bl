@@ -18,14 +18,14 @@
     j s32
   };
 
-  foo := cast(*Foo) alloc(sizeof(Foo)); 
+  foo := cast(*Foo) mem_alloc(sizeof(Foo)); 
   assert(foo != null);
   foo->i = 1;
   foo->j = 2;
 
   assert(foo->i == 1);
   assert(foo->j == 2);
-  free(foo);
+  mem_free(foo);
 };
 
 #test "nested structure" {
