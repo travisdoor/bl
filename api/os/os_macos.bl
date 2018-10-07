@@ -66,8 +66,8 @@ __bl_exit : fn () {
 };
 
 __bl_alloc : fn (count usize) *void {
-  p := sbrk(0); 
-  rq := sbrk(count);
+  p : sbrk(0); 
+  rq : sbrk(count);
 
   if (rq == cast(*void) (-1)) {
     return null; 

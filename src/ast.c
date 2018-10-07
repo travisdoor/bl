@@ -942,22 +942,28 @@ ast_type_cmp(Node *first, Node *second)
   Node *f = ast_get_type(first);
   Node *s = ast_get_type(second);
 
+  assert(f && s);
   if (f == s) return true;
+  TypeKind fkind = ast_type_kind(f);
+  TypeKind skind = ast_type_kind(s);
+
+  if (fkind == TYPE_KIND_ENUM) {
+    f     = ast_get_type(peek_type_enum(f)->base_type);
+    fkind = ast_type_kind(f);
+  }
+  if (skind == TYPE_KIND_ENUM) {
+    s = ast_get_type(peek_type_enum(s)->base_type);
+    skind = ast_type_kind(s);
+  }
+
+  if (fkind != skind) return false;
   if (node_code(f) != node_code(s)) return false;
-  if (ast_type_kind(f) != ast_type_kind(s)) return false;
 
   // same nodes
   switch (node_code(f)) {
 
   case NODE_TYPE_FUND: {
     if (peek_type_fund(f)->code != peek_type_fund(s)->code) return false;
-    break;
-  }
-
-  case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_f = peek_type_enum(f);
-    NodeTypeEnum *_s = peek_type_enum(s);
-    if (peek_type_fund(_f->base_type)->code != peek_type_fund(_s->base_type)->code) return false;
     break;
   }
 
@@ -1116,19 +1122,18 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
   if (fkind == TYPE_KIND_STRING && tkind == TYPE_KIND_PTR) return true;
   if (tkind == TYPE_KIND_STRING && fkind == TYPE_KIND_PTR) return true;
 
-  if ((fkind == TYPE_KIND_SINT || fkind == TYPE_KIND_UINT || fkind == TYPE_KIND_SIZE) &&
+  /*if ((fkind == TYPE_KIND_SINT || fkind == TYPE_KIND_UINT || fkind == TYPE_KIND_SIZE) &&
       (tkind == TYPE_KIND_SINT || tkind == TYPE_KIND_UINT || tkind == TYPE_KIND_SIZE))
-    return true;
+      return true;*/
 
   if (tkind == TYPE_KIND_ENUM) {
     return ast_can_impl_cast(from_type, peek_type_enum(to_type)->base_type);
   }
 
-  if (fkind != tkind) return false;
   if (fkind == TYPE_KIND_STRUCT || fkind == TYPE_KIND_FN) return false;
   if (fkind == TYPE_KIND_PTR && node_is(from_type, NODE_TYPE_FN)) return false;
 
-  return true;
+  return fkind == tkind;
 }
 
 Node *

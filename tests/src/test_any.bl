@@ -1,19 +1,19 @@
 #test "fundamental types" {
-  func : fn (in Any) {
-    if (in.type == TypeKind.UInt) {
-      val := cast(*u32) in.value;
+  func : fn (in any) {
+    if (in.t == TypeKind.UInt) {
+      val := cast(*u32) in.val;
       assert(*val == 10);
-    } else if (in.type == TypeKind.SInt) {
-      val := cast(*s32) in.value;
+    } else if (in.t == TypeKind.SInt) {
+      val := cast(*s32) in.val;
       assert(*val == 11);
-    } else if (in.type == TypeKind.Size) {
-      val := cast(*usize) in.value;
+    } else if (in.t == TypeKind.Size) {
+      val := cast(*usize) in.val;
       assert(*val == 12);
-    } else if (in.type == TypeKind.Real) {
-      val := cast(*f32) in.value;
+    } else if (in.t == TypeKind.Real) {
+      val := cast(*f32) in.val;
       assert(*val == 13.f);
-    } else if (in.type == TypeKind.Bool) {
-      val := cast(*bool) in.value;
+    } else if (in.t == TypeKind.Bool) {
+      val := cast(*bool) in.val;
       assert(*val);
     }
   };

@@ -166,7 +166,9 @@ post_ident(Visitor *visitor, Node *ident, void *cnt)
   }
 
   NodeDecl *_decl = peek_decl(_ident->ref);
-  if ((_decl->in_gscope && _decl->mutable) || _decl->kind == DECL_KIND_FN) {
+  if (_decl->kind == DECL_KIND_FN) {
+    ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
+  } else if (_decl->kind == DECL_KIND_FIELD && _decl->in_gscope) {
     ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
   }
 

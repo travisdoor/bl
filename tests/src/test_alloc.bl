@@ -19,7 +19,7 @@
 };
 
 #test "multiple allocations" {
-  count : 10;
+  count usize : 10;
   Foo : struct {
     i s32,
     j s32
@@ -27,14 +27,14 @@
 
   mem *Foo[count];
 
-  loop (i := 0; i < count; i += 1) {
+  loop (i usize := 0; i < count; i += 1) {
     mem[i] = cast(*Foo) mem_alloc(sizeof(Foo));
     assert(mem[i] != null);
     mem[i]->i = 10;
     mem[i]->j = 20;
   }
 
-  loop (i := 0; i < count; i += 1) {
+  loop (i usize := 0; i < count; i += 1) {
     assert(mem[i]->i == 10);
     assert(mem[i]->j == 20);
     mem_free(mem[i]);

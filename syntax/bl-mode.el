@@ -20,7 +20,7 @@
 
 (defconst bl-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" 
-    "char" "string" "type_t" "Any"))
+    "char" "string" "type" "any" "TypeInfo" "TypeKind"))
 
 (defconst bl-constants
   '("true" "false" "null"))

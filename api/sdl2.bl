@@ -372,7 +372,7 @@ SDL_Thread : struct {
 };
 
 SDL_KeyboardEvent : struct {
-  type      SDL_EventType,
+  etype     SDL_EventType,
   timestamp u32,
   window_id u32,
   state     u8,

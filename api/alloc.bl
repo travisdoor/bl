@@ -28,13 +28,13 @@
 
 #load "utils.bl"
 
-_AllocMeta : struct {
+_MemMeta : struct {
   size usize,
-  next *_AllocMeta,
-  prev *_AllocMeta,
+  next *_MemMeta,
+  prev *_MemMeta,
 };
 
-_alloc_free_pool *_AllocMeta := null;
+_mem_free_pool *_MemMeta := null;
 
 mem_alloc : fn (count usize) *void {
   if (count == 0) { return null; }
@@ -42,16 +42,17 @@ mem_alloc : fn (count usize) *void {
   mem := _get_free(count);
   if (mem == null) {
     //print("allocation\n");
-    size : count + sizeof(_AllocMeta);
-    mem = cast(*_AllocMeta) __bl_alloc(size);
+    size : count + sizeof(_MemMeta);
+    mem = cast(*_MemMeta) __bl_alloc(size);
     mem->size = count;
   }
-  return ptrshift(mem, sizeof(_AllocMeta)); 
+
+  return ptrrshift(mem, sizeof(_MemMeta)); 
 };
 
 mem_realloc : fn (ptr *void, count usize) *void {
   if (count == 0 || ptr == null) { return null; }
-  mem := mem_alloc(count);
+  mem : mem_alloc(count);
   mem_copy(mem, ptr, count);
   mem_free(ptr);
   return mem;
@@ -68,15 +69,15 @@ mem_copy : fn (dest *void, src *void, len usize) {
   _s := cast(*u8) src;
 
   // PERFORMANCE: copy 8 bytes at once if possible???
-  loop (i := 0; i < len; i += 1) {
+  loop (i usize := 0; i < len; i += 1) {
     *_d = *_s;
-    _d = ptrshift(_d, sizeof(u8)); 
-    _s = ptrshift(_s, sizeof(u8)); 
+    _d = ptrrshift(_d, sizeof(u8)); 
+    _s = ptrrshift(_s, sizeof(u8)); 
   }
 };
 
-_get_free : fn (size usize) *_AllocMeta {
-  unlink : fn (node *_AllocMeta) *_AllocMeta {
+_get_free : fn (size usize) *_MemMeta {
+  unlink : fn (node *_MemMeta) *_MemMeta {
     if (node->next != null) {
       node->next->prev = node->prev;
     }
@@ -86,7 +87,7 @@ _get_free : fn (size usize) *_AllocMeta {
     }
 
     if (node->next == null && node->prev == null) {
-      _alloc_free_pool = null;
+      _mem_free_pool = null;
     }
 
     node->next = null;
@@ -95,7 +96,7 @@ _get_free : fn (size usize) *_AllocMeta {
     return node; 
   };
 
-  found := _alloc_free_pool;
+  found := _mem_free_pool;
   loop (found != null) {
     if (found->size <= size) {
       return unlink(found);
@@ -107,19 +108,19 @@ _get_free : fn (size usize) *_AllocMeta {
 };
 
 _put_free : fn (mem *void) {
-  link : fn (node *_AllocMeta) {
-    if (_alloc_free_pool == null) {
+  link : fn (node *_MemMeta) {
+    if (_mem_free_pool == null) {
       node->next = null;
       node->prev = null;
-      _alloc_free_pool = node;
+      _mem_free_pool = node;
     } else {
-      node->next = _alloc_free_pool;
+      node->next = _mem_free_pool;
       node->prev = null;
-      _alloc_free_pool->prev = node;
-      _alloc_free_pool = node;
+      _mem_free_pool->prev = node;
+      _mem_free_pool = node;
     }
   };
 
-  meta := cast(*_AllocMeta) ptrshift(mem, - sizeof(_AllocMeta)); 
+  meta := cast(*_MemMeta) ptrlshift(mem, sizeof(_MemMeta)); 
   link(meta);
 };

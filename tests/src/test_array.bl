@@ -5,12 +5,12 @@
 
 #test "fundamental types" {
   arr s32[100];
-  loop (i := 0; i < arr.count; i += 1) {
-    arr[i] = i;
+  loop (i usize := 0; i < arr.count; i += 1) {
+    arr[i] = cast(s32) i;
   }
 
-  loop (i := 0; i < arr.count; i += 1) {
-    assert(arr[i] == i);
+  loop (i usize := 0; i < arr.count; i += 1) {
+    assert(arr[i] == cast(s32) i);
   }
 };
 
@@ -22,12 +22,12 @@
   foos Foo[100];
   foos.count;
 
-  loop (i := 0; i < foos.count; i += 1) {
-    foos[i].i = i;
+  loop (i usize := 0; i < foos.count; i += 1) {
+    foos[i].i = cast(s32) i;
   }
 
-  loop (i := 0; i < foos.count; i += 1) {
-    assert(foos[i].i == i);
+  loop (i usize := 0; i < foos.count; i += 1) {
+    assert(foos[i].i == cast(s32) i);
   }
 };
 
@@ -37,20 +37,20 @@
   };
 
   bar Bar;
-  loop (i := 0; i < bar.is.count; i += 1) {
-    bar.is[i] = i;
+  loop (i usize := 0; i < bar.is.count; i += 1) {
+    bar.is[i] = cast(s32) i;
   }
 
-  loop (i := 0; i < bar.is.count; i += 1) {
-    assert(bar.is[i] == i);
+  loop (i usize := 0; i < bar.is.count; i += 1) {
+    assert(bar.is[i] == cast(s32) i);
   }
 };
 
 #test "constant expr size" {
-  B : 5;
-  C : 20 + B;
-  arr1 s32[(10 + 2 * 3) * 2];
-  arr2 s32[200 + 1 + C]; 
+  B usize : 5;
+  C usize : 20 + B;
+  arr1 s32[cast(usize) (10 + 2 * 3) * 2];
+  arr2 s32[cast(usize) 200 + 1 + C]; 
 
   assert(arr1.count == 32);
   assert(arr2.count == 226);

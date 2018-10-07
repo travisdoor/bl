@@ -869,7 +869,7 @@ check_ident(Context *cnt, Node **ident)
     if (_ident->arr) {
       /* check valid type of array size */
 
-      if (!ast_can_impl_cast(ast_get_type(_ident->arr), &ftypes[FTYPE_SIZE])) {
+      if (!implicit_cast(cnt, &_ident->arr, &ftypes[FTYPE_SIZE])) {
         check_error_invalid_types(cnt, ast_get_type(_ident->arr), &ftypes[FTYPE_SIZE], _ident->arr);
       }
 
@@ -1007,6 +1007,7 @@ check_expr_binop(Context *cnt, Node **binop)
       if (!peek_decl(_lhs->ref)->mutable) {
         check_error_node(cnt, ERR_INVALID_MUTABILITY, *binop, BUILDER_CUR_WORD,
                          "left-hand side declaration is not mutable and cannot be assigned");
+        check_note_node(cnt, _lhs->ref, BUILDER_CUR_WORD, "declared here");
       }
     }
   }
@@ -1052,6 +1053,28 @@ check_expr_cast(Context *cnt, Node **cast)
   NodeExprCast *_cast = peek_expr_cast(*cast);
   assert(_cast->type);
   _cast->type = ast_get_type(_cast->type);
+
+  if (ast_type_cmp(_cast->type, ast_get_type(_cast->next))) {
+    /* unnecessary cast -> so remove them */
+    *cast = _cast->next;
+  }
+
+  TypeKind src_kind  = ast_type_kind(ast_get_type(_cast->next));
+  TypeKind dest_kind = ast_type_kind(_cast->type);
+
+  const bool valid = src_kind != TYPE_KIND_FN && src_kind != TYPE_KIND_STRUCT &&
+                     src_kind != TYPE_KIND_VOID && dest_kind != TYPE_KIND_FN &&
+                     dest_kind != TYPE_KIND_STRUCT && dest_kind != TYPE_KIND_VOID;
+
+  if (!valid) {
+    char tmp_first[256];
+    char tmp_second[256];
+    ast_type_to_string(tmp_first, 256, ast_get_type(_cast->next));
+    ast_type_to_string(tmp_second, 256, _cast->type);
+    check_error_node(cnt, ERR_INVALID_CAST, *cast, BUILDER_CUR_WORD,
+                     "cannot build cast from '%s' to '%s'", tmp_first, tmp_second);
+  }
+
   finish();
 }
 
@@ -1235,10 +1258,11 @@ infer_type(Context *cnt, Node *decl)
   Node *inferred_type = ast_get_type(_decl->value);
   if (!inferred_type) return false;
 
-  if (_decl->type && !ast_type_cmp(inferred_type, _decl->type) &&
-      !implicit_cast(cnt, &_decl->value, _decl->type)) {
-    check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
-    return false;
+  if (_decl->type && !ast_type_cmp(inferred_type, _decl->type)) {
+    if (!implicit_cast(cnt, &_decl->value, _decl->type)) {
+      check_error_invalid_types(cnt, _decl->type, inferred_type, _decl->value);
+      return false;
+    }
   }
 
   /* infer type from value */
@@ -1300,8 +1324,6 @@ check_decl(Context *cnt, Node **decl)
   }
 
   case DECL_KIND_FIELD: {
-    assert(_decl->mutable);
-
     if (ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
       char tmp[256];
       ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
@@ -1312,19 +1334,6 @@ check_decl(Context *cnt, Node **decl)
     if (_decl->in_gscope && !_decl->value) {
       check_error_node(cnt, ERR_EXPECTED_EXPR, _decl->type, BUILDER_CUR_AFTER,
                        "global variables needs to be initialized");
-    }
-    break;
-  }
-
-  case DECL_KIND_CONSTANT: {
-    assert(!_decl->mutable);
-
-    if (ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN ||
-        ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_STRUCT) {
-      char tmp[256];
-      ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
-      check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
-                       "invalid type of constant '%s'", tmp);
     }
     break;
   }

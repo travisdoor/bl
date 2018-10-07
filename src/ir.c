@@ -133,8 +133,10 @@ ir_decl_fn(Context *cnt, Node *decl);
 static LLVMValueRef
 ir_decl_mut(Context *cnt, Node *decl);
 
+#if 0
 static LLVMValueRef
 ir_decl_immut(Context *cnt, Node *decl);
+#endif
 
 static LLVMValueRef
 ir_block(Context *cnt, Node *block);
@@ -485,7 +487,7 @@ ir_lit(Context *cnt, Node *lit)
     result = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
   case FTYPE_STRING:
-    // TODO
+    // TODO: cache all strings in current module !!!
     result = LLVMBuildGlobalStringPtr(cnt->llvm_builder, PEEK_STR, "str");
     // result = get_or_create_const_string(cnt, _lit->value.str);
     break;
@@ -539,6 +541,8 @@ ir_lit_cmp(Context *cnt, Node *lit)
       LLVMValueRef llvm_field_dest =
           LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)(i++), gname("elem"));
       LLVMValueRef llvm_field = ir_node(cnt, field);
+      if (should_load(field, llvm_field))
+        llvm_field = LLVMBuildLoad(cnt->llvm_builder, llvm_field, gname("tmp"));
       LLVMBuildStore(cnt->llvm_builder, llvm_field, llvm_field_dest);
     }
   }
@@ -672,76 +676,115 @@ ir_expr_elem(Context *cnt, Node *elem)
 LLVMValueRef
 ir_expr_cast(Context *cnt, Node *cast)
 {
-  NodeExprCast *_cast     = peek_expr_cast(cast);
-  LLVMTypeRef   dest_type = to_llvm_type(cnt, _cast->type);
-  LLVMValueRef  next      = ir_node(cnt, _cast->next);
+  NodeExprCast *_cast          = peek_expr_cast(cast);
+  LLVMTypeRef   llvm_dest_type = to_llvm_type(cnt, _cast->type);
+  LLVMValueRef  llvm_src       = ir_node(cnt, _cast->next);
 
-  if (should_load(_cast->next, next)) {
-    next = LLVMBuildLoad(cnt->llvm_builder, next, gname("tmp"));
+  if (should_load(_cast->next, llvm_src)) {
+    llvm_src = LLVMBuildLoad(cnt->llvm_builder, llvm_src, gname("tmp"));
   }
-
-  LLVMTypeKind src_kind  = LLVMGetTypeKind(LLVMTypeOf(next));
-  LLVMTypeKind dest_kind = LLVMGetTypeKind(dest_type);
 
   LLVMTargetDataRef  data_layout = LLVMGetModuleDataLayout(cnt->llvm_module);
-  unsigned long long src_size    = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(next));
-  unsigned long long dest_size   = LLVMSizeOfTypeInBits(data_layout, dest_type);
+  unsigned long long src_size    = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(llvm_src));
+  unsigned long long dest_size   = LLVMSizeOfTypeInBits(data_layout, llvm_dest_type);
 
-  LLVMOpcode op = src_size > dest_size ? LLVMTrunc : LLVMSExt;
+  TypeKind src_kind  = ast_type_kind(ast_get_type(_cast->next));
+  TypeKind dest_kind = ast_type_kind(_cast->type);
 
-  switch (dest_kind) {
+  /* types are same -> no cast needed */
+  if (src_kind == dest_kind && src_size == dest_size && src_kind != TYPE_KIND_PTR) {
+    // assert(false && "try to build cast on a same types");
+    return llvm_src;
+  }
 
-  case LLVMPointerTypeKind: {
-    switch (src_kind) {
-    case LLVMPointerTypeKind:
-      op = LLVMBitCast;
-      break;
-    case LLVMIntegerTypeKind:
+  LLVMOpcode op = 0;
+
+  /* u8, u16, u32, u64 */
+  if (src_kind == TYPE_KIND_UINT) {
+    if (dest_kind == TYPE_KIND_UINT)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_SINT)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_REAL)
+      op = LLVMUIToFP;
+    else if (dest_kind == TYPE_KIND_PTR)
       op = LLVMIntToPtr;
-      break;
-    default:
-      break;
-    }
-    break;
-  }
+    else if (dest_kind == TYPE_KIND_BOOL)
+      op = LLVMTrunc; /* should be true or false ??? */
+    else if (dest_kind == TYPE_KIND_STRING)
+      op = LLVMIntToPtr; 
+    else if (dest_kind == TYPE_KIND_CHAR)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
 
-  case LLVMIntegerTypeKind: {
-    switch (src_kind) {
-    case LLVMFloatTypeKind:
-    case LLVMDoubleTypeKind:
-      op = LLVMFPToSI;
-      break;
-    case LLVMPointerTypeKind:
-      op = LLVMPtrToInt;
-      break;
-    default:
-      break;
-    }
-    break;
-  }
+    /* usize */
+  } else if (src_kind == TYPE_KIND_SIZE) {
+    if (dest_kind == TYPE_KIND_UINT)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_SINT)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_REAL)
+      op = LLVMUIToFP;
+    else if (dest_kind == TYPE_KIND_PTR)
+      op = LLVMIntToPtr;
 
-  case LLVMFloatTypeKind:
-  case LLVMDoubleTypeKind: {
-    switch (src_kind) {
-    case LLVMIntegerTypeKind:
+    /* s8, s16, s32, s64 */
+  } else if (src_kind == TYPE_KIND_SINT) {
+    if (dest_kind == TYPE_KIND_SINT)
+      op = src_size < dest_size ? LLVMSExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_REAL)
       op = LLVMSIToFP;
-      break;
-    case LLVMFloatTypeKind:
-    case LLVMDoubleTypeKind: {
-      op = LLVMFPExt;
-      break;
-    }
-    default:
-      break;
-    }
-    break;
+    else if (dest_kind == TYPE_KIND_PTR)
+      op = LLVMIntToPtr;
+    if (dest_kind == TYPE_KIND_UINT)
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+
+    /* f32, f64 */
+  } else if (src_kind == TYPE_KIND_REAL) {
+    if (dest_kind == TYPE_KIND_REAL) op = src_size < dest_size ? LLVMFPExt : LLVMFPTrunc;
+
+    /* pointers */
+  } else if (src_kind == TYPE_KIND_PTR) {
+    if (dest_kind == TYPE_KIND_SINT)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_UINT)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_PTR)
+      op = LLVMBitCast;
+
+    /* bool */
+  } else if (src_kind == TYPE_KIND_BOOL) {
+    if (dest_kind == TYPE_KIND_CHAR)
+      op = LLVMZExt;
+    else if (dest_kind == TYPE_KIND_SINT)
+      op = LLVMZExt;
+    else if (dest_kind == TYPE_KIND_UINT)
+      op = LLVMZExt;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = LLVMZExt;
+    else if (dest_kind == TYPE_KIND_PTR)
+      op = LLVMIntToPtr;
+    else if (dest_kind == TYPE_KIND_STRING)
+      op = LLVMIntToPtr;
+
+    /* string */
+  } else if (src_kind == TYPE_KIND_STRING) {
+    if (dest_kind == TYPE_KIND_PTR) op = LLVMBitCast;
   }
 
-  default:
-    bl_abort("invalid cast combination");
+  if (op == 0) {
+    char tmp_first[256];
+    char tmp_second[256];
+    ast_type_to_string(tmp_first, 256, ast_get_type(_cast->next));
+    ast_type_to_string(tmp_second, 256, _cast->type);
+    bl_abort("invalid cast from '%s' to '%s'", tmp_first, tmp_second);
   }
 
-  return LLVMBuildCast(cnt->llvm_builder, op, next, dest_type, gname("tmp"));
+  // bl_log("cast %d to %d with size %d to %d", src_kind, dest_kind, src_size, dest_size);
+  return LLVMBuildCast(cnt->llvm_builder, op, llvm_src, llvm_dest_type, gname("cast"));
 }
 
 LLVMValueRef
@@ -773,10 +816,6 @@ ir_ident(Context *cnt, Node *ident)
 
   case DECL_KIND_ARG:
     result = llvm_values_get(cnt, _ident->ref);
-    break;
-
-  case DECL_KIND_CONSTANT:
-    result = ir_node(cnt, _ref->value);
     break;
 
   case DECL_KIND_MEMBER:
@@ -1052,6 +1091,7 @@ ir_decl_mut(Context *cnt, Node *decl)
   return result;
 }
 
+#if 0
 LLVMValueRef
 ir_decl_immut(Context *cnt, Node *decl)
 {
@@ -1061,6 +1101,7 @@ ir_decl_immut(Context *cnt, Node *decl)
   llvm_values_insert(cnt, decl, result);
   return result;
 }
+#endif
 
 LLVMValueRef
 ir_fn_get(Context *cnt, Node *fn)
@@ -1194,8 +1235,7 @@ ir_decl(Context *cnt, Node *decl)
     return ir_decl_mut(cnt, decl);
   case DECL_KIND_ARG:
     return ir_decl_mut(cnt, decl);
-  case DECL_KIND_CONSTANT:
-    return ir_decl_immut(cnt, decl);
+    // return ir_decl_immut(cnt, decl);
   case DECL_KIND_STRUCT:
   case DECL_KIND_ENUM:
   case DECL_KIND_VARIANT:

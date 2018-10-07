@@ -29,6 +29,10 @@
 /*
  * Shift pointer by offset.
  */
-ptrshift : fn (ptr *void, offset s32) *void {
+ptrrshift : fn (ptr *void, offset usize) *void {
   return cast(*void)(cast(usize) ptr + offset);
+};
+
+ptrlshift : fn (ptr *void, offset usize) *void {
+  return cast(*void)(cast(usize) ptr - offset);
 };

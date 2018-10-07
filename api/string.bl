@@ -28,13 +28,13 @@
 
 #load "utils.bl"
 
-STRING_TERMINATOR : '\0';
+StringTerminator : '\0';
 
 string_len : fn (s *char) usize {
   len usize := 0;
   if (s == null) { return len; }    
 
-  loop (; *s != STRING_TERMINATOR; s = ptrshift(s, sizeof(char))) {
+  loop (; *s != StringTerminator; s = ptrrshift(s, sizeof(char))) {
     len += 1;
   }
 

@@ -36,18 +36,18 @@ OS_LINUX   : 2;
 EXIT_FAILURE : 1;
 EXIT_SUCCESS : 0;
 
-print : fn (v Any) {
-  if (v.type == TypeKind.String) {  
-    tmp := cast(*string) v.value;
+print : fn (v any) {
+  if (v.t == TypeKind.String) {  
+    tmp := cast(*string) v.val;
     __bl_print(tmp);
-  } else if (v.type == TypeKind.Bool) {
-    tmp := cast(*bool) v.value;
+  } else if (v.t == TypeKind.Bool) {
+    tmp := cast(*bool) v.val;
     if (*tmp) {
       __bl_print("true\n");
     } else {
       __bl_print("false\n");
     }
-  } else if (v.type == TypeKind.SInt) {
+  } else if (v.t == TypeKind.SInt) {
     __bl_print("some number\n");
   }
 };
@@ -68,9 +68,9 @@ exit : fn () {
   __bl_exit();
 };
 
-Any : struct {
-  value *u8,
-  type TypeKind
+any : struct {
+  val *u8,
+  t    TypeKind
 };
 
 TypeKind : enum s32 {

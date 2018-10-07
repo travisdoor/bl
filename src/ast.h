@@ -39,7 +39,7 @@
 
 // clang-format off
 #define _FTYPE_LIST                                                                         \
-    ft(TYPE,   type_t) \
+    ft(TYPE,   type) \
     ft(VOID,   void) \
     ft(S8,     s8) \
     ft(S16,    s16) \
@@ -60,7 +60,7 @@
     bt(MAIN,      main) \
     bt(ARR_COUNT, count) \
     bt(ASSERT,    assert) \
-    bt(ANY,    Any) \
+    bt(ANY,       any) \
 
 #define _NODE_TYPE_LIST \
   nt(BAD, Bad, bad, struct { \
@@ -246,16 +246,16 @@ typedef enum
 
 typedef enum
 {
-  DECL_KIND_UNKNOWN  = -1,
-  DECL_KIND_FIELD    = 0, /* foo s32; foo := 0; */
-  DECL_KIND_FN       = 1, /* foo : fn () {} */
-  DECL_KIND_STRUCT   = 2, /* foo : struct {} */
-  DECL_KIND_MEMBER   = 3, /* structure member */
-  DECL_KIND_ARG      = 4, /* function argument */
-  DECL_KIND_ENUM     = 5, /* foo : enum {} */
-  DECL_KIND_VARIANT  = 6, /* enum variant */
-  DECL_KIND_CONSTANT = 7, /* foo : 10; foo : bar; */
-  DECL_KIND_TYPE     = 8, /* foo : s32; foo : bar; */
+  DECL_KIND_UNKNOWN = -1,
+  DECL_KIND_FIELD   = 0, /* foo s32; foo := 0; */
+  DECL_KIND_FN      = 1, /* foo : fn () {} */
+  DECL_KIND_STRUCT  = 2, /* foo : struct {} */
+  DECL_KIND_MEMBER  = 3, /* structure member */
+  DECL_KIND_ARG     = 4, /* function argument */
+  DECL_KIND_ENUM    = 5, /* foo : enum {} */
+  DECL_KIND_VARIANT = 6, /* enum variant */
+  DECL_KIND_TYPE    = 7, /* foo : s32; foo : bar; */
+  // DECL_KIND_CONSTANT = 8, /* foo : 10; foo : bar; */
 } DeclKind;
 
 typedef enum

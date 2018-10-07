@@ -1280,11 +1280,11 @@ parse_decl(Context *cnt)
       _decl->kind = DECL_KIND_STRUCT;
       break;
     default:
-      _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT;
+      _decl->kind = DECL_KIND_FIELD;
       break;
     }
   } else {
-    _decl->kind = _decl->mutable ? DECL_KIND_FIELD : DECL_KIND_CONSTANT;
+    _decl->kind = DECL_KIND_FIELD;
   }
 
   pop_curr_decl(cnt);

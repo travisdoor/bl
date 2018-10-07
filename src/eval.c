@@ -89,17 +89,30 @@ eval_binop(Eval *eval, Node *binop);
 static bool
 eval_decl(Eval *eval, Node *decl);
 
+static bool
+eval_cast(Eval *eval, Node *cast);
+
 bool
 eval_lit(Eval *eval, Node *lit)
 {
   NodeLit *_lit = peek_lit(lit);
   /* TODO: support only signed integers for now! */
-  assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
+  //assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
   Object tmp = obj_new_s64((int64_t) _lit->value.u);
   push(eval, tmp);
 
   return true;
+}
+
+bool
+eval_cast(Eval *eval, Node *cast)
+{
+  NodeExprCast *_cast = peek_expr_cast(cast);
+  assert(_cast->next);
+  /* TODO */
+ 
+  return eval_node(eval, _cast->next);
 }
 
 bool
@@ -119,7 +132,7 @@ eval_decl(Eval *eval, Node *decl)
 {
   NodeDecl *_decl = peek_decl(decl);
   assert(_decl->value);
-  if (_decl->kind != DECL_KIND_CONSTANT) return false;
+  //if (_decl->kind != DECL_KIND_CONSTANT) return false;
   return eval_node(eval, _decl->value);
 }
 
@@ -173,6 +186,8 @@ eval_node(Eval *eval, Node *node)
     return eval_lit(eval, node);
   case NODE_EXPR_BINOP:
     return eval_binop(eval, node);
+  case NODE_EXPR_CAST:
+    return eval_cast(eval, node);
   case NODE_IDENT:
     return eval_ident(eval, node);
   case NODE_DECL:

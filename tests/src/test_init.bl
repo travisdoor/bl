@@ -9,7 +9,7 @@
   assert(c);
 };
 
-#test "custom types" {
+#test "custom types const initializers" {
   Foo : struct {
     i s32,
     j s32
@@ -23,11 +23,52 @@
   assert(foo.i == 2);
   assert(foo.j == 1);
 
-  a : 1;
-  foo = Foo { .j = a, .i = 2 };
+  //a : 1;
+  //foo = Foo { .j = a, .i = 2 };
+};
 
+#test "custom types variable initializers" {
+  Foo : struct {
+    i s32,
+    j s32
+  };
 
-  Foo { .j = 0, .i = 2 };
+  i := 1;
+  j := 2;
+
+  foo := Foo { .i = i, .j = j };
+  assert(foo.i == 1);
+  assert(foo.j == 2);
+};
+
+#test "immutable struct instance" {
+  Foo : struct {
+    i s32,
+    j s32
+  };
+
+  foo : Foo { .i = 1, .j = 2 };
+  assert(foo.i == 1);
+  assert(foo.j == 2);
+};
+
+#test "nested custom types" {
+  Foo : struct {
+    i s32
+  };
+
+  Bar : struct {
+    foo Foo,
+    j s32
+  };
+
+  bar := Bar {
+    .foo = Foo { .i = 10 },
+    .j = 20
+  };
+
+  assert(bar.foo.i == 10);
+  assert(bar.j == 20);
 };
 
 g_test_init_Foo : struct {

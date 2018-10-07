@@ -1,25 +1,80 @@
 #test "fundamental types" {
-  a u8 := 10;
-  assert(a == 10);
+  a u8 : 10;
+  (a == 10);
+  assert(cast(u8)  a == 10);
   assert(cast(u16) a == 10);
   assert(cast(u32) a == 10);
   assert(cast(u64) a == 10);
+  assert(cast(s8)  a == 10);
+  assert(cast(s16) a == 10);
+  assert(cast(s32) a == 10);
+  assert(cast(s64) a == 10);
+  assert(cast(usize) a == 10);
+  assert(cast(*u8) a != null);
+  cast(bool) a;
+  cast(string) a;
+  cast(char) a;
 
-  b s8 := 10;
-  assert(b == 10);
+  c u64 : 10;
+  (c == 10);
+  assert(cast(u8)  c == 10);
+  assert(cast(u16) c == 10);
+  assert(cast(u32) c == 10);
+
+  b s8 : 10;
+  (b == 10);
+  assert(cast(s8) b == 10);
   assert(cast(s16) b == 10);
   assert(cast(s32) b == 10);
   assert(cast(s64) b == 10);
+  assert(cast(u8)  b == 10);
+  assert(cast(u16) b == 10);
+  assert(cast(u32) b == 10);
+  assert(cast(u64) b == 10);
 
-  c u64 := 10;
-  assert(c == 10);
-  assert(cast(u16) c == 10);
-  assert(cast(u32) c == 10);
-  assert(cast(u64) c == 10);
-
-  d s64 := 10;
-  assert(d == 10);
+  d s64 : 10;
+  (d == 10);
   assert(cast(s16) d == 10);
   assert(cast(s32) d == 10);
   assert(cast(s64) d == 10);
+
+  e f32 : 0.1f;
+  (e == 0.1f);
+  assert(cast(f64) e != 0.0);
+
+  f f64 : 0.1;
+  (f == 0.1);
+  assert(cast(f32) f != 0.0f);
+
+  g s32 : 10;
+  (g == 10);
+  assert(cast(f32) g == 10.f);
+  assert(cast(f64) g == 10.0);
+
+  h u32 : 10;
+  (h == 10);
+  assert(cast(f32) h == 10.f);
+  assert(cast(f64) h == 10.0);
+
+  i u8 : 10;
+  assert(cast(*s8) i != null);
+
+  j s8 : 10;
+  assert(cast(*s8) j != null);
+
+  k bool : true;
+  assert(cast(s32) k == 1);
+  assert(cast(u32) k == 1);
+  assert(cast(*u32) k != null);
+  cast(string) k;
+  cast(char) k;
+};
+
+#test "enums" {
+  Enum : enum {
+    A, B, C
+  };
+
+  a s32 := Enum.A;
+  e Enum := Enum.A;
 };
