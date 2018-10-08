@@ -62,7 +62,7 @@
     j s32
   };
 
-  bar := Bar {
+  bar : Bar {
     .foo = Foo { .i = 10 },
     .j = 20
   };
@@ -70,6 +70,11 @@
   assert(bar.foo.i == 10);
   assert(bar.j == 20);
 };
+
+/*#test "array initializer" {
+  arr s32 [3];
+  arr = s32 [3] { 0, 1, 2 };
+};*/
 
 g_test_init_Foo : struct {
   i s32,

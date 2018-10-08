@@ -38,10 +38,10 @@ EXIT_SUCCESS : 0;
 
 print : fn (v any) {
   if (v.t == TypeKind.String) {  
-    tmp := cast(*string) v.val;
+    tmp : cast(*string) v.val;
     __bl_print(tmp);
   } else if (v.t == TypeKind.Bool) {
-    tmp := cast(*bool) v.val;
+    tmp : cast(*bool) v.val;
     if (*tmp) {
       __bl_print("true\n");
     } else {

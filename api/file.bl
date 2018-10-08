@@ -39,7 +39,7 @@ file_open : fn (file *File, filepath string) bool {
   // get size of file stream in bytes
   fsize : fn (handle *void) usize {
     fseek(handle, 0, SEEK_END); 
-    size := ftell(handle);
+    size : ftell(handle);
     fseek(handle, 0, SEEK_SET); 
     return size;
   };

@@ -51,6 +51,7 @@ typedef struct
   Assembly *             assembly;
   BHashTable *           llvm_values;
   bool                   is_gscope;
+  BHashTable *           llvm_strings;
   LLVMModuleRef          llvm_module;
   LLVMBuilderRef         llvm_builder;
   LLVMContextRef         llvm_cnt;
@@ -245,6 +246,26 @@ static inline void
 llvm_values_reset(Context *cnt)
 {
   bo_htbl_clear(cnt->llvm_values);
+}
+
+static inline void
+llvm_strings_insert(Context *cnt, uint64_t hash, LLVMValueRef val)
+{
+  bo_htbl_insert(cnt->llvm_strings, hash, val);
+}
+
+static inline LLVMValueRef
+llvm_strings_get(Context *cnt, uint64_t hash)
+{
+  if (bo_htbl_has_key(cnt->llvm_strings, hash))
+    return bo_htbl_at(cnt->llvm_strings, hash, LLVMValueRef);
+  return NULL;
+}
+
+static inline void
+llvm_strings_reset(Context *cnt)
+{
+  bo_htbl_clear(cnt->llvm_strings);
 }
 
 static inline bool
@@ -486,14 +507,20 @@ ir_lit(Context *cnt, Node *lit)
   case FTYPE_BOOL:
     result = LLVMConstInt(LLVMInt1TypeInContext(cnt->llvm_cnt), PEEK_ULL, false);
     break;
-  case FTYPE_STRING:
-    // TODO: cache all strings in current module !!!
-    result = LLVMBuildGlobalStringPtr(cnt->llvm_builder, PEEK_STR, "str");
-    // result = get_or_create_const_string(cnt, _lit->value.str);
-    break;
   case FTYPE_CHAR:
     result = LLVMConstInt(LLVMInt8TypeInContext(cnt->llvm_cnt), PEEK_CHAR, false);
     break;
+
+  case FTYPE_STRING: {
+    uint64_t hash = bo_hash_from_str(PEEK_STR);
+    result        = llvm_strings_get(cnt, hash);
+    if (!result) {
+      result = LLVMBuildGlobalStringPtr(cnt->llvm_builder, PEEK_STR, "str");
+      llvm_strings_insert(cnt, hash, result);
+    }
+    break;
+  }
+
   default:
     bl_abort("invalid constant type %s", node_name(lit));
   }
@@ -714,7 +741,7 @@ ir_expr_cast(Context *cnt, Node *cast)
     else if (dest_kind == TYPE_KIND_BOOL)
       op = LLVMTrunc; /* should be true or false ??? */
     else if (dest_kind == TYPE_KIND_STRING)
-      op = LLVMIntToPtr; 
+      op = LLVMIntToPtr;
     else if (dest_kind == TYPE_KIND_CHAR)
       op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
 
@@ -737,12 +764,31 @@ ir_expr_cast(Context *cnt, Node *cast)
       op = LLVMSIToFP;
     else if (dest_kind == TYPE_KIND_PTR)
       op = LLVMIntToPtr;
-    if (dest_kind == TYPE_KIND_UINT)
-      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_UINT)
+      op = src_size < dest_size ? LLVMSExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = src_size < dest_size ? LLVMSExt : LLVMTrunc;
+    else if (dest_kind == TYPE_KIND_BOOL)
+      op = LLVMTrunc; /* should be true or false ??? */
+    else if (dest_kind == TYPE_KIND_STRING)
+      op = LLVMIntToPtr;
+    else if (dest_kind == TYPE_KIND_CHAR)
+      op = src_size < dest_size ? LLVMSExt : LLVMTrunc;
 
     /* f32, f64 */
   } else if (src_kind == TYPE_KIND_REAL) {
-    if (dest_kind == TYPE_KIND_REAL) op = src_size < dest_size ? LLVMFPExt : LLVMFPTrunc;
+    if (dest_kind == TYPE_KIND_REAL)
+      op = src_size < dest_size ? LLVMFPExt : LLVMFPTrunc;
+    else if (dest_kind == TYPE_KIND_SINT)
+      op = LLVMFPToSI;
+    else if (dest_kind == TYPE_KIND_UINT)
+      op = LLVMFPToUI;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = LLVMFPToUI;
+    else if (dest_kind == TYPE_KIND_BOOL)
+      op = LLVMFPToUI; /* should be true or false ??? */
+    else if (dest_kind == TYPE_KIND_CHAR)
+      op = LLVMFPToUI;
 
     /* pointers */
   } else if (src_kind == TYPE_KIND_PTR) {
@@ -769,10 +815,23 @@ ir_expr_cast(Context *cnt, Node *cast)
       op = LLVMIntToPtr;
     else if (dest_kind == TYPE_KIND_STRING)
       op = LLVMIntToPtr;
+    else if (dest_kind == TYPE_KIND_REAL)
+      op = LLVMUIToFP;
 
     /* string */
   } else if (src_kind == TYPE_KIND_STRING) {
-    if (dest_kind == TYPE_KIND_PTR) op = LLVMBitCast;
+    if (dest_kind == TYPE_KIND_UINT)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_SINT)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_SIZE)
+      op = LLVMPtrToInt;
+    else if (dest_kind == TYPE_KIND_PTR)
+      op = LLVMBitCast;
+    else if (dest_kind == TYPE_KIND_BOOL)
+      op = LLVMPtrToInt; /* should be true or false ??? */
+    else if (dest_kind == TYPE_KIND_CHAR)
+      op = LLVMPtrToInt;
   }
 
   if (op == 0) {
@@ -1584,6 +1643,7 @@ generate_decl(Context *cnt, Node *decl)
   ir_node(cnt, decl);
   bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
   llvm_values_reset(cnt);
+  llvm_strings_reset(cnt);
 }
 
 LLVMModuleRef
@@ -1710,6 +1770,7 @@ ir_run(Builder *builder, Assembly *assembly)
   cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
   cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
   cnt.llvm_values  = bo_htbl_new(sizeof(LLVMValueRef), 256);
+  cnt.llvm_strings = bo_htbl_new(sizeof(LLVMValueRef), 128);
 
   create_jit(&cnt);
   generate(&cnt);
@@ -1739,6 +1800,7 @@ ir_run(Builder *builder, Assembly *assembly)
   bo_unref(cnt.llvm_modules);
   bo_unref(cnt.llvm_values);
   bo_unref(cnt.jit_linked);
+  bo_unref(cnt.llvm_strings);
 
   LLVMDisposeBuilder(cnt.llvm_builder);
 }

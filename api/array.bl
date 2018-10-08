@@ -38,7 +38,7 @@ Array : struct {
 };
 
 array_new : fn (elem_size usize) *Array {
-  arr := cast(*Array) mem_alloc(sizeof(Array));
+  arr : cast(*Array) mem_alloc(sizeof(Array));
   array_init(arr, elem_size);
   return arr;
 };
@@ -89,7 +89,7 @@ array_push_back : fn (self *Array, value *void) {
     array_reserve(self, self->capacity * 2);
   }
 
-  new_elem := ptrshift(self->_data, self->size * self->elem_size);
+  new_elem : ptrshift(self->_data, self->size * self->elem_size);
   self->size = self->size + 1;
 
   mem_copy(new_elem, value, self->elem_size);

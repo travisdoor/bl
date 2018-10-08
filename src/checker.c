@@ -1062,9 +1062,16 @@ check_expr_cast(Context *cnt, Node **cast)
   TypeKind src_kind  = ast_type_kind(ast_get_type(_cast->next));
   TypeKind dest_kind = ast_type_kind(_cast->type);
 
-  const bool valid = src_kind != TYPE_KIND_FN && src_kind != TYPE_KIND_STRUCT &&
+  bool valid = src_kind != TYPE_KIND_FN && src_kind != TYPE_KIND_STRUCT &&
                      src_kind != TYPE_KIND_VOID && dest_kind != TYPE_KIND_FN &&
                      dest_kind != TYPE_KIND_STRUCT && dest_kind != TYPE_KIND_VOID;
+
+  /* invalid cast ptr -> real and vice versa */
+  valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_PTR) &&
+    !(src_kind == TYPE_KIND_PTR && dest_kind == TYPE_KIND_REAL);
+
+  valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_STRING) &&
+    !(src_kind == TYPE_KIND_STRING && dest_kind == TYPE_KIND_REAL);
 
   if (!valid) {
     char tmp_first[256];

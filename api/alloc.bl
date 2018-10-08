@@ -121,6 +121,6 @@ _put_free : fn (mem *void) {
     }
   };
 
-  meta := cast(*_MemMeta) ptrlshift(mem, sizeof(_MemMeta)); 
+  meta : cast(*_MemMeta) ptrlshift(mem, sizeof(_MemMeta)); 
   link(meta);
 };
