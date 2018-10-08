@@ -849,6 +849,7 @@ parse_expr_nested(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_end, BUILDER_CUR_WORD,
                 "unterminated sub-expression, missing ')', started %d:%d", tok_begin->src.line,
                 tok_begin->src.col);
+    return ast_bad(cnt->ast, tok_begin);
   }
 
   return expr;
@@ -1531,13 +1532,15 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_test(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_stmt_if(cnt))) {
@@ -1551,18 +1554,21 @@ next:
   }
 
   if ((*node = parse_stmt_break(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_decl(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_block(cnt))) {
@@ -1579,13 +1585,15 @@ next:
       parse_warning_node(cnt, *node, BUILDER_CUR_WORD, "unused expression");
     }
 
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_assert(cnt))) {
+    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    if (parse_semicolon_rq(cnt)) goto next;
+    goto next;
   }
 
   if ((*node = parse_load(cnt))) {
@@ -1649,7 +1657,7 @@ next:
   }
 
   Token *tok = tokens_peek(cnt->tokens);
-  if (!token_is(tok, SYM_RBLOCK) && !token_is(tok, SYM_EOF)) {
+  if (!token_is(tok, SYM_EOF)) {
     parse_error(cnt, ERR_UNEXPECTED_SYMBOL, tok, BUILDER_CUR_WORD,
                 "unexpected symbol in module body");
   }
