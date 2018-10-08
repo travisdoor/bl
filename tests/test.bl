@@ -1,8 +1,13 @@
+#load "limits.bl"
 
-
-
+printf : fn (s string, v s64) s32 #extern;
 
 main : fn () s32 {
-  a := (10 + 2;
+  print("hello\n");
+  a := 129;
+  print(a);
+
+  printf("min s64 = %ld\n", MinS64);
+  printf("max s64 = %lu\n", MaxS64);
   return 0;
 };

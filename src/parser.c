@@ -825,6 +825,8 @@ parse_unary_expr(Context *cnt, Token *op)
       return ast_bad(cnt->ast, curr_op);
     }
 
+    if (node_is(next, NODE_BAD)) return next;
+
     return ast_expr_unary(cnt->ast, curr_op, curr_op->sym, next, NULL);
   } else {
     return parse_atom_expr(cnt, op);
@@ -844,11 +846,12 @@ parse_expr_nested(Context *cnt)
   }
 
   /* eat ) */
-  Token *tok_end = tokens_consume(cnt->tokens);
-  if (tok_end->sym != SYM_RPAREN) {
-    parse_error(cnt, ERR_MISSING_BRACKET, tok_end, BUILDER_CUR_WORD,
-                "unterminated sub-expression, missing ')', started %d:%d", tok_begin->src.line,
-                tok_begin->src.col);
+  Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RPAREN);
+  if (!tok_end) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
+                "unterminated sub-expression, missing ')'");
+    parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "starting here");
     return ast_bad(cnt->ast, tok_begin);
   }
 
@@ -928,7 +931,8 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
   while (token_prec(lookahead, false) >= min_precedence) {
     op = lookahead;
     tokens_consume(cnt->tokens);
-    rhs       = parse_unary_expr(cnt, op);
+    rhs = parse_unary_expr(cnt, op);
+    if (rhs && node_is(rhs, NODE_BAD)) return rhs;
     lookahead = tokens_peek(cnt->tokens);
 
     while (token_prec(lookahead, false) > token_prec(op, false)) {
@@ -1629,14 +1633,14 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl(cnt))) {
+    if (node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    parse_semicolon_rq(cnt);
     goto next;
   }
 
   if ((*node = parse_test(cnt))) {
+    if (node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
-    parse_semicolon_rq(cnt);
     goto next;
   }
 

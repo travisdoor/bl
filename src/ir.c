@@ -800,6 +800,8 @@ ir_expr_cast(Context *cnt, Node *cast)
       op = LLVMPtrToInt;
     else if (dest_kind == TYPE_KIND_PTR)
       op = LLVMBitCast;
+    else if (dest_kind == TYPE_KIND_STRING)
+      op = LLVMBitCast;
 
     /* bool */
   } else if (src_kind == TYPE_KIND_BOOL) {

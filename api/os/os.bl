@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "alloc.bl"
+#load "print.bl"
 
 // All supported platforms
 OS_WINDOWS : 0;
@@ -35,22 +36,6 @@ OS_LINUX   : 2;
 
 EXIT_FAILURE : 1;
 EXIT_SUCCESS : 0;
-
-print : fn (v any) {
-  if (v.t == TypeKind.String) {  
-    tmp : cast(*string) v.val;
-    __bl_print(tmp);
-  } else if (v.t == TypeKind.Bool) {
-    tmp : cast(*bool) v.val;
-    if (*tmp) {
-      __bl_print("true\n");
-    } else {
-      __bl_print("false\n");
-    }
-  } else if (v.t == TypeKind.SInt) {
-    __bl_print("some number\n");
-  }
-};
 
 __assert : fn (expr bool, file string, line s32) {
   __bl_assert_failure : fn (file string, line s32) #extern;
