@@ -89,9 +89,6 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 static void
 to_any(Context *cnt, Node **node, Node *any_type);
 
-static void
-to_array(Context *cnt, Node **node);
-
 static bool
 infer_type(Context *cnt, Node *decl);
 
@@ -233,14 +230,6 @@ to_any(Context *cnt, Node **node, Node *any_type)
   type.u      = (unsigned long long)ast_type_kind(from_type);
   value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
   *node       = ast_lit_cmp(cnt->ast, NULL, any_type, value, 2, NULL);
-}
-
-void
-to_array(Context *cnt, Node **node)
-{
-  //NodeTypeArr *_arr = peek_type_arr(*node);
-
-  /* build temp storage */
 }
 
 void
@@ -1185,10 +1174,6 @@ check_type_arr(Context *cnt, Node **type)
   assert(_type->elem_type);
   _type->elem_type = ast_get_type(_type->elem_type);
   /* TODO: arr len evaluation if there is one */
-
-  /* convert array to __Array structure */
-  to_array(cnt, type);
-
   finish();
 }
 
@@ -1410,22 +1395,26 @@ check_decl(Context *cnt, Node **decl)
   }
 
   assert(_decl->type);
-  TypeKind type_kind = ast_type_kind(ast_get_type(_decl->type));
+  Node *type = ast_get_type(_decl->type);
+  TypeKind type_kind = ast_type_kind(type);
   if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
     check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
                      "declaration has invalid type '%s'", tmp);
-  }
-
-  if (type_kind == TYPE_KIND_FN && _decl->mutable) {
+  } else if (type_kind == TYPE_KIND_FN && _decl->mutable) {
     char tmp[256];
-    ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
+    ast_type_to_string(tmp, 256, type);
     check_error_node(
         cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
         "declaration has invalid type '%s', a function mutable must be referenced by pointer", tmp);
+  } else if (type_kind == TYPE_KIND_ARR) {
+    bl_log("array declaration");
+    /* TODO: generate __Array reference */
   }
-  _decl->type = ast_get_type(_decl->type);
+
+  /* type validation done */
+  _decl->type = type;
 
   /* infer type for 'null' value */
   if (_decl->value && node_is(_decl->value, NODE_EXPR_NULL)) {
