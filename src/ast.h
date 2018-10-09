@@ -52,7 +52,7 @@
     ft(SIZE,   usize) \
     ft(F32,    f32) \
     ft(F64,    f64) \
-    ft(CHAR,   char) \
+    ft(CHAR,   char) /* REMOVE and use *u8 */ \
     ft(STRING, string) \
     ft(BOOL,   bool)
 
@@ -129,6 +129,9 @@
     FundType code; \
     Node    *arr; \
     int      ptr;\
+  }) \
+  nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
+      void *_; \
   }) \
   nt(TYPE_FN, TypeFn, type_fn, struct { \
     Node *arg_types; \
@@ -421,6 +424,7 @@ _NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound)
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            int order, bool in_gscope);
 _NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
+_NODE_CTOR(type_vargs);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
 _NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
 _NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr);

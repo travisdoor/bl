@@ -152,6 +152,9 @@ static Node *
 parse_type_fund(Context *cnt, int ptr);
 
 static Node *
+parse_type_vargs(Context *cnt, int ptr);
+
+static Node *
 parse_type_fn(Context *cnt, bool named_args, int ptr);
 
 static Node *
@@ -1002,14 +1005,14 @@ parse_arr(Context *cnt)
   if (!expr) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_AFTER,
                 "expected array size expression");
-    return ast_bad(cnt->ast, tok_begin);
+    expr = ast_bad(cnt->ast, tok_begin);
   }
 
   Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
   if (!tok_begin) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok_end, BUILDER_CUR_WORD,
                 "expected ']' after array size expression");
-    return ast_bad(cnt->ast, tok_begin);
+    expr = ast_bad(cnt->ast, tok_begin);
   }
 
   return expr;
@@ -1028,6 +1031,7 @@ parse_type(Context *cnt)
   type = parse_type_fn(cnt, false, ptr);
   if (!type) type = parse_type_struct(cnt, false, ptr);
   if (!type) type = parse_type_enum(cnt, ptr);
+  if (!type) type = parse_type_vargs(cnt, ptr);
   if (!type) type = parse_type_fund(cnt, ptr);
 
   if (!type) return NULL;
@@ -1048,6 +1052,20 @@ parse_type_fund(Context *cnt, int ptr)
   assert(ptr >= 0);
 
   return type_ident;
+}
+
+Node *
+parse_type_vargs(Context *cnt, int ptr)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
+  if (!tok_begin) return NULL;
+
+  if (ptr) {
+    parse_error(cnt, ERR_INVALID_TYPE, tok_begin, BUILDER_CUR_BEFORE,
+                "variable arguments type cannot be pointer type");
+  }
+
+  return ast_type_vargs(cnt->ast, tok_begin);
 }
 
 Node *
@@ -1200,6 +1218,7 @@ parse_decl(Context *cnt)
   case SYM_MDECL:
   case SYM_COMMA:
   case SYM_RBLOCK:
+  case SYM_VARGS:
     break;
   default:
     return NULL;

@@ -78,6 +78,7 @@
   sm(COMMA,        ",") \
   sm(SEMICOLON,    ";") \
   sm(IMMDECL,      ":") \
+  sm(VARGS,        "...") \
   sm(EQ,           "==") /* logical begin */ \
   sm(NEQ,          "!=") \
   sm(GREATER_EQ,   ">=") \

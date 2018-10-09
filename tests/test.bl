@@ -1,13 +1,12 @@
-#load "limits.bl"
+/* playground */
 
-printf : fn (s string, v s64) s32 #extern;
 
 main : fn () s32 {
-  print("hello\n");
-  a := 129;
-  print(a);
+  arr s32[10];
 
-  printf("min s64 = %ld\n", MinS64);
-  printf("max s64 = %lu\n", MaxS64);
+  // array alloca tmp {10 x i32}
+  // arr : __Array { .data = &tmp, .len = 10 };
+
   return 0;
 };
+

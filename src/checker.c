@@ -548,6 +548,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_TYPE_FUND:
+  case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
   case NODE_STMT_BREAK:
   case NODE_STMT_CONTINUE:
@@ -802,6 +803,7 @@ check_node(Context *cnt, Node **node)
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_STRUCT:
+  case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
   case NODE_LIT:
   case NODE_STMT_BREAK:
