@@ -143,7 +143,7 @@ static Node *
 parse_decl(Context *cnt);
 
 static Node *
-parse_arr(Context *cnt);
+parse_arr(Context *cnt, int ptr);
 
 static Node *
 parse_type(Context *cnt);
@@ -996,26 +996,29 @@ parse_ident(Context *cnt, int ptr)
 }
 
 Node *
-parse_arr(Context *cnt)
+parse_arr(Context *cnt, int ptr)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
   if (!tok_begin) return NULL;
 
-  Node *expr = parse_expr(cnt);
-  if (!expr) {
+  Node *len = parse_expr(cnt);
+  if (!len) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_AFTER,
                 "expected array size expression");
-    expr = ast_bad(cnt->ast, tok_begin);
+    len = ast_bad(cnt->ast, tok_begin);
   }
 
   Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
   if (!tok_begin) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok_end, BUILDER_CUR_WORD,
                 "expected ']' after array size expression");
-    expr = ast_bad(cnt->ast, tok_begin);
   }
 
-  return expr;
+  Node *elem_type = parse_type(cnt);
+  assert(elem_type);
+
+  /* TODO: use ptr (pointer to array) */
+  return ast_type_arr(cnt->ast, tok_begin, elem_type, len);
 }
 
 Node *
@@ -1032,14 +1035,8 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_struct(cnt, false, ptr);
   if (!type) type = parse_type_enum(cnt, ptr);
   if (!type) type = parse_type_vargs(cnt, ptr);
+  if (!type) type = parse_arr(cnt, ptr);
   if (!type) type = parse_type_fund(cnt, ptr);
-
-  if (!type) return NULL;
-
-  Node *arr = parse_arr(cnt);
-  if (arr) {
-    ast_type_set_arr(type, arr);
-  }
 
   return type;
 }
@@ -1189,7 +1186,7 @@ parse_type_enum(Context *cnt, int ptr)
 
   Node *type = parse_type(cnt);
   /* implicit type s32 when enum base type has not been specified */
-  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32, 0, NULL);
+  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32, 0);
 
   return ast_type_enum(cnt->ast, tok_enum, type, cnt->curr_decl, ptr);
 }
@@ -1219,6 +1216,7 @@ parse_decl(Context *cnt)
   case SYM_COMMA:
   case SYM_RBLOCK:
   case SYM_VARGS:
+  case SYM_LBRACKET:
     break;
   default:
     return NULL;

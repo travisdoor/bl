@@ -2,7 +2,7 @@
 
 
 main : fn () s32 {
-  arr s32[10];
+  arr [10]s32;
 
   // array alloca tmp {10 x i32}
   // arr : __Array { .data = &tmp, .len = 10 };

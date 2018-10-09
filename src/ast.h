@@ -58,9 +58,9 @@
 
 #define _BUILDINS_LIST \
     bt(MAIN,      main) \
-    bt(ARR_COUNT, count) \
     bt(ASSERT,    assert) \
     bt(ANY,       any) \
+    bt(ARRAY,     __Array) \
 
 #define _NODE_TYPE_LIST \
   nt(BAD, Bad, bad, struct { \
@@ -127,30 +127,30 @@
   }) \
   nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
-    Node    *arr; \
     int      ptr;\
   }) \
   nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
-      void *_; \
+    void *_; \
+  }) \
+  nt(TYPE_ARR, TypeArr, type_arr, struct { \
+    Node *elem_type; \
+    Node *len; \
   }) \
   nt(TYPE_FN, TypeFn, type_fn, struct { \
     Node *arg_types; \
     Node *ret_type; \
-    Node *arr; \
     int   argc_types; \
     int   ptr; \
   }) \
   nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
     Node *base_decl; /* sometimes we need structure name and scope? */ \
     Node *types; \
-    Node *arr; \
     int   typesc; \
     int   ptr; \
   }) \
   nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
     Node *base_decl; \
     Node *base_type; \
-    Node *arr; \
     int   ptr; \
   }) \
   nt(LIT_STRUCT, LitStruct, lit_struct, struct { \
@@ -244,7 +244,8 @@ typedef enum
   TYPE_KIND_BOOL    = 11, /* bool */
   TYPE_KIND_VOID    = 12, /* void */
   TYPE_KIND_TYPE    = 13, /* type_t */
-  TYPE_KIND_ANY     = 14, /* Any */
+  TYPE_KIND_ANY     = 14, /* any */
+  TYPE_KIND_ARR     = 15, /* array */
 } TypeKind;
 
 typedef enum
@@ -423,8 +424,9 @@ _NODE_CTOR(stmt_continue);
 _NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            int order, bool in_gscope);
-_NODE_CTOR(type_fund, FundType code, int ptr, Node *arr);
+_NODE_CTOR(type_fund, FundType code, int ptr);
 _NODE_CTOR(type_vargs);
+_NODE_CTOR(type_arr, Node *elem_type, Node *len);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
 _NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
 _NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr);

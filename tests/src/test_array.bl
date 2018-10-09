@@ -1,4 +1,4 @@
-#test "count buildin" {
+/*#test "count buildin" {
   arr s32[100];
   assert(arr.count == 100);
 };
@@ -54,7 +54,7 @@
 
   assert(arr1.count == 32);
   assert(arr2.count == 226);
-};
+};*/
 
 #test "size based on function call" {
 /*

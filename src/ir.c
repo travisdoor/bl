@@ -294,7 +294,6 @@ to_llvm_type(Context *cnt, Node *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  Node *      arr    = ast_type_get_arr(type);
   int         ptr    = ast_type_get_ptr(type);
 
   switch (node_code(type)) {
@@ -346,6 +345,38 @@ to_llvm_type(Context *cnt, Node *type)
     default:
       bl_abort("unknown fundamenetal type %s", node_name(type));
     }
+    break;
+  }
+
+  case NODE_TYPE_ARR: {
+    /* array */
+    NodeTypeArr *_arr_type = peek_type_arr(type);
+    assert(_arr_type->elem_type);
+    assert(_arr_type->len);
+    LLVMTypeRef llvm_elem_type = to_llvm_type(cnt, _arr_type->elem_type);
+
+    unsigned int arr_size = 0;
+    if (node_is(_arr_type->len, NODE_EXPR_CALL)) {
+      NodeExprCall *_call = peek_expr_call(_arr_type->len);
+      assert(_call->run);
+      RunResult rr = run(cnt, _call->ref);
+
+      switch (rr.type) {
+      case RR_S64:
+        arr_size = (unsigned int)rr.s64;
+        break;
+      case RR_U64:
+        arr_size = (unsigned int)rr.u64;
+        break;
+      default:
+        bl_abort("invalid type of array size called function");
+      }
+    } else if (node_is(_arr_type->len, NODE_LIT)) {
+      arr_size = (unsigned int)peek_lit(_arr_type->len)->value.u;
+    }
+
+    assert(arr_size);
+    result = LLVMArrayType(llvm_elem_type, arr_size);
     break;
   }
 
@@ -433,7 +464,7 @@ to_llvm_type(Context *cnt, Node *type)
       result = LLVMPointerType(result, 0);
   }
 
-  if (arr) {
+  /*if (arr) {
     unsigned int arr_size = 0;
     if (node_is(arr, NODE_EXPR_CALL)) {
       NodeExprCall *_call = peek_expr_call(arr);
@@ -456,7 +487,7 @@ to_llvm_type(Context *cnt, Node *type)
 
     assert(arr_size);
     result = LLVMArrayType(result, arr_size);
-  }
+    }*/
 
   return result;
 }

@@ -76,6 +76,7 @@ TypeKind : enum s32 {
   Char     : 10, /* char */
   Bool     : 11, /* bool */
   Void     : 12, /* void */
-  Type     : 13, /* type_t */
-  Anything : 14, /* Any */
+  Type     : 13, /* type */
+  Any      : 14, /* any */
+  Arr      : 15, /* array */
 };

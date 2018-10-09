@@ -47,7 +47,8 @@
 #define finish() return NULL
 #define wait(_n) return (_n)
 
-#define FN_ARR_COUNT_NAME "count@"
+#define FN_ARR_LEN_NAME "len@"
+#define FN_ARR_TMP_NAME "arr@"
 
 #define check_error_node(cnt, code, node, pos, format, ...)                                        \
   {                                                                                                \
@@ -86,7 +87,10 @@ static Node *
 _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 
 static void
-to_Any(Context *cnt, Node **node, Node *any_type);
+to_any(Context *cnt, Node **node, Node *any_type);
+
+static void
+to_array(Context *cnt, Node **node);
 
 static bool
 infer_type(Context *cnt, Node *decl);
@@ -174,6 +178,9 @@ check_stmt_return(Context *cnt, Node **ret);
 static Node *
 check_type_enum(Context *cnt, Node **type);
 
+static Node *
+check_type_arr(Context *cnt, Node **type);
+
 static void
 check_unresolved(Context *cnt);
 
@@ -208,17 +215,17 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree)
 }
 
 void
-to_Any(Context *cnt, Node **node, Node *any_type)
+to_any(Context *cnt, Node **node, Node *any_type)
 {
-  /* INITIALIZER BOILERPLATE for Any type */
-  /* Here we convert anything to 'Any { .value = cast(*u8) (&foo), .type = typeof(foo) }' */
+  /* INITIALIZER BOILERPLATE for any type */
+  /* Here we convert anything to 'any { .value = cast(*u8) (&foo), .type = typeof(foo) }' */
   Node *from_type = ast_get_type(*node);
 
   Node *tmp           = *node;
   Node *val_base_type = ast_node_dup(cnt->ast, from_type);
   ast_type_set_ptr(val_base_type, 1);
 
-  Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1, NULL);
+  Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1);
   Node *value  = ast_expr_unary(cnt->ast, NULL, SYM_AND, tmp, val_base_type);
   value        = ast_expr_cast(cnt->ast, NULL, u8_ptr, value);
 
@@ -226,6 +233,14 @@ to_Any(Context *cnt, Node **node, Node *any_type)
   type.u      = (unsigned long long)ast_type_kind(from_type);
   value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
   *node       = ast_lit_cmp(cnt->ast, NULL, any_type, value, 2, NULL);
+}
+
+void
+to_array(Context *cnt, Node **node)
+{
+  //NodeTypeArr *_arr = peek_type_arr(*node);
+
+  /* build temp storage */
 }
 
 void
@@ -541,6 +556,13 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
+  case NODE_TYPE_ARR: {
+    NodeTypeArr *_arr = peek_type_arr(*node);
+    flatten(&_arr->elem_type);
+    flatten(&_arr->len);
+    break;
+  }
+
   case NODE_IDENT: {
     NodeIdent *_ident = peek_ident(*node);
     flatten(&_ident->arr);
@@ -623,7 +645,7 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   if (!ast_can_impl_cast(from_type, to_type)) return false;
 
   if (to_kind == TYPE_KIND_ANY) {
-    to_Any(cnt, node, to_type);
+    to_any(cnt, node, to_type);
     return true;
   }
 
@@ -797,6 +819,9 @@ check_node(Context *cnt, Node **node)
   case NODE_TYPE_ENUM:
     result = check_type_enum(cnt, node);
     break;
+  case NODE_TYPE_ARR:
+    result = check_type_arr(cnt, node);
+    break;
   case NODE_LIT_CMP:
     result = check_lit_cmp(cnt, node);
     break;
@@ -889,7 +914,7 @@ check_ident(Context *cnt, Node **ident)
                * functon */
 
               /* generate unique name */
-              const char *uname = builder_get_unique_name(cnt->builder, FN_ARR_COUNT_NAME);
+              const char *uname = builder_get_unique_name(cnt->builder, FN_ARR_LEN_NAME);
 
               /* FUNCTION BOILERPLATE */
               Node *gscope   = cnt->unit->ast.root;
@@ -1065,15 +1090,15 @@ check_expr_cast(Context *cnt, Node **cast)
   TypeKind dest_kind = ast_type_kind(_cast->type);
 
   bool valid = src_kind != TYPE_KIND_FN && src_kind != TYPE_KIND_STRUCT &&
-                     src_kind != TYPE_KIND_VOID && dest_kind != TYPE_KIND_FN &&
-                     dest_kind != TYPE_KIND_STRUCT && dest_kind != TYPE_KIND_VOID;
+               src_kind != TYPE_KIND_VOID && dest_kind != TYPE_KIND_FN &&
+               dest_kind != TYPE_KIND_STRUCT && dest_kind != TYPE_KIND_VOID;
 
   /* invalid cast ptr -> real and vice versa */
   valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_PTR) &&
-    !(src_kind == TYPE_KIND_PTR && dest_kind == TYPE_KIND_REAL);
+          !(src_kind == TYPE_KIND_PTR && dest_kind == TYPE_KIND_REAL);
 
   valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_STRING) &&
-    !(src_kind == TYPE_KIND_STRING && dest_kind == TYPE_KIND_REAL);
+          !(src_kind == TYPE_KIND_STRING && dest_kind == TYPE_KIND_REAL);
 
   if (!valid) {
     char tmp_first[256];
@@ -1154,6 +1179,20 @@ check_type_enum(Context *cnt, Node **type)
 }
 
 Node *
+check_type_arr(Context *cnt, Node **type)
+{
+  NodeTypeArr *_type = peek_type_arr(*type);
+  assert(_type->elem_type);
+  _type->elem_type = ast_get_type(_type->elem_type);
+  /* TODO: arr len evaluation if there is one */
+
+  /* convert array to __Array structure */
+  to_array(cnt, type);
+
+  finish();
+}
+
+Node *
 check_expr_member(Context *cnt, Node **member)
 {
   NodeExprMember *_member = peek_expr_member(*member);
@@ -1172,16 +1211,7 @@ check_expr_member(Context *cnt, Node **member)
   }
 
   if (!lhs_type) finish();
-  if (ast_type_get_arr(lhs_type)) {
-    /* is member array 'count'??? */
-    if (ast_is_buildin(_member->ident) == BUILDIN_ARR_COUNT) {
-      Node *tmp_next  = (*member)->next;
-      *member         = ast_node_dup(cnt->ast, ast_type_get_arr(lhs_type));
-      (*member)->next = tmp_next;
-
-      finish();
-    }
-  } else if (node_is(lhs_type, NODE_TYPE_STRUCT)) {
+  if (node_is(lhs_type, NODE_TYPE_STRUCT)) {
     /* structure member */
     _member->kind = MEM_KIND_STRUCT;
 
