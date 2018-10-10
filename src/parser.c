@@ -158,7 +158,7 @@ static Node *
 parse_type_fn(Context *cnt, bool named_args, int ptr);
 
 static Node *
-parse_type_struct(Context *cnt, bool named_args, int ptr);
+parse_type_struct(Context *cnt, bool named_members, int ptr);
 
 static Node *
 parse_type_enum(Context *cnt, int ptr);
@@ -186,6 +186,15 @@ parse_expr_call(Context *cnt);
 
 static Node *
 parse_expr_null(Context *cnt);
+
+static Node *
+parse_decl_member(Context *cnt, int order);
+
+static Node *
+parse_decl_arg(Context *cnt);
+
+static Node *
+parse_decl_variant(Context *cnt, Node *base_type, Node *prev);
 
 static Node *
 parse_literal_cmp(Context *cnt, Node *prev);
@@ -314,6 +323,67 @@ parse_test(Context *cnt)
 
   pop_curr_decl(cnt);
   return test;
+}
+
+Node *
+parse_decl_member(Context *cnt, int order)
+{
+  Token *tok_begin = tokens_peek(cnt->tokens);
+  Node * name      = parse_ident(cnt, 0);
+  if (!name) return NULL;
+
+  Node *type = parse_type(cnt);
+  if (!type) {
+    bl_abort("missing member type");
+  }
+
+  return ast_decl(cnt->ast, tok_begin, DECL_KIND_MEMBER, name, type, NULL, true, 1, order, false);
+}
+
+Node *
+parse_decl_arg(Context *cnt)
+{
+  Token *tok_begin = tokens_peek(cnt->tokens);
+  Node * name      = parse_ident(cnt, 0);
+  if (!name) return NULL;
+
+  Node *type = parse_type(cnt);
+  if (!type) {
+    bl_abort("missing argument type");
+  }
+
+  return ast_decl(cnt->ast, tok_begin, DECL_KIND_ARG, name, type, NULL, true, 0, -1, false);
+}
+
+Node *
+parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
+{
+  Token *tok_begin = tokens_peek(cnt->tokens);
+  Node * name      = parse_ident(cnt, 0);
+  if (!name) return NULL;
+
+  Node * value      = NULL;
+  Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
+  if (tok_assign) {
+    value = parse_expr(cnt);
+    if (!value) bl_abort("expected enum variant value");
+  } else if (prev) {
+    NodeDecl *_prev = peek_decl(prev);
+
+    TokenValue implval;
+    implval.u      = 1;
+    Node *addition = ast_lit(cnt->ast, NULL, base_type, implval);
+    value          = ast_expr_binop(cnt->ast, NULL, _prev->value, addition, base_type, SYM_PLUS);
+  } else {
+    /* first variant is allways 0 */
+    TokenValue implval;
+    implval.u = 0;
+    value     = ast_lit(cnt->ast, NULL, base_type, implval);
+  }
+
+  assert(value);
+  return ast_decl(cnt->ast, tok_begin, DECL_KIND_VARIANT, name, base_type, value, false, 0, -1,
+                  false);
 }
 
 Node *
@@ -745,40 +815,8 @@ parse_literal_enum(Context *cnt)
   Node * prev_variant = NULL;
 
 next:
-  *variant = parse_decl(cnt);
+  *variant = parse_decl_variant(cnt, _type->base_type, prev_variant);
   if (*variant) {
-    NodeDecl *_variant = peek_decl(*variant);
-    _variant->kind     = DECL_KIND_VARIANT;
-
-    if (_variant->type) {
-      parse_warning_node(
-          cnt, _variant->type, BUILDER_CUR_WORD,
-          "explicitly written type of enum varaint declaration will be overriden by enum "
-          "base type");
-    }
-
-    _variant->type = _type->base_type;
-    if (!_variant->value) {
-      _variant->mutable = false;
-
-      /* implicitly infer value from previous enum varaint if there is one */
-      if (prev_variant) {
-        NodeDecl *_prev_variant = peek_decl(prev_variant);
-
-        TokenValue value;
-        value.u        = 1;
-        Node *addition = ast_lit(cnt->ast, NULL, _variant->type, value);
-
-        _variant->value = ast_expr_binop(cnt->ast, NULL, _prev_variant->value, addition,
-                                         _variant->type, SYM_PLUS);
-      } else {
-        /* first variant is allways 0 */
-        TokenValue value;
-        value.u         = 0;
-        _variant->value = ast_lit(cnt->ast, NULL, _variant->type, value);
-      }
-    }
-
     prev_variant = *variant;
     variant      = &(*variant)->next;
 
@@ -1079,13 +1117,8 @@ parse_type_fn(Context *cnt, bool named_args, int ptr)
   int    argc_types = 0;
 
 next:
-  *arg_type = named_args ? parse_decl(cnt) : parse_type(cnt);
+  *arg_type = named_args ? parse_decl_arg(cnt) : parse_type(cnt);
   if (*arg_type) {
-    /* validate argument */
-    if (node_is(*arg_type, NODE_DECL)) {
-      NodeDecl *_arg_decl = peek_decl(*arg_type);
-      _arg_decl->kind     = DECL_KIND_ARG;
-    }
     arg_type = &(*arg_type)->next;
     ++argc_types;
 
@@ -1118,7 +1151,7 @@ next:
 }
 
 Node *
-parse_type_struct(Context *cnt, bool named_args, int ptr)
+parse_type_struct(Context *cnt, bool named_members, int ptr)
 {
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
   if (!tok_struct) return NULL;
@@ -1136,15 +1169,8 @@ parse_type_struct(Context *cnt, bool named_args, int ptr)
   int    typesc = 0;
 
 next:
-  *type = named_args ? parse_decl(cnt) : parse_type(cnt);
+  *type = named_members ? parse_decl_member(cnt, typesc) : parse_type(cnt);
   if (*type) {
-    /* validate argument */
-    if (node_is(*type, NODE_DECL)) {
-      NodeDecl *_member_decl = peek_decl(*type);
-      _member_decl->order    = typesc;
-      _member_decl->used     = 1;
-      _member_decl->kind     = DECL_KIND_MEMBER;
-    }
     type = &(*type)->next;
     ++typesc;
 

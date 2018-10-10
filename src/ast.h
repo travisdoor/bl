@@ -260,7 +260,6 @@ typedef enum
   DECL_KIND_ENUM    = 5, /* foo : enum {} */
   DECL_KIND_VARIANT = 6, /* enum variant */
   DECL_KIND_TYPE    = 7, /* foo : s32; foo : bar; */
-  // DECL_KIND_CONSTANT = 8, /* foo : 10; foo : bar; */
 } DeclKind;
 
 typedef enum
