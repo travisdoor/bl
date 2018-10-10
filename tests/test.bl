@@ -4,7 +4,14 @@ main : fn () s32 {
   /*arr [10] s32;
   arr_ref [] s32;*/
 
-  test struct { s32, s32 } : struct { s32, s32 } { ._0 = 0, ._1 = 0 };
+  // type:    struct { s32, s32 }
+  // literal: struct { i s32, j s32 } 
+  //test : struct { s32, s32 } { ._0 = 0, ._1 = 0 };
+  //Test : struct { i s32, j s32 };
+
+  test struct { s32, s32 };
+  test._0 = 10;
+  test._1 = 20;
   
   //func(arr);
   return 0;
