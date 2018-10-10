@@ -1233,6 +1233,7 @@ check_expr_member(Context *cnt, Node **member)
                          "anonymous structure has no member with number '%d'", i);
       }
 
+      /* lookup member order PERFORMANCE: better solution */
       Node *tmp = _lhs_type->types;
       for (int j = 0; j != i; ++j, tmp = tmp->next)
         ;
