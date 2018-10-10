@@ -10,10 +10,11 @@ main : fn () s32 {
   //Test : struct { i s32, j s32 };
 
   a struct { struct { s32 }, s32 };
-  //test struct { s32, s32 } : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
   
-  foo Foo;
-  foo.i = 10;
+  foo : Foo { .i = 10, .j = 20 };
+  bar : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
+  //test : struct { i s32 } { ._0 = 10 };
+
   //func(arr);
   return 0;
 };

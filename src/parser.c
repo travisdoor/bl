@@ -158,7 +158,7 @@ static Node *
 parse_type_fn(Context *cnt, bool named_args, int ptr);
 
 static Node *
-parse_type_struct(Context *cnt, bool named_members, int ptr);
+parse_type_struct(Context *cnt, int ptr);
 
 static Node *
 parse_type_enum(Context *cnt, int ptr);
@@ -393,7 +393,8 @@ parse_literal_cmp(Context *cnt, Node *prev)
 
   switch (node_code(prev)) {
   case NODE_IDENT:
-  case NODE_LIT_STRUCT:
+  case NODE_TYPE_STRUCT:
+    //case NODE_LIT_STRUCT:
     break;
   default:
     return NULL;
@@ -772,19 +773,66 @@ parse_literal_fn(Context *cnt)
 Node *
 parse_literal_struct(Context *cnt)
 {
-  Token *tok_struct = tokens_peek(cnt->tokens);
-  if (token_is_not(tok_struct, SYM_STRUCT)) return NULL;
+  size_t marker     = tokens_get_marker(cnt->tokens);
+  Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
+  if (!tok_struct) {
+    tokens_back_to_marker(cnt->tokens, marker);
+    return NULL;
+  }
 
-  Node *         result      = ast_lit_struct(cnt->ast, tok_struct, NULL, cnt->curr_compound,
-                                scope_new(cnt->assembly->scope_cache, 64));
-  NodeLitStruct *_lit_struct = peek_lit_struct(result);
+  Token *tok = tokens_consume(cnt->tokens);
+  if (tok->sym != SYM_LBLOCK) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "expected struct member list");
+    return ast_bad(cnt->ast, tok_struct);
+  }
 
-  push_curr_compound(cnt, result);
-  _lit_struct->type = parse_type_struct(cnt, true, 0);
+  if (tokens_peek(cnt->tokens)->sym == SYM_IDENT &&
+      (tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
+       tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK)) {
+    tokens_back_to_marker(cnt->tokens, marker);
+    return NULL;
+  }
+
+  Node *type_struct = ast_type_struct(cnt->ast, tok_struct, NULL, 0, NULL, 0);
+  Node *lit_struct  = ast_lit_struct(cnt->ast, tok_struct, type_struct, cnt->curr_compound,
+                                    scope_new(cnt->assembly->scope_cache, 64));
+
+  push_curr_compound(cnt, lit_struct);
+
+  /* parse arg types */
+  bool   rq    = false;
+  Node **mem   = &peek_type_struct(type_struct)->types;
+  int *  memsc = &peek_type_struct(type_struct)->typesc;
+
+next:
+  *mem = parse_decl_member(cnt, *memsc);
+  if (*mem) {
+    mem = &(*mem)->next;
+    ++(*memsc);
+
+    if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+      rq = true;
+      goto next;
+    }
+  } else if (rq) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
+      parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
+                  "expected member after comma ','");
+      return ast_bad(cnt->ast, tok_struct);
+    }
+  }
+
+  tok = tokens_consume(cnt->tokens);
+  if (tok->sym != SYM_RBLOCK) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+                "expected end of member list  '}'  or another memeber separated by comma");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_bad(cnt->ast, tok_struct);
+  }
+
   pop_curr_compound(cnt);
-  assert(_lit_struct->type);
-
-  return result;
+  return lit_struct;
 }
 
 Node *
@@ -948,6 +996,7 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_run(cnt))) goto done;
   if ((expr = parse_literal_fn(cnt))) goto done;
   if ((expr = parse_literal_struct(cnt))) goto done;
+  if ((expr = parse_type_struct(cnt, 0))) goto done;
   if ((expr = parse_literal_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
@@ -1064,7 +1113,7 @@ parse_type(Context *cnt)
   }
 
   type = parse_type_fn(cnt, false, ptr);
-  if (!type) type = parse_type_struct(cnt, false, ptr);
+  if (!type) type = parse_type_struct(cnt, ptr);
   if (!type) type = parse_type_enum(cnt, ptr);
   if (!type) type = parse_type_vargs(cnt, ptr);
   if (!type) type = parse_type_arr(cnt, ptr);
@@ -1151,7 +1200,7 @@ next:
 }
 
 Node *
-parse_type_struct(Context *cnt, bool named_members, int ptr)
+parse_type_struct(Context *cnt, int ptr)
 {
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
   if (!tok_struct) return NULL;
@@ -1169,7 +1218,7 @@ parse_type_struct(Context *cnt, bool named_members, int ptr)
   int    typesc = 0;
 
 next:
-  *type = named_members ? parse_decl_member(cnt, typesc) : parse_type(cnt);
+  *type = parse_type(cnt);
   if (*type) {
     type = &(*type)->next;
     ++typesc;

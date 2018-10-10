@@ -1561,23 +1561,19 @@ check_lit_cmp(Context *cnt, Node **cmp)
         continue;
       }
 
-      assert(_member->ident);
-      NodeIdent *_ident       = peek_ident(_member->ident);
-      NodeDecl * _decl_member = peek_decl(_ident->ref);
-      assert(_decl_member->order != -1);
-      assert(_decl_member->order < _type->typesc);
+      assert(_member->i != -1);
 
-      if (tmp[_decl_member->order]) {
+      if (tmp[_member->i]) {
         check_error_node(cnt, ERR_INVALID_INITIALIZER, field, BUILDER_CUR_WORD,
                          "structure member alrady initialized");
 
-        check_note_node(cnt, tmp[_decl_member->order], BUILDER_CUR_WORD,
+        check_note_node(cnt, tmp[_member->i], BUILDER_CUR_WORD,
                         "previous initialization here");
         noerr = false;
         continue;
       }
 
-      tmp[_decl_member->order] = field;
+      tmp[_member->i] = field;
     }
 
     /* store initializers in right order and use only right side of field binop */
