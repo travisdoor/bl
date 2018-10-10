@@ -143,7 +143,7 @@ static Node *
 parse_decl(Context *cnt);
 
 static Node *
-parse_arr(Context *cnt, int ptr);
+parse_type_arr(Context *cnt, int ptr);
 
 static Node *
 parse_type(Context *cnt);
@@ -874,7 +874,7 @@ parse_expr_member(Context *cnt, Token *op)
     parse_error(cnt, ERR_EXPECTED_NAME, op, BUILDER_CUR_WORD, "expected structure member name");
   }
 
-  return ast_expr_member(cnt->ast, op, MEM_KIND_UNKNOWN, ident, NULL, NULL, is_ptr_ref);
+  return ast_expr_member(cnt->ast, op, MEM_KIND_UNKNOWN, ident, NULL, NULL, is_ptr_ref, -1);
 }
 
 Node *
@@ -954,7 +954,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
         Node *        call  = rhs;
         NodeExprCall *_call = peek_expr_call(call);
         Node *member = ast_expr_member(cnt->ast, op, MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
-                                       token_is(op, SYM_ARROW));
+                                       token_is(op, SYM_ARROW), -1);
 
         _call->ref                     = member;
         peek_expr_member(member)->next = lhs;
@@ -996,17 +996,12 @@ parse_ident(Context *cnt, int ptr)
 }
 
 Node *
-parse_arr(Context *cnt, int ptr)
+parse_type_arr(Context *cnt, int ptr)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
   if (!tok_begin) return NULL;
 
   Node *len = parse_expr(cnt);
-  if (!len) {
-    parse_error(cnt, ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_AFTER,
-                "expected array size expression");
-    len = ast_bad(cnt->ast, tok_begin);
-  }
 
   Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
   if (!tok_begin) {
@@ -1016,7 +1011,6 @@ parse_arr(Context *cnt, int ptr)
 
   Node *elem_type = parse_type(cnt);
   assert(elem_type);
-
   /* TODO: use ptr (pointer to array) */
   return ast_type_arr(cnt->ast, tok_begin, elem_type, len);
 }
@@ -1035,7 +1029,7 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_struct(cnt, false, ptr);
   if (!type) type = parse_type_enum(cnt, ptr);
   if (!type) type = parse_type_vargs(cnt, ptr);
-  if (!type) type = parse_arr(cnt, ptr);
+  if (!type) type = parse_type_arr(cnt, ptr);
   if (!type) type = parse_type_fund(cnt, ptr);
 
   return type;
@@ -1175,7 +1169,7 @@ next:
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  return ast_type_struct(cnt->ast, tok_struct, types, typesc, cnt->curr_decl, ptr);
+  return ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL, ptr);
 }
 
 Node *

@@ -352,31 +352,40 @@ to_llvm_type(Context *cnt, Node *type)
     /* array */
     NodeTypeArr *_arr_type = peek_type_arr(type);
     assert(_arr_type->elem_type);
-    assert(_arr_type->len);
+    const bool is_ref = (bool)!_arr_type->len;
+
     LLVMTypeRef llvm_elem_type = to_llvm_type(cnt, _arr_type->elem_type);
 
-    unsigned int arr_size = 0;
-    if (node_is(_arr_type->len, NODE_EXPR_CALL)) {
-      NodeExprCall *_call = peek_expr_call(_arr_type->len);
-      assert(_call->run);
-      RunResult rr = run(cnt, _call->ref);
+    if (is_ref) {
+      /* array is only reference -> generate implicit compound type */
+      LLVMTypeRef types[2];
+      types[0] = LLVMPointerType(llvm_elem_type, 0);
+      types[1] = LLVMInt64TypeInContext(cnt->llvm_cnt);
+      result   = LLVMStructType(types, 2, false);
+    } else {
+      unsigned int arr_size = 0;
+      if (node_is(_arr_type->len, NODE_EXPR_CALL)) {
+        NodeExprCall *_call = peek_expr_call(_arr_type->len);
+        assert(_call->run);
+        RunResult rr = run(cnt, _call->ref);
 
-      switch (rr.type) {
-      case RR_S64:
-        arr_size = (unsigned int)rr.s64;
-        break;
-      case RR_U64:
-        arr_size = (unsigned int)rr.u64;
-        break;
-      default:
-        bl_abort("invalid type of array size called function");
+        switch (rr.type) {
+        case RR_S64:
+          arr_size = (unsigned int)rr.s64;
+          break;
+        case RR_U64:
+          arr_size = (unsigned int)rr.u64;
+          break;
+        default:
+          bl_abort("invalid type of array size called function");
+        }
+      } else if (node_is(_arr_type->len, NODE_LIT)) {
+        arr_size = (unsigned int)peek_lit(_arr_type->len)->value.u;
       }
-    } else if (node_is(_arr_type->len, NODE_LIT)) {
-      arr_size = (unsigned int)peek_lit(_arr_type->len)->value.u;
-    }
 
-    assert(arr_size);
-    result = LLVMArrayType(llvm_elem_type, arr_size);
+      assert(arr_size);
+      result = LLVMArrayType(llvm_elem_type, arr_size);
+    }
     break;
   }
 
@@ -690,18 +699,19 @@ ir_expr_member(Context *cnt, Node *member)
 {
   NodeExprMember *_member      = peek_expr_member(member);
   NodeIdent *     _ident       = peek_ident(_member->ident);
-  NodeDecl *      _decl_member = peek_decl(_ident->ref);
 
   LLVMValueRef result = NULL;
 
   if (_member->kind == MEM_KIND_STRUCT) {
     result = ir_node(cnt, _member->next);
     assert(result);
+    assert(_member->i != -1);
     if (_member->ptr_ref && should_load(member, result))
       result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
-    result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)_decl_member->order,
+    result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int) _member->i,
                                 gname(_ident->str));
   } else if (_member->kind == MEM_KIND_ENUM) {
+    NodeDecl *      _decl_member = peek_decl(_ident->ref);
     assert(!_member->ptr_ref);
     assert(_decl_member->value);
     result = ir_node(cnt, _decl_member->value);

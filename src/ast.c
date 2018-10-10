@@ -426,7 +426,7 @@ _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
   return (Node *)_expr_call;
 }
 
-_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref)
+_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i)
 {
   NodeExprMember *_expr_member = alloc_node(ast, NODE_EXPR_MEMBER, tok, NodeExprMember *);
   _expr_member->kind           = kind;
@@ -434,6 +434,7 @@ _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bo
   _expr_member->next           = next;
   _expr_member->type           = type;
   _expr_member->ptr_ref        = ptr_ref;
+  _expr_member->i              = i;
   return (Node *)_expr_member;
 }
 
@@ -560,27 +561,27 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   }
 
   case NODE_TYPE_FUND: {
-    //NodeTypeFund *_fund = peek_type_fund(node);
-    //visit(_fund->arr);
+    // NodeTypeFund *_fund = peek_type_fund(node);
+    // visit(_fund->arr);
     break;
   }
 
   case NODE_TYPE_FN: {
-    //NodeTypeFn *_fn = peek_type_fn(node);
-    //visit(_fn->arr);
+    // NodeTypeFn *_fn = peek_type_fn(node);
+    // visit(_fn->arr);
     break;
   }
 
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct = peek_type_struct(node);
-    //visit(_struct->arr);
+    // visit(_struct->arr);
     node_foreach(_struct->types, tmp) visit(tmp);
     break;
   }
 
   case NODE_TYPE_ENUM: {
-    //NodeTypeEnum *_enum = peek_type_enum(node);
-    //visit(_enum->arr);
+    // NodeTypeEnum *_enum = peek_type_enum(node);
+    // visit(_enum->arr);
     break;
   }
 
@@ -1017,8 +1018,15 @@ ast_type_cmp(Node *first, Node *second)
     break;
   }
 
+  case NODE_TYPE_ARR: {
+    NodeTypeArr *_f = peek_type_arr(f);
+    NodeTypeArr *_s = peek_type_arr(s);
+    /* TODO: compare lens!!! */
+    return ast_type_cmp(_f->elem_type, _s->elem_type);
+  }
+
   default:
-    bl_abort("missing comparation of %s type", node_name(first));
+    bl_abort("missing comparation of %s type", node_name(f));
   }
 
   return true;
@@ -1139,6 +1147,7 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
   if (fkind == TYPE_KIND_STRING && tkind == TYPE_KIND_PTR) return true;
   if (tkind == TYPE_KIND_STRING && fkind == TYPE_KIND_PTR) return true;
 
+  /* implicit casting for int types ??? */
   /*if ((fkind == TYPE_KIND_SINT || fkind == TYPE_KIND_UINT || fkind == TYPE_KIND_SIZE) &&
       (tkind == TYPE_KIND_SINT || tkind == TYPE_KIND_UINT || tkind == TYPE_KIND_SIZE))
       return true;*/
@@ -1148,6 +1157,7 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
   }
 
   if (fkind == TYPE_KIND_STRUCT || fkind == TYPE_KIND_FN) return false;
+  if (fkind == TYPE_KIND_ARR || fkind == TYPE_KIND_ARR) return false;
   if (fkind == TYPE_KIND_PTR && node_is(from_type, NODE_TYPE_FN)) return false;
 
   return fkind == tkind;

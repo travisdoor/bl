@@ -45,11 +45,6 @@ __assert : fn (expr bool, file string, line s32) {
   }
 };
 
-__Array : struct {
-  data *u8,
-  len   usize
-};
-
 abort : fn () {
   __bl_abort();
 };

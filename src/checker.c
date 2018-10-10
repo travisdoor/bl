@@ -1174,6 +1174,7 @@ check_type_arr(Context *cnt, Node **type)
   assert(_type->elem_type);
   _type->elem_type = ast_get_type(_type->elem_type);
   /* TODO: arr len evaluation if there is one */
+
   finish();
 }
 
@@ -1184,6 +1185,7 @@ check_expr_member(Context *cnt, Node **member)
   Node *          found   = NULL;
   assert(_member->ident);
   Node *lhs_type = ast_get_type(_member->next);
+  int   i        = -1;
 
   if (_member->next) {
     lhs_type = ast_get_type(_member->next);
@@ -1201,16 +1203,40 @@ check_expr_member(Context *cnt, Node **member)
     _member->kind = MEM_KIND_STRUCT;
 
     NodeTypeStruct *_lhs_type = peek_type_struct(lhs_type);
-    /* lhs_type cannot be anonymous structure type (generate error later instead of assert?) */
-    assert(_lhs_type->base_decl);
 
-    found = _lookup(peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-    if (!found) wait(_member->ident);
+    if (_lhs_type->base_decl) {
+      /* named structure type */
+      found = _lookup(peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
+      if (!found) wait(_member->ident);
 
-    if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
-      check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
-                       "invalid member access, use %s",
-                       _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+      if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
+        check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
+                         "invalid member access, use %s",
+                         _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
+      }
+
+      /* CLEANUP !!! */
+      i = peek_decl(found)->order;
+    } else {
+      /* structure is anonymous and it's members can be referenced by '_N' (ex.: '_0') */
+      const char *mn = peek_ident(_member->ident)->str;
+      if (!sscanf(mn, "_%d", &i)) {
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, _member->ident, BUILDER_CUR_WORD,
+                         "expected member number in format '_N'");
+        finish();
+      }
+
+      assert(i != -1);
+
+      if (i >= _lhs_type->typesc) {
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, _member->ident, BUILDER_CUR_WORD,
+                         "anonymous structure has no member with number '%d'", i);
+      }
+
+      Node *tmp = _lhs_type->types;
+      for (int j = 0; j != i; ++j, tmp = tmp->next)
+        ;
+      _member->type = tmp;
     }
   } else if (node_is(lhs_type, NODE_TYPE_ENUM)) {
     /* enum variant */
@@ -1230,8 +1256,12 @@ check_expr_member(Context *cnt, Node **member)
                      "expected structure or enum");
   }
 
-  _member->type                   = ast_get_type(found);
-  peek_ident(_member->ident)->ref = found;
+  if (found) {
+    _member->type                   = ast_get_type(found);
+    peek_ident(_member->ident)->ref = found;
+  }
+
+  _member->i = i;
 
   finish();
 }
@@ -1315,13 +1345,15 @@ check_decl(Context *cnt, Node **decl)
                      "main is expected to be function");
   }
 
+  assert(_decl->type);
+  Node *   type      = ast_get_type(_decl->type);
+  TypeKind type_kind = ast_type_kind(type);
+
   switch (_decl->kind) {
   case DECL_KIND_STRUCT: {
     Node *value_type = ast_get_type(_decl->value);
 
-    /* what about anonymous types ??? */
-    assert(peek_type_struct(value_type)->base_decl);
-    // peek_type_struct(value_type)->base_decl = *decl;
+    peek_type_struct(value_type)->base_decl = *decl;
 
     if (_decl->mutable) {
       check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
@@ -1331,7 +1363,6 @@ check_decl(Context *cnt, Node **decl)
     if (peek_type_struct(value_type)->typesc == 0) {
       check_error_node(cnt, ERR_EMPTY, _decl->name, BUILDER_CUR_WORD, "empty structure");
     }
-
     break;
   }
 
@@ -1348,9 +1379,9 @@ check_decl(Context *cnt, Node **decl)
   }
 
   case DECL_KIND_FIELD: {
-    if (ast_type_kind(ast_get_type(_decl->type)) == TYPE_KIND_FN) {
+    if (type_kind == TYPE_KIND_FN) {
       char tmp[256];
-      ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
+      ast_type_to_string(tmp, 256, type);
       check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
                        "invalid type of variable '%s'", tmp);
     }
@@ -1394,9 +1425,6 @@ check_decl(Context *cnt, Node **decl)
     bl_abort("unknown declaration kind");
   }
 
-  assert(_decl->type);
-  Node *type = ast_get_type(_decl->type);
-  TypeKind type_kind = ast_type_kind(type);
   if (type_kind == TYPE_KIND_VOID) {
     char tmp[256];
     ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
@@ -1408,10 +1436,7 @@ check_decl(Context *cnt, Node **decl)
     check_error_node(
         cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
         "declaration has invalid type '%s', a function mutable must be referenced by pointer", tmp);
-  } else if (type_kind == TYPE_KIND_ARR) {
-    bl_log("array declaration");
-    /* TODO: generate __Array reference */
-  }
+  } 
 
   /* type validation done */
   _decl->type = type;

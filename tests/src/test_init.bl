@@ -71,6 +71,10 @@
   assert(bar.j == 20);
 };
 
+#test "tuples" {
+  foo : struct { s32, s32 } { ._0 = 10, ._1 = 20 };
+};
+
 /*#test "array initializer" {
   arr s32 [3];
   arr = s32 [3] { 0, 1, 2 };

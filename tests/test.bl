@@ -1,12 +1,14 @@
 /* playground */
 
-
 main : fn () s32 {
-  arr [10]s32;
+  /*arr [10] s32;
+  arr_ref [] s32;*/
 
-  // array alloca tmp {10 x i32}
-  // arr : __Array { .data = &tmp, .len = 10 };
-
+  test struct { s32, s32 } : struct { s32, s32 } { ._0 = 0, ._1 = 0 };
+  
+  //func(arr);
   return 0;
 };
 
+/*func : fn (arr [] s32) {
+};*/

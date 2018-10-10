@@ -203,6 +203,7 @@
     Node      *next; \
     Node      *type; \
     bool       ptr_ref; \
+    int        i; \
   }) \
   nt(EXPR_ELEM, ExprElem, expr_elem, struct { \
     Node       *next; \
@@ -436,7 +437,7 @@ _NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *s
 _NODE_CTOR(lit, Node *type, TokenValue value);
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
-_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref);
+_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i);
 _NODE_CTOR(expr_elem, Node *next, Node *type, Node *index);
 _NODE_CTOR(expr_sizeof, Node *in, Node *type);
 _NODE_CTOR(expr_typeof, Node *in, Node *type);
