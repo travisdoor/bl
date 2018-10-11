@@ -125,6 +125,11 @@
     bool        in_gscope; \
     BHashTable *deps; \
   }) \
+  nt(MEMBER, Member, member, struct { \
+    Node *name; \
+    Node *type; \
+    int   order; \
+  }) \
   nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
     int      ptr;\
@@ -143,20 +148,16 @@
     int   ptr; \
   }) \
   nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
-    Node *base_decl; \
-    Node *types; \
-    int   typesc; \
-    int   ptr; \
+    Scope *scope; \
+    Node  *parent_compound; \
+    Node  *members; \
+    int    membersc; \
+    int    ptr; \
   }) \
   nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
     Node *base_decl; \
     Node *base_type; \
     int   ptr; \
-  }) \
-  nt(LIT_STRUCT, LitStruct, lit_struct, struct { \
-    Node  *type; \
-    Scope *scope; \
-    Node  *parent_compound; \
   }) \
   nt(LIT_ENUM, LitEnum, lit_enum, struct { \
     Node  *type; \
@@ -424,14 +425,14 @@ _NODE_CTOR(stmt_continue);
 _NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            int order, bool in_gscope);
+_NODE_CTOR(member, Node *name, Node *type, int order);
 _NODE_CTOR(type_fund, FundType code, int ptr);
 _NODE_CTOR(type_vargs);
 _NODE_CTOR(type_arr, Node *elem_type, Node *len);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
-_NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr);
+_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, int ptr);
 _NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr);
 _NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
-_NODE_CTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope);
 _NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
 _NODE_CTOR(lit, Node *type, TokenValue value);
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
@@ -491,8 +492,12 @@ ast_get_parent_compound(Node *node);
 bool
 ast_is_type(Node *node);
 
-Node *
+DEPRECATED
+Node * 
 ast_get_type(Node *node);
+
+Node *
+ast_typeof(Node *node);
 
 void
 ast_set_type(Node *node, Node *type);

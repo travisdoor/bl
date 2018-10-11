@@ -51,7 +51,8 @@ static inline void
 print_head(Node *node, int pad)
 {
   if (node->src)
-    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", node_name(node), node->src->line, node->src->col);
+    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", node_name(node),
+            node->src->line, node->src->col);
   else
     fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "", node_name(node));
 
@@ -95,6 +96,9 @@ static void
 print_member(Visitor *visitor, Node *node, int pad);
 
 static void
+print_expr_member(Visitor *visitor, Node *node, int pad);
+
+static void
 print_elem(Visitor *visitor, Node *node, int pad);
 
 static void
@@ -134,9 +138,6 @@ static void
 print_lit_fn(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit_struct(Visitor *visitor, Node *node, int pad);
-
-static void
 print_lit_enum(Visitor *visitor, Node *node, int pad);
 
 static void
@@ -174,12 +175,26 @@ print_sizeof(Visitor *visitor, Node *node, int pad)
 }
 
 void
-print_member(Visitor *visitor, Node *node, int pad)
+print_expr_member(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeExprMember *_member = peek_expr_member(node);
   print_type(_member->type);
   fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
+  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+}
+
+void
+print_member(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeMember *_mem = peek_member(node);
+
+  if (_mem->name) {
+    fprintf(stdout, "%s ", peek_ident(_mem->name)->str);
+  }
+
+  print_type(_mem->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
@@ -198,13 +213,6 @@ print_load(Visitor *visitor, Node *node, int pad)
   print_head(node, pad);
   NodeLoad *_load = peek_load(node);
   fprintf(stdout, "'%s'", _load->filepath);
-}
-
-void
-print_lit_struct(Visitor *visitor, Node *node, int pad)
-{
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
 void
@@ -425,7 +433,6 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_decl, NODE_DECL);
   visitor_add(&visitor, (VisitorFunc)print_load, NODE_LOAD);
   visitor_add(&visitor, (VisitorFunc)print_lit_fn, NODE_LIT_FN);
-  visitor_add(&visitor, (VisitorFunc)print_lit_struct, NODE_LIT_STRUCT);
   visitor_add(&visitor, (VisitorFunc)print_lit_enum, NODE_LIT_ENUM);
   visitor_add(&visitor, (VisitorFunc)print_lit, NODE_LIT);
   visitor_add(&visitor, (VisitorFunc)print_return, NODE_STMT_RETURN);
@@ -439,10 +446,11 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_null, NODE_EXPR_NULL);
   visitor_add(&visitor, (VisitorFunc)print_sizeof, NODE_EXPR_SIZEOF);
   visitor_add(&visitor, (VisitorFunc)print_cast, NODE_EXPR_CAST);
-  visitor_add(&visitor, (VisitorFunc)print_member, NODE_EXPR_MEMBER);
+  visitor_add(&visitor, (VisitorFunc)print_expr_member, NODE_EXPR_MEMBER);
   visitor_add(&visitor, (VisitorFunc)print_elem, NODE_EXPR_ELEM);
   visitor_add(&visitor, (VisitorFunc)print_unary, NODE_EXPR_UNARY);
   visitor_add(&visitor, (VisitorFunc)print_type_struct, NODE_TYPE_STRUCT);
+  visitor_add(&visitor, (VisitorFunc)print_member, NODE_MEMBER);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

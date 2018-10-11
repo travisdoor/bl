@@ -1,38 +1,23 @@
 // some syntax and feature ideas
 
-// switch statement
-
-switch a {
-  case A:
-    puts("A"); // no need to have break
-  case B:
-    puts("B"); 
-  case C, D: // multiple cases
-    puts("C, D"); 
-  default: 
-    puts("default"); 
-}
-
-
-
-// for loop
-// from 0 to 9
-for i in 0 .. 10 {
-}
-
-for i s32 in 0 .. arr.count {
-}
-
-for i in 0 .. 10 by 2 {
-}
-
-Foo : struct {
-  a s32,
-  b s32
+// type
+Foo type : struct {
+  i s32,
+  j s32
 };
 
-foo Foo := { a = 10, b = 20 };
-foo := Foo { a = 10, b = 20 };
-arr s32[2] = {1, 2};
+Foo type : struct { s32, s32 };
 
-// range expression (make sense only in loops???)
+
+foo : Foo { .i = 10, .j = 20 };
+foo : Foo { ._0 = 10, ._1 = 20 };
+
+// function 
+Func type : fn () {};
+
+
+// values
+foo struct { s32, s32 } : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
+foo : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
+
+typeof(foo) -> struct { s32, s32 }

@@ -294,7 +294,8 @@ to_llvm_type(Context *cnt, Node *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  int         ptr    = ast_type_get_ptr(type);
+  //int         ptr    = ast_type_get_ptr(type);
+  int ptr = 0;
 
   switch (node_code(type)) {
   case NODE_TYPE_FUND: {
@@ -412,6 +413,7 @@ to_llvm_type(Context *cnt, Node *type)
   }
 
   case NODE_TYPE_STRUCT: {
+#if 0
     NodeTypeStruct *_struct_type = peek_type_struct(type);
 
     LLVMTypeRef *llvm_member_types = bl_malloc(sizeof(LLVMTypeRef) * _struct_type->typesc);
@@ -450,6 +452,7 @@ to_llvm_type(Context *cnt, Node *type)
       result = LLVMStructTypeInContext(cnt->llvm_cnt, llvm_member_types, i, false);
     }
     bl_free(llvm_member_types);
+#endif
     break;
   }
 
@@ -697,8 +700,8 @@ ir_expr_call_ct(Context *cnt, Node *call)
 LLVMValueRef
 ir_expr_member(Context *cnt, Node *member)
 {
-  NodeExprMember *_member      = peek_expr_member(member);
-  NodeIdent *     _ident       = peek_ident(_member->ident);
+  NodeExprMember *_member = peek_expr_member(member);
+  NodeIdent *     _ident  = peek_ident(_member->ident);
 
   LLVMValueRef result = NULL;
 
@@ -708,10 +711,10 @@ ir_expr_member(Context *cnt, Node *member)
     assert(_member->i != -1);
     if (_member->ptr_ref && should_load(member, result))
       result = LLVMBuildLoad(cnt->llvm_builder, result, gname("tmp"));
-    result = LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int) _member->i,
-                                gname(_ident->str));
+    result =
+        LLVMBuildStructGEP(cnt->llvm_builder, result, (unsigned int)_member->i, gname(_ident->str));
   } else if (_member->kind == MEM_KIND_ENUM) {
-    NodeDecl *      _decl_member = peek_decl(_ident->ref);
+    NodeDecl *_decl_member = peek_decl(_ident->ref);
     assert(!_member->ptr_ref);
     assert(_decl_member->value);
     result = ir_node(cnt, _decl_member->value);
@@ -1563,7 +1566,6 @@ ir_node(Context *cnt, Node *node)
   case NODE_TYPE_ENUM:
   case NODE_LIT_FN:
   case NODE_LIT_ENUM:
-  case NODE_LIT_STRUCT:
   case NODE_LOAD:
   case NODE_LINK:
   case NODE_BAD:

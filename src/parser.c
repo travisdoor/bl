@@ -188,7 +188,7 @@ static Node *
 parse_expr_null(Context *cnt);
 
 static Node *
-parse_decl_member(Context *cnt, int order);
+parse_decl_member(Context *cnt, bool type_only, int order);
 
 static Node *
 parse_decl_arg(Context *cnt);
@@ -204,9 +204,6 @@ parse_lit(Context *cnt);
 
 static Node *
 parse_lit_fn(Context *cnt);
-
-static Node *
-parse_lit_struct(Context *cnt);
 
 static Node *
 parse_lit_enum(Context *cnt);
@@ -326,18 +323,20 @@ parse_test(Context *cnt)
 }
 
 Node *
-parse_decl_member(Context *cnt, int order)
+parse_decl_member(Context *cnt, bool type_only, int order)
 {
   Token *tok_begin = tokens_peek(cnt->tokens);
-  Node * name      = parse_ident(cnt, 0);
-  if (!name) return NULL;
+  Node * name      = NULL;
+  Node * type      = NULL;
 
-  Node *type = parse_type(cnt);
-  if (!type) {
-    bl_abort("missing member type");
+  if (type_only) {
+    type = parse_type(cnt);
+  } else {
+    name = parse_ident(cnt, 0);
+    type = parse_type(cnt);
   }
 
-  return ast_decl(cnt->ast, tok_begin, DECL_KIND_MEMBER, name, type, NULL, true, 1, order, false);
+  return ast_member(cnt->ast, tok_begin, name, type, order);
 }
 
 Node *
@@ -394,7 +393,6 @@ parse_lit_cmp(Context *cnt, Node *prev)
   switch (node_code(prev)) {
   case NODE_IDENT:
   case NODE_TYPE_STRUCT:
-  case NODE_LIT_STRUCT:
     break;
   default:
     return NULL;
@@ -771,71 +769,6 @@ parse_lit_fn(Context *cnt)
 }
 
 Node *
-parse_lit_struct(Context *cnt)
-{
-  size_t marker     = tokens_get_marker(cnt->tokens);
-  Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
-  if (!tok_struct) {
-    tokens_back_to_marker(cnt->tokens, marker);
-    return NULL;
-  }
-
-  Token *tok = tokens_consume(cnt->tokens);
-  if (tok->sym != SYM_LBLOCK) {
-    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "expected struct member list");
-    return ast_bad(cnt->ast, tok_struct);
-  }
-
-  if (tokens_peek(cnt->tokens)->sym == SYM_IDENT &&
-      (tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
-       tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK)) {
-    tokens_back_to_marker(cnt->tokens, marker);
-    return NULL;
-  }
-
-  Node *type_struct = ast_type_struct(cnt->ast, tok_struct, NULL, 0, NULL, 0);
-  Node *lit_struct  = ast_lit_struct(cnt->ast, tok_struct, type_struct, cnt->curr_compound,
-                                    scope_new(cnt->assembly->scope_cache, 64));
-
-  push_curr_compound(cnt, lit_struct);
-
-  /* parse arg types */
-  bool   rq    = false;
-  Node **mem   = &peek_type_struct(type_struct)->types;
-  int *  memsc = &peek_type_struct(type_struct)->typesc;
-
-next:
-  *mem = parse_decl_member(cnt, *memsc);
-  if (*mem) {
-    mem = &(*mem)->next;
-    ++(*memsc);
-
-    if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
-      rq = true;
-      goto next;
-    }
-  } else if (rq) {
-    Token *tok_err = tokens_peek(cnt->tokens);
-    if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
-      parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-                  "expected member after comma ','");
-      return ast_bad(cnt->ast, tok_struct);
-    }
-  }
-
-  tok = tokens_consume(cnt->tokens);
-  if (tok->sym != SYM_RBLOCK) {
-    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-                "expected end of member list  '}'  or another memeber separated by comma");
-    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_bad(cnt->ast, tok_struct);
-  }
-
-  pop_curr_compound(cnt);
-  return lit_struct;
-}
-
-Node *
 parse_lit_enum(Context *cnt)
 {
   Token *tok_enum = tokens_peek(cnt->tokens);
@@ -995,7 +928,6 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_cast(cnt))) goto done;
   if ((expr = parse_run(cnt))) goto done;
   if ((expr = parse_lit_fn(cnt))) goto done;
-  if ((expr = parse_lit_struct(cnt))) goto done;
   if ((expr = parse_type_struct(cnt, 0))) goto done;
   if ((expr = parse_lit_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
@@ -1211,17 +1143,24 @@ parse_type_struct(Context *cnt, int ptr)
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  /* parse arg types */
-  Node * types;
-  bool   rq     = false;
-  Node **type   = &types;
-  int    typesc = 0;
+  Scope *scope = scope_new(cnt->assembly->scope_cache, 64);
+  Node * type_struct =
+      ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, ptr);
+  NodeTypeStruct *_type_struct = peek_type_struct(type_struct);
 
+  push_curr_compound(cnt, type_struct);
+  /* parse arg types */
+  bool   rq       = false;
+  Node **member   = &_type_struct->members;
+  int *  membersc = &_type_struct->membersc;
+
+  const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
+                         tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
 next:
-  *type = parse_type(cnt);
-  if (*type) {
-    type = &(*type)->next;
-    ++typesc;
+  *member = parse_decl_member(cnt, type_only, *membersc);
+  if (*member) {
+    member = &(*member)->next;
+    ++(*membersc);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -1232,6 +1171,8 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected member after comma ','");
+
+      pop_curr_compound(cnt);
       return ast_bad(cnt->ast, tok_struct);
     }
   }
@@ -1241,10 +1182,12 @@ next:
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected end of member list  '}'  or another memeber separated by comma");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    pop_curr_compound(cnt);
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  return ast_type_struct(cnt->ast, tok_struct, types, typesc, NULL, ptr);
+  pop_curr_compound(cnt);
+  return type_struct;
 }
 
 Node *
@@ -1367,7 +1310,7 @@ parse_decl(Context *cnt)
     case NODE_LIT_ENUM:
       _decl->kind = DECL_KIND_ENUM;
       break;
-    case NODE_LIT_STRUCT:
+    case NODE_TYPE_STRUCT:
       _decl->kind = DECL_KIND_STRUCT;
       break;
     default:

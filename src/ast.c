@@ -317,6 +317,15 @@ _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutabl
   return (Node *)_decl;
 }
 
+_NODE_CTOR(member, Node *name, Node *type, int order)
+{
+  NodeMember *_member = alloc_node(ast, NODE_MEMBER, tok, NodeMember *);
+  _member->name       = name;
+  _member->type       = type;
+  _member->order      = order;
+  return (Node *)_member;
+}
+
 _NODE_CTOR(type_fund, FundType code, int ptr)
 {
   NodeTypeFund *_type_fund = alloc_node(ast, NODE_TYPE_FUND, tok, NodeTypeFund *);
@@ -349,13 +358,14 @@ _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr)
   return (Node *)_type_fn;
 }
 
-_NODE_CTOR(type_struct, Node *types, int typesc, Node *base_decl, int ptr)
+_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, int ptr)
 {
-  NodeTypeStruct *_type_struct = alloc_node(ast, NODE_TYPE_STRUCT, tok, NodeTypeStruct *);
-  _type_struct->types          = types;
-  _type_struct->typesc         = typesc;
-  _type_struct->base_decl      = base_decl;
-  _type_struct->ptr            = ptr;
+  NodeTypeStruct *_type_struct  = alloc_node(ast, NODE_TYPE_STRUCT, tok, NodeTypeStruct *);
+  _type_struct->members         = members;
+  _type_struct->membersc        = membersc;
+  _type_struct->parent_compound = parent_compound;
+  _type_struct->scope           = scope;
+  _type_struct->ptr             = ptr;
   return (Node *)_type_struct;
 }
 
@@ -376,15 +386,6 @@ _NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
   _lit_fn->parent_compound = parent_compound;
   _lit_fn->scope           = scope;
   return (Node *)_lit_fn;
-}
-
-_NODE_CTOR(lit_struct, Node *type, Node *parent_compound, Scope *scope)
-{
-  NodeLitStruct *_lit_struct   = alloc_node(ast, NODE_LIT_STRUCT, tok, NodeLitStruct *);
-  _lit_struct->type            = type;
-  _lit_struct->parent_compound = parent_compound;
-  _lit_struct->scope           = scope;
-  return (Node *)_lit_struct;
 }
 
 _NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
@@ -574,14 +575,17 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
 
   case NODE_TYPE_STRUCT: {
     NodeTypeStruct *_struct = peek_type_struct(node);
-    // visit(_struct->arr);
-    node_foreach(_struct->types, tmp) visit(tmp);
+    node_foreach(_struct->members, tmp) visit(tmp);
     break;
   }
 
   case NODE_TYPE_ENUM: {
     // NodeTypeEnum *_enum = peek_type_enum(node);
     // visit(_enum->arr);
+    break;
+  }
+
+  case NODE_MEMBER: {
     break;
   }
 
@@ -655,11 +659,6 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
-  case NODE_LIT_STRUCT: {
-    visit(peek_lit_struct(node)->type);
-    break;
-  }
-
     /* defaults (terminal cases) */
   case NODE_IDENT:
   case NODE_LOAD:
@@ -701,12 +700,12 @@ _type_to_string(char *buf, size_t len, Node *type)
   switch (node_code(type)) {
   case NODE_IDENT: {
     // identificator can lead to type
-    _type_to_string(buf, len, peek_ident(type)->ref);
+    append_buf(buf, len, peek_ident(type)->str);
     break;
   }
 
   case NODE_DECL: {
-    _type_to_string(buf, len, peek_decl(type)->type);
+    _type_to_string(buf, len, peek_decl(type)->value);
     break;
   }
 
@@ -743,17 +742,9 @@ _type_to_string(char *buf, size_t len, Node *type)
       append_buf(buf, len, "*");
     }
 
-    if (_struct->base_decl) {
-      Node *name = peek_decl(_struct->base_decl)->name;
-      assert(name);
-
-      append_buf(buf, len, peek_ident(name)->str);
-      break;
-    }
-
     append_buf(buf, len, "struct {");
 
-    Node *t = _struct->types;
+    Node *t = _struct->members;
     while (t) {
       _type_to_string(buf, len, t);
       t = t->next;
@@ -777,6 +768,12 @@ _type_to_string(char *buf, size_t len, Node *type)
     NodeTypeArr *_arr = peek_type_arr(type);
     append_buf(buf, len, "[]");
     _type_to_string(buf, len, _arr->elem_type);
+    break;
+  }
+
+  case NODE_MEMBER: {
+    NodeMember *_mem = peek_member(type);
+    _type_to_string(buf, len, _mem->type);
     break;
   }
 
@@ -812,8 +809,6 @@ ast_get_scope(Node *node)
     return peek_block(node)->scope;
   case NODE_LIT_FN:
     return peek_lit_fn(node)->scope;
-  case NODE_LIT_STRUCT:
-    return peek_lit_struct(node)->scope;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->scope;
   case NODE_STMT_LOOP:
@@ -835,8 +830,6 @@ ast_get_type(Node *node)
     return ast_get_type(peek_lit(node)->type);
   case NODE_LIT_FN:
     return peek_lit_fn(node)->type;
-  case NODE_LIT_STRUCT:
-    return peek_lit_struct(node)->type;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->type;
   case NODE_LIT_CMP:
@@ -861,8 +854,9 @@ ast_get_type(Node *node)
     return ast_get_type(peek_expr_member(node)->type);
   case NODE_EXPR_ELEM:
     return ast_get_type(peek_expr_elem(node)->type);
-  case NODE_TYPE_FUND:
   case NODE_TYPE_STRUCT:
+    return &ftypes[FTYPE_TYPE];
+  case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_ENUM:
   case NODE_TYPE_ARR:
@@ -885,9 +879,6 @@ ast_set_type(Node *node, Node *type)
     break;
   case NODE_LIT_FN:
     peek_lit_fn(node)->type = type;
-    break;
-  case NODE_LIT_STRUCT:
-    peek_lit_struct(node)->type = type;
     break;
   case NODE_LIT_ENUM:
     peek_lit_enum(node)->type = type;
@@ -1005,10 +996,10 @@ ast_type_cmp(Node *first, Node *second)
     NodeTypeStruct *_f = peek_type_struct(f);
     NodeTypeStruct *_s = peek_type_struct(s);
 
-    if (_f->typesc != _s->typesc) return false;
+    if (_f->membersc != _s->membersc) return false;
 
-    Node *type1 = _f->types;
-    Node *type2 = _s->types;
+    Node *type1 = _f->members;
+    Node *type2 = _s->members;
     while (type1 && type2) {
       if (!ast_type_cmp(type1, type2)) return false;
 
@@ -1037,66 +1028,75 @@ ast_type_kind(Node *type)
 {
   assert(type);
   switch (node_code(type)) {
-  case NODE_TYPE_FUND: {
-    NodeTypeFund *_ftype = peek_type_fund(type);
+    case NODE_TYPE_FUND: {
+      NodeTypeFund *_ftype = peek_type_fund(type);
 
-    if (_ftype->ptr) return TYPE_KIND_PTR;
+      if (_ftype->ptr) return TYPE_KIND_PTR;
 
-    switch (_ftype->code) {
-    case FTYPE_TYPE:
-      return TYPE_KIND_TYPE;
-    case FTYPE_VOID:
-      return TYPE_KIND_VOID;
-    case FTYPE_S8:
-    case FTYPE_S16:
-    case FTYPE_S32:
-    case FTYPE_S64:
-      return TYPE_KIND_SINT;
-    case FTYPE_U8:
-    case FTYPE_U16:
-    case FTYPE_U32:
-    case FTYPE_U64:
-      return TYPE_KIND_UINT;
-    case FTYPE_SIZE:
-      return TYPE_KIND_SIZE;
-    case FTYPE_F32:
-    case FTYPE_F64:
-      return TYPE_KIND_REAL;
-    case FTYPE_CHAR:
-      return TYPE_KIND_CHAR;
-    case FTYPE_STRING:
-      return TYPE_KIND_STRING;
-    case FTYPE_BOOL:
-      return TYPE_KIND_BOOL;
-    case FTYPE_COUNT:
+      switch (_ftype->code) {
+        case FTYPE_TYPE:
+          return TYPE_KIND_TYPE;
+        case FTYPE_VOID:
+          return TYPE_KIND_VOID;
+        case FTYPE_S8:
+        case FTYPE_S16:
+        case FTYPE_S32:
+        case FTYPE_S64:
+          return TYPE_KIND_SINT;
+        case FTYPE_U8:
+        case FTYPE_U16:
+        case FTYPE_U32:
+        case FTYPE_U64:
+          return TYPE_KIND_UINT;
+        case FTYPE_SIZE:
+          return TYPE_KIND_SIZE;
+        case FTYPE_F32:
+        case FTYPE_F64:
+          return TYPE_KIND_REAL;
+        case FTYPE_CHAR:
+          return TYPE_KIND_CHAR;
+        case FTYPE_STRING:
+          return TYPE_KIND_STRING;
+        case FTYPE_BOOL:
+          return TYPE_KIND_BOOL;
+        case FTYPE_COUNT:
+          break;
+      }
       break;
     }
-    break;
-  }
 
-  case NODE_TYPE_FN: {
-    NodeTypeFn *_fn_type = peek_type_fn(type);
-    if (_fn_type->ptr) return TYPE_KIND_PTR;
-    return TYPE_KIND_FN;
-  }
-
-  case NODE_TYPE_STRUCT: {
-    NodeTypeStruct *_struct_type = peek_type_struct(type);
-    if (_struct_type->ptr) return TYPE_KIND_PTR;
-
-    if (_struct_type->base_decl &&
-        ast_is_buildin(peek_decl(_struct_type->base_decl)->name) == BUILDIN_ANY) {
-      return TYPE_KIND_ANY;
+    case NODE_TYPE_FN: {
+      NodeTypeFn *_fn_type = peek_type_fn(type);
+      if (_fn_type->ptr) return TYPE_KIND_PTR;
+      return TYPE_KIND_FN;
     }
 
-    return TYPE_KIND_STRUCT;
-  }
+    case NODE_TYPE_STRUCT: {
+      NodeTypeStruct *_struct_type = peek_type_struct(type);
+      if (_struct_type->ptr) return TYPE_KIND_PTR;
 
-  case NODE_TYPE_ENUM:
-    return TYPE_KIND_ENUM;
+      /*if (_struct_type->base_decl &&
+          ast_is_buildin(peek_decl(_struct_type->base_decl)->name) == BUILDIN_ANY) {
+        return TYPE_KIND_ANY;
+        }*/
 
-  case NODE_TYPE_ARR:
-    return TYPE_KIND_ARR;
+      return TYPE_KIND_STRUCT;
+    }
+
+    case NODE_TYPE_ENUM:
+      return TYPE_KIND_ENUM;
+
+    case NODE_TYPE_ARR:
+      return TYPE_KIND_ARR;
+
+    case NODE_DECL: {
+      NodeDecl *_decl = peek_decl(type);
+      return ast_type_kind(_decl->value);
+    }
+
+    case NODE_IDENT: {
+      return ast_type_kind(peek_ident(type)->ref);
+    }
 
   default:
     bl_abort("node %s is not a type", node_name(type));
@@ -1118,8 +1118,6 @@ ast_get_parent_compound(Node *node)
     return peek_block(node)->parent_compound;
   case NODE_LIT_FN:
     return peek_lit_fn(node)->parent_compound;
-  case NODE_LIT_STRUCT:
-    return peek_lit_struct(node)->parent_compound;
   case NODE_LIT_ENUM:
     return peek_lit_enum(node)->parent_compound;
   case NODE_LIT_CMP:
@@ -1128,6 +1126,36 @@ ast_get_parent_compound(Node *node)
     return peek_stmt_loop(node)->parent_compound;
   default:
     bl_abort("node %s has no parent compound", node_name(node));
+  }
+}
+
+Node *
+ast_typeof(Node *node)
+{
+  if (!node) return NULL;
+
+  switch (node_code(node)) {
+    case NODE_TYPE_STRUCT:
+      return &ftypes[FTYPE_TYPE];
+    case NODE_TYPE_FN:
+      return node;
+    case NODE_TYPE_FUND:
+      return node;
+    case NODE_IDENT:
+      return peek_ident(node)->ref;
+    case NODE_DECL: {
+      NodeDecl *_decl = peek_decl(node);
+      if (_decl->type == &ftypes[FTYPE_TYPE])
+        return node;
+      return ast_typeof(_decl->type);
+    }
+
+  case NODE_LIT_FN:
+    return peek_lit_fn(node)->type;
+  case NODE_LIT:
+    return peek_lit(node)->type;
+  default:
+    bl_abort("cannot get type of %s", node_name(node));
   }
 }
 

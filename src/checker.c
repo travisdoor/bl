@@ -378,17 +378,16 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
+  case NODE_MEMBER: {
+    NodeMember *_mem = peek_member(*node);
+    flatten(&_mem->type);
+    break;
+  }
+
   case NODE_LIT_FN: {
     NodeLitFn *_fn = peek_lit_fn(*node);
     flatten(&_fn->type);
     check_flatten(cnt, &_fn->block);
-    break;
-  }
-
-  case NODE_LIT_STRUCT: {
-    NodeLitStruct *_struct = peek_lit_struct(*node);
-    // flatten(&_struct->type);
-    check_flatten(cnt, &_struct->type);
     break;
   }
 
@@ -519,9 +518,9 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_TYPE_STRUCT: {
-    NodeTypeStruct *_struct_type = peek_type_struct(*node);
+    NodeTypeStruct *_type_struct = peek_type_struct(*node);
     Node **         tmp;
-    node_foreach_ref(_struct_type->types, tmp)
+    node_foreach_ref(_type_struct->members, tmp)
     {
       flatten(tmp);
     }
@@ -814,6 +813,8 @@ check_node(Context *cnt, Node **node)
   case NODE_LIT_CMP:
     result = check_lit_cmp(cnt, node);
     break;
+
+  case NODE_MEMBER:
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_STRUCT:
@@ -828,7 +829,6 @@ check_node(Context *cnt, Node **node)
   case NODE_BAD:
   case NODE_UBLOCK:
   case NODE_BLOCK:
-  case NODE_LIT_STRUCT:
   case NODE_LIT_ENUM:
   case NODE_LIT_FN:
   case NODE_COUNT:
@@ -1201,44 +1201,6 @@ check_expr_member(Context *cnt, Node **member)
   if (node_is(lhs_type, NODE_TYPE_STRUCT)) {
     /* structure member */
     _member->kind = MEM_KIND_STRUCT;
-
-    NodeTypeStruct *_lhs_type = peek_type_struct(lhs_type);
-
-    if (_lhs_type->base_decl) {
-      /* named structure type */
-      found = _lookup(peek_decl(_lhs_type->base_decl)->value, _member->ident, NULL, false);
-      if (!found) wait(_member->ident);
-
-      if (_member->ptr_ref != (_lhs_type->ptr ? true : false)) {
-        check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, *member, BUILDER_CUR_WORD,
-                         "invalid member access, use %s",
-                         _member->ptr_ref ? "'.' instead of '->'" : "'->' instead of '.'");
-      }
-
-      /* CLEANUP !!! */
-      i = peek_decl(found)->order;
-    } else {
-      /* structure is anonymous and it's members can be referenced by '_N' (ex.: '_0') */
-      const char *mn = peek_ident(_member->ident)->str;
-      if (!sscanf(mn, "_%d", &i)) {
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, _member->ident, BUILDER_CUR_WORD,
-                         "expected member number in format '_N'");
-        finish();
-      }
-
-      assert(i != -1);
-
-      if (i >= _lhs_type->typesc) {
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, _member->ident, BUILDER_CUR_WORD,
-                         "anonymous structure has no member with number '%d'", i);
-      }
-
-      /* lookup member order PERFORMANCE: better solution */
-      Node *tmp = _lhs_type->types;
-      for (int j = 0; j != i; ++j, tmp = tmp->next)
-        ;
-      _member->type = tmp;
-    }
   } else if (node_is(lhs_type, NODE_TYPE_ENUM)) {
     /* enum variant */
     _member->kind           = MEM_KIND_ENUM;
@@ -1310,7 +1272,8 @@ infer_type(Context *cnt, Node *decl)
 {
   NodeDecl *_decl = peek_decl(decl);
   if (!_decl->value) return false;
-  Node *inferred_type = ast_get_type(_decl->value);
+
+  Node *inferred_type = ast_typeof(_decl->value);
   if (!inferred_type) return false;
 
   if (_decl->type && !ast_type_cmp(inferred_type, _decl->type)) {
@@ -1347,11 +1310,16 @@ check_decl(Context *cnt, Node **decl)
   }
 
   assert(_decl->type);
-  Node *   type      = ast_get_type(_decl->type);
+  Node *   type      = ast_typeof(_decl->type);
   TypeKind type_kind = ast_type_kind(type);
+
+  if (type_kind == TYPE_KIND_TYPE) {
+    _decl->kind = DECL_KIND_TYPE;
+  }
 
   switch (_decl->kind) {
   case DECL_KIND_STRUCT: {
+    /*
     Node *value_type = ast_get_type(_decl->value);
 
     peek_type_struct(value_type)->base_decl = *decl;
@@ -1364,10 +1332,11 @@ check_decl(Context *cnt, Node **decl)
     if (peek_type_struct(value_type)->typesc == 0) {
       check_error_node(cnt, ERR_EMPTY, _decl->name, BUILDER_CUR_WORD, "empty structure");
     }
+    */
     break;
   }
 
-  case DECL_KIND_MEMBER: {
+  case DECL_KIND_MEMBER: { // REMOVE
     /* Structure members cannot be initialized with default value (foo s32 := 10), when implicit
      * structure initialization will be implemented in future, mutablility checking will be
      * required. In this case assignment of any kind will cause error */
@@ -1419,9 +1388,8 @@ check_decl(Context *cnt, Node **decl)
   }
 
   case DECL_KIND_FN:
-    break;
   case DECL_KIND_TYPE:
-    bl_abort("unimplemented");
+    break;
   case DECL_KIND_UNKNOWN:
     bl_abort("unknown declaration kind");
   }
@@ -1437,10 +1405,10 @@ check_decl(Context *cnt, Node **decl)
     check_error_node(
         cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
         "declaration has invalid type '%s', a function mutable must be referenced by pointer", tmp);
-  } 
+  }
 
   /* type validation done */
-  _decl->type = type;
+  //_decl->type = type;
 
   /* infer type for 'null' value */
   if (_decl->value && node_is(_decl->value, NODE_EXPR_NULL)) {
@@ -1520,6 +1488,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
     /* struct-field initializers need to be sorted and only left-hand side of expression can be used
      * for ir generation
      */
+#if 0
     NodeTypeStruct *_type = peek_type_struct(type);
     Node **         tmp   = bl_calloc((size_t)_type->typesc, sizeof(Node *));
     if (!tmp) bl_abort("bad alloc");
@@ -1574,7 +1543,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
       }
 
       tmp[_member->i] = field;
-    }
+  }
 
     /* store initializers in right order and use only right side of field binop */
     if (noerr) {
@@ -1597,6 +1566,7 @@ check_lit_cmp(Context *cnt, Node **cmp)
     bl_free(tmp);
     tmp = NULL;
 
+#endif
     break;
   }
 

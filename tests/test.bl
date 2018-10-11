@@ -1,29 +1,19 @@
 /* playground */
 
+Foo type : struct {
+  i s32, j s32
+};
+
+Bar : struct { s32, s32 };
+
+Hello : Bar;
+
 main : fn () s32 {
-  /*arr [10] s32;
-  arr_ref [] s32;*/
-
-  // type:    struct { s32, s32 }
-  // literal: struct { i s32, j s32 } 
-  //test : struct { s32, s32 } { ._0 = 0, ._1 = 0 };
-  //Test : struct { i s32, j s32 };
-
-  a struct { struct { s32 }, s32 };
+  a := 0;
   
-  foo : Foo { .i = 10, .j = 20 };
-  bar : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
-  test : struct { i s32 } { .i = 10 };
-
-  //func(arr);
+  foo Foo;  
+  bar Bar;
+  hello Hello;
   return 0;
 };
 
-Foo : struct {
-  i s32,
-  j s32
-};
-
-func : fn (i s32, j s32) {
-  i = j;
-};
