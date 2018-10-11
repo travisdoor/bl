@@ -18,14 +18,14 @@
   }
 };
 
-#test "multiple allocations" {
+/*#test "multiple allocations" {
   count usize : 10;
   Foo : struct {
     i s32,
     j s32
   };
 
-  mem *Foo[count];
+  mem [count] *Foo;
 
   loop (i usize := 0; i < count; i += 1) {
     mem[i] = cast(*Foo) mem_alloc(sizeof(Foo));
@@ -39,7 +39,7 @@
     assert(mem[i]->j == 20);
     mem_free(mem[i]);
   }
-};
+};*/
 
 #test "copying" {
   a := 10;
@@ -61,7 +61,7 @@
   assert(foo1.j == foo2.j);
 };
 
-#test "reallocation" {
+/*#test "reallocation" {
   Foo : struct {
     i usize,
     j usize
@@ -78,4 +78,4 @@
   assert(foo->j == 20);
 
   mem_free(foo);
-};
+};*/

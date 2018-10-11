@@ -13,7 +13,7 @@ main : fn () s32 {
   
   foo : Foo { .i = 10, .j = 20 };
   bar : struct { s32, s32 } { ._0 = 10, ._1 = 20 }; 
-  //test : struct { i s32 } { ._0 = 10 };
+  test : struct { i s32 } { .i = 10 };
 
   //func(arr);
   return 0;

@@ -143,7 +143,7 @@
     int   ptr; \
   }) \
   nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
-    Node *base_decl; /* sometimes we need structure name and scope? */ \
+    Node *base_decl; \
     Node *types; \
     int   typesc; \
     int   ptr; \

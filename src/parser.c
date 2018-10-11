@@ -197,19 +197,19 @@ static Node *
 parse_decl_variant(Context *cnt, Node *base_type, Node *prev);
 
 static Node *
-parse_literal_cmp(Context *cnt, Node *prev);
+parse_lit_cmp(Context *cnt, Node *prev);
 
 static Node *
-parse_literal(Context *cnt);
+parse_lit(Context *cnt);
 
 static Node *
-parse_literal_fn(Context *cnt);
+parse_lit_fn(Context *cnt);
 
 static Node *
-parse_literal_struct(Context *cnt);
+parse_lit_struct(Context *cnt);
 
 static Node *
-parse_literal_enum(Context *cnt);
+parse_lit_enum(Context *cnt);
 
 static inline bool
 parse_semicolon_rq(Context *cnt);
@@ -387,14 +387,14 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
 }
 
 Node *
-parse_literal_cmp(Context *cnt, Node *prev)
+parse_lit_cmp(Context *cnt, Node *prev)
 {
   if (prev == NULL) return NULL;
 
   switch (node_code(prev)) {
   case NODE_IDENT:
   case NODE_TYPE_STRUCT:
-    //case NODE_LIT_STRUCT:
+  case NODE_LIT_STRUCT:
     break;
   default:
     return NULL;
@@ -711,7 +711,7 @@ parse_stmt_continue(Context *cnt)
 }
 
 Node *
-parse_literal(Context *cnt)
+parse_lit(Context *cnt)
 {
   Token *tok  = tokens_peek(cnt->tokens);
   Node * type = NULL;
@@ -749,7 +749,7 @@ parse_literal(Context *cnt)
 }
 
 Node *
-parse_literal_fn(Context *cnt)
+parse_lit_fn(Context *cnt)
 {
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
@@ -771,7 +771,7 @@ parse_literal_fn(Context *cnt)
 }
 
 Node *
-parse_literal_struct(Context *cnt)
+parse_lit_struct(Context *cnt)
 {
   size_t marker     = tokens_get_marker(cnt->tokens);
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
@@ -836,7 +836,7 @@ next:
 }
 
 Node *
-parse_literal_enum(Context *cnt)
+parse_lit_enum(Context *cnt)
 {
   Token *tok_enum = tokens_peek(cnt->tokens);
   Node * type     = parse_type_enum(cnt, 0);
@@ -994,20 +994,20 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_typeof(cnt))) goto done;
   if ((expr = parse_expr_cast(cnt))) goto done;
   if ((expr = parse_run(cnt))) goto done;
-  if ((expr = parse_literal_fn(cnt))) goto done;
-  if ((expr = parse_literal_struct(cnt))) goto done;
+  if ((expr = parse_lit_fn(cnt))) goto done;
+  if ((expr = parse_lit_struct(cnt))) goto done;
   if ((expr = parse_type_struct(cnt, 0))) goto done;
-  if ((expr = parse_literal_enum(cnt))) goto done;
+  if ((expr = parse_lit_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
-  if ((expr = parse_literal(cnt))) goto done;
+  if ((expr = parse_lit(cnt))) goto done;
   if ((expr = parse_expr_member(cnt, op))) goto done;
   if ((expr = parse_ident(cnt, 0))) goto done;
   if ((expr = parse_line(cnt))) goto done;
   if ((expr = parse_file(cnt))) goto done;
 
 done:
-  tmp = parse_literal_cmp(cnt, expr);
+  tmp = parse_lit_cmp(cnt, expr);
   return tmp ? tmp : expr;
 }
 
