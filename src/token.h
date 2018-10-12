@@ -138,7 +138,7 @@ typedef struct Token
   TokenValue value;
 } Token;
 
-#define sym_is_binop(_sym) (_sym >= SYM_EQ && _sym <= SYM_LESS)
+#define sym_is_binop(_sym) (_sym >= SYM_EQ && _sym <= SYM_ASTERISK)
 #define sym_is_assign(_sym) (_sym >= SYM_PLUS_ASSIGN && _sym <= SYM_ASSIGN)
 #define sym_is_logical(_sym) (_sym >= SYM_EQ && _sym <= SYM_LESS)
 #define token_is_binop(_token) sym_is_binop(_token->sym)

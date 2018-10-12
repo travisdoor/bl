@@ -15,7 +15,6 @@ func fn () : fn() {};
 main : fn () s32 {
   a : 0;
   a = 10 + 1;
-
   
   foo Foo;  
   bar Bar;

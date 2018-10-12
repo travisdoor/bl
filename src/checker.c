@@ -182,6 +182,18 @@ static void
 check_unresolved(Context *cnt);
 
 // impl
+static inline void
+infer_null_type(Context *cnt, Node *from, Node *null)
+{
+  const Node *   type = ast_get_type(from);
+  const TypeKind kind = ast_type_kind(type);
+  if (kind != TYPE_KIND_PTR) {
+    check_error_node(cnt, ERR_INVALID_TYPE, from, BUILDER_CUR_WORD, "expected a pointer type");
+  } else {
+    peek_expr_null(null)->type = type;
+  }
+}
+
 Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
@@ -846,7 +858,7 @@ check_stmt_return(Context *cnt, Node **ret)
 Node *
 check_expr_binop(Context *cnt, Node **binop)
 {
-  /* TODO: check if lhs is assignable for = += etc. */
+  /* TODO: check if lhs is assignable for = += etc. and also assignment mutability */
   NodeExprBinop *_binop = peek_expr_binop(*binop);
 
   assert(_binop->lhs);
@@ -855,14 +867,8 @@ check_expr_binop(Context *cnt, Node **binop)
   const TypeKind lhs_kind = ast_type_kind(lhs_type);
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
-    if (lhs_kind != TYPE_KIND_PTR) {
-      check_error_node(cnt, ERR_INVALID_TYPE, _binop->lhs, BUILDER_CUR_WORD,
-                       "expected a pointer type");
-    } else {
-      peek_expr_null(_binop->rhs)->type = lhs_type;
-      if (!_binop->type) _binop->type = lhs_type;
-    }
-
+    infer_null_type(cnt, _binop->lhs, _binop->rhs);
+    if (!_binop->type) _binop->type = lhs_type;
     finish();
   }
 
