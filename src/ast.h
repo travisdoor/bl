@@ -121,7 +121,6 @@
     bool        mutable; \
     int         flags; \
     int         used; \
-    int         order; \
     bool        in_gscope; \
     BHashTable *deps; \
   }) \
@@ -129,6 +128,15 @@
     Node *name; \
     Node *type; \
     int   order; \
+  }) \
+  nt(ARG, Arg, arg, struct { \
+    Node *name; \
+    Node *type; \
+  }) \
+  nt(VARIANT, Variant, variant, struct { \
+    Node *name; \
+    Node *type; \
+    Node *value; \
   }) \
   nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
@@ -253,14 +261,10 @@ typedef enum
 typedef enum
 {
   DECL_KIND_UNKNOWN = -1,
-  DECL_KIND_FIELD   = 0, /* foo s32; foo := 0; */
-  DECL_KIND_FN      = 1, /* foo : fn () {} */
-  DECL_KIND_STRUCT  = 2, /* foo : struct {} */
-  DECL_KIND_MEMBER  = 3, /* structure member */
-  DECL_KIND_ARG     = 4, /* function argument */
-  DECL_KIND_ENUM    = 5, /* foo : enum {} */
-  DECL_KIND_VARIANT = 6, /* enum variant */
-  DECL_KIND_TYPE    = 7, /* foo : s32; foo : bar; */
+  DECL_KIND_FIELD   = 0, /* a := 0; */
+  DECL_KIND_TYPE    = 1, /* Type : struct { s32 }; */
+  DECL_KIND_FN      = 2, /* main : fn () s32 {}; */
+  DECL_KIND_ENUM    = 3, /* Enum : enum s8 {}; */
 } DeclKind;
 
 typedef enum
@@ -424,8 +428,10 @@ _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
 _NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
-           int order, bool in_gscope);
+           bool in_gscope);
 _NODE_CTOR(member, Node *name, Node *type, int order);
+_NODE_CTOR(arg, Node *name, Node *type);
+_NODE_CTOR(variant, Node *name, Node *type, Node *value);
 _NODE_CTOR(type_fund, FundType code, int ptr);
 _NODE_CTOR(type_vargs);
 _NODE_CTOR(type_arr, Node *elem_type, Node *len);
@@ -492,8 +498,7 @@ ast_get_parent_compound(Node *node);
 bool
 ast_is_type(Node *node);
 
-DEPRECATED
-Node * 
+Node *
 ast_get_type(Node *node);
 
 Node *

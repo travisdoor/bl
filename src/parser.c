@@ -300,7 +300,7 @@ parse_test(Context *cnt)
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
   Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound, 0, NULL);
   Node *      test =
-      ast_decl(cnt->ast, tok_begin, DECL_KIND_FN, name, NULL, value, false, FLAG_TEST, -1, false);
+      ast_decl(cnt->ast, tok_begin, DECL_KIND_UNKNOWN, name, NULL, value, false, FLAG_TEST, false);
 
   NodeLitFn *_value = peek_lit_fn(value);
   push_curr_decl(cnt, test);
@@ -336,6 +336,7 @@ parse_decl_member(Context *cnt, bool type_only, int order)
     type = parse_type(cnt);
   }
 
+  if (!type && !name) return NULL;
   return ast_member(cnt->ast, tok_begin, name, type, order);
 }
 
@@ -351,7 +352,7 @@ parse_decl_arg(Context *cnt)
     bl_abort("missing argument type");
   }
 
-  return ast_decl(cnt->ast, tok_begin, DECL_KIND_ARG, name, type, NULL, true, 0, -1, false);
+  return ast_arg(cnt->ast, tok_begin, name, type);
 }
 
 Node *
@@ -381,8 +382,7 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
   }
 
   assert(value);
-  return ast_decl(cnt->ast, tok_begin, DECL_KIND_VARIANT, name, base_type, value, false, 0, -1,
-                  false);
+  return ast_variant(cnt->ast, tok_begin, name, base_type, value);
 }
 
 Node *
@@ -393,6 +393,7 @@ parse_lit_cmp(Context *cnt, Node *prev)
   switch (node_code(prev)) {
   case NODE_IDENT:
   case NODE_TYPE_STRUCT:
+  case NODE_TYPE_ARR:
     break;
   default:
     return NULL;
@@ -929,6 +930,7 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_run(cnt))) goto done;
   if ((expr = parse_lit_fn(cnt))) goto done;
   if ((expr = parse_type_struct(cnt, 0))) goto done;
+  if ((expr = parse_type_arr(cnt, 0))) goto done;
   if ((expr = parse_lit_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
@@ -988,7 +990,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
 
       /* Set result type to bool for logical binary operations, this is used for type checking later
        * in the compiler pipeline. Other types are checked recursively. */
-      if (token_is_logic_op(op)) {
+      if (token_is_logical(op)) {
         // IDEA use ident reference instead???
         result_type = &ftypes[FTYPE_BOOL];
       }
@@ -1242,8 +1244,7 @@ parse_decl(Context *cnt)
                      "'%s' is reserved name of buildin type", tok_ident->value.str);
   }
 
-  Node *decl =
-      ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, -1, false);
+  Node *decl = ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, false);
   push_curr_decl(cnt, decl);
   NodeDecl *_decl = peek_decl(decl);
 
@@ -1296,29 +1297,11 @@ parse_decl(Context *cnt)
   }
 
   if (_decl->flags & FLAG_EXTERN) {
-    _decl->kind = DECL_KIND_FN;
     if (_decl->mutable) {
       parse_error(cnt, ERR_INVALID_MUTABILITY, tok_assign, BUILDER_CUR_WORD,
                   "extern declaration cannot be mutable");
       RETURN_BAD;
     }
-  } else if (_decl->value) {
-    switch (node_code(_decl->value)) {
-    case NODE_LIT_FN:
-      _decl->kind = DECL_KIND_FN;
-      break;
-    case NODE_LIT_ENUM:
-      _decl->kind = DECL_KIND_ENUM;
-      break;
-    case NODE_TYPE_STRUCT:
-      _decl->kind = DECL_KIND_STRUCT;
-      break;
-    default:
-      _decl->kind = DECL_KIND_FIELD;
-      break;
-    }
-  } else {
-    _decl->kind = DECL_KIND_FIELD;
   }
 
   pop_curr_decl(cnt);

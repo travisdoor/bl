@@ -89,9 +89,6 @@ _lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
 static void
 to_any(Context *cnt, Node **node, Node *any_type);
 
-static bool
-infer_type(Context *cnt, Node *decl);
-
 static void
 provide(Node *ident, Node *provided);
 
@@ -177,6 +174,9 @@ check_type_enum(Context *cnt, Node **type);
 
 static Node *
 check_type_arr(Context *cnt, Node **type);
+
+static Node *
+check_type_struct(Context *cnt, Node **type);
 
 static void
 check_unresolved(Context *cnt);
@@ -381,6 +381,19 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_MEMBER: {
     NodeMember *_mem = peek_member(*node);
     flatten(&_mem->type);
+    break;
+  }
+
+  case NODE_ARG: {
+    NodeArg *_arg = peek_arg(*node);
+    flatten(&_arg->type);
+    break;
+  }
+
+  case NODE_VARIANT: {
+    NodeVariant *_variant = peek_variant(*node);
+    flatten(&_variant->type);
+    flatten(&_variant->value);
     break;
   }
 
@@ -643,7 +656,7 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   cast->next     = tmp_next;
   *node          = cast;
   */
-  return true;
+  return false;
 }
 
 void
@@ -713,11 +726,15 @@ check_node(Context *cnt, Node **node)
   case NODE_LIT_CMP:
     result = check_lit_cmp(cnt, node);
     break;
+  case NODE_TYPE_STRUCT:
+    result = check_type_struct(cnt, node);
+    break;
 
   case NODE_MEMBER:
+  case NODE_ARG:
+  case NODE_VARIANT:
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
-  case NODE_TYPE_STRUCT:
   case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
   case NODE_LIT:
@@ -766,12 +783,6 @@ check_expr_unary(Context *cnt, Node **unary)
   finish();
 }
 
-static inline void
-reduce_type_refs(Node **found)
-{
-  /* TODO */
-}
-
 Node *
 check_ident(Context *cnt, Node **ident)
 {
@@ -792,7 +803,6 @@ check_ident(Context *cnt, Node **ident)
 
   assert(node_is(found, NODE_DECL) && "not declaration");
   peek_decl(found)->used++;
-  reduce_type_refs(&found);
 
   _ident->ref = found;
 
@@ -802,30 +812,139 @@ check_ident(Context *cnt, Node **ident)
 Node *
 check_stmt_return(Context *cnt, Node **ret)
 {
+  NodeStmtReturn *_ret = peek_stmt_return(*ret);
+  assert(_ret->fn_decl);
+
+  NodeDecl * _callee_decl = peek_decl(_ret->fn_decl);
+  NodeLitFn *_callee      = peek_lit_fn(_callee_decl->value);
+  Node *     fn_ret_type  = ast_get_type(peek_type_fn(_callee->type)->ret_type);
+  if (fn_ret_type == NULL) wait(peek_decl(_ret->fn_decl)->name);
+
+  if (_ret->expr) {
+    if (node_is(_ret->expr, NODE_EXPR_NULL)) {
+      NodeExprNull *_null = peek_expr_null(_ret->expr);
+      _null->type         = fn_ret_type;
+      if (ast_type_kind(_null->type) != TYPE_KIND_PTR) {
+        check_error_node(
+            cnt, ERR_INVALID_TYPE, _ret->expr, BUILDER_CUR_WORD,
+            "'null' cannot be used because the function does not return a pointer value");
+      }
+    } else {
+      Node *expr_type = ast_get_type(_ret->expr);
+      if (!ast_type_cmp(expr_type, fn_ret_type) && !implicit_cast(cnt, &_ret->expr, fn_ret_type)) {
+        check_error_invalid_types(cnt, expr_type, fn_ret_type, _ret->expr);
+      }
+    }
+  } else {
+    if (!ast_type_cmp(&ftypes[FTYPE_VOID], fn_ret_type)) {
+      check_error_node(cnt, ERR_EXPECTED_EXPR, *ret, BUILDER_CUR_AFTER, "expected return value");
+    }
+  }
   finish();
 }
 
 Node *
 check_expr_binop(Context *cnt, Node **binop)
 {
+  /* TODO: check if lhs is assignable for = += etc. */
+  NodeExprBinop *_binop = peek_expr_binop(*binop);
+
+  assert(_binop->lhs);
+  assert(_binop->rhs);
+  Node *         lhs_type = ast_get_type(_binop->lhs);
+  const TypeKind lhs_kind = ast_type_kind(lhs_type);
+
+  if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
+    if (lhs_kind != TYPE_KIND_PTR) {
+      check_error_node(cnt, ERR_INVALID_TYPE, _binop->lhs, BUILDER_CUR_WORD,
+                       "expected a pointer type");
+    } else {
+      peek_expr_null(_binop->rhs)->type = lhs_type;
+      if (!_binop->type) _binop->type = lhs_type;
+    }
+
+    finish();
+  }
+
+  Node *rhs_type = ast_get_type(_binop->rhs);
+  assert(rhs_type);
+  const TypeKind rhs_kind = ast_type_kind(rhs_type);
+
+  if (!ast_type_cmp(lhs_type, rhs_type)) {
+    if (node_is(_binop->lhs, NODE_LIT) &&
+        (lhs_kind == TYPE_KIND_SIZE || lhs_kind == TYPE_KIND_UINT || lhs_kind == TYPE_KIND_SINT) &&
+        (rhs_kind == TYPE_KIND_SIZE || rhs_kind == TYPE_KIND_UINT || rhs_kind == TYPE_KIND_SINT)) {
+      peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast, rhs_type);
+    } else if (!implicit_cast(cnt, &_binop->rhs, lhs_type)) {
+      check_error_invalid_types(cnt, lhs_type, rhs_type, *binop);
+    }
+  }
+
+  if (!_binop->type) _binop->type = ast_get_type(_binop->lhs);
+
   finish();
 }
 
 Node *
 check_expr_cast(Context *cnt, Node **cast)
 {
+  NodeExprCast *_cast = peek_expr_cast(*cast);
+  assert(_cast->type);
+  _cast->type = ast_get_type(_cast->type);
+
+  if (ast_type_cmp(_cast->type, ast_get_type(_cast->next))) {
+    /* unnecessary cast -> so remove them */
+    *cast = _cast->next;
+  }
+
+  const TypeKind src_kind  = ast_type_kind(ast_get_type(_cast->next));
+  const TypeKind dest_kind = ast_type_kind(_cast->type);
+
+  bool valid = src_kind != TYPE_KIND_FN && src_kind != TYPE_KIND_STRUCT &&
+               src_kind != TYPE_KIND_VOID && dest_kind != TYPE_KIND_FN &&
+               dest_kind != TYPE_KIND_STRUCT && dest_kind != TYPE_KIND_VOID;
+
+  /* invalid cast ptr -> real and vice versa */
+  valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_PTR) &&
+          !(src_kind == TYPE_KIND_PTR && dest_kind == TYPE_KIND_REAL);
+
+  valid = valid && !(src_kind == TYPE_KIND_REAL && dest_kind == TYPE_KIND_STRING) &&
+          !(src_kind == TYPE_KIND_STRING && dest_kind == TYPE_KIND_REAL);
+
+  if (!valid) {
+    char tmp_first[256];
+    char tmp_second[256];
+    ast_type_to_string(tmp_first, 256, ast_get_type(_cast->next));
+    ast_type_to_string(tmp_second, 256, _cast->type);
+    check_error_node(cnt, ERR_INVALID_CAST, *cast, BUILDER_CUR_WORD,
+                     "cannot build cast from '%s' to '%s'", tmp_first, tmp_second);
+  }
+
   finish();
 }
 
 Node *
 check_expr_sizeof(Context *cnt, Node **szof)
 {
+  NodeExprSizeof *_sizeof = peek_expr_sizeof(*szof);
+  _sizeof->in             = ast_get_type(_sizeof->in);
   finish();
 }
 
 Node *
 check_expr_typeof(Context *cnt, Node **tpof)
 {
+  NodeExprTypeof *_typeof = peek_expr_typeof(*tpof);
+  assert(_typeof->in);
+
+  Node *         type = ast_get_type(_typeof->in);
+  const TypeKind kind = ast_type_kind(type);
+  assert(kind != TYPE_KIND_UNKNOWN);
+
+  TokenValue value;
+  value.u = (unsigned long long)kind;
+  *tpof   = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
+
   finish();
 }
 
@@ -838,6 +957,17 @@ check_type_enum(Context *cnt, Node **type)
 Node *
 check_type_arr(Context *cnt, Node **type)
 {
+  finish();
+}
+
+Node *
+check_type_struct(Context *cnt, Node **type)
+{
+  NodeTypeStruct *_type = peek_type_struct(*type);
+  if (_type->membersc == 0) {
+    check_error_node(cnt, ERR_INVALID_TYPE, *type, BUILDER_CUR_WORD,
+                     "empty structures are not allowed");
+  }
   finish();
 }
 
@@ -856,19 +986,63 @@ check_expr_elem(Context *cnt, Node **elem)
 Node *
 check_stmt_if(Context *cnt, Node **stmt_if)
 {
+  NodeStmtIf *_if = peek_stmt_if(*stmt_if);
+  assert(_if->test);
+  assert(_if->true_stmt);
+
+  Node *test_type = ast_get_type(_if->test);
+  if (!ast_type_cmp(test_type, &ftypes[FTYPE_BOOL])) {
+    check_error_invalid_types(cnt, test_type, &ftypes[FTYPE_BOOL], _if->test);
+  }
   finish();
 }
 
-bool
+static inline bool
 infer_type(Context *cnt, Node *decl)
 {
   NodeDecl *_decl = peek_decl(decl);
   if (!_decl->value) return false;
 
-  Node *infered = ast_typeof(_decl->value);
-  _decl->type   = infered;
+  Node *inferred = NULL;
+  if (ast_is_type(_decl->value))
+    inferred = &ftypes[FTYPE_TYPE];
+  else
+    inferred = ast_get_type(_decl->value);
 
+  if (!inferred) return NULL;
+  if (_decl->type && !ast_type_cmp(inferred, _decl->type)) {
+    if (!implicit_cast(cnt, &_decl->value, _decl->type)) {
+      check_error_invalid_types(cnt, _decl->type, inferred, _decl->value);
+      return false;
+    }
+  }
+
+  /* infer type from value */
+  _decl->type = inferred;
   return true;
+}
+
+static inline void
+determinate_decl_kind(NodeDecl *_decl)
+{
+  assert(_decl->type);
+  DeclKind kind = DECL_KIND_UNKNOWN;
+
+  switch (ast_type_kind(_decl->type)) {
+  case TYPE_KIND_TYPE:
+    kind = DECL_KIND_TYPE;
+    break;
+  case TYPE_KIND_FN:
+    kind = DECL_KIND_FN;
+    break;
+  case TYPE_KIND_ENUM:
+    kind = DECL_KIND_ENUM;
+    break;
+  default:
+    kind = DECL_KIND_FIELD;
+  }
+
+  _decl->kind = kind;
 }
 
 Node *
@@ -876,6 +1050,11 @@ check_decl(Context *cnt, Node **decl)
 {
   NodeDecl *_decl          = peek_decl(*decl);
   bool      lookup_in_tree = true;
+
+  infer_type(cnt, *decl);
+  determinate_decl_kind(_decl);
+  assert(_decl->type);
+  const TypeKind tkind = ast_type_kind(_decl->type);
 
   _decl->in_gscope =
       ast_get_scope(peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
@@ -885,7 +1064,45 @@ check_decl(Context *cnt, Node **decl)
                      "main is expected to be function");
   }
 
-  infer_type(cnt, *decl);
+  if (_decl->in_gscope && !_decl->value) {
+    check_error_node(cnt, ERR_EXPECTED_EXPR, _decl->type, BUILDER_CUR_AFTER,
+                     "all globals must be initialized");
+  }
+
+  if (tkind == TYPE_KIND_VOID) {
+    char tmp[256];
+    ast_type_to_string(tmp, 256, ast_get_type(_decl->type));
+    check_error_node(cnt, ERR_INVALID_TYPE, _decl->name, BUILDER_CUR_WORD,
+                     "declaration has invalid type '%s'", tmp);
+  }
+
+  switch (_decl->kind) {
+  case DECL_KIND_TYPE: {
+    if (_decl->mutable) {
+      check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
+                       "type declaration cannot be mutable");
+    }
+    break;
+
+  case DECL_KIND_FN: {
+    if (_decl->mutable) {
+      check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
+                       "function declaration cannot be mutable");
+    }
+    break;
+  }
+
+  case DECL_KIND_FIELD:
+  case DECL_KIND_ENUM:
+    break;
+  }
+
+  default:
+    bl_abort("unknown declaration type!!!");
+  }
+
+  /* skip registration of test cases into symbol table */
+  if (_decl->flags & FLAG_TEST) finish();
 
   /* provide symbol into scope if there is no conflict */
   Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);

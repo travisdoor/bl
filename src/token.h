@@ -84,24 +84,24 @@
   sm(GREATER_EQ,   ">=") \
   sm(LESS_EQ,      "<=") \
   sm(LOGIC_AND,    "&&") \
+  sm(GREATER,      ">") \
+  sm(LESS,         "<") \
   sm(LOGIC_OR,     "||") /* logical end */ \
-  sm(PLUS_ASSIGN,  "+=") \
+  sm(PLUS_ASSIGN,  "+=") /* assign bebin */ \
   sm(MINUS_ASSIGN, "-=") \
   sm(MUL_ASSIGN,   "*=") \
   sm(DIV_ASSIGN,   "/=") \
   sm(MOD_ASSIGN,   "%=") \
+  sm(ASSIGN,       "=") /* assign end */\
   sm(AND,          "&") \
   sm(OR,           "|") \
   sm(XOR,          "^") \
   sm(NOT,          "!") \
   sm(SLASH,        "/") \
   sm(MODULO,       "%") \
-  sm(ASSIGN,       "=") \
   sm(PLUS,         "+") \
   sm(MINUS,        "-") \
   sm(ASTERISK,     "*") \
-  sm(GREATER,      ">") \
-  sm(LESS,         "<") \
   sm(DOT,          ".") \
   sm(NONE,         "") \
 
@@ -138,19 +138,18 @@ typedef struct Token
   TokenValue value;
 } Token;
 
-/* is token any known binary operation? */
-bool
-token_is_binop(Token *token);
+#define sym_is_binop(_sym) (_sym >= SYM_EQ && _sym <= SYM_LESS)
+#define sym_is_assign(_sym) (_sym >= SYM_PLUS_ASSIGN && _sym <= SYM_ASSIGN)
+#define sym_is_logical(_sym) (_sym >= SYM_EQ && _sym <= SYM_LESS)
+#define token_is_binop(_token) sym_is_binop(_token->sym)
+#define token_is_assign(_token) sym_is_assign(_token->sym)
+#define token_is_logical(_token) sym_is_logical(_token->sym)
 
 bool
 token_is(Token *token, Sym sym);
 
 bool
 token_is_not(Token *token, Sym sym);
-
-/* is token logical operation which result type should be boolean */
-bool
-token_is_logic_op(Token *token);
 
 bool
 token_is_unary(Token *token);

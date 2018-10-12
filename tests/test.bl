@@ -8,8 +8,14 @@ Bar : struct { s32, s32 };
 
 Hello : Bar;
 
+Arr : [10] s32;
+
+func fn () : fn() {};
+
 main : fn () s32 {
-  a := 0;
+  a : 0;
+  a = 10 + 1;
+
   
   foo Foo;  
   bar Bar;

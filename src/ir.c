@@ -903,7 +903,7 @@ ir_ident(Context *cnt, Node *ident)
   assert(node_is(ref, NODE_DECL));
   NodeDecl *_ref = peek_decl(ref);
 
-  switch (_ref->kind) {
+  /*switch (_ref->kind) {
   case DECL_KIND_FIELD:
     if (_ref->in_gscope)
       result = ir_global_get(cnt, _ident->ref);
@@ -919,18 +919,18 @@ ir_ident(Context *cnt, Node *ident)
     bl_log("here");
     break;
 
-  case DECL_KIND_ARG:
+    case DECL_KIND_ARG:
+  case DECL_KIND_MEMBER:
+  case DECL_KIND_VARIANT:
     result = llvm_values_get(cnt, _ident->ref);
     break;
 
-  case DECL_KIND_MEMBER:
-  case DECL_KIND_VARIANT:
   case DECL_KIND_ENUM:
   case DECL_KIND_TYPE:
     bl_abort("unimplemented");
   case DECL_KIND_UNKNOWN:
     bl_abort("unknown declaration kind");
-  }
+  }*/
 
   assert(result);
   return result;
@@ -1331,24 +1331,27 @@ ir_decl(Context *cnt, Node *decl)
   assert(_decl->type);
   assert(_decl->name);
 
+  /*
   switch (_decl->kind) {
   case DECL_KIND_FIELD:
     return ir_decl_mut(cnt, decl);
   case DECL_KIND_FN:
     return ir_decl_fn(cnt, decl);
+    /*
   case DECL_KIND_MEMBER:
     return ir_decl_mut(cnt, decl);
   case DECL_KIND_ARG:
     return ir_decl_mut(cnt, decl);
+  case DECL_KIND_VARIANT:
     // return ir_decl_immut(cnt, decl);
   case DECL_KIND_STRUCT:
   case DECL_KIND_ENUM:
-  case DECL_KIND_VARIANT:
   case DECL_KIND_TYPE:
     break;
   default:
     bl_abort("unknown declaration kind");
   }
+*/
 
   return NULL;
 }

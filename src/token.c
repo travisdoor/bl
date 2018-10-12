@@ -35,12 +35,6 @@ char *sym_strings[] = {
 };
 
 bool
-token_is_binop(Token *token)
-{
-  return token->sym >= SYM_EQ && token->sym <= SYM_LESS;
-}
-
-bool
 token_is_unary(Token *token)
 {
   switch (token->sym) {
@@ -55,25 +49,6 @@ token_is_unary(Token *token)
   }
 
   return false;
-}
-
-bool
-token_is_logic_op(Token *token)
-{
-  switch (token->sym) {
-  case SYM_LESS:
-  case SYM_GREATER:
-  case SYM_LESS_EQ:
-  case SYM_GREATER_EQ:
-  case SYM_EQ:
-  case SYM_NEQ:
-  case SYM_LOGIC_AND:
-  case SYM_LOGIC_OR:
-    return true;
-
-  default:
-    return false;
-  }
 }
 
 int

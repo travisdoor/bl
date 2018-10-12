@@ -303,7 +303,7 @@ _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
 }
 
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
-           int order, bool in_gscope)
+           bool in_gscope)
 {
   NodeDecl *_decl  = alloc_node(ast, NODE_DECL, tok, NodeDecl *);
   _decl->kind      = kind;
@@ -312,7 +312,6 @@ _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutabl
   _decl->value     = value;
   _decl->mutable   = mutable;
   _decl->flags     = flags;
-  _decl->order     = order;
   _decl->in_gscope = in_gscope;
   return (Node *)_decl;
 }
@@ -324,6 +323,23 @@ _NODE_CTOR(member, Node *name, Node *type, int order)
   _member->type       = type;
   _member->order      = order;
   return (Node *)_member;
+}
+
+_NODE_CTOR(arg, Node *name, Node *type)
+{
+  NodeArg *_arg = alloc_node(ast, NODE_ARG, tok, NodeArg *);
+  _arg->name    = name;
+  _arg->type    = type;
+  return (Node *)_arg;
+}
+
+_NODE_CTOR(variant, Node *name, Node *type, Node *value)
+{
+  NodeVariant *_variant = alloc_node(ast, NODE_VARIANT, tok, NodeVariant *);
+  _variant->name        = name;
+  _variant->type        = type;
+  _variant->value       = value;
+  return (Node *)_variant;
 }
 
 _NODE_CTOR(type_fund, FundType code, int ptr)
@@ -561,6 +577,18 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
+  case NODE_MEMBER: {
+    break;
+  }
+
+  case NODE_ARG: {
+    break;
+  }
+
+  case NODE_VARIANT: {
+    break;
+  }
+
   case NODE_TYPE_FUND: {
     // NodeTypeFund *_fund = peek_type_fund(node);
     // visit(_fund->arr);
@@ -582,10 +610,6 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
   case NODE_TYPE_ENUM: {
     // NodeTypeEnum *_enum = peek_type_enum(node);
     // visit(_enum->arr);
-    break;
-  }
-
-  case NODE_MEMBER: {
     break;
   }
 
@@ -855,7 +879,6 @@ ast_get_type(Node *node)
   case NODE_EXPR_ELEM:
     return ast_get_type(peek_expr_elem(node)->type);
   case NODE_TYPE_STRUCT:
-    return &ftypes[FTYPE_TYPE];
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
   case NODE_TYPE_ENUM:
@@ -1135,6 +1158,7 @@ Node *
 ast_typeof(Node *node)
 {
   if (!node) return NULL;
+  node = ast_unroll_ident(node);
 
   switch (node_code(node)) {
   case NODE_TYPE_STRUCT:
@@ -1295,6 +1319,7 @@ ast_type_set_arr(Node *type, Node *arr)
 bool
 ast_is_type(Node *node)
 {
+  node = ast_unroll_ident(node);
   switch (node_code(node)) {
   case NODE_TYPE_FUND:
   case NODE_TYPE_FN:
@@ -1310,13 +1335,9 @@ ast_is_type(Node *node)
 Node *
 ast_unroll_ident(Node *ident)
 {
-  assert(ident);
-  if (node_is(ident, NODE_IDENT)) {
-    NodeIdent *_ident = peek_ident(ident);
-    assert(_ident->ref);
-    return ast_unroll_ident(_ident->ref);
-  }
-
+  if (!ident) return NULL;
+  for (; node_is(ident, NODE_IDENT); ident = peek_ident(ident)->ref)
+    ;
   return ident;
 }
 
