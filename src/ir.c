@@ -457,9 +457,9 @@ to_llvm_type(Context *cnt, Node *type)
   }
 
   case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_enum_type = peek_type_enum(type);
+    /*NodeTypeEnum *_enum_type = peek_type_enum(type);
     assert(_enum_type->base_type);
-    result = to_llvm_type(cnt, _enum_type->base_type);
+    result = to_llvm_type(cnt, _enum_type->base_type);*/
     break;
   }
 
@@ -1568,7 +1568,6 @@ ir_node(Context *cnt, Node *node)
   case NODE_TYPE_STRUCT:
   case NODE_TYPE_ENUM:
   case NODE_LIT_FN:
-  case NODE_LIT_ENUM:
   case NODE_LOAD:
   case NODE_LINK:
   case NODE_BAD:

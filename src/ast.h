@@ -164,17 +164,13 @@
     bool   raw; \
   }) \
   nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
-    Node *base_decl; \
-    Node *base_type; \
-  }) \
-  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
-    Node *type; \
-  }) \
-  nt(LIT_ENUM, LitEnum, lit_enum, struct { \
     Node  *type; \
     Scope *scope; \
     Node  *parent_compound; \
     Node  *variants; \
+  }) \
+  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
+    Node *type; \
   }) \
   nt(LIT_FN, LitFn, lit_fn, struct { \
     Node  *type; \
@@ -441,10 +437,9 @@ _NODE_CTOR(type_vargs);
 _NODE_CTOR(type_arr, Node *elem_type, Node *len);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type);
 _NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, bool raw);
-_NODE_CTOR(type_enum, Node *type, Node *base_decl);
+_NODE_CTOR(type_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
 _NODE_CTOR(type_ptr, Node *type);
 _NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
-_NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
 _NODE_CTOR(lit, Node *type, TokenValue value);
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);

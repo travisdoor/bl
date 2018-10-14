@@ -167,9 +167,6 @@ static Node *
 parse_type_struct(Context *cnt);
 
 static Node *
-parse_type_enum(Context *cnt);
-
-static Node *
 parse_unary_expr(Context *cnt, Token *op);
 
 static Node *
@@ -212,7 +209,7 @@ static Node *
 parse_lit_fn(Context *cnt);
 
 static Node *
-parse_lit_enum(Context *cnt);
+parse_type_enum(Context *cnt);
 
 static inline bool
 parse_semicolon_rq(Context *cnt);
@@ -374,7 +371,7 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
     value = parse_expr(cnt);
     if (!value) bl_abort("expected enum variant value");
   } else if (prev) {
-    NodeDecl *_prev = peek_variant(prev);
+    NodeVariant *_prev = peek_variant(prev);
 
     TokenValue implval;
     implval.u      = 1;
@@ -776,17 +773,18 @@ parse_lit_fn(Context *cnt)
 }
 
 Node *
-parse_lit_enum(Context *cnt)
+parse_type_enum(Context *cnt)
 {
-  Token *tok_enum = tokens_peek(cnt->tokens);
-  Node * type     = parse_type_enum(cnt);
-  if (!type) return NULL;
-  NodeTypeEnum *_type = peek_type_enum(type);
+  Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
+  if (!tok_enum) return NULL;
 
-  Node *enm = ast_lit_enum(cnt->ast, tok_enum, type, NULL, cnt->curr_compound,
-                           scope_new(cnt->assembly->scope_cache, 256));
+  Node *base_type = parse_type(cnt);
+  if (!base_type) base_type = &ftypes[FTYPE_S32];
 
-  NodeLitEnum *_enm = peek_lit_enum(enm);
+  Scope *scope = scope_new(cnt->assembly->scope_cache, 256);
+  Node * enm   = ast_type_enum(cnt->ast, tok_enum, base_type, NULL, cnt->curr_compound, scope);
+
+  NodeTypeEnum *_enm = peek_type_enum(enm);
 
   push_curr_compound(cnt, enm);
 
@@ -803,7 +801,7 @@ parse_lit_enum(Context *cnt)
   Node * prev_variant = NULL;
 
 next:
-  *variant = parse_decl_variant(cnt, _type->base_type, prev_variant);
+  *variant = parse_decl_variant(cnt, base_type, prev_variant);
   if (*variant) {
     prev_variant = *variant;
     variant      = &(*variant)->next;
@@ -935,7 +933,7 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_lit_fn(cnt))) goto done;
   if ((expr = parse_type_struct(cnt))) goto done;
   if ((expr = parse_type_arr(cnt))) goto done;
-  if ((expr = parse_lit_enum(cnt))) goto done;
+  if ((expr = parse_type_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
   if ((expr = parse_lit(cnt))) goto done;
@@ -1159,8 +1157,9 @@ parse_type_struct(Context *cnt)
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  Scope *scope       = scope_new(cnt->assembly->scope_cache, 64);
-  Node * type_struct = ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, false);
+  Scope *scope = scope_new(cnt->assembly->scope_cache, 64);
+  Node * type_struct =
+      ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, false);
   NodeTypeStruct *_type_struct = peek_type_struct(type_struct);
 
   push_curr_compound(cnt, type_struct);
@@ -1204,19 +1203,6 @@ next:
 
   pop_curr_compound(cnt);
   return type_struct;
-}
-
-Node *
-parse_type_enum(Context *cnt)
-{
-  Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
-  if (!tok_enum) return NULL;
-
-  Node *type = parse_type(cnt);
-  /* implicit type s32 when enum base type has not been specified */
-  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32);
-
-  return ast_type_enum(cnt->ast, tok_enum, type, cnt->curr_decl);
 }
 
 Node *

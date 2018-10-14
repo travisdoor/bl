@@ -390,14 +390,6 @@ _NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scop
   return (Node *)_type_struct;
 }
 
-_NODE_CTOR(type_enum, Node *type, Node *base_decl)
-{
-  NodeTypeEnum *_type_enum = alloc_node(ast, NODE_TYPE_ENUM, tok, NodeTypeEnum *);
-  _type_enum->base_decl    = base_decl;
-  _type_enum->base_type    = type;
-  return (Node *)_type_enum;
-}
-
 _NODE_CTOR(type_ptr, Node *type)
 {
   NodeTypePtr *_type_ptr = alloc_node(ast, NODE_TYPE_PTR, tok, NodeTypePtr *);
@@ -415,14 +407,14 @@ _NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
   return (Node *)_lit_fn;
 }
 
-_NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
+_NODE_CTOR(type_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
 {
-  NodeLitEnum *_lit_enum     = alloc_node(ast, NODE_LIT_ENUM, tok, NodeLitEnum *);
-  _lit_enum->type            = type;
-  _lit_enum->parent_compound = parent_compound;
-  _lit_enum->scope           = scope;
-  _lit_enum->variants        = variants;
-  return (Node *)_lit_enum;
+  NodeTypeEnum *_type_enum     = alloc_node(ast, NODE_TYPE_ENUM, tok, NodeTypeEnum *);
+  _type_enum->type            = type;
+  _type_enum->parent_compound = parent_compound;
+  _type_enum->scope           = scope;
+  _type_enum->variants        = variants;
+  return (Node *)_type_enum;
 }
 
 _NODE_CTOR(lit, Node *type, TokenValue value)
@@ -689,11 +681,6 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt)
     break;
   }
 
-  case NODE_LIT_ENUM: {
-    visit(peek_lit_enum(node)->variants);
-    break;
-  }
-
     /* defaults (terminal cases) */
   case NODE_TYPE_TYPE:
   case NODE_IDENT:
@@ -789,7 +776,7 @@ _type_to_string(char *buf, size_t len, Node *type)
   case NODE_TYPE_ENUM: {
     NodeTypeEnum *_enum = peek_type_enum(type);
     append_buf(buf, len, "enum ");
-    _type_to_string(buf, len, _enum->base_type);
+    _type_to_string(buf, len, _enum->type);
     break;
   }
 
@@ -848,8 +835,8 @@ ast_get_scope(Node *node)
     return peek_block(node)->scope;
   case NODE_LIT_FN:
     return peek_lit_fn(node)->scope;
-  case NODE_LIT_ENUM:
-    return peek_lit_enum(node)->scope;
+  case NODE_TYPE_ENUM:
+    return peek_type_enum(node)->scope;
   case NODE_STMT_LOOP:
     return peek_stmt_loop(node)->scope;
   case NODE_TYPE_STRUCT:
@@ -873,8 +860,6 @@ ast_get_type(Node *node)
     return ast_get_type(peek_lit(node)->type);
   case NODE_LIT_FN:
     return peek_lit_fn(node)->type;
-  case NODE_LIT_ENUM:
-    return peek_lit_enum(node)->type;
   case NODE_LIT_CMP:
     return ast_get_type(peek_lit_cmp(node)->type);
   case NODE_IDENT:
@@ -952,11 +937,11 @@ ast_type_cmp(Node *first, Node *second)
   TypeKind skind = ast_type_kind(s);
 
   if (fkind == TYPE_KIND_ENUM) {
-    f     = ast_get_type(peek_type_enum(f)->base_type);
+    f     = ast_get_type(peek_type_enum(f)->type);
     fkind = ast_type_kind(f);
   }
   if (skind == TYPE_KIND_ENUM) {
-    s     = ast_get_type(peek_type_enum(s)->base_type);
+    s     = ast_get_type(peek_type_enum(s)->type);
     skind = ast_type_kind(s);
   }
 
@@ -1112,8 +1097,8 @@ ast_get_parent_compound(Node *node)
     return peek_type_struct(node)->parent_compound;
   case NODE_LIT_FN:
     return peek_lit_fn(node)->parent_compound;
-  case NODE_LIT_ENUM:
-    return peek_lit_enum(node)->parent_compound;
+  case NODE_TYPE_ENUM:
+    return peek_type_enum(node)->parent_compound;
   case NODE_LIT_CMP:
     return peek_lit_cmp(node)->parent_compound;
   case NODE_STMT_LOOP:
@@ -1146,7 +1131,7 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
       return true;*/
 
   if (tkind == TYPE_KIND_ENUM) {
-    return ast_can_impl_cast(from_type, peek_type_enum(to_type)->base_type);
+    return ast_can_impl_cast(from_type, peek_type_enum(to_type)->type);
   }
 
   if (fkind == TYPE_KIND_STRUCT || fkind == TYPE_KIND_FN) return false;

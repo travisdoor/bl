@@ -138,7 +138,7 @@ static void
 print_lit_fn(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit_enum(Visitor *visitor, Node *node, int pad);
+print_type_enum(Visitor *visitor, Node *node, int pad);
 
 static void
 print_ident(Visitor *visitor, Node *node, int pad);
@@ -216,7 +216,7 @@ print_load(Visitor *visitor, Node *node, int pad)
 }
 
 void
-print_lit_enum(Visitor *visitor, Node *node, int pad)
+print_type_enum(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -433,7 +433,7 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_decl, NODE_DECL);
   visitor_add(&visitor, (VisitorFunc)print_load, NODE_LOAD);
   visitor_add(&visitor, (VisitorFunc)print_lit_fn, NODE_LIT_FN);
-  visitor_add(&visitor, (VisitorFunc)print_lit_enum, NODE_LIT_ENUM);
+  visitor_add(&visitor, (VisitorFunc)print_type_enum, NODE_TYPE_ENUM);
   visitor_add(&visitor, (VisitorFunc)print_lit, NODE_LIT);
   visitor_add(&visitor, (VisitorFunc)print_return, NODE_STMT_RETURN);
   visitor_add(&visitor, (VisitorFunc)print_if, NODE_STMT_IF);

@@ -430,8 +430,8 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
-  case NODE_LIT_ENUM: {
-    NodeLitEnum *_enum = peek_lit_enum(*node);
+  case NODE_TYPE_ENUM: {
+    NodeTypeEnum *_enum = peek_type_enum(*node);
     flatten(&_enum->type);
     Node **variant;
     node_foreach_ref(_enum->variants, variant)
@@ -552,12 +552,6 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     {
       flatten(tmp);
     }
-    break;
-  }
-
-  case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_enum_type = peek_type_enum(*node);
-    flatten(&_enum_type->base_type);
     break;
   }
 
@@ -772,7 +766,6 @@ check_node(Context *cnt, Node **node)
   case NODE_BAD:
   case NODE_UBLOCK:
   case NODE_BLOCK:
-  case NODE_LIT_ENUM:
   case NODE_LIT_FN:
   case NODE_COUNT:
     break;
