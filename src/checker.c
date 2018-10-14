@@ -1029,9 +1029,9 @@ check_expr_cast(Context *cnt, Node **cast)
   NodeExprCast *_cast = peek_expr_cast(*cast);
   assert(_cast->type);
   assert(_cast->next);
-  
+
   (*cast)->adm = _cast->next->adm;
-  _cast->type = ast_get_type(_cast->type);
+  _cast->type  = ast_get_type(_cast->type);
 
   if (ast_type_cmp(_cast->type, ast_get_type(_cast->next))) {
     /* unnecessary cast -> so remove them */
@@ -1398,7 +1398,7 @@ check_member(Context *cnt, Node **mem)
 Node *
 check_variant(Context *cnt, Node **var)
 {
-  (*var)->adm = ADM_CONST;
+  (*var)->adm       = ADM_CONST;
   NodeVariant *_var = peek_variant(*var);
   assert(_var->type);
   /* anonymous struct variant */
@@ -1417,6 +1417,10 @@ check_variant(Context *cnt, Node **var)
   }
 
   /* evaluate const value of variant */
+  if (_var->value->adm != ADM_CONST) {
+    check_error_node(cnt, ERR_INVALID_ADM, _var->value, BUILDER_CUR_WORD,
+                     "enum variant value must be compile-time known constant");
+  }
 
   finish();
 }
