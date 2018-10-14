@@ -928,7 +928,7 @@ ir_ident(Context *cnt, Node *ident)
   case DECL_KIND_ENUM:
   case DECL_KIND_TYPE:
     bl_abort("unimplemented");
-  case DECL_KIND_UNKNOWN:
+  case DECL_KIND_INVALID:
     bl_abort("unknown declaration kind");
   }*/
 

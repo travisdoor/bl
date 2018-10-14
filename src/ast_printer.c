@@ -57,6 +57,26 @@ print_head(Node *node, int pad)
     fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "", node_name(node));
 
   print_address(node);
+
+  switch (node->adm) {
+  case ADM_INVALID:
+    break;
+  case ADM_LVALUE:
+    fprintf(stdout, "(lvalue) ");
+    break;
+  case ADM_RVALUE:
+    fprintf(stdout, "(rvalue) ");
+    break;
+  case ADM_IMMUT:
+    fprintf(stdout, "(immutable) ");
+    break;
+  case ADM_TYPE:
+    fprintf(stdout, "(type) ");
+    break;
+  case ADM_CONST:
+    fprintf(stdout, "(const) ");
+    break;
+  }
 }
 
 static inline void
@@ -94,6 +114,9 @@ print_lit_cmp(Visitor *visitor, Node *node, int pad);
 
 static void
 print_member(Visitor *visitor, Node *node, int pad);
+
+static void
+print_variant(Visitor *visitor, Node *node, int pad);
 
 static void
 print_expr_member(Visitor *visitor, Node *node, int pad);
@@ -199,6 +222,18 @@ print_member(Visitor *visitor, Node *node, int pad)
 }
 
 void
+print_variant(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeVariant *_var = peek_variant(node);
+
+  fprintf(stdout, "%s ", peek_ident(_var->name)->str);
+
+  print_type(_var->type);
+  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+}
+
+void
 print_elem(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
@@ -280,7 +315,7 @@ print_decl(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeDecl *_decl = peek_decl(node);
-  fprintf(stdout, "[%d] ", _decl->kind);
+  fprintf(stdout, "(%d) ", _decl->kind);
   fprintf(stdout, "%s (%s) used: %d ", peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable", _decl->used);
 
@@ -451,6 +486,7 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_unary, NODE_EXPR_UNARY);
   visitor_add(&visitor, (VisitorFunc)print_type_struct, NODE_TYPE_STRUCT);
   visitor_add(&visitor, (VisitorFunc)print_member, NODE_MEMBER);
+  visitor_add(&visitor, (VisitorFunc)print_variant, NODE_VARIANT);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

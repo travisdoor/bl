@@ -76,8 +76,6 @@
     uint64_t    hash; \
     Node       *ref; \
     Node       *parent_compound; \
-    Node       *arr; \
-    int         ptr; \
   }) \
   nt(UBLOCK, UBlock, ublock, struct { \
     Node      *nodes; \
@@ -99,10 +97,10 @@
     Node *false_stmt; \
   }) \
   nt(STMT_LOOP, StmtLoop, stmt_loop, struct { \
-    Node *init; \
-    Node *condition; \
-    Node *increment; \
-    Node *block; \
+    Node  *init; \
+    Node  *condition; \
+    Node  *increment; \
+    Node  *block; \
     Scope *scope; \
     Node  *parent_compound; \
   }) \
@@ -239,7 +237,7 @@
 
 typedef enum
 {
-  TYPE_KIND_UNKNOWN = 0,
+  TYPE_KIND_INVALID = 0,
   TYPE_KIND_SINT    = 1,  /* i8, i16, i32, i64 */
   TYPE_KIND_UINT    = 2,  /* u8, i16, u32, u64 */
   TYPE_KIND_SIZE    = 3,  /* size_t */
@@ -259,7 +257,7 @@ typedef enum
 
 typedef enum
 {
-  DECL_KIND_UNKNOWN = -1,
+  DECL_KIND_INVALID = -1,
   DECL_KIND_FIELD   = 0, /* a := 0; */
   DECL_KIND_TYPE    = 1, /* Type : struct { s32 }; */
   DECL_KIND_FN      = 2, /* main : fn () s32 {}; */
@@ -268,10 +266,20 @@ typedef enum
 
 typedef enum
 {
-  MEM_KIND_UNKNOWN = -1,
+  MEM_KIND_INVALID = -1,
   MEM_KIND_STRUCT  = 0, /* structure.bar; structure->bar; */
   MEM_KIND_ENUM    = 1, /* enum.A; */
 } MemberKind;
+
+typedef enum
+{
+  ADM_INVALID = -1,
+  ADM_LVALUE  = 0,
+  ADM_RVALUE  = 1,
+  ADM_IMMUT   = 2,
+  ADM_TYPE    = 3,
+  ADM_CONST   = 4,
+} AddressingMode;
 
 typedef enum
 {
@@ -283,7 +291,7 @@ typedef enum
 typedef enum
 {
   DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
-  DEP_STRICT = 1 << 1, /* dependency must be linked for sucessful IR construction */
+  DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
 
 typedef struct Ast    Ast;
@@ -385,10 +393,12 @@ struct Node
 #undef nt
   };
 
-  Src *      src;
-  NodeCode   code;
-  Node *     next;
-  CheckState state;
+  Src *          src;
+  NodeCode       code;
+  Node *         next;
+  Node *         type;
+  AddressingMode adm;
+  CheckState     state;
 #if BL_DEBUG
   int _serial;
 #endif
@@ -411,14 +421,14 @@ _NODE_TYPE_LIST
  * generate constructors definitions
  *************************************************************************************************/
 
-#define _NODE_CTOR(name, ...) Node *ast_##name(Ast *ast, Token *tok, ##__VA_ARGS__)
+#define _NODE_CTOR(name, ...) Node *ast_##name(Ast *_ast, Token *_tok, ##__VA_ARGS__)
 
 _NODE_CTOR(bad);
 _NODE_CTOR(load, const char *filepath);
 _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
 _NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
-_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound, int ptr, Node *arr);
+_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope,
@@ -485,6 +495,7 @@ visitor_walk(Visitor *visitor, Node *node, void *cnt);
 
 /* static fundamental type nodes */
 extern Node ftypes[];
+extern Node type_type;
 
 void
 ast_type_to_string(char *buf, size_t len, Node *type);

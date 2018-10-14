@@ -256,8 +256,8 @@ parse_expr_cast(Context *cnt)
     return ast_bad(cnt->ast, tok_begin);
   }
 
-  Node *to_type = parse_type(cnt);
-  if (to_type == NULL) {
+  Node *type = parse_type(cnt);
+  if (type == NULL) {
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
                 "expected type name as cast parameter");
@@ -281,7 +281,7 @@ parse_expr_cast(Context *cnt)
     return ast_bad(cnt->ast, tok);
   }
 
-  return ast_expr_cast(cnt->ast, tok_begin, to_type, next);
+  return ast_expr_cast(cnt->ast, tok_begin, type, next);
 }
 
 Node *
@@ -301,9 +301,9 @@ parse_test(Context *cnt)
   Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID]);
   Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, NULL, cnt->curr_compound, NULL);
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
-  Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound, 0, NULL);
+  Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound);
   Node *      test =
-      ast_decl(cnt->ast, tok_begin, DECL_KIND_UNKNOWN, name, NULL, value, false, FLAG_TEST, false);
+      ast_decl(cnt->ast, tok_begin, DECL_KIND_INVALID, name, NULL, value, false, FLAG_TEST, false);
 
   NodeLitFn *_value = peek_lit_fn(value);
   push_curr_decl(cnt, test);
@@ -747,7 +747,9 @@ parse_lit(Context *cnt)
   }
 
   tokens_consume(cnt->tokens);
-  return ast_lit(cnt->ast, tok, type, tok->value);
+  Node *lit = ast_lit(cnt->ast, tok, type, tok->value);
+  lit->adm  = ADM_CONST;
+  return lit;
 }
 
 Node *
@@ -896,7 +898,7 @@ parse_expr_member(Context *cnt, Token *op)
     parse_error(cnt, ERR_EXPECTED_NAME, op, BUILDER_CUR_WORD, "expected structure member name");
   }
 
-  return ast_expr_member(cnt->ast, op, MEM_KIND_UNKNOWN, ident, NULL, NULL, false, -1);
+  return ast_expr_member(cnt->ast, op, MEM_KIND_INVALID, ident, NULL, NULL, false, -1);
 }
 
 Node *
@@ -1015,7 +1017,7 @@ parse_ident(Context *cnt)
   if (!tok_ident) return NULL;
 
   assert(cnt->curr_compound);
-  return ast_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound, 0, NULL);
+  return ast_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound);
 }
 
 Node *
@@ -1245,7 +1247,7 @@ parse_decl(Context *cnt)
                      "'%s' is reserved name of buildin type", tok_ident->value.str);
   }
 
-  Node *decl = ast_decl(cnt->ast, tok_ident, DECL_KIND_UNKNOWN, ident, NULL, NULL, true, 0, false);
+  Node *decl = ast_decl(cnt->ast, tok_ident, DECL_KIND_INVALID, ident, NULL, NULL, true, 0, false);
   push_curr_decl(cnt, decl);
   NodeDecl *_decl = peek_decl(decl);
 
@@ -1454,7 +1456,7 @@ parse_assert(Context *cnt)
 
   TokenValue tmp;
 
-  Node *callee   = ast_ident(cnt->ast, tok_begin, "__assert", NULL, cnt->curr_compound, 0, NULL);
+  Node *callee   = ast_ident(cnt->ast, tok_begin, "__assert", NULL, cnt->curr_compound);
   tmp.str        = tok_begin->src.unit->filepath;
   Node *arg_file = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_STRING], tmp);
 
