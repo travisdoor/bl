@@ -6,19 +6,28 @@ Foo type : struct {
 
 Bar : struct { s32, s32 };
 
-Hello : Bar;
-
+Homo : Foo;
+Hello : Homo;
 Arr : [10] s32;
+Integer : s32;
 
-func fn () : fn() {};
+Enum : enum {
+  A, B, C
+};
 
 main : fn () s32 {
-  a : 0;
-  a = 10 + 1;
-  
-  foo Foo;  
-  bar Bar;
   hello Hello;
+  hello.i;
+  hello.j;
+
+  bar Bar;
+  bar._0;
+  bar._1;
+
+  hello_ptr *Hello;
+  hello_ptr.i;
+  hello_ptr.j;
+
   return 0;
 };
 

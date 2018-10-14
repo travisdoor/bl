@@ -137,6 +137,9 @@ static Node *
 check_decl(Context *cnt, Node **decl);
 
 static Node *
+check_member(Context *cnt, Node **mem);
+
+static Node *
 check_lit_cmp(Context *cnt, Node **cmp);
 
 static Node *
@@ -185,7 +188,7 @@ check_unresolved(Context *cnt);
 static inline void
 infer_null_type(Context *cnt, Node *from, Node *null)
 {
-  const Node *   type = ast_get_type(from);
+  Node *         type = ast_get_type(from);
   const TypeKind kind = ast_type_kind(type);
   if (kind != TYPE_KIND_PTR) {
     check_error_node(cnt, ERR_INVALID_TYPE, from, BUILDER_CUR_WORD, "expected a pointer type");
@@ -582,7 +585,14 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     break;
   }
 
+  case NODE_TYPE_PTR: {
+    NodeTypePtr *_ptr = peek_type_ptr(*node);
+    flatten(&_ptr->type);
+    break;
+  }
+
   case NODE_TYPE_FUND:
+  case NODE_TYPE_TYPE:
   case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
   case NODE_STMT_BREAK:
@@ -699,6 +709,9 @@ check_node(Context *cnt, Node **node)
   case NODE_DECL:
     result = check_decl(cnt, node);
     break;
+  case NODE_MEMBER:
+    result = check_member(cnt, node);
+    break;
   case NODE_EXPR_CALL:
     result = check_expr_call(cnt, node);
     break;
@@ -742,10 +755,11 @@ check_node(Context *cnt, Node **node)
     result = check_type_struct(cnt, node);
     break;
 
-  case NODE_MEMBER:
   case NODE_ARG:
+  case NODE_TYPE_TYPE:
   case NODE_VARIANT:
   case NODE_TYPE_FUND:
+  case NODE_TYPE_PTR:
   case NODE_TYPE_FN:
   case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
@@ -816,6 +830,18 @@ check_ident(Context *cnt, Node **ident)
   assert(node_is(found, NODE_DECL) && "not declaration");
   peek_decl(found)->used++;
 
+  /* REDUCE TYPE REFS */
+  while (true) {
+    NodeDecl *_found = peek_decl(found);
+    assert(_found->type);
+    if (ast_type_kind(_found->type) == TYPE_KIND_TYPE && node_is(_found->value, NODE_IDENT)) {
+      found = peek_ident(_found->value)->ref;
+    } else {
+      break;
+    }
+  }
+
+  assert(found);
   _ident->ref = found;
 
   finish();
@@ -980,6 +1006,66 @@ check_type_struct(Context *cnt, Node **type)
 Node *
 check_expr_member(Context *cnt, Node **member)
 {
+  int             order   = -1;
+  Node *          found   = NULL;
+  NodeExprMember *_member = peek_expr_member(*member);
+  assert(_member->ident);
+  assert(_member->next);
+
+  Node *   base_type  = ast_get_type(_member->next);
+  TypeKind base_tkind = ast_type_kind(base_type);
+
+  if (base_tkind == TYPE_KIND_PTR) {
+    NodeTypePtr *_type = peek_type_ptr(base_type);
+    assert(_type->type);
+    base_type        = ast_get_type(_type->type);
+    base_tkind       = ast_type_kind(base_type);
+    _member->ptr_ref = true;
+  }
+
+  if (base_tkind == TYPE_KIND_TYPE) {
+    NodeTypeType *_type = peek_type_type(base_type);
+    assert(_type->spec);
+    base_type  = ast_get_type(_type->spec);
+    base_tkind = ast_type_kind(base_type);
+  }
+
+  if (base_tkind == TYPE_KIND_STRUCT) {
+    NodeTypeStruct *_type = peek_type_struct(base_type);
+    if (_type->raw) {
+      order = -1;
+      if (sscanf(peek_ident(_member->ident)->str, "_%d", &order) != 1) {
+        check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, _member->ident, BUILDER_CUR_WORD,
+                         "raw structure members must be referenced by member order in format '_N'");
+        finish();
+      }
+
+      if (order >= _type->membersc || order < 0) {
+        check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, _member->ident, BUILDER_CUR_WORD,
+                         "order reference (%d) is out of bounds of the structure (from 0 to %d)",
+                         order, _type->membersc - 1);
+        finish();
+      }
+
+      found = _type->members;
+      for (int i = 0; i < order; ++i, found = found->next)
+        ;
+    } else {
+      _member->kind = MEM_KIND_STRUCT;
+      found         = _lookup(base_type, _member->ident, NULL, false);
+      if (!found) wait(_member->ident);
+
+      order = peek_member(found)->order;
+    }
+  } else {
+    check_error_node(cnt, ERR_EXPECTED_TYPE_STRUCT, _member->next, BUILDER_CUR_WORD,
+                     "expected structure or enum");
+  }
+
+  _member->type                   = ast_get_type(found);
+  _member->i                      = order;
+  peek_ident(_member->ident)->ref = found;
+
   finish();
 }
 
@@ -1010,12 +1096,14 @@ infer_type(Context *cnt, Node *decl)
   if (!_decl->value) return false;
 
   Node *inferred = NULL;
-  if (ast_is_type(_decl->value))
-    inferred = &ftypes[FTYPE_TYPE];
-  else
+  if (ast_is_type(_decl->value)) {
+    inferred = ast_type_type(cnt->ast, NULL, _decl->name, _decl->value);
+  } else {
     inferred = ast_get_type(_decl->value);
+  }
 
-  if (!inferred) return NULL;
+  assert(inferred);
+
   if (_decl->type && !ast_type_cmp(inferred, _decl->type)) {
     if (!implicit_cast(cnt, &_decl->value, _decl->type)) {
       check_error_invalid_types(cnt, _decl->type, inferred, _decl->value);
@@ -1054,8 +1142,7 @@ determinate_decl_kind(NodeDecl *_decl)
 Node *
 check_decl(Context *cnt, Node **decl)
 {
-  NodeDecl *_decl          = peek_decl(*decl);
-  bool      lookup_in_tree = true;
+  NodeDecl *_decl = peek_decl(*decl);
 
   infer_type(cnt, *decl);
   determinate_decl_kind(_decl);
@@ -1108,10 +1195,17 @@ check_decl(Context *cnt, Node **decl)
   }
 
   /* skip registration of test cases into symbol table */
-  if (_decl->flags & FLAG_TEST) finish();
+  if (_decl->flags & FLAG_TEST) {
+    assert(_decl->kind == DECL_KIND_FN);
+    finish();
+  }
+
+  if (_decl->value && node_is(_decl->value, NODE_EXPR_NULL)) {
+    infer_null_type(cnt, _decl->type, _decl->value);
+  }
 
   /* provide symbol into scope if there is no conflict */
-  Node *conflict = lookup(_decl->name, NULL, lookup_in_tree);
+  Node *conflict = lookup(_decl->name, NULL, true);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *decl, BUILDER_CUR_WORD,
                      "symbol with same name is already declared");
@@ -1120,6 +1214,29 @@ check_decl(Context *cnt, Node **decl)
   } else {
     provide(_decl->name, *decl);
     waiting_resume(cnt, _decl->name);
+  }
+
+  finish();
+}
+
+Node *
+check_member(Context *cnt, Node **mem)
+{
+  NodeMember *_mem = peek_member(*mem);
+  assert(_mem->type);
+  /* anonymous struct member */
+  if (!_mem->name) finish();
+
+  /* provide symbol into scope if there is no conflict */
+  Node *conflict = lookup(_mem->name, NULL, false);
+  if (conflict) {
+    check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *mem, BUILDER_CUR_WORD,
+                     "structure member with same name is already declared");
+
+    check_note_node(cnt, conflict, BUILDER_CUR_WORD, "previous declaration found here");
+  } else {
+    provide(_mem->name, *mem);
+    waiting_resume(cnt, _mem->name);
   }
 
   finish();

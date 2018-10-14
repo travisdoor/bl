@@ -134,7 +134,7 @@ static int
 parse_flags(Context *cnt, int allowed);
 
 static Node *
-parse_ident(Context *cnt, int ptr);
+parse_ident(Context *cnt);
 
 static Node *
 parse_block(Context *cnt);
@@ -143,25 +143,31 @@ static Node *
 parse_decl(Context *cnt);
 
 static Node *
-parse_type_arr(Context *cnt, int ptr);
+parse_type_type(Context *cnt);
+
+static Node *
+parse_type_arr(Context *cnt);
+
+static Node *
+parse_type_arr(Context *cnt);
 
 static Node *
 parse_type(Context *cnt);
 
 static Node *
-parse_type_fund(Context *cnt, int ptr);
+parse_type_fund(Context *cnt);
 
 static Node *
-parse_type_vargs(Context *cnt, int ptr);
+parse_type_vargs(Context *cnt);
 
 static Node *
-parse_type_fn(Context *cnt, bool named_args, int ptr);
+parse_type_fn(Context *cnt, bool named_args);
 
 static Node *
-parse_type_struct(Context *cnt, int ptr);
+parse_type_struct(Context *cnt);
 
 static Node *
-parse_type_enum(Context *cnt, int ptr);
+parse_type_enum(Context *cnt);
 
 static Node *
 parse_unary_expr(Context *cnt, Token *op);
@@ -295,7 +301,7 @@ parse_test(Context *cnt)
   }
 
   assert(cnt->curr_compound);
-  Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID], 0);
+  Node *      type  = ast_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID]);
   Node *      value = ast_lit_fn(cnt->ast, tok_begin, type, NULL, cnt->curr_compound, NULL);
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
   Node *      name  = ast_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound, 0, NULL);
@@ -332,7 +338,7 @@ parse_decl_member(Context *cnt, bool type_only, int order)
   if (type_only) {
     type = parse_type(cnt);
   } else {
-    name = parse_ident(cnt, 0);
+    name = parse_ident(cnt);
     type = parse_type(cnt);
   }
 
@@ -344,7 +350,7 @@ Node *
 parse_decl_arg(Context *cnt)
 {
   Token *tok_begin = tokens_peek(cnt->tokens);
-  Node * name      = parse_ident(cnt, 0);
+  Node * name      = parse_ident(cnt);
   if (!name) return NULL;
 
   Node *type = parse_type(cnt);
@@ -359,7 +365,7 @@ Node *
 parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
 {
   Token *tok_begin = tokens_peek(cnt->tokens);
-  Node * name      = parse_ident(cnt, 0);
+  Node * name      = parse_ident(cnt);
   if (!name) return NULL;
 
   Node * value      = NULL;
@@ -368,7 +374,7 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
     value = parse_expr(cnt);
     if (!value) bl_abort("expected enum variant value");
   } else if (prev) {
-    NodeDecl *_prev = peek_decl(prev);
+    NodeDecl *_prev = peek_variant(prev);
 
     TokenValue implval;
     implval.u      = 1;
@@ -759,7 +765,7 @@ parse_lit_fn(Context *cnt)
 
   push_curr_compound(cnt, fn);
 
-  _fn->type = parse_type_fn(cnt, true, 0);
+  _fn->type = parse_type_fn(cnt, true);
   assert(_fn->type);
 
   /* parse block (block is optional function body can be external) */
@@ -773,7 +779,7 @@ Node *
 parse_lit_enum(Context *cnt)
 {
   Token *tok_enum = tokens_peek(cnt->tokens);
-  Node * type     = parse_type_enum(cnt, 0);
+  Node * type     = parse_type_enum(cnt);
   if (!type) return NULL;
   NodeTypeEnum *_type = peek_type_enum(type);
 
@@ -885,16 +891,14 @@ Node *
 parse_expr_member(Context *cnt, Token *op)
 {
   if (!op) return NULL;
-  bool is_ptr_ref = token_is(op, SYM_ARROW);
+  if (token_is_not(op, SYM_DOT)) return NULL;
 
-  if (token_is_not(op, SYM_DOT) && !is_ptr_ref) return NULL;
-
-  Node *ident = parse_ident(cnt, 0);
+  Node *ident = parse_ident(cnt);
   if (!ident) {
     parse_error(cnt, ERR_EXPECTED_NAME, op, BUILDER_CUR_WORD, "expected structure member name");
   }
 
-  return ast_expr_member(cnt->ast, op, MEM_KIND_UNKNOWN, ident, NULL, NULL, is_ptr_ref, -1);
+  return ast_expr_member(cnt->ast, op, MEM_KIND_UNKNOWN, ident, NULL, NULL, false, -1);
 }
 
 Node *
@@ -929,14 +933,14 @@ parse_atom_expr(Context *cnt, Token *op)
   if ((expr = parse_expr_cast(cnt))) goto done;
   if ((expr = parse_run(cnt))) goto done;
   if ((expr = parse_lit_fn(cnt))) goto done;
-  if ((expr = parse_type_struct(cnt, 0))) goto done;
-  if ((expr = parse_type_arr(cnt, 0))) goto done;
+  if ((expr = parse_type_struct(cnt))) goto done;
+  if ((expr = parse_type_arr(cnt))) goto done;
   if ((expr = parse_lit_enum(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
   if ((expr = parse_lit(cnt))) goto done;
   if ((expr = parse_expr_member(cnt, op))) goto done;
-  if ((expr = parse_ident(cnt, 0))) goto done;
+  if ((expr = parse_ident(cnt))) goto done;
   if ((expr = parse_line(cnt))) goto done;
   if ((expr = parse_file(cnt))) goto done;
 
@@ -967,7 +971,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
     if (token_is(op, SYM_LBRACKET)) {
       peek_expr_elem(rhs)->next = lhs;
       lhs                       = rhs;
-    } else if (token_is(op, SYM_DOT) || token_is(op, SYM_ARROW)) {
+    } else if (token_is(op, SYM_DOT)) {
       if (node_is(rhs, NODE_EXPR_CALL)) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
@@ -975,7 +979,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
         Node *        call  = rhs;
         NodeExprCall *_call = peek_expr_call(call);
         Node *member = ast_expr_member(cnt->ast, op, MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
-                                       token_is(op, SYM_ARROW), -1);
+                                       false, -1);
 
         _call->ref                     = member;
         peek_expr_member(member)->next = lhs;
@@ -1007,17 +1011,37 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
 }
 
 Node *
-parse_ident(Context *cnt, int ptr)
+parse_ident(Context *cnt)
 {
   Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
   if (!tok_ident) return NULL;
 
   assert(cnt->curr_compound);
-  return ast_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound, ptr, NULL);
+  return ast_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound, 0, NULL);
 }
 
 Node *
-parse_type_arr(Context *cnt, int ptr)
+parse_type_ptr(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
+  if (!tok_begin) return NULL;
+
+  Node *type = parse_type(cnt);
+  assert(type);
+  return ast_type_ptr(cnt->ast, tok_begin, type);
+}
+
+Node *
+parse_type_type(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPE);
+  if (!tok_begin) return NULL;
+
+  return ast_type_type(cnt->ast, tok_begin, NULL, NULL);
+}
+
+Node *
+parse_type_arr(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
   if (!tok_begin) return NULL;
@@ -1032,7 +1056,6 @@ parse_type_arr(Context *cnt, int ptr)
 
   Node *elem_type = parse_type(cnt);
   assert(elem_type);
-  /* TODO: use ptr (pointer to array) */
   return ast_type_arr(cnt->ast, tok_begin, elem_type, len);
 }
 
@@ -1040,48 +1063,39 @@ Node *
 parse_type(Context *cnt)
 {
   Node *type = NULL;
-  int   ptr  = 0;
 
-  while (tokens_consume_if(cnt->tokens, SYM_ASTERISK)) {
-    ++ptr;
-  }
-
-  type = parse_type_fn(cnt, false, ptr);
-  if (!type) type = parse_type_struct(cnt, ptr);
-  if (!type) type = parse_type_enum(cnt, ptr);
-  if (!type) type = parse_type_vargs(cnt, ptr);
-  if (!type) type = parse_type_arr(cnt, ptr);
-  if (!type) type = parse_type_fund(cnt, ptr);
+  type = parse_type_ptr(cnt);
+  if (!type) type = parse_type_type(cnt);
+  if (!type) type = parse_type_fn(cnt, false);
+  if (!type) type = parse_type_struct(cnt);
+  if (!type) type = parse_type_enum(cnt);
+  if (!type) type = parse_type_vargs(cnt);
+  if (!type) type = parse_type_arr(cnt);
+  if (!type) type = parse_type_fund(cnt);
 
   return type;
 }
 
 Node *
-parse_type_fund(Context *cnt, int ptr)
+parse_type_fund(Context *cnt)
 {
-  Node *type_ident = parse_ident(cnt, ptr);
+  Node *type_ident = parse_ident(cnt);
   if (!type_ident) return NULL;
-  assert(ptr >= 0);
 
   return type_ident;
 }
 
 Node *
-parse_type_vargs(Context *cnt, int ptr)
+parse_type_vargs(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
   if (!tok_begin) return NULL;
-
-  if (ptr) {
-    parse_error(cnt, ERR_INVALID_TYPE, tok_begin, BUILDER_CUR_BEFORE,
-                "variable arguments type cannot be pointer type");
-  }
 
   return ast_type_vargs(cnt->ast, tok_begin);
 }
 
 Node *
-parse_type_fn(Context *cnt, bool named_args, int ptr)
+parse_type_fn(Context *cnt, bool named_args)
 {
   Token *tok_fn = tokens_consume_if(cnt->tokens, SYM_FN);
   if (!tok_fn) return NULL;
@@ -1130,11 +1144,11 @@ next:
     ret_type = &ftypes[FTYPE_VOID];
   }
 
-  return ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type, ptr);
+  return ast_type_fn(cnt->ast, tok_fn, arg_types, argc_types, ret_type);
 }
 
 Node *
-parse_type_struct(Context *cnt, int ptr)
+parse_type_struct(Context *cnt)
 {
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
   if (!tok_struct) return NULL;
@@ -1145,9 +1159,8 @@ parse_type_struct(Context *cnt, int ptr)
     return ast_bad(cnt->ast, tok_struct);
   }
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, 64);
-  Node * type_struct =
-      ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, ptr);
+  Scope *scope       = scope_new(cnt->assembly->scope_cache, 64);
+  Node * type_struct = ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, false);
   NodeTypeStruct *_type_struct = peek_type_struct(type_struct);
 
   push_curr_compound(cnt, type_struct);
@@ -1158,6 +1171,7 @@ parse_type_struct(Context *cnt, int ptr)
 
   const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
                          tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
+  _type_struct->raw = type_only;
 next:
   *member = parse_decl_member(cnt, type_only, *membersc);
   if (*member) {
@@ -1193,16 +1207,16 @@ next:
 }
 
 Node *
-parse_type_enum(Context *cnt, int ptr)
+parse_type_enum(Context *cnt)
 {
   Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
   if (!tok_enum) return NULL;
 
   Node *type = parse_type(cnt);
   /* implicit type s32 when enum base type has not been specified */
-  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32, 0);
+  if (!type) type = ast_type_fund(cnt->ast, NULL, FTYPE_S32);
 
-  return ast_type_enum(cnt->ast, tok_enum, type, cnt->curr_decl, ptr);
+  return ast_type_enum(cnt->ast, tok_enum, type, cnt->curr_decl);
 }
 
 Node *
@@ -1231,12 +1245,13 @@ parse_decl(Context *cnt)
   case SYM_RBLOCK:
   case SYM_VARGS:
   case SYM_LBRACKET:
+  case SYM_TYPE:
     break;
   default:
     return NULL;
   }
 
-  Node *ident = parse_ident(cnt, 0);
+  Node *ident = parse_ident(cnt);
   if (!ident) return NULL;
 
   if (ast_is_buildin_type(ident) != -1) {
@@ -1316,7 +1331,7 @@ parse_expr_call(Context *cnt)
   if (!tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_LPAREN)) return NULL;
 
   Token *tok_id = tokens_peek(cnt->tokens);
-  Node * ident  = parse_ident(cnt, 0);
+  Node * ident  = parse_ident(cnt);
   Token *tok    = tokens_consume(cnt->tokens);
   if (tok->sym != SYM_LPAREN) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
@@ -1675,7 +1690,7 @@ next:
   Token *tok = tokens_peek(cnt->tokens);
   if (!token_is(tok, SYM_EOF)) {
     parse_error(cnt, ERR_UNEXPECTED_SYMBOL, tok, BUILDER_CUR_WORD,
-                "unexpected symbol in module body");
+                "unexpected symbol in module body '%s'", sym_strings[tok->sym]);
   }
   pop_curr_compound(cnt);
 }

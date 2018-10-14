@@ -39,7 +39,6 @@
 
 // clang-format off
 #define _FTYPE_LIST                                                                         \
-    ft(TYPE,   type) \
     ft(VOID,   void) \
     ft(S8,     s8) \
     ft(S16,    s16) \
@@ -138,9 +137,12 @@
     Node *type; \
     Node *value; \
   }) \
+  nt(TYPE_TYPE, TypeType, type_type, struct { \
+    Node *name; \
+    Node *spec; \
+  }) \
   nt(TYPE_FUND, TypeFund, type_fund, struct { \
     FundType code; \
-    int      ptr;\
   }) \
   nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
     void *_; \
@@ -153,19 +155,20 @@
     Node *arg_types; \
     Node *ret_type; \
     int   argc_types; \
-    int   ptr; \
   }) \
   nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
     Scope *scope; \
     Node  *parent_compound; \
     Node  *members; \
     int    membersc; \
-    int    ptr; \
+    bool   raw; \
   }) \
   nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
     Node *base_decl; \
     Node *base_type; \
-    int   ptr; \
+  }) \
+  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
+    Node *type; \
   }) \
   nt(LIT_ENUM, LitEnum, lit_enum, struct { \
     Node  *type; \
@@ -432,12 +435,14 @@ _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutabl
 _NODE_CTOR(member, Node *name, Node *type, int order);
 _NODE_CTOR(arg, Node *name, Node *type);
 _NODE_CTOR(variant, Node *name, Node *type, Node *value);
-_NODE_CTOR(type_fund, FundType code, int ptr);
+_NODE_CTOR(type_type, Node *name, Node *spec);
+_NODE_CTOR(type_fund, FundType code);
 _NODE_CTOR(type_vargs);
 _NODE_CTOR(type_arr, Node *elem_type, Node *len);
-_NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type, int ptr);
-_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, int ptr);
-_NODE_CTOR(type_enum, Node *type, Node *base_decl, int ptr);
+_NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type);
+_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, bool raw);
+_NODE_CTOR(type_enum, Node *type, Node *base_decl);
+_NODE_CTOR(type_ptr, Node *type);
 _NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
 _NODE_CTOR(lit_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
 _NODE_CTOR(lit, Node *type, TokenValue value);
@@ -501,12 +506,6 @@ ast_is_type(Node *node);
 Node *
 ast_get_type(Node *node);
 
-Node *
-ast_typeof(Node *node);
-
-void
-ast_set_type(Node *node, Node *type);
-
 int
 ast_is_buildin_type(Node *ident);
 
@@ -515,18 +514,6 @@ ast_is_buildin(Node *ident);
 
 bool
 ast_type_cmp(Node *first, Node *second);
-
-int
-ast_type_get_ptr(Node *type);
-
-void
-ast_type_set_ptr(Node *type, int ptr);
-
-Node *
-ast_type_get_arr(Node *type);
-
-void
-ast_type_set_arr(Node *type, Node *arr);
 
 TypeKind
 ast_type_kind(Node *type);
