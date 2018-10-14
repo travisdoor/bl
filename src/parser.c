@@ -747,9 +747,7 @@ parse_lit(Context *cnt)
   }
 
   tokens_consume(cnt->tokens);
-  Node *lit = ast_lit(cnt->ast, tok, type, tok->value);
-  lit->adm  = ADM_CONST;
-  return lit;
+  return ast_lit(cnt->ast, tok, type, tok->value);
 }
 
 Node *

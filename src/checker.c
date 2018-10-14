@@ -134,6 +134,9 @@ static Node *
 check_ident(Context *cnt, Node **ident);
 
 static Node *
+check_lit(Context *cnt, Node **lit);
+
+static Node *
 check_decl(Context *cnt, Node **decl);
 
 static Node *
@@ -754,6 +757,9 @@ check_node(Context *cnt, Node **node)
   case NODE_TYPE_STRUCT:
     result = check_type_struct(cnt, node);
     break;
+  case NODE_LIT:
+    result = check_lit(cnt, node);
+    break;
 
   case NODE_TYPE_TYPE:
   case NODE_TYPE_FUND:
@@ -761,7 +767,6 @@ check_node(Context *cnt, Node **node)
   case NODE_TYPE_FN:
   case NODE_TYPE_VARGS:
   case NODE_EXPR_NULL:
-  case NODE_LIT:
   case NODE_STMT_BREAK:
   case NODE_STMT_CONTINUE:
   case NODE_STMT_LOOP:
@@ -947,6 +952,13 @@ check_ident(Context *cnt, Node **ident)
 }
 
 Node *
+check_lit(Context *cnt, Node **lit)
+{
+  (*lit)->adm = ADM_CONST;
+  finish();
+}
+
+Node *
 check_stmt_return(Context *cnt, Node **ret)
 {
   NodeStmtReturn *_ret = peek_stmt_return(*ret);
@@ -996,7 +1008,7 @@ check_expr_binop(Context *cnt, Node **binop)
     finish();
   }
 
-  (*binop)->adm = lhs_kind == TYPE_KIND_PTR ? ADM_LVALUE : ADM_RVALUE;
+  (*binop)->adm = _binop->lhs->adm;
 
   if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
     infer_null_type(cnt, _binop->lhs, _binop->rhs);
