@@ -425,11 +425,6 @@ ast_node_is_type(Node *node)
   return ast_node_code(node) >= NODE_TYPE_TYPE && ast_node_code(node) <= NODE_TYPE_PTR;
 }
 
-#define ast_create_node(ast, c, tok, t) (t) _ast_create_node((ast), (c), (tok));
-
-Node *
-_ast_create_node(Ast *ast, NodeCode c, Token *tok);
-
 void
 ast_type_to_string(char *buf, size_t len, Node *type);
 
@@ -485,6 +480,7 @@ _NODE_TYPE_LIST
 
 #define _NODE_CTOR(name, ...) Node *ast_create_##name(Ast *_ast, Token *_tok, ##__VA_ARGS__)
 
+_NODE_CTOR(bad);
 _NODE_CTOR(load, const char *filepath);
 _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
