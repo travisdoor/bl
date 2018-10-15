@@ -352,12 +352,6 @@ _NODE_TYPE_LIST
 /*************************************************************************************************
  * AST
  *************************************************************************************************/
-#define peek_src(n) (n)->src
-#define node_is(n, c) ((n)->code == (c))
-#define node_is_not(n, c) ((n)->code != (c))
-#define node_code(n) (n)->code
-#define node_name(n) node_type_strings[(n)->code]
-
 struct Chunk;
 
 struct Ast
@@ -403,6 +397,36 @@ struct Node
   int _serial;
 #endif
 };
+
+static inline Src *
+peek_src(Node *n)
+{
+  return n->src;
+}
+
+static inline NodeCode
+node_code(Node *n)
+{
+  return n->code;
+}
+
+static inline bool
+node_is(Node *n, NodeCode c)
+{
+  return node_code(n) == c;
+}
+
+static inline bool
+node_is_not(Node *n, NodeCode c)
+{
+  return node_code(n) != c;
+}
+
+static inline const char *
+node_name(Node *n)
+{
+  return node_type_strings[node_code(n)];
+}
 
 /*************************************************************************************************
  * generation of peek function

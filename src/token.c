@@ -128,15 +128,3 @@ token_prec(Token *token, bool unary)
   }
 }
 
-bool
-token_is(Token *token, Sym sym)
-{
-  if (!token) return false;
-  return token->sym == sym;
-}
-
-bool
-token_is_not(Token *token, Sym sym)
-{
-  return !token_is(token, sym);
-}

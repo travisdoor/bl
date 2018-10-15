@@ -138,23 +138,59 @@ typedef struct Token
   TokenValue value;
 } Token;
 
-#define sym_is_binop(_sym) (_sym >= SYM_EQ && _sym <= SYM_ASTERISK)
-#define sym_is_assign(_sym) (_sym >= SYM_PLUS_ASSIGN && _sym <= SYM_ASSIGN)
-#define sym_is_logical(_sym) (_sym >= SYM_EQ && _sym <= SYM_LESS)
-#define token_is_binop(_token) sym_is_binop(_token->sym)
-#define token_is_assign(_token) sym_is_assign(_token->sym)
-#define token_is_logical(_token) sym_is_logical(_token->sym)
+static inline bool
+sym_is_binop(Sym sym)
+{
+  return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+}
 
-bool
-token_is(Token *token, Sym sym);
+static inline bool
+sym_is_assign(Sym sym)
+{
+  return sym >= SYM_PLUS_ASSIGN && sym <= SYM_ASSIGN;
+}
 
-bool
-token_is_not(Token *token, Sym sym);
+static inline bool
+sym_is_logical(Sym sym)
+{
+  return sym >= SYM_EQ && sym <= SYM_LESS;
+}
+
+static inline bool
+token_is_binop(Token *token)
+{
+  return sym_is_binop(token->sym);
+}
+
+static inline bool
+token_is_assign(Token *token)
+{
+  return sym_is_assign(token->sym);
+}
+
+static inline bool
+token_is_logical(Token *token)
+{
+  return sym_is_logical(token->sym);
+}
 
 bool
 token_is_unary(Token *token);
 
 int
 token_prec(Token *token, bool unary);
+
+static inline bool
+token_is(Token *token, Sym sym)
+{
+  if (!token) return false;
+  return token->sym == sym;
+}
+
+static inline bool
+token_is_not(Token *token, Sym sym)
+{
+  return !token_is(token, sym);
+}
 
 #endif // BL_TOKEN_H
