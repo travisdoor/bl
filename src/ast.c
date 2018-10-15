@@ -145,9 +145,7 @@ free_chunk(chunk_t *chunk)
   return next;
 }
 
-#define ast_create_node(ast, c, tok, t) (t) _ast_create_node((ast), (c), (tok));
-
-static Node *
+Node *
 _ast_create_node(Ast *ast, NodeCode c, Token *tok)
 {
   if (!ast->current_chunk) {
@@ -215,11 +213,6 @@ ast_terminate(Ast *ast)
 /*************************************************************************************************
  * node constructors
  *************************************************************************************************/
-
-_NODE_CTOR(bad)
-{
-  return ast_create_node(_ast, NODE_BAD, _tok, Node *);
-}
 
 _NODE_CTOR(load, const char *filepath)
 {
