@@ -135,41 +135,49 @@
     Node *type; \
     Node *value; \
   }) \
-  nt(TYPE_TYPE, TypeType, type_type, struct { \
-    Node *name; \
-    Node *spec; \
-  }) \
-  nt(TYPE_FUND, TypeFund, type_fund, struct { \
-    FundType code; \
-  }) \
-  nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
+  \
+  nt(_TYPE_BEGIN, _TypeBegin, _type_begin, struct { \
     void *_; \
   }) \
-  nt(TYPE_ARR, TypeArr, type_arr, struct { \
-    Node *elem_type; \
-    Node *len; \
+    nt(TYPE_TYPE, TypeType, type_type, struct { \
+	Node *name; \
+	Node *spec; \
+    }) \
+    nt(TYPE_FUND, TypeFund, type_fund, struct { \
+	FundType code; \
+    }) \
+    nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
+	void *_; \
+    }) \
+    nt(TYPE_ARR, TypeArr, type_arr, struct { \
+	Node *elem_type; \
+	Node *len; \
+    }) \
+    nt(TYPE_FN, TypeFn, type_fn, struct { \
+	Node *arg_types; \
+	Node *ret_type; \
+	int   argc_types; \
+    }) \
+    nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
+	Scope *scope; \
+	Node  *parent_compound; \
+	Node  *members; \
+	int    membersc; \
+	bool   raw; \
+    }) \
+    nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
+	Node  *type; \
+	Scope *scope; \
+	Node  *parent_compound; \
+	Node  *variants; \
+    }) \
+    nt(TYPE_PTR, TypePtr, type_ptr, struct { \
+	Node *type; \
+    }) \
+  nt(_TYPE_END, _TypeEnd, _type_end, struct { \
+    void *_; \
   }) \
-  nt(TYPE_FN, TypeFn, type_fn, struct { \
-    Node *arg_types; \
-    Node *ret_type; \
-    int   argc_types; \
-  }) \
-  nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
-    Scope *scope; \
-    Node  *parent_compound; \
-    Node  *members; \
-    int    membersc; \
-    bool   raw; \
-  }) \
-  nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
-    Node  *type; \
-    Scope *scope; \
-    Node  *parent_compound; \
-    Node  *variants; \
-  }) \
-  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
-    Node *type; \
-  }) \
+  \
   nt(LIT_FN, LitFn, lit_fn, struct { \
     Node  *type; \
     Node  *block; \
@@ -257,29 +265,19 @@ typedef enum
 
 typedef enum
 {
-  DECL_KIND_INVALID = -1,
-  DECL_KIND_FIELD   = 0, /* a := 0; */
-  DECL_KIND_TYPE    = 1, /* Type : struct { s32 }; */
-  DECL_KIND_FN      = 2, /* main : fn () s32 {}; */
-  DECL_KIND_ENUM    = 3, /* Enum : enum s8 {}; */
+  DECL_KIND_INVALID = 0,
+  DECL_KIND_FIELD   = 1, /* a := 0; */
+  DECL_KIND_TYPE    = 2, /* Type : struct { s32 }; */
+  DECL_KIND_FN      = 3, /* main : fn () s32 {}; */
+  DECL_KIND_ENUM    = 4, /* Enum : enum s8 {}; */
 } DeclKind;
 
 typedef enum
 {
-  MEM_KIND_INVALID = -1,
-  MEM_KIND_STRUCT  = 0, /* structure.bar; structure->bar; */
-  MEM_KIND_ENUM    = 1, /* enum.A; */
+  MEM_KIND_INVALID = 0,
+  MEM_KIND_STRUCT  = 1, /* structure.bar; structure->bar; */
+  MEM_KIND_ENUM    = 2, /* enum.A; */
 } MemberKind;
-
-typedef enum
-{
-  ADM_INVALID = -1,
-  ADM_LVALUE  = 0,
-  ADM_RVALUE  = 1,
-  ADM_IMMUT   = 2,
-  ADM_TYPE    = 3,
-  ADM_CONST   = 4,
-} AddressingMode;
 
 typedef enum
 {
@@ -390,52 +388,96 @@ struct Node
   Src *          src;
   NodeCode       code;
   Node *         next;
-  Node *         type;
-  AddressingMode adm;
   CheckState     state;
 #if BL_DEBUG
   int _serial;
 #endif
 };
 
+/* static fundamental type nodes */
+extern Node ftypes[];
+extern Node type_type;
+
 static inline Src *
-peek_src(Node *n)
+ast_peek_src(Node *n)
 {
   return n->src;
 }
 
 static inline NodeCode
-node_code(Node *n)
+ast_node_code(Node *n)
 {
   return n->code;
 }
 
 static inline bool
-node_is(Node *n, NodeCode c)
+ast_node_is(Node *n, NodeCode c)
 {
-  return node_code(n) == c;
+  return ast_node_code(n) == c;
 }
 
 static inline bool
-node_is_not(Node *n, NodeCode c)
+ast_node_is_not(Node *n, NodeCode c)
 {
-  return node_code(n) != c;
+  return ast_node_code(n) != c;
 }
 
 static inline const char *
-node_name(Node *n)
+ast_node_name(Node *n)
 {
-  return node_type_strings[node_code(n)];
+  return node_type_strings[ast_node_code(n)];
 }
+
+static inline bool
+ast_node_is_type(Node *node)
+{
+  return ast_node_code(node) > NODE__TYPE_BEGIN && ast_node_code(node) < NODE__TYPE_END;
+}
+
+void
+ast_type_to_string(char *buf, size_t len, Node *type);
+
+Scope *
+ast_get_scope(Node *node);
+
+Node *
+ast_get_parent_compound(Node *node);
+
+Node *
+ast_get_type(Node *node);
+
+int
+ast_is_buildin_type(Node *ident);
+
+int
+ast_is_buildin(Node *ident);
+
+bool
+ast_type_cmp(Node *first, Node *second);
+
+TypeKind
+ast_type_kind(Node *type);
+
+bool
+ast_can_impl_cast(Node *from_type, Node *to_type);
+
+Node *
+ast_node_dup(Ast *Ast, Node *node);
+
+Node *
+ast_unroll_ident(Node *ident);
+
+Dependency *
+ast_add_dep_uq(Node *decl, Node *dep, int type);
 
 /*************************************************************************************************
  * generation of peek function
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
 #define nt(code, Name, name, data)                                                                 \
-  static inline Node##Name *peek_##name(Node *n)                                                   \
+  static inline Node##Name *ast_peek_##name(Node *n)                                               \
   {                                                                                                \
-    assert(node_is(n, NODE_##code));                                                               \
+    assert(ast_node_is(n, NODE_##code));                                                           \
     return &(n->name);                                                                             \
   }
 _NODE_TYPE_LIST
@@ -512,53 +554,6 @@ visitor_visit(Visitor *visitor, Node *node, void *cnt);
 
 void
 visitor_walk(Visitor *visitor, Node *node, void *cnt);
-
-/*************************************************************************************************
- * other
- *************************************************************************************************/
-
-/* static fundamental type nodes */
-extern Node ftypes[];
-extern Node type_type;
-
-void
-ast_type_to_string(char *buf, size_t len, Node *type);
-
-Scope *
-ast_get_scope(Node *node);
-
-Node *
-ast_get_parent_compound(Node *node);
-
-bool
-ast_is_type(Node *node);
-
-Node *
-ast_get_type(Node *node);
-
-int
-ast_is_buildin_type(Node *ident);
-
-int
-ast_is_buildin(Node *ident);
-
-bool
-ast_type_cmp(Node *first, Node *second);
-
-TypeKind
-ast_type_kind(Node *type);
-
-bool
-ast_can_impl_cast(Node *from_type, Node *to_type);
-
-Node *
-ast_node_dup(Ast *Ast, Node *node);
-
-Node *
-ast_unroll_ident(Node *ident);
-
-Dependency *
-ast_add_dep_uq(Node *decl, Node *dep, int type);
 
 /**************************************************************************************************/
 

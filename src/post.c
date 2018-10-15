@@ -70,11 +70,11 @@ static inline void
 schedule_generation(Context *cnt, Node *decl)
 {
   assert(decl);
-  NodeDecl *_decl = peek_decl(decl);
+  NodeDecl *_decl = ast_peek_decl(decl);
   if (_decl->used) {
     bo_list_push_back(cnt->assembly->ir_queue, decl);
 #if VERBOSE
-    bl_log("schedule generation of: %s", peek_ident(_decl->name)->str);
+    bl_log("schedule generation of: %s", ast_peek_ident(_decl->name)->str);
 #endif
   }
 }
@@ -94,7 +94,7 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(decl);
-  NodeDecl *_decl = peek_decl(decl);
+  NodeDecl *_decl = ast_peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
       !(_decl->flags & FLAG_MAIN)) {
     post_warning_node(_cnt, _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
@@ -123,14 +123,14 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 
 #if VERBOSE
   if (_decl->deps) {
-    bl_log(YELLOW("'%s'") " depends on:", peek_ident(_decl->name)->str);
+    bl_log(YELLOW("'%s'") " depends on:", ast_peek_ident(_decl->name)->str);
     bo_iterator_t it;
     Dependency    tmp;
     bhtbl_foreach(_decl->deps, it)
     {
       tmp = bo_htbl_iter_peek_value(_decl->deps, &it, Dependency);
       bl_log("  [%s] %s", tmp.type == DEP_STRICT ? RED("STRICT") : GREEN(" LAX "),
-             peek_ident(peek_decl(tmp.node)->name)->str);
+             ast_peek_ident(ast_peek_decl(tmp.node)->name)->str);
     }
   }
 #endif
@@ -141,12 +141,12 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(call);
-  NodeExprCall *_call = peek_expr_call(call);
+  NodeExprCall *_call = ast_peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
   Node *callee = ast_unroll_ident(_call->ref);
-  if (node_is(callee, NODE_DECL) && !(peek_decl(callee)->flags & FLAG_EXTERN) &&
-      !peek_decl(callee)->mutable) {
+  if (ast_node_is(callee, NODE_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
+      !ast_peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }
 
@@ -158,15 +158,15 @@ post_ident(Visitor *visitor, Node *ident, void *cnt)
 {
   assert(ident);
   Context *  _cnt   = (Context *)cnt;
-  NodeIdent *_ident = peek_ident(ident);
+  NodeIdent *_ident = ast_peek_ident(ident);
 
   if (!_ident->ref || !_cnt->curr_dependent) {
     visitor_walk(visitor, ident, cnt);
     return;
   }
 
-  if (node_is(_ident->ref, NODE_DECL)) {
-    NodeDecl *_decl = peek_decl(_ident->ref);
+  if (ast_node_is(_ident->ref, NODE_DECL)) {
+    NodeDecl *_decl = ast_peek_decl(_ident->ref);
     if (_decl->kind == DECL_KIND_FN) {
       ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
     } else if (_decl->kind == DECL_KIND_FIELD && _decl->in_gscope) {

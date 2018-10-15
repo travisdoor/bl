@@ -54,7 +54,7 @@ void
 scope_insert(Scope *scope, Node *ident, Node *node)
 {
   assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
+  const NodeIdent *_ident = ast_peek_ident(ident);
   bo_htbl_insert(scope, _ident->hash, node);
 }
 
@@ -62,7 +62,7 @@ Node *
 scope_get(Scope *scope, Node *ident)
 {
   assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
+  const NodeIdent *_ident = ast_peek_ident(ident);
   if (scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, Node *);
   return NULL;
 }
@@ -71,6 +71,6 @@ bool
 scope_has_symbol(Scope *scope, Node *ident)
 {
   assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
+  const NodeIdent *_ident = ast_peek_ident(ident);
   return bo_htbl_has_key(scope, _ident->hash);
 }

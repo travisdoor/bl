@@ -202,7 +202,7 @@ infer_null_type(Context *cnt, Node *from, Node *null)
   if (kind != TYPE_KIND_PTR) {
     check_error_node(cnt, ERR_INVALID_TYPE, from, BUILDER_CUR_WORD, "expected a pointer type");
   } else {
-    peek_expr_null(null)->type = type;
+    ast_peek_expr_null(null)->type = type;
   }
 }
 
@@ -210,7 +210,7 @@ Node *
 lookup(Node *ident, Scope **out_scope, bool walk_tree)
 {
   assert(ident && "invalid identificator in lookup");
-  Node *compound = peek_ident(ident)->parent_compound;
+  Node *compound = ast_peek_ident(ident)->parent_compound;
   assert(compound && "ident compound not set");
   return _lookup(compound, ident, out_scope, walk_tree);
 }
@@ -260,13 +260,13 @@ void
 provide(Node *ident, Node *provided)
 {
   assert(ident && provided && "trying to provide invalid symbol");
-  Node *compound = peek_ident(ident)->parent_compound;
+  Node *compound = ast_peek_ident(ident)->parent_compound;
   assert(compound);
   Scope *scope = ast_get_scope(compound);
   assert(scope);
 
 #if VERBOSE
-  bl_log("providing " MAGENTA("'%s'") " (%d)", peek_ident(ident)->str, ident->_serial);
+  bl_log("providing " MAGENTA("'%s'") " (%d)", ast_peek_ident(ident)->str, ident->_serial);
 #endif
   scope_insert(scope, ident, provided);
 }
@@ -274,7 +274,7 @@ provide(Node *ident, Node *provided)
 void
 waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor)
 {
-  NodeIdent *_waitfor = peek_ident(waitfor);
+  NodeIdent *_waitfor = ast_peek_ident(waitfor);
   BArray *   queue;
   if (bo_htbl_has_key(waiting, _waitfor->hash)) {
     queue = bo_htbl_at(waiting, _waitfor->hash, BArray *);
@@ -290,7 +290,7 @@ waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor)
 void
 waiting_resume(Context *cnt, Node *ident)
 {
-  NodeIdent *_ident = peek_ident(ident);
+  NodeIdent *_ident = ast_peek_ident(ident);
   /* is there some flattens waiting for this symbol??? */
   if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
 
@@ -387,9 +387,9 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
 
 #define flatten(_node) flatten_node(cnt, fbuf, (_node))
 
-  switch (node_code(*node)) {
+  switch (ast_node_code(*node)) {
   case NODE_DECL: {
-    NodeDecl *_decl = peek_decl(*node);
+    NodeDecl *_decl = ast_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
     if (_decl->in_gscope && !scope_has_symbol(cnt->provided_in_gscope, _decl->name))
@@ -403,33 +403,33 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_MEMBER: {
-    NodeMember *_mem = peek_member(*node);
+    NodeMember *_mem = ast_peek_member(*node);
     flatten(&_mem->type);
     break;
   }
 
   case NODE_ARG: {
-    NodeArg *_arg = peek_arg(*node);
+    NodeArg *_arg = ast_peek_arg(*node);
     flatten(&_arg->type);
     break;
   }
 
   case NODE_VARIANT: {
-    NodeVariant *_variant = peek_variant(*node);
+    NodeVariant *_variant = ast_peek_variant(*node);
     flatten(&_variant->type);
     flatten(&_variant->value);
     break;
   }
 
   case NODE_LIT_FN: {
-    NodeLitFn *_fn = peek_lit_fn(*node);
+    NodeLitFn *_fn = ast_peek_lit_fn(*node);
     flatten(&_fn->type);
     check_flatten(cnt, &_fn->block);
     break;
   }
 
   case NODE_LIT_CMP: {
-    NodeLitCmp *_cmp = peek_lit_cmp(*node);
+    NodeLitCmp *_cmp = ast_peek_lit_cmp(*node);
     flatten(&_cmp->type);
     Node **field;
     node_foreach_ref(_cmp->fields, field)
@@ -440,7 +440,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_enum = peek_type_enum(*node);
+    NodeTypeEnum *_enum = ast_peek_type_enum(*node);
     flatten(&_enum->type);
     Node **variant;
     node_foreach_ref(_enum->variants, variant)
@@ -451,7 +451,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_BLOCK: {
-    NodeBlock *_block = peek_block(*node);
+    NodeBlock *_block = ast_peek_block(*node);
 
     Node **tmp;
     node_foreach_ref(_block->nodes, tmp)
@@ -462,7 +462,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_UBLOCK: {
-    NodeUBlock *_ublock = peek_ublock(*node);
+    NodeUBlock *_ublock = ast_peek_ublock(*node);
 
     Node **tmp;
     node_foreach_ref(_ublock->nodes, tmp)
@@ -473,13 +473,13 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_STMT_RETURN: {
-    NodeStmtReturn *_return = peek_stmt_return(*node);
+    NodeStmtReturn *_return = ast_peek_stmt_return(*node);
     flatten(&_return->expr);
     break;
   }
 
   case NODE_STMT_IF: {
-    NodeStmtIf *_if = peek_stmt_if(*node);
+    NodeStmtIf *_if = ast_peek_stmt_if(*node);
     flatten(&_if->test);
     flatten(&_if->true_stmt);
     flatten(&_if->false_stmt);
@@ -487,7 +487,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_STMT_LOOP: {
-    NodeStmtLoop *_loop = peek_stmt_loop(*node);
+    NodeStmtLoop *_loop = ast_peek_stmt_loop(*node);
     flatten(&_loop->init);
     flatten(&_loop->condition);
     flatten(&_loop->increment);
@@ -496,41 +496,41 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_EXPR_MEMBER: {
-    NodeExprMember *_member = peek_expr_member(*node);
+    NodeExprMember *_member = ast_peek_expr_member(*node);
     flatten(&_member->next);
     break;
   }
 
   case NODE_EXPR_ELEM: {
-    NodeExprElem *_elem = peek_expr_elem(*node);
+    NodeExprElem *_elem = ast_peek_expr_elem(*node);
     flatten(&_elem->next);
     flatten(&_elem->index);
     break;
   }
 
   case NODE_EXPR_CAST: {
-    NodeExprCast *_cast = peek_expr_cast(*node);
+    NodeExprCast *_cast = ast_peek_expr_cast(*node);
     flatten(&_cast->type);
     flatten(&_cast->next);
     break;
   }
 
   case NODE_EXPR_SIZEOF: {
-    NodeExprSizeof *_sizeof = peek_expr_sizeof(*node);
+    NodeExprSizeof *_sizeof = ast_peek_expr_sizeof(*node);
     flatten(&_sizeof->in);
     flatten(&_sizeof->type);
     break;
   }
 
   case NODE_EXPR_TYPEOF: {
-    NodeExprTypeof *_typeof = peek_expr_typeof(*node);
+    NodeExprTypeof *_typeof = ast_peek_expr_typeof(*node);
     flatten(&_typeof->in);
     flatten(&_typeof->type);
     break;
   }
 
   case NODE_EXPR_CALL: {
-    NodeExprCall *_call = peek_expr_call(*node);
+    NodeExprCall *_call = ast_peek_expr_call(*node);
     flatten(&_call->ref);
 
     Node **tmp;
@@ -542,20 +542,20 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_EXPR_BINOP: {
-    NodeExprBinop *_binop = peek_expr_binop(*node);
+    NodeExprBinop *_binop = ast_peek_expr_binop(*node);
     flatten(&_binop->lhs);
     flatten(&_binop->rhs);
     break;
   }
 
   case NODE_EXPR_UNARY: {
-    NodeExprUnary *_unary = peek_expr_unary(*node);
+    NodeExprUnary *_unary = ast_peek_expr_unary(*node);
     flatten(&_unary->next);
     break;
   }
 
   case NODE_TYPE_STRUCT: {
-    NodeTypeStruct *_type_struct = peek_type_struct(*node);
+    NodeTypeStruct *_type_struct = ast_peek_type_struct(*node);
     Node **         tmp;
     node_foreach_ref(_type_struct->members, tmp)
     {
@@ -565,7 +565,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_TYPE_FN: {
-    NodeTypeFn *_type_fn = peek_type_fn(*node);
+    NodeTypeFn *_type_fn = ast_peek_type_fn(*node);
     flatten(&_type_fn->ret_type);
     Node **sub_type;
     node_foreach_ref(_type_fn->arg_types, sub_type)
@@ -576,30 +576,19 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   }
 
   case NODE_TYPE_ARR: {
-    NodeTypeArr *_arr = peek_type_arr(*node);
+    NodeTypeArr *_arr = ast_peek_type_arr(*node);
     flatten(&_arr->elem_type);
     flatten(&_arr->len);
     break;
   }
 
   case NODE_TYPE_PTR: {
-    NodeTypePtr *_ptr = peek_type_ptr(*node);
+    NodeTypePtr *_ptr = ast_peek_type_ptr(*node);
     flatten(&_ptr->type);
     break;
   }
 
-  case NODE_IDENT:
-  case NODE_TYPE_FUND:
-  case NODE_TYPE_TYPE:
-  case NODE_TYPE_VARGS:
-  case NODE_EXPR_NULL:
-  case NODE_STMT_BREAK:
-  case NODE_STMT_CONTINUE:
-  case NODE_LIT:
-  case NODE_LOAD:
-  case NODE_LINK:
-  case NODE_BAD:
-  case NODE_COUNT:
+  default:
     break;
   }
 
@@ -656,10 +645,10 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
 
   TypeKind from_kind = ast_type_kind(from_type);
   TypeKind to_kind   = ast_type_kind(to_type);
-  if (node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING && from_kind != TYPE_KIND_CHAR &&
-      from_kind != TYPE_KIND_REAL &&
+  if (ast_node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING &&
+      from_kind != TYPE_KIND_CHAR && from_kind != TYPE_KIND_REAL &&
       (to_kind == TYPE_KIND_SIZE || to_kind == TYPE_KIND_UINT || to_kind == TYPE_KIND_SINT)) {
-    peek_lit(*node)->type = ast_node_dup(cnt->ast, to_type);
+    ast_peek_lit(*node)->type = ast_node_dup(cnt->ast, to_type);
     return true;
   }
 
@@ -699,7 +688,7 @@ check_node(Context *cnt, Node **node)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
 #endif
 
-  switch (node_code(*node)) {
+  switch (ast_node_code(*node)) {
   case NODE_IDENT:
     result = check_ident(cnt, node);
     break;
@@ -761,22 +750,7 @@ check_node(Context *cnt, Node **node)
     result = check_lit(cnt, node);
     break;
 
-  case NODE_TYPE_TYPE:
-  case NODE_TYPE_FUND:
-  case NODE_TYPE_PTR:
-  case NODE_TYPE_FN:
-  case NODE_TYPE_VARGS:
-  case NODE_EXPR_NULL:
-  case NODE_STMT_BREAK:
-  case NODE_STMT_CONTINUE:
-  case NODE_STMT_LOOP:
-  case NODE_LOAD:
-  case NODE_LINK:
-  case NODE_BAD:
-  case NODE_UBLOCK:
-  case NODE_BLOCK:
-  case NODE_LIT_FN:
-  case NODE_COUNT:
+  default:
     break;
   }
 
@@ -790,7 +764,7 @@ check_node(Context *cnt, Node **node)
              col);
     } else {
       bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"), node_name(*node),
-             file, line, col, peek_ident(result)->str);
+             file, line, col, ast_peek_ident(result)->str);
     }
   }
 #endif
@@ -802,21 +776,22 @@ check_node(Context *cnt, Node **node)
 Node *
 check_expr_call(Context *cnt, Node **call)
 {
-  NodeExprCall *_call = peek_expr_call(*call);
+  NodeExprCall *_call = ast_peek_expr_call(*call);
 
-  Node *ident = node_is(_call->ref, NODE_IDENT) ? _call->ref : peek_expr_member(_call->ref)->ident;
+  Node *ident =
+      ast_node_is(_call->ref, NODE_IDENT) ? _call->ref : ast_peek_expr_member(_call->ref)->ident;
 
-  Node *callee = peek_ident(ident)->ref;
+  Node *callee = ast_peek_ident(ident)->ref;
   assert(callee);
-  NodeDecl *_callee     = peek_decl(callee);
+  NodeDecl *_callee     = ast_peek_decl(callee);
   Node *    callee_type = _callee->type;
 
-  if (node_is_not(callee_type, NODE_TYPE_FN)) {
+  if (ast_node_is_not(callee_type, NODE_TYPE_FN)) {
     check_error_node(cnt, ERR_INVALID_TYPE, *call, BUILDER_CUR_WORD, "expected function name");
     finish();
   }
 
-  NodeTypeFn *_callee_type = peek_type_fn(callee_type);
+  NodeTypeFn *_callee_type = ast_peek_type_fn(callee_type);
 
   _call->type = _callee_type->ret_type;
 
@@ -831,8 +806,8 @@ check_expr_call(Context *cnt, Node **call)
   Node * callee_arg = _callee_type->arg_types;
 
   while (*call_arg) {
-    if (node_is(*call_arg, NODE_EXPR_NULL)) {
-      peek_expr_null(*call_arg)->type = ast_get_type(callee_arg);
+    if (ast_node_is(*call_arg, NODE_EXPR_NULL)) {
+      ast_peek_expr_null(*call_arg)->type = ast_get_type(callee_arg);
     } else if (!ast_type_cmp(*call_arg, callee_arg) && !implicit_cast(cnt, call_arg, callee_arg)) {
       char tmp1[256];
       char tmp2[256];
@@ -875,7 +850,7 @@ check_expr_call(Context *cnt, Node **call)
 Node *
 check_expr_unary(Context *cnt, Node **unary)
 {
-  NodeExprUnary *_unary = peek_expr_unary(*unary);
+  NodeExprUnary *_unary = ast_peek_expr_unary(*unary);
   assert(_unary->next);
   Node *next_type = ast_get_type(_unary->next);
   if (!next_type) finish();
@@ -890,7 +865,7 @@ check_expr_unary(Context *cnt, Node **unary)
       check_error_node(cnt, ERR_INVALID_TYPE, _unary->next, BUILDER_CUR_WORD,
                        "cannot dereference non-pointer type");
     } else {
-      _unary->type = peek_type_ptr(next_type)->type;
+      _unary->type = ast_peek_type_ptr(next_type)->type;
     }
   } else {
     _unary->type = next_type;
@@ -902,7 +877,7 @@ check_expr_unary(Context *cnt, Node **unary)
 Node *
 check_ident(Context *cnt, Node **ident)
 {
-  NodeIdent *_ident = peek_ident(*ident);
+  NodeIdent *_ident = ast_peek_ident(*ident);
   if (_ident->ref) {
     finish();
   }
@@ -917,16 +892,16 @@ check_ident(Context *cnt, Node **ident)
   Node *found = lookup(*ident, NULL, true);
   if (!found) wait(*ident);
 
-  switch (node_code(found)) {
+  switch (ast_node_code(found)) {
   case NODE_DECL: {
-    peek_decl(found)->used++;
+    ast_peek_decl(found)->used++;
 
     /* REDUCE TYPE REFS */
     while (true) {
-      NodeDecl *_found = peek_decl(found);
+      NodeDecl *_found = ast_peek_decl(found);
       assert(_found->type);
-      if (ast_type_kind(_found->type) == TYPE_KIND_TYPE && node_is(_found->value, NODE_IDENT)) {
-        found = peek_ident(_found->value)->ref;
+      if (ast_type_kind(_found->type) == TYPE_KIND_TYPE && ast_node_is(_found->value, NODE_IDENT)) {
+        found = ast_peek_ident(_found->value)->ref;
       } else {
         break;
       }
@@ -936,17 +911,16 @@ check_ident(Context *cnt, Node **ident)
 
   case NODE_ARG: {
     // TODO: arg usage???
-    // peek_arg(found)->used++;
+    // ast_peek_arg(found)->used++;
     break;
   }
 
   default:
-    bl_abort("invalid node type %s", node_name(found));
+    bl_abort("invalid node type %s", ast_node_name(found));
   }
 
   assert(found);
   _ident->ref   = found;
-  (*ident)->adm = found->adm;
 
   finish();
 }
@@ -954,24 +928,23 @@ check_ident(Context *cnt, Node **ident)
 Node *
 check_lit(Context *cnt, Node **lit)
 {
-  (*lit)->adm = ADM_CONST;
   finish();
 }
 
 Node *
 check_stmt_return(Context *cnt, Node **ret)
 {
-  NodeStmtReturn *_ret = peek_stmt_return(*ret);
+  NodeStmtReturn *_ret = ast_peek_stmt_return(*ret);
   assert(_ret->fn_decl);
 
-  NodeDecl * _callee_decl = peek_decl(_ret->fn_decl);
-  NodeLitFn *_callee      = peek_lit_fn(_callee_decl->value);
-  Node *     fn_ret_type  = ast_get_type(peek_type_fn(_callee->type)->ret_type);
-  if (fn_ret_type == NULL) wait(peek_decl(_ret->fn_decl)->name);
+  NodeDecl * _callee_decl = ast_peek_decl(_ret->fn_decl);
+  NodeLitFn *_callee      = ast_peek_lit_fn(_callee_decl->value);
+  Node *     fn_ret_type  = ast_get_type(ast_peek_type_fn(_callee->type)->ret_type);
+  if (fn_ret_type == NULL) wait(ast_peek_decl(_ret->fn_decl)->name);
 
   if (_ret->expr) {
-    if (node_is(_ret->expr, NODE_EXPR_NULL)) {
-      NodeExprNull *_null = peek_expr_null(_ret->expr);
+    if (ast_node_is(_ret->expr, NODE_EXPR_NULL)) {
+      NodeExprNull *_null = ast_peek_expr_null(_ret->expr);
       _null->type         = fn_ret_type;
       if (ast_type_kind(_null->type) != TYPE_KIND_PTR) {
         check_error_node(
@@ -995,22 +968,20 @@ check_stmt_return(Context *cnt, Node **ret)
 Node *
 check_expr_binop(Context *cnt, Node **binop)
 {
-  NodeExprBinop *_binop = peek_expr_binop(*binop);
+  NodeExprBinop *_binop = ast_peek_expr_binop(*binop);
 
   assert(_binop->lhs);
   assert(_binop->rhs);
   Node *         lhs_type = ast_get_type(_binop->lhs);
   const TypeKind lhs_kind = ast_type_kind(lhs_type);
 
-  if (sym_is_assign(_binop->op) && _binop->lhs->adm != ADM_LVALUE) {
+  /*if (sym_is_assign(_binop->op) && _binop->lhs->adm != ADM_LVALUE) {
     check_error_node(cnt, ERR_INVALID_ADM, *binop, BUILDER_CUR_WORD,
                      "left-hand side of expression cannot be assigned");
     finish();
-  }
+    }*/
 
-  (*binop)->adm = _binop->lhs->adm;
-
-  if (node_is(_binop->rhs, NODE_EXPR_NULL)) {
+  if (ast_node_is(_binop->rhs, NODE_EXPR_NULL)) {
     infer_null_type(cnt, _binop->lhs, _binop->rhs);
     if (!_binop->type) _binop->type = lhs_type;
     finish();
@@ -1021,10 +992,10 @@ check_expr_binop(Context *cnt, Node **binop)
   const TypeKind rhs_kind = ast_type_kind(rhs_type);
 
   if (!ast_type_cmp(lhs_type, rhs_type)) {
-    if (node_is(_binop->lhs, NODE_LIT) &&
+    if (ast_node_is(_binop->lhs, NODE_LIT) &&
         (lhs_kind == TYPE_KIND_SIZE || lhs_kind == TYPE_KIND_UINT || lhs_kind == TYPE_KIND_SINT) &&
         (rhs_kind == TYPE_KIND_SIZE || rhs_kind == TYPE_KIND_UINT || rhs_kind == TYPE_KIND_SINT)) {
-      peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast, rhs_type);
+      ast_peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast, rhs_type);
     } else if (!implicit_cast(cnt, &_binop->rhs, lhs_type)) {
       check_error_invalid_types(cnt, lhs_type, rhs_type, *binop);
     }
@@ -1038,11 +1009,10 @@ check_expr_binop(Context *cnt, Node **binop)
 Node *
 check_expr_cast(Context *cnt, Node **cast)
 {
-  NodeExprCast *_cast = peek_expr_cast(*cast);
+  NodeExprCast *_cast = ast_peek_expr_cast(*cast);
   assert(_cast->type);
   assert(_cast->next);
 
-  (*cast)->adm = _cast->next->adm;
   _cast->type  = ast_get_type(_cast->type);
 
   if (ast_type_cmp(_cast->type, ast_get_type(_cast->next))) {
@@ -1079,7 +1049,7 @@ check_expr_cast(Context *cnt, Node **cast)
 Node *
 check_expr_sizeof(Context *cnt, Node **szof)
 {
-  NodeExprSizeof *_sizeof = peek_expr_sizeof(*szof);
+  NodeExprSizeof *_sizeof = ast_peek_expr_sizeof(*szof);
   Node *          type    = ast_get_type(_sizeof->in);
   if (ast_type_kind(type) == TYPE_KIND_VOID) {
     check_error_node(cnt, ERR_INVALID_TYPE, _sizeof->in, BUILDER_CUR_WORD,
@@ -1092,7 +1062,7 @@ check_expr_sizeof(Context *cnt, Node **szof)
 Node *
 check_expr_typeof(Context *cnt, Node **tpof)
 {
-  NodeExprTypeof *_typeof = peek_expr_typeof(*tpof);
+  NodeExprTypeof *_typeof = ast_peek_expr_typeof(*tpof);
   assert(_typeof->in);
 
   Node *         type = ast_get_type(_typeof->in);
@@ -1109,9 +1079,7 @@ check_expr_typeof(Context *cnt, Node **tpof)
 Node *
 check_type_enum(Context *cnt, Node **type)
 {
-  (*type)->type       = &type_type;
-  (*type)->adm        = ADM_TYPE;
-  NodeTypeEnum *_type = peek_type_enum(*type);
+  NodeTypeEnum *_type = ast_peek_type_enum(*type);
   assert(_type->type);
   Node *   tmp   = ast_get_type(_type->type);
   TypeKind tkind = ast_type_kind(tmp);
@@ -1136,17 +1104,13 @@ check_type_enum(Context *cnt, Node **type)
 Node *
 check_type_arr(Context *cnt, Node **type)
 {
-  (*type)->type = &type_type;
-  (*type)->adm  = ADM_TYPE;
   finish();
 }
 
 Node *
 check_type_struct(Context *cnt, Node **type)
 {
-  (*type)->type         = &type_type;
-  (*type)->adm          = ADM_TYPE;
-  NodeTypeStruct *_type = peek_type_struct(*type);
+  NodeTypeStruct *_type = ast_peek_type_struct(*type);
   if (_type->membersc == 0) {
     check_error_node(cnt, ERR_INVALID_TYPE, *type, BUILDER_CUR_WORD,
                      "empty structures are not allowed");
@@ -1159,7 +1123,7 @@ check_expr_member(Context *cnt, Node **member)
 {
   int             order   = -1;
   Node *          found   = NULL;
-  NodeExprMember *_member = peek_expr_member(*member);
+  NodeExprMember *_member = ast_peek_expr_member(*member);
   assert(_member->ident);
   assert(_member->next);
 
@@ -1167,7 +1131,7 @@ check_expr_member(Context *cnt, Node **member)
   TypeKind base_tkind = ast_type_kind(base_type);
 
   if (base_tkind == TYPE_KIND_PTR) {
-    NodeTypePtr *_type = peek_type_ptr(base_type);
+    NodeTypePtr *_type = ast_peek_type_ptr(base_type);
     assert(_type->type);
     base_type        = ast_get_type(_type->type);
     base_tkind       = ast_type_kind(base_type);
@@ -1175,7 +1139,7 @@ check_expr_member(Context *cnt, Node **member)
   }
 
   if (base_tkind == TYPE_KIND_TYPE) {
-    NodeTypeType *_type = peek_type_type(base_type);
+    NodeTypeType *_type = ast_peek_type_type(base_type);
     assert(_type->spec);
     base_type  = ast_get_type(_type->spec);
     base_tkind = ast_type_kind(base_type);
@@ -1183,10 +1147,10 @@ check_expr_member(Context *cnt, Node **member)
 
   if (base_tkind == TYPE_KIND_STRUCT) {
     _member->kind         = MEM_KIND_STRUCT;
-    NodeTypeStruct *_type = peek_type_struct(base_type);
+    NodeTypeStruct *_type = ast_peek_type_struct(base_type);
     if (_type->raw) {
       order = -1;
-      if (sscanf(peek_ident(_member->ident)->str, "_%d", &order) != 1) {
+      if (sscanf(ast_peek_ident(_member->ident)->str, "_%d", &order) != 1) {
         check_error_node(cnt, ERR_INVALID_MEMBER_ACCESS, _member->ident, BUILDER_CUR_WORD,
                          "raw structure members must be referenced by member order in format '_N'");
         finish();
@@ -1206,7 +1170,7 @@ check_expr_member(Context *cnt, Node **member)
       found = _lookup(base_type, _member->ident, NULL, false);
       if (!found) wait(_member->ident);
 
-      order = peek_member(found)->order;
+      order = ast_peek_member(found)->order;
     }
   } else if (base_tkind == TYPE_KIND_ENUM) {
     _member->kind = MEM_KIND_ENUM;
@@ -1218,10 +1182,9 @@ check_expr_member(Context *cnt, Node **member)
     finish();
   }
 
-  _member->type                   = ast_get_type(found);
-  _member->i                      = order;
-  peek_ident(_member->ident)->ref = found;
-  (*member)->adm                  = found->adm;
+  _member->type                       = ast_get_type(found);
+  _member->i                          = order;
+  ast_peek_ident(_member->ident)->ref = found;
 
   finish();
 }
@@ -1235,7 +1198,7 @@ check_expr_elem(Context *cnt, Node **elem)
 Node *
 check_stmt_if(Context *cnt, Node **stmt_if)
 {
-  NodeStmtIf *_if = peek_stmt_if(*stmt_if);
+  NodeStmtIf *_if = ast_peek_stmt_if(*stmt_if);
   assert(_if->test);
   assert(_if->true_stmt);
 
@@ -1249,11 +1212,11 @@ check_stmt_if(Context *cnt, Node **stmt_if)
 static inline bool
 infer_type(Context *cnt, Node *decl)
 {
-  NodeDecl *_decl = peek_decl(decl);
+  NodeDecl *_decl = ast_peek_decl(decl);
   if (!_decl->value) return false;
 
   Node *inferred = NULL;
-  if (ast_is_type(_decl->value)) {
+  if (ast_node_is_type(_decl->value)) {
     inferred = ast_type_type(cnt->ast, NULL, _decl->name, _decl->value);
   } else {
     inferred = ast_get_type(_decl->value);
@@ -1299,7 +1262,7 @@ determinate_decl_kind(NodeDecl *_decl)
 Node *
 check_decl(Context *cnt, Node **decl)
 {
-  NodeDecl *_decl = peek_decl(*decl);
+  NodeDecl *_decl = ast_peek_decl(*decl);
 
   infer_type(cnt, *decl);
   determinate_decl_kind(_decl);
@@ -1307,7 +1270,7 @@ check_decl(Context *cnt, Node **decl)
   const TypeKind tkind = ast_type_kind(_decl->type);
 
   _decl->in_gscope =
-      ast_get_scope(peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+      ast_get_scope(ast_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
 
   if (_decl->flags & FLAG_MAIN && _decl->kind != DECL_KIND_FN) {
     check_error_node(cnt, ERR_INVALID_TYPE, *decl, BUILDER_CUR_WORD,
@@ -1323,7 +1286,6 @@ check_decl(Context *cnt, Node **decl)
 
   switch (_decl->kind) {
   case DECL_KIND_TYPE: {
-    (*decl)->adm = ADM_TYPE;
     if (_decl->mutable) {
       check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
                        "type declaration cannot be mutable");
@@ -1331,7 +1293,6 @@ check_decl(Context *cnt, Node **decl)
     break;
 
   case DECL_KIND_FN: {
-    (*decl)->adm = ADM_RVALUE;
     if (_decl->mutable) {
       check_error_node(cnt, ERR_INVALID_MUTABILITY, *decl, BUILDER_CUR_WORD,
                        "function declaration cannot be mutable");
@@ -1341,11 +1302,9 @@ check_decl(Context *cnt, Node **decl)
   }
 
   case DECL_KIND_FIELD:
-    (*decl)->adm = _decl->mutable ? ADM_LVALUE : ADM_IMMUT;
     break;
 
   case DECL_KIND_ENUM:
-    (*decl)->adm = ADM_TYPE;
     break;
   }
 
@@ -1364,7 +1323,7 @@ check_decl(Context *cnt, Node **decl)
     finish();
   }
 
-  if (_decl->value && node_is(_decl->value, NODE_EXPR_NULL)) {
+  if (_decl->value && ast_node_is(_decl->value, NODE_EXPR_NULL)) {
     infer_null_type(cnt, _decl->type, _decl->value);
   }
 
@@ -1386,8 +1345,7 @@ check_decl(Context *cnt, Node **decl)
 Node *
 check_member(Context *cnt, Node **mem)
 {
-  (*mem)->adm      = ADM_LVALUE;
-  NodeMember *_mem = peek_member(*mem);
+  NodeMember *_mem = ast_peek_member(*mem);
   assert(_mem->type);
   /* anonymous struct member */
   if (!_mem->name) finish();
@@ -1410,8 +1368,7 @@ check_member(Context *cnt, Node **mem)
 Node *
 check_variant(Context *cnt, Node **var)
 {
-  (*var)->adm       = ADM_CONST;
-  NodeVariant *_var = peek_variant(*var);
+  NodeVariant *_var = ast_peek_variant(*var);
   assert(_var->type);
   /* anonymous struct variant */
   if (!_var->name) finish();
@@ -1429,10 +1386,10 @@ check_variant(Context *cnt, Node **var)
   }
 
   /* evaluate const value of variant */
-  if (_var->value->adm != ADM_CONST) {
+  /*if (_var->value->adm != ADM_CONST) {
     check_error_node(cnt, ERR_INVALID_ADM, _var->value, BUILDER_CUR_WORD,
                      "enum variant value must be compile-time known constant");
-  }
+		     }*/
 
   finish();
 }
@@ -1440,7 +1397,7 @@ check_variant(Context *cnt, Node **var)
 Node *
 check_arg(Context *cnt, Node **arg)
 {
-  NodeArg *_arg = peek_arg(*arg);
+  NodeArg *_arg = ast_peek_arg(*arg);
   assert(_arg->type);
   /* anonymous struct arg */
   if (!_arg->name) finish();

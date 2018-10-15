@@ -95,7 +95,7 @@ eval_cast(Eval *eval, Node *cast);
 bool
 eval_lit(Eval *eval, Node *lit)
 {
-  NodeLit *_lit = peek_lit(lit);
+  NodeLit *_lit = ast_peek_lit(lit);
   /* TODO: support only signed integers for now! */
   //assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
@@ -108,7 +108,7 @@ eval_lit(Eval *eval, Node *lit)
 bool
 eval_cast(Eval *eval, Node *cast)
 {
-  NodeExprCast *_cast = peek_expr_cast(cast);
+  NodeExprCast *_cast = ast_peek_expr_cast(cast);
   assert(_cast->next);
   /* TODO */
  
@@ -118,7 +118,7 @@ eval_cast(Eval *eval, Node *cast)
 bool
 eval_ident(Eval *eval, Node *ident)
 {
-  NodeIdent *_ident = peek_ident(ident);
+  NodeIdent *_ident = ast_peek_ident(ident);
   assert(_ident->ref);
   if (!eval_node(eval, _ident->ref)) {
     eval->err_node = ident;
@@ -130,7 +130,7 @@ eval_ident(Eval *eval, Node *ident)
 bool
 eval_decl(Eval *eval, Node *decl)
 {
-  NodeDecl *_decl = peek_decl(decl);
+  NodeDecl *_decl = ast_peek_decl(decl);
   assert(_decl->value);
   //if (_decl->kind != DECL_KIND_CONSTANT) return false;
   return eval_node(eval, _decl->value);
@@ -139,7 +139,7 @@ eval_decl(Eval *eval, Node *decl)
 bool
 eval_binop(Eval *eval, Node *binop)
 {
-  NodeExprBinop *_binop = peek_expr_binop(binop);
+  NodeExprBinop *_binop = ast_peek_expr_binop(binop);
 
   if (!eval_node(eval, _binop->lhs)) return false;
   if (!eval_node(eval, _binop->rhs)) return false;
@@ -181,7 +181,7 @@ eval_node(Eval *eval, Node *node)
 {
   if (!node) return false;
 
-  switch (node_code(node)) {
+  switch (ast_node_code(node)) {
   case NODE_LIT:
     return eval_lit(eval, node);
   case NODE_EXPR_BINOP:

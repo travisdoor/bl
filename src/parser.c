@@ -305,7 +305,7 @@ parse_test(Context *cnt)
   Node *      test =
       ast_decl(cnt->ast, tok_begin, DECL_KIND_INVALID, name, NULL, value, false, FLAG_TEST, false);
 
-  NodeLitFn *_value = peek_lit_fn(value);
+  NodeLitFn *_value = ast_peek_lit_fn(value);
   push_curr_decl(cnt, test);
 
   _value->block = parse_block(cnt);
@@ -316,7 +316,7 @@ parse_test(Context *cnt)
     return ast_bad(cnt->ast, tok_err);
   }
 
-  peek_decl(test)->used++;
+  ast_peek_decl(test)->used++;
 
   TestCase test_case = {.fn = test, .name = case_name->value.str};
   bo_array_push_back(cnt->assembly->test_cases, test_case);
@@ -371,7 +371,7 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
     value = parse_expr(cnt);
     if (!value) bl_abort("expected enum variant value");
   } else if (prev) {
-    NodeVariant *_prev = peek_variant(prev);
+    NodeVariant *_prev = ast_peek_variant(prev);
 
     TokenValue implval;
     implval.u      = 1;
@@ -393,7 +393,7 @@ parse_lit_cmp(Context *cnt, Node *prev)
 {
   if (prev == NULL) return NULL;
 
-  switch (node_code(prev)) {
+  switch (ast_node_code(prev)) {
   case NODE_IDENT:
   case NODE_TYPE_STRUCT:
   case NODE_TYPE_ARR:
@@ -406,7 +406,7 @@ parse_lit_cmp(Context *cnt, Node *prev)
   if (!tok_begin) return NULL;
 
   Node *      lit_cmp  = ast_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0, cnt->curr_compound);
-  NodeLitCmp *_lit_cmp = peek_lit_cmp(lit_cmp);
+  NodeLitCmp *_lit_cmp = ast_peek_lit_cmp(lit_cmp);
 
   push_curr_compound(cnt, lit_cmp);
 
@@ -571,7 +571,7 @@ parse_stmt_if(Context *cnt)
     return ast_bad(cnt->ast, err_tok);
   }
 
-  if (node_is(test, NODE_BAD)) {
+  if (ast_node_is(test, NODE_BAD)) {
     tokens_consume_till(cnt->tokens, SYM_LBLOCK);
   }
 
@@ -628,7 +628,7 @@ parse_stmt_loop(Context *cnt)
   const bool    while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
   Node *        loop       = ast_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL,
                              scope_new(cnt->assembly->scope_cache, 8), cnt->curr_compound);
-  NodeStmtLoop *_loop      = peek_stmt_loop(loop);
+  NodeStmtLoop *_loop      = ast_peek_stmt_loop(loop);
 
   push_inloop(cnt);
   push_curr_compound(cnt, loop);
@@ -758,7 +758,7 @@ parse_lit_fn(Context *cnt)
 
   Node *     fn  = ast_lit_fn(cnt->ast, tok_fn, NULL, NULL, cnt->curr_compound,
                         scope_new(cnt->assembly->scope_cache, 32));
-  NodeLitFn *_fn = peek_lit_fn(fn);
+  NodeLitFn *_fn = ast_peek_lit_fn(fn);
 
   push_curr_compound(cnt, fn);
 
@@ -784,7 +784,7 @@ parse_type_enum(Context *cnt)
   Scope *scope = scope_new(cnt->assembly->scope_cache, 256);
   Node * enm   = ast_type_enum(cnt->ast, tok_enum, base_type, NULL, cnt->curr_compound, scope);
 
-  NodeTypeEnum *_enm = peek_type_enum(enm);
+  NodeTypeEnum *_enm = ast_peek_type_enum(enm);
 
   push_curr_compound(cnt, enm);
 
@@ -852,7 +852,7 @@ parse_unary_expr(Context *cnt, Token *op)
       return ast_bad(cnt->ast, curr_op);
     }
 
-    if (node_is(next, NODE_BAD)) return next;
+    if (ast_node_is(next, NODE_BAD)) return next;
 
     return ast_expr_unary(cnt->ast, curr_op, curr_op->sym, next, NULL);
   } else {
@@ -958,7 +958,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
     op = lookahead;
     tokens_consume(cnt->tokens);
     rhs = parse_unary_expr(cnt, op);
-    if (rhs && node_is(rhs, NODE_BAD)) return rhs;
+    if (rhs && ast_node_is(rhs, NODE_BAD)) return rhs;
     lookahead = tokens_peek(cnt->tokens);
 
     while (token_prec(lookahead, false) > token_prec(op, false)) {
@@ -967,23 +967,23 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
     }
 
     if (token_is(op, SYM_LBRACKET)) {
-      peek_expr_elem(rhs)->next = lhs;
+      ast_peek_expr_elem(rhs)->next = lhs;
       lhs                       = rhs;
     } else if (token_is(op, SYM_DOT)) {
-      if (node_is(rhs, NODE_EXPR_CALL)) {
+      if (ast_node_is(rhs, NODE_EXPR_CALL)) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
          * expression, finally we put this new node into call reference */
         Node *        call  = rhs;
-        NodeExprCall *_call = peek_expr_call(call);
+        NodeExprCall *_call = ast_peek_expr_call(call);
         Node *member = ast_expr_member(cnt->ast, op, MEM_KIND_STRUCT, _call->ref, NULL, _call->type,
                                        false, -1);
 
         _call->ref                     = member;
-        peek_expr_member(member)->next = lhs;
+        ast_peek_expr_member(member)->next = lhs;
         lhs                            = call;
       } else {
-        peek_expr_member(rhs)->next = lhs;
+        ast_peek_expr_member(rhs)->next = lhs;
         lhs                         = rhs;
       }
     } else if (token_is_binop(op)) {
@@ -1160,7 +1160,7 @@ parse_type_struct(Context *cnt)
   Scope *scope = scope_new(cnt->assembly->scope_cache, 64);
   Node * type_struct =
       ast_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, false);
-  NodeTypeStruct *_type_struct = peek_type_struct(type_struct);
+  NodeTypeStruct *_type_struct = ast_peek_type_struct(type_struct);
 
   push_curr_compound(cnt, type_struct);
   /* parse arg types */
@@ -1247,7 +1247,7 @@ parse_decl(Context *cnt)
 
   Node *decl = ast_decl(cnt->ast, tok_ident, DECL_KIND_INVALID, ident, NULL, NULL, true, 0, false);
   push_curr_decl(cnt, decl);
-  NodeDecl *_decl = peek_decl(decl);
+  NodeDecl *_decl = ast_peek_decl(decl);
 
   {
     int buildin = ast_is_buildin(ident);
@@ -1514,13 +1514,13 @@ parse_run(Context *cnt)
   if (!tok) return NULL;
 
   Node *call = parse_expr_call(cnt);
-  if (!call || node_is_not(call, NODE_EXPR_CALL)) {
+  if (!call || ast_node_is_not(call, NODE_EXPR_CALL)) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_AFTER,
                 "expected call after '#run' directive");
     return ast_bad(cnt->ast, tok);
   }
 
-  peek_expr_call(call)->run = true;
+  ast_peek_expr_call(call)->run = true;
 
   return call;
 }
@@ -1533,7 +1533,7 @@ parse_block(Context *cnt)
 
   Node *     block  = ast_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
                           scope_new(cnt->assembly->scope_cache, 1024));
-  NodeBlock *_block = peek_block(block);
+  NodeBlock *_block = ast_peek_block(block);
 
   push_curr_compound(cnt, block);
 
@@ -1549,13 +1549,13 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_test(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1571,19 +1571,19 @@ next:
   }
 
   if ((*node = parse_stmt_break(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_decl(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1594,7 +1594,7 @@ next:
   }
 
   if ((*node = parse_expr(cnt))) {
-    switch (node_code(*node)) {
+    switch (ast_node_code(*node)) {
     case NODE_EXPR_BINOP:
     case NODE_EXPR_CALL:
       break;
@@ -1602,13 +1602,13 @@ next:
       parse_warning_node(cnt, *node, BUILDER_CUR_WORD, "unused expression");
     }
 
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_assert(cnt))) {
-    if (!node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (!ast_node_is(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1640,19 +1640,19 @@ void
 parse_ublock_content(Context *cnt, Node *ublock)
 {
   push_curr_compound(cnt, ublock);
-  NodeUBlock *_ublock = peek_ublock(ublock);
+  NodeUBlock *_ublock = ast_peek_ublock(ublock);
   Node **     node    = &_ublock->nodes;
 next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl(cnt))) {
-    if (node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (ast_node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_test(cnt))) {
-    if (node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
+    if (ast_node_is_not(*node, NODE_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
