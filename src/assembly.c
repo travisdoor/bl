@@ -53,7 +53,7 @@ assembly_new(const char *name)
   assembly->test_cases = bo_array_new(sizeof(TestCase));
 
   scope_cache_init(&assembly->scope_cache);
-  assembly->gscope = scope_new(assembly->scope_cache, EXPECTED_GSCOPE_COUNT);
+  assembly->gscope = scope_new(assembly->scope_cache, NULL, EXPECTED_GSCOPE_COUNT);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 

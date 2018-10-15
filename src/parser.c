@@ -62,11 +62,6 @@
   }
 
 /* swap current compound with _cmp and create temporary variable with previous one */
-#define push_curr_compound(_cnt, _cmp)                                                             \
-  Node *_prev_cmp       = (_cnt)->curr_compound;                                                   \
-  (_cnt)->curr_compound = (_cmp);
-
-#define pop_curr_compound(_cnt) (_cnt)->curr_compound = _prev_cmp;
 
 #define push_curr_decl(_cnt, _decl)                                                                \
   Node *const _prev_decl = (_cnt)->curr_decl;                                                      \
@@ -80,6 +75,12 @@
 
 #define pop_inloop(_cnt) (_cnt)->inside_loop = _prev_inloop;
 
+#define push_scope(_cnt, _scope)                                                                   \
+  Scope *_prev_scope = (_cnt)->scope;                                                              \
+  (_cnt)->scope      = _scope;
+
+#define pop_scope(_cnt) (_cnt)->scope = _prev_scope;
+
 typedef struct
 {
   Builder * builder;
@@ -89,10 +90,10 @@ typedef struct
   Tokens *  tokens;
 
   /* tmps */
-  Node *curr_decl;
-  Node *curr_compound;
-  bool  inside_loop;
-  bool  core_loaded;
+  Scope *scope;
+  Node * curr_decl;
+  bool   inside_loop;
+  bool   core_loaded;
 } Context;
 
 /* helpers */
@@ -297,11 +298,10 @@ parse_test(Context *cnt)
     return ast_create_bad(cnt->ast, tok_err);
   }
 
-  assert(cnt->curr_compound);
   Node *      type  = ast_create_type_fn(cnt->ast, tok_begin, NULL, 0, &ftypes[FTYPE_VOID]);
-  Node *      value = ast_create_lit_fn(cnt->ast, tok_begin, type, NULL, cnt->curr_compound, NULL);
+  Node *      value = ast_create_lit_fn(cnt->ast, tok_begin, type, NULL, cnt->scope);
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
-  Node *      name  = ast_create_ident(cnt->ast, case_name, uname, NULL, cnt->curr_compound);
+  Node *      name  = ast_create_ident(cnt->ast, case_name, uname, NULL, cnt->scope);
   Node *test = ast_create_decl(cnt->ast, tok_begin, DECL_KIND_INVALID, name, NULL, value, false,
                                FLAG_TEST, false);
 
@@ -405,10 +405,8 @@ parse_lit_cmp(Context *cnt, Node *prev)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Node *      lit_cmp  = ast_create_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0, cnt->curr_compound);
+  Node *      lit_cmp  = ast_create_lit_cmp(cnt->ast, tok_begin, prev, NULL, 0, cnt->scope);
   NodeLitCmp *_lit_cmp = ast_peek_lit_cmp(lit_cmp);
-
-  push_curr_compound(cnt, lit_cmp);
 
   /* parse lit_cmp fields */
   bool   rq     = false;
@@ -430,7 +428,6 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected field after comma ','");
-      pop_curr_compound(cnt);
       return ast_create_bad(cnt->ast, tok_err);
     }
   }
@@ -440,11 +437,9 @@ next:
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected end of initializer '}'");
-    pop_curr_compound(cnt);
     return ast_create_bad(cnt->ast, tok_err);
   }
 
-  pop_curr_compound(cnt);
   return lit_cmp;
 }
 
@@ -625,13 +620,15 @@ parse_stmt_loop(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
   if (!tok_begin) return NULL;
 
-  const bool    while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
-  Node *        loop       = ast_create_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL,
-                                    scope_new(cnt->assembly->scope_cache, 8), cnt->curr_compound);
-  NodeStmtLoop *_loop      = ast_peek_stmt_loop(loop);
+  const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
+
+  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 8);
+  push_scope(cnt, scope);
+
+  Node *        loop  = ast_create_stmt_loop(cnt->ast, tok_begin, NULL, NULL, NULL, NULL, scope);
+  NodeStmtLoop *_loop = ast_peek_stmt_loop(loop);
 
   push_inloop(cnt);
-  push_curr_compound(cnt, loop);
 
   if (!while_true) {
     // eat '('
@@ -666,7 +663,7 @@ parse_stmt_loop(Context *cnt)
       parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                   "expected closing parent ')'");
       pop_inloop(cnt);
-      pop_curr_compound(cnt);
+      pop_scope(cnt);
       return ast_create_bad(cnt->ast, tok_err);
     }
   }
@@ -677,12 +674,12 @@ parse_stmt_loop(Context *cnt)
     Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY, err_tok, BUILDER_CUR_WORD, "expected loop body block");
     pop_inloop(cnt);
-    pop_curr_compound(cnt);
+    pop_scope(cnt);
     return ast_create_bad(cnt->ast, err_tok);
   }
 
   pop_inloop(cnt);
-  pop_curr_compound(cnt);
+  pop_scope(cnt);
   return loop;
 }
 
@@ -756,11 +753,11 @@ parse_lit_fn(Context *cnt)
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
 
-  Node *     fn  = ast_create_lit_fn(cnt->ast, tok_fn, NULL, NULL, cnt->curr_compound,
-                               scope_new(cnt->assembly->scope_cache, 32));
-  NodeLitFn *_fn = ast_peek_lit_fn(fn);
+  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 32);
+  push_scope(cnt, scope);
 
-  push_curr_compound(cnt, fn);
+  Node *     fn  = ast_create_lit_fn(cnt->ast, tok_fn, NULL, NULL, scope);
+  NodeLitFn *_fn = ast_peek_lit_fn(fn);
 
   _fn->type = parse_type_fn(cnt, true);
   assert(_fn->type);
@@ -768,7 +765,7 @@ parse_lit_fn(Context *cnt)
   /* parse block (block is optional function body can be external) */
   _fn->block = parse_block(cnt);
 
-  pop_curr_compound(cnt);
+  pop_scope(cnt);
   return fn;
 }
 
@@ -781,17 +778,15 @@ parse_type_enum(Context *cnt)
   Node *base_type = parse_type(cnt);
   if (!base_type) base_type = &ftypes[FTYPE_S32];
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, 256);
-  Node * enm = ast_create_type_enum(cnt->ast, tok_enum, base_type, NULL, cnt->curr_compound, scope);
-
+  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 256);
+  push_scope(cnt, scope);
+  Node *        enm  = ast_create_type_enum(cnt->ast, tok_enum, base_type, NULL, scope);
   NodeTypeEnum *_enm = ast_peek_type_enum(enm);
-
-  push_curr_compound(cnt, enm);
 
   Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "expected enm variant list");
-    pop_curr_compound(cnt);
+    pop_scope(cnt);
     return ast_create_bad(cnt->ast, tok);
   }
 
@@ -815,6 +810,7 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected variant after comma ','");
+      pop_scope(cnt);
       return ast_create_bad(cnt->ast, tok);
     }
   }
@@ -823,10 +819,11 @@ next:
   if (tok->sym != SYM_RBLOCK) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected end of variant list  '}'  or another variant separated by comma");
+    pop_scope(cnt);
     return ast_create_bad(cnt->ast, tok);
   }
 
-  pop_curr_compound(cnt);
+  pop_scope(cnt);
   return enm;
 }
 
@@ -1014,8 +1011,7 @@ parse_ident(Context *cnt)
   Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
   if (!tok_ident) return NULL;
 
-  assert(cnt->curr_compound);
-  return ast_create_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->curr_compound);
+  return ast_create_ident(cnt->ast, tok_ident, tok_ident->value.str, NULL, cnt->scope);
 }
 
 Node *
@@ -1157,12 +1153,12 @@ parse_type_struct(Context *cnt)
     return ast_create_bad(cnt->ast, tok_struct);
   }
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, 64);
-  Node * type_struct =
-      ast_create_type_struct(cnt->ast, tok_struct, NULL, 0, cnt->curr_compound, scope, false);
+  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 64);
+  push_scope(cnt, scope);
+
+  Node *          type_struct = ast_create_type_struct(cnt->ast, tok_struct, NULL, 0, scope, false);
   NodeTypeStruct *_type_struct = ast_peek_type_struct(type_struct);
 
-  push_curr_compound(cnt, type_struct);
   /* parse arg types */
   bool   rq       = false;
   Node **member   = &_type_struct->members;
@@ -1187,7 +1183,7 @@ next:
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected member after comma ','");
 
-      pop_curr_compound(cnt);
+      pop_scope(cnt);
       return ast_create_bad(cnt->ast, tok_struct);
     }
   }
@@ -1197,11 +1193,11 @@ next:
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected end of member list  '}'  or another memeber separated by comma");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    pop_curr_compound(cnt);
+    pop_scope(cnt);
     return ast_create_bad(cnt->ast, tok_struct);
   }
 
-  pop_curr_compound(cnt);
+  pop_scope(cnt);
   return type_struct;
 }
 
@@ -1455,7 +1451,7 @@ parse_assert(Context *cnt)
 
   TokenValue tmp;
 
-  Node *callee   = ast_create_ident(cnt->ast, tok_begin, "__assert", NULL, cnt->curr_compound);
+  Node *callee   = ast_create_ident(cnt->ast, tok_begin, "__assert", NULL, cnt->scope);
   tmp.str        = tok_begin->src.unit->filepath;
   Node *arg_file = ast_create_lit(cnt->ast, NULL, &ftypes[FTYPE_STRING], tmp);
 
@@ -1532,11 +1528,11 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Node *     block  = ast_create_block(cnt->ast, tok_begin, NULL, cnt->curr_compound,
-                                 scope_new(cnt->assembly->scope_cache, 1024));
-  NodeBlock *_block = ast_peek_block(block);
+  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 1024);
+  push_scope(cnt, scope);
 
-  push_curr_compound(cnt, block);
+  Node *     block  = ast_create_block(cnt->ast, tok_begin, NULL, scope);
+  NodeBlock *_block = ast_peek_block(block);
 
   Token *tok;
   Node **node = &_block->nodes;
@@ -1629,18 +1625,17 @@ next:
     tok = tokens_peek_prev(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "expected end of block '}'");
     parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "block starting here");
-    pop_curr_compound(cnt);
+    pop_scope(cnt);
     return ast_create_bad(cnt->ast, tok_begin);
   }
 
-  pop_curr_compound(cnt);
+  pop_scope(cnt);
   return block;
 }
 
 void
 parse_ublock_content(Context *cnt, Node *ublock)
 {
-  push_curr_compound(cnt, ublock);
   NodeUBlock *_ublock = ast_peek_ublock(ublock);
   Node **     node    = &_ublock->nodes;
 next:
@@ -1679,7 +1674,6 @@ next:
     parse_error(cnt, ERR_UNEXPECTED_SYMBOL, tok, BUILDER_CUR_WORD,
                 "unexpected symbol in module body '%s'", sym_strings[tok->sym]);
   }
-  pop_curr_compound(cnt);
 }
 
 Node *
@@ -1697,15 +1691,15 @@ void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
   unit->ast.root = ast_create_ublock(&unit->ast, NULL, unit, assembly->gscope);
-  Context cnt    = {.builder       = builder,
-                 .assembly      = assembly,
-                 .unit          = unit,
-                 .ast           = &unit->ast,
-                 .tokens        = &unit->tokens,
-                 .curr_decl     = NULL,
-                 .curr_compound = unit->ast.root,
-                 .core_loaded   = false,
-                 .inside_loop   = false};
+  Context cnt    = {.builder     = builder,
+                 .assembly    = assembly,
+                 .scope       = assembly->gscope,
+                 .unit        = unit,
+                 .ast         = &unit->ast,
+                 .tokens      = &unit->tokens,
+                 .curr_decl   = NULL,
+                 .core_loaded = false,
+                 .inside_loop = false};
 
   parse_ublock_content(&cnt, unit->ast.root);
 }

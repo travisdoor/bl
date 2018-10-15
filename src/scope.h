@@ -33,10 +33,17 @@
 #include <bobject/containers/htbl.h>
 #include <assert.h>
 
-typedef BHashTable Scope;
-typedef BArray     ScopeCache;
-
 struct Node;
+
+typedef struct Scope
+{
+  struct Scope *parent;
+
+  BHashTable *symbols;
+} Scope;
+
+typedef BArray ScopeCache;
+
 
 void
 scope_cache_init(ScopeCache **cache);
@@ -45,15 +52,12 @@ void
 scope_cache_terminate(ScopeCache *cache);
 
 Scope *
-scope_new(ScopeCache *cache, size_t size);
+scope_new(ScopeCache *cache, Scope *parent, size_t size);
 
 void
 scope_insert(Scope *scope, struct Node *ident, struct Node *node);
 
 struct Node *
-scope_get(Scope *scope, struct Node *ident);
-
-bool
-scope_has_symbol(Scope *scope, struct Node *ident);
+scope_lookup(Scope *scope, struct Node *ident, bool in_tree);
 
 #endif

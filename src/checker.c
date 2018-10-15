@@ -80,12 +80,6 @@ typedef struct
   size_t  i;
 } FIter;
 
-static inline Node *
-lookup(Node *ident, Scope **out_scope, bool walk_tree);
-
-static Node *
-_lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree);
-
 static void
 to_any(Context *cnt, Node **node, Node *any_type);
 
@@ -206,35 +200,6 @@ infer_null_type(Context *cnt, Node *from, Node *null)
   }
 }
 
-Node *
-lookup(Node *ident, Scope **out_scope, bool walk_tree)
-{
-  assert(ident && "invalid identificator in lookup");
-  Node *compound = ast_peek_ident(ident)->parent_compound;
-  assert(compound && "ident compound not set");
-  return _lookup(compound, ident, out_scope, walk_tree);
-}
-
-Node *
-_lookup(Node *compound, Node *ident, Scope **out_scope, bool walk_tree)
-{
-  Node * found = NULL;
-  Scope *scope = NULL;
-
-  while (compound && !found) {
-    scope = ast_get_scope(compound);
-    if (scope) {
-      found = scope_get(scope, ident);
-    }
-
-    if (!walk_tree) break;
-    compound = ast_get_parent_compound(compound);
-  }
-
-  if (out_scope) *out_scope = scope;
-  return found;
-}
-
 void
 to_any(Context *cnt, Node **node, Node *any_type)
 {
@@ -260,9 +225,7 @@ void
 provide(Node *ident, Node *provided)
 {
   assert(ident && provided && "trying to provide invalid symbol");
-  Node *compound = ast_peek_ident(ident)->parent_compound;
-  assert(compound);
-  Scope *scope = ast_get_scope(compound);
+  Scope *scope = ast_peek_ident(ident)->scope;
   assert(scope);
 
 #if VERBOSE
@@ -327,7 +290,7 @@ check_unresolved(Context *cnt)
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       tmp = bo_array_at(q, i, FIter);
       assert(tmp.waitfor);
-      if (!scope_has_symbol(cnt->provided_in_gscope, tmp.waitfor))
+      if (!scope_lookup(cnt->provided_in_gscope, tmp.waitfor, false))
         check_error_node(cnt, ERR_UNKNOWN_SYMBOL, tmp.waitfor, BUILDER_CUR_WORD, "unknown symbol");
       flatten_put(cnt->flatten_cache, tmp.flatten);
     }
@@ -392,7 +355,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     NodeDecl *_decl = ast_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
-    if (_decl->in_gscope && !scope_has_symbol(cnt->provided_in_gscope, _decl->name))
+    if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
       scope_insert(cnt->provided_in_gscope, _decl->name, *node);
 
     flatten(&_decl->type);
@@ -889,7 +852,7 @@ check_ident(Context *cnt, Node **ident)
     finish();
   }
 
-  Node *found = lookup(*ident, NULL, true);
+  Node *found = scope_lookup(_ident->scope, *ident, true);
   if (!found) wait(*ident);
 
   switch (ast_node_code(found)) {
@@ -1167,14 +1130,14 @@ check_expr_member(Context *cnt, Node **member)
       for (int i = 0; i < order; ++i, found = found->next)
         ;
     } else {
-      found = _lookup(base_type, _member->ident, NULL, false);
+      found = scope_lookup(_type->scope, _member->ident, false);
       if (!found) wait(_member->ident);
 
       order = ast_peek_member(found)->order;
     }
   } else if (base_tkind == TYPE_KIND_ENUM) {
     _member->kind = MEM_KIND_ENUM;
-    found         = _lookup(base_type, _member->ident, NULL, false);
+    found         = scope_lookup(ast_peek_type_enum(base_type)->scope, _member->ident, false);
     if (!found) wait(_member->ident);
   } else {
     check_error_node(cnt, ERR_EXPECTED_TYPE_STRUCT, _member->next, BUILDER_CUR_WORD,
@@ -1269,8 +1232,11 @@ check_decl(Context *cnt, Node **decl)
   assert(_decl->type);
   const TypeKind tkind = ast_type_kind(_decl->type);
 
-  _decl->in_gscope =
-      ast_get_scope(ast_peek_ident(_decl->name)->parent_compound) == cnt->assembly->gscope;
+  // TODO: SET IN PARSER!!!!
+  // TODO: SET IN PARSER!!!!
+  // TODO: SET IN PARSER!!!!
+  // TODO: SET IN PARSER!!!!
+  _decl->in_gscope = false;
 
   if (_decl->flags & FLAG_MAIN && _decl->kind != DECL_KIND_FN) {
     check_error_node(cnt, ERR_INVALID_TYPE, *decl, BUILDER_CUR_WORD,
@@ -1328,7 +1294,7 @@ check_decl(Context *cnt, Node **decl)
   }
 
   /* provide symbol into scope if there is no conflict */
-  Node *conflict = lookup(_decl->name, NULL, true);
+  Node *conflict = scope_lookup(ast_peek_ident(_decl->name)->scope, _decl->name, true);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *decl, BUILDER_CUR_WORD,
                      "symbol with same name is already declared");
@@ -1351,7 +1317,7 @@ check_member(Context *cnt, Node **mem)
   if (!_mem->name) finish();
 
   /* provide symbol into scope if there is no conflict */
-  Node *conflict = lookup(_mem->name, NULL, false);
+  Node *conflict = scope_lookup(ast_peek_ident(_mem->name)->scope, _mem->name, false);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *mem, BUILDER_CUR_WORD,
                      "structure member with same name is already declared");
@@ -1374,7 +1340,7 @@ check_variant(Context *cnt, Node **var)
   if (!_var->name) finish();
 
   /* provide symbol into scope if there is no conflict */
-  Node *conflict = lookup(_var->name, NULL, false);
+  Node *conflict = scope_lookup(ast_peek_ident(_var->name)->scope, _var->name, false);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *var, BUILDER_CUR_WORD,
                      "enum variant with same name is already declared");
@@ -1403,7 +1369,7 @@ check_arg(Context *cnt, Node **arg)
   if (!_arg->name) finish();
 
   /* provide symbol into scope if there is no conflict */
-  Node *conflict = lookup(_arg->name, NULL, false);
+  Node *conflict = scope_lookup(ast_peek_ident(_arg->name)->scope, _arg->name, false);
   if (conflict) {
     check_error_node(cnt, ERR_DUPLICATE_SYMBOL, *arg, BUILDER_CUR_WORD,
                      "function argument with same name is already declared");
@@ -1434,7 +1400,7 @@ checker_run(Builder *builder, Assembly *assembly)
       .ast                = NULL,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
-      .provided_in_gscope = scope_new(assembly->scope_cache, 4092),
+      .provided_in_gscope = scope_new(assembly->scope_cache, NULL, 4092),
   };
 
   /* TODO: stack size */

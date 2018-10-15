@@ -72,20 +72,19 @@
     const char *lib; \
   }) \
   nt(IDENT, Ident, ident, struct { \
+    Scope      *scope;\
     const char *str; \
     uint64_t    hash; \
     Node       *ref; \
-    Node       *parent_compound; \
   }) \
   nt(UBLOCK, UBlock, ublock, struct { \
-    Node      *nodes; \
     Scope     *scope; \
+    Node      *nodes; \
     struct Unit *unit; \
   }) \
   nt(BLOCK, Block, block, struct { \
-    Node  *nodes; \
     Scope *scope; \
-    Node  *parent_compound; \
+    Node  *nodes; \
   }) \
   nt(STMT_RETURN, StmtReturn, stmt_return, struct { \
     Node *expr; \
@@ -97,12 +96,11 @@
     Node *false_stmt; \
   }) \
   nt(STMT_LOOP, StmtLoop, stmt_loop, struct { \
+    Scope *scope; \
     Node  *init; \
     Node  *condition; \
     Node  *increment; \
     Node  *block; \
-    Scope *scope; \
-    Node  *parent_compound; \
   }) \
   nt(STMT_BREAK, StmtBreak, stmt_break, struct { \
     void *_; \
@@ -156,35 +154,32 @@
   }) \
   nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
     Scope *scope; \
-    Node  *parent_compound; \
     Node  *members; \
     int    membersc; \
     bool   raw; \
   })					    \
   nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
-    Node  *type; \
     Scope *scope; \
-    Node  *parent_compound; \
+    Node  *type; \
     Node  *variants; \
   }) \
   nt(TYPE_PTR, TypePtr, type_ptr, struct { \
     Node *type; \
   }) \
   nt(LIT_FN, LitFn, lit_fn, struct { \
+    Scope *scope; \
     Node  *type; \
     Node  *block; \
-    Scope *scope; \
-    Node  *parent_compound; \
   }) \
   nt(LIT, Lit, lit, struct { \
     Node       *type; \
     TokenValue value; \
   }) \
   nt(LIT_CMP, LitCmp, lit_cmp, struct { \
-    Node *type; \
-    Node *fields; \
-    Node  *parent_compound; \
-    int   fieldc; \
+    Scope *scope; \
+    Node  *type; \
+    Node  *fields; \
+    int    fieldc; \
   }) \
   nt(EXPR_CAST, ExprCast, expr_cast, struct { \
     Node *type; \
@@ -428,12 +423,6 @@ ast_node_is_type(Node *node)
 void
 ast_type_to_string(char *buf, size_t len, Node *type);
 
-Scope *
-ast_get_scope(Node *node);
-
-Node *
-ast_get_parent_compound(Node *node);
-
 Node *
 ast_get_type(Node *node);
 
@@ -484,15 +473,14 @@ _NODE_CTOR(bad);
 _NODE_CTOR(load, const char *filepath);
 _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
-_NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope);
-_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound);
+_NODE_CTOR(block, Node *nodes, Scope *scope);
+_NODE_CTOR(ident, const char *str, Node *ref, Scope *scope);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
-_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope,
-           Node *parent_compound);
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
-_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound);
+_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            bool in_gscope);
 _NODE_CTOR(member, Node *name, Node *type, int order);
@@ -503,10 +491,10 @@ _NODE_CTOR(type_fund, FundType code);
 _NODE_CTOR(type_vargs);
 _NODE_CTOR(type_arr, Node *elem_type, Node *len);
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type);
-_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, bool raw);
-_NODE_CTOR(type_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope);
+_NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw);
+_NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope);
 _NODE_CTOR(type_ptr, Node *type);
-_NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope);
+_NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope);
 _NODE_CTOR(lit, Node *type, TokenValue value);
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);

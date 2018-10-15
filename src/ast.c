@@ -243,13 +243,13 @@ _NODE_CTOR(ublock, struct Unit *unit, Scope *scope)
   return (Node *)_ublock;
 }
 
-_NODE_CTOR(ident, const char *str, Node *ref, Node *parent_compound)
+_NODE_CTOR(ident, const char *str, Node *ref, Scope *scope)
 {
-  NodeIdent *_ident       = ast_create_node(_ast, NODE_IDENT, _tok, NodeIdent *);
-  _ident->hash            = bo_hash_from_str(str);
-  _ident->str             = str;
-  _ident->ref             = ref;
-  _ident->parent_compound = parent_compound;
+  NodeIdent *_ident = ast_create_node(_ast, NODE_IDENT, _tok, NodeIdent *);
+  _ident->hash      = bo_hash_from_str(str);
+  _ident->str       = str;
+  _ident->ref       = ref;
+  _ident->scope     = scope;
   return (Node *)_ident;
 }
 
@@ -280,25 +280,22 @@ _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
   return (Node *)_if;
 }
 
-_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope,
-           Node *parent_compound)
+_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope)
 {
-  NodeStmtLoop *_loop    = ast_create_node(_ast, NODE_STMT_LOOP, _tok, NodeStmtLoop *);
-  _loop->init            = init;
-  _loop->condition       = condition;
-  _loop->increment       = increment;
-  _loop->block           = block;
-  _loop->parent_compound = parent_compound;
-  _loop->scope           = scope;
+  NodeStmtLoop *_loop = ast_create_node(_ast, NODE_STMT_LOOP, _tok, NodeStmtLoop *);
+  _loop->init         = init;
+  _loop->condition    = condition;
+  _loop->increment    = increment;
+  _loop->block        = block;
+  _loop->scope        = scope;
   return (Node *)_loop;
 }
 
-_NODE_CTOR(block, Node *nodes, Node *parent_compound, Scope *scope)
+_NODE_CTOR(block, Node *nodes, Scope *scope)
 {
-  NodeBlock *_block       = ast_create_node(_ast, NODE_BLOCK, _tok, NodeBlock *);
-  _block->nodes           = nodes;
-  _block->parent_compound = parent_compound;
-  _block->scope           = scope;
+  NodeBlock *_block = ast_create_node(_ast, NODE_BLOCK, _tok, NodeBlock *);
+  _block->nodes     = nodes;
+  _block->scope     = scope;
   return (Node *)_block;
 }
 
@@ -380,14 +377,13 @@ _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type)
   return (Node *)_type_fn;
 }
 
-_NODE_CTOR(type_struct, Node *members, int membersc, Node *parent_compound, Scope *scope, bool raw)
+_NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw)
 {
-  NodeTypeStruct *_type_struct  = ast_create_node(_ast, NODE_TYPE_STRUCT, _tok, NodeTypeStruct *);
-  _type_struct->members         = members;
-  _type_struct->membersc        = membersc;
-  _type_struct->parent_compound = parent_compound;
-  _type_struct->scope           = scope;
-  _type_struct->raw             = raw;
+  NodeTypeStruct *_type_struct = ast_create_node(_ast, NODE_TYPE_STRUCT, _tok, NodeTypeStruct *);
+  _type_struct->members        = members;
+  _type_struct->membersc       = membersc;
+  _type_struct->scope          = scope;
+  _type_struct->raw            = raw;
   return (Node *)_type_struct;
 }
 
@@ -398,23 +394,21 @@ _NODE_CTOR(type_ptr, Node *type)
   return (Node *)_type_ptr;
 }
 
-_NODE_CTOR(lit_fn, Node *type, Node *block, Node *parent_compound, Scope *scope)
+_NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope)
 {
-  NodeLitFn *_lit_fn       = ast_create_node(_ast, NODE_LIT_FN, _tok, NodeLitFn *);
-  _lit_fn->type            = type;
-  _lit_fn->block           = block;
-  _lit_fn->parent_compound = parent_compound;
-  _lit_fn->scope           = scope;
+  NodeLitFn *_lit_fn = ast_create_node(_ast, NODE_LIT_FN, _tok, NodeLitFn *);
+  _lit_fn->type      = type;
+  _lit_fn->block     = block;
+  _lit_fn->scope     = scope;
   return (Node *)_lit_fn;
 }
 
-_NODE_CTOR(type_enum, Node *type, Node *variants, Node *parent_compound, Scope *scope)
+_NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope)
 {
-  NodeTypeEnum *_type_enum    = ast_create_node(_ast, NODE_TYPE_ENUM, _tok, NodeTypeEnum *);
-  _type_enum->type            = type;
-  _type_enum->parent_compound = parent_compound;
-  _type_enum->scope           = scope;
-  _type_enum->variants        = variants;
+  NodeTypeEnum *_type_enum = ast_create_node(_ast, NODE_TYPE_ENUM, _tok, NodeTypeEnum *);
+  _type_enum->type         = type;
+  _type_enum->scope        = scope;
+  _type_enum->variants     = variants;
   return (Node *)_type_enum;
 }
 
@@ -508,13 +502,13 @@ _NODE_CTOR(expr_null, Node *type)
   return (Node *)_expr_null;
 }
 
-_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Node *parent_compound)
+_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope)
 {
-  NodeLitCmp *_lit_cmp      = ast_create_node(_ast, NODE_LIT_CMP, _tok, NodeLitCmp *);
-  _lit_cmp->type            = type;
-  _lit_cmp->fields          = fields;
-  _lit_cmp->fieldc          = fieldc;
-  _lit_cmp->parent_compound = parent_compound;
+  NodeLitCmp *_lit_cmp = ast_create_node(_ast, NODE_LIT_CMP, _tok, NodeLitCmp *);
+  _lit_cmp->type       = type;
+  _lit_cmp->fields     = fields;
+  _lit_cmp->fieldc     = fieldc;
+  _lit_cmp->scope      = scope;
   return (Node *)_lit_cmp;
 }
 
@@ -814,30 +808,6 @@ ast_type_to_string(char *buf, size_t len, Node *type)
   _type_to_string(buf, len, type);
 }
 
-Scope *
-ast_get_scope(Node *node)
-{
-  assert(node);
-  switch (ast_node_code(node)) {
-
-  case NODE_UBLOCK:
-    return ast_peek_ublock(node)->scope;
-  case NODE_BLOCK:
-    return ast_peek_block(node)->scope;
-  case NODE_LIT_FN:
-    return ast_peek_lit_fn(node)->scope;
-  case NODE_TYPE_ENUM:
-    return ast_peek_type_enum(node)->scope;
-  case NODE_STMT_LOOP:
-    return ast_peek_stmt_loop(node)->scope;
-  case NODE_TYPE_STRUCT:
-    return ast_peek_type_struct(node)->scope;
-
-  default:
-    bl_abort("compound %s has no scope", ast_node_name(node));
-  }
-}
-
 Node *
 ast_get_type(Node *node)
 {
@@ -1089,32 +1059,6 @@ ast_type_kind(Node *type)
   }
 
   return TYPE_KIND_INVALID;
-}
-
-Node *
-ast_get_parent_compound(Node *node)
-{
-  assert(node);
-  switch (ast_node_code(node)) {
-  case NODE_IDENT:
-    return ast_peek_ident(node)->parent_compound;
-  case NODE_UBLOCK:
-    return NULL;
-  case NODE_BLOCK:
-    return ast_peek_block(node)->parent_compound;
-  case NODE_TYPE_STRUCT:
-    return ast_peek_type_struct(node)->parent_compound;
-  case NODE_LIT_FN:
-    return ast_peek_lit_fn(node)->parent_compound;
-  case NODE_TYPE_ENUM:
-    return ast_peek_type_enum(node)->parent_compound;
-  case NODE_LIT_CMP:
-    return ast_peek_lit_cmp(node)->parent_compound;
-  case NODE_STMT_LOOP:
-    return ast_peek_stmt_loop(node)->parent_compound;
-  default:
-    bl_abort("node %s has no parent compound", ast_node_name(node));
-  }
 }
 
 bool

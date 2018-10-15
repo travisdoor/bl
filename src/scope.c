@@ -33,19 +33,29 @@
 void
 scope_cache_init(ScopeCache **cache)
 {
-  *cache = bo_array_new_bo(bo_typeof(BArray), true);
+  *cache = bo_array_new(sizeof(Scope *));
 }
 
 void
 scope_cache_terminate(ScopeCache *cache)
 {
+  Scope *tmp;
+  barray_foreach(cache, tmp)
+  {
+    bo_unref(tmp->symbols);
+  }
+
   bo_unref(cache);
 }
 
 Scope *
-scope_new(ScopeCache *cache, size_t size)
+scope_new(ScopeCache *cache, Scope *parent, size_t size)
 {
-  Scope *scope = bo_htbl_new(sizeof(Node *), size);
+  Scope *scope = bl_malloc(sizeof(Scope));
+  if (!scope) bl_abort("bad alloc");
+
+  scope->symbols = bo_htbl_new(sizeof(Node *), size);
+  scope->parent  = parent;
   bo_array_push_back(cache, scope);
   return scope;
 }
@@ -55,22 +65,25 @@ scope_insert(Scope *scope, Node *ident, Node *node)
 {
   assert(scope);
   const NodeIdent *_ident = ast_peek_ident(ident);
-  bo_htbl_insert(scope, _ident->hash, node);
+  bo_htbl_insert(scope->symbols, _ident->hash, node);
 }
 
 Node *
-scope_get(Scope *scope, Node *ident)
+scope_lookup(Scope *scope, Node *ident, bool in_tree)
 {
   assert(scope);
-  const NodeIdent *_ident = ast_peek_ident(ident);
-  if (scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, Node *);
-  return NULL;
-}
 
-bool
-scope_has_symbol(Scope *scope, Node *ident)
-{
-  assert(scope);
-  const NodeIdent *_ident = ast_peek_ident(ident);
-  return bo_htbl_has_key(scope, _ident->hash);
+  while (scope) {
+    NodeIdent *_ident = ast_peek_ident(ident);
+
+    if (bo_htbl_has_key(scope->symbols, _ident->hash))
+      return bo_htbl_at(scope->symbols, _ident->hash, Node *);
+
+    if (in_tree)
+      scope = scope->parent;
+    else
+      break;
+  }
+
+  return NULL;
 }
