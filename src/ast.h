@@ -135,49 +135,41 @@
     Node *type; \
     Node *value; \
   }) \
-  \
-  nt(_TYPE_BEGIN, _TypeBegin, _type_begin, struct { \
+  nt(TYPE_TYPE, TypeType, type_type, struct { \
+    Node *name; \
+    Node *spec; \
+  }) \
+  nt(TYPE_FUND, TypeFund, type_fund, struct { \
+    FundType code; \
+  }) \
+  nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
     void *_; \
   }) \
-    nt(TYPE_TYPE, TypeType, type_type, struct { \
-	Node *name; \
-	Node *spec; \
-    }) \
-    nt(TYPE_FUND, TypeFund, type_fund, struct { \
-	FundType code; \
-    }) \
-    nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
-	void *_; \
-    }) \
-    nt(TYPE_ARR, TypeArr, type_arr, struct { \
-	Node *elem_type; \
-	Node *len; \
-    }) \
-    nt(TYPE_FN, TypeFn, type_fn, struct { \
-	Node *arg_types; \
-	Node *ret_type; \
-	int   argc_types; \
-    }) \
-    nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
-	Scope *scope; \
-	Node  *parent_compound; \
-	Node  *members; \
-	int    membersc; \
-	bool   raw; \
-    }) \
-    nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
-	Node  *type; \
-	Scope *scope; \
-	Node  *parent_compound; \
-	Node  *variants; \
-    }) \
-    nt(TYPE_PTR, TypePtr, type_ptr, struct { \
-	Node *type; \
-    }) \
-  nt(_TYPE_END, _TypeEnd, _type_end, struct { \
-    void *_; \
+  nt(TYPE_ARR, TypeArr, type_arr, struct { \
+    Node *elem_type; \
+    Node *len; \
   }) \
-  \
+  nt(TYPE_FN, TypeFn, type_fn, struct { \
+    Node *arg_types; \
+    Node *ret_type; \
+    int   argc_types; \
+  }) \
+  nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
+    Scope *scope; \
+    Node  *parent_compound; \
+    Node  *members; \
+    int    membersc; \
+    bool   raw; \
+  })					    \
+  nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
+    Node  *type; \
+    Scope *scope; \
+    Node  *parent_compound; \
+    Node  *variants; \
+  }) \
+  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
+    Node *type; \
+  }) \
   nt(LIT_FN, LitFn, lit_fn, struct { \
     Node  *type; \
     Node  *block; \
@@ -369,12 +361,6 @@ ast_terminate(Ast *ast);
 /*************************************************************************************************
  * definition node
  *************************************************************************************************/
-typedef enum
-{
-  NOT_CHECKED = 0, /* not checked node */
-  WAITING,         /* waiting for later check */
-  CHECKED          /* checked node */
-} CheckState;
 
 struct Node
 {
@@ -385,11 +371,16 @@ struct Node
 #undef nt
   };
 
-  Src *          src;
-  NodeCode       code;
-  Node *         next;
-  CheckState     state;
+  Src *    src;
+  NodeCode code;
+  Node *   next;
 #if BL_DEBUG
+  enum
+  {
+    NOT_CHECKED = 0, /* not checked node */
+    WAITING,         /* waiting for later check */
+    CHECKED          /* checked node */
+  } _state;
   int _serial;
 #endif
 };
@@ -431,7 +422,7 @@ ast_node_name(Node *n)
 static inline bool
 ast_node_is_type(Node *node)
 {
-  return ast_node_code(node) > NODE__TYPE_BEGIN && ast_node_code(node) < NODE__TYPE_END;
+  return ast_node_code(node) >= NODE_TYPE_TYPE && ast_node_code(node) <= NODE_TYPE_PTR;
 }
 
 void
@@ -487,7 +478,7 @@ _NODE_TYPE_LIST
  * generate constructors definitions
  *************************************************************************************************/
 
-#define _NODE_CTOR(name, ...) Node *ast_##name(Ast *_ast, Token *_tok, ##__VA_ARGS__)
+#define _NODE_CTOR(name, ...) Node *ast_create_##name(Ast *_ast, Token *_tok, ##__VA_ARGS__)
 
 _NODE_CTOR(bad);
 _NODE_CTOR(load, const char *filepath);

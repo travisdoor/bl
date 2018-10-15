@@ -395,8 +395,6 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     if (_decl->in_gscope && !scope_has_symbol(cnt->provided_in_gscope, _decl->name))
       scope_insert(cnt->provided_in_gscope, _decl->name, *node);
 
-    _decl->name->state = CHECKED;
-
     flatten(&_decl->type);
     flatten(&_decl->value);
     break;
@@ -661,7 +659,7 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
 
   Node *tmp_next = (*node)->next;
   Node *type_dup = ast_node_dup(cnt->ast, to_type);
-  Node *cast     = ast_expr_cast(cnt->ast, NULL, type_dup, *node);
+  Node *cast     = ast_create_expr_cast(cnt->ast, NULL, type_dup, *node);
   cast->next     = tmp_next;
   *node          = cast;
   return true;
@@ -684,7 +682,7 @@ check_node(Context *cnt, Node **node)
   assert(node);
   Node *result = NULL;
 #if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
-  if (node->state == BL_CHECKED)
+  if (node->_state == BL_CHECKED)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
 #endif
 
@@ -769,7 +767,9 @@ check_node(Context *cnt, Node **node)
   }
 #endif
 
-  (*node)->state = result ? WAITING : CHECKED;
+#ifdef BL_DEBUG
+  (*node)->_state = result ? WAITING : CHECKED;
+#endif
   return result;
 }
 
@@ -859,7 +859,7 @@ check_expr_unary(Context *cnt, Node **unary)
 
   if (_unary->op == SYM_AND) {
     /* address of */
-    _unary->type = ast_type_ptr(cnt->ast, NULL, next_type);
+    _unary->type = ast_create_type_ptr(cnt->ast, NULL, next_type);
   } else if (_unary->op == SYM_ASTERISK) {
     if (next_type_kind != TYPE_KIND_PTR) {
       check_error_node(cnt, ERR_INVALID_TYPE, _unary->next, BUILDER_CUR_WORD,
@@ -920,7 +920,7 @@ check_ident(Context *cnt, Node **ident)
   }
 
   assert(found);
-  _ident->ref   = found;
+  _ident->ref = found;
 
   finish();
 }
@@ -1013,7 +1013,7 @@ check_expr_cast(Context *cnt, Node **cast)
   assert(_cast->type);
   assert(_cast->next);
 
-  _cast->type  = ast_get_type(_cast->type);
+  _cast->type = ast_get_type(_cast->type);
 
   if (ast_type_cmp(_cast->type, ast_get_type(_cast->next))) {
     /* unnecessary cast -> so remove them */
@@ -1071,7 +1071,7 @@ check_expr_typeof(Context *cnt, Node **tpof)
 
   TokenValue value;
   value.u = (unsigned long long)kind;
-  *tpof   = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
+  *tpof   = ast_create_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
 
   finish();
 }
@@ -1217,7 +1217,7 @@ infer_type(Context *cnt, Node *decl)
 
   Node *inferred = NULL;
   if (ast_node_is_type(_decl->value)) {
-    inferred = ast_type_type(cnt->ast, NULL, _decl->name, _decl->value);
+    inferred = ast_create_type_type(cnt->ast, NULL, _decl->name, _decl->value);
   } else {
     inferred = ast_get_type(_decl->value);
   }
@@ -1389,7 +1389,7 @@ check_variant(Context *cnt, Node **var)
   /*if (_var->value->adm != ADM_CONST) {
     check_error_node(cnt, ERR_INVALID_ADM, _var->value, BUILDER_CUR_WORD,
                      "enum variant value must be compile-time known constant");
-		     }*/
+                     }*/
 
   finish();
 }

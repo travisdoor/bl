@@ -183,7 +183,6 @@ print_expr_member(Visitor *visitor, Node *node, int pad)
   print_head(node, pad);
   NodeExprMember *_member = ast_peek_expr_member(node);
   print_type(_member->type);
-  fprintf(stdout, " (%s)", _member->ptr_ref ? "->" : ".");
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
@@ -295,8 +294,8 @@ print_decl(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeDecl *_decl = ast_peek_decl(node);
-  fprintf(stdout, "(%d) ", _decl->kind);
-  fprintf(stdout, "%s (%s) used: %d ", ast_peek_ident(_decl->name)->str,
+  fprintf(stdout, "'%d' ", _decl->kind);
+  fprintf(stdout, "'%s' '%s' used: %d ", ast_peek_ident(_decl->name)->str,
           _decl->mutable ? "mutable" : "immutable", _decl->used);
 
   print_type(_decl->type);
@@ -323,7 +322,7 @@ print_ident(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeIdent *_ident = ast_peek_ident(node);
-  fprintf(stdout, "%s ->", _ident->str);
+  fprintf(stdout, "'%s' ->", _ident->str);
   print_address(_ident->ref);
 }
 
@@ -339,7 +338,7 @@ print_ublock(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeUBlock *_ublock = ast_peek_ublock(node);
-  fprintf(stdout, "%s", _ublock->unit->name);
+  fprintf(stdout, "'%s'", _ublock->unit->name);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
 
@@ -354,7 +353,7 @@ print_binop(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeExprBinop *_binop = ast_peek_expr_binop(node);
-  fprintf(stdout, "%s ", sym_strings[_binop->op]);
+  fprintf(stdout, "'%s' ", sym_strings[_binop->op]);
   print_type(_binop->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -422,7 +421,7 @@ print_call(Visitor *visitor, Node *node, int pad)
   assert(_call->ref);
   if (ast_node_is(_call->ref, NODE_IDENT)) {
     NodeIdent *_ident = ast_peek_ident(_call->ref);
-    fprintf(stdout, "%s ->", _ident->str);
+    fprintf(stdout, "'%s' ->", _ident->str);
     print_address(_ident->ref);
   }
   print_type(_call->type);
