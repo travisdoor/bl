@@ -87,6 +87,7 @@ typedef struct
   Assembly *assembly;
   Unit *    unit;
   Arena *   ast_arena;
+  Arena *   scope_arena;
   Tokens *  tokens;
 
   /* tmps */
@@ -301,7 +302,7 @@ parse_test(Context *cnt)
   Node *      type  = ast_create_type_fn(cnt->ast_arena, tok_begin, NULL, 0, &ftypes[FTYPE_VOID]);
   Node *      value = ast_create_lit_fn(cnt->ast_arena, tok_begin, type, NULL, cnt->scope);
   const char *uname = builder_get_unique_name(cnt->builder, FN_TEST_NAME);
-  Node *      name  = ast_create_ident(cnt->ast_arena, case_name, uname, NULL, cnt->scope);
+  Node *      name  = ast_create_ident(cnt->ast_arena, case_name, uname, cnt->scope);
   Node *test = ast_create_decl(cnt->ast_arena, tok_begin, DECL_KIND_INVALID, name, NULL, value,
                                false, FLAG_TEST, false);
 
@@ -373,16 +374,12 @@ parse_decl_variant(Context *cnt, Node *base_type, Node *prev)
   } else if (prev) {
     NodeVariant *_prev = ast_peek_variant(prev);
 
-    TokenValue implval;
-    implval.u      = 1;
-    Node *addition = ast_create_lit(cnt->ast_arena, NULL, base_type, implval);
+    Node *addition = ast_create_lit_int(cnt->ast_arena, NULL, 1);
     value =
-        ast_create_expr_binop(cnt->ast_arena, NULL, _prev->value, addition, base_type, SYM_PLUS);
+        ast_create_expr_binop(cnt->ast_arena, NULL, _prev->value, addition, base_type, BINOP_ADD);
   } else {
     /* first variant is allways 0 */
-    TokenValue implval;
-    implval.u = 0;
-    value     = ast_create_lit(cnt->ast_arena, NULL, base_type, implval);
+    value = ast_create_lit_int(cnt->ast_arena, NULL, 0);
   }
 
   assert(value);
@@ -623,7 +620,7 @@ parse_stmt_loop(Context *cnt)
 
   const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 8);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8);
   push_scope(cnt, scope);
 
   Node *loop = ast_create_stmt_loop(cnt->ast_arena, tok_begin, NULL, NULL, NULL, NULL, scope);
@@ -713,39 +710,44 @@ parse_stmt_continue(Context *cnt)
 Node *
 parse_lit(Context *cnt)
 {
-  Token *tok  = tokens_peek(cnt->tokens);
-  Node * type = NULL;
+  Token *tok = tokens_peek(cnt->tokens);
+  Node * lit = NULL;
 
   switch (tok->sym) {
   case SYM_NUM:
-    type = &ftypes[FTYPE_S32];
+    lit = ast_create_lit_int(cnt->ast_arena, tok, tok->value.u);
     break;
+
   case SYM_CHAR:
-    type = &ftypes[FTYPE_CHAR];
+    lit = ast_create_lit_char(cnt->ast_arena, tok, tok->value.c);
     break;
+
   case SYM_STRING:
-    type = &ftypes[FTYPE_STRING];
+    lit = ast_create_lit_string(cnt->ast_arena, tok, tok->value.str);
     break;
+
   case SYM_TRUE:
-    tok->value.u = true;
-    type         = &ftypes[FTYPE_BOOL];
+    lit = ast_create_lit_bool(cnt->ast_arena, tok, true);
     break;
+
   case SYM_FALSE:
-    tok->value.u = false;
-    type         = &ftypes[FTYPE_BOOL];
+    lit = ast_create_lit_bool(cnt->ast_arena, tok, false);
     break;
-  case SYM_FLOAT:
-    type = &ftypes[FTYPE_F32];
-    break;
+
   case SYM_DOUBLE:
-    type = &ftypes[FTYPE_F64];
+  case SYM_FLOAT:
+    // TODO: double!!!
+    // TODO: double!!!
+    // TODO: double!!!
+    lit = ast_create_lit_float(cnt->ast_arena, tok, (float)tok->value.d);
     break;
+
   default:
     return NULL;
   }
 
   tokens_consume(cnt->tokens);
-  return ast_create_lit(cnt->ast_arena, tok, type, tok->value);
+  return lit;
 }
 
 Node *
@@ -754,7 +756,7 @@ parse_lit_fn(Context *cnt)
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 32);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 32);
   push_scope(cnt, scope);
 
   Node *     fn  = ast_create_lit_fn(cnt->ast_arena, tok_fn, NULL, NULL, scope);
@@ -779,7 +781,7 @@ parse_type_enum(Context *cnt)
   Node *base_type = parse_type(cnt);
   if (!base_type) base_type = &ftypes[FTYPE_S32];
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 256);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 256);
   push_scope(cnt, scope);
   Node *        enm  = ast_create_type_enum(cnt->ast_arena, tok_enum, base_type, NULL, scope);
   NodeTypeEnum *_enm = ast_peek_type_enum(enm);
@@ -1012,7 +1014,7 @@ parse_ident(Context *cnt)
   Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
   if (!tok_ident) return NULL;
 
-  return ast_create_ident(cnt->ast_arena, tok_ident, tok_ident->value.str, NULL, cnt->scope);
+  return ast_create_ident(cnt->ast_arena, tok_ident, tok_ident->value.str, cnt->scope);
 }
 
 Node *
@@ -1154,7 +1156,7 @@ parse_type_struct(Context *cnt)
     return ast_create_bad(cnt->ast_arena, tok_struct);
   }
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 64);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 64);
   push_scope(cnt, scope);
 
   Node *type_struct = ast_create_type_struct(cnt->ast_arena, tok_struct, NULL, 0, scope, false);
@@ -1450,14 +1452,9 @@ parse_assert(Context *cnt)
     return ast_create_bad(cnt->ast_arena, tok_err);
   }
 
-  TokenValue tmp;
-
-  Node *callee   = ast_create_ident(cnt->ast_arena, tok_begin, "__assert", NULL, cnt->scope);
-  tmp.str        = tok_begin->src.unit->filepath;
-  Node *arg_file = ast_create_lit(cnt->ast_arena, NULL, &ftypes[FTYPE_STRING], tmp);
-
-  tmp.u          = (unsigned long long int)tok_begin->src.line;
-  Node *arg_line = ast_create_lit(cnt->ast_arena, NULL, &ftypes[FTYPE_S32], tmp);
+  Node *callee   = ast_create_ident(cnt->ast_arena, tok_begin, "__assert", cnt->scope);
+  Node *arg_file = ast_create_lit_string(cnt->ast_arena, NULL, tok_begin->src.unit->filepath);
+  Node *arg_line = ast_create_lit_int(cnt->ast_arena, NULL, tok_begin->src.line);
 
   expr->next     = arg_file;
   arg_file->next = arg_line;
@@ -1471,10 +1468,7 @@ parse_line(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LINE);
   if (!tok_begin) return NULL;
-
-  TokenValue value;
-  value.u = (unsigned long long int)tok_begin->src.line;
-  return ast_create_lit(cnt->ast_arena, tok_begin, &ftypes[FTYPE_U32], value);
+  return ast_create_lit_int(cnt->ast_arena, tok_begin, tok_begin->src.line);
 }
 
 Node *
@@ -1482,10 +1476,7 @@ parse_file(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FILE);
   if (!tok_begin) return NULL;
-
-  TokenValue value;
-  value.str = tok_begin->src.unit->filepath;
-  return ast_create_lit(cnt->ast_arena, tok_begin, &ftypes[FTYPE_STRING], value);
+  return ast_create_lit_string(cnt->ast_arena, tok_begin, tok_begin->src.unit->filepath);
 }
 
 Node *
@@ -1530,7 +1521,7 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Scope *scope = scope_new(cnt->assembly->scope_cache, cnt->scope, 1024);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 1024);
   push_scope(cnt, scope);
 
   Node *     block  = ast_create_block(cnt->ast_arena, tok_begin, NULL, scope);
@@ -1699,6 +1690,7 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
                  .scope       = assembly->gscope,
                  .unit        = unit,
                  .ast_arena   = &assembly->ast_arena,
+                 .scope_arena = &assembly->scope_arena,
                  .tokens      = &unit->tokens,
                  .curr_decl   = NULL,
                  .core_loaded = false,

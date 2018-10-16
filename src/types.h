@@ -31,41 +31,128 @@
 
 #include <bobject/containers/htbl.h>
 #include "common.h"
-#include "arena.h"
 
-#define _BLTYPE_KIND_LIST                                                                          \
-  tk(INTEGER, Integer, integer, struct {                                                           \
-    bool  is_signed;                                                                               \
-    short bit_size;                                                                                \
-  })
+struct Arena;
 
-#define tk(code, Name, name, data) BLTYPE_##code,
 typedef enum
 {
-  _BLTYPE_KIND_LIST BLTYPE_COUNT
-} BlTypeCode;
-#undef tk
+  TYPE_TYPE,
+  TYPE_VOID,
+  TYPE_INTEGER,
+  TYPE_REAL,
+  TYPE_BOOL,
+  TYPE_STRING,
+  TYPE_CHAR,
+  TYPE_COUNT,
+} TypeCode;
 
-#define tk(code, Name, name, data) typedef data BlType##Name;
-_BLTYPE_KIND_LIST
-#undef tk
+typedef enum
+{
+  TYPE_BUILDIN_TYPE,
+  TYPE_BUILDIN_VOID,
+  TYPE_BUILDIN_U8,
+  TYPE_BUILDIN_U16,
+  TYPE_BUILDIN_U32,
+  TYPE_BUILDIN_U64,
+  TYPE_BUILDIN_S8,
+  TYPE_BUILDIN_S16,
+  TYPE_BUILDIN_S32,
+  TYPE_BUILDIN_S64,
+  TYPE_BUILDIN_USIZE,
+  TYPE_BUILDIN_F32,
+  TYPE_BUILDIN_F64,
+  TYPE_BUILDIN_COUNT,
+} TypeBuildin;
 
-typedef struct
+struct TypeType
+{
+  void *_;
+};
+
+struct TypeVoid
+{
+  void *_;
+};
+
+struct TypeInteger
+{
+  bool  is_signed;
+  short bit_size;
+};
+
+struct TypeReal
+{
+  short bit_size;
+};
+
+struct TypeBool
+{
+  void *_;
+};
+
+struct TypeString
+{
+  void *_;
+};
+
+struct TypeChar
+{
+  void *_;
+};
+
+typedef struct Type        Type;
+typedef struct TypeType    TypeType;
+typedef struct TypeVoid    TypeVoid;
+typedef struct TypeInteger TypeInteger;
+typedef struct TypeReal    TypeReal;
+typedef struct TypeBool    TypeBool;
+typedef struct TypeString  TypeString;
+typedef struct TypeChar    TypeChar;
+
+struct Type
 {
   union
   {
-#define tk(code, Name, name, data) BlType##Name name;
-    _BLTYPE_KIND_LIST
-#undef tk
+    TypeType    type;
+    TypeVoid    void_;
+    TypeInteger integer;
+    TypeReal    real;
+    TypeBool    boolean;
+    TypeString  string;
+    TypeChar    character;
   };
 
-  BlTypeCode code;
-} BlType;
+  Type *      base;
+  TypeCode    code;
+  const char *name;
+};
+// clang-format on
 
 /* buildin types */
-extern BlType type_buildins[];
+extern Type type_buildins[];
 
-BlType *
-types_create_type(struct Arena *arena, BlTypeCode code);
+void
+types_init(struct Arena *arena);
+
+Type *
+types_create_type(struct Arena *arena, TypeCode code);
+
+/* peek helpers */
+#define _TYPE_PEEK(_name, _code, _type)                                                            \
+  static inline _type *types_peek_##_name(Type *t)                                                 \
+  {                                                                                                \
+    assert(t->code == _code);                                                                      \
+    return (_type *)t;                                                                             \
+  }
+
+_TYPE_PEEK(peek_type, TYPE_TYPE, TypeType)
+_TYPE_PEEK(peek_void, TYPE_VOID, TypeVoid)
+_TYPE_PEEK(peek_integer, TYPE_INTEGER, TypeInteger)
+_TYPE_PEEK(peek_real, TYPE_REAL, TypeReal)
+_TYPE_PEEK(peek_bool, TYPE_BOOL, TypeBool)
+_TYPE_PEEK(peek_string, TYPE_STRING, TypeString)
+_TYPE_PEEK(peek_char, TYPE_CHAR, TypeChar)
+
+#undef _TYPE_PEEK
 
 #endif

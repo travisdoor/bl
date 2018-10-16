@@ -29,24 +29,101 @@
 #include "types.h"
 #include "arena.h"
 
-#define EXPECTED_TYPE_COUNT 4096
-#define ARENA_CHUNK_SIZE 512
+#define ARENA_CHUNK_COUNT 256
 
-BlType type_buildins[8] = {
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 8, .integer.is_signed = false},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 16, .integer.is_signed = false},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 32, .integer.is_signed = false},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 64, .integer.is_signed = false},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 8, .integer.is_signed = true},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 16, .integer.is_signed = true},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 32, .integer.is_signed = true},
-    {.code = BLTYPE_INTEGER, .integer.bit_size = 64, .integer.is_signed = true},
+Type type_buildins[TYPE_BUILDIN_COUNT] = {
+    // type
+    {.code = TYPE_TYPE, .base = NULL, .name = "type"},
+
+    // void
+    {.code = TYPE_VOID, .base = &type_buildins[TYPE_BUILDIN_TYPE], .name = "void"},
+
+    // u8
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "u8",
+     .integer.bit_size  = 8,
+     .integer.is_signed = false},
+
+    // u16
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "u16",
+     .integer.bit_size  = 16,
+     .integer.is_signed = false},
+
+    // u32
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "u32",
+     .integer.bit_size  = 32,
+     .integer.is_signed = false},
+
+    // u64
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "u64",
+     .integer.bit_size  = 64,
+     .integer.is_signed = false},
+
+    // s8
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "s8",
+     .integer.bit_size  = 8,
+     .integer.is_signed = true},
+
+    // s16
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "s16",
+     .integer.bit_size  = 16,
+     .integer.is_signed = true},
+
+    // s32
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "s32",
+     .integer.bit_size  = 32,
+     .integer.is_signed = true},
+
+    // s64
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "s64",
+     .integer.bit_size  = 64,
+     .integer.is_signed = true},
+
+    // usize
+    {.code              = TYPE_INTEGER,
+     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name              = "usize",
+     .integer.bit_size  = 64,
+     .integer.is_signed = true},
+
+    // f32
+    {.code          = TYPE_REAL,
+     .base          = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name          = "f32",
+     .real.bit_size = 32},
+
+    // f64
+    {.code          = TYPE_REAL,
+     .base          = &type_buildins[TYPE_BUILDIN_TYPE],
+     .name          = "f64",
+     .real.bit_size = 64},
 };
 
-BlType *
-types_create_type(struct Arena *arena, BlTypeCode code)
+void
+types_init(Arena *arena)
 {
-  BlType *type = arena_alloc(arena);
+  arena_init(arena, sizeof(Type), ARENA_CHUNK_COUNT, NULL);
+}
+
+Type *
+types_create_type(Arena *arena, TypeCode code)
+{
+  Type *type = arena_alloc(arena);
   type->code = code;
   return type;
 }

@@ -38,7 +38,12 @@
 #include "scope.h"
 
 struct Arena;
+typedef struct Node Node;
 
+#define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
+#define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
+
+/* OLD BEGIN */
 // clang-format off
 #define _FTYPE_LIST                                                                         \
     ft(VOID,   void) \
@@ -63,174 +68,67 @@ struct Arena;
     bt(ANY,       any) \
     bt(ARRAY,     __Array) \
 
-#define _NODE_TYPE_LIST \
-  nt(BAD, Bad, bad, struct { \
-    void *_; \
-  }) \
-  nt(LOAD, Load, load, struct { \
-    const char *filepath; \
-  }) \
-  nt(LINK, Link, link, struct { \
-    const char *lib; \
-  }) \
-  nt(IDENT, Ident, ident, struct { \
-    Scope      *scope;\
-    const char *str; \
-    uint64_t    hash; \
-    Node       *ref; \
-  }) \
-  nt(UBLOCK, UBlock, ublock, struct { \
-    Scope     *scope; \
-    Node      *nodes; \
-    struct Unit *unit; \
-  }) \
-  nt(BLOCK, Block, block, struct { \
-    Scope *scope; \
-    Node  *nodes; \
-  }) \
-  nt(STMT_RETURN, StmtReturn, stmt_return, struct { \
-    Node *expr; \
-    Node *fn_decl; \
-  }) \
-  nt(STMT_IF, StmtIf, stmt_if, struct { \
-    Node *test; \
-    Node *true_stmt; \
-    Node *false_stmt; \
-  }) \
-  nt(STMT_LOOP, StmtLoop, stmt_loop, struct { \
-    Scope *scope; \
-    Node  *init; \
-    Node  *condition; \
-    Node  *increment; \
-    Node  *block; \
-  }) \
-  nt(STMT_BREAK, StmtBreak, stmt_break, struct { \
-    void *_; \
-  }) \
-  nt(STMT_CONTINUE, StmtContinue, stmt_continue, struct { \
-    void *_; \
-  }) \
-  nt(DECL, Decl, decl, struct { \
-    Node       *type; \
-    DeclKind    kind; \
-    Node       *name; \
-    Node       *value; \
-    bool        mutable; \
-    int         flags; \
-    int         used; \
-    bool        in_gscope; \
-    BHashTable *deps; \
-  }) \
-  nt(MEMBER, Member, member, struct { \
-    Node *type; \
-    Node *name; \
-    int   order; \
-  }) \
-  nt(ARG, Arg, arg, struct { \
-    Node *type; \
-    Node *name; \
-  }) \
-  nt(VARIANT, Variant, variant, struct { \
-    Node *type; \
-    Node *name; \
-    Node *value; \
-  }) \
-  nt(TYPE_TYPE, TypeType, type_type, struct { \
-    Node *name; \
-    Node *spec; \
-  }) \
-  nt(TYPE_FUND, TypeFund, type_fund, struct { \
-    FundType code; \
-  }) \
-  nt(TYPE_VARGS, TypeVArgs, type_vargs, struct { \
-    void *_; \
-  }) \
-  nt(TYPE_ARR, TypeArr, type_arr, struct { \
-    Node *elem_type; \
-    Node *len; \
-  }) \
-  nt(TYPE_FN, TypeFn, type_fn, struct { \
-    Node *arg_types; \
-    Node *ret_type; \
-    int   argc_types; \
-  }) \
-  nt(TYPE_STRUCT, TypeStruct, type_struct, struct { \
-    Scope *scope; \
-    Node  *members; \
-    int    membersc; \
-    bool   raw; \
-  })					    \
-  nt(TYPE_ENUM, TypeEnum, type_enum, struct { \
-    Scope *scope; \
-    Node  *type; \
-    Node  *variants; \
-  }) \
-  nt(TYPE_PTR, TypePtr, type_ptr, struct { \
-    Node *type; \
-  }) \
-  nt(LIT_FN, LitFn, lit_fn, struct { \
-    Scope *scope; \
-    Node  *type; \
-    Node  *block; \
-  }) \
-  nt(LIT, Lit, lit, struct { \
-    Node       *type; \
-    TokenValue value; \
-  }) \
-  nt(LIT_CMP, LitCmp, lit_cmp, struct { \
-    Scope *scope; \
-    Node  *type; \
-    Node  *fields; \
-    int    fieldc; \
-  }) \
-  nt(EXPR_CAST, ExprCast, expr_cast, struct { \
-    Node *type; \
-    Node *next; \
-  }) \
-  nt(EXPR_BINOP, ExprBinop, expr_binop, struct { \
-    Node     *type; \
-    Node     *lhs; \
-    Node     *rhs; \
-    BinopKind kind; \
-  }) \
-  nt(EXPR_CALL, ExprCall, expr_call, struct { \
-    Node *ref; \
-    Node *args; \
-    int   argsc; \
-    Node *type; \
-    bool  run; \
-  }) \
-  nt(EXPR_MEMBER, ExprMember, expr_member, struct { \
-    Node      *type; \
-    MemberKind kind; \
-    Node      *ident; \
-    Node      *next; \
-    bool       ptr_ref; \
-    int        i; \
-  }) \
-  nt(EXPR_ELEM, ExprElem, expr_elem, struct { \
-    Node       *type; \
-    Node       *next; \
-    Node       *index; \
-  }) \
-  nt(EXPR_SIZEOF, ExprSizeof, expr_sizeof, struct { \
-    Node *type; \
-    Node *in; \
-  }) \
-  nt(EXPR_TYPEOF, ExprTypeof, expr_typeof, struct { \
-    Node *type; \
-    Node *in; \
-  }) \
-  nt(EXPR_UNARY, ExprUnary, expr_unary, struct { \
-    Node    *type; \
-    UnopKind kind; \
-    Node    *next; \
-  }) \
-  nt(EXPR_NULL, ExprNull, expr_null, struct { \
-    Node *type;		    \
-  })
+typedef enum
+{
+#define ft(tok, str) FTYPE_##tok,
+  _FTYPE_LIST
+#undef ft
+      FTYPE_COUNT
+} FundType;
 
+typedef enum
+{
+#define bt(name, str) BUILDIN_##name,
+  _BUILDINS_LIST
+#undef bt
+      BUILDIN_COUNT
+} BuildinType;
 // clang-format on
+/* OLD END */
+
+typedef enum
+{
+  NODE_BAD,
+  NODE_LOAD,
+  NODE_LINK,
+  NODE_IDENT,
+  NODE_UBLOCK,
+  NODE_BLOCK,
+  NODE_STMT_RETURN,
+  NODE_STMT_IF,
+  NODE_STMT_LOOP,
+  NODE_STMT_BREAK,
+  NODE_STMT_CONTINUE,
+  NODE_DECL,
+  NODE_MEMBER,
+  NODE_ARG,
+  NODE_VARIANT,
+  NODE_TYPE_TYPE,
+  NODE_TYPE_FUND,
+  NODE_TYPE_VARGS,
+  NODE_TYPE_ARR,
+  NODE_TYPE_FN,
+  NODE_TYPE_STRUCT,
+  NODE_TYPE_ENUM,
+  NODE_TYPE_PTR,
+  NODE_LIT_FN,
+  NODE_LIT_INT,
+  NODE_LIT_FLOAT,
+  NODE_LIT_CHAR,
+  NODE_LIT_STRING,
+  NODE_LIT_BOOL,
+  NODE_LIT_CMP,
+  NODE_EXPR_CAST,
+  NODE_EXPR_BINOP,
+  NODE_EXPR_CALL,
+  NODE_EXPR_MEMBER,
+  NODE_EXPR_ELEM,
+  NODE_EXPR_SIZEOF,
+  NODE_EXPR_TYPEOF,
+  NODE_EXPR_UNARY,
+  NODE_EXPR_NULL,
+  NODE_COUNT
+} NodeCode;
 
 typedef enum
 {
@@ -314,64 +212,342 @@ typedef enum
   DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
 
-typedef struct Node   Node;
-typedef enum NodeCode NodeCode;
-
-typedef struct
+struct NodeBad
 {
-  Node *  node; /* dependent node */
-  DepType type; /* is dependency strict (ex.: caused by #run directive) */
-} Dependency;
-
-typedef enum
-{
-#define ft(tok, str) FTYPE_##tok,
-  _FTYPE_LIST
-#undef ft
-      FTYPE_COUNT
-} FundType;
-
-typedef enum
-{
-#define bt(name, str) BUILDIN_##name,
-  _BUILDINS_LIST
-#undef bt
-      BUILDIN_COUNT
-} BuildinType;
-
-#define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
-#define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
-
-/*************************************************************************************************
- * generation of node typedefs and code enum
- *************************************************************************************************/
-
-#define nt(code, Name, name, data) NODE_##code,
-enum NodeCode
-{
-  _NODE_TYPE_LIST NODE_COUNT
+  void *_;
 };
-#undef nt
 
-// clang-format off
-/* generate notes */
-#define nt(code, Name, name, data) typedef data Node##Name;
-_NODE_TYPE_LIST
-#undef nt
+struct NodeLoad
+{
+  const char *filepath;
+};
 
-// clang-format on
+struct NodeLink
+{
+  const char *lib;
+};
 
-/*************************************************************************************************
- * definition node
- *************************************************************************************************/
+struct NodeIdent
+{
+  Scope *     scope;
+  const char *str;
+  uint64_t    hash;
+};
+
+struct NodeUBlock
+{
+  Scope *      scope;
+  Node *       nodes;
+  struct Unit *unit;
+};
+
+struct NodeBlock
+{
+  Scope *scope;
+  Node * nodes;
+};
+
+struct NodeStmtReturn
+{
+  Node *expr;
+  Node *fn_decl;
+};
+
+struct NodeStmtIf
+{
+  Node *test;
+  Node *true_stmt;
+  Node *false_stmt;
+};
+
+struct NodeStmtLoop
+{
+  Scope *scope;
+  Node * init;
+  Node * condition;
+  Node * increment;
+  Node * block;
+};
+
+struct NodeStmtBreak
+{
+  void *_;
+};
+
+struct NodeStmtContinue
+{
+  void *_;
+};
+
+struct NodeDecl
+{
+  Node *   type;
+  DeclKind kind;
+  Node *   name;
+  Node *   value;
+  bool mutable;
+  int         flags;
+  int         used;
+  bool        in_gscope;
+  BHashTable *deps;
+};
+
+struct NodeMember
+{
+  Node *type;
+  Node *name;
+  int   order;
+};
+
+struct NodeArg
+{
+  Node *type;
+  Node *name;
+};
+
+struct NodeVariant
+{
+  Node *type;
+  Node *name;
+  Node *value;
+};
+
+struct NodeTypeType
+{
+  Node *name;
+  Node *spec;
+};
+
+struct NodeTypeFund
+{
+  FundType code;
+};
+
+struct NodeTypeVArgs
+{
+  void *_;
+};
+
+struct NodeTypeArr
+{
+  Node *elem_type;
+  Node *len;
+};
+
+struct NodeTypeFn
+{
+  Node *arg_types;
+  Node *ret_type;
+  int   argc_types;
+};
+
+struct NodeTypeStruct
+{
+  Scope *scope;
+  Node * members;
+  int    membersc;
+  bool   raw;
+};
+
+struct NodeTypeEnum
+{
+  Scope *scope;
+  Node * type;
+  Node * variants;
+};
+
+struct NodeTypePtr
+{
+  Node *type;
+};
+
+struct NodeLitFn
+{
+  Scope *scope;
+  Node * type;
+  Node * block;
+};
+
+struct NodeLitInt
+{
+  uint64_t i;
+};
+
+struct NodeLitFloat
+{
+  float f;
+};
+
+struct NodeLitChar
+{
+  uint8_t c;
+};
+
+struct NodeLitString
+{
+  const char *s;
+};
+
+struct NodeLitBool
+{
+  bool b;
+};
+
+struct NodeLitCmp
+{
+  Scope *scope;
+  Node * type;
+  Node * fields;
+  int    fieldc;
+};
+
+struct NodeExprCast
+{
+  Node *type;
+  Node *next;
+};
+
+struct NodeExprBinop
+{
+  Node *    type;
+  Node *    lhs;
+  Node *    rhs;
+  BinopKind kind;
+};
+
+struct NodeExprCall
+{
+  Node *ref;
+  Node *args;
+  int   argsc;
+  Node *type;
+  bool  run;
+};
+
+struct NodeExprMember
+{
+  Node *     type;
+  MemberKind kind;
+  Node *     ident;
+  Node *     next;
+  bool       ptr_ref;
+  int        i;
+};
+
+struct NodeExprElem
+{
+  Node *type;
+  Node *next;
+  Node *index;
+};
+
+struct NodeExprSizeof
+{
+  Node *type;
+  Node *in;
+};
+
+struct NodeExprTypeof
+{
+  Node *type;
+  Node *in;
+};
+
+struct NodeExprUnary
+{
+  Node *   type;
+  UnopKind kind;
+  Node *   next;
+};
+
+struct NodeExprNull
+{
+  Node *type;
+};
+
+typedef struct NodeBad          NodeBad;
+typedef struct NodeLoad         NodeLoad;
+typedef struct NodeLink         NodeLink;
+typedef struct NodeIdent        NodeIdent;
+typedef struct NodeUBlock       NodeUBlock;
+typedef struct NodeBlock        NodeBlock;
+typedef struct NodeStmtReturn   NodeStmtReturn;
+typedef struct NodeStmtIf       NodeStmtIf;
+typedef struct NodeStmtLoop     NodeStmtLoop;
+typedef struct NodeStmtBreak    NodeStmtBreak;
+typedef struct NodeStmtContinue NodeStmtContinue;
+typedef struct NodeDecl         NodeDecl;
+typedef struct NodeMember       NodeMember;
+typedef struct NodeArg          NodeArg;
+typedef struct NodeVariant      NodeVariant;
+typedef struct NodeTypeType     NodeTypeType;
+typedef struct NodeTypeFund     NodeTypeFund;
+typedef struct NodeTypeVArgs    NodeTypeVArgs;
+typedef struct NodeTypeArr      NodeTypeArr;
+typedef struct NodeTypeFn       NodeTypeFn;
+typedef struct NodeTypeStruct   NodeTypeStruct;
+typedef struct NodeTypeEnum     NodeTypeEnum;
+typedef struct NodeTypePtr      NodeTypePtr;
+typedef struct NodeLitFn        NodeLitFn;
+typedef struct NodeLitInt       NodeLitInt;
+typedef struct NodeLitFloat     NodeLitFloat;
+typedef struct NodeLitChar      NodeLitChar;
+typedef struct NodeLitString    NodeLitString;
+typedef struct NodeLitBool      NodeLitBool;
+typedef struct NodeLitCmp       NodeLitCmp;
+typedef struct NodeExprCast     NodeExprCast;
+typedef struct NodeExprBinop    NodeExprBinop;
+typedef struct NodeExprCall     NodeExprCall;
+typedef struct NodeExprMember   NodeExprMember;
+typedef struct NodeExprElem     NodeExprElem;
+typedef struct NodeExprSizeof   NodeExprSizeof;
+typedef struct NodeExprTypeof   NodeExprTypeof;
+typedef struct NodeExprUnary    NodeExprUnary;
+typedef struct NodeExprNull     NodeExprNull;
 
 struct Node
 {
   union
   {
-#define nt(code, Name, name, data) Node##Name name;
-    _NODE_TYPE_LIST
-#undef nt
+    NodeBad          bad;
+    NodeLoad         load;
+    NodeLink         link;
+    NodeIdent        ident;
+    NodeUBlock       ublock;
+    NodeBlock        block;
+    NodeStmtReturn   stmt_return;
+    NodeStmtIf       stmt_if;
+    NodeStmtLoop     stmt_loop;
+    NodeStmtBreak    stmt_break;
+    NodeStmtContinue stmt_continue;
+    NodeDecl         decl;
+    NodeMember       member;
+    NodeArg          arg;
+    NodeVariant      variant;
+    NodeTypeType     type_type;
+    NodeTypeFund     type_fund;
+    NodeTypeVArgs    type_vargs;
+    NodeTypeArr      type_arr;
+    NodeTypeFn       type_fn;
+    NodeTypeStruct   type_struct;
+    NodeTypeEnum     type_enum;
+    NodeTypePtr      type_ptr;
+    NodeLitFn        lit_fn;
+    NodeLitInt       lit_int;
+    NodeLitFloat     lit_float;
+    NodeLitChar      lit_char;
+    NodeLitString    lit_string;
+    NodeLitBool      lit_bool;
+    NodeLitCmp       lit_cmp;
+    NodeExprCast     expr_cast;
+    NodeExprBinop    expr_binop;
+    NodeExprCall     expr_call;
+    NodeExprMember   expr_member;
+    NodeExprElem     expr_elem;
+    NodeExprSizeof   expr_sizeof;
+    NodeExprTypeof   expr_typeof;
+    NodeExprUnary    expr_unary;
+    NodeExprNull     expr_null;
   };
 
   Src *    src;
@@ -388,20 +564,25 @@ struct Node
 #endif
 };
 
-/* static fundamental type nodes */
+typedef struct
+{
+  Node *  node; /* dependent node */
+  DepType type; /* is dependency strict (ex.: caused by #run directive) */
+} Dependency;
+
+extern const char *node_names[];
+
+/* OLD */
 extern Node        ftypes[];
 extern Node        type_type;
 extern const char *ftype_strings[];
-extern const char *node_type_strings[];
 extern const char *buildin_strings[];
 extern uint64_t    ftype_hashes[FTYPE_COUNT];
 extern uint64_t    buildin_hashes[BUILDIN_COUNT];
+/* OLD END */
 
 void
-ast_init_statics(void);
-
-void
-ast_node_terminate(Node *node);
+ast_init(struct Arena *arena);
 
 static inline Src *
 ast_peek_src(Node *n)
@@ -430,7 +611,7 @@ ast_node_is_not(Node *n, NodeCode c)
 static inline const char *
 ast_node_name(Node *n)
 {
-  return node_type_strings[ast_node_code(n)];
+  return node_names[ast_node_code(n)];
 }
 
 static inline bool
@@ -463,9 +644,6 @@ ast_can_impl_cast(Node *from_type, Node *to_type);
 Node *
 ast_node_dup(struct Arena *arena, Node *node);
 
-Node *
-ast_unroll_ident(Node *ident);
-
 Dependency *
 ast_add_dep_uq(Node *decl, Node *dep, int type);
 
@@ -473,14 +651,55 @@ ast_add_dep_uq(Node *decl, Node *dep, int type);
  * generation of peek function
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
-#define nt(code, Name, name, data)                                                                 \
-  static inline Node##Name *ast_peek_##name(Node *n)                                               \
+
+#define _NODE_PEEK(_name, _code, _type)                                                            \
+  static inline _type *ast_peek_##_name(Node *n)                                                   \
   {                                                                                                \
-    assert(ast_node_is(n, NODE_##code));                                                           \
-    return &(n->name);                                                                             \
+    assert(n->code == _code);                                                                      \
+    return (_type *)n;                                                                             \
   }
-_NODE_TYPE_LIST
-#undef nt
+
+_NODE_PEEK(bad, NODE_BAD, NodeBad)
+_NODE_PEEK(load, NODE_LOAD, NodeLoad)
+_NODE_PEEK(link, NODE_LINK, NodeLink)
+_NODE_PEEK(ident, NODE_IDENT, NodeIdent)
+_NODE_PEEK(ublock, NODE_UBLOCK, NodeUBlock)
+_NODE_PEEK(block, NODE_BLOCK, NodeBlock)
+_NODE_PEEK(stmt_return, NODE_STMT_RETURN, NodeStmtReturn)
+_NODE_PEEK(stmt_if, NODE_STMT_IF, NodeStmtIf)
+_NODE_PEEK(stmt_loop, NODE_STMT_LOOP, NodeStmtLoop)
+_NODE_PEEK(stmt_break, NODE_STMT_BREAK, NodeStmtBreak)
+_NODE_PEEK(stmt_continue, NODE_STMT_CONTINUE, NodeStmtContinue)
+_NODE_PEEK(decl, NODE_DECL, NodeDecl)
+_NODE_PEEK(member, NODE_MEMBER, NodeMember)
+_NODE_PEEK(arg, NODE_ARG, NodeArg)
+_NODE_PEEK(variant, NODE_VARIANT, NodeVariant)
+_NODE_PEEK(type_type, NODE_TYPE_TYPE, NodeTypeType)
+_NODE_PEEK(type_fund, NODE_TYPE_FUND, NodeTypeFund)
+_NODE_PEEK(type_vargs, NODE_TYPE_VARGS, NodeTypeVArgs)
+_NODE_PEEK(type_arr, NODE_TYPE_ARR, NodeTypeArr)
+_NODE_PEEK(type_fn, NODE_TYPE_FN, NodeTypeFn)
+_NODE_PEEK(type_struct, NODE_TYPE_STRUCT, NodeTypeStruct)
+_NODE_PEEK(type_enum, NODE_TYPE_ENUM, NodeTypeEnum)
+_NODE_PEEK(type_ptr, NODE_TYPE_PTR, NodeTypePtr)
+_NODE_PEEK(lit_fn, NODE_LIT_FN, NodeLitFn)
+_NODE_PEEK(lit_int, NODE_LIT_INT, NodeLitInt)
+_NODE_PEEK(lit_float, NODE_LIT_FLOAT, NodeLitFloat)
+_NODE_PEEK(lit_char, NODE_LIT_CHAR, NodeLitChar)
+_NODE_PEEK(lit_string, NODE_LIT_STRING, NodeLitString)
+_NODE_PEEK(lit_bool, NODE_LIT_BOOL, NodeLitBool)
+_NODE_PEEK(lit_cmp, NODE_LIT_CMP, NodeLitCmp)
+_NODE_PEEK(expr_cast, NODE_EXPR_CAST, NodeExprCast)
+_NODE_PEEK(expr_binop, NODE_EXPR_BINOP, NodeExprBinop)
+_NODE_PEEK(expr_call, NODE_EXPR_CALL, NodeExprCall)
+_NODE_PEEK(expr_member, NODE_EXPR_MEMBER, NodeExprMember)
+_NODE_PEEK(expr_elem, NODE_EXPR_ELEM, NodeExprElem)
+_NODE_PEEK(expr_sizeof, NODE_EXPR_SIZEOF, NodeExprSizeof)
+_NODE_PEEK(expr_typeof, NODE_EXPR_TYPEOF, NodeExprTypeof)
+_NODE_PEEK(expr_unary, NODE_EXPR_UNARY, NodeExprUnary)
+_NODE_PEEK(expr_null, NODE_EXPR_NULL, NodeExprNull)
+
+#undef _NODE_PEEK
 
 /*************************************************************************************************
  * generate constructors definitions
@@ -494,13 +713,12 @@ _NODE_CTOR(load, const char *filepath);
 _NODE_CTOR(link, const char *lib);
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
 _NODE_CTOR(block, Node *nodes, Scope *scope);
-_NODE_CTOR(ident, const char *str, Node *ref, Scope *scope);
+_NODE_CTOR(ident, const char *str, Scope *scope);
 _NODE_CTOR(stmt_return, Node *expr, Node *fn);
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
 _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope);
 _NODE_CTOR(stmt_break);
 _NODE_CTOR(stmt_continue);
-_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope);
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            bool in_gscope);
 _NODE_CTOR(member, Node *name, Node *type, int order);
@@ -514,8 +732,13 @@ _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type);
 _NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw);
 _NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope);
 _NODE_CTOR(type_ptr, Node *type);
+_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope);
 _NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope);
-_NODE_CTOR(lit, Node *type, TokenValue value);
+_NODE_CTOR(lit_int, uint64_t i);
+_NODE_CTOR(lit_float, float f);
+_NODE_CTOR(lit_char, uint8_t c);
+_NODE_CTOR(lit_string, const char *s);
+_NODE_CTOR(lit_bool, bool b);
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind);
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
 _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i);

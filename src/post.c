@@ -141,7 +141,7 @@ post_call(Visitor *visitor, Node *call, void *cnt)
   NodeExprCall *_call = ast_peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  Node *callee = ast_unroll_ident(_call->ref);
+  Node *callee = _call->ref;
   if (ast_node_is(callee, NODE_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
       !ast_peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
@@ -153,24 +153,6 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 void
 post_ident(Visitor *visitor, Node *ident, void *cnt)
 {
-  assert(ident);
-  Context *  _cnt   = (Context *)cnt;
-  NodeIdent *_ident = ast_peek_ident(ident);
-
-  if (!_ident->ref || !_cnt->curr_dependent) {
-    visitor_walk(visitor, ident, cnt);
-    return;
-  }
-
-  if (ast_node_is(_ident->ref, NODE_DECL)) {
-    NodeDecl *_decl = ast_peek_decl(_ident->ref);
-    if (_decl->kind == DECL_KIND_FN) {
-      ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
-    } else if (_decl->kind == DECL_KIND_FIELD && _decl->in_gscope) {
-      ast_add_dep_uq(_cnt->curr_dependent, _ident->ref, DEP_LAX);
-    }
-  }
-
   visitor_walk(visitor, ident, cnt);
 }
 

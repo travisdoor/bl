@@ -29,35 +29,29 @@
 #include "scope.h"
 #include "common.h"
 #include "ast.h"
+#include "arena.h"
 
-void
-scope_cache_init(ScopeCache **cache)
+#define ARENA_CHUNK_COUNT 256
+
+static void
+scope_dtor(Scope *scope)
 {
-  *cache = bo_array_new(sizeof(Scope *));
+  assert(scope);
+  bo_unref(scope->entries);
 }
 
 void
-scope_cache_terminate(ScopeCache *cache)
+scope_arena_init(Arena *arena)
 {
-  Scope *tmp;
-  barray_foreach(cache, tmp)
-  {
-    bo_unref(tmp->symbols);
-    bl_free(tmp);
-  }
-
-  bo_unref(cache);
+  arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
 }
 
 Scope *
-scope_new(ScopeCache *cache, Scope *parent, size_t size)
+scope_create(Arena *arena, Scope *parent, size_t size)
 {
-  Scope *scope = bl_malloc(sizeof(Scope));
-  if (!scope) bl_abort("bad alloc");
-
-  scope->symbols = bo_htbl_new(sizeof(Node *), size);
+  Scope *scope   = arena_alloc(arena);
+  scope->entries = bo_htbl_new(sizeof(ScopeEntry), size);
   scope->parent  = parent;
-  bo_array_push_back(cache, scope);
   return scope;
 }
 
@@ -66,10 +60,12 @@ scope_insert(Scope *scope, Node *ident, Node *node)
 {
   assert(scope);
   const NodeIdent *_ident = ast_peek_ident(ident);
-  bo_htbl_insert(scope->symbols, _ident->hash, node);
+
+  ScopeEntry entry = {.type = NULL, .ident = ident};
+  bo_htbl_insert(scope->entries, _ident->hash, entry);
 }
 
-Node *
+ScopeEntry *
 scope_lookup(Scope *scope, Node *ident, bool in_tree)
 {
   assert(scope);
@@ -77,8 +73,8 @@ scope_lookup(Scope *scope, Node *ident, bool in_tree)
   while (scope) {
     NodeIdent *_ident = ast_peek_ident(ident);
 
-    if (bo_htbl_has_key(scope->symbols, _ident->hash))
-      return bo_htbl_at(scope->symbols, _ident->hash, Node *);
+    if (bo_htbl_has_key(scope->entries, _ident->hash))
+      return &bo_htbl_at(scope->entries, _ident->hash, ScopeEntry);
 
     if (in_tree)
       scope = scope->parent;

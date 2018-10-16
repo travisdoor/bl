@@ -95,11 +95,11 @@ eval_cast(Eval *eval, Node *cast);
 bool
 eval_lit(Eval *eval, Node *lit)
 {
-  NodeLit *_lit = ast_peek_lit(lit);
+  NodeLitInt *_lit = ast_peek_lit_int(lit);
   /* TODO: support only signed integers for now! */
   //assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
-  Object tmp = obj_new_s64((int64_t) _lit->value.u);
+  Object tmp = obj_new_s64((int64_t) _lit->i);
   push(eval, tmp);
 
   return true;
@@ -118,13 +118,7 @@ eval_cast(Eval *eval, Node *cast)
 bool
 eval_ident(Eval *eval, Node *ident)
 {
-  NodeIdent *_ident = ast_peek_ident(ident);
-  assert(_ident->ref);
-  if (!eval_node(eval, _ident->ref)) {
-    eval->err_node = ident;
-    return false;
-  }
-  return true;
+  return false;
 }
 
 bool
@@ -182,7 +176,7 @@ eval_node(Eval *eval, Node *node)
   if (!node) return false;
 
   switch (ast_node_code(node)) {
-  case NODE_LIT:
+  case NODE_LIT_INT:
     return eval_lit(eval, node);
   case NODE_EXPR_BINOP:
     return eval_binop(eval, node);

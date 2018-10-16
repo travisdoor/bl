@@ -135,7 +135,19 @@ static void
 print_call(Visitor *visitor, Node *node, int pad);
 
 static void
-print_lit(Visitor *visitor, Node *node, int pad);
+print_lit_int(Visitor *visitor, Node *node, int pad);
+
+static void
+print_lit_float(Visitor *visitor, Node *node, int pad);
+
+static void
+print_lit_char(Visitor *visitor, Node *node, int pad);
+
+static void
+print_lit_bool(Visitor *visitor, Node *node, int pad);
+
+static void
+print_lit_string(Visitor *visitor, Node *node, int pad);
 
 static void
 print_lit_fn(Visitor *visitor, Node *node, int pad);
@@ -322,8 +334,7 @@ print_ident(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeIdent *_ident = ast_peek_ident(node);
-  fprintf(stdout, "'%s' ->", _ident->str);
-  print_address(_ident->ref);
+  fprintf(stdout, "'%s'", _ident->str);
 }
 
 void
@@ -359,48 +370,52 @@ print_binop(Visitor *visitor, Node *node, int pad)
 }
 
 void
-print_lit(Visitor *visitor, Node *node, int pad)
+print_lit_int(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
-  NodeLit *_lit = ast_peek_lit(node);
-  assert(_lit->type);
+  NodeLitInt *_lit = ast_peek_lit_int(node);
 
-  NodeTypeFund *_type = ast_peek_type_fund(ast_get_type(_lit->type));
-  switch (_type->code) {
-  case FTYPE_S8:
-  case FTYPE_S16:
-  case FTYPE_S32:
-  case FTYPE_S64:
-  case FTYPE_U8:
-  case FTYPE_U16:
-  case FTYPE_U32:
-  case FTYPE_U64:
-  case FTYPE_SIZE:
-    fprintf(stdout, "%llu ", _lit->value.u);
-    break;
-  case FTYPE_F32:
-  case FTYPE_F64:
-    fprintf(stdout, "%f ", _lit->value.d);
-    break;
-  case FTYPE_CHAR:
-    fprintf(stdout, "%c ", _lit->value.c);
-    break;
-  case FTYPE_STRING: {
-    char *tmp = strdup(_lit->value.str);
-    fprintf(stdout, "%s ", strtok(tmp, "\n"));
-    char *next = strtok(NULL, "\n");
-    if (next && strlen(next)) fprintf(stdout, "... ");
-    free(tmp);
-    break;
-  }
-  case FTYPE_BOOL:
-    fprintf(stdout, "%s ", _lit->value.u ? "true" : "false");
-    break;
-  default:
-    break;
-  }
+  fprintf(stdout, "%llu ", _lit->i);
+}
 
-  print_type(_lit->type);
+void
+print_lit_float(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeLitFloat *_lit = ast_peek_lit_float(node);
+
+  fprintf(stdout, "%f ", _lit->f);
+}
+
+void
+print_lit_char(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeLitChar *_lit = ast_peek_lit_char(node);
+
+  fprintf(stdout, "%c ", _lit->c);
+}
+
+void
+print_lit_bool(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeLitBool *_lit = ast_peek_lit_bool(node);
+
+  fprintf(stdout, "%s ", _lit->b ? "true" : "false");
+}
+
+void
+print_lit_string(Visitor *visitor, Node *node, int pad)
+{
+  print_head(node, pad);
+  NodeLitString *_lit = ast_peek_lit_string(node);
+
+  char *tmp = strdup(_lit->s);
+  fprintf(stdout, "%s ", strtok(tmp, "\n"));
+  char *next = strtok(NULL, "\n");
+  if (next && strlen(next)) fprintf(stdout, "... ");
+  free(tmp);
 }
 
 void
@@ -421,8 +436,7 @@ print_call(Visitor *visitor, Node *node, int pad)
   assert(_call->ref);
   if (ast_node_is(_call->ref, NODE_IDENT)) {
     NodeIdent *_ident = ast_peek_ident(_call->ref);
-    fprintf(stdout, "'%s' ->", _ident->str);
-    print_address(_ident->ref);
+    fprintf(stdout, "'%s'", _ident->str);
   }
   print_type(_call->type);
   if (_call->run) fprintf(stdout, " #run");
@@ -448,7 +462,11 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_load, NODE_LOAD);
   visitor_add(&visitor, (VisitorFunc)print_lit_fn, NODE_LIT_FN);
   visitor_add(&visitor, (VisitorFunc)print_type_enum, NODE_TYPE_ENUM);
-  visitor_add(&visitor, (VisitorFunc)print_lit, NODE_LIT);
+  visitor_add(&visitor, (VisitorFunc)print_lit_int, NODE_LIT_INT);
+  visitor_add(&visitor, (VisitorFunc)print_lit_float, NODE_LIT_FLOAT);
+  visitor_add(&visitor, (VisitorFunc)print_lit_char, NODE_LIT_CHAR);
+  visitor_add(&visitor, (VisitorFunc)print_lit_string, NODE_LIT_STRING);
+  visitor_add(&visitor, (VisitorFunc)print_lit_bool, NODE_LIT_BOOL);
   visitor_add(&visitor, (VisitorFunc)print_return, NODE_STMT_RETURN);
   visitor_add(&visitor, (VisitorFunc)print_if, NODE_STMT_IF);
   visitor_add(&visitor, (VisitorFunc)print_loop, NODE_STMT_LOOP);

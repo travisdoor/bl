@@ -36,8 +36,6 @@
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
 #define EXPECTED_GSCOPE_COUNT 4096
-#define AST_ARENA_CHUNK_COUNT 256
-#define TYPE_ARENA_CHUNK_COUNT 256
 
 /* public */
 
@@ -53,15 +51,12 @@ assembly_new(const char *name)
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->test_cases   = bo_array_new(sizeof(TestCase));
 
-  scope_cache_init(&assembly->scope_cache);
-  arena_init(&assembly->ast_arena, sizeof(Node), AST_ARENA_CHUNK_COUNT,
-             (ArenaElemDtor)ast_node_terminate);
-  arena_init(&assembly->type_arena, sizeof(BlType), TYPE_ARENA_CHUNK_COUNT, NULL);
+  scope_arena_init(&assembly->scope_arena);
+  ast_init(&assembly->ast_arena);
+  types_init(&assembly->type_arena);
+  assembly->gscope = scope_create(&assembly->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
-
-  assembly->gscope = scope_new(assembly->scope_cache, NULL, EXPECTED_GSCOPE_COUNT);
-
   return assembly;
 }
 
@@ -91,7 +86,7 @@ assembly_delete(Assembly *assembly)
 
   LLVMContextDispose(assembly->llvm_cnt);
 
-  scope_cache_terminate(assembly->scope_cache);
+  arena_terminate(&assembly->scope_arena);
   arena_terminate(&assembly->ast_arena);
   arena_terminate(&assembly->type_arena);
 

@@ -30,13 +30,7 @@
 #include "ast.h"
 #include "arena.h"
 
-#define ARENA_CHUNK_SIZE 256
-
-typedef struct Chunk
-{
-  struct Chunk *next;
-  int           count;
-} chunk_t;
+#define ARENA_CHUNK_COUNT 256
 
 Node type_type = {.code           = NODE_TYPE_TYPE,
                   .src            = NULL,
@@ -64,17 +58,22 @@ const char *buildin_strings[] = {
 #undef bt
 };
 
-const char *node_type_strings[] = {
-#define nt(code, Name, name, data) #Name,
-    _NODE_TYPE_LIST
-#undef nt
-};
-
 uint64_t ftype_hashes[FTYPE_COUNT];
 uint64_t buildin_hashes[BUILDIN_COUNT];
 
-void
-ast_node_terminate(Node *node)
+const char *node_names[] = {
+    "NodeBad",          "NodeLoad",       "NodeLink",      "NodeIdent",      "NodeUBlock",
+    "NodeBlock",        "NodeStmtReturn", "NodeStmtIf",    "NodeStmtLoop",   "NodeStmtBreak",
+    "NodeStmtContinue", "NodeDecl",       "NodeMember",    "NodeArg",        "NodeVariant",
+    "NodeTypeType",     "NodeTypeFund",   "NodeTypeVargs", "NodeTypeArr",    "NodeTypeFn",
+    "NodeTypeStruct",   "NodeTypeEnum",   "NodeTypePtr",   "NodeLitFn",      "NodeLitInt",
+    "NodeLitFloat",     "NodeLitChar",    "NodeLitString", "NodeLitBool",    "NodeLitCmp",
+    "NodeExprCast",     "NodeExprBinop",  "NodeExprCall",  "NodeExprMember", "NodeExprElem",
+    "NodeExprSizeof",   "NodeExprTypeof", "NodeExprUnary", "NodeExprNull",
+};
+
+static void
+node_dtor(Node *node)
 {
   switch (node->code) {
   case NODE_DECL:
@@ -102,9 +101,8 @@ _ast_create_node(Arena *arena, NodeCode c, Token *tok)
   return node;
 }
 
-/* public */
-void
-ast_init_statics(void)
+static void
+init_statics(void)
 {
   const char *it;
   array_foreach(ftype_strings, it)
@@ -116,6 +114,14 @@ ast_init_statics(void)
   {
     buildin_hashes[i] = bo_hash_from_str(it);
   }
+}
+
+/* public */
+void
+ast_init(struct Arena *arena)
+{
+  arena_init(arena, sizeof(Node), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
+  init_statics();
 }
 
 /*************************************************************************************************
@@ -149,12 +155,11 @@ _NODE_CTOR(ublock, struct Unit *unit, Scope *scope)
   return (Node *)_ublock;
 }
 
-_NODE_CTOR(ident, const char *str, Node *ref, Scope *scope)
+_NODE_CTOR(ident, const char *str, Scope *scope)
 {
   NodeIdent *_ident = ast_create_node(_arena, NODE_IDENT, _tok, NodeIdent *);
   _ident->hash      = bo_hash_from_str(str);
   _ident->str       = str;
-  _ident->ref       = ref;
   _ident->scope     = scope;
   return (Node *)_ident;
 }
@@ -318,12 +323,39 @@ _NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope)
   return (Node *)_type_enum;
 }
 
-_NODE_CTOR(lit, Node *type, TokenValue value)
+_NODE_CTOR(lit_int, uint64_t i)
 {
-  NodeLit *_lit = ast_create_node(_arena, NODE_LIT, _tok, NodeLit *);
-  _lit->type    = type;
-  _lit->value   = value;
-  return (Node *)_lit;
+  NodeLitInt *_lit_int = ast_create_node(_arena, NODE_LIT_INT, _tok, NodeLitInt *);
+  _lit_int->i          = i;
+  return (Node *)_lit_int;
+}
+
+_NODE_CTOR(lit_float, float f)
+{
+  NodeLitFloat *_lit_float = ast_create_node(_arena, NODE_LIT_FLOAT, _tok, NodeLitFloat *);
+  _lit_float->f            = f;
+  return (Node *)_lit_float;
+}
+
+_NODE_CTOR(lit_char, uint8_t c)
+{
+  NodeLitChar *_lit_char = ast_create_node(_arena, NODE_LIT_CHAR, _tok, NodeLitChar *);
+  _lit_char->c           = c;
+  return (Node *)_lit_char;
+}
+
+_NODE_CTOR(lit_string, const char *s)
+{
+  NodeLitString *_lit_string = ast_create_node(_arena, NODE_LIT_STRING, _tok, NodeLitString *);
+  _lit_string->s             = s;
+  return (Node *)_lit_string;
+}
+
+_NODE_CTOR(lit_bool, bool b)
+{
+  NodeLitBool *_lit_bool = ast_create_node(_arena, NODE_LIT_BOOL, _tok, NodeLitBool *);
+  _lit_bool->b           = b;
+  return (Node *)_lit_bool;
 }
 
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind)
@@ -734,17 +766,11 @@ next:
   case NODE_ARG:
     node = ast_peek_arg(node)->type;
     goto next;
-  case NODE_LIT:
-    node = ast_peek_lit(node)->type;
-    goto next;
   case NODE_LIT_FN:
     return ast_peek_lit_fn(node)->type;
     goto next;
   case NODE_LIT_CMP:
     node = ast_peek_lit_cmp(node)->type;
-    goto next;
-  case NODE_IDENT:
-    node = ast_peek_ident(node)->ref;
     goto next;
   case NODE_EXPR_CALL:
     node = ast_peek_expr_call(node)->type;
@@ -956,10 +982,6 @@ ast_type_kind(Node *type)
     return ast_type_kind(_decl->value);
   }
 
-  case NODE_IDENT: {
-    return ast_type_kind(ast_peek_ident(type)->ref);
-  }
-
   default:
     bl_abort("node %s is not a type", ast_node_name(type));
   }
@@ -1015,15 +1037,6 @@ ast_node_dup(Arena *arena, Node *node)
 #endif
 
   return tmp;
-}
-
-Node *
-ast_unroll_ident(Node *ident)
-{
-  if (!ident) return NULL;
-  for (; ast_node_is(ident, NODE_IDENT); ident = ast_peek_ident(ident)->ref)
-    ;
-  return ident;
 }
 
 Dependency *

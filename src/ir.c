@@ -34,6 +34,7 @@
 #include "common.h"
 #include "ast.h"
 
+#if 0
 #if BL_DEBUG
 #define gname(s) s
 #define JIT_OPT_LEVEL 0
@@ -1853,3 +1854,8 @@ ir_run(Builder *builder, Assembly *assembly)
 
   LLVMDisposeBuilder(cnt.llvm_builder);
 }
+#endif
+
+void
+ir_run(Builder *builder, Assembly *assembly)
+{}

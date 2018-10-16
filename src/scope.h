@@ -34,30 +34,31 @@
 #include <assert.h>
 
 struct Node;
+struct Type;
+struct Arena;
+
+typedef struct ScopeEntry
+{
+  struct Type *type;
+  struct Node *ident;
+} ScopeEntry;
 
 typedef struct Scope
 {
   struct Scope *parent;
-
-  BHashTable *symbols;
+  BHashTable *entries;
 } Scope;
 
-typedef BArray ScopeCache;
-
-
 void
-scope_cache_init(ScopeCache **cache);
-
-void
-scope_cache_terminate(ScopeCache *cache);
+scope_arena_init(struct Arena *arena);
 
 Scope *
-scope_new(ScopeCache *cache, Scope *parent, size_t size);
+scope_create(struct Arena *arena, Scope *parent, size_t size);
 
 void
 scope_insert(Scope *scope, struct Node *ident, struct Node *node);
 
-struct Node *
+ScopeEntry *
 scope_lookup(Scope *scope, struct Node *ident, bool in_tree);
 
 #endif
