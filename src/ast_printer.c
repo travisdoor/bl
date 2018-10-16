@@ -470,7 +470,7 @@ ast_printer_run(Assembly *assembly)
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
-    visitor_visit(&visitor, unit->ast.root, 0);
+    visitor_visit(&visitor, unit->ast, 0);
   }
   fprintf(stdout, "\n\n");
 }

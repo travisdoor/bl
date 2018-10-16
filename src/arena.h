@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   unit.h
+// File:   arena.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,31 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_H
-#define BL_UNIT_H
+#ifndef BL_ARENA_H
+#define BL_ARENA_H
 
-#include <llvm-c/Core.h>
-#include "config.h"
-#include "ast.h"
-#include "tokens.h"
+#include "common.h"
 
-struct Token;
+typedef void (*ArenaElemDtor)(void *);
 
-typedef struct
+struct ArenaChunk;
+
+typedef struct Arena
 {
-  struct Node *fn;
-  const char * name;
-} TestCase;
-
-/* class Unit object members */
-typedef struct Unit
-{
-  Tokens        tokens;
-  Node *        ast;
-  BArray *      globals;
-  char *        filepath;
-  char *        name;
-  char *        src;
-  struct Token *loaded_from;
-} Unit;
-
-Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from);
-
-Unit *
-unit_new_str(const char *name, const char *src);
+  struct ArenaChunk *first_chunk;
+  struct ArenaChunk *current_chunk;
+  size_t             elem_size_in_bytes;
+  int                elems_per_chunk;
+  ArenaElemDtor      elem_dtor;
+} Arena;
 
 void
-unit_delete(Unit *unit);
+arena_init(Arena *arena, size_t elem_size_in_bytes, int elems_per_chunk, ArenaElemDtor elem_dtor);
 
-const char *
-unit_get_src_file(Unit *unit);
+void
+arena_terminate(Arena *arena);
 
-const char *
-unit_get_src(Unit *unit);
-
-const char *
-unit_get_src_ln(Unit *unit, int line, long *len);
-
-const char *
-unit_get_name(Unit *unit);
+void *
+arena_alloc(Arena *arena);
 
 #endif

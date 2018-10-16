@@ -63,9 +63,6 @@ post_call(Visitor *visitor, Node *call, void *cnt);
 static void
 post_ident(Visitor *visitor, Node *ident, void *cnt);
 
-static void
-post_type(Visitor *visitor, Node *type, void *cnt);
-
 static inline void
 schedule_generation(Context *cnt, Node *decl)
 {
@@ -178,24 +175,6 @@ post_ident(Visitor *visitor, Node *ident, void *cnt)
 }
 
 void
-post_type(Visitor *visitor, Node *type, void *cnt)
-{
-#if 0
-  Context *_cnt = (Context *)cnt;
-  if (bo_htbl_has_key(_cnt->assembly->type_table, (uint64_t)type)) {
-    visitor_walk(visitor, type, cnt);
-    return;
-  }
-
-  char buf[256];
-  ast_type_to_string(buf, 256, type);
-  bl_log("new type: %s", buf);
-  bo_htbl_insert_empty(_cnt->assembly->type_table, (uint64_t)type);
-  _cnt->type_table_size++;
-#endif
-}
-
-void
 post_run(Builder *builder, Assembly *assembly)
 {
   Context cnt = {
@@ -215,16 +194,12 @@ post_run(Builder *builder, Assembly *assembly)
   visitor_add(&visitor, post_decl, NODE_DECL);
   visitor_add(&visitor, post_call, NODE_EXPR_CALL);
   visitor_add(&visitor, post_ident, NODE_IDENT);
-  visitor_add(&visitor, post_type, NODE_TYPE_FUND);
-  visitor_add(&visitor, post_type, NODE_TYPE_ENUM);
-  visitor_add(&visitor, post_type, NODE_TYPE_STRUCT);
-  visitor_add(&visitor, post_type, NODE_TYPE_FN);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    visitor_visit(&visitor, unit->ast.root, &cnt);
+    visitor_visit(&visitor, unit->ast, &cnt);
   }
 
 #if VERBOSE

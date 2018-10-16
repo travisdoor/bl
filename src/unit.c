@@ -37,7 +37,7 @@ static void
 init(Unit *unit)
 {
   tokens_init(&unit->tokens);
-  ast_init(&unit->ast);
+  unit->ast = NULL;
 }
 
 static char *
@@ -118,7 +118,6 @@ unit_delete(Unit *unit)
   free(unit->src);
   free(unit->name);
   tokens_terminate(&unit->tokens);
-  ast_terminate(&unit->ast);
   bl_free(unit);
 }
 

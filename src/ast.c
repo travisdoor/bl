@@ -28,11 +28,9 @@
 
 #include <math.h>
 #include "ast.h"
+#include "arena.h"
 
-#define CHUNK_SIZE 256
-#define MAX_ALIGNMENT 16
-
-#define NODE_SIZE (sizeof(Node) + MAX_ALIGNMENT)
+#define ARENA_CHUNK_SIZE 256
 
 typedef struct Chunk
 {
@@ -75,30 +73,8 @@ const char *node_type_strings[] = {
 uint64_t ftype_hashes[FTYPE_COUNT];
 uint64_t buildin_hashes[BUILDIN_COUNT];
 
-static inline bool
-is_aligned(const void *p, size_t size)
-{
-  return (uintptr_t)p % size == 0;
-}
-
-static void
-align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
-{
-  if (is_aligned(*p, alignment)) {
-    *adjustment = 0;
-    return;
-  }
-
-  const size_t mask = alignment - 1;
-  assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
-  const uintptr_t i_unaligned  = (uintptr_t)(*p);
-  const uintptr_t misalignment = i_unaligned & mask;
-  *adjustment                  = alignment - misalignment;
-  *p                           = (void *)(i_unaligned + *adjustment);
-}
-
-static void
-node_terminate(Node *node)
+void
+ast_node_terminate(Node *node)
 {
   switch (node->code) {
   case NODE_DECL:
@@ -109,62 +85,12 @@ node_terminate(Node *node)
   }
 }
 
-static inline Node *
-get_node_in_chunk(chunk_t *chunk, int i)
-{
-  void *node = (void *)((char *)chunk + (i * NODE_SIZE));
-  /* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
-   * sizeof(node_t) + MAX_ALIGNMENT) */
-  ptrdiff_t adj;
-  align_ptr_up(&node, MAX_ALIGNMENT, &adj);
-  assert(adj < MAX_ALIGNMENT);
-  return node;
-}
-
-static inline chunk_t *
-alloc_chunk(void)
-{
-  const size_t size_in_bytes = NODE_SIZE * CHUNK_SIZE;
-  chunk_t *    chunk         = bl_malloc(size_in_bytes);
-  if (!chunk) bl_abort("bad alloc");
-  memset(chunk, 0, size_in_bytes);
-  chunk->count = 1;
-  return chunk;
-}
-
-static inline chunk_t *
-free_chunk(chunk_t *chunk)
-{
-  if (!chunk) return NULL;
-
-  chunk_t *next = chunk->next;
-  for (int i = 0; i < chunk->count - 1; ++i) {
-    node_terminate(get_node_in_chunk(chunk, i + 1));
-  }
-  bl_free(chunk);
-  return next;
-}
-
-#define ast_create_node(ast, c, tok, t) (t) _ast_create_node((ast), (c), (tok));
+#define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
 
 static Node *
-_ast_create_node(Ast *ast, NodeCode c, Token *tok)
+_ast_create_node(Arena *arena, NodeCode c, Token *tok)
 {
-  if (!ast->current_chunk) {
-    ast->current_chunk = alloc_chunk();
-    ast->first_chunk   = ast->current_chunk;
-  }
-
-  if (ast->current_chunk->count == CHUNK_SIZE) {
-    // last chunk node
-    chunk_t *chunk           = alloc_chunk();
-    ast->current_chunk->next = chunk;
-    ast->current_chunk       = chunk;
-  }
-
-  Node *node = get_node_in_chunk(ast->current_chunk, ast->current_chunk->count);
-  ast->current_chunk->count++;
-
+  Node *node = arena_alloc(arena);
   node->code = c;
   node->src  = tok ? &tok->src : NULL;
 
@@ -173,42 +99,22 @@ _ast_create_node(Ast *ast, NodeCode c, Token *tok)
   node->_serial     = serial++;
   node->_state      = NOT_CHECKED;
 #endif
-
-  assert(is_aligned(node, MAX_ALIGNMENT) && "unaligned allocation of node");
-
   return node;
 }
 
 /* public */
 void
-ast_init(Ast *ast)
+ast_init_statics(void)
 {
-  static bool statics_initialized = false;
-  ast->first_chunk                = NULL;
-  ast->current_chunk              = NULL;
-
-  /* init ftype hashes */
-  if (!statics_initialized) {
-    statics_initialized = true;
-    const char *it;
-    array_foreach(ftype_strings, it)
-    {
-      ftype_hashes[i] = bo_hash_from_str(it);
-    }
-
-    array_foreach(buildin_strings, it)
-    {
-      buildin_hashes[i] = bo_hash_from_str(it);
-    }
+  const char *it;
+  array_foreach(ftype_strings, it)
+  {
+    ftype_hashes[i] = bo_hash_from_str(it);
   }
-}
 
-void
-ast_terminate(Ast *ast)
-{
-  chunk_t *chunk = ast->first_chunk;
-  while (chunk) {
-    chunk = free_chunk(chunk);
+  array_foreach(buildin_strings, it)
+  {
+    buildin_hashes[i] = bo_hash_from_str(it);
   }
 }
 
@@ -218,26 +124,26 @@ ast_terminate(Ast *ast)
 
 _NODE_CTOR(bad)
 {
-  return ast_create_node(_ast, NODE_BAD, _tok, Node *);
+  return ast_create_node(_arena, NODE_BAD, _tok, Node *);
 }
 
 _NODE_CTOR(load, const char *filepath)
 {
-  NodeLoad *_load = ast_create_node(_ast, NODE_LOAD, _tok, NodeLoad *);
+  NodeLoad *_load = ast_create_node(_arena, NODE_LOAD, _tok, NodeLoad *);
   _load->filepath = filepath;
   return (Node *)_load;
 }
 
 _NODE_CTOR(link, const char *lib)
 {
-  NodeLink *_link = ast_create_node(_ast, NODE_LINK, _tok, NodeLink *);
+  NodeLink *_link = ast_create_node(_arena, NODE_LINK, _tok, NodeLink *);
   _link->lib      = lib;
   return (Node *)_link;
 }
 
 _NODE_CTOR(ublock, struct Unit *unit, Scope *scope)
 {
-  NodeUBlock *_ublock = ast_create_node(_ast, NODE_UBLOCK, _tok, NodeUBlock *);
+  NodeUBlock *_ublock = ast_create_node(_arena, NODE_UBLOCK, _tok, NodeUBlock *);
   _ublock->scope      = scope;
   _ublock->unit       = unit;
   return (Node *)_ublock;
@@ -245,7 +151,7 @@ _NODE_CTOR(ublock, struct Unit *unit, Scope *scope)
 
 _NODE_CTOR(ident, const char *str, Node *ref, Scope *scope)
 {
-  NodeIdent *_ident = ast_create_node(_ast, NODE_IDENT, _tok, NodeIdent *);
+  NodeIdent *_ident = ast_create_node(_arena, NODE_IDENT, _tok, NodeIdent *);
   _ident->hash      = bo_hash_from_str(str);
   _ident->str       = str;
   _ident->ref       = ref;
@@ -255,7 +161,7 @@ _NODE_CTOR(ident, const char *str, Node *ref, Scope *scope)
 
 _NODE_CTOR(stmt_return, Node *expr, Node *fn)
 {
-  NodeStmtReturn *_ret = ast_create_node(_ast, NODE_STMT_RETURN, _tok, NodeStmtReturn *);
+  NodeStmtReturn *_ret = ast_create_node(_arena, NODE_STMT_RETURN, _tok, NodeStmtReturn *);
   _ret->expr           = expr;
   _ret->fn_decl        = fn;
   return (Node *)_ret;
@@ -263,17 +169,17 @@ _NODE_CTOR(stmt_return, Node *expr, Node *fn)
 
 _NODE_CTOR(stmt_break)
 {
-  return ast_create_node(_ast, NODE_STMT_BREAK, _tok, Node *);
+  return ast_create_node(_arena, NODE_STMT_BREAK, _tok, Node *);
 }
 
 _NODE_CTOR(stmt_continue)
 {
-  return ast_create_node(_ast, NODE_STMT_CONTINUE, _tok, Node *);
+  return ast_create_node(_arena, NODE_STMT_CONTINUE, _tok, Node *);
 }
 
 _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
 {
-  NodeStmtIf *_if = ast_create_node(_ast, NODE_STMT_IF, _tok, NodeStmtIf *);
+  NodeStmtIf *_if = ast_create_node(_arena, NODE_STMT_IF, _tok, NodeStmtIf *);
   _if->test       = test;
   _if->true_stmt  = true_stmt;
   _if->false_stmt = false_stmt;
@@ -282,7 +188,7 @@ _NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt)
 
 _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope)
 {
-  NodeStmtLoop *_loop = ast_create_node(_ast, NODE_STMT_LOOP, _tok, NodeStmtLoop *);
+  NodeStmtLoop *_loop = ast_create_node(_arena, NODE_STMT_LOOP, _tok, NodeStmtLoop *);
   _loop->init         = init;
   _loop->condition    = condition;
   _loop->increment    = increment;
@@ -293,7 +199,7 @@ _NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block,
 
 _NODE_CTOR(block, Node *nodes, Scope *scope)
 {
-  NodeBlock *_block = ast_create_node(_ast, NODE_BLOCK, _tok, NodeBlock *);
+  NodeBlock *_block = ast_create_node(_arena, NODE_BLOCK, _tok, NodeBlock *);
   _block->nodes     = nodes;
   _block->scope     = scope;
   return (Node *)_block;
@@ -302,7 +208,7 @@ _NODE_CTOR(block, Node *nodes, Scope *scope)
 _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
            bool in_gscope)
 {
-  NodeDecl *_decl  = ast_create_node(_ast, NODE_DECL, _tok, NodeDecl *);
+  NodeDecl *_decl  = ast_create_node(_arena, NODE_DECL, _tok, NodeDecl *);
   _decl->kind      = kind;
   _decl->type      = type;
   _decl->name      = name;
@@ -315,7 +221,7 @@ _NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutabl
 
 _NODE_CTOR(member, Node *name, Node *type, int order)
 {
-  NodeMember *_member = ast_create_node(_ast, NODE_MEMBER, _tok, NodeMember *);
+  NodeMember *_member = ast_create_node(_arena, NODE_MEMBER, _tok, NodeMember *);
   _member->name       = name;
   _member->type       = type;
   _member->order      = order;
@@ -324,7 +230,7 @@ _NODE_CTOR(member, Node *name, Node *type, int order)
 
 _NODE_CTOR(arg, Node *name, Node *type)
 {
-  NodeArg *_arg = ast_create_node(_ast, NODE_ARG, _tok, NodeArg *);
+  NodeArg *_arg = ast_create_node(_arena, NODE_ARG, _tok, NodeArg *);
   _arg->name    = name;
   _arg->type    = type;
   return (Node *)_arg;
@@ -332,7 +238,7 @@ _NODE_CTOR(arg, Node *name, Node *type)
 
 _NODE_CTOR(variant, Node *name, Node *type, Node *value)
 {
-  NodeVariant *_variant = ast_create_node(_ast, NODE_VARIANT, _tok, NodeVariant *);
+  NodeVariant *_variant = ast_create_node(_arena, NODE_VARIANT, _tok, NodeVariant *);
   _variant->name        = name;
   _variant->type        = type;
   _variant->value       = value;
@@ -341,7 +247,7 @@ _NODE_CTOR(variant, Node *name, Node *type, Node *value)
 
 _NODE_CTOR(type_type, Node *name, Node *spec)
 {
-  NodeTypeType *_type = ast_create_node(_ast, NODE_TYPE_TYPE, _tok, NodeTypeType *);
+  NodeTypeType *_type = ast_create_node(_arena, NODE_TYPE_TYPE, _tok, NodeTypeType *);
   _type->name         = name;
   _type->spec         = spec;
   return (Node *)_type;
@@ -349,20 +255,20 @@ _NODE_CTOR(type_type, Node *name, Node *spec)
 
 _NODE_CTOR(type_fund, FundType code)
 {
-  NodeTypeFund *_type_fund = ast_create_node(_ast, NODE_TYPE_FUND, _tok, NodeTypeFund *);
+  NodeTypeFund *_type_fund = ast_create_node(_arena, NODE_TYPE_FUND, _tok, NodeTypeFund *);
   _type_fund->code         = code;
   return (Node *)_type_fund;
 }
 
 _NODE_CTOR(type_vargs)
 {
-  NodeTypeVArgs *_type_vargs = ast_create_node(_ast, NODE_TYPE_VARGS, _tok, NodeTypeVArgs *);
+  NodeTypeVArgs *_type_vargs = ast_create_node(_arena, NODE_TYPE_VARGS, _tok, NodeTypeVArgs *);
   return (Node *)_type_vargs;
 }
 
 _NODE_CTOR(type_arr, Node *elem_type, Node *len)
 {
-  NodeTypeArr *_type_arr = ast_create_node(_ast, NODE_TYPE_ARR, _tok, NodeTypeArr *);
+  NodeTypeArr *_type_arr = ast_create_node(_arena, NODE_TYPE_ARR, _tok, NodeTypeArr *);
   _type_arr->elem_type   = elem_type;
   _type_arr->len         = len;
   return (Node *)_type_arr;
@@ -370,7 +276,7 @@ _NODE_CTOR(type_arr, Node *elem_type, Node *len)
 
 _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type)
 {
-  NodeTypeFn *_type_fn = ast_create_node(_ast, NODE_TYPE_FN, _tok, NodeTypeFn *);
+  NodeTypeFn *_type_fn = ast_create_node(_arena, NODE_TYPE_FN, _tok, NodeTypeFn *);
   _type_fn->arg_types  = arg_types;
   _type_fn->argc_types = argc_types;
   _type_fn->ret_type   = ret_type;
@@ -379,7 +285,7 @@ _NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type)
 
 _NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw)
 {
-  NodeTypeStruct *_type_struct = ast_create_node(_ast, NODE_TYPE_STRUCT, _tok, NodeTypeStruct *);
+  NodeTypeStruct *_type_struct = ast_create_node(_arena, NODE_TYPE_STRUCT, _tok, NodeTypeStruct *);
   _type_struct->members        = members;
   _type_struct->membersc       = membersc;
   _type_struct->scope          = scope;
@@ -389,14 +295,14 @@ _NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw)
 
 _NODE_CTOR(type_ptr, Node *type)
 {
-  NodeTypePtr *_type_ptr = ast_create_node(_ast, NODE_TYPE_PTR, _tok, NodeTypePtr *);
+  NodeTypePtr *_type_ptr = ast_create_node(_arena, NODE_TYPE_PTR, _tok, NodeTypePtr *);
   _type_ptr->type        = type;
   return (Node *)_type_ptr;
 }
 
 _NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope)
 {
-  NodeLitFn *_lit_fn = ast_create_node(_ast, NODE_LIT_FN, _tok, NodeLitFn *);
+  NodeLitFn *_lit_fn = ast_create_node(_arena, NODE_LIT_FN, _tok, NodeLitFn *);
   _lit_fn->type      = type;
   _lit_fn->block     = block;
   _lit_fn->scope     = scope;
@@ -405,7 +311,7 @@ _NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope)
 
 _NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope)
 {
-  NodeTypeEnum *_type_enum = ast_create_node(_ast, NODE_TYPE_ENUM, _tok, NodeTypeEnum *);
+  NodeTypeEnum *_type_enum = ast_create_node(_arena, NODE_TYPE_ENUM, _tok, NodeTypeEnum *);
   _type_enum->type         = type;
   _type_enum->scope        = scope;
   _type_enum->variants     = variants;
@@ -414,7 +320,7 @@ _NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope)
 
 _NODE_CTOR(lit, Node *type, TokenValue value)
 {
-  NodeLit *_lit = ast_create_node(_ast, NODE_LIT, _tok, NodeLit *);
+  NodeLit *_lit = ast_create_node(_arena, NODE_LIT, _tok, NodeLit *);
   _lit->type    = type;
   _lit->value   = value;
   return (Node *)_lit;
@@ -422,7 +328,7 @@ _NODE_CTOR(lit, Node *type, TokenValue value)
 
 _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind)
 {
-  NodeExprBinop *_expr_binop = ast_create_node(_ast, NODE_EXPR_BINOP, _tok, NodeExprBinop *);
+  NodeExprBinop *_expr_binop = ast_create_node(_arena, NODE_EXPR_BINOP, _tok, NodeExprBinop *);
   _expr_binop->lhs           = lhs;
   _expr_binop->rhs           = rhs;
   _expr_binop->type          = type;
@@ -432,7 +338,7 @@ _NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind)
 
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
 {
-  NodeExprCall *_expr_call = ast_create_node(_ast, NODE_EXPR_CALL, _tok, NodeExprCall *);
+  NodeExprCall *_expr_call = ast_create_node(_arena, NODE_EXPR_CALL, _tok, NodeExprCall *);
   _expr_call->ref          = ref;
   _expr_call->args         = args;
   _expr_call->argsc        = argsc;
@@ -443,7 +349,7 @@ _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run)
 
 _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i)
 {
-  NodeExprMember *_expr_member = ast_create_node(_ast, NODE_EXPR_MEMBER, _tok, NodeExprMember *);
+  NodeExprMember *_expr_member = ast_create_node(_arena, NODE_EXPR_MEMBER, _tok, NodeExprMember *);
   _expr_member->kind           = kind;
   _expr_member->ident          = ident;
   _expr_member->next           = next;
@@ -455,7 +361,7 @@ _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bo
 
 _NODE_CTOR(expr_elem, Node *next, Node *type, Node *index)
 {
-  NodeExprElem *_expr_elem = ast_create_node(_ast, NODE_EXPR_ELEM, _tok, NodeExprElem *);
+  NodeExprElem *_expr_elem = ast_create_node(_arena, NODE_EXPR_ELEM, _tok, NodeExprElem *);
   _expr_elem->next         = next;
   _expr_elem->type         = type;
   _expr_elem->index        = index;
@@ -464,7 +370,7 @@ _NODE_CTOR(expr_elem, Node *next, Node *type, Node *index)
 
 _NODE_CTOR(expr_sizeof, Node *in, Node *type)
 {
-  NodeExprSizeof *_expr_sizeof = ast_create_node(_ast, NODE_EXPR_SIZEOF, _tok, NodeExprSizeof *);
+  NodeExprSizeof *_expr_sizeof = ast_create_node(_arena, NODE_EXPR_SIZEOF, _tok, NodeExprSizeof *);
   _expr_sizeof->in             = in;
   _expr_sizeof->type           = type;
   return (Node *)_expr_sizeof;
@@ -472,7 +378,7 @@ _NODE_CTOR(expr_sizeof, Node *in, Node *type)
 
 _NODE_CTOR(expr_typeof, Node *in, Node *type)
 {
-  NodeExprTypeof *_expr_typeof = ast_create_node(_ast, NODE_EXPR_TYPEOF, _tok, NodeExprTypeof *);
+  NodeExprTypeof *_expr_typeof = ast_create_node(_arena, NODE_EXPR_TYPEOF, _tok, NodeExprTypeof *);
   _expr_typeof->in             = in;
   _expr_typeof->type           = type;
   return (Node *)_expr_typeof;
@@ -480,7 +386,7 @@ _NODE_CTOR(expr_typeof, Node *in, Node *type)
 
 _NODE_CTOR(expr_cast, Node *type, Node *next)
 {
-  NodeExprCast *_expr_cast = ast_create_node(_ast, NODE_EXPR_CAST, _tok, NodeExprCast *);
+  NodeExprCast *_expr_cast = ast_create_node(_arena, NODE_EXPR_CAST, _tok, NodeExprCast *);
   _expr_cast->type         = type;
   _expr_cast->next         = next;
   return (Node *)_expr_cast;
@@ -488,7 +394,7 @@ _NODE_CTOR(expr_cast, Node *type, Node *next)
 
 _NODE_CTOR(expr_unary, UnopKind kind, Node *next, Node *type)
 {
-  NodeExprUnary *_expr_unary = ast_create_node(_ast, NODE_EXPR_UNARY, _tok, NodeExprUnary *);
+  NodeExprUnary *_expr_unary = ast_create_node(_arena, NODE_EXPR_UNARY, _tok, NodeExprUnary *);
   _expr_unary->next          = next;
   _expr_unary->type          = type;
   _expr_unary->kind          = kind;
@@ -497,14 +403,14 @@ _NODE_CTOR(expr_unary, UnopKind kind, Node *next, Node *type)
 
 _NODE_CTOR(expr_null, Node *type)
 {
-  NodeExprNull *_expr_null = ast_create_node(_ast, NODE_EXPR_NULL, _tok, NodeExprNull *);
+  NodeExprNull *_expr_null = ast_create_node(_arena, NODE_EXPR_NULL, _tok, NodeExprNull *);
   _expr_null->type         = type;
   return (Node *)_expr_null;
 }
 
 _NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope)
 {
-  NodeLitCmp *_lit_cmp = ast_create_node(_ast, NODE_LIT_CMP, _tok, NodeLitCmp *);
+  NodeLitCmp *_lit_cmp = ast_create_node(_arena, NODE_LIT_CMP, _tok, NodeLitCmp *);
   _lit_cmp->type       = type;
   _lit_cmp->fields     = fields;
   _lit_cmp->fieldc     = fieldc;
@@ -1095,9 +1001,9 @@ ast_can_impl_cast(Node *from_type, Node *to_type)
 }
 
 Node *
-ast_node_dup(Ast *ast, Node *node)
+ast_node_dup(Arena *arena, Node *node)
 {
-  Node *tmp = ast_create_node(ast, -1, NULL, Node *);
+  Node *tmp = ast_create_node(arena, -1, NULL, Node *);
 #if BL_DEBUG
   int tmp_serial = tmp->_serial;
 #endif

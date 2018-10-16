@@ -164,6 +164,7 @@ builder_new(void)
   builder->uname_cache = bo_array_new_bo(bo_typeof(BString), true);
 
   llvm_init();
+  ast_init_statics();
 
   return builder;
 }

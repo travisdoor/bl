@@ -31,11 +31,13 @@
 #include "blmemory.h"
 #include "assembly.h"
 #include "unit.h"
+#include "types.h"
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
 #define EXPECTED_GSCOPE_COUNT 4096
-#define EXPECTED_TYPE_TABLE_COUNT 4096
+#define AST_ARENA_CHUNK_COUNT 256
+#define TYPE_ARENA_CHUNK_COUNT 256
 
 /* public */
 
@@ -49,13 +51,16 @@ assembly_new(const char *name)
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->ir_queue     = bo_list_new(sizeof(Node *));
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
-  assembly->type_table   = bo_htbl_new(0, EXPECTED_TYPE_TABLE_COUNT);
-  assembly->test_cases = bo_array_new(sizeof(TestCase));
+  assembly->test_cases   = bo_array_new(sizeof(TestCase));
 
   scope_cache_init(&assembly->scope_cache);
-  assembly->gscope = scope_new(assembly->scope_cache, NULL, EXPECTED_GSCOPE_COUNT);
+  arena_init(&assembly->ast_arena, sizeof(Node), AST_ARENA_CHUNK_COUNT,
+             (ArenaElemDtor)ast_node_terminate);
+  arena_init(&assembly->type_arena, sizeof(BlType), TYPE_ARENA_CHUNK_COUNT, NULL);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
+
+  assembly->gscope = scope_new(assembly->scope_cache, NULL, EXPECTED_GSCOPE_COUNT);
 
   return assembly;
 }
@@ -74,7 +79,6 @@ assembly_delete(Assembly *assembly)
   bo_unref(assembly->unique_cache);
   bo_unref(assembly->ir_queue);
   bo_unref(assembly->link_cache);
-  bo_unref(assembly->type_table);
   bo_unref(assembly->test_cases);
 
   /* LLVM cleanup */
@@ -88,6 +92,8 @@ assembly_delete(Assembly *assembly)
   LLVMContextDispose(assembly->llvm_cnt);
 
   scope_cache_terminate(assembly->scope_cache);
+  arena_terminate(&assembly->ast_arena);
+  arena_terminate(&assembly->type_arena);
 
   bl_free(assembly);
 }

@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   unit.h
+// File:   types.c
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,27 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_H
-#define BL_UNIT_H
+#include "types.h"
+#include "arena.h"
 
-#include <llvm-c/Core.h>
-#include "config.h"
-#include "ast.h"
-#include "tokens.h"
+#define EXPECTED_TYPE_COUNT 4096
+#define ARENA_CHUNK_SIZE 512
 
-struct Token;
+BlType type_buildins[8] = {
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 8, .integer.is_signed = false},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 16, .integer.is_signed = false},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 32, .integer.is_signed = false},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 64, .integer.is_signed = false},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 8, .integer.is_signed = true},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 16, .integer.is_signed = true},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 32, .integer.is_signed = true},
+    {.code = BLTYPE_INTEGER, .integer.bit_size = 64, .integer.is_signed = true},
+};
 
-typedef struct
+BlType *
+types_create_type(struct Arena *arena, BlTypeCode code)
 {
-  struct Node *fn;
-  const char * name;
-} TestCase;
-
-/* class Unit object members */
-typedef struct Unit
-{
-  Tokens        tokens;
-  Node *        ast;
-  BArray *      globals;
-  char *        filepath;
-  char *        name;
-  char *        src;
-  struct Token *loaded_from;
-} Unit;
-
-Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from);
-
-Unit *
-unit_new_str(const char *name, const char *src);
-
-void
-unit_delete(Unit *unit);
-
-const char *
-unit_get_src_file(Unit *unit);
-
-const char *
-unit_get_src(Unit *unit);
-
-const char *
-unit_get_src_ln(Unit *unit, int line, long *len);
-
-const char *
-unit_get_name(Unit *unit);
-
-#endif
+  BlType *type = arena_alloc(arena);
+  type->code = code;
+  return type;
+}

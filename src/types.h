@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   unit.h
+// File:   types.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,53 +26,46 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_H
-#define BL_UNIT_H
+#ifndef BL_TYPES_H
+#define BL_TYPES_H
 
-#include <llvm-c/Core.h>
-#include "config.h"
-#include "ast.h"
-#include "tokens.h"
+#include <bobject/containers/htbl.h>
+#include "common.h"
+#include "arena.h"
 
-struct Token;
+#define _BLTYPE_KIND_LIST                                                                          \
+  tk(INTEGER, Integer, integer, struct {                                                           \
+    bool  is_signed;                                                                               \
+    short bit_size;                                                                                \
+  })
+
+#define tk(code, Name, name, data) BLTYPE_##code,
+typedef enum
+{
+  _BLTYPE_KIND_LIST BLTYPE_COUNT
+} BlTypeCode;
+#undef tk
+
+#define tk(code, Name, name, data) typedef data BlType##Name;
+_BLTYPE_KIND_LIST
+#undef tk
 
 typedef struct
 {
-  struct Node *fn;
-  const char * name;
-} TestCase;
+  union
+  {
+#define tk(code, Name, name, data) BlType##Name name;
+    _BLTYPE_KIND_LIST
+#undef tk
+  };
 
-/* class Unit object members */
-typedef struct Unit
-{
-  Tokens        tokens;
-  Node *        ast;
-  BArray *      globals;
-  char *        filepath;
-  char *        name;
-  char *        src;
-  struct Token *loaded_from;
-} Unit;
+  BlTypeCode code;
+} BlType;
 
-Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from);
+/* buildin types */
+extern BlType type_buildins[];
 
-Unit *
-unit_new_str(const char *name, const char *src);
-
-void
-unit_delete(Unit *unit);
-
-const char *
-unit_get_src_file(Unit *unit);
-
-const char *
-unit_get_src(Unit *unit);
-
-const char *
-unit_get_src_ln(Unit *unit, int line, long *len);
-
-const char *
-unit_get_name(Unit *unit);
+BlType *
+types_create_type(struct Arena *arena, BlTypeCode code);
 
 #endif

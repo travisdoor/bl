@@ -36,16 +36,19 @@
 #include <llvm-c/Core.h>
 #include "scope.h"
 #include "unit.h"
+#include "types.h"
+#include "arena.h"
 
 typedef struct
 {
+  Arena                  ast_arena;
+  Arena                  type_arena;
   BArray *               units;           /* array of all units in assembly */
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
   char *                 name;            /* assembly name */
   ScopeCache *           scope_cache;     /* cache for scopes */
   Scope *                gscope;          /* cache for global scope */
-  BHashTable *           type_table;      /* all types used in assembly */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
   BArray *               test_cases;      /* array of all test cases in assembly */
   bool                   has_main;        /* has main method implemented */

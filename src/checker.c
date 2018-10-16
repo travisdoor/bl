@@ -67,7 +67,7 @@ typedef struct
   Builder *   builder;
   Assembly *  assembly;
   Unit *      unit;
-  Ast *       ast;
+  Arena *     ast_arena;
   BHashTable *waiting;
   Scope *     provided_in_gscope;
   BArray *    flatten_cache;
@@ -208,17 +208,17 @@ to_any(Context *cnt, Node **node, Node *any_type)
   /*Node *from_type = ast_get_type(*node);
 
   Node *tmp           = *node;
-  Node *val_base_type = ast_node_dup(cnt->ast, from_type);
+  Node *val_base_type = ast_node_dup(cnt->ast_arena, from_type);
   ast_type_set_ptr(val_base_type, 1);
 
-  Node *u8_ptr = ast_type_fund(cnt->ast, NULL, FTYPE_U8, 1);
-  Node *value  = ast_expr_unary(cnt->ast, NULL, SYM_AND, tmp, val_base_type);
-  value        = ast_expr_cast(cnt->ast, NULL, u8_ptr, value);
+  Node *u8_ptr = ast_type_fund(cnt->ast_arena, NULL, FTYPE_U8, 1);
+  Node *value  = ast_expr_unary(cnt->ast_arena, NULL, SYM_AND, tmp, val_base_type);
+  value        = ast_expr_cast(cnt->ast_arena, NULL, u8_ptr, value);
 
   TokenValue type;
   type.u      = (unsigned long long)ast_type_kind(from_type);
-  value->next = ast_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], type);
-  *node       = ast_lit_cmp(cnt->ast, NULL, any_type, value, 2, NULL);*/
+  value->next = ast_lit(cnt->ast_arena, NULL, &ftypes[FTYPE_S32], type);
+  *node       = ast_lit_cmp(cnt->ast_arena, NULL, any_type, value, 2, NULL);*/
 }
 
 void
@@ -609,7 +609,7 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   if (ast_node_is(*node, NODE_LIT) && from_kind != TYPE_KIND_STRING &&
       from_kind != TYPE_KIND_CHAR && from_kind != TYPE_KIND_REAL &&
       (to_kind == TYPE_KIND_SIZE || to_kind == TYPE_KIND_UINT || to_kind == TYPE_KIND_SINT)) {
-    ast_peek_lit(*node)->type = ast_node_dup(cnt->ast, to_type);
+    ast_peek_lit(*node)->type = ast_node_dup(cnt->ast_arena, to_type);
     return true;
   }
 
@@ -621,8 +621,8 @@ implicit_cast(Context *cnt, Node **node, Node *to_type)
   }
 
   Node *tmp_next = (*node)->next;
-  Node *type_dup = ast_node_dup(cnt->ast, to_type);
-  Node *cast     = ast_create_expr_cast(cnt->ast, NULL, type_dup, *node);
+  Node *type_dup = ast_node_dup(cnt->ast_arena, to_type);
+  Node *cast     = ast_create_expr_cast(cnt->ast_arena, NULL, type_dup, *node);
   cast->next     = tmp_next;
   *node          = cast;
   return true;
@@ -822,7 +822,7 @@ check_expr_unary(Context *cnt, Node **unary)
 
   if (_unary->kind == UNOP_ADR) {
     /* address of */
-    _unary->type = ast_create_type_ptr(cnt->ast, NULL, next_type);
+    _unary->type = ast_create_type_ptr(cnt->ast_arena, NULL, next_type);
   } else if (_unary->kind == UNOP_DEREF) {
     if (next_type_kind != TYPE_KIND_PTR) {
       check_error_node(cnt, ERR_INVALID_TYPE, _unary->next, BUILDER_CUR_WORD,
@@ -958,7 +958,7 @@ check_expr_binop(Context *cnt, Node **binop)
     if (ast_node_is(_binop->lhs, NODE_LIT) &&
         (lhs_kind == TYPE_KIND_SIZE || lhs_kind == TYPE_KIND_UINT || lhs_kind == TYPE_KIND_SINT) &&
         (rhs_kind == TYPE_KIND_SIZE || rhs_kind == TYPE_KIND_UINT || rhs_kind == TYPE_KIND_SINT)) {
-      ast_peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast, rhs_type);
+      ast_peek_lit(_binop->lhs)->type = ast_node_dup(cnt->ast_arena, rhs_type);
     } else if (!implicit_cast(cnt, &_binop->rhs, lhs_type)) {
       check_error_invalid_types(cnt, lhs_type, rhs_type, *binop);
     }
@@ -1034,7 +1034,7 @@ check_expr_typeof(Context *cnt, Node **tpof)
 
   TokenValue value;
   value.u = (unsigned long long)kind;
-  *tpof   = ast_create_lit(cnt->ast, NULL, &ftypes[FTYPE_S32], value);
+  *tpof   = ast_create_lit(cnt->ast_arena, NULL, &ftypes[FTYPE_S32], value);
 
   finish();
 }
@@ -1180,7 +1180,7 @@ infer_type(Context *cnt, Node *decl)
 
   Node *inferred = NULL;
   if (ast_node_is_type(_decl->value)) {
-    inferred = ast_create_type_type(cnt->ast, NULL, _decl->name, _decl->value);
+    inferred = ast_create_type_type(cnt->ast_arena, NULL, _decl->name, _decl->value);
   } else {
     inferred = ast_get_type(_decl->value);
   }
@@ -1397,7 +1397,7 @@ checker_run(Builder *builder, Assembly *assembly)
       .builder            = builder,
       .assembly           = assembly,
       .unit               = NULL,
-      .ast                = NULL,
+      .ast_arena          = &assembly->ast_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .provided_in_gscope = scope_new(assembly->scope_cache, NULL, 4092),
@@ -1410,8 +1410,7 @@ checker_run(Builder *builder, Assembly *assembly)
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    cnt.ast  = &unit->ast;
-    check_flatten(&cnt, &unit->ast.root);
+    check_flatten(&cnt, &unit->ast);
   }
 
   check_unresolved(&cnt);

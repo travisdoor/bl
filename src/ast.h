@@ -37,6 +37,8 @@
 #include "common.h"
 #include "scope.h"
 
+struct Arena;
+
 // clang-format off
 #define _FTYPE_LIST                                                                         \
     ft(VOID,   void) \
@@ -312,7 +314,6 @@ typedef enum
   DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
 
-typedef struct Ast    Ast;
 typedef struct Node   Node;
 typedef enum NodeCode NodeCode;
 
@@ -338,13 +339,6 @@ typedef enum
       BUILDIN_COUNT
 } BuildinType;
 
-extern const char *ftype_strings[];
-extern const char *node_type_strings[];
-extern const char *buildin_strings[];
-
-extern uint64_t ftype_hashes[FTYPE_COUNT];
-extern uint64_t buildin_hashes[BUILDIN_COUNT];
-
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
@@ -366,25 +360,6 @@ _NODE_TYPE_LIST
 #undef nt
 
 // clang-format on
-
-/*************************************************************************************************
- * AST
- *************************************************************************************************/
-struct Chunk;
-
-struct Ast
-{
-  Node *root;
-
-  struct Chunk *first_chunk;
-  struct Chunk *current_chunk;
-};
-
-void
-ast_init(Ast *ast);
-
-void
-ast_terminate(Ast *ast);
 
 /*************************************************************************************************
  * definition node
@@ -414,8 +389,19 @@ struct Node
 };
 
 /* static fundamental type nodes */
-extern Node ftypes[];
-extern Node type_type;
+extern Node        ftypes[];
+extern Node        type_type;
+extern const char *ftype_strings[];
+extern const char *node_type_strings[];
+extern const char *buildin_strings[];
+extern uint64_t    ftype_hashes[FTYPE_COUNT];
+extern uint64_t    buildin_hashes[BUILDIN_COUNT];
+
+void
+ast_init_statics(void);
+
+void
+ast_node_terminate(Node *node);
 
 static inline Src *
 ast_peek_src(Node *n)
@@ -475,7 +461,7 @@ bool
 ast_can_impl_cast(Node *from_type, Node *to_type);
 
 Node *
-ast_node_dup(Ast *Ast, Node *node);
+ast_node_dup(struct Arena *arena, Node *node);
 
 Node *
 ast_unroll_ident(Node *ident);
@@ -500,7 +486,8 @@ _NODE_TYPE_LIST
  * generate constructors definitions
  *************************************************************************************************/
 
-#define _NODE_CTOR(name, ...) Node *ast_create_##name(Ast *_ast, Token *_tok, ##__VA_ARGS__)
+#define _NODE_CTOR(name, ...)                                                                      \
+  Node *ast_create_##name(struct Arena *_arena, Token *_tok, ##__VA_ARGS__)
 
 _NODE_CTOR(bad);
 _NODE_CTOR(load, const char *filepath);
