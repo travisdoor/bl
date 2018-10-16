@@ -278,7 +278,8 @@ is_terminated(Context *cnt)
 static inline bool
 should_load(Node *node, LLVMValueRef llvm_value)
 {
-  if ((ast_node_is(node, NODE_EXPR_UNARY) && ast_peek_expr_unary(node)->op == SYM_ASTERISK)) return true;
+  if ((ast_node_is(node, NODE_EXPR_UNARY) && ast_peek_expr_unary(node)->kind == UNOP_DEREF))
+    return true;
 
   if (ast_node_is(node, NODE_EXPR_MEMBER) && ast_peek_expr_member(node)->kind == MEM_KIND_STRUCT)
     return true;
@@ -294,7 +295,7 @@ to_llvm_type(Context *cnt, Node *type)
 {
   assert(type);
   LLVMTypeRef result = NULL;
-  //int         ptr    = ast_type_get_ptr(type);
+  // int         ptr    = ast_type_get_ptr(type);
   int ptr = 0;
 
   switch (ast_node_code(type)) {
@@ -950,12 +951,12 @@ ir_expr_binop(Context *cnt, Node *binop)
   bool         float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   /* Assignments */
-  switch (_binop->op) {
-  case SYM_ASSIGN:
+  switch (_binop->kind) {
+  case BINOP_ASSIGN:
     LLVMBuildStore(cnt->llvm_builder, rhs, lhs);
     return lhs;
 
-  case SYM_PLUS_ASSIGN: {
+  case BINOP_ADD_ASSIGN: {
     LLVMValueRef value = lhs;
     if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
     if (float_kind)
@@ -965,7 +966,7 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
-  case SYM_MINUS_ASSIGN: {
+  case BINOP_SUB_ASSIGN: {
     LLVMValueRef value = lhs;
     if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
     if (float_kind)
@@ -975,7 +976,7 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
-  case SYM_MUL_ASSIGN: {
+  case BINOP_MUL_ASSIGN: {
     LLVMValueRef value = lhs;
     if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
     if (float_kind)
@@ -985,7 +986,7 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
-  case SYM_DIV_ASSIGN: {
+  case BINOP_DIV_ASSIGN: {
     LLVMValueRef value = lhs;
     if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
     if (float_kind)
@@ -995,7 +996,7 @@ ir_expr_binop(Context *cnt, Node *binop)
     return LLVMBuildStore(cnt->llvm_builder, value, lhs);
   }
 
-  case SYM_MOD_ASSIGN: {
+  case BINOP_MOD_ASSIGN: {
     LLVMValueRef value = lhs;
     if (should_load(_binop->lhs, lhs)) value = LLVMBuildLoad(cnt->llvm_builder, lhs, gname("tmp"));
     value = LLVMBuildSRem(cnt->llvm_builder, value, rhs, gname("tmp"));
@@ -1010,54 +1011,54 @@ ir_expr_binop(Context *cnt, Node *binop)
   lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
-  switch (_binop->op) {
-  case SYM_PLUS:
+  switch (_binop->kind) {
+  case BINOP_ADD:
     if (float_kind) return LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_MINUS:
+  case BINOP_SUB:
     if (float_kind) return LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSub(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_ASTERISK:
+  case BINOP_MUL:
     if (float_kind) return LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildMul(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_SLASH:
+  case BINOP_DIV:
     if (float_kind) return LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
     return LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_MODULO:
+  case BINOP_MOD:
     return LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_EQ:
+  case BINOP_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, gname("tmp"));
 
-  case SYM_NEQ:
+  case BINOP_NEQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, gname("tmp"));
 
-  case SYM_GREATER:
+  case BINOP_GREATER:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, gname("tmp"));
 
-  case SYM_LESS:
+  case BINOP_LESS:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, gname("tmp"));
 
-  case SYM_GREATER_EQ:
+  case BINOP_GREATER_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, gname("tmp"));
 
-  case SYM_LESS_EQ:
+  case BINOP_LESS_EQ:
     if (float_kind) return LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, gname("tmp"));
     return LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, gname("tmp"));
 
-  case SYM_LOGIC_AND:
+  case BINOP_LOGIC_AND:
     return LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
-  case SYM_LOGIC_OR:
+  case BINOP_LOGIC_OR:
     return LLVMBuildOr(cnt->llvm_builder, lhs, rhs, gname("tmp"));
 
   default:
@@ -1073,9 +1074,9 @@ ir_expr_unary(Context *cnt, Node *unary)
   LLVMValueRef next_val  = ir_node(cnt, _unary->next);
   LLVMTypeRef  next_type = LLVMTypeOf(next_val);
 
-  switch (_unary->op) {
-  case SYM_MINUS:
-  case SYM_PLUS: {
+  switch (_unary->kind) {
+  case UNOP_NEG:
+  case UNOP_POS: {
     if (should_load(_unary->next, next_val)) {
       next_val  = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
       next_type = LLVMTypeOf(next_val);
@@ -1085,15 +1086,15 @@ ir_expr_unary(Context *cnt, Node *unary)
     LLVMTypeKind next_type_kind = LLVMGetTypeKind(next_type);
 
     int mult = 1;
-    switch (_unary->op) {
-    case SYM_MINUS:
+    switch (_unary->kind) {
+    case UNOP_NEG:
       mult = -1;
       break;
-    case SYM_PLUS:
+    case UNOP_POS:
       mult = 1;
       break;
     default:
-      bl_abort("invalid unary operation %s", sym_strings[_unary->op]);
+      bl_abort("invalid unary operation %s", sym_strings[_unary->kind]);
     }
 
     if (next_type_kind == LLVMFloatTypeKind || next_type_kind == LLVMDoubleTypeKind) {
@@ -1105,7 +1106,7 @@ ir_expr_unary(Context *cnt, Node *unary)
     return LLVMBuildMul(cnt->llvm_builder, cnst, next_val, "");
   }
 
-  case SYM_NOT: {
+  case UNOP_NOT: {
     if (should_load(_unary->next, next_val)) {
       next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     }
@@ -1114,20 +1115,20 @@ ir_expr_unary(Context *cnt, Node *unary)
     return next_val;
   }
 
-  case SYM_AND: {
+  case UNOP_ADR: {
     /* unary operation is getting address of something "&foo" */
     LLVMValueRef indices[1];
     indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
     return LLVMBuildGEP(cnt->llvm_builder, next_val, indices, ARRAY_SIZE(indices), gname("tmp"));
   }
 
-  case SYM_ASTERISK: {
+  case UNOP_DEREF: {
     next_val = LLVMBuildLoad(cnt->llvm_builder, next_val, gname("tmp"));
     return next_val;
   }
 
   default:
-    bl_abort("invalid unary operation %s", sym_strings[_unary->op]);
+    bl_abort("invalid unary operation %s", sym_strings[_unary->kind]);
   }
 }
 
@@ -1686,7 +1687,8 @@ generate_decl(Context *cnt, Node *decl)
 #if VERBOSE
   bl_log(GREEN("generate: '%s'"), ast_peek_ident(_decl->name)->str);
 #endif
-  cnt->llvm_module = LLVMModuleCreateWithNameInContext(ast_peek_ident(_decl->name)->str, cnt->llvm_cnt);
+  cnt->llvm_module =
+      LLVMModuleCreateWithNameInContext(ast_peek_ident(_decl->name)->str, cnt->llvm_cnt);
   ir_node(cnt, decl);
   bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
   llvm_values_reset(cnt);

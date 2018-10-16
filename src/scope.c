@@ -43,6 +43,7 @@ scope_cache_terminate(ScopeCache *cache)
   barray_foreach(cache, tmp)
   {
     bo_unref(tmp->symbols);
+    bl_free(tmp);
   }
 
   bo_unref(cache);

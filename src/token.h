@@ -34,76 +34,76 @@
 
 // clang-format off
 #define _SYMBOLS_LIST \
-  sm(EOF = 0,      "end") \
-  sm(IDENT,        "identifier") \
-  sm(STRING,       "string") \
-  sm(CHAR,         "char") \
-  sm(NUM,          "number") \
-  sm(FLOAT,        "float") \
-  sm(DOUBLE,       "double") \
-  sm(IF,           "if") /* must be first */ \
-  sm(FN,           "fn") \
-  sm(TYPE,         "type") \
-  sm(CAST,         "cast") \
-  sm(ELSE,         "else") \
-  sm(TRUE,         "true") \
-  sm(NULL,         "null") \
-  sm(ENUM,         "enum") \
-  sm(LOOP,         "loop")\
-  sm(RUN,          "#run")\
-  sm(FALSE,        "false") \
-  sm(BREAK,        "break")\
-  sm(LOAD,         "#load") \
-  sm(LINK,         "#link") \
-  sm(LINE,         "#line") \
-  sm(FILE,         "#file") \
-  sm(TEST,         "#test") \
-  sm(RETURN,       "return") \
-  sm(STRUCT,       "struct") \
-  sm(SIZEOF,       "sizeof") \
-  sm(TYPEOF,       "typeof") \
-  sm(ASSERT,       "assert") \
-  sm(EXTERN,       "#extern") \
-  sm(CONTINUE,     "continue") /* must be last */\
-  sm(MDECL,        ":=") \
-  sm(LCOMMENT,     "//") \
-  sm(LBCOMMENT,    "/*") \
-  sm(RBCOMMENT,    "*/") \
-  sm(LBLOCK,       "{") \
-  sm(RBLOCK,       "}") \
-  sm(LBRACKET,     "[") \
-  sm(RBRACKET,     "]") \
-  sm(LPAREN,       "(") \
-  sm(RPAREN,       ")") \
-  sm(COMMA,        ",") \
-  sm(SEMICOLON,    ";") \
-  sm(IMMDECL,      ":") \
-  sm(VARGS,        "...") \
-  sm(EQ,           "==") /* logical begin */ \
-  sm(NEQ,          "!=") \
-  sm(GREATER_EQ,   ">=") \
-  sm(LESS_EQ,      "<=") \
-  sm(LOGIC_AND,    "&&") \
-  sm(GREATER,      ">") \
-  sm(LESS,         "<") \
-  sm(LOGIC_OR,     "||") /* logical end */ \
-  sm(PLUS_ASSIGN,  "+=") /* assign bebin */ \
-  sm(MINUS_ASSIGN, "-=") \
-  sm(MUL_ASSIGN,   "*=") \
-  sm(DIV_ASSIGN,   "/=") \
-  sm(MOD_ASSIGN,   "%=") \
-  sm(ASSIGN,       "=") /* assign end */\
-  sm(AND,          "&") \
-  sm(OR,           "|") \
-  sm(XOR,          "^") \
-  sm(NOT,          "!") \
-  sm(SLASH,        "/") \
-  sm(MODULO,       "%") \
-  sm(PLUS,         "+") \
-  sm(MINUS,        "-") \
-  sm(ASTERISK,     "*") \
-  sm(DOT,          ".") \
-  sm(NONE,         "") \
+  sm(EOF = 0,        "end") \
+  sm(IDENT,          "identifier") \
+  sm(STRING,         "string") \
+  sm(CHAR,           "char") \
+  sm(NUM,            "number") \
+  sm(FLOAT,          "float") \
+  sm(DOUBLE,         "double") \
+  sm(IF,             "if") /* must be first */ \
+  sm(FN,             "fn") \
+  sm(TYPE,           "type") \
+  sm(CAST,           "cast") \
+  sm(ELSE,           "else") \
+  sm(TRUE,           "true") \
+  sm(NULL,           "null") \
+  sm(ENUM,           "enum") \
+  sm(LOOP,           "loop")\
+  sm(RUN,            "#run")\
+  sm(FALSE,          "false") \
+  sm(BREAK,          "break")\
+  sm(LOAD,           "#load") \
+  sm(LINK,           "#link") \
+  sm(LINE,           "#line") \
+  sm(FILE,           "#file") \
+  sm(TEST,           "#test") \
+  sm(RETURN,         "return") \
+  sm(STRUCT,         "struct") \
+  sm(SIZEOF,         "sizeof") \
+  sm(TYPEOF,         "typeof") \
+  sm(ASSERT,         "assert") \
+  sm(EXTERN,         "#extern") \
+  sm(CONTINUE,       "continue") /* must be last */\
+  sm(MDECL,          ":=") \
+  sm(LCOMMENT,       "//") \
+  sm(LBCOMMENT,      "/*") \
+  sm(RBCOMMENT,      "*/") \
+  sm(LBLOCK,         "{") \
+  sm(RBLOCK,         "}") \
+  sm(LBRACKET,       "[") \
+  sm(RBRACKET,       "]") \
+  sm(LPAREN,         "(") \
+  sm(RPAREN,         ")") \
+  sm(COMMA,          ",") \
+  sm(SEMICOLON,      ";") \
+  sm(IMMDECL,        ":") \
+  sm(VARGS,          "...") \
+  sm(EQ,             "==") /* logical begin */ \
+  sm(NEQ,            "!=") \
+  sm(GREATER_EQ,     ">=") \
+  sm(LESS_EQ,        "<=") \
+  sm(LOGIC_AND,      "&&") \
+  sm(GREATER,        ">") \
+  sm(LESS,           "<") \
+  sm(LOGIC_OR,       "||") /* logical end */ \
+  sm(PLUS_ASSIGN,    "+=") /* assign bebin */ \
+  sm(MINUS_ASSIGN,   "-=") \
+  sm(ASTERISK_ASSIGN,"*=") \
+  sm(SLASH_ASSIGN,   "/=") \
+  sm(PERCENT_ASSIGN, "%=") \
+  sm(ASSIGN,         "=") /* assign end */\
+  sm(AND,            "&") \
+  sm(OR,             "|") \
+  sm(XOR,            "^") \
+  sm(NOT,            "!") \
+  sm(SLASH,          "/") \
+  sm(PERCENT,         "%") \
+  sm(PLUS,           "+") \
+  sm(MINUS,          "-") \
+  sm(ASTERISK,       "*") \
+  sm(DOT,            ".") \
+  sm(NONE,           "") \
 
 typedef enum {
 #define sm(tok, str) SYM_##tok,

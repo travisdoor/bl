@@ -154,17 +154,17 @@ eval_binop(Eval *eval, Node *binop)
     result.s64 = a.s64 op b.s64;                                                                   \
   }
 
-  switch (_binop->op) {
-  case SYM_PLUS:
+  switch (_binop->kind) {
+  case BINOP_ADD:
     operate(+);
     break;
-  case SYM_MINUS:
+  case BINOP_SUB:
     operate(-);
     break;
-  case SYM_ASTERISK:
+  case BINOP_MUL:
     operate(*);
     break;
-  case SYM_SLASH:
+  case BINOP_DIV:
     operate(/);
     break;
   default:

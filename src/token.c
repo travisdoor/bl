@@ -70,7 +70,7 @@ token_prec(Token *token, bool unary)
     // * / %
   case SYM_ASTERISK:
   case SYM_SLASH:
-  case SYM_MODULO:
+  case SYM_PERCENT:
     return 40;
 
     // + -
@@ -118,9 +118,9 @@ token_prec(Token *token, bool unary)
   case SYM_ASSIGN:
   case SYM_PLUS_ASSIGN:
   case SYM_MINUS_ASSIGN:
-  case SYM_MUL_ASSIGN:
-  case SYM_DIV_ASSIGN:
-  case SYM_MOD_ASSIGN:
+  case SYM_ASTERISK_ASSIGN:
+  case SYM_SLASH_ASSIGN:
+  case SYM_PERCENT_ASSIGN:
     return 4;
 
   default:

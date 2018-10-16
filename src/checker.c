@@ -820,10 +820,10 @@ check_expr_unary(Context *cnt, Node **unary)
 
   TypeKind next_type_kind = ast_type_kind(next_type);
 
-  if (_unary->op == SYM_AND) {
+  if (_unary->kind == UNOP_ADR) {
     /* address of */
     _unary->type = ast_create_type_ptr(cnt->ast, NULL, next_type);
-  } else if (_unary->op == SYM_ASTERISK) {
+  } else if (_unary->kind == UNOP_DEREF) {
     if (next_type_kind != TYPE_KIND_PTR) {
       check_error_node(cnt, ERR_INVALID_TYPE, _unary->next, BUILDER_CUR_WORD,
                        "cannot dereference non-pointer type");

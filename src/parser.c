@@ -851,7 +851,7 @@ parse_unary_expr(Context *cnt, Token *op)
 
     if (ast_node_is(next, NODE_BAD)) return next;
 
-    return ast_create_expr_unary(cnt->ast, curr_op, curr_op->sym, next, NULL);
+    return ast_create_expr_unary(cnt->ast, curr_op, (UnopKind) curr_op->sym, next, NULL);
   } else {
     return parse_atom_expr(cnt, op);
   }
@@ -994,7 +994,7 @@ _parse_expr(Context *cnt, Node *lhs, int min_precedence)
         result_type = &ftypes[FTYPE_BOOL];
       }
 
-      lhs = ast_create_expr_binop(cnt->ast, op, tmp, rhs, result_type, op->sym);
+      lhs = ast_create_expr_binop(cnt->ast, op, tmp, rhs, result_type, (BinopKind) op->sym);
     } else {
       parse_error(cnt, ERR_EXPECTED_BINOP, op, BUILDER_CUR_WORD, "expected binary operation");
       tokens_consume_till(cnt->tokens, SYM_SEMICOLON);

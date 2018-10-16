@@ -270,7 +270,7 @@ print_unary(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeExprUnary *_unary = ast_peek_expr_unary(node);
-  fprintf(stdout, "%s ", sym_strings[_unary->op]);
+  fprintf(stdout, "%s ", sym_strings[_unary->kind]);
   print_type(_unary->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -353,7 +353,7 @@ print_binop(Visitor *visitor, Node *node, int pad)
 {
   print_head(node, pad);
   NodeExprBinop *_binop = ast_peek_expr_binop(node);
-  fprintf(stdout, "'%s' ", sym_strings[_binop->op]);
+  fprintf(stdout, "'%s' ", sym_strings[_binop->kind]);
   print_type(_binop->type);
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }

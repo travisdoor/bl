@@ -109,9 +109,9 @@
     void *_; \
   }) \
   nt(DECL, Decl, decl, struct { \
+    Node       *type; \
     DeclKind    kind; \
     Node       *name; \
-    Node       *type; \
     Node       *value; \
     bool        mutable; \
     int         flags; \
@@ -120,17 +120,17 @@
     BHashTable *deps; \
   }) \
   nt(MEMBER, Member, member, struct { \
-    Node *name; \
     Node *type; \
+    Node *name; \
     int   order; \
   }) \
   nt(ARG, Arg, arg, struct { \
-    Node *name; \
     Node *type; \
+    Node *name; \
   }) \
   nt(VARIANT, Variant, variant, struct { \
-    Node *name; \
     Node *type; \
+    Node *name; \
     Node *value; \
   }) \
   nt(TYPE_TYPE, TypeType, type_type, struct { \
@@ -186,10 +186,10 @@
     Node *next; \
   }) \
   nt(EXPR_BINOP, ExprBinop, expr_binop, struct { \
-    Node *lhs; \
-    Node *rhs; \
-    Node *type; \
-    Sym   op; \
+    Node     *type; \
+    Node     *lhs; \
+    Node     *rhs; \
+    BinopKind kind; \
   }) \
   nt(EXPR_CALL, ExprCall, expr_call, struct { \
     Node *ref; \
@@ -199,30 +199,30 @@
     bool  run; \
   }) \
   nt(EXPR_MEMBER, ExprMember, expr_member, struct { \
+    Node      *type; \
     MemberKind kind; \
     Node      *ident; \
     Node      *next; \
-    Node      *type; \
     bool       ptr_ref; \
     int        i; \
   }) \
   nt(EXPR_ELEM, ExprElem, expr_elem, struct { \
-    Node       *next; \
     Node       *type; \
+    Node       *next; \
     Node       *index; \
   }) \
   nt(EXPR_SIZEOF, ExprSizeof, expr_sizeof, struct { \
-    Node *in; \
     Node *type; \
+    Node *in; \
   }) \
   nt(EXPR_TYPEOF, ExprTypeof, expr_typeof, struct { \
-    Node *in; \
     Node *type; \
+    Node *in; \
   }) \
   nt(EXPR_UNARY, ExprUnary, expr_unary, struct { \
-    Sym   op; \
-    Node *next; \
-    Node *type; \
+    Node    *type; \
+    UnopKind kind; \
+    Node    *next; \
   }) \
   nt(EXPR_NULL, ExprNull, expr_null, struct { \
     Node *type;		    \
@@ -272,6 +272,39 @@ typedef enum
   FLAG_MAIN   = 1 << 1, /* main method */
   FLAG_TEST   = 1 << 2, /* test case */
 } NodeFlag;
+
+/* map symbols to binary operation kind */
+typedef enum
+{
+  BINOP_ASSIGN     = SYM_ASSIGN,
+  BINOP_ADD_ASSIGN = SYM_PLUS_ASSIGN,
+  BINOP_SUB_ASSIGN = SYM_MINUS_ASSIGN,
+  BINOP_MUL_ASSIGN = SYM_ASTERISK_ASSIGN,
+  BINOP_DIV_ASSIGN = SYM_SLASH_ASSIGN,
+  BINOP_MOD_ASSIGN = SYM_PERCENT_ASSIGN,
+  BINOP_ADD        = SYM_PLUS,
+  BINOP_SUB        = SYM_MINUS,
+  BINOP_MUL        = SYM_ASTERISK,
+  BINOP_DIV        = SYM_SLASH,
+  BINOP_MOD        = SYM_PERCENT,
+  BINOP_EQ         = SYM_EQ,
+  BINOP_NEQ        = SYM_NEQ,
+  BINOP_GREATER    = SYM_GREATER,
+  BINOP_LESS       = SYM_LESS,
+  BINOP_GREATER_EQ = SYM_GREATER_EQ,
+  BINOP_LESS_EQ    = SYM_LESS_EQ,
+  BINOP_LOGIC_AND  = SYM_LOGIC_AND,
+  BINOP_LOGIC_OR   = SYM_LOGIC_OR
+} BinopKind;
+
+typedef enum
+{
+  UNOP_NEG   = SYM_MINUS,
+  UNOP_POS   = SYM_PLUS,
+  UNOP_NOT   = SYM_NOT,
+  UNOP_ADR   = SYM_AND,
+  UNOP_DEREF = SYM_ASTERISK
+} UnopKind;
 
 typedef enum
 {
@@ -496,14 +529,14 @@ _NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope);
 _NODE_CTOR(type_ptr, Node *type);
 _NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope);
 _NODE_CTOR(lit, Node *type, TokenValue value);
-_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op);
+_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind);
 _NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
 _NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i);
 _NODE_CTOR(expr_elem, Node *next, Node *type, Node *index);
 _NODE_CTOR(expr_sizeof, Node *in, Node *type);
 _NODE_CTOR(expr_typeof, Node *in, Node *type);
 _NODE_CTOR(expr_cast, Node *type, Node *next);
-_NODE_CTOR(expr_unary, Sym op, Node *next, Node *type);
+_NODE_CTOR(expr_unary, UnopKind kind, Node *next, Node *type);
 _NODE_CTOR(expr_null, Node *type);
 
 /*************************************************************************************************

@@ -420,13 +420,13 @@ _NODE_CTOR(lit, Node *type, TokenValue value)
   return (Node *)_lit;
 }
 
-_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, Sym op)
+_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind)
 {
   NodeExprBinop *_expr_binop = ast_create_node(_ast, NODE_EXPR_BINOP, _tok, NodeExprBinop *);
   _expr_binop->lhs           = lhs;
   _expr_binop->rhs           = rhs;
   _expr_binop->type          = type;
-  _expr_binop->op            = op;
+  _expr_binop->kind          = kind;
   return (Node *)_expr_binop;
 }
 
@@ -486,12 +486,12 @@ _NODE_CTOR(expr_cast, Node *type, Node *next)
   return (Node *)_expr_cast;
 }
 
-_NODE_CTOR(expr_unary, Sym op, Node *next, Node *type)
+_NODE_CTOR(expr_unary, UnopKind kind, Node *next, Node *type)
 {
   NodeExprUnary *_expr_unary = ast_create_node(_ast, NODE_EXPR_UNARY, _tok, NodeExprUnary *);
   _expr_unary->next          = next;
   _expr_unary->type          = type;
-  _expr_unary->op            = op;
+  _expr_unary->kind          = kind;
   return (Node *)_expr_unary;
 }
 
