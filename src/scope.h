@@ -39,26 +39,33 @@ struct Arena;
 
 typedef struct ScopeEntry
 {
-  struct Type *type;
   struct Node *ident;
+  struct Type *type;
+  bool         is_buildin;
 } ScopeEntry;
 
 typedef struct Scope
 {
   struct Scope *parent;
-  BHashTable *entries;
+  BHashTable *  entries;
 } Scope;
 
 void
 scope_arena_init(struct Arena *arena);
 
+void
+scope_entry_arena_init(struct Arena *arena);
+
 Scope *
 scope_create(struct Arena *arena, Scope *parent, size_t size);
 
 void
-scope_insert(Scope *scope, struct Node *ident, struct Node *node);
+scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);
 
 ScopeEntry *
 scope_lookup(Scope *scope, struct Node *ident, bool in_tree);
+
+ScopeEntry *
+scope_create_entry(struct Arena *arena, struct Node *ident, struct Type *type, bool is_buildin);
 
 #endif

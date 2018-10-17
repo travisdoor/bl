@@ -52,6 +52,7 @@ assembly_new(const char *name)
   assembly->test_cases   = bo_array_new(sizeof(TestCase));
 
   scope_arena_init(&assembly->scope_arena);
+  scope_entry_arena_init(&assembly->scope_entry_arena);
   ast_init(&assembly->ast_arena);
   types_init(&assembly->type_arena);
   assembly->gscope = scope_create(&assembly->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
@@ -89,6 +90,7 @@ assembly_delete(Assembly *assembly)
   arena_terminate(&assembly->scope_arena);
   arena_terminate(&assembly->ast_arena);
   arena_terminate(&assembly->type_arena);
+  arena_terminate(&assembly->scope_entry_arena);
 
   bl_free(assembly);
 }

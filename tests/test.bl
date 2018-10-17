@@ -1,4 +1,5 @@
 /* playground */
 
-i s32;
-j s32;
+i s32 : 10;
+j : 10;
+o : kokot;

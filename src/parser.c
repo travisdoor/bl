@@ -157,9 +157,6 @@ static Node *
 parse_type(Context *cnt);
 
 static Node *
-parse_type_fund(Context *cnt);
-
-static Node *
 parse_type_vargs(Context *cnt);
 
 static Node *
@@ -1068,18 +1065,9 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_enum(cnt);
   if (!type) type = parse_type_vargs(cnt);
   if (!type) type = parse_type_arr(cnt);
-  if (!type) type = parse_type_fund(cnt);
+  if (!type) type = parse_ident(cnt);
 
   return type;
-}
-
-Node *
-parse_type_fund(Context *cnt)
-{
-  Node *type_ident = parse_ident(cnt);
-  if (!type_ident) return NULL;
-
-  return type_ident;
 }
 
 Node *

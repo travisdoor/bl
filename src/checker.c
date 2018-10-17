@@ -41,6 +41,8 @@
 #include "ast.h"
 #include "eval.h"
 
+#define FLATTEN_ARENA_CHUNK_COUNT 128
+
 #define VERBOSE 0
 #define VERBOSE_MULTIPLE_CHECK 0
 
@@ -64,11 +66,13 @@
 typedef struct
 {
   Eval        evaluator;
+  Arena       flatten_arena;
   Builder *   builder;
   Assembly *  assembly;
   Unit *      unit;
   Arena *     ast_arena;
   Arena *     type_arena;
+  Arena *     scope_entry_arena;
   BHashTable *waiting;
   Scope *     provided_in_gscope;
   BArray *    flatten_cache;
@@ -76,34 +80,34 @@ typedef struct
 
 typedef struct
 {
-  BArray *flatten;
+  BArray *stack;
   Node *  waitfor;
   size_t  i;
-} FIter;
+} Flatten;
 
 static void
-provide(Node *ident, Node *provided);
+provide(Context *cnt, Node *ident, Node *provided);
 
 static inline void
-waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor);
+waiting_push(BHashTable *waiting, Flatten *flatten);
 
 static void
 waiting_resume(Context *cnt, Node *ident);
 
-static BArray *
-flatten_get(BArray *cache);
+static Flatten *
+flatten_get(Context *cnt);
 
 static void
-flatten_put(BArray *cache, BArray *flatten);
+flatten_put(Context *cnt, Flatten *flatten);
 
 static void
-flatten_free_cache(BArray *cache);
+flatten_dtor(Flatten *flatten);
 
 static inline void
-flatten_push(BArray *flatten, Node **node);
+flatten_push(Flatten *flatten, Node **node);
 
 static void
-flatten_node(Context *cnt, BArray *fbuf, Node **node);
+flatten_node(Context *cnt, Flatten *fbuf, Node **node);
 
 static bool
 implicit_cast(Context *cnt, Node **node, Node *to_type);
@@ -112,18 +116,21 @@ static inline void
 check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos);
 
 static void
-check_flatten(Context *cnt, Node **node);
+flatten_check(Context *cnt, Node **node);
 
 static void
-process_flatten(Context *cnt, FIter *fit);
+flatten_process(Context *cnt, Flatten *flatten);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
 static Node *
 check_node(Context *cnt, Node **node);
 
+static Node *
+check_ident(Context *cnt, Node **ident);
+
 void
-provide(Node *ident, Node *provided)
+provide(Context *cnt, Node *ident, Node *provided)
 {
   assert(ident && provided && "trying to provide invalid symbol");
   Scope *scope = ast_peek_ident(ident)->scope;
@@ -132,23 +139,26 @@ provide(Node *ident, Node *provided)
 #if VERBOSE
   bl_log("providing " MAGENTA("'%s'") " (%d)", ast_peek_ident(ident)->str, ident->_serial);
 #endif
-  scope_insert(scope, ident, provided);
+  /* TODO: set type!!! */
+  /* TODO: set type!!! */
+  /* TODO: set type!!! */
+  ScopeEntry *entry = scope_create_entry(cnt->scope_entry_arena, ident, NULL, false);
+  scope_insert(scope, ast_peek_ident(ident)->hash, entry);
 }
 
 void
-waiting_push(BHashTable *waiting, Node *node, FIter fiter, Node *waitfor)
+waiting_push(BHashTable *waiting, Flatten *flatten)
 {
-  NodeIdent *_waitfor = ast_peek_ident(waitfor);
+  NodeIdent *_waitfor = ast_peek_ident(flatten->waitfor);
   BArray *   queue;
   if (bo_htbl_has_key(waiting, _waitfor->hash)) {
     queue = bo_htbl_at(waiting, _waitfor->hash, BArray *);
   } else {
-    queue = bo_array_new(sizeof(FIter));
+    queue = bo_array_new(sizeof(Flatten *));
     bo_htbl_insert(waiting, _waitfor->hash, queue);
   }
   assert(queue);
-  fiter.waitfor = waitfor;
-  bo_array_push_back(queue, fiter);
+  bo_array_push_back(queue, flatten);
 }
 
 void
@@ -163,13 +173,13 @@ waiting_resume(Context *cnt, Node *ident)
   assert(q && "invalid flattens queue");
 
   /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
-   * 'process_flatten' method */
-  FIter     fit;
+   * 'flatten_process' method */
+  Flatten *flatten;
   const int c = (int)bo_array_size(q);
   for (int i = c - 1; i >= 0; --i) {
-    fit = bo_array_at(q, i, FIter);
+    flatten = bo_array_at(q, i, Flatten *);
     bo_array_erase(q, i);
-    process_flatten(cnt, &fit);
+    flatten_process(cnt, flatten);
   }
 
   if (bo_array_empty(q)) bo_htbl_erase_key(cnt->waiting, _ident->hash);
@@ -180,7 +190,7 @@ check_unresolved(Context *cnt)
 {
   bo_iterator_t iter;
   BArray *      q;
-  FIter         tmp;
+  Flatten *flatten;
 
   bhtbl_foreach(cnt->waiting, iter)
   {
@@ -189,63 +199,91 @@ check_unresolved(Context *cnt)
 
     // bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
-      tmp = bo_array_at(q, i, FIter);
-      assert(tmp.waitfor);
-      if (!scope_lookup(cnt->provided_in_gscope, tmp.waitfor, false))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, tmp.waitfor, BUILDER_CUR_WORD, "unknown symbol");
-      flatten_put(cnt->flatten_cache, tmp.flatten);
+      flatten = bo_array_at(q, i, Flatten *);
+      assert(flatten->waitfor);
+      if (!scope_lookup(cnt->provided_in_gscope, flatten->waitfor, false))
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, flatten->waitfor, BUILDER_CUR_WORD, "unknown symbol");
+      flatten_put(cnt, flatten);
     }
   }
 }
 
-#if BL_DEBUG
-static int _flatten = 0;
-#endif
-BArray *
-flatten_get(BArray *cache)
+Flatten *
+flatten_get(Context *cnt)
 {
-  BArray *tmp = NULL;
-  if (bo_array_size(cache) == 0) {
-    tmp = bo_array_new(sizeof(Node *));
+  Flatten *tmp = NULL;
+  if (bo_array_size(cnt->flatten_cache) == 0) {
+    tmp          = arena_alloc(&cnt->flatten_arena);
+    tmp->stack   = bo_array_new(sizeof(Node *));
+    tmp->i       = 0;
+    tmp->waitfor = NULL;
   } else {
-    tmp = bo_array_at(cache, 0, BArray *);
-    bo_array_erase(cache, 0);
+    tmp = bo_array_at(cnt->flatten_cache, 0, Flatten *);
+    bo_array_erase(cnt->flatten_cache, 0);
   }
+
   assert(tmp);
-#if BL_DEBUG
-  ++_flatten;
-#endif
   return tmp;
 }
 
 void
-flatten_put(BArray *cache, BArray *flatten)
+flatten_put(Context *cnt, Flatten *flatten)
 {
-#if BL_DEBUG
-  --_flatten;
-#endif
-  bo_array_clear(flatten);
-  bo_array_push_back(cache, flatten);
+  bo_array_clear(flatten->stack);
+  flatten->i       = 0;
+  flatten->waitfor = NULL;
+  bo_array_push_back(cnt->flatten_cache, flatten);
 }
 
 void
-flatten_free_cache(BArray *cache)
+flatten_dtor(Flatten *flatten)
 {
-  BArray *it;
-  barray_foreach(cache, it)
-  {
-    bo_unref(it);
+  bo_unref(flatten->stack);
+}
+
+void
+flatten_push(Flatten *flatten, Node **node)
+{
+  bo_array_push_back(flatten->stack, node);
+}
+
+void
+flatten_process(Context *cnt, Flatten *flatten)
+{
+  assert(flatten);
+  bool interrupted = false;
+
+  Node * waitfor;
+  Node **tmp;
+  for (; flatten->i < bo_array_size(flatten->stack); ++flatten->i) {
+    tmp = bo_array_at(flatten->stack, flatten->i, Node **);
+    assert(*tmp);
+    /* NULL means successfull check */
+    waitfor = check_node(cnt, tmp);
+    if (waitfor) {
+      flatten->waitfor = waitfor;
+      waiting_push(cnt->waiting, flatten);
+      interrupted = true;
+      break;
+    }
+  }
+
+  if (!interrupted) {
+    flatten_put(cnt, flatten);
   }
 }
 
 void
-flatten_push(BArray *flatten, Node **node)
+flatten_check(Context *cnt, Node **node)
 {
-  bo_array_push_back(flatten, node);
+  Flatten *flatten = flatten_get(cnt);
+
+  flatten_node(cnt, flatten, node);
+  flatten_process(cnt, flatten);
 }
 
 void
-flatten_node(Context *cnt, BArray *fbuf, Node **node)
+flatten_node(Context *cnt, Flatten *fbuf, Node **node)
 {
   if (!*node) return;
 
@@ -256,8 +294,8 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     NodeDecl *_decl = ast_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
-    if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
-      scope_insert(cnt->provided_in_gscope, _decl->name, *node);
+    /*if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
+      scope_insert(cnt->provided_in_gscope, _decl->name, *node);*/
 
     flatten(&_decl->type);
     flatten(&_decl->value);
@@ -286,7 +324,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
   case NODE_LIT_FN: {
     NodeLitFn *_fn = ast_peek_lit_fn(*node);
     flatten(&_fn->type);
-    check_flatten(cnt, &_fn->block);
+    flatten_check(cnt, &_fn->block);
     break;
   }
 
@@ -329,7 +367,7 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
     Node **tmp;
     node_foreach_ref(_ublock->nodes, tmp)
     {
-      check_flatten(cnt, tmp);
+      flatten_check(cnt, tmp);
     }
     break;
   }
@@ -459,45 +497,6 @@ flatten_node(Context *cnt, BArray *fbuf, Node **node)
 }
 
 void
-check_flatten(Context *cnt, Node **node)
-{
-  FIter fit;
-  fit.flatten = flatten_get(cnt->flatten_cache);
-  fit.i       = 0;
-  fit.waitfor = NULL;
-
-  flatten_node(cnt, fit.flatten, node);
-  process_flatten(cnt, &fit);
-}
-
-void
-process_flatten(Context *cnt, FIter *fit)
-{
-  assert(fit);
-  assert(fit->flatten && "invalid flatten");
-  bool interrupted = false;
-
-  Node * waitfor;
-  Node **tmp;
-  for (; fit->i < bo_array_size(fit->flatten); ++fit->i) {
-    tmp = bo_array_at(fit->flatten, fit->i, Node **);
-    assert(*tmp);
-    /* NULL means successfull check */
-    waitfor = check_node(cnt, tmp);
-    if (waitfor) {
-      waiting_push(cnt->waiting, *tmp, *fit, waitfor);
-      interrupted = true;
-      break;
-    }
-  }
-
-  if (!interrupted) {
-    flatten_put(cnt->flatten_cache, fit->flatten);
-    fit->flatten = NULL;
-  }
-}
-
-void
 check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos)
 {
   char tmp_first[256];
@@ -519,6 +518,9 @@ check_node(Context *cnt, Node **node)
 #endif
 
   switch (ast_node_code(*node)) {
+  case NODE_IDENT:
+    result = check_ident(cnt, node);
+    break;
   default:
     break;
   }
@@ -544,6 +546,18 @@ check_node(Context *cnt, Node **node)
   return result;
 }
 
+Node *
+check_ident(Context *cnt, Node **ident)
+{
+  NodeIdent *_ident = ast_peek_ident(*ident);
+
+  Scope *scope = _ident->scope;
+  assert(scope);
+  ScopeEntry *entry = scope_lookup(scope, *ident, true);
+  if (!entry) wait(*ident);
+  finish();
+}
+
 void
 checker_run(Builder *builder, Assembly *assembly)
 {
@@ -553,10 +567,17 @@ checker_run(Builder *builder, Assembly *assembly)
       .unit               = NULL,
       .ast_arena          = &assembly->ast_arena,
       .type_arena         = &assembly->type_arena,
+      .scope_entry_arena  = &assembly->scope_entry_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
   };
+
+  arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
+             (ArenaElemDtor)flatten_dtor);
+
+  /* add buildin symbols to global scope table */
+  types_add_builinds(assembly->gscope, &assembly->scope_entry_arena);
 
   /* TODO: stack size */
   eval_init(&cnt.evaluator, 1024);
@@ -565,12 +586,10 @@ checker_run(Builder *builder, Assembly *assembly)
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    check_flatten(&cnt, &unit->ast);
+    flatten_check(&cnt, &unit->ast);
   }
 
   check_unresolved(&cnt);
-
-  flatten_free_cache(cnt.flatten_cache);
 
   if (!assembly->has_main && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
     builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
@@ -579,8 +598,6 @@ checker_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
-#if BL_DEBUG
-  if (_flatten != 0) bl_log(RED("leaking flatten cache: %d"), _flatten);
-#endif
   eval_terminate(&cnt.evaluator);
+  arena_terminate(&cnt.flatten_arena);
 }

@@ -43,7 +43,8 @@ typedef struct
 {
   Arena                  ast_arena;
   Arena                  type_arena;
-  Arena                  scope_arena;     /* cache for scopes */
+  Arena                  scope_arena; 
+  Arena                  scope_entry_arena;
   BArray *               units;           /* array of all units in assembly */
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */

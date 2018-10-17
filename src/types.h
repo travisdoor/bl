@@ -33,6 +33,7 @@
 #include "common.h"
 
 struct Arena;
+struct Scope;
 
 typedef enum
 {
@@ -129,10 +130,13 @@ struct Type
 // clang-format on
 
 /* buildin types */
-extern Type type_buildins[];
+extern Type types_buildins[];
 
 void
 types_init(struct Arena *arena);
+
+void
+types_add_builinds(struct Scope *scope, struct Arena *scope_entry_arena);
 
 Type *
 types_create_type(struct Arena *arena, TypeCode code);

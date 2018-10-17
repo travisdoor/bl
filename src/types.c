@@ -26,90 +26,92 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <bobject/containers/hash.h>
 #include "types.h"
 #include "arena.h"
+#include "scope.h"
 
 #define ARENA_CHUNK_COUNT 256
 
-Type type_buildins[TYPE_BUILDIN_COUNT] = {
+Type types_buildins[TYPE_BUILDIN_COUNT] = {
     // type
     {.code = TYPE_TYPE, .base = NULL, .name = "type"},
 
     // void
-    {.code = TYPE_VOID, .base = &type_buildins[TYPE_BUILDIN_TYPE], .name = "void"},
+    {.code = TYPE_VOID, .base = &types_buildins[TYPE_BUILDIN_TYPE], .name = "void"},
 
     // u8
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u8",
      .integer.bit_size  = 8,
      .integer.is_signed = false},
 
     // u16
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u16",
      .integer.bit_size  = 16,
      .integer.is_signed = false},
 
     // u32
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u32",
      .integer.bit_size  = 32,
      .integer.is_signed = false},
 
     // u64
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u64",
      .integer.bit_size  = 64,
      .integer.is_signed = false},
 
     // s8
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s8",
      .integer.bit_size  = 8,
      .integer.is_signed = true},
 
     // s16
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s16",
      .integer.bit_size  = 16,
      .integer.is_signed = true},
 
     // s32
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s32",
      .integer.bit_size  = 32,
      .integer.is_signed = true},
 
     // s64
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s64",
      .integer.bit_size  = 64,
      .integer.is_signed = true},
 
     // usize
     {.code              = TYPE_INTEGER,
-     .base              = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "usize",
      .integer.bit_size  = 64,
      .integer.is_signed = true},
 
     // f32
     {.code          = TYPE_REAL,
-     .base          = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base          = &types_buildins[TYPE_BUILDIN_TYPE],
      .name          = "f32",
      .real.bit_size = 32},
 
     // f64
     {.code          = TYPE_REAL,
-     .base          = &type_buildins[TYPE_BUILDIN_TYPE],
+     .base          = &types_buildins[TYPE_BUILDIN_TYPE],
      .name          = "f64",
      .real.bit_size = 64},
 };
@@ -118,6 +120,19 @@ void
 types_init(Arena *arena)
 {
   arena_init(arena, sizeof(Type), ARENA_CHUNK_COUNT, NULL);
+}
+
+void
+types_add_builinds(Scope *scope, Arena *scope_entry_arena)
+{
+  ScopeEntry *entry;
+  uint64_t    key;
+
+  for (int i = 0; i < TYPE_BUILDIN_COUNT; ++i) {
+    entry = scope_create_entry(scope_entry_arena, NULL, &types_buildins[i], true);
+    key   = bo_hash_from_str(types_buildins[i].name);
+    scope_insert(scope, key, entry);
+  }
 }
 
 Type *
