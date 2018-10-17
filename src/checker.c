@@ -129,6 +129,9 @@ check_node(Context *cnt, Node **node);
 static Node *
 check_ident(Context *cnt, Node **ident);
 
+static Node *
+check_lit(Context *cnt, Node **lit);
+
 void
 provide(Context *cnt, Node *ident, Node *provided)
 {
@@ -174,7 +177,7 @@ waiting_resume(Context *cnt, Node *ident)
 
   /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
    * 'flatten_process' method */
-  Flatten *flatten;
+  Flatten * flatten;
   const int c = (int)bo_array_size(q);
   for (int i = c - 1; i >= 0; --i) {
     flatten = bo_array_at(q, i, Flatten *);
@@ -190,7 +193,7 @@ check_unresolved(Context *cnt)
 {
   bo_iterator_t iter;
   BArray *      q;
-  Flatten *flatten;
+  Flatten *     flatten;
 
   bhtbl_foreach(cnt->waiting, iter)
   {
@@ -202,7 +205,8 @@ check_unresolved(Context *cnt)
       flatten = bo_array_at(q, i, Flatten *);
       assert(flatten->waitfor);
       if (!scope_lookup(cnt->provided_in_gscope, flatten->waitfor, false))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, flatten->waitfor, BUILDER_CUR_WORD, "unknown symbol");
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, flatten->waitfor, BUILDER_CUR_WORD,
+                         "unknown symbol");
       flatten_put(cnt, flatten);
     }
   }
@@ -521,6 +525,13 @@ check_node(Context *cnt, Node **node)
   case NODE_IDENT:
     result = check_ident(cnt, node);
     break;
+  case NODE_LIT_BOOL:
+  case NODE_LIT_CHAR:
+  case NODE_LIT_FLOAT:
+  case NODE_LIT_INT:
+  case NODE_LIT_STRING:
+    result = check_lit(cnt, node);
+    break;
   default:
     break;
   }
@@ -556,6 +567,19 @@ check_ident(Context *cnt, Node **ident)
   ScopeEntry *entry = scope_lookup(scope, *ident, true);
   if (!entry) wait(*ident);
   finish();
+}
+
+Node *
+check_lit(Context *cnt, Node **lit)
+{
+  switch (ast_node_code(*lit)) {
+  case NODE_LIT_INT: {
+    finish();
+  }
+
+  default:
+    bl_abort("invliad literal %s", ast_node_name(*lit));
+  }
 }
 
 void

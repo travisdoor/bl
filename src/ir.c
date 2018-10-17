@@ -1856,6 +1856,7 @@ ir_run(Builder *builder, Assembly *assembly)
 }
 #endif
 
+
 void
 ir_run(Builder *builder, Assembly *assembly)
 {}

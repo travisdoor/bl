@@ -24,6 +24,7 @@ find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
         src/bldebug.h
+        src/ir.h
         src/error.h 
         src/config.h
 	src/messages.h

@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   stages.h
+// File:   ir.h
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,55 +26,29 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_STAGES_H
-#define BL_STAGES_H
+#ifndef BL_IR_H
+#define BL_IR_H
 
-#include "builder.h"
-#include "unit.h"
-#include "assembly.h"
-#include "error.h"
-#include "ir.h"
+#include "common.h"
 
-/*
- * per unit
- */
-void
-file_loader_run(Builder *builder, Unit *unit);
+struct Arena;
+struct Type;
+struct Node;
 
-void
-lexer_run(Builder *builder, Unit *unit);
+typedef enum {
+  IR_CONST_VALUE,
+  IR_VAR_DECL
+} IrCode;
 
-void
-token_printer_run(Unit *unit);
+struct IrConstValue {
+  struct Type  type;
+};
 
-void
-parser_run(Builder *builder, Assembly *assembly, Unit *unit);
-
-/*
- * per assembly
- */
-void
-ast_printer_run(Assembly *assembly);
+struct Ir {
+  IrCode code;
+};
 
 void
-checker_run(Builder *builder, Assembly *assembly);
-
-void
-post_run(Builder *builder, Assembly *assembly);
-
-void
-linker_run(Builder *builder, Assembly *assembly);
-
-void
-bc_writer_run(Builder *builder, Assembly *assembly);
-
-void
-native_bin_run(Builder *builder, Assembly *assembly);
-
-void
-jit_exec_run(Builder *builder, Assembly *assembly);
-
-void
-test_exec_run(Builder *builder, Assembly *assembly);
+ir_run(Builder *builder, Assembly *assembly);
 
 #endif
