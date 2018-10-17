@@ -43,7 +43,7 @@
 
 #define FLATTEN_ARENA_CHUNK_COUNT 128
 
-#define VERBOSE 0
+#define VERBOSE 1
 #define VERBOSE_MULTIPLE_CHECK 0
 
 #define finish() return NULL
@@ -542,10 +542,10 @@ check_node(Context *cnt, Node **node)
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
     if (result == NULL) {
-      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), node_name(*node), file, line,
+      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_node_name(*node), file, line,
              col);
     } else {
-      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"), node_name(*node),
+      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"), ast_node_name(*node),
              file, line, col, ast_peek_ident(result)->str);
     }
   }

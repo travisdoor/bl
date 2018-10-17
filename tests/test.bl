@@ -1,5 +1,7 @@
 /* playground */
 
-i s32 : 10;
-j : 10;
-o s32;
+main : fn () s32 {
+  i s32 : 10;
+  j : 10;
+  o s32;
+};
