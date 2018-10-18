@@ -94,8 +94,8 @@ provide(Context *cnt, AstIdent *name, AstType *type, bool is_buildin);
 static inline void
 waiting_push(BHashTable *waiting, Flatten *flatten);
 
-static void
-waiting_resume(Context *cnt, Ast *ident);
+void
+waiting_resume(Context *cnt, AstIdent *ident);
 
 static Flatten *
 flatten_get(Context *cnt);
@@ -172,6 +172,7 @@ provide(Context *cnt, AstIdent *name, AstType *type, bool is_buildin)
     entry->is_buildin = is_buildin;
 
     scope_insert(scope, name->hash, entry);
+    waiting_resume(cnt, name);
   }
 }
 
@@ -190,14 +191,17 @@ waiting_push(BHashTable *waiting, Flatten *flatten)
 }
 
 void
-waiting_resume(Context *cnt, Ast *ident)
+waiting_resume(Context *cnt, AstIdent *ident)
 {
-  AstIdent *_ident = ast_peek_ident(ident);
   /* is there some flattens waiting for this symbol??? */
-  if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
+  if (!bo_htbl_has_key(cnt->waiting, ident->hash)) return;
+
+#if VERBOSE
+  bl_log("checker: resume " RED("'%s'"), ident->str);
+#endif
 
   /* resume all waiting flattens */
-  BArray *q = bo_htbl_at(cnt->waiting, _ident->hash, BArray *);
+  BArray *q = bo_htbl_at(cnt->waiting, ident->hash, BArray *);
   assert(q && "invalid flattens queue");
 
   /* NOTE: we need to iterate backwards from last element in 'q' because it can be modified in
@@ -210,7 +214,7 @@ waiting_resume(Context *cnt, Ast *ident)
     flatten_process(cnt, flatten);
   }
 
-  if (bo_array_empty(q)) bo_htbl_erase_key(cnt->waiting, _ident->hash);
+  if (bo_array_empty(q)) bo_htbl_erase_key(cnt->waiting, ident->hash);
 }
 
 void
@@ -225,7 +229,6 @@ check_unresolved(Context *cnt)
     q = bo_htbl_iter_peek_value(cnt->waiting, &iter, BArray *);
     assert(q);
 
-    // bl_log("size %d", bo_array_size(q));
     for (size_t i = 0; i < bo_array_size(q); ++i) {
       flatten = bo_array_at(q, i, Flatten *);
       assert(flatten->waitfor);
@@ -557,10 +560,10 @@ check_node(Context *cnt, Ast **node)
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
     if (result == NULL) {
-      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_get_name(*node), file, line,
+      bl_log("checker: [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_get_name(*node), file, line,
              col);
     } else {
-      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"),
+      bl_log("checker: [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"),
              ast_get_name(*node), file, line, col, result->str);
     }
   }

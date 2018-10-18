@@ -78,8 +78,8 @@ scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
     const char *type_name  = entry->type->name;
     const char *is_buildin = entry->is_buildin ? "true" : "false";
 
-    bl_log("ADD INTO SCOPE (%p) <src: %s:%d:%d; type: '%s'; buildin: '%s'>", scope, file, line, col,
-           type_name, is_buildin);
+    bl_log("scope: ADD INTO SCOPE (%p) <src: %s:%d:%d; type: '%s'; buildin: '%s'>", scope, file,
+           line, col, type_name, is_buildin);
   }
 #endif
 }

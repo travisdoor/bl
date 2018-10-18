@@ -1,7 +1,7 @@
 /* playground */
 
+h : i;
 i : 10;
 j s32 : 10;
 k usize : 10;
-
 
