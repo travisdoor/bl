@@ -38,43 +38,18 @@
 #include "scope.h"
 
 struct Arena;
-typedef struct Node Node;
+typedef struct Ast Ast;
 
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
 /* OLD BEGIN */
 // clang-format off
-#define _FTYPE_LIST                                                                         \
-    ft(VOID,   void) \
-    ft(S8,     s8) \
-    ft(S16,    s16) \
-    ft(S32,    s32) \
-    ft(S64,    s64) \
-    ft(U8,     u8) \
-    ft(U16,    u16) \
-    ft(U32,    u32) \
-    ft(U64,    u64) \
-    ft(SIZE,   usize) \
-    ft(F32,    f32) \
-    ft(F64,    f64) \
-    ft(CHAR,   char) /* REMOVE and use *u8 */ \
-    ft(STRING, string) \
-    ft(BOOL,   bool)
-
 #define _BUILDINS_LIST \
     bt(MAIN,      main) \
     bt(ASSERT,    assert) \
     bt(ANY,       any) \
     bt(ARRAY,     __Array) \
-
-typedef enum
-{
-#define ft(tok, str) FTYPE_##tok,
-  _FTYPE_LIST
-#undef ft
-      FTYPE_COUNT
-} FundType;
 
 typedef enum
 {
@@ -88,67 +63,47 @@ typedef enum
 
 typedef enum
 {
-  NODE_BAD,
-  NODE_LOAD,
-  NODE_LINK,
-  NODE_IDENT,
-  NODE_UBLOCK,
-  NODE_BLOCK,
-  NODE_STMT_RETURN,
-  NODE_STMT_IF,
-  NODE_STMT_LOOP,
-  NODE_STMT_BREAK,
-  NODE_STMT_CONTINUE,
-  NODE_DECL,
-  NODE_MEMBER,
-  NODE_ARG,
-  NODE_VARIANT,
-  NODE_TYPE_TYPE,
-  NODE_TYPE_FUND,
-  NODE_TYPE_VARGS,
-  NODE_TYPE_ARR,
-  NODE_TYPE_FN,
-  NODE_TYPE_STRUCT,
-  NODE_TYPE_ENUM,
-  NODE_TYPE_PTR,
-  NODE_LIT_FN,
-  NODE_LIT_INT,
-  NODE_LIT_FLOAT,
-  NODE_LIT_CHAR,
-  NODE_LIT_STRING,
-  NODE_LIT_BOOL,
-  NODE_LIT_CMP,
-  NODE_EXPR_CAST,
-  NODE_EXPR_BINOP,
-  NODE_EXPR_CALL,
-  NODE_EXPR_MEMBER,
-  NODE_EXPR_ELEM,
-  NODE_EXPR_SIZEOF,
-  NODE_EXPR_TYPEOF,
-  NODE_EXPR_UNARY,
-  NODE_EXPR_NULL,
-  NODE_COUNT
-} NodeCode;
-
-typedef enum
-{
-  TYPE_KIND_INVALID = 0,
-  TYPE_KIND_SINT    = 1,  /* i8, i16, i32, i64 */
-  TYPE_KIND_UINT    = 2,  /* u8, i16, u32, u64 */
-  TYPE_KIND_SIZE    = 3,  /* size_t */
-  TYPE_KIND_PTR     = 4,  /* pointers */
-  TYPE_KIND_STRUCT  = 5,  /* structs */
-  TYPE_KIND_ENUM    = 6,  /* enums */
-  TYPE_KIND_FN      = 7,  /* function */
-  TYPE_KIND_REAL    = 8,  /* f32, f64 */
-  TYPE_KIND_STRING  = 9,  /* string */
-  TYPE_KIND_CHAR    = 10, /* char */
-  TYPE_KIND_BOOL    = 11, /* bool */
-  TYPE_KIND_VOID    = 12, /* void */
-  TYPE_KIND_TYPE    = 13, /* type_t */
-  TYPE_KIND_ANY     = 14, /* any */
-  TYPE_KIND_ARR     = 15, /* array */
-} TypeKind;
+  AST_BAD,
+  AST_LOAD,
+  AST_LINK,
+  AST_IDENT,
+  AST_UBLOCK,
+  AST_BLOCK,
+  AST_STMT_RETURN,
+  AST_STMT_IF,
+  AST_STMT_LOOP,
+  AST_STMT_BREAK,
+  AST_STMT_CONTINUE,
+  AST_DECL,
+  AST_MEMBER,
+  AST_ARG,
+  AST_VARIANT,
+  AST_TYPE_TYPE,
+  AST_TYPE_FUND,
+  AST_TYPE_VARGS,
+  AST_TYPE_ARR,
+  AST_TYPE_FN,
+  AST_TYPE_STRUCT,
+  AST_TYPE_ENUM,
+  AST_TYPE_PTR,
+  AST_LIT_FN,
+  AST_LIT_INT,
+  AST_LIT_FLOAT,
+  AST_LIT_CHAR,
+  AST_LIT_STRING,
+  AST_LIT_BOOL,
+  AST_LIT_CMP,
+  AST_EXPR_CAST,
+  AST_EXPR_BINOP,
+  AST_EXPR_CALL,
+  AST_EXPR_MEMBER,
+  AST_EXPR_ELEM,
+  AST_EXPR_SIZEOF,
+  AST_EXPR_TYPEOF,
+  AST_EXPR_UNARY,
+  AST_EXPR_NULL,
+  AST_COUNT
+} AstCode;
 
 typedef enum
 {
@@ -171,7 +126,7 @@ typedef enum
   FLAG_EXTERN = 1 << 0, /* methods marked as extern */
   FLAG_MAIN   = 1 << 1, /* main method */
   FLAG_TEST   = 1 << 2, /* test case */
-} NodeFlag;
+} AstFlag;
 
 /* map symbols to binary operation kind */
 typedef enum
@@ -212,79 +167,75 @@ typedef enum
   DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
 
-struct NodeBad
+struct AstBad
 {
   void *_;
 };
 
-struct NodeLoad
+struct AstLoad
 {
   const char *filepath;
 };
 
-struct NodeLink
+struct AstLink
 {
   const char *lib;
 };
 
-struct NodeIdent
+struct AstIdent
 {
-  Scope *     scope;
   const char *str;
   uint64_t    hash;
 };
 
-struct NodeUBlock
+struct AstUBlock
 {
-  Scope *      scope;
-  Node *       nodes;
+  Ast *        nodes;
   struct Unit *unit;
 };
 
-struct NodeBlock
+struct AstBlock
 {
-  Scope *scope;
-  Node * nodes;
+  Ast *nodes;
 };
 
-struct NodeStmtReturn
+struct AstStmtReturn
 {
-  Node *expr;
-  Node *fn_decl;
+  Ast *expr;
+  Ast *fn_decl;
 };
 
-struct NodeStmtIf
+struct AstStmtIf
 {
-  Node *test;
-  Node *true_stmt;
-  Node *false_stmt;
+  Ast *test;
+  Ast *true_stmt;
+  Ast *false_stmt;
 };
 
-struct NodeStmtLoop
+struct AstStmtLoop
 {
-  Scope *scope;
-  Node * init;
-  Node * condition;
-  Node * increment;
-  Node * block;
+  Ast *init;
+  Ast *condition;
+  Ast *increment;
+  Ast *block;
 };
 
-struct NodeStmtBreak
+struct AstStmtBreak
 {
   void *_;
 };
 
-struct NodeStmtContinue
+struct AstStmtContinue
 {
   void *_;
 };
 
-struct NodeDecl
+struct AstDecl
 {
-  Node *   type;
+  Ast *    type;
   DeclKind kind;
-  Node *   name;
-  Node *   value;
+  Ast *    name;
+  Ast *    value;
   bool mutable;
   int         flags;
   int         used;
@@ -292,267 +243,249 @@ struct NodeDecl
   BHashTable *deps;
 };
 
-struct NodeMember
+struct AstMember
 {
-  Node *type;
-  Node *name;
-  int   order;
+  Ast *type;
+  Ast *name;
+  int  order;
 };
 
-struct NodeArg
+struct AstArg
 {
-  Node *type;
-  Node *name;
+  Ast *type;
+  Ast *name;
 };
 
-struct NodeVariant
+struct AstVariant
 {
-  Node *type;
-  Node *name;
-  Node *value;
+  Ast *type;
+  Ast *name;
+  Ast *value;
 };
 
-struct NodeTypeType
+struct AstTypeType
 {
-  Node *name;
-  Node *spec;
+  Ast *name;
+  Ast *spec;
 };
 
-struct NodeTypeFund
-{
-  FundType code;
-};
-
-struct NodeTypeVArgs
+struct AstTypeVArgs
 {
   void *_;
 };
 
-struct NodeTypeArr
+struct AstTypeArr
 {
-  Node *elem_type;
-  Node *len;
+  Ast *elem_type;
+  Ast *len;
 };
 
-struct NodeTypeFn
+struct AstTypeFn
 {
-  Node *arg_types;
-  Node *ret_type;
-  int   argc_types;
+  Ast *ret_type;
+  Ast *arg_types;
+  int  argc_types;
 };
 
-struct NodeTypeStruct
+struct AstTypeStruct
 {
-  Scope *scope;
-  Node * members;
-  int    membersc;
-  bool   raw;
+  Ast *members;
+  int  membersc;
+  bool raw;
 };
 
-struct NodeTypeEnum
+struct AstTypeEnum
 {
-  Scope *scope;
-  Node * type;
-  Node * variants;
+  Ast *type;
+  Ast *variants;
 };
 
-struct NodeTypePtr
+struct AstTypePtr
 {
-  Node *type;
+  Ast *type;
 };
 
-struct NodeLitFn
+struct AstLitFn
 {
-  Scope *scope;
-  Node * type;
-  Node * block;
+  Ast *type;
+  Ast *block;
 };
 
-struct NodeLitInt
+struct AstLitInt
 {
   uint64_t i;
 };
 
-struct NodeLitFloat
+struct AstLitFloat
 {
   float f;
 };
 
-struct NodeLitChar
+struct AstLitChar
 {
   uint8_t c;
 };
 
-struct NodeLitString
+struct AstLitString
 {
   const char *s;
 };
 
-struct NodeLitBool
+struct AstLitBool
 {
   bool b;
 };
 
-struct NodeLitCmp
+struct AstLitCmp
 {
-  Scope *scope;
-  Node * type;
-  Node * fields;
-  int    fieldc;
+  Ast *type;
+  Ast *fields;
+  int  fieldc;
 };
 
-struct NodeExprCast
+struct AstExprCast
 {
-  Node *type;
-  Node *next;
+  Ast *type;
+  Ast *next;
 };
 
-struct NodeExprBinop
+struct AstExprBinop
 {
-  Node *    type;
-  Node *    lhs;
-  Node *    rhs;
+  Ast *     lhs;
+  Ast *     rhs;
   BinopKind kind;
 };
 
-struct NodeExprCall
+struct AstExprCall
 {
-  Node *ref;
-  Node *args;
-  int   argsc;
-  Node *type;
-  bool  run;
+  Ast *ref;
+  Ast *args;
+  int  argsc;
+  bool run;
 };
 
-struct NodeExprMember
+struct AstExprMember
 {
-  Node *     type;
   MemberKind kind;
-  Node *     ident;
-  Node *     next;
+  Ast *      ident;
+  Ast *      next;
   bool       ptr_ref;
   int        i;
 };
 
-struct NodeExprElem
+struct AstExprElem
 {
-  Node *type;
-  Node *next;
-  Node *index;
+  Ast *next;
+  Ast *index;
 };
 
-struct NodeExprSizeof
+struct AstExprSizeof
 {
-  Node *type;
-  Node *in;
+  Ast *in;
 };
 
-struct NodeExprTypeof
+struct AstExprTypeof
 {
-  Node *type;
-  Node *in;
+  Ast *in;
 };
 
-struct NodeExprUnary
+struct AstExprUnary
 {
-  Node *   type;
   UnopKind kind;
-  Node *   next;
+  Ast *    next;
 };
 
-struct NodeExprNull
+struct AstExprNull
 {
-  Node *type;
+  void *_;
 };
 
-typedef struct NodeBad          NodeBad;
-typedef struct NodeLoad         NodeLoad;
-typedef struct NodeLink         NodeLink;
-typedef struct NodeIdent        NodeIdent;
-typedef struct NodeUBlock       NodeUBlock;
-typedef struct NodeBlock        NodeBlock;
-typedef struct NodeStmtReturn   NodeStmtReturn;
-typedef struct NodeStmtIf       NodeStmtIf;
-typedef struct NodeStmtLoop     NodeStmtLoop;
-typedef struct NodeStmtBreak    NodeStmtBreak;
-typedef struct NodeStmtContinue NodeStmtContinue;
-typedef struct NodeDecl         NodeDecl;
-typedef struct NodeMember       NodeMember;
-typedef struct NodeArg          NodeArg;
-typedef struct NodeVariant      NodeVariant;
-typedef struct NodeTypeType     NodeTypeType;
-typedef struct NodeTypeFund     NodeTypeFund;
-typedef struct NodeTypeVArgs    NodeTypeVArgs;
-typedef struct NodeTypeArr      NodeTypeArr;
-typedef struct NodeTypeFn       NodeTypeFn;
-typedef struct NodeTypeStruct   NodeTypeStruct;
-typedef struct NodeTypeEnum     NodeTypeEnum;
-typedef struct NodeTypePtr      NodeTypePtr;
-typedef struct NodeLitFn        NodeLitFn;
-typedef struct NodeLitInt       NodeLitInt;
-typedef struct NodeLitFloat     NodeLitFloat;
-typedef struct NodeLitChar      NodeLitChar;
-typedef struct NodeLitString    NodeLitString;
-typedef struct NodeLitBool      NodeLitBool;
-typedef struct NodeLitCmp       NodeLitCmp;
-typedef struct NodeExprCast     NodeExprCast;
-typedef struct NodeExprBinop    NodeExprBinop;
-typedef struct NodeExprCall     NodeExprCall;
-typedef struct NodeExprMember   NodeExprMember;
-typedef struct NodeExprElem     NodeExprElem;
-typedef struct NodeExprSizeof   NodeExprSizeof;
-typedef struct NodeExprTypeof   NodeExprTypeof;
-typedef struct NodeExprUnary    NodeExprUnary;
-typedef struct NodeExprNull     NodeExprNull;
+typedef struct AstBad          AstBad;
+typedef struct AstLoad         AstLoad;
+typedef struct AstLink         AstLink;
+typedef struct AstIdent        AstIdent;
+typedef struct AstUBlock       AstUBlock;
+typedef struct AstBlock        AstBlock;
+typedef struct AstStmtReturn   AstStmtReturn;
+typedef struct AstStmtIf       AstStmtIf;
+typedef struct AstStmtLoop     AstStmtLoop;
+typedef struct AstStmtBreak    AstStmtBreak;
+typedef struct AstStmtContinue AstStmtContinue;
+typedef struct AstDecl         AstDecl;
+typedef struct AstMember       AstMember;
+typedef struct AstArg          AstArg;
+typedef struct AstVariant      AstVariant;
+typedef struct AstTypeType     AstTypeType;
+typedef struct AstTypeVArgs    AstTypeVArgs;
+typedef struct AstTypeArr      AstTypeArr;
+typedef struct AstTypeFn       AstTypeFn;
+typedef struct AstTypeStruct   AstTypeStruct;
+typedef struct AstTypeEnum     AstTypeEnum;
+typedef struct AstTypePtr      AstTypePtr;
+typedef struct AstLitFn        AstLitFn;
+typedef struct AstLitInt       AstLitInt;
+typedef struct AstLitFloat     AstLitFloat;
+typedef struct AstLitChar      AstLitChar;
+typedef struct AstLitString    AstLitString;
+typedef struct AstLitBool      AstLitBool;
+typedef struct AstLitCmp       AstLitCmp;
+typedef struct AstExprCast     AstExprCast;
+typedef struct AstExprBinop    AstExprBinop;
+typedef struct AstExprCall     AstExprCall;
+typedef struct AstExprMember   AstExprMember;
+typedef struct AstExprElem     AstExprElem;
+typedef struct AstExprSizeof   AstExprSizeof;
+typedef struct AstExprTypeof   AstExprTypeof;
+typedef struct AstExprUnary    AstExprUnary;
+typedef struct AstExprNull     AstExprNull;
 
-struct Node
+struct Ast
 {
   union
   {
-    NodeBad          bad;
-    NodeLoad         load;
-    NodeLink         link;
-    NodeIdent        ident;
-    NodeUBlock       ublock;
-    NodeBlock        block;
-    NodeStmtReturn   stmt_return;
-    NodeStmtIf       stmt_if;
-    NodeStmtLoop     stmt_loop;
-    NodeStmtBreak    stmt_break;
-    NodeStmtContinue stmt_continue;
-    NodeDecl         decl;
-    NodeMember       member;
-    NodeArg          arg;
-    NodeVariant      variant;
-    NodeTypeType     type_type;
-    NodeTypeFund     type_fund;
-    NodeTypeVArgs    type_vargs;
-    NodeTypeArr      type_arr;
-    NodeTypeFn       type_fn;
-    NodeTypeStruct   type_struct;
-    NodeTypeEnum     type_enum;
-    NodeTypePtr      type_ptr;
-    NodeLitFn        lit_fn;
-    NodeLitInt       lit_int;
-    NodeLitFloat     lit_float;
-    NodeLitChar      lit_char;
-    NodeLitString    lit_string;
-    NodeLitBool      lit_bool;
-    NodeLitCmp       lit_cmp;
-    NodeExprCast     expr_cast;
-    NodeExprBinop    expr_binop;
-    NodeExprCall     expr_call;
-    NodeExprMember   expr_member;
-    NodeExprElem     expr_elem;
-    NodeExprSizeof   expr_sizeof;
-    NodeExprTypeof   expr_typeof;
-    NodeExprUnary    expr_unary;
-    NodeExprNull     expr_null;
+    AstBad          bad;
+    AstLoad         load;
+    AstLink         link;
+    AstIdent        ident;
+    AstUBlock       ublock;
+    AstBlock        block;
+    AstStmtReturn   stmt_return;
+    AstStmtIf       stmt_if;
+    AstStmtLoop     stmt_loop;
+    AstStmtBreak    stmt_break;
+    AstStmtContinue stmt_continue;
+    AstDecl         decl;
+    AstMember       member;
+    AstArg          arg;
+    AstVariant      variant;
+    AstTypeType     type_type;
+    AstTypeVArgs    type_vargs;
+    AstTypeArr      type_arr;
+    AstTypeFn       type_fn;
+    AstTypeStruct   type_struct;
+    AstTypeEnum     type_enum;
+    AstTypePtr      type_ptr;
+    AstLitFn        lit_fn;
+    AstLitInt       lit_int;
+    AstLitFloat     lit_float;
+    AstLitChar      lit_char;
+    AstLitString    lit_string;
+    AstLitBool      lit_bool;
+    AstLitCmp       lit_cmp;
+    AstExprCast     expr_cast;
+    AstExprBinop    expr_binop;
+    AstExprCall     expr_call;
+    AstExprMember   expr_member;
+    AstExprElem     expr_elem;
+    AstExprSizeof   expr_sizeof;
+    AstExprTypeof   expr_typeof;
+    AstExprUnary    expr_unary;
+    AstExprNull     expr_null;
   };
 
-  Src *    src;
-  NodeCode code;
-  Node *   next;
+  Src *   src;
+  AstCode code;
+  Ast *   next;
 #if BL_DEBUG
   enum
   {
@@ -566,18 +499,15 @@ struct Node
 
 typedef struct
 {
-  Node *  node; /* dependent node */
+  Ast *   node; /* dependent node */
   DepType type; /* is dependency strict (ex.: caused by #run directive) */
 } Dependency;
 
 extern const char *node_names[];
 
 /* OLD */
-extern Node        ftypes[];
-extern Node        type_type;
-extern const char *ftype_strings[];
+extern Ast         type_type;
 extern const char *buildin_strings[];
-extern uint64_t    ftype_hashes[FTYPE_COUNT];
 extern uint64_t    buildin_hashes[BUILDIN_COUNT];
 /* OLD END */
 
@@ -585,180 +515,118 @@ void
 ast_init(struct Arena *arena);
 
 static inline Src *
-ast_peek_src(Node *n)
+ast_peek_src(Ast *n)
 {
   return n->src;
 }
 
-static inline NodeCode
-ast_node_code(Node *n)
+static inline AstCode
+ast_node_code(Ast *n)
 {
   return n->code;
 }
 
 static inline bool
-ast_node_is(Node *n, NodeCode c)
+ast_node_is(Ast *n, AstCode c)
 {
   return ast_node_code(n) == c;
 }
 
 static inline bool
-ast_node_is_not(Node *n, NodeCode c)
+ast_node_is_not(Ast *n, AstCode c)
 {
   return ast_node_code(n) != c;
 }
 
 static inline const char *
-ast_node_name(Node *n)
+ast_node_name(Ast *n)
 {
   return node_names[ast_node_code(n)];
 }
 
 static inline bool
-ast_node_is_type(Node *node)
+ast_node_is_type(Ast *node)
 {
-  return ast_node_code(node) >= NODE_TYPE_TYPE && ast_node_code(node) <= NODE_TYPE_PTR;
+  return ast_node_code(node) >= AST_TYPE_TYPE && ast_node_code(node) <= AST_TYPE_PTR;
 }
 
-void
-ast_type_to_string(char *buf, size_t len, Node *type);
+#define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
 
-Node *
-ast_get_type(Node *node);
-
-int
-ast_is_buildin_type(Node *ident);
+Ast *
+_ast_create_node(struct Arena *arena, AstCode c, Token *tok);
 
 int
-ast_is_buildin(Node *ident);
+ast_is_buildin(Ast *ident);
 
-bool
-ast_type_cmp(Node *first, Node *second);
-
-TypeKind
-ast_type_kind(Node *type);
-
-bool
-ast_can_impl_cast(Node *from_type, Node *to_type);
-
-Node *
-ast_node_dup(struct Arena *arena, Node *node);
+Ast *
+ast_node_dup(struct Arena *arena, Ast *node);
 
 Dependency *
-ast_add_dep_uq(Node *decl, Node *dep, int type);
+ast_add_dep_uq(Ast *decl, Ast *dep, int type);
 
 /*************************************************************************************************
  * generation of peek function
  * note: in debug mode function will check validity of node type
  *************************************************************************************************/
 
-#define _NODE_PEEK(_name, _code, _type)                                                            \
-  static inline _type *ast_peek_##_name(Node *n)                                                   \
+#define _AST_PEEK(_name, _code, _type)                                                             \
+  static inline _type *ast_peek_##_name(Ast *n)                                                    \
   {                                                                                                \
     assert(n->code == _code);                                                                      \
     return (_type *)n;                                                                             \
   }
 
-_NODE_PEEK(bad, NODE_BAD, NodeBad)
-_NODE_PEEK(load, NODE_LOAD, NodeLoad)
-_NODE_PEEK(link, NODE_LINK, NodeLink)
-_NODE_PEEK(ident, NODE_IDENT, NodeIdent)
-_NODE_PEEK(ublock, NODE_UBLOCK, NodeUBlock)
-_NODE_PEEK(block, NODE_BLOCK, NodeBlock)
-_NODE_PEEK(stmt_return, NODE_STMT_RETURN, NodeStmtReturn)
-_NODE_PEEK(stmt_if, NODE_STMT_IF, NodeStmtIf)
-_NODE_PEEK(stmt_loop, NODE_STMT_LOOP, NodeStmtLoop)
-_NODE_PEEK(stmt_break, NODE_STMT_BREAK, NodeStmtBreak)
-_NODE_PEEK(stmt_continue, NODE_STMT_CONTINUE, NodeStmtContinue)
-_NODE_PEEK(decl, NODE_DECL, NodeDecl)
-_NODE_PEEK(member, NODE_MEMBER, NodeMember)
-_NODE_PEEK(arg, NODE_ARG, NodeArg)
-_NODE_PEEK(variant, NODE_VARIANT, NodeVariant)
-_NODE_PEEK(type_type, NODE_TYPE_TYPE, NodeTypeType)
-_NODE_PEEK(type_fund, NODE_TYPE_FUND, NodeTypeFund)
-_NODE_PEEK(type_vargs, NODE_TYPE_VARGS, NodeTypeVArgs)
-_NODE_PEEK(type_arr, NODE_TYPE_ARR, NodeTypeArr)
-_NODE_PEEK(type_fn, NODE_TYPE_FN, NodeTypeFn)
-_NODE_PEEK(type_struct, NODE_TYPE_STRUCT, NodeTypeStruct)
-_NODE_PEEK(type_enum, NODE_TYPE_ENUM, NodeTypeEnum)
-_NODE_PEEK(type_ptr, NODE_TYPE_PTR, NodeTypePtr)
-_NODE_PEEK(lit_fn, NODE_LIT_FN, NodeLitFn)
-_NODE_PEEK(lit_int, NODE_LIT_INT, NodeLitInt)
-_NODE_PEEK(lit_float, NODE_LIT_FLOAT, NodeLitFloat)
-_NODE_PEEK(lit_char, NODE_LIT_CHAR, NodeLitChar)
-_NODE_PEEK(lit_string, NODE_LIT_STRING, NodeLitString)
-_NODE_PEEK(lit_bool, NODE_LIT_BOOL, NodeLitBool)
-_NODE_PEEK(lit_cmp, NODE_LIT_CMP, NodeLitCmp)
-_NODE_PEEK(expr_cast, NODE_EXPR_CAST, NodeExprCast)
-_NODE_PEEK(expr_binop, NODE_EXPR_BINOP, NodeExprBinop)
-_NODE_PEEK(expr_call, NODE_EXPR_CALL, NodeExprCall)
-_NODE_PEEK(expr_member, NODE_EXPR_MEMBER, NodeExprMember)
-_NODE_PEEK(expr_elem, NODE_EXPR_ELEM, NodeExprElem)
-_NODE_PEEK(expr_sizeof, NODE_EXPR_SIZEOF, NodeExprSizeof)
-_NODE_PEEK(expr_typeof, NODE_EXPR_TYPEOF, NodeExprTypeof)
-_NODE_PEEK(expr_unary, NODE_EXPR_UNARY, NodeExprUnary)
-_NODE_PEEK(expr_null, NODE_EXPR_NULL, NodeExprNull)
+_AST_PEEK(bad, AST_BAD, AstBad)
+_AST_PEEK(load, AST_LOAD, AstLoad)
+_AST_PEEK(link, AST_LINK, AstLink)
+_AST_PEEK(ident, AST_IDENT, AstIdent)
+_AST_PEEK(ublock, AST_UBLOCK, AstUBlock)
+_AST_PEEK(block, AST_BLOCK, AstBlock)
+_AST_PEEK(stmt_return, AST_STMT_RETURN, AstStmtReturn)
+_AST_PEEK(stmt_if, AST_STMT_IF, AstStmtIf)
+_AST_PEEK(stmt_loop, AST_STMT_LOOP, AstStmtLoop)
+_AST_PEEK(stmt_break, AST_STMT_BREAK, AstStmtBreak)
+_AST_PEEK(stmt_continue, AST_STMT_CONTINUE, AstStmtContinue)
+_AST_PEEK(decl, AST_DECL, AstDecl)
+_AST_PEEK(member, AST_MEMBER, AstMember)
+_AST_PEEK(arg, AST_ARG, AstArg)
+_AST_PEEK(variant, AST_VARIANT, AstVariant)
+_AST_PEEK(type_type, AST_TYPE_TYPE, AstTypeType)
+_AST_PEEK(type_vargs, AST_TYPE_VARGS, AstTypeVArgs)
+_AST_PEEK(type_arr, AST_TYPE_ARR, AstTypeArr)
+_AST_PEEK(type_fn, AST_TYPE_FN, AstTypeFn)
+_AST_PEEK(type_struct, AST_TYPE_STRUCT, AstTypeStruct)
+_AST_PEEK(type_enum, AST_TYPE_ENUM, AstTypeEnum)
+_AST_PEEK(type_ptr, AST_TYPE_PTR, AstTypePtr)
+_AST_PEEK(lit_fn, AST_LIT_FN, AstLitFn)
+_AST_PEEK(lit_int, AST_LIT_INT, AstLitInt)
+_AST_PEEK(lit_float, AST_LIT_FLOAT, AstLitFloat)
+_AST_PEEK(lit_char, AST_LIT_CHAR, AstLitChar)
+_AST_PEEK(lit_string, AST_LIT_STRING, AstLitString)
+_AST_PEEK(lit_bool, AST_LIT_BOOL, AstLitBool)
+_AST_PEEK(lit_cmp, AST_LIT_CMP, AstLitCmp)
+_AST_PEEK(expr_cast, AST_EXPR_CAST, AstExprCast)
+_AST_PEEK(expr_binop, AST_EXPR_BINOP, AstExprBinop)
+_AST_PEEK(expr_call, AST_EXPR_CALL, AstExprCall)
+_AST_PEEK(expr_member, AST_EXPR_MEMBER, AstExprMember)
+_AST_PEEK(expr_elem, AST_EXPR_ELEM, AstExprElem)
+_AST_PEEK(expr_sizeof, AST_EXPR_SIZEOF, AstExprSizeof)
+_AST_PEEK(expr_typeof, AST_EXPR_TYPEOF, AstExprTypeof)
+_AST_PEEK(expr_unary, AST_EXPR_UNARY, AstExprUnary)
+_AST_PEEK(expr_null, AST_EXPR_NULL, AstExprNull)
 
-#undef _NODE_PEEK
-
-/*************************************************************************************************
- * generate constructors definitions
- *************************************************************************************************/
-
-#define _NODE_CTOR(name, ...)                                                                      \
-  Node *ast_create_##name(struct Arena *_arena, Token *_tok, ##__VA_ARGS__)
-
-_NODE_CTOR(bad);
-_NODE_CTOR(load, const char *filepath);
-_NODE_CTOR(link, const char *lib);
-_NODE_CTOR(ublock, struct Unit *unit, Scope *scope);
-_NODE_CTOR(block, Node *nodes, Scope *scope);
-_NODE_CTOR(ident, const char *str, Scope *scope);
-_NODE_CTOR(stmt_return, Node *expr, Node *fn);
-_NODE_CTOR(stmt_if, Node *test, Node *true_stmt, Node *false_stmt);
-_NODE_CTOR(stmt_loop, Node *init, Node *condition, Node *increment, Node *block, Scope *scope);
-_NODE_CTOR(stmt_break);
-_NODE_CTOR(stmt_continue);
-_NODE_CTOR(decl, DeclKind kind, Node *name, Node *type, Node *value, bool mutable, int flags,
-           bool in_gscope);
-_NODE_CTOR(member, Node *name, Node *type, int order);
-_NODE_CTOR(arg, Node *name, Node *type);
-_NODE_CTOR(variant, Node *name, Node *type, Node *value);
-_NODE_CTOR(type_type, Node *name, Node *spec);
-_NODE_CTOR(type_fund, FundType code);
-_NODE_CTOR(type_vargs);
-_NODE_CTOR(type_arr, Node *elem_type, Node *len);
-_NODE_CTOR(type_fn, Node *arg_types, int argc_types, Node *ret_type);
-_NODE_CTOR(type_struct, Node *members, int membersc, Scope *scope, bool raw);
-_NODE_CTOR(type_enum, Node *type, Node *variants, Scope *scope);
-_NODE_CTOR(type_ptr, Node *type);
-_NODE_CTOR(lit_cmp, Node *type, Node *fields, int fieldc, Scope *scope);
-_NODE_CTOR(lit_fn, Node *type, Node *block, Scope *scope);
-_NODE_CTOR(lit_int, uint64_t i);
-_NODE_CTOR(lit_float, float f);
-_NODE_CTOR(lit_char, uint8_t c);
-_NODE_CTOR(lit_string, const char *s);
-_NODE_CTOR(lit_bool, bool b);
-_NODE_CTOR(expr_binop, Node *lhs, Node *rhs, Node *type, BinopKind kind);
-_NODE_CTOR(expr_call, Node *ref, Node *args, int argsc, Node *type, bool run);
-_NODE_CTOR(expr_member, MemberKind kind, Node *ident, Node *next, Node *type, bool ptr_ref, int i);
-_NODE_CTOR(expr_elem, Node *next, Node *type, Node *index);
-_NODE_CTOR(expr_sizeof, Node *in, Node *type);
-_NODE_CTOR(expr_typeof, Node *in, Node *type);
-_NODE_CTOR(expr_cast, Node *type, Node *next);
-_NODE_CTOR(expr_unary, UnopKind kind, Node *next, Node *type);
-_NODE_CTOR(expr_null, Node *type);
+#undef _AST_PEEK
 
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
 
 typedef struct Visitor Visitor;
-typedef void (*VisitorFunc)(Visitor *visitor, Node *node, void *cnt);
+typedef void (*VisitorFunc)(Visitor *visitor, Ast *node, void *cnt);
 
 struct Visitor
 {
-  VisitorFunc visitors[NODE_COUNT];
+  VisitorFunc visitors[AST_COUNT];
   VisitorFunc all_visitor;
 };
 
@@ -766,16 +634,16 @@ void
 visitor_init(Visitor *visitor);
 
 void
-visitor_add(Visitor *visitor, VisitorFunc fn, NodeCode code);
+visitor_add(Visitor *visitor, VisitorFunc fn, AstCode code);
 
 void
 visitor_add_visit_all(Visitor *visitor, VisitorFunc fn);
 
 void
-visitor_visit(Visitor *visitor, Node *node, void *cnt);
+visitor_visit(Visitor *visitor, Ast *node, void *cnt);
 
 void
-visitor_walk(Visitor *visitor, Node *node, void *cnt);
+visitor_walk(Visitor *visitor, Ast *node, void *cnt);
 
 /**************************************************************************************************/
 

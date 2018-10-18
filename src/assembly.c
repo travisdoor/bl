@@ -32,6 +32,7 @@
 #include "assembly.h"
 #include "unit.h"
 #include "types.h"
+#include "ir.h"
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
@@ -47,12 +48,13 @@ assembly_new(const char *name)
   assembly->name         = strdup(name);
   assembly->units        = bo_array_new(sizeof(Unit *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-  assembly->ir_queue     = bo_list_new(sizeof(Node *));
+  assembly->ir_queue     = bo_list_new(sizeof(Ast *));
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->test_cases   = bo_array_new(sizeof(TestCase));
 
   scope_arena_init(&assembly->scope_arena);
   scope_entry_arena_init(&assembly->scope_entry_arena);
+  ir_arena_init(&assembly->ir_arena);
   ast_init(&assembly->ast_arena);
   types_init(&assembly->type_arena);
   assembly->gscope = scope_create(&assembly->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
@@ -91,6 +93,7 @@ assembly_delete(Assembly *assembly)
   arena_terminate(&assembly->ast_arena);
   arena_terminate(&assembly->type_arena);
   arena_terminate(&assembly->scope_entry_arena);
+  arena_terminate(&assembly->ir_arena);
 
   bl_free(assembly);
 }

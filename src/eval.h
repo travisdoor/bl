@@ -30,12 +30,12 @@
 #define BL_EVAL_H
 
 struct Object;
-struct Node;
+struct Ast;
 
 typedef struct
 {
   struct Object *stack;
-  struct Node *  err_node;
+  struct Ast *  err_node;
   int            size;
   int            i;
 } Eval;
@@ -47,6 +47,6 @@ void
 eval_terminate(Eval *eval);
 
 int
-eval_expr(Eval *eval, struct Node *node, struct Node **err_node);
+eval_expr(Eval *eval, struct Ast *node, struct Ast **err_node);
 
 #endif

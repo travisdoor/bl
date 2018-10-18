@@ -75,27 +75,27 @@ reset(Eval *eval)
 }
 
 static bool
-eval_node(Eval *eval, Node *node);
+eval_node(Eval *eval, Ast *node);
 
 static bool
-eval_lit(Eval *eval, Node *lit);
+eval_lit(Eval *eval, Ast *lit);
 
 static bool
-eval_ident(Eval *eval, Node *ident);
+eval_ident(Eval *eval, Ast *ident);
 
 static bool
-eval_binop(Eval *eval, Node *binop);
+eval_binop(Eval *eval, Ast *binop);
 
 static bool
-eval_decl(Eval *eval, Node *decl);
+eval_decl(Eval *eval, Ast *decl);
 
 static bool
-eval_cast(Eval *eval, Node *cast);
+eval_cast(Eval *eval, Ast *cast);
 
 bool
-eval_lit(Eval *eval, Node *lit)
+eval_lit(Eval *eval, Ast *lit)
 {
-  NodeLitInt *_lit = ast_peek_lit_int(lit);
+  AstLitInt *_lit = ast_peek_lit_int(lit);
   /* TODO: support only signed integers for now! */
   //assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
@@ -106,9 +106,9 @@ eval_lit(Eval *eval, Node *lit)
 }
 
 bool
-eval_cast(Eval *eval, Node *cast)
+eval_cast(Eval *eval, Ast *cast)
 {
-  NodeExprCast *_cast = ast_peek_expr_cast(cast);
+  AstExprCast *_cast = ast_peek_expr_cast(cast);
   assert(_cast->next);
   /* TODO */
  
@@ -116,24 +116,24 @@ eval_cast(Eval *eval, Node *cast)
 }
 
 bool
-eval_ident(Eval *eval, Node *ident)
+eval_ident(Eval *eval, Ast *ident)
 {
   return false;
 }
 
 bool
-eval_decl(Eval *eval, Node *decl)
+eval_decl(Eval *eval, Ast *decl)
 {
-  NodeDecl *_decl = ast_peek_decl(decl);
+  AstDecl *_decl = ast_peek_decl(decl);
   assert(_decl->value);
   //if (_decl->kind != DECL_KIND_CONSTANT) return false;
   return eval_node(eval, _decl->value);
 }
 
 bool
-eval_binop(Eval *eval, Node *binop)
+eval_binop(Eval *eval, Ast *binop)
 {
-  NodeExprBinop *_binop = ast_peek_expr_binop(binop);
+  AstExprBinop *_binop = ast_peek_expr_binop(binop);
 
   if (!eval_node(eval, _binop->lhs)) return false;
   if (!eval_node(eval, _binop->rhs)) return false;
@@ -171,20 +171,20 @@ eval_binop(Eval *eval, Node *binop)
 }
 
 bool
-eval_node(Eval *eval, Node *node)
+eval_node(Eval *eval, Ast *node)
 {
   if (!node) return false;
 
   switch (ast_node_code(node)) {
-  case NODE_LIT_INT:
+  case AST_LIT_INT:
     return eval_lit(eval, node);
-  case NODE_EXPR_BINOP:
+  case AST_EXPR_BINOP:
     return eval_binop(eval, node);
-  case NODE_EXPR_CAST:
+  case AST_EXPR_CAST:
     return eval_cast(eval, node);
-  case NODE_IDENT:
+  case AST_IDENT:
     return eval_ident(eval, node);
-  case NODE_DECL:
+  case AST_DECL:
     return eval_decl(eval, node);
   default:
     eval->err_node = node;
@@ -214,7 +214,7 @@ eval_terminate(Eval *eval)
 }
 
 int
-eval_expr(Eval *eval, Node *node, Node **err_node)
+eval_expr(Eval *eval, Ast *node, Ast **err_node)
 {
   assert(node);
   reset(eval);

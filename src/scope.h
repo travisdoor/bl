@@ -33,13 +33,13 @@
 #include <bobject/containers/htbl.h>
 #include <assert.h>
 
-struct Node;
+struct Ast;
 struct Type;
 struct Arena;
 
 typedef struct ScopeEntry
 {
-  struct Node *ident;
+  struct Ast *ident;
   struct Type *type;
   bool         is_buildin;
 } ScopeEntry;
@@ -63,9 +63,9 @@ void
 scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);
 
 ScopeEntry *
-scope_lookup(Scope *scope, struct Node *ident, bool in_tree);
+scope_lookup(Scope *scope, struct Ast *ident, bool in_tree);
 
 ScopeEntry *
-scope_create_entry(struct Arena *arena, struct Node *ident, struct Type *type, bool is_buildin);
+scope_create_entry(struct Arena *arena, struct Ast *ident, struct Type *type, bool is_buildin);
 
 #endif

@@ -74,18 +74,18 @@ scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
   if (entry->is_buildin) {
     bl_log("ADD SCOPE ENTRY (%p): %s (%x, buildin)", scope, entry->type->name, key);
   } else {
-    bl_log("ADD SCOPE ENTRY (%p): %s (%x)", scope, ast_peek_ident(entry->type->name)->str, key);
+    bl_log("ADD SCOPE ENTRY (%p): %s (%x)", scope, ast_peek_ident(entry->ident)->str, key);
   }
 #endif
 }
 
 ScopeEntry *
-scope_lookup(Scope *scope, Node *ident, bool in_tree)
+scope_lookup(Scope *scope, Ast *ident, bool in_tree)
 {
   assert(scope);
 
   while (scope) {
-    NodeIdent *_ident = ast_peek_ident(ident);
+    AstIdent *_ident = ast_peek_ident(ident);
 
     if (bo_htbl_has_key(scope->entries, _ident->hash))
       return bo_htbl_at(scope->entries, _ident->hash, ScopeEntry *);
@@ -100,7 +100,7 @@ scope_lookup(Scope *scope, Node *ident, bool in_tree)
 }
 
 ScopeEntry *
-scope_create_entry(struct Arena *arena, struct Node *ident, struct Type *type, bool is_buildin)
+scope_create_entry(struct Arena *arena, struct Ast *ident, struct Type *type, bool is_buildin)
 {
   assert(is_buildin || ident);
   assert(type);

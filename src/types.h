@@ -35,6 +35,8 @@
 struct Arena;
 struct Scope;
 
+typedef struct Type Type;
+
 typedef enum
 {
   TYPE_TYPE,
@@ -45,6 +47,7 @@ typedef enum
   TYPE_STRING,
   TYPE_CHAR,
   TYPE_COUNT,
+  TYPE_FN,
 } TypeCode;
 
 typedef enum
@@ -101,7 +104,13 @@ struct TypeChar
   void *_;
 };
 
-typedef struct Type        Type;
+struct TypeFn
+{
+  Type *ret_type;
+  Type *args;
+  int   argc;
+};
+
 typedef struct TypeType    TypeType;
 typedef struct TypeVoid    TypeVoid;
 typedef struct TypeInteger TypeInteger;
@@ -109,6 +118,7 @@ typedef struct TypeReal    TypeReal;
 typedef struct TypeBool    TypeBool;
 typedef struct TypeString  TypeString;
 typedef struct TypeChar    TypeChar;
+typedef struct TypeFn      TypeFn;
 
 struct Type
 {
@@ -121,9 +131,11 @@ struct Type
     TypeBool    boolean;
     TypeString  string;
     TypeChar    character;
+    TypeFn      fn;
   };
 
   Type *      base;
+  Type *      next;
   TypeCode    code;
   const char *name;
 };
@@ -156,6 +168,7 @@ _TYPE_PEEK(peek_real, TYPE_REAL, TypeReal)
 _TYPE_PEEK(peek_bool, TYPE_BOOL, TypeBool)
 _TYPE_PEEK(peek_string, TYPE_STRING, TypeString)
 _TYPE_PEEK(peek_char, TYPE_CHAR, TypeChar)
+_TYPE_PEEK(peek_fn, TYPE_FN, TypeFn)
 
 #undef _TYPE_PEEK
 

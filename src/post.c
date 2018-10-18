@@ -45,29 +45,29 @@ typedef struct
   Builder * builder;
   Assembly *assembly;
   Unit *    unit;
-  Node *    curr_dependent;
+  Ast *    curr_dependent;
   size_t    type_table_size;
 } Context;
 
 #if 0
 static void
-post_node(Visitor *visitor, Node *node, void *cnt);
+post_node(Visitor *visitor, Ast *node, void *cnt);
 #endif
 
 static void
-post_decl(Visitor *visitor, Node *decl, void *cnt);
+post_decl(Visitor *visitor, Ast *decl, void *cnt);
 
 static void
-post_call(Visitor *visitor, Node *call, void *cnt);
+post_call(Visitor *visitor, Ast *call, void *cnt);
 
 static void
-post_ident(Visitor *visitor, Node *ident, void *cnt);
+post_ident(Visitor *visitor, Ast *ident, void *cnt);
 
 static inline void
-schedule_generation(Context *cnt, Node *decl)
+schedule_generation(Context *cnt, Ast *decl)
 {
   assert(decl);
-  NodeDecl *_decl = ast_peek_decl(decl);
+  AstDecl *_decl = ast_peek_decl(decl);
   if (_decl->used) {
     bo_list_push_back(cnt->assembly->ir_queue, decl);
 #if VERBOSE
@@ -78,7 +78,7 @@ schedule_generation(Context *cnt, Node *decl)
 
 #if 0 
 void
-post_node(Visitor *visitor, Node *node, void *cnt)
+post_node(Visitor *visitor, Ast *node, void *cnt)
 {
   if (node->state == NOT_CHECKED) {
     bl_warning("%s (%d) has not been checked!!!", node_name(node), node->_serial);
@@ -87,11 +87,11 @@ post_node(Visitor *visitor, Node *node, void *cnt)
 #endif
 
 void
-post_decl(Visitor *visitor, Node *decl, void *cnt)
+post_decl(Visitor *visitor, Ast *decl, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(decl);
-  NodeDecl *_decl = ast_peek_decl(decl);
+  AstDecl *_decl = ast_peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
       !(_decl->flags & FLAG_MAIN)) {
     post_warning_node(_cnt, _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
@@ -99,7 +99,7 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 
   if (_decl->flags & FLAG_MAIN) _decl->used++;
 
-  Node *prev_dependent = _cnt->curr_dependent;
+  Ast *prev_dependent = _cnt->curr_dependent;
   switch (_decl->kind) {
   case DECL_KIND_FN:
     _cnt->curr_dependent = decl;
@@ -134,15 +134,15 @@ post_decl(Visitor *visitor, Node *decl, void *cnt)
 }
 
 void
-post_call(Visitor *visitor, Node *call, void *cnt)
+post_call(Visitor *visitor, Ast *call, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(call);
-  NodeExprCall *_call = ast_peek_expr_call(call);
+  AstExprCall *_call = ast_peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  Node *callee = _call->ref;
-  if (ast_node_is(callee, NODE_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
+  Ast *callee = _call->ref;
+  if (ast_node_is(callee, AST_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
       !ast_peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }
@@ -151,7 +151,7 @@ post_call(Visitor *visitor, Node *call, void *cnt)
 }
 
 void
-post_ident(Visitor *visitor, Node *ident, void *cnt)
+post_ident(Visitor *visitor, Ast *ident, void *cnt)
 {
   visitor_walk(visitor, ident, cnt);
 }
@@ -173,9 +173,9 @@ post_run(Builder *builder, Assembly *assembly)
   visitor_add_visit_all(&visitor, post_node);
 #endif
 
-  visitor_add(&visitor, post_decl, NODE_DECL);
-  visitor_add(&visitor, post_call, NODE_EXPR_CALL);
-  visitor_add(&visitor, post_ident, NODE_IDENT);
+  visitor_add(&visitor, post_decl, AST_DECL);
+  visitor_add(&visitor, post_call, AST_EXPR_CALL);
+  visitor_add(&visitor, post_ident, AST_IDENT);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

@@ -35,15 +35,16 @@
 
 Type types_buildins[TYPE_BUILDIN_COUNT] = {
     // type
-    {.code = TYPE_TYPE, .base = NULL, .name = "type"},
+    {.code = TYPE_TYPE, .base = NULL, .next = NULL, .name = "type"},
 
     // void
-    {.code = TYPE_VOID, .base = &types_buildins[TYPE_BUILDIN_TYPE], .name = "void"},
+    {.code = TYPE_VOID, .base = &types_buildins[TYPE_BUILDIN_TYPE], .next = NULL, .name = "void"},
 
     // u8
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u8",
+     .next              = NULL,
      .integer.bit_size  = 8,
      .integer.is_signed = false},
 
@@ -51,6 +52,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u16",
+     .next              = NULL,
      .integer.bit_size  = 16,
      .integer.is_signed = false},
 
@@ -58,6 +60,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u32",
+     .next              = NULL,
      .integer.bit_size  = 32,
      .integer.is_signed = false},
 
@@ -65,6 +68,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "u64",
+     .next              = NULL,
      .integer.bit_size  = 64,
      .integer.is_signed = false},
 
@@ -72,6 +76,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s8",
+     .next              = NULL,
      .integer.bit_size  = 8,
      .integer.is_signed = true},
 
@@ -79,6 +84,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s16",
+     .next              = NULL,
      .integer.bit_size  = 16,
      .integer.is_signed = true},
 
@@ -86,6 +92,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s32",
+     .next              = NULL,
      .integer.bit_size  = 32,
      .integer.is_signed = true},
 
@@ -93,6 +100,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "s64",
+     .next              = NULL,
      .integer.bit_size  = 64,
      .integer.is_signed = true},
 
@@ -100,6 +108,7 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code              = TYPE_INTEGER,
      .base              = &types_buildins[TYPE_BUILDIN_TYPE],
      .name              = "usize",
+     .next              = NULL,
      .integer.bit_size  = 64,
      .integer.is_signed = true},
 
@@ -107,12 +116,14 @@ Type types_buildins[TYPE_BUILDIN_COUNT] = {
     {.code          = TYPE_REAL,
      .base          = &types_buildins[TYPE_BUILDIN_TYPE],
      .name          = "f32",
+     .next          = NULL,
      .real.bit_size = 32},
 
     // f64
     {.code          = TYPE_REAL,
      .base          = &types_buildins[TYPE_BUILDIN_TYPE],
      .name          = "f64",
+     .next          = NULL,
      .real.bit_size = 64},
 };
 

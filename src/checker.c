@@ -81,18 +81,18 @@ typedef struct
 typedef struct
 {
   BArray *stack;
-  Node *  waitfor;
+  Ast *  waitfor;
   size_t  i;
 } Flatten;
 
 static void
-provide(Context *cnt, Node *ident, Node *provided);
+provide(Context *cnt, Ast *ident, Ast *provided);
 
 static inline void
 waiting_push(BHashTable *waiting, Flatten *flatten);
 
 static void
-waiting_resume(Context *cnt, Node *ident);
+waiting_resume(Context *cnt, Ast *ident);
 
 static Flatten *
 flatten_get(Context *cnt);
@@ -104,55 +104,41 @@ static void
 flatten_dtor(Flatten *flatten);
 
 static inline void
-flatten_push(Flatten *flatten, Node **node);
+flatten_push(Flatten *flatten, Ast **node);
 
 static void
-flatten_node(Context *cnt, Flatten *fbuf, Node **node);
-
-static bool
-implicit_cast(Context *cnt, Node **node, Node *to_type);
-
-static inline void
-check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos);
+flatten_node(Context *cnt, Flatten *fbuf, Ast **node);
 
 static void
-flatten_check(Context *cnt, Node **node);
+flatten_check(Context *cnt, Ast **node);
 
 static void
 flatten_process(Context *cnt, Flatten *flatten);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
-static Node *
-check_node(Context *cnt, Node **node);
+static Ast *
+check_node(Context *cnt, Ast **node);
 
-static Node *
-check_ident(Context *cnt, Node **ident);
+static Ast *
+check_ident(Context *cnt, Ast **ident);
 
-static Node *
-check_lit(Context *cnt, Node **lit);
+static Ast *
+check_lit(Context *cnt, Ast **lit);
 
 void
-provide(Context *cnt, Node *ident, Node *provided)
+provide(Context *cnt, Ast *ident, Ast *provided)
 {
-  assert(ident && provided && "trying to provide invalid symbol");
-  Scope *scope = ast_peek_ident(ident)->scope;
-  assert(scope);
-
+  /* TODO */
 #if VERBOSE
   bl_log("providing " MAGENTA("'%s'") " (%d)", ast_peek_ident(ident)->str, ident->_serial);
 #endif
-  /* TODO: set type!!! */
-  /* TODO: set type!!! */
-  /* TODO: set type!!! */
-  ScopeEntry *entry = scope_create_entry(cnt->scope_entry_arena, ident, NULL, false);
-  scope_insert(scope, ast_peek_ident(ident)->hash, entry);
 }
 
 void
 waiting_push(BHashTable *waiting, Flatten *flatten)
 {
-  NodeIdent *_waitfor = ast_peek_ident(flatten->waitfor);
+  AstIdent *_waitfor = ast_peek_ident(flatten->waitfor);
   BArray *   queue;
   if (bo_htbl_has_key(waiting, _waitfor->hash)) {
     queue = bo_htbl_at(waiting, _waitfor->hash, BArray *);
@@ -165,9 +151,9 @@ waiting_push(BHashTable *waiting, Flatten *flatten)
 }
 
 void
-waiting_resume(Context *cnt, Node *ident)
+waiting_resume(Context *cnt, Ast *ident)
 {
-  NodeIdent *_ident = ast_peek_ident(ident);
+  AstIdent *_ident = ast_peek_ident(ident);
   /* is there some flattens waiting for this symbol??? */
   if (!bo_htbl_has_key(cnt->waiting, _ident->hash)) return;
 
@@ -218,7 +204,7 @@ flatten_get(Context *cnt)
   Flatten *tmp = NULL;
   if (bo_array_size(cnt->flatten_cache) == 0) {
     tmp          = arena_alloc(&cnt->flatten_arena);
-    tmp->stack   = bo_array_new(sizeof(Node *));
+    tmp->stack   = bo_array_new(sizeof(Ast *));
     tmp->i       = 0;
     tmp->waitfor = NULL;
   } else {
@@ -246,7 +232,7 @@ flatten_dtor(Flatten *flatten)
 }
 
 void
-flatten_push(Flatten *flatten, Node **node)
+flatten_push(Flatten *flatten, Ast **node)
 {
   bo_array_push_back(flatten->stack, node);
 }
@@ -257,10 +243,10 @@ flatten_process(Context *cnt, Flatten *flatten)
   assert(flatten);
   bool interrupted = false;
 
-  Node * waitfor;
-  Node **tmp;
+  Ast * waitfor;
+  Ast **tmp;
   for (; flatten->i < bo_array_size(flatten->stack); ++flatten->i) {
-    tmp = bo_array_at(flatten->stack, flatten->i, Node **);
+    tmp = bo_array_at(flatten->stack, flatten->i, Ast **);
     assert(*tmp);
     /* NULL means successfull check */
     waitfor = check_node(cnt, tmp);
@@ -278,7 +264,7 @@ flatten_process(Context *cnt, Flatten *flatten)
 }
 
 void
-flatten_check(Context *cnt, Node **node)
+flatten_check(Context *cnt, Ast **node)
 {
   Flatten *flatten = flatten_get(cnt);
 
@@ -287,15 +273,15 @@ flatten_check(Context *cnt, Node **node)
 }
 
 void
-flatten_node(Context *cnt, Flatten *fbuf, Node **node)
+flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 {
   if (!*node) return;
 
 #define flatten(_node) flatten_node(cnt, fbuf, (_node))
 
   switch (ast_node_code(*node)) {
-  case NODE_DECL: {
-    NodeDecl *_decl = ast_peek_decl(*node);
+  case AST_DECL: {
+    AstDecl *_decl = ast_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
     /*if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
@@ -306,36 +292,36 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_MEMBER: {
-    NodeMember *_mem = ast_peek_member(*node);
+  case AST_MEMBER: {
+    AstMember *_mem = ast_peek_member(*node);
     flatten(&_mem->type);
     break;
   }
 
-  case NODE_ARG: {
-    NodeArg *_arg = ast_peek_arg(*node);
+  case AST_ARG: {
+    AstArg *_arg = ast_peek_arg(*node);
     flatten(&_arg->type);
     break;
   }
 
-  case NODE_VARIANT: {
-    NodeVariant *_variant = ast_peek_variant(*node);
+  case AST_VARIANT: {
+    AstVariant *_variant = ast_peek_variant(*node);
     flatten(&_variant->type);
     flatten(&_variant->value);
     break;
   }
 
-  case NODE_LIT_FN: {
-    NodeLitFn *_fn = ast_peek_lit_fn(*node);
+  case AST_LIT_FN: {
+    AstLitFn *_fn = ast_peek_lit_fn(*node);
     flatten(&_fn->type);
     flatten_check(cnt, &_fn->block);
     break;
   }
 
-  case NODE_LIT_CMP: {
-    NodeLitCmp *_cmp = ast_peek_lit_cmp(*node);
+  case AST_LIT_CMP: {
+    AstLitCmp *_cmp = ast_peek_lit_cmp(*node);
     flatten(&_cmp->type);
-    Node **field;
+    Ast **field;
     node_foreach_ref(_cmp->fields, field)
     {
       flatten(field);
@@ -343,10 +329,10 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_TYPE_ENUM: {
-    NodeTypeEnum *_enum = ast_peek_type_enum(*node);
+  case AST_TYPE_ENUM: {
+    AstTypeEnum *_enum = ast_peek_type_enum(*node);
     flatten(&_enum->type);
-    Node **variant;
+    Ast **variant;
     node_foreach_ref(_enum->variants, variant)
     {
       flatten(variant);
@@ -354,10 +340,10 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_BLOCK: {
-    NodeBlock *_block = ast_peek_block(*node);
+  case AST_BLOCK: {
+    AstBlock *_block = ast_peek_block(*node);
 
-    Node **tmp;
+    Ast **tmp;
     node_foreach_ref(_block->nodes, tmp)
     {
       flatten(tmp);
@@ -365,10 +351,10 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_UBLOCK: {
-    NodeUBlock *_ublock = ast_peek_ublock(*node);
+  case AST_UBLOCK: {
+    AstUBlock *_ublock = ast_peek_ublock(*node);
 
-    Node **tmp;
+    Ast **tmp;
     node_foreach_ref(_ublock->nodes, tmp)
     {
       flatten_check(cnt, tmp);
@@ -376,22 +362,22 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_STMT_RETURN: {
-    NodeStmtReturn *_return = ast_peek_stmt_return(*node);
+  case AST_STMT_RETURN: {
+    AstStmtReturn *_return = ast_peek_stmt_return(*node);
     flatten(&_return->expr);
     break;
   }
 
-  case NODE_STMT_IF: {
-    NodeStmtIf *_if = ast_peek_stmt_if(*node);
+  case AST_STMT_IF: {
+    AstStmtIf *_if = ast_peek_stmt_if(*node);
     flatten(&_if->test);
     flatten(&_if->true_stmt);
     flatten(&_if->false_stmt);
     break;
   }
 
-  case NODE_STMT_LOOP: {
-    NodeStmtLoop *_loop = ast_peek_stmt_loop(*node);
+  case AST_STMT_LOOP: {
+    AstStmtLoop *_loop = ast_peek_stmt_loop(*node);
     flatten(&_loop->init);
     flatten(&_loop->condition);
     flatten(&_loop->increment);
@@ -399,45 +385,43 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_EXPR_MEMBER: {
-    NodeExprMember *_member = ast_peek_expr_member(*node);
+  case AST_EXPR_MEMBER: {
+    AstExprMember *_member = ast_peek_expr_member(*node);
     flatten(&_member->next);
     break;
   }
 
-  case NODE_EXPR_ELEM: {
-    NodeExprElem *_elem = ast_peek_expr_elem(*node);
+  case AST_EXPR_ELEM: {
+    AstExprElem *_elem = ast_peek_expr_elem(*node);
     flatten(&_elem->next);
     flatten(&_elem->index);
     break;
   }
 
-  case NODE_EXPR_CAST: {
-    NodeExprCast *_cast = ast_peek_expr_cast(*node);
+  case AST_EXPR_CAST: {
+    AstExprCast *_cast = ast_peek_expr_cast(*node);
     flatten(&_cast->type);
     flatten(&_cast->next);
     break;
   }
 
-  case NODE_EXPR_SIZEOF: {
-    NodeExprSizeof *_sizeof = ast_peek_expr_sizeof(*node);
+  case AST_EXPR_SIZEOF: {
+    AstExprSizeof *_sizeof = ast_peek_expr_sizeof(*node);
     flatten(&_sizeof->in);
-    flatten(&_sizeof->type);
     break;
   }
 
-  case NODE_EXPR_TYPEOF: {
-    NodeExprTypeof *_typeof = ast_peek_expr_typeof(*node);
+  case AST_EXPR_TYPEOF: {
+    AstExprTypeof *_typeof = ast_peek_expr_typeof(*node);
     flatten(&_typeof->in);
-    flatten(&_typeof->type);
     break;
   }
 
-  case NODE_EXPR_CALL: {
-    NodeExprCall *_call = ast_peek_expr_call(*node);
+  case AST_EXPR_CALL: {
+    AstExprCall *_call = ast_peek_expr_call(*node);
     flatten(&_call->ref);
 
-    Node **tmp;
+    Ast **tmp;
     node_foreach_ref(_call->args, tmp)
     {
       flatten(tmp);
@@ -445,22 +429,22 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_EXPR_BINOP: {
-    NodeExprBinop *_binop = ast_peek_expr_binop(*node);
+  case AST_EXPR_BINOP: {
+    AstExprBinop *_binop = ast_peek_expr_binop(*node);
     flatten(&_binop->lhs);
     flatten(&_binop->rhs);
     break;
   }
 
-  case NODE_EXPR_UNARY: {
-    NodeExprUnary *_unary = ast_peek_expr_unary(*node);
+  case AST_EXPR_UNARY: {
+    AstExprUnary *_unary = ast_peek_expr_unary(*node);
     flatten(&_unary->next);
     break;
   }
 
-  case NODE_TYPE_STRUCT: {
-    NodeTypeStruct *_type_struct = ast_peek_type_struct(*node);
-    Node **         tmp;
+  case AST_TYPE_STRUCT: {
+    AstTypeStruct *_type_struct = ast_peek_type_struct(*node);
+    Ast **         tmp;
     node_foreach_ref(_type_struct->members, tmp)
     {
       flatten(tmp);
@@ -468,10 +452,10 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_TYPE_FN: {
-    NodeTypeFn *_type_fn = ast_peek_type_fn(*node);
+  case AST_TYPE_FN: {
+    AstTypeFn *_type_fn = ast_peek_type_fn(*node);
     flatten(&_type_fn->ret_type);
-    Node **sub_type;
+    Ast **sub_type;
     node_foreach_ref(_type_fn->arg_types, sub_type)
     {
       flatten(sub_type);
@@ -479,15 +463,15 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
     break;
   }
 
-  case NODE_TYPE_ARR: {
-    NodeTypeArr *_arr = ast_peek_type_arr(*node);
+  case AST_TYPE_ARR: {
+    AstTypeArr *_arr = ast_peek_type_arr(*node);
     flatten(&_arr->elem_type);
     flatten(&_arr->len);
     break;
   }
 
-  case NODE_TYPE_PTR: {
-    NodeTypePtr *_ptr = ast_peek_type_ptr(*node);
+  case AST_TYPE_PTR: {
+    AstTypePtr *_ptr = ast_peek_type_ptr(*node);
     flatten(&_ptr->type);
     break;
   }
@@ -500,36 +484,25 @@ flatten_node(Context *cnt, Flatten *fbuf, Node **node)
 #undef flatten
 }
 
-void
-check_error_invalid_types(Context *cnt, Node *first_type, Node *second_type, Node *err_pos)
-{
-  char tmp_first[256];
-  char tmp_second[256];
-  ast_type_to_string(tmp_first, 256, first_type);
-  ast_type_to_string(tmp_second, 256, second_type);
-  check_error_node(cnt, ERR_INVALID_TYPE, err_pos, BUILDER_CUR_WORD,
-                   "no implicit cast for types '%s' and '%s'", tmp_first, tmp_second);
-}
-
-Node *
-check_node(Context *cnt, Node **node)
+Ast *
+check_node(Context *cnt, Ast **node)
 {
   assert(node);
-  Node *result = NULL;
+  Ast *result = NULL;
 #if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
   if (node->_state == BL_CHECKED)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
 #endif
 
   switch (ast_node_code(*node)) {
-  case NODE_IDENT:
+  case AST_IDENT:
     result = check_ident(cnt, node);
     break;
-  case NODE_LIT_BOOL:
-  case NODE_LIT_CHAR:
-  case NODE_LIT_FLOAT:
-  case NODE_LIT_INT:
-  case NODE_LIT_STRING:
+  case AST_LIT_BOOL:
+  case AST_LIT_CHAR:
+  case AST_LIT_FLOAT:
+  case AST_LIT_INT:
+  case AST_LIT_STRING:
     result = check_lit(cnt, node);
     break;
   default:
@@ -545,8 +518,8 @@ check_node(Context *cnt, Node **node)
       bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_node_name(*node), file, line,
              col);
     } else {
-      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"), ast_node_name(*node),
-             file, line, col, ast_peek_ident(result)->str);
+      bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"),
+             ast_node_name(*node), file, line, col, ast_peek_ident(result)->str);
     }
   }
 #endif
@@ -557,29 +530,16 @@ check_node(Context *cnt, Node **node)
   return result;
 }
 
-Node *
-check_ident(Context *cnt, Node **ident)
+Ast *
+check_ident(Context *cnt, Ast **ident)
 {
-  NodeIdent *_ident = ast_peek_ident(*ident);
-
-  Scope *scope = _ident->scope;
-  assert(scope);
-  ScopeEntry *entry = scope_lookup(scope, *ident, true);
-  if (!entry) wait(*ident);
   finish();
 }
 
-Node *
-check_lit(Context *cnt, Node **lit)
+Ast *
+check_lit(Context *cnt, Ast **lit)
 {
-  switch (ast_node_code(*lit)) {
-  case NODE_LIT_INT: {
-    finish();
-  }
-
-  default:
-    bl_abort("invliad literal %s", ast_node_name(*lit));
-  }
+  finish();
 }
 
 void

@@ -29,24 +29,39 @@
 #ifndef BL_IR_H
 #define BL_IR_H
 
+#include "builder.h"
+#include "assembly.h"
 #include "common.h"
 
-struct Arena;
-struct Type;
-struct Node;
+typedef struct Ir Ir;
 
-typedef enum {
-  IR_CONST_VALUE,
-  IR_VAR_DECL
+typedef enum
+{
+  IR_FN,
 } IrCode;
 
-struct IrConstValue {
-  struct Type  type;
+struct IrFn
+{
+  Type *type;
 };
 
-struct Ir {
+typedef struct IrFn IrFn;
+
+struct Ir
+{
+  union
+  {
+    IrFn fn;
+  };
+
   IrCode code;
 };
+
+void
+ir_arena_init(Arena *arena);
+
+Ir *
+ir_create(Arena *arena, IrCode c);
 
 void
 ir_run(Builder *builder, Assembly *assembly);
