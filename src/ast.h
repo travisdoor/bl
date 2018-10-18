@@ -43,23 +43,8 @@ typedef struct Ast Ast;
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
-/* OLD BEGIN */
-// clang-format off
-#define _BUILDINS_LIST \
-    bt(MAIN,      main) \
-    bt(ASSERT,    assert) \
-    bt(ANY,       any) \
-    bt(ARRAY,     __Array) \
-
-typedef enum
-{
-#define bt(name, str) BUILDIN_##name,
-  _BUILDINS_LIST
-#undef bt
-      BUILDIN_COUNT
-} BuildinType;
-// clang-format on
-/* OLD END */
+extern Ast         ast_buildin_type[];
+extern const char *ast_node_names[];
 
 typedef enum
 {
@@ -79,6 +64,7 @@ typedef enum
   AST_ARG,
   AST_VARIANT,
   AST_TYPE_TYPE,
+  AST_TYPE_INT,
   AST_TYPE_FUND,
   AST_TYPE_VARGS,
   AST_TYPE_ARR,
@@ -104,6 +90,20 @@ typedef enum
   AST_EXPR_NULL,
   AST_COUNT
 } AstCode;
+
+typedef enum
+{
+  AST_BUILDIN_TYPE_U8,
+  AST_BUILDIN_TYPE_U16,
+  AST_BUILDIN_TYPE_U32,
+  AST_BUILDIN_TYPE_U64,
+  AST_BUILDIN_TYPE_S8,
+  AST_BUILDIN_TYPE_S16,
+  AST_BUILDIN_TYPE_S32,
+  AST_BUILDIN_TYPE_S64,
+  AST_BUILDIN_TYPE_USIZE,
+  AST_BUILDIN_TYPE_COUNT,
+} AstBuildinType;
 
 typedef enum
 {
@@ -269,6 +269,12 @@ struct AstTypeType
   Ast *spec;
 };
 
+struct AstTypeInt
+{
+  bool is_signed;
+  int  bitcount;
+};
+
 struct AstTypeVArgs
 {
   void *_;
@@ -416,6 +422,7 @@ typedef struct AstMember       AstMember;
 typedef struct AstArg          AstArg;
 typedef struct AstVariant      AstVariant;
 typedef struct AstTypeType     AstTypeType;
+typedef struct AstTypeInt      AstTypeInt;
 typedef struct AstTypeVArgs    AstTypeVArgs;
 typedef struct AstTypeArr      AstTypeArr;
 typedef struct AstTypeFn       AstTypeFn;
@@ -459,6 +466,7 @@ struct Ast
     AstArg          arg;
     AstVariant      variant;
     AstTypeType     type_type;
+    AstTypeInt      type_int;
     AstTypeVArgs    type_vargs;
     AstTypeArr      type_arr;
     AstTypeFn       type_fn;
@@ -503,14 +511,6 @@ typedef struct
   DepType type; /* is dependency strict (ex.: caused by #run directive) */
 } Dependency;
 
-extern const char *node_names[];
-
-/* OLD */
-extern Ast         type_type;
-extern const char *buildin_strings[];
-extern uint64_t    buildin_hashes[BUILDIN_COUNT];
-/* OLD END */
-
 void
 ast_init(struct Arena *arena);
 
@@ -541,7 +541,8 @@ ast_node_is_not(Ast *n, AstCode c)
 static inline const char *
 ast_node_name(Ast *n)
 {
-  return node_names[ast_node_code(n)];
+  return ast_node_names[ast_node_code(n)];
+  init_statics();
 }
 
 static inline bool

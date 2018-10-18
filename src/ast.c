@@ -32,30 +32,18 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-Ast type_type = {.code           = AST_TYPE_TYPE,
-                  .src            = NULL,
-                  .next           = NULL,
-                  .type_type.name = NULL,
-                  .type_type.spec = NULL};
-
-const char *buildin_strings[] = {
-#define bt(code, name) #name,
-    _BUILDINS_LIST
-#undef bt
+const char *ast_node_names[AST_COUNT] = {
+    "AstBad",          "AstLoad",       "AstLink",        "AstIdent",      "AstUBlock",
+    "AstBlock",        "AstStmtReturn", "AstStmtIf",      "AstStmtLoop",   "AstStmtBreak",
+    "AstStmtContinue", "AstDecl",       "AstMember",      "AstArg",        "AstVariant",
+    "AstTypeType",     "AstTypeint",    " AstTypeVargs ", " AstTypeArr ",  " AstTypeFn ",
+    " AstTypeStruct ", "AstTypeEnum",   "AstTypePtr",     "AstLitFn",      "AstLitInt",
+    "AstLitFloat",     "AstLitChar",    "AstLitString",   "AstLitBool",    "AstLitCmp",
+    "AstExprCast",     "AstExprBinop",  "AstExprCall",    "AstExprMember", "AstExprElem",
+    "AstExprSizeof",   "AstExprTypeof", "AstExprUnary",   "AstExprNull",
 };
 
-uint64_t buildin_hashes[BUILDIN_COUNT];
-
-const char *node_names[] = {
-    "AstBad",          "AstLoad",       "AstLink",       "AstIdent",    "AstUBlock",
-    "AstBlock",        "AstStmtReturn", "AstStmtIf",     "AstStmtLoop", "AstStmtBreak",
-    "AstStmtContinue", "AstDecl",       "AstMember",     "AstArg",      "AstVariant",
-    "AstTypeType",     "AstTypeVargs",  "AstTypeArr",    "AstTypeFn",   "AstTypeStruct",
-    "AstTypeEnum",     "AstTypePtr",    "AstLitFn",      "AstLitInt",   "AstLitFloat",
-    "AstLitChar",      "AstLitString",  "AstLitBool",    "AstLitCmp",   "AstExprCast",
-    "AstExprBinop",    "AstExprCall",   "AstExprMember", "AstExprElem", "AstExprSizeof",
-    "AstExprTypeof",   "AstExprUnary",  "AstExprNull",
-};
+Ast         ast_type_buildin[AST_TYPE] =
 
 static void
 node_dtor(Ast *node)
@@ -72,7 +60,7 @@ node_dtor(Ast *node)
 Ast *
 _ast_create_node(Arena *arena, AstCode c, Token *tok)
 {
-  Ast *node = arena_alloc(arena);
+  Ast *node  = arena_alloc(arena);
   node->code = c;
   node->src  = tok ? &tok->src : NULL;
 
@@ -84,22 +72,11 @@ _ast_create_node(Arena *arena, AstCode c, Token *tok)
   return node;
 }
 
-static void
-init_statics(void)
-{
-  const char *it;
-  array_foreach(buildin_strings, it)
-  {
-    buildin_hashes[i] = bo_hash_from_str(it);
-  }
-}
-
 /* public */
 void
 ast_init(struct Arena *arena)
 {
   arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
-  init_statics();
 }
 
 /*************************************************************************************************

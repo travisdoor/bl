@@ -26,11 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "ir.h"
-#include "ast.h"
-#include "arena.h"
+#include "stages.h"
 
-#define ARENA_CHUNK_COUNT 512
 #define VERBOSE 0
 
 typedef struct
@@ -40,20 +37,6 @@ typedef struct
 } Context;
 
 /* public */
-void
-ir_arena_init(Arena *arena)
-{
-  arena_init(arena, sizeof(Ir), ARENA_CHUNK_COUNT, NULL);
-}
-
-Ir *
-ir_create(Arena *arena, IrCode c)
-{
-  Ir *ir = arena_alloc(arena);
-  ir->code = c;
-  return ir;
-}
-
 void
 ir_run(Builder *builder, Assembly *assembly)
 {

@@ -33,7 +33,6 @@
 #include "unit.h"
 #include "assembly.h"
 #include "error.h"
-#include "ir.h"
 
 /*
  * per unit
@@ -58,6 +57,9 @@ ast_printer_run(Assembly *assembly);
 
 void
 checker_run(Builder *builder, Assembly *assembly);
+
+void
+ir_run(Builder *builder, Assembly *assembly);
 
 void
 post_run(Builder *builder, Assembly *assembly);
