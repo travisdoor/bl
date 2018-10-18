@@ -120,7 +120,7 @@ int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   if (!builder->errorc) checker_run(builder, assembly);
-  if (!builder->errorc) post_run(builder, assembly);
+  //if (!builder->errorc) post_run(builder, assembly);
 
   if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);

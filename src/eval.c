@@ -175,7 +175,7 @@ eval_node(Eval *eval, Ast *node)
 {
   if (!node) return false;
 
-  switch (ast_node_code(node)) {
+  switch (ast_code(node)) {
   case AST_LIT_INT:
     return eval_lit(eval, node);
   case AST_EXPR_BINOP:

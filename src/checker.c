@@ -80,13 +80,16 @@ typedef struct
 
 typedef struct
 {
-  BArray *stack;
-  Ast *  waitfor;
-  size_t  i;
+  BArray *  stack;
+  AstIdent *waitfor;
+  size_t    i;
 } Flatten;
 
 static void
-provide(Context *cnt, Ast *ident, Ast *provided);
+provide_buildins(Context *cnt);
+
+void
+provide(Context *cnt, AstIdent *name, AstType *type, bool is_buildin);
 
 static inline void
 waiting_push(BHashTable *waiting, Flatten *flatten);
@@ -117,34 +120,70 @@ flatten_process(Context *cnt, Flatten *flatten);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
-static Ast *
+static AstIdent *
 check_node(Context *cnt, Ast **node);
 
-static Ast *
-check_ident(Context *cnt, Ast **ident);
+static AstIdent *
+check_ident(Context *cnt, AstIdent **ident);
 
-static Ast *
-check_lit(Context *cnt, Ast **lit);
+static AstIdent *
+check_decl(Context *cnt, AstDecl **decl);
+
+static AstIdent *
+check_lit_int(Context *cnt, AstLitInt **lit);
 
 void
-provide(Context *cnt, Ast *ident, Ast *provided)
+provide_buildins(Context *cnt)
 {
-  /* TODO */
-#if VERBOSE
-  bl_log("providing " MAGENTA("'%s'") " (%d)", ast_peek_ident(ident)->str, ident->_serial);
-#endif
+  ScopeEntry *entry;
+  AstType *   type;
+  uint64_t    key;
+
+  for (int i = 0; i < AST_BUILDIN_TYPE_COUNT; ++i) {
+    type              = ast_get_buildin_type(i);
+    key               = bo_hash_from_str(type->name);
+    entry             = scope_create_entry(cnt->scope_entry_arena);
+    entry->type       = type;
+    entry->src        = NULL;
+    entry->is_buildin = true;
+
+    scope_insert(cnt->assembly->gscope, key, entry);
+  }
+}
+
+void
+provide(Context *cnt, AstIdent *name, AstType *type, bool is_buildin)
+{
+  Scope *scope = name->scope;
+  assert(scope);
+
+  ScopeEntry *conflict = scope_lookup(scope, name, true);
+  if (conflict) {
+    /* symbol collision !!! */
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ast_peek_src((Ast *)name),
+                BUILDER_CUR_WORD, "symbol with same name is already declared");
+
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, conflict->src, BUILDER_CUR_WORD,
+                "previous declaration found here");
+  } else {
+    ScopeEntry *entry = scope_create_entry(cnt->scope_entry_arena);
+    entry->src        = ast_peek_src((Ast *)name);
+    entry->type       = type;
+    entry->is_buildin = is_buildin;
+
+    scope_insert(scope, name->hash, entry);
+  }
 }
 
 void
 waiting_push(BHashTable *waiting, Flatten *flatten)
 {
-  AstIdent *_waitfor = ast_peek_ident(flatten->waitfor);
-  BArray *   queue;
-  if (bo_htbl_has_key(waiting, _waitfor->hash)) {
-    queue = bo_htbl_at(waiting, _waitfor->hash, BArray *);
+  BArray *queue;
+  if (bo_htbl_has_key(waiting, flatten->waitfor->hash)) {
+    queue = bo_htbl_at(waiting, flatten->waitfor->hash, BArray *);
   } else {
     queue = bo_array_new(sizeof(Flatten *));
-    bo_htbl_insert(waiting, _waitfor->hash, queue);
+    bo_htbl_insert(waiting, flatten->waitfor->hash, queue);
   }
   assert(queue);
   bo_array_push_back(queue, flatten);
@@ -191,7 +230,7 @@ check_unresolved(Context *cnt)
       flatten = bo_array_at(q, i, Flatten *);
       assert(flatten->waitfor);
       if (!scope_lookup(cnt->provided_in_gscope, flatten->waitfor, false))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, flatten->waitfor, BUILDER_CUR_WORD,
+        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, (Ast *)flatten->waitfor, BUILDER_CUR_WORD,
                          "unknown symbol");
       flatten_put(cnt, flatten);
     }
@@ -243,11 +282,12 @@ flatten_process(Context *cnt, Flatten *flatten)
   assert(flatten);
   bool interrupted = false;
 
-  Ast * waitfor;
-  Ast **tmp;
+  AstIdent *waitfor;
+  Ast **    tmp;
   for (; flatten->i < bo_array_size(flatten->stack); ++flatten->i) {
     tmp = bo_array_at(flatten->stack, flatten->i, Ast **);
     assert(*tmp);
+
     /* NULL means successfull check */
     waitfor = check_node(cnt, tmp);
     if (waitfor) {
@@ -279,7 +319,7 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 
 #define flatten(_node) flatten_node(cnt, fbuf, (_node))
 
-  switch (ast_node_code(*node)) {
+  switch (ast_code(*node)) {
   case AST_DECL: {
     AstDecl *_decl = ast_peek_decl(*node);
     /* store declaration for temporary use here, this scope is used only for searching truly
@@ -484,27 +524,29 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 #undef flatten
 }
 
-Ast *
+AstIdent *
 check_node(Context *cnt, Ast **node)
 {
   assert(node);
-  Ast *result = NULL;
+  AstIdent *result = NULL;
 #if defined(BL_DEBUG) && BL_VERBOSE_MUTIPLE_CHECK
   if (node->_state == BL_CHECKED)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
 #endif
 
-  switch (ast_node_code(*node)) {
+  switch (ast_code(*node)) {
   case AST_IDENT:
-    result = check_ident(cnt, node);
+    result = check_ident(cnt, (AstIdent **)node);
     break;
-  case AST_LIT_BOOL:
-  case AST_LIT_CHAR:
-  case AST_LIT_FLOAT:
+
+  case AST_DECL:
+    result = check_decl(cnt, (AstDecl **)node);
+    break;
+
   case AST_LIT_INT:
-  case AST_LIT_STRING:
-    result = check_lit(cnt, node);
+    result = check_lit_int(cnt, (AstLitInt **)node);
     break;
+
   default:
     break;
   }
@@ -515,11 +557,11 @@ check_node(Context *cnt, Ast **node)
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
     if (result == NULL) {
-      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_node_name(*node), file, line,
+      bl_log("checked [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_get_name(*node), file, line,
              col);
     } else {
       bl_log("checked [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"),
-             ast_node_name(*node), file, line, col, ast_peek_ident(result)->str);
+             ast_get_name(*node), file, line, col, result->str);
     }
   }
 #endif
@@ -530,15 +572,36 @@ check_node(Context *cnt, Ast **node)
   return result;
 }
 
-Ast *
-check_ident(Context *cnt, Ast **ident)
+AstIdent *
+check_ident(Context *cnt, AstIdent **ident)
 {
+  AstIdent *_ident = *ident;
+  Scope *   scope  = _ident->scope;
+  assert(scope && "missing scope for identificator");
+
+  ScopeEntry *found = scope_lookup(scope, _ident, true);
+  if (!found) wait(_ident);
+
+  assert(found->type);
+  _ident->type = found->type;
+
   finish();
 }
 
-Ast *
-check_lit(Context *cnt, Ast **lit)
+AstIdent *
+check_decl(Context *cnt, AstDecl **decl)
 {
+  AstDecl *_decl = *decl;
+
+  provide(cnt, _decl->name, ast_get_buildin_type(AST_BUILDIN_TYPE_S32), false);
+
+  finish();
+}
+
+AstIdent *
+check_lit_int(Context *cnt, AstLitInt **lit)
+{
+  (*lit)->type = ast_get_buildin_type(AST_BUILDIN_TYPE_S32);
   finish();
 }
 
@@ -550,7 +613,6 @@ checker_run(Builder *builder, Assembly *assembly)
       .assembly           = assembly,
       .unit               = NULL,
       .ast_arena          = &assembly->ast_arena,
-      .type_arena         = &assembly->type_arena,
       .scope_entry_arena  = &assembly->scope_entry_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
@@ -561,7 +623,7 @@ checker_run(Builder *builder, Assembly *assembly)
              (ArenaElemDtor)flatten_dtor);
 
   /* add buildin symbols to global scope table */
-  types_add_builinds(assembly->gscope, &assembly->scope_entry_arena);
+  provide_buildins(&cnt);
 
   /* TODO: stack size */
   eval_init(&cnt.evaluator, 1024);

@@ -30,7 +30,7 @@
 #include "common.h"
 #include "ast.h"
 #include "arena.h"
-#include "types.h"
+#include "unit.h"
 
 #define ARENA_CHUNK_COUNT 256
 #define VERBOSE 1
@@ -71,24 +71,27 @@ scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
   bo_htbl_insert(scope->entries, key, entry);
 
 #if VERBOSE
-  if (entry->is_buildin) {
-    bl_log("ADD SCOPE ENTRY (%p): %s (%x, buildin)", scope, entry->type->name, key);
-  } else {
-    bl_log("ADD SCOPE ENTRY (%p): %s (%x)", scope, ast_peek_ident(entry->ident)->str, key);
+  {
+    const char *file       = entry->src ? entry->src->unit->name : "IMPLICIT";
+    const int   line       = entry->src ? entry->src->line : -1;
+    const int   col        = entry->src ? entry->src->col : -1;
+    const char *type_name  = entry->type->name;
+    const char *is_buildin = entry->is_buildin ? "true" : "false";
+
+    bl_log("ADD INTO SCOPE (%p) <src: %s:%d:%d; type: '%s'; buildin: '%s'>", scope, file, line, col,
+           type_name, is_buildin);
   }
 #endif
 }
 
 ScopeEntry *
-scope_lookup(Scope *scope, Ast *ident, bool in_tree)
+scope_lookup(Scope *scope, AstIdent *ident, bool in_tree)
 {
   assert(scope);
 
   while (scope) {
-    AstIdent *_ident = ast_peek_ident(ident);
-
-    if (bo_htbl_has_key(scope->entries, _ident->hash))
-      return bo_htbl_at(scope->entries, _ident->hash, ScopeEntry *);
+    if (bo_htbl_has_key(scope->entries, ident->hash))
+      return bo_htbl_at(scope->entries, ident->hash, ScopeEntry *);
 
     if (in_tree)
       scope = scope->parent;
@@ -100,14 +103,7 @@ scope_lookup(Scope *scope, Ast *ident, bool in_tree)
 }
 
 ScopeEntry *
-scope_create_entry(struct Arena *arena, struct Ast *ident, struct Type *type, bool is_buildin)
+scope_create_entry(Arena *arena)
 {
-  assert(is_buildin || ident);
-  assert(type);
-
-  ScopeEntry *entry = arena_alloc(arena);
-  entry->ident      = ident;
-  entry->type       = type;
-  entry->is_buildin = is_buildin;
-  return entry;
+  return arena_alloc(arena);
 }

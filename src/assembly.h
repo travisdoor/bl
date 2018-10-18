@@ -36,13 +36,11 @@
 #include <llvm-c/Core.h>
 #include "scope.h"
 #include "unit.h"
-#include "types.h"
 #include "arena.h"
 
 typedef struct
 {
   Arena                  ast_arena;
-  Arena                  type_arena;
   Arena                  scope_arena; 
   Arena                  scope_entry_arena;
   BArray *               units;           /* array of all units in assembly */

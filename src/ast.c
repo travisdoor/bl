@@ -26,24 +26,84 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <math.h>
 #include "ast.h"
 #include "arena.h"
 
 #define ARENA_CHUNK_COUNT 256
 
-const char *ast_node_names[AST_COUNT] = {
-    "AstBad",          "AstLoad",       "AstLink",        "AstIdent",      "AstUBlock",
-    "AstBlock",        "AstStmtReturn", "AstStmtIf",      "AstStmtLoop",   "AstStmtBreak",
-    "AstStmtContinue", "AstDecl",       "AstMember",      "AstArg",        "AstVariant",
-    "AstTypeType",     "AstTypeint",    " AstTypeVargs ", " AstTypeArr ",  " AstTypeFn ",
-    " AstTypeStruct ", "AstTypeEnum",   "AstTypePtr",     "AstLitFn",      "AstLitInt",
-    "AstLitFloat",     "AstLitChar",    "AstLitString",   "AstLitBool",    "AstLitCmp",
-    "AstExprCast",     "AstExprBinop",  "AstExprCall",    "AstExprMember", "AstExprElem",
-    "AstExprSizeof",   "AstExprTypeof", "AstExprUnary",   "AstExprNull",
-};
+Ast ast_buildin_types[AST_BUILDIN_TYPE_COUNT] = {
+    // u8
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "u8",
+     .type_int.bitcount  = 8,
+     .type_int.is_signed = false},
 
-Ast         ast_type_buildin[AST_TYPE] =
+    // u16
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "u16",
+     .type_int.bitcount  = 16,
+     .type_int.is_signed = false},
+
+    // u32
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "u32",
+     .type_int.bitcount  = 32,
+     .type_int.is_signed = false},
+
+    // u64
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "u64",
+     .type_int.bitcount  = 64,
+     .type_int.is_signed = false},
+
+    // usize
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "usize",
+     .type_int.bitcount  = 64,
+     .type_int.is_signed = false},
+
+    // s8
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "s8",
+     .type_int.bitcount  = 8,
+     .type_int.is_signed = true},
+
+    // s16
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "s16",
+     .type_int.bitcount  = 16,
+     .type_int.is_signed = true},
+
+    // s32
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "s32",
+     .type_int.bitcount  = 32,
+     .type_int.is_signed = true},
+
+    // s64
+    {.code               = AST_TYPE_INT,
+     .src                = NULL,
+     .next               = NULL,
+     .type_int.base.name = "s64",
+     .type_int.bitcount  = 64,
+     .type_int.is_signed = true},
+};
 
 static void
 node_dtor(Ast *node)
@@ -79,6 +139,152 @@ ast_init(struct Arena *arena)
   arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
+AstType *
+ast_get_buildin_type(AstBuildinType c)
+{
+  assert(c >= 0 && c < AST_BUILDIN_TYPE_COUNT);
+  return (AstType *)&ast_buildin_types[c];
+}
+
+Ast *
+ast_dup(Arena *arena,
+        Ast *node)
+{
+  Ast *tmp = ast_create_node(arena, -1, NULL, Ast *);
+#if BL_DEBUG
+  int tmp_serial = tmp->_serial;
+#endif
+
+  memcpy(tmp, node, sizeof(Ast));
+  tmp->next = NULL;
+#if BL_DEBUG
+  tmp->_serial = tmp_serial;
+#endif
+
+  return tmp;
+}
+
+Dependency *
+ast_add_dep_uq(Ast *decl, Ast *dep, int type)
+{
+  assert(dep && "invalid dep");
+  BHashTable **deps = &ast_peek_decl(decl)->deps;
+  Dependency   tmp  = {.node = dep, .type = type};
+
+  if (!*deps) {
+    *deps = bo_htbl_new(sizeof(Dependency), 64);
+    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
+  } else if (!bo_htbl_has_key(*deps, (uint64_t)dep)) {
+    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
+  }
+
+  return &bo_htbl_at(*deps, (uint64_t)dep, Dependency);
+}
+
+const char *
+ast_get_name(Ast *n)
+{
+  assert(n);
+  switch (ast_code(n)) {
+  case AST_BAD:
+    return "Bad";
+  case AST_LOAD:
+    return "Load";
+  case AST_LINK:
+    return "Link";
+  case AST_IDENT:
+    return "Ident";
+  case AST_UBLOCK:
+    return "UBlock";
+  case AST_BLOCK:
+    return "Block";
+  case AST_STMT_RETURN:
+    return "StmtReturn";
+  case AST_STMT_IF:
+    return "StmtIf";
+  case AST_STMT_LOOP:
+    return "StmtLoop";
+  case AST_STMT_BREAK:
+    return "StmtBreak";
+  case AST_STMT_CONTINUE:
+    return "StmtContinue";
+  case AST_DECL:
+    return "Decl";
+  case AST_MEMBER:
+    return "Member";
+  case AST_ARG:
+    return "Arg";
+  case AST_VARIANT:
+    return "Variant";
+  case AST_TYPE_TYPE:
+    return "TypeType";
+  case AST_TYPE_INT:
+    return "TypeInt";
+  case AST_TYPE_VARGS:
+    return "TypeVArgs";
+  case AST_TYPE_ARR:
+    return "TypeArr";
+  case AST_TYPE_FN:
+    return "TypeFn";
+  case AST_TYPE_STRUCT:
+    return "TypeStruct";
+  case AST_TYPE_ENUM:
+    return "TypeEnum";
+  case AST_TYPE_PTR:
+    return "TypePtr";
+  case AST_LIT_FN:
+    return "LitFn";
+  case AST_LIT_INT:
+    return "LitInt";
+  case AST_LIT_FLOAT:
+    return "LitFloat";
+  case AST_LIT_CHAR:
+    return "LitChar";
+  case AST_LIT_STRING:
+    return "LitString";
+  case AST_LIT_BOOL:
+    return "LitBool";
+  case AST_LIT_CMP:
+    return "LitCmp";
+  case AST_EXPR_CAST:
+    return "ExprCast";
+  case AST_EXPR_BINOP:
+    return "ExprBinop";
+  case AST_EXPR_CALL:
+    return "ExprCall";
+  case AST_EXPR_MEMBER:
+    return "ExprMember";
+  case AST_EXPR_ELEM:
+    return "ExprElem";
+  case AST_EXPR_SIZEOF:
+    return "ExprSizeof";
+  case AST_EXPR_TYPEOF:
+    return "ExprTypeof";
+  case AST_EXPR_UNARY:
+    return "ExprUnary";
+  case AST_EXPR_NULL:
+    return "ExprNull";
+  case AST_COUNT:
+    break;
+  }
+
+  bl_abort("invalid ast node");
+}
+
+AstType *
+ast_get_type(Ast *n)
+{
+  assert(n);
+  switch (ast_code(n)) {
+  case AST_IDENT:
+    return ast_peek_ident(n)->type;
+  case AST_LIT_INT:
+    return ast_peek_lit_int(n)->type;
+  default:
+    bl_abort("node has no type %s", ast_get_name(n));
+  }
+}
+
 /*************************************************************************************************
  * AST visiting
  *************************************************************************************************/
@@ -108,8 +314,8 @@ visitor_visit(Visitor *visitor, Ast *node, void *cnt)
 {
   if (!node) return;
   if (visitor->all_visitor) visitor->all_visitor(visitor, node, cnt);
-  if (visitor->visitors[ast_node_code(node)])
-    visitor->visitors[ast_node_code(node)](visitor, node, cnt);
+  if (visitor->visitors[ast_code(node)])
+    visitor->visitors[ast_code(node)](visitor, node, cnt);
   else
     visitor_walk(visitor, node, cnt);
 }
@@ -122,7 +328,7 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
   Ast *tmp = NULL;
 
   if (!node) return;
-  switch (ast_node_code(node)) {
+  switch (ast_code(node)) {
 
   case AST_UBLOCK: {
     node_foreach(ast_peek_ublock(node)->nodes, tmp) visit(tmp);
@@ -136,7 +342,7 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
 
   case AST_DECL: {
     AstDecl *_decl = ast_peek_decl(node);
-    visit(_decl->name);
+    visit((Ast *)_decl->name);
     visit(_decl->type);
     visit(_decl->value);
     break;
@@ -153,10 +359,6 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
   case AST_VARIANT: {
     AstVariant *_var = ast_peek_variant(node);
     visit(_var->value);
-    break;
-  }
-
-  case AST_TYPE_FUND: {
     break;
   }
 
@@ -247,57 +449,4 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
   }
 
 #undef visit
-}
-
-/*************************************************************************************************
- * other
- *************************************************************************************************/
-
-int
-ast_is_buildin(Ast *ident)
-{
-  assert(ident);
-  AstIdent *_ident = ast_peek_ident(ident);
-
-  uint64_t hash;
-  array_foreach(buildin_hashes, hash)
-  {
-    if (_ident->hash == hash) return (int)i;
-  }
-
-  return -1;
-}
-
-Ast *
-ast_node_dup(Arena *arena, Ast *node)
-{
-  Ast *tmp = ast_create_node(arena, -1, NULL, Ast *);
-#if BL_DEBUG
-  int tmp_serial = tmp->_serial;
-#endif
-
-  memcpy(tmp, node, sizeof(Ast));
-  tmp->next = NULL;
-#if BL_DEBUG
-  tmp->_serial = tmp_serial;
-#endif
-
-  return tmp;
-}
-
-Dependency *
-ast_add_dep_uq(Ast *decl, Ast *dep, int type)
-{
-  assert(dep && "invalid dep");
-  BHashTable **deps = &ast_peek_decl(decl)->deps;
-  Dependency   tmp  = {.node = dep, .type = type};
-
-  if (!*deps) {
-    *deps = bo_htbl_new(sizeof(Dependency), 64);
-    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
-  } else if (!bo_htbl_has_key(*deps, (uint64_t)dep)) {
-    bo_htbl_insert(*deps, (uint64_t)dep, tmp);
-  }
-
-  return &bo_htbl_at(*deps, (uint64_t)dep, Dependency);
 }

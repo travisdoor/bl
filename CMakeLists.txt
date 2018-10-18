@@ -38,13 +38,11 @@ set(HEADER_FILES
         src/scope.h
         src/eval.h
         src/arena.h
-        src/types.h
         src/ast.h)
 
 set(SOURCE_FILES
         src/main.c
         src/arena.c
-        src/types.c
         src/eval.c
         src/tokens.c
         src/file_loader.c

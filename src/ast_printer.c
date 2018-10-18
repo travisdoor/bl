@@ -51,10 +51,10 @@ static inline void
 print_head(Ast *node, int pad)
 {
   if (node->src)
-    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", ast_node_name(node),
+    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", ast_get_name(node),
             node->src->line, node->src->col);
   else
-    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "", ast_node_name(node));
+    fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "", ast_get_name(node));
 
   print_address(node);
 }
@@ -189,7 +189,7 @@ print_member(Visitor *visitor, Ast *node, int pad)
   AstMember *_mem = ast_peek_member(node);
 
   if (_mem->name) {
-    fprintf(stdout, "%s ", ast_peek_ident(_mem->name)->str);
+    fprintf(stdout, "%s ", _mem->name->str);
   }
 
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
@@ -201,7 +201,7 @@ print_variant(Visitor *visitor, Ast *node, int pad)
   print_head(node, pad);
   AstVariant *_var = ast_peek_variant(node);
 
-  fprintf(stdout, "%s ", ast_peek_ident(_var->name)->str);
+  fprintf(stdout, "%s ", _var->name->str);
 
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 }
@@ -282,7 +282,7 @@ print_decl(Visitor *visitor, Ast *node, int pad)
   print_head(node, pad);
   AstDecl *_decl = ast_peek_decl(node);
   fprintf(stdout, "'%d' ", _decl->kind);
-  fprintf(stdout, "'%s' '%s' used: %d ", ast_peek_ident(_decl->name)->str,
+  fprintf(stdout, "'%s' '%s' used: %d ", _decl->name->str,
           _decl->mutable ? "mutable" : "immutable", _decl->used);
 
   print_flags(_decl->flags);
@@ -404,7 +404,7 @@ print_call(Visitor *visitor, Ast *node, int pad)
   print_head(node, pad);
   AstExprCall *_call = ast_peek_expr_call(node);
   assert(_call->ref);
-  if (ast_node_is(_call->ref, AST_IDENT)) {
+  if (ast_is(_call->ref, AST_IDENT)) {
     AstIdent *_ident = ast_peek_ident(_call->ref);
     fprintf(stdout, "'%s'", _ident->str);
   }
@@ -412,7 +412,7 @@ print_call(Visitor *visitor, Ast *node, int pad)
 
   visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
 
-  if (ast_node_is(_call->ref, AST_EXPR_MEMBER)) {
+  if (ast_is(_call->ref, AST_EXPR_MEMBER)) {
     visitor_visit(visitor, _call->ref, int_to_void_ptr(pad + 2));
   }
 }

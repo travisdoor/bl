@@ -94,7 +94,7 @@ post_decl(Visitor *visitor, Ast *decl, void *cnt)
   AstDecl *_decl = ast_peek_decl(decl);
   if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
       !(_decl->flags & FLAG_MAIN)) {
-    post_warning_node(_cnt, _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
+    post_warning_node(_cnt, (Ast *) _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
   }
 
   if (_decl->flags & FLAG_MAIN) _decl->used++;
@@ -142,7 +142,7 @@ post_call(Visitor *visitor, Ast *call, void *cnt)
 
   assert(_cnt->curr_dependent);
   Ast *callee = _call->ref;
-  if (ast_node_is(callee, AST_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
+  if (ast_is(callee, AST_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
       !ast_peek_decl(callee)->mutable) {
     ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
   }

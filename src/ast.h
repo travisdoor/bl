@@ -38,13 +38,50 @@
 #include "scope.h"
 
 struct Arena;
-typedef struct Ast Ast;
+typedef struct Ast             Ast;
+typedef struct AstBad          AstBad;
+typedef struct AstLoad         AstLoad;
+typedef struct AstLink         AstLink;
+typedef struct AstIdent        AstIdent;
+typedef struct AstUBlock       AstUBlock;
+typedef struct AstBlock        AstBlock;
+typedef struct AstStmtReturn   AstStmtReturn;
+typedef struct AstStmtIf       AstStmtIf;
+typedef struct AstStmtLoop     AstStmtLoop;
+typedef struct AstStmtBreak    AstStmtBreak;
+typedef struct AstStmtContinue AstStmtContinue;
+typedef struct AstDecl         AstDecl;
+typedef struct AstMember       AstMember;
+typedef struct AstArg          AstArg;
+typedef struct AstVariant      AstVariant;
+typedef struct AstType         AstType;
+typedef struct AstTypeType     AstTypeType;
+typedef struct AstTypeInt      AstTypeInt;
+typedef struct AstTypeVArgs    AstTypeVArgs;
+typedef struct AstTypeArr      AstTypeArr;
+typedef struct AstTypeFn       AstTypeFn;
+typedef struct AstTypeStruct   AstTypeStruct;
+typedef struct AstTypeEnum     AstTypeEnum;
+typedef struct AstTypePtr      AstTypePtr;
+typedef struct AstLitFn        AstLitFn;
+typedef struct AstLitInt       AstLitInt;
+typedef struct AstLitFloat     AstLitFloat;
+typedef struct AstLitChar      AstLitChar;
+typedef struct AstLitString    AstLitString;
+typedef struct AstLitBool      AstLitBool;
+typedef struct AstLitCmp       AstLitCmp;
+typedef struct AstExprCast     AstExprCast;
+typedef struct AstExprBinop    AstExprBinop;
+typedef struct AstExprCall     AstExprCall;
+typedef struct AstExprMember   AstExprMember;
+typedef struct AstExprElem     AstExprElem;
+typedef struct AstExprSizeof   AstExprSizeof;
+typedef struct AstExprTypeof   AstExprTypeof;
+typedef struct AstExprUnary    AstExprUnary;
+typedef struct AstExprNull     AstExprNull;
 
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
-
-extern Ast         ast_buildin_type[];
-extern const char *ast_node_names[];
 
 typedef enum
 {
@@ -65,7 +102,6 @@ typedef enum
   AST_VARIANT,
   AST_TYPE_TYPE,
   AST_TYPE_INT,
-  AST_TYPE_FUND,
   AST_TYPE_VARGS,
   AST_TYPE_ARR,
   AST_TYPE_FN,
@@ -93,15 +129,15 @@ typedef enum
 
 typedef enum
 {
-  AST_BUILDIN_TYPE_U8,
+  AST_BUILDIN_TYPE_U8 = 0,
   AST_BUILDIN_TYPE_U16,
   AST_BUILDIN_TYPE_U32,
   AST_BUILDIN_TYPE_U64,
+  AST_BUILDIN_TYPE_USIZE,
   AST_BUILDIN_TYPE_S8,
   AST_BUILDIN_TYPE_S16,
   AST_BUILDIN_TYPE_S32,
   AST_BUILDIN_TYPE_S64,
-  AST_BUILDIN_TYPE_USIZE,
   AST_BUILDIN_TYPE_COUNT,
 } AstBuildinType;
 
@@ -184,6 +220,8 @@ struct AstLink
 
 struct AstIdent
 {
+  Scope *     scope;
+  AstType *   type;
   const char *str;
   uint64_t    hash;
 };
@@ -232,10 +270,10 @@ struct AstStmtContinue
 
 struct AstDecl
 {
-  Ast *    type;
-  DeclKind kind;
-  Ast *    name;
-  Ast *    value;
+  Ast *     type;
+  DeclKind  kind;
+  AstIdent *name;
+  Ast *     value;
   bool mutable;
   int         flags;
   int         used;
@@ -245,22 +283,27 @@ struct AstDecl
 
 struct AstMember
 {
-  Ast *type;
-  Ast *name;
-  int  order;
+  AstIdent *name;
+  Ast *     type;
+  int       order;
 };
 
 struct AstArg
 {
-  Ast *type;
-  Ast *name;
+  AstIdent *name;
+  Ast *     type;
 };
 
 struct AstVariant
 {
-  Ast *type;
-  Ast *name;
-  Ast *value;
+  AstIdent *name;
+  Ast *     type;
+  Ast *     value;
+};
+
+struct AstType
+{
+  const char *name;
 };
 
 struct AstTypeType
@@ -271,8 +314,9 @@ struct AstTypeType
 
 struct AstTypeInt
 {
-  bool is_signed;
-  int  bitcount;
+  struct AstType base;
+  bool           is_signed;
+  int            bitcount;
 };
 
 struct AstTypeVArgs
@@ -319,27 +363,32 @@ struct AstLitFn
 
 struct AstLitInt
 {
+  AstType *type;
   uint64_t i;
 };
 
 struct AstLitFloat
 {
-  float f;
+  AstType *type;
+  float    f;
 };
 
 struct AstLitChar
 {
-  uint8_t c;
+  AstType *type;
+  uint8_t  c;
 };
 
 struct AstLitString
 {
+  AstType *   type;
   const char *s;
 };
 
 struct AstLitBool
 {
-  bool b;
+  AstType *type;
+  bool     b;
 };
 
 struct AstLitCmp
@@ -405,46 +454,6 @@ struct AstExprNull
 {
   void *_;
 };
-
-typedef struct AstBad          AstBad;
-typedef struct AstLoad         AstLoad;
-typedef struct AstLink         AstLink;
-typedef struct AstIdent        AstIdent;
-typedef struct AstUBlock       AstUBlock;
-typedef struct AstBlock        AstBlock;
-typedef struct AstStmtReturn   AstStmtReturn;
-typedef struct AstStmtIf       AstStmtIf;
-typedef struct AstStmtLoop     AstStmtLoop;
-typedef struct AstStmtBreak    AstStmtBreak;
-typedef struct AstStmtContinue AstStmtContinue;
-typedef struct AstDecl         AstDecl;
-typedef struct AstMember       AstMember;
-typedef struct AstArg          AstArg;
-typedef struct AstVariant      AstVariant;
-typedef struct AstTypeType     AstTypeType;
-typedef struct AstTypeInt      AstTypeInt;
-typedef struct AstTypeVArgs    AstTypeVArgs;
-typedef struct AstTypeArr      AstTypeArr;
-typedef struct AstTypeFn       AstTypeFn;
-typedef struct AstTypeStruct   AstTypeStruct;
-typedef struct AstTypeEnum     AstTypeEnum;
-typedef struct AstTypePtr      AstTypePtr;
-typedef struct AstLitFn        AstLitFn;
-typedef struct AstLitInt       AstLitInt;
-typedef struct AstLitFloat     AstLitFloat;
-typedef struct AstLitChar      AstLitChar;
-typedef struct AstLitString    AstLitString;
-typedef struct AstLitBool      AstLitBool;
-typedef struct AstLitCmp       AstLitCmp;
-typedef struct AstExprCast     AstExprCast;
-typedef struct AstExprBinop    AstExprBinop;
-typedef struct AstExprCall     AstExprCall;
-typedef struct AstExprMember   AstExprMember;
-typedef struct AstExprElem     AstExprElem;
-typedef struct AstExprSizeof   AstExprSizeof;
-typedef struct AstExprTypeof   AstExprTypeof;
-typedef struct AstExprUnary    AstExprUnary;
-typedef struct AstExprNull     AstExprNull;
 
 struct Ast
 {
@@ -521,34 +530,29 @@ ast_peek_src(Ast *n)
 }
 
 static inline AstCode
-ast_node_code(Ast *n)
+ast_code(Ast *n)
 {
   return n->code;
 }
 
 static inline bool
-ast_node_is(Ast *n, AstCode c)
+ast_is(Ast *n,
+       AstCode c)
 {
-  return ast_node_code(n) == c;
+  return ast_code(n) == c;
 }
 
 static inline bool
-ast_node_is_not(Ast *n, AstCode c)
+ast_is_not(Ast *n,
+           AstCode c)
 {
-  return ast_node_code(n) != c;
-}
-
-static inline const char *
-ast_node_name(Ast *n)
-{
-  return ast_node_names[ast_node_code(n)];
-  init_statics();
+  return ast_code(n) != c;
 }
 
 static inline bool
-ast_node_is_type(Ast *node)
+ast_is_type(Ast *node)
 {
-  return ast_node_code(node) >= AST_TYPE_TYPE && ast_node_code(node) <= AST_TYPE_PTR;
+  return ast_code(node) >= AST_TYPE_TYPE && ast_code(node) <= AST_TYPE_PTR;
 }
 
 #define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
@@ -556,14 +560,21 @@ ast_node_is_type(Ast *node)
 Ast *
 _ast_create_node(struct Arena *arena, AstCode c, Token *tok);
 
-int
-ast_is_buildin(Ast *ident);
+AstType *
+ast_get_buildin_type(AstBuildinType c);
 
 Ast *
-ast_node_dup(struct Arena *arena, Ast *node);
+ast_dup(struct Arena *arena,
+        Ast *node);
 
 Dependency *
 ast_add_dep_uq(Ast *decl, Ast *dep, int type);
+
+const char *
+ast_get_name(Ast *n);
+
+AstType *
+ast_get_type(Ast *n);
 
 /*************************************************************************************************
  * generation of peek function

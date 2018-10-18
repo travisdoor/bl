@@ -51,8 +51,8 @@ test_case(Context *cnt, TestCase *tc)
   assert(tc->name);
   assert(cnt->llvm_jit);
 
-  AstDecl *   _decl   = ast_peek_decl(tc->fn);
-  const char * fn_name = ast_peek_ident(_decl->name)->str;
+  AstDecl *    _decl   = ast_peek_decl(tc->fn);
+  const char * fn_name = _decl->name->str;
   LLVMValueRef llvm_fn = NULL;
 
   if (LLVMFindFunction(cnt->llvm_jit, fn_name, &llvm_fn)) {
