@@ -112,15 +112,6 @@ static Ast *
 parse_load(Context *cnt);
 
 static Ast *
-parse_line(Context *cnt);
-
-static Ast *
-parse_file(Context *cnt);
-
-static Ast *
-parse_run(Context *cnt);
-
-static Ast *
 parse_link(Context *cnt);
 
 static void
@@ -137,6 +128,15 @@ parse_block(Context *cnt);
 
 static Ast *
 parse_decl(Context *cnt);
+
+static Ast *
+parse_decl_member(Context *cnt, bool type_only, int order);
+
+static Ast *
+parse_decl_arg(Context *cnt, bool type_only);
+
+static Ast *
+parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev);
 
 static AstType *
 parse_type(Context *cnt);
@@ -166,54 +166,6 @@ static AstType *
 parse_type_ptr(Context *cnt);
 
 static Ast *
-parse_unary_expr(Context *cnt, Token *op);
-
-static Ast *
-parse_expr_member(Context *cnt, Token *op);
-
-static Ast *
-parse_atom_expr(Context *cnt, Token *op);
-
-static Ast *
-_parse_expr(Context *cnt, Ast *lhs, int min_precedence);
-
-static Ast *
-parse_expr_ref(Context *cnt);
-
-static inline Ast *
-parse_expr(Context *cnt);
-
-static Ast *
-parse_expr_nested(Context *cnt);
-
-static Ast *
-parse_expr_call(Context *cnt);
-
-static Ast *
-parse_expr_null(Context *cnt);
-
-static Ast *
-parse_decl_member(Context *cnt, bool type_only, int order);
-
-static Ast *
-parse_decl_arg(Context *cnt);
-
-static Ast *
-parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev);
-
-static Ast *
-parse_lit_cmp(Context *cnt, Ast *prev);
-
-static Ast *
-parse_lit(Context *cnt);
-
-static Ast *
-parse_lit_fn(Context *cnt);
-
-static inline bool
-parse_semicolon_rq(Context *cnt);
-
-static Ast *
 parse_stmt_return(Context *cnt);
 
 static Ast *
@@ -228,32 +180,83 @@ parse_stmt_break(Context *cnt);
 static Ast *
 parse_stmt_continue(Context *cnt);
 
-static Ast *
+static inline AstExpr *
+parse_expr(Context *cnt);
+
+static AstExpr *
+_parse_expr(Context *cnt, AstExpr *lhs, int min_precedence);
+
+static AstExpr *
+parse_expr_type(Context *cnt);
+
+static AstExpr *
+parse_expr_run(Context *cnt);
+
+static AstExpr *
+parse_expr_unary(Context *cnt, Token *op);
+
+static AstExpr *
+parse_expr_member(Context *cnt, Token *op);
+
+static AstExpr *
+parse_expr_atom(Context *cnt, Token *op);
+
+static AstExpr *
+parse_expr_ref(Context *cnt);
+
+static AstExpr *
+parse_expr_nested(Context *cnt);
+
+static AstExpr *
+parse_expr_call(Context *cnt);
+
+static AstExpr *
+parse_expr_null(Context *cnt);
+
+static AstExpr *
 parse_expr_sizeof(Context *cnt);
 
-static Ast *
+static AstExpr *
 parse_expr_typeof(Context *cnt);
 
-static Ast *
+static AstExpr *
 parse_expr_cast(Context *cnt);
 
-static Ast *
+static AstExpr *
 parse_expr_elem(Context *cnt, Token *op);
 
+static AstExpr *
+parse_expr_line(Context *cnt);
+
+static AstExpr *
+parse_expr_file(Context *cnt);
+
+static AstExpr *
+parse_expr_lit_cmp(Context *cnt, Ast *prev);
+
+static AstExpr *
+parse_expr_lit(Context *cnt);
+
+static AstExpr *
+parse_expr_lit_fn(Context *cnt);
+
+static inline bool
+parse_semicolon_rq(Context *cnt);
+
 // impl
-Ast *
+AstExpr *
 parse_expr_ref(Context *cnt)
 {
   Token *   tok   = tokens_peek(cnt->tokens);
   AstIdent *ident = parse_ident(cnt);
   if (!ident) return NULL;
 
-  AstExprRef *_ref = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok, AstExprRef *);
+  AstExprRef *_ref = ast_create_expr(cnt->ast_arena, AST_EXPR_REF, tok, AstExprRef *);
   _ref->ident      = ident;
-  return (Ast *)_ref;
+  return (AstExpr *)_ref;
 }
 
-Ast *
+AstExpr *
 parse_expr_cast(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
@@ -264,17 +267,17 @@ parse_expr_cast(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
                 "expected '(' after cast expression");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_begin, AstExpr *);
   }
 
-  AstExprCast *_cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, AstExprCast *);
+  AstExprCast *_cast = ast_create_expr(cnt->ast_arena, AST_EXPR_CAST, tok_begin, AstExprCast *);
   _cast->type        = parse_type(cnt);
   if (!_cast->type) {
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
                 "expected type name as cast parameter");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
   tok = tokens_consume(cnt->tokens);
@@ -282,18 +285,18 @@ parse_expr_cast(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected ')' after cast expression");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
   }
 
-  _cast->next = _parse_expr(cnt, parse_atom_expr(cnt, NULL), token_prec(tok_begin, false));
+  _cast->next = _parse_expr(cnt, parse_expr_atom(cnt, NULL), token_prec(tok_begin, false));
   if (!_cast->next) {
     tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD, "expected expression after cast");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
   }
 
-  return (Ast *)_cast;
+  return (AstExpr *)_cast;
 }
 
 Ast *
@@ -320,18 +323,23 @@ parse_decl_member(Context *cnt, bool type_only, int order)
 }
 
 Ast *
-parse_decl_arg(Context *cnt)
+parse_decl_arg(Context *cnt, bool type_only)
 {
   Token *   tok_begin = tokens_peek(cnt->tokens);
-  AstIdent *name      = parse_ident(cnt);
-  if (!name) return NULL;
+  AstIdent *name      = NULL;
+  AstType * type      = NULL;
 
-  AstArg *_arg = ast_create_node(cnt->ast_arena, AST_ARG, tok_begin, AstArg *);
-
-  _arg->type = parse_type(cnt);
-  if (!_arg->type) {
-    bl_abort("missing argument type");
+  if (type_only) {
+    type = parse_type(cnt);
+  } else {
+    name = parse_ident(cnt);
+    type = parse_type(cnt);
   }
+
+  if (!type && !name) return NULL;
+  AstArg *_arg = ast_create_node(cnt->ast_arena, AST_ARG, tok_begin, AstArg *);
+  _arg->type   = type;
+  _arg->name   = name;
 
   return (Ast *)_arg;
 }
@@ -351,28 +359,28 @@ parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev)
     if (!_var->value) bl_abort("expected enum variant value");
   } else if (prev) {
     assert(ast_is(prev, AST_VARIANT));
-    AstLitInt *_addition = ast_create_node(cnt->ast_arena, AST_LIT_INT, NULL, AstLitInt *);
-    _addition->i         = 1;
+    AstExprLitInt *_addition =
+        ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExprLitInt *);
+    _addition->i = 1;
 
-    AstExprBinop *_binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, NULL, AstExprBinop *);
+    AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, NULL, AstExprBinop *);
     _binop->kind         = BINOP_ADD;
     _binop->lhs          = ((AstVariant *)prev)->value;
-    _binop->rhs          = (Ast *)_addition;
+    _binop->rhs          = (AstExpr *)_addition;
 
-    _var->value = (Ast *)_binop;
+    _var->value = (AstExpr *)_binop;
   } else {
     /* first variant is allways 0 */
-    _var->value = ast_create_node(cnt->ast_arena, AST_LIT_INT, NULL, Ast *);
-
-    ((AstLitInt *)_var->value)->i = 0;
+    _var->value = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExpr *);
+    ((AstExprLitInt *)_var->value)->i = 0;
   }
 
   assert(_var->value);
   return (Ast *)_var;
 }
 
-Ast *
-parse_lit_cmp(Context *cnt, Ast *prev)
+AstExpr *
+parse_expr_lit_cmp(Context *cnt, Ast *prev)
 {
   if (prev == NULL) return NULL;
 
@@ -386,16 +394,17 @@ parse_lit_cmp(Context *cnt, Ast *prev)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  AstLitCmp *_lit_cmp = ast_create_node(cnt->ast_arena, AST_LIT_CMP, tok_begin, AstLitCmp *);
-  _lit_cmp->type      = (AstType *)prev;
+  AstExprLitCmp *_lit_cmp =
+      ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CMP, tok_begin, AstExprLitCmp *);
+  _lit_cmp->type = (AstType *)prev;
 
   /* parse lit_cmp fields */
   bool  rq     = false;
-  Ast **field  = &_lit_cmp->fields;
+  Ast **field  = (Ast **)&_lit_cmp->fields;
   int * fieldc = &_lit_cmp->fieldc;
 
 next:
-  *field = parse_expr(cnt);
+  *field = (Ast *)parse_expr(cnt);
   if (*field) {
     field = &(*field)->next;
     ++(*fieldc);
@@ -409,7 +418,7 @@ next:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected field after comma ','");
-      return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
     }
   }
 
@@ -418,13 +427,13 @@ next:
     Token *tok_err = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected end of initializer '}'");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
-  return (Ast *)_lit_cmp;
+  return (AstExpr *)_lit_cmp;
 }
 
-Ast *
+AstExpr *
 parse_expr_sizeof(Context *cnt)
 {
   Token *tok_id = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
@@ -436,13 +445,13 @@ parse_expr_sizeof(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected '(' after sizeof buildin");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
   AstExprSizeof *_sizeof =
-      ast_create_node(cnt->ast_arena, AST_EXPR_SIZEOF, tok_id, AstExprSizeof *);
+      ast_create_expr(cnt->ast_arena, AST_EXPR_SIZEOF, tok_id, AstExprSizeof *);
 
-  _sizeof->in = (Ast *)parse_type(cnt);
+  //_sizeof->in = (Ast *)parse_type(cnt);
   if (!_sizeof->in) _sizeof->in = parse_expr(cnt);
   if (!_sizeof->in) {
     Token *tok_err = tokens_peek(cnt->tokens);
@@ -450,7 +459,7 @@ parse_expr_sizeof(Context *cnt)
                 "expected type name as parameter");
 
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
   /* eat ) */
@@ -459,13 +468,13 @@ parse_expr_sizeof(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected ')' after sizeof buildin argument");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
-  return (Ast *)_sizeof;
+  return (AstExpr *)_sizeof;
 }
 
-Ast *
+AstExpr *
 parse_expr_typeof(Context *cnt)
 {
   Token *tok_id = tokens_consume_if(cnt->tokens, SYM_TYPEOF);
@@ -477,12 +486,13 @@ parse_expr_typeof(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected '(' after typeof buildin");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
   AstExprTypeof *_typeof =
-      ast_create_node(cnt->ast_arena, AST_EXPR_TYPEOF, tok_id, AstExprTypeof *);
-  _typeof->in = (Ast *)parse_type(cnt);
+      ast_create_expr(cnt->ast_arena, AST_EXPR_TYPEOF, tok_id, AstExprTypeof *);
+
+  //_typeof->in = (Ast *)parse_type(cnt);
   if (!_typeof->in) _typeof->in = parse_expr(cnt);
   if (!_typeof->in) {
     Token *tok_err = tokens_peek(cnt->tokens);
@@ -490,7 +500,7 @@ parse_expr_typeof(Context *cnt)
                 "expected type name as parameter");
 
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
   /* eat ) */
@@ -499,10 +509,10 @@ parse_expr_typeof(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "expected ')' after typeof buildin argument");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
-  return (Ast *)_typeof;
+  return (AstExpr *)_typeof;
 }
 
 bool
@@ -556,7 +566,7 @@ parse_stmt_if(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, Ast *);
   }
 
-  if (ast_is(_if->test, AST_BAD)) {
+  if (_if->test->kind == AST_EXPR_BAD) {
     tokens_consume_till(cnt->tokens, SYM_LBLOCK);
   }
 
@@ -699,42 +709,42 @@ parse_stmt_continue(Context *cnt)
   return ast_create_node(cnt->ast_arena, AST_STMT_CONTINUE, tok, Ast *);
 }
 
-Ast *
-parse_lit(Context *cnt)
+AstExpr *
+parse_expr_lit(Context *cnt)
 {
-  Token *tok = tokens_peek(cnt->tokens);
-  Ast *  lit = NULL;
+  Token *  tok = tokens_peek(cnt->tokens);
+  AstExpr *lit = NULL;
 
   switch (tok->sym) {
   case SYM_NUM:
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_INT, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok, AstExpr *);
 
-    ((AstLitInt *)lit)->i = tok->value.u;
+    ((AstExprLitInt *)lit)->i = tok->value.u;
     break;
 
   case SYM_CHAR:
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_CHAR, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
 
-    ((AstLitChar *)lit)->c = tok->value.c;
+    ((AstExprLitChar *)lit)->c = tok->value.c;
 
     break;
 
   case SYM_STRING:
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_STRING, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_STRING, tok, AstExpr *);
 
-    ((AstLitString *)lit)->s = tok->value.str;
+    ((AstExprLitString *)lit)->s = tok->value.str;
     break;
 
   case SYM_TRUE:
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_BOOL, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
 
-    ((AstLitBool *)lit)->b = true;
+    ((AstExprLitBool *)lit)->b = true;
     break;
 
   case SYM_FALSE:
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_BOOL, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
 
-    ((AstLitBool *)lit)->b = false;
+    ((AstExprLitBool *)lit)->b = false;
     break;
 
   case SYM_DOUBLE:
@@ -742,9 +752,9 @@ parse_lit(Context *cnt)
     // TODO: double!!!
     // TODO: double!!!
     // TODO: double!!!
-    lit = ast_create_node(cnt->ast_arena, AST_LIT_FLOAT, tok, Ast *);
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_FLOAT, tok, AstExpr *);
 
-    ((AstLitFloat *)lit)->f = (float)tok->value.d;
+    ((AstExprLitFloat *)lit)->f = (float)tok->value.d;
     break;
 
   default:
@@ -755,26 +765,27 @@ parse_lit(Context *cnt)
   return lit;
 }
 
-Ast *
-parse_lit_fn(Context *cnt)
+AstExpr *
+parse_expr_lit_fn(Context *cnt)
 {
   Token *tok_fn = tokens_peek(cnt->tokens);
   if (token_is_not(tok_fn, SYM_FN)) return NULL;
 
-  AstLitFn *_fn = ast_create_node(cnt->ast_arena, AST_LIT_FN, tok_fn, AstLitFn *);
+  AstExprLitFn *_fn = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, AstExprLitFn *);
 
   Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 32);
   push_scope(cnt, scope);
 
-  _fn->type = parse_type_fn(cnt, true);
+  AstType *type = parse_type_fn(cnt, true);
+  assert(type);
 
-  assert(_fn->type);
+  ((AstExpr *)_fn)->type = type;
 
   /* parse block (block is optional function body can be external) */
   _fn->block = parse_block(cnt);
 
   pop_scope(cnt);
-  return (Ast *)_fn;
+  return (AstExpr *)_fn;
 }
 
 AstType *
@@ -834,20 +845,20 @@ next:
   return (AstType *)_enm;
 }
 
-Ast *
+AstExpr *
 parse_expr(Context *cnt)
 {
-  return _parse_expr(cnt, parse_unary_expr(cnt, NULL), 0);
+  return _parse_expr(cnt, parse_expr_unary(cnt, NULL), 0);
 }
 
-Ast *
-parse_unary_expr(Context *cnt, Token *op)
+AstExpr *
+parse_expr_unary(Context *cnt, Token *op)
 {
   Token *curr_op = tokens_peek(cnt->tokens);
   if (token_is_unary(curr_op)) {
     tokens_consume(cnt->tokens);
-    AstExprUnary *_unary = ast_create_node(cnt->ast_arena, AST_EXPR_UNARY, curr_op, AstExprUnary *);
-    _unary->next         = _parse_expr(cnt, parse_atom_expr(cnt, NULL), token_prec(curr_op, true));
+    AstExprUnary *_unary = ast_create_expr(cnt->ast_arena, AST_EXPR_UNARY, curr_op, AstExprUnary *);
+    _unary->next         = _parse_expr(cnt, parse_expr_atom(cnt, NULL), token_prec(curr_op, true));
     _unary->kind         = (UnopKind)curr_op->sym;
 
     if (_unary->next == NULL) {
@@ -855,22 +866,22 @@ parse_unary_expr(Context *cnt, Token *op)
       parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
                   "expected expression after unary operator");
       tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-      return ast_create_node(cnt->ast_arena, AST_BAD, curr_op, Ast *);
+      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, curr_op, AstExpr *);
     }
 
-    if (ast_is(_unary->next, AST_BAD)) return _unary->next;
+    if (_unary->next->kind == AST_EXPR_BAD) return _unary->next;
 
-    return (Ast *)_unary;
+    return (AstExpr *)_unary;
   } else {
-    return parse_atom_expr(cnt, op);
+    return parse_expr_atom(cnt, op);
   }
 }
 
-Ast *
+AstExpr *
 parse_expr_nested(Context *cnt)
 {
-  Ast *  expr      = NULL;
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
+  AstExpr *expr      = NULL;
+  Token *  tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
   if (!tok_begin) return NULL;
 
   expr = parse_expr(cnt);
@@ -885,13 +896,13 @@ parse_expr_nested(Context *cnt)
     parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
                 "unterminated sub-expression, missing ')'");
     parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "starting here");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_begin, AstExpr *);
   }
 
   return expr;
 }
 
-Ast *
+AstExpr *
 parse_expr_member(Context *cnt, Token *op)
 {
   if (!op) return NULL;
@@ -902,18 +913,18 @@ parse_expr_member(Context *cnt, Token *op)
     parse_error(cnt, ERR_EXPECTED_NAME, op, BUILDER_CUR_WORD, "expected structure member name");
   }
 
-  AstExprMember *_mem = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, op, AstExprMember *);
+  AstExprMember *_mem = ast_create_expr(cnt->ast_arena, AST_EXPR_MEMBER, op, AstExprMember *);
   _mem->i             = -1;
-  return (Ast *)_mem;
+  return (AstExpr *)_mem;
 }
 
-Ast *
+AstExpr *
 parse_expr_elem(Context *cnt, Token *op)
 {
   if (!op) return NULL;
   if (token_is_not(op, SYM_LBRACKET)) return NULL;
 
-  AstExprElem *_elem = ast_create_node(cnt->ast_arena, AST_EXPR_ELEM, op, AstExprElem *);
+  AstExprElem *_elem = ast_create_expr(cnt->ast_arena, AST_EXPR_ELEM, op, AstExprElem *);
 
   _elem->index = parse_expr(cnt);
   if (!_elem->index) {
@@ -925,50 +936,48 @@ parse_expr_elem(Context *cnt, Token *op)
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "missing bracket ']'");
   }
 
-  return (Ast *)_elem;
+  return (AstExpr *)_elem;
 }
 
-Ast *
-parse_atom_expr(Context *cnt, Token *op)
+AstExpr *
+parse_expr_atom(Context *cnt, Token *op)
 {
-  Ast *expr = NULL;
-  Ast *tmp  = NULL;
+  AstExpr *expr = NULL;
+  AstExpr *tmp  = NULL;
 
   if ((expr = parse_expr_nested(cnt))) goto done;
   if ((expr = parse_expr_null(cnt))) goto done;
   if ((expr = parse_expr_sizeof(cnt))) goto done;
   if ((expr = parse_expr_typeof(cnt))) goto done;
   if ((expr = parse_expr_cast(cnt))) goto done;
-  if ((expr = parse_run(cnt))) goto done;
-  if ((expr = parse_lit_fn(cnt))) goto done;
-  if ((expr = (Ast *)parse_type_struct(cnt))) goto done;
-  if ((expr = (Ast *)parse_type_arr(cnt))) goto done;
-  if ((expr = (Ast *)parse_type_enum(cnt))) goto done;
+  if ((expr = parse_expr_run(cnt))) goto done;
+  if ((expr = parse_expr_lit_fn(cnt))) goto done;
+  if ((expr = parse_expr_type(cnt))) goto done;
   if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
-  if ((expr = parse_lit(cnt))) goto done;
+  if ((expr = parse_expr_lit(cnt))) goto done;
   if ((expr = parse_expr_member(cnt, op))) goto done;
   if ((expr = parse_expr_ref(cnt))) goto done;
-  if ((expr = parse_line(cnt))) goto done;
-  if ((expr = parse_file(cnt))) goto done;
+  if ((expr = parse_expr_line(cnt))) goto done;
+  if ((expr = parse_expr_file(cnt))) goto done;
 
 done:
-  tmp = parse_lit_cmp(cnt, expr);
+  tmp = parse_expr_lit_cmp(cnt, (Ast *)expr);
   return tmp ? tmp : expr;
 }
 
-Ast *
-_parse_expr(Context *cnt, Ast *lhs, int min_precedence)
+AstExpr *
+_parse_expr(Context *cnt, AstExpr *lhs, int min_precedence)
 {
-  Ast *  rhs       = NULL;
-  Token *lookahead = tokens_peek(cnt->tokens);
-  Token *op        = NULL;
+  AstExpr *rhs       = NULL;
+  Token *  lookahead = tokens_peek(cnt->tokens);
+  Token *  op        = NULL;
 
   while (token_prec(lookahead, false) >= min_precedence) {
     op = lookahead;
     tokens_consume(cnt->tokens);
-    rhs = parse_unary_expr(cnt, op);
-    if (rhs && ast_is(rhs, AST_BAD)) return rhs;
+    rhs = parse_expr_unary(cnt, op);
+    if (rhs && rhs->kind == AST_EXPR_BAD) return rhs;
     lookahead = tokens_peek(cnt->tokens);
 
     while (token_prec(lookahead, false) > token_prec(op, false)) {
@@ -977,41 +986,40 @@ _parse_expr(Context *cnt, Ast *lhs, int min_precedence)
     }
 
     if (token_is(op, SYM_LBRACKET)) {
-      assert(ast_is(rhs, AST_EXPR_ELEM));
+      assert(rhs->kind == AST_EXPR_ELEM);
       ((AstExprElem *)rhs)->next = lhs;
       lhs                        = rhs;
     } else if (token_is(op, SYM_DOT)) {
-      if (ast_is(rhs, AST_EXPR_CALL)) {
-        assert(ast_is(rhs, AST_EXPR_CALL));
+      if (rhs->kind == AST_EXPR_CALL) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
          * expression, finally we put this new node into call reference */
         AstExprCall *  _call = (AstExprCall *)rhs;
-        AstExprMember *_mem = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, op, AstExprMember *);
+        AstExprMember *_mem = ast_create_expr(cnt->ast_arena, AST_EXPR_MEMBER, op, AstExprMember *);
 
         _mem->i    = -1;
         _mem->kind = MEM_KIND_STRUCT;
         _mem->next = _call->ref;
 
-        _call->ref = (Ast *)_mem;
+        _call->ref = (AstExpr *)_mem;
         _mem->next = lhs;
         lhs        = rhs;
       } else {
-        assert(ast_is(rhs, AST_EXPR_MEMBER));
+        assert(rhs->kind == AST_EXPR_MEMBER);
         ((AstExprMember *)rhs)->next = lhs;
         lhs                          = rhs;
       }
     } else if (token_is_binop(op)) {
-      AstExprBinop *_binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, op, AstExprBinop *);
+      AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, op, AstExprBinop *);
       _binop->kind         = (BinopKind)op->sym;
       _binop->lhs          = lhs;
       _binop->rhs          = rhs;
 
-      lhs = (Ast *)_binop;
+      lhs = (AstExpr *)_binop;
     } else {
       parse_error(cnt, ERR_EXPECTED_BINOP, op, BUILDER_CUR_WORD, "expected binary operation");
       tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-      return ast_create_node(cnt->ast_arena, AST_BAD, op, Ast *);
+      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, op, AstExpr *);
     }
   }
 
@@ -1135,7 +1143,7 @@ parse_type_fn(Context *cnt, bool named_args)
   int * argc = &_fn->argc;
 
 next:
-  *arg = named_args ? parse_decl_arg(cnt) : (Ast *)parse_type(cnt);
+  *arg = parse_decl_arg(cnt, !named_args);
   if (*arg) {
     arg = &(*arg)->next;
     ++(*argc);
@@ -1187,7 +1195,7 @@ parse_type_struct(Context *cnt)
 
   /* parse arg types */
   bool  rq       = false;
-  Ast **member   = &_type_struct->members;
+  Ast **member   = (Ast **)&_type_struct->members;
   int * membersc = &_type_struct->membersc;
 
   const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
@@ -1321,7 +1329,7 @@ parse_decl(Context *cnt)
 #undef RETURN_BAD
 }
 
-Ast *
+AstExpr *
 parse_expr_call(Context *cnt)
 {
   if (!tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_LPAREN)) return NULL;
@@ -1332,19 +1340,19 @@ parse_expr_call(Context *cnt)
   if (tok->sym != SYM_LPAREN) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected function parameter list");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_id, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
   }
 
-  AstExprCall *_call = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok_id, AstExprCall *);
-  _call->ref         = (Ast *)ident;
+  AstExprCall *_call = ast_create_expr(cnt->ast_arena, AST_EXPR_CALL, tok_id, AstExprCall *);
+  _call->ref         = (AstExpr *)ident;
   _call->run         = false;
 
   /* parse args */
   bool  rq    = false;
-  Ast **arg   = &_call->args;
+  Ast **arg   = (Ast **)&_call->args;
   int * argsc = &_call->argsc;
 arg:
-  *arg = parse_expr(cnt);
+  *arg = (Ast *)parse_expr(cnt);
   if (*arg) {
     ++(*argsc);
     arg = &(*arg)->next;
@@ -1358,7 +1366,7 @@ arg:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected function argument after comma ','");
-      return ast_create_node(cnt->ast_arena, AST_BAD, tok_id, Ast *);
+      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
     }
   }
 
@@ -1366,18 +1374,18 @@ arg:
   if (tok->sym != SYM_RPAREN) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected end of parameter list ')' or another parameter separated by comma");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_id, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
   }
 
-  return (Ast *)_call;
+  return (AstExpr *)_call;
 }
 
-Ast *
+AstExpr *
 parse_expr_null(Context *cnt)
 {
   Token *tok_null = tokens_consume_if(cnt->tokens, SYM_NULL);
   if (!tok_null) return NULL;
-  return ast_create_node(cnt->ast_arena, AST_EXPR_NULL, tok_null, Ast *);
+  return ast_create_expr(cnt->ast_arena, AST_EXPR_NULL, tok_null, AstExpr *);
 }
 
 int
@@ -1433,26 +1441,28 @@ parse_load(Context *cnt)
   return (Ast *)_load;
 }
 
-Ast *
-parse_line(Context *cnt)
+AstExpr *
+parse_expr_line(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LINE);
   if (!tok_begin) return NULL;
 
-  AstLitInt *_lit = ast_create_node(cnt->ast_arena, AST_LIT_INT, tok_begin, AstLitInt *);
-  _lit->i         = tok_begin->src.line;
-  return (Ast *)_lit;
+  AstExprLitInt *_lit =
+      ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, AstExprLitInt *);
+  _lit->i = tok_begin->src.line;
+  return (AstExpr *)_lit;
 }
 
-Ast *
-parse_file(Context *cnt)
+AstExpr *
+parse_expr_file(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_FILE);
   if (!tok_begin) return NULL;
 
-  AstLitString *_lit = ast_create_node(cnt->ast_arena, AST_LIT_STRING, tok_begin, AstLitString *);
-  _lit->s            = tok_begin->src.unit->filepath;
-  return (Ast *)_lit;
+  AstExprLitString *_lit =
+      ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_STRING, tok_begin, AstExprLitString *);
+  _lit->s = tok_begin->src.unit->filepath;
+  return (AstExpr *)_lit;
 }
 
 Ast *
@@ -1474,21 +1484,39 @@ parse_link(Context *cnt)
   return (Ast *)_link;
 }
 
-Ast *
-parse_run(Context *cnt)
+AstExpr *
+parse_expr_type(Context *cnt)
+{
+  Token *  tok  = tokens_peek(cnt->tokens);
+  AstType *type = NULL;
+
+  type = parse_type_struct(cnt);
+  if (!type) type = parse_type_arr(cnt);
+  if (!type) type = parse_type_enum(cnt);
+
+  if (type) {
+    AstExpr *expr = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, tok, AstExpr *);
+    expr->type    = type;
+    return expr;
+  }
+
+  return NULL;
+}
+
+AstExpr *
+parse_expr_run(Context *cnt)
 {
   Token *tok = tokens_consume_if(cnt->tokens, SYM_RUN);
   if (!tok) return NULL;
 
-  Ast *call = parse_expr_call(cnt);
+  AstExpr *call = parse_expr_call(cnt);
   if (!call) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_AFTER,
                 "expected call after '#run' directive");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok, Ast *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
   }
 
   ((AstExprCall *)call)->run = true;
-
   return call;
 }
 
@@ -1553,7 +1581,7 @@ next:
     goto next;
   }
 
-  if ((*node = parse_expr(cnt))) {
+  if ((*node = (Ast *)parse_expr(cnt))) {
     switch (ast_kind(*node)) {
     case AST_EXPR_BINOP:
     case AST_EXPR_CALL:

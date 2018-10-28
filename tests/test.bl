@@ -1,5 +1,6 @@
 /* playground */
 
+void  : #compiler;
 s8    : #compiler;
 s16   : #compiler;
 s32   : #compiler;
@@ -10,13 +11,8 @@ u32   : #compiler;
 u64   : #compiler;
 usize : #compiler;
 
-Integer type : s32;
-Int type : Integer;
+i s32 : 10;
 
-foo s32 : 10;
-bar Integer : 10;
-
-homo fn ();
-
-main : fn () {
+main fn (s32) : fn (i s32) {
+  num := 10; 
 };

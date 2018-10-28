@@ -30,6 +30,7 @@
 #include "common.h"
 #include "ast.h"
 
+#if 0
 #define obj_new_s64(value)                                                                         \
   {                                                                                                \
     .type = OBJ_S64, .s64 = (value)                                                                \
@@ -210,6 +211,7 @@ eval_terminate(Eval *eval)
   eval->stack = NULL;
 }
 
+
 int
 eval_expr(Eval *eval, Ast *node, Ast **err_node)
 {
@@ -221,3 +223,19 @@ eval_expr(Eval *eval, Ast *node, Ast **err_node)
 
   return (int)pop(eval).s64;
 }
+#else
+
+void
+eval_init(Eval *eval, int stack_size)
+{}
+
+void
+eval_terminate(Eval *eval)
+{}
+
+int
+eval_expr(Eval *eval, Ast *node, Ast **err_node)
+{
+  return 0;
+}
+#endif

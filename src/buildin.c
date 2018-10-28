@@ -29,10 +29,17 @@
 #include "buildin.h"
 #include "ast.h"
 
-static const char *names[BUILDIN_COUNT] = {"u8", "u16", "u32", "u64", "usize",
-                                           "s8", "s16", "s32", "s64"};
+static const char *names[BUILDIN_COUNT] = {"void",  "u8", "u16", "u32", "u64",
+                                           "usize", "s8", "s16", "s32", "s64"};
 
 static Ast nodes[BUILDIN_COUNT] = {
+    // void
+    {.kind            = AST_TYPE,
+     .src             = NULL,
+     .next            = NULL,
+     .type.kind       = AST_TYPE_VOID,
+     .type.mvoid.name = "void"},
+
     // u8
     {.kind                   = AST_TYPE,
      .src                    = NULL,
@@ -138,5 +145,6 @@ buildin_terminate(Buildin *buildin)
 struct Ast *
 buildin_get(Buildin *buildin, uint64_t hash)
 {
+  if (!bo_htbl_has_key(buildin->table, hash)) return NULL;
   return bo_htbl_at(buildin->table, hash, Ast *);
 }

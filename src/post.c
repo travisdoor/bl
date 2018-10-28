@@ -30,6 +30,7 @@
 #include "common.h"
 #include "ast.h"
 
+#if 0
 #define VERBOSE 0
 
 #define post_warning_node(cnt, node, pos, format, ...)                                             \
@@ -187,3 +188,7 @@ post_run(Builder *builder, Assembly *assembly)
   bl_log("found %d unique types", cnt.type_table_size);
 #endif
 }
+#endif
+
+void
+post_run(Builder *builder, Assembly *assembly) {}

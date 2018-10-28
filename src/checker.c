@@ -124,16 +124,25 @@ static AstIdent *
 check_node(Context *cnt, Ast **node);
 
 static AstIdent *
+check_expr(Context *cnt, AstExpr **expr);
+
+static AstIdent *
+check_type(Context *cnt, AstType **type);
+
+static AstIdent *
 check_expr_ref(Context *cnt, AstExprRef **expr_ref);
 
 static AstIdent *
 check_type_ref(Context *cnt, AstTypeRef **type_ref);
 
 static AstIdent *
+check_type_fn(Context *cnt, AstTypeFn **type_fn);
+
+static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
 
 static AstIdent *
-check_lit_int(Context *cnt, AstLitInt **lit);
+check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
 
 void
 provide(Context *cnt, AstIdent *name, AstDecl *decl)
@@ -333,24 +342,6 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
     break;
   }
 
-  case AST_LIT_FN: {
-    AstLitFn *_fn = (AstLitFn *)(*node);
-    flatten(&_fn->type);
-    flatten_check(cnt, &_fn->block);
-    break;
-  }
-
-  case AST_LIT_CMP: {
-    AstLitCmp *_cmp = (AstLitCmp *)(*node);
-    flatten(&_cmp->type);
-    Ast **field;
-    node_foreach_ref(_cmp->fields, field)
-    {
-      flatten(field);
-    }
-    break;
-  }
-
   case AST_BLOCK: {
     AstBlock *_block = (AstBlock *)(*node);
 
@@ -396,60 +387,36 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
     break;
   }
 
-  case AST_EXPR_MEMBER: {
-    AstExprMember *_member = (AstExprMember *)(*node);
-    flatten(&_member->next);
-    break;
-  }
-
-  case AST_EXPR_ELEM: {
-    AstExprElem *_elem = (AstExprElem *)(*node);
-    flatten(&_elem->next);
-    flatten(&_elem->index);
-    break;
-  }
-
-  case AST_EXPR_CAST: {
-    AstExprCast *_cast = (AstExprCast *)(*node);
-    flatten(&_cast->type);
-    flatten(&_cast->next);
-    break;
-  }
-
-  case AST_EXPR_SIZEOF: {
-    AstExprSizeof *_sizeof = (AstExprSizeof *)(*node);
-    flatten(&_sizeof->in);
-    break;
-  }
-
-  case AST_EXPR_TYPEOF: {
-    AstExprTypeof *_typeof = (AstExprTypeof *)(*node);
-    flatten(&_typeof->in);
-    break;
-  }
-
-  case AST_EXPR_CALL: {
-    AstExprCall *_call = (AstExprCall *)(*node);
-    flatten(&_call->ref);
-
-    Ast **tmp;
-    node_foreach_ref(_call->args, tmp)
-    {
-      flatten(tmp);
+  case AST_TYPE: {
+    AstType **type = (AstType **)node;
+    switch (ast_type_kind(*type)) {
+    case AST_TYPE_FN: {
+      AstTypeFn *_fn = (AstTypeFn *)(*type);
+      Ast *      arg;
+      node_foreach(_fn->args, arg) flatten(arg);
+      flatten(&_fn->ret_type);
+      break;
     }
+    default:
+      break;
+    }
+
     break;
   }
 
-  case AST_EXPR_BINOP: {
-    AstExprBinop *_binop = (AstExprBinop *)(*node);
-    flatten(&_binop->lhs);
-    flatten(&_binop->rhs);
-    break;
-  }
+  case AST_EXPR: {
+    AstExpr **expr = (AstExpr **)node;
+    switch (ast_expr_kind(*expr)) {
+    case AST_EXPR_LIT_FN: {
+      AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
+      flatten(&(*expr)->type);
+      flatten_check(cnt, &_fn->block);
+      break;
+    }
+    default:
+      break;
+    }
 
-  case AST_EXPR_UNARY: {
-    AstExprUnary *_unary = (AstExprUnary *)(*node);
-    flatten(&_unary->next);
     break;
   }
 
@@ -472,28 +439,18 @@ check_node(Context *cnt, Ast **node)
 #endif
 
   switch (ast_kind(*node)) {
-  case AST_EXPR_REF:
-    result = check_expr_ref(cnt, (AstExprRef **)node);
-    break;
 
   case AST_DECL:
     result = check_decl(cnt, (AstDecl **)node);
     break;
 
-  case AST_LIT_INT:
-    result = check_lit_int(cnt, (AstLitInt **)node);
+  case AST_EXPR:
+    result = check_expr(cnt, (AstExpr **)node);
     break;
 
-  case AST_TYPE: {
-    switch (ast_type_kind(*(AstType **)node)) {
-    case AST_TYPE_REF:
-      result = check_type_ref(cnt, (AstTypeRef **)node);
-      break;
-    default:
-      break;
-    }
+  case AST_TYPE:
+    result = check_type(cnt, (AstType **)node);
     break;
-  }
 
   default:
     break;
@@ -520,6 +477,48 @@ check_node(Context *cnt, Ast **node)
   return result;
 }
 
+AstIdent *
+check_expr(Context *cnt, AstExpr **expr)
+{
+  AstIdent *result = NULL;
+  switch (ast_expr_kind(*expr)) {
+  case AST_EXPR_LIT_INT:
+    result = check_expr_lit_int(cnt, (AstExprLitInt **)expr);
+    break;
+
+  case AST_EXPR_REF:
+    result = check_expr_ref(cnt, (AstExprRef **)expr);
+    break;
+  default:
+    break;
+  }
+
+  assert(result || (*expr)->type);
+  return result;
+}
+
+AstIdent *
+check_type(Context *cnt, AstType **type)
+{
+  AstIdent *result = NULL;
+
+  switch (ast_type_kind(*type)) {
+
+  case AST_TYPE_REF:
+    result = check_type_ref(cnt, (AstTypeRef **)type);
+    break;
+
+  case AST_TYPE_FN:
+    result = check_type_fn(cnt, (AstTypeFn **)type);
+    break;
+
+  default:
+    break;
+  }
+
+  return result;
+}
+
 bool
 cmp_type(AstType *first, AstType *second)
 {
@@ -536,16 +535,34 @@ cmp_type(AstType *first, AstType *second)
     return true;
   }
 
+  case AST_TYPE_FN: {
+    AstTypeFn *_f = &first->fn;
+    AstTypeFn *_s = &second->fn;
+
+    if (_f->argc != _s->argc) return false;
+    if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
+
+    Ast *argt1 = _f->args;
+    Ast *argt2 = _s->args;
+    while (argt1 && argt2) {
+      if (!cmp_type(argt1->arg.type, argt2->arg.type)) return false;
+
+      argt1 = argt1->next;
+      argt2 = argt2->next;
+    }
+    return true;
+  }
+
   case AST_TYPE_BAD:
   case AST_TYPE_REF:
   case AST_TYPE_INT:
   case AST_TYPE_VARGS:
   case AST_TYPE_ARR:
-  case AST_TYPE_FN:
   case AST_TYPE_STRUCT:
   case AST_TYPE_ENUM:
   case AST_TYPE_PTR:
-    bl_abort("unimplemented");
+  case AST_TYPE_VOID:
+    bl_abort("unimplemented %s", ast_get_name((Ast *)first));
   }
 
   return false;
@@ -567,16 +584,17 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
 {
   AstExprRef *_ref = *ref;
   assert(_ref->ident);
-  AstIdent *_ident = _ref->ident;
 
-  Scope *scope = _ident->scope;
+  Scope *scope = _ref->ident->scope;
   assert(scope && "missing scope for identificator");
 
-  AstDecl *found = scope_lookup(scope, _ident, true);
-  if (!found) wait(_ident);
+  /* TODO: not only declarations are registred??? */
+  AstDecl *found = scope_lookup(scope, _ref->ident, true);
+  if (!found) wait(_ref->ident);
+  found->used++;
 
   assert(found->type);
-  _ref->type = found->type;
+  ((AstExpr *)_ref)->type = found->type;
 
   finish();
 }
@@ -584,25 +602,35 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
 AstIdent *
 check_type_ref(Context *cnt, AstTypeRef **type_ref)
 {
-  AstTypeRef *_type_ref = *type_ref;
-  assert(_type_ref->ident);
-  AstIdent *_ident = _type_ref->ident;
+  AstTypeRef *_ref = *type_ref;
+  assert(_ref->ident);
 
-  Scope *scope = _ident->scope;
+  Scope *scope = _ref->ident->scope;
   assert(scope && "missing scope for identificator");
 
-  AstDecl *found = scope_lookup(scope, _ident, true);
-  if (!found) wait(_ident);
+  /* TODO: not only declarations are registred??? */
+  AstDecl *found = scope_lookup(scope, _ref->ident, true);
+  if (!found) wait(_ref->ident);
+  found->used++;
 
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_type_ref)->src,
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_ref)->src,
                 BUILDER_CUR_WORD, "expected type");
-    _type_ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
+    _ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
     finish();
   }
 
-  _type_ref->type = found->type;
+  *type_ref = (AstTypeRef *)found->type->type.spec;
+  finish();
+}
+
+AstIdent *
+check_type_fn(Context *cnt, AstTypeFn **type_fn)
+{
+  AstTypeFn *_fn = *type_fn;
+  if (!_fn->ret_type)
+    _fn->ret_type = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_VOID]);
   finish();
 }
 
@@ -621,7 +649,7 @@ infer_decl_type(Context *cnt, AstDecl *decl)
   }
 
   if (decl->type && !cmp_type(inferred, decl->type)) {
-    check_error_invalid_types(cnt, decl->type, inferred, decl->value);
+    check_error_invalid_types(cnt, decl->type, inferred, (Ast *)decl->value);
     return false;
   }
 
@@ -633,16 +661,52 @@ static bool
 check_buildin_decl(Context *cnt, AstDecl *decl)
 {
   if (!(decl->flags & FLAG_COMPILER)) return false;
-  decl->value = buildin_get(cnt->buildin, decl->name->hash);
+  AstType *tmp = (AstType *)buildin_get(cnt->buildin, decl->name->hash);
+  if (!tmp) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
+                BUILDER_CUR_WORD, "unknown compiler internal");
+    return false;
+  }
+
+  decl->value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
+  decl->value->type = tmp;
 
   AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
   type->name        = decl->name->str;
-  type->spec        = (AstType *)decl->value;
+  type->spec        = decl->value->type;
   decl->type        = (AstType *)type;
   decl->kind        = DECL_KIND_TYPE;
 
   provide(cnt, decl->name, decl);
   return true;
+}
+
+static inline void
+setup_decl_kind(AstDecl *decl)
+{
+  switch (ast_type_kind(decl->type)) {
+  case AST_TYPE_VOID:
+  case AST_TYPE_REF:
+  case AST_TYPE_BAD:
+  case AST_TYPE_VARGS:
+    decl->kind = DECL_KIND_INVALID;
+    break;
+  case AST_TYPE_TYPE:
+    decl->kind = DECL_KIND_TYPE;
+    break;
+  case AST_TYPE_FN:
+    decl->kind = DECL_KIND_FN;
+    break;
+  case AST_TYPE_ENUM:
+    decl->kind = DECL_KIND_ENUM;
+    break;
+  case AST_TYPE_INT:
+  case AST_TYPE_STRUCT:
+  case AST_TYPE_ARR:
+  case AST_TYPE_PTR:
+    decl->kind = DECL_KIND_FIELD;
+    break;
+  }
 }
 
 AstIdent *
@@ -654,21 +718,34 @@ check_decl(Context *cnt, AstDecl **decl)
   /* solve buildins */
   if (check_buildin_decl(cnt, _decl)) finish();
 
-  if (_decl->type) {
-    _decl->type = ast_get_type((Ast *)_decl->type);
-    if (_decl->type->kind == AST_TYPE_TYPE) {
-      _decl->type = _decl->type->type.spec;
-    }
-  }
-
   /* infer declaration type */
   infer_decl_type(cnt, _decl);
   assert(_decl->type);
 
-  if (_decl->type->kind == AST_TYPE_TYPE) {
-    _decl->kind = DECL_KIND_TYPE;
-  } else {
-    _decl->kind = DECL_KIND_FIELD;
+  /* declaration kind based on type */
+  setup_decl_kind(_decl);
+
+  switch (_decl->kind) {
+  case DECL_KIND_INVALID:
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, ((Ast *)_decl->type)->src,
+                BUILDER_CUR_WORD, "declaration has invalid type");
+    break;
+  case DECL_KIND_FIELD:
+    break;
+  case DECL_KIND_TYPE:
+    if (_decl->mutable) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
+                  BUILDER_CUR_WORD, "type declaration cannot be mutable");
+    }
+    break;
+  case DECL_KIND_FN:
+    if (_decl->mutable) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
+                  BUILDER_CUR_WORD, "function declaration cannot be mutable");
+    }
+    break;
+  case DECL_KIND_ENUM:
+    break;
   }
 
   provide(cnt, _decl->name, _decl);
@@ -677,10 +754,10 @@ check_decl(Context *cnt, AstDecl **decl)
 }
 
 AstIdent *
-check_lit_int(Context *cnt, AstLitInt **lit)
+check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
-  AstLitInt *_lit = *lit;
-  _lit->type      = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
+  AstExpr *_lit = (AstExpr *)*lit;
+  _lit->type    = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
   finish();
 }
 

@@ -38,7 +38,8 @@ typedef struct Buildin Buildin;
 
 typedef enum
 {
-  BUILDIN_U8 = 0,
+  BUILDIN_VOID,
+  BUILDIN_U8,
   BUILDIN_U16,
   BUILDIN_U32,
   BUILDIN_U64,
