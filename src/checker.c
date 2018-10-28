@@ -392,8 +392,8 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
     switch (ast_type_kind(*type)) {
     case AST_TYPE_FN: {
       AstTypeFn *_fn = (AstTypeFn *)(*type);
-      Ast *      arg;
-      node_foreach(_fn->args, arg) flatten(arg);
+      Ast **     arg;
+      node_foreach_ref(_fn->args, arg) flatten(arg);
       flatten(&_fn->ret_type);
       break;
     }

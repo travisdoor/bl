@@ -1628,6 +1628,8 @@ next:
   if ((*node = parse_decl(cnt))) {
     if (ast_is_not(*node, AST_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
+    /* setup global scope flag for declaration */
+    (*node)->decl.in_gscope = true;
     goto next;
   }
 
