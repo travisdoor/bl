@@ -116,7 +116,7 @@ static void
 flatten_process(Context *cnt, Flatten *flatten);
 
 static bool
-cmp_type(Ast *first, Ast *second);
+cmp_type(AstType *first, AstType *second);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
@@ -514,29 +514,38 @@ check_node(Context *cnt, Ast **node)
 }
 
 bool
-cmp_type(Ast *first, Ast *second)
+cmp_type(AstType *first, AstType *second)
 {
   assert(first && second);
 
   if (first == second) return true;
 
-  AstKind fc = ast_kind(first);
-  AstKind sc = ast_kind(second);
+  AstTypeKind fc = ast_type_kind(first);
+  AstTypeKind sc = ast_type_kind(second);
   if (fc != sc) return false;
 
   switch (fc) {
-  case AST_TYPE: {
+  case AST_TYPE_TYPE: {
     return true;
   }
-  default:
-    bl_abort("invalid type %s", ast_get_name(first));
+
+  case AST_TYPE_BAD:
+  case AST_TYPE_REF:
+  case AST_TYPE_INT:
+  case AST_TYPE_VARGS:
+  case AST_TYPE_ARR:
+  case AST_TYPE_FN:
+  case AST_TYPE_STRUCT:
+  case AST_TYPE_ENUM:
+  case AST_TYPE_PTR:
+    bl_abort("unimplemented");
   }
 
   return false;
 }
 
-void
-check_error_invalid_types(Context *cnt, Ast *first, Ast *second, Ast *err_pos)
+static inline void
+check_error_invalid_types(Context *cnt, AstType *first, AstType *second, Ast *err_pos)
 {
   char tmp_first[256];
   char tmp_second[256];
@@ -579,10 +588,10 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   if (!found) wait(_ident);
 
   assert(found->type);
-  if (ast_is_not(found->type, AST_TYPE)) {
+  if (found->type->kind != AST_TYPE_TYPE) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_type_ref)->src,
                 BUILDER_CUR_WORD, "expected type");
-    _type_ref->type = ast_create_node(cnt->ast_arena, AST_BAD, NULL, Ast *);
+    _type_ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
     finish();
   }
 
@@ -594,14 +603,14 @@ static inline bool
 infer_decl_type(Context *cnt, AstDecl *decl)
 {
   if (!decl->value) return false;
-  Ast *inferred = ast_get_type(decl->value);
+  AstType *inferred = ast_get_type(decl->value);
   assert(inferred);
 
-  if (ast_is(inferred, AST_TYPE)) {
-    AstType *tmp = ast_create_node(cnt->ast_arena, AST_TYPE, NULL, AstType *);
-    tmp->name    = decl->name->ident.str;
-    tmp->spec    = inferred->type.spec;
-    inferred     = (Ast *)tmp;
+  if (inferred->kind == AST_TYPE_TYPE) {
+    AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
+    tmp->name        = decl->name->ident.str;
+    tmp->spec        = inferred->type.spec;
+    inferred         = (AstType *)tmp;
   }
 
   if (decl->type && !cmp_type(inferred, decl->type)) {
@@ -620,12 +629,11 @@ check_buildin_decl(Context *cnt, AstDecl *decl)
   assert(ast_is(decl->name, AST_IDENT));
   decl->value = buildin_get(cnt->buildin, decl->name->ident.hash);
 
-  AstType *type = ast_create_node(cnt->ast_arena, AST_TYPE, NULL, AstType *);
-  type->name    = decl->name->ident.str;
-  type->spec    = decl->value;
-
-  decl->type = (Ast *)type;
-  decl->kind = DECL_KIND_TYPE;
+  AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
+  type->name        = decl->name->ident.str;
+  type->spec        = (AstType *)decl->value;
+  decl->type        = (AstType *)type;
+  decl->kind        = DECL_KIND_TYPE;
 
   provide(cnt, &decl->name->ident, decl);
   return true;
@@ -641,8 +649,8 @@ check_decl(Context *cnt, AstDecl **decl)
   if (check_buildin_decl(cnt, _decl)) finish();
 
   if (_decl->type) {
-    _decl->type = ast_get_type(_decl->type);
-    if (ast_is(_decl->type, AST_TYPE)) {
+    _decl->type = ast_get_type((Ast *)_decl->type);
+    if (_decl->type->kind == AST_TYPE_TYPE) {
       _decl->type = _decl->type->type.spec;
     }
   }
@@ -651,7 +659,7 @@ check_decl(Context *cnt, AstDecl **decl)
   infer_decl_type(cnt, _decl);
   assert(_decl->type);
 
-  if (ast_is(_decl->type, AST_TYPE)) {
+  if (_decl->type->kind == AST_TYPE_TYPE) {
     _decl->kind = DECL_KIND_TYPE;
   } else {
     _decl->kind = DECL_KIND_FIELD;
@@ -666,7 +674,7 @@ AstIdent *
 check_lit_int(Context *cnt, AstLitInt **lit)
 {
   AstLitInt *_lit = *lit;
-  _lit->type      = buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
+  _lit->type      = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
   finish();
 }
 

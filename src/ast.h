@@ -39,7 +39,6 @@
 
 struct Arena;
 typedef struct Ast             Ast;
-typedef struct AstBad          AstBad;
 typedef struct AstLoad         AstLoad;
 typedef struct AstLink         AstLink;
 typedef struct AstIdent        AstIdent;
@@ -55,23 +54,23 @@ typedef struct AstMember       AstMember;
 typedef struct AstArg          AstArg;
 typedef struct AstVariant      AstVariant;
 
-typedef struct AstLitFn        AstLitFn;
-typedef struct AstLitInt       AstLitInt;
-typedef struct AstLitFloat     AstLitFloat;
-typedef struct AstLitChar      AstLitChar;
-typedef struct AstLitString    AstLitString;
-typedef struct AstLitBool      AstLitBool;
-typedef struct AstLitCmp       AstLitCmp;
-typedef struct AstExprRef      AstExprRef;
-typedef struct AstExprCast     AstExprCast;
-typedef struct AstExprBinop    AstExprBinop;
-typedef struct AstExprCall     AstExprCall;
-typedef struct AstExprMember   AstExprMember;
-typedef struct AstExprElem     AstExprElem;
-typedef struct AstExprSizeof   AstExprSizeof;
-typedef struct AstExprTypeof   AstExprTypeof;
-typedef struct AstExprUnary    AstExprUnary;
-typedef struct AstExprNull     AstExprNull;
+typedef struct AstLitFn      AstLitFn;
+typedef struct AstLitInt     AstLitInt;
+typedef struct AstLitFloat   AstLitFloat;
+typedef struct AstLitChar    AstLitChar;
+typedef struct AstLitString  AstLitString;
+typedef struct AstLitBool    AstLitBool;
+typedef struct AstLitCmp     AstLitCmp;
+typedef struct AstExprRef    AstExprRef;
+typedef struct AstExprCast   AstExprCast;
+typedef struct AstExprBinop  AstExprBinop;
+typedef struct AstExprCall   AstExprCall;
+typedef struct AstExprMember AstExprMember;
+typedef struct AstExprElem   AstExprElem;
+typedef struct AstExprSizeof AstExprSizeof;
+typedef struct AstExprTypeof AstExprTypeof;
+typedef struct AstExprUnary  AstExprUnary;
+typedef struct AstExprNull   AstExprNull;
 
 typedef struct AstType       AstType;
 typedef struct AstTypeType   AstTypeType;
@@ -107,14 +106,6 @@ typedef enum
   AST_ARG,
   AST_VARIANT,
   AST_TYPE,
-  AST_TYPE_REF,
-  AST_TYPE_INT,
-  AST_TYPE_VARGS,
-  AST_TYPE_ARR,
-  AST_TYPE_FN,
-  AST_TYPE_STRUCT,
-  AST_TYPE_ENUM,
-  AST_TYPE_PTR,
   AST_LIT_FN,
   AST_LIT_INT,
   AST_LIT_FLOAT,
@@ -135,7 +126,8 @@ typedef enum
   AST_COUNT
 } AstKind;
 
-typedef enum {
+typedef enum
+{
   AST_TYPE_BAD,
   AST_TYPE_TYPE,
   AST_TYPE_REF,
@@ -211,11 +203,6 @@ typedef enum
   DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
 
-struct AstBad
-{
-  void *_;
-};
-
 struct AstLoad
 {
   const char *filepath;
@@ -277,7 +264,7 @@ struct AstStmtContinue
 
 struct AstDecl
 {
-  Ast *    type;
+  AstType *    type;
   DeclKind kind;
   Ast *    name;
   Ast *    value;
@@ -290,21 +277,27 @@ struct AstDecl
 
 struct AstMember
 {
+  AstType *type;
   Ast *name;
-  Ast *type;
   int  order;
 };
 
 struct AstArg
 {
+  AstType *type;
   Ast *name;
-  Ast *type;
+};
+
+struct AstTypeType
+{
+  const char *name;
+  AstType *       spec;
 };
 
 struct AstVariant
 {
+  AstType *type;
   Ast *name;
-  Ast *type;
   Ast *value;
 };
 
@@ -322,13 +315,13 @@ struct AstTypeVArgs
 
 struct AstTypeArr
 {
-  Ast *elem_type;
+  AstType *elem_type;
   Ast *len;
 };
 
 struct AstTypeFn
 {
-  Ast *ret_type;
+  AstType *ret_type;
   Ast *args;
   int  argc;
 };
@@ -342,79 +335,73 @@ struct AstTypeStruct
 
 struct AstTypeEnum
 {
-  Ast *type;
+  AstType *type;
   Ast *variants;
 };
 
 struct AstTypePtr
 {
-  Ast *type;
-};
-
-struct AstType
-{
-  const char *name;
-  Ast *       spec;
+  AstType *type;
 };
 
 struct AstTypeRef
 {
+  AstType *type;
   Ast *ident;
-  Ast *type;
 };
 
 struct AstLitFn
 {
-  Ast *type;
+  AstType *type;
   Ast *block;
 };
 
 struct AstLitInt
 {
-  Ast *    type;
+  AstType *    type;
   uint64_t i;
 };
 
 struct AstLitFloat
 {
-  Ast * type;
+  AstType * type;
   float f;
 };
 
 struct AstLitChar
 {
-  Ast *   type;
+  AstType *   type;
   uint8_t c;
 };
 
 struct AstLitString
 {
-  Ast *       type;
+  AstType *       type;
   const char *s;
 };
 
 struct AstLitBool
 {
-  Ast *type;
+  AstType *type;
   bool b;
 };
 
 struct AstLitCmp
 {
-  Ast *type;
+  AstType *type;
   Ast *fields;
   int  fieldc;
 };
 
 struct AstExprRef
 {
+  AstType *type;
   Ast *ident;
-  Ast *type;
 };
 
 struct AstExprCast
 {
-  Ast *type;
+  AstType *type;
   Ast *next;
 };
 
@@ -469,11 +456,28 @@ struct AstExprNull
   void *_;
 };
 
+struct AstType
+{
+  union
+  {
+    AstTypeType   type;
+    AstTypeRef    ref;
+    AstTypeInt    integer;
+    AstTypeVArgs  vargs;
+    AstTypeArr    arr;
+    AstTypeFn     fn;
+    AstTypeStruct strct;
+    AstTypeEnum   enm;
+    AstTypePtr    ptr;
+  };
+
+  AstTypeKind kind;
+};
+
 struct Ast
 {
   union
   {
-    AstBad          bad;
     AstLoad         load;
     AstLink         link;
     AstIdent        ident;
@@ -489,14 +493,6 @@ struct Ast
     AstArg          arg;
     AstVariant      variant;
     AstType         type;
-    AstTypeRef      type_ref;
-    AstTypeInt      type_integer;
-    AstTypeVArgs    type_vargs;
-    AstTypeArr      type_arr;
-    AstTypeFn       type_fn;
-    AstTypeStruct   type_strct;
-    AstTypeEnum     type_enm;
-    AstTypePtr      type_ptr;
     AstLitFn        lit_fn;
     AstLitInt       lit_int;
     AstLitFloat     lit_float;
@@ -545,6 +541,12 @@ ast_kind(Ast *n)
   return n->kind;
 }
 
+static inline AstTypeKind
+ast_type_kind(AstType *t)
+{
+  return t->kind;
+}
+
 static inline bool
 ast_is(Ast *n, AstKind c)
 {
@@ -560,13 +562,18 @@ ast_is_not(Ast *n, AstKind c)
 static inline bool
 ast_is_type(Ast *n)
 {
-  return n->kind >= AST_TYPE && n->kind <= AST_TYPE_PTR;
+  return n->kind == AST_TYPE;
 }
 
 #define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
 
+#define ast_create_type(arena, c, tok, t) (t) _ast_create_type((arena), (c), (tok));
+
 Ast *
 _ast_create_node(struct Arena *arena, AstKind c, Token *tok);
+
+AstType *
+_ast_create_type(struct Arena *arena, AstTypeKind c, Token *tok);
 
 Ast *
 ast_dup(struct Arena *arena, Ast *node);
@@ -577,11 +584,11 @@ ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type);
 const char *
 ast_get_name(Ast *n);
 
-Ast *
+AstType *
 ast_get_type(Ast *n);
 
 void
-ast_type_to_str(char *buf, int len, Ast *type);
+ast_type_to_str(char *buf, int len, AstType *type);
 
 /*************************************************************************************************
  * AST visiting

@@ -58,6 +58,14 @@ _ast_create_node(Arena *arena, AstKind c, Token *tok)
   return node;
 }
 
+AstType *
+_ast_create_type(struct Arena *arena, AstTypeKind c, Token *tok)
+{
+  AstType *type = (AstType *)_ast_create_node(arena, AST_TYPE, tok);
+  type->kind    = c;
+  return type;
+}
+
 /* public */
 void
 ast_arena_init(struct Arena *arena)
@@ -134,24 +142,30 @@ ast_get_name(Ast *n)
     return "Arg";
   case AST_VARIANT:
     return "Variant";
-  case AST_TYPE:
-    return "Type";
-  case AST_TYPE_REF:
-    return "TypeRef";
-  case AST_TYPE_INT:
-    return "TypeInt";
-  case AST_TYPE_VARGS:
-    return "TypeVArgs";
-  case AST_TYPE_ARR:
-    return "TypeArr";
-  case AST_TYPE_FN:
-    return "TypeFn";
-  case AST_TYPE_STRUCT:
-    return "TypeStruct";
-  case AST_TYPE_ENUM:
-    return "TypeEnum";
-  case AST_TYPE_PTR:
-    return "TypePtr";
+  case AST_TYPE: {
+    switch (ast_type_kind(&n->type)) {
+    case AST_TYPE_BAD:
+      return "TypeBad";
+    case AST_TYPE_TYPE:
+      return "TypeType";
+    case AST_TYPE_REF:
+      return "TypeRef";
+    case AST_TYPE_INT:
+      return "TypeInt";
+    case AST_TYPE_VARGS:
+      return "TypeVArgs";
+    case AST_TYPE_ARR:
+      return "TypeArr";
+    case AST_TYPE_FN:
+      return "TypeFn";
+    case AST_TYPE_STRUCT:
+      return "TypeStruct";
+    case AST_TYPE_ENUM:
+      return "TypeEnum";
+    case AST_TYPE_PTR:
+      return "TypePtr";
+    }
+  }
   case AST_LIT_FN:
     return "LitFn";
   case AST_LIT_INT:
@@ -193,7 +207,7 @@ ast_get_name(Ast *n)
   bl_abort("invalid ast node");
 }
 
-Ast *
+AstType *
 ast_get_type(Ast *n)
 {
   assert(n);
@@ -208,7 +222,7 @@ ast_get_type(Ast *n)
     return ((AstLitFn *)n)->type;
   case AST_TYPE:
   case AST_TYPE_FN:
-    return n;
+    return (AstType *)n;
   default:
     bl_abort("node has no type %s", ast_get_name(n));
   }
@@ -368,7 +382,7 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
 }
 
 static void
-_type_to_string(char *buf, size_t len, Ast *type)
+_type_to_string(char *buf, size_t len, AstType *type)
 {
 #define append_buf(buf, len, str)                                                                  \
   {                                                                                                \
@@ -382,26 +396,34 @@ _type_to_string(char *buf, size_t len, Ast *type)
     return;
   }
 
-  switch (ast_kind(type)) {
-  case AST_TYPE:
+  assert(ast_is_type((Ast *)type));
+
+  switch (ast_type_kind(type)) {
+  case AST_TYPE_BAD:
+    append_buf(buf, len, "BAD");
+    break;
+  case AST_TYPE_TYPE:
     append_buf(buf, len, type->type.name);
     break;
   case AST_TYPE_INT:
-    append_buf(buf, len, type->type_integer.name);
+    append_buf(buf, len, type->integer.name);
     break;
   case AST_TYPE_FN:
     append_buf(buf, len, "fn");
     break;
-  case AST_BAD:
-    append_buf(buf, len, "BAD");
-    break;
-  default:
-    bl_abort("invalid type %s", ast_get_name(type));
+
+  case AST_TYPE_REF:
+  case AST_TYPE_VARGS:
+  case AST_TYPE_ARR:
+  case AST_TYPE_STRUCT:
+  case AST_TYPE_ENUM:
+  case AST_TYPE_PTR:
+    bl_abort("unimplemented");
   }
 }
 
 void
-ast_type_to_str(char *buf, int len, Ast *type)
+ast_type_to_str(char *buf, int len, AstType *type)
 {
   if (!buf || !len) return;
   buf[0] = '\0';

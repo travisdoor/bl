@@ -75,7 +75,7 @@ print_flags(int flags)
 }
 
 static inline void
-print_type(Ast *type)
+print_type(AstType *type)
 {
   char tmp[256];
   ast_type_to_str(tmp, 256, type);
@@ -122,7 +122,7 @@ static void
 print_block(Visitor *visitor, AstBlock *block, int pad);
 
 static void
-print_bad(Visitor *visitor, AstBad *bad, int pad);
+print_bad(Visitor *visitor, void *bad, int pad);
 
 static void
 print_binop(Visitor *visitor, AstExprBinop *binop, int pad);
@@ -331,7 +331,7 @@ print_ublock(Visitor *visitor, AstUBlock *ublock, int pad)
 }
 
 void
-print_bad(Visitor *visitor, AstBad *bad, int pad)
+print_bad(Visitor *visitor, void *bad, int pad)
 {
   print_head(bad, pad);
 }
