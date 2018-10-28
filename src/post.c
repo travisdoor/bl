@@ -45,7 +45,7 @@ typedef struct
   Builder * builder;
   Assembly *assembly;
   Unit *    unit;
-  Ast *    curr_dependent;
+  AstDecl * curr_dependent;
   size_t    type_table_size;
 } Context;
 
@@ -55,20 +55,19 @@ post_node(Visitor *visitor, Ast *node, void *cnt);
 #endif
 
 static void
-post_decl(Visitor *visitor, Ast *decl, void *cnt);
+post_decl(Visitor *visitor, AstDecl *decl, void *cnt);
 
 static void
-post_call(Visitor *visitor, Ast *call, void *cnt);
+post_call(Visitor *visitor, AstExprCall *call, void *cnt);
 
 static void
-post_ident(Visitor *visitor, Ast *ident, void *cnt);
+post_ident(Visitor *visitor, AstIdent *ident, void *cnt);
 
 static inline void
-schedule_generation(Context *cnt, Ast *decl)
+schedule_generation(Context *cnt, AstDecl *decl)
 {
   assert(decl);
-  AstDecl *_decl = ast_peek_decl(decl);
-  if (_decl->used) {
+  if (decl->used) {
     bo_list_push_back(cnt->assembly->ir_queue, decl);
 #if VERBOSE
     bl_log("schedule generation of: %s", ast_peek_ident(_decl->name)->str);
@@ -87,26 +86,26 @@ post_node(Visitor *visitor, Ast *node, void *cnt)
 #endif
 
 void
-post_decl(Visitor *visitor, Ast *decl, void *cnt)
+post_decl(Visitor *visitor, AstDecl *decl, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(decl);
-  AstDecl *_decl = ast_peek_decl(decl);
-  if (!_decl->in_gscope && !_decl->used && !(_decl->flags & FLAG_EXTERN) &&
-      !(_decl->flags & FLAG_MAIN)) {
-    post_warning_node(_cnt, (Ast *) _decl->name, BUILDER_CUR_WORD, "symbol is declared but never used");
+  if (!decl->in_gscope && !decl->used && !(decl->flags & FLAG_EXTERN) &&
+      !(decl->flags & FLAG_MAIN)) {
+    post_warning_node(_cnt, (Ast *)decl->name, BUILDER_CUR_WORD,
+                      "symbol is declared but never used");
   }
 
-  if (_decl->flags & FLAG_MAIN) _decl->used++;
+  if (decl->flags & FLAG_MAIN) decl->used++;
 
-  Ast *prev_dependent = _cnt->curr_dependent;
-  switch (_decl->kind) {
+  AstDecl *prev_dependent = _cnt->curr_dependent;
+  switch (decl->kind) {
   case DECL_KIND_FN:
     _cnt->curr_dependent = decl;
     schedule_generation(cnt, decl);
     break;
   case DECL_KIND_FIELD:
-    if (_decl->in_gscope) {
+    if (decl->in_gscope) {
       _cnt->curr_dependent = decl;
       schedule_generation(cnt, decl);
     }
@@ -115,7 +114,7 @@ post_decl(Visitor *visitor, Ast *decl, void *cnt)
     break;
   }
 
-  visitor_walk(visitor, decl, cnt);
+  visitor_walk(visitor, (Ast *)decl, cnt);
   _cnt->curr_dependent = prev_dependent;
 
 #if VERBOSE
@@ -134,26 +133,26 @@ post_decl(Visitor *visitor, Ast *decl, void *cnt)
 }
 
 void
-post_call(Visitor *visitor, Ast *call, void *cnt)
+post_call(Visitor *visitor, AstExprCall *call, void *cnt)
 {
   Context *_cnt = (Context *)cnt;
   assert(call);
-  AstExprCall *_call = ast_peek_expr_call(call);
 
   assert(_cnt->curr_dependent);
-  Ast *callee = _call->ref;
-  if (ast_is(callee, AST_DECL) && !(ast_peek_decl(callee)->flags & FLAG_EXTERN) &&
-      !ast_peek_decl(callee)->mutable) {
-    ast_add_dep_uq(_cnt->curr_dependent, callee, _call->run ? DEP_STRICT : DEP_LAX);
+  Ast *callee = call->ref;
+  if (ast_is(callee, AST_DECL)) {
+    AstDecl *_callee = (AstDecl *)callee;
+    if (!(_callee->flags & FLAG_EXTERN) && !_callee->mutable)
+      ast_add_dep_uq(_cnt->curr_dependent, _callee, call->run ? DEP_STRICT : DEP_LAX);
   }
 
-  visitor_walk(visitor, call, cnt);
+  visitor_walk(visitor, (Ast *)call, cnt);
 }
 
 void
-post_ident(Visitor *visitor, Ast *ident, void *cnt)
+post_ident(Visitor *visitor, AstIdent *ident, void *cnt)
 {
-  visitor_walk(visitor, ident, cnt);
+  visitor_walk(visitor, (Ast *)ident, cnt);
 }
 
 void
@@ -173,15 +172,15 @@ post_run(Builder *builder, Assembly *assembly)
   visitor_add_visit_all(&visitor, post_node);
 #endif
 
-  visitor_add(&visitor, post_decl, AST_DECL);
-  visitor_add(&visitor, post_call, AST_EXPR_CALL);
-  visitor_add(&visitor, post_ident, AST_IDENT);
+  visitor_add(&visitor, (VisitorFunc)post_decl, AST_DECL);
+  visitor_add(&visitor, (VisitorFunc)post_call, AST_EXPR_CALL);
+  visitor_add(&visitor, (VisitorFunc)post_ident, AST_IDENT);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    visitor_visit(&visitor, unit->ast, &cnt);
+    visitor_visit(&visitor, (Ast *)unit->ast, &cnt);
   }
 
 #if VERBOSE

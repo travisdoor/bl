@@ -54,15 +54,7 @@ typedef struct AstDecl         AstDecl;
 typedef struct AstMember       AstMember;
 typedef struct AstArg          AstArg;
 typedef struct AstVariant      AstVariant;
-typedef struct AstType         AstType;
-typedef struct AstTypeType     AstTypeType;
-typedef struct AstTypeInt      AstTypeInt;
-typedef struct AstTypeVArgs    AstTypeVArgs;
-typedef struct AstTypeArr      AstTypeArr;
-typedef struct AstTypeFn       AstTypeFn;
-typedef struct AstTypeStruct   AstTypeStruct;
-typedef struct AstTypeEnum     AstTypeEnum;
-typedef struct AstTypePtr      AstTypePtr;
+
 typedef struct AstLitFn        AstLitFn;
 typedef struct AstLitInt       AstLitInt;
 typedef struct AstLitFloat     AstLitFloat;
@@ -70,6 +62,7 @@ typedef struct AstLitChar      AstLitChar;
 typedef struct AstLitString    AstLitString;
 typedef struct AstLitBool      AstLitBool;
 typedef struct AstLitCmp       AstLitCmp;
+typedef struct AstExprRef      AstExprRef;
 typedef struct AstExprCast     AstExprCast;
 typedef struct AstExprBinop    AstExprBinop;
 typedef struct AstExprCall     AstExprCall;
@@ -79,6 +72,19 @@ typedef struct AstExprSizeof   AstExprSizeof;
 typedef struct AstExprTypeof   AstExprTypeof;
 typedef struct AstExprUnary    AstExprUnary;
 typedef struct AstExprNull     AstExprNull;
+
+typedef struct AstType       AstType;
+typedef struct AstTypeType   AstTypeType;
+typedef struct AstTypeRef    AstTypeRef;
+typedef struct AstTypeInt    AstTypeInt;
+typedef struct AstTypeVArgs  AstTypeVArgs;
+typedef struct AstTypeArr    AstTypeArr;
+typedef struct AstTypeFn     AstTypeFn;
+typedef struct AstTypeStruct AstTypeStruct;
+typedef struct AstTypeEnum   AstTypeEnum;
+typedef struct AstTypePtr    AstTypePtr;
+
+typedef struct Dependency Dependency;
 
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
@@ -100,7 +106,8 @@ typedef enum
   AST_MEMBER,
   AST_ARG,
   AST_VARIANT,
-  AST_TYPE_TYPE,
+  AST_TYPE,
+  AST_TYPE_REF,
   AST_TYPE_INT,
   AST_TYPE_VARGS,
   AST_TYPE_ARR,
@@ -115,6 +122,7 @@ typedef enum
   AST_LIT_STRING,
   AST_LIT_BOOL,
   AST_LIT_CMP,
+  AST_EXPR_REF,
   AST_EXPR_CAST,
   AST_EXPR_BINOP,
   AST_EXPR_CALL,
@@ -125,21 +133,20 @@ typedef enum
   AST_EXPR_UNARY,
   AST_EXPR_NULL,
   AST_COUNT
-} AstCode;
+} AstKind;
 
-typedef enum
-{
-  AST_BUILDIN_TYPE_U8 = 0,
-  AST_BUILDIN_TYPE_U16,
-  AST_BUILDIN_TYPE_U32,
-  AST_BUILDIN_TYPE_U64,
-  AST_BUILDIN_TYPE_USIZE,
-  AST_BUILDIN_TYPE_S8,
-  AST_BUILDIN_TYPE_S16,
-  AST_BUILDIN_TYPE_S32,
-  AST_BUILDIN_TYPE_S64,
-  AST_BUILDIN_TYPE_COUNT,
-} AstBuildinType;
+typedef enum {
+  AST_TYPE_BAD,
+  AST_TYPE_TYPE,
+  AST_TYPE_REF,
+  AST_TYPE_INT,
+  AST_TYPE_VARGS,
+  AST_TYPE_ARR,
+  AST_TYPE_FN,
+  AST_TYPE_STRUCT,
+  AST_TYPE_ENUM,
+  AST_TYPE_PTR,
+} AstTypeKind;
 
 typedef enum
 {
@@ -159,9 +166,10 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-  FLAG_MAIN   = 1 << 1, /* main method */
-  FLAG_TEST   = 1 << 2, /* test case */
+  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
+  FLAG_MAIN     = 1 << 1, /* main method */
+  FLAG_TEST     = 1 << 2, /* test case */
+  FLAG_COMPILER = 1 << 3, /* compiler internal flag */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -221,7 +229,6 @@ struct AstLink
 struct AstIdent
 {
   Scope *     scope;
-  AstType *   type;
   const char *str;
   uint64_t    hash;
 };
@@ -270,10 +277,10 @@ struct AstStmtContinue
 
 struct AstDecl
 {
-  Ast *     type;
-  DeclKind  kind;
-  AstIdent *name;
-  Ast *     value;
+  Ast *    type;
+  DeclKind kind;
+  Ast *    name;
+  Ast *    value;
   bool mutable;
   int         flags;
   int         used;
@@ -283,40 +290,29 @@ struct AstDecl
 
 struct AstMember
 {
-  AstIdent *name;
-  Ast *     type;
-  int       order;
+  Ast *name;
+  Ast *type;
+  int  order;
 };
 
 struct AstArg
 {
-  AstIdent *name;
-  Ast *     type;
+  Ast *name;
+  Ast *type;
 };
 
 struct AstVariant
 {
-  AstIdent *name;
-  Ast *     type;
-  Ast *     value;
-};
-
-struct AstType
-{
-  const char *name;
-};
-
-struct AstTypeType
-{
   Ast *name;
-  Ast *spec;
+  Ast *type;
+  Ast *value;
 };
 
 struct AstTypeInt
 {
-  struct AstType base;
-  bool           is_signed;
-  int            bitcount;
+  const char *name;
+  bool        is_signed;
+  int         bitcount;
 };
 
 struct AstTypeVArgs
@@ -333,8 +329,8 @@ struct AstTypeArr
 struct AstTypeFn
 {
   Ast *ret_type;
-  Ast *arg_types;
-  int  argc_types;
+  Ast *args;
+  int  argc;
 };
 
 struct AstTypeStruct
@@ -355,6 +351,18 @@ struct AstTypePtr
   Ast *type;
 };
 
+struct AstType
+{
+  const char *name;
+  Ast *       spec;
+};
+
+struct AstTypeRef
+{
+  Ast *ident;
+  Ast *type;
+};
+
 struct AstLitFn
 {
   Ast *type;
@@ -363,32 +371,32 @@ struct AstLitFn
 
 struct AstLitInt
 {
-  AstType *type;
+  Ast *    type;
   uint64_t i;
 };
 
 struct AstLitFloat
 {
-  AstType *type;
-  float    f;
+  Ast * type;
+  float f;
 };
 
 struct AstLitChar
 {
-  AstType *type;
-  uint8_t  c;
+  Ast *   type;
+  uint8_t c;
 };
 
 struct AstLitString
 {
-  AstType *   type;
+  Ast *       type;
   const char *s;
 };
 
 struct AstLitBool
 {
-  AstType *type;
-  bool     b;
+  Ast *type;
+  bool b;
 };
 
 struct AstLitCmp
@@ -396,6 +404,12 @@ struct AstLitCmp
   Ast *type;
   Ast *fields;
   int  fieldc;
+};
+
+struct AstExprRef
+{
+  Ast *ident;
+  Ast *type;
 };
 
 struct AstExprCast
@@ -474,13 +488,14 @@ struct Ast
     AstMember       member;
     AstArg          arg;
     AstVariant      variant;
-    AstTypeType     type_type;
-    AstTypeInt      type_int;
+    AstType         type;
+    AstTypeRef      type_ref;
+    AstTypeInt      type_integer;
     AstTypeVArgs    type_vargs;
     AstTypeArr      type_arr;
     AstTypeFn       type_fn;
-    AstTypeStruct   type_struct;
-    AstTypeEnum     type_enum;
+    AstTypeStruct   type_strct;
+    AstTypeEnum     type_enm;
     AstTypePtr      type_ptr;
     AstLitFn        lit_fn;
     AstLitInt       lit_int;
@@ -489,6 +504,7 @@ struct Ast
     AstLitString    lit_string;
     AstLitBool      lit_bool;
     AstLitCmp       lit_cmp;
+    AstExprRef      expr_ref;
     AstExprCast     expr_cast;
     AstExprBinop    expr_binop;
     AstExprCall     expr_call;
@@ -501,7 +517,7 @@ struct Ast
   };
 
   Src *   src;
-  AstCode code;
+  AstKind kind;
   Ast *   next;
 #if BL_DEBUG
   enum
@@ -514,120 +530,58 @@ struct Ast
 #endif
 };
 
-typedef struct
+struct Dependency
 {
-  Ast *   node; /* dependent node */
-  DepType type; /* is dependency strict (ex.: caused by #run directive) */
-} Dependency;
+  AstDecl *decl; /* dependent node */
+  DepType  type; /* is dependency strict (ex.: caused by #run directive) */
+};
 
 void
-ast_init(struct Arena *arena);
+ast_arena_init(struct Arena *arena);
 
-static inline Src *
-ast_peek_src(Ast *n)
+static inline AstKind
+ast_kind(Ast *n)
 {
-  return n->src;
-}
-
-static inline AstCode
-ast_code(Ast *n)
-{
-  return n->code;
+  return n->kind;
 }
 
 static inline bool
-ast_is(Ast *n,
-       AstCode c)
+ast_is(Ast *n, AstKind c)
 {
-  return ast_code(n) == c;
+  return ast_kind(n) == c;
 }
 
 static inline bool
-ast_is_not(Ast *n,
-           AstCode c)
+ast_is_not(Ast *n, AstKind c)
 {
-  return ast_code(n) != c;
+  return ast_kind(n) != c;
 }
 
 static inline bool
-ast_is_type(Ast *node)
+ast_is_type(Ast *n)
 {
-  return ast_code(node) >= AST_TYPE_TYPE && ast_code(node) <= AST_TYPE_PTR;
+  return n->kind >= AST_TYPE && n->kind <= AST_TYPE_PTR;
 }
 
 #define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
 
 Ast *
-_ast_create_node(struct Arena *arena, AstCode c, Token *tok);
-
-AstType *
-ast_get_buildin_type(AstBuildinType c);
+_ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
 Ast *
-ast_dup(struct Arena *arena,
-        Ast *node);
+ast_dup(struct Arena *arena, Ast *node);
 
 Dependency *
-ast_add_dep_uq(Ast *decl, Ast *dep, int type);
+ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type);
 
 const char *
 ast_get_name(Ast *n);
 
-AstType *
+Ast *
 ast_get_type(Ast *n);
 
-/*************************************************************************************************
- * generation of peek function
- * note: in debug mode function will check validity of node type
- *************************************************************************************************/
-
-#define _AST_PEEK(_name, _code, _type)                                                             \
-  static inline _type *ast_peek_##_name(Ast *n)                                                    \
-  {                                                                                                \
-    assert(n->code == _code);                                                                      \
-    return (_type *)n;                                                                             \
-  }
-
-_AST_PEEK(bad, AST_BAD, AstBad)
-_AST_PEEK(load, AST_LOAD, AstLoad)
-_AST_PEEK(link, AST_LINK, AstLink)
-_AST_PEEK(ident, AST_IDENT, AstIdent)
-_AST_PEEK(ublock, AST_UBLOCK, AstUBlock)
-_AST_PEEK(block, AST_BLOCK, AstBlock)
-_AST_PEEK(stmt_return, AST_STMT_RETURN, AstStmtReturn)
-_AST_PEEK(stmt_if, AST_STMT_IF, AstStmtIf)
-_AST_PEEK(stmt_loop, AST_STMT_LOOP, AstStmtLoop)
-_AST_PEEK(stmt_break, AST_STMT_BREAK, AstStmtBreak)
-_AST_PEEK(stmt_continue, AST_STMT_CONTINUE, AstStmtContinue)
-_AST_PEEK(decl, AST_DECL, AstDecl)
-_AST_PEEK(member, AST_MEMBER, AstMember)
-_AST_PEEK(arg, AST_ARG, AstArg)
-_AST_PEEK(variant, AST_VARIANT, AstVariant)
-_AST_PEEK(type_type, AST_TYPE_TYPE, AstTypeType)
-_AST_PEEK(type_vargs, AST_TYPE_VARGS, AstTypeVArgs)
-_AST_PEEK(type_arr, AST_TYPE_ARR, AstTypeArr)
-_AST_PEEK(type_fn, AST_TYPE_FN, AstTypeFn)
-_AST_PEEK(type_struct, AST_TYPE_STRUCT, AstTypeStruct)
-_AST_PEEK(type_enum, AST_TYPE_ENUM, AstTypeEnum)
-_AST_PEEK(type_ptr, AST_TYPE_PTR, AstTypePtr)
-_AST_PEEK(lit_fn, AST_LIT_FN, AstLitFn)
-_AST_PEEK(lit_int, AST_LIT_INT, AstLitInt)
-_AST_PEEK(lit_float, AST_LIT_FLOAT, AstLitFloat)
-_AST_PEEK(lit_char, AST_LIT_CHAR, AstLitChar)
-_AST_PEEK(lit_string, AST_LIT_STRING, AstLitString)
-_AST_PEEK(lit_bool, AST_LIT_BOOL, AstLitBool)
-_AST_PEEK(lit_cmp, AST_LIT_CMP, AstLitCmp)
-_AST_PEEK(expr_cast, AST_EXPR_CAST, AstExprCast)
-_AST_PEEK(expr_binop, AST_EXPR_BINOP, AstExprBinop)
-_AST_PEEK(expr_call, AST_EXPR_CALL, AstExprCall)
-_AST_PEEK(expr_member, AST_EXPR_MEMBER, AstExprMember)
-_AST_PEEK(expr_elem, AST_EXPR_ELEM, AstExprElem)
-_AST_PEEK(expr_sizeof, AST_EXPR_SIZEOF, AstExprSizeof)
-_AST_PEEK(expr_typeof, AST_EXPR_TYPEOF, AstExprTypeof)
-_AST_PEEK(expr_unary, AST_EXPR_UNARY, AstExprUnary)
-_AST_PEEK(expr_null, AST_EXPR_NULL, AstExprNull)
-
-#undef _AST_PEEK
+void
+ast_type_to_str(char *buf, int len, Ast *type);
 
 /*************************************************************************************************
  * AST visiting
@@ -646,7 +600,7 @@ void
 visitor_init(Visitor *visitor);
 
 void
-visitor_add(Visitor *visitor, VisitorFunc fn, AstCode code);
+visitor_add(Visitor *visitor, VisitorFunc fn, AstKind kind);
 
 void
 visitor_add_visit_all(Visitor *visitor, VisitorFunc fn);

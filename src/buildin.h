@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   scope.c
+// File:   buildin.h
 // Author: Martin Dorazil
 // Date:   3/14/18
 //
@@ -26,58 +26,44 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "scope.h"
+#ifndef BL_BUILDIN_H
+#define BL_BUILDIN_H
+
+#include <bobject/containers/htbl.h>
+#include <bobject/containers/hash.h>
 #include "common.h"
-#include "ast.h"
-#include "arena.h"
-#include "unit.h"
 
-#define ARENA_CHUNK_COUNT 256
+struct Ast;
+typedef struct Buildin Buildin;
 
-static void
-scope_dtor(Scope *scope)
+typedef enum
 {
-  assert(scope);
-  bo_unref(scope->entries);
-}
+  BUILDIN_U8 = 0,
+  BUILDIN_U16,
+  BUILDIN_U32,
+  BUILDIN_U64,
+  BUILDIN_USIZE,
+  BUILDIN_S8,
+  BUILDIN_S16,
+  BUILDIN_S32,
+  BUILDIN_S64,
+  BUILDIN_COUNT,
+} Buildins;
+
+struct Buildin
+{
+  uint64_t    hashes[BUILDIN_COUNT];
+  const char *names[BUILDIN_COUNT];
+  BHashTable *table;
+};
 
 void
-scope_arena_init(Arena *arena)
-{
-  arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
-}
-
-Scope *
-scope_create(Arena *arena, Scope *parent, size_t size)
-{
-  Scope *scope   = arena_alloc(arena);
-  scope->entries = bo_htbl_new(sizeof(AstDecl *), size);
-  scope->parent  = parent;
-  return scope;
-}
+buildin_init(Buildin *buildin);
 
 void
-scope_insert(Scope *scope, uint64_t key, AstDecl *entry)
-{
-  assert(scope);
-  assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
-  bo_htbl_insert(scope->entries, key, entry);
-}
+buildin_terminate(Buildin *buildin);
 
-AstDecl *
-scope_lookup(Scope *scope, AstIdent *ident, bool in_tree)
-{
-  assert(scope);
+struct Ast *
+buildin_get(Buildin *buildin, uint64_t hash);
 
-  while (scope) {
-    if (bo_htbl_has_key(scope->entries, ident->hash))
-      return bo_htbl_at(scope->entries, ident->hash, AstDecl *);
-
-    if (in_tree)
-      scope = scope->parent;
-    else
-      break;
-  }
-
-  return NULL;
-}
+#endif

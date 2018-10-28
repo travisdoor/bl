@@ -62,7 +62,8 @@
   sm(SIZEOF,         "sizeof") \
   sm(TYPEOF,         "typeof") \
   sm(EXTERN,         "#extern") \
-  sm(CONTINUE,       "continue") /* must be last */\
+  sm(CONTINUE,       "continue") \
+  sm(COMPILER,       "#compiler") /* must be last */\
   sm(MDECL,          ":=") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \

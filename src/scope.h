@@ -34,16 +34,9 @@
 #include <assert.h>
 
 struct Src;
+struct AstDecl;
 struct AstIdent;
-struct AstType;
 struct Arena;
-
-typedef struct ScopeEntry
-{
-  struct AstType *type;
-  struct Src *    src;
-  bool            is_buildin;
-} ScopeEntry;
 
 typedef struct Scope
 {
@@ -54,19 +47,13 @@ typedef struct Scope
 void
 scope_arena_init(struct Arena *arena);
 
-void
-scope_entry_arena_init(struct Arena *arena);
-
 Scope *
 scope_create(struct Arena *arena, Scope *parent, size_t size);
 
 void
-scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);
+scope_insert(Scope *scope, uint64_t key, struct AstDecl *decl);
 
-ScopeEntry *
+struct AstDecl *
 scope_lookup(Scope *scope, struct AstIdent *ident, bool in_tree);
-
-ScopeEntry *
-scope_create_entry(struct Arena *arena);
 
 #endif

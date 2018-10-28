@@ -31,86 +31,12 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-Ast ast_buildin_types[AST_BUILDIN_TYPE_COUNT] = {
-    // u8
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "u8",
-     .type_int.bitcount  = 8,
-     .type_int.is_signed = false},
-
-    // u16
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "u16",
-     .type_int.bitcount  = 16,
-     .type_int.is_signed = false},
-
-    // u32
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "u32",
-     .type_int.bitcount  = 32,
-     .type_int.is_signed = false},
-
-    // u64
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "u64",
-     .type_int.bitcount  = 64,
-     .type_int.is_signed = false},
-
-    // usize
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "usize",
-     .type_int.bitcount  = 64,
-     .type_int.is_signed = false},
-
-    // s8
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "s8",
-     .type_int.bitcount  = 8,
-     .type_int.is_signed = true},
-
-    // s16
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "s16",
-     .type_int.bitcount  = 16,
-     .type_int.is_signed = true},
-
-    // s32
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "s32",
-     .type_int.bitcount  = 32,
-     .type_int.is_signed = true},
-
-    // s64
-    {.code               = AST_TYPE_INT,
-     .src                = NULL,
-     .next               = NULL,
-     .type_int.base.name = "s64",
-     .type_int.bitcount  = 64,
-     .type_int.is_signed = true},
-};
-
 static void
 node_dtor(Ast *node)
 {
-  switch (node->code) {
+  switch (node->kind) {
   case AST_DECL:
-    bo_unref(ast_peek_decl(node)->deps);
+    bo_unref(((AstDecl *)node)->deps);
     break;
   default:
     break;
@@ -118,10 +44,10 @@ node_dtor(Ast *node)
 }
 
 Ast *
-_ast_create_node(Arena *arena, AstCode c, Token *tok)
+_ast_create_node(Arena *arena, AstKind c, Token *tok)
 {
   Ast *node  = arena_alloc(arena);
-  node->code = c;
+  node->kind = c;
   node->src  = tok ? &tok->src : NULL;
 
 #if BL_DEBUG
@@ -134,21 +60,13 @@ _ast_create_node(Arena *arena, AstCode c, Token *tok)
 
 /* public */
 void
-ast_init(struct Arena *arena)
+ast_arena_init(struct Arena *arena)
 {
   arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
-AstType *
-ast_get_buildin_type(AstBuildinType c)
-{
-  assert(c >= 0 && c < AST_BUILDIN_TYPE_COUNT);
-  return (AstType *)&ast_buildin_types[c];
-}
-
 Ast *
-ast_dup(Arena *arena,
-        Ast *node)
+ast_dup(Arena *arena, Ast *node)
 {
   Ast *tmp = ast_create_node(arena, -1, NULL, Ast *);
 #if BL_DEBUG
@@ -165,11 +83,11 @@ ast_dup(Arena *arena,
 }
 
 Dependency *
-ast_add_dep_uq(Ast *decl, Ast *dep, int type)
+ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type)
 {
   assert(dep && "invalid dep");
-  BHashTable **deps = &ast_peek_decl(decl)->deps;
-  Dependency   tmp  = {.node = dep, .type = type};
+  BHashTable **deps = &decl->deps;
+  Dependency   tmp  = {.decl = dep, .type = type};
 
   if (!*deps) {
     *deps = bo_htbl_new(sizeof(Dependency), 64);
@@ -185,7 +103,7 @@ const char *
 ast_get_name(Ast *n)
 {
   assert(n);
-  switch (ast_code(n)) {
+  switch (ast_kind(n)) {
   case AST_BAD:
     return "Bad";
   case AST_LOAD:
@@ -216,8 +134,10 @@ ast_get_name(Ast *n)
     return "Arg";
   case AST_VARIANT:
     return "Variant";
-  case AST_TYPE_TYPE:
-    return "TypeType";
+  case AST_TYPE:
+    return "Type";
+  case AST_TYPE_REF:
+    return "TypeRef";
   case AST_TYPE_INT:
     return "TypeInt";
   case AST_TYPE_VARGS:
@@ -246,6 +166,8 @@ ast_get_name(Ast *n)
     return "LitBool";
   case AST_LIT_CMP:
     return "LitCmp";
+  case AST_EXPR_REF:
+    return "ExprRef";
   case AST_EXPR_CAST:
     return "ExprCast";
   case AST_EXPR_BINOP:
@@ -271,15 +193,22 @@ ast_get_name(Ast *n)
   bl_abort("invalid ast node");
 }
 
-AstType *
+Ast *
 ast_get_type(Ast *n)
 {
   assert(n);
-  switch (ast_code(n)) {
-  case AST_IDENT:
-    return ast_peek_ident(n)->type;
+  switch (ast_kind(n)) {
+  case AST_EXPR_REF:
+    return ((AstExprRef *)n)->type;
+  case AST_TYPE_REF:
+    return ((AstTypeRef *)n)->type;
   case AST_LIT_INT:
-    return ast_peek_lit_int(n)->type;
+    return ((AstLitInt *)n)->type;
+  case AST_LIT_FN:
+    return ((AstLitFn *)n)->type;
+  case AST_TYPE:
+  case AST_TYPE_FN:
+    return n;
   default:
     bl_abort("node has no type %s", ast_get_name(n));
   }
@@ -298,9 +227,9 @@ visitor_init(Visitor *visitor)
 }
 
 void
-visitor_add(Visitor *visitor, VisitorFunc fn, AstCode code)
+visitor_add(Visitor *visitor, VisitorFunc fn, AstKind kind)
 {
-  visitor->visitors[code] = fn;
+  visitor->visitors[kind] = fn;
 }
 
 void
@@ -314,8 +243,8 @@ visitor_visit(Visitor *visitor, Ast *node, void *cnt)
 {
   if (!node) return;
   if (visitor->all_visitor) visitor->all_visitor(visitor, node, cnt);
-  if (visitor->visitors[ast_code(node)])
-    visitor->visitors[ast_code(node)](visitor, node, cnt);
+  if (visitor->visitors[ast_kind(node)])
+    visitor->visitors[ast_kind(node)](visitor, node, cnt);
   else
     visitor_walk(visitor, node, cnt);
 }
@@ -323,26 +252,26 @@ visitor_visit(Visitor *visitor, Ast *node, void *cnt)
 void
 visitor_walk(Visitor *visitor, Ast *node, void *cnt)
 {
-#define visit(node) visitor_visit(visitor, node, cnt)
+#define visit(node) visitor_visit(visitor, (Ast *)node, cnt)
   if (!node) return;
   Ast *tmp = NULL;
 
   if (!node) return;
-  switch (ast_code(node)) {
+  switch (ast_kind(node)) {
 
   case AST_UBLOCK: {
-    node_foreach(ast_peek_ublock(node)->nodes, tmp) visit(tmp);
+    node_foreach(((AstUBlock *)node)->nodes, tmp) visit(tmp);
     break;
   }
 
   case AST_BLOCK: {
-    node_foreach(ast_peek_block(node)->nodes, tmp) visit(tmp);
+    node_foreach(((AstBlock *)node)->nodes, tmp) visit(tmp);
     break;
   }
 
   case AST_DECL: {
-    AstDecl *_decl = ast_peek_decl(node);
-    visit((Ast *)_decl->name);
+    AstDecl *_decl = (AstDecl *)node;
+    visit(_decl->name);
     visit(_decl->type);
     visit(_decl->value);
     break;
@@ -357,89 +286,76 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
   }
 
   case AST_VARIANT: {
-    AstVariant *_var = ast_peek_variant(node);
+    AstVariant *_var = (AstVariant *)node;
     visit(_var->value);
     break;
   }
 
-  case AST_TYPE_FN: {
-    break;
-  }
-
-  case AST_TYPE_STRUCT: {
-    AstTypeStruct *_struct = ast_peek_type_struct(node);
-    node_foreach(_struct->members, tmp) visit(tmp);
-    break;
-  }
-
-  case AST_TYPE_ENUM: {
-    AstTypeEnum *_enum = ast_peek_type_enum(node);
-    node_foreach(_enum->variants, tmp) visit(tmp);
-    break;
-  }
-
   case AST_EXPR_BINOP: {
-    AstExprBinop *_binop = ast_peek_expr_binop(node);
+    AstExprBinop *_binop = (AstExprBinop *)node;
     visit(_binop->lhs);
     visit(_binop->rhs);
     break;
   }
 
   case AST_EXPR_CALL: {
-    AstExprCall *_call = ast_peek_expr_call(node);
+    AstExprCall *_call = (AstExprCall *)node;
     node_foreach(_call->args, tmp) visit(tmp);
     break;
   }
 
   case AST_EXPR_CAST: {
-    visit(ast_peek_expr_cast(node)->next);
+    visit(((AstExprCast *)node)->next);
     break;
   }
 
   case AST_EXPR_UNARY: {
-    visit(ast_peek_expr_unary(node)->next);
+    visit(((AstExprUnary *)node)->next);
     break;
   }
 
   case AST_EXPR_MEMBER: {
-    visit(ast_peek_expr_member(node)->next);
+    visit(((AstExprMember *)node)->next);
     break;
   }
   case AST_EXPR_ELEM: {
-    visit(ast_peek_expr_elem(node)->index);
-    visit(ast_peek_expr_elem(node)->next);
+    AstExprElem *_elem = (AstExprElem *)node;
+    visit(_elem->index);
+    visit(_elem->next);
     break;
   }
 
   case AST_STMT_RETURN: {
-    visit(ast_peek_stmt_return(node)->expr);
+    visit(((AstStmtReturn *)node)->expr);
     break;
   }
 
   case AST_STMT_IF: {
-    visit(ast_peek_stmt_if(node)->test);
-    visit(ast_peek_stmt_if(node)->true_stmt);
-    visit(ast_peek_stmt_if(node)->false_stmt);
+    AstStmtIf *_if = (AstStmtIf *)node;
+    visit(_if->test);
+    visit(_if->true_stmt);
+    visit(_if->false_stmt);
     break;
   }
 
   case AST_STMT_LOOP: {
-    visit(ast_peek_stmt_loop(node)->init);
-    visit(ast_peek_stmt_loop(node)->condition);
-    visit(ast_peek_stmt_loop(node)->increment);
-    visit(ast_peek_stmt_loop(node)->block);
+    AstStmtLoop *_loop = (AstStmtLoop *)node;
+    visit(_loop->init);
+    visit(_loop->condition);
+    visit(_loop->increment);
+    visit(_loop->block);
     break;
   }
 
   case AST_LIT_CMP: {
-    AstLitCmp *_lit_cmp = ast_peek_lit_cmp(node);
+    AstLitCmp *_lit_cmp = (AstLitCmp *)node;
     visit(_lit_cmp->type);
     node_foreach(_lit_cmp->fields, tmp) visit(tmp);
     break;
   }
 
   case AST_LIT_FN: {
-    visit(ast_peek_lit_fn(node)->block);
+    visit(((AstLitFn *)node)->block);
     break;
   }
 
@@ -449,4 +365,45 @@ visitor_walk(Visitor *visitor, Ast *node, void *cnt)
   }
 
 #undef visit
+}
+
+static void
+_type_to_string(char *buf, size_t len, Ast *type)
+{
+#define append_buf(buf, len, str)                                                                  \
+  {                                                                                                \
+    const size_t filled = strlen(buf);                                                             \
+    snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
+  }
+
+  if (!buf) return;
+  if (!type) {
+    append_buf(buf, len, "?");
+    return;
+  }
+
+  switch (ast_kind(type)) {
+  case AST_TYPE:
+    append_buf(buf, len, type->type.name);
+    break;
+  case AST_TYPE_INT:
+    append_buf(buf, len, type->type_integer.name);
+    break;
+  case AST_TYPE_FN:
+    append_buf(buf, len, "fn");
+    break;
+  case AST_BAD:
+    append_buf(buf, len, "BAD");
+    break;
+  default:
+    bl_abort("invalid type %s", ast_get_name(type));
+  }
+}
+
+void
+ast_type_to_str(char *buf, int len, Ast *type)
+{
+  if (!buf || !len) return;
+  buf[0] = '\0';
+  _type_to_string(buf, len, type);
 }

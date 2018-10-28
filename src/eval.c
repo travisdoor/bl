@@ -81,62 +81,59 @@ static bool
 eval_lit(Eval *eval, Ast *lit);
 
 static bool
-eval_ident(Eval *eval, Ast *ident);
+eval_ident(Eval *eval, AstIdent *ident);
 
 static bool
-eval_binop(Eval *eval, Ast *binop);
+eval_binop(Eval *eval, AstExprBinop *binop);
 
 static bool
-eval_decl(Eval *eval, Ast *decl);
+eval_decl(Eval *eval, AstDecl *decl);
 
 static bool
-eval_cast(Eval *eval, Ast *cast);
+eval_cast(Eval *eval, AstExprCast *cast);
 
 bool
 eval_lit(Eval *eval, Ast *lit)
 {
-  AstLitInt *_lit = ast_peek_lit_int(lit);
+  assert(ast_is(lit, AST_LIT_INT));
+  AstLitInt *_lit = (AstLitInt *)lit;
   /* TODO: support only signed integers for now! */
-  //assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
+  // assert(ast_type_kind(_lit->type) == TYPE_KIND_SINT);
 
-  Object tmp = obj_new_s64((int64_t) _lit->i);
+  Object tmp = obj_new_s64((int64_t)_lit->i);
   push(eval, tmp);
 
   return true;
 }
 
 bool
-eval_cast(Eval *eval, Ast *cast)
+eval_cast(Eval *eval, AstExprCast *cast)
 {
-  AstExprCast *_cast = ast_peek_expr_cast(cast);
-  assert(_cast->next);
+  assert(cast->next);
   /* TODO */
- 
-  return eval_node(eval, _cast->next);
+
+  return eval_node(eval, cast->next);
 }
 
 bool
-eval_ident(Eval *eval, Ast *ident)
+eval_ident(Eval *eval, AstIdent *ident)
 {
   return false;
 }
 
 bool
-eval_decl(Eval *eval, Ast *decl)
+eval_decl(Eval *eval, AstDecl *decl)
 {
-  AstDecl *_decl = ast_peek_decl(decl);
-  assert(_decl->value);
-  //if (_decl->kind != DECL_KIND_CONSTANT) return false;
-  return eval_node(eval, _decl->value);
+  assert(decl->value);
+  // if (_decl->kind != DECL_KIND_CONSTANT) return false;
+  return eval_node(eval, decl->value);
 }
 
 bool
-eval_binop(Eval *eval, Ast *binop)
+eval_binop(Eval *eval, AstExprBinop *binop)
 {
-  AstExprBinop *_binop = ast_peek_expr_binop(binop);
-
-  if (!eval_node(eval, _binop->lhs)) return false;
-  if (!eval_node(eval, _binop->rhs)) return false;
+  if (!eval_node(eval, binop->lhs)) return false;
+  if (!eval_node(eval, binop->rhs)) return false;
 
   Object b = pop(eval);
   Object a = pop(eval);
@@ -148,7 +145,7 @@ eval_binop(Eval *eval, Ast *binop)
     result.s64 = a.s64 op b.s64;                                                                   \
   }
 
-  switch (_binop->kind) {
+  switch (binop->kind) {
   case BINOP_ADD:
     operate(+);
     break;
@@ -175,17 +172,17 @@ eval_node(Eval *eval, Ast *node)
 {
   if (!node) return false;
 
-  switch (ast_code(node)) {
+  switch (ast_kind(node)) {
   case AST_LIT_INT:
     return eval_lit(eval, node);
   case AST_EXPR_BINOP:
-    return eval_binop(eval, node);
+    return eval_binop(eval, (AstExprBinop *)node);
   case AST_EXPR_CAST:
-    return eval_cast(eval, node);
+    return eval_cast(eval, (AstExprCast *)node);
   case AST_IDENT:
-    return eval_ident(eval, node);
+    return eval_ident(eval, (AstIdent *)node);
   case AST_DECL:
-    return eval_decl(eval, node);
+    return eval_decl(eval, (AstDecl *)node);
   default:
     eval->err_node = node;
   };
@@ -202,7 +199,7 @@ eval_init(Eval *eval, int stack_size)
   eval->size     = stack_size;
   eval->err_node = NULL;
 
-  eval->stack    = bl_malloc(sizeof(Object) * stack_size);
+  eval->stack = bl_malloc(sizeof(Object) * stack_size);
   if (!eval->stack) bl_abort("bad allocation");
 }
 
@@ -220,8 +217,7 @@ eval_expr(Eval *eval, Ast *node, Ast **err_node)
   reset(eval);
   eval_node(eval, node);
   *err_node = eval->err_node;
-  if (eval->err_node)
-    return 0;
+  if (eval->err_node) return 0;
 
-  return (int) pop(eval).s64;
+  return (int)pop(eval).s64;
 }

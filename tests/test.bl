@@ -1,7 +1,22 @@
 /* playground */
 
-h : i;
-i : 10;
-j s32 : 10;
-k usize : 10;
+s8    : #compiler;
+s16   : #compiler;
+s32   : #compiler;
+s64   : #compiler;
+u8    : #compiler;
+u16   : #compiler;
+u32   : #compiler;
+u64   : #compiler;
+usize : #compiler;
 
+Integer type : s32;
+Int type : Integer;
+
+foo s32 : 10;
+bar Integer : 10;
+
+homo fn ();
+
+main : fn () {
+};

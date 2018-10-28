@@ -50,9 +50,10 @@ assembly_new(const char *name)
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->test_cases   = bo_array_new(sizeof(TestCase));
 
+  buildin_init(&assembly->buildin);
+
   scope_arena_init(&assembly->scope_arena);
-  scope_entry_arena_init(&assembly->scope_entry_arena);
-  ast_init(&assembly->ast_arena);
+  ast_arena_init(&assembly->ast_arena);
   assembly->gscope = scope_create(&assembly->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
@@ -87,7 +88,7 @@ assembly_delete(Assembly *assembly)
 
   arena_terminate(&assembly->scope_arena);
   arena_terminate(&assembly->ast_arena);
-  arena_terminate(&assembly->scope_entry_arena);
+  buildin_terminate(&assembly->buildin);
 
   bl_free(assembly);
 }

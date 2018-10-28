@@ -47,8 +47,10 @@ print_address(Ast *node)
 #endif
 }
 
+#define print_head(_node, _pad) _print_head((Ast *)(_node), (pad))
+
 static inline void
-print_head(Ast *node, int pad)
+_print_head(Ast *node, int pad)
 {
   if (node->src)
     fprintf(stdout, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "", ast_get_name(node),
@@ -69,322 +71,313 @@ print_flags(int flags)
   if (flags & FLAG_EXTERN) fprintf(stdout, "E");
   if (flags & FLAG_MAIN) fprintf(stdout, "M");
   if (flags & FLAG_TEST) fprintf(stdout, "T");
+  if (flags & FLAG_COMPILER) fprintf(stdout, "C");
+}
+
+static inline void
+print_type(Ast *type)
+{
+  char tmp[256];
+  ast_type_to_str(tmp, 256, type);
+  fprintf(stdout, BLUE("{%s}"), tmp);
 }
 
 static void
-print_load(Visitor *visitor, Ast *node, int pad);
+print_load(Visitor *visitor, AstLoad *load, int pad);
 
 static void
-print_sizeof(Visitor *visitor, Ast *node, int pad);
+print_sizeof(Visitor *visitor, AstExprSizeof *szof, int pad);
 
 static void
-print_lit_cmp(Visitor *visitor, Ast *node, int pad);
+print_lit_cmp(Visitor *visitor, AstLitCmp *cmp, int pad);
 
 static void
-print_member(Visitor *visitor, Ast *node, int pad);
+print_member(Visitor *visitor, AstMember *member, int pad);
 
 static void
-print_variant(Visitor *visitor, Ast *node, int pad);
+print_variant(Visitor *visitor, AstVariant *var, int pad);
 
 static void
-print_expr_member(Visitor *visitor, Ast *node, int pad);
+print_expr_member(Visitor *visitor, AstExprMember *mem, int pad);
 
 static void
-print_elem(Visitor *visitor, Ast *node, int pad);
+print_elem(Visitor *visitor, AstExprElem *elem, int pad);
 
 static void
-print_unary(Visitor *visitor, Ast *node, int pad);
+print_unary(Visitor *visitor, AstExprUnary *unary, int pad);
 
 static void
-print_break(Visitor *visitor, Ast *node, int pad);
+print_break(Visitor *visitor, AstStmtBreak *brk, int pad);
 
 static void
-print_continue(Visitor *visitor, Ast *node, int pad);
+print_continue(Visitor *visitor, AstStmtContinue *cont, int pad);
 
 static void
-print_ublock(Visitor *visitor, Ast *node, int pad);
+print_ublock(Visitor *visitor, AstUBlock *ublock, int pad);
 
 static void
-print_type_struct(Visitor *visitor, Ast *node, int pad);
+print_decl(Visitor *visitor, AstDecl *decl, int pad);
 
 static void
-print_decl(Visitor *visitor, Ast *node, int pad);
+print_block(Visitor *visitor, AstBlock *block, int pad);
 
 static void
-print_block(Visitor *visitor, Ast *node, int pad);
+print_bad(Visitor *visitor, AstBad *bad, int pad);
 
 static void
-print_bad(Visitor *visitor, Ast *node, int pad);
+print_binop(Visitor *visitor, AstExprBinop *binop, int pad);
 
 static void
-print_binop(Visitor *visitor, Ast *node, int pad);
+print_call(Visitor *visitor, AstExprCall *call, int pad);
 
 static void
-print_call(Visitor *visitor, Ast *node, int pad);
+print_lit_int(Visitor *visitor, AstLitInt *lit, int pad);
 
 static void
-print_lit_int(Visitor *visitor, Ast *node, int pad);
+print_lit_float(Visitor *visitor, AstLitFloat *lit, int pad);
 
 static void
-print_lit_float(Visitor *visitor, Ast *node, int pad);
+print_lit_char(Visitor *visitor, AstLitChar *lit, int pad);
 
 static void
-print_lit_char(Visitor *visitor, Ast *node, int pad);
+print_lit_bool(Visitor *visitor, AstLitBool *lit, int pad);
 
 static void
-print_lit_bool(Visitor *visitor, Ast *node, int pad);
+print_lit_string(Visitor *visitor, AstLitString *lit, int pad);
 
 static void
-print_lit_string(Visitor *visitor, Ast *node, int pad);
+print_lit_fn(Visitor *visitor, AstLitFn *fn, int pad);
 
 static void
-print_lit_fn(Visitor *visitor, Ast *node, int pad);
+print_ident(Visitor *visitor, AstIdent *ident, int pad);
 
 static void
-print_type_enum(Visitor *visitor, Ast *node, int pad);
+print_return(Visitor *visitor, AstStmtReturn *ret, int pad);
 
 static void
-print_ident(Visitor *visitor, Ast *node, int pad);
+print_if(Visitor *visitor, AstStmtIf *stmt, int pad);
 
 static void
-print_return(Visitor *visitor, Ast *node, int pad);
+print_loop(Visitor *visitor, AstStmtLoop *loop, int pad);
 
 static void
-print_if(Visitor *visitor, Ast *node, int pad);
+print_cast(Visitor *visitor, AstExprCast *cast, int pad);
 
 static void
-print_loop(Visitor *visitor, Ast *node, int pad);
-
-static void
-print_cast(Visitor *visitor, Ast *node, int pad);
-
-static void
-print_null(Visitor *visitor, Ast *node, int pad);
+print_null(Visitor *visitor, AstExprNull *null, int pad);
 
 // impl
 void
-print_lit_cmp(Visitor *visitor, Ast *node, int pad)
+print_lit_cmp(Visitor *visitor, AstLitCmp *cmp, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(cmp, pad);
+  visitor_walk(visitor, (Ast *)cmp, int_to_void_ptr(pad + 1));
 }
 
 void
-print_sizeof(Visitor *visitor, Ast *node, int pad)
+print_sizeof(Visitor *visitor, AstExprSizeof *szof, int pad)
 {
-  print_head(node, pad);
+  print_head(szof, pad);
 }
 
 void
-print_expr_member(Visitor *visitor, Ast *node, int pad)
+print_expr_member(Visitor *visitor, AstExprMember *member, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(member, pad);
+  visitor_walk(visitor, (Ast *)member, int_to_void_ptr(pad + 1));
 }
 
 void
-print_member(Visitor *visitor, Ast *node, int pad)
+print_member(Visitor *visitor, AstMember *member, int pad)
 {
-  print_head(node, pad);
-  AstMember *_mem = ast_peek_member(node);
+  print_head(member, pad);
 
-  if (_mem->name) {
-    fprintf(stdout, "%s ", _mem->name->str);
+  if (member->name) {
+    fprintf(stdout, "%s ", member->name->ident.str);
   }
 
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  visitor_walk(visitor, (Ast *)member, int_to_void_ptr(pad + 1));
 }
 
 void
-print_variant(Visitor *visitor, Ast *node, int pad)
+print_variant(Visitor *visitor, AstVariant *var, int pad)
 {
-  print_head(node, pad);
-  AstVariant *_var = ast_peek_variant(node);
+  print_head(var, pad);
+  fprintf(stdout, "%s ", var->name->ident.str);
 
-  fprintf(stdout, "%s ", _var->name->str);
-
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  visitor_walk(visitor, (Ast *)var, int_to_void_ptr(pad + 1));
 }
 
 void
-print_elem(Visitor *visitor, Ast *node, int pad)
+print_elem(Visitor *visitor, AstExprElem *elem, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(elem, pad);
+  visitor_walk(visitor, (Ast *)elem, int_to_void_ptr(pad + 1));
 }
 
 void
-print_load(Visitor *visitor, Ast *node, int pad)
+print_load(Visitor *visitor, AstLoad *load, int pad)
 {
-  print_head(node, pad);
-  AstLoad *_load = ast_peek_load(node);
-  fprintf(stdout, "'%s'", _load->filepath);
+  print_head(load, pad);
+  fprintf(stdout, "'%s'", load->filepath);
 }
 
 void
-print_type_enum(Visitor *visitor, Ast *node, int pad)
+print_break(Visitor *visitor, AstStmtBreak *brk, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(brk, pad);
 }
 
 void
-print_break(Visitor *visitor, Ast *node, int pad)
+print_continue(Visitor *visitor, AstStmtContinue *cont, int pad)
 {
-  print_head(node, pad);
+  print_head(cont, pad);
 }
 
 void
-print_continue(Visitor *visitor, Ast *node, int pad)
+print_cast(Visitor *visitor, AstExprCast *cast, int pad)
 {
-  print_head(node, pad);
+  print_head(cast, pad);
+  visitor_walk(visitor, (Ast *)cast, int_to_void_ptr(pad + 1));
 }
 
 void
-print_cast(Visitor *visitor, Ast *node, int pad)
+print_null(Visitor *visitor, AstExprNull *null, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(null, pad);
 }
 
 void
-print_null(Visitor *visitor, Ast *node, int pad)
+print_unary(Visitor *visitor, AstExprUnary *unary, int pad)
 {
-  print_head(node, pad);
+  print_head(unary, pad);
+  fprintf(stdout, "%s ", sym_strings[unary->kind]);
+  visitor_walk(visitor, (Ast *)unary, int_to_void_ptr(pad + 1));
 }
 
 void
-print_unary(Visitor *visitor, Ast *node, int pad)
+print_if(Visitor *visitor, AstStmtIf *sif, int pad)
 {
-  print_head(node, pad);
-  AstExprUnary *_unary = ast_peek_expr_unary(node);
-  fprintf(stdout, "%s ", sym_strings[_unary->kind]);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(sif, pad);
+  visitor_walk(visitor, (Ast *)sif, int_to_void_ptr(pad + 1));
 }
 
 void
-print_if(Visitor *visitor, Ast *node, int pad)
+print_loop(Visitor *visitor, AstStmtLoop *loop, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(loop, pad);
+  visitor_walk(visitor, (Ast *)loop, int_to_void_ptr(pad + 1));
 }
 
 void
-print_loop(Visitor *visitor, Ast *node, int pad)
+print_decl(Visitor *visitor, AstDecl *decl, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(decl, pad);
+
+  switch (decl->kind) {
+  case DECL_KIND_INVALID:
+    fprintf(stdout, "[INVALID] ");
+    break;
+  case DECL_KIND_FIELD:
+    fprintf(stdout, "[FIELD] ");
+    break;
+  case DECL_KIND_TYPE:
+    fprintf(stdout, "[TYPE] ");
+    break;
+  case DECL_KIND_FN:
+    fprintf(stdout, "[FN] ");
+    break;
+  case DECL_KIND_ENUM:
+    fprintf(stdout, "[ENUM] ");
+    break;
+  }
+
+  fprintf(stdout, "'%s' '%s' used: %d ", decl->name->ident.str,
+          decl->mutable ? "mutable" : "immutable", decl->used);
+
+  print_type(decl->type);
+
+  print_flags(decl->flags);
+  visitor_visit(visitor, decl->value, int_to_void_ptr(pad + 1));
 }
 
 void
-print_decl(Visitor *visitor, Ast *node, int pad)
+print_block(Visitor *visitor, AstBlock *block, int pad)
 {
-  print_head(node, pad);
-  AstDecl *_decl = ast_peek_decl(node);
-  fprintf(stdout, "'%d' ", _decl->kind);
-  fprintf(stdout, "'%s' '%s' used: %d ", _decl->name->str,
-          _decl->mutable ? "mutable" : "immutable", _decl->used);
-
-  print_flags(_decl->flags);
-  visitor_visit(visitor, _decl->value, int_to_void_ptr(pad + 1));
+  print_head(block, pad);
+  visitor_walk(visitor, (Ast *)block, int_to_void_ptr(pad + 1));
 }
 
 void
-print_type_struct(Visitor *visitor, Ast *node, int pad)
+print_ident(Visitor *visitor, AstIdent *ident, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(ident, pad);
+  fprintf(stdout, "'%s'", ident->str);
 }
 
 void
-print_block(Visitor *visitor, Ast *node, int pad)
+print_return(Visitor *visitor, AstStmtReturn *ret, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(ret, pad);
+  visitor_walk(visitor, (Ast *)ret, int_to_void_ptr(pad + 1));
 }
 
 void
-print_ident(Visitor *visitor, Ast *node, int pad)
+print_ublock(Visitor *visitor, AstUBlock *ublock, int pad)
 {
-  print_head(node, pad);
-  AstIdent *_ident = ast_peek_ident(node);
-  fprintf(stdout, "'%s'", _ident->str);
+  print_head(ublock, pad);
+  fprintf(stdout, "'%s'", ublock->unit->name);
+  visitor_walk(visitor, (Ast *)ublock, int_to_void_ptr(pad + 1));
 }
 
 void
-print_return(Visitor *visitor, Ast *node, int pad)
+print_bad(Visitor *visitor, AstBad *bad, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(bad, pad);
 }
 
 void
-print_ublock(Visitor *visitor, Ast *node, int pad)
+print_binop(Visitor *visitor, AstExprBinop *binop, int pad)
 {
-  print_head(node, pad);
-  AstUBlock *_ublock = ast_peek_ublock(node);
-  fprintf(stdout, "'%s'", _ublock->unit->name);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(binop, pad);
+  fprintf(stdout, "'%s' ", sym_strings[binop->kind]);
+  visitor_walk(visitor, (Ast *)binop, int_to_void_ptr(pad + 1));
 }
 
 void
-print_bad(Visitor *visitor, Ast *node, int pad)
+print_lit_int(Visitor *visitor, AstLitInt *lit, int pad)
 {
-  print_head(node, pad);
+  print_head(lit, pad);
+  fprintf(stdout, "%llu ", lit->i);
 }
 
 void
-print_binop(Visitor *visitor, Ast *node, int pad)
+print_lit_float(Visitor *visitor, AstLitFloat *lit, int pad)
 {
-  print_head(node, pad);
-  AstExprBinop *_binop = ast_peek_expr_binop(node);
-  fprintf(stdout, "'%s' ", sym_strings[_binop->kind]);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(lit, pad);
+  fprintf(stdout, "%f ", lit->f);
 }
 
 void
-print_lit_int(Visitor *visitor, Ast *node, int pad)
+print_lit_char(Visitor *visitor, AstLitChar *lit, int pad)
 {
-  print_head(node, pad);
-  AstLitInt *_lit = ast_peek_lit_int(node);
-
-  fprintf(stdout, "%llu ", _lit->i);
+  print_head(lit, pad);
+  fprintf(stdout, "%c ", lit->c);
 }
 
 void
-print_lit_float(Visitor *visitor, Ast *node, int pad)
+print_lit_bool(Visitor *visitor, AstLitBool *lit, int pad)
 {
-  print_head(node, pad);
-  AstLitFloat *_lit = ast_peek_lit_float(node);
-
-  fprintf(stdout, "%f ", _lit->f);
+  print_head(lit, pad);
+  fprintf(stdout, "%s ", lit->b ? "true" : "false");
 }
 
 void
-print_lit_char(Visitor *visitor, Ast *node, int pad)
+print_lit_string(Visitor *visitor, AstLitString *lit, int pad)
 {
-  print_head(node, pad);
-  AstLitChar *_lit = ast_peek_lit_char(node);
+  print_head(lit, pad);
 
-  fprintf(stdout, "%c ", _lit->c);
-}
-
-void
-print_lit_bool(Visitor *visitor, Ast *node, int pad)
-{
-  print_head(node, pad);
-  AstLitBool *_lit = ast_peek_lit_bool(node);
-
-  fprintf(stdout, "%s ", _lit->b ? "true" : "false");
-}
-
-void
-print_lit_string(Visitor *visitor, Ast *node, int pad)
-{
-  print_head(node, pad);
-  AstLitString *_lit = ast_peek_lit_string(node);
-
-  char *tmp = strdup(_lit->s);
+  char *tmp = strdup(lit->s);
   fprintf(stdout, "%s ", strtok(tmp, "\n"));
   char *next = strtok(NULL, "\n");
   if (next && strlen(next)) fprintf(stdout, "... ");
@@ -392,28 +385,23 @@ print_lit_string(Visitor *visitor, Ast *node, int pad)
 }
 
 void
-print_lit_fn(Visitor *visitor, Ast *node, int pad)
+print_lit_fn(Visitor *visitor, AstLitFn *fn, int pad)
 {
-  print_head(node, pad);
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  print_head(fn, pad);
+  visitor_walk(visitor, (Ast *)fn, int_to_void_ptr(pad + 1));
 }
 
 void
-print_call(Visitor *visitor, Ast *node, int pad)
+print_call(Visitor *visitor, AstExprCall *call, int pad)
 {
-  print_head(node, pad);
-  AstExprCall *_call = ast_peek_expr_call(node);
-  assert(_call->ref);
-  if (ast_is(_call->ref, AST_IDENT)) {
-    AstIdent *_ident = ast_peek_ident(_call->ref);
-    fprintf(stdout, "'%s'", _ident->str);
-  }
-  if (_call->run) fprintf(stdout, " #run");
+  print_head(call, pad);
+  assert(call->ref);
+  if (call->run) fprintf(stdout, " #run");
 
-  visitor_walk(visitor, node, int_to_void_ptr(pad + 1));
+  visitor_walk(visitor, (Ast *)call, int_to_void_ptr(pad + 1));
 
-  if (ast_is(_call->ref, AST_EXPR_MEMBER)) {
-    visitor_visit(visitor, _call->ref, int_to_void_ptr(pad + 2));
+  if (ast_is(call->ref, AST_EXPR_MEMBER)) {
+    visitor_visit(visitor, call->ref, int_to_void_ptr(pad + 2));
   }
 }
 
@@ -430,7 +418,6 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_decl, AST_DECL);
   visitor_add(&visitor, (VisitorFunc)print_load, AST_LOAD);
   visitor_add(&visitor, (VisitorFunc)print_lit_fn, AST_LIT_FN);
-  visitor_add(&visitor, (VisitorFunc)print_type_enum, AST_TYPE_ENUM);
   visitor_add(&visitor, (VisitorFunc)print_lit_int, AST_LIT_INT);
   visitor_add(&visitor, (VisitorFunc)print_lit_float, AST_LIT_FLOAT);
   visitor_add(&visitor, (VisitorFunc)print_lit_char, AST_LIT_CHAR);
@@ -450,14 +437,13 @@ ast_printer_run(Assembly *assembly)
   visitor_add(&visitor, (VisitorFunc)print_expr_member, AST_EXPR_MEMBER);
   visitor_add(&visitor, (VisitorFunc)print_elem, AST_EXPR_ELEM);
   visitor_add(&visitor, (VisitorFunc)print_unary, AST_EXPR_UNARY);
-  visitor_add(&visitor, (VisitorFunc)print_type_struct, AST_TYPE_STRUCT);
   visitor_add(&visitor, (VisitorFunc)print_member, AST_MEMBER);
   visitor_add(&visitor, (VisitorFunc)print_variant, AST_VARIANT);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
-    visitor_visit(&visitor, unit->ast, 0);
+    visitor_visit(&visitor, (Ast *)unit->ast, 0);
   }
   fprintf(stdout, "\n\n");
 }
