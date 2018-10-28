@@ -476,10 +476,6 @@ check_node(Context *cnt, Ast **node)
     result = check_expr_ref(cnt, (AstExprRef **)node);
     break;
 
-  case AST_TYPE_REF:
-    result = check_type_ref(cnt, (AstTypeRef **)node);
-    break;
-
   case AST_DECL:
     result = check_decl(cnt, (AstDecl **)node);
     break;
@@ -487,6 +483,17 @@ check_node(Context *cnt, Ast **node)
   case AST_LIT_INT:
     result = check_lit_int(cnt, (AstLitInt **)node);
     break;
+
+  case AST_TYPE: {
+    switch (ast_type_kind(*(AstType **)node)) {
+    case AST_TYPE_REF:
+      result = check_type_ref(cnt, (AstTypeRef **)node);
+      break;
+    default:
+      break;
+    }
+    break;
+  }
 
   default:
     break;
@@ -560,7 +567,7 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
 {
   AstExprRef *_ref = *ref;
   assert(_ref->ident);
-  AstIdent *_ident = &_ref->ident->ident;
+  AstIdent *_ident = _ref->ident;
 
   Scope *scope = _ident->scope;
   assert(scope && "missing scope for identificator");
@@ -579,7 +586,7 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
 {
   AstTypeRef *_type_ref = *type_ref;
   assert(_type_ref->ident);
-  AstIdent *_ident = &_type_ref->ident->ident;
+  AstIdent *_ident = _type_ref->ident;
 
   Scope *scope = _ident->scope;
   assert(scope && "missing scope for identificator");
@@ -608,7 +615,7 @@ infer_decl_type(Context *cnt, AstDecl *decl)
 
   if (inferred->kind == AST_TYPE_TYPE) {
     AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-    tmp->name        = decl->name->ident.str;
+    tmp->name        = decl->name->str;
     tmp->spec        = inferred->type.spec;
     inferred         = (AstType *)tmp;
   }
@@ -626,16 +633,15 @@ static bool
 check_buildin_decl(Context *cnt, AstDecl *decl)
 {
   if (!(decl->flags & FLAG_COMPILER)) return false;
-  assert(ast_is(decl->name, AST_IDENT));
-  decl->value = buildin_get(cnt->buildin, decl->name->ident.hash);
+  decl->value = buildin_get(cnt->buildin, decl->name->hash);
 
   AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-  type->name        = decl->name->ident.str;
+  type->name        = decl->name->str;
   type->spec        = (AstType *)decl->value;
   decl->type        = (AstType *)type;
   decl->kind        = DECL_KIND_TYPE;
 
-  provide(cnt, &decl->name->ident, decl);
+  provide(cnt, decl->name, decl);
   return true;
 }
 
@@ -665,7 +671,7 @@ check_decl(Context *cnt, AstDecl **decl)
     _decl->kind = DECL_KIND_FIELD;
   }
 
-  provide(cnt, &_decl->name->ident, _decl);
+  provide(cnt, _decl->name, _decl);
 
   finish();
 }

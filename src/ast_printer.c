@@ -193,7 +193,7 @@ print_member(Visitor *visitor, AstMember *member, int pad)
   print_head(member, pad);
 
   if (member->name) {
-    fprintf(stdout, "%s ", member->name->ident.str);
+    fprintf(stdout, "%s ", member->name->str);
   }
 
   visitor_walk(visitor, (Ast *)member, int_to_void_ptr(pad + 1));
@@ -203,7 +203,7 @@ void
 print_variant(Visitor *visitor, AstVariant *var, int pad)
 {
   print_head(var, pad);
-  fprintf(stdout, "%s ", var->name->ident.str);
+  fprintf(stdout, "%s ", var->name->str);
 
   visitor_walk(visitor, (Ast *)var, int_to_void_ptr(pad + 1));
 }
@@ -292,7 +292,7 @@ print_decl(Visitor *visitor, AstDecl *decl, int pad)
     break;
   }
 
-  fprintf(stdout, "'%s' '%s' used: %d ", decl->name->ident.str,
+  fprintf(stdout, "'%s' '%s' used: %d ", decl->name->str,
           decl->mutable ? "mutable" : "immutable", decl->used);
 
   print_type(decl->type);

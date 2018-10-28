@@ -411,14 +411,16 @@ _type_to_string(char *buf, size_t len, AstType *type)
   case AST_TYPE_FN:
     append_buf(buf, len, "fn");
     break;
-
   case AST_TYPE_REF:
+    _type_to_string(buf, len, type->ref.type);
+    break;
+
   case AST_TYPE_VARGS:
   case AST_TYPE_ARR:
   case AST_TYPE_STRUCT:
   case AST_TYPE_ENUM:
   case AST_TYPE_PTR:
-    bl_abort("unimplemented");
+    bl_abort("unimplemented %s", ast_get_name((Ast *)type));
   }
 }
 

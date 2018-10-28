@@ -142,6 +142,10 @@ typedef enum
 
 typedef enum
 {
+} AstExprKind;
+
+typedef enum
+{
   DECL_KIND_INVALID = 0,
   DECL_KIND_FIELD   = 1, /* a := 0; */
   DECL_KIND_TYPE    = 2, /* Type : struct { s32 }; */
@@ -264,10 +268,10 @@ struct AstStmtContinue
 
 struct AstDecl
 {
-  AstType *    type;
-  DeclKind kind;
-  Ast *    name;
-  Ast *    value;
+  AstType * type;
+  DeclKind  kind;
+  AstIdent *name;
+  Ast *     value;
   bool mutable;
   int         flags;
   int         used;
@@ -277,28 +281,28 @@ struct AstDecl
 
 struct AstMember
 {
-  AstType *type;
-  Ast *name;
-  int  order;
+  AstType * type;
+  AstIdent *name;
+  int       order;
 };
 
 struct AstArg
 {
-  AstType *type;
-  Ast *name;
+  AstType * type;
+  AstIdent *name;
 };
 
 struct AstTypeType
 {
   const char *name;
-  AstType *       spec;
+  AstType *   spec;
 };
 
 struct AstVariant
 {
-  AstType *type;
-  Ast *name;
-  Ast *value;
+  AstType * type;
+  AstIdent *name;
+  Ast *     value;
 };
 
 struct AstTypeInt
@@ -316,14 +320,14 @@ struct AstTypeVArgs
 struct AstTypeArr
 {
   AstType *elem_type;
-  Ast *len;
+  Ast *    len;
 };
 
 struct AstTypeFn
 {
   AstType *ret_type;
-  Ast *args;
-  int  argc;
+  Ast *    args;
+  int      argc;
 };
 
 struct AstTypeStruct
@@ -336,7 +340,7 @@ struct AstTypeStruct
 struct AstTypeEnum
 {
   AstType *type;
-  Ast *variants;
+  Ast *    variants;
 };
 
 struct AstTypePtr
@@ -346,63 +350,63 @@ struct AstTypePtr
 
 struct AstTypeRef
 {
-  AstType *type;
-  Ast *ident;
+  AstType * type;
+  AstIdent *ident;
 };
 
 struct AstLitFn
 {
   AstType *type;
-  Ast *block;
+  Ast *    block;
 };
 
 struct AstLitInt
 {
-  AstType *    type;
+  AstType *type;
   uint64_t i;
 };
 
 struct AstLitFloat
 {
-  AstType * type;
-  float f;
+  AstType *type;
+  float    f;
 };
 
 struct AstLitChar
 {
-  AstType *   type;
-  uint8_t c;
+  AstType *type;
+  uint8_t  c;
 };
 
 struct AstLitString
 {
-  AstType *       type;
+  AstType *   type;
   const char *s;
 };
 
 struct AstLitBool
 {
   AstType *type;
-  bool b;
+  bool     b;
 };
 
 struct AstLitCmp
 {
   AstType *type;
-  Ast *fields;
-  int  fieldc;
+  Ast *    fields;
+  int      fieldc;
 };
 
 struct AstExprRef
 {
-  AstType *type;
-  Ast *ident;
+  AstType * type;
+  AstIdent *ident;
 };
 
 struct AstExprCast
 {
   AstType *type;
-  Ast *next;
+  Ast *    next;
 };
 
 struct AstExprBinop
