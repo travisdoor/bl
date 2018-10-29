@@ -10,11 +10,12 @@ u32   : #compiler;
 u64   : #compiler;
 usize : #compiler;
 
-main : fn (i s32) {
-  foo : 10;
+main : fn (i Int) {
+  main : 10;
 };
 
 i s32 := 10;
+Int : s32;
 
 
 /*
