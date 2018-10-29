@@ -41,9 +41,9 @@
 #include "ast.h"
 #include "eval.h"
 
+#define LOG_TAG GREEN("CHECK")
 #define FLATTEN_ARENA_CHUNK_COUNT 128
 
-#define VERBOSE 1
 #define VERBOSE_MULTIPLE_CHECK 0
 
 #define finish() return NULL
@@ -51,17 +51,6 @@
 
 #define FN_ARR_LEN_NAME "len@"
 #define FN_ARR_TMP_NAME "arr@"
-
-#define check_error_node(cnt, kind, node, pos, format, ...)                                        \
-  {                                                                                                \
-    builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (kind), (node)->src, (pos), (format),           \
-                ##__VA_ARGS__);                                                                    \
-  }
-
-#define check_note_node(cnt, node, pos, format, ...)                                               \
-  {                                                                                                \
-    builder_msg((cnt)->builder, BUILDER_MSG_NOTE, 0, (node)->src, (pos), (format), ##__VA_ARGS__); \
-  }
 
 typedef struct
 {
@@ -76,6 +65,7 @@ typedef struct
   BHashTable *waiting;
   Scope *     provided_in_gscope;
   BArray *    flatten_cache;
+  BArray *    stack;
 } Context;
 
 typedef struct
@@ -116,10 +106,13 @@ static void
 flatten_type(Context *cnt, Flatten *fbuf, AstType **type);
 
 static void
-flatten_check(Context *cnt, Ast **node);
+flatten_process(Context *cnt, Flatten *flatten);
 
 static void
-flatten_process(Context *cnt, Flatten *flatten);
+schedule_check(Context *cnt, Ast **node);
+
+static void
+do_check(Context *cnt);
 
 static bool
 cmp_type(AstType *first, AstType *second);
@@ -169,6 +162,8 @@ provide(Context *cnt, AstIdent *name, AstDecl *decl)
                 "previous declaration found here");
   } else {
     scope_insert(scope, name->hash, decl);
+
+    if (cnt->builder->flags & BUILDER_VERBOSE) msg_log(LOG_TAG ": new entry '%s'", decl->name->str);
     waiting_resume(cnt, name);
   }
 }
@@ -193,9 +188,7 @@ waiting_resume(Context *cnt, AstIdent *ident)
   /* is there some flattens waiting for this symbol??? */
   if (!bo_htbl_has_key(cnt->waiting, ident->hash)) return;
 
-#if VERBOSE
-  bl_log("checker: resume " RED("'%s'"), ident->str);
-#endif
+  if (cnt->builder->flags & BUILDER_VERBOSE) msg_log(LOG_TAG ": resume " RED("'%s'"), ident->str);
 
   /* resume all waiting flattens */
   BArray *q = bo_htbl_at(cnt->waiting, ident->hash, BArray *);
@@ -230,8 +223,8 @@ check_unresolved(Context *cnt)
       flatten = bo_array_at(q, i, Flatten *);
       assert(flatten->waitfor);
       if (!scope_lookup(cnt->provided_in_gscope, flatten->waitfor, false))
-        check_error_node(cnt, ERR_UNKNOWN_SYMBOL, (Ast *)flatten->waitfor, BUILDER_CUR_WORD,
-                         "unknown symbol");
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
+                    ((Ast *)flatten->waitfor)->src, BUILDER_CUR_WORD, "unknown symbol");
       flatten_put(cnt, flatten);
     }
   }
@@ -304,12 +297,9 @@ flatten_process(Context *cnt, Flatten *flatten)
 }
 
 void
-flatten_check(Context *cnt, Ast **node)
+schedule_check(Context *cnt, Ast **node)
 {
-  Flatten *flatten = flatten_get(cnt);
-
-  flatten_node(cnt, flatten, node);
-  flatten_process(cnt, flatten);
+  bo_array_push_back(cnt->stack, node);
 }
 
 #define flatten(_node) flatten_node(cnt, fbuf, (Ast **)(_node))
@@ -368,7 +358,7 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
     Ast **tmp;
     node_foreach_ref(_ublock->nodes, tmp)
     {
-      flatten_check(cnt, tmp);
+      schedule_check(cnt, tmp);
     }
     break;
   }
@@ -422,7 +412,7 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
   case AST_EXPR_LIT_FN: {
     AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
     flatten(&(*expr)->type);
-    flatten_check(cnt, &_fn->block);
+    schedule_check(cnt, &_fn->block);
     break;
   }
 
@@ -493,20 +483,18 @@ check_node(Context *cnt, Ast **node)
     break;
   }
 
-#if VERBOSE
-  {
+  if (cnt->builder->flags & BUILDER_VERBOSE) {
     const char *file = (*node)->src ? (*node)->src->unit->name : "implicit";
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
+    const char *name = (*node)->kind == AST_DECL ? (*node)->decl.name->str : ast_get_name(*node);
     if (result == NULL) {
-      bl_log("checker: [" GREEN(" OK ") "] (%s) " CYAN("%s:%d:%d"), ast_get_name(*node), file, line,
-             col);
+      msg_log(LOG_TAG ": [" GREEN(" OK ") "] <%s:%d:%d> '%s' ", file, line, col, name);
     } else {
-      bl_log("checker: [" RED("WAIT") "] (%s) " CYAN("%s:%d:%d") " -> " RED("%s"),
-             ast_get_name(*node), file, line, col, result->str);
+      msg_log(LOG_TAG ": [" RED("WAIT") "] <%s:%d:%d> '%s' -> %s", file, line, col, name,
+              result->str);
     }
   }
-#endif
 
 #ifdef BL_DEBUG
   (*node)->_state = result ? WAITING : CHECKED;
@@ -843,6 +831,20 @@ check_expr_binop(Context *cnt, AstExprBinop **binop)
 }
 
 void
+do_check(Context *cnt)
+{
+  Ast **tmp;
+  for (size_t i = 0; i < bo_array_size(cnt->stack); ++i) {
+    tmp = bo_array_at(cnt->stack, i, Ast **);
+
+    Flatten *flatten = flatten_get(cnt);
+
+    flatten_node(cnt, flatten, tmp);
+    flatten_process(cnt, flatten);
+  }
+}
+
+void
 checker_run(Builder *builder, Assembly *assembly)
 {
   Context cnt = {
@@ -853,6 +855,7 @@ checker_run(Builder *builder, Assembly *assembly)
       .ast_arena          = &assembly->ast_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
+      .stack              = bo_array_new(sizeof(Ast **)),
       .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
   };
 
@@ -866,9 +869,10 @@ checker_run(Builder *builder, Assembly *assembly)
   barray_foreach(assembly->units, unit)
   {
     cnt.unit = unit;
-    flatten_check(&cnt, (Ast **)&unit->ast);
+    schedule_check(&cnt, (Ast **)&unit->ast);
   }
 
+  do_check(&cnt);
   check_unresolved(&cnt);
 
   if (!assembly->has_main && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
@@ -878,6 +882,7 @@ checker_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
+  bo_unref(cnt.stack);
   eval_terminate(&cnt.evaluator);
   arena_terminate(&cnt.flatten_arena);
 }

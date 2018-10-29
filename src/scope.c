@@ -32,7 +32,6 @@
 #include "arena.h"
 #include "unit.h"
 
-#define VERBOSE 1
 #define ARENA_CHUNK_COUNT 256
 
 static void
@@ -63,10 +62,6 @@ scope_insert(Scope *scope, uint64_t key, AstDecl *entry)
   assert(scope);
   assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
   bo_htbl_insert(scope->entries, key, entry);
-
-#if VERBOSE
-  bl_log("scope: new entry '%s'", entry->name->str);
-#endif
 }
 
 AstDecl *

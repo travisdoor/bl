@@ -10,11 +10,12 @@ u32   : #compiler;
 u64   : #compiler;
 usize : #compiler;
 
-i s32 : 10;
-
 main : fn (i s32) {
-  main : 10;
+  foo : 10;
 };
+
+i s32 := 10;
+
 
 /*
 reserved names:
