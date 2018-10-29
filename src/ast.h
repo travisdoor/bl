@@ -77,7 +77,6 @@ typedef struct AstType       AstType;
 typedef struct AstTypeType   AstTypeType;
 typedef struct AstTypeRef    AstTypeRef;
 typedef struct AstTypeInt    AstTypeInt;
-typedef struct AstTypeVoid   AstTypeVoid;
 typedef struct AstTypeVArgs  AstTypeVArgs;
 typedef struct AstTypeArr    AstTypeArr;
 typedef struct AstTypeFn     AstTypeFn;
@@ -116,7 +115,6 @@ typedef enum
 {
   AST_TYPE_BAD,
   AST_TYPE_TYPE,
-  AST_TYPE_VOID,
   AST_TYPE_REF,
   AST_TYPE_INT,
   AST_TYPE_VARGS,
@@ -177,34 +175,36 @@ typedef enum
 /* map symbols to binary operation kind */
 typedef enum
 {
-  BINOP_ASSIGN     = SYM_ASSIGN,
-  BINOP_ADD_ASSIGN = SYM_PLUS_ASSIGN,
-  BINOP_SUB_ASSIGN = SYM_MINUS_ASSIGN,
-  BINOP_MUL_ASSIGN = SYM_ASTERISK_ASSIGN,
-  BINOP_DIV_ASSIGN = SYM_SLASH_ASSIGN,
-  BINOP_MOD_ASSIGN = SYM_PERCENT_ASSIGN,
-  BINOP_ADD        = SYM_PLUS,
-  BINOP_SUB        = SYM_MINUS,
-  BINOP_MUL        = SYM_ASTERISK,
-  BINOP_DIV        = SYM_SLASH,
-  BINOP_MOD        = SYM_PERCENT,
-  BINOP_EQ         = SYM_EQ,
-  BINOP_NEQ        = SYM_NEQ,
-  BINOP_GREATER    = SYM_GREATER,
-  BINOP_LESS       = SYM_LESS,
-  BINOP_GREATER_EQ = SYM_GREATER_EQ,
-  BINOP_LESS_EQ    = SYM_LESS_EQ,
-  BINOP_LOGIC_AND  = SYM_LOGIC_AND,
-  BINOP_LOGIC_OR   = SYM_LOGIC_OR
+  BINOP_INVALID = 0,
+  BINOP_ASSIGN,
+  BINOP_ADD_ASSIGN,
+  BINOP_SUB_ASSIGN,
+  BINOP_MUL_ASSIGN,
+  BINOP_DIV_ASSIGN,
+  BINOP_MOD_ASSIGN,
+  BINOP_ADD,
+  BINOP_SUB,
+  BINOP_MUL,
+  BINOP_DIV,
+  BINOP_MOD,
+  BINOP_EQ,
+  BINOP_NEQ,
+  BINOP_GREATER,
+  BINOP_LESS,
+  BINOP_GREATER_EQ,
+  BINOP_LESS_EQ,
+  BINOP_LOGIC_AND,
+  BINOP_LOGIC_OR,
 } BinopKind;
 
 typedef enum
 {
-  UNOP_NEG   = SYM_MINUS,
-  UNOP_POS   = SYM_PLUS,
-  UNOP_NOT   = SYM_NOT,
-  UNOP_ADR   = SYM_AND,
-  UNOP_DEREF = SYM_ASTERISK
+  UNOP_INVALID = 0,
+  UNOP_NEG,
+  UNOP_POS,
+  UNOP_NOT,
+  UNOP_ADR,
+  UNOP_DEREF,
 } UnopKind;
 
 typedef enum
@@ -212,6 +212,15 @@ typedef enum
   DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
   DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
 } DepType;
+
+typedef enum
+{
+  ADR_MODE_INVALID,
+  ADR_MODE_NO_VALUE,
+  ADR_MODE_MUT,
+  ADR_MODE_IMMUT,
+  ADR_MODE_CONST,
+} AdrMode;
 
 struct AstLoad
 {
@@ -316,11 +325,6 @@ struct AstTypeInt
   const char *name;
   bool        is_signed;
   int         bitcount;
-};
-
-struct AstTypeVoid
-{
-  const char *name;
 };
 
 struct AstTypeVArgs
@@ -475,7 +479,6 @@ struct AstType
     AstTypeType   type;
     AstTypeRef    ref;
     AstTypeInt    integer;
-    AstTypeVoid   mvoid;
     AstTypeVArgs  vargs;
     AstTypeArr    arr;
     AstTypeFn     fn;
@@ -512,6 +515,7 @@ struct AstExpr
 
   AstExprKind kind;
   AstType *   type;
+  AdrMode     adr_mode;
 };
 
 struct Ast
@@ -600,6 +604,33 @@ ast_get_type(AstExpr *expr)
 {
   assert(ast_is((Ast *)expr, AST_EXPR));
   return expr->type;
+}
+
+static inline void
+ast_set_type(AstExpr *expr, AstType *type)
+{
+  assert(ast_is((Ast *)expr, AST_EXPR));
+  expr->type = type;
+}
+
+static inline AdrMode
+ast_get_adrmode(AstExpr *expr)
+{
+  assert(ast_is((Ast *)expr, AST_EXPR));
+  return expr->adr_mode;
+}
+
+static inline void
+ast_set_adrmode(AstExpr *expr, AdrMode am)
+{
+  assert(ast_is((Ast *)expr, AST_EXPR));
+  expr->adr_mode = am;
+}
+
+static inline bool
+ast_binop_is_assign(BinopKind op)
+{
+  return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
 #define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));

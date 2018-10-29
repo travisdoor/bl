@@ -107,6 +107,9 @@ static void
 print_expr_type(AstExpr *expr_type, int pad);
 
 static void
+print_expr_binop(AstExprBinop *binop, int pad);
+
+static void
 print_expr_ref(AstExprRef *ref, int pad);
 
 static void
@@ -189,6 +192,80 @@ print_bad(Ast *bad, int pad)
 }
 
 void
+print_expr_binop(AstExprBinop *binop, int pad)
+{
+  print_head(binop, pad);
+
+  const char *op = NULL;
+  switch (binop->kind) {
+  case BINOP_ASSIGN:
+    op = "=";
+    break;
+  case BINOP_ADD_ASSIGN:
+    op = "+=";
+    break;
+  case BINOP_SUB_ASSIGN:
+    op = "-=";
+    break;
+  case BINOP_MUL_ASSIGN:
+    op = "*=";
+    break;
+  case BINOP_DIV_ASSIGN:
+    op = "/=";
+    break;
+  case BINOP_MOD_ASSIGN:
+    op = "%=";
+    break;
+  case BINOP_ADD:
+    op = "+";
+    break;
+  case BINOP_SUB:
+    op = "-";
+    break;
+  case BINOP_MUL:
+    op = "*";
+    break;
+  case BINOP_DIV:
+    op = "/";
+    break;
+  case BINOP_MOD:
+    op = "%";
+    break;
+  case BINOP_EQ:
+    op = "==";
+    break;
+  case BINOP_NEQ:
+    op = "!=";
+    break;
+  case BINOP_GREATER:
+    op = ">";
+    break;
+  case BINOP_LESS:
+    op = "<";
+    break;
+  case BINOP_GREATER_EQ:
+    op = ">=";
+    break;
+  case BINOP_LESS_EQ:
+    op = "<=";
+    break;
+  case BINOP_LOGIC_AND:
+    op = "&&";
+    break;
+  case BINOP_LOGIC_OR:
+    op = "||";
+    break;
+  default:
+    op = "invalid";
+  }
+
+  fprintf(stdout, "'%s' ", op);
+  print_type(((AstExpr *)binop)->type);
+  print_node((Ast *)binop->lhs, pad + 1);
+  print_node((Ast *)binop->rhs, pad + 1);
+}
+
+void
 print_expr_type(AstExpr *expr_type, int pad)
 {
   print_head(expr_type, pad);
@@ -206,7 +283,7 @@ void
 print_expr_lit_int(AstExprLitInt *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%llu ", lit->i);
+  fprintf(stdout, "%llu ", (long long unsigned)lit->i);
 }
 
 void
@@ -266,6 +343,7 @@ print_expr(AstExpr *expr, int pad)
   case AST_EXPR_CAST:
     break;
   case AST_EXPR_BINOP:
+    print_expr_binop((AstExprBinop *)expr, pad);
     break;
   case AST_EXPR_CALL:
     break;

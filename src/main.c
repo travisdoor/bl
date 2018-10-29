@@ -36,6 +36,27 @@
 #include "error.h"
 #include "messages.h"
 
+static void
+print_help(void)
+{
+  fprintf(stdout, "Usage\n\n"
+                  "  blc [options] <source-files>\n\n"
+                  "Options\n"
+                  "  -h, -help       = Print usage information and exit.\n"
+                  "  -ast-dump       = Print AST.\n"
+                  "  -lex-dump       = Print output of lexer.\n"
+                  "  -syntax-only    = Check syntax and exit.\n"
+                  "  -emit-llvm      = Write LLVM-IR to file.\n"
+                  "  -run            = Execute 'main' method in compile time.\n"
+                  "  -run-tests      = Execute all unit tests in compile time.\n"
+                  "  -no-bin         = Don't write binary to disk.\n"
+                  "  -no-warning     = Ignore all warnings.\n"
+                  "  -verbose        = Verbose mode.\n"
+                  "  -no-api         = Don't load internal api.\n\n"
+
+  );
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -43,10 +64,15 @@ main(int argc, char *argv[])
   unsigned int build_flags = BUILDER_LOAD_FROM_FILE;
   puts("compiler version: " BL_VERSION);
 
+  bool   help = false;
   size_t optind;
   for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
     if (strcmp(&argv[optind][1], "ast-dump") == 0) {
       build_flags |= BUILDER_PRINT_AST;
+    } else if (strcmp(&argv[optind][1], "h") == 0) {
+      help = true;
+    } else if (strcmp(&argv[optind][1], "help") == 0) {
+      help = true;
     } else if (strcmp(&argv[optind][1], "lex-dump") == 0) {
       build_flags |= BUILDER_PRINT_TOKENS;
     } else if (strcmp(&argv[optind][1], "syntax-only") == 0) {
@@ -66,11 +92,17 @@ main(int argc, char *argv[])
     } else if (strcmp(&argv[optind][1], "no-api") == 0) {
       build_flags |= BUILDER_NO_API;
     } else {
-      fprintf(stderr, "invalid params\n");
+      msg_error("invalid params '%s'", &argv[optind][1]);
+      print_help();
       exit(EXIT_FAILURE);
     }
   }
   argv += optind;
+
+  if (help) {
+    print_help();
+    exit(EXIT_SUCCESS);
+  }
 
   if (*argv == NULL) {
     msg_warning("nothing to do, no input files, sorry :(");

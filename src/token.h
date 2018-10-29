@@ -144,33 +144,9 @@ sym_is_binop(Sym sym)
 }
 
 static inline bool
-sym_is_assign(Sym sym)
-{
-  return sym >= SYM_PLUS_ASSIGN && sym <= SYM_ASSIGN;
-}
-
-static inline bool
-sym_is_logical(Sym sym)
-{
-  return sym >= SYM_EQ && sym <= SYM_LESS;
-}
-
-static inline bool
 token_is_binop(Token *token)
 {
   return sym_is_binop(token->sym);
-}
-
-static inline bool
-token_is_assign(Token *token)
-{
-  return sym_is_assign(token->sym);
-}
-
-static inline bool
-token_is_logical(Token *token)
-{
-  return sym_is_logical(token->sym);
 }
 
 bool

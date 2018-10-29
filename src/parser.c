@@ -105,6 +105,12 @@ insert_node(Ast ***node)
 }
 
 /* fw decls */
+static BinopKind
+sym_to_binop_kind(Sym sm);
+
+static UnopKind
+sym_to_unop_kind(Sym sm);
+
 static Ast *
 load_core(Context *cnt);
 
@@ -244,6 +250,72 @@ static inline bool
 parse_semicolon_rq(Context *cnt);
 
 // impl
+BinopKind
+sym_to_binop_kind(Sym sm)
+{
+  switch (sm) {
+  case SYM_ASSIGN:
+    return BINOP_ASSIGN;
+  case SYM_PLUS_ASSIGN:
+    return BINOP_ADD_ASSIGN;
+  case SYM_MINUS_ASSIGN:
+    return BINOP_SUB_ASSIGN;
+  case SYM_ASTERISK_ASSIGN:
+    return BINOP_MUL_ASSIGN;
+  case SYM_SLASH_ASSIGN:
+    return BINOP_DIV_ASSIGN;
+  case SYM_PERCENT_ASSIGN:
+    return BINOP_MOD_ASSIGN;
+  case SYM_PLUS:
+    return BINOP_ADD;
+  case SYM_MINUS:
+    return BINOP_SUB;
+  case SYM_ASTERISK:
+    return BINOP_MUL;
+  case SYM_SLASH:
+    return BINOP_DIV;
+  case SYM_PERCENT:
+    return BINOP_MOD;
+  case SYM_EQ:
+    return BINOP_EQ;
+  case SYM_NEQ:
+    return BINOP_NEQ;
+  case SYM_GREATER:
+    return BINOP_GREATER;
+  case SYM_LESS:
+    return BINOP_LESS;
+  case SYM_GREATER_EQ:
+    return BINOP_GREATER_EQ;
+  case SYM_LESS_EQ:
+    return BINOP_LESS_EQ;
+  case SYM_LOGIC_AND:
+    return BINOP_LOGIC_AND;
+  case SYM_LOGIC_OR:
+    return BINOP_LOGIC_OR;
+  default:
+    bl_abort("unknown binop operation!!!");
+  }
+}
+
+UnopKind
+sym_to_unop_kind(Sym sm)
+{
+  switch (sm) {
+  case SYM_MINUS:
+    return UNOP_NEG;
+  case SYM_PLUS:
+    return UNOP_POS;
+  case SYM_NOT:
+    return UNOP_NOT;
+  case SYM_AND:
+    return UNOP_ADR;
+  case SYM_ASTERISK:
+    return UNOP_DEREF;
+  default:
+    bl_abort("unknown unop operation!!!");
+  }
+}
+
 AstExpr *
 parse_expr_ref(Context *cnt)
 {
@@ -859,7 +931,7 @@ parse_expr_unary(Context *cnt, Token *op)
     tokens_consume(cnt->tokens);
     AstExprUnary *_unary = ast_create_expr(cnt->ast_arena, AST_EXPR_UNARY, curr_op, AstExprUnary *);
     _unary->next         = _parse_expr(cnt, parse_expr_atom(cnt, NULL), token_prec(curr_op, true));
-    _unary->kind         = (UnopKind)curr_op->sym;
+    _unary->kind         = sym_to_unop_kind(curr_op->sym);
 
     if (_unary->next == NULL) {
       Token *err_tok = tokens_peek(cnt->tokens);
@@ -1011,7 +1083,7 @@ _parse_expr(Context *cnt, AstExpr *lhs, int min_precedence)
       }
     } else if (token_is_binop(op)) {
       AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, op, AstExprBinop *);
-      _binop->kind         = (BinopKind)op->sym;
+      _binop->kind         = sym_to_binop_kind(op->sym);
       _binop->lhs          = lhs;
       _binop->rhs          = rhs;
 

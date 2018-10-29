@@ -110,6 +110,12 @@ static void
 flatten_node(Context *cnt, Flatten *fbuf, Ast **node);
 
 static void
+flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr);
+
+static void
+flatten_type(Context *cnt, Flatten *fbuf, AstType **type);
+
+static void
 flatten_check(Context *cnt, Ast **node);
 
 static void
@@ -136,13 +142,16 @@ static AstIdent *
 check_type_ref(Context *cnt, AstTypeRef **type_ref);
 
 static AstIdent *
-check_type_fn(Context *cnt, AstTypeFn **type_fn);
-
-static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
 
 static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
+
+static AstIdent *
+check_expr_lit_fn(Context *cnt, AstExprLitFn **fn);
+
+static AstIdent *
+check_expr_binop(Context *cnt, AstExprBinop **binop);
 
 void
 provide(Context *cnt, AstIdent *name, AstDecl *decl)
@@ -303,12 +312,12 @@ flatten_check(Context *cnt, Ast **node)
   flatten_process(cnt, flatten);
 }
 
+#define flatten(_node) flatten_node(cnt, fbuf, (Ast **)(_node))
+
 void
 flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 {
   if (!*node) return;
-
-#define flatten(_node) flatten_node(cnt, fbuf, (Ast **)(_node))
 
   switch (ast_kind(*node)) {
   case AST_DECL: {
@@ -388,35 +397,12 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
   }
 
   case AST_TYPE: {
-    AstType **type = (AstType **)node;
-    switch (ast_type_kind(*type)) {
-    case AST_TYPE_FN: {
-      AstTypeFn *_fn = (AstTypeFn *)(*type);
-      Ast **     arg;
-      node_foreach_ref(_fn->args, arg) flatten(arg);
-      flatten(&_fn->ret_type);
-      break;
-    }
-    default:
-      break;
-    }
-
+    flatten_type(cnt, fbuf, (AstType **)node);
     break;
   }
 
   case AST_EXPR: {
-    AstExpr **expr = (AstExpr **)node;
-    switch (ast_expr_kind(*expr)) {
-    case AST_EXPR_LIT_FN: {
-      AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
-      flatten(&(*expr)->type);
-      flatten_check(cnt, &_fn->block);
-      break;
-    }
-    default:
-      break;
-    }
-
+    flatten_expr(cnt, fbuf, (AstExpr **)node);
     break;
   }
 
@@ -425,8 +411,49 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
   }
 
   flatten_push(fbuf, node);
-#undef flatten
 }
+
+void
+flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
+{
+  switch (ast_expr_kind(*expr)) {
+
+  case AST_EXPR_LIT_FN: {
+    AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
+    flatten(&(*expr)->type);
+    flatten_check(cnt, &_fn->block);
+    break;
+  }
+
+  case AST_EXPR_BINOP: {
+    AstExprBinop *_binop = (AstExprBinop *)(*expr);
+    flatten(&_binop->lhs);
+    flatten(&_binop->rhs);
+    break;
+  }
+
+  default:
+    break;
+  }
+}
+
+void
+flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
+{
+  switch (ast_type_kind(*type)) {
+  case AST_TYPE_FN: {
+    AstTypeFn *_fn = (AstTypeFn *)(*type);
+    Ast **     arg;
+    node_foreach_ref(_fn->args, arg) flatten(arg);
+    flatten(&_fn->ret_type);
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+#undef flatten
 
 AstIdent *
 check_node(Context *cnt, Ast **node)
@@ -452,7 +479,13 @@ check_node(Context *cnt, Ast **node)
     result = check_type(cnt, (AstType **)node);
     break;
 
+  case AST_UBLOCK:
+  case AST_BLOCK:
+  case AST_ARG:
+    break;
+
   default:
+    msg_warning("missing checking for %s", ast_get_name((Ast *)*node));
     break;
   }
 
@@ -486,14 +519,25 @@ check_expr(Context *cnt, AstExpr **expr)
     result = check_expr_lit_int(cnt, (AstExprLitInt **)expr);
     break;
 
+  case AST_EXPR_LIT_FN:
+    result = check_expr_lit_fn(cnt, (AstExprLitFn **)expr);
+    break;
+
   case AST_EXPR_REF:
     result = check_expr_ref(cnt, (AstExprRef **)expr);
     break;
+
+  case AST_EXPR_BINOP:
+    result = check_expr_binop(cnt, (AstExprBinop **)expr);
+    break;
+
   default:
+    msg_warning("missing checking for %s", ast_get_name((Ast *)*expr));
     break;
   }
 
   assert(result || (*expr)->type);
+  assert(result || ((*expr)->adr_mode != ADR_MODE_INVALID));
   return result;
 }
 
@@ -509,10 +553,10 @@ check_type(Context *cnt, AstType **type)
     break;
 
   case AST_TYPE_FN:
-    result = check_type_fn(cnt, (AstTypeFn **)type);
     break;
 
   default:
+    msg_warning("missing checking for %s", ast_get_name((Ast *)*type));
     break;
   }
 
@@ -540,7 +584,8 @@ cmp_type(AstType *first, AstType *second)
     AstTypeFn *_s = &second->fn;
 
     if (_f->argc != _s->argc) return false;
-    if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
+    if ((!_f->ret_type && _s->ret_type) || (_f->ret_type && !_s->ret_type)) return false;
+    if (_f->ret_type && _s->ret_type && !cmp_type(_f->ret_type, _s->ret_type)) return false;
 
     Ast *argt1 = _f->args;
     Ast *argt2 = _s->args;
@@ -561,7 +606,6 @@ cmp_type(AstType *first, AstType *second)
   case AST_TYPE_STRUCT:
   case AST_TYPE_ENUM:
   case AST_TYPE_PTR:
-  case AST_TYPE_VOID:
     bl_abort("unimplemented %s", ast_get_name((Ast *)first));
   }
 
@@ -577,26 +621,6 @@ check_error_invalid_types(Context *cnt, AstType *first, AstType *second, Ast *er
   ast_type_to_str(tmp_second, 256, second);
   builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, err_pos->src, BUILDER_CUR_WORD,
               "no implicit cast for types '%s' and '%s'", tmp_first, tmp_second);
-}
-
-AstIdent *
-check_expr_ref(Context *cnt, AstExprRef **ref)
-{
-  AstExprRef *_ref = *ref;
-  assert(_ref->ident);
-
-  Scope *scope = _ref->ident->scope;
-  assert(scope && "missing scope for identificator");
-
-  /* TODO: not only declarations are registred??? */
-  AstDecl *found = scope_lookup(scope, _ref->ident, true);
-  if (!found) wait(_ref->ident);
-  found->used++;
-
-  assert(found->type);
-  ((AstExpr *)_ref)->type = found->type;
-
-  finish();
 }
 
 AstIdent *
@@ -622,15 +646,7 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   }
 
   *type_ref = (AstTypeRef *)found->type->type.spec;
-  finish();
-}
 
-AstIdent *
-check_type_fn(Context *cnt, AstTypeFn **type_fn)
-{
-  AstTypeFn *_fn = *type_fn;
-  if (!_fn->ret_type)
-    _fn->ret_type = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_VOID]);
   finish();
 }
 
@@ -685,7 +701,6 @@ static inline void
 setup_decl_kind(AstDecl *decl)
 {
   switch (ast_type_kind(decl->type)) {
-  case AST_TYPE_VOID:
   case AST_TYPE_REF:
   case AST_TYPE_BAD:
   case AST_TYPE_VARGS:
@@ -756,8 +771,70 @@ check_decl(Context *cnt, AstDecl **decl)
 AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
-  AstExpr *_lit = (AstExpr *)*lit;
-  _lit->type    = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
+  AstExpr *_lit  = (AstExpr *)*lit;
+  _lit->type     = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
+  _lit->adr_mode = ADR_MODE_CONST;
+  finish();
+}
+
+AstIdent *
+check_expr_lit_fn(Context *cnt, AstExprLitFn **fn)
+{
+  ast_set_adrmode((AstExpr *)*fn, ADR_MODE_NO_VALUE);
+  finish();
+}
+
+AstIdent *
+check_expr_ref(Context *cnt, AstExprRef **ref)
+{
+  AstExprRef *_ref = *ref;
+  assert(_ref->ident);
+
+  Scope *scope = _ref->ident->scope;
+  assert(scope && "missing scope for identificator");
+
+  /* TODO: not only declarations are registred??? */
+  AstDecl *found = scope_lookup(scope, _ref->ident, true);
+  if (!found) wait(_ref->ident);
+  found->used++;
+
+  assert(found->type);
+  ast_set_type((AstExpr *)_ref, found->type);
+  ast_set_adrmode((AstExpr *)_ref, found->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT);
+
+  finish();
+}
+
+AstIdent *
+check_expr_binop(Context *cnt, AstExprBinop **binop)
+{
+  AstExprBinop *_binop = *binop;
+  assert(_binop->kind != BINOP_INVALID);
+  assert(_binop->lhs && _binop->rhs);
+
+  AdrMode  ladrm = ast_get_adrmode(_binop->lhs);
+  AdrMode  radrm = ast_get_adrmode(_binop->rhs);
+  AstType *ltype = ast_get_type(_binop->lhs);
+  AstType *rtype = ast_get_type(_binop->rhs);
+  assert(ladrm != ADR_MODE_INVALID && "invalid address mode of lhs expression!!!");
+  assert(radrm != ADR_MODE_INVALID && "invalid address mode of rhs expression!!!");
+  assert(ltype && rtype);
+
+  if (ast_binop_is_assign(_binop->kind)) {
+    /* assignment */
+    if (ladrm != ADR_MODE_MUT) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_binop)->src,
+                  BUILDER_CUR_WORD, "left-hand side of assign expression cannot be assigned");
+    }
+  }
+
+  ast_set_type((AstExpr *)_binop, ltype);
+  ast_set_adrmode((AstExpr *)_binop, ADR_MODE_IMMUT);
+
+  if (!cmp_type(ltype, rtype)) {
+    check_error_invalid_types(cnt, ltype, rtype, (Ast *)_binop);
+  }
+
   finish();
 }
 

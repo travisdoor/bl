@@ -157,8 +157,6 @@ ast_get_name(Ast *n)
       return "TypeBad";
     case AST_TYPE_TYPE:
       return "TypeType";
-    case AST_TYPE_VOID:
-      return "TypeVoid";
     case AST_TYPE_REF:
       return "TypeRef";
     case AST_TYPE_INT:
@@ -264,8 +262,13 @@ _type_to_str(char *buf, size_t len, AstType *type)
       arg = arg->next;
       if (arg) append_buf(buf, len, ", ");
     }
-    append_buf(buf, len, ") ");
-    _type_to_str(buf, len, fn->ret_type);
+
+    if (fn->ret_type) {
+      append_buf(buf, len, ") ");
+      _type_to_str(buf, len, fn->ret_type);
+    } else {
+      append_buf(buf, len, ")");
+    }
     break;
   }
 
@@ -286,10 +289,6 @@ _type_to_str(char *buf, size_t len, AstType *type)
     append_buf(buf, len, "}");
     break;
   }
-
-  case AST_TYPE_VOID:
-    append_buf(buf, len, type->mvoid.name);
-    break;
 
   case AST_TYPE_VARGS:
   case AST_TYPE_ARR:

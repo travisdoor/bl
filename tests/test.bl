@@ -1,6 +1,5 @@
 /* playground */
 
-void  : #compiler;
 s8    : #compiler;
 s16   : #compiler;
 s32   : #compiler;
@@ -13,6 +12,7 @@ usize : #compiler;
 
 i s32 : 10;
 
-main fn (s32) : fn (i s32) {
+main : fn (i s32) {
   num := 10; 
+  num = 10;
 };
