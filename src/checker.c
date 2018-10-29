@@ -43,7 +43,7 @@
 
 #define FLATTEN_ARENA_CHUNK_COUNT 128
 
-#define VERBOSE 0
+#define VERBOSE 1
 #define VERBOSE_MULTIPLE_CHECK 0
 
 #define finish() return NULL
@@ -407,6 +407,7 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
   }
 
   default:
+    msg_warning("missing flattening for %s", ast_get_name((Ast *)*node));
     break;
   }
 
@@ -433,6 +434,7 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
   }
 
   default:
+    msg_warning("missing flattening for %s", ast_get_name((Ast *)*expr));
     break;
   }
 }
@@ -448,7 +450,9 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
     flatten(&_fn->ret_type);
     break;
   }
+
   default:
+    msg_warning("missing flattening for %s", ast_get_name((Ast *)*type));
     break;
   }
 }
