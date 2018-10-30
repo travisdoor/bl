@@ -49,7 +49,7 @@ typedef struct
   Scope *                gscope;          /* cache for global scope */
   BList *                ir_queue;        /* generated into IR (entry functions 'main' etc.)*/
   BArray *               test_cases;      /* array of all test cases in assembly */
-  bool                   has_main;        /* has main method implemented */
+  Ast *                  entry_node;      /* AST node of main function */
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */
   LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */

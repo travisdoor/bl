@@ -11,30 +11,8 @@ u64   : #compiler;
 usize : #compiler;
 
 main : fn (i Int) {
-  foo : 10;
+  j : 10;
 };
 
 i s32 := 10;
 Int : s32;
-
-
-/*
-reserved names:
-types: 
-    s8    
-    s16   
-    s32   
-    s64   
-    u8    
-    u16   
-    u32   
-    u64   
-    usize 
-
-methods:
-    sizeof
-    typeof
-
-special:
-    main
-*/

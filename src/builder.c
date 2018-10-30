@@ -250,15 +250,15 @@ builder_new(void)
 
   /* SETUP BUILDINS */
   struct Buildin *b = &builder->buildin;
-  b->entry_u8       = &entry_u8;
-  b->entry_u16      = &entry_u16;
-  b->entry_u32      = &entry_u32;
-  b->entry_u64      = &entry_u64;
-  b->entry_usize    = &entry_usize;
-  b->entry_s8       = &entry_s8;
-  b->entry_s16      = &entry_s16;
-  b->entry_s32      = &entry_s32;
-  b->entry_s64      = &entry_s64;
+  b->entry_u8       = (AstType *)&entry_u8;
+  b->entry_u16      = (AstType *)&entry_u16;
+  b->entry_u32      = (AstType *)&entry_u32;
+  b->entry_u64      = (AstType *)&entry_u64;
+  b->entry_usize    = (AstType *)&entry_usize;
+  b->entry_s8       = (AstType *)&entry_s8;
+  b->entry_s16      = (AstType *)&entry_s16;
+  b->entry_s32      = (AstType *)&entry_s32;
+  b->entry_s64      = (AstType *)&entry_s64;
   /* SETUP BUILDINS */
 
   return builder;

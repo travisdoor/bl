@@ -1366,35 +1366,6 @@ parse_decl(Context *cnt)
     }
   }
 
-  if (_decl->flags & FLAG_MAIN) {
-    /* main function */
-    if (_decl->mutable) {
-      if (tok_assign) {
-        parse_error(cnt, ERR_INVALID_MUTABILITY, tok_assign, BUILDER_CUR_WORD,
-                    "'main' is expected to be immutable function");
-      } else {
-        parse_error_node(cnt, ERR_INVALID_MUTABILITY, (Ast *)ident, BUILDER_CUR_WORD,
-                         "'main' is expected to be immutable function");
-      }
-
-      RETURN_BAD;
-    }
-
-    if (_decl->flags & FLAG_EXTERN) {
-      parse_error_node(cnt, ERR_UNEXPECTED_MODIF, (Ast *)ident, BUILDER_CUR_WORD,
-                       "main function cannot be extern");
-      RETURN_BAD;
-    }
-  }
-
-  if (_decl->flags & FLAG_EXTERN) {
-    if (_decl->mutable) {
-      parse_error(cnt, ERR_INVALID_MUTABILITY, tok_assign, BUILDER_CUR_WORD,
-                  "extern declaration cannot be mutable");
-      RETURN_BAD;
-    }
-  }
-
   pop_curr_decl(cnt);
   return (Ast *)_decl;
 
@@ -1707,6 +1678,11 @@ next:
     goto next;
   }
 
+  /* TODO: move to builder!!! */
+  /* TODO: move to builder!!! */
+  /* TODO: move to builder!!! */
+  /* TODO: move to builder!!! */
+  /* TODO: move to builder!!! */
   if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (*node = load_core(cnt))) {
     insert_node(&node);
     cnt->core_loaded = true;

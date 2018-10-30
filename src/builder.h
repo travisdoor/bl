@@ -81,15 +81,15 @@ typedef struct Builder
 
   struct Buildin
   {
-    Ast *entry_u8;
-    Ast *entry_u16;
-    Ast *entry_u32;
-    Ast *entry_u64;
-    Ast *entry_usize;
-    Ast *entry_s8;
-    Ast *entry_s16;
-    Ast *entry_s32;
-    Ast *entry_s64;
+    AstType *entry_u8;
+    AstType *entry_u16;
+    AstType *entry_u32;
+    AstType *entry_u64;
+    AstType *entry_usize;
+    AstType *entry_s8;
+    AstType *entry_s16;
+    AstType *entry_s32;
+    AstType *entry_s64;
   } buildin;
 } Builder;
 

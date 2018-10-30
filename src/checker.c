@@ -39,7 +39,6 @@
 #include "stages.h"
 #include "common.h"
 #include "ast.h"
-#include "eval.h"
 
 #define LOG_TAG GREEN("CHECK")
 #define FLATTEN_ARENA_CHUNK_COUNT 128
@@ -54,7 +53,6 @@
 
 typedef struct
 {
-  Eval        evaluator;
   Arena       flatten_arena;
   Builder *   builder;
   Assembly *  assembly;
@@ -116,8 +114,8 @@ do_check(Context *cnt);
 static bool
 cmp_type(AstType *first, AstType *second);
 
-static Ast *
-lookup_buildin(Context *cnt, AstIdent *ident);
+static AstType *
+lookup_buildin_type(Context *cnt, AstIdent *ident);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
@@ -425,6 +423,9 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
     break;
   }
 
+  case AST_EXPR_LIT_INT:
+  case AST_EXPR_REF:
+    break;
   default:
     msg_warning("missing flattening for %s", ast_get_name((Ast *)*expr));
     break;
@@ -442,6 +443,9 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
     flatten(&_fn->ret_type);
     break;
   }
+
+  case AST_TYPE_REF:
+    break;
 
   default:
     msg_warning("missing flattening for %s", ast_get_name((Ast *)*type));
@@ -606,8 +610,8 @@ cmp_type(AstType *first, AstType *second)
   return false;
 }
 
-Ast *
-lookup_buildin(Context *cnt, AstIdent *ident)
+AstType *
+lookup_buildin_type(Context *cnt, AstIdent *ident)
 {
   assert(ident);
   int id = builder_is_reserved(cnt->builder, ident->hash);
@@ -632,7 +636,7 @@ lookup_buildin(Context *cnt, AstIdent *ident)
   case RESERVED_S64:
     return cnt->builder->buildin.entry_s64;
   default:
-    bl_abort("invalid buildin id");
+    return NULL;
   }
 }
 
@@ -701,7 +705,7 @@ static bool
 check_buildin_decl(Context *cnt, AstDecl *decl)
 {
   if (!(decl->flags & FLAG_COMPILER)) return false;
-  AstType *tmp = (AstType *)lookup_buildin(cnt, decl->name);
+  AstType *tmp = lookup_buildin_type(cnt, decl->name);
   if (!tmp) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
                 BUILDER_CUR_WORD, "unknown compiler internal");
@@ -759,10 +763,39 @@ check_decl(Context *cnt, AstDecl **decl)
 
   /* infer declaration type */
   infer_decl_type(cnt, _decl);
-  assert(_decl->type);
+  if (!_decl->type) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_decl)->src,
+                BUILDER_CUR_WORD, "declaration of unknown type");
+    _decl->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *)
+    finish();
+  }
 
   /* declaration kind based on type */
   setup_decl_kind(_decl);
+
+  {
+    const int id = builder_is_reserved(cnt->builder, _decl->name->hash);
+
+    /* check main method */
+    if (id == RESERVED_MAIN) {
+      cnt->assembly->entry_node = (Ast *)_decl;
+      _decl->used++;
+
+      if (_decl->kind != DECL_KIND_FN) {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_decl)->src,
+                    BUILDER_CUR_WORD, "'main' is expected to be a function");
+      }
+
+      if (_decl->flags != 0) {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNEXPECTED_MODIF, ((Ast *)_decl)->src,
+                    BUILDER_CUR_WORD, "'main' method declared with invalid flags");
+      }
+
+    } else if (id != -1) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, ((Ast *)_decl)->src,
+                  BUILDER_CUR_WORD, "'%s' is compiler reserved name", _decl->name->str);
+    }
+  }
 
   switch (_decl->kind) {
   case DECL_KIND_INVALID:
@@ -893,9 +926,6 @@ checker_run(Builder *builder, Assembly *assembly)
   arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
              (ArenaElemDtor)flatten_dtor);
 
-  /* TODO: stack size */
-  eval_init(&cnt.evaluator, 1024);
-
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
@@ -906,14 +936,13 @@ checker_run(Builder *builder, Assembly *assembly)
   do_check(&cnt);
   check_unresolved(&cnt);
 
-  if (!assembly->has_main && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
+  if (!assembly->entry_node && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
     builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
-                "assembly has no 'main' method");
+                "assembly has no 'main' entry method defined");
   }
 
   bo_unref(cnt.waiting);
   bo_unref(cnt.flatten_cache);
   bo_unref(cnt.stack);
-  eval_terminate(&cnt.evaluator);
   arena_terminate(&cnt.flatten_arena);
 }
