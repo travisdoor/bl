@@ -37,13 +37,11 @@
 #include "scope.h"
 #include "unit.h"
 #include "arena.h"
-#include "buildin.h"
 
 typedef struct
 {
   Arena                  ast_arena;
   Arena                  scope_arena;
-  Buildin                buildin;         /* all buildins of the compiler */
   BArray *               units;           /* array of all units in assembly */
   BHashTable *           unique_cache;    /* cache for loading only unique units */
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */

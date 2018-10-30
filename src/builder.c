@@ -40,6 +40,81 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
+static const char *reserved_names[RESERVED_COUNT] = {"u8", "u16", "u32", "u64", "usize",
+                                                     "s8", "s16", "s32", "s64", "main"};
+
+static Ast entry_u8 = {.kind                   = AST_TYPE,
+                       .src                    = NULL,
+                       .next                   = NULL,
+                       .type.kind              = AST_TYPE_INT,
+                       .type.integer.name      = "u8",
+                       .type.integer.bitcount  = 8,
+                       .type.integer.is_signed = false};
+
+static Ast entry_u16 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "u16",
+                        .type.integer.bitcount  = 16,
+                        .type.integer.is_signed = false};
+
+static Ast entry_u32 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "u32",
+                        .type.integer.bitcount  = 32,
+                        .type.integer.is_signed = false};
+
+static Ast entry_u64 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "u64",
+                        .type.integer.bitcount  = 64,
+                        .type.integer.is_signed = false};
+
+static Ast entry_usize = {.kind                   = AST_TYPE,
+                          .src                    = NULL,
+                          .next                   = NULL,
+                          .type.kind              = AST_TYPE_INT,
+                          .type.integer.name      = "u64",
+                          .type.integer.bitcount  = 64,
+                          .type.integer.is_signed = false};
+
+static Ast entry_s8 = {.kind                   = AST_TYPE,
+                       .src                    = NULL,
+                       .next                   = NULL,
+                       .type.kind              = AST_TYPE_INT,
+                       .type.integer.name      = "s8",
+                       .type.integer.bitcount  = 8,
+                       .type.integer.is_signed = true};
+
+static Ast entry_s16 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "s16",
+                        .type.integer.bitcount  = 16,
+                        .type.integer.is_signed = true};
+
+static Ast entry_s32 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "s32",
+                        .type.integer.bitcount  = 32,
+                        .type.integer.is_signed = true};
+
+static Ast entry_s64 = {.kind                   = AST_TYPE,
+                        .src                    = NULL,
+                        .next                   = NULL,
+                        .type.kind              = AST_TYPE_INT,
+                        .type.integer.name      = "s64",
+                        .type.integer.bitcount  = 64,
+                        .type.integer.is_signed = true};
+
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 
@@ -120,7 +195,7 @@ int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   if (!builder->errorc) checker_run(builder, assembly);
-  //if (!builder->errorc) post_run(builder, assembly);
+  // if (!builder->errorc) post_run(builder, assembly);
 
   if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
@@ -164,7 +239,27 @@ builder_new(void)
   builder->errorc      = 0;
   builder->uname_cache = bo_array_new_bo(bo_typeof(BString), true);
 
+  /* initialize LLVM statics */
   llvm_init();
+
+  /* initialize reserved names hashes */
+  builder->reserved = bo_htbl_new(sizeof(ReservedNames), RESERVED_COUNT);
+  for (int i = 0; i < RESERVED_COUNT; ++i) {
+    bo_htbl_insert(builder->reserved, bo_hash_from_str(reserved_names[i]), i);
+  }
+
+  /* SETUP BUILDINS */
+  struct Buildin *b = &builder->buildin;
+  b->entry_u8       = &entry_u8;
+  b->entry_u16      = &entry_u16;
+  b->entry_u32      = &entry_u32;
+  b->entry_u64      = &entry_u64;
+  b->entry_usize    = &entry_usize;
+  b->entry_s8       = &entry_s8;
+  b->entry_s16      = &entry_s16;
+  b->entry_s32      = &entry_s32;
+  b->entry_s64      = &entry_s64;
+  /* SETUP BUILDINS */
 
   return builder;
 }
@@ -173,6 +268,7 @@ void
 builder_delete(Builder *builder)
 {
   bo_unref(builder->uname_cache);
+  bo_unref(builder->reserved);
   bl_free(builder);
 }
 
@@ -390,4 +486,11 @@ builder_get_unique_name(Builder *builder, const char *base)
   sprintf(ui_str, "%llu", (unsigned long long)ui);
   bo_string_append(s, ui_str);
   return bo_string_get(s);
+}
+
+int
+builder_is_reserved(Builder *builder, uint64_t hash)
+{
+  if (!bo_htbl_has_key(builder->reserved, hash)) return -1;
+  return bo_htbl_at(builder->reserved, hash, ReservedNames);
 }

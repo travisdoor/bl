@@ -50,6 +50,21 @@
 
 typedef void (*diag_handler_f)(const char *, void *);
 
+typedef enum
+{
+  RESERVED_U8,
+  RESERVED_U16,
+  RESERVED_U32,
+  RESERVED_U64,
+  RESERVED_USIZE,
+  RESERVED_S8,
+  RESERVED_S16,
+  RESERVED_S32,
+  RESERVED_S64,
+  RESERVED_MAIN,
+  RESERVED_COUNT,
+} ReservedNames;
+
 typedef struct Builder
 {
   diag_handler_f on_error;
@@ -62,6 +77,20 @@ typedef struct Builder
   int            total_lines;
   int            errorc;
   BArray *       uname_cache;
+  BHashTable *   reserved;
+
+  struct Buildin
+  {
+    Ast *entry_u8;
+    Ast *entry_u16;
+    Ast *entry_u32;
+    Ast *entry_u64;
+    Ast *entry_usize;
+    Ast *entry_s8;
+    Ast *entry_s16;
+    Ast *entry_s32;
+    Ast *entry_s64;
+  } buildin;
 } Builder;
 
 typedef enum
@@ -113,5 +142,9 @@ builder_get_unique_id(Builder *builder);
 
 const char *
 builder_get_unique_name(Builder *builder, const char *base);
+
+/* determinate if hash is reserved keyword, return -1 if it's not or one of the RESERVED keys */
+int
+builder_is_reserved(Builder *builder, uint64_t hash);
 
 #endif

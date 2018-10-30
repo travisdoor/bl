@@ -59,7 +59,6 @@ typedef struct
   Builder *   builder;
   Assembly *  assembly;
   Unit *      unit;
-  Buildin *   buildin;
   Arena *     ast_arena;
   Arena *     type_arena;
   BHashTable *waiting;
@@ -116,6 +115,9 @@ do_check(Context *cnt);
 
 static bool
 cmp_type(AstType *first, AstType *second);
+
+static Ast *
+lookup_buildin(Context *cnt, AstIdent *ident);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
@@ -604,6 +606,36 @@ cmp_type(AstType *first, AstType *second)
   return false;
 }
 
+Ast *
+lookup_buildin(Context *cnt, AstIdent *ident)
+{
+  assert(ident);
+  int id = builder_is_reserved(cnt->builder, ident->hash);
+  if (id == -1) return NULL;
+  switch ((ReservedNames)id) {
+  case RESERVED_U8:
+    return cnt->builder->buildin.entry_u8;
+  case RESERVED_U16:
+    return cnt->builder->buildin.entry_u16;
+  case RESERVED_U32:
+    return cnt->builder->buildin.entry_u32;
+  case RESERVED_U64:
+    return cnt->builder->buildin.entry_u64;
+  case RESERVED_USIZE:
+    return cnt->builder->buildin.entry_usize;
+  case RESERVED_S8:
+    return cnt->builder->buildin.entry_s8;
+  case RESERVED_S16:
+    return cnt->builder->buildin.entry_s16;
+  case RESERVED_S32:
+    return cnt->builder->buildin.entry_s32;
+  case RESERVED_S64:
+    return cnt->builder->buildin.entry_s64;
+  default:
+    bl_abort("invalid buildin id");
+  }
+}
+
 static inline void
 check_error_invalid_types(Context *cnt, AstType *first, AstType *second, Ast *err_pos)
 {
@@ -669,7 +701,7 @@ static bool
 check_buildin_decl(Context *cnt, AstDecl *decl)
 {
   if (!(decl->flags & FLAG_COMPILER)) return false;
-  AstType *tmp = (AstType *)buildin_get(cnt->buildin, decl->name->hash);
+  AstType *tmp = (AstType *)lookup_buildin(cnt, decl->name);
   if (!tmp) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
                 BUILDER_CUR_WORD, "unknown compiler internal");
@@ -764,7 +796,7 @@ AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
   AstExpr *_lit  = (AstExpr *)*lit;
-  _lit->type     = (AstType *)buildin_get(cnt->buildin, cnt->buildin->hashes[BUILDIN_S32]);
+  _lit->type     = (AstType *)cnt->builder->buildin.entry_s32;
   _lit->adr_mode = ADR_MODE_CONST;
   finish();
 }
@@ -851,7 +883,6 @@ checker_run(Builder *builder, Assembly *assembly)
       .builder            = builder,
       .assembly           = assembly,
       .unit               = NULL,
-      .buildin            = &assembly->buildin,
       .ast_arena          = &assembly->ast_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),

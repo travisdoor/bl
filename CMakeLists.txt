@@ -24,7 +24,6 @@ find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
         src/bldebug.h
-        src/buildin.h
         src/error.h 
         src/config.h
 	src/messages.h
@@ -66,7 +65,6 @@ set(SOURCE_FILES
         src/scope.c
         src/common.c 
         src/post.c 
-        src/buildin.c
         src/ast.c)
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
