@@ -11,7 +11,8 @@ u64   : #compiler;
 usize : #compiler;
 
 main : fn (i Int) {
-  j : 10;
+  foo := 10;
+  bar := 10;
 };
 
 i s32 := 10;

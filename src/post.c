@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <bobject/containers/array.h>
 #include "stages.h"
 #include "common.h"
 #include "ast.h"
@@ -38,13 +39,122 @@ typedef struct
   AstDecl * curr_dependent;
 } Context;
 
+static void
+post_node(Context *cnt, Ast *node);
+
+static void
+post_expr(Context *cnt, AstExpr *expr);
+
+static void
+post_ublock(Context *cnt, AstUBlock *ublock);
+
+static void
+post_block(Context *cnt, AstBlock *block);
+
+static void
+post_decl(Context *cnt, AstDecl *decl);
+
+/* impl */
+void
+post_ublock(Context *cnt, AstUBlock *ublock)
+{
+  Ast *tmp;
+  node_foreach(ublock->nodes, tmp) post_node(cnt, tmp);
+}
+
+void
+post_block(Context *cnt, AstBlock *block)
+{
+  Ast *tmp;
+  node_foreach(block->nodes, tmp) post_node(cnt, tmp);
+}
+
+void
+post_decl(Context *cnt, AstDecl *decl)
+{
+  bl_log("decl!!!");
+}
+
+void
+post_node(Context *cnt, Ast *node)
+{
+  if (!node) return;
+  switch (ast_kind(node)) {
+
+  case AST_UBLOCK:
+    post_ublock(cnt, (AstUBlock *)node);
+    break;
+  case AST_BLOCK:
+    post_block(cnt, (AstBlock *)node);
+    break;
+  case AST_EXPR:
+    post_expr(cnt, (AstExpr *)node);
+    break;
+  case AST_DECL:
+    post_decl(cnt, (AstDecl *)node);
+    break;
+
+  case AST_LOAD:
+  case AST_LINK:
+  case AST_IDENT:
+  case AST_STMT_RETURN:
+  case AST_STMT_IF:
+  case AST_STMT_LOOP:
+  case AST_STMT_BREAK:
+  case AST_STMT_CONTINUE:
+  case AST_MEMBER:
+  case AST_ARG:
+  case AST_VARIANT:
+  case AST_TYPE:
+  case AST_COUNT:
+    break;
+  case AST_BAD:
+    bl_abort("bad node!!!");
+  }
+}
+
+void
+post_expr(Context *cnt, AstExpr *expr)
+{
+  switch (ast_expr_kind(expr)) {
+  case AST_EXPR_TYPE:
+  case AST_EXPR_REF:
+  case AST_EXPR_CAST:
+  case AST_EXPR_BINOP:
+  case AST_EXPR_CALL:
+  case AST_EXPR_MEMBER:
+  case AST_EXPR_ELEM:
+  case AST_EXPR_SIZEOF:
+  case AST_EXPR_TYPEOF:
+  case AST_EXPR_UNARY:
+  case AST_EXPR_NULL:
+  case AST_EXPR_LIT_FN:
+  case AST_EXPR_LIT_INT:
+  case AST_EXPR_LIT_FLOAT:
+  case AST_EXPR_LIT_CHAR:
+  case AST_EXPR_LIT_STRING:
+  case AST_EXPR_LIT_BOOL:
+  case AST_EXPR_LIT_CMP:
+    break;
+  case AST_EXPR_BAD:
+    bl_abort("bad expression!!!");
+  }
+}
+
 void
 post_run(Builder *builder, Assembly *assembly)
 {
   Context cnt = {
-      .builder         = builder,
-      .assembly        = assembly,
-      .unit            = NULL,
-      .curr_dependent  = NULL,
+      .builder        = builder,
+      .assembly       = assembly,
+      .unit           = NULL,
+      .curr_dependent = NULL,
   };
+
+  Unit *unit;
+  barray_foreach(assembly->units, unit)
+  {
+    cnt.unit = unit;
+    post_node(&cnt, (Ast *)unit->ast);
+  }
 }

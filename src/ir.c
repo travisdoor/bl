@@ -40,7 +40,7 @@ typedef struct
 void
 ir_run(Builder *builder, Assembly *assembly)
 {
-  Context cnt = {.builder = builder, .assembly = assembly};
+  //Context cnt = {.builder = builder, .assembly = assembly};
 
   bl_log("ir run");
 }

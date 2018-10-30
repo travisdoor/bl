@@ -596,9 +596,15 @@ cmp_type(AstType *first, AstType *second)
     return true;
   }
 
+  case AST_TYPE_INT: {
+    AstTypeInt *_f = &first->integer;
+    AstTypeInt *_s = &second->integer;
+
+    return _f->bitcount == _s->bitcount && _f->is_signed == _s->is_signed;
+  }
+
   case AST_TYPE_BAD:
   case AST_TYPE_REF:
-  case AST_TYPE_INT:
   case AST_TYPE_VARGS:
   case AST_TYPE_ARR:
   case AST_TYPE_STRUCT:
