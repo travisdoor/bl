@@ -30,6 +30,7 @@
 #include "stages.h"
 #include "bldebug.h"
 
+#if 0
 typedef struct
 {
   Builder *              builder;
@@ -97,3 +98,9 @@ __bl_assert_failure(const char *file, int line)
   msg_error("assertion failed in %s:%d", file, line);
   longjmp(assert_jmp, false);
 }
+#endif
+
+/* public */
+void
+test_exec_run(Builder *builder, Assembly *assembly)
+{}

@@ -36,12 +36,6 @@
 
 struct Token;
 
-typedef struct
-{
-  struct AstDecl *fn;
-  const char *    name;
-} TestCase;
-
 /* class Unit object members */
 typedef struct Unit
 {

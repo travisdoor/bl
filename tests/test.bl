@@ -10,10 +10,20 @@ u32   : #compiler;
 u64   : #compiler;
 usize : #compiler;
 
+// lax dependency on 'number'
 main : fn (i Int) {
   foo := 10;
   bar := 10;
+  number = 0;
+  foo = 0;
 };
 
-i s32 := 10;
+number s32 := 10;
 Int : s32;
+
+/*
+
+ir generation stack:
+- by default insert 'main' and all unit tests
+
+*/

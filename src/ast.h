@@ -413,6 +413,7 @@ struct AstExprLitCmp
 struct AstExprRef
 {
   AstIdent *ident;
+  Ast *     ref;
 };
 
 struct AstExprCast

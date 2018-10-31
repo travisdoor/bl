@@ -31,6 +31,14 @@
 #include "common.h"
 #include "ast.h"
 
+#define LOG_TAG CYAN("POST")
+
+#define push_curr_dependend(_cnt, _decl)                                                           \
+  AstDecl *const _prev_dependent = (_cnt)->curr_dependent;                                         \
+  (_cnt)->curr_dependent         = (_decl);
+
+#define pop_curr_dependent(_cnt) (_cnt)->curr_dependent = _prev_dependent;
+
 typedef struct
 {
   Builder * builder;
@@ -54,6 +62,15 @@ post_block(Context *cnt, AstBlock *block);
 static void
 post_decl(Context *cnt, AstDecl *decl);
 
+static void
+post_expr_ref(Context *cnt, AstExprRef *ref);
+
+static void
+post_expr_lit_fn(Context *cnt, AstExprLitFn *fn);
+
+static void
+post_expr_binop(Context *cnt, AstExprBinop *binop);
+
 /* impl */
 void
 post_ublock(Context *cnt, AstUBlock *ublock)
@@ -72,7 +89,47 @@ post_block(Context *cnt, AstBlock *block)
 void
 post_decl(Context *cnt, AstDecl *decl)
 {
-  bl_log("decl!!!");
+  push_curr_dependend(cnt, decl);
+  post_expr(cnt, decl->value);
+  pop_curr_dependent(cnt);
+
+  if (cnt->builder->flags & BUILDER_VERBOSE && decl->deps) {
+    msg_log(LOG_TAG ": '%s' depends on:", decl->name->str);
+
+    bo_iterator_t it;
+    Dependency    tmp;
+    bhtbl_foreach(decl->deps, it)
+    {
+      tmp = bo_htbl_iter_peek_value(decl->deps, &it, Dependency);
+      msg_log(LOG_TAG ": [%s] %s", tmp.type == DEP_STRICT ? RED("STRICT") : GREEN(" LAX "),
+              tmp.decl->name->str);
+    }
+  }
+}
+
+void
+post_expr_ref(Context *cnt, AstExprRef *ref)
+{
+  assert(cnt->curr_dependent);
+  assert(ref->ref && ast_is(ref->ref, AST_DECL));
+
+  AstDecl *dep = (AstDecl *)ref->ref;
+  if (!(dep->flags & FLAG_EXTERN) && dep->kind == DECL_KIND_FIELD && dep->in_gscope) {
+    ast_add_dep_uq(cnt->curr_dependent, dep, DEP_LAX);
+  }
+}
+
+void
+post_expr_lit_fn(Context *cnt, AstExprLitFn *fn)
+{
+  post_node(cnt, fn->block);
+}
+
+void
+post_expr_binop(Context *cnt, AstExprBinop *binop)
+{
+  post_expr(cnt, binop->lhs);
+  post_expr(cnt, binop->rhs);
 }
 
 void
@@ -116,11 +173,23 @@ post_node(Context *cnt, Ast *node)
 void
 post_expr(Context *cnt, AstExpr *expr)
 {
+  if (!expr) return;
   switch (ast_expr_kind(expr)) {
-  case AST_EXPR_TYPE:
+
   case AST_EXPR_REF:
-  case AST_EXPR_CAST:
+    post_expr_ref(cnt, (AstExprRef *)expr);
+    break;
+
+  case AST_EXPR_LIT_FN:
+    post_expr_lit_fn(cnt, (AstExprLitFn *)expr);
+    break;
+
   case AST_EXPR_BINOP:
+    post_expr_binop(cnt, (AstExprBinop *)expr);
+    break;
+
+  case AST_EXPR_TYPE:
+  case AST_EXPR_CAST:
   case AST_EXPR_CALL:
   case AST_EXPR_MEMBER:
   case AST_EXPR_ELEM:
@@ -128,7 +197,6 @@ post_expr(Context *cnt, AstExpr *expr)
   case AST_EXPR_TYPEOF:
   case AST_EXPR_UNARY:
   case AST_EXPR_NULL:
-  case AST_EXPR_LIT_FN:
   case AST_EXPR_LIT_INT:
   case AST_EXPR_LIT_FLOAT:
   case AST_EXPR_LIT_CHAR:

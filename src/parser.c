@@ -1625,14 +1625,6 @@ next:
   }
 
   if ((*node = (Ast *)parse_expr(cnt))) {
-    switch (ast_kind(*node)) {
-    case AST_EXPR_BINOP:
-    case AST_EXPR_CALL:
-      break;
-    default:
-      parse_warning_node(cnt, *node, BUILDER_CUR_WORD, "unused expression");
-    }
-
     if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;

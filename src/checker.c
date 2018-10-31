@@ -772,8 +772,7 @@ check_decl(Context *cnt, AstDecl **decl)
   if (!_decl->type) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_decl)->src,
                 BUILDER_CUR_WORD, "declaration of unknown type");
-    _decl->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *)
-    finish();
+    _decl->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *) finish();
   }
 
   /* declaration kind based on type */
@@ -801,6 +800,14 @@ check_decl(Context *cnt, AstDecl **decl)
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, ((Ast *)_decl)->src,
                   BUILDER_CUR_WORD, "'%s' is compiler reserved name", _decl->name->str);
     }
+  }
+
+  /* all globals need explicit initialization value */
+  if (_decl->in_gscope && !_decl->value) {
+    builder_msg(
+        cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_INITIALIZATION, ((Ast *)_decl)->src,
+        BUILDER_CUR_WORD,
+        "missing initializer, all global declarations must have explicit initialization value");
   }
 
   switch (_decl->kind) {
@@ -864,6 +871,7 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
   assert(found->type);
   ast_set_type((AstExpr *)_ref, found->type);
   ast_set_adrmode((AstExpr *)_ref, found->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT);
+  _ref->ref = (Ast *)found;
 
   finish();
 }
