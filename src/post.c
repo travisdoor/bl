@@ -45,6 +45,7 @@ typedef struct
   Assembly *assembly;
   Unit *    unit;
   AstDecl * curr_dependent;
+  bool      verbose;
 } Context;
 
 static void
@@ -93,7 +94,28 @@ post_decl(Context *cnt, AstDecl *decl)
   post_expr(cnt, decl->value);
   pop_curr_dependent(cnt);
 
-  if (cnt->builder->flags & BUILDER_VERBOSE && decl->deps) {
+  {
+    /* schedule future generation of this declaration, notice that all declarations must be used!!!
+     */
+    bool generate = false;
+    switch (decl->kind) {
+    case DECL_KIND_FN:
+      generate = true;
+      break;
+    case DECL_KIND_FIELD:
+      if (decl->in_gscope) generate = true;
+      break;
+    default:
+      break;
+    }
+
+    if (generate && decl->used) {
+      bo_list_push_back(cnt->assembly->ir_queue, decl);
+      if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", decl->name->str);
+    }
+  }
+
+  if (cnt->verbose && decl->deps) {
     msg_log(LOG_TAG ": '%s' depends on:", decl->name->str);
 
     bo_iterator_t it;
@@ -217,6 +239,7 @@ post_run(Builder *builder, Assembly *assembly)
       .assembly       = assembly,
       .unit           = NULL,
       .curr_dependent = NULL,
+      .verbose        = builder->flags & BUILDER_VERBOSE,
   };
 
   Unit *unit;

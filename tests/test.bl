@@ -16,10 +16,12 @@ main : fn (i Int) {
   bar := 10;
   number = 0;
   foo = 0;
+  foo = barbar;
 };
 
 number s32 := 10;
 Int : s32;
+barbar : 20;
 
 /*
 

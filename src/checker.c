@@ -63,6 +63,7 @@ typedef struct
   Scope *     provided_in_gscope;
   BArray *    flatten_cache;
   BArray *    stack;
+  bool        verbose;
 } Context;
 
 typedef struct
@@ -163,7 +164,7 @@ provide(Context *cnt, AstIdent *name, AstDecl *decl)
   } else {
     scope_insert(scope, name->hash, decl);
 
-    if (cnt->builder->flags & BUILDER_VERBOSE) msg_log(LOG_TAG ": new entry '%s'", decl->name->str);
+    if (cnt->verbose) msg_log(LOG_TAG ": new entry '%s'", decl->name->str);
     waiting_resume(cnt, name);
   }
 }
@@ -188,7 +189,7 @@ waiting_resume(Context *cnt, AstIdent *ident)
   /* is there some flattens waiting for this symbol??? */
   if (!bo_htbl_has_key(cnt->waiting, ident->hash)) return;
 
-  if (cnt->builder->flags & BUILDER_VERBOSE) msg_log(LOG_TAG ": resume " RED("'%s'"), ident->str);
+  if (cnt->verbose) msg_log(LOG_TAG ": resume " RED("'%s'"), ident->str);
 
   /* resume all waiting flattens */
   BArray *q = bo_htbl_at(cnt->waiting, ident->hash, BArray *);
@@ -489,7 +490,7 @@ check_node(Context *cnt, Ast **node)
     break;
   }
 
-  if (cnt->builder->flags & BUILDER_VERBOSE) {
+  if (cnt->verbose) {
     const char *file = (*node)->src ? (*node)->src->unit->name : "implicit";
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
@@ -927,36 +928,37 @@ void
 checker_run(Builder *builder, Assembly *assembly)
 {
   Context cnt = {
-      .builder            = builder,
-      .assembly           = assembly,
-      .unit               = NULL,
-      .ast_arena          = &assembly->ast_arena,
-      .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
-      .flatten_cache      = bo_array_new(sizeof(BArray *)),
-      .stack              = bo_array_new(sizeof(Ast **)),
-      .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
-  };
+    .builder            = builder,
+    .assembly           = assembly,
+    .unit               = NULL,
+    .ast_arena          = &assembly->ast_arena,
+    .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
+    .flatten_cache      = bo_array_new(sizeof(BArray *)),
+    .stack              = bo_array_new(sizeof(Ast **)),
+    .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
+    .verbose            = builder->flags & BUILDER_VERBOSE,
+};
 
-  arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
-             (ArenaElemDtor)flatten_dtor);
+arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
+           (ArenaElemDtor)flatten_dtor);
 
-  Unit *unit;
-  barray_foreach(assembly->units, unit)
-  {
-    cnt.unit = unit;
-    schedule_check(&cnt, (Ast **)&unit->ast);
-  }
+Unit *unit;
+barray_foreach(assembly->units, unit)
+{
+  cnt.unit = unit;
+  schedule_check(&cnt, (Ast **)&unit->ast);
+}
 
-  do_check(&cnt);
-  check_unresolved(&cnt);
+do_check(&cnt);
+check_unresolved(&cnt);
 
-  if (!assembly->entry_node && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
-    builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
-                "assembly has no 'main' entry method defined");
-  }
+if (!assembly->entry_node && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
+  builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
+              "assembly has no 'main' entry method defined");
+}
 
-  bo_unref(cnt.waiting);
-  bo_unref(cnt.flatten_cache);
-  bo_unref(cnt.stack);
-  arena_terminate(&cnt.flatten_arena);
+bo_unref(cnt.waiting);
+bo_unref(cnt.flatten_cache);
+bo_unref(cnt.stack);
+arena_terminate(&cnt.flatten_arena);
 }
