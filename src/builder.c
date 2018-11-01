@@ -205,6 +205,12 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
     ir_run(builder, assembly);
 
+    /* REMOVE !!!! */
+    /* REMOVE !!!! */
+    /* REMOVE !!!! */
+    /* REMOVE !!!! */
+    return COMPILE_OK;
+
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
       interrupt_on_error(builder);
