@@ -26,10 +26,22 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <llvm-c/Core.h>
+#include <llvm-c/Analysis.h>
+#include <llvm-c/Linker.h>
+#include <llvm-c/DebugInfo.h>
 #include "stages.h"
 #include "common.h"
 
 #define LOG_TAG BLUE("IR")
+
+#if BL_DEBUG
+#define gname(s) s
+#define JIT_OPT_LEVEL 0
+#else
+#define gname(s) ""
+#define JIT_OPT_LEVEL 3
+#endif
 
 typedef struct
 {
@@ -40,6 +52,14 @@ typedef struct
   LLVMBuilderRef llvm_builder;
   LLVMModuleRef  llvm_module; /* current generated llvm module */
 
+  /* current fn tmps */
+  LLVMBasicBlockRef break_block;
+  LLVMBasicBlockRef continue_block;
+  LLVMBasicBlockRef fn_init_block;
+  LLVMBasicBlockRef fn_ret_block;
+  LLVMBasicBlockRef fn_entry_block;
+  LLVMValueRef      fn_ret_val;
+
   bool verbose;
 } Context;
 
@@ -49,6 +69,17 @@ generated(Context *cnt, AstDecl *decl)
   return bo_htbl_has_key(cnt->llvm_modules, (uint64_t)decl);
 }
 
+#if BL_DEBUG
+static void
+validate(LLVMModuleRef module);
+#endif
+
+static LLVMValueRef
+fn_get(Context *cnt, AstDecl *fn);
+
+static LLVMTypeRef
+to_llvm_type(Context *cnt, AstType *type);
+
 /* check if declaration has all it's dependencies already generated in LLVM Modules, by
  * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
 static bool
@@ -57,10 +88,96 @@ is_satisfied(Context *cnt, AstDecl *decl, bool strict_only);
 static LLVMValueRef
 ir_node(Context *cnt, Ast *node);
 
+static LLVMValueRef
+ir_expr(Context *cnt, AstExpr *expr);
+
+static LLVMValueRef
+ir_decl(Context *cnt, AstDecl *decl);
+
+static LLVMValueRef
+ir_decl_fn(Context *cnt, AstDecl *decl_fn);
+
 /* impl */
+#if BL_DEBUG
+void
+validate(LLVMModuleRef module)
+{
+  char *error = NULL;
+  if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error)) {
+    char *str = LLVMPrintModuleToString(module);
+    bl_abort("module not verified with error: %s\n%s", error, str);
+  }
+  LLVMDisposeMessage(error);
+}
+#endif
+
+LLVMTypeRef
+to_llvm_type(Context *cnt, AstType *type)
+{
+  LLVMTypeRef result = NULL;
+  return result;
+}
+
+LLVMValueRef
+fn_get(Context *cnt, AstDecl *fn)
+{
+  const char *fn_name = fn->name->str;
+  assert(fn_name);
+
+  LLVMValueRef result = LLVMGetNamedFunction(cnt->llvm_module, fn_name);
+  if (!result) {
+    LLVMTypeRef llvm_type = to_llvm_type(cnt, fn->type);
+
+    result = LLVMAddFunction(cnt->llvm_module, fn_name, llvm_type);
+  }
+
+  assert(result);
+  return result;
+}
+
 LLVMValueRef
 ir_node(Context *cnt, Ast *node)
 {
+  assert(node);
+  switch (ast_kind(node)) {
+  case AST_DECL:
+    return ir_decl(cnt, (AstDecl *)node);
+  case AST_EXPR:
+    return ir_expr(cnt, (AstExpr *)node);
+
+  default:
+    bl_abort("missing ir generation for %s", ast_get_name(node));
+  }
+
+  return NULL;
+}
+
+LLVMValueRef
+ir_expr(Context *cnt, AstExpr *expr)
+{
+  assert(expr);
+  return NULL;
+}
+
+LLVMValueRef
+ir_decl(Context *cnt, AstDecl *decl)
+{
+  switch (decl->kind) {
+  case DECL_KIND_FN:
+    return ir_decl_fn(cnt, decl);
+  case DECL_KIND_FIELD:
+    break;
+  default:
+    bl_abort("invalid declaration");
+  }
+
+  return NULL;
+}
+
+LLVMValueRef
+ir_decl_fn(Context *cnt, AstDecl *decl_fn)
+{
+  fn_get(cnt, decl_fn);
   return NULL;
 }
 
@@ -110,6 +227,10 @@ generate(Context *cnt)
       cnt->llvm_module = LLVMModuleCreateWithNameInContext(decl->name->str, cnt->llvm_cnt);
 
       ir_node(cnt, (Ast *)decl);
+
+#if BL_DEBUG
+      validate(cnt->llvm_module);
+#endif
       bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
     } else {
       /* declaration is waiting for it's dependencies and need to be processed later */
