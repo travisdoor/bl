@@ -64,9 +64,6 @@ typedef struct
   LLVMBasicBlockRef fn_entry_block;
   LLVMValueRef      fn_ret_val;
 
-  /* buildins */
-  LLVMTypeRef       llvm_entry_void;
-
   bool verbose;
 } Context;
 
@@ -124,6 +121,13 @@ global_get(Context *cnt, AstDecl *global);
 
 static LLVMTypeRef
 to_llvm_type(Context *cnt, AstType *type);
+
+static LLVMModuleRef
+link(Context *cnt, AstDecl *entry);
+
+/* resursive version */
+static LLVMModuleRef
+_link(Context *cnt, AstDecl *entry);
 
 /* check if declaration has all it's dependencies already generated in LLVM Modules, by
  * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
@@ -202,15 +206,15 @@ to_llvm_type(Context *cnt, AstType *type)
     break;
   }
 
+  case AST_TYPE_VOID: {
+    result = LLVMVoidTypeInContext(cnt->llvm_cnt);
+    bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
+    break;
+  }
+
   case AST_TYPE_FN: {
     /* args */
-    LLVMTypeRef llvm_ret_type = NULL;
-
-    if (!type->fn.ret_type)
-      llvm_ret_type = cnt->llvm_entry_void;
-    else
-      to_llvm_type(cnt, type->fn.ret_type);
-
+    LLVMTypeRef  llvm_ret_type  = to_llvm_type(cnt, type->fn.ret_type);
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * type->fn.argc);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
@@ -270,6 +274,45 @@ global_get(Context *cnt, AstDecl *global)
 
   assert(result);
   return result;
+}
+
+LLVMModuleRef
+link(Context *cnt, AstDecl *entry)
+{
+  if (!entry) return NULL;
+  LLVMModuleRef dest_module = _link(cnt, entry);
+  return dest_module;
+}
+
+LLVMModuleRef
+_link(Context *cnt, AstDecl *entry)
+{
+  if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry)) return NULL;
+
+  LLVMModuleRef dest_module = bo_htbl_at(cnt->llvm_modules, (uint64_t)entry, LLVMModuleRef);
+  assert(dest_module);
+  if (!entry->deps) return dest_module;
+
+  Dependency    dep;
+  bo_iterator_t it;
+  bhtbl_foreach(entry->deps, it)
+  {
+    dep = bo_htbl_iter_peek_value(entry->deps, &it, Dependency);
+
+    /* link all lax dependencies */
+    if (dep.type & DEP_LAX) {
+      /* must be linked */
+      LLVMModuleRef src_module = _link(cnt, dep.decl);
+
+      if (src_module) {
+        if (LLVMLinkModules2(dest_module, src_module)) bl_abort("unable to link modules");
+
+        bo_htbl_erase_key(cnt->llvm_modules, (uint64_t)dep.decl);
+      }
+    }
+  }
+
+  return dest_module;
 }
 
 LLVMValueRef
@@ -358,7 +401,8 @@ ir_decl_fn(Context *cnt, AstDecl *decl_fn)
     /*
      * Prepare return value.
      */
-    if (type_fn->ret_type) {
+    assert(type_fn->ret_type);
+    if (type_fn->ret_type->kind != AST_TYPE_VOID) {
       LLVMTypeRef llvm_ret_type = to_llvm_type(cnt, type_fn->ret_type);
       cnt->fn_ret_val           = LLVMBuildAlloca(cnt->llvm_builder, llvm_ret_type, gname("ret"));
     } else {
@@ -527,37 +571,70 @@ ir_expr_binop(Context *cnt, AstExprBinop *binop)
   LLVMValueRef llvm_rhs = ir_node(cnt, (Ast *)binop->rhs);
   assert(llvm_lhs && llvm_rhs);
 
+  /* generate load if needed l/rvalue conversion is needed! */
+  llvm_rhs                = ltor_if_needed(cnt, binop->rhs, llvm_rhs);
   LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_lhs));
   bool         float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
   /* Assignments */
   switch (binop->kind) {
   case BINOP_ASSIGN: {
-    llvm_rhs = ltor_if_needed(cnt, binop->rhs, llvm_rhs);
     LLVMBuildStore(cnt->llvm_builder, llvm_rhs, llvm_lhs);
     return llvm_lhs;
   }
 
   case BINOP_ADD_ASSIGN: {
-    bl_abort("unimplemented");
+    LLVMValueRef value = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+    if (float_kind)
+      value = LLVMBuildFAdd(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    else
+      value = LLVMBuildAdd(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, llvm_lhs);
   }
 
   case BINOP_SUB_ASSIGN: {
-    bl_abort("unimplemented");
+    LLVMValueRef value = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+    if (float_kind)
+      value = LLVMBuildFSub(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    else
+      value = LLVMBuildSub(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, llvm_lhs);
   }
 
   case BINOP_MUL_ASSIGN: {
-    bl_abort("unimplemented");
+    LLVMValueRef value = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+    if (float_kind)
+      value = LLVMBuildFMul(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    else
+      value = LLVMBuildMul(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, llvm_lhs);
   }
 
   case BINOP_DIV_ASSIGN: {
-    bl_abort("unimplemented");
+    LLVMValueRef value = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+    if (float_kind)
+      value = LLVMBuildFDiv(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    else
+      value = LLVMBuildSDiv(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, llvm_lhs);
   }
 
   case BINOP_MOD_ASSIGN: {
-    bl_abort("unimplemented");
+    LLVMValueRef value = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+    value              = LLVMBuildSRem(cnt->llvm_builder, value, llvm_rhs, gname("tmp"));
+    return LLVMBuildStore(cnt->llvm_builder, value, llvm_lhs);
+  }
+  default:
+    break;
   }
 
+  /* generate load if needed l/rvalue conversion is needed! */
+  llvm_lhs   = ltor_if_needed(cnt, binop->lhs, llvm_lhs);
+  lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_lhs));
+  float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
+  /* Other binary operations */
+  switch (binop->kind) {
   case BINOP_ADD: {
     if (float_kind) return LLVMBuildFAdd(cnt->llvm_builder, llvm_lhs, llvm_rhs, gname("tmp"));
     return LLVMBuildAdd(cnt->llvm_builder, llvm_lhs, llvm_rhs, gname("tmp"));
@@ -627,9 +704,10 @@ ir_expr_binop(Context *cnt, AstExprBinop *binop)
   }
 
   default:
-    bl_abort("unknown binop");
+    break;
   }
-  return NULL;
+
+  bl_abort("unknown binop");
 }
 
 bool
@@ -704,17 +782,24 @@ ir_run(Builder *builder, Assembly *assembly)
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
 
-  cnt.verbose         = builder->flags & BUILDER_VERBOSE;
-  cnt.builder         = builder;
-  cnt.llvm_cnt        = LLVMContextCreate();
-  cnt.llvm_builder    = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.assembly        = assembly;
-  cnt.llvm_modules    = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
-  cnt.llvm_types      = bo_htbl_new(sizeof(LLVMTypeRef), EXPECTED_TYPE_COUNT);
-  cnt.llvm_values     = bo_htbl_new(sizeof(LLVMValueRef), EXPECTED_VALUE_COUNT);
-  cnt.llvm_entry_void = LLVMVoidTypeInContext(cnt.llvm_cnt);
+  cnt.verbose      = builder->flags & BUILDER_VERBOSE;
+  cnt.builder      = builder;
+  cnt.llvm_cnt     = LLVMContextCreate();
+  cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.assembly     = assembly;
+  cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
+  cnt.llvm_types   = bo_htbl_new(sizeof(LLVMTypeRef), EXPECTED_TYPE_COUNT);
+  cnt.llvm_values  = bo_htbl_new(sizeof(LLVMValueRef), EXPECTED_VALUE_COUNT);
 
   generate(&cnt);
+
+  /* link runtime (main as entry) */
+  if (assembly->entry_node) {
+    assembly->llvm_module = link(&cnt, assembly->entry_node);
+    bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)assembly->entry_node);
+
+    if (cnt.verbose) print_llvm_module(assembly->llvm_module);
+  }
 
   /* cleanup */
   bo_unref(cnt.llvm_modules);

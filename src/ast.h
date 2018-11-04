@@ -74,6 +74,7 @@ typedef struct AstExprUnary     AstExprUnary;
 typedef struct AstExprNull      AstExprNull;
 
 typedef struct AstType       AstType;
+typedef struct AstTypeVoid   AstTypeVoid;
 typedef struct AstTypeType   AstTypeType;
 typedef struct AstTypeRef    AstTypeRef;
 typedef struct AstTypeInt    AstTypeInt;
@@ -114,6 +115,7 @@ typedef enum
 typedef enum
 {
   AST_TYPE_BAD,
+  AST_TYPE_VOID,
   AST_TYPE_TYPE,
   AST_TYPE_REF,
   AST_TYPE_INT,
@@ -320,6 +322,11 @@ struct AstVariant
   AstExpr * value;
 };
 
+struct AstTypeVoid
+{
+  void *_;
+};
+
 struct AstTypeInt
 {
   const char *name;
@@ -381,31 +388,26 @@ struct AstExprLitInt
 
 struct AstExprLitFloat
 {
-  AstType *type;
-  float    f;
+  float f;
 };
 
 struct AstExprLitChar
 {
-  AstType *type;
-  uint8_t  c;
+  uint8_t c;
 };
 
 struct AstExprLitString
 {
-  AstType *   type;
   const char *s;
 };
 
 struct AstExprLitBool
 {
-  AstType *type;
-  bool     b;
+  bool b;
 };
 
 struct AstExprLitCmp
 {
-  AstType *type;
   AstExpr *fields;
   int      fieldc;
 };
@@ -432,7 +434,7 @@ struct AstExprBinop
 struct AstExprCall
 {
   AstExpr *ref;
-  AstExpr *args;
+  Ast *    args;
   int      argsc;
   bool     run;
 };
@@ -478,6 +480,7 @@ struct AstType
   union
   {
     AstTypeType   type;
+    AstTypeVoid   tvoid;
     AstTypeRef    ref;
     AstTypeInt    integer;
     AstTypeVArgs  vargs;

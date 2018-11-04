@@ -156,6 +156,8 @@ ast_get_name(Ast *n)
       return "TypeEnum";
     case AST_TYPE_PTR:
       return "TypePtr";
+    case AST_TYPE_VOID:
+      return "TypeVoid";
     }
   }
 
@@ -227,6 +229,9 @@ _type_to_str(char *buf, size_t len, AstType *type)
   switch (ast_type_kind(type)) {
   case AST_TYPE_BAD:
     append_buf(buf, len, "BAD");
+    break;
+  case AST_TYPE_VOID:
+    append_buf(buf, len, "void");
     break;
   case AST_TYPE_TYPE:
     append_buf(buf, len, type->type.name);

@@ -74,7 +74,7 @@ typedef struct
 } Flatten;
 
 void
-provide(Context *cnt, AstIdent *name, AstDecl *decl);
+provide(Context *cnt, AstIdent *name, Ast *decl);
 
 static inline void
 waiting_push(BHashTable *waiting, Flatten *flatten);
@@ -130,13 +130,13 @@ static AstIdent *
 check_type(Context *cnt, AstType **type);
 
 static AstIdent *
-check_expr_ref(Context *cnt, AstExprRef **expr_ref);
-
-static AstIdent *
 check_type_ref(Context *cnt, AstTypeRef **type_ref);
 
 static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
+
+static AstIdent *
+check_arg(Context *cnt, AstArg **arg);
 
 static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
@@ -147,24 +147,30 @@ check_expr_lit_fn(Context *cnt, AstExprLitFn **fn);
 static AstIdent *
 check_expr_binop(Context *cnt, AstExprBinop **binop);
 
+static AstIdent *
+check_expr_ref(Context *cnt, AstExprRef **expr_ref);
+
+static AstIdent *
+check_expr_call(Context *cnt, AstExprCall **call);
+
 void
-provide(Context *cnt, AstIdent *name, AstDecl *decl)
+provide(Context *cnt, AstIdent *name, Ast *decl)
 {
   Scope *scope = name->scope;
   assert(scope);
 
-  AstDecl *conflict = scope_lookup(scope, name, true);
+  Ast *conflict = scope_lookup(scope, name, true);
   if (conflict) {
     /* symbol collision !!! */
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ((Ast *)name)->src,
                 BUILDER_CUR_WORD, "symbol with same name is already declared");
 
-    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, ((Ast *)conflict)->src, BUILDER_CUR_WORD,
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, conflict->src, BUILDER_CUR_WORD,
                 "previous declaration found here");
   } else {
     scope_insert(scope, name->hash, decl);
 
-    if (cnt->verbose) msg_log(LOG_TAG ": new entry '%s'", decl->name->str);
+    if (cnt->verbose) msg_log(LOG_TAG ": new entry '%s'", name->str);
     waiting_resume(cnt, name);
   }
 }
@@ -424,6 +430,15 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
     break;
   }
 
+  case AST_EXPR_CALL: {
+    AstExprCall *_call = (AstExprCall *)(*expr);
+    flatten(&_call->ref);
+
+    Ast **arg;
+    node_foreach_ref(_call->args, arg) flatten(arg);
+    break;
+  }
+
   case AST_EXPR_LIT_INT:
   case AST_EXPR_REF:
     break;
@@ -446,6 +461,7 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
   }
 
   case AST_TYPE_REF:
+  case AST_TYPE_VOID:
     break;
 
   default:
@@ -472,6 +488,10 @@ check_node(Context *cnt, Ast **node)
     result = check_decl(cnt, (AstDecl **)node);
     break;
 
+  case AST_ARG:
+    result = check_arg(cnt, (AstArg **)node);
+    break;
+
   case AST_EXPR:
     result = check_expr(cnt, (AstExpr **)node);
     break;
@@ -482,7 +502,6 @@ check_node(Context *cnt, Ast **node)
 
   case AST_UBLOCK:
   case AST_BLOCK:
-  case AST_ARG:
     break;
 
   default:
@@ -526,6 +545,10 @@ check_expr(Context *cnt, AstExpr **expr)
     result = check_expr_ref(cnt, (AstExprRef **)expr);
     break;
 
+  case AST_EXPR_CALL:
+    result = check_expr_call(cnt, (AstExprCall **)expr);
+    break;
+
   case AST_EXPR_BINOP:
     result = check_expr_binop(cnt, (AstExprBinop **)expr);
     break;
@@ -552,6 +575,7 @@ check_type(Context *cnt, AstType **type)
     break;
 
   case AST_TYPE_FN:
+  case AST_TYPE_VOID:
     break;
 
   default:
@@ -583,8 +607,7 @@ cmp_type(AstType *first, AstType *second)
     AstTypeFn *_s = &second->fn;
 
     if (_f->argc != _s->argc) return false;
-    if ((!_f->ret_type && _s->ret_type) || (_f->ret_type && !_s->ret_type)) return false;
-    if (_f->ret_type && _s->ret_type && !cmp_type(_f->ret_type, _s->ret_type)) return false;
+    if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
 
     Ast *argt1 = _f->args;
     Ast *argt2 = _s->args;
@@ -603,6 +626,9 @@ cmp_type(AstType *first, AstType *second)
 
     return _f->bitcount == _s->bitcount && _f->is_signed == _s->is_signed;
   }
+
+  case AST_TYPE_VOID:
+    break;
 
   case AST_TYPE_BAD:
   case AST_TYPE_REF:
@@ -668,8 +694,17 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  AstDecl *found = scope_lookup(scope, _ref->ident, true);
-  if (!found) wait(_ref->ident);
+  Ast *tmp = scope_lookup(scope, _ref->ident, true);
+  if (!tmp) wait(_ref->ident);
+
+  if (tmp->kind != AST_DECL) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_ref)->src,
+                BUILDER_CUR_WORD, "expected type");
+    _ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
+    finish();
+  }
+
+  AstDecl *found = (AstDecl *)tmp;
   found->used++;
 
   assert(found->type);
@@ -728,7 +763,7 @@ check_buildin_decl(Context *cnt, AstDecl *decl)
   decl->type        = (AstType *)type;
   decl->kind        = DECL_KIND_TYPE;
 
-  provide(cnt, decl->name, decl);
+  provide(cnt, decl->name, (Ast *)decl);
   return true;
 }
 
@@ -756,6 +791,9 @@ setup_decl_kind(AstDecl *decl)
   case AST_TYPE_PTR:
     decl->kind = DECL_KIND_FIELD;
     break;
+
+  case AST_TYPE_VOID:
+    bl_abort("invalid type of declaration");
   }
 }
 
@@ -784,7 +822,7 @@ check_decl(Context *cnt, AstDecl **decl)
 
     /* check main method */
     if (id == RESERVED_MAIN) {
-      cnt->assembly->entry_node = (Ast *)_decl;
+      cnt->assembly->entry_node = _decl;
       _decl->used++;
 
       if (_decl->kind != DECL_KIND_FN) {
@@ -834,7 +872,42 @@ check_decl(Context *cnt, AstDecl **decl)
     break;
   }
 
-  provide(cnt, _decl->name, _decl);
+  provide(cnt, _decl->name, (Ast *)_decl);
+
+  finish();
+}
+
+AstIdent *
+check_arg(Context *cnt, AstArg **arg)
+{
+  AstArg *_arg = *arg;
+  assert(_arg->name && _arg->type);
+
+  {
+    const int id = builder_is_reserved(cnt->builder, _arg->name->hash);
+
+    /* check main method */
+    if (id != -1) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, ((Ast *)_arg)->src,
+                  BUILDER_CUR_WORD,
+                  "'%s' is compiler reserved name and cannot be used as name of function argument",
+                  _arg->name->str);
+    }
+  }
+
+  Scope *scope = _arg->name->scope;
+  assert(scope);
+
+  Ast *conflict = scope_lookup(scope, _arg->name, false);
+  if (conflict) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ((Ast *)_arg->name)->src,
+                BUILDER_CUR_WORD, "argument with same name is already declared");
+
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, conflict->src, BUILDER_CUR_WORD,
+                "previous declaration found here");
+  } else {
+    provide(cnt, _arg->name, (Ast *)_arg);
+  }
 
   finish();
 }
@@ -865,14 +938,48 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  AstDecl *found = scope_lookup(scope, _ref->ident, true);
-  if (!found) wait(_ref->ident);
-  found->used++;
+  Ast *tmp = scope_lookup(scope, _ref->ident, true);
+  if (!tmp) wait(_ref->ident);
 
-  assert(found->type);
-  ast_set_type((AstExpr *)_ref, found->type);
-  ast_set_adrmode((AstExpr *)_ref, found->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT);
-  _ref->ref = (Ast *)found;
+  AstType *found_type = NULL;
+  AdrMode  found_adrm = ADR_MODE_INVALID;
+
+  switch (tmp->kind) {
+  case AST_DECL: {
+    AstDecl *found = (AstDecl *)tmp;
+    found->used++;
+
+    found_type = found->type;
+    found_adrm = found->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
+    break;
+  }
+
+  case AST_ARG: {
+    AstArg *found = (AstArg *)tmp;
+
+    found_type = found->type;
+    found_adrm = ADR_MODE_MUT;
+    break;
+  }
+
+  case AST_MEMBER: {
+    bl_abort("unimplemented");
+  }
+
+  case AST_VARIANT: {
+    bl_abort("unimplemented");
+  }
+
+  default:
+    bl_abort("invalid found entry %s", ast_get_name(tmp));
+  }
+
+  assert(found_type);
+  assert(found_adrm != ADR_MODE_INVALID);
+
+  ast_set_type((AstExpr *)_ref, found_type);
+  ast_set_adrmode((AstExpr *)_ref, found_adrm);
+  _ref->ref = tmp;
 
   finish();
 }
@@ -897,17 +1004,43 @@ check_expr_binop(Context *cnt, AstExprBinop **binop)
     if (ladrm != ADR_MODE_MUT) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_binop)->src,
                   BUILDER_CUR_WORD, "left-hand side of assign expression cannot be assigned");
-    } else {
     }
   }
 
   ast_set_type((AstExpr *)_binop, ltype);
-  ast_set_adrmode((AstExpr *)_binop, ADR_MODE_IMMUT);
+  ast_set_adrmode((AstExpr *)_binop, ladrm);
 
   if (!cmp_type(ltype, rtype)) {
     check_error_invalid_types(cnt, ltype, rtype, (Ast *)_binop);
   }
 
+  finish();
+}
+
+AstIdent *
+check_expr_call(Context *cnt, AstExprCall **call)
+{
+  AstExprCall *_call = *call;
+  assert(_call->ref);
+
+  AstType *tmp_type = ast_get_type(_call->ref);
+  if (tmp_type->kind != AST_TYPE_FN) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_call->ref)->src,
+                BUILDER_CUR_WORD, "expected function name before call operator");
+    finish();
+  }
+
+  AstTypeFn *callee_type = (AstTypeFn *)tmp_type;
+
+  if (_call->argsc != callee_type->argc) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)_call)->src, BUILDER_CUR_WORD,
+                     "expected %d %s, but called with %d", callee_type->argc,
+                     callee_type->argc == 1 ? "argument" : "arguments", _call->argsc);
+    finish();
+  }
+
+  ast_set_type((AstExpr *)_call, callee_type->ret_type);
+  ast_set_adrmode((AstExpr *)_call, ADR_MODE_CONST);
   finish();
 }
 

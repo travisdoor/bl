@@ -214,7 +214,7 @@ static AstExpr *
 parse_expr_nested(Context *cnt);
 
 static AstExpr *
-parse_expr_call(Context *cnt);
+parse_expr_call(Context *cnt, AstExpr *prev);
 
 static AstExpr *
 parse_expr_null(Context *cnt);
@@ -238,7 +238,7 @@ static AstExpr *
 parse_expr_file(Context *cnt);
 
 static AstExpr *
-parse_expr_lit_cmp(Context *cnt, Ast *prev);
+parse_expr_lit_cmp(Context *cnt, AstExpr *prev);
 
 static AstExpr *
 parse_expr_lit(Context *cnt);
@@ -452,12 +452,12 @@ parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev)
 }
 
 AstExpr *
-parse_expr_lit_cmp(Context *cnt, Ast *prev)
+parse_expr_lit_cmp(Context *cnt, AstExpr *prev)
 {
-  if (prev == NULL) return NULL;
+  if (!prev) return NULL;
 
-  switch (ast_kind(prev)) {
-  case AST_TYPE:
+  switch (prev->kind) {
+  case AST_EXPR_TYPE:
     break;
   default:
     return NULL;
@@ -468,7 +468,7 @@ parse_expr_lit_cmp(Context *cnt, Ast *prev)
 
   AstExprLitCmp *_lit_cmp =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CMP, tok_begin, AstExprLitCmp *);
-  _lit_cmp->type = (AstType *)prev;
+  ast_set_type((AstExpr *)_lit_cmp, (AstType *)prev);
 
   /* parse lit_cmp fields */
   bool  rq     = false;
@@ -808,15 +808,11 @@ parse_expr_lit(Context *cnt)
     break;
 
   case SYM_TRUE:
-    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
-
-    ((AstExprLitBool *)lit)->b = true;
+    lit = (AstExpr *)cnt->builder->buildin.entry_expr_lit_true;
     break;
 
   case SYM_FALSE:
-    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
-
-    ((AstExprLitBool *)lit)->b = false;
+    lit = (AstExpr *)cnt->builder->buildin.entry_expr_lit_false;
     break;
 
   case SYM_DOUBLE:
@@ -1025,7 +1021,6 @@ parse_expr_atom(Context *cnt, Token *op)
   if ((expr = parse_expr_run(cnt))) goto done;
   if ((expr = parse_expr_lit_fn(cnt))) goto done;
   if ((expr = parse_expr_type(cnt))) goto done;
-  if ((expr = parse_expr_call(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
   if ((expr = parse_expr_lit(cnt))) goto done;
   if ((expr = parse_expr_member(cnt, op))) goto done;
@@ -1034,7 +1029,8 @@ parse_expr_atom(Context *cnt, Token *op)
   if ((expr = parse_expr_file(cnt))) goto done;
 
 done:
-  tmp = parse_expr_lit_cmp(cnt, (Ast *)expr);
+  tmp = parse_expr_call(cnt, expr);
+  if (!tmp) tmp = parse_expr_lit_cmp(cnt, expr);
   return tmp ? tmp : expr;
 }
 
@@ -1241,6 +1237,8 @@ next:
   }
 
   _fn->ret_type = parse_type(cnt);
+  /* implicitly use void for no-return functions */
+  if (!_fn->ret_type) _fn->ret_type = cnt->builder->buildin.entry_void;
 
   return (AstType *)_fn;
 }
@@ -1373,21 +1371,15 @@ parse_decl(Context *cnt)
 }
 
 AstExpr *
-parse_expr_call(Context *cnt)
+parse_expr_call(Context *cnt, AstExpr *prev)
 {
-  if (!tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_LPAREN)) return NULL;
+  if (!prev) return NULL;
 
-  Token *   tok_id = tokens_peek(cnt->tokens);
-  AstIdent *ident  = parse_ident(cnt);
-  Token *   tok    = tokens_consume(cnt->tokens);
-  if (tok->sym != SYM_LPAREN) {
-    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-                "expected function parameter list");
-    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
-  }
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_LPAREN);
+  if (!tok) return NULL;
 
-  AstExprCall *_call = ast_create_expr(cnt->ast_arena, AST_EXPR_CALL, tok_id, AstExprCall *);
-  _call->ref         = (AstExpr *)ident;
+  AstExprCall *_call = ast_create_expr(cnt->ast_arena, AST_EXPR_CALL, tok, AstExprCall *);
+  _call->ref         = prev;
   _call->run         = false;
 
   /* parse args */
@@ -1409,7 +1401,7 @@ arg:
     if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
       parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
                   "expected function argument after comma ','");
-      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
+      return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
     }
   }
 
@@ -1417,7 +1409,7 @@ arg:
   if (tok->sym != SYM_RPAREN) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
                 "expected end of parameter list ')' or another parameter separated by comma");
-    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_id, AstExpr *);
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
   }
 
   return (AstExpr *)_call;
@@ -1551,9 +1543,11 @@ parse_expr_run(Context *cnt)
 {
   Token *tok = tokens_consume_if(cnt->tokens, SYM_RUN);
   if (!tok) return NULL;
+  bl_abort("unimplemeted");
+  /*
 
-  AstExpr *call = parse_expr_call(cnt);
-  if (!call) {
+  AstExpr *expr = parse_expr(cnt);
+  if (!expr) {
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_AFTER,
                 "expected call after '#run' directive");
     return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
@@ -1561,6 +1555,7 @@ parse_expr_run(Context *cnt)
 
   ((AstExprCall *)call)->run = true;
   return call;
+  */
 }
 
 Ast *

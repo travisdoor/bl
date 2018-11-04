@@ -14,10 +14,15 @@ usize : #compiler;
 main : fn (i Int, o s32) {
   bar : 20;
   foo := bar;
-  foo = 10;
+  foo = 10 + 2 * bar; 
+  add();
 };
 
 Int : s32;
+
+add : fn (f s32, s s32) {
+  return f + s;
+};
 
 /*
 

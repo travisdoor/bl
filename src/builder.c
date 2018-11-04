@@ -43,6 +43,8 @@
 static const char *reserved_names[RESERVED_COUNT] = {"u8", "u16", "u32", "u64", "usize",
                                                      "s8", "s16", "s32", "s64", "main"};
 
+static Ast entry_void = {.kind = AST_TYPE, .src = NULL, .next = NULL, .type.kind = AST_TYPE_VOID};
+
 static Ast entry_u8 = {.kind                   = AST_TYPE,
                        .src                    = NULL,
                        .next                   = NULL,
@@ -114,6 +116,18 @@ static Ast entry_s64 = {.kind                   = AST_TYPE,
                         .type.integer.name      = "s64",
                         .type.integer.bitcount  = 64,
                         .type.integer.is_signed = true};
+
+static Ast entry_expr_lit_true = {.kind           = AST_EXPR,
+                                  .src            = NULL,
+                                  .next           = NULL,
+                                  .expr.kind      = AST_EXPR_LIT_BOOL,
+                                  .expr.boolean.b = true};
+
+static Ast entry_expr_lit_false = {.kind           = AST_EXPR,
+                                   .src            = NULL,
+                                   .next           = NULL,
+                                   .expr.kind      = AST_EXPR_LIT_BOOL,
+                                   .expr.boolean.b = false};
 
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
@@ -205,12 +219,6 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
     ir_run(builder, assembly);
 
-    /* REMOVE !!!! */
-    /* REMOVE !!!! */
-    /* REMOVE !!!! */
-    /* REMOVE !!!! */
-    return COMPILE_OK;
-
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
       interrupt_on_error(builder);
@@ -255,6 +263,7 @@ builder_new(void)
 
   /* SETUP BUILDINS */
   struct Buildin *b = &builder->buildin;
+  b->entry_void     = (AstType *)&entry_void;
   b->entry_u8       = (AstType *)&entry_u8;
   b->entry_u16      = (AstType *)&entry_u16;
   b->entry_u32      = (AstType *)&entry_u32;
@@ -264,6 +273,9 @@ builder_new(void)
   b->entry_s16      = (AstType *)&entry_s16;
   b->entry_s32      = (AstType *)&entry_s32;
   b->entry_s64      = (AstType *)&entry_s64;
+
+  b->entry_expr_lit_true  = (AstExprLitBool *)&entry_expr_lit_true;
+  b->entry_expr_lit_false = (AstExprLitBool *)&entry_expr_lit_false;
   /* SETUP BUILDINS */
 
   return builder;

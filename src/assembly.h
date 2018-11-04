@@ -47,7 +47,7 @@ typedef struct
   BHashTable *           link_cache;   /* all linked externals libraries passed to linker */
   char *                 name;         /* assembly name */
   Scope *                gscope;       /* cache for global scope */
-  Ast *                  entry_node;   /* AST node of main function */
+  AstDecl *              entry_node;   /* AST node of main function */
   BList *                ir_queue;
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */

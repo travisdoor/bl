@@ -133,6 +133,9 @@ print_expr_lit_bool(AstExprLitBool *lit, int pad);
 static void
 print_expr_lit_string(AstExprLitString *lit, int pad);
 
+static void
+print_expr_call(AstExprCall *call, int pad);
+
 /* impl */
 void
 print_ublock(AstUBlock *ublock, int pad)
@@ -362,6 +365,18 @@ print_expr_lit_fn(AstExprLitFn *fn, int pad)
 }
 
 void
+print_expr_call(AstExprCall *call, int pad)
+{
+  print_head(call, pad);
+  print_type(((AstExpr *)call)->type);
+
+  print_node((Ast *)call->ref, pad + 1);
+
+  Ast *arg;
+  node_foreach(call->args, arg) print_node(arg, pad + 1);
+}
+
+void
 print_expr(AstExpr *expr, int pad)
 {
   switch (ast_expr_kind(expr)) {
@@ -380,6 +395,7 @@ print_expr(AstExpr *expr, int pad)
     print_expr_binop((AstExprBinop *)expr, pad);
     break;
   case AST_EXPR_CALL:
+    print_expr_call((AstExprCall *)expr, pad);
     break;
   case AST_EXPR_MEMBER:
     break;
