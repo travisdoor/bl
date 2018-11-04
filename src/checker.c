@@ -897,6 +897,7 @@ check_expr_binop(Context *cnt, AstExprBinop **binop)
     if (ladrm != ADR_MODE_MUT) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_binop)->src,
                   BUILDER_CUR_WORD, "left-hand side of assign expression cannot be assigned");
+    } else {
     }
   }
 
@@ -928,37 +929,37 @@ void
 checker_run(Builder *builder, Assembly *assembly)
 {
   Context cnt = {
-    .builder            = builder,
-    .assembly           = assembly,
-    .unit               = NULL,
-    .ast_arena          = &assembly->ast_arena,
-    .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
-    .flatten_cache      = bo_array_new(sizeof(BArray *)),
-    .stack              = bo_array_new(sizeof(Ast **)),
-    .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
-    .verbose            = builder->flags & BUILDER_VERBOSE,
-};
+      .builder            = builder,
+      .assembly           = assembly,
+      .unit               = NULL,
+      .ast_arena          = &assembly->ast_arena,
+      .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
+      .flatten_cache      = bo_array_new(sizeof(BArray *)),
+      .stack              = bo_array_new(sizeof(Ast **)),
+      .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
+      .verbose            = builder->flags & BUILDER_VERBOSE,
+  };
 
-arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
-           (ArenaElemDtor)flatten_dtor);
+  arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
+             (ArenaElemDtor)flatten_dtor);
 
-Unit *unit;
-barray_foreach(assembly->units, unit)
-{
-  cnt.unit = unit;
-  schedule_check(&cnt, (Ast **)&unit->ast);
-}
+  Unit *unit;
+  barray_foreach(assembly->units, unit)
+  {
+    cnt.unit = unit;
+    schedule_check(&cnt, (Ast **)&unit->ast);
+  }
 
-do_check(&cnt);
-check_unresolved(&cnt);
+  do_check(&cnt);
+  check_unresolved(&cnt);
 
-if (!assembly->entry_node && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
-  builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
-              "assembly has no 'main' entry method defined");
-}
+  if (!assembly->entry_node && (!(builder->flags & (BUILDER_SYNTAX_ONLY | BUILDER_NO_BIN)))) {
+    builder_msg(builder, BUILDER_MSG_ERROR, ERR_NO_MAIN_METHOD, NULL, BUILDER_CUR_WORD,
+                "assembly has no 'main' entry method defined");
+  }
 
-bo_unref(cnt.waiting);
-bo_unref(cnt.flatten_cache);
-bo_unref(cnt.stack);
-arena_terminate(&cnt.flatten_arena);
+  bo_unref(cnt.waiting);
+  bo_unref(cnt.flatten_cache);
+  bo_unref(cnt.stack);
+  arena_terminate(&cnt.flatten_arena);
 }

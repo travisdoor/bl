@@ -12,16 +12,12 @@ usize : #compiler;
 
 // lax dependency on 'number'
 main : fn (i Int, o s32) {
-  foo := 10;
-  bar := 10;
-  number = 0;
-  foo = 0;
-  foo = barbar;
+  bar : 20;
+  foo := bar;
+  foo = 10;
 };
 
-number s32 := 10;
 Int : s32;
-barbar : 20;
 
 /*
 

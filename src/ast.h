@@ -89,12 +89,6 @@ typedef struct Dependency Dependency;
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
-/**
- * @type main - 
- * @param argc - Number of arguments
- * @param argv - Argument vector
- * @return int
- */
 typedef enum
 {
   AST_BAD,

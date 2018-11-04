@@ -113,6 +113,9 @@ static void
 print_expr_ref(AstExprRef *ref, int pad);
 
 static void
+print_expr_unary(AstExprUnary *unary, int pad);
+
+static void
 print_expr_lit_fn(AstExprLitFn *fn, int pad);
 
 static void
@@ -189,6 +192,37 @@ void
 print_bad(Ast *bad, int pad)
 {
   print_head(bad, pad);
+}
+
+void
+print_expr_unary(AstExprUnary *unary, int pad)
+{
+  print_head(unary, pad);
+
+  const char *op = NULL;
+  switch (unary->kind) {
+  case UNOP_INVALID:
+    op = "invalid";
+    break;
+  case UNOP_NEG:
+    op = "-";
+    break;
+  case UNOP_POS:
+    op = "+";
+    break;
+  case UNOP_NOT:
+    op = "!";
+    break;
+  case UNOP_ADR:
+    op = "&";
+    break;
+  case UNOP_DEREF:
+    op = "*";
+    break;
+  }
+
+  fprintf(stdout, "'%s' ", op);
+  print_node((Ast *)unary->next, pad + 1);
 }
 
 void
@@ -356,6 +390,7 @@ print_expr(AstExpr *expr, int pad)
   case AST_EXPR_TYPEOF:
     break;
   case AST_EXPR_UNARY:
+    print_expr_unary((AstExprUnary *)expr, pad);
     break;
   case AST_EXPR_NULL:
     break;
