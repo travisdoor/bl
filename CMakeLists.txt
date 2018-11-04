@@ -215,7 +215,7 @@ if (MSVC)
 	)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -Werror -fsanitize=address -fsanitize=address -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -Werror -fno-sanitize=all -Wdeprecated-declarations")
 
     target_link_libraries(blc PUBLIC LLVM)
 endif()

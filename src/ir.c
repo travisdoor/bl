@@ -34,6 +34,7 @@
 #include "common.h"
 
 #define LOG_TAG BLUE("IR")
+#define EXPECTED_TYPE_COUNT 4096
 
 #if BL_DEBUG
 #define gname(s) s
@@ -48,6 +49,7 @@ typedef struct
   Builder *      builder;
   Assembly *     assembly;
   BHashTable *   llvm_modules;
+  BHashTable *   llvm_types;
   LLVMContextRef llvm_cnt;
   LLVMBuilderRef llvm_builder;
   LLVMModuleRef  llvm_module; /* current generated llvm module */
@@ -59,6 +61,7 @@ typedef struct
   LLVMBasicBlockRef fn_ret_block;
   LLVMBasicBlockRef fn_entry_block;
   LLVMValueRef      fn_ret_val;
+  LLVMTypeRef       llvm_entry_void;
 
   bool verbose;
 } Context;
@@ -72,6 +75,9 @@ generated(Context *cnt, AstDecl *decl)
 #if BL_DEBUG
 static void
 validate(LLVMModuleRef module);
+
+static void
+print_llvm_module(LLVMModuleRef module);
 #endif
 
 static LLVMValueRef
@@ -109,12 +115,65 @@ validate(LLVMModuleRef module)
   }
   LLVMDisposeMessage(error);
 }
+
+void
+print_llvm_module(LLVMModuleRef module)
+{
+  char *str = LLVMPrintModuleToString(module);
+  msg_log(LOG_TAG ":\n%s\n", str);
+  LLVMDisposeMessage(str);
+}
 #endif
 
 LLVMTypeRef
 to_llvm_type(Context *cnt, AstType *type)
 {
+  if (bo_htbl_has_key(cnt->llvm_types, (uint64_t)type)) {
+    return bo_htbl_at(cnt->llvm_types, (uint64_t)type, LLVMTypeRef);
+  }
+
   LLVMTypeRef result = NULL;
+
+  switch (type->kind) {
+  case AST_TYPE_INT: {
+    result = LLVMIntTypeInContext(cnt->llvm_cnt, type->integer.bitcount);
+    bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
+    break;
+  }
+
+  case AST_TYPE_FN: {
+    /* args */
+    LLVMTypeRef llvm_ret_type = NULL;
+
+    if (!type->fn.ret_type)
+      llvm_ret_type = cnt->llvm_entry_void;
+    else
+      to_llvm_type(cnt, type->fn.ret_type);
+
+    LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * type->fn.argc);
+    if (!llvm_arg_types) bl_abort("bad alloc");
+
+    Ast *    tmp;
+    AstArg * arg;
+    unsigned i = 0;
+    node_foreach(type->fn.args, tmp)
+    {
+      assert(tmp->kind == AST_ARG);
+      arg                 = (AstArg *)tmp;
+      llvm_arg_types[i++] = to_llvm_type(cnt, arg->type);
+    }
+
+    result = LLVMFunctionType(llvm_ret_type, llvm_arg_types, i, false);
+    bl_free(llvm_arg_types);
+    bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
+    break;
+  }
+
+  default:
+    bl_abort("invalid type");
+  }
+
+  assert(result);
   return result;
 }
 
@@ -156,6 +215,10 @@ LLVMValueRef
 ir_expr(Context *cnt, AstExpr *expr)
 {
   assert(expr);
+  switch (expr->kind) {
+  default:
+    bl_abort("missing ir generation for %s", ast_get_name((Ast *)expr));
+  }
   return NULL;
 }
 
@@ -177,7 +240,87 @@ ir_decl(Context *cnt, AstDecl *decl)
 LLVMValueRef
 ir_decl_fn(Context *cnt, AstDecl *decl_fn)
 {
-  fn_get(cnt, decl_fn);
+  /* local functions will be generated in separate module */
+  if (!decl_fn->in_gscope) return NULL;
+  assert(decl_fn->value);
+  assert(decl_fn->type);
+
+  LLVMValueRef result = fn_get(cnt, decl_fn);
+
+  {
+    cnt->fn_init_block  = LLVMAppendBasicBlock(result, gname("init"));
+    cnt->fn_entry_block = LLVMAppendBasicBlock(result, gname("entry"));
+    cnt->fn_ret_block   = LLVMAppendBasicBlock(result, gname("exit"));
+
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
+
+    assert(decl_fn->type->kind == AST_TYPE_FN);
+    AstTypeFn *type_fn = (AstTypeFn *)decl_fn->type;
+
+    /*
+     * Create named references to function parameters so they
+     * can be called by name in function body.
+     */
+
+    Ast *   tmp;
+    AstArg *arg;
+    int     i = 0;
+    node_foreach(type_fn->args, tmp)
+    {
+      assert(tmp->kind == AST_ARG);
+      arg                = (AstArg *)tmp;
+      const char * name  = arg->name->str;
+      LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
+      LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
+      LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
+      // TODO store reference???
+    }
+
+    /*
+     * Prepare return value.
+     */
+    if (type_fn->ret_type) {
+      LLVMTypeRef llvm_ret_type = to_llvm_type(cnt, type_fn->ret_type);
+      cnt->fn_ret_val           = LLVMBuildAlloca(cnt->llvm_builder, llvm_ret_type, gname("ret"));
+    } else {
+      cnt->fn_ret_val = NULL;
+    }
+
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_entry_block);
+  }
+
+  /* Generate function body */
+  assert(decl_fn->value->kind == AST_EXPR_LIT_FN);
+  ir_node(cnt, (Ast *)decl_fn->value);
+
+  {
+    LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
+    LLVMBuildBr(cnt->llvm_builder, cnt->fn_entry_block);
+
+    if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+      LLVMPositionBuilderAtEnd(cnt->llvm_builder, curr_block);
+      LLVMBuildBr(cnt->llvm_builder, cnt->fn_ret_block);
+    }
+
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_ret_block);
+    if (cnt->fn_ret_val) {
+      cnt->fn_ret_val = LLVMBuildLoad(cnt->llvm_builder, cnt->fn_ret_val, gname("tmp"));
+      LLVMBuildRet(cnt->llvm_builder, cnt->fn_ret_val);
+    } else {
+      LLVMBuildRetVoid(cnt->llvm_builder);
+    }
+  }
+
+  /* reset tmps */
+  cnt->fn_entry_block = NULL;
+  cnt->fn_init_block  = NULL;
+  cnt->fn_ret_block   = NULL;
+  cnt->fn_ret_val     = NULL;
+  cnt->break_block    = NULL;
+  cnt->continue_block = NULL;
+
   return NULL;
 }
 
@@ -229,6 +372,7 @@ generate(Context *cnt)
       ir_node(cnt, (Ast *)decl);
 
 #if BL_DEBUG
+      print_llvm_module(cnt->llvm_module);
       validate(cnt->llvm_module);
 #endif
       bo_htbl_insert(cnt->llvm_modules, (uint64_t)decl, cnt->llvm_module);
@@ -251,16 +395,19 @@ ir_run(Builder *builder, Assembly *assembly)
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
 
-  cnt.verbose      = builder->flags & BUILDER_VERBOSE;
-  cnt.builder      = builder;
-  cnt.llvm_cnt     = LLVMContextCreate();
-  cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
-  cnt.assembly     = assembly;
-  cnt.llvm_modules = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
+  cnt.verbose         = builder->flags & BUILDER_VERBOSE;
+  cnt.builder         = builder;
+  cnt.llvm_cnt        = LLVMContextCreate();
+  cnt.llvm_builder    = LLVMCreateBuilderInContext(cnt.llvm_cnt);
+  cnt.assembly        = assembly;
+  cnt.llvm_modules    = bo_htbl_new(sizeof(LLVMModuleRef), bo_list_size(assembly->ir_queue));
+  cnt.llvm_types      = bo_htbl_new(sizeof(LLVMTypeRef), EXPECTED_TYPE_COUNT);
+  cnt.llvm_entry_void = LLVMVoidTypeInContext(cnt.llvm_cnt);
 
   generate(&cnt);
 
   /* cleanup */
   bo_unref(cnt.llvm_modules);
+  bo_unref(cnt.llvm_types);
   LLVMDisposeBuilder(cnt.llvm_builder);
 }

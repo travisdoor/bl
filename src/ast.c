@@ -81,23 +81,6 @@ ast_arena_init(struct Arena *arena)
   arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
-Ast *
-ast_dup(Arena *arena, Ast *node)
-{
-  Ast *tmp = ast_create_node(arena, -1, NULL, Ast *);
-#if BL_DEBUG
-  int tmp_serial = tmp->_serial;
-#endif
-
-  memcpy(tmp, node, sizeof(Ast));
-  tmp->next = NULL;
-#if BL_DEBUG
-  tmp->_serial = tmp_serial;
-#endif
-
-  return tmp;
-}
-
 Dependency *
 ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type)
 {

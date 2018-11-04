@@ -89,6 +89,12 @@ typedef struct Dependency Dependency;
 #define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
 #define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
 
+/**
+ * @type main - 
+ * @param argc - Number of arguments
+ * @param argv - Argument vector
+ * @return int
+ */
 typedef enum
 {
   AST_BAD,
@@ -646,9 +652,6 @@ _ast_create_type(struct Arena *arena, AstTypeKind c, Token *tok);
 
 AstExpr *
 _ast_create_expr(struct Arena *arena, AstExprKind c, Token *tok);
-
-Ast *
-ast_dup(struct Arena *arena, Ast *node);
 
 Dependency *
 ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type);
