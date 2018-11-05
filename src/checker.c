@@ -324,16 +324,17 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 
   switch ((*node)->kind) {
   case AST_DECL: {
-    flatten_decl(cnt, fbuf, (AstDecl **) node);
+    flatten_decl(cnt, fbuf, (AstDecl **)node);
     break;
   }
 
   case AST_BLOCK: {
     AstBlock *_block = (AstBlock *)(*node);
 
-    Ast **tmp;
-    node_foreach_ref(_block->nodes, tmp)
-    {
+    Ast **    tmp;
+    const int c = bo_array_size(_block->nodes);
+    for (int i = 0; i < c; ++i) {
+      tmp = &bo_array_at(_block->nodes, i, Ast *);
       flatten(tmp);
     }
     break;
@@ -342,9 +343,10 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
   case AST_UBLOCK: {
     AstUBlock *_ublock = (AstUBlock *)(*node);
 
-    Ast **tmp;
-    node_foreach_ref(_ublock->nodes, tmp)
-    {
+    Ast **    tmp;
+    const int c = bo_array_size(_ublock->nodes);
+    for (int i = 0; i < c; ++i) {
+      tmp = &bo_array_at(_ublock->nodes, i, Ast *);
       schedule_check(cnt, tmp);
     }
     break;
@@ -455,8 +457,12 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
     AstExprCall *_call = (AstExprCall *)(*expr);
     flatten(&_call->ref);
 
-    Ast **arg;
-    node_foreach_ref(_call->args, arg) flatten(arg);
+    Ast **    tmp;
+    const int c = bo_array_size(_call->args);
+    for (int i = 0; i < c; ++i) {
+      tmp = &bo_array_at(_call->args, i, Ast *);
+      flatten(tmp);
+    }
     break;
   }
 
@@ -475,8 +481,14 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
   switch ((*type)->kind) {
   case AST_TYPE_FN: {
     AstTypeFn *_fn = (AstTypeFn *)(*type);
-    Ast **     arg;
-    node_foreach_ref(_fn->args, arg) flatten(arg);
+
+    Ast **    tmp;
+    const int c = bo_array_size(_fn->args);
+    for (int i = 0; i < c; ++i) {
+      tmp = &bo_array_at(_fn->args, i, Ast *);
+      flatten(tmp);
+    }
+
     flatten(&_fn->ret_type);
     break;
   }
@@ -530,7 +542,8 @@ check_node(Context *cnt, Ast **node)
     const char *file = (*node)->src ? (*node)->src->unit->name : "implicit";
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
-    const char *name = (*node)->kind == AST_DECL ? ((AstDecl *)*node)->name->str : ast_get_name(*node);
+    const char *name =
+        (*node)->kind == AST_DECL ? ((AstDecl *)*node)->name->str : ast_get_name(*node);
     if (result == NULL) {
       msg_log(LOG_TAG ": [" GREEN(" OK ") "] <%s:%d:%d> '%s' ", file, line, col, name);
     } else {
@@ -643,17 +656,18 @@ cmp_type(AstType *first, AstType *second)
     AstTypeFn *_f = (AstTypeFn *)first;
     AstTypeFn *_s = (AstTypeFn *)second;
 
-    if (_f->argc != _s->argc) return false;
+    const int fargc = bo_array_size(_f->args);
+    const int sargc = bo_array_size(_f->args);
+    if (fargc != sargc) return false;
     if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
 
-    Ast *argt1 = _f->args;
-    Ast *argt2 = _s->args;
-    while (argt1 && argt2) {
-      assert(argt1->kind == AST_DECL && argt2->kind == AST_DECL);
-      if (!cmp_type(((AstDecl *)argt1)->type, ((AstDecl *)argt2)->type)) return false;
+    AstDeclArg *farg;
+    AstDeclArg *sarg;
+    for (int i = 0; i < fargc; ++i) {
+      farg = bo_array_at(_f->args, i, AstDeclArg *);
+      sarg = bo_array_at(_s->args, i, AstDeclArg *);
 
-      argt1 = argt1->next;
-      argt2 = argt2->next;
+      if (!cmp_type(farg->base.type, sarg->base.type)) return false;
     }
     return true;
   }
@@ -735,8 +749,7 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   AstDecl *found = scope_lookup(scope, _ref->ident, true);
   if (!found) wait(_ref->ident);
 
-  if (found->kind == AST_DECL_ENTITY)
-    ((AstDeclEntity *)found)->used++;
+  if (found->kind == AST_DECL_ENTITY) ((AstDeclEntity *)found)->used++;
 
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
@@ -747,7 +760,7 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   }
 
   AstTypeType *type = (AstTypeType *)found->type;
-  *type_ref = (AstTypeRef *)type->spec;
+  *type_ref         = (AstTypeRef *)type->spec;
 
   finish();
 }
@@ -792,7 +805,7 @@ check_buildin_decl(Context *cnt, AstDeclEntity *decl)
   AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
   type->name        = decl->base.name->str;
   type->spec        = decl->value->type;
-  decl->base.type        = (AstType *)type;
+  decl->base.type   = (AstType *)type;
   decl->kind        = DECL_ENTITY_TYPE;
 
   provide(cnt, decl->base.name, &decl->base);
@@ -832,7 +845,7 @@ setup_decl_kind(AstDeclEntity *decl)
 AstIdent *
 check_decl_entity(Context *cnt, AstDeclEntity **decl)
 {
-  AstDeclEntity  *entity = *decl;
+  AstDeclEntity *entity = *decl;
   assert(entity->base.name);
 
   /* solve buildins */
@@ -916,7 +929,7 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl)
 AstIdent *
 check_decl_arg(Context *cnt, AstDeclArg **decl)
 {
-  AstDeclArg  *arg = *decl;
+  AstDeclArg *arg = *decl;
   assert(arg->base.name && arg->base.type);
 
   {
@@ -954,6 +967,7 @@ check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
   AstExpr *_lit  = (AstExpr *)*lit;
   _lit->type     = cnt->builder->buildin.entry_s32;
   _lit->adr_mode = ADR_MODE_CONST;
+  
   finish();
 }
 
@@ -977,14 +991,14 @@ check_expr_ref(Context *cnt, AstExprRef **expr)
   AstDecl *found = scope_lookup(scope, ref->ident, true);
   if (!found) wait(ref->ident);
 
-  ref->base.type =found->type;
+  ref->base.type = found->type;
 
   if (found->kind == AST_DECL_ENTITY)
     ref->base.adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
   else
     ref->base.adr_mode = ADR_MODE_MUT;
 
-  ref->ref = (Ast *)found;
+  ref->ref = found;
   finish();
 }
 
@@ -1011,7 +1025,7 @@ check_expr_binop(Context *cnt, AstExprBinop **expr)
     }
   }
 
-  binop->base.type = ltype;
+  binop->base.type     = ltype;
   binop->base.adr_mode = ladrm;
 
   if (!cmp_type(ltype, rtype)) {
@@ -1039,39 +1053,40 @@ check_expr_call(Context *cnt, AstExprCall **expr)
 
   AstTypeFn *callee_type = (AstTypeFn *)tmp_type;
 
-  if (call->argsc != callee_type->argc) {
+  const int call_argc   = bo_array_size(call->args);
+  const int callee_argc = bo_array_size(callee_type->args);
+
+  if (call_argc != callee_argc) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)call)->src,
-                BUILDER_CUR_WORD, "expected %d %s, but called with %d", callee_type->argc,
-                callee_type->argc == 1 ? "argument" : "arguments", call->argsc);
+                BUILDER_CUR_WORD, "expected %d %s, but called with %d", callee_argc,
+                callee_argc == 1 ? "argument" : "arguments", call_argc);
 
     call->base.type = callee_type->ret_type;
     finish();
   }
 
-  Ast *call_arg   = call->args;
-  Ast *callee_arg = callee_type->args;
+  AstExpr *   call_arg;
+  AstDeclArg *callee_arg;
 
-  while (call_arg) {
-    assert(call_arg->kind == AST_EXPR);
-    assert(callee_arg->kind == AST_DECL);
+  for (int i = 0; i < call_argc; ++i) {
+    call_arg   = bo_array_at(call->args, i, AstExpr *);
+    callee_arg = bo_array_at(callee_type->args, i, AstDeclArg *);
 
-    if (!cmp_type(((AstExpr *)call_arg)->type, ((AstDecl *)callee_arg)->type)) {
+    if (!cmp_type(call_arg->type, callee_arg->base.type)) {
       char tmp1[256];
       char tmp2[256];
-      ast_type_to_str(tmp1, 256, ((AstExpr *)call_arg)->type);
-      ast_type_to_str(tmp2, 256,((AstDecl *)callee_arg)->type);
+      ast_type_to_str(tmp1, 256, call_arg->type);
+      ast_type_to_str(tmp2, 256, callee_arg->base.type);
 
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, call_arg->src,
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, call_arg->base.src,
                   BUILDER_CUR_WORD,
                   "invalid expr argument type, expected is '%s' but called with '%s'", tmp2, tmp1);
 
       break;
     }
-    call_arg   = call_arg->next;
-    callee_arg = callee_arg->next;
   }
 
-  call->base.type =callee_type->ret_type;
+  call->base.type = callee_type->ret_type;
   finish();
 }
 
@@ -1101,7 +1116,7 @@ checker_run(Builder *builder, Assembly *assembly)
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .stack              = bo_array_new(sizeof(Ast **)),
       .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
-      .verbose            = (bool) (builder->flags & BUILDER_VERBOSE),
+      .verbose            = (bool)(builder->flags & BUILDER_VERBOSE),
   };
 
   arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,

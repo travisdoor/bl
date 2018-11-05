@@ -41,11 +41,11 @@
 
 typedef struct
 {
-  Builder * builder;
-  Assembly *assembly;
-  Unit *    unit;
-  AstDeclEntity * curr_dependent;
-  bool      verbose;
+  Builder *      builder;
+  Assembly *     assembly;
+  Unit *         unit;
+  AstDeclEntity *curr_dependent;
+  bool           verbose;
 } Context;
 
 static void
@@ -80,28 +80,31 @@ void
 post_ublock(Context *cnt, AstUBlock *ublock)
 {
   Ast *tmp;
-  node_foreach(ublock->nodes, tmp) post_node(cnt, tmp);
+  barray_foreach(ublock->nodes, tmp) post_node(cnt, tmp);
 }
 
 void
 post_block(Context *cnt, AstBlock *block)
 {
   Ast *tmp;
-  node_foreach(block->nodes, tmp) post_node(cnt, tmp);
+  barray_foreach(block->nodes, tmp) post_node(cnt, tmp);
 }
 
 void
-post_decl(Context *cnt, AstDecl *decl) {
+post_decl(Context *cnt, AstDecl *decl)
+{
   switch (decl->kind) {
-    case AST_DECL_BAD:
-      break;
-    case AST_DECL_ENTITY:
-      post_decl_entity(cnt, (AstDeclEntity *)decl);
-      break;
-    case AST_DECL_MEMBER:
-      break;
-    case AST_DECL_ARG:break;
-    case AST_DECL_VARIANT:break;
+  case AST_DECL_BAD:
+    break;
+  case AST_DECL_ENTITY:
+    post_decl_entity(cnt, (AstDeclEntity *)decl);
+    break;
+  case AST_DECL_MEMBER:
+    break;
+  case AST_DECL_ARG:
+    break;
+  case AST_DECL_VARIANT:
+    break;
   }
 }
 
@@ -153,16 +156,12 @@ post_expr_ref(Context *cnt, AstExprRef *ref)
   assert(cnt->curr_dependent);
   assert(ref->ref);
 
-  if (ref->ref->kind != AST_DECL)
-    return;
+  if (ref->ref->kind != AST_DECL_ENTITY) return;
 
-  AstDecl *decl = (AstDecl *)ref->ref;
-  if (decl->kind != AST_DECL_ENTITY) return;
-
-  AstDeclEntity *entity = (AstDeclEntity *)decl;
-    if (!(entity->flags & FLAG_EXTERN) && entity->kind == DECL_ENTITY_FIELD && entity->in_gscope) {
-      ast_add_dep_uq(cnt->curr_dependent, entity, DEP_LAX);
-    }
+  AstDeclEntity *entity = (AstDeclEntity *)ref->ref;
+  if (!(entity->flags & FLAG_EXTERN) && entity->kind == DECL_ENTITY_FIELD && entity->in_gscope) {
+    ast_add_dep_uq(cnt->curr_dependent, entity, DEP_LAX);
+  }
 }
 
 void
@@ -260,7 +259,7 @@ post_run(Builder *builder, Assembly *assembly)
       .assembly       = assembly,
       .unit           = NULL,
       .curr_dependent = NULL,
-      .verbose        = (bool) (builder->flags & BUILDER_VERBOSE),
+      .verbose        = (bool)(builder->flags & BUILDER_VERBOSE),
   };
 
   Unit *unit;

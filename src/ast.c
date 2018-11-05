@@ -82,9 +82,57 @@ union _Ast
 static void
 node_dtor(Ast *node)
 {
-  if (node->kind == AST_DECL) {
-    AstDecl *decl = (AstDecl *)node;
-    if (decl->kind == AST_DECL_ENTITY) bo_unref(((AstDeclEntity *)decl)->deps);
+  switch (node->kind) {
+  case AST_UBLOCK:
+    bo_unref(((AstUBlock *)node)->nodes);
+    break;
+  case AST_BLOCK:
+    bo_unref(((AstBlock *)node)->nodes);
+    break;
+
+  case AST_DECL: {
+    switch (((AstDecl *)node)->kind) {
+    case AST_DECL_ENTITY:
+      bo_unref(((AstDeclEntity *)node)->deps);
+      break;
+    default:
+      break;
+    }
+  }
+
+  case AST_EXPR: {
+    switch (((AstExpr *)node)->kind) {
+    case AST_EXPR_CALL:
+      bo_unref(((AstExprCall *)node)->args);
+      break;
+    case AST_EXPR_LIT_CMP:
+      bo_unref(((AstExprLitCmp *)node)->fields);
+      break;
+    default:
+      break;
+    }
+    break;
+  }
+
+  case AST_TYPE: {
+    switch (((AstType *)node)->kind) {
+    case AST_TYPE_FN:
+      bo_unref(((AstTypeFn *)node)->args);
+      break;
+    case AST_TYPE_STRUCT:
+      bo_unref(((AstTypeStruct *)node)->members);
+      break;
+    case AST_TYPE_ENUM:
+      bo_unref(((AstTypeEnum *)node)->variants);
+      break;
+    default:
+      break;
+    }
+    break;
+  }
+
+  default:
+    break;
   }
 }
 
@@ -301,15 +349,16 @@ _type_to_str(char *buf, size_t len, AstType *type)
     break;
 
   case AST_TYPE_FN: {
-    AstTypeFn * fn  = (AstTypeFn *)type;
-    Ast *arg = fn->args;
+    AstTypeFn * fn = (AstTypeFn *)type;
+    AstDeclArg *tmp;
 
     append_buf(buf, len, "fn (");
-    while (arg) {
-      assert(arg->kind == AST_DECL);
-      _type_to_str(buf, len, ((AstDecl *)arg)->type);
-      arg = arg->next;
-      if (arg) append_buf(buf, len, ", ");
+
+    const int last_index = bo_array_size(fn->args) - 1;
+    barray_foreach(fn->args, tmp)
+    {
+      _type_to_str(buf, len, tmp->base.type);
+      if (i != last_index) append_buf(buf, len, ", ");
     }
 
     if (fn->ret_type) {
@@ -327,14 +376,14 @@ _type_to_str(char *buf, size_t len, AstType *type)
 
   case AST_TYPE_STRUCT: {
     AstTypeStruct *strct = (AstTypeStruct *)type;
-    Ast *          mem   = strct->members;
+    AstDeclMember *tmp;
 
     append_buf(buf, len, "{");
-    while (mem) {
-      assert(mem->kind == AST_DECL);
-      _type_to_str(buf, len, ((AstDecl *)mem)->type);
-      mem = mem->next;
-      if (mem) append_buf(buf, len, ", ");
+    const int last_index = bo_array_size(strct->members) - 1;
+    barray_foreach(strct->members, tmp)
+    {
+      _type_to_str(buf, len, tmp->base.type);
+      if (i != last_index) append_buf(buf, len, ", ");
     }
     append_buf(buf, len, "}");
     break;

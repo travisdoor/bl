@@ -145,8 +145,10 @@ print_ublock(AstUBlock *ublock, int pad)
 {
   print_head(ublock, pad);
   fprintf(stdout, "%s", ublock->unit->name);
+
   Ast *tmp = NULL;
-  node_foreach(ublock->nodes, tmp) print_node(tmp, pad + 1);
+  barray_foreach(ublock->nodes, tmp)
+  print_node(tmp, pad + 1);
 }
 
 void
@@ -154,7 +156,7 @@ print_block(AstBlock *block, int pad)
 {
   print_head(block, pad);
   Ast *tmp = NULL;
-  node_foreach(block->nodes, tmp) print_node(tmp, pad + 1);
+  barray_foreach(block->nodes, tmp) print_node(tmp, pad + 1);
 }
 
 void
@@ -376,7 +378,7 @@ print_expr_call(AstExprCall *call, int pad)
   print_node((Ast *)call->ref, pad + 1);
 
   Ast *arg;
-  node_foreach(call->args, arg) print_node(arg, pad + 1);
+  barray_foreach(call->args, arg) print_node(arg, pad + 1);
 }
 
 void

@@ -86,12 +86,6 @@ typedef struct
 } Context;
 
 /* helpers */
-static inline void
-insert_node(Ast ***node)
-{
-  *node = &(**node)->next;
-}
-
 /* fw decls */
 static BinopKind
 sym_to_binop_kind(Sym sm);
@@ -457,17 +451,16 @@ parse_expr_lit_cmp(Context *cnt, AstExpr *prev)
   AstExprLitCmp *lit_cmp =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CMP, tok_begin, AstExprLitCmp *);
   lit_cmp->base.type = prev->type;
+  lit_cmp->fields = bo_array_new(sizeof(AstExpr *));
 
   /* parse lit_cmp fields */
   bool  rq     = false;
-  Ast **field  = (Ast **)&lit_cmp->fields;
-  int * fieldc = &lit_cmp->fieldc;
+  AstExpr *tmp;
 
 next:
-  *field = (Ast *)parse_expr(cnt);
-  if (*field) {
-    field = &(*field)->next;
-    ++(*fieldc);
+  tmp = parse_expr(cnt);
+  if (tmp) {
+    bo_array_push_back(lit_cmp->fields, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -847,9 +840,9 @@ parse_type_enum(Context *cnt)
   Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 512);
   push_scope(cnt, scope);
 
-  AstTypeEnum *_enm = ast_create_type(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, AstTypeEnum *);
-
-  _enm->type = parse_type(cnt);
+  AstTypeEnum *enm = ast_create_type(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, AstTypeEnum *);
+  enm->variants    = bo_array_new(sizeof(AstDeclVariant *));
+  enm->type        = parse_type(cnt);
 
   Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok) {
@@ -859,15 +852,15 @@ parse_type_enum(Context *cnt)
   }
 
   /* parse enum varinats */
-  bool            rq           = false;
-  Ast **          variant      = &_enm->variants;
-  AstDeclVariant *prev_variant = NULL;
+  bool            rq = false;
+  AstDeclVariant *tmp;
+  AstDeclVariant *prev_tmp = NULL;
 
 next:
-  *variant = (Ast *)parse_decl_variant(cnt, _enm->type, prev_variant);
-  if (*variant) {
-    prev_variant = (AstDeclVariant *)*variant;
-    variant      = &(*variant)->next;
+  tmp = (AstDeclVariant *)parse_decl_variant(cnt, enm->type, prev_tmp);
+  if (tmp) {
+    prev_tmp = tmp;
+    bo_array_push_back(enm->variants, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -892,7 +885,7 @@ next:
   }
 
   pop_scope(cnt);
-  return (AstType *)_enm;
+  return &enm->base;
 }
 
 AstExpr *
@@ -1163,16 +1156,16 @@ parse_type_fn(Context *cnt, bool named_args)
 
   AstTypeFn *fn = ast_create_type(cnt->ast_arena, AST_TYPE_FN, tok_fn, AstTypeFn *);
 
+  fn->args = bo_array_new(sizeof(AstDeclArg *));
+
   /* parse arg types */
-  bool         rq   = false;
-  AstDeclArg **arg  = &fn->args;
-  int *        argc = &fn->argc;
+  bool        rq = false;
+  AstDeclArg *tmp;
 
 next:
-  *arg = (AstDeclArg *)parse_decl_arg(cnt, !named_args);
-  if (*arg) {
-    arg = (AstDeclArg **)&(*arg)->base.base.next;
-    ++(*argc);
+  tmp = (AstDeclArg *)parse_decl_arg(cnt, !named_args);
+  if (tmp) {
+    bo_array_push_back(fn->args, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -1219,21 +1212,19 @@ parse_type_struct(Context *cnt)
 
   AstTypeStruct *type_struct =
       ast_create_type(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, AstTypeStruct *);
-  type_struct->raw = false;
+  type_struct->raw     = false;
+  type_struct->members = bo_array_new(sizeof(AstDeclMember *));
 
   /* parse arg types */
-  bool  rq       = false;
-  Ast **member   = &type_struct->members;
-  int * membersc = &type_struct->membersc;
-
-  const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
+  bool           rq = false;
+  AstDeclMember *tmp;
+  const bool     type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
                          tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
   type_struct->raw = type_only;
 next:
-  *member = (Ast *)parse_decl_member(cnt, type_only, *membersc);
-  if (*member) {
-    member = &(*member)->next;
-    ++(*membersc);
+  tmp = (AstDeclMember *)parse_decl_member(cnt, type_only, bo_array_size(type_struct->members));
+  if (tmp) {
+    bo_array_push_back(type_struct->members, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -1340,16 +1331,16 @@ parse_expr_call(Context *cnt, AstExpr *prev)
   AstExprCall *call = ast_create_expr(cnt->ast_arena, AST_EXPR_CALL, tok, AstExprCall *);
   call->ref         = prev;
   call->run         = false;
+  call->args        = bo_array_new(sizeof(AstExpr *));
 
   /* parse args */
-  bool  rq    = false;
-  Ast **arg   = &call->args;
-  int * argsc = &call->argsc;
+  bool     rq = false;
+  AstExpr *tmp;
+
 arg:
-  *arg = (Ast *)parse_expr(cnt);
-  if (*arg) {
-    ++(*argsc);
-    arg = &(*arg)->next;
+  tmp = parse_expr(cnt);
+  if (tmp) {
+    bo_array_push_back(call->args, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
       rq = true;
@@ -1535,7 +1526,9 @@ parse_block(Context *cnt)
   AstBlock *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin, AstBlock *);
 
   Token *tok;
-  Ast ** node = &block->nodes;
+  Ast *  tmp;
+  block->nodes = bo_array_new(sizeof(Ast *));
+
 next:
   if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {
     tok = tokens_consume(cnt->tokens);
@@ -1545,58 +1538,58 @@ next:
 
   parse_flags(cnt, 0);
 
-  if ((*node = parse_stmt_return(cnt))) {
-    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
-    insert_node(&node);
+  if ((tmp = parse_stmt_return(cnt))) {
+    if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_stmt_if(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_stmt_if(cnt))) {
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_stmt_loop(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_stmt_loop(cnt))) {
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_stmt_break(cnt))) {
-    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
-    insert_node(&node);
+  if ((tmp = parse_stmt_break(cnt))) {
+    if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_stmt_continue(cnt))) {
-    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
-    insert_node(&node);
+  if ((tmp = parse_stmt_continue(cnt))) {
+    if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = (Ast *)parse_decl(cnt))) {
-    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
-    insert_node(&node);
+  if ((tmp = (Ast *)parse_decl(cnt))) {
+    if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_block(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_block(cnt))) {
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = (Ast *)parse_expr(cnt))) {
-    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
-    insert_node(&node);
+  if ((tmp = (Ast *)parse_expr(cnt))) {
+    if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_load(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_load(cnt))) {
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_link(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_link(cnt))) {
+    bo_array_push_back(block->nodes, tmp);
     goto next;
   }
 
@@ -1616,17 +1609,18 @@ next:
 void
 parse_ublock_content(Context *cnt, AstUBlock *ublock)
 {
-  Ast **node = &ublock->nodes;
+  ublock->nodes = bo_array_new(sizeof(Ast *));
+  Ast *tmp;
 next:
   parse_flags(cnt, 0);
 
-  if ((*node = (Ast *)parse_decl(cnt))) {
-    if ((*node) != AST_BAD) {
+  if ((tmp = (Ast *)parse_decl(cnt))) {
+    if (tmp != AST_BAD) {
       parse_semicolon_rq(cnt);
       /* setup global scope flag for declaration */
-      ((AstDeclEntity *)*node)->in_gscope = true;
+      ((AstDeclEntity *)tmp)->in_gscope = true;
     }
-    insert_node(&node);
+    bo_array_push_back(ublock->nodes, tmp);
     goto next;
   }
 
@@ -1635,19 +1629,19 @@ next:
   /* TODO: move to builder!!! */
   /* TODO: move to builder!!! */
   /* TODO: move to builder!!! */
-  if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (*node = load_core(cnt))) {
-    insert_node(&node);
+  if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (tmp = load_core(cnt))) {
+    bo_array_push_back(ublock->nodes, tmp);
     cnt->core_loaded = true;
     goto next;
   }
 
-  if ((*node = parse_load(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_load(cnt))) {
+    bo_array_push_back(ublock->nodes, tmp);
     goto next;
   }
 
-  if ((*node = parse_link(cnt))) {
-    insert_node(&node);
+  if ((tmp = parse_link(cnt))) {
+    bo_array_push_back(ublock->nodes, tmp);
     goto next;
   }
 

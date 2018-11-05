@@ -75,13 +75,13 @@ generated(Context *cnt, AstDeclEntity *decl)
 }
 
 static inline void
-llvm_values_insert(Context *cnt, Ast *node, void *val)
+llvm_values_insert(Context *cnt, AstDecl *node, void *val)
 {
   bo_htbl_insert(cnt->llvm_values, (uint64_t)node, val);
 }
 
 static inline void *
-llvm_values_get(Context *cnt, Ast *node)
+llvm_values_get(Context *cnt, AstDecl *node)
 {
   if (bo_htbl_has_key(cnt->llvm_values, (uint64_t)node))
     return bo_htbl_at(cnt->llvm_values, (uint64_t)node, void *);
@@ -207,7 +207,7 @@ to_llvm_type(Context *cnt, AstType *type)
 
   switch (type->kind) {
   case AST_TYPE_INT: {
-    result = LLVMIntTypeInContext(cnt->llvm_cnt, (unsigned int) ((AstTypeInt *)type)->bitcount);
+    result = LLVMIntTypeInContext(cnt->llvm_cnt, (unsigned int)((AstTypeInt *)type)->bitcount);
     bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
     break;
   }
@@ -220,14 +220,15 @@ to_llvm_type(Context *cnt, AstType *type)
 
   case AST_TYPE_FN: {
     /* args */
-    AstTypeFn *fn = (AstTypeFn *)type;
+    AstTypeFn *  fn             = (AstTypeFn *)type;
     LLVMTypeRef  llvm_ret_type  = to_llvm_type(cnt, fn->ret_type);
-    LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * fn->argc);
+    const int    argc           = bo_array_size(fn->args);
+    LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * argc);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
     Ast *    arg;
     unsigned i = 0;
-    node_foreach(fn->args, arg)
+    barray_foreach(fn->args, arg)
     {
       assert(arg->kind == AST_DECL);
       llvm_arg_types[i++] = to_llvm_type(cnt, ((AstDecl *)arg)->type);
@@ -373,7 +374,7 @@ void
 ir_block(Context *cnt, AstBlock *block)
 {
   Ast *node;
-  node_foreach(block->nodes, node) ir_node(cnt, node);
+  barray_foreach(block->nodes, node) ir_node(cnt, node);
 }
 
 /* DECLARATIONS */
@@ -402,18 +403,14 @@ ir_decl_fn(Context *cnt, AstDeclEntity *decl_fn)
      * can be called by name in function body.
      */
 
-    Ast *    tmp;
-    AstDecl *arg;
-    int      i = 0;
-    node_foreach(type_fn->args, tmp)
+    AstDeclArg *tmp;
+    barray_foreach(type_fn->args, tmp)
     {
-      assert(tmp->kind == AST_DECL);
-      arg                = (AstDecl *)&tmp;
-      const char * name  = arg->name->str;
+      const char * name  = tmp->base.name->str;
       LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
       LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
-      llvm_values_insert(cnt, tmp, p);
+      llvm_values_insert(cnt, &tmp->base, p);
     }
 
     /*
@@ -482,10 +479,11 @@ ir_decl_field(Context *cnt, AstDeclEntity *decl_field)
   } else {
     LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
-    result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(((AstDecl *)decl_field)->name->str));
+    result =
+        LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(((AstDecl *)decl_field)->name->str));
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
 
-    llvm_values_insert(cnt, (Ast *)decl_field, result);
+    llvm_values_insert(cnt, &decl_field->base, result);
 
     if (!decl_field->value) return;
 
@@ -524,7 +522,9 @@ LLVMValueRef
 ir_expr_ref(Context *cnt, AstExprRef *ref)
 {
   assert(ref->ref);
-  LLVMValueRef result = llvm_values_get(cnt, ref->ref);
+  LLVMValueRef result = NULL;
+
+  result = llvm_values_get(cnt, ref->ref);
 
   assert(result);
   return result;
@@ -538,22 +538,21 @@ ir_expr_call(Context *cnt, AstExprCall *call)
 
   assert(llvm_fn);
 
-  LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * call->argsc);
+  const int     argc      = bo_array_size(call->args);
+  LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * argc);
   if (!llvm_args) bl_abort("bad alloc");
 
   Ast *arg;
-  int  i = 0;
-  node_foreach(call->args, arg)
+  barray_foreach(call->args, arg)
   {
     assert(arg->kind == AST_EXPR);
     llvm_args[i] = ir_expr(cnt, (AstExpr *)arg);
     assert(llvm_args[i] && "invalid call argument");
 
     llvm_args[i] = ltor_if_needed(cnt, (AstExpr *)arg, llvm_args[i]);
-    ++i;
   }
 
-  result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)call->argsc, "");
+  result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)argc, "");
   bl_free(llvm_args);
   return result;
 }
@@ -787,7 +786,7 @@ is_satisfied(Context *cnt, AstDeclEntity *decl, bool strict_only)
 void
 generate(Context *cnt)
 {
-  BList *  queue = cnt->assembly->ir_queue;
+  BList *        queue = cnt->assembly->ir_queue;
   AstDeclEntity *entity;
 
   while (!bo_list_empty(queue)) {
@@ -829,7 +828,7 @@ ir_run(Builder *builder, Assembly *assembly)
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
 
-  cnt.verbose      = (bool) (builder->flags & BUILDER_VERBOSE);
+  cnt.verbose      = (bool)(builder->flags & BUILDER_VERBOSE);
   cnt.builder      = builder;
   cnt.llvm_cnt     = LLVMContextCreate();
   cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);

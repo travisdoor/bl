@@ -89,9 +89,6 @@ typedef struct AstTypePtr    AstTypePtr;
 
 typedef struct Dependency Dependency;
 
-#define node_foreach(_root, _it) for ((_it) = (_root); (_it); (_it) = (_it)->next)
-#define node_foreach_ref(_root, _it) for ((_it) = &(_root); *(_it); (_it) = &((*(_it))->next))
-
 typedef enum
 {
   AST_BAD,
@@ -237,7 +234,6 @@ struct Ast
 {
   AstKind kind;
   Src *   src;
-  Ast *   next;
 #if BL_DEBUG
   enum
   {
@@ -294,14 +290,14 @@ struct AstIdent
 struct AstUBlock
 {
   Ast          base;
-  Ast *        nodes;
+  BArray *     nodes;
   struct Unit *unit;
 };
 
 struct AstBlock
 {
-  Ast  base;
-  Ast *nodes;
+  Ast     base;
+  BArray *nodes;
 };
 
 struct AstStmtReturn
@@ -406,17 +402,15 @@ struct AstTypeArr
 
 struct AstTypeFn
 {
-  AstType     base;
-  AstType *   ret_type;
-  AstDeclArg *args;
-  int         argc;
+  AstType  base;
+  AstType *ret_type;
+  BArray * args;
 };
 
 struct AstTypeStruct
 {
   AstType base;
-  Ast *   members;
-  int     membersc;
+  BArray *members;
   bool    raw;
 };
 
@@ -424,7 +418,7 @@ struct AstTypeEnum
 {
   AstType  base;
   AstType *type;
-  Ast *    variants;
+  BArray * variants;
 };
 
 struct AstTypePtr
@@ -478,16 +472,15 @@ struct AstExprLitBool
 
 struct AstExprLitCmp
 {
-  AstExpr  base;
-  AstExpr *fields;
-  int      fieldc;
+  AstExpr base;
+  BArray *fields;
 };
 
 struct AstExprRef
 {
   AstExpr   base;
   AstIdent *ident;
-  Ast *     ref;
+  AstDecl * ref;
 };
 
 struct AstExprCast
@@ -509,8 +502,7 @@ struct AstExprCall
 {
   AstExpr  base;
   AstExpr *ref;
-  Ast *    args;
-  int      argsc;
+  BArray * args;
   bool     run;
 };
 
@@ -518,7 +510,7 @@ struct AstExprMember
 {
   AstExpr    base;
   MemberKind kind;
-  Ast *      ident;
+  AstIdent * ident;
   AstExpr *  next;
   bool       ptr_ref;
   int        i;
