@@ -306,8 +306,8 @@ struct AstBlock
 
 struct AstStmtReturn
 {
-  Ast      base;
-  AstExpr *expr;
+  Ast            base;
+  AstExpr *      expr;
   AstDeclEntity *fn_decl;
 };
 
@@ -322,7 +322,7 @@ struct AstStmtIf
 struct AstStmtLoop
 {
   Ast      base;
-  AstDecl *    init;
+  AstDecl *init;
   AstExpr *condition;
   AstExpr *increment;
   Ast *    block;
@@ -406,10 +406,10 @@ struct AstTypeArr
 
 struct AstTypeFn
 {
-  AstType  base;
-  AstType *ret_type;
-  Ast *    args;
-  int      argc;
+  AstType     base;
+  AstType *   ret_type;
+  AstDeclArg *args;
+  int         argc;
 };
 
 struct AstTypeStruct

@@ -52,8 +52,8 @@
 /* swap current compound with _cmp and create temporary variable with previous one */
 
 #define push_curr_decl(_cnt, _decl)                                                                \
-  AstDeclEntity *const _prev_decl = (_cnt)->curr_decl;                                                   \
-  (_cnt)->curr_decl         = (_decl);
+  AstDeclEntity *const _prev_decl = (_cnt)->curr_decl;                                             \
+  (_cnt)->curr_decl               = (_decl);
 
 #define pop_curr_decl(_cnt) (_cnt)->curr_decl = _prev_decl;
 
@@ -79,10 +79,10 @@ typedef struct
   Tokens *  tokens;
 
   /* tmps */
-  Scope *  scope;
+  Scope *        scope;
   AstDeclEntity *curr_decl;
-  bool     inside_loop;
-  bool     core_loaded;
+  bool           inside_loop;
+  bool           core_loaded;
 } Context;
 
 /* helpers */
@@ -374,10 +374,10 @@ parse_decl_member(Context *cnt, bool type_only, int order)
   }
 
   if (!type && !name) return NULL;
-  AstDeclMember *mem      = ast_create_decl(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, AstDeclMember *);
-  mem->base.type         = type;
-  mem->base.name         = name;
-  mem->order = -1;
+  AstDeclMember *mem = ast_create_decl(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, AstDeclMember *);
+  mem->base.type     = type;
+  mem->base.name     = name;
+  mem->order         = -1;
 
   return &mem->base;
 }
@@ -398,8 +398,8 @@ parse_decl_arg(Context *cnt, bool type_only)
 
   if (!type && !name) return NULL;
   AstDeclArg *arg = ast_create_decl(cnt->ast_arena, AST_DECL_ARG, tok_begin, AstDeclArg *);
-  arg->base.type    = type;
-  arg->base.name    = name;
+  arg->base.type  = type;
+  arg->base.name  = name;
 
   return &arg->base;
 }
@@ -411,7 +411,8 @@ parse_decl_variant(Context *cnt, AstType *base_type, AstDeclVariant *prev)
   AstIdent *name      = parse_ident(cnt);
   if (!name) return NULL;
 
-  AstDeclVariant *var = ast_create_decl(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, AstDeclVariant *);
+  AstDeclVariant *var =
+      ast_create_decl(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, AstDeclVariant *);
 
   Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
   if (tok_assign) {
@@ -507,8 +508,7 @@ parse_expr_sizeof(Context *cnt)
     return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
-  AstExprSizeof *szof =
-      ast_create_expr(cnt->ast_arena, AST_EXPR_SIZEOF, tok_id, AstExprSizeof *);
+  AstExprSizeof *szof = ast_create_expr(cnt->ast_arena, AST_EXPR_SIZEOF, tok_id, AstExprSizeof *);
 
   //_sizeof->in = (Ast *)parse_type(cnt);
   if (!szof->in) szof->in = parse_expr(cnt);
@@ -548,8 +548,7 @@ parse_expr_typeof(Context *cnt)
     return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok_err, AstExpr *);
   }
 
-  AstExprTypeof *tpof =
-      ast_create_expr(cnt->ast_arena, AST_EXPR_TYPEOF, tok_id, AstExprTypeof *);
+  AstExprTypeof *tpof = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPEOF, tok_id, AstExprTypeof *);
 
   if (!tpof->in) tpof->in = parse_expr(cnt);
   if (!tpof->in) {
@@ -591,8 +590,7 @@ parse_stmt_return(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
   if (!tok_begin) return NULL;
 
-  AstStmtReturn *ret =
-      ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, AstStmtReturn *);
+  AstStmtReturn *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, AstStmtReturn *);
 
   assert(cnt->curr_decl);
   ret->fn_decl = cnt->curr_decl;
@@ -781,7 +779,7 @@ parse_expr_lit(Context *cnt)
 
   case SYM_CHAR:
     lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
-    ((AstExprLitChar *)lit)->c = (uint8_t) tok->value.c;
+    ((AstExprLitChar *)lit)->c = (uint8_t)tok->value.c;
 
     break;
 
@@ -861,9 +859,9 @@ parse_type_enum(Context *cnt)
   }
 
   /* parse enum varinats */
-  bool  rq           = false;
-  Ast **variant      = &_enm->variants;
-  AstDeclVariant * prev_variant = NULL;
+  bool            rq           = false;
+  Ast **          variant      = &_enm->variants;
+  AstDeclVariant *prev_variant = NULL;
 
 next:
   *variant = (Ast *)parse_decl_variant(cnt, _enm->type, prev_variant);
@@ -1166,14 +1164,14 @@ parse_type_fn(Context *cnt, bool named_args)
   AstTypeFn *fn = ast_create_type(cnt->ast_arena, AST_TYPE_FN, tok_fn, AstTypeFn *);
 
   /* parse arg types */
-  bool  rq   = false;
-  Ast **arg  = &fn->args;
-  int * argc = &fn->argc;
+  bool         rq   = false;
+  AstDeclArg **arg  = &fn->args;
+  int *        argc = &fn->argc;
 
 next:
-  *arg = (Ast *)parse_decl_arg(cnt, !named_args);
+  *arg = (AstDeclArg *)parse_decl_arg(cnt, !named_args);
   if (*arg) {
-    arg = &(*arg)->next;
+    arg = (AstDeclArg **)&(*arg)->base.base.next;
     ++(*argc);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
@@ -1271,7 +1269,7 @@ parse_decl(Context *cnt)
 #define RETURN_BAD                                                                                 \
   {                                                                                                \
     pop_curr_decl(cnt);                                                                            \
-    return ast_create_decl(cnt->ast_arena, AST_DECL_BAD, tok_ident, AstDecl *);                             \
+    return ast_create_decl(cnt->ast_arena, AST_DECL_BAD, tok_ident, AstDecl *);                    \
   }
 
   Token *tok_ident = tokens_peek(cnt->tokens);
@@ -1300,13 +1298,14 @@ parse_decl(Context *cnt)
   AstIdent *ident = parse_ident(cnt);
   if (!ident) return NULL;
 
-  AstDeclEntity *decl        = ast_create_decl(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, AstDeclEntity *);
-  decl->base.name           = ident;
-  decl->mutable = true;
+  AstDeclEntity *decl =
+      ast_create_decl(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, AstDeclEntity *);
+  decl->base.name = ident;
+  decl->mutable   = true;
 
   push_curr_decl(cnt, decl);
 
-  decl->base.type       = parse_type(cnt);
+  decl->base.type   = parse_type(cnt);
   Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_MDECL);
   if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
 
@@ -1444,7 +1443,7 @@ parse_expr_line(Context *cnt)
 
   AstExprLitInt *lit =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, AstExprLitInt *);
-  lit->i = (uint64_t) tok_begin->src.line;
+  lit->i = (uint64_t)tok_begin->src.line;
   return &lit->base;
 }
 
