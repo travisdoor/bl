@@ -34,7 +34,7 @@
 #define LOG_TAG CYAN("POST")
 
 #define push_curr_dependend(_cnt, _decl)                                                           \
-  AstDecl *const _prev_dependent = (_cnt)->curr_dependent;                                         \
+  AstDeclEntity *const _prev_dependent = (_cnt)->curr_dependent;                                         \
   (_cnt)->curr_dependent         = (_decl);
 
 #define pop_curr_dependent(_cnt) (_cnt)->curr_dependent = _prev_dependent;
@@ -44,7 +44,7 @@ typedef struct
   Builder * builder;
   Assembly *assembly;
   Unit *    unit;
-  AstDecl * curr_dependent;
+  AstDeclEntity * curr_dependent;
   bool      verbose;
 } Context;
 
@@ -62,6 +62,9 @@ post_block(Context *cnt, AstBlock *block);
 
 static void
 post_decl(Context *cnt, AstDecl *decl);
+
+static void
+post_decl_entity(Context *cnt, AstDecl *decl);
 
 static void
 post_expr_ref(Context *cnt, AstExprRef *ref);
@@ -88,43 +91,58 @@ post_block(Context *cnt, AstBlock *block)
 }
 
 void
-post_decl(Context *cnt, AstDecl *decl)
+post_decl(Context *cnt, AstDecl *decl) {
+  switch (decl->kind) {
+    case AST_DECL_BAD:
+      break;
+    case AST_DECL_ENTITY:
+      post_decl_entity(cnt, decl);
+      break;
+    case AST_DECL_MEMBER:
+      break;
+    case AST_DECL_ARG:break;
+    case AST_DECL_VARIANT:break;
+  }
+}
+
+void
+post_decl_entity(Context *cnt, AstDecl *decl)
 {
-  push_curr_dependend(cnt, decl);
-  post_expr(cnt, decl->value);
+  push_curr_dependend(cnt, &decl->entity);
+  post_expr(cnt, decl->entity.value);
   pop_curr_dependent(cnt);
 
   {
     /* schedule future generation of this declaration, notice that all declarations must be used!!!
      */
     bool generate = false;
-    switch (decl->kind) {
-    case DECL_KIND_FN:
+    switch (decl->entity.kind) {
+    case DECL_ENTITY_FN:
       generate = true;
       break;
-    case DECL_KIND_FIELD:
-      if (decl->in_gscope) generate = true;
+    case DECL_ENTITY_FIELD:
+      if (decl->entity.in_gscope) generate = true;
       break;
     default:
       break;
     }
 
-    if (generate && decl->used) {
+    if (generate && decl->entity.used) {
       bo_list_push_back(cnt->assembly->ir_queue, decl);
       if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", decl->name->str);
     }
   }
 
-  if (cnt->verbose && decl->deps) {
+  if (cnt->verbose && decl->entity.deps) {
     msg_log(LOG_TAG ": '%s' depends on:", decl->name->str);
 
     bo_iterator_t it;
     Dependency    tmp;
-    bhtbl_foreach(decl->deps, it)
+    bhtbl_foreach(decl->entity.deps, it)
     {
-      tmp = bo_htbl_iter_peek_value(decl->deps, &it, Dependency);
+      tmp = bo_htbl_iter_peek_value(decl->entity.deps, &it, Dependency);
       msg_log(LOG_TAG ": [%s] %s", tmp.type == DEP_STRICT ? RED("STRICT") : GREEN(" LAX "),
-              tmp.decl->name->str);
+              ((AstDecl *)tmp.decl)->name->str);
     }
   }
 }
@@ -133,12 +151,17 @@ void
 post_expr_ref(Context *cnt, AstExprRef *ref)
 {
   assert(cnt->curr_dependent);
-  assert(ref->ref && ast_is(ref->ref, AST_DECL));
+  assert(ref->ref);
 
-  AstDecl *dep = (AstDecl *)ref->ref;
-  if (!(dep->flags & FLAG_EXTERN) && dep->kind == DECL_KIND_FIELD && dep->in_gscope) {
-    ast_add_dep_uq(cnt->curr_dependent, dep, DEP_LAX);
-  }
+  if (ref->ref->kind != AST_DECL)
+    return;
+
+  AstDecl *decl = &ref->ref->decl;
+  if (decl->kind != AST_DECL_ENTITY) return;
+
+    if (!(decl->entity.flags & FLAG_EXTERN) && decl->entity.kind == DECL_ENTITY_FIELD && decl->entity.in_gscope) {
+      ast_add_dep_uq(cnt->curr_dependent, &decl->entity, DEP_LAX);
+    }
 }
 
 void
@@ -158,7 +181,7 @@ void
 post_node(Context *cnt, Ast *node)
 {
   if (!node) return;
-  switch (ast_kind(node)) {
+  switch (node->kind) {
 
   case AST_UBLOCK:
     post_ublock(cnt, (AstUBlock *)node);
@@ -181,9 +204,6 @@ post_node(Context *cnt, Ast *node)
   case AST_STMT_LOOP:
   case AST_STMT_BREAK:
   case AST_STMT_CONTINUE:
-  case AST_MEMBER:
-  case AST_ARG:
-  case AST_VARIANT:
   case AST_TYPE:
   case AST_COUNT:
     break;
@@ -196,7 +216,7 @@ void
 post_expr(Context *cnt, AstExpr *expr)
 {
   if (!expr) return;
-  switch (ast_expr_kind(expr)) {
+  switch (expr->kind) {
 
   case AST_EXPR_REF:
     post_expr_ref(cnt, (AstExprRef *)expr);
@@ -239,7 +259,7 @@ post_run(Builder *builder, Assembly *assembly)
       .assembly       = assembly,
       .unit           = NULL,
       .curr_dependent = NULL,
-      .verbose        = builder->flags & BUILDER_VERBOSE,
+      .verbose        = (bool) (builder->flags & BUILDER_VERBOSE),
   };
 
   Unit *unit;

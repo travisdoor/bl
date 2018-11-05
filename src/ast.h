@@ -49,10 +49,12 @@ typedef struct AstStmtIf       AstStmtIf;
 typedef struct AstStmtLoop     AstStmtLoop;
 typedef struct AstStmtBreak    AstStmtBreak;
 typedef struct AstStmtContinue AstStmtContinue;
-typedef struct AstDecl         AstDecl;
-typedef struct AstMember       AstMember;
-typedef struct AstArg          AstArg;
-typedef struct AstVariant      AstVariant;
+
+typedef struct AstDecl        AstDecl;
+typedef struct AstDeclEntity  AstDeclEntity;
+typedef struct AstDeclMember  AstDeclMember;
+typedef struct AstDeclArg     AstDeclArg;
+typedef struct AstDeclVariant AstDeclVariant;
 
 typedef struct AstExprLitFn     AstExprLitFn;
 typedef struct AstExprLitInt    AstExprLitInt;
@@ -104,9 +106,6 @@ typedef enum
   AST_STMT_BREAK,
   AST_STMT_CONTINUE,
   AST_DECL,
-  AST_MEMBER,
-  AST_ARG,
-  AST_VARIANT,
   AST_TYPE,
   AST_EXPR,
   AST_COUNT
@@ -152,12 +151,21 @@ typedef enum
 
 typedef enum
 {
-  DECL_KIND_INVALID = 0,
-  DECL_KIND_FIELD   = 1, /* a := 0; */
-  DECL_KIND_TYPE    = 2, /* Type : struct { s32 }; */
-  DECL_KIND_FN      = 3, /* main : fn () s32 {}; */
-  DECL_KIND_ENUM    = 4, /* Enum : enum s8 {}; */
-} DeclKind;
+  AST_DECL_BAD,
+  AST_DECL_ENTITY,
+  AST_DECL_MEMBER,
+  AST_DECL_ARG,
+  AST_DECL_VARIANT,
+} AstDeclKind;
+
+typedef enum
+{
+  DECL_ENTITY_INVALID = 0,
+  DECL_ENTITY_FIELD   = 1, /* a := 0; */
+  DECL_ENTITY_TYPE    = 2, /* Type : struct { s32 }; */
+  DECL_ENTITY_FN      = 3, /* main : fn () s32 {}; */
+  DECL_ENTITY_ENUM    = 4, /* Enum : enum s8 {}; */
+} DeclEntityKind;
 
 typedef enum
 {
@@ -255,7 +263,7 @@ struct AstBlock
 struct AstStmtReturn
 {
   AstExpr *expr;
-  Ast *    fn_decl;
+  AstDecl *fn_decl;
 };
 
 struct AstStmtIf
@@ -283,43 +291,36 @@ struct AstStmtContinue
   void *_;
 };
 
-struct AstDecl
+struct AstDeclEntity
 {
-  AstType * type;
-  DeclKind  kind;
-  AstIdent *name;
-  AstExpr * value;
+  DeclEntityKind kind;
+  AstExpr *      value;
+  int            flags;
+  int            used;
+  bool           in_gscope;
   bool mutable;
-  int         flags;
-  int         used;
-  bool        in_gscope;
   BHashTable *deps;
 };
 
-struct AstMember
+struct AstDeclMember
 {
-  AstType * type;
-  AstIdent *name;
-  int       order;
+  int order;
 };
 
-struct AstArg
+struct AstDeclArg
 {
-  AstType * type;
-  AstIdent *name;
+  void *_;
+};
+
+struct AstDeclVariant
+{
+  AstExpr *value;
 };
 
 struct AstTypeType
 {
   const char *name;
   AstType *   spec;
-};
-
-struct AstVariant
-{
-  AstType * type;
-  AstIdent *name;
-  AstExpr * value;
 };
 
 struct AstTypeVoid
@@ -475,6 +476,21 @@ struct AstExprNull
   void *_;
 };
 
+struct AstDecl
+{
+  union
+  {
+    AstDeclEntity  entity;
+    AstDeclArg     arg;
+    AstDeclMember  member;
+    AstDeclVariant variant;
+  };
+
+  AstDeclKind kind;
+  AstType *   type;
+  AstIdent *  name;
+};
+
 struct AstType
 {
   union
@@ -537,9 +553,6 @@ struct Ast
     AstStmtBreak    stmt_break;
     AstStmtContinue stmt_continue;
     AstDecl         decl;
-    AstMember       member;
-    AstArg          arg;
-    AstVariant      variant;
     AstType         type;
     AstExpr         expr;
   };
@@ -560,74 +573,34 @@ struct Ast
 
 struct Dependency
 {
-  AstDecl *decl; /* dependent node */
-  DepType  type; /* is dependency strict (ex.: caused by #run directive) */
+  AstDeclEntity *decl; /* dependent node */
+  DepType        type; /* is dependency strict (ex.: caused by #run directive) */
 };
 
 void
 ast_arena_init(struct Arena *arena);
 
-static inline AstKind
-ast_kind(Ast *n)
-{
-  return n->kind;
-}
-
-static inline AstTypeKind
-ast_type_kind(AstType *t)
-{
-  return t->kind;
-}
-
-static inline AstExprKind
-ast_expr_kind(AstExpr *e)
-{
-  return e->kind;
-}
-
-static inline bool
-ast_is(Ast *n, AstKind c)
-{
-  return ast_kind(n) == c;
-}
-
-static inline bool
-ast_is_not(Ast *n, AstKind c)
-{
-  return ast_kind(n) != c;
-}
-
-static inline bool
-ast_is_type(Ast *t)
-{
-  return t->kind == AST_TYPE;
-}
-
 static inline AstType *
 ast_get_type(AstExpr *expr)
 {
-  assert(ast_is((Ast *)expr, AST_EXPR));
   return expr->type;
 }
 
 static inline void
 ast_set_type(AstExpr *expr, AstType *type)
 {
-  assert(ast_is((Ast *)expr, AST_EXPR));
   expr->type = type;
 }
 
 static inline AdrMode
 ast_get_adrmode(AstExpr *expr)
 {
-  assert(ast_is((Ast *)expr, AST_EXPR));
   return expr->adr_mode;
 }
 
 static inline void
 ast_set_adrmode(AstExpr *expr, AdrMode am)
 {
-  assert(ast_is((Ast *)expr, AST_EXPR));
   expr->adr_mode = am;
 }
 
@@ -638,6 +611,7 @@ ast_binop_is_assign(BinopKind op)
 }
 
 #define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
+#define ast_create_decl(arena, c, tok, t) (t) _ast_create_decl((arena), (c), (tok));
 #define ast_create_type(arena, c, tok, t) (t) _ast_create_type((arena), (c), (tok));
 #define ast_create_expr(arena, c, tok, t) (t) _ast_create_expr((arena), (c), (tok));
 
@@ -650,8 +624,11 @@ _ast_create_type(struct Arena *arena, AstTypeKind c, Token *tok);
 AstExpr *
 _ast_create_expr(struct Arena *arena, AstExprKind c, Token *tok);
 
+AstDecl *
+_ast_create_decl(struct Arena *arena, AstDeclKind c, Token *tok);
+
 Dependency *
-ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type);
+ast_add_dep_uq(AstDeclEntity *decl, AstDeclEntity *dep, int type);
 
 const char *
 ast_get_name(Ast *n);

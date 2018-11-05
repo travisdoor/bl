@@ -34,7 +34,7 @@
 #include <assert.h>
 
 struct Src;
-struct Ast;
+struct AstDecl;
 struct AstIdent;
 struct Arena;
 
@@ -51,9 +51,9 @@ Scope *
 scope_create(struct Arena *arena, Scope *parent, size_t size);
 
 void
-scope_insert(Scope *scope, uint64_t key, struct Ast *decl);
+scope_insert(Scope *scope, uint64_t key, struct AstDecl *decl);
 
-struct Ast *
+struct AstDecl *
 scope_lookup(Scope *scope, struct AstIdent *ident, bool in_tree);
 
 #endif

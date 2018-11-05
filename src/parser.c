@@ -64,8 +64,8 @@
 /* swap current compound with _cmp and create temporary variable with previous one */
 
 #define push_curr_decl(_cnt, _decl)                                                                \
-  Ast *const _prev_decl = (_cnt)->curr_decl;                                                       \
-  (_cnt)->curr_decl     = (_decl);
+  AstDecl *const _prev_decl = (_cnt)->curr_decl;                                                   \
+  (_cnt)->curr_decl         = (_decl);
 
 #define pop_curr_decl(_cnt) (_cnt)->curr_decl = _prev_decl;
 
@@ -91,10 +91,10 @@ typedef struct
   Tokens *  tokens;
 
   /* tmps */
-  Scope *scope;
-  Ast *  curr_decl;
-  bool   inside_loop;
-  bool   core_loaded;
+  Scope *  scope;
+  AstDecl *curr_decl;
+  bool     inside_loop;
+  bool     core_loaded;
 } Context;
 
 /* helpers */
@@ -142,7 +142,7 @@ static Ast *
 parse_decl_arg(Context *cnt, bool type_only);
 
 static Ast *
-parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev);
+parse_decl_variant(Context *cnt, AstType *base_type, AstDeclVariant *prev);
 
 static AstType *
 parse_type(Context *cnt);
@@ -386,10 +386,10 @@ parse_decl_member(Context *cnt, bool type_only, int order)
   }
 
   if (!type && !name) return NULL;
-  AstMember *_mem = ast_create_node(cnt->ast_arena, AST_MEMBER, tok_begin, AstMember *);
-  _mem->type      = type;
-  _mem->name      = name;
-  _mem->order     = -1;
+  AstDecl *_mem      = ast_create_decl(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, AstDecl *);
+  _mem->type         = type;
+  _mem->name         = name;
+  _mem->member.order = -1;
 
   return (Ast *)_mem;
 }
@@ -409,45 +409,44 @@ parse_decl_arg(Context *cnt, bool type_only)
   }
 
   if (!type && !name) return NULL;
-  AstArg *_arg = ast_create_node(cnt->ast_arena, AST_ARG, tok_begin, AstArg *);
-  _arg->type   = type;
-  _arg->name   = name;
+  AstDecl *_arg = ast_create_decl(cnt->ast_arena, AST_DECL_ARG, tok_begin, AstDecl *);
+  _arg->type    = type;
+  _arg->name    = name;
 
   return (Ast *)_arg;
 }
 
 Ast *
-parse_decl_variant(Context *cnt, AstType *base_type, Ast *prev)
+parse_decl_variant(Context *cnt, AstType *base_type, AstDeclVariant *prev)
 {
   Token *   tok_begin = tokens_peek(cnt->tokens);
   AstIdent *name      = parse_ident(cnt);
   if (!name) return NULL;
 
-  AstVariant *_var = ast_create_node(cnt->ast_arena, AST_VARIANT, tok_begin, AstVariant *);
+  AstDecl *_var = ast_create_decl(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, AstDecl *);
 
   Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
   if (tok_assign) {
-    _var->value = parse_expr(cnt);
-    if (!_var->value) bl_abort("expected enum variant value");
+    _var->variant.value = parse_expr(cnt);
+    if (!_var->variant.value) bl_abort("expected enum variant value");
   } else if (prev) {
-    assert(ast_is(prev, AST_VARIANT));
     AstExprLitInt *_addition =
         ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExprLitInt *);
     _addition->i = 1;
 
     AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, NULL, AstExprBinop *);
     _binop->kind         = BINOP_ADD;
-    _binop->lhs          = ((AstVariant *)prev)->value;
+    _binop->lhs          = prev->value;
     _binop->rhs          = (AstExpr *)_addition;
 
-    _var->value = (AstExpr *)_binop;
+    _var->variant.value = (AstExpr *)_binop;
   } else {
     /* first variant is allways 0 */
-    _var->value = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExpr *);
-    ((AstExprLitInt *)_var->value)->i = 0;
+    _var->variant.value = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExpr *);
+    ((AstExprLitInt *)_var->variant.value)->i = 0;
   }
 
-  assert(_var->value);
+  assert(_var->variant.value);
   return (Ast *)_var;
 }
 
@@ -880,7 +879,7 @@ parse_type_enum(Context *cnt)
   Ast * prev_variant = NULL;
 
 next:
-  *variant = parse_decl_variant(cnt, _enm->type, prev_variant);
+  *variant = parse_decl_variant(cnt, _enm->type, &prev_variant->decl.variant);
   if (*variant) {
     prev_variant = *variant;
     variant      = &(*variant)->next;
@@ -1053,14 +1052,14 @@ _parse_expr(Context *cnt, AstExpr *lhs, int min_precedence)
 
     if (token_is(op, SYM_LBRACKET)) {
       assert(rhs->kind == AST_EXPR_ELEM);
-      ((AstExprElem *)rhs)->next = lhs;
-      lhs                        = rhs;
+      rhs->elem.next = lhs;
+      lhs            = rhs;
     } else if (token_is(op, SYM_DOT)) {
       if (rhs->kind == AST_EXPR_CALL) {
         /* rhs is call 'foo.pointer_to_some_fn()' */
         /* in this case we create new member access expression node and use it instead of call
          * expression, finally we put this new node into call reference */
-        AstExprCall *  _call = (AstExprCall *)rhs;
+        AstExprCall *  _call = &rhs->call;
         AstExprMember *_mem = ast_create_expr(cnt->ast_arena, AST_EXPR_MEMBER, op, AstExprMember *);
 
         _mem->i    = -1;
@@ -1072,8 +1071,8 @@ _parse_expr(Context *cnt, AstExpr *lhs, int min_precedence)
         lhs        = rhs;
       } else {
         assert(rhs->kind == AST_EXPR_MEMBER);
-        ((AstExprMember *)rhs)->next = lhs;
-        lhs                          = rhs;
+        rhs->member.next = lhs;
+        lhs              = rhs;
       }
     } else if (token_is_binop(op)) {
       AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, op, AstExprBinop *);
@@ -1338,23 +1337,23 @@ parse_decl(Context *cnt)
   AstIdent *ident = parse_ident(cnt);
   if (!ident) return NULL;
 
-  AstDecl *_decl = ast_create_node(cnt->ast_arena, AST_DECL, tok_ident, AstDecl *);
-  _decl->name    = ident;
-  _decl->mutable = true;
+  AstDecl *_decl        = ast_create_decl(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, AstDecl *);
+  _decl->name           = ident;
+  _decl->entity.mutable = true;
 
-  push_curr_decl(cnt, (Ast *)_decl);
+  push_curr_decl(cnt, _decl);
 
   _decl->type       = parse_type(cnt);
   Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_MDECL);
   if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_IMMDECL);
 
   if (tok_assign) {
-    _decl->value   = parse_expr(cnt);
-    _decl->mutable = token_is(tok_assign, SYM_MDECL);
-    _decl->flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_COMPILER);
+    _decl->entity.value   = parse_expr(cnt);
+    _decl->entity.mutable = token_is(tok_assign, SYM_MDECL);
+    _decl->entity.flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_COMPILER);
 
-    if (!(_decl->flags & (FLAG_EXTERN | FLAG_COMPILER))) {
-      if (!_decl->value) {
+    if (!(_decl->entity.flags & (FLAG_EXTERN | FLAG_COMPILER))) {
+      if (!_decl->entity.value) {
         parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
                     "expected binding of declaration to some value");
         RETURN_BAD;
@@ -1579,7 +1578,7 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
-    if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
+    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1595,19 +1594,19 @@ next:
   }
 
   if ((*node = parse_stmt_break(cnt))) {
-    if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
+    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
-    if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
+    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_decl(cnt))) {
-    if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
+    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1618,7 +1617,7 @@ next:
   }
 
   if ((*node = (Ast *)parse_expr(cnt))) {
-    if (!ast_is(*node, AST_BAD)) parse_semicolon_rq(cnt);
+    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1654,10 +1653,10 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_decl(cnt))) {
-    if (ast_is_not(*node, AST_BAD)) {
+    if ((*node) != AST_BAD) {
       parse_semicolon_rq(cnt);
       /* setup global scope flag for declaration */
-      (*node)->decl.in_gscope = true;
+      (*node)->decl.entity.in_gscope = true;
     }
     insert_node(&node);
     goto next;

@@ -32,14 +32,9 @@
 #define ARENA_CHUNK_COUNT 256
 
 static void
-node_dtor(Ast *node)
-{
-  switch (node->kind) {
-  case AST_DECL:
-    bo_unref(((AstDecl *)node)->deps);
-    break;
-  default:
-    break;
+node_dtor(Ast *node) {
+  if (node->kind == AST_DECL && node->decl.kind == AST_DECL_ENTITY) {
+    bo_unref(node->decl.entity.deps);
   }
 }
 
@@ -74,6 +69,14 @@ _ast_create_expr(struct Arena *arena, AstExprKind c, Token *tok)
   return expr;
 }
 
+AstDecl *
+_ast_create_decl(struct Arena *arena, AstDeclKind c, Token *tok)
+{
+  AstDecl *decl = (AstDecl *)_ast_create_node(arena, AST_DECL, tok);
+  decl->kind    = c;
+  return decl;
+}
+
 /* public */
 void
 ast_arena_init(struct Arena *arena)
@@ -82,7 +85,7 @@ ast_arena_init(struct Arena *arena)
 }
 
 Dependency *
-ast_add_dep_uq(AstDecl *decl, AstDecl *dep, int type)
+ast_add_dep_uq(AstDeclEntity *decl, AstDeclEntity *dep, int type)
 {
   assert(dep && "invalid dep");
   BHashTable **deps = &decl->deps;
@@ -102,7 +105,7 @@ const char *
 ast_get_name(Ast *n)
 {
   assert(n);
-  switch (ast_kind(n)) {
+  switch (n->kind) {
   case AST_BAD:
     return "Bad";
   case AST_LOAD:
@@ -125,17 +128,24 @@ ast_get_name(Ast *n)
     return "StmtBreak";
   case AST_STMT_CONTINUE:
     return "StmtContinue";
-  case AST_DECL:
-    return "Decl";
-  case AST_MEMBER:
-    return "Member";
-  case AST_ARG:
-    return "Arg";
-  case AST_VARIANT:
-    return "Variant";
+
+  case AST_DECL: {
+    switch (n->decl.kind) {
+    case AST_DECL_BAD:
+      return "DeclBad";
+    case AST_DECL_ENTITY:
+      return "DeclEntity";
+    case AST_DECL_MEMBER:
+      return "DeclMember";
+    case AST_DECL_ARG:
+      return "DeclArg";
+    case AST_DECL_VARIANT:
+      return "DeclVariant";
+    }
+  }
 
   case AST_TYPE: {
-    switch (ast_type_kind(&n->type)) {
+    switch (n->type.kind) {
     case AST_TYPE_BAD:
       return "TypeBad";
     case AST_TYPE_TYPE:
@@ -162,7 +172,7 @@ ast_get_name(Ast *n)
   }
 
   case AST_EXPR: {
-    switch (ast_expr_kind(&n->expr)) {
+    switch (n->expr.kind) {
     case AST_EXPR_BAD:
       return "ExprBad";
     case AST_EXPR_TYPE:
@@ -224,9 +234,9 @@ _type_to_str(char *buf, size_t len, AstType *type)
     return;
   }
 
-  assert(ast_is_type((Ast *)type));
+  assert(((Ast *)type)->kind == AST_TYPE);
 
-  switch (ast_type_kind(type)) {
+  switch (type->kind) {
   case AST_TYPE_BAD:
     append_buf(buf, len, "BAD");
     break;
@@ -246,7 +256,7 @@ _type_to_str(char *buf, size_t len, AstType *type)
 
     append_buf(buf, len, "fn (");
     while (arg) {
-      _type_to_str(buf, len, arg->arg.type);
+      _type_to_str(buf, len, arg->decl.type);
       arg = arg->next;
       if (arg) append_buf(buf, len, ", ");
     }
@@ -270,7 +280,7 @@ _type_to_str(char *buf, size_t len, AstType *type)
 
     append_buf(buf, len, "{");
     while (mem) {
-      _type_to_str(buf, len, mem->member.type);
+      _type_to_str(buf, len, mem->decl.type);
       mem = mem->next;
       if (mem) append_buf(buf, len, ", ");
     }

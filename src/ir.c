@@ -69,7 +69,7 @@ typedef struct
 
 /* Generate declaration in global scope */
 static inline bool
-generated(Context *cnt, AstDecl *decl)
+generated(Context *cnt, AstDeclEntity *decl)
 {
   return bo_htbl_has_key(cnt->llvm_modules, (uint64_t)decl);
 }
@@ -114,25 +114,25 @@ print_llvm_module(LLVMModuleRef module);
 #endif
 
 static LLVMValueRef
-fn_get(Context *cnt, AstDecl *fn);
+fn_get(Context *cnt, AstDeclEntity *fn);
 
 static LLVMValueRef
-global_get(Context *cnt, AstDecl *global);
+global_get(Context *cnt, AstDeclEntity *global);
 
 static LLVMTypeRef
 to_llvm_type(Context *cnt, AstType *type);
 
 static LLVMModuleRef
-link(Context *cnt, AstDecl *entry);
+link(Context *cnt, AstDeclEntity *entry);
 
 /* resursive version */
 static LLVMModuleRef
-_link(Context *cnt, AstDecl *entry);
+_link(Context *cnt, AstDeclEntity *entry);
 
 /* check if declaration has all it's dependencies already generated in LLVM Modules, by
  * 'strict_only' tag we can check onlu strict dependencies caused by '#run' directive */
 static bool
-is_satisfied(Context *cnt, AstDecl *decl, bool strict_only);
+is_satisfied(Context *cnt, AstDeclEntity *decl, bool strict_only);
 
 static void
 ir_node(Context *cnt, Ast *node);
@@ -144,10 +144,13 @@ static void
 ir_decl(Context *cnt, AstDecl *decl);
 
 static void
-ir_decl_fn(Context *cnt, AstDecl *decl_fn);
+ir_decl_entity(Context *cnt, AstDeclEntity *entity);
 
 static void
-ir_decl_field(Context *cnt, AstDecl *decl_field);
+ir_decl_fn(Context *cnt, AstDeclEntity *decl_fn);
+
+static void
+ir_decl_field(Context *cnt, AstDeclEntity *decl_field);
 
 static LLVMValueRef
 ir_expr(Context *cnt, AstExpr *expr);
@@ -221,14 +224,12 @@ to_llvm_type(Context *cnt, AstType *type)
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * type->fn.argc);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
-    Ast *    tmp;
-    AstArg * arg;
+    Ast *    arg;
     unsigned i = 0;
-    node_foreach(type->fn.args, tmp)
+    node_foreach(type->fn.args, arg)
     {
-      assert(tmp->kind == AST_ARG);
-      arg                 = (AstArg *)tmp;
-      llvm_arg_types[i++] = to_llvm_type(cnt, arg->type);
+      assert(arg->kind == AST_DECL);
+      llvm_arg_types[i++] = to_llvm_type(cnt, arg->decl.type);
     }
 
     result = LLVMFunctionType(llvm_ret_type, llvm_arg_types, i, false);
@@ -246,14 +247,15 @@ to_llvm_type(Context *cnt, AstType *type)
 }
 
 LLVMValueRef
-fn_get(Context *cnt, AstDecl *fn)
+fn_get(Context *cnt, AstDeclEntity *fn)
 {
-  const char *fn_name = fn->name->str;
+  AstDecl *   base    = (AstDecl *)fn;
+  const char *fn_name = base->name->str;
   assert(fn_name);
 
   LLVMValueRef result = LLVMGetNamedFunction(cnt->llvm_module, fn_name);
   if (!result) {
-    LLVMTypeRef llvm_type = to_llvm_type(cnt, fn->type);
+    LLVMTypeRef llvm_type = to_llvm_type(cnt, base->type);
 
     result = LLVMAddFunction(cnt->llvm_module, fn_name, llvm_type);
   }
@@ -263,15 +265,16 @@ fn_get(Context *cnt, AstDecl *fn)
 }
 
 LLVMValueRef
-global_get(Context *cnt, AstDecl *global)
+global_get(Context *cnt, AstDeclEntity *global)
 {
-  const char *g_name = global->name->str;
+  AstDecl *   base   = (AstDecl *)global;
+  const char *g_name = base->name->str;
   assert(g_name);
 
   LLVMValueRef result = LLVMGetNamedGlobal(cnt->llvm_module, g_name);
   if (!result) {
-    assert(global->type);
-    LLVMTypeRef llvm_type = to_llvm_type(cnt, global->type);
+    assert(base->type);
+    LLVMTypeRef llvm_type = to_llvm_type(cnt, base->type);
     result                = LLVMAddGlobal(cnt->llvm_module, llvm_type, g_name);
   }
 
@@ -280,7 +283,7 @@ global_get(Context *cnt, AstDecl *global)
 }
 
 LLVMModuleRef
-link(Context *cnt, AstDecl *entry)
+link(Context *cnt, AstDeclEntity *entry)
 {
   if (!entry) return NULL;
   LLVMModuleRef dest_module = _link(cnt, entry);
@@ -288,7 +291,7 @@ link(Context *cnt, AstDecl *entry)
 }
 
 LLVMModuleRef
-_link(Context *cnt, AstDecl *entry)
+_link(Context *cnt, AstDeclEntity *entry)
 {
   if (!bo_htbl_has_key(cnt->llvm_modules, (uint64_t)entry)) return NULL;
 
@@ -322,7 +325,7 @@ void
 ir_node(Context *cnt, Ast *node)
 {
   assert(node);
-  switch (ast_kind(node)) {
+  switch (node->kind) {
   case AST_DECL:
     ir_decl(cnt, (AstDecl *)node);
     break;
@@ -342,11 +345,23 @@ void
 ir_decl(Context *cnt, AstDecl *decl)
 {
   switch (decl->kind) {
-  case DECL_KIND_FN:
-    ir_decl_fn(cnt, decl);
+  case AST_DECL_ENTITY:
+    ir_decl_entity(cnt, &decl->entity);
     break;
-  case DECL_KIND_FIELD:
-    ir_decl_field(cnt, decl);
+  default:
+    bl_abort("invalid declaration");
+  }
+}
+
+void
+ir_decl_entity(Context *cnt, AstDeclEntity *entity)
+{
+  switch (entity->kind) {
+  case DECL_ENTITY_FN:
+    ir_decl_fn(cnt, entity);
+    break;
+  case DECL_ENTITY_FIELD:
+    ir_decl_field(cnt, entity);
     break;
   default:
     bl_abort("invalid declaration");
@@ -363,12 +378,14 @@ ir_block(Context *cnt, AstBlock *block)
 
 /* DECLARATIONS */
 void
-ir_decl_fn(Context *cnt, AstDecl *decl_fn)
+ir_decl_fn(Context *cnt, AstDeclEntity *decl_fn)
 {
   /* local functions will be generated in separate module */
   if (!decl_fn->in_gscope) return;
   assert(decl_fn->value);
-  assert(decl_fn->type);
+  assert(((AstDecl *)decl_fn)->type);
+
+  AstDecl *base = (AstDecl *)decl_fn;
 
   LLVMValueRef result = fn_get(cnt, decl_fn);
 
@@ -379,21 +396,21 @@ ir_decl_fn(Context *cnt, AstDecl *decl_fn)
 
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
 
-    assert(decl_fn->type->kind == AST_TYPE_FN);
-    AstTypeFn *type_fn = (AstTypeFn *)decl_fn->type;
+    assert(base->type->kind == AST_TYPE_FN);
+    AstTypeFn *type_fn = (AstTypeFn *)base->type;
 
     /*
      * Create named references to function parameters so they
      * can be called by name in function body.
      */
 
-    Ast *   tmp;
-    AstArg *arg;
-    int     i = 0;
+    Ast *    tmp;
+    AstDecl *arg;
+    int      i = 0;
     node_foreach(type_fn->args, tmp)
     {
-      assert(tmp->kind == AST_ARG);
-      arg                = (AstArg *)tmp;
+      assert(tmp->kind == AST_DECL);
+      arg                = &tmp->decl;
       const char * name  = arg->name->str;
       LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
       LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
@@ -449,11 +466,13 @@ ir_decl_fn(Context *cnt, AstDecl *decl_fn)
 }
 
 void
-ir_decl_field(Context *cnt, AstDecl *decl_field)
+ir_decl_field(Context *cnt, AstDeclEntity *decl_field)
 {
   LLVMValueRef result = NULL;
-  assert(decl_field->type && decl_field->name);
-  LLVMTypeRef llvm_type = to_llvm_type(cnt, decl_field->type);
+  assert(((AstDecl *)decl_field)->type && ((AstDecl *)decl_field)->name);
+
+  AstDecl *   base      = (AstDecl *)decl_field;
+  LLVMTypeRef llvm_type = to_llvm_type(cnt, base->type);
 
   if (decl_field->in_gscope) {
     /* declaration in global scope */
@@ -465,7 +484,7 @@ ir_decl_field(Context *cnt, AstDecl *decl_field)
   } else {
     LLVMBasicBlockRef prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, cnt->fn_init_block);
-    result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(decl_field->name->str));
+    result = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, gname(((AstDecl *)decl_field)->name->str));
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_block);
 
     llvm_values_insert(cnt, (Ast *)decl_field, result);
@@ -507,10 +526,9 @@ LLVMValueRef
 ir_expr_ref(Context *cnt, AstExprRef *ref)
 {
   assert(ref->ref);
-
   LLVMValueRef result = llvm_values_get(cnt, ref->ref);
-  assert(result);
 
+  assert(result);
   return result;
 }
 
@@ -742,7 +760,7 @@ ir_expr_binop(Context *cnt, AstExprBinop *binop)
 }
 
 bool
-is_satisfied(Context *cnt, AstDecl *decl, bool strict_only)
+is_satisfied(Context *cnt, AstDeclEntity *decl, bool strict_only)
 {
   assert(decl);
   BHashTable *deps = decl->deps;
@@ -776,11 +794,12 @@ generate(Context *cnt)
 
   while (!bo_list_empty(queue)) {
     decl = bo_list_front(queue, AstDecl *);
+    assert(decl->kind == AST_DECL_ENTITY);
     bo_list_pop_front(queue);
 
-    assert(decl->flags == 0 && "invalid flags");
+    assert(decl->entity.flags == 0 && "invalid flags");
 
-    if (is_satisfied(cnt, decl, true)) {
+    if (is_satisfied(cnt, &decl->entity, true)) {
       if (cnt->verbose) msg_log(LOG_TAG ": generate: '%s'", decl->name->str);
 
       /* prepare llvm module for currently generated declaration */
@@ -813,7 +832,7 @@ ir_run(Builder *builder, Assembly *assembly)
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
 
-  cnt.verbose      = builder->flags & BUILDER_VERBOSE;
+  cnt.verbose      = (bool) (builder->flags & BUILDER_VERBOSE);
   cnt.builder      = builder;
   cnt.llvm_cnt     = LLVMContextCreate();
   cnt.llvm_builder = LLVMCreateBuilderInContext(cnt.llvm_cnt);
@@ -829,7 +848,9 @@ ir_run(Builder *builder, Assembly *assembly)
     assembly->llvm_module = link(&cnt, assembly->entry_node);
     bo_htbl_erase_key(cnt.llvm_modules, (uint64_t)assembly->entry_node);
 
+#if BL_DEBUG
     if (cnt.verbose) print_llvm_module(assembly->llvm_module);
+#endif
   }
 
   /* cleanup */

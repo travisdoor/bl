@@ -74,7 +74,7 @@ typedef struct
 } Flatten;
 
 void
-provide(Context *cnt, AstIdent *name, Ast *decl);
+provide(Context *cnt, AstIdent *name, AstDecl *decl);
 
 static inline void
 waiting_push(BHashTable *waiting, Flatten *flatten);
@@ -96,6 +96,9 @@ flatten_push(Flatten *flatten, Ast **node);
 
 static void
 flatten_node(Context *cnt, Flatten *fbuf, Ast **node);
+
+static void
+flatten_decl(Context *cnt, Flatten *fbuf, AstDecl **decl);
 
 static void
 flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr);
@@ -136,7 +139,10 @@ static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
 
 static AstIdent *
-check_arg(Context *cnt, AstArg **arg);
+check_decl_entity(Context *cnt, AstDecl **decl);
+
+static AstIdent *
+check_arg(Context *cnt, AstDecl **arg);
 
 static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
@@ -154,18 +160,18 @@ static AstIdent *
 check_expr_call(Context *cnt, AstExprCall **call);
 
 void
-provide(Context *cnt, AstIdent *name, Ast *decl)
+provide(Context *cnt, AstIdent *name, AstDecl *decl)
 {
   Scope *scope = name->scope;
   assert(scope);
 
-  Ast *conflict = scope_lookup(scope, name, true);
+  AstDecl *conflict = scope_lookup(scope, name, true);
   if (conflict) {
     /* symbol collision !!! */
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ((Ast *)name)->src,
                 BUILDER_CUR_WORD, "symbol with same name is already declared");
 
-    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, conflict->src, BUILDER_CUR_WORD,
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, ((Ast *)conflict)->src, BUILDER_CUR_WORD,
                 "previous declaration found here");
   } else {
     scope_insert(scope, name->hash, decl);
@@ -316,35 +322,9 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 {
   if (!*node) return;
 
-  switch (ast_kind(*node)) {
+  switch ((*node)->kind) {
   case AST_DECL: {
-    AstDecl *_decl = (AstDecl *)(*node);
-    /* store declaration for temporary use here, this scope is used only for searching truly
-     * undefined symbols later */
-    /*if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
-      scope_insert(cnt->provided_in_gscope, _decl->name, *node);*/
-
-    flatten(&_decl->type);
-    flatten(&_decl->value);
-    break;
-  }
-
-  case AST_MEMBER: {
-    AstMember *_mem = (AstMember *)(*node);
-    flatten(&_mem->type);
-    break;
-  }
-
-  case AST_ARG: {
-    AstArg *_arg = (AstArg *)(*node);
-    flatten(&_arg->type);
-    break;
-  }
-
-  case AST_VARIANT: {
-    AstVariant *_variant = (AstVariant *)(*node);
-    flatten(&_variant->type);
-    flatten(&_variant->value);
+    flatten_decl(cnt, fbuf, (AstDecl **) node);
     break;
   }
 
@@ -412,9 +392,50 @@ flatten_node(Context *cnt, Flatten *fbuf, Ast **node)
 }
 
 void
+flatten_decl(Context *cnt, Flatten *fbuf, AstDecl **decl)
+{
+  switch ((*decl)->kind) {
+  case AST_DECL_ENTITY: {
+    AstDecl *_decl = *decl;
+    /* store declaration for temporary use here, this scope is used only for searching truly
+     * undefined symbols later */
+    /*if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
+      scope_insert(cnt->provided_in_gscope, _decl->name, *node);*/
+
+    flatten(&_decl->type);
+    flatten(&_decl->entity.value);
+    break;
+  }
+
+  case AST_DECL_MEMBER: {
+    AstDecl *_decl = *decl;
+    flatten(&_decl->type);
+    break;
+  }
+
+  case AST_DECL_ARG: {
+    AstDecl *_decl = *decl;
+    flatten(&_decl->type);
+    break;
+  }
+
+  case AST_DECL_VARIANT: {
+    AstDecl *_decl = *decl;
+    flatten(&_decl->type);
+    flatten(&_decl->variant.value);
+    break;
+  }
+
+  default:
+    msg_warning("missing flattening for %s", ast_get_name((Ast *)*decl));
+    break;
+  }
+}
+
+void
 flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
 {
-  switch (ast_expr_kind(*expr)) {
+  switch ((*expr)->kind) {
 
   case AST_EXPR_LIT_FN: {
     AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
@@ -451,7 +472,7 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
 void
 flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
 {
-  switch (ast_type_kind(*type)) {
+  switch ((*type)->kind) {
   case AST_TYPE_FN: {
     AstTypeFn *_fn = (AstTypeFn *)(*type);
     Ast **     arg;
@@ -482,14 +503,10 @@ check_node(Context *cnt, Ast **node)
     bl_msg_warning("unnecessary node check %s (%d)", node_name(node), node->_serial);
 #endif
 
-  switch (ast_kind(*node)) {
+  switch ((*node)->kind) {
 
   case AST_DECL:
     result = check_decl(cnt, (AstDecl **)node);
-    break;
-
-  case AST_ARG:
-    result = check_arg(cnt, (AstArg **)node);
     break;
 
   case AST_EXPR:
@@ -529,10 +546,30 @@ check_node(Context *cnt, Ast **node)
 }
 
 AstIdent *
+check_decl(Context *cnt, AstDecl **decl)
+{
+  AstIdent *result = NULL;
+  switch ((*decl)->kind) {
+  case AST_DECL_ENTITY:
+    result = check_decl_entity(cnt, decl);
+    break;
+  case AST_DECL_ARG:
+    result = check_arg(cnt, decl);
+    break;
+
+  default:
+    msg_warning("missing checking for %s", ast_get_name((Ast *)*decl));
+    break;
+  }
+
+  return result;
+}
+
+AstIdent *
 check_expr(Context *cnt, AstExpr **expr)
 {
   AstIdent *result = NULL;
-  switch (ast_expr_kind(*expr)) {
+  switch ((*expr)->kind) {
   case AST_EXPR_LIT_INT:
     result = check_expr_lit_int(cnt, (AstExprLitInt **)expr);
     break;
@@ -568,7 +605,7 @@ check_type(Context *cnt, AstType **type)
 {
   AstIdent *result = NULL;
 
-  switch (ast_type_kind(*type)) {
+  switch ((*type)->kind) {
 
   case AST_TYPE_REF:
     result = check_type_ref(cnt, (AstTypeRef **)type);
@@ -593,8 +630,8 @@ cmp_type(AstType *first, AstType *second)
 
   if (first == second) return true;
 
-  AstTypeKind fc = ast_type_kind(first);
-  AstTypeKind sc = ast_type_kind(second);
+  AstTypeKind fc = first->kind;
+  AstTypeKind sc = second->kind;
   if (fc != sc) return false;
 
   switch (fc) {
@@ -612,7 +649,7 @@ cmp_type(AstType *first, AstType *second)
     Ast *argt1 = _f->args;
     Ast *argt2 = _s->args;
     while (argt1 && argt2) {
-      if (!cmp_type(argt1->arg.type, argt2->arg.type)) return false;
+      if (!cmp_type(argt1->decl.type, argt2->decl.type)) return false;
 
       argt1 = argt1->next;
       argt2 = argt2->next;
@@ -694,18 +731,11 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  Ast *tmp = scope_lookup(scope, _ref->ident, true);
-  if (!tmp) wait(_ref->ident);
+  AstDecl *found = scope_lookup(scope, _ref->ident, true);
+  if (!found) wait(_ref->ident);
 
-  if (tmp->kind != AST_DECL) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_ref)->src,
-                BUILDER_CUR_WORD, "expected type");
-    _ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
-    finish();
-  }
-
-  AstDecl *found = (AstDecl *)tmp;
-  found->used++;
+  if (found->kind == AST_DECL_ENTITY)
+    found->entity.used++;
 
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
@@ -723,8 +753,8 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
 static inline bool
 infer_decl_type(Context *cnt, AstDecl *decl)
 {
-  if (!decl->value) return false;
-  AstType *inferred = ast_get_type(decl->value);
+  if (!decl->entity.value) return false;
+  AstType *inferred = ast_get_type(decl->entity.value);
   assert(inferred);
 
   if (inferred->kind == AST_TYPE_TYPE) {
@@ -735,7 +765,7 @@ infer_decl_type(Context *cnt, AstDecl *decl)
   }
 
   if (decl->type && !cmp_type(inferred, decl->type)) {
-    check_error_invalid_types(cnt, decl->type, inferred, (Ast *)decl->value);
+    check_error_invalid_types(cnt, decl->type, inferred, (Ast *)decl->entity.value);
     return false;
   }
 
@@ -746,7 +776,7 @@ infer_decl_type(Context *cnt, AstDecl *decl)
 static bool
 check_buildin_decl(Context *cnt, AstDecl *decl)
 {
-  if (!(decl->flags & FLAG_COMPILER)) return false;
+  if (!(decl->entity.flags & FLAG_COMPILER)) return false;
   AstType *tmp = lookup_buildin_type(cnt, decl->name);
   if (!tmp) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
@@ -754,53 +784,53 @@ check_buildin_decl(Context *cnt, AstDecl *decl)
     return false;
   }
 
-  decl->value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
-  decl->value->type = tmp;
+  decl->entity.value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
+  decl->entity.value->type = tmp;
 
   AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
   type->name        = decl->name->str;
-  type->spec        = decl->value->type;
+  type->spec        = decl->entity.value->type;
   decl->type        = (AstType *)type;
-  decl->kind        = DECL_KIND_TYPE;
+  decl->entity.kind        = DECL_ENTITY_TYPE;
 
-  provide(cnt, decl->name, (Ast *)decl);
+  provide(cnt, decl->name, decl);
   return true;
 }
 
 static inline void
 setup_decl_kind(AstDecl *decl)
 {
-  switch (ast_type_kind(decl->type)) {
+  switch (decl->type->kind) {
   case AST_TYPE_REF:
   case AST_TYPE_BAD:
   case AST_TYPE_VARGS:
-    decl->kind = DECL_KIND_INVALID;
+    decl->entity.kind = DECL_ENTITY_INVALID;
     break;
   case AST_TYPE_TYPE:
-    decl->kind = DECL_KIND_TYPE;
+    decl->entity.kind = DECL_ENTITY_TYPE;
     break;
   case AST_TYPE_FN:
-    decl->kind = DECL_KIND_FN;
+    decl->entity.kind = DECL_ENTITY_FN;
     break;
   case AST_TYPE_ENUM:
-    decl->kind = DECL_KIND_ENUM;
+    decl->entity.kind = DECL_ENTITY_ENUM;
     break;
   case AST_TYPE_INT:
   case AST_TYPE_STRUCT:
   case AST_TYPE_ARR:
   case AST_TYPE_PTR:
-    decl->kind = DECL_KIND_FIELD;
+    decl->entity.kind = DECL_ENTITY_FIELD;
     break;
 
   case AST_TYPE_VOID:
-    decl->kind = DECL_KIND_INVALID;
+    decl->entity.kind = DECL_ENTITY_INVALID;
   }
 }
 
 AstIdent *
-check_decl(Context *cnt, AstDecl **decl)
+check_decl_entity(Context *cnt, AstDecl **decl)
 {
-  AstDecl *_decl = *decl;
+  AstDecl  *_decl = *decl;
   assert(_decl->name);
 
   /* solve buildins */
@@ -822,15 +852,15 @@ check_decl(Context *cnt, AstDecl **decl)
 
     /* check main method */
     if (id == RESERVED_MAIN) {
-      cnt->assembly->entry_node = _decl;
-      _decl->used++;
+      cnt->assembly->entry_node = &_decl->entity;
+      _decl->entity.used++;
 
-      if (_decl->kind != DECL_KIND_FN) {
+      if (_decl->entity.kind != DECL_ENTITY_FN) {
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_decl)->src,
                     BUILDER_CUR_WORD, "'main' is expected to be a function");
       }
 
-      if (_decl->flags != 0) {
+      if (_decl->entity.flags != 0) {
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNEXPECTED_MODIF, ((Ast *)_decl)->src,
                     BUILDER_CUR_WORD, "'main' method declared with invalid flags");
       }
@@ -842,15 +872,15 @@ check_decl(Context *cnt, AstDecl **decl)
   }
 
   /* all globals need explicit initialization value */
-  if (_decl->in_gscope && !_decl->value) {
+  if (_decl->entity.in_gscope && !_decl->entity.value) {
     builder_msg(
         cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_INITIALIZATION, ((Ast *)_decl)->src,
         BUILDER_CUR_WORD,
         "missing initializer, all global declarations must have explicit initialization value");
   }
 
-  switch (_decl->kind) {
-  case DECL_KIND_INVALID: {
+  switch (_decl->entity.kind) {
+  case DECL_ENTITY_INVALID: {
     char tmp[256];
     ast_type_to_str(tmp, 256, _decl->type);
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, ((Ast *)_decl)->src,
@@ -858,33 +888,33 @@ check_decl(Context *cnt, AstDecl **decl)
     break;
   }
 
-  case DECL_KIND_FIELD:
+  case DECL_ENTITY_FIELD:
     break;
-  case DECL_KIND_TYPE:
-    if (_decl->mutable) {
+  case DECL_ENTITY_TYPE:
+    if (_decl->entity.mutable) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
                   BUILDER_CUR_WORD, "type declaration cannot be mutable");
     }
     break;
-  case DECL_KIND_FN:
-    if (_decl->mutable) {
+  case DECL_ENTITY_FN:
+    if (_decl->entity.mutable) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
                   BUILDER_CUR_WORD, "function declaration cannot be mutable");
     }
     break;
-  case DECL_KIND_ENUM:
+  case DECL_ENTITY_ENUM:
     break;
   }
 
-  provide(cnt, _decl->name, (Ast *)_decl);
+  provide(cnt, _decl->name, _decl);
 
   finish();
 }
 
 AstIdent *
-check_arg(Context *cnt, AstArg **arg)
+check_arg(Context *cnt, AstDecl **arg)
 {
-  AstArg *_arg = *arg;
+  AstDecl  *_arg = *arg;
   assert(_arg->name && _arg->type);
 
   {
@@ -902,15 +932,15 @@ check_arg(Context *cnt, AstArg **arg)
   Scope *scope = _arg->name->scope;
   assert(scope);
 
-  Ast *conflict = scope_lookup(scope, _arg->name, false);
+  AstDecl *conflict = scope_lookup(scope, _arg->name, false);
   if (conflict) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ((Ast *)_arg->name)->src,
                 BUILDER_CUR_WORD, "argument with same name is already declared");
 
-    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, conflict->src, BUILDER_CUR_WORD,
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, ((Ast *)conflict)->src, BUILDER_CUR_WORD,
                 "previous declaration found here");
   } else {
-    provide(cnt, _arg->name, (Ast *)_arg);
+    provide(cnt, _arg->name, _arg);
   }
 
   finish();
@@ -942,48 +972,16 @@ check_expr_ref(Context *cnt, AstExprRef **ref)
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  Ast *tmp = scope_lookup(scope, _ref->ident, true);
-  if (!tmp) wait(_ref->ident);
+  AstDecl *found = scope_lookup(scope, _ref->ident, true);
+  if (!found) wait(_ref->ident);
 
-  AstType *found_type = NULL;
-  AdrMode  found_adrm = ADR_MODE_INVALID;
+  ast_set_type((AstExpr *)_ref, found->type);
 
-  switch (tmp->kind) {
-  case AST_DECL: {
-    AstDecl *found = (AstDecl *)tmp;
-    found->used++;
+  if (found->kind == AST_DECL_ENTITY)
+    ast_set_adrmode((AstExpr *)_ref, found->entity.mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT);
 
-    found_type = found->type;
-    found_adrm = found->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
-    break;
-  }
-
-  case AST_ARG: {
-    AstArg *found = (AstArg *)tmp;
-
-    found_type = found->type;
-    found_adrm = ADR_MODE_MUT;
-    break;
-  }
-
-  case AST_MEMBER: {
-    bl_abort("unimplemented");
-  }
-
-  case AST_VARIANT: {
-    bl_abort("unimplemented");
-  }
-
-  default:
-    bl_abort("invalid found entry %s", ast_get_name(tmp));
-  }
-
-  assert(found_type);
-  assert(found_adrm != ADR_MODE_INVALID);
-
-  ast_set_type((AstExpr *)_ref, found_type);
-  ast_set_adrmode((AstExpr *)_ref, found_adrm);
-  _ref->ref = tmp;
+  ast_set_adrmode((AstExpr *)_ref, ADR_MODE_MUT);
+  _ref->ref = (Ast *)found;
 
   finish();
 }
@@ -1053,13 +1051,13 @@ check_expr_call(Context *cnt, AstExprCall **call)
 
   while (call_arg) {
     assert(call_arg->kind == AST_EXPR);
-    assert(callee_arg->kind == AST_ARG);
+    assert(callee_arg->kind == AST_DECL);
 
-    if (!cmp_type(ast_get_type(&call_arg->expr), callee_arg->arg.type)) {
+    if (!cmp_type(ast_get_type(&call_arg->expr), callee_arg->decl.type)) {
       char tmp1[256];
       char tmp2[256];
       ast_type_to_str(tmp1, 256, ast_get_type(&call_arg->expr));
-      ast_type_to_str(tmp2, 256, callee_arg->arg.type);
+      ast_type_to_str(tmp2, 256, callee_arg->decl.type);
 
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, ((Ast *)call_arg)->src,
                   BUILDER_CUR_WORD,
@@ -1101,7 +1099,7 @@ checker_run(Builder *builder, Assembly *assembly)
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .stack              = bo_array_new(sizeof(Ast **)),
       .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
-      .verbose            = builder->flags & BUILDER_VERBOSE,
+      .verbose            = (bool) (builder->flags & BUILDER_VERBOSE),
   };
 
   arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
