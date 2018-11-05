@@ -11,11 +11,11 @@ u64   : #compiler;
 usize : #compiler;
 
 // lax dependency on 'number'
-main : fn (i Int, o s32) {
+main : fn () {
   bar : 20;
   foo := bar;
   foo = 10 + 2 * bar; 
-  add(10, 20);
+  //add(10, 20);
 };
 
 Int : s32;

@@ -31,10 +31,60 @@
 
 #define ARENA_CHUNK_COUNT 256
 
+union _Ast
+{
+  AstLoad          load;
+  AstLink          link;
+  AstIdent         ident;
+  AstUBlock        ublock;
+  AstBlock         block;
+  AstStmtReturn    stmt_return;
+  AstStmtIf        stmt_if;
+  AstStmtLoop      stmt_loop;
+  AstStmtBreak     stmt_break;
+  AstStmtContinue  stmt_continue;
+  AstDecl          decl;
+  AstDeclEntity    decl_entity;
+  AstDeclArg       decl_arg;
+  AstDeclMember    decl_member;
+  AstDeclVariant   decl_variant;
+  AstType          type;
+  AstTypeType      type_type;
+  AstTypeVoid      type_tvoid;
+  AstTypeRef       type_ref;
+  AstTypeInt       type_integer;
+  AstTypeVArgs     type_vargs;
+  AstTypeArr       type_arr;
+  AstTypeFn        type_fn;
+  AstTypeStruct    type_strct;
+  AstTypeEnum      type_enm;
+  AstTypePtr       type_ptr;
+  AstExpr          expr;
+  AstExprLitFn     expr_fn;
+  AstExprLitInt    expr_integer;
+  AstExprLitFloat  expr_real;
+  AstExprLitChar   expr_character;
+  AstExprLitString expr_string;
+  AstExprLitBool   expr_boolean;
+  AstExprLitCmp    expr_cmp;
+  AstExprRef       expr_ref;
+  AstExprCast      expr_cast;
+  AstExprBinop     expr_binop;
+  AstExprCall      expr_call;
+  AstExprMember    expr_member;
+  AstExprElem      expr_elem;
+  AstExprSizeof    expr_szof;
+  AstExprTypeof    expr_tpof;
+  AstExprUnary     expr_unary;
+  AstExprNull      expr_null;
+};
+
 static void
-node_dtor(Ast *node) {
-  if (node->kind == AST_DECL && node->decl.kind == AST_DECL_ENTITY) {
-    bo_unref(node->decl.entity.deps);
+node_dtor(Ast *node)
+{
+  if (node->kind == AST_DECL) {
+    AstDecl *decl = (AstDecl *)node;
+    if (decl->kind == AST_DECL_ENTITY) bo_unref(((AstDeclEntity *)decl)->deps);
   }
 }
 
@@ -81,7 +131,7 @@ _ast_create_decl(struct Arena *arena, AstDeclKind c, Token *tok)
 void
 ast_arena_init(struct Arena *arena)
 {
-  arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
+  arena_init(arena, sizeof(union _Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
 Dependency *
@@ -102,7 +152,7 @@ ast_add_dep_uq(AstDeclEntity *decl, AstDeclEntity *dep, int type)
 }
 
 const char *
-ast_get_name(Ast *n)
+ast_get_name(const Ast *n)
 {
   assert(n);
   switch (n->kind) {
@@ -130,7 +180,7 @@ ast_get_name(Ast *n)
     return "StmtContinue";
 
   case AST_DECL: {
-    switch (n->decl.kind) {
+    switch (((AstDecl *)n)->kind) {
     case AST_DECL_BAD:
       return "DeclBad";
     case AST_DECL_ENTITY:
@@ -145,7 +195,7 @@ ast_get_name(Ast *n)
   }
 
   case AST_TYPE: {
-    switch (n->type.kind) {
+    switch (((AstType *)n)->kind) {
     case AST_TYPE_BAD:
       return "TypeBad";
     case AST_TYPE_TYPE:
@@ -172,7 +222,7 @@ ast_get_name(Ast *n)
   }
 
   case AST_EXPR: {
-    switch (n->expr.kind) {
+    switch (((AstExpr *)n)->kind) {
     case AST_EXPR_BAD:
       return "ExprBad";
     case AST_EXPR_TYPE:
@@ -244,19 +294,20 @@ _type_to_str(char *buf, size_t len, AstType *type)
     append_buf(buf, len, "void");
     break;
   case AST_TYPE_TYPE:
-    append_buf(buf, len, type->type.name);
+    append_buf(buf, len, ((AstTypeType *)type)->name);
     break;
   case AST_TYPE_INT:
-    append_buf(buf, len, type->integer.name);
+    append_buf(buf, len, ((AstTypeInt *)type)->name);
     break;
 
   case AST_TYPE_FN: {
-    AstTypeFn *fn  = &type->fn;
-    Ast *      arg = fn->args;
+    AstTypeFn * fn  = (AstTypeFn *)type;
+    Ast *arg = fn->args;
 
     append_buf(buf, len, "fn (");
     while (arg) {
-      _type_to_str(buf, len, arg->decl.type);
+      assert(arg->kind == AST_DECL);
+      _type_to_str(buf, len, ((AstDecl *)arg)->type);
       arg = arg->next;
       if (arg) append_buf(buf, len, ", ");
     }
@@ -271,16 +322,17 @@ _type_to_str(char *buf, size_t len, AstType *type)
   }
 
   case AST_TYPE_REF:
-    _type_to_str(buf, len, type->ref.type);
+    _type_to_str(buf, len, ((AstTypeRef *)type)->type);
     break;
 
   case AST_TYPE_STRUCT: {
-    AstTypeStruct *strct = &type->strct;
+    AstTypeStruct *strct = (AstTypeStruct *)type;
     Ast *          mem   = strct->members;
 
     append_buf(buf, len, "{");
     while (mem) {
-      _type_to_str(buf, len, mem->decl.type);
+      assert(mem->kind == AST_DECL);
+      _type_to_str(buf, len, ((AstDecl *)mem)->type);
       mem = mem->next;
       if (mem) append_buf(buf, len, ", ");
     }

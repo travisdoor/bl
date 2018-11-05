@@ -139,10 +139,10 @@ static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
 
 static AstIdent *
-check_decl_entity(Context *cnt, AstDecl **decl);
+check_decl_entity(Context *cnt, AstDeclEntity **decl);
 
 static AstIdent *
-check_arg(Context *cnt, AstDecl **arg);
+check_decl_arg(Context *cnt, AstDeclArg **decl);
 
 static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
@@ -151,13 +151,13 @@ static AstIdent *
 check_expr_lit_fn(Context *cnt, AstExprLitFn **fn);
 
 static AstIdent *
-check_expr_binop(Context *cnt, AstExprBinop **binop);
+check_expr_binop(Context *cnt, AstExprBinop **expr);
 
 static AstIdent *
-check_expr_ref(Context *cnt, AstExprRef **expr_ref);
+check_expr_ref(Context *cnt, AstExprRef **expr);
 
 static AstIdent *
-check_expr_call(Context *cnt, AstExprCall **call);
+check_expr_call(Context *cnt, AstExprCall **expr);
 
 void
 provide(Context *cnt, AstIdent *name, AstDecl *decl)
@@ -396,33 +396,33 @@ flatten_decl(Context *cnt, Flatten *fbuf, AstDecl **decl)
 {
   switch ((*decl)->kind) {
   case AST_DECL_ENTITY: {
-    AstDecl *_decl = *decl;
+    AstDeclEntity *entity = (AstDeclEntity *)*decl;
     /* store declaration for temporary use here, this scope is used only for searching truly
      * undefined symbols later */
     /*if (_decl->in_gscope && !scope_lookup(cnt->provided_in_gscope, _decl->name, false))
       scope_insert(cnt->provided_in_gscope, _decl->name, *node);*/
 
-    flatten(&_decl->type);
-    flatten(&_decl->entity.value);
+    flatten(&entity->base.type);
+    flatten(&entity->value);
     break;
   }
 
   case AST_DECL_MEMBER: {
-    AstDecl *_decl = *decl;
-    flatten(&_decl->type);
+    AstDeclMember *member = (AstDeclMember *)*decl;
+    flatten(&member->base.type);
     break;
   }
 
   case AST_DECL_ARG: {
-    AstDecl *_decl = *decl;
-    flatten(&_decl->type);
+    AstDeclArg *arg = (AstDeclArg *)*decl;
+    flatten(&arg->base.type);
     break;
   }
 
   case AST_DECL_VARIANT: {
-    AstDecl *_decl = *decl;
-    flatten(&_decl->type);
-    flatten(&_decl->variant.value);
+    AstDeclVariant *var = (AstDeclVariant *)*decl;
+    flatten(&var->base.type);
+    flatten(&var->value);
     break;
   }
 
@@ -530,7 +530,7 @@ check_node(Context *cnt, Ast **node)
     const char *file = (*node)->src ? (*node)->src->unit->name : "implicit";
     const int   line = (*node)->src ? (*node)->src->line : 0;
     const int   col  = (*node)->src ? (*node)->src->col : 0;
-    const char *name = (*node)->kind == AST_DECL ? (*node)->decl.name->str : ast_get_name(*node);
+    const char *name = (*node)->kind == AST_DECL ? ((AstDecl *)*node)->name->str : ast_get_name(*node);
     if (result == NULL) {
       msg_log(LOG_TAG ": [" GREEN(" OK ") "] <%s:%d:%d> '%s' ", file, line, col, name);
     } else {
@@ -551,10 +551,10 @@ check_decl(Context *cnt, AstDecl **decl)
   AstIdent *result = NULL;
   switch ((*decl)->kind) {
   case AST_DECL_ENTITY:
-    result = check_decl_entity(cnt, decl);
+    result = check_decl_entity(cnt, (AstDeclEntity **)decl);
     break;
   case AST_DECL_ARG:
-    result = check_arg(cnt, decl);
+    result = check_decl_arg(cnt, (AstDeclArg **)decl);
     break;
 
   default:
@@ -640,8 +640,8 @@ cmp_type(AstType *first, AstType *second)
   }
 
   case AST_TYPE_FN: {
-    AstTypeFn *_f = &first->fn;
-    AstTypeFn *_s = &second->fn;
+    AstTypeFn *_f = (AstTypeFn *)first;
+    AstTypeFn *_s = (AstTypeFn *)second;
 
     if (_f->argc != _s->argc) return false;
     if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
@@ -649,7 +649,8 @@ cmp_type(AstType *first, AstType *second)
     Ast *argt1 = _f->args;
     Ast *argt2 = _s->args;
     while (argt1 && argt2) {
-      if (!cmp_type(argt1->decl.type, argt2->decl.type)) return false;
+      assert(argt1->kind == AST_DECL && argt2->kind == AST_DECL);
+      if (!cmp_type(((AstDecl *)argt1)->type, ((AstDecl *)argt2)->type)) return false;
 
       argt1 = argt1->next;
       argt2 = argt2->next;
@@ -658,8 +659,8 @@ cmp_type(AstType *first, AstType *second)
   }
 
   case AST_TYPE_INT: {
-    AstTypeInt *_f = &first->integer;
-    AstTypeInt *_s = &second->integer;
+    AstTypeInt *_f = (AstTypeInt *)first;
+    AstTypeInt *_s = (AstTypeInt *)second;
 
     return _f->bitcount == _s->bitcount && _f->is_signed == _s->is_signed;
   }
@@ -735,7 +736,7 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   if (!found) wait(_ref->ident);
 
   if (found->kind == AST_DECL_ENTITY)
-    found->entity.used++;
+    ((AstDeclEntity *)found)->used++;
 
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
@@ -745,145 +746,146 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
     finish();
   }
 
-  *type_ref = (AstTypeRef *)found->type->type.spec;
+  AstTypeType *type = (AstTypeType *)found->type;
+  *type_ref = (AstTypeRef *)type->spec;
 
   finish();
 }
 
 static inline bool
-infer_decl_type(Context *cnt, AstDecl *decl)
+infer_decl_type(Context *cnt, AstDeclEntity *decl)
 {
-  if (!decl->entity.value) return false;
-  AstType *inferred = ast_get_type(decl->entity.value);
+  if (!decl->value) return false;
+  AstType *inferred = decl->value->type;
   assert(inferred);
 
   if (inferred->kind == AST_TYPE_TYPE) {
     AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-    tmp->name        = decl->name->str;
-    tmp->spec        = inferred->type.spec;
+    tmp->name        = decl->base.name->str;
+    tmp->spec        = ((AstTypeType *)inferred)->spec;
     inferred         = (AstType *)tmp;
   }
 
-  if (decl->type && !cmp_type(inferred, decl->type)) {
-    check_error_invalid_types(cnt, decl->type, inferred, (Ast *)decl->entity.value);
+  if (decl->base.type && !cmp_type(inferred, decl->base.type)) {
+    check_error_invalid_types(cnt, decl->base.type, inferred, (Ast *)decl->value);
     return false;
   }
 
-  decl->type = inferred;
+  decl->base.type = inferred;
   return true;
 }
 
 static bool
-check_buildin_decl(Context *cnt, AstDecl *decl)
+check_buildin_decl(Context *cnt, AstDeclEntity *decl)
 {
-  if (!(decl->entity.flags & FLAG_COMPILER)) return false;
-  AstType *tmp = lookup_buildin_type(cnt, decl->name);
+  if (!(decl->flags & FLAG_COMPILER)) return false;
+  AstType *tmp = lookup_buildin_type(cnt, decl->base.name);
   if (!tmp) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
                 BUILDER_CUR_WORD, "unknown compiler internal");
     return false;
   }
 
-  decl->entity.value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
-  decl->entity.value->type = tmp;
+  decl->value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
+  decl->value->type = tmp;
 
   AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-  type->name        = decl->name->str;
-  type->spec        = decl->entity.value->type;
-  decl->type        = (AstType *)type;
-  decl->entity.kind        = DECL_ENTITY_TYPE;
+  type->name        = decl->base.name->str;
+  type->spec        = decl->value->type;
+  decl->base.type        = (AstType *)type;
+  decl->kind        = DECL_ENTITY_TYPE;
 
-  provide(cnt, decl->name, decl);
+  provide(cnt, decl->base.name, &decl->base);
   return true;
 }
 
 static inline void
-setup_decl_kind(AstDecl *decl)
+setup_decl_kind(AstDeclEntity *decl)
 {
-  switch (decl->type->kind) {
+  switch (decl->base.type->kind) {
   case AST_TYPE_REF:
   case AST_TYPE_BAD:
   case AST_TYPE_VARGS:
-    decl->entity.kind = DECL_ENTITY_INVALID;
+    decl->kind = DECL_ENTITY_INVALID;
     break;
   case AST_TYPE_TYPE:
-    decl->entity.kind = DECL_ENTITY_TYPE;
+    decl->kind = DECL_ENTITY_TYPE;
     break;
   case AST_TYPE_FN:
-    decl->entity.kind = DECL_ENTITY_FN;
+    decl->kind = DECL_ENTITY_FN;
     break;
   case AST_TYPE_ENUM:
-    decl->entity.kind = DECL_ENTITY_ENUM;
+    decl->kind = DECL_ENTITY_ENUM;
     break;
   case AST_TYPE_INT:
   case AST_TYPE_STRUCT:
   case AST_TYPE_ARR:
   case AST_TYPE_PTR:
-    decl->entity.kind = DECL_ENTITY_FIELD;
+    decl->kind = DECL_ENTITY_FIELD;
     break;
 
   case AST_TYPE_VOID:
-    decl->entity.kind = DECL_ENTITY_INVALID;
+    decl->kind = DECL_ENTITY_INVALID;
   }
 }
 
 AstIdent *
-check_decl_entity(Context *cnt, AstDecl **decl)
+check_decl_entity(Context *cnt, AstDeclEntity **decl)
 {
-  AstDecl  *_decl = *decl;
-  assert(_decl->name);
+  AstDeclEntity  *entity = *decl;
+  assert(entity->base.name);
 
   /* solve buildins */
-  if (check_buildin_decl(cnt, _decl)) finish();
+  if (check_buildin_decl(cnt, entity)) finish();
 
   /* infer declaration type */
-  infer_decl_type(cnt, _decl);
-  if (!_decl->type) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_decl)->src,
+  infer_decl_type(cnt, entity);
+  if (!entity->base.type) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, entity->base.base.src,
                 BUILDER_CUR_WORD, "declaration of unknown type");
-    _decl->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *) finish();
+    entity->base.type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *) finish();
   }
 
   /* declaration kind based on type */
-  setup_decl_kind(_decl);
+  setup_decl_kind(entity);
 
   {
-    const int id = builder_is_reserved(cnt->builder, _decl->name->hash);
+    const int id = builder_is_reserved(cnt->builder, entity->base.name->hash);
 
     /* check main method */
     if (id == RESERVED_MAIN) {
-      cnt->assembly->entry_node = &_decl->entity;
-      _decl->entity.used++;
+      cnt->assembly->entry_node = entity;
+      entity->used++;
 
-      if (_decl->entity.kind != DECL_ENTITY_FN) {
-        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_decl)->src,
+      if (entity->kind != DECL_ENTITY_FN) {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, entity->base.base.src,
                     BUILDER_CUR_WORD, "'main' is expected to be a function");
       }
 
-      if (_decl->entity.flags != 0) {
-        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNEXPECTED_MODIF, ((Ast *)_decl)->src,
+      if (entity->flags != 0) {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNEXPECTED_MODIF, entity->base.base.src,
                     BUILDER_CUR_WORD, "'main' method declared with invalid flags");
       }
 
     } else if (id != -1) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, ((Ast *)_decl)->src,
-                  BUILDER_CUR_WORD, "'%s' is compiler reserved name", _decl->name->str);
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, entity->base.base.src,
+                  BUILDER_CUR_WORD, "'%s' is compiler reserved name", entity->base.name->str);
     }
   }
 
   /* all globals need explicit initialization value */
-  if (_decl->entity.in_gscope && !_decl->entity.value) {
+  if (entity->in_gscope && !entity->value) {
     builder_msg(
-        cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_INITIALIZATION, ((Ast *)_decl)->src,
+        cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_INITIALIZATION, entity->base.base.src,
         BUILDER_CUR_WORD,
         "missing initializer, all global declarations must have explicit initialization value");
   }
 
-  switch (_decl->entity.kind) {
+  switch (entity->kind) {
   case DECL_ENTITY_INVALID: {
     char tmp[256];
-    ast_type_to_str(tmp, 256, _decl->type);
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, ((Ast *)_decl)->src,
+    ast_type_to_str(tmp, 256, entity->base.type);
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, entity->base.base.src,
                 BUILDER_CUR_WORD, "declaration has invalid type '%s'", tmp);
     break;
   }
@@ -891,14 +893,14 @@ check_decl_entity(Context *cnt, AstDecl **decl)
   case DECL_ENTITY_FIELD:
     break;
   case DECL_ENTITY_TYPE:
-    if (_decl->entity.mutable) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
+    if (entity->mutable) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, entity->base.base.src,
                   BUILDER_CUR_WORD, "type declaration cannot be mutable");
     }
     break;
   case DECL_ENTITY_FN:
-    if (_decl->entity.mutable) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_decl)->src,
+    if (entity->mutable) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, entity->base.base.src,
                   BUILDER_CUR_WORD, "function declaration cannot be mutable");
     }
     break;
@@ -906,41 +908,41 @@ check_decl_entity(Context *cnt, AstDecl **decl)
     break;
   }
 
-  provide(cnt, _decl->name, _decl);
+  provide(cnt, entity->base.name, &entity->base);
 
   finish();
 }
 
 AstIdent *
-check_arg(Context *cnt, AstDecl **arg)
+check_decl_arg(Context *cnt, AstDeclArg **decl)
 {
-  AstDecl  *_arg = *arg;
-  assert(_arg->name && _arg->type);
+  AstDeclArg  *arg = *decl;
+  assert(arg->base.name && arg->base.type);
 
   {
-    const int id = builder_is_reserved(cnt->builder, _arg->name->hash);
+    const int id = builder_is_reserved(cnt->builder, arg->base.name->hash);
 
     /* check main method */
     if (id != -1) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, ((Ast *)_arg)->src,
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, arg->base.base.src,
                   BUILDER_CUR_WORD,
                   "'%s' is compiler reserved name and cannot be used as name of function argument",
-                  _arg->name->str);
+                  arg->base.name->str);
     }
   }
 
-  Scope *scope = _arg->name->scope;
+  Scope *scope = arg->base.name->scope;
   assert(scope);
 
-  AstDecl *conflict = scope_lookup(scope, _arg->name, false);
+  AstDecl *conflict = scope_lookup(scope, arg->base.name, false);
   if (conflict) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ((Ast *)_arg->name)->src,
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, arg->base.name->base.src,
                 BUILDER_CUR_WORD, "argument with same name is already declared");
 
     builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, ((Ast *)conflict)->src, BUILDER_CUR_WORD,
                 "previous declaration found here");
   } else {
-    provide(cnt, _arg->name, _arg);
+    provide(cnt, arg->base.name, &arg->base);
   }
 
   finish();
@@ -950,7 +952,7 @@ AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
   AstExpr *_lit  = (AstExpr *)*lit;
-  _lit->type     = (AstType *)cnt->builder->buildin.entry_s32;
+  _lit->type     = cnt->builder->buildin.entry_s32;
   _lit->adr_mode = ADR_MODE_CONST;
   finish();
 }
@@ -958,110 +960,110 @@ check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 AstIdent *
 check_expr_lit_fn(Context *cnt, AstExprLitFn **fn)
 {
-  ast_set_adrmode((AstExpr *)*fn, ADR_MODE_NO_VALUE);
+  (*fn)->base.adr_mode = ADR_MODE_NO_VALUE;
   finish();
 }
 
 AstIdent *
-check_expr_ref(Context *cnt, AstExprRef **ref)
+check_expr_ref(Context *cnt, AstExprRef **expr)
 {
-  AstExprRef *_ref = *ref;
-  assert(_ref->ident);
+  AstExprRef *ref = *expr;
+  assert(ref->ident);
 
-  Scope *scope = _ref->ident->scope;
+  Scope *scope = ref->ident->scope;
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  AstDecl *found = scope_lookup(scope, _ref->ident, true);
-  if (!found) wait(_ref->ident);
+  AstDecl *found = scope_lookup(scope, ref->ident, true);
+  if (!found) wait(ref->ident);
 
-  ast_set_type((AstExpr *)_ref, found->type);
+  ref->base.type =found->type;
 
   if (found->kind == AST_DECL_ENTITY)
-    ast_set_adrmode((AstExpr *)_ref, found->entity.mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT);
+    ref->base.adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
+  else
+    ref->base.adr_mode = ADR_MODE_MUT;
 
-  ast_set_adrmode((AstExpr *)_ref, ADR_MODE_MUT);
-  _ref->ref = (Ast *)found;
-
+  ref->ref = (Ast *)found;
   finish();
 }
 
 AstIdent *
-check_expr_binop(Context *cnt, AstExprBinop **binop)
+check_expr_binop(Context *cnt, AstExprBinop **expr)
 {
-  AstExprBinop *_binop = *binop;
-  assert(_binop->kind != BINOP_INVALID);
-  assert(_binop->lhs && _binop->rhs);
+  AstExprBinop *binop = *expr;
+  assert(binop->kind != BINOP_INVALID);
+  assert(binop->lhs && binop->rhs);
 
-  AdrMode  ladrm = ast_get_adrmode(_binop->lhs);
-  AdrMode  radrm = ast_get_adrmode(_binop->rhs);
-  AstType *ltype = ast_get_type(_binop->lhs);
-  AstType *rtype = ast_get_type(_binop->rhs);
+  AdrMode  ladrm = binop->lhs->adr_mode;
+  AdrMode  radrm = binop->rhs->adr_mode;
+  AstType *ltype = binop->lhs->type;
+  AstType *rtype = binop->rhs->type;
   assert(ladrm != ADR_MODE_INVALID && "invalid address mode of lhs expression!!!");
   assert(radrm != ADR_MODE_INVALID && "invalid address mode of rhs expression!!!");
   assert(ltype && rtype);
 
-  if (ast_binop_is_assign(_binop->kind)) {
+  if (ast_binop_is_assign(binop->kind)) {
     /* assignment */
     if (ladrm != ADR_MODE_MUT) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, ((Ast *)_binop)->src,
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, binop->base.base.src,
                   BUILDER_CUR_WORD, "left-hand side of assign expression cannot be assigned");
     }
   }
 
-  ast_set_type((AstExpr *)_binop, ltype);
-  ast_set_adrmode((AstExpr *)_binop, ladrm);
+  binop->base.type = ltype;
+  binop->base.adr_mode = ladrm;
 
   if (!cmp_type(ltype, rtype)) {
-    check_error_invalid_types(cnt, ltype, rtype, (Ast *)_binop);
+    check_error_invalid_types(cnt, ltype, rtype, (Ast *)binop);
   }
 
   finish();
 }
 
 AstIdent *
-check_expr_call(Context *cnt, AstExprCall **call)
+check_expr_call(Context *cnt, AstExprCall **expr)
 {
-  AstExprCall *_call = *call;
-  assert(_call->ref);
+  AstExprCall *call = *expr;
+  assert(call->ref);
 
-  ast_set_adrmode((AstExpr *)_call, ADR_MODE_CONST);
+  call->base.adr_mode = ADR_MODE_CONST;
 
-  AstType *tmp_type = ast_get_type(_call->ref);
+  AstType *tmp_type = call->ref->type;
   if (tmp_type->kind != AST_TYPE_FN) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_call->ref)->src,
-                BUILDER_CUR_WORD, "expected function name before call operator");
-    ast_set_type((AstExpr *)_call, tmp_type);
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)call->ref)->src,
+                BUILDER_CUR_WORD, "expected function name before expr operator");
+    call->base.type = tmp_type;
     finish();
   }
 
   AstTypeFn *callee_type = (AstTypeFn *)tmp_type;
 
-  if (_call->argsc != callee_type->argc) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)_call)->src,
+  if (call->argsc != callee_type->argc) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)call)->src,
                 BUILDER_CUR_WORD, "expected %d %s, but called with %d", callee_type->argc,
-                callee_type->argc == 1 ? "argument" : "arguments", _call->argsc);
+                callee_type->argc == 1 ? "argument" : "arguments", call->argsc);
 
-    ast_set_type((AstExpr *)_call, callee_type->ret_type);
+    call->base.type = callee_type->ret_type;
     finish();
   }
 
-  Ast *call_arg   = _call->args;
+  Ast *call_arg   = call->args;
   Ast *callee_arg = callee_type->args;
 
   while (call_arg) {
     assert(call_arg->kind == AST_EXPR);
     assert(callee_arg->kind == AST_DECL);
 
-    if (!cmp_type(ast_get_type(&call_arg->expr), callee_arg->decl.type)) {
+    if (!cmp_type(((AstExpr *)call_arg)->type, ((AstDecl *)callee_arg)->type)) {
       char tmp1[256];
       char tmp2[256];
-      ast_type_to_str(tmp1, 256, ast_get_type(&call_arg->expr));
-      ast_type_to_str(tmp2, 256, callee_arg->decl.type);
+      ast_type_to_str(tmp1, 256, ((AstExpr *)call_arg)->type);
+      ast_type_to_str(tmp2, 256,((AstDecl *)callee_arg)->type);
 
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, ((Ast *)call_arg)->src,
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, call_arg->src,
                   BUILDER_CUR_WORD,
-                  "invalid call argument type, expected is '%s' but called with '%s'", tmp2, tmp1);
+                  "invalid expr argument type, expected is '%s' but called with '%s'", tmp2, tmp1);
 
       break;
     }
@@ -1069,7 +1071,7 @@ check_expr_call(Context *cnt, AstExprCall **call)
     callee_arg = callee_arg->next;
   }
 
-  ast_set_type((AstExpr *)_call, callee_type->ret_type);
+  call->base.type =callee_type->ret_type;
   finish();
 }
 

@@ -34,7 +34,7 @@
 #define LOG_TAG CYAN("POST")
 
 #define push_curr_dependend(_cnt, _decl)                                                           \
-  AstDeclEntity *const _prev_dependent = (_cnt)->curr_dependent;                                         \
+  AstDeclEntity *_prev_dependent = (_cnt)->curr_dependent;                                         \
   (_cnt)->curr_dependent         = (_decl);
 
 #define pop_curr_dependent(_cnt) (_cnt)->curr_dependent = _prev_dependent;
@@ -64,7 +64,7 @@ static void
 post_decl(Context *cnt, AstDecl *decl);
 
 static void
-post_decl_entity(Context *cnt, AstDecl *decl);
+post_decl_entity(Context *cnt, AstDeclEntity *entity);
 
 static void
 post_expr_ref(Context *cnt, AstExprRef *ref);
@@ -96,7 +96,7 @@ post_decl(Context *cnt, AstDecl *decl) {
     case AST_DECL_BAD:
       break;
     case AST_DECL_ENTITY:
-      post_decl_entity(cnt, decl);
+      post_decl_entity(cnt, (AstDeclEntity *)decl);
       break;
     case AST_DECL_MEMBER:
       break;
@@ -106,41 +106,41 @@ post_decl(Context *cnt, AstDecl *decl) {
 }
 
 void
-post_decl_entity(Context *cnt, AstDecl *decl)
+post_decl_entity(Context *cnt, AstDeclEntity *entity)
 {
-  push_curr_dependend(cnt, &decl->entity);
-  post_expr(cnt, decl->entity.value);
+  push_curr_dependend(cnt, entity);
+  post_expr(cnt, entity->value);
   pop_curr_dependent(cnt);
 
   {
     /* schedule future generation of this declaration, notice that all declarations must be used!!!
      */
     bool generate = false;
-    switch (decl->entity.kind) {
+    switch (entity->kind) {
     case DECL_ENTITY_FN:
       generate = true;
       break;
     case DECL_ENTITY_FIELD:
-      if (decl->entity.in_gscope) generate = true;
+      if (entity->in_gscope) generate = true;
       break;
     default:
       break;
     }
 
-    if (generate && decl->entity.used) {
-      bo_list_push_back(cnt->assembly->ir_queue, decl);
-      if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", decl->name->str);
+    if (generate && entity->used) {
+      bo_list_push_back(cnt->assembly->ir_queue, entity);
+      if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", entity->base.name->str);
     }
   }
 
-  if (cnt->verbose && decl->entity.deps) {
-    msg_log(LOG_TAG ": '%s' depends on:", decl->name->str);
+  if (cnt->verbose && entity->deps) {
+    msg_log(LOG_TAG ": '%s' depends on:", entity->base.name->str);
 
     bo_iterator_t it;
     Dependency    tmp;
-    bhtbl_foreach(decl->entity.deps, it)
+    bhtbl_foreach(entity->deps, it)
     {
-      tmp = bo_htbl_iter_peek_value(decl->entity.deps, &it, Dependency);
+      tmp = bo_htbl_iter_peek_value(entity->deps, &it, Dependency);
       msg_log(LOG_TAG ": [%s] %s", tmp.type == DEP_STRICT ? RED("STRICT") : GREEN(" LAX "),
               ((AstDecl *)tmp.decl)->name->str);
     }
@@ -156,11 +156,12 @@ post_expr_ref(Context *cnt, AstExprRef *ref)
   if (ref->ref->kind != AST_DECL)
     return;
 
-  AstDecl *decl = &ref->ref->decl;
+  AstDecl *decl = (AstDecl *)ref->ref;
   if (decl->kind != AST_DECL_ENTITY) return;
 
-    if (!(decl->entity.flags & FLAG_EXTERN) && decl->entity.kind == DECL_ENTITY_FIELD && decl->entity.in_gscope) {
-      ast_add_dep_uq(cnt->curr_dependent, &decl->entity, DEP_LAX);
+  AstDeclEntity *entity = (AstDeclEntity *)decl;
+    if (!(entity->flags & FLAG_EXTERN) && entity->kind == DECL_ENTITY_FIELD && entity->in_gscope) {
+      ast_add_dep_uq(cnt->curr_dependent, entity, DEP_LAX);
     }
 }
 

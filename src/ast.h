@@ -232,331 +232,9 @@ typedef enum
   ADR_MODE_CONST,
 } AdrMode;
 
-struct AstLoad
-{
-  const char *filepath;
-};
-
-struct AstLink
-{
-  const char *lib;
-};
-
-struct AstIdent
-{
-  Scope *     scope;
-  const char *str;
-  uint64_t    hash;
-};
-
-struct AstUBlock
-{
-  Ast *        nodes;
-  struct Unit *unit;
-};
-
-struct AstBlock
-{
-  Ast *nodes;
-};
-
-struct AstStmtReturn
-{
-  AstExpr *expr;
-  AstDecl *fn_decl;
-};
-
-struct AstStmtIf
-{
-  AstExpr *test;
-  Ast *    true_stmt;
-  Ast *    false_stmt;
-};
-
-struct AstStmtLoop
-{
-  Ast *    init;
-  AstExpr *condition;
-  AstExpr *increment;
-  Ast *    block;
-};
-
-struct AstStmtBreak
-{
-  void *_;
-};
-
-struct AstStmtContinue
-{
-  void *_;
-};
-
-struct AstDeclEntity
-{
-  DeclEntityKind kind;
-  AstExpr *      value;
-  int            flags;
-  int            used;
-  bool           in_gscope;
-  bool mutable;
-  BHashTable *deps;
-};
-
-struct AstDeclMember
-{
-  int order;
-};
-
-struct AstDeclArg
-{
-  void *_;
-};
-
-struct AstDeclVariant
-{
-  AstExpr *value;
-};
-
-struct AstTypeType
-{
-  const char *name;
-  AstType *   spec;
-};
-
-struct AstTypeVoid
-{
-  void *_;
-};
-
-struct AstTypeInt
-{
-  const char *name;
-  bool        is_signed;
-  int         bitcount;
-};
-
-struct AstTypeVArgs
-{
-  void *_;
-};
-
-struct AstTypeArr
-{
-  AstType *elem_type;
-  AstExpr *len;
-};
-
-struct AstTypeFn
-{
-  AstType *ret_type;
-  Ast *    args;
-  int      argc;
-};
-
-struct AstTypeStruct
-{
-  Ast *members;
-  int  membersc;
-  bool raw;
-};
-
-struct AstTypeEnum
-{
-  AstType *type;
-  Ast *    variants;
-};
-
-struct AstTypePtr
-{
-  AstType *type;
-};
-
-struct AstTypeRef
-{
-  AstType * type;
-  AstIdent *ident;
-};
-
-struct AstExprLitFn
-{
-  Ast *block;
-};
-
-struct AstExprLitInt
-{
-  uint64_t i;
-};
-
-struct AstExprLitFloat
-{
-  float f;
-};
-
-struct AstExprLitChar
-{
-  uint8_t c;
-};
-
-struct AstExprLitString
-{
-  const char *s;
-};
-
-struct AstExprLitBool
-{
-  bool b;
-};
-
-struct AstExprLitCmp
-{
-  AstExpr *fields;
-  int      fieldc;
-};
-
-struct AstExprRef
-{
-  AstIdent *ident;
-  Ast *     ref;
-};
-
-struct AstExprCast
-{
-  AstType *type;
-  AstExpr *next;
-};
-
-struct AstExprBinop
-{
-  AstExpr * lhs;
-  AstExpr * rhs;
-  BinopKind kind;
-};
-
-struct AstExprCall
-{
-  AstExpr *ref;
-  Ast *    args;
-  int      argsc;
-  bool     run;
-};
-
-struct AstExprMember
-{
-  MemberKind kind;
-  Ast *      ident;
-  AstExpr *  next;
-  bool       ptr_ref;
-  int        i;
-};
-
-struct AstExprElem
-{
-  AstExpr *next;
-  AstExpr *index;
-};
-
-struct AstExprSizeof
-{
-  AstExpr *in;
-};
-
-struct AstExprTypeof
-{
-  AstExpr *in;
-};
-
-struct AstExprUnary
-{
-  UnopKind kind;
-  AstExpr *next;
-};
-
-struct AstExprNull
-{
-  void *_;
-};
-
-struct AstDecl
-{
-  union
-  {
-    AstDeclEntity  entity;
-    AstDeclArg     arg;
-    AstDeclMember  member;
-    AstDeclVariant variant;
-  };
-
-  AstDeclKind kind;
-  AstType *   type;
-  AstIdent *  name;
-};
-
-struct AstType
-{
-  union
-  {
-    AstTypeType   type;
-    AstTypeVoid   tvoid;
-    AstTypeRef    ref;
-    AstTypeInt    integer;
-    AstTypeVArgs  vargs;
-    AstTypeArr    arr;
-    AstTypeFn     fn;
-    AstTypeStruct strct;
-    AstTypeEnum   enm;
-    AstTypePtr    ptr;
-  };
-
-  AstTypeKind kind;
-};
-
-struct AstExpr
-{
-  union
-  {
-    AstExprLitFn     fn;
-    AstExprLitInt    integer;
-    AstExprLitFloat  real;
-    AstExprLitChar   character;
-    AstExprLitString string;
-    AstExprLitBool   boolean;
-    AstExprLitCmp    cmp;
-    AstExprRef       ref;
-    AstExprCast      cast;
-    AstExprBinop     binop;
-    AstExprCall      call;
-    AstExprMember    member;
-    AstExprElem      elem;
-    AstExprSizeof    szof;
-    AstExprTypeof    tpof;
-    AstExprUnary     unary;
-    AstExprNull      null;
-  };
-
-  AstExprKind kind;
-  AstType *   type;
-  AdrMode     adr_mode;
-};
-
+/* AST base type */
 struct Ast
 {
-  union
-  {
-    AstLoad         load;
-    AstLink         link;
-    AstIdent        ident;
-    AstUBlock       ublock;
-    AstBlock        block;
-    AstStmtReturn   stmt_return;
-    AstStmtIf       stmt_if;
-    AstStmtLoop     stmt_loop;
-    AstStmtBreak    stmt_break;
-    AstStmtContinue stmt_continue;
-    AstDecl         decl;
-    AstType         type;
-    AstExpr         expr;
-  };
-
   AstKind kind;
   Src *   src;
   Ast *   next;
@@ -571,6 +249,313 @@ struct Ast
 #endif
 };
 
+struct AstDecl
+{
+  Ast         base;
+  AstDeclKind kind;
+  AstType *   type;
+  AstIdent *  name;
+};
+
+struct AstType
+{
+  Ast         base;
+  AstTypeKind kind;
+};
+
+struct AstExpr
+{
+  Ast         base;
+  AstExprKind kind;
+  AstType *   type;
+  AdrMode     adr_mode;
+};
+
+struct AstLoad
+{
+  Ast         base;
+  const char *filepath;
+};
+
+struct AstLink
+{
+  Ast         base;
+  const char *lib;
+};
+
+struct AstIdent
+{
+  Ast         base;
+  Scope *     scope;
+  const char *str;
+  uint64_t    hash;
+};
+
+struct AstUBlock
+{
+  Ast          base;
+  Ast *        nodes;
+  struct Unit *unit;
+};
+
+struct AstBlock
+{
+  Ast  base;
+  Ast *nodes;
+};
+
+struct AstStmtReturn
+{
+  Ast      base;
+  AstExpr *expr;
+  AstDeclEntity *fn_decl;
+};
+
+struct AstStmtIf
+{
+  Ast      base;
+  AstExpr *test;
+  Ast *    true_stmt;
+  Ast *    false_stmt;
+};
+
+struct AstStmtLoop
+{
+  Ast      base;
+  AstDecl *    init;
+  AstExpr *condition;
+  AstExpr *increment;
+  Ast *    block;
+};
+
+struct AstStmtBreak
+{
+  Ast   base;
+  void *_;
+};
+
+struct AstStmtContinue
+{
+  Ast   base;
+  void *_;
+};
+
+struct AstDeclEntity
+{
+  AstDecl        base;
+  DeclEntityKind kind;
+  AstExpr *      value;
+  int            flags;
+  int            used;
+  bool           in_gscope;
+  bool mutable;
+  BHashTable *deps;
+};
+
+struct AstDeclMember
+{
+  AstDecl base;
+  int     order;
+};
+
+struct AstDeclArg
+{
+  AstDecl base;
+  void *  _;
+};
+
+struct AstDeclVariant
+{
+  AstDecl  base;
+  AstExpr *value;
+};
+
+struct AstTypeType
+{
+  AstType     base;
+  const char *name;
+  AstType *   spec;
+};
+
+struct AstTypeVoid
+{
+  AstType base;
+  void *  _;
+};
+
+struct AstTypeInt
+{
+  AstType     base;
+  const char *name;
+  bool        is_signed;
+  int         bitcount;
+};
+
+struct AstTypeVArgs
+{
+  AstType base;
+  void *  _;
+};
+
+struct AstTypeArr
+{
+  AstType  base;
+  AstType *elem_type;
+  AstExpr *len;
+};
+
+struct AstTypeFn
+{
+  AstType  base;
+  AstType *ret_type;
+  Ast *    args;
+  int      argc;
+};
+
+struct AstTypeStruct
+{
+  AstType base;
+  Ast *   members;
+  int     membersc;
+  bool    raw;
+};
+
+struct AstTypeEnum
+{
+  AstType  base;
+  AstType *type;
+  Ast *    variants;
+};
+
+struct AstTypePtr
+{
+  AstType  base;
+  AstType *type;
+};
+
+struct AstTypeRef
+{
+  AstType   base;
+  AstType * type;
+  AstIdent *ident;
+};
+
+struct AstExprLitFn
+{
+  AstExpr base;
+  Ast *   block;
+};
+
+struct AstExprLitInt
+{
+  AstExpr  base;
+  uint64_t i;
+};
+
+struct AstExprLitFloat
+{
+  AstExpr base;
+  float   f;
+};
+
+struct AstExprLitChar
+{
+  AstExpr base;
+  uint8_t c;
+};
+
+struct AstExprLitString
+{
+  AstExpr     base;
+  const char *s;
+};
+
+struct AstExprLitBool
+{
+  AstExpr base;
+  bool    b;
+};
+
+struct AstExprLitCmp
+{
+  AstExpr  base;
+  AstExpr *fields;
+  int      fieldc;
+};
+
+struct AstExprRef
+{
+  AstExpr   base;
+  AstIdent *ident;
+  Ast *     ref;
+};
+
+struct AstExprCast
+{
+  AstExpr  base;
+  AstType *type;
+  AstExpr *next;
+};
+
+struct AstExprBinop
+{
+  AstExpr   base;
+  AstExpr * lhs;
+  AstExpr * rhs;
+  BinopKind kind;
+};
+
+struct AstExprCall
+{
+  AstExpr  base;
+  AstExpr *ref;
+  Ast *    args;
+  int      argsc;
+  bool     run;
+};
+
+struct AstExprMember
+{
+  AstExpr    base;
+  MemberKind kind;
+  Ast *      ident;
+  AstExpr *  next;
+  bool       ptr_ref;
+  int        i;
+};
+
+struct AstExprElem
+{
+  AstExpr  base;
+  AstExpr *next;
+  AstExpr *index;
+};
+
+struct AstExprSizeof
+{
+  AstExpr  base;
+  AstExpr *in;
+};
+
+struct AstExprTypeof
+{
+  AstExpr  base;
+  AstExpr *in;
+};
+
+struct AstExprUnary
+{
+  AstExpr  base;
+  UnopKind kind;
+  AstExpr *next;
+};
+
+struct AstExprNull
+{
+  AstExpr base;
+  void *  _;
+};
+
 struct Dependency
 {
   AstDeclEntity *decl; /* dependent node */
@@ -579,30 +564,6 @@ struct Dependency
 
 void
 ast_arena_init(struct Arena *arena);
-
-static inline AstType *
-ast_get_type(AstExpr *expr)
-{
-  return expr->type;
-}
-
-static inline void
-ast_set_type(AstExpr *expr, AstType *type)
-{
-  expr->type = type;
-}
-
-static inline AdrMode
-ast_get_adrmode(AstExpr *expr)
-{
-  return expr->adr_mode;
-}
-
-static inline void
-ast_set_adrmode(AstExpr *expr, AdrMode am)
-{
-  expr->adr_mode = am;
-}
 
 static inline bool
 ast_binop_is_assign(BinopKind op)
@@ -631,7 +592,7 @@ Dependency *
 ast_add_dep_uq(AstDeclEntity *decl, AstDeclEntity *dep, int type);
 
 const char *
-ast_get_name(Ast *n);
+ast_get_name(const Ast *n);
 
 void
 ast_type_to_str(char *buf, int len, AstType *type);

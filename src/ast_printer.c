@@ -180,11 +180,10 @@ print_decl_entity(AstDeclEntity *entity, int pad)
     break;
   }
 
-  AstDecl *base = (AstDecl *)entity;
-  fprintf(stdout, "'%s' '%s' used: %d ", base->name->str, entity->mutable ? "mutable" : "immutable",
+  fprintf(stdout, "'%s' '%s' used: %d ", entity->base.name->str, entity->mutable ? "mutable" : "immutable",
           entity->used);
 
-  print_type(base->type);
+  print_type(entity->base.type);
   print_flags(entity->flags);
   print_node((Ast *)entity->value, pad + 1);
 }
@@ -364,7 +363,7 @@ void
 print_expr_lit_fn(AstExprLitFn *fn, int pad)
 {
   print_head(fn, pad);
-  print_type(((AstExpr *)fn)->type);
+  print_type(fn->base.type);
   print_node(fn->block, pad + 1);
 }
 
@@ -372,7 +371,7 @@ void
 print_expr_call(AstExprCall *call, int pad)
 {
   print_head(call, pad);
-  print_type(((AstExpr *)call)->type);
+  print_type(call->base.type);
 
   print_node((Ast *)call->ref, pad + 1);
 
@@ -391,15 +390,15 @@ print_expr(AstExpr *expr, int pad)
     print_expr_type(expr, pad);
     break;
   case AST_EXPR_REF:
-    print_expr_ref(&expr->ref, pad);
+    print_expr_ref((AstExprRef*)expr, pad);
     break;
   case AST_EXPR_CAST:
     break;
   case AST_EXPR_BINOP:
-    print_expr_binop(&expr->binop, pad);
+    print_expr_binop((AstExprBinop *)expr, pad);
     break;
   case AST_EXPR_CALL:
-    print_expr_call(&expr->call, pad);
+    print_expr_call((AstExprCall *)expr, pad);
     break;
   case AST_EXPR_MEMBER:
     break;
@@ -410,27 +409,27 @@ print_expr(AstExpr *expr, int pad)
   case AST_EXPR_TYPEOF:
     break;
   case AST_EXPR_UNARY:
-    print_expr_unary(&expr->unary, pad);
+    print_expr_unary((AstExprUnary *)expr, pad);
     break;
   case AST_EXPR_NULL:
     break;
   case AST_EXPR_LIT_FN:
-    print_expr_lit_fn(&expr->fn, pad);
+    print_expr_lit_fn((AstExprLitFn *)expr, pad);
     break;
   case AST_EXPR_LIT_INT:
-    print_expr_lit_int(&expr->integer, pad);
+    print_expr_lit_int((AstExprLitInt *)expr, pad);
     break;
   case AST_EXPR_LIT_FLOAT:
-    print_expr_lit_float(&expr->real, pad);
+    print_expr_lit_float((AstExprLitFloat *)expr, pad);
     break;
   case AST_EXPR_LIT_CHAR:
-    print_expr_lit_char(&expr->character, pad);
+    print_expr_lit_char((AstExprLitChar *)expr, pad);
     break;
   case AST_EXPR_LIT_STRING:
-    print_expr_lit_string(&expr->string, pad);
+    print_expr_lit_string((AstExprLitString *)expr, pad);
     break;
   case AST_EXPR_LIT_BOOL:
-    print_expr_lit_bool(&expr->boolean, pad);
+    print_expr_lit_bool((AstExprLitBool *)expr, pad);
     break;
   case AST_EXPR_LIT_CMP:
     break;
@@ -445,10 +444,10 @@ print_decl(AstDecl *decl, int pad)
     print_bad((Ast *)decl, pad);
     break;
   case AST_DECL_ENTITY:
-    print_decl_entity(&decl->entity, pad);
+    print_decl_entity((AstDeclEntity *)decl, pad);
     break;
   case AST_DECL_ARG:
-    print_decl_arg(&decl->arg, pad);
+    print_decl_arg((AstDeclArg *)decl, pad);
     break;
   case AST_DECL_MEMBER:
   case AST_DECL_VARIANT:
@@ -472,10 +471,10 @@ print_node(Ast *node, int pad)
   case AST_IDENT:
     break;
   case AST_UBLOCK:
-    print_ublock(&node->ublock, pad);
+    print_ublock((AstUBlock *)node, pad);
     break;
   case AST_BLOCK:
-    print_block(&node->block, pad);
+    print_block((AstBlock *)node, pad);
     break;
   case AST_STMT_RETURN:
     break;
@@ -488,10 +487,10 @@ print_node(Ast *node, int pad)
   case AST_STMT_CONTINUE:
     break;
   case AST_DECL:
-    print_decl(&node->decl, pad);
+    print_decl((AstDecl *)node, pad);
     break;
   case AST_EXPR:
-    print_expr(&node->expr, pad);
+    print_expr((AstExpr *)node, pad);
     break;
   case AST_TYPE:
   case AST_COUNT:
@@ -505,7 +504,7 @@ ast_printer_run(Assembly *assembly)
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
-    print_node((Ast *)unit->ast, 0);
+    print_node(&unit->ast->base, 0);
   }
   fprintf(stdout, "\n\n");
 }

@@ -47,7 +47,7 @@ assembly_new(const char *name)
   assembly->units        = bo_array_new(sizeof(Unit *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
-  assembly->ir_queue     = bo_list_new(sizeof(AstDecl *));
+  assembly->ir_queue     = bo_list_new(sizeof(AstDeclEntity *));
 
   scope_arena_init(&assembly->scope_arena);
   ast_arena_init(&assembly->ast_arena);
