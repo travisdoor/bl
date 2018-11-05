@@ -1547,7 +1547,7 @@ next:
   parse_flags(cnt, 0);
 
   if ((*node = parse_stmt_return(cnt))) {
-    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
+    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1563,19 +1563,19 @@ next:
   }
 
   if ((*node = parse_stmt_break(cnt))) {
-    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
+    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = parse_stmt_continue(cnt))) {
-    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
+    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
 
   if ((*node = (Ast *)parse_decl(cnt))) {
-    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
+    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }
@@ -1586,7 +1586,7 @@ next:
   }
 
   if ((*node = (Ast *)parse_expr(cnt))) {
-    if ((*node)->kind == AST_BAD) parse_semicolon_rq(cnt);
+    if ((*node)->kind != AST_BAD) parse_semicolon_rq(cnt);
     insert_node(&node);
     goto next;
   }

@@ -805,7 +805,7 @@ generate(Context *cnt)
       ir_node(cnt, (Ast *)entity);
 
 #if BL_DEBUG
-      print_llvm_module(cnt->llvm_module);
+      if (cnt->verbose) print_llvm_module(cnt->llvm_module);
       validate(cnt->llvm_module);
 #endif
       llvm_values_reset(cnt);
