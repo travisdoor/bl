@@ -15,7 +15,7 @@ main : fn (i Int, o s32) {
   bar : 20;
   foo := bar;
   foo = 10 + 2 * bar; 
-  add();
+  add(10, 20);
 };
 
 Int : s32;

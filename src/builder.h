@@ -91,9 +91,6 @@ typedef struct Builder
     AstType *entry_s16;
     AstType *entry_s32;
     AstType *entry_s64;
-
-    AstExprLitBool *entry_expr_lit_true;
-    AstExprLitBool *entry_expr_lit_false;
   } buildin;
 } Builder;
 

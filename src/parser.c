@@ -789,30 +789,29 @@ parse_expr_lit(Context *cnt)
 
   switch (tok->sym) {
   case SYM_NUM:
-    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok, AstExpr *);
-
+    lit                       = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok, AstExpr *);
     ((AstExprLitInt *)lit)->i = tok->value.u;
     break;
 
   case SYM_CHAR:
-    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
-
+    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
     ((AstExprLitChar *)lit)->c = tok->value.c;
 
     break;
 
   case SYM_STRING:
     lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_STRING, tok, AstExpr *);
-
     ((AstExprLitString *)lit)->s = tok->value.str;
     break;
 
   case SYM_TRUE:
-    lit = (AstExpr *)cnt->builder->buildin.entry_expr_lit_true;
+    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
+    ((AstExprLitBool *)lit)->b = true;
     break;
 
   case SYM_FALSE:
-    lit = (AstExpr *)cnt->builder->buildin.entry_expr_lit_false;
+    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
+    ((AstExprLitBool *)lit)->b = false;
     break;
 
   case SYM_DOUBLE:
@@ -821,7 +820,6 @@ parse_expr_lit(Context *cnt)
     // TODO: double!!!
     // TODO: double!!!
     lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_FLOAT, tok, AstExpr *);
-
     ((AstExprLitFloat *)lit)->f = (float)tok->value.d;
     break;
 

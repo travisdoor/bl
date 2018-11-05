@@ -793,7 +793,7 @@ setup_decl_kind(AstDecl *decl)
     break;
 
   case AST_TYPE_VOID:
-    bl_abort("invalid type of declaration");
+    decl->kind = DECL_KIND_INVALID;
   }
 }
 
@@ -850,10 +850,14 @@ check_decl(Context *cnt, AstDecl **decl)
   }
 
   switch (_decl->kind) {
-  case DECL_KIND_INVALID:
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, ((Ast *)_decl->type)->src,
-                BUILDER_CUR_WORD, "declaration has invalid type");
+  case DECL_KIND_INVALID: {
+    char tmp[256];
+    ast_type_to_str(tmp, 256, _decl->type);
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, ((Ast *)_decl)->src,
+                BUILDER_CUR_WORD, "declaration has invalid type '%s'", tmp);
     break;
+  }
+
   case DECL_KIND_FIELD:
     break;
   case DECL_KIND_TYPE:
@@ -1023,24 +1027,51 @@ check_expr_call(Context *cnt, AstExprCall **call)
   AstExprCall *_call = *call;
   assert(_call->ref);
 
+  ast_set_adrmode((AstExpr *)_call, ADR_MODE_CONST);
+
   AstType *tmp_type = ast_get_type(_call->ref);
   if (tmp_type->kind != AST_TYPE_FN) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ((Ast *)_call->ref)->src,
                 BUILDER_CUR_WORD, "expected function name before call operator");
+    ast_set_type((AstExpr *)_call, tmp_type);
     finish();
   }
 
   AstTypeFn *callee_type = (AstTypeFn *)tmp_type;
 
   if (_call->argsc != callee_type->argc) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)_call)->src, BUILDER_CUR_WORD,
-                     "expected %d %s, but called with %d", callee_type->argc,
-                     callee_type->argc == 1 ? "argument" : "arguments", _call->argsc);
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, ((Ast *)_call)->src,
+                BUILDER_CUR_WORD, "expected %d %s, but called with %d", callee_type->argc,
+                callee_type->argc == 1 ? "argument" : "arguments", _call->argsc);
+
+    ast_set_type((AstExpr *)_call, callee_type->ret_type);
     finish();
   }
 
+  Ast *call_arg   = _call->args;
+  Ast *callee_arg = callee_type->args;
+
+  while (call_arg) {
+    assert(call_arg->kind == AST_EXPR);
+    assert(callee_arg->kind == AST_ARG);
+
+    if (!cmp_type(ast_get_type(&call_arg->expr), callee_arg->arg.type)) {
+      char tmp1[256];
+      char tmp2[256];
+      ast_type_to_str(tmp1, 256, ast_get_type(&call_arg->expr));
+      ast_type_to_str(tmp2, 256, callee_arg->arg.type);
+
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_TYPE, ((Ast *)call_arg)->src,
+                  BUILDER_CUR_WORD,
+                  "invalid call argument type, expected is '%s' but called with '%s'", tmp2, tmp1);
+
+      break;
+    }
+    call_arg   = call_arg->next;
+    callee_arg = callee_arg->next;
+  }
+
   ast_set_type((AstExpr *)_call, callee_type->ret_type);
-  ast_set_adrmode((AstExpr *)_call, ADR_MODE_CONST);
   finish();
 }
 

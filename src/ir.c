@@ -134,19 +134,19 @@ _link(Context *cnt, AstDecl *entry);
 static bool
 is_satisfied(Context *cnt, AstDecl *decl, bool strict_only);
 
-static LLVMValueRef
+static void
 ir_node(Context *cnt, Ast *node);
 
-static LLVMValueRef
+static void
 ir_block(Context *cnt, AstBlock *block);
 
-static LLVMValueRef
+static void
 ir_decl(Context *cnt, AstDecl *decl);
 
-static LLVMValueRef
+static void
 ir_decl_fn(Context *cnt, AstDecl *decl_fn);
 
-static LLVMValueRef
+static void
 ir_decl_field(Context *cnt, AstDecl *decl_field);
 
 static LLVMValueRef
@@ -166,6 +166,9 @@ ir_expr_unary(Context *cnt, AstExprUnary *unary);
 
 static LLVMValueRef
 ir_expr_ref(Context *cnt, AstExprRef *ref);
+
+static LLVMValueRef
+ir_expr_call(Context *cnt, AstExprCall *call);
 
 /* impl */
 #if BL_DEBUG
@@ -315,55 +318,55 @@ _link(Context *cnt, AstDecl *entry)
   return dest_module;
 }
 
-LLVMValueRef
+void
 ir_node(Context *cnt, Ast *node)
 {
   assert(node);
   switch (ast_kind(node)) {
   case AST_DECL:
-    return ir_decl(cnt, (AstDecl *)node);
+    ir_decl(cnt, (AstDecl *)node);
+    break;
   case AST_BLOCK:
-    return ir_block(cnt, (AstBlock *)node);
+    ir_block(cnt, (AstBlock *)node);
+    break;
   case AST_EXPR:
-    return ir_expr(cnt, (AstExpr *)node);
+    ir_expr(cnt, (AstExpr *)node);
+    break;
 
   default:
     bl_abort("missing ir generation for %s", ast_get_name(node));
   }
-
-  return NULL;
 }
 
-LLVMValueRef
+void
 ir_decl(Context *cnt, AstDecl *decl)
 {
   switch (decl->kind) {
   case DECL_KIND_FN:
-    return ir_decl_fn(cnt, decl);
+    ir_decl_fn(cnt, decl);
+    break;
   case DECL_KIND_FIELD:
-    return ir_decl_field(cnt, decl);
+    ir_decl_field(cnt, decl);
+    break;
   default:
     bl_abort("invalid declaration");
   }
-
-  return NULL;
 }
 
 /* OTHER */
-LLVMValueRef
+void
 ir_block(Context *cnt, AstBlock *block)
 {
   Ast *node;
   node_foreach(block->nodes, node) ir_node(cnt, node);
-  return NULL;
 }
 
 /* DECLARATIONS */
-LLVMValueRef
+void
 ir_decl_fn(Context *cnt, AstDecl *decl_fn)
 {
   /* local functions will be generated in separate module */
-  if (!decl_fn->in_gscope) return NULL;
+  if (!decl_fn->in_gscope) return;
   assert(decl_fn->value);
   assert(decl_fn->type);
 
@@ -414,7 +417,7 @@ ir_decl_fn(Context *cnt, AstDecl *decl_fn)
 
   /* Generate function body */
   assert(decl_fn->value->kind == AST_EXPR_LIT_FN);
-  ir_node(cnt, (Ast *)decl_fn->value);
+  ir_expr(cnt, decl_fn->value);
 
   {
     LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -443,11 +446,9 @@ ir_decl_fn(Context *cnt, AstDecl *decl_fn)
   cnt->fn_ret_val     = NULL;
   cnt->break_block    = NULL;
   cnt->continue_block = NULL;
-
-  return NULL;
 }
 
-LLVMValueRef
+void
 ir_decl_field(Context *cnt, AstDecl *decl_field)
 {
   LLVMValueRef result = NULL;
@@ -457,7 +458,7 @@ ir_decl_field(Context *cnt, AstDecl *decl_field)
   if (decl_field->in_gscope) {
     /* declaration in global scope */
     result            = global_get(cnt, decl_field);
-    LLVMValueRef init = ir_node(cnt, (Ast *)decl_field->value);
+    LLVMValueRef init = ir_expr(cnt, decl_field->value);
     assert(init);
 
     LLVMSetInitializer(result, init);
@@ -469,21 +470,20 @@ ir_decl_field(Context *cnt, AstDecl *decl_field)
 
     llvm_values_insert(cnt, (Ast *)decl_field, result);
 
-    if (!decl_field->value) return result;
+    if (!decl_field->value) return;
 
-    LLVMValueRef init = ir_node(cnt, (Ast *)decl_field->value);
+    LLVMValueRef init = ir_expr(cnt, decl_field->value);
     init              = ltor_if_needed(cnt, decl_field->value, init);
 
     LLVMBuildStore(cnt->llvm_builder, init, result);
   }
-  return result;
 }
 
 /* EXPRESSIONS */
 LLVMValueRef
 ir_expr(Context *cnt, AstExpr *expr)
 {
-  assert(expr);
+  assert(expr && ((Ast *)expr)->kind == AST_EXPR);
   switch (expr->kind) {
   case AST_EXPR_UNARY:
     return ir_expr_unary(cnt, (AstExprUnary *)expr);
@@ -495,6 +495,8 @@ ir_expr(Context *cnt, AstExpr *expr)
     return ir_expr_lit_int(cnt, (AstExprLitInt *)expr);
   case AST_EXPR_REF:
     return ir_expr_ref(cnt, (AstExprRef *)expr);
+  case AST_EXPR_CALL:
+    return ir_expr_call(cnt, (AstExprCall *)expr);
   default:
     bl_abort("missing ir generation for %s", ast_get_name((Ast *)expr));
   }
@@ -513,10 +515,39 @@ ir_expr_ref(Context *cnt, AstExprRef *ref)
 }
 
 LLVMValueRef
+ir_expr_call(Context *cnt, AstExprCall *call)
+{
+  LLVMValueRef result  = NULL;
+  LLVMValueRef llvm_fn = ir_expr(cnt, call->ref);
+
+  assert(llvm_fn);
+
+  LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * call->argsc);
+  if (!llvm_args) bl_abort("bad alloc");
+
+  Ast *arg;
+  int  i = 0;
+  node_foreach(call->args, arg)
+  {
+    assert(arg->kind == AST_EXPR);
+    llvm_args[i] = ir_expr(cnt, &arg->expr);
+    assert(llvm_args[i] && "invalid call argument");
+
+    llvm_args[i] = ltor_if_needed(cnt, &arg->expr, llvm_args[i]);
+    ++i;
+  }
+
+  result = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)call->argsc, "");
+  bl_free(llvm_args);
+  return result;
+}
+
+LLVMValueRef
 ir_expr_lit_fn(Context *cnt, AstExprLitFn *lit_fn)
 {
   assert(lit_fn->block);
-  return ir_node(cnt, (Ast *)lit_fn->block);
+  ir_node(cnt, lit_fn->block);
+  return NULL;
 }
 
 LLVMValueRef
@@ -536,7 +567,7 @@ LLVMValueRef
 ir_expr_unary(Context *cnt, AstExprUnary *unary)
 {
   assert(unary->next);
-  LLVMValueRef result = ir_node(cnt, (Ast *)unary->next);
+  LLVMValueRef result = ir_expr(cnt, unary->next);
 
   switch (unary->kind) {
   case UNOP_NEG:
@@ -567,8 +598,8 @@ ir_expr_unary(Context *cnt, AstExprUnary *unary)
 LLVMValueRef
 ir_expr_binop(Context *cnt, AstExprBinop *binop)
 {
-  LLVMValueRef llvm_lhs = ir_node(cnt, (Ast *)binop->lhs);
-  LLVMValueRef llvm_rhs = ir_node(cnt, (Ast *)binop->rhs);
+  LLVMValueRef llvm_lhs = ir_expr(cnt, binop->lhs);
+  LLVMValueRef llvm_rhs = ir_expr(cnt, binop->rhs);
   assert(llvm_lhs && llvm_rhs);
 
   /* generate load if needed l/rvalue conversion is needed! */

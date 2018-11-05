@@ -117,18 +117,6 @@ static Ast entry_s64 = {.kind                   = AST_TYPE,
                         .type.integer.bitcount  = 64,
                         .type.integer.is_signed = true};
 
-static Ast entry_expr_lit_true = {.kind           = AST_EXPR,
-                                  .src            = NULL,
-                                  .next           = NULL,
-                                  .expr.kind      = AST_EXPR_LIT_BOOL,
-                                  .expr.boolean.b = true};
-
-static Ast entry_expr_lit_false = {.kind           = AST_EXPR,
-                                   .src            = NULL,
-                                   .next           = NULL,
-                                   .expr.kind      = AST_EXPR_LIT_BOOL,
-                                   .expr.boolean.b = false};
-
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 
@@ -273,9 +261,6 @@ builder_new(void)
   b->entry_s16      = (AstType *)&entry_s16;
   b->entry_s32      = (AstType *)&entry_s32;
   b->entry_s64      = (AstType *)&entry_s64;
-
-  b->entry_expr_lit_true  = (AstExprLitBool *)&entry_expr_lit_true;
-  b->entry_expr_lit_false = (AstExprLitBool *)&entry_expr_lit_false;
   /* SETUP BUILDINS */
 
   return builder;
