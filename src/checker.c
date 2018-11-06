@@ -31,7 +31,8 @@
  * Symbols in this language can be defined in any order in global scope, so we need some kind of
  * 'lazy' reference connecting. For example we can call function 'foo' before it is declared, when
  * checker reaches such call it need to be interrupted and resumed later when definition of the
- * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided into
+ * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided
+into
  * smaller flatten queues which are later solved backwards. When compiler gets to unknown symbol we
  * take note about position in queue and push it into waiting cache.
  */
@@ -143,6 +144,9 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl);
 
 static AstIdent *
 check_decl_arg(Context *cnt, AstDeclArg **decl);
+
+static AstIdent *
+check_stmt_return(Context *cnt, AstStmtReturn **stmt);
 
 static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
@@ -529,6 +533,10 @@ check_node(Context *cnt, Ast **node)
     result = check_type(cnt, (AstType **)node);
     break;
 
+  case AST_STMT_RETURN:
+    result = check_stmt_return(cnt, (AstStmtReturn **)node);
+    break;
+
   case AST_UBLOCK:
   case AST_BLOCK:
     break;
@@ -765,6 +773,31 @@ check_type_ref(Context *cnt, AstTypeRef **type_ref)
   finish();
 }
 
+AstIdent *
+check_stmt_return(Context *cnt, AstStmtReturn **stmt)
+{
+  AstStmtReturn *ret = *stmt;
+  assert(ret->fn_decl && ret->fn_decl->kind == DECL_ENTITY_FN);
+  AstDeclEntity *fn = (AstDeclEntity *)ret->fn_decl;
+
+  assert(fn->base.type->kind == AST_TYPE_FN);
+  AstType *expected_type = ((AstTypeFn *)fn->base.type)->ret_type;
+  assert(expected_type);
+
+  if (ret->expr) {
+    if (!cmp_type(ret->expr->type, expected_type)) {
+      check_error_invalid_types(cnt, ret->expr->type, expected_type, (Ast *)ret);
+    }
+  } else {
+    if (!cmp_type(cnt->builder->buildin.entry_void, expected_type)) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->base.src,
+                  BUILDER_CUR_WORD, "expected return value");
+    }
+  }
+
+  finish();
+}
+
 static inline bool
 infer_decl_type(Context *cnt, AstDeclEntity *decl)
 {
@@ -967,7 +1000,7 @@ check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
   AstExpr *_lit  = (AstExpr *)*lit;
   _lit->type     = cnt->builder->buildin.entry_s32;
   _lit->adr_mode = ADR_MODE_CONST;
-  
+
   finish();
 }
 
@@ -987,16 +1020,17 @@ check_expr_ref(Context *cnt, AstExprRef **expr)
   Scope *scope = ref->ident->scope;
   assert(scope && "missing scope for identificator");
 
-  /* TODO: not only declarations are registred??? */
   AstDecl *found = scope_lookup(scope, ref->ident, true);
   if (!found) wait(ref->ident);
 
   ref->base.type = found->type;
 
-  if (found->kind == AST_DECL_ENTITY)
+  if (found->kind == AST_DECL_ENTITY) {
     ref->base.adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
-  else
+    ((AstDeclEntity *)found)->used++;
+  } else {
     ref->base.adr_mode = ADR_MODE_MUT;
+  }
 
   ref->ref = found;
   finish();

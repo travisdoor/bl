@@ -75,6 +75,9 @@ post_expr_lit_fn(Context *cnt, AstExprLitFn *fn);
 static void
 post_expr_binop(Context *cnt, AstExprBinop *binop);
 
+static void
+post_expr_call(Context *cnt, AstExprCall *call);
+
 /* impl */
 void
 post_ublock(Context *cnt, AstUBlock *ublock)
@@ -159,9 +162,21 @@ post_expr_ref(Context *cnt, AstExprRef *ref)
   if (ref->ref->kind != AST_DECL_ENTITY) return;
 
   AstDeclEntity *entity = (AstDeclEntity *)ref->ref;
-  if (!(entity->flags & FLAG_EXTERN) && entity->kind == DECL_ENTITY_FIELD && entity->in_gscope) {
+
+  if (!(entity->flags & FLAG_EXTERN) &&
+      (entity->kind == DECL_ENTITY_FIELD || entity->kind == DECL_ENTITY_FN) && entity->in_gscope) {
     ast_add_dep_uq(cnt->curr_dependent, entity, DEP_LAX);
   }
+}
+
+void
+post_expr_call(Context *cnt, AstExprCall *call)
+{
+  assert(call->ref);
+  post_expr(cnt, call->ref);
+
+  AstExpr *arg;
+  barray_foreach(call->args, arg) post_expr(cnt, arg);
 }
 
 void
@@ -230,9 +245,12 @@ post_expr(Context *cnt, AstExpr *expr)
     post_expr_binop(cnt, (AstExprBinop *)expr);
     break;
 
-  case AST_EXPR_TYPE:
-  case AST_EXPR_CAST:
   case AST_EXPR_CALL:
+    post_expr_call(cnt, (AstExprCall *)expr);
+    break;
+
+  case AST_EXPR_CAST:
+  case AST_EXPR_TYPE:
   case AST_EXPR_MEMBER:
   case AST_EXPR_ELEM:
   case AST_EXPR_SIZEOF:

@@ -15,7 +15,7 @@ main : fn () {
   bar : 20;
   foo := bar;
   foo = 10 + 2 * bar; 
-  //add(10, 20);
+  add(10, 20);
 };
 
 Int : s32;
@@ -23,10 +23,3 @@ Int : s32;
 add : fn (f s32, s s32) {
   return f + s;
 };
-
-/*
-
-ir generation stack:
-- by default insert 'main' and all unit tests
-
-*/

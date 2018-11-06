@@ -227,14 +227,13 @@ to_llvm_type(Context *cnt, AstType *type)
     if (!llvm_arg_types) bl_abort("bad alloc");
 
     Ast *    arg;
-    unsigned i = 0;
     barray_foreach(fn->args, arg)
     {
       assert(arg->kind == AST_DECL);
-      llvm_arg_types[i++] = to_llvm_type(cnt, ((AstDecl *)arg)->type);
+      llvm_arg_types[i] = to_llvm_type(cnt, ((AstDecl *)arg)->type);
     }
 
-    result = LLVMFunctionType(llvm_ret_type, llvm_arg_types, i, false);
+    result = LLVMFunctionType(llvm_ret_type, llvm_arg_types, argc, false);
     bl_free(llvm_arg_types);
     bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
     break;
@@ -524,7 +523,37 @@ ir_expr_ref(Context *cnt, AstExprRef *ref)
   assert(ref->ref);
   LLVMValueRef result = NULL;
 
-  result = llvm_values_get(cnt, ref->ref);
+  switch (ref->ref->kind) {
+  case AST_DECL_ARG:
+    result = llvm_values_get(cnt, ref->ref);
+    break;
+
+  case AST_DECL_ENTITY: {
+    AstDeclEntity *entity = (AstDeclEntity *)ref->ref;
+    switch (entity->kind) {
+    case DECL_ENTITY_FIELD:
+      result = llvm_values_get(cnt, ref->ref);
+      break;
+    case DECL_ENTITY_FN:
+      result = fn_get(cnt, entity);
+      break;
+    default:
+      bl_abort("bad declaration");
+    }
+    break;
+  }
+
+  case AST_DECL_MEMBER:
+    bl_abort("unimplemented");
+    break;
+
+  case AST_DECL_VARIANT:
+    bl_abort("unimplemented");
+    break;
+
+  case AST_DECL_BAD:
+    bl_abort("bad declaration");
+  }
 
   assert(result);
   return result;
