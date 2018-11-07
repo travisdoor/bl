@@ -9,17 +9,37 @@ u16   : #compiler;
 u32   : #compiler;
 u64   : #compiler;
 usize : #compiler;
+bool  : #compiler;
+f32   : #compiler;
+f64   : #compiler;
 
-// lax dependency on 'number'
+// TODO ExprType
+/*Foo : struct {
+  i s32,
+  j s32
+};*/
+
 main : fn () {
   bar : 20;
   foo := bar;
   foo = 10 + 2 * bar; 
-  add(10, 20);
+  homo : add(10, 20);
+
+  if (true) {
+    sub(foo, 20);
+  }
+
+  a f32 := cast(f32) 0.5;
+  b u8 := cast(u8) 10;
+  c f32 := cast(f32) 0.5f;
 };
 
 Int : s32;
 
-add : fn (f s32, s s32) {
+add : fn (f s32, s s32) s32 {
   return f + s;
+};
+
+sub : fn (f s32, c s32) {
+  return; 
 };

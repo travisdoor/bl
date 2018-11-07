@@ -33,12 +33,6 @@
 
 #define LOG_TAG CYAN("POST")
 
-#define push_curr_dependend(_cnt, _decl)                                                           \
-  AstDeclEntity *_prev_dependent = (_cnt)->curr_dependent;                                         \
-  (_cnt)->curr_dependent         = (_decl);
-
-#define pop_curr_dependent(_cnt) (_cnt)->curr_dependent = _prev_dependent;
-
 typedef struct
 {
   Builder *      builder;
@@ -59,6 +53,12 @@ post_ublock(Context *cnt, AstUBlock *ublock);
 
 static void
 post_block(Context *cnt, AstBlock *block);
+
+static void
+post_stmt_return(Context *cnt, AstStmtReturn *stmt_ret);
+
+static void
+post_stmt_if(Context *cnt, AstStmtIf *stmt_if);
 
 static void
 post_decl(Context *cnt, AstDecl *decl);
@@ -94,6 +94,20 @@ post_block(Context *cnt, AstBlock *block)
 }
 
 void
+post_stmt_return(Context *cnt, AstStmtReturn *stmt_ret)
+{
+  post_expr(cnt, stmt_ret->expr);
+}
+
+void
+post_stmt_if(Context *cnt, AstStmtIf *stmt_if)
+{
+  post_expr(cnt, stmt_if->test);
+  post_node(cnt, stmt_if->true_stmt);
+  post_node(cnt, stmt_if->false_stmt);
+}
+
+void
 post_decl(Context *cnt, AstDecl *decl)
 {
   switch (decl->kind) {
@@ -114,30 +128,32 @@ post_decl(Context *cnt, AstDecl *decl)
 void
 post_decl_entity(Context *cnt, AstDeclEntity *entity)
 {
-  push_curr_dependend(cnt, entity);
-  post_expr(cnt, entity->value);
-  pop_curr_dependent(cnt);
-
-  {
-    /* schedule future generation of this declaration, notice that all declarations must be used!!!
-     */
-    bool generate = false;
-    switch (entity->kind) {
-    case DECL_ENTITY_FN:
-      generate = true;
-      break;
-    case DECL_ENTITY_FIELD:
-      if (entity->in_gscope) generate = true;
-      break;
-    default:
-      break;
-    }
-
-    if (generate && entity->used) {
-      bo_list_push_back(cnt->assembly->ir_queue, entity);
-      if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", entity->base.name->str);
-    }
+  /* schedule future generation of this declaration, notice that all declarations must be used!!!
+   */
+  bool generate = false;
+  switch (entity->kind) {
+  case DECL_ENTITY_FN:
+    generate = true;
+    break;
+  case DECL_ENTITY_FIELD:
+    if (entity->in_gscope) generate = true;
+    break;
+  default:
+    break;
   }
+
+  AstDeclEntity *prev_depenedent = NULL;
+  if (generate && entity->used) {
+    prev_depenedent     = cnt->curr_dependent;
+    cnt->curr_dependent = entity;
+
+    bo_list_push_back(cnt->assembly->ir_queue, entity);
+    if (cnt->verbose) msg_log(LOG_TAG ": schedule generation of: '%s'", entity->base.name->str);
+  }
+
+  post_expr(cnt, entity->value);
+
+  if (prev_depenedent) cnt->curr_dependent = prev_depenedent;
 
   if (cnt->verbose && entity->deps) {
     msg_log(LOG_TAG ": '%s' depends on:", entity->base.name->str);
@@ -210,12 +226,16 @@ post_node(Context *cnt, Ast *node)
   case AST_DECL:
     post_decl(cnt, (AstDecl *)node);
     break;
+  case AST_STMT_RETURN:
+    post_stmt_return(cnt, (AstStmtReturn *)node);
+    break;
+  case AST_STMT_IF:
+    post_stmt_if(cnt, (AstStmtIf *)node);
+    break;
 
   case AST_LOAD:
   case AST_LINK:
   case AST_IDENT:
-  case AST_STMT_RETURN:
-  case AST_STMT_IF:
   case AST_STMT_LOOP:
   case AST_STMT_BREAK:
   case AST_STMT_CONTINUE:
@@ -259,6 +279,7 @@ post_expr(Context *cnt, AstExpr *expr)
   case AST_EXPR_NULL:
   case AST_EXPR_LIT_INT:
   case AST_EXPR_LIT_FLOAT:
+  case AST_EXPR_LIT_DOUBLE:
   case AST_EXPR_LIT_CHAR:
   case AST_EXPR_LIT_STRING:
   case AST_EXPR_LIT_BOOL:

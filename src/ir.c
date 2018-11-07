@@ -141,6 +141,12 @@ static void
 ir_block(Context *cnt, AstBlock *block);
 
 static void
+ir_stmt_return(Context *cnt, AstStmtReturn *ret);
+
+static void
+ir_stmt_if(Context *cnt, AstStmtIf *stmt_if);
+
+static void
 ir_decl(Context *cnt, AstDecl *decl);
 
 static void
@@ -156,10 +162,22 @@ static LLVMValueRef
 ir_expr(Context *cnt, AstExpr *expr);
 
 static LLVMValueRef
+ir_expr_cast(Context *cnt, AstExprCast *cast);
+
+static LLVMValueRef
 ir_expr_lit_fn(Context *cnt, AstExprLitFn *lit_fn);
 
 static LLVMValueRef
 ir_expr_lit_int(Context *cnt, AstExprLitInt *lit_int);
+
+static LLVMValueRef
+ir_expr_lit_float(Context *cnt, AstExprLitFloat *lit_float);
+
+static LLVMValueRef
+ir_expr_lit_double(Context *cnt, AstExprLitDouble *lit_double);
+
+static LLVMValueRef
+ir_expr_lit_bool(Context *cnt, AstExprLitBool *lit_bool);
 
 static LLVMValueRef
 ir_expr_binop(Context *cnt, AstExprBinop *binop);
@@ -212,6 +230,23 @@ to_llvm_type(Context *cnt, AstType *type)
     break;
   }
 
+  case AST_TYPE_REAL: {
+    AstTypeReal *real = (AstTypeReal *)type;
+    if (real->bitcount == 32)
+      result = LLVMFloatTypeInContext(cnt->llvm_cnt);
+    else
+      result = LLVMDoubleTypeInContext(cnt->llvm_cnt);
+
+    bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
+    break;
+  }
+
+  case AST_TYPE_BOOL: {
+    result = LLVMIntTypeInContext(cnt->llvm_cnt, 1);
+    bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
+    break;
+  }
+
   case AST_TYPE_VOID: {
     result = LLVMVoidTypeInContext(cnt->llvm_cnt);
     bo_htbl_insert(cnt->llvm_types, (uint64_t)type, result);
@@ -226,7 +261,7 @@ to_llvm_type(Context *cnt, AstType *type)
     LLVMTypeRef *llvm_arg_types = bl_malloc(sizeof(LLVMTypeRef) * argc);
     if (!llvm_arg_types) bl_abort("bad alloc");
 
-    Ast *    arg;
+    Ast *arg;
     barray_foreach(fn->args, arg)
     {
       assert(arg->kind == AST_DECL);
@@ -335,6 +370,12 @@ ir_node(Context *cnt, Ast *node)
   case AST_EXPR:
     ir_expr(cnt, (AstExpr *)node);
     break;
+  case AST_STMT_RETURN:
+    ir_stmt_return(cnt, (AstStmtReturn *)node);
+    break;
+  case AST_STMT_IF:
+    ir_stmt_if(cnt, (AstStmtIf *)node);
+    break;
 
   default:
     bl_abort("missing ir generation for %s", ast_get_name(node));
@@ -376,6 +417,73 @@ ir_block(Context *cnt, AstBlock *block)
   barray_foreach(block->nodes, node) ir_node(cnt, node);
 }
 
+void
+ir_stmt_return(Context *cnt, AstStmtReturn *ret)
+{
+  if (!ret->expr) {
+    LLVMBuildBr(cnt->llvm_builder, cnt->fn_ret_block);
+    return;
+  }
+
+  LLVMValueRef val = ir_expr(cnt, ret->expr);
+  // val = ltor_if_needed(cnt, ret->expr, val);
+
+  assert(cnt->fn_ret_val);
+  assert(cnt->fn_ret_block);
+  LLVMBuildStore(cnt->llvm_builder, val, cnt->fn_ret_val);
+  LLVMBuildBr(cnt->llvm_builder, cnt->fn_ret_block);
+}
+
+void
+ir_stmt_if(Context *cnt, AstStmtIf *stmt_if)
+{
+  LLVMBasicBlockRef insert_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  LLVMValueRef      parent       = LLVMGetBasicBlockParent(insert_block);
+  assert(LLVMIsAFunction(parent));
+
+  LLVMBasicBlockRef if_then = LLVMAppendBasicBlock(parent, gname("if_then"));
+  LLVMBasicBlockRef if_else = LLVMAppendBasicBlock(parent, gname("if_else"));
+  LLVMBasicBlockRef if_cont = LLVMAppendBasicBlock(parent, gname("if_cont"));
+  LLVMValueRef      expr    = ir_expr(cnt, stmt_if->test);
+
+  expr = ltor_if_needed(cnt, stmt_if->test, expr);
+  expr =
+      LLVMBuildIntCast(cnt->llvm_builder, expr, LLVMInt1TypeInContext(cnt->llvm_cnt), gname("tmp"));
+
+  /*
+   * If condition break generation.
+   */
+  LLVMBuildCondBr(cnt->llvm_builder, expr, if_then, if_else);
+
+  if (stmt_if->false_stmt == NULL) {
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
+    LLVMBuildBr(cnt->llvm_builder, if_cont);
+  }
+
+  /* then block */
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_then);
+  ir_node(cnt, stmt_if->true_stmt);
+
+  LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+  if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+    LLVMBuildBr(cnt->llvm_builder, if_cont);
+  }
+
+  /* else if */
+  if (stmt_if->false_stmt != NULL) {
+    /* else */
+    LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_else);
+    ir_node(cnt, stmt_if->false_stmt);
+
+    curr_block = LLVMGetInsertBlock(cnt->llvm_builder);
+    if (LLVMGetBasicBlockTerminator(curr_block) == NULL) {
+      LLVMBuildBr(cnt->llvm_builder, if_cont);
+    }
+  }
+
+  LLVMPositionBuilderAtEnd(cnt->llvm_builder, if_cont);
+}
+
 /* DECLARATIONS */
 void
 ir_decl_fn(Context *cnt, AstDeclEntity *decl_fn)
@@ -406,10 +514,10 @@ ir_decl_fn(Context *cnt, AstDeclEntity *decl_fn)
     barray_foreach(type_fn->args, tmp)
     {
       const char * name  = tmp->base.name->str;
-      LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i++);
+      LLVMValueRef p     = LLVMGetParam(result, (unsigned int)i);
       LLVMValueRef p_tmp = LLVMBuildAlloca(cnt->llvm_builder, LLVMTypeOf(p), gname(name));
       LLVMBuildStore(cnt->llvm_builder, p, p_tmp);
-      llvm_values_insert(cnt, &tmp->base, p);
+      llvm_values_insert(cnt, &tmp->base, p_tmp);
     }
 
     /*
@@ -501,12 +609,20 @@ ir_expr(Context *cnt, AstExpr *expr)
   switch (expr->kind) {
   case AST_EXPR_UNARY:
     return ir_expr_unary(cnt, (AstExprUnary *)expr);
+  case AST_EXPR_CAST:
+    return ir_expr_cast(cnt, (AstExprCast *)expr);
   case AST_EXPR_BINOP:
     return ir_expr_binop(cnt, (AstExprBinop *)expr);
   case AST_EXPR_LIT_FN:
     return ir_expr_lit_fn(cnt, (AstExprLitFn *)expr);
   case AST_EXPR_LIT_INT:
     return ir_expr_lit_int(cnt, (AstExprLitInt *)expr);
+  case AST_EXPR_LIT_FLOAT:
+    return ir_expr_lit_float(cnt, (AstExprLitFloat *)expr);
+  case AST_EXPR_LIT_DOUBLE:
+    return ir_expr_lit_double(cnt, (AstExprLitDouble *)expr);
+  case AST_EXPR_LIT_BOOL:
+    return ir_expr_lit_bool(cnt, (AstExprLitBool *)expr);
   case AST_EXPR_REF:
     return ir_expr_ref(cnt, (AstExprRef *)expr);
   case AST_EXPR_CALL:
@@ -515,6 +631,59 @@ ir_expr(Context *cnt, AstExpr *expr)
     bl_abort("missing ir generation for %s", ast_get_name((Ast *)expr));
   }
   return NULL;
+}
+
+LLVMValueRef
+ir_expr_cast(Context *cnt, AstExprCast *cast)
+{
+  assert(cast->next);
+  assert(cast->type);
+  assert(cast->type == cast->base.type);
+
+  LLVMTargetDataRef  data_layout = LLVMGetModuleDataLayout(cnt->llvm_module);
+
+  AstType *         src_type       = cast->next->type;
+  AstType *         dest_type      = cast->type;
+  const AstTypeKind src_kind       = cast->next->type->kind;
+  const AstTypeKind dest_kind      = cast->type->kind;
+  LLVMValueRef      llvm_src       = ir_expr(cnt, cast->next);
+  LLVMTypeRef       llvm_dest_type = to_llvm_type(cnt, dest_type);
+
+  unsigned long long src_size    = LLVMSizeOfTypeInBits(data_layout, LLVMTypeOf(llvm_src));
+  unsigned long long dest_size   = LLVMSizeOfTypeInBits(data_layout, llvm_dest_type);
+
+  /* types are same -> no cast needed */
+  if (src_kind == dest_kind && src_size == dest_size && src_kind != AST_TYPE_PTR) {
+    // assert(false && "try to build cast on a same types");
+    return llvm_src;
+  }
+
+  LLVMOpcode op = 0;
+
+  if (src_kind == AST_TYPE_INT) {
+    if (dest_kind == AST_TYPE_INT) {
+      op = src_size < dest_size ? LLVMZExt : LLVMTrunc;
+    } else if (dest_kind == AST_TYPE_REAL) {
+      op = ((AstTypeInt *)src_type)->is_signed ? LLVMSIToFP : LLVMUIToFP;
+    }
+  } else if (src_kind == AST_TYPE_REAL) {
+    if (dest_kind == AST_TYPE_REAL) {
+      op = src_size < dest_size ? LLVMFPExt : LLVMFPTrunc;
+    } else if (dest_kind == AST_TYPE_INT) {
+      op = ((AstTypeInt *)dest_type)->is_signed ? LLVMFPToSI : LLVMFPToUI;
+    }
+  }
+
+  if (op == 0) {
+    char tmp_first[256];
+    char tmp_second[256];
+    ast_type_to_str(tmp_first, 256, cast->next->type);
+    ast_type_to_str(tmp_second, 256, cast->type);
+    bl_abort("invalid cast from '%s' to '%s'", tmp_first, tmp_second);
+  }
+
+  llvm_src                         = ltor_if_needed(cnt, cast->next, llvm_src);
+  return LLVMBuildCast(cnt->llvm_builder, op, llvm_src, llvm_dest_type, gname("cast"));
 }
 
 LLVMValueRef
@@ -601,7 +770,46 @@ ir_expr_lit_int(Context *cnt, AstExprLitInt *lit_int)
   AstTypeInt * type      = (AstTypeInt *)lit_int->base.type;
   LLVMTypeRef  llvm_type = to_llvm_type(cnt, (AstType *)type);
 
-  result = LLVMConstInt(llvm_type, lit_int->i, type->is_signed);
+  result = LLVMConstInt(llvm_type, lit_int->val, type->is_signed);
+  assert(result);
+
+  return result;
+}
+
+LLVMValueRef
+ir_expr_lit_float(Context *cnt, AstExprLitFloat *lit_float)
+{
+  LLVMValueRef result    = NULL;
+  AstTypeReal *type      = (AstTypeReal *)lit_float->base.type;
+  LLVMTypeRef  llvm_type = to_llvm_type(cnt, (AstType *)type);
+
+  result = LLVMConstReal(llvm_type, (double)lit_float->val);
+  assert(result);
+
+  return result;
+}
+
+LLVMValueRef
+ir_expr_lit_double(Context *cnt, AstExprLitDouble *lit_double)
+{
+  LLVMValueRef result    = NULL;
+  AstTypeReal *type      = (AstTypeReal *)lit_double->base.type;
+  LLVMTypeRef  llvm_type = to_llvm_type(cnt, (AstType *)type);
+
+  result = LLVMConstReal(llvm_type, lit_double->val);
+  assert(result);
+
+  return result;
+}
+
+LLVMValueRef
+ir_expr_lit_bool(Context *cnt, AstExprLitBool *lit_bool)
+{
+  LLVMValueRef result    = NULL;
+  AstTypeBool *type      = (AstTypeBool *)lit_bool->base.type;
+  LLVMTypeRef  llvm_type = to_llvm_type(cnt, (AstType *)type);
+
+  result = LLVMConstInt(llvm_type, lit_bool->val, false);
   assert(result);
 
   return result;

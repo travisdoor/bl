@@ -40,75 +40,89 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-static const char *reserved_names[RESERVED_COUNT] = {"u8", "u16", "u32", "u64", "usize",
-                                                     "s8", "s16", "s32", "s64", "main"};
+static const char *reserved_names[RESERVED_COUNT] = {
+    "u8", "u16", "u32", "u64", "usize", "s8", "s16", "s32", "s64", "f32", "f64", "bool", "main"};
 
-static AstTypeVoid entry_void = {.base.base.kind = AST_TYPE,
-                                 .base.base.src  = NULL,
-                                 .base.kind      = AST_TYPE_VOID};
+static AstTypeVoid entry_void = {
+    .base.base.kind = AST_TYPE, .base.base.src = NULL, .base.kind = AST_TYPE_VOID};
 
-static AstTypeInt entry_u8 = {.base.base      = AST_TYPE,
-                              .base.base.src  = NULL,
-                              .base.kind      = AST_TYPE_INT,
-                              .name           = "u8",
-                              .bitcount       = 8,
-                              .is_signed      = false};
+static AstTypeInt entry_u8 = {.base.base     = AST_TYPE,
+                              .base.base.src = NULL,
+                              .base.kind     = AST_TYPE_INT,
+                              .name          = "u8",
+                              .bitcount      = 8,
+                              .is_signed     = false};
 
-static AstTypeInt entry_u16 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "u16",
-                               .bitcount       = 16,
-                               .is_signed      = false};
+static AstTypeInt entry_u16 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "u16",
+                               .bitcount      = 16,
+                               .is_signed     = false};
 
-static AstTypeInt entry_u32 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "u32",
-                               .bitcount       = 32,
-                               .is_signed      = false};
+static AstTypeInt entry_u32 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "u32",
+                               .bitcount      = 32,
+                               .is_signed     = false};
 
-static AstTypeInt entry_u64 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "u64",
-                               .bitcount       = 64,
-                               .is_signed      = false};
+static AstTypeInt entry_u64 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "u64",
+                               .bitcount      = 64,
+                               .is_signed     = false};
 
-static AstTypeInt entry_usize = {.base.base      = AST_TYPE,
-                                 .base.base.src  = NULL,
-                                 .base.kind      = AST_TYPE_INT,
-                                 .name           = "usize",
-                                 .bitcount       = 64,
-                                 .is_signed      = false};
+static AstTypeInt entry_usize = {.base.base     = AST_TYPE,
+                                 .base.base.src = NULL,
+                                 .base.kind     = AST_TYPE_INT,
+                                 .name          = "usize",
+                                 .bitcount      = 64,
+                                 .is_signed     = false};
 
-static AstTypeInt entry_s8 = {.base.base      = AST_TYPE,
-                              .base.base.src  = NULL,
-                              .base.kind      = AST_TYPE_INT,
-                              .name           = "s8",
-                              .bitcount       = 8,
-                              .is_signed      = true};
+static AstTypeInt entry_s8 = {.base.base     = AST_TYPE,
+                              .base.base.src = NULL,
+                              .base.kind     = AST_TYPE_INT,
+                              .name          = "s8",
+                              .bitcount      = 8,
+                              .is_signed     = true};
 
-static AstTypeInt entry_s16 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "s16",
-                               .bitcount       = 16,
-                               .is_signed      = true};
+static AstTypeInt entry_s16 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "s16",
+                               .bitcount      = 16,
+                               .is_signed     = true};
 
-static AstTypeInt entry_s32 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "s32",
-                               .bitcount       = 32,
-                               .is_signed      = true};
+static AstTypeInt entry_s32 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "s32",
+                               .bitcount      = 32,
+                               .is_signed     = true};
 
-static AstTypeInt entry_s64 = {.base.base      = AST_TYPE,
-                               .base.base.src  = NULL,
-                               .base.kind      = AST_TYPE_INT,
-                               .name           = "s64",
-                               .bitcount       = 64,
-                               .is_signed      = true};
+static AstTypeInt entry_s64 = {.base.base     = AST_TYPE,
+                               .base.base.src = NULL,
+                               .base.kind     = AST_TYPE_INT,
+                               .name          = "s64",
+                               .bitcount      = 64,
+                               .is_signed     = true};
+
+static AstTypeReal entry_f32 = {.base.base     = AST_TYPE,
+                                .base.base.src = NULL,
+                                .base.kind     = AST_TYPE_REAL,
+                                .name          = "f32",
+                                .bitcount      = 32};
+
+static AstTypeReal entry_f64 = {.base.base     = AST_TYPE,
+                                .base.base.src = NULL,
+                                .base.kind     = AST_TYPE_REAL,
+                                .name          = "f64",
+                                .bitcount      = 64};
+
+static AstTypeBool entry_bool = {
+    .base.base = AST_TYPE, .base.base.src = NULL, .base.kind = AST_TYPE_BOOL};
 
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
@@ -254,6 +268,9 @@ builder_new(void)
   b->entry_s16      = (AstType *)&entry_s16;
   b->entry_s32      = (AstType *)&entry_s32;
   b->entry_s64      = (AstType *)&entry_s64;
+  b->entry_f32      = (AstType *)&entry_f32;
+  b->entry_f64      = (AstType *)&entry_f64;
+  b->entry_bool     = (AstType *)&entry_bool;
   /* SETUP BUILDINS */
 
   return builder;

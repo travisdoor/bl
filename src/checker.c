@@ -149,7 +149,19 @@ static AstIdent *
 check_stmt_return(Context *cnt, AstStmtReturn **stmt);
 
 static AstIdent *
+check_expr_cast(Context *cnt, AstExprCast **expr);
+
+static AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit);
+
+static AstIdent *
+check_expr_lit_float(Context *cnt, AstExprLitFloat **lit);
+
+static AstIdent *
+check_expr_lit_double(Context *cnt, AstExprLitDouble **lit);
+
+static AstIdent *
+check_expr_lit_bool(Context *cnt, AstExprLitBool **lit);
 
 static AstIdent *
 check_expr_lit_fn(Context *cnt, AstExprLitFn **fn);
@@ -444,33 +456,43 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
   switch ((*expr)->kind) {
 
   case AST_EXPR_LIT_FN: {
-    AstExprLitFn *_fn = (AstExprLitFn *)(*expr);
+    AstExprLitFn *_fn = (AstExprLitFn *)*expr;
     flatten(&(*expr)->type);
     schedule_check(cnt, &_fn->block);
     break;
   }
 
   case AST_EXPR_BINOP: {
-    AstExprBinop *_binop = (AstExprBinop *)(*expr);
-    flatten(&_binop->lhs);
-    flatten(&_binop->rhs);
+    AstExprBinop *binop = (AstExprBinop *)*expr;
+    flatten(&binop->lhs);
+    flatten(&binop->rhs);
     break;
   }
 
   case AST_EXPR_CALL: {
-    AstExprCall *_call = (AstExprCall *)(*expr);
-    flatten(&_call->ref);
+    AstExprCall *call = (AstExprCall *)*expr;
+    flatten(&call->ref);
 
     Ast **    tmp;
-    const int c = bo_array_size(_call->args);
+    const int c = bo_array_size(call->args);
     for (int i = 0; i < c; ++i) {
-      tmp = &bo_array_at(_call->args, i, Ast *);
+      tmp = &bo_array_at(call->args, i, Ast *);
       flatten(tmp);
     }
     break;
   }
 
+  case AST_EXPR_CAST: {
+    AstExprCast *cast = (AstExprCast *)*expr;
+    flatten(&cast->type);
+    flatten(&cast->next);
+    break;
+  }
+
   case AST_EXPR_LIT_INT:
+  case AST_EXPR_LIT_FLOAT:
+  case AST_EXPR_LIT_DOUBLE:
+  case AST_EXPR_LIT_BOOL:
   case AST_EXPR_REF:
     break;
   default:
@@ -498,6 +520,7 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
   }
 
   case AST_TYPE_REF:
+  case AST_TYPE_BOOL:
   case AST_TYPE_VOID:
     break;
 
@@ -537,6 +560,7 @@ check_node(Context *cnt, Ast **node)
     result = check_stmt_return(cnt, (AstStmtReturn **)node);
     break;
 
+  case AST_STMT_IF:
   case AST_UBLOCK:
   case AST_BLOCK:
     break;
@@ -591,12 +615,28 @@ check_expr(Context *cnt, AstExpr **expr)
 {
   AstIdent *result = NULL;
   switch ((*expr)->kind) {
+  case AST_EXPR_CAST:
+    result = check_expr_cast(cnt, (AstExprCast **)expr);
+    break;
+
   case AST_EXPR_LIT_INT:
     result = check_expr_lit_int(cnt, (AstExprLitInt **)expr);
     break;
 
+  case AST_EXPR_LIT_FLOAT:
+    result = check_expr_lit_float(cnt, (AstExprLitFloat **)expr);
+    break;
+
+  case AST_EXPR_LIT_DOUBLE:
+    result = check_expr_lit_double(cnt, (AstExprLitDouble **)expr);
+    break;
+
   case AST_EXPR_LIT_FN:
     result = check_expr_lit_fn(cnt, (AstExprLitFn **)expr);
+    break;
+
+  case AST_EXPR_LIT_BOOL:
+    result = check_expr_lit_bool(cnt, (AstExprLitBool **)expr);
     break;
 
   case AST_EXPR_REF:
@@ -687,10 +727,18 @@ cmp_type(AstType *first, AstType *second)
     return _f->bitcount == _s->bitcount && _f->is_signed == _s->is_signed;
   }
 
+  case AST_TYPE_REAL: {
+    AstTypeReal *_f = (AstTypeReal *)first;
+    AstTypeReal *_s = (AstTypeReal *)second;
+
+    return _f->bitcount == _s->bitcount;
+  }
+
   case AST_TYPE_VOID:
     break;
 
   case AST_TYPE_BAD:
+  case AST_TYPE_BOOL:
   case AST_TYPE_REF:
   case AST_TYPE_VARGS:
   case AST_TYPE_ARR:
@@ -728,6 +776,12 @@ lookup_buildin_type(Context *cnt, AstIdent *ident)
     return cnt->builder->buildin.entry_s32;
   case RESERVED_S64:
     return cnt->builder->buildin.entry_s64;
+  case RESERVED_F32:
+    return cnt->builder->buildin.entry_f32;
+  case RESERVED_F64:
+    return cnt->builder->buildin.entry_f64;
+  case RESERVED_BOOL:
+    return cnt->builder->buildin.entry_bool;
   default:
     return NULL;
   }
@@ -867,6 +921,8 @@ setup_decl_kind(AstDeclEntity *decl)
   case AST_TYPE_STRUCT:
   case AST_TYPE_ARR:
   case AST_TYPE_PTR:
+  case AST_TYPE_BOOL:
+  case AST_TYPE_REAL:
     decl->kind = DECL_ENTITY_FIELD;
     break;
 
@@ -995,11 +1051,61 @@ check_decl_arg(Context *cnt, AstDeclArg **decl)
 }
 
 AstIdent *
+check_expr_cast(Context *cnt, AstExprCast **expr)
+{
+  /* TODO: cast validation */
+  /* TODO: cast validation */
+  /* TODO: cast validation */
+  /* TODO: cast validation */
+  /* TODO: cast validation */
+  AstExprCast *cast   = (AstExprCast *)*expr;
+  cast->base.type     = cast->type;
+  cast->base.adr_mode = cast->next->adr_mode;
+
+  if (cmp_type(cast->type, cast->next->type)) {
+    builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, cast->base.base.src, BUILDER_CUR_WORD,
+                "cast can be removed");
+  }
+
+  finish();
+}
+
+AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
-  AstExpr *_lit  = (AstExpr *)*lit;
-  _lit->type     = cnt->builder->buildin.entry_s32;
-  _lit->adr_mode = ADR_MODE_CONST;
+  AstExpr *integer  = (AstExpr *)*lit;
+  integer->type     = cnt->builder->buildin.entry_s32;
+  integer->adr_mode = ADR_MODE_CONST;
+
+  finish();
+}
+
+AstIdent *
+check_expr_lit_float(Context *cnt, AstExprLitFloat **lit)
+{
+  AstExpr *flt  = (AstExpr *)*lit;
+  flt->type     = cnt->builder->buildin.entry_f32;
+  flt->adr_mode = ADR_MODE_CONST;
+
+  finish();
+}
+
+AstIdent *
+check_expr_lit_double(Context *cnt, AstExprLitDouble **lit)
+{
+  AstExpr *flt  = (AstExpr *)*lit;
+  flt->type     = cnt->builder->buildin.entry_f64;
+  flt->adr_mode = ADR_MODE_CONST;
+
+  finish();
+}
+
+AstIdent *
+check_expr_lit_bool(Context *cnt, AstExprLitBool **lit)
+{
+  AstExpr *bl  = (AstExpr *)*lit;
+  bl->type     = cnt->builder->buildin.entry_bool;
+  bl->adr_mode = ADR_MODE_CONST;
 
   finish();
 }

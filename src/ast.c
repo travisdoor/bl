@@ -53,6 +53,8 @@ union _Ast
   AstTypeVoid      type_tvoid;
   AstTypeRef       type_ref;
   AstTypeInt       type_integer;
+  AstTypeReal      type_real;
+  AstTypeBool      type_bool;
   AstTypeVArgs     type_vargs;
   AstTypeArr       type_arr;
   AstTypeFn        type_fn;
@@ -62,7 +64,8 @@ union _Ast
   AstExpr          expr;
   AstExprLitFn     expr_fn;
   AstExprLitInt    expr_integer;
-  AstExprLitFloat  expr_real;
+  AstExprLitFloat  expr_float;
+  AstExprLitDouble expr_double;
   AstExprLitChar   expr_character;
   AstExprLitString expr_string;
   AstExprLitBool   expr_boolean;
@@ -266,6 +269,10 @@ ast_get_name(const Ast *n)
       return "TypePtr";
     case AST_TYPE_VOID:
       return "TypeVoid";
+    case AST_TYPE_BOOL:
+      return "TypeBool";
+    case AST_TYPE_REAL:
+      return "TypeReal";
     }
   }
 
@@ -301,6 +308,8 @@ ast_get_name(const Ast *n)
       return "ExprLitInt";
     case AST_EXPR_LIT_FLOAT:
       return "ExprLitFloat";
+    case AST_EXPR_LIT_DOUBLE:
+      return "ExprLitDouble";
     case AST_EXPR_LIT_CHAR:
       return "ExprLitChar";
     case AST_EXPR_LIT_STRING:
@@ -338,6 +347,9 @@ _type_to_str(char *buf, size_t len, AstType *type)
   case AST_TYPE_BAD:
     append_buf(buf, len, "BAD");
     break;
+  case AST_TYPE_BOOL:
+    append_buf(buf, len, "bool");
+    break;
   case AST_TYPE_VOID:
     append_buf(buf, len, "void");
     break;
@@ -346,6 +358,9 @@ _type_to_str(char *buf, size_t len, AstType *type)
     break;
   case AST_TYPE_INT:
     append_buf(buf, len, ((AstTypeInt *)type)->name);
+    break;
+  case AST_TYPE_REAL:
+    append_buf(buf, len, ((AstTypeReal *)type)->name);
     break;
 
   case AST_TYPE_FN: {

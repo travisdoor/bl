@@ -59,6 +59,7 @@ typedef struct AstDeclVariant AstDeclVariant;
 typedef struct AstExprLitFn     AstExprLitFn;
 typedef struct AstExprLitInt    AstExprLitInt;
 typedef struct AstExprLitFloat  AstExprLitFloat;
+typedef struct AstExprLitDouble AstExprLitDouble;
 typedef struct AstExprLitChar   AstExprLitChar;
 typedef struct AstExprLitString AstExprLitString;
 typedef struct AstExprLitBool   AstExprLitBool;
@@ -80,6 +81,8 @@ typedef struct AstTypeVoid   AstTypeVoid;
 typedef struct AstTypeType   AstTypeType;
 typedef struct AstTypeRef    AstTypeRef;
 typedef struct AstTypeInt    AstTypeInt;
+typedef struct AstTypeReal   AstTypeReal;
+typedef struct AstTypeBool   AstTypeBool;
 typedef struct AstTypeVArgs  AstTypeVArgs;
 typedef struct AstTypeArr    AstTypeArr;
 typedef struct AstTypeFn     AstTypeFn;
@@ -115,6 +118,8 @@ typedef enum
   AST_TYPE_TYPE,
   AST_TYPE_REF,
   AST_TYPE_INT,
+  AST_TYPE_REAL,
+  AST_TYPE_BOOL,
   AST_TYPE_VARGS,
   AST_TYPE_ARR,
   AST_TYPE_FN,
@@ -140,6 +145,7 @@ typedef enum
   AST_EXPR_LIT_FN,
   AST_EXPR_LIT_INT,
   AST_EXPR_LIT_FLOAT,
+  AST_EXPR_LIT_DOUBLE,
   AST_EXPR_LIT_CHAR,
   AST_EXPR_LIT_STRING,
   AST_EXPR_LIT_BOOL,
@@ -387,6 +393,18 @@ struct AstTypeInt
   int         bitcount;
 };
 
+struct AstTypeReal
+{
+  AstType     base;
+  const char *name;
+  int         bitcount;
+};
+
+struct AstTypeBool
+{
+  AstType base;
+};
+
 struct AstTypeVArgs
 {
   AstType base;
@@ -443,31 +461,37 @@ struct AstExprLitFn
 struct AstExprLitInt
 {
   AstExpr  base;
-  uint64_t i;
+  uint64_t val;
 };
 
 struct AstExprLitFloat
 {
   AstExpr base;
-  float   f;
+  float   val;
+};
+
+struct AstExprLitDouble
+{
+  AstExpr base;
+  double  val;
 };
 
 struct AstExprLitChar
 {
   AstExpr base;
-  uint8_t c;
+  uint8_t val;
 };
 
 struct AstExprLitString
 {
   AstExpr     base;
-  const char *s;
+  const char *val;
 };
 
 struct AstExprLitBool
 {
   AstExpr base;
-  bool    b;
+  bool    val;
 };
 
 struct AstExprLitCmp

@@ -61,6 +61,9 @@ typedef enum
   RESERVED_S16,
   RESERVED_S32,
   RESERVED_S64,
+  RESERVED_F32,
+  RESERVED_F64,
+  RESERVED_BOOL,
   RESERVED_MAIN,
   RESERVED_COUNT,
 } ReservedNames;
@@ -91,6 +94,9 @@ typedef struct Builder
     AstType *entry_s16;
     AstType *entry_s32;
     AstType *entry_s64;
+    AstType *entry_f32;
+    AstType *entry_f64;
+    AstType *entry_bool;
   } buildin;
 } Builder;
 

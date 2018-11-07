@@ -415,7 +415,7 @@ parse_decl_variant(Context *cnt, AstType *base_type, AstDeclVariant *prev)
   } else if (prev) {
     AstExprLitInt *_addition =
         ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExprLitInt *);
-    _addition->i = 1;
+    _addition->val = 1;
 
     AstExprBinop *_binop = ast_create_expr(cnt->ast_arena, AST_EXPR_BINOP, NULL, AstExprBinop *);
     _binop->kind         = BINOP_ADD;
@@ -426,7 +426,7 @@ parse_decl_variant(Context *cnt, AstType *base_type, AstDeclVariant *prev)
   } else {
     /* first variant is allways 0 */
     var->value = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, AstExpr *);
-    ((AstExprLitInt *)var->value)->i = 0;
+    ((AstExprLitInt *)var->value)->val = 0;
   }
 
   assert(var->value);
@@ -451,10 +451,10 @@ parse_expr_lit_cmp(Context *cnt, AstExpr *prev)
   AstExprLitCmp *lit_cmp =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CMP, tok_begin, AstExprLitCmp *);
   lit_cmp->base.type = prev->type;
-  lit_cmp->fields = bo_array_new(sizeof(AstExpr *));
+  lit_cmp->fields    = bo_array_new(sizeof(AstExpr *));
 
   /* parse lit_cmp fields */
-  bool  rq     = false;
+  bool     rq = false;
   AstExpr *tmp;
 
 next:
@@ -766,38 +766,39 @@ parse_expr_lit(Context *cnt)
 
   switch (tok->sym) {
   case SYM_NUM:
-    lit                       = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok, AstExpr *);
-    ((AstExprLitInt *)lit)->i = tok->value.u;
+    lit                         = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok, AstExpr *);
+    ((AstExprLitInt *)lit)->val = tok->value.u;
     break;
 
   case SYM_CHAR:
-    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
-    ((AstExprLitChar *)lit)->c = (uint8_t)tok->value.c;
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, AstExpr *);
+    ((AstExprLitChar *)lit)->val = (uint8_t)tok->value.c;
 
     break;
 
   case SYM_STRING:
     lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_STRING, tok, AstExpr *);
-    ((AstExprLitString *)lit)->s = tok->value.str;
+    ((AstExprLitString *)lit)->val = tok->value.str;
     break;
 
   case SYM_TRUE:
-    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
-    ((AstExprLitBool *)lit)->b = true;
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
+    ((AstExprLitBool *)lit)->val = true;
     break;
 
   case SYM_FALSE:
-    lit                        = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
-    ((AstExprLitBool *)lit)->b = false;
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, AstExpr *);
+    ((AstExprLitBool *)lit)->val = false;
     break;
 
   case SYM_DOUBLE:
+    lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_DOUBLE, tok, AstExpr *);
+    ((AstExprLitDouble *)lit)->val = tok->value.d;
+    break;
+
   case SYM_FLOAT:
-    // TODO: double!!!
-    // TODO: double!!!
-    // TODO: double!!!
     lit = ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_FLOAT, tok, AstExpr *);
-    ((AstExprLitFloat *)lit)->f = (float)tok->value.d;
+    ((AstExprLitFloat *)lit)->val = (float)tok->value.d;
     break;
 
   default:
@@ -1434,7 +1435,7 @@ parse_expr_line(Context *cnt)
 
   AstExprLitInt *lit =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, AstExprLitInt *);
-  lit->i = (uint64_t)tok_begin->src.line;
+  lit->val = (uint64_t)tok_begin->src.line;
   return &lit->base;
 }
 
@@ -1446,7 +1447,7 @@ parse_expr_file(Context *cnt)
 
   AstExprLitString *lit =
       ast_create_expr(cnt->ast_arena, AST_EXPR_LIT_STRING, tok_begin, AstExprLitString *);
-  lit->s = tok_begin->src.unit->filepath;
+  lit->val = tok_begin->src.unit->filepath;
   return &lit->base;
 }
 
