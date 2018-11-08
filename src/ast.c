@@ -358,7 +358,7 @@ _type_to_str(char *buf, size_t len, AstType *type)
     append_buf(buf, len, ((AstTypeType *)type)->name);
     break;
   case AST_TYPE_INT:
-    append_buf(buf, len, ((AstTypeInt *)type)->name);
+    append_buf(buf, len, "integer");
     break;
   case AST_TYPE_REAL:
     append_buf(buf, len, ((AstTypeReal *)type)->name);
@@ -386,10 +386,6 @@ _type_to_str(char *buf, size_t len, AstType *type)
     break;
   }
 
-  case AST_TYPE_REF:
-    _type_to_str(buf, len, ((AstTypeRef *)type)->type);
-    break;
-
   case AST_TYPE_STRUCT: {
     AstTypeStruct *strct = (AstTypeStruct *)type;
     AstDeclMember *tmp;
@@ -406,6 +402,7 @@ _type_to_str(char *buf, size_t len, AstType *type)
   }
 
   case AST_TYPE_VARGS:
+  case AST_TYPE_REF:
   case AST_TYPE_ARR:
   case AST_TYPE_ENUM:
   case AST_TYPE_PTR:

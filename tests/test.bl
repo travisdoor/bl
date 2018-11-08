@@ -1,28 +1,19 @@
 /* playground */
 
-s8    : #compiler;
-s16   : #compiler;
-s32   : #compiler;
-s64   : #compiler;
-u8    : #compiler;
-u16   : #compiler;
-u32   : #compiler;
-u64   : #compiler;
-usize : #compiler;
-bool  : #compiler;
-f32   : #compiler;
-f64   : #compiler;
-
-// TODO ExprType
-Foo : struct {
-  i s32,
-  j Int 
-};
-
-// ExprRef
-Int : s32;
-Bar : Foo;
+s8    type : #compiler;
+s16   type : #compiler;
+s32   type : #compiler;
+s64   type : #compiler;
+u8    type : #compiler;
+u16   type : #compiler;
+u32   type : #compiler;
+u64   type : #compiler;
+usize type : #compiler;
+bool  type : #compiler;
+f32   type : #compiler;
+f64   type : #compiler;
 
 main : fn () {
+  a s32;
 };
 

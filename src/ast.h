@@ -334,13 +334,11 @@ struct AstStmtLoop
 struct AstStmtBreak
 {
   Ast   base;
-  void *_;
 };
 
 struct AstStmtContinue
 {
   Ast   base;
-  void *_;
 };
 
 struct AstDeclEntity
@@ -364,7 +362,6 @@ struct AstDeclMember
 struct AstDeclArg
 {
   AstDecl base;
-  void *  _;
 };
 
 struct AstDeclVariant
@@ -389,7 +386,6 @@ struct AstTypeVoid
 struct AstTypeInt
 {
   AstType     base;
-  const char *name;
   bool        is_signed;
   int         bitcount;
 };
@@ -409,7 +405,6 @@ struct AstTypeBool
 struct AstTypeVArgs
 {
   AstType base;
-  void *  _;
 };
 
 struct AstTypeArr
@@ -449,7 +444,6 @@ struct AstTypePtr
 struct AstTypeRef
 {
   AstType   base;
-  AstType * type;
   AstIdent *ident;
 };
 
@@ -575,7 +569,6 @@ struct AstExprUnary
 struct AstExprNull
 {
   AstExpr base;
-  void *  _;
 };
 
 struct Dependency

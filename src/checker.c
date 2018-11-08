@@ -842,14 +842,12 @@ check_type_ref(Context *cnt, AstTypeRef **type)
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)ref)->src,
-                BUILDER_CUR_WORD, "expected type");
-    ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
+                BUILDER_CUR_WORD, "expected type declaration name");
+    *type = (AstTypeRef *)ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
     finish();
   }
 
-  AstTypeType *tmp = (AstTypeType *)found->type;
-  *type            = (AstTypeRef *)tmp->spec;
-  // ref->type = found->type;
+  *type = (AstTypeRef *)found->type;
 
   finish();
 }
@@ -891,22 +889,6 @@ infer_decl_type(Context *cnt, AstDeclEntity *decl)
     return false;
   }
 
-  /* CLEANUP !!! */
-  /* CLEANUP !!! */
-  /* CLEANUP !!! */
-  /* CLEANUP !!! */
-  if (decl->value->kind == AST_EXPR_REF && inferred->kind == AST_TYPE_TYPE) {
-    AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-    tmp->name        = decl->base.name->str;
-    tmp->spec        = ((AstTypeType *)inferred)->spec;
-    inferred         = (AstType *)tmp;
-  } else if (decl->value->kind == AST_EXPR_TYPE) {
-    AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-    tmp->name        = decl->base.name->str;
-    tmp->spec        = decl->value->type;
-    inferred         = (AstType *)tmp;
-  }
-
   decl->base.type = inferred;
   return true;
 }
@@ -938,32 +920,22 @@ check_buildin_decl(Context *cnt, AstDeclEntity *decl)
 static inline void
 setup_decl_kind(AstDeclEntity *decl)
 {
-  switch (decl->base.type->kind) {
-  case AST_TYPE_REF:
-  case AST_TYPE_BAD:
-  case AST_TYPE_VARGS:
-    decl->kind = DECL_ENTITY_INVALID;
-    break;
-  case AST_TYPE_TYPE:
-    decl->kind = DECL_ENTITY_TYPE;
-    break;
-  case AST_TYPE_FN:
+  if (!decl->value) {
+    decl->kind = DECL_ENTITY_FIELD;
+    return;
+  }
+
+  switch (decl->value->kind) {
+  case AST_EXPR_LIT_FN:
     decl->kind = DECL_ENTITY_FN;
     break;
-  case AST_TYPE_ENUM:
-    decl->kind = DECL_ENTITY_ENUM;
-    break;
-  case AST_TYPE_INT:
-  case AST_TYPE_STRUCT:
-  case AST_TYPE_ARR:
-  case AST_TYPE_PTR:
-  case AST_TYPE_BOOL:
-  case AST_TYPE_REAL:
-    decl->kind = DECL_ENTITY_FIELD;
+
+  case AST_EXPR_TYPE:
+    decl->kind = DECL_ENTITY_TYPE;
     break;
 
-  case AST_TYPE_VOID:
-    decl->kind = DECL_ENTITY_INVALID;
+  default:
+    decl->kind = DECL_ENTITY_FIELD;
   }
 }
 

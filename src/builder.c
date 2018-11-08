@@ -49,63 +49,54 @@ static AstTypeVoid entry_void = {
 static AstTypeInt entry_u8 = {.base.base     = AST_TYPE,
                               .base.base.src = NULL,
                               .base.kind     = AST_TYPE_INT,
-                              .name          = "u8",
                               .bitcount      = 8,
                               .is_signed     = false};
 
 static AstTypeInt entry_u16 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "u16",
                                .bitcount      = 16,
                                .is_signed     = false};
 
 static AstTypeInt entry_u32 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "u32",
                                .bitcount      = 32,
                                .is_signed     = false};
 
 static AstTypeInt entry_u64 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "u64",
                                .bitcount      = 64,
                                .is_signed     = false};
 
 static AstTypeInt entry_usize = {.base.base     = AST_TYPE,
                                  .base.base.src = NULL,
                                  .base.kind     = AST_TYPE_INT,
-                                 .name          = "usize",
                                  .bitcount      = 64,
                                  .is_signed     = false};
 
 static AstTypeInt entry_s8 = {.base.base     = AST_TYPE,
                               .base.base.src = NULL,
                               .base.kind     = AST_TYPE_INT,
-                              .name          = "s8",
                               .bitcount      = 8,
                               .is_signed     = true};
 
 static AstTypeInt entry_s16 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "s16",
                                .bitcount      = 16,
                                .is_signed     = true};
 
 static AstTypeInt entry_s32 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "s32",
                                .bitcount      = 32,
                                .is_signed     = true};
 
 static AstTypeInt entry_s64 = {.base.base     = AST_TYPE,
                                .base.base.src = NULL,
                                .base.kind     = AST_TYPE_INT,
-                               .name          = "s64",
                                .bitcount      = 64,
                                .is_signed     = true};
 
