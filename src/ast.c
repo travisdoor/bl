@@ -62,6 +62,7 @@ union _Ast
   AstTypeEnum      type_enm;
   AstTypePtr       type_ptr;
   AstExpr          expr;
+  AstExprType      expr_type;
   AstExprLitFn     expr_fn;
   AstExprLitInt    expr_integer;
   AstExprLitFloat  expr_float;

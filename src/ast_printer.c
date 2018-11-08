@@ -79,7 +79,7 @@ print_type(AstType *type)
 {
   char tmp[256];
   ast_type_to_str(tmp, 256, type);
-  fprintf(stdout, BLUE("{%s}"), tmp);
+  fprintf(stdout, BLUE("<%s>"), tmp);
 }
 
 static void

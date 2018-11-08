@@ -1481,9 +1481,9 @@ parse_expr_type(Context *cnt)
   if (!type) type = parse_type_enum(cnt);
 
   if (type) {
-    AstExpr *expr = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, tok, AstExpr *);
-    expr->type    = type;
-    return expr;
+    AstExprType *expr = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, tok, AstExprType *);
+    expr->base.type   = type;
+    return &expr->base;
   }
 
   return NULL;

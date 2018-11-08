@@ -36,11 +36,11 @@ native_bin_run(Builder *builder, Assembly *assembly)
   const char *cmd =
       "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker "
       "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
-      "/usr/lib64/crt1.o "
-      "/usr/lib64/crti.o "
+      "/usr/lib/x86_64-linux-gnu/crt1.o "
+      "/usr/lib/x86_64-linux-gnu/crti.o "
       "-L/usr/bin "
-      "-L/usr/lib64 "
-      "/usr/lib64/crtn.o "
+      "-L/usr/lib/x86_64-linux-gnu "
+      "/usr/lib/x86_64-linux-gnu/crtn.o "
       "-lc ";
 #elif defined(BL_PLATFORM_MACOS)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";

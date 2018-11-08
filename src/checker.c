@@ -134,7 +134,7 @@ static AstIdent *
 check_type(Context *cnt, AstType **type);
 
 static AstIdent *
-check_type_ref(Context *cnt, AstTypeRef **type_ref);
+check_type_ref(Context *cnt, AstTypeRef **type);
 
 static AstIdent *
 check_decl(Context *cnt, AstDecl **decl);
@@ -147,6 +147,9 @@ check_decl_arg(Context *cnt, AstDeclArg **decl);
 
 static AstIdent *
 check_stmt_return(Context *cnt, AstStmtReturn **stmt);
+
+static AstIdent *
+check_expr_type(Context *cnt, AstExprType **expr);
 
 static AstIdent *
 check_expr_cast(Context *cnt, AstExprCast **expr);
@@ -489,6 +492,12 @@ flatten_expr(Context *cnt, Flatten *fbuf, AstExpr **expr)
     break;
   }
 
+  case AST_EXPR_TYPE: {
+    AstExprType *expr_type = (AstExprType *)*expr;
+    flatten(&expr_type->base.type);
+    break;
+  }
+
   case AST_EXPR_LIT_INT:
   case AST_EXPR_LIT_FLOAT:
   case AST_EXPR_LIT_DOUBLE:
@@ -506,16 +515,28 @@ flatten_type(Context *cnt, Flatten *fbuf, AstType **type)
 {
   switch ((*type)->kind) {
   case AST_TYPE_FN: {
-    AstTypeFn *_fn = (AstTypeFn *)(*type);
+    AstTypeFn *fn = (AstTypeFn *)(*type);
 
     Ast **    tmp;
-    const int c = bo_array_size(_fn->args);
+    const int c = bo_array_size(fn->args);
     for (int i = 0; i < c; ++i) {
-      tmp = &bo_array_at(_fn->args, i, Ast *);
+      tmp = &bo_array_at(fn->args, i, Ast *);
       flatten(tmp);
     }
 
-    flatten(&_fn->ret_type);
+    flatten(&fn->ret_type);
+    break;
+  }
+
+  case AST_TYPE_STRUCT: {
+    AstTypeStruct *strct = (AstTypeStruct *)*type;
+
+    Ast **    tmp;
+    const int c = bo_array_size(strct->members);
+    for (int i = 0; i < c; ++i) {
+      tmp = &bo_array_at(strct->members, i, Ast *);
+      flatten(tmp);
+    }
     break;
   }
 
@@ -651,6 +672,10 @@ check_expr(Context *cnt, AstExpr **expr)
     result = check_expr_binop(cnt, (AstExprBinop **)expr);
     break;
 
+  case AST_EXPR_TYPE:
+    result = check_expr_type(cnt, (AstExprType **)expr);
+    break;
+
   default:
     msg_warning("missing checking for %s", ast_get_name((Ast *)*expr));
     break;
@@ -672,6 +697,7 @@ check_type(Context *cnt, AstType **type)
     result = check_type_ref(cnt, (AstTypeRef **)type);
     break;
 
+  case AST_TYPE_STRUCT:
   case AST_TYPE_FN:
   case AST_TYPE_VOID:
     break;
@@ -799,30 +825,31 @@ check_error_invalid_types(Context *cnt, AstType *first, AstType *second, Ast *er
 }
 
 AstIdent *
-check_type_ref(Context *cnt, AstTypeRef **type_ref)
+check_type_ref(Context *cnt, AstTypeRef **type)
 {
-  AstTypeRef *_ref = *type_ref;
-  assert(_ref->ident);
+  AstTypeRef *ref = *type;
+  assert(ref->ident);
 
-  Scope *scope = _ref->ident->scope;
+  Scope *scope = ref->ident->scope;
   assert(scope && "missing scope for identificator");
 
   /* TODO: not only declarations are registred??? */
-  AstDecl *found = scope_lookup(scope, _ref->ident, true);
-  if (!found) wait(_ref->ident);
+  AstDecl *found = scope_lookup(scope, ref->ident, true);
+  if (!found) wait(ref->ident);
 
   if (found->kind == AST_DECL_ENTITY) ((AstDeclEntity *)found)->used++;
 
   assert(found->type);
   if (found->type->kind != AST_TYPE_TYPE) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)_ref)->src,
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, ((Ast *)ref)->src,
                 BUILDER_CUR_WORD, "expected type");
-    _ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
+    ref->type = ast_create_type(cnt->ast_arena, AST_TYPE_BAD, NULL, AstType *);
     finish();
   }
 
-  AstTypeType *type = (AstTypeType *)found->type;
-  *type_ref         = (AstTypeRef *)type->spec;
+  AstTypeType *tmp = (AstTypeType *)found->type;
+  *type            = (AstTypeRef *)tmp->spec;
+  // ref->type = found->type;
 
   finish();
 }
@@ -859,16 +886,25 @@ infer_decl_type(Context *cnt, AstDeclEntity *decl)
   AstType *inferred = decl->value->type;
   assert(inferred);
 
-  if (inferred->kind == AST_TYPE_TYPE) {
+  if (decl->base.type && !cmp_type(inferred, decl->base.type)) {
+    check_error_invalid_types(cnt, decl->base.type, inferred, (Ast *)decl->value);
+    return false;
+  }
+
+  /* CLEANUP !!! */
+  /* CLEANUP !!! */
+  /* CLEANUP !!! */
+  /* CLEANUP !!! */
+  if (decl->value->kind == AST_EXPR_REF && inferred->kind == AST_TYPE_TYPE) {
     AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
     tmp->name        = decl->base.name->str;
     tmp->spec        = ((AstTypeType *)inferred)->spec;
     inferred         = (AstType *)tmp;
-  }
-
-  if (decl->base.type && !cmp_type(inferred, decl->base.type)) {
-    check_error_invalid_types(cnt, decl->base.type, inferred, (Ast *)decl->value);
-    return false;
+  } else if (decl->value->kind == AST_EXPR_TYPE) {
+    AstTypeType *tmp = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
+    tmp->name        = decl->base.name->str;
+    tmp->spec        = decl->value->type;
+    inferred         = (AstType *)tmp;
   }
 
   decl->base.type = inferred;
@@ -942,6 +978,7 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl)
 
   /* infer declaration type */
   infer_decl_type(cnt, entity);
+
   if (!entity->base.type) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, entity->base.base.src,
                 BUILDER_CUR_WORD, "declaration of unknown type");
@@ -1071,6 +1108,16 @@ check_expr_cast(Context *cnt, AstExprCast **expr)
 }
 
 AstIdent *
+check_expr_type(Context *cnt, AstExprType **expr)
+{
+  AstExprType *type = (AstExprType *)*expr;
+  assert(type->base.type);
+
+  type->base.adr_mode = ADR_MODE_NO_VALUE;
+  finish();
+}
+
+AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
   AstExpr *integer  = (AstExpr *)*lit;
@@ -1129,16 +1176,19 @@ check_expr_ref(Context *cnt, AstExprRef **expr)
   AstDecl *found = scope_lookup(scope, ref->ident, true);
   if (!found) wait(ref->ident);
 
-  ref->base.type = found->type;
+  AstType *type     = found->type;
+  AdrMode  adr_mode = ADR_MODE_INVALID;
 
   if (found->kind == AST_DECL_ENTITY) {
-    ref->base.adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
+    adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
     ((AstDeclEntity *)found)->used++;
   } else {
-    ref->base.adr_mode = ADR_MODE_MUT;
+    adr_mode = ADR_MODE_MUT;
   }
 
-  ref->ref = found;
+  ref->base.type     = type;
+  ref->base.adr_mode = adr_mode;
+  ref->ref           = found;
   finish();
 }
 

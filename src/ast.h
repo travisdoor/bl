@@ -56,6 +56,8 @@ typedef struct AstDeclMember  AstDeclMember;
 typedef struct AstDeclArg     AstDeclArg;
 typedef struct AstDeclVariant AstDeclVariant;
 
+typedef struct AstExpr          AstExpr;
+typedef struct AstExprType      AstExprType;
 typedef struct AstExprLitFn     AstExprLitFn;
 typedef struct AstExprLitInt    AstExprLitInt;
 typedef struct AstExprLitFloat  AstExprLitFloat;
@@ -64,7 +66,6 @@ typedef struct AstExprLitChar   AstExprLitChar;
 typedef struct AstExprLitString AstExprLitString;
 typedef struct AstExprLitBool   AstExprLitBool;
 typedef struct AstExprLitCmp    AstExprLitCmp;
-typedef struct AstExpr          AstExpr;
 typedef struct AstExprRef       AstExprRef;
 typedef struct AstExprCast      AstExprCast;
 typedef struct AstExprBinop     AstExprBinop;
@@ -450,6 +451,11 @@ struct AstTypeRef
   AstType   base;
   AstType * type;
   AstIdent *ident;
+};
+
+struct AstExprType
+{
+  AstExpr base;
 };
 
 struct AstExprLitFn

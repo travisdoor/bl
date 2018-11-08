@@ -172,7 +172,6 @@ post_decl_entity(Context *cnt, AstDeclEntity *entity)
 void
 post_expr_ref(Context *cnt, AstExprRef *ref)
 {
-  assert(cnt->curr_dependent);
   assert(ref->ref);
 
   if (ref->ref->kind != AST_DECL_ENTITY) return;
@@ -181,6 +180,7 @@ post_expr_ref(Context *cnt, AstExprRef *ref)
 
   if (!(entity->flags & FLAG_EXTERN) &&
       (entity->kind == DECL_ENTITY_FIELD || entity->kind == DECL_ENTITY_FN) && entity->in_gscope) {
+    assert(cnt->curr_dependent);
     ast_add_dep_uq(cnt->curr_dependent, entity, DEP_LAX);
   }
 }
