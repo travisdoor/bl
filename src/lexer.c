@@ -46,10 +46,10 @@ typedef struct context
   Builder *builder;
   Unit *   unit;
   Tokens * tokens;
-  jmp_buf    jmp_error;
-  char *     c;
-  int        line;
-  int        col;
+  jmp_buf  jmp_error;
+  char *   c;
+  int      line;
+  int      col;
 } Context;
 
 static void
@@ -429,7 +429,7 @@ scan:
       /*
        * Two joined symbols will be parsed as identifier.
        */
-      if (i >= SYM_IF && i <= SYM_COMPILER && is_intend_c(*cnt->c)) {
+      if (i >= SYM_IF && i <= SYM_CONTINUE && is_intend_c(*cnt->c)) {
         /* roll back */
         cnt->c -= len;
         break;

@@ -34,7 +34,6 @@
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
-#define EXPECTED_GSCOPE_COUNT 4096
 
 /* public */
 
@@ -48,10 +47,6 @@ assembly_new(const char *name)
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
   assembly->ir_queue     = bo_list_new(sizeof(AstDeclEntity *));
-
-  scope_arena_init(&assembly->scope_arena);
-  ast_arena_init(&assembly->ast_arena);
-  assembly->gscope = scope_create(&assembly->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
   return assembly;
@@ -82,8 +77,6 @@ assembly_delete(Assembly *assembly)
 
   LLVMContextDispose(assembly->llvm_cnt);
 
-  arena_terminate(&assembly->scope_arena);
-  arena_terminate(&assembly->ast_arena);
   bl_free(assembly);
 }
 

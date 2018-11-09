@@ -32,6 +32,7 @@
 #include <bobject/containers/array.h>
 #include "assembly.h"
 #include "error.h"
+#include "arena.h"
 
 #define BUILDER_RUN 0x00000002
 #define BUILDER_PRINT_TOKENS 0x00000004
@@ -52,24 +53,14 @@ typedef void (*diag_handler_f)(const char *, void *);
 
 typedef enum
 {
-  RESERVED_U8,
-  RESERVED_U16,
-  RESERVED_U32,
-  RESERVED_U64,
-  RESERVED_USIZE,
-  RESERVED_S8,
-  RESERVED_S16,
-  RESERVED_S32,
-  RESERVED_S64,
-  RESERVED_F32,
-  RESERVED_F64,
-  RESERVED_BOOL,
-  RESERVED_MAIN,
-  RESERVED_COUNT,
+  BUILDIN_GET_INT,
+  BUILDIN_COUNT,
 } ReservedNames;
 
 typedef struct Builder
 {
+  Arena          ast_arena;
+  Arena          scope_arena;
   diag_handler_f on_error;
   diag_handler_f on_warning;
   diag_handler_f on_note;
@@ -80,23 +71,14 @@ typedef struct Builder
   int            total_lines;
   int            errorc;
   BArray *       uname_cache;
-  BHashTable *   reserved;
 
   struct Buildin
   {
-    AstType *entry_void;
-    AstType *entry_u8;
-    AstType *entry_u16;
-    AstType *entry_u32;
-    AstType *entry_u64;
-    AstType *entry_usize;
-    AstType *entry_s8;
-    AstType *entry_s16;
-    AstType *entry_s32;
-    AstType *entry_s64;
-    AstType *entry_f32;
-    AstType *entry_f64;
-    AstType *entry_bool;
+    BHashTable *table;
+    AstType *   entry_void;
+    AstType *   entry_bool;
+
+    Ast *entries[BUILDIN_COUNT];
   } buildin;
 } Builder;
 
@@ -150,8 +132,7 @@ builder_get_unique_id(Builder *builder);
 const char *
 builder_get_unique_name(Builder *builder, const char *base);
 
-/* determinate if hash is reserved keyword, return -1 if it's not or one of the RESERVED keys */
-int
-builder_is_reserved(Builder *builder, uint64_t hash);
+Ast *
+builder_get_buildin(Builder *builder, uint64_t hash);
 
 #endif

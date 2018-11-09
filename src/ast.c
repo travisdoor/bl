@@ -361,7 +361,10 @@ _type_to_str(char *buf, size_t len, AstType *type)
     append_buf(buf, len, "integer");
     break;
   case AST_TYPE_REAL:
-    append_buf(buf, len, ((AstTypeReal *)type)->name);
+    append_buf(buf, len, "real");
+    break;
+  case AST_TYPE_REF:
+    append_buf(buf, len, "ref");
     break;
 
   case AST_TYPE_FN: {
@@ -402,7 +405,6 @@ _type_to_str(char *buf, size_t len, AstType *type)
   }
 
   case AST_TYPE_VARGS:
-  case AST_TYPE_REF:
   case AST_TYPE_ARR:
   case AST_TYPE_ENUM:
   case AST_TYPE_PTR:

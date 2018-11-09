@@ -1,0 +1,27 @@
+@startuml
+
+class AstType {
+  AstTypeKind kind	
+}
+
+class AstTypeType {
+  AstType *spec	
+  const char *name
+}
+
+class AstTypeInt {
+  int bitcount
+  bool signed
+}
+
+class AstTypeStruct {
+  BArray *members
+  bool raw
+}
+
+AstType <|-- AstTypeType
+AstType <|-- AstTypeInt
+AstType <|-- AstTypeStruct
+
+
+@enduml

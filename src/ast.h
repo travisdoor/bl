@@ -183,7 +183,6 @@ typedef enum
   FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
   FLAG_MAIN     = 1 << 1, /* main method */
   FLAG_TEST     = 1 << 2, /* test case */
-  FLAG_COMPILER = 1 << 3, /* compiler internal flag */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -272,6 +271,7 @@ struct AstExpr
   AstExprKind kind;
   AstType *   type;
   AdrMode     adr_mode;
+  bool        internal;
 };
 
 struct AstLoad
@@ -333,12 +333,12 @@ struct AstStmtLoop
 
 struct AstStmtBreak
 {
-  Ast   base;
+  Ast base;
 };
 
 struct AstStmtContinue
 {
-  Ast   base;
+  Ast base;
 };
 
 struct AstDeclEntity
@@ -385,16 +385,15 @@ struct AstTypeVoid
 
 struct AstTypeInt
 {
-  AstType     base;
-  bool        is_signed;
-  int         bitcount;
+  AstType base;
+  bool    is_signed;
+  int     bitcount;
 };
 
 struct AstTypeReal
 {
-  AstType     base;
-  const char *name;
-  int         bitcount;
+  AstType base;
+  int     bitcount;
 };
 
 struct AstTypeBool

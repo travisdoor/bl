@@ -31,8 +31,7 @@
  * Symbols in this language can be defined in any order in global scope, so we need some kind of
  * 'lazy' reference connecting. For example we can call function 'foo' before it is declared, when
  * checker reaches such call it need to be interrupted and resumed later when definition of the
- * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided
-into
+ * function 'foo' apears in current of parent scope. To solve such problem whole AST is divided into
  * smaller flatten queues which are later solved backwards. When compiler gets to unknown symbol we
  * take note about position in queue and push it into waiting cache.
  */
@@ -43,6 +42,7 @@ into
 
 #define LOG_TAG GREEN("CHECK")
 #define FLATTEN_ARENA_CHUNK_COUNT 128
+#define ENTRY_FN_NAME "main"
 
 #define VERBOSE_MULTIPLE_CHECK 0
 
@@ -65,6 +65,7 @@ typedef struct
   BArray *    flatten_cache;
   BArray *    stack;
   bool        verbose;
+  uint64_t    entry_fn_hash;
 } Context;
 
 typedef struct
@@ -118,9 +119,6 @@ do_check(Context *cnt);
 
 static bool
 cmp_type(AstType *first, AstType *second);
-
-static AstType *
-lookup_buildin_type(Context *cnt, AstIdent *ident);
 
 /* perform checking on node of any type, return NULL when node was sucessfully checked or ponter to
  * waiting-for node */
@@ -723,23 +721,25 @@ cmp_type(AstType *first, AstType *second)
 
   switch (fc) {
   case AST_TYPE_TYPE: {
-    return true;
+    AstTypeType *ftmp = (AstTypeType *)first;
+    AstTypeType *stmp = (AstTypeType *)second;
+    return cmp_type(ftmp->spec, stmp->spec);
   }
 
   case AST_TYPE_FN: {
-    AstTypeFn *_f = (AstTypeFn *)first;
-    AstTypeFn *_s = (AstTypeFn *)second;
+    AstTypeFn *ftmp = (AstTypeFn *)first;
+    AstTypeFn *stmp = (AstTypeFn *)second;
 
-    const int fargc = bo_array_size(_f->args);
-    const int sargc = bo_array_size(_f->args);
+    const int fargc = bo_array_size(ftmp->args);
+    const int sargc = bo_array_size(ftmp->args);
     if (fargc != sargc) return false;
-    if (!cmp_type(_f->ret_type, _s->ret_type)) return false;
+    if (!cmp_type(ftmp->ret_type, stmp->ret_type)) return false;
 
     AstDeclArg *farg;
     AstDeclArg *sarg;
     for (int i = 0; i < fargc; ++i) {
-      farg = bo_array_at(_f->args, i, AstDeclArg *);
-      sarg = bo_array_at(_s->args, i, AstDeclArg *);
+      farg = bo_array_at(ftmp->args, i, AstDeclArg *);
+      sarg = bo_array_at(stmp->args, i, AstDeclArg *);
 
       if (!cmp_type(farg->base.type, sarg->base.type)) return false;
     }
@@ -747,17 +747,17 @@ cmp_type(AstType *first, AstType *second)
   }
 
   case AST_TYPE_INT: {
-    AstTypeInt *_f = (AstTypeInt *)first;
-    AstTypeInt *_s = (AstTypeInt *)second;
+    AstTypeInt *ftmp = (AstTypeInt *)first;
+    AstTypeInt *stmp = (AstTypeInt *)second;
 
-    return _f->bitcount == _s->bitcount && _f->is_signed == _s->is_signed;
+    return ftmp->bitcount == stmp->bitcount && ftmp->is_signed == stmp->is_signed;
   }
 
   case AST_TYPE_REAL: {
-    AstTypeReal *_f = (AstTypeReal *)first;
-    AstTypeReal *_s = (AstTypeReal *)second;
+    AstTypeReal *ftmp = (AstTypeReal *)first;
+    AstTypeReal *stmp = (AstTypeReal *)second;
 
-    return _f->bitcount == _s->bitcount;
+    return ftmp->bitcount == stmp->bitcount;
   }
 
   case AST_TYPE_VOID:
@@ -775,42 +775,6 @@ cmp_type(AstType *first, AstType *second)
   }
 
   return false;
-}
-
-AstType *
-lookup_buildin_type(Context *cnt, AstIdent *ident)
-{
-  assert(ident);
-  int id = builder_is_reserved(cnt->builder, ident->hash);
-  if (id == -1) return NULL;
-  switch ((ReservedNames)id) {
-  case RESERVED_U8:
-    return cnt->builder->buildin.entry_u8;
-  case RESERVED_U16:
-    return cnt->builder->buildin.entry_u16;
-  case RESERVED_U32:
-    return cnt->builder->buildin.entry_u32;
-  case RESERVED_U64:
-    return cnt->builder->buildin.entry_u64;
-  case RESERVED_USIZE:
-    return cnt->builder->buildin.entry_usize;
-  case RESERVED_S8:
-    return cnt->builder->buildin.entry_s8;
-  case RESERVED_S16:
-    return cnt->builder->buildin.entry_s16;
-  case RESERVED_S32:
-    return cnt->builder->buildin.entry_s32;
-  case RESERVED_S64:
-    return cnt->builder->buildin.entry_s64;
-  case RESERVED_F32:
-    return cnt->builder->buildin.entry_f32;
-  case RESERVED_F64:
-    return cnt->builder->buildin.entry_f64;
-  case RESERVED_BOOL:
-    return cnt->builder->buildin.entry_bool;
-  default:
-    return NULL;
-  }
 }
 
 static inline void
@@ -893,30 +857,6 @@ infer_decl_type(Context *cnt, AstDeclEntity *decl)
   return true;
 }
 
-static bool
-check_buildin_decl(Context *cnt, AstDeclEntity *decl)
-{
-  if (!(decl->flags & FLAG_COMPILER)) return false;
-  AstType *tmp = lookup_buildin_type(cnt, decl->base.name);
-  if (!tmp) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNCOMPATIBLE_MODIF, ((Ast *)decl)->src,
-                BUILDER_CUR_WORD, "unknown compiler internal");
-    return false;
-  }
-
-  decl->value       = ast_create_expr(cnt->ast_arena, AST_EXPR_TYPE, NULL, AstExpr *);
-  decl->value->type = tmp;
-
-  AstTypeType *type = ast_create_type(cnt->ast_arena, AST_TYPE_TYPE, NULL, AstTypeType *);
-  type->name        = decl->base.name->str;
-  type->spec        = decl->value->type;
-  decl->base.type   = (AstType *)type;
-  decl->kind        = DECL_ENTITY_TYPE;
-
-  provide(cnt, decl->base.name, &decl->base);
-  return true;
-}
-
 static inline void
 setup_decl_kind(AstDeclEntity *decl)
 {
@@ -945,9 +885,6 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl)
   AstDeclEntity *entity = *decl;
   assert(entity->base.name);
 
-  /* solve buildins */
-  if (check_buildin_decl(cnt, entity)) finish();
-
   /* infer declaration type */
   infer_decl_type(cnt, entity);
 
@@ -961,10 +898,8 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl)
   setup_decl_kind(entity);
 
   {
-    const int id = builder_is_reserved(cnt->builder, entity->base.name->hash);
-
     /* check main method */
-    if (id == RESERVED_MAIN) {
+    if (entity->base.name->hash == cnt->entry_fn_hash) {
       cnt->assembly->entry_node = entity;
       entity->used++;
 
@@ -977,10 +912,6 @@ check_decl_entity(Context *cnt, AstDeclEntity **decl)
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNEXPECTED_MODIF, entity->base.base.src,
                     BUILDER_CUR_WORD, "'main' method declared with invalid flags");
       }
-
-    } else if (id != -1) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, entity->base.base.src,
-                  BUILDER_CUR_WORD, "'%s' is compiler reserved name", entity->base.name->str);
     }
   }
 
@@ -1029,18 +960,6 @@ check_decl_arg(Context *cnt, AstDeclArg **decl)
 {
   AstDeclArg *arg = *decl;
   assert(arg->base.name && arg->base.type);
-
-  {
-    const int id = builder_is_reserved(cnt->builder, arg->base.name->hash);
-
-    /* check main method */
-    if (id != -1) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_NAME, arg->base.base.src,
-                  BUILDER_CUR_WORD,
-                  "'%s' is compiler reserved name and cannot be used as name of function argument",
-                  arg->base.name->str);
-    }
-  }
 
   Scope *scope = arg->base.name->scope;
   assert(scope);
@@ -1092,9 +1011,10 @@ check_expr_type(Context *cnt, AstExprType **expr)
 AstIdent *
 check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 {
-  AstExpr *integer  = (AstExpr *)*lit;
+  bl_abort("unimplemented");
+  /*AstExpr *integer  = (AstExpr *)*lit;
   integer->type     = cnt->builder->buildin.entry_s32;
-  integer->adr_mode = ADR_MODE_CONST;
+  integer->adr_mode = ADR_MODE_CONST;*/
 
   finish();
 }
@@ -1102,9 +1022,10 @@ check_expr_lit_int(Context *cnt, AstExprLitInt **lit)
 AstIdent *
 check_expr_lit_float(Context *cnt, AstExprLitFloat **lit)
 {
-  AstExpr *flt  = (AstExpr *)*lit;
+  bl_abort("unimplemented");
+  /*AstExpr *flt  = (AstExpr *)*lit;
   flt->type     = cnt->builder->buildin.entry_f32;
-  flt->adr_mode = ADR_MODE_CONST;
+  flt->adr_mode = ADR_MODE_CONST;*/
 
   finish();
 }
@@ -1112,9 +1033,10 @@ check_expr_lit_float(Context *cnt, AstExprLitFloat **lit)
 AstIdent *
 check_expr_lit_double(Context *cnt, AstExprLitDouble **lit)
 {
-  AstExpr *flt  = (AstExpr *)*lit;
+  bl_abort("unimplemented");
+  /*AstExpr *flt  = (AstExpr *)*lit;
   flt->type     = cnt->builder->buildin.entry_f64;
-  flt->adr_mode = ADR_MODE_CONST;
+  flt->adr_mode = ADR_MODE_CONST;*/
 
   finish();
 }
@@ -1142,25 +1064,34 @@ check_expr_ref(Context *cnt, AstExprRef **expr)
   AstExprRef *ref = *expr;
   assert(ref->ident);
 
-  Scope *scope = ref->ident->scope;
-  assert(scope && "missing scope for identificator");
-
-  AstDecl *found = scope_lookup(scope, ref->ident, true);
-  if (!found) wait(ref->ident);
-
-  AstType *type     = found->type;
-  AdrMode  adr_mode = ADR_MODE_INVALID;
-
-  if (found->kind == AST_DECL_ENTITY) {
-    adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
-    ((AstDeclEntity *)found)->used++;
+  if (ref->base.internal) {
+    Ast *buildin = builder_get_buildin(cnt->builder, ref->ident->hash);
+    if (!buildin) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ref->base.base.src,
+                  BUILDER_CUR_WORD, "unknown buildin symbol");
+    }
   } else {
-    adr_mode = ADR_MODE_MUT;
-  }
 
-  ref->base.type     = type;
-  ref->base.adr_mode = adr_mode;
-  ref->ref           = found;
+    Scope *scope = ref->ident->scope;
+    assert(scope && "missing scope for identificator");
+
+    AstDecl *found = scope_lookup(scope, ref->ident, true);
+    if (!found) wait(ref->ident);
+
+    AstType *type     = found->type;
+    AdrMode  adr_mode = ADR_MODE_INVALID;
+
+    if (found->kind == AST_DECL_ENTITY) {
+      adr_mode = ((AstDeclEntity *)found)->mutable ? ADR_MODE_MUT : ADR_MODE_IMMUT;
+      ((AstDeclEntity *)found)->used++;
+    } else {
+      adr_mode = ADR_MODE_MUT;
+    }
+
+    ref->base.type     = type;
+    ref->base.adr_mode = adr_mode;
+    ref->ref           = found;
+  }
   finish();
 }
 
@@ -1273,16 +1204,18 @@ checker_run(Builder *builder, Assembly *assembly)
       .builder            = builder,
       .assembly           = assembly,
       .unit               = NULL,
-      .ast_arena          = &assembly->ast_arena,
+      .ast_arena          = &builder->ast_arena,
       .waiting            = bo_htbl_new_bo(bo_typeof(BArray), true, 2048),
       .flatten_cache      = bo_array_new(sizeof(BArray *)),
       .stack              = bo_array_new(sizeof(Ast **)),
-      .provided_in_gscope = scope_create(&assembly->scope_arena, NULL, 4092),
+      .provided_in_gscope = scope_create(&builder->scope_arena, NULL, 4092),
       .verbose            = (bool)(builder->flags & BUILDER_VERBOSE),
   };
 
   arena_init(&cnt.flatten_arena, sizeof(Flatten), FLATTEN_ARENA_CHUNK_COUNT,
              (ArenaElemDtor)flatten_dtor);
+
+  cnt.entry_fn_hash = bo_hash_from_str(ENTRY_FN_NAME);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

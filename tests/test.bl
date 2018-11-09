@@ -1,19 +1,31 @@
 /* playground */
 
-s8    type : #compiler;
-s16   type : #compiler;
-s32   type : #compiler;
-s64   type : #compiler;
-u8    type : #compiler;
-u16   type : #compiler;
-u32   type : #compiler;
-u64   type : #compiler;
-usize type : #compiler;
-bool  type : #compiler;
-f32   type : #compiler;
-f64   type : #compiler;
+/*
+@load("homo.bl")
+@line
+@file
+*/
+
+// 1. lookup and check
+// 2. replace call with result ???
+s32 type : @get_int(32, true);
+
+/*
+s8    type : @get_int(8, true);
+s16   type : @get_int(16, true);
+s32   type : @get_int(32, true);
+s64   type : @get_int(64, true);
+u8    type : @get_int(8, false);
+u16   type : @get_int(16, false);
+u32   type : @get_int(32, false);
+u64   type : @get_int(64, false);
+usize type : @get_int(64, false);
+bool  type : @get_bool();
+f32   type : @get_real(32);
+f64   type : @get_real(64);
+*/
 
 main : fn () {
-  a s32;
+  //a s32 := 0;
 };
 

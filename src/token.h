@@ -63,7 +63,7 @@
   sm(TYPEOF,         "typeof") \
   sm(EXTERN,         "#extern") \
   sm(CONTINUE,       "continue") \
-  sm(COMPILER,       "#compiler") /* must be last */\
+  sm(AT,             "@") \
   sm(MDECL,          ":=") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \

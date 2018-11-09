@@ -30,6 +30,7 @@
 #include "stages.h"
 #include "common.h"
 
+#define EXPECTED_GSCOPE_COUNT 4096
 #define FN_TEST_NAME "test@"
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
@@ -194,6 +195,9 @@ parse_expr_ref(Context *cnt);
 
 static AstExpr *
 parse_expr_nested(Context *cnt);
+
+static AstExpr *
+parse_expr_internal(Context *cnt);
 
 static AstExpr *
 parse_expr_call(Context *cnt, AstExpr *prev);
@@ -989,6 +993,7 @@ parse_expr_atom(Context *cnt, Token *op)
   AstExpr *expr = NULL;
   AstExpr *tmp  = NULL;
 
+  if ((expr = parse_expr_internal(cnt))) goto done;
   if ((expr = parse_expr_nested(cnt))) goto done;
   if ((expr = parse_expr_null(cnt))) goto done;
   if ((expr = parse_expr_sizeof(cnt))) goto done;
@@ -1304,9 +1309,9 @@ parse_decl(Context *cnt)
   if (tok_assign) {
     decl->value   = parse_expr(cnt);
     decl->mutable = token_is(tok_assign, SYM_MDECL);
-    decl->flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_COMPILER);
+    decl->flags |= parse_flags(cnt, FLAG_EXTERN);
 
-    if (!(decl->flags & (FLAG_EXTERN | FLAG_COMPILER))) {
+    if (!(decl->flags & (FLAG_EXTERN))) {
       if (!decl->value) {
         parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
                     "expected binding of declaration to some value");
@@ -1319,6 +1324,23 @@ parse_decl(Context *cnt)
   return &decl->base;
 
 #undef RETURN_BAD
+}
+
+AstExpr *
+parse_expr_internal(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_AT);
+  if (!tok) return NULL;
+
+  AstExpr *expr = parse_expr(cnt);
+  if (!expr) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, &tok->src, BUILDER_CUR_AFTER,
+                "expected expression after '@'");
+    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
+  }
+
+  expr->internal = true;
+  return expr;
 }
 
 AstExpr *
@@ -1395,7 +1417,6 @@ next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {
     CASE(SYM_EXTERN, FLAG_EXTERN)
-    CASE(SYM_COMPILER, FLAG_COMPILER)
   default:
     break;
   }
@@ -1668,16 +1689,16 @@ load_core(Context *cnt)
 void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
-  AstUBlock *_root = ast_create_node(&assembly->ast_arena, AST_UBLOCK, NULL, AstUBlock *);
+  AstUBlock *_root = ast_create_node(&builder->ast_arena, AST_UBLOCK, NULL, AstUBlock *);
   _root->unit      = unit;
   unit->ast        = _root;
 
   Context cnt = {.builder     = builder,
                  .assembly    = assembly,
-                 .scope       = assembly->gscope,
+                 .scope       = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT),
                  .unit        = unit,
-                 .ast_arena   = &assembly->ast_arena,
-                 .scope_arena = &assembly->scope_arena,
+                 .ast_arena   = &builder->ast_arena,
+                 .scope_arena = &builder->scope_arena,
                  .tokens      = &unit->tokens,
                  .curr_decl   = NULL,
                  .core_loaded = false,
