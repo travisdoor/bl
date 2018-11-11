@@ -46,7 +46,6 @@ assembly_new(const char *name)
   assembly->units        = bo_array_new(sizeof(Unit *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
-  assembly->ir_queue     = bo_list_new(sizeof(AstDeclEntity *));
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
   return assembly;
@@ -65,7 +64,6 @@ assembly_delete(Assembly *assembly)
   bo_unref(assembly->units);
   bo_unref(assembly->unique_cache);
   bo_unref(assembly->link_cache);
-  bo_unref(assembly->ir_queue);
 
   /* LLVM cleanup */
   /* execution engine owns llvm_module after creation */

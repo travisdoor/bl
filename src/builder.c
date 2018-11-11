@@ -36,38 +36,11 @@
 #include "unit.h"
 #include "stages.h"
 #include "token.h"
+#include "mir.h"
+#include "type.h"
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
-
-static const char *buildin_names[BUILDIN_COUNT] = {"get_int"};
-
-static AstTypeVoid entry_void = {
-    .base.base.kind = AST_TYPE, .base.base.src = NULL, .base.kind = AST_TYPE_VOID};
-
-static AstTypeBool entry_bool = {
-    .base.base = AST_TYPE, .base.base.src = NULL, .base.kind = AST_TYPE_BOOL};
-
-static Ast *
-create_entry_get_int(Builder *builder)
-{
-  AstIdent *ident = ast_create_node(&builder->ast_arena, AST_IDENT, NULL, AstIdent *);
-  ident->str      = buildin_names[BUILDIN_GET_INT];
-  ident->hash     = bo_hash_from_str(ident->str);
-
-  AstTypeFn *type = ast_create_type(&builder->ast_arena, AST_TYPE_FN, NULL, AstTypeFn *);
-
-  AstDeclEntity *entity =
-      ast_create_decl(&builder->ast_arena, AST_DECL_ENTITY, NULL, AstDeclEntity *);
-  entity->kind      = DECL_ENTITY_FN;
-  entity->base.name = ident;
-  entity->base.type = (AstType *)type;
-
-  return &entity->base.base;
-}
-
-typedef Ast *(*BuildinCtor)(Builder *);
-static BuildinCtor buildin_ctors[BUILDIN_COUNT] = {create_entry_get_int};
 
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
@@ -148,16 +121,12 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
-  if (!builder->errorc) checker_run(builder, assembly);
   if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
   }
 
-  if (!builder->errorc) post_run(builder, assembly);
-  interrupt_on_error(builder);
-
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
-    ir_run(builder, assembly);
+    mir_run(builder, assembly);
 
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
@@ -197,21 +166,10 @@ builder_new(void)
 
   scope_arena_init(&builder->scope_arena);
   ast_arena_init(&builder->ast_arena);
-
-  /* SETUP BUILDINS */
-  /* initialize buildin hash mapping */
-  struct Buildin *b = &builder->buildin;
-  b->entry_void     = (AstType *)&entry_void;
-  b->entry_bool     = (AstType *)&entry_bool;
-
-  b->table = bo_htbl_new(sizeof(Ast *), BUILDIN_COUNT);
-  Ast *entry;
-  for (int i = 0; i < BUILDIN_COUNT; ++i) {
-    entry = buildin_ctors[i](builder);
-    bo_htbl_insert(b->table, bo_hash_from_str(buildin_names[i]), entry);
-  }
-
-  /* SETUP BUILDINS */
+  mir_instr_arena_init(&builder->mir_instr_arena);
+  mir_block_arena_init(&builder->mir_block_arena);
+  mir_value_arena_init(&builder->mir_value_arena);
+  type_arena_init(&builder->type_arena);
 
   return builder;
 }
@@ -221,8 +179,11 @@ builder_delete(Builder *builder)
 {
   arena_terminate(&builder->scope_arena);
   arena_terminate(&builder->ast_arena);
+  arena_terminate(&builder->mir_instr_arena);
+  arena_terminate(&builder->mir_block_arena);
+  arena_terminate(&builder->mir_value_arena);
+  arena_terminate(&builder->type_arena);
   bo_unref(builder->uname_cache);
-  bo_unref(builder->buildin.table);
   bl_free(builder);
 }
 
@@ -440,11 +401,4 @@ builder_get_unique_name(Builder *builder, const char *base)
   sprintf(ui_str, "%llu", (unsigned long long)ui);
   bo_string_append(s, ui_str);
   return bo_string_get(s);
-}
-
-Ast *
-builder_get_buildin(Builder *builder, uint64_t hash)
-{
-  if (!bo_htbl_has_key(builder->buildin.table, hash)) return NULL;
-  return bo_htbl_at(builder->buildin.table, hash, Ast *);
 }

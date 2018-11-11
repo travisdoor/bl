@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   eval.h
+// File:   mir.h
 // Author: Martin Dorazil
-// Date:   9/10/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,27 +26,55 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_EVAL_H
-#define BL_EVAL_H
+#ifndef BL_MIR_H
+#define BL_MIR_H
 
-struct Object;
-struct Ast;
+#include <bobject/containers/array.h>
+#include "type.h"
 
-typedef struct
+struct Assembly;
+struct Builder;
+struct Arena;
+
+typedef struct MirInstr MirInstr;
+typedef struct MirBlock MirBlock;
+typedef struct MirValue MirValue;
+
+struct MirBlock
 {
-  struct Object *stack;
-  struct Ast *  err_node;
-  int            size;
-  int            i;
-} Eval;
+  BArray *  instructions;
+  MirValue *ret_value;
+};
+
+struct MirValue
+{
+  Type *type;
+};
+
+typedef enum
+{
+  MIR_INSTR_INVALID,
+  MIR_INSTR_CONSTANT
+} MirInstrKind;
+
+struct MirInstr
+{
+  MirInstrKind kind;
+
+  union
+  { } data; };
+
+/* public */
+void
+mir_instr_arena_init(struct Arena *arena);
 
 void
-eval_init(Eval *eval, int stack_size);
+mir_block_arena_init(struct Arena *arena);
 
 void
-eval_terminate(Eval *eval);
+mir_value_arena_init(struct Arena *arena);
 
-int
-eval_expr(Eval *eval, struct Ast *node, struct Ast **err_node);
+void
+mir_run(struct Builder *builder, struct Assembly *assembly);
 
 #endif

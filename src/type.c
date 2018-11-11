@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   scope.c
+// File:   type.c
 // Author: Martin Dorazil
-// Date:   3/14/18
+// Date:   11/11/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,59 +26,69 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "scope.h"
-#include "common.h"
-#include "ast.h"
+#include "type.h"
 #include "arena.h"
-#include "unit.h"
 
 #define ARENA_CHUNK_COUNT 256
 
+void
+type_arena_init(Arena *arena)
+{
+  arena_init(arena, sizeof(Type), ARENA_CHUNK_COUNT, NULL);
+}
+
+Type *
+_type_create(struct Arena *arena, TypeKind kind)
+{
+  Type *tmp = arena_alloc(arena);
+  tmp->kind = kind;
+  return tmp;
+}
+
 static void
-scope_dtor(Scope *scope)
+_type_to_str(char *buf, size_t len, Type *type)
 {
-  assert(scope);
-  bo_unref(scope->entries);
-}
-
-void
-scope_arena_init(Arena *arena)
-{
-  arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
-}
-
-Scope *
-scope_create(Arena *arena, Scope *parent, size_t size)
-{
-  Scope *scope   = arena_alloc(arena);
-  scope->entries = bo_htbl_new(sizeof(Ast *), size);
-  scope->parent  = parent;
-  return scope;
-}
-
-void
-scope_insert(Scope *scope, uint64_t key, Ast *entry)
-{
-  assert(scope);
-  assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
-  bo_htbl_insert(scope->entries, key, entry);
-}
-
-Ast *
-scope_lookup(Scope *scope, Ast *ident, bool in_tree)
-{
-  assert(scope);
-  assert(ident->kind == AST_IDENT);
-
-  while (scope) {
-    if (bo_htbl_has_key(scope->entries, ident->data.ident.hash))
-      return bo_htbl_at(scope->entries, ident->data.ident.hash, Ast *);
-
-    if (in_tree)
-      scope = scope->parent;
-    else
-      break;
+#define append_buf(buf, len, str)                                                                  \
+  {                                                                                                \
+    const size_t filled = strlen(buf);                                                             \
+    snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
   }
 
-  return NULL;
+  if (!buf) return;
+  if (!type) {
+    append_buf(buf, len, "?");
+    return;
+  }
+
+  if (type->name) {
+    append_buf(buf, len, type->name);
+    return;
+  }
+
+  switch (type->kind) {
+  case TYPE_INT:
+    append_buf(buf, len, "integer");
+    break;
+
+  case TYPE_FN: {
+    append_buf(buf, len, "fn");
+    break;
+  }
+
+  case TYPE_STRUCT: {
+    append_buf(buf, len, "struct");
+    break;
+  }
+
+  default:
+    bl_abort("unimplemented");
+  }
+}
+
+void
+type_to_str(char *buf, int len, Type *type)
+{
+  if (!buf || !len) return;
+  buf[0] = '\0';
+  _type_to_str(buf, len, type);
 }

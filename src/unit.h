@@ -40,7 +40,7 @@ struct Token;
 typedef struct Unit
 {
   Tokens        tokens;
-  AstUBlock *   ast;
+  Ast *   ast;
   BArray *      globals;
   char *        filepath;
   char *        name;

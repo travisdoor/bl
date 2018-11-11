@@ -36,62 +36,10 @@
 #include "token.h"
 #include "common.h"
 #include "scope.h"
+#include "type.h"
 
 struct Arena;
-typedef struct Ast             Ast;
-typedef struct AstLoad         AstLoad;
-typedef struct AstLink         AstLink;
-typedef struct AstIdent        AstIdent;
-typedef struct AstUBlock       AstUBlock;
-typedef struct AstBlock        AstBlock;
-typedef struct AstStmtReturn   AstStmtReturn;
-typedef struct AstStmtIf       AstStmtIf;
-typedef struct AstStmtLoop     AstStmtLoop;
-typedef struct AstStmtBreak    AstStmtBreak;
-typedef struct AstStmtContinue AstStmtContinue;
-
-typedef struct AstDecl        AstDecl;
-typedef struct AstDeclEntity  AstDeclEntity;
-typedef struct AstDeclMember  AstDeclMember;
-typedef struct AstDeclArg     AstDeclArg;
-typedef struct AstDeclVariant AstDeclVariant;
-
-typedef struct AstExpr          AstExpr;
-typedef struct AstExprType      AstExprType;
-typedef struct AstExprLitFn     AstExprLitFn;
-typedef struct AstExprLitInt    AstExprLitInt;
-typedef struct AstExprLitFloat  AstExprLitFloat;
-typedef struct AstExprLitDouble AstExprLitDouble;
-typedef struct AstExprLitChar   AstExprLitChar;
-typedef struct AstExprLitString AstExprLitString;
-typedef struct AstExprLitBool   AstExprLitBool;
-typedef struct AstExprLitCmp    AstExprLitCmp;
-typedef struct AstExprRef       AstExprRef;
-typedef struct AstExprCast      AstExprCast;
-typedef struct AstExprBinop     AstExprBinop;
-typedef struct AstExprCall      AstExprCall;
-typedef struct AstExprMember    AstExprMember;
-typedef struct AstExprElem      AstExprElem;
-typedef struct AstExprSizeof    AstExprSizeof;
-typedef struct AstExprTypeof    AstExprTypeof;
-typedef struct AstExprUnary     AstExprUnary;
-typedef struct AstExprNull      AstExprNull;
-
-typedef struct AstType       AstType;
-typedef struct AstTypeVoid   AstTypeVoid;
-typedef struct AstTypeType   AstTypeType;
-typedef struct AstTypeRef    AstTypeRef;
-typedef struct AstTypeInt    AstTypeInt;
-typedef struct AstTypeReal   AstTypeReal;
-typedef struct AstTypeBool   AstTypeBool;
-typedef struct AstTypeVArgs  AstTypeVArgs;
-typedef struct AstTypeArr    AstTypeArr;
-typedef struct AstTypeFn     AstTypeFn;
-typedef struct AstTypeStruct AstTypeStruct;
-typedef struct AstTypeEnum   AstTypeEnum;
-typedef struct AstTypePtr    AstTypePtr;
-
-typedef struct Dependency Dependency;
+typedef struct Ast Ast;
 
 typedef enum
 {
@@ -101,37 +49,27 @@ typedef enum
   AST_IDENT,
   AST_UBLOCK,
   AST_BLOCK,
+  _AST_DECL_FIRST,
+  AST_DECL_ENTITY,
+  AST_DECL_MEMBER,
+  AST_DECL_ARG,
+  AST_DECL_VARIANT,
+  _AST_DECL_LAST,
   AST_STMT_RETURN,
   AST_STMT_IF,
   AST_STMT_LOOP,
   AST_STMT_BREAK,
   AST_STMT_CONTINUE,
-  AST_DECL,
-  AST_TYPE,
-  AST_EXPR,
-  AST_COUNT
-} AstKind;
-
-typedef enum
-{
-  AST_TYPE_BAD,
-  AST_TYPE_VOID,
+  _AST_TYPE_FIRST,
   AST_TYPE_TYPE,
   AST_TYPE_REF,
-  AST_TYPE_INT,
-  AST_TYPE_REAL,
-  AST_TYPE_BOOL,
-  AST_TYPE_VARGS,
   AST_TYPE_ARR,
   AST_TYPE_FN,
   AST_TYPE_STRUCT,
   AST_TYPE_ENUM,
   AST_TYPE_PTR,
-} AstTypeKind;
-
-typedef enum
-{
-  AST_EXPR_BAD,
+  _AST_TYPE_LAST,
+  _AST_EXPR_FIRST,
   AST_EXPR_TYPE,
   AST_EXPR_REF,
   AST_EXPR_CAST,
@@ -151,16 +89,8 @@ typedef enum
   AST_EXPR_LIT_STRING,
   AST_EXPR_LIT_BOOL,
   AST_EXPR_LIT_CMP,
-} AstExprKind;
-
-typedef enum
-{
-  AST_DECL_BAD,
-  AST_DECL_ENTITY,
-  AST_DECL_MEMBER,
-  AST_DECL_ARG,
-  AST_DECL_VARIANT,
-} AstDeclKind;
+  _AST_EXPR_LAST,
+} AstKind;
 
 typedef enum
 {
@@ -180,9 +110,9 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
-  FLAG_MAIN     = 1 << 1, /* main method */
-  FLAG_TEST     = 1 << 2, /* test case */
+  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  FLAG_MAIN   = 1 << 1, /* main method */
+  FLAG_TEST   = 1 << 2, /* test case */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -220,26 +150,274 @@ typedef enum
   UNOP_DEREF,
 } UnopKind;
 
-typedef enum
+struct AstLoad
 {
-  DEP_LAX    = 1 << 0, /* dependency is't needed for successful IR construction */
-  DEP_STRICT = 1 << 1, /* dependency must be linked for successful IR construction */
-} DepType;
+  const char *filepath;
+};
 
-typedef enum
+struct AstLink
 {
-  ADR_MODE_INVALID,
-  ADR_MODE_NO_VALUE,
-  ADR_MODE_MUT,
-  ADR_MODE_IMMUT,
-  ADR_MODE_CONST,
-} AdrMode;
+  const char *lib;
+};
+
+struct AstIdent
+{
+  Scope *     scope;
+  const char *str;
+  uint64_t    hash;
+};
+
+struct AstUBlock
+{
+  BArray *     nodes;
+  struct Unit *unit;
+};
+
+struct AstBlock
+{
+  BArray *nodes;
+};
+
+struct AstStmtReturn
+{
+  Ast *expr;
+  Ast *fn_decl;
+};
+
+struct AstStmtIf
+{
+  Ast *test;
+  Ast *true_stmt;
+  Ast *false_stmt;
+};
+
+struct AstStmtLoop
+{
+  Ast *init;
+  Ast *condition;
+  Ast *increment;
+  Ast *block;
+};
+
+struct AstDecl
+{
+  Ast *name;
+  Ast *type;
+};
+
+struct AstDeclEntity
+{
+  struct AstDecl base;
+  DeclEntityKind kind;
+  Ast *          value;
+  int            flags;
+  int            used;
+  bool           in_gscope;
+  bool mutable;
+};
+
+struct AstDeclMember
+{
+  struct AstDecl base;
+  int            order;
+};
+
+struct AstDeclArg
+{
+  struct AstDecl base;
+};
+
+struct AstDeclVariant
+{
+  struct AstDecl base;
+  Ast *          value;
+};
+
+struct AstTypeArr
+{
+  Ast *elem_type;
+  Ast *len;
+};
+
+struct AstTypeFn
+{
+  Ast *   ret_type;
+  BArray *args;
+};
+
+struct AstTypeStruct
+{
+  BArray *members;
+  bool    raw;
+};
+
+struct AstTypeEnum
+{
+  Ast *   type;
+  BArray *variants;
+};
+
+struct AstTypePtr
+{
+  Ast *type;
+};
+
+struct AstTypeRef
+{
+  Ast *ident;
+};
+
+struct AstExprType
+{
+  Ast *type;
+};
+
+struct AstExprLitFn
+{
+  Ast *type;
+  Ast *block;
+};
+
+struct AstExprLitInt
+{
+  uint64_t val;
+};
+
+struct AstExprLitFloat
+{
+  float val;
+};
+
+struct AstExprLitDouble
+{
+  double val;
+};
+
+struct AstExprLitChar
+{
+  uint8_t val;
+};
+
+struct AstExprLitString
+{
+  const char *val;
+};
+
+struct AstExprLitBool
+{
+  bool val;
+};
+
+struct AstExprLitCmp
+{
+  BArray *fields;
+};
+
+struct AstExprRef
+{
+  Ast *ident;
+  Ast *ref;
+  bool buildin;
+};
+
+struct AstExprCast
+{
+  Ast *type;
+  Ast *next;
+};
+
+struct AstExprBinop
+{
+  Ast *     lhs;
+  Ast *     rhs;
+  BinopKind kind;
+};
+
+struct AstExprCall
+{
+  Ast *   ref;
+  BArray *args;
+  bool    run;
+};
+
+struct AstExprMember
+{
+  MemberKind kind;
+  Ast *      ident;
+  Ast *      next;
+  bool       ptr_ref;
+  int        i;
+};
+
+struct AstExprElem
+{
+  Ast *next;
+  Ast *index;
+};
+
+struct AstExprSizeof
+{
+  Ast *in;
+};
+
+struct AstExprTypeof
+{
+  Ast *in;
+};
+
+struct AstExprUnary
+{
+  UnopKind kind;
+  Ast *    next;
+};
 
 /* AST base type */
 struct Ast
 {
   AstKind kind;
   Src *   src;
+
+  union
+  {
+    struct AstLoad          load;
+    struct AstLink          link;
+    struct AstIdent         ident;
+    struct AstUBlock        ublock;
+    struct AstBlock         block;
+    struct AstStmtReturn    stmt_return;
+    struct AstStmtIf        stmt_if;
+    struct AstStmtLoop      stmt_loop;
+    struct AstDecl          decl;
+    struct AstDeclEntity    decl_entity;
+    struct AstDeclArg       decl_arg;
+    struct AstDeclMember    decl_member;
+    struct AstDeclVariant   decl_variant;
+    struct AstTypeRef       type_ref;
+    struct AstTypeArr       type_arr;
+    struct AstTypeFn        type_fn;
+    struct AstTypeStruct    type_strct;
+    struct AstTypeEnum      type_enm;
+    struct AstTypePtr       type_ptr;
+    struct AstExprType      expr_type;
+    struct AstExprLitFn     expr_fn;
+    struct AstExprLitInt    expr_integer;
+    struct AstExprLitFloat  expr_float;
+    struct AstExprLitDouble expr_double;
+    struct AstExprLitChar   expr_character;
+    struct AstExprLitString expr_string;
+    struct AstExprLitBool   expr_boolean;
+    struct AstExprLitCmp    expr_cmp;
+    struct AstExprRef       expr_ref;
+    struct AstExprCast      expr_cast;
+    struct AstExprBinop     expr_binop;
+    struct AstExprCall      expr_call;
+    struct AstExprMember    expr_member;
+    struct AstExprElem      expr_elem;
+    struct AstExprSizeof    expr_szof;
+    struct AstExprTypeof    expr_tpof;
+    struct AstExprUnary     expr_unary;
+  } data;
+
 #if BL_DEBUG
   enum
   {
@@ -251,331 +429,6 @@ struct Ast
 #endif
 };
 
-struct AstDecl
-{
-  Ast         base;
-  AstDeclKind kind;
-  AstType *   type;
-  AstIdent *  name;
-};
-
-struct AstType
-{
-  Ast         base;
-  AstTypeKind kind;
-};
-
-struct AstExpr
-{
-  Ast         base;
-  AstExprKind kind;
-  AstType *   type;
-  AdrMode     adr_mode;
-  bool        internal;
-};
-
-struct AstLoad
-{
-  Ast         base;
-  const char *filepath;
-};
-
-struct AstLink
-{
-  Ast         base;
-  const char *lib;
-};
-
-struct AstIdent
-{
-  Ast         base;
-  Scope *     scope;
-  const char *str;
-  uint64_t    hash;
-};
-
-struct AstUBlock
-{
-  Ast          base;
-  BArray *     nodes;
-  struct Unit *unit;
-};
-
-struct AstBlock
-{
-  Ast     base;
-  BArray *nodes;
-};
-
-struct AstStmtReturn
-{
-  Ast            base;
-  AstExpr *      expr;
-  AstDeclEntity *fn_decl;
-};
-
-struct AstStmtIf
-{
-  Ast      base;
-  AstExpr *test;
-  Ast *    true_stmt;
-  Ast *    false_stmt;
-};
-
-struct AstStmtLoop
-{
-  Ast      base;
-  AstDecl *init;
-  AstExpr *condition;
-  AstExpr *increment;
-  Ast *    block;
-};
-
-struct AstStmtBreak
-{
-  Ast base;
-};
-
-struct AstStmtContinue
-{
-  Ast base;
-};
-
-struct AstDeclEntity
-{
-  AstDecl        base;
-  DeclEntityKind kind;
-  AstExpr *      value;
-  int            flags;
-  int            used;
-  bool           in_gscope;
-  bool mutable;
-  BHashTable *deps;
-};
-
-struct AstDeclMember
-{
-  AstDecl base;
-  int     order;
-};
-
-struct AstDeclArg
-{
-  AstDecl base;
-};
-
-struct AstDeclVariant
-{
-  AstDecl  base;
-  AstExpr *value;
-};
-
-struct AstTypeType
-{
-  AstType     base;
-  const char *name;
-  AstType *   spec;
-};
-
-struct AstTypeVoid
-{
-  AstType base;
-  void *  _;
-};
-
-struct AstTypeInt
-{
-  AstType base;
-  bool    is_signed;
-  int     bitcount;
-};
-
-struct AstTypeReal
-{
-  AstType base;
-  int     bitcount;
-};
-
-struct AstTypeBool
-{
-  AstType base;
-};
-
-struct AstTypeVArgs
-{
-  AstType base;
-};
-
-struct AstTypeArr
-{
-  AstType  base;
-  AstType *elem_type;
-  AstExpr *len;
-};
-
-struct AstTypeFn
-{
-  AstType  base;
-  AstType *ret_type;
-  BArray * args;
-};
-
-struct AstTypeStruct
-{
-  AstType base;
-  BArray *members;
-  bool    raw;
-};
-
-struct AstTypeEnum
-{
-  AstType  base;
-  AstType *type;
-  BArray * variants;
-};
-
-struct AstTypePtr
-{
-  AstType  base;
-  AstType *type;
-};
-
-struct AstTypeRef
-{
-  AstType   base;
-  AstIdent *ident;
-};
-
-struct AstExprType
-{
-  AstExpr base;
-};
-
-struct AstExprLitFn
-{
-  AstExpr base;
-  Ast *   block;
-};
-
-struct AstExprLitInt
-{
-  AstExpr  base;
-  uint64_t val;
-};
-
-struct AstExprLitFloat
-{
-  AstExpr base;
-  float   val;
-};
-
-struct AstExprLitDouble
-{
-  AstExpr base;
-  double  val;
-};
-
-struct AstExprLitChar
-{
-  AstExpr base;
-  uint8_t val;
-};
-
-struct AstExprLitString
-{
-  AstExpr     base;
-  const char *val;
-};
-
-struct AstExprLitBool
-{
-  AstExpr base;
-  bool    val;
-};
-
-struct AstExprLitCmp
-{
-  AstExpr base;
-  BArray *fields;
-};
-
-struct AstExprRef
-{
-  AstExpr   base;
-  AstIdent *ident;
-  AstDecl * ref;
-};
-
-struct AstExprCast
-{
-  AstExpr  base;
-  AstType *type;
-  AstExpr *next;
-};
-
-struct AstExprBinop
-{
-  AstExpr   base;
-  AstExpr * lhs;
-  AstExpr * rhs;
-  BinopKind kind;
-};
-
-struct AstExprCall
-{
-  AstExpr  base;
-  AstExpr *ref;
-  BArray * args;
-  bool     run;
-};
-
-struct AstExprMember
-{
-  AstExpr    base;
-  MemberKind kind;
-  AstIdent * ident;
-  AstExpr *  next;
-  bool       ptr_ref;
-  int        i;
-};
-
-struct AstExprElem
-{
-  AstExpr  base;
-  AstExpr *next;
-  AstExpr *index;
-};
-
-struct AstExprSizeof
-{
-  AstExpr  base;
-  AstExpr *in;
-};
-
-struct AstExprTypeof
-{
-  AstExpr  base;
-  AstExpr *in;
-};
-
-struct AstExprUnary
-{
-  AstExpr  base;
-  UnopKind kind;
-  AstExpr *next;
-};
-
-struct AstExprNull
-{
-  AstExpr base;
-};
-
-struct Dependency
-{
-  AstDeclEntity *decl; /* dependent node */
-  DepType        type; /* is dependency strict (ex.: caused by #run directive) */
-};
-
 void
 ast_arena_init(struct Arena *arena);
 
@@ -585,30 +438,31 @@ ast_binop_is_assign(BinopKind op)
   return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
-#define ast_create_node(arena, c, tok, t) (t) _ast_create_node((arena), (c), (tok));
-#define ast_create_decl(arena, c, tok, t) (t) _ast_create_decl((arena), (c), (tok));
-#define ast_create_type(arena, c, tok, t) (t) _ast_create_type((arena), (c), (tok));
-#define ast_create_expr(arena, c, tok, t) (t) _ast_create_expr((arena), (c), (tok));
+static inline bool
+ast_is_expr(Ast *node)
+{
+  assert(node);
+  return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
+}
+
+static inline bool
+ast_is_decl(Ast *node)
+{
+  assert(node);
+  return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
+}
+
+static inline bool
+ast_is_type(Ast *node)
+{
+  assert(node);
+  return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
+}
 
 Ast *
-_ast_create_node(struct Arena *arena, AstKind c, Token *tok);
-
-AstType *
-_ast_create_type(struct Arena *arena, AstTypeKind c, Token *tok);
-
-AstExpr *
-_ast_create_expr(struct Arena *arena, AstExprKind c, Token *tok);
-
-AstDecl *
-_ast_create_decl(struct Arena *arena, AstDeclKind c, Token *tok);
-
-Dependency *
-ast_add_dep_uq(AstDeclEntity *decl, AstDeclEntity *dep, int type);
+ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
 const char *
 ast_get_name(const Ast *n);
-
-void
-ast_type_to_str(char *buf, int len, AstType *type);
 
 #endif

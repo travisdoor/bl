@@ -73,111 +73,96 @@ print_flags(int flags)
   if (flags & FLAG_TEST) fprintf(stdout, "T");
 }
 
-static inline void
-print_type(AstType *type)
-{
-  char tmp[256];
-  ast_type_to_str(tmp, 256, type);
-  fprintf(stdout, BLUE("<%s>"), tmp);
-}
+static void
+print_node(Ast *node, int pad);
+
+static void
+print_ublock(Ast *ublock, int pad);
+
+static void
+print_block(Ast *block, int pad);
+
+static void
+print_stmt_if(Ast *stmt_if, int pad);
+
+static void
+print_decl_entity(Ast *entity, int pad);
+
+static void
+print_decl_arg(Ast *arg, int pad);
 
 static void
 print_bad(Ast *bad, int pad);
 
 static void
-print_ublock(AstUBlock *ublock, int pad);
+print_expr_unary(Ast *unary, int pad);
 
 static void
-print_block(AstBlock *block, int pad);
+print_expr_binop(Ast *binop, int pad);
 
 static void
-print_stmt_if(AstStmtIf *stmt_if, int pad);
+print_expr_type(Ast *expr_type, int pad);
 
 static void
-print_node(Ast *node, int pad);
+print_expr_ref(Ast *ref, int pad);
 
 static void
-print_expr(AstExpr *expr, int pad);
+print_expr_lit_int(Ast *lit, int pad);
 
 static void
-print_decl(AstDecl *decl, int pad);
+print_expr_lit_float(Ast *lit, int pad);
 
 static void
-print_decl_entity(AstDeclEntity *entity, int pad);
+print_expr_lit_double(Ast *lit, int pad);
 
 static void
-print_decl_arg(AstDeclArg *arg, int pad);
+print_expr_lit_char(Ast *lit, int pad);
 
 static void
-print_expr_type(AstExpr *expr_type, int pad);
+print_expr_lit_bool(Ast *lit, int pad);
+
+void static print_expr_lit_string(Ast *lit, int pad);
 
 static void
-print_expr_binop(AstExprBinop *binop, int pad);
+print_expr_lit_fn(Ast *fn, int pad);
 
 static void
-print_expr_ref(AstExprRef *ref, int pad);
-
-static void
-print_expr_unary(AstExprUnary *unary, int pad);
-
-static void
-print_expr_lit_fn(AstExprLitFn *fn, int pad);
-
-static void
-print_expr_lit_int(AstExprLitInt *lit, int pad);
-
-static void
-print_expr_lit_float(AstExprLitFloat *lit, int pad);
-
-static void
-print_expr_lit_double(AstExprLitDouble *lit, int pad);
-
-static void
-print_expr_lit_char(AstExprLitChar *lit, int pad);
-
-static void
-print_expr_lit_bool(AstExprLitBool *lit, int pad);
-
-static void
-print_expr_lit_string(AstExprLitString *lit, int pad);
-
-static void
-print_expr_call(AstExprCall *call, int pad);
+print_expr_call(Ast *call, int pad);
 
 /* impl */
 void
-print_ublock(AstUBlock *ublock, int pad)
+print_ublock(Ast *ublock, int pad)
 {
   print_head(ublock, pad);
-  fprintf(stdout, "%s", ublock->unit->name);
+  fprintf(stdout, "%s", ublock->data.ublock.unit->name);
 
   Ast *tmp = NULL;
-  barray_foreach(ublock->nodes, tmp) print_node(tmp, pad + 1);
+  barray_foreach(ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1);
 }
 
 void
-print_block(AstBlock *block, int pad)
+print_block(Ast *block, int pad)
 {
   print_head(block, pad);
   Ast *tmp = NULL;
-  barray_foreach(block->nodes, tmp) print_node(tmp, pad + 1);
+  barray_foreach(block->data.block.nodes, tmp) print_node(tmp, pad + 1);
 }
 
 void
-print_stmt_if(AstStmtIf *stmt_if, int pad)
+print_stmt_if(Ast *stmt_if, int pad)
 {
   print_head(stmt_if, pad);
-  print_expr(stmt_if->test, pad + 1);
-  print_node(stmt_if->true_stmt, pad + 1);
-  print_node(stmt_if->false_stmt, pad + 1);
+  print_node(stmt_if->data.stmt_if.test, pad + 1);
+  print_node(stmt_if->data.stmt_if.true_stmt, pad + 1);
+  print_node(stmt_if->data.stmt_if.false_stmt, pad + 1);
 }
 
 void
-print_decl_entity(AstDeclEntity *entity, int pad)
+print_decl_entity(Ast *entity, int pad)
 {
   print_head(entity, pad);
 
-  switch (entity->kind) {
+  switch (entity->data.decl_entity.kind) {
   case DECL_ENTITY_INVALID:
     fprintf(stdout, "[INVALID] ");
     break;
@@ -195,16 +180,16 @@ print_decl_entity(AstDeclEntity *entity, int pad)
     break;
   }
 
-  fprintf(stdout, "'%s' '%s' used: %d ", entity->base.name->str,
-          entity->mutable ? "mutable" : "immutable", entity->used);
+  fprintf(stdout, "'%s' '%s' used: %d ", entity->data.decl.name->data.ident.str,
+          entity->data.decl_entity.mutable ? "mutable" : "immutable",
+          entity->data.decl_entity.used);
 
-  print_type(entity->base.type);
-  print_flags(entity->flags);
-  print_node((Ast *)entity->value, pad + 1);
+  print_flags(entity->data.decl_entity.flags);
+  print_node((Ast *)entity->data.decl_entity.value, pad + 1);
 }
 
 void
-print_decl_arg(AstDeclArg *arg, int pad)
+print_decl_arg(Ast *arg, int pad)
 {
   print_head(arg, pad);
 }
@@ -216,12 +201,12 @@ print_bad(Ast *bad, int pad)
 }
 
 void
-print_expr_unary(AstExprUnary *unary, int pad)
+print_expr_unary(Ast *unary, int pad)
 {
   print_head(unary, pad);
 
   const char *op = NULL;
-  switch (unary->kind) {
+  switch (unary->data.expr_unary.kind) {
   case UNOP_INVALID:
     op = "invalid";
     break;
@@ -243,16 +228,16 @@ print_expr_unary(AstExprUnary *unary, int pad)
   }
 
   fprintf(stdout, "'%s' ", op);
-  print_node((Ast *)unary->next, pad + 1);
+  print_node(unary->data.expr_unary.next, pad + 1);
 }
 
 void
-print_expr_binop(AstExprBinop *binop, int pad)
+print_expr_binop(Ast *binop, int pad)
 {
   print_head(binop, pad);
 
   const char *op = NULL;
-  switch (binop->kind) {
+  switch (binop->data.expr_binop.kind) {
   case BINOP_ASSIGN:
     op = "=";
     break;
@@ -315,66 +300,66 @@ print_expr_binop(AstExprBinop *binop, int pad)
   }
 
   fprintf(stdout, "'%s' ", op);
-  print_type(((AstExpr *)binop)->type);
-  print_node((Ast *)binop->lhs, pad + 1);
-  print_node((Ast *)binop->rhs, pad + 1);
+  print_node(binop->data.expr_binop.lhs, pad + 1);
+  print_node(binop->data.expr_binop.rhs, pad + 1);
 }
 
 void
-print_expr_type(AstExpr *expr_type, int pad)
+print_expr_type(Ast *expr_type, int pad)
 {
   print_head(expr_type, pad);
-  print_type(expr_type->type);
 }
 
 void
-print_expr_ref(AstExprRef *ref, int pad)
+print_expr_ref(Ast *ref, int pad)
 {
   print_head(ref, pad);
-  fprintf(stdout, "'%s' ", ref->ident->str);
+  if (ref->data.expr_ref.buildin) fprintf(stdout, RED("@"));
+
+  fprintf(stdout, "'%s' ", ref->data.expr_ref.ident->data.ident.str);
 }
 
 void
-print_expr_lit_int(AstExprLitInt *lit, int pad)
+print_expr_lit_int(Ast *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%llu ", (long long unsigned)lit->val);
+  fprintf(stdout, "%llu ", (long long unsigned)lit->data.expr_integer.val);
 }
 
 void
-print_expr_lit_float(AstExprLitFloat *lit, int pad)
+print_expr_lit_float(Ast *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%f ", lit->val);
+  fprintf(stdout, "%f ", lit->data.expr_float.val);
 }
 
 void
-print_expr_lit_double(AstExprLitDouble *lit, int pad)
+print_expr_lit_double(Ast *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%f ", lit->val);
+  fprintf(stdout, "%f ", lit->data.expr_double.val);
 }
 
 void
-print_expr_lit_char(AstExprLitChar *lit, int pad)
+print_expr_lit_char(Ast *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%c ", lit->val);
+  fprintf(stdout, "%c ", lit->data.expr_character.val);
 }
 
 void
-print_expr_lit_bool(AstExprLitBool *lit, int pad)
+print_expr_lit_bool(Ast *lit, int pad)
 {
   print_head(lit, pad);
-  fprintf(stdout, "%s ", lit->val ? "true" : "false");
+  fprintf(stdout, "%s ", lit->data.expr_boolean.val ? "true" : "false");
 }
 
 void
-print_expr_lit_string(AstExprLitString *lit, int pad)
+print_expr_lit_string(Ast *lit, int pad)
 {
   print_head(lit, pad);
 
-  char *tmp = strdup(lit->val);
+  char *tmp = strdup(lit->data.expr_string.val);
   fprintf(stdout, "%s ", strtok(tmp, "\n"));
   char *next = strtok(NULL, "\n");
   if (next && strlen(next)) fprintf(stdout, "... ");
@@ -382,102 +367,21 @@ print_expr_lit_string(AstExprLitString *lit, int pad)
 }
 
 void
-print_expr_lit_fn(AstExprLitFn *fn, int pad)
+print_expr_lit_fn(Ast *fn, int pad)
 {
   print_head(fn, pad);
-  print_type(fn->base.type);
-  print_node(fn->block, pad + 1);
+  print_node(fn->data.expr_fn.block, pad + 1);
 }
 
 void
-print_expr_call(AstExprCall *call, int pad)
+print_expr_call(Ast *call, int pad)
 {
   print_head(call, pad);
-  print_type(call->base.type);
 
-  print_node((Ast *)call->ref, pad + 1);
+  print_node(call->data.expr_call.ref, pad + 1);
 
   Ast *arg;
-  barray_foreach(call->args, arg) print_node(arg, pad + 1);
-}
-
-void
-print_expr(AstExpr *expr, int pad)
-{
-  switch (expr->kind) {
-  case AST_EXPR_BAD:
-    print_bad((Ast *)expr, pad);
-    break;
-  case AST_EXPR_TYPE:
-    print_expr_type(expr, pad);
-    break;
-  case AST_EXPR_REF:
-    print_expr_ref((AstExprRef *)expr, pad);
-    break;
-  case AST_EXPR_CAST:
-    break;
-  case AST_EXPR_BINOP:
-    print_expr_binop((AstExprBinop *)expr, pad);
-    break;
-  case AST_EXPR_CALL:
-    print_expr_call((AstExprCall *)expr, pad);
-    break;
-  case AST_EXPR_MEMBER:
-    break;
-  case AST_EXPR_ELEM:
-    break;
-  case AST_EXPR_SIZEOF:
-    break;
-  case AST_EXPR_TYPEOF:
-    break;
-  case AST_EXPR_UNARY:
-    print_expr_unary((AstExprUnary *)expr, pad);
-    break;
-  case AST_EXPR_NULL:
-    break;
-  case AST_EXPR_LIT_FN:
-    print_expr_lit_fn((AstExprLitFn *)expr, pad);
-    break;
-  case AST_EXPR_LIT_INT:
-    print_expr_lit_int((AstExprLitInt *)expr, pad);
-    break;
-  case AST_EXPR_LIT_FLOAT:
-    print_expr_lit_float((AstExprLitFloat *)expr, pad);
-    break;
-  case AST_EXPR_LIT_DOUBLE:
-    print_expr_lit_double((AstExprLitDouble *)expr, pad);
-    break;
-  case AST_EXPR_LIT_CHAR:
-    print_expr_lit_char((AstExprLitChar *)expr, pad);
-    break;
-  case AST_EXPR_LIT_STRING:
-    print_expr_lit_string((AstExprLitString *)expr, pad);
-    break;
-  case AST_EXPR_LIT_BOOL:
-    print_expr_lit_bool((AstExprLitBool *)expr, pad);
-    break;
-  case AST_EXPR_LIT_CMP:
-    break;
-  }
-}
-
-void
-print_decl(AstDecl *decl, int pad)
-{
-  switch (decl->kind) {
-  case AST_DECL_BAD:
-    print_bad((Ast *)decl, pad);
-    break;
-  case AST_DECL_ENTITY:
-    print_decl_entity((AstDeclEntity *)decl, pad);
-    break;
-  case AST_DECL_ARG:
-    print_decl_arg((AstDeclArg *)decl, pad);
-    break;
-  case AST_DECL_MEMBER:
-  case AST_DECL_VARIANT:
-    break;
-  }
+  barray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1);
 }
 
 void
@@ -491,36 +395,117 @@ print_node(Ast *node, int pad)
 
   case AST_LOAD:
     break;
+
   case AST_LINK:
     break;
+
   case AST_IDENT:
     break;
+
   case AST_UBLOCK:
-    print_ublock((AstUBlock *)node, pad);
+    print_ublock(node, pad);
     break;
+
   case AST_BLOCK:
-    print_block((AstBlock *)node, pad);
+    print_block(node, pad);
     break;
+
+  case AST_DECL_ENTITY:
+    print_decl_entity(node, pad);
+    break;
+
+  case AST_DECL_ARG:
+    print_decl_arg(node, pad);
+    break;
+
+  case AST_DECL_MEMBER:
+  case AST_DECL_VARIANT:
+    break;
+
   case AST_STMT_RETURN:
     break;
+
   case AST_STMT_IF:
-    print_stmt_if((AstStmtIf *)node, pad);
+    print_stmt_if(node, pad);
     break;
+
   case AST_STMT_LOOP:
     break;
+
   case AST_STMT_BREAK:
     break;
+
   case AST_STMT_CONTINUE:
     break;
-  case AST_DECL:
-    print_decl((AstDecl *)node, pad);
+
+  case AST_EXPR_TYPE:
+    print_expr_type(node, pad);
     break;
-  case AST_EXPR:
-    print_expr((AstExpr *)node, pad);
+
+  case AST_EXPR_REF:
+    print_expr_ref(node, pad);
     break;
+
+  case AST_EXPR_CAST:
     break;
-  case AST_TYPE:
-  case AST_COUNT:
+
+  case AST_EXPR_BINOP:
+    print_expr_binop(node, pad);
+    break;
+
+  case AST_EXPR_CALL:
+    print_expr_call(node, pad);
+    break;
+
+  case AST_EXPR_MEMBER:
+    break;
+
+  case AST_EXPR_ELEM:
+    break;
+
+  case AST_EXPR_SIZEOF:
+    break;
+
+  case AST_EXPR_TYPEOF:
+    break;
+
+  case AST_EXPR_UNARY:
+    print_expr_unary(node, pad);
+    break;
+
+  case AST_EXPR_NULL:
+    break;
+
+  case AST_EXPR_LIT_FN:
+    print_expr_lit_fn(node, pad);
+    break;
+
+  case AST_EXPR_LIT_INT:
+    print_expr_lit_int(node, pad);
+    break;
+
+  case AST_EXPR_LIT_FLOAT:
+    print_expr_lit_float(node, pad);
+    break;
+
+  case AST_EXPR_LIT_DOUBLE:
+    print_expr_lit_double(node, pad);
+    break;
+
+  case AST_EXPR_LIT_CHAR:
+    print_expr_lit_char(node, pad);
+    break;
+
+  case AST_EXPR_LIT_STRING:
+    print_expr_lit_string(node, pad);
+    break;
+
+  case AST_EXPR_LIT_BOOL:
+    print_expr_lit_bool(node, pad);
+
+    break;
+
+  default:
     break;
   }
 }
@@ -531,7 +516,7 @@ ast_printer_run(Assembly *assembly)
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
-    print_node(&unit->ast->base, 0);
+    print_node(unit->ast, 0);
   }
   fprintf(stdout, "\n\n");
 }

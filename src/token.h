@@ -59,8 +59,6 @@
   sm(FILE,           "#file") \
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
-  sm(SIZEOF,         "sizeof") \
-  sm(TYPEOF,         "typeof") \
   sm(EXTERN,         "#extern") \
   sm(CONTINUE,       "continue") \
   sm(AT,             "@") \

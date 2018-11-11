@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   scope.h
+// File:   type.h
 // Author: Martin Dorazil
-// Date:   15/03/2018
+// Date:   11/11/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,33 +26,61 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_SCOPE_H
-#define BL_SCOPE_H
+#ifndef BL_TYPE_H
+#define BL_TYPE_H
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <assert.h>
+#include <llvm-c/Core.h>
+#include "common.h"
 
-struct Src;
-struct Ast;
+/* fwd decls */
 struct Arena;
 
-typedef struct Scope
+typedef struct Type Type;
+
+typedef enum
 {
-  struct Scope *parent;
-  BHashTable *  entries;
-} Scope;
+  TYPE_INVALID,
+  TYPE_NOVAL,
+  TYPE_INT,
+  TYPE_FN,
+  TYPE_STRUCT
+} TypeKind;
+
+struct TypeInt
+{
+  int  bitcount;
+  bool is_signed;
+};
+
+struct TypeFn
+{};
+
+struct TypeStruct
+{};
+
+struct Type
+{
+  TypeKind    kind;
+  const char *name;
+  LLVMTypeRef llvm_type;
+
+  union
+  {
+    struct TypeInt    integer;
+    struct TypeFn     fn;
+    struct TypeStruct strct;
+  } data;
+};
 
 void
-scope_arena_init(struct Arena *arena);
+type_arena_init(struct Arena *arena);
 
-Scope *
-scope_create(struct Arena *arena, Scope *parent, size_t size);
+#define type_create(_arena, _kind, _type) ((_type)_type_create((_arena), (_kind)));
+
+Type *
+_type_create(struct Arena *arena, TypeKind kind);
 
 void
-scope_insert(Scope *scope, uint64_t key, struct Ast *decl);
-
-struct Ast *
-scope_lookup(Scope *scope, struct Ast *ident, bool in_tree);
+type_to_str(char *buf, int len, Type *type);
 
 #endif

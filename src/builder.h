@@ -51,16 +51,14 @@
 
 typedef void (*diag_handler_f)(const char *, void *);
 
-typedef enum
-{
-  BUILDIN_GET_INT,
-  BUILDIN_COUNT,
-} ReservedNames;
-
 typedef struct Builder
 {
   Arena          ast_arena;
   Arena          scope_arena;
+  Arena          mir_instr_arena;
+  Arena          mir_block_arena;
+  Arena          mir_value_arena;
+  Arena          type_arena;
   diag_handler_f on_error;
   diag_handler_f on_warning;
   diag_handler_f on_note;
@@ -71,15 +69,6 @@ typedef struct Builder
   int            total_lines;
   int            errorc;
   BArray *       uname_cache;
-
-  struct Buildin
-  {
-    BHashTable *table;
-    AstType *   entry_void;
-    AstType *   entry_bool;
-
-    Ast *entries[BUILDIN_COUNT];
-  } buildin;
 } Builder;
 
 typedef enum
@@ -95,6 +84,13 @@ typedef enum
   BUILDER_CUR_WORD,
   BUILDER_CUR_BEFORE
 } BuilderCurPos;
+
+typedef enum
+{
+  BUILDIN_TYPE_NONE = -1,
+  BUILDIN_TYPE_S32,
+  _BUILDIN_TYPE_COUNT,
+} BuildinType;
 
 struct Src;
 
@@ -131,8 +127,5 @@ builder_get_unique_id(Builder *builder);
 
 const char *
 builder_get_unique_name(Builder *builder, const char *base);
-
-Ast *
-builder_get_buildin(Builder *builder, uint64_t hash);
 
 #endif

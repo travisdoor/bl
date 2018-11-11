@@ -56,9 +56,6 @@ void
 ast_printer_run(Assembly *assembly);
 
 void
-checker_run(Builder *builder, Assembly *assembly);
-
-void
 ir_run(Builder *builder, Assembly *assembly);
 
 void

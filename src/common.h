@@ -36,7 +36,7 @@
 #include "messages.h"
 #include "blmemory.h"
 
-#if defined (BL_COMPILER_CLANG) || defined (BL_COMPILER_GNUC)
+#if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
 #else
 #define DEPRECATED
