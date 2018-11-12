@@ -24,7 +24,6 @@ find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
         src/bldebug.h
-        src/type.h
         src/error.h 
         src/config.h
 	src/messages.h
@@ -38,6 +37,7 @@ set(HEADER_FILES
         src/common.h 
         src/scope.h
         src/mir.h
+        src/mir_printer.h
         src/arena.h
         src/ast.h)
 
@@ -63,7 +63,7 @@ set(SOURCE_FILES
         src/scope.c
         src/common.c 
         src/mir.c
-        src/type.c
+        src/mir_printer.c
         src/ast.c)
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})

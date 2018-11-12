@@ -31,36 +31,141 @@
 #include "common.h"
 #include "builder.h"
 #include "assembly.h"
-#include "arena.h"
+#include "mir_printer.h"
 
 #define ARENA_CHUNK_COUNT 512
 
 typedef struct
 {
+  MirModule   module;
   Builder *   builder;
   Assembly *  assembly;
-  Arena *     mir_instr_arena;
-  Arena *     mir_block_arena;
+  MirArenas * arenas;
   BHashTable *buildin_type_table;
+  MirFn *     curr_fn;
+  MirBlock *  curr_block;
+  bool        verbose;
 } Context;
+
+static MirValue entry_no_value = {.kind = MIR_VALUE_NO, .type = NULL};
 
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s32"};
 
-static Type entry_s32 = {
-    .kind = TYPE_INT, .name = "s32", .data.integer.bitcount = 32, .data.integer.is_signed = true};
+static MirType entry_type = {.kind = MIR_TYPE_TYPE, .name = "type"};
+
+static MirType entry_s32 = {.kind                   = MIR_TYPE_INT,
+                            .name                   = "s32",
+                            .data.integer.bitcount  = 32,
+                            .data.integer.is_signed = true};
+
+static void
+fn_dtor(MirFn *fn)
+{
+  bo_unref(fn->blocks);
+}
+
+static void
+block_dtor(MirBlock *block)
+{
+  bo_unref(block->instructions);
+}
 
 static inline MirInstr *
-create_instr(Arena *arena, MirInstrKind kind)
+create_instr(Context *cnt, MirInstrKind kind)
 {
-  MirInstr *tmp = arena_alloc(arena);
+  MirInstr *tmp = arena_alloc(&cnt->arenas->instr_arena);
+  tmp->kind     = kind;
+  assert(cnt->curr_block);
+  bo_array_push_back(cnt->curr_block->instructions, tmp);
+  return tmp;
+}
+
+static inline MirValue *
+create_value(Context *cnt, MirValueKind kind)
+{
+  MirValue *tmp = arena_alloc(&cnt->arenas->value_arena);
   tmp->kind     = kind;
   return tmp;
 }
 
-static void
-mir_block_dtor(MirBlock *block)
+static inline MirFn *
+add_fn(Context *cnt, const char *name)
 {
-  bo_unref(block->instructions);
+  MirFn *tmp  = arena_alloc(&cnt->arenas->fn_arena);
+  tmp->name   = name;
+  tmp->blocks = bo_array_new(sizeof(MirBlock *));
+
+  cnt->curr_fn = tmp;
+  bo_array_push_back(cnt->module.fns, tmp);
+
+  return tmp;
+}
+
+static inline MirValue *
+add_global_variable(Context *cnt, const char *name)
+{
+  MirVar *tmp = arena_alloc(&cnt->arenas->var_arena);
+  tmp->name   = name;
+  tmp->value  = create_value(cnt, MIR_VALUE_INVALID);
+
+  bo_array_push_back(cnt->module.globals, tmp);
+  return tmp->value;
+}
+
+static inline MirBlock *
+add_block(Context *cnt, const char *name)
+{
+  MirBlock *tmp     = arena_alloc(&cnt->arenas->block_arena);
+  tmp->name         = name;
+  tmp->instructions = bo_array_new(sizeof(MirInstr *));
+  cnt->curr_block   = tmp;
+  assert(cnt->curr_fn);
+  bo_array_push_back(cnt->curr_fn->blocks, tmp);
+  return tmp;
+}
+
+static inline void
+init_module(MirModule *module, const char *name)
+{
+  module->name    = name;
+  module->fns     = bo_array_new(sizeof(MirFn *));
+  module->globals = bo_array_new(sizeof(MirVar *));
+}
+
+static inline void
+terminate_module(MirModule *module)
+{
+  bo_unref(module->fns);
+  bo_unref(module->globals);
+}
+
+/* instructions */
+static inline MirValue *
+add_constant_type(Context *cnt, MirType *type)
+{
+  MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONSTANT);
+  tmp->value                  = create_value(cnt, MIR_VALUE_TYPE);
+  tmp->value->type            = &entry_type;
+  tmp->value->data.type_value = type;
+  return tmp->value;
+}
+
+static inline void
+add_ret(Context *cnt, MirValue *value)
+{
+  MirInstr *tmp       = create_instr(cnt, MIR_INSTR_RET);
+  tmp->data.ret.value = value;
+  tmp->value          = &entry_no_value;
+}
+
+#define create_type(_arena, _kind, _type) ((_type)_create_type((_arena), (_kind)));
+
+MirType *
+_create_type(struct Arena *arena, MirTypeKind kind)
+{
+  MirType *tmp = arena_alloc(arena);
+  tmp->kind    = kind;
+  return tmp;
 }
 
 static inline BuildinType
@@ -70,25 +175,28 @@ is_buildin_type(Context *cnt, const uint64_t hash)
   return bo_htbl_at(cnt->buildin_type_table, hash, BuildinType);
 }
 
-static MirBlock *
-create_block(Context *cnt);
-
-static MirInstr *
-mir_ast(Context *cnt, Ast *node);
-
-static void
-mir_ast_ublock(Context *cnt, Ast *node);
-
-/* impl */
-MirBlock *
-create_block(Context *cnt)
+static inline MirType *
+get_buildin(BuildinType id)
 {
-  MirBlock *tmp     = arena_alloc(cnt->mir_block_arena);
-  tmp->instructions = bo_array_new(sizeof(MirInstr *));
-  return tmp;
+  switch (id) {
+  case BUILDIN_TYPE_S32:
+    return &entry_s32;
+  default:
+    bl_abort("invalid buildin type");
+  }
 }
 
-void
+static MirValue *
+mir_ast(Context *cnt, Ast *node);
+
+static MirValue *
+mir_ast_ublock(Context *cnt, Ast *node);
+
+static MirValue *
+mir_ast_decl_entity(Context *cnt, Ast *node);
+
+/* impl */
+MirValue *
 mir_ast_ublock(Context *cnt, Ast *node)
 {
   Ast *tmp;
@@ -96,16 +204,44 @@ mir_ast_ublock(Context *cnt, Ast *node)
   {
     mir_ast(cnt, tmp);
   }
+
+  return NULL;
 }
 
-MirInstr *
+MirValue *
+mir_ast_decl_entity(Context *cnt, Ast *node)
+{
+  MirValue *val = add_global_variable(cnt, node->data.decl.name->data.ident.str);
+
+  if (node->data.decl.type) {
+    MirFn *   fn          = add_fn(cnt, "_");
+    MirBlock *entry_block = add_block(cnt, "entry");
+
+    Ast *type_ref = node->data.decl.type;
+    assert(ast_is_type(type_ref));
+    assert(type_ref->kind == AST_TYPE_REF);
+
+    Ast *ident = type_ref->data.type_ref.ident;
+    assert(ident);
+    BuildinType id = is_buildin_type(cnt, ident->data.ident.hash);
+    assert(id != BUILDIN_TYPE_NONE);
+
+    MirValue *tmp = add_constant_type(cnt, get_buildin(id));
+    add_ret(cnt, tmp);
+  }
+
+  return val;
+}
+
+MirValue *
 mir_ast(Context *cnt, Ast *node)
 {
   if (!node) return NULL;
   switch (node->kind) {
   case AST_UBLOCK:
-    mir_ast_ublock(cnt, node);
-    break;
+    return mir_ast_ublock(cnt, node);
+  case AST_DECL_ENTITY:
+    return mir_ast_decl_entity(cnt, node);
   default:
     bl_abort("invalid node");
   }
@@ -115,31 +251,98 @@ mir_ast(Context *cnt, Ast *node)
 
 /* public */
 void
-mir_instr_arena_init(Arena *arena)
+mir_arenas_init(MirArenas *arenas)
 {
-  arena_init(arena, sizeof(MirInstr), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->block_arena, sizeof(MirBlock), ARENA_CHUNK_COUNT, (ArenaElemDtor)block_dtor);
+  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
+  arena_init(&arenas->instr_arena, sizeof(MirInstr), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->value_arena, sizeof(MirValue), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
 }
 
 void
-mir_block_arena_init(Arena *arena)
+mir_arenas_terminate(MirArenas *arenas)
 {
-  arena_init(arena, sizeof(MirBlock), ARENA_CHUNK_COUNT, (ArenaElemDtor)mir_block_dtor);
+  arena_terminate(&arenas->block_arena);
+  arena_terminate(&arenas->fn_arena);
+  arena_terminate(&arenas->instr_arena);
+  arena_terminate(&arenas->value_arena);
+  arena_terminate(&arenas->var_arena);
+  arena_terminate(&arenas->type_arena);
+}
+
+static void
+_type_to_str(char *buf, size_t len, MirType *type)
+{
+#define append_buf(buf, len, str)                                                                  \
+  {                                                                                                \
+    const size_t filled = strlen(buf);                                                             \
+    snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
+  }
+
+  if (!buf) return;
+  if (!type) {
+    append_buf(buf, len, "?");
+    return;
+  }
+
+  if (type->name) {
+    append_buf(buf, len, type->name);
+    return;
+  }
+
+  switch (type->kind) {
+  case MIR_TYPE_INT:
+    append_buf(buf, len, "integer");
+    break;
+
+  case MIR_TYPE_FN: {
+    append_buf(buf, len, "fn");
+    break;
+  }
+
+  case MIR_TYPE_STRUCT: {
+    append_buf(buf, len, "struct");
+    break;
+  }
+
+  default:
+    bl_abort("unimplemented");
+  }
 }
 
 void
-mir_value_arena_init(Arena *arena)
+mir_type_to_str(char *buf, int len, MirType *type)
 {
-  arena_init(arena, sizeof(MirValue), ARENA_CHUNK_COUNT, NULL);
+  if (!buf || !len) return;
+  buf[0] = '\0';
+  _type_to_str(buf, len, type);
+}
+
+const char *
+mir_get_instr_name(MirInstr *instr)
+{
+  assert(instr);
+  switch (instr->kind) {
+  case MIR_INSTR_CONSTANT:
+    return "constant";
+  case MIR_INSTR_RET:
+    return "return";
+  case MIR_INSTR_INVALID:
+    return "INVALID";
+  }
 }
 
 void
 mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
-  cnt.builder         = builder;
-  cnt.assembly        = assembly;
-  cnt.mir_instr_arena = &builder->mir_instr_arena;
-  cnt.mir_block_arena = &builder->mir_block_arena;
+  cnt.builder  = builder;
+  cnt.assembly = assembly;
+  cnt.arenas   = &builder->mir_arenas;
+  cnt.verbose  = builder->flags & BUILDER_VERBOSE;
+  cnt.curr_fn  = NULL;
 
   /* INIT BUILDINS */
   uint64_t tmp;
@@ -150,6 +353,8 @@ mir_run(Builder *builder, Assembly *assembly)
   }
   /* INIT BUILDINS */
 
+  init_module(&cnt.module, "main");
+
   Unit *unit;
 
   barray_foreach(assembly->units, unit)
@@ -157,5 +362,8 @@ mir_run(Builder *builder, Assembly *assembly)
     mir_ast(&cnt, unit->ast);
   }
 
+  if (cnt.verbose) mir_printer_module(&cnt.module);
+
   bo_unref(cnt.buildin_type_table);
+  terminate_module(&cnt.module);
 }

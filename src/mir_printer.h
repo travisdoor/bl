@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   type.h
+// File:   mir_printer.h
 // Author: Martin Dorazil
-// Date:   11/11/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,61 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_TYPE_H
-#define BL_TYPE_H
+#ifndef BL_MIR_PRINTER_H
+#define BL_MIR_PRINTER_H
 
-#include <llvm-c/Core.h>
-#include "common.h"
-
-/* fwd decls */
-struct Arena;
-
-typedef struct Type Type;
-
-typedef enum
-{
-  TYPE_INVALID,
-  TYPE_NOVAL,
-  TYPE_INT,
-  TYPE_FN,
-  TYPE_STRUCT
-} TypeKind;
-
-struct TypeInt
-{
-  int  bitcount;
-  bool is_signed;
-};
-
-struct TypeFn
-{};
-
-struct TypeStruct
-{};
-
-struct Type
-{
-  TypeKind    kind;
-  const char *name;
-  LLVMTypeRef llvm_type;
-
-  union
-  {
-    struct TypeInt    integer;
-    struct TypeFn     fn;
-    struct TypeStruct strct;
-  } data;
-};
+#include "mir.h"
 
 void
-type_arena_init(struct Arena *arena);
-
-#define type_create(_arena, _kind, _type) ((_type)_type_create((_arena), (_kind)));
-
-Type *
-_type_create(struct Arena *arena, TypeKind kind);
-
-void
-type_to_str(char *buf, int len, Type *type);
+mir_printer_module(MirModule *module);
 
 #endif

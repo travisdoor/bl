@@ -29,50 +29,150 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
+#include <llvm-c/Core.h>
 #include <bobject/containers/array.h>
-#include "type.h"
+#include <bobject/containers/htbl.h>
+#include "arena.h"
 
 struct Assembly;
 struct Builder;
-struct Arena;
 
-typedef struct MirInstr MirInstr;
-typedef struct MirBlock MirBlock;
-typedef struct MirValue MirValue;
+typedef struct MirArenas MirArenas;
+typedef struct MirInstr  MirInstr;
+typedef struct MirBlock  MirBlock;
+typedef struct MirValue  MirValue;
+typedef struct MirVar    MirVar;
+typedef struct MirFn     MirFn;
+typedef struct MirModule MirModule;
+typedef struct MirType   MirType;
+
+typedef enum
+{
+  MIR_TYPE_INVALID,
+  MIR_TYPE_NOVAL,
+  MIR_TYPE_TYPE,
+  MIR_TYPE_INT,
+  MIR_TYPE_FN,
+  MIR_TYPE_STRUCT
+} MirTypeKind;
+
+struct MirTypeInt
+{
+  int  bitcount;
+  bool is_signed;
+};
+
+struct MirTypeFn
+{};
+
+struct MirTypeStruct
+{};
+
+struct MirType
+{
+  MirTypeKind kind;
+  const char *name;
+  LLVMTypeRef llvm_type;
+
+  union
+  {
+    struct MirTypeInt    integer;
+    struct MirTypeFn     fn;
+    struct MirTypeStruct strct;
+  } data;
+};
+
+struct MirArenas
+{
+  Arena instr_arena;
+  Arena block_arena;
+  Arena value_arena;
+  Arena var_arena;
+  Arena fn_arena;
+  Arena type_arena;
+};
+
+struct MirModule
+{
+  const char *name;
+  BArray *    fns;
+  BArray *    globals;
+};
+
+struct MirFn
+{
+  const char *name;
+  BArray *    blocks;
+  MirValue *  type;
+};
 
 struct MirBlock
 {
-  BArray *  instructions;
-  MirValue *ret_value;
+  const char *name;
+  BArray *    instructions;
 };
+
+typedef enum
+{
+  MIR_VALUE_INVALID,
+  MIR_VALUE_NO,
+  MIR_VALUE_TYPE,
+  MIR_VALUE_INT,
+} MirValueKind;
 
 struct MirValue
 {
-  Type *type;
+  MirValueKind kind;
+  MirType *    type;
+
+  union
+  {
+    MirType *          type_value;
+    unsigned long long int_value;
+  } data;
+};
+
+struct MirVar
+{
+  const char *name;
+  MirValue *  value;
 };
 
 typedef enum
 {
   MIR_INSTR_INVALID,
-  MIR_INSTR_CONSTANT
+  MIR_INSTR_CONSTANT,
+  MIR_INSTR_RET,
 } MirInstrKind;
+
+struct MirInstrRet
+{
+  MirValue *value;
+};
 
 struct MirInstr
 {
   MirInstrKind kind;
+  MirValue *   value;
 
   union
-  { } data; };
+  {
+    struct MirInstrRet ret;
+  } data;
+};
 
 /* public */
 void
-mir_instr_arena_init(struct Arena *arena);
+mir_type_to_str(char *buf, int len, MirType *type);
 
 void
-mir_block_arena_init(struct Arena *arena);
+mir_arenas_init(MirArenas *arenas);
 
 void
-mir_value_arena_init(struct Arena *arena);
+mir_arenas_terminate(MirArenas *arenas);
+
+const char *
+mir_get_instr_name(MirInstr *instr);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

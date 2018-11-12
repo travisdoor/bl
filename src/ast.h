@@ -36,7 +36,6 @@
 #include "token.h"
 #include "common.h"
 #include "scope.h"
-#include "type.h"
 
 struct Arena;
 typedef struct Ast Ast;

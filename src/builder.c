@@ -36,8 +36,6 @@
 #include "unit.h"
 #include "stages.h"
 #include "token.h"
-#include "mir.h"
-#include "type.h"
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
@@ -125,8 +123,11 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
     ast_printer_run(assembly);
   }
 
+  /* TODO */
+  mir_run(builder, assembly);
+
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
-    mir_run(builder, assembly);
+    //mir_run(builder, assembly);
 
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
@@ -166,10 +167,7 @@ builder_new(void)
 
   scope_arena_init(&builder->scope_arena);
   ast_arena_init(&builder->ast_arena);
-  mir_instr_arena_init(&builder->mir_instr_arena);
-  mir_block_arena_init(&builder->mir_block_arena);
-  mir_value_arena_init(&builder->mir_value_arena);
-  type_arena_init(&builder->type_arena);
+  mir_arenas_init(&builder->mir_arenas);
 
   return builder;
 }
@@ -177,12 +175,9 @@ builder_new(void)
 void
 builder_delete(Builder *builder)
 {
+  mir_arenas_terminate(&builder->mir_arenas);
   arena_terminate(&builder->scope_arena);
   arena_terminate(&builder->ast_arena);
-  arena_terminate(&builder->mir_instr_arena);
-  arena_terminate(&builder->mir_block_arena);
-  arena_terminate(&builder->mir_value_arena);
-  arena_terminate(&builder->type_arena);
   bo_unref(builder->uname_cache);
   bl_free(builder);
 }

@@ -33,6 +33,7 @@
 #include "assembly.h"
 #include "error.h"
 #include "arena.h"
+#include "mir.h"
 
 #define BUILDER_RUN 0x00000002
 #define BUILDER_PRINT_TOKENS 0x00000004
@@ -53,12 +54,9 @@ typedef void (*diag_handler_f)(const char *, void *);
 
 typedef struct Builder
 {
+  MirArenas      mir_arenas;
   Arena          ast_arena;
   Arena          scope_arena;
-  Arena          mir_instr_arena;
-  Arena          mir_block_arena;
-  Arena          mir_value_arena;
-  Arena          type_arena;
   diag_handler_f on_error;
   diag_handler_f on_warning;
   diag_handler_f on_note;
