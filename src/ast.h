@@ -93,15 +93,6 @@ typedef enum
 
 typedef enum
 {
-  DECL_ENTITY_INVALID = 0,
-  DECL_ENTITY_FIELD   = 1, /* a := 0; */
-  DECL_ENTITY_TYPE    = 2, /* Type : struct { s32 }; */
-  DECL_ENTITY_FN      = 3, /* main : fn () s32 {}; */
-  DECL_ENTITY_ENUM    = 4, /* Enum : enum s8 {}; */
-} DeclEntityKind;
-
-typedef enum
-{
   MEM_KIND_INVALID = 0,
   MEM_KIND_STRUCT  = 1, /* structure.bar; structure->bar; */
   MEM_KIND_ENUM    = 2, /* enum.A; */
@@ -207,7 +198,6 @@ struct AstDecl
 struct AstDeclEntity
 {
   struct AstDecl base;
-  DeclEntityKind kind;
   Ast *          value;
   int            flags;
   int            used;

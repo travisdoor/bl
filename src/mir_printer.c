@@ -39,7 +39,6 @@ print_type(MirType *type)
 static inline void
 print_instr_head(MirInstr *instr)
 {
-  const char *name = mir_get_instr_name(instr);
   fprintf(stdout, "  ");
   assert(instr->value);
 
@@ -48,8 +47,6 @@ print_instr_head(MirInstr *instr)
     print_type(instr->value->type);
     fprintf(stdout, " = ");
   }
-
-  fprintf(stdout, "%s", name);
 }
 
 static void
@@ -68,18 +65,18 @@ static void
 print_ret(MirInstr *instr);
 
 static void
-print_constant(MirInstr *instr);
+print_call(MirInstr *call);
 
 /* impl */
 void
 print_instr(MirInstr *instr)
 {
   switch (instr->kind) {
-  case MIR_INSTR_CONSTANT:
-    print_constant(instr);
-    break;
   case MIR_INSTR_RET:
     print_ret(instr);
+    break;
+  case MIR_INSTR_CALL:
+    print_call(instr);
     break;
   case MIR_INSTR_INVALID:
     fprintf(stdout, RED("INVALID"));
@@ -88,19 +85,21 @@ print_instr(MirInstr *instr)
 };
 
 void
-print_ret(MirInstr *instr)
+print_call(MirInstr *call)
 {
-  print_instr_head(instr);
-  if (instr->data.ret.value) {
-    fprintf(stdout, YELLOW(" %p"), instr->data.ret.value);
-  }
-  fprintf(stdout, "\n");
+  print_instr_head(call);
+  assert(call->data.call.callee);
+  fprintf(stdout, "%p()\n", call->data.call.callee);
 }
 
 void
-print_constant(MirInstr *instr)
+print_ret(MirInstr *instr)
 {
   print_instr_head(instr);
+  fprintf(stdout, "return");
+  if (instr->data.ret.value) {
+    fprintf(stdout, YELLOW(" %p"), instr->data.ret.value);
+  }
   fprintf(stdout, "\n");
 }
 
@@ -109,18 +108,25 @@ print_var(MirVar *var)
 {
   fprintf(stdout, YELLOW("%p") " ", var->value);
   print_type(var->value->type);
-  fprintf(stdout, " var %s\n", var->name);
+  fprintf(stdout, " var %s", var->name);
+
+  if (var->value->has_data) {
+    fprintf(stdout, " = %llu", var->value->data.int_value);
+  }
+  fprintf(stdout, "\n");
 }
 
 void
 print_fn(MirFn *fn)
 {
-  fprintf(stdout, "\nfn %s {\n", fn->name);
+  fprintf(stdout, YELLOW("%p") " ", fn->value);
+  print_type(fn->value->type);
+  fprintf(stdout, " fn %s {\n", fn->name);
 
   MirBlock *tmp;
   barray_foreach(fn->blocks, tmp) print_block(tmp);
 
-  fprintf(stdout, "}\n");
+  fprintf(stdout, "}\n\n");
 }
 
 void
@@ -141,6 +147,8 @@ mir_printer_module(MirModule *module)
     MirVar *tmp;
     barray_foreach(module->globals, tmp) print_var(tmp);
   }
+
+  fprintf(stdout, "\n");
 
   {
     MirFn *tmp;

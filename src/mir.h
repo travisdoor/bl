@@ -49,11 +49,9 @@ typedef struct MirType   MirType;
 typedef enum
 {
   MIR_TYPE_INVALID,
-  MIR_TYPE_NOVAL,
   MIR_TYPE_TYPE,
   MIR_TYPE_INT,
   MIR_TYPE_FN,
-  MIR_TYPE_STRUCT
 } MirTypeKind;
 
 struct MirTypeInt
@@ -65,9 +63,6 @@ struct MirTypeInt
 struct MirTypeFn
 {};
 
-struct MirTypeStruct
-{};
-
 struct MirType
 {
   MirTypeKind kind;
@@ -76,9 +71,8 @@ struct MirType
 
   union
   {
-    struct MirTypeInt    integer;
-    struct MirTypeFn     fn;
-    struct MirTypeStruct strct;
+    struct MirTypeInt integer;
+    struct MirTypeFn  fn;
   } data;
 };
 
@@ -103,7 +97,7 @@ struct MirFn
 {
   const char *name;
   BArray *    blocks;
-  MirValue *  type;
+  MirValue *  value;
 };
 
 struct MirBlock
@@ -117,6 +111,7 @@ typedef enum
   MIR_VALUE_INVALID,
   MIR_VALUE_NO,
   MIR_VALUE_TYPE,
+  MIR_VALUE_FN,
   MIR_VALUE_INT,
 } MirValueKind;
 
@@ -124,6 +119,7 @@ struct MirValue
 {
   MirValueKind kind;
   MirType *    type;
+  bool         has_data;
 
   union
   {
@@ -141,13 +137,19 @@ struct MirVar
 typedef enum
 {
   MIR_INSTR_INVALID,
-  MIR_INSTR_CONSTANT,
   MIR_INSTR_RET,
+  MIR_INSTR_CALL,
 } MirInstrKind;
 
 struct MirInstrRet
 {
   MirValue *value;
+};
+
+struct MirInstrCall
+{
+  MirValue *callee;
+  /* TODO args */
 };
 
 struct MirInstr
@@ -157,7 +159,8 @@ struct MirInstr
 
   union
   {
-    struct MirInstrRet ret;
+    struct MirInstrRet  ret;
+    struct MirInstrCall call;
   } data;
 };
 
@@ -170,9 +173,6 @@ mir_arenas_init(MirArenas *arenas);
 
 void
 mir_arenas_terminate(MirArenas *arenas);
-
-const char *
-mir_get_instr_name(MirInstr *instr);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

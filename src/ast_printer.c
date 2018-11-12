@@ -162,24 +162,6 @@ print_decl_entity(Ast *entity, int pad)
 {
   print_head(entity, pad);
 
-  switch (entity->data.decl_entity.kind) {
-  case DECL_ENTITY_INVALID:
-    fprintf(stdout, "[INVALID] ");
-    break;
-  case DECL_ENTITY_FIELD:
-    fprintf(stdout, "[FIELD] ");
-    break;
-  case DECL_ENTITY_TYPE:
-    fprintf(stdout, "[TYPE] ");
-    break;
-  case DECL_ENTITY_FN:
-    fprintf(stdout, "[FN] ");
-    break;
-  case DECL_ENTITY_ENUM:
-    fprintf(stdout, "[ENUM] ");
-    break;
-  }
-
   fprintf(stdout, "'%s' '%s' used: %d ", entity->data.decl.name->data.ident.str,
           entity->data.decl_entity.mutable ? "mutable" : "immutable",
           entity->data.decl_entity.used);

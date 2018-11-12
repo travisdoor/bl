@@ -70,6 +70,14 @@ block_dtor(MirBlock *block)
   bo_unref(block->instructions);
 }
 
+static inline MirType *
+create_type(Context *cnt, MirTypeKind kind)
+{
+  MirType *tmp = arena_alloc(&cnt->arenas->type_arena);
+  tmp->kind    = kind;
+  return tmp;
+}
+
 static inline MirInstr *
 create_instr(Context *cnt, MirInstrKind kind)
 {
@@ -88,17 +96,28 @@ create_value(Context *cnt, MirValueKind kind)
   return tmp;
 }
 
-static inline MirFn *
-add_fn(Context *cnt, const char *name)
+static inline MirType *
+create_type_fn(Context *cnt, MirType args[], unsigned argc)
 {
+  MirType *tmp = create_type(cnt, MIR_TYPE_FN);
+  return tmp;
+}
+
+static inline MirValue *
+add_fn(Context *cnt, MirType *type, const char *name)
+{
+  MirValue *value = create_value(cnt, MIR_VALUE_FN);
+  value->type     = type;
+
   MirFn *tmp  = arena_alloc(&cnt->arenas->fn_arena);
   tmp->name   = name;
+  tmp->value  = value;
   tmp->blocks = bo_array_new(sizeof(MirBlock *));
 
   cnt->curr_fn = tmp;
   bo_array_push_back(cnt->module.fns, tmp);
 
-  return tmp;
+  return tmp->value;
 }
 
 static inline MirValue *
@@ -140,32 +159,12 @@ terminate_module(MirModule *module)
 }
 
 /* instructions */
-static inline MirValue *
-add_constant_type(Context *cnt, MirType *type)
-{
-  MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONSTANT);
-  tmp->value                  = create_value(cnt, MIR_VALUE_TYPE);
-  tmp->value->type            = &entry_type;
-  tmp->value->data.type_value = type;
-  return tmp->value;
-}
-
 static inline void
 add_ret(Context *cnt, MirValue *value)
 {
   MirInstr *tmp       = create_instr(cnt, MIR_INSTR_RET);
   tmp->data.ret.value = value;
   tmp->value          = &entry_no_value;
-}
-
-#define create_type(_arena, _kind, _type) ((_type)_create_type((_arena), (_kind)));
-
-MirType *
-_create_type(struct Arena *arena, MirTypeKind kind)
-{
-  MirType *tmp = arena_alloc(arena);
-  tmp->kind    = kind;
-  return tmp;
 }
 
 static inline BuildinType
@@ -195,6 +194,9 @@ mir_ast_ublock(Context *cnt, Ast *node);
 static MirValue *
 mir_ast_decl_entity(Context *cnt, Ast *node);
 
+static MirValue *
+mir_ast_expr_lit_int(Context *cnt, Ast *node);
+
 /* impl */
 MirValue *
 mir_ast_ublock(Context *cnt, Ast *node)
@@ -209,28 +211,44 @@ mir_ast_ublock(Context *cnt, Ast *node)
 }
 
 MirValue *
+mir_ast_expr_lit_int(Context *cnt, Ast *node)
+{
+  MirValue *tmp       = create_value(cnt, MIR_VALUE_INT);
+  tmp->data.int_value = node->data.expr_integer.val;
+  tmp->type           = &entry_s32;
+  return tmp;
+}
+
+MirValue *
 mir_ast_decl_entity(Context *cnt, Ast *node)
 {
-  MirValue *val = add_global_variable(cnt, node->data.decl.name->data.ident.str);
+  MirValue *var = add_global_variable(cnt, node->data.decl.name->data.ident.str);
 
   if (node->data.decl.type) {
-    MirFn *   fn          = add_fn(cnt, "_");
-    MirBlock *entry_block = add_block(cnt, "entry");
+    Ast *ast_type_ref = node->data.decl.type;
+    assert(ast_is_type(ast_type_ref));
+    assert(ast_type_ref->kind == AST_TYPE_REF);
 
-    Ast *type_ref = node->data.decl.type;
-    assert(ast_is_type(type_ref));
-    assert(type_ref->kind == AST_TYPE_REF);
-
-    Ast *ident = type_ref->data.type_ref.ident;
+    Ast *ident = ast_type_ref->data.type_ref.ident;
     assert(ident);
     BuildinType id = is_buildin_type(cnt, ident->data.ident.hash);
     assert(id != BUILDIN_TYPE_NONE);
 
-    MirValue *tmp = add_constant_type(cnt, get_buildin(id));
-    add_ret(cnt, tmp);
+    var->type = get_buildin(id);
   }
 
-  return val;
+  Ast *ast_expr = node->data.decl_entity.value;
+  if (ast_expr) {
+    MirValue *initializer = mir_ast(cnt, ast_expr);
+    assert(initializer);
+
+    /* TODO: cmp types of initializer and variable */
+    var->data.int_value = initializer->data.int_value;
+    var->has_data       = true;
+  }
+
+  assert(var->type);
+  return var;
 }
 
 MirValue *
@@ -242,6 +260,8 @@ mir_ast(Context *cnt, Ast *node)
     return mir_ast_ublock(cnt, node);
   case AST_DECL_ENTITY:
     return mir_ast_decl_entity(cnt, node);
+  case AST_EXPR_LIT_INT:
+    return mir_ast_expr_lit_int(cnt, node);
   default:
     bl_abort("invalid node");
   }
@@ -302,11 +322,6 @@ _type_to_str(char *buf, size_t len, MirType *type)
     break;
   }
 
-  case MIR_TYPE_STRUCT: {
-    append_buf(buf, len, "struct");
-    break;
-  }
-
   default:
     bl_abort("unimplemented");
   }
@@ -318,20 +333,6 @@ mir_type_to_str(char *buf, int len, MirType *type)
   if (!buf || !len) return;
   buf[0] = '\0';
   _type_to_str(buf, len, type);
-}
-
-const char *
-mir_get_instr_name(MirInstr *instr)
-{
-  assert(instr);
-  switch (instr->kind) {
-  case MIR_INSTR_CONSTANT:
-    return "constant";
-  case MIR_INSTR_RET:
-    return "return";
-  case MIR_INSTR_INVALID:
-    return "INVALID";
-  }
 }
 
 void
