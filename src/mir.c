@@ -35,15 +35,24 @@
 
 #define ARENA_CHUNK_COUNT 512
 
+/* TODO: this is temporary solution, we need some kind of fast allocator for different instructions
+ * with different size (we allocate pool where every element has size of biggest instruction -> we
+ * are wastig memory) */
+union _MirInstr
+{
+  MirInstrFnProto fn;
+};
+
 typedef struct
 {
-  MirModule   module;
   Builder *   builder;
   Assembly *  assembly;
   MirArenas * arenas;
   BHashTable *buildin_type_table;
-  MirBlock *  curr_block;
-  bool        verbose;
+
+  MirBlock *       curr_block;
+  MirInstrFnProto *curr_fn;
+  bool             verbose;
 } Context;
 
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s32"};
@@ -61,44 +70,10 @@ block_dtor(MirBlock *block)
   bo_unref(block->instructions);
 }
 
-static inline MirType *
-create_type(Context *cnt, MirTypeKind kind)
-{
-  MirType *tmp = arena_alloc(&cnt->arenas->type_arena);
-  tmp->kind    = kind;
-  return tmp;
-}
+static void
+entry_dtor(MirEntry *mod)
+{}
 
-static inline MirBlock *
-add_block(Context *cnt, const char *name)
-{
-  MirBlock *tmp     = arena_alloc(&cnt->arenas->block_arena);
-  tmp->name         = name;
-  tmp->instructions = bo_array_new(sizeof(MirInstr *));
-  cnt->curr_block   = tmp;
-
-  /*
-  assert(cnt->curr_fn);
-  bo_array_push_back(cnt->curr_fn->blocks, tmp);*/
-  return tmp;
-}
-
-static inline void
-init_module(MirModule *module, const char *name)
-{
-  module->name = name;
-  /*module->fns     = bo_array_new(sizeof(MirFn *));
-    module->globals = bo_array_new(sizeof(MirVar *));*/
-}
-
-static inline void
-terminate_module(MirModule *module)
-{
-  bo_unref(module->fns);
-  bo_unref(module->globals);
-}
-
-/* instructions */
 static inline BuildinType
 is_buildin_type(Context *cnt, const uint64_t hash)
 {
@@ -117,6 +92,50 @@ get_buildin(BuildinType id)
   }
 }
 
+#define create_instr(_cnt, _kind, _t) ((_t)_create_instr((_cnt), (_kind)))
+
+static MirInstr *
+_create_instr(Context *cnt, MirInstrKind kind)
+{
+  MirInstr *tmp = arena_alloc(&cnt->arenas->instr_arena);
+  tmp->kind     = kind;
+  return tmp;
+}
+
+static MirType *
+create_type(Context *cnt, MirTypeKind kind)
+{
+  MirType *tmp = arena_alloc(&cnt->arenas->type_arena);
+  tmp->kind    = kind;
+  return tmp;
+}
+
+static MirBlock *
+add_block(Context *cnt, const char *name)
+{
+  MirBlock *tmp     = arena_alloc(&cnt->arenas->block_arena);
+  tmp->name         = name;
+  tmp->instructions = bo_array_new(sizeof(MirInstr *));
+  cnt->curr_block   = tmp;
+
+  assert(cnt->curr_fn);
+  // bo_array_push_back(cnt->curr_fn->, tmp);
+  return tmp;
+}
+
+static MirInstr *
+add_fn(Context *cnt, MirType *type, const char *name)
+{
+  assert(type && type->kind == MIR_TYPE_FN);
+  MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, MirInstrFnProto *);
+  tmp->base.type       = type;
+
+  cnt->curr_fn = tmp;
+
+  return &tmp->base;
+}
+
+/* instructions */
 static void
 mir_ast(Context *cnt, Ast *node);
 
@@ -129,8 +148,9 @@ void
 mir_arenas_init(MirArenas *arenas)
 {
   arena_init(&arenas->block_arena, sizeof(MirBlock), ARENA_CHUNK_COUNT, (ArenaElemDtor)block_dtor);
-  arena_init(&arenas->instr_arena, sizeof(MirInstr), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->entry_arena, sizeof(MirEntry), ARENA_CHUNK_COUNT, (ArenaElemDtor)entry_dtor);
 }
 
 void
@@ -139,6 +159,7 @@ mir_arenas_terminate(MirArenas *arenas)
   arena_terminate(&arenas->block_arena);
   arena_terminate(&arenas->instr_arena);
   arena_terminate(&arenas->type_arena);
+  arena_terminate(&arenas->entry_arena);
 }
 
 static void
@@ -202,8 +223,6 @@ mir_run(Builder *builder, Assembly *assembly)
   }
   /* INIT BUILDINS */
 
-  init_module(&cnt.module, "main");
-
   Unit *unit;
 
   barray_foreach(assembly->units, unit)
@@ -211,8 +230,7 @@ mir_run(Builder *builder, Assembly *assembly)
     mir_ast(&cnt, unit->ast);
   }
 
-  if (cnt.verbose) mir_printer_module(&cnt.module);
+  //if (cnt.verbose) mir_printer_module(&cnt.module);
 
   bo_unref(cnt.buildin_type_table);
-  terminate_module(&cnt.module);
 }

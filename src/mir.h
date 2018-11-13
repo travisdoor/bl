@@ -39,10 +39,11 @@ struct Builder;
 
 typedef struct MirArenas MirArenas;
 typedef struct MirBlock  MirBlock;
-typedef struct MirModule MirModule;
+typedef struct MirEntry MirEntry;
 typedef struct MirType   MirType;
 
-typedef struct MirInstr MirInstr;
+typedef struct MirInstr        MirInstr;
+typedef struct MirInstrFnProto MirInstrFnProto;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -50,14 +51,14 @@ struct MirArenas
   Arena instr_arena;
   Arena block_arena;
   Arena type_arena;
+  Arena entry_arena;
 };
 
-/* MODULE */
-struct MirModule
+/* ENTRY */
+struct MirEntry
 {
   const char *name;
   BArray *    fns;
-  BArray *    globals;
 };
 
 /* BASIC BLOCK */
@@ -102,7 +103,7 @@ struct MirType
 typedef enum
 {
   MIR_INSTR_INVALID,
-  MIR_INSTR_FN,
+  MIR_INSTR_FN_PROTO,
 } MirInstrKind;
 
 struct MirInstr
@@ -113,7 +114,7 @@ struct MirInstr
   LLVMValueRef llvm_value;
 };
 
-struct MirInstrFn
+struct MirInstrFnProto
 {
   MirInstr base;
 };

@@ -37,7 +37,6 @@ print_type(MirType *type)
 }
 
 void
-mir_printer_module(MirModule *module)
+mir_printer_module(void)
 {
-  fprintf(stdout, "mod %s\n\n", module->name);
 }

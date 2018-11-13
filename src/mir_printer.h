@@ -32,6 +32,6 @@
 #include "mir.h"
 
 void
-mir_printer_module(MirModule *module);
+mir_printer_module(void);
 
 #endif
