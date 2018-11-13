@@ -1,20 +1,5 @@
 /* playground */
 
-foo s32 := 10;
-bar s32 := 10;
-
-/*
-MirModule {
-  {
-    1 s32 type
-    2 @must_be_type(1)
-    3 return 1
-  }
-  
-  MirVar {
-    name
-    type
-    
-  } 
-}
-*/
+main : fn () {
+  return;
+};

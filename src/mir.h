@@ -38,14 +38,36 @@ struct Assembly;
 struct Builder;
 
 typedef struct MirArenas MirArenas;
-typedef struct MirInstr  MirInstr;
 typedef struct MirBlock  MirBlock;
-typedef struct MirValue  MirValue;
-typedef struct MirVar    MirVar;
-typedef struct MirFn     MirFn;
 typedef struct MirModule MirModule;
 typedef struct MirType   MirType;
 
+typedef struct MirInstr MirInstr;
+
+/* ALLOCATORS */
+struct MirArenas
+{
+  Arena instr_arena;
+  Arena block_arena;
+  Arena type_arena;
+};
+
+/* MODULE */
+struct MirModule
+{
+  const char *name;
+  BArray *    fns;
+  BArray *    globals;
+};
+
+/* BASIC BLOCK */
+struct MirBlock
+{
+  const char *name;
+  BArray *    instructions;
+};
+
+/* TYPE */
 typedef enum
 {
   MIR_TYPE_INVALID,
@@ -76,92 +98,24 @@ struct MirType
   } data;
 };
 
-struct MirArenas
-{
-  Arena instr_arena;
-  Arena block_arena;
-  Arena value_arena;
-  Arena var_arena;
-  Arena fn_arena;
-  Arena type_arena;
-};
-
-struct MirModule
-{
-  const char *name;
-  BArray *    fns;
-  BArray *    globals;
-};
-
-struct MirFn
-{
-  const char *name;
-  BArray *    blocks;
-  MirValue *  value;
-};
-
-struct MirBlock
-{
-  const char *name;
-  BArray *    instructions;
-};
-
-typedef enum
-{
-  MIR_VALUE_INVALID,
-  MIR_VALUE_NO,
-  MIR_VALUE_TYPE,
-  MIR_VALUE_FN,
-  MIR_VALUE_INT,
-} MirValueKind;
-
-struct MirValue
-{
-  MirValueKind kind;
-  MirType *    type;
-  bool         has_data;
-
-  union
-  {
-    MirType *          type_value;
-    unsigned long long int_value;
-  } data;
-};
-
-struct MirVar
-{
-  const char *name;
-  MirValue *  value;
-};
-
+/* INSTRUCTIONS */
 typedef enum
 {
   MIR_INSTR_INVALID,
-  MIR_INSTR_RET,
-  MIR_INSTR_CALL,
+  MIR_INSTR_FN,
 } MirInstrKind;
-
-struct MirInstrRet
-{
-  MirValue *value;
-};
-
-struct MirInstrCall
-{
-  MirValue *callee;
-  /* TODO args */
-};
 
 struct MirInstr
 {
   MirInstrKind kind;
-  MirValue *   value;
+  unsigned     id;
+  MirType *    type;
+  LLVMValueRef llvm_value;
+};
 
-  union
-  {
-    struct MirInstrRet  ret;
-    struct MirInstrCall call;
-  } data;
+struct MirInstrFn
+{
+  MirInstr base;
 };
 
 /* public */
