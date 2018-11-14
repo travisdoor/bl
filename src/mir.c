@@ -83,13 +83,6 @@ exec_dtor(MirExec *exec)
   bo_unref(exec->blocks);
 }
 
-static inline unsigned
-get_id(Context *cnt)
-{
-  assert(cnt->curr_exec);
-  return cnt->curr_exec->id_counter++;
-}
-
 static inline BuildinType
 is_buildin_type(Context *cnt, const uint64_t hash)
 {
@@ -113,9 +106,10 @@ get_buildin(BuildinType id)
 static MirInstr *
 _add_instr(Context *cnt, MirInstrKind kind, MirType *type)
 {
+  assert(cnt->curr_exec);
   MirInstr *tmp = arena_alloc(&cnt->arenas->instr_arena);
   tmp->kind     = kind;
-  tmp->id       = get_id(cnt);
+  tmp->id       = cnt->curr_exec->id_counter++;
   tmp->type     = type;
 
   assert(cnt->curr_block);
