@@ -33,7 +33,7 @@ print_type(MirType *type)
 {
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
-  fprintf(stdout, BLUE("<%s>"), tmp);
+  fprintf(stdout, "<%s>", tmp);
 }
 
 static inline void
@@ -53,12 +53,35 @@ print_instr(MirInstr *instr);
 static void
 print_instr_decl_var(MirInstrDeclVar *decl);
 
+static void
+print_instr_const_int(MirInstrConstInt *ci);
+
+static void
+print_instr_ret(MirInstrRet *ret);
+
 /* impl */
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
 {
   print_instr_head(&decl->base);
   fprintf(stdout, "decl_var");
+}
+
+void
+print_instr_const_int(MirInstrConstInt *ci)
+{
+  print_instr_head(&ci->base);
+  fprintf(stdout, "%llu", ci->value);
+}
+
+void
+print_instr_ret(MirInstrRet *ret)
+{
+  print_instr_head(&ret->base);
+  if (ret->value)
+    fprintf(stdout, "ret %%%u", ret->value->id);
+  else
+    fprintf(stdout, "ret");
 }
 
 void
@@ -72,12 +95,17 @@ print_instr(MirInstr *instr)
     print_instr_decl_var((MirInstrDeclVar *)instr);
     break;
   case MIR_INSTR_CONST_INT:
+    print_instr_const_int((MirInstrConstInt *)instr);
     break;
   case MIR_INSTR_LOAD:
     break;
   case MIR_INSTR_STORE:
     break;
+  case MIR_INSTR_RET:
+    print_instr_ret((MirInstrRet *)instr);
+    break;
   }
+  fprintf(stdout, "\n");
 }
 
 void
@@ -99,5 +127,5 @@ mir_printer_exec(MirExec *exec)
   MirBlock *tmp;
   barray_foreach(exec->blocks, tmp) print_block(tmp);
 
-  fprintf(stdout, "\n}\n");
+  fprintf(stdout, "}\n");
 }

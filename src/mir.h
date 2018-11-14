@@ -47,6 +47,7 @@ typedef struct MirInstrDeclVar  MirInstrDeclVar;
 typedef struct MirInstrConstInt MirInstrConstInt;
 typedef struct MirInstrLoad     MirInstrLoad;
 typedef struct MirInstrStore    MirInstrStore;
+typedef struct MirInstrRet      MirInstrRet;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -78,6 +79,7 @@ typedef enum
 {
   MIR_TYPE_INVALID,
   MIR_TYPE_TYPE,
+  MIR_TYPE_VOID,
   MIR_TYPE_INT,
   MIR_TYPE_FN,
 } MirTypeKind;
@@ -112,6 +114,7 @@ typedef enum
   MIR_INSTR_CONST_INT, /* replace with generic constant? */
   MIR_INSTR_LOAD,
   MIR_INSTR_STORE,
+  MIR_INSTR_RET,
 } MirInstrKind;
 
 struct MirInstr
@@ -147,6 +150,13 @@ struct MirInstrStore
 
   MirInstr *src;
   MirInstr *dest;
+};
+
+struct MirInstrRet
+{
+  MirInstr base;
+
+  MirInstr *value;
 };
 
 /* public */

@@ -44,6 +44,7 @@ union _MirInstr
   MirInstrConstInt const_int;
   MirInstrLoad     load;
   MirInstrStore    store;
+  MirInstrRet      ret;
 };
 
 typedef struct
@@ -67,6 +68,8 @@ static MirType entry_s32 = {.kind                   = MIR_TYPE_INT,
                             .name                   = "s32",
                             .data.integer.bitcount  = 32,
                             .data.integer.is_signed = true};
+
+static MirType entry_void = {.kind = MIR_TYPE_VOID, .name = "void"};
 
 static void
 block_dtor(MirBlock *block)
@@ -162,6 +165,30 @@ add_instr_decl_var(Context *cnt, MirType *type)
 }
 
 static MirInstr *
+add_instr_const_int(Context *cnt, uint64_t val)
+{
+  MirInstrConstInt *tmp = add_instr(cnt, MIR_INSTR_CONST_INT, &entry_s32, MirInstrConstInt *);
+  tmp->value            = val;
+  return &tmp->base;
+}
+
+static MirInstr *
+add_instr_ret(Context *cnt, MirInstr *value)
+{
+  MirType *type = NULL;
+  if (value) {
+    assert(value->type);
+    type = value->type;
+  } else {
+    type = &entry_void;
+  }
+
+  MirInstrRet *tmp = add_instr(cnt, MIR_INSTR_RET, type, MirInstrRet *);
+  tmp->value       = value;
+  return &tmp->base;
+}
+
+static MirInstr *
 mir_ast(Context *cnt, Ast *node);
 
 static MirInstr *
@@ -169,6 +196,9 @@ mir_ast_ublock(Context *cnt, Ast *ublock);
 
 static MirInstr *
 mir_ast_decl_entity(Context *cnt, Ast *entity);
+
+static MirInstr *
+mir_ast_expr_lit_int(Context *cnt, Ast *expr);
 
 MirInstr *
 mir_ast_ublock(Context *cnt, Ast *ublock)
@@ -179,6 +209,12 @@ mir_ast_ublock(Context *cnt, Ast *ublock)
 }
 
 MirInstr *
+mir_ast_expr_lit_int(Context *cnt, Ast *expr)
+{
+  return add_instr_const_int(cnt, expr->data.expr_integer.val);
+}
+
+MirInstr *
 mir_ast_decl_entity(Context *cnt, Ast *entity)
 {
   add_exec(cnt);
@@ -186,6 +222,8 @@ mir_ast_decl_entity(Context *cnt, Ast *entity)
 
   MirType * type = &entry_s32;
   MirInstr *var  = add_instr_decl_var(cnt, type);
+  MirInstr *init = mir_ast(cnt, entity->data.decl_entity.value);
+  MirInstr *ret  = add_instr_ret(cnt, NULL);
 
   return var;
 }
@@ -200,6 +238,8 @@ mir_ast(Context *cnt, Ast *node)
     break;
   case AST_DECL_ENTITY:
     return mir_ast_decl_entity(cnt, node);
+  case AST_EXPR_LIT_INT:
+    return mir_ast_expr_lit_int(cnt, node);
   default:
     bl_abort("invalid node");
   }
