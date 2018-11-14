@@ -39,11 +39,14 @@ struct Builder;
 
 typedef struct MirArenas MirArenas;
 typedef struct MirBlock  MirBlock;
-typedef struct MirEntry MirEntry;
+typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
 
-typedef struct MirInstr        MirInstr;
-typedef struct MirInstrFnProto MirInstrFnProto;
+typedef struct MirInstr         MirInstr;
+typedef struct MirInstrDeclVar  MirInstrDeclVar;
+typedef struct MirInstrConstInt MirInstrConstInt;
+typedef struct MirInstrLoad     MirInstrLoad;
+typedef struct MirInstrStore    MirInstrStore;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -51,14 +54,16 @@ struct MirArenas
   Arena instr_arena;
   Arena block_arena;
   Arena type_arena;
-  Arena entry_arena;
+  Arena exec_arena;
 };
 
-/* ENTRY */
-struct MirEntry
+/* EXEC */
+/* MirExec represents smallest atomic executable block of code it can be function body or floating
+ * compile time executed block */
+struct MirExec
 {
-  const char *name;
-  BArray *    fns;
+  BArray * blocks;
+  unsigned id_counter;
 };
 
 /* BASIC BLOCK */
@@ -103,7 +108,10 @@ struct MirType
 typedef enum
 {
   MIR_INSTR_INVALID,
-  MIR_INSTR_FN_PROTO,
+  MIR_INSTR_DECL_VAR,
+  MIR_INSTR_CONST_INT, /* replace with generic constant? */
+  MIR_INSTR_LOAD,
+  MIR_INSTR_STORE,
 } MirInstrKind;
 
 struct MirInstr
@@ -114,9 +122,31 @@ struct MirInstr
   LLVMValueRef llvm_value;
 };
 
-struct MirInstrFnProto
+struct MirInstrDeclVar
 {
   MirInstr base;
+};
+
+struct MirInstrConstInt
+{
+  MirInstr base;
+
+  uint64_t value;
+};
+
+struct MirInstrLoad
+{
+  MirInstr base;
+
+  MirInstr *src;
+};
+
+struct MirInstrStore
+{
+  MirInstr base;
+
+  MirInstr *src;
+  MirInstr *dest;
 };
 
 /* public */

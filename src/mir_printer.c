@@ -36,7 +36,68 @@ print_type(MirType *type)
   fprintf(stdout, BLUE("<%s>"), tmp);
 }
 
-void
-mir_printer_module(void)
+static inline void
+print_instr_head(MirInstr *instr)
 {
+  fprintf(stdout, "  %%%u ", instr->id);
+  print_type(instr->type);
+  fprintf(stdout, " = ");
+}
+
+static void
+print_block(MirBlock *block);
+
+static void
+print_instr(MirInstr *instr);
+
+static void
+print_instr_decl_var(MirInstrDeclVar *decl);
+
+/* impl */
+void
+print_instr_decl_var(MirInstrDeclVar *decl)
+{
+  print_instr_head(&decl->base);
+  fprintf(stdout, "decl_var");
+}
+
+void
+print_instr(MirInstr *instr)
+{
+  switch (instr->kind) {
+  case MIR_INSTR_INVALID:
+    fprintf(stdout, "INVALID");
+    break;
+  case MIR_INSTR_DECL_VAR:
+    print_instr_decl_var((MirInstrDeclVar *)instr);
+    break;
+  case MIR_INSTR_CONST_INT:
+    break;
+  case MIR_INSTR_LOAD:
+    break;
+  case MIR_INSTR_STORE:
+    break;
+  }
+}
+
+void
+print_block(MirBlock *block)
+{
+  fprintf(stdout, "%s:\n", block->name);
+
+  MirInstr *tmp;
+  barray_foreach(block->instructions, tmp) print_instr(tmp);
+}
+
+/* public */
+void
+mir_printer_exec(MirExec *exec)
+{
+  assert(exec);
+  fprintf(stdout, "\n{\n");
+
+  MirBlock *tmp;
+  barray_foreach(exec->blocks, tmp) print_block(tmp);
+
+  fprintf(stdout, "\n}\n");
 }
