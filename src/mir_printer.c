@@ -33,7 +33,7 @@ print_type(MirType *type)
 {
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
-  fprintf(stdout, "<%s>", tmp);
+  fprintf(stdout, "%s", tmp);
 }
 
 static inline void
@@ -58,6 +58,9 @@ print_instr_const_int(MirInstrConstInt *ci);
 
 static void
 print_instr_ret(MirInstrRet *ret);
+
+static void
+print_instr_store(MirInstrStore *store);
 
 /* impl */
 void
@@ -85,6 +88,14 @@ print_instr_ret(MirInstrRet *ret)
 }
 
 void
+print_instr_store(MirInstrStore *store)
+{
+  print_instr_head(&store->base);
+  assert(store->src && store->src);
+  fprintf(stdout, "store %%%u -> %%%u", store->src->id, store->dest->id);
+}
+
+void
 print_instr(MirInstr *instr)
 {
   switch (instr->kind) {
@@ -100,6 +111,7 @@ print_instr(MirInstr *instr)
   case MIR_INSTR_LOAD:
     break;
   case MIR_INSTR_STORE:
+    print_instr_store((MirInstrStore *)instr);
     break;
   case MIR_INSTR_RET:
     print_instr_ret((MirInstrRet *)instr);

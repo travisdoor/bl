@@ -82,6 +82,7 @@ typedef enum
   MIR_TYPE_VOID,
   MIR_TYPE_INT,
   MIR_TYPE_FN,
+  MIR_TYPE_PTR,
 } MirTypeKind;
 
 struct MirTypeInt
@@ -93,6 +94,11 @@ struct MirTypeInt
 struct MirTypeFn
 {};
 
+struct MirTypePtr
+{
+  MirType *next;
+};
+
 struct MirType
 {
   MirTypeKind kind;
@@ -103,6 +109,7 @@ struct MirType
   {
     struct MirTypeInt integer;
     struct MirTypeFn  fn;
+    struct MirTypePtr ptr;
   } data;
 };
 
@@ -134,7 +141,7 @@ struct MirInstrConstInt
 {
   MirInstr base;
 
-  uint64_t value;
+  unsigned long long value;
 };
 
 struct MirInstrLoad

@@ -1,4 +1,4 @@
 /* playground */
 
 foo s32 := 10;
-bar s32 := 10;
+bar s32 := 666;

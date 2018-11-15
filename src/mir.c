@@ -106,6 +106,7 @@ get_buildin(BuildinType id)
 static MirInstr *
 _add_instr(Context *cnt, MirInstrKind kind, MirType *type)
 {
+  assert(type);
   assert(cnt->curr_exec);
   MirInstr *tmp = arena_alloc(&cnt->arenas->instr_arena);
   tmp->kind     = kind;
@@ -154,7 +155,9 @@ add_block(Context *cnt, const char *name)
 static MirInstr *
 add_instr_decl_var(Context *cnt, MirType *type)
 {
-  MirInstrDeclVar *tmp = add_instr(cnt, MIR_INSTR_DECL_VAR, type, MirInstrDeclVar *);
+  MirType *type_ptr       = create_type(cnt, MIR_TYPE_PTR);
+  type_ptr->data.ptr.next = type;
+  MirInstrDeclVar *tmp    = add_instr(cnt, MIR_INSTR_DECL_VAR, type_ptr, MirInstrDeclVar *);
   return &tmp->base;
 }
 
@@ -179,6 +182,17 @@ add_instr_ret(Context *cnt, MirInstr *value)
 
   MirInstrRet *tmp = add_instr(cnt, MIR_INSTR_RET, type, MirInstrRet *);
   tmp->value       = value;
+  return &tmp->base;
+}
+
+static MirInstr *
+add_instr_store(Context *cnt, MirInstr *src, MirInstr *dest)
+{
+  assert(src && dest && dest->type);
+  assert(dest->type->kind == MIR_TYPE_PTR);
+  MirInstrStore *tmp = add_instr(cnt, MIR_INSTR_STORE, dest->type, MirInstrStore *);
+  tmp->src           = src;
+  tmp->dest          = dest;
   return &tmp->base;
 }
 
@@ -217,7 +231,8 @@ mir_ast_decl_entity(Context *cnt, Ast *entity)
   MirType * type = &entry_s32;
   MirInstr *var  = add_instr_decl_var(cnt, type);
   MirInstr *init = mir_ast(cnt, entity->data.decl_entity.value);
-  MirInstr *ret  = add_instr_ret(cnt, NULL);
+  add_instr_store(cnt, init, var);
+  add_instr_ret(cnt, NULL);
 
   return var;
 }
@@ -287,6 +302,12 @@ _type_to_str(char *buf, size_t len, MirType *type)
 
   case MIR_TYPE_FN: {
     append_buf(buf, len, "fn");
+    break;
+  }
+
+  case MIR_TYPE_PTR: {
+    append_buf(buf, len, "*");
+    _type_to_str(buf, len, type->data.ptr.next);
     break;
   }
 
