@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "mir_printer.h"
+#include "ast.h"
 
 static inline void
 print_type(MirType *type)
@@ -66,8 +67,12 @@ print_instr_store(MirInstrStore *store);
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
 {
+  assert(decl->var);
+  const char *name = decl->var->name->data.ident.str;
+  
   print_instr_head(&decl->base);
-  fprintf(stdout, "decl_var");
+  fprintf(stdout, "'%s' ", name);
+  print_type(decl->var->type);
 }
 
 void

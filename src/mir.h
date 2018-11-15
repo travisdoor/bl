@@ -34,6 +34,7 @@
 #include <bobject/containers/htbl.h>
 #include "arena.h"
 
+struct Ast;
 struct Assembly;
 struct Builder;
 
@@ -41,6 +42,8 @@ typedef struct MirArenas MirArenas;
 typedef struct MirBlock  MirBlock;
 typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
+typedef struct MirVar    MirVar;
+typedef struct MirFn     MirFn;
 
 typedef struct MirInstr         MirInstr;
 typedef struct MirInstrDeclVar  MirInstrDeclVar;
@@ -56,6 +59,8 @@ struct MirArenas
   Arena block_arena;
   Arena type_arena;
   Arena exec_arena;
+  Arena var_arena;
+  Arena fn_arena;
 };
 
 /* EXEC */
@@ -72,6 +77,21 @@ struct MirBlock
 {
   const char *name;
   BArray *    instructions;
+  MirInstr *  terminal;
+};
+
+/* VAR */
+struct MirVar
+{
+  struct Ast *name;
+  MirType *   type;
+};
+
+/* FN */
+struct MirFn
+{
+  struct Ast *name;
+  MirType *   type;
 };
 
 /* TYPE */
@@ -92,7 +112,10 @@ struct MirTypeInt
 };
 
 struct MirTypeFn
-{};
+{
+  MirType *ret_type;
+  BArray * arg_types;
+};
 
 struct MirTypePtr
 {
@@ -104,6 +127,7 @@ struct MirType
   MirTypeKind kind;
   const char *name;
   LLVMTypeRef llvm_type;
+  size_t      size;
 
   union
   {
@@ -135,6 +159,7 @@ struct MirInstr
 struct MirInstrDeclVar
 {
   MirInstr base;
+  MirVar * var;
 };
 
 struct MirInstrConstInt

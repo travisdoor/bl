@@ -1,5 +1,10 @@
 @startuml
 
+class MirVar {
+  name: const char *
+  type: *MirType
+}
+
 class MirExec {
   blocks: *MirBlock[]
 }
@@ -26,6 +31,7 @@ class MirInstr {
 }
 
 class MirInstrDeclVar {
+  var: *MirVar
 }
 
 class MirInstrConstInt {
@@ -53,6 +59,8 @@ MirExec o-- "n" MirBlock
 
 MirBlock o-- "n" MirInstr
 
-MirInstr o-- MirType: type
+MirInstr o-- MirType
+MirInstrDeclVar o-- MirVar
+MirVar o-- MirType
 
 @enduml
