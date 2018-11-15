@@ -174,3 +174,49 @@ ast_get_name(const Ast *n)
   }
 }
 
+const char *
+ast_binop_to_str(BinopKind op)
+{
+  switch (op) {
+  case BINOP_ASSIGN:
+    return "=";
+  case BINOP_ADD_ASSIGN:
+    return "+=";
+  case BINOP_SUB_ASSIGN:
+    return "-=";
+  case BINOP_MUL_ASSIGN:
+    return "*=";
+  case BINOP_DIV_ASSIGN:
+    return "/=";
+  case BINOP_MOD_ASSIGN:
+    return "%=";
+  case BINOP_ADD:
+    return "+";
+  case BINOP_SUB:
+    return "-";
+  case BINOP_MUL:
+    return "*";
+  case BINOP_DIV:
+    return "/";
+  case BINOP_MOD:
+    return "%";
+  case BINOP_EQ:
+    return "==";
+  case BINOP_NEQ:
+    return "!=";
+  case BINOP_GREATER:
+    return ">";
+  case BINOP_LESS:
+    return "<";
+  case BINOP_GREATER_EQ:
+    return ">=";
+  case BINOP_LESS_EQ:
+    return "<=";
+  case BINOP_LOGIC_AND:
+    return "&&";
+  case BINOP_LOGIC_OR:
+    return "||";
+  default:
+    return "invalid";
+  }
+}

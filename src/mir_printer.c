@@ -63,15 +63,18 @@ print_instr_ret(MirInstrRet *ret);
 static void
 print_instr_store(MirInstrStore *store);
 
+static void
+print_instr_binop(MirInstrBinop *binop);
+
 /* impl */
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
 {
   assert(decl->var);
   const char *name = decl->var->name->data.ident.str;
-  
+
   print_instr_head(&decl->base);
-  fprintf(stdout, "'%s' ", name);
+  fprintf(stdout, "decl %s ", name);
   print_type(decl->var->type);
 }
 
@@ -101,6 +104,15 @@ print_instr_store(MirInstrStore *store)
 }
 
 void
+print_instr_binop(MirInstrBinop *binop)
+{
+  print_instr_head(&binop->base);
+  assert(binop->lhs && binop->rhs);
+  const char *op = ast_binop_to_str(binop->op);
+  fprintf(stdout, "%%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
+}
+
+void
 print_instr(MirInstr *instr)
 {
   switch (instr->kind) {
@@ -121,6 +133,9 @@ print_instr(MirInstr *instr)
   case MIR_INSTR_RET:
     print_instr_ret((MirInstrRet *)instr);
     break;
+  case MIR_INSTR_BINOP:
+    print_instr_binop((MirInstrBinop *)instr);
+    break;
   }
   fprintf(stdout, "\n");
 }
@@ -139,7 +154,13 @@ void
 mir_printer_exec(MirExec *exec)
 {
   assert(exec);
-  fprintf(stdout, "\n{\n");
+  if (exec->fn) {
+    fprintf(stdout, "\n%s ", exec->fn->name->data.ident.str);
+    print_type(exec->fn->type);
+    fprintf(stdout, " {\n");
+  } else {
+    fprintf(stdout, "\n{\n");
+  }
 
   MirBlock *tmp;
   barray_foreach(exec->blocks, tmp) print_block(tmp);

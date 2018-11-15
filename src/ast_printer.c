@@ -217,71 +217,7 @@ void
 print_expr_binop(Ast *binop, int pad)
 {
   print_head(binop, pad);
-
-  const char *op = NULL;
-  switch (binop->data.expr_binop.kind) {
-  case BINOP_ASSIGN:
-    op = "=";
-    break;
-  case BINOP_ADD_ASSIGN:
-    op = "+=";
-    break;
-  case BINOP_SUB_ASSIGN:
-    op = "-=";
-    break;
-  case BINOP_MUL_ASSIGN:
-    op = "*=";
-    break;
-  case BINOP_DIV_ASSIGN:
-    op = "/=";
-    break;
-  case BINOP_MOD_ASSIGN:
-    op = "%=";
-    break;
-  case BINOP_ADD:
-    op = "+";
-    break;
-  case BINOP_SUB:
-    op = "-";
-    break;
-  case BINOP_MUL:
-    op = "*";
-    break;
-  case BINOP_DIV:
-    op = "/";
-    break;
-  case BINOP_MOD:
-    op = "%";
-    break;
-  case BINOP_EQ:
-    op = "==";
-    break;
-  case BINOP_NEQ:
-    op = "!=";
-    break;
-  case BINOP_GREATER:
-    op = ">";
-    break;
-  case BINOP_LESS:
-    op = "<";
-    break;
-  case BINOP_GREATER_EQ:
-    op = ">=";
-    break;
-  case BINOP_LESS_EQ:
-    op = "<=";
-    break;
-  case BINOP_LOGIC_AND:
-    op = "&&";
-    break;
-  case BINOP_LOGIC_OR:
-    op = "||";
-    break;
-  default:
-    op = "invalid";
-  }
-
-  fprintf(stdout, "'%s' ", op);
+  fprintf(stdout, "'%s' ", ast_binop_to_str(binop->data.expr_binop.kind));
   print_node(binop->data.expr_binop.lhs, pad + 1);
   print_node(binop->data.expr_binop.rhs, pad + 1);
 }

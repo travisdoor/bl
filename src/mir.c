@@ -45,6 +45,7 @@ union _MirInstr
   MirInstrLoad     load;
   MirInstrStore    store;
   MirInstrRet      ret;
+  MirInstrBinop    binop;
 };
 
 typedef struct
@@ -115,16 +116,28 @@ get_buildin(Context *cnt, BuildinType id)
 
 /* FW decls */
 static MirInstr *
-mir_ast(Context *cnt, Ast *node);
+ast(Context *cnt, Ast *node);
+
+static void
+ast_ublock(Context *cnt, Ast *ublock);
+
+static void
+ast_block(Context *cnt, Ast *block);
+
+static void
+ast_stmt_return(Context *cnt, Ast *ret);
 
 static MirInstr *
-mir_ast_ublock(Context *cnt, Ast *ublock);
+ast_decl_entity(Context *cnt, Ast *entity);
 
 static MirInstr *
-mir_ast_decl_entity(Context *cnt, Ast *entity);
+ast_expr_lit_int(Context *cnt, Ast *expr);
 
 static MirInstr *
-mir_ast_expr_lit_int(Context *cnt, Ast *expr);
+ast_expr_lit_fn(Context *cnt, Ast *lit_fn);
+
+static MirInstr *
+ast_expr_binop(Context *cnt, Ast *binop);
 
 static LLVMTypeRef
 to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
@@ -185,7 +198,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
 }
 
 static MirType *
-create_type_fn(Context *cnt, const char *name, BArray *arg_types, MirType *ret_type)
+create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
 {
   assert(arg_types && ret_type);
   MirType *tmp           = arena_alloc(&cnt->arenas->type_arena);
@@ -207,11 +220,22 @@ create_var(Context *cnt, MirType *type, Ast *name)
   return tmp;
 }
 
+static MirFn *
+create_fn(Context *cnt, MirType *type, Ast *name)
+{
+  assert(name && type);
+  MirFn *tmp = arena_alloc(&cnt->arenas->fn_arena);
+  tmp->name  = name;
+  tmp->type  = type;
+  return tmp;
+}
+
 static MirExec *
-add_exec(Context *cnt)
+add_exec(Context *cnt, MirFn *fn)
 {
   MirExec *tmp = arena_alloc(&cnt->arenas->exec_arena);
   tmp->blocks  = bo_array_new(sizeof(MirBlock *));
+  tmp->fn      = fn;
 
   bo_array_push_back(cnt->execs, tmp);
   cnt->curr_exec = tmp;
@@ -268,6 +292,7 @@ add_instr_ret(Context *cnt, MirInstr *value)
 
   /* add terminate current block */
   assert(cnt->curr_block);
+  assert(!cnt->curr_block->terminal && "basic block already terminated!");
   cnt->curr_block->terminal = &tmp->base;
 
   return &tmp->base;
@@ -281,6 +306,17 @@ add_instr_store(Context *cnt, MirInstr *src, MirInstr *dest)
   MirInstrStore *tmp = add_instr(cnt, MIR_INSTR_STORE, dest->type, MirInstrStore *);
   tmp->src           = src;
   tmp->dest          = dest;
+  return &tmp->base;
+}
+
+static MirInstr *
+add_instr_binop(Context *cnt, MirType *type, MirInstr *lhs, MirInstr *rhs, BinopKind op)
+{
+  assert(lhs && rhs && type);
+  MirInstrBinop *tmp = add_instr(cnt, MIR_INSTR_BINOP, type, MirInstrBinop *);
+  tmp->lhs           = lhs;
+  tmp->rhs           = rhs;
+  tmp->op            = op;
   return &tmp->base;
 }
 
@@ -331,7 +367,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
     }
 
     result = LLVMFunctionType(tmp_ret->llvm_type, tmp_args_llvm, cargs, false);
-    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->llvm_td, result);
+    if (out_size) *out_size = 0;
     bl_free(tmp_args_llvm);
     break;
   }
@@ -344,49 +380,110 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
 }
 
 /* MIR building */
-MirInstr *
-mir_ast_ublock(Context *cnt, Ast *ublock)
+void
+ast_ublock(Context *cnt, Ast *ublock)
 {
   Ast *tmp;
-  barray_foreach(ublock->data.ublock.nodes, tmp) mir_ast(cnt, tmp);
-  return NULL;
+  barray_foreach(ublock->data.ublock.nodes, tmp) ast(cnt, tmp);
+}
+
+void
+ast_block(Context *cnt, Ast *block)
+{
+  Ast *tmp;
+  barray_foreach(block->data.block.nodes, tmp) ast(cnt, tmp);
+}
+
+void
+ast_stmt_return(Context *cnt, Ast *ret)
+{
+  MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
+  add_instr_ret(cnt, value);
 }
 
 MirInstr *
-mir_ast_expr_lit_int(Context *cnt, Ast *expr)
+ast_expr_lit_int(Context *cnt, Ast *expr)
 {
   return add_instr_const_int(cnt, expr->data.expr_integer.val);
 }
 
 MirInstr *
-mir_ast_decl_entity(Context *cnt, Ast *entity)
+ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 {
-  add_exec(cnt);
+  Ast *block = lit_fn->data.expr_fn.block;
+  assert(block);
+
   add_block(cnt, "entry");
+  ast(cnt, block);
 
-  MirType * type = cnt->buildin_types.entry_s32;
-  MirInstr *var  = add_instr_decl_var(cnt, type, entity->data.decl.name);
-  MirInstr *init = mir_ast(cnt, entity->data.decl_entity.value);
-  add_instr_store(cnt, init, var);
-  add_instr_ret(cnt, NULL);
-
-  return var;
+  return NULL;
 }
 
 MirInstr *
-mir_ast(Context *cnt, Ast *node)
+ast_expr_binop(Context *cnt, Ast *binop)
+{
+  Ast *ast_lhs = binop->data.expr_binop.lhs;
+  Ast *ast_rhs = binop->data.expr_binop.rhs;
+  assert(ast_lhs && ast_rhs);
+
+  MirInstr *lhs = ast(cnt, ast_lhs);
+  MirInstr *rhs = ast(cnt, ast_rhs);
+  assert(lhs && rhs);
+
+  return add_instr_binop(cnt, lhs->type, lhs, rhs, binop->data.expr_binop.kind);
+}
+
+MirInstr *
+ast_decl_entity(Context *cnt, Ast *entity)
+{
+  Ast *ast_name  = entity->data.decl.name;
+  Ast *ast_type  = entity->data.decl.type;
+  Ast *ast_value = entity->data.decl_entity.value;
+
+  assert(ast_value);
+
+  if (ast_value->kind == AST_EXPR_LIT_FN) {
+    /* TODO: type resolving!!! */
+    BArray * args = bo_array_new(sizeof(MirType *));
+    MirType *type = create_type_fn(cnt, cnt->buildin_types.entry_void, args);
+    MirFn *  fn   = create_fn(cnt, type, ast_name);
+
+    add_exec(cnt, fn);
+    ast(cnt, ast_value);
+  } else {
+    MirType *type = cnt->buildin_types.entry_s32;
+    MirInstr *decl = add_instr_decl_var(cnt, type, ast_name);
+    MirInstr *init = ast(cnt, ast_value);
+    return add_instr_store(cnt, init, decl);
+  }
+
+  return NULL;
+}
+
+MirInstr *
+ast(Context *cnt, Ast *node)
 {
   if (!node) return NULL;
   switch (node->kind) {
   case AST_UBLOCK:
-    mir_ast_ublock(cnt, node);
+    ast_ublock(cnt, node);
+    break;
+  case AST_BLOCK:
+    ast_block(cnt, node);
+    break;
+  case AST_STMT_RETURN:
+    ast_stmt_return(cnt, node);
     break;
   case AST_DECL_ENTITY:
-    return mir_ast_decl_entity(cnt, node);
+    return ast_decl_entity(cnt, node);
   case AST_EXPR_LIT_INT:
-    return mir_ast_expr_lit_int(cnt, node);
+    return ast_expr_lit_int(cnt, node);
+  case AST_EXPR_LIT_FN:
+    return ast_expr_lit_fn(cnt, node);
+  case AST_EXPR_BINOP:
+    return ast_expr_binop(cnt, node);
   default:
-    bl_abort("invalid node");
+    bl_abort("invalid node %s", ast_get_name(node));
   }
 
   return NULL;
@@ -441,7 +538,18 @@ _type_to_str(char *buf, size_t len, MirType *type)
     break;
 
   case MIR_TYPE_FN: {
-    append_buf(buf, len, "fn");
+    append_buf(buf, len, "fn(");
+
+    MirType *tmp;
+    BArray * args = type->data.fn.arg_types;
+    assert(args);
+    barray_foreach(args, tmp)
+    {
+      _type_to_str(buf, len, tmp);
+      if (i < bo_array_size(args)) append_buf(buf, len, ", ");
+    }
+
+    append_buf(buf, len, ")");
     break;
   }
 
@@ -494,7 +602,7 @@ mir_run(Builder *builder, Assembly *assembly)
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
-    mir_ast(&cnt, unit->ast);
+    ast(&cnt, unit->ast);
   }
 
   if (cnt.verbose) {

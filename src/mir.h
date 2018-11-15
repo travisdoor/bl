@@ -33,8 +33,8 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include "arena.h"
+#include "ast.h"
 
-struct Ast;
 struct Assembly;
 struct Builder;
 
@@ -51,6 +51,7 @@ typedef struct MirInstrConstInt MirInstrConstInt;
 typedef struct MirInstrLoad     MirInstrLoad;
 typedef struct MirInstrStore    MirInstrStore;
 typedef struct MirInstrRet      MirInstrRet;
+typedef struct MirInstrBinop    MirInstrBinop;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -70,6 +71,7 @@ struct MirExec
 {
   BArray * blocks;
   unsigned id_counter;
+  MirFn *  fn;
 };
 
 /* BASIC BLOCK */
@@ -145,6 +147,7 @@ typedef enum
   MIR_INSTR_CONST_INT, /* replace with generic constant? */
   MIR_INSTR_LOAD,
   MIR_INSTR_STORE,
+  MIR_INSTR_BINOP,
   MIR_INSTR_RET,
 } MirInstrKind;
 
@@ -189,6 +192,15 @@ struct MirInstrRet
   MirInstr base;
 
   MirInstr *value;
+};
+
+struct MirInstrBinop
+{
+  MirInstr base;
+
+  BinopKind op;
+  MirInstr *lhs;
+  MirInstr *rhs;
 };
 
 /* public */

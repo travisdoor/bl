@@ -1,4 +1,6 @@
 /* playground */
 
-foo s32 := 10;
-bar s32 := 666;
+main fn () : fn () {
+  foo s32 := 10 + 2;
+  return;
+};

@@ -452,6 +452,9 @@ Ast *
 ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
 const char *
+ast_binop_to_str(BinopKind op);
+
+const char *
 ast_get_name(const Ast *n);
 
 #endif
