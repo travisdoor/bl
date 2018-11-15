@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   eval.h
+// File:   mir_printer.h
 // Author: Martin Dorazil
-// Date:   9/10/18
+// Date:   3/15/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,27 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_EVAL_H
-#define BL_EVAL_H
+#ifndef BL_MIR_PRINTER_H
+#define BL_MIR_PRINTER_H
 
-struct Object;
-struct Node;
-
-typedef struct
-{
-  struct Object *stack;
-  struct Node *  err_node;
-  int            size;
-  int            i;
-} Eval;
+#include "mir.h"
 
 void
-eval_init(Eval *eval, int stack_size);
-
-void
-eval_terminate(Eval *eval);
-
-int
-eval_expr(Eval *eval, struct Node *node, struct Node **err_node);
+mir_printer_exec(MirExec *exec);
 
 #endif

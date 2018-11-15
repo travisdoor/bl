@@ -46,10 +46,10 @@ typedef struct context
   Builder *builder;
   Unit *   unit;
   Tokens * tokens;
-  jmp_buf    jmp_error;
-  char *     c;
-  int        line;
-  int        col;
+  jmp_buf  jmp_error;
+  char *   c;
+  int      line;
+  int      col;
 } Context;
 
 static void

@@ -56,7 +56,7 @@ void
 ast_printer_run(Assembly *assembly);
 
 void
-checker_run(Builder *builder, Assembly *assembly);
+ir_run(Builder *builder, Assembly *assembly);
 
 void
 post_run(Builder *builder, Assembly *assembly);
@@ -69,9 +69,6 @@ bc_writer_run(Builder *builder, Assembly *assembly);
 
 void
 native_bin_run(Builder *builder, Assembly *assembly);
-
-void
-ir_run(Builder *builder, Assembly *assembly);
 
 void
 jit_exec_run(Builder *builder, Assembly *assembly);

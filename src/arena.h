@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   scope.h
+// File:   arena.h
 // Author: Martin Dorazil
-// Date:   15/03/2018
+// Date:   3/14/18
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,33 +26,31 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_SCOPE_H
-#define BL_SCOPE_H
+#ifndef BL_ARENA_H
+#define BL_ARENA_H
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <assert.h>
+#include "common.h"
 
-struct Src;
-struct Ast;
-struct Arena;
+typedef void (*ArenaElemDtor)(void *);
 
-typedef struct Scope
+struct ArenaChunk;
+
+typedef struct Arena
 {
-  struct Scope *parent;
-  BHashTable *  entries;
-} Scope;
+  struct ArenaChunk *first_chunk;
+  struct ArenaChunk *current_chunk;
+  size_t             elem_size_in_bytes;
+  int                elems_per_chunk;
+  ArenaElemDtor      elem_dtor;
+} Arena;
 
 void
-scope_arena_init(struct Arena *arena);
-
-Scope *
-scope_create(struct Arena *arena, Scope *parent, size_t size);
+arena_init(Arena *arena, size_t elem_size_in_bytes, int elems_per_chunk, ArenaElemDtor elem_dtor);
 
 void
-scope_insert(Scope *scope, uint64_t key, struct Ast *decl);
+arena_terminate(Arena *arena);
 
-struct Ast *
-scope_lookup(Scope *scope, struct Ast *ident, bool in_tree);
+void *
+arena_alloc(Arena *arena);
 
 #endif

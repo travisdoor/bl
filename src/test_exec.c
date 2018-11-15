@@ -30,6 +30,7 @@
 #include "stages.h"
 #include "bldebug.h"
 
+#if 0
 typedef struct
 {
   Builder *              builder;
@@ -51,8 +52,8 @@ test_case(Context *cnt, TestCase *tc)
   assert(tc->name);
   assert(cnt->llvm_jit);
 
-  NodeDecl *   _decl   = peek_decl(tc->fn);
-  const char * fn_name = peek_ident(_decl->name)->str;
+  AstDecl *    _decl   = tc->fn;
+  const char * fn_name = _decl->name->str;
   LLVMValueRef llvm_fn = NULL;
 
   if (LLVMFindFunction(cnt->llvm_jit, fn_name, &llvm_fn)) {
@@ -67,8 +68,8 @@ test_case(Context *cnt, TestCase *tc)
     LLVMDisposeGenericValue(ret);
   }
 
-  const char *unit_name = tc->fn->src->unit->name;
-  const int   line      = tc->fn->src->line;
+  const char *unit_name = ((Ast *)tc->fn)->src->unit->name;
+  const int   line      = ((Ast *)tc->fn)->src->line;
   msg_log("[%s] %s:%d %s", result ? RED(" FAIL ") : GREEN("  OK  "), unit_name, line, tc->name);
 }
 
@@ -97,3 +98,9 @@ __bl_assert_failure(const char *file, int line)
   msg_error("assertion failed in %s:%d", file, line);
   longjmp(assert_jmp, false);
 }
+#endif
+
+/* public */
+void
+test_exec_run(Builder *builder, Assembly *assembly)
+{}

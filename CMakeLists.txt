@@ -36,12 +36,14 @@ set(HEADER_FILES
         src/stages.h
         src/common.h 
         src/scope.h
-        src/eval.h
+        src/mir.h
+        src/mir_printer.h
+        src/arena.h
         src/ast.h)
 
 set(SOURCE_FILES
         src/main.c
-        src/eval.c
+        src/arena.c
         src/tokens.c
         src/file_loader.c
         src/unit.c
@@ -53,16 +55,15 @@ set(SOURCE_FILES
         src/lexer.c
         src/bldebug.c
         src/parser.c
-        src/ir.c
         src/linker.c
         src/jit_exec.c
         src/test_exec.c
         src/bc_writer.c
         src/native_bin.c
-        src/checker.c
         src/scope.c
         src/common.c 
-        src/post.c 
+        src/mir.c
+        src/mir_printer.c
         src/ast.c)
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
@@ -213,7 +214,7 @@ if (MSVC)
 	)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wno-missing-braces -O0 -fsanitize=address -fsanitize=address")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fno-sanitize=all -Wdeprecated-declarations")
 
     target_link_libraries(blc PUBLIC LLVM)
 endif()

@@ -34,7 +34,7 @@
   assert(sizeof(foo_ptr) == 8);
 };
 
-#test "array types" {
+/*#test "array types" {
   arr s32[10];
   assert(sizeof(arr) == 40);
-};
+};*/

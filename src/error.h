@@ -92,6 +92,7 @@ typedef enum
   ERR_FILE_EMPTY              = 55,
   ERR_INVALID_INITIALIZER     = 56,
   ERR_INVALID_CAST            = 57,
+  ERR_INVALID_ADM             = 58,
 } Error;
 
 #endif // BL_ERROR_H

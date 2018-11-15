@@ -34,76 +34,73 @@
 
 // clang-format off
 #define _SYMBOLS_LIST \
-  sm(EOF = 0,      "end") \
-  sm(IDENT,        "identifier") \
-  sm(STRING,       "string") \
-  sm(CHAR,         "char") \
-  sm(NUM,          "number") \
-  sm(FLOAT,        "float") \
-  sm(DOUBLE,       "double") \
-  sm(IF,           "if") /* must be first */ \
-  sm(FN,           "fn") \
-  sm(CAST,         "cast") \
-  sm(ELSE,         "else") \
-  sm(TRUE,         "true") \
-  sm(NULL,         "null") \
-  sm(ENUM,         "enum") \
-  sm(LOOP,         "loop")\
-  sm(RUN,          "#run")\
-  sm(FALSE,        "false") \
-  sm(BREAK,        "break")\
-  sm(LOAD,         "#load") \
-  sm(LINK,         "#link") \
-  sm(LINE,         "#line") \
-  sm(FILE,         "#file") \
-  sm(TEST,         "#test") \
-  sm(RETURN,       "return") \
-  sm(STRUCT,       "struct") \
-  sm(SIZEOF,       "sizeof") \
-  sm(TYPEOF,       "typeof") \
-  sm(ASSERT,       "assert") \
-  sm(EXTERN,       "#extern") \
-  sm(CONTINUE,     "continue") /* must be last */\
-  sm(MDECL,        ":=") \
-  sm(ARROW,        "->") \
-  sm(LCOMMENT,     "//") \
-  sm(LBCOMMENT,    "/*") \
-  sm(RBCOMMENT,    "*/") \
-  sm(LBLOCK,       "{") \
-  sm(RBLOCK,       "}") \
-  sm(LBRACKET,     "[") \
-  sm(RBRACKET,     "]") \
-  sm(LPAREN,       "(") \
-  sm(RPAREN,       ")") \
-  sm(COMMA,        ",") \
-  sm(SEMICOLON,    ";") \
-  sm(IMMDECL,      ":") \
-  sm(VARGS,        "...") \
-  sm(EQ,           "==") /* logical begin */ \
-  sm(NEQ,          "!=") \
-  sm(GREATER_EQ,   ">=") \
-  sm(LESS_EQ,      "<=") \
-  sm(LOGIC_AND,    "&&") \
-  sm(LOGIC_OR,     "||") /* logical end */ \
-  sm(PLUS_ASSIGN,  "+=") \
-  sm(MINUS_ASSIGN, "-=") \
-  sm(MUL_ASSIGN,   "*=") \
-  sm(DIV_ASSIGN,   "/=") \
-  sm(MOD_ASSIGN,   "%=") \
-  sm(AND,          "&") \
-  sm(OR,           "|") \
-  sm(XOR,          "^") \
-  sm(NOT,          "!") \
-  sm(SLASH,        "/") \
-  sm(MODULO,       "%") \
-  sm(ASSIGN,       "=") \
-  sm(PLUS,         "+") \
-  sm(MINUS,        "-") \
-  sm(ASTERISK,     "*") \
-  sm(GREATER,      ">") \
-  sm(LESS,         "<") \
-  sm(DOT,          ".") \
-  sm(NONE,         "") \
+  sm(EOF = 0,        "end") \
+  sm(IDENT,          "identifier") \
+  sm(STRING,         "string") \
+  sm(CHAR,           "char") \
+  sm(NUM,            "number") \
+  sm(FLOAT,          "float") \
+  sm(DOUBLE,         "double") \
+  sm(IF,             "if") /* must be first */ \
+  sm(FN,             "fn") \
+  sm(TYPE,           "type") \
+  sm(CAST,           "cast") \
+  sm(ELSE,           "else") \
+  sm(TRUE,           "true") \
+  sm(NULL,           "null") \
+  sm(ENUM,           "enum") \
+  sm(LOOP,           "loop")\
+  sm(RUN,            "#run")\
+  sm(FALSE,          "false") \
+  sm(BREAK,          "break")\
+  sm(LOAD,           "#load") \
+  sm(LINK,           "#link") \
+  sm(LINE,           "#line") \
+  sm(FILE,           "#file") \
+  sm(RETURN,         "return") \
+  sm(STRUCT,         "struct") \
+  sm(EXTERN,         "#extern") \
+  sm(CONTINUE,       "continue") \
+  sm(AT,             "@") \
+  sm(MDECL,          ":=") \
+  sm(LCOMMENT,       "//") \
+  sm(LBCOMMENT,      "/*") \
+  sm(RBCOMMENT,      "*/") \
+  sm(LBLOCK,         "{") \
+  sm(RBLOCK,         "}") \
+  sm(LBRACKET,       "[") \
+  sm(RBRACKET,       "]") \
+  sm(LPAREN,         "(") \
+  sm(RPAREN,         ")") \
+  sm(COMMA,          ",") \
+  sm(SEMICOLON,      ";") \
+  sm(IMMDECL,        ":") \
+  sm(VARGS,          "...") \
+  sm(EQ,             "==") /* logical begin */ \
+  sm(NEQ,            "!=") \
+  sm(GREATER_EQ,     ">=") \
+  sm(LESS_EQ,        "<=") \
+  sm(LOGIC_AND,      "&&") \
+  sm(GREATER,        ">") \
+  sm(LESS,           "<") \
+  sm(LOGIC_OR,       "||") /* logical end */ \
+  sm(PLUS_ASSIGN,    "+=") /* assign bebin */ \
+  sm(MINUS_ASSIGN,   "-=") \
+  sm(ASTERISK_ASSIGN,"*=") \
+  sm(SLASH_ASSIGN,   "/=") \
+  sm(PERCENT_ASSIGN, "%=") \
+  sm(ASSIGN,         "=") /* assign end */\
+  sm(AND,            "&") \
+  sm(OR,             "|") \
+  sm(XOR,            "^") \
+  sm(NOT,            "!") \
+  sm(SLASH,          "/") \
+  sm(PERCENT,         "%") \
+  sm(PLUS,           "+") \
+  sm(MINUS,          "-") \
+  sm(ASTERISK,       "*") \
+  sm(DOT,            ".") \
+  sm(NONE,           "") \
 
 typedef enum {
 #define sm(tok, str) SYM_##tok,
@@ -138,24 +135,35 @@ typedef struct Token
   TokenValue value;
 } Token;
 
-/* is token any known binary operation? */
-bool
-token_is_binop(Token *token);
+static inline bool
+sym_is_binop(Sym sym)
+{
+  return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+}
 
-bool
-token_is(Token *token, Sym sym);
-
-bool
-token_is_not(Token *token, Sym sym);
-
-/* is token logical operation which result type should be boolean */
-bool
-token_is_logic_op(Token *token);
+static inline bool
+token_is_binop(Token *token)
+{
+  return sym_is_binop(token->sym);
+}
 
 bool
 token_is_unary(Token *token);
 
 int
 token_prec(Token *token, bool unary);
+
+static inline bool
+token_is(Token *token, Sym sym)
+{
+  if (!token) return false;
+  return token->sym == sym;
+}
+
+static inline bool
+token_is_not(Token *token, Sym sym)
+{
+  return !token_is(token, sym);
+}
 
 #endif // BL_TOKEN_H

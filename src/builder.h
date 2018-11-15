@@ -32,6 +32,8 @@
 #include <bobject/containers/array.h>
 #include "assembly.h"
 #include "error.h"
+#include "arena.h"
+#include "mir.h"
 
 #define BUILDER_RUN 0x00000002
 #define BUILDER_PRINT_TOKENS 0x00000004
@@ -52,6 +54,9 @@ typedef void (*diag_handler_f)(const char *, void *);
 
 typedef struct Builder
 {
+  MirArenas      mir_arenas;
+  Arena          ast_arena;
+  Arena          scope_arena;
   diag_handler_f on_error;
   diag_handler_f on_warning;
   diag_handler_f on_note;
@@ -77,6 +82,13 @@ typedef enum
   BUILDER_CUR_WORD,
   BUILDER_CUR_BEFORE
 } BuilderCurPos;
+
+typedef enum
+{
+  BUILDIN_TYPE_NONE = -1,
+  BUILDIN_TYPE_S32,
+  _BUILDIN_TYPE_COUNT,
+} BuildinType;
 
 struct Src;
 

@@ -35,12 +35,6 @@ char *sym_strings[] = {
 };
 
 bool
-token_is_binop(Token *token)
-{
-  return token->sym >= SYM_EQ && token->sym <= SYM_LESS;
-}
-
-bool
 token_is_unary(Token *token)
 {
   switch (token->sym) {
@@ -57,32 +51,12 @@ token_is_unary(Token *token)
   return false;
 }
 
-bool
-token_is_logic_op(Token *token)
-{
-  switch (token->sym) {
-  case SYM_LESS:
-  case SYM_GREATER:
-  case SYM_LESS_EQ:
-  case SYM_GREATER_EQ:
-  case SYM_EQ:
-  case SYM_NEQ:
-  case SYM_LOGIC_AND:
-  case SYM_LOGIC_OR:
-    return true;
-
-  default:
-    return false;
-  }
-}
-
 int
 token_prec(Token *token, bool unary)
 {
   switch (token->sym) {
     // . -> [ (
   case SYM_DOT:
-  case SYM_ARROW:
   case SYM_LBRACKET:
   case SYM_LPAREN:
     return 60;
@@ -96,7 +70,7 @@ token_prec(Token *token, bool unary)
     // * / %
   case SYM_ASTERISK:
   case SYM_SLASH:
-  case SYM_MODULO:
+  case SYM_PERCENT:
     return 40;
 
     // + -
@@ -144,9 +118,9 @@ token_prec(Token *token, bool unary)
   case SYM_ASSIGN:
   case SYM_PLUS_ASSIGN:
   case SYM_MINUS_ASSIGN:
-  case SYM_MUL_ASSIGN:
-  case SYM_DIV_ASSIGN:
-  case SYM_MOD_ASSIGN:
+  case SYM_ASTERISK_ASSIGN:
+  case SYM_SLASH_ASSIGN:
+  case SYM_PERCENT_ASSIGN:
     return 4;
 
   default:
@@ -154,15 +128,3 @@ token_prec(Token *token, bool unary)
   }
 }
 
-bool
-token_is(Token *token, Sym sym)
-{
-  if (!token) return false;
-  return token->sym == sym;
-}
-
-bool
-token_is_not(Token *token, Sym sym)
-{
-  return !token_is(token, sym);
-}

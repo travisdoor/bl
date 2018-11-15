@@ -36,6 +36,12 @@
 #include "messages.h"
 #include "blmemory.h"
 
+#if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
+#define DEPRECATED __attribute__((deprecated))
+#else
+#define DEPRECATED
+#endif
+
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define barray_foreach(arr, it)                                                                    \

@@ -119,16 +119,15 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
-  if (!builder->errorc) checker_run(builder, assembly);
-  if (!builder->errorc) post_run(builder, assembly);
-
   if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
   }
-  interrupt_on_error(builder);
+
+  /* TODO */
+  mir_run(builder, assembly);
 
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
-    ir_run(builder, assembly);
+    //mir_run(builder, assembly);
 
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
@@ -163,7 +162,12 @@ builder_new(void)
   builder->errorc      = 0;
   builder->uname_cache = bo_array_new_bo(bo_typeof(BString), true);
 
+  /* initialize LLVM statics */
   llvm_init();
+
+  scope_arena_init(&builder->scope_arena);
+  ast_arena_init(&builder->ast_arena);
+  mir_arenas_init(&builder->mir_arenas);
 
   return builder;
 }
@@ -171,6 +175,9 @@ builder_new(void)
 void
 builder_delete(Builder *builder)
 {
+  mir_arenas_terminate(&builder->mir_arenas);
+  arena_terminate(&builder->scope_arena);
+  arena_terminate(&builder->ast_arena);
   bo_unref(builder->uname_cache);
   bl_free(builder);
 }

@@ -45,6 +45,10 @@
     ;; Keywords
     (,(bl-keywords-rx bl-keywords) 1 font-lock-keyword-face)
 
+    ;; Hash directives
+    ("#\\w+" . font-lock-preprocessor-face)
+    ("@\\w+" . font-lock-builtin-face)
+
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
     ("\\(\\w+\\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
@@ -60,9 +64,6 @@
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
     ("\\(\\w+\\)\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
-
-    ;; Hash directives
-    ("#\\w+" . font-lock-preprocessor-face)
 
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)

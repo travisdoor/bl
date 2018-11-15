@@ -36,17 +36,11 @@
 
 struct Token;
 
-typedef struct
-{
-  struct Node *fn;
-  const char * name;
-} TestCase;
-
 /* class Unit object members */
 typedef struct Unit
 {
   Tokens        tokens;
-  Ast           ast;
+  Ast *   ast;
   BArray *      globals;
   char *        filepath;
   char *        name;

@@ -29,48 +29,56 @@
 #include "scope.h"
 #include "common.h"
 #include "ast.h"
+#include "arena.h"
+#include "unit.h"
 
-void
-scope_cache_init(ScopeCache **cache)
+#define ARENA_CHUNK_COUNT 256
+
+static void
+scope_dtor(Scope *scope)
 {
-  *cache = bo_array_new_bo(bo_typeof(BArray), true);
+  assert(scope);
+  bo_unref(scope->entries);
 }
 
 void
-scope_cache_terminate(ScopeCache *cache)
+scope_arena_init(Arena *arena)
 {
-  bo_unref(cache);
+  arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
 }
 
 Scope *
-scope_new(ScopeCache *cache, size_t size)
+scope_create(Arena *arena, Scope *parent, size_t size)
 {
-  Scope *scope = bo_htbl_new(sizeof(Node *), size);
-  bo_array_push_back(cache, scope);
+  Scope *scope   = arena_alloc(arena);
+  scope->entries = bo_htbl_new(sizeof(Ast *), size);
+  scope->parent  = parent;
   return scope;
 }
 
 void
-scope_insert(Scope *scope, Node *ident, Node *node)
+scope_insert(Scope *scope, uint64_t key, Ast *entry)
 {
   assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
-  bo_htbl_insert(scope, _ident->hash, node);
+  assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
+  bo_htbl_insert(scope->entries, key, entry);
 }
 
-Node *
-scope_get(Scope *scope, Node *ident)
+Ast *
+scope_lookup(Scope *scope, Ast *ident, bool in_tree)
 {
   assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
-  if (scope_has_symbol(scope, ident)) return bo_htbl_at(scope, _ident->hash, Node *);
+  assert(ident->kind == AST_IDENT);
+
+  while (scope) {
+    if (bo_htbl_has_key(scope->entries, ident->data.ident.hash))
+      return bo_htbl_at(scope->entries, ident->data.ident.hash, Ast *);
+
+    if (in_tree)
+      scope = scope->parent;
+    else
+      break;
+  }
+
   return NULL;
-}
-
-bool
-scope_has_symbol(Scope *scope, Node *ident)
-{
-  assert(scope);
-  const NodeIdent *_ident = peek_ident(ident);
-  return bo_htbl_has_key(scope, _ident->hash);
 }

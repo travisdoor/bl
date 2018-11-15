@@ -1,12 +1,4 @@
 /* playground */
 
-
-main : fn () s32 {
-  arr s32[10];
-
-  // array alloca tmp {10 x i32}
-  // arr : __Array { .data = &tmp, .len = 10 };
-
-  return 0;
-};
-
+foo s32 := 10;
+bar s32 := 666;

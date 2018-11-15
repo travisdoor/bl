@@ -50,3 +50,11 @@
   foo Foo;
   foo.foo = &foo;
 };
+
+#test "anonymous structure aka tuple" {
+  foo struct { s32, s32 };
+  foo._0 = 10;
+  foo._1 = 20;
+  assert(foo._0 == 10);
+  assert(foo._1 == 20);
+};
