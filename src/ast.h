@@ -200,7 +200,6 @@ struct AstDeclEntity
   struct AstDecl base;
   Ast *          value;
   int            flags;
-  int            used;
   bool           in_gscope;
   bool mutable;
 };

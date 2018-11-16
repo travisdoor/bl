@@ -45,13 +45,14 @@ typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
 
-typedef struct MirInstr         MirInstr;
-typedef struct MirInstrDeclVar  MirInstrDeclVar;
-typedef struct MirInstrConstInt MirInstrConstInt;
-typedef struct MirInstrLoad     MirInstrLoad;
-typedef struct MirInstrStore    MirInstrStore;
-typedef struct MirInstrRet      MirInstrRet;
-typedef struct MirInstrBinop    MirInstrBinop;
+typedef struct MirInstr             MirInstr;
+typedef struct MirInstrDeclVar      MirInstrDeclVar;
+typedef struct MirInstrConst        MirInstrConst;
+typedef struct MirInstrLoad         MirInstrLoad;
+typedef struct MirInstrStore        MirInstrStore;
+typedef struct MirInstrRet          MirInstrRet;
+typedef struct MirInstrBinop        MirInstrBinop;
+typedef struct MirInstrValidateType MirInstrValidateType;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -69,9 +70,9 @@ struct MirArenas
  * compile time executed block */
 struct MirExec
 {
-  BArray * blocks;
-  unsigned id_counter;
-  MirFn *  fn;
+  BArray *  blocks;
+  MirBlock *entry_block;
+  MirInstr *ret;
 };
 
 /* BASIC BLOCK */
@@ -94,12 +95,15 @@ struct MirFn
 {
   struct Ast *name;
   MirType *   type;
+  MirExec *   exec;
+  MirExec *   exec_analyzed;
 };
 
 /* TYPE */
 typedef enum
 {
   MIR_TYPE_INVALID,
+  MIR_TYPE_META,
   MIR_TYPE_TYPE,
   MIR_TYPE_VOID,
   MIR_TYPE_INT,
@@ -124,6 +128,16 @@ struct MirTypePtr
   MirType *next;
 };
 
+struct MirTypeMeta
+{
+  Ast *node;
+};
+
+struct MirTypeType
+{
+  MirType *spec;
+};
+
 struct MirType
 {
   MirTypeKind kind;
@@ -133,9 +147,11 @@ struct MirType
 
   union
   {
-    struct MirTypeInt integer;
-    struct MirTypeFn  fn;
-    struct MirTypePtr ptr;
+    struct MirTypeMeta meta;
+    struct MirTypeType type;
+    struct MirTypeInt  integer;
+    struct MirTypeFn   fn;
+    struct MirTypePtr  ptr;
   } data;
 };
 
@@ -144,11 +160,12 @@ typedef enum
 {
   MIR_INSTR_INVALID,
   MIR_INSTR_DECL_VAR,
-  MIR_INSTR_CONST_INT, /* replace with generic constant? */
+  MIR_INSTR_CONST,
   MIR_INSTR_LOAD,
   MIR_INSTR_STORE,
   MIR_INSTR_BINOP,
   MIR_INSTR_RET,
+  MIR_INSTR_VALIDATE_TYPE,
 } MirInstrKind;
 
 struct MirInstr
@@ -157,6 +174,9 @@ struct MirInstr
   unsigned     id;
   MirType *    type;
   LLVMValueRef llvm_value;
+  Ast *        node;
+  bool         comptime;
+  int          ref_count;
 };
 
 struct MirInstrDeclVar
@@ -165,11 +185,16 @@ struct MirInstrDeclVar
   MirVar * var;
 };
 
-struct MirInstrConstInt
+struct MirInstrConst
 {
   MirInstr base;
 
-  unsigned long long value;
+  union
+  {
+    MirType *          type_value;
+    unsigned long long int_value;
+    void *             ptr_value;
+  };
 };
 
 struct MirInstrLoad
@@ -201,6 +226,13 @@ struct MirInstrBinop
   BinopKind op;
   MirInstr *lhs;
   MirInstr *rhs;
+};
+
+struct MirInstrValidateType
+{
+  MirInstr base;
+
+  MirInstr *src;
 };
 
 /* public */

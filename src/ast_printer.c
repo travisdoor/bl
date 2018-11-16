@@ -162,9 +162,8 @@ print_decl_entity(Ast *entity, int pad)
 {
   print_head(entity, pad);
 
-  fprintf(stdout, "'%s' '%s' used: %d ", entity->data.decl.name->data.ident.str,
-          entity->data.decl_entity.mutable ? "mutable" : "immutable",
-          entity->data.decl_entity.used);
+  fprintf(stdout, "'%s' '%s'", entity->data.decl.name->data.ident.str,
+          entity->data.decl_entity.mutable ? "mutable" : "immutable");
 
   print_flags(entity->data.decl_entity.flags);
   print_node((Ast *)entity->data.decl_entity.value, pad + 1);
