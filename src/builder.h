@@ -83,13 +83,6 @@ typedef enum
   BUILDER_CUR_BEFORE
 } BuilderCurPos;
 
-typedef enum
-{
-  BUILDIN_TYPE_NONE = -1,
-  BUILDIN_TYPE_S32,
-  _BUILDIN_TYPE_COUNT,
-} BuildinType;
-
 struct Src;
 
 Builder *

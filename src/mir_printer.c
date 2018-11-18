@@ -47,7 +47,7 @@ print_instr_head(MirInstr *instr)
 {
   if (!instr) return;
   fprintf(stdout, "  %%%u (%d) ", instr->id, instr->ref_count);
-  print_type(instr->type);
+  print_type(instr->value.type);
   fprintf(stdout, " = ");
 }
 
@@ -83,18 +83,19 @@ print_instr_decl_var(MirInstrDeclVar *decl)
   const char *name = decl->var->name->data.ident.str;
 
   fprintf(stdout, INSTR_COLOR("decl") " %s ", name);
-  print_type(decl->var->type);
 }
 
 void
 print_instr_const(MirInstrConst *cnst)
 {
-  switch (cnst->base.type->kind) {
+  MirValue *value = &cnst->base.value;
+  assert(value->type);
+  switch (value->type->kind) {
   case MIR_TYPE_INT:
-    fprintf(stdout, "%llu", cnst->int_value);
+    fprintf(stdout, "%llu", value->data.v_int);
     break;
   case MIR_TYPE_TYPE:
-    print_type(cnst->type_value);
+    print_type(value->data.v_type);
     break;
   default:
     fprintf(stdout, "cannot read value");
@@ -190,7 +191,7 @@ mir_printer_fn(MirFn *fn)
   barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
   fprintf(stdout, "}");
 
-  if (fn->exec_analyzed) {
+  if (fn->analyzed) {
     fprintf(stdout, " => {\n");
     barray_foreach(fn->exec_analyzed->blocks, tmp) print_block(tmp);
     fprintf(stdout, "}\n");

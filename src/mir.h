@@ -44,6 +44,7 @@ typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
+typedef struct MirValue  MirValue;
 
 typedef struct MirInstr             MirInstr;
 typedef struct MirInstrDeclVar      MirInstrDeclVar;
@@ -87,7 +88,7 @@ struct MirBlock
 struct MirVar
 {
   struct Ast *name;
-  MirType *   type;
+  MirValue *  value;
 };
 
 /* FN */
@@ -97,13 +98,14 @@ struct MirFn
   MirType *   type;
   MirExec *   exec;
   MirExec *   exec_analyzed;
+
+  bool analyzed;
 };
 
 /* TYPE */
 typedef enum
 {
   MIR_TYPE_INVALID,
-  MIR_TYPE_META,
   MIR_TYPE_TYPE,
   MIR_TYPE_VOID,
   MIR_TYPE_INT,
@@ -128,16 +130,6 @@ struct MirTypePtr
   MirType *next;
 };
 
-struct MirTypeMeta
-{
-  Ast *node;
-};
-
-struct MirTypeType
-{
-  MirType *spec;
-};
-
 struct MirType
 {
   MirTypeKind kind;
@@ -147,11 +139,20 @@ struct MirType
 
   union
   {
-    struct MirTypeMeta meta;
-    struct MirTypeType type;
     struct MirTypeInt  integer;
     struct MirTypeFn   fn;
     struct MirTypePtr  ptr;
+  } data;
+};
+
+/* VALUE */
+struct MirValue
+{
+  MirType *type;
+  union
+  {
+    unsigned long long v_int;
+    MirType *          v_type;
   } data;
 };
 
@@ -172,29 +173,25 @@ struct MirInstr
 {
   MirInstrKind kind;
   unsigned     id;
-  MirType *    type;
   LLVMValueRef llvm_value;
   Ast *        node;
   bool         comptime;
   int          ref_count;
+
+  MirValue value;
 };
 
 struct MirInstrDeclVar
 {
   MirInstr base;
-  MirVar * var;
+
+  MirVar *  var;
+  MirInstr *type;
 };
 
 struct MirInstrConst
 {
   MirInstr base;
-
-  union
-  {
-    MirType *          type_value;
-    unsigned long long int_value;
-    void *             ptr_value;
-  };
 };
 
 struct MirInstrLoad

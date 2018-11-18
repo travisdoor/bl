@@ -1,8 +1,8 @@
 /* playground */
 
 main fn () : fn () {
-  foo s32 := 10 + 2 * 10 - 26 / 2;
-  bar s32 := 0;
+  foo s32 := 10;
+  bar u32 := 0;
   return;
 };
 
