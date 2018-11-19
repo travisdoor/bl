@@ -52,10 +52,10 @@ print_instr_head(MirInstr *instr)
 }
 
 static void
-print_block(MirBlock *block);
+print_instr_fn_proto(MirInstrFnProto *fn_proto);
 
 static void
-print_instr(MirInstr *instr);
+print_block(MirBlock *block);
 
 static void
 print_instr_decl_var(MirInstrDeclVar *decl);
@@ -82,6 +82,8 @@ print_instr_call(MirInstrCall *call);
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
 {
+  print_instr_head(&decl->base);
+
   assert(decl->var);
   const char *name = decl->var->name->data.ident.str;
 
@@ -91,6 +93,8 @@ print_instr_decl_var(MirInstrDeclVar *decl)
 void
 print_instr_const(MirInstrConst *cnst)
 {
+  print_instr_head(&cnst->base);
+
   MirValue *value = &cnst->base.value;
   assert(value->type);
   switch (value->type->kind) {
@@ -108,12 +112,14 @@ print_instr_const(MirInstrConst *cnst)
 void
 print_instr_call(MirInstrCall *call)
 {
+  print_instr_head(&call->base);
+
   fprintf(stdout, INSTR_COLOR("call "));
   if (call->callee->node) {
     assert(call->callee->node->kind == AST_IDENT);
-    fprintf(stdout, "%s", call->callee->node->data.ident.str);
+    fprintf(stdout, "@%s", call->callee->node->data.ident.str);
   } else {
-    fprintf(stdout, "%p", call->callee);
+    fprintf(stdout, "@%u", call->callee->id);
   }
 
   fprintf(stdout, "(");
@@ -131,12 +137,14 @@ print_instr_call(MirInstrCall *call)
 void
 print_instr_validate_type(MirInstrValidateType *vt)
 {
-  fprintf(stdout, INSTR_COLOR("@validate_type") " %%%u", vt->src->id);
+  print_instr_head(&vt->base);
+  fprintf(stdout, INSTR_COLOR("validate_type") " %%%u", vt->src->id);
 }
 
 void
 print_instr_ret(MirInstrRet *ret)
 {
+  print_instr_head(&ret->base);
   if (ret->value)
     fprintf(stdout, INSTR_COLOR("ret") " %%%u", ret->value->id);
   else
@@ -146,6 +154,7 @@ print_instr_ret(MirInstrRet *ret)
 void
 print_instr_store(MirInstrStore *store)
 {
+  print_instr_head(&store->base);
   assert(store->src && store->src);
   fprintf(stdout, INSTR_COLOR("store") " %%%u -> %%%u", store->src->id, store->dest->id);
 }
@@ -153,16 +162,54 @@ print_instr_store(MirInstrStore *store)
 void
 print_instr_binop(MirInstrBinop *binop)
 {
+  print_instr_head(&binop->base);
   assert(binop->lhs && binop->rhs);
   const char *op = ast_binop_to_str(binop->op);
   fprintf(stdout, "%%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
 }
 
 void
-print_instr(MirInstr *instr)
+print_block(MirBlock *block)
 {
-  print_instr_head(instr);
+  fprintf(stdout, GOTO_COLOR("%s:\n"), block->name);
 
+  MirInstr *tmp;
+  barray_foreach(block->instructions, tmp) mir_print_instr(tmp);
+}
+
+void
+print_instr_fn_proto(MirInstrFnProto *fn_proto)
+{
+  MirFn *fn = fn_proto->base.value.data.v_fn;
+
+  if (fn->name)
+    fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
+  else
+    fprintf(stdout, "@%u ", fn_proto->base.id);
+  
+  fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
+  print_type(fn_proto->base.value.type);
+  fprintf(stdout, " {\n");
+
+  if (fn) {
+    MirBlock *tmp;
+    barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
+    fprintf(stdout, "}");
+
+    if (fn->analyzed) {
+      fprintf(stdout, " => {\n");
+      barray_foreach(fn->exec_analyzed->blocks, tmp) print_block(tmp);
+      fprintf(stdout, "}\n");
+    } else {
+      fprintf(stdout, " => " ERROR_COLOR("MISING\n"));
+    }
+  }
+}
+
+/* public */
+void
+mir_print_instr(MirInstr *instr)
+{
   switch (instr->kind) {
   case MIR_INSTR_INVALID:
     fprintf(stdout, RED("INVALID"));
@@ -191,42 +238,8 @@ print_instr(MirInstr *instr)
     print_instr_call((MirInstrCall *)instr);
     break;
   case MIR_INSTR_FN_PROTO:
+    print_instr_fn_proto((MirInstrFnProto *)instr);
     break;
   }
   fprintf(stdout, "\n");
-}
-
-void
-print_block(MirBlock *block)
-{
-  fprintf(stdout, GOTO_COLOR("%s:\n"), block->name);
-
-  MirInstr *tmp;
-  barray_foreach(block->instructions, tmp) print_instr(tmp);
-}
-
-/* public */
-void
-mir_printer_fn(MirFn *fn)
-{
-  assert(fn);
-  if (fn->name) {
-    fprintf(stdout, "\n%s ", fn->name->data.ident.str);
-    print_type(fn->type);
-    fprintf(stdout, " {\n");
-  } else {
-    fprintf(stdout, "\n{\n");
-  }
-
-  MirBlock *tmp;
-  barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
-  fprintf(stdout, "}");
-
-  if (fn->analyzed) {
-    fprintf(stdout, " => {\n");
-    barray_foreach(fn->exec_analyzed->blocks, tmp) print_block(tmp);
-    fprintf(stdout, "}\n");
-  } else {
-    fprintf(stdout, " => " ERROR_COLOR("MISING\n"));
-  }
 }

@@ -32,6 +32,6 @@
 #include "mir.h"
 
 void
-mir_printer_fn(MirFn *fn);
+mir_print_instr(MirInstr *instr);
 
 #endif
