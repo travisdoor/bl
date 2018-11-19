@@ -75,6 +75,9 @@ print_instr_binop(MirInstrBinop *binop);
 static void
 print_instr_validate_type(MirInstrValidateType *vt);
 
+static void
+print_instr_call(MirInstrCall *call);
+
 /* impl */
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
@@ -82,7 +85,7 @@ print_instr_decl_var(MirInstrDeclVar *decl)
   assert(decl->var);
   const char *name = decl->var->name->data.ident.str;
 
-  fprintf(stdout, INSTR_COLOR("decl") " %s ", name);
+  fprintf(stdout, INSTR_COLOR("decl") " %s %%%u", name, decl->type->id);
 }
 
 void
@@ -100,6 +103,29 @@ print_instr_const(MirInstrConst *cnst)
   default:
     fprintf(stdout, "cannot read value");
   }
+}
+
+void
+print_instr_call(MirInstrCall *call)
+{
+  fprintf(stdout, INSTR_COLOR("call "));
+  if (call->callee->node) {
+    assert(call->callee->node->kind == AST_IDENT);
+    fprintf(stdout, "%s", call->callee->node->data.ident.str);
+  } else {
+    fprintf(stdout, "%p", call->callee);
+  }
+
+  fprintf(stdout, "(");
+  if (call->args) {
+    MirInstr *tmp;
+    barray_foreach(call->args, tmp)
+    {
+      fprintf(stdout, "%%%u", tmp->id);
+      if (i != bo_array_size(call->args)) fprintf(stdout, ", ");
+    }
+  }
+  fprintf(stdout, ")");
 }
 
 void
@@ -160,6 +186,11 @@ print_instr(MirInstr *instr)
     break;
   case MIR_INSTR_VALIDATE_TYPE:
     print_instr_validate_type((MirInstrValidateType *)instr);
+    break;
+  case MIR_INSTR_CALL:
+    print_instr_call((MirInstrCall *)instr);
+    break;
+  case MIR_INSTR_FN_PROTO:
     break;
   }
   fprintf(stdout, "\n");

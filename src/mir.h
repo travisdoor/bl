@@ -54,6 +54,8 @@ typedef struct MirInstrStore        MirInstrStore;
 typedef struct MirInstrRet          MirInstrRet;
 typedef struct MirInstrBinop        MirInstrBinop;
 typedef struct MirInstrValidateType MirInstrValidateType;
+typedef struct MirInstrFnProto      MirInstrFnProto;
+typedef struct MirInstrCall         MirInstrCall;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -82,6 +84,7 @@ struct MirBlock
   const char *name;
   BArray *    instructions;
   MirInstr *  terminal;
+  MirExec *   owner_exec;
 };
 
 /* VAR */
@@ -139,9 +142,9 @@ struct MirType
 
   union
   {
-    struct MirTypeInt  integer;
-    struct MirTypeFn   fn;
-    struct MirTypePtr  ptr;
+    struct MirTypeInt integer;
+    struct MirTypeFn  fn;
+    struct MirTypePtr ptr;
   } data;
 };
 
@@ -153,6 +156,7 @@ struct MirValue
   {
     unsigned long long v_int;
     MirType *          v_type;
+    MirFn *            v_fn;
   } data;
 };
 
@@ -167,6 +171,8 @@ typedef enum
   MIR_INSTR_BINOP,
   MIR_INSTR_RET,
   MIR_INSTR_VALIDATE_TYPE,
+  MIR_INSTR_FN_PROTO,
+  MIR_INSTR_CALL,
 } MirInstrKind;
 
 struct MirInstr
@@ -230,6 +236,22 @@ struct MirInstrValidateType
   MirInstr base;
 
   MirInstr *src;
+};
+
+struct MirInstrFnProto
+{
+  MirInstr base;
+
+  MirInstr *ret_type;
+  BArray *  arg_types;
+};
+
+struct MirInstrCall
+{
+  MirInstr base;
+
+  MirInstr *callee;
+  BArray *  args;
 };
 
 /* public */
