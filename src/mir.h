@@ -181,7 +181,6 @@ struct MirInstr
   unsigned     id;
   LLVMValueRef llvm_value;
   Ast *        node;
-  bool         comptime;
   int          ref_count;
 
   MirValue value;

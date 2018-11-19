@@ -87,7 +87,7 @@ print_instr_decl_var(MirInstrDeclVar *decl)
   assert(decl->var);
   const char *name = decl->var->name->data.ident.str;
 
-  fprintf(stdout, INSTR_COLOR("decl") " %s %%%u", name, decl->type->id);
+  fprintf(stdout, INSTR_COLOR("decl") " %s", name);
 }
 
 void
