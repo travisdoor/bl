@@ -77,7 +77,7 @@ typedef struct
   Builder *  builder;
   Assembly * assembly;
   MirArenas *arenas;
-  BList *    analyze_stack;
+  BArray *   globals;
 
   struct
   {
@@ -101,6 +101,7 @@ typedef struct
   LLVMTargetDataRef llvm_td;
 
   bool verbose;
+  bool executing;
   Pass pass;
 } Context;
 
@@ -171,6 +172,12 @@ get_cursor_block(Context *cnt)
 }
 
 /* FW decls */
+static bool
+type_cmp(MirType *first, MirType *second);
+
+static const char *
+instr_name(MirInstr *instr);
+
 static MirInstr *
 ast(Context *cnt, Ast *node);
 
@@ -202,14 +209,34 @@ static LLVMTypeRef
 to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
 
 /* analyze */
-static void
-analyze_instr(Context *cnt, MirInstr *instr);
+static MirInstr *
+analyze_instr(Context *cnt, MirInstr *instr, bool execute);
+
+static MirInstr *
+analyze_instr_ret(Context *cnt, MirInstrRet *ret, bool execute);
+
+static MirInstr *
+analyze_instr_store(Context *cnt, MirInstrStore *store, bool execute);
+
+static MirInstr *
+analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool execute);
+
+static MirInstr *
+analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var, bool execute);
+
+static MirInstr *
+analyze_instr_const(Context *cnt, MirInstrConst *cnst, bool execute);
+
+static MirInstr *
+analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate, bool execute);
+
+static MirInstr *
+analyze_instr_call(Context *cnt, MirInstrCall *call, bool execute);
 
 static void
 analyze(Context *cnt);
 
 /* impl */
-
 static MirType *
 create_type_type(Context *cnt)
 {
@@ -273,10 +300,11 @@ create_var(Context *cnt, Ast *name)
 }
 
 static MirExec *
-create_exec(Context *cnt)
+create_exec(Context *cnt, MirFn *owner_fn)
 {
-  MirExec *tmp = arena_alloc(&cnt->arenas->exec_arena);
-  tmp->blocks  = bo_array_new(sizeof(MirBlock *));
+  MirExec *tmp  = arena_alloc(&cnt->arenas->exec_arena);
+  tmp->blocks   = bo_array_new(sizeof(MirBlock *));
+  tmp->owner_fn = owner_fn;
   return tmp;
 }
 
@@ -285,8 +313,8 @@ create_fn(Context *cnt, Ast *name)
 {
   MirFn *tmp         = arena_alloc(&cnt->arenas->fn_arena);
   tmp->name          = name;
-  tmp->exec          = create_exec(cnt);
-  tmp->exec_analyzed = create_exec(cnt);
+  tmp->exec          = create_exec(cnt, tmp);
+  tmp->exec_analyzed = create_exec(cnt, tmp);
   return tmp;
 }
 
@@ -303,6 +331,7 @@ append_block(Context *cnt, MirInstr *fn, const char *name)
   if (!v_fn) fn->value.data.v_fn = v_fn = create_fn(cnt, fn->node);
 
   tmp->owner_exec = cnt->pass == PASS_GENERATE ? v_fn->exec : v_fn->exec_analyzed;
+  if (!tmp->owner_exec->entry_block) tmp->owner_exec->entry_block = tmp;
   bo_array_push_back(tmp->owner_exec->blocks, tmp);
   return tmp;
 }
@@ -314,6 +343,7 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
   assert(instr);
   assert(cnt->cursor.block);
   bo_array_push_back(cnt->cursor.block->instructions, instr);
+  instr->owner_block = cnt->cursor.block;
 }
 
 #define create_instr(_cnt, _kind, _id, _node, _t)                                                  \
@@ -335,6 +365,7 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
   assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
   MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, 0, NULL, MirInstrCall *);
   tmp->callee       = resolver_fn;
+  tmp->comptime     = true;
   ++resolver_fn->ref_count;
   return &tmp->base;
 }
@@ -342,13 +373,13 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
 static MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *name)
 {
-  const unsigned   id  = bo_list_size(cnt->analyze_stack);
+  const unsigned   id  = bo_array_size(cnt->globals);
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, id, name, MirInstrFnProto *);
   tmp->base.kind       = MIR_INSTR_FN_PROTO;
   tmp->ret_type        = ret_type;
   tmp->arg_types       = arg_types;
 
-  bo_list_push_back(cnt->analyze_stack, tmp);
+  bo_array_push_back(cnt->globals, tmp);
   return &tmp->base;
 }
 
@@ -404,6 +435,16 @@ add_instr_const_type(Context *cnt, Ast *node, MirType *type)
 }
 
 static MirInstr *
+add_instr_const(Context *cnt, Ast *node, MirValue *value)
+{
+  MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, cnt->cursor.id_counter++, node, MirInstr *);
+  tmp->value    = *value;
+
+  push_into_curr_block(cnt, tmp);
+  return tmp;
+}
+
+static MirInstr *
 add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 {
   if (value) {
@@ -422,7 +463,6 @@ add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
   /* when current block is already terminated we produce unrecheable code replacement later during
    * analyze */
   if (!cnt->cursor.block->terminal) cnt->cursor.block->terminal = &tmp->base;
-  if (!cnt->cursor.block->owner_exec->ret) cnt->cursor.block->owner_exec->ret = &tmp->base;
   ++tmp->base.ref_count;
 
   push_into_curr_block(cnt, &tmp->base);
@@ -534,26 +574,153 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   return result;
 }
 
-/* analyze */
-void
-analyze_instr(Context *cnt, MirInstr *instr)
+bool
+type_cmp(MirType *first, MirType *second)
 {
-  if (!instr) return;
+  assert(first && second);
+  if (first->kind != second->kind) return false;
+  /* TODO */
+  return true;
+}
+
+/* analyze */
+MirInstr *
+analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool execute)
+{
+  MirFn *fn = fn_proto->base.value.data.v_fn;
+  if (!fn || fn->analyzed) return &fn_proto->base;
+
+  MirBlock *prev_block  = get_cursor_block(cnt);
+  MirBlock *entry_block = append_block(cnt, &fn_proto->base, "entry");
+  set_cursor_block(cnt, entry_block);
+
+  MirExec *exec = fn_proto->base.value.data.v_fn->exec;
+  assert(exec);
+  /* iterate over entry block of executable */
+  MirInstr *tmp;
+  barray_foreach(exec->entry_block->instructions, tmp)
+  {
+    analyze_instr(cnt, tmp, execute);
+  }
+
+  fn->analyzed = true;
+  set_cursor_block(cnt, prev_block);
+  return entry_block->owner_exec->comptime_execute_result;
+}
+
+MirInstr *
+analyze_instr_const(Context *cnt, MirInstrConst *cnst, bool execute)
+{
+  assert(cnst->base.value.type);
+  push_into_curr_block(cnt, &cnst->base);
+  return &cnst->base;
+}
+
+MirInstr *
+analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate, bool execute)
+{
+  assert(validate->src);
+  if (!type_cmp(validate->src->value.type, cnt->buildin_types.entry_type)) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, validate->src->node->src,
+                BUILDER_CUR_WORD, "expected type");
+  }
+
+  assert(validate->src->value.data.v_type);
+  return &validate->base;
+}
+
+MirInstr *
+analyze_instr_ret(Context *cnt, MirInstrRet *ret, bool execute)
+{
+  /* compare return value with current function type */
+  push_into_curr_block(cnt, &ret->base);
+
+  if (!cnt->cursor.block->terminal) cnt->cursor.block->terminal = &ret->base;
+
+  if (execute && ret->value) {
+    assert(ret->value->value.type);
+    ret->base.owner_block->owner_exec->comptime_execute_result = ret->value;
+  }
+
+  return &ret->base;
+}
+
+MirInstr *
+analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var, bool execute)
+{
+  if (var->type) {
+    /* resolve time in compile time */
+    MirInstr *result = analyze_instr(cnt, var->type, execute);
+    assert(result && result->value.type);
+    var->base.value.type = result->value.data.v_type;
+  }
+
+  push_into_curr_block(cnt, &var->base);
+  return &var->base;
+}
+
+MirInstr *
+analyze_instr_call(Context *cnt, MirInstrCall *call, bool execute)
+{
+  assert(call->callee && call->callee->kind == MIR_INSTR_FN_PROTO);
+  MirInstrFnProto *callee = (MirInstrFnProto *)call->callee;
+
+  MirInstr *result = analyze_instr_fn_proto(cnt, callee, call->comptime);
+  if (call->comptime) {
+    assert(result);
+    return result;
+  }
+
+  push_into_curr_block(cnt, &call->base);
+  return &call->base;
+}
+
+MirInstr *
+analyze_instr_store(Context *cnt, MirInstrStore *store, bool execute)
+{
+  push_into_curr_block(cnt, &store->base);
+
+  store->base.value.type = store->dest->value.type;
+  
+  return &store->base;
+}
+
+MirInstr *
+analyze_instr(Context *cnt, MirInstr *instr, bool execute)
+{
+  if (!instr) return NULL;
 
   switch (instr->kind) {
+  case MIR_INSTR_FN_PROTO:
+    return analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, execute);
+  case MIR_INSTR_DECL_VAR:
+    return analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr, execute);
+  case MIR_INSTR_CALL:
+    return analyze_instr_call(cnt, (MirInstrCall *)instr, execute);
+  case MIR_INSTR_CONST:
+    return analyze_instr_const(cnt, (MirInstrConst *)instr, execute);
+  case MIR_INSTR_VALIDATE_TYPE:
+    return analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr, execute);
+  case MIR_INSTR_RET:
+    return analyze_instr_ret(cnt, (MirInstrRet *)instr, execute);
+  case MIR_INSTR_STORE:
+    return analyze_instr_store(cnt, (MirInstrStore *)instr, execute);
   default:
-    bl_abort("missing analyze for %d", instr->kind);
+    msg_warning("missing analyze for %s", instr_name(instr));
   }
+
+  return NULL;
 }
 
 void
 analyze(Context *cnt)
 {
   MirInstr *tmp;
-  while (!bo_list_empty(cnt->analyze_stack)) {
-    tmp = bo_list_front(cnt->analyze_stack, MirInstr *);
-    bo_list_pop_front(cnt->analyze_stack);
+  barray_foreach(cnt->globals, tmp)
+  {
     assert(tmp->kind == MIR_INSTR_FN_PROTO);
+    analyze_instr(cnt, tmp, false);
+
     mir_print_instr(tmp);
   }
 }
@@ -646,11 +813,11 @@ ast_type_ref(Context *cnt, Ast *type_ref)
   assert(ast_ref);
 
   /* create type resolver function */
-  MirBlock *prev_block  = get_cursor_block(cnt);
-  MirInstr *resolver_fn = add_instr_fn_proto(cnt, NULL, NULL, NULL);
-  resolver_fn->value.type = cnt->buildin_types.entry_resolve_type_fn; 
-  
-  MirBlock *block       = append_block(cnt, resolver_fn, "entry");
+  MirBlock *prev_block    = get_cursor_block(cnt);
+  MirInstr *resolver_fn   = add_instr_fn_proto(cnt, NULL, NULL, NULL);
+  resolver_fn->value.type = cnt->buildin_types.entry_resolve_type_fn;
+
+  MirBlock *block = append_block(cnt, resolver_fn, "entry");
   set_cursor_block(cnt, block);
 
   BuildinType id = is_buildin_type(cnt, ast_ref->data.ident.hash);
@@ -695,6 +862,36 @@ ast(Context *cnt, Ast *node)
   }
 
   return NULL;
+}
+
+const char *
+instr_name(MirInstr *instr)
+{
+  assert(instr);
+  switch (instr->kind) {
+  case MIR_INSTR_INVALID:
+    return "InstrInvalid";
+  case MIR_INSTR_DECL_VAR:
+    return "InstrDeclVar";
+  case MIR_INSTR_CONST:
+    return "InstrConst";
+  case MIR_INSTR_LOAD:
+    return "InstrLoad";
+  case MIR_INSTR_STORE:
+    return "InstrStore";
+  case MIR_INSTR_BINOP:
+    return "InstrBinop";
+  case MIR_INSTR_RET:
+    return "InstrRet";
+  case MIR_INSTR_VALIDATE_TYPE:
+    return "InstrValidateType";
+  case MIR_INSTR_FN_PROTO:
+    return "InstrFnProto";
+  case MIR_INSTR_CALL:
+    return "InstrCall";
+  }
+
+  return "UNKNOWN";
 }
 
 /* public */
@@ -788,15 +985,15 @@ mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
-  cnt.builder       = builder;
-  cnt.assembly      = assembly;
-  cnt.arenas        = &builder->mir_arenas;
-  cnt.verbose       = builder->flags & BUILDER_VERBOSE;
-  cnt.analyze_stack = bo_list_new(sizeof(MirInstr *));
-  cnt.llvm_cnt      = LLVMContextCreate();
-  cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
-  cnt.llvm_td       = LLVMGetModuleDataLayout(cnt.llvm_module);
-  cnt.pass          = PASS_GENERATE;
+  cnt.builder     = builder;
+  cnt.assembly    = assembly;
+  cnt.arenas      = &builder->mir_arenas;
+  cnt.verbose     = builder->flags & BUILDER_VERBOSE;
+  cnt.globals     = bo_array_new(sizeof(MirInstr *));
+  cnt.llvm_cnt    = LLVMContextCreate();
+  cnt.llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
+  cnt.llvm_td     = LLVMGetModuleDataLayout(cnt.llvm_module);
+  cnt.pass        = PASS_GENERATE;
 
   /* INIT BUILDINS */
   uint64_t tmp;
@@ -828,7 +1025,7 @@ mir_run(Builder *builder, Assembly *assembly)
   analyze(&cnt);
 
   bo_unref(cnt.buildin_types.table);
-  bo_unref(cnt.analyze_stack);
+  bo_unref(cnt.globals);
   /* TODO: pass context to the next stages */
   LLVMContextDispose(cnt.llvm_cnt);
 }

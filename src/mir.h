@@ -75,7 +75,8 @@ struct MirExec
 {
   BArray *  blocks;
   MirBlock *entry_block;
-  MirInstr *ret;
+  MirFn *   owner_fn;
+  MirInstr *comptime_execute_result;
 };
 
 /* BASIC BLOCK */
@@ -101,8 +102,7 @@ struct MirFn
   MirType *   type;
   MirExec *   exec;
   MirExec *   exec_analyzed;
-
-  bool analyzed;
+  bool        analyzed;
 };
 
 /* TYPE */
@@ -182,6 +182,7 @@ struct MirInstr
   LLVMValueRef llvm_value;
   Ast *        node;
   int          ref_count;
+  MirBlock *   owner_block;
 
   MirValue value;
 };
@@ -251,6 +252,7 @@ struct MirInstrCall
 
   MirInstr *callee;
   BArray *  args;
+  bool      comptime;
 };
 
 /* public */
