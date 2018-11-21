@@ -56,6 +56,7 @@ union _MirInstr
   MirInstrValidateType validate_type;
   MirInstrFnProto      fn_proto;
   MirInstrCall         call;
+  MirInstrDeclRef      decl_ref;
 };
 
 typedef enum
@@ -391,6 +392,7 @@ add_instr_decl_ref(Context *cnt, Ast *node)
 {
   MirInstrDeclRef *tmp =
       create_instr(cnt, MIR_INSTR_DECL_REF, cnt->cursor.id_counter++, node, MirInstrDeclRef *);
+
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -793,7 +795,18 @@ ast_expr_binop(Context *cnt, Ast *binop)
   MirInstr *rhs = ast(cnt, ast_rhs);
   assert(lhs && rhs);
 
-  return add_instr_binop(cnt, binop, lhs, rhs, binop->data.expr_binop.kind);
+  const BinopKind op = binop->data.expr_binop.kind;
+  if (ast_binop_is_assign(op)) {
+    switch (op) {
+    case BINOP_ASSIGN: {
+      return add_instr_store(cnt, binop, rhs, lhs);
+    }
+    default:
+      bl_abort("unimplemented");
+    }
+  } else {
+    return add_instr_binop(cnt, binop, lhs, rhs, op);
+  }
 }
 
 MirInstr *
@@ -1045,8 +1058,10 @@ mir_run(Builder *builder, Assembly *assembly)
     ast(&cnt, unit->ast);
   }
 
-  cnt.pass = PASS_ANALYZE;
-  analyze(&cnt);
+  if (!builder->errorc) {
+    cnt.pass = PASS_ANALYZE;
+    analyze(&cnt);
+  }
 
   bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.globals);
