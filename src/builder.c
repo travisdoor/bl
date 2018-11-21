@@ -123,11 +123,12 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
     ast_printer_run(assembly);
   }
 
+  interrupt_on_error(builder);
   /* TODO */
   mir_run(builder, assembly);
 
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
-    //mir_run(builder, assembly);
+    // mir_run(builder, assembly);
 
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);

@@ -51,28 +51,27 @@ Scope *
 scope_create(Arena *arena, Scope *parent, size_t size)
 {
   Scope *scope   = arena_alloc(arena);
-  scope->entries = bo_htbl_new(sizeof(Ast *), size);
+  scope->entries = bo_htbl_new(sizeof(ScopeEntry), size);
   scope->parent  = parent;
   return scope;
 }
 
 void
-scope_insert(Scope *scope, uint64_t key, Ast *entry)
+scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
 {
   assert(scope);
   assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
-  bo_htbl_insert(scope->entries, key, entry);
+  bo_htbl_insert(scope->entries, key, *entry);
 }
 
-Ast *
-scope_lookup(Scope *scope, Ast *ident, bool in_tree)
+ScopeEntry *
+scope_lookup(Scope *scope, uint64_t key, bool in_tree)
 {
   assert(scope);
-  assert(ident->kind == AST_IDENT);
 
   while (scope) {
-    if (bo_htbl_has_key(scope->entries, ident->data.ident.hash))
-      return bo_htbl_at(scope->entries, ident->data.ident.hash, Ast *);
+    if (bo_htbl_has_key(scope->entries, key))
+      return &bo_htbl_at(scope->entries, key, ScopeEntry);
 
     if (in_tree)
       scope = scope->parent;

@@ -70,12 +70,6 @@
 
 #define pop_scope(_cnt) (_cnt)->scope = _prev_scope;
 
-#define push_buildin(_cnt)                                                                         \
-  bool _prev_buildin = (_cnt)->buildin;                                                            \
-  (_cnt)->buildin    = true;
-
-#define pop_buildin(_cnt) (_cnt)->buildin = _prev_buildin;
-
 typedef struct
 {
   Builder * builder;
@@ -90,7 +84,6 @@ typedef struct
   Ast *  curr_decl;
   bool   inside_loop;
   bool   core_loaded;
-  bool   buildin;
 } Context;
 
 /* helpers */
@@ -103,6 +96,9 @@ sym_to_unop_kind(Sym sm);
 
 static Ast *
 load_core(Context *cnt);
+
+static void
+provide(Context *cnt, Ast *ident, bool in_tree);
 
 static Ast *
 parse_load(Context *cnt);
@@ -201,9 +197,6 @@ static Ast *
 parse_expr_nested(Context *cnt);
 
 static Ast *
-parse_expr_buildin(Context *cnt);
-
-static Ast *
 parse_expr_call(Context *cnt, Ast *prev);
 
 static Ast *
@@ -297,6 +290,26 @@ sym_to_unop_kind(Sym sm)
   }
 }
 
+void
+provide(Context *cnt, Ast *ident, bool in_tree)
+{
+  assert(cnt->scope && ident);
+  assert(ident->kind == AST_IDENT);
+  const uint64_t key       = ident->data.ident.hash;
+  ScopeEntry *   collision = scope_lookup(cnt->scope, key, in_tree);
+  if (collision) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ident->src, BUILDER_CUR_WORD,
+                "symbol with same name is already declared");
+
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src, BUILDER_CUR_WORD,
+                "previous declaration found here");
+    return;
+  }
+
+  ScopeEntry entry = {.node = ident, .instr = NULL};
+  scope_insert(cnt->scope, key, &entry);
+}
+
 Ast *
 parse_expr_ref(Context *cnt)
 {
@@ -306,7 +319,6 @@ parse_expr_ref(Context *cnt)
 
   Ast *ref                   = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok);
   ref->data.expr_ref.ident   = ident;
-  ref->data.expr_ref.buildin = cnt->buildin;
   return ref;
 }
 
@@ -856,7 +868,6 @@ parse_expr_atom(Context *cnt, Token *op)
   Ast *expr = NULL;
   Ast *tmp  = NULL;
 
-  if ((expr = parse_expr_buildin(cnt))) goto done;
   if ((expr = parse_expr_nested(cnt))) goto done;
   if ((expr = parse_expr_null(cnt))) goto done;
   if ((expr = parse_expr_cast(cnt))) goto done;
@@ -1143,6 +1154,8 @@ parse_decl(Context *cnt)
   decl->data.decl.name           = ident;
   decl->data.decl_entity.mutable = true;
 
+  /* add entity into current scope */
+  provide(cnt, ident, true);
   push_curr_decl(cnt, decl);
 
   decl->data.decl.type = parse_type(cnt);
@@ -1167,31 +1180,6 @@ parse_decl(Context *cnt)
   return decl;
 
 #undef RETURN_BAD
-}
-
-Ast *
-parse_expr_buildin(Context *cnt)
-{
-  Token *tok = tokens_consume_if(cnt->tokens, SYM_AT);
-  if (!tok) return NULL;
-
-  push_buildin(cnt);
-  Ast *expr = parse_expr(cnt);
-  pop_buildin(cnt);
-
-  if (!expr) {
-    Token *tok_err = tokens_peek(cnt->tokens);
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_EXPR, &tok->src, BUILDER_CUR_AFTER,
-                "expected expression after buildin tag '@'");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
-  }
-
-  if (expr->kind != AST_EXPR_CALL) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, expr->src, BUILDER_CUR_WORD,
-                "expected internal function call after '@' tag");
-  }
-
-  return expr;
 }
 
 Ast *
@@ -1554,7 +1542,6 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
                  .tokens      = &unit->tokens,
                  .curr_decl   = NULL,
                  .core_loaded = false,
-                 .buildin     = false,
                  .inside_loop = false};
 
   parse_ublock_content(&cnt, unit->ast);

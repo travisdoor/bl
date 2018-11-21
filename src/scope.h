@@ -36,6 +36,13 @@
 struct Src;
 struct Ast;
 struct Arena;
+struct MirInstr;
+
+typedef struct ScopeEntry
+{
+  struct Ast *     node;
+  struct MirInstr *instr;
+} ScopeEntry;
 
 typedef struct Scope
 {
@@ -50,9 +57,9 @@ Scope *
 scope_create(struct Arena *arena, Scope *parent, size_t size);
 
 void
-scope_insert(Scope *scope, uint64_t key, struct Ast *decl);
+scope_insert(Scope *scope, uint64_t key, struct ScopeEntry *entry);
 
-struct Ast *
-scope_lookup(Scope *scope, struct Ast *ident, bool in_tree);
+ScopeEntry *
+scope_lookup(Scope *scope, uint64_t key, bool in_tree);
 
 #endif

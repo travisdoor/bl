@@ -3,6 +3,9 @@
 main : fn () {
   foo s32 := 10;
   bar u32 := 0;
+
+  foo = 0;
+
   return;
 };
 

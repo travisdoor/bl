@@ -56,6 +56,7 @@ typedef struct MirInstrBinop        MirInstrBinop;
 typedef struct MirInstrValidateType MirInstrValidateType;
 typedef struct MirInstrFnProto      MirInstrFnProto;
 typedef struct MirInstrCall         MirInstrCall;
+typedef struct MirInstrDeclRef      MirInstrDeclRef;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -173,6 +174,7 @@ typedef enum
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_FN_PROTO,
   MIR_INSTR_CALL,
+  MIR_INSTR_DECL_REF,
 } MirInstrKind;
 
 struct MirInstr
@@ -253,6 +255,11 @@ struct MirInstrCall
   MirInstr *callee;
   BArray *  args;
   bool      comptime;
+};
+
+struct MirInstrDeclRef
+{
+  MirInstr base;
 };
 
 /* public */

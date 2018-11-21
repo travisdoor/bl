@@ -35,20 +35,23 @@
 #define ERROR_COLOR RED
 
 static inline void
-print_type(MirType *type)
+print_type(MirType *type, bool aligned)
 {
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
-  fprintf(stdout, TYPE_COLOR("<%s>"), tmp);
+  if (aligned)
+    fprintf(stdout, TYPE_COLOR("%10s"), tmp);
+  else
+    fprintf(stdout, TYPE_COLOR("%s"), tmp);
 }
 
 static inline void
 print_instr_head(MirInstr *instr)
 {
   if (!instr) return;
-  fprintf(stdout, "  %%%u (%d) ", instr->id, instr->ref_count);
-  print_type(instr->value.type);
-  fprintf(stdout, " = ");
+  fprintf(stdout, "  %%%-3u (%d) ", instr->id, instr->ref_count);
+  print_type(instr->value.type, true);
+  fprintf(stdout, " ");
 }
 
 static void
@@ -78,6 +81,9 @@ print_instr_validate_type(MirInstrValidateType *vt);
 static void
 print_instr_call(MirInstrCall *call);
 
+static void
+print_instr_decl_ref(MirInstrDeclRef *ref);
+
 /* impl */
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
@@ -91,18 +97,29 @@ print_instr_decl_var(MirInstrDeclVar *decl)
 }
 
 void
+print_instr_decl_ref(MirInstrDeclRef *ref)
+{
+  print_instr_head(&ref->base);
+  const char *name = ref->base.node->data.ident.str;
+
+  fprintf(stdout, INSTR_COLOR("ref") " %s", name);
+}
+
+void
 print_instr_const(MirInstrConst *cnst)
 {
   print_instr_head(&cnst->base);
 
   MirValue *value = &cnst->base.value;
   assert(value->type);
+
+  fprintf(stdout, INSTR_COLOR("const "));
   switch (value->type->kind) {
   case MIR_TYPE_INT:
     fprintf(stdout, "%llu", value->data.v_int);
     break;
   case MIR_TYPE_TYPE:
-    print_type(value->data.v_type);
+    print_type(value->data.v_type, false);
     break;
   default:
     fprintf(stdout, "cannot read value");
@@ -148,7 +165,7 @@ print_instr_ret(MirInstrRet *ret)
   if (ret->value)
     fprintf(stdout, INSTR_COLOR("ret") " %%%u", ret->value->id);
   else
-    fprintf(stdout, "ret");
+    fprintf(stdout, INSTR_COLOR("ret"));
 }
 
 void
@@ -165,7 +182,7 @@ print_instr_binop(MirInstrBinop *binop)
   print_instr_head(&binop->base);
   assert(binop->lhs && binop->rhs);
   const char *op = ast_binop_to_str(binop->op);
-  fprintf(stdout, "%%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
+  fprintf(stdout, INSTR_COLOR("op") " %%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
 }
 
 void
@@ -186,9 +203,9 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto)
     fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
   else
     fprintf(stdout, "@%u ", fn_proto->base.id);
-  
+
   fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
-  print_type(fn_proto->base.value.type);
+  print_type(fn_proto->base.value.type, false);
   fprintf(stdout, " {\n");
 
   if (fn) {
@@ -239,6 +256,9 @@ mir_print_instr(MirInstr *instr)
     break;
   case MIR_INSTR_FN_PROTO:
     print_instr_fn_proto((MirInstrFnProto *)instr);
+    break;
+  case MIR_INSTR_DECL_REF:
+    print_instr_decl_ref((MirInstrDeclRef *)instr);
     break;
   }
   fprintf(stdout, "\n");

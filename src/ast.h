@@ -304,8 +304,6 @@ struct AstExprLitCmp
 struct AstExprRef
 {
   Ast *ident;
-  Ast *ref;
-  bool buildin;
 };
 
 struct AstExprCast

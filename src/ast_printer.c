@@ -231,8 +231,6 @@ void
 print_expr_ref(Ast *ref, int pad)
 {
   print_head(ref, pad);
-  if (ref->data.expr_ref.buildin) fprintf(stdout, RED("@"));
-
   fprintf(stdout, "'%s' ", ref->data.expr_ref.ident->data.ident.str);
 }
 

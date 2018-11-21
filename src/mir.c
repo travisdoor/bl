@@ -197,6 +197,9 @@ static MirInstr *
 ast_type_ref(Context *cnt, Ast *type_ref);
 
 static MirInstr *
+ast_expr_ref(Context *cnt, Ast *ref);
+
+static MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr);
 
 static MirInstr *
@@ -380,6 +383,15 @@ add_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *nam
   tmp->arg_types       = arg_types;
 
   bo_array_push_back(cnt->globals, tmp);
+  return &tmp->base;
+}
+
+static MirInstr *
+add_instr_decl_ref(Context *cnt, Ast *node)
+{
+  MirInstrDeclRef *tmp =
+      create_instr(cnt, MIR_INSTR_DECL_REF, cnt->cursor.id_counter++, node, MirInstrDeclRef *);
+  push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
 
@@ -681,7 +693,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store, bool execute)
   push_into_curr_block(cnt, &store->base);
 
   store->base.value.type = store->dest->value.type;
-  
+
   return &store->base;
 }
 
@@ -751,6 +763,14 @@ MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr)
 {
   return add_instr_const_int(cnt, expr, expr->data.expr_integer.val);
+}
+
+MirInstr *
+ast_expr_ref(Context *cnt, Ast *ref)
+{
+  Ast *ident = ref->data.expr_ref.ident;
+  assert(ident);
+  return add_instr_decl_ref(cnt, ident);
 }
 
 MirInstr *
@@ -857,6 +877,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_lit_fn(cnt, node);
   case AST_EXPR_BINOP:
     return ast_expr_binop(cnt, node);
+  case AST_EXPR_REF:
+    return ast_expr_ref(cnt, node);
   default:
     bl_abort("invalid node %s", ast_get_name(node));
   }
@@ -889,6 +911,8 @@ instr_name(MirInstr *instr)
     return "InstrFnProto";
   case MIR_INSTR_CALL:
     return "InstrCall";
+  case MIR_INSTR_DECL_REF:
+    return "InstrDeclRef";
   }
 
   return "UNKNOWN";
