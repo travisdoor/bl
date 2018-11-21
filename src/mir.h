@@ -57,6 +57,7 @@ typedef struct MirInstrValidateType MirInstrValidateType;
 typedef struct MirInstrFnProto      MirInstrFnProto;
 typedef struct MirInstrCall         MirInstrCall;
 typedef struct MirInstrDeclRef      MirInstrDeclRef;
+typedef struct MirInstrUnreachable  MirInstrUnreachable;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -115,6 +116,7 @@ typedef enum
   MIR_TYPE_INT,
   MIR_TYPE_FN,
   MIR_TYPE_PTR,
+  MIR_TYPE_BOOL,
 } MirTypeKind;
 
 struct MirTypeInt
@@ -175,6 +177,7 @@ typedef enum
   MIR_INSTR_FN_PROTO,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
+  MIR_INSTR_UNREACHABLE,
 } MirInstrKind;
 
 struct MirInstr
@@ -258,6 +261,11 @@ struct MirInstrCall
 };
 
 struct MirInstrDeclRef
+{
+  MirInstr base;
+};
+
+struct MirInstrUnreachable
 {
   MirInstr base;
 };

@@ -57,13 +57,24 @@ union _MirInstr
   MirInstrFnProto      fn_proto;
   MirInstrCall         call;
   MirInstrDeclRef      decl_ref;
+  MirInstrUnreachable  unreachable;
 };
 
 typedef enum
 {
   BUILDIN_TYPE_NONE = -1,
+
+  BUILDIN_TYPE_S8,
+  BUILDIN_TYPE_S16,
   BUILDIN_TYPE_S32,
+  BUILDIN_TYPE_S64,
+  BUILDIN_TYPE_U8,
+  BUILDIN_TYPE_U16,
   BUILDIN_TYPE_U32,
+  BUILDIN_TYPE_U64,
+  BUILDIN_TYPE_USIZE,
+  BUILDIN_TYPE_BOOL,
+
   _BUILDIN_TYPE_COUNT,
 } BuildinType;
 
@@ -85,8 +96,16 @@ typedef struct
     BHashTable *table;
 
     MirType *entry_type;
+    MirType *entry_s8;
+    MirType *entry_s16;
     MirType *entry_s32;
+    MirType *entry_s64;
+    MirType *entry_u8;
+    MirType *entry_u16;
     MirType *entry_u32;
+    MirType *entry_u64;
+    MirType *entry_usize;
+    MirType *entry_bool;
     MirType *entry_void;
     MirType *entry_resolve_type_fn;
   } buildin_types;
@@ -106,7 +125,8 @@ typedef struct
   Pass pass;
 } Context;
 
-static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s32", "u32"};
+static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s8",  "s16", "s32", "s64",   "u8",
+                                                              "u16", "u32", "u64", "usize", "bool"};
 
 static void
 block_dtor(MirBlock *block)
@@ -149,10 +169,26 @@ static inline MirType *
 get_buildin(Context *cnt, BuildinType id)
 {
   switch (id) {
+  case BUILDIN_TYPE_S8:
+    return cnt->buildin_types.entry_s8;
+  case BUILDIN_TYPE_S16:
+    return cnt->buildin_types.entry_s16;
   case BUILDIN_TYPE_S32:
     return cnt->buildin_types.entry_s32;
+  case BUILDIN_TYPE_S64:
+    return cnt->buildin_types.entry_s64;
+  case BUILDIN_TYPE_U8:
+    return cnt->buildin_types.entry_u8;
+  case BUILDIN_TYPE_U16:
+    return cnt->buildin_types.entry_u16;
   case BUILDIN_TYPE_U32:
     return cnt->buildin_types.entry_u32;
+  case BUILDIN_TYPE_U64:
+    return cnt->buildin_types.entry_u64;
+  case BUILDIN_TYPE_USIZE:
+    return cnt->buildin_types.entry_usize;
+  case BUILDIN_TYPE_BOOL:
+    return cnt->buildin_types.entry_bool;
   default:
     bl_abort("invalid buildin type");
   }
@@ -172,7 +208,26 @@ get_cursor_block(Context *cnt)
   return cnt->cursor.block;
 }
 
+static inline void
+error_no_impl_cast(Context *cnt, MirInstr *from, MirInstr *to)
+{
+  assert(from && to);
+  assert(from->value.type);
+  assert(to->value.type);
+
+  char tmp_from[256];
+  char tmp_to[256];
+  mir_type_to_str(tmp_from, 256, from->value.type);
+  mir_type_to_str(tmp_to, 256, to->value.type);
+
+  builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, from->node->src, BUILDER_CUR_WORD,
+              "no implicit cast for type '%s' and '%s'", tmp_from, tmp_to);
+}
+
 /* FW decls */
+static void
+init_buildins(Context *cnt);
+
 static bool
 type_cmp(MirType *first, MirType *second);
 
@@ -256,6 +311,15 @@ create_type_void(Context *cnt)
   MirType *tmp = arena_alloc(&cnt->arenas->type_arena);
   tmp->kind    = MIR_TYPE_VOID;
   tmp->name    = "void";
+  return tmp;
+}
+
+static MirType *
+create_type_bool(Context *cnt)
+{
+  MirType *tmp = arena_alloc(&cnt->arenas->type_arena);
+  tmp->kind    = MIR_TYPE_BOOL;
+  tmp->name    = "bool";
   return tmp;
 }
 
@@ -593,8 +657,26 @@ type_cmp(MirType *first, MirType *second)
 {
   assert(first && second);
   if (first->kind != second->kind) return false;
-  /* TODO */
-  return true;
+
+  switch (first->kind) {
+  case MIR_TYPE_INT:
+    return first->data.integer.bitcount == second->data.integer.bitcount &&
+           first->data.integer.is_signed == second->data.integer.is_signed;
+  case MIR_TYPE_TYPE:
+    return true;
+  default:
+    break;
+  }
+
+#if BL_DEBUG
+  char tmp_first[256];
+  char tmp_second[256];
+  mir_type_to_str(tmp_first, 256, first);
+  mir_type_to_str(tmp_second, 256, second);
+  msg_warning("missing type comparation for types %s and %s!!!", tmp_first, tmp_second);
+#endif
+
+  return false;
 }
 
 /* analyze */
@@ -693,9 +775,15 @@ MirInstr *
 analyze_instr_store(Context *cnt, MirInstrStore *store, bool execute)
 {
   push_into_curr_block(cnt, &store->base);
+  MirInstr *src  = store->src;
+  MirInstr *dest = store->dest;
+  assert(src && dest);
 
-  store->base.value.type = store->dest->value.type;
+  if (!type_cmp(src->value.type, dest->value.type)) {
+    error_no_impl_cast(cnt, src, dest);
+  }
 
+  store->base.value.type = dest->value.type;
   return &store->base;
 }
 
@@ -816,7 +904,6 @@ ast_decl_entity(Context *cnt, Ast *entity)
   Ast *ast_type  = entity->data.decl.type;
   Ast *ast_value = entity->data.decl_entity.value;
 
-  assert(ast_value);
   MirInstr *type = NULL;
   if (ast_type) {
     MirInstr *type_resolve_fn = ast(cnt, ast_type);
@@ -824,15 +911,18 @@ ast_decl_entity(Context *cnt, Ast *entity)
     type = create_instr_call_type_resolve(cnt, type_resolve_fn);
   }
 
-  if (ast_value->kind == AST_EXPR_LIT_FN) {
+  if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
     MirInstr *fn          = add_instr_fn_proto(cnt, NULL, NULL, ast_name);
     MirBlock *entry_block = append_block(cnt, fn, "entry");
     set_cursor_block(cnt, entry_block);
     ast(cnt, ast_value);
   } else {
     MirInstr *decl = add_instr_decl_var(cnt, type, ast_name);
-    MirInstr *init = ast(cnt, ast_value);
-    return add_instr_store(cnt, ast_value, init, decl);
+
+    if (ast_value) {
+      MirInstr *init = ast(cnt, ast_value);
+      return add_instr_store(cnt, ast_value, init, decl);
+    }
   }
 
   return NULL;
@@ -926,6 +1016,8 @@ instr_name(MirInstr *instr)
     return "InstrCall";
   case MIR_INSTR_DECL_REF:
     return "InstrDeclRef";
+  case MIR_INSTR_UNREACHABLE:
+    return "InstrUnreachable";
   }
 
   return "UNKNOWN";
@@ -1018,6 +1110,42 @@ mir_type_to_str(char *buf, int len, MirType *type)
 }
 
 void
+init_buildins(Context *cnt)
+{
+  uint64_t tmp;
+  cnt->buildin_types.table = bo_htbl_new(sizeof(BuildinType), _BUILDIN_TYPE_COUNT);
+  for (int i = 0; i < _BUILDIN_TYPE_COUNT; ++i) {
+    tmp = bo_hash_from_str(buildin_type_names[i]);
+    bo_htbl_insert(cnt->buildin_types.table, tmp, i);
+  }
+
+  cnt->buildin_types.entry_type = create_type_type(cnt);
+  cnt->buildin_types.entry_void = create_type_void(cnt);
+
+  cnt->buildin_types.entry_s8 = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S8], 8, true);
+  cnt->buildin_types.entry_s16 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S16], 16, true);
+  cnt->buildin_types.entry_s32 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
+  cnt->buildin_types.entry_s64 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S64], 64, true);
+
+  cnt->buildin_types.entry_u8 = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U8], 8, false);
+  cnt->buildin_types.entry_u16 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
+  cnt->buildin_types.entry_u32 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
+  cnt->buildin_types.entry_usize =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
+
+  cnt->buildin_types.entry_bool = create_type_bool(cnt);
+
+  BArray *args = bo_array_new(sizeof(MirType *));
+  cnt->buildin_types.entry_resolve_type_fn =
+      create_type_fn(cnt, cnt->buildin_types.entry_type, args);
+}
+
+void
 mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
@@ -1032,25 +1160,7 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.llvm_td     = LLVMGetModuleDataLayout(cnt.llvm_module);
   cnt.pass        = PASS_GENERATE;
 
-  /* INIT BUILDINS */
-  uint64_t tmp;
-  cnt.buildin_types.table = bo_htbl_new(sizeof(BuildinType), _BUILDIN_TYPE_COUNT);
-  for (int i = 0; i < _BUILDIN_TYPE_COUNT; ++i) {
-    tmp = bo_hash_from_str(buildin_type_names[i]);
-    bo_htbl_insert(cnt.buildin_types.table, tmp, i);
-  }
-
-  cnt.buildin_types.entry_type = create_type_type(&cnt);
-  cnt.buildin_types.entry_void = create_type_void(&cnt);
-  cnt.buildin_types.entry_s32 =
-      create_type_int(&cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
-  cnt.buildin_types.entry_u32 =
-      create_type_int(&cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
-
-  BArray *args = bo_array_new(sizeof(MirType *));
-  cnt.buildin_types.entry_resolve_type_fn =
-      create_type_fn(&cnt, cnt.buildin_types.entry_type, args);
-  /* INIT BUILDINS */
+  init_buildins(&cnt);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

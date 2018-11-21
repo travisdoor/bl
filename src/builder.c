@@ -122,10 +122,11 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
   if (flags & BUILDER_PRINT_AST) {
     ast_printer_run(assembly);
   }
-
   interrupt_on_error(builder);
-  /* TODO */
+
+  /* TODO: move to !syntax only block */
   mir_run(builder, assembly);
+  interrupt_on_error(builder);
 
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
     // mir_run(builder, assembly);

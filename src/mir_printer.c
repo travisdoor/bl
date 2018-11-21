@@ -70,6 +70,9 @@ static void
 print_instr_ret(MirInstrRet *ret);
 
 static void
+print_instr_unreachable(MirInstrUnreachable *instr);
+
+static void
 print_instr_store(MirInstrStore *store);
 
 static void
@@ -85,6 +88,13 @@ static void
 print_instr_decl_ref(MirInstrDeclRef *ref);
 
 /* impl */
+void
+print_instr_unreachable(MirInstrUnreachable *instr)
+{
+  print_instr_head(&instr->base);
+  fprintf(stdout, INSTR_COLOR("unreachable"));
+}
+
 void
 print_instr_decl_var(MirInstrDeclVar *decl)
 {
@@ -230,6 +240,9 @@ mir_print_instr(MirInstr *instr)
   switch (instr->kind) {
   case MIR_INSTR_INVALID:
     fprintf(stdout, RED("INVALID"));
+    break;
+  case MIR_INSTR_UNREACHABLE:
+    print_instr_unreachable((MirInstrUnreachable *)instr);
     break;
   case MIR_INSTR_DECL_VAR:
     print_instr_decl_var((MirInstrDeclVar *)instr);

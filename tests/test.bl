@@ -2,9 +2,10 @@
 
 main : fn () {
   foo s32 := 10;
-  bar u32 := 0;
+  bar s32 := 0;
+  _b bool;
 
-  foo = 0;
+  //foo = 0;
 
   return;
 };
