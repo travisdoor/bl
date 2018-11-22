@@ -3,9 +3,8 @@
 main : fn () {
   foo s32 := 10;
   bar s32 := 0;
-  _b bool;
 
-  //foo = 0;
+  foo = 666;
 
   return;
 };

@@ -1155,7 +1155,7 @@ parse_decl(Context *cnt)
   decl->data.decl_entity.mutable = true;
 
   /* add entity into current scope */
-  provide(cnt, ident, true);
+  provide(cnt, ident, false);
   push_curr_decl(cnt, decl);
 
   decl->data.decl.type = parse_type(cnt);

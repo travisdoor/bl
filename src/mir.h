@@ -104,7 +104,6 @@ struct MirFn
   MirType *   type;
   MirExec *   exec;
   MirExec *   exec_analyzed;
-  bool        analyzed;
 };
 
 /* TYPE */
@@ -188,8 +187,8 @@ struct MirInstr
   Ast *        node;
   int          ref_count;
   MirBlock *   owner_block;
-
-  MirValue value;
+  bool         analyzed;
+  MirValue     value;
 };
 
 struct MirInstrDeclVar

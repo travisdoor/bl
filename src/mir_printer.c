@@ -223,7 +223,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto)
     barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
     fprintf(stdout, "}");
 
-    if (fn->analyzed) {
+    if (fn_proto->base.analyzed) {
       fprintf(stdout, " => {\n");
       barray_foreach(fn->exec_analyzed->blocks, tmp) print_block(tmp);
       fprintf(stdout, "}\n");

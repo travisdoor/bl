@@ -284,6 +284,9 @@ static MirInstr *
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var, bool execute);
 
 static MirInstr *
+analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref, bool execute);
+
+static MirInstr *
 analyze_instr_const(Context *cnt, MirInstrConst *cnst, bool execute);
 
 static MirInstr *
@@ -681,17 +684,44 @@ type_cmp(MirType *first, MirType *second)
 
 /* analyze */
 MirInstr *
+analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref, bool execute)
+{
+  Ast *ast_ident = ref->base.node;
+  assert(ref->base.node && ref->base.node->kind == AST_IDENT);
+
+  Scope *scope = ast_ident->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ast_ident->data.ident.hash, true);
+  if (!scope_entry) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ast_ident->src,
+                BUILDER_CUR_WORD, "unknown symbol");
+    return &ref->base;
+  }
+
+  assert(scope_entry->instr);
+  if (!scope_entry->instr->analyzed) analyze_instr(cnt, scope_entry->instr, execute);
+  scope_entry->instr->ref_count++;
+
+  assert(scope_entry->instr->value.type);
+  return scope_entry->instr;
+}
+
+MirInstr *
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool execute)
 {
-  MirFn *fn = fn_proto->base.value.data.v_fn;
-  if (!fn || fn->analyzed) return &fn_proto->base;
+  MirBlock *prev_block = NULL;
+  bool      analyzing  = !fn_proto->base.analyzed;
 
-  MirBlock *prev_block  = get_cursor_block(cnt);
-  MirBlock *entry_block = append_block(cnt, &fn_proto->base, "entry");
-  set_cursor_block(cnt, entry_block);
+  if (analyzing) {
+    fn_proto->base.analyzed = true;
+    prev_block              = get_cursor_block(cnt);
+    MirBlock *entry_block   = append_block(cnt, &fn_proto->base, "entry");
+    set_cursor_block(cnt, entry_block);
+  }
 
   MirExec *exec = fn_proto->base.value.data.v_fn->exec;
   assert(exec);
+
   /* iterate over entry block of executable */
   MirInstr *tmp;
   barray_foreach(exec->entry_block->instructions, tmp)
@@ -699,9 +729,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool execute)
     analyze_instr(cnt, tmp, execute);
   }
 
-  fn->analyzed = true;
-  set_cursor_block(cnt, prev_block);
-  return entry_block->owner_exec->comptime_execute_result;
+  if (analyzing) {
+    assert(prev_block);
+    set_cursor_block(cnt, prev_block);
+  }
+
+  MirExec *exec_analyzed = fn_proto->base.value.data.v_fn->exec_analyzed;
+  assert(exec_analyzed);
+  return execute ? exec_analyzed->comptime_execute_result : &fn_proto->base;
 }
 
 MirInstr *
@@ -791,27 +826,39 @@ MirInstr *
 analyze_instr(Context *cnt, MirInstr *instr, bool execute)
 {
   if (!instr) return NULL;
+  MirInstr *result = NULL;
 
   switch (instr->kind) {
   case MIR_INSTR_FN_PROTO:
-    return analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, execute);
+    result = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, execute);
+    break;
   case MIR_INSTR_DECL_VAR:
-    return analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr, execute);
+    result = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr, execute);
+    break;
   case MIR_INSTR_CALL:
-    return analyze_instr_call(cnt, (MirInstrCall *)instr, execute);
+    result = analyze_instr_call(cnt, (MirInstrCall *)instr, execute);
+    break;
   case MIR_INSTR_CONST:
-    return analyze_instr_const(cnt, (MirInstrConst *)instr, execute);
+    result = analyze_instr_const(cnt, (MirInstrConst *)instr, execute);
+    break;
   case MIR_INSTR_VALIDATE_TYPE:
-    return analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr, execute);
+    result = analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr, execute);
+    break;
   case MIR_INSTR_RET:
-    return analyze_instr_ret(cnt, (MirInstrRet *)instr, execute);
+    result = analyze_instr_ret(cnt, (MirInstrRet *)instr, execute);
+    break;
   case MIR_INSTR_STORE:
-    return analyze_instr_store(cnt, (MirInstrStore *)instr, execute);
+    result = analyze_instr_store(cnt, (MirInstrStore *)instr, execute);
+    break;
+  case MIR_INSTR_DECL_REF:
+    result = analyze_instr_decl_ref(cnt, (MirInstrDeclRef *)instr, execute);
+    break;
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
   }
 
-  return NULL;
+  instr->analyzed = true;
+  return result;
 }
 
 void
@@ -904,6 +951,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
   Ast *ast_type  = entity->data.decl.type;
   Ast *ast_value = entity->data.decl_entity.value;
 
+  assert(ast_name->kind == AST_IDENT);
+  Scope *scope = ast_name->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ast_name->data.ident.hash, true);
+  assert(scope_entry && "declaration has no scope entry");
+
   MirInstr *type = NULL;
   if (ast_type) {
     MirInstr *type_resolve_fn = ast(cnt, ast_type);
@@ -916,8 +969,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirBlock *entry_block = append_block(cnt, fn, "entry");
     set_cursor_block(cnt, entry_block);
     ast(cnt, ast_value);
+    scope_entry->instr = fn;
   } else {
-    MirInstr *decl = add_instr_decl_var(cnt, type, ast_name);
+    MirInstr *decl     = add_instr_decl_var(cnt, type, ast_name);
+    scope_entry->instr = decl;
 
     if (ast_value) {
       MirInstr *init = ast(cnt, ast_value);
