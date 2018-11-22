@@ -2,7 +2,9 @@
 
 main : fn () {
   foo s32 := 10;
-  bar s32 := 0;
+  bar s32 := 0 + 2;
+  bar = 2;
+  b bool;
 
   foo = 666;
 

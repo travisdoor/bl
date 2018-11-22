@@ -544,7 +544,6 @@ add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
   /* when current block is already terminated we produce unrecheable code replacement later during
    * analyze */
   if (!cnt->cursor.block->terminal) cnt->cursor.block->terminal = &tmp->base;
-  ++tmp->base.ref_count;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -868,7 +867,7 @@ analyze(Context *cnt)
   barray_foreach(cnt->globals, tmp)
   {
     assert(tmp->kind == MIR_INSTR_FN_PROTO);
-    analyze_instr(cnt, tmp, false);
+    //analyze_instr(cnt, tmp, false);
 
     mir_print_instr(tmp);
   }
