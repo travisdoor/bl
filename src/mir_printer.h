@@ -32,6 +32,6 @@
 #include "mir.h"
 
 void
-mir_print_instr(MirInstr *instr);
+mir_print_instr(MirInstr *instr, bool analyzed);
 
 #endif
