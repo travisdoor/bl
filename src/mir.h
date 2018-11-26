@@ -72,18 +72,6 @@ struct MirArenas
   Arena fn_arena;
 };
 
-typedef enum
-{
-  MIR_DEP_LAX,
-  MIR_DEP_STRICT,
-} MirDepKind;
-
-struct MirDep
-{
-  MirDepKind kind;
-  MirInstr * dep;
-};
-
 /* EXEC */
 /* MirExec represents smallest atomic executable block of code it can be function body or floating
  * compile time executed block */
@@ -92,7 +80,6 @@ struct MirExec
   BArray *  blocks;
   MirBlock *entry_block;
   MirFn *   owner_fn;
-  MirInstr *comptime_execute_result;
 };
 
 /* BASIC BLOCK */
@@ -170,7 +157,8 @@ struct MirValue
   MirType *type;
   union
   {
-    unsigned long long v_int;
+    unsigned long long v_uint;
+    long long          v_int;
     MirType *          v_type;
     MirFn *            v_fn;
   } data;
@@ -193,17 +181,31 @@ typedef enum
   MIR_INSTR_UNREACHABLE,
 } MirInstrKind;
 
+typedef enum
+{
+  MIR_DEP_LAX,
+  MIR_DEP_STRICT,
+} MirDepKind;
+
+struct MirDep
+{
+  MirDepKind kind;
+  MirInstr * dep;
+};
+
 struct MirInstr
 {
+  MirValue     value;
   MirInstrKind kind;
   unsigned     id;
   LLVMValueRef llvm_value;
   Ast *        node;
-  int          ref_count;
   MirBlock *   owner_block;
-  bool         analyzed;
-  MirValue     value;
-  bool         comptime;
+  BHashTable * deps;
+
+  int  ref_count;
+  bool analyzed;
+  bool comptime;
 };
 
 struct MirInstrDeclVar

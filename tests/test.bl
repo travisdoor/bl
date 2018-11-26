@@ -2,7 +2,9 @@
 
 main : fn () {
   bar s32 := 666 + 2 * 25 - (22 * 5);
-  bar = 0;
+  foo bool;
+  baz s32 := 12 - 1 + bar;
+  bar = baz;
   return;
 };
 
