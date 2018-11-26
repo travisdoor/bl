@@ -204,7 +204,7 @@ get_buildin(Context *cnt, BuildinType id)
 static inline void
 set_cursor_block(Context *cnt, MirBlock *block)
 {
-  assert(block);
+  if (!block) return;
   cnt->cursor.block = block;
 }
 
@@ -306,10 +306,16 @@ static MirInstr *
 ast_type_ref(Context *cnt, Ast *type_ref);
 
 static MirInstr *
+ast_type_fn(Context *cnt, Ast *type_fn);
+
+static MirInstr *
 ast_expr_ref(Context *cnt, Ast *ref);
 
 static MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr);
+
+static MirInstr *
+ast_expr_lit_bool(Context *cnt, Ast *expr);
 
 static MirInstr *
 ast_expr_lit_fn(Context *cnt, Ast *lit_fn);
@@ -522,6 +528,7 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
 {
   assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
   MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, NULL, MirInstrCall *);
+  tmp->base.id       = -1;
   tmp->base.comptime = true;
   tmp->callee        = resolver_fn;
   ++resolver_fn->ref_count;
@@ -529,7 +536,7 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
 }
 
 static MirInstr *
-add_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *name)
+create_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *name)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
   tmp->base.kind       = MIR_INSTR_FN_PROTO;
@@ -537,8 +544,15 @@ add_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *nam
   tmp->ret_type        = ret_type;
   tmp->arg_types       = arg_types;
 
-  bo_list_push_back(cnt->analyze_stack, tmp);
   return &tmp->base;
+}
+
+static MirInstr *
+add_instr_fn_proto(Context *cnt, MirInstr *ret_type, BArray *arg_types, Ast *name)
+{
+  MirInstr *tmp = create_instr_fn_proto(cnt, ret_type, arg_types, name);
+  bo_list_push_back(cnt->analyze_stack, tmp);
+  return tmp;
 }
 
 static MirInstr *
@@ -590,6 +604,18 @@ add_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 }
 
 static MirInstr *
+add_instr_const_bool(Context *cnt, Ast *node, bool val)
+{
+  MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime          = true;
+  tmp->value.type        = cnt->buildin_types.entry_bool;
+  tmp->value.data.v_bool = val;
+
+  push_into_curr_block(cnt, tmp);
+  return tmp;
+}
+
+static MirInstr *
 add_instr_const_type(Context *cnt, Ast *node, MirType *type)
 {
   MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
@@ -625,14 +651,15 @@ add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 }
 
 static MirInstr *
-add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
+add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest, bool is_initializer)
 {
   assert(src && dest);
   ++src->ref_count;
   ++dest->ref_count;
-  MirInstrStore *tmp = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
-  tmp->src           = src;
-  tmp->dest          = dest;
+  MirInstrStore *tmp  = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
+  tmp->src            = src;
+  tmp->dest           = dest;
+  tmp->is_initializer = is_initializer;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -744,6 +771,7 @@ type_cmp(MirType *first, MirType *second)
     return first->data.integer.bitcount == second->data.integer.bitcount &&
            first->data.integer.is_signed == second->data.integer.is_signed;
   case MIR_TYPE_TYPE:
+  case MIR_TYPE_BOOL:
     return true;
   default:
     break;
@@ -758,6 +786,28 @@ type_cmp(MirType *first, MirType *second)
 #endif
 
   return false;
+}
+
+static MirInstr *
+create_type_resolver(Context *cnt, Ast *type)
+{
+  if (!type) return NULL;
+
+  /* create type resolver function */
+  MirBlock *prev_block    = get_cursor_block(cnt);
+  MirInstr *resolver_fn   = add_instr_fn_proto(cnt, NULL, NULL, NULL);
+  resolver_fn->value.type = cnt->buildin_types.entry_resolve_type_fn;
+  push_curr_dependent(cnt, resolver_fn);
+
+  MirBlock *block = append_block(cnt, resolver_fn, "entry");
+  set_cursor_block(cnt, block);
+
+  MirInstr *result = ast(cnt, type);
+  add_instr_validate_type(cnt, result);
+  add_instr_ret(cnt, NULL, result);
+  pop_curr_dependent(cnt);
+  set_cursor_block(cnt, prev_block);
+  return resolver_fn;
 }
 
 /* analyze */
@@ -926,7 +976,11 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   push_into_curr_block(cnt, dest);
   push_into_curr_block(cnt, src);
 
-  if (!type_cmp(src->value.type, dest->value.type)) {
+  /* do type infering for initializer store instruction */
+  if (!dest->value.type) {
+    assert(store->is_initializer);
+    dest->value.type = src->value.type;
+  } else if (!type_cmp(src->value.type, dest->value.type)) {
     error_no_impl_cast(cnt, src, dest);
   }
 
@@ -1203,6 +1257,12 @@ ast_expr_lit_int(Context *cnt, Ast *expr)
 }
 
 MirInstr *
+ast_expr_lit_bool(Context *cnt, Ast *expr)
+{
+  return add_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
+}
+
+MirInstr *
 ast_expr_ref(Context *cnt, Ast *ref)
 {
   Ast *ident = ref->data.expr_ref.ident;
@@ -1213,10 +1273,28 @@ ast_expr_ref(Context *cnt, Ast *ref)
 MirInstr *
 ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 {
-  Ast *block = lit_fn->data.expr_fn.block;
-  assert(block);
-  ast(cnt, block);
-  return NULL;
+  /* creates function prototype */
+  Ast *ast_block = lit_fn->data.expr_fn.block;
+  Ast *ast_fn_type = lit_fn->data.expr_fn.type;
+
+  /* TODO: external function has no body!!! */
+  assert(ast_block);
+  MirInstr *fn_proto = ast(cnt, ast_fn_type);
+  assert(fn_proto && fn_proto->kind == MIR_INSTR_FN_PROTO);
+  bo_list_push_back(cnt->analyze_stack, fn_proto);
+
+  push_curr_dependent(cnt, fn_proto);
+
+  MirBlock *prev_block  = get_cursor_block(cnt);
+  MirBlock *entry_block = append_block(cnt, fn_proto, "entry");
+  set_cursor_block(cnt, entry_block);
+
+  /* generate body instructions */
+  ast(cnt, ast_block);
+
+  pop_curr_dependent(cnt);
+  set_cursor_block(cnt, prev_block);
+  return fn_proto;
 }
 
 MirInstr *
@@ -1234,7 +1312,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
   if (ast_binop_is_assign(op)) {
     switch (op) {
     case BINOP_ASSIGN: {
-      return add_instr_store(cnt, binop, rhs, lhs);
+      return add_instr_store(cnt, binop, rhs, lhs, false);
     }
     default:
       bl_abort("unimplemented");
@@ -1251,37 +1329,34 @@ ast_decl_entity(Context *cnt, Ast *entity)
   Ast *ast_type  = entity->data.decl.type;
   Ast *ast_value = entity->data.decl_entity.value;
 
+  /* Prepare scope entry created in parser */
   assert(ast_name->kind == AST_IDENT);
   Scope *scope = ast_name->data.ident.scope;
   assert(scope);
   ScopeEntry *scope_entry = scope_lookup(scope, ast_name->data.ident.hash, true);
   assert(scope_entry && "declaration has no scope entry");
 
-  MirInstr *type            = NULL;
-  MirInstr *type_resolve_fn = ast(cnt, ast_type);
-  if (type_resolve_fn) {
-    assert(type_resolve_fn && type_resolve_fn->kind == MIR_INSTR_FN_PROTO);
-    type = create_instr_call_type_resolve(cnt, type_resolve_fn);
-  }
+  MirInstr *value         = ast(cnt, ast_value);
+  MirInstr *type_resolver = create_type_resolver(cnt, ast_type);
+  MirInstr *type_resolver_call =
+      type_resolver ? create_instr_call_type_resolve(cnt, type_resolver) : NULL;
 
-  if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
-    MirInstr *fn = add_instr_fn_proto(cnt, NULL, NULL, ast_name);
-    push_curr_dependent(cnt, fn);
+  if (value) {
+    if (value->kind == MIR_INSTR_FN_PROTO) {
+      value->node        = ast_name;
+      scope_entry->instr = value;
+    } else {
+      MirInstr *decl     = add_instr_decl_var(cnt, type_resolver_call, ast_name);
+      scope_entry->instr = decl;
 
-    MirBlock *entry_block = append_block(cnt, fn, "entry");
-    set_cursor_block(cnt, entry_block);
-    ast(cnt, ast_value);
-    scope_entry->instr = fn;
+      if (type_resolver) {
+        add_dep_uq(cnt->curr_dependent, type_resolver, MIR_DEP_STRICT);
+      }
 
-    pop_curr_dependent(cnt);
-  } else {
-    MirInstr *decl = add_instr_decl_var(cnt, type, ast_name);
-    add_dep_uq(cnt->curr_dependent, type_resolve_fn, MIR_DEP_STRICT);
-    scope_entry->instr = decl;
-
-    if (ast_value) {
-      MirInstr *init = ast(cnt, ast_value);
-      return add_instr_store(cnt, ast_value, init, decl);
+      if (ast_value) {
+        MirInstr *init = ast(cnt, ast_value);
+        return add_instr_store(cnt, ast_value, init, decl, true);
+      }
     }
   }
 
@@ -1295,25 +1370,32 @@ ast_type_ref(Context *cnt, Ast *type_ref)
   Ast *     ast_ref = type_ref->data.type_ref.ident;
   assert(ast_ref);
 
-  /* create type resolver function */
-  MirBlock *prev_block    = get_cursor_block(cnt);
-  MirInstr *resolver_fn   = add_instr_fn_proto(cnt, NULL, NULL, NULL);
-  resolver_fn->value.type = cnt->buildin_types.entry_resolve_type_fn;
-
-  MirBlock *block = append_block(cnt, resolver_fn, "entry");
-  set_cursor_block(cnt, block);
-
   BuildinType id = is_buildin_type(cnt, ast_ref->data.ident.hash);
   if (id != BUILDIN_TYPE_NONE) {
     /* buildin primitive !!! */
     result = add_instr_const_type(cnt, ast_ref, get_buildin(cnt, id));
   }
 
-  add_instr_validate_type(cnt, result);
-  add_instr_ret(cnt, NULL, result);
-  set_cursor_block(cnt, prev_block);
+  assert(result && "unimplemented type ref resolving");
+  return result;
+}
 
-  return resolver_fn;
+MirInstr *
+ast_type_fn(Context *cnt, Ast *type_fn)
+{
+  Ast *ast_ret_type = type_fn->data.type_fn.ret_type;
+
+  /* return type */
+  MirInstr *type_resolver = create_type_resolver(cnt, ast_ret_type);
+  MirInstr *type_resolver_call =
+      type_resolver ? create_instr_call_type_resolve(cnt, type_resolver) : NULL;
+
+  MirInstr *fn = create_instr_fn_proto(cnt, type_resolver_call, NULL, type_fn);
+  if (type_resolver) {
+    add_dep_uq(fn, type_resolver, MIR_DEP_STRICT);
+  }
+
+  return fn;
 }
 
 MirInstr *
@@ -1334,8 +1416,12 @@ ast(Context *cnt, Ast *node)
     return ast_decl_entity(cnt, node);
   case AST_TYPE_REF:
     return ast_type_ref(cnt, node);
+  case AST_TYPE_FN:
+    return ast_type_fn(cnt, node);
   case AST_EXPR_LIT_INT:
     return ast_expr_lit_int(cnt, node);
+  case AST_EXPR_LIT_BOOL:
+    return ast_expr_lit_bool(cnt, node);
   case AST_EXPR_LIT_FN:
     return ast_expr_lit_fn(cnt, node);
   case AST_EXPR_BINOP:

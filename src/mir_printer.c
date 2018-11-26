@@ -128,6 +128,9 @@ print_instr_const(MirInstrConst *cnst)
   case MIR_TYPE_INT:
     fprintf(stdout, "%llu", value->data.v_int);
     break;
+  case MIR_TYPE_BOOL:
+    fprintf(stdout, "%s", value->data.v_bool ? "true" : "false");
+    break;
   case MIR_TYPE_TYPE:
     print_type(value->data.v_type, false);
     break;

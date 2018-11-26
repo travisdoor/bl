@@ -159,6 +159,7 @@ struct MirValue
   {
     unsigned long long v_uint;
     long long          v_int;
+    bool               v_bool;
     MirType *          v_type;
     MirFn *            v_fn;
   } data;
@@ -234,6 +235,7 @@ struct MirInstrStore
 
   MirInstr *src;
   MirInstr *dest;
+  bool      is_initializer;
 };
 
 struct MirInstrRet
