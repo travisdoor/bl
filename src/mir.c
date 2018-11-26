@@ -222,6 +222,18 @@ error_no_impl_cast(Context *cnt, MirInstr *from, MirInstr *to)
               "no implicit cast for type '%s' and '%s'", tmp_from, tmp_to);
 }
 
+/* Mutate any instruction to compile time known constant, propper destructor is called but value is
+ * keept. */
+static inline void
+mutate_to_const(MirInstr *src)
+{
+  assert(src);
+  assert(src->value.type);
+  instr_dtor(src);
+  src->kind     = MIR_INSTR_CONST;
+  src->comptime = true;
+}
+
 /* FW decls */
 static void
 init_buildins(Context *cnt);
@@ -454,9 +466,9 @@ static MirInstr *
 create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
 {
   assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
-  MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, NULL, MirInstrCall *);
-  tmp->callee       = resolver_fn;
-  tmp->comptime     = true;
+  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, NULL, MirInstrCall *);
+  tmp->base.comptime = true;
+  tmp->callee        = resolver_fn;
   ++resolver_fn->ref_count;
   return &tmp->base;
 }
@@ -514,6 +526,7 @@ static MirInstr *
 add_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 {
   MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime         = true;
   tmp->value.type       = cnt->buildin_types.entry_s32;
   tmp->value.data.v_int = val;
 
@@ -525,18 +538,9 @@ static MirInstr *
 add_instr_const_type(Context *cnt, Ast *node, MirType *type)
 {
   MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime          = true;
   tmp->value.type        = cnt->buildin_types.entry_type;
   tmp->value.data.v_type = type;
-
-  push_into_curr_block(cnt, tmp);
-  return tmp;
-}
-
-static MirInstr *
-add_instr_const(Context *cnt, Ast *node, MirValue *value)
-{
-  MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->value    = *value;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -705,7 +709,8 @@ type_cmp(MirType *first, MirType *second)
 MirInstr *
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
-  Ast *ast_ident = ref->base.node;
+  ref->base.analyzed = true;
+  Ast *ast_ident     = ref->base.node;
   assert(ref->base.node && ref->base.node->kind == AST_IDENT);
 
   Scope *scope = ast_ident->data.ident.scope;
@@ -729,7 +734,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 MirInstr *
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-  MirBlock *prev_block = NULL;
+  fn_proto->base.analyzed = true;
+  MirBlock *prev_block    = NULL;
 
   prev_block            = get_cursor_block(cnt);
   MirBlock *entry_block = append_block(cnt, &fn_proto->base, "entry");
@@ -761,10 +767,6 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
   MirInstr *rhs = analyze_instr(cnt, binop->rhs);
   assert(lhs && rhs);
 
-  /* TODO: optimize constants */
-  push_into_curr_block(cnt, lhs);
-  push_into_curr_block(cnt, rhs);
-
   if (!type_cmp(lhs->value.type, rhs->value.type)) {
     error_no_impl_cast(cnt, lhs, rhs);
   }
@@ -772,6 +774,19 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
   MirType *type = lhs->value.type;
   assert(type);
   binop->base.value.type = type;
+  binop->base.analyzed   = true;
+
+  if (lhs->comptime && rhs->comptime) {
+    /* binary operation on compile-time known values can be replaced by constant containing
+     * execution result
+     */
+
+    exec_instr(cnt, &binop->base);
+    mutate_to_const(&binop->base);
+  } else {
+    push_into_curr_block(cnt, lhs);
+    push_into_curr_block(cnt, rhs);
+  }
 
   return &binop->base;
 }
@@ -779,6 +794,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 MirInstr *
 analyze_instr_const(Context *cnt, MirInstrConst *cnst)
 {
+  cnst->base.analyzed = true;
   assert(cnst->base.value.type);
   return &cnst->base;
 }
@@ -786,7 +802,8 @@ analyze_instr_const(Context *cnt, MirInstrConst *cnst)
 MirInstr *
 analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
 {
-  MirInstr *src = validate->src;
+  validate->base.analyzed = true;
+  MirInstr *src           = validate->src;
   assert(src);
 
   if (!type_cmp(src->value.type, cnt->buildin_types.entry_type)) {
@@ -802,6 +819,7 @@ analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
 MirInstr *
 analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 {
+  ret->base.analyzed = true;
   /* compare return value with current function type */
   if (!cnt->cursor.block->terminal) cnt->cursor.block->terminal = &ret->base;
 
@@ -815,6 +833,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 MirInstr *
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
 {
+  var->base.analyzed = true;
   if (var->type) {
     /* resolve time in compile time */
     // MirInstr *result = analyze_instr(cnt, var->type);
@@ -833,6 +852,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
 MirInstr *
 analyze_instr_call(Context *cnt, MirInstrCall *call)
 {
+  call->base.analyzed = true;
   // bl_abort("unimplemented");
   return &call->base;
 }
@@ -840,8 +860,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 MirInstr *
 analyze_instr_store(Context *cnt, MirInstrStore *store)
 {
-  MirInstr *src  = analyze_instr(cnt, store->src);
-  MirInstr *dest = analyze_instr(cnt, store->dest);
+  store->base.analyzed = true;
+  MirInstr *src        = analyze_instr(cnt, store->src);
+  MirInstr *dest       = analyze_instr(cnt, store->dest);
   assert(src && dest);
 
   push_into_curr_block(cnt, dest);
@@ -896,8 +917,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
   }
-
-  instr->analyzed = true;
   return result;
 }
 

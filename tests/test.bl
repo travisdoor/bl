@@ -6,7 +6,6 @@ main : fn () {
   return;
 };
 
-// fn proto 'hello' -> MirFn hello
 hello : fn () {
   return;
 };

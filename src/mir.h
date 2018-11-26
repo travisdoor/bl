@@ -59,6 +59,8 @@ typedef struct MirInstrCall         MirInstrCall;
 typedef struct MirInstrDeclRef      MirInstrDeclRef;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
 
+typedef struct MirDep MirDep;
+
 /* ALLOCATORS */
 struct MirArenas
 {
@@ -68,6 +70,18 @@ struct MirArenas
   Arena exec_arena;
   Arena var_arena;
   Arena fn_arena;
+};
+
+typedef enum
+{
+  MIR_DEP_LAX,
+  MIR_DEP_STRICT,
+} MirDepKind;
+
+struct MirDep
+{
+  MirDepKind kind;
+  MirInstr * dep;
 };
 
 /* EXEC */
@@ -189,6 +203,7 @@ struct MirInstr
   MirBlock *   owner_block;
   bool         analyzed;
   MirValue     value;
+  bool         comptime;
 };
 
 struct MirInstrDeclVar
@@ -256,7 +271,6 @@ struct MirInstrCall
 
   MirInstr *callee;
   BArray *  args;
-  bool      comptime;
 };
 
 struct MirInstrDeclRef
