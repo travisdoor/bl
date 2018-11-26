@@ -55,7 +55,7 @@ print_instr_head(MirInstr *instr)
 }
 
 static void
-print_instr_fn_proto(MirInstrFnProto *fn_proto);
+print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed);
 
 static void
 print_block(MirBlock *block);
@@ -201,14 +201,14 @@ print_block(MirBlock *block)
   fprintf(stdout, GOTO_COLOR("%s:\n"), block->name);
 
   MirInstr *tmp;
-  barray_foreach(block->instructions, tmp) mir_print_instr(tmp);
+  barray_foreach(block->instructions, tmp) mir_print_instr(tmp, false);
 }
 
 void
-print_instr_fn_proto(MirInstrFnProto *fn_proto)
+print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
 {
   MirFn *fn = fn_proto->base.value.data.v_fn;
-
+    
   if (fn->name)
     fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
   else
@@ -216,26 +216,23 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto)
 
   fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
   print_type(fn_proto->base.value.type, false);
-  fprintf(stdout, " {\n");
 
   if (fn) {
     MirBlock *tmp;
-    barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
-    fprintf(stdout, "}");
-
-    if (fn_proto->base.analyzed) {
-      fprintf(stdout, " => {\n");
-      barray_foreach(fn->exec_analyzed->blocks, tmp) print_block(tmp);
-      fprintf(stdout, "}\n");
+    MirExec *exec = analyzed ? fn->exec_analyzed : fn->exec;
+    fprintf(stdout, " { %s\n", analyzed ? GREEN("// ANALYZED") : "");
+    if (exec) {
+    barray_foreach(exec->blocks, tmp) print_block(tmp);
     } else {
-      fprintf(stdout, " => " ERROR_COLOR("MISING\n"));
+      fprintf(stdout, RED("MISSING!!!\n"));
     }
+    fprintf(stdout, "}\n");
   }
 }
 
 /* public */
 void
-mir_print_instr(MirInstr *instr)
+mir_print_instr(MirInstr *instr, bool analyzed)
 {
   switch (instr->kind) {
   case MIR_INSTR_INVALID:
@@ -268,7 +265,7 @@ mir_print_instr(MirInstr *instr)
     print_instr_call((MirInstrCall *)instr);
     break;
   case MIR_INSTR_FN_PROTO:
-    print_instr_fn_proto((MirInstrFnProto *)instr);
+    print_instr_fn_proto((MirInstrFnProto *)instr, analyzed);
     break;
   case MIR_INSTR_DECL_REF:
     print_instr_decl_ref((MirInstrDeclRef *)instr);

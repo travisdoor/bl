@@ -1,17 +1,13 @@
 /* playground */
 
 main : fn () {
-  foo s32 := 10;
-  bar s32 := 0 + 2;
-  bar = 2;
-  b bool;
-
-  foo = 666;
-
+  bar s32 := 666 + 2 * 25 - (22 * 5);
+  foo bool;
+  baz s32 := 12 - 1 + bar;
+  bar = baz;
   return;
 };
 
-// fn proto 'hello' -> MirFn hello
 hello : fn () {
   return;
 };
