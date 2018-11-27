@@ -14,3 +14,11 @@ main : fn () {
 hello : fn () s8 {
   return;
 };
+
+/*
+fn () - fn type
+hello : fn () extern; - external decl of type fn ()
+hello : fn () {}; - decl with body
+
+fn (i s32) {} (8); - anonymous function with direct call
+*/
