@@ -58,6 +58,9 @@ static void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed);
 
 static void
+print_instr_type_fn(MirInstrTypeFn *type_fn);
+
+static void
 print_block(MirBlock *block);
 
 static void
@@ -88,6 +91,29 @@ static void
 print_instr_decl_ref(MirInstrDeclRef *ref);
 
 /* impl */
+void
+print_instr_type_fn(MirInstrTypeFn *type_fn)
+{
+  print_instr_head(&type_fn->base);
+  fprintf(stdout, INSTR_COLOR("const"));
+
+  fprintf(stdout, " fn (");
+
+  if (type_fn->arg_types) {
+    MirInstr *tmp;
+    barray_foreach(type_fn->arg_types, tmp)
+    {
+      fprintf(stdout, "%%%u", tmp->id);
+      if (i + 1 < bo_array_size(type_fn->arg_types)) fprintf(stdout, ", ");
+    }
+  }
+
+  fprintf(stdout, ")");
+
+  if (type_fn->ret_type)
+      fprintf(stdout, " %%%u", type_fn->ret_type->id);
+}
+
 void
 print_instr_unreachable(MirInstrUnreachable *instr)
 {
@@ -211,7 +237,7 @@ void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
 {
   MirFn *fn = fn_proto->base.value.data.v_fn;
-    
+
   if (fn->name)
     fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
   else
@@ -222,10 +248,10 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
 
   if (fn) {
     MirBlock *tmp;
-    MirExec *exec = analyzed ? fn->exec_analyzed : fn->exec;
+    MirExec * exec = analyzed ? fn->exec_analyzed : fn->exec;
     fprintf(stdout, " { %s\n", analyzed ? GREEN("// ANALYZED") : "");
     if (exec) {
-    barray_foreach(exec->blocks, tmp) print_block(tmp);
+      barray_foreach(exec->blocks, tmp) print_block(tmp);
     } else {
       fprintf(stdout, RED("MISSING!!!\n"));
     }
@@ -272,6 +298,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_DECL_REF:
     print_instr_decl_ref((MirInstrDeclRef *)instr);
+    break;
+  case MIR_INSTR_TYPE_FN:
+    print_instr_type_fn((MirInstrTypeFn *)instr);
     break;
   }
   fprintf(stdout, "\n");
