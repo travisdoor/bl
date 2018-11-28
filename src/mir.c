@@ -1099,43 +1099,33 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
   /* skip already analyzed instructions */
   if (instr->analyzed) return instr;
-  MirInstr *result = NULL;
 
   switch (instr->kind) {
   case MIR_INSTR_FN_PROTO:
-    result = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
-    break;
+    return  analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
   case MIR_INSTR_DECL_VAR:
-    result = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
-    break;
+    return  analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
   case MIR_INSTR_CALL:
-    result = analyze_instr_call(cnt, (MirInstrCall *)instr);
-    break;
+    return  analyze_instr_call(cnt, (MirInstrCall *)instr);
   case MIR_INSTR_CONST:
-    result = analyze_instr_const(cnt, (MirInstrConst *)instr);
-    break;
+    return  analyze_instr_const(cnt, (MirInstrConst *)instr);
   case MIR_INSTR_VALIDATE_TYPE:
-    result = analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
-    break;
+    return  analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
   case MIR_INSTR_RET:
-    result = analyze_instr_ret(cnt, (MirInstrRet *)instr);
-    break;
+    return  analyze_instr_ret(cnt, (MirInstrRet *)instr);
   case MIR_INSTR_STORE:
-    result = analyze_instr_store(cnt, (MirInstrStore *)instr);
-    break;
+    return  analyze_instr_store(cnt, (MirInstrStore *)instr);
   case MIR_INSTR_DECL_REF:
-    result = analyze_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
-    break;
+    return  analyze_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
   case MIR_INSTR_BINOP:
-    result = analyze_instr_binop(cnt, (MirInstrBinop *)instr);
-    break;
+    return  analyze_instr_binop(cnt, (MirInstrBinop *)instr);
   case MIR_INSTR_TYPE_FN:
-    result = analyze_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
-    break;
+    return  analyze_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
   }
-  return result;
+
+  return NULL;
 }
 
 bool
