@@ -54,7 +54,7 @@ typedef struct MirInstrStore        MirInstrStore;
 typedef struct MirInstrRet          MirInstrRet;
 typedef struct MirInstrBinop        MirInstrBinop;
 typedef struct MirInstrValidateType MirInstrValidateType;
-typedef struct MirInstrFnProto       MirInstrFnProto;
+typedef struct MirInstrFnProto      MirInstrFnProto;
 typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrCall         MirInstrCall;
 typedef struct MirInstrDeclRef      MirInstrDeclRef;
