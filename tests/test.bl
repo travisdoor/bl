@@ -5,16 +5,12 @@ main : fn () {
   foo bool := true;
   baz := 12 - 1 + bar;
   bar = baz;
-
   sailor := 0;
 
-  homo u8 := 10;
-  kokot bool;
-
-  return 1;
+  return;
 };
 
-hello : fn () s8 {
+hello : fn () s32 {
   return 1;
 };
 
