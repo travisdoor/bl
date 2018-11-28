@@ -102,7 +102,6 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  struct Ast *name;
   MirType *   type;
   MirExec *   exec;
   MirExec *   exec_analyzed;

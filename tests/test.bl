@@ -8,11 +8,14 @@ main : fn () {
 
   sailor := 0;
 
-  return;
+  homo u8 := 10;
+  kokot bool;
+
+  return 1;
 };
 
-hello fn () s16 : fn () s8 {
-  return;
+hello : fn () s8 {
+  return 1;
 };
 
 /*

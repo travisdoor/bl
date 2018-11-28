@@ -110,8 +110,7 @@ print_instr_type_fn(MirInstrTypeFn *type_fn)
 
   fprintf(stdout, ")");
 
-  if (type_fn->ret_type)
-      fprintf(stdout, " %%%u", type_fn->ret_type->id);
+  if (type_fn->ret_type) fprintf(stdout, " %%%u", type_fn->ret_type->id);
 }
 
 void
@@ -236,9 +235,7 @@ print_block(MirBlock *block)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
 {
-  MirFn *fn = fn_proto->base.value.data.v_fn;
-
-  if (fn->name)
+  if (fn_proto->base.node)
     fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
   else
     fprintf(stdout, "@%u ", fn_proto->base.id);
@@ -246,6 +243,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
   fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
   print_type(fn_proto->base.value.type, false);
 
+  MirFn *fn = fn_proto->base.value.data.v_fn;
   if (fn) {
     MirBlock *tmp;
     MirExec * exec = analyzed ? fn->exec_analyzed : fn->exec;
