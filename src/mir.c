@@ -222,18 +222,16 @@ get_cursor_block(Context *cnt)
 }
 
 static inline void
-error_no_impl_cast(Context *cnt, MirInstr *from, MirInstr *to)
+error_no_impl_cast(Context *cnt, MirType *from, MirType *to, Ast *loc)
 {
   assert(from && to);
-  assert(from->value.type);
-  assert(to->value.type);
 
   char tmp_from[256];
   char tmp_to[256];
-  mir_type_to_str(tmp_from, 256, from->value.type);
-  mir_type_to_str(tmp_to, 256, to->value.type);
+  mir_type_to_str(tmp_from, 256, from);
+  mir_type_to_str(tmp_to, 256, to);
 
-  builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, from->node->src, BUILDER_CUR_WORD,
+  builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, loc->src, BUILDER_CUR_WORD,
               "no implicit cast for type '%s' and '%s'", tmp_from, tmp_to);
 }
 
@@ -295,7 +293,7 @@ static const char *
 instr_name(MirInstr *instr);
 
 static MirInstr *
-ast_create_type_resolver_fn_proto(Context *cnt, Ast *type);
+ast_create_type_resolver_call(Context *cnt, Ast *type);
 
 static MirInstr *
 ast(Context *cnt, Ast *node);
@@ -540,10 +538,10 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 }
 
 static MirInstr *
-create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn)
+create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
 {
   assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
-  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, NULL, MirInstrCall *);
+  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, type, MirInstrCall *);
   tmp->base.id       = -1;
   tmp->base.comptime = true;
   tmp->callee        = resolver_fn;
@@ -855,10 +853,22 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
   /* resolve type */
   if (!fn_proto->base.value.type) {
-    assert(fn_proto->type && fn_proto->type->analyzed);
-    MirValue *result = exec_instr(cnt, fn_proto->type);
-    assert(result->type && result->type->kind == MIR_TYPE_TYPE);
-    fn_proto->base.value.type = result->data.v_type;
+    assert(fn_proto->type);
+    MirInstr *type_resolve_call = analyze_instr(cnt, fn_proto->type);
+    MirValue *type_val          = exec_instr(cnt, type_resolve_call);
+    assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
+    fn_proto->base.value.type = type_val->data.v_type;
+
+    if (fn_proto->user_type) {
+      type_resolve_call       = analyze_instr(cnt, fn_proto->type);
+      MirValue *user_type_val = exec_instr(cnt, type_resolve_call);
+      assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
+
+      if (!type_cmp(type_val->data.v_type, user_type_val->data.v_type)) {
+        error_no_impl_cast(cnt, type_val->data.v_type, user_type_val->data.v_type,
+                           fn_proto->user_type->node);
+      }
+    }
   }
 
   assert(fn_proto->base.value.type && "function has no valid type");
@@ -918,7 +928,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
   assert(lhs && rhs);
 
   if (!type_cmp(lhs->value.type, rhs->value.type)) {
-    error_no_impl_cast(cnt, lhs, rhs);
+    error_no_impl_cast(cnt, lhs->value.type, rhs->value.type, binop->base.node);
   }
 
   MirType *type = lhs->value.type;
@@ -1018,7 +1028,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
     assert(store->is_initializer);
     dest->value.type = src->value.type;
   } else if (!type_cmp(src->value.type, dest->value.type)) {
-    error_no_impl_cast(cnt, src, dest);
+    error_no_impl_cast(cnt, src->value.type, dest->value.type, src->node);
   }
 
   store->base.value.type = dest->value.type;
@@ -1345,7 +1355,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, lit_fn);
   push_curr_dependent(cnt, &fn_proto->base);
 
-  fn_proto->type = ast_create_type_resolver_fn_proto(cnt, ast_fn_type);
+  fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
 
   MirBlock *prev_block  = get_cursor_block(cnt);
@@ -1399,30 +1409,24 @@ ast_decl_entity(Context *cnt, Ast *entity)
   ScopeEntry *scope_entry = scope_lookup(scope, ast_name->data.ident.hash, true);
   assert(scope_entry && "declaration has no scope entry");
 
-  MirInstr *value              = ast(cnt, ast_value);
-  MirInstr *type_resolver      = NULL;
-  MirInstr *type_resolver_call = NULL;
+  MirInstr *value = ast(cnt, ast_value);
 
   if (value) {
     if (value->kind == MIR_INSTR_FN_PROTO) {
       value->node        = ast_name;
       scope_entry->instr = value;
 
-      push_curr_dependent(cnt, value);
-      type_resolver = ast_create_type_resolver_fn_proto(cnt, ast_type);
-      if (type_resolver) {
-        type_resolver_call                    = create_instr_call_type_resolve(cnt, type_resolver);
-        ((MirInstrFnProto *)value)->user_type = type_resolver_call;
+      if (ast_type) {
+        push_curr_dependent(cnt, value);
+        ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
+        pop_curr_dependent(cnt);
       }
-      pop_curr_dependent(cnt);
     } else {
-      MirInstr *decl     = add_instr_decl_var(cnt, type_resolver_call, ast_name);
+      MirInstr *decl     = add_instr_decl_var(cnt, NULL, ast_name);
       scope_entry->instr = decl;
 
-      type_resolver = ast_create_type_resolver_fn_proto(cnt, ast_type);
-      if (type_resolver) {
-        type_resolver_call               = create_instr_call_type_resolve(cnt, type_resolver);
-        ((MirInstrDeclVar *)value)->type = type_resolver_call;
+      if (ast_type) {
+        ((MirInstrDeclVar *)value)->type = ast_create_type_resolver_call(cnt, ast_type);
       }
 
       if (ast_value) {
@@ -1481,7 +1485,7 @@ ast_type_fn(Context *cnt, Ast *type_fn)
 }
 
 MirInstr *
-ast_create_type_resolver_fn_proto(Context *cnt, Ast *type)
+ast_create_type_resolver_call(Context *cnt, Ast *type)
 {
   if (!type) return NULL;
   MirBlock *prev_block = get_cursor_block(cnt);
@@ -1496,7 +1500,7 @@ ast_create_type_resolver_fn_proto(Context *cnt, Ast *type)
 
   set_cursor_block(cnt, prev_block);
   add_dep_uq(cnt->curr_dependent, fn, MIR_DEP_STRICT);
-  return fn;
+  return create_instr_call_type_resolve(cnt, fn, type);
 }
 
 MirInstr *
