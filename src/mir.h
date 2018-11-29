@@ -55,6 +55,7 @@ typedef struct MirInstrRet          MirInstrRet;
 typedef struct MirInstrBinop        MirInstrBinop;
 typedef struct MirInstrValidateType MirInstrValidateType;
 typedef struct MirInstrFnProto      MirInstrFnProto;
+typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrCall         MirInstrCall;
 typedef struct MirInstrDeclRef      MirInstrDeclRef;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
@@ -101,7 +102,6 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  struct Ast *name;
   MirType *   type;
   MirExec *   exec;
   MirExec *   exec_analyzed;
@@ -177,6 +177,7 @@ typedef enum
   MIR_INSTR_RET,
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_FN_PROTO,
+  MIR_INSTR_TYPE_FN,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
@@ -262,6 +263,14 @@ struct MirInstrValidateType
 };
 
 struct MirInstrFnProto
+{
+  MirInstr base;
+
+  MirInstr *type;
+  MirInstr *user_type;
+};
+
+struct MirInstrTypeFn
 {
   MirInstr base;
 
