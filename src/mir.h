@@ -59,6 +59,7 @@ typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrCall         MirInstrCall;
 typedef struct MirInstrDeclRef      MirInstrDeclRef;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
+typedef struct MirInstrAddrOf       MirInstrAddrOf;
 
 typedef struct MirDep MirDep;
 
@@ -102,9 +103,9 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  MirType *   type;
-  MirExec *   exec;
-  MirExec *   exec_analyzed;
+  MirType *type;
+  MirExec *exec;
+  MirExec *exec_analyzed;
 };
 
 /* TYPE */
@@ -162,6 +163,7 @@ struct MirValue
     bool               v_bool;
     MirType *          v_type;
     MirFn *            v_fn;
+    MirValue *         v_ptr;
   } data;
 };
 
@@ -181,6 +183,7 @@ typedef enum
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
+  MIR_INSTR_ADDR_OF,
 } MirInstrKind;
 
 typedef enum
@@ -289,6 +292,15 @@ struct MirInstrCall
 struct MirInstrDeclRef
 {
   MirInstr base;
+
+  MirInstr *opt_ref;
+};
+
+struct MirInstrAddrOf
+{
+  MirInstr base;
+
+  MirInstr *target;
 };
 
 struct MirInstrUnreachable

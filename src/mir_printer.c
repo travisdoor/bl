@@ -55,6 +55,9 @@ print_instr_head(MirInstr *instr)
 }
 
 static void
+print_instr_addr_of(MirInstrAddrOf *addr_of);
+
+static void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed);
 
 static void
@@ -114,6 +117,13 @@ print_instr_type_fn(MirInstrTypeFn *type_fn)
 }
 
 void
+print_instr_addr_of(MirInstrAddrOf *addr_of)
+{
+  print_instr_head(&addr_of->base);
+  fprintf(stdout, INSTR_COLOR("&") "%%%u", addr_of->target->id);
+}
+
+void
 print_instr_unreachable(MirInstrUnreachable *instr)
 {
   print_instr_head(&instr->base);
@@ -137,7 +147,10 @@ print_instr_decl_ref(MirInstrDeclRef *ref)
   print_instr_head(&ref->base);
   const char *name = ref->base.node->data.ident.str;
 
-  fprintf(stdout, INSTR_COLOR("ref") " %s", name);
+  if (ref->opt_ref)
+    fprintf(stdout, INSTR_COLOR("declref") " %%%u", ref->opt_ref->id);
+  else
+    fprintf(stdout, INSTR_COLOR("declref") " %s", name);
 }
 
 void
@@ -299,6 +312,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_TYPE_FN:
     print_instr_type_fn((MirInstrTypeFn *)instr);
+    break;
+  case MIR_INSTR_ADDR_OF:
+    print_instr_addr_of((MirInstrAddrOf *)instr);
     break;
   }
   fprintf(stdout, "\n");
