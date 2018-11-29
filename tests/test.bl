@@ -1,13 +1,13 @@
 /* playground */
 
-main : fn () {
+main : fn () s32 {
   bar := 666 + 2 * 25 - (22 * 5);
   foo bool := true;
   baz := 12 - 1 + bar;
   bar = baz;
   sailor := 0;
 
-  return;
+  return 666;
 };
 
 hello : fn () s32 {

@@ -44,7 +44,6 @@ typedef struct Assembly
   BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
   char *                 name;            /* assembly name */
   Scope *                gscope;          /* global scope of the assembly */
-  Ast *                  entry_node;      /* AST node of main function */
   LLVMContextRef         llvm_cnt;        /* llvm context */
   LLVMModuleRef          llvm_module;     /* final llvm module */
   LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
