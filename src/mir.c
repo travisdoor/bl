@@ -60,6 +60,7 @@ union _MirInstr
   MirInstrCall         call;
   MirInstrUnreachable  unreachable;
   MirInstrAddrOf       addr_of;
+  MirInstrTryInfer     try_infer;
 };
 
 #define push_curr_dependent(_cnt, _dep)                                                            \
@@ -360,13 +361,19 @@ static MirInstr *
 create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
 
 static MirInstr *
+add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
+
+static MirInstr *
 add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
+
+static MirInstr *
+add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *decl);
 
 static MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
 
 static MirInstr *
-add_instr_decl_ref(Context *cnt, Ast *node, MirInstr *opt_ref);
+add_instr_decl_ref(Context *cnt, Ast *node);
 
 static MirInstr *
 add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
@@ -387,7 +394,7 @@ static MirInstr *
 add_instr_ret(Context *cnt, Ast *node, MirInstr *value);
 
 static MirInstr *
-add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest, bool is_initializer);
+add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
 
 static MirInstr *
 add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
@@ -442,43 +449,46 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
 static bool
 analyze_is_satisfied(Context *cnt, MirInstr *instr, bool strict_only);
 
-static MirInstr *
-analyze_instr_top(Context *cnt, MirInstr *instr);
-
-static MirInstr *
+static bool 
 analyze_instr(Context *cnt, MirInstr *instr);
 
-static MirInstr *
+static bool 
 analyze_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static MirInstr *
+static bool 
 analyze_instr_store(Context *cnt, MirInstrStore *store);
 
-static MirInstr *
+static bool 
+analyze_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof);
+
+static bool
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
-static MirInstr *
+static bool
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 
-static MirInstr *
+static bool
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
-static MirInstr *
+static bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static MirInstr *
+static bool
 analyze_instr_const(Context *cnt, MirInstrConst *cnst);
 
-static MirInstr *
+static bool
 analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate);
 
-static MirInstr *
+static bool
+analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer);
+
+static bool
 analyze_instr_call(Context *cnt, MirInstrCall *call);
 
-static MirInstr *
+static bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static void
+static void 
 analyze(Context *cnt);
 
 /* execute */
@@ -687,6 +697,17 @@ add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types
 }
 
 MirInstr *
+add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
+{
+  ++target->ref_count;
+  MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDR_OF, node, MirInstrAddrOf *);
+  tmp->target         = target;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 {
   MirInstr *tmp = create_instr_fn_proto(cnt, type, user_type, name);
@@ -695,13 +716,9 @@ add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 }
 
 MirInstr *
-add_instr_decl_ref(Context *cnt, Ast *node, MirInstr *opt_ref)
+add_instr_decl_ref(Context *cnt, Ast *node)
 {
   MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node, MirInstrDeclRef *);
-  tmp->opt_ref         = opt_ref;
-
-  if (opt_ref) opt_ref->ref_count++;
-
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -793,15 +810,28 @@ add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 }
 
 MirInstr *
-add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest, bool is_initializer)
+add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 {
   assert(src && dest);
   ++src->ref_count;
   ++dest->ref_count;
-  MirInstrStore *tmp  = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
-  tmp->src            = src;
-  tmp->dest           = dest;
-  tmp->is_initializer = is_initializer;
+  MirInstrStore *tmp = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
+  tmp->src           = src;
+  tmp->dest          = dest;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+add_instr_try_infer(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
+{
+  assert(src && dest);
+  ++src->ref_count;
+  ++dest->ref_count;
+  MirInstrTryInfer *tmp = create_instr(cnt, MIR_INSTR_TRY_INFER, node, MirInstrTryInfer *);
+  tmp->src              = src;
+  tmp->dest             = dest;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -962,59 +992,53 @@ type_cmp(MirType *first, MirType *second)
 }
 
 /* analyze */
-MirInstr *
+bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
-  ref->base.analyzed = true;
+  Ast *ast_ident     = ref->base.node;
+  assert(ref->base.node && ref->base.node->kind == AST_IDENT);
 
-  /* reference can be optionally found for declaration initializers */
-  MirInstr *referenced = ref->opt_ref;
-
-  if (!referenced) {
-    Ast *ast_ident = ref->base.node;
-    assert(ref->base.node && ref->base.node->kind == AST_IDENT);
-
-    Scope *scope = ast_ident->data.ident.scope;
-    assert(scope);
-    ScopeEntry *scope_entry = scope_lookup(scope, ast_ident->data.ident.hash, true);
-    if (!scope_entry) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ast_ident->src,
-                  BUILDER_CUR_WORD, "unknown symbol");
-      return &ref->base;
-    }
-
-    referenced = scope_entry->instr;
-    referenced->ref_count++;
-  } else {
-    push_into_curr_block(cnt, referenced);
+  Scope *scope = ast_ident->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ast_ident->data.ident.hash, true);
+  if (!scope_entry) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ast_ident->src,
+                BUILDER_CUR_WORD, "unknown symbol");
+    return false;
   }
 
-  assert(referenced);
-  analyze_instr(cnt, referenced);
+  assert(scope_entry->instr);
+  assert(scope_entry->instr->analyzed);
+  scope_entry->instr->ref_count++;
+
+  assert(scope_entry->instr->value.type);
+  ref->base.value = scope_entry->instr->value;
 
   /* create pointer to referenced data */
-  assert(referenced->value.type);
-  ref->base.value.type       = create_type_ptr(cnt, referenced->value.type);
-  ref->base.value.data.v_ptr = &referenced->value;
-  return &ref->base;
+  assert(scope_entry->instr->value.type);
+  ref->base.value.type       = create_type_ptr(cnt, scope_entry->instr->value.type);
+  ref->base.value.data.v_ptr = &scope_entry->instr->value;
+
+  if (ref->base.ref_count) push_into_curr_block(cnt, &ref->base);
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-  fn_proto->base.analyzed = true;
   MirBlock *prev_block    = NULL;
 
   /* resolve type */
   if (!fn_proto->base.value.type) {
-    assert(fn_proto->type);
-    MirInstr *type_resolve_call = analyze_instr(cnt, fn_proto->type);
-    MirValue *type_val          = exec_instr(cnt, type_resolve_call);
+    assert(fn_proto->type && fn_proto->type->kind == MIR_INSTR_CALL);
+    analyze_instr(cnt, fn_proto->type);
+    MirValue *type_val          = exec_instr(cnt, fn_proto->type);
     assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
 
     if (fn_proto->user_type) {
-      type_resolve_call       = analyze_instr(cnt, fn_proto->user_type);
-      MirValue *user_type_val = exec_instr(cnt, type_resolve_call);
+      assert(fn_proto->user_type->kind == MIR_INSTR_CALL);
+      analyze_instr(cnt, fn_proto->user_type);
+      MirValue *user_type_val = exec_instr(cnt, fn_proto->user_type);
       assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
 
       if (!type_cmp(type_val->data.v_type, user_type_val->data.v_type)) {
@@ -1045,7 +1069,9 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   MirInstr *tmp;
   barray_foreach(exec->entry_block->instructions, tmp)
   {
-    tmp = analyze_instr_top(cnt, tmp);
+    if (!analyze_instr(cnt, tmp)) {
+      break;
+    }
   }
 
   if (cnt->verbose) {
@@ -1057,10 +1083,10 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   assert(prev_block);
   set_cursor_block(cnt, prev_block);
 
-  return &fn_proto->base;
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
   assert(type_fn->base.value.type);
@@ -1069,20 +1095,21 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   if (type_fn->arg_types) bl_abort("unimplemented");
 
   if (type_fn->ret_type) {
-    MirInstr *ret_type = analyze_instr(cnt, type_fn->ret_type);
-    push_into_curr_block(cnt, ret_type);
+    assert(type_fn->ret_type->analyzed);
   }
 
-  type_fn->base.analyzed = true;
-  return &type_fn->base;
+  if (type_fn->base.ref_count) push_into_curr_block(cnt, &type_fn->base);
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-  MirInstr *lhs = analyze_instr(cnt, binop->lhs);
-  MirInstr *rhs = analyze_instr(cnt, binop->rhs);
+  MirInstr *lhs = binop->lhs;
+  MirInstr *rhs = binop->rhs;
   assert(lhs && rhs);
+  assert(lhs->analyzed);
+  assert(rhs->analyzed);
 
   if (!type_cmp(lhs->value.type, rhs->value.type)) {
     error_no_impl_cast(cnt, lhs->value.type, rhs->value.type, binop->base.node);
@@ -1091,7 +1118,6 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
   MirType *type = lhs->value.type;
   assert(type);
   binop->base.value.type = type;
-  binop->base.analyzed   = true;
 
   if (lhs->comptime && rhs->comptime) {
     /* binary operation on compile-time known values can be replaced by constant containing
@@ -1100,23 +1126,36 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
     exec_instr(cnt, &binop->base);
     mutate_to_const(&binop->base);
-  } else {
-    push_into_curr_block(cnt, lhs);
-    push_into_curr_block(cnt, rhs);
-  }
+  } 
 
-  return &binop->base;
+  if (binop->base.ref_count) push_into_curr_block(cnt, &binop->base);
+  return true;
 }
 
-MirInstr *
+bool
+analyze_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof)
+{
+  assert(addrof->target);
+  assert(addrof->target->analyzed);
+
+  MirType *type = addrof->target->value.type;
+  assert(type);
+
+  addrof->base.value.type       = create_type_ptr(cnt, type);
+  addrof->base.value.data.v_ptr = &addrof->target->value;
+  if (addrof->base.ref_count) push_into_curr_block(cnt, &addrof->base);
+  return true;
+}
+
+bool
 analyze_instr_const(Context *cnt, MirInstrConst *cnst)
 {
-  cnst->base.analyzed = true;
   assert(cnst->base.value.type);
-  return &cnst->base;
+  if (cnst->base.ref_count) push_into_curr_block(cnt, &cnst->base);
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
 {
   MirInstr *src = validate->src;
@@ -1129,23 +1168,39 @@ analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
 
   assert(src->value.data.v_type);
   src->ref_count--;
-  validate->base.analyzed = true;
-  return NULL;
+  return true;
 }
 
-MirInstr *
+bool
+analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
+{
+  MirInstr *src  = infer->src;
+  MirInstr *dest = infer->dest;
+  assert(src && dest);
+  assert(src->analyzed && dest->analyzed);
+
+  src->ref_count--;
+  dest->ref_count--;
+
+  if (dest->value.type) return true;
+
+  dest->value.type = src->value.type;
+  assert(dest->value.type);
+  return true;
+}
+
+bool
 analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-  ret->base.analyzed = true;
   /* compare return value with current function type */
   MirBlock *block = get_current_block(cnt);
   assert(block);
   if (!block->terminal) block->terminal = &ret->base;
 
-  MirInstr *value = ret->value ? analyze_instr(cnt, ret->value) : NULL;
-  if (value) push_into_curr_block(cnt, value);
-
-  push_into_curr_block(cnt, &ret->base);
+  MirInstr *value = ret->value;
+  if (value) {
+    assert(value->analyzed);
+  }
 
   MirType *fn_type = get_current_fn(cnt)->type;
   assert(fn_type);
@@ -1166,15 +1221,16 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
                 BUILDER_CUR_AFTER, "expected return value");
   }
 
-  return &ret->base;
+  push_into_curr_block(cnt, &ret->base);
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
 {
   if (var->type) {
-    MirInstr *type_instr          = analyze_instr(cnt, var->type);
-    MirValue *resolved_type_value = exec_instr(cnt, type_instr);
+    analyze_instr(cnt, var->type);
+    MirValue *resolved_type_value = exec_instr(cnt, var->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
 
     var->base.value.type = resolved_type_value->data.v_type;
@@ -1185,41 +1241,30 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
                 "unused declaration");
   }
 
-  var->base.analyzed = true;
-  return &var->base;
+  if (var->base.ref_count) push_into_curr_block(cnt, &var->base);
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_call(Context *cnt, MirInstrCall *call)
 {
-  call->base.analyzed = true;
   /* TODO */
-  return &call->base;
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr_store(Context *cnt, MirInstrStore *store)
 {
-  MirInstr *src = analyze_instr(cnt, store->src);
-
-  if (store->is_initializer && store->dest->kind == MIR_INSTR_DECL_REF) {
-    MirInstrDeclRef *dest_ref = (MirInstrDeclRef *)store->dest;
-    if (dest_ref->opt_ref && !dest_ref->opt_ref->value.type)
-      dest_ref->opt_ref->value.type = src->value.type;
-  }
-
-  MirInstr *dest = analyze_instr(cnt, store->dest);
+  MirInstr *src  = store->src;
+  MirInstr *dest = store->dest;
   assert(src && dest);
-
-  push_into_curr_block(cnt, dest);
-  push_into_curr_block(cnt, src);
+  assert(src->analyzed && dest->analyzed);
 
   assert(dest->value.type->kind == MIR_TYPE_PTR && "store expect destination to be a pointer");
 
   MirValue *deref_dest = dest->value.data.v_ptr;
   assert(deref_dest && "reference does not point to any declaration");
 
-  /* do type infering for initializer store instruction */
   if (!type_cmp(src->value.type, deref_dest->type)) {
     error_no_impl_cast(cnt, src->value.type, deref_dest->type, src->node);
   }
@@ -1228,44 +1273,62 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   store->base.value.type = cnt->buildin_types.entry_void;
 
   push_into_curr_block(cnt, &store->base);
-  store->base.analyzed = true;
-  return &store->base;
+  return true;
 }
 
-MirInstr *
+bool
 analyze_instr(Context *cnt, MirInstr *instr)
 {
   if (!instr) return NULL;
 
   /* skip already analyzed instructions */
   if (instr->analyzed) return instr;
+  bool state = false;
 
   switch (instr->kind) {
   case MIR_INSTR_FN_PROTO:
-    return analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
+    state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
+    break;
   case MIR_INSTR_DECL_VAR:
-    return analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+    state = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+    break;
   case MIR_INSTR_CALL:
-    return analyze_instr_call(cnt, (MirInstrCall *)instr);
+    state = analyze_instr_call(cnt, (MirInstrCall *)instr);
+    break;
   case MIR_INSTR_CONST:
-    return analyze_instr_const(cnt, (MirInstrConst *)instr);
-  case MIR_INSTR_VALIDATE_TYPE:
-    return analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
+    state = analyze_instr_const(cnt, (MirInstrConst *)instr);
+    break;
   case MIR_INSTR_RET:
-    return analyze_instr_ret(cnt, (MirInstrRet *)instr);
+    state = analyze_instr_ret(cnt, (MirInstrRet *)instr);
+    break;
   case MIR_INSTR_STORE:
-    return analyze_instr_store(cnt, (MirInstrStore *)instr);
+    state = analyze_instr_store(cnt, (MirInstrStore *)instr);
+    break;
   case MIR_INSTR_DECL_REF:
-    return analyze_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    state = analyze_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    break;
   case MIR_INSTR_BINOP:
-    return analyze_instr_binop(cnt, (MirInstrBinop *)instr);
+    state = analyze_instr_binop(cnt, (MirInstrBinop *)instr);
+    break;
   case MIR_INSTR_TYPE_FN:
-    return analyze_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
+    state = analyze_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
+    break;
+  case MIR_INSTR_ADDR_OF:
+    state = analyze_instr_addr_of(cnt, (MirInstrAddrOf *)instr);
+    break;
+  case MIR_INSTR_VALIDATE_TYPE:
+    state = analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
+    break;
+  case MIR_INSTR_TRY_INFER:
+    state = analyze_instr_try_infer(cnt, (MirInstrTryInfer *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
+    return false;
   }
 
-  return NULL;
+  instr->analyzed = true;
+  return state;
 }
 
 bool
@@ -1293,15 +1356,6 @@ analyze_is_satisfied(Context *cnt, MirInstr *instr, bool strict_only)
   }
 
   return true;
-}
-
-MirInstr *
-analyze_instr_top(Context *cnt, MirInstr *instr)
-{
-  assert(instr);
-  if (instr->ref_count) return NULL;
-
-  return analyze_instr(cnt, instr);
 }
 
 void
@@ -1557,7 +1611,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
 {
   Ast *ident = ref->data.expr_ref.ident;
   assert(ident);
-  return add_instr_decl_ref(cnt, ident, NULL);
+  return add_instr_decl_ref(cnt, ident);
 }
 
 MirInstr *
@@ -1602,7 +1656,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
   if (ast_binop_is_assign(op)) {
     switch (op) {
     case BINOP_ASSIGN: {
-      return add_instr_store(cnt, binop, rhs, lhs, false);
+      return add_instr_store(cnt, binop, rhs, lhs);
     }
     default:
       bl_abort("unimplemented");
@@ -1648,8 +1702,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
     scope_entry->instr = decl;
 
     if (value) {
-      MirInstr *decl_ref = add_instr_decl_ref(cnt, ast_name, decl);
-      return add_instr_store(cnt, ast_value, value, decl_ref, true);
+      add_instr_try_infer(cnt, NULL, value, decl);
+      MirInstr *decl_ref = add_instr_addr_of(cnt, NULL, decl);
+      return add_instr_store(cnt, ast_value, value, decl_ref);
     }
 
     if (is_entry_fn(ast_name)) {
@@ -1795,6 +1850,8 @@ instr_name(MirInstr *instr)
     return "InstrTypeFn";
   case MIR_INSTR_ADDR_OF:
     return "InstrAddrOf";
+  case MIR_INSTR_TRY_INFER:
+    return "InstrTryInfer";
   }
 
   return "UNKNOWN";

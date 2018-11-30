@@ -31,6 +31,7 @@
 
 #define TYPE_COLOR BLUE
 #define INSTR_COLOR YELLOW
+#define INSTR_ANALYZE_COLOR MAGENTA
 #define GOTO_COLOR GREEN
 #define ERROR_COLOR RED
 
@@ -56,6 +57,9 @@ print_instr_head(MirInstr *instr)
 
 static void
 print_instr_addr_of(MirInstrAddrOf *addr_of);
+
+static void
+print_instr_try_infer(MirInstrTryInfer *infer);
 
 static void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed);
@@ -117,6 +121,13 @@ print_instr_type_fn(MirInstrTypeFn *type_fn)
 }
 
 void
+print_instr_try_infer(MirInstrTryInfer *infer)
+{
+  print_instr_head(&infer->base);
+  fprintf(stdout, INSTR_ANALYZE_COLOR("tryinfer") " %%%u -> %%%u", infer->src->id, infer->dest->id);
+}
+
+void
 print_instr_addr_of(MirInstrAddrOf *addr_of)
 {
   print_instr_head(&addr_of->base);
@@ -147,10 +158,7 @@ print_instr_decl_ref(MirInstrDeclRef *ref)
   print_instr_head(&ref->base);
   const char *name = ref->base.node->data.ident.str;
 
-  if (ref->opt_ref)
-    fprintf(stdout, INSTR_COLOR("declref") " %%%u", ref->opt_ref->id);
-  else
-    fprintf(stdout, INSTR_COLOR("declref") " %s", name);
+  fprintf(stdout, INSTR_COLOR("declref") " %s", name);
 }
 
 void
@@ -206,7 +214,7 @@ void
 print_instr_validate_type(MirInstrValidateType *vt)
 {
   print_instr_head(&vt->base);
-  fprintf(stdout, INSTR_COLOR("validate_type") " %%%u", vt->src->id);
+  fprintf(stdout, INSTR_ANALYZE_COLOR("validate_type") " %%%u", vt->src->id);
 }
 
 void
@@ -315,6 +323,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_ADDR_OF:
     print_instr_addr_of((MirInstrAddrOf *)instr);
+    break;
+  case MIR_INSTR_TRY_INFER:
+    print_instr_try_infer((MirInstrTryInfer *)instr);
     break;
   }
   fprintf(stdout, "\n");
