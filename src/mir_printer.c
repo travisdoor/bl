@@ -56,7 +56,13 @@ print_instr_head(MirInstr *instr)
 }
 
 static void
+print_instr_load(MirInstrLoad *load);
+
+static void
 print_instr_addr_of(MirInstrAddrOf *addr_of);
+
+static void
+print_instr_cond_br(MirInstrCondBr *cond_br);
 
 static void
 print_instr_try_infer(MirInstrTryInfer *infer);
@@ -121,10 +127,25 @@ print_instr_type_fn(MirInstrTypeFn *type_fn)
 }
 
 void
+print_instr_cond_br(MirInstrCondBr *cond_br)
+{
+  print_instr_head(&cond_br->base);
+  fprintf(stdout, INSTR_COLOR("br") " %%%u ? %s : %s", cond_br->cond->id, cond_br->then_block->name,
+          cond_br->else_block->name);
+}
+
+void
 print_instr_try_infer(MirInstrTryInfer *infer)
 {
   print_instr_head(&infer->base);
   fprintf(stdout, INSTR_ANALYZE_COLOR("tryinfer") " %%%u -> %%%u", infer->src->id, infer->dest->id);
+}
+
+void
+print_instr_load(MirInstrLoad *load)
+{
+  print_instr_head(&load->base);
+  fprintf(stdout, INSTR_COLOR("load") " %%%u", load->src->id);
 }
 
 void
@@ -247,7 +268,7 @@ print_instr_binop(MirInstrBinop *binop)
 void
 print_block(MirBlock *block)
 {
-  fprintf(stdout, GOTO_COLOR("%s:\n"), block->name);
+  fprintf(stdout, GOTO_COLOR("%s_%u:\n"), block->name, block->id);
 
   MirInstr *tmp;
   barray_foreach(block->instructions, tmp) mir_print_instr(tmp, false);
@@ -296,6 +317,7 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     print_instr_const((MirInstrConst *)instr);
     break;
   case MIR_INSTR_LOAD:
+    print_instr_load((MirInstrLoad *)instr);
     break;
   case MIR_INSTR_STORE:
     print_instr_store((MirInstrStore *)instr);
@@ -326,6 +348,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_TRY_INFER:
     print_instr_try_infer((MirInstrTryInfer *)instr);
+    break;
+  case MIR_INSTR_COND_BR:
+    print_instr_cond_br((MirInstrCondBr *)instr);
     break;
   }
   fprintf(stdout, "\n");

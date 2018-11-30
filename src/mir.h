@@ -59,6 +59,7 @@ typedef struct MirInstrCall        MirInstrCall;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
+typedef struct MirInstrCondBr      MirInstrCondBr;
 
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
@@ -90,6 +91,7 @@ struct MirExec
 struct MirBlock
 {
   const char *name;
+  unsigned    id;
   BArray *    instructions;
   MirInstr *  terminal;
   MirExec *   owner_exec;
@@ -185,6 +187,7 @@ typedef enum
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
   MIR_INSTR_ADDR_OF,
+  MIR_INSTR_COND_BR,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -300,6 +303,15 @@ struct MirInstrAddrOf
 struct MirInstrUnreachable
 {
   MirInstr base;
+};
+
+struct MirInstrCondBr
+{
+  MirInstr base;
+
+  MirInstr *cond;
+  MirBlock *then_block;
+  MirBlock *else_block;
 };
 
 /* analyze helper instructions */
