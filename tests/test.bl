@@ -7,6 +7,8 @@ main : fn () s32 {
   foo bool := true;
   if (foo) {
     bar = 0;
+  } else {
+    bar = 1;
   }
 
   return bar;

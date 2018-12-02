@@ -32,7 +32,7 @@
 #define TYPE_COLOR BLUE
 #define INSTR_COLOR YELLOW
 #define INSTR_ANALYZE_COLOR MAGENTA
-#define GOTO_COLOR GREEN
+#define BLOCK_COLOR GREEN
 #define ERROR_COLOR RED
 
 static inline void
@@ -63,6 +63,9 @@ print_instr_addr_of(MirInstrAddrOf *addr_of);
 
 static void
 print_instr_cond_br(MirInstrCondBr *cond_br);
+
+static void
+print_instr_br(MirInstrBr *br);
 
 static void
 print_instr_try_infer(MirInstrTryInfer *infer);
@@ -130,8 +133,17 @@ void
 print_instr_cond_br(MirInstrCondBr *cond_br)
 {
   print_instr_head(&cond_br->base);
-  fprintf(stdout, INSTR_COLOR("br") " %%%u ? %s : %s", cond_br->cond->id, cond_br->then_block->name,
-          cond_br->else_block->name);
+  fprintf(stdout, INSTR_COLOR("br") " %%%u ? " BLOCK_COLOR("%s_%u") " : " BLOCK_COLOR("%s_%u"),
+          cond_br->cond->id, cond_br->then_block->name, cond_br->then_block->id,
+          cond_br->else_block->name, cond_br->else_block->id);
+}
+
+void
+print_instr_br(MirInstrBr *br)
+{
+  print_instr_head(&br->base);
+  fprintf(stdout, INSTR_COLOR("br") BLOCK_COLOR(" %s_%d"), br->then_block->name,
+          br->then_block->id);
 }
 
 void
@@ -268,7 +280,7 @@ print_instr_binop(MirInstrBinop *binop)
 void
 print_block(MirBlock *block)
 {
-  fprintf(stdout, GOTO_COLOR("%s_%u:\n"), block->name, block->id);
+  fprintf(stdout, BLOCK_COLOR("%s_%u:\n"), block->name, block->id);
 
   MirInstr *tmp;
   barray_foreach(block->instructions, tmp) mir_print_instr(tmp, false);
@@ -351,6 +363,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_COND_BR:
     print_instr_cond_br((MirInstrCondBr *)instr);
+    break;
+  case MIR_INSTR_BR:
+    print_instr_br((MirInstrBr *)instr);
     break;
   }
   fprintf(stdout, "\n");

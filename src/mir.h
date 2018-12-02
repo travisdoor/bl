@@ -60,6 +60,7 @@ typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
+typedef struct MirInstrBr          MirInstrBr;
 
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
@@ -188,6 +189,7 @@ typedef enum
   MIR_INSTR_UNREACHABLE,
   MIR_INSTR_ADDR_OF,
   MIR_INSTR_COND_BR,
+  MIR_INSTR_BR,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -312,6 +314,13 @@ struct MirInstrCondBr
   MirInstr *cond;
   MirBlock *then_block;
   MirBlock *else_block;
+};
+
+struct MirInstrBr
+{
+  MirInstr base;
+
+  MirBlock *then_block;
 };
 
 /* analyze helper instructions */
