@@ -46,18 +46,24 @@ typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
 typedef struct MirValue  MirValue;
 
-typedef struct MirInstr             MirInstr;
-typedef struct MirInstrDeclVar      MirInstrDeclVar;
-typedef struct MirInstrConst        MirInstrConst;
-typedef struct MirInstrLoad         MirInstrLoad;
-typedef struct MirInstrStore        MirInstrStore;
-typedef struct MirInstrRet          MirInstrRet;
-typedef struct MirInstrBinop        MirInstrBinop;
+typedef struct MirInstr            MirInstr;
+typedef struct MirInstrDeclVar     MirInstrDeclVar;
+typedef struct MirInstrConst       MirInstrConst;
+typedef struct MirInstrLoad        MirInstrLoad;
+typedef struct MirInstrStore       MirInstrStore;
+typedef struct MirInstrRet         MirInstrRet;
+typedef struct MirInstrBinop       MirInstrBinop;
+typedef struct MirInstrFnProto     MirInstrFnProto;
+typedef struct MirInstrTypeFn      MirInstrTypeFn;
+typedef struct MirInstrCall        MirInstrCall;
+typedef struct MirInstrDeclRef     MirInstrDeclRef;
+typedef struct MirInstrUnreachable MirInstrUnreachable;
+typedef struct MirInstrAddrOf      MirInstrAddrOf;
+typedef struct MirInstrCondBr      MirInstrCondBr;
+typedef struct MirInstrBr          MirInstrBr;
+
+typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
-typedef struct MirInstrFnProto      MirInstrFnProto;
-typedef struct MirInstrCall         MirInstrCall;
-typedef struct MirInstrDeclRef      MirInstrDeclRef;
-typedef struct MirInstrUnreachable  MirInstrUnreachable;
 
 typedef struct MirDep MirDep;
 
@@ -86,6 +92,7 @@ struct MirExec
 struct MirBlock
 {
   const char *name;
+  unsigned    id;
   BArray *    instructions;
   MirInstr *  terminal;
   MirExec *   owner_exec;
@@ -101,10 +108,9 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  struct Ast *name;
-  MirType *   type;
-  MirExec *   exec;
-  MirExec *   exec_analyzed;
+  MirType *type;
+  MirExec *exec;
+  MirExec *exec_analyzed;
 };
 
 /* TYPE */
@@ -162,6 +168,7 @@ struct MirValue
     bool               v_bool;
     MirType *          v_type;
     MirFn *            v_fn;
+    MirValue *         v_ptr;
   } data;
 };
 
@@ -175,11 +182,17 @@ typedef enum
   MIR_INSTR_STORE,
   MIR_INSTR_BINOP,
   MIR_INSTR_RET,
-  MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_FN_PROTO,
+  MIR_INSTR_TYPE_FN,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
+  MIR_INSTR_ADDR_OF,
+  MIR_INSTR_COND_BR,
+  MIR_INSTR_BR,
+
+  MIR_INSTR_VALIDATE_TYPE,
+  MIR_INSTR_TRY_INFER,
 } MirInstrKind;
 
 typedef enum
@@ -235,7 +248,6 @@ struct MirInstrStore
 
   MirInstr *src;
   MirInstr *dest;
-  bool      is_initializer;
 };
 
 struct MirInstrRet
@@ -254,14 +266,15 @@ struct MirInstrBinop
   MirInstr *rhs;
 };
 
-struct MirInstrValidateType
+struct MirInstrFnProto
 {
   MirInstr base;
 
-  MirInstr *src;
+  MirInstr *type;
+  MirInstr *user_type;
 };
 
-struct MirInstrFnProto
+struct MirInstrTypeFn
 {
   MirInstr base;
 
@@ -282,9 +295,48 @@ struct MirInstrDeclRef
   MirInstr base;
 };
 
+struct MirInstrAddrOf
+{
+  MirInstr base;
+
+  MirInstr *target;
+};
+
 struct MirInstrUnreachable
 {
   MirInstr base;
+};
+
+struct MirInstrCondBr
+{
+  MirInstr base;
+
+  MirInstr *cond;
+  MirBlock *then_block;
+  MirBlock *else_block;
+};
+
+struct MirInstrBr
+{
+  MirInstr base;
+
+  MirBlock *then_block;
+};
+
+/* analyze helper instructions */
+struct MirInstrValidateType
+{
+  MirInstr base;
+
+  MirInstr *src;
+};
+
+struct MirInstrTryInfer
+{
+  MirInstr base;
+
+  MirInstr *src;
+  MirInstr *dest;
 };
 
 /* public */

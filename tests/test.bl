@@ -1,16 +1,27 @@
 /* playground */
 
-main : fn () {
-  bar := 666 + 2 * 25 - (22 * 5);
+main : fn () s32 {
+  bar := 2;
+  bar = (20 - 5) * bar;
+
   foo bool := true;
-  baz := 12 - 1 + bar;
-  bar = baz;
 
-  sailor := 0;
+  if (foo) {
+    bar = 0;
+  } else {
+    bar = 1;
+  }
 
-  return;
+  return bar;
 };
 
-hello : fn () s8 {
-  return;
+hello : fn () s32 {
+  return 1;
 };
+
+/*
+fn ()			- fn type
+hello : fn () extern; 	- external decl of type fn ()
+hello : fn () {}; 	- decl with body
+fn (i s32) {} (8); 	- anonymous function with direct call
+*/
