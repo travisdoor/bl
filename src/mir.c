@@ -116,6 +116,7 @@ typedef struct
   struct
   {
     MirBlock *block;
+    size_t    next;
   } cursor;
 
   LLVMContextRef    llvm_cnt;
@@ -389,6 +390,12 @@ static MirValue *
 exec_instr(Context *cnt, MirInstr *instr);
 
 static MirValue *
+exec_instr_br(Context *cnt, MirInstrBr *br);
+
+static MirValue *
+exec_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+
+static MirValue *
 exec_instr_const(Context *cnt, MirInstrConst *cnst);
 
 static MirValue *
@@ -497,6 +504,14 @@ static inline MirBlock *
 get_current_block(Context *cnt)
 {
   return cnt->cursor.block;
+}
+
+static inline void
+set_executor_at_beginning(Context *cnt, MirBlock *block)
+{
+  assert(block);
+  cnt->cursor.block = block;
+  cnt->cursor.next  = 0;
 }
 
 static inline MirFn *
@@ -1548,12 +1563,31 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_addr_of(cnt, (MirInstrAddrOf *)instr);
   case MIR_INSTR_LOAD:
     return exec_instr_load(cnt, (MirInstrLoad *)instr);
+  case MIR_INSTR_BR:
+    return exec_instr_br(cnt, (MirInstrBr *)instr);
+  case MIR_INSTR_COND_BR:
+    return exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
 
   default:
     bl_abort("missing execution for instruction: %s", instr_name(instr));
   }
 
   return NULL;
+}
+
+MirValue *
+exec_instr_br(Context *cnt, MirInstrBr *br)
+{
+  assert(br->then_block);
+  bl_abort("unimplemented");
+  return &br->base.value;
+}
+
+MirValue *
+exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
+{
+  bl_abort("unimplemented");
+  return &br->base.value;
 }
 
 MirValue *
@@ -1637,9 +1671,11 @@ exec_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
   cnt->exec_call_result = NULL;
   /* iterate over entry block of executable */
+  set_executor_at_beginning(cnt, exec->entry_block);
+
   MirInstr *tmp;
-  barray_foreach(exec->entry_block->instructions, tmp)
-  {
+  for (; cnt->cursor.next < bo_array_size(cnt->cursor.block->instructions); ++cnt->cursor.next) {
+    tmp = bo_array_at(cnt->cursor.block->instructions, cnt->cursor.next, MirInstr *);
     exec_instr(cnt, tmp);
   }
 

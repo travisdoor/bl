@@ -5,6 +5,7 @@ main : fn () s32 {
   bar = (20 - 5) * bar;
 
   foo bool := true;
+
   if (foo) {
     bar = 0;
   } else {
