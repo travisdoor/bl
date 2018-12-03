@@ -35,16 +35,6 @@
 
 #define ARENA_CHUNK_COUNT 512
 
-/* Pipeline:
- *   - generate first pass from AST with unknown types
- *   - generate implicit type resolvers
- *   - analyze and execute type resolvers
- *   - analyze rest of code and also execute compile time executables
- */
-
-/* TODO: this is temporary solution, we need some kind of fast allocator for different instructions
- * with different size (we allocate pool where every element has size of biggest instruction -> we
- * are wastig memory) */
 union _MirInstr
 {
   MirInstrDeclVar      var;
