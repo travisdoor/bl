@@ -30,14 +30,12 @@
 #define BL_TOKENS_H
 
 #include <bobject/bobject.h>
-#include <bobject/containers/string.h>
 #include <bobject/containers/array.h>
 #include "token.h"
 
 typedef struct Tokens
 {
   BArray *buf;
-  BArray *string_cache;
   size_t  iter;
 } Tokens;
 
@@ -55,9 +53,6 @@ tokens_init(Tokens *tokens);
 
 void
 tokens_terminate(Tokens *tokens);
-
-BString *
-tokens_create_cached_str(Tokens *tokens);
 
 int
 tokens_count(Tokens *tokens);

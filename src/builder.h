@@ -30,6 +30,7 @@
 #define BL_BUILDER_H
 
 #include <bobject/containers/array.h>
+#include <bobject/containers/string.h>
 #include "assembly.h"
 #include "error.h"
 #include "arena.h"
@@ -66,7 +67,7 @@ typedef struct Builder
   uint32_t       flags;
   int            total_lines;
   int            errorc;
-  BArray *       uname_cache;
+  BArray *       str_cache;
 } Builder;
 
 typedef enum
@@ -113,10 +114,7 @@ void
 builder_msg(Builder *builder, BuilderMsgType type, int code, struct Src *src, BuilderCurPos pos,
             const char *format, ...);
 
-uint64_t
-builder_get_unique_id(Builder *builder);
-
-const char *
-builder_get_unique_name(Builder *builder, const char *base);
+BString *
+builder_create_cached_str(Builder *builder);
 
 #endif
