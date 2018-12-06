@@ -93,7 +93,9 @@ struct MirBlock
 {
   const char *name;
   unsigned    id;
-  BArray *    instructions;
+  MirInstr *  entry_instr;
+  MirInstr *  last_instr;
+  int         count_instr;
   MirInstr *  terminal;
   MirExec *   owner_exec;
 };
@@ -110,7 +112,6 @@ struct MirFn
 {
   MirType *type;
   MirExec *exec;
-  MirExec *exec_analyzed;
 };
 
 /* TYPE */
@@ -220,6 +221,9 @@ struct MirInstr
   int  ref_count;
   bool analyzed;
   bool comptime;
+
+  MirInstr *prev;
+  MirInstr *next;
 };
 
 struct MirInstrDeclVar

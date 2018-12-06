@@ -282,8 +282,12 @@ print_block(MirBlock *block)
 {
   fprintf(stdout, BLOCK_COLOR("%s_%u:\n"), block->name, block->id);
 
-  MirInstr *tmp;
-  barray_foreach(block->instructions, tmp) mir_print_instr(tmp, false);
+  MirInstr *tmp = block->entry_instr;
+
+  while (tmp) {
+    mir_print_instr(tmp, false);
+    tmp = tmp->next;
+  }
 }
 
 void
@@ -300,13 +304,8 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
   MirFn *fn = fn_proto->base.value.data.v_fn;
   if (fn) {
     MirBlock *tmp;
-    MirExec * exec = analyzed ? fn->exec_analyzed : fn->exec;
     fprintf(stdout, " { %s\n", analyzed ? GREEN("// ANALYZED") : "");
-    if (exec) {
-      barray_foreach(exec->blocks, tmp) print_block(tmp);
-    } else {
-      fprintf(stdout, RED("MISSING!!!\n"));
-    }
+    barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
     fprintf(stdout, "}\n");
   }
 }
