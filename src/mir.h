@@ -53,6 +53,7 @@ typedef struct MirInstrLoad        MirInstrLoad;
 typedef struct MirInstrStore       MirInstrStore;
 typedef struct MirInstrRet         MirInstrRet;
 typedef struct MirInstrBinop       MirInstrBinop;
+typedef struct MirInstrUnop        MirInstrUnop;
 typedef struct MirInstrFnProto     MirInstrFnProto;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrCall        MirInstrCall;
@@ -93,7 +94,9 @@ struct MirBlock
 {
   const char *name;
   unsigned    id;
-  BArray *    instructions;
+  MirInstr *  entry_instr;
+  MirInstr *  last_instr;
+  int         count_instr;
   MirInstr *  terminal;
   MirExec *   owner_exec;
 };
@@ -110,7 +113,6 @@ struct MirFn
 {
   MirType *type;
   MirExec *exec;
-  MirExec *exec_analyzed;
 };
 
 /* TYPE */
@@ -190,6 +192,7 @@ typedef enum
   MIR_INSTR_ADDR_OF,
   MIR_INSTR_COND_BR,
   MIR_INSTR_BR,
+  MIR_INSTR_UNOP,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -220,6 +223,9 @@ struct MirInstr
   int  ref_count;
   bool analyzed;
   bool comptime;
+
+  MirInstr *prev;
+  MirInstr *next;
 };
 
 struct MirInstrDeclVar
@@ -264,6 +270,14 @@ struct MirInstrBinop
   BinopKind op;
   MirInstr *lhs;
   MirInstr *rhs;
+};
+
+struct MirInstrUnop
+{
+  MirInstr base;
+
+  UnopKind  op;
+  MirInstr *instr;
 };
 
 struct MirInstrFnProto

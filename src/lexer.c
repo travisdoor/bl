@@ -123,7 +123,7 @@ scan_ident(Context *cnt, Token *tok)
 
   if (len == 0) return false;
 
-  BString *cstr = tokens_create_cached_str(cnt->tokens);
+  BString *cstr = builder_create_cached_str(cnt->builder);
   bo_string_appendn(cstr, begin, len);
   tok->value.str = bo_string_get(cstr);
 
@@ -169,7 +169,7 @@ scan_string(Context *cnt, Token *tok)
   /* eat " */
   cnt->c++;
 
-  BString *cstr = tokens_create_cached_str(cnt->tokens);
+  BString *cstr = builder_create_cached_str(cnt->builder);
   char     c;
   int      len = 0;
 

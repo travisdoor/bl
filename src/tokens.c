@@ -33,15 +33,13 @@
 void
 tokens_init(Tokens *tokens)
 {
-  tokens->buf          = bo_array_new(sizeof(Token));
-  tokens->string_cache = bo_array_new_bo(bo_typeof(BString), true);
+  tokens->buf = bo_array_new(sizeof(Token));
 }
 
 void
 tokens_terminate(Tokens *tokens)
 {
   bo_unref(tokens->buf);
-  bo_unref(tokens->string_cache);
 }
 
 void
@@ -197,14 +195,6 @@ int
 tokens_count(Tokens *tokens)
 {
   return (int)bo_array_size(tokens->buf);
-}
-
-BString *
-tokens_create_cached_str(Tokens *tokens)
-{
-  BString *str = bo_string_new(64);
-  bo_array_push_back(tokens->string_cache, str);
-  return str;
 }
 
 void

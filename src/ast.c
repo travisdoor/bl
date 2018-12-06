@@ -220,3 +220,22 @@ ast_binop_to_str(BinopKind op)
     return "invalid";
   }
 }
+
+const char *
+ast_unop_to_str(UnopKind op)
+{
+  switch (op) {
+  case UNOP_NEG:
+    return "-";
+  case UNOP_POS:
+    return "+";
+  case UNOP_NOT:
+    return "!";
+  case UNOP_ADR:
+    return "&";
+  case UNOP_DEREF:
+    return "*";
+  default:
+    return "invalid";
+  }
+}

@@ -157,12 +157,12 @@ builder_new(void)
   Builder *builder = bl_calloc(1, sizeof(Builder));
   if (!builder) bl_abort("bad alloc");
 
-  builder->on_error    = default_error_handler;
-  builder->on_warning  = default_warning_handler;
-  builder->on_note     = default_note_handler;
-  builder->flags       = 0;
-  builder->errorc      = 0;
-  builder->uname_cache = bo_array_new_bo(bo_typeof(BString), true);
+  builder->on_error   = default_error_handler;
+  builder->on_warning = default_warning_handler;
+  builder->on_note    = default_note_handler;
+  builder->flags      = 0;
+  builder->errorc     = 0;
+  builder->str_cache  = bo_array_new_bo(bo_typeof(BString), true);
 
   /* initialize LLVM statics */
   llvm_init();
@@ -180,7 +180,7 @@ builder_delete(Builder *builder)
   mir_arenas_terminate(&builder->mir_arenas);
   arena_terminate(&builder->scope_arena);
   arena_terminate(&builder->ast_arena);
-  bo_unref(builder->uname_cache);
+  bo_unref(builder->str_cache);
   bl_free(builder);
 }
 
@@ -379,23 +379,10 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
 #endif
 }
 
-uint64_t
-builder_get_unique_id(Builder *builder)
+BString *
+builder_create_cached_str(Builder *builder)
 {
-  static uint64_t i = 0;
-  return i++;
-}
-
-const char *
-builder_get_unique_name(Builder *builder, const char *base)
-{
-  BString *s = bo_string_new(64);
-  bo_array_push_back(builder->uname_cache, s);
-
-  bo_string_append(s, base);
-  uint64_t ui = builder_get_unique_id(builder);
-  char     ui_str[21];
-  sprintf(ui_str, "%llu", (unsigned long long)ui);
-  bo_string_append(s, ui_str);
-  return bo_string_get(s);
+  BString *str = bo_string_new(64);
+  bo_array_push_back(builder->str_cache, str);
+  return str;
 }
