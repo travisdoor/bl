@@ -53,6 +53,7 @@ union _MirInstr
   MirInstrTryInfer     try_infer;
   MirInstrCondBr       cond_br;
   MirInstrBr           br;
+  MirInstrUnop         unop;
 };
 
 #define push_curr_dependent(_cnt, _dep)                                                            \
@@ -269,6 +270,9 @@ static MirInstr *
 add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
 
 static MirInstr *
+add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op);
+
+static MirInstr *
 add_instr_validate_type(Context *cnt, MirInstr *src);
 
 /* ast */
@@ -314,6 +318,9 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn);
 static MirInstr *
 ast_expr_binop(Context *cnt, Ast *binop);
 
+static MirInstr *
+ast_expr_unary(Context *cnt, Ast *unop);
+
 static LLVMTypeRef
 to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
 
@@ -329,6 +336,9 @@ analyze_instr(Context *cnt, MirInstr *instr);
 
 static bool
 analyze_instr_ret(Context *cnt, MirInstrRet *ret);
+
+static bool
+analyze_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static bool
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br);
@@ -399,6 +409,9 @@ exec_instr_store(Context *cnt, MirInstrStore *store);
 
 static MirValue *
 exec_instr_binop(Context *cnt, MirInstrBinop *binop);
+
+static MirValue *
+exec_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static MirValue *
 exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
@@ -551,6 +564,7 @@ add_instr_load_if_needed(Context *cnt, MirInstr *src)
   switch (src->kind) {
   case MIR_INSTR_CONST:
   case MIR_INSTR_BINOP:
+  case MIR_INSTR_UNOP:
     return src;
   default:
     break;
@@ -959,6 +973,19 @@ add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind
 }
 
 MirInstr *
+add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op)
+{
+  assert(instr);
+  ++instr->ref_count;
+  MirInstrUnop *tmp = create_instr(cnt, MIR_INSTR_UNOP, node, MirInstrUnop *);
+  tmp->instr        = instr;
+  tmp->op           = op;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
 add_instr_validate_type(Context *cnt, MirInstr *src)
 {
   assert(src);
@@ -1252,10 +1279,20 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
     error_no_impl_cast(cnt, lhs->value.type, rhs->value.type, binop->base.node);
   }
 
-  MirType *type = lhs->value.type;
+  MirType *type = ast_binop_is_logic(binop->op) ? cnt->buildin_types.entry_bool : lhs->value.type;
   assert(type);
   binop->base.value.type = type;
 
+  return true;
+}
+
+bool
+analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
+{
+  assert(unop->instr && unop->instr->analyzed);
+  MirType *type = unop->instr->value.type;
+  assert(type);
+  unop->base.value.type = type;
   return true;
 }
 
@@ -1456,6 +1493,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_COND_BR:
     state = analyze_instr_cond_br(cnt, (MirInstrCondBr *)instr);
     break;
+  case MIR_INSTR_UNOP:
+    state = analyze_instr_unop(cnt, (MirInstrUnop *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
     return false;
@@ -1542,6 +1582,8 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_const(cnt, (MirInstrConst *)instr);
   case MIR_INSTR_BINOP:
     return exec_instr_binop(cnt, (MirInstrBinop *)instr);
+  case MIR_INSTR_UNOP:
+    return exec_instr_unop(cnt, (MirInstrUnop *)instr);
   case MIR_INSTR_CALL:
     return exec_instr_call(cnt, (MirInstrCall *)instr);
   case MIR_INSTR_RET:
@@ -1576,14 +1618,25 @@ MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
-  bl_abort("unimplemented");
+
+  set_executor_at_beginning(cnt, br->then_block);
+
   return &br->base.value;
 }
 
 MirValue *
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
-  bl_abort("unimplemented");
+  assert(br->cond);
+  MirValue *cond = &br->cond->value;
+  assert(cond->type);
+
+  if (cond->data.v_bool) {
+    set_executor_at_beginning(cnt, br->then_block);
+  } else {
+    set_executor_at_beginning(cnt, br->else_block);
+  }
+
   return &br->base.value;
 }
 
@@ -1750,6 +1803,18 @@ exec_math_div(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_int = v_lhs->data.v_int / v_rhs->data.v_int;
 }
 
+static void
+exec_math_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int == v_rhs->data.v_int;
+}
+
 MirValue *
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
@@ -1767,11 +1832,35 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   case BINOP_DIV:
     exec_math_div(cnt, binop->lhs, binop->rhs, &binop->base);
     break;
+  case BINOP_EQ:
+    exec_math_eq(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
   default:
     bl_abort("unimplemented");
   }
 
   return &binop->base.value;
+}
+
+MirValue *
+exec_instr_unop(Context *cnt, MirInstrUnop *unop)
+{
+  assert(unop->base.value.type);
+  switch (unop->op) {
+  case UNOP_NEG:
+    unop->base.value.data.v_int = unop->instr->value.data.v_int * -1;
+    break;
+  case UNOP_POS:
+    unop->base.value.data.v_int = unop->instr->value.data.v_int;
+    break;
+  case UNOP_NOT:
+    unop->base.value.data.v_int = !unop->instr->value.data.v_int;
+    break;
+  default:
+    bl_abort("unimplemented");
+  }
+
+  return &unop->base.value;
 }
 
 /* MIR building */
@@ -1916,6 +2005,19 @@ ast_expr_binop(Context *cnt, Ast *binop)
     rhs = add_instr_load_if_needed(cnt, rhs);
     return add_instr_binop(cnt, binop, lhs, rhs, op);
   }
+}
+
+MirInstr *
+ast_expr_unary(Context *cnt, Ast *unop)
+{
+  Ast *ast_next = unop->data.expr_unary.next;
+  assert(ast_next);
+
+  MirInstr *next = ast(cnt, ast_next);
+  assert(next);
+
+  next = add_instr_load_if_needed(cnt, next);
+  return add_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
 MirInstr *
@@ -2064,6 +2166,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_lit_fn(cnt, node);
   case AST_EXPR_BINOP:
     return ast_expr_binop(cnt, node);
+  case AST_EXPR_UNARY:
+    return ast_expr_unary(cnt, node);
   case AST_EXPR_REF:
     return ast_expr_ref(cnt, node);
   default:
@@ -2112,6 +2216,8 @@ instr_name(MirInstr *instr)
     return "InstrCondBr";
   case MIR_INSTR_BR:
     return "InstrBr";
+  case MIR_INSTR_UNOP:
+    return "InstrUnop";
   }
 
   return "UNKNOWN";

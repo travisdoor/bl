@@ -4,20 +4,21 @@ main : fn () s32 {
   bar := 2;
   bar = (20 - 5) * bar;
 
-  foo bool := true;
+  foo := true;
+  homo := 1 == 1;
 
-  if (foo) {
-    bar = 0;
+  if (foo == true) {
+    bar = 100;
   } else {
-    bar = 1;
+    bar = 200 + 1;
   }
 
   return bar;
 };
 
-hello : fn () s32 {
+/*hello : fn () s32 {
   return 1;
-};
+};*/
 
 /*
 fn ()			- fn type

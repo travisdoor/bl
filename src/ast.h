@@ -424,6 +424,12 @@ ast_binop_is_assign(BinopKind op)
 }
 
 static inline bool
+ast_binop_is_logic(BinopKind op)
+{
+  return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
+}
+
+static inline bool
 ast_is_expr(Ast *node)
 {
   assert(node);
@@ -449,6 +455,9 @@ ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
 const char *
 ast_binop_to_str(BinopKind op);
+
+const char *
+ast_unop_to_str(UnopKind op);
 
 const char *
 ast_get_name(const Ast *n);

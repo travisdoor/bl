@@ -53,6 +53,7 @@ typedef struct MirInstrLoad        MirInstrLoad;
 typedef struct MirInstrStore       MirInstrStore;
 typedef struct MirInstrRet         MirInstrRet;
 typedef struct MirInstrBinop       MirInstrBinop;
+typedef struct MirInstrUnop        MirInstrUnop;
 typedef struct MirInstrFnProto     MirInstrFnProto;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrCall        MirInstrCall;
@@ -191,6 +192,7 @@ typedef enum
   MIR_INSTR_ADDR_OF,
   MIR_INSTR_COND_BR,
   MIR_INSTR_BR,
+  MIR_INSTR_UNOP,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -268,6 +270,14 @@ struct MirInstrBinop
   BinopKind op;
   MirInstr *lhs;
   MirInstr *rhs;
+};
+
+struct MirInstrUnop
+{
+  MirInstr base;
+
+  UnopKind  op;
+  MirInstr *instr;
 };
 
 struct MirInstrFnProto

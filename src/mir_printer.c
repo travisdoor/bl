@@ -106,6 +106,9 @@ print_instr_call(MirInstrCall *call);
 static void
 print_instr_decl_ref(MirInstrDeclRef *ref);
 
+static void
+print_instr_unop(MirInstrUnop *unop);
+
 /* impl */
 void
 print_instr_type_fn(MirInstrTypeFn *type_fn)
@@ -127,6 +130,15 @@ print_instr_type_fn(MirInstrTypeFn *type_fn)
   fprintf(stdout, ")");
 
   if (type_fn->ret_type) fprintf(stdout, " %%%u", type_fn->ret_type->id);
+}
+
+void
+print_instr_unop(MirInstrUnop *unop)
+{
+  print_instr_head(&unop->base);
+
+  const char *op = ast_unop_to_str(unop->op);
+  fprintf(stdout, INSTR_COLOR("%s") "%%%u", op, unop->instr->id);
 }
 
 void
@@ -274,7 +286,7 @@ print_instr_binop(MirInstrBinop *binop)
   print_instr_head(&binop->base);
   assert(binop->lhs && binop->rhs);
   const char *op = ast_binop_to_str(binop->op);
-  fprintf(stdout, INSTR_COLOR("op") " %%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
+  fprintf(stdout, INSTR_COLOR("binop") " %%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
 }
 
 void
@@ -365,6 +377,9 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_BR:
     print_instr_br((MirInstrBr *)instr);
+    break;
+  case MIR_INSTR_UNOP:
+    print_instr_unop((MirInstrUnop *)instr);
     break;
   }
   fprintf(stdout, "\n");
