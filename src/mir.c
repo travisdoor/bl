@@ -307,6 +307,9 @@ static MirInstr *
 ast_expr_ref(Context *cnt, Ast *ref);
 
 static MirInstr *
+ast_expr_call(Context *cnt, Ast *call);
+
+static MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr);
 
 static MirInstr *
@@ -584,7 +587,7 @@ print_deps(MirInstr *instr)
   bhtbl_foreach(instr->deps, it)
   {
     dep = &bo_htbl_iter_peek_value(instr->deps, &it, MirDep);
-    fprintf(stdout, "  %%%u: %s\n", dep->dep->id, dep->kind == MIR_DEP_STRICT ? "STRICT" : "LAX");
+    fprintf(stdout, "  @%u: %s\n", dep->dep->id, dep->kind == MIR_DEP_STRICT ? "STRICT" : "LAX");
   }
 }
 
@@ -851,7 +854,7 @@ add_instr_decl_ref(Context *cnt, Ast *node)
 MirInstr *
 add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 {
-  assert(callee && callee->kind == MIR_INSTR_FN_PROTO);
+  assert(callee);
   MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
   tmp->args         = args;
   tmp->callee       = callee;
@@ -1445,7 +1448,8 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
   /* skip already analyzed instructions */
   if (instr->analyzed) return instr;
-  bool state = false;
+  instr->analyzed = true;
+  bool state      = false;
 
   switch (instr->kind) {
   case MIR_INSTR_FN_PROTO:
@@ -1501,7 +1505,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
     return false;
   }
 
-  instr->analyzed = true;
   return state;
 }
 
@@ -1815,6 +1818,42 @@ exec_math_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_bool = v_lhs->data.v_int == v_rhs->data.v_int;
 }
 
+static void
+exec_math_neq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int != v_rhs->data.v_int;
+}
+
+static void
+exec_math_logic_and(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int && v_rhs->data.v_int;
+}
+
+static void
+exec_math_logic_or(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int || v_rhs->data.v_int;
+}
+
 MirValue *
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
@@ -1834,6 +1873,15 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     break;
   case BINOP_EQ:
     exec_math_eq(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_NEQ:
+    exec_math_neq(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_LOGIC_AND:
+    exec_math_logic_and(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_LOGIC_OR:
+    exec_math_logic_or(cnt, binop->lhs, binop->rhs, &binop->base);
     break;
   default:
     bl_abort("unimplemented");
@@ -1942,6 +1990,14 @@ MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr)
 {
   return add_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
+}
+
+MirInstr *
+ast_expr_call(Context *cnt, Ast *call)
+{
+  assert(call->data.expr_call.ref);
+  MirInstr *callee = ast(cnt, call->data.expr_call.ref);
+  return add_instr_call(cnt, call, callee, NULL);
 }
 
 MirInstr *
@@ -2170,6 +2226,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_unary(cnt, node);
   case AST_EXPR_REF:
     return ast_expr_ref(cnt, node);
+  case AST_EXPR_CALL:
+    return ast_expr_call(cnt, node);
   default:
     bl_abort("invalid node %s", ast_get_name(node));
   }

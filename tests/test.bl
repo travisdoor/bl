@@ -7,8 +7,8 @@ main : fn () s32 {
   foo := true;
   homo := 1 == 1;
 
-  if (foo == true) {
-    bar = 100;
+  if (foo || true) {
+    bar = 1;
   } else {
     bar = 200 + 1;
   }
@@ -16,9 +16,9 @@ main : fn () s32 {
   return bar;
 };
 
-/*hello : fn () s32 {
+hello : fn () s32 {
   return 1;
-};*/
+};
 
 /*
 fn ()			- fn type
@@ -26,3 +26,4 @@ hello : fn () extern; 	- external decl of type fn ()
 hello : fn () {}; 	- decl with body
 fn (i s32) {} (8); 	- anonymous function with direct call
 */
+
