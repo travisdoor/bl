@@ -56,12 +56,6 @@ union _MirInstr
   MirInstrUnop         unop;
 };
 
-#define push_curr_dependent(_cnt, _dep)                                                            \
-  MirInstr *const _prev_dep = (_cnt)->curr_dependent;                                              \
-  (_cnt)->curr_dependent    = (_dep);
-
-#define pop_curr_dependent(_cnt) (_cnt)->curr_dependent = _prev_dep;
-
 typedef enum
 {
   BUILDIN_TYPE_NONE = -1,
@@ -86,8 +80,7 @@ typedef struct
   Builder *  builder;
   Assembly * assembly;
   MirArenas *arenas;
-  BList *    analyze_stack;
-  MirInstr * curr_dependent;
+  BArray *   analyze_stack;
 
   struct
   {
@@ -136,7 +129,6 @@ exec_dtor(MirExec *exec)
 static void
 instr_dtor(MirInstr *instr)
 {
-  bo_unref(instr->deps);
   switch (instr->kind) {
   case MIR_INSTR_TYPE_FN:
     bo_unref(((MirInstrTypeFn *)instr)->arg_types);
@@ -329,13 +321,10 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
 
 /* analyze */
 static bool
-analyze_is_satisfied(Context *cnt, MirInstr *instr, bool strict_only);
+analyze_block(Context *cnt, MirBlock *block, bool comptime);
 
 static bool
-analyze_block(Context *cnt, MirBlock *block);
-
-static bool
-analyze_instr(Context *cnt, MirInstr *instr);
+analyze_instr(Context *cnt, MirInstr *instr, bool comptime);
 
 static bool
 analyze_instr_ret(Context *cnt, MirInstrRet *ret);
@@ -359,7 +348,7 @@ static bool
 analyze_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof);
 
 static bool
-analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime);
 
 static bool
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
@@ -380,7 +369,7 @@ static bool
 analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer);
 
 static bool
-analyze_instr_call(Context *cnt, MirInstrCall *call);
+analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime);
 
 static bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
@@ -540,26 +529,6 @@ error_no_impl_cast(Context *cnt, MirType *from, MirType *to, Ast *loc)
               "no implicit cast for type '%s' and '%s'", tmp_from, tmp_to);
 }
 
-static inline void
-add_dep_uq(MirInstr *dependent, MirInstr *dependency, MirDepKind kind)
-{
-  assert(dependent && dependency);
-  const uint64_t hash = (uint64_t)dependency;
-
-  if (!dependent->deps) {
-    dependent->deps = bo_htbl_new(sizeof(MirDep), 128);
-  } else {
-    if (bo_htbl_has_key(dependent->deps, hash)) {
-      MirDep *dep = &bo_htbl_at(dependent->deps, hash, MirDep);
-      if (dep->kind == MIR_DEP_LAX) dep->kind = kind;
-      return;
-    }
-  }
-
-  MirDep dep = {.kind = kind, .dep = dependency};
-  bo_htbl_insert(dependent->deps, hash, dep);
-}
-
 static inline MirInstr *
 add_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
@@ -574,21 +543,6 @@ add_instr_load_if_needed(Context *cnt, MirInstr *src)
   }
 
   return add_instr_load(cnt, NULL, src);
-}
-
-static inline void
-print_deps(MirInstr *instr)
-{
-  if (!instr->deps) return;
-  fprintf(stdout, "Analyze dependencies: \n");
-
-  bo_iterator_t it;
-  MirDep *      dep;
-  bhtbl_foreach(instr->deps, it)
-  {
-    dep = &bo_htbl_iter_peek_value(instr->deps, &it, MirDep);
-    fprintf(stdout, "  @%u: %s\n", dep->dep->id, dep->kind == MIR_DEP_STRICT ? "STRICT" : "LAX");
-  }
 }
 
 /* impl */
@@ -759,7 +713,7 @@ MirInstr *
 create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
-  tmp->base.id         = bo_list_size(cnt->analyze_stack);
+  tmp->base.id         = bo_array_size(cnt->analyze_stack);
   tmp->type            = type;
   tmp->user_type       = user_type;
 
@@ -839,7 +793,7 @@ MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 {
   MirInstr *tmp = create_instr_fn_proto(cnt, type, user_type, name);
-  bo_list_push_back(cnt->analyze_stack, tmp);
+  bo_array_push_back(cnt->analyze_stack, tmp);
   return tmp;
 }
 
@@ -1159,20 +1113,20 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 }
 
 bool
-analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
+analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 {
   MirBlock *prev_block = NULL;
 
   /* resolve type */
   if (!fn_proto->base.value.type) {
     assert(fn_proto->type && fn_proto->type->kind == MIR_INSTR_CALL);
-    analyze_instr(cnt, fn_proto->type);
+    analyze_instr(cnt, fn_proto->type, true);
     MirValue *type_val = exec_instr(cnt, fn_proto->type);
     assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
 
     if (fn_proto->user_type) {
       assert(fn_proto->user_type->kind == MIR_INSTR_CALL);
-      analyze_instr(cnt, fn_proto->user_type);
+      analyze_instr(cnt, fn_proto->user_type, true);
       MirValue *user_type_val = exec_instr(cnt, fn_proto->user_type);
       assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
 
@@ -1189,12 +1143,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   assert(fn_proto->base.value.data.v_fn);
   fn_proto->base.value.data.v_fn->type = fn_proto->base.value.type;
 
-  /* Print verbose information before analyze */
-  if (cnt->verbose) {
-    print_deps(&fn_proto->base);
-    mir_print_instr(&fn_proto->base, false);
-  }
-
   prev_block = get_current_block(cnt);
   MirFn *fn  = fn_proto->base.value.data.v_fn;
   assert(fn);
@@ -1202,13 +1150,12 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   assert(exec);
 
   MirBlock *tmp;
-  barray_foreach(exec->blocks, tmp) analyze_block(cnt, tmp);
-
-  /* Print verbose information after analyze */
-  if (cnt->verbose) {
-    mir_print_instr(&fn_proto->base, true);
-    fprintf(stdout,
-            "--------------------------------------------------------------------------------\n");
+  barray_foreach(exec->blocks, tmp)
+  {
+    if (comptime)
+      analyze_block(cnt, tmp, comptime);
+    else
+      bo_array_push_back(cnt->analyze_stack, tmp);
   }
 
   assert(prev_block);
@@ -1396,7 +1343,7 @@ bool
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
 {
   if (var->type) {
-    analyze_instr(cnt, var->type);
+    analyze_instr(cnt, var->type, true);
     MirValue *resolved_type_value = exec_instr(cnt, var->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
 
@@ -1412,9 +1359,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
 }
 
 bool
-analyze_instr_call(Context *cnt, MirInstrCall *call)
+analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 {
-  /* TODO */
+  assert(call->callee);
+  analyze_instr(cnt, call->callee, call->base.comptime || comptime);
   return true;
 }
 
@@ -1442,7 +1390,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 }
 
 bool
-analyze_instr(Context *cnt, MirInstr *instr)
+analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
 {
   if (!instr) return NULL;
 
@@ -1453,13 +1401,13 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
   switch (instr->kind) {
   case MIR_INSTR_FN_PROTO:
-    state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
+    state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, comptime);
     break;
   case MIR_INSTR_DECL_VAR:
     state = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
     break;
   case MIR_INSTR_CALL:
-    state = analyze_instr_call(cnt, (MirInstrCall *)instr);
+    state = analyze_instr_call(cnt, (MirInstrCall *)instr, comptime);
     break;
   case MIR_INSTR_CONST:
     state = analyze_instr_const(cnt, (MirInstrConst *)instr);
@@ -1509,7 +1457,7 @@ analyze_instr(Context *cnt, MirInstr *instr)
 }
 
 bool
-analyze_block(Context *cnt, MirBlock *block)
+analyze_block(Context *cnt, MirBlock *block, bool comptime)
 {
   assert(block);
   set_cursor_block(cnt, block);
@@ -1520,35 +1468,8 @@ analyze_block(Context *cnt, MirBlock *block)
 
   while (instr) {
     next = instr->next;
-    if (!analyze_instr(cnt, instr)) return false;
+    if (!analyze_instr(cnt, instr, comptime)) return false;
     instr = next;
-  }
-
-  return true;
-}
-
-bool
-analyze_is_satisfied(Context *cnt, MirInstr *instr, bool strict_only)
-{
-  assert(instr);
-  BHashTable *deps = instr->deps;
-  if (!deps) return true;
-
-  bo_iterator_t iter;
-  MirDep *      dep;
-  bhtbl_foreach(deps, iter)
-  {
-    dep = &bo_htbl_iter_peek_value(deps, &iter, MirDep);
-
-    // PERFORMANCE: is there some better solution than check whole tree???
-    const bool check_tree = (bool)(strict_only ? dep->kind & MIR_DEP_STRICT : true);
-    if (check_tree) {
-      if (!dep->dep->analyzed) {
-        return false;
-      } else if (!analyze_is_satisfied(cnt, dep->dep, false)) {
-        return false;
-      }
-    }
   }
 
   return true;
@@ -1557,18 +1478,32 @@ analyze_is_satisfied(Context *cnt, MirInstr *instr, bool strict_only)
 void
 analyze(Context *cnt)
 {
-  BList *   stack = cnt->analyze_stack;
+  BArray *  stack = cnt->analyze_stack;
   MirInstr *instr;
 
-  while (!bo_list_empty(stack)) {
-    instr = bo_list_front(stack, MirInstr *);
-    bo_list_pop_front(stack);
-    assert(instr);
+  if (cnt->verbose) {
+    barray_foreach(stack, instr)
+    {
+      /* Print verbose information before analyze */
+      if (instr->kind == MIR_INSTR_FN_PROTO) {
+        mir_print_instr(instr, false);
+      }
+    }
+  }
 
-    if (analyze_is_satisfied(cnt, instr, true)) {
-      analyze_instr(cnt, instr);
-    } else {
-      bo_list_push_back(stack, instr);
+  barray_foreach(stack, instr)
+  {
+    assert(instr);
+    analyze_instr(cnt, instr, false);
+  }
+
+  if (cnt->verbose) {
+    barray_foreach(stack, instr)
+    {
+      /* Print verbose information before analyze */
+      if (instr->kind == MIR_INSTR_FN_PROTO) {
+        mir_print_instr(instr, false);
+      }
     }
   }
 }
@@ -1578,7 +1513,7 @@ MirValue *
 exec_instr(Context *cnt, MirInstr *instr)
 {
   if (!instr) return NULL;
-  assert(instr->analyzed);
+  if (!instr->analyzed) bl_abort("instruction %s has not been analyzed!", instr_name(instr));
 
   switch (instr->kind) {
   case MIR_INSTR_CONST:
@@ -2018,7 +1953,6 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   /* TODO: external function has no body!!! */
   assert(ast_block);
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, lit_fn);
-  push_curr_dependent(cnt, &fn_proto->base);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
@@ -2031,7 +1965,6 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   /* generate body instructions */
   ast(cnt, ast_block);
 
-  pop_curr_dependent(cnt);
   set_cursor_block(cnt, prev_block);
   return &fn_proto->base;
 }
@@ -2097,9 +2030,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     scope_entry->instr = value;
 
     if (ast_type) {
-      push_curr_dependent(cnt, value);
       ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
-      pop_curr_dependent(cnt);
     }
 
     if (is_entry_fn(ast_name)) {
@@ -2187,7 +2118,6 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   add_instr_ret(cnt, NULL, result);
 
   set_cursor_block(cnt, prev_block);
-  add_dep_uq(cnt->curr_dependent, fn, MIR_DEP_STRICT);
   return create_instr_call_type_resolve(cnt, fn, type);
 }
 
@@ -2425,7 +2355,7 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.assembly      = assembly;
   cnt.arenas        = &builder->mir_arenas;
   cnt.verbose       = builder->flags & BUILDER_VERBOSE;
-  cnt.analyze_stack = bo_list_new(sizeof(MirInstr *));
+  cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
   cnt.llvm_cnt      = LLVMContextCreate();
   cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
   cnt.llvm_td       = LLVMGetModuleDataLayout(cnt.llvm_module);
@@ -2433,6 +2363,7 @@ mir_run(Builder *builder, Assembly *assembly)
   init_buildins(&cnt);
 
   entry_fn_hash = bo_hash_from_str(entry_fn_name);
+  bo_array_reserve(cnt.analyze_stack, 1024);
 
   Unit *unit;
   barray_foreach(assembly->units, unit)

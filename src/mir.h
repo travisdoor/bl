@@ -66,8 +66,6 @@ typedef struct MirInstrBr          MirInstrBr;
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
 
-typedef struct MirDep MirDep;
-
 /* ALLOCATORS */
 struct MirArenas
 {
@@ -198,18 +196,6 @@ typedef enum
   MIR_INSTR_TRY_INFER,
 } MirInstrKind;
 
-typedef enum
-{
-  MIR_DEP_LAX,
-  MIR_DEP_STRICT,
-} MirDepKind;
-
-struct MirDep
-{
-  MirDepKind kind;
-  MirInstr * dep;
-};
-
 struct MirInstr
 {
   MirValue     value;
@@ -218,7 +204,6 @@ struct MirInstr
   LLVMValueRef llvm_value;
   Ast *        node;
   MirBlock *   owner_block;
-  BHashTable * deps;
 
   int  ref_count;
   bool analyzed;
