@@ -39,7 +39,6 @@ struct Assembly;
 struct Builder;
 
 typedef struct MirArenas MirArenas;
-typedef struct MirBlock  MirBlock;
 typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
@@ -47,6 +46,7 @@ typedef struct MirFn     MirFn;
 typedef struct MirValue  MirValue;
 
 typedef struct MirInstr            MirInstr;
+typedef struct MirInstrBlock       MirInstrBlock;
 typedef struct MirInstrDeclVar     MirInstrDeclVar;
 typedef struct MirInstrConst       MirInstrConst;
 typedef struct MirInstrLoad        MirInstrLoad;
@@ -66,13 +66,10 @@ typedef struct MirInstrBr          MirInstrBr;
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
 
-typedef struct MirDep MirDep;
-
 /* ALLOCATORS */
 struct MirArenas
 {
   Arena instr_arena;
-  Arena block_arena;
   Arena type_arena;
   Arena exec_arena;
   Arena var_arena;
@@ -84,21 +81,9 @@ struct MirArenas
  * compile time executed block */
 struct MirExec
 {
-  BArray *  blocks;
-  MirBlock *entry_block;
-  MirFn *   owner_fn;
-};
-
-/* BASIC BLOCK */
-struct MirBlock
-{
-  const char *name;
-  unsigned    id;
-  MirInstr *  entry_instr;
-  MirInstr *  last_instr;
-  int         count_instr;
-  MirInstr *  terminal;
-  MirExec *   owner_exec;
+  BArray *       blocks;
+  MirInstrBlock *entry_block;
+  MirFn *        owner_fn;
 };
 
 /* VAR */
@@ -178,6 +163,7 @@ struct MirValue
 typedef enum
 {
   MIR_INSTR_INVALID,
+  MIR_INSTR_BLOCK,
   MIR_INSTR_DECL_VAR,
   MIR_INSTR_CONST,
   MIR_INSTR_LOAD,
@@ -198,27 +184,14 @@ typedef enum
   MIR_INSTR_TRY_INFER,
 } MirInstrKind;
 
-typedef enum
-{
-  MIR_DEP_LAX,
-  MIR_DEP_STRICT,
-} MirDepKind;
-
-struct MirDep
-{
-  MirDepKind kind;
-  MirInstr * dep;
-};
-
 struct MirInstr
 {
-  MirValue     value;
-  MirInstrKind kind;
-  unsigned     id;
-  LLVMValueRef llvm_value;
-  Ast *        node;
-  MirBlock *   owner_block;
-  BHashTable * deps;
+  MirValue       value;
+  MirInstrKind   kind;
+  unsigned       id;
+  LLVMValueRef   llvm_value;
+  Ast *          node;
+  MirInstrBlock *owner_block;
 
   int  ref_count;
   bool analyzed;
@@ -226,6 +199,18 @@ struct MirInstr
 
   MirInstr *prev;
   MirInstr *next;
+};
+
+struct MirInstrBlock
+{
+  MirInstr base;
+
+  const char *name;
+  MirInstr *  entry_instr;
+  MirInstr *  last_instr;
+  int         count_instr;
+  MirInstr *  terminal;
+  MirExec *   owner_exec;
 };
 
 struct MirInstrDeclVar
@@ -325,16 +310,16 @@ struct MirInstrCondBr
 {
   MirInstr base;
 
-  MirInstr *cond;
-  MirBlock *then_block;
-  MirBlock *else_block;
+  MirInstr *     cond;
+  MirInstrBlock *then_block;
+  MirInstrBlock *else_block;
 };
 
 struct MirInstrBr
 {
   MirInstr base;
 
-  MirBlock *then_block;
+  MirInstrBlock *then_block;
 };
 
 /* analyze helper instructions */
