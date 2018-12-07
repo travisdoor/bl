@@ -42,17 +42,19 @@ print_help(void)
   fprintf(stdout, "Usage\n\n"
                   "  blc [options] <source-files>\n\n"
                   "Options\n"
-                  "  -h, -help       = Print usage information and exit.\n"
-                  "  -ast-dump       = Print AST.\n"
-                  "  -lex-dump       = Print output of lexer.\n"
-                  "  -syntax-only    = Check syntax and exit.\n"
-                  "  -emit-llvm      = Write LLVM-IR to file.\n"
-                  "  -run            = Execute 'main' method in compile time.\n"
-                  "  -run-tests      = Execute all unit tests in compile time.\n"
-                  "  -no-bin         = Don't write binary to disk.\n"
-                  "  -no-warning     = Ignore all warnings.\n"
-                  "  -verbose        = Verbose mode.\n"
-                  "  -no-api         = Don't load internal api.\n\n"
+                  "  -h, -help         = Print usage information and exit.\n"
+                  "  -ast-dump         = Print AST.\n"
+                  "  -lex-dump         = Print output of lexer.\n"
+                  "  -syntax-only      = Check syntax and exit.\n"
+                  "  -emit-llvm        = Write LLVM-IR to file.\n"
+                  "  -run              = Execute 'main' method in compile time.\n"
+                  "  -run-tests        = Execute all unit tests in compile time.\n"
+                  "  -no-bin           = Don't write binary to disk.\n"
+                  "  -no-warning       = Ignore all warnings.\n"
+                  "  -verbose          = Verbose mode.\n"
+                  "  -verbose-mir-pre  = Verbose mode, MIR pre analyze.\n"
+                  "  -verbose-mir-post = Verbose mode, MIR post analyze.\n"
+                  "  -no-api           = Don't load internal api.\n\n"
 
   );
 }
@@ -89,6 +91,10 @@ main(int argc, char *argv[])
       build_flags |= BUILDER_NO_WARN;
     } else if (strcmp(&argv[optind][1], "verbose") == 0) {
       build_flags |= BUILDER_VERBOSE;
+    } else if (strcmp(&argv[optind][1], "verbose-mir-pre") == 0) {
+      build_flags |= BUILDER_VERBOSE_MIR_PRE;
+    } else if (strcmp(&argv[optind][1], "verbose-mir-post") == 0) {
+      build_flags |= BUILDER_VERBOSE_MIR_POST;
     } else if (strcmp(&argv[optind][1], "no-api") == 0) {
       build_flags |= BUILDER_NO_API;
     } else {

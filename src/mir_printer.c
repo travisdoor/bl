@@ -71,13 +71,13 @@ static void
 print_instr_try_infer(MirInstrTryInfer *infer);
 
 static void
-print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed);
+print_instr_fn_proto(MirInstrFnProto *fn_proto);
 
 static void
 print_instr_type_fn(MirInstrTypeFn *type_fn);
 
 static void
-print_block(MirBlock *block);
+print_instr_block(MirInstrBlock *block);
 
 static void
 print_instr_decl_var(MirInstrDeclVar *decl);
@@ -146,8 +146,8 @@ print_instr_cond_br(MirInstrCondBr *cond_br)
 {
   print_instr_head(&cond_br->base);
   fprintf(stdout, INSTR_COLOR("br") " %%%u ? " BLOCK_COLOR("%s_%u") " : " BLOCK_COLOR("%s_%u"),
-          cond_br->cond->id, cond_br->then_block->name, cond_br->then_block->id,
-          cond_br->else_block->name, cond_br->else_block->id);
+          cond_br->cond->id, cond_br->then_block->name, cond_br->then_block->base.id,
+          cond_br->else_block->name, cond_br->else_block->base.id);
 }
 
 void
@@ -155,7 +155,7 @@ print_instr_br(MirInstrBr *br)
 {
   print_instr_head(&br->base);
   fprintf(stdout, INSTR_COLOR("br") BLOCK_COLOR(" %s_%d"), br->then_block->name,
-          br->then_block->id);
+          br->then_block->base.id);
 }
 
 void
@@ -235,13 +235,7 @@ print_instr_call(MirInstrCall *call)
 {
   print_instr_head(&call->base);
 
-  fprintf(stdout, INSTR_COLOR("call "));
-  if (call->callee->node) {
-    assert(call->callee->node->kind == AST_IDENT);
-    fprintf(stdout, "@%s", call->callee->node->data.ident.str);
-  } else {
-    fprintf(stdout, "@%u", call->callee->id);
-  }
+  fprintf(stdout, INSTR_COLOR("call ") "%%%u", call->callee->id);
 
   fprintf(stdout, "(");
   if (call->args) {
@@ -290,20 +284,20 @@ print_instr_binop(MirInstrBinop *binop)
 }
 
 void
-print_block(MirBlock *block)
+print_instr_block(MirInstrBlock *block)
 {
-  fprintf(stdout, BLOCK_COLOR("%s_%u:\n"), block->name, block->id);
+  fprintf(stdout, BLOCK_COLOR("%s_%u:\n"), block->name, block->base.id);
 
   MirInstr *tmp = block->entry_instr;
 
   while (tmp) {
-    mir_print_instr(tmp, false);
+    mir_print_instr(tmp);
     tmp = tmp->next;
   }
 }
 
 void
-print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
+print_instr_fn_proto(MirInstrFnProto *fn_proto)
 {
   if (fn_proto->base.node)
     fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
@@ -315,16 +309,16 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, bool analyzed)
 
   MirFn *fn = fn_proto->base.value.data.v_fn;
   if (fn) {
-    MirBlock *tmp;
-    fprintf(stdout, " { %s\n", analyzed ? GREEN("// ANALYZED") : "");
-    barray_foreach(fn->exec->blocks, tmp) print_block(tmp);
+    MirInstrBlock *tmp;
+    fprintf(stdout, " { %s\n", fn_proto->base.analyzed ? GREEN("// ANALYZED") : "");
+    barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp);
     fprintf(stdout, "}\n");
   }
 }
 
 /* public */
 void
-mir_print_instr(MirInstr *instr, bool analyzed)
+mir_print_instr(MirInstr *instr)
 {
   switch (instr->kind) {
   case MIR_INSTR_INVALID:
@@ -358,7 +352,7 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     print_instr_call((MirInstrCall *)instr);
     break;
   case MIR_INSTR_FN_PROTO:
-    print_instr_fn_proto((MirInstrFnProto *)instr, analyzed);
+    print_instr_fn_proto((MirInstrFnProto *)instr);
     break;
   case MIR_INSTR_DECL_REF:
     print_instr_decl_ref((MirInstrDeclRef *)instr);
@@ -380,6 +374,8 @@ mir_print_instr(MirInstr *instr, bool analyzed)
     break;
   case MIR_INSTR_UNOP:
     print_instr_unop((MirInstrUnop *)instr);
+    break;
+  case MIR_INSTR_BLOCK:
     break;
   }
   fprintf(stdout, "\n");

@@ -5,10 +5,9 @@ main : fn () s32 {
   bar = (20 - 5) * bar;
 
   foo := true;
-  homo := 1 == 1;
 
-  if (foo || true) {
-    bar = 1;
+  if (foo) {
+    bar = hello();
   } else {
     bar = 200 + 1;
   }
@@ -17,13 +16,7 @@ main : fn () s32 {
 };
 
 hello : fn () s32 {
-  return 1;
+  foo := 2 + 2;
+  return foo;
 };
-
-/*
-fn ()			- fn type
-hello : fn () extern; 	- external decl of type fn ()
-hello : fn () {}; 	- decl with body
-fn (i s32) {} (8); 	- anonymous function with direct call
-*/
 
