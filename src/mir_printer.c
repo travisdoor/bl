@@ -243,7 +243,7 @@ print_instr_call(MirInstrCall *call)
     barray_foreach(call->args, tmp)
     {
       fprintf(stdout, "%%%u", tmp->id);
-      if (i != bo_array_size(call->args)) fprintf(stdout, ", ");
+      if (i < bo_array_size(call->args) - 1) fprintf(stdout, ", ");
     }
   }
   fprintf(stdout, ")");

@@ -134,6 +134,12 @@ instr_dtor(MirInstr *instr)
   case MIR_INSTR_TYPE_FN:
     bo_unref(((MirInstrTypeFn *)instr)->arg_types);
     break;
+  case MIR_INSTR_FN_PROTO:
+    bo_unref(((MirInstrFnProto *)instr)->arg_slots);
+    break;
+  case MIR_INSTR_CALL:
+    bo_unref(((MirInstrCall *)instr)->args);
+    break;
   default:
     break;
   }
@@ -211,7 +217,8 @@ static MirInstr *
 create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
 
 static MirInstr *
-create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
+create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots,
+                      Ast *name);
 
 static MirInstr *
 add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
@@ -233,13 +240,16 @@ static MirInstr *
 add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *decl);
 
 static MirInstr *
-add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
+add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots, Ast *name);
 
 static MirInstr *
 add_instr_decl_ref(Context *cnt, Ast *node);
 
 static MirInstr *
 add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
+
+static MirInstr *
+create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
 
 static MirInstr *
 add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
@@ -289,6 +299,9 @@ ast_stmt_return(Context *cnt, Ast *ret);
 
 static MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity);
+
+static MirInstr *
+ast_decl_arg(Context *cnt, Ast *arg);
 
 static MirInstr *
 ast_type_ref(Context *cnt, Ast *type_ref);
@@ -712,12 +725,14 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
 }
 
 MirInstr *
-create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
+create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots,
+                      Ast *name)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
   tmp->base.id         = bo_array_size(cnt->analyze_stack);
   tmp->type            = type;
   tmp->user_type       = user_type;
+  tmp->arg_slots       = arg_slots;
 
   return &tmp->base;
 }
@@ -792,9 +807,9 @@ add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
 }
 
 MirInstr *
-add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
+add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots, Ast *name)
 {
-  MirInstr *tmp = create_instr_fn_proto(cnt, type, user_type, name);
+  MirInstr *tmp = create_instr_fn_proto(cnt, type, user_type, arg_slots, name);
   bo_array_push_back(cnt->analyze_stack, tmp);
   return tmp;
 }
@@ -821,7 +836,7 @@ add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 }
 
 MirInstr *
-add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
+create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
 {
   if (type) ++type->ref_count;
   MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, name, MirInstrDeclVar *);
@@ -829,9 +844,15 @@ add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
 
   MirVar *var = create_var(cnt, name);
   tmp->var    = var;
-
-  push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
+}
+
+MirInstr *
+add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
+{
+  MirInstr *tmp = create_instr_decl_var(cnt, type, name);
+  push_into_curr_block(cnt, tmp);
+  return tmp;
 }
 
 MirInstr *
@@ -1144,7 +1165,21 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
       }
     }
 
+    assert(type_val->data.v_type->kind = MIR_TYPE_FN);
     fn_proto->base.value.type = type_val->data.v_type;
+
+    /* setup types for arg slots */
+    if (fn_proto->arg_slots) {
+      BArray *types = type_val->data.v_type->data.fn.arg_types;
+      assert(types);
+      assert(types && (bo_array_size(types) == bo_array_size(fn_proto->arg_slots)));
+      MirInstr *arg;
+      barray_foreach(fn_proto->arg_slots, arg)
+      {
+        arg->value.type = bo_array_at(types, i, MirType *);
+        arg->analyzed   = true;
+      }
+    }
   }
 
   assert(fn_proto->base.value.type && "function has no valid type");
@@ -1215,7 +1250,12 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   assert(type_fn->base.value.type);
 
   /* TODO analyze args */
-  if (type_fn->arg_types) bl_abort("unimplemented");
+  /* TODO analyze args */
+  /* TODO analyze args */
+  /* TODO analyze args */
+  /* TODO analyze args */
+  if (type_fn->arg_types) {
+  }
 
   if (type_fn->ret_type) {
     assert(type_fn->ret_type->analyzed);
@@ -1390,6 +1430,24 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   MirType *result_type = type->data.fn.ret_type;
   assert(result_type && "invalid type of call result");
   call->base.value.type = result_type;
+
+  /* validate arguments */
+  const size_t callee_argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
+  const size_t call_argc   = call->args ? bo_array_size(call->args) : 0;
+  if (callee_argc != call_argc) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, call->base.node->src,
+                BUILDER_CUR_WORD, "expected %u %s, but called with %u", callee_argc,
+                callee_argc == 1 ? "argument" : "arguments", call_argc);
+    return false;
+  }
+
+  if (call_argc) {
+    /* TODO check arg types */
+    /* TODO check arg types */
+    /* TODO check arg types */
+    /* TODO check arg types */
+    /* TODO check arg types */
+  }
 
   return true;
 }
@@ -1662,7 +1720,16 @@ exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
   BArray *arg_types = NULL;
   if (type_fn->arg_types) {
-    bl_abort("unimplemented");
+    arg_types = bo_array_new(sizeof(MirType *));
+    bo_array_reserve(arg_types, bo_array_size(type_fn->arg_types));
+
+    MirInstr *arg_type;
+    MirType * tmp;
+    barray_foreach(type_fn->arg_types, arg_type)
+    {
+      tmp = arg_type->value.data.v_type;
+      bo_array_push_back(arg_types, tmp);
+    }
   }
 
   type_fn->base.value.data.v_type = create_type_fn(cnt, ret_type, arg_types);
@@ -1957,9 +2024,26 @@ ast_expr_lit_bool(Context *cnt, Ast *expr)
 MirInstr *
 ast_expr_call(Context *cnt, Ast *call)
 {
-  assert(call->data.expr_call.ref);
-  MirInstr *callee = ast(cnt, call->data.expr_call.ref);
-  return add_instr_call(cnt, call, callee, NULL);
+  Ast *   ast_callee = call->data.expr_call.ref;
+  BArray *ast_args   = call->data.expr_call.args;
+  assert(ast_callee);
+
+  MirInstr *callee = ast(cnt, ast_callee);
+  BArray *  args   = NULL;
+
+  if (ast_args) {
+    args = bo_array_new(sizeof(MirInstr *));
+    bo_array_reserve(args, bo_array_size(ast_args));
+    MirInstr *arg;
+    Ast *     ast_arg;
+    barray_foreach(ast_args, ast_arg)
+    {
+      arg = ast(cnt, ast_arg);
+      bo_array_push_back(args, arg);
+    }
+  }
+
+  return add_instr_call(cnt, call, callee, args);
 }
 
 MirInstr *
@@ -1977,9 +2061,37 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   Ast *ast_block   = lit_fn->data.expr_fn.block;
   Ast *ast_fn_type = lit_fn->data.expr_fn.type;
 
+  /* create arg slots for the function */
+  BArray *ast_args  = ast_fn_type->data.type_fn.args;
+  BArray *arg_slots = NULL;
+  if (ast_args) {
+    arg_slots = bo_array_new(sizeof(MirInstr *));
+    bo_array_reserve(arg_slots, bo_array_size(ast_args));
+
+    Ast *     ast_arg;
+    Ast *     ast_arg_name;
+    MirInstr *arg;
+    barray_foreach(ast_args, ast_arg)
+    {
+      assert(ast_arg->kind == AST_DECL_ARG);
+      ast_arg_name = ast_arg->data.decl.name;
+      assert(ast_arg_name);
+
+      arg = create_instr_decl_var(cnt, NULL, ast_arg_name);
+      bo_array_push_back(arg_slots, arg);
+
+      Scope *scope = ast_arg_name->data.ident.scope;
+      assert(scope);
+      ScopeEntry *scope_entry = scope_lookup(scope, ast_arg_name->data.ident.hash, true);
+      assert(scope_entry && "declaration has no scope entry");
+      scope_entry->instr = arg;
+    }
+  }
+
   /* TODO: external function has no body!!! */
   assert(ast_block);
-  MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, lit_fn);
+  MirInstrFnProto *fn_proto =
+      (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, arg_slots, lit_fn);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
@@ -2060,6 +2172,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
       ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
     }
 
+    /* check main */
     if (is_entry_fn(ast_name)) {
       assert(!cnt->entry_fn);
       cnt->entry_fn = value;
@@ -2082,6 +2195,16 @@ ast_decl_entity(Context *cnt, Ast *entity)
   }
 
   return NULL;
+}
+
+MirInstr *
+ast_decl_arg(Context *cnt, Ast *arg)
+{
+  Ast *ast_type = arg->data.decl.type;
+
+  assert(ast_type);
+  MirInstr *type = ast(cnt, ast_type);
+  return type;
 }
 
 MirInstr *
@@ -2109,7 +2232,11 @@ ast_type_fn(Context *cnt, Ast *type_fn)
   BArray *ast_arg_types = type_fn->data.type_fn.args;
 
   /* return type */
-  MirInstr *ret_type = ast_ret_type ? ast(cnt, ast_ret_type) : NULL;
+  MirInstr *ret_type = NULL;
+  if (ast_ret_type) {
+    ret_type = ast(cnt, ast_ret_type);
+    ret_type->ref_count++;
+  }
 
   BArray *arg_types = NULL;
   if (ast_arg_types && bo_array_size(ast_arg_types)) {
@@ -2122,6 +2249,7 @@ ast_type_fn(Context *cnt, Ast *type_fn)
     for (size_t i = 0; i < c; ++i) {
       ast_arg_type = bo_array_at(ast_arg_types, i, Ast *);
       arg_type     = ast(cnt, ast_arg_type);
+      arg_type->ref_count++;
       bo_array_push_back(arg_types, arg_type);
     }
   }
@@ -2134,7 +2262,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
 {
   if (!type) return NULL;
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL);
+  MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
   fn->value.data.v_fn       = create_fn(cnt);
 
@@ -2167,6 +2295,8 @@ ast(Context *cnt, Ast *node)
     break;
   case AST_DECL_ENTITY:
     return ast_decl_entity(cnt, node);
+  case AST_DECL_ARG:
+    return ast_decl_arg(cnt, node);
   case AST_TYPE_REF:
     return ast_type_ref(cnt, node);
   case AST_TYPE_FN:
@@ -2296,7 +2426,7 @@ _type_to_str(char *buf, size_t len, MirType *type)
       barray_foreach(args, tmp)
       {
         _type_to_str(buf, len, tmp);
-        if (i < bo_array_size(args)) append_buf(buf, len, ", ");
+        if (i < bo_array_size(args) - 1) append_buf(buf, len, ", ");
       }
     }
 

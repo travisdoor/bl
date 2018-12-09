@@ -12,11 +12,19 @@ main : fn () s32 {
     bar = 200 + 1;
   }
 
+  result := get(1, true);
+
   return bar;
 };
 
 hello : fn () s32 {
   foo := 2 + 2;
   return foo;
+};
+
+get : fn (i s32, b bool) s32 {
+  i = 0;
+  b = true;
+  return 0;
 };
 
