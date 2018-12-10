@@ -236,7 +236,7 @@ static MirInstr *
 add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
 
 static MirInstr *
-add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *decl);
+add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *dest);
 
 static MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
@@ -686,8 +686,6 @@ erase_from_curr_block(Context *cnt, MirInstr *instr)
   instr->next = NULL;
 }
 
-#define create_instr(_cnt, _kind, _node, _t) ((_t)_create_instr((_cnt), (_kind), (_node)))
-
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
@@ -707,7 +705,7 @@ append_block(Context *cnt, MirFn *fn, const char *name)
   tmp->owner_exec    = fn->exec;
 
   if (!tmp->owner_exec->entry_block) tmp->owner_exec->entry_block = tmp;
-  tmp->base.id = bo_array_size(tmp->owner_exec->blocks);
+  tmp->base.id = (int)bo_array_size(tmp->owner_exec->blocks);
   bo_array_push_back(tmp->owner_exec->blocks, tmp);
   return tmp;
 }
@@ -797,7 +795,7 @@ MirInstr *
 add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
-  tmp->base.id         = bo_array_size(cnt->analyze_stack);
+  tmp->base.id         = (int)bo_array_size(cnt->analyze_stack);
   tmp->type            = type;
   tmp->user_type       = user_type;
 
@@ -852,7 +850,7 @@ add_instr_const_int(Context *cnt, Ast *node, uint64_t val)
   MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime         = true;
   tmp->value.type       = cnt->buildin_types.entry_s32;
-  tmp->value.data.v_int = val;
+  tmp->value.data.v_int = (long long int)val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -986,7 +984,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   }
 
   case MIR_TYPE_INT: {
-    result = LLVMIntTypeInContext(cnt->llvm_cnt, type->data.integer.bitcount);
+    result = LLVMIntTypeInContext(cnt->llvm_cnt, (unsigned int)type->data.integer.bitcount);
     if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->llvm_td, result);
     break;
   }
@@ -1028,7 +1026,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
     llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->llvm_cnt);
     assert(llvm_ret);
 
-    result = LLVMFunctionType(llvm_ret, llvm_args, cargs, false);
+    result = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
     if (out_size) *out_size = 0;
     bl_free(llvm_args);
     break;
@@ -1190,8 +1188,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   {
     if (comptime)
       analyze_instr_block(cnt, tmp, comptime);
-    else
+    else {
+      /* TODO: blocks can be used as linked list, only first one must be pushed into analyze_stack
+       */
       bo_array_push_back(cnt->analyze_stack, tmp);
+    }
   }
 
   assert(prev_block);
@@ -1491,7 +1492,7 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   /* skip already analyzed instructions */
   if (instr->analyzed) return instr;
   instr->analyzed = true;
-  bool state      = false;
+  bool state;
 
   switch (instr->kind) {
   case MIR_INSTR_BLOCK:
@@ -2385,7 +2386,7 @@ mir_arenas_terminate(MirArenas *arenas)
 }
 
 static void
-_type_to_str(char *buf, size_t len, MirType *type)
+_type_to_str(char *buf, int len, MirType *type)
 {
 #define append_buf(buf, len, str)                                                                  \
   {                                                                                                \
@@ -2503,8 +2504,8 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.builder       = builder;
   cnt.assembly      = assembly;
   cnt.arenas        = &builder->mir_arenas;
-  cnt.verbose_pre   = (bool) (builder->flags & BUILDER_VERBOSE_MIR_PRE);
-  cnt.verbose_post  = (bool) (builder->flags & BUILDER_VERBOSE_MIR_POST);
+  cnt.verbose_pre   = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
+  cnt.verbose_post  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
   cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
   cnt.llvm_cnt      = LLVMContextCreate();
   cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
