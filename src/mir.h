@@ -98,6 +98,9 @@ struct MirFn
 {
   MirType *type;
   MirExec *exec;
+
+  BArray *arg_slots;
+  void *  extern_entry;
 };
 
 /* TYPE */
@@ -188,7 +191,7 @@ struct MirInstr
 {
   MirValue       value;
   MirInstrKind   kind;
-  unsigned       id;
+  int            id;
   LLVMValueRef   llvm_value;
   Ast *          node;
   MirInstrBlock *owner_block;
@@ -271,7 +274,6 @@ struct MirInstrFnProto
 
   MirInstr *type;
   MirInstr *user_type;
-  BArray *  arg_slots;
 };
 
 struct MirInstrTypeFn

@@ -128,14 +128,17 @@ exec_dtor(MirExec *exec)
 }
 
 static void
+fn_dtor(MirFn *fn)
+{
+  bo_unref(fn->arg_slots);
+}
+
+static void
 instr_dtor(MirInstr *instr)
 {
   switch (instr->kind) {
   case MIR_INSTR_TYPE_FN:
     bo_unref(((MirInstrTypeFn *)instr)->arg_types);
-    break;
-  case MIR_INSTR_FN_PROTO:
-    bo_unref(((MirInstrFnProto *)instr)->arg_slots);
     break;
   case MIR_INSTR_CALL:
     bo_unref(((MirInstrCall *)instr)->args);
@@ -196,7 +199,7 @@ static MirExec *
 create_exec(Context *cnt, MirFn *owner_fn);
 
 static MirFn *
-create_fn(Context *cnt);
+create_fn(Context *cnt, BArray *arg_slots);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -215,10 +218,6 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
 create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
-
-static MirInstr *
-create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots,
-                      Ast *name);
 
 static MirInstr *
 add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
@@ -240,7 +239,7 @@ static MirInstr *
 add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *decl);
 
 static MirInstr *
-add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots, Ast *name);
+add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name);
 
 static MirInstr *
 add_instr_decl_ref(Context *cnt, Ast *node);
@@ -647,10 +646,11 @@ create_exec(Context *cnt, MirFn *owner_fn)
 }
 
 MirFn *
-create_fn(Context *cnt)
+create_fn(Context *cnt, BArray *arg_slots)
 {
-  MirFn *tmp = arena_alloc(&cnt->arenas->fn_arena);
-  tmp->exec  = create_exec(cnt, tmp);
+  MirFn *tmp     = arena_alloc(&cnt->arenas->fn_arena);
+  tmp->exec      = create_exec(cnt, tmp);
+  tmp->arg_slots = arg_slots;
   return tmp;
 }
 
@@ -725,19 +725,6 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
 }
 
 MirInstr *
-create_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots,
-                      Ast *name)
-{
-  MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
-  tmp->base.id         = bo_array_size(cnt->analyze_stack);
-  tmp->type            = type;
-  tmp->user_type       = user_type;
-  tmp->arg_slots       = arg_slots;
-
-  return &tmp->base;
-}
-
-MirInstr *
 add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types)
 {
   MirInstrTypeFn *tmp  = create_instr(cnt, MIR_INSTR_TYPE_FN, node, MirInstrTypeFn *);
@@ -807,11 +794,15 @@ add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
 }
 
 MirInstr *
-add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, BArray *arg_slots, Ast *name)
+add_instr_fn_proto(Context *cnt, MirInstr *type, MirInstr *user_type, Ast *name)
 {
-  MirInstr *tmp = create_instr_fn_proto(cnt, type, user_type, arg_slots, name);
+  MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, name, MirInstrFnProto *);
+  tmp->base.id         = bo_array_size(cnt->analyze_stack);
+  tmp->type            = type;
+  tmp->user_type       = user_type;
+
   bo_array_push_back(cnt->analyze_stack, tmp);
-  return tmp;
+  return &tmp->base;
 }
 
 MirInstr *
@@ -1165,32 +1156,34 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
       }
     }
 
-    assert(type_val->data.v_type->kind = MIR_TYPE_FN);
+    assert(type_val->data.v_type->kind == MIR_TYPE_FN);
     fn_proto->base.value.type = type_val->data.v_type;
-
-    /* setup types for arg slots */
-    if (fn_proto->arg_slots) {
-      BArray *types = type_val->data.v_type->data.fn.arg_types;
-      assert(types);
-      assert(types && (bo_array_size(types) == bo_array_size(fn_proto->arg_slots)));
-      MirInstr *arg;
-      barray_foreach(fn_proto->arg_slots, arg)
-      {
-        arg->value.type = bo_array_at(types, i, MirType *);
-        arg->analyzed   = true;
-      }
-    }
   }
 
-  assert(fn_proto->base.value.type && "function has no valid type");
-  assert(fn_proto->base.value.data.v_fn);
-  fn_proto->base.value.data.v_fn->type = fn_proto->base.value.type;
+  MirValue *value = &fn_proto->base.value;
+
+  assert(value->type && "function has no valid type");
+  assert(value->data.v_fn);
+  value->data.v_fn->type = fn_proto->base.value.type;
 
   prev_block = get_current_block(cnt);
   MirFn *fn  = fn_proto->base.value.data.v_fn;
   assert(fn);
   MirExec *exec = fn->exec;
   assert(exec);
+
+  /* setup types for arg slots */
+  if (fn->arg_slots) {
+    BArray *types = value->type->data.fn.arg_types;
+    assert(types);
+    assert(types && (bo_array_size(types) == bo_array_size(fn->arg_slots)));
+    MirInstr *arg;
+    barray_foreach(fn->arg_slots, arg)
+    {
+      arg->value.type = bo_array_at(types, i, MirType *);
+      arg->analyzed   = true;
+    }
+  }
 
   MirInstrBlock *tmp;
   barray_foreach(exec->blocks, tmp)
@@ -1248,15 +1241,6 @@ bool
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
   assert(type_fn->base.value.type);
-
-  /* TODO analyze args */
-  /* TODO analyze args */
-  /* TODO analyze args */
-  /* TODO analyze args */
-  /* TODO analyze args */
-  if (type_fn->arg_types) {
-  }
-
   if (type_fn->ret_type) {
     assert(type_fn->ret_type->analyzed);
   }
@@ -1441,12 +1425,17 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
     return false;
   }
 
+  /* validate argument types */
   if (call_argc) {
-    /* TODO check arg types */
-    /* TODO check arg types */
-    /* TODO check arg types */
-    /* TODO check arg types */
-    /* TODO check arg types */
+    MirInstr *call_arg;
+    MirType * callee_arg_type;
+    barray_foreach(call->args, call_arg)
+    {
+      callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
+      if (!type_cmp(call_arg->value.type, callee_arg_type)) {
+        error_no_impl_cast(cnt, call_arg->value.type, callee_arg_type, call_arg->node);
+      }
+    }
   }
 
   return true;
@@ -1767,7 +1756,10 @@ exec_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 MirValue *
 exec_instr_call(Context *cnt, MirInstrCall *call)
 {
-  assert(call->callee);
+  bl_log("call: %s", instr_name(call->callee));
+  // assert(call->callee && call->callee->kind == MIR_INSTR_FN_PROTO);
+  // MirInstrFnProto *callee = call->callee;
+
   MirValue *result = exec_instr_fn_proto(cnt, (MirInstrFnProto *)call->callee);
   assert(result);
 
@@ -2090,14 +2082,14 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
   /* TODO: external function has no body!!! */
   assert(ast_block);
-  MirInstrFnProto *fn_proto =
-      (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, arg_slots, lit_fn);
+  MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, lit_fn);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block      = get_current_block(cnt);
-  fn_proto->base.value.data.v_fn = create_fn(cnt);
+  MirFn *        fn              = create_fn(cnt, arg_slots);
+  fn_proto->base.value.data.v_fn = fn;
   MirInstrBlock *entry_block     = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
@@ -2262,9 +2254,9 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
 {
   if (!type) return NULL;
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL, NULL);
+  MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
-  fn->value.data.v_fn       = create_fn(cnt);
+  fn->value.data.v_fn       = create_fn(cnt, NULL);
 
   MirInstrBlock *entry = append_block(cnt, fn->value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -2379,7 +2371,7 @@ mir_arenas_init(MirArenas *arenas)
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
   arena_init(&arenas->exec_arena, sizeof(MirExec), ARENA_CHUNK_COUNT, (ArenaElemDtor)exec_dtor);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
 }
 
 void
@@ -2511,8 +2503,8 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.builder       = builder;
   cnt.assembly      = assembly;
   cnt.arenas        = &builder->mir_arenas;
-  cnt.verbose_pre   = builder->flags & BUILDER_VERBOSE_MIR_PRE;
-  cnt.verbose_post  = builder->flags & BUILDER_VERBOSE_MIR_POST;
+  cnt.verbose_pre   = (bool) (builder->flags & BUILDER_VERBOSE_MIR_PRE);
+  cnt.verbose_post  = (bool) (builder->flags & BUILDER_VERBOSE_MIR_POST);
   cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
   cnt.llvm_cnt      = LLVMContextCreate();
   cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
