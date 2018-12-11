@@ -317,8 +317,8 @@ parse_expr_ref(Context *cnt)
   Ast *  ident = parse_ident(cnt);
   if (!ident) return NULL;
 
-  Ast *ref                   = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok);
-  ref->data.expr_ref.ident   = ident;
+  Ast *ref                 = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok);
+  ref->data.expr_ref.ident = ident;
   return ref;
 }
 
@@ -408,6 +408,7 @@ parse_decl_arg(Context *cnt, bool type_only)
   arg->data.decl.type = type;
   arg->data.decl.name = name;
 
+  provide(cnt, name, false);
   return arg;
 }
 
@@ -1020,8 +1021,7 @@ parse_type_fn(Context *cnt, bool named_args)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn);
   }
 
-  Ast *fn               = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn);
-  fn->data.type_fn.args = bo_array_new(sizeof(Ast *));
+  Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn);
 
   /* parse arg types */
   bool rq = false;
@@ -1030,6 +1030,7 @@ parse_type_fn(Context *cnt, bool named_args)
 next:
   tmp = parse_decl_arg(cnt, !named_args);
   if (tmp) {
+    if (!fn->data.type_fn.args) fn->data.type_fn.args = bo_array_new(sizeof(Ast *));
     bo_array_push_back(fn->data.type_fn.args, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
