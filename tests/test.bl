@@ -1,30 +1,14 @@
 /* playground */
 
+//printf : fn (i s32) #extern;
+
 main : fn () s32 {
-  bar := 2;
-  bar = (20 - 5) * bar;
-
-  foo := true;
-
-  if (foo) {
-    bar = hello();
-  } else {
-    bar = 200 + 1;
-  }
-
-  result := get(1, true);
-
-  return bar;
-};
-
-hello : fn () s32 {
-  foo := 2 + 2;
+  foo := 10;
+  rec(foo);
   return foo;
 };
 
-get : fn (i s32, b bool) s32 {
-  i = 0;
-  b = true;
-  return 0;
+rec : fn (n s32) {
+  if (n == 0) { return; }
+  rec(n - 1);
 };
-
