@@ -24,6 +24,7 @@ find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
         src/bldebug.h
+        src/dlink.h
         src/error.h 
         src/config.h
 	src/messages.h
@@ -63,6 +64,7 @@ set(SOURCE_FILES
         src/scope.c
         src/common.c 
         src/mir.c
+        src/dlink.c
         src/mir_printer.c
         src/ast.c)
 

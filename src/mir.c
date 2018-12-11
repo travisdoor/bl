@@ -32,6 +32,7 @@
 #include "builder.h"
 #include "assembly.h"
 #include "mir_printer.h"
+#include "dlink.h"
 
 #define ARENA_CHUNK_COUNT 512
 
@@ -77,6 +78,7 @@ typedef enum
 
 typedef struct
 {
+  DLink      dlink;
   MirValue * exec_call_result;
   Builder *  builder;
   Assembly * assembly;
@@ -431,7 +433,7 @@ static MirValue *
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
 static MirValue *
-exec_fn(Context *cnt, MirFn *fn);
+exec_fn(Context *cnt, MirFn *fn, BArray *args);
 
 static inline bool
 is_pointer_type(MirType *type)
@@ -1746,9 +1748,24 @@ exec_instr_const(Context *cnt, MirInstrConst *cnst)
 }
 
 static MirValue *
-exec_fn(Context *cnt, MirFn *fn)
+exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
+  BArray *arg_slots = fn->arg_slots;
+
+  /* copy call arguments values into function argument slots */
+  if (arg_slots) {
+    assert(args);
+    MirInstr *arg;
+    MirInstr *arg_slot;
+
+    barray_foreach(arg_slots, arg_slot)
+    {
+      arg                  = bo_array_at(args, i, MirInstr *);
+      arg_slot->value.data = arg->value.data;
+    }
+  }
+
   MirExec *exec = fn->exec;
   assert(exec);
 
@@ -1777,23 +1794,8 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirValue *callee_val = &call->callee->value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
-  MirFn * fn        = callee_val->data.v_fn;
-  BArray *arg_slots = fn->arg_slots;
-
-  /* copy call arguments values into function argument slots */
-  if (arg_slots) {
-    assert(call->args);
-    MirInstr *arg_call;
-    MirInstr *arg_slot;
-
-    barray_foreach(arg_slots, arg_slot)
-    {
-      arg_call             = bo_array_at(call->args, i, MirInstr *);
-      arg_slot->value.data = arg_call->value.data;
-    }
-  }
-
-  MirValue *result = exec_fn(cnt, fn);
+  MirFn *   fn     = callee_val->data.v_fn;
+  MirValue *result = exec_fn(cnt, fn, call->args);
 
   if (result) {
     /* copy function execution return value into call instruction */
@@ -2493,7 +2495,7 @@ execute_entry_fn(Context *cnt)
   assert(cnt->entry_fn->kind == MIR_INSTR_FN_PROTO && cnt->entry_fn->value.type);
   MirFn *  fn = cnt->entry_fn->value.data.v_fn;
   MirValue result;
-  result = *exec_fn(cnt, fn);
+  result = *exec_fn(cnt, fn, NULL);
   msg_log("execution finished with state: %llu", result.data.v_int);
 }
 
@@ -2552,6 +2554,39 @@ mir_run(Builder *builder, Assembly *assembly)
   entry_fn_hash = bo_hash_from_str(entry_fn_name);
   bo_array_reserve(cnt.analyze_stack, 1024);
 
+  dlink_init(&cnt.dlink);
+  /* TEST: load standart C runtime */
+  {
+    int error = dlink_open(&cnt.dlink, NULL);
+    if (error != NO_ERR) {
+      msg_error("unable to link internal library with error: %d", error);
+    }
+
+    void (*fn)();
+    error = dlink_sym(&cnt.dlink, &fn, "printf");
+    if (error != NO_ERR) {
+      msg_error("unable to link external symbol %s with error: %d", "printf", error);
+    } else {
+      printf("\n");
+
+      union Arg
+      {
+        void *    p;
+        double    d;
+        float     f;
+        long long i;
+      };
+
+      union Arg args[3];
+      args[0].p = "hello world %i and %f\n";
+      args[1].i = 10;
+      args[2].d = 20.3;
+      fn(args[0], args[1], args[2]);
+      printf(args[0].p, args[1], args[2].d);
+      printf("\n");
+    }
+  }
+
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
@@ -2571,4 +2606,5 @@ mir_run(Builder *builder, Assembly *assembly)
   bo_unref(cnt.analyze_stack);
   /* TODO: pass context to the next stages */
   LLVMContextDispose(cnt.llvm_cnt);
+  dlink_terminate(&cnt.dlink);
 }
