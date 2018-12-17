@@ -29,6 +29,8 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
+#include <dyncall.h>
+#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
@@ -99,8 +101,9 @@ struct MirFn
   MirType *type;
   MirExec *exec;
 
-  BArray *arg_slots;
-  void *  extern_entry;
+  BArray *  arg_slots;
+  DCpointer extern_entry;
+  bool      is_external;
 };
 
 /* TYPE */
@@ -150,7 +153,6 @@ struct MirType
 /* VALUE */
 struct MirValue
 {
-  MirType *type;
   union
   {
     unsigned long long v_uint;
@@ -160,6 +162,8 @@ struct MirValue
     MirFn *            v_fn;
     MirValue *         v_ptr;
   } data;
+
+  MirType *type;
 };
 
 /* INSTRUCTIONS */

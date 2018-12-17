@@ -22,6 +22,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
+find_library(DYNLOAD_LIBS dynload_s)
+find_library(DYNCALL_LIBS dyncall_s)
+
 set(HEADER_FILES
         src/bldebug.h
         src/error.h 
@@ -219,9 +222,7 @@ else()
     target_link_libraries(blc PUBLIC LLVM)
 endif()
 
-target_link_libraries(blc PUBLIC bobject)
+target_link_libraries(blc PUBLIC bobject ${DYNLOAD_LIBS} ${DYNCALL_LIBS} ${CMAKE_DL_LIBS})
 target_include_directories(blc PRIVATE src)
 
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
-
-

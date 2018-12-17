@@ -94,6 +94,8 @@ typedef enum
   ERR_INVALID_CAST            = 57,
   ERR_INVALID_ADM             = 58,
   ERR_DIV_BY_ZERO             = 59,
+  ERR_LIB_NOT_FOUND           = 60,
+  ERR_LIB_SYMBOL_NOT_FOUND    = 61,
 } Error;
 
 #endif // BL_ERROR_H
