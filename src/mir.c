@@ -107,6 +107,7 @@ typedef struct
     MirType *entry_bool;
     MirType *entry_void;
     MirType *entry_resolve_type_fn;
+    MirType *entry_test_case_fn;
   } buildin_types;
 
   MirInstrBlock *current_block;
@@ -209,7 +210,7 @@ static MirExec *
 create_exec(Context *cnt, MirFn *owner_fn);
 
 static MirFn *
-create_fn(Context *cnt, BArray *arg_slots, bool is_external);
+create_fn(Context *cnt, BArray *arg_slots, bool is_external, bool is_test_case);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -296,6 +297,9 @@ ast(Context *cnt, Ast *node);
 
 static void
 ast_ublock(Context *cnt, Ast *ublock);
+
+static void
+ast_test_case(Context *cnt, Ast *test);
 
 static void
 ast_stmt_if(Context *cnt, Ast *stmt_if);
@@ -667,12 +671,13 @@ create_exec(Context *cnt, MirFn *owner_fn)
 }
 
 MirFn *
-create_fn(Context *cnt, BArray *arg_slots, bool is_external)
+create_fn(Context *cnt, BArray *arg_slots, bool is_external, bool is_test_case)
 {
-  MirFn *tmp       = arena_alloc(&cnt->arenas->fn_arena);
-  tmp->exec        = create_exec(cnt, tmp);
-  tmp->arg_slots   = arg_slots;
-  tmp->is_external = is_external;
+  MirFn *tmp        = arena_alloc(&cnt->arenas->fn_arena);
+  tmp->exec         = create_exec(cnt, tmp);
+  tmp->arg_slots    = arg_slots;
+  tmp->is_external  = is_external;
+  tmp->is_test_case = is_test_case;
   return tmp;
 }
 
@@ -2067,6 +2072,30 @@ ast_block(Context *cnt, Ast *block)
 }
 
 void
+ast_test_case(Context *cnt, Ast *test)
+{
+  /* build test function */
+  Ast *ast_block = test->data.test_case.block;
+  assert(ast_block);
+
+  MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, test);
+
+  fn_proto->base.value.type = cnt->buildin_types.entry_test_case_fn;
+
+  MirInstrBlock *prev_block = get_current_block(cnt);
+  MirFn *        fn         = create_fn(cnt, NULL, false, true); /* TODO: based on user flag!!! */
+  fn_proto->base.value.data.v_fn = fn;
+
+  MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
+  set_cursor_block(cnt, entry_block);
+
+  /* generate body instructions */
+  ast(cnt, ast_block);
+
+  set_cursor_block(cnt, prev_block);
+}
+
+void
 ast_stmt_if(Context *cnt, Ast *stmt_if)
 {
   Ast *ast_cond = stmt_if->data.stmt_if.test;
@@ -2206,7 +2235,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *        fn = create_fn(cnt, arg_slots, !ast_block); /* TODO: based on user flag!!! */
+  MirFn *fn = create_fn(cnt, arg_slots, !ast_block, false); /* TODO: based on user flag!!! */
   fn_proto->base.value.data.v_fn = fn;
 
   /* function body */
@@ -2378,7 +2407,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
-  fn->value.data.v_fn       = create_fn(cnt, NULL, false);
+  fn->value.data.v_fn       = create_fn(cnt, NULL, false, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -2400,6 +2429,9 @@ ast(Context *cnt, Ast *node)
     break;
   case AST_BLOCK:
     ast_block(cnt, node);
+    break;
+  case AST_TEST_CASE:
+    ast_test_case(cnt, node);
     break;
   case AST_STMT_RETURN:
     ast_stmt_return(cnt, node);
@@ -2617,6 +2649,8 @@ init_buildins(Context *cnt)
 
   cnt->buildin_types.entry_resolve_type_fn =
       create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
+
+  cnt->buildin_types.entry_test_case_fn = create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
 }
 
 int

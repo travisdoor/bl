@@ -104,6 +104,7 @@ struct MirFn
   BArray *  arg_slots;
   DCpointer extern_entry;
   bool      is_external;
+  bool      is_test_case;
 };
 
 /* TYPE */

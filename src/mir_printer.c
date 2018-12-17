@@ -313,6 +313,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto)
   if (fn->is_external) {
     fprintf(stdout, FLAG_COLOR(" #extern\n"));
   } else {
+    if (fn->is_test_case) fprintf(stdout, FLAG_COLOR(" #test"));
     MirInstrBlock *tmp;
     fprintf(stdout, " { %s\n", fn_proto->base.analyzed ? GREEN("// ANALYZED") : "");
     barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp);

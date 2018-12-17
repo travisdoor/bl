@@ -1478,7 +1478,12 @@ parse_test_case(Context *cnt)
   }
 
   Ast *block = parse_block(cnt);
-  /* TODO: handle missing block error */
+  if (!block) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD,
+                "expected test case body");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
 
   Ast *test                  = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
   test->data.test_case.desc  = tok_desc->value.str;
