@@ -153,7 +153,6 @@ struct MirType
 /* VALUE */
 struct MirValue
 {
-  MirType *type;
   union
   {
     unsigned long long v_uint;
@@ -163,6 +162,8 @@ struct MirValue
     MirFn *            v_fn;
     MirValue *         v_ptr;
   } data;
+
+  MirType *type;
 };
 
 /* INSTRUCTIONS */
