@@ -1,9 +1,11 @@
 /* playground */
 
-//printf : fn (i s32) #extern;
+putchar : fn (c s32) s32 #extern;
 
 main : fn () s32 {
   foo := 10;
+  putchar(60);
+
   rec(foo);
   return foo;
 };

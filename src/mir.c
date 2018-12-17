@@ -26,13 +26,14 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <dyncall.h>
+#include <dynload.h>
 #include "mir.h"
 #include "unit.h"
 #include "common.h"
 #include "builder.h"
 #include "assembly.h"
 #include "mir_printer.h"
-#include "dlink.h"
 
 #define ARENA_CHUNK_COUNT 512
 
@@ -78,12 +79,18 @@ typedef enum
 
 typedef struct
 {
-  DLink      dlink;
   MirValue * exec_call_result;
   Builder *  builder;
   Assembly * assembly;
   MirArenas *arenas;
   BArray *   analyze_stack;
+
+  /* DynCall/Lib data used for external method execution in compile time */
+  struct
+  {
+    DLLib *   lib;
+    DCCallVM *vm;
+  } dl;
 
   struct
   {
@@ -163,6 +170,12 @@ type_dtor(MirType *type)
 static void
 init_buildins(Context *cnt);
 
+static int
+init_dl(Context *cnt);
+
+static void
+terminate_dl(Context *cnt);
+
 static void
 execute_entry_fn(Context *cnt);
 
@@ -198,7 +211,7 @@ static MirExec *
 create_exec(Context *cnt, MirFn *owner_fn);
 
 static MirFn *
-create_fn(Context *cnt, BArray *arg_slots);
+create_fn(Context *cnt, BArray *arg_slots, bool is_external);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -656,11 +669,12 @@ create_exec(Context *cnt, MirFn *owner_fn)
 }
 
 MirFn *
-create_fn(Context *cnt, BArray *arg_slots)
+create_fn(Context *cnt, BArray *arg_slots, bool is_external)
 {
-  MirFn *tmp     = arena_alloc(&cnt->arenas->fn_arena);
-  tmp->exec      = create_exec(cnt, tmp);
-  tmp->arg_slots = arg_slots;
+  MirFn *tmp       = arena_alloc(&cnt->arenas->fn_arena);
+  tmp->exec        = create_exec(cnt, tmp);
+  tmp->arg_slots   = arg_slots;
+  tmp->is_external = is_external;
   return tmp;
 }
 
@@ -1174,8 +1188,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   assert(value->data.v_fn);
   value->data.v_fn->type = fn_proto->base.value.type;
 
-  prev_block = get_current_block(cnt);
-  MirFn *fn  = fn_proto->base.value.data.v_fn;
+  MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
   MirExec *exec = fn->exec;
   assert(exec);
@@ -1193,20 +1206,37 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     }
   }
 
-  MirInstrBlock *tmp;
-  barray_foreach(exec->blocks, tmp)
-  {
-    if (comptime)
-      analyze_instr_block(cnt, tmp, comptime);
-    else {
-      /* TODO: blocks can be used as linked list, only first one must be pushed into analyze_stack
-       */
-      bo_array_push_back(cnt->analyze_stack, tmp);
-    }
-  }
+  if (fn->is_external) {
+    /* lookup external function exec handle */
+    assert(fn_proto->base.node && fn_proto->base.node->kind == AST_IDENT);
+    const char *name = fn_proto->base.node->data.ident.str;
+    assert(name);
+    void *handle = dlFindSymbol(cnt->dl.lib, name);
+    assert(handle);
 
-  assert(prev_block);
-  set_cursor_block(cnt, prev_block);
+    if (!handle) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, fn_proto->base.node->src,
+                  BUILDER_CUR_WORD, "external symbol not found");
+    }
+
+    fn->extern_entry = handle;
+  } else {
+    prev_block = get_current_block(cnt);
+    MirInstrBlock *tmp;
+    barray_foreach(exec->blocks, tmp)
+    {
+      if (comptime)
+        analyze_instr_block(cnt, tmp, comptime);
+      else {
+        /* TODO: blocks can be used as linked list, only first one must be pushed into analyze_stack
+         */
+        bo_array_push_back(cnt->analyze_stack, tmp);
+      }
+    }
+
+    assert(prev_block);
+    set_cursor_block(cnt, prev_block);
+  }
 
   return true;
 }
@@ -1747,43 +1777,57 @@ exec_instr_const(Context *cnt, MirInstrConst *cnst)
   return &cnst->base.value;
 }
 
-static MirValue *
+static inline void
+exec_fn_push_dc_arg(Context *cnt, MirValue *val)
+{
+  MirType *type = val->type;
+  assert(type);
+
+  switch (type->kind) {
+  case MIR_TYPE_INT:
+    break;
+  default:
+    bl_abort("unsupported external call argument type");
+  }
+}
+
+MirValue *
 exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
-  BArray *arg_slots = fn->arg_slots;
+  if (fn->is_external) {
+    dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
+    dcReset(cnt->dl.vm);
 
-  /* copy call arguments values into function argument slots */
-  if (arg_slots) {
-    assert(args);
-    MirInstr *arg;
-    MirInstr *arg_slot;
-
-    barray_foreach(arg_slots, arg_slot)
-    {
-      arg                  = bo_array_at(args, i, MirInstr *);
-      arg_slot->value.data = arg->value.data;
+    BArray *args = fn->arg_slots;
+    if (args) {
+      MirInstr *arg;
+      barray_foreach(args, arg)
+      {
+        exec_fn_push_dc_arg(cnt, &arg->value);
+      }
     }
+  } else {
+    MirExec *exec = fn->exec;
+    assert(exec);
+
+    cnt->exec_call_result   = NULL;
+    MirInstr *prev_executor = get_executor(cnt);
+    /* iterate over entry block of executable */
+    set_executor_at_beginning(cnt, exec->entry_block);
+
+    MirInstr *prev;
+    while (cnt->executor) {
+      prev = cnt->executor;
+      exec_instr(cnt, cnt->executor);
+
+      if (!cnt->executor) break;
+      if (prev == cnt->executor) cnt->executor = cnt->executor->next;
+    }
+
+    set_executor(cnt, prev_executor);
   }
 
-  MirExec *exec = fn->exec;
-  assert(exec);
-
-  cnt->exec_call_result   = NULL;
-  MirInstr *prev_executor = get_executor(cnt);
-  /* iterate over entry block of executable */
-  set_executor_at_beginning(cnt, exec->entry_block);
-
-  MirInstr *prev;
-  while (cnt->executor) {
-    prev = cnt->executor;
-    exec_instr(cnt, cnt->executor);
-
-    if (!cnt->executor) break;
-    if (prev == cnt->executor) cnt->executor = cnt->executor->next;
-  }
-
-  set_executor(cnt, prev_executor);
   return cnt->exec_call_result;
 }
 
@@ -2117,17 +2161,19 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
     }
   }
 
-  /* TODO: external function has no body!!! */
-  assert(ast_block);
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, NULL, NULL, lit_fn);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
 
-  MirInstrBlock *prev_block      = get_current_block(cnt);
-  MirFn *        fn              = create_fn(cnt, arg_slots);
+  MirInstrBlock *prev_block = get_current_block(cnt);
+  MirFn *        fn = create_fn(cnt, arg_slots, !ast_block); /* TODO: based on user flag!!! */
   fn_proto->base.value.data.v_fn = fn;
-  MirInstrBlock *entry_block     = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
+
+  /* function body */
+  if (fn->is_external) return &fn_proto->base;
+
+  MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
   /* generate body instructions */
@@ -2293,7 +2339,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
-  fn->value.data.v_fn       = create_fn(cnt, NULL);
+  fn->value.data.v_fn       = create_fn(cnt, NULL, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -2534,6 +2580,30 @@ init_buildins(Context *cnt)
       create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
 }
 
+int
+init_dl(Context *cnt)
+{
+  /* load only current executed workspace */
+  DLLib *lib = dlLoadLibrary(NULL);
+  if (!lib) {
+    msg_error("unable to load library");
+    return ERR_LIB_NOT_FOUND;
+  }
+
+  DCCallVM *vm = dcNewCallVM(4096);
+  dcMode(vm, DC_CALL_C_DEFAULT);
+  cnt->dl.lib = lib;
+  cnt->dl.vm  = vm;
+  return NO_ERR;
+}
+
+void
+terminate_dl(Context *cnt)
+{
+  dcFree(cnt->dl.vm);
+  dlFreeLibrary(cnt->dl.lib);
+}
+
 void
 mir_run(Builder *builder, Assembly *assembly)
 {
@@ -2554,38 +2624,8 @@ mir_run(Builder *builder, Assembly *assembly)
   entry_fn_hash = bo_hash_from_str(entry_fn_name);
   bo_array_reserve(cnt.analyze_stack, 1024);
 
-  dlink_init(&cnt.dlink);
-  /* TEST: load standart C runtime */
-  {
-    int error = dlink_open(&cnt.dlink, NULL);
-    if (error != NO_ERR) {
-      msg_error("unable to link internal library with error: %d", error);
-    }
-
-    void (*fn)();
-    error = dlink_sym(&cnt.dlink, &fn, "printf");
-    if (error != NO_ERR) {
-      msg_error("unable to link external symbol %s with error: %d", "printf", error);
-    } else {
-      printf("\n");
-
-      union Arg
-      {
-        void *    p;
-        double    d;
-        float     f;
-        long long i;
-      };
-
-      union Arg args[3];
-      args[0].p = "hello world %i and %f\n";
-      args[1].i = 10;
-      args[2].d = 20.3;
-      fn(args[0], args[1], args[2]);
-      printf(args[0].p, args[1], args[2].d);
-      printf("\n");
-    }
-  }
+  int error = init_dl(&cnt);
+  if (error != NO_ERR) return;
 
   Unit *unit;
   barray_foreach(assembly->units, unit)
@@ -2606,5 +2646,5 @@ mir_run(Builder *builder, Assembly *assembly)
   bo_unref(cnt.analyze_stack);
   /* TODO: pass context to the next stages */
   LLVMContextDispose(cnt.llvm_cnt);
-  dlink_terminate(&cnt.dlink);
+  terminate_dl(&cnt);
 }

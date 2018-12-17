@@ -33,6 +33,7 @@
 #define INSTR_COLOR YELLOW
 #define INSTR_ANALYZE_COLOR MAGENTA
 #define BLOCK_COLOR GREEN
+#define FLAG_COLOR GREEN
 #define ERROR_COLOR RED
 
 static inline void
@@ -41,7 +42,7 @@ print_type(MirType *type, bool aligned)
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
   if (aligned)
-    fprintf(stdout, TYPE_COLOR("%10s"), tmp);
+    fprintf(stdout, TYPE_COLOR("%16s"), tmp);
   else
     fprintf(stdout, TYPE_COLOR("%s"), tmp);
 }
@@ -308,7 +309,10 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto)
   print_type(fn_proto->base.value.type, false);
 
   MirFn *fn = fn_proto->base.value.data.v_fn;
-  if (fn) {
+  assert(fn);
+  if (fn->is_external) {
+    fprintf(stdout, FLAG_COLOR(" #extern\n"));
+  } else {
     MirInstrBlock *tmp;
     fprintf(stdout, " { %s\n", fn_proto->base.analyzed ? GREEN("// ANALYZED") : "");
     barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp);

@@ -101,6 +101,7 @@ struct MirFn
 
   BArray *arg_slots;
   void *  extern_entry;
+  bool    is_external;
 };
 
 /* TYPE */
