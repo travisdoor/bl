@@ -79,6 +79,9 @@ static void
 print_ublock(Ast *ublock, int pad);
 
 static void
+print_test_case(Ast *test, int pad);
+
+static void
 print_block(Ast *block, int pad);
 
 static void
@@ -145,6 +148,14 @@ print_block(Ast *block, int pad)
   print_head(block, pad);
   Ast *tmp = NULL;
   barray_foreach(block->data.block.nodes, tmp) print_node(tmp, pad + 1);
+}
+
+void
+print_test_case(Ast *test, int pad)
+{
+  print_head(test, pad);
+  fprintf(stdout, "%s", test->data.test_case.desc);
+  print_node(test->data.test_case.block, pad + 1);
 }
 
 void
@@ -324,6 +335,10 @@ print_node(Ast *node, int pad)
     print_block(node, pad);
     break;
 
+  case AST_TEST_CASE:
+    print_test_case(node, pad);
+    break;
+
   case AST_DECL_ENTITY:
     print_decl_entity(node, pad);
     break;
@@ -416,7 +431,6 @@ print_node(Ast *node, int pad)
 
   case AST_EXPR_LIT_BOOL:
     print_expr_lit_bool(node, pad);
-
     break;
 
   default:

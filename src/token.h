@@ -57,6 +57,7 @@
   sm(LINK,           "#link") \
   sm(LINE,           "#line") \
   sm(FILE,           "#file") \
+  sm(TEST,           "#test") \
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
   sm(EXTERN,         "#extern") \

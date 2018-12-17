@@ -100,6 +100,8 @@ ast_get_name(const Ast *n)
     return "UBlock";
   case AST_BLOCK:
     return "Block";
+  case AST_TEST_CASE:
+    return "TestCase";
   case AST_STMT_RETURN:
     return "StmtReturn";
   case AST_STMT_IF:

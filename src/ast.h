@@ -48,6 +48,7 @@ typedef enum
   AST_IDENT,
   AST_UBLOCK,
   AST_BLOCK,
+  AST_TEST_CASE,
   _AST_DECL_FIRST,
   AST_DECL_ENTITY,
   AST_DECL_MEMBER,
@@ -165,6 +166,12 @@ struct AstUBlock
 struct AstBlock
 {
   BArray *nodes;
+};
+
+struct AstTestCase
+{
+  const char *desc;
+  Ast *       block;
 };
 
 struct AstStmtReturn
@@ -372,6 +379,7 @@ struct Ast
     struct AstStmtReturn    stmt_return;
     struct AstStmtIf        stmt_if;
     struct AstStmtLoop      stmt_loop;
+    struct AstTestCase      test_case;
     struct AstDecl          decl;
     struct AstDeclEntity    decl_entity;
     struct AstDeclArg       decl_arg;

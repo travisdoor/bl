@@ -31,7 +31,6 @@
 #include "common.h"
 
 #define EXPECTED_GSCOPE_COUNT 4096
-#define FN_TEST_NAME "test@"
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
   {                                                                                                \
@@ -105,6 +104,9 @@ parse_load(Context *cnt);
 
 static Ast *
 parse_link(Context *cnt);
+
+static Ast *
+parse_test_case(Context *cnt);
 
 static void
 parse_ublock_content(Context *cnt, Ast *ublock);
@@ -1466,6 +1468,25 @@ next:
   return block;
 }
 
+Ast *
+parse_test_case(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_TEST);
+  if (!tok) return NULL;
+
+  Token *tok_desc = tokens_consume(cnt->tokens);
+  if (tok_desc->sym != SYM_STRING) {
+    parse_error(cnt, ERR_EXPECTED_TEST_DESC, tok_desc, BUILDER_CUR_WORD,
+                "expected test case description");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  Ast *test                 = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
+  test->data.test_case.desc = tok_desc->value.str;
+
+  return test;
+}
+
 void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
@@ -1502,6 +1523,11 @@ next:
   }
 
   if ((tmp = parse_link(cnt))) {
+    bo_array_push_back(ublock->data.ublock.nodes, tmp);
+    goto next;
+  }
+
+  if ((tmp = parse_test_case(cnt))) {
     bo_array_push_back(ublock->data.ublock.nodes, tmp);
     goto next;
   }

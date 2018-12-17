@@ -21,3 +21,11 @@ main : fn () s32 {
   return foo;
 };
 
+#test "hello test" {
+};
+
+#test "hello test 2" {
+};
+
+#test "hello test 3" {
+};
