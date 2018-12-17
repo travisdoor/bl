@@ -4,13 +4,20 @@ putchar : fn (c s32) s32 #extern;
 
 main : fn () s32 {
   foo := 10;
-  putchar(60);
 
-  rec(foo);
+  putchar(72);
+  putchar(101);
+  putchar(108);
+  putchar(108);
+  putchar(111);
+  putchar(32);
+  putchar(87);
+  putchar(111);
+  putchar(114);
+  putchar(108);
+  putchar(100);
+  putchar(10);
+
   return foo;
 };
 
-rec : fn (n s32) {
-  if (n == 0) { return; }
-  rec(n - 1);
-};

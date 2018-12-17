@@ -26,8 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <dyncall.h>
-#include <dynload.h>
 #include "mir.h"
 #include "unit.h"
 #include "common.h"
@@ -1784,8 +1782,26 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   assert(type);
 
   switch (type->kind) {
-  case MIR_TYPE_INT:
+  case MIR_TYPE_INT: {
+    switch (type->data.integer.bitcount) {
+    case 64:
+      dcArgLongLong(cnt->dl.vm, val->data.v_int);
+      break;
+    case 32:
+      dcArgInt(cnt->dl.vm, val->data.v_int);
+      break;
+    case 16:
+      dcArgShort(cnt->dl.vm, val->data.v_int);
+      break;
+    case 8:
+      dcArgChar(cnt->dl.vm, val->data.v_int);
+      break;
+    default:
+      bl_abort("unsupported external call integer argument type");
+    }
     break;
+  }
+
   default:
     bl_abort("unsupported external call argument type");
   }
@@ -1795,11 +1811,13 @@ MirValue *
 exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
+  cnt->exec_call_result = NULL;
+
   if (fn->is_external) {
+    assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
     dcReset(cnt->dl.vm);
 
-    BArray *args = fn->arg_slots;
     if (args) {
       MirInstr *arg;
       barray_foreach(args, arg)
@@ -1807,11 +1825,32 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
         exec_fn_push_dc_arg(cnt, &arg->value);
       }
     }
+
+    // TODO: handle call result
+    switch (fn->type->data.fn.ret_type->kind) {
+    case MIR_TYPE_INT:
+      dcCallInt(cnt->dl.vm, fn->extern_entry);
+      break;
+
+    default:
+      bl_abort("unsupported external call return type");
+    }
   } else {
+    /* copy arguments into arg slots of the executed function */
+    if (args) {
+      MirValue *arg;
+      MirValue *slot;
+      assert(bo_array_size(args) == bo_array_size(fn->arg_slots));
+      barray_foreach(args, arg)
+      {
+        slot       = bo_array_at(fn->arg_slots, i, MirValue *);
+        slot->data = arg->data;
+      }
+    }
+
     MirExec *exec = fn->exec;
     assert(exec);
 
-    cnt->exec_call_result   = NULL;
     MirInstr *prev_executor = get_executor(cnt);
     /* iterate over entry block of executable */
     set_executor_at_beginning(cnt, exec->entry_block);
