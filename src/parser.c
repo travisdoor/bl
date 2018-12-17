@@ -82,7 +82,6 @@ typedef struct
   Scope *scope;
   Ast *  curr_decl;
   bool   inside_loop;
-  bool   core_loaded;
 } Context;
 
 /* helpers */
@@ -92,9 +91,6 @@ sym_to_binop_kind(Sym sm);
 
 static UnopKind
 sym_to_unop_kind(Sym sm);
-
-static Ast *
-load_core(Context *cnt);
 
 static void
 provide(Context *cnt, Ast *ident, bool in_tree);
@@ -1481,8 +1477,12 @@ parse_test_case(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
-  Ast *test                 = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
-  test->data.test_case.desc = tok_desc->value.str;
+  Ast *block = parse_block(cnt);
+  /* TODO: handle missing block error */
+
+  Ast *test                  = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
+  test->data.test_case.desc  = tok_desc->value.str;
+  test->data.test_case.block = block;
 
   return test;
 }
@@ -1506,17 +1506,6 @@ next:
     goto next;
   }
 
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (tmp = load_core(cnt))) {
-    bo_array_push_back(ublock->data.ublock.nodes, tmp);
-    cnt->core_loaded = true;
-    goto next;
-  }
-
   if ((tmp = parse_load(cnt))) {
     bo_array_push_back(ublock->data.ublock.nodes, tmp);
     goto next;
@@ -1529,6 +1518,7 @@ next:
 
   if ((tmp = parse_test_case(cnt))) {
     bo_array_push_back(ublock->data.ublock.nodes, tmp);
+    parse_semicolon_rq(cnt);
     goto next;
   }
 
@@ -1568,7 +1558,6 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
                  .scope_arena = &builder->scope_arena,
                  .tokens      = &unit->tokens,
                  .curr_decl   = NULL,
-                 .core_loaded = false,
                  .inside_loop = false};
 
   parse_ublock_content(&cnt, unit->ast);
