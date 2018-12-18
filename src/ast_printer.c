@@ -85,6 +85,9 @@ static void
 print_block(Ast *block, int pad);
 
 static void
+print_unrecheable(Ast *unr, int pad);
+
+static void
 print_stmt_if(Ast *stmt_if, int pad);
 
 static void
@@ -156,6 +159,12 @@ print_test_case(Ast *test, int pad)
   print_head(test, pad);
   fprintf(stdout, "%s", test->data.test_case.desc);
   print_node(test->data.test_case.block, pad + 1);
+}
+
+void
+print_unrecheable(Ast *unr, int pad)
+{
+  print_head(unr, pad);
 }
 
 void
@@ -337,6 +346,10 @@ print_node(Ast *node, int pad)
 
   case AST_TEST_CASE:
     print_test_case(node, pad);
+    break;
+
+  case AST_UNREACHABLE:
+    print_unrecheable(node, pad);
     break;
 
   case AST_DECL_ENTITY:

@@ -55,19 +55,11 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-typedef void (*diag_handler_f)(const char *, void *);
-
 typedef struct Builder
 {
   MirArenas      mir_arenas;
   Arena          ast_arena;
   Arena          scope_arena;
-  diag_handler_f on_error;
-  diag_handler_f on_warning;
-  diag_handler_f on_note;
-  void *         on_error_cnt;
-  void *         on_warning_cnt;
-  void *         on_note_cnt;
   uint32_t       flags;
   int            total_lines;
   int            errorc;
@@ -79,6 +71,7 @@ typedef enum
   BUILDER_MSG_ERROR,
   BUILDER_MSG_WARNING,
   BUILDER_MSG_NOTE,
+  BUILDER_MSG_LOG,
 } BuilderMsgType;
 
 typedef enum
@@ -98,15 +91,6 @@ builder_delete(Builder *builder);
 
 int
 builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
-
-void
-builder_set_error_diag_handler(Builder *builder, diag_handler_f handler, void *context);
-
-void
-builder_set_warning_diag_handler(Builder *builder, diag_handler_f handler, void *context);
-
-void
-builder_set_note_diag_handler(Builder *builder, diag_handler_f handler, void *context);
 
 void
 builder_error(Builder *builder, const char *format, ...);

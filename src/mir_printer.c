@@ -69,6 +69,9 @@ static void
 print_instr_br(MirInstrBr *br);
 
 static void
+print_instr_unreachable(MirInstrUnreachable *unr);
+
+static void
 print_instr_try_infer(MirInstrTryInfer *infer);
 
 static void
@@ -88,9 +91,6 @@ print_instr_const(MirInstrConst *ci);
 
 static void
 print_instr_ret(MirInstrRet *ret);
-
-static void
-print_instr_unreachable(MirInstrUnreachable *instr);
 
 static void
 print_instr_store(MirInstrStore *store);
@@ -152,6 +152,13 @@ print_instr_cond_br(MirInstrCondBr *cond_br)
 }
 
 void
+print_instr_unreachable(MirInstrUnreachable *unr)
+{
+  print_instr_head(&unr->base);
+  fprintf(stdout, INSTR_COLOR("unreachable"));
+}
+
+void
 print_instr_br(MirInstrBr *br)
 {
   print_instr_head(&br->base);
@@ -178,13 +185,6 @@ print_instr_addr_of(MirInstrAddrOf *addr_of)
 {
   print_instr_head(&addr_of->base);
   fprintf(stdout, INSTR_COLOR("&") "%%%u", addr_of->target->id);
-}
-
-void
-print_instr_unreachable(MirInstrUnreachable *instr)
-{
-  print_instr_head(&instr->base);
-  fprintf(stdout, INSTR_COLOR("unreachable"));
 }
 
 void

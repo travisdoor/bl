@@ -96,6 +96,9 @@ static void
 provide(Context *cnt, Ast *ident, bool in_tree);
 
 static Ast *
+parse_unrecheable(Context *cnt);
+
+static Ast *
 parse_load(Context *cnt);
 
 static Ast *
@@ -1189,10 +1192,9 @@ parse_expr_call(Context *cnt, Ast *prev)
   Token *tok = tokens_consume_if(cnt->tokens, SYM_LPAREN);
   if (!tok) return NULL;
 
-  Ast *call                 = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok);
-  call->data.expr_call.ref  = prev;
-  call->data.expr_call.run  = false;
-  call->data.expr_call.args = bo_array_new(sizeof(Ast *));
+  Ast *call                = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok);
+  call->data.expr_call.ref = prev;
+  call->data.expr_call.run = false;
 
   /* parse args */
   bool rq = false;
@@ -1201,6 +1203,7 @@ parse_expr_call(Context *cnt, Ast *prev)
 arg:
   tmp = parse_expr(cnt);
   if (tmp) {
+    if (!call->data.expr_call.args) call->data.expr_call.args = bo_array_new(sizeof(Ast *));
     bo_array_push_back(call->data.expr_call.args, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
@@ -1261,6 +1264,15 @@ next:
 
   return flags;
 #undef CASE
+}
+
+Ast *
+parse_unrecheable(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_UNREACHABLE);
+  if (!tok) return NULL;
+
+  return ast_create_node(cnt->ast_arena, AST_UNREACHABLE, tok);
 }
 
 Ast *
@@ -1451,6 +1463,12 @@ next:
     goto next;
   }
 
+  if ((tmp = parse_unrecheable(cnt))) {
+    bo_array_push_back(block->data.block.nodes, tmp);
+    parse_semicolon_rq(cnt);
+    goto next;
+  }
+
   tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
   if (!tok) {
     tok = tokens_peek_prev(cnt->tokens);
@@ -1477,14 +1495,17 @@ parse_test_case(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8);
+  push_scope(cnt, scope);
+
   Ast *block = parse_block(cnt);
   if (!block) {
     Token *tok_err = tokens_peek(cnt->tokens);
-    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD,
-                "expected test case body");
+    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected test case body");
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
+  pop_scope(cnt);
   Ast *test                  = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
   test->data.test_case.desc  = tok_desc->value.str;
   test->data.test_case.block = block;

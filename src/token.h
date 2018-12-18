@@ -62,6 +62,7 @@
   sm(STRUCT,         "struct") \
   sm(EXTERN,         "#extern") \
   sm(CONTINUE,       "continue") \
+  sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
   sm(MDECL,          ":=") \
   sm(LCOMMENT,       "//") \

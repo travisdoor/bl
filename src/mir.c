@@ -52,7 +52,6 @@ union _MirInstr
   MirInstrDeclRef      decl_ref;
   MirInstrCall         call;
   MirInstrUnreachable  unreachable;
-  MirInstrAddrOf       addr_of;
   MirInstrTryInfer     try_infer;
   MirInstrCondBr       cond_br;
   MirInstrBr           br;
@@ -85,6 +84,7 @@ typedef struct
   MirArenas *arenas;
   BArray *   analyze_stack;
   BArray *   test_cases;
+  BArray *   exec_stack;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -294,6 +294,9 @@ add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op);
 static MirInstr *
 add_instr_validate_type(Context *cnt, MirInstr *src);
 
+static MirInstr *
+add_instr_unrecheable(Context *cnt, Ast *node);
+
 /* ast */
 static MirInstr *
 ast_create_type_resolver_call(Context *cnt, Ast *type);
@@ -306,6 +309,9 @@ ast_ublock(Context *cnt, Ast *ublock);
 
 static void
 ast_test_case(Context *cnt, Ast *test);
+
+static void
+ast_unrecheable(Context *cnt, Ast *unr);
 
 static void
 ast_stmt_if(Context *cnt, Ast *stmt_if);
@@ -461,6 +467,29 @@ is_pointer_type(MirType *type)
 {
   assert(type);
   return type->kind == MIR_TYPE_PTR;
+}
+
+static inline void
+exec_stack_push(Context *cnt, MirInstr *instr)
+{
+  assert(instr);
+  bo_array_push_back(cnt->exec_stack, instr);
+}
+
+static inline MirInstr ** 
+exec_stack_get(Context *cnt)
+{
+  const size_t c = bo_array_size(cnt->exec_stack);
+  if (c == 0) return NULL;
+  return &bo_array_at(cnt->exec_stack, c - 1, MirInstr *);
+}
+
+static inline void 
+exec_stack_pop(Context *cnt)
+{
+  const size_t c = bo_array_size(cnt->exec_stack);
+  if (c == 0) return;
+  bo_array_pop_back(cnt->exec_stack);
 }
 
 static inline void
@@ -821,6 +850,15 @@ add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
   MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDR_OF, node, MirInstrAddrOf *);
   tmp->target         = target;
 
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+add_instr_unrecheable(Context *cnt, Ast *node)
+{
+  MirInstrUnreachable *tmp = create_instr(cnt, MIR_INSTR_UNREACHABLE, node, MirInstrUnreachable *);
+  tmp->base.value.type     = cnt->buildin_types.entry_void;
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1887,7 +1925,8 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirValue *callee_val = &call->callee->value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
-  MirFn *   fn     = callee_val->data.v_fn;
+  MirFn *fn = callee_val->data.v_fn;
+  builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, call->base.node->src, BUILDER_CUR_WORD, "");
   MirValue *result = exec_fn(cnt, fn, call->args);
 
   if (result) {
@@ -2104,6 +2143,12 @@ ast_test_case(Context *cnt, Ast *test)
   ast(cnt, ast_block);
 
   set_cursor_block(cnt, prev_block);
+}
+
+void
+ast_unrecheable(Context *cnt, Ast *unr)
+{
+  add_instr_unrecheable(cnt, unr);
 }
 
 void
@@ -2444,6 +2489,9 @@ ast(Context *cnt, Ast *node)
   case AST_TEST_CASE:
     ast_test_case(cnt, node);
     break;
+  case AST_UNREACHABLE:
+    ast_unrecheable(cnt, node);
+    break;
   case AST_STMT_RETURN:
     ast_stmt_return(cnt, node);
     break;
@@ -2629,10 +2677,11 @@ void
 execute_test_cases(Context *cnt)
 {
   MirFn *test_fn;
-  barray_foreach(cnt->test_cases, test_fn) {
+  barray_foreach(cnt->test_cases, test_fn)
+  {
     assert(test_fn->is_test_case);
     msg_log("%s", test_fn->test_case_desc);
-    
+
     exec_fn(cnt, test_fn, NULL);
   }
 }
@@ -2709,6 +2758,7 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.verbose_pre   = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
   cnt.verbose_post  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
   cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
+  cnt.exec_stack    = bo_array_new(sizeof(MirInstr *));
   cnt.test_cases    = bo_array_new(sizeof(MirFn *));
   cnt.llvm_cnt      = LLVMContextCreate();
   cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
@@ -2744,6 +2794,7 @@ mir_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.analyze_stack);
+  bo_unref(cnt.exec_stack);
   bo_unref(cnt.test_cases);
   /* TODO: pass context to the next stages */
   LLVMContextDispose(cnt.llvm_cnt);

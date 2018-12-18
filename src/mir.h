@@ -48,6 +48,7 @@ typedef struct MirFn     MirFn;
 typedef struct MirValue  MirValue;
 
 typedef struct MirInstr            MirInstr;
+typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrBlock       MirInstrBlock;
 typedef struct MirInstrDeclVar     MirInstrDeclVar;
 typedef struct MirInstrConst       MirInstrConst;
@@ -60,7 +61,6 @@ typedef struct MirInstrFnProto     MirInstrFnProto;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrCall        MirInstrCall;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
-typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
 typedef struct MirInstrBr          MirInstrBr;
