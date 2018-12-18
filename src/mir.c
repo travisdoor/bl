@@ -85,6 +85,7 @@ typedef struct
   BArray *   analyze_stack;
   BArray *   test_cases;
   BArray *   exec_stack;
+  bool       exec_aborted;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -114,7 +115,6 @@ typedef struct
   } buildin_types;
 
   MirInstrBlock *current_block;
-  MirInstr *     executor;
 
   LLVMContextRef    llvm_cnt;
   LLVMModuleRef     llvm_module;
@@ -372,6 +372,9 @@ static bool
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static bool
+analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static bool
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
 static bool
@@ -421,6 +424,9 @@ static MirValue *
 exec_instr(Context *cnt, MirInstr *instr);
 
 static MirValue *
+exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br);
 
 static MirValue *
@@ -462,6 +468,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 static MirValue *
 exec_fn(Context *cnt, MirFn *fn, BArray *args);
 
+static void
+exec_print_stack_trace(Context *cnt);
+
 static inline bool
 is_pointer_type(MirType *type)
 {
@@ -476,7 +485,7 @@ exec_stack_push(Context *cnt, MirInstr *instr)
   bo_array_push_back(cnt->exec_stack, instr);
 }
 
-static inline MirInstr ** 
+static inline MirInstr **
 exec_stack_get(Context *cnt)
 {
   const size_t c = bo_array_size(cnt->exec_stack);
@@ -484,7 +493,7 @@ exec_stack_get(Context *cnt)
   return &bo_array_at(cnt->exec_stack, c - 1, MirInstr *);
 }
 
-static inline void 
+static inline void
 exec_stack_pop(Context *cnt)
 {
   const size_t c = bo_array_size(cnt->exec_stack);
@@ -561,25 +570,6 @@ static inline MirInstrBlock *
 get_current_block(Context *cnt)
 {
   return cnt->current_block;
-}
-
-static inline MirInstr *
-get_executor(Context *cnt)
-{
-  return cnt->executor;
-}
-
-static inline void
-set_executor(Context *cnt, MirInstr *executor)
-{
-  cnt->executor = executor;
-}
-
-static inline void
-set_executor_at_beginning(Context *cnt, MirInstrBlock *block)
-{
-  assert(block);
-  cnt->executor = block->entry_instr;
 }
 
 static inline MirFn *
@@ -1203,6 +1193,13 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 }
 
 bool
+analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+{
+  /* nothing to do :( */
+  return true;
+}
+
+bool
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 {
   MirInstrBlock *prev_block = NULL;
@@ -1632,6 +1629,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_UNOP:
     state = analyze_instr_unop(cnt, (MirInstrUnop *)instr);
     break;
+  case MIR_INSTR_UNREACHABLE:
+    state = analyze_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", instr_name(instr));
     return false;
@@ -1670,6 +1670,16 @@ analyze(Context *cnt)
 }
 
 /* executing */
+void
+exec_print_stack_trace(Context *cnt)
+{
+  MirInstr *instr;
+  for (size_t i = bo_array_size(cnt->exec_stack); i-- > 0;) {
+    instr = bo_array_at(cnt->exec_stack, i, MirInstr *);
+    builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
+  }
+}
+
 MirValue *
 exec_instr(Context *cnt, MirInstr *instr)
 {
@@ -1711,6 +1721,8 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_br(cnt, (MirInstrBr *)instr);
   case MIR_INSTR_COND_BR:
     return exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
+  case MIR_INSTR_UNREACHABLE:
+    return exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
 
   default:
     bl_abort("missing execution for instruction: %s", instr_name(instr));
@@ -1720,10 +1732,19 @@ exec_instr(Context *cnt, MirInstr *instr)
 }
 
 MirValue *
+exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+{
+  msg_error("execution reached unreachable code");
+  exec_print_stack_trace(cnt);
+  cnt->exec_aborted = true;
+  return NULL;
+}
+
+MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
-  set_executor_at_beginning(cnt, br->then_block);
+  *exec_stack_get(cnt) = br->then_block->entry_instr;
   return &br->base.value;
 }
 
@@ -1735,9 +1756,9 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   assert(cond->type);
 
   if (cond->data.v_bool) {
-    set_executor_at_beginning(cnt, br->then_block);
+    *exec_stack_get(cnt) = br->then_block->entry_instr;
   } else {
-    set_executor_at_beginning(cnt, br->else_block);
+    *exec_stack_get(cnt) = br->else_block->entry_instr;
   }
 
   return &br->base.value;
@@ -1836,13 +1857,13 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
       dcArgLongLong(cnt->dl.vm, val->data.v_int);
       break;
     case 32:
-      dcArgInt(cnt->dl.vm, val->data.v_int);
+      dcArgInt(cnt->dl.vm, (DCint)val->data.v_int);
       break;
     case 16:
-      dcArgShort(cnt->dl.vm, val->data.v_int);
+      dcArgShort(cnt->dl.vm, (DCshort)val->data.v_int);
       break;
     case 8:
-      dcArgChar(cnt->dl.vm, val->data.v_int);
+      dcArgChar(cnt->dl.vm, (DCchar)val->data.v_int);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -1899,20 +1920,22 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
     MirExec *exec = fn->exec;
     assert(exec);
 
-    MirInstr *prev_executor = get_executor(cnt);
+    exec_stack_push(cnt, exec->entry_block->entry_instr);
+
     /* iterate over entry block of executable */
-    set_executor_at_beginning(cnt, exec->entry_block);
+    MirInstr *instr, *prev;
+    while (true) {
+      instr = *exec_stack_get(cnt);
+      prev  = instr;
+      if (!instr || cnt->exec_aborted) break;
 
-    MirInstr *prev;
-    while (cnt->executor) {
-      prev = cnt->executor;
-      exec_instr(cnt, cnt->executor);
+      exec_instr(cnt, instr);
 
-      if (!cnt->executor) break;
-      if (prev == cnt->executor) cnt->executor = cnt->executor->next;
+      /* stack head can be changed by br instructions */
+      if (*exec_stack_get(cnt) == prev) *exec_stack_get(cnt) = instr->next;
     }
 
-    set_executor(cnt, prev_executor);
+    exec_stack_pop(cnt);
   }
 
   return cnt->exec_call_result;
@@ -1925,8 +1948,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirValue *callee_val = &call->callee->value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
-  MirFn *fn = callee_val->data.v_fn;
-  builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, call->base.node->src, BUILDER_CUR_WORD, "");
+  MirFn *   fn     = callee_val->data.v_fn;
   MirValue *result = exec_fn(cnt, fn, call->args);
 
   if (result) {
@@ -2679,10 +2701,10 @@ execute_test_cases(Context *cnt)
   MirFn *test_fn;
   barray_foreach(cnt->test_cases, test_fn)
   {
+    cnt->exec_aborted = false;
     assert(test_fn->is_test_case);
-    msg_log("%s", test_fn->test_case_desc);
-
     exec_fn(cnt, test_fn, NULL);
+    msg_log("[ %s ] ... %s", cnt->exec_aborted ? RED("FAIL") : GREEN(" OK "), test_fn->test_case_desc);
   }
 }
 
