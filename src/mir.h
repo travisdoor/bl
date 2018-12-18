@@ -98,13 +98,15 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  MirType *type;
-  MirExec *exec;
+  const char *name;
+  MirType *   type;
+  MirExec *   exec;
 
-  BArray *  arg_slots;
-  DCpointer extern_entry;
-  bool      is_external;
-  bool      is_test_case;
+  BArray *    arg_slots;
+  DCpointer   extern_entry;
+  bool        is_external;
+  bool        is_test_case;
+  const char *test_case_desc;
 };
 
 /* TYPE */

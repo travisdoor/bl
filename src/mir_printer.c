@@ -300,16 +300,17 @@ print_instr_block(MirInstrBlock *block)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto)
 {
-  if (fn_proto->base.node)
-    fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
+  MirFn *fn = fn_proto->base.value.data.v_fn;
+  assert(fn);
+
+  if (fn->name)
+    fprintf(stdout, "@%s ", fn->name);
   else
     fprintf(stdout, "@%u ", fn_proto->base.id);
 
   fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
   print_type(fn_proto->base.value.type, false);
 
-  MirFn *fn = fn_proto->base.value.data.v_fn;
-  assert(fn);
   if (fn->is_external) {
     fprintf(stdout, FLAG_COLOR(" #extern\n"));
   } else {
