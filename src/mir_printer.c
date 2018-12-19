@@ -33,6 +33,7 @@
 #define INSTR_COLOR YELLOW
 #define INSTR_ANALYZE_COLOR MAGENTA
 #define BLOCK_COLOR GREEN
+#define FLAG_COLOR GREEN
 #define ERROR_COLOR RED
 
 static inline void
@@ -41,7 +42,7 @@ print_type(MirType *type, bool aligned)
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
   if (aligned)
-    fprintf(stdout, TYPE_COLOR("%10s"), tmp);
+    fprintf(stdout, TYPE_COLOR("%16s"), tmp);
   else
     fprintf(stdout, TYPE_COLOR("%s"), tmp);
 }
@@ -68,6 +69,9 @@ static void
 print_instr_br(MirInstrBr *br);
 
 static void
+print_instr_unreachable(MirInstrUnreachable *unr);
+
+static void
 print_instr_try_infer(MirInstrTryInfer *infer);
 
 static void
@@ -87,9 +91,6 @@ print_instr_const(MirInstrConst *ci);
 
 static void
 print_instr_ret(MirInstrRet *ret);
-
-static void
-print_instr_unreachable(MirInstrUnreachable *instr);
 
 static void
 print_instr_store(MirInstrStore *store);
@@ -151,6 +152,13 @@ print_instr_cond_br(MirInstrCondBr *cond_br)
 }
 
 void
+print_instr_unreachable(MirInstrUnreachable *unr)
+{
+  print_instr_head(&unr->base);
+  fprintf(stdout, INSTR_COLOR("unreachable"));
+}
+
+void
 print_instr_br(MirInstrBr *br)
 {
   print_instr_head(&br->base);
@@ -177,13 +185,6 @@ print_instr_addr_of(MirInstrAddrOf *addr_of)
 {
   print_instr_head(&addr_of->base);
   fprintf(stdout, INSTR_COLOR("&") "%%%u", addr_of->target->id);
-}
-
-void
-print_instr_unreachable(MirInstrUnreachable *instr)
-{
-  print_instr_head(&instr->base);
-  fprintf(stdout, INSTR_COLOR("unreachable"));
 }
 
 void
@@ -299,16 +300,21 @@ print_instr_block(MirInstrBlock *block)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto)
 {
-  if (fn_proto->base.node)
-    fprintf(stdout, "@%s ", fn_proto->base.node->data.ident.str);
+  MirFn *fn = fn_proto->base.value.data.v_fn;
+  assert(fn);
+
+  if (fn->name)
+    fprintf(stdout, "@%s ", fn->name);
   else
     fprintf(stdout, "@%u ", fn_proto->base.id);
 
   fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
   print_type(fn_proto->base.value.type, false);
 
-  MirFn *fn = fn_proto->base.value.data.v_fn;
-  if (fn) {
+  if (fn->is_external) {
+    fprintf(stdout, FLAG_COLOR(" #extern\n"));
+  } else {
+    if (fn->is_test_case) fprintf(stdout, FLAG_COLOR(" #test"));
     MirInstrBlock *tmp;
     fprintf(stdout, " { %s\n", fn_proto->base.analyzed ? GREEN("// ANALYZED") : "");
     barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp);
@@ -378,5 +384,6 @@ mir_print_instr(MirInstr *instr)
   case MIR_INSTR_BLOCK:
     break;
   }
+
   fprintf(stdout, "\n");
 }

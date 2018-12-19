@@ -31,7 +31,6 @@
 #include "common.h"
 
 #define EXPECTED_GSCOPE_COUNT 4096
-#define FN_TEST_NAME "test@"
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
   {                                                                                                \
@@ -83,7 +82,6 @@ typedef struct
   Scope *scope;
   Ast *  curr_decl;
   bool   inside_loop;
-  bool   core_loaded;
 } Context;
 
 /* helpers */
@@ -94,17 +92,20 @@ sym_to_binop_kind(Sym sm);
 static UnopKind
 sym_to_unop_kind(Sym sm);
 
-static Ast *
-load_core(Context *cnt);
-
 static void
 provide(Context *cnt, Ast *ident, bool in_tree);
+
+static Ast *
+parse_unrecheable(Context *cnt);
 
 static Ast *
 parse_load(Context *cnt);
 
 static Ast *
 parse_link(Context *cnt);
+
+static Ast *
+parse_test_case(Context *cnt);
 
 static void
 parse_ublock_content(Context *cnt, Ast *ublock);
@@ -1191,10 +1192,9 @@ parse_expr_call(Context *cnt, Ast *prev)
   Token *tok = tokens_consume_if(cnt->tokens, SYM_LPAREN);
   if (!tok) return NULL;
 
-  Ast *call                 = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok);
-  call->data.expr_call.ref  = prev;
-  call->data.expr_call.run  = false;
-  call->data.expr_call.args = bo_array_new(sizeof(Ast *));
+  Ast *call                = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok);
+  call->data.expr_call.ref = prev;
+  call->data.expr_call.run = false;
 
   /* parse args */
   bool rq = false;
@@ -1203,6 +1203,7 @@ parse_expr_call(Context *cnt, Ast *prev)
 arg:
   tmp = parse_expr(cnt);
   if (tmp) {
+    if (!call->data.expr_call.args) call->data.expr_call.args = bo_array_new(sizeof(Ast *));
     bo_array_push_back(call->data.expr_call.args, tmp);
 
     if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
@@ -1263,6 +1264,15 @@ next:
 
   return flags;
 #undef CASE
+}
+
+Ast *
+parse_unrecheable(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_UNREACHABLE);
+  if (!tok) return NULL;
+
+  return ast_create_node(cnt->ast_arena, AST_UNREACHABLE, tok);
 }
 
 Ast *
@@ -1453,6 +1463,12 @@ next:
     goto next;
   }
 
+  if ((tmp = parse_unrecheable(cnt))) {
+    bo_array_push_back(block->data.block.nodes, tmp);
+    parse_semicolon_rq(cnt);
+    goto next;
+  }
+
   tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
   if (!tok) {
     tok = tokens_peek_prev(cnt->tokens);
@@ -1464,6 +1480,37 @@ next:
 
   pop_scope(cnt);
   return block;
+}
+
+Ast *
+parse_test_case(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_TEST);
+  if (!tok) return NULL;
+
+  Token *tok_desc = tokens_consume(cnt->tokens);
+  if (tok_desc->sym != SYM_STRING) {
+    parse_error(cnt, ERR_EXPECTED_TEST_DESC, tok_desc, BUILDER_CUR_WORD,
+                "expected test case description");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8);
+  push_scope(cnt, scope);
+
+  Ast *block = parse_block(cnt);
+  if (!block) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "expected test case body");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  pop_scope(cnt);
+  Ast *test                  = ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok);
+  test->data.test_case.desc  = tok_desc->value.str;
+  test->data.test_case.block = block;
+
+  return test;
 }
 
 void
@@ -1485,17 +1532,6 @@ next:
     goto next;
   }
 
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  /* TODO: move to builder!!! */
-  if (!(cnt->builder->flags & BUILDER_NO_API) && !cnt->core_loaded && (tmp = load_core(cnt))) {
-    bo_array_push_back(ublock->data.ublock.nodes, tmp);
-    cnt->core_loaded = true;
-    goto next;
-  }
-
   if ((tmp = parse_load(cnt))) {
     bo_array_push_back(ublock->data.ublock.nodes, tmp);
     goto next;
@@ -1503,6 +1539,12 @@ next:
 
   if ((tmp = parse_link(cnt))) {
     bo_array_push_back(ublock->data.ublock.nodes, tmp);
+    goto next;
+  }
+
+  if ((tmp = parse_test_case(cnt))) {
+    bo_array_push_back(ublock->data.ublock.nodes, tmp);
+    parse_semicolon_rq(cnt);
     goto next;
   }
 
@@ -1532,7 +1574,8 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
   root->data.ublock.unit = unit;
   unit->ast              = root;
 
-  assembly->gscope = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
+  if (!assembly->gscope)
+    assembly->gscope = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
 
   Context cnt = {.builder     = builder,
                  .assembly    = assembly,
@@ -1542,7 +1585,6 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
                  .scope_arena = &builder->scope_arena,
                  .tokens      = &unit->tokens,
                  .curr_decl   = NULL,
-                 .core_loaded = false,
                  .inside_loop = false};
 
   parse_ublock_content(&cnt, unit->ast);

@@ -29,6 +29,8 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
+#include <dyncall.h>
+#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
@@ -46,6 +48,7 @@ typedef struct MirFn     MirFn;
 typedef struct MirValue  MirValue;
 
 typedef struct MirInstr            MirInstr;
+typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrBlock       MirInstrBlock;
 typedef struct MirInstrDeclVar     MirInstrDeclVar;
 typedef struct MirInstrConst       MirInstrConst;
@@ -58,7 +61,6 @@ typedef struct MirInstrFnProto     MirInstrFnProto;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrCall        MirInstrCall;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
-typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
 typedef struct MirInstrBr          MirInstrBr;
@@ -96,11 +98,16 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  MirType *type;
-  MirExec *exec;
+  Ast *       node;
+  const char *name;
+  MirType *   type;
+  MirExec *   exec;
 
-  BArray *arg_slots;
-  void *  extern_entry;
+  BArray *    arg_slots;
+  DCpointer   extern_entry;
+  bool        is_external;
+  bool        is_test_case;
+  const char *test_case_desc;
 };
 
 /* TYPE */
@@ -150,7 +157,6 @@ struct MirType
 /* VALUE */
 struct MirValue
 {
-  MirType *type;
   union
   {
     unsigned long long v_uint;
@@ -160,6 +166,8 @@ struct MirValue
     MirFn *            v_fn;
     MirValue *         v_ptr;
   } data;
+
+  MirType *type;
 };
 
 /* INSTRUCTIONS */
@@ -202,6 +210,10 @@ struct MirInstr
 
   MirInstr *prev;
   MirInstr *next;
+
+#if BL_DEBUG
+  uint64_t _serial;
+#endif
 };
 
 struct MirInstrBlock

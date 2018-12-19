@@ -46,28 +46,6 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 static int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags);
 
-static void
-default_error_handler(const char *msg, void *context)
-{
-#if BL_ABORT_ON_CMP_ERROR
-  bl_abort(false, "%s", msg);
-#else
-  msg_error("%s", msg);
-#endif
-}
-
-static void
-default_warning_handler(const char *msg, void *context)
-{
-  msg_warning("%s", msg);
-}
-
-static void
-default_note_handler(const char *msg, void *context)
-{
-  msg_note("%s", msg);
-}
-
 static bool llvm_initialized = false;
 
 static void
@@ -157,9 +135,6 @@ builder_new(void)
   Builder *builder = bl_calloc(1, sizeof(Builder));
   if (!builder) bl_abort("bad alloc");
 
-  builder->on_error   = default_error_handler;
-  builder->on_warning = default_warning_handler;
-  builder->on_note    = default_note_handler;
   builder->flags      = 0;
   builder->errorc     = 0;
   builder->str_cache  = bo_array_new_bo(bo_typeof(BString), true);
@@ -216,33 +191,6 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 }
 
 void
-builder_set_error_diag_handler(Builder *builder, diag_handler_f handler, void *context)
-{
-  builder->on_error     = handler;
-  builder->on_error_cnt = context;
-}
-
-void
-builder_set_warning_diag_handler(Builder *builder, diag_handler_f handler, void *context)
-{
-  builder->on_warning     = handler;
-  builder->on_warning_cnt = context;
-}
-
-void
-builder_set_note_diag_handler(Builder *builder, diag_handler_f handler, void *context)
-{
-  builder->on_note     = handler;
-  builder->on_note_cnt = context;
-}
-
-void
-bl_diag_delete_msg(char *msg)
-{
-  free(msg);
-}
-
-void
 builder_error(Builder *builder, const char *format, ...)
 {
   if (builder->errorc > MAX_ERROR_REPORTED) return;
@@ -253,7 +201,7 @@ builder_error(Builder *builder, const char *format, ...)
   vsnprintf(error, MAX_MSG_LEN, format, args);
   va_end(args);
 
-  builder->on_error(&error[0], builder->on_error_cnt);
+  msg_error("%s", &error[0]);
   builder->errorc++;
 }
 
@@ -267,7 +215,7 @@ builder_warning(Builder *builder, const char *format, ...)
   vsnprintf(warning, MAX_MSG_LEN, format, args);
   va_end(args);
 
-  builder->on_warning(&warning[0], builder->on_error_cnt);
+  msg_warning("%s", &warning[0]);
 }
 
 void
@@ -304,6 +252,7 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
       snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
     } else {
       const char *mark = "E";
+      if (type == BUILDER_MSG_LOG) mark = "";
       if (type == BUILDER_MSG_NOTE) mark = "N";
       if (type == BUILDER_MSG_WARNING) mark = "W";
 
@@ -342,6 +291,7 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
         bo_string_append(tmp, " ");
       else {
         const char *marker = RED("^");
+        if (type == BUILDER_MSG_LOG) marker = GREEN("^");
         if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
         if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
         bo_string_append(tmp, marker);
@@ -365,11 +315,13 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
 
   if (type == BUILDER_MSG_ERROR) {
     builder->errorc++;
-    builder->on_error(bo_string_get(tmp), builder->on_error_cnt);
+    msg_error("%s", bo_string_get(tmp));
   } else if (type == BUILDER_MSG_WARNING) {
-    builder->on_warning(bo_string_get(tmp), builder->on_warning_cnt);
+    msg_warning("%s", bo_string_get(tmp));
+  } else if (type == BUILDER_MSG_LOG) {
+    msg_log("%s", bo_string_get(tmp));
   } else {
-    builder->on_note(bo_string_get(tmp), builder->on_note_cnt);
+    msg_note("%s", bo_string_get(tmp));
   }
 
   bo_unref(tmp);

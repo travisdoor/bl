@@ -1,7 +1,0 @@
-#test "simple local function" {
-  add : fn (a s32, b s32) s32 {
-    return a + b; 
-  };
-
-  assert(add(10, 20) == 30);
-};
