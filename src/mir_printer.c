@@ -384,5 +384,6 @@ mir_print_instr(MirInstr *instr)
   case MIR_INSTR_BLOCK:
     break;
   }
+
   fprintf(stdout, "\n");
 }

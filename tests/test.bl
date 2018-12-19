@@ -1,5 +1,7 @@
 /* playground */
 
+#load "std/debug.bl"
+
 putchar : fn (c s32) s32 #extern;
 
 main : fn () s32 {
@@ -22,24 +24,3 @@ say_hello : fn () {
   putchar(10);
 };
 
-#test "test 1" {
-  assert(true);
-};
-
-#test "test 2" {
-  assert(false);
-};
-
-#test "test 3" {
-  assert(true);
-};
-
-#test "test 4" {
-  assert(true);
-};
-
-assert : fn (cond bool) {
-  if (!cond) {
-    unreachable;
-  }
-};

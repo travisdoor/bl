@@ -98,6 +98,7 @@ struct MirVar
 /* FN */
 struct MirFn
 {
+  Ast *       node;
   const char *name;
   MirType *   type;
   MirExec *   exec;
@@ -209,6 +210,10 @@ struct MirInstr
 
   MirInstr *prev;
   MirInstr *next;
+
+#if BL_DEBUG
+  uint64_t _serial;
+#endif
 };
 
 struct MirInstrBlock

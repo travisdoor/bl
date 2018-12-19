@@ -237,6 +237,9 @@ static MirInstr *
 create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
 
 static MirInstr *
+create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
+
+static MirInstr *
 add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
 
 static MirInstr *
@@ -746,6 +749,12 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
   tmp->kind     = kind;
   tmp->node     = node;
   tmp->id       = 0;
+
+#if BL_DEBUG
+  static uint64_t counter = 0;
+  tmp->_serial            = counter++;
+#endif
+
   return tmp;
 }
 
@@ -854,15 +863,21 @@ add_instr_unrecheable(Context *cnt, Ast *node)
 }
 
 MirInstr *
-add_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
+create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, node, MirInstrFnProto *);
   tmp->base.id         = (int)bo_array_size(cnt->analyze_stack);
   tmp->type            = type;
   tmp->user_type       = user_type;
-
-  bo_array_push_back(cnt->analyze_stack, tmp);
   return &tmp->base;
+}
+
+MirInstr *
+add_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
+{
+  MirInstr *tmp = create_instr_fn_proto(cnt, node, type, user_type);
+  bo_array_push_back(cnt->analyze_stack, tmp);
+  return tmp;
 }
 
 MirInstr *
@@ -1684,7 +1699,13 @@ MirValue *
 exec_instr(Context *cnt, MirInstr *instr)
 {
   if (!instr) return NULL;
-  if (!instr->analyzed) bl_abort("instruction %s has not been analyzed!", instr_name(instr));
+  if (!instr->analyzed) {
+#if BL_DEBUG
+    bl_abort("instruction %s (%llu) has not been analyzed!", instr_name(instr), instr->_serial);
+#else
+    bl_abort("instruction %s has not been analyzed!", instr_name(instr));
+#endif
+  }
 
 #if 0
   /* step-by-step execution */
@@ -1920,6 +1941,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
     MirExec *exec = fn->exec;
     assert(exec);
 
+    if (!exec->entry_block->entry_instr) return NULL;
     exec_stack_push(cnt, exec->entry_block->entry_instr);
 
     /* iterate over entry block of executable */
@@ -2151,6 +2173,7 @@ ast_test_case(Context *cnt, Ast *test)
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirFn *        fn =
       create_fn(cnt, TEST_CASE_FN_NAME, NULL, false, true); /* TODO: based on user flag!!! */
+  fn->node = test;
 
   assert(test->data.test_case.desc);
   fn->test_case_desc             = test->data.test_case.desc;
@@ -2387,6 +2410,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
   if (value && value->kind == MIR_INSTR_FN_PROTO) {
     value->value.data.v_fn->name = ast_name->data.ident.str;
+    value->node                  = ast_name;
     scope_entry->instr           = value;
 
     if (ast_type) {
@@ -2483,7 +2507,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
 {
   if (!type) return NULL;
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirInstr *     fn         = add_instr_fn_proto(cnt, NULL, NULL, NULL);
+  MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
   fn->value.data.v_fn       = create_fn(cnt, RESOLVE_TYPE_FN_NAME, NULL, false, false);
 
@@ -2542,6 +2566,9 @@ ast(Context *cnt, Ast *node)
     return ast_expr_ref(cnt, node);
   case AST_EXPR_CALL:
     return ast_expr_call(cnt, node);
+
+  case AST_LOAD:
+    break;
   default:
     bl_abort("invalid node %s", ast_get_name(node));
   }
@@ -2685,6 +2712,7 @@ mir_type_to_str(char *buf, int len, MirType *type)
 void
 execute_entry_fn(Context *cnt)
 {
+  msg_log("executing 'main' in compile time...");
   if (!cnt->entry_fn) {
     msg_error("assembly '%s' has no entry function!", cnt->assembly->name);
     return;
@@ -2698,14 +2726,30 @@ execute_entry_fn(Context *cnt)
 void
 execute_test_cases(Context *cnt)
 {
-  MirFn *test_fn;
+  msg_log("\nexecuting test cases...");
+
+  const size_t c      = bo_array_size(cnt->test_cases);
+  int          failed = 0;
+  MirFn *      test_fn;
+  int          line;
+  const char * file;
+
   barray_foreach(cnt->test_cases, test_fn)
   {
     cnt->exec_aborted = false;
     assert(test_fn->is_test_case);
     exec_fn(cnt, test_fn, NULL);
-    msg_log("[ %s ] ... %s", cnt->exec_aborted ? RED("FAIL") : GREEN(" OK "), test_fn->test_case_desc);
+
+    line = test_fn->node ? test_fn->node->src->line : -1;
+    file = test_fn->node ? test_fn->node->src->unit->filepath : "?";
+
+    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'", cnt->exec_aborted ? RED("FAILED") : GREEN("PASSED"),
+            i + 1, c, file, line, test_fn->test_case_desc);
+
+    if (cnt->exec_aborted) ++failed;
   }
+
+  msg_log("testing done, %d of %zu failed\n", failed, c);
 }
 
 void
@@ -2734,6 +2778,8 @@ init_buildins(Context *cnt)
       create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
   cnt->buildin_types.entry_u32 =
       create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
+  cnt->buildin_types.entry_u64 =
+      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U64], 64, false);
   cnt->buildin_types.entry_usize =
       create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
 
@@ -2804,15 +2850,8 @@ mir_run(Builder *builder, Assembly *assembly)
     analyze(&cnt);
   }
 
-  if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) {
-    msg_log("executing test cases...");
-    execute_test_cases(&cnt);
-  }
-
-  if (!builder->errorc && builder->flags & BUILDER_RUN) {
-    msg_log("executing 'main' in compile time...");
-    execute_entry_fn(&cnt);
-  }
+  if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
+  if (!builder->errorc && builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
 
   bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.analyze_stack);
