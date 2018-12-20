@@ -31,6 +31,7 @@
 #include "blmemory.h"
 #include "assembly.h"
 #include "unit.h"
+#include "mir.h"
 
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
@@ -46,6 +47,8 @@ assembly_new(const char *name)
   assembly->units        = bo_array_new(sizeof(Unit *));
   assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
   assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
+
+  assembly->mir_module = mir_new_module(assembly->name);
 
   bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
   return assembly;
@@ -65,15 +68,7 @@ assembly_delete(Assembly *assembly)
   bo_unref(assembly->unique_cache);
   bo_unref(assembly->link_cache);
 
-  /* LLVM cleanup */
-  /* execution engine owns llvm_module after creation */
-  LLVMDisposeExecutionEngine(assembly->llvm_jit);
-  if (assembly->llvm_run_engine)
-    LLVMDisposeExecutionEngine(assembly->llvm_run_engine);
-  else
-    LLVMDisposeModule(assembly->llvm_module);
-
-  LLVMContextDispose(assembly->llvm_cnt);
+  mir_delete_module(assembly->mir_module);
 
   bl_free(assembly);
 }

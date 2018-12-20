@@ -49,6 +49,7 @@ print_help(void)
                   "  -mir-post-dump    = Print output of MIR post analyze stage.\n"
                   "  -syntax-only      = Check syntax and exit.\n"
                   "  -emit-llvm        = Write LLVM-IR to file.\n"
+                  "  -emit-mir         = Write MIR to file.\n"
                   "  -run              = Execute 'main' method in compile time.\n"
                   "  -run-tests        = Execute all unit tests in compile time.\n"
                   "  -no-bin           = Don't write binary to disk.\n"
@@ -85,6 +86,8 @@ main(int argc, char *argv[])
       build_flags |= BUILDER_SYNTAX_ONLY;
     } else if (strcmp(&argv[optind][1], "emit-llvm") == 0) {
       build_flags |= BUILDER_EMIT_LLVM;
+    } else if (strcmp(&argv[optind][1], "emit-mir") == 0) {
+      build_flags |= BUILDER_EMIT_MIR;
     } else if (strcmp(&argv[optind][1], "run") == 0) {
       build_flags |= BUILDER_RUN;
     } else if (strcmp(&argv[optind][1], "run-tests") == 0) {

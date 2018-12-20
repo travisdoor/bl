@@ -32,6 +32,7 @@
 #include <dyncall.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include "arena.h"
@@ -40,7 +41,7 @@
 struct Assembly;
 struct Builder;
 
-typedef struct MirArenas MirArenas;
+typedef struct MirModule MirModule;
 typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
@@ -76,6 +77,15 @@ struct MirArenas
   Arena exec_arena;
   Arena var_arena;
   Arena fn_arena;
+};
+
+struct MirModule
+{
+  struct MirArenas  arenas;
+  BArray *          globals;
+  LLVMModuleRef     llvm_module;
+  LLVMContextRef    llvm_cnt;
+  LLVMTargetDataRef llvm_td;
 };
 
 /* EXEC */
@@ -357,11 +367,11 @@ struct MirInstrTryInfer
 void
 mir_type_to_str(char *buf, int len, MirType *type);
 
-void
-mir_arenas_init(MirArenas *arenas);
+MirModule *
+mir_new_module(const char *name);
 
 void
-mir_arenas_terminate(MirArenas *arenas);
+mir_delete_module(MirModule *module);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

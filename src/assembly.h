@@ -37,17 +37,16 @@
 #include "scope.h"
 #include "unit.h"
 
+struct MirModule;
+
 typedef struct Assembly
 {
-  BArray *               units;           /* array of all units in assembly */
-  BHashTable *           unique_cache;    /* cache for loading only unique units */
-  BHashTable *           link_cache;      /* all linked externals libraries passed to linker */
-  char *                 name;            /* assembly name */
-  Scope *                gscope;          /* global scope of the assembly */
-  LLVMContextRef         llvm_cnt;        /* llvm context */
-  LLVMModuleRef          llvm_module;     /* final llvm module */
-  LLVMExecutionEngineRef llvm_jit;        /* used in ir.c for compile-time execution */
-  LLVMExecutionEngineRef llvm_run_engine; /* used when compiler is called with '-run' */
+  BArray *          units;        /* array of all units in assembly */
+  BHashTable *      unique_cache; /* cache for loading only unique units */
+  BHashTable *      link_cache;   /* all linked externals libraries passed to linker */
+  char *            name;         /* assembly name */
+  Scope *           gscope;       /* global scope of the assembly */
+  struct MirModule *mir_module;
 } Assembly;
 
 Assembly *

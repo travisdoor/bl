@@ -36,14 +36,14 @@
 void
 bc_writer_run(Builder *builder, Assembly *assembly)
 {
-  assert(assembly->llvm_module);
+  assert(assembly->mir_module->llvm_module);
 
   char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
   if (!export_file) bl_abort("bad alloc");
   strcpy(export_file, assembly->name);
   strcat(export_file, ".ll");
 
-  char *str = LLVMPrintModuleToString(assembly->llvm_module);
+  char *str = LLVMPrintModuleToString(assembly->mir_module->llvm_module);
 
   FILE *f = fopen(export_file, "w");
   if (f == NULL) {

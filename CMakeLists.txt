@@ -59,13 +59,13 @@ set(SOURCE_FILES
         src/bldebug.c
         src/parser.c
         src/linker.c
-        src/jit_exec.c
-        src/test_exec.c
         src/bc_writer.c
+	src/mir_writer.c
         src/native_bin.c
         src/scope.c
         src/common.c 
         src/mir.c
+        src/ir.c
         src/mir_printer.c
         src/ast.c)
 

@@ -53,13 +53,10 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit);
  * per assembly
  */
 void
-ast_printer_run(Assembly *assembly);
+ast_printer_run(Assembly *assembly, FILE *stream);
 
 void
 ir_run(Builder *builder, Assembly *assembly);
-
-void
-post_run(Builder *builder, Assembly *assembly);
 
 void
 linker_run(Builder *builder, Assembly *assembly);
@@ -71,9 +68,6 @@ void
 native_bin_run(Builder *builder, Assembly *assembly);
 
 void
-jit_exec_run(Builder *builder, Assembly *assembly);
-
-void
-test_exec_run(Builder *builder, Assembly *assembly);
+mir_writer_run(Assembly *assembly);
 
 #endif

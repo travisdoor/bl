@@ -98,24 +98,22 @@ int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   if (flags & BUILDER_PRINT_AST) {
-    ast_printer_run(assembly);
+    ast_printer_run(assembly, stdout);
   }
   interrupt_on_error(builder);
 
-  /* TODO: move to !syntax only block */
-  mir_run(builder, assembly);
-  interrupt_on_error(builder);
-
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
-    // mir_run(builder, assembly);
+    mir_run(builder, assembly);
+    mir_writer_run(assembly);
+    interrupt_on_error(builder);
+
+    ir_run(builder, assembly);
+    interrupt_on_error(builder);
 
     if (flags & BUILDER_EMIT_LLVM) {
       bc_writer_run(builder, assembly);
       interrupt_on_error(builder);
     }
-
-    if (flags & BUILDER_RUN) jit_exec_run(builder, assembly);
-    if (flags & BUILDER_RUN_TESTS) test_exec_run(builder, assembly);
 
     if (!(flags & BUILDER_NO_BIN)) {
       linker_run(builder, assembly);
@@ -135,16 +133,15 @@ builder_new(void)
   Builder *builder = bl_calloc(1, sizeof(Builder));
   if (!builder) bl_abort("bad alloc");
 
-  builder->flags      = 0;
-  builder->errorc     = 0;
-  builder->str_cache  = bo_array_new_bo(bo_typeof(BString), true);
+  builder->flags     = 0;
+  builder->errorc    = 0;
+  builder->str_cache = bo_array_new_bo(bo_typeof(BString), true);
 
   /* initialize LLVM statics */
   llvm_init();
 
   scope_arena_init(&builder->scope_arena);
   ast_arena_init(&builder->ast_arena);
-  mir_arenas_init(&builder->mir_arenas);
 
   return builder;
 }
@@ -152,7 +149,6 @@ builder_new(void)
 void
 builder_delete(Builder *builder)
 {
-  mir_arenas_terminate(&builder->mir_arenas);
   arena_terminate(&builder->scope_arena);
   arena_terminate(&builder->ast_arena);
   bo_unref(builder->str_cache);
