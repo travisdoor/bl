@@ -111,4 +111,10 @@ _log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
     abort();                                                                                       \
   }
 
+#define bl_unimplemented                                                                           \
+  {                                                                                                \
+    _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                      \
+    abort();                                                                                       \
+  }
+
 #endif

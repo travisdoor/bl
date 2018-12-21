@@ -182,9 +182,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   print_instr_head(&decl->base, stream);
 
   assert(decl->var);
-  const char *name = decl->var->name->data.ident.str;
-
-  fprintf(stream, "decl %s", name);
+  fprintf(stream, "decl %s", decl->var->name);
 }
 
 void
@@ -296,6 +294,9 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
 
+  fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
+          fn_proto->base.ref_count ? "" : ", no LLVM representation");
+
   if (fn->name)
     fprintf(stream, "@%s ", fn->name);
   else
@@ -304,18 +305,18 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   fprintf(stream, "(%d) ", fn_proto->base.ref_count);
   print_type(fn_proto->base.value.type, false, stream);
 
-  if (fn->is_external) {
-    fprintf(stream, " #extern\n");
-  } else {
+  if (!fn->is_external) {
     if (fn->is_test_case) fprintf(stream, " #test");
-    MirInstrBlock *tmp = fn->first_block;
-    fprintf(stream, " { %s\n", fn_proto->base.analyzed ? "// ANALYZED" : "");
+    fprintf(stream, " {\n");
 
+    MirInstrBlock *tmp = fn->first_block;
     while (tmp) {
       print_instr_block(tmp, stream);
       tmp = (MirInstrBlock *)tmp->base.next;
     }
     fprintf(stream, "}\n");
+  } else {
+    fprintf(stream, " #extern\n");
   }
 }
 

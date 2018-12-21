@@ -62,12 +62,56 @@ gen_instr_br(Context *cnt, MirInstrBr *br);
 static void
 gen_instr_ret(Context *cnt, MirInstrRet *ret);
 
+static void
+gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+
+static void
+gen_instr_const(Context *cnt, MirInstrConst *cnst);
+
+static void
+gen_instr_load(Context *cnt, MirInstrLoad *load);
+
+void
+gen_instr_load(Context *cnt, MirInstrLoad *load)
+{
+  LLVMValueRef llvm_src = load->src->llvm_value;
+  assert(llvm_src);
+  load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "tmp");
+}
+
+void
+gen_instr_const(Context *cnt, MirInstrConst *cnst)
+{
+  MirValue *value = &cnst->base.value;
+  MirType * type  = value->type;
+  assert(type);
+  LLVMTypeRef llvm_type = type->llvm_type;
+  assert(llvm_type);
+
+  switch (type->kind) {
+  case MIR_TYPE_INT:
+    cnst->base.llvm_value =
+        LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
+    break;
+  default:
+    bl_unimplemented;
+  }
+}
+
+void
+gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
+{
+  LLVMTypeRef llvm_type = decl->base.value.type->llvm_type;
+  assert(llvm_type);
+  decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, decl->var->name);
+}
+
 void
 gen_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   LLVMValueRef llvm_ret;
   if (ret->value) {
-    bl_abort("unimpemneted");
+    bl_unimplemented;
   } else {
     llvm_ret = LLVMBuildRetVoid(cnt->llvm_builder);
   }
@@ -157,6 +201,15 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_RET:
     gen_instr_ret(cnt, (MirInstrRet *)instr);
+    break;
+  case MIR_INSTR_DECL_VAR:
+    gen_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+    break;
+  case MIR_INSTR_CONST:
+    gen_instr_const(cnt, (MirInstrConst *)instr);
+    break;
+  case MIR_INSTR_LOAD:
+    gen_instr_load(cnt, (MirInstrLoad *)instr);
     break;
 
   default:

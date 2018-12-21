@@ -7,6 +7,7 @@ main : fn () {
   return;
 };
 
+putchar : fn (c s32) s32 #extern;
 /*
 putchar : fn (c s32) s32 #extern;
 

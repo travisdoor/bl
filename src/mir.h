@@ -89,7 +89,7 @@ struct MirModule
 /* VAR */
 struct MirVar
 {
-  struct Ast *name;
+  const char *name;
   MirValue *  value;
 };
 

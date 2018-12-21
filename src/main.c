@@ -156,6 +156,11 @@ main(int argc, char *argv[])
   }
 
   int state = builder_compile(builder, assembly, build_flags);
+
+  char date[26];
+  date_time(date, 26, "%d-%m-%Y %H:%M:%S");
+  msg_log("\nfinished at %s", date);
+  
   if (state == COMPILE_OK) {
     msg_log(GREEN("done"));
   }

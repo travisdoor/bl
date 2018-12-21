@@ -200,7 +200,7 @@ static MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types);
 
 static MirVar *
-create_var(Context *cnt, Ast *name);
+create_var(Context *cnt, const char *name);
 
 static MirFn *
 create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case);
@@ -698,7 +698,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
 }
 
 MirVar *
-create_var(Context *cnt, Ast *name)
+create_var(Context *cnt, const char *name)
 {
   assert(name);
   MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
@@ -931,7 +931,7 @@ create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
   MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, name, MirInstrDeclVar *);
   tmp->type            = type;
 
-  MirVar *var = create_var(cnt, name);
+  MirVar *var = create_var(cnt, name->data.ident.str);
   tmp->var    = var;
   return &tmp->base;
 }
@@ -1133,7 +1133,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   }
 
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return result;
@@ -2139,7 +2139,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     exec_math_logic_or(cnt, binop->lhs, binop->rhs, &binop->base);
     break;
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return &binop->base.value;
@@ -2160,7 +2160,7 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     unop->base.value.data.v_int = !unop->instr->value.data.v_int;
     break;
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return &unop->base.value;
@@ -2402,7 +2402,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
       return append_instr_store(cnt, binop, rhs, lhs);
     }
     default:
-      bl_abort("unimplemented");
+      bl_unimplemented;
     }
   } else {
     lhs = append_instr_load_if_needed(cnt, lhs);
@@ -2733,7 +2733,7 @@ _type_to_str(char *buf, int len, MirType *type)
   }
 
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 }
 
