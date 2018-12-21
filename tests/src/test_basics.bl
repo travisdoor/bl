@@ -1,0 +1,57 @@
+#load "std/debug.bl"
+
+#test "fundametal types" {
+  _u8    u8; 
+  _u16   u16; 
+  _u32   u32; 
+  _u64   u64; 
+  _usize usize;
+  _s8    s8; 
+  _s16   s16; 
+  _s32   s32; 
+  _s64   s64; 
+  _bool  bool;
+};
+
+#test "type infer" {
+  number := 0;
+  boolean := true;
+};
+
+#test "simple assignement" {
+  number := 0;
+  assert(number == 0);
+
+  number = 666;
+  assert(number == 666);
+
+  number = (1 + 2 * 3 - 1) / 2;
+  assert(number == 3);
+};
+
+#test "ifs" {
+  b := true;
+  if (b) {
+    if (!b) {
+      unreachable;
+    }
+  } else {
+    unreachable;
+  }
+
+  if (!b) {
+    unreachable;
+  }
+};
+
+#test "function calls" {
+  _1 : fn () {
+  };
+
+  _2 : fn (i s32) s32 {
+    return i;
+  };
+
+  _1();  
+  assert(_2(10) == 10);
+};
