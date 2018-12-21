@@ -108,7 +108,7 @@ void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
   print_instr_head(&type_fn->base, stream);
-  fprintf(stream, "const fn {");
+  fprintf(stream, "const fn (");
 
   if (type_fn->arg_types) {
     MirInstr *tmp;
@@ -137,9 +137,8 @@ void
 print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
 {
   print_instr_head(&cond_br->base, stream);
-  fprintf(stream, "br %%%u ? %s_%u : %s_%u",
-          cond_br->cond->id, cond_br->then_block->name, cond_br->then_block->base.id,
-          cond_br->else_block->name, cond_br->else_block->base.id);
+  fprintf(stream, "br %%%u ? %s_%u : %s_%u", cond_br->cond->id, cond_br->then_block->name,
+          cond_br->then_block->base.id, cond_br->else_block->name, cond_br->else_block->base.id);
 }
 
 void
@@ -153,8 +152,7 @@ void
 print_instr_br(MirInstrBr *br, FILE *stream)
 {
   print_instr_head(&br->base, stream);
-  fprintf(stream, "br %s_%d", br->then_block->name,
-          br->then_block->base.id);
+  fprintf(stream, "br %s_%d", br->then_block->name, br->then_block->base.id);
 }
 
 void
@@ -278,7 +276,11 @@ print_instr_binop(MirInstrBinop *binop, FILE *stream)
 void
 print_instr_block(MirInstrBlock *block, FILE *stream)
 {
-  fprintf(stream, "%s_%u:\n", block->name, block->base.id);
+  fprintf(stream, "%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
+  if (!block->base.ref_count)
+    fprintf(stream, " // NEVER REACHED\n");
+  else
+    fprintf(stream, "\n");
 
   MirInstr *tmp = block->entry_instr;
 
@@ -306,9 +308,13 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     fprintf(stream, " #extern\n");
   } else {
     if (fn->is_test_case) fprintf(stream, " #test");
-    MirInstrBlock *tmp;
+    MirInstrBlock *tmp = fn->first_block;
     fprintf(stream, " { %s\n", fn_proto->base.analyzed ? "// ANALYZED" : "");
-    barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp, stream);
+
+    while (tmp) {
+      print_instr_block(tmp, stream);
+      tmp = (MirInstrBlock *)tmp->base.next;
+    }
     fprintf(stream, "}\n");
   }
 }

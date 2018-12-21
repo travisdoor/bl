@@ -42,7 +42,6 @@ struct Assembly;
 struct Builder;
 
 typedef struct MirModule MirModule;
-typedef struct MirExec   MirExec;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
@@ -74,7 +73,6 @@ struct MirArenas
 {
   Arena instr_arena;
   Arena type_arena;
-  Arena exec_arena;
   Arena var_arena;
   Arena fn_arena;
 };
@@ -88,16 +86,6 @@ struct MirModule
   LLVMTargetDataRef llvm_td;
 };
 
-/* EXEC */
-/* MirExec represents smallest atomic executable block of code it can be function body or floating
- * compile time executed block */
-struct MirExec
-{
-  BArray *       blocks;
-  MirInstrBlock *entry_block;
-  MirFn *        owner_fn;
-};
-
 /* VAR */
 struct MirVar
 {
@@ -108,16 +96,22 @@ struct MirVar
 /* FN */
 struct MirFn
 {
-  Ast *       node;
-  const char *name;
-  MirType *   type;
-  MirExec *   exec;
+  Ast *        node;
+  const char * name;
+  MirType *    type;
+  LLVMValueRef llvm_value;
 
   BArray *    arg_slots;
   DCpointer   extern_entry;
   bool        is_external;
   bool        is_test_case;
   const char *test_case_desc;
+
+  /* pointer to the first block inside function body */
+  MirInstrBlock *first_block;
+  MirInstrBlock *last_block;
+  int            block_count;
+  int            instr_count;
 };
 
 /* TYPE */
@@ -233,9 +227,8 @@ struct MirInstrBlock
   const char *name;
   MirInstr *  entry_instr;
   MirInstr *  last_instr;
-  int         count_instr;
   MirInstr *  terminal;
-  MirExec *   owner_exec;
+  MirFn *     owner_fn;
 };
 
 struct MirInstrDeclVar

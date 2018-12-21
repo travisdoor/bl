@@ -2,9 +2,9 @@
 
 //#load "std/debug.bl"
 
-main : fn () s32 {
+main : fn () {
   i := 0;
-  return 0;
+  return;
 };
 
 /*
