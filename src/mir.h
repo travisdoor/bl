@@ -169,6 +169,7 @@ struct MirValue
     MirType *          v_type;
     MirFn *            v_fn;
     MirValue *         v_ptr;
+    void *             v_stack_ptr;
   } data;
 
   MirType *type;
@@ -310,6 +311,8 @@ struct MirInstrCall
 struct MirInstrDeclRef
 {
   MirInstr base;
+
+  MirInstr *ref;
 };
 
 struct MirInstrAddrOf
