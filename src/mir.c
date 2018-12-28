@@ -95,7 +95,7 @@ typedef struct
 
     BArray *  call_stack;
     bool      aborted;
-    MirValue *call_result;
+    MirValue *call_result; // TODO: remove and use frame stack
   } exec;
 
   /* DynCall/Lib data used for external method execution in compile time */
@@ -217,7 +217,7 @@ static MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types);
 
 static MirVar *
-create_var(Context *cnt, const char *name);
+create_var(Context *cnt, const char *name, MirType *type);
 
 static MirFn *
 create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case);
@@ -757,11 +757,13 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
 }
 
 MirVar *
-create_var(Context *cnt, const char *name)
+create_var(Context *cnt, const char *name, MirType *type)
 {
   assert(name);
-  MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
-  tmp->name   = name;
+  MirVar *tmp               = arena_alloc(&cnt->module->arenas.var_arena);
+  tmp->name                 = name;
+  tmp->type                 = type;
+  tmp->exec_frame_stack_ptr = NULL;
   return tmp;
 }
 
@@ -990,9 +992,8 @@ create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
   if (type) ref_instr(type);
   MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, name, MirInstrDeclVar *);
   tmp->type            = type;
-
-  MirVar *var = create_var(cnt, name->data.ident.str);
-  tmp->var    = var;
+  tmp->base.value.data.v_var =
+      create_var(cnt, name->data.ident.str, NULL); /* type is filled later */
   return &tmp->base;
 }
 
@@ -1409,9 +1410,10 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   MirInstr *src = load->src;
   assert(src);
   assert(is_pointer_type(src->value.type) && "expected pointer");
+  assert(src->kind == MIR_INSTR_DECL_VAR || src->kind == MIR_INSTR_DECL_REF);
 
-  MirValue *deref       = src->value.data.v_ptr;
-  load->base.value.type = deref->type;
+  MirVar *var           = src->value.data.v_var;
+  load->base.value.type = var->type;
 
   return true;
 }
@@ -1503,9 +1505,15 @@ analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
   assert(src && dest);
   assert(src->analyzed && dest->analyzed);
 
+  assert(dest->kind == MIR_INSTR_DECL_VAR);
   if (dest->value.type) return true;
 
+  /* set type to decl var and variable */
   dest->value.type = create_type_ptr(cnt, src->value.type);
+  MirVar *var      = dest->value.data.v_var;
+  assert(var);
+  var->type = src->value.type;
+
   assert(dest->value.type);
   erase_from_curr_block(cnt, &infer->base);
   return true;
@@ -1547,19 +1555,24 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 }
 
 bool
-analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
+analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  if (var->type) {
-    analyze_instr(cnt, var->type, true);
-    MirValue *resolved_type_value = exec_instr(cnt, var->type);
-    unref_instr(var->type);
+  if (decl->type) {
+    analyze_instr(cnt, decl->type, true);
+    MirValue *resolved_type_value = exec_instr(cnt, decl->type);
+    unref_instr(decl->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
+    MirType *resolved_type = resolved_type_value->data.v_type;
+    assert(resolved_type);
 
-    var->base.value.type = resolved_type_value->data.v_type;
+    decl->base.value.type = create_type_ptr(cnt, resolved_type);
+    MirVar *var           = decl->base.value.data.v_var;
+    assert(var);
+    var->type = resolved_type;
   }
 
-  if (var->base.ref_count == 0) {
-    builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, var->base.node->src, BUILDER_CUR_WORD,
+  if (decl->base.ref_count == 0) {
+    builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, decl->base.node->src, BUILDER_CUR_WORD,
                 "unused declaration");
   }
 
@@ -1870,23 +1883,22 @@ exec_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof)
 }
 
 MirValue *
-exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
+exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  assert(var->base.value.type);
+  assert(decl->base.value.type);
+
+  MirVar *var = decl->base.value.data.v_var;
+  assert(var);
 
   /* allocate memory storage on current stack frame */
-  /* TODO: better size lookup??? */
-  /* TODO: better size lookup??? */
-  /* TODO: better size lookup??? */
-  /* TODO: better size lookup??? */
-  /* TODO: better size lookup??? */
-  /* TODO: better size lookup??? */
-  const size_t data_size = var->base.value.type->data.ptr.next->size;
+  const size_t data_size = var->type->size;
   assert(data_size && "trying to allocate 0 bytes data on frame stack!!!");
-  void *mem                        = exec_frame_stack_alloc(cnt, data_size);
-  var->base.value.data.v_stack_ptr = mem;
 
-  return &var->base.value;
+  /* allocate memory for variable on frame stack */
+  void *mem                 = exec_frame_stack_alloc(cnt, data_size);
+  var->exec_frame_stack_ptr = mem;
+
+  return &decl->base.value;
 }
 
 MirValue *
@@ -1907,7 +1919,11 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   assert(is_pointer_type(dest->value.type));
 
   const size_t data_size = src->value.type->size;
-  void *       dest_ptr  = dest->value.data.v_stack_ptr;
+
+  assert(dest->kind == MIR_INSTR_DECL_VAR || MIR_INSTR_DECL_REF);
+  MirVar *var = dest->value.data.v_var;
+  assert(var);
+  void *dest_ptr = var->exec_frame_stack_ptr;
   assert(dest_ptr && "no space allocated for destination");
 
   /* copy value do destination */
@@ -1997,6 +2013,37 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
   cnt->exec.call_result = NULL;
+  MirType *ret_type     = fn->type->data.fn.ret_type;
+
+  /* Store previous frame stack location pointer, this can be used later for rollback. This pointer
+   * will be top of current executed function stack frame in memory layout:
+   *
+   * fn (s32, s32, s32) s32 { ... };
+   * ┏━━━━━━━━━━━━━━┓
+   * ┃ return value ┃
+   * ┠──────────────┨
+   * ┃ arg value 1  ┃
+   * ┠──────────────┨
+   * ┃ arg value 2  ┃
+   * ┠──────────────┨
+   * ┃ arg value 3  ┃
+   * ┠──────────────┨
+   * ┃ local value  ┃
+   * ┠──────────────┨
+   * ┃ local value  ┃
+   * ┠──────────────┨
+   * ┃ ...          ┃
+   * ┗━━━━━━━━━━━━━━┛
+   */
+  void *frame_ptr = exec_frame_stack_get_ptr(cnt);
+
+  /* allocate frame stack space for return value */
+  void *frame_ret_ptr = NULL;
+  {
+    if (ret_type->size != 0) {
+      frame_ret_ptr = exec_frame_stack_alloc(cnt, ret_type->size);
+    }
+  }
 
   if (fn->is_external) {
     assert(fn->extern_entry);
@@ -2011,19 +2058,30 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
       }
     }
 
-    // TODO: handle call result
-    switch (fn->type->data.fn.ret_type->kind) {
+    switch (ret_type->kind) {
     case MIR_TYPE_INT:
-      dcCallInt(cnt->dl.vm, fn->extern_entry);
+      switch (ret_type->data.integer.bitcount) {
+      case sizeof(char) * 8:
+        (*(char *)frame_ret_ptr) = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(short) * 8:
+        (*(short *)frame_ret_ptr) = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(int) * 8:
+        (*(int *)frame_ret_ptr) = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(long long) * 8:
+        (*(long long *)frame_ret_ptr) = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        break;
+      default:
+        bl_abort("unsupported integer size for external call result");
+      }
       break;
 
     default:
       bl_abort("unsupported external call return type");
     }
   } else {
-    /* store previous frame stack location pointer, this can be used later for rollback */
-    void *frame_ptr = exec_frame_stack_get_ptr(cnt);
-
     /* copy arguments into arg slots of the executed function */
     if (args) {
       MirValue *arg;
@@ -2053,11 +2111,10 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
     }
 
     exec_call_stack_pop(cnt);
-
-    /* do frame stack rollback */
-    exec_frame_stack_rollback(cnt, frame_ptr);
   }
 
+  /* do frame stack rollback */
+  exec_frame_stack_rollback(cnt, frame_ptr);
   return cnt->exec.call_result;
 }
 

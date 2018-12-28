@@ -90,7 +90,10 @@ struct MirModule
 struct MirVar
 {
   const char *name;
-  MirValue *  value;
+  MirType *   type; 
+
+  /* pointer to allocated memory on frame stack (used only during execution) */
+  void *exec_frame_stack_ptr;
 };
 
 /* FN */
@@ -167,9 +170,9 @@ struct MirValue
     long long          v_int;
     bool               v_bool;
     MirType *          v_type;
-    MirFn *            v_fn;
     MirValue *         v_ptr;
-    void *             v_stack_ptr;
+    MirFn *            v_fn;
+    MirVar *           v_var;
   } data;
 
   MirType *type;
@@ -236,7 +239,6 @@ struct MirInstrDeclVar
 {
   MirInstr base;
 
-  MirVar *  var;
   MirInstr *type;
 };
 

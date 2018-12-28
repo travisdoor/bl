@@ -101,9 +101,14 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
 void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  LLVMTypeRef llvm_type = decl->base.value.type->llvm_type;
-  assert(llvm_type);
-  decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, decl->var->name);
+  MirVar *var = decl->base.value.data.v_var;
+  assert(var);
+
+  const char *name      = var->name;
+  LLVMTypeRef llvm_type = var->type->llvm_type;
+  assert(llvm_type && name);
+
+  decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);
 }
 
 void
@@ -222,6 +227,13 @@ gen_instr(Context *cnt, MirInstr *instr)
 void
 ir_run(Builder *builder, Assembly *assembly)
 {
+  /* TODO */
+  /* TODO */
+  /* TODO */
+  /* TODO */
+  /* TODO */
+  return; 
+
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
   cnt.builder      = builder;

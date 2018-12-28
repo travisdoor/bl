@@ -7,10 +7,7 @@ main : fn () {
   j := 2;
   k := 3;
 
-  foo();
-  foo();
-  foo();
-  foo();
+  i = get_int();
 
   say_hello();
 
@@ -32,12 +29,10 @@ say_hello : fn () {
   putchar(108);
   putchar(100);
   putchar(10);
+
   return;
 };
 
-foo : fn () {
-  i := 1;
-  j := 2;
-  k := 3;
-  return;
+get_int : fn () s32 {
+  return 10;
 };
