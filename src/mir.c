@@ -93,9 +93,8 @@ typedef struct
     size_t frame_stack_allocated;
     size_t frame_stack_size;
 
-    BArray *  call_stack;
-    bool      aborted;
-    MirValue *call_result; // TODO: remove and use frame stack
+    BArray *call_stack;
+    bool    aborted;
   } exec;
 
   /* DynCall/Lib data used for external method execution in compile time */
@@ -760,10 +759,9 @@ MirVar *
 create_var(Context *cnt, const char *name, MirType *type)
 {
   assert(name);
-  MirVar *tmp               = arena_alloc(&cnt->module->arenas.var_arena);
-  tmp->name                 = name;
-  tmp->type                 = type;
-  tmp->exec_frame_stack_ptr = NULL;
+  MirVar *tmp     = arena_alloc(&cnt->module->arenas.var_arena);
+  tmp->name       = name;
+  tmp->value.type = type;
   return tmp;
 }
 
@@ -992,8 +990,8 @@ create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
   if (type) ref_instr(type);
   MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, name, MirInstrDeclVar *);
   tmp->type            = type;
-  tmp->base.value.data.v_var =
-      create_var(cnt, name->data.ident.str, NULL); /* type is filled later */
+  tmp->var             = create_var(cnt, name->data.ident.str, NULL); /* type is filled later */
+  tmp->base.value.data.v_ptr = &tmp->var->value;
   return &tmp->base;
 }
 
@@ -1412,8 +1410,9 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   assert(is_pointer_type(src->value.type) && "expected pointer");
   assert(src->kind == MIR_INSTR_DECL_VAR || src->kind == MIR_INSTR_DECL_REF);
 
-  MirVar *var           = src->value.data.v_var;
-  load->base.value.type = var->type;
+  MirType *type = src->value.type->data.ptr.next;
+  assert(type);
+  load->base.value.type = type;
 
   return true;
 }
@@ -1510,9 +1509,9 @@ analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
 
   /* set type to decl var and variable */
   dest->value.type = create_type_ptr(cnt, src->value.type);
-  MirVar *var      = dest->value.data.v_var;
+  MirVar *var      = ((MirInstrDeclVar *)dest)->var;
   assert(var);
-  var->type = src->value.type;
+  var->value.type = src->value.type;
 
   assert(dest->value.type);
   erase_from_curr_block(cnt, &infer->base);
@@ -1566,9 +1565,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     assert(resolved_type);
 
     decl->base.value.type = create_type_ptr(cnt, resolved_type);
-    MirVar *var           = decl->base.value.data.v_var;
+    MirVar *var           = decl->var;
     assert(var);
-    var->type = resolved_type;
+    var->value.type = resolved_type;
   }
 
   if (decl->base.ref_count == 0) {
@@ -1887,16 +1886,16 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   assert(decl->base.value.type);
 
-  MirVar *var = decl->base.value.data.v_var;
+  MirVar *var = decl->var;
   assert(var);
 
   /* allocate memory storage on current stack frame */
-  const size_t data_size = var->type->size;
+  const size_t data_size = var->value.type->size;
   assert(data_size && "trying to allocate 0 bytes data on frame stack!!!");
 
   /* allocate memory for variable on frame stack */
-  void *mem                 = exec_frame_stack_alloc(cnt, data_size);
-  var->exec_frame_stack_ptr = mem;
+  void *mem                   = exec_frame_stack_alloc(cnt, data_size);
+  var->value.data.v_stack_ptr = mem;
 
   return &decl->base.value;
 }
@@ -2012,8 +2011,7 @@ MirValue *
 exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
-  cnt->exec.call_result = NULL;
-  MirType *ret_type     = fn->type->data.fn.ret_type;
+  MirType *ret_type = fn->type->data.fn.ret_type;
 
   /* Store previous frame stack location pointer, this can be used later for rollback. This pointer
    * will be top of current executed function stack frame in memory layout:
@@ -2044,6 +2042,9 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
       frame_ret_ptr = exec_frame_stack_alloc(cnt, ret_type->size);
     }
   }
+
+  /* store return frame pointer */
+  fn->exec_frame_ret_ptr = frame_ret_ptr;
 
   if (fn->is_external) {
     assert(fn->extern_entry);
@@ -2115,6 +2116,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
 
   /* do frame stack rollback */
   exec_frame_stack_rollback(cnt, frame_ptr);
+  // TODO: pass frame_ret pointer???
   return cnt->exec.call_result;
 }
 
@@ -2132,14 +2134,21 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     /* copy function execution return value into call instruction */
     call->base.value = *result;
   }
+
   return &call->base.value;
 }
 
 MirValue *
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-  cnt->exec.call_result = &ret->value->value;
-  return &ret->value->value;
+  MirFn *fn = get_current_fn(cnt);
+  assert(fn && fn->exec_frame_ret_ptr);
+
+  bo_assert("unimplemented");
+  const size_t size = 0;
+
+  memcpy(fn->exec_frame_ret_ptr, ret->value->value.data, size);
+  return &ret->base.value;
 }
 
 static void

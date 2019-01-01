@@ -86,16 +86,6 @@ struct MirModule
   LLVMTargetDataRef llvm_td;
 };
 
-/* VAR */
-struct MirVar
-{
-  const char *name;
-  MirType *   type; 
-
-  /* pointer to allocated memory on frame stack (used only during execution) */
-  void *exec_frame_stack_ptr;
-};
-
 /* FN */
 struct MirFn
 {
@@ -115,6 +105,8 @@ struct MirFn
   MirInstrBlock *last_block;
   int            block_count;
   int            instr_count;
+
+  void *exec_frame_ret_ptr;
 };
 
 /* TYPE */
@@ -172,10 +164,18 @@ struct MirValue
     MirType *          v_type;
     MirValue *         v_ptr;
     MirFn *            v_fn;
-    MirVar *           v_var;
+    void *             v_stack_ptr;
   } data;
 
   MirType *type;
+  bool     is_alloca;
+};
+
+/* VAR */
+struct MirVar
+{
+  MirValue    value;
+  const char *name;
 };
 
 /* INSTRUCTIONS */
@@ -239,6 +239,7 @@ struct MirInstrDeclVar
 {
   MirInstr base;
 
+  MirVar *  var;
   MirInstr *type;
 };
 
