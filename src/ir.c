@@ -101,11 +101,11 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
 void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  MirVar *var = decl->base.value.data.v_var;
+  MirVar *var = decl->var;
   assert(var);
 
   const char *name      = var->name;
-  LLVMTypeRef llvm_type = var->type->llvm_type;
+  LLVMTypeRef llvm_type = var->value.type->llvm_type;
   assert(llvm_type && name);
 
   decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);

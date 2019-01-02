@@ -471,7 +471,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret);
 static MirValue *
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
-static MirValue *
+static MirFrameStackPtr
 exec_fn(Context *cnt, MirFn *fn, BArray *args);
 
 static void
@@ -509,19 +509,22 @@ exec_call_stack_pop(Context *cnt)
   bo_array_pop_back(cnt->exec.call_stack);
 }
 
-/* allocate memory on frame stack, size is in bits!!! */
-static inline void *
-exec_frame_stack_alloc(Context *cnt, const size_t size_in_bits)
+static inline size_t
+size_bits_to_bytes(size_t size_in_bits)
 {
-  assert(size_in_bits && "trying to allocate 0 bits on stack");
-
-  /* we need to lookup best size in bytes */
   size_t size = size_in_bits;
   if (size % 8) size = size + (8 - size % 8);
   size = size / 8;
-  assert(size);
+  return size;
+}
 
-  bl_log("allocate %u bits (%u bytes) on stack", size_in_bits, size);
+/* allocate memory on frame stack, size is in bits!!! */
+static inline MirFrameStackPtr
+exec_frame_stack_alloc(Context *cnt, const size_t size)
+{
+  assert(size && "trying to allocate 0 bits on stack");
+
+  bl_log("allocate %u bytes on stack", size);
   cnt->exec.frame_stack_allocated += size;
   if (cnt->exec.frame_stack_allocated > cnt->exec.frame_stack_size) {
     bl_abort("Stack overflow!");
@@ -532,14 +535,14 @@ exec_frame_stack_alloc(Context *cnt, const size_t size_in_bits)
   return mem;
 }
 
-static inline void *
+static inline MirFrameStackPtr
 exec_frame_stack_get_ptr(Context *cnt)
 {
   return cnt->exec.frame_stack_ptr;
 }
 
 static inline void
-exec_frame_stack_rollback(Context *cnt, void *ptr)
+exec_frame_stack_rollback(Context *cnt, MirFrameStackPtr ptr)
 {
   if (cnt->exec.frame_stack_ptr < (char *)ptr) bl_abort("frame stack corrupted!");
   const ptrdiff_t freed_bytes = cnt->exec.frame_stack_ptr - (char *)ptr;
@@ -694,7 +697,9 @@ create_type_type(Context *cnt)
   MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_TYPE;
   tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type = to_llvm_type(cnt, tmp, NULL);
+
+  tmp->size = sizeof(MirType *) * 8;
   return tmp;
 }
 
@@ -1890,11 +1895,11 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   assert(var);
 
   /* allocate memory storage on current stack frame */
-  const size_t data_size = var->value.type->size;
-  assert(data_size && "trying to allocate 0 bytes data on frame stack!!!");
+  const size_t size = size_bits_to_bytes(var->value.type->size);
+  assert(size && "trying to allocate 0 bytes data on frame stack!!!");
 
   /* allocate memory for variable on frame stack */
-  void *mem                   = exec_frame_stack_alloc(cnt, data_size);
+  MirFrameStackPtr mem        = exec_frame_stack_alloc(cnt, size);
   var->value.data.v_stack_ptr = mem;
 
   return &decl->base.value;
@@ -1917,9 +1922,12 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   assert(dest && src);
   assert(is_pointer_type(dest->value.type));
 
-  const size_t data_size = src->value.type->size;
+  bl_abort("unimplemented");
 
+#if 0
+  const size_t data_size = src->value.type->size;
   assert(dest->kind == MIR_INSTR_DECL_VAR || MIR_INSTR_DECL_REF);
+
   MirVar *var = dest->value.data.v_var;
   assert(var);
   void *dest_ptr = var->exec_frame_stack_ptr;
@@ -1927,6 +1935,7 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 
   /* copy value do destination */
   memcpy(dest_ptr, &src->value.data, data_size);
+#endif
   return &store->base.value;
 }
 
@@ -2007,7 +2016,7 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   }
 }
 
-MirValue *
+MirFrameStackPtr
 exec_fn(Context *cnt, MirFn *fn, BArray *args)
 {
   assert(fn);
@@ -2033,13 +2042,14 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
    * ┃ ...          ┃
    * ┗━━━━━━━━━━━━━━┛
    */
-  void *frame_ptr = exec_frame_stack_get_ptr(cnt);
+  MirFrameStackPtr frame_ptr = exec_frame_stack_get_ptr(cnt);
 
   /* allocate frame stack space for return value */
-  void *frame_ret_ptr = NULL;
+  MirFrameStackPtr frame_ret_ptr = NULL;
   {
     if (ret_type->size != 0) {
-      frame_ret_ptr = exec_frame_stack_alloc(cnt, ret_type->size);
+      const size_t size = size_bits_to_bytes(ret_type->size);
+      frame_ret_ptr     = exec_frame_stack_alloc(cnt, size);
     }
   }
 
@@ -2116,23 +2126,22 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
 
   /* do frame stack rollback */
   exec_frame_stack_rollback(cnt, frame_ptr);
-  // TODO: pass frame_ret pointer???
-  return cnt->exec.call_result;
+  return frame_ret_ptr;
 }
 
 MirValue *
 exec_instr_call(Context *cnt, MirInstrCall *call)
 {
-  assert(call->callee);
+  assert(call->callee && call->base.value.type);
   MirValue *callee_val = &call->callee->value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
-  MirFn *   fn     = callee_val->data.v_fn;
-  MirValue *result = exec_fn(cnt, fn, call->args);
+  MirFn *          fn     = callee_val->data.v_fn;
+  MirFrameStackPtr result = exec_fn(cnt, fn, call->args);
 
   if (result) {
     /* copy function execution return value into call instruction */
-    call->base.value = *result;
+    call->base.value.data.v_stack_ptr = result;
   }
 
   return &call->base.value;
@@ -2142,12 +2151,15 @@ MirValue *
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   MirFn *fn = get_current_fn(cnt);
-  assert(fn && fn->exec_frame_ret_ptr);
+  assert(fn);
 
-  bo_assert("unimplemented");
+  if (!fn->exec_frame_ret_ptr) return &ret->base.value;
+
+  bl_abort("unimplemented");
+#if 0
   const size_t size = 0;
-
   memcpy(fn->exec_frame_ret_ptr, ret->value->value.data, size);
+#endif
   return &ret->base.value;
 }
 
@@ -2896,9 +2908,9 @@ execute_entry_fn(Context *cnt)
     return;
   }
 
-  MirValue *result = exec_fn(cnt, cnt->entry_fn, NULL);
+  MirFrameStackPtr result = exec_fn(cnt, cnt->entry_fn, NULL);
   if (result) {
-    msg_log("execution finished with state: %llu", result->data.v_int);
+    msg_log("execution finished with state: %d", *((int *)result));
   } else {
     msg_log("execution finished");
   }

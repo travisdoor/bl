@@ -41,6 +41,8 @@
 struct Assembly;
 struct Builder;
 
+typedef void *MirFrameStackPtr;
+
 typedef struct MirModule MirModule;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
@@ -106,7 +108,7 @@ struct MirFn
   int            block_count;
   int            instr_count;
 
-  void *exec_frame_ret_ptr;
+  MirFrameStackPtr exec_frame_ret_ptr;
 };
 
 /* TYPE */
@@ -164,7 +166,7 @@ struct MirValue
     MirType *          v_type;
     MirValue *         v_ptr;
     MirFn *            v_fn;
-    void *             v_stack_ptr;
+    MirFrameStackPtr   v_stack_ptr;
   } data;
 
   MirType *type;

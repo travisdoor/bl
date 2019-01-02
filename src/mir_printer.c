@@ -181,7 +181,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 {
   print_instr_head(&decl->base, stream);
 
-  MirVar *var = decl->base.value.data.v_var;
+  MirVar *var = decl->var;
   assert(var);
   fprintf(stream, "decl %s", var->name);
 }
