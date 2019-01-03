@@ -1606,7 +1606,8 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 
   MirType *result_type = type->data.fn.ret_type;
   assert(result_type && "invalid type of call result");
-  call->base.value.type = result_type;
+  call->base.value.type               = result_type;
+  call->base.value.is_stack_allocated = true;
 
   /* validate arguments */
   const size_t callee_argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
@@ -2048,8 +2049,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
   MirFrameStackPtr frame_ret_ptr = NULL;
   {
     if (ret_type->size != 0) {
-      const size_t size = size_bits_to_bytes(ret_type->size);
-      frame_ret_ptr     = exec_frame_stack_alloc(cnt, size);
+      frame_ret_ptr = exec_frame_stack_alloc(cnt, sizeof(void *));
     }
   }
 
@@ -2156,13 +2156,9 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   if (!fn->exec_frame_ret_ptr) return &ret->base.value;
 
   assert(ret->value);
-  MirValue *val  = &ret->value->value;
-  MirType * type = val->type;
-  assert(type);
+  MirValue *val = &ret->value->value;
 
-  const size_t size = size_bits_to_bytes(type->size);
-  assert(size <= sizeof(val->data));
-  memcpy(fn->exec_frame_ret_ptr, &val->data.v_stack_ptr, size);
+  memcpy(fn->exec_frame_ret_ptr, &val->data, sizeof(void *));
   return &ret->base.value;
 }
 

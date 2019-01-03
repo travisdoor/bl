@@ -170,7 +170,7 @@ struct MirValue
   } data;
 
   MirType *type;
-  bool     is_alloca;
+  bool     is_stack_allocated;
 };
 
 /* VAR */
