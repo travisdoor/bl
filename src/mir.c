@@ -2155,11 +2155,14 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
   if (!fn->exec_frame_ret_ptr) return &ret->base.value;
 
-  MirType *type = ret->base.value.type;
+  assert(ret->value);
+  MirValue *val  = &ret->value->value;
+  MirType * type = val->type;
   assert(type);
 
   const size_t size = size_bits_to_bytes(type->size);
-  memcpy(fn->exec_frame_ret_ptr, ret->value->value.data.v_stack_ptr, size);
+  assert(size <= sizeof(val->data));
+  memcpy(fn->exec_frame_ret_ptr, &val->data.v_stack_ptr, size);
   return &ret->base.value;
 }
 
