@@ -183,7 +183,8 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
   MirVar *var = decl->var;
   assert(var);
-  fprintf(stream, "decl %s", var->name);
+  fprintf(stream, "decl %s ", var->name);
+  print_type(var->value.type, false, stream);
 }
 
 void

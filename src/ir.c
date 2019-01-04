@@ -227,13 +227,6 @@ gen_instr(Context *cnt, MirInstr *instr)
 void
 ir_run(Builder *builder, Assembly *assembly)
 {
-  /* TODO */
-  /* TODO */
-  /* TODO */
-  /* TODO */
-  /* TODO */
-  return; 
-
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
   cnt.builder      = builder;

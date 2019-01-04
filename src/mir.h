@@ -108,7 +108,7 @@ struct MirFn
   int            block_count;
   int            instr_count;
 
-  MirFrameStackPtr exec_frame_ret_ptr;
+  MirValue *exec_ret_value;
 };
 
 /* TYPE */
