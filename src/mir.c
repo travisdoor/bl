@@ -193,9 +193,6 @@ execute_test_cases(Context *cnt);
 static bool
 type_cmp(MirType *first, MirType *second);
 
-static const char *
-instr_name(MirInstr *instr);
-
 /* ctors */
 static MirType *
 create_type_type(Context *cnt);
@@ -524,7 +521,7 @@ exec_frame_stack_alloc(Context *cnt, const size_t size)
 {
   assert(size && "trying to allocate 0 bits on stack");
 
-  bl_log("allocate %u bytes on stack", size);
+  // bl_log("allocate %u bytes on stack", size);
   cnt->exec.frame_stack_allocated += size;
   if (cnt->exec.frame_stack_allocated > cnt->exec.frame_stack_size) {
     bl_abort("Stack overflow!");
@@ -546,7 +543,7 @@ exec_frame_stack_rollback(Context *cnt, MirFrameStackPtr ptr)
 {
   if (cnt->exec.frame_stack_ptr < (char *)ptr) bl_abort("frame stack corrupted!");
   const ptrdiff_t freed_bytes = cnt->exec.frame_stack_ptr - (char *)ptr;
-  bl_log("stack rollback to %p, free: %u bytes", ptr, freed_bytes);
+  // bl_log("stack rollback to %p, free: %u bytes", ptr, freed_bytes);
   assert(ptr);
   cnt->exec.frame_stack_allocated -= freed_bytes;
   cnt->exec.frame_stack_ptr = ptr;
@@ -680,7 +677,7 @@ unref_instr(MirInstr *instr)
   case MIR_INSTR_DECL_VAR:
     break;
   default:
-    bl_abort("unimplemented for %s", instr_name(instr));
+    bl_abort("unimplemented for %s", mir_instr_name(instr));
   }
 }
 
@@ -985,6 +982,15 @@ append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
   tmp->args         = args;
   tmp->callee       = callee;
   ref_instr(callee);
+
+  /* every call must have ref_count = 1 at least */
+  ref_instr(&tmp->base);
+
+  /* reference all arguments */
+  if (args) {
+    MirInstr *instr;
+    barray_foreach(args, instr) ref_instr(instr);
+  }
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -1743,7 +1749,7 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     state = analyze_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
     break;
   default:
-    msg_warning("missing analyze for %s", instr_name(instr));
+    msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
   }
 
@@ -1796,9 +1802,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   if (!instr) return NULL;
   if (!instr->analyzed) {
 #if BL_DEBUG
-    bl_abort("instruction %s (%llu) has not been analyzed!", instr_name(instr), instr->_serial);
+    bl_abort("instruction %s (%llu) has not been analyzed!", mir_instr_name(instr), instr->_serial);
 #else
-    bl_abort("instruction %s has not been analyzed!", instr_name(instr));
+    bl_abort("instruction %s has not been analyzed!", mir_instr_name(instr));
 #endif
   }
 
@@ -1841,7 +1847,7 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
 
   default:
-    bl_abort("missing execution for instruction: %s", instr_name(instr));
+    bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
   }
 
   return NULL;
@@ -2126,7 +2132,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 MirValue *
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-  MirFn *fn = get_current_fn(cnt);
+  MirFn *fn = ret->base.owner_block->owner_fn;
   assert(fn);
 
   /* return from function with void return type */
@@ -2745,7 +2751,7 @@ ast(Context *cnt, Ast *node)
 }
 
 const char *
-instr_name(MirInstr *instr)
+mir_instr_name(MirInstr *instr)
 {
   assert(instr);
   switch (instr->kind) {

@@ -368,6 +368,9 @@ struct MirInstrTryInfer
 void
 mir_type_to_str(char *buf, int len, MirType *type);
 
+const char *
+mir_instr_name(MirInstr *instr);
+
 MirModule *
 mir_new_module(const char *name);
 

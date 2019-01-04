@@ -51,6 +51,9 @@ static void
 gen_instr(Context *cnt, MirInstr *instr);
 
 static void
+gen_instr_store(Context *cnt, MirInstrStore *store);
+
+static void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
 static void
@@ -70,6 +73,23 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst);
 
 static void
 gen_instr_load(Context *cnt, MirInstrLoad *load);
+
+static void
+gen_instr_call(Context *cnt, MirInstrCall *call);
+
+static void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+
+static inline void
+gen_fn_proto(Context *cnt, MirFn *fn)
+{
+  assert(fn);
+
+  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->name);
+  if (!fn->llvm_value) {
+    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->name, fn->type->llvm_type);
+  }
+}
 
 void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
@@ -95,6 +115,59 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
     break;
   default:
     bl_unimplemented;
+  }
+}
+
+void
+gen_instr_store(Context *cnt, MirInstrStore *store)
+{
+  LLVMValueRef val = store->src->llvm_value;
+  LLVMValueRef ptr = store->dest->llvm_value;
+  assert(val && ptr);
+  store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+}
+
+void
+gen_instr_call(Context *cnt, MirInstrCall *call)
+{
+  MirInstr *callee = call->callee;
+  assert(callee);
+  assert(callee->value.type && callee->value.type->kind == MIR_TYPE_FN);
+
+  MirFn *fn = callee->value.data.v_fn;
+  assert(fn);
+
+  LLVMValueRef  llvm_fn   = fn->llvm_value;
+  const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
+  LLVMValueRef *llvm_args = NULL;
+
+  if (llvm_argc) {
+    llvm_args = bl_malloc(sizeof(LLVMValueRef) * llvm_argc);
+    if (!llvm_args) bl_abort("bad alloc");
+
+    MirInstr *arg;
+
+    barray_foreach(call->args, arg)
+    {
+      assert(arg->llvm_value && "function argument has no LLVM value");
+      llvm_args[i] = arg->llvm_value;
+    }
+  }
+
+  assert(llvm_fn);
+  call->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, llvm_argc, "");
+  bl_free(llvm_args);
+}
+
+void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+{
+  const bool is_fn = ref->base.value.type->kind == MIR_TYPE_FN;
+
+  if (is_fn) {
+    /* generate or get function prototype */
+    MirFn *fn = ref->base.value.data.v_fn;
+    gen_fn_proto(cnt, fn);
   }
 }
 
@@ -171,20 +244,14 @@ void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
   MirFn *fn = fn_proto->base.value.data.v_fn;
-  assert(fn);
+  gen_fn_proto(cnt, fn);
 
-  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->name);
-  if (!fn->llvm_value) {
-    fn->llvm_value =
-        LLVMAddFunction(cnt->llvm_module, fn->name, fn_proto->base.value.type->llvm_type);
+  if (!fn->is_external) {
+    MirInstr *block = (MirInstr *)fn->first_block;
 
-    if (!fn->is_external) {
-      MirInstr *block = (MirInstr *)fn->first_block;
-
-      while (block) {
-        gen_instr(cnt, block);
-        block = block->next;
-      }
+    while (block) {
+      gen_instr(cnt, block);
+      block = block->next;
     }
   }
 }
@@ -216,10 +283,19 @@ gen_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_LOAD:
     gen_instr_load(cnt, (MirInstrLoad *)instr);
     break;
+  case MIR_INSTR_STORE:
+    gen_instr_store(cnt, (MirInstrStore *)instr);
+    break;
+  case MIR_INSTR_CALL:
+    gen_instr_call(cnt, (MirInstrCall *)instr);
+    break;
+  case MIR_INSTR_DECL_REF:
+    gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    break;
 
   default:
+    bl_warning("unimplemented LLVM generation for %s", mir_instr_name(instr));
     break;
-    bl_abort("unimplemented");
   }
 }
 

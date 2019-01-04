@@ -7,14 +7,10 @@ main : fn () {
   j := 2;
   k := 3;
 
-  //i = get_int();
-
-  //say_hello();
+  say_hello();
 
   return;
 };
-
-/*putchar : fn (c s32) s32 #extern;
 
 say_hello : fn () {
   putchar(72);
@@ -33,7 +29,4 @@ say_hello : fn () {
   return;
 };
 
-get_int : fn () s32 {
-  return 10;
-};
-*/
+putchar : fn (c s32) s32 #extern;
