@@ -51,6 +51,9 @@ static void
 gen_instr(Context *cnt, MirInstr *instr);
 
 static void
+gen_instr_binop(Context *cnt, MirInstrBinop *binop);
+
+static void
 gen_instr_store(Context *cnt, MirInstrStore *store);
 
 static void
@@ -96,7 +99,7 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
   LLVMValueRef llvm_src = load->src->llvm_value;
   assert(llvm_src);
-  load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "tmp");
+  load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 }
 
 void
@@ -128,6 +131,104 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 }
 
 void
+gen_instr_binop(Context *cnt, MirInstrBinop *binop)
+{
+  LLVMValueRef lhs = binop->lhs->llvm_value;
+  LLVMValueRef rhs = binop->rhs->llvm_value;
+  assert(lhs && rhs);
+
+  LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
+  const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
+  switch (binop->op) {
+  case BINOP_ADD:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_SUB:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildSub(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_MUL:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildMul(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_DIV:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_MOD:
+    binop->base.llvm_value = LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_EQ:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, "");
+    break;
+
+  case BINOP_NEQ:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, "");
+    break;
+
+  case BINOP_GREATER:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, "");
+    break;
+
+  case BINOP_LESS:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, "");
+    break;
+
+  case BINOP_GREATER_EQ:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, "");
+    break;
+
+  case BINOP_LESS_EQ:
+    if (float_kind)
+      binop->base.llvm_value = LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, "");
+    else
+      binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
+    break;
+
+  case BINOP_LOGIC_AND:
+    binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_LOGIC_OR:
+    binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  default:
+    bl_unimplemented;
+  }
+}
+
+void
 gen_instr_call(Context *cnt, MirInstrCall *call)
 {
   MirInstr *callee = call->callee;
@@ -155,7 +256,8 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
   }
 
   assert(llvm_fn);
-  call->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, llvm_argc, "");
+  call->base.llvm_value =
+      LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
   bl_free(llvm_args);
 }
 
@@ -262,6 +364,9 @@ gen_instr(Context *cnt, MirInstr *instr)
   if (!instr || !instr->ref_count) return;
 
   switch (instr->kind) {
+  case MIR_INSTR_BINOP:
+    gen_instr_binop(cnt, (MirInstrBinop *)instr);
+    break;
   case MIR_INSTR_FN_PROTO:
     gen_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
     break;

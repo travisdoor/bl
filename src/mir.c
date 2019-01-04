@@ -468,7 +468,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret);
 static MirValue *
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
-static void
+static bool
 exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 
 static void
@@ -2032,11 +2032,13 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   }
 }
 
-void
+bool
 exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
 {
   assert(fn);
   MirType *ret_type = fn->type->data.fn.ret_type;
+  assert(ret_type);
+  const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
   /* Store previous frame stack location pointer, this can be used later for rollback. This pointer
    */
@@ -2094,7 +2096,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
       }
     }
 
-    if (!fn->first_block->entry_instr) return;
+    if (!fn->first_block->entry_instr) return does_return_value;
     exec_call_stack_push(cnt, fn->first_block->entry_instr);
 
     /* iterate over entry block of executable */
@@ -2115,6 +2117,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
 
   /* do frame stack rollback */
   exec_frame_stack_rollback(cnt, frame_ptr);
+  return does_return_value;
 }
 
 MirValue *
@@ -2891,8 +2894,7 @@ execute_entry_fn(Context *cnt)
 
   /* tmp return value storage */
   MirValue result;
-  exec_fn(cnt, cnt->entry_fn, NULL, &result);
-  if (result.type->kind != MIR_TYPE_VOID) {
+  if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
     msg_log("execution finished with state: %llu", result.data.v_int);
   } else {
     msg_log("execution finished");

@@ -3,7 +3,7 @@
 //#load "std/debug.bl"
 
 main : fn () {
-  i := 1;
+  i := 1 + 2;
   j := 2;
   k := 3;
 
