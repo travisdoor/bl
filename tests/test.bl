@@ -9,6 +9,12 @@ main : fn () {
 
   say_hello();
 
+  if (false) {
+    say_hello();
+  } else {
+    say_hello();
+  }
+
   return;
 };
 

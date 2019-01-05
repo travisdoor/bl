@@ -262,7 +262,7 @@ static MirInstr *
 append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
 static MirInstr *
-append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *ref);
+append_instr_decl_ref(Context *cnt, Ast *node);
 
 static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
@@ -896,6 +896,7 @@ append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *the
   terminate_block(block, &tmp->base);
 
   push_into_curr_block(cnt, &tmp->base);
+  ref_instr(&tmp->base);
   return &tmp->base;
 }
 
@@ -966,10 +967,9 @@ append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_ty
 }
 
 MirInstr *
-append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *ref)
+append_instr_decl_ref(Context *cnt, Ast *node)
 {
   MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node, MirInstrDeclRef *);
-  tmp->ref             = ref;
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1287,9 +1287,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   /* setup type of reference */
   MirType *type = scope_entry->instr->value.type;
   assert(type);
-  ref->base.value.type = type;
-
-  ref->ref = scope_entry->instr;
+  ref->base.value = scope_entry->instr->value;
   return true;
 }
 
@@ -1959,10 +1957,6 @@ MirValue *
 exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   assert(ref->base.value.type);
-  assert(ref->ref && "missing reference");
-
-  ref->base.value.data = ref->ref->value.data;
-
   return &ref->base.value;
 }
 
@@ -2459,7 +2453,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
   Ast *ident = ref->data.expr_ref.ident;
   assert(ident);
   /* referenced declaration will be resolved later during analyze pass */
-  return append_instr_decl_ref(cnt, ident, NULL);
+  return append_instr_decl_ref(cnt, ident);
 }
 
 MirInstr *

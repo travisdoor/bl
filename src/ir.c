@@ -66,6 +66,9 @@ static void
 gen_instr_br(Context *cnt, MirInstrBr *br);
 
 static void
+gen_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+
+static void
 gen_instr_ret(Context *cnt, MirInstrRet *ret);
 
 static void
@@ -94,6 +97,22 @@ gen_fn_proto(Context *cnt, MirFn *fn)
   }
 }
 
+static inline LLVMBasicBlockRef
+gen_basic_block(Context *cnt, MirInstrBlock *block)
+{
+  if (!block) return NULL;
+  LLVMBasicBlockRef llvm_block = NULL;
+  if (!block->base.llvm_value) {
+    llvm_block =
+        LLVMAppendBasicBlockInContext(cnt->llvm_cnt, block->owner_fn->llvm_value, block->name);
+    block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
+  } else {
+    llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
+  }
+
+  return llvm_block;
+}
+
 void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
@@ -115,6 +134,9 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   case MIR_TYPE_INT:
     cnst->base.llvm_value =
         LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
+    break;
+  case MIR_TYPE_BOOL:
+    cnst->base.llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
     break;
   default:
     bl_unimplemented;
@@ -305,15 +327,7 @@ gen_instr_br(Context *cnt, MirInstrBr *br)
   MirInstrBlock *then_block = br->then_block;
   assert(then_block);
 
-  LLVMBasicBlockRef llvm_then_block = NULL;
-  if (!then_block->base.llvm_value) {
-    llvm_then_block = LLVMAppendBasicBlockInContext(cnt->llvm_cnt, then_block->owner_fn->llvm_value,
-                                                    then_block->name);
-    then_block->base.llvm_value = LLVMBasicBlockAsValue(llvm_then_block);
-  } else {
-    llvm_then_block = LLVMValueAsBasicBlock(then_block->base.llvm_value);
-  }
-
+  LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
   assert(llvm_then_block);
   br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
@@ -321,18 +335,27 @@ gen_instr_br(Context *cnt, MirInstrBr *br)
 }
 
 void
+gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
+{
+  MirInstr *cond       = br->cond;
+  MirInstrBlock *then_block = br->then_block;
+  MirInstrBlock *else_block = br->else_block;
+  assert(cond && then_block);
+
+  LLVMValueRef llvm_cond       = cond->llvm_value;
+  LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
+  LLVMBasicBlockRef llvm_else_block = gen_basic_block(cnt, else_block);
+
+  br->base.llvm_value =
+      LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
+}
+
+void
 gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
   assert(block->owner_fn->llvm_value);
-  LLVMBasicBlockRef llvm_block = NULL;
-
-  if (!block->base.llvm_value) {
-    llvm_block =
-        LLVMAppendBasicBlockInContext(cnt->llvm_cnt, block->owner_fn->llvm_value, block->name);
-    block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
-  } else {
-    llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
-  }
+  LLVMBasicBlockRef llvm_block = gen_basic_block(cnt, block);
+  assert(llvm_block);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
   MirInstr *instr = block->entry_instr;
@@ -375,6 +398,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_BR:
     gen_instr_br(cnt, (MirInstrBr *)instr);
+    break;
+  case MIR_INSTR_COND_BR:
+    gen_instr_cond_br(cnt, (MirInstrCondBr *)instr);
     break;
   case MIR_INSTR_RET:
     gen_instr_ret(cnt, (MirInstrRet *)instr);
