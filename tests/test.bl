@@ -2,20 +2,24 @@
 
 //#load "std/debug.bl"
 
-main : fn () {
+main : fn () s32 {
   i := 1 + 2;
   j := 2;
   k := 3;
 
+  i = 0;
+
   say_hello();
 
-  if (false) {
+  if (i == 0) {
     say_hello();
-  } else {
-    say_hello();
-  }
+  } 
 
-  return;
+  c := 72;
+  putchar(c);
+  putchar(10);
+
+  return 666;
 };
 
 say_hello : fn () {

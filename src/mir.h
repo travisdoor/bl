@@ -316,6 +316,8 @@ struct MirInstrCall
 struct MirInstrDeclRef
 {
   MirInstr base;
+
+  MirInstr *decl;
 };
 
 struct MirInstrAddrOf

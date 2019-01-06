@@ -292,6 +292,11 @@ gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     /* generate or get function prototype */
     MirFn *fn = ref->base.value.data.v_fn;
     gen_fn_proto(cnt, fn);
+  } else {
+    /* copy llvm value */
+    assert(ref->decl);
+    ref->base.llvm_value = ref->decl->llvm_value;
+    assert(ref->base.llvm_value);
   }
 }
 
@@ -313,7 +318,9 @@ gen_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   LLVMValueRef llvm_ret;
   if (ret->value) {
-    bl_unimplemented;
+    LLVMValueRef llvm_ret_value = ret->value->llvm_value;
+    assert(llvm_ret_value);
+    llvm_ret = LLVMBuildRet(cnt->llvm_builder, llvm_ret_value);
   } else {
     llvm_ret = LLVMBuildRetVoid(cnt->llvm_builder);
   }
@@ -337,12 +344,12 @@ gen_instr_br(Context *cnt, MirInstrBr *br)
 void
 gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
-  MirInstr *cond       = br->cond;
+  MirInstr *     cond       = br->cond;
   MirInstrBlock *then_block = br->then_block;
   MirInstrBlock *else_block = br->else_block;
   assert(cond && then_block);
 
-  LLVMValueRef llvm_cond       = cond->llvm_value;
+  LLVMValueRef      llvm_cond       = cond->llvm_value;
   LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
   LLVMBasicBlockRef llvm_else_block = gen_basic_block(cnt, else_block);
 
