@@ -50,6 +50,7 @@
 #define BUILDER_VERBOSE_MIR_PRE  0x00000800
 #define BUILDER_VERBOSE_MIR_POST 0x00001000
 #define BUILDER_NO_API           0x00002000
+#define BUILDER_EMIT_MIR         0x00004000
 // clang-format on
 
 #define COMPILE_OK 0
@@ -57,7 +58,6 @@
 
 typedef struct Builder
 {
-  MirArenas      mir_arenas;
   Arena          ast_arena;
   Arena          scope_arena;
   uint32_t       flags;

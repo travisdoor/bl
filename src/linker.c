@@ -42,7 +42,7 @@
 void
 linker_run(Builder *builder, Assembly *assembly)
 {
-  assert(assembly->llvm_module);
+  assert(assembly->mir_module->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
   if (!filename) bl_abort("bad alloc");
   strcpy(filename, assembly->name);
@@ -74,8 +74,8 @@ linker_run(Builder *builder, Assembly *assembly)
 
   // TODO: use tmp file first (cause problems on windows)
   remove(filename);
-  if (LLVMTargetMachineEmitToFile(target_machine, assembly->llvm_module, filename, LLVMObjectFile,
-                                  &error_msg)) {
+  if (LLVMTargetMachineEmitToFile(target_machine, assembly->mir_module->llvm_module, filename,
+                                  LLVMObjectFile, &error_msg)) {
     msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
     LLVMDisposeMessage(error_msg);

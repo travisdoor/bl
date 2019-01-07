@@ -1,15 +1,27 @@
 /* playground */
 
-#load "std/debug.bl"
-
-//putchar : fn (c s32) s32 #extern;
+//#load "std/debug.bl"
 
 main : fn () s32 {
-  //say_hello();
-  return 0;
+  i := 1 + 2;
+  j := 2;
+  k := 3;
+
+  i = 0;
+
+  say_hello();
+
+  if (i == 0) {
+    say_hello();
+  } 
+
+  c := 72;
+  putchar(c);
+  putchar(10);
+
+  return 666;
 };
 
-/*
 say_hello : fn () {
   putchar(72);
   putchar(101);
@@ -23,6 +35,8 @@ say_hello : fn () {
   putchar(108);
   putchar(100);
   putchar(10);
+
+  return;
 };
 
-*/
+putchar : fn (c s32) s32 #extern;

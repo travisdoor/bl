@@ -32,6 +32,7 @@
 #include <dyncall.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include "arena.h"
@@ -40,8 +41,9 @@
 struct Assembly;
 struct Builder;
 
-typedef struct MirArenas MirArenas;
-typedef struct MirExec   MirExec;
+typedef void *MirFrameStackPtr;
+
+typedef struct MirModule MirModule;
 typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
@@ -73,41 +75,40 @@ struct MirArenas
 {
   Arena instr_arena;
   Arena type_arena;
-  Arena exec_arena;
   Arena var_arena;
   Arena fn_arena;
 };
 
-/* EXEC */
-/* MirExec represents smallest atomic executable block of code it can be function body or floating
- * compile time executed block */
-struct MirExec
+struct MirModule
 {
-  BArray *       blocks;
-  MirInstrBlock *entry_block;
-  MirFn *        owner_fn;
-};
-
-/* VAR */
-struct MirVar
-{
-  struct Ast *name;
-  MirValue *  value;
+  struct MirArenas  arenas;
+  BArray *          globals;
+  LLVMModuleRef     llvm_module;
+  LLVMContextRef    llvm_cnt;
+  LLVMTargetDataRef llvm_td;
 };
 
 /* FN */
 struct MirFn
 {
-  Ast *       node;
-  const char *name;
-  MirType *   type;
-  MirExec *   exec;
+  Ast *        node;
+  const char * name;
+  MirType *    type;
+  LLVMValueRef llvm_value;
 
   BArray *    arg_slots;
   DCpointer   extern_entry;
   bool        is_external;
   bool        is_test_case;
   const char *test_case_desc;
+
+  /* pointer to the first block inside function body */
+  MirInstrBlock *first_block;
+  MirInstrBlock *last_block;
+  int            block_count;
+  int            instr_count;
+
+  MirValue *exec_ret_value;
 };
 
 /* TYPE */
@@ -155,19 +156,29 @@ struct MirType
 };
 
 /* VALUE */
+union MirValueData
+{
+  unsigned long long v_uint;
+  long long          v_int;
+  bool               v_bool;
+  MirType *          v_type;
+  MirValue *         v_ptr;
+  MirFn *            v_fn;
+  MirFrameStackPtr   v_stack_ptr;
+};
+
 struct MirValue
 {
-  union
-  {
-    unsigned long long v_uint;
-    long long          v_int;
-    bool               v_bool;
-    MirType *          v_type;
-    MirFn *            v_fn;
-    MirValue *         v_ptr;
-  } data;
+  union MirValueData data;
+  MirType *          type;
+  bool               is_stack_allocated;
+};
 
-  MirType *type;
+/* VAR */
+struct MirVar
+{
+  MirValue    value;
+  const char *name;
 };
 
 /* INSTRUCTIONS */
@@ -223,9 +234,8 @@ struct MirInstrBlock
   const char *name;
   MirInstr *  entry_instr;
   MirInstr *  last_instr;
-  int         count_instr;
   MirInstr *  terminal;
-  MirExec *   owner_exec;
+  MirFn *     owner_fn;
 };
 
 struct MirInstrDeclVar
@@ -307,6 +317,8 @@ struct MirInstrCall
 struct MirInstrDeclRef
 {
   MirInstr base;
+
+  MirInstr *decl;
 };
 
 struct MirInstrAddrOf
@@ -357,11 +369,14 @@ struct MirInstrTryInfer
 void
 mir_type_to_str(char *buf, int len, MirType *type);
 
-void
-mir_arenas_init(MirArenas *arenas);
+const char *
+mir_instr_name(MirInstr *instr);
+
+MirModule *
+mir_new_module(const char *name);
 
 void
-mir_arenas_terminate(MirArenas *arenas);
+mir_delete_module(MirModule *module);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

@@ -6,7 +6,7 @@ class MirVar {
 }
 
 class MirExec {
-  blocks: *MirBlock[]
+  first_block: *MirBlock[]
 }
 
 class MirBlock {

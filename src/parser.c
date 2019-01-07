@@ -1363,7 +1363,7 @@ parse_expr_run(Context *cnt)
 {
   Token *tok = tokens_consume_if(cnt->tokens, SYM_RUN);
   if (!tok) return NULL;
-  bl_abort("unimplemeted");
+  bl_unimplemented;
 
   /* TODO: implement as separate node */
   /* TODO: implement as separate node */

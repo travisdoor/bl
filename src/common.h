@@ -69,4 +69,7 @@ file_exists(const char *filepath);
 const char *
 brealpath(const char *file, char *out, int out_len);
 
+void
+date_time(char *buf, int len, const char *format);
+
 #endif

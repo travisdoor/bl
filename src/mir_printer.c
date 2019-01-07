@@ -29,361 +29,369 @@
 #include "mir_printer.h"
 #include "ast.h"
 
-#define TYPE_COLOR BLUE
-#define INSTR_COLOR YELLOW
-#define INSTR_ANALYZE_COLOR MAGENTA
-#define BLOCK_COLOR GREEN
-#define FLAG_COLOR GREEN
-#define ERROR_COLOR RED
-
 static inline void
-print_type(MirType *type, bool aligned)
+print_type(MirType *type, bool aligned, FILE *stream)
 {
   char tmp[256];
   mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
   if (aligned)
-    fprintf(stdout, TYPE_COLOR("%16s"), tmp);
+    fprintf(stream, "%16s", tmp);
   else
-    fprintf(stdout, TYPE_COLOR("%s"), tmp);
+    fprintf(stream, "%s", tmp);
 }
 
 static inline void
-print_instr_head(MirInstr *instr)
+print_instr_head(MirInstr *instr, FILE *stream)
 {
   if (!instr) return;
-  fprintf(stdout, "  %%%-3u (%d) ", instr->id, instr->ref_count);
-  print_type(instr->value.type, true);
-  fprintf(stdout, " ");
+  fprintf(stream, "  %%%-3u (%d) ", instr->id, instr->ref_count);
+  print_type(instr->value.type, true, stream);
+  fprintf(stream, " ");
 }
 
 static void
-print_instr_load(MirInstrLoad *load);
+print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
-print_instr_addr_of(MirInstrAddrOf *addr_of);
+print_instr_addr_of(MirInstrAddrOf *addr_of, FILE *stream);
 
 static void
-print_instr_cond_br(MirInstrCondBr *cond_br);
+print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
 static void
-print_instr_br(MirInstrBr *br);
+print_instr_br(MirInstrBr *br, FILE *stream);
 
 static void
-print_instr_unreachable(MirInstrUnreachable *unr);
+print_instr_unreachable(MirInstrUnreachable *unr, FILE *stream);
 
 static void
-print_instr_try_infer(MirInstrTryInfer *infer);
+print_instr_try_infer(MirInstrTryInfer *infer, FILE *stream);
 
 static void
-print_instr_fn_proto(MirInstrFnProto *fn_proto);
+print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream);
 
 static void
-print_instr_type_fn(MirInstrTypeFn *type_fn);
+print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream);
 
 static void
-print_instr_block(MirInstrBlock *block);
+print_instr_block(MirInstrBlock *block, FILE *stream);
 
 static void
-print_instr_decl_var(MirInstrDeclVar *decl);
+print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream);
 
 static void
-print_instr_const(MirInstrConst *ci);
+print_instr_const(MirInstrConst *ci, FILE *stream);
 
 static void
-print_instr_ret(MirInstrRet *ret);
+print_instr_ret(MirInstrRet *ret, FILE *stream);
 
 static void
-print_instr_store(MirInstrStore *store);
+print_instr_store(MirInstrStore *store, FILE *stream);
 
 static void
-print_instr_binop(MirInstrBinop *binop);
+print_instr_binop(MirInstrBinop *binop, FILE *stream);
 
 static void
-print_instr_validate_type(MirInstrValidateType *vt);
+print_instr_validate_type(MirInstrValidateType *vt, FILE *stream);
 
 static void
-print_instr_call(MirInstrCall *call);
+print_instr_call(MirInstrCall *call, FILE *stream);
 
 static void
-print_instr_decl_ref(MirInstrDeclRef *ref);
+print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream);
 
 static void
-print_instr_unop(MirInstrUnop *unop);
+print_instr_unop(MirInstrUnop *unop, FILE *stream);
 
 /* impl */
 void
-print_instr_type_fn(MirInstrTypeFn *type_fn)
+print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
-  print_instr_head(&type_fn->base);
-  fprintf(stdout, INSTR_COLOR("const"));
-
-  fprintf(stdout, " fn (");
+  print_instr_head(&type_fn->base, stream);
+  fprintf(stream, "const fn (");
 
   if (type_fn->arg_types) {
     MirInstr *tmp;
     barray_foreach(type_fn->arg_types, tmp)
     {
-      fprintf(stdout, "%%%u", tmp->id);
-      if (i + 1 < bo_array_size(type_fn->arg_types)) fprintf(stdout, ", ");
+      fprintf(stream, "%%%u", tmp->id);
+      if (i + 1 < bo_array_size(type_fn->arg_types)) fprintf(stream, ", ");
     }
   }
 
-  fprintf(stdout, ")");
+  fprintf(stream, ")");
 
-  if (type_fn->ret_type) fprintf(stdout, " %%%u", type_fn->ret_type->id);
+  if (type_fn->ret_type) fprintf(stream, " %%%u", type_fn->ret_type->id);
 }
 
 void
-print_instr_unop(MirInstrUnop *unop)
+print_instr_unop(MirInstrUnop *unop, FILE *stream)
 {
-  print_instr_head(&unop->base);
+  print_instr_head(&unop->base, stream);
 
   const char *op = ast_unop_to_str(unop->op);
-  fprintf(stdout, INSTR_COLOR("%s") "%%%u", op, unop->instr->id);
+  fprintf(stream, "%s %%%u", op, unop->instr->id);
 }
 
 void
-print_instr_cond_br(MirInstrCondBr *cond_br)
+print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
 {
-  print_instr_head(&cond_br->base);
-  fprintf(stdout, INSTR_COLOR("br") " %%%u ? " BLOCK_COLOR("%s_%u") " : " BLOCK_COLOR("%s_%u"),
-          cond_br->cond->id, cond_br->then_block->name, cond_br->then_block->base.id,
-          cond_br->else_block->name, cond_br->else_block->base.id);
+  print_instr_head(&cond_br->base, stream);
+  fprintf(stream, "br %%%u ? %s_%u : %s_%u", cond_br->cond->id, cond_br->then_block->name,
+          cond_br->then_block->base.id, cond_br->else_block->name, cond_br->else_block->base.id);
 }
 
 void
-print_instr_unreachable(MirInstrUnreachable *unr)
+print_instr_unreachable(MirInstrUnreachable *unr, FILE *stream)
 {
-  print_instr_head(&unr->base);
-  fprintf(stdout, INSTR_COLOR("unreachable"));
+  print_instr_head(&unr->base, stream);
+  fprintf(stream, "unreachable");
 }
 
 void
-print_instr_br(MirInstrBr *br)
+print_instr_br(MirInstrBr *br, FILE *stream)
 {
-  print_instr_head(&br->base);
-  fprintf(stdout, INSTR_COLOR("br") BLOCK_COLOR(" %s_%d"), br->then_block->name,
-          br->then_block->base.id);
+  print_instr_head(&br->base, stream);
+  fprintf(stream, "br %s_%d", br->then_block->name, br->then_block->base.id);
 }
 
 void
-print_instr_try_infer(MirInstrTryInfer *infer)
+print_instr_try_infer(MirInstrTryInfer *infer, FILE *stream)
 {
-  print_instr_head(&infer->base);
-  fprintf(stdout, INSTR_ANALYZE_COLOR("tryinfer") " %%%u -> %%%u", infer->src->id, infer->dest->id);
+  print_instr_head(&infer->base, stream);
+  fprintf(stream, "tryinfer %%%u -> %%%u", infer->src->id, infer->dest->id);
 }
 
 void
-print_instr_load(MirInstrLoad *load)
+print_instr_load(MirInstrLoad *load, FILE *stream)
 {
-  print_instr_head(&load->base);
-  fprintf(stdout, INSTR_COLOR("load") " %%%u", load->src->id);
+  print_instr_head(&load->base, stream);
+  fprintf(stream, "load %%%u", load->src->id);
 }
 
 void
-print_instr_addr_of(MirInstrAddrOf *addr_of)
+print_instr_addr_of(MirInstrAddrOf *addr_of, FILE *stream)
 {
-  print_instr_head(&addr_of->base);
-  fprintf(stdout, INSTR_COLOR("&") "%%%u", addr_of->target->id);
+  print_instr_head(&addr_of->base, stream);
+  fprintf(stream, "&%%%u", addr_of->target->id);
 }
 
 void
-print_instr_decl_var(MirInstrDeclVar *decl)
+print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 {
-  print_instr_head(&decl->base);
+  print_instr_head(&decl->base, stream);
 
-  assert(decl->var);
-  const char *name = decl->var->name->data.ident.str;
-
-  fprintf(stdout, INSTR_COLOR("decl") " %s", name);
+  MirVar *var = decl->var;
+  assert(var);
+  fprintf(stream, "decl %s ", var->name);
+  print_type(var->value.type, false, stream);
 }
 
 void
-print_instr_decl_ref(MirInstrDeclRef *ref)
+print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream)
 {
-  print_instr_head(&ref->base);
+  print_instr_head(&ref->base, stream);
   const char *name = ref->base.node->data.ident.str;
 
-  fprintf(stdout, INSTR_COLOR("declref") " %s", name);
+  fprintf(stream, "declref %s", name);
 }
 
 void
-print_instr_const(MirInstrConst *cnst)
+print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
-  print_instr_head(&cnst->base);
+  print_instr_head(&cnst->base, stream);
 
   MirValue *value = &cnst->base.value;
   assert(value->type);
 
-  fprintf(stdout, INSTR_COLOR("const "));
+  fprintf(stream, "const ");
   switch (value->type->kind) {
   case MIR_TYPE_INT:
-    fprintf(stdout, "%llu", value->data.v_int);
+    fprintf(stream, "%llu", value->data.v_int);
     break;
   case MIR_TYPE_BOOL:
-    fprintf(stdout, "%s", value->data.v_bool ? "true" : "false");
+    fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
     break;
   case MIR_TYPE_TYPE:
-    print_type(value->data.v_type, false);
+    print_type(value->data.v_type, false, stream);
     break;
   default:
-    fprintf(stdout, "cannot read value");
+    fprintf(stream, "cannot read value");
   }
 }
 
 void
-print_instr_call(MirInstrCall *call)
+print_instr_call(MirInstrCall *call, FILE *stream)
 {
-  print_instr_head(&call->base);
+  print_instr_head(&call->base, stream);
 
-  fprintf(stdout, INSTR_COLOR("call ") "%%%u", call->callee->id);
+  fprintf(stream, "call %%%u", call->callee->id);
 
-  fprintf(stdout, "(");
+  fprintf(stream, "(");
   if (call->args) {
     MirInstr *tmp;
     barray_foreach(call->args, tmp)
     {
-      fprintf(stdout, "%%%u", tmp->id);
-      if (i < bo_array_size(call->args) - 1) fprintf(stdout, ", ");
+      fprintf(stream, "%%%u", tmp->id);
+      if (i < bo_array_size(call->args) - 1) fprintf(stream, ", ");
     }
   }
-  fprintf(stdout, ")");
+  fprintf(stream, ")");
 }
 
 void
-print_instr_validate_type(MirInstrValidateType *vt)
+print_instr_validate_type(MirInstrValidateType *vt, FILE *stream)
 {
-  print_instr_head(&vt->base);
-  fprintf(stdout, INSTR_ANALYZE_COLOR("validate_type") " %%%u", vt->src->id);
+  print_instr_head(&vt->base, stream);
+  fprintf(stream, "validate_type %%%u", vt->src->id);
 }
 
 void
-print_instr_ret(MirInstrRet *ret)
+print_instr_ret(MirInstrRet *ret, FILE *stream)
 {
-  print_instr_head(&ret->base);
+  print_instr_head(&ret->base, stream);
   if (ret->value)
-    fprintf(stdout, INSTR_COLOR("ret") " %%%u", ret->value->id);
+    fprintf(stream, "ret %%%u", ret->value->id);
   else
-    fprintf(stdout, INSTR_COLOR("ret"));
+    fprintf(stream, "ret");
 }
 
 void
-print_instr_store(MirInstrStore *store)
+print_instr_store(MirInstrStore *store, FILE *stream)
 {
-  print_instr_head(&store->base);
+  print_instr_head(&store->base, stream);
   assert(store->src && store->src);
-  fprintf(stdout, INSTR_COLOR("store") " %%%u -> %%%u", store->src->id, store->dest->id);
+  fprintf(stream, "store %%%u -> %%%u", store->src->id, store->dest->id);
 }
 
 void
-print_instr_binop(MirInstrBinop *binop)
+print_instr_binop(MirInstrBinop *binop, FILE *stream)
 {
-  print_instr_head(&binop->base);
+  print_instr_head(&binop->base, stream);
   assert(binop->lhs && binop->rhs);
   const char *op = ast_binop_to_str(binop->op);
-  fprintf(stdout, INSTR_COLOR("binop") " %%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
+  fprintf(stream, "binop %%%u %s %%%u", binop->lhs->id, op, binop->rhs->id);
 }
 
 void
-print_instr_block(MirInstrBlock *block)
+print_instr_block(MirInstrBlock *block, FILE *stream)
 {
-  fprintf(stdout, BLOCK_COLOR("%s_%u:\n"), block->name, block->base.id);
+  fprintf(stream, "%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
+  if (!block->base.ref_count)
+    fprintf(stream, " // NEVER REACHED\n");
+  else
+    fprintf(stream, "\n");
 
   MirInstr *tmp = block->entry_instr;
 
   while (tmp) {
-    mir_print_instr(tmp);
+    mir_print_instr(tmp, stream);
     tmp = tmp->next;
   }
 }
 
 void
-print_instr_fn_proto(MirInstrFnProto *fn_proto)
+print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
   MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
 
+  fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
+          fn_proto->base.ref_count ? "" : ", no LLVM representation");
+
   if (fn->name)
-    fprintf(stdout, "@%s ", fn->name);
+    fprintf(stream, "@%s ", fn->name);
   else
-    fprintf(stdout, "@%u ", fn_proto->base.id);
+    fprintf(stream, "@%u ", fn_proto->base.id);
 
-  fprintf(stdout, "(%d) ", fn_proto->base.ref_count);
-  print_type(fn_proto->base.value.type, false);
+  fprintf(stream, "(%d) ", fn_proto->base.ref_count);
+  print_type(fn_proto->base.value.type, false, stream);
 
-  if (fn->is_external) {
-    fprintf(stdout, FLAG_COLOR(" #extern\n"));
+  if (!fn->is_external) {
+    if (fn->is_test_case) fprintf(stream, " #test");
+    fprintf(stream, " {\n");
+
+    MirInstrBlock *tmp = fn->first_block;
+    while (tmp) {
+      print_instr_block(tmp, stream);
+      tmp = (MirInstrBlock *)tmp->base.next;
+    }
+    fprintf(stream, "}\n");
   } else {
-    if (fn->is_test_case) fprintf(stdout, FLAG_COLOR(" #test"));
-    MirInstrBlock *tmp;
-    fprintf(stdout, " { %s\n", fn_proto->base.analyzed ? GREEN("// ANALYZED") : "");
-    barray_foreach(fn->exec->blocks, tmp) print_instr_block(tmp);
-    fprintf(stdout, "}\n");
+    fprintf(stream, " #extern\n");
   }
 }
 
 /* public */
 void
-mir_print_instr(MirInstr *instr)
+mir_print_instr(MirInstr *instr, FILE *stream)
 {
   switch (instr->kind) {
   case MIR_INSTR_INVALID:
-    fprintf(stdout, RED("INVALID"));
+    fprintf(stream, RED("INVALID"));
     break;
   case MIR_INSTR_UNREACHABLE:
-    print_instr_unreachable((MirInstrUnreachable *)instr);
+    print_instr_unreachable((MirInstrUnreachable *)instr, stream);
     break;
   case MIR_INSTR_DECL_VAR:
-    print_instr_decl_var((MirInstrDeclVar *)instr);
+    print_instr_decl_var((MirInstrDeclVar *)instr, stream);
     break;
   case MIR_INSTR_CONST:
-    print_instr_const((MirInstrConst *)instr);
+    print_instr_const((MirInstrConst *)instr, stream);
     break;
   case MIR_INSTR_LOAD:
-    print_instr_load((MirInstrLoad *)instr);
+    print_instr_load((MirInstrLoad *)instr, stream);
     break;
   case MIR_INSTR_STORE:
-    print_instr_store((MirInstrStore *)instr);
+    print_instr_store((MirInstrStore *)instr, stream);
     break;
   case MIR_INSTR_RET:
-    print_instr_ret((MirInstrRet *)instr);
+    print_instr_ret((MirInstrRet *)instr, stream);
     break;
   case MIR_INSTR_BINOP:
-    print_instr_binop((MirInstrBinop *)instr);
+    print_instr_binop((MirInstrBinop *)instr, stream);
     break;
   case MIR_INSTR_VALIDATE_TYPE:
-    print_instr_validate_type((MirInstrValidateType *)instr);
+    print_instr_validate_type((MirInstrValidateType *)instr, stream);
     break;
   case MIR_INSTR_CALL:
-    print_instr_call((MirInstrCall *)instr);
+    print_instr_call((MirInstrCall *)instr, stream);
     break;
   case MIR_INSTR_FN_PROTO:
-    print_instr_fn_proto((MirInstrFnProto *)instr);
+    print_instr_fn_proto((MirInstrFnProto *)instr, stream);
     break;
   case MIR_INSTR_DECL_REF:
-    print_instr_decl_ref((MirInstrDeclRef *)instr);
+    print_instr_decl_ref((MirInstrDeclRef *)instr, stream);
     break;
   case MIR_INSTR_TYPE_FN:
-    print_instr_type_fn((MirInstrTypeFn *)instr);
+    print_instr_type_fn((MirInstrTypeFn *)instr, stream);
     break;
   case MIR_INSTR_ADDR_OF:
-    print_instr_addr_of((MirInstrAddrOf *)instr);
+    print_instr_addr_of((MirInstrAddrOf *)instr, stream);
     break;
   case MIR_INSTR_TRY_INFER:
-    print_instr_try_infer((MirInstrTryInfer *)instr);
+    print_instr_try_infer((MirInstrTryInfer *)instr, stream);
     break;
   case MIR_INSTR_COND_BR:
-    print_instr_cond_br((MirInstrCondBr *)instr);
+    print_instr_cond_br((MirInstrCondBr *)instr, stream);
     break;
   case MIR_INSTR_BR:
-    print_instr_br((MirInstrBr *)instr);
+    print_instr_br((MirInstrBr *)instr, stream);
     break;
   case MIR_INSTR_UNOP:
-    print_instr_unop((MirInstrUnop *)instr);
+    print_instr_unop((MirInstrUnop *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;
   }
 
-  fprintf(stdout, "\n");
+  fprintf(stream, "\n");
+}
+
+void
+mir_print_module(MirModule *module, FILE *stream)
+{
+  assert(module);
+  MirInstr *instr;
+  barray_foreach(module->globals, instr) mir_print_instr(instr, stream);
 }

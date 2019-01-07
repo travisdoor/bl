@@ -1,11 +1,11 @@
 //************************************************************************************************
-// blc
+// bl
 //
-// File:   jit_exec.c
+// File:   debug.bl
 // Author: Martin Dorazil
-// Date:   14/02/2018
+// Date:   3/15/18
 //
-// Copyright 2017 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-//#include <llvm-c/Core.h>
-#include "stages.h"
-#include "bldebug.h"
-
-void
-jit_exec_run(Builder *builder, Assembly *assembly)
-{
-  LLVMExecutionEngineRef jit;
-  char *                 llvm_error = NULL;
-
-  if (LLVMCreateJITCompilerForModule(&jit, assembly->llvm_module, 3, &llvm_error) != 0)
-    bl_abort("failed to create execution engine for compile-time module with error %s", llvm_error);
-
-  msg_log("\nRunning:");
-  LLVMValueRef        llvm_fn = LLVMGetNamedFunction(assembly->llvm_module, "main");
-  LLVMGenericValueRef result  = LLVMRunFunction(jit, llvm_fn, 0, NULL);
-  int                 ires    = (int)LLVMGenericValueToInt(result, 0);
-  LLVMDisposeGenericValue(result);
-
-  if (ires != 0) {
-    builder_warning(builder, "executed unit return %i", ires);
+assert : fn (cond bool) {
+  if (!cond) {
+    unreachable;
   }
-  msg_log("");
-
-  assembly->llvm_run_engine = jit;
-}
+};

@@ -36,6 +36,8 @@
 #define ARENA_CHUNK_COUNT 512
 #define TEST_CASE_FN_NAME "_test"
 #define RESOLVE_TYPE_FN_NAME "_type"
+#define DEFAULT_EXEC_FRAME_STACK_SIZE 2097152
+#define DEFAULT_EXEC_CALL_STACK_NESTING 1000
 
 union _MirInstr
 {
@@ -78,14 +80,22 @@ typedef enum
 
 typedef struct
 {
-  MirValue * exec_call_result;
   Builder *  builder;
   Assembly * assembly;
-  MirArenas *arenas;
+  MirModule *module;
   BArray *   analyze_stack;
   BArray *   test_cases;
-  BArray *   exec_stack;
-  bool       exec_aborted;
+
+  struct
+  {
+    char * frame_stack;
+    char * frame_stack_ptr;
+    size_t frame_stack_allocated;
+    size_t frame_stack_size;
+
+    BArray *call_stack;
+    bool    aborted;
+  } exec;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -116,10 +126,6 @@ typedef struct
 
   MirInstrBlock *current_block;
 
-  LLVMContextRef    llvm_cnt;
-  LLVMModuleRef     llvm_module;
-  LLVMTargetDataRef llvm_td;
-
   MirFn *entry_fn;
   bool   verbose_pre, verbose_post;
 } Context;
@@ -128,12 +134,6 @@ static const char *entry_fn_name                           = "main";
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s8",  "s16", "s32", "s64",   "u8",
                                                               "u16", "u32", "u64", "usize", "bool"};
 static uint64_t    entry_fn_hash                           = 0;
-
-static void
-exec_dtor(MirExec *exec)
-{
-  bo_unref(exec->blocks);
-}
 
 static void
 fn_dtor(MirFn *fn)
@@ -176,6 +176,12 @@ static int
 init_dl(Context *cnt);
 
 static void
+init_frame_stack(Context *cnt, size_t size);
+
+static void
+terminate_frame_stack(Context *cnt);
+
+static void
 terminate_dl(Context *cnt);
 
 static void
@@ -186,9 +192,6 @@ execute_test_cases(Context *cnt);
 
 static bool
 type_cmp(MirType *first, MirType *second);
-
-static const char *
-instr_name(MirInstr *instr);
 
 /* ctors */
 static MirType *
@@ -210,10 +213,7 @@ static MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types);
 
 static MirVar *
-create_var(Context *cnt, Ast *name);
-
-static MirExec *
-create_exec(Context *cnt, MirFn *owner_fn);
+create_var(Context *cnt, const char *name, MirType *type);
 
 static MirFn *
 create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case);
@@ -239,66 +239,66 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
 static MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
-static MirInstr *
-add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
+// static MirInstr *
+// append_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
 
 static MirInstr *
-add_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
-                  MirInstrBlock *else_block);
+append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
+                     MirInstrBlock *else_block);
 
 static MirInstr *
-add_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block);
+append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block);
 
 static MirInstr *
-add_instr_load(Context *cnt, Ast *node, MirInstr *src);
+append_instr_load(Context *cnt, Ast *node, MirInstr *src);
 
 static MirInstr *
-add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
+append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
 
 static MirInstr *
-add_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *dest);
+append_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *dest);
 
 static MirInstr *
-add_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
+append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
 static MirInstr *
-add_instr_decl_ref(Context *cnt, Ast *node);
+append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *decl);
 
 static MirInstr *
-add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
+append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
 
 static MirInstr *
 create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
 
 static MirInstr *
-add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
+append_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
 
 static MirInstr *
-add_instr_const_int(Context *cnt, Ast *node, uint64_t val);
+append_instr_const_int(Context *cnt, Ast *node, uint64_t val);
 
 static MirInstr *
-add_instr_const_bool(Context *cnt, Ast *node, bool val);
+append_instr_const_bool(Context *cnt, Ast *node, bool val);
 
 static MirInstr *
-add_instr_const_type(Context *cnt, Ast *node, MirType *type);
+append_instr_const_type(Context *cnt, Ast *node, MirType *type);
 
 static MirInstr *
-add_instr_ret(Context *cnt, Ast *node, MirInstr *value);
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
 
 static MirInstr *
-add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
+append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
 
 static MirInstr *
-add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
+append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
 
 static MirInstr *
-add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op);
+append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op);
 
 static MirInstr *
-add_instr_validate_type(Context *cnt, MirInstr *src);
+append_instr_validate_type(Context *cnt, MirInstr *src);
 
 static MirInstr *
-add_instr_unrecheable(Context *cnt, Ast *node);
+append_instr_unrecheable(Context *cnt, Ast *node);
 
 /* ast */
 static MirInstr *
@@ -468,11 +468,11 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret);
 static MirValue *
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
-static MirValue *
-exec_fn(Context *cnt, MirFn *fn, BArray *args);
+static bool
+exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 
 static void
-exec_print_stack_trace(Context *cnt);
+exec_print_call_stack(Context *cnt);
 
 static inline bool
 is_pointer_type(MirType *type)
@@ -482,26 +482,71 @@ is_pointer_type(MirType *type)
 }
 
 static inline void
-exec_stack_push(Context *cnt, MirInstr *instr)
+exec_call_stack_push(Context *cnt, MirInstr *instr)
 {
   assert(instr);
-  bo_array_push_back(cnt->exec_stack, instr);
+  bo_array_push_back(cnt->exec.call_stack, instr);
+  if (bo_array_size(cnt->exec.call_stack) > DEFAULT_EXEC_CALL_STACK_NESTING)
+    bl_abort("Maximum call stack nesting exceeded!!!");
 }
 
 static inline MirInstr **
-exec_stack_get(Context *cnt)
+exec_call_stack_get(Context *cnt)
 {
-  const size_t c = bo_array_size(cnt->exec_stack);
+  const size_t c = bo_array_size(cnt->exec.call_stack);
   if (c == 0) return NULL;
-  return &bo_array_at(cnt->exec_stack, c - 1, MirInstr *);
+  return &bo_array_at(cnt->exec.call_stack, c - 1, MirInstr *);
 }
 
 static inline void
-exec_stack_pop(Context *cnt)
+exec_call_stack_pop(Context *cnt)
 {
-  const size_t c = bo_array_size(cnt->exec_stack);
+  const size_t c = bo_array_size(cnt->exec.call_stack);
   if (c == 0) return;
-  bo_array_pop_back(cnt->exec_stack);
+  bo_array_pop_back(cnt->exec.call_stack);
+}
+
+static inline size_t
+size_bits_to_bytes(size_t size_in_bits)
+{
+  size_t size = size_in_bits;
+  if (size % 8) size = size + (8 - size % 8);
+  size = size / 8;
+  return size;
+}
+
+/* allocate memory on frame stack, size is in bits!!! */
+static inline MirFrameStackPtr
+exec_frame_stack_alloc(Context *cnt, const size_t size)
+{
+  assert(size && "trying to allocate 0 bits on stack");
+
+  // bl_log("allocate %u bytes on stack", size);
+  cnt->exec.frame_stack_allocated += size;
+  if (cnt->exec.frame_stack_allocated > cnt->exec.frame_stack_size) {
+    bl_abort("Stack overflow!");
+  }
+
+  char *mem = cnt->exec.frame_stack_ptr;
+  cnt->exec.frame_stack_ptr += size;
+  return mem;
+}
+
+static inline MirFrameStackPtr
+exec_frame_stack_get_ptr(Context *cnt)
+{
+  return cnt->exec.frame_stack_ptr;
+}
+
+static inline void
+exec_frame_stack_rollback(Context *cnt, MirFrameStackPtr ptr)
+{
+  if (cnt->exec.frame_stack_ptr < (char *)ptr) bl_abort("frame stack corrupted!");
+  const ptrdiff_t freed_bytes = cnt->exec.frame_stack_ptr - (char *)ptr;
+  // bl_log("stack rollback to %p, free: %u bytes", ptr, freed_bytes);
+  assert(ptr);
+  cnt->exec.frame_stack_allocated -= freed_bytes;
+  cnt->exec.frame_stack_ptr = ptr;
 }
 
 static inline void
@@ -578,7 +623,7 @@ get_current_block(Context *cnt)
 static inline MirFn *
 get_current_fn(Context *cnt)
 {
-  return cnt->current_block ? cnt->current_block->owner_exec->owner_fn : NULL;
+  return cnt->current_block ? cnt->current_block->owner_fn : NULL;
 }
 
 static inline void
@@ -596,7 +641,7 @@ error_no_impl_cast(Context *cnt, MirType *from, MirType *to, Ast *loc)
 }
 
 static inline MirInstr *
-add_instr_load_if_needed(Context *cnt, MirInstr *src)
+append_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
   if (!src) return src;
   switch (src->kind) {
@@ -609,24 +654,58 @@ add_instr_load_if_needed(Context *cnt, MirInstr *src)
     break;
   }
 
-  return add_instr_load(cnt, NULL, src);
+  return append_instr_load(cnt, NULL, src);
+}
+
+static void
+unref_instr(MirInstr *instr)
+{
+  if (!instr) return;
+  --instr->ref_count;
+  switch (instr->kind) {
+  case MIR_INSTR_CALL:
+    ((MirInstrCall *)instr)->callee->ref_count--;
+    break;
+  case MIR_INSTR_VALIDATE_TYPE:
+    ((MirInstrValidateType *)instr)->src->ref_count--;
+    break;
+  case MIR_INSTR_TRY_INFER:
+    ((MirInstrTryInfer *)instr)->src->ref_count--;
+    ((MirInstrTryInfer *)instr)->dest->ref_count--;
+    break;
+  case MIR_INSTR_CONST:
+  case MIR_INSTR_FN_PROTO:
+  case MIR_INSTR_DECL_VAR:
+    break;
+  default:
+    bl_abort("unimplemented for %s", mir_instr_name(instr));
+  }
+}
+
+static inline void
+ref_instr(MirInstr *instr)
+{
+  if (!instr) return;
+  ++instr->ref_count;
 }
 
 /* impl */
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_TYPE;
   tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type = to_llvm_type(cnt, tmp, NULL);
+
+  tmp->size = sizeof(MirType *) * 8;
   return tmp;
 }
 
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_VOID;
   tmp->name      = "void";
   tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
@@ -636,7 +715,7 @@ create_type_void(Context *cnt)
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_BOOL;
   tmp->name      = "bool";
   tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
@@ -647,7 +726,7 @@ MirType *
 create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
 {
   assert(bitcount > 0);
-  MirType *tmp                = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp                = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind                   = MIR_TYPE_INT;
   tmp->name                   = name;
   tmp->data.integer.bitcount  = bitcount;
@@ -660,7 +739,7 @@ create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
-  MirType *tmp       = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
   tmp->llvm_type     = to_llvm_type(cnt, tmp, &tmp->size);
@@ -671,7 +750,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
 MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
 {
-  MirType *tmp           = arena_alloc(&cnt->arenas->type_arena);
+  MirType *tmp           = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->buildin_types.entry_void;
@@ -681,28 +760,19 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
 }
 
 MirVar *
-create_var(Context *cnt, Ast *name)
+create_var(Context *cnt, const char *name, MirType *type)
 {
   assert(name);
-  MirVar *tmp = arena_alloc(&cnt->arenas->var_arena);
-  tmp->name   = name;
-  return tmp;
-}
-
-MirExec *
-create_exec(Context *cnt, MirFn *owner_fn)
-{
-  MirExec *tmp  = arena_alloc(&cnt->arenas->exec_arena);
-  tmp->blocks   = bo_array_new(sizeof(MirInstrBlock *));
-  tmp->owner_fn = owner_fn;
+  MirVar *tmp                   = arena_alloc(&cnt->module->arenas.var_arena);
+  tmp->name                     = name;
+  tmp->value.type               = type;
   return tmp;
 }
 
 MirFn *
 create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case)
 {
-  MirFn *tmp        = arena_alloc(&cnt->arenas->fn_arena);
-  tmp->exec         = create_exec(cnt, tmp);
+  MirFn *tmp        = arena_alloc(&cnt->module->arenas.fn_arena);
   tmp->name         = name;
   tmp->arg_slots    = arg_slots;
   tmp->is_external  = is_external;
@@ -716,9 +786,10 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
 {
   assert(instr);
   MirInstrBlock *block = get_current_block(cnt);
+  MirFn *        fn    = get_current_fn(cnt);
   assert(block);
 
-  instr->id          = block->count_instr++;
+  instr->id          = fn->instr_count++;
   instr->owner_block = block;
   instr->prev        = block->last_instr;
 
@@ -734,6 +805,8 @@ erase_from_curr_block(Context *cnt, MirInstr *instr)
   MirInstrBlock *block = get_current_block(cnt);
   assert(block);
 
+  unref_instr(instr);
+
   if (block->entry_instr == instr) block->entry_instr = instr->next;
   if (instr->prev) instr->prev->next = instr->next;
   if (instr->next) instr->next->prev = instr->prev;
@@ -745,7 +818,7 @@ erase_from_curr_block(Context *cnt, MirInstr *instr)
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-  MirInstr *tmp = arena_alloc(&cnt->arenas->instr_arena);
+  MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
   tmp->kind     = kind;
   tmp->node     = node;
   tmp->id       = 0;
@@ -764,11 +837,20 @@ append_block(Context *cnt, MirFn *fn, const char *name)
   assert(fn && name);
   MirInstrBlock *tmp = create_instr(cnt, MIR_INSTR_BLOCK, NULL, MirInstrBlock *);
   tmp->name          = name;
-  tmp->owner_exec    = fn->exec;
+  tmp->owner_fn      = fn;
+  tmp->base.id       = fn->block_count++;
 
-  if (!tmp->owner_exec->entry_block) tmp->owner_exec->entry_block = tmp;
-  tmp->base.id = (int)bo_array_size(tmp->owner_exec->blocks);
-  bo_array_push_back(tmp->owner_exec->blocks, tmp);
+  if (!fn->first_block) {
+    fn->first_block = tmp;
+
+    /* first block is referenced everytime!!! */
+    ref_instr(&tmp->base);
+  }
+
+  tmp->base.prev = &fn->last_block->base;
+  if (fn->last_block) fn->last_block->base.next = &tmp->base;
+  fn->last_block = tmp;
+
   return tmp;
 }
 
@@ -780,12 +862,12 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
   tmp->base.id       = 0;
   tmp->base.comptime = true;
   tmp->callee        = resolver_fn;
-  ++resolver_fn->ref_count;
+  ref_instr(resolver_fn);
   return &tmp->base;
 }
 
 MirInstr *
-add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types)
+append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types)
 {
   MirInstrTypeFn *tmp  = create_instr(cnt, MIR_INSTR_TYPE_FN, node, MirInstrTypeFn *);
   tmp->base.value.type = cnt->buildin_types.entry_type;
@@ -798,11 +880,13 @@ add_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types
 }
 
 MirInstr *
-add_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
-                  MirInstrBlock *else_block)
+append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
+                     MirInstrBlock *else_block)
 {
   assert(cond && then_block && else_block);
-  ++cond->ref_count;
+  ref_instr(cond);
+  ref_instr(&then_block->base);
+  ref_instr(&else_block->base);
   MirInstrCondBr *tmp  = create_instr(cnt, MIR_INSTR_COND_BR, node, MirInstrCondBr *);
   tmp->base.value.type = cnt->buildin_types.entry_void;
   tmp->cond            = cond;
@@ -813,16 +897,19 @@ add_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_b
   terminate_block(block, &tmp->base);
 
   push_into_curr_block(cnt, &tmp->base);
+  ref_instr(&tmp->base);
   return &tmp->base;
 }
 
 MirInstr *
-add_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
+append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
 {
   assert(then_block);
+  ref_instr(&then_block->base);
   MirInstrBr *tmp      = create_instr(cnt, MIR_INSTR_BR, node, MirInstrBr *);
   tmp->base.value.type = cnt->buildin_types.entry_void;
   tmp->then_block      = then_block;
+  ref_instr(&tmp->base);
 
   MirInstrBlock *block = get_current_block(cnt);
   terminate_block(block, &tmp->base);
@@ -832,9 +919,9 @@ add_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
 }
 
 MirInstr *
-add_instr_load(Context *cnt, Ast *node, MirInstr *src)
+append_instr_load(Context *cnt, Ast *node, MirInstr *src)
 {
-  ++src->ref_count;
+  ref_instr(src);
   MirInstrLoad *tmp = create_instr(cnt, MIR_INSTR_LOAD, node, MirInstrLoad *);
   tmp->src          = src;
 
@@ -842,19 +929,19 @@ add_instr_load(Context *cnt, Ast *node, MirInstr *src)
   return &tmp->base;
 }
 
-MirInstr *
-add_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
+/*MirInstr *
+append_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
 {
-  ++target->ref_count;
+  ref_instr(target);
   MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDR_OF, node, MirInstrAddrOf *);
   tmp->target         = target;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
-}
+  }*/
 
 MirInstr *
-add_instr_unrecheable(Context *cnt, Ast *node)
+append_instr_unrecheable(Context *cnt, Ast *node)
 {
   MirInstrUnreachable *tmp = create_instr(cnt, MIR_INSTR_UNREACHABLE, node, MirInstrUnreachable *);
   tmp->base.value.type     = cnt->buildin_types.entry_void;
@@ -873,7 +960,7 @@ create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_ty
 }
 
 MirInstr *
-add_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
+append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstr *tmp = create_instr_fn_proto(cnt, node, type, user_type);
   bo_array_push_back(cnt->analyze_stack, tmp);
@@ -881,21 +968,32 @@ add_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 }
 
 MirInstr *
-add_instr_decl_ref(Context *cnt, Ast *node)
+append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *decl)
 {
   MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node, MirInstrDeclRef *);
+  ref_instr(decl);
+  tmp->decl = decl;
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
 
 MirInstr *
-add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
+append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 {
   assert(callee);
   MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
   tmp->args         = args;
   tmp->callee       = callee;
-  ++callee->ref_count;
+  ref_instr(callee);
+
+  /* every call must have ref_count = 1 at least */
+  ref_instr(&tmp->base);
+
+  /* reference all arguments */
+  if (args) {
+    MirInstr *instr;
+    barray_foreach(args, instr) ref_instr(instr);
+  }
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -904,17 +1002,16 @@ add_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 MirInstr *
 create_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
 {
-  if (type) ++type->ref_count;
+  if (type) ref_instr(type);
   MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, name, MirInstrDeclVar *);
   tmp->type            = type;
-
-  MirVar *var = create_var(cnt, name);
-  tmp->var    = var;
+  tmp->var             = create_var(cnt, name->data.ident.str, NULL); /* type is filled later */
+  tmp->base.value.data.v_ptr = &tmp->var->value;
   return &tmp->base;
 }
 
 MirInstr *
-add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
+append_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
 {
   MirInstr *tmp = create_instr_decl_var(cnt, type, name);
   push_into_curr_block(cnt, tmp);
@@ -922,7 +1019,7 @@ add_instr_decl_var(Context *cnt, MirInstr *type, Ast *name)
 }
 
 MirInstr *
-add_instr_const_int(Context *cnt, Ast *node, uint64_t val)
+append_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 {
   MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime         = true;
@@ -934,7 +1031,7 @@ add_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 }
 
 MirInstr *
-add_instr_const_bool(Context *cnt, Ast *node, bool val)
+append_instr_const_bool(Context *cnt, Ast *node, bool val)
 {
   MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime          = true;
@@ -946,7 +1043,7 @@ add_instr_const_bool(Context *cnt, Ast *node, bool val)
 }
 
 MirInstr *
-add_instr_const_type(Context *cnt, Ast *node, MirType *type)
+append_instr_const_type(Context *cnt, Ast *node, MirType *type)
 {
   MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime          = true;
@@ -958,15 +1055,14 @@ add_instr_const_type(Context *cnt, Ast *node, MirType *type)
 }
 
 MirInstr *
-add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 {
-  if (value) {
-    ++value->ref_count;
-  }
+  if (value) ref_instr(value);
 
   MirInstrRet *tmp     = create_instr(cnt, MIR_INSTR_RET, node, MirInstrRet *);
   tmp->value           = value;
   tmp->base.value.type = cnt->buildin_types.entry_void;
+  ref_instr(&tmp->base);
 
   MirInstrBlock *block = get_current_block(cnt);
   terminate_block(block, &tmp->base);
@@ -976,25 +1072,26 @@ add_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 }
 
 MirInstr *
-add_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
+append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 {
   assert(src && dest);
-  ++src->ref_count;
-  ++dest->ref_count;
+  ref_instr(src);
+  ref_instr(dest);
   MirInstrStore *tmp = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
   tmp->src           = src;
   tmp->dest          = dest;
+  ref_instr(&tmp->base);
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
 
 MirInstr *
-add_instr_try_infer(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
+append_instr_try_infer(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 {
   assert(src && dest);
-  ++src->ref_count;
-  ++dest->ref_count;
+  ref_instr(src);
+  ref_instr(dest);
   MirInstrTryInfer *tmp = create_instr(cnt, MIR_INSTR_TRY_INFER, node, MirInstrTryInfer *);
   tmp->src              = src;
   tmp->dest             = dest;
@@ -1004,11 +1101,11 @@ add_instr_try_infer(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 }
 
 MirInstr *
-add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
+append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
 {
   assert(lhs && rhs);
-  ++lhs->ref_count;
-  ++rhs->ref_count;
+  ref_instr(lhs);
+  ref_instr(rhs);
   MirInstrBinop *tmp = create_instr(cnt, MIR_INSTR_BINOP, node, MirInstrBinop *);
   tmp->lhs           = lhs;
   tmp->rhs           = rhs;
@@ -1019,10 +1116,10 @@ add_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind
 }
 
 MirInstr *
-add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op)
+append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op)
 {
   assert(instr);
-  ++instr->ref_count;
+  ref_instr(instr);
   MirInstrUnop *tmp = create_instr(cnt, MIR_INSTR_UNOP, node, MirInstrUnop *);
   tmp->instr        = instr;
   tmp->op           = op;
@@ -1032,10 +1129,10 @@ add_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op)
 }
 
 MirInstr *
-add_instr_validate_type(Context *cnt, MirInstr *src)
+append_instr_validate_type(Context *cnt, MirInstr *src)
 {
   assert(src);
-  ++src->ref_count;
+  ref_instr(src);
   MirInstrValidateType *tmp =
       create_instr(cnt, MIR_INSTR_VALIDATE_TYPE, NULL, MirInstrValidateType *);
   tmp->src             = src;
@@ -1056,19 +1153,19 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   case MIR_TYPE_TYPE:
   case MIR_TYPE_VOID: {
     if (out_size) *out_size = 0;
-    result = LLVMVoidTypeInContext(cnt->llvm_cnt);
+    result = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
   case MIR_TYPE_INT: {
-    result = LLVMIntTypeInContext(cnt->llvm_cnt, (unsigned int)type->data.integer.bitcount);
-    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->llvm_td, result);
+    result = LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
+    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
     break;
   }
 
   case MIR_TYPE_BOOL: {
-    result = LLVMIntTypeInContext(cnt->llvm_cnt, 1);
-    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->llvm_td, result);
+    result = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
+    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
     break;
   }
 
@@ -1077,7 +1174,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
     assert(tmp);
     assert(tmp->llvm_type);
     result = LLVMPointerType(tmp->llvm_type, 0);
-    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->llvm_td, result);
+    if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
     break;
   }
 
@@ -1100,7 +1197,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
       }
     }
 
-    llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->llvm_cnt);
+    llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     assert(llvm_ret);
 
     result = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
@@ -1110,7 +1207,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   }
 
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return result;
@@ -1188,22 +1285,10 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   assert(scope_entry->instr);
   assert(scope_entry->instr->analyzed);
-  scope_entry->instr->ref_count++;
 
-  assert(scope_entry->instr->value.type);
   ref->base.value = scope_entry->instr->value;
-
-  /* create pointer to referenced data */
-  MirType *type = scope_entry->instr->value.type;
-  assert(type);
-  if (type->kind == MIR_TYPE_FN) {
-    ref->base.value.type      = type;
-    ref->base.value.data.v_fn = scope_entry->instr->value.data.v_fn;
-  } else {
-    ref->base.value.type       = create_type_ptr(cnt, type);
-    ref->base.value.data.v_ptr = &scope_entry->instr->value;
-  }
-
+  ref->decl       = scope_entry->instr;
+  ref_instr(scope_entry->instr);
   return true;
 }
 
@@ -1224,12 +1309,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     assert(fn_proto->type && fn_proto->type->kind == MIR_INSTR_CALL);
     analyze_instr(cnt, fn_proto->type, true);
     MirValue *type_val = exec_instr(cnt, fn_proto->type);
+    unref_instr(fn_proto->type);
     assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
 
     if (fn_proto->user_type) {
       assert(fn_proto->user_type->kind == MIR_INSTR_CALL);
       analyze_instr(cnt, fn_proto->user_type, true);
       MirValue *user_type_val = exec_instr(cnt, fn_proto->user_type);
+      unref_instr(fn_proto->user_type);
       assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
 
       if (!type_cmp(type_val->data.v_type, user_type_val->data.v_type)) {
@@ -1250,8 +1337,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
   MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
-  MirExec *exec = fn->exec;
-  assert(exec);
 
   /* setup types for arg slots */
   if (fn->arg_slots) {
@@ -1279,23 +1364,28 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
     fn->extern_entry = handle;
   } else {
-    prev_block = get_current_block(cnt);
-    MirInstrBlock *tmp;
-    barray_foreach(exec->blocks, tmp)
-    {
+    prev_block         = get_current_block(cnt);
+    MirInstrBlock *tmp = fn->first_block;
+
+    while (tmp) {
       if (comptime)
         analyze_instr_block(cnt, tmp, comptime);
       else {
-        /* TODO: blocks can be used as linked list, only first one must be pushed into analyze_stack
+        /* TODO: first_block can be used as linked list, only first one must be pushed into
+         * analyze_stack
          */
         bo_array_push_back(cnt->analyze_stack, tmp);
       }
+
+      tmp = (MirInstrBlock *)tmp->base.next;
     }
 
     assert(prev_block);
     set_cursor_block(cnt, prev_block);
   }
 
+  /* push function into globals of the mir module */
+  bo_array_push_back(cnt->module->globals, fn_proto);
   return true;
 }
 
@@ -1329,9 +1419,11 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   MirInstr *src = load->src;
   assert(src);
   assert(is_pointer_type(src->value.type) && "expected pointer");
+  assert(src->kind == MIR_INSTR_DECL_VAR || src->kind == MIR_INSTR_DECL_REF);
 
-  MirValue *deref       = src->value.data.v_ptr;
-  load->base.value.type = deref->type;
+  MirType *type = src->value.type->data.ptr.next;
+  assert(type);
+  load->base.value.type = type;
 
   return true;
 }
@@ -1410,7 +1502,6 @@ analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
   }
 
   assert(src->value.data.v_type);
-  src->ref_count--;
 
   erase_from_curr_block(cnt, &validate->base);
   return true;
@@ -1424,12 +1515,15 @@ analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
   assert(src && dest);
   assert(src->analyzed && dest->analyzed);
 
-  src->ref_count--;
-  dest->ref_count--;
-
+  assert(dest->kind == MIR_INSTR_DECL_VAR);
   if (dest->value.type) return true;
 
-  dest->value.type = src->value.type;
+  /* set type to decl var and variable */
+  dest->value.type = create_type_ptr(cnt, src->value.type);
+  MirVar *var      = ((MirInstrDeclVar *)dest)->var;
+  assert(var);
+  var->value.type = src->value.type;
+
   assert(dest->value.type);
   erase_from_curr_block(cnt, &infer->base);
   return true;
@@ -1471,18 +1565,24 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 }
 
 bool
-analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
+analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  if (var->type) {
-    analyze_instr(cnt, var->type, true);
-    MirValue *resolved_type_value = exec_instr(cnt, var->type);
+  if (decl->type) {
+    analyze_instr(cnt, decl->type, true);
+    MirValue *resolved_type_value = exec_instr(cnt, decl->type);
+    unref_instr(decl->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
+    MirType *resolved_type = resolved_type_value->data.v_type;
+    assert(resolved_type);
 
-    var->base.value.type = resolved_type_value->data.v_type;
+    decl->base.value.type = create_type_ptr(cnt, resolved_type);
+    MirVar *var           = decl->var;
+    assert(var);
+    var->value.type = resolved_type;
   }
 
-  if (var->base.ref_count == 0) {
-    builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, var->base.node->src, BUILDER_CUR_WORD,
+  if (decl->base.ref_count == 0) {
+    builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, decl->base.node->src, BUILDER_CUR_WORD,
                 "unused declaration");
   }
 
@@ -1550,11 +1650,11 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 
   assert(is_pointer_type(dest->value.type) && "store expect destination to be a pointer");
 
-  MirValue *deref_dest = dest->value.data.v_ptr;
-  assert(deref_dest && "reference does not point to any declaration");
+  MirType *dest_type = dest->value.type->data.ptr.next;
+  assert(dest_type && "store destination has invalid base type");
 
-  if (!type_cmp(src->value.type, deref_dest->type)) {
-    error_no_impl_cast(cnt, src->value.type, deref_dest->type, src->node);
+  if (!type_cmp(src->value.type, dest_type)) {
+    error_no_impl_cast(cnt, src->value.type, dest_type, src->node);
   }
 
   /* store implicitly yields void value */
@@ -1648,7 +1748,7 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     state = analyze_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
     break;
   default:
-    msg_warning("missing analyze for %s", instr_name(instr));
+    msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
   }
 
@@ -1665,7 +1765,7 @@ analyze(Context *cnt)
     barray_foreach(stack, instr)
     {
       /* Print verbose information before analyze */
-      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr);
+      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
     }
   }
 
@@ -1679,18 +1779,18 @@ analyze(Context *cnt)
     barray_foreach(stack, instr)
     {
       /* Print verbose information before analyze */
-      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr);
+      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
     }
   }
 }
 
 /* executing */
 void
-exec_print_stack_trace(Context *cnt)
+exec_print_call_stack(Context *cnt)
 {
   MirInstr *instr;
-  for (size_t i = bo_array_size(cnt->exec_stack); i-- > 0;) {
-    instr = bo_array_at(cnt->exec_stack, i, MirInstr *);
+  for (size_t i = bo_array_size(cnt->exec.call_stack); i-- > 0;) {
+    instr = bo_array_at(cnt->exec.call_stack, i, MirInstr *);
     builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
   }
 }
@@ -1701,9 +1801,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   if (!instr) return NULL;
   if (!instr->analyzed) {
 #if BL_DEBUG
-    bl_abort("instruction %s (%llu) has not been analyzed!", instr_name(instr), instr->_serial);
+    bl_abort("instruction %s (%llu) has not been analyzed!", mir_instr_name(instr), instr->_serial);
 #else
-    bl_abort("instruction %s has not been analyzed!", instr_name(instr));
+    bl_abort("instruction %s has not been analyzed!", mir_instr_name(instr));
 #endif
   }
 
@@ -1746,7 +1846,7 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
 
   default:
-    bl_abort("missing execution for instruction: %s", instr_name(instr));
+    bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
   }
 
   return NULL;
@@ -1756,8 +1856,8 @@ MirValue *
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   msg_error("execution reached unreachable code");
-  exec_print_stack_trace(cnt);
-  cnt->exec_aborted = true;
+  exec_print_call_stack(cnt);
+  cnt->exec.aborted = true;
   return NULL;
 }
 
@@ -1765,7 +1865,7 @@ MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
-  *exec_stack_get(cnt) = br->then_block->entry_instr;
+  *exec_call_stack_get(cnt) = br->then_block->entry_instr;
   return &br->base.value;
 }
 
@@ -1777,9 +1877,9 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   assert(cond->type);
 
   if (cond->data.v_bool) {
-    *exec_stack_get(cnt) = br->then_block->entry_instr;
+    *exec_call_stack_get(cnt) = br->then_block->entry_instr;
   } else {
-    *exec_stack_get(cnt) = br->else_block->entry_instr;
+    *exec_call_stack_get(cnt) = br->else_block->entry_instr;
   }
 
   return &br->base.value;
@@ -1793,10 +1893,25 @@ exec_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof)
 }
 
 MirValue *
-exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var)
+exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-  assert(var->base.value.type);
-  return &var->base.value;
+  assert(decl->base.value.type);
+
+  MirVar *var = decl->var;
+  assert(var);
+
+  const size_t size     = size_bits_to_bytes(var->value.type->size);
+  const size_t max_size = sizeof(union MirValueData);
+
+  var->value.is_stack_allocated = size > max_size;
+
+  if (var->value.is_stack_allocated) {
+    /* allocate memory for variable on frame stack */
+    MirFrameStackPtr mem          = exec_frame_stack_alloc(cnt, size);
+    var->value.data.v_stack_ptr   = mem;
+  } 
+
+  return &decl->base.value;
 }
 
 MirValue *
@@ -1805,6 +1920,9 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
   assert(load->src);
   assert(is_pointer_type(load->src->value.type));
   load->base.value = *load->src->value.data.v_ptr;
+
+  assert(!load->base.value.is_stack_allocated && "unsupported value allocated on stack");
+
   return &load->base.value;
 }
 
@@ -1817,10 +1935,13 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   assert(is_pointer_type(dest->value.type));
 
   MirValue *deref_dest = dest->value.data.v_ptr;
-  assert(deref_dest);
+  assert(deref_dest && "invalid pointer reference");
 
-  /* copy value do destination */
-  *deref_dest = src->value;
+  assert(!deref_dest->is_stack_allocated && "unsupported value on stack");
+
+  /* copy from source to destination */
+  deref_dest->data = src->value.data;
+
   return &store->base.value;
 }
 
@@ -1897,11 +2018,20 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   }
 }
 
-MirValue *
-exec_fn(Context *cnt, MirFn *fn, BArray *args)
+bool
+exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
 {
   assert(fn);
-  cnt->exec_call_result = NULL;
+  MirType *ret_type = fn->type->data.fn.ret_type;
+  assert(ret_type);
+  const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
+
+  /* Store previous frame stack location pointer, this can be used later for rollback. This pointer
+   */
+  MirFrameStackPtr frame_ptr = exec_frame_stack_get_ptr(cnt);
+
+  /* store return frame pointer */
+  fn->exec_ret_value = out_value;
 
   if (fn->is_external) {
     assert(fn->extern_entry);
@@ -1916,10 +2046,24 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
       }
     }
 
-    // TODO: handle call result
-    switch (fn->type->data.fn.ret_type->kind) {
+    switch (ret_type->kind) {
     case MIR_TYPE_INT:
-      dcCallInt(cnt->dl.vm, fn->extern_entry);
+      switch (ret_type->data.integer.bitcount) {
+      case sizeof(char) * 8:
+        out_value->data.v_int = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(short) * 8:
+        out_value->data.v_int = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(int) * 8:
+        out_value->data.v_int = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(long long) * 8:
+        out_value->data.v_int = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        break;
+      default:
+        bl_abort("unsupported integer size for external call result");
+      }
       break;
 
     default:
@@ -1938,53 +2082,55 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args)
       }
     }
 
-    MirExec *exec = fn->exec;
-    assert(exec);
-
-    if (!exec->entry_block->entry_instr) return NULL;
-    exec_stack_push(cnt, exec->entry_block->entry_instr);
+    if (!fn->first_block->entry_instr) return does_return_value;
+    exec_call_stack_push(cnt, fn->first_block->entry_instr);
 
     /* iterate over entry block of executable */
     MirInstr *instr, *prev;
     while (true) {
-      instr = *exec_stack_get(cnt);
+      instr = *exec_call_stack_get(cnt);
       prev  = instr;
-      if (!instr || cnt->exec_aborted) break;
+      if (!instr || cnt->exec.aborted) break;
 
       exec_instr(cnt, instr);
 
       /* stack head can be changed by br instructions */
-      if (*exec_stack_get(cnt) == prev) *exec_stack_get(cnt) = instr->next;
+      if (*exec_call_stack_get(cnt) == prev) *exec_call_stack_get(cnt) = instr->next;
     }
 
-    exec_stack_pop(cnt);
+    exec_call_stack_pop(cnt);
   }
 
-  return cnt->exec_call_result;
+  /* do frame stack rollback */
+  exec_frame_stack_rollback(cnt, frame_ptr);
+  return does_return_value;
 }
 
 MirValue *
 exec_instr_call(Context *cnt, MirInstrCall *call)
 {
-  assert(call->callee);
+  assert(call->callee && call->base.value.type);
   MirValue *callee_val = &call->callee->value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
-  MirFn *   fn     = callee_val->data.v_fn;
-  MirValue *result = exec_fn(cnt, fn, call->args);
-
-  if (result) {
-    /* copy function execution return value into call instruction */
-    call->base.value = *result;
-  }
+  MirFn *fn = callee_val->data.v_fn;
+  exec_fn(cnt, fn, call->args, &call->base.value);
   return &call->base.value;
 }
 
 MirValue *
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-  cnt->exec_call_result = &ret->value->value;
-  return &ret->value->value;
+  MirFn *fn = ret->base.owner_block->owner_fn;
+  assert(fn);
+
+  /* return from function with void return type */
+  if (!ret->value) return NULL;
+  MirValue *val = &ret->value->value;
+
+  /* set fn execution resulting instruction */
+  *fn->exec_ret_value = *val;
+  return &ret->base.value;
 }
 
 static void
@@ -2117,7 +2263,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     exec_math_logic_or(cnt, binop->lhs, binop->rhs, &binop->base);
     break;
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return &binop->base.value;
@@ -2138,7 +2284,7 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     unop->base.value.data.v_int = !unop->instr->value.data.v_int;
     break;
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 
   return &unop->base.value;
@@ -2166,7 +2312,7 @@ ast_test_case(Context *cnt, Ast *test)
   Ast *ast_block = test->data.test_case.block;
   assert(ast_block);
 
-  MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, test, NULL, NULL);
+  MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, test, NULL, NULL);
 
   fn_proto->base.value.type = cnt->buildin_types.entry_test_case_fn;
 
@@ -2181,11 +2327,16 @@ ast_test_case(Context *cnt, Ast *test)
 
   bo_array_push_back(cnt->test_cases, fn);
 
+  append_block(cnt, fn_proto->base.value.data.v_fn, "init");
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
   /* generate body instructions */
   ast(cnt, ast_block);
+
+  /* terminate initialization block */
+  set_cursor_block(cnt, fn->first_block);
+  append_instr_br(cnt, NULL, entry_block);
 
   set_cursor_block(cnt, prev_block);
 }
@@ -2193,7 +2344,7 @@ ast_test_case(Context *cnt, Ast *test)
 void
 ast_unrecheable(Context *cnt, Ast *unr)
 {
-  add_instr_unrecheable(cnt, unr);
+  append_instr_unrecheable(cnt, unr);
 }
 
 void
@@ -2212,8 +2363,8 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   MirInstrBlock *cont_block = append_block(cnt, fn, "if_cont");
 
   MirInstr *cond = ast(cnt, ast_cond);
-  cond           = add_instr_load_if_needed(cnt, cond);
-  add_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
+  cond           = append_instr_load_if_needed(cnt, cond);
+  append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
 
   /* then block */
   set_cursor_block(cnt, then_block);
@@ -2221,7 +2372,7 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   if (!get_block_terminator(then_block)) {
     /* block has not been terminated -> add terminator */
     set_cursor_block(cnt, then_block);
-    add_instr_br(cnt, NULL, cont_block);
+    append_instr_br(cnt, NULL, cont_block);
   }
 
   /* else if */
@@ -2230,13 +2381,13 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
     set_cursor_block(cnt, else_block);
     ast(cnt, ast_else);
 
-    if (!get_block_terminator(else_block)) add_instr_br(cnt, NULL, cont_block);
+    if (!get_block_terminator(else_block)) append_instr_br(cnt, NULL, cont_block);
   }
 
   if (!get_block_terminator(else_block)) {
     /* block has not been terminated -> add terminator */
     set_cursor_block(cnt, else_block);
-    add_instr_br(cnt, NULL, cont_block);
+    append_instr_br(cnt, NULL, cont_block);
   }
 
   set_cursor_block(cnt, cont_block);
@@ -2246,20 +2397,20 @@ void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-  value           = add_instr_load_if_needed(cnt, value);
-  add_instr_ret(cnt, ret, value);
+  value           = append_instr_load_if_needed(cnt, value);
+  append_instr_ret(cnt, ret, value);
 }
 
 MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr)
 {
-  return add_instr_const_int(cnt, expr, expr->data.expr_integer.val);
+  return append_instr_const_int(cnt, expr, expr->data.expr_integer.val);
 }
 
 MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr)
 {
-  return add_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
+  return append_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
 }
 
 MirInstr *
@@ -2280,12 +2431,12 @@ ast_expr_call(Context *cnt, Ast *call)
     barray_foreach(ast_args, ast_arg)
     {
       arg = ast(cnt, ast_arg);
-      arg = add_instr_load_if_needed(cnt, arg);
+      arg = append_instr_load_if_needed(cnt, arg);
       bo_array_push_back(args, arg);
     }
   }
 
-  return add_instr_call(cnt, call, callee, args);
+  return append_instr_call(cnt, call, callee, args);
 }
 
 MirInstr *
@@ -2293,7 +2444,8 @@ ast_expr_ref(Context *cnt, Ast *ref)
 {
   Ast *ident = ref->data.expr_ref.ident;
   assert(ident);
-  return add_instr_decl_ref(cnt, ident);
+  /* referenced declaration will be resolved later during analyze pass */
+  return append_instr_decl_ref(cnt, ident, NULL);
 }
 
 MirInstr *
@@ -2330,7 +2482,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
     }
   }
 
-  MirInstrFnProto *fn_proto = (MirInstrFnProto *)add_instr_fn_proto(cnt, lit_fn, NULL, NULL);
+  MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
@@ -2342,11 +2494,16 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   /* function body */
   if (fn->is_external) return &fn_proto->base;
 
+  append_block(cnt, fn_proto->base.value.data.v_fn, "init");
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
   /* generate body instructions */
   ast(cnt, ast_block);
+
+  /* terminate initialization block */
+  set_cursor_block(cnt, fn->first_block);
+  append_instr_br(cnt, NULL, entry_block);
 
   set_cursor_block(cnt, prev_block);
   return &fn_proto->base;
@@ -2367,15 +2524,15 @@ ast_expr_binop(Context *cnt, Ast *binop)
   if (ast_binop_is_assign(op)) {
     switch (op) {
     case BINOP_ASSIGN: {
-      return add_instr_store(cnt, binop, rhs, lhs);
+      return append_instr_store(cnt, binop, rhs, lhs);
     }
     default:
-      bl_abort("unimplemented");
+      bl_unimplemented;
     }
   } else {
-    lhs = add_instr_load_if_needed(cnt, lhs);
-    rhs = add_instr_load_if_needed(cnt, rhs);
-    return add_instr_binop(cnt, binop, lhs, rhs, op);
+    lhs = append_instr_load_if_needed(cnt, lhs);
+    rhs = append_instr_load_if_needed(cnt, rhs);
+    return append_instr_binop(cnt, binop, lhs, rhs, op);
   }
 }
 
@@ -2388,8 +2545,8 @@ ast_expr_unary(Context *cnt, Ast *unop)
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
 
-  next = add_instr_load_if_needed(cnt, next);
-  return add_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
+  next = append_instr_load_if_needed(cnt, next);
+  return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
 MirInstr *
@@ -2421,16 +2578,22 @@ ast_decl_entity(Context *cnt, Ast *entity)
     if (is_entry_fn(ast_name)) {
       assert(!cnt->entry_fn);
       cnt->entry_fn = value->value.data.v_fn;
+      ref_instr(value);
     }
   } else {
-    MirInstr *type     = ast_type ? ast_create_type_resolver_call(cnt, ast_type) : NULL;
-    MirInstr *decl     = add_instr_decl_var(cnt, type, ast_name);
+    MirInstr *type = ast_type ? ast_create_type_resolver_call(cnt, ast_type) : NULL;
+
+    MirInstrBlock *prev_block = get_current_block(cnt);
+    MirFn *        fn         = get_current_fn(cnt);
+    set_cursor_block(cnt, fn->first_block);
+    MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
+    set_cursor_block(cnt, prev_block);
     scope_entry->instr = decl;
 
+    /* initialize value */
     if (value) {
-      if (!type) add_instr_try_infer(cnt, NULL, value, decl);
-      MirInstr *decl_ref = add_instr_addr_of(cnt, NULL, decl);
-      return add_instr_store(cnt, ast_value, value, decl_ref);
+      if (!type) append_instr_try_infer(cnt, NULL, value, decl);
+      return append_instr_store(cnt, ast_value, value, decl);
     }
 
     if (is_entry_fn(ast_name)) {
@@ -2462,11 +2625,11 @@ ast_type_ref(Context *cnt, Ast *type_ref)
   BuildinType id = is_buildin_type(cnt, ast_ref->data.ident.hash);
   if (id != BUILDIN_TYPE_NONE) {
     /* buildin primitive !!! */
-    result = add_instr_const_type(cnt, ast_ref, get_buildin(cnt, id));
+    result = append_instr_const_type(cnt, ast_ref, get_buildin(cnt, id));
   }
 
   assert(result && "unimplemented type ref resolving");
-  add_instr_validate_type(cnt, result);
+  append_instr_validate_type(cnt, result);
   return result;
 }
 
@@ -2480,7 +2643,7 @@ ast_type_fn(Context *cnt, Ast *type_fn)
   MirInstr *ret_type = NULL;
   if (ast_ret_type) {
     ret_type = ast(cnt, ast_ret_type);
-    ret_type->ref_count++;
+    ref_instr(ret_type);
   }
 
   BArray *arg_types = NULL;
@@ -2494,12 +2657,12 @@ ast_type_fn(Context *cnt, Ast *type_fn)
     for (size_t i = 0; i < c; ++i) {
       ast_arg_type = bo_array_at(ast_arg_types, i, Ast *);
       arg_type     = ast(cnt, ast_arg_type);
-      arg_type->ref_count++;
+      ref_instr(arg_type);
       bo_array_push_back(arg_types, arg_type);
     }
   }
 
-  return add_instr_type_fn(cnt, type_fn, ret_type, arg_types);
+  return append_instr_type_fn(cnt, type_fn, ret_type, arg_types);
 }
 
 MirInstr *
@@ -2515,7 +2678,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   set_cursor_block(cnt, entry);
 
   MirInstr *result = ast(cnt, type);
-  add_instr_ret(cnt, NULL, result);
+  append_instr_ret(cnt, NULL, result);
 
   set_cursor_block(cnt, prev_block);
   return create_instr_call_type_resolve(cnt, fn, type);
@@ -2577,7 +2740,7 @@ ast(Context *cnt, Ast *node)
 }
 
 const char *
-instr_name(MirInstr *instr)
+mir_instr_name(MirInstr *instr)
 {
   assert(instr);
   switch (instr->kind) {
@@ -2624,28 +2787,26 @@ instr_name(MirInstr *instr)
   return "UNKNOWN";
 }
 
-/* public */
-void
-mir_arenas_init(MirArenas *arenas)
+static void
+arenas_init(struct MirArenas *arenas)
 {
   arena_init(&arenas->instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT,
              (ArenaElemDtor)instr_dtor);
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
-  arena_init(&arenas->exec_arena, sizeof(MirExec), ARENA_CHUNK_COUNT, (ArenaElemDtor)exec_dtor);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
 }
 
-void
-mir_arenas_terminate(MirArenas *arenas)
+static void
+arenas_terminate(struct MirArenas *arenas)
 {
   arena_terminate(&arenas->instr_arena);
   arena_terminate(&arenas->type_arena);
-  arena_terminate(&arenas->exec_arena);
   arena_terminate(&arenas->var_arena);
   arena_terminate(&arenas->fn_arena);
 }
 
+/* public */
 static void
 _type_to_str(char *buf, int len, MirType *type)
 {
@@ -2654,7 +2815,6 @@ _type_to_str(char *buf, int len, MirType *type)
     const size_t filled = strlen(buf);                                                             \
     snprintf((buf) + filled, (len)-filled, "%s", str);                                             \
   }
-
   if (!buf) return;
   if (!type) {
     append_buf(buf, len, "?");
@@ -2697,7 +2857,7 @@ _type_to_str(char *buf, int len, MirType *type)
   }
 
   default:
-    bl_abort("unimplemented");
+    bl_unimplemented;
   }
 }
 
@@ -2718,9 +2878,13 @@ execute_entry_fn(Context *cnt)
     return;
   }
 
+  /* tmp return value storage */
   MirValue result;
-  result = *exec_fn(cnt, cnt->entry_fn, NULL);
-  msg_log("execution finished with state: %llu", result.data.v_int);
+  if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
+    msg_log("execution finished with state: %llu", result.data.v_int);
+  } else {
+    msg_log("execution finished");
+  }
 }
 
 void
@@ -2736,17 +2900,17 @@ execute_test_cases(Context *cnt)
 
   barray_foreach(cnt->test_cases, test_fn)
   {
-    cnt->exec_aborted = false;
+    cnt->exec.aborted = false;
     assert(test_fn->is_test_case);
-    exec_fn(cnt, test_fn, NULL);
+    exec_fn(cnt, test_fn, NULL, NULL);
 
     line = test_fn->node ? test_fn->node->src->line : -1;
     file = test_fn->node ? test_fn->node->src->unit->filepath : "?";
 
-    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'", cnt->exec_aborted ? RED("FAILED") : GREEN("PASSED"),
+    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'", cnt->exec.aborted ? RED("FAILED") : GREEN("PASSED"),
             i + 1, c, file, line, test_fn->test_case_desc);
 
-    if (cnt->exec_aborted) ++failed;
+    if (cnt->exec.aborted) ++failed;
   }
 
   msg_log("testing done, %d of %zu failed\n", failed, c);
@@ -2791,6 +2955,26 @@ init_buildins(Context *cnt)
   cnt->buildin_types.entry_test_case_fn = create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
 }
 
+void
+init_frame_stack(Context *cnt, size_t size)
+{
+  if (size == 0) bl_abort("invalid frame stack size");
+
+  char *stack = bl_malloc(sizeof(char) * size);
+  if (!stack) bl_abort("bad alloc");
+
+  cnt->exec.frame_stack           = stack;
+  cnt->exec.frame_stack_ptr       = stack;
+  cnt->exec.frame_stack_allocated = 0;
+  cnt->exec.frame_stack_size      = size;
+}
+
+void
+terminate_frame_stack(Context *cnt)
+{
+  bl_free(cnt->exec.frame_stack);
+}
+
 int
 init_dl(Context *cnt)
 {
@@ -2815,23 +2999,49 @@ terminate_dl(Context *cnt)
   dlFreeLibrary(cnt->dl.lib);
 }
 
+MirModule *
+mir_new_module(const char *name)
+{
+  MirModule *tmp = bl_malloc(sizeof(MirModule));
+  if (!tmp) bl_abort("bad alloc");
+
+  arenas_init(&tmp->arenas);
+
+  tmp->globals     = bo_array_new(sizeof(MirInstr *));
+  tmp->llvm_cnt    = LLVMContextCreate();
+  tmp->llvm_module = LLVMModuleCreateWithNameInContext(name, tmp->llvm_cnt);
+  tmp->llvm_td     = LLVMGetModuleDataLayout(tmp->llvm_module);
+  return tmp;
+}
+
+void
+mir_delete_module(MirModule *module)
+{
+  if (!module) return;
+  bo_unref(module->globals);
+
+  arenas_terminate(&module->arenas);
+
+  LLVMDisposeModule(module->llvm_module);
+
+  bl_free(module);
+}
+
 void
 mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
-  cnt.builder       = builder;
-  cnt.assembly      = assembly;
-  cnt.arenas        = &builder->mir_arenas;
-  cnt.verbose_pre   = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
-  cnt.verbose_post  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
-  cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
-  cnt.exec_stack    = bo_array_new(sizeof(MirInstr *));
-  cnt.test_cases    = bo_array_new(sizeof(MirFn *));
-  cnt.llvm_cnt      = LLVMContextCreate();
-  cnt.llvm_module   = LLVMModuleCreateWithNameInContext(assembly->name, cnt.llvm_cnt);
-  cnt.llvm_td       = LLVMGetModuleDataLayout(cnt.llvm_module);
+  cnt.builder         = builder;
+  cnt.assembly        = assembly;
+  cnt.module          = assembly->mir_module;
+  cnt.verbose_pre     = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
+  cnt.verbose_post    = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
+  cnt.analyze_stack   = bo_array_new(sizeof(MirInstr *));
+  cnt.exec.call_stack = bo_array_new(sizeof(MirInstr *));
+  cnt.test_cases      = bo_array_new(sizeof(MirFn *));
 
+  init_frame_stack(&cnt, DEFAULT_EXEC_FRAME_STACK_SIZE);
   init_buildins(&cnt);
 
   entry_fn_hash = bo_hash_from_str(entry_fn_name);
@@ -2855,9 +3065,9 @@ mir_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.analyze_stack);
-  bo_unref(cnt.exec_stack);
+  bo_unref(cnt.exec.call_stack);
   bo_unref(cnt.test_cases);
-  /* TODO: pass context to the next stages */
-  LLVMContextDispose(cnt.llvm_cnt);
+
   terminate_dl(&cnt);
+  terminate_frame_stack(&cnt);
 }

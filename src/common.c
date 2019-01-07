@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <time.h>
 #include "common.h"
 
 #ifndef BL_COMPILER_MSVC
@@ -56,4 +57,17 @@ brealpath(const char *file, char *out, int out_len)
 #else
   return realpath(file, out);
 #endif
+}
+
+void
+date_time(char *buf, int len, const char *format)
+{
+  assert(buf && len);
+  time_t     timer;
+  struct tm *tm_info;
+
+  time(&timer);
+  tm_info = localtime(&timer);
+
+  strftime(buf, len, format, tm_info);
 }
