@@ -766,7 +766,6 @@ create_var(Context *cnt, const char *name, MirType *type)
   MirVar *tmp                   = arena_alloc(&cnt->module->arenas.var_arena);
   tmp->name                     = name;
   tmp->value.type               = type;
-  tmp->value.is_stack_allocated = true;
   return tmp;
 }
 
@@ -1901,13 +1900,16 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  /* allocate memory storage on current stack frame */
-  const size_t size = size_bits_to_bytes(var->value.type->size);
-  assert(size && "trying to allocate 0 bytes data on frame stack!!!");
+  const size_t size     = size_bits_to_bytes(var->value.type->size);
+  const size_t max_size = sizeof(union MirValueData);
 
-  /* allocate memory for variable on frame stack */
-  MirFrameStackPtr mem        = exec_frame_stack_alloc(cnt, size);
-  var->value.data.v_stack_ptr = mem;
+  var->value.is_stack_allocated = size > max_size;
+
+  if (var->value.is_stack_allocated) {
+    /* allocate memory for variable on frame stack */
+    MirFrameStackPtr mem          = exec_frame_stack_alloc(cnt, size);
+    var->value.data.v_stack_ptr   = mem;
+  } 
 
   return &decl->base.value;
 }
@@ -1918,6 +1920,9 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
   assert(load->src);
   assert(is_pointer_type(load->src->value.type));
   load->base.value = *load->src->value.data.v_ptr;
+
+  assert(!load->base.value.is_stack_allocated && "unsupported value allocated on stack");
+
   return &load->base.value;
 }
 
@@ -1932,25 +1937,10 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   MirValue *deref_dest = dest->value.data.v_ptr;
   assert(deref_dest && "invalid pointer reference");
 
-  if (deref_dest->is_stack_allocated) {
-    /* storage for execution value is allocated on frame stack */
-    assert(deref_dest->data.v_stack_ptr && "missing allocation for variable on stack");
+  assert(!deref_dest->is_stack_allocated && "unsupported value on stack");
 
-    MirType *deref_dest_type = deref_dest->type;
-    assert(deref_dest_type);
-    const size_t data_size = size_bits_to_bytes(deref_dest_type->size);
-
-    MirFrameStackPtr dest_ptr = deref_dest->data.v_stack_ptr;
-    assert(dest_ptr && "no space allocated for destination");
-
-    const MirFrameStackPtr src_ptr =
-        src->value.is_stack_allocated ? src->value.data.v_stack_ptr : &src->value.data;
-
-    /* copy value do destination */
-    memcpy(dest_ptr, src_ptr, data_size);
-  } else {
-    bl_unimplemented;
-  }
+  /* copy from source to destination */
+  deref_dest->data = src->value.data;
 
   return &store->base.value;
 }

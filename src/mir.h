@@ -156,21 +156,22 @@ struct MirType
 };
 
 /* VALUE */
+union MirValueData
+{
+  unsigned long long v_uint;
+  long long          v_int;
+  bool               v_bool;
+  MirType *          v_type;
+  MirValue *         v_ptr;
+  MirFn *            v_fn;
+  MirFrameStackPtr   v_stack_ptr;
+};
+
 struct MirValue
 {
-  union
-  {
-    unsigned long long v_uint;
-    long long          v_int;
-    bool               v_bool;
-    MirType *          v_type;
-    MirValue *         v_ptr;
-    MirFn *            v_fn;
-    MirFrameStackPtr   v_stack_ptr;
-  } data;
-
-  MirType *type;
-  bool     is_stack_allocated;
+  union MirValueData data;
+  MirType *          type;
+  bool               is_stack_allocated;
 };
 
 /* VAR */
