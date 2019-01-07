@@ -58,6 +58,7 @@ union _MirInstr
   MirInstrCondBr       cond_br;
   MirInstrBr           br;
   MirInstrUnop         unop;
+  MirInstrArg          arg;
 };
 
 typedef enum
@@ -241,6 +242,9 @@ create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_ty
 
 // static MirInstr *
 // append_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
+
+static MirInstr *
+append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
@@ -879,6 +883,16 @@ append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_ty
   tmp->base.comptime   = true;
   tmp->ret_type        = ret_type;
   tmp->arg_types       = arg_types;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_arg(Context *cnt, Ast *node, unsigned i)
+{
+  MirInstrArg *tmp = create_instr(cnt, MIR_INSTR_ARG, node, MirInstrArg *);
+  tmp->i           = i;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2495,6 +2509,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
       ast_arg_name = ast_arg->data.decl.name;
       assert(ast_arg_name);
 
+      /* type is filled later in analyze pass */
       arg = create_instr_decl_var(cnt, NULL, ast_arg_name);
       bo_array_push_back(arg_slots, arg);
 
@@ -2603,9 +2618,10 @@ ast_expr_unary(Context *cnt, Ast *unop)
 MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity)
 {
-  Ast *ast_name  = entity->data.decl.name;
-  Ast *ast_type  = entity->data.decl.type;
-  Ast *ast_value = entity->data.decl_entity.value;
+  MirInstr *result    = NULL;
+  Ast *     ast_name  = entity->data.decl.name;
+  Ast *     ast_type  = entity->data.decl.type;
+  Ast *     ast_value = entity->data.decl_entity.value;
 
   /* Prepare scope entry created in parser */
   assert(ast_name->kind == AST_IDENT);
@@ -2637,14 +2653,14 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirInstrBlock *prev_block = get_current_block(cnt);
     MirFn *        fn         = get_current_fn(cnt);
     set_cursor_block(cnt, fn->first_block);
-    MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
+    MirInstr *decl     = append_instr_decl_var(cnt, type, ast_name);
     set_cursor_block(cnt, prev_block);
     scope_entry->instr = decl;
 
     /* initialize value */
     if (value) {
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
-      return append_instr_store(cnt, ast_value, value, decl);
+      result = append_instr_store(cnt, ast_value, value, decl);
     }
 
     if (is_entry_fn(ast_name)) {
@@ -2653,7 +2669,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     }
   }
 
-  return NULL;
+  return result;
 }
 
 MirInstr *
@@ -2833,6 +2849,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrBr";
   case MIR_INSTR_UNOP:
     return "InstrUnop";
+  case MIR_INSTR_ARG:
+    return "InstrArg";
   }
 
   return "UNKNOWN";

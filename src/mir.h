@@ -66,6 +66,7 @@ typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
 typedef struct MirInstrBr          MirInstrBr;
+typedef struct MirInstrArg         MirInstrArg;
 
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
@@ -185,23 +186,61 @@ struct MirVar
 /* INSTRUCTIONS */
 typedef enum
 {
+  /* Invalid instructon */
   MIR_INSTR_INVALID,
+
+  /* Atomic basic block without branching. */
   MIR_INSTR_BLOCK,
+
+  /* Variable declaration. This instruction will create named variable of some type. Large variables
+     can allocate memory on stack. */
   MIR_INSTR_DECL_VAR,
+
+  /* Constant declaration. */
   MIR_INSTR_CONST,
+
+  /* Produce dereferencing of some input value. */
   MIR_INSTR_LOAD,
+
+  /* Store some value. */
   MIR_INSTR_STORE,
+
+  /* Binary operation */
   MIR_INSTR_BINOP,
+
+  /* Return terminator. */
   MIR_INSTR_RET,
+
+  /* Function prototype. */
   MIR_INSTR_FN_PROTO,
+
+  /* Function type. */
   MIR_INSTR_TYPE_FN,
+
+  /* Function call */
   MIR_INSTR_CALL,
+
+  /* Reference to some named value. */
   MIR_INSTR_DECL_REF,
+
+  /* Unreachable terminatro. */
   MIR_INSTR_UNREACHABLE,
+
+  /* Get address of some value. */
   MIR_INSTR_ADDR_OF,
+
+  /* Conditional break. This instruction can produce jumps to other blocks based on some condition.
+   */
   MIR_INSTR_COND_BR,
+
+  /* Break. Simpy jump to some block. */
   MIR_INSTR_BR,
+
+  /* Unary operation. */
   MIR_INSTR_UNOP,
+
+  /* Reference to argument of current function. */
+  MIR_INSTR_ARG,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -245,6 +284,13 @@ struct MirInstrDeclVar
 
   MirVar *  var;
   MirInstr *type;
+};
+
+struct MirInstrArg
+{
+  MirInstr base;
+
+  unsigned i;
 };
 
 struct MirInstrConst

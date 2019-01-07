@@ -103,6 +103,9 @@ print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream);
 static void
 print_instr_unop(MirInstrUnop *unop, FILE *stream);
 
+static void
+print_instr_arg(MirInstrArg *arg, FILE *stream);
+
 /* impl */
 void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
@@ -139,6 +142,13 @@ print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
   print_instr_head(&cond_br->base, stream);
   fprintf(stream, "br %%%u ? %s_%u : %s_%u", cond_br->cond->id, cond_br->then_block->name,
           cond_br->then_block->base.id, cond_br->else_block->name, cond_br->else_block->base.id);
+}
+
+void
+print_instr_arg(MirInstrArg *arg, FILE *stream)
+{
+  print_instr_head(&arg->base, stream);
+  fprintf(stream, "arg $%u", arg->i);
 }
 
 void
@@ -381,6 +391,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_UNOP:
     print_instr_unop((MirInstrUnop *)instr, stream);
+    break;
+  case MIR_INSTR_ARG:
+    print_instr_arg((MirInstrArg *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;
