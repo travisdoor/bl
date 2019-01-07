@@ -276,6 +276,7 @@ print_instr_binop(MirInstrBinop *binop, FILE *stream)
 void
 print_instr_block(MirInstrBlock *block, FILE *stream)
 {
+  if (block->base.prev) fprintf(stream, "\n");
   fprintf(stream, "%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
   if (!block->base.ref_count)
     fprintf(stream, " // NEVER REACHED\n");

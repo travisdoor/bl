@@ -627,17 +627,18 @@ get_current_fn(Context *cnt)
 }
 
 static inline void
-error_no_impl_cast(Context *cnt, MirType *from, MirType *to, Ast *loc)
+error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 {
   assert(from && to);
+  if (!msg) msg = "no implicit cast for type '%s' and '%s'";
 
   char tmp_from[256];
   char tmp_to[256];
   mir_type_to_str(tmp_from, 256, from);
   mir_type_to_str(tmp_to, 256, to);
 
-  builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, loc->src, BUILDER_CUR_WORD,
-              "no implicit cast for type '%s' and '%s'", tmp_from, tmp_to);
+  builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, loc->src, BUILDER_CUR_WORD, msg,
+              tmp_from, tmp_to);
 }
 
 static inline MirInstr *
@@ -763,9 +764,9 @@ MirVar *
 create_var(Context *cnt, const char *name, MirType *type)
 {
   assert(name);
-  MirVar *tmp                   = arena_alloc(&cnt->module->arenas.var_arena);
-  tmp->name                     = name;
-  tmp->value.type               = type;
+  MirVar *tmp     = arena_alloc(&cnt->module->arenas.var_arena);
+  tmp->name       = name;
+  tmp->value.type = type;
   return tmp;
 }
 
@@ -1320,8 +1321,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
       assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
 
       if (!type_cmp(type_val->data.v_type, user_type_val->data.v_type)) {
-        error_no_impl_cast(cnt, type_val->data.v_type, user_type_val->data.v_type,
-                           fn_proto->user_type->node);
+        error_types(cnt, type_val->data.v_type, user_type_val->data.v_type,
+                    fn_proto->user_type->node, NULL);
       }
     }
 
@@ -1344,9 +1345,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     assert(types);
     assert(types && (bo_array_size(types) == bo_array_size(fn->arg_slots)));
     MirInstr *arg;
+    MirType * arg_type;
     barray_foreach(fn->arg_slots, arg)
     {
-      arg->value.type = bo_array_at(types, i, MirType *);
+      arg_type        = bo_array_at(types, i, MirType *);
+      arg->value.type = create_type_ptr(cnt, arg_type);
       arg->analyzed   = true;
     }
   }
@@ -1399,7 +1402,7 @@ analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   assert(cond_type);
 
   if (!type_cmp(cond_type, cnt->buildin_types.entry_bool)) {
-    error_no_impl_cast(cnt, cond_type, cnt->buildin_types.entry_bool, br->cond->node);
+    error_types(cnt, cond_type, cnt->buildin_types.entry_bool, br->cond->node, NULL);
     return false;
   }
 
@@ -1448,8 +1451,20 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
   assert(lhs->analyzed);
   assert(rhs->analyzed);
 
+  const bool is_logic = ast_binop_is_logic(binop->op);
+
   if (!type_cmp(lhs->value.type, rhs->value.type)) {
-    error_no_impl_cast(cnt, lhs->value.type, rhs->value.type, binop->base.node);
+    error_types(cnt, lhs->value.type, rhs->value.type, binop->base.node, NULL);
+  } else {
+    const MirTypeKind lhs_kind = lhs->value.type->kind;
+    const MirTypeKind rhs_kind = rhs->value.type->kind;
+    const bool lhs_valid = (lhs_kind == MIR_TYPE_INT) || (lhs_kind == MIR_TYPE_BOOL && is_logic);
+    const bool rhs_valid = (rhs_kind == MIR_TYPE_INT) || (rhs_kind == MIR_TYPE_BOOL && is_logic);
+
+    if (!(lhs_valid && rhs_valid)) {
+      error_types(cnt, lhs->value.type, rhs->value.type, binop->base.node,
+                  "invalid operation for %s type");
+    }
   }
 
   MirType *type = ast_binop_is_logic(binop->op) ? cnt->buildin_types.entry_bool : lhs->value.type;
@@ -1554,7 +1569,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->value->node->src,
                   BUILDER_CUR_WORD, "unexpected return value");
     } else if (!type_cmp(value->value.type, fn_type->data.fn.ret_type)) {
-      error_no_impl_cast(cnt, value->value.type, fn_type->data.fn.ret_type, ret->value->node);
+      error_types(cnt, value->value.type, fn_type->data.fn.ret_type, ret->value->node, NULL);
     }
   } else if (expected_ret_value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->base.node->src,
@@ -1632,7 +1647,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
     {
       callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
       if (!type_cmp(call_arg->value.type, callee_arg_type)) {
-        error_no_impl_cast(cnt, call_arg->value.type, callee_arg_type, call_arg->node);
+        error_types(cnt, call_arg->value.type, callee_arg_type, call_arg->node, NULL);
       }
     }
   }
@@ -1654,7 +1669,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   assert(dest_type && "store destination has invalid base type");
 
   if (!type_cmp(src->value.type, dest_type)) {
-    error_no_impl_cast(cnt, src->value.type, dest_type, src->node);
+    error_types(cnt, src->value.type, dest_type, src->node, NULL);
   }
 
   /* store implicitly yields void value */
@@ -1907,9 +1922,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (var->value.is_stack_allocated) {
     /* allocate memory for variable on frame stack */
-    MirFrameStackPtr mem          = exec_frame_stack_alloc(cnt, size);
-    var->value.data.v_stack_ptr   = mem;
-  } 
+    MirFrameStackPtr mem        = exec_frame_stack_alloc(cnt, size);
+    var->value.data.v_stack_ptr = mem;
+  }
 
   return &decl->base.value;
 }
@@ -2520,18 +2535,45 @@ ast_expr_binop(Context *cnt, Ast *binop)
   MirInstr *rhs = ast(cnt, ast_rhs);
   assert(lhs && rhs);
 
+  rhs = append_instr_load_if_needed(cnt, rhs);
+
   const BinopKind op = binop->data.expr_binop.kind;
   if (ast_binop_is_assign(op)) {
     switch (op) {
+
     case BINOP_ASSIGN: {
       return append_instr_store(cnt, binop, rhs, lhs);
     }
+
+    case BINOP_ADD_ASSIGN: {
+      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_ADD);
+      return append_instr_store(cnt, binop, add_tmp, lhs);
+    }
+
+    case BINOP_SUB_ASSIGN: {
+      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_SUB);
+      return append_instr_store(cnt, binop, add_tmp, lhs);
+    }
+
+    case BINOP_MUL_ASSIGN: {
+      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_MUL);
+      return append_instr_store(cnt, binop, add_tmp, lhs);
+    }
+
+    case BINOP_DIV_ASSIGN: {
+      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_DIV);
+      return append_instr_store(cnt, binop, add_tmp, lhs);
+    }
+
     default:
       bl_unimplemented;
     }
   } else {
     lhs = append_instr_load_if_needed(cnt, lhs);
-    rhs = append_instr_load_if_needed(cnt, rhs);
     return append_instr_binop(cnt, binop, lhs, rhs, op);
   }
 }
