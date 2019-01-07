@@ -146,6 +146,7 @@ struct MirType
   const char *name;
   LLVMTypeRef llvm_type;
   size_t      size;
+  unsigned    alignment;
 
   union
   {

@@ -359,7 +359,7 @@ static MirInstr *
 ast_expr_unary(Context *cnt, Ast *unop);
 
 static LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type, size_t *out_size);
+to_llvm_type(Context *cnt, MirType *type, size_t *out_size, unsigned *out_alignment);
 
 /* analyze */
 static bool
@@ -507,9 +507,15 @@ exec_call_stack_pop(Context *cnt)
 }
 
 static inline size_t
-size_bits_to_bytes(size_t size_in_bits)
+sizeof_type_in_bits(MirType *type)
 {
-  size_t size = size_in_bits;
+  return type->size;
+}
+
+static inline size_t
+store_sizeof_type_in_bytes(MirType *type)
+{
+  size_t size = type->size;
   if (size % 8) size = size + (8 - size % 8);
   size = size / 8;
   return size;
@@ -697,9 +703,7 @@ create_type_type(Context *cnt)
   MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_TYPE;
   tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, NULL);
-
-  tmp->size = sizeof(MirType *) * 8;
+  tmp->llvm_type = to_llvm_type(cnt, tmp, NULL, NULL);
   return tmp;
 }
 
@@ -709,7 +713,7 @@ create_type_void(Context *cnt)
   MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_VOID;
   tmp->name      = "void";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
   return tmp;
 }
 
@@ -719,7 +723,7 @@ create_type_bool(Context *cnt)
   MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_BOOL;
   tmp->name      = "bool";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
   return tmp;
 }
 
@@ -732,7 +736,7 @@ create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
   tmp->name                   = name;
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
-  tmp->llvm_type              = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type              = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
 
   return tmp;
 }
@@ -743,7 +747,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
   MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
-  tmp->llvm_type     = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type     = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
 
   return tmp;
 }
@@ -755,7 +759,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->buildin_types.entry_void;
-  tmp->llvm_type         = to_llvm_type(cnt, tmp, &tmp->size);
+  tmp->llvm_type         = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
 
   return tmp;
 }
@@ -1145,7 +1149,7 @@ append_instr_validate_type(Context *cnt, MirInstr *src)
 
 /* LLVM */
 LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
+to_llvm_type(Context *cnt, MirType *type, size_t *out_size, unsigned *out_alignment)
 {
   if (!type) return NULL;
   LLVMTypeRef result = NULL;
@@ -1154,6 +1158,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   case MIR_TYPE_TYPE:
   case MIR_TYPE_VOID: {
     if (out_size) *out_size = 0;
+    if (out_alignment) *out_alignment = 0;
     result = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
@@ -1161,12 +1166,14 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
   case MIR_TYPE_INT: {
     result = LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
     if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
+    if (out_alignment) *out_alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
     break;
   }
 
   case MIR_TYPE_BOOL: {
     result = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
     if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
+    if (out_alignment) *out_alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
     break;
   }
 
@@ -1176,6 +1183,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
     assert(tmp->llvm_type);
     result = LLVMPointerType(tmp->llvm_type, 0);
     if (out_size) *out_size = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
+    if (out_alignment) *out_alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
     break;
   }
 
@@ -1203,6 +1211,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size)
 
     result = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
     if (out_size) *out_size = 0;
+    if (out_alignment) *out_alignment = 0;
     bl_free(llvm_args);
     break;
   }
@@ -1915,7 +1924,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  const size_t size     = size_bits_to_bytes(var->value.type->size);
+  const size_t size     = store_sizeof_type_in_bytes(var->value.type);
   const size_t max_size = sizeof(union MirValueData);
 
   var->value.is_stack_allocated = size > max_size;

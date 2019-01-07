@@ -44,12 +44,10 @@ say_hello : fn () {
 
 putchar : fn (c s32) s32 #extern;
 
-/*
 // TODO: fn arguments
-get : fn (i s32) {
+/*get : fn (i s32) {
   return i;
-};
-*/
+};*/
 
 #test "hello test" {
   say_hello();
