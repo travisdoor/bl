@@ -66,6 +66,9 @@ static void
 gen_instr_br(Context *cnt, MirInstrBr *br);
 
 static void
+gen_instr_arg(Context *cnt, MirInstrArg *arg);
+
+static void
 gen_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
 static void
@@ -111,6 +114,17 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
   }
 
   return llvm_block;
+}
+
+void
+gen_instr_arg(Context *cnt, MirInstrArg *arg)
+{
+  MirFn *fn = arg->base.owner_block->owner_fn;
+  assert(fn);
+  LLVMValueRef llvm_fn = fn->llvm_value;
+  assert(llvm_fn);
+
+  arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
 }
 
 void
@@ -435,6 +449,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_DECL_REF:
     gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    break;
+  case MIR_INSTR_ARG:
+    gen_instr_arg(cnt, (MirInstrArg *)instr);
     break;
 
   default:

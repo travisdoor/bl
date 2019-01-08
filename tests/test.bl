@@ -3,7 +3,6 @@
 //#load "std/debug.bl"
 
 main : fn () s32 {
-/*
   i := 1 + 2; // 3
   j := 2;
   k := 3;
@@ -22,17 +21,14 @@ main : fn () s32 {
   c := 72;
   putchar(c);
   putchar(10);
-*/
-  i := 10;
-  return 666;
+
+  return add(10, 20);
 };
 
-// TODO: fn arguments
 add : fn (i s32, j s32) s32 {
-  return 0;
+  return i + j;
 };
 
-/*
 say_hello : fn () {
   putchar(72);
   putchar(101);
@@ -55,4 +51,3 @@ putchar : fn (c s32) s32 #extern;
 #test "hello test" {
   say_hello();
 };
-*/

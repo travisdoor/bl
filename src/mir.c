@@ -376,6 +376,9 @@ static bool
 analyze_instr_ret(Context *cnt, MirInstrRet *ret);
 
 static bool
+analyze_instr_arg(Context *cnt, MirInstrArg *arg);
+
+static bool
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static bool
@@ -437,6 +440,9 @@ static MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br);
 
 static MirValue *
+exec_instr_arg(Context *cnt, MirInstrArg *arg);
+
+static MirValue *
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
 static MirValue *
@@ -483,6 +489,13 @@ is_pointer_type(MirType *type)
 {
   assert(type);
   return type->kind == MIR_TYPE_PTR;
+}
+
+static inline void
+exec_copy_value(MirValue *dest, MirValue *src)
+{
+  dest->data = src->data;
+  dest->is_stack_allocated = src->is_stack_allocated;
 }
 
 static inline void
@@ -1317,6 +1330,22 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 }
 
 bool
+analyze_instr_arg(Context *cnt, MirInstrArg *arg)
+{
+  MirFn *fn = arg->base.owner_block->owner_fn;
+  assert(fn);
+
+  BArray *arg_types = fn->type->data.fn.arg_types;
+  assert(arg_types && "trying to reference type of argument in function without arguments");
+
+  assert(arg->i < bo_array_size(arg_types));
+  arg->base.value.type = bo_array_at(arg_types, arg->i, MirType *);
+  assert(arg->base.value.type);
+
+  return true;
+}
+
+bool
 analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   /* nothing to do :( */
@@ -1361,21 +1390,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
   MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
-
-  /* setup types for arg slots */
-  if (fn->arg_slots) {
-    BArray *types = value->type->data.fn.arg_types;
-    assert(types);
-    assert(types && (bo_array_size(types) == bo_array_size(fn->arg_slots)));
-    MirInstr *arg;
-    MirType * arg_type;
-    barray_foreach(fn->arg_slots, arg)
-    {
-      arg_type        = bo_array_at(types, i, MirType *);
-      arg->value.type = create_type_ptr(cnt, arg_type);
-      arg->analyzed   = true;
-    }
-  }
 
   if (fn->is_external) {
     /* lookup external function exec handle */
@@ -1785,6 +1799,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_UNREACHABLE:
     state = analyze_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
     break;
+  case MIR_INSTR_ARG:
+    state = analyze_instr_arg(cnt, (MirInstrArg *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
@@ -1882,6 +1899,8 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
   case MIR_INSTR_UNREACHABLE:
     return exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+  case MIR_INSTR_ARG:
+    return exec_instr_arg(cnt, (MirInstrArg *)instr);
 
   default:
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
@@ -1905,6 +1924,21 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
   assert(br->then_block);
   *exec_call_stack_get(cnt) = br->then_block->entry_instr;
   return &br->base.value;
+}
+
+MirValue *
+exec_instr_arg(Context *cnt, MirInstrArg *arg)
+{
+  MirFn *fn = arg->base.owner_block->owner_fn;
+  assert(fn);
+
+  BArray *arg_slots = fn->arg_slots;
+  assert(arg_slots);
+  assert(arg->i < bo_array_size(arg_slots));
+    
+  MirValue *val = bo_array_at(arg_slots, arg->i, MirValue *);
+  exec_copy_value(&arg->base.value, val);
+  return &arg->base.value;
 }
 
 MirValue *
@@ -1978,7 +2012,7 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   assert(!deref_dest->is_stack_allocated && "unsupported value on stack");
 
   /* copy from source to destination */
-  deref_dest->data = src->value.data;
+  exec_copy_value(deref_dest, &src->value);
 
   return &store->base.value;
 }
@@ -2110,13 +2144,12 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
   } else {
     /* copy arguments into arg slots of the executed function */
     if (args) {
-      MirValue *arg;
-      MirValue *slot;
-      assert(bo_array_size(args) == bo_array_size(fn->arg_slots));
+      MirInstr *arg;
+      MirValue *arg_val;
       barray_foreach(args, arg)
       {
-        slot       = bo_array_at(fn->arg_slots, i, MirValue *);
-        slot->data = arg->data;
+        arg_val = &arg->value;
+        bo_array_push_back(fn->arg_slots, arg_val);
       }
     }
 
@@ -2136,7 +2169,9 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
       if (*exec_call_stack_get(cnt) == prev) *exec_call_stack_get(cnt) = instr->next;
     }
 
+    /* cleanup */
     exec_call_stack_pop(cnt);
+    if (fn->arg_slots) bo_array_clear(fn->arg_slots);
   }
 
   /* do frame stack rollback */
@@ -2493,47 +2528,57 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   Ast *ast_block   = lit_fn->data.expr_fn.block;
   Ast *ast_fn_type = lit_fn->data.expr_fn.type;
 
-  /* create arg slots for the function */
-  BArray *ast_args  = ast_fn_type->data.type_fn.args;
-  BArray *arg_slots = NULL;
-  if (ast_args) {
-    arg_slots = bo_array_new(sizeof(MirInstr *));
-    bo_array_reserve(arg_slots, bo_array_size(ast_args));
-
-    Ast *     ast_arg;
-    Ast *     ast_arg_name;
-    MirInstr *arg;
-    barray_foreach(ast_args, ast_arg)
-    {
-      assert(ast_arg->kind == AST_DECL_ARG);
-      ast_arg_name = ast_arg->data.decl.name;
-      assert(ast_arg_name);
-
-      /* type is filled later in analyze pass */
-      arg = create_instr_decl_var(cnt, NULL, ast_arg_name);
-      bo_array_push_back(arg_slots, arg);
-
-      Scope *scope = ast_arg_name->data.ident.scope;
-      assert(scope);
-      ScopeEntry *scope_entry = scope_lookup(scope, ast_arg_name->data.ident.hash, true);
-      assert(scope_entry && "declaration has no scope entry");
-      scope_entry->instr = arg;
-    }
-  }
-
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL);
 
   fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *fn = create_fn(cnt, NULL, arg_slots, !ast_block, false); /* TODO: based on user flag!!! */
+  MirFn *fn = create_fn(cnt, NULL, NULL, !ast_block, false); /* TODO: based on user flag!!! */
   fn_proto->base.value.data.v_fn = fn;
 
   /* function body */
+
+  /* external functions has no body */
   if (fn->is_external) return &fn_proto->base;
 
-  append_block(cnt, fn_proto->base.value.data.v_fn, "init");
+  /* create block for initialization locals and arguments */
+  MirInstrBlock *init_block = append_block(cnt, fn_proto->base.value.data.v_fn, "init");
+  set_cursor_block(cnt, init_block);
+
+  /* create arg slots for the function */
+  {
+    BArray *ast_args  = ast_fn_type->data.type_fn.args;
+    BArray *arg_slots = NULL;
+    if (ast_args) {
+      arg_slots = bo_array_new(sizeof(MirValue *));
+      bo_array_reserve(arg_slots, bo_array_size(ast_args));
+
+      Ast *ast_arg;
+      Ast *ast_arg_name;
+      barray_foreach(ast_args, ast_arg)
+      {
+        assert(ast_arg->kind == AST_DECL_ARG);
+        ast_arg_name = ast_arg->data.decl.name;
+        assert(ast_arg_name);
+
+        /* create tmp declaration for arg variable */
+        MirInstr *var = append_instr_decl_var(cnt, NULL, ast_arg_name);
+        MirInstr *arg = append_instr_arg(cnt, NULL, i);
+        append_instr_try_infer(cnt, NULL, arg, var);
+        append_instr_store(cnt, NULL, arg, var);
+
+        /* registrate argument into scope */
+        Scope *scope = ast_arg_name->data.ident.scope;
+        assert(scope);
+        ScopeEntry *scope_entry = scope_lookup(scope, ast_arg_name->data.ident.hash, true);
+        assert(scope_entry && "declaration has no scope entry");
+        scope_entry->instr = var;
+      }
+    }
+    fn->arg_slots = arg_slots;
+  }
+
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
@@ -2653,7 +2698,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirInstrBlock *prev_block = get_current_block(cnt);
     MirFn *        fn         = get_current_fn(cnt);
     set_cursor_block(cnt, fn->first_block);
-    MirInstr *decl     = append_instr_decl_var(cnt, type, ast_name);
+    MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
     set_cursor_block(cnt, prev_block);
     scope_entry->instr = decl;
 
