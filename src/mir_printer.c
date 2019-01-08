@@ -133,7 +133,7 @@ print_instr_unop(MirInstrUnop *unop, FILE *stream)
   print_instr_head(&unop->base, stream);
 
   const char *op = ast_unop_to_str(unop->op);
-  fprintf(stream, "%s %%%u", op, unop->instr->id);
+  fprintf(stream, "%s%%%u", op, unop->instr->id);
 }
 
 void

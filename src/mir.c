@@ -494,7 +494,7 @@ is_pointer_type(MirType *type)
 static inline void
 exec_copy_value(MirValue *dest, MirValue *src)
 {
-  dest->data = src->data;
+  dest->data               = src->data;
   dest->is_stack_allocated = src->is_stack_allocated;
 }
 
@@ -578,6 +578,12 @@ terminate_block(MirInstrBlock *block, MirInstr *terminator)
   assert(block);
   if (block->terminal) bl_abort("basic block already terminated!");
   block->terminal = terminator;
+}
+
+static inline bool
+is_block_terminated(MirInstrBlock *block)
+{
+  return block->terminal;
 }
 
 static inline bool
@@ -978,6 +984,7 @@ append_instr_unrecheable(Context *cnt, Ast *node)
   MirInstrUnreachable *tmp = create_instr(cnt, MIR_INSTR_UNREACHABLE, node, MirInstrUnreachable *);
   tmp->base.value.type     = cnt->buildin_types.entry_void;
   push_into_curr_block(cnt, &tmp->base);
+  ref_instr(&tmp->base);
   return &tmp->base;
 }
 
@@ -1406,6 +1413,17 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   } else {
     prev_block         = get_current_block(cnt);
     MirInstrBlock *tmp = fn->first_block;
+
+    /* append implicit return for void functions or generate error when last block is not terminated
+     */
+    if (!is_block_terminated(fn->last_block)) {
+      if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
+        set_cursor_block(cnt, fn->last_block);
+        append_instr_ret(cnt, NULL, NULL);
+      } else {
+        bl_abort("missing return!!!");
+      }
+    }
 
     while (tmp) {
       if (comptime)
@@ -1935,7 +1953,7 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   BArray *arg_slots = fn->arg_slots;
   assert(arg_slots);
   assert(arg->i < bo_array_size(arg_slots));
-    
+
   MirValue *val = bo_array_at(arg_slots, arg->i, MirValue *);
   exec_copy_value(&arg->base.value, val);
   return &arg->base.value;
@@ -2615,26 +2633,37 @@ ast_expr_binop(Context *cnt, Ast *binop)
     }
 
     case BINOP_ADD_ASSIGN: {
-      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_ADD);
+      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_ADD);
       return append_instr_store(cnt, binop, add_tmp, lhs);
     }
 
     case BINOP_SUB_ASSIGN: {
-      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_SUB);
+      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_SUB);
       return append_instr_store(cnt, binop, add_tmp, lhs);
     }
 
     case BINOP_MUL_ASSIGN: {
-      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_MUL);
+      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_MUL);
       return append_instr_store(cnt, binop, add_tmp, lhs);
     }
 
     case BINOP_DIV_ASSIGN: {
-      MirInstr *lhs_tmp = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, rhs, lhs_tmp, BINOP_DIV);
+      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_DIV);
+      return append_instr_store(cnt, binop, add_tmp, lhs);
+    }
+
+    case BINOP_MOD_ASSIGN: {
+      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
+      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_MOD);
       return append_instr_store(cnt, binop, add_tmp, lhs);
     }
 

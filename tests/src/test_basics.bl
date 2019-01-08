@@ -55,3 +55,20 @@
   _1();  
   assert(_2(10) == 10);
 };
+
+#test "assign operators" {
+  i := 5;
+  assert(i == 5);
+
+  i += 1;
+  assert(i == 6);
+
+  i -= 1;
+  assert(i == 5);
+
+  i *= 2;
+  assert(i == 10);
+
+  i /= 2;
+  assert(i == 5);
+};

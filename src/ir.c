@@ -36,6 +36,8 @@
 #include "builder.h"
 #include "assembly.h"
 
+#define LLVM_TRAP_FN "llvm.debugtrap"
+
 typedef struct
 {
   Builder * builder;
@@ -45,6 +47,8 @@ typedef struct
   LLVMModuleRef     llvm_module;
   LLVMTargetDataRef llvm_td;
   LLVMBuilderRef    llvm_builder;
+
+  LLVMValueRef llvm_trap_fn;
 } Context;
 
 static void
@@ -52,6 +56,12 @@ gen_instr(Context *cnt, MirInstr *instr);
 
 static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
+
+static void
+gen_instr_unop(Context *cnt, MirInstrUnop *unop);
+
+static void
+gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
 static void
 gen_instr_store(Context *cnt, MirInstrStore *store);
@@ -117,6 +127,12 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 }
 
 void
+gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+{
+  unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
+}
+
+void
 gen_instr_arg(Context *cnt, MirInstrArg *arg)
 {
   MirFn *fn = arg->base.owner_block->owner_fn;
@@ -168,6 +184,22 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
   assert(val && ptr);
   store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
   LLVMSetAlignment(store->base.llvm_value, alignment);
+}
+
+void
+gen_instr_unop(Context *cnt, MirInstrUnop *unop)
+{
+  LLVMValueRef llvm_val = unop->instr->llvm_value;
+  assert(llvm_val);
+
+  switch (unop->op) {
+  case UNOP_NOT: {
+    unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
+    break;
+  default:
+    bl_unimplemented;
+  }
+  }
 }
 
 void
@@ -453,6 +485,12 @@ gen_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_ARG:
     gen_instr_arg(cnt, (MirInstrArg *)instr);
     break;
+  case MIR_INSTR_UNOP:
+    gen_instr_unop(cnt, (MirInstrUnop *)instr);
+    break;
+  case MIR_INSTR_UNREACHABLE:
+    gen_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
 
   default:
     bl_warning("unimplemented LLVM generation for %s", mir_instr_name(instr));
@@ -472,6 +510,12 @@ ir_run(Builder *builder, Assembly *assembly)
   cnt.llvm_module  = assembly->mir_module->llvm_module;
   cnt.llvm_td      = assembly->mir_module->llvm_td;
   cnt.llvm_builder = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+
+  {
+    LLVMTypeRef llvm_void_type    = LLVMVoidTypeInContext(cnt.llvm_cnt);
+    LLVMTypeRef llvm_trap_fn_type = LLVMFunctionType(llvm_void_type, NULL, 0, false);
+    cnt.llvm_trap_fn = LLVMAddFunction(cnt.llvm_module, LLVM_TRAP_FN, llvm_trap_fn_type);
+  }
 
   MirInstr *ginstr;
   barray_foreach(assembly->mir_module->globals, ginstr)
