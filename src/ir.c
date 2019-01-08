@@ -66,6 +66,9 @@ static void
 gen_instr_br(Context *cnt, MirInstrBr *br);
 
 static void
+gen_instr_arg(Context *cnt, MirInstrArg *arg);
+
+static void
 gen_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
 static void
@@ -114,11 +117,24 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 }
 
 void
+gen_instr_arg(Context *cnt, MirInstrArg *arg)
+{
+  MirFn *fn = arg->base.owner_block->owner_fn;
+  assert(fn);
+  LLVMValueRef llvm_fn = fn->llvm_value;
+  assert(llvm_fn);
+
+  arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
+}
+
+void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
-  LLVMValueRef llvm_src = load->src->llvm_value;
+  LLVMValueRef   llvm_src  = load->src->llvm_value;
+  const unsigned alignment = load->base.value.type->alignment;
   assert(llvm_src);
   load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+  LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
 void
@@ -146,10 +162,12 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
 void
 gen_instr_store(Context *cnt, MirInstrStore *store)
 {
-  LLVMValueRef val = store->src->llvm_value;
-  LLVMValueRef ptr = store->dest->llvm_value;
+  LLVMValueRef   val       = store->src->llvm_value;
+  LLVMValueRef   ptr       = store->dest->llvm_value;
+  const unsigned alignment = store->src->value.type->alignment;
   assert(val && ptr);
   store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+  LLVMSetAlignment(store->base.llvm_value, alignment);
 }
 
 void
@@ -306,11 +324,13 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  const char *name      = var->name;
-  LLVMTypeRef llvm_type = var->value.type->llvm_type;
+  const char *   name      = var->name;
+  LLVMTypeRef    llvm_type = var->value.type->llvm_type;
+  const unsigned alignment = var->value.type->alignment;
   assert(llvm_type && name);
 
   decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);
+  LLVMSetAlignment(decl->base.llvm_value, alignment);
 }
 
 void
@@ -429,6 +449,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_DECL_REF:
     gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    break;
+  case MIR_INSTR_ARG:
+    gen_instr_arg(cnt, (MirInstrArg *)instr);
     break;
 
   default:

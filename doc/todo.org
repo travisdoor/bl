@@ -1,3 +1,12 @@
-- remove base_decl
-- better type structure
-- type table ???
+* Features [0/3]
+  - [ ] Function arguments
+  - [ ] Loops
+  - [ ] Arrays 
+  - [ ] Structures
+  - [ ] Enums
+    
+
+* Bugs [0/0]
+    
+
+  

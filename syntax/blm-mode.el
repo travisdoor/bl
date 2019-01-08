@@ -15,8 +15,23 @@
 (add-to-list 'auto-mode-alist '("\\.blm\\'" . blm-mode))
 
 (defconst blm-keywords
-  '("const" "br" "unreachable" "typeinfer" "load" "&" "decl"
-    "declref" "call" "validate_type" "ret" "store" "binop" ":=" "unreachable")) 
+  '("const"
+    "br"
+    "unreachable"
+    "typeinfer"
+    "load"
+    "&"
+    "decl"
+    "declref"
+    "call"
+    "validate_type"
+    "ret"
+    "store"
+    "binop"
+    "unreachable"
+    "arg"
+    "sizeof"
+    "alignof")) 
 
 (defconst blm-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" 
