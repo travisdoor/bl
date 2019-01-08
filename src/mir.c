@@ -321,13 +321,16 @@ static void
 ast_unrecheable(Context *cnt, Ast *unr);
 
 static void
-ast_stmt_if(Context *cnt, Ast *stmt_if);
-
-static void
 ast_block(Context *cnt, Ast *block);
 
 static void
+ast_stmt_if(Context *cnt, Ast *stmt_if);
+
+static void
 ast_stmt_return(Context *cnt, Ast *ret);
+
+static void
+ast_stmt_loop(Context *cnt, Ast *loop);
 
 static MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity);
@@ -2224,7 +2227,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   return &ret->base.value;
 }
 
-static void
+static inline void
 exec_math_add(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2235,7 +2238,7 @@ exec_math_add(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_int = v_lhs->data.v_int + v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_sub(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2246,7 +2249,7 @@ exec_math_sub(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_int = v_lhs->data.v_int - v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_mul(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2257,7 +2260,7 @@ exec_math_mul(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_int = v_lhs->data.v_int * v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_div(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2276,7 +2279,7 @@ exec_math_div(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_int = v_lhs->data.v_int / v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2288,7 +2291,7 @@ exec_math_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_bool = v_lhs->data.v_int == v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_neq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2300,7 +2303,55 @@ exec_math_neq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_bool = v_lhs->data.v_int != v_rhs->data.v_int;
 }
 
-static void
+static inline void
+exec_math_less(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int < v_rhs->data.v_int;
+}
+
+static inline void
+exec_math_less_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int <= v_rhs->data.v_int;
+}
+
+static inline void
+exec_math_greater(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int > v_rhs->data.v_int;
+}
+
+static inline void
+exec_math_greater_eq(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
+{
+  MirValue *v_lhs  = &lhs->value;
+  MirValue *v_rhs  = &rhs->value;
+  MirValue *v_dest = &dest->value;
+
+  assert(v_lhs && v_rhs && v_dest);
+  assert(dest->value.type->kind == MIR_TYPE_BOOL);
+  v_dest->data.v_bool = v_lhs->data.v_int >= v_rhs->data.v_int;
+}
+
+static inline void
 exec_math_logic_and(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2312,7 +2363,7 @@ exec_math_logic_and(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
   v_dest->data.v_bool = v_lhs->data.v_int && v_rhs->data.v_int;
 }
 
-static void
+static inline void
 exec_math_logic_or(Context *cnt, MirInstr *lhs, MirInstr *rhs, MirInstr *dest)
 {
   MirValue *v_lhs  = &lhs->value;
@@ -2346,6 +2397,18 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     break;
   case BINOP_NEQ:
     exec_math_neq(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_LESS:
+    exec_math_less(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_LESS_EQ:
+    exec_math_less_eq(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_GREATER:
+    exec_math_greater(cnt, binop->lhs, binop->rhs, &binop->base);
+    break;
+  case BINOP_GREATER_EQ:
+    exec_math_greater_eq(cnt, binop->lhs, binop->rhs, &binop->base);
     break;
   case BINOP_LOGIC_AND:
     exec_math_logic_and(cnt, binop->lhs, binop->rhs, &binop->base);
@@ -2472,13 +2535,65 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
     set_cursor_block(cnt, else_block);
     ast(cnt, ast_else);
 
-    if (!get_block_terminator(else_block)) append_instr_br(cnt, NULL, cont_block);
+    if (!is_block_terminated(else_block)) append_instr_br(cnt, NULL, cont_block);
   }
 
-  if (!get_block_terminator(else_block)) {
+  if (!is_block_terminated(else_block)) {
     /* block has not been terminated -> add terminator */
     set_cursor_block(cnt, else_block);
     append_instr_br(cnt, NULL, cont_block);
+  }
+
+  set_cursor_block(cnt, cont_block);
+}
+
+void
+ast_stmt_loop(Context *cnt, Ast *loop)
+{
+  Ast *ast_block     = loop->data.stmt_loop.block;
+  Ast *ast_cond      = loop->data.stmt_loop.condition;
+  Ast *ast_increment = loop->data.stmt_loop.increment;
+  Ast *ast_init      = loop->data.stmt_loop.init;
+  assert(ast_block);
+
+  MirFn *fn = get_current_fn(cnt);
+  assert(fn);
+
+  /* prepare all blocks */
+  MirInstrBlock *increment_block = ast_increment ? append_block(cnt, fn, "loop_increment") : NULL;
+  MirInstrBlock *decide_block    = append_block(cnt, fn, "loop_decide");
+  MirInstrBlock *body_block      = append_block(cnt, fn, "loop_body");
+  MirInstrBlock *cont_block      = append_block(cnt, fn, "loop_continue");
+
+  /* generate initialization if there is one */
+  if (ast_init) {
+    ast(cnt, ast_init);
+  }
+
+  /* decide block */
+  append_instr_br(cnt, NULL, decide_block);
+  set_cursor_block(cnt, decide_block);
+
+  MirInstr *cond = ast_cond ? append_instr_load_if_needed(cnt, ast(cnt, ast_cond))
+                            : append_instr_const_bool(cnt, NULL, true);
+
+  append_instr_cond_br(cnt, ast_cond, cond, body_block, cont_block);
+
+  /* loop body */
+  set_cursor_block(cnt, body_block);
+  ast(cnt, ast_block);
+
+  MirInstrBlock *curr_block = get_current_block(cnt);
+  assert(curr_block);
+  if (!is_block_terminated(curr_block)) {
+    append_instr_br(cnt, NULL, ast_increment ? increment_block : decide_block);
+  }
+
+  /* increment if there is one */
+  if (ast_increment) {
+    set_cursor_block(cnt, increment_block);
+    ast(cnt, ast_increment);
+    append_instr_br(cnt, NULL, decide_block);
   }
 
   set_cursor_block(cnt, cont_block);
@@ -2844,6 +2959,9 @@ ast(Context *cnt, Ast *node)
     break;
   case AST_STMT_RETURN:
     ast_stmt_return(cnt, node);
+    break;
+  case AST_STMT_LOOP:
+    ast_stmt_loop(cnt, node);
     break;
   case AST_STMT_IF:
     ast_stmt_if(cnt, node);

@@ -3,7 +3,7 @@
 #load "std/debug.bl"
 
 main : fn () s32 {
-  loop {
+  loop (i := 0; i < 10; i += 1) {
     say_hello();
   }
 
