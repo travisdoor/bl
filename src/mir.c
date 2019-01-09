@@ -126,6 +126,8 @@ typedef struct
   } buildin_types;
 
   MirInstrBlock *current_block;
+  MirInstrBlock *break_block;
+  MirInstrBlock *continue_block;
 
   MirFn *entry_fn;
   bool   verbose_pre, verbose_post;
@@ -217,7 +219,8 @@ static MirVar *
 create_var(Context *cnt, const char *name, MirType *type);
 
 static MirFn *
-create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case);
+create_fn(Context *cnt, Ast *node, const char *name, BArray *arg_slots, bool is_external,
+          bool is_test_case);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -331,6 +334,12 @@ ast_stmt_return(Context *cnt, Ast *ret);
 
 static void
 ast_stmt_loop(Context *cnt, Ast *loop);
+
+static void
+ast_stmt_break(Context *cnt, Ast *br);
+
+static void
+ast_stmt_continue(Context *cnt, Ast *cont);
 
 static MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity);
@@ -801,13 +810,15 @@ create_var(Context *cnt, const char *name, MirType *type)
 }
 
 MirFn *
-create_fn(Context *cnt, const char *name, BArray *arg_slots, bool is_external, bool is_test_case)
+create_fn(Context *cnt, Ast *node, const char *name, BArray *arg_slots, bool is_external,
+          bool is_test_case)
 {
   MirFn *tmp        = arena_alloc(&cnt->module->arenas.fn_arena);
   tmp->name         = name;
   tmp->arg_slots    = arg_slots;
   tmp->is_external  = is_external;
   tmp->is_test_case = is_test_case;
+  tmp->node         = node;
   return tmp;
 }
 
@@ -1417,17 +1428,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     prev_block         = get_current_block(cnt);
     MirInstrBlock *tmp = fn->first_block;
 
-    /* append implicit return for void functions or generate error when last block is not terminated
-     */
-    if (!is_block_terminated(fn->last_block)) {
-      if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
-        set_cursor_block(cnt, fn->last_block);
-        append_instr_ret(cnt, NULL, NULL);
-      } else {
-        bl_abort("missing return!!!");
-      }
-    }
-
     while (tmp) {
       if (comptime)
         analyze_instr_block(cnt, tmp, comptime);
@@ -1741,6 +1741,20 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
 {
   assert(block);
   set_cursor_block(cnt, block);
+
+  /* append implicit return for void functions or generate error when last block is not terminated
+   */
+  if (!is_block_terminated(block)) {
+    MirFn *fn = block->owner_fn;
+    assert(fn);
+
+    if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
+      append_instr_ret(cnt, NULL, NULL);
+    } else {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->node->src,
+                  BUILDER_CUR_WORD, "not every path inside function return value");
+    }
+  }
 
   /* iterate over entry block of executable */
   MirInstr *instr = block->entry_instr;
@@ -2467,12 +2481,13 @@ ast_test_case(Context *cnt, Ast *test)
   assert(ast_block);
 
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, test, NULL, NULL);
+  if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ref_instr(&fn_proto->base);
 
   fn_proto->base.value.type = cnt->buildin_types.entry_test_case_fn;
 
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirFn *        fn =
-      create_fn(cnt, TEST_CASE_FN_NAME, NULL, false, true); /* TODO: based on user flag!!! */
+      create_fn(cnt, test, TEST_CASE_FN_NAME, NULL, false, true); /* TODO: based on user flag!!! */
   fn->node = test;
 
   assert(test->data.test_case.desc);
@@ -2512,6 +2527,7 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   MirFn *fn = get_current_fn(cnt);
   assert(fn);
 
+  MirInstrBlock *tmp_block  = NULL;
   MirInstrBlock *then_block = append_block(cnt, fn, "if_then");
   MirInstrBlock *else_block = append_block(cnt, fn, "if_else");
   MirInstrBlock *cont_block = append_block(cnt, fn, "if_cont");
@@ -2523,19 +2539,20 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   /* then block */
   set_cursor_block(cnt, then_block);
   ast(cnt, ast_then);
-  if (!get_block_terminator(then_block)) {
+
+  tmp_block = get_current_block(cnt);
+  if (!get_block_terminator(tmp_block)) {
     /* block has not been terminated -> add terminator */
-    set_cursor_block(cnt, then_block);
     append_instr_br(cnt, NULL, cont_block);
   }
 
   /* else if */
   if (ast_else) {
-    /* else */
     set_cursor_block(cnt, else_block);
     ast(cnt, ast_else);
 
-    if (!is_block_terminated(else_block)) append_instr_br(cnt, NULL, cont_block);
+    tmp_block = get_current_block(cnt);
+    if (!is_block_terminated(tmp_block)) append_instr_br(cnt, NULL, cont_block);
   }
 
   if (!is_block_terminated(else_block)) {
@@ -2560,10 +2577,16 @@ ast_stmt_loop(Context *cnt, Ast *loop)
   assert(fn);
 
   /* prepare all blocks */
+  MirInstrBlock *tmp_block       = NULL;
   MirInstrBlock *increment_block = ast_increment ? append_block(cnt, fn, "loop_increment") : NULL;
   MirInstrBlock *decide_block    = append_block(cnt, fn, "loop_decide");
   MirInstrBlock *body_block      = append_block(cnt, fn, "loop_body");
   MirInstrBlock *cont_block      = append_block(cnt, fn, "loop_continue");
+
+  MirInstrBlock *prev_break_block    = cnt->break_block;
+  MirInstrBlock *prev_continue_block = cnt->continue_block;
+  cnt->break_block                   = cont_block;
+  cnt->continue_block                = ast_increment ? increment_block : decide_block;
 
   /* generate initialization if there is one */
   if (ast_init) {
@@ -2583,9 +2606,8 @@ ast_stmt_loop(Context *cnt, Ast *loop)
   set_cursor_block(cnt, body_block);
   ast(cnt, ast_block);
 
-  MirInstrBlock *curr_block = get_current_block(cnt);
-  assert(curr_block);
-  if (!is_block_terminated(curr_block)) {
+  tmp_block = get_current_block(cnt);
+  if (!is_block_terminated(tmp_block)) {
     append_instr_br(cnt, NULL, ast_increment ? increment_block : decide_block);
   }
 
@@ -2596,7 +2618,23 @@ ast_stmt_loop(Context *cnt, Ast *loop)
     append_instr_br(cnt, NULL, decide_block);
   }
 
+  cnt->break_block    = prev_break_block;
+  cnt->continue_block = prev_continue_block;
   set_cursor_block(cnt, cont_block);
+}
+
+void
+ast_stmt_break(Context *cnt, Ast *br)
+{
+  assert(cnt->break_block && "break statement outside the loop");
+  append_instr_br(cnt, br, cnt->break_block);
+}
+
+void
+ast_stmt_continue(Context *cnt, Ast *cont)
+{
+  assert(cnt->continue_block && "break statement outside the loop");
+  append_instr_br(cnt, cont, cnt->continue_block);
 }
 
 void
@@ -2667,7 +2705,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *fn = create_fn(cnt, NULL, NULL, !ast_block, false); /* TODO: based on user flag!!! */
+  MirFn *        fn =
+      create_fn(cnt, lit_fn, NULL, NULL, !ast_block, false); /* TODO: based on user flag!!! */
   fn_proto->base.value.data.v_fn = fn;
 
   /* function body */
@@ -2928,7 +2967,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->value.type            = cnt->buildin_types.entry_resolve_type_fn;
-  fn->value.data.v_fn       = create_fn(cnt, RESOLVE_TYPE_FN_NAME, NULL, false, false);
+  fn->value.data.v_fn       = create_fn(cnt, NULL, RESOLVE_TYPE_FN_NAME, NULL, false, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -2962,6 +3001,12 @@ ast(Context *cnt, Ast *node)
     break;
   case AST_STMT_LOOP:
     ast_stmt_loop(cnt, node);
+    break;
+  case AST_STMT_BREAK:
+    ast_stmt_break(cnt, node);
+    break;
+  case AST_STMT_CONTINUE:
+    ast_stmt_continue(cnt, node);
     break;
   case AST_STMT_IF:
     ast_stmt_if(cnt, node);

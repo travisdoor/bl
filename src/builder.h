@@ -51,6 +51,7 @@
 #define BUILDER_VERBOSE_MIR_POST 0x00001000
 #define BUILDER_NO_API           0x00002000
 #define BUILDER_EMIT_MIR         0x00004000
+#define BUILDER_FORCE_TEST_LLVM  0x00008000
 // clang-format on
 
 #define COMPILE_OK 0

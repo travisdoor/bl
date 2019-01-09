@@ -1,11 +1,13 @@
 /* playground */
 
-#load "std/debug.bl"
+//#load "std/debug.bl"
 
 main : fn () s32 {
-  loop (i := 0; i < 10; i += 1) {
-    say_hello();
-  }
+  i := 10;
+  c : 10;
+
+  i = 0;
+  c = 0;
 
   return 0;
 };
@@ -26,3 +28,4 @@ say_hello : fn () {
 };
 
 putchar : fn (c s32) s32 #extern;
+
