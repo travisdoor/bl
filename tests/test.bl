@@ -2,17 +2,17 @@
 
 //#load "std/debug.bl"
 
-main : fn () s32 {
-  i := 10;
-  c : 10;
+main :: fn () s32 {
+  array : [10]s32;
+  array[0] = 666;
 
-  i = 0;
-  c = 0;
+  i := 10;
+  i : s32 = 10;
 
   return 0;
 };
 
-say_hello : fn () {
+say_hello :: fn () {
   putchar(72);
   putchar(101);
   putchar(108);
@@ -27,5 +27,5 @@ say_hello : fn () {
   putchar(10);
 };
 
-putchar : fn (c s32) s32 #extern;
+putchar :: fn (c s32) s32 #extern;
 
