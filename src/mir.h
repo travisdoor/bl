@@ -60,13 +60,14 @@ typedef struct MirInstrRet         MirInstrRet;
 typedef struct MirInstrBinop       MirInstrBinop;
 typedef struct MirInstrUnop        MirInstrUnop;
 typedef struct MirInstrFnProto     MirInstrFnProto;
-typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrCall        MirInstrCall;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
 typedef struct MirInstrBr          MirInstrBr;
 typedef struct MirInstrArg         MirInstrArg;
+typedef struct MirInstrTypeFn      MirInstrTypeFn;
+typedef struct MirInstrTypeArray   MirInstrTypeArray;
 
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
@@ -122,6 +123,7 @@ typedef enum
   MIR_TYPE_FN,
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
+  MIR_TYPE_ARRAY,
 } MirTypeKind;
 
 struct MirTypeInt
@@ -141,6 +143,12 @@ struct MirTypePtr
   MirType *next;
 };
 
+struct MirTypeArray
+{
+  MirType *elem_type;
+  size_t   len;
+};
+
 struct MirType
 {
   MirTypeKind kind;
@@ -151,9 +159,10 @@ struct MirType
 
   union
   {
-    struct MirTypeInt integer;
-    struct MirTypeFn  fn;
-    struct MirTypePtr ptr;
+    struct MirTypeInt   integer;
+    struct MirTypeFn    fn;
+    struct MirTypePtr   ptr;
+    struct MirTypeArray array;
   } data;
 };
 
@@ -163,6 +172,7 @@ union MirValueData
   unsigned long long v_uint;
   long long          v_int;
   bool               v_bool;
+  const char *       v_str;
   MirType *          v_type;
   MirValue *         v_ptr;
   MirFn *            v_fn;
@@ -241,6 +251,9 @@ typedef enum
 
   /* Reference to argument of current function. */
   MIR_INSTR_ARG,
+
+  /* Array type. */
+  MIR_INSTR_TYPE_ARRAY,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -351,6 +364,14 @@ struct MirInstrTypeFn
 
   MirInstr *ret_type;
   BArray *  arg_types;
+};
+
+struct MirInstrTypeArray
+{
+  MirInstr base;
+
+  MirInstr *elem_type;
+  MirInstr *len;
 };
 
 struct MirInstrCall

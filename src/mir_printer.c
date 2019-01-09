@@ -74,6 +74,9 @@ static void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream);
 
 static void
+print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream);
+
+static void
 print_instr_block(MirInstrBlock *block, FILE *stream);
 
 static void
@@ -125,6 +128,13 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
   fprintf(stream, ")");
 
   if (type_fn->ret_type) fprintf(stream, " %%%u", type_fn->ret_type->id);
+}
+
+void
+print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
+{
+  print_instr_head(&type_array->base, stream);
+  fprintf(stream, "const [%%%u]%%%u", type_array->len->id, type_array->elem_type->id);
 }
 
 void
@@ -376,6 +386,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_FN:
     print_instr_type_fn((MirInstrTypeFn *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_ARRAY:
+    print_instr_type_array((MirInstrTypeArray *)instr, stream);
     break;
   case MIR_INSTR_ADDR_OF:
     print_instr_addr_of((MirInstrAddrOf *)instr, stream);
