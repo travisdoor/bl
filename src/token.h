@@ -54,9 +54,6 @@
   sm(FALSE,          "false") \
   sm(BREAK,          "break")\
   sm(LOAD,           "#load") \
-  sm(LINK,           "#link") \
-  sm(LINE,           "#line") \
-  sm(FILE,           "#file") \
   sm(TEST,           "#test") \
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
@@ -64,7 +61,6 @@
   sm(CONTINUE,       "continue") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
-  sm(MDECL,          ":=") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \
   sm(RBCOMMENT,      "*/") \
@@ -76,7 +72,7 @@
   sm(RPAREN,         ")") \
   sm(COMMA,          ",") \
   sm(SEMICOLON,      ";") \
-  sm(IMMDECL,        ":") \
+  sm(COLON,          ":") \
   sm(VARGS,          "...") \
   sm(EQ,             "==") /* logical begin */ \
   sm(NEQ,            "!=") \
