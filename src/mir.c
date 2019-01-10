@@ -34,8 +34,9 @@
 #include "mir_printer.h"
 
 #define ARENA_CHUNK_COUNT 512
-#define TEST_CASE_FN_NAME "_test"
-#define RESOLVE_TYPE_FN_NAME "_type"
+#define TEST_CASE_FN_NAME "$test"
+#define RESOLVE_TYPE_FN_NAME "$type"
+#define IMPL_FN_NAME "$impl"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE 2097152
 #define DEFAULT_EXEC_CALL_STACK_NESTING 1000
 
@@ -517,6 +518,19 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 
 static void
 exec_print_call_stack(Context *cnt);
+
+static inline const char *
+gen_uq_name(Context *cnt, const char *prefix)
+{
+  static int ui = 0;
+  BString *  s  = builder_create_cached_str(cnt->builder);
+
+  bo_string_append(s, prefix);
+  char ui_str[21];
+  sprintf(ui_str, "%i", ui++);
+  bo_string_append(s, ui_str);
+  return bo_string_get(s);
+}
 
 static inline bool
 is_pointer_type(MirType *type)
@@ -1157,9 +1171,9 @@ append_instr_const_type(Context *cnt, Ast *node, MirType *type)
 MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
-  MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->comptime          = true;
-  tmp->value.type        = create_type_array(cnt, cnt->buildin_types.entry_u8, strlen(str));
+  MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime         = true;
+  tmp->value.type       = create_type_array(cnt, cnt->buildin_types.entry_u8, strlen(str));
   tmp->value.data.v_str = str;
 
   push_into_curr_block(cnt, tmp);
@@ -1326,7 +1340,7 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size, unsigned *out_alignm
   case MIR_TYPE_ARRAY: {
     LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
     assert(llvm_elem_type);
-    const unsigned int len = (const unsigned int) type->data.array.len;
+    const unsigned int len = (const unsigned int)type->data.array.len;
     bl_log("%u", len);
 
     result = LLVMArrayType(llvm_elem_type, len);
@@ -1482,6 +1496,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
   MirFn *fn = fn_proto->base.value.data.v_fn;
   assert(fn);
+
+  /* implicit functions has no name -> generate one */
+  if (!fn->name) {
+    fn->name = gen_uq_name(cnt, IMPL_FN_NAME);
+  }
 
   if (fn->is_external) {
     /* lookup external function exec handle */

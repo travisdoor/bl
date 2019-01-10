@@ -135,6 +135,9 @@ print_expr_lit_fn(Ast *fn, int pad, FILE *stream);
 static void
 print_expr_call(Ast *call, int pad, FILE *stream);
 
+static void
+print_expr_elem(Ast *elem, int pad, FILE *stream);
+
 /* impl */
 void
 print_ublock(Ast *ublock, int pad, FILE *stream)
@@ -230,6 +233,14 @@ print_expr_unary(Ast *unary, int pad, FILE *stream)
 
   fprintf(stream, "'%s' ", op);
   print_node(unary->data.expr_unary.next, pad + 1, stream);
+}
+
+void
+print_expr_elem(Ast *elem, int pad, FILE *stream)
+{
+  print_head(elem, pad, stream);
+  print_node(elem->data.expr_elem.index, pad + 1, stream);
+  print_node(elem->data.expr_elem.next, pad + 1, stream);
 }
 
 void
@@ -406,6 +417,7 @@ print_node(Ast *node, int pad, FILE *stream)
     break;
 
   case AST_EXPR_ELEM:
+    print_expr_elem(node, pad, stream);
     break;
 
   case AST_EXPR_SIZEOF:
