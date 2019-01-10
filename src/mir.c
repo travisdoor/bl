@@ -34,9 +34,9 @@
 #include "mir_printer.h"
 
 #define ARENA_CHUNK_COUNT 512
-#define TEST_CASE_FN_NAME "$test"
-#define RESOLVE_TYPE_FN_NAME "$type"
-#define IMPL_FN_NAME "$impl"
+#define TEST_CASE_FN_NAME "__test"
+#define RESOLVE_TYPE_FN_NAME "__type"
+#define IMPL_FN_NAME "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE 2097152
 #define DEFAULT_EXEC_CALL_STACK_NESTING 1000
 

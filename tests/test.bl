@@ -6,8 +6,7 @@ main :: fn () s32 {
   arr : [10]s32;
   arr[0] = 10;
 
-  i := fn (i s32, j s32) s32 { return i * j; } (2, 3);
-  return i; 
+  return 10; 
 };
 
 say_hello :: fn () {

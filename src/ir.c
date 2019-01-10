@@ -99,7 +99,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call);
 static void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static inline void
+static inline LLVMValueRef
 gen_fn_proto(Context *cnt, MirFn *fn)
 {
   assert(fn);
@@ -108,6 +108,8 @@ gen_fn_proto(Context *cnt, MirFn *fn)
   if (!fn->llvm_value) {
     fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->name, fn->type->llvm_type);
   }
+
+  return fn->llvm_value;
 }
 
 static inline LLVMBasicBlockRef
@@ -307,10 +309,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
   assert(callee);
   assert(callee->value.type && callee->value.type->kind == MIR_TYPE_FN);
 
-  MirFn *fn = callee->value.data.v_fn;
-  assert(fn);
-
-  LLVMValueRef  llvm_fn   = fn->llvm_value;
+  LLVMValueRef  llvm_fn   = gen_fn_proto(cnt, callee->value.data.v_fn);
   const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
   LLVMValueRef *llvm_args = NULL;
 

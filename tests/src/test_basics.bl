@@ -56,6 +56,14 @@
   assert(_2(10) == 10);
 };
 
+#test "implicit functions direct call" {
+  i := fn (i s32, j s32) s32 {
+    return i * j; 
+  } (2, 3);
+
+  assert(i == 6);
+};
+
 #test "assign operators" {
   i := 5;
   assert(i == 5);
