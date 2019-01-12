@@ -1524,18 +1524,6 @@ next:
   }
 }
 
-Ast *
-load_core(Context *cnt)
-{
-  Unit *unit = unit_new_file(CORE_SOURCE_FILE, NULL);
-  if (!assembly_add_unit_unique(cnt->assembly, unit)) {
-    unit_delete(unit);
-  }
-  Ast *load                = ast_create_node(cnt->ast_arena, AST_LOAD, NULL);
-  load->data.load.filepath = CORE_SOURCE_FILE;
-  return load;
-}
-
 void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {

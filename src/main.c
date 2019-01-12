@@ -50,13 +50,13 @@ print_help(void)
                   "  -syntax-only        = Check syntax and exit.\n"
                   "  -emit-llvm          = Write LLVM-IR to file.\n"
                   "  -emit-mir           = Write MIR to file.\n"
-                  "  -run                = Execute 'main' method in compile time.\n"
-                  "  -run-tests          = Execute all unit tests in compile time.\n"
                   "  -no-bin             = Don't write binary to disk.\n"
                   "  -no-warning         = Ignore all warnings.\n"
                   "  -verbose            = Verbose mode.\n"
                   "  -no-api             = Don't load internal api.\n\n"
                   "  -force-test-to-llvm = Force llvm generation of unit tests.\n\n"
+                  "  -run                = Execute 'main' method in compile time.\n"
+                  "  -run-tests          = Execute all unit tests in compile time.\n"
   );
 }
 

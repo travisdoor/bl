@@ -1,12 +1,34 @@
 /* playground */
 
-//#load "std/debug.bl"
+#load "std/debug.bl"
 
 main :: fn () s32 {
-  arr : [10]s32;
-  arr[0] = 10;
 
-  return 10; 
+  arr : [10]s32;
+  arr[0] = 666;
+  assert(arr[0] == 666);
+
+  foo := 10;
+  bar := 11;
+
+  assert(foo == 10);
+  assert(bar == 11);
+
+  foo = bar;
+  assert(foo == bar);
+
+  assert(gimme(10) == 11);
+
+  i := 20;
+  if (i == 10 || i == 20) {
+    say_hello();    
+  }
+
+  return foo + arr[0]; 
+};
+
+gimme :: fn (i s32) s32 {
+  return i + 1; 
 };
 
 say_hello :: fn () {

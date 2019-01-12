@@ -66,6 +66,7 @@ typedef struct MirInstrAddrOf      MirInstrAddrOf;
 typedef struct MirInstrCondBr      MirInstrCondBr;
 typedef struct MirInstrBr          MirInstrBr;
 typedef struct MirInstrArg         MirInstrArg;
+typedef struct MirInstrElemPtr     MirInstrElemPtr;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrTypeArray   MirInstrTypeArray;
 
@@ -169,14 +170,14 @@ struct MirType
 /* VALUE */
 union MirValueData
 {
-  unsigned long long v_uint;
-  long long          v_int;
-  bool               v_bool;
-  const char *       v_str;
-  MirType *          v_type;
-  MirValue *         v_ptr;
-  MirFn *            v_fn;
-  MirFrameStackPtr   v_stack_ptr;
+  uint64_t         v_uint;
+  int64_t          v_int;
+  bool             v_bool;
+  const char *     v_str;
+  MirType *        v_type;
+  MirValue *       v_ptr;
+  MirFn *          v_fn;
+  MirFrameStackPtr v_stack_ptr;
 };
 
 struct MirValue
@@ -196,64 +197,26 @@ struct MirVar
 /* INSTRUCTIONS */
 typedef enum
 {
-  /* Invalid instructon */
   MIR_INSTR_INVALID,
-
-  /* Atomic basic block without branching. */
   MIR_INSTR_BLOCK,
-
-  /* Variable declaration. This instruction will create named variable of some type. Large variables
-     can allocate memory on stack. */
   MIR_INSTR_DECL_VAR,
-
-  /* Constant declaration. */
   MIR_INSTR_CONST,
-
-  /* Produce dereferencing of some input value. */
   MIR_INSTR_LOAD,
-
-  /* Store some value. */
   MIR_INSTR_STORE,
-
-  /* Binary operation */
   MIR_INSTR_BINOP,
-
-  /* Return terminator. */
   MIR_INSTR_RET,
-
-  /* Function prototype. */
   MIR_INSTR_FN_PROTO,
-
-  /* Function type. */
   MIR_INSTR_TYPE_FN,
-
-  /* Function call */
   MIR_INSTR_CALL,
-
-  /* Reference to some named value. */
   MIR_INSTR_DECL_REF,
-
-  /* Unreachable terminatro. */
   MIR_INSTR_UNREACHABLE,
-
-  /* Get address of some value. */
   MIR_INSTR_ADDR_OF,
-
-  /* Conditional break. This instruction can produce jumps to other blocks based on some condition.
-   */
   MIR_INSTR_COND_BR,
-
-  /* Break. Simpy jump to some block. */
   MIR_INSTR_BR,
-
-  /* Unary operation. */
   MIR_INSTR_UNOP,
-
-  /* Reference to argument of current function. */
   MIR_INSTR_ARG,
-
-  /* Array type. */
   MIR_INSTR_TYPE_ARRAY,
+  MIR_INSTR_ELEM_PTR,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -297,6 +260,15 @@ struct MirInstrDeclVar
 
   MirVar *  var;
   MirInstr *type;
+};
+
+struct MirInstrElemPtr
+{
+  MirInstr base;
+  MirValue tmp_value;
+
+  MirInstr *arr_ptr;
+  MirInstr *index;
 };
 
 struct MirInstrArg

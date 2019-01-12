@@ -99,6 +99,9 @@ gen_instr_call(Context *cnt, MirInstrCall *call);
 static void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
+static void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
 static inline LLVMValueRef
 gen_fn_proto(Context *cnt, MirFn *fn)
 {
@@ -146,8 +149,24 @@ gen_instr_arg(Context *cnt, MirInstrArg *arg)
 }
 
 void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
+{
+  LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
+  LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
+  assert(llvm_arr_ptr && llvm_index);
+
+  LLVMValueRef llvm_indices[2];
+  llvm_indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+  llvm_indices[1] = llvm_index;
+
+  elem_ptr->base.llvm_value =
+      LLVMBuildGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+}
+
+void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
+  assert(load->base.value.type && "invalid type of load instruction");
   LLVMValueRef   llvm_src  = load->src->llvm_value;
   const unsigned alignment = load->base.value.type->alignment;
   assert(llvm_src);
@@ -489,6 +508,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_UNREACHABLE:
     gen_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
+  case MIR_INSTR_ELEM_PTR:
+    gen_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
     break;
 
   default:

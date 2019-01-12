@@ -53,6 +53,9 @@ static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
+print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream);
+
+static void
 print_instr_addr_of(MirInstrAddrOf *addr_of, FILE *stream);
 
 static void
@@ -138,6 +141,13 @@ print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
 }
 
 void
+print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream)
+{
+  print_instr_head(&elem_ptr->base, stream);
+  fprintf(stream, "%%%u[%%%u]", elem_ptr->arr_ptr->id, elem_ptr->index->id);
+}
+
+void
 print_instr_unop(MirInstrUnop *unop, FILE *stream)
 {
   print_instr_head(&unop->base, stream);
@@ -203,7 +213,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
   MirVar *var = decl->var;
   assert(var);
-  fprintf(stream, "decl %s ", var->name);
+  fprintf(stream, "decl %s : ", var->name);
   print_type(var->value.type, false, stream);
 }
 
@@ -407,6 +417,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_ARG:
     print_instr_arg((MirInstrArg *)instr, stream);
+    break;
+  case MIR_INSTR_ELEM_PTR:
+    print_instr_elem_ptr((MirInstrElemPtr *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;
