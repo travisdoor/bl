@@ -54,9 +54,6 @@
   sm(FALSE,          "false") \
   sm(BREAK,          "break")\
   sm(LOAD,           "#load") \
-  sm(LINK,           "#link") \
-  sm(LINE,           "#line") \
-  sm(FILE,           "#file") \
   sm(TEST,           "#test") \
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
@@ -64,7 +61,6 @@
   sm(CONTINUE,       "continue") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
-  sm(MDECL,          ":=") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \
   sm(RBCOMMENT,      "*/") \
@@ -76,7 +72,7 @@
   sm(RPAREN,         ")") \
   sm(COMMA,          ",") \
   sm(SEMICOLON,      ";") \
-  sm(IMMDECL,        ":") \
+  sm(COLON,          ":") \
   sm(VARGS,          "...") \
   sm(EQ,             "==") /* logical begin */ \
   sm(NEQ,            "!=") \
@@ -111,6 +107,13 @@ typedef enum {
 } Sym;
 // clang-format on
 
+typedef enum
+{
+  TOKEN_ASSOC_NONE,
+  TOKEN_ASSOC_RIGHT,
+  TOKEN_ASSOC_LEFT,
+} TokenAssociativity;
+
 extern char *sym_strings[];
 
 struct Unit;
@@ -137,6 +140,13 @@ typedef struct Token
   TokenValue value;
 } Token;
 
+/* sizeof this structure is 8 bytes so it can be passed by value */
+typedef struct
+{
+  int                priority;
+  TokenAssociativity associativity;
+} TokenPrecedence;
+
 static inline bool
 sym_is_binop(Sym sym)
 {
@@ -152,8 +162,8 @@ token_is_binop(Token *token)
 bool
 token_is_unary(Token *token);
 
-int
-token_prec(Token *token, bool unary);
+TokenPrecedence
+token_prec(Token *token);
 
 static inline bool
 token_is(Token *token, Sym sym)

@@ -99,7 +99,10 @@ gen_instr_call(Context *cnt, MirInstrCall *call);
 static void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static inline void
+static void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
+static inline LLVMValueRef
 gen_fn_proto(Context *cnt, MirFn *fn)
 {
   assert(fn);
@@ -108,6 +111,8 @@ gen_fn_proto(Context *cnt, MirFn *fn)
   if (!fn->llvm_value) {
     fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->name, fn->type->llvm_type);
   }
+
+  return fn->llvm_value;
 }
 
 static inline LLVMBasicBlockRef
@@ -144,8 +149,24 @@ gen_instr_arg(Context *cnt, MirInstrArg *arg)
 }
 
 void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
+{
+  LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
+  LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
+  assert(llvm_arr_ptr && llvm_index);
+
+  LLVMValueRef llvm_indices[2];
+  llvm_indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+  llvm_indices[1] = llvm_index;
+
+  elem_ptr->base.llvm_value =
+      LLVMBuildGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+}
+
+void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
+  assert(load->base.value.type && "invalid type of load instruction");
   LLVMValueRef   llvm_src  = load->src->llvm_value;
   const unsigned alignment = load->base.value.type->alignment;
   assert(llvm_src);
@@ -307,10 +328,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
   assert(callee);
   assert(callee->value.type && callee->value.type->kind == MIR_TYPE_FN);
 
-  MirFn *fn = callee->value.data.v_fn;
-  assert(fn);
-
-  LLVMValueRef  llvm_fn   = fn->llvm_value;
+  LLVMValueRef  llvm_fn   = gen_fn_proto(cnt, callee->value.data.v_fn);
   const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
   LLVMValueRef *llvm_args = NULL;
 
@@ -490,6 +508,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_UNREACHABLE:
     gen_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
+  case MIR_INSTR_ELEM_PTR:
+    gen_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
     break;
 
   default:

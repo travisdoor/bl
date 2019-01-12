@@ -73,25 +73,10 @@
 #define ENVPATH_SEPARATOR ':'
 #endif
 
-#ifdef BL_PLATFORM_LINUX
-#define CORE_SOURCE_FILE "os/os_linux.bl"
-#endif
-
-#ifdef BL_PLATFORM_WIN
-#define CORE_SOURCE_FILE "os/os_windows.bl"
-#endif
-
-#ifdef BL_PLATFORM_MACOS
-#define CORE_SOURCE_FILE "os/os_macos.bl"
-#endif
-
 #if BL_DEBUG
 #define ASSERT_ON_CMP_ERROR 0
 #else
 #define ASSERT_ON_CMP_ERROR 0
 #endif
-
-/* enable experimental language features */
-#define ENABLE_EXPERIMENTAL 1
 
 #endif // BL_CONFIG_H

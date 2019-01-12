@@ -51,80 +51,69 @@ token_is_unary(Token *token)
   return false;
 }
 
-int
-token_prec(Token *token, bool unary)
+TokenPrecedence
+token_prec(Token *token)
 {
   switch (token->sym) {
-    // . -> [ (
+    /* . [ ( */
   case SYM_DOT:
   case SYM_LBRACKET:
   case SYM_LPAREN:
-    return 60;
+    return (TokenPrecedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
-    // ident number cast + -
-  case SYM_IDENT:
-  case SYM_NUM:
-  case SYM_CAST:
-    return 50;
-
-    // * / %
+    /* * / % */
   case SYM_ASTERISK:
   case SYM_SLASH:
   case SYM_PERCENT:
-    return 40;
+    return (TokenPrecedence){.priority = 40, .associativity = TOKEN_ASSOC_LEFT};
 
-    // + -
+    /* + - */
   case SYM_PLUS:
   case SYM_MINUS:
-    return unary ? 50 : 20;
+    return (TokenPrecedence){.priority = 20, .associativity = TOKEN_ASSOC_LEFT};
 
-    // .
-  case SYM_NOT:
-    return 20;
-
-    // < > <= >=
+    /* < > <= >= */
   case SYM_LESS:
   case SYM_GREATER:
   case SYM_LESS_EQ:
   case SYM_GREATER_EQ:
-    return 15;
+    return (TokenPrecedence){.priority = 15, .associativity = TOKEN_ASSOC_LEFT};
 
-    // == !=
+    /* == != */
   case SYM_EQ:
   case SYM_NEQ:
-    return 10;
+    return (TokenPrecedence){.priority = 10, .associativity = TOKEN_ASSOC_LEFT};
 
-    // &
+    /* & */
   case SYM_AND:
-    return 9;
+    return (TokenPrecedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
 
-    // ~
+    /* ^ */
   case SYM_XOR:
-    return 8;
+    return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
 
-    // |
+    /* | */
   case SYM_OR:
-    return 7;
+    return (TokenPrecedence){.priority = 7, .associativity = TOKEN_ASSOC_LEFT};
 
-    // &&
+    /* && */
   case SYM_LOGIC_AND:
-    return 6;
+    return (TokenPrecedence){.priority = 6, .associativity = TOKEN_ASSOC_LEFT};
 
-    // ||
+    /* || */
   case SYM_LOGIC_OR:
-    return 5;
+    return (TokenPrecedence){.priority = 5, .associativity = TOKEN_ASSOC_LEFT};
 
-    // = += -= *= /=
+    /* = += -= *= /= */
   case SYM_ASSIGN:
   case SYM_PLUS_ASSIGN:
   case SYM_MINUS_ASSIGN:
   case SYM_ASTERISK_ASSIGN:
   case SYM_SLASH_ASSIGN:
   case SYM_PERCENT_ASSIGN:
-    return 4;
+    return (TokenPrecedence){.priority = 4, .associativity = TOKEN_ASSOC_RIGHT};
 
   default:
-    return -1;
+    return (TokenPrecedence){.priority = 0, .associativity = TOKEN_ASSOC_NONE};
   }
 }
-
