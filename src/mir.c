@@ -2157,7 +2157,12 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
     }
 
     instr = bo_array_at(cnt->exec.call_stack, i, MirInstr *);
-    builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
+    if (i == bo_array_size(cnt->exec.call_stack) - 1) {
+      builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
+    } else {
+      builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, instr->node->src, BUILDER_CUR_WORD,
+                  "called from here");
+    }
   }
 }
 
