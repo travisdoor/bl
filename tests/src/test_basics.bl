@@ -48,7 +48,7 @@
   _1 :: fn () {
   };
 
-  _2 :: fn (i s32) s32 {
+  _2 :: fn (i: s32) s32 {
     return i;
   };
 
@@ -57,7 +57,7 @@
 };
 
 #test "implicit functions direct call" {
-  i := fn (i s32, j s32) s32 {
+  i := fn (i: s32, j: s32) s32 {
     return i * j; 
   } (2, 3);
 

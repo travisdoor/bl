@@ -77,6 +77,9 @@ static void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream);
 
 static void
+print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream);
+
+static void
 print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream);
 
 static void
@@ -131,6 +134,13 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
   fprintf(stream, ")");
 
   if (type_fn->ret_type) fprintf(stream, " %%%u", type_fn->ret_type->id);
+}
+
+void
+print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream)
+{
+  print_instr_head(&type_ptr->base, stream);
+  fprintf(stream, "const *%%%u", type_ptr->type->id);
 }
 
 void
@@ -237,13 +247,20 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
   fprintf(stream, "const ");
   switch (value->type->kind) {
   case MIR_TYPE_INT:
-    fprintf(stream, "%llu", value->data.v_int);
+    fprintf(stream, "%lu", value->data.v_int);
     break;
   case MIR_TYPE_BOOL:
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
     break;
   case MIR_TYPE_TYPE:
     print_type(value->data.v_type, false, stream);
+    break;
+  case MIR_TYPE_PTR:
+    if (value->data.v_uint == 0) {
+      fprintf(stream, "null");
+    } else {
+      fprintf(stream, "%p", value->data.v_void_ptr);
+    }
     break;
   default:
     fprintf(stream, "cannot read value");
@@ -420,6 +437,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_ELEM_PTR:
     print_instr_elem_ptr((MirInstrElemPtr *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_PTR:
+    print_instr_type_ptr((MirInstrTypePtr *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;

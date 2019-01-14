@@ -69,6 +69,7 @@ typedef struct MirInstrArg         MirInstrArg;
 typedef struct MirInstrElemPtr     MirInstrElemPtr;
 typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrTypeArray   MirInstrTypeArray;
+typedef struct MirInstrTypePtr     MirInstrTypePtr;
 
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
@@ -178,6 +179,7 @@ union MirValueData
   MirValue *       v_ptr;
   MirFn *          v_fn;
   MirFrameStackPtr v_stack_ptr;
+  void *           v_void_ptr;
 };
 
 struct MirValue
@@ -207,6 +209,8 @@ typedef enum
   MIR_INSTR_RET,
   MIR_INSTR_FN_PROTO,
   MIR_INSTR_TYPE_FN,
+  MIR_INSTR_TYPE_PTR,
+  MIR_INSTR_TYPE_ARRAY,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
@@ -215,7 +219,6 @@ typedef enum
   MIR_INSTR_BR,
   MIR_INSTR_UNOP,
   MIR_INSTR_ARG,
-  MIR_INSTR_TYPE_ARRAY,
   MIR_INSTR_ELEM_PTR,
 
   MIR_INSTR_VALIDATE_TYPE,
@@ -336,6 +339,13 @@ struct MirInstrTypeFn
 
   MirInstr *ret_type;
   BArray *  arg_types;
+};
+
+struct MirInstrTypePtr
+{
+  MirInstr base;
+
+  MirInstr *type;
 };
 
 struct MirInstrTypeArray

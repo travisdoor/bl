@@ -191,6 +191,10 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   case MIR_TYPE_BOOL:
     cnst->base.llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
     break;
+  case MIR_TYPE_PTR:
+    assert(value->data.v_void_ptr == NULL);
+    cnst->base.llvm_value = LLVMConstNull(llvm_type);
+    break;
   default:
     bl_unimplemented;
   }

@@ -3,13 +3,16 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-  arr : [10]s32;
+  /*
+  arr: [10]s32;
 
   loop (i := 0; i <= 10; i += 1) {
     arr[i] = 10;
   }
+  */
 
-  putchar(10);
+  ptr: *s32 = null;
+
   return 0; 
 };
 
@@ -28,8 +31,8 @@ say_hello :: fn () {
   putchar(10);
 };
 
-putchar :: fn (c s32) s32 #extern;
+putchar :: fn (c: s32) s32 #extern;
 
-print :: fn (s s32) {
+print :: fn (s: s32) {
   putchar(s);
 };

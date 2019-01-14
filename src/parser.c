@@ -398,6 +398,10 @@ parse_decl_arg(Context *cnt, bool type_only)
     type = parse_type(cnt);
   } else {
     name = parse_ident(cnt);
+    if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src, BUILDER_CUR_AFTER,
+                  "expected semicolon after argument name");
+    }
     type = parse_type(cnt);
   }
 
@@ -688,9 +692,9 @@ parse_expr_primary(Context *cnt)
   if ((expr = parse_expr_ref(cnt))) return expr;
   if ((expr = parse_expr_lit(cnt))) return expr;
   if ((expr = parse_expr_lit_fn(cnt))) return expr;
+  if ((expr = parse_expr_null(cnt))) return expr;
 
   /*
-  if ((expr = parse_expr_null(cnt))) return expr;
   if ((expr = parse_expr_run(cnt))) return expr;
   if ((expr = parse_expr_type(cnt))) return expr;
   */
