@@ -137,8 +137,13 @@
 };
 
 #test "simple static array" {
-  // TODO
-  // TODO
-  // TODO
-  // TODO
+  arr : [10]s32;
+
+  arr[0] = 10;
+  arr[1] = 20;
+  arr[2] = 30;
+
+  assert(arr[0] == 10);
+  assert(arr[1] == 20);
+  assert(arr[2] == 30);
 };

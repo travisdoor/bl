@@ -41,7 +41,7 @@
 struct Assembly;
 struct Builder;
 
-typedef void *MirFrameStackPtr;
+typedef unsigned char *MirFrameStackPtr;
 
 typedef struct MirModule MirModule;
 typedef struct MirType   MirType;

@@ -92,10 +92,10 @@ typedef struct
 
   struct
   {
-    char * frame_stack;
-    char * frame_stack_ptr;
-    size_t frame_stack_allocated;
-    size_t frame_stack_size;
+    MirFrameStackPtr frame_stack;
+    MirFrameStackPtr frame_stack_ptr;
+    size_t           frame_stack_allocated;
+    size_t           frame_stack_size;
 
     BArray *call_stack;
     bool    aborted;
@@ -579,9 +579,9 @@ static inline void
 exec_copy_value(MirValue *dest, MirValue *src)
 {
   assert(dest->is_stack_allocated);
-  MirFrameStackPtr *dest_ptr = dest->data.v_stack_ptr;
-  MirFrameStackPtr *src_ptr =
-      src->is_stack_allocated ? src->data.v_stack_ptr : (MirFrameStackPtr *)&src->data;
+  MirFrameStackPtr dest_ptr = dest->data.v_stack_ptr;
+  MirFrameStackPtr src_ptr =
+      src->is_stack_allocated ? src->data.v_stack_ptr : (MirFrameStackPtr)&src->data;
 
   assert(dest_ptr && src_ptr);
   const size_t size = store_sizeof_type_in_bytes(dest->type);
@@ -601,8 +601,26 @@ exec_read_int64(MirValue *value)
 
   int64_t tmp = 0;
 
-  MirFrameStackPtr *dest_ptr = (void *)&tmp;
-  MirFrameStackPtr *src_ptr  = value->data.v_stack_ptr;
+  MirFrameStackPtr dest_ptr = (void *)&tmp;
+  MirFrameStackPtr src_ptr  = value->data.v_stack_ptr;
+  memcpy(dest_ptr, src_ptr, size);
+
+  return tmp;
+}
+
+static inline uint64_t
+exec_read_uint64(MirValue *value)
+{
+  if (!value->is_stack_allocated) return value->data.v_uint;
+  assert(value->data.v_stack_ptr);
+
+  const size_t size = store_sizeof_type_in_bytes(value->type);
+  assert(size <= sizeof(uint64_t));
+
+  uint64_t tmp = 0;
+
+  MirFrameStackPtr dest_ptr = (void *)&tmp;
+  MirFrameStackPtr src_ptr  = value->data.v_stack_ptr;
   memcpy(dest_ptr, src_ptr, size);
 
   return tmp;
@@ -653,7 +671,7 @@ exec_frame_stack_alloc(Context *cnt, MirValue *val)
     abort();
   }
 
-  char *mem = cnt->exec.frame_stack_ptr;
+  MirFrameStackPtr mem = cnt->exec.frame_stack_ptr;
   cnt->exec.frame_stack_ptr += size;
 
   val->is_stack_allocated = true;
@@ -670,8 +688,8 @@ exec_frame_stack_get_ptr(Context *cnt)
 static inline void
 exec_frame_stack_rollback(Context *cnt, MirFrameStackPtr ptr)
 {
-  if (cnt->exec.frame_stack_ptr < (char *)ptr) bl_abort("frame stack corrupted!");
-  const ptrdiff_t freed_bytes = cnt->exec.frame_stack_ptr - (char *)ptr;
+  if (cnt->exec.frame_stack_ptr < ptr) bl_abort("frame stack corrupted!");
+  const ptrdiff_t freed_bytes = cnt->exec.frame_stack_ptr - ptr;
   // bl_log("stack rollback to %p, free: %u bytes", ptr, freed_bytes);
   assert(ptr);
   cnt->exec.frame_stack_allocated -= freed_bytes;
@@ -2174,9 +2192,18 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
   // const size_t elem_size = store_sizeof_type_in_bytes(arr_value->type->data.array.elem_type);
   MirValue *elem_value = &elem_ptr->base.value;
-  /* TODO: shift pointer by index */
+  MirValue *index      = &elem_ptr->index->value;
+
+  const uint64_t i         = exec_read_uint64(index);
+  const size_t   elem_size = store_sizeof_type_in_bytes(elem_value->type);
+  assert(elem_size && "invalid size of array element");
+
+  assert(arr_value->data.v_stack_ptr);
   elem_ptr->tmp_value.data = arr_value->data;
-  elem_value->data.v_ptr   = &elem_ptr->tmp_value;
+  /* shift pointer by size */
+  elem_ptr->tmp_value.data.v_stack_ptr += i * elem_size;
+
+  elem_value->data.v_ptr = &elem_ptr->tmp_value;
 
   return elem_value;
 }
@@ -2318,7 +2345,14 @@ MirValue *
 exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
   MirType *elem_type = type_arr->elem_type->value.data.v_type;
-  size_t   len       = type_arr->len->value.data.v_int;
+
+  /* TODO: len set by immutable variable need to be set before use!!! */
+  /* TODO: len set by immutable variable need to be set before use!!! */
+  /* TODO: len set by immutable variable need to be set before use!!! */
+  /* TODO: len set by immutable variable need to be set before use!!! */
+  /* TODO: len set by immutable variable need to be set before use!!! */
+  assert(elem_type->kind == MIR_INSTR_CONST);
+  size_t   len       = exec_read_uint64(&type_arr->len->value);
 
   type_arr->base.value.data.v_type = create_type_array(cnt, elem_type, len);
   return &type_arr->base.value;
@@ -2341,16 +2375,16 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   case MIR_TYPE_INT: {
     switch (type->data.integer.bitcount) {
     case 64:
-      dcArgLongLong(cnt->dl.vm, val->data.v_int);
+      dcArgLongLong(cnt->dl.vm, exec_read_int64(val));
       break;
     case 32:
-      dcArgInt(cnt->dl.vm, (DCint)val->data.v_int);
+      dcArgInt(cnt->dl.vm, (DCint)exec_read_int64(val));
       break;
     case 16:
-      dcArgShort(cnt->dl.vm, (DCshort)val->data.v_int);
+      dcArgShort(cnt->dl.vm, (DCshort)exec_read_int64(val));
       break;
     case 8:
-      dcArgChar(cnt->dl.vm, (DCchar)val->data.v_int);
+      dcArgChar(cnt->dl.vm, (DCchar)exec_read_int64(val));
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -2628,13 +2662,13 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
   assert(unop->base.value.type);
   switch (unop->op) {
   case UNOP_NEG:
-    unop->base.value.data.v_int = unop->instr->value.data.v_int * -1;
+    unop->base.value.data.v_int = exec_read_int64(&unop->instr->value) * -1;
     break;
   case UNOP_POS:
-    unop->base.value.data.v_int = unop->instr->value.data.v_int;
+    unop->base.value.data.v_int = exec_read_int64(&unop->instr->value);
     break;
   case UNOP_NOT:
-    unop->base.value.data.v_int = !unop->instr->value.data.v_int;
+    unop->base.value.data.v_int = !exec_read_int64(&unop->instr->value);
     break;
   default:
     bl_unimplemented;
@@ -2885,7 +2919,7 @@ ast_expr_elem(Context *cnt, Ast *elem)
   assert(ast_arr && ast_index);
 
   MirInstr *arr_ptr = ast(cnt, ast_arr);
-  MirInstr *index   = ast(cnt, ast_index);
+  MirInstr *index   = append_instr_load_if_needed(cnt, ast(cnt, ast_index));
 
   return append_instr_elem_ptr(cnt, elem, arr_ptr, index);
 }
@@ -3064,9 +3098,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
   ScopeEntry *scope_entry = scope_lookup(scope, ast_name->data.ident.hash, true);
   assert(scope_entry && "declaration has no scope entry");
 
-  MirInstr *value = ast(cnt, ast_value);
-
-  if (value && value->kind == MIR_INSTR_FN_PROTO) {
+  if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
+    MirInstr *value              = ast(cnt, ast_value);
     value->value.data.v_fn->name = ast_name->data.ident.str;
     value->node                  = ast_name;
     scope_entry->instr           = value;
@@ -3092,6 +3125,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     scope_entry->instr = decl;
 
     /* initialize value */
+    MirInstr *value = ast(cnt, ast_value);
     if (value) {
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
       result = append_instr_store(cnt, ast_value, value, decl);
@@ -3173,7 +3207,7 @@ ast_type_arr(Context *cnt, Ast *type_arr)
   Ast *ast_len       = type_arr->data.type_arr.len;
   assert(ast_elem_type && ast_len);
 
-  MirInstr *len       = ast(cnt, ast_len);
+  MirInstr *len       = append_instr_load_if_needed(cnt, ast(cnt, ast_len));
   MirInstr *elem_type = ast(cnt, ast_elem_type);
   return append_instr_type_array(cnt, type_arr, elem_type, len);
 }
@@ -3504,7 +3538,7 @@ init_frame_stack(Context *cnt, size_t size)
 {
   if (size == 0) bl_abort("invalid frame stack size");
 
-  char *stack = bl_malloc(sizeof(char) * size);
+  MirFrameStackPtr stack = bl_malloc(sizeof(char) * size);
   if (!stack) bl_abort("bad alloc");
 
   cnt->exec.frame_stack           = stack;
