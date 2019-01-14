@@ -1806,7 +1806,23 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
   assert(unop->instr && unop->instr->analyzed);
   MirType *type = unop->instr->value.type;
   assert(type);
-  unop->base.value.type = type;
+
+  switch (unop->op) {
+  case UNOP_INVALID:
+    bl_abort("invalid unary operation");
+  case UNOP_NEG:
+  case UNOP_POS:
+  case UNOP_NOT:
+    unop->base.value.type = type;
+    break;
+  case UNOP_ADR:
+    bl_unimplemented;
+    break;
+  case UNOP_DEREF:
+    bl_unimplemented;
+    break;
+  }
+
   return true;
 }
 
