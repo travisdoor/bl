@@ -250,9 +250,6 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
 static MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
-// static MirInstr *
-// append_instr_addr_of(Context *cnt, Ast *node, MirInstr *target);
-
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
@@ -449,9 +446,6 @@ static bool
 analyze_instr_store(Context *cnt, MirInstrStore *store);
 
 static bool
-analyze_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof);
-
-static bool
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime);
 
 static bool
@@ -513,9 +507,6 @@ static MirValue *
 exec_instr_load(Context *cnt, MirInstrLoad *load);
 
 static MirValue *
-exec_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof);
-
-static MirValue *
 exec_instr_store(Context *cnt, MirInstrStore *store);
 
 static MirValue *
@@ -551,6 +542,13 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 /* zero max nesting = unlimited nesting */
 static void
 exec_print_call_stack(Context *cnt, size_t max_nesting);
+
+static inline void
+exec_abort(Context *cnt, int report_stack_nesting)
+{
+  exec_print_call_stack(cnt, report_stack_nesting);
+  cnt->exec.aborted = true;
+}
 
 static inline const char *
 gen_uq_name(Context *cnt, const char *prefix)
@@ -652,8 +650,7 @@ exec_call_stack_push(Context *cnt, MirInstr *instr)
   bo_array_push_back(cnt->exec.call_stack, instr);
   if (bo_array_size(cnt->exec.call_stack) > DEFAULT_EXEC_CALL_STACK_NESTING) {
     msg_error("Maximum call stack nesting exceeded!!!");
-    exec_print_call_stack(cnt, 10);
-    abort();
+    exec_abort(cnt, 10);
   }
 }
 
@@ -686,8 +683,7 @@ exec_frame_stack_alloc(Context *cnt, MirValue *val)
   cnt->exec.frame_stack_allocated += size;
   if (cnt->exec.frame_stack_allocated > cnt->exec.frame_stack_size) {
     msg_error("Stack overflow!!!");
-    exec_print_call_stack(cnt, 10);
-    abort();
+    exec_abort(cnt, 10);
   }
 
   MirFrameStackPtr mem = cnt->exec.frame_stack_ptr;
@@ -822,6 +818,7 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
   case MIR_INSTR_BINOP:
   case MIR_INSTR_UNOP:
   case MIR_INSTR_CALL:
+  case MIR_INSTR_LOAD:
     return src;
   default:
     break;
@@ -1162,17 +1159,6 @@ append_instr_load(Context *cnt, Ast *node, MirInstr *src)
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
-
-/*MirInstr *
-append_instr_addr_of(Context *cnt, Ast *node, MirInstr *target)
-{
-  ref_instr(target);
-  MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDR_OF, node, MirInstrAddrOf *);
-  tmp->target         = target;
-
-  push_into_curr_block(cnt, &tmp->base);
-  return &tmp->base;
-  }*/
 
 MirInstr *
 append_instr_unrecheable(Context *cnt, Ast *node)
@@ -1734,7 +1720,11 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
 {
   MirInstr *src = load->src;
   assert(src);
-  assert(is_pointer_type(src->value.type) && "expected pointer");
+  if (!is_pointer_type(src->value.type)) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, src->node->src, BUILDER_CUR_WORD,
+                "expected pointer");
+    return false;
+  }
 
   MirType *type = src->value.type->data.ptr.next;
   assert(type);
@@ -1813,30 +1803,14 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
   case UNOP_NEG:
   case UNOP_POS:
   case UNOP_NOT:
-    unop->base.value.type = type;
-    break;
   case UNOP_ADR:
-    bl_unimplemented;
     break;
   case UNOP_DEREF:
-    bl_unimplemented;
+    bl_abort("invalid unary instruction operator");
     break;
   }
 
-  return true;
-}
-
-bool
-analyze_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof)
-{
-  assert(addrof->target);
-  assert(addrof->target->analyzed);
-
-  MirType *type = addrof->target->value.type;
-  assert(type);
-
-  addrof->base.value.type       = create_type_ptr(cnt, type);
-  addrof->base.value.data.v_ptr = &addrof->target->value;
+  unop->base.value.type = type;
   return true;
 }
 
@@ -2106,9 +2080,6 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_TYPE_PTR:
     state = analyze_instr_type_ptr(cnt, (MirInstrTypePtr *)instr);
     break;
-  case MIR_INSTR_ADDR_OF:
-    state = analyze_instr_addr_of(cnt, (MirInstrAddrOf *)instr);
-    break;
   case MIR_INSTR_VALIDATE_TYPE:
     state = analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
     break;
@@ -2233,8 +2204,6 @@ exec_instr(Context *cnt, MirInstr *instr)
     return exec_instr_store(cnt, (MirInstrStore *)instr);
   case MIR_INSTR_DECL_REF:
     return exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
-  case MIR_INSTR_ADDR_OF:
-    return exec_instr_addr_of(cnt, (MirInstrAddrOf *)instr);
   case MIR_INSTR_LOAD:
     return exec_instr_load(cnt, (MirInstrLoad *)instr);
   case MIR_INSTR_BR:
@@ -2287,8 +2256,7 @@ MirValue *
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   msg_error("execution reached unreachable code");
-  exec_print_call_stack(cnt, 0);
-  cnt->exec.aborted = true;
+  exec_abort(cnt, 0);
   return NULL;
 }
 
@@ -2333,13 +2301,6 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 }
 
 MirValue *
-exec_instr_addr_of(Context *cnt, MirInstrAddrOf *addrof)
-{
-  assert(is_pointer_type(addrof->base.value.type));
-  return &addrof->base.value;
-}
-
-MirValue *
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   assert(decl->base.value.type);
@@ -2358,9 +2319,23 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
   assert(load->src);
   assert(is_pointer_type(load->src->value.type));
+  MirValue *deref = NULL;
 
-  assert(!load->src->value.is_stack_allocated);
-  load->base.value = *load->src->value.data.v_ptr;
+  if (load->src->value.is_stack_allocated) {
+    MirFrameStackPtr ptr = load->src->value.data.v_stack_ptr;
+    assert(ptr);
+    deref = *(MirValue **)ptr;
+  } else {
+    deref = load->src->value.data.v_ptr;
+  }
+
+  if (deref == NULL) {
+    msg_error("dereferencing of null pointer detected");
+    exec_abort(cnt, 0);
+  } else {
+    load->base.value.data               = deref->data;
+    load->base.value.is_stack_allocated = deref->is_stack_allocated;
+  }
 
   return &load->base.value;
 }
@@ -2567,7 +2542,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
 
   /* do frame stack rollback */
   exec_frame_stack_rollback(cnt, frame_ptr);
-  return does_return_value;
+  return does_return_value && !cnt->exec.aborted;
 }
 
 MirValue *
@@ -2753,6 +2728,9 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     break;
   case UNOP_NOT:
     unop->base.value.data.v_int = !exec_read_int64(&unop->instr->value);
+    break;
+  case UNOP_ADR:
+    unop->base.value.data = unop->instr->value.data;
     break;
   default:
     bl_unimplemented;
@@ -3175,7 +3153,22 @@ ast_expr_unary(Context *cnt, Ast *unop)
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
 
-  next = append_instr_load_if_needed(cnt, next);
+  switch (unop->data.expr_unary.kind) {
+  case UNOP_INVALID:
+    bl_abort("invalid unary operation operator");
+  case UNOP_NEG:
+  case UNOP_POS:
+  case UNOP_NOT:
+    next = append_instr_load_if_needed(cnt, next);
+    break;
+  case UNOP_ADR:
+    break;
+  case UNOP_DEREF:
+    next = append_instr_load(cnt, next->node, next);
+    return append_instr_load(cnt, unop, next);
+    break;
+  }
+
   return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
@@ -3446,8 +3439,6 @@ mir_instr_name(MirInstr *instr)
     return "InstrTypeFn";
   case MIR_INSTR_TYPE_ARRAY:
     return "InstrTypeArray";
-  case MIR_INSTR_ADDR_OF:
-    return "InstrAddrOf";
   case MIR_INSTR_TRY_INFER:
     return "InstrTryInfer";
   case MIR_INSTR_COND_BR:
@@ -3571,9 +3562,9 @@ execute_entry_fn(Context *cnt)
   MirValue result;
   if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
     int64_t tmp = exec_read_int64(&result);
-    msg_log("execution finished with state: %ld\n", tmp);
+    msg_log("execution finished with state: %lld\n", (long long)tmp);
   } else {
-    msg_log("execution finished\n");
+    msg_log("execution finished %s\n", cnt->exec.aborted ? "with errors" : "without errors");
   }
 }
 

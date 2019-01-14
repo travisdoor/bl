@@ -10,14 +10,25 @@ main :: fn () s32 {
     arr[i] = 10;
   }
   */
-
-  i := 10;
-  ptr: *s32 = null;
-  ptr = &i;
-
+  foo();
   return 0; 
 };
 
+foo :: fn () {
+  bar();
+};
+
+bar :: fn () {
+  i   :  s32 = 666;
+  ptr : *s32 = &i;
+  ptr = null;
+  j   :  s32 = *ptr;
+  assert(j == 666);
+};
+
+putchar :: fn (c: s32) s32 #extern;
+
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -38,3 +49,4 @@ putchar :: fn (c: s32) s32 #extern;
 print :: fn (s: s32) {
   putchar(s);
 };
+*/

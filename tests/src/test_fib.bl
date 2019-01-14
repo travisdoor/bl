@@ -1,0 +1,21 @@
+#load "std/debug.bl"
+
+#test "fibonacci" {
+  fib :: fn (n s32) s32 {
+    if (n == 0 || n == 1) {
+      return n;
+    } else {
+      return fib(n-1) + fib(n-2);
+    }
+
+    return 0;
+  };
+
+  // TODO
+  // TODO
+  // TODO
+
+  //fib(2);
+  //fib(5);
+  //fib(10);
+};

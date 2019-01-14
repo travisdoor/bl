@@ -221,9 +221,13 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
   case UNOP_NOT: {
     unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
     break;
+  }
+  case UNOP_ADR: {
+    unop->base.llvm_value = llvm_val;
+    break;
+  }
   default:
     bl_unimplemented;
-  }
   }
 }
 

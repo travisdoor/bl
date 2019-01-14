@@ -1,12 +1,13 @@
-* Features [0/3]
-  - [ ] Function arguments
-  - [ ] Loops
+* Features [2/5]
+  - [X] Function arguments
+  - [X] Loops
   - [ ] Arrays 
   - [ ] Structures
   - [ ] Enums
     
 
 * Bugs [0/0]
+  - [ ] In function body does can be declarations in any order!!!
     
 
   

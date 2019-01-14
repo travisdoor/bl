@@ -214,7 +214,6 @@ typedef enum
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
-  MIR_INSTR_ADDR_OF,
   MIR_INSTR_COND_BR,
   MIR_INSTR_BR,
   MIR_INSTR_UNOP,
@@ -369,13 +368,6 @@ struct MirInstrDeclRef
   MirInstr base;
 
   MirInstr *decl;
-};
-
-struct MirInstrAddrOf
-{
-  MirInstr base;
-
-  MirInstr *target;
 };
 
 struct MirInstrUnreachable
