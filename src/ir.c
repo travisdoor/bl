@@ -373,8 +373,9 @@ gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     gen_fn_proto(cnt, fn);
   } else {
     /* copy llvm value */
-    assert(ref->decl);
-    ref->base.llvm_value = ref->decl->llvm_value;
+    MirInstr *decl = ref->scope_entry->instr;
+    assert(decl);
+    ref->base.llvm_value = decl->llvm_value;
     assert(ref->base.llvm_value);
   }
 }

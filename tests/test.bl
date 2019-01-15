@@ -3,8 +3,8 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-  i = 10; // generate error
   i : s32;
+  i = 10; // generate error
   foo(10);
 
   homo :: fn () {
@@ -13,16 +13,20 @@ main :: fn () s32 {
   homo();
 
   j := fn (j: s32) s32 {
+    loop (i := 0; i < j; i += 1) {
+      say_hello();
+    }
     return j;
   } (10);
 
-  return 0; 
+  return j; 
 };
 
 putchar :: fn (c: s32) s32 #extern;
 
 foo :: fn (i: s32) {
-  i;
+  if (i == 0) { return; }
+  foo(i - 1);
 };
 
 say_hello :: fn () {

@@ -283,7 +283,7 @@ static MirInstr *
 append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
 static MirInstr *
-append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *decl);
+append_instr_decl_ref(Context *cnt, Ast *node, ScopeEntry *scope_entry);
 
 static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
@@ -1258,11 +1258,10 @@ append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_ty
 }
 
 MirInstr *
-append_instr_decl_ref(Context *cnt, Ast *node, MirInstr *decl)
+append_instr_decl_ref(Context *cnt, Ast *node, ScopeEntry *scope_entry)
 {
   MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node, MirInstrDeclRef *);
-  ref_instr(decl);
-  tmp->decl = decl;
+  tmp->scope_entry     = scope_entry;
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1640,24 +1639,14 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
-  Ast *ast_ident = ref->base.node;
-  assert(ref->base.node && ref->base.node->kind == AST_IDENT);
-
-  /* symbol lookup */
-  Scope *scope = ast_ident->data.ident.scope;
-  assert(scope);
-  ScopeEntry *scope_entry = scope_lookup(scope, ast_ident->data.ident.hash, true);
-  if (!scope_entry) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ast_ident->src,
-                BUILDER_CUR_WORD, "unknown symbol");
-    return false;
-  }
+  // Ast *ast_ident = ref->base.node;
+  ScopeEntry *scope_entry = ref->scope_entry;
+  assert(scope_entry);
 
   assert(scope_entry->instr);
   assert(scope_entry->instr->analyzed);
 
   ref->base.value = scope_entry->instr->value;
-  ref->decl       = scope_entry->instr;
   ref_instr(scope_entry->instr);
   return true;
 }
@@ -1727,12 +1716,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   /* implicit functions has no name -> generate one */
   if (!fn->name) {
     fn->name = gen_uq_name(cnt, IMPL_FN_NAME);
-  }
-
-  /* registrate local functions only */
-  Ast *ast_name = fn_proto->base.node;
-  if (ast_name && ast_name->kind == AST_IDENT && !is_ident_in_gscope(ast_name)) {
-    provide(cnt, ast_name, &fn_proto->base, false);
   }
 
   if (fn->is_external) {
@@ -2017,12 +2000,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirVar *var           = decl->var;
     assert(var);
     var->value.type = resolved_type;
-  }
-
-  /* registrate local variables here */
-  Ast *ast_name = decl->base.node;
-  if (!is_ident_in_gscope(ast_name)) {
-    provide(cnt, ast_name, &decl->base, false);
   }
 
   /* TODO: reference can be created later during analyze pass */
@@ -3100,8 +3077,18 @@ ast_expr_ref(Context *cnt, Ast *ref)
 {
   Ast *ident = ref->data.expr_ref.ident;
   assert(ident);
-  /* referenced declaration will be resolved later during analyze pass */
-  return append_instr_decl_ref(cnt, ident, NULL);
+  assert(ident->kind == AST_IDENT);
+
+  /* symbol lookup */
+  Scope *scope = ident->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ident->data.ident.hash, true);
+  if (!scope_entry) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ident->src, BUILDER_CUR_WORD,
+                "unknown symbol");
+  }
+
+  return append_instr_decl_ref(cnt, ident, scope_entry);
 }
 
 MirInstr *
@@ -3166,7 +3153,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
         append_instr_store(cnt, NULL, arg, var);
 
         /* registrate argument into local scope */
-        // provide(cnt, ast_arg_name, var, false);
+        provide(cnt, ast_arg_name, var, false);
       }
     }
     fn->arg_slots = arg_slots;
@@ -3300,7 +3287,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
     value->value.data.v_fn->name = ast_name->data.ident.str;
     value->node                  = ast_name;
 
-    if (is_ident_in_gscope(ast_name)) provide_into_existing_scope_entry(cnt, ast_name, value);
+    if (!is_ident_in_gscope(ast_name))
+      provide(cnt, ast_name, value, false);
+    else
+      provide_into_existing_scope_entry(cnt, ast_name, value);
 
     if (ast_type) {
       ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
@@ -3321,7 +3311,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
     set_cursor_block(cnt, prev_block);
 
-    if (is_ident_in_gscope(ast_name)) provide(cnt, ast_name, decl, false);
+    if (!is_ident_in_gscope(ast_name))
+      provide(cnt, ast_name, decl, false);
+    else
+      provide_into_existing_scope_entry(cnt, ast_name, decl);
 
     /* initialize value */
     MirInstr *value = ast(cnt, ast_value);

@@ -147,8 +147,7 @@ struct MirTypePtr
 };
 
 struct MirTypeNull
-{
-};
+{};
 
 struct MirTypeArray
 {
@@ -373,7 +372,7 @@ struct MirInstrDeclRef
 {
   MirInstr base;
 
-  MirInstr *decl;
+  ScopeEntry *scope_entry;
 };
 
 struct MirInstrUnreachable
