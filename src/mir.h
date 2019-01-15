@@ -41,7 +41,8 @@
 struct Assembly;
 struct Builder;
 
-typedef unsigned char *MirFrameStackPtr;
+typedef unsigned short *MirStackPtr;
+typedef ptrdiff_t      MirRelativeStackPtr;
 
 typedef struct MirModule MirModule;
 typedef struct MirType   MirType;
@@ -176,15 +177,15 @@ struct MirType
 /* VALUE */
 union MirValueData
 {
-  uint64_t         v_uint;
-  int64_t          v_int;
-  bool             v_bool;
-  const char *     v_str;
-  MirType *        v_type;
-  MirValue *       v_ptr;
-  MirFn *          v_fn;
-  MirFrameStackPtr v_stack_ptr;
-  void *           v_void_ptr;
+  uint64_t    v_uint;
+  int64_t     v_int;
+  bool        v_bool;
+  const char *v_str;
+  MirType *   v_type;
+  MirValue *  v_ptr;
+  MirFn *     v_fn;
+  MirStackPtr v_stack_ptr;
+  void *      v_void_ptr;
 };
 
 struct MirValue
