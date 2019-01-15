@@ -48,13 +48,14 @@ typedef struct Scope
 {
   struct Scope *parent;
   BHashTable *  entries;
+  bool          is_global;
 } Scope;
 
 void
 scope_arena_init(struct Arena *arena);
 
 Scope *
-scope_create(struct Arena *arena, Scope *parent, size_t size);
+scope_create(struct Arena *arena, Scope *parent, size_t size, bool is_global);
 
 void
 scope_insert(Scope *scope, uint64_t key, struct ScopeEntry *entry);

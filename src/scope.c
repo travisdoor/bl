@@ -48,11 +48,12 @@ scope_arena_init(Arena *arena)
 }
 
 Scope *
-scope_create(Arena *arena, Scope *parent, size_t size)
+scope_create(Arena *arena, Scope *parent, size_t size, bool is_global)
 {
-  Scope *scope   = arena_alloc(arena);
-  scope->entries = bo_htbl_new(sizeof(ScopeEntry), size);
-  scope->parent  = parent;
+  Scope *scope     = arena_alloc(arena);
+  scope->entries   = bo_htbl_new(sizeof(ScopeEntry), size);
+  scope->parent    = parent;
+  scope->is_global = is_global;
   return scope;
 }
 
@@ -70,8 +71,7 @@ scope_lookup(Scope *scope, uint64_t key, bool in_tree)
   assert(scope);
 
   while (scope) {
-    if (bo_htbl_has_key(scope->entries, key))
-      return &bo_htbl_at(scope->entries, key, ScopeEntry);
+    if (bo_htbl_has_key(scope->entries, key)) return &bo_htbl_at(scope->entries, key, ScopeEntry);
 
     if (in_tree)
       scope = scope->parent;

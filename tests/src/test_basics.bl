@@ -167,3 +167,14 @@
 
   assert(j == 666);
 };
+
+#test "null pointers" {
+  test_ptr :: fn (ptr: *s32) *s32 {
+    return null;
+  };
+
+  foo : *s32 = null;
+  assert(foo == null);
+  assert(null == null);
+  assert(test_ptr(null) == null);
+};

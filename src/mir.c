@@ -125,6 +125,7 @@ typedef struct
     MirType *entry_usize;
     MirType *entry_bool;
     MirType *entry_void;
+    MirType *entry_u8_ptr;
     MirType *entry_resolve_type_fn;
     MirType *entry_test_case_fn;
   } buildin_types;
@@ -305,8 +306,8 @@ append_instr_const_type(Context *cnt, Ast *node, MirType *type);
 static MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str);
 
-static MirInstr *
-append_instr_const_null(Context *cnt, Ast *node, MirType *type);
+MirInstr *
+append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
 append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
@@ -809,6 +810,54 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
               tmp_from, tmp_to);
 }
 
+static inline void
+provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
+{
+  assert(ident);
+  assert(ident->kind == AST_IDENT);
+
+  Scope *scope = ident->data.ident.scope;
+  assert(scope);
+
+  // bl_log("provide %s into %p scope (lookup in tree %s)", ident->data.ident.str, scope, in_tree ?
+  // "true" : "false");
+
+  const uint64_t key       = ident->data.ident.hash;
+  ScopeEntry *   collision = scope_lookup(scope, key, in_tree);
+  if (collision) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ident->src, BUILDER_CUR_WORD,
+                "symbol with same name is already declared");
+
+    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src, BUILDER_CUR_WORD,
+                "previous declaration found here");
+    return;
+  }
+
+  ScopeEntry entry = {.node = ident, .instr = instr};
+  scope_insert(scope, key, &entry);
+}
+
+static inline void
+provide_into_existing_scope_entry(Context *cnt, Ast *ident, MirInstr *instr)
+{
+  /* Prepare scope entry created in parser */
+  assert(ident->kind == AST_IDENT);
+  Scope *scope = ident->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ident->data.ident.hash, false);
+  assert(scope_entry && "declaration has no scope entry");
+  scope_entry->instr = instr;
+}
+
+static inline bool
+is_ident_in_gscope(Ast *ident)
+{
+  assert(ident->kind == AST_IDENT);
+  Scope *scope = ident->data.ident.scope;
+  assert(scope);
+  return scope->is_global;
+}
+
 static inline MirInstr *
 append_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
@@ -825,6 +874,15 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
   }
 
   return append_instr_load(cnt, NULL, src);
+}
+
+static inline void
+setup_null_type_if_needed(MirType *dest, MirType *src)
+{
+  if (dest->kind == MIR_TYPE_NULL) {
+    dest->llvm_type = src->llvm_type;
+    assert(dest->llvm_type);
+  }
 }
 
 static void
@@ -867,6 +925,17 @@ create_type_type(Context *cnt)
   tmp->kind      = MIR_TYPE_TYPE;
   tmp->name      = "type";
   tmp->llvm_type = to_llvm_type(cnt, tmp, NULL, NULL);
+  return tmp;
+}
+
+MirType *
+create_type_null(Context *cnt)
+{
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_NULL;
+  tmp->name    = "null";
+  /* default type of null in llvm (can be overriden later) */
+  tmp->llvm_type = cnt->buildin_types.entry_u8_ptr->llvm_type;
   return tmp;
 }
 
@@ -1288,11 +1357,11 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 }
 
 MirInstr *
-append_instr_const_null(Context *cnt, Ast *node, MirType *type)
+append_instr_const_null(Context *cnt, Ast *node)
 {
   MirInstr *tmp              = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime              = true;
-  tmp->value.type            = type;
+  tmp->value.type            = create_type_null(cnt);
   tmp->value.data.v_void_ptr = NULL;
 
   push_into_curr_block(cnt, tmp);
@@ -1478,6 +1547,12 @@ bool
 type_cmp(MirType *first, MirType *second)
 {
   assert(first && second);
+  /* null vs ptr / ptr vs null / null vs null*/
+  if ((first->kind == MIR_TYPE_PTR && second->kind == MIR_TYPE_NULL) ||
+      (first->kind == MIR_TYPE_NULL && second->kind == MIR_TYPE_PTR) ||
+      (first->kind == MIR_TYPE_NULL && second->kind == MIR_TYPE_NULL))
+    return true;
+
   if (first->kind != second->kind) return false;
 
   switch (first->kind) {
@@ -1568,6 +1643,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   Ast *ast_ident = ref->base.node;
   assert(ref->base.node && ref->base.node->kind == AST_IDENT);
 
+  /* symbol lookup */
   Scope *scope = ast_ident->data.ident.scope;
   assert(scope);
   ScopeEntry *scope_entry = scope_lookup(scope, ast_ident->data.ident.hash, true);
@@ -1651,6 +1727,12 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   /* implicit functions has no name -> generate one */
   if (!fn->name) {
     fn->name = gen_uq_name(cnt, IMPL_FN_NAME);
+  }
+
+  /* registrate local functions only */
+  Ast *ast_name = fn_proto->base.node;
+  if (ast_name && ast_name->kind == AST_IDENT && !is_ident_in_gscope(ast_name)) {
+    provide(cnt, ast_name, &fn_proto->base, false);
   }
 
   if (fn->is_external) {
@@ -1769,13 +1851,23 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
   const bool is_logic = ast_binop_is_logic(binop->op);
 
+  /* setup llvm type for null type */
+  if (lhs->value.type->kind == MIR_TYPE_NULL)
+    setup_null_type_if_needed(lhs->value.type, rhs->value.type);
+  else
+    setup_null_type_if_needed(rhs->value.type, lhs->value.type);
+
   if (!type_cmp(lhs->value.type, rhs->value.type)) {
     error_types(cnt, lhs->value.type, rhs->value.type, binop->base.node, NULL);
   } else {
     const MirTypeKind lhs_kind = lhs->value.type->kind;
     const MirTypeKind rhs_kind = rhs->value.type->kind;
-    const bool lhs_valid = (lhs_kind == MIR_TYPE_INT) || (lhs_kind == MIR_TYPE_BOOL && is_logic);
-    const bool rhs_valid = (rhs_kind == MIR_TYPE_INT) || (rhs_kind == MIR_TYPE_BOOL && is_logic);
+
+    const bool lhs_valid = (lhs_kind == MIR_TYPE_INT) || (lhs_kind == MIR_TYPE_NULL) ||
+                           (lhs_kind == MIR_TYPE_PTR) || (lhs_kind == MIR_TYPE_BOOL && is_logic);
+
+    const bool rhs_valid = (rhs_kind == MIR_TYPE_INT) || (rhs_kind == MIR_TYPE_NULL) ||
+                           (rhs_kind == MIR_TYPE_PTR) || (rhs_kind == MIR_TYPE_BOOL && is_logic);
 
     if (!(lhs_valid && rhs_valid)) {
       error_types(cnt, lhs->value.type, rhs->value.type, binop->base.node,
@@ -1880,16 +1972,31 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   const bool expected_ret_value =
       !type_cmp(fn_type->data.fn.ret_type, cnt->buildin_types.entry_void);
 
-  if (value) {
-    if (!expected_ret_value) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->value->node->src,
-                  BUILDER_CUR_WORD, "unexpected return value");
-    } else if (!type_cmp(value->value.type, fn_type->data.fn.ret_type)) {
-      error_types(cnt, value->value.type, fn_type->data.fn.ret_type, ret->value->node, NULL);
-    }
-  } else if (expected_ret_value) {
+  /* return value is not expected, and it's not provided */
+  if (!expected_ret_value && !value) {
+    return true;
+  }
+
+  /* return value is expected, but it's not provided */
+  if (expected_ret_value && !value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->base.node->src,
                 BUILDER_CUR_AFTER, "expected return value");
+    return false;
+  }
+
+  /* return value is not expected, but it's provided */
+  if (!expected_ret_value && value) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->value->node->src,
+                BUILDER_CUR_WORD, "unexpected return value");
+    return false;
+  }
+
+  /* setup correct type of llvm null for call(null) */
+  setup_null_type_if_needed(value->value.type, fn_type->data.fn.ret_type);
+
+  if (!type_cmp(value->value.type, fn_type->data.fn.ret_type)) {
+    error_types(cnt, value->value.type, fn_type->data.fn.ret_type, ret->value->node, NULL);
+    return false;
   }
 
   return true;
@@ -1910,6 +2017,12 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirVar *var           = decl->var;
     assert(var);
     var->value.type = resolved_type;
+  }
+
+  /* registrate local variables here */
+  Ast *ast_name = decl->base.node;
+  if (!is_ident_in_gscope(ast_name)) {
+    provide(cnt, ast_name, &decl->base, false);
   }
 
   /* TODO: reference can be created later during analyze pass */
@@ -1968,6 +2081,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
     barray_foreach(call->args, call_arg)
     {
       callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
+
+      /* setup correct type of llvm null for call(null) */
+      setup_null_type_if_needed(call_arg->value.type, callee_arg_type);
       if (!type_cmp(call_arg->value.type, callee_arg_type)) {
         error_types(cnt, call_arg->value.type, callee_arg_type, call_arg->node, NULL);
       }
@@ -1989,6 +2105,9 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 
   MirType *dest_type = dest->value.type->data.ptr.next;
   assert(dest_type && "store destination has invalid base type");
+
+  /* setup llvm type for null type */
+  setup_null_type_if_needed(src->value.type, dest_type);
 
   if (!type_cmp(src->value.type, dest_type)) {
     error_types(cnt, src->value.type, dest_type, src->node, NULL);
@@ -2469,7 +2588,8 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
   assert(ret_type);
   const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
-  /* Store previous frame stack location pointer, this can be used later for rollback. This pointer
+  /* Store previous frame stack location pointer, this can be used later for rollback. This
+   * pointer
    */
   MirFrameStackPtr frame_ptr = exec_frame_stack_get_ptr(cnt);
 
@@ -2946,13 +3066,7 @@ ast_expr_lit_bool(Context *cnt, Ast *expr)
 MirInstr *
 ast_expr_null(Context *cnt, Ast *nl)
 {
-  // TODO: test only
-  // TODO: test only
-  // TODO: test only
-  // TODO: test only
-  MirType *type = create_type_ptr(cnt, cnt->buildin_types.entry_s32);
-
-  return append_instr_const_null(cnt, nl, type);
+  return append_instr_const_null(cnt, nl);
 }
 
 MirInstr *
@@ -3051,12 +3165,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
         append_instr_try_infer(cnt, NULL, arg, var);
         append_instr_store(cnt, NULL, arg, var);
 
-        /* registrate argument into scope */
-        Scope *scope = ast_arg_name->data.ident.scope;
-        assert(scope);
-        ScopeEntry *scope_entry = scope_lookup(scope, ast_arg_name->data.ident.hash, true);
-        assert(scope_entry && "declaration has no scope entry");
-        scope_entry->instr = var;
+        /* registrate argument into local scope */
+        // provide(cnt, ast_arg_name, var, false);
       }
     }
     fn->arg_slots = arg_slots;
@@ -3185,18 +3295,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
   Ast *     ast_type  = entity->data.decl.type;
   Ast *     ast_value = entity->data.decl_entity.value;
 
-  /* Prepare scope entry created in parser */
-  assert(ast_name->kind == AST_IDENT);
-  Scope *scope = ast_name->data.ident.scope;
-  assert(scope);
-  ScopeEntry *scope_entry = scope_lookup(scope, ast_name->data.ident.hash, true);
-  assert(scope_entry && "declaration has no scope entry");
-
   if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
     MirInstr *value              = ast(cnt, ast_value);
     value->value.data.v_fn->name = ast_name->data.ident.str;
     value->node                  = ast_name;
-    scope_entry->instr           = value;
+
+    if (is_ident_in_gscope(ast_name)) provide_into_existing_scope_entry(cnt, ast_name, value);
 
     if (ast_type) {
       ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
@@ -3216,7 +3320,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
     set_cursor_block(cnt, fn->first_block);
     MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
     set_cursor_block(cnt, prev_block);
-    scope_entry->instr = decl;
+
+    if (is_ident_in_gscope(ast_name)) provide(cnt, ast_name, decl, false);
 
     /* initialize value */
     MirInstr *value = ast(cnt, ast_value);
@@ -3634,6 +3739,8 @@ init_buildins(Context *cnt)
       create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
 
   cnt->buildin_types.entry_bool = create_type_bool(cnt);
+
+  cnt->buildin_types.entry_u8_ptr = create_type_ptr(cnt, cnt->buildin_types.entry_u8);
 
   cnt->buildin_types.entry_resolve_type_fn =
       create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);

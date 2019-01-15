@@ -126,6 +126,7 @@ typedef enum
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
   MIR_TYPE_ARRAY,
+  MIR_TYPE_NULL,
 } MirTypeKind;
 
 struct MirTypeInt
@@ -143,6 +144,10 @@ struct MirTypeFn
 struct MirTypePtr
 {
   MirType *next;
+};
+
+struct MirTypeNull
+{
 };
 
 struct MirTypeArray
@@ -165,6 +170,7 @@ struct MirType
     struct MirTypeFn    fn;
     struct MirTypePtr   ptr;
     struct MirTypeArray array;
+    struct MirTypeNull  null;
   } data;
 };
 

@@ -91,7 +91,7 @@ scan_comment(Context *cnt, const char *term)
       scan_error(cnt, ERR_UNTERMINATED_COMMENT, "%s %d:%d unterminated comment block.",
                  cnt->unit->name, cnt->line, cnt->col);
     }
-    if (strncmp(cnt->c, term, len) == 0) {
+    if (*cnt->c == SYM_EOF || strncmp(cnt->c, term, len) == 0) {
       break;
     }
     cnt->c++;

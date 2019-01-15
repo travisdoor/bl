@@ -44,8 +44,7 @@ static inline void
 print_instr_head(MirInstr *instr, FILE *stream)
 {
   if (!instr) return;
-  fprintf(stream, "  %%%-3u (%d%s) ", instr->id, instr->ref_count, instr->value.is_stack_allocated ?
-	  ":S" : "");
+  fprintf(stream, "  %%%-3u (%d) ", instr->id, instr->ref_count);
   print_type(instr->value.type, true, stream);
   fprintf(stream, " ");
 }
@@ -247,11 +246,9 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
     print_type(value->data.v_type, false, stream);
     break;
   case MIR_TYPE_PTR:
-    if (value->data.v_uint == 0) {
-      fprintf(stream, "null");
-    } else {
-      fprintf(stream, "%p", value->data.v_void_ptr);
-    }
+    fprintf(stream, "%p", value->data.v_void_ptr);
+    break;
+  case MIR_TYPE_NULL:
     break;
   default:
     fprintf(stream, "cannot read value");

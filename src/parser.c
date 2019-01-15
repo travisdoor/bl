@@ -93,7 +93,7 @@ static UnopKind
 sym_to_unop_kind(Sym sm);
 
 static void
-provide(Context *cnt, Ast *ident, bool in_tree);
+provide_gscope(Context *cnt, Ast *ident, bool in_tree);
 
 static Ast *
 parse_unrecheable(Context *cnt);
@@ -290,10 +290,13 @@ sym_to_unop_kind(Sym sm)
 }
 
 void
-provide(Context *cnt, Ast *ident, bool in_tree)
+provide_gscope(Context *cnt, Ast *ident, bool in_tree)
 {
   assert(cnt->scope && ident);
   assert(ident->kind == AST_IDENT);
+
+  if (!cnt->scope->is_global) return;
+  
   const uint64_t key       = ident->data.ident.hash;
   ScopeEntry *   collision = scope_lookup(cnt->scope, key, in_tree);
   if (collision) {
@@ -409,8 +412,6 @@ parse_decl_arg(Context *cnt, bool type_only)
   Ast *arg            = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin);
   arg->data.decl.type = type;
   arg->data.decl.name = name;
-
-  provide(cnt, name, false);
   return arg;
 }
 
@@ -556,7 +557,7 @@ parse_stmt_loop(Context *cnt)
   Ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin);
   push_inloop(cnt);
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8, false);
   push_scope(cnt, scope);
 
   if (!while_true) {
@@ -821,7 +822,7 @@ parse_expr_lit_fn(Context *cnt)
 
   Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn);
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 32);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 32, false);
   push_scope(cnt, scope);
 
   Ast *type = parse_type_fn(cnt, true);
@@ -938,7 +939,7 @@ parse_type_enum(Context *cnt)
   Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
   if (!tok_enum) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 512);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 512, false);
   push_scope(cnt, scope);
 
   Ast *enm                    = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum);
@@ -1101,7 +1102,7 @@ parse_type_struct(Context *cnt)
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
   if (!tok_struct) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 256);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 256, false);
   push_scope(cnt, scope);
 
   Token *tok = tokens_consume(cnt->tokens);
@@ -1157,12 +1158,6 @@ next:
 Ast *
 parse_decl(Context *cnt)
 {
-#define RETURN_BAD                                                                                 \
-  {                                                                                                \
-    pop_curr_decl(cnt);                                                                            \
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_ident);                                    \
-  }
-
   /* is value declaration? */
   Token *tok_ident = tokens_peek(cnt->tokens);
   if (token_is_not(tok_ident, SYM_IDENT)) return NULL;
@@ -1180,8 +1175,8 @@ parse_decl(Context *cnt)
   decl->data.decl.name           = ident;
   decl->data.decl_entity.mutable = true;
 
-  /* add entity into current scope */
-  provide(cnt, ident, false);
+  /* add entity into current scope (only global declarations)*/
+  provide_gscope(cnt, ident, false);
   push_curr_decl(cnt, decl);
 
   decl->data.decl.type = parse_type(cnt);
@@ -1197,15 +1192,14 @@ parse_decl(Context *cnt)
       if (!decl->data.decl_entity.value) {
         parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
                     "expected binding of declaration to some value");
-        RETURN_BAD
+        pop_curr_decl(cnt);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_ident);
       }
     }
   }
 
   pop_curr_decl(cnt);
   return decl;
-
-#undef RETURN_BAD
 }
 
 Ast *
@@ -1373,7 +1367,7 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 1024);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 1024, false);
   push_scope(cnt, scope);
 
   Ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin);
@@ -1473,7 +1467,7 @@ parse_test_case(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8);
+  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8, false);
   push_scope(cnt, scope);
 
   Ast *block = parse_block(cnt);
@@ -1536,7 +1530,7 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
   unit->ast              = root;
 
   if (!assembly->gscope)
-    assembly->gscope = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT);
+    assembly->gscope = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT, true);
 
   Context cnt = {.builder     = builder,
                  .assembly    = assembly,
