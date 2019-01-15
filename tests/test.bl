@@ -5,7 +5,7 @@
 main :: fn () s32 {
   i : s32;
   i = 10; // generate error
-  foo(10);
+  foo(101);
 
   homo :: fn () {
   };
@@ -25,8 +25,12 @@ main :: fn () s32 {
 putchar :: fn (c: s32) s32 #extern;
 
 foo :: fn (i: s32) {
-  if (i == 0) { return; }
-  foo(i - 1);
+  putchar(i);
+  if (i == 0) {
+    return;
+  } else {
+    foo(i - 1);
+  }
 };
 
 say_hello :: fn () {

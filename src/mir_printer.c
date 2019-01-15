@@ -44,7 +44,11 @@ static inline void
 print_instr_head(MirInstr *instr, FILE *stream)
 {
   if (!instr) return;
+#if BL_DEBUG
+  fprintf(stream, "  %%%-3u ~%-5lu (%d) ", instr->id, instr->_serial, instr->ref_count);
+#else
   fprintf(stream, "  %%%-3u (%d) ", instr->id, instr->ref_count);
+#endif
   print_type(instr->value.type, true, stream);
   fprintf(stream, " ");
 }
