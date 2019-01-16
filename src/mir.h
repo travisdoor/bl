@@ -41,6 +41,10 @@
 struct Assembly;
 struct Builder;
 
+// TODO: remove
+// TODO: remove
+// TODO: remove
+// TODO: remove
 typedef uint8_t * MirStackPtr;
 typedef ptrdiff_t MirRelativeStackPtr;
 
@@ -161,7 +165,8 @@ struct MirType
   MirTypeKind kind;
   const char *name;
   LLVMTypeRef llvm_type;
-  size_t      size;
+  size_t      size_bits;
+  size_t      store_size_bytes;
   unsigned    alignment;
 
   union
@@ -175,7 +180,7 @@ struct MirType
 };
 
 /* VALUE */
-union MirValueData
+union MirConstValue
 {
   uint64_t    v_uint;
   int64_t     v_int;
@@ -191,9 +196,9 @@ union MirValueData
 
 struct MirValue
 {
-  union MirValueData data;
-  MirType *          type;
-  bool               is_stack_allocated;
+  union MirConstValue data;
+  MirType *           type;
+  bool                is_stack_allocated;
 };
 
 /* VAR */
