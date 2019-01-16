@@ -83,11 +83,21 @@ typedef enum
   _BUILDIN_TYPE_COUNT,
 } BuildinType;
 
-typedef struct FrameStackTop
+typedef struct Frame
 {
-  struct FrameStackTop *prev;
-  MirInstr *            callee;
-} FrameStackTop;
+  struct Frame *prev;
+  MirInstr *    callee;
+} Frame;
+
+typedef struct Stack
+{
+  MirStackPtr top_ptr;         /* pointer to top of the stack */
+  size_t      used_bytes;      /* size of the used stack in bytes */
+  size_t      allocated_bytes; /* total allocated size of the stack in bytes */
+  Frame *     curr_frame;      /* current frame beginning */
+  MirInstr *  curr_instr;      /* currently executed instruction */
+  bool        aborted;         /* true when execution was aborted */
+} Stack;
 
 typedef struct
 {
@@ -97,29 +107,8 @@ typedef struct
   BArray *   analyze_stack;
   BArray *   test_cases;
 
-  struct
-  {
-    /* pointer to allocated memory for execution */
-    MirStackPtr stack;
-
-    /* total allocated stack size in bytes */
-    size_t stack_size;
-
-    /* current frame stack top (pointer to call instruction) this pointer is changed only by call
-     * instruction */
-    union
-    {
-      FrameStackTop *data;
-      MirStackPtr    ptr;
-    } cfst;
-
-    MirStackPtr stack_ptr;
-    size_t      stack_allocated;
-
-    // BArray *  call_stack;
-    MirInstr *curr_instr;
-    bool      aborted;
-  } exec;
+  /* stack header is also allocated on the stack :) */
+  Stack *exec_stack;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -201,12 +190,6 @@ init_buildins(Context *cnt);
 
 static int
 init_dl(Context *cnt);
-
-static void
-init_frame_stack(Context *cnt, size_t size);
-
-static void
-terminate_frame_stack(Context *cnt);
 
 static void
 terminate_dl(Context *cnt);
@@ -563,6 +546,13 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 static void
 exec_print_call_stack(Context *cnt, size_t max_nesting);
 
+static Stack *
+exec_new_stack(size_t size);
+
+static void
+exec_delete_stack(Stack *stack);
+
+/* INLINES */
 static inline const char *
 gen_uq_name(Context *cnt, const char *prefix)
 {
@@ -656,58 +646,68 @@ exec_read_uint64(MirValue *value)
 }
 
 static inline void
-exec_abort(Context *cnt, int report_stack_nesting)
+exec_abort(Stack *stack, int report_stack_nesting)
 {
-  exec_print_call_stack(cnt, report_stack_nesting);
-  cnt->exec.aborted = true;
+  // TODO
+  // exec_print_call_stack(cnt, report_stack_nesting);
+  stack->aborted = true;
 }
 
 /* allocate memory on frame stack, size is in bits!!! */
 static inline MirStackPtr
-exec_stack_alloc(Context *cnt, const size_t size)
+exec_stack_alloc(Stack *stack, const size_t size)
 {
   assert(size && "trying to allocate 0 bits on stack");
 
   // bl_log("allocate %u bytes on stack", size);
-  cnt->exec.stack_allocated += size;
-  if (cnt->exec.stack_allocated > cnt->exec.stack_size) {
+  stack->used_bytes += size;
+  if (stack->used_bytes > stack->allocated_bytes) {
     msg_error("Stack overflow!!!");
-    exec_abort(cnt, 10);
+    exec_abort(stack, 10);
   }
 
-  MirStackPtr mem = cnt->exec.stack_ptr;
-  cnt->exec.stack_ptr += size;
+  MirStackPtr mem = stack->top_ptr;
+  stack->top_ptr += size;
   return mem;
 }
 
 static inline void
-exec_push_cfst(Context *cnt, MirInstr *instr)
+exec_push_curr_frame(Stack *stack, MirInstr *instr)
 {
-  FrameStackTop *prev         = cnt->exec.cfst.data;
-  cnt->exec.cfst.ptr          = exec_stack_alloc(cnt, sizeof(FrameStackTop));
-  cnt->exec.cfst.data->callee = instr;
-  cnt->exec.cfst.data->prev   = prev;
+  Frame *prev = stack->curr_frame;
+  Frame *tmp  = (Frame *)exec_stack_alloc(stack, sizeof(Frame));
+  tmp->callee = instr;
+  tmp->prev   = prev;
 }
 
 static inline MirInstr *
-exec_pop_cfst(Context *cnt)
+exec_pop_curr_frame(Stack *stack)
 {
-  if (!cnt->exec.cfst.ptr) return NULL;
-  cnt->exec.cfst.data = cnt->exec.cfst.data->prev;
-  cnt->exec.stack_ptr = cnt->exec.cfst.ptr;
-  return cnt->exec.cfst.data->callee;
+  if (!stack->curr_frame) return NULL;
+  stack->top_ptr    = (MirStackPtr)stack->curr_frame;
+  stack->curr_frame = stack->curr_frame->prev;
+  return stack->curr_frame->callee;
+}
+
+static inline void
+exec_push_value(Stack *stack, MirValue *value)
+{
+  assert(value && value->type);
+  const size_t size         = store_sizeof_type_in_bytes(value->type);
+  value->data.v_stack_ptr   = exec_stack_alloc(stack, size);
+  value->is_stack_allocated = true;
 }
 
 static inline MirInstr *
-exec_get_curr_instr(Context *cnt)
+exec_get_curr_instr(Stack *stack)
 {
-  return cnt->exec.curr_instr;
+  return stack->curr_instr;
 }
 
-static inline void 
-exec_set_curr_instr(Context *cnt, MirInstr *instr)
+static inline void
+exec_set_curr_instr(Stack *stack, MirInstr *instr)
 {
-  cnt->exec.curr_instr= instr;
+  stack->curr_instr = instr;
 }
 
 static inline void
@@ -2239,6 +2239,29 @@ analyze(Context *cnt)
 }
 
 /* executing */
+Stack *
+exec_new_stack(size_t size)
+{
+  if (size == 0) bl_abort("invalid frame stack size");
+
+  Stack *header = bl_malloc(sizeof(char) * size);
+  if (!header) bl_abort("bad alloc");
+
+  header->curr_instr      = NULL;
+  header->curr_frame      = NULL;
+  header->aborted         = false;
+  header->allocated_bytes = size;
+  header->used_bytes      = sizeof(Stack);
+  header->top_ptr         = (MirStackPtr)header + sizeof(Stack);
+  return header;
+}
+
+void
+exec_delete_stack(Stack *stack)
+{
+  bl_free(stack);
+}
+
 void
 exec_print_call_stack(Context *cnt, size_t max_nesting)
 {
@@ -2356,7 +2379,7 @@ MirValue *
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   msg_error("execution reached unreachable code");
-  exec_abort(cnt, 0);
+  exec_abort(cnt->exec_stack, 0);
   return NULL;
 }
 
@@ -2364,7 +2387,7 @@ MirValue *
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
-  cnt->exec.curr_instr = br->then_block->entry_instr;
+  exec_set_curr_instr(cnt->exec_stack, br->then_block->entry_instr);
   return &br->base.value;
 }
 
@@ -2392,9 +2415,9 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   assert(cond->type);
 
   if (exec_read_int64(cond)) {
-    cnt->exec.curr_instr = br->then_block->entry_instr;
+    exec_set_curr_instr(cnt->exec_stack, br->then_block->entry_instr);
   } else {
-    cnt->exec.curr_instr = br->else_block->entry_instr;
+    exec_set_curr_instr(cnt->exec_stack, br->else_block->entry_instr);
   }
 
   return &br->base.value;
@@ -2409,7 +2432,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   assert(var);
 
   /* allocate memory for variable on frame stack */
-  exec_frame_stack_alloc(cnt, &var->value);
+  exec_push_value(cnt->exec_stack, &var->value);
 
   return &decl->base.value;
 }
@@ -2431,7 +2454,7 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
 
   if (deref == NULL) {
     msg_error("dereferencing of null pointer detected");
-    exec_abort(cnt, 0);
+    exec_abort(cnt->exec_stack, 0);
   } else {
     load->base.value.data               = deref->data;
     load->base.value.is_stack_allocated = deref->is_stack_allocated;
@@ -2565,7 +2588,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
   const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
   /* Push current frame stack top. */
-  exec_push_cfst(cnt, cnt->exec.curr_instr);
+  exec_push_curr_frame(cnt->exec_stack, exec_get_curr_instr(cnt->exec_stack));
 
   /* store return frame pointer */
   fn->exec_ret_value = out_value;
@@ -2622,25 +2645,30 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
 
     if (!fn->first_block->entry_instr) return does_return_value;
 
-    exec_set_curr_instr(cnt, fn->first_block->entry_instr);
+    /* setup entry instruction */
+    exec_set_curr_instr(cnt->exec_stack, fn->first_block->entry_instr);
 
     /* iterate over entry block of executable */
     MirInstr *instr, *prev;
     while (true) {
-      instr = exec_get_curr_instr(cnt);
+      instr = exec_get_curr_instr(cnt->exec_stack);
       prev  = instr;
-      if (!instr || cnt->exec.aborted) break;
+      if (!instr || cnt->exec_stack->aborted) break;
 
       exec_instr(cnt, instr);
 
       /* stack head can be changed by br instructions */
-      if (exec_get_curr_instr(cnt) == prev) exec_set_curr_instr(cnt, instr->next);
+      if (exec_get_curr_instr(cnt->exec_stack) == prev) exec_set_curr_instr(cnt->exec_stack, instr->next);
     }
   }
 
   /* do frame stack rollback */
-  cnt->exec.curr_instr = exec_pop_cfst(cnt);
-  return does_return_value && !cnt->exec.aborted;
+  {
+    MirInstr *curr_instr = exec_pop_curr_frame(cnt->exec_stack);
+    exec_set_curr_instr(cnt->exec_stack, curr_instr);
+  }
+
+  return does_return_value && !cnt->exec_stack->aborted;
 }
 
 MirValue *
@@ -3663,7 +3691,7 @@ execute_entry_fn(Context *cnt)
     int64_t tmp = exec_read_int64(&result);
     msg_log("execution finished with state: %lld\n", (long long)tmp);
   } else {
-    msg_log("execution finished %s\n", cnt->exec.aborted ? "with errors" : "without errors");
+    msg_log("execution finished %s\n", cnt->exec_stack->aborted ? "with errors" : "without errors");
   }
 }
 
@@ -3680,17 +3708,17 @@ execute_test_cases(Context *cnt)
 
   barray_foreach(cnt->test_cases, test_fn)
   {
-    cnt->exec.aborted = false;
+    cnt->exec_stack->aborted = false;
     assert(test_fn->is_test_case);
     exec_fn(cnt, test_fn, NULL, NULL);
 
     line = test_fn->node ? test_fn->node->src->line : -1;
     file = test_fn->node ? test_fn->node->src->unit->filepath : "?";
 
-    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'", cnt->exec.aborted ? RED("FAILED") : GREEN("PASSED"),
+    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'", cnt->exec_stack->aborted ? RED("FAILED") : GREEN("PASSED"),
             i + 1, c, file, line, test_fn->test_case_desc);
 
-    if (cnt->exec.aborted) ++failed;
+    if (cnt->exec_stack->aborted) ++failed;
   }
 
   msg_log("testing done, %d of %zu failed\n", failed, c);
@@ -3735,29 +3763,6 @@ init_buildins(Context *cnt)
       create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
 
   cnt->buildin_types.entry_test_case_fn = create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
-}
-
-void
-init_frame_stack(Context *cnt, size_t size)
-{
-  if (size == 0) bl_abort("invalid frame stack size");
-
-  MirStackPtr stack = bl_malloc(sizeof(char) * size);
-  if (!stack) bl_abort("bad alloc");
-
-  cnt->exec.stack           = stack;
-  cnt->exec.stack_ptr       = stack;
-  cnt->exec.stack_allocated = 0;
-  cnt->exec.stack_size      = size;
-
-  /* set stack terminator */
-  cnt->exec.cfst = NULL;
-}
-
-void
-terminate_frame_stack(Context *cnt)
-{
-  bl_free(cnt->exec.stack);
 }
 
 int
@@ -3823,10 +3828,9 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.verbose_pre     = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
   cnt.verbose_post    = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
   cnt.analyze_stack   = bo_array_new(sizeof(MirInstr *));
-  cnt.exec.call_stack = bo_array_new(sizeof(MirInstr *));
   cnt.test_cases      = bo_array_new(sizeof(MirFn *));
 
-  init_frame_stack(&cnt, DEFAULT_EXEC_FRAME_STACK_SIZE);
+  cnt.exec_stack = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
   init_buildins(&cnt);
 
   entry_fn_hash = bo_hash_from_str(entry_fn_name);
@@ -3850,9 +3854,8 @@ mir_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.analyze_stack);
-  bo_unref(cnt.exec.call_stack);
   bo_unref(cnt.test_cases);
 
   terminate_dl(&cnt);
-  terminate_frame_stack(&cnt);
+  exec_delete_stack(cnt.exec_stack);
 }

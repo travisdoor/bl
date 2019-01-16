@@ -41,8 +41,8 @@
 struct Assembly;
 struct Builder;
 
-typedef unsigned short *MirStackPtr;
-typedef ptrdiff_t      MirRelativeStackPtr;
+typedef uint8_t * MirStackPtr;
+typedef ptrdiff_t MirRelativeStackPtr;
 
 typedef struct MirModule MirModule;
 typedef struct MirType   MirType;
