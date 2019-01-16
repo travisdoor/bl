@@ -542,6 +542,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 static bool
 exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value);
 
+static MirValue *
+exec_call_top_lvl(Context *cnt, MirInstrCall *call);
+
 /* zero max nesting = unlimited nesting */
 static void
 exec_print_call_stack(Context *cnt, size_t max_nesting);
@@ -1684,14 +1687,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
   if (!fn_proto->base.value.type) {
     assert(fn_proto->type && fn_proto->type->kind == MIR_INSTR_CALL);
     analyze_instr(cnt, fn_proto->type, true);
-    MirValue *type_val = exec_instr(cnt, fn_proto->type);
+    MirValue *type_val = exec_call_top_lvl(cnt, (MirInstrCall *)fn_proto->type);
     unref_instr(fn_proto->type);
     assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
 
     if (fn_proto->user_type) {
       assert(fn_proto->user_type->kind == MIR_INSTR_CALL);
       analyze_instr(cnt, fn_proto->user_type, true);
-      MirValue *user_type_val = exec_instr(cnt, fn_proto->user_type);
+      MirValue *user_type_val = exec_call_top_lvl(cnt, (MirInstrCall *)fn_proto->user_type);
       unref_instr(fn_proto->user_type);
       assert(user_type_val->type && user_type_val->type->kind == MIR_TYPE_TYPE);
 
@@ -1990,8 +1993,9 @@ bool
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   if (decl->type) {
+    assert(decl->type->kind == MIR_INSTR_CALL && "expected type resolver call");
     analyze_instr(cnt, decl->type, true);
-    MirValue *resolved_type_value = exec_instr(cnt, decl->type);
+    MirValue *resolved_type_value = exec_call_top_lvl(cnt, (MirInstrCall *) decl->type);
     unref_instr(decl->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
     MirType *resolved_type = resolved_type_value->data.v_type;
@@ -2554,6 +2558,20 @@ exec_instr_const(Context *cnt, MirInstrConst *cnst)
   return &cnst->base.value;
 }
 
+static MirValue * 
+exec_call_top_lvl(Context *cnt, MirInstrCall *call)
+{
+  assert(call && call->base.analyzed);
+
+  assert(call->callee && call->base.value.type);
+  MirValue *callee_val = &call->callee->value;
+  assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
+
+  MirFn *fn = callee_val->data.v_fn;
+  exec_fn(cnt, fn, call->args, &call->base.value);
+  return &call->base.value;
+}
+
 static inline void
 exec_fn_push_dc_arg(Context *cnt, MirValue *val)
 {
@@ -2689,7 +2707,36 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
   MirFn *fn = callee_val->data.v_fn;
-  exec_fn(cnt, fn, call->args, &call->base.value);
+  assert(fn);
+
+  /* Push current frame stack top. */
+  {
+    MirInstr *curr_instr = exec_get_curr_instr(cnt);
+    exec_push_curr_frame(cnt, curr_instr);
+  }
+
+  if (fn->is_external) {
+    bl_unimplemented;
+  } else {
+    /* cleanup */
+    if (fn->arg_slots) bo_array_clear(fn->arg_slots);
+    /* copy arguments into arg slots of the executed function */
+    if (call->args) {
+      MirInstr *arg;
+      MirValue *arg_val;
+      barray_foreach(call->args, arg)
+      {
+        arg_val = &arg->value;
+        bo_array_push_back(fn->arg_slots, arg_val);
+      }
+    }
+
+    assert(fn->first_block->entry_instr);
+
+    /* setup entry instruction */
+    exec_set_curr_instr(cnt, fn->first_block->entry_instr);
+  }
+
   return &call->base.value;
 }
 
@@ -2705,6 +2752,13 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
   /* set fn execution resulting instruction */
   *fn->exec_ret_value = *val;
+
+  /* do frame stack rollback */
+  {
+    MirInstr *curr_instr = exec_pop_curr_frame(cnt);
+    exec_set_curr_instr(cnt, curr_instr);
+  }
+
   return &ret->base.value;
 }
 
