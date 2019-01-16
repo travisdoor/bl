@@ -3,10 +3,11 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-  i : s32;
-  i = 10; 
+  return 666; 
+};
 
-  return 0; 
+foo :: fn (i: s32, j: bool) s32 {
+  return 0;
 };
 
 /*

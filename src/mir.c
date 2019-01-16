@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include <stdalign.h>
 #include "mir.h"
 #include "unit.h"
 #include "common.h"
@@ -689,6 +690,17 @@ exec_stack_alloc(Context *cnt, const size_t size)
   return mem;
 }
 
+/* shift stack top by the size in bytes */
+static inline void
+exec_stack_free(Context *cnt, const size_t size)
+{
+  // bl_log("free %u bytes on stack", size);
+  const MirStackPtr new_top = cnt->exec_stack->top_ptr - size;
+  if (new_top < (MirStackPtr)(cnt->exec_stack->curr_frame + 1)) bl_abort("Stack underflow!!!");
+  cnt->exec_stack->top_ptr = new_top;
+  cnt->exec_stack->used_bytes -= size;
+}
+
 static inline void
 exec_push_curr_frame(Context *cnt, MirInstr *instr)
 {
@@ -721,6 +733,29 @@ exec_push_value(Context *cnt, MirValue *value)
   /* pointer relative to frame top */
   value->data.v_stack_ptr = exec_stack_alloc(cnt, size) - (MirStackPtr)cnt->exec_stack->curr_frame;
   value->is_stack_allocated = true;
+}
+
+static inline MirRelativeStackPtr
+exec_push_stack(Context *cnt, MirValue *value)
+{
+  assert(value && value->type);
+  const size_t size = store_sizeof_type_in_bytes(value->type);
+  bl_log("STACK PUSH %uB", size);
+  /* pointer relative to frame top */
+  MirStackPtr tmp = exec_stack_alloc(cnt, size);
+  memcpy(tmp, &value->data, size);
+  return tmp - (MirStackPtr)cnt->exec_stack->curr_frame;
+}
+
+static inline MirStackPtr
+exec_pop_stack(Context *cnt, MirType *type)
+{
+  assert(type);
+  const size_t size = store_sizeof_type_in_bytes(type);
+  assert(size && "popping zero sized data on stack");
+  bl_log("STACK POP %uB", size);
+  exec_stack_free(cnt, size);
+  return cnt->exec_stack->top_ptr;
 }
 
 static inline MirInstr *
@@ -947,7 +982,7 @@ create_type_type(Context *cnt)
   MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind      = MIR_TYPE_TYPE;
   tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp, NULL, NULL);
+  tmp->llvm_type = to_llvm_type(cnt, tmp, &tmp->size, &tmp->alignment);
   return tmp;
 }
 
@@ -1486,7 +1521,13 @@ to_llvm_type(Context *cnt, MirType *type, size_t *out_size, unsigned *out_alignm
   LLVMTypeRef result = NULL;
 
   switch (type->kind) {
-  case MIR_TYPE_TYPE:
+  case MIR_TYPE_TYPE: {
+    if (out_size) *out_size = sizeof(MirType *) * 8;
+    if (out_alignment) *out_alignment = alignof(MirType *);
+    result = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    break;
+  }
+
   case MIR_TYPE_VOID: {
     if (out_size) *out_size = 0;
     if (out_alignment) *out_alignment = 0;
@@ -2272,6 +2313,9 @@ exec_new_stack(size_t size)
 
   Stack *stack = bl_malloc(sizeof(char) * size);
   if (!stack) bl_abort("bad alloc");
+#if BL_DEBUG
+  memset(stack, 0, size);
+#endif
 
   stack->allocated_bytes = size;
   exec_reset_stack(stack);
@@ -2529,12 +2573,6 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 void
 exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
-  MirType *ret_type = NULL;
-  if (type_fn->ret_type) {
-    ret_type = type_fn->ret_type->value.data.v_type;
-    assert(ret_type);
-  }
-
   BArray *arg_types = NULL;
   if (type_fn->arg_types) {
     arg_types = bo_array_new(sizeof(MirType *));
@@ -2544,12 +2582,20 @@ exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
     MirType * tmp;
     barray_foreach(type_fn->arg_types, arg_type)
     {
-      tmp = arg_type->value.data.v_type;
+      tmp = *(MirType **)exec_pop_stack(cnt, arg_type->value.type);
+      assert(tmp);
       bo_array_push_back(arg_types, tmp);
     }
   }
 
+  MirType *ret_type = NULL;
+  if (type_fn->ret_type) {
+    ret_type = *(MirType **)exec_pop_stack(cnt, type_fn->ret_type->value.type);
+    assert(ret_type);
+  }
+
   type_fn->base.value.data.v_type = create_type_fn(cnt, ret_type, arg_types);
+  exec_push_stack(cnt, &type_fn->base.value);
 }
 
 void
@@ -2580,6 +2626,7 @@ void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.value.type);
+  exec_push_stack(cnt, &cnst->base.value);
 }
 
 static MirValue *
@@ -2750,10 +2797,15 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
   /* return from function with void return type */
   if (!ret->value) return;
-  MirValue *val = &ret->value->value;
+  MirStackPtr data = exec_pop_stack(cnt, ret->value->value.type);
+  assert(data);
 
+  /* TODO */
   /* set fn execution resulting instruction */
-  if (fn->exec_ret_value) *fn->exec_ret_value = *val;
+  if (fn->exec_ret_value) {
+    const size_t size = store_sizeof_type_in_bytes(ret->value->value.type);
+    memcpy(&fn->exec_ret_value->data, data, size);
+  }
 }
 
 /* INT MATH */
@@ -3455,15 +3507,15 @@ ast_type_fn(Context *cnt, Ast *type_fn)
   if (ast_arg_types && bo_array_size(ast_arg_types)) {
     const size_t c = bo_array_size(ast_arg_types);
     arg_types      = bo_array_new(sizeof(MirInstr *));
-    bo_array_reserve(arg_types, c);
+    bo_array_resize(arg_types, c);
 
     Ast *     ast_arg_type;
     MirInstr *arg_type;
-    for (size_t i = 0; i < c; ++i) {
+    for (size_t i = c; i-- > 0;) {
       ast_arg_type = bo_array_at(ast_arg_types, i, Ast *);
       arg_type     = ast(cnt, ast_arg_type);
       ref_instr(arg_type);
-      bo_array_push_back(arg_types, arg_type);
+      bo_array_at(arg_types, i, MirInstr *) = arg_type;
     }
   }
 
