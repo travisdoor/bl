@@ -485,58 +485,58 @@ static void
 analyze(Context *cnt);
 
 /* execute */
-static MirValue *
+static void
 exec_instr(Context *cnt, MirInstr *instr);
 
-static MirValue *
+static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static MirValue *
+static void
 exec_instr_br(Context *cnt, MirInstrBr *br);
 
-static MirValue *
+static void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
-static MirValue *
+static void
 exec_instr_arg(Context *cnt, MirInstrArg *arg);
 
-static MirValue *
+static void
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
-static MirValue *
+static void
 exec_instr_const(Context *cnt, MirInstrConst *cnst);
 
-static MirValue *
+static void
 exec_instr_load(Context *cnt, MirInstrLoad *load);
 
-static MirValue *
+static void
 exec_instr_store(Context *cnt, MirInstrStore *store);
 
-static MirValue *
+static void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static MirValue *
+static void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static MirValue *
+static void
 exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static MirValue *
+static void
 exec_instr_call(Context *cnt, MirInstrCall *call);
 
-static MirValue *
+static void
 exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 
-static MirValue *
+static void
 exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
 
-static MirValue *
+static void
 exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr);
 
-static MirValue *
+static void
 exec_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static MirValue *
+static void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
 static bool
@@ -554,6 +554,9 @@ exec_new_stack(size_t size);
 
 static void
 exec_delete_stack(Stack *stack);
+
+static void
+exec_reset_stack(Stack *stack);
 
 /* INLINES */
 static inline const char *
@@ -598,12 +601,24 @@ is_array_type(MirType *type)
   return type->kind == MIR_TYPE_ARRAY;
 }
 
+static inline MirStackPtr
+exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr)
+{
+  assert(rel_ptr);
+
+  MirStackPtr base = (MirStackPtr)cnt->exec_stack->curr_frame;
+  assert(base);
+
+  return base + rel_ptr;
+}
+
 static inline void
-exec_copy_value(MirValue *dest, MirValue *src)
+exec_copy_value(Context *cnt, MirValue *dest, MirValue *src)
 {
   assert(dest->is_stack_allocated);
-  MirStackPtr dest_ptr = dest->data.v_stack_ptr;
-  MirStackPtr src_ptr  = src->is_stack_allocated ? src->data.v_stack_ptr : (MirStackPtr)&src->data;
+  MirStackPtr dest_ptr = exec_read_stack_ptr(cnt, dest->data.v_stack_ptr);
+  MirStackPtr src_ptr  = src->is_stack_allocated ? exec_read_stack_ptr(cnt, src->data.v_stack_ptr)
+                                                : (MirStackPtr)&src->data;
 
   assert(dest_ptr && src_ptr);
   const size_t size = store_sizeof_type_in_bytes(dest->type);
@@ -613,7 +628,7 @@ exec_copy_value(MirValue *dest, MirValue *src)
 }
 
 static inline int64_t
-exec_read_int64(MirValue *value)
+exec_read_int64(Context *cnt, MirValue *value)
 {
   if (!value->is_stack_allocated) return value->data.v_int;
   assert(value->data.v_stack_ptr);
@@ -624,14 +639,14 @@ exec_read_int64(MirValue *value)
   int64_t tmp = 0;
 
   MirStackPtr dest_ptr = (void *)&tmp;
-  MirStackPtr src_ptr  = value->data.v_stack_ptr;
+  MirStackPtr src_ptr  = exec_read_stack_ptr(cnt, value->data.v_stack_ptr);
   memcpy(dest_ptr, src_ptr, size);
 
   return tmp;
 }
 
 static inline uint64_t
-exec_read_uint64(MirValue *value)
+exec_read_uint64(Context *cnt, MirValue *value)
 {
   if (!value->is_stack_allocated) return value->data.v_uint;
   assert(value->data.v_stack_ptr);
@@ -642,7 +657,7 @@ exec_read_uint64(MirValue *value)
   uint64_t tmp = 0;
 
   MirStackPtr dest_ptr = (void *)&tmp;
-  MirStackPtr src_ptr  = value->data.v_stack_ptr;
+  MirStackPtr src_ptr  = exec_read_stack_ptr(cnt, value->data.v_stack_ptr);
   memcpy(dest_ptr, src_ptr, size);
 
   return tmp;
@@ -689,8 +704,11 @@ exec_pop_curr_frame(Context *cnt)
 {
   if (!cnt->exec_stack->curr_frame) return NULL;
   MirInstr *callee = cnt->exec_stack->curr_frame->callee;
+
   /* rollback */
-  cnt->exec_stack->top_ptr    = (MirStackPtr)cnt->exec_stack->curr_frame;
+  MirStackPtr new_top_ptr     = (MirStackPtr)cnt->exec_stack->curr_frame;
+  cnt->exec_stack->used_bytes = cnt->exec_stack->top_ptr - new_top_ptr;
+  cnt->exec_stack->top_ptr    = new_top_ptr;
   cnt->exec_stack->curr_frame = cnt->exec_stack->curr_frame->prev;
   return callee;
 }
@@ -699,8 +717,9 @@ static inline void
 exec_push_value(Context *cnt, MirValue *value)
 {
   assert(value && value->type);
-  const size_t size         = store_sizeof_type_in_bytes(value->type);
-  value->data.v_stack_ptr   = exec_stack_alloc(cnt, size);
+  const size_t size = store_sizeof_type_in_bytes(value->type);
+  /* pointer relative to frame top */
+  value->data.v_stack_ptr = exec_stack_alloc(cnt, size) - (MirStackPtr)cnt->exec_stack->curr_frame;
   value->is_stack_allocated = true;
 }
 
@@ -1995,7 +2014,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   if (decl->type) {
     assert(decl->type->kind == MIR_INSTR_CALL && "expected type resolver call");
     analyze_instr(cnt, decl->type, true);
-    MirValue *resolved_type_value = exec_call_top_lvl(cnt, (MirInstrCall *) decl->type);
+    MirValue *resolved_type_value = exec_call_top_lvl(cnt, (MirInstrCall *)decl->type);
     unref_instr(decl->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
     MirType *resolved_type = resolved_type_value->data.v_type;
@@ -2251,22 +2270,28 @@ exec_new_stack(size_t size)
 {
   if (size == 0) bl_abort("invalid frame stack size");
 
-  Stack *header = bl_malloc(sizeof(char) * size);
-  if (!header) bl_abort("bad alloc");
+  Stack *stack = bl_malloc(sizeof(char) * size);
+  if (!stack) bl_abort("bad alloc");
 
-  header->curr_instr      = NULL;
-  header->curr_frame      = NULL;
-  header->aborted         = false;
-  header->allocated_bytes = size;
-  header->used_bytes      = sizeof(Stack);
-  header->top_ptr         = (MirStackPtr)header + sizeof(Stack);
-  return header;
+  stack->allocated_bytes = size;
+  exec_reset_stack(stack);
+  return stack;
 }
 
 void
 exec_delete_stack(Stack *stack)
 {
   bl_free(stack);
+}
+
+void
+exec_reset_stack(Stack *stack)
+{
+  stack->curr_instr = NULL;
+  stack->curr_frame = NULL;
+  stack->aborted    = false;
+  stack->used_bytes = sizeof(Stack);
+  stack->top_ptr    = (MirStackPtr)stack + sizeof(Stack);
 }
 
 void
@@ -2295,10 +2320,10 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
   }
 }
 
-MirValue *
+void
 exec_instr(Context *cnt, MirInstr *instr)
 {
-  if (!instr) return NULL;
+  if (!instr) return;
   if (!instr->analyzed) {
 #if BL_DEBUG
     bl_abort("instruction %s (%llu) has not been analyzed!", mir_instr_name(instr), instr->_serial);
@@ -2317,48 +2342,65 @@ exec_instr(Context *cnt, MirInstr *instr)
 
   switch (instr->kind) {
   case MIR_INSTR_CONST:
-    return exec_instr_const(cnt, (MirInstrConst *)instr);
+    exec_instr_const(cnt, (MirInstrConst *)instr);
+    break;
   case MIR_INSTR_BINOP:
-    return exec_instr_binop(cnt, (MirInstrBinop *)instr);
+    exec_instr_binop(cnt, (MirInstrBinop *)instr);
+    break;
   case MIR_INSTR_UNOP:
-    return exec_instr_unop(cnt, (MirInstrUnop *)instr);
+    exec_instr_unop(cnt, (MirInstrUnop *)instr);
+    break;
   case MIR_INSTR_CALL:
-    return exec_instr_call(cnt, (MirInstrCall *)instr);
+    exec_instr_call(cnt, (MirInstrCall *)instr);
+    break;
   case MIR_INSTR_RET:
-    return exec_instr_ret(cnt, (MirInstrRet *)instr);
+    exec_instr_ret(cnt, (MirInstrRet *)instr);
+    break;
   case MIR_INSTR_TYPE_FN:
-    return exec_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
+    exec_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
+    break;
   case MIR_INSTR_TYPE_PTR:
-    return exec_instr_type_ptr(cnt, (MirInstrTypePtr *)instr);
+    exec_instr_type_ptr(cnt, (MirInstrTypePtr *)instr);
+    break;
   case MIR_INSTR_TYPE_ARRAY:
-    return exec_instr_type_array(cnt, (MirInstrTypeArray *)instr);
+    exec_instr_type_array(cnt, (MirInstrTypeArray *)instr);
+    break;
   case MIR_INSTR_DECL_VAR:
-    return exec_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+    exec_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+    break;
   case MIR_INSTR_STORE:
-    return exec_instr_store(cnt, (MirInstrStore *)instr);
+    exec_instr_store(cnt, (MirInstrStore *)instr);
+    break;
   case MIR_INSTR_DECL_REF:
-    return exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    break;
   case MIR_INSTR_LOAD:
-    return exec_instr_load(cnt, (MirInstrLoad *)instr);
+    exec_instr_load(cnt, (MirInstrLoad *)instr);
+    break;
   case MIR_INSTR_BR:
-    return exec_instr_br(cnt, (MirInstrBr *)instr);
+    exec_instr_br(cnt, (MirInstrBr *)instr);
+    break;
   case MIR_INSTR_COND_BR:
-    return exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
+    exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
+    break;
   case MIR_INSTR_UNREACHABLE:
-    return exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
   case MIR_INSTR_ARG:
-    return exec_instr_arg(cnt, (MirInstrArg *)instr);
+    exec_instr_arg(cnt, (MirInstrArg *)instr);
+    break;
   case MIR_INSTR_ELEM_PTR:
-    return exec_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    exec_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    break;
 
   default:
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
   }
 
-  return NULL;
+  return;
 }
 
-MirValue *
+void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
   assert(elem_ptr->arr_ptr && elem_ptr->index);
@@ -2372,7 +2414,7 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   MirValue *elem_value = &elem_ptr->base.value;
   MirValue *index      = &elem_ptr->index->value;
 
-  const uint64_t i         = exec_read_uint64(index);
+  const uint64_t i         = exec_read_uint64(cnt, index);
   const size_t   elem_size = store_sizeof_type_in_bytes(elem_value->type);
   assert(elem_size && "invalid size of array element");
 
@@ -2382,27 +2424,23 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   elem_ptr->tmp_value.data.v_stack_ptr += i * elem_size;
 
   elem_value->data.v_ptr = &elem_ptr->tmp_value;
-
-  return elem_value;
 }
 
-MirValue *
+void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   msg_error("execution reached unreachable code");
   exec_abort(cnt, 0);
-  return NULL;
 }
 
-MirValue *
+void
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
   exec_set_curr_instr(cnt, br->then_block->entry_instr);
-  return &br->base.value;
 }
 
-MirValue *
+void
 exec_instr_arg(Context *cnt, MirInstrArg *arg)
 {
   MirFn *fn = arg->base.owner_block->owner_fn;
@@ -2415,26 +2453,23 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   MirValue *val                      = bo_array_at(arg_slots, arg->i, MirValue *);
   arg->base.value.is_stack_allocated = val->is_stack_allocated;
   arg->base.value.data               = val->data;
-  return &arg->base.value;
 }
 
-MirValue *
+void
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
   assert(br->cond);
   MirValue *cond = &br->cond->value;
   assert(cond->type);
 
-  if (exec_read_int64(cond)) {
+  if (exec_read_int64(cnt, cond)) {
     exec_set_curr_instr(cnt, br->then_block->entry_instr);
   } else {
     exec_set_curr_instr(cnt, br->else_block->entry_instr);
   }
-
-  return &br->base.value;
 }
 
-MirValue *
+void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   assert(decl->base.value.type);
@@ -2444,11 +2479,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   /* allocate memory for variable on frame stack */
   exec_push_value(cnt, &var->value);
-
-  return &decl->base.value;
 }
 
-MirValue *
+void
 exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
   assert(load->src);
@@ -2456,7 +2489,7 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
   MirValue *deref = NULL;
 
   if (load->src->value.is_stack_allocated) {
-    MirStackPtr ptr = load->src->value.data.v_stack_ptr;
+    MirStackPtr ptr = exec_read_stack_ptr(cnt, load->src->value.data.v_stack_ptr);
     assert(ptr);
     deref = *(MirValue **)ptr;
   } else {
@@ -2470,11 +2503,9 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
     load->base.value.data               = deref->data;
     load->base.value.is_stack_allocated = deref->is_stack_allocated;
   }
-
-  return &load->base.value;
 }
 
-MirValue *
+void
 exec_instr_store(Context *cnt, MirInstrStore *store)
 {
   MirInstr *dest = store->dest;
@@ -2486,19 +2517,16 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   assert(deref_dest && "invalid pointer reference");
 
   /* copy from source to destination */
-  exec_copy_value(deref_dest, &src->value);
-
-  return &store->base.value;
+  exec_copy_value(cnt, deref_dest, &src->value);
 }
 
-MirValue *
+void
 exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   assert(ref->base.value.type);
-  return &ref->base.value;
 }
 
-MirValue *
+void
 exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
   MirType *ret_type = NULL;
@@ -2522,19 +2550,17 @@ exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   }
 
   type_fn->base.value.data.v_type = create_type_fn(cnt, ret_type, arg_types);
-  return &type_fn->base.value;
 }
 
-MirValue *
+void
 exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   MirType *type = type_ptr->type->value.data.v_type;
   assert(type);
   type_ptr->base.value.data.v_type = create_type_ptr(cnt, type);
-  return &type_ptr->base.value;
 }
 
-MirValue *
+void
 exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
   MirType *elem_type = type_arr->elem_type->value.data.v_type;
@@ -2545,20 +2571,18 @@ exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   /* TODO: len set by immutable variable need to be set before use!!! */
   /* TODO: len set by immutable variable need to be set before use!!! */
   assert(type_arr->elem_type->kind == MIR_INSTR_CONST);
-  size_t len = exec_read_uint64(&type_arr->len->value);
+  size_t len = exec_read_uint64(cnt, &type_arr->len->value);
 
   type_arr->base.value.data.v_type = create_type_array(cnt, elem_type, len);
-  return &type_arr->base.value;
 }
 
-MirValue *
+void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.value.type);
-  return &cnst->base.value;
 }
 
-static MirValue * 
+static MirValue *
 exec_call_top_lvl(Context *cnt, MirInstrCall *call)
 {
   assert(call && call->base.analyzed);
@@ -2572,8 +2596,42 @@ exec_call_top_lvl(Context *cnt, MirInstrCall *call)
   return &call->base.value;
 }
 
+bool
+exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
+{
+  assert(fn);
+  MirType *ret_type = fn->type->data.fn.ret_type;
+  assert(ret_type);
+  const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
+
+  exec_reset_stack(cnt->exec_stack);
+  /* push terminal frame on stack */
+  exec_push_curr_frame(cnt, NULL);
+
+  /* store return frame pointer */
+  fn->exec_ret_value = out_value;
+
+  /* setup entry instruction */
+  exec_set_curr_instr(cnt, fn->first_block->entry_instr);
+
+  /* iterate over entry block of executable */
+  MirInstr *instr, *prev;
+  while (true) {
+    instr = exec_get_curr_instr(cnt);
+    prev  = instr;
+    if (!instr || cnt->exec_stack->aborted) break;
+
+    exec_instr(cnt, instr);
+
+    /* stack head can be changed by br instructions */
+    if (exec_get_curr_instr(cnt) == prev) exec_set_curr_instr(cnt, instr->next);
+  }
+
+  return does_return_value && !cnt->exec_stack->aborted;
+}
+
 static inline void
-exec_fn_push_dc_arg(Context *cnt, MirValue *val)
+exec_push_dc_arg(Context *cnt, MirValue *val)
 {
   MirType *type = val->type;
   assert(type);
@@ -2582,16 +2640,16 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   case MIR_TYPE_INT: {
     switch (type->data.integer.bitcount) {
     case 64:
-      dcArgLongLong(cnt->dl.vm, exec_read_int64(val));
+      dcArgLongLong(cnt->dl.vm, exec_read_int64(cnt, val));
       break;
     case 32:
-      dcArgInt(cnt->dl.vm, (DCint)exec_read_int64(val));
+      dcArgInt(cnt->dl.vm, (DCint)exec_read_int64(cnt, val));
       break;
     case 16:
-      dcArgShort(cnt->dl.vm, (DCshort)exec_read_int64(val));
+      dcArgShort(cnt->dl.vm, (DCshort)exec_read_int64(cnt, val));
       break;
     case 8:
-      dcArgChar(cnt->dl.vm, (DCchar)exec_read_int64(val));
+      dcArgChar(cnt->dl.vm, (DCchar)exec_read_int64(cnt, val));
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -2604,33 +2662,29 @@ exec_fn_push_dc_arg(Context *cnt, MirValue *val)
   }
 }
 
-bool
-exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
+void
+exec_instr_call(Context *cnt, MirInstrCall *call)
 {
+  assert(call->callee && call->base.value.type);
+  MirValue *callee_val = &call->callee->value;
+  assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
+
+  MirFn *fn = callee_val->data.v_fn;
   assert(fn);
+
   MirType *ret_type = fn->type->data.fn.ret_type;
   assert(ret_type);
-  const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
-
-  /* Push current frame stack top. */
-  {
-    MirInstr *curr_instr = exec_get_curr_instr(cnt);
-    exec_push_curr_frame(cnt, curr_instr);
-  }
-
-  /* store return frame pointer */
-  fn->exec_ret_value = out_value;
 
   if (fn->is_external) {
     assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
     dcReset(cnt->dl.vm);
 
-    if (args) {
+    if (call->args) {
       MirInstr *arg;
-      barray_foreach(args, arg)
+      barray_foreach(call->args, arg)
       {
-        exec_fn_push_dc_arg(cnt, &arg->value);
+        exec_push_dc_arg(cnt, &arg->value);
       }
     }
 
@@ -2638,16 +2692,16 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
     case MIR_TYPE_INT:
       switch (ret_type->data.integer.bitcount) {
       case sizeof(char) * 8:
-        out_value->data.v_int = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        call->base.value.data.v_int = dcCallChar(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(short) * 8:
-        out_value->data.v_int = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        call->base.value.data.v_int = dcCallShort(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(int) * 8:
-        out_value->data.v_int = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        call->base.value.data.v_int = dcCallInt(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(long long) * 8:
-        out_value->data.v_int = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        call->base.value.data.v_int = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
         break;
       default:
         bl_abort("unsupported integer size for external call result");
@@ -2658,66 +2712,9 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirValue *out_value)
       bl_abort("unsupported external call return type");
     }
   } else {
-    /* cleanup */
-    if (fn->arg_slots) bo_array_clear(fn->arg_slots);
-    /* copy arguments into arg slots of the executed function */
-    if (args) {
-      MirInstr *arg;
-      MirValue *arg_val;
-      barray_foreach(args, arg)
-      {
-        arg_val = &arg->value;
-        bo_array_push_back(fn->arg_slots, arg_val);
-      }
-    }
+    /* Push current frame stack top. (Later poped by ret instruction)*/
+    exec_push_curr_frame(cnt, &call->base);
 
-    if (!fn->first_block->entry_instr) return does_return_value;
-
-    /* setup entry instruction */
-    exec_set_curr_instr(cnt, fn->first_block->entry_instr);
-
-    /* iterate over entry block of executable */
-    MirInstr *instr, *prev;
-    while (true) {
-      instr = exec_get_curr_instr(cnt);
-      prev  = instr;
-      if (!instr || cnt->exec_stack->aborted) break;
-
-      exec_instr(cnt, instr);
-
-      /* stack head can be changed by br instructions */
-      if (exec_get_curr_instr(cnt) == prev) exec_set_curr_instr(cnt, instr->next);
-    }
-  }
-
-  /* do frame stack rollback */
-  {
-    MirInstr *curr_instr = exec_pop_curr_frame(cnt);
-    exec_set_curr_instr(cnt, curr_instr);
-  }
-
-  return does_return_value && !cnt->exec_stack->aborted;
-}
-
-MirValue *
-exec_instr_call(Context *cnt, MirInstrCall *call)
-{
-  assert(call->callee && call->base.value.type);
-  MirValue *callee_val = &call->callee->value;
-  assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
-
-  MirFn *fn = callee_val->data.v_fn;
-  assert(fn);
-
-  /* Push current frame stack top. */
-  {
-    MirInstr *curr_instr = exec_get_curr_instr(cnt);
-    exec_push_curr_frame(cnt, curr_instr);
-  }
-
-  if (fn->is_external) {
-    bl_unimplemented;
-  } else {
     /* cleanup */
     if (fn->arg_slots) bo_array_clear(fn->arg_slots);
     /* copy arguments into arg slots of the executed function */
@@ -2736,55 +2733,52 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     /* setup entry instruction */
     exec_set_curr_instr(cnt, fn->first_block->entry_instr);
   }
-
-  return &call->base.value;
 }
 
-MirValue *
+void
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   MirFn *fn = ret->base.owner_block->owner_fn;
   assert(fn);
 
-  /* return from function with void return type */
-  if (!ret->value) return NULL;
-  MirValue *val = &ret->value->value;
-
-  /* set fn execution resulting instruction */
-  *fn->exec_ret_value = *val;
-
   /* do frame stack rollback */
   {
     MirInstr *curr_instr = exec_pop_curr_frame(cnt);
+    curr_instr           = curr_instr ? curr_instr->next : NULL;
     exec_set_curr_instr(cnt, curr_instr);
   }
 
-  return &ret->base.value;
+  /* return from function with void return type */
+  if (!ret->value) return;
+  MirValue *val = &ret->value->value;
+
+  /* set fn execution resulting instruction */
+  if (fn->exec_ret_value) *fn->exec_ret_value = *val;
 }
 
 /* INT MATH */
 static inline void
 exec_math_add(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
-  dest->data.v_int = exec_read_int64(lhs) + exec_read_int64(rhs);
+  dest->data.v_int = exec_read_int64(cnt, lhs) + exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_sub(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
-  dest->data.v_int = exec_read_int64(lhs) - exec_read_int64(rhs);
+  dest->data.v_int = exec_read_int64(cnt, lhs) - exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_mul(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
-  dest->data.v_int = exec_read_int64(lhs) * exec_read_int64(rhs);
+  dest->data.v_int = exec_read_int64(cnt, lhs) * exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_div(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest, Src *rhs_src)
 {
-  if (exec_read_int64(rhs) == 0) {
+  if (exec_read_int64(cnt, rhs) == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DIV_BY_ZERO, rhs_src, BUILDER_CUR_WORD,
                 "division by zero");
 
@@ -2792,66 +2786,66 @@ exec_math_div(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest, Src *r
     return;
   }
 
-  dest->data.v_int = exec_read_int64(lhs) / exec_read_int64(rhs);
+  dest->data.v_int = exec_read_int64(cnt, lhs) / exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_eq(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) == exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) == exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_neq(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) != exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) != exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_less(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) < exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) < exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_less_eq(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) <= exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) <= exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_greater(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) > exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) > exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_greater_eq(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) >= exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) >= exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_logic_and(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) && exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) && exec_read_int64(cnt, rhs);
 }
 
 static inline void
 exec_math_logic_or(Context *cnt, MirValue *lhs, MirValue *rhs, MirValue *dest)
 {
   assert(dest->type->kind == MIR_TYPE_BOOL);
-  dest->data.v_bool = exec_read_int64(lhs) || exec_read_int64(rhs);
+  dest->data.v_bool = exec_read_int64(cnt, lhs) || exec_read_int64(cnt, rhs);
 }
 
-MirValue *
+void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
   MirValue *lhs    = &binop->lhs->value;
@@ -2901,23 +2895,21 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   default:
     bl_unimplemented;
   }
-
-  return result;
 }
 
-MirValue *
+void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
   assert(unop->base.value.type);
   switch (unop->op) {
   case UNOP_NEG:
-    unop->base.value.data.v_int = exec_read_int64(&unop->instr->value) * -1;
+    unop->base.value.data.v_int = exec_read_int64(cnt, &unop->instr->value) * -1;
     break;
   case UNOP_POS:
-    unop->base.value.data.v_int = exec_read_int64(&unop->instr->value);
+    unop->base.value.data.v_int = exec_read_int64(cnt, &unop->instr->value);
     break;
   case UNOP_NOT:
-    unop->base.value.data.v_int = !exec_read_int64(&unop->instr->value);
+    unop->base.value.data.v_int = !exec_read_int64(cnt, &unop->instr->value);
     break;
   case UNOP_ADR:
     unop->base.value.data = unop->instr->value.data;
@@ -2925,8 +2917,6 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
   default:
     bl_unimplemented;
   }
-
-  return &unop->base.value;
 }
 
 /* MIR building */
@@ -3752,7 +3742,7 @@ execute_entry_fn(Context *cnt)
   /* tmp return value storage */
   MirValue result;
   if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
-    int64_t tmp = exec_read_int64(&result);
+    int64_t tmp = exec_read_int64(cnt, &result);
     msg_log("execution finished with state: %lld\n", (long long)tmp);
   } else {
     msg_log("execution finished %s\n", cnt->exec_stack->aborted ? "with errors" : "without errors");

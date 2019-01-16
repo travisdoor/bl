@@ -184,8 +184,9 @@ union MirValueData
   MirType *   v_type;
   MirValue *  v_ptr;
   MirFn *     v_fn;
-  MirStackPtr v_stack_ptr;
   void *      v_void_ptr;
+
+  MirRelativeStackPtr v_stack_ptr;
 };
 
 struct MirValue
