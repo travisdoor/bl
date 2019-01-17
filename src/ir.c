@@ -166,9 +166,9 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
-  assert(load->base.value.type && "invalid type of load instruction");
+  assert(load->base.const_value.type && "invalid type of load instruction");
   LLVMValueRef   llvm_src  = load->src->llvm_value;
-  const unsigned alignment = load->base.value.type->alignment;
+  const unsigned alignment = load->base.const_value.type->alignment;
   assert(llvm_src);
   load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
   LLVMSetAlignment(load->base.llvm_value, alignment);
@@ -177,7 +177,7 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
 void
 gen_instr_const(Context *cnt, MirInstrConst *cnst)
 {
-  MirValue *value = &cnst->base.value;
+  MirConstValue *value = &cnst->base.const_value;
   MirType * type  = value->type;
   assert(type);
   LLVMTypeRef llvm_type = type->llvm_type;
@@ -208,7 +208,7 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 {
   LLVMValueRef   val       = store->src->llvm_value;
   LLVMValueRef   ptr       = store->dest->llvm_value;
-  const unsigned alignment = store->src->value.type->alignment;
+  const unsigned alignment = store->src->const_value.type->alignment;
   assert(val && ptr);
   store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
   LLVMSetAlignment(store->base.llvm_value, alignment);
@@ -337,9 +337,9 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 {
   MirInstr *callee = call->callee;
   assert(callee);
-  assert(callee->value.type && callee->value.type->kind == MIR_TYPE_FN);
+  assert(callee->const_value.type && callee->const_value.type->kind == MIR_TYPE_FN);
 
-  LLVMValueRef  llvm_fn   = gen_fn_proto(cnt, callee->value.data.v_fn);
+  LLVMValueRef  llvm_fn   = gen_fn_proto(cnt, callee->const_value.data.v_fn);
   const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
   LLVMValueRef *llvm_args = NULL;
 
@@ -351,7 +351,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 
     barray_foreach(call->args, arg)
     {
-      assert(arg->llvm_value && "function argument has no LLVM value");
+      assert(arg->llvm_value && "function argument has no LLVM const_value");
       llvm_args[i] = arg->llvm_value;
     }
   }
@@ -365,14 +365,14 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
-  const bool is_fn = ref->base.value.type->kind == MIR_TYPE_FN;
+  const bool is_fn = ref->base.const_value.type->kind == MIR_TYPE_FN;
 
   if (is_fn) {
     /* generate or get function prototype */
-    MirFn *fn = ref->base.value.data.v_fn;
+    MirFn *fn = ref->base.const_value.data.v_fn;
     gen_fn_proto(cnt, fn);
   } else {
-    /* copy llvm value */
+    /* copy llvm const_value */
     MirInstr *decl = ref->scope_entry->instr;
     assert(decl);
     ref->base.llvm_value = decl->llvm_value;
@@ -387,8 +387,8 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   assert(var);
 
   const char *   name      = var->name;
-  LLVMTypeRef    llvm_type = var->value.type->llvm_type;
-  const unsigned alignment = var->value.type->alignment;
+  LLVMTypeRef    llvm_type = var->alloc_type->llvm_type;
+  const unsigned alignment = var->alloc_type->alignment;
   assert(llvm_type && name);
 
   decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);
@@ -457,7 +457,7 @@ gen_instr_block(Context *cnt, MirInstrBlock *block)
 void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-  MirFn *fn = fn_proto->base.value.data.v_fn;
+  MirFn *fn = fn_proto->base.const_value.data.v_fn;
   gen_fn_proto(cnt, fn);
 
   if (!fn->is_external) {
