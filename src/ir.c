@@ -97,9 +97,6 @@ static void
 gen_instr_call(Context *cnt, MirInstrCall *call);
 
 static void
-gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-
-static void
 gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
 static inline LLVMValueRef
@@ -363,24 +360,6 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 }
 
 void
-gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
-{
-  const bool is_fn = ref->base.const_value.type->kind == MIR_TYPE_FN;
-
-  if (is_fn) {
-    /* generate or get function prototype */
-    MirFn *fn = ref->base.const_value.data.v_fn;
-    gen_fn_proto(cnt, fn);
-  } else {
-    /* copy llvm const_value */
-    MirInstr *decl = ref->scope_entry->instr;
-    assert(decl);
-    ref->base.llvm_value = decl->llvm_value;
-    assert(ref->base.llvm_value);
-  }
-}
-
-void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
@@ -508,9 +487,6 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_CALL:
     gen_instr_call(cnt, (MirInstrCall *)instr);
-    break;
-  case MIR_INSTR_DECL_REF:
-    gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
     break;
   case MIR_INSTR_ARG:
     gen_instr_arg(cnt, (MirInstrArg *)instr);

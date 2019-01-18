@@ -71,12 +71,12 @@
 
 typedef struct
 {
-  Builder * builder;
-  Assembly *assembly;
-  Unit *    unit;
-  Arena *   ast_arena;
-  Arena *   scope_arena;
-  Tokens *  tokens;
+  Builder *    builder;
+  Assembly *   assembly;
+  Unit *       unit;
+  Arena *      ast_arena;
+  ScopeArenas *scope_arenas;
+  Tokens *     tokens;
 
   /* tmps */
   Scope *scope;
@@ -296,7 +296,7 @@ provide_gscope(Context *cnt, Ast *ident, bool in_tree)
   assert(ident->kind == AST_IDENT);
 
   if (!cnt->scope->is_global) return;
-  
+
   const uint64_t key       = ident->data.ident.hash;
   ScopeEntry *   collision = scope_lookup(cnt->scope, key, in_tree);
   if (collision) {
@@ -308,8 +308,8 @@ provide_gscope(Context *cnt, Ast *ident, bool in_tree)
     return;
   }
 
-  ScopeEntry entry = {.node = ident, .instr = NULL};
-  scope_insert(cnt->scope, key, &entry);
+  ScopeEntry *entry = scope_create_entry(cnt->scope_arenas, ident, NULL);
+  scope_insert(cnt->scope, key, entry);
 }
 
 Ast *
@@ -557,7 +557,7 @@ parse_stmt_loop(Context *cnt)
   Ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin);
   push_inloop(cnt);
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 8, false);
   push_scope(cnt, scope);
 
   if (!while_true) {
@@ -822,7 +822,7 @@ parse_expr_lit_fn(Context *cnt)
 
   Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn);
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 32, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 32, false);
   push_scope(cnt, scope);
 
   Ast *type = parse_type_fn(cnt, true);
@@ -939,7 +939,7 @@ parse_type_enum(Context *cnt)
   Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
   if (!tok_enum) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 512, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 512, false);
   push_scope(cnt, scope);
 
   Ast *enm                    = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum);
@@ -1102,7 +1102,7 @@ parse_type_struct(Context *cnt)
   Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
   if (!tok_struct) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 256, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 256, false);
   push_scope(cnt, scope);
 
   Token *tok = tokens_consume(cnt->tokens);
@@ -1367,7 +1367,7 @@ parse_block(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
   if (!tok_begin) return NULL;
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 1024, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 1024, false);
   push_scope(cnt, scope);
 
   Ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin);
@@ -1467,7 +1467,7 @@ parse_test_case(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
-  Scope *scope = scope_create(cnt->scope_arena, cnt->scope, 8, false);
+  Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 8, false);
   push_scope(cnt, scope);
 
   Ast *block = parse_block(cnt);
@@ -1530,17 +1530,17 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
   unit->ast              = root;
 
   if (!assembly->gscope)
-    assembly->gscope = scope_create(&builder->scope_arena, NULL, EXPECTED_GSCOPE_COUNT, true);
+    assembly->gscope = scope_create(&builder->scope_arenas, NULL, EXPECTED_GSCOPE_COUNT, true);
 
-  Context cnt = {.builder     = builder,
-                 .assembly    = assembly,
-                 .scope       = assembly->gscope,
-                 .unit        = unit,
-                 .ast_arena   = &builder->ast_arena,
-                 .scope_arena = &builder->scope_arena,
-                 .tokens      = &unit->tokens,
-                 .curr_decl   = NULL,
-                 .inside_loop = false};
+  Context cnt = {.builder      = builder,
+                 .assembly     = assembly,
+                 .scope        = assembly->gscope,
+                 .unit         = unit,
+                 .ast_arena    = &builder->ast_arena,
+                 .scope_arenas = &builder->scope_arenas,
+                 .tokens       = &unit->tokens,
+                 .curr_decl    = NULL,
+                 .inside_loop  = false};
 
   parse_ublock_content(&cnt, unit->ast);
 }

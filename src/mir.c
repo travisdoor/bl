@@ -95,12 +95,12 @@ typedef struct MirFrame
 
 typedef struct MirStack
 {
-  MirGenericValuePtr top_ptr;         /* pointer to top of the stack */
-  size_t             used_bytes;      /* size of the used stack in bytes */
-  size_t             allocated_bytes; /* total allocated size of the stack in bytes */
-  MirFrame *         curr_frame;      /* current frame beginning */
-  MirInstr *         pc;              /* currently executed instruction */
-  bool               aborted;         /* true when execution was aborted */
+  uint8_t * top_ptr;         /* pointer to top of the stack */
+  size_t    used_bytes;      /* size of the used stack in bytes */
+  size_t    allocated_bytes; /* total allocated size of the stack in bytes */
+  MirFrame *curr_frame;      /* current frame beginning */
+  MirInstr *pc;              /* currently executed instruction */
+  bool      aborted;         /* true when execution was aborted */
 } MirStack;
 
 typedef struct
@@ -113,6 +113,9 @@ typedef struct
 
   /* stack header is also allocated on the stack :) */
   MirStack *exec_stack;
+#if BL_DEBUG
+  int64_t (*_debug_stack)[150];
+#endif
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -524,9 +527,6 @@ static void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static void
-exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-
-static void
 exec_instr_call(Context *cnt, MirInstrCall *call);
 
 static void
@@ -631,8 +631,8 @@ exec_stack_alloc(Context *cnt, const size_t size)
     exec_abort(cnt, 10);
   }
 
-  MirGenericValuePtr mem = cnt->exec_stack->top_ptr;
-  cnt->exec_stack->top_ptr += size;
+  MirGenericValuePtr mem   = (MirGenericValuePtr)cnt->exec_stack->top_ptr;
+  cnt->exec_stack->top_ptr = cnt->exec_stack->top_ptr + size;
   return mem;
 }
 
@@ -641,9 +641,8 @@ static inline void
 exec_stack_free(Context *cnt, const size_t size)
 {
   // bl_log("free %u bytes on stack", size);
-  MirGenericValuePtr new_top = cnt->exec_stack->top_ptr - size;
-  if (new_top < (MirGenericValuePtr)(cnt->exec_stack->curr_frame + 1))
-    bl_abort("ExecStack underflow!!!");
+  uint8_t *new_top = cnt->exec_stack->top_ptr - size;
+  if (new_top < (uint8_t *)(cnt->exec_stack->curr_frame + 1)) bl_abort("ExecStack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
   cnt->exec_stack->used_bytes -= size;
 }
@@ -665,10 +664,10 @@ exec_pop_curr_frame(Context *cnt)
   MirInstr *callee = cnt->exec_stack->curr_frame->callee;
 
   /* rollback */
-  MirGenericValuePtr new_top_ptr = (MirGenericValuePtr)cnt->exec_stack->curr_frame;
-  cnt->exec_stack->used_bytes    = cnt->exec_stack->top_ptr - new_top_ptr;
-  cnt->exec_stack->top_ptr       = new_top_ptr;
-  cnt->exec_stack->curr_frame    = cnt->exec_stack->curr_frame->prev;
+  uint8_t *new_top_ptr        = (uint8_t *)cnt->exec_stack->curr_frame;
+  cnt->exec_stack->used_bytes = cnt->exec_stack->top_ptr - new_top_ptr;
+  cnt->exec_stack->top_ptr    = new_top_ptr;
+  cnt->exec_stack->curr_frame = cnt->exec_stack->curr_frame->prev;
   return callee;
 }
 
@@ -709,7 +708,7 @@ exec_pop_stack(Context *cnt, MirType *type)
 #endif
 
   exec_stack_free(cnt, size);
-  return cnt->exec_stack->top_ptr;
+  return (MirGenericValuePtr)cnt->exec_stack->top_ptr;
 }
 
 #define exec_pop_stack_as(cnt, type, T) ((T)exec_pop_stack((cnt), (type)))
@@ -824,7 +823,7 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
               tmp_from, tmp_to);
 }
 
-static inline void
+static inline ScopeEntry *
 provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
 {
   assert(ident);
@@ -844,14 +843,15 @@ provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
 
     builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src, BUILDER_CUR_WORD,
                 "previous declaration found here");
-    return;
+    return NULL;
   }
 
-  ScopeEntry entry = {.node = ident, .instr = instr};
-  scope_insert(scope, key, &entry);
+  ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, ident, instr);
+  scope_insert(scope, key, entry);
+  return entry;
 }
 
-static inline void
+static inline ScopeEntry *
 provide_into_existing_scope_entry(Context *cnt, Ast *ident, MirInstr *instr)
 {
   /* Prepare scope entry created in parser */
@@ -861,6 +861,7 @@ provide_into_existing_scope_entry(Context *cnt, Ast *ident, MirInstr *instr)
   ScopeEntry *scope_entry = scope_lookup(scope, ident->data.ident.hash, false);
   assert(scope_entry && "declaration has no scope entry");
   scope_entry->instr = instr;
+  return scope_entry;
 }
 
 static inline bool
@@ -887,7 +888,7 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
     break;
   }
 
-  return append_instr_load(cnt, NULL, src);
+  return append_instr_load(cnt, src->node, src);
 }
 
 static inline void
@@ -918,6 +919,7 @@ unref_instr(MirInstr *instr)
   case MIR_INSTR_CONST:
   case MIR_INSTR_FN_PROTO:
   case MIR_INSTR_DECL_VAR:
+  case MIR_INSTR_DECL_REF:
     break;
   default:
     bl_abort("unimplemented for %s", mir_instr_name(instr));
@@ -1663,15 +1665,17 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
-  // Ast *ast_ident = ref->base.node;
   ScopeEntry *scope_entry = ref->scope_entry;
   assert(scope_entry);
 
   assert(scope_entry->instr);
   assert(scope_entry->instr->analyzed);
+  assert(scope_entry->instr->const_value.type);
 
-  ref->base.const_value = scope_entry->instr->const_value;
+  ref->base.const_value.type = scope_entry->instr->const_value.type;
   ref_instr(scope_entry->instr);
+
+  erase_from_curr_block(cnt, &ref->base);
   return true;
 }
 
@@ -1818,6 +1822,12 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   MirType *type = src->const_value.type->data.ptr.next;
   assert(type);
   load->base.const_value.type = type;
+
+  /* src is declref -> we replace reference to true declaration */
+  if (src->kind == MIR_INSTR_DECL_REF) {
+    load->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
+    assert(load->src && "invalid destination for load instruction");
+  }
 
   return true;
 }
@@ -2119,6 +2129,12 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   /* store implicitly yields void const_value */
   store->base.const_value.type = cnt->buildin_types.entry_void;
 
+  /* destination is declref -> we replace reference to true declaration */
+  if (dest->kind == MIR_INSTR_DECL_REF) {
+    store->dest = ((MirInstrDeclRef *)dest)->scope_entry->instr;
+    assert(store->dest && "invalid destination for store instruction");
+  }
+
   return true;
 }
 
@@ -2296,7 +2312,7 @@ exec_reset_stack(MirStack *stack)
   stack->curr_frame = NULL;
   stack->aborted    = false;
   stack->used_bytes = sizeof(MirStack);
-  stack->top_ptr    = (MirGenericValuePtr)stack + sizeof(MirStack);
+  stack->top_ptr    = (uint8_t *)stack + sizeof(MirStack);
 }
 
 void
@@ -2376,9 +2392,6 @@ exec_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_STORE:
     exec_instr_store(cnt, (MirInstrStore *)instr);
-    break;
-  case MIR_INSTR_DECL_REF:
-    exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
     break;
   case MIR_INSTR_LOAD:
     exec_instr_load(cnt, (MirInstrLoad *)instr);
@@ -2495,52 +2508,51 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 void
 exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
-  /* pop source from stack, push on to stack dereferenced value of source */
-  MirType *src_type = load->src->const_value.type;
-  assert(src_type);
+  /* pop source from stack or load directly when src is declaration, push on to stack dereferenced
+   * value of source */
+  MirType *src_type  = load->src->const_value.type;
+  MirType *dest_type = load->base.const_value.type;
+  assert(src_type && dest_type);
   assert(is_pointer_type(src_type));
 
-  MirGenericValuePtr src_ptr = exec_pop_stack(cnt, src_type);
+  MirGenericValuePtr src_ptr = NULL;
+  if (load->src->kind == MIR_INSTR_DECL_VAR) {
+    MirRelativeStackPtr src_rel_ptr = load->src->const_value.data.v_rel_stack_ptr;
+    src_ptr                         = exec_read_stack_ptr(cnt, src_rel_ptr);
+  } else {
+    src_ptr = exec_pop_stack(cnt, src_type);
+    src_ptr = src_ptr->v_stack_ptr;
+  }
   assert(src_ptr);
 
-  MirGenericValue tmp;
-  tmp.v_int = 77;
-  exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_s32);
+  exec_push_stack(cnt, src_ptr, dest_type);
 }
 
 void
 exec_instr_store(Context *cnt, MirInstrStore *store)
 {
-  /* loads source and destination from stack */
+  /* loads destination (in case it is not direct reference to declaration) and source from stack
+   */
   MirType *src_type  = store->src->const_value.type;
   MirType *dest_type = store->dest->const_value.type;
   assert(src_type && dest_type);
   assert(is_pointer_type(dest_type));
 
-  MirGenericValuePtr src_ptr  = exec_pop_stack(cnt, src_type);
-  MirGenericValuePtr dest_ptr = exec_pop_stack(cnt, dest_type);
+  MirGenericValuePtr dest_ptr = NULL;
+  MirGenericValuePtr src_ptr  = NULL;
+
+  if (store->dest->kind == MIR_INSTR_DECL_VAR) {
+    MirRelativeStackPtr dest_rel_ptr = store->dest->const_value.data.v_rel_stack_ptr;
+    dest_ptr                         = exec_read_stack_ptr(cnt, dest_rel_ptr);
+  } else {
+    dest_ptr = exec_pop_stack(cnt, dest_type);
+    dest_ptr = dest_ptr->v_stack_ptr;
+  }
+
+  src_ptr = exec_pop_stack(cnt, src_type);
   assert(src_ptr);
 
   memcpy(dest_ptr, src_ptr, exec_store_size(src_type));
-}
-
-void
-exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
-{
-  /* this instruction push real pointer to some declaration on the stack */
-  MirConstValue *value      = &ref->base.const_value;
-  MirConstValue *referenced = &ref->scope_entry->instr->const_value;
-  MirType *      value_type = value->type;
-  assert(value_type);
-
-  MirGenericValue result = {0};
-  if (value_type->kind == MIR_TYPE_PTR) {
-    result.v_stack_ptr = exec_read_stack_ptr(cnt, referenced->data.v_rel_stack_ptr);
-  } else {
-    result.v_stack_ptr = ref->scope_entry->instr->const_value.data.v_stack_ptr;
-  }
-
-  exec_push_stack(cnt, &result, value_type);
 }
 
 void
@@ -2563,7 +2575,8 @@ exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
   MirType *ret_type = NULL;
   if (type_fn->ret_type) {
-    ret_type = *exec_pop_stack_as(cnt, type_fn->ret_type->const_value.type, MirType **);
+    MirGenericValuePtr tmp = exec_pop_stack(cnt, type_fn->ret_type->const_value.type);
+    ret_type               = tmp->v_type;
     assert(ret_type);
   }
 
@@ -2602,7 +2615,7 @@ void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.const_value.type);
-  exec_push_stack(cnt, (MirGenericValue *)&cnst->base.const_value.data,
+  exec_push_stack(cnt, (MirGenericValuePtr)&cnst->base.const_value.data,
                   cnst->base.const_value.type);
 }
 
@@ -2794,9 +2807,9 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-  /* binop expects rhs and lhs on stack in exact order and push result again to the stack */
-  MirGenericValuePtr rhs_ptr = exec_pop_stack(cnt, binop->rhs->const_value.type);
+  /* binop expects lhs and rhs on stack in exact order and push result again to the stack */
   MirGenericValuePtr lhs_ptr = exec_pop_stack(cnt, binop->lhs->const_value.type);
+  MirGenericValuePtr rhs_ptr = exec_pop_stack(cnt, binop->rhs->const_value.type);
   assert(rhs_ptr && lhs_ptr);
 
   int64_t         lhs    = lhs_ptr->v_int;
@@ -3224,60 +3237,72 @@ ast_expr_binop(Context *cnt, Ast *binop)
   Ast *ast_rhs = binop->data.expr_binop.rhs;
   assert(ast_lhs && ast_rhs);
 
-  MirInstr *lhs = ast(cnt, ast_lhs);
-  MirInstr *rhs = ast(cnt, ast_rhs);
-  assert(lhs && rhs);
-
-  rhs = append_instr_load_if_needed(cnt, rhs);
-
   const BinopKind op = binop->data.expr_binop.kind;
   if (ast_binop_is_assign(op)) {
     switch (op) {
 
     case BINOP_ASSIGN: {
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+
       return append_instr_store(cnt, binop, rhs, lhs);
     }
 
     case BINOP_ADD_ASSIGN: {
-      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_ADD);
-      return append_instr_store(cnt, binop, add_tmp, lhs);
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+      MirInstr *tmp =
+          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_ADD);
+
+      return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_SUB_ASSIGN: {
-      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_SUB);
-      return append_instr_store(cnt, binop, add_tmp, lhs);
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+      MirInstr *tmp =
+          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_SUB);
+      return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_MUL_ASSIGN: {
-      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_MUL);
-      return append_instr_store(cnt, binop, add_tmp, lhs);
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+      MirInstr *tmp =
+          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_MUL);
+      return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_DIV_ASSIGN: {
-      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_DIV);
-      return append_instr_store(cnt, binop, add_tmp, lhs);
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+      MirInstr *tmp =
+          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_DIV);
+      return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_MOD_ASSIGN: {
-      MirInstr *lhs_val = append_instr_load_if_needed(cnt, lhs);
-      MirInstr *rhs_val = append_instr_load_if_needed(cnt, rhs);
-      MirInstr *add_tmp = append_instr_binop(cnt, binop, lhs_val, rhs_val, BINOP_MOD);
-      return append_instr_store(cnt, binop, add_tmp, lhs);
+      MirInstr *rhs = ast(cnt, ast_rhs);
+      rhs           = append_instr_load_if_needed(cnt, rhs);
+      MirInstr *lhs = ast(cnt, ast_lhs);
+      MirInstr *tmp =
+          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_MOD);
+      return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     default:
       bl_unimplemented;
     }
   } else {
-    lhs = append_instr_load_if_needed(cnt, lhs);
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    rhs           = append_instr_load_if_needed(cnt, rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    lhs           = append_instr_load_if_needed(cnt, lhs);
     return append_instr_binop(cnt, binop, lhs, rhs, op);
   }
 }
@@ -3347,10 +3372,11 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
     set_cursor_block(cnt, prev_block);
 
+    ScopeEntry *scope_entry = NULL;
     if (!is_ident_in_gscope(ast_name))
-      provide(cnt, ast_name, decl, false);
+      scope_entry = provide(cnt, ast_name, decl, false);
     else
-      provide_into_existing_scope_entry(cnt, ast_name, decl);
+      scope_entry = provide_into_existing_scope_entry(cnt, ast_name, decl);
 
     /* initialize const_value */
     MirInstr *value = ast(cnt, ast_value);
@@ -3849,6 +3875,11 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.test_cases    = bo_array_new(sizeof(MirFn *));
 
   cnt.exec_stack = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
+
+#if BL_DEBUG
+  cnt._debug_stack = (int64_t(*)[150])(cnt.exec_stack->top_ptr);
+#endif
+
   init_buildins(&cnt);
 
   entry_fn_hash = bo_hash_from_str(entry_fn_name);

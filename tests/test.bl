@@ -5,22 +5,29 @@
 /*
   TODO
   - method call interpreter
-  - missing decl ref for inicialization
 */
 
 main :: fn () s32 {
-  j : s32;
-  j = 666;
+  /*j := 666;
 
-  return j;
+  if (j == 667) {
+    j = 10;
+  } else {
+    j = 20;
+  }*/
+
+  result := 0;
+  loop (i := 0; i < 10; i += 1) {
+    result += 1;
+  }
+
+  return result;
 };
 
-foo :: fn () {
+/*foo :: fn () {
   i := 20 * 15 / 2 + 1;
 };
 
-
-/*
 putchar :: fn (c: s32) s32 #extern;
 
 say_hello :: fn () {
