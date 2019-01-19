@@ -264,7 +264,11 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
   print_instr_head(&call->base, stream);
 
-  fprintf(stream, "call %%%u", call->callee->id);
+  const char *callee_name = call->callee->const_value.data.v_fn->name;
+  if (callee_name)
+    fprintf(stream, "call @%s", callee_name);
+  else
+    fprintf(stream, "call %%%u", call->callee->id);
 
   fprintf(stream, "(");
   if (call->args) {

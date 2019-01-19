@@ -480,14 +480,6 @@ parse_stmt_if(Context *cnt)
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_IF);
   if (!tok_begin) return NULL;
 
-  // eat '('
-  if (!tokens_consume_if(cnt->tokens, SYM_LPAREN)) {
-    Token *tok_err = tokens_consume(cnt->tokens);
-    parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_AFTER,
-                "expected left parent '(' after 'if' statement");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
-  }
-
   Ast *stmt_if = ast_create_node(cnt->ast_arena, AST_STMT_IF, tok_begin);
 
   stmt_if->data.stmt_if.test = parse_expr(cnt);
@@ -500,14 +492,6 @@ parse_stmt_if(Context *cnt)
 
   if (stmt_if->data.stmt_if.test->kind == AST_BAD) {
     tokens_consume_till(cnt->tokens, SYM_LBLOCK);
-  }
-
-  // eat ')'
-  if (!tokens_consume_if(cnt->tokens, SYM_RPAREN)) {
-    Token *tok_err = tokens_consume(cnt->tokens);
-    parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
-                "expected closing parent ')' after 'if' statement expression");
-    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
   }
 
   stmt_if->data.stmt_if.true_stmt = parse_block(cnt);
@@ -561,15 +545,6 @@ parse_stmt_loop(Context *cnt)
   push_scope(cnt, scope);
 
   if (!while_true) {
-    // eat '('
-    if (!while_true && !tokens_consume_if(cnt->tokens, SYM_LPAREN)) {
-      Token *tok_err = tokens_consume(cnt->tokens);
-      parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_AFTER,
-                  "expected left parent '(' after 'loop' statement");
-      pop_scope(cnt);
-      return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
-    }
-
     if (tokens_lookahead(cnt->tokens, cmp_stmt_loop)) {
       /* for loop construct loop [init]; [condition]; [increment] {} */
       loop->data.stmt_loop.init = parse_decl(cnt);
@@ -586,16 +561,6 @@ parse_stmt_loop(Context *cnt)
     } else {
       /* while construct with optional condition */
       loop->data.stmt_loop.condition = parse_expr(cnt);
-    }
-
-    // eat ')'
-    if (!tokens_consume_if(cnt->tokens, SYM_RPAREN)) {
-      Token *tok_err = tokens_consume(cnt->tokens);
-      parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
-                  "expected closing parent ')'");
-      pop_inloop(cnt);
-      pop_scope(cnt);
-      return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
     }
   }
 

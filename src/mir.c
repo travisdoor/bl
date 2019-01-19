@@ -42,6 +42,8 @@
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define EXEC_MIN_STORE_SIZE             sizeof(union MirGenericValue)
+
+#define VERBOSE_EXEC false
 // clang-format on
 
 union _MirInstr
@@ -98,7 +100,7 @@ typedef struct MirStack
   uint8_t * top_ptr;         /* pointer to top of the stack */
   size_t    used_bytes;      /* size of the used stack in bytes */
   size_t    allocated_bytes; /* total allocated size of the stack in bytes */
-  MirFrame *curr_frame;      /* current frame beginning */
+  MirFrame *ra;              /* current frame beginning (return address)*/
   MirInstr *pc;              /* currently executed instruction */
   bool      aborted;         /* true when execution was aborted */
 } MirStack;
@@ -157,12 +159,6 @@ static const char *entry_fn_name                           = "main";
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s8",  "s16", "s32", "s64",   "u8",
                                                               "u16", "u32", "u64", "usize", "bool"};
 static uint64_t    entry_fn_hash                           = 0;
-
-static void
-fn_dtor(MirFn *fn)
-{
-  bo_unref(fn->arg_slots);
-}
 
 static void
 instr_dtor(MirInstr *instr)
@@ -236,8 +232,7 @@ static MirVar *
 create_var(Context *cnt, const char *name, MirType *type);
 
 static MirFn *
-create_fn(Context *cnt, Ast *node, const char *name, BArray *arg_slots, bool is_external,
-          bool is_test_case);
+create_fn(Context *cnt, Ast *node, const char *name, bool is_external, bool is_test_case);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -605,7 +600,7 @@ exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr)
 {
   assert(rel_ptr);
 
-  MirGenericValuePtr base = (MirGenericValuePtr)cnt->exec_stack->curr_frame;
+  MirGenericValuePtr base = (MirGenericValuePtr)cnt->exec_stack->ra;
   assert(base);
   return base + rel_ptr;
 }
@@ -627,7 +622,7 @@ exec_stack_alloc(Context *cnt, const size_t size)
   // bl_log("allocate %u bytes on stack", size);
   cnt->exec_stack->used_bytes += size;
   if (cnt->exec_stack->used_bytes > cnt->exec_stack->allocated_bytes) {
-    msg_error("ExecStack overflow!!!");
+    msg_error("Stack overflow!!!");
     exec_abort(cnt, 10);
   }
 
@@ -642,32 +637,49 @@ exec_stack_free(Context *cnt, const size_t size)
 {
   // bl_log("free %u bytes on stack", size);
   uint8_t *new_top = cnt->exec_stack->top_ptr - size;
-  if (new_top < (uint8_t *)(cnt->exec_stack->curr_frame + 1)) bl_abort("ExecStack underflow!!!");
+  if (new_top < (uint8_t *)(cnt->exec_stack->ra + 1)) bl_abort("Stack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
   cnt->exec_stack->used_bytes -= size;
 }
 
 static inline void
-exec_push_curr_frame(Context *cnt, MirInstr *instr)
+exec_push_ra(Context *cnt, MirInstr *instr)
 {
-  MirFrame *prev              = cnt->exec_stack->curr_frame;
-  MirFrame *tmp               = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
-  tmp->callee                 = instr;
-  tmp->prev                   = prev;
-  cnt->exec_stack->curr_frame = tmp;
+  MirFrame *prev      = cnt->exec_stack->ra;
+  MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
+  tmp->callee         = instr;
+  tmp->prev           = prev;
+  cnt->exec_stack->ra = tmp;
+
+#if BL_DEBUG && VERBOSE_EXEC
+  {
+    if (instr) {
+      bl_log("~%d " YELLOW("'%s'") "> " RED("PUSH RA"), instr->_serial, mir_instr_name(instr));
+    } else {
+      bl_log(RED("'Terminal'") "> " RED("PUSH RA"));
+    }
+  }
+#endif
 }
 
 static inline MirInstr *
-exec_pop_curr_frame(Context *cnt)
+exec_pop_ra(Context *cnt)
 {
-  if (!cnt->exec_stack->curr_frame) return NULL;
-  MirInstr *callee = cnt->exec_stack->curr_frame->callee;
+  if (!cnt->exec_stack->ra) return NULL;
+  MirInstr *callee = cnt->exec_stack->ra->callee;
+
+#if BL_DEBUG && VERBOSE_EXEC
+  {
+    bl_log("~%d " YELLOW("'%s'") "> " CYAN("POP RA"), cnt->exec_stack->pc->_serial,
+           mir_instr_name(cnt->exec_stack->pc));
+  }
+#endif
 
   /* rollback */
-  uint8_t *new_top_ptr        = (uint8_t *)cnt->exec_stack->curr_frame;
+  uint8_t *new_top_ptr        = (uint8_t *)cnt->exec_stack->ra;
   cnt->exec_stack->used_bytes = cnt->exec_stack->top_ptr - new_top_ptr;
   cnt->exec_stack->top_ptr    = new_top_ptr;
-  cnt->exec_stack->curr_frame = cnt->exec_stack->curr_frame->prev;
+  cnt->exec_stack->ra         = cnt->exec_stack->ra->prev;
   return callee;
 }
 
@@ -677,7 +689,7 @@ exec_push_stack(Context *cnt, MirGenericValuePtr value, MirType *type)
   assert(type);
   const size_t       size = exec_store_size(type);
   MirGenericValuePtr tmp  = exec_stack_alloc(cnt, size);
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
@@ -689,7 +701,7 @@ exec_push_stack(Context *cnt, MirGenericValuePtr value, MirType *type)
   /* copy data when there is some */
   if (value) memcpy(tmp, value, size);
   /* pointer relative to frame top */
-  return tmp - (MirGenericValuePtr)cnt->exec_stack->curr_frame;
+  return tmp - (MirGenericValuePtr)cnt->exec_stack->ra;
 }
 
 static inline MirGenericValuePtr
@@ -698,7 +710,7 @@ exec_pop_stack(Context *cnt, MirType *type)
   assert(type);
   const size_t size = exec_store_size(type);
   assert(size && "popping zero sized data on stack");
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
@@ -717,6 +729,12 @@ static inline MirInstr *
 exec_get_pc(Context *cnt)
 {
   return cnt->exec_stack->pc;
+}
+
+static inline MirFrame *
+exec_get_ra(Context *cnt)
+{
+  return cnt->exec_stack->ra;
 }
 
 static inline void
@@ -1034,12 +1052,10 @@ create_var(Context *cnt, const char *name, MirType *type)
 }
 
 MirFn *
-create_fn(Context *cnt, Ast *node, const char *name, BArray *arg_slots, bool is_external,
-          bool is_test_case)
+create_fn(Context *cnt, Ast *node, const char *name, bool is_external, bool is_test_case)
 {
   MirFn *tmp        = arena_alloc(&cnt->module->arenas.fn_arena);
   tmp->name         = name;
-  tmp->arg_slots    = arg_slots;
   tmp->is_external  = is_external;
   tmp->is_test_case = is_test_case;
   tmp->node         = node;
@@ -1973,7 +1989,7 @@ analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
 bool
 analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-  /* compare return const_value with current function type */
+  /* compare return value with current function type */
   MirInstrBlock *block = get_current_block(cnt);
   assert(block);
   if (!block->terminal) block->terminal = &ret->base;
@@ -1990,22 +2006,22 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   const bool expected_ret_value =
       !type_cmp(fn_type->data.fn.ret_type, cnt->buildin_types.entry_void);
 
-  /* return const_value is not expected, and it's not provided */
+  /* return value is not expected, and it's not provided */
   if (!expected_ret_value && !value) {
     return true;
   }
 
-  /* return const_value is expected, but it's not provided */
+  /* return value is expected, but it's not provided */
   if (expected_ret_value && !value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->base.node->src,
-                BUILDER_CUR_AFTER, "expected return const_value");
+                BUILDER_CUR_AFTER, "expected return value");
     return false;
   }
 
-  /* return const_value is not expected, but it's provided */
+  /* return value is not expected, but it's provided */
   if (!expected_ret_value && value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->value->node->src,
-                BUILDER_CUR_WORD, "unexpected return const_value");
+                BUILDER_CUR_WORD, "unexpected return value");
     return false;
   }
 
@@ -2103,6 +2119,12 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
     }
   }
 
+  /* destination is declref -> we replace reference to true declaration */
+  if (call->callee->kind == MIR_INSTR_DECL_REF) {
+    call->callee = ((MirInstrDeclRef *)call->callee)->scope_entry->instr;
+    assert(call->callee && "invalid destination for call instruction");
+  }
+
   return true;
 }
 
@@ -2154,7 +2176,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
       append_instr_ret(cnt, NULL, NULL);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->node->src,
-                  BUILDER_CUR_WORD, "not every path inside function return const_value");
+                  BUILDER_CUR_WORD, "not every path inside function return value");
     }
   }
 
@@ -2309,7 +2331,7 @@ void
 exec_reset_stack(MirStack *stack)
 {
   stack->pc         = NULL;
-  stack->curr_frame = NULL;
+  stack->ra         = NULL;
   stack->aborted    = false;
   stack->used_bytes = sizeof(MirStack);
   stack->top_ptr    = (uint8_t *)stack + sizeof(MirStack);
@@ -2319,7 +2341,7 @@ void
 exec_print_call_stack(Context *cnt, size_t max_nesting)
 {
   MirInstr *instr = cnt->exec_stack->pc;
-  MirFrame *fr    = cnt->exec_stack->curr_frame;
+  MirFrame *fr    = cnt->exec_stack->ra;
   size_t    n     = 0;
 
   if (!instr) return;
@@ -2463,15 +2485,22 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
 void
 exec_instr_arg(Context *cnt, MirInstrArg *arg)
 {
+  /* arguments must be pushed before RA in reverse order */
   MirFn *fn = arg->base.owner_block->owner_fn;
   assert(fn);
 
-  BArray *arg_slots = fn->arg_slots;
-  assert(arg_slots);
-  assert(arg->i < bo_array_size(arg_slots));
+  /* resolve argument pointer */
+  BArray * arg_types = fn->type->data.fn.arg_types;
+  MirType *tmp_type  = NULL;
+  /* starting point */
+  uint8_t *arg_ptr = (uint8_t *)cnt->exec_stack->ra;
+  for (int i = 0; i <= arg->i; ++i) {
+    tmp_type = bo_array_at(arg_types, i, MirType *);
+    assert(tmp_type);
+    arg_ptr -= exec_store_size(tmp_type);
+  }
 
-  MirConstValue *val         = bo_array_at(arg_slots, arg->i, MirConstValue *);
-  arg->base.const_value.data = val->data;
+  exec_push_stack(cnt, (MirGenericValuePtr)arg_ptr, arg->base.const_value.type);
 }
 
 void
@@ -2643,7 +2672,7 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValue *out_value)
 
   exec_reset_stack(cnt->exec_stack);
   /* push terminal frame on stack */
-  exec_push_curr_frame(cnt, NULL);
+  exec_push_ra(cnt, NULL);
 
   /* store return frame pointer */
   fn->exec_ret_value = out_value;
@@ -2668,27 +2697,24 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValue *out_value)
 }
 
 static inline void
-exec_push_dc_arg(Context *cnt, MirConstValue *val)
+exec_push_dc_arg(Context *cnt, MirGenericValuePtr val_ptr, MirType *type)
 {
-  MirType *type = val->type;
   assert(type);
 
-  bl_unimplemented;
-  /*
   switch (type->kind) {
   case MIR_TYPE_INT: {
     switch (type->data.integer.bitcount) {
     case 64:
-      dcArgLongLong(cnt->dl.vm, exec_read_int64(cnt, val));
+      dcArgLongLong(cnt->dl.vm, val_ptr->v_int);
       break;
     case 32:
-      dcArgInt(cnt->dl.vm, (DCint)exec_read_int64(cnt, val));
+      dcArgInt(cnt->dl.vm, (DCint)val_ptr->v_int);
       break;
     case 16:
-      dcArgShort(cnt->dl.vm, (DCshort)exec_read_int64(cnt, val));
+      dcArgShort(cnt->dl.vm, (DCshort)val_ptr->v_int);
       break;
     case 8:
-      dcArgChar(cnt->dl.vm, (DCchar)exec_read_int64(cnt, val));
+      dcArgChar(cnt->dl.vm, (DCchar)val_ptr->v_int);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -2699,13 +2725,32 @@ exec_push_dc_arg(Context *cnt, MirConstValue *val)
   default:
     bl_abort("unsupported external call argument type");
   }
-  */
 }
 
+/*
+  Stack operations of call instruction and argument ordering on stack
+
+  pc   program counter (pointer to current instruction)
+  RA   return address (used later for rollback of the stack)
+
+  call fn (1, 2, 3) 4
+
+    | stack op | data         | instr |
+    |----------+--------------+-------|
+    | PUSH     | 3            | ?     |
+    | PUSH     | 2            | ?     |
+    | PUSH     | 1            | ?     |
+    | PUSH RA  | pc, prev RA  | call  |
+    | ...      | -            | -     |
+    | POP RA   | -            | ret   |
+    | POP      | -            | ret   |
+    | POP      | -            | ret   |
+    | POP      | -            | ret   |
+    | PUSH     | 4            | ret   |
+ */
 void
 exec_instr_call(Context *cnt, MirInstrCall *call)
 {
-  bl_unimplemented;
   assert(call->callee && call->base.const_value.type);
   MirConstValue *callee_val = &call->callee->const_value;
   assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
@@ -2717,32 +2762,38 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   assert(ret_type);
 
   if (fn->is_external) {
+    /* call setup and clenup */
     assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
     dcReset(cnt->dl.vm);
 
-    if (call->args) {
-      MirInstr *arg;
-      barray_foreach(call->args, arg)
+    /* pop all arguments from the stack */
+    MirGenericValuePtr arg_ptr;
+    BArray *           arg_types = fn->type->data.fn.arg_types;
+    if (arg_types) {
+      MirType *arg_type;
+      barray_foreach(arg_types, arg_type)
       {
-        exec_push_dc_arg(cnt, &arg->const_value);
+        arg_ptr = exec_pop_stack(cnt, arg_type);
+        exec_push_dc_arg(cnt, arg_ptr, arg_type);
       }
     }
 
+    MirGenericValue call_result;
     switch (ret_type->kind) {
     case MIR_TYPE_INT:
       switch (ret_type->data.integer.bitcount) {
       case sizeof(char) * 8:
-        call->base.const_value.data.v_int = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        call_result.v_int = dcCallChar(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(short) * 8:
-        call->base.const_value.data.v_int = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        call_result.v_int = dcCallShort(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(int) * 8:
-        call->base.const_value.data.v_int = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        call_result.v_int = dcCallInt(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(long long) * 8:
-        call->base.const_value.data.v_int = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        call_result.v_int = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
         break;
       default:
         bl_abort("unsupported integer size for external call result");
@@ -2752,23 +2803,11 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     default:
       bl_abort("unsupported external call return type");
     }
+
+    exec_push_stack(cnt, &call_result, ret_type);
   } else {
     /* Push current frame stack top. (Later poped by ret instruction)*/
-    exec_push_curr_frame(cnt, &call->base);
-
-    /* cleanup */
-    if (fn->arg_slots) bo_array_clear(fn->arg_slots);
-    /* copy arguments into arg slots of the executed function */
-    if (call->args) {
-      MirInstr *     arg;
-      MirConstValue *arg_val;
-      barray_foreach(call->args, arg)
-      {
-        arg_val = &arg->const_value;
-        bo_array_push_back(fn->arg_slots, arg_val);
-      }
-    }
-
+    exec_push_ra(cnt, &call->base);
     assert(fn->first_block->entry_instr);
 
     /* setup entry instruction */
@@ -2782,25 +2821,52 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   MirFn *fn = ret->base.owner_block->owner_fn;
   assert(fn);
 
-  /* pop return const_value from stack */
-  if (ret->value) {
-    MirGenericValuePtr data = exec_pop_stack(cnt, ret->value->const_value.type);
-    assert(data);
+  MirType *          ret_type     = NULL;
+  MirGenericValuePtr ret_data_ptr = NULL;
 
-    /* TODO */
+  /* pop return value from stack */
+  if (ret->value) {
+    ret_type = ret->value->const_value.type;
+    assert(ret_type);
+
+    ret_data_ptr = exec_pop_stack(cnt, ret->value->const_value.type);
+    assert(ret_data_ptr);
+
+    /* TODO: remove */
     /* set fn execution resulting instruction */
     if (fn->exec_ret_value) {
-      const size_t size = exec_store_size(ret->value->const_value.type);
-      memcpy(&fn->exec_ret_value->data, data, size);
+      const size_t size = exec_store_size(ret_type);
+      memcpy(&fn->exec_ret_value->data, ret_data_ptr, size);
     }
+
+    /* read callee from frame stack */
+    MirInstr *callee = exec_get_ra(cnt)->callee;
+    /* discard return value pointer if result is not used on caller size, this solution is kinda
+     * messy... */
+    if (!(callee && callee->ref_count > 1)) ret_data_ptr = NULL;
   }
 
   /* do frame stack rollback */
-  {
-    MirInstr *pc = exec_pop_curr_frame(cnt);
-    pc           = pc ? pc->next : NULL;
-    exec_set_pc(cnt, pc);
+  MirInstr *pc = exec_pop_ra(cnt);
+
+  /* clean up all arguments from the stack */
+  BArray *arg_types = fn->type->data.fn.arg_types;
+  if (arg_types) {
+    MirType *arg_type;
+    barray_foreach(arg_types, arg_type)
+    {
+      exec_pop_stack(cnt, arg_type);
+    }
   }
+
+  /* push return value on the stack if there is one */
+  if (ret_data_ptr) {
+    exec_push_stack(cnt, ret_data_ptr, ret_type);
+  }
+
+  /* set program counter to next instruction */
+  pc = pc ? pc->next : NULL;
+  exec_set_pc(cnt, pc);
 }
 
 /* INT MATH */
@@ -2919,7 +2985,7 @@ ast_test_case(Context *cnt, Ast *test)
 
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirFn *        fn =
-      create_fn(cnt, test, TEST_CASE_FN_NAME, NULL, false, true); /* TODO: based on user flag!!! */
+      create_fn(cnt, test, TEST_CASE_FN_NAME, false, true); /* TODO: based on user flag!!! */
   fn->node = test;
 
   assert(test->data.test_case.desc);
@@ -3105,16 +3171,19 @@ ast_expr_call(Context *cnt, Ast *call)
   MirInstr *callee = ast(cnt, ast_callee);
   BArray *  args   = NULL;
 
+  /* arguments need to be generated into reverse order due to bytecode call conventions */
   if (ast_args) {
-    args = bo_array_new(sizeof(MirInstr *));
-    bo_array_reserve(args, bo_array_size(ast_args));
+    const size_t argc = bo_array_size(ast_args);
+    args              = bo_array_new(sizeof(MirInstr *));
+    bo_array_resize(args, argc);
     MirInstr *arg;
     Ast *     ast_arg;
-    barray_foreach(ast_args, ast_arg)
-    {
-      arg = ast(cnt, ast_arg);
-      arg = append_instr_load_if_needed(cnt, arg);
-      bo_array_push_back(args, arg);
+    for (size_t i = argc; i-- > 0;) {
+      ast_arg = bo_array_at(ast_args, i, Ast *);
+      arg     = ast(cnt, ast_arg);
+      arg     = append_instr_load_if_needed(cnt, arg);
+
+      bo_array_at(args, i, MirInstr *) = arg;
     }
   }
 
@@ -3166,12 +3235,10 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *        fn =
-      create_fn(cnt, lit_fn, NULL, NULL, !ast_block, false); /* TODO: based on user flag!!! */
+  MirFn *fn = create_fn(cnt, lit_fn, NULL, !ast_block, false); /* TODO: based on user flag!!! */
   fn_proto->base.const_value.data.v_fn = fn;
 
   /* function body */
-
   /* external functions has no body */
   if (fn->is_external) return &fn_proto->base;
 
@@ -3179,18 +3246,16 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   MirInstrBlock *init_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "init");
   set_cursor_block(cnt, init_block);
 
-  /* create arg slots for the function */
+  /* build MIR for fn arguments */
   {
-    BArray *ast_args  = ast_fn_type->data.type_fn.args;
-    BArray *arg_slots = NULL;
+    BArray *ast_args = ast_fn_type->data.type_fn.args;
     if (ast_args) {
-      arg_slots = bo_array_new(sizeof(MirConstValue *));
-      bo_array_reserve(arg_slots, bo_array_size(ast_args));
-
       Ast *ast_arg;
       Ast *ast_arg_name;
-      barray_foreach(ast_args, ast_arg)
-      {
+
+      const size_t argc = bo_array_size(ast_args);
+      for (size_t i = argc; i-- > 0;) {
+        ast_arg = bo_array_at(ast_args, i, Ast *);
         assert(ast_arg->kind == AST_DECL_ARG);
         ast_arg_name = ast_arg->data.decl.name;
         assert(ast_arg_name);
@@ -3205,7 +3270,6 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
         provide(cnt, ast_arg_name, var, false);
       }
     }
-    fn->arg_slots = arg_slots;
   }
 
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "entry");
@@ -3483,7 +3547,7 @@ ast_create_type_resolver_call(Context *cnt, Ast *type)
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->const_value.type      = cnt->buildin_types.entry_resolve_type_fn;
-  fn->const_value.data.v_fn = create_fn(cnt, NULL, RESOLVE_TYPE_FN_NAME, NULL, false, false);
+  fn->const_value.data.v_fn = create_fn(cnt, NULL, RESOLVE_TYPE_FN_NAME, false, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -3630,7 +3694,7 @@ arenas_init(struct MirArenas *arenas)
              (ArenaElemDtor)instr_dtor);
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
+  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
 }
 
 static void
@@ -3723,7 +3787,7 @@ execute_entry_fn(Context *cnt)
     return;
   }
 
-  /* tmp return const_value storage */
+  /* tmp return value storage */
   MirConstValue result;
   if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
     // TODO
