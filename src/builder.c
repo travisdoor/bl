@@ -104,7 +104,7 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 
   if (!(flags & BUILDER_SYNTAX_ONLY)) {
     mir_run(builder, assembly);
-    mir_writer_run(assembly);
+    if (flags & BUILDER_EMIT_MIR) mir_writer_run(assembly);
     interrupt_on_error(builder);
 
     ir_run(builder, assembly);
