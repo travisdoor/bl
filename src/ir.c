@@ -175,7 +175,7 @@ void
 gen_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   MirConstValue *value = &cnst->base.const_value;
-  MirType * type  = value->type;
+  MirType *      type  = value->type;
   assert(type);
   LLVMTypeRef llvm_type = type->llvm_type;
   assert(llvm_type);
@@ -184,6 +184,15 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   case MIR_TYPE_INT:
     cnst->base.llvm_value =
         LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
+    break;
+  case MIR_TYPE_REAL:
+    if (type->data.real.bitcount == 32) {
+    } else if (type->data.real.bitcount == 64) {
+    } else {
+      bl_unimplemented;
+    }
+
+    cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_real);
     break;
   case MIR_TYPE_BOOL:
     cnst->base.llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
