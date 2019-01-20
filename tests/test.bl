@@ -1,37 +1,19 @@
 /* playground */
 
-//#load "std/debug.bl"
+#load "std/debug.bl"
+
+/*
+  TODO:
+  - pointers 
+  - arrays
+*/
 
 main :: fn () s32 {
-  i : s32;
-  i = 10; // generate error
-  foo(101);
-
-  homo :: fn () {
-  };
-
-  homo();
-
-  j := fn (j: s32) s32 {
-    loop (i := 0; i < j; i += 1) {
-      say_hello();
-    }
-    return j;
-  } (10);
-
-  return j; 
+  return 10;
 };
 
+/*
 putchar :: fn (c: s32) s32 #extern;
-
-foo :: fn (i: s32) {
-  putchar(i);
-  if (i == 0) {
-    return;
-  } else {
-    foo(i - 1);
-  }
-};
 
 say_hello :: fn () {
   putchar(72);
@@ -47,12 +29,4 @@ say_hello :: fn () {
   putchar(100);
   putchar(10);
 };
-
-gimme :: fn (ptr: *s32, ptr2: s32) *s32 {
-  return null;
-};
-
-#test "kokot" {
-  i := 0;
-  i;
-};
+*/

@@ -49,7 +49,7 @@ print_instr_head(MirInstr *instr, FILE *stream)
 #else
   fprintf(stream, "  %%%-3u (%d) ", instr->id, instr->ref_count);
 #endif
-  print_type(instr->value.type, true, stream);
+  print_type(instr->const_value.type, true, stream);
   fprintf(stream, " ");
 }
 
@@ -218,7 +218,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   MirVar *var = decl->var;
   assert(var);
   fprintf(stream, "decl %s : ", var->name);
-  print_type(var->value.type, false, stream);
+  print_type(var->alloc_type, false, stream);
 }
 
 void
@@ -235,7 +235,7 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
   print_instr_head(&cnst->base, stream);
 
-  MirValue *value = &cnst->base.value;
+  MirConstValue *value = &cnst->base.const_value;
   assert(value->type);
 
   fprintf(stream, "const ");
@@ -255,7 +255,7 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
   case MIR_TYPE_NULL:
     break;
   default:
-    fprintf(stream, "cannot read value");
+    fprintf(stream, "cannot read const_value");
   }
 }
 
@@ -264,7 +264,11 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
   print_instr_head(&call->base, stream);
 
-  fprintf(stream, "call %%%u", call->callee->id);
+  const char *callee_name = call->callee->const_value.data.v_fn->name;
+  if (callee_name)
+    fprintf(stream, "call @%s", callee_name);
+  else
+    fprintf(stream, "call %%%u", call->callee->id);
 
   fprintf(stream, "(");
   if (call->args) {
@@ -333,7 +337,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
-  MirFn *fn = fn_proto->base.value.data.v_fn;
+  MirFn *fn = fn_proto->base.const_value.data.v_fn;
   assert(fn);
 
   fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
@@ -345,7 +349,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     fprintf(stream, "@%u ", fn_proto->base.id);
 
   fprintf(stream, "(%d) ", fn_proto->base.ref_count);
-  print_type(fn_proto->base.value.type, false, stream);
+  print_type(fn_proto->base.const_value.type, false, stream);
 
   if (!fn->is_external) {
     if (fn->is_test_case) fprintf(stream, " #test");

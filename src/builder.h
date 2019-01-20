@@ -59,12 +59,12 @@
 
 typedef struct Builder
 {
-  Arena          ast_arena;
-  Arena          scope_arena;
-  uint32_t       flags;
-  int            total_lines;
-  int            errorc;
-  BArray *       str_cache;
+  Arena       ast_arena;
+  ScopeArenas scope_arenas;
+  uint32_t    flags;
+  int         total_lines;
+  int         errorc;
+  BArray *    str_cache;
 } Builder;
 
 typedef enum

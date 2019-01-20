@@ -41,13 +41,13 @@
 struct Assembly;
 struct Builder;
 
-typedef unsigned char *MirFrameStackPtr;
+typedef ptrdiff_t MirRelativeStackPtr;
 
-typedef struct MirModule MirModule;
-typedef struct MirType   MirType;
-typedef struct MirVar    MirVar;
-typedef struct MirFn     MirFn;
-typedef struct MirValue  MirValue;
+typedef struct MirModule     MirModule;
+typedef struct MirType       MirType;
+typedef struct MirVar        MirVar;
+typedef struct MirFn         MirFn;
+typedef struct MirConstValue MirConstValue;
 
 typedef struct MirInstr            MirInstr;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
@@ -100,7 +100,6 @@ struct MirFn
   MirType *    type;
   LLVMValueRef llvm_value;
 
-  BArray *    arg_slots;
   DCpointer   extern_entry;
   bool        is_external;
   bool        is_test_case;
@@ -112,7 +111,7 @@ struct MirFn
   int            block_count;
   int            instr_count;
 
-  MirValue *exec_ret_value;
+  MirConstValue *exec_ret_value;
 };
 
 /* TYPE */
@@ -160,7 +159,8 @@ struct MirType
   MirTypeKind kind;
   const char *name;
   LLVMTypeRef llvm_type;
-  size_t      size;
+  size_t      size_bits;
+  size_t      store_size_bytes;
   unsigned    alignment;
 
   union
@@ -174,30 +174,42 @@ struct MirType
 };
 
 /* VALUE */
-union MirValueData
+typedef union MirGenericValue *MirGenericValuePtr;
+
+typedef union MirGenericValue
 {
-  uint64_t         v_uint;
-  int64_t          v_int;
-  bool             v_bool;
-  const char *     v_str;
-  MirType *        v_type;
-  MirValue *       v_ptr;
-  MirFn *          v_fn;
-  MirFrameStackPtr v_stack_ptr;
-  void *           v_void_ptr;
+  int64_t            v_int;
+  uint64_t           v_uint;
+  bool               v_bool;
+  MirType *          v_type;
+  MirFn *            v_fn;
+  MirGenericValuePtr v_stack_ptr;
+} MirGenericValue;
+
+union MirConstValueData
+{
+  uint64_t            v_uint;
+  int64_t             v_int;
+  bool                v_bool;
+  const char *        v_str;
+  MirType *           v_type;
+  MirConstValue *     v_ptr;
+  MirFn *             v_fn;
+  void *              v_void_ptr;
+  MirRelativeStackPtr v_rel_stack_ptr;
+  MirGenericValuePtr  v_stack_ptr;
 };
 
-struct MirValue
+struct MirConstValue
 {
-  union MirValueData data;
-  MirType *          type;
-  bool               is_stack_allocated;
+  union MirConstValueData data;
+  MirType *               type;
 };
 
 /* VAR */
 struct MirVar
 {
-  MirValue    value;
+  MirType *   alloc_type;
   const char *name;
 };
 
@@ -231,7 +243,7 @@ typedef enum
 
 struct MirInstr
 {
-  MirValue       value;
+  MirConstValue  const_value;
   MirInstrKind   kind;
   int            id;
   LLVMValueRef   llvm_value;
@@ -271,8 +283,8 @@ struct MirInstrDeclVar
 
 struct MirInstrElemPtr
 {
-  MirInstr base;
-  MirValue tmp_value;
+  MirInstr      base;
+  MirConstValue tmp_value;
 
   MirInstr *arr_ptr;
   MirInstr *index;

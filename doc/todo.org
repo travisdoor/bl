@@ -1,13 +1,32 @@
-* Features [2/5]
-  - [X] Function arguments
+* Features [20%]
+  - [ ] Function arguments
   - [X] Loops
   - [ ] Arrays 
   - [ ] Structures
   - [ ] Enums
     
 
-* Bugs [0/0]
-  - [ ] In function body does can be declarations in any order!!!
+* Bugs [100%]
+  - [X] In function body does can be declarations in any order!!!
     
-
   
+* Stack operations for call instruction  
+
+  pc   program counter (pointer to current instruction)
+  CFS  current frame stack (used later for rollback of the stack)
+
+  call fn (1, 2, 3) 4
+
+    | stack op | data         | instr |
+    |----------+--------------+-------|
+    | PUSH     | 3            | ?     |
+    | PUSH     | 2            | ?     |
+    | PUSH     | 1            | ?     |
+    | PUSH CFS | pc, prev CFS | call  |
+    | ...      | -            | -     |
+    | POP CFS  | -            | ret   |
+    | POP      | -            | ret   |
+    | POP      | -            | ret   |
+    | POP      | -            | ret   |
+    | PUSH     | 4            | ret   |
+

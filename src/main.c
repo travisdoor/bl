@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 {
   setlocale(LC_ALL, "C");
   unsigned int build_flags = BUILDER_LOAD_FROM_FILE;
-  puts("compiler version: " BL_VERSION);
+  puts("compiler version: " BL_VERSION " (pre-alpha)");
 
   bool   help = false;
   size_t optind;

@@ -42,19 +42,36 @@ scope_dtor(Scope *scope)
 }
 
 void
-scope_arena_init(Arena *arena)
+scope_arenas_init(ScopeArenas *arenas)
 {
-  arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
+  arena_init(&arenas->scope_arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
+  arena_init(&arenas->entry_arena, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
+}
+
+void
+scope_arenas_terminate(ScopeArenas *arenas)
+{
+  arena_terminate(&arenas->scope_arena);
+  arena_terminate(&arenas->entry_arena);
 }
 
 Scope *
-scope_create(Arena *arena, Scope *parent, size_t size, bool is_global)
+scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global)
 {
-  Scope *scope     = arena_alloc(arena);
-  scope->entries   = bo_htbl_new(sizeof(ScopeEntry), size);
+  Scope *scope     = arena_alloc(&arenas->scope_arena);
+  scope->entries   = bo_htbl_new(sizeof(ScopeEntry *), size);
   scope->parent    = parent;
   scope->is_global = is_global;
   return scope;
+}
+
+ScopeEntry *
+scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr)
+{
+  ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
+  entry->node       = node;
+  entry->instr      = instr;
+  return entry;
 }
 
 void
@@ -62,7 +79,7 @@ scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
 {
   assert(scope);
   assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
-  bo_htbl_insert(scope->entries, key, *entry);
+  bo_htbl_insert(scope->entries, key, entry);
 }
 
 ScopeEntry *
@@ -71,7 +88,7 @@ scope_lookup(Scope *scope, uint64_t key, bool in_tree)
   assert(scope);
 
   while (scope) {
-    if (bo_htbl_has_key(scope->entries, key)) return &bo_htbl_at(scope->entries, key, ScopeEntry);
+    if (bo_htbl_has_key(scope->entries, key)) return bo_htbl_at(scope->entries, key, ScopeEntry *);
 
     if (in_tree)
       scope = scope->parent;

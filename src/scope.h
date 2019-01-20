@@ -32,11 +32,17 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <assert.h>
+#include "arena.h"
 
 struct Src;
 struct Ast;
-struct Arena;
 struct MirInstr;
+
+typedef struct ScopeArenas
+{
+  Arena scope_arena;
+  Arena entry_arena;
+} ScopeArenas;
 
 typedef struct ScopeEntry
 {
@@ -52,13 +58,19 @@ typedef struct Scope
 } Scope;
 
 void
-scope_arena_init(struct Arena *arena);
-
-Scope *
-scope_create(struct Arena *arena, Scope *parent, size_t size, bool is_global);
+scope_arenas_init(ScopeArenas *arenas);
 
 void
-scope_insert(Scope *scope, uint64_t key, struct ScopeEntry *entry);
+scope_arenas_terminate(ScopeArenas *arenas);
+
+Scope *
+scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
+
+ScopeEntry *
+scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr);
+
+void
+scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);
 
 ScopeEntry *
 scope_lookup(Scope *scope, uint64_t key, bool in_tree);
