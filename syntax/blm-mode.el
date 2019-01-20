@@ -17,10 +17,10 @@
 (defconst blm-keywords
   '("const"
     "br"
+    "unop"
     "unreachable"
     "typeinfer"
     "load"
-    "&"
     "decl"
     "declref"
     "call"

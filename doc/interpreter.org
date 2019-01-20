@@ -1,8 +1,17 @@
 * Documentation for BL-MIR
- BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR.
+ BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from SAT. It is located between AST and LCM-IR.
 
 ** Instructions: 
   
+*** block
+    Basic block representation.
+
+    #+BEGIN_EXAMPLE
+    <name>: 
+      %0  s32 const 666
+      %1 void ret %0
+    #+END_EXAMPLE
+
 *** const
     Constant value.
 
@@ -119,3 +128,12 @@
 
 *** unreachable
     Abort execution when this instruction is reached.
+
+*** binop
+    TODO
+
+*** unop
+    TODO
+
+*** elemptr
+    TODO
