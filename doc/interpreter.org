@@ -3,27 +3,27 @@
 
 ** Assert function in MIR
  #+BEGIN_EXAMPLE
- @assert (0) fn(bool) void {
- init_0 (1):
-   %0   ~40    (2)            *bool decl cond : bool
-   %1   ~41    (1)             bool arg $0
-   %3   ~43    (1)             void store %1 -> %0
-   %11  ~55    (1)             void br entry_1
+ @assert fn(bool) void {
+ init_0:
+   %0              *bool decl cond : bool
+   %1               bool arg $0
+   %3               void store %1 -> %0
+   %11              void br entry_1
  
- entry_1 (1):
-   %5   ~49    (1)             bool load %0
-   %6   ~50    (1)             bool unop !%5
-   %7   ~51    (1)             void br %6 ? if_then_2 : if_else_3
+ entry_1:
+   %5               bool load %0
+   %6               bool unop !%5
+   %7               void br %6 ? if_then_2 : if_else_3
  
- if_then_2 (1):
-   %8   ~52    (1)             void unreachable
-   %9   ~53    (1)             void br if_cont_4
+ if_then_2:
+   %8               void unreachable
+   %9               void br if_cont_4
  
- if_else_3 (1):
-   %10  ~54    (1)             void br if_cont_4
+ if_else_3:
+   %10              void br if_cont_4
  
- if_cont_4 (2):
-   %12  ~56    (1)             void ret
+ if_cont_4:
+   %12              void ret
  }
  #+END_EXAMPLE
 
