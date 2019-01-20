@@ -243,6 +243,9 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
   case MIR_TYPE_INT:
     fprintf(stream, "%llu", (long long)value->data.v_int);
     break;
+  case MIR_TYPE_REAL:
+    fprintf(stream, "%f", value->data.v_real);
+    break;
   case MIR_TYPE_BOOL:
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
     break;

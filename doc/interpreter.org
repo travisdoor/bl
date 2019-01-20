@@ -1,0 +1,75 @@
+* Documentation for BL-MIR
+ BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR.
+
+** Instructions: 
+  
+*** const
+    Constant value.
+
+    #+BEGIN_EXAMPLE
+    <T> const <value> // yields constant value of the type T
+    #+END_EXAMPLE
+
+    | stack op | data  | description    |
+    |----------+-------+----------------|
+    | PUSH     | value | constant value |
+
+*** decl
+    Variable declaration.
+
+    #+BEGIN_EXAMPLE
+    <*T> decl <name> : <T> // yields *T (pointer to value allocated on the stack)
+    #+END_EXAMPLE
+
+    | stack op | data | description              |
+    |----------+------+--------------------------|
+    | PUSH     | -    | storage for the variable |
+    
+*** load
+    Push pointed value on the stack.
+
+    #+BEGIN_EXAMPLE
+    <T> load <ptr> // yields T loaded from ptr
+    #+END_EXAMPLE
+
+    | stack op | data  | description              |
+    |----------+-------+--------------------------|
+    | POP      | ptr   | pointer to source        |
+    | PUSH     | value | value loaded from source |
+    
+*** store
+    Store value from source to destination address.
+
+    #+BEGIN_EXAMPLE
+    void store <src> -> <dest_ptr> // yields void
+    #+END_EXAMPLE
+
+    Destination pointer is on the stack:
+    | stack op | data     | description            |
+    |----------+----------+------------------------|
+    | POP      | dest_ptr | pointer to destination |
+    | POP      | src_ptr  | value                  |
+
+    Destination pointer is declaration:
+    | stack op | data     | description            |
+    |----------+----------+------------------------|
+    | POP      | src_ptr  | value                  |
+
+*** call
+    pc   program counter (pointer to current instruction)
+    RA   return address (used later for rollback of the stack)
+
+    call fn (1, 2, 3) 4
+
+    | stack op | data        | instr |
+    |----------+-------------+-------|
+    | PUSH     | 3           | ?     |
+    | PUSH     | 2           | ?     |
+    | PUSH     | 1           | ?     |
+    | PUSH RA  | pc, prev RA | call  |
+    | ...      | -           | -     |
+    | POP RA   | -           | ret   |
+    | POP      | -           | ret   |
+    | POP      | -           | ret   |
+    | POP      | -           | ret   |
+    | PUSH     | 4           | ret   |

@@ -85,6 +85,8 @@ typedef enum
   BUILDIN_TYPE_U64,
   BUILDIN_TYPE_USIZE,
   BUILDIN_TYPE_BOOL,
+  BUILDIN_TYPE_F32,
+  BUILDIN_TYPE_F64,
 
   _BUILDIN_TYPE_COUNT,
 } BuildinType;
@@ -141,6 +143,8 @@ typedef struct
     MirType *entry_u64;
     MirType *entry_usize;
     MirType *entry_bool;
+    MirType *entry_f32;
+    MirType *entry_f64;
     MirType *entry_void;
     MirType *entry_u8_ptr;
     MirType *entry_resolve_type_fn;
@@ -156,9 +160,9 @@ typedef struct
 } Context;
 
 static const char *entry_fn_name                           = "main";
-static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {"s8",  "s16", "s32", "s64",   "u8",
-                                                              "u16", "u32", "u64", "usize", "bool"};
-static uint64_t    entry_fn_hash                           = 0;
+static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {
+    "s8", "s16", "s32", "s64", "u8", "u16", "u32", "u64", "usize", "bool", "f32", "f64"};
+static uint64_t entry_fn_hash = 0;
 
 static void
 instr_dtor(MirInstr *instr)
@@ -218,6 +222,9 @@ create_type_bool(Context *cnt);
 
 static MirType *
 create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed);
+
+static MirType *
+create_type_real(Context *cnt, const char *name, int bitcount);
 
 static MirType *
 create_type_ptr(Context *cnt, MirType *src_type);
@@ -300,6 +307,12 @@ append_instr_decl_var(Context *cnt, MirInstr *type, Ast *name);
 
 static MirInstr *
 append_instr_const_int(Context *cnt, Ast *node, uint64_t val);
+
+static MirInstr *
+append_instr_const_float(Context *cnt, Ast *node, float val);
+
+static MirInstr *
+append_instr_const_double(Context *cnt, Ast *node, double val);
 
 static MirInstr *
 append_instr_const_bool(Context *cnt, Ast *node, bool val);
@@ -397,6 +410,12 @@ ast_expr_null(Context *cnt, Ast *nl);
 
 static MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr);
+
+static MirInstr *
+ast_expr_lit_float(Context *cnt, Ast *expr);
+
+static MirInstr *
+ast_expr_lit_double(Context *cnt, Ast *expr);
 
 static MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr);
@@ -798,6 +817,10 @@ get_buildin(Context *cnt, BuildinType id)
     return cnt->buildin_types.entry_u32;
   case BUILDIN_TYPE_U64:
     return cnt->buildin_types.entry_u64;
+  case BUILDIN_TYPE_F32:
+    return cnt->buildin_types.entry_f32;
+  case BUILDIN_TYPE_F64:
+    return cnt->buildin_types.entry_f64;
   case BUILDIN_TYPE_USIZE:
     return cnt->buildin_types.entry_usize;
   case BUILDIN_TYPE_BOOL:
@@ -1003,6 +1026,18 @@ create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
   tmp->llvm_type              = to_llvm_type(cnt, tmp);
+  return tmp;
+}
+
+MirType *
+create_type_real(Context *cnt, const char *name, int bitcount)
+{
+  assert(bitcount > 0);
+  MirType *tmp            = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind               = MIR_TYPE_REAL;
+  tmp->name               = name;
+  tmp->data.real.bitcount = bitcount;
+  tmp->llvm_type          = to_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1350,6 +1385,30 @@ append_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 }
 
 MirInstr *
+append_instr_const_float(Context *cnt, Ast *node, float val)
+{
+  MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime                = true;
+  tmp->const_value.type        = cnt->buildin_types.entry_f32;
+  tmp->const_value.data.v_real = (double)val;
+
+  push_into_curr_block(cnt, tmp);
+  return tmp;
+}
+
+MirInstr *
+append_instr_const_double(Context *cnt, Ast *node, double val)
+{
+  MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime                = true;
+  tmp->const_value.type        = cnt->buildin_types.entry_f64;
+  tmp->const_value.data.v_real = val;
+
+  push_into_curr_block(cnt, tmp);
+  return tmp;
+}
+
+MirInstr *
 append_instr_const_bool(Context *cnt, Ast *node, bool val)
 {
   MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
@@ -1517,6 +1576,20 @@ to_llvm_type(Context *cnt, MirType *type)
     break;
   }
 
+  case MIR_TYPE_REAL: {
+    if (type->data.real.bitcount == 32)
+      result = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
+    else if (type->data.real.bitcount == 64)
+      result = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
+    else
+      bl_abort("invalid floating point type");
+
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    break;
+  }
+
   case MIR_TYPE_BOOL: {
     result                 = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
     type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
@@ -1601,6 +1674,10 @@ type_cmp(MirType *first, MirType *second)
   case MIR_TYPE_INT: {
     return first->data.integer.bitcount == second->data.integer.bitcount &&
            first->data.integer.is_signed == second->data.integer.is_signed;
+  }
+
+  case MIR_TYPE_REAL: {
+    return first->data.real.bitcount == second->data.real.bitcount;
   }
 
   case MIR_TYPE_PTR: {
@@ -2444,6 +2521,8 @@ exec_instr(Context *cnt, MirInstr *instr)
 void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
+  bl_unimplemented;
+#if 0
   assert(elem_ptr->arr_ptr && elem_ptr->index);
   assert(is_pointer_type(elem_ptr->arr_ptr->const_value.type));
 
@@ -2454,7 +2533,6 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   MirConstValue *elem_value = &elem_ptr->base.const_value;
   MirConstValue *index      = &elem_ptr->index->const_value;
 
-  bl_unimplemented;
   // const uint64_t i         = exec_read_uint64(cnt, index);
   const uint64_t i         = 0;
   const size_t   elem_size = elem_value->type->store_size_bytes;
@@ -2466,6 +2544,7 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   elem_ptr->tmp_value.data.v_rel_stack_ptr += i * elem_size;
 
   elem_value->data.v_ptr = &elem_ptr->tmp_value;
+#endif
 }
 
 void
@@ -3150,6 +3229,18 @@ ast_expr_lit_int(Context *cnt, Ast *expr)
 }
 
 MirInstr *
+ast_expr_lit_float(Context *cnt, Ast *expr)
+{
+  return append_instr_const_float(cnt, expr, expr->data.expr_float.val);
+}
+
+MirInstr *
+ast_expr_lit_double(Context *cnt, Ast *expr)
+{
+  return append_instr_const_double(cnt, expr, expr->data.expr_double.val);
+}
+
+MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr)
 {
   return append_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
@@ -3605,6 +3696,10 @@ ast(Context *cnt, Ast *node)
     return ast_type_ptr(cnt, node);
   case AST_EXPR_LIT_INT:
     return ast_expr_lit_int(cnt, node);
+  case AST_EXPR_LIT_FLOAT:
+    return ast_expr_lit_float(cnt, node);
+  case AST_EXPR_LIT_DOUBLE:
+    return ast_expr_lit_double(cnt, node);
   case AST_EXPR_LIT_BOOL:
     return ast_expr_lit_bool(cnt, node);
   case AST_EXPR_LIT_FN:
@@ -3864,6 +3959,9 @@ init_buildins(Context *cnt)
       create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
 
   cnt->buildin_types.entry_bool = create_type_bool(cnt);
+
+  cnt->buildin_types.entry_f32 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F32], 32);
+  cnt->buildin_types.entry_f64 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F64], 64);
 
   cnt->buildin_types.entry_u8_ptr = create_type_ptr(cnt, cnt->buildin_types.entry_u8);
 

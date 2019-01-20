@@ -9,6 +9,8 @@
 */
 
 main :: fn () s32 {
+  float : f32 = 0.1f;
+  double : f64 = 0.1;
   return 10;
 };
 
