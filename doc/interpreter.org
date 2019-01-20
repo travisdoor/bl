@@ -54,6 +54,17 @@
     | stack op | data     | description            |
     |----------+----------+------------------------|
     | POP      | src_ptr  | value                  |
+    
+*** arg
+    Load argument of the current function on the stack.
+
+    #+BEGIN_EXAMPLE
+    <T> arg $<arg number> // yields T
+    #+END_EXAMPLE
+
+    | stack op | data | description |
+    |----------+------+-------------|
+    | PUSH     | arg  | fn argument |
 
 *** call
     pc   program counter (pointer to current instruction)
@@ -73,3 +84,38 @@
     | POP      | -           | ret   |
     | POP      | -           | ret   |
     | PUSH     | 4           | ret   |
+
+*** ret
+    Return value from the function and return control to the caller. This instruction terminates current basic block.
+
+    #+BEGIN_EXAMPLE
+    void ret [value] // yields void
+    #+END_EXAMPLE
+
+    | stack op | data  | description                            |
+    |----------+-------+----------------------------------------|
+    | POP RA   | -     | rollback the stack to return address   |
+    | POP      | arg 1 | clenup fn argument                     |
+    | POP      | arg 2 | clenup fn argument                     |
+    | PUSH     | value | push call result value if there is one |
+
+*** br
+    Breaks to the basic block. This instruction terminates current basic block.
+
+    #+BEGIN_EXAMPLE
+    void br <block> // yields void
+    #+END_EXAMPLE
+
+*** br (conditional)
+    Breaks into then block if the condition is true. This instruction terminates current basic block.
+
+    #+BEGIN_EXAMPLE
+    void br <cont> ? <then_block> : <else_block> // yields void
+    #+END_EXAMPLE
+
+    | stack op | data      | description       |
+    |----------+-----------+-------------------|
+    | POP      | condition | checked condition |
+
+*** unreachable
+    Abort execution when this instruction is reached.
