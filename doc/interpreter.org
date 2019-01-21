@@ -163,10 +163,29 @@
     Abort execution when this instruction is reached.
 
 *** binop
-    TODO
+    Binary operation.
+
+    #+BEGIN_EXAMPLE
+    <T> binop <lhs> <+|-|*|/|%> <rhs> // yields result value of type T
+    #+END_EXAMPLE
+
+    | stack op | data   | description                   |
+    |----------+--------+-------------------------------|
+    | POP      | lhs    | left-hand side of operation   |
+    | POP      | rhs    | right-hand side of operation  |
+    | PUSH     | result | result value of the operation |
 
 *** unop
-    TODO
+    Unary operation.
+
+    #+BEGIN_EXAMPLE
+    <T> unop <+|-|*|&> <value> // yields result value of type T
+    #+END_EXAMPLE
+
+    | stack op | data   | description                   |
+    |----------+--------+-------------------------------|
+    | POP      | value  |                               |
+    | PUSH     | result | result value of the operation |
 
 *** elemptr
     TODO

@@ -187,6 +187,7 @@ typedef union MirGenericValue
 {
   int64_t            v_int;
   uint64_t           v_uint;
+  double             v_real;
   bool               v_bool;
   MirType *          v_type;
   MirFn *            v_fn;
