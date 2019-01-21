@@ -37,6 +37,7 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
+#define NAMED_VARS false
 
 typedef struct
 {
@@ -232,11 +233,6 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
     break;
   }
 
-  case UNOP_ADR: {
-    unop->base.llvm_value = llvm_val;
-    break;
-  }
-
   case UNOP_NEG: {
     unop->base.llvm_value = LLVMBuildNeg(cnt->llvm_builder, llvm_val, "");
     break;
@@ -386,7 +382,11 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  const char *   name      = var->name;
+#if NAMED_VARS
+  const char *name = var->name;
+#else
+  const char *name = "";
+#endif
   LLVMTypeRef    llvm_type = var->alloc_type->llvm_type;
   const unsigned alignment = var->alloc_type->alignment;
   assert(llvm_type && name);

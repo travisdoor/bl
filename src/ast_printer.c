@@ -103,6 +103,12 @@ static void
 print_expr_unary(Ast *unary, int pad, FILE *stream);
 
 static void
+print_expr_addrof(Ast *addrof, int pad, FILE *stream);
+
+static void
+print_expr_deref(Ast *deref, int pad, FILE *stream);
+
+static void
 print_expr_binop(Ast *binop, int pad, FILE *stream);
 
 static void
@@ -223,16 +229,24 @@ print_expr_unary(Ast *unary, int pad, FILE *stream)
   case UNOP_NOT:
     op = "!";
     break;
-  case UNOP_ADR:
-    op = "&";
-    break;
-  case UNOP_DEREF:
-    op = "*";
-    break;
   }
 
   fprintf(stream, "'%s' ", op);
   print_node(unary->data.expr_unary.next, pad + 1, stream);
+}
+
+void
+print_expr_addrof(Ast *addrof, int pad, FILE *stream)
+{
+  print_head(addrof, pad, stream);
+  print_node(addrof->data.expr_addrof.next, pad + 1, stream);
+}
+
+void
+print_expr_deref(Ast *deref, int pad, FILE *stream)
+{
+  print_head(deref, pad, stream);
+  print_node(deref->data.expr_deref.next, pad + 1, stream);
 }
 
 void
@@ -428,6 +442,14 @@ print_node(Ast *node, int pad, FILE *stream)
 
   case AST_EXPR_UNARY:
     print_expr_unary(node, pad, stream);
+    break;
+
+  case AST_EXPR_ADDROF:
+    print_expr_addrof(node, pad, stream);
+    break;
+
+  case AST_EXPR_DEREF:
+    print_expr_deref(node, pad, stream);
     break;
 
   case AST_EXPR_NULL:

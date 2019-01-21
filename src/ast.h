@@ -82,6 +82,8 @@ typedef enum
   AST_EXPR_TYPEOF,
   AST_EXPR_UNARY,
   AST_EXPR_NULL,
+  AST_EXPR_ADDROF,
+  AST_EXPR_DEREF,
   AST_EXPR_LIT_FN,
   AST_EXPR_LIT_INT,
   AST_EXPR_LIT_FLOAT,
@@ -137,8 +139,6 @@ typedef enum
   UNOP_NEG,
   UNOP_POS,
   UNOP_NOT,
-  UNOP_ADR,
-  UNOP_DEREF,
 } UnopKind;
 
 struct AstLoad
@@ -364,6 +364,16 @@ struct AstExprUnary
   Ast *    next;
 };
 
+struct AstExprAddrOf
+{
+  Ast *next;
+};
+
+struct AstExprDeref
+{
+  Ast *next;
+};
+
 /* AST base type */
 struct Ast
 {
@@ -410,6 +420,8 @@ struct Ast
     struct AstExprSizeof    expr_szof;
     struct AstExprTypeof    expr_tpof;
     struct AstExprUnary     expr_unary;
+    struct AstExprAddrOf    expr_addrof;
+    struct AstExprDeref     expr_deref;
   } data;
 
 #if BL_DEBUG

@@ -433,8 +433,8 @@ static MirInstr *
 ast_expr_unary(Context *cnt, Ast *unop);
 
 /* this will also set size and alignment of the type */
-static LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type);
+static void
+init_llvm_type(Context *cnt, MirType *type);
 
 /* analyze */
 static bool
@@ -919,9 +919,9 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
   if (!src) return src;
   switch (src->kind) {
+  case MIR_INSTR_UNOP:
   case MIR_INSTR_CONST:
   case MIR_INSTR_BINOP:
-  case MIR_INSTR_UNOP:
   case MIR_INSTR_CALL:
   case MIR_INSTR_LOAD:
     return src;
@@ -978,10 +978,10 @@ ref_instr(MirInstr *instr)
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_TYPE;
-  tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_TYPE;
+  tmp->name    = "type";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -992,27 +992,27 @@ create_type_null(Context *cnt)
   tmp->kind    = MIR_TYPE_NULL;
   tmp->name    = "null";
   /* default type of null in llvm (can be overriden later) */
-  tmp->llvm_type = cnt->buildin_types.entry_u8_ptr->llvm_type;
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_VOID;
-  tmp->name      = "void";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_VOID;
+  tmp->name    = "void";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_BOOL;
-  tmp->name      = "bool";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_BOOL;
+  tmp->name    = "bool";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1025,7 +1025,7 @@ create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
   tmp->name                   = name;
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
-  tmp->llvm_type              = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1037,7 +1037,7 @@ create_type_real(Context *cnt, const char *name, int bitcount)
   tmp->kind               = MIR_TYPE_REAL;
   tmp->name               = name;
   tmp->data.real.bitcount = bitcount;
-  tmp->llvm_type          = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1047,7 +1047,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
   MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
-  tmp->llvm_type     = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1059,7 +1059,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->buildin_types.entry_void;
-  tmp->llvm_type         = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1071,7 +1071,7 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
   tmp->kind                 = MIR_TYPE_ARRAY;
   tmp->data.array.elem_type = elem_type;
   tmp->data.array.len       = len;
-  tmp->llvm_type            = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1545,18 +1545,25 @@ append_instr_validate_type(Context *cnt, MirInstr *src)
 }
 
 /* LLVM */
-LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type)
+void
+init_llvm_type(Context *cnt, MirType *type)
 {
-  if (!type) return NULL;
-  LLVMTypeRef result = NULL;
+  if (!type) return;
 
   switch (type->kind) {
   case MIR_TYPE_TYPE: {
     type->alignment        = alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
-    result                 = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    break;
+  }
+
+  case MIR_TYPE_NULL: {
+    type->alignment        = cnt->buildin_types.entry_u8_ptr->alignment;
+    type->size_bits        = cnt->buildin_types.entry_u8_ptr->size_bits;
+    type->store_size_bytes = cnt->buildin_types.entry_u8_ptr->store_size_bytes;
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
@@ -1564,37 +1571,38 @@ to_llvm_type(Context *cnt, MirType *type)
     type->alignment        = 0;
     type->size_bits        = 0;
     type->store_size_bytes = 0;
-    result                 = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
   case MIR_TYPE_INT: {
-    result = LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type =
+        LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   case MIR_TYPE_REAL: {
     if (type->data.real.bitcount == 32)
-      result = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
+      type->llvm_type = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
     else if (type->data.real.bitcount == 64)
-      result = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
+      type->llvm_type = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
     else
       bl_abort("invalid floating point type");
 
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   case MIR_TYPE_BOOL: {
-    result                 = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
@@ -1602,10 +1610,10 @@ to_llvm_type(Context *cnt, MirType *type)
     MirType *tmp = type->data.ptr.next;
     assert(tmp);
     assert(tmp->llvm_type);
-    result                 = LLVMPointerType(tmp->llvm_type, 0);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
@@ -1631,7 +1639,7 @@ to_llvm_type(Context *cnt, MirType *type)
     llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     assert(llvm_ret);
 
-    result                 = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
+    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
     type->size_bits        = 0;
     type->store_size_bytes = 0;
     type->alignment        = 0;
@@ -1644,18 +1652,16 @@ to_llvm_type(Context *cnt, MirType *type)
     assert(llvm_elem_type);
     const unsigned int len = (const unsigned int)type->data.array.len;
 
-    result                 = LLVMArrayType(llvm_elem_type, len);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMArrayType(llvm_elem_type, len);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   default:
     bl_unimplemented;
   }
-
-  return result;
 }
 
 bool
@@ -1997,20 +2003,6 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
   assert(unop->instr && unop->instr->analyzed);
   MirType *type = unop->instr->const_value.type;
   assert(type);
-
-  switch (unop->op) {
-  case UNOP_INVALID:
-    bl_abort("invalid unary operation");
-  case UNOP_NEG:
-  case UNOP_POS:
-  case UNOP_NOT:
-  case UNOP_ADR:
-    break;
-  case UNOP_DEREF:
-    bl_abort("invalid unary instruction operator");
-    break;
-  }
-
   unop->base.const_value.type = type;
   return true;
 }
@@ -2230,6 +2222,12 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   if (dest->kind == MIR_INSTR_DECL_REF) {
     store->dest = ((MirInstrDeclRef *)dest)->scope_entry->instr;
     assert(store->dest && "invalid destination for store instruction");
+  }
+
+  /* source is declref -> we replace reference to true declaration */
+  if (src->kind == MIR_INSTR_DECL_REF) {
+    store->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
+    assert(store->src && "invalid source for store instruction");
   }
 
   return true;
@@ -2627,7 +2625,11 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
     src_ptr = exec_pop_stack(cnt, src_type);
     src_ptr = src_ptr->v_stack_ptr;
   }
-  assert(src_ptr);
+
+  if (!src_ptr) {
+    msg_error("Dereferencing null pointer!");
+    exec_abort(cnt, 0);
+  }
 
   exec_push_stack(cnt, src_ptr, dest_type);
 }
@@ -2644,6 +2646,7 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 
   MirGenericValuePtr dest_ptr = NULL;
   MirGenericValuePtr src_ptr  = NULL;
+  MirGenericValue    tmp_value;
 
   if (store->dest->kind == MIR_INSTR_DECL_VAR) {
     MirRelativeStackPtr dest_rel_ptr = store->dest->const_value.data.v_rel_stack_ptr;
@@ -2653,9 +2656,15 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
     dest_ptr = dest_ptr->v_stack_ptr;
   }
 
-  src_ptr = exec_pop_stack(cnt, src_type);
-  assert(src_ptr);
+  if (store->src->kind == MIR_INSTR_DECL_VAR) {
+    MirRelativeStackPtr src_rel_ptr = store->src->const_value.data.v_rel_stack_ptr;
+    tmp_value.v_stack_ptr           = exec_read_stack_ptr(cnt, src_rel_ptr);
+    src_ptr                         = &tmp_value;
+  } else {
+    src_ptr = exec_pop_stack(cnt, src_type);
+  }
 
+  assert(dest_ptr && src_ptr);
   memcpy(dest_ptr, src_ptr, exec_store_size(src_type));
 }
 
@@ -2694,7 +2703,13 @@ exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   MirType *type = type_ptr->type->const_value.data.v_type;
   assert(type);
-  type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, type);
+
+  /* create pointer type */
+  MirGenericValue tmp;
+  tmp.v_type = create_type_ptr(cnt, type);
+  assert(tmp.v_type);
+
+  exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
 }
 
 void
@@ -3049,6 +3064,10 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     binop(binop->op, lhs_ptr, rhs_ptr, result, int64_t, v_int);
     break;
 
+  case MIR_TYPE_PTR:
+    binop(binop->op, lhs_ptr, rhs_ptr, result, uint64_t, v_uint);
+    break;
+
   default:
     bl_abort("invalid binop type");
   }
@@ -3073,7 +3092,6 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     case UNOP_NOT:                                                                                 \
       (_result)._v_T = !value;                                                                     \
       break;                                                                                       \
-    case UNOP_ADR:                                                                                 \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
     }                                                                                              \
@@ -3134,7 +3152,7 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     break;
 
   default:
-    bl_abort("invalid binop type");
+    bl_abort("invalid unop type");
   }
 
   exec_push_stack(cnt, &result, value_type);
@@ -3576,22 +3594,6 @@ ast_expr_unary(Context *cnt, Ast *unop)
 
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
-
-  switch (unop->data.expr_unary.kind) {
-  case UNOP_INVALID:
-    bl_abort("invalid unary operation operator");
-  case UNOP_NEG:
-  case UNOP_POS:
-  case UNOP_NOT:
-    next = append_instr_load_if_needed(cnt, next);
-    break;
-  case UNOP_ADR:
-    break;
-  case UNOP_DEREF:
-    next = append_instr_load(cnt, next->node, next);
-    return append_instr_load(cnt, unop, next);
-    break;
-  }
 
   return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }

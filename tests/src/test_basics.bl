@@ -152,6 +152,18 @@
   assert(i == 10);
 };
 
+#test "pointers" {
+  i       := 666;
+  ptr     := &i;
+  ptr_ptr := &ptr;
+
+  j := **ptr_ptr;
+  assert(j == 666);
+
+  j = *ptr;
+  assert(j == 666);
+};
+
 /*
 #test "simple static array" {
   arr : [10]s32;
@@ -174,15 +186,6 @@
 
   assert(arr[0] == 0);
   assert(arr[9] == 9);
-};
-
-#test "pointers" {
-  i : s32 = 666;
-  ptr : *s32 = null;
-  ptr = &i;
-  j : s32 = *ptr;
-
-  assert(j == 666);
 };
 
 #test "null pointers" {

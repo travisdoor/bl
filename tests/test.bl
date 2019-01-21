@@ -1,21 +1,20 @@
 /* playground */
 
-#load "std/debug.bl"
+// #load "std/debug.bl"
 
 /*
   TODO:
-  - pointers 
   - arrays
 */
 
 main :: fn () s32 {
-  i : f32 = 0.1f;
-  j : f64 = 0.1;
+  i       := 666;
+  modif(&i);
+  return i;
+};
 
-  i = i + 0.1f; 
-  j = j + 0.1; 
-
-  return 10;
+modif :: fn (ptr: *s32) {
+  *ptr = 10;
 };
 
 /*
