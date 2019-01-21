@@ -398,6 +398,12 @@ static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
 
 static MirInstr *
+ast_expr_addrof(Context *cnt, Ast *addrof);
+
+static MirInstr *
+ast_expr_deref(Context *cnt, Ast *deref);
+
+static MirInstr *
 ast_expr_ref(Context *cnt, Ast *ref);
 
 static MirInstr *
@@ -3359,6 +3365,24 @@ ast_stmt_return(Context *cnt, Ast *ret)
 }
 
 MirInstr *
+ast_expr_addrof(Context *cnt, Ast *addrof)
+{
+  MirInstr *src = ast(cnt, addrof->data.expr_addrof.next);
+  assert(src);
+
+  return append_instr_addrof(cnt, addrof, src);
+}
+
+MirInstr *
+ast_expr_deref(Context *cnt, Ast *deref)
+{
+  MirInstr *src = ast(cnt, deref->data.expr_deref.next);
+  assert(src);
+
+  return append_instr_load(cnt, deref, src);
+}
+
+MirInstr *
 ast_expr_lit_int(Context *cnt, Ast *expr)
 {
   return append_instr_const_int(cnt, expr, expr->data.expr_integer.val);
@@ -3813,6 +3837,10 @@ ast(Context *cnt, Ast *node)
     return ast_type_arr(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
+  case AST_EXPR_ADDROF:
+    return ast_expr_addrof(cnt, node);
+  case AST_EXPR_DEREF:
+    return ast_expr_deref(cnt, node);
   case AST_EXPR_LIT_INT:
     return ast_expr_lit_int(cnt, node);
   case AST_EXPR_LIT_FLOAT:
