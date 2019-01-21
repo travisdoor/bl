@@ -67,6 +67,7 @@ union _MirInstr
   MirInstrUnop         unop;
   MirInstrArg          arg;
   MirInstrElemPtr      elem_ptr;
+  MirInstrAddrOf       addrof;
   MirInstrTypeArray    type_array;
   MirInstrTypePtr      type_ptr;
 };
@@ -1290,6 +1291,17 @@ append_instr_load(Context *cnt, Ast *node, MirInstr *src)
   ref_instr(src);
   MirInstrLoad *tmp = create_instr(cnt, MIR_INSTR_LOAD, node, MirInstrLoad *);
   tmp->src          = src;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
+{
+  ref_instr(src);
+  MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDROF, node, MirInstrAddrOf *);
+  tmp->src            = src;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -3884,6 +3896,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrElemPtr";
   case MIR_INSTR_TYPE_PTR:
     return "InstrTypePtr";
+  case MIR_INSTR_ADDROF:
+    return "InstrAddrOf";
   }
 
   return "UNKNOWN";

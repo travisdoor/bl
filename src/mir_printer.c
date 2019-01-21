@@ -57,6 +57,9 @@ static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
+print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream);
+
+static void
 print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream);
 
 static void
@@ -208,6 +211,13 @@ print_instr_load(MirInstrLoad *load, FILE *stream)
 {
   print_instr_head(&load->base, stream);
   fprintf(stream, "load %%%u", load->src->id);
+}
+
+void
+print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream)
+{
+  print_instr_head(&addrof->base, stream);
+  fprintf(stream, "addrof %%%u", addrof->src->id);
 }
 
 void
@@ -442,6 +452,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_PTR:
     print_instr_type_ptr((MirInstrTypePtr *)instr, stream);
+    break;
+  case MIR_INSTR_ADDROF:
+    print_instr_addrof((MirInstrAddrOf *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;
