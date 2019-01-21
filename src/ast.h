@@ -413,12 +413,6 @@ struct Ast
   } data;
 
 #if BL_DEBUG
-  enum
-  {
-    NOT_CHECKED = 0, /* not checked node */
-    WAITING,         /* waiting for later check */
-    CHECKED          /* checked node */
-  } _state;
   int _serial;
 #endif
 };

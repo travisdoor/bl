@@ -121,6 +121,7 @@ typedef enum
   MIR_TYPE_TYPE,
   MIR_TYPE_VOID,
   MIR_TYPE_INT,
+  MIR_TYPE_REAL,
   MIR_TYPE_FN,
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
@@ -132,6 +133,11 @@ struct MirTypeInt
 {
   int  bitcount;
   bool is_signed;
+};
+
+struct MirTypeReal
+{
+  int bitcount;
 };
 
 struct MirTypeFn
@@ -168,6 +174,7 @@ struct MirType
     struct MirTypeInt   integer;
     struct MirTypeFn    fn;
     struct MirTypePtr   ptr;
+    struct MirTypeReal  real;
     struct MirTypeArray array;
     struct MirTypeNull  null;
   } data;
@@ -180,6 +187,7 @@ typedef union MirGenericValue
 {
   int64_t            v_int;
   uint64_t           v_uint;
+  double             v_real;
   bool               v_bool;
   MirType *          v_type;
   MirFn *            v_fn;
@@ -190,6 +198,7 @@ union MirConstValueData
 {
   uint64_t            v_uint;
   int64_t             v_int;
+  double              v_real;
   bool                v_bool;
   const char *        v_str;
   MirType *           v_type;

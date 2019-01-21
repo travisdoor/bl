@@ -71,7 +71,6 @@ ast_create_node(Arena *arena, AstKind c, Token *tok)
 #if BL_DEBUG
   static int serial = 0;
   node->_serial     = serial++;
-  node->_state      = NOT_CHECKED;
 #endif
   return node;
 }

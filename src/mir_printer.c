@@ -47,7 +47,7 @@ print_instr_head(MirInstr *instr, FILE *stream)
 #if BL_DEBUG
   fprintf(stream, "  %%%-3u ~%-5lu (%d) ", instr->id, instr->_serial, instr->ref_count);
 #else
-  fprintf(stream, "  %%%-3u (%d) ", instr->id, instr->ref_count);
+  fprintf(stream, "  %%%-3u ", instr->id);
 #endif
   print_type(instr->const_value.type, true, stream);
   fprintf(stream, " ");
@@ -164,7 +164,7 @@ print_instr_unop(MirInstrUnop *unop, FILE *stream)
   print_instr_head(&unop->base, stream);
 
   const char *op = ast_unop_to_str(unop->op);
-  fprintf(stream, "%s%%%u", op, unop->instr->id);
+  fprintf(stream, "unop %s%%%u", op, unop->instr->id);
 }
 
 void
@@ -243,6 +243,9 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
   case MIR_TYPE_INT:
     fprintf(stream, "%llu", (long long)value->data.v_int);
     break;
+  case MIR_TYPE_REAL:
+    fprintf(stream, "%f", value->data.v_real);
+    break;
   case MIR_TYPE_BOOL:
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
     break;
@@ -320,7 +323,11 @@ void
 print_instr_block(MirInstrBlock *block, FILE *stream)
 {
   if (block->base.prev) fprintf(stream, "\n");
+#if BL_DEBUG
   fprintf(stream, "%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
+#else
+  fprintf(stream, "%s_%u:", block->name, block->base.id);
+#endif
   if (!block->base.ref_count)
     fprintf(stream, " // NEVER REACHED\n");
   else
@@ -348,7 +355,9 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   else
     fprintf(stream, "@%u ", fn_proto->base.id);
 
+#if BL_DEBUG
   fprintf(stream, "(%d) ", fn_proto->base.ref_count);
+#endif
   print_type(fn_proto->base.const_value.type, false, stream);
 
   if (!fn->is_external) {

@@ -11,22 +11,35 @@
   _s32:   s32; 
   _s64:   s64; 
   _bool:  bool;
+  _f32:   f32; 
+  _f64:   f64; 
 };
 
 #test "type infer" {
   number := 0;
   boolean := true;
+  float := 0.1f;
+  double := 0.1;
 };
 
 #test "simple assignement" {
-  number := 0;
-  assert(number == 0);
+  {
+    number := 0;
+    assert(number == 0);
+    number = 666;
+    assert(number == 666);
+    number = (1 + 2 * 3 - 1) / 2;
+    assert(number == 3);
+  }
 
-  number = 666;
-  assert(number == 666);
+  {
+    real_number := 0.f;
+    real_number = 10.1f;
+    assert(real_number - 10.1f < 0.0001f);
 
-  number = (1 + 2 * 3 - 1) / 2;
-  assert(number == 3);
+    real_number = (0.1f + 10.f - 10.f) * 0.1f;
+    assert(real_number - 0.01f < 0.0001f);
+  }
 };
 
 #test "ifs" {
