@@ -6,7 +6,6 @@
 This is very pre-alpha version!!!
 
 The Biscuit is programming language inspired by C, Odin and Jai. 
-Visit [wiki](https://github.com/travisdoor/bl/wiki) for more informations...
 
 ## Example
 
