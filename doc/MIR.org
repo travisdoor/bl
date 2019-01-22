@@ -10,7 +10,7 @@
  BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from SAT. It is located between AST and LLVM-IR. 
 
 * Assert function in MIR
- #+BEGIN_EXAMPLE
+ #+BEGIN_SRC blm
  @assert fn(bool) void {
  init_0:
    %0              *bool decl cond : bool
@@ -33,7 +33,7 @@
  if_cont_4:
    %12              void ret
  }
- #+END_EXAMPLE
+ #+END_SRC
 
 * Function
    #+BEGIN_EXAMPLE
@@ -198,9 +198,29 @@
    | POP      | index    |                              |
    | PUSH     | elem ptr | Address of the array element |
 
-** addrof
+** adore
     Evaluates address of the variable.
 
     | stack op | data    | description                   |
     |----------+---------+-------------------------------|
     | PUSH     | var ptr | pointer to allocated variable |
+
+    
+* Special instructions
+  Special instructions are used only during analyze pass inside the compiler.
+
+** tryinfer
+   Assign type of the source to the destination instruction.
+   
+   #+BEGIN_EXAMPLE
+   void tryinfer <src> -> <dest> // yields void
+   #+END_EXAMPLE
+
+** validate_type
+   Validates if the source instruction yields value of type 'type'. 
+   
+   #+BEGIN_EXAMPLE
+   void validate_type <src> // yields void
+   #+END_EXAMPLE
+
+* Footnotes

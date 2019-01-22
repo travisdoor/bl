@@ -1,0 +1,11 @@
+#test "break and continue" {
+  i := 0;
+  loop {
+    i += 1;
+    if i == 10 { 
+      break; 
+    } else {
+      continue;
+    }
+  }
+};

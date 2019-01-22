@@ -1,0 +1,16 @@
+#test "named functions" {
+  foo :: fn () {
+  };
+  
+  bar :: fn (i: s32) {
+    i; // use i
+  };
+  
+  baz :: fn (i: s32) s32 {
+    return i;
+  };
+  
+  foo();
+  bar(666);
+  j := baz(666);
+};
