@@ -448,6 +448,9 @@ static bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
 static bool
+analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+
+static bool
 analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime);
 
 static bool
@@ -519,6 +522,9 @@ exec_instr(Context *cnt, MirInstr *instr);
 
 static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static void
+exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
 static void
 exec_instr_br(Context *cnt, MirInstrBr *br);
@@ -930,7 +936,8 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
   case MIR_INSTR_CONST:
   case MIR_INSTR_BINOP:
   case MIR_INSTR_CALL:
-  case MIR_INSTR_LOAD:
+    // case MIR_INSTR_LOAD:
+  case MIR_INSTR_ADDROF:
     return src;
   default:
     break;
@@ -1780,6 +1787,30 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 }
 
 bool
+analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+{
+  MirInstr *src = addrof->src;
+  assert(src);
+  if (src->kind != MIR_INSTR_DECL_REF) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL, addrof->base.node->src,
+                BUILDER_CUR_WORD, "cannot take the address of unallocated object");
+    return false;
+  }
+
+  /* setup type */
+  addrof->base.const_value.type = src->const_value.type;
+  assert(addrof->base.const_value.type && "invalid type");
+
+  /* source is declref -> we replace reference to true declaration */
+  if (src->kind == MIR_INSTR_DECL_REF) {
+    addrof->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
+    assert(addrof->src && "invalid source for addrof instruction");
+  }
+
+  return true;
+}
+
+bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   ScopeEntry *scope_entry = ref->scope_entry;
@@ -2242,12 +2273,6 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
     assert(store->dest && "invalid destination for store instruction");
   }
 
-  /* source is declref -> we replace reference to true declaration */
-  if (src->kind == MIR_INSTR_DECL_REF) {
-    store->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
-    assert(store->src && "invalid source for store instruction");
-  }
-
   return true;
 }
 
@@ -2357,6 +2382,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_ELEM_PTR:
     state = analyze_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    break;
+  case MIR_INSTR_ADDROF:
+    state = analyze_instr_addrof(cnt, (MirInstrAddrOf *)instr);
     break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
@@ -2479,6 +2507,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_CONST:
     exec_instr_const(cnt, (MirInstrConst *)instr);
     break;
+  case MIR_INSTR_ADDROF:
+    exec_instr_addrof(cnt, (MirInstrAddrOf *)instr);
+    break;
   case MIR_INSTR_BINOP:
     exec_instr_binop(cnt, (MirInstrBinop *)instr);
     break;
@@ -2530,6 +2561,26 @@ exec_instr(Context *cnt, MirInstr *instr)
   }
 }
 
+/*
+ * Evaluates address of the variable.
+ *
+ * | stack op | data    | description                   |
+ * |----------+---------+-------------------------------|
+ * | PUSH     | var ptr | pointer to allocated variable |
+ */
+void
+exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+{
+  MirInstr *src  = addrof->src;
+  MirType * type = src->const_value.type;
+  assert(type);
+  assert(src->kind == MIR_INSTR_DECL_VAR);
+
+  MirGenericValue value;
+  value.v_stack_ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
+  exec_push_stack(cnt, &value, type);
+}
+
 void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
@@ -2559,6 +2610,9 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 #endif
 }
 
+/*
+ * Abort execution when this instruction is reached.
+ */
 void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
@@ -2566,6 +2620,9 @@ exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
   exec_abort(cnt, 0);
 }
 
+/*
+ * Breaks to the basic block. This instruction terminates current basic block.
+ */
 void
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
@@ -2573,6 +2630,13 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
   exec_set_pc(cnt, br->then_block->entry_instr);
 }
 
+/*
+ * Load argument of the current function on the stack.
+ *
+ * | stack op | data | description |
+ * |----------+------+-------------|
+ * | PUSH     | arg  | fn argument |
+ */
 void
 exec_instr_arg(Context *cnt, MirInstrArg *arg)
 {
@@ -2594,6 +2658,14 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   exec_push_stack(cnt, (MirGenericValuePtr)arg_ptr, arg->base.const_value.type);
 }
 
+/*
+ * Breaks into then block if the condition is true. This instruction terminates current basic
+ * block.
+ *
+ * | stack op | data      | description       |
+ * |----------+-----------+-------------------|
+ * | POP      | condition | checked condition |
+ */
 void
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
@@ -2611,6 +2683,13 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   }
 }
 
+/*
+ * Variable declaration.
+ *
+ * | stack op | data | description              |
+ * |----------+------+--------------------------|
+ * | PUSH     | -    | storage for the variable |
+ */
 void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
@@ -2625,6 +2704,14 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   decl->base.const_value.data.v_rel_stack_ptr = ptr;
 }
 
+/*
+ * Push pointed value on the stack.
+ *
+ * | stack op | data  | description              |
+ * |----------+-------+--------------------------|
+ * | POP      | ptr   | pointer to source        |
+ * | PUSH     | value | value loaded from source |
+ */
 void
 exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
@@ -2652,6 +2739,20 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
   exec_push_stack(cnt, src_ptr, dest_type);
 }
 
+/*
+   Store value from source to destination address.
+
+   Destination pointer is on the stack:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | dest_ptr | pointer to destination |
+   | POP      | src_ptr  | value                  |
+
+   Destination pointer is declaration:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | src_ptr  | value                  |
+ */
 void
 exec_instr_store(Context *cnt, MirInstrStore *store)
 {
@@ -2664,7 +2765,6 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 
   MirGenericValuePtr dest_ptr = NULL;
   MirGenericValuePtr src_ptr  = NULL;
-  MirGenericValue    tmp_value;
 
   if (store->dest->kind == MIR_INSTR_DECL_VAR) {
     MirRelativeStackPtr dest_rel_ptr = store->dest->const_value.data.v_rel_stack_ptr;
@@ -2674,13 +2774,7 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
     dest_ptr = dest_ptr->v_stack_ptr;
   }
 
-  if (store->src->kind == MIR_INSTR_DECL_VAR) {
-    MirRelativeStackPtr src_rel_ptr = store->src->const_value.data.v_rel_stack_ptr;
-    tmp_value.v_stack_ptr           = exec_read_stack_ptr(cnt, src_rel_ptr);
-    src_ptr                         = &tmp_value;
-  } else {
-    src_ptr = exec_pop_stack(cnt, src_type);
-  }
+  src_ptr = exec_pop_stack(cnt, src_type);
 
   assert(dest_ptr && src_ptr);
   memcpy(dest_ptr, src_ptr, exec_store_size(src_type));
@@ -2748,6 +2842,13 @@ exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   type_arr->base.const_value.data.v_type = create_type_array(cnt, elem_type, len);
 }
 
+/*
+ * Constant value.
+ *
+ * | stack op | data  | description    |
+ * |----------+-------+----------------|
+ * | PUSH     | value | constant value |
+ */
 void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
@@ -2836,25 +2937,25 @@ exec_push_dc_arg(Context *cnt, MirGenericValuePtr val_ptr, MirType *type)
 }
 
 /*
-  Stack operations of call instruction and argument ordering on stack
-
-  pc   program counter (pointer to current instruction)
-  RA   return address (used later for rollback of the stack)
-
-  call fn (1, 2, 3) 4
-
-    | stack op | data         | instr |
-    |----------+--------------+-------|
-    | PUSH     | 3            | ?     |
-    | PUSH     | 2            | ?     |
-    | PUSH     | 1            | ?     |
-    | PUSH RA  | pc, prev RA  | call  |
-    | ...      | -            | -     |
-    | POP RA   | -            | ret   |
-    | POP      | -            | ret   |
-    | POP      | -            | ret   |
-    | POP      | -            | ret   |
-    | PUSH     | 4            | ret   |
+ * Stack operations of call instruction and argument ordering on stack
+ *
+ * pc   program counter (pointer to current instruction)
+ * RA   return address (used later for rollback of the stack)
+ *
+ * call fn (1, 2, 3) 4
+ *
+ * | stack op | data         | instr |
+ * |----------+--------------+-------|
+ * | PUSH     | 3            | ?     |
+ * | PUSH     | 2            | ?     |
+ * | PUSH     | 1            | ?     |
+ * | PUSH RA  | pc, prev RA  | call  |
+ * | ...      | -            | -     |
+ * | POP RA   | -            | ret   |
+ * | POP      | -            | ret   |
+ * | POP      | -            | ret   |
+ * | POP      | -            | ret   |
+ * | PUSH     | 4            | ret   |
  */
 void
 exec_instr_call(Context *cnt, MirInstrCall *call)
@@ -2923,6 +3024,17 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   }
 }
 
+/*
+ * Return value from the function and return control to the caller. This instruction terminates
+ * current basic block.
+ *
+ * | stack op | data  | description                            |
+ * |----------+-------+----------------------------------------|
+ * | POP RA   | -     | rollback the stack to return address   |
+ * | POP      | arg 1 | clenup fn argument                     |
+ * | POP      | arg 2 | clenup fn argument                     |
+ * | PUSH     | value | push call result value if there is one |
+ */
 void
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
@@ -2977,7 +3089,15 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   exec_set_pc(cnt, pc);
 }
 
-/* INT MATH */
+/*
+ * Binary operation.
+ *
+ * | stack op | data   | description                   |
+ * |----------+--------+-------------------------------|
+ * | POP      | lhs    | left-hand side of operation   |
+ * | POP      | rhs    | right-hand side of operation  |
+ * | PUSH     | result | result value of the operation |
+ */
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
@@ -3094,6 +3214,14 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 #undef binop
 }
 
+/*
+ * Unary operation.
+ *
+ * | stack op | data   | description                   |
+ * |----------+--------+-------------------------------|
+ * | POP      | value  |                               |
+ * | PUSH     | result | result value of the operation |
+ */
 void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
@@ -3376,10 +3504,11 @@ ast_expr_addrof(Context *cnt, Ast *addrof)
 MirInstr *
 ast_expr_deref(Context *cnt, Ast *deref)
 {
-  MirInstr *src = ast(cnt, deref->data.expr_deref.next);
-  assert(src);
+  MirInstr *next = ast(cnt, deref->data.expr_deref.next);
+  assert(next);
 
-  return append_instr_load(cnt, deref, src);
+  // next = append_instr_load(cnt, deref, next);
+  return append_instr_load(cnt, deref, next);
 }
 
 MirInstr *
@@ -3631,6 +3760,7 @@ ast_expr_unary(Context *cnt, Ast *unop)
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
 
+  next = append_instr_load_if_needed(cnt, next);
   return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
@@ -3679,6 +3809,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     /* initialize const_value */
     MirInstr *value = ast(cnt, ast_value);
     if (value) {
+      value = append_instr_load_if_needed(cnt, value);
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
       result = append_instr_store(cnt, ast_value, value, decl);
     }

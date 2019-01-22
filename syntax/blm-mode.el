@@ -17,6 +17,7 @@
 (defconst blm-keywords
   '("const"
     "br"
+    "addrof"
     "unop"
     "unreachable"
     "typeinfer"

@@ -1,6 +1,6 @@
 /* playground */
 
-// #load "std/debug.bl"
+#load "std/debug.bl"
 
 /*
   TODO:
@@ -8,13 +8,25 @@
 */
 
 main :: fn () s32 {
-  i       := 666;
+  foo := 666;
+  foo_ptr := &foo;
+  foo_ptr_ptr := &foo_ptr;
+
+  assert(foo_ptr != null);
+  assert(foo_ptr_ptr != null);
+
+  bar : s32 = *foo_ptr;
+  baz := *foo_ptr;
+  bar = **foo_ptr_ptr;
+  assert(bar == foo);
+
+  i := 666;
   modif(&i);
   return i;
 };
 
 modif :: fn (ptr: *s32) {
-  *ptr = 10;
+  *ptr = 777;
 };
 
 /*

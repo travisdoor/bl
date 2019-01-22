@@ -189,3 +189,10 @@
 
 *** elemptr
     TODO
+
+*** addrof
+    Evaluates address of the variable.
+
+    | stack op | data    | description                   |
+    |----------+---------+-------------------------------|
+    | PUSH     | var ptr | pointer to allocated variable |
