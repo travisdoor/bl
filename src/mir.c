@@ -43,7 +43,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define EXEC_MIN_STORE_SIZE             sizeof(union MirGenericValue)
 
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC false 
 // clang-format on
 
 union _MirInstr
