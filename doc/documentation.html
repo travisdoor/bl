@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Biscuit Documentation</title>
+<!-- 2019-01-22 Út 17:14 -->
+<meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta  name="generator" content="Org-mode" />
+<meta  name="author" content="Martin Derail" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { color: green; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  pre.src-sh:before    { content: 'sh'; }
+  pre.src-bash:before  { content: 'sh'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-R:before     { content: 'R'; }
+  pre.src-perl:before  { content: 'Perl'; }
+  pre.src-java:before  { content: 'Java'; }
+  pre.src-sql:before   { content: 'SQL'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.right  { text-align: center;  }
+  th.left   { text-align: center;   }
+  th.center { text-align: center; }
+  td.right  { text-align: right;  }
+  td.left   { text-align: left;   }
+  td.center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara:nth-child(2) { display: inline; }
+  .footpara { display: block; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="org.css"/>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Biscuit Documentation</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">1. About</a></li>
+<li><a href="#sec-2">2. Instalation</a>
+<ul>
+<li><a href="#sec-2-1">2.1. Requirements</a></li>
+<li><a href="#sec-2-2">2.2. Linux</a></li>
+<li><a href="#sec-2-3">2.3. Mac's</a></li>
+<li><a href="#sec-2-4">2.4. <span class="todo TODO">TODO</span> Windows</a></li>
+</ul>
+</li>
+<li><a href="#sec-3">3. Compiler</a>
+<ul>
+<li><a href="#sec-3-1">3.1. Usage</a></li>
+<li><a href="#sec-3-2">3.2. <span class="todo TODO">TODO</span> Compile-time execution</a></li>
+</ul>
+</li>
+<li><a href="#sec-4">4. Language</a>
+<ul>
+<li><a href="#sec-4-1">4.1. Base syntax</a></li>
+<li><a href="#sec-4-2">4.2. Comments</a></li>
+<li><a href="#sec-4-3">4.3. Operators</a></li>
+<li><a href="#sec-4-4">4.4. Data types</a></li>
+<li><a href="#sec-4-5">4.5. Variables</a></li>
+<li><a href="#sec-4-6">4.6. Constants</a></li>
+<li><a href="#sec-4-7">4.7. Functions</a></li>
+<li><a href="#sec-4-8">4.8. <span class="todo TODO">TODO</span> Ifs</a></li>
+<li><a href="#sec-4-9">4.9. <span class="todo TODO">TODO</span> Loops</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> About</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+The Biscuit Language (BL) is simple imperative programming language.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> Instalation</h2>
+<div class="outline-text-2" id="text-2">
+</div><div id="outline-container-sec-2-1" class="outline-3">
+<h3 id="sec-2-1"><span class="section-number-3">2.1</span> Requirements</h3>
+<div class="outline-text-3" id="text-2-1">
+<ul class="org-ul">
+<li>git
+</li>
+<li>CMake
+</li>
+<li>LLVM
+</li>
+<li><a href="https://github.com/travisdoor/bobject">bobject</a>
+</li>
+<li><a href="http://www.dyncall.org">dyncall</a>
+</li>
+<li>GCC/CLANG/Visual Studio compiler
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-2" class="outline-3">
+<h3 id="sec-2-2"><span class="section-number-3">2.2</span> Linux</h3>
+<div class="outline-text-3" id="text-2-2">
+<ul class="org-ul">
+<li>Install bobject.
+</li>
+<li>Install dyncall.
+</li>
+<li>Install LLVM dev packages.
+</li>
+<li>Download and compile bl.
+</li>
+</ul>
+
+<pre class="example">
+git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make
+</pre>
+
+<ul class="org-ul">
+<li>Add 'bl/api' and 'bl/bin' into the system PATH
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-3" class="outline-3">
+<h3 id="sec-2-3"><span class="section-number-3">2.3</span> Mac's</h3>
+<div class="outline-text-3" id="text-2-3">
+<ul class="org-ul">
+<li>Install bobject.
+</li>
+<li>Install dyncall.
+</li>
+<li>Install LLVM dev packages.
+</li>
+<li>Download and compile bl.
+</li>
+</ul>
+
+<pre class="example">
+git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make
+</pre>
+
+<ul class="org-ul">
+<li>Add 'bl/api' and 'bl/bin' into the system PATH
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-4" class="outline-3">
+<h3 id="sec-2-4"><span class="section-number-3">2.4</span> <span class="todo TODO">TODO</span> Windows</h3>
+</div>
+</div>
+
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> Compiler</h2>
+<div class="outline-text-2" id="text-3">
+</div><div id="outline-container-sec-3-1" class="outline-3">
+<h3 id="sec-3-1"><span class="section-number-3">3.1</span> Usage</h3>
+<div class="outline-text-3" id="text-3-1">
+<pre class="example">
+blc [options] &lt;source-files&gt;
+</pre>
+
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">Option</th>
+<th scope="col" class="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">-h, -help</td>
+<td class="left">Print usage information and exit.</td>
+</tr>
+
+<tr>
+<td class="left">-ast-dump</td>
+<td class="left">Print AST.</td>
+</tr>
+
+<tr>
+<td class="left">-lex-dump</td>
+<td class="left">Print output of lexer.</td>
+</tr>
+
+<tr>
+<td class="left">-mir-pre-dump</td>
+<td class="left">Print output of MIR pre analyze stage.</td>
+</tr>
+
+<tr>
+<td class="left">-mir-post-dump</td>
+<td class="left">Print output of MIR post analyze stage.</td>
+</tr>
+
+<tr>
+<td class="left">-syntax-only</td>
+<td class="left">Check syntax and exit.</td>
+</tr>
+
+<tr>
+<td class="left">-emit-llvm</td>
+<td class="left">Write LLVM-IR to file.</td>
+</tr>
+
+<tr>
+<td class="left">-emit-mir</td>
+<td class="left">Write MIR to file.</td>
+</tr>
+
+<tr>
+<td class="left">-no-bin</td>
+<td class="left">Don't write binary to disk.</td>
+</tr>
+
+<tr>
+<td class="left">-no-warning</td>
+<td class="left">Ignore all warnings.</td>
+</tr>
+
+<tr>
+<td class="left">-verbose</td>
+<td class="left">Verbose mode.</td>
+</tr>
+
+<tr>
+<td class="left">-no-api</td>
+<td class="left">Don't load internal api.</td>
+</tr>
+
+<tr>
+<td class="left">-force-test-to-llvm</td>
+<td class="left">Force llvm generation of unit tests.</td>
+</tr>
+
+<tr>
+<td class="left">-run</td>
+<td class="left">Execute 'main' method in compile time.</td>
+</tr>
+
+<tr>
+<td class="left">-run-tests</td>
+<td class="left">Execute all unit tests in compile time.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-3-2" class="outline-3">
+<h3 id="sec-3-2"><span class="section-number-3">3.2</span> <span class="todo TODO">TODO</span> Compile-time execution</h3>
+</div>
+</div>
+
+<div id="outline-container-sec-4" class="outline-2">
+<h2 id="sec-4"><span class="section-number-2">4</span> Language</h2>
+<div class="outline-text-2" id="text-4">
+</div><div id="outline-container-sec-4-1" class="outline-3">
+<h3 id="sec-4-1"><span class="section-number-3">4.1</span> Base syntax</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+Declarations and mutability:
+</p>
+<pre class="example">
+&lt;name&gt;: &lt;type&gt;;              // mutable declaration
+&lt;name&gt;: [type] = &lt;value&gt;;    // mutable declaration
+&lt;name&gt;: [type] : &lt;value&gt;;    // immutable declaration
+</pre>
+
+<p>
+Data type is optional when we specify some value.
+</p>
+
+<pre class="example">
+foo: s32; // data type required
+foo := 10; // data type based on value type (in this case s32)
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-2" class="outline-3">
+<h3 id="sec-4-2"><span class="section-number-3">4.2</span> Comments</h3>
+<div class="outline-text-3" id="text-4-2">
+<pre class="example">
+// this is line comment
+/*
+ this
+ is
+ multi line
+ comment
+*/
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-3" class="outline-3">
+<h3 id="sec-4-3"><span class="section-number-3">4.3</span> Operators</h3>
+<div class="outline-text-3" id="text-4-3">
+</div><div id="outline-container-sec-4-3-1" class="outline-4">
+<h4 id="sec-4-3-1"><span class="section-number-4">4.3.1</span> Binary</h4>
+<div class="outline-text-4" id="text-4-3-1">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">Symbol</th>
+<th scope="col" class="left">Relevant for types</th>
+<th scope="col" class="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">+</td>
+<td class="left">Integers, Floats</td>
+<td class="left">Addition.</td>
+</tr>
+
+<tr>
+<td class="left">&minus;</td>
+<td class="left">Integers, Floats</td>
+<td class="left">Subtraction.</td>
+</tr>
+
+<tr>
+<td class="left">*</td>
+<td class="left">Integers, Floats</td>
+<td class="left">Multiplication.</td>
+</tr>
+
+<tr>
+<td class="left">/</td>
+<td class="left">Integers, Floats</td>
+<td class="left">Division.</td>
+</tr>
+
+<tr>
+<td class="left">%</td>
+<td class="left">Integers, Floats</td>
+<td class="left">Remainder division.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-3-2" class="outline-4">
+<h4 id="sec-4-3-2"><span class="section-number-4">4.3.2</span> <span class="todo TODO">TODO</span> Unary</h4>
+</div>
+</div>
+
+<div id="outline-container-sec-4-4" class="outline-3">
+<h3 id="sec-4-4"><span class="section-number-3">4.4</span> Data types</h3>
+<div class="outline-text-3" id="text-4-4">
+</div><div id="outline-container-sec-4-4-1" class="outline-4">
+<h4 id="sec-4-4-1"><span class="section-number-4">4.4.1</span> Fundamental data types</h4>
+<div class="outline-text-4" id="text-4-4-1">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">Name</th>
+<th scope="col" class="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">s8</td>
+<td class="left">Signed 8-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">s16</td>
+<td class="left">Signed 16-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">s32</td>
+<td class="left">Signed 32-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">s64</td>
+<td class="left">Signed 64-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">u8</td>
+<td class="left">Unsigned 8-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">u16</td>
+<td class="left">Unsigned 16-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">u32</td>
+<td class="left">Unsigned 32-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">u64</td>
+<td class="left">Unsigned 64-bit number.</td>
+</tr>
+
+<tr>
+<td class="left">usize</td>
+<td class="left">Unsigned 64-bit size.</td>
+</tr>
+
+<tr>
+<td class="left">bool</td>
+<td class="left">Boolean. (true/fasle)</td>
+</tr>
+
+<tr>
+<td class="left">f32</td>
+<td class="left">32-bit floating point number</td>
+</tr>
+
+<tr>
+<td class="left">f64</td>
+<td class="left">64-bit floating point number.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+<div id="outline-container-sec-4-4-2" class="outline-4">
+<h4 id="sec-4-4-2"><span class="section-number-4">4.4.2</span> Pointers</h4>
+<div class="outline-text-4" id="text-4-4-2">
+<p>
+Represents the address of some allocated data.
+</p>
+
+<pre class="example">
+i := 666;
+i_ptr : *s32 = &amp;i; // taking the address of 'i' variable and set 'i_ptr'
+j := *i_ptr;       // pointer dereferencing
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-4-3" class="outline-4">
+<h4 id="sec-4-4-3"><span class="section-number-4">4.4.3</span> Function type</h4>
+<div class="outline-text-4" id="text-4-4-3">
+<p>
+Type of function. 
+</p>
+
+<pre class="example">
+fn ([arguments]) [return type]
+
+// type of function without arguments and without return value
+fn ()             
+
+// type of function without arguments, returning value of 's32' type
+fn () s32
+
+// type of function with two arguments, returning value of 's32' type
+fn (s32, bool) s32
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-4-5" class="outline-3">
+<h3 id="sec-4-5"><span class="section-number-3">4.5</span> Variables</h3>
+<div class="outline-text-3" id="text-4-5">
+<p>
+Example of variable allocated on stack.
+</p>
+
+<pre class="example">
+i : s32 = 666; 
+i := 666; // type is optional here
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-6" class="outline-3">
+<h3 id="sec-4-6"><span class="section-number-3">4.6</span> Constants</h3>
+<div class="outline-text-3" id="text-4-6">
+<p>
+Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
+</p>
+
+<pre class="example">
+i : s32 : 666; 
+i :: 666; // type is optional here
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-7" class="outline-3">
+<h3 id="sec-4-7"><span class="section-number-3">4.7</span> Functions</h3>
+<div class="outline-text-3" id="text-4-7">
+</div><div id="outline-container-sec-4-7-1" class="outline-4">
+<h4 id="sec-4-7-1"><span class="section-number-4">4.7.1</span> Named function</h4>
+<div class="outline-text-4" id="text-4-7-1">
+<p>
+Examples of named function.
+</p>
+
+<pre class="example">
+foo :: fn () {
+};
+
+bar :: fn (i: s32) {
+  i; // use i
+};
+
+baz :: fn (i: s32) s32 {
+  return i;
+};
+
+foo();
+bar(666);
+j := baz(666);
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-7-2" class="outline-4">
+<h4 id="sec-4-7-2"><span class="section-number-4">4.7.2</span> Anonymous function</h4>
+<div class="outline-text-4" id="text-4-7-2">
+<p>
+Example of anonymous function.
+</p>
+
+<pre class="example">
+i := fn (i: s32) s32 {
+  return i;
+} (666);
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-4-8" class="outline-3">
+<h3 id="sec-4-8"><span class="section-number-3">4.8</span> <span class="todo TODO">TODO</span> Ifs</h3>
+</div>
+<div id="outline-container-sec-4-9" class="outline-3">
+<h3 id="sec-4-9"><span class="section-number-3">4.9</span> <span class="todo TODO">TODO</span> Loops</h3>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Martin Derail</p>
+<p class="date">Created: 2019-01-22 Út 17:14</p>
+<p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
