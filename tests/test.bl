@@ -21,15 +21,16 @@ main :: fn () s32 {
   assert(bar == foo);
 
   i := 666;
-  modif(&i);
+  modif(&i, 777);
+  assert(i == 777);
   return i;
 };
 
-modif :: fn (ptr: *s32) {
-  *ptr = 777;
+modif :: fn (ptr: *s32, value: s32) {
+  *ptr = value;
+  say_hello();
 };
 
-/*
 putchar :: fn (c: s32) s32 #extern;
 
 say_hello :: fn () {
@@ -46,4 +47,3 @@ say_hello :: fn () {
   putchar(100);
   putchar(10);
 };
-*/

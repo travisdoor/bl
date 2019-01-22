@@ -3203,6 +3203,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     break;
 
   case MIR_TYPE_PTR:
+  case MIR_TYPE_NULL:
     binop(binop->op, lhs_ptr, rhs_ptr, result, uint64_t, v_uint);
     break;
 
