@@ -8,29 +8,12 @@
 */
 
 main :: fn () s32 {
-  foo := 666;
-  foo_ptr := &foo;
-  foo_ptr_ptr := &foo_ptr;
-
-  assert(foo_ptr != null);
-  assert(foo_ptr_ptr != null);
-
-  bar : s32 = *foo_ptr;
-  baz := *foo_ptr;
-  bar = **foo_ptr_ptr;
-  assert(bar == foo);
-
-  i := 666;
-  modif(&i, 777);
-  assert(i == 777);
-  return i;
+  arr : [10] s32;
+  arr[1];
+  return 666;
 };
 
-modif :: fn (ptr: *s32, value: s32) {
-  *ptr = value;
-  say_hello();
-};
-
+/*
 putchar :: fn (c: s32) s32 #extern;
 
 say_hello :: fn () {
@@ -47,3 +30,4 @@ say_hello :: fn () {
   putchar(100);
   putchar(10);
 };
+*/

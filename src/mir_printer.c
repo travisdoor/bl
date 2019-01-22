@@ -158,7 +158,7 @@ void
 print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream)
 {
   print_instr_head(&elem_ptr->base, stream);
-  fprintf(stream, "%%%u[%%%u]", elem_ptr->arr_ptr->id, elem_ptr->index->id);
+  fprintf(stream, "elemptr %%%u[%%%u]", elem_ptr->arr_ptr->id, elem_ptr->index->id);
 }
 
 void
