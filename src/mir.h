@@ -245,6 +245,7 @@ typedef enum
   MIR_INSTR_UNOP,
   MIR_INSTR_ARG,
   MIR_INSTR_ELEM_PTR,
+  MIR_INSTR_ADDROF,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -324,6 +325,13 @@ struct MirInstrStore
 
   MirInstr *src;
   MirInstr *dest;
+};
+
+struct MirInstrAddrOf
+{
+  MirInstr base;
+
+  MirInstr *src;
 };
 
 struct MirInstrRet

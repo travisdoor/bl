@@ -57,6 +57,9 @@ static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
+print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream);
+
+static void
 print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream);
 
 static void
@@ -211,6 +214,13 @@ print_instr_load(MirInstrLoad *load, FILE *stream)
 }
 
 void
+print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream)
+{
+  print_instr_head(&addrof->base, stream);
+  fprintf(stream, "addrof %%%u", addrof->src->id);
+}
+
+void
 print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 {
   print_instr_head(&decl->base, stream);
@@ -267,7 +277,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
   print_instr_head(&call->base, stream);
 
-  const char *callee_name = call->callee->const_value.data.v_fn->name;
+  const char *callee_name = call->callee->const_value.data.v_fn ? call->callee->const_value.data.v_fn->name : NULL;
   if (callee_name)
     fprintf(stream, "call @%s", callee_name);
   else
@@ -442,6 +452,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_PTR:
     print_instr_type_ptr((MirInstrTypePtr *)instr, stream);
+    break;
+  case MIR_INSTR_ADDROF:
+    print_instr_addrof((MirInstrAddrOf *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;

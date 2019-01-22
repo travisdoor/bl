@@ -152,6 +152,41 @@
   assert(i == 10);
 };
 
+#test "pointers" {
+  i       := 666;
+  ptr     := &i;
+  ptr_ptr := &ptr;
+
+  j := **ptr_ptr;
+  assert(j == 666);
+
+  j = *ptr;
+  assert(j == 666);
+};
+
+
+#test "null pointers" {
+  test_ptr :: fn (ptr: *s32) *s32 {
+    return null;
+  };
+
+  foo : *s32 = null;
+  assert(foo == null);
+  assert(null == null);
+  assert(test_ptr(null) == null);
+};
+
+#test "passed pointer" {
+  value :: 10;
+  i := 0;
+  
+  fn (ptr: *s32, v: s32) {
+    *ptr = v; 
+  } (&i, value);
+
+  assert(i == value);
+};
+
 /*
 #test "simple static array" {
   arr : [10]s32;
@@ -174,25 +209,5 @@
 
   assert(arr[0] == 0);
   assert(arr[9] == 9);
-};
-
-#test "pointers" {
-  i : s32 = 666;
-  ptr : *s32 = null;
-  ptr = &i;
-  j : s32 = *ptr;
-
-  assert(j == 666);
-};
-
-#test "null pointers" {
-  test_ptr :: fn (ptr: *s32) *s32 {
-    return null;
-  };
-
-  foo : *s32 = null;
-  assert(foo == null);
-  assert(null == null);
-  assert(test_ptr(null) == null);
 };
 */

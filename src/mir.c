@@ -67,6 +67,7 @@ union _MirInstr
   MirInstrUnop         unop;
   MirInstrArg          arg;
   MirInstrElemPtr      elem_ptr;
+  MirInstrAddrOf       addrof;
   MirInstrTypeArray    type_array;
   MirInstrTypePtr      type_ptr;
 };
@@ -397,6 +398,12 @@ static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
 
 static MirInstr *
+ast_expr_addrof(Context *cnt, Ast *addrof);
+
+static MirInstr *
+ast_expr_deref(Context *cnt, Ast *deref);
+
+static MirInstr *
 ast_expr_ref(Context *cnt, Ast *ref);
 
 static MirInstr *
@@ -433,12 +440,15 @@ static MirInstr *
 ast_expr_unary(Context *cnt, Ast *unop);
 
 /* this will also set size and alignment of the type */
-static LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type);
+static void
+init_llvm_type(Context *cnt, MirType *type);
 
 /* analyze */
 static bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
+static bool
+analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
 static bool
 analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime);
@@ -512,6 +522,9 @@ exec_instr(Context *cnt, MirInstr *instr);
 
 static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static void
+exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
 static void
 exec_instr_br(Context *cnt, MirInstrBr *br);
@@ -919,11 +932,12 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
   if (!src) return src;
   switch (src->kind) {
+  case MIR_INSTR_UNOP:
   case MIR_INSTR_CONST:
   case MIR_INSTR_BINOP:
-  case MIR_INSTR_UNOP:
   case MIR_INSTR_CALL:
-  case MIR_INSTR_LOAD:
+    // case MIR_INSTR_LOAD:
+  case MIR_INSTR_ADDROF:
     return src;
   default:
     break;
@@ -978,10 +992,10 @@ ref_instr(MirInstr *instr)
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_TYPE;
-  tmp->name      = "type";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_TYPE;
+  tmp->name    = "type";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -992,27 +1006,27 @@ create_type_null(Context *cnt)
   tmp->kind    = MIR_TYPE_NULL;
   tmp->name    = "null";
   /* default type of null in llvm (can be overriden later) */
-  tmp->llvm_type = cnt->buildin_types.entry_u8_ptr->llvm_type;
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_VOID;
-  tmp->name      = "void";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_VOID;
+  tmp->name    = "void";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp   = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind      = MIR_TYPE_BOOL;
-  tmp->name      = "bool";
-  tmp->llvm_type = to_llvm_type(cnt, tmp);
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind    = MIR_TYPE_BOOL;
+  tmp->name    = "bool";
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1025,7 +1039,7 @@ create_type_int(Context *cnt, const char *name, int bitcount, bool is_signed)
   tmp->name                   = name;
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
-  tmp->llvm_type              = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1037,7 +1051,7 @@ create_type_real(Context *cnt, const char *name, int bitcount)
   tmp->kind               = MIR_TYPE_REAL;
   tmp->name               = name;
   tmp->data.real.bitcount = bitcount;
-  tmp->llvm_type          = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
   return tmp;
 }
 
@@ -1047,7 +1061,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
   MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
-  tmp->llvm_type     = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1059,7 +1073,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->buildin_types.entry_void;
-  tmp->llvm_type         = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1071,7 +1085,7 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
   tmp->kind                 = MIR_TYPE_ARRAY;
   tmp->data.array.elem_type = elem_type;
   tmp->data.array.len       = len;
-  tmp->llvm_type            = to_llvm_type(cnt, tmp);
+  init_llvm_type(cnt, tmp);
 
   return tmp;
 }
@@ -1290,6 +1304,17 @@ append_instr_load(Context *cnt, Ast *node, MirInstr *src)
   ref_instr(src);
   MirInstrLoad *tmp = create_instr(cnt, MIR_INSTR_LOAD, node, MirInstrLoad *);
   tmp->src          = src;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
+{
+  ref_instr(src);
+  MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDROF, node, MirInstrAddrOf *);
+  tmp->src            = src;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -1545,18 +1570,25 @@ append_instr_validate_type(Context *cnt, MirInstr *src)
 }
 
 /* LLVM */
-LLVMTypeRef
-to_llvm_type(Context *cnt, MirType *type)
+void
+init_llvm_type(Context *cnt, MirType *type)
 {
-  if (!type) return NULL;
-  LLVMTypeRef result = NULL;
+  if (!type) return;
 
   switch (type->kind) {
   case MIR_TYPE_TYPE: {
     type->alignment        = alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
-    result                 = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    break;
+  }
+
+  case MIR_TYPE_NULL: {
+    type->alignment        = cnt->buildin_types.entry_u8_ptr->alignment;
+    type->size_bits        = cnt->buildin_types.entry_u8_ptr->size_bits;
+    type->store_size_bytes = cnt->buildin_types.entry_u8_ptr->store_size_bytes;
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
@@ -1564,37 +1596,38 @@ to_llvm_type(Context *cnt, MirType *type)
     type->alignment        = 0;
     type->size_bits        = 0;
     type->store_size_bytes = 0;
-    result                 = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
   case MIR_TYPE_INT: {
-    result = LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type =
+        LLVMIntTypeInContext(cnt->module->llvm_cnt, (unsigned int)type->data.integer.bitcount);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   case MIR_TYPE_REAL: {
     if (type->data.real.bitcount == 32)
-      result = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
+      type->llvm_type = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
     else if (type->data.real.bitcount == 64)
-      result = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
+      type->llvm_type = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
     else
       bl_abort("invalid floating point type");
 
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   case MIR_TYPE_BOOL: {
-    result                 = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
@@ -1602,10 +1635,10 @@ to_llvm_type(Context *cnt, MirType *type)
     MirType *tmp = type->data.ptr.next;
     assert(tmp);
     assert(tmp->llvm_type);
-    result                 = LLVMPointerType(tmp->llvm_type, 0);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
@@ -1631,7 +1664,7 @@ to_llvm_type(Context *cnt, MirType *type)
     llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     assert(llvm_ret);
 
-    result                 = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
+    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
     type->size_bits        = 0;
     type->store_size_bytes = 0;
     type->alignment        = 0;
@@ -1644,18 +1677,16 @@ to_llvm_type(Context *cnt, MirType *type)
     assert(llvm_elem_type);
     const unsigned int len = (const unsigned int)type->data.array.len;
 
-    result                 = LLVMArrayType(llvm_elem_type, len);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, result);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, result);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, result);
+    type->llvm_type        = LLVMArrayType(llvm_elem_type, len);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     break;
   }
 
   default:
     bl_unimplemented;
   }
-
-  return result;
 }
 
 bool
@@ -1751,6 +1782,30 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   assert(elem_type);
   elem_ptr->tmp_value.type        = elem_type;
   elem_ptr->base.const_value.type = create_type_ptr(cnt, elem_type);
+
+  return true;
+}
+
+bool
+analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+{
+  MirInstr *src = addrof->src;
+  assert(src);
+  if (src->kind != MIR_INSTR_DECL_REF) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL, addrof->base.node->src,
+                BUILDER_CUR_WORD, "cannot take the address of unallocated object");
+    return false;
+  }
+
+  /* setup type */
+  addrof->base.const_value.type = src->const_value.type;
+  assert(addrof->base.const_value.type && "invalid type");
+
+  /* source is declref -> we replace reference to true declaration */
+  if (src->kind == MIR_INSTR_DECL_REF) {
+    addrof->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
+    assert(addrof->src && "invalid source for addrof instruction");
+  }
 
   return true;
 }
@@ -1997,20 +2052,6 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
   assert(unop->instr && unop->instr->analyzed);
   MirType *type = unop->instr->const_value.type;
   assert(type);
-
-  switch (unop->op) {
-  case UNOP_INVALID:
-    bl_abort("invalid unary operation");
-  case UNOP_NEG:
-  case UNOP_POS:
-  case UNOP_NOT:
-  case UNOP_ADR:
-    break;
-  case UNOP_DEREF:
-    bl_abort("invalid unary instruction operator");
-    break;
-  }
-
   unop->base.const_value.type = type;
   return true;
 }
@@ -2342,6 +2383,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_ELEM_PTR:
     state = analyze_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
     break;
+  case MIR_INSTR_ADDROF:
+    state = analyze_instr_addrof(cnt, (MirInstrAddrOf *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
@@ -2463,6 +2507,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_CONST:
     exec_instr_const(cnt, (MirInstrConst *)instr);
     break;
+  case MIR_INSTR_ADDROF:
+    exec_instr_addrof(cnt, (MirInstrAddrOf *)instr);
+    break;
   case MIR_INSTR_BINOP:
     exec_instr_binop(cnt, (MirInstrBinop *)instr);
     break;
@@ -2514,6 +2561,26 @@ exec_instr(Context *cnt, MirInstr *instr)
   }
 }
 
+/*
+ * Evaluates address of the variable.
+ *
+ * | stack op | data    | description                   |
+ * |----------+---------+-------------------------------|
+ * | PUSH     | var ptr | pointer to allocated variable |
+ */
+void
+exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+{
+  MirInstr *src  = addrof->src;
+  MirType * type = src->const_value.type;
+  assert(type);
+  assert(src->kind == MIR_INSTR_DECL_VAR);
+
+  MirGenericValue value;
+  value.v_stack_ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
+  exec_push_stack(cnt, &value, type);
+}
+
 void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
@@ -2543,6 +2610,9 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 #endif
 }
 
+/*
+ * Abort execution when this instruction is reached.
+ */
 void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
@@ -2550,6 +2620,9 @@ exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
   exec_abort(cnt, 0);
 }
 
+/*
+ * Breaks to the basic block. This instruction terminates current basic block.
+ */
 void
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
@@ -2557,6 +2630,13 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
   exec_set_pc(cnt, br->then_block->entry_instr);
 }
 
+/*
+ * Load argument of the current function on the stack.
+ *
+ * | stack op | data | description |
+ * |----------+------+-------------|
+ * | PUSH     | arg  | fn argument |
+ */
 void
 exec_instr_arg(Context *cnt, MirInstrArg *arg)
 {
@@ -2578,6 +2658,14 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   exec_push_stack(cnt, (MirGenericValuePtr)arg_ptr, arg->base.const_value.type);
 }
 
+/*
+ * Breaks into then block if the condition is true. This instruction terminates current basic
+ * block.
+ *
+ * | stack op | data      | description       |
+ * |----------+-----------+-------------------|
+ * | POP      | condition | checked condition |
+ */
 void
 exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
@@ -2595,6 +2683,13 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   }
 }
 
+/*
+ * Variable declaration.
+ *
+ * | stack op | data | description              |
+ * |----------+------+--------------------------|
+ * | PUSH     | -    | storage for the variable |
+ */
 void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
@@ -2609,6 +2704,14 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   decl->base.const_value.data.v_rel_stack_ptr = ptr;
 }
 
+/*
+ * Push pointed value on the stack.
+ *
+ * | stack op | data  | description              |
+ * |----------+-------+--------------------------|
+ * | POP      | ptr   | pointer to source        |
+ * | PUSH     | value | value loaded from source |
+ */
 void
 exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
@@ -2627,11 +2730,29 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
     src_ptr = exec_pop_stack(cnt, src_type);
     src_ptr = src_ptr->v_stack_ptr;
   }
-  assert(src_ptr);
+
+  if (!src_ptr) {
+    msg_error("Dereferencing null pointer!");
+    exec_abort(cnt, 0);
+  }
 
   exec_push_stack(cnt, src_ptr, dest_type);
 }
 
+/*
+   Store value from source to destination address.
+
+   Destination pointer is on the stack:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | dest_ptr | pointer to destination |
+   | POP      | src_ptr  | value                  |
+
+   Destination pointer is declaration:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | src_ptr  | value                  |
+ */
 void
 exec_instr_store(Context *cnt, MirInstrStore *store)
 {
@@ -2654,8 +2775,8 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
   }
 
   src_ptr = exec_pop_stack(cnt, src_type);
-  assert(src_ptr);
 
+  assert(dest_ptr && src_ptr);
   memcpy(dest_ptr, src_ptr, exec_store_size(src_type));
 }
 
@@ -2694,7 +2815,13 @@ exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   MirType *type = type_ptr->type->const_value.data.v_type;
   assert(type);
-  type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, type);
+
+  /* create pointer type */
+  MirGenericValue tmp;
+  tmp.v_type = create_type_ptr(cnt, type);
+  assert(tmp.v_type);
+
+  exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
 }
 
 void
@@ -2715,6 +2842,13 @@ exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   type_arr->base.const_value.data.v_type = create_type_array(cnt, elem_type, len);
 }
 
+/*
+ * Constant value.
+ *
+ * | stack op | data  | description    |
+ * |----------+-------+----------------|
+ * | PUSH     | value | constant value |
+ */
 void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
@@ -2803,25 +2937,25 @@ exec_push_dc_arg(Context *cnt, MirGenericValuePtr val_ptr, MirType *type)
 }
 
 /*
-  Stack operations of call instruction and argument ordering on stack
-
-  pc   program counter (pointer to current instruction)
-  RA   return address (used later for rollback of the stack)
-
-  call fn (1, 2, 3) 4
-
-    | stack op | data         | instr |
-    |----------+--------------+-------|
-    | PUSH     | 3            | ?     |
-    | PUSH     | 2            | ?     |
-    | PUSH     | 1            | ?     |
-    | PUSH RA  | pc, prev RA  | call  |
-    | ...      | -            | -     |
-    | POP RA   | -            | ret   |
-    | POP      | -            | ret   |
-    | POP      | -            | ret   |
-    | POP      | -            | ret   |
-    | PUSH     | 4            | ret   |
+ * Stack operations of call instruction and argument ordering on stack
+ *
+ * pc   program counter (pointer to current instruction)
+ * RA   return address (used later for rollback of the stack)
+ *
+ * call fn (1, 2, 3) 4
+ *
+ * | stack op | data         | instr |
+ * |----------+--------------+-------|
+ * | PUSH     | 3            | ?     |
+ * | PUSH     | 2            | ?     |
+ * | PUSH     | 1            | ?     |
+ * | PUSH RA  | pc, prev RA  | call  |
+ * | ...      | -            | -     |
+ * | POP RA   | -            | ret   |
+ * | POP      | -            | ret   |
+ * | POP      | -            | ret   |
+ * | POP      | -            | ret   |
+ * | PUSH     | 4            | ret   |
  */
 void
 exec_instr_call(Context *cnt, MirInstrCall *call)
@@ -2890,6 +3024,17 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   }
 }
 
+/*
+ * Return value from the function and return control to the caller. This instruction terminates
+ * current basic block.
+ *
+ * | stack op | data  | description                            |
+ * |----------+-------+----------------------------------------|
+ * | POP RA   | -     | rollback the stack to return address   |
+ * | POP      | arg 1 | clenup fn argument                     |
+ * | POP      | arg 2 | clenup fn argument                     |
+ * | PUSH     | value | push call result value if there is one |
+ */
 void
 exec_instr_ret(Context *cnt, MirInstrRet *ret)
 {
@@ -2944,7 +3089,15 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   exec_set_pc(cnt, pc);
 }
 
-/* INT MATH */
+/*
+ * Binary operation.
+ *
+ * | stack op | data   | description                   |
+ * |----------+--------+-------------------------------|
+ * | POP      | lhs    | left-hand side of operation   |
+ * | POP      | rhs    | right-hand side of operation  |
+ * | PUSH     | result | result value of the operation |
+ */
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
@@ -3049,6 +3202,11 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     binop(binop->op, lhs_ptr, rhs_ptr, result, int64_t, v_int);
     break;
 
+  case MIR_TYPE_PTR:
+  case MIR_TYPE_NULL:
+    binop(binop->op, lhs_ptr, rhs_ptr, result, uint64_t, v_uint);
+    break;
+
   default:
     bl_abort("invalid binop type");
   }
@@ -3057,6 +3215,14 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 #undef binop
 }
 
+/*
+ * Unary operation.
+ *
+ * | stack op | data   | description                   |
+ * |----------+--------+-------------------------------|
+ * | POP      | value  |                               |
+ * | PUSH     | result | result value of the operation |
+ */
 void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
@@ -3073,7 +3239,6 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     case UNOP_NOT:                                                                                 \
       (_result)._v_T = !value;                                                                     \
       break;                                                                                       \
-    case UNOP_ADR:                                                                                 \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
     }                                                                                              \
@@ -3134,7 +3299,7 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
     break;
 
   default:
-    bl_abort("invalid binop type");
+    bl_abort("invalid unop type");
   }
 
   exec_push_stack(cnt, &result, value_type);
@@ -3326,6 +3491,25 @@ ast_stmt_return(Context *cnt, Ast *ret)
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
   value           = append_instr_load_if_needed(cnt, value);
   append_instr_ret(cnt, ret, value);
+}
+
+MirInstr *
+ast_expr_addrof(Context *cnt, Ast *addrof)
+{
+  MirInstr *src = ast(cnt, addrof->data.expr_addrof.next);
+  assert(src);
+
+  return append_instr_addrof(cnt, addrof, src);
+}
+
+MirInstr *
+ast_expr_deref(Context *cnt, Ast *deref)
+{
+  MirInstr *next = ast(cnt, deref->data.expr_deref.next);
+  assert(next);
+
+  // next = append_instr_load(cnt, deref, next);
+  return append_instr_load(cnt, deref, next);
 }
 
 MirInstr *
@@ -3577,22 +3761,7 @@ ast_expr_unary(Context *cnt, Ast *unop)
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
 
-  switch (unop->data.expr_unary.kind) {
-  case UNOP_INVALID:
-    bl_abort("invalid unary operation operator");
-  case UNOP_NEG:
-  case UNOP_POS:
-  case UNOP_NOT:
-    next = append_instr_load_if_needed(cnt, next);
-    break;
-  case UNOP_ADR:
-    break;
-  case UNOP_DEREF:
-    next = append_instr_load(cnt, next->node, next);
-    return append_instr_load(cnt, unop, next);
-    break;
-  }
-
+  next = append_instr_load_if_needed(cnt, next);
   return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
@@ -3641,6 +3810,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     /* initialize const_value */
     MirInstr *value = ast(cnt, ast_value);
     if (value) {
+      value = append_instr_load_if_needed(cnt, value);
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
       result = append_instr_store(cnt, ast_value, value, decl);
     }
@@ -3799,6 +3969,10 @@ ast(Context *cnt, Ast *node)
     return ast_type_arr(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
+  case AST_EXPR_ADDROF:
+    return ast_expr_addrof(cnt, node);
+  case AST_EXPR_DEREF:
+    return ast_expr_deref(cnt, node);
   case AST_EXPR_LIT_INT:
     return ast_expr_lit_int(cnt, node);
   case AST_EXPR_LIT_FLOAT:
@@ -3882,6 +4056,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrElemPtr";
   case MIR_INSTR_TYPE_PTR:
     return "InstrTypePtr";
+  case MIR_INSTR_ADDROF:
+    return "InstrAddrOf";
   }
 
   return "UNKNOWN";

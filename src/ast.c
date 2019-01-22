@@ -155,6 +155,10 @@ ast_get_name(const Ast *n)
     return "ExprUnary";
   case AST_EXPR_NULL:
     return "ExprNull";
+  case AST_EXPR_ADDROF:
+    return "ExprAddrOf";
+  case AST_EXPR_DEREF:
+    return "ExprDeref";
   case AST_EXPR_LIT_FN:
     return "ExprLitFn";
   case AST_EXPR_LIT_INT:
@@ -234,10 +238,6 @@ ast_unop_to_str(UnopKind op)
     return "+";
   case UNOP_NOT:
     return "!";
-  case UNOP_ADR:
-    return "&";
-  case UNOP_DEREF:
-    return "*";
   default:
     return "invalid";
   }

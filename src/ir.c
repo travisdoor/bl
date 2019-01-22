@@ -37,6 +37,7 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
+#define NAMED_VARS false
 
 typedef struct
 {
@@ -56,6 +57,9 @@ gen_instr(Context *cnt, MirInstr *instr);
 
 static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
+
+static void
+gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
 static void
 gen_instr_unop(Context *cnt, MirInstrUnop *unop);
@@ -132,6 +136,13 @@ void
 gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
+}
+
+void
+gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+{
+  addrof->base.llvm_value = addrof->src->llvm_value;
+  assert(addrof->base.llvm_value);
 }
 
 void
@@ -229,11 +240,6 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
   switch (unop->op) {
   case UNOP_NOT: {
     unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
-    break;
-  }
-
-  case UNOP_ADR: {
-    unop->base.llvm_value = llvm_val;
     break;
   }
 
@@ -386,7 +392,11 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  const char *   name      = var->name;
+#if NAMED_VARS
+  const char *name = var->name;
+#else
+  const char *name = "";
+#endif
   LLVMTypeRef    llvm_type = var->alloc_type->llvm_type;
   const unsigned alignment = var->alloc_type->alignment;
   assert(llvm_type && name);
@@ -520,6 +530,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_ELEM_PTR:
     gen_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    break;
+  case MIR_INSTR_ADDROF:
+    gen_instr_addrof(cnt, (MirInstrAddrOf *)instr);
     break;
 
   default:

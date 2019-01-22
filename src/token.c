@@ -38,8 +38,6 @@ bool
 token_is_unary(Token *token)
 {
   switch (token->sym) {
-  case SYM_AND:
-  case SYM_ASTERISK:
   case SYM_MINUS:
   case SYM_PLUS:
   case SYM_NOT:

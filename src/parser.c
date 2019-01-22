@@ -187,6 +187,12 @@ static Ast *
 parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op);
 
 static Ast *
+parse_expr_addrof(Context *cnt);
+
+static Ast *
+parse_expr_deref(Context *cnt);
+
+static Ast *
 parse_expr_type(Context *cnt);
 
 static Ast *
@@ -280,10 +286,6 @@ sym_to_unop_kind(Sym sm)
     return UNOP_POS;
   case SYM_NOT:
     return UNOP_NOT;
-  case SYM_AND:
-    return UNOP_ADR;
-  case SYM_ASTERISK:
-    return UNOP_DEREF;
   default:
     bl_abort("unknown unop operation!!!");
   }
@@ -700,6 +702,8 @@ parse_expr_atom(Context *cnt)
 
   if ((expr = parse_expr_primary(cnt))) return expr;
   if ((expr = parse_expr_unary(cnt))) return expr;
+  if ((expr = parse_expr_deref(cnt))) return expr;
+  if ((expr = parse_expr_addrof(cnt))) return expr;
 
   /*if ((expr = parse_expr_null(cnt))) goto done;
   if ((expr = parse_expr_cast(cnt))) goto done;
@@ -726,6 +730,48 @@ parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
   binop->data.expr_binop.rhs  = rhs;
 
   return binop;
+}
+
+Ast *
+parse_expr_addrof(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_AND);
+  if (!tok) return NULL;
+
+  Ast *addrof                   = ast_create_node(cnt->ast_arena, AST_EXPR_ADDROF, tok);
+  addrof->data.expr_addrof.next = _parse_expr(cnt, token_prec(tok).priority);
+
+  if (addrof->data.expr_addrof.next == NULL) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
+                "expected expression after '&' operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  if (addrof->data.expr_addrof.next->kind == AST_BAD) return addrof->data.expr_addrof.next;
+  return addrof;
+}
+
+Ast *
+parse_expr_deref(Context *cnt)
+{
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
+  if (!tok) return NULL;
+
+  Ast *deref                  = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok);
+  deref->data.expr_deref.next = _parse_expr(cnt, token_prec(tok).priority);
+
+  if (deref->data.expr_deref.next == NULL) {
+    Token *err_tok = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
+                "expected expression after '&' operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  if (deref->data.expr_deref.next->kind == AST_BAD) return deref->data.expr_deref.next;
+  return deref;
 }
 
 Ast *
