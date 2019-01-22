@@ -43,7 +43,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define EXEC_MIN_STORE_SIZE             sizeof(union MirGenericValue)
 
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC true
 // clang-format on
 
 union _MirInstr
@@ -1218,6 +1218,7 @@ append_instr_type_ptr(Context *cnt, Ast *node, MirInstr *type)
   tmp->base.comptime         = true;
   tmp->type                  = type;
 
+  ref_instr(type);
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1231,6 +1232,8 @@ append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *
   tmp->elem_type             = elem_type;
   tmp->len                   = len;
 
+  ref_instr(elem_type);
+  ref_instr(len);
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1782,6 +1785,12 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   assert(elem_type);
   elem_ptr->tmp_value.type        = elem_type;
   elem_ptr->base.const_value.type = create_type_ptr(cnt, elem_type);
+
+  /* source is declref -> we replace reference to true declaration */
+  if (arr_ptr->kind == MIR_INSTR_DECL_REF) {
+    elem_ptr->arr_ptr = ((MirInstrDeclRef *)arr_ptr)->scope_entry->instr;
+    assert(elem_ptr->arr_ptr && "invalid source for elemptr instruction");
+  }
 
   return true;
 }
@@ -2581,33 +2590,18 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   exec_push_stack(cnt, &value, type);
 }
 
+/*
+ * Evaluates address of the array element and push it on the stack.
+ *
+ * | stack op | data     | description                  |
+ * |----------+----------+------------------------------|
+ * | POP      | index    |                              |
+ * | PUSH     | elem ptr | Address of the array element |
+ */
 void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
   bl_unimplemented;
-#if 0
-  assert(elem_ptr->arr_ptr && elem_ptr->index);
-  assert(is_pointer_type(elem_ptr->arr_ptr->const_value.type));
-
-  MirConstValue *arr_value = elem_ptr->arr_ptr->const_value.data.v_ptr;
-  assert(is_array_type(arr_value->type));
-
-  // const size_t elem_size = store_sizeof_type_in_bytes(arr_value->type->data.array.elem_type);
-  MirConstValue *elem_value = &elem_ptr->base.const_value;
-  MirConstValue *index      = &elem_ptr->index->const_value;
-
-  // const uint64_t i         = exec_read_uint64(cnt, index);
-  const uint64_t i         = 0;
-  const size_t   elem_size = elem_value->type->store_size_bytes;
-  assert(elem_size && "invalid size of array element");
-
-  assert(arr_value->data.v_rel_stack_ptr);
-  elem_ptr->tmp_value.data = arr_value->data;
-  /* shift pointer by size */
-  elem_ptr->tmp_value.data.v_rel_stack_ptr += i * elem_size;
-
-  elem_value->data.v_ptr = &elem_ptr->tmp_value;
-#endif
 }
 
 /*
@@ -2813,7 +2807,7 @@ exec_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 void
 exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
-  MirType *type = type_ptr->type->const_value.data.v_type;
+  MirType *type = *exec_pop_stack_as(cnt, type_ptr->type->const_value.type, MirType **);
   assert(type);
 
   /* create pointer type */
@@ -2827,19 +2821,23 @@ exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 void
 exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
-  MirType *elem_type = type_arr->elem_type->const_value.data.v_type;
+  /* pop elm type */
+  MirType *elem_type = *exec_pop_stack_as(cnt, type_arr->elem_type->const_value.type, MirType **);
+  assert(elem_type);
 
-  /* TODO: len set by immutable variable need to be set before use!!! */
-  /* TODO: len set by immutable variable need to be set before use!!! */
-  /* TODO: len set by immutable variable need to be set before use!!! */
-  /* TODO: len set by immutable variable need to be set before use!!! */
+  /* pop arr size */
   /* TODO: len set by immutable variable need to be set before use!!! */
   assert(type_arr->elem_type->kind == MIR_INSTR_CONST);
-  bl_unimplemented;
-  size_t len = 0;
-  // size_t len = exec_read_uint64(cnt, &type_arr->len->const_value);
+  MirGenericValuePtr len_ptr = exec_pop_stack(cnt, type_arr->len->const_value.type);
+  size_t len = len_ptr->v_uint; // TODO!!!
 
-  type_arr->base.const_value.data.v_type = create_type_array(cnt, elem_type, len);
+  assert(elem_type);
+
+  MirGenericValue tmp;
+  tmp.v_type = create_type_array(cnt, elem_type, len);
+  assert(tmp.v_type);
+
+  exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
 }
 
 /*

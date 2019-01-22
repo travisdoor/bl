@@ -18,6 +18,7 @@
   '("const"
     "br"
     "addrof"
+    "elemptr"
     "unop"
     "unreachable"
     "typeinfer"
