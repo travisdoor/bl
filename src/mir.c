@@ -41,6 +41,7 @@
 #define IMPL_FN_NAME                    "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
+#define MAX_ALIGNMENT                   8
 
 #define VERBOSE_EXEC false
 // clang-format on
@@ -640,20 +641,21 @@ exec_abort(Context *cnt, int32_t report_stack_nesting)
 }
 
 static inline size_t
-exec_stack_alloc_size(const size_t size, const size_t alignment)
+exec_stack_alloc_size(const size_t size)
 {
   assert(size != 0);
-  return size + alignment - 1;
+  return size +  (MAX_ALIGNMENT - (size % MAX_ALIGNMENT));
+
 }
 
 /* allocate memory on frame stack, size is in bits!!! */
 static inline MirStackPtr
-exec_stack_alloc(Context *cnt, size_t size, size_t alignment)
+exec_stack_alloc(Context *cnt, size_t size)
 {
   assert(size && "trying to allocate 0 bits on stack");
 
-  // bl_log("allocate %u bytes on stack", size);
-  size = exec_stack_alloc_size(size, alignment);
+  size = exec_stack_alloc_size(size);
+  bl_log("allocate %u bytes on stack", size);
   cnt->exec_stack->used_bytes += size;
   if (cnt->exec_stack->used_bytes > cnt->exec_stack->allocated_bytes) {
     msg_error("Stack overflow!!!");
@@ -663,17 +665,17 @@ exec_stack_alloc(Context *cnt, size_t size, size_t alignment)
   MirStackPtr mem          = (MirStackPtr)cnt->exec_stack->top_ptr;
   cnt->exec_stack->top_ptr = cnt->exec_stack->top_ptr + size;
 
-  ptrdiff_t adj;
-  align_ptr_up(&mem, alignment, &adj);
+  align_ptr_up(&mem, MAX_ALIGNMENT, NULL);
+
   // bl_log("realy allocated %d with adj +%d", size, adj);
   return mem;
 }
 
 /* shift stack top by the size in bytes */
 static inline void
-exec_stack_free(Context *cnt, size_t size, size_t alignment)
+exec_stack_free(Context *cnt, size_t size)
 {
-  size             = exec_stack_alloc_size(size, alignment);
+  size             = exec_stack_alloc_size(size);
   uint8_t *new_top = cnt->exec_stack->top_ptr - size;
   if (new_top < (uint8_t *)(cnt->exec_stack->ra + 1)) bl_abort("Stack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
@@ -684,7 +686,7 @@ static inline void
 exec_push_ra(Context *cnt, MirInstr *instr)
 {
   MirFrame *prev      = cnt->exec_stack->ra;
-  MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame), alignof(MirFrame));
+  MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
   tmp->callee         = instr;
   tmp->prev           = prev;
   cnt->exec_stack->ra = tmp;
@@ -726,9 +728,8 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
 {
   assert(type);
   const size_t size      = type->store_size_bytes;
-  const size_t alignment = type->alignment;
   assert(size && "pushing zero sized data on stack");
-  MirStackPtr tmp = exec_stack_alloc(cnt, size, alignment);
+  MirStackPtr tmp = exec_stack_alloc(cnt, size);
 #if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
@@ -762,10 +763,9 @@ exec_pop_stack(Context *cnt, MirType *type)
   }
 #endif
 
-  exec_stack_free(cnt, size, alignment);
+  exec_stack_free(cnt, size);
   MirStackPtr tmp = cnt->exec_stack->top_ptr;
-  align_ptr_up(&tmp, alignment, NULL);
-
+  align_ptr_up(&tmp, MAX_ALIGNMENT, NULL);
   return tmp;
 }
 
