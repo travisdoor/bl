@@ -1,4 +1,3 @@
-#+bind: org-html-htmlize-output-type css
 #+TITLE: Biscuit Documentation
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil num:3 H:4 ^:nil pri:t
@@ -149,7 +148,7 @@
     | u32   | Unsigned 32-bit number.       |
     | u64   | Unsigned 64-bit number.       |
     | usize | Unsigned 64-bit size.         |
-    | bool  | Boolean. (true/fasle)         |
+    | bool  | Boolean. (true/false)         |
     | f32   | 32-bit floating point number  |
     | f64   | 64-bit floating point number. |
 
@@ -287,6 +286,5 @@
    finished at 22-01-2019 21:28:10
    done
    #+END_EXAMPLE
-
 
 * Footnotes

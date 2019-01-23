@@ -1591,7 +1591,7 @@ init_llvm_type(Context *cnt, MirType *type)
     type->alignment        = cnt->buildin_types.entry_u8_ptr->alignment;
     type->size_bits        = cnt->buildin_types.entry_u8_ptr->size_bits;
     type->store_size_bytes = cnt->buildin_types.entry_u8_ptr->store_size_bytes;
-    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    type->llvm_type        = cnt->buildin_types.entry_u8_ptr->llvm_type;
     break;
   }
 
