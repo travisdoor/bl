@@ -48,6 +48,8 @@ typedef struct MirType       MirType;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
 typedef struct MirConstValue MirConstValue;
+typedef union MirGeneric64   MirGeneric64;
+typedef uint8_t *            MirStackPtr;
 
 typedef struct MirInstr            MirInstr;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
@@ -108,10 +110,10 @@ struct MirFn
   /* pointer to the first block inside function body */
   MirInstrBlock *first_block;
   MirInstrBlock *last_block;
-  int            block_count;
-  int            instr_count;
+  int32_t        block_count;
+  int32_t        instr_count;
 
-  MirConstValue *exec_ret_value;
+  MirGeneric64 *exec_ret_value;
 };
 
 /* TYPE */
@@ -131,13 +133,13 @@ typedef enum
 
 struct MirTypeInt
 {
-  int  bitcount;
-  bool is_signed;
+  int32_t bitcount;
+  bool    is_signed;
 };
 
 struct MirTypeReal
 {
-  int bitcount;
+  int32_t bitcount;
 };
 
 struct MirTypeFn
@@ -181,7 +183,21 @@ struct MirType
 };
 
 /* VALUE */
-typedef uint8_t *MirStackPtr;
+union MirGeneric64
+{
+  int64_t     v_s64;
+  int32_t     v_s32;
+  int16_t     v_s16;
+  int8_t      v_s8;
+  uint64_t    v_u64;
+  uint32_t    v_u32;
+  uint16_t    v_u16;
+  uint8_t     v_u8;
+  double      v_f64;
+  float       v_f32;
+  MirType *   v_type;
+  MirStackPtr v_stack_ptr;
+};
 
 union MirConstValueData
 {
@@ -244,14 +260,14 @@ struct MirInstr
 {
   MirConstValue  const_value;
   MirInstrKind   kind;
-  int            id;
+  int32_t        id;
   LLVMValueRef   llvm_value;
   Ast *          node;
   MirInstrBlock *owner_block;
 
-  int  ref_count;
-  bool analyzed;
-  bool comptime;
+  int32_t ref_count;
+  bool    analyzed;
+  bool    comptime;
 
   MirInstr *prev;
   MirInstr *next;
@@ -432,7 +448,7 @@ struct MirInstrTryInfer
 
 /* public */
 void
-mir_type_to_str(char *buf, int len, MirType *type);
+mir_type_to_str(char *buf, int32_t len, MirType *type);
 
 const char *
 mir_instr_name(MirInstr *instr);

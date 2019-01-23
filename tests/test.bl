@@ -1,6 +1,6 @@
 /* playground */
 
-//#load "std/debug.bl"
+#load "std/debug.bl"
 
 /*
   TODO:
@@ -8,10 +8,16 @@
 */
 
 main :: fn () s32 {
-  arr : [10] s32;
+  i := 10;
+  j := 10;
+  arr : [10] s32;   // 4
+  arr2 : [10] s8; // 1
+  arr3 : [10] s64;  // 4
+  arr4 : [10] s16;  // 4
+
   loop i := 0; i < 10; i += 1 {
     arr[i] = i;
-    say_hello();     
+    //assert(arr[i] == i);
   }
 
   return arr[8];
