@@ -187,7 +187,6 @@
   assert(i == value);
 };
 
-/*
 #test "simple static array" {
   arr : [10]s32;
 
@@ -200,9 +199,10 @@
   assert(arr[2] == 30);
 };
 
+/*
 #test "simple static array loops" {
   arr : [10]s32;
-  loop (i := 0; i < 10; i += 1) {
+  loop i := 0; i < 10; i += 1 {
     arr[i] = i;
     assert(arr[i] == i);
   }

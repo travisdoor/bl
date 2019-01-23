@@ -198,7 +198,7 @@
    | POP      | index    |                              |
    | PUSH     | elem ptr | Address of the array element |
 
-** adore
+** addrof
     Evaluates address of the variable.
 
     | stack op | data    | description                   |

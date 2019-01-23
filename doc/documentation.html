@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Documentation</title>
-<!-- 2019-01-23 St 10:03 -->
+<!-- 2019-01-23 St 14:36 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -666,6 +666,10 @@ Data type is optional when we specify some value.
 Represents the address of some allocated data.
 </p>
 
+<pre class="example">
+*&lt;T&gt;
+</pre>
+
 <div class="org-src-container">
 
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#load</span> <span class="org-string">"std/debug.bl"</span>
@@ -683,8 +687,17 @@ Represents the address of some allocated data.
 </div>
 
 <div id="outline-container-sec-4-4-3" class="outline-4">
-<h4 id="sec-4-4-3"><span class="section-number-4">4.4.3</span> Function type</h4>
+<h4 id="sec-4-4-3"><span class="section-number-4">4.4.3</span> <span class="todo TODO">TODO</span> Arrays</h4>
 <div class="outline-text-4" id="text-4-4-3">
+<pre class="example">
+[&lt;size&gt;] &lt;T&gt;
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-4-4" class="outline-4">
+<h4 id="sec-4-4-4"><span class="section-number-4">4.4.4</span> Function type</h4>
+<div class="outline-text-4" id="text-4-4-4">
 <p>
 Type of function. 
 </p>
@@ -795,9 +808,16 @@ Examples of named function.
 <h4 id="sec-4-7-2"><span class="section-number-4">4.7.2</span> Anonymous function</h4>
 <div class="outline-text-4" id="text-4-7-2">
 <p>
-Example of anonymous function.
+Anonymous function has no name and contains only function literal.
 </p>
 
+<pre class="example">
+fn ([args]) [return type] {[body]};
+</pre>
+
+<p>
+Example of anonymous function.
+</p>
 <div class="org-src-container">
 
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"anonymous function"</span> {
@@ -997,7 +1017,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-23 St 10:03</p>
+<p class="date">Created: 2019-01-23 St 14:36</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

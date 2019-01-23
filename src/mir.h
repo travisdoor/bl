@@ -181,18 +181,7 @@ struct MirType
 };
 
 /* VALUE */
-typedef union MirGenericValue *MirGenericValuePtr;
-
-typedef union MirGenericValue
-{
-  int64_t            v_int;
-  uint64_t           v_uint;
-  double             v_real;
-  bool               v_bool;
-  MirType *          v_type;
-  MirFn *            v_fn;
-  MirGenericValuePtr v_stack_ptr;
-} MirGenericValue;
+typedef uint8_t *MirStackPtr;
 
 union MirConstValueData
 {
@@ -206,7 +195,7 @@ union MirConstValueData
   MirFn *             v_fn;
   void *              v_void_ptr;
   MirRelativeStackPtr v_rel_stack_ptr;
-  MirGenericValuePtr  v_stack_ptr;
+  MirStackPtr         v_stack_ptr;
 };
 
 struct MirConstValue
