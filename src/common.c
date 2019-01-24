@@ -73,9 +73,9 @@ date_time(char *buf, int len, const char *format)
 }
 
 bool
-is_aligned(const void *p, size_t size)
+is_aligned(const void *p, int32_t alignment)
 {
-  return (uintptr_t)p % size == 0;
+  return (uintptr_t)p % alignment == 0;
 }
 
 void

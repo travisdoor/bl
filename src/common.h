@@ -73,7 +73,7 @@ void
 date_time(char *buf, int len, const char *format);
 
 bool
-is_aligned(const void *p, size_t size);
+is_aligned(const void *p, int32_t alignment);
 
 void
 align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);

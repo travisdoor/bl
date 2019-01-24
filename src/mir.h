@@ -87,11 +87,13 @@ struct MirArenas
 
 struct MirModule
 {
-  struct MirArenas  arenas;
-  BArray *          globals;
-  LLVMModuleRef     llvm_module;
-  LLVMContextRef    llvm_cnt;
-  LLVMTargetDataRef llvm_td;
+  struct MirArenas     arenas;
+  BArray *             globals;
+  LLVMModuleRef        llvm_module;
+  LLVMContextRef       llvm_cnt;
+  LLVMTargetDataRef    llvm_td;
+  LLVMTargetMachineRef llvm_tm;
+  char *               llvm_triple;
 };
 
 /* FN */
@@ -169,7 +171,7 @@ struct MirType
   LLVMTypeRef llvm_type;
   size_t      size_bits;
   size_t      store_size_bytes;
-  unsigned    alignment;
+  int32_t     alignment;
 
   union
   {

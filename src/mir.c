@@ -41,7 +41,7 @@
 #define IMPL_FN_NAME                    "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
-#define MAX_ALIGNMENT                   8
+#define MAX_ALIGNMENT                   16
 
 #define VERBOSE_EXEC false
 // clang-format on
@@ -444,7 +444,7 @@ ast_expr_unary(Context *cnt, Ast *unop);
 
 /* this will also set size and alignment of the type */
 static void
-init_llvm_type(Context *cnt, MirType *type);
+init_type_llvm_ABI(Context *cnt, MirType *type);
 
 /* analyze */
 static bool
@@ -644,8 +644,7 @@ static inline size_t
 exec_stack_alloc_size(const size_t size)
 {
   assert(size != 0);
-  return size +  (MAX_ALIGNMENT - (size % MAX_ALIGNMENT));
-
+  return size + (MAX_ALIGNMENT - (size % MAX_ALIGNMENT));
 }
 
 /* allocate memory on frame stack, size is in bits!!! */
@@ -655,7 +654,7 @@ exec_stack_alloc(Context *cnt, size_t size)
   assert(size && "trying to allocate 0 bits on stack");
 
   size = exec_stack_alloc_size(size);
-  bl_log("allocate %u bytes on stack", size);
+  // bl_log("allocate %u bytes on stack", size);
   cnt->exec_stack->used_bytes += size;
   if (cnt->exec_stack->used_bytes > cnt->exec_stack->allocated_bytes) {
     msg_error("Stack overflow!!!");
@@ -665,21 +664,27 @@ exec_stack_alloc(Context *cnt, size_t size)
   MirStackPtr mem          = (MirStackPtr)cnt->exec_stack->top_ptr;
   cnt->exec_stack->top_ptr = cnt->exec_stack->top_ptr + size;
 
-  align_ptr_up(&mem, MAX_ALIGNMENT, NULL);
+  //assert(is_aligned(mem, size) && "Unaligned stack allocation");
+  //align_ptr_up((void **)&mem, MAX_ALIGNMENT, NULL);
 
-  // bl_log("realy allocated %d with adj +%d", size, adj);
+  if (!is_aligned(mem, MAX_ALIGNMENT)) {
+    bl_log("BAD ALIGNMENT %p, %d bytes", mem, size);
+  }
+
   return mem;
 }
 
 /* shift stack top by the size in bytes */
-static inline void
+static inline MirStackPtr
 exec_stack_free(Context *cnt, size_t size)
 {
-  size             = exec_stack_alloc_size(size);
-  uint8_t *new_top = cnt->exec_stack->top_ptr - size;
+  size                = exec_stack_alloc_size(size);
+  MirStackPtr new_top = cnt->exec_stack->top_ptr - size;
   if (new_top < (uint8_t *)(cnt->exec_stack->ra + 1)) bl_abort("Stack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
   cnt->exec_stack->used_bytes -= size;
+  //align_ptr_up((void **)&new_top, MAX_ALIGNMENT, NULL);
+  return new_top;
 }
 
 static inline void
@@ -716,7 +721,7 @@ exec_pop_ra(Context *cnt)
 #endif
 
   /* rollback */
-  uint8_t *new_top_ptr        = (uint8_t *)cnt->exec_stack->ra;
+  MirStackPtr new_top_ptr     = (MirStackPtr)cnt->exec_stack->ra;
   cnt->exec_stack->used_bytes = cnt->exec_stack->top_ptr - new_top_ptr;
   cnt->exec_stack->top_ptr    = new_top_ptr;
   cnt->exec_stack->ra         = cnt->exec_stack->ra->prev;
@@ -727,7 +732,7 @@ static inline MirRelativeStackPtr
 exec_push_stack(Context *cnt, void *value, MirType *type)
 {
   assert(type);
-  const size_t size      = type->store_size_bytes;
+  const size_t size = type->store_size_bytes;
   assert(size && "pushing zero sized data on stack");
   MirStackPtr tmp = exec_stack_alloc(cnt, size);
 #if BL_DEBUG && VERBOSE_EXEC
@@ -739,8 +744,6 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
   }
 #endif
 
-  bl_log("%s", is_aligned(tmp, size) ? "OK" : "BAD");
-  assert(is_aligned(tmp, size) && "Unaligned stack allocation");
   /* copy data when there is some */
   if (value) memcpy(tmp, value, size);
   /* pointer relative to frame top */
@@ -751,8 +754,7 @@ static inline MirStackPtr
 exec_pop_stack(Context *cnt, MirType *type)
 {
   assert(type);
-  const size_t size      = type->store_size_bytes;
-  const size_t alignment = type->alignment;
+  const size_t size = type->store_size_bytes;
   assert(size && "popping zero sized data on stack");
 #if BL_DEBUG && VERBOSE_EXEC
   {
@@ -763,10 +765,7 @@ exec_pop_stack(Context *cnt, MirType *type)
   }
 #endif
 
-  exec_stack_free(cnt, size);
-  MirStackPtr tmp = cnt->exec_stack->top_ptr;
-  align_ptr_up(&tmp, MAX_ALIGNMENT, NULL);
-  return tmp;
+  return exec_stack_free(cnt, size);
 }
 
 #define exec_pop_stack_as(cnt, type, T) ((T)exec_pop_stack((cnt), (type)))
@@ -990,7 +989,7 @@ create_type_type(Context *cnt)
   MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind    = MIR_TYPE_TYPE;
   tmp->name    = "type";
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1001,7 +1000,7 @@ create_type_null(Context *cnt)
   tmp->kind    = MIR_TYPE_NULL;
   tmp->name    = "null";
   /* default type of null in llvm (can be overriden later) */
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1011,7 +1010,7 @@ create_type_void(Context *cnt)
   MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind    = MIR_TYPE_VOID;
   tmp->name    = "void";
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1021,7 +1020,7 @@ create_type_bool(Context *cnt)
   MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind    = MIR_TYPE_BOOL;
   tmp->name    = "bool";
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1034,7 +1033,7 @@ create_type_int(Context *cnt, const char *name, int32_t bitcount, bool is_signed
   tmp->name                   = name;
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1046,7 +1045,7 @@ create_type_real(Context *cnt, const char *name, int32_t bitcount)
   tmp->kind               = MIR_TYPE_REAL;
   tmp->name               = name;
   tmp->data.real.bitcount = bitcount;
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
 
@@ -1056,7 +1055,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
   MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
 }
@@ -1068,7 +1067,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->buildin_types.entry_void;
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
 }
@@ -1080,7 +1079,7 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
   tmp->kind                 = MIR_TYPE_ARRAY;
   tmp->data.array.elem_type = elem_type;
   tmp->data.array.len       = len;
-  init_llvm_type(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
 }
@@ -1640,7 +1639,7 @@ append_instr_validate_type(Context *cnt, MirInstr *src)
 
 /* LLVM */
 void
-init_llvm_type(Context *cnt, MirType *type)
+init_type_llvm_ABI(Context *cnt, MirType *type)
 {
   if (!type) return;
 
@@ -1752,7 +1751,7 @@ init_llvm_type(Context *cnt, MirType *type)
     type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
 
     bl_log("array alignment = %d | %d | %d", type->alignment, type->data.array.elem_type->alignment,
-	   type->alignment * type->data.array.elem_type->alignment);
+           type->alignment * type->data.array.elem_type->alignment);
     break;
   }
 
@@ -2538,8 +2537,9 @@ exec_reset_stack(MirStack *stack)
   stack->pc         = NULL;
   stack->ra         = NULL;
   stack->aborted    = false;
-  stack->used_bytes = sizeof(MirStack);
-  stack->top_ptr    = (uint8_t *)stack + sizeof(MirStack);
+  const size_t size = exec_stack_alloc_size(sizeof(MirStack));
+  stack->used_bytes = size;
+  stack->top_ptr    = (uint8_t *)stack + size;
 }
 
 void
@@ -2720,7 +2720,7 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   for (int32_t i = 0; i <= arg->i; ++i) {
     tmp_type = bo_array_at(arg_types, i, MirType *);
     assert(tmp_type);
-    arg_ptr -= tmp_type->store_size_bytes;
+    arg_ptr -= exec_stack_alloc_size(tmp_type->store_size_bytes);
   }
 
   exec_push_stack(cnt, (MirStackPtr)arg_ptr, arg->base.const_value.type);
@@ -4288,10 +4288,43 @@ mir_new_module(const char *name)
 
   arenas_init(&tmp->arenas);
 
+  /* init LLVM */
+  char *triple    = LLVMGetDefaultTargetTriple();
+  char *cpu       = "";
+  char *features  = "";
+  char *error_msg = NULL;
+
+  msg_log("target: %s", triple);
+
+  LLVMTargetRef llvm_target = NULL;
+  if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
+    msg_error("cannot get target with error: %s", error_msg);
+    LLVMDisposeMessage(error_msg);
+    abort();
+  }
+
+  /* TODO: set opt level */
+#if BL_DEBUG
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelNone;
+#else
+  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
+#endif
+
+  LLVMContextRef llvm_context = LLVMContextCreate();
+  LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(name, llvm_context);
+
+  LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(
+      llvm_target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
+
+  LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
+  LLVMSetModuleDataLayout(llvm_module, llvm_td);
+
   tmp->globals     = bo_array_new(sizeof(MirInstr *));
-  tmp->llvm_cnt    = LLVMContextCreate();
-  tmp->llvm_module = LLVMModuleCreateWithNameInContext(name, tmp->llvm_cnt);
-  tmp->llvm_td     = LLVMGetModuleDataLayout(tmp->llvm_module);
+  tmp->llvm_cnt    = llvm_context;
+  tmp->llvm_module = llvm_module;
+  tmp->llvm_tm     = llvm_tm;
+  tmp->llvm_td     = llvm_td;
+  tmp->llvm_triple = triple;
   return tmp;
 }
 
@@ -4304,6 +4337,8 @@ mir_delete_module(MirModule *module)
   arenas_terminate(&module->arenas);
 
   LLVMDisposeModule(module->llvm_module);
+  LLVMDisposeTargetMachine(module->llvm_tm);
+  LLVMDisposeMessage(module->llvm_triple);
 
   bl_free(module);
 }

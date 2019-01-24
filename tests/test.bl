@@ -17,12 +17,13 @@ main :: fn () s32 {
 
   loop i := 0; i < 10; i += 1 {
     arr[i] = i;
-    //assert(arr[i] == i);
+    assert(arr[i] == i);
   }
 
   return arr[8];
 };
 
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -39,3 +40,4 @@ say_hello :: fn () {
 };
 
 putchar :: fn (c: s32) s32 #extern;
+*/
