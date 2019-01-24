@@ -184,6 +184,7 @@
    | POP RA   | -     | rollback the stack to return address   |
    | POP      | arg 1 | clenup fn argument                     |
    | POP      | arg 2 | clenup fn argument                     |
+   | POP      | arg 3 | clenup fn argument                     |
    | PUSH     | value | push call result value if there is one |
 
 ** br
