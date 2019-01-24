@@ -215,6 +215,9 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   case MIR_TYPE_PTR:
     bl_abort("invalid constant type");
     break;
+  case MIR_TYPE_ARRAY:
+    bl_unimplemented;
+    break;
   default:
     bl_unimplemented;
   }

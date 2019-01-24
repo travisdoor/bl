@@ -1802,6 +1802,11 @@ type_cmp(MirType *first, MirType *second)
     return true;
   }
 
+  case MIR_TYPE_ARRAY: {
+    if (first->data.array.len != second->data.array.len) return false;
+    return type_cmp(first->data.array.elem_type, second->data.array.elem_type);
+  }
+
   case MIR_TYPE_VOID:
   case MIR_TYPE_TYPE:
   case MIR_TYPE_BOOL:

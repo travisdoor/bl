@@ -3,11 +3,20 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-  v :: 10;
-  assert(v == 10);
-  return 0;
+  str := "hello world\n";
+
+  /*
+  loop i := 0; i < 12; i += 1 {
+    putchar(str[i]);
+  }
+  */
+
+  return 666;
 };
 
+putchar :: fn (c: u8) s32 #extern;
+
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -23,4 +32,6 @@ say_hello :: fn () {
   putchar(10);
 };
 
+
 putchar :: fn (c: s32) s32 #extern;
+*/
