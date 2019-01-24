@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-01-24 Thu 23:42 -->
+<!-- 2019-01-24 Thu 23:46 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit Language</title>
@@ -236,17 +236,36 @@ for the JavaScript code in this tag.
 <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=BRSWZ2U7A2TXG&source=url"><img src="https://img.shields.io/badge/Donate-PayPal-green.svg"></a>
 </p>
 
-<div id="outline-container-org6c1916a" class="outline-2">
-<h2 id="org6c1916a">About</h2>
-<div class="outline-text-2" id="text-org6c1916a">
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org03c84ba">About</a>
+<ul>
+<li><a href="#org5aee5b0">Goals</a></li>
+<li><a href="#orgafd6f84">Example</a></li>
+</ul>
+</li>
+<li><a href="#org52b19fa">Releases</a>
+<ul>
+<li><a href="#org1241c75">0.4.0 pre-alpha</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org03c84ba" class="outline-2">
+<h2 id="org03c84ba">About</h2>
+<div class="outline-text-2" id="text-org03c84ba">
 <p>
 The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit is designed to be simple, fast and explicit.
 </p>
 </div>
 
-<div id="outline-container-orgd1f54c9" class="outline-3">
-<h3 id="orgd1f54c9">Goals</h3>
-<div class="outline-text-3" id="text-orgd1f54c9">
+<div id="outline-container-org5aee5b0" class="outline-3">
+<h3 id="org5aee5b0">Goals</h3>
+<div class="outline-text-3" id="text-org5aee5b0">
 <ul class="org-ul">
 <li>manual memory management</li>
 <li>pointers</li>
@@ -257,15 +276,37 @@ The Biscuit Language (BL) is simple imperative programming language using LLVM b
 </ul>
 </div>
 </div>
+
+<div id="outline-container-orgafd6f84" class="outline-3">
+<h3 id="orgafd6f84">Example</h3>
+<div class="outline-text-3" id="text-orgafd6f84">
+<div class="org-src-container">
+<pre class="src src-bl"><span class="org-function-name">main</span> :: <span class="org-keyword">fn</span> () <span class="org-type">s32</span> {
+  <span class="org-keyword">return</span> <span class="org-function-name">fib</span>(<span class="org-constant">10</span>);
+};
+
+<span class="org-function-name">fib</span> :: <span class="org-keyword">fn</span> (n: <span class="org-type">s32</span>) <span class="org-type">s32</span> {
+  <span class="org-keyword">if</span> n == <span class="org-constant">0</span> || n == <span class="org-constant">1</span> {
+    <span class="org-keyword">return</span> n;
+  } <span class="org-keyword">else</span> {
+    <span class="org-keyword">return</span> <span class="org-function-name">fib</span>(n-1) + <span class="org-function-name">fib</span>(n-2);
+  }
+
+  <span class="org-keyword">return</span> -1;
+};
+</pre>
+</div>
+</div>
+</div>
 </div>
 
-<div id="outline-container-org960abd6" class="outline-2">
-<h2 id="org960abd6">Releases</h2>
-<div class="outline-text-2" id="text-org960abd6">
+<div id="outline-container-org52b19fa" class="outline-2">
+<h2 id="org52b19fa">Releases</h2>
+<div class="outline-text-2" id="text-org52b19fa">
 </div>
-<div id="outline-container-org980d4f0" class="outline-3">
-<h3 id="org980d4f0">0.4.0 pre-alpha</h3>
-<div class="outline-text-3" id="text-org980d4f0">
+<div id="outline-container-org1241c75" class="outline-3">
+<h3 id="org1241c75">0.4.0 pre-alpha</h3>
+<div class="outline-text-3" id="text-org1241c75">
 <ul class="org-ul">
 <li><a href="https://github.com/travisdoor/bl">source</a></li>
 <li><a href="documentation.html">documentation</a></li>
@@ -277,7 +318,7 @@ The Biscuit Language (BL) is simple imperative programming language using LLVM b
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-24 Thu 23:42</p>
+<p class="date">Created: 2019-01-24 Thu 23:46</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

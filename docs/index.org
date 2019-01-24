@@ -7,6 +7,8 @@
 {{{imglnk(http://89.177.170.156:8080/job/biscuit/,http://89.177.170.156:8080/buildStatus/icon?job=biscuit&style=flat)}}}
 {{{imglnk(https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=BRSWZ2U7A2TXG&source=url,https://img.shields.io/badge/Donate-PayPal-green.svg)}}}
 
+#+TOC: headlines 2
+
 * About
   The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit is designed to be simple, fast and explicit.
 
@@ -17,6 +19,23 @@
    - fast compilation
    - compile-time execution
    - no OOP
+     
+** Example
+   #+BEGIN_SRC bl
+   main :: fn () s32 {
+     return fib(10);
+   };
+   
+   fib :: fn (n: s32) s32 {
+     if n == 0 || n == 1 {
+       return n;
+     } else {
+       return fib(n-1) + fib(n-2);
+     }
+   
+     return -1;
+   };
+   #+END_SRC
 
 * Releases
 ** 0.4.0 pre-alpha
