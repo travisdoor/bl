@@ -43,36 +43,40 @@ struct Builder;
 
 typedef ptrdiff_t MirRelativeStackPtr;
 
-typedef struct MirModule     MirModule;
-typedef struct MirType       MirType;
-typedef struct MirVar        MirVar;
-typedef struct MirFn         MirFn;
-typedef struct MirConstValue MirConstValue;
-typedef union MirGeneric64   MirGeneric64;
-typedef uint8_t *            MirStackPtr;
+typedef struct MirModule MirModule;
+typedef struct MirType   MirType;
+typedef struct MirVar    MirVar;
+typedef struct MirFn     MirFn;
 
-typedef struct MirInstr            MirInstr;
-typedef struct MirInstrUnreachable MirInstrUnreachable;
-typedef struct MirInstrBlock       MirInstrBlock;
-typedef struct MirInstrDeclVar     MirInstrDeclVar;
-typedef struct MirInstrConst       MirInstrConst;
-typedef struct MirInstrLoad        MirInstrLoad;
-typedef struct MirInstrStore       MirInstrStore;
-typedef struct MirInstrRet         MirInstrRet;
-typedef struct MirInstrBinop       MirInstrBinop;
-typedef struct MirInstrUnop        MirInstrUnop;
-typedef struct MirInstrFnProto     MirInstrFnProto;
-typedef struct MirInstrCall        MirInstrCall;
-typedef struct MirInstrDeclRef     MirInstrDeclRef;
-typedef struct MirInstrAddrOf      MirInstrAddrOf;
-typedef struct MirInstrCondBr      MirInstrCondBr;
-typedef struct MirInstrBr          MirInstrBr;
-typedef struct MirInstrArg         MirInstrArg;
-typedef struct MirInstrElemPtr     MirInstrElemPtr;
-typedef struct MirInstrTypeFn      MirInstrTypeFn;
-typedef struct MirInstrTypeArray   MirInstrTypeArray;
-typedef struct MirInstrTypePtr     MirInstrTypePtr;
+typedef union MirGeneric64        MirGeneric64;
+typedef uint8_t *                 MirStackPtr;
+typedef struct MirConstValue      MirConstValue;
 
+typedef enum MirConstValueKind MirConstValueKind;
+typedef enum MirTypeKind       MirTypeKind;
+typedef enum MirInstrKind      MirInstrKind;
+
+typedef struct MirInstr             MirInstr;
+typedef struct MirInstrUnreachable  MirInstrUnreachable;
+typedef struct MirInstrBlock        MirInstrBlock;
+typedef struct MirInstrDeclVar      MirInstrDeclVar;
+typedef struct MirInstrConst        MirInstrConst;
+typedef struct MirInstrLoad         MirInstrLoad;
+typedef struct MirInstrStore        MirInstrStore;
+typedef struct MirInstrRet          MirInstrRet;
+typedef struct MirInstrBinop        MirInstrBinop;
+typedef struct MirInstrUnop         MirInstrUnop;
+typedef struct MirInstrFnProto      MirInstrFnProto;
+typedef struct MirInstrCall         MirInstrCall;
+typedef struct MirInstrDeclRef      MirInstrDeclRef;
+typedef struct MirInstrAddrOf       MirInstrAddrOf;
+typedef struct MirInstrCondBr       MirInstrCondBr;
+typedef struct MirInstrBr           MirInstrBr;
+typedef struct MirInstrArg          MirInstrArg;
+typedef struct MirInstrElemPtr      MirInstrElemPtr;
+typedef struct MirInstrTypeFn       MirInstrTypeFn;
+typedef struct MirInstrTypeArray    MirInstrTypeArray;
+typedef struct MirInstrTypePtr      MirInstrTypePtr;
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
 
@@ -119,7 +123,7 @@ struct MirFn
 };
 
 /* TYPE */
-typedef enum
+enum MirTypeKind
 {
   MIR_TYPE_INVALID,
   MIR_TYPE_TYPE,
@@ -131,7 +135,7 @@ typedef enum
   MIR_TYPE_BOOL,
   MIR_TYPE_ARRAY,
   MIR_TYPE_NULL,
-} MirTypeKind;
+};
 
 struct MirTypeInt
 {
@@ -201,6 +205,14 @@ union MirGeneric64
   MirStackPtr v_stack_ptr;
 };
 
+enum MirConstValueKind
+{
+  MIR_CV_INVALID,
+  MIR_CV_BASIC,
+  MIR_CV_POINTER,
+  MIR_CV_STRING
+};
+
 union MirConstValueData
 {
   uint64_t            v_uint;
@@ -220,6 +232,7 @@ struct MirConstValue
 {
   union MirConstValueData data;
   MirType *               type;
+  MirConstValueKind       kind;
 };
 
 /* VAR */
@@ -230,7 +243,7 @@ struct MirVar
 };
 
 /* INSTRUCTIONS */
-typedef enum
+enum MirInstrKind
 {
   MIR_INSTR_INVALID,
   MIR_INSTR_BLOCK,
@@ -256,7 +269,7 @@ typedef enum
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
-} MirInstrKind;
+};
 
 struct MirInstr
 {

@@ -43,7 +43,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC false
 // clang-format on
 
 union _MirInstr
@@ -695,7 +695,7 @@ exec_push_ra(Context *cnt, MirInstr *instr)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     if (instr) {
-      fprintf(stdout, "%6lu %20s  PUSH RA\n", cnt->exec_stack->pc->_serial,
+      fprintf(stdout, "%6llu %20s  PUSH RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,
               mir_instr_name(cnt->exec_stack->pc));
     } else {
       fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");
@@ -712,7 +712,7 @@ exec_pop_ra(Context *cnt)
 
 #if BL_DEBUG && VERBOSE_EXEC
   {
-    fprintf(stdout, "%6lu %20s  POP RA\n", cnt->exec_stack->pc->_serial,
+    fprintf(stdout, "%6llu %20s  POP RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,
             mir_instr_name(cnt->exec_stack->pc));
   }
 #endif
@@ -736,8 +736,9 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
-    fprintf(stdout, "%6lu %20s  PUSH    (%luB, %p) %s\n", cnt->exec_stack->pc->_serial,
-            mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);
+    fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
+            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
+            size, tmp, type_name);
   }
 #endif
 
@@ -757,8 +758,9 @@ exec_pop_stack(Context *cnt, MirType *type)
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
-    fprintf(stdout, "%6lu %20s  POP     (%luB, %p) %s\n", cnt->exec_stack->pc->_serial,
-            mir_instr_name(cnt->exec_stack->pc), size, cnt->exec_stack->top_ptr - size, type_name);
+    fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",
+            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
+            size, cnt->exec_stack->top_ptr - size, type_name);
   }
 #endif
 
@@ -1206,10 +1208,11 @@ erase_unused_instr(Context *cnt, MirInstr *instr)
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-  MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
-  tmp->kind     = kind;
-  tmp->node     = node;
-  tmp->id       = 0;
+  MirInstr *tmp         = arena_alloc(&cnt->module->arenas.instr_arena);
+  tmp->kind             = kind;
+  tmp->node             = node;
+  tmp->id               = 0;
+  tmp->const_value.kind = MIR_CV_BASIC; /* can be overriden later */
 
 #if BL_DEBUG
   static uint64_t counter = 0;
@@ -1529,6 +1532,7 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
   tmp->comptime               = true;
   tmp->const_value.type       = create_type_array(cnt, cnt->buildin_types.entry_u8, strlen(str));
   tmp->const_value.data.v_str = str;
+  tmp->const_value.kind       = MIR_CV_STRING;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -2886,7 +2890,20 @@ void
 exec_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.const_value.type);
-  exec_push_stack(cnt, (MirStackPtr)&cnst->base.const_value.data, cnst->base.const_value.type);
+  MirConstValue *value = &cnst->base.const_value;
+
+  switch (value->kind) {
+  case MIR_CV_BASIC:
+    exec_push_stack(cnt, (MirStackPtr)&cnst->base.const_value.data, cnst->base.const_value.type);
+    break;
+  case MIR_CV_STRING: {
+    assert(value->data.v_str && "invalid string value");
+    exec_push_stack(cnt, (MirStackPtr)value->data.v_str, cnst->base.const_value.type);
+    break;
+  }
+  default:
+    bl_unimplemented;
+  }
 }
 
 static MirConstValue *
