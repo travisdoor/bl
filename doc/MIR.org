@@ -6,10 +6,16 @@
 # now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 2
 
-* About 
- BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from SAT. It is located between AST and LLVM-IR. 
+* About
+ BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR. 
 
-* Assert function in MIR
+** MIR Interpreter
+   BL Compiler has integrated interpreter for MIR. 
+   
+   - Default execution stack size is 2MB.
+   - Stack allocations are 8 byte aligned.
+
+** Assert function in MIR
  #+BEGIN_SRC blm
  @assert fn(bool) void {
  init_0:
@@ -34,6 +40,46 @@
    %12              void ret
  }
  #+END_SRC
+   
+** Stack manipulation
+   Example function:
+   #+BEGIN_SRC bl
+   #load "std/debug.bl"
+   main :: fn () s32 {
+     v :: 10;
+     assert(v == 10);
+     return 0;
+   };
+   #+END_SRC
+
+   Stack operation produced during execution of the main function:
+   #+BEGIN_EXAMPLE
+   executing 'main' in compile time...
+        -             Terminal  PUSH RA
+       10         InstrDeclVar  PUSH    (4B, 0x7f377a17a060) s32
+       11           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       13           InstrStore  POP     (4B, 0x7f377a17a06c) s32
+       15           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       17            InstrLoad  PUSH    (4B, 0x7f377a17a070) s32
+       18           InstrBinop  POP     (4B, 0x7f377a17a074) s32
+       18           InstrBinop  POP     (4B, 0x7f377a17a06c) s32
+       18           InstrBinop  PUSH    (1B, 0x7f377a17a068) bool
+       19            InstrCall  PUSH RA
+       87         InstrDeclVar  PUSH    (1B, 0x7f377a17a088) bool
+       88             InstrArg  PUSH    (1B, 0x7f377a17a090) bool
+       90           InstrStore  POP     (1B, 0x7f377a17a097) bool
+       96            InstrLoad  PUSH    (1B, 0x7f377a17a090) bool
+       97            InstrUnop  POP     (1B, 0x7f377a17a097) bool
+       97            InstrUnop  PUSH    (1B, 0x7f377a17a090) bool
+       98          InstrCondBr  POP     (1B, 0x7f377a17a097) bool
+      104             InstrRet  POP RA
+      104             InstrRet  POP     (1B, 0x7f377a17a06f) bool
+       20           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       21             InstrRet  POP     (4B, 0x7f377a17a06c) s32
+       21             InstrRet  POP RA
+   execution finished with state: 0
+   #+END_EXAMPLE
+
 
 * Function
    #+BEGIN_EXAMPLE
@@ -138,6 +184,7 @@
    | POP RA   | -     | rollback the stack to return address   |
    | POP      | arg 1 | clenup fn argument                     |
    | POP      | arg 2 | clenup fn argument                     |
+   | POP      | arg 3 | clenup fn argument                     |
    | PUSH     | value | push call result value if there is one |
 
 ** br
@@ -198,13 +245,15 @@
    | POP      | index    |                              |
    | PUSH     | elem ptr | Address of the array element |
 
-** adore
+** addrof
     Evaluates address of the variable.
 
+    Getting address of variable:
     | stack op | data    | description                   |
     |----------+---------+-------------------------------|
     | PUSH     | var ptr | pointer to allocated variable |
 
+    Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
     
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.

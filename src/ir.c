@@ -192,29 +192,46 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   assert(llvm_type);
 
   switch (type->kind) {
-  case MIR_TYPE_INT:
+  case MIR_TYPE_INT: {
     cnst->base.llvm_value =
         LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
     break;
-  case MIR_TYPE_REAL:
-    if (type->data.real.bitcount == 32) {
-    } else if (type->data.real.bitcount == 64) {
-    } else {
-      bl_unimplemented;
-    }
+  }
 
+  case MIR_TYPE_REAL: {
     cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_real);
     break;
+  }
+
   case MIR_TYPE_BOOL:
     cnst->base.llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
     break;
+
   case MIR_TYPE_NULL:
     assert(value->data.v_void_ptr == NULL);
     cnst->base.llvm_value = LLVMConstNull(llvm_type);
     break;
+
   case MIR_TYPE_PTR:
     bl_abort("invalid constant type");
     break;
+
+  case MIR_TYPE_ARRAY: {
+    const size_t len = type->data.array.len;
+    assert(len && "zero sized array");
+
+    switch (value->kind) {
+    case MIR_CV_STRING: {
+      assert(value->data.v_str);
+      cnst->base.llvm_value = LLVMConstStringInContext(cnt->llvm_cnt, value->data.v_str, len, true);
+      break;
+    }
+
+    default:
+      bl_unimplemented;
+    }
+    break;
+  }
   default:
     bl_unimplemented;
   }

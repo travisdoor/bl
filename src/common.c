@@ -71,3 +71,28 @@ date_time(char *buf, int len, const char *format)
 
   strftime(buf, len, format, tm_info);
 }
+
+bool
+is_aligned(const void *p, int32_t alignment)
+{
+  return (uintptr_t)p % alignment == 0;
+}
+
+void
+align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
+{
+  ptrdiff_t adj;
+  if (is_aligned(*p, alignment)) {
+    if (adjustment) *adjustment = 0;
+    return;
+  }
+
+  const size_t mask = alignment - 1;
+  assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+  const uintptr_t i_unaligned  = (uintptr_t)(*p);
+  const uintptr_t misalignment = i_unaligned & mask;
+
+  adj = alignment - misalignment;
+  *p  = (void *)(i_unaligned + adj);
+  if (adjustment) *adjustment = adj;
+}

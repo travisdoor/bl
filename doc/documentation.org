@@ -155,7 +155,16 @@
 *** Pointers
     Represents the address of some allocated data.
 
+    #+BEGIN_EXAMPLE
+    *<T>
+    #+END_EXAMPLE
+
     #+INCLUDE: "../tests/src/examples/pointers.bl" src bl -n
+    
+*** TODO Arrays
+    #+BEGIN_EXAMPLE
+    [<size>] <T>
+    #+END_EXAMPLE
     
 *** Function type
     Type of function. 
@@ -205,9 +214,14 @@
    #+INCLUDE: "../tests/src/examples/named_functions.bl" src bl -n
    
 *** Anonymous function
-   Example of anonymous function.
+    Anonymous function has no name and contains only function literal.
 
-   #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
+    #+BEGIN_EXAMPLE
+    fn ([args]) [return type] {[body]};
+    #+END_EXAMPLE
+
+    Example of anonymous function.
+    #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
    
 ** Blocks
    Block can limit scope of the variable.

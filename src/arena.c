@@ -36,28 +36,6 @@ typedef struct ArenaChunk
   int                count;
 } ArenaChunk;
 
-static inline bool
-is_aligned(const void *p, size_t size)
-{
-  return (uintptr_t)p % size == 0;
-}
-
-static void
-align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
-{
-  if (is_aligned(*p, alignment)) {
-    *adjustment = 0;
-    return;
-  }
-
-  const size_t mask = alignment - 1;
-  assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
-  const uintptr_t i_unaligned  = (uintptr_t)(*p);
-  const uintptr_t misalignment = i_unaligned & mask;
-  *adjustment                  = alignment - misalignment;
-  *p                           = (void *)(i_unaligned + *adjustment);
-}
-
 static inline ArenaChunk *
 alloc_chunk(Arena *arena)
 {

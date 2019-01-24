@@ -91,6 +91,18 @@ static void
 print_stmt_if(Ast *stmt_if, int pad, FILE *stream);
 
 static void
+print_stmt_loop(Ast *loop, int pad, FILE *stream);
+
+static void
+print_stmt_break(Ast *br, int pad, FILE *stream);
+
+static void
+print_stmt_continue(Ast *cnt, int pad, FILE *stream);
+
+static void
+print_stmt_return(Ast *ret, int pad, FILE *stream);
+
+static void
 print_decl_entity(Ast *entity, int pad, FILE *stream);
 
 static void
@@ -184,6 +196,35 @@ print_stmt_if(Ast *stmt_if, int pad, FILE *stream)
   print_node(stmt_if->data.stmt_if.test, pad + 1, stream);
   print_node(stmt_if->data.stmt_if.true_stmt, pad + 1, stream);
   print_node(stmt_if->data.stmt_if.false_stmt, pad + 1, stream);
+}
+
+void
+print_stmt_loop(Ast *loop, int pad, FILE *stream)
+{
+  print_head(loop, pad, stream);
+  print_node(loop->data.stmt_loop.init, pad + 1, stream);
+  print_node(loop->data.stmt_loop.condition, pad + 1, stream);
+  print_node(loop->data.stmt_loop.increment, pad + 1, stream);
+  print_node(loop->data.stmt_loop.block, pad + 1, stream);
+}
+
+void
+print_stmt_break(Ast *br, int pad, FILE *stream)
+{
+  print_head(br, pad, stream);
+}
+
+void
+print_stmt_continue(Ast *cnt, int pad, FILE *stream)
+{
+  print_head(cnt, pad, stream);
+}
+
+void
+print_stmt_return(Ast *ret, int pad, FILE *stream)
+{
+  print_head(ret, pad, stream);
+  print_node(ret->data.stmt_return.expr, pad + 1, stream);
 }
 
 void
@@ -393,6 +434,7 @@ print_node(Ast *node, int pad, FILE *stream)
     break;
 
   case AST_STMT_RETURN:
+    print_stmt_return(node, pad, stream);
     break;
 
   case AST_STMT_IF:
@@ -400,12 +442,15 @@ print_node(Ast *node, int pad, FILE *stream)
     break;
 
   case AST_STMT_LOOP:
+    print_stmt_loop(node, pad, stream);
     break;
 
   case AST_STMT_BREAK:
+    print_stmt_break(node, pad, stream);
     break;
 
   case AST_STMT_CONTINUE:
+    print_stmt_continue(node, pad, stream);
     break;
 
   case AST_EXPR_TYPE:

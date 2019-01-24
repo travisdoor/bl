@@ -5,7 +5,7 @@
 ## About
 This is very pre-alpha version!!!
 
-The Biscuit is programming language inspired by C, Odin and Jai. 
+The Biscuit is programming language inspired by C, Odin and Jai. More information can be found on my personal (web)[https://travisdoor.github.io/biscuit-language].
 
 ## Example
 

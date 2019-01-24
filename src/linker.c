@@ -42,50 +42,23 @@
 void
 linker_run(Builder *builder, Assembly *assembly)
 {
-  assert(assembly->mir_module->llvm_module);
+  MirModule *module = assembly->mir_module;
+  assert(module->llvm_module);
   char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
   if (!filename) bl_abort("bad alloc");
   strcpy(filename, assembly->name);
   strcat(filename, OBJ_EXT);
 
-  char *triple    = LLVMGetDefaultTargetTriple();
-  char *cpu       = "";
-  char *features  = "";
   char *error_msg = NULL;
-
-  msg_log("target: %s", triple);
-
-  LLVMTargetRef target = NULL;
-  if (LLVMGetTargetFromTriple(triple, &target, &error_msg)) {
-    msg_error("cannot get target with error: %s", error_msg);
-    LLVMDisposeMessage(error_msg);
-    bl_free(filename);
-    return;
-  }
-
-#if BL_DEBUG
-  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelNone;
-#else
-  LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
-#endif
-
-  LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
-      target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
-
-  // TODO: use tmp file first (cause problems on windows)
   remove(filename);
-  if (LLVMTargetMachineEmitToFile(target_machine, assembly->mir_module->llvm_module, filename,
+  if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module, filename,
                                   LLVMObjectFile, &error_msg)) {
     msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
     LLVMDisposeMessage(error_msg);
-    LLVMDisposeTargetMachine(target_machine);
-    LLVMDisposeMessage(triple);
     bl_free(filename);
     return;
   }
 
-  LLVMDisposeTargetMachine(target_machine);
-  LLVMDisposeMessage(triple);
   bl_free(filename);
 }

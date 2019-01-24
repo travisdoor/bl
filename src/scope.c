@@ -79,6 +79,7 @@ scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry)
 {
   assert(scope);
   assert(!bo_htbl_has_key(scope->entries, key) && "duplicate scope entry key!!!");
+  entry->parent_scope = scope;
   bo_htbl_insert(scope->entries, key, entry);
 }
 

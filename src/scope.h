@@ -46,6 +46,7 @@ typedef struct ScopeArenas
 
 typedef struct ScopeEntry
 {
+  struct Scope *   parent_scope;
   struct Ast *     node;
   struct MirInstr *instr;
 } ScopeEntry;
