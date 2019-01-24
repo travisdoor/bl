@@ -1,0 +1,275 @@
+#+TITLE: Biscuit-MIR Documentation
+#+AUTHOR: Martin Dorazil
+#+OPTIONS: toc:nil num:3 H:4 ^:nil pri:t
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
+
+# now prints out the previously disabled (toc:nil) table of contents.
+#+TOC: headlines 2
+
+* About
+ BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR. 
+
+** MIR Interpreter
+   BL Compiler has integrated interpreter for MIR. 
+   
+   - Default execution stack size is 2MB.
+   - Stack allocations are 8 byte aligned.
+
+** Assert function in MIR
+ #+BEGIN_SRC blm
+ @assert fn(bool) void {
+ init_0:
+   %0              *bool decl cond : bool
+   %1               bool arg $0
+   %3               void store %1 -> %0
+   %11              void br entry_1
+ 
+ entry_1:
+   %5               bool load %0
+   %6               bool unop !%5
+   %7               void br %6 ? if_then_2 : if_else_3
+ 
+ if_then_2:
+   %8               void unreachable
+   %9               void br if_cont_4
+ 
+ if_else_3:
+   %10              void br if_cont_4
+ 
+ if_cont_4:
+   %12              void ret
+ }
+ #+END_SRC
+   
+** Stack manipulation
+   Example function:
+   #+BEGIN_SRC bl
+   #load "std/debug.bl"
+   main :: fn () s32 {
+     v :: 10;
+     assert(v == 10);
+     return 0;
+   };
+   #+END_SRC
+
+   Stack operation produced during execution of the main function:
+   #+BEGIN_EXAMPLE
+   executing 'main' in compile time...
+        -             Terminal  PUSH RA
+       10         InstrDeclVar  PUSH    (4B, 0x7f377a17a060) s32
+       11           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       13           InstrStore  POP     (4B, 0x7f377a17a06c) s32
+       15           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       17            InstrLoad  PUSH    (4B, 0x7f377a17a070) s32
+       18           InstrBinop  POP     (4B, 0x7f377a17a074) s32
+       18           InstrBinop  POP     (4B, 0x7f377a17a06c) s32
+       18           InstrBinop  PUSH    (1B, 0x7f377a17a068) bool
+       19            InstrCall  PUSH RA
+       87         InstrDeclVar  PUSH    (1B, 0x7f377a17a088) bool
+       88             InstrArg  PUSH    (1B, 0x7f377a17a090) bool
+       90           InstrStore  POP     (1B, 0x7f377a17a097) bool
+       96            InstrLoad  PUSH    (1B, 0x7f377a17a090) bool
+       97            InstrUnop  POP     (1B, 0x7f377a17a097) bool
+       97            InstrUnop  PUSH    (1B, 0x7f377a17a090) bool
+       98          InstrCondBr  POP     (1B, 0x7f377a17a097) bool
+      104             InstrRet  POP RA
+      104             InstrRet  POP     (1B, 0x7f377a17a06f) bool
+       20           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
+       21             InstrRet  POP     (4B, 0x7f377a17a06c) s32
+       21             InstrRet  POP RA
+   execution finished with state: 0
+   #+END_EXAMPLE
+
+
+* Function
+   #+BEGIN_EXAMPLE
+   @<name> <T> { 
+     [entry block]
+   }
+   #+END_EXAMPLE
+
+* Block
+  Basic block representation.
+
+  #+BEGIN_EXAMPLE
+  <name>: 
+    ...
+    <terminal instruction>
+  #+END_EXAMPLE
+
+* Instructions: 
+  
+** const
+   Constant value.
+
+   #+BEGIN_EXAMPLE
+   <T> const <value> // yields constant value of the type T
+   #+END_EXAMPLE
+
+   | stack op | data  | description    |
+   |----------+-------+----------------|
+   | PUSH     | value | constant value |
+
+** decl
+   Variable declaration.
+
+   #+BEGIN_EXAMPLE
+   <*T> decl <name> : <T> // yields *T (pointer to value allocated on the stack)
+   #+END_EXAMPLE
+
+   | stack op | data | description              |
+   |----------+------+--------------------------|
+   | PUSH     | -    | storage for the variable |
+   
+** load
+   Push pointed value on the stack.
+
+   #+BEGIN_EXAMPLE
+   <T> load <ptr> // yields T loaded from ptr
+   #+END_EXAMPLE
+
+   | stack op | data  | description              |
+   |----------+-------+--------------------------|
+   | POP      | ptr   | pointer to source        |
+   | PUSH     | value | value loaded from source |
+   
+** store
+   Store value from source to destination address.
+
+   #+BEGIN_EXAMPLE
+   void store <src> -> <dest ptr> // yields void
+   #+END_EXAMPLE
+
+   Destination pointer is on the stack:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | dest ptr | pointer to destination |
+   | POP      | src ptr  | value                  |
+
+   Destination pointer is declaration:
+   | stack op | data     | description            |
+   |----------+----------+------------------------|
+   | POP      | src ptr | value                  |
+   
+** arg
+   Load argument of the current function on the stack.
+
+   #+BEGIN_EXAMPLE
+   <T> arg $<arg number> // yields T
+   #+END_EXAMPLE
+
+   | stack op | data | description |
+   |----------+------+-------------|
+   | PUSH     | arg  | fn argument |
+
+** call
+   Call function. This instruction will create new stack frame and switch control to the callee.
+
+   | stack op | data         | description                                                                |
+   |----------+--------------+----------------------------------------------------------------------------|
+   | PUSH     | arg 3        | push 3rd argument                                                          |
+   | PUSH     | arg 2        | push 2nd argument                                                          |
+   | PUSH     | arg 1        | push 1st argument                                                          |
+   | PUSH RA  | pc, call ptr | create new frame stack (push program counter and call instruction pointer) |
+
+** ret
+   Return value from the function and return control to the caller. This instruction terminates current basic block.
+
+   #+BEGIN_EXAMPLE
+   void ret [value] // yields void
+   #+END_EXAMPLE
+
+   | stack op | data  | description                            |
+   |----------+-------+----------------------------------------|
+   | POP RA   | -     | rollback the stack to return address   |
+   | POP      | arg 1 | clenup fn argument                     |
+   | POP      | arg 2 | clenup fn argument                     |
+   | POP      | arg 3 | clenup fn argument                     |
+   | PUSH     | value | push call result value if there is one |
+
+** br
+   Breaks to the basic block. This instruction terminates current basic block.
+
+   #+BEGIN_EXAMPLE
+   void br <block> // yields void
+   #+END_EXAMPLE
+
+** br (conditional)
+   Breaks into then block if the condition is true. This instruction terminates current basic block.
+
+   #+BEGIN_EXAMPLE
+   void br <cont> ? <then_block> : <else_block> // yields void
+   #+END_EXAMPLE
+
+   | stack op | data      | description       |
+   |----------+-----------+-------------------|
+   | POP      | condition | checked condition |
+
+** unreachable
+   Abort execution when this instruction is reached.
+
+** binop
+   Binary operation.
+
+   #+BEGIN_EXAMPLE
+   <T> binop <lhs> <+|-|*|/|%> <rhs> // yields result value of type T
+   #+END_EXAMPLE
+
+   | stack op | data   | description                   |
+   |----------+--------+-------------------------------|
+   | POP      | lhs    | left-hand side of operation   |
+   | POP      | rhs    | right-hand side of operation  |
+   | PUSH     | result | result value of the operation |
+
+** unop
+   Unary operation.
+
+   #+BEGIN_EXAMPLE
+   <T> unop <+|-|*|&> <value> // yields result value of type T
+   #+END_EXAMPLE
+
+   | stack op | data   | description                   |
+   |----------+--------+-------------------------------|
+   | POP      | value  |                               |
+   | PUSH     | result | result value of the operation |
+
+** elemptr
+   Evaluates address of the array element and push it on the stack.
+
+   #+BEGIN_EXAMPLE
+   <*T> elemptr <arr ptr>[<index>] // yields result address *T (elem type)
+   #+END_EXAMPLE
+
+   | stack op | data     | description                  |
+   |----------+----------+------------------------------|
+   | POP      | index    |                              |
+   | PUSH     | elem ptr | Address of the array element |
+
+** addrof
+    Evaluates address of the variable.
+
+    Getting address of variable:
+    | stack op | data    | description                   |
+    |----------+---------+-------------------------------|
+    | PUSH     | var ptr | pointer to allocated variable |
+
+    Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
+    
+* Special instructions
+  Special instructions are used only during analyze pass inside the compiler.
+
+** tryinfer
+   Assign type of the source to the destination instruction.
+   
+   #+BEGIN_EXAMPLE
+   void tryinfer <src> -> <dest> // yields void
+   #+END_EXAMPLE
+
+** validate_type
+   Validates if the source instruction yields value of type 'type'. 
+   
+   #+BEGIN_EXAMPLE
+   void validate_type <src> // yields void
+   #+END_EXAMPLE
+
+* Footnotes

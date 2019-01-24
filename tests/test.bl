@@ -1,9 +1,39 @@
-/* testing playground */
+/* playground */
 
+#load "std/debug.bl"
 
-main : fn () s32 {
-  arr s32[64];
-  arr[0] = 10;
-  arr[10 + 1] = 10;
-  return 0;
+main :: fn () s32 {
+  str := "hello world\n";
+
+  loop i := 0; i < 12; i += 1 {
+    putchar(str[i]);
+  }
+
+  return 666;
 };
+
+putchar :: fn (c: u8) s32 #extern;
+
+print :: fn (str: []u8) {
+  
+};
+
+/*
+say_hello :: fn () {
+  putchar(72);
+  putchar(101);
+  putchar(108);
+  putchar(108);
+  putchar(111);
+  putchar(32);
+  putchar(87);
+  putchar(111);
+  putchar(114);
+  putchar(108);
+  putchar(100);
+  putchar(10);
+};
+
+
+putchar :: fn (c: s32) s32 #extern;
+*/

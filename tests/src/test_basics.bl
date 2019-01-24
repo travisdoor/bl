@@ -1,0 +1,213 @@
+#load "std/debug.bl"
+
+#test "fundametal types" {
+  _u8:    u8; 
+  _u16:   u16; 
+  _u32:   u32; 
+  _u64:   u64; 
+  _usize: usize;
+  _s8:    s8; 
+  _s16:   s16; 
+  _s32:   s32; 
+  _s64:   s64; 
+  _bool:  bool;
+  _f32:   f32; 
+  _f64:   f64; 
+};
+
+#test "type infer" {
+  number := 0;
+  boolean := true;
+  float := 0.1f;
+  double := 0.1;
+};
+
+#test "simple assignement" {
+  {
+    number := 0;
+    assert(number == 0);
+    number = 666;
+    assert(number == 666);
+    number = (1 + 2 * 3 - 1) / 2;
+    assert(number == 3);
+  }
+
+  {
+    real_number := 0.f;
+    real_number = 10.1f;
+    assert(real_number - 10.1f < 0.0001f);
+
+    real_number = (0.1f + 10.f - 10.f) * 0.1f;
+    assert(real_number - 0.01f < 0.0001f);
+  }
+};
+
+#test "ifs" {
+  b := true;
+  if b {
+    if !b {
+      unreachable;
+    }
+  } else {
+    unreachable;
+  }
+
+  if !b {
+    unreachable;
+  }
+};
+
+#test "function calls" {
+  _1 :: fn () {
+  };
+
+  _2 :: fn (i: s32) s32 {
+    return i;
+  };
+
+  _1();  
+  assert(_2(10) == 10);
+};
+
+#test "implicit functions direct call" {
+  i := fn (i: s32, j: s32) s32 {
+    return i * j; 
+  } (2, 3);
+
+  assert(i == 6);
+
+  fn () {
+  } ();
+};
+
+#test "assign operators" {
+  i := 5;
+  assert(i == 5);
+
+  i += 1;
+  assert(i == 6);
+
+  i -= 1;
+  assert(i == 5);
+
+  i *= 2;
+  assert(i == 10);
+
+  i /= 2;
+  assert(i == 5);
+};
+
+#test "compare operators" {
+  i := 10;
+  assert(i == 10);
+  assert(i != 9);
+  assert(i > 0);
+  assert(i < 11);
+  assert(i >= 10);
+  assert(i <= 10);
+};
+
+#test "simple loops" {
+  count :: 10;
+  i := 0;
+
+  loop i < count {
+    i += 1;
+  }
+
+  assert(i == count);
+
+  i = 0;
+  loop j := 0; j < count; j += 1 {
+    i += 1;
+  }
+
+  assert(i == count);
+};
+
+#test "nested loops" {
+  count :: 10;
+  i := 0;
+
+  loop x := 0; x < count; x += 1 {
+    loop y := 0; y < count; y += 1 {
+      i += 1;
+    }
+  }
+
+  assert(i == count * count); 
+};
+
+#test "break/continue loop" {
+  i := 0;
+  loop {
+    if i == 10 {
+      break;
+    } else {
+      i += 1;
+      continue;
+    }
+  }
+
+  assert(i == 10);
+};
+
+#test "pointers" {
+  i       := 666;
+  ptr     := &i;
+  ptr_ptr := &ptr;
+
+  j := **ptr_ptr;
+  assert(j == 666);
+
+  j = *ptr;
+  assert(j == 666);
+};
+
+
+#test "null pointers" {
+  test_ptr :: fn (ptr: *s32) *s32 {
+    return null;
+  };
+
+  foo : *s32 = null;
+  assert(foo == null);
+  assert(null == null);
+  assert(test_ptr(null) == null);
+};
+
+#test "passed pointer" {
+  value :: 10;
+  i := 0;
+  
+  fn (ptr: *s32, v: s32) {
+    *ptr = v; 
+  } (&i, value);
+
+  assert(i == value);
+};
+
+#test "simple static array" {
+  arr : [10]s32;
+
+  arr[0] = 10;
+  arr[1] = 20;
+  arr[2] = 30;
+
+  assert(arr[0] == 10);
+  assert(arr[1] == 20);
+  assert(arr[2] == 30);
+};
+
+/*
+#test "simple static array loops" {
+  arr : [10]s32;
+  loop i := 0; i < 10; i += 1 {
+    arr[i] = i;
+    assert(arr[i] == i);
+  }
+
+  assert(arr[0] == 0);
+  assert(arr[9] == 9);
+};
+*/

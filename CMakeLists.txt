@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.3.1 LANGUAGES C)
+project(bl VERSION 0.4.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(HAVE_64_BIT 1)
@@ -15,8 +15,61 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
 endif()
 
-find_package(BObject 1.0 REQUIRED)
+# setup output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
+# deps
+find_package(BObject 1.0 REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
+
+find_library(DYNLOAD_LIBS dynload_s)
+find_library(DYNCALL_LIBS dyncall_s)
+
+set(HEADER_FILES
+        src/bldebug.h
+        src/error.h 
+        src/config.h
+	src/messages.h
+        src/builder.h
+        src/blmemory.h
+        src/assembly.h
+        src/token.h
+        src/tokens.h
+        src/unit.h
+        src/stages.h
+        src/common.h 
+        src/scope.h
+        src/mir.h
+        src/mir_printer.h
+        src/arena.h
+        src/ast.h)
+
+set(SOURCE_FILES
+        src/main.c
+        src/arena.c
+        src/tokens.c
+        src/file_loader.c
+        src/unit.c
+        src/ast_printer.c
+        src/token.c
+        src/token_printer.c
+        src/assembly.c
+        src/builder.c
+        src/lexer.c
+        src/bldebug.c
+        src/parser.c
+        src/linker.c
+        src/bc_writer.c
+	src/mir_writer.c
+        src/native_bin.c
+        src/scope.c
+        src/common.c 
+        src/mir.c
+        src/ir.c
+        src/mir_printer.c
+        src/ast.c)
+
+add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
 if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
@@ -25,12 +78,151 @@ if (MSVC)
     # Link LLVM from custom path
     include_directories(${LLVM_PATH}/include)
     link_directories(${LLVM_PATH}/lib)
+
+    target_link_libraries(blc PUBLIC
+	LLVMAArch64AsmParser       
+	LLVMAArch64AsmPrinter      
+	LLVMAArch64CodeGen         
+	LLVMAArch64Desc            
+	LLVMAArch64Disassembler    
+	LLVMAArch64Info            
+	LLVMAArch64Utils           
+	LLVMAMDGPUAsmParser        
+	LLVMAMDGPUAsmPrinter       
+	LLVMAMDGPUCodeGen          
+	LLVMAMDGPUDesc             
+	LLVMAMDGPUDisassembler     
+	LLVMAMDGPUInfo             
+	LLVMAMDGPUUtils            
+	LLVMAnalysis               
+	LLVMARMAsmParser           
+	LLVMARMAsmPrinter          
+	LLVMARMCodeGen             
+	LLVMARMDesc                
+	LLVMARMDisassembler        
+	LLVMARMInfo                
+	LLVMARMUtils               
+	LLVMAsmParser              
+	LLVMAsmPrinter             
+	LLVMBinaryFormat           
+	LLVMBitReader              
+	LLVMBitWriter              
+	LLVMBPFAsmParser           
+	LLVMBPFAsmPrinter          
+	LLVMBPFCodeGen             
+	LLVMBPFDesc                
+	LLVMBPFDisassembler        
+	LLVMBPFInfo                
+	LLVMCodeGen                
+	LLVMCore                   
+	LLVMCoroutines             
+	LLVMCoverage               
+	LLVMDebugInfoCodeView      
+	LLVMDebugInfoDWARF         
+	LLVMDebugInfoMSF           
+	LLVMDebugInfoPDB           
+	LLVMDemangle               
+	LLVMDlltoolDriver          
+	LLVMExecutionEngine        
+	LLVMFuzzMutate             
+	LLVMGlobalISel             
+	LLVMHexagonAsmParser       
+	LLVMHexagonCodeGen         
+	LLVMHexagonDesc            
+	LLVMHexagonDisassembler    
+	LLVMHexagonInfo            
+	LLVMInstCombine            
+	LLVMInstrumentation        
+	LLVMInterpreter            
+	LLVMipo                    
+	LLVMIRReader               
+	LLVMLanaiAsmParser         
+	LLVMLanaiAsmPrinter        
+	LLVMLanaiCodeGen           
+	LLVMLanaiDesc              
+	LLVMLanaiDisassembler      
+	LLVMLanaiInfo              
+	LLVMLibDriver              
+	LLVMLineEditor             
+	LLVMLinker                 
+	LLVMLTO                    
+	LLVMMC                     
+	LLVMMCDisassembler         
+	LLVMMCJIT                  
+	LLVMMCParser               
+	LLVMMipsAsmParser          
+	LLVMMipsAsmPrinter         
+	LLVMMipsCodeGen            
+	LLVMMipsDesc               
+	LLVMMipsDisassembler       
+	LLVMMipsInfo               
+	LLVMMIRParser              
+	LLVMMSP430AsmPrinter       
+	LLVMMSP430CodeGen          
+	LLVMMSP430Desc             
+	LLVMMSP430Info             
+	LLVMNVPTXAsmPrinter        
+	LLVMNVPTXCodeGen           
+	LLVMNVPTXDesc              
+	LLVMNVPTXInfo              
+	LLVMObjCARCOpts            
+	LLVMObject                 
+	LLVMObjectYAML             
+	LLVMOption                 
+	LLVMOrcJIT                 
+	LLVMPasses                 
+	LLVMPowerPCAsmParser       
+	LLVMPowerPCAsmPrinter      
+	LLVMPowerPCCodeGen         
+	LLVMPowerPCDesc            
+	LLVMPowerPCDisassembler    
+	LLVMPowerPCInfo            
+	LLVMProfileData            
+	LLVMRuntimeDyld            
+	LLVMScalarOpts             
+	LLVMSelectionDAG           
+	LLVMSparcAsmParser         
+	LLVMSparcAsmPrinter        
+	LLVMSparcCodeGen           
+	LLVMSparcDesc              
+	LLVMSparcDisassembler      
+	LLVMSparcInfo              
+	LLVMSupport                
+	LLVMSymbolize              
+	LLVMSystemZAsmParser       
+	LLVMSystemZAsmPrinter      
+	LLVMSystemZCodeGen         
+	LLVMSystemZDesc            
+	LLVMSystemZDisassembler    
+	LLVMSystemZInfo            
+	LLVMTableGen               
+	LLVMTarget                 
+	LLVMTransformUtils         
+	LLVMVectorize              
+	LLVMWindowsManifest        
+	LLVMX86AsmParser           
+	LLVMX86AsmPrinter          
+	LLVMX86CodeGen             
+	LLVMX86Desc                
+	LLVMX86Disassembler        
+	LLVMX86Info                
+	LLVMX86Utils               
+	LLVMXCoreAsmPrinter        
+	LLVMXCoreCodeGen           
+	LLVMXCoreDesc              
+	LLVMXCoreDisassembler      
+	LLVMXCoreInfo              
+	LLVMXRay  
+	Shlwapi
+	)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wno-missing-braces -O0")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fno-sanitize=all -Wdeprecated-declarations")
+
+    target_link_libraries(blc PUBLIC LLVM)
 endif()
 
-add_subdirectory(libbl)
-add_subdirectory(blc)
-# add_subdirectory(tests)
+target_link_libraries(blc PUBLIC bobject ${DYNLOAD_LIBS} ${DYNCALL_LIBS} ${CMAKE_DL_LIBS})
+target_include_directories(blc PRIVATE src)
 
+configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)

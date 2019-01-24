@@ -1,0 +1,12 @@
+#test "ifs" {
+  b := true;
+  if b {
+  } else {
+    unreachable;
+  }
+
+  i := 10;
+  if i != 10 {
+    unreachable;
+  } 
+};

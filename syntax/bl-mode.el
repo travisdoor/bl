@@ -15,12 +15,12 @@
 (add-to-list 'auto-mode-alist '("\\.bl\\'" . bl-mode))
 
 (defconst bl-keywords
-  '("if" "while" "loop" "break" "continue" "else" "extern" "sizeof"
-    "struct" "enum" "fn" "return" "cast" "for" ":" ":=" "->")) 
+  '("if" "loop" "break" "continue" "else" "sizeof" "typeof"
+    "struct" "enum" "fn" "return" "cast" ":" ":=" "unreachable")) 
 
 (defconst bl-types
-  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "size_t" "void" 
-    "char" "string" "type_t"))
+  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" 
+    "type"))
 
 (defconst bl-constants
   '("true" "false" "null"))
@@ -45,6 +45,10 @@
     ;; Keywords
     (,(bl-keywords-rx bl-keywords) 1 font-lock-keyword-face)
 
+    ;; Hash directives
+    ("#\\w+" . font-lock-preprocessor-face)
+    ("@\\w+" . font-lock-builtin-face)
+
     ;; Types 
     (,(bl-keywords-rx bl-types) 1 font-lock-type-face)
     ("\\(\\w+\\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
@@ -60,9 +64,6 @@
     ;; Constants
     (,(bl-keywords-rx bl-constants) 1 font-lock-constant-face)
     ("\\(\\w+\\)\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
-
-    ;; Hash directives
-    ("#\\w+" . font-lock-preprocessor-face)
 
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)

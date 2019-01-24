@@ -44,6 +44,9 @@
 *.idb
 *.pdb
 
+# Documentation
+doc/html
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
@@ -57,3 +60,5 @@ dkms.conf
 *bin/
 .idea/
 /tests/src/test_runner
+*.ll
+*.blm
