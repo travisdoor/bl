@@ -1,6 +1,6 @@
 #+TITLE: Biscuit Language
 #+AUTHOR: Martin Dorazil
-#+OPTIONS: toc:nil num:3 H:4 ^:nil pri:t
+#+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
 #+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
 
