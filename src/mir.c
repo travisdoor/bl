@@ -41,9 +41,9 @@
 #define IMPL_FN_NAME                    "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
-#define MAX_ALIGNMENT                   16
+#define MAX_ALIGNMENT                   8
 
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC true
 // clang-format on
 
 union _MirInstr
@@ -654,7 +654,6 @@ exec_stack_alloc(Context *cnt, size_t size)
   assert(size && "trying to allocate 0 bits on stack");
 
   size = exec_stack_alloc_size(size);
-  // bl_log("allocate %u bytes on stack", size);
   cnt->exec_stack->used_bytes += size;
   if (cnt->exec_stack->used_bytes > cnt->exec_stack->allocated_bytes) {
     msg_error("Stack overflow!!!");
@@ -664,11 +663,8 @@ exec_stack_alloc(Context *cnt, size_t size)
   MirStackPtr mem          = (MirStackPtr)cnt->exec_stack->top_ptr;
   cnt->exec_stack->top_ptr = cnt->exec_stack->top_ptr + size;
 
-  //assert(is_aligned(mem, size) && "Unaligned stack allocation");
-  //align_ptr_up((void **)&mem, MAX_ALIGNMENT, NULL);
-
   if (!is_aligned(mem, MAX_ALIGNMENT)) {
-    bl_log("BAD ALIGNMENT %p, %d bytes", mem, size);
+    bl_warning("BAD ALIGNMENT %p, %d bytes", mem, size);
   }
 
   return mem;
@@ -683,7 +679,7 @@ exec_stack_free(Context *cnt, size_t size)
   if (new_top < (uint8_t *)(cnt->exec_stack->ra + 1)) bl_abort("Stack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
   cnt->exec_stack->used_bytes -= size;
-  //align_ptr_up((void **)&new_top, MAX_ALIGNMENT, NULL);
+  // align_ptr_up((void **)&new_top, MAX_ALIGNMENT, NULL);
   return new_top;
 }
 
@@ -699,9 +695,10 @@ exec_push_ra(Context *cnt, MirInstr *instr)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     if (instr) {
-      bl_log("~%d " YELLOW("'%s'") "> " RED("PUSH RA"), instr->_serial, mir_instr_name(instr));
+      fprintf(stdout, "%6lu %20s  PUSH RA\n", cnt->exec_stack->pc->_serial,
+              mir_instr_name(cnt->exec_stack->pc));
     } else {
-      bl_log(RED("'Terminal'") "> " RED("PUSH RA"));
+      fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");
     }
   }
 #endif
@@ -715,8 +712,8 @@ exec_pop_ra(Context *cnt)
 
 #if BL_DEBUG && VERBOSE_EXEC
   {
-    bl_log("~%d " YELLOW("'%s'") "> " CYAN("POP RA"), cnt->exec_stack->pc->_serial,
-           mir_instr_name(cnt->exec_stack->pc));
+    fprintf(stdout, "%6lu %20s  POP RA\n", cnt->exec_stack->pc->_serial,
+            mir_instr_name(cnt->exec_stack->pc));
   }
 #endif
 
@@ -739,8 +736,8 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
-    bl_log("~%d " YELLOW("'%s'") "> " GREEN("PUSH") " (%uB, %p) %s", cnt->exec_stack->pc->_serial,
-           mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);
+    fprintf(stdout, "%6lu %20s  PUSH    (%luB, %p) %s\n", cnt->exec_stack->pc->_serial,
+            mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);
   }
 #endif
 
@@ -760,8 +757,8 @@ exec_pop_stack(Context *cnt, MirType *type)
   {
     char type_name[256];
     mir_type_to_str(type_name, 256, type);
-    bl_log("~%d " YELLOW("'%s'") "> " BLUE("POP") " (%uB, %p) %s", cnt->exec_stack->pc->_serial,
-           mir_instr_name(cnt->exec_stack->pc), size, cnt->exec_stack->top_ptr - size, type_name);
+    fprintf(stdout, "%6lu %20s  POP     (%luB, %p) %s\n", cnt->exec_stack->pc->_serial,
+            mir_instr_name(cnt->exec_stack->pc), size, cnt->exec_stack->top_ptr - size, type_name);
   }
 #endif
 
@@ -898,9 +895,6 @@ provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
 
   Scope *scope = ident->data.ident.scope;
   assert(scope);
-
-  // bl_log("provide %s into %p scope (lookup in tree %s)", ident->data.ident.str, scope, in_tree ?
-  // "true" : "false");
 
   const uint64_t key       = ident->data.ident.hash;
   ScopeEntry *   collision = scope_lookup(scope, key, in_tree);
@@ -1420,7 +1414,10 @@ append_instr_decl_ref(Context *cnt, Ast *node, ScopeEntry *scope_entry)
   MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node, MirInstrDeclRef *);
   tmp->scope_entry     = scope_entry;
 
-  ref_instr(scope_entry->instr);
+  if (!scope_entry->parent_scope->is_global) {
+    ref_instr(scope_entry->instr);
+  }
+
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -1749,9 +1746,6 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
     type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
-
-    bl_log("array alignment = %d | %d | %d", type->alignment, type->data.array.elem_type->alignment,
-           type->alignment * type->data.array.elem_type->alignment);
     break;
   }
 
@@ -1870,7 +1864,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
   MirInstr *src = addrof->src;
   assert(src);
-  if (src->kind != MIR_INSTR_DECL_REF) {
+  if (src->kind != MIR_INSTR_DECL_REF && src->kind != MIR_INSTR_ELEM_PTR) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL, addrof->base.node->src,
                 BUILDER_CUR_WORD, "cannot take the address of unallocated object");
     return false;
@@ -1900,6 +1894,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   assert(scope_entry->instr->const_value.type);
 
   ref->base.const_value.type = scope_entry->instr->const_value.type;
+
+  if (scope_entry->parent_scope->is_global) ref_instr(scope_entry->instr);
 
   erase_instr(cnt, &ref->base);
   return true;
@@ -2653,10 +2649,18 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   MirInstr *src  = addrof->src;
   MirType * type = src->const_value.type;
   assert(type);
-  assert(src->kind == MIR_INSTR_DECL_VAR);
 
-  MirStackPtr ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
-  exec_push_stack(cnt, (MirStackPtr)&ptr, type);
+  if (src->kind == MIR_INSTR_ELEM_PTR) {
+    /* address of the element is already on the stack */
+    return;
+  }
+
+  if (src->kind == MIR_INSTR_DECL_VAR) {
+    MirStackPtr ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
+    exec_push_stack(cnt, (MirStackPtr)&ptr, type);
+  }
+
+  bl_unimplemented;
 }
 
 void
@@ -2861,7 +2865,6 @@ exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
   /* pop arr size */
   /* TODO: len set by immutable variable need to be set before use!!! */
-  assert(type_arr->elem_type->kind == MIR_INSTR_CONST);
   MirStackPtr  len_ptr = exec_pop_stack(cnt, type_arr->len->const_value.type);
   MirGeneric64 len     = {0};
   exec_read_value(&len, len_ptr, type_arr->len->const_value.type);

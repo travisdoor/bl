@@ -2,28 +2,12 @@
 
 #load "std/debug.bl"
 
-/*
-  TODO:
-  - arrays
-*/
-
 main :: fn () s32 {
-  i := 10;
-  j := 10;
-  arr : [10] s32;   // 4
-  arr2 : [10] s8; // 1
-  arr3 : [10] s64;  // 4
-  arr4 : [10] s16;  // 4
-
-  loop i := 0; i < 10; i += 1 {
-    arr[i] = i;
-    assert(arr[i] == i);
-  }
-
-  return arr[8];
+  v :: 10;
+  assert(v == 10);
+  return 0;
 };
 
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -40,4 +24,3 @@ say_hello :: fn () {
 };
 
 putchar :: fn (c: s32) s32 #extern;
-*/
