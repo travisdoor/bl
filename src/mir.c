@@ -2691,6 +2691,15 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   MirGeneric64 index = {0};
   exec_read_value(&index, index_ptr, index_type);
 
+  {
+    const size_t len = arr_type->data.array.len;
+    if (index.v_u64 > len) {
+      msg_error("Array index out of range! Index is %llu but array size is %llu",
+                (unsigned long long)index.v_u64, (unsigned long long)len);
+      exec_abort(cnt, 0);
+    }
+  }
+
   MirGeneric64 result = {0};
   result.v_stack_ptr  = (MirStackPtr)((arr_ptr) + (index.v_u64 * elem_type->store_size_bytes));
 

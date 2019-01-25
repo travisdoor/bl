@@ -4,6 +4,7 @@
 
 main :: fn () s32 {
   str := "hello world\n";
+  str.len;
 
   loop i := 0; i < 12; i += 1 {
     putchar(str[i]);
@@ -14,9 +15,10 @@ main :: fn () s32 {
 
 putchar :: fn (c: u8) s32 #extern;
 
+/*
 print :: fn (str: []u8) {
-  
 };
+*/
 
 /*
 say_hello :: fn () {
