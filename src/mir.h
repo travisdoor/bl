@@ -74,6 +74,7 @@ typedef struct MirInstrCondBr       MirInstrCondBr;
 typedef struct MirInstrBr           MirInstrBr;
 typedef struct MirInstrArg          MirInstrArg;
 typedef struct MirInstrElemPtr      MirInstrElemPtr;
+typedef struct MirInstrMemberPtr    MirInstrMemberPtr;
 typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrTypeArray    MirInstrTypeArray;
 typedef struct MirInstrTypePtr      MirInstrTypePtr;
@@ -265,6 +266,7 @@ enum MirInstrKind
   MIR_INSTR_UNOP,
   MIR_INSTR_ARG,
   MIR_INSTR_ELEM_PTR,
+  MIR_INSTR_MEMBER_PTR,
   MIR_INSTR_ADDROF,
 
   MIR_INSTR_VALIDATE_TYPE,
@@ -318,6 +320,13 @@ struct MirInstrElemPtr
 
   MirInstr *arr_ptr;
   MirInstr *index;
+};
+
+struct MirInstrMemberPtr
+{
+  MirInstr      base;
+
+  MirInstr *target_ptr;
 };
 
 struct MirInstrArg

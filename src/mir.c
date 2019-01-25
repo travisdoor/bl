@@ -67,6 +67,7 @@ union _MirInstr
   MirInstrUnop         unop;
   MirInstrArg          arg;
   MirInstrElemPtr      elem_ptr;
+  MirInstrMemberPtr    member_ptr;
   MirInstrAddrOf       addrof;
   MirInstrTypeArray    type_array;
   MirInstrTypePtr      type_ptr;
@@ -273,6 +274,9 @@ static MirInstr *
 append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
 
 static MirInstr *
+append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr);
+
+static MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
                      MirInstrBlock *else_block);
 
@@ -327,7 +331,7 @@ append_instr_const_type(Context *cnt, Ast *node, MirType *type);
 static MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str);
 
-MirInstr *
+static MirInstr *
 append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
@@ -1356,6 +1360,18 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
   MirInstrElemPtr *tmp = create_instr(cnt, MIR_INSTR_ELEM_PTR, node, MirInstrElemPtr *);
   tmp->arr_ptr         = arr_ptr;
   tmp->index           = index;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr)
+{
+  assert(target_ptr);
+  ref_instr(target_ptr);
+  MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
+  tmp->target_ptr        = target_ptr;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -4096,6 +4112,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrTypePtr";
   case MIR_INSTR_ADDROF:
     return "InstrAddrOf";
+  case MIR_INSTR_MEMBER_PTR:
+    return "InstrMemberPtr";
   }
 
   return "UNKNOWN";
