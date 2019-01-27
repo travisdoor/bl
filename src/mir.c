@@ -637,18 +637,14 @@ erase_instr(MirInstr *instr)
 }
 
 static inline void
-insert_instr_before(MirInstr *before, MirInstr *instr)
+insert_instr_after(MirInstr *after, MirInstr *instr)
 {
-  assert(before && instr);
-  MirInstrBlock *block = instr->owner_block;
-  if (!block) return;
+  assert(after && instr);
 
-  /* 'before' is the first one in block */
-  if (block->entry_instr == before) block->entry_instr = instr;
-  instr->next = before;
-  instr->prev = before->prev;
-  if (before->prev) before->prev->next = instr;
-  before->prev = instr;
+  instr->next = after->next;
+  instr->prev = after;
+  if (after->next) after->next->prev = instr;
+  after->next = instr;
 }
 
 static inline const char *
@@ -984,6 +980,20 @@ provide_into_existing_scope_entry(Context *cnt, Ast *ident, MirInstr *instr)
   return scope_entry;
 }
 
+static inline void
+unref_instr(MirInstr *instr)
+{
+  if (!instr) return;
+  --instr->ref_count;
+}
+
+static inline void
+ref_instr(MirInstr *instr)
+{
+  if (!instr) return;
+  ++instr->ref_count;
+}
+
 static inline bool
 is_ident_in_gscope(Ast *ident)
 {
@@ -1015,8 +1025,36 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
 static inline MirInstr *
 insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
-  bl_unimplemented;
-  return NULL;
+  if (!src) return src;
+  switch (src->kind) {
+  case MIR_INSTR_UNOP:
+  case MIR_INSTR_CONST:
+  case MIR_INSTR_BINOP:
+  case MIR_INSTR_CALL:
+  case MIR_INSTR_ADDROF:
+  case MIR_INSTR_TYPE_ARRAY:
+  case MIR_INSTR_TYPE_FN:
+  case MIR_INSTR_TYPE_PTR:
+    return src;
+  default:
+    break;
+  }
+
+  MirInstrBlock *block = src->owner_block;
+  assert(block);
+
+  assert(src->const_value.type);
+  assert(src->const_value.type->kind == MIR_TYPE_PTR);
+  ref_instr(src);
+  MirInstrLoad *tmp          = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
+  tmp->src                   = src;
+  tmp->base.analyzed         = true;
+  tmp->base.id = ++block->owner_fn->block_count;
+
+  ref_instr(&tmp->base);
+  insert_instr_after(src, &tmp->base);
+  analyze_instr_load(cnt, tmp);
+  return &tmp->base;
 }
 
 static inline void
@@ -1026,20 +1064,6 @@ setup_null_type_if_needed(MirType *dest, MirType *src)
     dest->llvm_type = src->llvm_type;
     assert(dest->llvm_type);
   }
-}
-
-static inline void
-unref_instr(MirInstr *instr)
-{
-  if (!instr) return;
-  --instr->ref_count;
-}
-
-static inline void
-ref_instr(MirInstr *instr)
-{
-  if (!instr) return;
-  ++instr->ref_count;
 }
 
 /* impl */
@@ -1943,6 +1967,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
   if (target_type->kind == MIR_TYPE_ARRAY) {
     /* check array buildin members */
     if (is_buildin_spec(ast_member_ident, BUILDIN_SPEC_ARR_LEN)) {
+      assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
+      erase_instr(member_ptr->target_ptr);
       /* mutate instruction into constant */
       MirInstr *len                = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
       len->const_value.type        = cnt->buildin_types.entry_usize;
@@ -1997,7 +2023,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   if (scope_entry->parent_scope->is_global) ref_instr(scope_entry->instr);
 
-  erase_instr(&ref->base);
+  erase_unused_instr(cnt, &ref->base);
   return true;
 }
 
@@ -2151,6 +2177,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   if (src->kind == MIR_INSTR_DECL_REF) {
     load->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
     assert(load->src && "invalid destination for load instruction");
+    erase_instr(src);
   }
 
   return true;
@@ -2291,6 +2318,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   assert(block);
   if (!block->terminal) block->terminal = &ret->base;
 
+  ret->value      = insert_instr_load_if_needed(cnt, ret->value);
   MirInstr *value = ret->value;
   if (value) {
     assert(value->analyzed);
@@ -2428,9 +2456,11 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 bool
 analyze_instr_store(Context *cnt, MirInstrStore *store)
 {
+  store->src = insert_instr_load_if_needed(cnt, store->src);
   MirInstr *src  = store->src;
   MirInstr *dest = store->dest;
   assert(src && dest);
+
   assert(src->analyzed && dest->analyzed);
 
   assert(is_pointer_type(dest->const_value.type) && "store expect destination to be a pointer");
@@ -2452,6 +2482,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   if (dest->kind == MIR_INSTR_DECL_REF) {
     store->dest = ((MirInstrDeclRef *)dest)->scope_entry->instr;
     assert(store->dest && "invalid destination for store instruction");
+    erase_instr(dest);
   }
 
   return true;
@@ -3621,7 +3652,7 @@ void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-  value           = append_instr_load_if_needed(cnt, value);
+  // value           = append_instr_load_if_needed(cnt, value);
   append_instr_ret(cnt, ret, value);
 }
 
@@ -3832,7 +3863,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
     case BINOP_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
+      //rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
 
       return append_instr_store(cnt, binop, rhs, lhs);
@@ -3954,7 +3985,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     /* initialize const_value */
     MirInstr *value = ast(cnt, ast_value);
     if (value) {
-      value = append_instr_load_if_needed(cnt, value);
+      // value = append_instr_load_if_needed(cnt, value);
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
       result = append_instr_store(cnt, ast_value, value, decl);
     }

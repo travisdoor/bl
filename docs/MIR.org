@@ -128,9 +128,15 @@
    <T> load <ptr> // yields T loaded from ptr
    #+END_EXAMPLE
 
+   Source is on the stack:
    | stack op | data  | description              |
    |----------+-------+--------------------------|
    | POP      | ptr   | pointer to source        |
+   | PUSH     | value | value loaded from source |
+
+   Source is variable declaration:
+   | stack op | data  | description              |
+   |----------+-------+--------------------------|
    | PUSH     | value | value loaded from source |
    
 ** store

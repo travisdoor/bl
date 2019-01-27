@@ -1,16 +1,19 @@
 /* playground */
 
-#load "std/debug.bl"
+//#load "std/debug.bl"
 
 main :: fn () s32 {
-  //str := "hello world\n";
-  //l := str.len;
+  str := "hello world\n";
+  l := str.len;
 
   /*loop i := 0; i < 12; i += 1 {
     putchar(str[i]);
   }*/
 
   i := 666;
+  j : s32;
+  i = j;
+
   return i;
 };
 
