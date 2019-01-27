@@ -260,9 +260,6 @@ static void
 push_into_curr_block(Context *cnt, MirInstr *instr);
 
 static void
-erase_instr(Context *cnt, MirInstr *instr);
-
-static void
 erase_unused_instr(Context *cnt, MirInstr *instr);
 
 #define create_instr(_cnt, _kind, _node, _t) ((_t)_create_instr((_cnt), (_kind), (_node)))
@@ -621,6 +618,37 @@ mutate_instr(MirInstr *instr, MirInstrKind kind)
   instr_dtor(instr);
   instr->kind = kind;
   return instr;
+}
+
+static inline void
+erase_instr(MirInstr *instr)
+{
+  assert(instr);
+  MirInstrBlock *block = instr->owner_block;
+  if (!block) return;
+
+  /* first in block */
+  if (block->entry_instr == instr) block->entry_instr = instr->next;
+  if (instr->prev) instr->prev->next = instr->next;
+  if (instr->next) instr->next->prev = instr->prev;
+
+  instr->prev = NULL;
+  instr->next = NULL;
+}
+
+static inline void
+insert_instr_before(MirInstr *before, MirInstr *instr)
+{
+  assert(before && instr);
+  MirInstrBlock *block = instr->owner_block;
+  if (!block) return;
+
+  /* 'before' is the first one in block */
+  if (block->entry_instr == before) block->entry_instr = instr;
+  instr->next = before;
+  instr->prev = before->prev;
+  if (before->prev) before->prev->next = instr;
+  before->prev = instr;
 }
 
 static inline const char *
@@ -984,6 +1012,13 @@ append_instr_load_if_needed(Context *cnt, MirInstr *src)
   return append_instr_load(cnt, src->node, src);
 }
 
+static inline MirInstr *
+insert_instr_load_if_needed(Context *cnt, MirInstr *src)
+{
+  bl_unimplemented;
+  return NULL;
+}
+
 static inline void
 setup_null_type_if_needed(MirType *dest, MirType *src)
 {
@@ -1149,27 +1184,12 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
 }
 
 void
-erase_instr(Context *cnt, MirInstr *instr)
-{
-  assert(instr);
-  MirInstrBlock *block = instr->owner_block;
-  if (!block) return;
-
-  if (block->entry_instr == instr) block->entry_instr = instr->next;
-  if (instr->prev) instr->prev->next = instr->next;
-  if (instr->next) instr->next->prev = instr->prev;
-
-  instr->prev = NULL;
-  instr->next = NULL;
-}
-
-void
 erase_unused_instr(Context *cnt, MirInstr *instr)
 {
   if (!instr) return;
   if (instr->ref_count > 0) return;
 
-  erase_instr(cnt, instr);
+  erase_instr(instr);
 
   switch (instr->kind) {
   case MIR_INSTR_VALIDATE_TYPE: {
@@ -1977,7 +1997,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   if (scope_entry->parent_scope->is_global) ref_instr(scope_entry->instr);
 
-  erase_instr(cnt, &ref->base);
+  erase_instr(&ref->base);
   return true;
 }
 
