@@ -1959,7 +1959,7 @@ bool
 analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
   MirType *target_type = member_ptr->target_ptr->const_value.type;
-  assert(target_type->kind = MIR_TYPE_PTR && "this should be compiler error");
+  assert(target_type->kind == MIR_TYPE_PTR && "this should be compiler error");
   Ast *ast_member_ident = member_ptr->member_ident;
   assert(ast_member_ident);
 
