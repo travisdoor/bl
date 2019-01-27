@@ -244,11 +244,11 @@
    |----------+----------+------------------------------|
    | POP      | index    |                              |
    | PUSH     | elem ptr | Address of the array element |
-** memptr
+** memberptr
    Evaluates address of member access via '.' operator.
 
    #+BEGIN_EXAMPLE
-   <*T> memberptr <target ptr> // yields result address *T (member type)
+   <*T> memberptr <target ptr>.<member name|order> // yields result address *T (member type)
    #+END_EXAMPLE
 
    | stack op | data       | description           |

@@ -93,6 +93,14 @@ typedef enum
   _BUILDIN_TYPE_COUNT,
 } BuildinType;
 
+typedef enum
+{
+  BUILDIN_SPEC_MAIN,
+  BUILDIN_SPEC_ARR_LEN,
+
+  _BUILDIN_SPEC_COUNT,
+} BuildinSpecial;
+
 typedef struct MirFrame
 {
   struct MirFrame *prev;
@@ -161,10 +169,11 @@ typedef struct
   bool   verbose_pre, verbose_post;
 } Context;
 
-static const char *entry_fn_name                           = "main";
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {
     "s8", "s16", "s32", "s64", "u8", "u16", "u32", "u64", "usize", "bool", "f32", "f64"};
-static uint64_t entry_fn_hash = 0;
+
+static const char *buildin_spec_names[_BUILDIN_SPEC_COUNT]  = {"main", "len"};
+static uint64_t    buildin_spec_hashes[_BUILDIN_SPEC_COUNT] = {0};
 
 static void
 instr_dtor(MirInstr *instr)
@@ -274,7 +283,8 @@ static MirInstr *
 append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
 
 static MirInstr *
-append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr);
+append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
+                        int32_t order);
 
 static MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
@@ -420,6 +430,9 @@ static MirInstr *
 ast_expr_elem(Context *cnt, Ast *elem);
 
 static MirInstr *
+ast_expr_member(Context *cnt, Ast *member);
+
+static MirInstr *
 ast_expr_null(Context *cnt, Ast *nl);
 
 static MirInstr *
@@ -453,6 +466,9 @@ init_type_llvm_ABI(Context *cnt, MirType *type);
 /* analyze */
 static bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
+static bool
+analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
 static bool
 analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
@@ -598,6 +614,15 @@ static void
 exec_reset_stack(MirStack *stack);
 
 /* INLINES */
+static inline MirInstr *
+mutate_instr(MirInstr *instr, MirInstrKind kind)
+{
+  assert(instr);
+  instr_dtor(instr);
+  instr->kind = kind;
+  return instr;
+}
+
 static inline const char *
 gen_uq_name(Context *cnt, const char *prefix)
 {
@@ -806,11 +831,11 @@ is_block_terminated(MirInstrBlock *block)
 }
 
 static inline bool
-is_entry_fn(Ast *ident)
+is_buildin_spec(Ast *ident, BuildinSpecial kind)
 {
   if (!ident) return false;
   assert(ident->kind == AST_IDENT);
-  return ident->data.ident.hash == entry_fn_hash;
+  return ident->data.ident.hash == buildin_spec_hashes[kind];
 }
 
 static inline BuildinType
@@ -1366,12 +1391,15 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 }
 
 MirInstr *
-append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr)
+append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
+                        int32_t order)
 {
-  assert(target_ptr);
+  assert(target_ptr && member_ident);
   ref_instr(target_ptr);
   MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
   tmp->target_ptr        = target_ptr;
+  tmp->member_ident      = member_ident;
+  tmp->order             = order;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -1879,8 +1907,35 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     assert(elem_ptr->arr_ptr && "invalid source for elemptr instruction");
   }
 
-  // TEST
   erase_unused_instr(cnt, &elem_ptr->base);
+  return true;
+}
+
+bool
+analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+{
+  MirType *target_type = member_ptr->target_ptr->const_value.type;
+  assert(target_type->kind = MIR_TYPE_PTR && "this should be compiler error");
+  Ast *ast_member_ident = member_ptr->member_ident;
+  assert(ast_member_ident);
+
+  target_type = target_type->data.ptr.next;
+  if (target_type->kind == MIR_TYPE_ARRAY) {
+    /* check array buildin members */
+    if (is_buildin_spec(ast_member_ident, BUILDIN_SPEC_ARR_LEN)) {
+      /* mutate instruction into constant */
+      MirInstr *len                = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+      len->const_value.type        = cnt->buildin_types.entry_usize;
+      len->const_value.data.v_uint = target_type->data.array.len;
+    } else {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, ast_member_ident->src,
+                  BUILDER_CUR_WORD, "unknown member");
+    }
+  } else {
+    bl_unimplemented;
+  }
+
+  erase_unused_instr(cnt, &member_ptr->base);
   return true;
 }
 
@@ -2488,6 +2543,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_ELEM_PTR:
     state = analyze_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    break;
+  case MIR_INSTR_MEMBER_PTR:
+    state = analyze_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
     break;
   case MIR_INSTR_ADDROF:
     state = analyze_instr_addrof(cnt, (MirInstrAddrOf *)instr);
@@ -3658,6 +3716,18 @@ ast_expr_elem(Context *cnt, Ast *elem)
 }
 
 MirInstr *
+ast_expr_member(Context *cnt, Ast *member)
+{
+  Ast *ast_next = member->data.expr_member.next;
+  assert(ast_next);
+
+  MirInstr *target = ast(cnt, ast_next);
+  assert(target);
+
+  return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, -1);
+}
+
+MirInstr *
 ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 {
   /* creates function prototype */
@@ -3842,7 +3912,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     }
 
     /* check main */
-    if (is_entry_fn(ast_name)) {
+    if (is_buildin_spec(ast_name, BUILDIN_SPEC_MAIN)) {
       assert(!cnt->entry_fn);
       cnt->entry_fn = value->const_value.data.v_fn;
       ref_instr(value);
@@ -3869,7 +3939,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
       result = append_instr_store(cnt, ast_value, value, decl);
     }
 
-    if (is_entry_fn(ast_name)) {
+    if (is_buildin_spec(ast_name, BUILDIN_SPEC_MAIN)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ast_name->src,
                   BUILDER_CUR_WORD, "'main' is expected to be a function");
     }
@@ -4051,6 +4121,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_elem(cnt, node);
   case AST_EXPR_NULL:
     return ast_expr_null(cnt, node);
+  case AST_EXPR_MEMBER:
+    return ast_expr_member(cnt, node);
 
   case AST_LOAD:
     break;
@@ -4163,6 +4235,10 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     append_buf(buf, len, "integer");
     break;
 
+  case MIR_TYPE_TYPE:
+    append_buf(buf, len, "type");
+    break;
+
   case MIR_TYPE_FN: {
     append_buf(buf, len, "fn(");
 
@@ -4267,45 +4343,56 @@ execute_test_cases(Context *cnt)
 void
 init_buildins(Context *cnt)
 {
-  uint64_t tmp;
-  cnt->buildin_types.table = bo_htbl_new(sizeof(BuildinType), _BUILDIN_TYPE_COUNT);
-  for (int32_t i = 0; i < _BUILDIN_TYPE_COUNT; ++i) {
-    tmp = bo_hash_from_str(buildin_type_names[i]);
-    bo_htbl_insert(cnt->buildin_types.table, tmp, i);
+  { // TYPES
+    uint64_t tmp;
+    cnt->buildin_types.table = bo_htbl_new(sizeof(BuildinType), _BUILDIN_TYPE_COUNT);
+    for (int32_t i = 0; i < _BUILDIN_TYPE_COUNT; ++i) {
+      tmp = bo_hash_from_str(buildin_type_names[i]);
+      bo_htbl_insert(cnt->buildin_types.table, tmp, i);
+    }
+
+    cnt->buildin_types.entry_type = create_type_type(cnt);
+    cnt->buildin_types.entry_void = create_type_void(cnt);
+
+    cnt->buildin_types.entry_s8 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S8], 8, true);
+    cnt->buildin_types.entry_s16 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S16], 16, true);
+    cnt->buildin_types.entry_s32 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
+    cnt->buildin_types.entry_s64 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S64], 64, true);
+
+    cnt->buildin_types.entry_u8 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U8], 8, false);
+    cnt->buildin_types.entry_u16 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
+    cnt->buildin_types.entry_u32 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
+    cnt->buildin_types.entry_u64 =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U64], 64, false);
+    cnt->buildin_types.entry_usize =
+        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
+
+    cnt->buildin_types.entry_bool = create_type_bool(cnt);
+
+    cnt->buildin_types.entry_f32 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F32], 32);
+    cnt->buildin_types.entry_f64 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F64], 64);
+
+    cnt->buildin_types.entry_u8_ptr = create_type_ptr(cnt, cnt->buildin_types.entry_u8);
+
+    cnt->buildin_types.entry_resolve_type_fn =
+        create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
+
+    cnt->buildin_types.entry_test_case_fn =
+        create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
   }
 
-  cnt->buildin_types.entry_type = create_type_type(cnt);
-  cnt->buildin_types.entry_void = create_type_void(cnt);
-
-  cnt->buildin_types.entry_s8 = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S8], 8, true);
-  cnt->buildin_types.entry_s16 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S16], 16, true);
-  cnt->buildin_types.entry_s32 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
-  cnt->buildin_types.entry_s64 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S64], 64, true);
-
-  cnt->buildin_types.entry_u8 = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U8], 8, false);
-  cnt->buildin_types.entry_u16 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
-  cnt->buildin_types.entry_u32 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
-  cnt->buildin_types.entry_u64 =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U64], 64, false);
-  cnt->buildin_types.entry_usize =
-      create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
-
-  cnt->buildin_types.entry_bool = create_type_bool(cnt);
-
-  cnt->buildin_types.entry_f32 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F32], 32);
-  cnt->buildin_types.entry_f64 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F64], 64);
-
-  cnt->buildin_types.entry_u8_ptr = create_type_ptr(cnt, cnt->buildin_types.entry_u8);
-
-  cnt->buildin_types.entry_resolve_type_fn =
-      create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
-
-  cnt->buildin_types.entry_test_case_fn = create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
+  { // SPECIAL
+    for (int32_t i = 0; i < _BUILDIN_SPEC_COUNT; ++i) {
+      buildin_spec_hashes[i] = bo_hash_from_str(buildin_spec_names[i]);
+    }
+  }
 }
 
 int
@@ -4416,7 +4503,6 @@ mir_run(Builder *builder, Assembly *assembly)
 
   init_buildins(&cnt);
 
-  entry_fn_hash = bo_hash_from_str(entry_fn_name);
   bo_array_reserve(cnt.analyze_stack, 1024);
 
   int32_t error = init_dl(&cnt);

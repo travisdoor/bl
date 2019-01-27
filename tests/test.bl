@@ -4,11 +4,11 @@
 
 main :: fn () s32 {
   str := "hello world\n";
-  str.len;
+  l := str.len;
 
-  loop i := 0; i < 12; i += 1 {
+  /*loop i := 0; i < 12; i += 1 {
     putchar(str[i]);
-  }
+  }*/
 
   return 666;
 };

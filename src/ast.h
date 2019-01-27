@@ -207,7 +207,6 @@ struct AstDeclEntity
 struct AstDeclMember
 {
   struct AstDecl base;
-  int            order;
 };
 
 struct AstDeclArg

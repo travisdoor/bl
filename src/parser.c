@@ -387,7 +387,6 @@ parse_decl_member(Context *cnt, bool type_only, int32_t order)
   Ast *mem                    = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
   mem->data.decl.type         = type;
   mem->data.decl.name         = name;
-  mem->data.decl_member.order = -1;
 
   return mem;
 }

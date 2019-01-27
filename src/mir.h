@@ -48,9 +48,9 @@ typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
 
-typedef union MirGeneric64        MirGeneric64;
-typedef uint8_t *                 MirStackPtr;
-typedef struct MirConstValue      MirConstValue;
+typedef union MirGeneric64   MirGeneric64;
+typedef uint8_t *            MirStackPtr;
+typedef struct MirConstValue MirConstValue;
 
 typedef enum MirConstValueKind MirConstValueKind;
 typedef enum MirTypeKind       MirTypeKind;
@@ -324,9 +324,11 @@ struct MirInstrElemPtr
 
 struct MirInstrMemberPtr
 {
-  MirInstr      base;
+  MirInstr base;
 
+  Ast *     member_ident;
   MirInstr *target_ptr;
+  int32_t   order;
 };
 
 struct MirInstrArg
