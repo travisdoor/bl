@@ -43,7 +43,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC true
 // clang-format on
 
 union _MirInstr
@@ -538,6 +538,9 @@ static bool
 analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime);
 
 static bool
+analyze_instr_cast(Context *cnt, MirInstrCast *cast);
+
+static bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
@@ -549,6 +552,9 @@ exec_instr(Context *cnt, MirInstr *instr);
 
 static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static void
+exec_instr_cast(Context *cnt, MirInstrCast *cast);
 
 static void
 exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
@@ -1024,6 +1030,7 @@ is_load_needed(MirInstr *instr)
   case MIR_INSTR_TYPE_ARRAY:
   case MIR_INSTR_TYPE_FN:
   case MIR_INSTR_TYPE_PTR:
+  case MIR_INSTR_CAST:
     return false;
   default:
     break;
@@ -2034,6 +2041,43 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 }
 
 bool
+analyze_instr_cast(Context *cnt, MirInstrCast *cast)
+{
+  cast->next         = insert_instr_load_if_needed(cnt, cast->next);
+  MirType *dest_type = NULL;
+  MirType *src_type  = cast->next->const_value.type;
+
+  {
+    assert(cast->type && cast->type->kind == MIR_INSTR_CALL);
+    analyze_instr(cnt, cast->type, true);
+    MirConstValue *type_val = exec_call_top_lvl(cnt, (MirInstrCall *)cast->type);
+    unref_instr(cast->type);
+    erase_unused_instr(cnt, cast->type);
+    assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
+    dest_type = type_val->data.v_type;
+  }
+
+  assert(dest_type && "invalid cast destination type");
+  assert(src_type && "invalid cast source type");
+
+  {
+    MirTypeKind dkind = dest_type->kind;
+    MirTypeKind skind = src_type->kind;
+    if (dkind != skind) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_CAST, cast->base.node->src,
+                  BUILDER_CUR_WORD, "invalid cast");
+      return false;
+    }
+
+    /* TODO: orher cast types */
+    cast->op = MIR_CAST_BITCAST;
+  }
+
+  cast->base.const_value.type = dest_type;
+  return true;
+}
+
+bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   ScopeEntry *scope_entry = ref->scope_entry;
@@ -2639,6 +2683,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_ADDROF:
     state = analyze_instr_addrof(cnt, (MirInstrAddrOf *)instr);
     break;
+  case MIR_INSTR_CAST:
+    state = analyze_instr_cast(cnt, (MirInstrCast *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
@@ -2760,6 +2807,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   switch (instr->kind) {
   case MIR_INSTR_CONST:
     exec_instr_const(cnt, (MirInstrConst *)instr);
+    break;
+  case MIR_INSTR_CAST:
+    exec_instr_cast(cnt, (MirInstrCast *)instr);
     break;
   case MIR_INSTR_ADDROF:
     exec_instr_addrof(cnt, (MirInstrAddrOf *)instr);
@@ -2886,6 +2936,21 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
   exec_set_pc(cnt, br->then_block->entry_instr);
+}
+
+void
+exec_instr_cast(Context *cnt, MirInstrCast *cast)
+{
+  MirType *src_type = cast->next->const_value.type;
+  MirType *dest_type = cast->base.const_value.type;
+
+  MirGeneric64 tmp = {0};
+  assert(cast->op == MIR_CAST_BITCAST && "unimplemented cast type");
+  MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+
+  exec_read_value(&tmp, from_ptr, src_type);
+  
+  exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
 }
 
 void

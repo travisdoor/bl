@@ -3,8 +3,10 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-  i : s8 = cast(s8) 10;
-  return 66;
+  i : s8 = cast(s8) 255;
+  j := 0xFFFF;
+  assert((cast(s32) i) == -1);
+  return cast(s32) i;
 };
 
 putchar :: fn (c: u8) s32 #extern;

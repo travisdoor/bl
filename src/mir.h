@@ -55,6 +55,7 @@ typedef struct MirConstValue MirConstValue;
 typedef enum MirConstValueKind MirConstValueKind;
 typedef enum MirTypeKind       MirTypeKind;
 typedef enum MirInstrKind      MirInstrKind;
+typedef enum MirCastOp         MirCastOp;
 
 typedef struct MirInstr             MirInstr;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
@@ -334,10 +335,17 @@ struct MirInstrMemberPtr
   int32_t   order;
 };
 
+enum MirCastOp
+{
+  MIR_CAST_INVALID,
+  MIR_CAST_BITCAST
+};
+
 struct MirInstrCast
 {
   MirInstr base;
 
+  MirCastOp op;
   MirInstr *type;
   MirInstr *next;
 };
