@@ -80,6 +80,7 @@ typedef struct MirInstrTypeArray    MirInstrTypeArray;
 typedef struct MirInstrTypePtr      MirInstrTypePtr;
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
+typedef struct MirInstrCast         MirInstrCast;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -269,6 +270,7 @@ enum MirInstrKind
   MIR_INSTR_ELEM_PTR,
   MIR_INSTR_MEMBER_PTR,
   MIR_INSTR_ADDROF,
+  MIR_INSTR_CAST,
 
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
@@ -330,6 +332,14 @@ struct MirInstrMemberPtr
   Ast *     member_ident;
   MirInstr *target_ptr;
   int32_t   order;
+};
+
+struct MirInstrCast
+{
+  MirInstr base;
+
+  MirInstr *type;
+  MirInstr *next;
 };
 
 struct MirInstrArg

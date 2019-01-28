@@ -71,6 +71,7 @@ union _MirInstr
   MirInstrAddrOf       addrof;
   MirInstrTypeArray    type_array;
   MirInstrTypePtr      type_ptr;
+  MirInstrCast         cast;
 };
 
 typedef enum
@@ -277,6 +278,9 @@ static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *
+append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
+
+static MirInstr *
 append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
 
 static MirInstr *
@@ -413,6 +417,9 @@ ast_type_ptr(Context *cnt, Ast *type_ptr);
 
 static MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof);
+
+static MirInstr *
+ast_expr_cast(Context *cnt, Ast *cast);
 
 static MirInstr *
 ast_expr_deref(Context *cnt, Ast *deref);
@@ -1382,6 +1389,19 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i)
 }
 
 MirInstr *
+append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next)
+{
+  ref_instr(type);
+  ref_instr(next);
+  MirInstrCast *tmp = create_instr(cnt, MIR_INSTR_CAST, node, MirInstrCast *);
+  tmp->type         = type;
+  tmp->next         = next;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
                      MirInstrBlock *else_block)
 {
@@ -1571,7 +1591,7 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
   MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime         = true;
   tmp->const_value.type = cnt->buildin_types.entry_f32;
-  //memcpy(&tmp->const_value.data, &val, sizeof(float));
+  // memcpy(&tmp->const_value.data, &val, sizeof(float));
   tmp->const_value.data.v_float = val;
 
   push_into_curr_block(cnt, tmp);
@@ -3344,7 +3364,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
-    const bool    is_signed = type->data.integer.is_signed;
+    const bool   is_signed = type->data.integer.is_signed;
     const size_t size      = type->store_size_bytes;
 
     if (is_signed && size == sizeof(int8_t)) { // s8
@@ -3676,6 +3696,19 @@ ast_expr_addrof(Context *cnt, Ast *addrof)
   assert(src);
 
   return append_instr_addrof(cnt, addrof, src);
+}
+
+MirInstr *
+ast_expr_cast(Context *cnt, Ast *cast)
+{
+  Ast *ast_type = cast->data.expr_cast.type;
+  Ast *ast_next = cast->data.expr_cast.next;
+  assert(ast_type && ast_next);
+
+  MirInstr *type = ast_create_type_resolver_call(cnt, ast_type);
+  MirInstr *next = ast(cnt, ast_next);
+
+  return append_instr_cast(cnt, cast, type, next);
 }
 
 MirInstr *
@@ -4143,6 +4176,8 @@ ast(Context *cnt, Ast *node)
     return ast_type_ptr(cnt, node);
   case AST_EXPR_ADDROF:
     return ast_expr_addrof(cnt, node);
+  case AST_EXPR_CAST:
+    return ast_expr_cast(cnt, node);
   case AST_EXPR_DEREF:
     return ast_expr_deref(cnt, node);
   case AST_EXPR_LIT_INT:
@@ -4234,6 +4269,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrAddrOf";
   case MIR_INSTR_MEMBER_PTR:
     return "InstrMemberPtr";
+  case MIR_INSTR_CAST:
+    return "InstrCast";
   }
 
   return "UNKNOWN";

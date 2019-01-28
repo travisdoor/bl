@@ -264,12 +264,34 @@
 ** addrof
     Evaluates address of the variable.
 
+   #+BEGIN_EXAMPLE
+   <*T> addrof <target> // yields result address *T
+   #+END_EXAMPLE
+
     Getting address of variable:
     | stack op | data    | description                   |
     |----------+---------+-------------------------------|
     | PUSH     | var ptr | pointer to allocated variable |
 
     Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
+    
+** cast
+   Produce casting from one type to other.
+
+   #+BEGIN_EXAMPLE
+   <T> cast <target> // yields value with casted type
+   #+END_EXAMPLE
+
+    Getting target from the stack:
+    | stack op | data   | description          |
+    |----------+--------+----------------------|
+    | POP      | target |                      |
+    | PUSH     | resutlt | result with new type |
+
+    Target is a variable:
+    | stack op | data   | description          |
+    |----------+--------+----------------------|
+    | PUSH     | resutlt | result with new type |
     
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.

@@ -3,17 +3,7 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-  /*
-  double: f64;
-  double = 0.2 + 0.1;
-
-  float: f32;
-  float = 100.2f + 100.1f;
-  */
-
-  real_number := 10.1f;
-  assert(real_number - 10.1f < 0.0001f);
-
+  i : s8 = cast(s8) 10;
   return 66;
 };
 
