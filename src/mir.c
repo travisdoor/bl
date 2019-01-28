@@ -1003,30 +1003,12 @@ is_ident_in_gscope(Ast *ident)
   return scope->is_global;
 }
 
-static inline MirInstr *
-append_instr_load_if_needed(Context *cnt, MirInstr *src)
+static inline bool
+is_load_needed(MirInstr *instr)
 {
-  if (!src) return src;
-  switch (src->kind) {
-  case MIR_INSTR_UNOP:
-  case MIR_INSTR_CONST:
-  case MIR_INSTR_BINOP:
-  case MIR_INSTR_CALL:
-    // case MIR_INSTR_LOAD:
-  case MIR_INSTR_ADDROF:
-    return src;
-  default:
-    break;
-  }
-
-  return append_instr_load(cnt, src->node, src);
-}
-
-static inline MirInstr *
-insert_instr_load_if_needed(Context *cnt, MirInstr *src)
-{
-  if (!src) return src;
-  switch (src->kind) {
+  assert(instr);
+  switch (instr->kind) {
+  case MIR_INSTR_ARG:
   case MIR_INSTR_UNOP:
   case MIR_INSTR_CONST:
   case MIR_INSTR_BINOP:
@@ -1035,10 +1017,19 @@ insert_instr_load_if_needed(Context *cnt, MirInstr *src)
   case MIR_INSTR_TYPE_ARRAY:
   case MIR_INSTR_TYPE_FN:
   case MIR_INSTR_TYPE_PTR:
-    return src;
+    return false;
   default:
     break;
   }
+
+  return true;
+}
+
+static inline MirInstr *
+insert_instr_load_if_needed(Context *cnt, MirInstr *src)
+{
+  if (!src) return src;
+  if (!is_load_needed(src)) return src;
 
   MirInstrBlock *block = src->owner_block;
   assert(block);
@@ -1046,10 +1037,10 @@ insert_instr_load_if_needed(Context *cnt, MirInstr *src)
   assert(src->const_value.type);
   assert(src->const_value.type->kind == MIR_TYPE_PTR);
   ref_instr(src);
-  MirInstrLoad *tmp          = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
-  tmp->src                   = src;
-  tmp->base.analyzed         = true;
-  tmp->base.id = ++block->owner_fn->block_count;
+  MirInstrLoad *tmp  = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
+  tmp->src           = src;
+  tmp->base.analyzed = true;
+  tmp->base.id       = ++block->owner_fn->block_count;
 
   ref_instr(&tmp->base);
   insert_instr_after(src, &tmp->base);
@@ -1270,11 +1261,20 @@ erase_unused_instr(Context *cnt, MirInstr *instr)
     break;
   }
 
+  case MIR_INSTR_DECL_REF: {
+    MirInstrDeclRef *tmp = (MirInstrDeclRef *)instr;
+    unref_instr(tmp->scope_entry->instr);
+    erase_unused_instr(cnt, tmp->scope_entry->instr);
+    break;
+  }
+
   case MIR_INSTR_DECL_VAR:
   case MIR_INSTR_CONST:
     break;
   default:
-    bl_abort("cannot erase %s", mir_instr_name(instr));
+    bl_abort("cannot erase %s (%s:%d)", mir_instr_name(instr),
+             instr->node ? instr->node->src->unit->filepath : "",
+             instr->node ? instr->node->src->line : 0);
   }
 }
 
@@ -1568,10 +1568,11 @@ append_instr_const_int(Context *cnt, Ast *node, uint64_t val)
 MirInstr *
 append_instr_const_float(Context *cnt, Ast *node, float val)
 {
-  MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->comptime                = true;
-  tmp->const_value.type        = cnt->buildin_types.entry_f32;
-  tmp->const_value.data.v_real = (double)val;
+  MirInstr *tmp         = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime         = true;
+  tmp->const_value.type = cnt->buildin_types.entry_f32;
+  //memcpy(&tmp->const_value.data, &val, sizeof(float));
+  tmp->const_value.data.v_float = val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -1580,10 +1581,10 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
 MirInstr *
 append_instr_const_double(Context *cnt, Ast *node, double val)
 {
-  MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->comptime                = true;
-  tmp->const_value.type        = cnt->buildin_types.entry_f64;
-  tmp->const_value.data.v_real = val;
+  MirInstr *tmp                  = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime                  = true;
+  tmp->const_value.type          = cnt->buildin_types.entry_f64;
+  tmp->const_value.data.v_double = val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -1923,6 +1924,7 @@ type_cmp(MirType *first, MirType *second)
 bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
+  elem_ptr->index = insert_instr_load_if_needed(cnt, elem_ptr->index);
   assert(elem_ptr->index);
 
   MirInstr *arr_ptr = elem_ptr->arr_ptr;
@@ -1949,6 +1951,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   if (arr_ptr->kind == MIR_INSTR_DECL_REF) {
     elem_ptr->arr_ptr = ((MirInstrDeclRef *)arr_ptr)->scope_entry->instr;
     assert(elem_ptr->arr_ptr && "invalid source for elemptr instruction");
+    erase_instr(arr_ptr);
   }
 
   erase_unused_instr(cnt, &elem_ptr->base);
@@ -2004,6 +2007,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   if (src->kind == MIR_INSTR_DECL_REF) {
     addrof->src = ((MirInstrDeclRef *)src)->scope_entry->instr;
     assert(addrof->src && "invalid source for addrof instruction");
+    erase_instr(src);
   }
 
   return true;
@@ -2137,6 +2141,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 bool
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
+  br->cond = insert_instr_load_if_needed(cnt, br->cond);
   assert(br->cond && br->then_block && br->else_block);
   assert(br->cond->analyzed);
 
@@ -2216,6 +2221,10 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
    ((_type)->kind == MIR_TYPE_REAL) || ((_type)->kind == MIR_TYPE_PTR) ||                          \
    ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)))
 
+  /* insert load instructions is the are needed */
+  binop->lhs = insert_instr_load_if_needed(cnt, binop->lhs);
+  binop->rhs = insert_instr_load_if_needed(cnt, binop->rhs);
+
   MirInstr *lhs = binop->lhs;
   MirInstr *rhs = binop->rhs;
   assert(lhs && rhs);
@@ -2253,6 +2262,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 bool
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
+  unop->instr = insert_instr_load_if_needed(cnt, unop->instr);
   assert(unop->instr && unop->instr->analyzed);
   MirType *type = unop->instr->const_value.type;
   assert(type);
@@ -2299,11 +2309,14 @@ analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
   assert(dest->kind == MIR_INSTR_DECL_VAR);
   if (dest->const_value.type) return true;
 
+  const bool will_be_loaded = is_load_needed(infer->src);
+
   /* set type to decl var and variable */
-  dest->const_value.type = create_type_ptr(cnt, src->const_value.type);
-  MirVar *var            = ((MirInstrDeclVar *)dest)->var;
+  dest->const_value.type =
+      will_be_loaded ? src->const_value.type : create_type_ptr(cnt, src->const_value.type);
+  MirVar *var = ((MirInstrDeclVar *)dest)->var;
   assert(var);
-  var->alloc_type = src->const_value.type;
+  var->alloc_type = will_be_loaded ? src->const_value.type->data.ptr.next : src->const_value.type;
 
   assert(dest->const_value.type);
   erase_unused_instr(cnt, &infer->base);
@@ -2430,24 +2443,29 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 
   /* validate argument types */
   if (call_argc) {
-    MirInstr *call_arg;
-    MirType * callee_arg_type;
-    barray_foreach(call->args, call_arg)
-    {
+    MirInstr **call_arg;
+    MirType *  callee_arg_type;
+
+    for (int32_t i = 0; i < call_argc; ++i) {
+      call_arg        = &bo_array_at(call->args, i, MirInstr *);
       callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
 
+      *call_arg = insert_instr_load_if_needed(cnt, *call_arg);
+
       /* setup correct type of llvm null for call(null) */
-      setup_null_type_if_needed(call_arg->const_value.type, callee_arg_type);
-      if (!type_cmp(call_arg->const_value.type, callee_arg_type)) {
-        error_types(cnt, call_arg->const_value.type, callee_arg_type, call_arg->node, NULL);
+      setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
+      if (!type_cmp((*call_arg)->const_value.type, callee_arg_type)) {
+        error_types(cnt, (*call_arg)->const_value.type, callee_arg_type, (*call_arg)->node, NULL);
       }
     }
   }
 
   /* destination is declref -> we replace reference to true declaration */
   if (call->callee->kind == MIR_INSTR_DECL_REF) {
-    call->callee = ((MirInstrDeclRef *)call->callee)->scope_entry->instr;
+    MirInstr *callee = call->callee;
+    call->callee     = ((MirInstrDeclRef *)callee)->scope_entry->instr;
     assert(call->callee && "invalid destination for call instruction");
+    erase_instr(callee);
   }
 
   return true;
@@ -2456,7 +2474,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 bool
 analyze_instr_store(Context *cnt, MirInstrStore *store)
 {
-  store->src = insert_instr_load_if_needed(cnt, store->src);
+  store->src     = insert_instr_load_if_needed(cnt, store->src);
   MirInstr *src  = store->src;
   MirInstr *dest = store->dest;
   assert(src && dest);
@@ -2793,8 +2811,6 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     MirStackPtr ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
     exec_push_stack(cnt, (MirStackPtr)&ptr, type);
   }
-
-  bl_unimplemented;
 }
 
 void
@@ -3284,28 +3300,28 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
       (_result)._v_T = _lhs._v_T / _rhs._v_T;                                                      \
       break;                                                                                       \
     case BINOP_EQ:                                                                                 \
-      (_result)._v_T = _lhs._v_T == _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T == _rhs._v_T);                                           \
       break;                                                                                       \
     case BINOP_NEQ:                                                                                \
-      (_result)._v_T = _lhs._v_T != _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T != _rhs._v_T);                                           \
       break;                                                                                       \
     case BINOP_LESS:                                                                               \
-      (_result)._v_T = _lhs._v_T < _rhs._v_T;                                                      \
+      (_result).v_s8 = (int8_t)(_lhs._v_T < _rhs._v_T);                                            \
       break;                                                                                       \
     case BINOP_LESS_EQ:                                                                            \
-      (_result)._v_T = _lhs._v_T == _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T == _rhs._v_T);                                           \
       break;                                                                                       \
     case BINOP_GREATER:                                                                            \
-      (_result)._v_T = _lhs._v_T > _rhs._v_T;                                                      \
+      (_result).v_s8 = (int8_t)(_lhs._v_T > _rhs._v_T);                                            \
       break;                                                                                       \
     case BINOP_GREATER_EQ:                                                                         \
-      (_result)._v_T = _lhs._v_T >= _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T >= _rhs._v_T);                                           \
       break;                                                                                       \
     case BINOP_LOGIC_AND:                                                                          \
-      (_result)._v_T = _lhs._v_T && _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T && _rhs._v_T);                                           \
       break;                                                                                       \
     case BINOP_LOGIC_OR:                                                                           \
-      (_result)._v_T = _lhs._v_T || _rhs._v_T;                                                     \
+      (_result).v_s8 = (int8_t)(_lhs._v_T || _rhs._v_T);                                           \
       break;                                                                                       \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
@@ -3329,7 +3345,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   switch (type->kind) {
   case MIR_TYPE_INT: {
     const bool    is_signed = type->data.integer.is_signed;
-    const int32_t size      = type->store_size_bytes;
+    const size_t size      = type->store_size_bytes;
 
     if (is_signed && size == sizeof(int8_t)) { // s8
       binop(binop->op, lhs, rhs, result, v_s8);
@@ -3355,7 +3371,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   }
 
   case MIR_TYPE_REAL: {
-    const int32_t size = type->store_size_bytes;
+    const size_t size = type->store_size_bytes;
 
     if (size == sizeof(float)) { // float
       binop(binop->op, lhs, rhs, result, v_f32);
@@ -3544,7 +3560,6 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   MirInstrBlock *cont_block = append_block(cnt, fn, "if_cont");
 
   MirInstr *cond = ast(cnt, ast_cond);
-  cond           = append_instr_load_if_needed(cnt, cond);
   append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
 
   /* then block */
@@ -3608,8 +3623,7 @@ ast_stmt_loop(Context *cnt, Ast *loop)
   append_instr_br(cnt, NULL, decide_block);
   set_cursor_block(cnt, decide_block);
 
-  MirInstr *cond = ast_cond ? append_instr_load_if_needed(cnt, ast(cnt, ast_cond))
-                            : append_instr_const_bool(cnt, NULL, true);
+  MirInstr *cond = ast_cond ? ast(cnt, ast_cond) : append_instr_const_bool(cnt, NULL, true);
 
   append_instr_cond_br(cnt, ast_cond, cond, body_block, cont_block);
 
@@ -3652,7 +3666,6 @@ void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-  // value           = append_instr_load_if_needed(cnt, value);
   append_instr_ret(cnt, ret, value);
 }
 
@@ -3725,7 +3738,6 @@ ast_expr_call(Context *cnt, Ast *call)
     for (size_t i = argc; i-- > 0;) {
       ast_arg = bo_array_at(ast_args, i, Ast *);
       arg     = ast(cnt, ast_arg);
-      arg     = append_instr_load_if_needed(cnt, arg);
 
       bo_array_at(args, i, MirInstr *) = arg;
     }
@@ -3761,7 +3773,7 @@ ast_expr_elem(Context *cnt, Ast *elem)
   assert(ast_arr && ast_index);
 
   MirInstr *arr_ptr = ast(cnt, ast_arr);
-  MirInstr *index   = append_instr_load_if_needed(cnt, ast(cnt, ast_index));
+  MirInstr *index   = ast(cnt, ast_index);
 
   return append_instr_elem_ptr(cnt, elem, arr_ptr, index);
 }
@@ -3863,7 +3875,6 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
     case BINOP_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      //rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
 
       return append_instr_store(cnt, binop, rhs, lhs);
@@ -3871,47 +3882,37 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
     case BINOP_ADD_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp =
-          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_ADD);
+      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_ADD);
 
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_SUB_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp =
-          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_SUB);
+      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_SUB);
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_MUL_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp =
-          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_MUL);
+      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MUL);
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_DIV_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp =
-          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_DIV);
+      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_DIV);
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
     case BINOP_MOD_ASSIGN: {
       MirInstr *rhs = ast(cnt, ast_rhs);
-      rhs           = append_instr_load_if_needed(cnt, rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp =
-          append_instr_binop(cnt, binop, append_instr_load_if_needed(cnt, lhs), rhs, BINOP_MOD);
+      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MOD);
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
@@ -3920,9 +3921,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
     }
   } else {
     MirInstr *rhs = ast(cnt, ast_rhs);
-    rhs           = append_instr_load_if_needed(cnt, rhs);
     MirInstr *lhs = ast(cnt, ast_lhs);
-    lhs           = append_instr_load_if_needed(cnt, lhs);
     return append_instr_binop(cnt, binop, lhs, rhs, op);
   }
 }
@@ -3936,7 +3935,6 @@ ast_expr_unary(Context *cnt, Ast *unop)
   MirInstr *next = ast(cnt, ast_next);
   assert(next);
 
-  next = append_instr_load_if_needed(cnt, next);
   return append_instr_unop(cnt, unop, next, unop->data.expr_unary.kind);
 }
 
@@ -3985,7 +3983,6 @@ ast_decl_entity(Context *cnt, Ast *entity)
     /* initialize const_value */
     MirInstr *value = ast(cnt, ast_value);
     if (value) {
-      // value = append_instr_load_if_needed(cnt, value);
       if (!type) append_instr_try_infer(cnt, NULL, value, decl);
       result = append_instr_store(cnt, ast_value, value, decl);
     }
@@ -4066,7 +4063,7 @@ ast_type_arr(Context *cnt, Ast *type_arr)
   Ast *ast_len       = type_arr->data.type_arr.len;
   assert(ast_elem_type && ast_len);
 
-  MirInstr *len       = append_instr_load_if_needed(cnt, ast(cnt, ast_len));
+  MirInstr *len       = ast(cnt, ast_len);
   MirInstr *elem_type = ast(cnt, ast_elem_type);
   return append_instr_type_array(cnt, type_arr, elem_type, len);
 }

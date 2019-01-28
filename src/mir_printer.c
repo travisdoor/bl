@@ -270,7 +270,11 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
     fprintf(stream, "%llu", (long long)value->data.v_int);
     break;
   case MIR_TYPE_REAL:
-    fprintf(stream, "%f", value->data.v_real);
+    if (value->type->store_size_bytes == sizeof(float)) {
+      fprintf(stream, "%f", value->data.v_float);
+    } else {
+      fprintf(stream, "%f", value->data.v_double);
+    }
     break;
   case MIR_TYPE_BOOL:
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");

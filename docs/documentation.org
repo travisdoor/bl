@@ -151,9 +151,27 @@
     #+INCLUDE: "../tests/src/examples/pointers.bl" src bl -n
     
 *** TODO Arrays
+    Only one-dimensional array types are supported. 
+
     #+BEGIN_EXAMPLE
     [<size>] <T>
     #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/array_type.bl" src bl -n
+
+*** TODO Strings
+    String in BL is just an array. There is no zero terminator at the end.
+
+    #+BEGIN_EXAMPLE
+    [<size>] u8
+    #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
+
+*** TODO Slices
+    Slice is consit of pointer to the first element and element count.
     
 *** Function type
     Type of function. 

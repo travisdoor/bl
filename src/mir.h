@@ -218,7 +218,8 @@ union MirConstValueData
 {
   uint64_t            v_uint;
   int64_t             v_int;
-  double              v_real;
+  float               v_float;
+  double              v_double;
   bool                v_bool;
   const char *        v_str;
   MirType *           v_type;

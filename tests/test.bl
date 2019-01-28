@@ -1,20 +1,20 @@
 /* playground */
 
-//#load "std/debug.bl"
+#load "std/debug.bl"
 
 main :: fn () s32 {
-  str := "hello world\n";
-  l := str.len;
+  /*
+  double: f64;
+  double = 0.2 + 0.1;
 
-  /*loop i := 0; i < 12; i += 1 {
-    putchar(str[i]);
-  }*/
+  float: f32;
+  float = 100.2f + 100.1f;
+  */
 
-  /*i := 666;
-  j : s32;
-  i = j;*/
+  real_number := 10.1f;
+  assert(real_number - 10.1f < 0.0001f);
 
-  return 666;
+  return 66;
 };
 
 putchar :: fn (c: u8) s32 #extern;
