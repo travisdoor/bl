@@ -1,0 +1,4 @@
+#test "array type" {
+  arr : [10] s32; // declare uninitialized array variable 
+  arr.len;        // yields array element count (usize)
+};

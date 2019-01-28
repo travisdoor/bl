@@ -45,7 +45,8 @@ print_instr_head(MirInstr *instr, FILE *stream)
 {
   if (!instr) return;
 #if BL_DEBUG
-  fprintf(stream, "  %%%-3u ~%-5lu (%d) ", instr->id, instr->_serial, instr->ref_count);
+  fprintf(stream, "  %%%-3u ~%-5llu (%d) ", instr->id, (unsigned long long)instr->_serial,
+          instr->ref_count);
 #else
   fprintf(stream, "  %%%-3u ", instr->id);
 #endif
@@ -61,6 +62,9 @@ print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream);
 
 static void
 print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream);
+
+static void
+print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream);
 
 static void
 print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
@@ -162,6 +166,18 @@ print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream)
 }
 
 void
+print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
+{
+  print_instr_head(&member_ptr->base, stream);
+  if (member_ptr->member_ident) {
+    fprintf(stream, "memberptr %%%u.%s", member_ptr->target_ptr->id,
+            member_ptr->member_ident->data.ident.str);
+  } else {
+    fprintf(stream, "memberptr %%%u.%u", member_ptr->target_ptr->id, member_ptr->order);
+  }
+}
+
+void
 print_instr_unop(MirInstrUnop *unop, FILE *stream)
 {
   print_instr_head(&unop->base, stream);
@@ -254,7 +270,11 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
     fprintf(stream, "%llu", (long long)value->data.v_int);
     break;
   case MIR_TYPE_REAL:
-    fprintf(stream, "%f", value->data.v_real);
+    if (value->type->store_size_bytes == sizeof(float)) {
+      fprintf(stream, "%f", value->data.v_float);
+    } else {
+      fprintf(stream, "%f", value->data.v_double);
+    }
     break;
   case MIR_TYPE_BOOL:
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
@@ -267,8 +287,20 @@ print_instr_const(MirInstrConst *cnst, FILE *stream)
     break;
   case MIR_TYPE_NULL:
     break;
+  case MIR_TYPE_ARRAY:
+    if (value->kind == MIR_CV_STRING) {
+      char *tmp = strdup(value->data.v_str);
+      fprintf(stream, "\"%s", strtok(tmp, "\n"));
+      char *next = strtok(NULL, "\n");
+      if (next && strlen(next)) fprintf(stdout, "...");
+      fprintf(stream, "\"");
+      free(tmp);
+    } else {
+      fprintf(stream, "cannot read value");
+    }
+    break;
   default:
-    fprintf(stream, "cannot read const_value");
+    fprintf(stream, "cannot read value");
   }
 }
 
@@ -277,7 +309,8 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
   print_instr_head(&call->base, stream);
 
-  const char *callee_name = call->callee->const_value.data.v_fn ? call->callee->const_value.data.v_fn->name : NULL;
+  const char *callee_name =
+      call->callee->const_value.data.v_fn ? call->callee->const_value.data.v_fn->name : NULL;
   if (callee_name)
     fprintf(stream, "call @%s", callee_name);
   else
@@ -455,6 +488,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_ADDROF:
     print_instr_addrof((MirInstrAddrOf *)instr, stream);
+    break;
+  case MIR_INSTR_MEMBER_PTR:
+    print_instr_member_ptr((MirInstrMemberPtr *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;

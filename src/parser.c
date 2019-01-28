@@ -108,7 +108,7 @@ static void
 parse_ublock_content(Context *cnt, Ast *ublock);
 
 static int
-parse_flags(Context *cnt, int allowed);
+parse_flags(Context *cnt, int32_t allowed);
 
 static Ast *
 parse_ident(Context *cnt);
@@ -120,7 +120,7 @@ static Ast *
 parse_decl(Context *cnt);
 
 static Ast *
-parse_decl_member(Context *cnt, bool type_only, int order);
+parse_decl_member(Context *cnt, bool type_only, int32_t order);
 
 static Ast *
 parse_decl_arg(Context *cnt, bool type_only);
@@ -172,7 +172,7 @@ static Ast *
 parse_expr(Context *cnt);
 
 static Ast *
-_parse_expr(Context *cnt, int p);
+_parse_expr(Context *cnt, int32_t p);
 
 static Ast *
 parse_expr_atom(Context *cnt);
@@ -199,7 +199,7 @@ static Ast *
 parse_expr_run(Context *cnt);
 
 static Ast *
-parse_expr_member(Context *cnt, Token *op);
+parse_expr_member(Context *cnt, Ast *prev);
 
 static Ast *
 parse_expr_ref(Context *cnt);
@@ -370,7 +370,7 @@ parse_expr_cast(Context *cnt)
 }
 
 Ast *
-parse_decl_member(Context *cnt, bool type_only, int order)
+parse_decl_member(Context *cnt, bool type_only, int32_t order)
 {
   Token *tok_begin = tokens_peek(cnt->tokens);
   Ast *  name      = NULL;
@@ -387,7 +387,6 @@ parse_decl_member(Context *cnt, bool type_only, int order)
   Ast *mem                    = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
   mem->data.decl.type         = type;
   mem->data.decl.name         = name;
-  mem->data.decl_member.order = -1;
 
   return mem;
 }
@@ -615,20 +614,21 @@ parse_expr(Context *cnt)
 }
 
 Ast *
-_parse_expr(Context *cnt, int p)
+_parse_expr(Context *cnt, int32_t p)
 {
   Ast *lhs = parse_expr_atom(cnt);
 
   Ast *tmp = parse_expr_call(cnt, lhs);
   if (!tmp) tmp = parse_expr_elem(cnt, lhs);
+  if (!tmp) tmp = parse_expr_member(cnt, lhs);
   lhs = tmp ? tmp : lhs;
 
   while (token_is_binop(tokens_peek(cnt->tokens)) &&
          token_prec(tokens_peek(cnt->tokens)).priority >= p) {
     Token *op = tokens_consume(cnt->tokens);
 
-    const int q = token_prec(op).associativity == TOKEN_ASSOC_LEFT ? token_prec(op).priority + 1
-                                                                   : token_prec(op).priority;
+    const int32_t q = token_prec(op).associativity == TOKEN_ASSOC_LEFT ? token_prec(op).priority + 1
+                                                                       : token_prec(op).priority;
 
     Ast *rhs = _parse_expr(cnt, q);
     if (!lhs || !rhs) {
@@ -712,7 +712,6 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_type(cnt))) goto done;
   if ((expr = parse_expr_elem(cnt, op))) goto done;
   if ((expr = parse_expr_lit(cnt))) goto done;
-  if ((expr = parse_expr_member(cnt, op))) goto done;
   if ((expr = parse_expr_ref(cnt))) goto done;*/
 
   return NULL;
@@ -876,18 +875,23 @@ parse_expr_nested(Context *cnt)
 
 /* <expression>.<identifier> */
 Ast *
-parse_expr_member(Context *cnt, Token *op)
+parse_expr_member(Context *cnt, Ast *prev)
 {
-  if (!op) return NULL;
-  if (token_is_not(op, SYM_DOT)) return NULL;
+  if (!prev) return NULL;
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
+  if (!tok) return NULL;
 
   Ast *ident = parse_ident(cnt);
   if (!ident) {
-    parse_error(cnt, ERR_EXPECTED_NAME, op, BUILDER_CUR_WORD, "expected structure member name");
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "expected member name");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
-  Ast *mem                = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, op);
-  mem->data.expr_member.i = -1;
+  Ast *mem                    = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, tok);
+  mem->data.expr_member.ident = ident;
+  mem->data.expr_member.next  = prev;
+  mem->data.expr_member.i     = -1;
   return mem;
 }
 
@@ -1267,7 +1271,7 @@ parse_expr_null(Context *cnt)
 }
 
 int
-parse_flags(Context *cnt, int allowed)
+parse_flags(Context *cnt, int32_t allowed)
 {
 #define CASE(_sym, _flag)                                                                          \
   case _sym: {                                                                                     \
@@ -1281,8 +1285,8 @@ parse_flags(Context *cnt, int allowed)
     goto next;                                                                                     \
   }
 
-  int    flags = 0;
-  Token *tok;
+  int32_t flags = 0;
+  Token * tok;
 next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {

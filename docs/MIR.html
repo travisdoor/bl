@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-01-24 Thu 23:43 -->
+<!-- 2019-01-27 Sun 21:50 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit-MIR Documentation</title>
@@ -235,54 +235,55 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orgfd5c05e">About</a>
+<li><a href="#org1061488">About</a>
 <ul>
-<li><a href="#orgb6fa307">MIR Interpreter</a></li>
-<li><a href="#orgb835945">Assert function in MIR</a></li>
-<li><a href="#orga6979e8">Stack manipulation</a></li>
+<li><a href="#orgba84318">MIR Interpreter</a></li>
+<li><a href="#org11ae9ac">Assert function in MIR</a></li>
+<li><a href="#orgd38b5e5">Stack manipulation</a></li>
 </ul>
 </li>
-<li><a href="#org850206f">Function</a></li>
-<li><a href="#orga257751">Block</a></li>
-<li><a href="#orgc611d1e">Instructions:</a>
+<li><a href="#org7e7442d">Function</a></li>
+<li><a href="#org67f69f6">Block</a></li>
+<li><a href="#org7b2cca0">Instructions:</a>
 <ul>
-<li><a href="#orgb4fef75">const</a></li>
-<li><a href="#orgf0bf484">decl</a></li>
-<li><a href="#orgfb3ee00">load</a></li>
-<li><a href="#org60fbb55">store</a></li>
-<li><a href="#org31ff76a">arg</a></li>
-<li><a href="#orgbab6a12">call</a></li>
-<li><a href="#orgb44b12d">ret</a></li>
-<li><a href="#orgaeb33bc">br</a></li>
-<li><a href="#org7120a60">br (conditional)</a></li>
-<li><a href="#orga01c4b0">unreachable</a></li>
-<li><a href="#orgfe08075">binop</a></li>
-<li><a href="#org737912c">unop</a></li>
-<li><a href="#org601c26f">elemptr</a></li>
-<li><a href="#org745e4f2">addrof</a></li>
+<li><a href="#org33447aa">const</a></li>
+<li><a href="#org0c8eb00">decl</a></li>
+<li><a href="#org6e189a7">load</a></li>
+<li><a href="#org557b16b">store</a></li>
+<li><a href="#orge14beb0">arg</a></li>
+<li><a href="#orgef63dcf">call</a></li>
+<li><a href="#orgbd606fc">ret</a></li>
+<li><a href="#org7463651">br</a></li>
+<li><a href="#org55759a6">br (conditional)</a></li>
+<li><a href="#org2c7d760">unreachable</a></li>
+<li><a href="#orgcdabaff">binop</a></li>
+<li><a href="#orgd6b7829">unop</a></li>
+<li><a href="#orgcea6fc3">elemptr</a></li>
+<li><a href="#org08b7199">memberptr</a></li>
+<li><a href="#org82eaa9f">addrof</a></li>
 </ul>
 </li>
-<li><a href="#org1f5ce39">Special instructions</a>
+<li><a href="#org230fed5">Special instructions</a>
 <ul>
-<li><a href="#org182a36c">tryinfer</a></li>
-<li><a href="#org4a00c5a">validate_type</a></li>
+<li><a href="#org6c0c06d">tryinfer</a></li>
+<li><a href="#orga84aea9">validate_type</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-orgfd5c05e" class="outline-2">
-<h2 id="orgfd5c05e">About</h2>
-<div class="outline-text-2" id="text-orgfd5c05e">
+<div id="outline-container-org1061488" class="outline-2">
+<h2 id="org1061488">About</h2>
+<div class="outline-text-2" id="text-org1061488">
 <p>
 BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR. 
 </p>
 </div>
 
-<div id="outline-container-orgb6fa307" class="outline-3">
-<h3 id="orgb6fa307">MIR Interpreter</h3>
-<div class="outline-text-3" id="text-orgb6fa307">
+<div id="outline-container-orgba84318" class="outline-3">
+<h3 id="orgba84318">MIR Interpreter</h3>
+<div class="outline-text-3" id="text-orgba84318">
 <p>
 BL Compiler has integrated interpreter for MIR. 
 </p>
@@ -294,9 +295,9 @@ BL Compiler has integrated interpreter for MIR.
 </div>
 </div>
 
-<div id="outline-container-orgb835945" class="outline-3">
-<h3 id="orgb835945">Assert function in MIR</h3>
-<div class="outline-text-3" id="text-orgb835945">
+<div id="outline-container-org11ae9ac" class="outline-3">
+<h3 id="org11ae9ac">Assert function in MIR</h3>
+<div class="outline-text-3" id="text-org11ae9ac">
 <div class="org-src-container">
 <pre class="src src-blm"><span class="org-function-name">@assert</span> fn(<span class="org-type">bool</span>) <span class="org-type">void</span> {
 <span class="org-constant">init_0</span>:
@@ -325,9 +326,9 @@ BL Compiler has integrated interpreter for MIR.
 </div>
 </div>
 
-<div id="outline-container-orga6979e8" class="outline-3">
-<h3 id="orga6979e8">Stack manipulation</h3>
-<div class="outline-text-3" id="text-orga6979e8">
+<div id="outline-container-orgd38b5e5" class="outline-3">
+<h3 id="orgd38b5e5">Stack manipulation</h3>
+<div class="outline-text-3" id="text-orgd38b5e5">
 <p>
 Example function:
 </p>
@@ -375,9 +376,9 @@ execution finished with state: 0
 </div>
 
 
-<div id="outline-container-org850206f" class="outline-2">
-<h2 id="org850206f">Function</h2>
-<div class="outline-text-2" id="text-org850206f">
+<div id="outline-container-org7e7442d" class="outline-2">
+<h2 id="org7e7442d">Function</h2>
+<div class="outline-text-2" id="text-org7e7442d">
 <pre class="example">
 @&lt;name&gt; &lt;T&gt; { 
   [entry block]
@@ -386,9 +387,9 @@ execution finished with state: 0
 </div>
 </div>
 
-<div id="outline-container-orga257751" class="outline-2">
-<h2 id="orga257751">Block</h2>
-<div class="outline-text-2" id="text-orga257751">
+<div id="outline-container-org67f69f6" class="outline-2">
+<h2 id="org67f69f6">Block</h2>
+<div class="outline-text-2" id="text-org67f69f6">
 <p>
 Basic block representation.
 </p>
@@ -401,13 +402,13 @@ Basic block representation.
 </div>
 </div>
 
-<div id="outline-container-orgc611d1e" class="outline-2">
-<h2 id="orgc611d1e">Instructions:</h2>
-<div class="outline-text-2" id="text-orgc611d1e">
+<div id="outline-container-org7b2cca0" class="outline-2">
+<h2 id="org7b2cca0">Instructions:</h2>
+<div class="outline-text-2" id="text-org7b2cca0">
 </div>
-<div id="outline-container-orgb4fef75" class="outline-3">
-<h3 id="orgb4fef75">const</h3>
-<div class="outline-text-3" id="text-orgb4fef75">
+<div id="outline-container-org33447aa" class="outline-3">
+<h3 id="org33447aa">const</h3>
+<div class="outline-text-3" id="text-org33447aa">
 <p>
 Constant value.
 </p>
@@ -444,9 +445,9 @@ Constant value.
 </div>
 </div>
 
-<div id="outline-container-orgf0bf484" class="outline-3">
-<h3 id="orgf0bf484">decl</h3>
-<div class="outline-text-3" id="text-orgf0bf484">
+<div id="outline-container-org0c8eb00" class="outline-3">
+<h3 id="org0c8eb00">decl</h3>
+<div class="outline-text-3" id="text-org0c8eb00">
 <p>
 Variable declaration.
 </p>
@@ -483,9 +484,9 @@ Variable declaration.
 </div>
 </div>
 
-<div id="outline-container-orgfb3ee00" class="outline-3">
-<h3 id="orgfb3ee00">load</h3>
-<div class="outline-text-3" id="text-orgfb3ee00">
+<div id="outline-container-org6e189a7" class="outline-3">
+<h3 id="org6e189a7">load</h3>
+<div class="outline-text-3" id="text-org6e189a7">
 <p>
 Push pointed value on the stack.
 </p>
@@ -494,6 +495,9 @@ Push pointed value on the stack.
 &lt;T&gt; load &lt;ptr&gt; // yields T loaded from ptr
 </pre>
 
+<p>
+Source is on the stack:
+</p>
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -525,12 +529,41 @@ Push pointed value on the stack.
 </tr>
 </tbody>
 </table>
+
+<p>
+Source is variable declaration:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">stack op</th>
+<th scope="col" class="org-left">data</th>
+<th scope="col" class="org-left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">PUSH</td>
+<td class="org-left">value</td>
+<td class="org-left">value loaded from source</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 
-<div id="outline-container-org60fbb55" class="outline-3">
-<h3 id="org60fbb55">store</h3>
-<div class="outline-text-3" id="text-org60fbb55">
+<div id="outline-container-org557b16b" class="outline-3">
+<h3 id="org557b16b">store</h3>
+<div class="outline-text-3" id="text-org557b16b">
 <p>
 Store value from source to destination address.
 </p>
@@ -605,9 +638,9 @@ Destination pointer is declaration:
 </div>
 </div>
 
-<div id="outline-container-org31ff76a" class="outline-3">
-<h3 id="org31ff76a">arg</h3>
-<div class="outline-text-3" id="text-org31ff76a">
+<div id="outline-container-orge14beb0" class="outline-3">
+<h3 id="orge14beb0">arg</h3>
+<div class="outline-text-3" id="text-orge14beb0">
 <p>
 Load argument of the current function on the stack.
 </p>
@@ -644,9 +677,9 @@ Load argument of the current function on the stack.
 </div>
 </div>
 
-<div id="outline-container-orgbab6a12" class="outline-3">
-<h3 id="orgbab6a12">call</h3>
-<div class="outline-text-3" id="text-orgbab6a12">
+<div id="outline-container-orgef63dcf" class="outline-3">
+<h3 id="orgef63dcf">call</h3>
+<div class="outline-text-3" id="text-orgef63dcf">
 <p>
 Call function. This instruction will create new stack frame and switch control to the callee.
 </p>
@@ -697,9 +730,9 @@ Call function. This instruction will create new stack frame and switch control t
 </div>
 </div>
 
-<div id="outline-container-orgb44b12d" class="outline-3">
-<h3 id="orgb44b12d">ret</h3>
-<div class="outline-text-3" id="text-orgb44b12d">
+<div id="outline-container-orgbd606fc" class="outline-3">
+<h3 id="orgbd606fc">ret</h3>
+<div class="outline-text-3" id="text-orgbd606fc">
 <p>
 Return value from the function and return control to the caller. This instruction terminates current basic block.
 </p>
@@ -760,9 +793,9 @@ void ret [value] // yields void
 </div>
 </div>
 
-<div id="outline-container-orgaeb33bc" class="outline-3">
-<h3 id="orgaeb33bc">br</h3>
-<div class="outline-text-3" id="text-orgaeb33bc">
+<div id="outline-container-org7463651" class="outline-3">
+<h3 id="org7463651">br</h3>
+<div class="outline-text-3" id="text-org7463651">
 <p>
 Breaks to the basic block. This instruction terminates current basic block.
 </p>
@@ -773,9 +806,9 @@ void br &lt;block&gt; // yields void
 </div>
 </div>
 
-<div id="outline-container-org7120a60" class="outline-3">
-<h3 id="org7120a60">br (conditional)</h3>
-<div class="outline-text-3" id="text-org7120a60">
+<div id="outline-container-org55759a6" class="outline-3">
+<h3 id="org55759a6">br (conditional)</h3>
+<div class="outline-text-3" id="text-org55759a6">
 <p>
 Breaks into then block if the condition is true. This instruction terminates current basic block.
 </p>
@@ -812,18 +845,18 @@ void br &lt;cont&gt; ? &lt;then_block&gt; : &lt;else_block&gt; // yields void
 </div>
 </div>
 
-<div id="outline-container-orga01c4b0" class="outline-3">
-<h3 id="orga01c4b0">unreachable</h3>
-<div class="outline-text-3" id="text-orga01c4b0">
+<div id="outline-container-org2c7d760" class="outline-3">
+<h3 id="org2c7d760">unreachable</h3>
+<div class="outline-text-3" id="text-org2c7d760">
 <p>
 Abort execution when this instruction is reached.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgfe08075" class="outline-3">
-<h3 id="orgfe08075">binop</h3>
-<div class="outline-text-3" id="text-orgfe08075">
+<div id="outline-container-orgcdabaff" class="outline-3">
+<h3 id="orgcdabaff">binop</h3>
+<div class="outline-text-3" id="text-orgcdabaff">
 <p>
 Binary operation.
 </p>
@@ -872,9 +905,9 @@ Binary operation.
 </div>
 </div>
 
-<div id="outline-container-org737912c" class="outline-3">
-<h3 id="org737912c">unop</h3>
-<div class="outline-text-3" id="text-org737912c">
+<div id="outline-container-orgd6b7829" class="outline-3">
+<h3 id="orgd6b7829">unop</h3>
+<div class="outline-text-3" id="text-orgd6b7829">
 <p>
 Unary operation.
 </p>
@@ -917,9 +950,9 @@ Unary operation.
 </div>
 </div>
 
-<div id="outline-container-org601c26f" class="outline-3">
-<h3 id="org601c26f">elemptr</h3>
-<div class="outline-text-3" id="text-org601c26f">
+<div id="outline-container-orgcea6fc3" class="outline-3">
+<h3 id="orgcea6fc3">elemptr</h3>
+<div class="outline-text-3" id="text-orgcea6fc3">
 <p>
 Evaluates address of the array element and push it on the stack.
 </p>
@@ -961,10 +994,53 @@ Evaluates address of the array element and push it on the stack.
 </table>
 </div>
 </div>
+<div id="outline-container-org08b7199" class="outline-3">
+<h3 id="org08b7199">memberptr</h3>
+<div class="outline-text-3" id="text-org08b7199">
+<p>
+Evaluates address of member access via '.' operator.
+</p>
 
-<div id="outline-container-org745e4f2" class="outline-3">
-<h3 id="org745e4f2">addrof</h3>
-<div class="outline-text-3" id="text-org745e4f2">
+<pre class="example">
+&lt;*T&gt; memberptr &lt;target ptr&gt;.&lt;member name|order&gt; // yields result address *T (member type)
+</pre>
+
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">stack op</th>
+<th scope="col" class="org-left">data</th>
+<th scope="col" class="org-left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">POP</td>
+<td class="org-left">target ptr</td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">PUSH</td>
+<td class="org-left">member ptr</td>
+<td class="org-left">Address of the member</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org82eaa9f" class="outline-3">
+<h3 id="org82eaa9f">addrof</h3>
+<div class="outline-text-3" id="text-org82eaa9f">
 <p>
 Evaluates address of the variable.
 </p>
@@ -1005,17 +1081,17 @@ Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
 </div>
 </div>
 
-<div id="outline-container-org1f5ce39" class="outline-2">
-<h2 id="org1f5ce39">Special instructions</h2>
-<div class="outline-text-2" id="text-org1f5ce39">
+<div id="outline-container-org230fed5" class="outline-2">
+<h2 id="org230fed5">Special instructions</h2>
+<div class="outline-text-2" id="text-org230fed5">
 <p>
 Special instructions are used only during analyze pass inside the compiler.
 </p>
 </div>
 
-<div id="outline-container-org182a36c" class="outline-3">
-<h3 id="org182a36c">tryinfer</h3>
-<div class="outline-text-3" id="text-org182a36c">
+<div id="outline-container-org6c0c06d" class="outline-3">
+<h3 id="org6c0c06d">tryinfer</h3>
+<div class="outline-text-3" id="text-org6c0c06d">
 <p>
 Assign type of the source to the destination instruction.
 </p>
@@ -1026,9 +1102,9 @@ void tryinfer &lt;src&gt; -&gt; &lt;dest&gt; // yields void
 </div>
 </div>
 
-<div id="outline-container-org4a00c5a" class="outline-3">
-<h3 id="org4a00c5a">validate_type</h3>
-<div class="outline-text-3" id="text-org4a00c5a">
+<div id="outline-container-orga84aea9" class="outline-3">
+<h3 id="orga84aea9">validate_type</h3>
+<div class="outline-text-3" id="text-orga84aea9">
 <p>
 Validates if the source instruction yields value of type 'type'. 
 </p>
@@ -1042,7 +1118,7 @@ void validate_type &lt;src&gt; // yields void
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-24 Thu 23:43</p>
+<p class="date">Created: 2019-01-27 Sun 21:50</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

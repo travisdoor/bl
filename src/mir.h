@@ -48,9 +48,9 @@ typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
 
-typedef union MirGeneric64        MirGeneric64;
-typedef uint8_t *                 MirStackPtr;
-typedef struct MirConstValue      MirConstValue;
+typedef union MirGeneric64   MirGeneric64;
+typedef uint8_t *            MirStackPtr;
+typedef struct MirConstValue MirConstValue;
 
 typedef enum MirConstValueKind MirConstValueKind;
 typedef enum MirTypeKind       MirTypeKind;
@@ -74,6 +74,7 @@ typedef struct MirInstrCondBr       MirInstrCondBr;
 typedef struct MirInstrBr           MirInstrBr;
 typedef struct MirInstrArg          MirInstrArg;
 typedef struct MirInstrElemPtr      MirInstrElemPtr;
+typedef struct MirInstrMemberPtr    MirInstrMemberPtr;
 typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrTypeArray    MirInstrTypeArray;
 typedef struct MirInstrTypePtr      MirInstrTypePtr;
@@ -217,7 +218,8 @@ union MirConstValueData
 {
   uint64_t            v_uint;
   int64_t             v_int;
-  double              v_real;
+  float               v_float;
+  double              v_double;
   bool                v_bool;
   const char *        v_str;
   MirType *           v_type;
@@ -265,6 +267,7 @@ enum MirInstrKind
   MIR_INSTR_UNOP,
   MIR_INSTR_ARG,
   MIR_INSTR_ELEM_PTR,
+  MIR_INSTR_MEMBER_PTR,
   MIR_INSTR_ADDROF,
 
   MIR_INSTR_VALIDATE_TYPE,
@@ -318,6 +321,15 @@ struct MirInstrElemPtr
 
   MirInstr *arr_ptr;
   MirInstr *index;
+};
+
+struct MirInstrMemberPtr
+{
+  MirInstr base;
+
+  Ast *     member_ident;
+  MirInstr *target_ptr;
+  int32_t   order;
 };
 
 struct MirInstrArg

@@ -97,13 +97,6 @@ typedef enum
 
 typedef enum
 {
-  MEM_KIND_INVALID = 0,
-  MEM_KIND_STRUCT  = 1, /* structure.bar; structure->bar; */
-  MEM_KIND_ENUM    = 2, /* enum.A; */
-} MemberKind;
-
-typedef enum
-{
   FLAG_EXTERN = 1 << 0, /* methods marked as extern */
   FLAG_TEST   = 1 << 1, /* test case */
 } AstFlag;
@@ -214,7 +207,6 @@ struct AstDeclEntity
 struct AstDeclMember
 {
   struct AstDecl base;
-  int            order;
 };
 
 struct AstDeclArg
@@ -335,10 +327,8 @@ struct AstExprCall
 
 struct AstExprMember
 {
-  MemberKind kind;
   Ast *      ident;
   Ast *      next;
-  bool       ptr_ref;
   int        i;
 };
 

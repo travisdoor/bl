@@ -199,7 +199,15 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   }
 
   case MIR_TYPE_REAL: {
-    cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_real);
+    const size_t size = type->store_size_bytes;
+
+    if (size == sizeof(float)) { // float
+      cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_float);
+    } else if (size == sizeof(double)) { // double
+      cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_double);
+    } else {
+      bl_abort("invalid floating point type");
+    }
     break;
   }
 

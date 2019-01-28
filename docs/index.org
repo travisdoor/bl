@@ -17,8 +17,11 @@
    - pointers
    - no exceptions
    - fast compilation
-   - compile-time execution
+   - full compile-time execution (integrated interpreter)
    - no OOP
+   - types as values in compile-time
+   - use of the LLVM backend
+   - multiplatform
      
 ** Example
    #+BEGIN_SRC bl

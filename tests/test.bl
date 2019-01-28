@@ -3,20 +3,26 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-  str := "hello world\n";
+  /*
+  double: f64;
+  double = 0.2 + 0.1;
 
-  loop i := 0; i < 12; i += 1 {
-    putchar(str[i]);
-  }
+  float: f32;
+  float = 100.2f + 100.1f;
+  */
 
-  return 666;
+  real_number := 10.1f;
+  assert(real_number - 10.1f < 0.0001f);
+
+  return 66;
 };
 
 putchar :: fn (c: u8) s32 #extern;
 
+/*
 print :: fn (str: []u8) {
-  
 };
+*/
 
 /*
 say_hello :: fn () {
