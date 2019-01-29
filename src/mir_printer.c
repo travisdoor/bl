@@ -172,8 +172,14 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_NOOP:
     fprintf(stream, "noopcast %%%u", cast->next->id);
     break;
+  case MIR_CAST_SEXT:
+    fprintf(stream, "sext %%%u", cast->next->id);
+    break;
+  case MIR_CAST_ZEXT:
+    fprintf(stream, "zext %%%u", cast->next->id);
+    break;
   case MIR_CAST_INVALID:
-    fprintf(stream, "unknowncast %%%u", cast->next->id);
+    fprintf(stream, "invalid cast %%%u", cast->next->id);
     break;
   }
 }

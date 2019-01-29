@@ -263,6 +263,15 @@ push_into_curr_block(Context *cnt, MirInstr *instr);
 static void
 erase_unused_instr(Context *cnt, MirInstr *instr);
 
+static MirInstr *
+insert_instr_load_if_needed(Context *cnt, MirInstr *src);
+
+static MirInstr *
+try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid);
+
+static MirCastOp
+get_cast_op(MirType *from, MirType *to);
+
 #define create_instr(_cnt, _kind, _node, _t) ((_t)_create_instr((_cnt), (_kind), (_node)))
 
 static MirInstr *
@@ -278,7 +287,7 @@ static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *
-append_instr_cast(Context *cnt, Ast *node, MirCastOp op, MirInstr *type, MirInstr *next);
+append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
 
 static MirInstr *
 append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
@@ -658,6 +667,8 @@ insert_instr_after(MirInstr *after, MirInstr *instr)
   instr->prev = after;
   if (after->next) after->next->prev = instr;
   after->next = instr;
+
+  instr->owner_block = after->owner_block;
 }
 
 static inline const char *
@@ -1039,69 +1050,6 @@ is_load_needed(MirInstr *instr)
   return true;
 }
 
-static inline MirInstr *
-insert_instr_load_if_needed(Context *cnt, MirInstr *src)
-{
-  if (!src) return src;
-  if (!is_load_needed(src)) return src;
-
-  MirInstrBlock *block = src->owner_block;
-  assert(block);
-
-  assert(src->const_value.type);
-  assert(src->const_value.type->kind == MIR_TYPE_PTR);
-  ref_instr(src);
-  MirInstrLoad *tmp  = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
-  tmp->src           = src;
-  tmp->base.analyzed = true;
-  tmp->base.id       = ++block->owner_fn->block_count;
-
-  ref_instr(&tmp->base);
-  insert_instr_after(src, &tmp->base);
-  analyze_instr_load(cnt, tmp);
-  return &tmp->base;
-}
-
-static inline MirInstr *
-try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
-{
-  assert(src && expected_type && valid);
-  *valid            = true;
-  MirType *src_type = src->const_value.type;
-
-  /* both types are same -> no cast is needed */
-  if (type_cmp(src_type, expected_type)) {
-    return src;
-  }
-
-  /* try create implicit cast */
-  if (src_type->kind == MIR_TYPE_INT && expected_type->kind == MIR_TYPE_INT) {
-    if (src->kind == MIR_INSTR_CONST) {
-      /* constant numeric literal */
-      src->const_value.type = expected_type;
-      /* TODO: check constant overflow */
-      return src;
-    }
-
-    /* insert cast */
-    MirInstrBlock *block = src->owner_block;
-    MirInstrCast *cast          = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
-    cast->base.const_value.type = expected_type;
-    cast->base.analyzed         = true;
-    cast->base.id               = block ? ++block->owner_fn->block_count : 0;
-    cast->next                  = src;
-    cast->op                    = MIR_CAST_BITCAST;
-
-    ref_instr(&cast->base);
-    insert_instr_after(src, &cast->base);
-    return &cast->base;
-  }
-
-  error_types(cnt, src->const_value.type, expected_type, src->node, NULL);
-  *valid = false;
-  return src;
-}
-
 static inline void
 setup_null_type_if_needed(MirType *dest, MirType *src)
 {
@@ -1333,6 +1281,95 @@ erase_unused_instr(Context *cnt, MirInstr *instr)
 }
 
 MirInstr *
+insert_instr_load_if_needed(Context *cnt, MirInstr *src)
+{
+  if (!src) return src;
+  if (!is_load_needed(src)) return src;
+
+  MirInstrBlock *block = src->owner_block;
+  assert(block);
+
+  assert(src->const_value.type);
+  assert(src->const_value.type->kind == MIR_TYPE_PTR);
+  ref_instr(src);
+  MirInstrLoad *tmp  = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
+  tmp->src           = src;
+  tmp->base.analyzed = true;
+  tmp->base.id       = ++block->owner_fn->block_count;
+
+  ref_instr(&tmp->base);
+  insert_instr_after(src, &tmp->base);
+  analyze_instr_load(cnt, tmp);
+  return &tmp->base;
+}
+
+MirCastOp
+get_cast_op(MirType *from, MirType *to)
+{
+  const size_t fsize = from->store_size_bytes;
+  const size_t tsize = to->store_size_bytes;
+
+  switch (from->kind) {
+  case MIR_TYPE_INT: {
+    const bool is_to_signed = to->data.integer.is_signed;
+    if (fsize < tsize) {
+      return is_to_signed ? MIR_CAST_SEXT : MIR_CAST_ZEXT;
+    } else {
+      bl_unimplemented;
+    }
+    break;
+  }
+
+  default:
+    bl_unimplemented;
+  }
+
+  return MIR_CAST_INVALID;
+}
+
+MirInstr *
+try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
+{
+  assert(src && expected_type && valid);
+  *valid            = true;
+  MirType *src_type = src->const_value.type;
+
+  /* both types are same -> no cast is needed */
+  if (type_cmp(src_type, expected_type)) {
+    return src;
+  }
+
+  /* try create implicit cast */
+  if (src_type->kind == MIR_TYPE_INT && expected_type->kind == MIR_TYPE_INT) {
+    if (src->kind == MIR_INSTR_CONST) {
+      /* constant numeric literal */
+      src->const_value.type = expected_type;
+      /* TODO: check constant overflow */
+      return src;
+    }
+
+    /* insert cast */
+    MirInstrBlock *block = src->owner_block;
+    assert(block);
+
+    MirInstrCast *cast          = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
+    cast->base.const_value.type = expected_type;
+    cast->base.id               = ++block->owner_fn->block_count;
+    cast->base.analyzed         = true;
+    cast->next                  = src;
+    cast->op                    = get_cast_op(src_type, expected_type);
+
+    ref_instr(&cast->base);
+    insert_instr_after(src, &cast->base);
+    return &cast->base;
+  }
+
+  error_types(cnt, src->const_value.type, expected_type, src->node, NULL);
+  *valid = false;
+  return src;
+}
+
+MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
   MirInstr *tmp         = arena_alloc(&cnt->module->arenas.instr_arena);
@@ -1436,14 +1473,13 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i)
 }
 
 MirInstr *
-append_instr_cast(Context *cnt, Ast *node, MirCastOp op, MirInstr *type, MirInstr *next)
+append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next)
 {
   ref_instr(type);
   ref_instr(next);
   MirInstrCast *tmp = create_instr(cnt, MIR_INSTR_CAST, node, MirInstrCast *);
   tmp->type         = type;
   tmp->next         = next;
-  tmp->op           = op;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2092,10 +2128,10 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
   MirInstr *src = cast->next;
   assert(src);
 
-  MirType *dest_type = NULL;
+  MirType *dest_type = cast->base.const_value.type;
   MirType *src_type  = src->const_value.type;
 
-  {
+  if (!dest_type) {
     assert(cast->type && cast->type->kind == MIR_INSTR_CALL);
     analyze_instr(cnt, cast->type, true);
     MirConstValue *type_val = exec_call_top_lvl(cnt, (MirInstrCall *)cast->type);
@@ -2108,17 +2144,11 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
   assert(dest_type && "invalid cast destination type");
   assert(src_type && "invalid cast source type");
 
-  {
-    MirTypeKind dkind = dest_type->kind;
-    MirTypeKind skind = src_type->kind;
-    if (dkind != skind) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_CAST, cast->base.node->src,
-                  BUILDER_CUR_WORD, "invalid cast");
-      return false;
-    }
-
-    /* TODO: orher cast types */
-    cast->op = MIR_CAST_BITCAST;
+  cast->op = get_cast_op(src_type, dest_type);
+  if (cast->op == MIR_CAST_INVALID) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_CAST, cast->base.node->src,
+                BUILDER_CUR_WORD, "invalid cast");
+    return false;
   }
 
   cast->base.const_value.type = dest_type;
@@ -2559,7 +2589,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   if (call_argc) {
     MirInstr **call_arg;
     MirType *  callee_arg_type;
-    bool valid;
+    bool       valid;
 
     for (int32_t i = 0; i < call_argc; ++i) {
       call_arg        = &bo_array_at(call->args, i, MirInstr *);
@@ -3783,7 +3813,7 @@ ast_expr_cast(Context *cnt, Ast *cast)
   MirInstr *type = ast_create_type_resolver_call(cnt, ast_type);
   MirInstr *next = ast(cnt, ast_next);
 
-  return append_instr_cast(cnt, cast, MIR_CAST_BITCAST, type, next);
+  return append_instr_cast(cnt, cast, type, next);
 }
 
 MirInstr *

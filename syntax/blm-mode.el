@@ -19,6 +19,8 @@
     "br"
     "bitcast"
     "noopcast"
+    "zext"
+    "sext"
     "addrof"
     "elemptr"
     "unop"

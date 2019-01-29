@@ -3,9 +3,8 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-  arr : [10] s32;
-  arr[0] = 10;
-  return 666;
+  i : s8 = 10;
+  return i;
 };
 
 putchar :: fn (c: u8) s32 #extern;

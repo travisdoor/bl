@@ -275,24 +275,56 @@
 
     Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
     
-** bitcast, noopcast
-   Produce casting from one type to other.
+** noopcast
+   #+BEGIN_EXAMPLE
+   <T> noopcast <target> // yields value with casted type
+   #+END_EXAMPLE
+   
+   No-operation casting.
+    
+** bitcast
+   Produce bit casting from one type to other. Bit cast just change type of pushed value. No stack operations are produced.
 
    #+BEGIN_EXAMPLE
-   <T> bitcast|noopcast <target> // yields value with casted type
+   <T> bitcast <target> // yields value with casted type
+   #+END_EXAMPLE
+
+** sext
+   Signed-extend cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> sextcast <target> // yields value with casted type
    #+END_EXAMPLE
 
     Getting target from the stack:
-    | stack op | data   | description          |
-    |----------+--------+----------------------|
-    | POP      | target |                      |
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
     | PUSH     | resutlt | result with new type |
 
     Target is a variable:
     | stack op | data   | description          |
     |----------+--------+----------------------|
     | PUSH     | resutlt | result with new type |
-    
+
+** zext
+   Unsigned-extend cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> sextcast <target> // yields value with casted type
+   #+END_EXAMPLE
+
+    Getting target from the stack:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
+    | PUSH     | resutlt | result with new type |
+
+    Target is a variable:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | PUSH     | resutlt | result with new type |
+
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.
 
