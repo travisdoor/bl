@@ -21,6 +21,7 @@
     "noopcast"
     "zext"
     "sext"
+    "trunc"
     "addrof"
     "elemptr"
     "unop"

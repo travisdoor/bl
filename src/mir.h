@@ -322,10 +322,10 @@ struct MirInstrMemberPtr
 enum MirCastOp
 {
   MIR_CAST_INVALID,
-  MIR_CAST_NOOP,
+  MIR_CAST_BITCAST,
   MIR_CAST_SEXT,
   MIR_CAST_ZEXT,
-  MIR_CAST_BITCAST,
+  MIR_CAST_TRUNC,
 };
 
 struct MirInstrCast

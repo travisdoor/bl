@@ -150,10 +150,6 @@ gen_instr_cast(Context *cnt, MirInstrCast *cast)
   assert(llvm_src && llvm_dest_type);
 
   switch (cast->op) {
-  case MIR_CAST_NOOP:
-    cast->base.llvm_value = llvm_src;
-    return;
-
   case MIR_CAST_BITCAST:
     llvm_op = LLVMBitCast;
     break;
@@ -164,6 +160,10 @@ gen_instr_cast(Context *cnt, MirInstrCast *cast)
 
   case MIR_CAST_ZEXT:
     llvm_op = LLVMZExt;
+    break;
+
+  case MIR_CAST_TRUNC:
+    llvm_op = LLVMTrunc;
     break;
 
   default:

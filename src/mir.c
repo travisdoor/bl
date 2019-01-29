@@ -1306,22 +1306,45 @@ insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 MirCastOp
 get_cast_op(MirType *from, MirType *to)
 {
-  const size_t fsize = from->store_size_bytes;
-  const size_t tsize = to->store_size_bytes;
+  const size_t fsize = from->size_bits;
+  const size_t tsize = to->size_bits;
 
   switch (from->kind) {
   case MIR_TYPE_INT: {
-    const bool is_to_signed = to->data.integer.is_signed;
-    if (fsize < tsize) {
-      return is_to_signed ? MIR_CAST_SEXT : MIR_CAST_ZEXT;
-    } else {
-      bl_unimplemented;
+    /* from integer */
+    switch (to->kind) {
+    case MIR_TYPE_INT: {
+      /* to integer */
+      const bool is_to_signed = to->data.integer.is_signed;
+      if (fsize < tsize) {
+        return is_to_signed ? MIR_CAST_SEXT : MIR_CAST_ZEXT;
+      } else {
+        return MIR_CAST_TRUNC;
+      }
+    }
+
+    default:
+      bl_abort("invalid to cast type");
+    }
+    break;
+  }
+
+  case MIR_TYPE_PTR: {
+    /* from pointer */
+    switch (to->kind) {
+    case MIR_TYPE_PTR: {
+      /* to pointer */
+      return MIR_CAST_BITCAST;
+    }
+
+    default:
+      bl_abort("invalid to cast type");
     }
     break;
   }
 
   default:
-    bl_unimplemented;
+    bl_abort("invalid from cast type");
   }
 
   return MIR_CAST_INVALID;
@@ -3025,16 +3048,47 @@ exec_instr_br(Context *cnt, MirInstrBr *br)
 void
 exec_instr_cast(Context *cnt, MirInstrCast *cast)
 {
-  MirType *src_type  = cast->next->const_value.type;
-  MirType *dest_type = cast->base.const_value.type;
+  MirType *         src_type  = cast->next->const_value.type;
+  MirType *         dest_type = cast->base.const_value.type;
+  MirConstValueData tmp       = {0};
 
-  MirConstValueData tmp = {0};
-  assert(cast->op == MIR_CAST_BITCAST && "unimplemented cast type");
-  MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+  switch (cast->op) {
+  case MIR_CAST_BITCAST:
+    /* bitcast is always noop */
+    break;
 
-  exec_read_value(&tmp, from_ptr, src_type);
+  case MIR_CAST_SEXT: {
+    /* src is smaller than dest */
+    MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+    exec_read_value(&tmp, from_ptr, src_type);
 
-  exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    size_t        shift = src_type->size_bits - 1;
+    const uint8_t neg   = (tmp.v_uint >> shift) & 1U;
+    uint64_t      mask  = 0;
+    while (shift < dest_type->size_bits) {
+      mask = 1 << shift;
+      tmp.v_uint ^= (mask & (neg << shift));
+      ++shift;
+    }
+
+    exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_ZEXT:
+    /* src is smaller than dest and destination is unsigned, src value will be extended with zeros
+     * to dest type size */
+  case MIR_CAST_TRUNC: {
+    /* src is bigger than dest */
+    MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+    exec_read_value(&tmp, from_ptr, src_type);
+    exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  default:
+    bl_abort("invalid cast operation");
+  }
 }
 
 void

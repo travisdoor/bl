@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit-MIR Documentation</title>
-<!-- 2019-01-29 Út 13:57 -->
+<!-- 2019-01-29 Út 16:39 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -169,9 +169,10 @@ for the JavaScript code in this tag.
 <li><a href="#sec-4-13">elemptr</a></li>
 <li><a href="#sec-4-14">memberptr</a></li>
 <li><a href="#sec-4-15">addrof</a></li>
-<li><a href="#sec-4-16">noopcast</a></li>
-<li><a href="#sec-4-17">bitcast</a></li>
-<li><a href="#sec-4-18">sextcast</a></li>
+<li><a href="#sec-4-16">bitcast</a></li>
+<li><a href="#sec-4-17">sext</a></li>
+<li><a href="#sec-4-18">zext</a></li>
+<li><a href="#sec-4-19">trunc</a></li>
 </ul>
 </li>
 <li><a href="#sec-5">Special instructions</a>
@@ -999,21 +1000,8 @@ Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
 </div>
 
 <div id="outline-container-sec-4-16" class="outline-3">
-<h3 id="sec-4-16">noopcast</h3>
+<h3 id="sec-4-16">bitcast</h3>
 <div class="outline-text-3" id="text-4-16">
-<pre class="example">
-&lt;T&gt; noopcast &lt;target&gt; // yields value with casted type
-</pre>
-
-<p>
-No-operation casting.
-</p>
-</div>
-</div>
-
-<div id="outline-container-sec-4-17" class="outline-3">
-<h3 id="sec-4-17">bitcast</h3>
-<div class="outline-text-3" id="text-4-17">
 <p>
 Produce bit casting from one type to other. Bit cast just change type of pushed value. No stack operations are produced.
 </p>
@@ -1024,15 +1012,169 @@ Produce bit casting from one type to other. Bit cast just change type of pushed 
 </div>
 </div>
 
-<div id="outline-container-sec-4-18" class="outline-3">
-<h3 id="sec-4-18">sextcast</h3>
-<div class="outline-text-3" id="text-4-18">
+<div id="outline-container-sec-4-17" class="outline-3">
+<h3 id="sec-4-17">sext</h3>
+<div class="outline-text-3" id="text-4-17">
 <p>
 Signed-extend cast. 
 </p>
 
 <pre class="example">
-&lt;T&gt; sextcast &lt;target&gt; // yields value with casted type
+&lt;T&gt; sext &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Getting target from the stack:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Target is a variable:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-18" class="outline-3">
+<h3 id="sec-4-18">zext</h3>
+<div class="outline-text-3" id="text-4-18">
+<p>
+Zero-extend cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; zext &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Getting target from the stack:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Target is a variable:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-19" class="outline-3">
+<h3 id="sec-4-19">trunc</h3>
+<div class="outline-text-3" id="text-4-19">
+<p>
+Truncates target to destination type 'T'.
+</p>
+
+<pre class="example">
+&lt;T&gt; trunc &lt;target&gt; // yields value with casted type
 </pre>
 
 <p>
@@ -1139,7 +1281,7 @@ void validate_type &lt;src&gt; // yields void
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-29 Út 13:57</p>
+<p class="date">Created: 2019-01-29 Út 16:39</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

@@ -172,6 +172,13 @@
   }
 };
 
+#test "pointer casting" {
+  i_ptr : *s32;
+  j_ptr : *s8;
+
+  i_ptr = cast(*s32) j_ptr;
+};
+
 #test "pointers" {
   i       := 666;
   ptr     := &i;

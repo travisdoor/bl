@@ -169,14 +169,14 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_BITCAST:
     fprintf(stream, "bitcast %%%u", cast->next->id);
     break;
-  case MIR_CAST_NOOP:
-    fprintf(stream, "noopcast %%%u", cast->next->id);
-    break;
   case MIR_CAST_SEXT:
     fprintf(stream, "sext %%%u", cast->next->id);
     break;
   case MIR_CAST_ZEXT:
     fprintf(stream, "zext %%%u", cast->next->id);
+    break;
+  case MIR_CAST_TRUNC:
+    fprintf(stream, "trunc %%%u", cast->next->id);
     break;
   case MIR_CAST_INVALID:
     fprintf(stream, "invalid cast %%%u", cast->next->id);
