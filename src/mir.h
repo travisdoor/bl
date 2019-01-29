@@ -48,9 +48,9 @@ typedef struct MirType   MirType;
 typedef struct MirVar    MirVar;
 typedef struct MirFn     MirFn;
 
-typedef union MirGeneric64   MirGeneric64;
-typedef uint8_t *            MirStackPtr;
-typedef struct MirConstValue MirConstValue;
+typedef uint8_t *               MirStackPtr;
+typedef struct MirConstValue    MirConstValue;
+typedef union MirConstValueData MirConstValueData;
 
 typedef enum MirConstValueKind MirConstValueKind;
 typedef enum MirTypeKind       MirTypeKind;
@@ -122,7 +122,7 @@ struct MirFn
   int32_t        block_count;
   int32_t        instr_count;
 
-  MirGeneric64 *exec_ret_value;
+  MirConstValueData *exec_ret_value;
 };
 
 /* TYPE */
@@ -192,22 +192,6 @@ struct MirType
 };
 
 /* VALUE */
-union MirGeneric64
-{
-  int64_t     v_s64;
-  int32_t     v_s32;
-  int16_t     v_s16;
-  int8_t      v_s8;
-  uint64_t    v_u64;
-  uint32_t    v_u32;
-  uint16_t    v_u16;
-  uint8_t     v_u8;
-  double      v_f64;
-  float       v_f32;
-  MirType *   v_type;
-  MirStackPtr v_stack_ptr;
-};
-
 enum MirConstValueKind
 {
   MIR_CV_INVALID,
@@ -338,7 +322,8 @@ struct MirInstrMemberPtr
 enum MirCastOp
 {
   MIR_CAST_INVALID,
-  MIR_CAST_BITCAST
+  MIR_CAST_NOOP,
+  MIR_CAST_BITCAST,
 };
 
 struct MirInstrCast

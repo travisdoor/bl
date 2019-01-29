@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit-MIR Documentation</title>
-<!-- 2019-01-28 Po 17:04 -->
+<!-- 2019-01-29 Út 13:19 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -169,7 +169,7 @@ for the JavaScript code in this tag.
 <li><a href="#sec-4-13">elemptr</a></li>
 <li><a href="#sec-4-14">memberptr</a></li>
 <li><a href="#sec-4-15">addrof</a></li>
-<li><a href="#sec-4-16">cast</a></li>
+<li><a href="#sec-4-16">bitcast, noopcast</a></li>
 </ul>
 </li>
 <li><a href="#sec-5">Special instructions</a>
@@ -997,14 +997,14 @@ Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
 </div>
 
 <div id="outline-container-sec-4-16" class="outline-3">
-<h3 id="sec-4-16">cast</h3>
+<h3 id="sec-4-16">bitcast, noopcast</h3>
 <div class="outline-text-3" id="text-4-16">
 <p>
 Produce casting from one type to other.
 </p>
 
 <pre class="example">
-&lt;T&gt; cast &lt;target&gt; // yields value with casted type
+&lt;T&gt; bitcast|noopcast &lt;target&gt; // yields value with casted type
 </pre>
 
 <p>
@@ -1111,7 +1111,7 @@ void validate_type &lt;src&gt; // yields void
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-28 Po 17:04</p>
+<p class="date">Created: 2019-01-29 Út 13:19</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

@@ -165,7 +165,17 @@ void
 print_instr_cast(MirInstrCast *cast, FILE *stream)
 {
   print_instr_head(&cast->base, stream);
-  fprintf(stream, "cast %%%u", cast->next->id);
+  switch (cast->op) {
+  case MIR_CAST_BITCAST:
+    fprintf(stream, "bitcast %%%u", cast->next->id);
+    break;
+  case MIR_CAST_NOOP:
+    fprintf(stream, "noopcast %%%u", cast->next->id);
+    break;
+  case MIR_CAST_INVALID:
+    fprintf(stream, "unknowncast %%%u", cast->next->id);
+    break;
+  }
 }
 
 void

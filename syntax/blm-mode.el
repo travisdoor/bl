@@ -17,7 +17,8 @@
 (defconst blm-keywords
   '("const"
     "br"
-    "cast"
+    "bitcast"
+    "noopcast"
     "addrof"
     "elemptr"
     "unop"

@@ -275,11 +275,11 @@
 
     Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
     
-** cast
+** bitcast, noopcast
    Produce casting from one type to other.
 
    #+BEGIN_EXAMPLE
-   <T> cast <target> // yields value with casted type
+   <T> bitcast|noopcast <target> // yields value with casted type
    #+END_EXAMPLE
 
     Getting target from the stack:
