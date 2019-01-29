@@ -3361,27 +3361,6 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
   }
 }
 
-/*
- * Stack operations of call instruction and argument ordering on stack
- *
- * pc   program counter (pointer to current instruction)
- * RA   return address (used later for rollback of the stack)
- *
- * call fn (1, 2, 3) 4
- *
- * | stack op | data         | instr |
- * |----------+--------------+-------|
- * | PUSH     | 3            | ?     |
- * | PUSH     | 2            | ?     |
- * | PUSH     | 1            | ?     |
- * | PUSH RA  | pc, prev RA  | call  |
- * | ...      | -            | -     |
- * | POP RA   | -            | ret   |
- * | POP      | -            | ret   |
- * | POP      | -            | ret   |
- * | POP      | -            | ret   |
- * | PUSH     | 4            | ret   |
- */
 void
 exec_instr_call(Context *cnt, MirInstrCall *call)
 {
