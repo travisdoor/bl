@@ -22,6 +22,8 @@
     "zext"
     "sext"
     "trunc"
+    "fptosi"
+    "fptoui"
     "addrof"
     "elemptr"
     "unop"

@@ -178,6 +178,12 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_TRUNC:
     fprintf(stream, "trunc %%%u", cast->next->id);
     break;
+  case MIR_CAST_FPTOSI:
+    fprintf(stream, "fptosi %%%u", cast->next->id);
+    break;
+  case MIR_CAST_FPTOUI:
+    fprintf(stream, "fptoui %%%u", cast->next->id);
+    break;
   case MIR_CAST_INVALID:
     fprintf(stream, "invalid cast %%%u", cast->next->id);
     break;

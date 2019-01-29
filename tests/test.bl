@@ -4,17 +4,19 @@
 
 main :: fn () u32 {
   i : s8  = 10;
-  j : u64 = 10;
+  j : s64 = 10;
   k : s8  = 20;
 
   j = cast(s8) i;
+  float : f32 = 12.5f;
+  j = cast(s64) float;
 
   i_ptr := &i;
   j_ptr := &j;
 
   i_ptr = cast(*s8) j_ptr;
 
-  return i;
+  return j;
 };
 
 putchar :: fn (c: u8) s32 #extern;

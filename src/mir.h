@@ -326,6 +326,8 @@ enum MirCastOp
   MIR_CAST_SEXT,
   MIR_CAST_ZEXT,
   MIR_CAST_TRUNC,
+  MIR_CAST_FPTOSI,
+  MIR_CAST_FPTOUI,
 };
 
 struct MirInstrCast

@@ -1343,6 +1343,21 @@ get_cast_op(MirType *from, MirType *to)
     break;
   }
 
+  case MIR_TYPE_REAL: {
+    /* from real */
+    switch (to->kind) {
+    case MIR_TYPE_INT: {
+      /* to integer */
+      const bool is_to_signed = to->data.integer.is_signed;
+      return is_to_signed ? MIR_CAST_FPTOSI : MIR_CAST_FPTOUI;
+    }
+
+    default:
+      bl_abort("invalid to cast type");
+    }
+    break;
+  }
+
   default:
     bl_abort("invalid from cast type");
   }
@@ -3070,6 +3085,34 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
       tmp.v_uint ^= (mask & (neg << shift));
       ++shift;
     }
+
+    exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_FPTOSI: {
+    /* real to signed integer */
+    MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (src_type->store_size_bytes == sizeof(float))
+      tmp.v_int = (int64_t)tmp.v_float;
+    else
+      tmp.v_int = (int64_t)tmp.v_double;
+
+    exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_FPTOUI: {
+    /* real to signed integer */
+    MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (src_type->store_size_bytes == sizeof(float))
+      tmp.v_uint = (uint64_t)tmp.v_float;
+    else
+      tmp.v_uint = (uint64_t)tmp.v_double;
 
     exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
     break;
