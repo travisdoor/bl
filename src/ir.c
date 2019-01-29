@@ -166,6 +166,14 @@ gen_instr_cast(Context *cnt, MirInstrCast *cast)
     llvm_op = LLVMTrunc;
     break;
 
+  case MIR_CAST_FPTOSI:
+    llvm_op = LLVMFPToSI;
+    break;
+
+  case MIR_CAST_FPTOUI:
+    llvm_op = LLVMFPToUI;
+    break;
+
   default:
     bl_abort("invalid cast type");
   }

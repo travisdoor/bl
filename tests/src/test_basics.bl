@@ -179,6 +179,16 @@
   i_ptr = cast(*s32) j_ptr;
 };
 
+#test "real casting" {
+  float : f32 = 12.5f;
+  j := cast(s64) float;
+  assert(j == 12);
+
+  double : f64 = 12.5;
+  j = cast(s64) double;
+  assert(j == 12);
+};
+
 #test "pointers" {
   i       := 666;
   ptr     := &i;
