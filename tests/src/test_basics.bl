@@ -177,6 +177,9 @@
   j_ptr : *s8;
 
   i_ptr = cast(*s32) j_ptr;
+
+  num := cast(u64) i_ptr;
+  i_ptr = cast(*s32) num;
 };
 
 #test "real casting" {

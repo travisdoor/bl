@@ -18,6 +18,8 @@
   '("const"
     "br"
     "bitcast"
+    "ptrtoint"
+    "inttoptr"
     "noopcast"
     "zext"
     "sext"

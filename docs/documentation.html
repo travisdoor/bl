@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Documentation</title>
-<!-- 2019-01-28 Po 16:31 -->
+<!-- 2019-01-30 St 11:08 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -706,7 +706,7 @@ Example:
 <h4 id="sec-3-4-5"><span class="todo TODO">TODO</span> Slices</h4>
 <div class="outline-text-4" id="text-3-4-5">
 <p>
-Slice is consit of pointer to the first element and element count.
+Slice is consist of pointer to the first element and element count of an array.
 </p>
 </div>
 </div>
@@ -736,8 +736,46 @@ fn ([arguments]) [return type]
 </div>
 </div>
 </div>
-</div>
 
+<div id="outline-container-sec-3-4-7" class="outline-4">
+<h4 id="sec-3-4-7">Type casting</h4>
+<div class="outline-text-4" id="text-3-4-7">
+<p>
+Change type of value to other type. Conventions between integer types is generated implicitly by the compiler.
+</p>
+
+<pre class="example">
+cast(&lt;T&gt;) &lt;expr&gt;
+</pre>
+
+<p>
+Example:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"type cast"</span> {
+<span class="linenr"> 2: </span>  <span class="org-comment">// default type of integer literal is 's32'</span>
+<span class="linenr"> 3: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">666</span>; 
+<span class="linenr"> 4: </span>
+<span class="linenr"> 5: </span>  <span class="org-comment">// type of the integer literal is changed to u64</span>
+<span class="linenr"> 6: </span>  <span class="org-constant">j</span> : <span class="org-type">u64</span> = <span class="org-constant">666</span>;
+<span class="linenr"> 7: </span>
+<span class="linenr"> 8: </span>  <span class="org-comment">// 'j' is implicitly casted to 'u32'</span>
+<span class="linenr"> 9: </span>  <span class="org-constant">k</span> : <span class="org-type">u32</span> = j;
+<span class="linenr">10: </span>
+<span class="linenr">11: </span>  <span class="org-comment">// implicit cast on function call</span>
+<span class="linenr">12: </span>  <span class="org-keyword">fn</span> (num: <span class="org-type">u16</span>) {
+<span class="linenr">13: </span>  } (j);
+<span class="linenr">14: </span>
+<span class="linenr">15: </span>  <span class="org-comment">// explicit cast of 'f32' type to 's32'</span>
+<span class="linenr">16: </span>  <span class="org-variable-name">l </span>:= <span class="org-constant">1</span>.<span class="org-constant">5f</span>;
+<span class="linenr">17: </span>  <span class="org-variable-name">m </span>:= <span class="org-keyword">cast</span>(<span class="org-type">s32</span>) l;
+<span class="linenr">18: </span>};
+</pre>
+</div>
+</div>
+</div>
+</div>
 <div id="outline-container-sec-3-5" class="outline-3">
 <h3 id="sec-3-5">Variables</h3>
 <div class="outline-text-3" id="text-3-5">
@@ -1033,7 +1071,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-28 Po 16:31</p>
+<p class="date">Created: 2019-01-30 St 11:08</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

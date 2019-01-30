@@ -83,7 +83,7 @@
 
 * Function
    #+BEGIN_EXAMPLE
-   @<name> <T> { 
+   @<name> <T> [flags] { 
      [entry block]
    }
    #+END_EXAMPLE
@@ -335,6 +335,30 @@
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | PUSH     | resutlt | result with new type |
+** fptosi
+   Floating point to signed integer cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> fptosi <target> // yields value with casted type
+   #+END_EXAMPLE
+** fptoui
+   Floating point to unsigned integer cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> fptoui <target> // yields value with casted type
+   #+END_EXAMPLE
+** ptrtoint
+   Pointer to integer cast. This cast is noop cast when T has same size as type of the target.
+
+   #+BEGIN_EXAMPLE
+   <T> ptrtoint <target> // yields value with casted type
+   #+END_EXAMPLE
+** inttoptr 
+   Integer to pointer cast. This cast is noop cast when T has same size as type of the target.
+
+   #+BEGIN_EXAMPLE
+   <T> inttoptr <target> // yields value with casted type
+   #+END_EXAMPLE
 
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.

@@ -187,6 +187,12 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_INVALID:
     fprintf(stream, "invalid cast %%%u", cast->next->id);
     break;
+  case MIR_CAST_PTRTOINT:
+    fprintf(stream, "ptrtoint %%%u", cast->next->id);
+    break;
+  case MIR_CAST_INTTOPTR:
+    fprintf(stream, "inttoptr %%%u", cast->next->id);
+    break;
   }
 }
 

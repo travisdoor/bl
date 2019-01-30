@@ -1323,8 +1323,13 @@ get_cast_op(MirType *from, MirType *to)
       }
     }
 
+    case MIR_TYPE_PTR: {
+      /* to ptr */
+      return MIR_CAST_INTTOPTR;
+    }
+
     default:
-      bl_abort("invalid to cast type");
+      return MIR_CAST_INVALID;
     }
     break;
   }
@@ -1337,8 +1342,13 @@ get_cast_op(MirType *from, MirType *to)
       return MIR_CAST_BITCAST;
     }
 
+    case MIR_TYPE_INT: {
+      /* to int */
+      return MIR_CAST_PTRTOINT;
+    }
+
     default:
-      bl_abort("invalid to cast type");
+      return MIR_CAST_INVALID;
     }
     break;
   }
@@ -1353,13 +1363,13 @@ get_cast_op(MirType *from, MirType *to)
     }
 
     default:
-      bl_abort("invalid to cast type");
+      return MIR_CAST_INVALID;
     }
     break;
   }
 
   default:
-    bl_abort("invalid from cast type");
+    return MIR_CAST_INVALID;
   }
 
   return MIR_CAST_INVALID;
@@ -3115,6 +3125,22 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
       tmp.v_uint = (uint64_t)tmp.v_double;
 
     exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_INTTOPTR:
+  case MIR_CAST_PTRTOINT: {
+    /* noop for same sizes */
+    const size_t src_size  = src_type->store_size_bytes;
+    const size_t dest_size = dest_type->store_size_bytes;
+
+    if (src_size != dest_size) {
+      /* trunc or zero extend */
+      MirStackPtr from_ptr = exec_pop_stack(cnt, src_type);
+      exec_read_value(&tmp, from_ptr, src_type);
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    }
+
     break;
   }
 

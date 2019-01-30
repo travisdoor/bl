@@ -15,6 +15,8 @@ main :: fn () u32 {
   j_ptr := &j;
 
   i_ptr = cast(*s8) j_ptr;
+  foo := cast(s32) j_ptr;
+  i_ptr = cast(*s8) foo;
 
   return j;
 };
