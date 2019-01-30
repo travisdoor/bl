@@ -3,27 +3,19 @@
 //#load "std/debug.bl"
 
 main :: fn () u32 {
-  i : s8  = 10;
-  j : s64 = 10;
-  k : s8  = 20;
-
-  j = cast(s8) i;
-  float : f32 = 12.5f;
-  j = cast(s64) float;
-
-  i_ptr := &i;
-  j_ptr := &j;
-
-  i_ptr = cast(*s8) j_ptr;
-  foo := cast(s32) j_ptr;
-  i_ptr = cast(*s8) foo;
-
-  return j;
+  str := "hello world\n";
+  print(str);
+  return 666;
 };
 
-putchar :: fn (c: u8) s32 #extern;
+// array here should not be passed by value
+// -> use slices
+print :: fn (str: [12]u8) {
+  loop i := 0; i < str.len; i += 1 {
+    putchar(str[i]);
+  }
+};
 
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -41,4 +33,3 @@ say_hello :: fn () {
 
 
 putchar :: fn (c: s32) s32 #extern;
-*/

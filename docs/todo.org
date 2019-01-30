@@ -1,7 +1,7 @@
-* Features [40%]
+* Features [60%]
   - [X] Function arguments
   - [X] Loops
-  - [ ] Arrays 
+  - [X] Arrays 
   - [ ] Structures
   - [ ] Enums
     
