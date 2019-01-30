@@ -66,11 +66,12 @@ scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global)
 }
 
 ScopeEntry *
-scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr)
+scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr, bool is_buildin)
 {
   ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
   entry->node       = node;
   entry->instr      = instr;
+  entry->is_buildin = is_buildin;
   return entry;
 }
 

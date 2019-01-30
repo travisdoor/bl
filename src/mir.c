@@ -79,6 +79,7 @@ typedef enum
 {
   BUILDIN_TYPE_NONE = -1,
 
+  BUILDIN_TYPE_TYPE,
   BUILDIN_TYPE_S8,
   BUILDIN_TYPE_S16,
   BUILDIN_TYPE_S32,
@@ -140,10 +141,8 @@ typedef struct
     DCCallVM *vm;
   } dl;
 
-  struct
+  struct BuildinTypes
   {
-    BHashTable *table;
-
     MirType *entry_type;
     MirType *entry_s8;
     MirType *entry_s16;
@@ -172,8 +171,7 @@ typedef struct
 } Context;
 
 static const char *buildin_type_names[_BUILDIN_TYPE_COUNT] = {
-    "s8", "s16", "s32", "s64", "u8", "u16", "u32", "u64", "usize", "bool", "f32", "f64"};
-
+    "type", "s8", "s16", "s32", "s64", "u8", "u16", "u32", "u64", "usize", "bool", "f32", "f64"};
 static const char *buildin_spec_names[_BUILDIN_SPEC_COUNT]  = {"main", "len"};
 static uint64_t    buildin_spec_hashes[_BUILDIN_SPEC_COUNT] = {0};
 
@@ -283,6 +281,9 @@ create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
 
 static MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
+
+static MirInstr *
+create_instr_const_type(Context *cnt, Ast *node, MirType *type);
 
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
@@ -626,6 +627,9 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret);
 static void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
+static void
+exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+
 static bool
 exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValueData *out_value);
 
@@ -899,50 +903,10 @@ is_buildin_spec(Ast *ident, BuildinSpecial kind)
   return ident->data.ident.hash == buildin_spec_hashes[kind];
 }
 
-static inline BuildinType
-is_buildin_type(Context *cnt, const uint64_t hash)
-{
-  if (!bo_htbl_has_key(cnt->buildin_types.table, hash)) return BUILDIN_TYPE_NONE;
-  return bo_htbl_at(cnt->buildin_types.table, hash, BuildinType);
-}
-
 static inline bool
 get_block_terminator(MirInstrBlock *block)
 {
   return block->terminal;
-}
-
-static inline MirType *
-get_buildin(Context *cnt, BuildinType id)
-{
-  switch (id) {
-  case BUILDIN_TYPE_S8:
-    return cnt->buildin_types.entry_s8;
-  case BUILDIN_TYPE_S16:
-    return cnt->buildin_types.entry_s16;
-  case BUILDIN_TYPE_S32:
-    return cnt->buildin_types.entry_s32;
-  case BUILDIN_TYPE_S64:
-    return cnt->buildin_types.entry_s64;
-  case BUILDIN_TYPE_U8:
-    return cnt->buildin_types.entry_u8;
-  case BUILDIN_TYPE_U16:
-    return cnt->buildin_types.entry_u16;
-  case BUILDIN_TYPE_U32:
-    return cnt->buildin_types.entry_u32;
-  case BUILDIN_TYPE_U64:
-    return cnt->buildin_types.entry_u64;
-  case BUILDIN_TYPE_F32:
-    return cnt->buildin_types.entry_f32;
-  case BUILDIN_TYPE_F64:
-    return cnt->buildin_types.entry_f64;
-  case BUILDIN_TYPE_USIZE:
-    return cnt->buildin_types.entry_usize;
-  case BUILDIN_TYPE_BOOL:
-    return cnt->buildin_types.entry_bool;
-  default:
-    bl_abort("invalid buildin type");
-  }
 }
 
 static inline void
@@ -980,6 +944,23 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 }
 
 static inline ScopeEntry *
+provide_buildin(Context *cnt, uint64_t hash, MirInstr *instr)
+{
+  /* all buildin declarations are inserted into the global scope */
+  Scope *scope = cnt->assembly->gscope;
+  assert(scope);
+
+#if BL_DEBUG
+  ScopeEntry *collision = scope_lookup(scope, hash, false);
+  assert(collision == NULL);
+#endif
+
+  ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, NULL, instr, true);
+  scope_insert(scope, hash, entry);
+  return entry;
+}
+
+static inline ScopeEntry *
 provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
 {
   assert(ident);
@@ -999,7 +980,7 @@ provide(Context *cnt, Ast *ident, MirInstr *instr, bool in_tree)
     return NULL;
   }
 
-  ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, ident, instr);
+  ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, ident, instr, false);
   scope_insert(scope, key, entry);
   return entry;
 }
@@ -1055,6 +1036,7 @@ is_load_needed(MirInstr *instr)
   case MIR_INSTR_TYPE_FN:
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_CAST:
+  case MIR_INSTR_DECL_REF:
     return false;
   default:
     break;
@@ -1078,7 +1060,7 @@ create_type_type(Context *cnt)
 {
   MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind    = MIR_TYPE_TYPE;
-  tmp->name    = "type";
+  tmp->name    = buildin_type_names[BUILDIN_TYPE_TYPE];
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
@@ -1781,13 +1763,19 @@ append_instr_const_bool(Context *cnt, Ast *node, bool val)
 }
 
 MirInstr *
-append_instr_const_type(Context *cnt, Ast *node, MirType *type)
+create_instr_const_type(Context *cnt, Ast *node, MirType *type)
 {
   MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime                = true;
   tmp->const_value.type        = cnt->buildin_types.entry_type;
   tmp->const_value.data.v_type = type;
+  return tmp;
+}
 
+MirInstr *
+append_instr_const_type(Context *cnt, Ast *node, MirType *type)
+{
+  MirInstr *tmp = create_instr_const_type(cnt, node, type);
   push_into_curr_block(cnt, tmp);
   return tmp;
 }
@@ -1840,9 +1828,11 @@ append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
   assert(src && dest);
   ref_instr(src);
   ref_instr(dest);
-  MirInstrStore *tmp = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
-  tmp->src           = src;
-  tmp->dest          = dest;
+  MirInstrStore *tmp         = create_instr(cnt, MIR_INSTR_STORE, node, MirInstrStore *);
+  tmp->base.const_value.type = cnt->buildin_types.entry_void;
+  tmp->src                   = src;
+  tmp->dest                  = dest;
+
   ref_instr(&tmp->base);
 
   push_into_curr_block(cnt, &tmp->base);
@@ -2512,8 +2502,6 @@ analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
                 "expected type");
   }
 
-  assert(src->const_value.data.v_type);
-
   erase_unused_instr(cnt, &validate->base);
   return true;
 }
@@ -2611,10 +2599,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     var->alloc_type = resolved_type;
   }
 
-  /* TODO: reference can be created later during analyze pass */
-  /* TODO: reference can be created later during analyze pass */
-  /* TODO: reference can be created later during analyze pass */
-  /* TODO: reference can be created later during analyze pass */
   if (decl->base.ref_count == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, decl->base.node->src, BUILDER_CUR_WORD,
                 "unused declaration");
@@ -2715,15 +2699,14 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   MirInstr *src = store->src;
   assert(src);
 
-  /* store implicitly yields void const_value */
-  store->base.const_value.type = cnt->buildin_types.entry_void;
-
   /* destination is declref -> we replace reference to true declaration */
+  /*
   if (dest->kind == MIR_INSTR_DECL_REF) {
     store->dest = ((MirInstrDeclRef *)dest)->scope_entry->instr;
     assert(store->dest && "invalid destination for store instruction");
     erase_instr(dest);
   }
+  */
 
   return true;
 }
@@ -2768,7 +2751,6 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
 
   /* skip already analyzed instructions */
   if (instr->analyzed) return instr;
-  instr->analyzed = true;
   bool state;
 
   switch (instr->kind) {
@@ -2776,6 +2758,11 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     state = analyze_instr_block(cnt, (MirInstrBlock *)instr, comptime);
     break;
   case MIR_INSTR_FN_PROTO:
+    if (cnt->verbose_pre) {
+      /* Print verbose information before analyze */
+      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
+    }
+
     state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, comptime);
     break;
   case MIR_INSTR_DECL_VAR:
@@ -2849,6 +2836,7 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     return false;
   }
 
+  instr->analyzed = true;
   return state;
 }
 
@@ -2857,14 +2845,6 @@ analyze(Context *cnt)
 {
   BArray *  stack = cnt->analyze_stack;
   MirInstr *instr;
-
-  if (cnt->verbose_pre) {
-    barray_foreach(stack, instr)
-    {
-      /* Print verbose information before analyze */
-      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
-    }
-  }
 
   barray_foreach(stack, instr)
   {
@@ -2875,7 +2855,7 @@ analyze(Context *cnt)
   if (cnt->verbose_post) {
     barray_foreach(stack, instr)
     {
-      /* Print verbose information before analyze */
+      /* Print verbose information after analyze */
       if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
     }
   }
@@ -3019,6 +2999,9 @@ exec_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_ELEM_PTR:
     exec_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+    break;
+  case MIR_INSTR_DECL_REF:
+    exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
     break;
 
   default:
@@ -3245,6 +3228,18 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 }
 
 void
+exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+{
+  MirInstr *decl = ref->scope_entry->instr;
+  MirType * type = ref->base.const_value.type;
+  assert(decl && type);
+
+  assert(decl->kind == MIR_INSTR_CONST && "TODO");
+
+  exec_push_stack(cnt, &decl->const_value.data, type);
+}
+
+void
 exec_instr_load(Context *cnt, MirInstrLoad *load)
 {
   /* pop source from stack or load directly when src is declaration, push on to stack dereferenced
@@ -3366,7 +3361,7 @@ exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 
   MirConstValueData tmp = {0};
   bl_unimplemented;
-  //tmp.v_type            = create_type_slice(cnt, elem_type);
+  // tmp.v_type            = create_type_slice(cnt, elem_type);
   exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
 }
 
@@ -4253,14 +4248,17 @@ ast_decl_entity(Context *cnt, Ast *entity)
     MirFn *        fn         = get_current_fn(cnt);
     set_cursor_block(cnt, fn->first_block);
     MirInstr *decl = append_instr_decl_var(cnt, type, ast_name);
-    set_cursor_block(cnt, prev_block);
 
     if (!is_ident_in_gscope(ast_name))
       provide(cnt, ast_name, decl, false);
     else
       provide_into_existing_scope_entry(cnt, ast_name, decl);
 
-    /* initialize const_value */
+    if (entity->data.decl_entity.mutable) {
+      set_cursor_block(cnt, prev_block);
+    }
+
+    /* initialize value */
     MirInstr *value = ast(cnt, ast_value);
     if (value) {
       if (!type) {
@@ -4268,6 +4266,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
       }
       result = append_instr_store(cnt, ast_value, value, decl);
     }
+    set_cursor_block(cnt, prev_block);
 
     if (is_buildin_spec(ast_name, BUILDIN_SPEC_MAIN)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ast_name->src,
@@ -4291,19 +4290,21 @@ ast_decl_arg(Context *cnt, Ast *arg)
 MirInstr *
 ast_type_ref(Context *cnt, Ast *type_ref)
 {
-  MirInstr *result  = NULL;
-  Ast *     ast_ref = type_ref->data.type_ref.ident;
-  assert(ast_ref);
+  Ast *ident = type_ref->data.type_ref.ident;
+  assert(ident);
 
-  BuildinType id = is_buildin_type(cnt, ast_ref->data.ident.hash);
-  if (id != BUILDIN_TYPE_NONE) {
-    /* buildin primitive !!! */
-    result = append_instr_const_type(cnt, ast_ref, get_buildin(cnt, id));
+  /* symbol lookup */
+  Scope *scope = ident->data.ident.scope;
+  assert(scope);
+  ScopeEntry *scope_entry = scope_lookup(scope, ident->data.ident.hash, true);
+  if (!scope_entry) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ident->src, BUILDER_CUR_WORD,
+                "unknown type");
   }
 
-  assert(result && "unimplemented type ref resolving");
-  append_instr_validate_type(cnt, result);
-  return result;
+  MirInstr *ref = append_instr_decl_ref(cnt, ident, scope_entry);
+  append_instr_validate_type(cnt, ref);
+  return ref;
 }
 
 MirInstr *
@@ -4442,8 +4443,6 @@ ast(Context *cnt, Ast *node)
     return ast_type_slice(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
-  case AST_TYPE_TYPE:
-    return ast_type_type(cnt, node);
   case AST_EXPR_ADDROF:
     return ast_expr_addrof(cnt, node);
   case AST_EXPR_CAST:
@@ -4695,49 +4694,50 @@ execute_test_cases(Context *cnt)
 void
 init_buildins(Context *cnt)
 {
+#define provide_type(_id, _type)                                                                   \
+  {                                                                                                \
+    const uint64_t hash = bo_hash_from_str(buildin_type_names[(_id)]);                             \
+    MirInstr *     tmp  = create_instr_const_type(cnt, NULL, (_type));                             \
+    tmp->analyzed       = true;                                                                    \
+    provide_buildin(cnt, hash, tmp);                                                               \
+  }
+
   { // TYPES
-    uint64_t tmp;
-    cnt->buildin_types.table = bo_htbl_new(sizeof(BuildinType), _BUILDIN_TYPE_COUNT);
-    for (int32_t i = 0; i < _BUILDIN_TYPE_COUNT; ++i) {
-      tmp = bo_hash_from_str(buildin_type_names[i]);
-      bo_htbl_insert(cnt->buildin_types.table, tmp, i);
-    }
+    struct BuildinTypes *bt = &cnt->buildin_types;
+    bt->entry_type          = create_type_type(cnt);
+    bt->entry_void          = create_type_void(cnt);
 
-    cnt->buildin_types.entry_type = create_type_type(cnt);
-    cnt->buildin_types.entry_void = create_type_void(cnt);
+    bt->entry_s8    = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S8], 8, true);
+    bt->entry_s16   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S16], 16, true);
+    bt->entry_s32   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
+    bt->entry_s64   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S64], 64, true);
+    bt->entry_u8    = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U8], 8, false);
+    bt->entry_u16   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
+    bt->entry_u32   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
+    bt->entry_u64   = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U64], 64, false);
+    bt->entry_usize = create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
+    bt->entry_bool  = create_type_bool(cnt);
+    bt->entry_f32   = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F32], 32);
+    bt->entry_f64   = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F64], 64);
 
-    cnt->buildin_types.entry_s8 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S8], 8, true);
-    cnt->buildin_types.entry_s16 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S16], 16, true);
-    cnt->buildin_types.entry_s32 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S32], 32, true);
-    cnt->buildin_types.entry_s64 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_S64], 64, true);
+    bt->entry_u8_ptr          = create_type_ptr(cnt, bt->entry_u8);
+    bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL);
+    bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL);
 
-    cnt->buildin_types.entry_u8 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U8], 8, false);
-    cnt->buildin_types.entry_u16 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U16], 16, false);
-    cnt->buildin_types.entry_u32 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U32], 32, false);
-    cnt->buildin_types.entry_u64 =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_U64], 64, false);
-    cnt->buildin_types.entry_usize =
-        create_type_int(cnt, buildin_type_names[BUILDIN_TYPE_USIZE], 64, false);
-
-    cnt->buildin_types.entry_bool = create_type_bool(cnt);
-
-    cnt->buildin_types.entry_f32 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F32], 32);
-    cnt->buildin_types.entry_f64 = create_type_real(cnt, buildin_type_names[BUILDIN_TYPE_F64], 64);
-
-    cnt->buildin_types.entry_u8_ptr = create_type_ptr(cnt, cnt->buildin_types.entry_u8);
-
-    cnt->buildin_types.entry_resolve_type_fn =
-        create_type_fn(cnt, cnt->buildin_types.entry_type, NULL);
-
-    cnt->buildin_types.entry_test_case_fn =
-        create_type_fn(cnt, cnt->buildin_types.entry_void, NULL);
+    /* register buildins */
+    provide_type(BUILDIN_TYPE_TYPE, bt->entry_type);
+    provide_type(BUILDIN_TYPE_S8, bt->entry_s8);
+    provide_type(BUILDIN_TYPE_S16, bt->entry_s16);
+    provide_type(BUILDIN_TYPE_S32, bt->entry_s32);
+    provide_type(BUILDIN_TYPE_S64, bt->entry_s64);
+    provide_type(BUILDIN_TYPE_U8, bt->entry_u8);
+    provide_type(BUILDIN_TYPE_U16, bt->entry_u16);
+    provide_type(BUILDIN_TYPE_U32, bt->entry_u32);
+    provide_type(BUILDIN_TYPE_U64, bt->entry_u64);
+    provide_type(BUILDIN_TYPE_USIZE, bt->entry_usize);
+    provide_type(BUILDIN_TYPE_BOOL, bt->entry_bool);
+    provide_type(BUILDIN_TYPE_F32, bt->entry_f32);
+    provide_type(BUILDIN_TYPE_F64, bt->entry_f64);
   }
 
   { // SPECIAL
@@ -4745,6 +4745,8 @@ init_buildins(Context *cnt)
       buildin_spec_hashes[i] = bo_hash_from_str(buildin_spec_names[i]);
     }
   }
+
+#undef provide_type
 }
 
 int
@@ -4873,7 +4875,6 @@ mir_run(Builder *builder, Assembly *assembly)
   if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
   if (!builder->errorc && builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
 
-  bo_unref(cnt.buildin_types.table);
   bo_unref(cnt.analyze_stack);
   bo_unref(cnt.test_cases);
 

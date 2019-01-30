@@ -5,9 +5,12 @@
   - [ ] Structures
   - [ ] Enums
     
-
 * Bugs [50%]
   - [X] In function body does can be declarations in any order!!!
   - [ ] Local functions cannot produce self-call due to symbol lookup 
     
   
+* Agenda [0%]
+  - [ ] register buildin types into global scope as constants
+  - [ ] remove AST_TYPE_TYPE node 
+  - [ ] solve type defs

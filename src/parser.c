@@ -135,9 +135,6 @@ static Ast *
 parse_type_ref(Context *cnt);
 
 static Ast *
-parse_type_type(Context *cnt);
-
-static Ast *
 parse_type_arr(Context *cnt);
 
 static Ast *
@@ -313,7 +310,7 @@ provide_gscope(Context *cnt, Ast *ident, bool in_tree)
     return;
   }
 
-  ScopeEntry *entry = scope_create_entry(cnt->scope_arenas, ident, NULL);
+  ScopeEntry *entry = scope_create_entry(cnt->scope_arenas, ident, NULL, false);
   scope_insert(cnt->scope, key, entry);
 }
 
@@ -1016,15 +1013,6 @@ parse_type_ref(Context *cnt)
 }
 
 Ast *
-parse_type_type(Context *cnt)
-{
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPE);
-  if (!tok_begin) return NULL;
-
-  return ast_create_node(cnt->ast_arena, AST_TYPE_TYPE, tok_begin);
-}
-
-Ast *
 parse_type_arr(Context *cnt)
 {
   /* slice or array??? */
@@ -1074,7 +1062,6 @@ parse_type(Context *cnt)
   Ast *type = NULL;
 
   type = parse_type_ptr(cnt);
-  if (!type) type = parse_type_type(cnt);
   if (!type) type = parse_type_fn(cnt, false);
   if (!type) type = parse_type_struct(cnt);
   if (!type) type = parse_type_enum(cnt);

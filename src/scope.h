@@ -49,6 +49,7 @@ typedef struct ScopeEntry
   struct Scope *   parent_scope;
   struct Ast *     node;
   struct MirInstr *instr;
+  bool             is_buildin;
 } ScopeEntry;
 
 typedef struct Scope
@@ -68,7 +69,7 @@ Scope *
 scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
 
 ScopeEntry *
-scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr);
+scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr, bool is_buildin);
 
 void
 scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);

@@ -2,8 +2,9 @@
 
 //#load "std/debug.bl"
 
-main :: fn () u32 {
-  T: type : s32;
+main :: fn () s32 {
+  T : type : s32;
+  i := 10 + 20;
   return 666;
 };
 
@@ -22,6 +23,8 @@ print :: fn (str: []u8) {
   j: u8
 };*/
 
+
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -38,4 +41,6 @@ say_hello :: fn () {
 };
 
 
+
 putchar :: fn (c: s32) s32 #extern;
+*/

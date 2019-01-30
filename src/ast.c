@@ -133,8 +133,6 @@ ast_get_name(const Ast *n)
     return "TypeStruct";
   case AST_TYPE_ENUM:
     return "TypeEnum";
-  case AST_TYPE_TYPE:
-    return "TypeType";
   case AST_TYPE_PTR:
     return "TypePtr";
   case AST_EXPR_TYPE:
