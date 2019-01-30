@@ -65,6 +65,7 @@ typedef enum
   AST_TYPE_TYPE,
   AST_TYPE_REF,
   AST_TYPE_ARR,
+  AST_TYPE_SLICE,
   AST_TYPE_FN,
   AST_TYPE_STRUCT,
   AST_TYPE_ENUM,
@@ -226,6 +227,11 @@ struct AstTypeArr
   Ast *len;
 };
 
+struct AstTypeSlice
+{
+  Ast *elem_type;
+};
+
 struct AstTypeFn
 {
   Ast *   ret_type;
@@ -327,9 +333,9 @@ struct AstExprCall
 
 struct AstExprMember
 {
-  Ast *      ident;
-  Ast *      next;
-  int        i;
+  Ast *ident;
+  Ast *next;
+  int  i;
 };
 
 struct AstExprElem
@@ -388,6 +394,7 @@ struct Ast
     struct AstDeclVariant   decl_variant;
     struct AstTypeRef       type_ref;
     struct AstTypeArr       type_arr;
+    struct AstTypeSlice     type_slice;
     struct AstTypeFn        type_fn;
     struct AstTypeStruct    type_strct;
     struct AstTypeEnum      type_enm;

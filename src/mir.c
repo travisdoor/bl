@@ -70,6 +70,7 @@ union _MirInstr
   MirInstrMemberPtr    member_ptr;
   MirInstrAddrOf       addrof;
   MirInstrTypeArray    type_array;
+  MirInstrTypeSlice    type_slice;
   MirInstrTypePtr      type_ptr;
   MirInstrCast         cast;
 };
@@ -316,6 +317,9 @@ static MirInstr *
 append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *len);
 
 static MirInstr *
+append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type);
+
+static MirInstr *
 append_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *dest);
 
 static MirInstr *
@@ -416,10 +420,16 @@ static MirInstr *
 ast_type_ref(Context *cnt, Ast *type_ref);
 
 static MirInstr *
+ast_type_type(Context *cnt, Ast *type_type);
+
+static MirInstr *
 ast_type_fn(Context *cnt, Ast *type_fn);
 
 static MirInstr *
 ast_type_arr(Context *cnt, Ast *type_arr);
+
+static MirInstr *
+ast_type_slice(Context *cnt, Ast *type_slice);
 
 static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
@@ -606,6 +616,9 @@ exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
 
 static void
 exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr);
+
+static void
+exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static void
 exec_instr_ret(Context *cnt, MirInstrRet *ret);
@@ -1506,6 +1519,19 @@ append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *
 
   ref_instr(elem_type);
   ref_instr(len);
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type)
+{
+  MirInstrTypeSlice *tmp     = create_instr(cnt, MIR_INSTR_TYPE_SLICE, node, MirInstrTypeSlice *);
+  tmp->base.const_value.type = cnt->buildin_types.entry_type;
+  tmp->base.comptime         = true;
+  tmp->elem_type             = elem_type;
+
+  ref_instr(elem_type);
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -2967,6 +2993,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_ARRAY:
     exec_instr_type_array(cnt, (MirInstrTypeArray *)instr);
     break;
+  case MIR_INSTR_TYPE_SLICE:
+    exec_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
+    break;
   case MIR_INSTR_DECL_VAR:
     exec_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
     break;
@@ -3325,6 +3354,19 @@ exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   MirConstValueData tmp = {0};
   tmp.v_type            = create_type_array(cnt, elem_type, len.v_uint);
 
+  exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
+}
+
+void
+exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
+{
+  /* pop elm type */
+  MirType *elem_type = *exec_pop_stack_as(cnt, type_slice->elem_type->const_value.type, MirType **);
+  assert(elem_type);
+
+  MirConstValueData tmp = {0};
+  bl_unimplemented;
+  //tmp.v_type            = create_type_slice(cnt, elem_type);
   exec_push_stack(cnt, &tmp, cnt->buildin_types.entry_type);
 }
 
@@ -4265,6 +4307,12 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 }
 
 MirInstr *
+ast_type_type(Context *cnt, Ast *type_type)
+{
+  bl_unimplemented;
+}
+
+MirInstr *
 ast_type_fn(Context *cnt, Ast *type_fn)
 {
   Ast *   ast_ret_type  = type_fn->data.type_fn.ret_type;
@@ -4306,6 +4354,16 @@ ast_type_arr(Context *cnt, Ast *type_arr)
   MirInstr *len       = ast(cnt, ast_len);
   MirInstr *elem_type = ast(cnt, ast_elem_type);
   return append_instr_type_array(cnt, type_arr, elem_type, len);
+}
+
+MirInstr *
+ast_type_slice(Context *cnt, Ast *type_slice)
+{
+  Ast *ast_elem_type = type_slice->data.type_arr.elem_type;
+  assert(ast_elem_type);
+
+  MirInstr *elem_type = ast(cnt, ast_elem_type);
+  return append_instr_type_slice(cnt, type_slice, elem_type);
 }
 
 MirInstr *
@@ -4379,8 +4437,12 @@ ast(Context *cnt, Ast *node)
     return ast_type_fn(cnt, node);
   case AST_TYPE_ARR:
     return ast_type_arr(cnt, node);
+  case AST_TYPE_SLICE:
+    return ast_type_slice(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
+  case AST_TYPE_TYPE:
+    return ast_type_type(cnt, node);
   case AST_EXPR_ADDROF:
     return ast_expr_addrof(cnt, node);
   case AST_EXPR_CAST:
@@ -4458,6 +4520,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrTypeFn";
   case MIR_INSTR_TYPE_ARRAY:
     return "InstrTypeArray";
+  case MIR_INSTR_TYPE_SLICE:
+    return "InstrTypeSlice";
   case MIR_INSTR_TRY_INFER:
     return "InstrTryInfer";
   case MIR_INSTR_COND_BR:

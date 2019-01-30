@@ -41,22 +41,13 @@
 struct Assembly;
 struct Builder;
 
-typedef ptrdiff_t MirRelativeStackPtr;
-
-typedef struct MirModule MirModule;
-typedef struct MirType   MirType;
-typedef struct MirVar    MirVar;
-typedef struct MirFn     MirFn;
-
-typedef uint8_t *               MirStackPtr;
-typedef struct MirConstValue    MirConstValue;
-typedef union MirConstValueData MirConstValueData;
-
-typedef enum MirConstValueKind MirConstValueKind;
-typedef enum MirTypeKind       MirTypeKind;
-typedef enum MirInstrKind      MirInstrKind;
-typedef enum MirCastOp         MirCastOp;
-
+typedef ptrdiff_t                   MirRelativeStackPtr;
+typedef uint8_t *                   MirStackPtr;
+typedef struct MirModule            MirModule;
+typedef struct MirType              MirType;
+typedef struct MirVar               MirVar;
+typedef struct MirFn                MirFn;
+typedef struct MirConstValue        MirConstValue;
 typedef struct MirInstr             MirInstr;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
 typedef struct MirInstrBlock        MirInstrBlock;
@@ -78,10 +69,16 @@ typedef struct MirInstrElemPtr      MirInstrElemPtr;
 typedef struct MirInstrMemberPtr    MirInstrMemberPtr;
 typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrTypeArray    MirInstrTypeArray;
+typedef struct MirInstrTypeSlice    MirInstrTypeSlice;
 typedef struct MirInstrTypePtr      MirInstrTypePtr;
 typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
 typedef struct MirInstrCast         MirInstrCast;
+typedef enum MirConstValueKind      MirConstValueKind;
+typedef enum MirTypeKind            MirTypeKind;
+typedef enum MirInstrKind           MirInstrKind;
+typedef enum MirCastOp              MirCastOp;
+typedef union MirConstValueData     MirConstValueData;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -137,6 +134,7 @@ enum MirTypeKind
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
   MIR_TYPE_ARRAY,
+  MIR_TYPE_SLICE,
   MIR_TYPE_NULL,
 };
 
@@ -245,6 +243,7 @@ enum MirInstrKind
   MIR_INSTR_TYPE_FN,
   MIR_INSTR_TYPE_PTR,
   MIR_INSTR_TYPE_ARRAY,
+  MIR_INSTR_TYPE_SLICE,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
@@ -428,6 +427,13 @@ struct MirInstrTypeArray
 
   MirInstr *elem_type;
   MirInstr *len;
+};
+
+struct MirInstrTypeSlice
+{
+  MirInstr base;
+
+  MirInstr *elem_type;
 };
 
 struct MirInstrCall

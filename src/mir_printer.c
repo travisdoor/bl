@@ -94,6 +94,9 @@ static void
 print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream);
 
 static void
+print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream);
+
+static void
 print_instr_block(MirInstrBlock *block, FILE *stream);
 
 static void
@@ -159,6 +162,13 @@ print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
 {
   print_instr_head(&type_array->base, stream);
   fprintf(stream, "const [%%%u]%%%u", type_array->len->id, type_array->elem_type->id);
+}
+
+void
+print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
+{
+  print_instr_head(&type_slice->base, stream);
+  fprintf(stream, "const []%%%u", type_slice->elem_type->id);
 }
 
 void
@@ -502,6 +512,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_ARRAY:
     print_instr_type_array((MirInstrTypeArray *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_SLICE:
+    print_instr_type_slice((MirInstrTypeSlice *)instr, stream);
     break;
   case MIR_INSTR_TRY_INFER:
     print_instr_try_infer((MirInstrTryInfer *)instr, stream);

@@ -125,12 +125,16 @@ ast_get_name(const Ast *n)
     return "TypeRef";
   case AST_TYPE_ARR:
     return "TypeArr";
+  case AST_TYPE_SLICE:
+    return "TypeSlice";
   case AST_TYPE_FN:
     return "TypeFn";
   case AST_TYPE_STRUCT:
     return "TypeStruct";
   case AST_TYPE_ENUM:
     return "TypeEnum";
+  case AST_TYPE_TYPE:
+    return "TypeType";
   case AST_TYPE_PTR:
     return "TypePtr";
   case AST_EXPR_TYPE:

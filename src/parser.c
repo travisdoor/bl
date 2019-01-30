@@ -141,6 +141,9 @@ static Ast *
 parse_type_arr(Context *cnt);
 
 static Ast *
+parse_type_slice(Context *cnt);
+
+static Ast *
 parse_type_fn(Context *cnt, bool named_args);
 
 static Ast *
@@ -380,13 +383,17 @@ parse_decl_member(Context *cnt, bool type_only, int32_t order)
     type = parse_type(cnt);
   } else {
     name = parse_ident(cnt);
+    if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src, BUILDER_CUR_AFTER,
+                  "expected semicolon after struct member name");
+    }
     type = parse_type(cnt);
   }
 
   if (!type && !name) return NULL;
-  Ast *mem                    = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
-  mem->data.decl.type         = type;
-  mem->data.decl.name         = name;
+  Ast *mem            = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
+  mem->data.decl.type = type;
+  mem->data.decl.name = name;
 
   return mem;
 }
@@ -660,11 +667,11 @@ parse_expr_primary(Context *cnt)
   if ((expr = parse_expr_ref(cnt))) return expr;
   if ((expr = parse_expr_lit(cnt))) return expr;
   if ((expr = parse_expr_lit_fn(cnt))) return expr;
+  if ((expr = parse_expr_type(cnt))) return expr;
   if ((expr = parse_expr_null(cnt))) return expr;
 
   /*
   if ((expr = parse_expr_run(cnt))) return expr;
-  if ((expr = parse_expr_type(cnt))) return expr;
   */
 
   return NULL;
@@ -705,15 +712,6 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_deref(cnt))) return expr;
   if ((expr = parse_expr_addrof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
-
-  /*if ((expr = parse_expr_null(cnt))) goto done;
-  if ((expr = parse_expr_run(cnt))) goto done;
-  if ((expr = parse_expr_lit_fn(cnt))) goto done;
-  if ((expr = parse_expr_type(cnt))) goto done;
-  if ((expr = parse_expr_elem(cnt, op))) goto done;
-  if ((expr = parse_expr_lit(cnt))) goto done;
-  if ((expr = parse_expr_ref(cnt))) goto done;*/
-
   return NULL;
 }
 
@@ -1029,11 +1027,17 @@ parse_type_type(Context *cnt)
 Ast *
 parse_type_arr(Context *cnt)
 {
+  /* slice or array??? */
+  if (tokens_peek(cnt->tokens)->sym == SYM_LBRACKET &&
+      tokens_peek_2nd(cnt->tokens)->sym == SYM_RBRACKET)
+    return NULL;
+
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
   if (!tok_begin) return NULL;
 
   Ast *arr               = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin);
   arr->data.type_arr.len = parse_expr(cnt);
+  assert(arr->data.type_arr.len);
 
   Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
   if (!tok_end) {
@@ -1047,6 +1051,24 @@ parse_type_arr(Context *cnt)
 }
 
 Ast *
+parse_type_slice(Context *cnt)
+{
+  /* slice or array??? []<type> */
+  if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
+  if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
+
+  /* eat [] */
+  Token *tok_begin = tokens_consume(cnt->tokens);
+  tokens_consume(cnt->tokens);
+
+  Ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_SLICE, tok_begin);
+
+  slice->data.type_slice.elem_type = parse_type(cnt);
+  assert(slice->data.type_slice.elem_type);
+  return slice;
+}
+
+Ast *
 parse_type(Context *cnt)
 {
   Ast *type = NULL;
@@ -1057,6 +1079,7 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_struct(cnt);
   if (!type) type = parse_type_enum(cnt);
   if (!type) type = parse_type_arr(cnt);
+  if (!type) type = parse_type_slice(cnt);
   if (!type) type = parse_type_ref(cnt);
 
   return type;
@@ -1131,7 +1154,7 @@ parse_type_struct(Context *cnt)
   type_struct->data.type_strct.raw = false;
   type_struct->data.type_strct.members = bo_array_new(sizeof(Ast *));
 
-  /* parse arg types */
+  /* parse members */
   bool       rq = false;
   Ast *      tmp;
   const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||

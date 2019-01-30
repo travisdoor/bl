@@ -3,18 +3,24 @@
 //#load "std/debug.bl"
 
 main :: fn () u32 {
-  str := "hello world\n";
-  print(str);
+  T: type;
   return 666;
 };
 
 // array here should not be passed by value
 // -> use slices
-print :: fn (str: [12]u8) {
+/*
+print :: fn (str: []u8) {
   loop i := 0; i < str.len; i += 1 {
     putchar(str[i]);
   }
 };
+*/
+
+/*Data : type : struct {
+  i: s32,
+  j: u8
+};*/
 
 say_hello :: fn () {
   putchar(72);
