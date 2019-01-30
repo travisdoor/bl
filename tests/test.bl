@@ -3,7 +3,7 @@
 //#load "std/debug.bl"
 
 main :: fn () u32 {
-  T: type;
+  T: type : s32;
   return 666;
 };
 

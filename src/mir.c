@@ -4309,7 +4309,8 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 MirInstr *
 ast_type_type(Context *cnt, Ast *type_type)
 {
-  bl_unimplemented;
+  MirType *type = create_type_type(cnt);
+  return append_instr_const_type(cnt, type_type, type);
 }
 
 MirInstr *
