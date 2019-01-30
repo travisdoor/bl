@@ -59,6 +59,9 @@ static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
+gen_instr_cast(Context *cnt, MirInstrCast *cast);
+
+static void
 gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
 static void
@@ -136,6 +139,54 @@ void
 gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
+}
+
+void
+gen_instr_cast(Context *cnt, MirInstrCast *cast)
+{
+  LLVMValueRef llvm_src       = cast->next->llvm_value;
+  LLVMTypeRef  llvm_dest_type = cast->base.const_value.type->llvm_type;
+  LLVMOpcode   llvm_op;
+  assert(llvm_src && llvm_dest_type);
+
+  switch (cast->op) {
+  case MIR_CAST_BITCAST:
+    llvm_op = LLVMBitCast;
+    break;
+
+  case MIR_CAST_SEXT:
+    llvm_op = LLVMSExt;
+    break;
+
+  case MIR_CAST_ZEXT:
+    llvm_op = LLVMZExt;
+    break;
+
+  case MIR_CAST_TRUNC:
+    llvm_op = LLVMTrunc;
+    break;
+
+  case MIR_CAST_FPTOSI:
+    llvm_op = LLVMFPToSI;
+    break;
+
+  case MIR_CAST_FPTOUI:
+    llvm_op = LLVMFPToUI;
+    break;
+
+  case MIR_CAST_PTRTOINT:
+    llvm_op = LLVMPtrToInt;
+    break;
+
+  case MIR_CAST_INTTOPTR:
+    llvm_op = LLVMIntToPtr;
+    break;
+
+  default:
+    bl_abort("invalid cast type");
+  }
+
+  cast->base.llvm_value = LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
 }
 
 void
@@ -558,6 +609,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_ADDROF:
     gen_instr_addrof(cnt, (MirInstrAddrOf *)instr);
+    break;
+  case MIR_INSTR_CAST:
+    gen_instr_cast(cnt, (MirInstrCast *)instr);
     break;
 
   default:

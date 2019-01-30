@@ -83,7 +83,7 @@
 
 * Function
    #+BEGIN_EXAMPLE
-   @<name> <T> { 
+   @<name> <T> [flags] { 
      [entry block]
    }
    #+END_EXAMPLE
@@ -264,6 +264,10 @@
 ** addrof
     Evaluates address of the variable.
 
+   #+BEGIN_EXAMPLE
+   <*T> addrof <target> // yields result address *T
+   #+END_EXAMPLE
+
     Getting address of variable:
     | stack op | data    | description                   |
     |----------+---------+-------------------------------|
@@ -271,6 +275,91 @@
 
     Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
     
+** bitcast
+   Produce bit casting from one type to other. Bit cast just change type of pushed value. No stack operations are produced.
+
+   #+BEGIN_EXAMPLE
+   <T> bitcast <target> // yields value with casted type
+   #+END_EXAMPLE
+
+** sext
+   Signed-extend cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> sext <target> // yields value with casted type
+   #+END_EXAMPLE
+
+    Getting target from the stack:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
+    | PUSH     | resutlt | result with new type |
+
+    Target is a variable:
+    | stack op | data   | description          |
+    |----------+--------+----------------------|
+    | PUSH     | resutlt | result with new type |
+
+** zext
+   Zero-extend cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> zext <target> // yields value with casted type
+   #+END_EXAMPLE
+
+    Getting target from the stack:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
+    | PUSH     | resutlt | result with new type |
+
+    Target is a variable:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | PUSH     | resutlt | result with new type |
+
+** trunc
+   Truncates target to destination type 'T'.
+
+   #+BEGIN_EXAMPLE
+   <T> trunc <target> // yields value with casted type
+   #+END_EXAMPLE
+
+    Getting target from the stack:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
+    | PUSH     | resutlt | result with new type |
+
+    Target is a variable:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | PUSH     | resutlt | result with new type |
+** fptosi
+   Floating point to signed integer cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> fptosi <target> // yields value with casted type
+   #+END_EXAMPLE
+** fptoui
+   Floating point to unsigned integer cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> fptoui <target> // yields value with casted type
+   #+END_EXAMPLE
+** ptrtoint
+   Pointer to integer cast. This cast is noop cast when T has same size as type of the target.
+
+   #+BEGIN_EXAMPLE
+   <T> ptrtoint <target> // yields value with casted type
+   #+END_EXAMPLE
+** inttoptr 
+   Integer to pointer cast. This cast is noop cast when T has same size as type of the target.
+
+   #+BEGIN_EXAMPLE
+   <T> inttoptr <target> // yields value with casted type
+   #+END_EXAMPLE
+
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.
 

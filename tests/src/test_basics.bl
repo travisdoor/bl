@@ -152,6 +152,46 @@
   assert(i == 10);
 };
 
+#test "literal implicit casting" {
+  _u8:    u8    = 10; 
+  _u16:   u16   = 10; 
+  _u32:   u32   = 10; 
+  _u64:   u64   = 10; 
+  _usize: usize = 10;
+  _s8:    s8    = 10; 
+  _s16:   s16   = 10; 
+  _s32:   s32   = 10; 
+  _s64:   s64   = 10; 
+
+  _s64 = 10 * 2; 
+
+  fn (i: u8) {
+  } (10);
+
+  if _u8 == 10 {
+  }
+};
+
+#test "pointer casting" {
+  i_ptr : *s32;
+  j_ptr : *s8;
+
+  i_ptr = cast(*s32) j_ptr;
+
+  num := cast(u64) i_ptr;
+  i_ptr = cast(*s32) num;
+};
+
+#test "real casting" {
+  float : f32 = 12.5f;
+  j := cast(s64) float;
+  assert(j == 12);
+
+  double : f64 = 12.5;
+  j = cast(s64) double;
+  assert(j == 12);
+};
+
 #test "pointers" {
   i       := 666;
   ptr     := &i;
@@ -199,10 +239,9 @@
   assert(arr[2] == 30);
 };
 
-/*
 #test "simple static array loops" {
   arr : [10]s32;
-  loop i := 0; i < 10; i += 1 {
+  loop i := 0; i < arr.len; i += 1 {
     arr[i] = i;
     assert(arr[i] == i);
   }
@@ -210,4 +249,3 @@
   assert(arr[0] == 0);
   assert(arr[9] == 9);
 };
-*/

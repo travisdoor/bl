@@ -704,9 +704,9 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_unary(cnt))) return expr;
   if ((expr = parse_expr_deref(cnt))) return expr;
   if ((expr = parse_expr_addrof(cnt))) return expr;
+  if ((expr = parse_expr_cast(cnt))) return expr;
 
   /*if ((expr = parse_expr_null(cnt))) goto done;
-  if ((expr = parse_expr_cast(cnt))) goto done;
   if ((expr = parse_expr_run(cnt))) goto done;
   if ((expr = parse_expr_lit_fn(cnt))) goto done;
   if ((expr = parse_expr_type(cnt))) goto done;

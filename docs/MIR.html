@@ -3,30 +3,23 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-01-27 Sun 21:50 -->
-<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit-MIR Documentation</title>
-<meta name="generator" content="Org mode" />
-<meta name="author" content="Martin Dorazil" />
+<!-- 2019-01-30 St 10:31 -->
+<meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta  name="generator" content="Org-mode" />
+<meta  name="author" content="Martin Dorazil" />
 <style type="text/css">
  <!--/*--><![CDATA[/*><!--*/
-  .title  { text-align: center;
-             margin-bottom: .2em; }
-  .subtitle { text-align: center;
-              font-size: medium;
-              font-weight: bold;
-              margin-top:0; }
+  .title  { text-align: center; }
   .todo   { font-family: monospace; color: red; }
-  .done   { font-family: monospace; color: green; }
-  .priority { font-family: monospace; color: orange; }
+  .done   { color: green; }
   .tag    { background-color: #eee; font-family: monospace;
             padding: 2px; font-size: 80%; font-weight: normal; }
   .timestamp { color: #bebebe; }
   .timestamp-kwd { color: #5f9ea0; }
-  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
-  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
-  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .center { margin-left: auto; margin-right: auto; text-align: center; }
   .underline { text-decoration: underline; }
   #postamble p, #preamble p { font-size: 90%; margin: .2em; }
   p.verse { margin-left: 3%; }
@@ -53,111 +46,27 @@
     border: 1px solid black;
   }
   pre.src:hover:before { display: inline;}
-  /* Languages per Org manual */
-  pre.src-asymptote:before { content: 'Asymptote'; }
-  pre.src-awk:before { content: 'Awk'; }
-  pre.src-C:before { content: 'C'; }
-  /* pre.src-C++ doesn't work in CSS */
-  pre.src-clojure:before { content: 'Clojure'; }
-  pre.src-css:before { content: 'CSS'; }
-  pre.src-D:before { content: 'D'; }
-  pre.src-ditaa:before { content: 'ditaa'; }
-  pre.src-dot:before { content: 'Graphviz'; }
-  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-sh:before    { content: 'sh'; }
+  pre.src-bash:before  { content: 'sh'; }
   pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
-  pre.src-fortran:before { content: 'Fortran'; }
-  pre.src-gnuplot:before { content: 'gnuplot'; }
-  pre.src-haskell:before { content: 'Haskell'; }
-  pre.src-hledger:before { content: 'hledger'; }
-  pre.src-java:before { content: 'Java'; }
-  pre.src-js:before { content: 'Javascript'; }
-  pre.src-latex:before { content: 'LaTeX'; }
-  pre.src-ledger:before { content: 'Ledger'; }
-  pre.src-lisp:before { content: 'Lisp'; }
-  pre.src-lilypond:before { content: 'Lilypond'; }
-  pre.src-lua:before { content: 'Lua'; }
-  pre.src-matlab:before { content: 'MATLAB'; }
-  pre.src-mscgen:before { content: 'Mscgen'; }
-  pre.src-ocaml:before { content: 'Objective Caml'; }
-  pre.src-octave:before { content: 'Octave'; }
-  pre.src-org:before { content: 'Org mode'; }
-  pre.src-oz:before { content: 'OZ'; }
-  pre.src-plantuml:before { content: 'Plantuml'; }
-  pre.src-processing:before { content: 'Processing.js'; }
-  pre.src-python:before { content: 'Python'; }
-  pre.src-R:before { content: 'R'; }
-  pre.src-ruby:before { content: 'Ruby'; }
-  pre.src-sass:before { content: 'Sass'; }
-  pre.src-scheme:before { content: 'Scheme'; }
-  pre.src-screen:before { content: 'Gnu Screen'; }
-  pre.src-sed:before { content: 'Sed'; }
-  pre.src-sh:before { content: 'shell'; }
-  pre.src-sql:before { content: 'SQL'; }
-  pre.src-sqlite:before { content: 'SQLite'; }
-  /* additional languages in org.el's org-babel-load-languages alist */
-  pre.src-forth:before { content: 'Forth'; }
-  pre.src-io:before { content: 'IO'; }
-  pre.src-J:before { content: 'J'; }
-  pre.src-makefile:before { content: 'Makefile'; }
-  pre.src-maxima:before { content: 'Maxima'; }
-  pre.src-perl:before { content: 'Perl'; }
-  pre.src-picolisp:before { content: 'Pico Lisp'; }
-  pre.src-scala:before { content: 'Scala'; }
-  pre.src-shell:before { content: 'Shell Script'; }
-  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
-  /* additional language identifiers per "defun org-babel-execute"
-       in ob-*.el */
-  pre.src-cpp:before  { content: 'C++'; }
-  pre.src-abc:before  { content: 'ABC'; }
-  pre.src-coq:before  { content: 'Coq'; }
-  pre.src-groovy:before  { content: 'Groovy'; }
-  /* additional language identifiers from org-babel-shell-names in
-     ob-shell.el: ob-shell is the only babel language using a lambda to put
-     the execution function name together. */
-  pre.src-bash:before  { content: 'bash'; }
-  pre.src-csh:before  { content: 'csh'; }
-  pre.src-ash:before  { content: 'ash'; }
-  pre.src-dash:before  { content: 'dash'; }
-  pre.src-ksh:before  { content: 'ksh'; }
-  pre.src-mksh:before  { content: 'mksh'; }
-  pre.src-posh:before  { content: 'posh'; }
-  /* Additional Emacs modes also supported by the LaTeX listings package */
-  pre.src-ada:before { content: 'Ada'; }
-  pre.src-asm:before { content: 'Assembler'; }
-  pre.src-caml:before { content: 'Caml'; }
-  pre.src-delphi:before { content: 'Delphi'; }
-  pre.src-html:before { content: 'HTML'; }
-  pre.src-idl:before { content: 'IDL'; }
-  pre.src-mercury:before { content: 'Mercury'; }
-  pre.src-metapost:before { content: 'MetaPost'; }
-  pre.src-modula-2:before { content: 'Modula-2'; }
-  pre.src-pascal:before { content: 'Pascal'; }
-  pre.src-ps:before { content: 'PostScript'; }
-  pre.src-prolog:before { content: 'Prolog'; }
-  pre.src-simula:before { content: 'Simula'; }
-  pre.src-tcl:before { content: 'tcl'; }
-  pre.src-tex:before { content: 'TeX'; }
-  pre.src-plain-tex:before { content: 'Plain TeX'; }
-  pre.src-verilog:before { content: 'Verilog'; }
-  pre.src-vhdl:before { content: 'VHDL'; }
-  pre.src-xml:before { content: 'XML'; }
-  pre.src-nxml:before { content: 'XML'; }
-  /* add a generic configuration mode; LaTeX export needs an additional
-     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
-  pre.src-conf:before { content: 'Configuration File'; }
+  pre.src-R:before     { content: 'R'; }
+  pre.src-perl:before  { content: 'Perl'; }
+  pre.src-java:before  { content: 'Java'; }
+  pre.src-sql:before   { content: 'SQL'; }
 
   table { border-collapse:collapse; }
   caption.t-above { caption-side: top; }
   caption.t-bottom { caption-side: bottom; }
   td, th { vertical-align:top;  }
-  th.org-right  { text-align: center;  }
-  th.org-left   { text-align: center;   }
-  th.org-center { text-align: center; }
-  td.org-right  { text-align: right;  }
-  td.org-left   { text-align: left;   }
-  td.org-center { text-align: center; }
+  th.right  { text-align: center;  }
+  th.left   { text-align: center;   }
+  th.center { text-align: center; }
+  td.right  { text-align: right;  }
+  td.left   { text-align: left;   }
+  td.center { text-align: center; }
   dt { font-weight: bold; }
-  .footpara { display: inline; }
+  .footpara:nth-child(2) { display: inline; }
+  .footpara { display: block; }
   .footdef  { margin-bottom: 1em; }
   .figure { padding: 1em; }
   .figure p { text-align: center; }
@@ -177,7 +86,6 @@
     { font-size: 10px; font-weight: bold; white-space: nowrap; }
   .org-info-js_search-highlight
     { background-color: #ffff00; color: #000000; font-weight: bold; }
-  .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
 <link rel="stylesheet" type="text/css" href="org.css"/>
@@ -186,7 +94,7 @@
 @licstart  The following is the entire license notice for the
 JavaScript code in this tag.
 
-Copyright (C) 2012-2018 Free Software Foundation, Inc.
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
 
 The JavaScript code in this tag is free software: you can
 redistribute it and/or modify it under the terms of the GNU
@@ -235,70 +143,81 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org1061488">About</a>
+<li><a href="#sec-1">About</a>
 <ul>
-<li><a href="#orgba84318">MIR Interpreter</a></li>
-<li><a href="#org11ae9ac">Assert function in MIR</a></li>
-<li><a href="#orgd38b5e5">Stack manipulation</a></li>
+<li><a href="#sec-1-1">MIR Interpreter</a></li>
+<li><a href="#sec-1-2">Assert function in MIR</a></li>
+<li><a href="#sec-1-3">Stack manipulation</a></li>
 </ul>
 </li>
-<li><a href="#org7e7442d">Function</a></li>
-<li><a href="#org67f69f6">Block</a></li>
-<li><a href="#org7b2cca0">Instructions:</a>
+<li><a href="#sec-2">Function</a></li>
+<li><a href="#sec-3">Block</a></li>
+<li><a href="#sec-4">Instructions:</a>
 <ul>
-<li><a href="#org33447aa">const</a></li>
-<li><a href="#org0c8eb00">decl</a></li>
-<li><a href="#org6e189a7">load</a></li>
-<li><a href="#org557b16b">store</a></li>
-<li><a href="#orge14beb0">arg</a></li>
-<li><a href="#orgef63dcf">call</a></li>
-<li><a href="#orgbd606fc">ret</a></li>
-<li><a href="#org7463651">br</a></li>
-<li><a href="#org55759a6">br (conditional)</a></li>
-<li><a href="#org2c7d760">unreachable</a></li>
-<li><a href="#orgcdabaff">binop</a></li>
-<li><a href="#orgd6b7829">unop</a></li>
-<li><a href="#orgcea6fc3">elemptr</a></li>
-<li><a href="#org08b7199">memberptr</a></li>
-<li><a href="#org82eaa9f">addrof</a></li>
+<li><a href="#sec-4-1">const</a></li>
+<li><a href="#sec-4-2">decl</a></li>
+<li><a href="#sec-4-3">load</a></li>
+<li><a href="#sec-4-4">store</a></li>
+<li><a href="#sec-4-5">arg</a></li>
+<li><a href="#sec-4-6">call</a></li>
+<li><a href="#sec-4-7">ret</a></li>
+<li><a href="#sec-4-8">br</a></li>
+<li><a href="#sec-4-9">br (conditional)</a></li>
+<li><a href="#sec-4-10">unreachable</a></li>
+<li><a href="#sec-4-11">binop</a></li>
+<li><a href="#sec-4-12">unop</a></li>
+<li><a href="#sec-4-13">elemptr</a></li>
+<li><a href="#sec-4-14">memberptr</a></li>
+<li><a href="#sec-4-15">addrof</a></li>
+<li><a href="#sec-4-16">bitcast</a></li>
+<li><a href="#sec-4-17">sext</a></li>
+<li><a href="#sec-4-18">zext</a></li>
+<li><a href="#sec-4-19">trunc</a></li>
+<li><a href="#sec-4-20">fptosi</a></li>
+<li><a href="#sec-4-21">fptoui</a></li>
+<li><a href="#sec-4-22">ptrtoint</a></li>
+<li><a href="#sec-4-23">inttoptr</a></li>
 </ul>
 </li>
-<li><a href="#org230fed5">Special instructions</a>
+<li><a href="#sec-5">Special instructions</a>
 <ul>
-<li><a href="#org6c0c06d">tryinfer</a></li>
-<li><a href="#orga84aea9">validate_type</a></li>
+<li><a href="#sec-5-1">tryinfer</a></li>
+<li><a href="#sec-5-2">validate_type</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org1061488" class="outline-2">
-<h2 id="org1061488">About</h2>
-<div class="outline-text-2" id="text-org1061488">
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1">About</h2>
+<div class="outline-text-2" id="text-1">
 <p>
 BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR. 
 </p>
 </div>
 
-<div id="outline-container-orgba84318" class="outline-3">
-<h3 id="orgba84318">MIR Interpreter</h3>
-<div class="outline-text-3" id="text-orgba84318">
+<div id="outline-container-sec-1-1" class="outline-3">
+<h3 id="sec-1-1">MIR Interpreter</h3>
+<div class="outline-text-3" id="text-1-1">
 <p>
 BL Compiler has integrated interpreter for MIR. 
 </p>
 
 <ul class="org-ul">
-<li>Default execution stack size is 2MB.</li>
-<li>Stack allocations are 8 byte aligned.</li>
+<li>Default execution stack size is 2MB.
+</li>
+<li>Stack allocations are 8 byte aligned.
+</li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org11ae9ac" class="outline-3">
-<h3 id="org11ae9ac">Assert function in MIR</h3>
-<div class="outline-text-3" id="text-org11ae9ac">
+<div id="outline-container-sec-1-2" class="outline-3">
+<h3 id="sec-1-2">Assert function in MIR</h3>
+<div class="outline-text-3" id="text-1-2">
 <div class="org-src-container">
+
 <pre class="src src-blm"><span class="org-function-name">@assert</span> fn(<span class="org-type">bool</span>) <span class="org-type">void</span> {
 <span class="org-constant">init_0</span>:
   <span class="org-constant">%0</span>              *<span class="org-type">bool</span> <span class="org-keyword">decl</span> cond : <span class="org-type">bool</span>
@@ -326,13 +245,14 @@ BL Compiler has integrated interpreter for MIR.
 </div>
 </div>
 
-<div id="outline-container-orgd38b5e5" class="outline-3">
-<h3 id="orgd38b5e5">Stack manipulation</h3>
-<div class="outline-text-3" id="text-orgd38b5e5">
+<div id="outline-container-sec-1-3" class="outline-3">
+<h3 id="sec-1-3">Stack manipulation</h3>
+<div class="outline-text-3" id="text-1-3">
 <p>
 Example function:
 </p>
 <div class="org-src-container">
+
 <pre class="src src-bl"><span class="org-preprocessor">#load</span> <span class="org-string">"std/debug.bl"</span>
 <span class="org-function-name">main</span> :: <span class="org-keyword">fn</span> () <span class="org-type">s32</span> {
   <span class="org-constant">v</span> :: <span class="org-constant">10</span>;
@@ -376,9 +296,9 @@ execution finished with state: 0
 </div>
 
 
-<div id="outline-container-org7e7442d" class="outline-2">
-<h2 id="org7e7442d">Function</h2>
-<div class="outline-text-2" id="text-org7e7442d">
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2">Function</h2>
+<div class="outline-text-2" id="text-2">
 <pre class="example">
 @&lt;name&gt; &lt;T&gt; { 
   [entry block]
@@ -387,9 +307,9 @@ execution finished with state: 0
 </div>
 </div>
 
-<div id="outline-container-org67f69f6" class="outline-2">
-<h2 id="org67f69f6">Block</h2>
-<div class="outline-text-2" id="text-org67f69f6">
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3">Block</h2>
+<div class="outline-text-2" id="text-3">
 <p>
 Basic block representation.
 </p>
@@ -402,13 +322,12 @@ Basic block representation.
 </div>
 </div>
 
-<div id="outline-container-org7b2cca0" class="outline-2">
-<h2 id="org7b2cca0">Instructions:</h2>
-<div class="outline-text-2" id="text-org7b2cca0">
-</div>
-<div id="outline-container-org33447aa" class="outline-3">
-<h3 id="org33447aa">const</h3>
-<div class="outline-text-3" id="text-org33447aa">
+<div id="outline-container-sec-4" class="outline-2">
+<h2 id="sec-4">Instructions:</h2>
+<div class="outline-text-2" id="text-4">
+</div><div id="outline-container-sec-4-1" class="outline-3">
+<h3 id="sec-4-1">const</h3>
+<div class="outline-text-3" id="text-4-1">
 <p>
 Constant value.
 </p>
@@ -421,33 +340,33 @@ Constant value.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">value</td>
-<td class="org-left">constant value</td>
+<td class="left">PUSH</td>
+<td class="left">value</td>
+<td class="left">constant value</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-org0c8eb00" class="outline-3">
-<h3 id="org0c8eb00">decl</h3>
-<div class="outline-text-3" id="text-org0c8eb00">
+<div id="outline-container-sec-4-2" class="outline-3">
+<h3 id="sec-4-2">decl</h3>
+<div class="outline-text-3" id="text-4-2">
 <p>
 Variable declaration.
 </p>
@@ -460,33 +379,33 @@ Variable declaration.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">-</td>
-<td class="org-left">storage for the variable</td>
+<td class="left">PUSH</td>
+<td class="left">-</td>
+<td class="left">storage for the variable</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-org6e189a7" class="outline-3">
-<h3 id="org6e189a7">load</h3>
-<div class="outline-text-3" id="text-org6e189a7">
+<div id="outline-container-sec-4-3" class="outline-3">
+<h3 id="sec-4-3">load</h3>
+<div class="outline-text-3" id="text-4-3">
 <p>
 Push pointed value on the stack.
 </p>
@@ -502,30 +421,30 @@ Source is on the stack:
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">ptr</td>
-<td class="org-left">pointer to source</td>
+<td class="left">POP</td>
+<td class="left">ptr</td>
+<td class="left">pointer to source</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">value</td>
-<td class="org-left">value loaded from source</td>
+<td class="left">PUSH</td>
+<td class="left">value</td>
+<td class="left">value loaded from source</td>
 </tr>
 </tbody>
 </table>
@@ -537,33 +456,33 @@ Source is variable declaration:
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">value</td>
-<td class="org-left">value loaded from source</td>
+<td class="left">PUSH</td>
+<td class="left">value</td>
+<td class="left">value loaded from source</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-org557b16b" class="outline-3">
-<h3 id="org557b16b">store</h3>
-<div class="outline-text-3" id="text-org557b16b">
+<div id="outline-container-sec-4-4" class="outline-3">
+<h3 id="sec-4-4">store</h3>
+<div class="outline-text-3" id="text-4-4">
 <p>
 Store value from source to destination address.
 </p>
@@ -579,30 +498,30 @@ Destination pointer is on the stack:
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">dest ptr</td>
-<td class="org-left">pointer to destination</td>
+<td class="left">POP</td>
+<td class="left">dest ptr</td>
+<td class="left">pointer to destination</td>
 </tr>
 
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">src ptr</td>
-<td class="org-left">value</td>
+<td class="left">POP</td>
+<td class="left">src ptr</td>
+<td class="left">value</td>
 </tr>
 </tbody>
 </table>
@@ -614,33 +533,33 @@ Destination pointer is declaration:
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">src ptr</td>
-<td class="org-left">value</td>
+<td class="left">POP</td>
+<td class="left">src ptr</td>
+<td class="left">value</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-orge14beb0" class="outline-3">
-<h3 id="orge14beb0">arg</h3>
-<div class="outline-text-3" id="text-orge14beb0">
+<div id="outline-container-sec-4-5" class="outline-3">
+<h3 id="sec-4-5">arg</h3>
+<div class="outline-text-3" id="text-4-5">
 <p>
 Load argument of the current function on the stack.
 </p>
@@ -653,33 +572,33 @@ Load argument of the current function on the stack.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">arg</td>
-<td class="org-left">fn argument</td>
+<td class="left">PUSH</td>
+<td class="left">arg</td>
+<td class="left">fn argument</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-orgef63dcf" class="outline-3">
-<h3 id="orgef63dcf">call</h3>
-<div class="outline-text-3" id="text-orgef63dcf">
+<div id="outline-container-sec-4-6" class="outline-3">
+<h3 id="sec-4-6">call</h3>
+<div class="outline-text-3" id="text-4-6">
 <p>
 Call function. This instruction will create new stack frame and switch control to the callee.
 </p>
@@ -688,51 +607,51 @@ Call function. This instruction will create new stack frame and switch control t
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">arg 3</td>
-<td class="org-left">push 3rd argument</td>
+<td class="left">PUSH</td>
+<td class="left">arg 3</td>
+<td class="left">push 3rd argument</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">arg 2</td>
-<td class="org-left">push 2nd argument</td>
+<td class="left">PUSH</td>
+<td class="left">arg 2</td>
+<td class="left">push 2nd argument</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">arg 1</td>
-<td class="org-left">push 1st argument</td>
+<td class="left">PUSH</td>
+<td class="left">arg 1</td>
+<td class="left">push 1st argument</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH RA</td>
-<td class="org-left">pc, call ptr</td>
-<td class="org-left">create new frame stack (push program counter and call instruction pointer)</td>
+<td class="left">PUSH RA</td>
+<td class="left">pc, call ptr</td>
+<td class="left">create new frame stack (push program counter and call instruction pointer)</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-orgbd606fc" class="outline-3">
-<h3 id="orgbd606fc">ret</h3>
-<div class="outline-text-3" id="text-orgbd606fc">
+<div id="outline-container-sec-4-7" class="outline-3">
+<h3 id="sec-4-7">ret</h3>
+<div class="outline-text-3" id="text-4-7">
 <p>
 Return value from the function and return control to the caller. This instruction terminates current basic block.
 </p>
@@ -745,57 +664,57 @@ void ret [value] // yields void
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP RA</td>
-<td class="org-left">-</td>
-<td class="org-left">rollback the stack to return address</td>
+<td class="left">POP RA</td>
+<td class="left">-</td>
+<td class="left">rollback the stack to return address</td>
 </tr>
 
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">arg 1</td>
-<td class="org-left">clenup fn argument</td>
+<td class="left">POP</td>
+<td class="left">arg 1</td>
+<td class="left">clenup fn argument</td>
 </tr>
 
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">arg 2</td>
-<td class="org-left">clenup fn argument</td>
+<td class="left">POP</td>
+<td class="left">arg 2</td>
+<td class="left">clenup fn argument</td>
 </tr>
 
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">arg 3</td>
-<td class="org-left">clenup fn argument</td>
+<td class="left">POP</td>
+<td class="left">arg 3</td>
+<td class="left">clenup fn argument</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">value</td>
-<td class="org-left">push call result value if there is one</td>
+<td class="left">PUSH</td>
+<td class="left">value</td>
+<td class="left">push call result value if there is one</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-org7463651" class="outline-3">
-<h3 id="org7463651">br</h3>
-<div class="outline-text-3" id="text-org7463651">
+<div id="outline-container-sec-4-8" class="outline-3">
+<h3 id="sec-4-8">br</h3>
+<div class="outline-text-3" id="text-4-8">
 <p>
 Breaks to the basic block. This instruction terminates current basic block.
 </p>
@@ -806,9 +725,9 @@ void br &lt;block&gt; // yields void
 </div>
 </div>
 
-<div id="outline-container-org55759a6" class="outline-3">
-<h3 id="org55759a6">br (conditional)</h3>
-<div class="outline-text-3" id="text-org55759a6">
+<div id="outline-container-sec-4-9" class="outline-3">
+<h3 id="sec-4-9">br (conditional)</h3>
+<div class="outline-text-3" id="text-4-9">
 <p>
 Breaks into then block if the condition is true. This instruction terminates current basic block.
 </p>
@@ -821,42 +740,42 @@ void br &lt;cont&gt; ? &lt;then_block&gt; : &lt;else_block&gt; // yields void
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">condition</td>
-<td class="org-left">checked condition</td>
+<td class="left">POP</td>
+<td class="left">condition</td>
+<td class="left">checked condition</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-org2c7d760" class="outline-3">
-<h3 id="org2c7d760">unreachable</h3>
-<div class="outline-text-3" id="text-org2c7d760">
+<div id="outline-container-sec-4-10" class="outline-3">
+<h3 id="sec-4-10">unreachable</h3>
+<div class="outline-text-3" id="text-4-10">
 <p>
 Abort execution when this instruction is reached.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgcdabaff" class="outline-3">
-<h3 id="orgcdabaff">binop</h3>
-<div class="outline-text-3" id="text-orgcdabaff">
+<div id="outline-container-sec-4-11" class="outline-3">
+<h3 id="sec-4-11">binop</h3>
+<div class="outline-text-3" id="text-4-11">
 <p>
 Binary operation.
 </p>
@@ -869,45 +788,45 @@ Binary operation.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">lhs</td>
-<td class="org-left">left-hand side of operation</td>
+<td class="left">POP</td>
+<td class="left">lhs</td>
+<td class="left">left-hand side of operation</td>
 </tr>
 
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">rhs</td>
-<td class="org-left">right-hand side of operation</td>
+<td class="left">POP</td>
+<td class="left">rhs</td>
+<td class="left">right-hand side of operation</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">result</td>
-<td class="org-left">result value of the operation</td>
+<td class="left">PUSH</td>
+<td class="left">result</td>
+<td class="left">result value of the operation</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-orgd6b7829" class="outline-3">
-<h3 id="orgd6b7829">unop</h3>
-<div class="outline-text-3" id="text-orgd6b7829">
+<div id="outline-container-sec-4-12" class="outline-3">
+<h3 id="sec-4-12">unop</h3>
+<div class="outline-text-3" id="text-4-12">
 <p>
 Unary operation.
 </p>
@@ -920,39 +839,39 @@ Unary operation.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">value</td>
-<td class="org-left">&#xa0;</td>
+<td class="left">POP</td>
+<td class="left">value</td>
+<td class="left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">result</td>
-<td class="org-left">result value of the operation</td>
+<td class="left">PUSH</td>
+<td class="left">result</td>
+<td class="left">result value of the operation</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<div id="outline-container-orgcea6fc3" class="outline-3">
-<h3 id="orgcea6fc3">elemptr</h3>
-<div class="outline-text-3" id="text-orgcea6fc3">
+<div id="outline-container-sec-4-13" class="outline-3">
+<h3 id="sec-4-13">elemptr</h3>
+<div class="outline-text-3" id="text-4-13">
 <p>
 Evaluates address of the array element and push it on the stack.
 </p>
@@ -965,38 +884,38 @@ Evaluates address of the array element and push it on the stack.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">index</td>
-<td class="org-left">&#xa0;</td>
+<td class="left">POP</td>
+<td class="left">index</td>
+<td class="left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">elem ptr</td>
-<td class="org-left">Address of the array element</td>
+<td class="left">PUSH</td>
+<td class="left">elem ptr</td>
+<td class="left">Address of the array element</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<div id="outline-container-org08b7199" class="outline-3">
-<h3 id="org08b7199">memberptr</h3>
-<div class="outline-text-3" id="text-org08b7199">
+<div id="outline-container-sec-4-14" class="outline-3">
+<h3 id="sec-4-14">memberptr</h3>
+<div class="outline-text-3" id="text-4-14">
 <p>
 Evaluates address of member access via '.' operator.
 </p>
@@ -1009,41 +928,45 @@ Evaluates address of member access via '.' operator.
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">POP</td>
-<td class="org-left">target ptr</td>
-<td class="org-left">&#xa0;</td>
+<td class="left">POP</td>
+<td class="left">target ptr</td>
+<td class="left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">member ptr</td>
-<td class="org-left">Address of the member</td>
+<td class="left">PUSH</td>
+<td class="left">member ptr</td>
+<td class="left">Address of the member</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<div id="outline-container-org82eaa9f" class="outline-3">
-<h3 id="org82eaa9f">addrof</h3>
-<div class="outline-text-3" id="text-org82eaa9f">
+<div id="outline-container-sec-4-15" class="outline-3">
+<h3 id="sec-4-15">addrof</h3>
+<div class="outline-text-3" id="text-4-15">
 <p>
 Evaluates address of the variable.
 </p>
+
+<pre class="example">
+&lt;*T&gt; addrof &lt;target&gt; // yields result address *T
+</pre>
 
 <p>
 Getting address of variable:
@@ -1052,24 +975,24 @@ Getting address of variable:
 
 
 <colgroup>
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 
-<col  class="org-left" />
+<col  class="left" />
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">stack op</th>
-<th scope="col" class="org-left">data</th>
-<th scope="col" class="org-left">description</th>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">PUSH</td>
-<td class="org-left">var ptr</td>
-<td class="org-left">pointer to allocated variable</td>
+<td class="left">PUSH</td>
+<td class="left">var ptr</td>
+<td class="left">pointer to allocated variable</td>
 </tr>
 </tbody>
 </table>
@@ -1079,19 +1002,311 @@ Skipped when address has been pushed by previous instruction (ex.: 'elemptr').
 </p>
 </div>
 </div>
+
+<div id="outline-container-sec-4-16" class="outline-3">
+<h3 id="sec-4-16">bitcast</h3>
+<div class="outline-text-3" id="text-4-16">
+<p>
+Produce bit casting from one type to other. Bit cast just change type of pushed value. No stack operations are produced.
+</p>
+
+<pre class="example">
+&lt;T&gt; bitcast &lt;target&gt; // yields value with casted type
+</pre>
+</div>
 </div>
 
-<div id="outline-container-org230fed5" class="outline-2">
-<h2 id="org230fed5">Special instructions</h2>
-<div class="outline-text-2" id="text-org230fed5">
+<div id="outline-container-sec-4-17" class="outline-3">
+<h3 id="sec-4-17">sext</h3>
+<div class="outline-text-3" id="text-4-17">
+<p>
+Signed-extend cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; sext &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Getting target from the stack:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Target is a variable:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-18" class="outline-3">
+<h3 id="sec-4-18">zext</h3>
+<div class="outline-text-3" id="text-4-18">
+<p>
+Zero-extend cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; zext &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Getting target from the stack:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Target is a variable:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-19" class="outline-3">
+<h3 id="sec-4-19">trunc</h3>
+<div class="outline-text-3" id="text-4-19">
+<p>
+Truncates target to destination type 'T'.
+</p>
+
+<pre class="example">
+&lt;T&gt; trunc &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Getting target from the stack:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Target is a variable:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-sec-4-20" class="outline-3">
+<h3 id="sec-4-20">fptosi</h3>
+<div class="outline-text-3" id="text-4-20">
+<p>
+Floating point to signed integer cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; fptosi &lt;target&gt; // yields value with casted type
+</pre>
+</div>
+</div>
+<div id="outline-container-sec-4-21" class="outline-3">
+<h3 id="sec-4-21">fptoui</h3>
+<div class="outline-text-3" id="text-4-21">
+<p>
+Floating point to unsigned integer cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; fptoui &lt;target&gt; // yields value with casted type
+</pre>
+</div>
+</div>
+<div id="outline-container-sec-4-22" class="outline-3">
+<h3 id="sec-4-22">ptrtoint</h3>
+<div class="outline-text-3" id="text-4-22">
+<p>
+Pointer to integer cast. This cast is noop cast when T has same size as type of the target.
+</p>
+
+<pre class="example">
+&lt;T&gt; ptrtoint &lt;target&gt; // yields value with casted type
+</pre>
+</div>
+</div>
+<div id="outline-container-sec-4-23" class="outline-3">
+<h3 id="sec-4-23">inttoptr</h3>
+<div class="outline-text-3" id="text-4-23">
+<p>
+Integer to pointer cast. This cast is noop cast when T has same size as type of the target.
+</p>
+
+<pre class="example">
+&lt;T&gt; inttoptr &lt;target&gt; // yields value with casted type
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-5" class="outline-2">
+<h2 id="sec-5">Special instructions</h2>
+<div class="outline-text-2" id="text-5">
 <p>
 Special instructions are used only during analyze pass inside the compiler.
 </p>
 </div>
 
-<div id="outline-container-org6c0c06d" class="outline-3">
-<h3 id="org6c0c06d">tryinfer</h3>
-<div class="outline-text-3" id="text-org6c0c06d">
+<div id="outline-container-sec-5-1" class="outline-3">
+<h3 id="sec-5-1">tryinfer</h3>
+<div class="outline-text-3" id="text-5-1">
 <p>
 Assign type of the source to the destination instruction.
 </p>
@@ -1102,9 +1317,9 @@ void tryinfer &lt;src&gt; -&gt; &lt;dest&gt; // yields void
 </div>
 </div>
 
-<div id="outline-container-orga84aea9" class="outline-3">
-<h3 id="orga84aea9">validate_type</h3>
-<div class="outline-text-3" id="text-orga84aea9">
+<div id="outline-container-sec-5-2" class="outline-3">
+<h3 id="sec-5-2">validate_type</h3>
+<div class="outline-text-3" id="text-5-2">
 <p>
 Validates if the source instruction yields value of type 'type'. 
 </p>
@@ -1118,7 +1333,8 @@ void validate_type &lt;src&gt; // yields void
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-27 Sun 21:50</p>
+<p class="date">Created: 2019-01-30 St 10:31</p>
+<p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

@@ -1,28 +1,27 @@
 /* playground */
 
-#load "std/debug.bl"
+//#load "std/debug.bl"
 
-main :: fn () s32 {
-  /*
-  double: f64;
-  double = 0.2 + 0.1;
+main :: fn () u32 {
+  i : s8  = 10;
+  j : s64 = 10;
+  k : s8  = 20;
 
-  float: f32;
-  float = 100.2f + 100.1f;
-  */
+  j = cast(s8) i;
+  float : f32 = 12.5f;
+  j = cast(s64) float;
 
-  real_number := 10.1f;
-  assert(real_number - 10.1f < 0.0001f);
+  i_ptr := &i;
+  j_ptr := &j;
 
-  return 66;
+  i_ptr = cast(*s8) j_ptr;
+  foo := cast(s32) j_ptr;
+  i_ptr = cast(*s8) foo;
+
+  return j;
 };
 
 putchar :: fn (c: u8) s32 #extern;
-
-/*
-print :: fn (str: []u8) {
-};
-*/
 
 /*
 say_hello :: fn () {

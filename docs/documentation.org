@@ -171,7 +171,7 @@
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
 *** TODO Slices
-    Slice is consit of pointer to the first element and element count.
+    Slice is consist of pointer to the first element and element count of an array.
     
 *** Function type
     Type of function. 
@@ -191,6 +191,15 @@
     fn (s32, bool) s32 
     #+END_SRC
 
+*** Type casting
+    Change type of value to other type. Conventions between integer types is generated implicitly by the compiler.
+
+    #+BEGIN_EXAMPLE
+    cast(<T>) <expr>
+    #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/type_cast.bl" src bl -n
 ** Variables
    Example of variable allocated on stack.
 

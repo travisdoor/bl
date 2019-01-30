@@ -55,6 +55,9 @@ print_instr_head(MirInstr *instr, FILE *stream)
 }
 
 static void
+print_instr_cast(MirInstrCast *cast, FILE *stream);
+
+static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
@@ -156,6 +159,41 @@ print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
 {
   print_instr_head(&type_array->base, stream);
   fprintf(stream, "const [%%%u]%%%u", type_array->len->id, type_array->elem_type->id);
+}
+
+void
+print_instr_cast(MirInstrCast *cast, FILE *stream)
+{
+  print_instr_head(&cast->base, stream);
+  switch (cast->op) {
+  case MIR_CAST_BITCAST:
+    fprintf(stream, "bitcast %%%u", cast->next->id);
+    break;
+  case MIR_CAST_SEXT:
+    fprintf(stream, "sext %%%u", cast->next->id);
+    break;
+  case MIR_CAST_ZEXT:
+    fprintf(stream, "zext %%%u", cast->next->id);
+    break;
+  case MIR_CAST_TRUNC:
+    fprintf(stream, "trunc %%%u", cast->next->id);
+    break;
+  case MIR_CAST_FPTOSI:
+    fprintf(stream, "fptosi %%%u", cast->next->id);
+    break;
+  case MIR_CAST_FPTOUI:
+    fprintf(stream, "fptoui %%%u", cast->next->id);
+    break;
+  case MIR_CAST_INVALID:
+    fprintf(stream, "invalid cast %%%u", cast->next->id);
+    break;
+  case MIR_CAST_PTRTOINT:
+    fprintf(stream, "ptrtoint %%%u", cast->next->id);
+    break;
+  case MIR_CAST_INTTOPTR:
+    fprintf(stream, "inttoptr %%%u", cast->next->id);
+    break;
+  }
 }
 
 void
@@ -491,6 +529,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_MEMBER_PTR:
     print_instr_member_ptr((MirInstrMemberPtr *)instr, stream);
+    break;
+  case MIR_INSTR_CAST:
+    print_instr_cast((MirInstrCast *)instr, stream);
     break;
   case MIR_INSTR_BLOCK:
     break;
