@@ -111,9 +111,9 @@ gen_fn_proto(Context *cnt, MirFn *fn)
 {
   assert(fn);
 
-  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->name);
+  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->llvm_name);
   if (!fn->llvm_value) {
-    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->name, fn->type->llvm_type);
+    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
   }
 
   return fn->llvm_value;

@@ -146,9 +146,8 @@ struct AstLink
 
 struct AstIdent
 {
-  Scope *     scope;
-  const char *str;
-  uint64_t    hash;
+  Scope *scope;
+  ID     id;
 };
 
 struct AstUBlock

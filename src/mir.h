@@ -103,9 +103,11 @@ struct MirModule
 /* FN */
 struct MirFn
 {
-  Ast *        node;
-  const char * name;
+  ID *         id;
+  Ast *        decl_node;
   MirType *    type;
+  Scope *      scope;
+  const char * llvm_name;
   LLVMValueRef llvm_value;
 
   DCpointer   extern_entry;
@@ -172,7 +174,7 @@ struct MirTypeArray
 struct MirType
 {
   MirTypeKind kind;
-  const char *name;
+  ID *        id;
   LLVMTypeRef llvm_type;
   size_t      size_bits;
   size_t      store_size_bytes;
@@ -224,8 +226,10 @@ struct MirConstValue
 /* VAR */
 struct MirVar
 {
-  MirType *   alloc_type;
-  const char *name;
+  MirType *alloc_type;
+  ID *     id;
+  Ast *    decl_node;
+  Scope *  scope;
 };
 
 /* INSTRUCTIONS */
@@ -448,6 +452,8 @@ struct MirInstrDeclRef
 {
   MirInstr base;
 
+  ID *        rid;
+  Scope *     scope;
   ScopeEntry *scope_entry;
 };
 

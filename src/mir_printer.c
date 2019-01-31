@@ -219,7 +219,7 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
   print_instr_head(&member_ptr->base, stream);
   if (member_ptr->member_ident) {
     fprintf(stream, "memberptr %%%u.%s", member_ptr->target_ptr->id,
-            member_ptr->member_ident->data.ident.str);
+            member_ptr->member_ident->data.ident.id.str);
   } else {
     fprintf(stream, "memberptr %%%u.%u", member_ptr->target_ptr->id, member_ptr->order);
   }
@@ -291,7 +291,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
   MirVar *var = decl->var;
   assert(var);
-  fprintf(stream, "decl %s : ", var->name);
+  fprintf(stream, "decl %s : ", var->id->str);
   print_type(var->alloc_type, false, stream);
 }
 
@@ -299,7 +299,7 @@ void
 print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream)
 {
   print_instr_head(&ref->base, stream);
-  const char *name = ref->base.node->data.ident.str;
+  const char *name = ref->rid->str;
 
   fprintf(stream, "declref %s", name);
 }
@@ -358,7 +358,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
   print_instr_head(&call->base, stream);
 
   const char *callee_name =
-      call->callee->const_value.data.v_fn ? call->callee->const_value.data.v_fn->name : NULL;
+      call->callee->const_value.data.v_fn ? call->callee->const_value.data.v_fn->llvm_name : NULL;
   if (callee_name)
     fprintf(stream, "call @%s", callee_name);
   else
@@ -441,8 +441,8 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
           fn_proto->base.ref_count ? "" : ", no LLVM representation");
 
-  if (fn->name)
-    fprintf(stream, "@%s ", fn->name);
+  if (fn->llvm_name)
+    fprintf(stream, "@%s ", fn->llvm_name);
   else
     fprintf(stream, "@%u ", fn_proto->base.id);
 

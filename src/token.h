@@ -49,7 +49,6 @@
   sm(NULL,           "null") \
   sm(ENUM,           "enum") \
   sm(LOOP,           "loop")\
-  sm(RUN,            "#run")\
   sm(FALSE,          "false") \
   sm(BREAK,          "break")\
   sm(LOAD,           "#load") \

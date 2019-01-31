@@ -2,9 +2,15 @@
 
 //#load "std/debug.bl"
 
+test :: fn () {
+};
+
 main :: fn () s32 {
-  T : type : s32;
   i := 10 + 20;
+  j :: 10 + 20;
+
+  test();
+  //i = 0;
   return 666;
 };
 

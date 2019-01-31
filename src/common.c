@@ -27,11 +27,20 @@
 //************************************************************************************************
 
 #include <time.h>
+#include <bobject/containers/hash.h>
 #include "common.h"
 
 #ifndef BL_COMPILER_MSVC
 #include "unistd.h"
 #endif
+
+void
+id_init(ID *id, const char *str)
+{
+  assert(id);
+  id->hash = bo_hash_from_str(str);
+  id->str  = str;
+}
 
 bool
 file_exists(const char *filepath)

@@ -63,6 +63,15 @@
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
 
+typedef struct ID
+{
+  const char *str;
+  uint64_t    hash;
+} ID;
+
+void
+id_init(ID *id, const char *str);
+
 bool
 file_exists(const char *filepath);
 

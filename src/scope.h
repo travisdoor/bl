@@ -37,6 +37,17 @@
 struct Src;
 struct Ast;
 struct MirInstr;
+struct MirType;
+struct MirFn;
+struct MirVar;
+
+typedef enum ScopeEntryKind
+{
+  SCOPE_ENTRY_INVALID,
+  SCOPE_ENTRY_TYPE,
+  SCOPE_ENTRY_VAR,
+  SCOPE_ENTRY_FN,
+} ScopeEntryKind;
 
 typedef struct ScopeArenas
 {
@@ -46,10 +57,18 @@ typedef struct ScopeArenas
 
 typedef struct ScopeEntry
 {
-  struct Scope *   parent_scope;
-  struct Ast *     node;
-  struct MirInstr *instr;
-  bool             is_buildin;
+  ID *           id;
+  ScopeEntryKind kind;
+  struct Scope * parent_scope;
+  struct Ast *   node;
+  bool           is_buildin;
+
+  union
+  {
+    struct MirType *type;
+    struct MirFn *  fn;
+    struct MirVar * var;
+  } data;
 } ScopeEntry;
 
 typedef struct Scope
@@ -69,12 +88,13 @@ Scope *
 scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
 
 ScopeEntry *
-scope_create_entry(ScopeArenas *arenas, struct Ast *node, struct MirInstr *instr, bool is_buildin);
+scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
+                   bool is_buildin);
 
 void
-scope_insert(Scope *scope, uint64_t key, ScopeEntry *entry);
+scope_insert(Scope *scope, ScopeEntry *entry);
 
 ScopeEntry *
-scope_lookup(Scope *scope, uint64_t key, bool in_tree);
+scope_lookup(Scope *scope, ID *id, bool in_tree);
 
 #endif
