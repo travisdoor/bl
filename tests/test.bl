@@ -2,16 +2,10 @@
 
 //#load "std/debug.bl"
 
-test :: fn () {
-};
-
 main :: fn () s32 {
-  i := 10 + 20;
-  j :: 10 + 20;
-
-  test();
-  //i = 0;
-  return 666;
+  i : s32 = 10; 
+  //i = -666;
+  return -(600 + 66 * 10 - 15 / 2);
 };
 
 // array here should not be passed by value
@@ -22,15 +16,7 @@ print :: fn (str: []u8) {
     putchar(str[i]);
   }
 };
-*/
 
-/*Data : type : struct {
-  i: s32,
-  j: u8
-};*/
-
-
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);

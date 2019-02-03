@@ -1,6 +1,6 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
-#+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
+#+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
 
 # now prints out the previously disabled (toc:nil) table of contents.
@@ -42,6 +42,9 @@
  #+END_SRC
    
 ** Stack manipulation
+   - Interpreter is used for evaluation of compile-time known expressions during analyze process.
+   - Compile-time known values are not pushed on the stack.
+
    Example function:
    #+BEGIN_SRC bl
    #load "std/debug.bl"
@@ -100,15 +103,11 @@
 * Instructions: 
   
 ** const
-   Constant value.
+   Constant values are known in compile time.
 
    #+BEGIN_EXAMPLE
    <T> const <value> // yields constant value of the type T
    #+END_EXAMPLE
-
-   | stack op | data  | description    |
-   |----------+-------+----------------|
-   | PUSH     | value | constant value |
 
 ** decl
    Variable declaration.
@@ -128,15 +127,9 @@
    <T> load <ptr> // yields T loaded from ptr
    #+END_EXAMPLE
 
-   Source is on the stack:
    | stack op | data  | description              |
    |----------+-------+--------------------------|
    | POP      | ptr   | pointer to source        |
-   | PUSH     | value | value loaded from source |
-
-   Source is variable declaration:
-   | stack op | data  | description              |
-   |----------+-------+--------------------------|
    | PUSH     | value | value loaded from source |
    
 ** store
@@ -146,16 +139,10 @@
    void store <src> -> <dest ptr> // yields void
    #+END_EXAMPLE
 
-   Destination pointer is on the stack:
    | stack op | data     | description            |
    |----------+----------+------------------------|
    | POP      | dest ptr | pointer to destination |
    | POP      | src ptr  | value                  |
-
-   Destination pointer is declaration:
-   | stack op | data     | description            |
-   |----------+----------+------------------------|
-   | POP      | src ptr | value                  |
    
 ** arg
    Load argument of the current function on the stack.
@@ -289,16 +276,10 @@
    <T> sext <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
-    | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
     | stack op | data   | description          |
     |----------+--------+----------------------|
-    | PUSH     | resutlt | result with new type |
+    | POP      | target |                      |
+    | PUSH     | result | result with new type |
 
 ** zext
    Zero-extend cast. 
@@ -307,15 +288,9 @@
    <T> zext <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
     | PUSH     | resutlt | result with new type |
 
 ** trunc
@@ -325,15 +300,9 @@
    <T> trunc <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
     | PUSH     | resutlt | result with new type |
 ** fptosi
    Floating point to signed integer cast. 
