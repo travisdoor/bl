@@ -63,8 +63,10 @@ static inline void
 print_const_value(MirInstr *instr, FILE *stream)
 {
   MirConstValue *value = &instr->const_value;
-  assert(value->type);
-  switch (value->type->kind) {
+  MirType *      type  = value->type;
+  assert(type);
+
+  switch (type->kind) {
   case MIR_TYPE_INT:
     fprintf(stream, "%lld", (long long)value->data.v_int);
     break;
@@ -193,7 +195,7 @@ print_instr_arg(MirInstrArg *arg, FILE *stream);
 void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
-  print_instr_head(&type_fn->base, stream, "const fn");
+  print_instr_head(&type_fn->base, stream, "fn");
   fprintf(stream, "(");
   if (type_fn->arg_types) {
     MirInstr *tmp;
@@ -212,21 +214,21 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 void
 print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream)
 {
-  print_instr_head(&type_ptr->base, stream, "const");
+  print_instr_head(&type_ptr->base, stream, "");
   fprintf(stream, "*%%%u", type_ptr->type->id);
 }
 
 void
 print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
 {
-  print_instr_head(&type_array->base, stream, "const");
+  print_instr_head(&type_array->base, stream, "");
   fprintf(stream, "[%%%u]%%%u", type_array->len->id, type_array->elem_type->id);
 }
 
 void
 print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
 {
-  print_instr_head(&type_slice->base, stream, "const");
+  print_instr_head(&type_slice->base, stream, "");
   fprintf(stream, "[]%%%u", type_slice->elem_type->id);
 }
 

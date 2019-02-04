@@ -72,7 +72,6 @@ typedef struct MirInstrTypeSlice     MirInstrTypeSlice;
 typedef struct MirInstrTypePtr       MirInstrTypePtr;
 typedef struct MirInstrTryInfer      MirInstrTryInfer;
 typedef struct MirInstrValidateType  MirInstrValidateType;
-typedef struct MirInstrCheckComptime MirInstrCheckComptime;
 typedef struct MirInstrDeclRef       MirInstrDeclRef;
 typedef struct MirInstrCast          MirInstrCast;
 typedef enum MirConstValueKind       MirConstValueKind;
@@ -269,7 +268,6 @@ enum MirInstrKind
   MIR_INSTR_ADDROF,
   MIR_INSTR_CAST,
 
-  MIR_INSTR_CHECK_COMPTIME,
   MIR_INSTR_VALIDATE_TYPE,
   MIR_INSTR_TRY_INFER,
 };
@@ -503,13 +501,6 @@ struct MirInstrTryInfer
 
   MirInstr *src;
   MirInstr *dest;
-};
-
-struct MirInstrCheckComptime
-{
-  MirInstr base;
-
-  MirInstr *src;
 };
 
 /* public */
