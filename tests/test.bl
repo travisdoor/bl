@@ -3,9 +3,12 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-  i : s32 = 10; 
-  //i = -666;
-  return -(600 + 66 * 10 - 15 / 2);
+  i : u32 : 600 + 66 * 10 - 15 / 2; 
+  j := i + 1;
+  j;
+  //j = 10;
+  //j += 1;
+  return 0;
 };
 
 // array here should not be passed by value

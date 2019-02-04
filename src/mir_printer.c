@@ -66,7 +66,7 @@ print_const_value(MirInstr *instr, FILE *stream)
   assert(value->type);
   switch (value->type->kind) {
   case MIR_TYPE_INT:
-    fprintf(stream, "%lld", value->data.v_int);
+    fprintf(stream, "%lld", (long long)value->data.v_int);
     break;
   case MIR_TYPE_REAL:
     if (value->type->store_size_bytes == sizeof(float)) {
@@ -233,36 +233,39 @@ print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
 void
 print_instr_cast(MirInstrCast *cast, FILE *stream)
 {
-  print_instr_head(&cast->base, stream, "");
   switch (cast->op) {
   case MIR_CAST_BITCAST:
-    fprintf(stream, "bitcast %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "bitcast");
     break;
   case MIR_CAST_SEXT:
-    fprintf(stream, "sext %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "sext");
     break;
   case MIR_CAST_ZEXT:
-    fprintf(stream, "zext %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "zext");
     break;
   case MIR_CAST_TRUNC:
-    fprintf(stream, "trunc %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "trunc");
     break;
   case MIR_CAST_FPTOSI:
-    fprintf(stream, "fptosi %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "fptosi");
     break;
   case MIR_CAST_FPTOUI:
-    fprintf(stream, "fptoui %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "fptoui");
     break;
   case MIR_CAST_INVALID:
     fprintf(stream, "invalid cast %%%u", cast->next->id);
     break;
   case MIR_CAST_PTRTOINT:
-    fprintf(stream, "ptrtoint %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "ptrtoint");
     break;
   case MIR_CAST_INTTOPTR:
-    fprintf(stream, "inttoptr %%%u", cast->next->id);
+    print_instr_head(&cast->base, stream, "inttoptr");
     break;
+  default:
+    bl_unimplemented;
   }
+
+  fprintf(stream, "%%%u", cast->next->id);
 }
 
 void
@@ -333,7 +336,7 @@ void
 print_instr_load(MirInstrLoad *load, FILE *stream)
 {
   print_instr_head(&load->base, stream, "load");
-  fprintf(stream, "%%%u", load->src->id);
+  print_comptime_value_or_id(load->src, stream);
 }
 
 void
@@ -352,6 +355,10 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   assert(var);
   fprintf(stream, "%s : ", var->id->str);
   print_type(var->alloc_type, false, stream);
+  if (decl->init) {
+    fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
+    print_comptime_value_or_id(decl->init, stream);
+  }
 }
 
 void

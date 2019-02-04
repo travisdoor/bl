@@ -233,9 +233,12 @@ struct MirVar
   Ast *    decl_node;
   Scope *  scope;
   int32_t  ref_count;
+  bool     is_mutable;
+  bool     comptime;
 
-  MirConstValue *value;
-  LLVMValueRef   llvm_value;
+  MirConstValue *     value;
+  LLVMValueRef        llvm_value;
+  MirRelativeStackPtr rel_stack_ptr;
 };
 
 /* INSTRUCTIONS */
@@ -309,6 +312,7 @@ struct MirInstrDeclVar
 
   MirVar *  var;
   MirInstr *type;
+  MirInstr *init;
 };
 
 struct MirInstrElemPtr
