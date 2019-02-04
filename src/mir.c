@@ -1600,13 +1600,10 @@ MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 {
   assert(callee);
-  MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
-  tmp->args         = args;
-  tmp->callee       = callee;
-  ref_instr(callee);
-
-  /* every call must have ref_count = 1 at least */
-  ref_instr(&tmp->base);
+  MirInstrCall *tmp   = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
+  tmp->base.ref_count = NO_REF_COUNTING;
+  tmp->args           = args;
+  tmp->callee         = callee;
 
   /* reference all arguments */
   if (args) {
@@ -2006,7 +2003,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
     break;
   }
 
-  case MIR_INSTR_TYPE_FN: 
+  case MIR_INSTR_TYPE_FN:
     erase_instr(instr);
     break;
 
@@ -2178,6 +2175,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   case SCOPE_ENTRY_FN:
     ref->base.const_value.type      = found->data.fn->type;
     ref->base.const_value.data.v_fn = found->data.fn;
+    ref->base.comptime              = true;
+    ++found->data.fn->ref_count;
     break;
 
   case SCOPE_ENTRY_TYPE: {
@@ -2193,7 +2192,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     MirVar *var = found->data.var;
     assert(var);
 
-    MirType *type = var->alloc_type;
+    MirType *type              = var->alloc_type;
     type                       = create_type_ptr(cnt, type);
     ref->base.const_value.type = type;
     ref->base.comptime         = var->comptime;
@@ -2375,10 +2374,11 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
     MirType * tmp;
     barray_foreach(type_fn->arg_types, arg_type)
     {
-      bl_unimplemented;
-      tmp = *exec_pop_stack_as(cnt, arg_type->const_value.type, MirType **);
+      assert(arg_type->comptime);
+      tmp = arg_type->const_value.data.v_type;
       assert(tmp);
       bo_array_push_back(arg_types, tmp);
+      reduce_instr(cnt, arg_type);
     }
   }
 
@@ -2693,8 +2693,11 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
       setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
 
       (*call_arg) = try_impl_cast(cnt, (*call_arg), callee_arg_type, &valid);
+      reduce_instr(cnt, *call_arg);
     }
   }
+
+  reduce_instr(cnt, call->callee);
   return true;
 }
 
@@ -2705,7 +2708,11 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   assert(dest);
   assert(dest->analyzed);
 
-  assert(is_pointer_type(dest->const_value.type) && "store expect destination to be a pointer");
+  if (!is_pointer_type(dest->const_value.type)) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
+                BUILDER_CUR_WORD, "left hand side of the expression cannot be assigned");
+    return false;
+  }
 
   MirType *dest_type = dest->const_value.type->data.ptr.next;
   assert(dest_type && "store destination has invalid base type");
@@ -2853,6 +2860,11 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
     return false;
+  }
+
+  /* remove unused instructions */
+  if (state && instr->ref_count == 0) {
+    erase_instr(instr);
   }
 
   instr->analyzed = true;
@@ -3249,19 +3261,33 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   ScopeEntry *entry = ref->scope_entry;
   assert(entry);
-  assert(entry->kind == SCOPE_ENTRY_VAR && "expected variable!");
 
-  MirVar *var = entry->data.var;
-  assert(var);
+  switch (entry->kind) {
+  case SCOPE_ENTRY_VAR: {
+    MirVar *var = entry->data.var;
+    assert(var);
 
-  MirStackPtr real_ptr = NULL;
-  if (var->comptime) {
-    real_ptr = (MirStackPtr)&var->value->data;
-  } else {
-    real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+    MirStackPtr real_ptr = NULL;
+    if (var->comptime) {
+      real_ptr = (MirStackPtr)&var->value->data;
+    } else {
+      real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+    }
+
+    ref->base.const_value.data.v_stack_ptr = real_ptr;
+    break;
   }
 
-  ref->base.const_value.data.v_stack_ptr = real_ptr;
+  case SCOPE_ENTRY_FN: {
+    MirFn *fn = entry->data.fn;
+    assert(fn);
+    ref->base.const_value.data.v_fn = fn;
+    break;
+
+  default:
+    bl_abort("invalid declaration reference");
+  }
+  }
 }
 
 void
@@ -4103,11 +4129,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
         assert(ast_arg_name);
 
         /* create tmp declaration for arg variable */
-        bl_unimplemented;
         MirInstr *arg = append_instr_arg(cnt, NULL, i);
-        MirInstr *var = append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true);
-        append_instr_try_infer(cnt, NULL, arg, var);
-        append_instr_store(cnt, NULL, arg, var);
+        append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true);
       }
     }
   }

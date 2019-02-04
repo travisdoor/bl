@@ -3,11 +3,26 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-  //cnst : u32 : 600 + 66 * 10 - 15 / 2; 
-  c :: 665;
+  c :: 665 - foo(10 + 2);
+  h :: 10;
   i := c + 1;
 
+  i = 12 * 3 + foo(20 * h);
+  bar();
+
+  ptr := &c;
+
+  hola: s32;
+
   return i;
+};
+
+bar :: fn () s32 {
+  return 888;
+};
+
+foo :: fn (i: s32) s32 {
+  return bar() + i;
 };
 
 // array here should not be passed by value

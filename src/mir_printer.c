@@ -396,7 +396,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
     MirInstr *tmp;
     barray_foreach(call->args, tmp)
     {
-      fprintf(stream, "%%%u", tmp->id);
+      print_comptime_value_or_id(tmp, stream);
       if (i < bo_array_size(call->args) - 1) fprintf(stream, ", ");
     }
   }
