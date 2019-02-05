@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include <llvm-c/Analysis.h>
+#include <llvm-c/Transforms/Vectorize.h>
 #include <llvm-c/Transforms/PassManagerBuilder.h>
 #include "stages.h"
 #include "assembly.h"
@@ -49,6 +50,9 @@ ir_opt_run(Builder *builder, Assembly *assembly)
   LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
 
   LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
+  LLVMAddLoopVectorizePass(llvm_pm);
+  LLVMAddSLPVectorizePass(llvm_pm);
+
   LLVMPassManagerBuilderPopulateFunctionPassManager(llvm_pm_builder, llvm_pm);
   LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
   LLVMRunPassManager(llvm_pm, llvm_module);

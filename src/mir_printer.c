@@ -192,7 +192,7 @@ print_instr_arg(MirInstrArg *arg, FILE *stream);
 void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
-  print_instr_head(&type_fn->base, stream, "fn");
+  print_instr_head(&type_fn->base, stream, "const fn");
   fprintf(stream, "(");
   if (type_fn->arg_types) {
     MirInstr *tmp;
@@ -211,21 +211,21 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 void
 print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream)
 {
-  print_instr_head(&type_ptr->base, stream, "");
+  print_instr_head(&type_ptr->base, stream, "const");
   fprintf(stream, "*%%%u", type_ptr->type->id);
 }
 
 void
 print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream)
 {
-  print_instr_head(&type_array->base, stream, "");
+  print_instr_head(&type_array->base, stream, "const");
   fprintf(stream, "[%%%u]%%%u", type_array->len->id, type_array->elem_type->id);
 }
 
 void
 print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
 {
-  print_instr_head(&type_slice->base, stream, "");
+  print_instr_head(&type_slice->base, stream, "const");
   fprintf(stream, "[]%%%u", type_slice->elem_type->id);
 }
 
@@ -271,7 +271,9 @@ void
 print_instr_elem_ptr(MirInstrElemPtr *elem_ptr, FILE *stream)
 {
   print_instr_head(&elem_ptr->base, stream, "elemptr");
-  fprintf(stream, "%%%u[%%%u]", elem_ptr->arr_ptr->id, elem_ptr->index->id);
+  fprintf(stream, "%%%u[", elem_ptr->arr_ptr->id);
+  print_comptime_value_or_id(elem_ptr->index, stream);
+  fprintf(stream, "]");
 }
 
 void

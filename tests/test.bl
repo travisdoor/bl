@@ -3,19 +3,12 @@
 load "std/debug.bl"
 
 main :: fn () s32 {
-  count :: 1;
-  foo :: 0;
-  loop i := 0; i < count; i += 1 {
-    say_hello();
-  }
-
+  count : usize = 0;
+  arr : [count]s32;
   return 0;
 };
 
-test "kokot" {
-  main();
-};
-
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -32,3 +25,4 @@ say_hello :: fn () {
 };
 
 putchar :: fn (c: s32) s32 extern;
+*/

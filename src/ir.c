@@ -253,8 +253,8 @@ gen_instr_arg(Context *cnt, MirInstrArg *arg)
 void
 gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
-  LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
-  LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
+  LLVMValueRef llvm_arr_ptr = fetch_value(cnt, elem_ptr->arr_ptr);
+  LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
   assert(llvm_arr_ptr && llvm_index);
 
   LLVMValueRef llvm_indices[2];

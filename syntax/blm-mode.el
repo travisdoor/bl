@@ -54,6 +54,9 @@
 (defconst blm-preproc
   '("extern" "test" "load"))
 
+(defconst blm-error
+  '("?"))
+
 (defconst blm-number-rx
   (rx (and
        symbol-start
@@ -76,6 +79,9 @@
 
     ;; Preprocessors
     (,(blm-keywords-rx blm-preproc) 1 font-lock-preprocessor-face)
+
+    ;; Error
+    (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)
 
     ;; Types 
     (,(blm-keywords-rx blm-types) 1 font-lock-type-face)

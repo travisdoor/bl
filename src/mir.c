@@ -601,12 +601,6 @@ static void
 exec_instr_call(Context *cnt, MirInstrCall *call);
 
 static void
-exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
-
-static void
-exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr);
-
-static void
 exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static void
@@ -1690,9 +1684,8 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
 MirInstr *
 append_instr_const_double(Context *cnt, Ast *node, double val)
 {
-  MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->comptime = true;
-  bl_unimplemented;
+  MirInstr *tmp                  = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime                  = true;
   tmp->const_value.type          = cnt->builtin_types.entry_f64;
   tmp->const_value.data.v_double = val;
 
@@ -2016,12 +2009,10 @@ reduce_instr(Context *cnt, MirInstr *instr)
   if (!instr->comptime) return;
 
   switch (instr->kind) {
-  case MIR_INSTR_CONST: {
-    erase_instr(instr);
-    break;
-  }
-
+  case MIR_INSTR_CONST:
   case MIR_INSTR_TYPE_FN:
+  case MIR_INSTR_TYPE_ARRAY:
+  case MIR_INSTR_TYPE_PTR:
     erase_instr(instr);
     break;
 
@@ -2089,6 +2080,9 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   assert(elem_type);
   elem_ptr->tmp_value.type        = elem_type;
   elem_ptr->base.const_value.type = create_type_ptr(cnt, elem_type);
+
+  reduce_instr(cnt, elem_ptr->index);
+  reduce_instr(cnt, elem_ptr->arr_ptr);
 
   return true;
 }
@@ -2439,10 +2433,37 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->base.const_value.type);
   assert(type_arr->elem_type->analyzed);
 
+  type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len);
+
   bool valid;
   type_arr->len = try_impl_cast(cnt, type_arr->len, cnt->builtin_types.entry_usize, &valid);
   if (!valid) return false;
 
+  /* len */
+  if (!type_arr->len->comptime) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_CONST, type_arr->len->node->src,
+                BUILDER_CUR_WORD, "array size must be compile-time constant");
+    return false;
+  }
+
+  assert(type_arr->len->comptime && "this must be error");
+  reduce_instr(cnt, type_arr->len);
+
+  const size_t len = type_arr->len->const_value.data.v_uint;
+  if (len == 0) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARR_SIZE, type_arr->len->node->src,
+                BUILDER_CUR_WORD, "array size cannot be 0");
+    return false;
+  }
+
+  /* elem type */
+  assert(type_arr->elem_type->comptime);
+  reduce_instr(cnt, type_arr->elem_type);
+
+  MirType *elem_type = type_arr->elem_type->const_value.data.v_type;
+  assert(elem_type);
+
+  type_arr->base.const_value.data.v_type = create_type_array(cnt, elem_type, len);
   return true;
 }
 
@@ -2450,6 +2471,12 @@ bool
 analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   assert(type_ptr->type);
+
+  reduce_instr(cnt, type_ptr->type);
+  assert(type_ptr->type->comptime);
+  MirType *src_type = type_ptr->type->const_value.data.v_type;
+  assert(src_type);
+  type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, src_type);
   return true;
 }
 
@@ -2609,7 +2636,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     unref_instr(decl->type);
     assert(resolved_type_value && resolved_type_value->type->kind == MIR_TYPE_TYPE);
     MirType *resolved_type = resolved_type_value->data.v_type;
-    assert(resolved_type);
+    if (!resolved_type) return false;
 
     var->alloc_type = resolved_type;
   }
@@ -2965,6 +2992,7 @@ void
 exec_instr(Context *cnt, MirInstr *instr)
 {
   if (!instr) return;
+  if (cnt->builder->errorc) return;
   if (!instr->analyzed) {
 #if BL_DEBUG
     bl_abort("instruction %s (%llu) has not been analyzed!", mir_instr_name(instr), instr->_serial);
@@ -3000,12 +3028,6 @@ exec_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_RET:
     exec_instr_ret(cnt, (MirInstrRet *)instr);
-    break;
-  case MIR_INSTR_TYPE_PTR:
-    exec_instr_type_ptr(cnt, (MirInstrTypePtr *)instr);
-    break;
-  case MIR_INSTR_TYPE_ARRAY:
-    exec_instr_type_array(cnt, (MirInstrTypeArray *)instr);
     break;
   case MIR_INSTR_TYPE_SLICE:
     exec_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
@@ -3382,39 +3404,6 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 
   assert(dest_ptr && src_ptr);
   memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
-}
-
-void
-exec_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
-{
-  MirType *type = *exec_pop_stack_as(cnt, type_ptr->type->const_value.type, MirType **);
-  assert(type);
-
-  /* create pointer type */
-  MirType *tmp = create_type_ptr(cnt, type);
-
-  exec_push_stack(cnt, (MirStackPtr)&tmp, cnt->builtin_types.entry_type);
-}
-
-void
-exec_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
-{
-  /* pop elm type */
-  MirType *elem_type = *exec_pop_stack_as(cnt, type_arr->elem_type->const_value.type, MirType **);
-  assert(elem_type);
-
-  /* pop arr size */
-  /* TODO: len set by immutable variable need to be set before use!!! */
-  MirStackPtr       len_ptr = exec_pop_stack(cnt, type_arr->len->const_value.type);
-  MirConstValueData len     = {0};
-  exec_read_value(&len, len_ptr, type_arr->len->const_value.type);
-
-  assert(elem_type);
-
-  MirConstValueData tmp = {0};
-  tmp.v_type            = create_type_array(cnt, elem_type, len.v_uint);
-
-  exec_push_stack(cnt, &tmp, cnt->builtin_types.entry_type);
 }
 
 void

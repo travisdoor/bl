@@ -98,6 +98,7 @@ typedef enum
   ERR_LIB_SYMBOL_NOT_FOUND    = 61,
   ERR_EXPECTED_TEST_DESC      = 62,
   ERR_NULL_POINTER            = 63,
+  ERR_INVALID_ARR_SIZE        = 64,
 } Error;
 
 #endif // BL_ERROR_H
