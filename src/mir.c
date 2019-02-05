@@ -192,6 +192,12 @@ instr_dtor(MirInstr *instr)
 }
 
 static void
+fn_dtor(MirFn *fn)
+{
+  bo_unref(fn->variables);
+}
+
+static void
 type_dtor(MirType *type)
 {
   switch (type->kind) {
@@ -988,6 +994,7 @@ provide_var(Context *cnt, MirVar *var)
                                          var->decl_node, false);
   entry->data.var   = var;
   scope_insert(var->scope, entry);
+
   return entry;
 }
 
@@ -1182,6 +1189,7 @@ create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, 
           bool is_test_case)
 {
   MirFn *tmp        = arena_alloc(&cnt->module->arenas.fn_arena);
+  tmp->variables    = bo_array_new(sizeof(MirVar *));
   tmp->llvm_name    = llvm_name;
   tmp->id           = id;
   tmp->scope        = scope;
@@ -1643,6 +1651,14 @@ append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, b
                         &tmp->base.const_value, is_mutable);
 
   push_into_curr_block(cnt, &tmp->base);
+
+  /* store variable into current function (due alloca-first generation pass in LLVM) */
+  {
+    MirFn *fn = tmp->base.owner_block->owner_fn;
+    assert(fn);
+    bo_array_push_back(fn->variables, tmp->var);
+  }
+
   return &tmp->base;
 }
 
@@ -4543,7 +4559,7 @@ arenas_init(struct MirArenas *arenas)
              (ArenaElemDtor)instr_dtor);
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
 }
 
 static void
@@ -4790,6 +4806,7 @@ mir_new_module(const char *name)
 
   LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
   LLVMSetModuleDataLayout(llvm_module, llvm_td);
+  LLVMSetTarget(llvm_module, triple);
 
   tmp->globals     = bo_array_new(sizeof(MirInstr *));
   tmp->llvm_cnt    = llvm_context;

@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Documentation</title>
-<!-- 2019-01-30 St 11:08 -->
+<!-- 2019-02-05 Út 13:21 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -638,9 +638,9 @@ Represents the address of some allocated data.
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#load</span> <span class="org-string">"std/debug.bl"</span>
+<pre class="src src-bl"><span class="linenr">1: </span>load <span class="org-string">"std/debug.bl"</span>
 <span class="linenr">2: </span>
-<span class="linenr">3: </span><span class="org-preprocessor">#test</span> <span class="org-string">"pointers"</span> {
+<span class="linenr">3: </span>test <span class="org-string">"pointers"</span> {
 <span class="linenr">4: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">666</span>;
 <span class="linenr">5: </span>  <span class="org-constant">i_ptr</span> : *<span class="org-type">s32</span> = &amp;i; <span class="org-comment">// taking the address of 'i' variable and set 'i_ptr'</span>
 <span class="linenr">6: </span>  <span class="org-variable-name">j </span>:= *i_ptr;       <span class="org-comment">// pointer dereferencing</span>
@@ -668,7 +668,7 @@ Example:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"array type"</span> {
+<pre class="src src-bl"><span class="linenr">1: </span>test <span class="org-string">"array type"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">arr</span> : [<span class="org-constant">10</span>] <span class="org-type">s32</span>; <span class="org-comment">// declare uninitialized array variable </span>
 <span class="linenr">3: </span>  arr.len;        <span class="org-comment">// yields array element count (usize)</span>
 <span class="linenr">4: </span>};
@@ -693,7 +693,7 @@ Example:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"string type"</span> {
+<pre class="src src-bl"><span class="linenr">1: </span>test <span class="org-string">"string type"</span> {
 <span class="linenr">2: </span>  <span class="org-variable-name">msg </span>:= <span class="org-string">"hello world\n"</span>; <span class="org-comment">// type is '[12] u8'</span>
 <span class="linenr">3: </span>  msg.len;                <span class="org-comment">// character count of the string</span>
 <span class="linenr">4: </span>};
@@ -753,7 +753,7 @@ Example:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"type cast"</span> {
+<pre class="src src-bl"><span class="linenr"> 1: </span>test <span class="org-string">"type cast"</span> {
 <span class="linenr"> 2: </span>  <span class="org-comment">// default type of integer literal is 's32'</span>
 <span class="linenr"> 3: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">666</span>; 
 <span class="linenr"> 4: </span>
@@ -790,7 +790,7 @@ Example of variable allocated on stack.
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"variables"</span> {
+<pre class="src src-bl"><span class="linenr">1: </span>test <span class="org-string">"variables"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">i</span> : <span class="org-type">s32</span> = <span class="org-constant">666</span>; 
 <span class="linenr">3: </span>  <span class="org-variable-name">j </span>:= <span class="org-constant">666</span>; <span class="org-comment">// type is optional here</span>
 <span class="linenr">4: </span>};
@@ -812,7 +812,7 @@ Example of constant allocated on stack. Constant must be initialized and cannot 
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"constants"</span> {
+<pre class="src src-bl"><span class="linenr">1: </span>test <span class="org-string">"constants"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">i</span> : <span class="org-type">s32</span> : <span class="org-constant">666</span>; 
 <span class="linenr">3: </span>  <span class="org-constant">j</span> :: <span class="org-constant">666</span>; <span class="org-comment">// type is optional here</span>
 <span class="linenr">4: </span>};
@@ -837,7 +837,7 @@ Examples of named function.
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"named functions"</span> {
+<pre class="src src-bl"><span class="linenr"> 1: </span>test <span class="org-string">"named functions"</span> {
 <span class="linenr"> 2: </span>  <span class="org-function-name">foo</span> :: <span class="org-keyword">fn</span> () {
 <span class="linenr"> 3: </span>  };
 <span class="linenr"> 4: </span>
@@ -874,7 +874,7 @@ Example of anonymous function.
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"anonymous function"</span> {
+<pre class="src src-bl"><span class="linenr">1: </span>test <span class="org-string">"anonymous function"</span> {
 <span class="linenr">2: </span>  <span class="org-function-name">i</span> := <span class="org-keyword">fn</span> (i: <span class="org-type">s32</span>) <span class="org-type">s32</span> {
 <span class="linenr">3: </span>    <span class="org-keyword">return</span> i;
 <span class="linenr">4: </span>  } (<span class="org-constant">666</span>);
@@ -894,9 +894,9 @@ Block can limit scope of the variable.
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#load</span> <span class="org-string">"std/debug.bl"</span>
+<pre class="src src-bl"><span class="linenr"> 1: </span>load <span class="org-string">"std/debug.bl"</span>
 <span class="linenr"> 2: </span>
-<span class="linenr"> 3: </span><span class="org-preprocessor">#test</span> <span class="org-string">"blocks"</span> {
+<span class="linenr"> 3: </span>test <span class="org-string">"blocks"</span> {
 <span class="linenr"> 4: </span>  <span class="org-variable-name">a </span>:= <span class="org-constant">10</span>;
 <span class="linenr"> 5: </span>
 <span class="linenr"> 6: </span>  {
@@ -925,7 +925,7 @@ if &lt;condition&gt; {[then block]} [else {[else block]}]
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"ifs"</span> {
+<pre class="src src-bl"><span class="linenr"> 1: </span>test <span class="org-string">"ifs"</span> {
 <span class="linenr"> 2: </span>  <span class="org-variable-name">b </span>:= <span class="org-constant">true</span>;
 <span class="linenr"> 3: </span>  <span class="org-keyword">if</span> b {
 <span class="linenr"> 4: </span>  } <span class="org-keyword">else</span> {
@@ -956,7 +956,7 @@ loop &lt;initialization&gt;; &lt;condition&gt;; &lt;increment&gt; {[block]}
 
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"simple loops"</span> {
+<pre class="src src-bl"><span class="linenr"> 1: </span>test <span class="org-string">"simple loops"</span> {
 <span class="linenr"> 2: </span>  <span class="org-constant">count</span> :: <span class="org-constant">10</span>;
 <span class="linenr"> 3: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">0</span>;
 <span class="linenr"> 4: </span>
@@ -991,7 +991,7 @@ Examples:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"break and continue"</span> {
+<pre class="src src-bl"><span class="linenr"> 1: </span>test <span class="org-string">"break and continue"</span> {
 <span class="linenr"> 2: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">0</span>;
 <span class="linenr"> 3: </span>  <span class="org-keyword">loop</span> {
 <span class="linenr"> 4: </span>    i += <span class="org-constant">1</span>;
@@ -1071,7 +1071,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-01-30 St 11:08</p>
+<p class="date">Created: 2019-02-05 Út 13:21</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

@@ -37,7 +37,7 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
-#define NAMED_VARS false
+#define NAMED_VARS true
 
 typedef struct
 {
@@ -108,6 +108,9 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
 static void
 gen_as_const(Context *cnt, MirInstr *instr);
+
+static void
+gen_allocas(Context *cnt, MirFn *fn);
 
 static inline LLVMValueRef
 gen_fn_proto(Context *cnt, MirFn *fn)
@@ -262,7 +265,7 @@ void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
   assert(load->base.const_value.type && "invalid type of load instruction");
-  LLVMValueRef   llvm_src  = load->src->llvm_value;
+  LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
   const unsigned alignment = load->base.const_value.type->alignment;
   assert(llvm_src);
   load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
@@ -335,8 +338,8 @@ gen_as_const(Context *cnt, MirInstr *instr)
 void
 gen_instr_store(Context *cnt, MirInstrStore *store)
 {
-  LLVMValueRef   val       = store->src->llvm_value;
-  LLVMValueRef   ptr       = store->dest->llvm_value;
+  LLVMValueRef   val       = fetch_value(cnt, store->src);
+  LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
   const unsigned alignment = store->src->const_value.type->alignment;
   assert(val && ptr);
   store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
@@ -346,7 +349,7 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 void
 gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-  LLVMValueRef llvm_val = unop->instr->llvm_value;
+  LLVMValueRef llvm_val = fetch_value(cnt, unop->instr);
   assert(llvm_val);
 
   switch (unop->op) {
@@ -373,8 +376,8 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-  LLVMValueRef lhs = binop->lhs->llvm_value;
-  LLVMValueRef rhs = binop->rhs->llvm_value;
+  LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
+  LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
   assert(lhs && rhs);
 
   LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
@@ -487,8 +490,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 
     barray_foreach(call->args, arg)
     {
-      assert(arg->llvm_value && "function argument has no LLVM const_value");
-      llvm_args[i] = arg->llvm_value;
+      llvm_args[i] = fetch_value(cnt, arg);
     }
   }
 
@@ -503,18 +505,13 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
   assert(var);
+  assert(var->llvm_value);
 
-#if NAMED_VARS
-  const char *name = var->llvm_name;
-#else
-  const char *name = "";
-#endif
-  LLVMTypeRef    llvm_type = var->alloc_type->llvm_type;
-  const unsigned alignment = var->alloc_type->alignment;
-  assert(llvm_type && name);
-
-  var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);
-  LLVMSetAlignment(var->llvm_value, alignment);
+  if (decl->init) {
+    LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
+    assert(llvm_init);
+    LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+  }
 }
 
 void
@@ -564,15 +561,54 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
-  assert(block->owner_fn->llvm_value);
+  MirFn *fn = block->owner_fn;
+  assert(fn->llvm_value);
   LLVMBasicBlockRef llvm_block = gen_basic_block(cnt, block);
   assert(llvm_block);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
+
+  /* gen allocas fist in entry block!!! */
+  if (fn->first_block == block) {
+    gen_allocas(cnt, fn);
+  }
+  
   MirInstr *instr = block->entry_instr;
   while (instr) {
     gen_instr(cnt, instr);
     instr = instr->next;
+  }
+}
+
+void
+gen_allocas(Context *cnt, MirFn *fn)
+{
+  assert(fn);
+
+  //LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(fn->llvm_value);
+  //assert(bb && "invalid insert block for allocas!!!");
+  //LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+
+  const char *var_name;
+  LLVMTypeRef var_type;
+  unsigned    var_alignment;
+  MirVar *    var;
+
+  barray_foreach(fn->variables, var)
+  {
+    assert(var);
+#if NAMED_VARS
+    var_name = var->id->str;
+#else
+    var_name = "";
+#endif
+
+    var_type      = var->alloc_type->llvm_type;
+    var_alignment = (unsigned int)var->alloc_type->alignment;
+    assert(var_type);
+
+    var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
+    LLVMSetAlignment(var->llvm_value, var_alignment);
   }
 }
 

@@ -1,4 +1,4 @@
-#test "string type" {
+test "string type" {
   msg := "hello world\n"; // type is '[12] u8'
   msg.len; 	          // character count of the string
 };

@@ -1,4 +1,4 @@
-#test "variables" {
+test "variables" {
   i : s32 = 666; 
   j := 666; // type is optional here
 };

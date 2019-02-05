@@ -1078,6 +1078,9 @@ p.verse{
 .org-src-container>pre.src-blm:before{
     content:"Biscuit MIR"
 }
+.org-src-container>pre.src-llvm:before{
+    content:"LLVM"
+}
 .inlinetask{
     background:#ffc;
     border:2px solid gray;

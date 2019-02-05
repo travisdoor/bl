@@ -1,4 +1,4 @@
-#test "simple loops" {
+test "simple loops" {
   count :: 10;
   i := 0;
 

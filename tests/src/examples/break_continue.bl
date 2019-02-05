@@ -1,4 +1,4 @@
-#test "break and continue" {
+test "break and continue" {
   i := 0;
   loop {
     i += 1;

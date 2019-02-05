@@ -3,24 +3,16 @@
 load "std/debug.bl"
 
 main :: fn () s32 {
-  count := 10 + 12 / 2 * 3;
-
-  /*
+  count :: 10;
   loop i := 0; i < count; i += 1 {
     say_hello();
   }
 
-  // comptime conditions
-  if count == 10 {
-    if true {
-       say_hello();
-    }
-  } else {
-    unreachable;
-  }
-  */
+  return 0;
+};
 
-  return count;
+test "kokot" {
+  main();
 };
 
 say_hello :: fn () {
@@ -39,16 +31,3 @@ say_hello :: fn () {
 };
 
 putchar :: fn (c: s32) s32 extern;
-
-// array here should not be passed by value
-// -> use slices
-/*
-print :: fn (str: []u8) {
-  loop i := 0; i < str.len; i += 1 {
-    putchar(str[i]);
-  }
-};
-
-
-
-*/

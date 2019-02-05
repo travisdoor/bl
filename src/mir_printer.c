@@ -301,7 +301,7 @@ print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
 {
   print_instr_head(&cond_br->base, stream, "br");
   print_comptime_value_or_id(cond_br->cond, stream);
-  fprintf(stream, " ? %s_%u : %s_%u", cond_br->then_block->name, cond_br->then_block->base.id,
+  fprintf(stream, " ? %%%s_%u : %%%s_%u", cond_br->then_block->name, cond_br->then_block->base.id,
           cond_br->else_block->name, cond_br->else_block->base.id);
 }
 
@@ -322,7 +322,7 @@ void
 print_instr_br(MirInstrBr *br, FILE *stream)
 {
   print_instr_head(&br->base, stream, "br");
-  fprintf(stream, "%s_%d", br->then_block->name, br->then_block->base.id);
+  fprintf(stream, "%%%s_%d", br->then_block->name, br->then_block->base.id);
 }
 
 void
@@ -434,9 +434,9 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 {
   if (block->base.prev) fprintf(stream, "\n");
 #if BL_DEBUG
-  fprintf(stream, "%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
+  fprintf(stream, "%%%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
 #else
-  fprintf(stream, "%s_%u:", block->name, block->base.id);
+  fprintf(stream, "%%%s_%u:", block->name, block->base.id);
 #endif
   if (!block->base.ref_count)
     fprintf(stream, " // NEVER REACHED\n");

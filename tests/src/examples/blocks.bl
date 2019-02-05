@@ -1,6 +1,6 @@
-#load "std/debug.bl"
+load "std/debug.bl"
 
-#test "blocks" {
+test "blocks" {
   a := 10;
 
   {
