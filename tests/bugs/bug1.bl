@@ -1,0 +1,4 @@
+test "setting constant" {
+  foo :: 10;
+  foo = 5; // this should be error (also assignment via pointer!!!)
+};
