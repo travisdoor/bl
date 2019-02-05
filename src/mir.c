@@ -44,7 +44,7 @@
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
 
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC false
 // clang-format on
 
 union _MirInstr
@@ -62,7 +62,6 @@ union _MirInstr
   MirInstrDeclRef      decl_ref;
   MirInstrCall         call;
   MirInstrUnreachable  unreachable;
-  MirInstrTryInfer     try_infer;
   MirInstrCondBr       cond_br;
   MirInstrBr           br;
   MirInstrUnop         unop;
@@ -322,9 +321,6 @@ MirInstr *
 append_instr_type_const(Context *cnt, Ast *node, MirInstr *type);
 
 static MirInstr *
-append_instr_try_infer(Context *cnt, Ast *node, MirInstr *expr, MirInstr *dest);
-
-static MirInstr *
 append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
 
 static MirInstr *
@@ -547,9 +543,6 @@ static bool
 analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate);
 
 static bool
-analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer);
-
-static bool
 analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime);
 
 static bool
@@ -649,9 +642,29 @@ mutate_instr(MirInstr *instr, MirInstrKind kind)
 }
 
 static inline void
+erase_block(MirInstrBlock *block)
+{
+  if (!block) return;
+  MirFn *fn = block->owner_fn;
+  assert(fn);
+
+  MirInstr *bl_instr = &block->base;
+
+  /* first in fn */
+  if (fn->first_block == block) fn->first_block = (MirInstrBlock *)bl_instr->next;
+  /* last in fn */
+  if (fn->last_block == block) fn->last_block = (MirInstrBlock *)bl_instr->prev;
+  if (bl_instr->prev) bl_instr->prev->next = bl_instr->next;
+  if (bl_instr->next) bl_instr->next->prev = bl_instr->prev;
+
+  bl_instr->prev = NULL;
+  bl_instr->next = NULL;
+}
+
+static inline void
 erase_instr(MirInstr *instr)
 {
-  assert(instr);
+  if (!instr) return;
   MirInstrBlock *block = instr->owner_block;
   if (!block) return;
 
@@ -1600,10 +1613,11 @@ MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 {
   assert(callee);
-  MirInstrCall *tmp   = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
-  tmp->base.ref_count = NO_REF_COUNTING;
-  tmp->args           = args;
-  tmp->callee         = callee;
+  MirInstrCall *tmp = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
+  tmp->args         = args;
+  tmp->callee       = callee;
+
+  ref_instr(&tmp->base);
 
   /* reference all arguments */
   if (args) {
@@ -1736,18 +1750,6 @@ append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
   tmp->base.ref_count        = NO_REF_COUNTING;
   tmp->src                   = src;
   tmp->dest                  = dest;
-
-  push_into_curr_block(cnt, &tmp->base);
-  return &tmp->base;
-}
-
-MirInstr *
-append_instr_try_infer(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
-{
-  assert(src && dest);
-  MirInstrTryInfer *tmp = create_instr(cnt, MIR_INSTR_TRY_INFER, node, MirInstrTryInfer *);
-  tmp->src              = src;
-  tmp->dest             = dest;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2328,6 +2330,26 @@ analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   br->cond = try_impl_cast(cnt, br->cond, cnt->builtin_types.entry_bool, &valid);
   if (!valid) return false;
 
+  reduce_instr(cnt, br->cond);
+
+  /* compile time known condition leads to branching reduction */
+  if (br->cond->comptime) {
+    /* PERFORMANCE: break can be completly removed, but we have no way how to reparent all
+     * instructions inside branches */
+    MirInstrBlock *then_block = br->then_block;
+    MirInstrBlock *else_block = br->else_block;
+
+    MirInstrBr *tmp = (MirInstrBr *)mutate_instr(&br->base, MIR_INSTR_BR);
+
+    if (br->cond->const_value.data.v_int == true) {
+      tmp->then_block = then_block;
+      erase_block(else_block);
+    } else {
+      tmp->then_block = else_block;
+      erase_block(then_block);
+    }
+  }
+
   return true;
 }
 
@@ -2503,32 +2525,6 @@ analyze_instr_validate_type(Context *cnt, MirInstrValidateType *validate)
   }
 
   erase_instr(&validate->base);
-  return true;
-}
-
-bool
-analyze_instr_try_infer(Context *cnt, MirInstrTryInfer *infer)
-{
-  MirInstr *src  = infer->src;
-  MirInstr *dest = infer->dest;
-  assert(src && dest);
-  assert(src->analyzed && dest->analyzed);
-
-  assert(dest->kind == MIR_INSTR_DECL_VAR);
-  if (dest->const_value.type) return true;
-
-  const bool will_be_loaded = is_load_needed(infer->src);
-
-  /* set type to decl var and variable */
-  dest->const_value.type =
-      will_be_loaded ? src->const_value.type : create_type_ptr(cnt, src->const_value.type);
-  MirVar *var = ((MirInstrDeclVar *)dest)->var;
-  assert(var);
-  var->alloc_type = will_be_loaded ? src->const_value.type->data.ptr.next : src->const_value.type;
-
-  assert(dest->const_value.type);
-
-  erase_instr(&infer->base);
   return true;
 }
 
@@ -2823,9 +2819,6 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_VALIDATE_TYPE:
     state = analyze_instr_validate_type(cnt, (MirInstrValidateType *)instr);
-    break;
-  case MIR_INSTR_TRY_INFER:
-    state = analyze_instr_try_infer(cnt, (MirInstrTryInfer *)instr);
     break;
   case MIR_INSTR_LOAD:
     state = analyze_instr_load(cnt, (MirInstrLoad *)instr);
@@ -3222,18 +3215,28 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   MirFn *fn = arg->base.owner_block->owner_fn;
   assert(fn);
 
-  /* resolve argument pointer */
-  BArray * arg_types = fn->type->data.fn.arg_types;
-  MirType *tmp_type  = NULL;
-  /* starting point */
-  uint8_t *arg_ptr = (uint8_t *)cnt->exec_stack->ra;
-  for (int32_t i = 0; i <= arg->i; ++i) {
-    tmp_type = bo_array_at(arg_types, i, MirType *);
-    assert(tmp_type);
-    arg_ptr -= exec_stack_alloc_size(tmp_type->store_size_bytes);
-  }
+  MirInstrCall *caller     = (MirInstrCall *)exec_get_ra(cnt)->callee;
+  BArray *      arg_values = caller->args;
+  assert(arg_values);
+  MirInstr *curr_arg_value = bo_array_at(arg_values, arg->i, MirInstr *);
 
-  exec_push_stack(cnt, (MirStackPtr)arg_ptr, arg->base.const_value.type);
+  if (curr_arg_value->comptime) {
+    exec_push_stack(cnt, (MirStackPtr)&curr_arg_value->const_value.data,
+                    curr_arg_value->const_value.type);
+  } else {
+    /* resolve argument pointer */
+    MirInstr *arg_value = NULL;
+    /* starting point */
+    MirStackPtr arg_ptr = (MirStackPtr)cnt->exec_stack->ra;
+    for (int32_t i = 0; i <= arg->i; ++i) {
+      arg_value = bo_array_at(arg_values, i, MirInstr *);
+      assert(arg_value);
+      if (arg_value->comptime) continue;
+      arg_ptr -= exec_stack_alloc_size(arg_value->const_value.type->store_size_bytes);
+    }
+
+    exec_push_stack(cnt, (MirStackPtr)arg_ptr, arg->base.const_value.type);
+  }
 }
 
 void
@@ -3243,7 +3246,7 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   MirType *type = br->cond->const_value.type;
 
   /* pop condition from stack */
-  MirStackPtr cond = exec_pop_stack(cnt, type);
+  MirStackPtr cond = exec_fetch_value(cnt, br->cond);
   assert(cond);
 
   MirConstValueData tmp = {0};
@@ -3514,13 +3517,13 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 
     /* pop all arguments from the stack */
     MirStackPtr arg_ptr;
-    BArray *    arg_types = fn->type->data.fn.arg_types;
-    if (arg_types) {
-      MirType *arg_type;
-      barray_foreach(arg_types, arg_type)
+    BArray *    arg_values = call->args;
+    if (arg_values) {
+      MirInstr *arg_value;
+      barray_foreach(arg_values, arg_value)
       {
-        arg_ptr = exec_pop_stack(cnt, arg_type);
-        exec_push_dc_arg(cnt, arg_ptr, arg_type);
+        arg_ptr = exec_fetch_value(cnt, arg_value);
+        exec_push_dc_arg(cnt, arg_ptr, arg_value->const_value.type);
       }
     }
 
@@ -3566,6 +3569,9 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   MirFn *fn = ret->base.owner_block->owner_fn;
   assert(fn);
 
+  /* read callee from frame stack */
+  MirInstrCall *caller = (MirInstrCall *)exec_get_ra(cnt)->callee;
+
   MirType *   ret_type     = NULL;
   MirStackPtr ret_data_ptr = NULL;
 
@@ -3584,23 +3590,24 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
       memcpy(fn->exec_ret_value, ret_data_ptr, size);
     }
 
-    /* read callee from frame stack */
-    MirInstr *callee = exec_get_ra(cnt)->callee;
     /* discard return value pointer if result is not used on caller side, this solution is kinda
      * messy... */
-    if (!(callee && callee->ref_count > 1)) ret_data_ptr = NULL;
+    if (!(caller && caller->base.ref_count > 1)) ret_data_ptr = NULL;
   }
 
   /* do frame stack rollback */
   MirInstr *pc = exec_pop_ra(cnt);
 
   /* clean up all arguments from the stack */
-  BArray *arg_types = fn->type->data.fn.arg_types;
-  if (arg_types) {
-    MirType *arg_type;
-    barray_foreach(arg_types, arg_type)
-    {
-      exec_pop_stack(cnt, arg_type);
+  if (caller) {
+    BArray *arg_values = caller->args;
+    if (arg_values) {
+      MirInstr *arg_value;
+      barray_foreach(arg_values, arg_value)
+      {
+        if (arg_value->comptime) continue;
+        exec_pop_stack(cnt, arg_value->const_value.type);
+      }
     }
   }
 
@@ -4506,8 +4513,6 @@ mir_instr_name(MirInstr *instr)
     return "InstrTypeArray";
   case MIR_INSTR_TYPE_SLICE:
     return "InstrTypeSlice";
-  case MIR_INSTR_TRY_INFER:
-    return "InstrTryInfer";
   case MIR_INSTR_COND_BR:
     return "InstrCondBr";
   case MIR_INSTR_BR:

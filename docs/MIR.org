@@ -113,13 +113,25 @@
    Variable declaration.
 
    #+BEGIN_EXAMPLE
-   <*T> decl <name> : <T> // yields *T (pointer to value allocated on the stack)
+   void decl <name> : <T> = <init value> // yields void 
    #+END_EXAMPLE
 
    | stack op | data | description              |
    |----------+------+--------------------------|
    | PUSH     | -    | storage for the variable |
+
+   Constant declaration.
+
+   #+BEGIN_EXAMPLE
+   void decl <name> : <T> : <init value> // yields void 
+   #+END_EXAMPLE
+** declref
+   Reference to some declaration. This instruction is 'noop'. Symbol lookup is done here during analyze pass, when symbol is not found error is generated.
    
+   #+BEGIN_EXAMPLE
+   <T*> declref <name> // yields pointer to found declaration
+   #+END_EXAMPLE
+
 ** load
    Push pointed value on the stack.
 
@@ -156,7 +168,7 @@
    | PUSH     | arg  | fn argument |
 
 ** call
-   Call function. This instruction will create new stack frame and switch control to the callee.
+   Call function. This instruction will create new stack frame and switch control to the callee. All call arguments in example case are known only in runtime (compile-time known arguments is passed by const value).
 
    | stack op | data         | description                                                                |
    |----------+--------------+----------------------------------------------------------------------------|
@@ -331,13 +343,6 @@
 
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.
-
-** tryinfer
-   Assign type of the source to the destination instruction.
-   
-   #+BEGIN_EXAMPLE
-   void tryinfer <src> -> <dest> // yields void
-   #+END_EXAMPLE
 
 ** validate_type
    Validates if the source instruction yields value of type 'type'. 

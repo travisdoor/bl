@@ -141,9 +141,6 @@ static void
 print_instr_unreachable(MirInstrUnreachable *unr, FILE *stream);
 
 static void
-print_instr_try_infer(MirInstrTryInfer *infer, FILE *stream);
-
-static void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream);
 
 static void
@@ -303,8 +300,9 @@ void
 print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
 {
   print_instr_head(&cond_br->base, stream, "br");
-  fprintf(stream, "%%%u ? %s_%u : %s_%u", cond_br->cond->id, cond_br->then_block->name,
-          cond_br->then_block->base.id, cond_br->else_block->name, cond_br->else_block->base.id);
+  print_comptime_value_or_id(cond_br->cond, stream);
+  fprintf(stream, " ? %s_%u : %s_%u", cond_br->then_block->name, cond_br->then_block->base.id,
+          cond_br->else_block->name, cond_br->else_block->base.id);
 }
 
 void
@@ -325,13 +323,6 @@ print_instr_br(MirInstrBr *br, FILE *stream)
 {
   print_instr_head(&br->base, stream, "br");
   fprintf(stream, "%s_%d", br->then_block->name, br->then_block->base.id);
-}
-
-void
-print_instr_try_infer(MirInstrTryInfer *infer, FILE *stream)
-{
-  print_instr_head(&infer->base, stream, "tryinfer");
-  fprintf(stream, "%%%u -> %%%u", infer->src->id, infer->dest->id);
 }
 
 void
@@ -480,7 +471,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   print_type(fn_proto->base.const_value.type, false, stream);
 
   if (!fn->is_external) {
-    if (fn->is_test_case) fprintf(stream, " #test");
+    if (fn->is_test_case) fprintf(stream, " test");
     fprintf(stream, " {\n");
 
     MirInstrBlock *tmp = fn->first_block;
@@ -490,7 +481,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     }
     fprintf(stream, "}\n");
   } else {
-    fprintf(stream, " #extern\n");
+    fprintf(stream, " extern\n");
   }
 }
 
@@ -543,9 +534,6 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_SLICE:
     print_instr_type_slice((MirInstrTypeSlice *)instr, stream);
-    break;
-  case MIR_INSTR_TRY_INFER:
-    print_instr_try_infer((MirInstrTryInfer *)instr, stream);
     break;
   case MIR_INSTR_COND_BR:
     print_instr_cond_br((MirInstrCondBr *)instr, stream);
