@@ -53,7 +53,7 @@ file_exists(const char *filepath)
 }
 
 const char *
-brealpath(const char *file, char *out, int out_len)
+brealpath(const char *file, char *out, int32_t out_len)
 {
   const char *resolved = NULL;
   assert(out);
@@ -69,7 +69,7 @@ brealpath(const char *file, char *out, int out_len)
 }
 
 void
-date_time(char *buf, int len, const char *format)
+date_time(char *buf, int32_t len, const char *format)
 {
   assert(buf && len);
   time_t     timer;
@@ -111,7 +111,7 @@ print_bits(size_t const size, void const *const ptr)
 {
   unsigned char *b = (unsigned char *)ptr;
   unsigned char  byte;
-  int            i, j;
+  int32_t        i, j;
 
   for (i = size - 1; i >= 0; i--) {
     for (j = 7; j >= 0; j--) {

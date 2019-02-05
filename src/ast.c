@@ -69,7 +69,7 @@ ast_create_node(Arena *arena, AstKind c, Token *tok)
   node->src  = tok ? &tok->src : NULL;
 
 #if BL_DEBUG
-  static int serial = 0;
+  static uint64_t serial = 0;
   node->_serial     = serial++;
 #endif
   return node;

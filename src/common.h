@@ -76,10 +76,10 @@ bool
 file_exists(const char *filepath);
 
 const char *
-brealpath(const char *file, char *out, int out_len);
+brealpath(const char *file, char *out, int32_t out_len);
 
 void
-date_time(char *buf, int len, const char *format);
+date_time(char *buf, int32_t len, const char *format);
 
 bool
 is_aligned(const void *p, int32_t alignment);

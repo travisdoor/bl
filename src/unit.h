@@ -64,7 +64,7 @@ const char *
 unit_get_src(Unit *unit);
 
 const char *
-unit_get_src_ln(Unit *unit, int line, long *len);
+unit_get_src_ln(Unit *unit, int32_t line, long *len);
 
 const char *
 unit_get_name(Unit *unit);

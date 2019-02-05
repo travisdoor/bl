@@ -163,7 +163,7 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 {
   clock_t begin = clock();
   Unit *  unit;
-  int     state = COMPILE_OK;
+  int32_t state = COMPILE_OK;
 
   builder->flags = flags;
   msg_log("compile assembly: %s", assembly->name);
@@ -218,7 +218,7 @@ builder_warning(Builder *builder, const char *format, ...)
 }
 
 void
-builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCurPos pos,
+builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, BuilderCurPos pos,
             const char *format, ...)
 {
   if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
@@ -228,9 +228,9 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
   char     msg[MAX_MSG_LEN] = {0};
 
   if (src) {
-    int line = src->line;
-    int col  = src->col;
-    int len  = src->len;
+    int32_t line = src->line;
+    int32_t col  = src->col;
+    int32_t len  = src->len;
 
     switch (pos) {
     case BUILDER_CUR_AFTER:
@@ -264,7 +264,7 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
     va_end(args);
     bo_string_append(tmp, &msg[0]);
 
-    int         pad      = sprintf(msg, "%d", src->line) + 2;
+    int32_t     pad      = sprintf(msg, "%d", src->line) + 2;
     long        line_len = 0;
     const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
     if (line_str && line_len) {
@@ -285,7 +285,7 @@ builder_msg(Builder *builder, BuilderMsgType type, int code, Src *src, BuilderCu
       bo_string_append(tmp, " | ");
     }
 
-    for (int i = 0; i < col + len - 1; ++i) {
+    for (int32_t i = 0; i < col + len - 1; ++i) {
       if (i < col - 1)
         bo_string_append(tmp, " ");
       else {

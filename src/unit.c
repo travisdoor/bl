@@ -140,9 +140,9 @@ unit_get_name(Unit *unit)
 }
 
 const char *
-unit_get_src_ln(Unit *unit, int line, long *len)
+unit_get_src_ln(Unit *unit, int32_t line, long *len)
 {
-  int         l    = 1;
+  int32_t     l    = 1;
   const char *iter = unit->src;
   while (iter && l != line) {
     ++l;

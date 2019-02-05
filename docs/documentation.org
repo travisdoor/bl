@@ -273,18 +273,18 @@
 
    Create unit test case:
    #+BEGIN_SRC bl :var css-file="org.css" :results raw
-   #load "std/debug.bl"
+   load "std/debug.bl"
 
    // function to be tested
    add :: fn (a: s32, b: s32) s32 {
      return a + b;
    };
 
-   #test "this is OK" {
+   test "this is OK" {
      assert(add(10, 20) == 30); 
    };
 
-   #test "this is not OK" {
+   test "this is not OK" {
      assert(add(10, 20) != 30); 
    };
    #+END_SRC

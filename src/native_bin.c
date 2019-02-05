@@ -70,7 +70,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 
   msg_log("%s", buf);
   /* TODO: handle error */
-  int result = system(buf);
+  int32_t result = system(buf);
   if (result != 0) {
     return;
   }

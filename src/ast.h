@@ -198,7 +198,7 @@ struct AstDeclEntity
 {
   struct AstDecl base;
   Ast *          value;
-  int            flags;
+  int32_t        flags;
   bool           in_gscope;
   bool mutable;
 };
@@ -331,9 +331,9 @@ struct AstExprCall
 
 struct AstExprMember
 {
-  Ast *ident;
-  Ast *next;
-  int  i;
+  Ast *   ident;
+  Ast *   next;
+  int32_t i;
 };
 
 struct AstExprElem
@@ -420,7 +420,7 @@ struct Ast
   } data;
 
 #if BL_DEBUG
-  int _serial;
+  int32_t _serial;
 #endif
 };
 

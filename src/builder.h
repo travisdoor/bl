@@ -62,8 +62,8 @@ typedef struct Builder
   Arena       ast_arena;
   ScopeArenas scope_arenas;
   uint32_t    flags;
-  int         total_lines;
-  int         errorc;
+  int32_t     total_lines;
+  int32_t     errorc;
   BArray *    str_cache;
 } Builder;
 
@@ -100,7 +100,7 @@ void
 builder_warning(Builder *builder, const char *format, ...);
 
 void
-builder_msg(Builder *builder, BuilderMsgType type, int code, struct Src *src, BuilderCurPos pos,
+builder_msg(Builder *builder, BuilderMsgType type, int32_t code, struct Src *src, BuilderCurPos pos,
             const char *format, ...);
 
 BString *

@@ -1028,7 +1028,7 @@ static inline bool
 is_load_needed(MirInstr *instr)
 {
   assert(instr);
-  if (instr->const_value.type->kind != MIR_TYPE_PTR) return false;
+  if (!is_pointer_type(instr->const_value.type)) return false;
   switch (instr->kind) {
   case MIR_INSTR_ARG:
   case MIR_INSTR_UNOP:
@@ -3346,14 +3346,14 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
    * already allocated variables will never be allocated again (in case declaration is inside loop
    * body!!!)
    */
-  if (var->comptime || var->rel_stack_ptr) return;
+  if (var->comptime) return;
 
   /* read initialization value if there is one */
   MirStackPtr init_ptr = NULL;
   if (decl->init) init_ptr = exec_fetch_value(cnt, decl->init);
 
   /* allocate memory for variable on stack */
-  var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
+  if (!var->rel_stack_ptr) var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
 
   /* initialize variable if there is some init value */
   if (decl->init) {
@@ -4691,7 +4691,7 @@ init_builtins(Context *cnt)
 {
   {
     // initialize all hashes once
-    for (int i = 0; i < _BUILTIN_COUNT; ++i) {
+    for (int32_t i = 0; i < _BUILTIN_COUNT; ++i) {
       builtin_ids[i].hash = bo_hash_from_str(builtin_ids[i].str);
     }
   }
