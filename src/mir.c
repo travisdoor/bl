@@ -43,8 +43,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
-
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC                    false
 // clang-format on
 
 union _MirInstr
@@ -1029,6 +1028,7 @@ static inline bool
 is_load_needed(MirInstr *instr)
 {
   assert(instr);
+  if (instr->const_value.type->kind != MIR_TYPE_PTR) return false;
   switch (instr->kind) {
   case MIR_INSTR_ARG:
   case MIR_INSTR_UNOP:
@@ -1040,7 +1040,6 @@ is_load_needed(MirInstr *instr)
   case MIR_INSTR_TYPE_FN:
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_CAST:
-  case MIR_INSTR_LOAD:
     return false;
   case MIR_INSTR_DECL_REF:
     if (((MirInstrDeclRef *)instr)->scope_entry->kind != SCOPE_ENTRY_VAR) return false;
@@ -2103,6 +2102,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       erase_instr(member_ptr->target_ptr);
       /* mutate instruction into constant */
       MirInstr *len                = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+      len->comptime                = true;
       len->const_value.type        = cnt->builtin_types.entry_usize;
       len->const_value.data.v_uint = target_type->data.array.len;
     } else {
@@ -3078,7 +3078,8 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   }
 
   if (src->kind == MIR_INSTR_DECL_REF) {
-    MirStackPtr ptr = exec_read_stack_ptr(cnt, src->const_value.data.v_rel_stack_ptr);
+    MirStackPtr ptr = exec_fetch_value(cnt, src);
+    ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
     exec_push_stack(cnt, (MirStackPtr)&ptr, type);
   }
 }
@@ -3090,10 +3091,10 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   assert(is_pointer_type(elem_ptr->arr_ptr->const_value.type));
   MirType *   arr_type   = elem_ptr->arr_ptr->const_value.type->data.ptr.next;
   MirType *   index_type = elem_ptr->index->const_value.type;
-  MirStackPtr index_ptr  = exec_pop_stack(cnt, index_type);
+  MirStackPtr index_ptr  = exec_fetch_value(cnt, elem_ptr->index);
 
-  MirRelativeStackPtr arr_rel_ptr = elem_ptr->arr_ptr->const_value.data.v_rel_stack_ptr;
-  MirStackPtr         arr_ptr     = exec_read_stack_ptr(cnt, arr_rel_ptr);
+  MirStackPtr arr_ptr = exec_fetch_value(cnt, elem_ptr->arr_ptr);
+  arr_ptr             = ((MirConstValueData *)arr_ptr)->v_stack_ptr;
   assert(arr_ptr && index_ptr);
 
   MirType *elem_type = arr_type->data.array.elem_type;

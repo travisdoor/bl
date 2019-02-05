@@ -3,8 +3,8 @@
 load "std/debug.bl"
 
 main :: fn () s32 {
-  count : usize = 0;
-  arr : [count]s32;
+  i :: 10;
+  foo : u8 = i;
   return 0;
 };
 

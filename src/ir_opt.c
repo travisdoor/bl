@@ -49,12 +49,9 @@ ir_opt_run(Builder *builder, Assembly *assembly)
   LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
   LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
 
-  LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
-  LLVMAddLoopVectorizePass(llvm_pm);
-  LLVMAddSLPVectorizePass(llvm_pm);
 
-  LLVMPassManagerBuilderPopulateFunctionPassManager(llvm_pm_builder, llvm_pm);
-  LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
+  LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
+  LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
   LLVMRunPassManager(llvm_pm, llvm_module);
 
   LLVMDisposePassManager(llvm_pm);
