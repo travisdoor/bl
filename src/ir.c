@@ -37,7 +37,11 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
+#if BL_DEBUG
 #define NAMED_VARS true
+#else
+#define NAMED_VARS false
+#endif
 
 typedef struct
 {
@@ -723,7 +727,6 @@ ir_run(Builder *builder, Assembly *assembly)
     msg_error("LLVM module not verified with error: %s", error);
   }
   LLVMDisposeMessage(error);
-#else
 #endif
 
   LLVMDisposeBuilder(cnt.llvm_builder);
