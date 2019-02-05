@@ -3,7 +3,8 @@
 load "std/debug.bl"
 
 main :: fn () s32 {
-  count :: 10;
+  count :: 1;
+  foo :: 0;
   loop i := 0; i < count; i += 1 {
     say_hello();
   }

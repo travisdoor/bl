@@ -572,7 +572,7 @@ gen_instr_block(Context *cnt, MirInstrBlock *block)
   if (fn->first_block == block) {
     gen_allocas(cnt, fn);
   }
-  
+
   MirInstr *instr = block->entry_instr;
   while (instr) {
     gen_instr(cnt, instr);
@@ -585,9 +585,9 @@ gen_allocas(Context *cnt, MirFn *fn)
 {
   assert(fn);
 
-  //LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(fn->llvm_value);
-  //assert(bb && "invalid insert block for allocas!!!");
-  //LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+  // LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(fn->llvm_value);
+  // assert(bb && "invalid insert block for allocas!!!");
+  // LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
 
   const char *var_name;
   LLVMTypeRef var_type;
@@ -723,6 +723,7 @@ ir_run(Builder *builder, Assembly *assembly)
     msg_error("LLVM module not verified with error: %s", error);
   }
   LLVMDisposeMessage(error);
+#else
 #endif
 
   LLVMDisposeBuilder(cnt.llvm_builder);
