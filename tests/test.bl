@@ -2,18 +2,15 @@
 
 load "std/debug.bl"
 
+/*
+Foo :: struct {
+  i: s32,
+  j: s32
+};
+*/
+
 main :: fn () s32 {
-  count :: 2;
-  i := 0;
-
-  loop x := 0; x < count; x += 1 {
-    loop y := 0; y < count; y += 1 {
-      i += 1;
-    }
-  }
-
-  //assert(i == count * count); 
-  return i;
+  return 0;
 };
 
 /*
