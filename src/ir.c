@@ -508,6 +508,7 @@ void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
+  if (!var->gen_llvm) return;
   assert(var);
   assert(var->llvm_value);
 

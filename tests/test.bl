@@ -1,6 +1,6 @@
 /* playground */
 
-load "std/debug.bl"
+//load "std/debug.bl"
 
 /*
 Foo :: struct {
@@ -9,7 +9,21 @@ Foo :: struct {
 };
 */
 
+get_T :: fn (signed: bool) type {
+  T : type;
+
+  if signed {
+    T = s32;
+  } else {
+    T = u32;
+  }
+
+  return T;
+};
+
 main :: fn () s32 {
+  i : type = get_T(true);
+  foo : i;
   return 0;
 };
 

@@ -435,6 +435,9 @@ static MirInstr *
 ast_expr_cast(Context *cnt, Ast *cast);
 
 static MirInstr *
+ast_expr_type(Context *cnt, Ast *type);
+
+static MirInstr *
 ast_expr_deref(Context *cnt, Ast *deref);
 
 static MirInstr *
@@ -1041,8 +1044,11 @@ is_load_needed(MirInstr *instr)
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_CAST:
     return false;
-  case MIR_INSTR_DECL_REF:
-    if (((MirInstrDeclRef *)instr)->scope_entry->kind != SCOPE_ENTRY_VAR) return false;
+  case MIR_INSTR_DECL_REF: {
+    MirInstrDeclRef *ref = (MirInstrDeclRef *)instr;
+    if (ref->scope_entry->kind == SCOPE_ENTRY_FN) return true;
+  }
+
   default:
     break;
   }
@@ -1644,14 +1650,6 @@ append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, b
                         &tmp->base.const_value, is_mutable);
 
   push_into_curr_block(cnt, &tmp->base);
-
-  /* store variable into current function (due alloca-first generation pass in LLVM) */
-  {
-    MirFn *fn = tmp->base.owner_block->owner_fn;
-    assert(fn);
-    bo_array_push_back(fn->variables, tmp->var);
-  }
-
   return &tmp->base;
 }
 
@@ -2184,30 +2182,36 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   }
 
   switch (found->kind) {
-  case SCOPE_ENTRY_FN:
-    ref->base.const_value.type      = found->data.fn->type;
+  case SCOPE_ENTRY_FN: {
+    MirFn *fn = found->data.fn;
+    assert(fn);
+    MirType *type = fn->type;
+    assert(type);
+
+    ref->base.const_value.type      = type;
     ref->base.const_value.data.v_fn = found->data.fn;
     ref->base.comptime              = true;
-    ++found->data.fn->ref_count;
+    ++fn->ref_count;
     break;
+  }
 
   case SCOPE_ENTRY_TYPE: {
-    /* convert to type constant */
-    MirInstr *tmp                = mutate_instr(&ref->base, MIR_INSTR_CONST);
-    tmp->comptime                = true;
-    tmp->const_value.type        = cnt->builtin_types.entry_type;
-    tmp->const_value.data.v_type = found->data.type;
-    return true;
+    ref->base.const_value.type        = cnt->builtin_types.entry_type;
+    ref->base.const_value.data.v_type = found->data.type;
+    ref->base.comptime                = true;
+    break;
   }
 
   case SCOPE_ENTRY_VAR: {
     MirVar *var = found->data.var;
     assert(var);
+    MirType *type = var->alloc_type;
+    assert(type);
 
-    MirType *type              = var->alloc_type;
     type                       = create_type_ptr(cnt, type);
     ref->base.const_value.type = type;
     ref->base.comptime         = var->comptime;
+    ++var->ref_count;
     break;
   }
 
@@ -2416,6 +2420,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
   MirType *ret_type = NULL;
   if (type_fn->ret_type) {
+    type_fn->ret_type = insert_instr_load_if_needed(cnt, type_fn->ret_type);
     assert(type_fn->ret_type->comptime);
     ret_type = type_fn->ret_type->const_value.data.v_type;
     assert(ret_type);
@@ -2472,10 +2477,18 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   assert(type_ptr->type);
 
+  type_ptr->type = insert_instr_load_if_needed(cnt, type_ptr->type);
   reduce_instr(cnt, type_ptr->type);
   assert(type_ptr->type->comptime);
   MirType *src_type = type_ptr->type->const_value.data.v_type;
   assert(src_type);
+
+  if (src_type->kind == MIR_TYPE_TYPE) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, type_ptr->base.node->src,
+                BUILDER_CUR_WORD, "cannot create pointer to type");
+    return false;
+  }
+
   type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, src_type);
   return true;
 }
@@ -2677,6 +2690,14 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   /* insert variable into symbol lookup table */
   provide_var(cnt, decl->var);
+
+  if (var->alloc_type->kind != MIR_TYPE_TYPE) {
+    var->gen_llvm = true;
+    /* store variable into current function (due alloca-first generation pass in LLVM) */
+    MirFn *fn = decl->base.owner_block->owner_fn;
+    assert(fn);
+    bo_array_push_back(fn->variables, var);
+  }
 
   return true;
 }
@@ -3320,15 +3341,12 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     break;
   }
 
-  case SCOPE_ENTRY_FN: {
-    MirFn *fn = entry->data.fn;
-    assert(fn);
-    ref->base.const_value.data.v_fn = fn;
+  case SCOPE_ENTRY_FN:
+  case SCOPE_ENTRY_TYPE:
     break;
 
   default:
     bl_abort("invalid declaration reference");
-  }
   }
 }
 
@@ -4240,6 +4258,14 @@ ast_expr_unary(Context *cnt, Ast *unop)
 }
 
 MirInstr *
+ast_expr_type(Context *cnt, Ast *type)
+{
+  Ast *next_type = type->data.expr_type.type;
+  assert(next_type);
+  return ast(cnt, next_type);
+}
+
+MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity)
 {
   MirInstr * result     = NULL;
@@ -4296,18 +4322,9 @@ ast_type_ref(Context *cnt, Ast *type_ref)
   Ast *ident = type_ref->data.type_ref.ident;
   assert(ident);
 
-  /* symbol lookup */
-  Scope *scope = ident->data.ident.scope;
-  assert(scope);
-  ScopeEntry *scope_entry = scope_lookup(scope, &ident->data.ident.id, true);
-  if (!scope_entry) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ident->src, BUILDER_CUR_WORD,
-                "unknown type");
-  }
-
-  MirInstr *ref = append_instr_decl_ref(cnt, type_ref, &ident->data.ident.id,
-                                        ident->data.ident.scope, scope_entry);
-  append_instr_validate_type(cnt, ref);
+  MirInstr *ref =
+      append_instr_decl_ref(cnt, type_ref, &ident->data.ident.id, ident->data.ident.scope, NULL);
+  // append_instr_validate_type(cnt, ref);
   return ref;
 }
 
@@ -4472,6 +4489,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_null(cnt, node);
   case AST_EXPR_MEMBER:
     return ast_expr_member(cnt, node);
+  case AST_EXPR_TYPE:
+    return ast_expr_type(cnt, node);
 
   case AST_LOAD:
     break;
