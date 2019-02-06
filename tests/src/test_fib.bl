@@ -1,4 +1,4 @@
-#load "std/debug.bl"
+load "std/debug.bl"
 
 fib :: fn (n: s32) s32 {
   if n == 0 || n == 1 {
@@ -10,7 +10,7 @@ fib :: fn (n: s32) s32 {
   return -1;
 };
 
-#test "fibonacci" {
+test "fibonacci" {
   fib(2);
   fib(5);
   fib(10);

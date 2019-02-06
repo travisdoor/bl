@@ -62,9 +62,9 @@ typedef enum
   AST_STMT_BREAK,
   AST_STMT_CONTINUE,
   _AST_TYPE_FIRST,
-  AST_TYPE_TYPE,
   AST_TYPE_REF,
   AST_TYPE_ARR,
+  AST_TYPE_SLICE,
   AST_TYPE_FN,
   AST_TYPE_STRUCT,
   AST_TYPE_ENUM,
@@ -146,9 +146,8 @@ struct AstLink
 
 struct AstIdent
 {
-  Scope *     scope;
-  const char *str;
-  uint64_t    hash;
+  Scope *scope;
+  ID     id;
 };
 
 struct AstUBlock
@@ -199,7 +198,7 @@ struct AstDeclEntity
 {
   struct AstDecl base;
   Ast *          value;
-  int            flags;
+  int32_t        flags;
   bool           in_gscope;
   bool mutable;
 };
@@ -224,6 +223,11 @@ struct AstTypeArr
 {
   Ast *elem_type;
   Ast *len;
+};
+
+struct AstTypeSlice
+{
+  Ast *elem_type;
 };
 
 struct AstTypeFn
@@ -327,9 +331,9 @@ struct AstExprCall
 
 struct AstExprMember
 {
-  Ast *      ident;
-  Ast *      next;
-  int        i;
+  Ast *   ident;
+  Ast *   next;
+  int32_t i;
 };
 
 struct AstExprElem
@@ -388,6 +392,7 @@ struct Ast
     struct AstDeclVariant   decl_variant;
     struct AstTypeRef       type_ref;
     struct AstTypeArr       type_arr;
+    struct AstTypeSlice     type_slice;
     struct AstTypeFn        type_fn;
     struct AstTypeStruct    type_strct;
     struct AstTypeEnum      type_enm;
@@ -415,7 +420,7 @@ struct Ast
   } data;
 
 #if BL_DEBUG
-  int _serial;
+  int32_t _serial;
 #endif
 };
 

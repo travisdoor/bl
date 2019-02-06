@@ -66,6 +66,7 @@ set(SOURCE_FILES
         src/common.c 
         src/mir.c
         src/ir.c
+        src/ir_opt.c
         src/mir_printer.c
         src/ast.c)
 

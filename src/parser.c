@@ -92,9 +92,6 @@ sym_to_binop_kind(Sym sm);
 static UnopKind
 sym_to_unop_kind(Sym sm);
 
-static void
-provide_gscope(Context *cnt, Ast *ident, bool in_tree);
-
 static Ast *
 parse_unrecheable(Context *cnt);
 
@@ -135,10 +132,10 @@ static Ast *
 parse_type_ref(Context *cnt);
 
 static Ast *
-parse_type_type(Context *cnt);
+parse_type_arr(Context *cnt);
 
 static Ast *
-parse_type_arr(Context *cnt);
+parse_type_slice(Context *cnt);
 
 static Ast *
 parse_type_fn(Context *cnt, bool named_args);
@@ -194,9 +191,6 @@ parse_expr_deref(Context *cnt);
 
 static Ast *
 parse_expr_type(Context *cnt);
-
-static Ast *
-parse_expr_run(Context *cnt);
 
 static Ast *
 parse_expr_member(Context *cnt, Ast *prev);
@@ -291,29 +285,6 @@ sym_to_unop_kind(Sym sm)
   }
 }
 
-void
-provide_gscope(Context *cnt, Ast *ident, bool in_tree)
-{
-  assert(cnt->scope && ident);
-  assert(ident->kind == AST_IDENT);
-
-  if (!cnt->scope->is_global) return;
-
-  const uint64_t key       = ident->data.ident.hash;
-  ScopeEntry *   collision = scope_lookup(cnt->scope, key, in_tree);
-  if (collision) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, ident->src, BUILDER_CUR_WORD,
-                "symbol with same name is already declared");
-
-    builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src, BUILDER_CUR_WORD,
-                "previous declaration found here");
-    return;
-  }
-
-  ScopeEntry *entry = scope_create_entry(cnt->scope_arenas, ident, NULL);
-  scope_insert(cnt->scope, key, entry);
-}
-
 Ast *
 parse_expr_ref(Context *cnt)
 {
@@ -380,13 +351,17 @@ parse_decl_member(Context *cnt, bool type_only, int32_t order)
     type = parse_type(cnt);
   } else {
     name = parse_ident(cnt);
+    if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src, BUILDER_CUR_AFTER,
+                  "expected semicolon after struct member name");
+    }
     type = parse_type(cnt);
   }
 
   if (!type && !name) return NULL;
-  Ast *mem                    = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
-  mem->data.decl.type         = type;
-  mem->data.decl.name         = name;
+  Ast *mem            = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin);
+  mem->data.decl.type = type;
+  mem->data.decl.name = name;
 
   return mem;
 }
@@ -660,12 +635,8 @@ parse_expr_primary(Context *cnt)
   if ((expr = parse_expr_ref(cnt))) return expr;
   if ((expr = parse_expr_lit(cnt))) return expr;
   if ((expr = parse_expr_lit_fn(cnt))) return expr;
-  if ((expr = parse_expr_null(cnt))) return expr;
-
-  /*
-  if ((expr = parse_expr_run(cnt))) return expr;
   if ((expr = parse_expr_type(cnt))) return expr;
-  */
+  if ((expr = parse_expr_null(cnt))) return expr;
 
   return NULL;
 }
@@ -705,15 +676,6 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_deref(cnt))) return expr;
   if ((expr = parse_expr_addrof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
-
-  /*if ((expr = parse_expr_null(cnt))) goto done;
-  if ((expr = parse_expr_run(cnt))) goto done;
-  if ((expr = parse_expr_lit_fn(cnt))) goto done;
-  if ((expr = parse_expr_type(cnt))) goto done;
-  if ((expr = parse_expr_elem(cnt, op))) goto done;
-  if ((expr = parse_expr_lit(cnt))) goto done;
-  if ((expr = parse_expr_ref(cnt))) goto done;*/
-
   return NULL;
 }
 
@@ -928,9 +890,8 @@ parse_ident(Context *cnt)
 
   assert(cnt->scope);
 
-  Ast *ident              = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident);
-  ident->data.ident.hash  = bo_hash_from_str(tok_ident->value.str);
-  ident->data.ident.str   = tok_ident->value.str;
+  Ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident);
+  id_init(&ident->data.ident.id, tok_ident->value.str);
   ident->data.ident.scope = cnt->scope;
 
   return ident;
@@ -1018,22 +979,19 @@ parse_type_ref(Context *cnt)
 }
 
 Ast *
-parse_type_type(Context *cnt)
-{
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPE);
-  if (!tok_begin) return NULL;
-
-  return ast_create_node(cnt->ast_arena, AST_TYPE_TYPE, tok_begin);
-}
-
-Ast *
 parse_type_arr(Context *cnt)
 {
+  /* slice or array??? */
+  if (tokens_peek(cnt->tokens)->sym == SYM_LBRACKET &&
+      tokens_peek_2nd(cnt->tokens)->sym == SYM_RBRACKET)
+    return NULL;
+
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
   if (!tok_begin) return NULL;
 
   Ast *arr               = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin);
   arr->data.type_arr.len = parse_expr(cnt);
+  assert(arr->data.type_arr.len);
 
   Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
   if (!tok_end) {
@@ -1047,16 +1005,34 @@ parse_type_arr(Context *cnt)
 }
 
 Ast *
+parse_type_slice(Context *cnt)
+{
+  /* slice or array??? []<type> */
+  if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
+  if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
+
+  /* eat [] */
+  Token *tok_begin = tokens_consume(cnt->tokens);
+  tokens_consume(cnt->tokens);
+
+  Ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_SLICE, tok_begin);
+
+  slice->data.type_slice.elem_type = parse_type(cnt);
+  assert(slice->data.type_slice.elem_type);
+  return slice;
+}
+
+Ast *
 parse_type(Context *cnt)
 {
   Ast *type = NULL;
 
   type = parse_type_ptr(cnt);
-  if (!type) type = parse_type_type(cnt);
   if (!type) type = parse_type_fn(cnt, false);
   if (!type) type = parse_type_struct(cnt);
   if (!type) type = parse_type_enum(cnt);
   if (!type) type = parse_type_arr(cnt);
+  if (!type) type = parse_type_slice(cnt);
   if (!type) type = parse_type_ref(cnt);
 
   return type;
@@ -1131,7 +1107,7 @@ parse_type_struct(Context *cnt)
   type_struct->data.type_strct.raw = false;
   type_struct->data.type_strct.members = bo_array_new(sizeof(Ast *));
 
-  /* parse arg types */
+  /* parse members */
   bool       rq = false;
   Ast *      tmp;
   const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
@@ -1190,8 +1166,6 @@ parse_decl(Context *cnt)
   decl->data.decl.name           = ident;
   decl->data.decl_entity.mutable = true;
 
-  /* add entity into current scope (only global declarations)*/
-  provide_gscope(cnt, ident, false);
   push_curr_decl(cnt, decl);
 
   decl->data.decl.type = parse_type(cnt);
@@ -1348,32 +1322,6 @@ parse_expr_type(Context *cnt)
   }
 
   return NULL;
-}
-
-Ast *
-parse_expr_run(Context *cnt)
-{
-  Token *tok = tokens_consume_if(cnt->tokens, SYM_RUN);
-  if (!tok) return NULL;
-  bl_unimplemented;
-
-  /* TODO: implement as separate node */
-  /* TODO: implement as separate node */
-  /* TODO: implement as separate node */
-  /* TODO: implement as separate node */
-  /* TODO: implement as separate node */
-  /*
-
-  AstExpr *expr = parse_expr(cnt);
-  if (!expr) {
-    parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_AFTER,
-                "expected call after '#run' directive");
-    return ast_create_expr(cnt->ast_arena, AST_EXPR_BAD, tok, AstExpr *);
-  }
-
-  ((AstExprCall *)call)->run = true;
-  return call;
-  */
 }
 
 Ast *

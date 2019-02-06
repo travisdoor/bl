@@ -1,6 +1,6 @@
-#load "std/debug.bl"
+load "std/debug.bl"
 
-#test "fundametal types" {
+test "fundametal types" {
   _u8:    u8; 
   _u16:   u16; 
   _u32:   u32; 
@@ -15,14 +15,14 @@
   _f64:   f64; 
 };
 
-#test "type infer" {
+test "type infer" {
   number := 0;
   boolean := true;
   float := 0.1f;
   double := 0.1;
 };
 
-#test "simple assignement" {
+test "simple assignement" {
   {
     number := 0;
     assert(number == 0);
@@ -42,7 +42,7 @@
   }
 };
 
-#test "ifs" {
+test "ifs" {
   b := true;
   if b {
     if !b {
@@ -57,7 +57,7 @@
   }
 };
 
-#test "function calls" {
+test "function calls" {
   _1 :: fn () {
   };
 
@@ -69,7 +69,7 @@
   assert(_2(10) == 10);
 };
 
-#test "implicit functions direct call" {
+test "implicit functions direct call" {
   i := fn (i: s32, j: s32) s32 {
     return i * j; 
   } (2, 3);
@@ -80,7 +80,7 @@
   } ();
 };
 
-#test "assign operators" {
+test "assign operators" {
   i := 5;
   assert(i == 5);
 
@@ -97,7 +97,7 @@
   assert(i == 5);
 };
 
-#test "compare operators" {
+test "compare operators" {
   i := 10;
   assert(i == 10);
   assert(i != 9);
@@ -107,7 +107,7 @@
   assert(i <= 10);
 };
 
-#test "simple loops" {
+test "simple loops" {
   count :: 10;
   i := 0;
 
@@ -125,7 +125,7 @@
   assert(i == count);
 };
 
-#test "nested loops" {
+test "nested loops" {
   count :: 10;
   i := 0;
 
@@ -138,7 +138,7 @@
   assert(i == count * count); 
 };
 
-#test "break/continue loop" {
+test "break/continue loop" {
   i := 0;
   loop {
     if i == 10 {
@@ -152,7 +152,7 @@
   assert(i == 10);
 };
 
-#test "literal implicit casting" {
+test "literal implicit casting" {
   _u8:    u8    = 10; 
   _u16:   u16   = 10; 
   _u32:   u32   = 10; 
@@ -172,7 +172,7 @@
   }
 };
 
-#test "pointer casting" {
+test "pointer casting" {
   i_ptr : *s32;
   j_ptr : *s8;
 
@@ -182,7 +182,7 @@
   i_ptr = cast(*s32) num;
 };
 
-#test "real casting" {
+test "real casting" {
   float : f32 = 12.5f;
   j := cast(s64) float;
   assert(j == 12);
@@ -192,7 +192,7 @@
   assert(j == 12);
 };
 
-#test "pointers" {
+test "pointers" {
   i       := 666;
   ptr     := &i;
   ptr_ptr := &ptr;
@@ -205,7 +205,7 @@
 };
 
 
-#test "null pointers" {
+test "null pointers" {
   test_ptr :: fn (ptr: *s32) *s32 {
     return null;
   };
@@ -216,7 +216,7 @@
   assert(test_ptr(null) == null);
 };
 
-#test "passed pointer" {
+test "passed pointer" {
   value :: 10;
   i := 0;
   
@@ -227,7 +227,7 @@
   assert(i == value);
 };
 
-#test "simple static array" {
+test "simple static array" {
   arr : [10]s32;
 
   arr[0] = 10;
@@ -239,7 +239,7 @@
   assert(arr[2] == 30);
 };
 
-#test "simple static array loops" {
+test "simple static array loops" {
   arr : [10]s32;
   loop i := 0; i < arr.len; i += 1 {
     arr[i] = i;

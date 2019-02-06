@@ -69,7 +69,7 @@ ast_create_node(Arena *arena, AstKind c, Token *tok)
   node->src  = tok ? &tok->src : NULL;
 
 #if BL_DEBUG
-  static int serial = 0;
+  static uint64_t serial = 0;
   node->_serial     = serial++;
 #endif
   return node;
@@ -125,6 +125,8 @@ ast_get_name(const Ast *n)
     return "TypeRef";
   case AST_TYPE_ARR:
     return "TypeArr";
+  case AST_TYPE_SLICE:
+    return "TypeSlice";
   case AST_TYPE_FN:
     return "TypeFn";
   case AST_TYPE_STRUCT:

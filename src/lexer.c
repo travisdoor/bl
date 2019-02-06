@@ -48,8 +48,8 @@ typedef struct context
   Tokens * tokens;
   jmp_buf  jmp_error;
   char *   c;
-  int      line;
-  int      col;
+  int32_t  line;
+  int32_t  col;
 } Context;
 
 static void
@@ -71,7 +71,7 @@ static bool
 scan_number(Context *cnt, Token *tok);
 
 static inline int
-c_to_number(char c, int base);
+c_to_number(char c, int32_t base);
 
 static char
 scan_specch(char c);
@@ -111,7 +111,7 @@ scan_ident(Context *cnt, Token *tok)
 
   char *begin = cnt->c;
 
-  int len = 0;
+  int32_t len = 0;
   while (true) {
     if (!is_intend_c(*cnt->c)) {
       break;
@@ -171,7 +171,7 @@ scan_string(Context *cnt, Token *tok)
 
   BString *cstr = builder_create_cached_str(cnt->builder);
   char     c;
-  int      len = 0;
+  int32_t  len = 0;
 
 scan:
   while (true) {
@@ -261,7 +261,7 @@ scan_char(Context *cnt, Token *tok)
 }
 
 int
-c_to_number(char c, int base)
+c_to_number(char c, int32_t base)
 {
   switch (base) {
   case 16:
@@ -296,9 +296,9 @@ scan_number(Context *cnt, Token *tok)
   tok->value.str = cnt->c;
 
   unsigned long n    = 0;
-  int           len  = 0;
-  int           base = 10;
-  int           buf  = 0;
+  int32_t       len  = 0;
+  int32_t       base = 10;
+  int32_t       buf  = 0;
 
   if (strncmp(cnt->c, "0x", 2) == 0) {
     base = 16;
@@ -419,7 +419,7 @@ scan:
    * Scan symbols described directly as strings.
    */
   size_t len = 0;
-  for (int i = SYM_IF; i < SYM_NONE; ++i) {
+  for (int32_t i = SYM_IF; i < SYM_NONE; ++i) {
     len = strlen(sym_strings[i]);
     if (strncmp(cnt->c, sym_strings[i], len) == 0) {
       cnt->c += len;
@@ -484,7 +484,7 @@ lexer_run(Builder *builder, Unit *unit)
       .col     = 1,
   };
 
-  int error = 0;
+  int32_t error = 0;
   if ((error = setjmp(cnt.jmp_error))) return;
 
   scan(&cnt);

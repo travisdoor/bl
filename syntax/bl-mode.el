@@ -25,6 +25,9 @@
 (defconst bl-constants
   '("true" "false" "null"))
 
+(defconst bl-preproc
+  '("extern" "load" "test"))
+
 (defconst bl-number-rx
   (rx (and
        symbol-start
@@ -45,8 +48,8 @@
     ;; Keywords
     (,(bl-keywords-rx bl-keywords) 1 font-lock-keyword-face)
 
-    ;; Hash directives
-    ("#\\w+" . font-lock-preprocessor-face)
+    ;; Preproc
+    (,(bl-keywords-rx bl-preproc) 1 font-lock-preprocessor-face)
     ("@\\w+" . font-lock-builtin-face)
 
     ;; Types 

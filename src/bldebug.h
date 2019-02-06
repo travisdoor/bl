@@ -82,7 +82,7 @@ typedef enum
 } bl_log_msg_type_e;
 
 void
-_log(bl_log_msg_type_e t, const char *file, int line, const char *msg, ...);
+_log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 
 #ifdef BL_DEBUG
 #define bl_log(format, ...)                                                                        \

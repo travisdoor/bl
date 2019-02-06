@@ -45,11 +45,17 @@
     "alignof")) 
 
 (defconst blm-types
-  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" 
+  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void"  
     "type"))
 
 (defconst blm-constants
   '("true" "false" "null"))
+
+(defconst blm-preproc
+  '("extern" "test" "load"))
+
+(defconst blm-error
+  '("?"))
 
 (defconst blm-number-rx
   (rx (and
@@ -71,8 +77,11 @@
     ;; Keywords
     (,(blm-keywords-rx blm-keywords) 1 font-lock-keyword-face)
 
-    ;; Hash directives
-    ("#\\w+" . font-lock-preprocessor-face)
+    ;; Preprocessors
+    (,(blm-keywords-rx blm-preproc) 1 font-lock-preprocessor-face)
+
+    ;; Error
+    (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)
 
     ;; Types 
     (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
@@ -82,9 +91,9 @@
     ;; Functions
     ("@\\w+" . font-lock-function-name-face)
 
-    ;; Constants
-    (,(blm-keywords-rx blm-constants) 1 font-lock-constant-face)
-    ("\\(\\w+\\)\\(.*\\)\\(\\:\\)" 1 font-lock-constant-face)
+    ;; IDs 
+    ("%\\w+" . font-lock-variable-name-face)
+    ("$\\w+" . font-lock-reference-face)
 
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)

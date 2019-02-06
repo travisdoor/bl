@@ -63,14 +63,23 @@
   for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
        bo_list_iter_next((list), &(it)))
 
+typedef struct ID
+{
+  const char *str;
+  uint64_t    hash;
+} ID;
+
+void
+id_init(ID *id, const char *str);
+
 bool
 file_exists(const char *filepath);
 
 const char *
-brealpath(const char *file, char *out, int out_len);
+brealpath(const char *file, char *out, int32_t out_len);
 
 void
-date_time(char *buf, int len, const char *format);
+date_time(char *buf, int32_t len, const char *format);
 
 bool
 is_aligned(const void *p, int32_t alignment);

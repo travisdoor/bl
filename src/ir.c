@@ -37,7 +37,11 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
+#if BL_DEBUG
+#define NAMED_VARS true
+#else
 #define NAMED_VARS false
+#endif
 
 typedef struct
 {
@@ -57,6 +61,9 @@ gen_instr(Context *cnt, MirInstr *instr);
 
 static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
+
+static void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
 static void
 gen_instr_cast(Context *cnt, MirInstrCast *cast);
@@ -95,9 +102,6 @@ static void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
 static void
-gen_instr_const(Context *cnt, MirInstrConst *cnst);
-
-static void
 gen_instr_load(Context *cnt, MirInstrLoad *load);
 
 static void
@@ -106,17 +110,34 @@ gen_instr_call(Context *cnt, MirInstrCall *call);
 static void
 gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
+static void
+gen_as_const(Context *cnt, MirInstr *instr);
+
+static void
+gen_allocas(Context *cnt, MirFn *fn);
+
 static inline LLVMValueRef
 gen_fn_proto(Context *cnt, MirFn *fn)
 {
   assert(fn);
 
-  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->name);
+  fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->llvm_name);
   if (!fn->llvm_value) {
-    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->name, fn->type->llvm_type);
+    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
   }
 
   return fn->llvm_value;
+}
+
+static inline LLVMValueRef
+fetch_value(Context *cnt, MirInstr *instr)
+{
+  LLVMValueRef value = NULL;
+  if (instr->comptime && !instr->llvm_value) gen_as_const(cnt, instr);
+
+  value = instr->llvm_value;
+  assert(value);
+  return value;
 }
 
 static inline LLVMBasicBlockRef
@@ -133,6 +154,28 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
   }
 
   return llvm_block;
+}
+
+void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+{
+  ScopeEntry *entry = ref->scope_entry;
+  assert(entry);
+
+  switch (entry->kind) {
+  case SCOPE_ENTRY_VAR: {
+    ref->base.llvm_value = entry->data.var->llvm_value;
+    break;
+  }
+  case SCOPE_ENTRY_FN: {
+    ref->base.llvm_value = entry->data.fn->llvm_value;
+    break;
+  }
+  default:
+    bl_unimplemented;
+  }
+
+  assert(ref->base.llvm_value);
 }
 
 void
@@ -210,8 +253,8 @@ gen_instr_arg(Context *cnt, MirInstrArg *arg)
 void
 gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
-  LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
-  LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
+  LLVMValueRef llvm_arr_ptr = fetch_value(cnt, elem_ptr->arr_ptr);
+  LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
   assert(llvm_arr_ptr && llvm_index);
 
   LLVMValueRef llvm_indices[2];
@@ -226,7 +269,7 @@ void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
   assert(load->base.const_value.type && "invalid type of load instruction");
-  LLVMValueRef   llvm_src  = load->src->llvm_value;
+  LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
   const unsigned alignment = load->base.const_value.type->alignment;
   assert(llvm_src);
   load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
@@ -234,9 +277,10 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
 }
 
 void
-gen_instr_const(Context *cnt, MirInstrConst *cnst)
+gen_as_const(Context *cnt, MirInstr *instr)
 {
-  MirConstValue *value = &cnst->base.const_value;
+  assert(instr->comptime && "only compile time known instructions can act like a constants");
+  MirConstValue *value = &instr->const_value;
   MirType *      type  = value->type;
   assert(type);
   LLVMTypeRef llvm_type = type->llvm_type;
@@ -244,8 +288,7 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
-    cnst->base.llvm_value =
-        LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
+    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
     break;
   }
 
@@ -253,9 +296,9 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
     const size_t size = type->store_size_bytes;
 
     if (size == sizeof(float)) { // float
-      cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_float);
+      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_float);
     } else if (size == sizeof(double)) { // double
-      cnst->base.llvm_value = LLVMConstReal(llvm_type, value->data.v_double);
+      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_double);
     } else {
       bl_abort("invalid floating point type");
     }
@@ -263,12 +306,12 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
   }
 
   case MIR_TYPE_BOOL:
-    cnst->base.llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
+    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
     break;
 
   case MIR_TYPE_NULL:
     assert(value->data.v_void_ptr == NULL);
-    cnst->base.llvm_value = LLVMConstNull(llvm_type);
+    instr->llvm_value = LLVMConstNull(llvm_type);
     break;
 
   case MIR_TYPE_PTR:
@@ -282,7 +325,7 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
     switch (value->kind) {
     case MIR_CV_STRING: {
       assert(value->data.v_str);
-      cnst->base.llvm_value = LLVMConstStringInContext(cnt->llvm_cnt, value->data.v_str, len, true);
+      instr->llvm_value = LLVMConstStringInContext(cnt->llvm_cnt, value->data.v_str, len, true);
       break;
     }
 
@@ -299,8 +342,8 @@ gen_instr_const(Context *cnt, MirInstrConst *cnst)
 void
 gen_instr_store(Context *cnt, MirInstrStore *store)
 {
-  LLVMValueRef   val       = store->src->llvm_value;
-  LLVMValueRef   ptr       = store->dest->llvm_value;
+  LLVMValueRef   val       = fetch_value(cnt, store->src);
+  LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
   const unsigned alignment = store->src->const_value.type->alignment;
   assert(val && ptr);
   store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
@@ -310,7 +353,7 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 void
 gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-  LLVMValueRef llvm_val = unop->instr->llvm_value;
+  LLVMValueRef llvm_val = fetch_value(cnt, unop->instr);
   assert(llvm_val);
 
   switch (unop->op) {
@@ -337,8 +380,8 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-  LLVMValueRef lhs = binop->lhs->llvm_value;
-  LLVMValueRef rhs = binop->rhs->llvm_value;
+  LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
+  LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
   assert(lhs && rhs);
 
   LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
@@ -451,8 +494,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 
     barray_foreach(call->args, arg)
     {
-      assert(arg->llvm_value && "function argument has no LLVM const_value");
-      llvm_args[i] = arg->llvm_value;
+      llvm_args[i] = fetch_value(cnt, arg);
     }
   }
 
@@ -467,18 +509,13 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
   assert(var);
+  assert(var->llvm_value);
 
-#if NAMED_VARS
-  const char *name = var->name;
-#else
-  const char *name = "";
-#endif
-  LLVMTypeRef    llvm_type = var->alloc_type->llvm_type;
-  const unsigned alignment = var->alloc_type->alignment;
-  assert(llvm_type && name);
-
-  decl->base.llvm_value = LLVMBuildAlloca(cnt->llvm_builder, llvm_type, name);
-  LLVMSetAlignment(decl->base.llvm_value, alignment);
+  if (decl->init) {
+    LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
+    assert(llvm_init);
+    LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+  }
 }
 
 void
@@ -486,7 +523,7 @@ gen_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   LLVMValueRef llvm_ret;
   if (ret->value) {
-    LLVMValueRef llvm_ret_value = ret->value->llvm_value;
+    LLVMValueRef llvm_ret_value = fetch_value(cnt, ret->value);
     assert(llvm_ret_value);
     llvm_ret = LLVMBuildRet(cnt->llvm_builder, llvm_ret_value);
   } else {
@@ -528,11 +565,18 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
-  assert(block->owner_fn->llvm_value);
+  MirFn *fn = block->owner_fn;
+  assert(fn->llvm_value);
   LLVMBasicBlockRef llvm_block = gen_basic_block(cnt, block);
   assert(llvm_block);
 
   LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
+
+  /* gen allocas fist in entry block!!! */
+  if (fn->first_block == block) {
+    gen_allocas(cnt, fn);
+  }
+
   MirInstr *instr = block->entry_instr;
   while (instr) {
     gen_instr(cnt, instr);
@@ -541,9 +585,43 @@ gen_instr_block(Context *cnt, MirInstrBlock *block)
 }
 
 void
+gen_allocas(Context *cnt, MirFn *fn)
+{
+  assert(fn);
+
+  // LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(fn->llvm_value);
+  // assert(bb && "invalid insert block for allocas!!!");
+  // LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+
+  const char *var_name;
+  LLVMTypeRef var_type;
+  unsigned    var_alignment;
+  MirVar *    var;
+
+  barray_foreach(fn->variables, var)
+  {
+    assert(var);
+#if NAMED_VARS
+    var_name = var->id->str;
+#else
+    var_name = "";
+#endif
+
+    var_type      = var->alloc_type->llvm_type;
+    var_alignment = (unsigned int)var->alloc_type->alignment;
+    assert(var_type);
+
+    var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
+    LLVMSetAlignment(var->llvm_value, var_alignment);
+  }
+}
+
+void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
   MirFn *fn = fn_proto->base.const_value.data.v_fn;
+  /* unused function */
+  if (fn->ref_count == 0) return;
   gen_fn_proto(cnt, fn);
 
   if (!fn->is_external) {
@@ -559,8 +637,6 @@ gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 void
 gen_instr(Context *cnt, MirInstr *instr)
 {
-  if (!instr || !instr->ref_count) return;
-
   switch (instr->kind) {
   case MIR_INSTR_BINOP:
     gen_instr_binop(cnt, (MirInstrBinop *)instr);
@@ -583,8 +659,8 @@ gen_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_DECL_VAR:
     gen_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
     break;
-  case MIR_INSTR_CONST:
-    gen_instr_const(cnt, (MirInstrConst *)instr);
+  case MIR_INSTR_DECL_REF:
+    gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
     break;
   case MIR_INSTR_LOAD:
     gen_instr_load(cnt, (MirInstrLoad *)instr);

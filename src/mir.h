@@ -41,22 +41,13 @@
 struct Assembly;
 struct Builder;
 
-typedef ptrdiff_t MirRelativeStackPtr;
-
-typedef struct MirModule MirModule;
-typedef struct MirType   MirType;
-typedef struct MirVar    MirVar;
-typedef struct MirFn     MirFn;
-
-typedef uint8_t *               MirStackPtr;
-typedef struct MirConstValue    MirConstValue;
-typedef union MirConstValueData MirConstValueData;
-
-typedef enum MirConstValueKind MirConstValueKind;
-typedef enum MirTypeKind       MirTypeKind;
-typedef enum MirInstrKind      MirInstrKind;
-typedef enum MirCastOp         MirCastOp;
-
+typedef ptrdiff_t                   MirRelativeStackPtr;
+typedef uint8_t *                   MirStackPtr;
+typedef struct MirModule            MirModule;
+typedef struct MirType              MirType;
+typedef struct MirVar               MirVar;
+typedef struct MirFn                MirFn;
+typedef struct MirConstValue        MirConstValue;
 typedef struct MirInstr             MirInstr;
 typedef struct MirInstrUnreachable  MirInstrUnreachable;
 typedef struct MirInstrBlock        MirInstrBlock;
@@ -69,7 +60,6 @@ typedef struct MirInstrBinop        MirInstrBinop;
 typedef struct MirInstrUnop         MirInstrUnop;
 typedef struct MirInstrFnProto      MirInstrFnProto;
 typedef struct MirInstrCall         MirInstrCall;
-typedef struct MirInstrDeclRef      MirInstrDeclRef;
 typedef struct MirInstrAddrOf       MirInstrAddrOf;
 typedef struct MirInstrCondBr       MirInstrCondBr;
 typedef struct MirInstrBr           MirInstrBr;
@@ -78,10 +68,16 @@ typedef struct MirInstrElemPtr      MirInstrElemPtr;
 typedef struct MirInstrMemberPtr    MirInstrMemberPtr;
 typedef struct MirInstrTypeFn       MirInstrTypeFn;
 typedef struct MirInstrTypeArray    MirInstrTypeArray;
+typedef struct MirInstrTypeSlice    MirInstrTypeSlice;
 typedef struct MirInstrTypePtr      MirInstrTypePtr;
-typedef struct MirInstrTryInfer     MirInstrTryInfer;
 typedef struct MirInstrValidateType MirInstrValidateType;
+typedef struct MirInstrDeclRef      MirInstrDeclRef;
 typedef struct MirInstrCast         MirInstrCast;
+typedef enum MirConstValueKind      MirConstValueKind;
+typedef enum MirTypeKind            MirTypeKind;
+typedef enum MirInstrKind           MirInstrKind;
+typedef enum MirCastOp              MirCastOp;
+typedef union MirConstValueData     MirConstValueData;
 
 /* ALLOCATORS */
 struct MirArenas
@@ -106,9 +102,13 @@ struct MirModule
 /* FN */
 struct MirFn
 {
-  Ast *        node;
-  const char * name;
+  ID *         id;
+  Ast *        decl_node;
   MirType *    type;
+  Scope *      scope;
+  BArray *     variables;
+  int32_t      ref_count;
+  const char * llvm_name;
   LLVMValueRef llvm_value;
 
   DCpointer   extern_entry;
@@ -137,6 +137,7 @@ enum MirTypeKind
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
   MIR_TYPE_ARRAY,
+  MIR_TYPE_SLICE,
   MIR_TYPE_NULL,
 };
 
@@ -174,7 +175,7 @@ struct MirTypeArray
 struct MirType
 {
   MirTypeKind kind;
-  const char *name;
+  ID *        id;
   LLVMTypeRef llvm_type;
   size_t      size_bits;
   size_t      store_size_bytes;
@@ -226,8 +227,17 @@ struct MirConstValue
 /* VAR */
 struct MirVar
 {
-  MirType *   alloc_type;
-  const char *name;
+  MirType *alloc_type;
+  ID *     id;
+  Ast *    decl_node;
+  Scope *  scope;
+  int32_t  ref_count;
+  bool     is_mutable;
+  bool     comptime;
+
+  MirConstValue *     value;
+  LLVMValueRef        llvm_value;
+  MirRelativeStackPtr rel_stack_ptr;
 };
 
 /* INSTRUCTIONS */
@@ -245,6 +255,7 @@ enum MirInstrKind
   MIR_INSTR_TYPE_FN,
   MIR_INSTR_TYPE_PTR,
   MIR_INSTR_TYPE_ARRAY,
+  MIR_INSTR_TYPE_SLICE,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
@@ -258,7 +269,6 @@ enum MirInstrKind
   MIR_INSTR_CAST,
 
   MIR_INSTR_VALIDATE_TYPE,
-  MIR_INSTR_TRY_INFER,
 };
 
 struct MirInstr
@@ -299,6 +309,7 @@ struct MirInstrDeclVar
 
   MirVar *  var;
   MirInstr *type;
+  MirInstr *init;
 };
 
 struct MirInstrElemPtr
@@ -430,6 +441,13 @@ struct MirInstrTypeArray
   MirInstr *len;
 };
 
+struct MirInstrTypeSlice
+{
+  MirInstr base;
+
+  MirInstr *elem_type;
+};
+
 struct MirInstrCall
 {
   MirInstr base;
@@ -442,6 +460,8 @@ struct MirInstrDeclRef
 {
   MirInstr base;
 
+  ID *        rid;
+  Scope *     scope;
   ScopeEntry *scope_entry;
 };
 
@@ -472,14 +492,6 @@ struct MirInstrValidateType
   MirInstr base;
 
   MirInstr *src;
-};
-
-struct MirInstrTryInfer
-{
-  MirInstr base;
-
-  MirInstr *src;
-  MirInstr *dest;
 };
 
 /* public */

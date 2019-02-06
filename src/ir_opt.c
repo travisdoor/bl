@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   stages.h
+// File:   ir_opt.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   5.2.19
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,51 +26,34 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_STAGES_H
-#define BL_STAGES_H
-
-#include "builder.h"
-#include "unit.h"
+#include <llvm-c/Analysis.h>
+#include <llvm-c/Transforms/Vectorize.h>
+#include <llvm-c/Transforms/PassManagerBuilder.h>
+#include "stages.h"
 #include "assembly.h"
+#include "bldebug.h"
 #include "error.h"
 
-/*
- * per unit
- */
 void
-file_loader_run(Builder *builder, Unit *unit);
-
-void
-lexer_run(Builder *builder, Unit *unit);
-
-void
-token_printer_run(Unit *unit);
-
-void
-parser_run(Builder *builder, Assembly *assembly, Unit *unit);
-
-/*
- * per assembly
- */
-void
-ast_printer_run(Assembly *assembly, FILE *stream);
-
-void
-ir_run(Builder *builder, Assembly *assembly);
-
-void
-ir_opt_run(Builder *builder, Assembly *assembly);
-
-void
-linker_run(Builder *builder, Assembly *assembly);
-
-void
-bc_writer_run(Builder *builder, Assembly *assembly);
-
-void
-native_bin_run(Builder *builder, Assembly *assembly);
-
-void
-mir_writer_run(Assembly *assembly);
-
+ir_opt_run(Builder *builder, Assembly *assembly)
+{
+  /* TODO: set by user!!! */
+#if BL_DEBUG
+  const unsigned opt_lvl = 0;
+#else
+  const unsigned opt_lvl = 3;
 #endif
+
+  LLVMModuleRef llvm_module = assembly->mir_module->llvm_module;
+
+  LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
+  LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
+
+
+  LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
+  LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
+  LLVMRunPassManager(llvm_pm, llvm_module);
+
+  LLVMDisposePassManager(llvm_pm);
+  LLVMPassManagerBuilderDispose(llvm_pm_builder);
+}

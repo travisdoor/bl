@@ -43,21 +43,19 @@
   sm(DOUBLE,         "double") \
   sm(IF,             "if") /* must be first */ \
   sm(FN,             "fn") \
-  sm(TYPE,           "type") \
   sm(CAST,           "cast") \
   sm(ELSE,           "else") \
   sm(TRUE,           "true") \
   sm(NULL,           "null") \
   sm(ENUM,           "enum") \
   sm(LOOP,           "loop")\
-  sm(RUN,            "#run")\
+  sm(LOAD,           "load") \
+  sm(TEST,           "test") \
   sm(FALSE,          "false") \
   sm(BREAK,          "break")\
-  sm(LOAD,           "#load") \
-  sm(TEST,           "#test") \
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
-  sm(EXTERN,         "#extern") \
+  sm(EXTERN,         "extern") \
   sm(CONTINUE,       "continue") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
@@ -119,9 +117,9 @@ extern char *sym_strings[];
 struct Unit;
 typedef struct Src
 {
-  int          line;
-  int          col;
-  int          len;
+  int32_t      line;
+  int32_t      col;
+  int32_t      len;
   struct Unit *unit;
 } Src;
 
@@ -143,7 +141,7 @@ typedef struct Token
 /* sizeof this structure is 8 bytes so it can be passed by value */
 typedef struct
 {
-  int                priority;
+  int32_t            priority;
   TokenAssociativity associativity;
 } TokenPrecedence;
 

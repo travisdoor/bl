@@ -235,7 +235,7 @@ print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 {
   print_head(entity, pad, stream);
 
-  fprintf(stream, "'%s' '%s'", entity->data.decl.name->data.ident.str,
+  fprintf(stream, "'%s' '%s'", entity->data.decl.name->data.ident.id.str,
           entity->data.decl_entity.mutable ? "mutable" : "immutable");
 
   print_flags(entity->data.decl_entity.flags, stream);
@@ -285,7 +285,7 @@ print_expr_member(Ast *member, int32_t pad, FILE *stream)
   print_head(member, pad, stream);
 
   Ast *ident = member->data.expr_member.ident;
-  if (ident) fprintf(stream, "'%s' ", ident->data.ident.str);
+  if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
   print_node(member->data.expr_member.next, pad + 1, stream);
 }
 
@@ -330,7 +330,7 @@ void
 print_expr_ref(Ast *ref, int32_t pad, FILE *stream)
 {
   print_head(ref, pad, stream);
-  fprintf(stream, "'%s' ", ref->data.expr_ref.ident->data.ident.str);
+  fprintf(stream, "'%s' ", ref->data.expr_ref.ident->data.ident.id.str);
 }
 
 void

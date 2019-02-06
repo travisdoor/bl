@@ -1,21 +1,19 @@
 /* playground */
 
-//#load "std/debug.bl"
+load "std/debug.bl"
 
-main :: fn () u32 {
-  str := "hello world\n";
-  print(str);
-  return 666;
+/*
+Foo :: struct {
+  i: s32,
+  j: s32
+};
+*/
+
+main :: fn () s32 {
+  return 0;
 };
 
-// array here should not be passed by value
-// -> use slices
-print :: fn (str: [12]u8) {
-  loop i := 0; i < str.len; i += 1 {
-    putchar(str[i]);
-  }
-};
-
+/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -31,5 +29,5 @@ say_hello :: fn () {
   putchar(10);
 };
 
-
-putchar :: fn (c: s32) s32 #extern;
+putchar :: fn (c: s32) s32 extern;
+*/

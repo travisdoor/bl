@@ -56,15 +56,14 @@ print_help(void)
                   "  -no-api             = Don't load internal api.\n"
                   "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
                   "  -run                = Execute 'main' method in compile time.\n"
-                  "  -run-tests          = Execute all unit tests in compile time.\n"
-  );
+                  "  -run-tests          = Execute all unit tests in compile time.\n");
 }
 
 int
-main(int argc, char *argv[])
+main(int32_t argc, char *argv[])
 {
   setlocale(LC_ALL, "C");
-  unsigned int build_flags = BUILDER_LOAD_FROM_FILE;
+  uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
   puts("compiler version: " BL_VERSION " (pre-alpha)");
 
   bool   help = false;
@@ -157,12 +156,12 @@ main(int argc, char *argv[])
     argv++;
   }
 
-  int state = builder_compile(builder, assembly, build_flags);
+  int32_t state = builder_compile(builder, assembly, build_flags);
 
   char date[26];
   date_time(date, 26, "%d-%m-%Y %H:%M:%S");
   msg_log("\nfinished at %s", date);
-  
+
   if (state == COMPILE_OK) {
     msg_log(GREEN("done"));
   }

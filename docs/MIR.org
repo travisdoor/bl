@@ -1,6 +1,6 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
-#+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
+#+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
 
 # now prints out the previously disabled (toc:nil) table of contents.
@@ -15,36 +15,71 @@
    - Default execution stack size is 2MB.
    - Stack allocations are 8 byte aligned.
 
-** Assert function in MIR
- #+BEGIN_SRC blm
- @assert fn(bool) void {
- init_0:
-   %0              *bool decl cond : bool
-   %1               bool arg $0
-   %3               void store %1 -> %0
-   %11              void br entry_1
- 
- entry_1:
-   %5               bool load %0
-   %6               bool unop !%5
-   %7               void br %6 ? if_then_2 : if_else_3
- 
- if_then_2:
-   %8               void unreachable
-   %9               void br if_cont_4
- 
- if_else_3:
-   %10              void br if_cont_4
- 
- if_cont_4:
-   %12              void ret
- }
- #+END_SRC
+** Assert function example
+   #+BEGIN_SRC bl
+   assert :: fn (cond: bool) {
+     if (!cond) {
+       unreachable;
+     }
+   };
+   #+END_SRC
+
+   #+BEGIN_SRC blm
+   @assert fn(bool) void {
+   %entry_0:
+     %0              bool arg $0
+     %1              void decl cond : bool = %0
+     %2             *bool declref cond
+     %5              bool load %2
+     %3              bool unop !%5
+     %4              void br %3 ? %if_then_1 : %if_else_2
+   
+   %if_then_1:
+     %5              void unreachable 
+     %6              void br %if_cont_3
+   
+   %if_else_2:
+     %7              void br %if_cont_3
+   
+   %if_cont_3:
+     %8              void ret 
+   }
+   #+END_SRC
+   
+   #+BEGIN_SRC llvm
+   define void @assert(i1) {
+   entry:
+     %cond = alloca i1, align 1
+     store i1 %0, i1* %cond
+     %1 = load i1, i1* %cond, align 1
+     %2 = xor i1 %1, true
+     br i1 %2, label %if_then, label %if_else
+   
+   if_then:                                          ; preds = %entry
+     call void @llvm.debugtrap()
+     br label %if_cont
+   
+   if_else:                                          ; preds = %entry
+     br label %if_cont
+   
+   if_cont:                                          ; preds = %if_else, %if_then
+     ret void
+   }
+   #+END_SRC
+
    
 ** Stack manipulation
+   - Interpreter is used for evaluation of compile-time known expressions during analyze process.
+   - Compile-time known values are not pushed on the stack.
+
    Example function:
    #+BEGIN_SRC bl
-   #load "std/debug.bl"
+   assert :: fn (cond: bool) {
+     if (!cond) {
+       unreachable;
+     }
+   };
+
    main :: fn () s32 {
      v :: 10;
      assert(v == 10);
@@ -56,27 +91,16 @@
    #+BEGIN_EXAMPLE
    executing 'main' in compile time...
         -             Terminal  PUSH RA
-       10         InstrDeclVar  PUSH    (4B, 0x7f377a17a060) s32
-       11           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
-       13           InstrStore  POP     (4B, 0x7f377a17a06c) s32
-       15           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
-       17            InstrLoad  PUSH    (4B, 0x7f377a17a070) s32
-       18           InstrBinop  POP     (4B, 0x7f377a17a074) s32
-       18           InstrBinop  POP     (4B, 0x7f377a17a06c) s32
-       18           InstrBinop  PUSH    (1B, 0x7f377a17a068) bool
-       19            InstrCall  PUSH RA
-       87         InstrDeclVar  PUSH    (1B, 0x7f377a17a088) bool
-       88             InstrArg  PUSH    (1B, 0x7f377a17a090) bool
-       90           InstrStore  POP     (1B, 0x7f377a17a097) bool
-       96            InstrLoad  PUSH    (1B, 0x7f377a17a090) bool
-       97            InstrUnop  POP     (1B, 0x7f377a17a097) bool
-       97            InstrUnop  PUSH    (1B, 0x7f377a17a090) bool
-       98          InstrCondBr  POP     (1B, 0x7f377a17a097) bool
-      104             InstrRet  POP RA
-      104             InstrRet  POP     (1B, 0x7f377a17a06f) bool
-       20           InstrConst  PUSH    (4B, 0x7f377a17a068) s32
-       21             InstrRet  POP     (4B, 0x7f377a17a06c) s32
-       21             InstrRet  POP RA
+       15            InstrCall  PUSH RA
+       27             InstrArg  PUSH    (1B, 0x7fbd02347078) bool
+       28         InstrDeclVar  POP     (1B, 0x7fbd0234707f) bool
+       28         InstrDeclVar  PUSH    (1B, 0x7fbd02347078) bool
+       39            InstrLoad  PUSH    (1B, 0x7fbd02347080) bool
+       33            InstrUnop  POP     (1B, 0x7fbd02347087) bool
+       33            InstrUnop  PUSH    (1B, 0x7fbd02347080) bool
+       34          InstrCondBr  POP     (1B, 0x7fbd02347087) bool
+       40             InstrRet  POP RA
+       17             InstrRet  POP RA
    execution finished with state: 0
    #+END_EXAMPLE
 
@@ -100,27 +124,35 @@
 * Instructions: 
   
 ** const
-   Constant value.
+   Constant values are known in compile time.
 
    #+BEGIN_EXAMPLE
    <T> const <value> // yields constant value of the type T
    #+END_EXAMPLE
 
-   | stack op | data  | description    |
-   |----------+-------+----------------|
-   | PUSH     | value | constant value |
-
 ** decl
    Variable declaration.
 
    #+BEGIN_EXAMPLE
-   <*T> decl <name> : <T> // yields *T (pointer to value allocated on the stack)
+   void decl <name> : <T> = <init value> // yields void 
    #+END_EXAMPLE
 
    | stack op | data | description              |
    |----------+------+--------------------------|
    | PUSH     | -    | storage for the variable |
+
+   Constant declaration.
+
+   #+BEGIN_EXAMPLE
+   void decl <name> : <T> : <init value> // yields void 
+   #+END_EXAMPLE
+** declref
+   Reference to some declaration. This instruction is 'noop'. Symbol lookup is done here during analyze pass, when symbol is not found error is generated.
    
+   #+BEGIN_EXAMPLE
+   <T*> declref <name> // yields pointer to found declaration
+   #+END_EXAMPLE
+
 ** load
    Push pointed value on the stack.
 
@@ -128,15 +160,9 @@
    <T> load <ptr> // yields T loaded from ptr
    #+END_EXAMPLE
 
-   Source is on the stack:
    | stack op | data  | description              |
    |----------+-------+--------------------------|
    | POP      | ptr   | pointer to source        |
-   | PUSH     | value | value loaded from source |
-
-   Source is variable declaration:
-   | stack op | data  | description              |
-   |----------+-------+--------------------------|
    | PUSH     | value | value loaded from source |
    
 ** store
@@ -146,16 +172,10 @@
    void store <src> -> <dest ptr> // yields void
    #+END_EXAMPLE
 
-   Destination pointer is on the stack:
    | stack op | data     | description            |
    |----------+----------+------------------------|
    | POP      | dest ptr | pointer to destination |
    | POP      | src ptr  | value                  |
-
-   Destination pointer is declaration:
-   | stack op | data     | description            |
-   |----------+----------+------------------------|
-   | POP      | src ptr | value                  |
    
 ** arg
    Load argument of the current function on the stack.
@@ -169,7 +189,7 @@
    | PUSH     | arg  | fn argument |
 
 ** call
-   Call function. This instruction will create new stack frame and switch control to the callee.
+   Call function. This instruction will create new stack frame and switch control to the callee. All call arguments in example case are known only in runtime (compile-time known arguments is passed by const value).
 
    | stack op | data         | description                                                                |
    |----------+--------------+----------------------------------------------------------------------------|
@@ -289,16 +309,10 @@
    <T> sext <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
-    | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
     | stack op | data   | description          |
     |----------+--------+----------------------|
-    | PUSH     | resutlt | result with new type |
+    | POP      | target |                      |
+    | PUSH     | result | result with new type |
 
 ** zext
    Zero-extend cast. 
@@ -307,15 +321,9 @@
    <T> zext <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
     | PUSH     | resutlt | result with new type |
 
 ** trunc
@@ -325,15 +333,9 @@
    <T> trunc <target> // yields value with casted type
    #+END_EXAMPLE
 
-    Getting target from the stack:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
-
-    Target is a variable:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
     | PUSH     | resutlt | result with new type |
 ** fptosi
    Floating point to signed integer cast. 
@@ -362,13 +364,6 @@
 
 * Special instructions
   Special instructions are used only during analyze pass inside the compiler.
-
-** tryinfer
-   Assign type of the source to the destination instruction.
-   
-   #+BEGIN_EXAMPLE
-   void tryinfer <src> -> <dest> // yields void
-   #+END_EXAMPLE
 
 ** validate_type
    Validates if the source instruction yields value of type 'type'. 
