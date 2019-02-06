@@ -9,21 +9,9 @@ Foo :: struct {
 };
 */
 
-get_T :: fn (signed: bool) type {
-  T : type;
-
-  if signed {
-    T = s32;
-  } else {
-    T = u32;
-  }
-
-  return T;
-};
-
 main :: fn () s32 {
-  i : type = get_T(true);
-  foo : i;
+  T :: s32;
+  foo : T;
   return 0;
 };
 
