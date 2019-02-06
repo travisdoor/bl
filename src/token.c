@@ -59,8 +59,9 @@ token_prec(Token *token)
   case SYM_LPAREN:
     return (TokenPrecedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
-    /* * / % */
+    /* * ^ / % */
   case SYM_ASTERISK:
+  case SYM_CARET:
   case SYM_SLASH:
   case SYM_PERCENT:
     return (TokenPrecedence){.priority = 40, .associativity = TOKEN_ASSOC_LEFT};
@@ -85,14 +86,6 @@ token_prec(Token *token)
     /* & */
   case SYM_AND:
     return (TokenPrecedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
-
-    /* ^ */
-  case SYM_XOR:
-    return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
-
-    /* | */
-  case SYM_OR:
-    return (TokenPrecedence){.priority = 7, .associativity = TOKEN_ASSOC_LEFT};
 
     /* && */
   case SYM_LOGIC_AND:

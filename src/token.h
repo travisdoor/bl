@@ -87,11 +87,10 @@
   sm(PERCENT_ASSIGN, "%=") \
   sm(ASSIGN,         "=") /* assign end */\
   sm(AND,            "&") \
-  sm(OR,             "|") \
-  sm(XOR,            "^") \
+  sm(CARET,          "^") \
   sm(NOT,            "!") \
   sm(SLASH,          "/") \
-  sm(PERCENT,         "%") \
+  sm(PERCENT,        "%") \
   sm(PLUS,           "+") \
   sm(MINUS,          "-") \
   sm(ASTERISK,       "*") \

@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-02-05 Tue 23:32 -->
+<!-- 2019-02-06 Wed 22:57 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit Documentation</title>
@@ -180,7 +180,12 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="org.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 <script type="text/javascript">
 /*
 @licstart  The following is the entire license notice for the
@@ -235,41 +240,41 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orgabd8a7b">Instalation</a>
+<li><a href="#org8e891c4">Instalation</a>
 <ul>
-<li><a href="#org717a84b">Requirements</a></li>
-<li><a href="#org2beb6e6">Linux</a></li>
-<li><a href="#org04bde90">MacOS</a></li>
-<li><a href="#org5df9012"><span class="todo TODO">TODO</span> Windows</a></li>
+<li><a href="#org09ee7ea">Requirements</a></li>
+<li><a href="#orgaf1dd5c">Linux</a></li>
+<li><a href="#orge946726">MacOS</a></li>
+<li><a href="#orge0ab79b"><span class="todo TODO">TODO</span> Windows</a></li>
 </ul>
 </li>
-<li><a href="#org106c597">Compiler usage</a></li>
-<li><a href="#org1e76e9f">Language</a>
+<li><a href="#org8b4179d">Compiler usage</a></li>
+<li><a href="#orgdc44f13">Language</a>
 <ul>
-<li><a href="#org92cd2b7">Base syntax</a></li>
-<li><a href="#org6cd040e">Comments</a></li>
-<li><a href="#orgdda0995">Operators</a></li>
-<li><a href="#org00b37b2">Data types</a></li>
-<li><a href="#orgdbc30a5">Variables</a></li>
-<li><a href="#orgf52164e">Constants</a></li>
-<li><a href="#org7fa6f9e">Functions</a></li>
-<li><a href="#orga5a9005">Blocks</a></li>
-<li><a href="#orgef66e0c">Ifs</a></li>
-<li><a href="#org0262986">Loops</a></li>
-<li><a href="#org20089a9">Break and continue</a></li>
-<li><a href="#org16261f6">Unit tests</a></li>
+<li><a href="#org4f8704e">Base syntax</a></li>
+<li><a href="#org34389a9">Comments</a></li>
+<li><a href="#org4af46c6">Operators</a></li>
+<li><a href="#org1cc11cf">Data types</a></li>
+<li><a href="#orga5ced70">Variables</a></li>
+<li><a href="#org6ba3d1c">Constants</a></li>
+<li><a href="#org2d0a1ce">Functions</a></li>
+<li><a href="#org7de498e">Blocks</a></li>
+<li><a href="#orgc97bf45">Ifs</a></li>
+<li><a href="#orgf099810">Loops</a></li>
+<li><a href="#orgd9daa08">Break and continue</a></li>
+<li><a href="#org079e09d">Unit tests</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
-<div id="outline-container-orgabd8a7b" class="outline-2">
-<h2 id="orgabd8a7b">Instalation</h2>
-<div class="outline-text-2" id="text-orgabd8a7b">
+<div id="outline-container-org8e891c4" class="outline-2">
+<h2 id="org8e891c4">Instalation</h2>
+<div class="outline-text-2" id="text-org8e891c4">
 </div>
-<div id="outline-container-org717a84b" class="outline-3">
-<h3 id="org717a84b">Requirements</h3>
-<div class="outline-text-3" id="text-org717a84b">
+<div id="outline-container-org09ee7ea" class="outline-3">
+<h3 id="org09ee7ea">Requirements</h3>
+<div class="outline-text-3" id="text-org09ee7ea">
 <ul class="org-ul">
 <li>git</li>
 <li>CMake</li>
@@ -281,9 +286,9 @@ for the JavaScript code in this tag.
 </div>
 </div>
 
-<div id="outline-container-org2beb6e6" class="outline-3">
-<h3 id="org2beb6e6">Linux</h3>
-<div class="outline-text-3" id="text-org2beb6e6">
+<div id="outline-container-orgaf1dd5c" class="outline-3">
+<h3 id="orgaf1dd5c">Linux</h3>
+<div class="outline-text-3" id="text-orgaf1dd5c">
 <ul class="org-ul">
 <li>Install bobject.</li>
 <li>Install dyncall.</li>
@@ -306,9 +311,9 @@ make
 </div>
 </div>
 
-<div id="outline-container-org04bde90" class="outline-3">
-<h3 id="org04bde90">MacOS</h3>
-<div class="outline-text-3" id="text-org04bde90">
+<div id="outline-container-orge946726" class="outline-3">
+<h3 id="orge946726">MacOS</h3>
+<div class="outline-text-3" id="text-orge946726">
 <ul class="org-ul">
 <li>Install bobject.</li>
 <li>Install dyncall.</li>
@@ -331,14 +336,14 @@ make
 </div>
 </div>
 
-<div id="outline-container-org5df9012" class="outline-3">
-<h3 id="org5df9012"><span class="todo TODO">TODO</span> Windows</h3>
+<div id="outline-container-orge0ab79b" class="outline-3">
+<h3 id="orge0ab79b"><span class="todo TODO">TODO</span> Windows</h3>
 </div>
 </div>
 
-<div id="outline-container-org106c597" class="outline-2">
-<h2 id="org106c597">Compiler usage</h2>
-<div class="outline-text-2" id="text-org106c597">
+<div id="outline-container-org8b4179d" class="outline-2">
+<h2 id="org8b4179d">Compiler usage</h2>
+<div class="outline-text-2" id="text-org8b4179d">
 <pre class="example">
 blc [options] &lt;source-files&gt;
 </pre>
@@ -437,13 +442,13 @@ blc [options] &lt;source-files&gt;
 </div>
 </div>
 
-<div id="outline-container-org1e76e9f" class="outline-2">
-<h2 id="org1e76e9f">Language</h2>
-<div class="outline-text-2" id="text-org1e76e9f">
+<div id="outline-container-orgdc44f13" class="outline-2">
+<h2 id="orgdc44f13">Language</h2>
+<div class="outline-text-2" id="text-orgdc44f13">
 </div>
-<div id="outline-container-org92cd2b7" class="outline-3">
-<h3 id="org92cd2b7">Base syntax</h3>
-<div class="outline-text-3" id="text-org92cd2b7">
+<div id="outline-container-org4f8704e" class="outline-3">
+<h3 id="org4f8704e">Base syntax</h3>
+<div class="outline-text-3" id="text-org4f8704e">
 <p>
 Declarations and mutability:
 </p>
@@ -465,9 +470,9 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org6cd040e" class="outline-3">
-<h3 id="org6cd040e">Comments</h3>
-<div class="outline-text-3" id="text-org6cd040e">
+<div id="outline-container-org34389a9" class="outline-3">
+<h3 id="org34389a9">Comments</h3>
+<div class="outline-text-3" id="text-org34389a9">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-comment-delimiter">// </span><span class="org-comment">this is line comment</span>
 <span class="org-comment-delimiter">/*</span>
@@ -481,13 +486,13 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-orgdda0995" class="outline-3">
-<h3 id="orgdda0995">Operators</h3>
-<div class="outline-text-3" id="text-orgdda0995">
+<div id="outline-container-org4af46c6" class="outline-3">
+<h3 id="org4af46c6">Operators</h3>
+<div class="outline-text-3" id="text-org4af46c6">
 </div>
-<div id="outline-container-org9d0c272" class="outline-4">
-<h4 id="org9d0c272">Binary</h4>
-<div class="outline-text-4" id="text-org9d0c272">
+<div id="outline-container-org1a4b762" class="outline-4">
+<h4 id="org1a4b762">Binary</h4>
+<div class="outline-text-4" id="text-org1a4b762">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -612,18 +617,18 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org480cded" class="outline-4">
-<h4 id="org480cded"><span class="todo TODO">TODO</span> Unary</h4>
+<div id="outline-container-orgb0de84b" class="outline-4">
+<h4 id="orgb0de84b"><span class="todo TODO">TODO</span> Unary</h4>
 </div>
 </div>
 
-<div id="outline-container-org00b37b2" class="outline-3">
-<h3 id="org00b37b2">Data types</h3>
-<div class="outline-text-3" id="text-org00b37b2">
+<div id="outline-container-org1cc11cf" class="outline-3">
+<h3 id="org1cc11cf">Data types</h3>
+<div class="outline-text-3" id="text-org1cc11cf">
 </div>
-<div id="outline-container-orgd3ac8b5" class="outline-4">
-<h4 id="orgd3ac8b5">Fundamental data types</h4>
-<div class="outline-text-4" id="text-orgd3ac8b5">
+<div id="outline-container-org546318d" class="outline-4">
+<h4 id="org546318d">Fundamental data types</h4>
+<div class="outline-text-4" id="text-org546318d">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -703,9 +708,9 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org8431594" class="outline-4">
-<h4 id="org8431594">Pointers</h4>
-<div class="outline-text-4" id="text-org8431594">
+<div id="outline-container-orgf1ad854" class="outline-4">
+<h4 id="orgf1ad854">Pointers</h4>
+<div class="outline-text-4" id="text-orgf1ad854">
 <p>
 Represents the address of some allocated data.
 </p>
@@ -729,9 +734,9 @@ Represents the address of some allocated data.
 </div>
 </div>
 
-<div id="outline-container-org5349504" class="outline-4">
-<h4 id="org5349504"><span class="todo TODO">TODO</span> Arrays</h4>
-<div class="outline-text-4" id="text-org5349504">
+<div id="outline-container-org84bcd3d" class="outline-4">
+<h4 id="org84bcd3d"><span class="todo TODO">TODO</span> Arrays</h4>
+<div class="outline-text-4" id="text-org84bcd3d">
 <p>
 Only one-dimensional array types are supported. 
 </p>
@@ -753,9 +758,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgf5badee" class="outline-4">
-<h4 id="orgf5badee"><span class="todo TODO">TODO</span> Strings</h4>
-<div class="outline-text-4" id="text-orgf5badee">
+<div id="outline-container-org1da273f" class="outline-4">
+<h4 id="org1da273f"><span class="todo TODO">TODO</span> Strings</h4>
+<div class="outline-text-4" id="text-org1da273f">
 <p>
 String in BL is just an array. There is no zero terminator at the end.
 </p>
@@ -777,18 +782,18 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgc81064c" class="outline-4">
-<h4 id="orgc81064c"><span class="todo TODO">TODO</span> Slices</h4>
-<div class="outline-text-4" id="text-orgc81064c">
+<div id="outline-container-org703da79" class="outline-4">
+<h4 id="org703da79"><span class="todo TODO">TODO</span> Slices</h4>
+<div class="outline-text-4" id="text-org703da79">
 <p>
 Slice is consist of pointer to the first element and element count of an array.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgbcfd307" class="outline-4">
-<h4 id="orgbcfd307">Function type</h4>
-<div class="outline-text-4" id="text-orgbcfd307">
+<div id="outline-container-org7c3e401" class="outline-4">
+<h4 id="org7c3e401">Function type</h4>
+<div class="outline-text-4" id="text-org7c3e401">
 <p>
 Type of function. 
 </p>
@@ -811,9 +816,9 @@ fn ([arguments]) [return type]
 </div>
 </div>
 
-<div id="outline-container-orge8139e3" class="outline-4">
-<h4 id="orge8139e3">Type casting</h4>
-<div class="outline-text-4" id="text-orge8139e3">
+<div id="outline-container-org34c905c" class="outline-4">
+<h4 id="org34c905c">Type casting</h4>
+<div class="outline-text-4" id="text-org34c905c">
 <p>
 Change type of value to other type. Conventions between integer types is generated implicitly by the compiler.
 </p>
@@ -849,9 +854,9 @@ Example:
 </div>
 </div>
 </div>
-<div id="outline-container-orgdbc30a5" class="outline-3">
-<h3 id="orgdbc30a5">Variables</h3>
-<div class="outline-text-3" id="text-orgdbc30a5">
+<div id="outline-container-orga5ced70" class="outline-3">
+<h3 id="orga5ced70">Variables</h3>
+<div class="outline-text-3" id="text-orga5ced70">
 <p>
 Example of variable allocated on stack.
 </p>
@@ -871,9 +876,9 @@ Example of variable allocated on stack.
 </div>
 </div>
 
-<div id="outline-container-orgf52164e" class="outline-3">
-<h3 id="orgf52164e">Constants</h3>
-<div class="outline-text-3" id="text-orgf52164e">
+<div id="outline-container-org6ba3d1c" class="outline-3">
+<h3 id="org6ba3d1c">Constants</h3>
+<div class="outline-text-3" id="text-org6ba3d1c">
 <p>
 Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
 </p>
@@ -892,13 +897,13 @@ Example of constant allocated on stack. Constant must be initialized and cannot 
 </div>
 </div>
 
-<div id="outline-container-org7fa6f9e" class="outline-3">
-<h3 id="org7fa6f9e">Functions</h3>
-<div class="outline-text-3" id="text-org7fa6f9e">
+<div id="outline-container-org2d0a1ce" class="outline-3">
+<h3 id="org2d0a1ce">Functions</h3>
+<div class="outline-text-3" id="text-org2d0a1ce">
 </div>
-<div id="outline-container-orgddf381d" class="outline-4">
-<h4 id="orgddf381d">Named function</h4>
-<div class="outline-text-4" id="text-orgddf381d">
+<div id="outline-container-orgd5e84ad" class="outline-4">
+<h4 id="orgd5e84ad">Named function</h4>
+<div class="outline-text-4" id="text-orgd5e84ad">
 <p>
 Examples of named function.
 </p>
@@ -929,9 +934,9 @@ Examples of named function.
 </div>
 </div>
 
-<div id="outline-container-orgd0599f1" class="outline-4">
-<h4 id="orgd0599f1">Anonymous function</h4>
-<div class="outline-text-4" id="text-orgd0599f1">
+<div id="outline-container-org013e0eb" class="outline-4">
+<h4 id="org013e0eb">Anonymous function</h4>
+<div class="outline-text-4" id="text-org013e0eb">
 <p>
 Anonymous function has no name and contains only function literal.
 </p>
@@ -955,9 +960,9 @@ Example of anonymous function.
 </div>
 </div>
 
-<div id="outline-container-orga5a9005" class="outline-3">
-<h3 id="orga5a9005">Blocks</h3>
-<div class="outline-text-3" id="text-orga5a9005">
+<div id="outline-container-org7de498e" class="outline-3">
+<h3 id="org7de498e">Blocks</h3>
+<div class="outline-text-3" id="text-org7de498e">
 <p>
 Block can limit scope of the variable.
 </p>
@@ -982,9 +987,9 @@ Block can limit scope of the variable.
 </div>
 </div>
 
-<div id="outline-container-orgef66e0c" class="outline-3">
-<h3 id="orgef66e0c">Ifs</h3>
-<div class="outline-text-3" id="text-orgef66e0c">
+<div id="outline-container-orgc97bf45" class="outline-3">
+<h3 id="orgc97bf45">Ifs</h3>
+<div class="outline-text-3" id="text-orgc97bf45">
 <p>
 If - else base syntax:
 </p>
@@ -1010,9 +1015,9 @@ if &lt;condition&gt; {[then block]} [else {[else block]}]
 </div>
 </div>
 
-<div id="outline-container-org0262986" class="outline-3">
-<h3 id="org0262986">Loops</h3>
-<div class="outline-text-3" id="text-org0262986">
+<div id="outline-container-orgf099810" class="outline-3">
+<h3 id="orgf099810">Loops</h3>
+<div class="outline-text-3" id="text-orgf099810">
 <p>
 Loop base syntax:
 </p>
@@ -1046,9 +1051,9 @@ loop &lt;initialization&gt;; &lt;condition&gt;; &lt;increment&gt; {[block]}
 </div>
 </div>
 
-<div id="outline-container-org20089a9" class="outline-3">
-<h3 id="org20089a9">Break and continue</h3>
-<div class="outline-text-3" id="text-org20089a9">
+<div id="outline-container-orgd9daa08" class="outline-3">
+<h3 id="orgd9daa08">Break and continue</h3>
+<div class="outline-text-3" id="text-orgd9daa08">
 <p>
 Break/continue statements can be used in loops to control execution flow.
 </p>
@@ -1073,9 +1078,9 @@ Examples:
 </div>
 </div>
 
-<div id="outline-container-org16261f6" class="outline-3">
-<h3 id="org16261f6">Unit tests</h3>
-<div class="outline-text-3" id="text-org16261f6">
+<div id="outline-container-org079e09d" class="outline-3">
+<h3 id="org079e09d">Unit tests</h3>
+<div class="outline-text-3" id="text-org079e09d">
 <p>
 Biscuit compiler supports unit testing by default.
 </p>
@@ -1136,7 +1141,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-05 Tue 23:32</p>
+<p class="date">Created: 2019-02-06 Wed 22:57</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

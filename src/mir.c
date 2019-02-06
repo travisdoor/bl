@@ -2205,13 +2205,15 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   case SCOPE_ENTRY_VAR: {
     MirVar *var = found->data.var;
     assert(var);
+    ++var->ref_count;
     MirType *type = var->alloc_type;
     assert(type);
 
     type                       = create_type_ptr(cnt, type);
     ref->base.const_value.type = type;
     ref->base.comptime         = var->comptime;
-    ++var->ref_count;
+    /* set pointer to variable const value directly when variable is compile time known */
+    if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
     break;
   }
 
@@ -2346,23 +2348,9 @@ analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 
   reduce_instr(cnt, br->cond);
 
-  /* compile time known condition leads to branching reduction */
-  if (br->cond->comptime) {
-    /* PERFORMANCE: break can be completly removed, but we have no way how to reparent all
-     * instructions inside branches */
-    MirInstrBlock *then_block = br->then_block;
-    MirInstrBlock *else_block = br->else_block;
-
-    MirInstrBr *tmp = (MirInstrBr *)mutate_instr(&br->base, MIR_INSTR_BR);
-
-    if (br->cond->const_value.data.v_int == true) {
-      tmp->then_block = then_block;
-      erase_block(else_block);
-    } else {
-      tmp->then_block = else_block;
-      erase_block(then_block);
-    }
-  }
+  /* PERFORMANCE: When condition is known in compile time, we can discard whole else/then block
+   * based on condition resutl. It is not possible because we don't have tracked down execution tree
+   * for now. */
 
   return true;
 }
@@ -2674,6 +2662,12 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (!var->alloc_type) {
     bl_abort("unknown declaration type");
+  }
+
+  if (var->alloc_type->kind == MIR_TYPE_TYPE && var->is_mutable) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, decl->base.node->src,
+                BUILDER_CUR_WORD, "type declaration must be immutable");
+    return false;
   }
 
   if (decl->base.ref_count == 0) {
@@ -3324,6 +3318,8 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   ScopeEntry *entry = ref->scope_entry;
   assert(entry);
+
+  if (ref->base.comptime) return;
 
   switch (entry->kind) {
   case SCOPE_ENTRY_VAR: {

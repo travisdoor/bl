@@ -717,7 +717,7 @@ parse_expr_addrof(Context *cnt)
 Ast *
 parse_expr_deref(Context *cnt)
 {
-  Token *tok = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_CARET);
   if (!tok) return NULL;
 
   Ast *deref                  = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok);
@@ -726,7 +726,7 @@ parse_expr_deref(Context *cnt)
   if (deref->data.expr_deref.next == NULL) {
     Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-                "expected expression after '&' operator");
+                "expected expression after '^' operator");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }

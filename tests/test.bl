@@ -10,8 +10,11 @@ Foo :: struct {
 */
 
 main :: fn () s32 {
-  T :: s32;
-  foo : T;
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
+
   return 0;
 };
 

@@ -1,7 +1,7 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 
 # now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 2
@@ -121,7 +121,7 @@
     <terminal instruction>
   #+END_EXAMPLE
 
-* Instructions: 
+* Instructions 
   
 ** const
    Constant values are known in compile time.
@@ -372,4 +372,3 @@
    void validate_type <src> // yields void
    #+END_EXAMPLE
 
-* Footnotes

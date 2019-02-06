@@ -1,7 +1,7 @@
 #+TITLE: Biscuit Documentation
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 
 # now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 2

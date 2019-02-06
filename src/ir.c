@@ -555,7 +555,7 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   MirInstrBlock *else_block = br->else_block;
   assert(cond && then_block);
 
-  LLVMValueRef      llvm_cond       = cond->llvm_value;
+  LLVMValueRef      llvm_cond       = fetch_value(cnt, cond);
   LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
   LLVMBasicBlockRef llvm_else_block = gen_basic_block(cnt, else_block);
 

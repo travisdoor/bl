@@ -460,7 +460,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   assert(fn);
 
   fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
-          fn->ref_count ? "" : ", no LLVM representation");
+          fn->ref_count ? "" : ", no LLVM");
 
   if (fn->llvm_name)
     fprintf(stream, "@%s ", fn->llvm_name);
