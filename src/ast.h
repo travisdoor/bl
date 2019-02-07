@@ -238,6 +238,7 @@ struct AstTypeFn
 
 struct AstTypeStruct
 {
+  Scope * scope;
   BArray *members;
   bool    raw;
 };

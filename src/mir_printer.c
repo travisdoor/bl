@@ -381,10 +381,10 @@ print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
 {
   print_instr_head(&decl->base, stream, "declmember");
 
-  assert(decl->ast_name->kind == AST_IDENT);
-  ID *id = &decl->ast_name->data.ident.id;
+  MirMember *member = decl->member;
+  assert(member);
 
-  fprintf(stream, "%s : ", id->str);
+  fprintf(stream, "%s : ", member->id->str);
   print_comptime_value_or_id(decl->type, stream);
 }
 

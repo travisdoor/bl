@@ -47,6 +47,7 @@ typedef enum ScopeEntryKind
   SCOPE_ENTRY_TYPE,
   SCOPE_ENTRY_VAR,
   SCOPE_ENTRY_FN,
+  SCOPE_ENTRY_MEMBER,
 } ScopeEntryKind;
 
 typedef struct ScopeArenas
@@ -65,9 +66,10 @@ typedef struct ScopeEntry
 
   union
   {
-    struct MirType *type;
-    struct MirFn *  fn;
-    struct MirVar * var;
+    struct MirType *  type;
+    struct MirFn *    fn;
+    struct MirVar *   var;
+    struct MirMember *member;
   } data;
 } ScopeEntry;
 

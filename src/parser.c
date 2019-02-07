@@ -1103,8 +1103,9 @@ parse_type_struct(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct);
   }
 
-  Ast *type_struct                 = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct);
-  type_struct->data.type_strct.raw = false;
+  Ast *type_struct                   = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct);
+  type_struct->data.type_strct.scope = scope;
+  type_struct->data.type_strct.raw   = false;
   type_struct->data.type_strct.members = bo_array_new(sizeof(Ast *));
 
   /* parse members */

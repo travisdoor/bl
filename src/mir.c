@@ -260,7 +260,7 @@ static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
 
 static MirType *
-create_type_struct(Context *cnt, BArray *members);
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed);
 
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
@@ -269,6 +269,9 @@ create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_ty
 static MirFn *
 create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, bool is_external,
           bool is_test_case);
+
+static MirMember *
+create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -324,7 +327,7 @@ static MirInstr *
 append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
 
 static MirInstr *
-append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members);
+append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members, bool is_packed);
 
 static MirInstr *
 append_instr_type_ptr(Context *cnt, Ast *node, MirInstr *type);
@@ -1017,6 +1020,26 @@ provide_var(Context *cnt, MirVar *var)
 }
 
 static inline ScopeEntry *
+provide_member(Context *cnt, MirMember *member)
+{
+  assert(member && member->id && member->scope);
+
+  ScopeEntry *collision = scope_lookup(member->scope, member->id, false);
+  if (collision) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, member->decl_node->src,
+                BUILDER_CUR_WORD, "duplicate symbol inside structure declaration");
+    return NULL;
+  }
+
+  ScopeEntry *entry  = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_MEMBER,
+                                         member->id, member->decl_node, false);
+  entry->data.member = member;
+  scope_insert(member->scope, entry);
+
+  return entry;
+}
+
+static inline ScopeEntry *
 provide_fn(Context *cnt, MirFn *fn)
 {
   assert(fn && fn->id && fn->scope);
@@ -1193,11 +1216,13 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 }
 
 MirType *
-create_type_struct(Context *cnt, BArray *members)
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed)
 {
-  MirType *tmp            = arena_alloc(&cnt->module->arenas.type_arena);
-  tmp->kind               = MIR_TYPE_STRUCT;
-  tmp->data.strct.members = members;
+  MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
+  tmp->kind                 = MIR_TYPE_STRUCT;
+  tmp->data.strct.members   = members;
+  tmp->data.strct.scope     = scope;
+  tmp->data.strct.is_packed = is_packed;
   init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
@@ -1230,6 +1255,18 @@ create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, 
   tmp->is_external  = is_external;
   tmp->is_test_case = is_test_case;
   tmp->decl_node    = node;
+  return tmp;
+}
+
+MirMember *
+create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type)
+{
+  MirMember *tmp = arena_alloc(&cnt->module->arenas.member_arena);
+  tmp->decl_node = node;
+  tmp->id        = id;
+  tmp->index     = index;
+  tmp->type      = type;
+  tmp->scope     = scope;
   return tmp;
 }
 
@@ -1457,12 +1494,14 @@ append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_ty
 }
 
 MirInstr *
-append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members)
+append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members, bool is_packed)
 {
   MirInstrTypeStruct *tmp    = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node, MirInstrTypeStruct *);
   tmp->base.const_value.type = cnt->builtin_types.entry_type;
   tmp->base.comptime         = true;
   tmp->members               = members;
+  tmp->scope                 = scope;
+  tmp->is_packed             = is_packed;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -1709,7 +1748,9 @@ append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
   tmp->base.comptime         = true;
   tmp->base.const_value.type = cnt->builtin_types.entry_void;
   tmp->type                  = type;
-  tmp->ast_name              = node;
+
+  ID *id      = node ? &node->data.ident.id : NULL;
+  tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -1969,7 +2010,8 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   case MIR_TYPE_STRUCT: {
     BArray *members = type->data.strct.members;
     assert(members);
-    const size_t memc = bo_array_size(members);
+    const bool   is_packed = type->data.strct.is_packed;
+    const size_t memc      = bo_array_size(members);
     assert(memc > 0);
     LLVMTypeRef *llvm_members = NULL;
 
@@ -1985,8 +2027,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
       }
     }
 
-    // TODO: support packed structures!!!
-    type->llvm_type = LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, memc, false);
+    type->llvm_type = LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, memc, is_packed);
     type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
     type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
@@ -2162,7 +2203,9 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 bool
 analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
-  MirType *target_type = member_ptr->target_ptr->const_value.type;
+  MirInstr *target_ptr = member_ptr->target_ptr;
+  assert(target_ptr);
+  MirType *target_type = target_ptr->const_value.type;
   assert(target_type->kind == MIR_TYPE_PTR && "this should be compiler error");
   Ast *ast_member_ident = member_ptr->member_ident;
   assert(ast_member_ident);
@@ -2183,7 +2226,33 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
                   BUILDER_CUR_WORD, "unknown member");
     }
   } else {
-    bl_unimplemented;
+    if (target_type->kind != MIR_TYPE_STRUCT) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, target_ptr->node->src,
+                  BUILDER_CUR_WORD, "expected structure type");
+      return false;
+    }
+
+    /* lookup for member inside struct */
+    Scope *     scope = target_type->data.strct.scope;
+    ID *        rid   = &ast_member_ident->data.ident.id;
+    ScopeEntry *found = scope_lookup(scope, rid, false);
+    if (!found) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
+                  member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown structure member");
+      return false;
+    }
+
+    {
+      assert(found->kind = SCOPE_ENTRY_MEMBER);
+      MirMember *member = found->data.member;
+
+      /* setup member_ptr type */
+      MirType *type = create_type_ptr(cnt, member->type);
+      assert(type);
+      member_ptr->base.const_value.type = type;
+    }
+
+    reduce_instr(cnt, member_ptr->target_ptr);
   }
 
   return true;
@@ -2496,37 +2565,64 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 }
 
 bool
+analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
+{
+  MirMember *member = decl->member;
+  assert(member);
+
+  decl->type = insert_instr_load_if_needed(cnt, decl->type);
+  reduce_instr(cnt, decl->type);
+
+  /* NOTE: Members will be provided by instr type struct because we need to know right ordering of
+   * members inside structure layout. (index and llvm element offet need to be calculated)*/
+  return true;
+}
+
+bool
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
   BArray *members = NULL;
+
   if (type_struct->members) {
-    MirInstr **  member;
-    MirType *    tmp;
-    const size_t memc = bo_array_size(type_struct->members);
+    MirInstr **         member_instr;
+    MirInstrDeclMember *decl_member;
+    MirMember *         member;
+    MirType *           member_type;
+    Scope *             scope = type_struct->scope;
+    const size_t        memc  = bo_array_size(type_struct->members);
 
     members = bo_array_new(sizeof(MirType *));
     bo_array_reserve(members, bo_array_size(type_struct->members));
 
     for (size_t i = 0; i < memc; ++i) {
-      member = &bo_array_at(type_struct->members, i, MirInstr *);
+      member_instr = &bo_array_at(type_struct->members, i, MirInstr *);
 
-      *member = insert_instr_load_if_needed(cnt, *member);
-      reduce_instr(cnt, *member);
+      *member_instr = insert_instr_load_if_needed(cnt, *member_instr);
+      reduce_instr(cnt, *member_instr);
 
-      assert((*member)->comptime);
-      if ((*member)->kind == MIR_INSTR_DECL_MEMBER) {
-        MirInstrDeclMember *decl = (MirInstrDeclMember *)*member;
-        tmp                      = decl->type->const_value.data.v_type;
-      } else {
-        tmp = (*member)->const_value.data.v_type;
-      }
+      decl_member = (MirInstrDeclMember *)*member_instr;
+      assert(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
+      assert(decl_member->base.comptime);
 
-      assert(tmp);
-      bo_array_push_back(members, tmp);
+      /* solve member type */
+      member_type = decl_member->type->const_value.data.v_type;
+
+      assert(member_type);
+      bo_array_push_back(members, member_type);
+
+      /* setup and provide member */
+      member = decl_member->member;
+      assert(member);
+      member->type  = member_type;
+      member->scope = scope;
+      member->index = i;
+
+      provide_member(cnt, member);
     }
   }
 
-  type_struct->base.const_value.data.v_type = create_type_struct(cnt, members);
+  type_struct->base.const_value.data.v_type =
+      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed);
   return true;
 }
 
@@ -2788,20 +2884,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     bo_array_push_back(fn->variables, var);
   }
 
-  return true;
-}
-
-bool
-analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
-{
-  Ast *ast_name = decl->ast_name;
-  assert(ast_name);
-  assert(decl->type);
-
-  decl->type = insert_instr_load_if_needed(cnt, decl->type);
-  reduce_instr(cnt, decl->type);
-
-  bl_log("new member: %s", ast_name->data.ident.id.str);
   return true;
 }
 
@@ -4541,8 +4623,10 @@ ast_type_struct(Context *cnt, Ast *type_struct)
     bo_array_push_back(members, tmp);
   }
 
-  // TODO: fill up scope!!!
-  return append_instr_type_struct(cnt, type_struct, NULL, members);
+  Scope *scope = type_struct->data.type_strct.scope;
+  assert(scope);
+
+  return append_instr_type_struct(cnt, type_struct, scope, members, false);
 }
 
 MirInstr *
@@ -4728,6 +4812,7 @@ arenas_init(struct MirArenas *arenas)
   arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
+  arena_init(&arenas->member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
 }
 
 static void
@@ -4737,6 +4822,7 @@ arenas_terminate(struct MirArenas *arenas)
   arena_terminate(&arenas->type_arena);
   arena_terminate(&arenas->var_arena);
   arena_terminate(&arenas->fn_arena);
+  arena_terminate(&arenas->member_arena);
 }
 
 /* public */
@@ -4769,7 +4855,12 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     break;
 
   case MIR_TYPE_STRUCT: {
-    append_buf(buf, len, "struct{");
+    append_buf(buf, len, "struct");
+    if (type->data.strct.is_packed) {
+      append_buf(buf, len, "<");
+    } else {
+      append_buf(buf, len, "{");
+    }
 
     MirType *tmp;
     BArray * members = type->data.strct.members;
@@ -4781,7 +4872,11 @@ _type_to_str(char *buf, int32_t len, MirType *type)
       }
     }
 
-    append_buf(buf, len, "} ");
+    if (type->data.strct.is_packed) {
+      append_buf(buf, len, ">");
+    } else {
+      append_buf(buf, len, "}");
+    }
     break;
   }
 

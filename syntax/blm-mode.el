@@ -28,6 +28,7 @@
     "fptoui"
     "addrof"
     "elemptr"
+    "memberptr"
     "unop"
     "unreachable"
     "typeinfer"

@@ -44,11 +44,13 @@ struct Builder;
 typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
 
-typedef struct MirModule           MirModule;
-typedef struct MirType             MirType;
-typedef struct MirVar              MirVar;
-typedef struct MirFn               MirFn;
-typedef struct MirConstValue       MirConstValue;
+typedef struct MirModule     MirModule;
+typedef struct MirType       MirType;
+typedef struct MirVar        MirVar;
+typedef struct MirFn         MirFn;
+typedef struct MirMember     MirMember;
+typedef struct MirConstValue MirConstValue;
+
 typedef struct MirInstr            MirInstr;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrBlock       MirInstrBlock;
@@ -90,6 +92,7 @@ struct MirArenas
   Arena type_arena;
   Arena var_arena;
   Arena fn_arena;
+  Arena member_arena;
 };
 
 struct MirModule
@@ -127,6 +130,19 @@ struct MirFn
   int32_t        instr_count;
 
   MirConstValueData *exec_ret_value;
+};
+
+/* MEMBER */
+
+struct MirMember
+{
+  ID *     id;
+  Ast *    decl_node;
+  MirType *type;
+  Scope *  scope;
+  int64_t  index;
+
+  LLVMValueRef llvm_value;
 };
 
 /* TYPE */
@@ -170,7 +186,9 @@ struct MirTypePtr
 
 struct MirTypeStruct
 {
+  Scope * scope;
   BArray *members;
+  bool    is_packed;
 };
 
 struct MirTypeNull
@@ -328,8 +346,8 @@ struct MirInstrDeclMember
 {
   MirInstr base;
 
-  Ast *     ast_name;
-  MirInstr *type;
+  MirMember *member;
+  MirInstr * type;
 };
 
 struct MirInstrElemPtr
@@ -451,6 +469,7 @@ struct MirInstrTypeStruct
 
   Scope * scope;
   BArray *members;
+  bool    is_packed;
 };
 
 struct MirInstrTypePtr

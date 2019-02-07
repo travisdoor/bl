@@ -14,11 +14,13 @@ main :: fn () s32 {
 
   foo : struct {
     is_ok: bool,
-    age: s32,
-    arr: [10] s32
+    age:   s32,
+    bar:   u8,
   };
 
-  //foo.i = true;
+  foo.age = 10;
+  foo.is_ok = true;
+  foo.bar = 11;
 
   return 0;
 };
