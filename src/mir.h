@@ -362,9 +362,9 @@ struct MirInstrMemberPtr
 {
   MirInstr base;
 
-  Ast *     member_ident;
-  MirInstr *target_ptr;
-  int32_t   order;
+  Ast *       member_ident;
+  MirInstr *  target_ptr;
+  ScopeEntry *scope_entry;
 };
 
 enum MirCastOp

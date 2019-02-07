@@ -311,7 +311,7 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 
 static MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
-                        int32_t order);
+                        ScopeEntry *scope_entry);
 
 static MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
@@ -605,6 +605,9 @@ exec_instr_br(Context *cnt, MirInstrBr *br);
 
 static void
 exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
+static void
+exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
 static void
 exec_instr_arg(Context *cnt, MirInstrArg *arg);
@@ -1626,14 +1629,14 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 
 MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
-                        int32_t order)
+                        ScopeEntry *scope_entry)
 {
   assert(target_ptr && member_ident);
   ref_instr(target_ptr);
   MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
   tmp->target_ptr        = target_ptr;
   tmp->member_ident      = member_ident;
-  tmp->order             = order;
+  tmp->scope_entry       = scope_entry;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2253,6 +2256,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
     }
 
     reduce_instr(cnt, member_ptr->target_ptr);
+    member_ptr->scope_entry = found;
   }
 
   return true;
@@ -3268,6 +3272,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_ELEM_PTR:
     exec_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
     break;
+  case MIR_INSTR_MEMBER_PTR:
+    exec_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
+    break;
 
   default:
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
@@ -3332,6 +3339,39 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 #endif
   /* push result address on the stack */
   exec_push_stack(cnt, &result, elem_ptr->base.const_value.type);
+}
+
+void
+exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+{
+  assert(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
+  MirMember *member = member_ptr->scope_entry->data.member;
+  assert(member);
+  const int64_t index = member->index;
+
+  MirType *target_type = member_ptr->target_ptr->const_value.type;
+  {
+    /* lookup for base structure declaration type
+     * IDEA: maybe we can store parent type to the member type?
+     */
+    assert(target_type->kind == MIR_TYPE_PTR && "expected pointer");
+    target_type = target_type->data.ptr.next;
+    assert(target_type->kind == MIR_TYPE_STRUCT && "expected structure");
+  }
+
+  MirStackPtr ptr = exec_fetch_value(cnt, member_ptr->target_ptr);
+  ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
+  assert(ptr);
+
+  /* let the llvm solve poiner offest */
+  LLVMTypeRef llvm_target_type = target_type->llvm_type;
+  assert(llvm_target_type && "missing LLVM struct type ref");
+  ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, index);
+
+  /* push result address on the stack */
+  MirConstValueData result = {0};
+  result.v_stack_ptr       = ptr + ptr_offset; // pointer shift
+  exec_push_stack(cnt, &result, member_ptr->base.const_value.type);
 }
 
 void
@@ -4307,7 +4347,7 @@ ast_expr_member(Context *cnt, Ast *member)
   MirInstr *target = ast(cnt, ast_next);
   assert(target);
 
-  return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, -1);
+  return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL);
 }
 
 MirInstr *

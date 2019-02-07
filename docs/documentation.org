@@ -4,7 +4,7 @@
 #+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 
 # now prints out the previously disabled (toc:nil) table of contents.
-#+TOC: headlines 2
+#+TOC: headlines 3
 * Instalation
 ** Requirements
   - git
@@ -177,12 +177,15 @@
     #+END_EXAMPLE
 *** TODO Structures
     #+BEGIN_EXAMPLE
-    <name> :: struct { 
+    struct { 
       <member1 name>: <type>,
       <member2 name>: <type>,
       <member3 name>: <type>
     };
     #+END_EXAMPLE
+    
+    Example:
+    #+INCLUDE: "../tests/src/examples/struct.bl" src bl -n
 
 *** TODO Enums
     #+BEGIN_EXAMPLE

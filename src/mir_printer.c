@@ -304,7 +304,7 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
     fprintf(stream, "%%%u.%s", member_ptr->target_ptr->id,
             member_ptr->member_ident->data.ident.id.str);
   } else {
-    fprintf(stream, "%%%u.%u", member_ptr->target_ptr->id, member_ptr->order);
+    bl_unimplemented;
   }
 }
 

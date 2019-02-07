@@ -12,17 +12,23 @@ Foo :: struct {
 main :: fn () s32 {
   T :: s32;
 
-  foo : struct {
+  Foo :: struct {
     is_ok: bool,
     age:   s32,
     bar:   u8,
   };
 
-  foo.age = 10;
-  foo.is_ok = true;
+  foo : Foo;
   foo.bar = 11;
+  foo.age = 10;
+  //foo.is_ok = true;
 
-  return 0;
+  /*
+  bar : struct { a: s32, b: s32 };
+  bar.a = bar.b;
+  */
+
+  return foo.age;
 };
 
 /*
