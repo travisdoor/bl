@@ -111,6 +111,9 @@ static void
 gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
 static void
+gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+
+static void
 gen_as_const(Context *cnt, MirInstr *instr);
 
 static void
@@ -263,6 +266,21 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
   elem_ptr->base.llvm_value =
       LLVMBuildGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+}
+
+void
+gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+{
+  assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
+  MirMember *member = member_ptr->scope_entry->data.member;
+  assert(member);
+
+  LLVMValueRef       llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
+  const unsigned int index = (const unsigned int)member_ptr->scope_entry->data.member->index;
+  assert(llvm_target_ptr);
+
+  member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
+  assert(member_ptr->base.llvm_value);
 }
 
 void
@@ -680,6 +698,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_UNREACHABLE:
     gen_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+    break;
+  case MIR_INSTR_MEMBER_PTR:
+    gen_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
     break;
   case MIR_INSTR_ELEM_PTR:
     gen_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);

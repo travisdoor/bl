@@ -141,8 +141,6 @@ struct MirMember
   MirType *type;
   Scope *  scope;
   int64_t  index;
-
-  LLVMValueRef llvm_value;
 };
 
 /* TYPE */
