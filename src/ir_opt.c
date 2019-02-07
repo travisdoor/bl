@@ -45,13 +45,16 @@ ir_opt_run(Builder *builder, Assembly *assembly)
 #endif
 
   LLVMModuleRef llvm_module = assembly->mir_module->llvm_module;
+  LLVMTargetMachineRef llvm_tm = assembly->mir_module->llvm_tm;
 
   LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
   LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
 
-
   LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
+  LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
   LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
+  LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
+
   LLVMRunPassManager(llvm_pm, llvm_module);
 
   LLVMDisposePassManager(llvm_pm);

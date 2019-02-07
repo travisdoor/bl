@@ -147,6 +147,9 @@ static void
 print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream);
 
 static void
+print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream);
+
+static void
 print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream);
 
 static void
@@ -162,6 +165,9 @@ static void
 print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream);
 
 static void
+print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream);
+
+static void
 print_instr_const(MirInstrConst *ci, FILE *stream);
 
 static void
@@ -172,9 +178,6 @@ print_instr_store(MirInstrStore *store, FILE *stream);
 
 static void
 print_instr_binop(MirInstrBinop *binop, FILE *stream);
-
-static void
-print_instr_validate_type(MirInstrValidateType *vt, FILE *stream);
 
 static void
 print_instr_call(MirInstrCall *call, FILE *stream);
@@ -206,6 +209,23 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
   fprintf(stream, ")");
 
   if (type_fn->ret_type) fprintf(stream, " %%%u", type_fn->ret_type->id);
+}
+
+void
+print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
+{
+  print_instr_head(&type_struct->base, stream, "const struct");
+  fprintf(stream, "{");
+
+  BArray *  members = type_struct->members;
+  MirInstr *member;
+  barray_foreach(members, member)
+  {
+    print_comptime_value_or_id(member, stream);
+    if (i + 1 < bo_array_size(members)) fprintf(stream, ", ");
+  }
+
+  fprintf(stream, "}");
 }
 
 void
@@ -357,6 +377,18 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 }
 
 void
+print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
+{
+  print_instr_head(&decl->base, stream, "declmember");
+
+  assert(decl->ast_name->kind == AST_IDENT);
+  ID *id = &decl->ast_name->data.ident.id;
+
+  fprintf(stream, "%s : ", id->str);
+  print_comptime_value_or_id(decl->type, stream);
+}
+
+void
 print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream)
 {
   print_instr_head(&ref->base, stream, "declref");
@@ -394,13 +426,6 @@ print_instr_call(MirInstrCall *call, FILE *stream)
     }
   }
   fprintf(stream, ")");
-}
-
-void
-print_instr_validate_type(MirInstrValidateType *vt, FILE *stream)
-{
-  print_instr_head(&vt->base, stream, "validate_type");
-  fprintf(stream, "%%%u", vt->src->id);
 }
 
 void
@@ -501,6 +526,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
   case MIR_INSTR_DECL_VAR:
     print_instr_decl_var((MirInstrDeclVar *)instr, stream);
     break;
+  case MIR_INSTR_DECL_MEMBER:
+    print_instr_decl_member((MirInstrDeclMember *)instr, stream);
+    break;
   case MIR_INSTR_CONST:
     print_instr_const((MirInstrConst *)instr, stream);
     break;
@@ -516,9 +544,6 @@ mir_print_instr(MirInstr *instr, FILE *stream)
   case MIR_INSTR_BINOP:
     print_instr_binop((MirInstrBinop *)instr, stream);
     break;
-  case MIR_INSTR_VALIDATE_TYPE:
-    print_instr_validate_type((MirInstrValidateType *)instr, stream);
-    break;
   case MIR_INSTR_CALL:
     print_instr_call((MirInstrCall *)instr, stream);
     break;
@@ -530,6 +555,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_FN:
     print_instr_type_fn((MirInstrTypeFn *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_STRUCT:
+    print_instr_type_struct((MirInstrTypeStruct *)instr, stream);
     break;
   case MIR_INSTR_TYPE_ARRAY:
     print_instr_type_array((MirInstrTypeArray *)instr, stream);

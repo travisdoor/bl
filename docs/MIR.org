@@ -131,8 +131,7 @@
    #+END_EXAMPLE
 
 ** decl
-   Variable declaration.
-
+   Variable declaration:
    #+BEGIN_EXAMPLE
    void decl <name> : <T> = <init value> // yields void 
    #+END_EXAMPLE
@@ -141,16 +140,21 @@
    |----------+------+--------------------------|
    | PUSH     | -    | storage for the variable |
 
-   Constant declaration.
-
+   Constant declaration:
    #+BEGIN_EXAMPLE
    void decl <name> : <T> : <init value> // yields void 
+   #+END_EXAMPLE
+** declmember
+   Declare member of the structured type.
+
+   #+BEGIN_EXAMPLE
+   void declmember <name> : <T> // yields void 
    #+END_EXAMPLE
 ** declref
    Reference to some declaration. This instruction is 'noop'. Symbol lookup is done here during analyze pass, when symbol is not found error is generated.
    
    #+BEGIN_EXAMPLE
-   <T*> declref <name> // yields pointer to found declaration
+   <*T> declref <name> // yields pointer to found declaration
    #+END_EXAMPLE
 
 ** load
@@ -271,7 +275,7 @@
    | POP      | index    |                              |
    | PUSH     | elem ptr | Address of the array element |
 ** memberptr
-   Evaluates address of member access via '.' operator.
+   Evaluates address of member of the structured type via '.' operator.
 
    #+BEGIN_EXAMPLE
    <*T> memberptr <target ptr>.<member name|order> // yields result address *T (member type)
@@ -360,15 +364,5 @@
 
    #+BEGIN_EXAMPLE
    <T> inttoptr <target> // yields value with casted type
-   #+END_EXAMPLE
-
-* Special instructions
-  Special instructions are used only during analyze pass inside the compiler.
-
-** validate_type
-   Validates if the source instruction yields value of type 'type'. 
-   
-   #+BEGIN_EXAMPLE
-   void validate_type <src> // yields void
    #+END_EXAMPLE
 

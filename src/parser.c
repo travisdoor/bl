@@ -1314,6 +1314,7 @@ parse_expr_type(Context *cnt)
   type = parse_type_struct(cnt);
   if (!type) type = parse_type_arr(cnt);
   if (!type) type = parse_type_enum(cnt);
+  if (!type) type = parse_type_ptr(cnt);
 
   if (type) {
     Ast *expr                 = ast_create_node(cnt->ast_arena, AST_EXPR_TYPE, tok);

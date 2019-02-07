@@ -10,10 +10,15 @@ Foo :: struct {
 */
 
 main :: fn () s32 {
-  Foo :: struct {
-    i: s32,
-    j: s32
+  T :: s32;
+
+  foo : struct {
+    is_ok: bool,
+    age: s32,
+    arr: [10] s32
   };
+
+  //foo.i = true;
 
   return 0;
 };

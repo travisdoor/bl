@@ -148,11 +148,10 @@
     *<T>
     #+END_EXAMPLE
 
+    Example:
     #+INCLUDE: "../tests/src/examples/pointers.bl" src bl -n
     
 *** TODO Arrays
-    Only one-dimensional array types are supported. 
-
     #+BEGIN_EXAMPLE
     [<size>] <T>
     #+END_EXAMPLE
@@ -172,7 +171,38 @@
 
 *** TODO Slices
     Slice is consist of pointer to the first element and element count of an array.
-    
+
+    #+BEGIN_EXAMPLE
+    [] <type>
+    #+END_EXAMPLE
+*** TODO Structures
+    #+BEGIN_EXAMPLE
+    <name> :: struct { 
+      <member1 name>: <type>,
+      <member2 name>: <type>,
+      <member3 name>: <type>
+    };
+    #+END_EXAMPLE
+
+*** TODO Enums
+    #+BEGIN_EXAMPLE
+    <name> :: enum [type] { 
+      <variant1 name> [:: <expr>],
+      <variant2 name> [:: <expr>],
+      <variant3 name> [:: <expr>]
+    };
+    #+END_EXAMPLE
+
+*** TODO Type aliasing
+    It's posible to create alias to any data type.
+
+    #+BEGIN_EXAMPLE
+    <alias name> :: <type>;
+    #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/alias.bl" src bl -n
+
 *** Function type
     Type of function. 
     
@@ -208,6 +238,7 @@
    <name> : [type] = <value>;
    #+END_EXAMPLE
 
+    Example:
    #+INCLUDE: "../tests/src/examples/variables.bl" src bl -n
 
 ** Constants
@@ -217,6 +248,7 @@
    <name> : [type] : <value>;
    #+END_EXAMPLE
 
+    Example:
    #+INCLUDE: "../tests/src/examples/constants.bl" src bl -n
    
 ** Functions
@@ -227,6 +259,7 @@
    <name> : [type] : fn ([args]) [return type] {[body]};
    #+END_EXAMPLE
 
+    Example:
    #+INCLUDE: "../tests/src/examples/named_functions.bl" src bl -n
    
 *** Anonymous function
@@ -242,6 +275,7 @@
 ** Blocks
    Block can limit scope of the variable.
 
+    Example:
    #+INCLUDE: "../tests/src/examples/blocks.bl" src bl -n
    
 ** Ifs 
@@ -250,6 +284,7 @@
    if <condition> {[then block]} [else {[else block]}]
    #+END_EXAMPLE
 
+    Example:
    #+INCLUDE: "../tests/src/examples/ifs.bl" src bl -n
 
 ** Loops
@@ -260,6 +295,7 @@
    loop <initialization>; <condition>; <increment> {[block]} 
    #+END_EXAMPLE
 
+    Example:
    #+INCLUDE: "../tests/src/examples/loops.bl" src bl -n
 
 ** Break and continue

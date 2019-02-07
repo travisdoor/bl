@@ -33,6 +33,7 @@
     "typeinfer"
     "load"
     "decl"
+    "declmember"
     "declref"
     "call"
     "validate_type"
