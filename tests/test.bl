@@ -2,13 +2,6 @@
 
 //load "std/debug.bl"
 
-/*
-Foo :: struct {
-  i: s32,
-  j: s32
-};
-*/
-
 main :: fn () s32 {
   T :: s32;
 
@@ -16,17 +9,19 @@ main :: fn () s32 {
     is_ok: bool,
     age:   s32,
     bar:   u8,
+    size:  usize,
+    ptr:   *u8,
+    arr:   [10] s32
   };
 
   foo : Foo;
   foo.bar = 11;
   foo.age = 10;
-  //foo.is_ok = true;
+  foo.is_ok = true;
+  (foo.arr)[1] = 10; // FIX IT!!!
 
-  /*
   bar : struct { a: s32, b: s32 };
   bar.a = bar.b;
-  */
 
   return foo.age;
 };

@@ -2034,6 +2034,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
     type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+    free(llvm_members);
     break;
   }
 
@@ -2235,6 +2236,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       return false;
     }
 
+    reduce_instr(cnt, member_ptr->target_ptr);
+
     /* lookup for member inside struct */
     Scope *     scope = target_type->data.strct.scope;
     ID *        rid   = &ast_member_ident->data.ident.id;
@@ -2255,7 +2258,6 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       member_ptr->base.const_value.type = type;
     }
 
-    reduce_instr(cnt, member_ptr->target_ptr);
     member_ptr->scope_entry = found;
   }
 
@@ -4067,13 +4069,13 @@ ast_test_case(Context *cnt, Ast *test)
   assert(ast_block);
 
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, test, NULL, NULL);
-  if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ref_instr(&fn_proto->base);
 
   fn_proto->base.const_value.type = cnt->builtin_types.entry_test_case_fn;
 
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirFn *        fn         = create_fn(cnt, test, NULL, TEST_CASE_FN_NAME, NULL, false, true);
 
+  if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ++fn->ref_count;
   assert(test->data.test_case.desc);
   fn->test_case_desc                   = test->data.test_case.desc;
   fn_proto->base.const_value.data.v_fn = fn;
