@@ -592,11 +592,14 @@ Ast *
 _parse_expr(Context *cnt, int32_t p)
 {
   Ast *lhs = parse_expr_atom(cnt);
+  Ast *tmp = NULL;
 
-  Ast *tmp = parse_expr_call(cnt, lhs);
-  if (!tmp) tmp = parse_expr_elem(cnt, lhs);
-  if (!tmp) tmp = parse_expr_member(cnt, lhs);
-  lhs = tmp ? tmp : lhs;
+  do {
+    tmp = parse_expr_call(cnt, lhs);
+    if (!tmp) tmp = parse_expr_elem(cnt, lhs);
+    if (!tmp) tmp = parse_expr_member(cnt, lhs);
+    lhs = tmp ? tmp : lhs;
+  } while (tmp);
 
   while (token_is_binop(tokens_peek(cnt->tokens)) &&
          token_prec(tokens_peek(cnt->tokens)).priority >= p) {
@@ -717,7 +720,7 @@ parse_expr_addrof(Context *cnt)
 Ast *
 parse_expr_deref(Context *cnt)
 {
-  Token *tok = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
+  Token *tok = tokens_consume_if(cnt->tokens, SYM_CARET);
   if (!tok) return NULL;
 
   Ast *deref                  = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok);
@@ -726,7 +729,7 @@ parse_expr_deref(Context *cnt)
   if (deref->data.expr_deref.next == NULL) {
     Token *err_tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-                "expected expression after '&' operator");
+                "expected expression after '^' operator");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
@@ -1103,8 +1106,9 @@ parse_type_struct(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct);
   }
 
-  Ast *type_struct                 = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct);
-  type_struct->data.type_strct.raw = false;
+  Ast *type_struct                   = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct);
+  type_struct->data.type_strct.scope = scope;
+  type_struct->data.type_strct.raw   = false;
   type_struct->data.type_strct.members = bo_array_new(sizeof(Ast *));
 
   /* parse members */
@@ -1314,6 +1318,7 @@ parse_expr_type(Context *cnt)
   type = parse_type_struct(cnt);
   if (!type) type = parse_type_arr(cnt);
   if (!type) type = parse_type_enum(cnt);
+  if (!type) type = parse_type_ptr(cnt);
 
   if (type) {
     Ast *expr                 = ast_create_node(cnt->ast_arena, AST_EXPR_TYPE, tok);

@@ -32,9 +32,9 @@
 /*
  * Values set automatically during build by cmake.
  */
-#define BL_VERSION       "0.4.0"
+#define BL_VERSION       "0.4.1"
 #define BL_VERSION_MAJOR 0
 #define BL_VERSION_MINOR 4
-#define BL_VERSION_PATCH 0
+#define BL_VERSION_PATCH 1
 
 #endif

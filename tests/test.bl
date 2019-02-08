@@ -1,16 +1,16 @@
 /* playground */
 
-load "std/debug.bl"
-
-/*
-Foo :: struct {
-  i: s32,
-  j: s32
-};
-*/
+//load "std/debug.bl"
 
 main :: fn () s32 {
-  return 0;
+  foo : struct {
+    i: s32,
+    bar : struct { i: s32 }
+  };
+
+  foo.i = 10;
+  foo.bar.i = 10;
+  return foo.bar.i;
 };
 
 /*

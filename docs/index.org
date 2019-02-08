@@ -1,7 +1,7 @@
 #+TITLE: Biscuit Language
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
 #+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
 
 {{{imglnk(http://89.177.170.156:8080/job/biscuit/,http://89.177.170.156:8080/buildStatus/icon?job=biscuit&style=flat)}}}

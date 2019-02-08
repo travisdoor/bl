@@ -1,0 +1,11 @@
+test "bug2" {
+  i := 0;
+  loop {
+    if i == 10 {
+      break;
+    } else {
+      i += 1;
+      continue; // This produce unreachable block in MIR
+    }
+  }
+};

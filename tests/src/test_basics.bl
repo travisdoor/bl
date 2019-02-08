@@ -197,10 +197,10 @@ test "pointers" {
   ptr     := &i;
   ptr_ptr := &ptr;
 
-  j := **ptr_ptr;
+  j := ^^ptr_ptr;
   assert(j == 666);
 
-  j = *ptr;
+  j = ^ptr;
   assert(j == 666);
 };
 
@@ -221,7 +221,7 @@ test "passed pointer" {
   i := 0;
   
   fn (ptr: *s32, v: s32) {
-    *ptr = v; 
+    ^ptr = v; 
   } (&i, value);
 
   assert(i == value);
@@ -248,4 +248,65 @@ test "simple static array loops" {
 
   assert(arr[0] == 0);
   assert(arr[9] == 9);
+};
+
+test "struct" {
+  Foo :: struct {
+    _1: u8,
+    _2: s32,
+    _3: *s32,
+    _4: [10] s32
+  };
+
+  int :: 10;
+
+  foo : Foo;
+  foo._1 = 10;
+  foo._2 = 666;
+  foo._3 = &int;
+  (foo._4)[0] = 10;
+
+  assert(foo._1 == 10);
+  assert(foo._2 == 666);
+  assert(foo._3 != null);
+  assert((foo._4)[0] == 10);
+};
+
+test "implicit struct" {
+  foo : struct {
+    _1: u8,
+    _2: s32,
+    _3: *s32,
+    _4: [10] s32
+  };
+
+  int :: 10;
+
+  foo._1 = 10;
+  foo._2 = 666;
+  foo._3 = &int;
+  (foo._4)[0] = 10;
+
+  assert(foo._1 == 10);
+  assert(foo._2 == 666);
+  assert(foo._3 != null);
+  assert((foo._4)[0] == 10);
+};
+
+test "nested struct" {
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
+
+  Bar :: struct {
+    foo: Foo
+  };
+
+  bar : Bar;
+  (bar.foo).i = 10;
+  (bar.foo).j = 20;
+
+  assert((bar.foo).i == 10);
+  assert((bar.foo).j == 20);
 };

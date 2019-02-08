@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-02-05 Tue 23:32 -->
+<!-- 2019-02-08 Fri 15:56 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit Documentation</title>
@@ -180,7 +180,12 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="org.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 <script type="text/javascript">
 /*
 @licstart  The following is the entire license notice for the
@@ -235,41 +240,64 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orgabd8a7b">Instalation</a>
+<li><a href="#orgb7e1c96">Instalation</a>
 <ul>
-<li><a href="#org717a84b">Requirements</a></li>
-<li><a href="#org2beb6e6">Linux</a></li>
-<li><a href="#org04bde90">MacOS</a></li>
-<li><a href="#org5df9012"><span class="todo TODO">TODO</span> Windows</a></li>
+<li><a href="#org7bac1da">Requirements</a></li>
+<li><a href="#org15dfe87">Linux</a></li>
+<li><a href="#org8ff4b46">MacOS</a></li>
+<li><a href="#org28d4fbe"><span class="todo TODO">TODO</span> Windows</a></li>
 </ul>
 </li>
-<li><a href="#org106c597">Compiler usage</a></li>
-<li><a href="#org1e76e9f">Language</a>
+<li><a href="#orgd40811f">Compiler usage</a></li>
+<li><a href="#org412a41b">Language</a>
 <ul>
-<li><a href="#org92cd2b7">Base syntax</a></li>
-<li><a href="#org6cd040e">Comments</a></li>
-<li><a href="#orgdda0995">Operators</a></li>
-<li><a href="#org00b37b2">Data types</a></li>
-<li><a href="#orgdbc30a5">Variables</a></li>
-<li><a href="#orgf52164e">Constants</a></li>
-<li><a href="#org7fa6f9e">Functions</a></li>
-<li><a href="#orga5a9005">Blocks</a></li>
-<li><a href="#orgef66e0c">Ifs</a></li>
-<li><a href="#org0262986">Loops</a></li>
-<li><a href="#org20089a9">Break and continue</a></li>
-<li><a href="#org16261f6">Unit tests</a></li>
+<li><a href="#org4631340">Base syntax</a></li>
+<li><a href="#orgcbbde9a">Comments</a></li>
+<li><a href="#org9a7b323">Operators</a>
+<ul>
+<li><a href="#orgcdbe403">Binary</a></li>
+<li><a href="#org837b1ce">Unary</a></li>
+</ul>
+</li>
+<li><a href="#org5e1023d">Data types</a>
+<ul>
+<li><a href="#orgfa39731">Fundamental data types</a></li>
+<li><a href="#org43a8ab9">Pointers</a></li>
+<li><a href="#orgfb621ec"><span class="todo TODO">TODO</span> Arrays</a></li>
+<li><a href="#org0af566b"><span class="todo TODO">TODO</span> Strings</a></li>
+<li><a href="#org21c3d56"><span class="todo TODO">TODO</span> Slices</a></li>
+<li><a href="#org60c91dd">Structures</a></li>
+<li><a href="#org0d1c8d3"><span class="todo TODO">TODO</span> Enums</a></li>
+<li><a href="#org2da4840"><span class="todo TODO">TODO</span> Type aliasing</a></li>
+<li><a href="#org593f3e0">Function type</a></li>
+<li><a href="#org245e9c3">Type casting</a></li>
+</ul>
+</li>
+<li><a href="#org85e6cc4">Variables</a></li>
+<li><a href="#orgc3c3605">Constants</a></li>
+<li><a href="#org3a796e2">Functions</a>
+<ul>
+<li><a href="#org58721de">Named function</a></li>
+<li><a href="#org3b23b9f">Anonymous function</a></li>
+</ul>
+</li>
+<li><a href="#org26d757c">Blocks</a></li>
+<li><a href="#orgf438c3b">Ifs</a></li>
+<li><a href="#org726eb81">Loops</a></li>
+<li><a href="#org0866a4b">Break and continue</a></li>
+<li><a href="#org6e384b9">Unit tests</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
-<div id="outline-container-orgabd8a7b" class="outline-2">
-<h2 id="orgabd8a7b">Instalation</h2>
-<div class="outline-text-2" id="text-orgabd8a7b">
+<div id="outline-container-orgb7e1c96" class="outline-2">
+<h2 id="orgb7e1c96">Instalation</h2>
+<div class="outline-text-2" id="text-orgb7e1c96">
 </div>
-<div id="outline-container-org717a84b" class="outline-3">
-<h3 id="org717a84b">Requirements</h3>
-<div class="outline-text-3" id="text-org717a84b">
+<div id="outline-container-org7bac1da" class="outline-3">
+<h3 id="org7bac1da">Requirements</h3>
+<div class="outline-text-3" id="text-org7bac1da">
 <ul class="org-ul">
 <li>git</li>
 <li>CMake</li>
@@ -281,9 +309,9 @@ for the JavaScript code in this tag.
 </div>
 </div>
 
-<div id="outline-container-org2beb6e6" class="outline-3">
-<h3 id="org2beb6e6">Linux</h3>
-<div class="outline-text-3" id="text-org2beb6e6">
+<div id="outline-container-org15dfe87" class="outline-3">
+<h3 id="org15dfe87">Linux</h3>
+<div class="outline-text-3" id="text-org15dfe87">
 <ul class="org-ul">
 <li>Install bobject.</li>
 <li>Install dyncall.</li>
@@ -306,9 +334,9 @@ make
 </div>
 </div>
 
-<div id="outline-container-org04bde90" class="outline-3">
-<h3 id="org04bde90">MacOS</h3>
-<div class="outline-text-3" id="text-org04bde90">
+<div id="outline-container-org8ff4b46" class="outline-3">
+<h3 id="org8ff4b46">MacOS</h3>
+<div class="outline-text-3" id="text-org8ff4b46">
 <ul class="org-ul">
 <li>Install bobject.</li>
 <li>Install dyncall.</li>
@@ -331,14 +359,14 @@ make
 </div>
 </div>
 
-<div id="outline-container-org5df9012" class="outline-3">
-<h3 id="org5df9012"><span class="todo TODO">TODO</span> Windows</h3>
+<div id="outline-container-org28d4fbe" class="outline-3">
+<h3 id="org28d4fbe"><span class="todo TODO">TODO</span> Windows</h3>
 </div>
 </div>
 
-<div id="outline-container-org106c597" class="outline-2">
-<h2 id="org106c597">Compiler usage</h2>
-<div class="outline-text-2" id="text-org106c597">
+<div id="outline-container-orgd40811f" class="outline-2">
+<h2 id="orgd40811f">Compiler usage</h2>
+<div class="outline-text-2" id="text-orgd40811f">
 <pre class="example">
 blc [options] &lt;source-files&gt;
 </pre>
@@ -437,13 +465,17 @@ blc [options] &lt;source-files&gt;
 </div>
 </div>
 
-<div id="outline-container-org1e76e9f" class="outline-2">
-<h2 id="org1e76e9f">Language</h2>
-<div class="outline-text-2" id="text-org1e76e9f">
+<div id="outline-container-org412a41b" class="outline-2">
+<h2 id="org412a41b">Language</h2>
+<div class="outline-text-2" id="text-org412a41b">
 </div>
-<div id="outline-container-org92cd2b7" class="outline-3">
-<h3 id="org92cd2b7">Base syntax</h3>
-<div class="outline-text-3" id="text-org92cd2b7">
+<div id="outline-container-org4631340" class="outline-3">
+<h3 id="org4631340">Base syntax</h3>
+<div class="outline-text-3" id="text-org4631340">
+<p>
+Basicly every construct in Biscuit language fallows the same rules of declaration. We define name of the entity, type and optionally some initial value.
+</p>
+
 <p>
 Declarations and mutability:
 </p>
@@ -465,9 +497,9 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org6cd040e" class="outline-3">
-<h3 id="org6cd040e">Comments</h3>
-<div class="outline-text-3" id="text-org6cd040e">
+<div id="outline-container-orgcbbde9a" class="outline-3">
+<h3 id="orgcbbde9a">Comments</h3>
+<div class="outline-text-3" id="text-orgcbbde9a">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-comment-delimiter">// </span><span class="org-comment">this is line comment</span>
 <span class="org-comment-delimiter">/*</span>
@@ -481,13 +513,17 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-orgdda0995" class="outline-3">
-<h3 id="orgdda0995">Operators</h3>
-<div class="outline-text-3" id="text-orgdda0995">
+<div id="outline-container-org9a7b323" class="outline-3">
+<h3 id="org9a7b323">Operators</h3>
+<div class="outline-text-3" id="text-org9a7b323">
+<p>
+There is no operator overloading in Biscuit.
+</p>
 </div>
-<div id="outline-container-org9d0c272" class="outline-4">
-<h4 id="org9d0c272">Binary</h4>
-<div class="outline-text-4" id="text-org9d0c272">
+
+<div id="outline-container-orgcdbe403" class="outline-4">
+<h4 id="orgcdbe403">Binary</h4>
+<div class="outline-text-4" id="text-orgcdbe403">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -609,21 +645,82 @@ Data type is optional when we specify some value.
 </tr>
 </tbody>
 </table>
+
+<p>
+Usage:
+</p>
+<pre class="example">
+&lt;expr&gt; &lt;op&gt; &lt;expr&gt;
+</pre>
 </div>
 </div>
 
-<div id="outline-container-org480cded" class="outline-4">
-<h4 id="org480cded"><span class="todo TODO">TODO</span> Unary</h4>
+
+<div id="outline-container-org837b1ce" class="outline-4">
+<h4 id="org837b1ce">Unary</h4>
+<div class="outline-text-4" id="text-org837b1ce">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Symbol</th>
+<th scope="col" class="org-left">Relevant for types</th>
+<th scope="col" class="org-left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">+</td>
+<td class="org-left">Integers, Floats</td>
+<td class="org-left">Positive value.</td>
+</tr>
+
+<tr>
+<td class="org-left">&minus;</td>
+<td class="org-left">Integers, Floats</td>
+<td class="org-left">Negative value.</td>
+</tr>
+
+<tr>
+<td class="org-left">&and;</td>
+<td class="org-left">Pointers</td>
+<td class="org-left">Pointer dereference.</td>
+</tr>
+
+<tr>
+<td class="org-left">&amp;</td>
+<td class="org-left">Allocated value</td>
+<td class="org-left">Address of.</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+Usage:
+</p>
+<pre class="example">
+&lt;op&gt; &lt;expr&gt;
+</pre>
+</div>
 </div>
 </div>
 
-<div id="outline-container-org00b37b2" class="outline-3">
-<h3 id="org00b37b2">Data types</h3>
-<div class="outline-text-3" id="text-org00b37b2">
+
+<div id="outline-container-org5e1023d" class="outline-3">
+<h3 id="org5e1023d">Data types</h3>
+<div class="outline-text-3" id="text-org5e1023d">
 </div>
-<div id="outline-container-orgd3ac8b5" class="outline-4">
-<h4 id="orgd3ac8b5">Fundamental data types</h4>
-<div class="outline-text-4" id="text-orgd3ac8b5">
+<div id="outline-container-orgfa39731" class="outline-4">
+<h4 id="orgfa39731">Fundamental data types</h4>
+<div class="outline-text-4" id="text-orgfa39731">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -703,9 +800,9 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org8431594" class="outline-4">
-<h4 id="org8431594">Pointers</h4>
-<div class="outline-text-4" id="text-org8431594">
+<div id="outline-container-org43a8ab9" class="outline-4">
+<h4 id="org43a8ab9">Pointers</h4>
+<div class="outline-text-4" id="text-org43a8ab9">
 <p>
 Represents the address of some allocated data.
 </p>
@@ -714,13 +811,16 @@ Represents the address of some allocated data.
 *&lt;T&gt;
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">load</span> <span class="org-string">"std/debug.bl"</span>
 <span class="linenr">2: </span>
 <span class="linenr">3: </span><span class="org-preprocessor">test</span> <span class="org-string">"pointers"</span> {
 <span class="linenr">4: </span>  <span class="org-variable-name">i </span>:= <span class="org-constant">666</span>;
 <span class="linenr">5: </span>  <span class="org-constant">i_ptr</span> : *<span class="org-type">s32</span> = &amp;i; <span class="org-comment-delimiter">// </span><span class="org-comment">taking the address of 'i' variable and set 'i_ptr'</span>
-<span class="linenr">6: </span>  <span class="org-variable-name">j </span>:= *i_ptr;       <span class="org-comment-delimiter">// </span><span class="org-comment">pointer dereferencing</span>
+<span class="linenr">6: </span>  <span class="org-variable-name">j </span>:= ^i_ptr;       <span class="org-comment-delimiter">// </span><span class="org-comment">pointer dereferencing</span>
 <span class="linenr">7: </span>
 <span class="linenr">8: </span>  <span class="org-function-name">assert</span>(j == i);
 <span class="linenr">9: </span>};
@@ -729,13 +829,9 @@ Represents the address of some allocated data.
 </div>
 </div>
 
-<div id="outline-container-org5349504" class="outline-4">
-<h4 id="org5349504"><span class="todo TODO">TODO</span> Arrays</h4>
-<div class="outline-text-4" id="text-org5349504">
-<p>
-Only one-dimensional array types are supported. 
-</p>
-
+<div id="outline-container-orgfb621ec" class="outline-4">
+<h4 id="orgfb621ec"><span class="todo TODO">TODO</span> Arrays</h4>
+<div class="outline-text-4" id="text-orgfb621ec">
 <pre class="example">
 [&lt;size&gt;] &lt;T&gt;
 </pre>
@@ -746,16 +842,21 @@ Example:
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">test</span> <span class="org-string">"array type"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">arr</span> : [<span class="org-constant">10</span>] <span class="org-type">s32</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">declare uninitialized array variable </span>
-<span class="linenr">3: </span>  arr.len;        <span class="org-comment-delimiter">// </span><span class="org-comment">yields array element count (usize)</span>
-<span class="linenr">4: </span>};
+<span class="linenr">3: </span>  arr[<span class="org-constant">0</span>] = <span class="org-constant">666</span>;
+<span class="linenr">4: </span>  arr.len;        <span class="org-comment-delimiter">// </span><span class="org-comment">yields array element count (usize)</span>
+<span class="linenr">5: </span>
+<span class="linenr">6: </span>  <span class="org-constant">multi_arr</span>: [<span class="org-constant">10</span>][<span class="org-constant">5</span>] <span class="org-type">s32</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">multidimensional arrays are also possible</span>
+<span class="linenr">7: </span>  multi_arr[<span class="org-constant">0</span>][<span class="org-constant">1</span>] = <span class="org-constant">666</span>;
+<span class="linenr">8: </span>  <span class="org-comment-delimiter">// </span><span class="org-comment">TODO multi_arr.len???</span>
+<span class="linenr">9: </span>};
 </pre>
 </div>
 </div>
 </div>
 
-<div id="outline-container-orgf5badee" class="outline-4">
-<h4 id="orgf5badee"><span class="todo TODO">TODO</span> Strings</h4>
-<div class="outline-text-4" id="text-orgf5badee">
+<div id="outline-container-org0af566b" class="outline-4">
+<h4 id="org0af566b"><span class="todo TODO">TODO</span> Strings</h4>
+<div class="outline-text-4" id="text-org0af566b">
 <p>
 String in BL is just an array. There is no zero terminator at the end.
 </p>
@@ -777,18 +878,111 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgc81064c" class="outline-4">
-<h4 id="orgc81064c"><span class="todo TODO">TODO</span> Slices</h4>
-<div class="outline-text-4" id="text-orgc81064c">
+<div id="outline-container-org21c3d56" class="outline-4">
+<h4 id="org21c3d56"><span class="todo TODO">TODO</span> Slices</h4>
+<div class="outline-text-4" id="text-org21c3d56">
 <p>
-Slice is consist of pointer to the first element and element count of an array.
+Slice is consist of pointer to the first element and element count of an array. Slice is internally represented as special kind of structure passed by value. 
 </p>
+
+<pre class="example">
+[] &lt;type&gt;
+</pre>
+</div>
+</div>
+<div id="outline-container-org60c91dd" class="outline-4">
+<h4 id="org60c91dd">Structures</h4>
+<div class="outline-text-4" id="text-org60c91dd">
+<p>
+Structure is simple group of some data separated by comma.
+</p>
+
+<pre class="example">
+struct { 
+  &lt;member1 name&gt;: &lt;type&gt;,
+  &lt;member2 name&gt;: &lt;type&gt;,
+  &lt;member3 name&gt;: &lt;type&gt;
+};
+</pre>
+
+<p>
+Example:
+</p>
+<div class="org-src-container">
+<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">test</span> <span class="org-string">"structure declaration"</span> {
+<span class="linenr"> 2: </span>  <span class="org-function-name">Person</span> :: <span class="org-keyword">struct</span> {
+<span class="linenr"> 3: </span>    <span class="org-constant">id</span>:     <span class="org-type">u64</span>,
+<span class="linenr"> 4: </span>    <span class="org-constant">age</span>:    <span class="org-type">s32</span>,
+<span class="linenr"> 5: </span>    <span class="org-constant">female</span>: <span class="org-type">bool</span>
+<span class="linenr"> 6: </span>  };
+<span class="linenr"> 7: </span>
+<span class="linenr"> 8: </span>  <span class="org-constant">person</span> : Person;
+<span class="linenr"> 9: </span>  person.id     = <span class="org-constant">666</span>;
+<span class="linenr">10: </span>  person.age    = <span class="org-constant">29</span>;
+<span class="linenr">11: </span>  person.female = <span class="org-constant">false</span>;
+<span class="linenr">12: </span>};
+<span class="linenr">13: </span>
+<span class="linenr">14: </span><span class="org-preprocessor">test</span> <span class="org-string">"anonymous structure declaration"</span> {
+<span class="linenr">15: </span>  <span class="org-function-name">person</span> : <span class="org-keyword">struct</span> {
+<span class="linenr">16: </span>    <span class="org-constant">id</span>:     <span class="org-type">u64</span>,
+<span class="linenr">17: </span>    <span class="org-constant">age</span>:    <span class="org-type">s32</span>,
+<span class="linenr">18: </span>    <span class="org-constant">female</span>: <span class="org-type">bool</span>
+<span class="linenr">19: </span>  };
+<span class="linenr">20: </span>
+<span class="linenr">21: </span>  person.id     = <span class="org-constant">666</span>;
+<span class="linenr">22: </span>  person.age    = <span class="org-constant">29</span>;
+<span class="linenr">23: </span>  person.female = <span class="org-constant">false</span>;
+<span class="linenr">24: </span>};
+</pre>
+</div>
 </div>
 </div>
 
-<div id="outline-container-orgbcfd307" class="outline-4">
-<h4 id="orgbcfd307">Function type</h4>
-<div class="outline-text-4" id="text-orgbcfd307">
+<div id="outline-container-org0d1c8d3" class="outline-4">
+<h4 id="org0d1c8d3"><span class="todo TODO">TODO</span> Enums</h4>
+<div class="outline-text-4" id="text-org0d1c8d3">
+<pre class="example">
+&lt;name&gt; :: enum [type] { 
+  &lt;variant1 name&gt; [:: &lt;expr&gt;],
+  &lt;variant2 name&gt; [:: &lt;expr&gt;],
+  &lt;variant3 name&gt; [:: &lt;expr&gt;]
+};
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org2da4840" class="outline-4">
+<h4 id="org2da4840"><span class="todo TODO">TODO</span> Type aliasing</h4>
+<div class="outline-text-4" id="text-org2da4840">
+<p>
+It's posible to create alias to any data type.
+</p>
+
+<pre class="example">
+&lt;alias name&gt; :: &lt;type&gt;;
+</pre>
+
+<p>
+Example:
+</p>
+<div class="org-src-container">
+<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">test</span> <span class="org-string">"alias"</span> {
+<span class="linenr">2: </span>  <span class="org-constant">MyIntType</span> :: <span class="org-type">s32</span>;
+<span class="linenr">3: </span>  <span class="org-constant">MyArrayType</span> :: [<span class="org-constant">10</span>] <span class="org-type">s32</span>;
+<span class="linenr">4: </span>  <span class="org-constant">MyPtrType</span> :: *<span class="org-type">s32</span>;
+<span class="linenr">5: </span>
+<span class="linenr">6: </span>  <span class="org-constant">i</span> : MyIntType;
+<span class="linenr">7: </span>  <span class="org-constant">arr</span> : MyArrayType;
+<span class="linenr">8: </span>  <span class="org-constant">ptr</span> : MyPtrType;
+<span class="linenr">9: </span>};
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org593f3e0" class="outline-4">
+<h4 id="org593f3e0">Function type</h4>
+<div class="outline-text-4" id="text-org593f3e0">
 <p>
 Type of function. 
 </p>
@@ -811,9 +1005,9 @@ fn ([arguments]) [return type]
 </div>
 </div>
 
-<div id="outline-container-orge8139e3" class="outline-4">
-<h4 id="orge8139e3">Type casting</h4>
-<div class="outline-text-4" id="text-orge8139e3">
+<div id="outline-container-org245e9c3" class="outline-4">
+<h4 id="org245e9c3">Type casting</h4>
+<div class="outline-text-4" id="text-org245e9c3">
 <p>
 Change type of value to other type. Conventions between integer types is generated implicitly by the compiler.
 </p>
@@ -849,9 +1043,9 @@ Example:
 </div>
 </div>
 </div>
-<div id="outline-container-orgdbc30a5" class="outline-3">
-<h3 id="orgdbc30a5">Variables</h3>
-<div class="outline-text-3" id="text-orgdbc30a5">
+<div id="outline-container-org85e6cc4" class="outline-3">
+<h3 id="org85e6cc4">Variables</h3>
+<div class="outline-text-3" id="text-org85e6cc4">
 <p>
 Example of variable allocated on stack.
 </p>
@@ -861,6 +1055,9 @@ Example of variable allocated on stack.
 &lt;name&gt; : [type] = &lt;value&gt;;
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">test</span> <span class="org-string">"variables"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">i</span> : <span class="org-type">s32</span> = <span class="org-constant">666</span>; 
@@ -871,9 +1068,9 @@ Example of variable allocated on stack.
 </div>
 </div>
 
-<div id="outline-container-orgf52164e" class="outline-3">
-<h3 id="orgf52164e">Constants</h3>
-<div class="outline-text-3" id="text-orgf52164e">
+<div id="outline-container-orgc3c3605" class="outline-3">
+<h3 id="orgc3c3605">Constants</h3>
+<div class="outline-text-3" id="text-orgc3c3605">
 <p>
 Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
 </p>
@@ -882,6 +1079,9 @@ Example of constant allocated on stack. Constant must be initialized and cannot 
 &lt;name&gt; : [type] : &lt;value&gt;;
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">test</span> <span class="org-string">"constants"</span> {
 <span class="linenr">2: </span>  <span class="org-constant">i</span> : <span class="org-type">s32</span> : <span class="org-constant">666</span>; 
@@ -892,13 +1092,13 @@ Example of constant allocated on stack. Constant must be initialized and cannot 
 </div>
 </div>
 
-<div id="outline-container-org7fa6f9e" class="outline-3">
-<h3 id="org7fa6f9e">Functions</h3>
-<div class="outline-text-3" id="text-org7fa6f9e">
+<div id="outline-container-org3a796e2" class="outline-3">
+<h3 id="org3a796e2">Functions</h3>
+<div class="outline-text-3" id="text-org3a796e2">
 </div>
-<div id="outline-container-orgddf381d" class="outline-4">
-<h4 id="orgddf381d">Named function</h4>
-<div class="outline-text-4" id="text-orgddf381d">
+<div id="outline-container-org58721de" class="outline-4">
+<h4 id="org58721de">Named function</h4>
+<div class="outline-text-4" id="text-org58721de">
 <p>
 Examples of named function.
 </p>
@@ -907,6 +1107,9 @@ Examples of named function.
 &lt;name&gt; : [type] : fn ([args]) [return type] {[body]};
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">test</span> <span class="org-string">"named functions"</span> {
 <span class="linenr"> 2: </span>  <span class="org-function-name">foo</span> :: <span class="org-keyword">fn</span> () {
@@ -929,9 +1132,9 @@ Examples of named function.
 </div>
 </div>
 
-<div id="outline-container-orgd0599f1" class="outline-4">
-<h4 id="orgd0599f1">Anonymous function</h4>
-<div class="outline-text-4" id="text-orgd0599f1">
+<div id="outline-container-org3b23b9f" class="outline-4">
+<h4 id="org3b23b9f">Anonymous function</h4>
+<div class="outline-text-4" id="text-org3b23b9f">
 <p>
 Anonymous function has no name and contains only function literal.
 </p>
@@ -955,13 +1158,16 @@ Example of anonymous function.
 </div>
 </div>
 
-<div id="outline-container-orga5a9005" class="outline-3">
-<h3 id="orga5a9005">Blocks</h3>
-<div class="outline-text-3" id="text-orga5a9005">
+<div id="outline-container-org26d757c" class="outline-3">
+<h3 id="org26d757c">Blocks</h3>
+<div class="outline-text-3" id="text-org26d757c">
 <p>
 Block can limit scope of the variable.
 </p>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">load</span> <span class="org-string">"std/debug.bl"</span>
 <span class="linenr"> 2: </span>
@@ -982,9 +1188,9 @@ Block can limit scope of the variable.
 </div>
 </div>
 
-<div id="outline-container-orgef66e0c" class="outline-3">
-<h3 id="orgef66e0c">Ifs</h3>
-<div class="outline-text-3" id="text-orgef66e0c">
+<div id="outline-container-orgf438c3b" class="outline-3">
+<h3 id="orgf438c3b">Ifs</h3>
+<div class="outline-text-3" id="text-orgf438c3b">
 <p>
 If - else base syntax:
 </p>
@@ -992,6 +1198,9 @@ If - else base syntax:
 if &lt;condition&gt; {[then block]} [else {[else block]}]
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">test</span> <span class="org-string">"ifs"</span> {
 <span class="linenr"> 2: </span>  <span class="org-variable-name">b </span>:= <span class="org-constant">true</span>;
@@ -1010,9 +1219,9 @@ if &lt;condition&gt; {[then block]} [else {[else block]}]
 </div>
 </div>
 
-<div id="outline-container-org0262986" class="outline-3">
-<h3 id="org0262986">Loops</h3>
-<div class="outline-text-3" id="text-org0262986">
+<div id="outline-container-org726eb81" class="outline-3">
+<h3 id="org726eb81">Loops</h3>
+<div class="outline-text-3" id="text-org726eb81">
 <p>
 Loop base syntax:
 </p>
@@ -1022,6 +1231,9 @@ loop &lt;condition&gt; {[block]}
 loop &lt;initialization&gt;; &lt;condition&gt;; &lt;increment&gt; {[block]} 
 </pre>
 
+<p>
+Example:
+</p>
 <div class="org-src-container">
 <pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">test</span> <span class="org-string">"simple loops"</span> {
 <span class="linenr"> 2: </span>  <span class="org-constant">count</span> :: <span class="org-constant">10</span>;
@@ -1046,9 +1258,9 @@ loop &lt;initialization&gt;; &lt;condition&gt;; &lt;increment&gt; {[block]}
 </div>
 </div>
 
-<div id="outline-container-org20089a9" class="outline-3">
-<h3 id="org20089a9">Break and continue</h3>
-<div class="outline-text-3" id="text-org20089a9">
+<div id="outline-container-org0866a4b" class="outline-3">
+<h3 id="org0866a4b">Break and continue</h3>
+<div class="outline-text-3" id="text-org0866a4b">
 <p>
 Break/continue statements can be used in loops to control execution flow.
 </p>
@@ -1073,9 +1285,9 @@ Examples:
 </div>
 </div>
 
-<div id="outline-container-org16261f6" class="outline-3">
-<h3 id="org16261f6">Unit tests</h3>
-<div class="outline-text-3" id="text-org16261f6">
+<div id="outline-container-org6e384b9" class="outline-3">
+<h3 id="org6e384b9">Unit tests</h3>
+<div class="outline-text-3" id="text-org6e384b9">
 <p>
 Biscuit compiler supports unit testing by default.
 </p>
@@ -1136,7 +1348,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-05 Tue 23:32</p>
+<p class="date">Created: 2019-02-08 Fri 15:56</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

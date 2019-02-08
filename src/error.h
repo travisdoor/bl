@@ -99,6 +99,7 @@ typedef enum
   ERR_EXPECTED_TEST_DESC      = 62,
   ERR_NULL_POINTER            = 63,
   ERR_INVALID_ARR_SIZE        = 64,
+  ERR_BOUND_CHECK_FAILED      = 65,
 } Error;
 
 #endif // BL_ERROR_H
