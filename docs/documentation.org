@@ -211,7 +211,7 @@
     Example:
     #+INCLUDE: "../tests/src/examples/struct.bl" src bl -n
 
-*** TODO Enums
+*** TODO Emus
     #+BEGIN_EXAMPLE
     <name> :: enum [type] { 
       <variant1 name> [:: <expr>],
@@ -257,6 +257,23 @@
 
     Example:
     #+INCLUDE: "../tests/src/examples/type_cast.bl" src bl -n
+** Literals
+*** Simple literals
+   #+BEGIN_SRC bl
+   b :: true;         // bool true literal 
+   b :: false;        // bool false literal 
+   ptr : *s32 = null; // *s32 null pointer literal
+   #+END_SRC
+
+*** Numeric literals 
+   #+BEGIN_SRC bl
+   i     :: 10;      // s32 literal
+   i_hex :: 0x10;    // s32 literal
+   f     :: 13.43f;  // f32 literal
+   d     :: 13.43;   // f64 literal
+   char  :: 'i';     // u8 literal 
+   #+END_SRC
+
 ** Variables
    Example of variable allocated on stack.
 

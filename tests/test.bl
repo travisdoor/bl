@@ -3,14 +3,17 @@
 //load "std/debug.bl"
 
 main :: fn () s32 {
-  foo : struct {
-    i: s32,
-    bar : struct { i: s32 }
+  Foo :: struct {
+    i: s32
   };
 
+  foo : Foo;
+  foo_ptr := &foo;
+
   foo.i = 10;
-  foo.bar.i = 10;
-  return foo.bar.i;
+  foo_ptr.i = 10;
+
+  return foo_ptr.i;
 };
 
 /*

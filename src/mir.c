@@ -2239,6 +2239,13 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
                   BUILDER_CUR_WORD, "unknown member");
     }
   } else {
+    if (target_type->kind == MIR_TYPE_PTR) {
+      /* we try to access structure member via pointer so we need one more load */
+      member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
+      assert(member_ptr->target_ptr);
+      target_type = target_type->data.ptr.next;
+    }
+    
     if (target_type->kind != MIR_TYPE_STRUCT) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, target_ptr->node->src,
                   BUILDER_CUR_WORD, "expected structure type");
