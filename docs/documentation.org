@@ -75,6 +75,8 @@
 
 * Language
 ** Base syntax
+   Basicly every construct in Biscuit language fallows the same rules of declaration. We define name of the entity, type and optionally some initial value.
+
    Declarations and mutability:
    #+BEGIN_EXAMPLE
    <name>: <type>;              // mutable declaration
@@ -101,6 +103,8 @@
    #+END_SRC
 
 ** Operators
+   There is no operator overloading in Biscuit.
+
 *** Binary
    | Symbol     | Relevant for types         | Description                    |
    |------------+----------------------------+--------------------------------|
@@ -122,7 +126,25 @@
    | &&         | Booleans                   | Logical AND                    |
    | \vert\vert | Booleans                   | Logical                        |
 
-*** TODO Unary
+   Usage:
+   #+BEGIN_EXAMPLE
+   <expr> <op> <expr>
+   #+END_EXAMPLE
+
+
+*** Unary
+   | Symbol | Relevant for types | Description          |
+   |--------+--------------------+----------------------|
+   | \plus  | Integers, Floats   | Positive value.      |
+   | \minus | Integers, Floats   | Negative value.      |
+   | \wedge | Pointers           | Pointer dereference. |
+   | &      | Allocated value    | Address of.          |
+
+   Usage:
+   #+BEGIN_EXAMPLE
+   <op> <expr>
+   #+END_EXAMPLE
+
 
 ** Data types
 *** Fundamental data types
@@ -170,12 +192,14 @@
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
 *** TODO Slices
-    Slice is consist of pointer to the first element and element count of an array.
+    Slice is consist of pointer to the first element and element count of an array. Slice is internally represented as special kind of structure passed by value. 
 
     #+BEGIN_EXAMPLE
     [] <type>
     #+END_EXAMPLE
-*** TODO Structures
+*** Structures
+    Structure is simple group of some data separated by comma.
+
     #+BEGIN_EXAMPLE
     struct { 
       <member1 name>: <type>,

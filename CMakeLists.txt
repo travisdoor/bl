@@ -20,7 +20,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # deps
 find_package(BObject 1.0 REQUIRED)
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 7.0 REQUIRED CONFIG)
 
 find_library(DYNLOAD_LIBS dynload_s)
 find_library(DYNCALL_LIBS dyncall_s)

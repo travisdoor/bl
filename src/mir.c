@@ -2193,6 +2193,15 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     return false;
   }
 
+  if (elem_ptr->index->comptime) {
+    const size_t len = arr_type->data.array.len;
+    if (elem_ptr->index->const_value.data.v_uint >= len) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_BOUND_CHECK_FAILED,
+                  elem_ptr->index->node->src, BUILDER_CUR_WORD, "array index is out of the bounds");
+      return false;
+    }
+  }
+
   /* setup ElemPtr instruction const_value type */
   MirType *elem_type = arr_type->data.array.elem_type;
   assert(elem_type);
@@ -2839,9 +2848,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     var->alloc_type = resolved_type;
   }
 
-  decl->init = insert_instr_load_if_needed(cnt, decl->init);
-
   if (decl->init) {
+    setup_null_type_if_needed(decl->init->const_value.type, var->alloc_type);
+    decl->init = insert_instr_load_if_needed(cnt, decl->init);
+
     /* validate types or infer */
     if (var->alloc_type) {
       bool is_valid;
@@ -3323,9 +3333,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
   {
     const size_t len = arr_type->data.array.len;
-    if (index.v_uint > len) {
-      msg_error("Array index out of range! Index is %llu but array size is %llu",
-                (unsigned long long)index.v_uint, (unsigned long long)len);
+    if (index.v_uint >= len) {
+      msg_error("array index is out of the bounds");
       exec_abort(cnt, 0);
     }
   }
@@ -4072,8 +4081,8 @@ ast_test_case(Context *cnt, Ast *test)
 
   fn_proto->base.const_value.type = cnt->builtin_types.entry_test_case_fn;
 
-  MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *        fn         = create_fn(cnt, test, NULL, TEST_CASE_FN_NAME, NULL, false, true);
+  const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
+  MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, false, true);
 
   if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ++fn->ref_count;
   assert(test->data.test_case.desc);
@@ -4082,18 +4091,11 @@ ast_test_case(Context *cnt, Ast *test)
 
   bo_array_push_back(cnt->test_cases, fn);
 
-  append_block(cnt, fn_proto->base.const_value.data.v_fn, "init");
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry_block);
 
   /* generate body instructions */
   ast(cnt, ast_block);
-
-  /* terminate initialization block */
-  set_cursor_block(cnt, fn->first_block);
-  append_instr_br(cnt, NULL, entry_block);
-
-  set_cursor_block(cnt, prev_block);
 }
 
 void

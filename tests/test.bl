@@ -3,27 +3,14 @@
 //load "std/debug.bl"
 
 main :: fn () s32 {
-  T :: s32;
-
-  Foo :: struct {
-    is_ok: bool,
-    age:   s32,
-    bar:   u8,
-    size:  usize,
-    ptr:   *u8,
-    arr:   [10] s32
+  foo : struct {
+    i: s32,
+    bar : struct { i: s32 }
   };
 
-  foo : Foo;
-  foo.bar = 11;
-  foo.age = 10;
-  foo.is_ok = true;
-  (foo.arr)[1] = 10; // FIX IT!!!
-
-  bar : struct { a: s32, b: s32 };
-  bar.a = bar.b;
-
-  return foo.age;
+  foo.i = 10;
+  foo.bar.i = 10;
+  return foo.bar.i;
 };
 
 /*

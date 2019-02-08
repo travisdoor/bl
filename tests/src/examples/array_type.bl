@@ -1,4 +1,9 @@
 test "array type" {
   arr : [10] s32; // declare uninitialized array variable 
+  arr[0] = 666;
   arr.len;        // yields array element count (usize)
+
+  multi_arr: [10][5] s32; // multidimensional arrays are also possible
+  multi_arr[0][1] = 666;
+  // TODO multi_arr.len???
 };

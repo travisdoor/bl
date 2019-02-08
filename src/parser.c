@@ -592,11 +592,14 @@ Ast *
 _parse_expr(Context *cnt, int32_t p)
 {
   Ast *lhs = parse_expr_atom(cnt);
+  Ast *tmp = NULL;
 
-  Ast *tmp = parse_expr_call(cnt, lhs);
-  if (!tmp) tmp = parse_expr_elem(cnt, lhs);
-  if (!tmp) tmp = parse_expr_member(cnt, lhs);
-  lhs = tmp ? tmp : lhs;
+  do {
+    tmp = parse_expr_call(cnt, lhs);
+    if (!tmp) tmp = parse_expr_elem(cnt, lhs);
+    if (!tmp) tmp = parse_expr_member(cnt, lhs);
+    lhs = tmp ? tmp : lhs;
+  } while (tmp);
 
   while (token_is_binop(tokens_peek(cnt->tokens)) &&
          token_prec(tokens_peek(cnt->tokens)).priority >= p) {
