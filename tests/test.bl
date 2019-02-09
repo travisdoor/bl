@@ -3,7 +3,10 @@
 //load "std/debug.bl"
 
 main :: fn () s32 {
+  arr : [10]s32;
   arr_ref : []s32;
+
+  arr_ref = arr;
 
   return 0;
 };
