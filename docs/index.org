@@ -1,10 +1,14 @@
 #+TITLE: Biscuit Language
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
-#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 #+MACRO: imglnk @@html:<a href="$1"><img src="$2"></a>@@
 
-{{{imglnk(http://89.177.170.156:8080/job/biscuit/,http://89.177.170.156:8080/buildStatus/icon?job=biscuit&style=flat)}}}
 {{{imglnk(https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=BRSWZ2U7A2TXG&source=url,https://img.shields.io/badge/Donate-PayPal-green.svg)}}}
 
 #+TOC: headlines 2

@@ -260,7 +260,7 @@ static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
 
 static MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed);
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice);
 
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
@@ -738,6 +738,20 @@ is_pointer_type(MirType *type)
 {
   assert(type);
   return type->kind == MIR_TYPE_PTR;
+}
+
+static inline bool
+is_slice_type(MirType *type)
+{
+  assert(type);
+  return type->kind == MIR_TYPE_STRUCT && type->data.strct.is_slice;
+}
+
+static inline MirType *
+deref_type(MirType *ptr)
+{
+  if (!is_pointer_type(ptr)) return NULL;
+  return ptr->data.ptr.next;
 }
 
 static inline MirStackPtr
@@ -1219,13 +1233,14 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 }
 
 MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed)
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice)
 {
   MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind                 = MIR_TYPE_STRUCT;
   tmp->data.strct.members   = members;
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
+  tmp->data.strct.is_slice  = is_slice;
   init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
@@ -1958,7 +1973,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_PTR: {
-    MirType *tmp = type->data.ptr.next;
+    MirType *tmp = deref_type(type);
     assert(tmp);
     assert(tmp->llvm_type);
     type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
@@ -2066,7 +2081,7 @@ type_cmp(MirType *first, MirType *second)
   }
 
   case MIR_TYPE_PTR: {
-    return type_cmp(first->data.ptr.next, second->data.ptr.next);
+    return type_cmp(deref_type(first), deref_type(second));
   }
 
   case MIR_TYPE_FN: {
@@ -2184,7 +2199,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   assert(arr_ptr->const_value.type);
 
   assert(is_pointer_type(arr_ptr->const_value.type));
-  MirType *arr_type = arr_ptr->const_value.type->data.ptr.next;
+  MirType *arr_type = deref_type(arr_ptr->const_value.type);
   assert(arr_type);
 
   if (arr_type->kind != MIR_TYPE_ARRAY) {
@@ -2223,7 +2238,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
   Ast *ast_member_ident = member_ptr->member_ident;
   assert(ast_member_ident);
 
-  target_type = target_type->data.ptr.next;
+  target_type = deref_type(target_type);
   if (target_type->kind == MIR_TYPE_ARRAY) {
     /* check array builtin members */
     if (is_builtin(ast_member_ident, BUILTIN_ARR_LEN)) {
@@ -2243,9 +2258,9 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       /* we try to access structure member via pointer so we need one more load */
       member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
       assert(member_ptr->target_ptr);
-      target_type = target_type->data.ptr.next;
+      target_type = deref_type(target_type);
     }
-    
+
     if (target_type->kind != MIR_TYPE_STRUCT) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, target_ptr->node->src,
                   BUILDER_CUR_WORD, "expected structure type");
@@ -2539,7 +2554,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
     return false;
   }
 
-  MirType *type = src->const_value.type->data.ptr.next;
+  MirType *type = deref_type(src->const_value.type);
   assert(type);
   load->base.const_value.type = type;
 
@@ -2644,7 +2659,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
   }
 
   type_struct->base.const_value.data.v_type =
-      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed);
+      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed, false);
   return true;
 }
 
@@ -2922,7 +2937,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   if (is_pointer_type(type)) {
     /* we want to make calls also via pointer to functions so in such case we need to resolve
      * pointed function */
-    type = type->data.ptr.next;
+    type = deref_type(type);
   }
 
   if (type->kind != MIR_TYPE_FN) {
@@ -2982,7 +2997,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
     return false;
   }
 
-  MirType *dest_type = dest->const_value.type->data.ptr.next;
+  MirType *dest_type = deref_type(dest->const_value.type);
   assert(dest_type && "store destination has invalid base type");
 
   /* setup llvm type for null type */
@@ -3324,7 +3339,7 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
   /* pop index from stack */
   assert(is_pointer_type(elem_ptr->arr_ptr->const_value.type));
-  MirType *   arr_type   = elem_ptr->arr_ptr->const_value.type->data.ptr.next;
+  MirType *   arr_type   = deref_type(elem_ptr->arr_ptr->const_value.type);
   MirType *   index_type = elem_ptr->index->const_value.type;
   MirStackPtr index_ptr  = exec_fetch_value(cnt, elem_ptr->index);
 
@@ -3373,7 +3388,7 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
      * IDEA: maybe we can store parent type to the member type?
      */
     assert(target_type->kind == MIR_TYPE_PTR && "expected pointer");
-    target_type = target_type->data.ptr.next;
+    target_type = deref_type(target_type);
     assert(target_type->kind == MIR_TYPE_STRUCT && "expected structure");
   }
 
@@ -4952,7 +4967,7 @@ _type_to_str(char *buf, int32_t len, MirType *type)
 
   case MIR_TYPE_PTR: {
     append_buf(buf, len, "*");
-    _type_to_str(buf, len, type->data.ptr.next);
+    _type_to_str(buf, len, deref_type(type));
     break;
   }
 

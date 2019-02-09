@@ -187,6 +187,7 @@ struct MirTypeStruct
   Scope * scope;
   BArray *members;
   bool    is_packed;
+  bool    is_slice;
 };
 
 struct MirTypeNull

@@ -3,15 +3,7 @@
 //load "std/debug.bl"
 
 main :: fn () s32 {
-  Foo :: struct {
-    i: s32
-  };
-
-  foo : Foo;
-  foo_ptr := &foo;
-
-  foo.i = 10;
-  foo_ptr.i = 10;
+  arr_ref : []s32;
 
   return foo_ptr.i;
 };
