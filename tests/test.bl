@@ -5,7 +5,7 @@
 main :: fn () s32 {
   arr_ref : []s32;
 
-  return foo_ptr.i;
+  return 0;
 };
 
 /*

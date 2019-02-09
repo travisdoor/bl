@@ -262,6 +262,9 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len);
 static MirType *
 create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice);
 
+static MirType *
+create_type_slice(Context *cnt, MirType *elem_ptr_type);
+
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
            MirConstValue *value, bool is_mutable);
@@ -556,6 +559,9 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 
 static bool
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
+
+static bool
+analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static bool
 analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
@@ -1246,6 +1252,17 @@ create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, 
   return tmp;
 }
 
+MirType *
+create_type_slice(Context *cnt, MirType *elem_ptr_type)
+{
+  assert(is_pointer_type(elem_ptr_type));
+  BArray *members = bo_array_new(sizeof(MirType *));
+  bo_array_reserve(members, 2);
+  bo_array_push_back(members, elem_ptr_type);
+  bo_array_push_back(members, cnt->builtin_types.entry_usize);
+  return create_type_struct(cnt, NULL, members, false, true);
+}
+
 MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
            MirConstValue *value, bool is_mutable)
@@ -1400,6 +1417,25 @@ get_cast_op(MirType *from, MirType *to)
   return MIR_CAST_INVALID;
 }
 
+static inline bool
+can_impl_cast(MirType *from, MirType *to)
+{
+  assert(from && to);
+  switch (from->kind) {
+  case MIR_TYPE_INT:
+    switch (to->kind) {
+    case MIR_TYPE_INT:
+      return true; // int to int
+    default:
+      break;
+    }
+    break;
+  default:
+    break;
+  }
+  return false;
+}
+
 MirInstr *
 try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 {
@@ -1412,11 +1448,8 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
     return src;
   }
 
-  const bool src_can_be_casted      = src_type->kind == MIR_TYPE_INT;
-  const bool expected_can_be_casted = expected_type->kind == MIR_TYPE_INT;
-
   /* try create implicit cast */
-  if (src_can_be_casted && expected_can_be_casted) {
+  if (can_impl_cast(src_type, expected_type)) {
     if (src->kind == MIR_INSTR_CONST) {
       /* constant numeric literal */
       src->const_value.type = expected_type;
@@ -2146,6 +2179,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_ARRAY:
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_TYPE_STRUCT:
+  case MIR_INSTR_TYPE_SLICE:
     erase_instr(instr);
     break;
 
@@ -2664,6 +2698,23 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 }
 
 bool
+analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
+{
+  assert(type_slice->elem_type);
+  type_slice->elem_type = insert_instr_load_if_needed(cnt, type_slice->elem_type);
+
+  reduce_instr(cnt, type_slice->elem_type);
+
+  assert(type_slice->elem_type->comptime && "This should be an error");
+  MirType *elem_type = type_slice->elem_type->const_value.data.v_type;
+  assert(elem_type);
+  elem_type                                = create_type_ptr(cnt, elem_type);
+  type_slice->base.const_value.data.v_type = create_type_slice(cnt, elem_type);
+
+  return true;
+}
+
+bool
 analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
   assert(type_arr->base.const_value.type);
@@ -3103,6 +3154,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_TYPE_STRUCT:
     state = analyze_instr_type_struct(cnt, (MirInstrTypeStruct *)instr);
+    break;
+  case MIR_INSTR_TYPE_SLICE:
+    state = analyze_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
     break;
   case MIR_INSTR_TYPE_ARRAY:
     state = analyze_instr_type_array(cnt, (MirInstrTypeArray *)instr);
@@ -4921,7 +4975,11 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     break;
 
   case MIR_TYPE_STRUCT: {
-    append_buf(buf, len, "struct");
+    if (is_slice_type(type)) {
+      append_buf(buf, len, "slice");
+    } else {
+      append_buf(buf, len, "struct");
+    }
     if (type->data.strct.is_packed) {
       append_buf(buf, len, "<");
     } else {
