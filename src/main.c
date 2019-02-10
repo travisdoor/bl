@@ -146,7 +146,7 @@ main(int32_t argc, char *argv[])
 
   /* init actors */
   while (*argv != NULL) {
-    Unit *unit = unit_new_file(*argv, NULL);
+    Unit *unit = unit_new_file(*argv, NULL, NULL);
 
     bool added = assembly_add_unit_unique(assembly, unit);
     if (added == false) {

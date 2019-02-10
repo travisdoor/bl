@@ -97,6 +97,7 @@ typedef enum
   BUILTIN_NULL,
   BUILTIN_MAIN,
   BUILTIN_ARR_LEN,
+  BUILTIN_ARR_PTR,
 
   _BUILTIN_COUNT,
 } BuiltinKind;
@@ -173,7 +174,7 @@ static ID builtin_ids[_BUILTIN_COUNT] = {
     {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
     {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
     {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null", .hash = 0},
-    {.str = "main", .hash = 0},  {.str = "len", .hash = 0},
+    {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
 };
 
 static void
@@ -314,7 +315,7 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 
 static MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
-                        ScopeEntry *scope_entry);
+                        ScopeEntry *scope_entry, BuiltinKind builtin_id);
 
 static MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
@@ -1697,14 +1698,15 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 
 MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
-                        ScopeEntry *scope_entry)
+                        ScopeEntry *scope_entry, BuiltinKind builtin_id)
 {
-  assert(target_ptr && member_ident);
+  assert(target_ptr);
   ref_instr(target_ptr);
   MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
   tmp->target_ptr        = target_ptr;
   tmp->member_ident      = member_ident;
   tmp->scope_entry       = scope_entry;
+  tmp->builtin_id        = builtin_id;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2164,6 +2166,12 @@ type_cmp(MirType *first, MirType *second)
     return type_cmp(first->data.array.elem_type, second->data.array.elem_type);
   }
 
+  case MIR_TYPE_STRUCT: {
+    /* slice is builtin so we can skip other comparations here... */
+    if (is_slice_type(first) && is_slice_type(second)) return true;
+    bl_unimplemented;
+  }
+
   case MIR_TYPE_VOID:
   case MIR_TYPE_TYPE:
   case MIR_TYPE_BOOL:
@@ -2296,6 +2304,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
   if (target_type->kind == MIR_TYPE_ARRAY) {
     /* check array builtin members */
     if (is_builtin(ast_member_ident, BUILTIN_ARR_LEN)) {
+      /* .len */
       assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
       erase_instr(member_ptr->target_ptr);
       /* mutate instruction into constant */
@@ -2303,6 +2312,13 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       len->comptime                = true;
       len->const_value.type        = cnt->builtin_types.entry_usize;
       len->const_value.data.v_uint = target_type->data.array.len;
+    } else if (is_builtin(ast_member_ident, BUILTIN_ARR_PTR)) {
+      /* .ptr -> This will be replaced by:
+       *     elemptr
+       *     addrof	 
+       * to match syntax: &array[0]
+       */
+      bl_unimplemented;
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, ast_member_ident->src,
                   BUILDER_CUR_WORD, "unknown member");
@@ -2323,27 +2339,49 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
     reduce_instr(cnt, member_ptr->target_ptr);
 
-    /* lookup for member inside struct */
-    Scope *     scope = target_type->data.strct.scope;
-    ID *        rid   = &ast_member_ident->data.ident.id;
-    ScopeEntry *found = scope_lookup(scope, rid, false);
-    if (!found) {
-      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
-                  member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown structure member");
-      return false;
+    if (target_type->data.strct.is_slice) {
+      /* slice!!! */
+      BArray *slice_members = target_type->data.strct.members;
+      assert(slice_members);
+      MirType *ptr_type = bo_array_at(slice_members, 0, MirType *);
+      MirType *len_type = bo_array_at(slice_members, 1, MirType *);
+
+      if (is_builtin(ast_member_ident, BUILTIN_ARR_LEN)) {
+        /* .len builtin member of slices */
+        member_ptr->builtin_id            = BUILTIN_ARR_LEN;
+        member_ptr->base.const_value.type = create_type_ptr(cnt, len_type);
+      } else if (is_builtin(ast_member_ident, BUILTIN_ARR_PTR)) {
+        /* .ptr builtin member of slices */
+        member_ptr->builtin_id            = BUILTIN_ARR_PTR;
+        member_ptr->base.const_value.type = create_type_ptr(cnt, ptr_type);
+      } else {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
+                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown slice member");
+        return false;
+      }
+    } else {
+      /* lookup for member inside struct */
+      Scope *     scope = target_type->data.strct.scope;
+      ID *        rid   = &ast_member_ident->data.ident.id;
+      ScopeEntry *found = scope_lookup(scope, rid, false);
+      if (!found) {
+        builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
+                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown structure member");
+        return false;
+      }
+
+      {
+        assert(found->kind == SCOPE_ENTRY_MEMBER);
+        MirMember *member = found->data.member;
+
+        /* setup member_ptr type */
+        MirType *type = create_type_ptr(cnt, member->type);
+        assert(type);
+        member_ptr->base.const_value.type = type;
+      }
+
+      member_ptr->scope_entry = found;
     }
-
-    {
-      assert(found->kind == SCOPE_ENTRY_MEMBER);
-      MirMember *member = found->data.member;
-
-      /* setup member_ptr type */
-      MirType *type = create_type_ptr(cnt, member->type);
-      assert(type);
-      member_ptr->base.const_value.type = type;
-    }
-
-    member_ptr->scope_entry = found;
   }
 
   return true;
@@ -3037,11 +3075,11 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
     MirType *  callee_arg_type;
     bool       valid;
 
-    for (int32_t i = 0; i < call_argc; ++i) {
+    for (size_t i = 0; i < call_argc; ++i) {
       call_arg        = &bo_array_at(call->args, i, MirInstr *);
       callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
 
-      *call_arg = insert_instr_load_if_needed(cnt, *call_arg, NULL);
+      *call_arg = insert_instr_load_if_needed(cnt, *call_arg, callee_arg_type);
 
       /* setup correct type of llvm null for call(null) */
       setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
@@ -3451,33 +3489,53 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 void
 exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
-  assert(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
-  MirMember *member = member_ptr->scope_entry->data.member;
-  assert(member);
-  const int64_t index = member->index;
+  assert(member_ptr->target_ptr);
+  MirType *         target_type = member_ptr->target_ptr->const_value.type;
+  MirConstValueData result      = {0};
 
-  MirType *target_type = member_ptr->target_ptr->const_value.type;
-  {
-    /* lookup for base structure declaration type
-     * IDEA: maybe we can store parent type to the member type?
-     */
-    assert(target_type->kind == MIR_TYPE_PTR && "expected pointer");
-    target_type = deref_type(target_type);
-    assert(target_type->kind == MIR_TYPE_STRUCT && "expected structure");
-  }
+  /* lookup for base structure declaration type
+   * IDEA: maybe we can store parent type to the member type? But what about builtin types???
+   */
+  assert(target_type->kind == MIR_TYPE_PTR && "expected pointer");
+  target_type = deref_type(target_type);
+  assert(target_type->kind == MIR_TYPE_STRUCT && "expected structure");
 
+  /* fetch address of the struct begin */
   MirStackPtr ptr = exec_fetch_value(cnt, member_ptr->target_ptr);
   ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
   assert(ptr);
 
-  /* let the llvm solve poiner offest */
   LLVMTypeRef llvm_target_type = target_type->llvm_type;
   assert(llvm_target_type && "missing LLVM struct type ref");
-  ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, index);
+
+  if (member_ptr->builtin_id == BUILTIN_NONE) {
+    assert(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
+    MirMember *member = member_ptr->scope_entry->data.member;
+    assert(member);
+    const int64_t index = member->index;
+
+    /* let the llvm solve poiner offest */
+    const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, index);
+
+    result.v_stack_ptr = ptr + ptr_offset; // pointer shift
+  } else {
+    /* builtin member */
+    assert(is_slice_type(target_type));
+
+    if (member_ptr->builtin_id == BUILTIN_ARR_PTR) {
+      /* slice .ptr */
+      const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 0);
+      result.v_stack_ptr         = ptr + ptr_offset; // pointer shift
+    } else if (member_ptr->builtin_id == BUILTIN_ARR_LEN) {
+      /* slice .len*/
+      const ptrdiff_t len_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 1);
+      result.v_stack_ptr         = ptr + len_offset; // pointer shift
+    } else {
+      bl_abort("invalid slice member!");
+    }
+  }
 
   /* push result address on the stack */
-  MirConstValueData result = {0};
-  result.v_stack_ptr       = ptr + ptr_offset; // pointer shift
   exec_push_stack(cnt, &result, member_ptr->base.const_value.type);
 }
 
@@ -4478,7 +4536,8 @@ ast_expr_member(Context *cnt, Ast *member)
   MirInstr *target = ast(cnt, ast_next);
   assert(target);
 
-  return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL);
+  return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL,
+                                 BUILTIN_NONE);
 }
 
 MirInstr *
@@ -5027,10 +5086,19 @@ _type_to_str(char *buf, int32_t len, MirType *type)
 
   case MIR_TYPE_STRUCT: {
     if (is_slice_type(type)) {
-      append_buf(buf, len, "slice");
-    } else {
-      append_buf(buf, len, "struct");
+      append_buf(buf, len, "slice{");
+
+      BArray *members = type->data.strct.members;
+      if (members) {
+        MirType *tmp = bo_array_at(members, 0, MirType *);
+        _type_to_str(buf, len, tmp);
+      }
+
+      append_buf(buf, len, "}");
+      break;
     }
+
+    append_buf(buf, len, "struct");
     if (type->data.strct.is_packed) {
       append_buf(buf, len, "<");
     } else {

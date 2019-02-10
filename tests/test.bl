@@ -1,14 +1,20 @@
 /* playground */
 
-//load "std/debug.bl"
+load "std/basics.bl"
 
 main :: fn () s32 {
-  arr     : [10]s32;
-  arr_ref : []s32;
+  arr   : [10]s32;
+  slice : []s32;
 
-  arr_ref = arr;
+  slice.ptr = &arr[0];
+  slice.len = arr.len;
 
-  return 0;
+  return get_len(arr);
+};
+
+get_len :: fn (arr: []s32) usize {
+  assert(arr.ptr != null);
+  return arr.len;
 };
 
 /*

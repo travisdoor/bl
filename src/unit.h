@@ -40,7 +40,7 @@ struct Token;
 typedef struct Unit
 {
   Tokens        tokens;
-  Ast *   ast;
+  Ast *         ast;
   BArray *      globals;
   char *        filepath;
   char *        name;
@@ -49,7 +49,7 @@ typedef struct Unit
 } Unit;
 
 Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from);
+unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 
 Unit *
 unit_new_str(const char *name, const char *src);

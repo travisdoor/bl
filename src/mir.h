@@ -364,6 +364,7 @@ struct MirInstrMemberPtr
   Ast *       member_ident;
   MirInstr *  target_ptr;
   ScopeEntry *scope_entry;
+  int32_t     builtin_id;
 };
 
 enum MirCastOp
