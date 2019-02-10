@@ -377,6 +377,7 @@ enum MirCastOp
   MIR_CAST_FPTOUI,
   MIR_CAST_PTRTOINT,
   MIR_CAST_INTTOPTR,
+  MIR_CAST_ARRTOSLICE,
 };
 
 struct MirInstrCast

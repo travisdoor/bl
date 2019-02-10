@@ -26,6 +26,7 @@
     "trunc"
     "fptosi"
     "fptoui"
+    "arrtoslice"
     "addrof"
     "elemptr"
     "memberptr"

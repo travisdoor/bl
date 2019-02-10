@@ -271,14 +271,17 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_FPTOUI:
     print_instr_head(&cast->base, stream, "fptoui");
     break;
-  case MIR_CAST_INVALID:
-    fprintf(stream, "invalid cast %%%u", cast->next->id);
-    break;
   case MIR_CAST_PTRTOINT:
     print_instr_head(&cast->base, stream, "ptrtoint");
     break;
   case MIR_CAST_INTTOPTR:
     print_instr_head(&cast->base, stream, "inttoptr");
+    break;
+  case MIR_CAST_ARRTOSLICE:
+    print_instr_head(&cast->base, stream, "arrtoslice");
+    break;
+  case MIR_CAST_INVALID:
+    print_instr_head(&cast->base, stream, "<invalid cast>");
     break;
   default:
     bl_unimplemented;
