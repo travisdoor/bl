@@ -30,10 +30,10 @@
 #include "ast.h"
 
 static inline void
-print_type(MirType *type, bool aligned, FILE *stream)
+print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
   char tmp[256];
-  mir_type_to_str(tmp, ARRAY_SIZE(tmp), type);
+  mir_type_to_str(tmp, ARRAY_SIZE(tmp), type, prefer_name);
   if (aligned)
     fprintf(stream, "%16s", tmp);
   else
@@ -55,7 +55,7 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 #else
   fprintf(stream, "  %%%-3u", instr->id);
 #endif
-  print_type(instr->const_value.type, true, stream);
+  print_type(instr->const_value.type, true, stream, true);
   fprintf(stream, " %s ", name);
 }
 
@@ -81,7 +81,7 @@ print_const_value(MirInstr *instr, FILE *stream)
     fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
     break;
   case MIR_TYPE_TYPE:
-    print_type(value->data.v_type, false, stream);
+    print_type(value->data.v_type, false, stream, false);
     break;
   case MIR_TYPE_PTR:
     fprintf(stream, "%p", value->data.v_void_ptr);
@@ -383,7 +383,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   MirVar *var = decl->var;
   assert(var);
   fprintf(stream, "%s : ", var->id->str);
-  print_type(var->alloc_type, false, stream);
+  print_type(var->alloc_type, false, stream, true);
   if (decl->init) {
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
     print_comptime_value_or_id(decl->init, stream);
@@ -509,10 +509,10 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 #if BL_DEBUG
   fprintf(stream, "(%d) ", fn->ref_count);
 #endif
-  print_type(fn_proto->base.const_value.type, false, stream);
+  print_type(fn_proto->base.const_value.type, false, stream, false);
 
   if (!fn->is_external) {
-    if (fn->is_test_case) fprintf(stream, " test");
+    if (fn->is_test_case) fprintf(stream, " #test");
     fprintf(stream, " {\n");
 
     MirInstrBlock *tmp = fn->first_block;
@@ -522,7 +522,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     }
     fprintf(stream, "}\n");
   } else {
-    fprintf(stream, " extern\n");
+    fprintf(stream, " #extern\n");
   }
 }
 

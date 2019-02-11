@@ -584,7 +584,7 @@ mir_deref_type(MirType *ptr)
 }
 
 void
-mir_type_to_str(char *buf, int32_t len, MirType *type);
+mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);

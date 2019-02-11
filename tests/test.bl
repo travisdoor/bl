@@ -3,28 +3,27 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  arr   : [10]s32;
-  slice : []s32;
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
 
-  slice.ptr = arr.ptr;
-  slice.len = arr.len;
+  Slice :: []s32;
+  slice : Slice;
 
-  slice[0] = 10;
-  slice[1] = 11;
-  slice[2] = 12;
-  assert(slice[0] == 10);
-  assert(slice[1] == 11);
-  assert(slice[2] == 12);
+  foo : Foo;
 
-  return get_len(slice);
+  bar : struct {
+    i: s32
+  };
+
+  Int :: s32;
+  i : Int = 10;
+
+  say_hello();
+  return 0;
 };
 
-get_len :: fn (arr: []s32) usize {
-  assert(arr.ptr != null);
-  return arr.len;
-};
-
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -40,5 +39,4 @@ say_hello :: fn () {
   putchar(10);
 };
 
-putchar :: fn (c: s32) s32 extern;
-*/
+putchar :: fn (c: s32) s32 #extern;
