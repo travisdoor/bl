@@ -3,25 +3,18 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  arr   : [10]s32;
-  slice : []s32;
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
 
-  slice.ptr = arr.ptr;
-  slice.len = arr.len;
+  foo : Foo;
 
-  slice[0] = 10;
-  slice[1] = 11;
-  slice[2] = 12;
-  assert(slice[0] == 10);
-  assert(slice[1] == 11);
-  assert(slice[2] == 12);
+  bar : struct {
+    i: s32
+  };
 
-  return get_len(slice);
-};
-
-get_len :: fn (arr: []s32) usize {
-  assert(arr.ptr != null);
-  return arr.len;
+  return 0;
 };
 
 /*

@@ -100,6 +100,7 @@ typedef enum
   ERR_NULL_POINTER            = 63,
   ERR_INVALID_ARR_SIZE        = 64,
   ERR_BOUND_CHECK_FAILED      = 65,
+  ERR_EMPTY_STRUCT            = 66,
 } Error;
 
 #endif // BL_ERROR_H

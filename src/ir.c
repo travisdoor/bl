@@ -60,6 +60,7 @@ typedef struct
   LLVMBuilderRef    llvm_builder;
 
   LLVMValueRef llvm_trap_fn;
+  LLVMValueRef llvm_const_u64;
 } Context;
 
 static void
@@ -275,15 +276,14 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     LLVMValueRef llvm_indices[1];
     llvm_indices[0] = llvm_index;
 
-    elem_ptr->base.llvm_value =
-        LLVMBuildInBoundsGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+    elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices,
+                                                     ARRAY_SIZE(llvm_indices), "");
 
     return;
   }
 
-  // PERFORMANCE: create shared const int value, not create new one very time!
   LLVMValueRef llvm_indices[2];
-  llvm_indices[0] = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, false);
+  llvm_indices[0] = cnt->llvm_const_u64;
   llvm_indices[1] = llvm_index;
 
   elem_ptr->base.llvm_value =
@@ -772,6 +772,8 @@ ir_run(Builder *builder, Assembly *assembly)
     LLVMTypeRef llvm_trap_fn_type = LLVMFunctionType(llvm_void_type, NULL, 0, false);
     cnt.llvm_trap_fn = LLVMAddFunction(cnt.llvm_module, LLVM_TRAP_FN, llvm_trap_fn_type);
   }
+
+  cnt.llvm_const_u64 = LLVMConstInt(LLVMInt64TypeInContext(cnt.llvm_cnt), 0, false);
 
   MirInstr *ginstr;
   barray_foreach(assembly->mir_module->globals, ginstr)

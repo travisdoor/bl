@@ -234,7 +234,8 @@ static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
 
 static MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice);
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice,
+                   bool init_ABI);
 
 static MirType *
 create_type_slice(Context *cnt, MirType *elem_ptr_type);
@@ -1230,7 +1231,8 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 }
 
 MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice)
+create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice,
+                   bool init_ABI)
 {
   MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind                 = MIR_TYPE_STRUCT;
@@ -1238,7 +1240,8 @@ create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, 
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
   tmp->data.strct.is_slice  = is_slice;
-  init_type_llvm_ABI(cnt, tmp);
+
+  if (init_ABI) init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
 }
@@ -1251,7 +1254,7 @@ create_type_slice(Context *cnt, MirType *elem_ptr_type)
   bo_array_reserve(members, 2);
   bo_array_push_back(members, elem_ptr_type);
   bo_array_push_back(members, cnt->builtin_types.entry_usize);
-  return create_type_struct(cnt, NULL, members, false, true);
+  return create_type_struct(cnt, NULL, members, false, true, true);
 }
 
 MirVar *
@@ -2115,8 +2118,15 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
       }
     }
 
-    type->llvm_type = LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, memc, is_packed);
-    type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
+    /* named structure type */
+    if (type->id) {
+      type->llvm_type = LLVMStructCreateNamed(cnt->module->llvm_cnt, type->id->str);
+      LLVMStructSetBody(type->llvm_type, llvm_members, memc, is_packed);
+    } else {
+      type->llvm_type =
+          LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, memc, is_packed);
+    }
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
     type->alignment        = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
     free(llvm_members);
@@ -2800,7 +2810,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
   }
 
   type_struct->base.const_value.data.v_type =
-      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed, false);
+      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed, false, false);
   return true;
 }
 
@@ -3078,6 +3088,13 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirFn *fn = decl->base.owner_block->owner_fn;
     assert(fn);
     bo_array_push_back(fn->variables, var);
+  } else {
+    /* setup for named type */
+    MirType *declared_type = var->value->data.v_type;
+    declared_type->id      = var->id;
+
+    /* setup llvm type here */
+    if (!declared_type->llvm_type) init_type_llvm_ABI(cnt, declared_type);
   }
 
   return true;
@@ -3548,7 +3565,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
       exec_abort(cnt, 0);
     }
 
-    result.v_stack_ptr = (MirStackPtr)((ptr_tmp.v_stack_ptr) + (index.v_uint * elem_type->store_size_bytes));
+    result.v_stack_ptr =
+        (MirStackPtr)((ptr_tmp.v_stack_ptr) + (index.v_uint * elem_type->store_size_bytes));
   } else {
     MirType *elem_type = arr_type->data.array.elem_type;
     assert(elem_type);
@@ -4896,7 +4914,11 @@ ast_type_struct(Context *cnt, Ast *type_struct)
   assert(ast_members);
 
   const size_t memc = bo_array_size(ast_members);
-  if (memc == 0) bl_abort("This should be an error (zero member count in structure type)");
+  if (memc == 0) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EMPTY_STRUCT, type_struct->src,
+                BUILDER_CUR_WORD, "empty structure");
+    return NULL;
+  }
 
   BArray *members = bo_array_new(sizeof(MirInstr *));
   bo_array_reserve(members, memc);
