@@ -95,6 +95,9 @@
     ("%\\w+" . font-lock-variable-name-face)
     ("$\\w+" . font-lock-reference-face)
 
+    ;; Invalid
+    ("<\\w+>" . font-lock-warning-face)
+
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)
 

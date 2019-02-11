@@ -316,7 +316,7 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
       fprintf(stream, "%%%u.ptr", member_ptr->target_ptr->id);
       break;
 
-    default: 
+    default:
       fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
     }
   }
@@ -378,15 +378,30 @@ print_instr_addrof(MirInstrAddrOf *addrof, FILE *stream)
 void
 print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 {
-  print_instr_head(&decl->base, stream, "decl");
-
   MirVar *var = decl->var;
   assert(var);
-  fprintf(stream, "%s : ", var->id->str);
-  print_type(var->alloc_type, false, stream, true);
-  if (decl->init) {
+
+  if (var->is_in_gscope) {
+    /* global scope variable */
+    fprintf(stream, "@%s : ", var->id->str);
+    print_type(var->alloc_type, false, stream, true);
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
-    print_comptime_value_or_id(decl->init, stream);
+    if (decl->init) {
+      print_comptime_value_or_id(decl->init, stream);
+    } else {
+      fprintf(stream, "<uninitialized>");
+    }
+    fprintf(stream, "\n");
+  } else {
+    /* local scope variable */
+    print_instr_head(&decl->base, stream, "decl");
+
+    fprintf(stream, "%s : ", var->id->str);
+    print_type(var->alloc_type, false, stream, true);
+    if (decl->init) {
+      fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
+      print_comptime_value_or_id(decl->init, stream);
+    }
   }
 }
 
@@ -507,9 +522,12 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     fprintf(stream, "@%u ", fn_proto->base.id);
 
 #if BL_DEBUG
-  fprintf(stream, "(%d) ", fn->ref_count);
+  fprintf(stream, "(%d) : ", fn->ref_count);
+#else
+  fprintf(stream, " : ");
 #endif
   print_type(fn_proto->base.const_value.type, false, stream, false);
+  fprintf(stream, " :");
 
   if (!fn->is_external) {
     if (fn->is_test_case) fprintf(stream, " #test");

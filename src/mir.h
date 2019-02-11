@@ -291,6 +291,7 @@ struct MirVar
   bool     is_mutable;
   bool     comptime;
   bool     gen_llvm;
+  bool     is_in_gscope;
 
   MirConstValue *     value;
   LLVMValueRef        llvm_value;
