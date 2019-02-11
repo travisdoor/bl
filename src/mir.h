@@ -187,6 +187,7 @@ struct MirTypeStruct
   Scope * scope;
   BArray *members;
   bool    is_packed;
+  bool    is_slice;
 };
 
 struct MirTypeNull
@@ -363,6 +364,7 @@ struct MirInstrMemberPtr
   Ast *       member_ident;
   MirInstr *  target_ptr;
   ScopeEntry *scope_entry;
+  int32_t     builtin_id;
 };
 
 enum MirCastOp

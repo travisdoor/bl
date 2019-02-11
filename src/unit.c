@@ -40,12 +40,35 @@ init(Unit *unit)
   unit->ast = NULL;
 }
 
+static bool
+get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
+{
+  if (!filepath) return false;
+
+  char *ptr = strrchr(filepath, PATH_SEPARATORC);
+  if (!ptr) return false;
+  if (filepath == ptr) return strdup(filepath);
+
+  size_t len = ptr - filepath;
+  if (len + 1 > l) bl_abort("path too long!!!");
+  strncpy(buf, filepath, len);
+
+  return true;
+}
+
 static char *
-search_file(const char *filepath)
+search_file(const char *filepath, const char *wdir)
 {
   if (filepath == NULL) return NULL;
 
-  char        tmp_rpath[PATH_MAX];
+  char tmp_rpath[PATH_MAX] = {0};
+  if (get_dir_from_filepath(tmp_rpath, PATH_MAX, wdir)) {
+    strcat(&tmp_rpath[0], PATH_SEPARATOR);
+    strcat(&tmp_rpath[0], filepath);
+
+    if (file_exists(tmp_rpath)) return strdup(tmp_rpath);
+  }
+
   const char *rpath = brealpath(filepath, tmp_rpath, PATH_MAX);
 
   if (rpath != NULL) {
@@ -53,41 +76,43 @@ search_file(const char *filepath)
   }
 
   /* file has not been found in current working direcotry -> search in PATH */
-  char   tmp_env[PATH_MAX];
-  char * env          = strdup(getenv(ENV_PATH));
-  char * s            = env;
-  char * p            = NULL;
-  size_t filepath_len = strlen(filepath);
+  {
+    char   tmp_env[PATH_MAX];
+    char * env          = strdup(getenv(ENV_PATH));
+    char * s            = env;
+    char * p            = NULL;
+    size_t filepath_len = strlen(filepath);
 
-  do {
-    p = strchr(s, ENVPATH_SEPARATOR);
-    if (p != NULL) {
-      p[0] = 0;
-    }
+    do {
+      p = strchr(s, ENVPATH_SEPARATOR);
+      if (p != NULL) {
+        p[0] = 0;
+      }
 
-    if (strlen(s) + filepath_len + strlen(PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
+      if (strlen(s) + filepath_len + strlen(PATH_SEPARATOR) >= PATH_MAX) bl_abort("path too long");
 
-    strcpy(&tmp_env[0], s);
-    strcat(&tmp_env[0], PATH_SEPARATOR);
-    strcat(&tmp_env[0], filepath);
+      strcpy(&tmp_env[0], s);
+      strcat(&tmp_env[0], PATH_SEPARATOR);
+      strcat(&tmp_env[0], filepath);
 
-    rpath = brealpath(&tmp_env[0], tmp_rpath, PATH_MAX);
+      rpath = brealpath(&tmp_env[0], tmp_rpath, PATH_MAX);
 
-    s = p + 1;
-  } while (p != NULL && rpath == NULL);
+      s = p + 1;
+    } while (p != NULL && rpath == NULL);
 
-  free(env);
-  if (rpath) return strdup(rpath);
+    free(env);
+    if (rpath) return strdup(rpath);
+  }
   return NULL;
 }
 
 /* public */
 Unit *
-unit_new_file(const char *filepath, Token *loaded_from)
+unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
   Unit *unit = bl_calloc(1, sizeof(Unit));
   if (!unit) bl_abort("bad alloc");
-  unit->filepath    = search_file(filepath);
+  unit->filepath    = search_file(filepath, parent_unit ? parent_unit->filepath : NULL);
   unit->name        = strdup(filepath);
   unit->loaded_from = loaded_from;
   init(unit);

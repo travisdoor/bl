@@ -1,4 +1,4 @@
-test "named functions" {
+#test "named functions" {
   foo :: fn () {
   };
   

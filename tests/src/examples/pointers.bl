@@ -1,6 +1,6 @@
-load "std/debug.bl"
+#load "std/debug.bl"
 
-test "pointers" {
+#test "pointers" {
   i := 666;
   i_ptr : *s32 = &i; // taking the address of 'i' variable and set 'i_ptr'
   j := ^i_ptr;       // pointer dereferencing

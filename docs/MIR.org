@@ -1,7 +1,12 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
-#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 
 # now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 2
@@ -67,7 +72,6 @@
    }
    #+END_SRC
 
-   
 ** Stack manipulation
    - Interpreter is used for evaluation of compile-time known expressions during analyze process.
    - Compile-time known values are not pushed on the stack.
@@ -104,7 +108,6 @@
    execution finished with state: 0
    #+END_EXAMPLE
 
-
 * Function
    #+BEGIN_EXAMPLE
    @<name> <T> [flags] { 
@@ -136,6 +139,7 @@
    void decl <name> : <T> = <init value> // yields void 
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data | description              |
    |----------+------+--------------------------|
    | PUSH     | -    | storage for the variable |
@@ -164,6 +168,7 @@
    <T> load <ptr> // yields T loaded from ptr
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data  | description              |
    |----------+-------+--------------------------|
    | POP      | ptr   | pointer to source        |
@@ -176,6 +181,7 @@
    void store <src> -> <dest ptr> // yields void
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data     | description            |
    |----------+----------+------------------------|
    | POP      | dest ptr | pointer to destination |
@@ -188,6 +194,7 @@
    <T> arg $<arg number> // yields T
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data | description |
    |----------+------+-------------|
    | PUSH     | arg  | fn argument |
@@ -195,6 +202,7 @@
 ** call
    Call function. This instruction will create new stack frame and switch control to the callee. All call arguments in example case are known only in runtime (compile-time known arguments is passed by const value).
 
+   Stack operations:
    | stack op | data         | description                                                                |
    |----------+--------------+----------------------------------------------------------------------------|
    | PUSH     | arg 3        | push 3rd argument                                                          |
@@ -209,6 +217,7 @@
    void ret [value] // yields void
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data  | description                            |
    |----------+-------+----------------------------------------|
    | POP RA   | -     | rollback the stack to return address   |
@@ -231,6 +240,7 @@
    void br <cont> ? <then_block> : <else_block> // yields void
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data      | description       |
    |----------+-----------+-------------------|
    | POP      | condition | checked condition |
@@ -245,6 +255,7 @@
    <T> binop <lhs> <+|-|*|/|%> <rhs> // yields result value of type T
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data   | description                   |
    |----------+--------+-------------------------------|
    | POP      | lhs    | left-hand side of operation   |
@@ -258,6 +269,7 @@
    <T> unop <+|-|*|&> <value> // yields result value of type T
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data   | description                   |
    |----------+--------+-------------------------------|
    | POP      | value  |                               |
@@ -270,6 +282,7 @@
    <*T> elemptr <arr ptr>[<index>] // yields result address *T (elem type)
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data     | description                  |
    |----------+----------+------------------------------|
    | POP      | index    |                              |
@@ -281,6 +294,7 @@
    <*T> memberptr <target ptr>.<member name|order> // yields result address *T (member type)
    #+END_EXAMPLE
 
+   Stack operations:
    | stack op | data       | description           |
    |----------+------------+-----------------------|
    | POP      | target ptr |                       |
@@ -313,6 +327,7 @@
    <T> sext <target> // yields value with casted type
    #+END_EXAMPLE
 
+   Stack operations:
     | stack op | data   | description          |
     |----------+--------+----------------------|
     | POP      | target |                      |
@@ -325,6 +340,7 @@
    <T> zext <target> // yields value with casted type
    #+END_EXAMPLE
 
+   Stack operations:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |
@@ -337,6 +353,7 @@
    <T> trunc <target> // yields value with casted type
    #+END_EXAMPLE
 
+   Stack operations:
     | stack op | data    | description          |
     |----------+---------+----------------------|
     | POP      | target  |                      |

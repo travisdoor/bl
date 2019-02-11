@@ -43,6 +43,12 @@
 #define NAMED_VARS false
 #endif
 
+#if NAMED_VARS
+#define get_name(str) str
+#else
+#define get_name(str) ""
+#endif
+
 typedef struct
 {
   Builder * builder;
@@ -607,10 +613,6 @@ void
 gen_allocas(Context *cnt, MirFn *fn)
 {
   assert(fn);
-
-  // LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(fn->llvm_value);
-  // assert(bb && "invalid insert block for allocas!!!");
-  // LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
 
   const char *var_name;
   LLVMTypeRef var_type;

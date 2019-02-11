@@ -26,6 +26,7 @@
     "trunc"
     "fptosi"
     "fptoui"
+    "arrtoslice"
     "addrof"
     "elemptr"
     "memberptr"
@@ -48,13 +49,10 @@
 
 (defconst blm-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void"  
-    "type"))
+    "type" "slice"))
 
 (defconst blm-constants
   '("true" "false" "null"))
-
-(defconst blm-preproc
-  '("extern" "test" "load"))
 
 (defconst blm-error
   '("?"))
@@ -79,8 +77,8 @@
     ;; Keywords
     (,(blm-keywords-rx blm-keywords) 1 font-lock-keyword-face)
 
-    ;; Preprocessors
-    (,(blm-keywords-rx blm-preproc) 1 font-lock-preprocessor-face)
+    ;; Hash directives
+    ("#\\w+" . font-lock-preprocessor-face)
 
     ;; Error
     (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)

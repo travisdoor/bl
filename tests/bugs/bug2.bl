@@ -1,4 +1,4 @@
-test "bug2" {
+#test "bug2" {
   i := 0;
   loop {
     if i == 10 {

@@ -1,16 +1,21 @@
 /* playground */
 
-//load "std/debug.bl"
+#load "std/core.bl"
 
 main :: fn () s32 {
-  foo : struct {
-    i: s32,
-    bar : struct { i: s32 }
-  };
+  arr   : [10]s32;
+  slice : []s32;
 
-  foo.i = 10;
-  foo.bar.i = 10;
-  return foo.bar.i;
+  slice.ptr = arr.ptr;
+  slice.len = arr.len;
+
+  slice = arr;
+  return get_len(arr);
+};
+
+get_len :: fn (arr: []s32) usize {
+  assert(arr.ptr != null);
+  return arr.len;
 };
 
 /*

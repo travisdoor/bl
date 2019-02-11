@@ -1301,7 +1301,7 @@ parse_load(Context *cnt)
   Ast *load                = ast_create_node(cnt->ast_arena, AST_LOAD, tok_id);
   load->data.load.filepath = tok_path->value.str;
 
-  Unit *unit = unit_new_file(load->data.load.filepath, tok_path);
+  Unit *unit = unit_new_file(load->data.load.filepath, tok_path, cnt->unit);
   if (!assembly_add_unit_unique(cnt->assembly, unit)) {
     unit_delete(unit);
   }

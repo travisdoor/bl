@@ -1,9 +1,13 @@
 #+TITLE: Biscuit Documentation
 #+AUTHOR: Martin Dorazil
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
-#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 
-# now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 3
 * Instalation
 ** Requirements
@@ -145,7 +149,6 @@
    <op> <expr>
    #+END_EXAMPLE
 
-
 ** Data types
 *** Fundamental data types
     | Name  | Description                   |
@@ -191,12 +194,16 @@
     Example:
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
-*** TODO Slices
-    Slice is consist of pointer to the first element and element count of an array. Slice is internally represented as special kind of structure passed by value. 
+*** TODO Array reference
+    Array reference is consist of pointer to the first array element and array lenght. 
 
+    Syntax:
     #+BEGIN_EXAMPLE
     [] <type>
     #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/array_ref.bl" src bl -n
 *** Structures
     Structure is simple group of some data separated by comma.
 
@@ -257,6 +264,23 @@
 
     Example:
     #+INCLUDE: "../tests/src/examples/type_cast.bl" src bl -n
+** Literals
+*** Simple literals
+   #+BEGIN_SRC bl
+   b :: true;         // bool true literal 
+   b :: false;        // bool false literal 
+   ptr : *s32 = null; // *s32 null pointer literal
+   #+END_SRC
+
+*** Numeric literals 
+   #+BEGIN_SRC bl
+   i     :: 10;      // s32 literal
+   i_hex :: 0x10;    // s32 literal
+   f     :: 13.43f;  // f32 literal
+   d     :: 13.43;   // f64 literal
+   char  :: 'i';     // u8 literal 
+   #+END_SRC
+
 ** Variables
    Example of variable allocated on stack.
 
@@ -336,18 +360,18 @@
 
    Create unit test case:
    #+BEGIN_SRC bl :var css-file="org.css" :results raw
-   load "std/debug.bl"
+   #load "std/debug.bl"
 
    // function to be tested
    add :: fn (a: s32, b: s32) s32 {
      return a + b;
    };
 
-   test "this is OK" {
+   #test "this is OK" {
      assert(add(10, 20) == 30); 
    };
 
-   test "this is not OK" {
+   #test "this is not OK" {
      assert(add(10, 20) != 30); 
    };
    #+END_SRC
