@@ -234,11 +234,11 @@ static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
 
 static MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice,
-                   bool init_ABI);
+create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
+                   bool is_slice);
 
 static MirType *
-create_type_slice(Context *cnt, MirType *elem_ptr_type);
+create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
 
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
@@ -986,8 +986,8 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 
   char tmp_from[256];
   char tmp_to[256];
-  mir_type_to_str(tmp_from, 256, from);
-  mir_type_to_str(tmp_to, 256, to);
+  mir_type_to_str(tmp_from, 256, from, true);
+  mir_type_to_str(tmp_to, 256, to, true);
 
   builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, loc->src, BUILDER_CUR_WORD, msg,
               tmp_from, tmp_to);
@@ -1231,8 +1231,8 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 }
 
 MirType *
-create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, bool is_slice,
-                   bool init_ABI)
+create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
+                   bool is_slice)
 {
   MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind                 = MIR_TYPE_STRUCT;
@@ -1240,21 +1240,22 @@ create_type_struct(Context *cnt, Scope *scope, BArray *members, bool is_packed, 
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
   tmp->data.strct.is_slice  = is_slice;
+  tmp->id                   = id;
 
-  if (init_ABI) init_type_llvm_ABI(cnt, tmp);
+  init_type_llvm_ABI(cnt, tmp);
 
   return tmp;
 }
 
 MirType *
-create_type_slice(Context *cnt, MirType *elem_ptr_type)
+create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 {
   assert(mir_is_pointer_type(elem_ptr_type));
   BArray *members = bo_array_new(sizeof(MirType *));
   bo_array_reserve(members, 2);
   bo_array_push_back(members, elem_ptr_type);
   bo_array_push_back(members, cnt->builtin_types.entry_usize);
-  return create_type_struct(cnt, NULL, members, false, true, true);
+  return create_type_struct(cnt, id, NULL, members, false, true);
 }
 
 MirVar *
@@ -2209,8 +2210,8 @@ type_cmp(MirType *first, MirType *second)
 #if BL_DEBUG
   char tmp_first[256];
   char tmp_second[256];
-  mir_type_to_str(tmp_first, 256, first);
-  mir_type_to_str(tmp_second, 256, second);
+  mir_type_to_str(tmp_first, 256, first, true);
+  mir_type_to_str(tmp_second, 256, second, true);
   msg_warning("missing type comparation for types %s and %s!!!", tmp_first, tmp_second);
 #endif
 
@@ -2809,8 +2810,13 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
     }
   }
 
+  ID *id = NULL;
+  if (type_struct->base.node && type_struct->base.node->kind == AST_IDENT) {
+    id = &type_struct->base.node->data.ident.id;
+  }
+
   type_struct->base.const_value.data.v_type =
-      create_type_struct(cnt, type_struct->scope, members, type_struct->is_packed, false, false);
+      create_type_struct(cnt, id, type_struct->scope, members, type_struct->is_packed, false);
   return true;
 }
 
@@ -2822,11 +2828,16 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 
   reduce_instr(cnt, type_slice->elem_type);
 
+  ID *id = NULL;
+  if (type_slice->base.node && type_slice->base.node->kind == AST_IDENT) {
+    id = &type_slice->base.node->data.ident.id;
+  }
+
   assert(type_slice->elem_type->comptime && "This should be an error");
   MirType *elem_type = type_slice->elem_type->const_value.data.v_type;
   assert(elem_type);
   elem_type                                = create_type_ptr(cnt, elem_type);
-  type_slice->base.const_value.data.v_type = create_type_slice(cnt, elem_type);
+  type_slice->base.const_value.data.v_type = create_type_slice(cnt, id, elem_type);
 
   return true;
 }
@@ -3088,13 +3099,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirFn *fn = decl->base.owner_block->owner_fn;
     assert(fn);
     bo_array_push_back(fn->variables, var);
-  } else {
-    /* setup for named type */
-    MirType *declared_type = var->value->data.v_type;
-    declared_type->id      = var->id;
-
-    /* setup llvm type here */
-    if (!declared_type->llvm_type) init_type_llvm_ABI(cnt, declared_type);
   }
 
   return true;
@@ -4788,8 +4792,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
     }
   } else {
     MirInstr *type = ast_type ? ast_create_type_resolver_call(cnt, ast_type) : NULL;
+
     /* initialize value */
     MirInstr *value = ast(cnt, ast_value);
+    if (value) value->node = ast_name;
     append_instr_decl_var(cnt, ast_name, type, value, is_mutable);
 
     if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
@@ -5136,7 +5142,7 @@ arenas_terminate(struct MirArenas *arenas)
 
 /* public */
 static void
-_type_to_str(char *buf, int32_t len, MirType *type)
+_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 {
 #define append_buf(buf, len, str)                                                                  \
   {                                                                                                \
@@ -5149,16 +5155,12 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     return;
   }
 
-  if (type->id) {
+  if (type->id && prefer_name) {
     append_buf(buf, len, type->id->str);
     return;
   }
 
   switch (type->kind) {
-  case MIR_TYPE_INT:
-    append_buf(buf, len, "integer");
-    break;
-
   case MIR_TYPE_TYPE:
     append_buf(buf, len, "type");
     break;
@@ -5170,7 +5172,7 @@ _type_to_str(char *buf, int32_t len, MirType *type)
       BArray *members = type->data.strct.members;
       if (members) {
         MirType *tmp = bo_array_at(members, 0, MirType *);
-        _type_to_str(buf, len, tmp);
+        _type_to_str(buf, len, tmp, true);
       }
 
       append_buf(buf, len, "}");
@@ -5189,7 +5191,7 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     if (members) {
       barray_foreach(members, tmp)
       {
-        _type_to_str(buf, len, tmp);
+        _type_to_str(buf, len, tmp, true);
         if (i < bo_array_size(members) - 1) append_buf(buf, len, ", ");
       }
     }
@@ -5210,20 +5212,20 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     if (args) {
       barray_foreach(args, tmp)
       {
-        _type_to_str(buf, len, tmp);
+        _type_to_str(buf, len, tmp, true);
         if (i < bo_array_size(args) - 1) append_buf(buf, len, ", ");
       }
     }
 
     append_buf(buf, len, ") ");
 
-    _type_to_str(buf, len, type->data.fn.ret_type);
+    _type_to_str(buf, len, type->data.fn.ret_type, true);
     break;
   }
 
   case MIR_TYPE_PTR: {
     append_buf(buf, len, "*");
-    _type_to_str(buf, len, mir_deref_type(type));
+    _type_to_str(buf, len, mir_deref_type(type), prefer_name);
     break;
   }
 
@@ -5232,21 +5234,25 @@ _type_to_str(char *buf, int32_t len, MirType *type)
     sprintf(str, "[%lu]", type->data.array.len);
     append_buf(buf, len, str);
 
-    _type_to_str(buf, len, type->data.array.elem_type);
+    _type_to_str(buf, len, type->data.array.elem_type, true);
     break;
   }
 
   default:
-    bl_unimplemented;
+    if (type->id) {
+      append_buf(buf, len, type->id->str);
+    } else {
+      append_buf(buf, len, "<invalid>");
+    }
   }
 }
 
 void
-mir_type_to_str(char *buf, int32_t len, MirType *type)
+mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 {
   if (!buf || !len) return;
   buf[0] = '\0';
-  _type_to_str(buf, len, type);
+  _type_to_str(buf, len, type, prefer_name);
 }
 
 void

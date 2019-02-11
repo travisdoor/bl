@@ -8,16 +8,22 @@ main :: fn () s32 {
     j: s32
   };
 
+  Slice :: []s32;
+  slice : Slice;
+
   foo : Foo;
 
   bar : struct {
     i: s32
   };
 
+  Int :: s32;
+  i : Int = 10;
+
+  say_hello();
   return 0;
 };
 
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -33,5 +39,4 @@ say_hello :: fn () {
   putchar(10);
 };
 
-putchar :: fn (c: s32) s32 extern;
-*/
+putchar :: fn (c: s32) s32 #extern;
