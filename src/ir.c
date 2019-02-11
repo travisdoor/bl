@@ -277,16 +277,34 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 void
 gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
-  assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
-  MirMember *member = member_ptr->scope_entry->data.member;
-  assert(member);
-
   LLVMValueRef       llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
-  const unsigned int index = (const unsigned int)member_ptr->scope_entry->data.member->index;
-  assert(llvm_target_ptr);
+    assert(llvm_target_ptr);
 
-  member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
-  assert(member_ptr->base.llvm_value);
+  if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
+    assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
+    MirMember *member = member_ptr->scope_entry->data.member;
+    assert(member);
+
+    const unsigned int index = (const unsigned int)member_ptr->scope_entry->data.member->index;
+
+    member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
+    assert(member_ptr->base.llvm_value);
+  } else {
+    /* builtin member */
+
+    MirType *target_type = mir_deref_type(member_ptr->target_ptr->const_value.type);
+
+    /* Valid only for slice types, we generate direct replacement for arrays. */
+    assert(mir_is_slice_type(target_type));
+
+    if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN) {
+      /* .len */
+      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
+    } else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR) {
+      /* .ptr*/
+      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
+    }
+  }
 }
 
 void

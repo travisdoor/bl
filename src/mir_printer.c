@@ -300,11 +300,25 @@ void
 print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
 {
   print_instr_head(&member_ptr->base, stream, "memberptr");
-  if (member_ptr->member_ident) {
-    fprintf(stream, "%%%u.%s", member_ptr->target_ptr->id,
-            member_ptr->member_ident->data.ident.id.str);
+  if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
+    if (member_ptr->member_ident) {
+      fprintf(stream, "%%%u.%s", member_ptr->target_ptr->id,
+              member_ptr->member_ident->data.ident.id.str);
+    } else {
+      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+    }
   } else {
-    bl_unimplemented;
+    switch (member_ptr->builtin_id) {
+    case MIR_BUILTIN_ARR_LEN:
+      fprintf(stream, "%%%u.len", member_ptr->target_ptr->id);
+      break;
+    case MIR_BUILTIN_ARR_PTR:
+      fprintf(stream, "%%%u.ptr", member_ptr->target_ptr->id);
+      break;
+
+    default: 
+      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+    }
   }
 }
 

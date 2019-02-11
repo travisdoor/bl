@@ -234,6 +234,9 @@
   arr[1] = 20;
   arr[2] = 30;
 
+  assert(arr.ptr == &arr[0]);
+  assert(arr.len == 10);
+
   assert(arr[0] == 10);
   assert(arr[1] == 20);
   assert(arr[2] == 30);
@@ -248,6 +251,24 @@
 
   assert(arr[0] == 0);
   assert(arr[9] == 9);
+};
+
+#test "slices" {
+  arr : [3]s32;
+
+  arr[0] = 10;
+  arr[1] = 20;
+  arr[2] = 30;
+
+  slice : []s32;
+  slice.ptr = arr.ptr;
+  slice.len = arr.len;
+
+  assert(slice.ptr == &arr[0]);
+  assert(slice.len == 3);
+  assert(slice[0] == 10);
+  assert(slice[1] == 20);
+  assert(slice[2] == 30);
 };
 
 #test "structures" {

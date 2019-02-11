@@ -276,10 +276,10 @@
    | PUSH     | result | result value of the operation |
 
 ** elemptr
-   Evaluates address of the array element and push it on the stack.
+   Evaluates address of the array element and push it on the stack. Input array pointer can also be a pointer to slice.
 
    #+BEGIN_EXAMPLE
-   <*T> elemptr <arr ptr>[<index>] // yields result address *T (elem type)
+   <*T> elemptr <[arr ptr|slice ptr]>[<index>] // yields result address *T (elem type)
    #+END_EXAMPLE
 
    Stack operations:

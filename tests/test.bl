@@ -9,8 +9,14 @@ main :: fn () s32 {
   slice.ptr = arr.ptr;
   slice.len = arr.len;
 
-  slice = arr;
-  return get_len(arr);
+  slice[0] = 10;
+  slice[1] = 11;
+  slice[2] = 12;
+  assert(slice[0] == 10);
+  assert(slice[1] == 11);
+  assert(slice[2] == 12);
+  
+  return get_len(slice);
 };
 
 get_len :: fn (arr: []s32) usize {
