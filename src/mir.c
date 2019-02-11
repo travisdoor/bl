@@ -3108,14 +3108,14 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   /* insert variable into symbol lookup table */
   provide_var(cnt, decl->var);
 
+  /* Return here when we have type declaration... */
+  if (var->alloc_type->kind == MIR_TYPE_TYPE) return true;
+  var->gen_llvm = true;
+
   if (var->is_in_gscope) {
     /* push variable into globals of the mir module */
     bo_array_push_back(cnt->module->globals, decl);
-    bl_warning("we should handle global scope variables!!!");
-  }
-
-  if (var->alloc_type->kind != MIR_TYPE_TYPE && !var->is_in_gscope) {
-    var->gen_llvm = true;
+  } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
     assert(fn);

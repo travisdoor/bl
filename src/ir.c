@@ -140,6 +140,21 @@ gen_fn_proto(Context *cnt, MirFn *fn)
 }
 
 static inline LLVMValueRef
+gen_global_var_proto(Context *cnt, MirVar *var)
+{
+  assert(var);
+  if (var->llvm_value) return var->llvm_value;
+
+  ID *id = var->id;
+  assert(id && "Unnamed global variable???");
+  LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
+  var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, id->str);
+
+  LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
+  return var->llvm_value;
+}
+
+static inline LLVMValueRef
 fetch_value(Context *cnt, MirInstr *instr)
 {
   LLVMValueRef value = NULL;
@@ -174,7 +189,11 @@ gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   switch (entry->kind) {
   case SCOPE_ENTRY_VAR: {
-    ref->base.llvm_value = entry->data.var->llvm_value;
+    MirVar *var = entry->data.var;
+    if (var->is_in_gscope)
+      ref->base.llvm_value = gen_global_var_proto(cnt, var);
+    else
+      ref->base.llvm_value = var->llvm_value;
     break;
   }
   case SCOPE_ENTRY_FN: {
@@ -566,14 +585,37 @@ void
 gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
-  if (!var->gen_llvm) return;
   assert(var);
-  assert(var->llvm_value);
 
-  if (decl->init) {
-    LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
-    assert(llvm_init);
-    LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+  /* skip when we should not generate LLVM representation */
+  if (!var->gen_llvm) return;
+
+  if (var->is_in_gscope) {
+    /* OK variable is declared in global scope so we need different generation here*/
+    bl_warning("Generate global scope variable in IR!!!");
+    /* Generates destination for global if there is no one. Global variable can come later than it
+     * is used, so we call same function during generation of the declref instruction IR. */
+    gen_global_var_proto(cnt, var);
+
+    /* Globals must be set to some value */
+    // assert(decl->init);
+
+    /* TEST!!! */
+    /* TEST!!! */
+    /* TEST!!! */
+    /* TEST!!! */
+    /* TEST!!! */
+    assert(var->alloc_type->kind == MIR_TYPE_INT && var->alloc_type->data.integer.bitcount == 32);
+    LLVMValueRef tmp = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, true);
+    LLVMSetInitializer(var->llvm_value, tmp);
+  } else {
+    assert(var->llvm_value);
+
+    if (decl->init) {
+      LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
+      assert(llvm_init);
+      LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+    }
   }
 }
 

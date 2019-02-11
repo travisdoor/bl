@@ -54,9 +54,6 @@
 (defconst blm-constants
   '("true" "false" "null"))
 
-(defconst blm-error
-  '("?"))
-
 (defconst blm-number-rx
   (rx (and
        symbol-start
@@ -77,16 +74,15 @@
     ;; Keywords
     (,(blm-keywords-rx blm-keywords) 1 font-lock-keyword-face)
 
+    ;; Types 
+    ("fn\(.*\) \\w+" . font-lock-type-face)
+    ("struct{.*}" . font-lock-type-face)
+    ("slice{.*}" . font-lock-type-face)
+    ("*.\\w+" . font-lock-type-face)
+    (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
+
     ;; Hash directives
     ("#\\w+" . font-lock-preprocessor-face)
-
-    ;; Error
-    (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)
-
-    ;; Types 
-    (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
-    ("\\(\\w+\\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
-    ("\\(\\w+\\)\\(.*\\)\\(\\:*struct\\)" 1 font-lock-function-name-face)
 
     ;; Functions
     ("@\\w+" . font-lock-function-name-face)

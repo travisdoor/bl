@@ -2,12 +2,14 @@
 
 #load "std/core.bl"
 
-global : s32;
-is_true : bool;
+bar : s32;
 
 main :: fn () s32 {
+  foo = 0;
   return 0;
 };
+
+foo : s32;
 
 /*
 say_hello :: fn () {
