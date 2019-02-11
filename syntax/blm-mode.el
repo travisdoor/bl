@@ -54,9 +54,6 @@
 (defconst blm-constants
   '("true" "false" "null"))
 
-(defconst blm-preproc
-  '("extern" "test" "load"))
-
 (defconst blm-error
   '("?"))
 
@@ -80,8 +77,8 @@
     ;; Keywords
     (,(blm-keywords-rx blm-keywords) 1 font-lock-keyword-face)
 
-    ;; Preprocessors
-    (,(blm-keywords-rx blm-preproc) 1 font-lock-preprocessor-face)
+    ;; Hash directives
+    ("#\\w+" . font-lock-preprocessor-face)
 
     ;; Error
     (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)

@@ -194,12 +194,16 @@
     Example:
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
-*** TODO Slices
-    Slice is consist of pointer to the first element and element count of an array. Slice is internally represented as special kind of structure passed by value. 
+*** TODO Array reference
+    Array reference is consist of pointer to the first array element and array lenght. 
 
+    Syntax:
     #+BEGIN_EXAMPLE
     [] <type>
     #+END_EXAMPLE
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/array_ref.bl" src bl -n
 *** Structures
     Structure is simple group of some data separated by comma.
 
@@ -356,18 +360,18 @@
 
    Create unit test case:
    #+BEGIN_SRC bl :var css-file="org.css" :results raw
-   load "std/debug.bl"
+   #load "std/debug.bl"
 
    // function to be tested
    add :: fn (a: s32, b: s32) s32 {
      return a + b;
    };
 
-   test "this is OK" {
+   #test "this is OK" {
      assert(add(10, 20) == 30); 
    };
 
-   test "this is not OK" {
+   #test "this is not OK" {
      assert(add(10, 20) != 30); 
    };
    #+END_SRC

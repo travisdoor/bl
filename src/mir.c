@@ -285,7 +285,7 @@ static void
 push_into_curr_block(Context *cnt, MirInstr *instr);
 
 static MirInstr *
-insert_instr_load_if_needed(Context *cnt, MirInstr *src, MirType *expected_type);
+insert_instr_load_if_needed(Context *cnt, MirInstr *src);
 
 static MirInstr *
 try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid);
@@ -1124,13 +1124,10 @@ ref_instr(MirInstr *instr)
 }
 
 static inline bool
-is_load_needed(MirInstr *instr, MirType *expected_type)
+is_load_needed(MirInstr *instr)
 {
   assert(instr);
   if (!is_pointer_type(instr->const_value.type)) return false;
-  if (expected_type && is_slice_type(expected_type) &&
-      deref_type(instr->const_value.type)->kind == MIR_TYPE_ARRAY)
-    return false;
 
   switch (instr->kind) {
   case MIR_INSTR_ARG:
@@ -1356,10 +1353,10 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
 }
 
 MirInstr *
-insert_instr_load_if_needed(Context *cnt, MirInstr *src, MirType *expected_type)
+insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
   if (!src) return src;
-  if (!is_load_needed(src, expected_type)) return src;
+  if (!is_load_needed(src)) return src;
 
   MirInstrBlock *block = src->owner_block;
   assert(block);
@@ -1421,12 +1418,6 @@ get_cast_op(MirType *from, MirType *to)
       return MIR_CAST_PTRTOINT;
     }
 
-    case MIR_TYPE_STRUCT: {
-      /* array to slice */
-      if (deref_type(from)->kind == MIR_TYPE_ARRAY && is_slice_type(to)) return MIR_CAST_ARRTOSLICE;
-      break;
-    }
-
     default:
       return MIR_CAST_INVALID;
     }
@@ -1464,15 +1455,6 @@ can_impl_cast(MirType *from, MirType *to)
     switch (to->kind) {
     case MIR_TYPE_INT:
       return true; // int to int
-    default:
-      break;
-    }
-    break;
-
-  case MIR_TYPE_PTR:
-    switch (to->kind) {
-    case MIR_TYPE_STRUCT:
-      return deref_type(from)->kind == MIR_TYPE_ARRAY && is_slice_type(to); // arr ptr to slice
     default:
       break;
     }
@@ -2300,7 +2282,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
 bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
-  elem_ptr->index = insert_instr_load_if_needed(cnt, elem_ptr->index, NULL);
+  elem_ptr->index = insert_instr_load_if_needed(cnt, elem_ptr->index);
   assert(elem_ptr->index);
 
   bool valid;
@@ -2390,7 +2372,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
   } else {
     if (target_type->kind == MIR_TYPE_PTR) {
       /* we try to access structure member via pointer so we need one more load */
-      member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr, NULL);
+      member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
       assert(member_ptr->target_ptr);
       target_type = deref_type(target_type);
     }
@@ -2473,7 +2455,7 @@ bool
 analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 {
   MirType *dest_type = cast->base.const_value.type;
-  cast->next         = insert_instr_load_if_needed(cnt, cast->next, dest_type);
+  cast->next         = insert_instr_load_if_needed(cnt, cast->next);
   MirInstr *src      = cast->next;
   assert(src);
 
@@ -2672,7 +2654,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 bool
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
-  br->cond = insert_instr_load_if_needed(cnt, br->cond, NULL);
+  br->cond = insert_instr_load_if_needed(cnt, br->cond);
   assert(br->cond && br->then_block && br->else_block);
   assert(br->cond->analyzed);
 
@@ -2745,7 +2727,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
   MirType *ret_type = NULL;
   if (type_fn->ret_type) {
-    type_fn->ret_type = insert_instr_load_if_needed(cnt, type_fn->ret_type, NULL);
+    type_fn->ret_type = insert_instr_load_if_needed(cnt, type_fn->ret_type);
     assert(type_fn->ret_type->comptime);
     ret_type = type_fn->ret_type->const_value.data.v_type;
     assert(ret_type);
@@ -2763,7 +2745,7 @@ analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
   MirMember *member = decl->member;
   assert(member);
 
-  decl->type = insert_instr_load_if_needed(cnt, decl->type, NULL);
+  decl->type = insert_instr_load_if_needed(cnt, decl->type);
   reduce_instr(cnt, decl->type);
 
   /* NOTE: Members will be provided by instr type struct because we need to know right ordering of
@@ -2790,7 +2772,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
     for (size_t i = 0; i < memc; ++i) {
       member_instr = &bo_array_at(type_struct->members, i, MirInstr *);
 
-      *member_instr = insert_instr_load_if_needed(cnt, *member_instr, NULL);
+      *member_instr = insert_instr_load_if_needed(cnt, *member_instr);
       reduce_instr(cnt, *member_instr);
 
       decl_member = (MirInstrDeclMember *)*member_instr;
@@ -2823,7 +2805,7 @@ bool
 analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 {
   assert(type_slice->elem_type);
-  type_slice->elem_type = insert_instr_load_if_needed(cnt, type_slice->elem_type, NULL);
+  type_slice->elem_type = insert_instr_load_if_needed(cnt, type_slice->elem_type);
 
   reduce_instr(cnt, type_slice->elem_type);
 
@@ -2842,7 +2824,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->base.const_value.type);
   assert(type_arr->elem_type->analyzed);
 
-  type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len, NULL);
+  type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len);
 
   bool valid;
   type_arr->len = try_impl_cast(cnt, type_arr->len, cnt->builtin_types.entry_usize, &valid);
@@ -2881,7 +2863,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   assert(type_ptr->type);
 
-  type_ptr->type = insert_instr_load_if_needed(cnt, type_ptr->type, NULL);
+  type_ptr->type = insert_instr_load_if_needed(cnt, type_ptr->type);
   reduce_instr(cnt, type_ptr->type);
   assert(type_ptr->type->comptime);
   MirType *src_type = type_ptr->type->const_value.data.v_type;
@@ -2906,8 +2888,8 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
    ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)))
 
   /* insert load instructions is the are needed */
-  binop->lhs = insert_instr_load_if_needed(cnt, binop->lhs, NULL);
-  binop->rhs = insert_instr_load_if_needed(cnt, binop->rhs, NULL);
+  binop->lhs = insert_instr_load_if_needed(cnt, binop->lhs);
+  binop->rhs = insert_instr_load_if_needed(cnt, binop->rhs);
 
   /* setup llvm type for null type */
   if (binop->lhs->const_value.type->kind == MIR_TYPE_NULL)
@@ -2953,7 +2935,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 bool
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-  unop->instr = insert_instr_load_if_needed(cnt, unop->instr, NULL);
+  unop->instr = insert_instr_load_if_needed(cnt, unop->instr);
   assert(unop->instr && unop->instr->analyzed);
   MirType *type = unop->instr->const_value.type;
   assert(type);
@@ -2981,7 +2963,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   assert(block);
   if (!block->terminal) block->terminal = &ret->base;
 
-  ret->value      = insert_instr_load_if_needed(cnt, ret->value, NULL);
+  ret->value      = insert_instr_load_if_needed(cnt, ret->value);
   MirInstr *value = ret->value;
   if (value) {
     assert(value->analyzed);
@@ -3045,7 +3027,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (decl->init) {
     setup_null_type_if_needed(decl->init->const_value.type, var->alloc_type);
-    decl->init = insert_instr_load_if_needed(cnt, decl->init, NULL);
+    decl->init = insert_instr_load_if_needed(cnt, decl->init);
 
     /* validate types or infer */
     if (var->alloc_type) {
@@ -3143,7 +3125,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
       call_arg        = &bo_array_at(call->args, i, MirInstr *);
       callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
 
-      *call_arg = insert_instr_load_if_needed(cnt, *call_arg, callee_arg_type);
+      *call_arg = insert_instr_load_if_needed(cnt, *call_arg);
 
       /* setup correct type of llvm null for call(null) */
       setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
@@ -3174,7 +3156,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   assert(dest_type && "store destination has invalid base type");
 
   /* insert load if needed */
-  store->src = insert_instr_load_if_needed(cnt, store->src, dest_type);
+  store->src = insert_instr_load_if_needed(cnt, store->src);
 
   /* setup llvm type for null type */
   setup_null_type_if_needed(store->src->const_value.type, dest_type);
@@ -3717,37 +3699,6 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
     else
       exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
-    break;
-  }
-
-  case MIR_CAST_ARRTOSLICE: {
-    /* cast from array pouinter to slice struct */
-    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
-    exec_read_value(&tmp, from_ptr, src_type);
-
-    if (cast->base.comptime) {
-      bl_unimplemented;
-    } else {
-      MirRelativeStackPtr slice_ptr_rel = exec_push_stack(cnt, NULL, dest_type);
-      MirStackPtr         slice_ptr     = exec_read_stack_ptr(cnt, slice_ptr_rel);
-
-      assert(is_slice_type(dest_type));
-      const ptrdiff_t ptr_offset =
-          LLVMOffsetOfElement(cnt->module->llvm_td, dest_type->llvm_type, 0);
-      const ptrdiff_t len_offset =
-          LLVMOffsetOfElement(cnt->module->llvm_td, dest_type->llvm_type, 1);
-
-      const uint64_t len = deref_type(src_type)->data.array.len;
-      assert(len && "creating slice from zero sized array");
-
-      MirType *ptr_type = bo_array_at(dest_type->data.strct.members, 0, MirType *);
-      MirType *len_type = bo_array_at(dest_type->data.strct.members, 1, MirType *);
-
-      /* Copy data to the right destination. Slice is consist of pointer to the array begin and
-       * array len in usize */
-      memcpy(slice_ptr + ptr_offset, &tmp.v_stack_ptr, ptr_type->store_size_bytes);
-      memcpy(slice_ptr + len_offset, &len, len_type->store_size_bytes);
-    }
     break;
   }
 

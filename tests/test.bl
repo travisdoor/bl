@@ -1,6 +1,6 @@
 /* playground */
 
-load "std/basics.bl"
+#load "std/core.bl"
 
 main :: fn () s32 {
   arr   : [10]s32;
@@ -9,6 +9,7 @@ main :: fn () s32 {
   slice.ptr = arr.ptr;
   slice.len = arr.len;
 
+  slice = arr;
   return get_len(arr);
 };
 

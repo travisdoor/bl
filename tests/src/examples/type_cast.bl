@@ -1,4 +1,4 @@
-test "type cast" {
+#test "type cast" {
   // default type of integer literal is 's32'
   i := 666; 
 

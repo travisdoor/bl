@@ -1,4 +1,4 @@
-test "ifs" {
+#test "ifs" {
   b := true;
   if b {
   } else {

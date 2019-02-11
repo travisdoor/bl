@@ -72,7 +72,6 @@
    }
    #+END_SRC
 
-   
 ** Stack manipulation
    - Interpreter is used for evaluation of compile-time known expressions during analyze process.
    - Compile-time known values are not pushed on the stack.
@@ -108,7 +107,6 @@
        17             InstrRet  POP RA
    execution finished with state: 0
    #+END_EXAMPLE
-
 
 * Function
    #+BEGIN_EXAMPLE
@@ -385,15 +383,3 @@
    <T> inttoptr <target> // yields value with casted type
    #+END_EXAMPLE
 
-** arrtoslice
-   Cast array to slice. Instruction expects pointer to an array not value!
-
-   #+BEGIN_EXAMPLE
-   <T> arrtoslice <target> // yields value with casted type
-   #+END_EXAMPLE
-
-   Stack operations:
-   | stack op | data   | description          |
-   |----------+--------+----------------------|
-   | POP      | target |                      |
-   | PUSH     | result | result with new type |

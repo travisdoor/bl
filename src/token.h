@@ -49,13 +49,13 @@
   sm(NULL,           "null") \
   sm(ENUM,           "enum") \
   sm(LOOP,           "loop")\
-  sm(LOAD,           "load") \
-  sm(TEST,           "test") \
   sm(FALSE,          "false") \
+  sm(LOAD,           "#load") \
+  sm(TEST,           "#test") \
   sm(BREAK,          "break")\
   sm(RETURN,         "return") \
   sm(STRUCT,         "struct") \
-  sm(EXTERN,         "extern") \
+  sm(EXTERN,         "#extern") \
   sm(CONTINUE,       "continue") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
