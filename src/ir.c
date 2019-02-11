@@ -266,8 +266,24 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
   assert(llvm_arr_ptr && llvm_index);
 
+  if (elem_ptr->target_is_slice) {
+    /* special case for slices */
+    llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 0, "");
+    llvm_arr_ptr = LLVMBuildLoad(cnt->llvm_builder, llvm_arr_ptr, "");
+    assert(llvm_arr_ptr);
+
+    LLVMValueRef llvm_indices[1];
+    llvm_indices[0] = llvm_index;
+
+    elem_ptr->base.llvm_value =
+        LLVMBuildInBoundsGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+
+    return;
+  }
+
+  // PERFORMANCE: create shared const int value, not create new one very time!
   LLVMValueRef llvm_indices[2];
-  llvm_indices[0] = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, false);
+  llvm_indices[0] = LLVMConstInt(LLVMInt64TypeInContext(cnt->llvm_cnt), 0, false);
   llvm_indices[1] = llvm_index;
 
   elem_ptr->base.llvm_value =
@@ -277,8 +293,8 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 void
 gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
-  LLVMValueRef       llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
-    assert(llvm_target_ptr);
+  LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
+  assert(llvm_target_ptr);
 
   if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
     assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);

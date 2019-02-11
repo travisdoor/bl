@@ -15,7 +15,7 @@ main :: fn () s32 {
   assert(slice[0] == 10);
   assert(slice[1] == 11);
   assert(slice[2] == 12);
-  
+
   return get_len(slice);
 };
 
