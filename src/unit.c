@@ -61,7 +61,7 @@ search_file(const char *filepath, const char *wdir)
 {
   if (filepath == NULL) return NULL;
 
-  char tmp_rpath[PATH_MAX] = {0}; 
+  char tmp_rpath[PATH_MAX] = {0};
   if (get_dir_from_filepath(tmp_rpath, PATH_MAX, wdir)) {
     strcat(&tmp_rpath[0], PATH_SEPARATOR);
     strcat(&tmp_rpath[0], filepath);

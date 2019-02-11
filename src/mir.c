@@ -311,6 +311,9 @@ static MirInstr *
 append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
 
 static MirInstr *
+create_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
+
+static MirInstr *
 append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
 
 static MirInstr *
@@ -361,6 +364,9 @@ static MirInstr *
 append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
 
 static MirInstr *
+create_instr_const_usize(Context *cnt, Ast *node, uint64_t val);
+
+static MirInstr *
 append_instr_const_int(Context *cnt, Ast *node, uint64_t val);
 
 static MirInstr *
@@ -392,6 +398,12 @@ append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op);
 
 static MirInstr *
 append_instr_unrecheable(Context *cnt, Ast *node);
+
+static MirInstr *
+create_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
+
+static MirInstr *
+append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 
 /* ast */
 static MirInstr *
@@ -725,6 +737,21 @@ insert_instr_after(MirInstr *after, MirInstr *instr)
   after->next = instr;
 
   instr->owner_block = after->owner_block;
+  if (instr->owner_block->last_instr == after) instr->owner_block->last_instr = instr;
+}
+
+static inline void
+insert_instr_before(MirInstr *before, MirInstr *instr)
+{
+  assert(before && instr);
+
+  instr->next = before;
+  instr->prev = before->prev;
+  if (before->prev) before->prev->next = instr;
+  before->prev = instr;
+
+  instr->owner_block = before->owner_block;
+  if (instr->owner_block->entry_instr == before) instr->owner_block->entry_instr = instr;
 }
 
 static inline const char *
@@ -1683,7 +1710,7 @@ append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
 }
 
 MirInstr *
-append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index)
+create_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index)
 {
   assert(arr_ptr && index);
   ref_instr(arr_ptr);
@@ -1692,8 +1719,15 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
   tmp->arr_ptr         = arr_ptr;
   tmp->index           = index;
 
-  push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
+}
+
+MirInstr *
+append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index)
+{
+  MirInstr *tmp = create_instr_elem_ptr(cnt, node, arr_ptr, index);
+  push_into_curr_block(cnt, tmp);
+  return tmp;
 }
 
 MirInstr *
@@ -1724,14 +1758,20 @@ append_instr_load(Context *cnt, Ast *node, MirInstr *src)
 }
 
 MirInstr *
-append_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
+create_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
 {
   ref_instr(src);
   MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDROF, node, MirInstrAddrOf *);
   tmp->src            = src;
-
-  push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
+}
+
+MirInstr *
+append_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
+{
+  MirInstr *tmp = create_instr_addrof(cnt, node, src);
+  push_into_curr_block(cnt, tmp);
+  return tmp;
 }
 
 MirInstr *
@@ -1827,6 +1867,17 @@ append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
+}
+
+static MirInstr *
+create_instr_const_usize(Context *cnt, Ast *node, uint64_t val)
+{
+  MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime               = true;
+  tmp->const_value.type       = cnt->builtin_types.entry_usize;
+  tmp->const_value.data.v_int = (long long int)val;
+
+  return tmp;
 }
 
 MirInstr *
@@ -2315,10 +2366,23 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
     } else if (is_builtin(ast_member_ident, BUILTIN_ARR_PTR)) {
       /* .ptr -> This will be replaced by:
        *     elemptr
-       *     addrof	 
+       *     addrof
        * to match syntax: &array[0]
        */
-      bl_unimplemented;
+
+      MirInstr *index    = create_instr_const_usize(cnt, NULL, 0);
+      MirInstr *elem_ptr = create_instr_elem_ptr(cnt, NULL, target_ptr, index);
+      ref_instr(elem_ptr);
+
+      insert_instr_before(&member_ptr->base, elem_ptr);
+
+      analyze_instr(cnt, index, false);
+      analyze_instr(cnt, elem_ptr, false);
+
+      MirInstrAddrOf *addrof_elem =
+          (MirInstrAddrOf *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
+      addrof_elem->src = elem_ptr;
+      analyze_instr(cnt, &addrof_elem->base, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, ast_member_ident->src,
                   BUILDER_CUR_WORD, "unknown member");
