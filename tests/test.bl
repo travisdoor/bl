@@ -5,13 +5,15 @@
 bar : s32;
 
 main :: fn () s32 {
-  foo = 0;
+  foo = 10;
+  if foo == 10 {
+    say_hello();
+  }
   return 0;
 };
 
 foo : s32;
 
-/*
 say_hello :: fn () {
   putchar(72);
   putchar(101);
@@ -28,4 +30,3 @@ say_hello :: fn () {
 };
 
 putchar :: fn (c: s32) s32 #extern;
-*/
