@@ -3074,15 +3074,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   }
 
   if (decl->init) {
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
-    if (decl->init->kind == MIR_INSTR_CALL) {
+    if (decl->init->kind == MIR_INSTR_CALL && decl->init->comptime) {
       analyze_instr(cnt, decl->init, true);
       exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
     }
