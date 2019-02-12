@@ -38,6 +38,7 @@
 #define ARENA_CHUNK_COUNT               512
 #define TEST_CASE_FN_NAME               "__test"
 #define RESOLVE_TYPE_FN_NAME            "__type"
+#define INIT_VALUE_FN_NAME              "__init"
 #define IMPL_FN_NAME                    "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
@@ -143,7 +144,7 @@ static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
     {.str = "s32", .hash = 0},   {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
     {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
     {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null", .hash = 0},
+    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
     {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
 };
 
@@ -273,7 +274,7 @@ static MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
-create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
+create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 
 static MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
@@ -370,7 +371,7 @@ static MirInstr *
 append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_type_override);
 
 static MirInstr *
 append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
@@ -392,7 +393,7 @@ append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 
 /* ast */
 static MirInstr *
-ast_create_type_resolver_call(Context *cnt, Ast *type);
+ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type);
 
 static MirInstr *
 ast(Context *cnt, Ast *node);
@@ -1526,14 +1527,14 @@ append_block(Context *cnt, MirFn *fn, const char *name)
 }
 
 MirInstr *
-create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
+create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
 {
-  assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
-  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, type, MirInstrCall *);
+  assert(fn && fn->kind == MIR_INSTR_FN_PROTO);
+  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
   tmp->base.id       = 0;
   tmp->base.comptime = true;
-  tmp->callee        = resolver_fn;
-  ref_instr(resolver_fn);
+  tmp->callee        = fn;
+  ref_instr(fn);
   return &tmp->base;
 }
 
@@ -1938,14 +1939,15 @@ append_instr_const_null(Context *cnt, Ast *node)
 }
 
 MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_type_override)
 {
   if (value) ref_instr(value);
 
-  MirInstrRet *tmp           = create_instr(cnt, MIR_INSTR_RET, node, MirInstrRet *);
-  tmp->base.const_value.type = cnt->builtin_types.entry_void;
-  tmp->base.ref_count        = NO_REF_COUNTING;
-  tmp->value                 = value;
+  MirInstrRet *tmp                = create_instr(cnt, MIR_INSTR_RET, node, MirInstrRet *);
+  tmp->base.const_value.type      = cnt->builtin_types.entry_void;
+  tmp->base.ref_count             = NO_REF_COUNTING;
+  tmp->value                      = value;
+  tmp->allow_fn_ret_type_override = allow_fn_ret_type_override;
 
   MirInstrBlock *block = get_current_block(cnt);
   terminate_block(block, &tmp->base);
@@ -2622,6 +2624,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
       }
     }
 
+    if (!type_val->data.v_type) return false;
     assert(type_val->data.v_type->kind == MIR_TYPE_FN);
     fn_proto->base.const_value.type = type_val->data.v_type;
   }
@@ -3012,6 +3015,12 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   assert(fn_type);
   assert(fn_type->kind == MIR_TYPE_FN);
 
+  if (ret->allow_fn_ret_type_override) {
+    /* return is supposed to override function return type */
+    fn_type->data.fn.ret_type =
+        ret->value ? ret->value->const_value.type : cnt->builtin_types.entry_void;
+  }
+
   const bool expected_ret_value =
       !type_cmp(fn_type->data.fn.ret_type, cnt->builtin_types.entry_void);
 
@@ -3065,6 +3074,18 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   }
 
   if (decl->init) {
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    // TODO: this cause error when local variable is set based on function call which is not in comptime!!!
+    if (decl->init->kind == MIR_INSTR_CALL) {
+      analyze_instr(cnt, decl->init, true);
+      exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
+    }
     setup_null_type_if_needed(decl->init->const_value.type, var->alloc_type);
     decl->init = insert_instr_load_if_needed(cnt, decl->init);
 
@@ -3081,6 +3102,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     }
 
     decl->base.comptime = var->comptime = !var->is_mutable && decl->init->comptime;
+  } else if (var->is_in_gscope) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNINITIALIZED, decl->base.node->src,
+                BUILDER_CUR_WORD, "all globals must be initialized to compile time known value");
+    return false;
   }
 
   if (!var->alloc_type) {
@@ -3233,7 +3258,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
     assert(fn);
 
     if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
-      append_instr_ret(cnt, NULL, NULL);
+      append_instr_ret(cnt, NULL, NULL, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->decl_node->src,
                   BUILDER_CUR_WORD, "not every path inside function return value");
@@ -4512,7 +4537,7 @@ void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-  append_instr_ret(cnt, ret, value);
+  append_instr_ret(cnt, ret, value, false);
 }
 
 MirInstr *
@@ -4532,7 +4557,8 @@ ast_expr_cast(Context *cnt, Ast *cast)
   assert(ast_type && ast_next);
 
   // TODO: const type!!!
-  MirInstr *type = ast_create_type_resolver_call(cnt, ast_type);
+  MirInstr *type = ast_create_impl_fn_call(cnt, ast_type, RESOLVE_TYPE_FN_NAME,
+                                           cnt->builtin_types.entry_resolve_type_fn);
   MirInstr *next = ast(cnt, ast_next);
 
   return append_instr_cast(cnt, cast, type, next);
@@ -4649,7 +4675,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL);
 
-  fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
+  fn_proto->type = ast_create_impl_fn_call(cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME,
+                                           cnt->builtin_types.entry_resolve_type_fn);
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
@@ -4803,7 +4830,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
     value->const_value.data.v_fn->decl_node = ast_name;
 
     if (ast_type) {
-      ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
+      ((MirInstrFnProto *)value)->user_type = ast_create_impl_fn_call(
+          cnt, ast_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.entry_resolve_type_fn);
     }
 
     /* check main */
@@ -4813,10 +4841,21 @@ ast_decl_entity(Context *cnt, Ast *entity)
       cnt->entry_fn->ref_count = 1; /* main must be generated into LLVM */
     }
   } else {
-    MirInstr *type = ast_type ? ast_create_type_resolver_call(cnt, ast_type) : NULL;
+    MirInstr *type = ast_type ? ast_create_impl_fn_call(cnt, ast_type, RESOLVE_TYPE_FN_NAME,
+                                                        cnt->builtin_types.entry_resolve_type_fn)
+                              : NULL;
 
     /* initialize value */
-    MirInstr *value = ast(cnt, ast_value);
+    MirInstr *value = NULL;
+    if (is_in_gscope) {
+      /* Initialization of global variables must be done in implicit initializer function executed
+       * in compile time. Every initialization function must be able to be executed in compile
+       * time. */
+      value = ast_value ? ast_create_impl_fn_call(cnt, ast_value, INIT_VALUE_FN_NAME, NULL) : NULL;
+    } else {
+      value = ast(cnt, ast_value);
+    }
+
     if (value) value->node = ast_name;
     append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope);
 
@@ -4967,22 +5006,34 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 }
 
 MirInstr *
-ast_create_type_resolver_call(Context *cnt, Ast *type)
+ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type)
 {
-  if (!type) return NULL;
+  if (!node) return NULL;
+
+  /* Sometimes we need to have implicit function return type based on resulting type of the AST
+   * expression, in such case we must allow return instruction to change function return type and
+   * create dummy type for the function. */
+  MirType *final_fn_type  = fn_type;
+  bool     infer_ret_type = false;
+  if (!final_fn_type) {
+    final_fn_type  = create_type_fn(cnt, NULL, NULL);
+    infer_ret_type = true;
+  }
+
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
-  fn->const_value.type      = cnt->builtin_types.entry_resolve_type_fn;
-  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, RESOLVE_TYPE_FN_NAME, NULL, false, false);
+  fn->const_value.type      = final_fn_type;
+  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, fn_name, NULL, false, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
 
-  MirInstr *result = ast(cnt, type);
-  append_instr_ret(cnt, NULL, result);
+  MirInstr *result = ast(cnt, node);
+  /* Guess return type here when it is based on expression result... */
+  append_instr_ret(cnt, NULL, result, infer_ret_type);
 
   set_cursor_block(cnt, prev_block);
-  return create_instr_call_type_resolve(cnt, fn, type);
+  return create_instr_call_comptime(cnt, node, fn);
 }
 
 MirInstr *

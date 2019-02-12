@@ -49,7 +49,7 @@
 
 (defconst blm-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void"  
-    "type" "slice"))
+    "type" "slice" "null_t"))
 
 (defconst blm-constants
   '("true" "false" "null"))
@@ -92,7 +92,10 @@
     ("$\\w+" . font-lock-reference-face)
 
     ;; Invalid
-    ("<\\w+>" . font-lock-warning-face)
+    ("<.*>" . font-lock-warning-face)
+
+    ;; Analyze helper instruction
+    ("'\\w+" . font-lock-builtin-face)
 
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)

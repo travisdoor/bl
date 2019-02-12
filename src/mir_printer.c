@@ -87,6 +87,7 @@ print_const_value(MirInstr *instr, FILE *stream)
     fprintf(stream, "%p", value->data.v_void_ptr);
     break;
   case MIR_TYPE_NULL:
+    fprintf(stream, "null");
     break;
   case MIR_TYPE_ARRAY:
     if (value->kind == MIR_CV_STRING) {
@@ -97,11 +98,11 @@ print_const_value(MirInstr *instr, FILE *stream)
       fprintf(stream, "\"");
       free(tmp);
     } else {
-      fprintf(stream, "cannot read value");
+      fprintf(stream, "<cannot read value>");
     }
     break;
   default:
-    fprintf(stream, "cannot read value");
+    fprintf(stream, "<cannot read value>");
   }
 }
 
@@ -462,6 +463,8 @@ print_instr_ret(MirInstrRet *ret, FILE *stream)
 {
   print_instr_head(&ret->base, stream, "ret");
   if (ret->value) print_comptime_value_or_id(ret->value, stream);
+  if (ret->allow_fn_ret_type_override)
+  fprintf(stream, " // can override");
 }
 
 void

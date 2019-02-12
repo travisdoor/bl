@@ -595,21 +595,14 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (var->is_in_gscope) {
     /* OK variable is declared in global scope so we need different generation here*/
-    bl_warning("Generate global scope variable in IR!!!");
     /* Generates destination for global if there is no one. Global variable can come later than it
      * is used, so we call same function during generation of the declref instruction IR. */
     gen_global_var_proto(cnt, var);
 
     /* Globals must be set to some value */
-    // assert(decl->init);
+    assert(decl->init);
 
-    /* TEST!!! */
-    /* TEST!!! */
-    /* TEST!!! */
-    /* TEST!!! */
-    /* TEST!!! */
-    assert(var->alloc_type->kind == MIR_TYPE_INT && var->alloc_type->data.integer.bitcount == 32);
-    LLVMValueRef tmp = LLVMConstInt(LLVMInt32TypeInContext(cnt->llvm_cnt), 0, true);
+    LLVMValueRef tmp = fetch_value(cnt, decl->init);
     LLVMSetInitializer(var->llvm_value, tmp);
   } else {
     assert(var->llvm_value);
