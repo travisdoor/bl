@@ -3132,6 +3132,16 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   if (var->is_in_gscope) {
     /* push variable into globals of the mir module */
     bo_array_push_back(cnt->module->globals, decl);
+
+    /* Global varibales which are not compile time constants are allocated on the stack, one option
+     * is to do allocation every time when we invoke comptime function execution, but we don't know
+     * which globals will be used by function and we also don't known whatever function has some
+     * side effect or not. So we produce allocation here. Variable will be stored in static data
+     * segment. There is no need to use relative pointers here. */
+    if (!var->comptime) {
+      bl_unimplemented;	
+    }
+    bl_warning("global allocated on the stack");
   } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;

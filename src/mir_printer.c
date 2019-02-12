@@ -392,7 +392,6 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
     } else {
       fprintf(stream, "<uninitialized>");
     }
-    fprintf(stream, "\n");
   } else {
     /* local scope variable */
     print_instr_head(&decl->base, stream, "decl");

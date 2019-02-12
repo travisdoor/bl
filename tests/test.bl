@@ -2,19 +2,12 @@
 
 #load "std/core.bl"
 
-bar := 10 * 10 + 200;
-ptr : *s32 = null;
+foo := 0;
 
 main :: fn () s32 {
-  foo = true;
-
-  i := 10;
-  ptr = &i;
-
+  foo = 10;
   return 0;
 };
-
-foo : bool = false;
 
 /*
 say_hello :: fn () {
