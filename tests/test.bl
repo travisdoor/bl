@@ -5,8 +5,12 @@
 foo := 0;
 
 main :: fn () s32 {
+  baz();
+  return foo;
+};
+
+baz :: fn () {
   foo = 10;
-  return 0;
 };
 
 /*

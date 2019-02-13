@@ -331,3 +331,18 @@
   assert((bar.foo).i == 10);
   assert((bar.foo).j == 20);
 };
+
+
+_GlobalInt1     := 10;
+_GlobalInt2     := 10 + 10; // 20
+_GlobalConstInt :: 10;
+_GlobalType     :: s32;
+
+#test "globals" {
+  assert(_GlobalInt1 == 10);
+  assert(_GlobalInt2 == 20);
+  assert(_GlobalConstInt == 10);
+
+  foo : _GlobalType = 10;
+  assert(foo == 10);
+};

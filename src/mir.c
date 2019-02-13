@@ -44,7 +44,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_EXEC                    false
+#define VERBOSE_EXEC                    false 
 // clang-format on
 
 union _MirInstr
@@ -753,9 +753,13 @@ gen_uq_name(Context *cnt, const char *prefix)
   return bo_string_get(s);
 }
 
+/* Global variables are allocated in static data segment, so there is no need to use relative
+ * pointer. When we set ignore to true original pointer is returned as absolute pointer to the
+ * stack.  */
 static inline MirStackPtr
-exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr)
+exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr, bool ignore)
 {
+  if (ignore) return (MirStackPtr)rel_ptr;
   assert(rel_ptr);
 
   MirStackPtr base = (MirStackPtr)cnt->exec_stack->ra;
@@ -874,10 +878,15 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
-    mir_type_to_str(type_name, 256, type);
-    fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
-            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
-            size, tmp, type_name);
+    mir_type_to_str(type_name, 256, type, true);
+    if (cnt->exec_stack->pc) {
+      fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
+              (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
+              size, tmp, type_name);
+    } else {
+      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n\n", size, tmp,
+              type_name);
+    }
   }
 #endif
 
@@ -896,7 +905,7 @@ exec_pop_stack(Context *cnt, MirType *type)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
-    mir_type_to_str(type_name, 256, type);
+    mir_type_to_str(type_name, 256, type, true);
     fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",
             (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
             size, cnt->exec_stack->top_ptr - size, type_name);
@@ -3139,9 +3148,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
      * side effect or not. So we produce allocation here. Variable will be stored in static data
      * segment. There is no need to use relative pointers here. */
     if (!var->comptime) {
-      bl_unimplemented;	
+      exec_instr_decl_var(cnt, decl);
     }
-    bl_warning("global allocated on the stack");
   } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
@@ -3883,11 +3891,12 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     MirVar *var = entry->data.var;
     assert(var);
 
-    MirStackPtr real_ptr = NULL;
+    const bool  use_static_segment = var->is_in_gscope;
+    MirStackPtr real_ptr           = NULL;
     if (var->comptime) {
       real_ptr = (MirStackPtr)&var->value->data;
     } else {
-      real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+      real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     }
 
     ref->base.const_value.data.v_stack_ptr = real_ptr;
@@ -3919,6 +3928,8 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
    */
   if (var->comptime) return;
 
+  const bool use_static_segment = var->is_in_gscope;
+
   /* read initialization value if there is one */
   MirStackPtr init_ptr = NULL;
   if (decl->init) init_ptr = exec_fetch_value(cnt, decl->init);
@@ -3928,7 +3939,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   /* initialize variable if there is some init value */
   if (decl->init) {
-    MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+    MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr && init_ptr);
     memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
   }
@@ -4013,7 +4024,6 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValueData *out_value)
   assert(ret_type);
   const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
-  exec_reset_stack(cnt->exec_stack);
   /* push terminal frame on stack */
   exec_push_ra(cnt, NULL);
 
