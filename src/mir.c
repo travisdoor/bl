@@ -923,6 +923,28 @@ exec_pop_stack(Context *cnt, MirType *type)
 
 #define exec_pop_stack_as(cnt, type, T) ((T)exec_pop_stack((cnt), (type)))
 
+static inline void
+exec_stack_alloc_var(Context *cnt, MirVar *var)
+{
+  assert(var);
+  if (var->comptime) return;
+  /* allocate memory for variable on stack */
+  var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
+}
+
+static inline void
+exec_stack_alloc_vars(Context *cnt, MirFn *fn)
+{
+  assert(fn);
+  /* Init all stack variables. */
+  BArray *vars = fn->variables;
+  MirVar *var;
+  barray_foreach(vars, var)
+  {
+    exec_stack_alloc_var(cnt, var);
+  }
+}
+
 static inline MirStackPtr
 exec_fetch_value(Context *cnt, MirInstr *src)
 {
@@ -3166,9 +3188,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
      * which globals will be used by function and we also don't known whatever function has some
      * side effect or not. So we produce allocation here. Variable will be stored in static data
      * segment. There is no need to use relative pointers here. */
-    if (!var->comptime) {
-      exec_instr_decl_var(cnt, decl);
-    }
+    exec_stack_alloc_var(cnt, var);
   } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
@@ -3967,8 +3987,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     }
   }
 
-  /* allocate memory for variable on stack */
-  var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
+  assert(var->rel_stack_ptr);
 
   /* initialize variable if there is some init value */
   if (decl->init) {
@@ -4059,6 +4078,9 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValueData *out_value)
   /* push terminal frame on stack */
   exec_push_ra(cnt, NULL);
 
+  /* allocate local variables */
+  exec_stack_alloc_vars(cnt, fn);
+
   /* store return frame pointer */
   fn->exec_ret_value = out_value;
 
@@ -4088,7 +4110,6 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 
   MirConstValueData tmp = {0};
   exec_read_value(&tmp, val_ptr, type);
-  bl_log("%d", tmp.v_s32);
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
@@ -4185,6 +4206,8 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     /* Push current frame stack top. (Later poped by ret instruction)*/
     exec_push_ra(cnt, &call->base);
     assert(fn->first_block->entry_instr);
+
+    exec_stack_alloc_vars(cnt, fn);
 
     /* setup entry instruction */
     exec_set_pc(cnt, fn->first_block->entry_instr);

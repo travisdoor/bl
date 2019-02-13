@@ -3,19 +3,12 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := "I'm glad to see this message!!!\n";
-  //str_slice := str_to_slice(str.ptr, str.len);
-  str_slice : []u8;
-  str_slice.ptr = str.ptr;
-  str_slice.len = str.len;
+  str := " - I'm glad to see this message!!!\n";
+  str_slice := str_to_slice(str.ptr, str.len);
   
-  print_str(str_slice);
-  print_str(str_slice);
-  //print_str(str_slice);
-  //print_str(str_slice);
-
   loop i := 0; i < 1000000; i += 1 {
-    foo := i;
+    print_int(i);
+    print_str(str_slice);
   }
 
   return 0;
