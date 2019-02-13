@@ -3,28 +3,18 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := "hello\n";
-
-  write(C_STDOUT, &str[0], str.len);
-  //print_str(tmp);
+  str := "I'm glad to see this message!!!\n";
+  tmp := str_to_slice(str.ptr, str.len);
+  
+  print_str(tmp);
+  print_int(666);
 
   return 0;
 };
 
-/*
-say_hello :: fn () {
-  putchar(72);
-  putchar(101);
-  putchar(108);
-  putchar(108);
-  putchar(111);
-  putchar(32);
-  putchar(87);
-  putchar(111);
-  putchar(114);
-  putchar(108);
-  putchar(100);
-  putchar(10);
+str_to_slice :: fn (str: *u8, len: usize) []u8 {
+  tmp : []u8;
+  tmp.ptr = str;
+  tmp.len = len;
+  return tmp;
 };
-
-*/
