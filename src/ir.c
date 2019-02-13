@@ -291,7 +291,7 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
   if (elem_ptr->target_is_slice) {
     /* special case for slices */
-    llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 0, "");
+    llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 1, "");
     llvm_arr_ptr = LLVMBuildLoad(cnt->llvm_builder, llvm_arr_ptr, "");
     assert(llvm_arr_ptr);
 
@@ -337,10 +337,10 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
     if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN) {
       /* .len */
-      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
+      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
     } else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR) {
       /* .ptr*/
-      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
+      member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
     }
   }
 }

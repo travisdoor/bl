@@ -1264,8 +1264,9 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
   assert(mir_is_pointer_type(elem_ptr_type));
   BArray *members = bo_array_new(sizeof(MirType *));
   bo_array_reserve(members, 2);
-  bo_array_push_back(members, elem_ptr_type);
+  /* Slice layout struct { usize, *T } */
   bo_array_push_back(members, cnt->builtin_types.entry_usize);
+  bo_array_push_back(members, elem_ptr_type);
   return create_type_struct(cnt, id, NULL, members, false, true);
 }
 
@@ -2343,7 +2344,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     assert(members);
 
     /* setup type */
-    MirType *elem_type = bo_array_at(members, 0, MirType *);
+    MirType *elem_type = bo_array_at(members, 1, MirType *);
     assert(elem_type);
     elem_ptr->base.const_value.type = elem_type;
 
@@ -2427,8 +2428,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       /* slice!!! */
       BArray *slice_members = target_type->data.strct.members;
       assert(slice_members);
-      MirType *ptr_type = bo_array_at(slice_members, 0, MirType *);
-      MirType *len_type = bo_array_at(slice_members, 1, MirType *);
+      MirType *len_type = bo_array_at(slice_members, 0, MirType *);
+      MirType *ptr_type = bo_array_at(slice_members, 1, MirType *);
 
       if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN ||
           is_builtin(ast_member_ident, MIR_BUILTIN_ARR_LEN)) {
@@ -3594,17 +3595,17 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     BArray *members = arr_type->data.strct.members;
     assert(members);
 
-    MirType *ptr_type = bo_array_at(members, 0, MirType *);
-    MirType *len_type = bo_array_at(members, 1, MirType *);
+    MirType *len_type = bo_array_at(members, 0, MirType *);
+    MirType *ptr_type = bo_array_at(members, 1, MirType *);
 
     MirType *elem_type = mir_deref_type(ptr_type);
     assert(elem_type);
 
     MirConstValueData ptr_tmp = {0};
     MirConstValueData len_tmp = {0};
-    const ptrdiff_t   ptr_member_offset =
-        LLVMOffsetOfElement(cnt->module->llvm_td, arr_type->llvm_type, 0);
     const ptrdiff_t len_member_offset =
+        LLVMOffsetOfElement(cnt->module->llvm_td, arr_type->llvm_type, 0);
+    const ptrdiff_t   ptr_member_offset =
         LLVMOffsetOfElement(cnt->module->llvm_td, arr_type->llvm_type, 1);
 
     MirStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
@@ -3690,11 +3691,11 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
     if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR) {
       /* slice .ptr */
-      const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 0);
+      const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 1);
       result.v_stack_ptr         = ptr + ptr_offset; // pointer shift
     } else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN) {
       /* slice .len*/
-      const ptrdiff_t len_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 1);
+      const ptrdiff_t len_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 0);
       result.v_stack_ptr         = ptr + len_offset; // pointer shift
     } else {
       bl_abort("invalid slice member!");
@@ -3998,7 +3999,6 @@ exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 
   MirConstValueData tmp = {0};
   bl_unimplemented;
-  // tmp.v_type            = create_type_slice(cnt, elem_type);
   exec_push_stack(cnt, &tmp, cnt->builtin_types.entry_type);
 }
 
@@ -5256,7 +5256,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
       BArray *members = type->data.strct.members;
       if (members) {
-        MirType *tmp = bo_array_at(members, 0, MirType *);
+        MirType *tmp = bo_array_at(members, 1, MirType *);
         _type_to_str(buf, len, tmp, true);
       }
 

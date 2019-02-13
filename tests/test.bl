@@ -2,15 +2,8 @@
 
 #load "std/core.bl"
 
-foo := 0;
-
-main :: fn () s32 {
-  baz();
-  return foo;
-};
-
-baz :: fn () {
-  foo = 10;
+main :: fn (args: []*u8) s32 {
+  return args.len;
 };
 
 /*
