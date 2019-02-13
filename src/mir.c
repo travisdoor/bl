@@ -368,6 +368,9 @@ static MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str);
 
 static MirInstr *
+append_instr_const_char(Context *cnt, Ast *node, char c);
+
+static MirInstr *
 append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
@@ -496,6 +499,9 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn);
 
 static MirInstr *
 ast_expr_lit_string(Context *cnt, Ast *lit_string);
+
+static MirInstr *
+ast_expr_lit_char(Context *cnt, Ast *lit_char);
 
 static MirInstr *
 ast_expr_binop(Context *cnt, Ast *binop);
@@ -1869,7 +1875,7 @@ create_instr_const_usize(Context *cnt, Ast *node, uint64_t val)
   MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime               = true;
   tmp->const_value.type       = cnt->builtin_types.entry_usize;
-  tmp->const_value.data.v_int = (long long int)val;
+  tmp->const_value.data.v_u64 = val;
 
   return tmp;
 }
@@ -1880,7 +1886,7 @@ append_instr_const_int(Context *cnt, Ast *node, uint64_t val)
   MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime               = true;
   tmp->const_value.type       = cnt->builtin_types.entry_s32;
-  tmp->const_value.data.v_int = (long long int)val;
+  tmp->const_value.data.v_s64 = (int64_t)val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -1893,7 +1899,7 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
   tmp->comptime         = true;
   tmp->const_value.type = cnt->builtin_types.entry_f32;
   // memcpy(&tmp->const_value.data, &val, sizeof(float));
-  tmp->const_value.data.v_float = val;
+  tmp->const_value.data.v_f32 = val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -1902,10 +1908,10 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
 MirInstr *
 append_instr_const_double(Context *cnt, Ast *node, double val)
 {
-  MirInstr *tmp                  = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-  tmp->comptime                  = true;
-  tmp->const_value.type          = cnt->builtin_types.entry_f64;
-  tmp->const_value.data.v_double = val;
+  MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime               = true;
+  tmp->const_value.type       = cnt->builtin_types.entry_f64;
+  tmp->const_value.data.v_f64 = val;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -1931,6 +1937,18 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
   tmp->const_value.type       = create_type_array(cnt, cnt->builtin_types.entry_u8, strlen(str));
   tmp->const_value.data.v_str = str;
   tmp->const_value.kind       = MIR_CV_STRING;
+
+  push_into_curr_block(cnt, tmp);
+  return tmp;
+}
+
+MirInstr *
+append_instr_const_char(Context *cnt, Ast *node, char c)
+{
+  MirInstr *tmp                = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+  tmp->comptime                = true;
+  tmp->const_value.type        = cnt->builtin_types.entry_u8;
+  tmp->const_value.data.v_char = c;
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -2321,10 +2339,11 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     /* array */
     if (elem_ptr->index->comptime) {
       const size_t len = arr_type->data.array.len;
-      if (elem_ptr->index->const_value.data.v_uint >= len) {
+      const size_t i   = elem_ptr->index->const_value.data.v_u64;
+      if (i >= len) {
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_BOUND_CHECK_FAILED,
                     elem_ptr->index->node->src, BUILDER_CUR_WORD,
-                    "array index is out of the bounds");
+                    "Array index is out of the bounds (%llu)", i);
         return false;
       }
     }
@@ -2379,10 +2398,10 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
       erase_instr(member_ptr->target_ptr);
       /* mutate instruction into constant */
-      MirInstr *len                = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
-      len->comptime                = true;
-      len->const_value.type        = cnt->builtin_types.entry_usize;
-      len->const_value.data.v_uint = target_type->data.array.len;
+      MirInstr *len               = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+      len->comptime               = true;
+      len->const_value.type       = cnt->builtin_types.entry_usize;
+      len->const_value.data.v_u64 = target_type->data.array.len;
     } else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR ||
                is_builtin(ast_member_ident, MIR_BUILTIN_ARR_PTR)) {
       /* .ptr -> This will be replaced by:
@@ -2891,7 +2910,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->len->comptime && "this must be error");
   reduce_instr(cnt, type_arr->len);
 
-  const size_t len = type_arr->len->const_value.data.v_uint;
+  const size_t len = type_arr->len->const_value.data.v_u64;
   if (len == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARR_SIZE, type_arr->len->node->src,
                 BUILDER_CUR_WORD, "array size cannot be 0");
@@ -3618,32 +3637,32 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
       exec_abort(cnt, 0);
     }
 
-    assert(len_tmp.v_uint > 0);
+    assert(len_tmp.v_u64 > 0);
 
-    if (index.v_uint >= len_tmp.v_uint) {
+    if (index.v_u64 >= len_tmp.v_u64) {
       msg_error("Array index is out of the bounds!");
       exec_abort(cnt, 0);
     }
 
     result.v_stack_ptr =
-        (MirStackPtr)((ptr_tmp.v_stack_ptr) + (index.v_uint * elem_type->store_size_bytes));
+        (MirStackPtr)((ptr_tmp.v_stack_ptr) + (index.v_u64 * elem_type->store_size_bytes));
   } else {
     MirType *elem_type = arr_type->data.array.elem_type;
     assert(elem_type);
 
     {
       const size_t len = arr_type->data.array.len;
-      if (index.v_uint >= len) {
+      if (index.v_u64 >= len) {
         msg_error("Array index is out of the bounds!");
         exec_abort(cnt, 0);
       }
     }
-    result.v_stack_ptr = (MirStackPtr)((arr_ptr) + (index.v_uint * elem_type->store_size_bytes));
+    result.v_stack_ptr = (MirStackPtr)((arr_ptr) + (index.v_u64 * elem_type->store_size_bytes));
 
 #if BL_DEBUG
     {
-      ptrdiff_t _diff = result.v_uint - (uintptr_t)arr_ptr;
-      assert(_diff / elem_type->store_size_bytes == index.v_uint);
+      ptrdiff_t _diff = result.v_u64 - (uintptr_t)arr_ptr;
+      assert(_diff / elem_type->store_size_bytes == index.v_u64);
     }
 #endif
   }
@@ -3736,14 +3755,23 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
     exec_read_value(&tmp, from_ptr, src_type);
 
-    size_t        shift = src_type->size_bits - 1;
-    const uint8_t neg   = (tmp.v_uint >> shift) & 1U;
-    uint64_t      mask  = 0;
-    while (shift < dest_type->size_bits) {
-      mask = 1 << shift;
-      tmp.v_uint ^= (mask & (neg << shift));
-      ++shift;
+#define sext_case(v, T)                                                                            \
+  case sizeof(v.T):                                                                                \
+    tmp.v_s64 = (int64_t)tmp.T;                                                                    \
+    break;
+
+    // clang-format off
+    switch (src_type->store_size_bytes)
+    {
+      sext_case(tmp, v_s8)
+      sext_case(tmp, v_s16)
+      sext_case(tmp, v_s32)
+    default:
+      bl_abort("Invalid sext cast!");
     }
+    // clang-format on
+
+#undef sext_case
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
@@ -3759,9 +3787,9 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     exec_read_value(&tmp, from_ptr, src_type);
 
     if (src_type->store_size_bytes == sizeof(float))
-      tmp.v_int = (int64_t)tmp.v_float;
+      tmp.v_s32 = (int32_t)tmp.v_f32;
     else
-      tmp.v_int = (int64_t)tmp.v_double;
+      tmp.v_s64 = (int64_t)tmp.v_f64;
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
@@ -3776,9 +3804,9 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     exec_read_value(&tmp, from_ptr, src_type);
 
     if (src_type->store_size_bytes == sizeof(float))
-      tmp.v_uint = (uint64_t)tmp.v_float;
+      tmp.v_u64 = (uint64_t)tmp.v_f32;
     else
-      tmp.v_uint = (uint64_t)tmp.v_double;
+      tmp.v_u64 = (uint64_t)tmp.v_f64;
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
@@ -3871,7 +3899,7 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   MirConstValueData tmp = {0};
   exec_read_value(&tmp, cond, type);
 
-  if (tmp.v_int) {
+  if (tmp.v_s64) {
     exec_set_pc(cnt, br->then_block->entry_instr);
   } else {
     exec_set_pc(cnt, br->else_block->entry_instr);
@@ -3940,7 +3968,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   }
 
   /* allocate memory for variable on stack */
-  if (!var->rel_stack_ptr) var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
+  var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
 
   /* initialize variable if there is some init value */
   if (decl->init) {
@@ -4060,21 +4088,22 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 
   MirConstValueData tmp = {0};
   exec_read_value(&tmp, val_ptr, type);
+  bl_log("%d", tmp.v_s32);
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
-    switch (type->data.integer.bitcount) {
-    case 64:
-      dcArgLongLong(cnt->dl.vm, tmp.v_int);
+    switch (type->store_size_bytes) {
+    case sizeof(int64_t):
+      dcArgLongLong(cnt->dl.vm, tmp.v_s64);
       break;
-    case 32:
-      dcArgInt(cnt->dl.vm, (DCint)tmp.v_int);
+    case sizeof(int32_t):
+      dcArgInt(cnt->dl.vm, (DCint)tmp.v_s32);
       break;
-    case 16:
-      dcArgShort(cnt->dl.vm, (DCshort)tmp.v_int);
+    case sizeof(int16_t):
+      dcArgShort(cnt->dl.vm, (DCshort)tmp.v_s16);
       break;
-    case 8:
-      dcArgChar(cnt->dl.vm, (DCchar)tmp.v_int);
+    case sizeof(int8_t):
+      dcArgChar(cnt->dl.vm, (DCchar)tmp.v_s8);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -4126,17 +4155,17 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     int64_t result = 0;
     switch (ret_type->kind) {
     case MIR_TYPE_INT:
-      switch (ret_type->data.integer.bitcount) {
-      case sizeof(char) * 8:
+      switch (ret_type->store_size_bytes) {
+      case sizeof(char):
         result = dcCallChar(cnt->dl.vm, fn->extern_entry);
         break;
-      case sizeof(short) * 8:
+      case sizeof(short):
         result = dcCallShort(cnt->dl.vm, fn->extern_entry);
         break;
-      case sizeof(int) * 8:
+      case sizeof(int):
         result = dcCallInt(cnt->dl.vm, fn->extern_entry);
         break;
-      case sizeof(long long) * 8:
+      case sizeof(long long):
         result = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
         break;
       default:
@@ -4148,7 +4177,10 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
       bl_abort("unsupported external call return type");
     }
 
-    exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
+    /* PUSH result only if it is used */
+    if (call->base.ref_count > 1) {
+      exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
+    }
   } else {
     /* Push current frame stack top. (Later poped by ret instruction)*/
     exec_push_ra(cnt, &call->base);
@@ -4220,8 +4252,8 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-#define binop(_op, _lhs, _rhs, _result, _v_T)                                                      \
-  {                                                                                                \
+#define binop_case(_op, _lhs, _rhs, _result, _v_T)                                                 \
+  case sizeof(_lhs._v_T): {                                                                        \
     switch (_op) {                                                                                 \
     case BINOP_ADD:                                                                                \
       (_result)._v_T = _lhs._v_T + _rhs._v_T;                                                      \
@@ -4233,37 +4265,40 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
       (_result)._v_T = _lhs._v_T * _rhs._v_T;                                                      \
       break;                                                                                       \
     case BINOP_DIV:                                                                                \
-      assert(_rhs._v_T != 0 && "divide by zero, this should be error");                            \
+      assert(_rhs._v_T != 0 && "divide by zero, this should be an error");                         \
       (_result)._v_T = _lhs._v_T / _rhs._v_T;                                                      \
       break;                                                                                       \
+    case BINOP_MOD:                                                                                \
+      (_result)._v_T = (int64_t)_lhs._v_T % (int64_t)_rhs._v_T;                                    \
+      break;                                                                                       \
     case BINOP_EQ:                                                                                 \
-      (_result).v_int = (int64_t)(_lhs._v_T == _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                   \
       break;                                                                                       \
     case BINOP_NEQ:                                                                                \
-      (_result).v_int = (int64_t)(_lhs._v_T != _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T != _rhs._v_T;                                                   \
       break;                                                                                       \
     case BINOP_LESS:                                                                               \
-      (_result).v_int = (int64_t)(_lhs._v_T < _rhs._v_T);                                          \
+      (_result).v_bool = _lhs._v_T < _rhs._v_T;                                                    \
       break;                                                                                       \
     case BINOP_LESS_EQ:                                                                            \
-      (_result).v_int = (int64_t)(_lhs._v_T == _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                   \
       break;                                                                                       \
     case BINOP_GREATER:                                                                            \
-      (_result).v_int = (int64_t)(_lhs._v_T > _rhs._v_T);                                          \
+      (_result).v_bool = _lhs._v_T > _rhs._v_T;                                                    \
       break;                                                                                       \
     case BINOP_GREATER_EQ:                                                                         \
-      (_result).v_int = (int64_t)(_lhs._v_T >= _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T >= _rhs._v_T;                                                   \
       break;                                                                                       \
     case BINOP_LOGIC_AND:                                                                          \
-      (_result).v_int = (int64_t)(_lhs._v_T && _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T && _rhs._v_T;                                                   \
       break;                                                                                       \
     case BINOP_LOGIC_OR:                                                                           \
-      (_result).v_int = (int64_t)(_lhs._v_T || _rhs._v_T);                                         \
+      (_result).v_bool = _lhs._v_T || _rhs._v_T;                                                   \
       break;                                                                                       \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
     }                                                                                              \
-  }
+  } break;
 
   /* binop expects lhs and rhs on stack in exact order and push result again to the stack */
   MirType *type = binop->lhs->const_value.type;
@@ -4280,32 +4315,43 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   exec_read_value(&rhs, rhs_ptr, type);
 
   switch (type->kind) {
+  case MIR_TYPE_PTR:
+  case MIR_TYPE_NULL:
+  case MIR_TYPE_BOOL:
   case MIR_TYPE_INT: {
-    binop(binop->op, lhs, rhs, result, v_uint);
-    break;
-  }
-
-  case MIR_TYPE_REAL: {
-    const size_t size = type->store_size_bytes;
-
-    if (size == sizeof(float)) { // float
-      binop(binop->op, lhs, rhs, result, v_float);
-    } else if (size == sizeof(double)) { // double
-      binop(binop->op, lhs, rhs, result, v_double);
+    const size_t s = type->store_size_bytes;
+    if (type->data.integer.is_signed) {
+      switch (s) {
+        binop_case(binop->op, lhs, rhs, result, v_s8);
+        binop_case(binop->op, lhs, rhs, result, v_s16);
+        binop_case(binop->op, lhs, rhs, result, v_s32);
+        binop_case(binop->op, lhs, rhs, result, v_s64);
+      default:
+        bl_abort("invalid integer data type");
+      }
     } else {
-      bl_abort("invalid floating point type");
+      switch (s) {
+        binop_case(binop->op, lhs, rhs, result, v_u8);
+        binop_case(binop->op, lhs, rhs, result, v_u16);
+        binop_case(binop->op, lhs, rhs, result, v_u32);
+        binop_case(binop->op, lhs, rhs, result, v_u64);
+      default:
+        bl_abort("invalid integer data type");
+      }
     }
     break;
   }
 
-  case MIR_TYPE_BOOL:
-    binop(binop->op, lhs, rhs, result, v_int);
+  case MIR_TYPE_REAL: {
+    const size_t s = type->store_size_bytes;
+    switch (s) {
+      binop_case(binop->op, lhs, rhs, result, v_f32);
+      binop_case(binop->op, lhs, rhs, result, v_f64);
+    default:
+      bl_abort("invalid real data type");
+    }
     break;
-
-  case MIR_TYPE_PTR:
-  case MIR_TYPE_NULL:
-    binop(binop->op, lhs, rhs, result, v_uint);
-    break;
+  }
 
   default:
     bl_abort("invalid binop type");
@@ -4321,22 +4367,22 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-#define unop(_op, _value, _result, _v_T)                                                           \
-  {                                                                                                \
+#define unop_case(_op, _value, _result, _v_T)                                                      \
+  case sizeof(_value._v_T): {                                                                      \
     switch (_op) {                                                                                 \
+    case UNOP_NOT:                                                                                 \
+      (_result)._v_T = !_value._v_T;                                                               \
+      break;                                                                                       \
     case UNOP_NEG:                                                                                 \
       (_result)._v_T = _value._v_T * -1;                                                           \
       break;                                                                                       \
     case UNOP_POS:                                                                                 \
       (_result)._v_T = _value._v_T;                                                                \
       break;                                                                                       \
-    case UNOP_NOT:                                                                                 \
-      (_result)._v_T = !_value._v_T;                                                               \
-      break;                                                                                       \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
     }                                                                                              \
-  }
+  } break;
 
   assert(unop->base.const_value.type);
   MirType *   value_type = unop->instr->const_value.type;
@@ -4351,27 +4397,42 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
   exec_read_value(&value, value_ptr, type);
 
   switch (type->kind) {
+  case MIR_TYPE_BOOL:
   case MIR_TYPE_INT: {
-    unop(unop->op, value, result, v_uint);
-    break;
-  }
-
-  case MIR_TYPE_REAL: {
-    const int32_t size = type->store_size_bytes;
-
-    if (size == sizeof(float)) { // float
-      unop(unop->op, value, result, v_float);
-    } else if (size == sizeof(double)) { // double
-      unop(unop->op, value, result, v_double);
+    const size_t s = type->store_size_bytes;
+    if (type->data.integer.is_signed) {
+      switch (s) {
+        unop_case(unop->op, value, result, v_s8);
+        unop_case(unop->op, value, result, v_s16);
+        unop_case(unop->op, value, result, v_s32);
+        unop_case(unop->op, value, result, v_s64);
+      default:
+        bl_abort("invalid integer data type");
+      }
     } else {
-      bl_abort("invalid floating point type");
+      switch (s) {
+        unop_case(unop->op, value, result, v_u8);
+        unop_case(unop->op, value, result, v_u16);
+        unop_case(unop->op, value, result, v_u32);
+        unop_case(unop->op, value, result, v_u64);
+      default:
+        bl_abort("invalid integer data type");
+      }
     }
     break;
   }
 
-  case MIR_TYPE_BOOL:
-    unop(unop->op, value, result, v_int);
+  case MIR_TYPE_REAL: {
+    const size_t s = type->store_size_bytes;
+
+    switch (s) {
+      unop_case(unop->op, value, result, v_f32);
+      unop_case(unop->op, value, result, v_f64);
+    default:
+      bl_abort("invalid real data type");
+    }
     break;
+  }
 
   default:
     bl_abort("invalid unop type");
@@ -4615,6 +4676,12 @@ MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr)
 {
   return append_instr_const_bool(cnt, expr, expr->data.expr_boolean.val);
+}
+
+MirInstr *
+ast_expr_lit_char(Context *cnt, Ast *expr)
+{
+  return append_instr_const_char(cnt, expr, expr->data.expr_character.val);
 }
 
 MirInstr *
@@ -5125,6 +5192,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_lit_fn(cnt, node);
   case AST_EXPR_LIT_STRING:
     return ast_expr_lit_string(cnt, node);
+  case AST_EXPR_LIT_CHAR:
+    return ast_expr_lit_char(cnt, node);
   case AST_EXPR_BINOP:
     return ast_expr_binop(cnt, node);
   case AST_EXPR_UNARY:
@@ -5361,7 +5430,7 @@ execute_entry_fn(Context *cnt)
   /* tmp return value storage */
   MirConstValueData result = {0};
   if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
-    int64_t tmp = result.v_int;
+    int64_t tmp = result.v_s64;
     msg_log("execution finished with state: %lld\n", (long long)tmp);
   } else {
     msg_log("execution finished %s\n", cnt->exec_stack->aborted ? "with errors" : "without errors");

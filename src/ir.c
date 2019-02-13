@@ -368,7 +368,7 @@ gen_as_const(Context *cnt, MirInstr *instr)
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
-    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, type->data.integer.is_signed);
+    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
     break;
   }
 
@@ -376,9 +376,9 @@ gen_as_const(Context *cnt, MirInstr *instr)
     const size_t size = type->store_size_bytes;
 
     if (size == sizeof(float)) { // float
-      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_float);
+      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_f32);
     } else if (size == sizeof(double)) { // double
-      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_double);
+      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_f64);
     } else {
       bl_abort("invalid floating point type");
     }
@@ -386,7 +386,7 @@ gen_as_const(Context *cnt, MirInstr *instr)
   }
 
   case MIR_TYPE_BOOL:
-    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_uint, false);
+    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_s32, false);
     break;
 
   case MIR_TYPE_NULL:

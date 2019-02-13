@@ -34,13 +34,21 @@ print_str :: fn (str: []u8) {
 };
 
 print_int :: fn (i: s64) {
+  c := 0;
   buf: [21]u8;
 
-  // TODO: char literal!!!!
-  // TODO: char literal!!!!
-  // TODO: char literal!!!!
-  // TODO: char literal!!!!
   if i < 0 {
-    buf[0] = '-';
+    buf[c] = '-';
+    c += 1;
+    i *= -1;
   }
+
+  loop i > 0 {
+    d := i % 10;
+    buf[c] = d + '0';
+    i /= 10;
+    c += 1;
+  }
+
+  write(C_STDOUT, buf.ptr, c);
 };

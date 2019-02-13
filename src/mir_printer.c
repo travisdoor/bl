@@ -62,19 +62,47 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 static inline void
 print_const_value(MirInstr *instr, FILE *stream)
 {
+#define print_case(format, T)                                                                      \
+  case sizeof(value->data.T):                                                                      \
+    fprintf(stream, format, value->data.T);                                                        \
+    break;
+
   MirConstValue *value = &instr->const_value;
   MirType *      type  = value->type;
   assert(type);
 
   switch (type->kind) {
-  case MIR_TYPE_INT:
-    fprintf(stream, "%lld", (long long)value->data.v_int);
+  case MIR_TYPE_INT: {
+    const size_t s = type->store_size_bytes;
+    if (type->data.integer.is_signed) {
+      switch (s) {
+        print_case("%d", v_s8);
+        print_case("%d", v_s16);
+        print_case("%d", v_s32);
+        print_case("%ld", v_s64);
+      default:
+        fprintf(stream, "<cannot read value>");
+        break;
+      }
+    } else {
+      switch (s) {
+        print_case("%u", v_u8);
+        print_case("%u", v_u16);
+        print_case("%u", v_u32);
+        print_case("%lu", v_u64);
+      default:
+        fprintf(stream, "<cannot read value>");
+        break;
+      }
+    }
+
     break;
+  }
   case MIR_TYPE_REAL:
     if (value->type->store_size_bytes == sizeof(float)) {
-      fprintf(stream, "%f", value->data.v_float);
+      fprintf(stream, "%f", value->data.v_f32);
     } else {
-      fprintf(stream, "%f", value->data.v_double);
+      fprintf(stream, "%f", value->data.v_f64);
     }
     break;
   case MIR_TYPE_BOOL:
@@ -462,8 +490,7 @@ print_instr_ret(MirInstrRet *ret, FILE *stream)
 {
   print_instr_head(&ret->base, stream, "ret");
   if (ret->value) print_comptime_value_or_id(ret->value, stream);
-  if (ret->allow_fn_ret_type_override)
-  fprintf(stream, " // can override");
+  if (ret->allow_fn_ret_type_override) fprintf(stream, " // can override");
 }
 
 void
