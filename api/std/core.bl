@@ -35,4 +35,12 @@ print_str :: fn (str: []u8) {
 
 print_int :: fn (i: s64) {
   buf: [21]u8;
+
+  // TODO: char literal!!!!
+  // TODO: char literal!!!!
+  // TODO: char literal!!!!
+  // TODO: char literal!!!!
+  if i < 0 {
+    buf[0] = '-';
+  }
 };
