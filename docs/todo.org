@@ -1,16 +1,6 @@
-* Features [60%]
-  - [X] Function arguments
-  - [X] Loops
-  - [X] Arrays 
-  - [ ] Structures
-  - [ ] Enums
+* Agenda [25%]
+  - [X] Globals declaration
+  - [ ] Globals initializations
+  - [ ] Globals set to default value
+  - [ ] Globals error handling
     
-* Bugs [50%]
-  - [X] In function body does can be declarations in any order!!!
-  - [ ] Local functions cannot produce self-call due to symbol lookup 
-    
-  
-* Agenda [0%]
-  - [ ] register buildin types into global scope as constants
-  - [ ] remove AST_TYPE_TYPE node 
-  - [ ] solve type defs

@@ -101,6 +101,7 @@ typedef enum
   ERR_INVALID_ARR_SIZE        = 64,
   ERR_BOUND_CHECK_FAILED      = 65,
   ERR_EMPTY_STRUCT            = 66,
+  ERR_UNINITIALIZED           = 67,
 } Error;
 
 #endif // BL_ERROR_H

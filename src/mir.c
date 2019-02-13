@@ -38,12 +38,13 @@
 #define ARENA_CHUNK_COUNT               512
 #define TEST_CASE_FN_NAME               "__test"
 #define RESOLVE_TYPE_FN_NAME            "__type"
+#define INIT_VALUE_FN_NAME              "__init"
 #define IMPL_FN_NAME                    "__impl_"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_EXEC                    false
+#define VERBOSE_EXEC                    false 
 // clang-format on
 
 union _MirInstr
@@ -101,9 +102,6 @@ typedef struct
 
   /* stack header is also allocated on the stack :) */
   MirStack *exec_stack;
-#if BL_DEBUG
-  int64_t (*_debug_stack)[150];
-#endif
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -146,7 +144,7 @@ static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
     {.str = "s32", .hash = 0},   {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
     {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
     {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null", .hash = 0},
+    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
     {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
 };
 
@@ -242,7 +240,7 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
 
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
-           MirConstValue *value, bool is_mutable);
+           MirConstValue *value, bool is_mutable, bool is_in_gscope);
 
 static MirFn *
 create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, bool is_external,
@@ -257,6 +255,9 @@ append_block(Context *cnt, MirFn *fn, const char *name);
 /* instructions */
 static void
 push_into_curr_block(Context *cnt, MirInstr *instr);
+
+static void
+push_into_gscope_analyze(Context *cnt, MirInstr *instr);
 
 static MirInstr *
 insert_instr_load_if_needed(Context *cnt, MirInstr *src);
@@ -273,7 +274,7 @@ static MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
-create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type);
+create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 
 static MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
@@ -342,7 +343,8 @@ static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
 
 static MirInstr *
-append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, bool is_mutable);
+append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, bool is_mutable,
+                      bool is_in_gscope);
 
 static MirInstr *
 append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
@@ -369,7 +371,7 @@ static MirInstr *
 append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_type_override);
 
 static MirInstr *
 append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
@@ -391,7 +393,7 @@ append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 
 /* ast */
 static MirInstr *
-ast_create_type_resolver_call(Context *cnt, Ast *type);
+ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type);
 
 static MirInstr *
 ast(Context *cnt, Ast *node);
@@ -751,9 +753,13 @@ gen_uq_name(Context *cnt, const char *prefix)
   return bo_string_get(s);
 }
 
+/* Global variables are allocated in static data segment, so there is no need to use relative
+ * pointer. When we set ignore to true original pointer is returned as absolute pointer to the
+ * stack.  */
 static inline MirStackPtr
-exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr)
+exec_read_stack_ptr(Context *cnt, MirRelativeStackPtr rel_ptr, bool ignore)
 {
+  if (ignore) return (MirStackPtr)rel_ptr;
   assert(rel_ptr);
 
   MirStackPtr base = (MirStackPtr)cnt->exec_stack->ra;
@@ -872,10 +878,15 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
-    mir_type_to_str(type_name, 256, type);
-    fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
-            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
-            size, tmp, type_name);
+    mir_type_to_str(type_name, 256, type, true);
+    if (cnt->exec_stack->pc) {
+      fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
+              (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
+              size, tmp, type_name);
+    } else {
+      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n\n", size, tmp,
+              type_name);
+    }
   }
 #endif
 
@@ -894,7 +905,7 @@ exec_pop_stack(Context *cnt, MirType *type)
 #if BL_DEBUG && VERBOSE_EXEC
   {
     char type_name[256];
-    mir_type_to_str(type_name, 256, type);
+    mir_type_to_str(type_name, 256, type, true);
     fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",
             (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
             size, cnt->exec_stack->top_ptr - size, type_name);
@@ -1260,16 +1271,17 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 
 MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
-           MirConstValue *value, bool is_mutable)
+           MirConstValue *value, bool is_mutable, bool is_in_gscope)
 {
   assert(id);
-  MirVar *tmp     = arena_alloc(&cnt->module->arenas.var_arena);
-  tmp->id         = id;
-  tmp->alloc_type = alloc_type;
-  tmp->value      = value;
-  tmp->scope      = scope;
-  tmp->decl_node  = decl_node;
-  tmp->is_mutable = is_mutable;
+  MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
+  tmp->id           = id;
+  tmp->alloc_type   = alloc_type;
+  tmp->value        = value;
+  tmp->scope        = scope;
+  tmp->decl_node    = decl_node;
+  tmp->is_mutable   = is_mutable;
+  tmp->is_in_gscope = is_in_gscope;
   return tmp;
 }
 
@@ -1316,6 +1328,14 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
   if (!block->entry_instr) block->entry_instr = instr;
   if (instr->prev) instr->prev->next = instr;
   block->last_instr = instr;
+}
+
+void
+push_into_gscope_analyze(Context *cnt, MirInstr *instr)
+{
+  assert(instr);
+  instr->id = bo_array_size(cnt->analyze_stack);
+  bo_array_push_back(cnt->analyze_stack, instr);
 }
 
 MirInstr *
@@ -1516,14 +1536,14 @@ append_block(Context *cnt, MirFn *fn, const char *name)
 }
 
 MirInstr *
-create_instr_call_type_resolve(Context *cnt, MirInstr *resolver_fn, Ast *type)
+create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
 {
-  assert(resolver_fn && resolver_fn->kind == MIR_INSTR_FN_PROTO);
-  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, type, MirInstrCall *);
+  assert(fn && fn->kind == MIR_INSTR_FN_PROTO);
+  MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
   tmp->base.id       = 0;
   tmp->base.comptime = true;
-  tmp->callee        = resolver_fn;
-  ref_instr(resolver_fn);
+  tmp->callee        = fn;
+  ref_instr(fn);
   return &tmp->base;
 }
 
@@ -1766,7 +1786,7 @@ MirInstr *
 append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstr *tmp = create_instr_fn_proto(cnt, node, type, user_type);
-  bo_array_push_back(cnt->analyze_stack, tmp);
+  push_into_gscope_analyze(cnt, tmp);
   return tmp;
 }
 
@@ -1804,7 +1824,8 @@ append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args)
 }
 
 MirInstr *
-append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, bool is_mutable)
+append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, bool is_mutable,
+                      bool is_in_gscope)
 {
   ref_instr(type);
   ref_instr(init);
@@ -1814,9 +1835,13 @@ append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, b
   tmp->type                  = type;
   tmp->init                  = init;
   tmp->var = create_var(cnt, node, node->data.ident.scope, &node->data.ident.id, NULL,
-                        &tmp->base.const_value, is_mutable);
+                        &tmp->base.const_value, is_mutable, is_in_gscope);
 
-  push_into_curr_block(cnt, &tmp->base);
+  if (is_in_gscope) {
+    push_into_gscope_analyze(cnt, &tmp->base);
+  } else {
+    push_into_curr_block(cnt, &tmp->base);
+  }
   return &tmp->base;
 }
 
@@ -1923,14 +1948,15 @@ append_instr_const_null(Context *cnt, Ast *node)
 }
 
 MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_type_override)
 {
   if (value) ref_instr(value);
 
-  MirInstrRet *tmp           = create_instr(cnt, MIR_INSTR_RET, node, MirInstrRet *);
-  tmp->base.const_value.type = cnt->builtin_types.entry_void;
-  tmp->base.ref_count        = NO_REF_COUNTING;
-  tmp->value                 = value;
+  MirInstrRet *tmp                = create_instr(cnt, MIR_INSTR_RET, node, MirInstrRet *);
+  tmp->base.const_value.type      = cnt->builtin_types.entry_void;
+  tmp->base.ref_count             = NO_REF_COUNTING;
+  tmp->value                      = value;
+  tmp->allow_fn_ret_type_override = allow_fn_ret_type_override;
 
   MirInstrBlock *block = get_current_block(cnt);
   terminate_block(block, &tmp->base);
@@ -2607,6 +2633,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
       }
     }
 
+    if (!type_val->data.v_type) return false;
     assert(type_val->data.v_type->kind == MIR_TYPE_FN);
     fn_proto->base.const_value.type = type_val->data.v_type;
   }
@@ -2997,6 +3024,12 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   assert(fn_type);
   assert(fn_type->kind == MIR_TYPE_FN);
 
+  if (ret->allow_fn_ret_type_override) {
+    /* return is supposed to override function return type */
+    fn_type->data.fn.ret_type =
+        ret->value ? ret->value->const_value.type : cnt->builtin_types.entry_void;
+  }
+
   const bool expected_ret_value =
       !type_cmp(fn_type->data.fn.ret_type, cnt->builtin_types.entry_void);
 
@@ -3050,6 +3083,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   }
 
   if (decl->init) {
+    if (decl->init->kind == MIR_INSTR_CALL && decl->init->comptime) {
+      analyze_instr(cnt, decl->init, true);
+      exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
+    }
     setup_null_type_if_needed(decl->init->const_value.type, var->alloc_type);
     decl->init = insert_instr_load_if_needed(cnt, decl->init);
 
@@ -3066,6 +3103,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     }
 
     decl->base.comptime = var->comptime = !var->is_mutable && decl->init->comptime;
+  } else if (var->is_in_gscope) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNINITIALIZED, decl->base.node->src,
+                BUILDER_CUR_WORD, "all globals must be initialized to compile time known value");
+    return false;
   }
 
   if (!var->alloc_type) {
@@ -3093,8 +3134,23 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   /* insert variable into symbol lookup table */
   provide_var(cnt, decl->var);
 
-  if (var->alloc_type->kind != MIR_TYPE_TYPE) {
-    var->gen_llvm = true;
+  /* Return here when we have type declaration... */
+  if (var->alloc_type->kind == MIR_TYPE_TYPE) return true;
+  var->gen_llvm = true;
+
+  if (var->is_in_gscope) {
+    /* push variable into globals of the mir module */
+    bo_array_push_back(cnt->module->globals, decl);
+
+    /* Global varibales which are not compile time constants are allocated on the stack, one option
+     * is to do allocation every time when we invoke comptime function execution, but we don't know
+     * which globals will be used by function and we also don't known whatever function has some
+     * side effect or not. So we produce allocation here. Variable will be stored in static data
+     * segment. There is no need to use relative pointers here. */
+    if (!var->comptime) {
+      exec_instr_decl_var(cnt, decl);
+    }
+  } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
     assert(fn);
@@ -3212,7 +3268,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
     assert(fn);
 
     if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
-      append_instr_ret(cnt, NULL, NULL);
+      append_instr_ret(cnt, NULL, NULL, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->decl_node->src,
                   BUILDER_CUR_WORD, "not every path inside function return value");
@@ -3835,11 +3891,12 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     MirVar *var = entry->data.var;
     assert(var);
 
-    MirStackPtr real_ptr = NULL;
+    const bool  use_static_segment = var->is_in_gscope;
+    MirStackPtr real_ptr           = NULL;
     if (var->comptime) {
       real_ptr = (MirStackPtr)&var->value->data;
     } else {
-      real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+      real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     }
 
     ref->base.const_value.data.v_stack_ptr = real_ptr;
@@ -3871,6 +3928,8 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
    */
   if (var->comptime) return;
 
+  const bool use_static_segment = var->is_in_gscope;
+
   /* read initialization value if there is one */
   MirStackPtr init_ptr = NULL;
   if (decl->init) init_ptr = exec_fetch_value(cnt, decl->init);
@@ -3880,7 +3939,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   /* initialize variable if there is some init value */
   if (decl->init) {
-    MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr);
+    MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr && init_ptr);
     memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
   }
@@ -3965,7 +4024,6 @@ exec_fn(Context *cnt, MirFn *fn, BArray *args, MirConstValueData *out_value)
   assert(ret_type);
   const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
-  exec_reset_stack(cnt->exec_stack);
   /* push terminal frame on stack */
   exec_push_ra(cnt, NULL);
 
@@ -4491,7 +4549,7 @@ void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
   MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-  append_instr_ret(cnt, ret, value);
+  append_instr_ret(cnt, ret, value, false);
 }
 
 MirInstr *
@@ -4511,7 +4569,8 @@ ast_expr_cast(Context *cnt, Ast *cast)
   assert(ast_type && ast_next);
 
   // TODO: const type!!!
-  MirInstr *type = ast_create_type_resolver_call(cnt, ast_type);
+  MirInstr *type = ast_create_impl_fn_call(cnt, ast_type, RESOLVE_TYPE_FN_NAME,
+                                           cnt->builtin_types.entry_resolve_type_fn);
   MirInstr *next = ast(cnt, ast_next);
 
   return append_instr_cast(cnt, cast, type, next);
@@ -4628,7 +4687,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
   MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL);
 
-  fn_proto->type = ast_create_type_resolver_call(cnt, ast_fn_type);
+  fn_proto->type = ast_create_impl_fn_call(cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME,
+                                           cnt->builtin_types.entry_resolve_type_fn);
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
@@ -4660,7 +4720,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
         /* create tmp declaration for arg variable */
         MirInstr *arg = append_instr_arg(cnt, NULL, i);
-        append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true);
+        append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false);
       }
     }
   }
@@ -4767,11 +4827,12 @@ ast_expr_type(Context *cnt, Ast *type)
 MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity)
 {
-  MirInstr * result     = NULL;
-  Ast *      ast_name   = entity->data.decl.name;
-  Ast *      ast_type   = entity->data.decl.type;
-  Ast *      ast_value  = entity->data.decl_entity.value;
-  const bool is_mutable = entity->data.decl_entity.mutable;
+  MirInstr * result       = NULL;
+  Ast *      ast_name     = entity->data.decl.name;
+  Ast *      ast_type     = entity->data.decl.type;
+  Ast *      ast_value    = entity->data.decl_entity.value;
+  const bool is_mutable   = entity->data.decl_entity.mutable;
+  const bool is_in_gscope = entity->data.decl_entity.in_gscope;
 
   if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
     MirInstr *value                         = ast(cnt, ast_value);
@@ -4781,7 +4842,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
     value->const_value.data.v_fn->decl_node = ast_name;
 
     if (ast_type) {
-      ((MirInstrFnProto *)value)->user_type = ast_create_type_resolver_call(cnt, ast_type);
+      ((MirInstrFnProto *)value)->user_type = ast_create_impl_fn_call(
+          cnt, ast_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.entry_resolve_type_fn);
     }
 
     /* check main */
@@ -4791,12 +4853,23 @@ ast_decl_entity(Context *cnt, Ast *entity)
       cnt->entry_fn->ref_count = 1; /* main must be generated into LLVM */
     }
   } else {
-    MirInstr *type = ast_type ? ast_create_type_resolver_call(cnt, ast_type) : NULL;
+    MirInstr *type = ast_type ? ast_create_impl_fn_call(cnt, ast_type, RESOLVE_TYPE_FN_NAME,
+                                                        cnt->builtin_types.entry_resolve_type_fn)
+                              : NULL;
 
     /* initialize value */
-    MirInstr *value = ast(cnt, ast_value);
+    MirInstr *value = NULL;
+    if (is_in_gscope) {
+      /* Initialization of global variables must be done in implicit initializer function executed
+       * in compile time. Every initialization function must be able to be executed in compile
+       * time. */
+      value = ast_value ? ast_create_impl_fn_call(cnt, ast_value, INIT_VALUE_FN_NAME, NULL) : NULL;
+    } else {
+      value = ast(cnt, ast_value);
+    }
+
     if (value) value->node = ast_name;
-    append_instr_decl_var(cnt, ast_name, type, value, is_mutable);
+    append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope);
 
     if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ast_name->src,
@@ -4945,22 +5018,34 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 }
 
 MirInstr *
-ast_create_type_resolver_call(Context *cnt, Ast *type)
+ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type)
 {
-  if (!type) return NULL;
+  if (!node) return NULL;
+
+  /* Sometimes we need to have implicit function return type based on resulting type of the AST
+   * expression, in such case we must allow return instruction to change function return type and
+   * create dummy type for the function. */
+  MirType *final_fn_type  = fn_type;
+  bool     infer_ret_type = false;
+  if (!final_fn_type) {
+    final_fn_type  = create_type_fn(cnt, NULL, NULL);
+    infer_ret_type = true;
+  }
+
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
-  fn->const_value.type      = cnt->builtin_types.entry_resolve_type_fn;
-  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, RESOLVE_TYPE_FN_NAME, NULL, false, false);
+  fn->const_value.type      = final_fn_type;
+  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, fn_name, NULL, false, false);
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
 
-  MirInstr *result = ast(cnt, type);
-  append_instr_ret(cnt, NULL, result);
+  MirInstr *result = ast(cnt, node);
+  /* Guess return type here when it is based on expression result... */
+  append_instr_ret(cnt, NULL, result, infer_ret_type);
 
   set_cursor_block(cnt, prev_block);
-  return create_instr_call_type_resolve(cnt, fn, type);
+  return create_instr_call_comptime(cnt, node, fn);
 }
 
 MirInstr *
@@ -5151,7 +5236,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
   }
   if (!buf) return;
   if (!type) {
-    append_buf(buf, len, "?");
+    append_buf(buf, len, "<unknown>");
     return;
   }
 
@@ -5456,12 +5541,7 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.verbose_post  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
   cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
   cnt.test_cases    = bo_array_new(sizeof(MirFn *));
-
-  cnt.exec_stack = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
-
-#if BL_DEBUG
-  cnt._debug_stack = (int64_t(*)[150])(cnt.exec_stack->top_ptr);
-#endif
+  cnt.exec_stack    = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
 
   init_builtins(&cnt);
 

@@ -49,13 +49,10 @@
 
 (defconst blm-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void"  
-    "type" "slice"))
+    "type" "slice" "null_t"))
 
 (defconst blm-constants
   '("true" "false" "null"))
-
-(defconst blm-error
-  '("?"))
 
 (defconst blm-number-rx
   (rx (and
@@ -77,16 +74,15 @@
     ;; Keywords
     (,(blm-keywords-rx blm-keywords) 1 font-lock-keyword-face)
 
+    ;; Types 
+    ("fn\(.*\) \\w+" . font-lock-type-face)
+    ("struct{.*}" . font-lock-type-face)
+    ("slice{.*}" . font-lock-type-face)
+    ("*.\\w+" . font-lock-type-face)
+    (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
+
     ;; Hash directives
     ("#\\w+" . font-lock-preprocessor-face)
-
-    ;; Error
-    (,(blm-keywords-rx blm-error) 1 font-lock-warning-face)
-
-    ;; Types 
-    (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
-    ("\\(\\w+\\)\\(.*\\)\\(\\:*enum\\)" 1 font-lock-function-name-face)
-    ("\\(\\w+\\)\\(.*\\)\\(\\:*struct\\)" 1 font-lock-function-name-face)
 
     ;; Functions
     ("@\\w+" . font-lock-function-name-face)
@@ -94,6 +90,12 @@
     ;; IDs 
     ("%\\w+" . font-lock-variable-name-face)
     ("$\\w+" . font-lock-reference-face)
+
+    ;; Invalid
+    ("<.*>" . font-lock-warning-face)
+
+    ;; Analyze helper instruction
+    ("'\\w+" . font-lock-builtin-face)
 
     ;; Chars 
     ("\\\\'.*\\\\'" . font-lock-string-face)
