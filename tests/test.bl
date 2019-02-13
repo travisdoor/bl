@@ -2,8 +2,13 @@
 
 #load "std/core.bl"
 
-main :: fn (args: []*u8) s32 {
-  return args.len;
+main :: fn () s32 {
+  str := "hello\n";
+
+  write(C_STDOUT, &str[0], str.len);
+  //print_str(tmp);
+
+  return 0;
 };
 
 /*
@@ -22,5 +27,4 @@ say_hello :: fn () {
   putchar(10);
 };
 
-putchar :: fn (c: s32) s32 #extern;
 */

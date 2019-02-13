@@ -44,7 +44,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_EXEC                    false 
+#define VERBOSE_EXEC                    false
 // clang-format on
 
 union _MirInstr
@@ -2657,7 +2657,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     /* lookup external function exec handle */
     assert(fn->llvm_name);
     void *handle = dlFindSymbol(cnt->dl.lib, fn->llvm_name);
-    assert(handle);
 
     if (!handle) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, fn_proto->base.node->src,
@@ -3603,9 +3602,9 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
     MirConstValueData ptr_tmp = {0};
     MirConstValueData len_tmp = {0};
-    const ptrdiff_t len_member_offset =
+    const ptrdiff_t   len_member_offset =
         LLVMOffsetOfElement(cnt->module->llvm_td, arr_type->llvm_type, 0);
-    const ptrdiff_t   ptr_member_offset =
+    const ptrdiff_t ptr_member_offset =
         LLVMOffsetOfElement(cnt->module->llvm_td, arr_type->llvm_type, 1);
 
     MirStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
@@ -3933,7 +3932,12 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   /* read initialization value if there is one */
   MirStackPtr init_ptr = NULL;
-  if (decl->init) init_ptr = exec_fetch_value(cnt, decl->init);
+  if (decl->init) {
+    init_ptr = exec_fetch_value(cnt, decl->init);
+    if (decl->init->const_value.kind == MIR_CV_STRING) {
+      init_ptr = (MirStackPtr)(*(uint64_t *)init_ptr);
+    }
+  }
 
   /* allocate memory for variable on stack */
   if (!var->rel_stack_ptr) var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
@@ -4075,6 +4079,11 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
     default:
       bl_abort("unsupported external call integer argument type");
     }
+    break;
+  }
+
+  case MIR_TYPE_PTR: {
+    dcArgPointer(cnt->dl.vm, (DCpointer)tmp.v_void_ptr);
     break;
   }
 

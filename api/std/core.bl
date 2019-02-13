@@ -26,4 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "c.bl"
 #load "debug.bl"
+
+print_str :: fn (str: []u8) {
+  write(C_STDOUT, str.ptr, str.len);
+};
