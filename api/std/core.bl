@@ -33,21 +33,38 @@ print_str :: fn (str: []u8) {
   write(C_STDOUT, str.ptr, str.len);
 };
 
-print_int :: fn (i: s64) {
+print_int :: fn (v: s64) {
+  buf      : [21]u8;
+  negative :: v < 0;
   c := 0;
-  buf: [21]u8;
 
-  if i < 0 {
-    buf[c] = '-';
-    c += 1;
-    i *= -1;
+  if negative {
+    v *= -1; // make it positive
   }
 
-  loop i > 0 {
-    d := i % 10;
+  loop v > 0 {
+    d := v % 10;
     buf[c] = d + '0';
-    i /= 10;
+    v /= 10;
     c += 1;
+  }
+
+  if negative {
+    buf[c] = '-';
+    c += 1;
+  }
+
+  {
+    j := c - 1;   // Assigning j to Last array element
+    i := 0;       // Assigning i to first array element
+ 
+    loop i < j {
+      tmp := buf[i];
+      buf[i] = buf[j];
+      buf[j] = tmp;
+      i += 1;             
+      j -= 1;         
+    }
   }
 
   write(C_STDOUT, buf.ptr, c);
