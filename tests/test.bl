@@ -6,7 +6,7 @@ main :: fn () s32 {
   str := " - I'm glad to see this message!!!\n";
   str_slice := str_to_slice(str.ptr, str.len);
   
-  loop i := 0; i < 1000000; i += 1 {
+  loop i := 0; i < 100; i += 1 {
     print_int(i);
     print_str(str_slice);
   }

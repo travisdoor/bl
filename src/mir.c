@@ -927,7 +927,7 @@ static inline void
 exec_stack_alloc_var(Context *cnt, MirVar *var)
 {
   assert(var);
-  if (var->comptime) return;
+  assert(!var->comptime && "cannot allocate compile time constant");
   /* allocate memory for variable on stack */
   var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
 }
@@ -941,6 +941,7 @@ exec_stack_alloc_vars(Context *cnt, MirFn *fn)
   MirVar *var;
   barray_foreach(vars, var)
   {
+    if (var->comptime) continue;
     exec_stack_alloc_var(cnt, var);
   }
 }
@@ -3188,7 +3189,12 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
      * which globals will be used by function and we also don't known whatever function has some
      * side effect or not. So we produce allocation here. Variable will be stored in static data
      * segment. There is no need to use relative pointers here. */
-    exec_stack_alloc_var(cnt, var);
+    if (!var->comptime) {
+      /* Allocate memory in static block. */
+      exec_stack_alloc_var(cnt, var);
+      /* Initialize data. */
+      exec_instr_decl_var(cnt, decl);
+    }
   } else {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
