@@ -78,7 +78,6 @@ typedef struct MirInstrTypePtr     MirInstrTypePtr;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 
-typedef enum MirConstValueKind MirConstValueKind;
 typedef enum MirTypeKind       MirTypeKind;
 typedef enum MirInstrKind      MirInstrKind;
 typedef enum MirCastOp         MirCastOp;
@@ -249,14 +248,6 @@ struct MirType
 };
 
 /* VALUE */
-enum MirConstValueKind
-{
-  MIR_CV_INVALID,
-  MIR_CV_BASIC,
-  MIR_CV_POINTER,
-  MIR_CV_STRING,
-};
-
 union MirConstValueData
 {
   int64_t             v_s64;
@@ -289,7 +280,6 @@ struct MirConstValue
 {
   union MirConstValueData data;
   MirType *               type;
-  MirConstValueKind       kind;
 };
 
 /* VAR */

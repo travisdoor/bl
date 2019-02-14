@@ -400,19 +400,7 @@ gen_as_const(Context *cnt, MirInstr *instr)
     break;
 
   case MIR_TYPE_ARRAY: {
-    const size_t len = type->data.array.len;
-    assert(len && "zero sized array");
-
-    switch (value->kind) {
-    case MIR_CV_STRING: {
-      assert(value->data.v_str);
-      instr->llvm_value = LLVMConstStringInContext(cnt->llvm_cnt, value->data.v_str, len, true);
-      break;
-    }
-
-    default:
-      bl_unimplemented;
-    }
+    bl_unimplemented;
     break;
   }
 

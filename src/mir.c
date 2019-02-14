@@ -1547,7 +1547,6 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
   tmp->kind             = kind;
   tmp->node             = node;
   tmp->id               = 0;
-  tmp->const_value.kind = MIR_CV_BASIC; /* can be overriden later */
 
 #if BL_DEBUG
   static uint64_t counter = 0;
@@ -1974,7 +1973,6 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
   tmp->comptime               = true;
   tmp->const_value.type       = cnt->builtin_types.entry_u8_slice;
   tmp->const_value.data.v_str = str;
-  tmp->const_value.kind       = MIR_CV_STRING;
 
   /* initialize constant slice */
   {
