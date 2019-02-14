@@ -114,8 +114,18 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     /* pointers to u8 is printed like strings */
     if (deref_type->kind == MIR_TYPE_INT && deref_type->data.integer.bitcount == 8 &&
         deref_type->data.integer.is_signed == false) {
+      if (data->v_str == NULL) {
+        fprintf(stream, "<null>");
+        break;
+      }
+
       char *tmp = strdup(data->v_str);
-      fprintf(stream, "\"%s", strtok(tmp, "\n"));
+      if (strtok(tmp, "\n")) {
+        fprintf(stream, "\"%s", strtok(tmp, "\n"));
+      } else {
+        fprintf(stream, "\"\"");
+	break;
+      }
       char *next = strtok(NULL, "\n");
       if (next && strlen(next)) fprintf(stdout, "...");
       fprintf(stream, "\"");
