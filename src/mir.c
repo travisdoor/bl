@@ -4016,9 +4016,6 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirStackPtr init_ptr = NULL;
   if (decl->init) {
     init_ptr = exec_fetch_value(cnt, decl->init);
-    if (decl->init->const_value.kind == MIR_CV_STRING) {
-      init_ptr = (MirStackPtr)(*(uint64_t *)init_ptr);
-    }
   }
 
   assert(var->rel_stack_ptr);
@@ -4027,6 +4024,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   if (decl->init) {
     MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr && init_ptr);
+
+    // TODO: this is not enough, compile time constants of agregate type are stored in different
+    // way, we need to produce decomposition of those data.
     memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
   }
 }
