@@ -60,6 +60,7 @@ typedef struct
   LLVMBuilderRef    llvm_builder;
 
   LLVMValueRef llvm_trap_fn;
+  LLVMTypeRef  llvm_u64_type;
   LLVMValueRef llvm_const_u64;
 } Context;
 
@@ -414,6 +415,36 @@ gen_as_const(Context *cnt, MirInstr *instr)
     }
     break;
   }
+
+  case MIR_TYPE_STRUCT: {
+    if (mir_is_slice_type(type) && instr->kind == MIR_INSTR_CONST) {
+      /* TODO: We generate representation only constant string slices, this need to be improved
+       * later. */
+      BArray *members = value->data.v_struct.members;
+      assert(members);
+      assert(bo_array_size(members) == 2 && "not slice string?");
+
+      const uint64_t len = (&bo_array_at(members, 0, MirConstValueData))->v_u64;
+      const char *   str = (&bo_array_at(members, 1, MirConstValueData))->v_str;
+      assert(str);
+
+      LLVMValueRef *const_vals = bl_malloc(sizeof(LLVMValueRef));
+      const_vals[0]            = LLVMConstInt(cnt->llvm_u64_type, len, false);
+      const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
+      LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
+
+      instr->llvm_value = LLVMConstStructInContext(cnt->llvm_cnt, const_vals, 2, false);
+
+      bl_free(const_vals);
+    } else {
+      /* TODO: support other structure types. */
+      /* TODO: support other structure types. */
+      /* TODO: support other structure types. */
+      bl_unimplemented;
+    }
+    break;
+  }
+
   default:
     bl_unimplemented;
   }
@@ -811,7 +842,8 @@ ir_run(Builder *builder, Assembly *assembly)
     cnt.llvm_trap_fn = LLVMAddFunction(cnt.llvm_module, LLVM_TRAP_FN, llvm_trap_fn_type);
   }
 
-  cnt.llvm_const_u64 = LLVMConstInt(LLVMInt64TypeInContext(cnt.llvm_cnt), 0, false);
+  cnt.llvm_u64_type  = LLVMInt64TypeInContext(cnt.llvm_cnt);
+  cnt.llvm_const_u64 = LLVMConstInt(cnt.llvm_u64_type, 0, false);
 
   MirInstr *ginstr;
   barray_foreach(assembly->mir_module->globals, ginstr)

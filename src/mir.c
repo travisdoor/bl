@@ -957,7 +957,14 @@ exec_stack_alloc_vars(Context *cnt, MirFn *fn)
 static inline MirStackPtr
 exec_fetch_value(Context *cnt, MirInstr *src)
 {
-  if (src->comptime || src->kind == MIR_INSTR_DECL_REF) return (MirStackPtr)&src->const_value.data;
+  if (src->comptime || src->kind == MIR_INSTR_DECL_REF) {
+    /* TODO: Constant values needs special handlig since we support agregate constant types. */
+    /* TODO: Constant values needs special handlig since we support agregate constant types. */
+    /* TODO: Constant values needs special handlig since we support agregate constant types. */
+    /* TODO: Constant values needs special handlig since we support agregate constant types. */
+    return (MirStackPtr)&src->const_value.data;
+  }
+
   return exec_pop_stack(cnt, src->const_value.type);
 }
 
