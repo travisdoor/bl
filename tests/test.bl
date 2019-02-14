@@ -3,8 +3,12 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := "I'm glad to see this message!!!\n";
-  print_str(str);
-  
+
+  loop i := 0; i < 10000; i += 1 {
+    print_str("Hello world - ");
+    print_int(i);
+    print_str("\n");
+  }
+
   return 0;
 };

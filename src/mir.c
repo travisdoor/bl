@@ -1543,10 +1543,10 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-  MirInstr *tmp         = arena_alloc(&cnt->module->arenas.instr_arena);
-  tmp->kind             = kind;
-  tmp->node             = node;
-  tmp->id               = 0;
+  MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
+  tmp->kind     = kind;
+  tmp->node     = node;
+  tmp->id       = 0;
 
 #if BL_DEBUG
   static uint64_t counter = 0;
@@ -4025,7 +4025,42 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
     // TODO: this is not enough, compile time constants of agregate type are stored in different
     // way, we need to produce decomposition of those data.
-    memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+
+    // TODO: Create some abstraction for data manipulation!!!
+    // TODO: Create some abstraction for data manipulation!!!
+    // TODO: Create some abstraction for data manipulation!!!
+    // TODO: Create some abstraction for data manipulation!!!
+    if (decl->init->comptime) {
+      MirConstValueData *data      = (MirConstValueData *)init_ptr;
+      MirType *          init_type = decl->init->const_value.type;
+      assert(init_type);
+      switch (init_type->kind) {
+      case MIR_TYPE_STRUCT: {
+        BArray *           members = decl->init->const_value.data.v_struct.members;
+        MirConstValueData *member;
+        MirType *          member_type;
+
+        assert(members);
+        const size_t memc = bo_array_size(members);
+        for (size_t i = 0; i < memc; ++i) {
+          member      = &bo_array_at(members, i, MirConstValueData);
+          member_type = bo_array_at(init_type->data.strct.members, i, MirType *);
+          /* copy all members to variable allocated memory on the stack */
+          MirStackPtr elem_src_ptr = (MirStackPtr)member; // TODO: what about struct in struct???
+          MirStackPtr elem_dest_ptr =
+              var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
+          assert(elem_dest_ptr && elem_src_ptr);
+          memcpy(elem_dest_ptr, elem_src_ptr, member_type->store_size_bytes);
+        }
+
+        break;
+      }
+      default:
+        memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+      }
+    } else {
+      memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+    }
   }
 }
 
