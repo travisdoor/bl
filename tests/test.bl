@@ -3,13 +3,19 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := " - I'm glad to see this message!!!\n";
+  str : []s8 = "I'm glad to see this message!!!\n";
+  /*
+  nl := "\n";
   str_slice := str_to_slice(str.ptr, str.len);
+  nl_slice := str_to_slice(nl.ptr, nl.len);
+
   
   loop i := 0; i < 100; i += 1 {
-    print_int(i);
     print_str(str_slice);
+    print_int(i);
+    print_str(nl_slice);
   }
+  */
 
   return 0;
 };

@@ -254,7 +254,7 @@ enum MirConstValueKind
   MIR_CV_INVALID,
   MIR_CV_BASIC,
   MIR_CV_POINTER,
-  MIR_CV_STRING
+  MIR_CV_STRING,
 };
 
 union MirConstValueData
@@ -278,6 +278,11 @@ union MirConstValueData
   void *              v_void_ptr;
   MirRelativeStackPtr v_rel_stack_ptr;
   MirStackPtr         v_stack_ptr;
+
+  struct
+  {
+    BArray *members;
+  } v_struct;
 };
 
 struct MirConstValue

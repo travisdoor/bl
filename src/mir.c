@@ -127,6 +127,7 @@ typedef struct
     MirType *entry_f64;
     MirType *entry_void;
     MirType *entry_u8_ptr;
+    MirType *entry_u8_slice;
     MirType *entry_resolve_type_fn;
     MirType *entry_test_case_fn;
   } builtin_types;
@@ -161,6 +162,13 @@ instr_dtor(MirInstr *instr)
   case MIR_INSTR_CALL:
     bo_unref(((MirInstrCall *)instr)->args);
     break;
+  case MIR_INSTR_CONST: {
+    if (instr->const_value.type->kind == MIR_TYPE_STRUCT) {
+      bo_unref(instr->const_value.data.v_struct.members);
+    }
+    break;
+  }
+
   default:
     break;
   }
@@ -1957,9 +1965,23 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
   MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime               = true;
-  tmp->const_value.type       = create_type_array(cnt, cnt->builtin_types.entry_u8, strlen(str));
+  tmp->const_value.type       = cnt->builtin_types.entry_u8_slice;
   tmp->const_value.data.v_str = str;
   tmp->const_value.kind       = MIR_CV_STRING;
+
+  /* initialize constant slice */
+  {
+    BArray *          members = bo_array_new(sizeof(MirConstValueData));
+    MirConstValueData v       = {0};
+
+    v.v_u64 = strlen(str);
+    bo_array_push_back(members, v);
+
+    v.v_str = str;
+    bo_array_push_back(members, v);
+
+    tmp->const_value.data.v_struct.members = members;
+  }
 
   push_into_curr_block(cnt, tmp);
   return tmp;
@@ -3044,7 +3066,6 @@ bool
 analyze_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.const_value.type);
-
   return true;
 }
 
@@ -5359,19 +5380,10 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
   case MIR_TYPE_STRUCT: {
     if (mir_is_slice_type(type)) {
-      append_buf(buf, len, "slice{");
-
-      BArray *members = type->data.strct.members;
-      if (members) {
-        MirType *tmp = bo_array_at(members, 1, MirType *);
-        _type_to_str(buf, len, tmp, true);
-      }
-
-      append_buf(buf, len, "}");
-      break;
+      append_buf(buf, len, "slice");
+    } else {
+      append_buf(buf, len, "struct");
     }
-
-    append_buf(buf, len, "struct");
     if (type->data.strct.is_packed) {
       append_buf(buf, len, "<");
     } else {
@@ -5527,6 +5539,7 @@ init_builtins(Context *cnt)
     bt->entry_u8_ptr          = create_type_ptr(cnt, bt->entry_u8);
     bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL);
     bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL);
+    bt->entry_u8_slice        = create_type_slice(cnt, NULL, bt->entry_u8_ptr);
 
     provide_builtin_type(cnt, bt->entry_type);
     provide_builtin_type(cnt, bt->entry_s8);

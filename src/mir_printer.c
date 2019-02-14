@@ -60,15 +60,13 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 }
 
 static inline void
-print_const_value(MirInstr *instr, FILE *stream)
+print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
 {
 #define print_case(format, T)                                                                      \
-  case sizeof(value->data.T):                                                                      \
-    fprintf(stream, format, value->data.T);                                                        \
+  case sizeof(data->T):                                                                            \
+    fprintf(stream, format, data->T);                                                              \
     break;
 
-  MirConstValue *value = &instr->const_value;
-  MirType *      type  = value->type;
   assert(type);
 
   switch (type->kind) {
@@ -99,39 +97,75 @@ print_const_value(MirInstr *instr, FILE *stream)
     break;
   }
   case MIR_TYPE_REAL:
-    if (value->type->store_size_bytes == sizeof(float)) {
-      fprintf(stream, "%f", value->data.v_f32);
+    if (type->store_size_bytes == sizeof(float)) {
+      fprintf(stream, "%f", data->v_f32);
     } else {
-      fprintf(stream, "%f", value->data.v_f64);
+      fprintf(stream, "%f", data->v_f64);
     }
     break;
   case MIR_TYPE_BOOL:
-    fprintf(stream, "%s", value->data.v_bool ? "true" : "false");
+    fprintf(stream, "%s", data->v_bool ? "true" : "false");
     break;
   case MIR_TYPE_TYPE:
-    print_type(value->data.v_type, false, stream, false);
+    print_type(data->v_type, false, stream, false);
     break;
-  case MIR_TYPE_PTR:
-    fprintf(stream, "%p", value->data.v_void_ptr);
-    break;
-  case MIR_TYPE_NULL:
-    fprintf(stream, "null");
-    break;
-  case MIR_TYPE_ARRAY:
-    if (value->kind == MIR_CV_STRING) {
-      char *tmp = strdup(value->data.v_str);
+  case MIR_TYPE_PTR: {
+    MirType *deref_type = mir_deref_type(type);
+    /* pointers to u8 is printed like strings */
+    if (deref_type->kind == MIR_TYPE_INT && deref_type->data.integer.bitcount == 8 &&
+        deref_type->data.integer.is_signed == false) {
+      char *tmp = strdup(data->v_str);
       fprintf(stream, "\"%s", strtok(tmp, "\n"));
       char *next = strtok(NULL, "\n");
       if (next && strlen(next)) fprintf(stdout, "...");
       fprintf(stream, "\"");
       free(tmp);
     } else {
-      fprintf(stream, "<cannot read value>");
+      fprintf(stream, "%p", data->v_void_ptr);
     }
+    break;
+  }
+  case MIR_TYPE_NULL:
+    fprintf(stream, "null");
+    break;
+  case MIR_TYPE_STRUCT: {
+    BArray *members = data->v_struct.members;
+    if (!members) {
+      fprintf(stream, "{<null>}");
+    } else {
+      fprintf(stream, "{");
+
+      MirType *          member_type;
+      MirConstValueData *member;
+      const size_t       memc = bo_array_size(members);
+
+      for (size_t i = 0; i < memc; ++i) {
+        member      = &bo_array_at(members, i, MirConstValueData);
+        member_type = bo_array_at(type->data.strct.members, i, MirType *);
+        print_const_value_data(member, member_type, stream);
+        if (i + 1 < memc) fprintf(stream, ", ");
+      }
+
+      fprintf(stream, "}");
+    }
+    break;
+  }
+  case MIR_TYPE_ARRAY:
+    fprintf(stream, "<cannot read value>");
     break;
   default:
     fprintf(stream, "<cannot read value>");
   }
+}
+
+static inline void
+print_const_value(MirInstr *instr, FILE *stream)
+{
+  MirConstValue *value = &instr->const_value;
+  MirType *      type  = value->type;
+  assert(type);
+
+  print_const_value_data(&value->data, type, stream);
 }
 
 static inline void
