@@ -34,6 +34,7 @@
 #include "assembly.h"
 #include "mir_printer.h"
 
+// Constants
 // clang-format off
 #define ARENA_CHUNK_COUNT               512
 #define TEST_CASE_FN_NAME               "__test"
@@ -46,6 +47,54 @@
 #define NO_REF_COUNTING                 -1
 #define VERBOSE_EXEC                    false
 // clang-format on
+
+// Debug helpers
+#if BL_DEBUG && VERBOSE_EXEC
+#define _log_push_ra                                                                               \
+  {                                                                                                \
+    if (instr) {                                                                                   \
+      fprintf(stdout, "%6llu %20s  PUSH RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,   \
+              mir_instr_name(cnt->exec_stack->pc));                                                \
+    } else {                                                                                       \
+      fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                                       \
+    }                                                                                              \
+  }
+
+#define _log_pop_ra                                                                                \
+  {                                                                                                \
+    fprintf(stdout, "%6llu %20s  POP RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,      \
+            mir_instr_name(cnt->exec_stack->pc));                                                  \
+  }
+
+#define _log_push_stack                                                                            \
+  {                                                                                                \
+    char type_name[256];                                                                           \
+    mir_type_to_str(type_name, 256, type, true);                                                   \
+    if (cnt->exec_stack->pc) {                                                                     \
+      fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",                                       \
+              (unsigned long long)cnt->exec_stack->pc->_serial,                                    \
+              mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);                          \
+    } else {                                                                                       \
+      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n\n", size, tmp,         \
+              type_name);                                                                          \
+    }                                                                                              \
+  }
+
+#define _log_pop_stack                                                                             \
+  {                                                                                                \
+    char type_name[256];                                                                           \
+    mir_type_to_str(type_name, 256, type, true);                                                   \
+    fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",                                         \
+            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc), \
+            size, cnt->exec_stack->top_ptr - size, type_name);                                     \
+  }
+
+#else
+#define _log_push_ra
+#define _log_pop_ra
+#define _log_push_stack
+#define _log_pop_stack
+#endif
 
 union _MirInstr
 {
@@ -792,7 +841,6 @@ exec_read_value(MirConstValueData *dest, MirStackPtr src, MirType *type)
 static inline void
 exec_abort(Context *cnt, int32_t report_stack_nesting)
 {
-  // TODO
   exec_print_call_stack(cnt, report_stack_nesting);
   cnt->exec_stack->aborted = true;
 }
@@ -836,7 +884,6 @@ exec_stack_free(Context *cnt, size_t size)
   if (new_top < (uint8_t *)(cnt->exec_stack->ra + 1)) bl_abort("Stack underflow!!!");
   cnt->exec_stack->top_ptr = new_top;
   cnt->exec_stack->used_bytes -= size;
-  // align_ptr_up((void **)&new_top, MAX_ALIGNMENT, NULL);
   return new_top;
 }
 
@@ -848,17 +895,7 @@ exec_push_ra(Context *cnt, MirInstr *instr)
   tmp->callee         = instr;
   tmp->prev           = prev;
   cnt->exec_stack->ra = tmp;
-
-#if BL_DEBUG && VERBOSE_EXEC
-  {
-    if (instr) {
-      fprintf(stdout, "%6llu %20s  PUSH RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,
-              mir_instr_name(cnt->exec_stack->pc));
-    } else {
-      fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");
-    }
-  }
-#endif
+  _log_push_ra;
 }
 
 static inline MirInstr *
@@ -867,12 +904,7 @@ exec_pop_ra(Context *cnt)
   if (!cnt->exec_stack->ra) return NULL;
   MirInstr *callee = cnt->exec_stack->ra->callee;
 
-#if BL_DEBUG && VERBOSE_EXEC
-  {
-    fprintf(stdout, "%6llu %20s  POP RA\n", (unsigned long long)cnt->exec_stack->pc->_serial,
-            mir_instr_name(cnt->exec_stack->pc));
-  }
-#endif
+  _log_pop_ra;
 
   /* rollback */
   MirStackPtr new_top_ptr     = (MirStackPtr)cnt->exec_stack->ra;
@@ -882,31 +914,26 @@ exec_pop_ra(Context *cnt)
   return callee;
 }
 
-static inline MirRelativeStackPtr
+static inline MirStackPtr
 exec_push_stack(Context *cnt, void *value, MirType *type)
 {
   assert(type);
   const size_t size = type->store_size_bytes;
   assert(size && "pushing zero sized data on stack");
   MirStackPtr tmp = exec_stack_alloc(cnt, size);
-#if BL_DEBUG && VERBOSE_EXEC
-  {
-    char type_name[256];
-    mir_type_to_str(type_name, 256, type, true);
-    if (cnt->exec_stack->pc) {
-      fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",
-              (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
-              size, tmp, type_name);
-    } else {
-      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n\n", size, tmp,
-              type_name);
-    }
-  }
-#endif
+
+  _log_push_stack;
 
   /* copy data when there is some */
   if (value) memcpy(tmp, value, size);
   /* pointer relative to frame top */
+  return tmp;
+}
+
+static inline MirRelativeStackPtr
+exec_push_stack_relative(Context *cnt, void *value, MirType *type)
+{
+  MirStackPtr tmp = exec_push_stack(cnt, value, type);
   return tmp - (MirStackPtr)cnt->exec_stack->ra;
 }
 
@@ -916,15 +943,8 @@ exec_pop_stack(Context *cnt, MirType *type)
   assert(type);
   const size_t size = type->store_size_bytes;
   assert(size && "popping zero sized data on stack");
-#if BL_DEBUG && VERBOSE_EXEC
-  {
-    char type_name[256];
-    mir_type_to_str(type_name, 256, type, true);
-    fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",
-            (unsigned long long)cnt->exec_stack->pc->_serial, mir_instr_name(cnt->exec_stack->pc),
-            size, cnt->exec_stack->top_ptr - size, type_name);
-  }
-#endif
+
+  _log_pop_stack;
 
   return exec_stack_free(cnt, size);
 }
@@ -937,7 +957,7 @@ exec_stack_alloc_var(Context *cnt, MirVar *var)
   assert(var);
   assert(!var->comptime && "cannot allocate compile time constant");
   /* allocate memory for variable on stack */
-  var->rel_stack_ptr = exec_push_stack(cnt, NULL, var->alloc_type);
+  var->rel_stack_ptr = exec_push_stack_relative(cnt, NULL, var->alloc_type);
 }
 
 static inline void
@@ -958,10 +978,6 @@ static inline MirStackPtr
 exec_fetch_value(Context *cnt, MirInstr *src)
 {
   if (src->comptime || src->kind == MIR_INSTR_DECL_REF) {
-    /* TODO: Constant values needs special handlig since we support agregate constant types. */
-    /* TODO: Constant values needs special handlig since we support agregate constant types. */
-    /* TODO: Constant values needs special handlig since we support agregate constant types. */
-    /* TODO: Constant values needs special handlig since we support agregate constant types. */
     return (MirStackPtr)&src->const_value.data;
   }
 
