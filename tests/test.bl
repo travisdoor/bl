@@ -3,20 +3,14 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := " - I'm glad to see this message!!!\n";
-  str_slice := str_to_slice(str.ptr, str.len);
-  
-  loop i := 0; i < 100; i += 1 {
+  str := "Hello world - ";
+  nl := "\n";
+
+  loop i := 0; i < 10000; i += 1 {
+    print_str(str);
     print_int(i);
-    print_str(str_slice);
+    print_str("\n");
   }
 
   return 0;
-};
-
-str_to_slice :: fn (str: *u8, len: usize) []u8 {
-  tmp : []u8;
-  tmp.ptr = str;
-  tmp.len = len;
-  return tmp;
 };
