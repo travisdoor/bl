@@ -346,3 +346,9 @@ _GlobalType     :: s32;
   foo : _GlobalType = 10;
   assert(foo == 10);
 };
+
+#test "strings" {
+  _1 := "hello";
+  assert(_1.ptr != null);
+  assert(_1.len == 5);
+};
