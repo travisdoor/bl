@@ -135,6 +135,8 @@ ast_get_name(const Ast *n)
     return "TypeEnum";
   case AST_TYPE_PTR:
     return "TypePtr";
+  case AST_TYPE_VARGS:
+    return "TypeVargs";
   case AST_EXPR_TYPE:
     return "ExprType";
   case AST_EXPR_REF:

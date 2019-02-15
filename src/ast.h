@@ -69,6 +69,7 @@ typedef enum
   AST_TYPE_STRUCT,
   AST_TYPE_ENUM,
   AST_TYPE_PTR,
+  AST_TYPE_VARGS,
   _AST_TYPE_LAST,
   _AST_EXPR_FIRST,
   AST_EXPR_TYPE,
@@ -254,6 +255,11 @@ struct AstTypePtr
   Ast *type;
 };
 
+struct AstTypeVargs
+{
+  Ast *type;
+};
+
 struct AstTypeRef
 {
   Ast *ident;
@@ -398,6 +404,7 @@ struct Ast
     struct AstTypeStruct    type_strct;
     struct AstTypeEnum      type_enm;
     struct AstTypePtr       type_ptr;
+    struct AstTypeVargs     type_vargs;
     struct AstExprType      expr_type;
     struct AstExprLitFn     expr_fn;
     struct AstExprLitInt    expr_integer;

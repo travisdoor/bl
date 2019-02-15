@@ -150,6 +150,9 @@ static Ast *
 parse_type_ptr(Context *cnt);
 
 static Ast *
+parse_type_vargs(Context *cnt);
+
+static Ast *
 parse_stmt_return(Context *cnt);
 
 static Ast *
@@ -913,6 +916,18 @@ parse_type_ptr(Context *cnt)
 }
 
 Ast *
+parse_type_vargs(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
+  if (!tok_begin) return NULL;
+
+  Ast *ptr                = ast_create_node(cnt->ast_arena, AST_TYPE_VARGS, tok_begin);
+  ptr->data.type_ptr.type = parse_type(cnt);
+  assert(ptr->data.type_ptr.type);
+  return ptr;
+}
+
+Ast *
 parse_type_enum(Context *cnt)
 {
   Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
@@ -1034,6 +1049,7 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_fn(cnt, false);
   if (!type) type = parse_type_struct(cnt);
   if (!type) type = parse_type_enum(cnt);
+  if (!type) type = parse_type_vargs(cnt);
   if (!type) type = parse_type_arr(cnt);
   if (!type) type = parse_type_slice(cnt);
   if (!type) type = parse_type_ref(cnt);

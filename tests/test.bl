@@ -14,3 +14,7 @@ main :: fn () s32 {
 
   return 0;
 };
+
+// Test var args
+func :: fn (args: ...s32) {
+};
