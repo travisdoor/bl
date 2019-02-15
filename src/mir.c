@@ -915,7 +915,7 @@ exec_pop_ra(Context *cnt)
 }
 
 static inline MirStackPtr
-exec_push_stack(Context *cnt, void *value, MirType *type)
+exec_push_stack_empty(Context *cnt, MirType *type)
 {
   assert(type);
   const size_t size = type->store_size_bytes;
@@ -923,18 +923,18 @@ exec_push_stack(Context *cnt, void *value, MirType *type)
   MirStackPtr tmp = exec_stack_alloc(cnt, size);
 
   _log_push_stack;
-
-  /* copy data when there is some */
-  if (value) memcpy(tmp, value, size);
-  /* pointer relative to frame top */
   return tmp;
 }
 
-static inline MirRelativeStackPtr
-exec_push_stack_relative(Context *cnt, void *value, MirType *type)
+static inline MirStackPtr
+exec_push_stack(Context *cnt, void *value, MirType *type)
 {
-  MirStackPtr tmp = exec_push_stack(cnt, value, type);
-  return tmp - (MirStackPtr)cnt->exec_stack->ra;
+  assert(value && "try to push NULL value");
+  MirStackPtr  tmp  = exec_push_stack_empty(cnt, type);
+  const size_t size = type->store_size_bytes;
+  memcpy(tmp, value, size);
+  /* pointer relative to frame top */
+  return tmp;
 }
 
 static inline MirStackPtr
@@ -957,7 +957,9 @@ exec_stack_alloc_var(Context *cnt, MirVar *var)
   assert(var);
   assert(!var->comptime && "cannot allocate compile time constant");
   /* allocate memory for variable on stack */
-  var->rel_stack_ptr = exec_push_stack_relative(cnt, NULL, var->alloc_type);
+
+  MirStackPtr tmp    = exec_push_stack_empty(cnt, var->alloc_type);
+  var->rel_stack_ptr = tmp - (MirStackPtr)cnt->exec_stack->ra;
 }
 
 static inline void
@@ -974,6 +976,8 @@ exec_stack_alloc_vars(Context *cnt, MirFn *fn)
   }
 }
 
+/* Return pointer to value evaluated from src instruction. Source can be compile time constant or
+ * allocated on the stack.*/
 static inline MirStackPtr
 exec_fetch_value(Context *cnt, MirInstr *src)
 {
