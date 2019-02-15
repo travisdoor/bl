@@ -182,7 +182,6 @@ enum MirTypeKind
   MIR_TYPE_PTR,
   MIR_TYPE_BOOL,
   MIR_TYPE_ARRAY,
-  MIR_TYPE_SLICE,
   MIR_TYPE_STRUCT,
   MIR_TYPE_NULL,
 };
@@ -299,7 +298,6 @@ struct MirVar
   LLVMValueRef        llvm_value;
   MirRelativeStackPtr rel_stack_ptr;
 };
-
 /* INSTRUCTIONS */
 enum MirInstrKind
 {

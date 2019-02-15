@@ -729,6 +729,10 @@ exec_delete_stack(MirStack *stack);
 static void
 exec_reset_stack(MirStack *stack);
 
+static void
+exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirStackPtr src_ptr,
+                            MirType *src_type);
+
 /* INLINES */
 static inline MirInstr *
 mutate_instr(MirInstr *instr, MirInstrKind kind)
@@ -1005,6 +1009,46 @@ exec_set_pc(Context *cnt, MirInstr *instr)
 {
   cnt->exec_stack->pc = instr;
 }
+
+static void
+exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirStackPtr src_ptr,
+                            MirType *src_type)
+{
+  /* This may cause recursive calls for agregate data types. */
+  assert(dest_ptr && src_ptr && src_type);
+  MirConstValueData *data = (MirConstValueData *)src_ptr;
+  switch (src_type->kind) {
+  case MIR_TYPE_STRUCT: {
+    BArray *           members = data->v_struct.members;
+    MirConstValueData *member;
+    MirType *          member_type;
+
+    assert(members);
+    const size_t memc = bo_array_size(members);
+    for (size_t i = 0; i < memc; ++i) {
+      member      = &bo_array_at(members, i, MirConstValueData);
+      member_type = bo_array_at(src_type->data.strct.members, i, MirType *);
+
+      /* copy all members to variable allocated memory on the stack */
+      MirStackPtr elem_src_ptr = (MirStackPtr)member; // TODO: what about struct in struct???
+      MirStackPtr elem_dest_ptr =
+          dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, i);
+      assert(elem_dest_ptr && elem_src_ptr);
+
+      exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem_src_ptr, member_type);
+    }
+
+    break;
+  }
+
+  case MIR_TYPE_ARRAY:
+    bl_unimplemented;
+
+  default:
+    memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
+  }
+}
+/* execute end */
 
 static inline void
 terminate_block(MirInstrBlock *block, MirInstr *terminator)
@@ -3712,7 +3756,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     assert(len_tmp.v_u64 > 0);
 
     if (index.v_u64 >= len_tmp.v_u64) {
-      msg_error("Array index is out of the bounds!");
+      msg_error("Array index is out of the bounds! Array index is: %llu, but array size is: %llu",
+                (unsigned long long)index.v_u64, (unsigned long long)len_tmp.v_u64);
       exec_abort(cnt, 0);
     }
 
@@ -3725,7 +3770,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     {
       const size_t len = arr_type->data.array.len;
       if (index.v_u64 >= len) {
-        msg_error("Array index is out of the bounds!");
+        msg_error("Array index is out of the bounds! Array index is: %llu, but array size is: %llu",
+                  (unsigned long long)index.v_u64, (unsigned long long)len);
         exec_abort(cnt, 0);
       }
     }
@@ -3940,8 +3986,11 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   MirInstr *curr_arg_value = bo_array_at(arg_values, arg->i, MirInstr *);
 
   if (curr_arg_value->comptime) {
-    exec_push_stack(cnt, (MirStackPtr)&curr_arg_value->const_value.data,
-                    curr_arg_value->const_value.type);
+    MirType *   type = curr_arg_value->const_value.type;
+    MirStackPtr dest = exec_push_stack_empty(cnt, type);
+    MirStackPtr src  = (MirStackPtr)&curr_arg_value->const_value.data;
+
+    exec_copy_comptime_to_stack(cnt, dest, src, type);
   } else {
     /* resolve argument pointer */
     MirInstr *arg_value = NULL;
@@ -4043,41 +4092,10 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr && init_ptr);
 
-    // TODO: this is not enough, compile time constants of agregate type are stored in different
-    // way, we need to produce decomposition of those data.
-
-    // TODO: Create some abstraction for data manipulation!!!
-    // TODO: Create some abstraction for data manipulation!!!
-    // TODO: Create some abstraction for data manipulation!!!
-    // TODO: Create some abstraction for data manipulation!!!
     if (decl->init->comptime) {
-      MirConstValueData *data      = (MirConstValueData *)init_ptr;
-      MirType *          init_type = decl->init->const_value.type;
-      assert(init_type);
-      switch (init_type->kind) {
-      case MIR_TYPE_STRUCT: {
-        BArray *           members = decl->init->const_value.data.v_struct.members;
-        MirConstValueData *member;
-        MirType *          member_type;
-
-        assert(members);
-        const size_t memc = bo_array_size(members);
-        for (size_t i = 0; i < memc; ++i) {
-          member      = &bo_array_at(members, i, MirConstValueData);
-          member_type = bo_array_at(init_type->data.strct.members, i, MirType *);
-          /* copy all members to variable allocated memory on the stack */
-          MirStackPtr elem_src_ptr = (MirStackPtr)member; // TODO: what about struct in struct???
-          MirStackPtr elem_dest_ptr =
-              var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
-          assert(elem_dest_ptr && elem_src_ptr);
-          memcpy(elem_dest_ptr, elem_src_ptr, member_type->store_size_bytes);
-        }
-
-        break;
-      }
-      default:
-        memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
-      }
+      /* Compile time constants of agregate type are stored in different
+         way, we need to produce decomposition of those data. */
+      exec_copy_comptime_to_stack(cnt, var_ptr, init_ptr, decl->init->const_value.type);
     } else {
       memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
     }
@@ -4351,7 +4369,14 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
   /* push return value on the stack if there is one */
   if (ret_data_ptr) {
-    exec_push_stack(cnt, ret_data_ptr, ret_type);
+    if (ret->value->comptime) {
+      MirStackPtr dest = exec_push_stack_empty(cnt, ret_type);
+      MirStackPtr src  = ret_data_ptr;
+
+      exec_copy_comptime_to_stack(cnt, dest, src, ret_type);
+    } else {
+      exec_push_stack(cnt, ret_data_ptr, ret_type);
+    }
   }
 
   /* set program counter to next instruction */
@@ -5524,7 +5549,16 @@ execute_entry_fn(Context *cnt)
 {
   msg_log("\nexecuting 'main' in compile time...");
   if (!cnt->entry_fn) {
-    msg_error("assembly '%s' has no entry function!", cnt->assembly->name);
+    msg_error("Assembly '%s' has no entry function!", cnt->assembly->name);
+    return;
+  }
+
+  MirType *fn_type = cnt->entry_fn->type;
+  assert(fn_type && fn_type->kind == MIR_TYPE_FN);
+
+  /* TODO: support passing of arguments. */
+  if (fn_type->data.fn.arg_types) {
+    msg_error("Main function expects arguments, this is not supported yet!");
     return;
   }
 
@@ -5532,16 +5566,16 @@ execute_entry_fn(Context *cnt)
   MirConstValueData result = {0};
   if (exec_fn(cnt, cnt->entry_fn, NULL, &result)) {
     int64_t tmp = result.v_s64;
-    msg_log("execution finished with state: %lld\n", (long long)tmp);
+    msg_log("Execution finished with state: %lld\n", (long long)tmp);
   } else {
-    msg_log("execution finished %s\n", cnt->exec_stack->aborted ? "with errors" : "without errors");
+    msg_log("Execution finished %s\n", cnt->exec_stack->aborted ? "with errors" : "without errors");
   }
 }
 
 void
 execute_test_cases(Context *cnt)
 {
-  msg_log("\nexecuting test cases...");
+  msg_log("\nExecuting test cases...");
 
   const size_t c      = bo_array_size(cnt->test_cases);
   int32_t      failed = 0;
@@ -5565,7 +5599,17 @@ execute_test_cases(Context *cnt)
     if (cnt->exec_stack->aborted) ++failed;
   }
 
-  msg_log("testing done, %d of %zu failed\n", failed, c);
+  {
+    int32_t perc = c > 0 ? (int32_t)((float)(c - failed) / (c * 0.01f)) : 100;
+
+    msg_log("────────────────────────────────────────────────────────────────────────────────");
+    if (perc == 100) {
+      msg_log("Testing done, %d of %zu failed. Completed: " GREEN("%d%%"), failed, c, perc);
+    } else {
+      msg_log("Testing done, %d of %zu failed. Completed: " RED("%d%%"), failed, c, perc);
+    }
+    msg_log("────────────────────────────────────────────────────────────────────────────────");
+  }
 }
 
 void

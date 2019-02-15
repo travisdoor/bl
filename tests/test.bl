@@ -3,9 +3,11 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
+  str := "Hello world - ";
+  nl := "\n";
 
   loop i := 0; i < 10000; i += 1 {
-    print_str("Hello world - ");
+    print_str(str);
     print_int(i);
     print_str("\n");
   }
