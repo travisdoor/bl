@@ -78,10 +78,10 @@ typedef struct MirInstrTypePtr     MirInstrTypePtr;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 
-typedef enum MirTypeKind       MirTypeKind;
-typedef enum MirInstrKind      MirInstrKind;
-typedef enum MirCastOp         MirCastOp;
-typedef enum MirBuiltinKind    MirBuiltinKind;
+typedef enum MirTypeKind    MirTypeKind;
+typedef enum MirInstrKind   MirInstrKind;
+typedef enum MirCastOp      MirCastOp;
+typedef enum MirBuiltinKind MirBuiltinKind;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -201,6 +201,7 @@ struct MirTypeFn
 {
   MirType *ret_type;
   BArray * arg_types;
+  bool     is_vargs;
 };
 
 struct MirTypePtr

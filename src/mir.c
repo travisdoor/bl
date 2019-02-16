@@ -283,7 +283,7 @@ static MirType *
 create_type_ptr(Context *cnt, MirType *src_type);
 
 static MirType *
-create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types);
+create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs);
 
 static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
@@ -1326,11 +1326,12 @@ create_type_ptr(Context *cnt, MirType *src_type)
 }
 
 MirType *
-create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
+create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 {
   MirType *tmp           = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
+  tmp->data.fn.is_vargs  = is_vargs;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
   init_type_llvm_ABI(cnt, tmp);
 
@@ -2217,14 +2218,16 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_FN: {
-    MirType *    tmp_ret   = type->data.fn.ret_type;
-    BArray *     tmp_args  = type->data.fn.arg_types;
-    const size_t cargs     = tmp_args ? bo_array_size(tmp_args) : 0;
+    MirType *    tmp_ret  = type->data.fn.ret_type;
+    BArray *     tmp_args = type->data.fn.arg_types;
+    const bool   is_vargs = type->data.fn.is_vargs;
+    const size_t argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+
     LLVMTypeRef *llvm_args = NULL;
     LLVMTypeRef  llvm_ret  = NULL;
 
     if (tmp_args) {
-      llvm_args = bl_malloc(cargs * sizeof(LLVMTypeRef));
+      llvm_args = bl_malloc(argc * sizeof(LLVMTypeRef));
       if (!llvm_args) bl_abort("bad alloc");
 
       MirType *tmp_arg;
@@ -2238,7 +2241,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     assert(llvm_ret);
 
-    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
+    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)argc, is_vargs);
     type->size_bits        = 0;
     type->store_size_bytes = 0;
     type->alignment        = 0;
@@ -2882,6 +2885,8 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   assert(type_fn->base.const_value.type);
   assert(type_fn->ret_type ? type_fn->ret_type->analyzed : true);
 
+  bool is_vargs = false;
+
   BArray *arg_types = NULL;
   if (type_fn->arg_types) {
     arg_types = bo_array_new(sizeof(MirType *));
@@ -2908,7 +2913,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
     reduce_instr(cnt, type_fn->ret_type);
   }
 
-  type_fn->base.const_value.data.v_type = create_type_fn(cnt, ret_type, arg_types);
+  type_fn->base.const_value.data.v_type = create_type_fn(cnt, ret_type, arg_types, is_vargs);
 
   return true;
 }
@@ -5239,7 +5244,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
   MirType *final_fn_type  = fn_type;
   bool     infer_ret_type = false;
   if (!final_fn_type) {
-    final_fn_type  = create_type_fn(cnt, NULL, NULL);
+    final_fn_type  = create_type_fn(cnt, NULL, NULL, false);
     infer_ret_type = true;
   }
 
@@ -5641,8 +5646,8 @@ init_builtins(Context *cnt)
     bt->entry_f64   = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
 
     bt->entry_u8_ptr          = create_type_ptr(cnt, bt->entry_u8);
-    bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL);
-    bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL);
+    bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
+    bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
     bt->entry_u8_slice        = create_type_slice(cnt, NULL, bt->entry_u8_ptr);
 
     provide_builtin_type(cnt, bt->entry_type);

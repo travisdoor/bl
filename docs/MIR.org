@@ -200,18 +200,19 @@
    | PUSH     | arg  | fn argument |
 
 ** call
-   Call function. This instruction will create new stack frame and switch control to the callee. All call arguments in example case are known only in runtime (compile-time known arguments is passed by const value).
+   Call some function. This instruction will create new stack frame and switch control to the callee. 
+
+   Compile-time known arguments are passed by const value otherwise call instruction expects that all arguments are already pushed on the stack in reverse order.
 
    Stack operations:
    | stack op | data         | description                                                                |
    |----------+--------------+----------------------------------------------------------------------------|
-   | PUSH     | arg 3        | push 3rd argument                                                          |
-   | PUSH     | arg 2        | push 2nd argument                                                          |
-   | PUSH     | arg 1        | push 1st argument                                                          |
    | PUSH RA  | pc, call ptr | create new frame stack (push program counter and call instruction pointer) |
 
 ** ret
    Return value from the function and return control to the caller. This instruction terminates current basic block.
+   
+   This instruction also clean up all argumets pushed on the stack and push return value if there is one and if it is used.
 
    #+BEGIN_EXAMPLE
    void ret [value] // yields void
