@@ -150,6 +150,9 @@ static Ast *
 parse_type_ptr(Context *cnt);
 
 static Ast *
+parse_type_vargs(Context *cnt);
+
+static Ast *
 parse_stmt_return(Context *cnt);
 
 static Ast *
@@ -218,6 +221,9 @@ parse_expr_lit(Context *cnt);
 
 static Ast *
 parse_expr_lit_fn(Context *cnt);
+
+static Ast *
+parse_expr_sizeof(Context *cnt);
 
 static inline bool
 parse_semicolon_rq(Context *cnt);
@@ -298,6 +304,40 @@ parse_expr_ref(Context *cnt)
 }
 
 Ast *
+parse_expr_sizeof(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
+  if (!tok_begin) return NULL;
+
+  Token *tok = tokens_consume(cnt->tokens);
+  if (!token_is(tok, SYM_LPAREN)) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
+                "expected '(' after cast operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
+  }
+
+  Ast *szof                   = ast_create_node(cnt->ast_arena, AST_EXPR_SIZEOF, tok_begin);
+  szof->data.expr_sizeof.node = parse_expr(cnt);
+  if (!szof->data.expr_sizeof.node) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "expected expression");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
+  }
+
+  tok = tokens_consume(cnt->tokens);
+  if (!token_is(tok, SYM_RPAREN)) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+                "expected ')' after szof operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  return szof;
+}
+
+Ast *
 parse_expr_cast(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
@@ -306,7 +346,7 @@ parse_expr_cast(Context *cnt)
   Token *tok = tokens_consume(cnt->tokens);
   if (!token_is(tok, SYM_LPAREN)) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-                "expected '(' after cast expression");
+                "expected '(' after expression");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
   }
@@ -679,6 +719,7 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_deref(cnt))) return expr;
   if ((expr = parse_expr_addrof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
+  if ((expr = parse_expr_sizeof(cnt))) return expr;
   return NULL;
 }
 
@@ -913,6 +954,18 @@ parse_type_ptr(Context *cnt)
 }
 
 Ast *
+parse_type_vargs(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
+  if (!tok_begin) return NULL;
+
+  Ast *ptr                = ast_create_node(cnt->ast_arena, AST_TYPE_VARGS, tok_begin);
+  ptr->data.type_ptr.type = parse_type(cnt);
+  assert(ptr->data.type_ptr.type);
+  return ptr;
+}
+
+Ast *
 parse_type_enum(Context *cnt)
 {
   Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
@@ -1034,6 +1087,7 @@ parse_type(Context *cnt)
   if (!type) type = parse_type_fn(cnt, false);
   if (!type) type = parse_type_struct(cnt);
   if (!type) type = parse_type_enum(cnt);
+  if (!type) type = parse_type_vargs(cnt);
   if (!type) type = parse_type_arr(cnt);
   if (!type) type = parse_type_slice(cnt);
   if (!type) type = parse_type_ref(cnt);

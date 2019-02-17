@@ -3,14 +3,31 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  str := "Hello world - ";
-  nl := "\n";
+  i := 10;
+  j := 20;
 
-  loop i := 0; i < 10000; i += 1 {
-    print_str(str);
-    print_int(i);
-    print_str("\n");
-  }
+  // initialize vargs
+  args : []s32;
+  args.len = 2;
+  args.ptr = cast(*s32) malloc(sizeof(s32) * args.len);
+  args[0] = i;
+  args[1] = j;
 
+  func(args);
+
+  // free vargs
+  free(cast(*u8) args.ptr);
+  
   return 0;
 };
+
+// Test var args
+func :: fn (args: ...s32) {
+  print_str("Passed vargs:\n");
+
+  loop i := 0; i < args.len; i += 1 {
+    print_int(args[i]);
+    print_str("\n");
+  }
+};
+

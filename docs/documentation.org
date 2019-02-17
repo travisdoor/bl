@@ -148,6 +148,12 @@
    #+BEGIN_EXAMPLE
    <op> <expr>
    #+END_EXAMPLE
+   
+*** Special
+   | Symbol | Relevant for types | Description                 |
+   |--------+--------------------+-----------------------------|
+   | sizeof | Any                | Determinates size in bytes. |
+   
 
 ** Data types
 *** Fundamental data types
@@ -323,6 +329,11 @@
     Example of anonymous function.
     #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
    
+*** Functions with variable argument count
+    Biscuit supports functions with variable argument count of same type.
+
+    Example of variable argument count function:
+    #+INCLUDE: "../tests/src/examples/vargs.bl" src bl -n
 ** Blocks
    Block can limit scope of the variable.
 

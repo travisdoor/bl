@@ -35,3 +35,5 @@ putchar :: fn (c: s32) s32 #extern;
 write   :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
 abort   :: fn () #extern;
+malloc  :: fn (size: usize) *u8 #extern;
+free    :: fn (ptr: *u8) #extern;

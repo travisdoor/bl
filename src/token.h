@@ -54,6 +54,7 @@
   sm(TEST,           "#test") \
   sm(BREAK,          "break")\
   sm(RETURN,         "return") \
+  sm(SIZEOF,         "sizeof") \
   sm(STRUCT,         "struct") \
   sm(EXTERN,         "#extern") \
   sm(CONTINUE,       "continue") \

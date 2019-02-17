@@ -106,7 +106,6 @@ union _MirInstr
   MirInstrStore       store;
   MirInstrRet         ret;
   MirInstrBinop       binop;
-  MirInstrTypeFn      type_fn;
   MirInstrFnProto     fn_proto;
   MirInstrDeclRef     decl_ref;
   MirInstrCall        call;
@@ -122,7 +121,9 @@ union _MirInstr
   MirInstrTypeSlice   type_slice;
   MirInstrTypePtr     type_ptr;
   MirInstrTypeStruct  type_struct;
+  MirInstrTypeFn      type_fn;
   MirInstrCast        cast;
+  MirInstrSizeof      szof;
 };
 
 typedef struct MirFrame
@@ -283,7 +284,7 @@ static MirType *
 create_type_ptr(Context *cnt, MirType *src_type);
 
 static MirType *
-create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types);
+create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs);
 
 static MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len);
@@ -341,6 +342,9 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *
 append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
+
+static MirInstr *
+append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
 create_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index,
@@ -513,10 +517,16 @@ static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
 
 static MirInstr *
+ast_type_vargs(Context *cnt, Ast *type_vargs);
+
+static MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof);
 
 static MirInstr *
 ast_expr_cast(Context *cnt, Ast *cast);
+
+static MirInstr *
+ast_expr_sizeof(Context *cnt, Ast *szof);
 
 static MirInstr *
 ast_expr_type(Context *cnt, Ast *type);
@@ -648,6 +658,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime);
 
 static bool
 analyze_instr_cast(Context *cnt, MirInstrCast *cast);
+
+static bool
+analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 
 static bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
@@ -1326,11 +1339,12 @@ create_type_ptr(Context *cnt, MirType *src_type)
 }
 
 MirType *
-create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types)
+create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 {
   MirType *tmp           = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
+  tmp->data.fn.is_vargs  = is_vargs;
   tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
   init_type_llvm_ABI(cnt, tmp);
 
@@ -1741,6 +1755,19 @@ append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next)
   MirInstrCast *tmp = create_instr(cnt, MIR_INSTR_CAST, node, MirInstrCast *);
   tmp->type         = type;
   tmp->next         = next;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr)
+{
+  ref_instr(expr);
+  MirInstrSizeof *tmp        = create_instr(cnt, MIR_INSTR_SIZEOF, node, MirInstrSizeof *);
+  tmp->base.const_value.type = cnt->builtin_types.entry_usize;
+  tmp->base.comptime         = true;
+  tmp->expr                  = expr;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2217,19 +2244,24 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_FN: {
-    MirType *    tmp_ret   = type->data.fn.ret_type;
-    BArray *     tmp_args  = type->data.fn.arg_types;
-    const size_t cargs     = tmp_args ? bo_array_size(tmp_args) : 0;
+    MirType *  tmp_ret  = type->data.fn.ret_type;
+    BArray *   tmp_args = type->data.fn.arg_types;
+    const bool is_vargs = type->data.fn.is_vargs;
+    size_t     argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+
+    assert(!(is_vargs && argc == 0));
+    if (is_vargs) --argc;
+
     LLVMTypeRef *llvm_args = NULL;
     LLVMTypeRef  llvm_ret  = NULL;
 
     if (tmp_args) {
-      llvm_args = bl_malloc(cargs * sizeof(LLVMTypeRef));
+      llvm_args = bl_malloc(argc * sizeof(LLVMTypeRef));
       if (!llvm_args) bl_abort("bad alloc");
 
       MirType *tmp_arg;
-      barray_foreach(tmp_args, tmp_arg)
-      {
+      for (size_t i = 0; i < argc; ++i) {
+        tmp_arg = bo_array_at(tmp_args, i, MirType *);
         assert(tmp_arg->llvm_type);
         llvm_args[i] = tmp_arg->llvm_type;
       }
@@ -2238,7 +2270,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     assert(llvm_ret);
 
-    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)cargs, false);
+    type->llvm_type        = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)argc, is_vargs);
     type->size_bits        = 0;
     type->store_size_bytes = 0;
     type->alignment        = 0;
@@ -2393,6 +2425,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_TYPE_STRUCT:
   case MIR_INSTR_TYPE_SLICE:
+  case MIR_INSTR_SIZEOF:
     erase_instr(instr);
     break;
 
@@ -2662,6 +2695,24 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 }
 
 bool
+analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
+{
+  assert(szof->expr);
+  reduce_instr(cnt, szof->expr);
+
+  MirType *type = szof->expr->const_value.type;
+  assert(type);
+
+  if (type->kind == MIR_TYPE_TYPE) {
+    type = szof->expr->const_value.data.v_type;
+    assert(type);
+  }
+
+  szof->base.const_value.data.v_u64 = type->store_size_bytes;
+  return true;
+}
+
+bool
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   assert(ref->rid && ref->scope);
@@ -2728,8 +2779,10 @@ analyze_instr_arg(Context *cnt, MirInstrArg *arg)
   assert(arg_types && "trying to reference type of argument in function without arguments");
 
   assert(arg->i < bo_array_size(arg_types));
-  arg->base.const_value.type = bo_array_at(arg_types, arg->i, MirType *);
-  assert(arg->base.const_value.type);
+
+  MirType *type = bo_array_at(arg_types, arg->i, MirType *);
+  assert(type);
+  arg->base.const_value.type = type;
 
   return true;
 }
@@ -2882,6 +2935,8 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   assert(type_fn->base.const_value.type);
   assert(type_fn->ret_type ? type_fn->ret_type->analyzed : true);
 
+  bool is_vargs = false;
+
   BArray *arg_types = NULL;
   if (type_fn->arg_types) {
     arg_types = bo_array_new(sizeof(MirType *));
@@ -2894,6 +2949,15 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
       assert(arg_type->comptime);
       tmp = arg_type->const_value.data.v_type;
       assert(tmp);
+
+      /*
+      if (tmp->kind == MIR_TYPE_VARGS) {
+        is_vargs = true;
+        assert(i == bo_array_size(type_fn->arg_types) - 1 &&
+               "VArgs must be last, this should be an error");
+      }
+      */
+
       bo_array_push_back(arg_types, tmp);
       reduce_instr(cnt, arg_type);
     }
@@ -2908,7 +2972,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
     reduce_instr(cnt, type_fn->ret_type);
   }
 
-  type_fn->base.const_value.data.v_type = create_type_fn(cnt, ret_type, arg_types);
+  type_fn->base.const_value.data.v_type = create_type_fn(cnt, ret_type, arg_types, is_vargs);
 
   return true;
 }
@@ -3512,6 +3576,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_CAST:
     state = analyze_instr_cast(cnt, (MirInstrCast *)instr);
+    break;
+  case MIR_INSTR_SIZEOF:
+    state = analyze_instr_sizeof(cnt, (MirInstrSizeof *)instr);
     break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
@@ -4278,25 +4345,36 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
       }
     }
 
-    int64_t result = 0;
+    bool does_return = true;
+
+    MirConstValueData result = {0};
     switch (ret_type->kind) {
     case MIR_TYPE_INT:
       switch (ret_type->store_size_bytes) {
       case sizeof(char):
-        result = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        result.v_s8 = dcCallChar(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(short):
-        result = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        result.v_s16 = dcCallShort(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(int):
-        result = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        result.v_s32 = dcCallInt(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(long long):
-        result = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        result.v_s64 = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
         break;
       default:
         bl_abort("unsupported integer size for external call result");
       }
+      break;
+
+    case MIR_TYPE_PTR:
+      result.v_void_ptr = dcCallPointer(cnt->dl.vm, fn->extern_entry);
+      break;
+
+    case MIR_TYPE_VOID:
+      dcCallVoid(cnt->dl.vm, fn->extern_entry);
+      does_return = false;
       break;
 
     default:
@@ -4304,7 +4382,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     }
 
     /* PUSH result only if it is used */
-    if (call->base.ref_count > 1) {
+    if (call->base.ref_count > 1 && does_return) {
       exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
     }
   } else {
@@ -4782,6 +4860,16 @@ ast_expr_cast(Context *cnt, Ast *cast)
 }
 
 MirInstr *
+ast_expr_sizeof(Context *cnt, Ast *szof)
+{
+  Ast *ast_node = szof->data.expr_sizeof.node;
+  assert(ast_node);
+
+  MirInstr *expr = ast(cnt, ast_node);
+  return append_instr_sizeof(cnt, szof, expr);
+}
+
+MirInstr *
 ast_expr_deref(Context *cnt, Ast *deref)
 {
   MirInstr *next = ast(cnt, deref->data.expr_deref.next);
@@ -5196,6 +5284,16 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 }
 
 MirInstr *
+ast_type_vargs(Context *cnt, Ast *type_vargs)
+{
+  Ast *ast_type = type_vargs->data.type_vargs.type;
+  assert(ast_type);
+  MirInstr *type = ast(cnt, ast_type);
+  assert(type);
+  return append_instr_type_slice(cnt, type_vargs, type);
+}
+
+MirInstr *
 ast_type_struct(Context *cnt, Ast *type_struct)
 {
   BArray *   ast_members = type_struct->data.type_strct.members;
@@ -5239,7 +5337,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
   MirType *final_fn_type  = fn_type;
   bool     infer_ret_type = false;
   if (!final_fn_type) {
-    final_fn_type  = create_type_fn(cnt, NULL, NULL);
+    final_fn_type  = create_type_fn(cnt, NULL, NULL, false);
     infer_ret_type = true;
   }
 
@@ -5309,10 +5407,14 @@ ast(Context *cnt, Ast *node)
     return ast_type_slice(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
+  case AST_TYPE_VARGS:
+    return ast_type_vargs(cnt, node);
   case AST_EXPR_ADDROF:
     return ast_expr_addrof(cnt, node);
   case AST_EXPR_CAST:
     return ast_expr_cast(cnt, node);
+  case AST_EXPR_SIZEOF:
+    return ast_expr_sizeof(cnt, node);
   case AST_EXPR_DEREF:
     return ast_expr_deref(cnt, node);
   case AST_EXPR_LIT_INT:
@@ -5412,6 +5514,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrMemberPtr";
   case MIR_INSTR_CAST:
     return "InstrCast";
+  case MIR_INSTR_SIZEOF:
+    return "InstrSizeof";
   }
 
   return "UNKNOWN";
@@ -5641,8 +5745,8 @@ init_builtins(Context *cnt)
     bt->entry_f64   = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
 
     bt->entry_u8_ptr          = create_type_ptr(cnt, bt->entry_u8);
-    bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL);
-    bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL);
+    bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
+    bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
     bt->entry_u8_slice        = create_type_slice(cnt, NULL, bt->entry_u8_ptr);
 
     provide_builtin_type(cnt, bt->entry_type);
