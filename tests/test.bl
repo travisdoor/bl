@@ -17,8 +17,6 @@ main :: fn () s32 {
 
   // free vargs
   free(cast(*u8) args.ptr);
-
-  print_int(sizeof(u8));
   
   return 0;
 };

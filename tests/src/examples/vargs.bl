@@ -1,0 +1,17 @@
+#load "std/debug.bl"
+
+sum :: fn (nums: ...s32) s32 {
+  // nums is slice of pointers to s32
+  result := 0;
+  loop i := 0; i < nums.len; i += 1 {
+    result += ^nums[i];
+  }
+
+  return result;
+};
+
+#test "vargs" {
+  s := sum(10, 20, 30);
+  assert(s == 60);
+};
+
