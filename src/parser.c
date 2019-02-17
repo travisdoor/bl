@@ -222,6 +222,9 @@ parse_expr_lit(Context *cnt);
 static Ast *
 parse_expr_lit_fn(Context *cnt);
 
+static Ast *
+parse_expr_sizeof(Context *cnt);
+
 static inline bool
 parse_semicolon_rq(Context *cnt);
 
@@ -341,6 +344,15 @@ parse_expr_cast(Context *cnt)
   }
 
   return cast;
+}
+
+Ast *
+parse_expr_sizeof(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
+  if (!tok_begin) return NULL;
+
+  bl_unimplemented;
 }
 
 Ast *
@@ -682,6 +694,7 @@ parse_expr_atom(Context *cnt)
   if ((expr = parse_expr_deref(cnt))) return expr;
   if ((expr = parse_expr_addrof(cnt))) return expr;
   if ((expr = parse_expr_cast(cnt))) return expr;
+  if ((expr = parse_expr_sizeof(cnt))) return expr;
   return NULL;
 }
 

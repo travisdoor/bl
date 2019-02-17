@@ -106,7 +106,6 @@ union _MirInstr
   MirInstrStore       store;
   MirInstrRet         ret;
   MirInstrBinop       binop;
-  MirInstrTypeFn      type_fn;
   MirInstrFnProto     fn_proto;
   MirInstrDeclRef     decl_ref;
   MirInstrCall        call;
@@ -122,6 +121,7 @@ union _MirInstr
   MirInstrTypeSlice   type_slice;
   MirInstrTypePtr     type_ptr;
   MirInstrTypeStruct  type_struct;
+  MirInstrTypeFn      type_fn;
   MirInstrCast        cast;
 };
 
@@ -511,6 +511,9 @@ ast_type_slice(Context *cnt, Ast *type_slice);
 
 static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
+
+static MirInstr *
+ast_type_vargs(Context *cnt, Ast *type_vargs);
 
 static MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof);
@@ -2218,10 +2221,13 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_FN: {
-    MirType *    tmp_ret  = type->data.fn.ret_type;
-    BArray *     tmp_args = type->data.fn.arg_types;
-    const bool   is_vargs = type->data.fn.is_vargs;
-    const size_t argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+    MirType *  tmp_ret  = type->data.fn.ret_type;
+    BArray *   tmp_args = type->data.fn.arg_types;
+    const bool is_vargs = type->data.fn.is_vargs;
+    size_t     argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+
+    assert(!(is_vargs && argc == 0));
+    if (is_vargs) --argc;
 
     LLVMTypeRef *llvm_args = NULL;
     LLVMTypeRef  llvm_ret  = NULL;
@@ -2231,8 +2237,8 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
       if (!llvm_args) bl_abort("bad alloc");
 
       MirType *tmp_arg;
-      barray_foreach(tmp_args, tmp_arg)
-      {
+      for (size_t i = 0; i < argc; ++i) {
+        tmp_arg = bo_array_at(tmp_args, i, MirType *);
         assert(tmp_arg->llvm_type);
         llvm_args[i] = tmp_arg->llvm_type;
       }
@@ -2731,8 +2737,10 @@ analyze_instr_arg(Context *cnt, MirInstrArg *arg)
   assert(arg_types && "trying to reference type of argument in function without arguments");
 
   assert(arg->i < bo_array_size(arg_types));
-  arg->base.const_value.type = bo_array_at(arg_types, arg->i, MirType *);
-  assert(arg->base.const_value.type);
+
+  MirType *type = bo_array_at(arg_types, arg->i, MirType *);
+  assert(type);
+  arg->base.const_value.type = type;
 
   return true;
 }
@@ -2899,6 +2907,15 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
       assert(arg_type->comptime);
       tmp = arg_type->const_value.data.v_type;
       assert(tmp);
+
+      /*
+      if (tmp->kind == MIR_TYPE_VARGS) {
+        is_vargs = true;
+        assert(i == bo_array_size(type_fn->arg_types) - 1 &&
+               "VArgs must be last, this should be an error");
+      }
+      */
+
       bo_array_push_back(arg_types, tmp);
       reduce_instr(cnt, arg_type);
     }
@@ -4283,25 +4300,36 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
       }
     }
 
-    int64_t result = 0;
+    bool does_return = true;
+
+    MirConstValueData result = {0};
     switch (ret_type->kind) {
     case MIR_TYPE_INT:
       switch (ret_type->store_size_bytes) {
       case sizeof(char):
-        result = dcCallChar(cnt->dl.vm, fn->extern_entry);
+        result.v_s8 = dcCallChar(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(short):
-        result = dcCallShort(cnt->dl.vm, fn->extern_entry);
+        result.v_s16 = dcCallShort(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(int):
-        result = dcCallInt(cnt->dl.vm, fn->extern_entry);
+        result.v_s32 = dcCallInt(cnt->dl.vm, fn->extern_entry);
         break;
       case sizeof(long long):
-        result = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+        result.v_s64 = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
         break;
       default:
         bl_abort("unsupported integer size for external call result");
       }
+      break;
+
+    case MIR_TYPE_PTR:
+      result.v_void_ptr = dcCallPointer(cnt->dl.vm, fn->extern_entry);
+      break;
+
+    case MIR_TYPE_VOID:
+      dcCallVoid(cnt->dl.vm, fn->extern_entry);
+      does_return = false;
       break;
 
     default:
@@ -4309,7 +4337,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     }
 
     /* PUSH result only if it is used */
-    if (call->base.ref_count > 1) {
+    if (call->base.ref_count > 1 && does_return) {
       exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
     }
   } else {
@@ -5201,6 +5229,16 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 }
 
 MirInstr *
+ast_type_vargs(Context *cnt, Ast *type_vargs)
+{
+  Ast *ast_type = type_vargs->data.type_vargs.type;
+  assert(ast_type);
+  MirInstr *type = ast(cnt, ast_type);
+  assert(type);
+  return append_instr_type_slice(cnt, type_vargs, type);
+}
+
+MirInstr *
 ast_type_struct(Context *cnt, Ast *type_struct)
 {
   BArray *   ast_members = type_struct->data.type_strct.members;
@@ -5314,6 +5352,8 @@ ast(Context *cnt, Ast *node)
     return ast_type_slice(cnt, node);
   case AST_TYPE_PTR:
     return ast_type_ptr(cnt, node);
+  case AST_TYPE_VARGS:
+    return ast_type_vargs(cnt, node);
   case AST_EXPR_ADDROF:
     return ast_expr_addrof(cnt, node);
   case AST_EXPR_CAST:
