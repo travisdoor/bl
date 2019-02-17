@@ -304,6 +304,40 @@ parse_expr_ref(Context *cnt)
 }
 
 Ast *
+parse_expr_sizeof(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
+  if (!tok_begin) return NULL;
+
+  Token *tok = tokens_consume(cnt->tokens);
+  if (!token_is(tok, SYM_LPAREN)) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
+                "expected '(' after cast operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
+  }
+
+  Ast *szof                   = ast_create_node(cnt->ast_arena, AST_EXPR_SIZEOF, tok_begin);
+  szof->data.expr_sizeof.node = parse_expr(cnt);
+  if (!szof->data.expr_sizeof.node) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "expected expression");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
+  }
+
+  tok = tokens_consume(cnt->tokens);
+  if (!token_is(tok, SYM_RPAREN)) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+                "expected ')' after szof operator");
+    tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok);
+  }
+
+  return szof;
+}
+
+Ast *
 parse_expr_cast(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
@@ -312,7 +346,7 @@ parse_expr_cast(Context *cnt)
   Token *tok = tokens_consume(cnt->tokens);
   if (!token_is(tok, SYM_LPAREN)) {
     parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-                "expected '(' after cast expression");
+                "expected '(' after expression");
     tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
   }
@@ -344,15 +378,6 @@ parse_expr_cast(Context *cnt)
   }
 
   return cast;
-}
-
-Ast *
-parse_expr_sizeof(Context *cnt)
-{
-  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
-  if (!tok_begin) return NULL;
-
-  bl_unimplemented;
 }
 
 Ast *

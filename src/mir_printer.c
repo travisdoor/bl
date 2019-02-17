@@ -124,7 +124,7 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
         fprintf(stream, "\"%s", strtok(tmp, "\n"));
       } else {
         fprintf(stream, "\"\"");
-	break;
+        break;
       }
       char *next = strtok(NULL, "\n");
       if (next && strlen(next)) fprintf(stdout, "...");
@@ -191,6 +191,9 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 
 static void
 print_instr_cast(MirInstrCast *cast, FILE *stream);
+
+static void
+print_instr_sizeof(MirInstrSizeof *szof, FILE *stream);
 
 static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
@@ -358,6 +361,15 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   }
 
   fprintf(stream, "%%%u", cast->next->id);
+}
+
+void
+print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
+{
+  print_instr_head(&szof->base, stream, "sizeof");
+  fprintf(stream, "(");
+  print_comptime_value_or_id(szof->expr, stream);
+  fprintf(stream, ")");
 }
 
 void
@@ -696,6 +708,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_CAST:
     print_instr_cast((MirInstrCast *)instr, stream);
+    break;
+  case MIR_INSTR_SIZEOF:
+    print_instr_sizeof((MirInstrSizeof *)instr, stream);
     break;
   default:
     break;

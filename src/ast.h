@@ -351,12 +351,12 @@ struct AstExprElem
 
 struct AstExprSizeof
 {
-  Ast *in;
+  Ast *node;
 };
 
 struct AstExprTypeof
 {
-  Ast *in;
+  Ast *node;
 };
 
 struct AstExprUnary
@@ -420,8 +420,8 @@ struct Ast
     struct AstExprCall      expr_call;
     struct AstExprMember    expr_member;
     struct AstExprElem      expr_elem;
-    struct AstExprSizeof    expr_szof;
-    struct AstExprTypeof    expr_tpof;
+    struct AstExprSizeof    expr_sizeof;
+    struct AstExprTypeof    expr_typeof;
     struct AstExprUnary     expr_unary;
     struct AstExprAddrOf    expr_addrof;
     struct AstExprDeref     expr_deref;

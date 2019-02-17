@@ -77,6 +77,7 @@ typedef struct MirInstrTypeSlice   MirInstrTypeSlice;
 typedef struct MirInstrTypePtr     MirInstrTypePtr;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
+typedef struct MirInstrSizeof      MirInstrSizeof;
 
 typedef enum MirTypeKind    MirTypeKind;
 typedef enum MirInstrKind   MirInstrKind;
@@ -328,6 +329,7 @@ enum MirInstrKind
   MIR_INSTR_MEMBER_PTR,
   MIR_INSTR_ADDROF,
   MIR_INSTR_CAST,
+  MIR_INSTR_SIZEOF,
 };
 
 struct MirInstr
@@ -418,6 +420,13 @@ struct MirInstrCast
   MirCastOp op;
   MirInstr *type;
   MirInstr *next;
+};
+
+struct MirInstrSizeof
+{
+  MirInstr base;
+
+  MirInstr *expr;
 };
 
 struct MirInstrArg
