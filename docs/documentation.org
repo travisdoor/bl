@@ -148,6 +148,12 @@
    #+BEGIN_EXAMPLE
    <op> <expr>
    #+END_EXAMPLE
+   
+*** Special
+   | Symbol | Relevant for types | Description                 |
+   |--------+--------------------+-----------------------------|
+   | sizeof | Any                | Determinates size in bytes. |
+   
 
 ** Data types
 *** Fundamental data types

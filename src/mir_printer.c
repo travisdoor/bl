@@ -367,9 +367,8 @@ void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
 {
   print_instr_head(&szof->base, stream, "sizeof");
-  fprintf(stream, "(");
+  fprintf(stream, " ");
   print_comptime_value_or_id(szof->expr, stream);
-  fprintf(stream, ")");
 }
 
 void
@@ -598,8 +597,8 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   MirFn *fn = fn_proto->base.const_value.data.v_fn;
   assert(fn);
 
-  fprintf(stream, "%s%s\n", fn_proto->base.analyzed ? "// analyzed" : "",
-          fn->ref_count ? "" : ", no LLVM");
+  if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
+  if (fn->ref_count) fprintf(stream, "// no LLVM\n");
 
   if (fn->llvm_name)
     fprintf(stream, "@%s ", fn->llvm_name);

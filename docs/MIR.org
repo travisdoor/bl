@@ -383,4 +383,10 @@
    #+BEGIN_EXAMPLE
    <T> inttoptr <target> // yields value with casted type
    #+END_EXAMPLE
+** sizeof
+   Determinates size of expresion or type in compile time.
+
+   #+BEGIN_EXAMPLE
+   usize sizeof <expr|type> // yields size of input in bytes
+   #+END_EXAMPLE
 
