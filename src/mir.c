@@ -124,6 +124,7 @@ union _MirInstr
   MirInstrTypeFn      type_fn;
   MirInstrCast        cast;
   MirInstrSizeof      szof;
+  MirInstrAlignof     alof;
 };
 
 typedef struct MirFrame
@@ -347,6 +348,9 @@ static MirInstr *
 append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
+append_instr_alignof(Context *cnt, Ast *node, MirInstr *expr);
+
+static MirInstr *
 create_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index,
                       bool target_is_slice);
 
@@ -529,6 +533,9 @@ static MirInstr *
 ast_expr_sizeof(Context *cnt, Ast *szof);
 
 static MirInstr *
+ast_expr_alignof(Context *cnt, Ast *szof);
+
+static MirInstr *
 ast_expr_type(Context *cnt, Ast *type);
 
 static MirInstr *
@@ -661,6 +668,9 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast);
 
 static bool
 analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
+
+static bool
+analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
 
 static bool
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
@@ -1774,6 +1784,19 @@ append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr)
 }
 
 MirInstr *
+append_instr_alignof(Context *cnt, Ast *node, MirInstr *expr)
+{
+  ref_instr(expr);
+  MirInstrAlignof *tmp       = create_instr(cnt, MIR_INSTR_ALIGNOF, node, MirInstrAlignof *);
+  tmp->base.const_value.type = cnt->builtin_types.entry_usize;
+  tmp->base.comptime         = true;
+  tmp->expr                  = expr;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
 append_instr_cond_br(Context *cnt, Ast *node, MirInstr *cond, MirInstrBlock *then_block,
                      MirInstrBlock *else_block)
 {
@@ -2426,6 +2449,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_STRUCT:
   case MIR_INSTR_TYPE_SLICE:
   case MIR_INSTR_SIZEOF:
+  case MIR_INSTR_ALIGNOF:
     erase_instr(instr);
     break;
 
@@ -2709,6 +2733,24 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
   }
 
   szof->base.const_value.data.v_u64 = type->store_size_bytes;
+  return true;
+}
+
+bool
+analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
+{
+  assert(alof->expr);
+  reduce_instr(cnt, alof->expr);
+
+  MirType *type = alof->expr->const_value.type;
+  assert(type);
+
+  if (type->kind == MIR_TYPE_TYPE) {
+    type = alof->expr->const_value.data.v_type;
+    assert(type);
+  }
+
+  alof->base.const_value.data.v_u64 = type->alignment;
   return true;
 }
 
@@ -3579,6 +3621,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_SIZEOF:
     state = analyze_instr_sizeof(cnt, (MirInstrSizeof *)instr);
+    break;
+  case MIR_INSTR_ALIGNOF:
+    state = analyze_instr_alignof(cnt, (MirInstrAlignof *)instr);
     break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
@@ -4870,6 +4915,16 @@ ast_expr_sizeof(Context *cnt, Ast *szof)
 }
 
 MirInstr *
+ast_expr_alignof(Context *cnt, Ast *szof)
+{
+  Ast *ast_node = szof->data.expr_alignof.node;
+  assert(ast_node);
+
+  MirInstr *expr = ast(cnt, ast_node);
+  return append_instr_alignof(cnt, szof, expr);
+}
+
+MirInstr *
 ast_expr_deref(Context *cnt, Ast *deref)
 {
   MirInstr *next = ast(cnt, deref->data.expr_deref.next);
@@ -5415,6 +5470,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_cast(cnt, node);
   case AST_EXPR_SIZEOF:
     return ast_expr_sizeof(cnt, node);
+  case AST_EXPR_ALIGNOF:
+    return ast_expr_alignof(cnt, node);
   case AST_EXPR_DEREF:
     return ast_expr_deref(cnt, node);
   case AST_EXPR_LIT_INT:
@@ -5516,6 +5573,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrCast";
   case MIR_INSTR_SIZEOF:
     return "InstrSizeof";
+  case MIR_INSTR_ALIGNOF:
+    return "InstrAlignof";
   }
 
   return "UNKNOWN";

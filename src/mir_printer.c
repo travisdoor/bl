@@ -196,6 +196,9 @@ static void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream);
 
 static void
+print_instr_alignof(MirInstrAlignof *szof, FILE *stream);
+
+static void
 print_instr_load(MirInstrLoad *load, FILE *stream);
 
 static void
@@ -367,6 +370,14 @@ void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
 {
   print_instr_head(&szof->base, stream, "sizeof");
+  fprintf(stream, " ");
+  print_comptime_value_or_id(szof->expr, stream);
+}
+
+void
+print_instr_alignof(MirInstrAlignof *szof, FILE *stream)
+{
+  print_instr_head(&szof->base, stream, "alignof");
   fprintf(stream, " ");
   print_comptime_value_or_id(szof->expr, stream);
 }
@@ -710,6 +721,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_SIZEOF:
     print_instr_sizeof((MirInstrSizeof *)instr, stream);
+    break;
+  case MIR_INSTR_ALIGNOF:
+    print_instr_alignof((MirInstrAlignof *)instr, stream);
     break;
   default:
     break;

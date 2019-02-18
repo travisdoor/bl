@@ -390,3 +390,10 @@
    usize sizeof <expr|type> // yields size of input in bytes
    #+END_EXAMPLE
 
+** alignof
+   Determinates alignment of expresion or type in compile time.
+
+   #+BEGIN_EXAMPLE
+   usize alignof <expr|type> // yields alignment of input
+   #+END_EXAMPLE
+

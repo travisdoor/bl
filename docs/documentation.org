@@ -135,7 +135,6 @@
    <expr> <op> <expr>
    #+END_EXAMPLE
 
-
 *** Unary
    | Symbol | Relevant for types | Description          |
    |--------+--------------------+----------------------|
@@ -150,11 +149,14 @@
    #+END_EXAMPLE
    
 *** Special
-   | Symbol | Relevant for types | Description                 |
-   |--------+--------------------+-----------------------------|
-   | sizeof | Any                | Determinates size in bytes. |
-   
+   | Symbol  | Relevant for types | Description                     |
+   |---------+--------------------+---------------------------------|
+   | sizeof  | Any                | Determinates size in bytes.     |
+   | alignof | Any                | Determinates alignment of type. |
 
+    Example:
+    #+INCLUDE: "../tests/src/examples/special_op.bl" src bl -n
+   
 ** Data types
 *** Fundamental data types
     | Name  | Description                   |

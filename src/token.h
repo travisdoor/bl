@@ -57,6 +57,7 @@
   sm(SIZEOF,         "sizeof") \
   sm(STRUCT,         "struct") \
   sm(EXTERN,         "#extern") \
+  sm(ALIGNOF,        "alignof") \
   sm(CONTINUE,       "continue") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
