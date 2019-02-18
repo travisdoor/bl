@@ -61,6 +61,7 @@ typedef enum
   AST_STMT_LOOP,
   AST_STMT_BREAK,
   AST_STMT_CONTINUE,
+  AST_STMT_DEFER,
   _AST_TYPE_FIRST,
   AST_TYPE_REF,
   AST_TYPE_ARR,
@@ -173,6 +174,11 @@ struct AstStmtReturn
 {
   Ast *expr;
   Ast *fn_decl;
+};
+
+struct AstStmtDefer
+{
+  Ast *expr;
 };
 
 struct AstStmtIf
@@ -397,6 +403,7 @@ struct Ast
     struct AstStmtReturn    stmt_return;
     struct AstStmtIf        stmt_if;
     struct AstStmtLoop      stmt_loop;
+    struct AstStmtDefer     stmt_defer;
     struct AstTestCase      test_case;
     struct AstDecl          decl;
     struct AstDeclEntity    decl_entity;

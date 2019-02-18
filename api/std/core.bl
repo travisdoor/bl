@@ -29,6 +29,14 @@
 #load "c.bl"
 #load "debug.bl"
 
+alloc :: fn (size: usize) *u8 {
+  return malloc(size);
+};
+
+dealloc :: fn (ptr: *u8) {
+  free(ptr);
+};
+
 print_str :: fn (str: []u8) {
   write(C_STDOUT, str.ptr, str.len);
 };

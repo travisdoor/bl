@@ -105,6 +105,8 @@ ast_get_name(const Ast *n)
     return "Unreachable";
   case AST_STMT_RETURN:
     return "StmtReturn";
+  case AST_STMT_DEFER:
+    return "StmtDefer";
   case AST_STMT_IF:
     return "StmtIf";
   case AST_STMT_LOOP:

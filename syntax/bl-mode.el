@@ -15,7 +15,7 @@
 (add-to-list 'auto-mode-alist '("\\.bl\\'" . bl-mode))
 
 (defconst bl-keywords
-  '("if" "loop" "break" "continue" "else" "sizeof" "typeof" "alignof"
+  '("if" "loop" "break" "continue" "else" "sizeof" "typeof" "alignof" "defer"
     "struct" "enum" "fn" "return" "cast" ":" ":=" "unreachable")) 
 
 (defconst bl-types
