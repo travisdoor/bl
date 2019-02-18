@@ -125,6 +125,7 @@ union _MirInstr
   MirInstrCast        cast;
   MirInstrSizeof      szof;
   MirInstrAlignof     alof;
+  MirInstrInit        init;
 };
 
 typedef struct MirFrame
@@ -212,6 +213,9 @@ instr_dtor(MirInstr *instr)
     break;
   case MIR_INSTR_CALL:
     bo_unref(((MirInstrCall *)instr)->args);
+    break;
+  case MIR_INSTR_INIT:
+    bo_unref(((MirInstrInit *)instr)->values);
     break;
   case MIR_INSTR_CONST: {
     if (instr->const_value.type->kind == MIR_TYPE_STRUCT) {
@@ -340,6 +344,9 @@ create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_ty
 
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
+
+static MirInstr *
+append_instr_init(Context *cnt, Ast *node, MirInstr *decl, BArray *values);
 
 static MirInstr *
 append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
@@ -583,6 +590,9 @@ ast_expr_binop(Context *cnt, Ast *binop);
 static MirInstr *
 ast_expr_unary(Context *cnt, Ast *unop);
 
+static MirInstr *
+ast_expr_compound(Context *cnt, Ast *cmp);
+
 /* this will also set size and alignment of the type */
 static void
 init_type_llvm_ABI(Context *cnt, MirType *type);
@@ -590,6 +600,9 @@ init_type_llvm_ABI(Context *cnt, MirType *type);
 /* analyze */
 static void
 reduce_instr(Context *cnt, MirInstr *instr);
+
+static bool
+analyze_instr_init(Context *cnt, MirInstrInit *init);
 
 static bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
@@ -1163,7 +1176,7 @@ provide_var(Context *cnt, MirVar *var)
   ScopeEntry *collision = scope_lookup(var->scope, var->id, false);
   if (collision) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, var->decl_node->src,
-                BUILDER_CUR_WORD, "duplicate symbol");
+                BUILDER_CUR_WORD, "Duplicate symbol.");
     return NULL;
   }
 
@@ -1183,7 +1196,7 @@ provide_member(Context *cnt, MirMember *member)
   ScopeEntry *collision = scope_lookup(member->scope, member->id, false);
   if (collision) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, member->decl_node->src,
-                BUILDER_CUR_WORD, "duplicate symbol inside structure declaration");
+                BUILDER_CUR_WORD, "Duplicate symbol inside structure declaration.");
     return NULL;
   }
 
@@ -1203,7 +1216,7 @@ provide_fn(Context *cnt, MirFn *fn)
   ScopeEntry *collision = scope_lookup(fn->scope, fn->id, false);
   if (collision) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, fn->decl_node->src,
-                BUILDER_CUR_WORD, "duplicate symbol");
+                BUILDER_CUR_WORD, "Duplicate symbol.");
     return NULL;
   }
 
@@ -1752,6 +1765,22 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i)
 {
   MirInstrArg *tmp = create_instr(cnt, MIR_INSTR_ARG, node, MirInstrArg *);
   tmp->i           = i;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values)
+{
+  assert(values);
+
+  MirInstr *value;
+  barray_foreach(values, value) ref_instr(value);
+
+  MirInstrInit *tmp = create_instr(cnt, MIR_INSTR_INIT, node, MirInstrInit *);
+  tmp->type         = type;
+  tmp->values       = values;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -2489,6 +2518,54 @@ reduce_instr(Context *cnt, MirInstr *instr)
 }
 
 bool
+analyze_instr_init(Context *cnt, MirInstrInit *init)
+{
+  MirInstr *instr_type = init->type;
+  BArray *  values     = init->values;
+  assert(instr_type && values);
+
+  reduce_instr(cnt, instr_type);
+  if (instr_type->const_value.type->kind != MIR_TYPE_TYPE) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, instr_type->node->src,
+                BUILDER_CUR_WORD, "Expected type before compound expression.");
+    return false;
+  }
+
+  MirType *type = instr_type->const_value.data.v_type;
+  assert(type);
+  MirInstr *   value;
+  const size_t valc = bo_array_size(values);
+
+  switch (type->kind) {
+  case MIR_TYPE_ARRAY: {
+    barray_foreach(values, value)
+    {
+      reduce_instr(cnt, value);
+
+      /* Check if array is supposed to be initilialized to {0} */
+      if (valc == 1 && value->kind == MIR_INSTR_CONST &&
+          value->const_value.type->kind == MIR_TYPE_INT && value->const_value.data.v_u64 == 0) {
+        bl_log("zero initializer");
+      }
+    }
+
+    // TODO: create constant array initializer
+    // TODO: create constant array initializer
+    // TODO: create constant array initializer
+    // TODO: create constant array initializer
+
+    break;
+  }
+
+  default:
+    bl_unimplemented;
+  }
+
+  init->base.const_value.type = type;
+  return true;
+}
+
+bool
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
   elem_ptr->index = insert_instr_load_if_needed(cnt, elem_ptr->index);
@@ -2542,7 +2619,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     elem_ptr->target_is_slice = true;
   } else {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, arr_ptr->node->src,
-                BUILDER_CUR_WORD, "expected array or slice type");
+                BUILDER_CUR_WORD, "Expected array or slice type.");
     return false;
   }
 
@@ -2596,7 +2673,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       analyze_instr(cnt, &addrof_elem->base, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, ast_member_ident->src,
-                  BUILDER_CUR_WORD, "unknown member");
+                  BUILDER_CUR_WORD, "Unknown member.");
     }
   } else {
     if (target_type->kind == MIR_TYPE_PTR) {
@@ -2608,7 +2685,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
     if (target_type->kind != MIR_TYPE_STRUCT) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS, target_ptr->node->src,
-                  BUILDER_CUR_WORD, "expected structure type");
+                  BUILDER_CUR_WORD, "Expected structure type.");
       return false;
     }
 
@@ -2633,7 +2710,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
         member_ptr->base.const_value.type = create_type_ptr(cnt, ptr_type);
       } else {
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
-                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown slice member");
+                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "Unknown slice member.");
         return false;
       }
     } else {
@@ -2643,7 +2720,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
       ScopeEntry *found = scope_lookup(scope, rid, false);
       if (!found) {
         builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
-                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "unknown structure member");
+                    member_ptr->member_ident->src, BUILDER_CUR_WORD, "Unknown structure member.");
         return false;
       }
 
@@ -2671,7 +2748,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   assert(src);
   if (src->kind != MIR_INSTR_DECL_REF && src->kind != MIR_INSTR_ELEM_PTR) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL, addrof->base.node->src,
-                BUILDER_CUR_WORD, "cannot take the address of unallocated object");
+                BUILDER_CUR_WORD, "Cannot take the address of unallocated object.");
     return false;
   }
 
@@ -2707,7 +2784,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
   cast->op = get_cast_op(src_type, dest_type);
   if (cast->op == MIR_CAST_INVALID) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_CAST, cast->base.node->src,
-                BUILDER_CUR_WORD, "invalid cast");
+                BUILDER_CUR_WORD, "Invalid cast.");
     return false;
   }
 
@@ -2763,7 +2840,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   if (!found) {
     // TODO: postpone analyze and go to the other entry in analyze queue
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ref->base.node->src,
-                BUILDER_CUR_WORD, "unknown symbol");
+                BUILDER_CUR_WORD, "Unknown symbol.");
     return false;
   }
 
@@ -2888,7 +2965,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
     if (!handle) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, fn_proto->base.node->src,
-                  BUILDER_CUR_WORD, "external symbol '%s' not found", fn->llvm_name);
+                  BUILDER_CUR_WORD, "External symbol '%s' not found.", fn->llvm_name);
     }
 
     fn->extern_entry = handle;
@@ -2957,7 +3034,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   assert(src);
   if (!mir_is_pointer_type(src->const_value.type)) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, src->node->src, BUILDER_CUR_WORD,
-                "expected pointer");
+                "Expected pointer.");
     return false;
   }
 
@@ -3123,7 +3200,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   /* len */
   if (!type_arr->len->comptime) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_CONST, type_arr->len->node->src,
-                BUILDER_CUR_WORD, "array size must be compile-time constant");
+                BUILDER_CUR_WORD, "Array size must be compile-time constant.");
     return false;
   }
 
@@ -3133,7 +3210,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   const size_t len = type_arr->len->const_value.data.v_u64;
   if (len == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARR_SIZE, type_arr->len->node->src,
-                BUILDER_CUR_WORD, "array size cannot be 0");
+                BUILDER_CUR_WORD, "Array size cannot be 0.");
     return false;
   }
 
@@ -3161,7 +3238,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 
   if (src_type->kind == MIR_TYPE_TYPE) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, type_ptr->base.node->src,
-                BUILDER_CUR_WORD, "cannot create pointer to type");
+                BUILDER_CUR_WORD, "Cannot create pointer to type.");
     return false;
   }
 
@@ -3279,14 +3356,14 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   /* return value is expected, but it's not provided */
   if (expected_ret_value && !value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->base.node->src,
-                BUILDER_CUR_AFTER, "expected return value");
+                BUILDER_CUR_AFTER, "Expected return value.");
     return false;
   }
 
   /* return value is not expected, but it's provided */
   if (!expected_ret_value && value) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, ret->value->node->src,
-                BUILDER_CUR_WORD, "unexpected return value");
+                BUILDER_CUR_WORD, "Unexpected return value.");
     return false;
   }
 
@@ -3343,7 +3420,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     decl->base.comptime = var->comptime = !var->is_mutable && decl->init->comptime;
   } else if (var->is_in_gscope) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNINITIALIZED, decl->base.node->src,
-                BUILDER_CUR_WORD, "all globals must be initialized to compile time known value");
+                BUILDER_CUR_WORD, "All globals must be initialized to compile time known value.");
     return false;
   }
 
@@ -3353,13 +3430,13 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (var->alloc_type->kind == MIR_TYPE_TYPE && var->is_mutable) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, decl->base.node->src,
-                BUILDER_CUR_WORD, "type declaration must be immutable");
+                BUILDER_CUR_WORD, "Type declaration must be immutable.");
     return false;
   }
 
   if (decl->base.ref_count == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_WARNING, 0, decl->base.node->src, BUILDER_CUR_WORD,
-                "unused declaration");
+                "Unused declaration.");
   }
 
   reduce_instr(cnt, decl->init);
@@ -3418,7 +3495,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 
   if (type->kind != MIR_TYPE_FN) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, call->callee->node->src,
-                BUILDER_CUR_WORD, "expected a function name");
+                BUILDER_CUR_WORD, "Expected a function name.");
     return false;
   }
 
@@ -3431,7 +3508,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   const size_t call_argc   = call->args ? bo_array_size(call->args) : 0;
   if (callee_argc != call_argc) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, call->base.node->src,
-                BUILDER_CUR_WORD, "expected %u %s, but called with %u", callee_argc,
+                BUILDER_CUR_WORD, "Expected %u %s, but called with %u.", callee_argc,
                 callee_argc == 1 ? "argument" : "arguments", call_argc);
     return false;
   }
@@ -3469,7 +3546,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 
   if (!mir_is_pointer_type(dest->const_value.type)) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
-                BUILDER_CUR_WORD, "left hand side of the expression cannot be assigned");
+                BUILDER_CUR_WORD, "Left hand side of the expression cannot be assigned.");
     return false;
   }
 
@@ -3512,7 +3589,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
       append_instr_ret(cnt, NULL, NULL, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->decl_node->src,
-                  BUILDER_CUR_WORD, "not every path inside function return value");
+                  BUILDER_CUR_WORD, "Not every path inside function return value.");
     }
   }
 
@@ -3591,6 +3668,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_LOAD:
     state = analyze_instr_load(cnt, (MirInstrLoad *)instr);
+    break;
+  case MIR_INSTR_INIT:
+    state = analyze_instr_init(cnt, (MirInstrInit *)instr);
     break;
   case MIR_INSTR_BR:
     state = analyze_instr_br(cnt, (MirInstrBr *)instr);
@@ -4881,6 +4961,30 @@ ast_stmt_return(Context *cnt, Ast *ret)
 }
 
 MirInstr *
+ast_expr_compound(Context *cnt, Ast *cmp)
+{
+  BArray *ast_values = cmp->data.expr_compound.values;
+  Ast *   ast_type   = cmp->data.expr_compound.type;
+  assert(ast_values && "empty initialization list, this should be an error");
+  assert(ast_type);
+
+  MirInstr *type   = ast(cnt, ast_type);
+  BArray *  values = bo_array_new(sizeof(MirInstr *));
+  bo_array_reserve(values, bo_array_size(ast_values));
+
+  Ast *     ast_value;
+  MirInstr *value;
+  barray_foreach(ast_values, ast_value)
+  {
+    value = ast(cnt, ast_value);
+    assert(value);
+    bo_array_push_back(values, value);
+  }
+
+  return append_instr_init(cnt, cmp, type, values);
+}
+
+MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof)
 {
   MirInstr *src = ast(cnt, addrof->data.expr_addrof.next);
@@ -5227,7 +5331,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
     if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ast_name->src,
-                  BUILDER_CUR_WORD, "'main' is expected to be a function");
+                  BUILDER_CUR_WORD, "Main is expected to be a function.");
     }
   }
 
@@ -5360,7 +5464,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
   const size_t memc = bo_array_size(ast_members);
   if (memc == 0) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EMPTY_STRUCT, type_struct->src,
-                BUILDER_CUR_WORD, "empty structure");
+                BUILDER_CUR_WORD, "Empty structure.");
     return NULL;
   }
 
@@ -5505,6 +5609,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_member(cnt, node);
   case AST_EXPR_TYPE:
     return ast_expr_type(cnt, node);
+  case AST_EXPR_COMPOUND:
+    return ast_expr_compound(cnt, node);
 
   case AST_LOAD:
     break;
@@ -5576,6 +5682,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrSizeof";
   case MIR_INSTR_ALIGNOF:
     return "InstrAlignof";
+  case MIR_INSTR_INIT:
+    return "InstrInit";
   }
 
   return "UNKNOWN";

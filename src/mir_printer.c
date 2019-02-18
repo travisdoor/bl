@@ -214,6 +214,9 @@ static void
 print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
 static void
+print_instr_init(MirInstrInit *init, FILE *stream);
+
+static void
 print_instr_br(MirInstrBr *br, FILE *stream);
 
 static void
@@ -364,6 +367,23 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   }
 
   fprintf(stream, "%%%u", cast->next->id);
+}
+
+void
+print_instr_init(MirInstrInit *init, FILE *stream)
+{
+  print_instr_head(&init->base, stream, "init");
+  print_comptime_value_or_id(init->type, stream);
+
+  fprintf(stream, " {");
+  BArray *  values = init->values;
+  MirInstr *value;
+  barray_foreach(values, value)
+  {
+    print_comptime_value_or_id(value, stream);
+    if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+  }
+  fprintf(stream, "}");
 }
 
 void
@@ -724,6 +744,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_ALIGNOF:
     print_instr_alignof((MirInstrAlignof *)instr, stream);
+    break;
+  case MIR_INSTR_INIT:
+    print_instr_init((MirInstrInit *)instr, stream);
     break;
   default:
     break;

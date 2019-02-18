@@ -5,7 +5,8 @@
 main :: fn () s32 {
 
   // initialize whole array to 0
-  arr : [2]s32 = { 0 };
+  arr1 := [2]s32 { 0 }; // zero initializer (set whole array to 0)
+  arr2 := [2]s32 { 1, 2 };
 
   /*
   i := 10;
@@ -36,4 +37,3 @@ foo :: fn (args: ...s32) {
   }
 };
 */
-

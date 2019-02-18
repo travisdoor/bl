@@ -45,6 +45,7 @@
     "unreachable"
     "arg"
     "sizeof"
+    "init"
     "alignof")) 
 
 (defconst blm-types

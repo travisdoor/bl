@@ -79,6 +79,7 @@ typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 typedef struct MirInstrSizeof      MirInstrSizeof;
 typedef struct MirInstrAlignof     MirInstrAlignof;
+typedef struct MirInstrInit        MirInstrInit;
 
 typedef enum MirTypeKind    MirTypeKind;
 typedef enum MirInstrKind   MirInstrKind;
@@ -332,6 +333,7 @@ enum MirInstrKind
   MIR_INSTR_CAST,
   MIR_INSTR_SIZEOF,
   MIR_INSTR_ALIGNOF,
+  MIR_INSTR_INIT,
 };
 
 struct MirInstr
@@ -580,6 +582,14 @@ struct MirInstrBr
   MirInstr base;
 
   MirInstrBlock *then_block;
+};
+
+struct MirInstrInit
+{
+  MirInstr base;
+
+  MirInstr *type;
+  BArray *  values;
 };
 
 /* public */
