@@ -44,8 +44,8 @@ node_dtor(Ast *node)
   case AST_EXPR_CALL:
     bo_unref(node->data.expr_call.args);
     break;
-  case AST_EXPR_LIT_CMP:
-    bo_unref(node->data.expr_cmp.fields);
+  case AST_EXPR_COMPOUND:
+    bo_unref(node->data.expr_compound.values);
     break;
   case AST_TYPE_FN:
     bo_unref(node->data.type_fn.args);
@@ -70,7 +70,7 @@ ast_create_node(Arena *arena, AstKind c, Token *tok)
 
 #if BL_DEBUG
   static uint64_t serial = 0;
-  node->_serial     = serial++;
+  node->_serial          = serial++;
 #endif
   return node;
 }
@@ -167,6 +167,8 @@ ast_get_name(const Ast *n)
     return "ExprAddrOf";
   case AST_EXPR_DEREF:
     return "ExprDeref";
+  case AST_EXPR_COMPOUND:
+    return "ExprCompound";
   case AST_EXPR_LIT_FN:
     return "ExprLitFn";
   case AST_EXPR_LIT_INT:
@@ -181,8 +183,6 @@ ast_get_name(const Ast *n)
     return "ExprLitString";
   case AST_EXPR_LIT_BOOL:
     return "ExprLitBool";
-  case AST_EXPR_LIT_CMP:
-    return "ExprLitCmp";
 
   default:
     bl_abort("invalid ast node");

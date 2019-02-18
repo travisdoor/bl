@@ -130,6 +130,9 @@ static void
 print_expr_type(Ast *expr_type, int32_t pad, FILE *stream);
 
 static void
+print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream);
+
+static void
 print_expr_ref(Ast *ref, int32_t pad, FILE *stream);
 
 static void
@@ -401,6 +404,20 @@ print_expr_call(Ast *call, int32_t pad, FILE *stream)
 }
 
 void
+print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
+{
+  print_head(expr_compound, pad, stream);
+
+  BArray *exprs = expr_compound->data.expr_compound.values;
+  if (exprs) {
+    Ast *value;
+    barray_foreach(exprs, value) {
+      print_node(value, pad + 1, stream);
+    }
+  }
+}
+
+void
 print_node(Ast *node, int32_t pad, FILE *stream)
 {
   if (!node) return;
@@ -464,6 +481,10 @@ print_node(Ast *node, int32_t pad, FILE *stream)
 
   case AST_STMT_CONTINUE:
     print_stmt_continue(node, pad, stream);
+    break;
+
+  case AST_EXPR_COMPOUND:
+    print_expr_compound(node, pad, stream);
     break;
 
   case AST_EXPR_TYPE:

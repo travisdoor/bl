@@ -5345,6 +5345,7 @@ ast_type_vargs(Context *cnt, Ast *type_vargs)
   assert(ast_type);
   MirInstr *type = ast(cnt, ast_type);
   assert(type);
+  type = append_instr_type_ptr(cnt, ast_type, type);
   return append_instr_type_slice(cnt, type_vargs, type);
 }
 

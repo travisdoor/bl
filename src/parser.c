@@ -228,6 +228,9 @@ parse_expr_sizeof(Context *cnt);
 static Ast *
 parse_expr_alignof(Context *cnt);
 
+static Ast *
+parse_expr_compound(Context *cnt);
+
 static inline bool
 parse_semicolon_rq(Context *cnt);
 
@@ -307,6 +310,49 @@ parse_expr_ref(Context *cnt)
 }
 
 Ast *
+parse_expr_compound(Context *cnt)
+{
+  Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+  if (!tok_begin) return NULL;
+  bl_log("initializer");
+
+  Ast *compound = ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin);
+
+  /* parse values */
+  bool rq = false;
+  Ast *tmp;
+
+value:
+  tmp = parse_expr(cnt);
+  if (tmp) {
+    if (!compound->data.expr_compound.values)
+      compound->data.expr_compound.values = bo_array_new(sizeof(Ast *));
+    bo_array_push_back(compound->data.expr_compound.values, tmp);
+
+    if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+      rq = true;
+      goto value;
+    }
+  } else if (rq) {
+    Token *tok_err = tokens_peek(cnt->tokens);
+    if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
+      parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
+                  "expected expression after comma ','");
+      return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
+    }
+  }
+
+  Token *tok = tokens_consume(cnt->tokens);
+  if (tok->sym != SYM_RBLOCK) {
+    parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+                "expected end of initialization list '}' or another expression separated by comma");
+    return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
+  }
+
+  return compound;
+}
+
+Ast *
 parse_expr_sizeof(Context *cnt)
 {
   Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
@@ -354,7 +400,7 @@ parse_expr_alignof(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
   }
 
-  Ast *alof                   = ast_create_node(cnt->ast_arena, AST_EXPR_ALIGNOF, tok_begin);
+  Ast *alof                    = ast_create_node(cnt->ast_arena, AST_EXPR_ALIGNOF, tok_begin);
   alof->data.expr_alignof.node = parse_expr(cnt);
   if (!alof->data.expr_alignof.node) {
     Token *tok_err = tokens_peek(cnt->tokens);
@@ -717,6 +763,7 @@ parse_expr_primary(Context *cnt)
   if ((expr = parse_expr_lit_fn(cnt))) return expr;
   if ((expr = parse_expr_type(cnt))) return expr;
   if ((expr = parse_expr_null(cnt))) return expr;
+  if ((expr = parse_expr_compound(cnt))) return expr;
 
   return NULL;
 }
