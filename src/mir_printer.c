@@ -160,9 +160,30 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     }
     break;
   }
-  case MIR_TYPE_ARRAY:
-    fprintf(stream, "<cannot read value>");
+  case MIR_TYPE_ARRAY: {
+    BArray *   elems               = data->v_array.elems;
+    const bool is_zero_initializer = data->v_array.is_zero_initializer;
+
+    if (is_zero_initializer) {
+      fprintf(stream, "{0}");
+    } else {
+      fprintf(stream, "{");
+
+      MirType *          elem_type;
+      MirConstValueData *elem;
+      const size_t       elc = bo_array_size(elems);
+
+      for (size_t i = 0; i < elc; ++i) {
+        elem      = &bo_array_at(elems, i, MirConstValueData);
+        elem_type = type->data.array.elem_type;
+        print_const_value_data(elem, elem_type, stream);
+        if (i + 1 < elc) fprintf(stream, ", ");
+      }
+
+      fprintf(stream, "}");
+    }
     break;
+  }
   default:
     fprintf(stream, "<cannot read value>");
   }

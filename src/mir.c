@@ -217,13 +217,18 @@ instr_dtor(MirInstr *instr)
   case MIR_INSTR_INIT:
     bo_unref(((MirInstrInit *)instr)->values);
     break;
-  case MIR_INSTR_CONST: {
-    if (instr->const_value.type->kind == MIR_TYPE_STRUCT) {
-      bo_unref(instr->const_value.data.v_struct.members);
-    }
+  default:
     break;
   }
 
+  if (!instr->const_value.type || !instr->comptime) return;
+  switch (instr->const_value.type->kind) {
+  case MIR_TYPE_STRUCT:
+    bo_unref(instr->const_value.data.v_struct.members);
+    break;
+  case MIR_TYPE_ARRAY:
+    bo_unref(instr->const_value.data.v_array.elems);
+    break;
   default:
     break;
   }
@@ -2479,6 +2484,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_SLICE:
   case MIR_INSTR_SIZEOF:
   case MIR_INSTR_ALIGNOF:
+  case MIR_INSTR_INIT:
     erase_instr(instr);
     break;
 
@@ -2545,7 +2551,9 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       /* Check if array is supposed to be initilialized to {0} */
       if (valc == 1 && value->kind == MIR_INSTR_CONST &&
           value->const_value.type->kind == MIR_TYPE_INT && value->const_value.data.v_u64 == 0) {
-        bl_log("zero initializer");
+        init->base.const_value.data.v_array.is_zero_initializer = true;
+	init->base.comptime = true;
+        break;
       }
     }
 

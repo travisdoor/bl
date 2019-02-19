@@ -1,7 +1,11 @@
 #test "array type" {
-  arr : [10] s32; // declare uninitialized array variable 
-  arr[0] = 666;
+  arr1 : [10] s32; // declare uninitialized array variable 
+  arr1[0] = 666;
 
-  arr.len; // yields array element count (usize)
-  arr.ptr; // yields pointer to first element '&arr[0]'
+  arr1.len; // yields array element count (usize)
+  arr1.ptr; // yields pointer to first element '&arr[0]'
+
+  // inline initialization of array type
+  arr2 := [10]s32 { 0 };         // initialize whole array to 0
+  arr3 := [4]s32 { 1, 2, 3, 4 }; // initialize array to the sequence 1, 2, 3, 4
 };

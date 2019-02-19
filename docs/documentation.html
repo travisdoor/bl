@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Documentation</title>
-<!-- 2019-02-18 Po 10:08 -->
+<!-- 2019-02-19 Út 10:49 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -172,7 +172,7 @@ for the JavaScript code in this tag.
 <ul>
 <li><a href="#sec-3-4-1">Fundamental data types</a></li>
 <li><a href="#sec-3-4-2">Pointers</a></li>
-<li><a href="#sec-3-4-3"><span class="todo TODO">TODO</span> Arrays</a></li>
+<li><a href="#sec-3-4-3">Arrays</a></li>
 <li><a href="#sec-3-4-4"><span class="todo TODO">TODO</span> Strings</a></li>
 <li><a href="#sec-3-4-5"><span class="todo TODO">TODO</span> Array reference</a></li>
 <li><a href="#sec-3-4-6">Structures</a></li>
@@ -687,7 +687,7 @@ Example:
 <span class="linenr">2: </span>
 <span class="linenr">3: </span><span class="org-preprocessor">#test</span> <span class="org-string">"special operators"</span> {
 <span class="linenr">4: </span>  <span class="org-variable-name">s </span>:= <span class="org-keyword">sizeof</span>(<span class="org-type">s32</span>);  <span class="org-comment">// size in bytes</span>
-<span class="linenr">5: </span>  <span class="org-variable-name">a </span>:= <span class="org-function-name">alignof</span>(<span class="org-type">s32</span>); <span class="org-comment">// alignment</span>
+<span class="linenr">5: </span>  <span class="org-variable-name">a </span>:= <span class="org-keyword">alignof</span>(<span class="org-type">s32</span>); <span class="org-comment">// alignment</span>
 <span class="linenr">6: </span>};
 </pre>
 </div>
@@ -811,10 +811,20 @@ Example:
 </div>
 
 <div id="outline-container-sec-3-4-3" class="outline-4">
-<h4 id="sec-3-4-3"><span class="todo TODO">TODO</span> Arrays</h4>
+<h4 id="sec-3-4-3">Arrays</h4>
 <div class="outline-text-4" id="text-3-4-3">
+<p>
+Array is aggregate type of multiple values of the same type.
+</p>
 <pre class="example">
 [&lt;size&gt;] &lt;T&gt;
+</pre>
+
+<p>
+Arrays can be inline initialized with compound block, type is required. Zero initializer can be used for zero initialization of whole array storage, otherwise we must specify value for every element in an array.
+</p>
+<pre class="example">
+&lt;T&gt; {[val], ...}
 </pre>
 
 <p>
@@ -822,13 +832,17 @@ Example:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span class="linenr">1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"array type"</span> {
-<span class="linenr">2: </span>  <span class="org-constant">arr</span> : [<span class="org-constant">10</span>] <span class="org-type">s32</span>; <span class="org-comment">// declare uninitialized array variable </span>
-<span class="linenr">3: </span>  arr[<span class="org-constant">0</span>] = <span class="org-constant">666</span>;
-<span class="linenr">4: </span>
-<span class="linenr">5: </span>  arr.len; <span class="org-comment">// yields array element count (usize)</span>
-<span class="linenr">6: </span>  arr.ptr; <span class="org-comment">// yields pointer to first element '&amp;arr[0]'</span>
-<span class="linenr">7: </span>};
+<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#test</span> <span class="org-string">"array type"</span> {
+<span class="linenr"> 2: </span>  <span class="org-constant">arr1</span> : [<span class="org-constant">10</span>] <span class="org-type">s32</span>; <span class="org-comment">// declare uninitialized array variable </span>
+<span class="linenr"> 3: </span>  arr1[<span class="org-constant">0</span>] = <span class="org-constant">666</span>;
+<span class="linenr"> 4: </span>
+<span class="linenr"> 5: </span>  arr1.len; <span class="org-comment">// yields array element count (usize)</span>
+<span class="linenr"> 6: </span>  arr1.ptr; <span class="org-comment">// yields pointer to first element '&amp;arr[0]'</span>
+<span class="linenr"> 7: </span>
+<span class="linenr"> 8: </span>  <span class="org-comment">// inline initialization of array type</span>
+<span class="linenr"> 9: </span>  <span class="org-variable-name">arr2 </span>:= [<span class="org-constant">10</span>]<span class="org-type">s32</span> { <span class="org-constant">0</span> };         <span class="org-comment">// initialize whole array to 0</span>
+<span class="linenr">10: </span>  <span class="org-variable-name">arr3 </span>:= [<span class="org-constant">4</span>]<span class="org-type">s32</span> { <span class="org-constant">1</span>, <span class="org-constant">2</span>, <span class="org-constant">3</span>, <span class="org-constant">4</span> }; <span class="org-comment">// initialize array to the sequence 1, 2, 3, 4</span>
+<span class="linenr">11: </span>};
 </pre>
 </div>
 </div>
@@ -1436,7 +1450,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-18 Po 10:08</p>
+<p class="date">Created: 2019-02-19 Út 10:49</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

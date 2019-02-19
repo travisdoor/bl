@@ -184,9 +184,15 @@
     Example:
     #+INCLUDE: "../tests/src/examples/pointers.bl" src bl -n
     
-*** TODO Arrays
+*** Arrays
+    Array is aggregate type of multiple values of the same type.
     #+BEGIN_EXAMPLE
     [<size>] <T>
+    #+END_EXAMPLE
+    
+    Arrays can be inline initialized with compound block, type is required. Zero initializer can be used for zero initialization of whole array storage, otherwise we must specify value for every element in an array.
+    #+BEGIN_EXAMPLE
+    <T> {[val], ...}
     #+END_EXAMPLE
 
     Example:

@@ -397,8 +397,9 @@
    usize alignof <expr|type> // yields alignment of input
    #+END_EXAMPLE
 ** init
-   Initialize variable, this is used maily for compound initializers.
+   Compound initializer.
 
    #+BEGIN_EXAMPLE
-   void init <decl> {[val, ...]}// yields void 
+   <T> init <T> {[val, ...]} // yields T
    #+END_EXAMPLE
+   
