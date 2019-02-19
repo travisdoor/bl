@@ -59,6 +59,7 @@
   sm(EXTERN,         "#extern") \
   sm(ALIGNOF,        "alignof") \
   sm(CONTINUE,       "continue") \
+  sm(INTERNAL,       "#internal") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
   sm(LCOMMENT,       "//") \
