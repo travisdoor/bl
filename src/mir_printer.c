@@ -665,8 +665,12 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   print_type(fn_proto->base.const_value.type, false, stream, false);
   fprintf(stream, " :");
 
-  if (!fn->is_external) {
-    if (fn->is_test_case) fprintf(stream, " #test");
+  if (fn->flags & FLAG_EXTERN) {
+    fprintf(stream, " #extern\n");
+  } else if (fn->flags & FLAG_INTERNAL) {
+    fprintf(stream, " #internal\n");
+  } else {
+    if (fn->flags & FLAG_TEST) fprintf(stream, " #test");
     fprintf(stream, " {\n");
 
     MirInstrBlock *tmp = fn->first_block;
@@ -675,8 +679,6 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
       tmp = (MirInstrBlock *)tmp->base.next;
     }
     fprintf(stream, "}\n");
-  } else {
-    fprintf(stream, " #extern\n");
   }
 }
 

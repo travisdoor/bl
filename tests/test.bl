@@ -3,6 +3,9 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
+  mem_alloc :: fn (size: usize) *u8 #internal;
+  //mem_free  :: fn (size: usize) *u8 #internal;
+  //mem_copy  :: fn (dest: *u8, src: *u8, usize: len) #internal;
 
   // initialize whole array to 0
   //arr1 := [2]s32 { 0 }; // zero initializer (set whole array to 0)

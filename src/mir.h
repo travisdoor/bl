@@ -149,8 +149,7 @@ struct MirFn
   LLVMValueRef llvm_value;
 
   DCpointer   extern_entry;
-  bool        is_external;
-  bool        is_test_case;
+  int32_t     flags;
   const char *test_case_desc;
 
   /* pointer to the first block inside function body */

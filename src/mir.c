@@ -311,8 +311,7 @@ create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_ty
            MirConstValue *value, bool is_mutable, bool is_in_gscope);
 
 static MirFn *
-create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, bool is_external,
-          bool is_test_case);
+create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags);
 
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
@@ -1437,17 +1436,15 @@ create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_ty
 }
 
 MirFn *
-create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, bool is_external,
-          bool is_test_case)
+create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags)
 {
-  MirFn *tmp        = arena_alloc(&cnt->module->arenas.fn_arena);
-  tmp->variables    = bo_array_new(sizeof(MirVar *));
-  tmp->llvm_name    = llvm_name;
-  tmp->id           = id;
-  tmp->scope        = scope;
-  tmp->is_external  = is_external;
-  tmp->is_test_case = is_test_case;
-  tmp->decl_node    = node;
+  MirFn *tmp     = arena_alloc(&cnt->module->arenas.fn_arena);
+  tmp->variables = bo_array_new(sizeof(MirVar *));
+  tmp->llvm_name = llvm_name;
+  tmp->id        = id;
+  tmp->scope     = scope;
+  tmp->flags     = flags;
+  tmp->decl_node = node;
   return tmp;
 }
 
@@ -2552,7 +2549,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       if (valc == 1 && value->kind == MIR_INSTR_CONST &&
           value->const_value.type->kind == MIR_TYPE_INT && value->const_value.data.v_u64 == 0) {
         init->base.const_value.data.v_array.is_zero_initializer = true;
-	init->base.comptime = true;
+        init->base.comptime                                     = true;
         break;
       }
     }
@@ -2966,7 +2963,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     fn->llvm_name = gen_uq_name(cnt, IMPL_FN_NAME);
   }
 
-  if (fn->is_external) {
+  if (fn->flags & FLAG_EXTERN) {
     /* lookup external function exec handle */
     assert(fn->llvm_name);
     void *handle = dlFindSymbol(cnt->dl.lib, fn->llvm_name);
@@ -2977,6 +2974,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     }
 
     fn->extern_entry = handle;
+  } else if (fn->flags & FLAG_INTERNAL) {
+    bl_unimplemented;
   } else {
     prev_block         = get_current_block(cnt);
     MirInstrBlock *tmp = fn->first_block;
@@ -4460,7 +4459,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirType *ret_type = fn->type->data.fn.ret_type;
   assert(ret_type);
 
-  if (fn->is_external) {
+  if (fn->flags & FLAG_EXTERN) {
     /* call setup and clenup */
     assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
@@ -4518,6 +4517,8 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     if (call->base.ref_count > 1 && does_return) {
       exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
     }
+  } else if (fn->flags & FLAG_INTERNAL) {
+    bl_unimplemented;
   } else {
     /* Push current frame stack top. (Later poped by ret instruction)*/
     exec_push_ra(cnt, &call->base);
@@ -4820,7 +4821,7 @@ ast_test_case(Context *cnt, Ast *test)
   fn_proto->base.const_value.type = cnt->builtin_types.entry_test_case_fn;
 
   const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
-  MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, false, true);
+  MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, FLAG_TEST);
 
   if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ++fn->ref_count;
   assert(test->data.test_case.desc);
@@ -5158,13 +5159,12 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *        fn =
-      create_fn(cnt, lit_fn, NULL, NULL, NULL, !ast_block, false); /* TODO: based on user flag!!! */
+  MirFn *        fn = create_fn(cnt, lit_fn, NULL, NULL, NULL, 0); /* TODO: based on user flag!!! */
   fn_proto->base.const_value.data.v_fn = fn;
 
   /* function body */
   /* external functions has no body */
-  if (fn->is_external) return &fn_proto->base;
+  if (!ast_block) return &fn_proto->base;
 
   /* create block for initialization locals and arguments */
   MirInstrBlock *init_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "entry");
@@ -5306,6 +5306,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
     value->const_value.data.v_fn->scope     = ast_name->data.ident.scope;
     value->const_value.data.v_fn->id        = &ast_name->data.ident.id;
     value->const_value.data.v_fn->decl_node = ast_name;
+    value->const_value.data.v_fn->flags     = entity->data.decl_entity.flags;
 
     if (ast_type) {
       ((MirInstrFnProto *)value)->user_type = ast_create_impl_fn_call(
@@ -5512,7 +5513,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
   MirInstrBlock *prev_block = get_current_block(cnt);
   MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->const_value.type      = final_fn_type;
-  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, fn_name, NULL, false, false);
+  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
@@ -5866,7 +5867,7 @@ execute_test_cases(Context *cnt)
   barray_foreach(cnt->test_cases, test_fn)
   {
     cnt->exec_stack->aborted = false;
-    assert(test_fn->is_test_case);
+    assert(test_fn->flags & FLAG_TEST);
     exec_fn(cnt, test_fn, NULL, NULL);
 
     line = test_fn->decl_node ? test_fn->decl_node->src->line : -1;

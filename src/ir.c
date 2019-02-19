@@ -736,7 +736,7 @@ gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   if (fn->ref_count == 0) return;
   gen_fn_proto(cnt, fn);
 
-  if (!fn->is_external) {
+  if (!fn->flags & (FLAG_EXTERN | FLAG_INTERNAL)) {
     MirInstr *block = (MirInstr *)fn->first_block;
 
     while (block) {
