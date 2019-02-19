@@ -46,6 +46,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         src/main.c
+        src/mir_api.c
         src/arena.c
         src/tokens.c
         src/file_loader.c

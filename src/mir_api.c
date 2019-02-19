@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   core.bl 
+// File:   mir_api.c
 // Author: Martin Dorazil
-// Date:   2/11/19
+// Date:   3/15/18
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,51 +26,42 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "c.bl"
-#load "debug.bl"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 
-mem_alloc :: fn (size: usize) *u8 #internal;
-mem_free  :: fn (size: usize) #internal;
-mem_copy  :: fn (dest: *u8, src: *u8, len: usize) #internal;
-mem_set   :: fn (dest: *u8, value: s32, len: usize) #internal;
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef uint64_t usize;
+typedef int8_t   s8;
+typedef int16_t  s16;
+typedef int32_t  s32;
+typedef int64_t  s64;
 
-print_str :: fn (str: []u8) {
-  write(C_STDOUT, str.ptr, str.len);
-};
+u8 *
+mem_alloc(usize size)
+{
+  return malloc(size);
+}
 
-print_int :: fn (v: s64) {
-  buf      : [21]u8;
-  negative :: v < 0;
-  c := 0;
+void
+mem_free(u8 *ptr)
+{
+  free(ptr);
+}
 
-  if negative {
-    v *= -1; // make it positive
-  }
+void
+mem_copy(u8 *dest, u8 *src, usize len)
+{
+  memcpy(dest, src, len);
+}
 
-  loop v > 0 {
-    d := v % 10;
-    buf[c] = d + '0';
-    v /= 10;
-    c += 1;
-  }
-
-  if negative {
-    buf[c] = '-';
-    c += 1;
-  }
-
-  {
-    j := c - 1; 
-    i := 0; 
- 
-    loop i < j {
-      tmp := buf[i];
-      buf[i] = buf[j];
-      buf[j] = tmp;
-      i += 1;             
-      j -= 1;         
-    }
-  }
-
-  write(C_STDOUT, buf.ptr, c);
-};
+void
+mem_set(u8 *dest, s32 value, usize len)
+{
+  printf("memcpy(%p, %d, %lu)\n", dest, value, len);
+  memset(dest, value, len);
+}

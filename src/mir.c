@@ -193,13 +193,13 @@ typedef struct
 } Context;
 
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
-    {.str = "type", .hash = 0},  {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
-    {.str = "s32", .hash = 0},   {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
-    {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
-    {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
-    {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
-};
+    {.str = "type", .hash = 0},     {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
+    {.str = "s32", .hash = 0},      {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
+    {.str = "u16", .hash = 0},      {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
+    {.str = "usize", .hash = 0},    {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
+    {.str = "f64", .hash = 0},      {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
+    {.str = "main", .hash = 0},     {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
+    {.str = "mem_alloc", .hash = 0}};
 
 static void
 instr_dtor(MirInstr *instr)
@@ -2804,6 +2804,7 @@ bool
 analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 {
   assert(szof->expr);
+  szof->expr = insert_instr_load_if_needed(cnt, szof->expr);
   reduce_instr(cnt, szof->expr);
 
   MirType *type = szof->expr->const_value.type;
@@ -2822,6 +2823,7 @@ bool
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 {
   assert(alof->expr);
+  alof->expr = insert_instr_load_if_needed(cnt, alof->expr);
   reduce_instr(cnt, alof->expr);
 
   MirType *type = alof->expr->const_value.type;
@@ -2963,7 +2965,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     fn->llvm_name = gen_uq_name(cnt, IMPL_FN_NAME);
   }
 
-  if (fn->flags & FLAG_EXTERN) {
+  if (fn->flags & (FLAG_EXTERN | FLAG_INTERNAL)) {
     /* lookup external function exec handle */
     assert(fn->llvm_name);
     void *handle = dlFindSymbol(cnt->dl.lib, fn->llvm_name);
@@ -2974,8 +2976,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     }
 
     fn->extern_entry = handle;
-  } else if (fn->flags & FLAG_INTERNAL) {
-    bl_unimplemented;
   } else {
     prev_block         = get_current_block(cnt);
     MirInstrBlock *tmp = fn->first_block;
@@ -4459,7 +4459,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirType *ret_type = fn->type->data.fn.ret_type;
   assert(ret_type);
 
-  if (fn->flags & FLAG_EXTERN) {
+  if (fn->flags & (FLAG_EXTERN | FLAG_INTERNAL)) {
     /* call setup and clenup */
     assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
@@ -4517,8 +4517,6 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     if (call->base.ref_count > 1 && does_return) {
       exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
     }
-  } else if (fn->flags & FLAG_INTERNAL) {
-    bl_unimplemented;
   } else {
     /* Push current frame stack top. (Later poped by ret instruction)*/
     exec_push_ra(cnt, &call->base);

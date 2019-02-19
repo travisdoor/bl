@@ -3,9 +3,16 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  mem_alloc :: fn (size: usize) *u8 #internal;
-  //mem_free  :: fn (size: usize) *u8 #internal;
-  //mem_copy  :: fn (dest: *u8, src: *u8, usize: len) #internal;
+  mem_alloc(sizeof(s32));
+
+  arr : [10]s32;
+  mem_set(cast(*u8) arr.ptr, 10, sizeof(arr));
+
+  loop i := 0; i < arr.len; i += 1 {
+    print_int(arr[i]);
+    print_str("\n");
+  }
+
 
   // initialize whole array to 0
   //arr1 := [2]s32 { 0 }; // zero initializer (set whole array to 0)
