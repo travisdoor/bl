@@ -6,8 +6,6 @@
   arr1.ptr; // yields pointer to first element '&arr[0]'
 
   // inline initialization of array type
-  /* TODO!!!
   arr2 := [10]s32 { 0 };         // initialize whole array to 0
   arr3 := [4]s32 { 1, 2, 3, 4 }; // initialize array to the sequence 1, 2, 3, 4
-  */
 };
