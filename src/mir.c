@@ -2557,6 +2557,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       value = bo_array_at(values, 0, MirInstr *);
       if (value->kind == MIR_INSTR_CONST && value->const_value.type->kind == MIR_TYPE_INT &&
           value->const_value.data.v_u64 == 0) {
+	reduce_instr(cnt, value);
         init->base.const_value.data.v_array.is_zero_initializer = true;
         break;
       }
@@ -2569,18 +2570,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       comptime = value->comptime ? comptime : false;
     }
 
-    /* build constant array */
-    if (comptime) {
-      BArray *elems = bo_array_new(sizeof(MirConstValueData));
-      bo_array_reserve(elems, valc);
-
-      barray_foreach(values, value)
-      {
-        bo_array_push_back(elems, value->const_value.data);
-      }
-
-      init->base.const_value.data.v_array.elems = elems;
-    }
+    init->base.const_value.data.v_array.elems = values;
     break;
   }
 

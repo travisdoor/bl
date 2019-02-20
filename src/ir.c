@@ -171,8 +171,8 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 static void
 gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
-static void
-gen_as_const(Context *cnt, MirInstr *instr);
+static LLVMValueRef
+gen_as_const(Context *cnt, MirConstValue *value);
 
 static void
 gen_allocas(Context *cnt, MirFn *fn);
@@ -212,7 +212,9 @@ static inline LLVMValueRef
 fetch_value(Context *cnt, MirInstr *instr)
 {
   LLVMValueRef value = NULL;
-  if (instr->comptime && !instr->llvm_value) gen_as_const(cnt, instr);
+  if (instr->comptime && !instr->llvm_value) {
+    instr->llvm_value = gen_as_const(cnt, &instr->const_value);
+  }
 
   value = instr->llvm_value;
   assert(value);
@@ -407,88 +409,91 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
   LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
-void
-gen_as_const(Context *cnt, MirInstr *instr)
+LLVMValueRef
+gen_as_const(Context *cnt, MirConstValue *value)
 {
-  assert(instr->comptime && "only compile time known instructions can act like a constants");
-  MirConstValue *value = &instr->const_value;
-  MirType *      type  = value->type;
+  MirType *type = value->type;
   assert(type);
   LLVMTypeRef llvm_type = type->llvm_type;
   assert(llvm_type);
 
   switch (type->kind) {
   case MIR_TYPE_INT: {
-    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
-    break;
+    return LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
   }
 
   case MIR_TYPE_REAL: {
     const size_t size = type->store_size_bytes;
 
     if (size == sizeof(float)) { // float
-      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_f32);
+      return LLVMConstReal(llvm_type, value->data.v_f32);
     } else if (size == sizeof(double)) { // double
-      instr->llvm_value = LLVMConstReal(llvm_type, value->data.v_f64);
-    } else {
-      bl_abort("invalid floating point type");
+      return LLVMConstReal(llvm_type, value->data.v_f64);
     }
-    break;
+    bl_abort("invalid floating point type");
   }
 
   case MIR_TYPE_BOOL:
-    instr->llvm_value = LLVMConstInt(llvm_type, value->data.v_s32, false);
-    break;
+    return LLVMConstInt(llvm_type, value->data.v_s32, false);
 
   case MIR_TYPE_NULL:
     assert(value->data.v_void_ptr == NULL);
-    instr->llvm_value = LLVMConstNull(llvm_type);
-    break;
+    return LLVMConstNull(llvm_type);
 
   case MIR_TYPE_PTR:
     bl_abort("invalid constant type");
-    break;
 
   case MIR_TYPE_ARRAY: {
     const size_t len            = type->data.array.len;
     LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
     assert(len && llvm_elem_type);
 
-    BArray *  elems = value->data.v_array.elems;
-    MirConstValueData *elem;
+    BArray *       elems = value->data.v_array.elems;
+    MirConstValue *elem;
 
     assert(elems);
     assert(len == bo_array_size(elems));
     LLVMValueRef *llvm_elems = bl_malloc(sizeof(LLVMValueRef) * len);
 
     for (size_t i = 0; i < len; ++i) {
-      elem         = &bo_array_at(elems, i, MirConstValueData);
-      llvm_elems[i] = fetch_value(cnt, elem);
+      elem          = bo_array_at(elems, i, MirConstValue *);
+      llvm_elems[i] = gen_as_const(cnt, elem);
     }
 
-    instr->llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems, len);
+    LLVMValueRef result = LLVMConstArray(llvm_elem_type, llvm_elems, len);
     bl_free(llvm_elems);
-    break;
+    return result;
   }
 
   case MIR_TYPE_STRUCT: {
-    if (mir_is_slice_type(type) && instr->kind == MIR_INSTR_CONST) {
+    LLVMValueRef result = NULL;
+    if (mir_is_slice_type(type)) {
+      /* TODO: We generate representation only constant string slices, this need to be improved
+       * later. */
+      /* TODO: We generate representation only constant string slices, this need to be improved
+       * later. */
+      /* TODO: We generate representation only constant string slices, this need to be improved
+       * later. */
       /* TODO: We generate representation only constant string slices, this need to be improved
        * later. */
       BArray *members = value->data.v_struct.members;
       assert(members);
       assert(bo_array_size(members) == 2 && "not slice string?");
 
-      const uint64_t len = (bo_array_at(members, 0, MirConstValue *))->data.v_u64;
-      const char *   str = (bo_array_at(members, 1, MirConstValue *))->data.v_str;
+      MirConstValue *len_value = bo_array_at(members, 0, MirConstValue *);
+      MirConstValue *str_value = bo_array_at(members, 1, MirConstValue *);
+      assert(len_value && str_value);
+
+      const uint64_t len = len_value->data.v_u64;
+      const char *   str = str_value->data.v_str;
       assert(str);
 
       LLVMValueRef *const_vals = bl_malloc(sizeof(LLVMValueRef));
-      const_vals[0]            = LLVMConstInt(cnt->llvm_i64_type, len, false);
+      const_vals[0]            = LLVMConstInt(len_value->type->llvm_type, len, false);
       const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
       LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
 
-      instr->llvm_value = LLVMConstStructInContext(cnt->llvm_cnt, const_vals, 2, false);
+      result = LLVMConstStructInContext(cnt->llvm_cnt, const_vals, 2, false);
 
       bl_free(const_vals);
     } else {
@@ -497,12 +502,14 @@ gen_as_const(Context *cnt, MirInstr *instr)
       /* TODO: support other structure types. */
       bl_unimplemented;
     }
-    break;
+    return result;
   }
 
   default:
     bl_unimplemented;
   }
+
+  bl_abort("should not happend!!!");
 }
 
 void
