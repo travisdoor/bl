@@ -3,30 +3,12 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  // initialize whole array to 0
-  arr1 := [4]s32 { 1, 2, 3, 4 };
+  arr := [4]s32 { 20 + 43, 7 * 2, 17, 5 };
 
-  loop i := 0; i < arr1.len; i += 1 {
-    print_int(arr1[i]);
+  loop i := 0; i < arr.len; i += 1 {
+    print_int(arr[i]);
     print_str("\n");
   }
-
-  //arr2 := [2]s32 { 1, 2 };
-
-  /*
-  i := 10;
-  j := 20;
-
-  tmp : [2]*s32;
-  tmp[0] = &i;
-  tmp[1] = &j;
-
-  args : []*s32 = { .ptr = tmp.ptr, .len = 2 };
-  args.ptr = tmp.ptr;
-  args.len = 2;
-
-  foo(args);
-  */
 
   return 0;
 };

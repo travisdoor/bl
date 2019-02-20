@@ -775,8 +775,7 @@ static void
 exec_reset_stack(MirStack *stack);
 
 static void
-exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirStackPtr src_ptr,
-                            MirType *src_type);
+exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
 static inline MirInstr *
@@ -1056,41 +1055,60 @@ exec_set_pc(Context *cnt, MirInstr *instr)
 }
 
 static void
-exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirStackPtr src_ptr,
-                            MirType *src_type)
+exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value)
 {
   /* This may cause recursive calls for aggregate data types. */
-  assert(dest_ptr && src_ptr && src_type);
-  MirConstValueData *data = (MirConstValueData *)src_ptr;
+  assert(dest_ptr && src_value);
+  MirConstValueData *data     = &src_value->data;
+  MirType *          src_type = src_value->type;
+  assert(src_type);
+
   switch (src_type->kind) {
   case MIR_TYPE_STRUCT: {
     BArray *       members = data->v_struct.members;
     MirConstValue *member;
-    MirType *      member_type;
 
     assert(members);
     const size_t memc = bo_array_size(members);
     for (size_t i = 0; i < memc; ++i) {
-      member      = bo_array_at(members, i, MirConstValue *);
-      member_type = member->type;
+      member = bo_array_at(members, i, MirConstValue *);
 
       /* copy all members to variable allocated memory on the stack */
-      MirStackPtr elem_src_ptr = (MirStackPtr)member; // TODO: what about struct in struct???
       MirStackPtr elem_dest_ptr =
           dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, i);
-      assert(elem_dest_ptr && elem_src_ptr);
+      assert(elem_dest_ptr);
 
-      exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem_src_ptr, member_type);
+      exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
     }
 
     break;
   }
 
-  case MIR_TYPE_ARRAY:
-    bl_unimplemented;
+  case MIR_TYPE_ARRAY: {
+    if (src_value->data.v_array.is_zero_initializer) {
+      memset(dest_ptr, 0, src_type->store_size_bytes);
+    } else {
+      BArray *       elems = data->v_array.elems;
+      MirConstValue *elem;
+
+      assert(elems);
+      const size_t memc = bo_array_size(elems);
+      for (size_t i = 0; i < memc; ++i) {
+        elem = bo_array_at(elems, i, MirConstValue *);
+
+        /* copy all elems to variable allocated memory on the stack */
+        MirStackPtr elem_dest_ptr = dest_ptr + (elem->type->store_size_bytes * i);
+        assert(elem_dest_ptr);
+
+        exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem);
+      }
+    }
+
+    break;
+  }
 
   default:
-    memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
+    memcpy(dest_ptr, (MirStackPtr)src_value, src_type->store_size_bytes);
   }
 }
 /* execute end */
@@ -1788,10 +1806,10 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i)
 MirInstr *
 append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values)
 {
-  assert(values);
-
-  MirInstr *value;
-  barray_foreach(values, value) ref_instr(value);
+  if (values) {
+    MirInstr *value;
+    barray_foreach(values, value) ref_instr(value);
+  }
 
   MirInstrInit *tmp = create_instr(cnt, MIR_INSTR_INIT, node, MirInstrInit *);
   tmp->type         = type;
@@ -2535,7 +2553,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
 {
   MirInstr *instr_type = init->type;
   BArray *  values     = init->values;
-  assert(instr_type && values);
+  assert(instr_type);
 
   reduce_instr(cnt, instr_type);
   if (instr_type->const_value.type->kind != MIR_TYPE_TYPE) {
@@ -2547,7 +2565,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
   MirType *type = instr_type->const_value.data.v_type;
   assert(type);
   MirInstr *   value;
-  const size_t valc     = bo_array_size(values);
+  const size_t valc     = values ? bo_array_size(values) : 0;
   bool         comptime = true;
 
   switch (type->kind) {
@@ -2557,10 +2575,19 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       value = bo_array_at(values, 0, MirInstr *);
       if (value->kind == MIR_INSTR_CONST && value->const_value.type->kind == MIR_TYPE_INT &&
           value->const_value.data.v_u64 == 0) {
-	reduce_instr(cnt, value);
+        reduce_instr(cnt, value);
         init->base.const_value.data.v_array.is_zero_initializer = true;
         break;
       }
+    }
+
+    if (valc != type->data.array.len) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER, init->base.node->src,
+                  BUILDER_CUR_WORD,
+                  "Array initializer must explicitly set all array elements of the array or "
+                  "initialize array to 0 by zero initializer {0}. Expected is %llu but given %llu.",
+                  (unsigned long long)type->data.array.len, (unsigned long long)valc);
+      return false;
     }
 
     /* Else iterate over values */
@@ -2858,9 +2885,10 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   ScopeEntry *found = scope_lookup(ref->scope, ref->rid, true);
   if (!found) {
-    // TODO: postpone analyze and go to the other entry in analyze queue
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ref->base.node->src,
-                BUILDER_CUR_WORD, "Unknown symbol.");
+    if (cnt->builder->errorc == 0) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ref->base.node->src,
+                  BUILDER_CUR_WORD, "Unknown symbol.");
+    }
     return false;
   }
 
@@ -4200,9 +4228,8 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
   if (curr_arg_value->comptime) {
     MirType *   type = curr_arg_value->const_value.type;
     MirStackPtr dest = exec_push_stack_empty(cnt, type);
-    MirStackPtr src  = (MirStackPtr)&curr_arg_value->const_value.data;
 
-    exec_copy_comptime_to_stack(cnt, dest, src, type);
+    exec_copy_comptime_to_stack(cnt, dest, &curr_arg_value->const_value);
   } else {
     /* resolve argument pointer */
     MirInstr *arg_value = NULL;
@@ -4307,7 +4334,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     if (decl->init->comptime) {
       /* Compile time constants of agregate type are stored in different
          way, we need to produce decomposition of those data. */
-      exec_copy_comptime_to_stack(cnt, var_ptr, init_ptr, decl->init->const_value.type);
+      exec_copy_comptime_to_stack(cnt, var_ptr, &decl->init->const_value);
     } else {
       memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
     }
@@ -4594,9 +4621,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
   if (ret_data_ptr) {
     if (ret->value->comptime) {
       MirStackPtr dest = exec_push_stack_empty(cnt, ret_type);
-      MirStackPtr src  = ret_data_ptr;
-
-      exec_copy_comptime_to_stack(cnt, dest, src, ret_type);
+      exec_copy_comptime_to_stack(cnt, dest, &ret->value->const_value);
     } else {
       exec_push_stack(cnt, ret_data_ptr, ret_type);
     }
@@ -4983,13 +5008,17 @@ ast_stmt_return(Context *cnt, Ast *ret)
 MirInstr *
 ast_expr_compound(Context *cnt, Ast *cmp)
 {
-  BArray *ast_values = cmp->data.expr_compound.values;
-  Ast *   ast_type   = cmp->data.expr_compound.type;
-  assert(ast_values && "empty initialization list, this should be an error");
+  BArray *  ast_values = cmp->data.expr_compound.values;
+  Ast *     ast_type   = cmp->data.expr_compound.type;
+  MirInstr *type       = ast(cnt, ast_type);
+
+  if (!ast_values) {
+    return append_instr_init(cnt, cmp, type, NULL);
+  }
+
   assert(ast_type);
 
-  MirInstr *type   = ast(cnt, ast_type);
-  BArray *  values = bo_array_new(sizeof(MirInstr *));
+  BArray *values = bo_array_new(sizeof(MirInstr *));
   bo_array_reserve(values, bo_array_size(ast_values));
 
   Ast *     ast_value;

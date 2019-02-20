@@ -149,7 +149,6 @@ print_const_value(MirConstValue *value, FILE *stream)
     } else {
       fprintf(stream, "{");
 
-      MirType *      member_type;
       MirConstValue *member;
       const size_t   memc = bo_array_size(members);
 
@@ -173,13 +172,11 @@ print_const_value(MirConstValue *value, FILE *stream)
       fprintf(stream, "{");
 
       if (elems) {
-        MirType *      elem_type;
         MirConstValue *elem;
         const size_t   elc = bo_array_size(elems);
 
         for (size_t i = 0; i < elc; ++i) {
           elem      = bo_array_at(elems, i, MirConstValue *);
-          elem_type = type->data.array.elem_type;
           print_const_value(elem, stream);
           if (i + 1 < elc) fprintf(stream, ", ");
         }
@@ -204,7 +201,7 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
     return;
   }
 
-  print_const_value(instr, stream);
+  print_const_value(&instr->const_value, stream);
 }
 
 static void
@@ -394,12 +391,16 @@ print_instr_init(MirInstrInit *init, FILE *stream)
   print_comptime_value_or_id(init->type, stream);
 
   fprintf(stream, " {");
-  BArray *  values = init->values;
-  MirInstr *value;
-  barray_foreach(values, value)
-  {
-    print_comptime_value_or_id(value, stream);
-    if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+  BArray *values = init->values;
+  if (values) {
+    MirInstr *value;
+    barray_foreach(values, value)
+    {
+      print_comptime_value_or_id(value, stream);
+      if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+    }
+  } else {
+    fprintf(stream, "<invalid values>");
   }
   fprintf(stream, "}");
 }
@@ -562,7 +563,7 @@ void
 print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
   print_instr_head(&cnst->base, stream, "const");
-  print_const_value(&cnst->base, stream);
+  print_const_value(&cnst->base.const_value, stream);
 }
 
 void
