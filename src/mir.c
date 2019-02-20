@@ -749,26 +749,6 @@ mutate_instr(MirInstr *instr, MirInstrKind kind)
 }
 
 static inline void
-erase_block(MirInstrBlock *block)
-{
-  if (!block) return;
-  MirFn *fn = block->owner_fn;
-  assert(fn);
-
-  MirInstr *bl_instr = &block->base;
-
-  /* first in fn */
-  if (fn->first_block == block) fn->first_block = (MirInstrBlock *)bl_instr->next;
-  /* last in fn */
-  if (fn->last_block == block) fn->last_block = (MirInstrBlock *)bl_instr->prev;
-  if (bl_instr->prev) bl_instr->prev->next = bl_instr->next;
-  if (bl_instr->next) bl_instr->next->prev = bl_instr->prev;
-
-  bl_instr->prev = NULL;
-  bl_instr->next = NULL;
-}
-
-static inline void
 erase_instr(MirInstr *instr)
 {
   if (!instr) return;

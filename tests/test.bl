@@ -1,15 +1,9 @@
 /* playground */
 
 #load "std/core.bl"
+#load "sdl2/sdl2.bl"
 
 main :: fn () s32 {
-  arr := [4]s32 { 20 + 43, 7 * 2, 17, 5 };
-
-  loop i := 0; i < arr.len; i += 1 {
-    print_int(arr[i]);
-    print_str("\n");
-  }
-
   return 0;
 };
 
