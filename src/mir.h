@@ -123,6 +123,7 @@ struct MirArenas
   Arena var_arena;
   Arena fn_arena;
   Arena member_arena;
+  Arena value_arena;
 };
 
 struct MirModule

@@ -4,12 +4,14 @@
 
 main :: fn () s32 {
   // initialize whole array to 0
-  arr1 := [4]s32 { 1, 2, 3, 4 }; // zero initializer (set whole array to 0)
+  /*
+  arr1 := [4]s32 { 1, 2, 3, 4 };
 
   loop i := 0; i < arr1.len; i += 1 {
     print_int(arr1[i]);
     print_str("\n");
   }
+  */
 
   //arr2 := [2]s32 { 1, 2 };
 

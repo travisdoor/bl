@@ -201,6 +201,23 @@ static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
     {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0}};
 
 static void
+value_dtor(MirConstValue *value)
+{
+  if (!value->type) return;
+
+  switch (value->type->kind) {
+  case MIR_TYPE_STRUCT:
+    bo_unref(value->data.v_struct.members);
+    break;
+  case MIR_TYPE_ARRAY:
+    bo_unref(value->data.v_array.elems);
+    break;
+  default:
+    break;
+  }
+}
+
+static void
 instr_dtor(MirInstr *instr)
 {
   switch (instr->kind) {
@@ -220,17 +237,7 @@ instr_dtor(MirInstr *instr)
     break;
   }
 
-  if (!instr->const_value.type || !instr->comptime) return;
-  switch (instr->const_value.type->kind) {
-  case MIR_TYPE_STRUCT:
-    bo_unref(instr->const_value.data.v_struct.members);
-    break;
-  case MIR_TYPE_ARRAY:
-    bo_unref(instr->const_value.data.v_array.elems);
-    break;
-  default:
-    break;
-  }
+  value_dtor(&instr->const_value);
 }
 
 static void
@@ -5705,6 +5712,7 @@ arenas_init(struct MirArenas *arenas)
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
   arena_init(&arenas->member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->value_arena, sizeof(MirConstValue), ARENA_CHUNK_COUNT / 2, (ArenaElemDtor)value_dtor);
 }
 
 static void
@@ -5715,6 +5723,7 @@ arenas_terminate(struct MirArenas *arenas)
   arena_terminate(&arenas->var_arena);
   arena_terminate(&arenas->fn_arena);
   arena_terminate(&arenas->member_arena);
+  arena_terminate(&arenas->value_arena);
 }
 
 /* public */
