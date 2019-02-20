@@ -206,9 +206,6 @@ value_dtor(MirConstValue *value)
   if (!value->type) return;
 
   switch (value->type->kind) {
-  case MIR_TYPE_STRUCT:
-    bo_unref(value->data.v_struct.members);
-    break;
   case MIR_TYPE_ARRAY:
     bo_unref(value->data.v_array.elems);
     break;
@@ -218,47 +215,9 @@ value_dtor(MirConstValue *value)
 }
 
 static void
-instr_dtor(MirInstr *instr)
+array_dtor(BArray **arr)
 {
-  switch (instr->kind) {
-  case MIR_INSTR_TYPE_FN:
-    bo_unref(((MirInstrTypeFn *)instr)->arg_types);
-    break;
-  case MIR_INSTR_TYPE_STRUCT:
-    bo_unref(((MirInstrTypeStruct *)instr)->members);
-    break;
-  case MIR_INSTR_CALL:
-    bo_unref(((MirInstrCall *)instr)->args);
-    break;
-  case MIR_INSTR_INIT:
-    bo_unref(((MirInstrInit *)instr)->values);
-    break;
-  default:
-    break;
-  }
-
-  value_dtor(&instr->const_value);
-}
-
-static void
-fn_dtor(MirFn *fn)
-{
-  bo_unref(fn->variables);
-}
-
-static void
-type_dtor(MirType *type)
-{
-  switch (type->kind) {
-  case MIR_TYPE_FN:
-    bo_unref(type->data.fn.arg_types);
-    break;
-  case MIR_TYPE_STRUCT:
-    bo_unref(type->data.strct.members);
-    break;
-  default:
-    break;
-  }
+  bo_unref(*arr);
 }
 
 /* FW decls */
@@ -315,6 +274,9 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
            MirConstValue *value, bool is_mutable, bool is_in_gscope);
+
+static BArray *
+create_arr(Context *cnt, size_t size);
 
 static MirFn *
 create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags);
@@ -782,7 +744,6 @@ static inline MirInstr *
 mutate_instr(MirInstr *instr, MirInstrKind kind)
 {
   assert(instr);
-  instr_dtor(instr);
   instr->kind = kind;
   return instr;
 }
@@ -1434,7 +1395,7 @@ MirType *
 create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 {
   assert(mir_is_pointer_type(elem_ptr_type));
-  BArray *members = bo_array_new(sizeof(MirType *));
+  BArray *members = create_arr(cnt, sizeof(MirType *));
   bo_array_reserve(members, 2);
   /* Slice layout struct { usize, *T } */
   bo_array_push_back(members, cnt->builtin_types.entry_usize);
@@ -1458,11 +1419,19 @@ create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_ty
   return tmp;
 }
 
+BArray *
+create_arr(Context *cnt, size_t size)
+{
+  BArray **tmp = arena_alloc(&cnt->module->arenas.array_arena);
+  *tmp         = bo_array_new(size);
+  return *tmp;
+}
+
 MirFn *
 create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags)
 {
   MirFn *tmp     = arena_alloc(&cnt->module->arenas.fn_arena);
-  tmp->variables = bo_array_new(sizeof(MirVar *));
+  tmp->variables = create_arr(cnt, sizeof(MirVar *));
   tmp->llvm_name = llvm_name;
   tmp->id        = id;
   tmp->scope     = scope;
@@ -2144,7 +2113,7 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 
   /* initialize constant slice */
   {
-    BArray *       members      = bo_array_new(sizeof(MirConstValue *));
+    BArray *       members      = create_arr(cnt, sizeof(MirConstValue *));
     BArray *       member_types = cnt->builtin_types.entry_u8_slice->data.strct.members;
     MirConstValue *value;
 
@@ -2597,6 +2566,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       comptime = value->comptime ? comptime : false;
     }
 
+    // NOTE: Innstructions can be used like values!!!
     init->base.const_value.data.v_array.elems = values;
     break;
   }
@@ -3107,7 +3077,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
   BArray *arg_types = NULL;
   if (type_fn->arg_types) {
-    arg_types = bo_array_new(sizeof(MirType *));
+    arg_types = create_arr(cnt, sizeof(MirType *));
     bo_array_reserve(arg_types, bo_array_size(type_fn->arg_types));
 
     MirInstr *arg_type;
@@ -3172,7 +3142,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
     Scope *             scope = type_struct->scope;
     const size_t        memc  = bo_array_size(type_struct->members);
 
-    members = bo_array_new(sizeof(MirType *));
+    members = create_arr(cnt, sizeof(MirType *));
     bo_array_reserve(members, bo_array_size(type_struct->members));
 
     for (size_t i = 0; i < memc; ++i) {
@@ -5019,7 +4989,7 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 
   assert(ast_type);
 
-  BArray *values = bo_array_new(sizeof(MirInstr *));
+  BArray *values = create_arr(cnt, sizeof(MirInstr *));
   bo_array_reserve(values, bo_array_size(ast_values));
 
   Ast *     ast_value;
@@ -5135,7 +5105,7 @@ ast_expr_call(Context *cnt, Ast *call)
   /* arguments need to be generated into reverse order due to bytecode call conventions */
   if (ast_args) {
     const size_t argc = bo_array_size(ast_args);
-    args              = bo_array_new(sizeof(MirInstr *));
+    args              = create_arr(cnt, sizeof(MirInstr *));
     bo_array_resize(args, argc);
     MirInstr *arg;
     Ast *     ast_arg;
@@ -5444,7 +5414,7 @@ ast_type_fn(Context *cnt, Ast *type_fn)
   BArray *arg_types = NULL;
   if (ast_arg_types && bo_array_size(ast_arg_types)) {
     const size_t c = bo_array_size(ast_arg_types);
-    arg_types      = bo_array_new(sizeof(MirInstr *));
+    arg_types      = create_arr(cnt, sizeof(MirInstr *));
     bo_array_resize(arg_types, c);
 
     Ast *     ast_arg_type;
@@ -5518,7 +5488,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
     return NULL;
   }
 
-  BArray *members = bo_array_new(sizeof(MirInstr *));
+  BArray *members = create_arr(cnt, sizeof(MirInstr *));
   bo_array_reserve(members, memc);
 
   MirInstr *tmp = NULL;
@@ -5742,14 +5712,15 @@ mir_instr_name(MirInstr *instr)
 static void
 arenas_init(struct MirArenas *arenas)
 {
-  arena_init(&arenas->instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT,
-             (ArenaElemDtor)instr_dtor);
-  arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, (ArenaElemDtor)type_dtor);
+  arena_init(&arenas->instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
+  arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
+  arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->value_arena, sizeof(MirConstValue), ARENA_CHUNK_COUNT / 2,
              (ArenaElemDtor)value_dtor);
+  arena_init(&arenas->array_arena, sizeof(BArray *), ARENA_CHUNK_COUNT / 2,
+             (ArenaElemDtor)array_dtor);
 }
 
 static void
@@ -5761,6 +5732,7 @@ arenas_terminate(struct MirArenas *arenas)
   arena_terminate(&arenas->fn_arena);
   arena_terminate(&arenas->member_arena);
   arena_terminate(&arenas->value_arena);
+  arena_terminate(&arenas->array_arena);
 }
 
 /* public */

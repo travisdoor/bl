@@ -124,6 +124,7 @@ struct MirArenas
   Arena fn_arena;
   Arena member_arena;
   Arena value_arena;
+  Arena array_arena;
 };
 
 struct MirModule
@@ -345,7 +346,7 @@ enum MirInstrKind
 
 struct MirInstr
 {
-  MirConstValue  const_value;
+  MirConstValue  const_value; // must be first
   MirInstrKind   kind;
   int32_t        id;
   LLVMValueRef   llvm_value;
