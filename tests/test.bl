@@ -13,6 +13,8 @@ main :: fn () s32 {
   }
   */
 
+  print_str("hello world!!!\n");
+
   //arr2 := [2]s32 { 1, 2 };
 
   /*

@@ -287,6 +287,7 @@ union MirConstValueData
 
 struct MirConstValue
 {
+  // data must be first!!!
   union MirConstValueData data;
   MirType *               type;
 };

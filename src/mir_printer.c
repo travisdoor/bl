@@ -60,8 +60,12 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 }
 
 static inline void
-print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
+print_const_value(MirConstValue *value, FILE *stream)
 {
+  MirType *          type = value->type;
+  MirConstValueData *data = &value->data;
+  assert(type);
+
 #define print_case(format, T)                                                                      \
   case sizeof(data->T):                                                                            \
     fprintf(stream, format, data->T);                                                              \
@@ -145,14 +149,13 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     } else {
       fprintf(stream, "{");
 
-      MirType *          member_type;
-      MirConstValueData *member;
-      const size_t       memc = bo_array_size(members);
+      MirType *      member_type;
+      MirConstValue *member;
+      const size_t   memc = bo_array_size(members);
 
       for (size_t i = 0; i < memc; ++i) {
-        member      = &bo_array_at(members, i, MirConstValueData);
-        member_type = bo_array_at(type->data.strct.members, i, MirType *);
-        print_const_value_data(member, member_type, stream);
+        member = bo_array_at(members, i, MirConstValue *);
+        print_const_value(member, stream);
         if (i + 1 < memc) fprintf(stream, ", ");
       }
 
@@ -170,14 +173,14 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
       fprintf(stream, "{");
 
       if (elems) {
-        MirType *elem_type;
-        MirConstValueData *elem;
-        const size_t elc = bo_array_size(elems);
+        MirType *      elem_type;
+        MirConstValue *elem;
+        const size_t   elc = bo_array_size(elems);
 
         for (size_t i = 0; i < elc; ++i) {
-          elem = &bo_array_at(elems, i, MirConstValueData);
+          elem      = bo_array_at(elems, i, MirConstValue *);
           elem_type = type->data.array.elem_type;
-          print_const_value_data(elem, elem_type, stream);
+          print_const_value(elem, stream);
           if (i + 1 < elc) fprintf(stream, ", ");
         }
       } else {
@@ -191,16 +194,6 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
   default:
     fprintf(stream, "<cannot read value>");
   }
-}
-
-static inline void
-print_const_value(MirInstr *instr, FILE *stream)
-{
-  MirConstValue *value = &instr->const_value;
-  MirType *      type  = value->type;
-  assert(type);
-
-  print_const_value_data(&value->data, type, stream);
 }
 
 static inline void

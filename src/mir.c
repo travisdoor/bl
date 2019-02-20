@@ -322,6 +322,9 @@ create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, 
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
 
+static MirConstValue *
+create_value(Context *cnt, MirType *type);
+
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
 
@@ -1056,20 +1059,20 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirStackPtr src_ptr,
                             MirType *src_type)
 {
-  /* This may cause recursive calls for agregate data types. */
+  /* This may cause recursive calls for aggregate data types. */
   assert(dest_ptr && src_ptr && src_type);
   MirConstValueData *data = (MirConstValueData *)src_ptr;
   switch (src_type->kind) {
   case MIR_TYPE_STRUCT: {
-    BArray *           members = data->v_struct.members;
-    MirConstValueData *member;
-    MirType *          member_type;
+    BArray *       members = data->v_struct.members;
+    MirConstValue *member;
+    MirType *      member_type;
 
     assert(members);
     const size_t memc = bo_array_size(members);
     for (size_t i = 0; i < memc; ++i) {
-      member      = &bo_array_at(members, i, MirConstValueData);
-      member_type = bo_array_at(src_type->data.strct.members, i, MirType *);
+      member      = bo_array_at(members, i, MirConstValue *);
+      member_type = member->type;
 
       /* copy all members to variable allocated memory on the stack */
       MirStackPtr elem_src_ptr = (MirStackPtr)member; // TODO: what about struct in struct???
@@ -1459,6 +1462,14 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirT
   tmp->index     = index;
   tmp->type      = type;
   tmp->scope     = scope;
+  return tmp;
+}
+
+MirConstValue *
+create_value(Context *cnt, MirType *type)
+{
+  MirConstValue *tmp = arena_alloc(&cnt->module->arenas.value_arena);
+  tmp->type          = type;
   return tmp;
 }
 
@@ -2115,14 +2126,19 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 
   /* initialize constant slice */
   {
-    BArray *          members = bo_array_new(sizeof(MirConstValueData));
-    MirConstValueData v       = {0};
+    BArray *       members      = bo_array_new(sizeof(MirConstValue *));
+    BArray *       member_types = cnt->builtin_types.entry_u8_slice->data.strct.members;
+    MirConstValue *value;
 
-    v.v_u64 = strlen(str);
-    bo_array_push_back(members, v);
+    /* string slice len */
+    value             = create_value(cnt, bo_array_at(member_types, 0, MirType *));
+    value->data.v_u64 = strlen(str);
+    bo_array_push_back(members, value);
 
-    v.v_str = str;
-    bo_array_push_back(members, v);
+    /* string slice ptr */
+    value             = create_value(cnt, bo_array_at(member_types, 1, MirType *));
+    value->data.v_str = str;
+    bo_array_push_back(members, value);
 
     tmp->const_value.data.v_struct.members = members;
   }
@@ -5712,7 +5728,8 @@ arenas_init(struct MirArenas *arenas)
   arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
   arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)fn_dtor);
   arena_init(&arenas->member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
-  arena_init(&arenas->value_arena, sizeof(MirConstValue), ARENA_CHUNK_COUNT / 2, (ArenaElemDtor)value_dtor);
+  arena_init(&arenas->value_arena, sizeof(MirConstValue), ARENA_CHUNK_COUNT / 2,
+             (ArenaElemDtor)value_dtor);
 }
 
 static void

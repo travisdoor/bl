@@ -479,8 +479,8 @@ gen_as_const(Context *cnt, MirInstr *instr)
       assert(members);
       assert(bo_array_size(members) == 2 && "not slice string?");
 
-      const uint64_t len = (&bo_array_at(members, 0, MirConstValueData))->v_u64;
-      const char *   str = (&bo_array_at(members, 1, MirConstValueData))->v_str;
+      const uint64_t len = (bo_array_at(members, 0, MirConstValue *))->data.v_u64;
+      const char *   str = (bo_array_at(members, 1, MirConstValue *))->data.v_str;
       assert(str);
 
       LLVMValueRef *const_vals = bl_malloc(sizeof(LLVMValueRef));
