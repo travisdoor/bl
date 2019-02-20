@@ -2605,6 +2605,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     bl_unimplemented;
   }
 
+  if (!comptime) bl_abort("Variable initializer values not supported yet!");
   init->base.comptime         = comptime;
   init->base.const_value.type = type;
   return true;
