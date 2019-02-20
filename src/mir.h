@@ -112,8 +112,6 @@ enum MirBuiltinKind
   MIR_BUILTIN_ARR_LEN,
   MIR_BUILTIN_ARR_PTR,
 
-  MIR_BUILTIN_MEM_ALLOC_FN,
-
   _MIR_BUILTIN_COUNT,
 };
 
@@ -276,12 +274,12 @@ union MirConstValueData
 
   struct
   {
-    BArray *members;
+    BArray *members; // array of MirConstValues *
   } v_struct;
 
   struct
   {
-    BArray *elems;
+    BArray *elems; // array of MirConstValues *
     bool    is_zero_initializer;
   } v_array;
 };

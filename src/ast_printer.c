@@ -69,7 +69,7 @@ print_flags(int32_t flags, FILE *stream)
   else
     return;
   if (flags & FLAG_EXTERN) fprintf(stream, "E");
-  if (flags & FLAG_INTERNAL) fprintf(stream, "I");
+  if (flags & FLAG_TEST) fprintf(stream, "T");
 }
 
 static void

@@ -37,6 +37,8 @@
 #include "assembly.h"
 
 #define LLVM_TRAP_FN "llvm.debugtrap"
+#define LLVM_MEMSET_FN "llvm.memset.p0i8.i64"
+
 #if BL_DEBUG
 #define NAMED_VARS true
 #else
@@ -60,9 +62,57 @@ typedef struct
   LLVMBuilderRef    llvm_builder;
 
   LLVMValueRef llvm_trap_fn;
-  LLVMTypeRef  llvm_u64_type;
-  LLVMValueRef llvm_const_u64;
+  LLVMValueRef llvm_memset_fn;
+  LLVMValueRef llvm_const_i64;
+
+  LLVMTypeRef llvm_void_type;
+  LLVMTypeRef llvm_i1_type;
+  LLVMTypeRef llvm_i8_type;
+  LLVMTypeRef llvm_i32_type;
+  LLVMTypeRef llvm_i64_type;
+  LLVMTypeRef llvm_i8_ptr_type;
 } Context;
+
+static inline LLVMValueRef
+create_trap_fn(Context *cnt)
+{
+  LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, NULL, 0, false);
+  return LLVMAddFunction(cnt->llvm_module, LLVM_TRAP_FN, llvm_fn_type);
+}
+
+static inline LLVMValueRef
+create_memset_fn(Context *cnt)
+{
+  LLVMTypeRef *llvm_args = bl_malloc(sizeof(LLVMTypeRef) * 5);
+  llvm_args[0]           = cnt->llvm_i8_ptr_type;
+  llvm_args[1]           = cnt->llvm_i8_type;
+  llvm_args[2]           = cnt->llvm_i64_type;
+  llvm_args[3]           = cnt->llvm_i32_type;
+  llvm_args[4]           = cnt->llvm_i1_type;
+
+  LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
+  LLVMValueRef llvm_fn      = LLVMAddFunction(cnt->llvm_module, LLVM_MEMSET_FN, llvm_fn_type);
+  bl_free(llvm_args);
+  return llvm_fn;
+}
+
+static inline LLVMValueRef
+build_call_memset_arr_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_size,
+                        LLVMValueRef llvm_alignment)
+{
+  LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * 5);
+  llvm_args[0] = LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, "");
+  llvm_args[1] = LLVMConstInt(cnt->llvm_i8_type, 0, false);
+  llvm_args[2] = llvm_size;
+  llvm_args[3] = llvm_alignment;
+  llvm_args[4] = LLVMConstInt(cnt->llvm_i1_type, 0, false);
+
+  LLVMValueRef llvm_result =
+      LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memset_fn, llvm_args, 5, "");
+
+  bl_free(llvm_args);
+  return llvm_result;
+}
 
 static void
 gen_instr(Context *cnt, MirInstr *instr);
@@ -306,7 +356,7 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   }
 
   LLVMValueRef llvm_indices[2];
-  llvm_indices[0] = cnt->llvm_const_u64;
+  llvm_indices[0] = cnt->llvm_const_i64;
   llvm_indices[1] = llvm_index;
 
   elem_ptr->base.llvm_value =
@@ -400,7 +450,24 @@ gen_as_const(Context *cnt, MirInstr *instr)
     break;
 
   case MIR_TYPE_ARRAY: {
-    bl_unimplemented;
+    const size_t len            = type->data.array.len;
+    LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
+    assert(len && llvm_elem_type);
+
+    BArray *  elems = value->data.v_array.elems;
+    MirConstValueData *elem;
+
+    assert(elems);
+    assert(len == bo_array_size(elems));
+    LLVMValueRef *llvm_elems = bl_malloc(sizeof(LLVMValueRef) * len);
+
+    for (size_t i = 0; i < len; ++i) {
+      elem         = &bo_array_at(elems, i, MirConstValueData);
+      llvm_elems[i] = fetch_value(cnt, elem);
+    }
+
+    instr->llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems, len);
+    bl_free(llvm_elems);
     break;
   }
 
@@ -417,7 +484,7 @@ gen_as_const(Context *cnt, MirInstr *instr)
       assert(str);
 
       LLVMValueRef *const_vals = bl_malloc(sizeof(LLVMValueRef));
-      const_vals[0]            = LLVMConstInt(cnt->llvm_u64_type, len, false);
+      const_vals[0]            = LLVMConstInt(cnt->llvm_i64_type, len, false);
       const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
       LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
 
@@ -627,9 +694,41 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     assert(var->llvm_value);
 
     if (decl->init) {
-      LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
-      assert(llvm_init);
-      LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+      /* There is special handling for initialization via init instruction */
+      if (decl->init->kind == MIR_INSTR_INIT) {
+        MirInstrInit *init = (MirInstrInit *)decl->init;
+        MirType *     type = var->alloc_type;
+
+        switch (type->kind) {
+        case MIR_TYPE_ARRAY: {
+          MirConstValue *tmp = &init->base.const_value;
+          if (tmp->data.v_array.is_zero_initializer) {
+            /* zero initialized array */
+            LLVMValueRef llvm_size =
+                LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+            LLVMValueRef llvm_alignment = LLVMConstInt(cnt->llvm_i32_type, type->alignment, false);
+            build_call_memset_arr_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
+          } else if (init->base.comptime) {
+            /* compile time known constant initializer */
+            LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
+            assert(llvm_type);
+            LLVMValueRef llvm_const_arr = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
+            LLVMSetGlobalConstant(llvm_const_arr, true);
+            LLVMSetLinkage(llvm_const_arr, LLVMInternalLinkage);
+            LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
+          }
+          break;
+        }
+        default:
+          bl_unimplemented;
+        }
+
+      } else {
+        /* use simple store */
+        LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
+        assert(llvm_init);
+        LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
+      }
     }
   }
 }
@@ -736,7 +835,7 @@ gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   if (fn->ref_count == 0) return;
   gen_fn_proto(cnt, fn);
 
-  if (!(fn->flags & (FLAG_EXTERN | FLAG_INTERNAL))) {
+  if (!(fn->flags & (FLAG_EXTERN))) {
     MirInstr *block = (MirInstr *)fn->first_block;
 
     while (block) {
@@ -824,14 +923,17 @@ ir_run(Builder *builder, Assembly *assembly)
   cnt.llvm_td      = assembly->mir_module->llvm_td;
   cnt.llvm_builder = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
 
-  {
-    LLVMTypeRef llvm_void_type    = LLVMVoidTypeInContext(cnt.llvm_cnt);
-    LLVMTypeRef llvm_trap_fn_type = LLVMFunctionType(llvm_void_type, NULL, 0, false);
-    cnt.llvm_trap_fn = LLVMAddFunction(cnt.llvm_module, LLVM_TRAP_FN, llvm_trap_fn_type);
-  }
+  cnt.llvm_void_type = LLVMVoidTypeInContext(cnt.llvm_cnt);
+  cnt.llvm_i1_type   = LLVMInt1TypeInContext(cnt.llvm_cnt);
+  cnt.llvm_i8_type   = LLVMInt8TypeInContext(cnt.llvm_cnt);
+  cnt.llvm_i32_type  = LLVMInt32TypeInContext(cnt.llvm_cnt);
+  cnt.llvm_i64_type  = LLVMInt64TypeInContext(cnt.llvm_cnt);
 
-  cnt.llvm_u64_type  = LLVMInt64TypeInContext(cnt.llvm_cnt);
-  cnt.llvm_const_u64 = LLVMConstInt(cnt.llvm_u64_type, 0, false);
+  cnt.llvm_i8_ptr_type = LLVMPointerType(cnt.llvm_i8_type, 0);
+
+  cnt.llvm_const_i64 = LLVMConstInt(cnt.llvm_i64_type, 0, false);
+  cnt.llvm_trap_fn   = create_trap_fn(&cnt);
+  cnt.llvm_memset_fn = create_memset_fn(&cnt);
 
   MirInstr *ginstr;
   barray_foreach(assembly->mir_module->globals, ginstr)

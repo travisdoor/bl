@@ -3,19 +3,14 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  mem_alloc(sizeof(s32));
+  // initialize whole array to 0
+  arr1 := [4]s32 { 1, 2, 3, 4 }; // zero initializer (set whole array to 0)
 
-  arr : [10]s32;
-  mem_set(cast(*u8) arr.ptr, 10, sizeof(arr));
-
-  loop i := 0; i < arr.len; i += 1 {
-    print_int(arr[i]);
+  loop i := 0; i < arr1.len; i += 1 {
+    print_int(arr1[i]);
     print_str("\n");
   }
 
-
-  // initialize whole array to 0
-  //arr1 := [2]s32 { 0 }; // zero initializer (set whole array to 0)
   //arr2 := [2]s32 { 1, 2 };
 
   /*

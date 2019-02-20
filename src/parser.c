@@ -1321,9 +1321,9 @@ parse_decl(Context *cnt)
   if (tok_assign) {
     decl->data.decl_entity.value   = parse_expr(cnt, true);
     decl->data.decl_entity.mutable = token_is(tok_assign, SYM_ASSIGN);
-    decl->data.decl_entity.flags |= parse_flags(cnt, FLAG_EXTERN | FLAG_INTERNAL);
+    decl->data.decl_entity.flags |= parse_flags(cnt, FLAG_EXTERN);
 
-    if (!(decl->data.decl_entity.flags & (FLAG_EXTERN | FLAG_INTERNAL))) {
+    if (!(decl->data.decl_entity.flags & (FLAG_EXTERN))) {
       if (!decl->data.decl_entity.value) {
         parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
                     "Expected binding of declaration to some value.");
@@ -1411,7 +1411,6 @@ next:
   tok = tokens_peek(cnt->tokens);
   switch (tok->sym) {
     CASE(SYM_EXTERN, FLAG_EXTERN)
-    CASE(SYM_INTERNAL, FLAG_INTERNAL)
   default:
     break;
   }

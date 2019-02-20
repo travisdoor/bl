@@ -29,11 +29,6 @@
 #load "c.bl"
 #load "debug.bl"
 
-mem_alloc :: fn (size: usize) *u8 #internal;
-mem_free  :: fn (size: usize) #internal;
-mem_copy  :: fn (dest: *u8, src: *u8, len: usize) #internal;
-mem_set   :: fn (dest: *u8, value: s32, len: usize) #internal;
-
 print_str :: fn (str: []u8) {
   write(C_STDOUT, str.ptr, str.len);
 };
@@ -42,6 +37,12 @@ print_int :: fn (v: s64) {
   buf      : [21]u8;
   negative :: v < 0;
   c := 0;
+
+  if v == 0 {
+    buf[0] = '0';
+    write(C_STDOUT, buf.ptr, 1);
+    return;
+  }
 
   if negative {
     v *= -1; // make it positive

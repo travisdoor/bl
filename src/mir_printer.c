@@ -169,15 +169,19 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     } else {
       fprintf(stream, "{");
 
-      MirType *          elem_type;
-      MirConstValueData *elem;
-      const size_t       elc = bo_array_size(elems);
+      if (elems) {
+        MirType *elem_type;
+        MirConstValueData *elem;
+        const size_t elc = bo_array_size(elems);
 
-      for (size_t i = 0; i < elc; ++i) {
-        elem      = &bo_array_at(elems, i, MirConstValueData);
-        elem_type = type->data.array.elem_type;
-        print_const_value_data(elem, elem_type, stream);
-        if (i + 1 < elc) fprintf(stream, ", ");
+        for (size_t i = 0; i < elc; ++i) {
+          elem = &bo_array_at(elems, i, MirConstValueData);
+          elem_type = type->data.array.elem_type;
+          print_const_value_data(elem, elem_type, stream);
+          if (i + 1 < elc) fprintf(stream, ", ");
+        }
+      } else {
+        fprintf(stream, "<cannot read value>");
       }
 
       fprintf(stream, "}");
@@ -667,8 +671,6 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 
   if (fn->flags & FLAG_EXTERN) {
     fprintf(stream, " #extern\n");
-  } else if (fn->flags & FLAG_INTERNAL) {
-    fprintf(stream, " #internal\n");
   } else {
     if (fn->flags & FLAG_TEST) fprintf(stream, " #test");
     fprintf(stream, " {\n");

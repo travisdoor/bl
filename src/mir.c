@@ -193,13 +193,12 @@ typedef struct
 } Context;
 
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
-    {.str = "type", .hash = 0},     {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
-    {.str = "s32", .hash = 0},      {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
-    {.str = "u16", .hash = 0},      {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
-    {.str = "usize", .hash = 0},    {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},      {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
-    {.str = "main", .hash = 0},     {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0},
-    {.str = "mem_alloc", .hash = 0}};
+    {.str = "type", .hash = 0},  {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
+    {.str = "s32", .hash = 0},   {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
+    {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
+    {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
+    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
+    {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0}};
 
 static void
 instr_dtor(MirInstr *instr)
@@ -372,10 +371,6 @@ append_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *inde
 static MirInstr *
 create_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
                         ScopeEntry *scope_entry, MirBuiltinKind builtin_id);
-
-static MirInstr *
-create_instr_builtin_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr,
-                                MirBuiltinKind builtin_id);
 
 static MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
@@ -1906,14 +1901,6 @@ create_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *memb
 }
 
 MirInstr *
-create_instr_builtin_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr,
-                                MirBuiltinKind builtin_id)
-{
-  MirInstr *tmp = create_instr_member_ptr(cnt, node, target_ptr, NULL, NULL, builtin_id);
-  return tmp;
-}
-
-MirInstr *
 append_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
                         ScopeEntry *scope_entry, MirBuiltinKind builtin_id)
 {
@@ -2537,28 +2524,40 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
   MirType *type = instr_type->const_value.data.v_type;
   assert(type);
   MirInstr *   value;
-  const size_t valc = bo_array_size(values);
+  const size_t valc     = bo_array_size(values);
+  bool         comptime = true;
 
   switch (type->kind) {
   case MIR_TYPE_ARRAY: {
-    barray_foreach(values, value)
-    {
-      reduce_instr(cnt, value);
-
-      /* Check if array is supposed to be initilialized to {0} */
-      if (valc == 1 && value->kind == MIR_INSTR_CONST &&
-          value->const_value.type->kind == MIR_TYPE_INT && value->const_value.data.v_u64 == 0) {
+    /* Check if array is supposed to be initilialized to {0} */
+    if (valc == 1) {
+      value = bo_array_at(values, 0, MirInstr *);
+      if (value->kind == MIR_INSTR_CONST && value->const_value.type->kind == MIR_TYPE_INT &&
+          value->const_value.data.v_u64 == 0) {
         init->base.const_value.data.v_array.is_zero_initializer = true;
-        init->base.comptime                                     = true;
         break;
       }
     }
 
-    // TODO: create constant array initializer
-    // TODO: create constant array initializer
-    // TODO: create constant array initializer
-    // TODO: create constant array initializer
+    /* Else iterate over values */
+    barray_foreach(values, value)
+    {
+      reduce_instr(cnt, value);
+      comptime = value->comptime ? comptime : false;
+    }
 
+    /* build constant array */
+    if (comptime) {
+      BArray *elems = bo_array_new(sizeof(MirConstValueData));
+      bo_array_reserve(elems, valc);
+
+      barray_foreach(values, value)
+      {
+        bo_array_push_back(elems, value->const_value.data);
+      }
+
+      init->base.const_value.data.v_array.elems = elems;
+    }
     break;
   }
 
@@ -2566,6 +2565,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     bl_unimplemented;
   }
 
+  init->base.comptime         = comptime;
   init->base.const_value.type = type;
   return true;
 }
@@ -2965,7 +2965,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     fn->llvm_name = gen_uq_name(cnt, IMPL_FN_NAME);
   }
 
-  if (fn->flags & (FLAG_EXTERN | FLAG_INTERNAL)) {
+  if (fn->flags & (FLAG_EXTERN)) {
     /* lookup external function exec handle */
     assert(fn->llvm_name);
     void *handle = dlFindSymbol(cnt->dl.lib, fn->llvm_name);
@@ -4459,7 +4459,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
   MirType *ret_type = fn->type->data.fn.ret_type;
   assert(ret_type);
 
-  if (fn->flags & (FLAG_EXTERN | FLAG_INTERNAL)) {
+  if (fn->flags & (FLAG_EXTERN)) {
     /* call setup and clenup */
     assert(fn->extern_entry);
     dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
