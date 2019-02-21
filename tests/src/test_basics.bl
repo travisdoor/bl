@@ -242,6 +242,30 @@
   assert(arr[2] == 30);
 };
 
+#test "array initialization" {
+  {
+    arr : [2]s32 = [2]s32 { 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  {
+    arr := [2]s32 { 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  // TODO: missing execution in MIR
+  /*{
+    i := 10;
+    j := 20;
+
+    arr := [2]s32 { i, j };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }*/
+};
+
 #test "simple static array loops" {
   arr : [10]s32;
   loop i := 0; i < arr.len; i += 1 {

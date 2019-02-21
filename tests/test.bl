@@ -2,26 +2,44 @@
 
 #load "std/core.bl"
 
+Point :: struct {
+  x: s32,
+  y: s32
+};
+
 main :: fn () s32 {
+  p := Point { .x += 10, .y = 10 };
+
   a := 10;
   b := 20;
 
-  arr := [3]s32 { a, b, 10 };
+  arr := [2]*s32 { &a, &b };
 
-  loop i := 0; i < arr.len; i += 1 {
-    print_int(arr[i]);
-    print_str("\n");
-  }
+  /*
+  //tmp := []*s32 { .ptr = arr.ptr, .len = arr.len };
+
+  tmp : []*s32;
+  tmp.ptr = arr.ptr;
+  tmp.len = arr.len;
+  
+  foo(tmp);
+  */
 
   return 0;
 };
 
 foo :: fn (args: ...s32) {  
   print_str("\nPassed var args:\n");
+  print_str("len = ");
   print_int(args.len);
-  print_str("\n\n");
-  
+  print_str("; values = { ");
+
   loop i := 0; i < args.len; i += 1 {
     print_int(^args[i]);
+    if i < args.len -1 {
+      print_str(", ");
+    }
   }
+
+  print_str(" }\n");
 };

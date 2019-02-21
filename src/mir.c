@@ -161,7 +161,17 @@ typedef struct
     DLLib *   lib;
     DCCallVM *vm;
   } dl;
+  /* AST -> MIR generation */
+  MirInstrBlock *current_block;
+  MirInstrBlock *break_block;
+  MirInstrBlock *continue_block;
+  bool           is_inside_init;
 
+  /* Other */
+  MirFn *entry_fn;
+  bool   verbose_pre, verbose_post;
+
+  /* Builtins */
   struct BuiltinTypes
   {
     MirType *entry_type;
@@ -183,13 +193,6 @@ typedef struct
     MirType *entry_resolve_type_fn;
     MirType *entry_test_case_fn;
   } builtin_types;
-
-  MirInstrBlock *current_block;
-  MirInstrBlock *break_block;
-  MirInstrBlock *continue_block;
-
-  MirFn *entry_fn;
-  bool   verbose_pre, verbose_post;
 } Context;
 
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
@@ -421,6 +424,9 @@ append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_typ
 
 static MirInstr *
 append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
+
+static MirInstr *
+create_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
 
 static MirInstr *
 append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
@@ -1874,7 +1880,6 @@ MirInstr *
 create_instr_member_ptr(Context *cnt, Ast *node, MirInstr *target_ptr, Ast *member_ident,
                         ScopeEntry *scope_entry, MirBuiltinKind builtin_id)
 {
-  assert(target_ptr);
   ref_instr(target_ptr);
   MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
   tmp->target_ptr        = target_ptr;
@@ -2174,7 +2179,7 @@ append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 }
 
 MirInstr *
-append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
+create_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
 {
   assert(lhs && rhs);
   ref_instr(lhs);
@@ -2184,6 +2189,13 @@ append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopK
   tmp->rhs           = rhs;
   tmp->op            = op;
 
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
+{
+  MirInstr *tmp = create_instr_binop(cnt, node, lhs, rhs, op);
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -2542,7 +2554,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     /* Else iterate over values */
     MirInstr **value_ref;
     for (size_t i = 0; i < valc; ++i) {
-      value_ref = &bo_array_at(values, i, MirInstr *);
+      value_ref    = &bo_array_at(values, i, MirInstr *);
       (*value_ref) = insert_instr_load_if_needed(cnt, *value_ref);
       reduce_instr(cnt, *value_ref);
 
@@ -4976,6 +4988,9 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 
   assert(ast_type);
 
+  const bool prev_is_inside_init = cnt->is_inside_init;
+  cnt->is_inside_init            = true;
+
   BArray *values = create_arr(cnt, sizeof(MirInstr *));
   bo_array_reserve(values, bo_array_size(ast_values));
 
@@ -4988,6 +5003,7 @@ ast_expr_compound(Context *cnt, Ast *cmp)
     bo_array_push_back(values, value);
   }
 
+  cnt->is_inside_init = prev_is_inside_init;
   return append_instr_init(cnt, cmp, type, values);
 }
 
@@ -5134,10 +5150,15 @@ MirInstr *
 ast_expr_member(Context *cnt, Ast *member)
 {
   Ast *ast_next = member->data.expr_member.next;
-  assert(ast_next);
+  // assert(ast_next);
 
   MirInstr *target = ast(cnt, ast_next);
-  assert(target);
+  // assert(target);
+
+  if (cnt->is_inside_init) {
+    return create_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL,
+                                   MIR_BUILTIN_NONE);
+  }
 
   return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL,
                                  MIR_BUILTIN_NONE);
@@ -5212,6 +5233,11 @@ ast_expr_binop(Context *cnt, Ast *binop)
   assert(ast_lhs && ast_rhs);
 
   const BinopKind op = binop->data.expr_binop.kind;
+
+  if (cnt->is_inside_init && op != BINOP_ASSIGN) {
+    bl_abort("Expected assignement inside initialization list");
+  }
+  
   if (ast_binop_is_assign(op)) {
     switch (op) {
 
