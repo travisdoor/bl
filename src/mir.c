@@ -2540,10 +2540,17 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     }
 
     /* Else iterate over values */
-    barray_foreach(values, value)
-    {
-      reduce_instr(cnt, value);
-      comptime = value->comptime ? comptime : false;
+    MirInstr **value_ref;
+    for (size_t i = 0; i < valc; ++i) {
+      value_ref = &bo_array_at(values, i, MirInstr *);
+      reduce_instr(cnt, *value_ref);
+
+      /* validate value type */
+      bool is_valid;
+      *value_ref = try_impl_cast(cnt, *value_ref, type->data.array.elem_type, &is_valid);
+      if (!is_valid) return false;
+
+      comptime = (*value_ref)->comptime ? comptime : false;
     }
 
     // NOTE: Innstructions can be used like values!!!

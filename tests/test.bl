@@ -1,13 +1,18 @@
 /* playground */
 
 #load "std/core.bl"
-#load "sdl2/sdl2.bl"
 
 main :: fn () s32 {
+  i := 10;
+  j := 20;
+
+  arr := [2]s32 { i, j };
+  
+  //_tmp1 := [2]*s32 { &i, &j };
+
   return 0;
 };
 
-/*
 foo :: fn (args: ...s32) {  
   print_str("\nPassed var args:\n");
   print_int(args.len);
@@ -17,4 +22,3 @@ foo :: fn (args: ...s32) {
     print_int(^args[i]);
   }
 };
-*/
