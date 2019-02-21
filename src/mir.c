@@ -3557,32 +3557,37 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   call->base.const_value.type = result_type;
 
   /* validate arguments */
-  const size_t callee_argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
-  const size_t call_argc   = call->args ? bo_array_size(call->args) : 0;
-  if (callee_argc != call_argc) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, call->base.node->src,
-                BUILDER_CUR_WORD, "Expected %u %s, but called with %u.", callee_argc,
-                callee_argc == 1 ? "argument" : "arguments", call_argc);
-    return false;
-  }
+  const bool is_vargs = type->data.fn.is_vargs;
+  if (is_vargs) {
+    bl_log("call to vargs fn");
+  } else {
+    const size_t callee_argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
+    const size_t call_argc   = call->args ? bo_array_size(call->args) : 0;
+    if (callee_argc != call_argc) {
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, call->base.node->src,
+                  BUILDER_CUR_WORD, "Expected %u %s, but called with %u.", callee_argc,
+                  callee_argc == 1 ? "argument" : "arguments", call_argc);
+      return false;
+    }
 
-  /* validate argument types */
-  if (call_argc) {
-    MirInstr **call_arg;
-    MirType *  callee_arg_type;
-    bool       valid;
+    /* validate argument types */
+    if (call_argc) {
+      MirInstr **call_arg;
+      MirType *  callee_arg_type;
+      bool       valid;
 
-    for (size_t i = 0; i < call_argc; ++i) {
-      call_arg        = &bo_array_at(call->args, i, MirInstr *);
-      callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
+      for (size_t i = 0; i < call_argc; ++i) {
+        call_arg        = &bo_array_at(call->args, i, MirInstr *);
+        callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
 
-      *call_arg = insert_instr_load_if_needed(cnt, *call_arg);
+        *call_arg = insert_instr_load_if_needed(cnt, *call_arg);
 
-      /* setup correct type of llvm null for call(null) */
-      setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
+        /* setup correct type of llvm null for call(null) */
+        setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
 
-      (*call_arg) = try_impl_cast(cnt, (*call_arg), callee_arg_type, &valid);
-      reduce_instr(cnt, *call_arg);
+        (*call_arg) = try_impl_cast(cnt, (*call_arg), callee_arg_type, &valid);
+        reduce_instr(cnt, *call_arg);
+      }
     }
   }
 
@@ -5392,7 +5397,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
       value = ast(cnt, ast_value);
     }
 
-    if (value) value->node = ast_name;
+    // if (value) value->node = ast_name;
     append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope);
 
     if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
