@@ -2543,6 +2543,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     MirInstr **value_ref;
     for (size_t i = 0; i < valc; ++i) {
       value_ref = &bo_array_at(values, i, MirInstr *);
+      (*value_ref) = insert_instr_load_if_needed(cnt, *value_ref);
       reduce_instr(cnt, *value_ref);
 
       /* validate value type */
@@ -2562,7 +2563,6 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
     bl_unimplemented;
   }
 
-  if (!comptime) bl_abort("Variable initializer values not supported yet!");
   init->base.comptime         = comptime;
   init->base.const_value.type = type;
   return true;

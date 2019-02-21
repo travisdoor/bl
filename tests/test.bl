@@ -3,12 +3,15 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  i := 10;
-  j := 20;
+  a := 10;
+  b := 20;
 
-  arr := [2]s32 { i, j };
-  
-  //_tmp1 := [2]*s32 { &i, &j };
+  arr := [3]s32 { a, b, 10 };
+
+  loop i := 0; i < arr.len; i += 1 {
+    print_int(arr[i]);
+    print_str("\n");
+  }
 
   return 0;
 };

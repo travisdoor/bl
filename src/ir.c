@@ -761,6 +761,27 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
 
             build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size, llvm_alignment);
+          } else {
+            /* one or more initizalizer values are known only in runtime */
+            BArray *     values = init->values;
+            MirInstr *   value;
+            LLVMValueRef llvm_value;
+            LLVMValueRef llvm_value_dest;
+            LLVMValueRef llvm_indices[2];
+            llvm_indices[0] = cnt->llvm_const_i64;
+
+            barray_foreach(values, value)
+            {
+              llvm_value = fetch_value(cnt, value);
+              assert(llvm_value);
+
+              llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+
+              llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder, var->llvm_value, llvm_indices,
+                                             ARRAY_SIZE(llvm_indices), "");
+
+              LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+            }
           }
           break;
         }
@@ -947,6 +968,10 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_CAST:
     gen_instr_cast(cnt, (MirInstrCast *)instr);
+    break;
+
+  case MIR_INSTR_INIT:
+    /* noop */
     break;
 
   default:
