@@ -143,8 +143,12 @@ print_const_value(MirConstValue *value, FILE *stream)
     fprintf(stream, "null");
     break;
   case MIR_TYPE_STRUCT: {
-    BArray *members = data->v_struct.members;
-    if (!members) {
+    BArray *   members             = data->v_struct.members;
+    const bool is_zero_initializer = data->v_struct.is_zero_initializer;
+
+    if (is_zero_initializer) {
+      fprintf(stream, "{0}");
+    } else if (!members) {
       fprintf(stream, "{<null>}");
     } else {
       fprintf(stream, "{");
@@ -176,7 +180,7 @@ print_const_value(MirConstValue *value, FILE *stream)
         const size_t   elc = bo_array_size(elems);
 
         for (size_t i = 0; i < elc; ++i) {
-          elem      = bo_array_at(elems, i, MirConstValue *);
+          elem = bo_array_at(elems, i, MirConstValue *);
           print_const_value(elem, stream);
           if (i + 1 < elc) fprintf(stream, ", ");
         }
@@ -434,24 +438,27 @@ void
 print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
 {
   print_instr_head(&member_ptr->base, stream, "memberptr");
+  if (!member_ptr->target_ptr) {
+    fprintf(stream, "<unknown>.");
+  }
+
   if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
     if (member_ptr->member_ident) {
-      fprintf(stream, "%%%u.%s", member_ptr->target_ptr->id,
-              member_ptr->member_ident->data.ident.id.str);
+      fprintf(stream, "%s", member_ptr->member_ident->data.ident.id.str);
     } else {
-      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+      fprintf(stream, "<unknown>");
     }
   } else {
     switch (member_ptr->builtin_id) {
     case MIR_BUILTIN_ARR_LEN:
-      fprintf(stream, "%%%u.len", member_ptr->target_ptr->id);
+      fprintf(stream, "len");
       break;
     case MIR_BUILTIN_ARR_PTR:
-      fprintf(stream, "%%%u.ptr", member_ptr->target_ptr->id);
+      fprintf(stream, "ptr");
       break;
 
     default:
-      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+      fprintf(stream, "<unknown>");
     }
   }
 }

@@ -165,7 +165,6 @@ typedef struct
   MirInstrBlock *current_block;
   MirInstrBlock *break_block;
   MirInstrBlock *continue_block;
-  bool           is_inside_init;
 
   /* Other */
   MirFn *entry_fn;
@@ -424,9 +423,6 @@ append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_typ
 
 static MirInstr *
 append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
-
-static MirInstr *
-create_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
 
 static MirInstr *
 append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op);
@@ -2179,7 +2175,7 @@ append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest)
 }
 
 MirInstr *
-create_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
+append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
 {
   assert(lhs && rhs);
   ref_instr(lhs);
@@ -2189,13 +2185,6 @@ create_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopK
   tmp->rhs           = rhs;
   tmp->op            = op;
 
-  return &tmp->base;
-}
-
-MirInstr *
-append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopKind op)
-{
-  MirInstr *tmp = create_instr_binop(cnt, node, lhs, rhs, op);
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
 }
@@ -2512,10 +2501,10 @@ reduce_instr(Context *cnt, MirInstr *instr)
 bool
 analyze_instr_init(Context *cnt, MirInstrInit *init)
 {
-  MirInstr *instr_type = init->type;
-  BArray *  values     = init->values;
-  assert(instr_type);
+  BArray *values = init->values;
 
+  init->type           = insert_instr_load_if_needed(cnt, init->type);
+  MirInstr *instr_type = init->type;
   reduce_instr(cnt, instr_type);
   if (instr_type->const_value.type->kind != MIR_TYPE_TYPE) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, instr_type->node->src,
@@ -2526,20 +2515,25 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
   MirType *type = instr_type->const_value.data.v_type;
   assert(type);
   MirInstr *   value;
-  const size_t valc     = values ? bo_array_size(values) : 0;
-  bool         comptime = true;
+  const size_t valc      = values ? bo_array_size(values) : 0;
+  bool         comptime  = true;
+  bool         zero_init = false;
+
+  /* Check if array is supposed to be initilialized to {0} */
+  if (valc == 1) {
+    value = bo_array_at(values, 0, MirInstr *);
+    if (value->kind == MIR_INSTR_CONST && value->const_value.type->kind == MIR_TYPE_INT &&
+        value->const_value.data.v_u64 == 0) {
+      reduce_instr(cnt, value);
+      zero_init = true;
+    }
+  }
 
   switch (type->kind) {
   case MIR_TYPE_ARRAY: {
-    /* Check if array is supposed to be initilialized to {0} */
-    if (valc == 1) {
-      value = bo_array_at(values, 0, MirInstr *);
-      if (value->kind == MIR_INSTR_CONST && value->const_value.type->kind == MIR_TYPE_INT &&
-          value->const_value.data.v_u64 == 0) {
-        reduce_instr(cnt, value);
-        init->base.const_value.data.v_array.is_zero_initializer = true;
-        break;
-      }
+    if (zero_init) {
+      init->base.const_value.data.v_array.is_zero_initializer = true;
+      break;
     }
 
     if (valc != type->data.array.len) {
@@ -2566,8 +2560,49 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       comptime = (*value_ref)->comptime ? comptime : false;
     }
 
-    // NOTE: Instructions can be used like values!!!
+    // NOTE: Instructions can be used as values!!!
     init->base.const_value.data.v_array.elems = values;
+    break;
+  }
+
+  case MIR_TYPE_STRUCT: {
+    comptime = true;
+
+    if (zero_init) {
+      init->base.const_value.data.v_struct.is_zero_initializer = true;
+      break;
+    }
+
+    const size_t memc = bo_array_size(type->data.strct.members);
+    if (valc != memc) {
+      builder_msg(
+          cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER, init->base.node->src,
+          BUILDER_CUR_WORD,
+          "Structure initializer must explicitly set all members of the structure or "
+          "initialize structure to 0 by zero initializer {0}. Expected is %llu but given %llu.",
+          (unsigned long long)memc, (unsigned long long)valc);
+      return false;
+    }
+
+    /* Else iterate over values */
+    MirInstr **value_ref;
+    MirType *  member_type;
+    for (size_t i = 0; i < valc; ++i) {
+      value_ref    = &bo_array_at(values, i, MirInstr *);
+      member_type  = bo_array_at(type->data.strct.members, i, MirType *);
+      (*value_ref) = insert_instr_load_if_needed(cnt, *value_ref);
+      reduce_instr(cnt, *value_ref);
+
+      /* validate value type */
+      bool is_valid;
+      *value_ref = try_impl_cast(cnt, *value_ref, member_type, &is_valid);
+      if (!is_valid) return false;
+
+      comptime = (*value_ref)->comptime ? comptime : false;
+    }
+
+    // NOTE: Instructions can be used as values!!!
+    init->base.const_value.data.v_struct.members = values;
     break;
   }
 
@@ -4981,15 +5016,13 @@ ast_expr_compound(Context *cnt, Ast *cmp)
   BArray *  ast_values = cmp->data.expr_compound.values;
   Ast *     ast_type   = cmp->data.expr_compound.type;
   MirInstr *type       = ast(cnt, ast_type);
+  assert(type);
 
   if (!ast_values) {
     return append_instr_init(cnt, cmp, type, NULL);
   }
 
   assert(ast_type);
-
-  const bool prev_is_inside_init = cnt->is_inside_init;
-  cnt->is_inside_init            = true;
 
   BArray *values = create_arr(cnt, sizeof(MirInstr *));
   bo_array_reserve(values, bo_array_size(ast_values));
@@ -4998,12 +5031,21 @@ ast_expr_compound(Context *cnt, Ast *cmp)
   MirInstr *value;
   barray_foreach(ast_values, ast_value)
   {
-    value = ast(cnt, ast_value);
-    assert(value);
-    bo_array_push_back(values, value);
+    if (ast_value->kind == AST_EXPR_BINOP) {
+      if (ast_value->data.expr_binop.kind != BINOP_ASSIGN) {
+        bl_abort("expected '=' in compound struct initializer, this should be an error.");
+      }
+
+      value = ast(cnt, ast_value->data.expr_binop.rhs);
+      assert(value);
+      bo_array_push_back(values, value);
+    } else {
+      value = ast(cnt, ast_value);
+      assert(value);
+      bo_array_push_back(values, value);
+    }
   }
 
-  cnt->is_inside_init = prev_is_inside_init;
   return append_instr_init(cnt, cmp, type, values);
 }
 
@@ -5155,11 +5197,6 @@ ast_expr_member(Context *cnt, Ast *member)
   MirInstr *target = ast(cnt, ast_next);
   // assert(target);
 
-  if (cnt->is_inside_init) {
-    return create_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL,
-                                   MIR_BUILTIN_NONE);
-  }
-
   return append_instr_member_ptr(cnt, member, target, member->data.expr_member.ident, NULL,
                                  MIR_BUILTIN_NONE);
 }
@@ -5234,10 +5271,6 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
   const BinopKind op = binop->data.expr_binop.kind;
 
-  if (cnt->is_inside_init && op != BINOP_ASSIGN) {
-    bl_abort("Expected assignement inside initialization list");
-  }
-  
   if (ast_binop_is_assign(op)) {
     switch (op) {
 
@@ -5482,7 +5515,6 @@ ast_type_vargs(Context *cnt, Ast *type_vargs)
   assert(ast_type);
   MirInstr *type = ast(cnt, ast_type);
   assert(type);
-  type = append_instr_type_ptr(cnt, ast_type, type);
   return append_instr_type_slice(cnt, type_vargs, type);
 }
 

@@ -115,8 +115,8 @@ create_memcpy_fn(Context *cnt)
 }
 
 static inline LLVMValueRef
-build_call_memset_arr_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_size,
-                        LLVMValueRef llvm_alignment)
+build_call_memset_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_size,
+                    LLVMValueRef llvm_alignment)
 {
   LLVMValueRef *llvm_args = bl_malloc(sizeof(LLVMValueRef) * 5);
   llvm_args[0] = LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, "");
@@ -533,10 +533,19 @@ gen_as_const(Context *cnt, MirConstValue *value)
 
       bl_free(const_vals);
     } else {
-      /* TODO: support other structure types. */
-      /* TODO: support other structure types. */
-      /* TODO: support other structure types. */
-      bl_unimplemented;
+      BArray *       members = value->data.v_struct.members;
+      const size_t   memc    = bo_array_size(members);
+      MirConstValue *member;
+      LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
+
+      barray_foreach(members, member)
+      {
+        llvm_members[i] = gen_as_const(cnt, member);
+      }
+
+      result =
+          LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, memc, type->data.strct.is_packed);
+      bl_free(llvm_members);
     }
     return result;
   }
@@ -742,6 +751,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         MirInstrInit *init = (MirInstrInit *)decl->init;
         MirType *     type = var->alloc_type;
 
+        /* CLEANUP: can be simplified */
         switch (type->kind) {
         case MIR_TYPE_ARRAY: {
           MirConstValue *tmp     = &init->base.const_value;
@@ -750,7 +760,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
           if (tmp->data.v_array.is_zero_initializer) {
             /* zero initialized array */
-            build_call_memset_arr_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
+            build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
           } else if (init->base.comptime) {
             /* compile time known constant initializer */
             LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
@@ -780,6 +790,43 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
               llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder, var->llvm_value, llvm_indices,
                                              ARRAY_SIZE(llvm_indices), "");
 
+              LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+            }
+          }
+          break;
+        }
+
+        case MIR_TYPE_STRUCT: {
+          MirConstValue *tmp     = &init->base.const_value;
+          LLVMValueRef llvm_size = LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+          LLVMValueRef llvm_alignment = LLVMConstInt(cnt->llvm_i32_type, type->alignment, false);
+
+          if (tmp->data.v_array.is_zero_initializer) {
+            /* zero initialized array */
+            build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
+          } else if (init->base.comptime) {
+            /* compile time known constant initializer */
+            LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
+            assert(llvm_type);
+            LLVMValueRef llvm_const_arr = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
+            LLVMSetGlobalConstant(llvm_const_arr, true);
+            LLVMSetLinkage(llvm_const_arr, LLVMInternalLinkage);
+            LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
+
+            build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size, llvm_alignment);
+          } else {
+            /* one or more initizalizer values are known only in runtime */
+            BArray *     values = init->values;
+            MirInstr *   value;
+            LLVMValueRef llvm_value;
+            LLVMValueRef llvm_value_dest;
+
+            barray_foreach(values, value)
+            {
+              llvm_value = fetch_value(cnt, value);
+              assert(llvm_value);
+
+              llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, var->llvm_value, i, "");
               LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
             }
           }

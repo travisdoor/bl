@@ -277,6 +277,7 @@ union MirConstValueData
   struct
   {
     BArray *members; // array of MirConstValues *
+    bool    is_zero_initializer;
   } v_struct;
 
   struct

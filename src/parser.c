@@ -971,6 +971,7 @@ parse_expr_nested(Context *cnt)
 Ast *
 parse_expr_member(Context *cnt, Ast *prev)
 {
+  if (!prev) return NULL;
   Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
   if (!tok) return NULL;
 
