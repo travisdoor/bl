@@ -2553,7 +2553,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       comptime = (*value_ref)->comptime ? comptime : false;
     }
 
-    // NOTE: Innstructions can be used like values!!!
+    // NOTE: Instructions can be used like values!!!
     init->base.const_value.data.v_array.elems = values;
     break;
   }
