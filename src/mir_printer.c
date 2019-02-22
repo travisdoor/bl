@@ -200,6 +200,11 @@ print_const_value(MirConstValue *value, FILE *stream)
 static inline void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 {
+  if (!instr) {
+    fprintf(stream, "<invalid>");
+    return;
+  }
+
   if (!instr->comptime || !instr->analyzed) {
     fprintf(stream, "%%%u", instr->id);
     return;
@@ -234,6 +239,9 @@ print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
 static void
 print_instr_init(MirInstrInit *init, FILE *stream);
+
+static void
+print_instr_vargs(MirInstrVArgs *vargs, FILE *stream);
 
 static void
 print_instr_br(MirInstrBr *br, FILE *stream);
@@ -420,6 +428,27 @@ print_instr_init(MirInstrInit *init, FILE *stream)
 }
 
 void
+print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
+{
+  print_instr_head(&vargs->base, stream, "vargs");
+  print_type(vargs->type, false, stream, true);
+
+  fprintf(stream, " {");
+  BArray *values = vargs->values;
+  if (values) {
+    MirInstr *value;
+    barray_foreach(values, value)
+    {
+      print_comptime_value_or_id(value, stream);
+      if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+    }
+  } else {
+    fprintf(stream, "<invalid values>");
+  }
+  fprintf(stream, "}");
+}
+
+void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
 {
   print_instr_head(&szof->base, stream, "sizeof");
@@ -532,9 +561,11 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   MirVar *var = decl->var;
   assert(var);
 
+  const char *name = var->llvm_name ? var->llvm_name : "<unknown>";
+
   if (var->is_in_gscope) {
     /* global scope variable */
-    fprintf(stream, "@%s : ", var->id->str);
+    fprintf(stream, "@%s : ", name);
     print_type(var->alloc_type, false, stream, true);
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
     if (decl->init) {
@@ -546,7 +577,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
     /* local scope variable */
     print_instr_head(&decl->base, stream, "decl");
 
-    fprintf(stream, "%s : ", var->id->str);
+    fprintf(stream, "%s : ", name);
     print_type(var->alloc_type, false, stream, true);
     if (decl->init) {
       fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
@@ -786,6 +817,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_INIT:
     print_instr_init((MirInstrInit *)instr, stream);
+    break;
+  case MIR_INSTR_VARGS:
+    print_instr_vargs((MirInstrVArgs *)instr, stream);
     break;
   default:
     break;

@@ -46,6 +46,7 @@
     "arg"
     "sizeof"
     "init"
+    "vargs"
     "alignof")) 
 
 (defconst blm-types
@@ -87,6 +88,7 @@
 
     ;; Functions
     ("@\\w+" . font-lock-function-name-face)
+    ("@\\.\\w+" . font-lock-builtin-face)
 
     ;; IDs 
     ("%\\w+" . font-lock-variable-name-face)

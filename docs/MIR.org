@@ -403,3 +403,17 @@
    <T> init <T> {[val, ...]} // yields T
    #+END_EXAMPLE
    
+** vargs
+   Builds vargs slice from input values.
+
+   #+BEGIN_EXAMPLE
+   <T> vargs <T> {[val, ...]} // yields T
+   #+END_EXAMPLE
+
+   Stack operations:
+   | stack op | data        | description       |
+   |----------+-------------+-------------------|
+   | POP      | arg 1       |                   |
+   | POP      | arg 2       |                   |
+   | POP      | arg 3       |                   |
+   | PUSH     | vargs slice | VArgs array slice |

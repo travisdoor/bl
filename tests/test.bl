@@ -7,13 +7,33 @@ main :: fn () s32 {
   b := 20;
   c := 30; 
 
-  arr := [3]s32 { a, b, c };
-  tmp := []s32 { arr.len, arr.ptr };
-  
-  result := sum(tmp);
-  print_str(" = ");
-  print_int(result);
-  print_str("\n");
+  {
+    result := sum(a, b, c);
+    print_str(" = ");
+    print_int(result);
+    print_str("\n");
+  }
+
+  {
+    result := sum(a, b);
+    print_str(" = ");
+    print_int(result);
+    print_str("\n");
+  }
+
+  {
+    result := sum(a, b, b, a);
+    print_str(" = ");
+    print_int(result);
+    print_str("\n");
+  }
+
+  {
+    result := sum(10, 32, 75);
+    print_str(" = ");
+    print_int(result);
+    print_str("\n");
+  }
 
   return 0;
 };
@@ -29,5 +49,3 @@ sum :: fn (args: ...s32) s32 {
   }
   return result;
 };
-
-//printf :: fn (...) #extern;

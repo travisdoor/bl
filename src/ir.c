@@ -232,10 +232,8 @@ gen_global_var_proto(Context *cnt, MirVar *var)
   assert(var);
   if (var->llvm_value) return var->llvm_value;
 
-  ID *id = var->id;
-  assert(id && "Unnamed global variable???");
   LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
-  var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, id->str);
+  var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->llvm_name);
 
   LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
@@ -891,6 +889,50 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 }
 
 void
+gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
+{
+  MirType *    vargs_type = vargs->base.const_value.type;
+  BArray *     values     = vargs->values;
+  const size_t vargsc     = values ? bo_array_size(values) : 0;
+  assert(vargs_type && mir_is_vargs_type(vargs_type));
+
+  /* Setup tmp array values. */
+  {
+    MirInstr *   value;
+    LLVMValueRef llvm_value;
+    LLVMValueRef llvm_value_dest;
+    LLVMValueRef llvm_indices[2];
+    llvm_indices[0] = cnt->llvm_const_i64;
+
+    barray_foreach(values, value)
+    {
+      llvm_value = fetch_value(cnt, value);
+      assert(llvm_value);
+      llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+      llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder, vargs->arr_tmp->llvm_value, llvm_indices,
+                                     ARRAY_SIZE(llvm_indices), "");
+      LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+    }
+  }
+
+  {
+    LLVMValueRef llvm_len = LLVMConstInt(cnt->llvm_i64_type, vargsc, false);
+    LLVMValueRef llvm_dest =
+        LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 0, "");
+    LLVMBuildStore(cnt->llvm_builder, llvm_len, llvm_dest);
+
+    LLVMTypeRef llvm_ptr_type =
+        bo_array_at(vargs_type->data.strct.members, 1, MirType *)->llvm_type;
+    LLVMValueRef llvm_ptr = vargs->arr_tmp->llvm_value;
+    llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 1, "");
+    llvm_ptr  = LLVMBuildBitCast(cnt->llvm_builder, llvm_ptr, llvm_ptr_type, "");
+    LLVMBuildStore(cnt->llvm_builder, llvm_ptr, llvm_dest);
+  }
+
+  vargs->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
+}
+
+void
 gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
   MirFn *fn = block->owner_fn;
@@ -926,7 +968,7 @@ gen_allocas(Context *cnt, MirFn *fn)
   {
     assert(var);
 #if NAMED_VARS
-    var_name = var->id->str;
+    var_name = var->llvm_name;
 #else
     var_name = "";
 #endif
@@ -1015,6 +1057,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_CAST:
     gen_instr_cast(cnt, (MirInstrCast *)instr);
+    break;
+  case MIR_INSTR_VARGS:
+    gen_instr_vargs(cnt, (MirInstrVArgs *)instr);
     break;
 
   case MIR_INSTR_INIT:

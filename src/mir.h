@@ -81,6 +81,7 @@ typedef struct MirInstrCast        MirInstrCast;
 typedef struct MirInstrSizeof      MirInstrSizeof;
 typedef struct MirInstrAlignof     MirInstrAlignof;
 typedef struct MirInstrInit        MirInstrInit;
+typedef struct MirInstrVArgs       MirInstrVArgs;
 
 typedef enum MirTypeKind       MirTypeKind;
 typedef enum MirInstrKind      MirInstrKind;
@@ -316,9 +317,11 @@ struct MirVar
   bool     comptime;
   bool     gen_llvm;
   bool     is_in_gscope;
+  bool     is_implicit;
 
   MirConstValue *     value;
   LLVMValueRef        llvm_value;
+  const char *        llvm_name;
   MirRelativeStackPtr rel_stack_ptr;
 };
 /* INSTRUCTIONS */
@@ -354,6 +357,7 @@ enum MirInstrKind
   MIR_INSTR_SIZEOF,
   MIR_INSTR_ALIGNOF,
   MIR_INSTR_INIT,
+  MIR_INSTR_VARGS,
 };
 
 struct MirInstr
@@ -617,6 +621,16 @@ struct MirInstrInit
 
   MirInstr *type;
   BArray *  values;
+};
+
+struct MirInstrVArgs
+{
+  MirInstr base;
+
+  MirVar * arr_tmp;
+  MirVar * vargs_tmp;
+  MirType *type;
+  BArray * values;
 };
 
 /* public */
