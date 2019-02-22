@@ -119,6 +119,7 @@ union _MirInstr
   MirInstrAddrOf      addrof;
   MirInstrTypeArray   type_array;
   MirInstrTypeSlice   type_slice;
+  MirInstrTypeVArgs   type_vargs;
   MirInstrTypePtr     type_ptr;
   MirInstrTypeStruct  type_struct;
   MirInstrTypeFn      type_fn;
@@ -268,10 +269,13 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len);
 
 static MirType *
 create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
-                   bool is_slice);
+                   MirTypeStructKind kind);
 
 static MirType *
 create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
+
+static MirType *
+create_type_vargs(Context *cnt, MirType *elem_ptr_type);
 
 static MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
@@ -374,6 +378,9 @@ append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *
 
 static MirInstr *
 append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type);
+
+static MirInstr *
+append_instr_type_vargs(Context *cnt, Ast *node, MirInstr *elem_type);
 
 MirInstr *
 append_instr_type_const(Context *cnt, Ast *node, MirInstr *type);
@@ -627,6 +634,9 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
 
 static bool
 analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
+
+static bool
+analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
 
 static bool
 analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
@@ -1364,14 +1374,14 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 
 MirType *
 create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
-                   bool is_slice)
+                   MirTypeStructKind kind)
 {
   MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
   tmp->kind                 = MIR_TYPE_STRUCT;
   tmp->data.strct.members   = members;
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
-  tmp->data.strct.is_slice  = is_slice;
+  tmp->data.strct.kind      = kind;
   tmp->id                   = id;
 
   init_type_llvm_ABI(cnt, tmp);
@@ -1388,7 +1398,15 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
   /* Slice layout struct { usize, *T } */
   bo_array_push_back(members, cnt->builtin_types.entry_usize);
   bo_array_push_back(members, elem_ptr_type);
-  return create_type_struct(cnt, id, NULL, members, false, true);
+  return create_type_struct(cnt, id, NULL, members, false, MIR_TS_SLICE);
+}
+
+MirType *
+create_type_vargs(Context *cnt, MirType *elem_ptr_type)
+{
+  MirType *tmp         = create_type_slice(cnt, NULL, elem_ptr_type);
+  tmp->data.strct.kind = MIR_TS_VARGS;
+  return tmp;
 }
 
 MirVar *
@@ -1741,6 +1759,19 @@ MirInstr *
 append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type)
 {
   MirInstrTypeSlice *tmp     = create_instr(cnt, MIR_INSTR_TYPE_SLICE, node, MirInstrTypeSlice *);
+  tmp->base.const_value.type = cnt->builtin_types.entry_type;
+  tmp->base.comptime         = true;
+  tmp->elem_type             = elem_type;
+
+  ref_instr(elem_type);
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_type_vargs(Context *cnt, Ast *node, MirInstr *elem_type)
+{
+  MirInstrTypeVArgs *tmp     = create_instr(cnt, MIR_INSTR_TYPE_VARGS, node, MirInstrTypeVArgs *);
   tmp->base.const_value.type = cnt->builtin_types.entry_type;
   tmp->base.comptime         = true;
   tmp->elem_type             = elem_type;
@@ -2463,6 +2494,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_PTR:
   case MIR_INSTR_TYPE_STRUCT:
   case MIR_INSTR_TYPE_SLICE:
+  case MIR_INSTR_TYPE_VARGS:
   case MIR_INSTR_SIZEOF:
   case MIR_INSTR_ALIGNOF:
   case MIR_INSTR_INIT:
@@ -2747,7 +2779,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
     reduce_instr(cnt, member_ptr->target_ptr);
 
-    if (target_type->data.strct.is_slice) {
+    if (target_type->data.strct.kind & MIR_TS_SLICE) {
       /* slice!!! */
       BArray *slice_members = target_type->data.strct.members;
       assert(slice_members);
@@ -3218,7 +3250,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
   }
 
   type_struct->base.const_value.data.v_type =
-      create_type_struct(cnt, id, type_struct->scope, members, type_struct->is_packed, false);
+      create_type_struct(cnt, id, type_struct->scope, members, type_struct->is_packed, MIR_TS_NONE);
   return true;
 }
 
@@ -3240,6 +3272,23 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
   assert(elem_type);
   elem_type                                = create_type_ptr(cnt, elem_type);
   type_slice->base.const_value.data.v_type = create_type_slice(cnt, id, elem_type);
+
+  return true;
+}
+
+bool
+analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
+{
+  assert(type_vargs->elem_type);
+  type_vargs->elem_type = insert_instr_load_if_needed(cnt, type_vargs->elem_type);
+
+  reduce_instr(cnt, type_vargs->elem_type);
+
+  assert(type_vargs->elem_type->comptime && "This should be an error");
+  MirType *elem_type = type_vargs->elem_type->const_value.data.v_type;
+  assert(elem_type);
+  elem_type                                = create_type_ptr(cnt, elem_type);
+  type_vargs->base.const_value.data.v_type = create_type_vargs(cnt, elem_type);
 
   return true;
 }
@@ -3723,6 +3772,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_TYPE_SLICE:
     state = analyze_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
+    break;
+  case MIR_INSTR_TYPE_VARGS:
+    state = analyze_instr_type_vargs(cnt, (MirInstrTypeVArgs *)instr);
     break;
   case MIR_INSTR_TYPE_ARRAY:
     state = analyze_instr_type_array(cnt, (MirInstrTypeArray *)instr);
@@ -4338,6 +4390,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
 
     barray_foreach(values, value)
     {
+      // CLEANUP
       if (value->comptime) {
         exec_copy_comptime_to_stack(cnt, var_ptr, &value->const_value);
       } else {
@@ -4362,6 +4415,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
       member_type = value->const_value.type;
       member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
 
+      // CLEANUP
       if (value->comptime) {
         exec_copy_comptime_to_stack(cnt, member_ptr, &value->const_value);
       } else {
@@ -4406,6 +4460,10 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr);
 
+    // CLEANUP
+    // CLEANUP
+    // CLEANUP
+    // CLEANUP
     if (decl->init->comptime) {
       /* Compile time constants of agregate type are stored in different
          way, we need to produce decomposition of those data. */
@@ -5590,7 +5648,7 @@ ast_type_vargs(Context *cnt, Ast *type_vargs)
   assert(ast_type);
   MirInstr *type = ast(cnt, ast_type);
   assert(type);
-  return append_instr_type_slice(cnt, type_vargs, type);
+  return append_instr_type_vargs(cnt, type_vargs, type);
 }
 
 MirInstr *
@@ -5800,6 +5858,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrTypeArray";
   case MIR_INSTR_TYPE_SLICE:
     return "InstrTypeSlice";
+  case MIR_INSTR_TYPE_VARGS:
+    return "InstrTypeVArgs";
   case MIR_INSTR_COND_BR:
     return "InstrCondBr";
   case MIR_INSTR_BR:
@@ -5881,7 +5941,9 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
     break;
 
   case MIR_TYPE_STRUCT: {
-    if (mir_is_slice_type(type)) {
+    if (mir_is_vargs_type(type)) {
+      append_buf(buf, len, "vargs");
+    } else if (mir_is_slice_type(type)) {
       append_buf(buf, len, "slice");
     } else {
       append_buf(buf, len, "struct");

@@ -29,3 +29,5 @@ sum :: fn (args: ...s32) s32 {
   }
   return result;
 };
+
+//printf :: fn (...) #extern;

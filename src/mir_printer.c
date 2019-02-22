@@ -260,6 +260,9 @@ static void
 print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream);
 
 static void
+print_instr_type_vargs(MirInstrTypeVArgs *type_vargs, FILE *stream);
+
+static void
 print_instr_block(MirInstrBlock *block, FILE *stream);
 
 static void
@@ -348,6 +351,13 @@ print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
 {
   print_instr_head(&type_slice->base, stream, "const");
   fprintf(stream, "[]%%%u", type_slice->elem_type->id);
+}
+
+void
+print_instr_type_vargs(MirInstrTypeVArgs *type_vargs, FILE *stream)
+{
+  print_instr_head(&type_vargs->base, stream, "const");
+  fprintf(stream, "...%%%u", type_vargs->elem_type->id);
 }
 
 void
@@ -737,6 +747,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_SLICE:
     print_instr_type_slice((MirInstrTypeSlice *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_VARGS:
+    print_instr_type_vargs((MirInstrTypeVArgs *)instr, stream);
     break;
   case MIR_INSTR_COND_BR:
     print_instr_cond_br((MirInstrCondBr *)instr, stream);
