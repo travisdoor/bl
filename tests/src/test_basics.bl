@@ -244,6 +244,12 @@
 
 #test "array initialization" {
   {
+    arr := [2]s32 { 0 };
+    assert(arr[0] == 0);
+    assert(arr[1] == 0);
+  }
+
+  {
     arr : [2]s32 = [2]s32 { 10, 20 };
     assert(arr[0] == 10);
     assert(arr[1] == 20);
@@ -361,13 +367,11 @@
     j: s32
   };
 
-  /*
   {
     foo := Foo { 0 };
     assert(foo.i == 0); 
     assert(foo.j == 0); 
   }
-  */
 
   {
     i := 10;

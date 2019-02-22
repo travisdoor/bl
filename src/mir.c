@@ -1011,22 +1011,25 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
   switch (src_type->kind) {
   case MIR_TYPE_STRUCT: {
-    BArray *       members = data->v_struct.members;
-    MirConstValue *member;
+    if (src_value->data.v_struct.is_zero_initializer) {
+      memset(dest_ptr, 0, src_type->store_size_bytes);
+    } else {
+      BArray *       members = data->v_struct.members;
+      MirConstValue *member;
 
-    assert(members);
-    const size_t memc = bo_array_size(members);
-    for (size_t i = 0; i < memc; ++i) {
-      member = bo_array_at(members, i, MirConstValue *);
+      assert(members);
+      const size_t memc = bo_array_size(members);
+      for (size_t i = 0; i < memc; ++i) {
+        member = bo_array_at(members, i, MirConstValue *);
 
-      /* copy all members to variable allocated memory on the stack */
-      MirStackPtr elem_dest_ptr =
-          dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, i);
-      assert(elem_dest_ptr);
+        /* copy all members to variable allocated memory on the stack */
+        MirStackPtr elem_dest_ptr =
+            dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, i);
+        assert(elem_dest_ptr);
 
-      exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
+        exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
+      }
     }
-
     break;
   }
 
@@ -4332,6 +4335,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
   switch (init_type->kind) {
   case MIR_TYPE_ARRAY: {
     const size_t elem_size = init_type->data.array.elem_type->store_size_bytes;
+
     barray_foreach(values, value)
     {
       if (value->comptime) {
