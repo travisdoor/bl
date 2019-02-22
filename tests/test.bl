@@ -7,6 +7,8 @@ main :: fn () s32 {
   b := 20;
   c := 30; 
 
+  print_str("hello ", "world", "!!!", "\n");
+
   {
     result := sum(a, b, c);
     print_str(" = ");

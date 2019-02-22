@@ -29,8 +29,10 @@
 #load "c.bl"
 #load "debug.bl"
 
-print_str :: fn (str: []u8) {
-  write(C_STDOUT, str.ptr, str.len);
+print_str :: fn (args: ...[]u8) {
+  loop i := 0; i < args.len; i += 1 {
+    write(C_STDOUT, args[i].ptr, args[i].len);
+  }
 };
 
 print_int :: fn (v: s64) {
