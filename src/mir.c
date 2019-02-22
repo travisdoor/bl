@@ -714,6 +714,9 @@ static void
 exec_instr_ret(Context *cnt, MirInstrRet *ret);
 
 static void
+exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init);
+
+static void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
 static void
@@ -3932,6 +3935,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_MEMBER_PTR:
     exec_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
     break;
+  case MIR_INSTR_INIT:
+    /* noop */
+    break;
 
   default:
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
@@ -4311,6 +4317,67 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 }
 
 void
+exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
+{
+  BArray *values = init->values;
+  assert(values);
+
+  MirType *init_type = init->base.const_value.type;
+  assert(init_type);
+  LLVMTypeRef llvm_init_type = init_type->llvm_type;
+  assert(llvm_init_type);
+  MirStackPtr value_ptr;
+  MirInstr *  value;
+
+  switch (init_type->kind) {
+  case MIR_TYPE_ARRAY: {
+    const size_t elem_size = init_type->data.array.elem_type->store_size_bytes;
+    barray_foreach(values, value)
+    {
+      if (value->comptime) {
+        exec_copy_comptime_to_stack(cnt, var_ptr, &value->const_value);
+      } else {
+        if (value->kind == MIR_INSTR_INIT) {
+          exec_instr_init(cnt, var_ptr, (MirInstrInit *)value);
+        } else {
+          value_ptr = exec_fetch_value(cnt, value);
+          memcpy(var_ptr, value_ptr, elem_size);
+        }
+      }
+
+      var_ptr += elem_size;
+    }
+    break;
+  }
+
+  case MIR_TYPE_STRUCT: {
+    MirType *   member_type;
+    MirStackPtr member_ptr;
+    barray_foreach(values, value)
+    {
+      member_type = value->const_value.type;
+      member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
+
+      if (value->comptime) {
+        exec_copy_comptime_to_stack(cnt, member_ptr, &value->const_value);
+      } else {
+        if (value->kind == MIR_INSTR_INIT) {
+          exec_instr_init(cnt, member_ptr, (MirInstrInit *)value);
+        } else {
+          value_ptr = exec_fetch_value(cnt, value);
+          memcpy(member_ptr, value_ptr, member_type->store_size_bytes);
+        }
+      }
+    }
+    break;
+  }
+
+  default:
+    bl_unimplemented;
+  }
+}
+
+void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   assert(decl->base.const_value.type);
@@ -4328,25 +4395,30 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   const bool use_static_segment = var->is_in_gscope;
 
-  /* read initialization value if there is one */
-  MirStackPtr init_ptr = NULL;
-  if (decl->init) {
-    init_ptr = exec_fetch_value(cnt, decl->init);
-  }
-
   assert(var->rel_stack_ptr);
 
   /* initialize variable if there is some init value */
   if (decl->init) {
     MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
-    assert(var_ptr && init_ptr);
+    assert(var_ptr);
 
     if (decl->init->comptime) {
       /* Compile time constants of agregate type are stored in different
          way, we need to produce decomposition of those data. */
       exec_copy_comptime_to_stack(cnt, var_ptr, &decl->init->const_value);
     } else {
-      memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+      if (decl->init->kind == MIR_INSTR_INIT) {
+        /* used compound initialization!!! */
+        exec_instr_init(cnt, var_ptr, (MirInstrInit *)decl->init);
+      } else {
+        /* read initialization value if there is one */
+        MirStackPtr init_ptr = NULL;
+        if (decl->init) {
+          init_ptr = exec_fetch_value(cnt, decl->init);
+        }
+
+        memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+      }
     }
   }
 }
@@ -5027,28 +5099,22 @@ ast_expr_compound(Context *cnt, Ast *cmp)
     return append_instr_init(cnt, cmp, type, NULL);
   }
 
+  const size_t valc = bo_array_size(ast_values);
+
   assert(ast_type);
 
   BArray *values = create_arr(cnt, sizeof(MirInstr *));
-  bo_array_reserve(values, bo_array_size(ast_values));
+  bo_array_resize(values, bo_array_size(ast_values));
 
   Ast *     ast_value;
   MirInstr *value;
-  barray_foreach(ast_values, ast_value)
-  {
-    if (ast_value->kind == AST_EXPR_BINOP) {
-      if (ast_value->data.expr_binop.kind != BINOP_ASSIGN) {
-        bl_abort("expected '=' in compound struct initializer, this should be an error.");
-      }
 
-      value = ast(cnt, ast_value->data.expr_binop.rhs);
-      assert(value);
-      bo_array_push_back(values, value);
-    } else {
-      value = ast(cnt, ast_value);
-      assert(value);
-      bo_array_push_back(values, value);
-    }
+  /* Values must be appended in reverse order. */
+  for (size_t i = valc; i-- > 0;) {
+    ast_value = bo_array_at(ast_values, i, Ast *);
+    value     = ast(cnt, ast_value);
+    assert(value);
+    bo_array_at(values, i, MirInstr *) = value;
   }
 
   return append_instr_init(cnt, cmp, type, values);
