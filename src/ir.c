@@ -891,13 +891,14 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-  MirType *    vargs_type = vargs->base.const_value.type;
-  BArray *     values     = vargs->values;
-  const size_t vargsc     = values ? bo_array_size(values) : 0;
+  MirType *vargs_type = vargs->base.const_value.type;
+  BArray * values     = vargs->values;
+  assert(values);
+  const size_t vargsc = bo_array_size(values);
   assert(vargs_type && mir_is_vargs_type(vargs_type));
 
   /* Setup tmp array values. */
-  {
+  if (vargsc > 0) {
     MirInstr *   value;
     LLVMValueRef llvm_value;
     LLVMValueRef llvm_value_dest;
@@ -923,7 +924,8 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
     LLVMTypeRef llvm_ptr_type =
         bo_array_at(vargs_type->data.strct.members, 1, MirType *)->llvm_type;
-    LLVMValueRef llvm_ptr = vargs->arr_tmp->llvm_value;
+    LLVMValueRef llvm_ptr =
+        vargs->arr_tmp ? vargs->arr_tmp->llvm_value : LLVMConstNull(llvm_ptr_type);
     llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 1, "");
     llvm_ptr  = LLVMBuildBitCast(cnt->llvm_builder, llvm_ptr, llvm_ptr_type, "");
     LLVMBuildStore(cnt->llvm_builder, llvm_ptr, llvm_dest);

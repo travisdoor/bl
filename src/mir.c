@@ -77,7 +77,7 @@
               (unsigned long long)cnt->exec_stack->pc->_serial,                                    \
               mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);                          \
     } else {                                                                                       \
-      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n\n", size, tmp,         \
+      fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n", size, tmp,           \
               type_name);                                                                          \
     }                                                                                              \
   }
@@ -735,6 +735,9 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret);
 
 static void
 exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init);
+
+static void
+exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
 static void
 exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
@@ -2690,24 +2693,27 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
   type = create_type_vargs(cnt, create_type_ptr(cnt, type));
 
-  MirInstr **  value;
-  MirType *    value_type;
-  bool         is_valid = true;
-  const size_t valc     = bo_array_size(values);
+  const size_t valc = bo_array_size(values);
 
-  {
+  MirFn *fn = get_current_fn(cnt);
+  if (valc > 0) {
     /* Prepare tmp array for values */
-    MirFn *     fn       = get_current_fn(cnt);
     const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP_ARR);
     MirType *   tmp_type = create_type_array(cnt, vargs->type, valc);
     vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, NULL, true, false);
     bo_array_push_back(fn->variables, vargs->arr_tmp);
+  }
 
+  {
     /* Prepare tmp slice for vargs */
-    tmp_name         = gen_uq_name(cnt, IMPL_VARGS_TMP);
-    vargs->vargs_tmp = create_var_impl(cnt, tmp_name, type, NULL, true, false);
+    const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP);
+    vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, NULL, true, false);
     bo_array_push_back(fn->variables, vargs->vargs_tmp);
   }
+
+  MirInstr **value;
+  MirType *  value_type;
+  bool       is_valid = true;
 
   for (size_t i = 0; i < valc && is_valid; ++i) {
     value = &bo_array_at(values, i, MirInstr *);
@@ -3690,7 +3696,6 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 
   if (is_vargs) {
     /* This will gonna be tricky... */
-    assert(call_argc - 1);
     --callee_argc;
     if ((call_argc < callee_argc)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT, call->base.node->src,
@@ -3707,17 +3712,28 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 
     /* Prepare vargs values. */
     const size_t vargsc = call_argc - callee_argc;
-    assert(vargsc != 0 && "TODO");
+    BArray *     values = create_arr(cnt, sizeof(MirInstr *));
+    bo_array_reserve(values, vargsc);
+    MirInstr *vargs = create_instr_vargs_impl(cnt, vargs_type, values);
+    ref_instr(vargs);
 
-    BArray *vargs_values = create_arr(cnt, sizeof(MirInstr *));
-    bo_array_reserve(vargs_values, vargsc);
-    MirInstr **first_in_vargs = &bo_array_at(call->args, callee_argc, MirInstr *);
-    bo_array_insert(vargs_values, 0, first_in_vargs, vargsc);
+    if (vargsc > 0) {
+      /* One or more vargs passed. */
+      bo_array_reserve(values, vargsc);
+      MirInstr **insert_loc = &bo_array_at(call->args, callee_argc, MirInstr *);
+      bo_array_insert(values, 0, insert_loc, vargsc);
 
-    MirInstr *vargs = create_instr_vargs_impl(cnt, vargs_type, vargs_values);
+      insert_instr_after(*insert_loc, vargs);
+    } else if (callee_argc > 0) {
+      /* No arguments passed into vargs but there are more regular arguments before vargs. */
+      MirInstr *insert_loc = bo_array_at(call->args, 0, MirInstr *);
+      insert_instr_before(insert_loc, vargs);
+    } else {
+      insert_instr_before(&call->base, vargs);
+    }
 
-    insert_instr_after(*first_in_vargs, vargs);
     if (!analyze_instr_vargs(cnt, (MirInstrVArgs *)vargs)) return false;
+    vargs->analyzed = true;
 
     /* Erase vargs from arguments. */
     bo_array_resize(call->args, callee_argc);
@@ -4096,6 +4112,9 @@ exec_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_MEMBER_PTR:
     exec_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
+    break;
+  case MIR_INSTR_VARGS:
+    exec_instr_vargs(cnt, (MirInstrVArgs *)instr);
     break;
   case MIR_INSTR_INIT:
     /* noop */
@@ -4539,6 +4558,69 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
 
   default:
     bl_unimplemented;
+  }
+}
+
+void
+exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
+{
+  BArray *values    = vargs->values;
+  MirVar *arr_tmp   = vargs->arr_tmp;
+  MirVar *vargs_tmp = vargs->vargs_tmp;
+
+  assert(mir_is_vargs_type(vargs_tmp->alloc_type));
+  assert(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
+  assert(values);
+
+  MirStackPtr arr_tmp_ptr =
+      arr_tmp ? exec_read_stack_ptr(cnt, arr_tmp->rel_stack_ptr, false) : NULL;
+
+  /* Fill vargs tmp array with values from stack or constants. */
+  {
+    MirInstr *  value;
+    MirStackPtr value_ptr;
+    barray_foreach(values, value)
+    {
+      const size_t value_size = value->const_value.type->store_size_bytes;
+      MirStackPtr  dest       = arr_tmp_ptr + i * value_size;
+
+      if (value->comptime) {
+        exec_copy_comptime_to_stack(cnt, dest, &value->const_value);
+      } else {
+        value_ptr = exec_fetch_value(cnt, value);
+        memcpy(dest, value_ptr, value_size);
+      }
+    }
+  }
+
+  /* Push vargs slice on the stack. */
+  {
+    MirStackPtr vargs_tmp_ptr = exec_read_stack_ptr(cnt, vargs_tmp->rel_stack_ptr, false);
+    // set len
+    {
+      MirConstValueData len_tmp = {0};
+      MirStackPtr       len_ptr =
+          vargs_tmp_ptr +
+          LLVMOffsetOfElement(cnt->module->llvm_td, vargs_tmp->alloc_type->llvm_type, 0);
+
+      MirType *len_type = bo_array_at(vargs_tmp->alloc_type->data.strct.members, 0, MirType *);
+      len_tmp.v_u64     = bo_array_size(values);
+      memcpy(len_ptr, &len_tmp, len_type->store_size_bytes);
+    }
+
+    // set ptr
+    {
+      MirConstValueData ptr_tmp = {0};
+      MirStackPtr       ptr_ptr =
+          vargs_tmp_ptr +
+          LLVMOffsetOfElement(cnt->module->llvm_td, vargs_tmp->alloc_type->llvm_type, 1);
+
+      MirType *ptr_type  = bo_array_at(vargs_tmp->alloc_type->data.strct.members, 1, MirType *);
+      ptr_tmp.v_void_ptr = arr_tmp_ptr;
+      memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
+    }
+
+    exec_push_stack(cnt, vargs_tmp_ptr, vargs_tmp->alloc_type);
   }
 }
 
@@ -5385,12 +5467,11 @@ ast_expr_call(Context *cnt, Ast *call)
   assert(ast_callee);
 
   MirInstr *callee = ast(cnt, ast_callee);
-  BArray *  args   = NULL;
+  BArray *  args   = create_arr(cnt, sizeof(MirInstr *));
 
   /* arguments need to be generated into reverse order due to bytecode call conventions */
   if (ast_args) {
     const size_t argc = bo_array_size(ast_args);
-    args              = create_arr(cnt, sizeof(MirInstr *));
     bo_array_resize(args, argc);
     MirInstr *arg;
     Ast *     ast_arg;
@@ -5525,6 +5606,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
       MirInstr *rhs = ast(cnt, ast_rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
       MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_ADD);
+      lhs           = ast(cnt, ast_lhs);
 
       return append_instr_store(cnt, binop, tmp, lhs);
     }
@@ -5533,6 +5615,8 @@ ast_expr_binop(Context *cnt, Ast *binop)
       MirInstr *rhs = ast(cnt, ast_rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
       MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_SUB);
+      lhs           = ast(cnt, ast_lhs);
+
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
@@ -5540,6 +5624,8 @@ ast_expr_binop(Context *cnt, Ast *binop)
       MirInstr *rhs = ast(cnt, ast_rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
       MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MUL);
+      lhs           = ast(cnt, ast_lhs);
+
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
@@ -5547,6 +5633,8 @@ ast_expr_binop(Context *cnt, Ast *binop)
       MirInstr *rhs = ast(cnt, ast_rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
       MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_DIV);
+      lhs           = ast(cnt, ast_lhs);
+
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
@@ -5554,6 +5642,8 @@ ast_expr_binop(Context *cnt, Ast *binop)
       MirInstr *rhs = ast(cnt, ast_rhs);
       MirInstr *lhs = ast(cnt, ast_lhs);
       MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MOD);
+      lhs           = ast(cnt, ast_lhs);
+
       return append_instr_store(cnt, binop, tmp, lhs);
     }
 
@@ -5598,8 +5688,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
   const bool is_in_gscope = entity->data.decl_entity.in_gscope;
 
   if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
-    MirInstr *value                         = ast(cnt, ast_value);
-    value->const_value.data.v_fn->llvm_name = ast_name->data.ident.id.str;
+    MirInstr *value = ast(cnt, ast_value);
+    value->const_value.data.v_fn->llvm_name =
+        is_in_gscope ? ast_name->data.ident.id.str : gen_uq_name(cnt, ast_name->data.ident.id.str);
     value->const_value.data.v_fn->scope     = ast_name->data.ident.scope;
     value->const_value.data.v_fn->id        = &ast_name->data.ident.id;
     value->const_value.data.v_fn->decl_node = ast_name;

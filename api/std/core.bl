@@ -29,6 +29,34 @@
 #load "c.bl"
 #load "debug.bl"
 
+print :: fn (format: []u8, nums: ...s64) {
+  tmp := []u8 { 0, format.ptr }; 
+  ni := 0;
+
+  loop i := 0; i < format.len; i += 1 {
+    c := format[i];
+
+    if c == '%' {
+      print_str(tmp);
+      if ni < nums.len {
+        print_int(nums[ni]); 
+        ni += 1;
+      } else {
+        print_str("(null)");
+      }
+
+      tmp.len = 0;
+      if i + 1 < format.len {
+        tmp.ptr = &format[i + 1];
+      }
+    } else {
+      tmp.len += 1;
+    }
+  }
+
+  if tmp.len > 0 { print_str(tmp); }
+};
+
 print_str :: fn (args: ...[]u8) {
   loop i := 0; i < args.len; i += 1 {
     write(C_STDOUT, args[i].ptr, args[i].len);

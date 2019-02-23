@@ -7,47 +7,10 @@ main :: fn () s32 {
   b := 20;
   c := 30; 
 
-  print_str("hello ", "world", "!!!", "\n");
-
-  {
-    result := sum(a, b, c);
-    print_str(" = ");
-    print_int(result);
-    print_str("\n");
-  }
-
-  {
-    result := sum(a, b);
-    print_str(" = ");
-    print_int(result);
-    print_str("\n");
-  }
-
-  {
-    result := sum(a, b, b, a);
-    print_str(" = ");
-    print_int(result);
-    print_str("\n");
-  }
-
-  {
-    result := sum(10, 32, 75);
-    print_str(" = ");
-    print_int(result);
-    print_str("\n");
-  }
-
+  print("a = %, b = %, c = %\n", a, b, c);
+  print("Martin is % years old!!!\n", 29);
+  print("10 + 20 = %\n", 10 + 20);
+  print("Hello sailor!!!\n");
+  
   return 0;
-};
-
-sum :: fn (args: ...s32) s32 {  
-  result := 0;
-  loop i := 0; i < args.len; i += 1 {
-    result += args[i];
-    print_int(args[i]);
-    if i < args.len -1 {
-      print_str(" + ");
-    }
-  }
-  return result;
 };
