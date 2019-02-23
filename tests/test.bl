@@ -11,6 +11,6 @@ main :: fn () s32 {
   print("Martin is % years old!!!\n", 29);
   print("10 + 20 = %\n", 10 + 20);
   print("Hello sailor!!!\n");
-  
+  assert(a == 10); 
   return 0;
 };

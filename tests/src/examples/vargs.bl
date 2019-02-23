@@ -4,7 +4,7 @@ sum :: fn (nums: ...s32) s32 {
   // nums is slice of pointers to s32
   result := 0;
   loop i := 0; i < nums.len; i += 1 {
-    result += ^nums[i];
+    result += nums[i];
   }
 
   return result;

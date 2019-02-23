@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit-MIR Documentation</title>
-<!-- 2019-02-22 Pá 20:39 -->
+<!-- 2019-02-23 So 19:35 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -223,9 +223,9 @@ BL Compiler has integrated interpreter for MIR.
 <div class="outline-text-3" id="text-1-2">
 <div class="org-src-container">
 
-<pre class="src src-bl"><span style="color: #cdaa7d;">assert</span> :: <span style="color: #fffbf1;">fn</span> (cond: <span style="color: #99edaa;">bool</span>) {
-  <span style="color: #fffbf1;">if</span> (!cond) {
-    <span style="color: #fffbf1;">unreachable</span>;
+<pre class="src src-bl"><span style="color: #006699;">assert</span> :: <span style="color: #0000FF;">fn</span> (cond: <span style="color: #6434A3;">bool</span>) {
+  <span style="color: #0000FF;">if</span> !cond {
+    <span style="color: #0000FF;">unreachable</span>;
   }
 };
 </pre>
@@ -233,47 +233,40 @@ BL Compiler has integrated interpreter for MIR.
 
 <div class="org-src-container">
 
-<pre class="src src-blm"><span style="color: #cdaa7d;">@assert</span> <span style="color: #99edaa;">fn(bool) void</span> {
-<span style="color: #cdaa7d;">%entry_0</span>:
-  <span style="color: #cdaa7d;">%0</span>              <span style="color: #99edaa;">bool</span> <span style="color: #fffbf1;">arg</span> <span style="color: #62ccb9;">$0</span>
-  <span style="color: #cdaa7d;">%1</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">decl</span> cond : <span style="color: #99edaa;">bool</span> = <span style="color: #cdaa7d;">%0</span>
-  <span style="color: #cdaa7d;">%2</span>             <span style="color: #99edaa;">*bool</span> <span style="color: #fffbf1;">declref</span> cond
-  <span style="color: #cdaa7d;">%5</span>              <span style="color: #99edaa;">bool</span> <span style="color: #fffbf1;">load</span> <span style="color: #cdaa7d;">%2</span>
-  <span style="color: #cdaa7d;">%3</span>              <span style="color: #99edaa;">bool</span> <span style="color: #fffbf1;">unop</span> !<span style="color: #cdaa7d;">%5</span>
-  <span style="color: #cdaa7d;">%4</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">br</span> <span style="color: #cdaa7d;">%3</span> ? <span style="color: #cdaa7d;">%if_then_1</span> : <span style="color: #cdaa7d;">%if_else_2</span>
+<pre class="src src-blm"><span style="color: #006699;">@assert</span>  : <span style="color: #6434A3;">fn(bool) void</span> : {
+<span style="color: #BA36A5;">%entry_0</span>:
+  <span style="color: #BA36A5;">%0</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">arg</span> <span style="color: #D0372D;">$0</span>
+  <span style="color: #BA36A5;">%1</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">decl</span> cond : <span style="color: #6434A3;">bool</span> = <span style="color: #BA36A5;">%0</span>
+  <span style="color: #BA36A5;">%2</span>             <span style="color: #6434A3;">*bool</span> <span style="color: #0000FF;">declref</span> cond
+  <span style="color: #BA36A5;">%8</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">load</span> <span style="color: #BA36A5;">%2</span>
+  <span style="color: #BA36A5;">%3</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">unop</span> !<span style="color: #BA36A5;">%8</span>
+  <span style="color: #BA36A5;">%4</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%3</span> ? <span style="color: #BA36A5;">%if_then_1</span> : <span style="color: #BA36A5;">%if_else_2</span>
 
-<span style="color: #cdaa7d;">%if_then_1</span>:
-  <span style="color: #cdaa7d;">%5</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">unreachable</span> 
-  <span style="color: #cdaa7d;">%6</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">br</span> <span style="color: #cdaa7d;">%if_cont_3</span>
+<span style="color: #BA36A5;">%if_then_1</span>:
+  <span style="color: #BA36A5;">%5</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">unreachable</span> 
+  <span style="color: #BA36A5;">%6</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%if_cont_3</span>
 
-<span style="color: #cdaa7d;">%if_else_2</span>:
-  <span style="color: #cdaa7d;">%7</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">br</span> <span style="color: #cdaa7d;">%if_cont_3</span>
+<span style="color: #BA36A5;">%if_else_2</span>:
+  <span style="color: #BA36A5;">%7</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%if_cont_3</span>
 
-<span style="color: #cdaa7d;">%if_cont_3</span>:
-  <span style="color: #cdaa7d;">%8</span>              <span style="color: #99edaa;">void</span> <span style="color: #fffbf1;">ret</span> 
+<span style="color: #BA36A5;">%if_cont_3</span>:
+  <span style="color: #BA36A5;">%9</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">ret</span> 
 }
 </pre>
 </div>
 
 <div class="org-src-container">
 
-<pre class="src src-llvm"><span style="color: #fffbf1;">define</span> <span style="color: #99edaa;">void</span> @assert(<span style="color: #99edaa;">i1</span>) {
-<span style="color: #cdaa7d;">entry:</span>
-  <span style="color: #cdaa7d;">%cond</span> = <span style="color: #fffbf1;">alloca</span> <span style="color: #99edaa;">i1</span>, align <span style="color: #cdaa7d;">1</span>
-  <span style="color: #fffbf1;">store</span> <span style="color: #99edaa;">i1</span> <span style="color: #cdaa7d;">%0</span>, i1* <span style="color: #cdaa7d;">%cond</span>
-  <span style="color: #cdaa7d;">%1</span> = <span style="color: #fffbf1;">load</span> <span style="color: #99edaa;">i1</span>, i1* <span style="color: #cdaa7d;">%cond</span>, align <span style="color: #cdaa7d;">1</span>
-  <span style="color: #cdaa7d;">%2</span> = <span style="color: #fffbf1;">xor</span> <span style="color: #99edaa;">i1</span> <span style="color: #cdaa7d;">%1</span>, <span style="color: #fffbf1;">true</span>
-  <span style="color: #fffbf1;">br</span> <span style="color: #99edaa;">i1</span> <span style="color: #cdaa7d;">%2</span>, <span style="color: #99edaa;">label</span> <span style="color: #cdaa7d;">%if_then</span>, <span style="color: #99edaa;">label</span> <span style="color: #cdaa7d;">%if_else</span>
+<pre class="src src-llvm"><span style="color: #0000FF;">define</span> <span style="color: #6434A3;">void</span> @assert(<span style="color: #6434A3;">i1</span>) local_unnamed_addr #<span style="color: #808080;">0</span> {
+<span style="color: #BA36A5;">entry:</span>
+  <span style="color: #0000FF;">br</span> <span style="color: #6434A3;">i1</span> <span style="color: #BA36A5;">%0</span>, <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_cont</span>, <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_then</span>
 
-<span style="color: #cdaa7d;">if_then:</span>                                          <span style="color: #1e9a12;">; preds = %entry</span>
-  <span style="color: #fffbf1;">call</span> <span style="color: #99edaa;">void</span> @llvm.debugtrap()
-  <span style="color: #fffbf1;">br</span> <span style="color: #99edaa;">label</span> <span style="color: #cdaa7d;">%if_cont</span>
+<span style="color: #BA36A5;">if_then:</span>                                          <span style="color: #8D8D84; font-style: italic;">; preds = %entry</span>
+  <span style="color: #0000FF;">tail</span> <span style="color: #0000FF;">call</span> <span style="color: #6434A3;">void</span> @llvm.debugtrap()
+  <span style="color: #0000FF;">br</span> <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_cont</span>
 
-<span style="color: #cdaa7d;">if_else:</span>                                          <span style="color: #1e9a12;">; preds = %entry</span>
-  <span style="color: #fffbf1;">br</span> <span style="color: #99edaa;">label</span> <span style="color: #cdaa7d;">%if_cont</span>
-
-<span style="color: #cdaa7d;">if_cont:</span>                                          <span style="color: #1e9a12;">; preds = %if_else, %if_then</span>
-  <span style="color: #fffbf1;">ret</span> <span style="color: #99edaa;">void</span>
+<span style="color: #BA36A5;">if_cont:</span>                                          <span style="color: #8D8D84; font-style: italic;">; preds = %entry, %if_then</span>
+  <span style="color: #0000FF;">ret</span> <span style="color: #6434A3;">void</span>
 }
 </pre>
 </div>
@@ -295,16 +288,16 @@ Example function:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span style="color: #cdaa7d;">assert</span> :: <span style="color: #fffbf1;">fn</span> (cond: <span style="color: #99edaa;">bool</span>) {
-  <span style="color: #fffbf1;">if</span> (!cond) {
-    <span style="color: #fffbf1;">unreachable</span>;
+<pre class="src src-bl"><span style="color: #006699;">assert</span> :: <span style="color: #0000FF;">fn</span> (cond: <span style="color: #6434A3;">bool</span>) {
+  <span style="color: #0000FF;">if</span> (!cond) {
+    <span style="color: #0000FF;">unreachable</span>;
   }
 };
 
-<span style="color: #cdaa7d;">main</span> :: <span style="color: #fffbf1;">fn</span> () <span style="color: #99edaa;">s32</span> {
-  <span style="color: #62ccb9;">v</span> :: <span style="color: #62ccb9;">10</span>;
-  <span style="color: #cdaa7d;">assert</span>(v == <span style="color: #62ccb9;">10</span>);
-  <span style="color: #fffbf1;">return</span> <span style="color: #62ccb9;">0</span>;
+<span style="color: #006699;">main</span> :: <span style="color: #0000FF;">fn</span> () <span style="color: #6434A3;">s32</span> {
+  <span style="color: #D0372D;">v</span> :: <span style="color: #D0372D;">10</span>;
+  <span style="color: #006699;">assert</span>(v == <span style="color: #D0372D;">10</span>);
+  <span style="color: #0000FF;">return</span> <span style="color: #D0372D;">0</span>;
 };
 </pre>
 </div>
@@ -1251,7 +1244,7 @@ Builds vargs slice from input values.
 </p>
 
 <pre class="example">
-&lt;T&gt; vargs &lt;T&gt; {[val, ...]} // yields T
+&lt;slice{usize, *T}&gt; vargs &lt;T&gt; {[val, ...]} // yields T
 </pre>
 
 <p>
@@ -1306,7 +1299,7 @@ Stack operations:
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-22 Pá 20:39</p>
+<p class="date">Created: 2019-02-23 So 19:35</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

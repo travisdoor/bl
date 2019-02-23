@@ -23,20 +23,20 @@
 ** Assert function example
    #+BEGIN_SRC bl
    assert :: fn (cond: bool) {
-     if (!cond) {
+     if !cond {
        unreachable;
      }
    };
    #+END_SRC
 
    #+BEGIN_SRC blm
-   @assert fn(bool) void {
+   @assert  : fn(bool) void : {
    %entry_0:
      %0              bool arg $0
      %1              void decl cond : bool = %0
      %2             *bool declref cond
-     %5              bool load %2
-     %3              bool unop !%5
+     %8              bool load %2
+     %3              bool unop !%8
      %4              void br %3 ? %if_then_1 : %if_else_2
    
    %if_then_1:
@@ -47,27 +47,20 @@
      %7              void br %if_cont_3
    
    %if_cont_3:
-     %8              void ret 
+     %9              void ret 
    }
    #+END_SRC
    
    #+BEGIN_SRC llvm
-   define void @assert(i1) {
+   define void @assert(i1) local_unnamed_addr #0 {
    entry:
-     %cond = alloca i1, align 1
-     store i1 %0, i1* %cond
-     %1 = load i1, i1* %cond, align 1
-     %2 = xor i1 %1, true
-     br i1 %2, label %if_then, label %if_else
+     br i1 %0, label %if_cont, label %if_then
    
    if_then:                                          ; preds = %entry
-     call void @llvm.debugtrap()
+     tail call void @llvm.debugtrap()
      br label %if_cont
    
-   if_else:                                          ; preds = %entry
-     br label %if_cont
-   
-   if_cont:                                          ; preds = %if_else, %if_then
+   if_cont:                                          ; preds = %entry, %if_then
      ret void
    }
    #+END_SRC
@@ -407,7 +400,7 @@
    Builds vargs slice from input values.
 
    #+BEGIN_EXAMPLE
-   <T> vargs <T> {[val, ...]} // yields T
+   <slice{usize, *T}> vargs <T> {[val, ...]} // yields T
    #+END_EXAMPLE
 
    Stack operations:
@@ -417,3 +410,4 @@
    | POP      | arg 2       |                   |
    | POP      | arg 3       |                   |
    | PUSH     | vargs slice | VArgs array slice |
+   

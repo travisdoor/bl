@@ -1,6 +1,19 @@
-* Agenda [25%]
-  - [X] Globals declaration
-  - [ ] Globals initializations
-  - [ ] Globals set to default value
-  - [ ] Globals error handling
+* Agenda 0.4.1 [9%]
+  - [X] VArgs
+  - [ ] String type aka []u8
+  - [ ] Build setup
+  - [ ] Constants should not by overridable
+  - [ ] Instalation of compiler in CMake
+  - [ ] Windows version 
+  - [ ] Better analyze pass and symbol lookup
+  - [ ] Typeof operator [0%]
+    - [ ] Type hashing 
+    - [ ] Implicit type table in data segment
+    - [ ] Implementation of 'typeof' operator
+  - [ ] Any type 
+  - [ ] Enums
+  - [ ] Pointer math
+
+
+
     
