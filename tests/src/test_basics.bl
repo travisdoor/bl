@@ -242,6 +242,35 @@
   assert(arr[2] == 30);
 };
 
+#test "array initialization" {
+  {
+    arr := [2]s32 { 0 };
+    assert(arr[0] == 0);
+    assert(arr[1] == 0);
+  }
+
+  {
+    arr : [2]s32 = [2]s32 { 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  {
+    arr := [2]s32 { 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  {
+    i := 10;
+    j := 20;
+
+    arr := [2]s32 { i, j };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+};
+
 #test "simple static array loops" {
   arr : [10]s32;
   loop i := 0; i < arr.len; i += 1 {
@@ -332,6 +361,26 @@
   assert((bar.foo).j == 20);
 };
 
+#test "structure initialization" {
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
+
+  {
+    foo := Foo { 0 };
+    assert(foo.i == 0); 
+    assert(foo.j == 0); 
+  }
+
+  {
+    i := 10;
+    j := 20;
+    foo := Foo { i, j };
+    assert(foo.i == i); 
+    assert(foo.j == j); 
+  }
+};
 
 _GlobalInt1     := 10;
 _GlobalInt2     := 10 + 10; // 20
@@ -364,4 +413,33 @@ _GlobalType     :: s32;
   assert(sizeof(s32) == 4);
   assert(sizeof(s64) == 8);
   assert(sizeof(1 + 2) == 4);
+};
+
+#test "vargs functions" {
+  _0 :: fn (args: ...s32) {
+    assert(args.len == 0);
+  };
+
+  _2 :: fn (args: ...s32) {
+    assert(args.len == 2);
+    assert(args[0] == 10);
+    assert(args[1] == 20);
+  };
+
+  _10 :: fn (i: s32, args: ...s32) {
+    assert(args.len == 0);
+    assert(i == 10);
+  };
+
+  _12 :: fn (i: s32, args: ...s32) {
+    assert(args.len == 2);
+    assert(args[0] == 10);
+    assert(args[1] == 20);
+    assert(i == 10);
+  };
+
+  _0();
+  _2(10, 20);
+  _10(10);
+  _12(10, 10, 20);
 };

@@ -29,22 +29,50 @@
 #load "c.bl"
 #load "debug.bl"
 
-alloc :: fn (size: usize) *u8 {
-  return malloc(size);
+print :: fn (format: []u8, nums: ...s64) {
+  tmp := []u8 { 0, format.ptr }; 
+  ni := 0;
+
+  loop i := 0; i < format.len; i += 1 {
+    c := format[i];
+
+    if c == '%' {
+      print_str(tmp);
+      if ni < nums.len {
+        print_int(nums[ni]); 
+        ni += 1;
+      } else {
+        print_str("(null)");
+      }
+
+      tmp.len = 0;
+      if i + 1 < format.len {
+        tmp.ptr = &format[i + 1];
+      }
+    } else {
+      tmp.len += 1;
+    }
+  }
+
+  if tmp.len > 0 { print_str(tmp); }
 };
 
-dealloc :: fn (ptr: *u8) {
-  free(ptr);
-};
-
-print_str :: fn (str: []u8) {
-  write(C_STDOUT, str.ptr, str.len);
+print_str :: fn (args: ...[]u8) {
+  loop i := 0; i < args.len; i += 1 {
+    write(C_STDOUT, args[i].ptr, args[i].len);
+  }
 };
 
 print_int :: fn (v: s64) {
   buf      : [21]u8;
   negative :: v < 0;
   c := 0;
+
+  if v == 0 {
+    buf[0] = '0';
+    write(C_STDOUT, buf.ptr, 1);
+    return;
+  }
 
   if negative {
     v *= -1; // make it positive

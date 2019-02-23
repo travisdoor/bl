@@ -74,16 +74,20 @@ typedef struct MirInstrTypeFn      MirInstrTypeFn;
 typedef struct MirInstrTypeStruct  MirInstrTypeStruct;
 typedef struct MirInstrTypeArray   MirInstrTypeArray;
 typedef struct MirInstrTypeSlice   MirInstrTypeSlice;
+typedef struct MirInstrTypeVArgs   MirInstrTypeVArgs;
 typedef struct MirInstrTypePtr     MirInstrTypePtr;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 typedef struct MirInstrSizeof      MirInstrSizeof;
 typedef struct MirInstrAlignof     MirInstrAlignof;
+typedef struct MirInstrInit        MirInstrInit;
+typedef struct MirInstrVArgs       MirInstrVArgs;
 
-typedef enum MirTypeKind    MirTypeKind;
-typedef enum MirInstrKind   MirInstrKind;
-typedef enum MirCastOp      MirCastOp;
-typedef enum MirBuiltinKind MirBuiltinKind;
+typedef enum MirTypeKind       MirTypeKind;
+typedef enum MirInstrKind      MirInstrKind;
+typedef enum MirCastOp         MirCastOp;
+typedef enum MirBuiltinKind    MirBuiltinKind;
+typedef enum MirTypeStructKind MirTypeStructKind;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -122,6 +126,8 @@ struct MirArenas
   Arena var_arena;
   Arena fn_arena;
   Arena member_arena;
+  Arena value_arena;
+  Arena array_arena;
 };
 
 struct MirModule
@@ -148,8 +154,7 @@ struct MirFn
   LLVMValueRef llvm_value;
 
   DCpointer   extern_entry;
-  bool        is_external;
-  bool        is_test_case;
+  int32_t     flags;
   const char *test_case_desc;
 
   /* pointer to the first block inside function body */
@@ -211,12 +216,20 @@ struct MirTypePtr
   MirType *next;
 };
 
+enum MirTypeStructKind
+{
+  MIR_TS_NONE   = 0x0, // ordinary user structure
+  MIR_TS_SLICE  = 0x1, // slice
+  MIR_TS_STRING = 0x3, // string slice
+  MIR_TS_VARGS  = 0x5, // vargs slice
+};
+
 struct MirTypeStruct
 {
-  Scope * scope;
-  BArray *members;
-  bool    is_packed;
-  bool    is_slice;
+  MirTypeStructKind kind;
+  Scope *           scope;
+  BArray *          members;
+  bool              is_packed;
 };
 
 struct MirTypeNull
@@ -274,12 +287,20 @@ union MirConstValueData
 
   struct
   {
-    BArray *members;
+    BArray *members; // array of MirConstValues *
+    bool    is_zero_initializer;
   } v_struct;
+
+  struct
+  {
+    BArray *elems; // array of MirConstValues *
+    bool    is_zero_initializer;
+  } v_array;
 };
 
 struct MirConstValue
 {
+  // data must be first!!!
   union MirConstValueData data;
   MirType *               type;
 };
@@ -296,9 +317,11 @@ struct MirVar
   bool     comptime;
   bool     gen_llvm;
   bool     is_in_gscope;
+  bool     is_implicit;
 
   MirConstValue *     value;
   LLVMValueRef        llvm_value;
+  const char *        llvm_name;
   MirRelativeStackPtr rel_stack_ptr;
 };
 /* INSTRUCTIONS */
@@ -319,6 +342,7 @@ enum MirInstrKind
   MIR_INSTR_TYPE_PTR,
   MIR_INSTR_TYPE_ARRAY,
   MIR_INSTR_TYPE_SLICE,
+  MIR_INSTR_TYPE_VARGS,
   MIR_INSTR_CALL,
   MIR_INSTR_DECL_REF,
   MIR_INSTR_UNREACHABLE,
@@ -332,11 +356,13 @@ enum MirInstrKind
   MIR_INSTR_CAST,
   MIR_INSTR_SIZEOF,
   MIR_INSTR_ALIGNOF,
+  MIR_INSTR_INIT,
+  MIR_INSTR_VARGS,
 };
 
 struct MirInstr
 {
-  MirConstValue  const_value;
+  MirConstValue  const_value; // must be first
   MirInstrKind   kind;
   int32_t        id;
   LLVMValueRef   llvm_value;
@@ -544,6 +570,13 @@ struct MirInstrTypeSlice
   MirInstr *elem_type;
 };
 
+struct MirInstrTypeVArgs
+{
+  MirInstr base;
+
+  MirInstr *elem_type;
+};
+
 struct MirInstrCall
 {
   MirInstr base;
@@ -582,6 +615,24 @@ struct MirInstrBr
   MirInstrBlock *then_block;
 };
 
+struct MirInstrInit
+{
+  MirInstr base;
+
+  MirInstr *type;
+  BArray *  values;
+};
+
+struct MirInstrVArgs
+{
+  MirInstr base;
+
+  MirVar * arr_tmp;
+  MirVar * vargs_tmp;
+  MirType *type;
+  BArray * values;
+};
+
 /* public */
 static inline bool
 mir_is_pointer_type(MirType *type)
@@ -594,7 +645,14 @@ static inline bool
 mir_is_slice_type(MirType *type)
 {
   assert(type);
-  return type->kind == MIR_TYPE_STRUCT && type->data.strct.is_slice;
+  return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind & MIR_TS_SLICE);
+}
+
+static inline bool
+mir_is_vargs_type(MirType *type)
+{
+  assert(type);
+  return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
 }
 
 static inline MirType *

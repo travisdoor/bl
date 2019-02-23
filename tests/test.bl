@@ -4,12 +4,13 @@
 
 main :: fn () s32 {
   a := 10;
-  {
-    defer a = 2;
-    a = 1;
-  }
+  b := 20;
+  c := 30; 
 
-  assert(a == 2);
+  print("a = %, b = %, c = %\n", a, b, c);
+  print("Martin is % years old!!!\n", 29);
+  print("10 + 20 = %\n", 10 + 20);
+  print("Hello sailor!!!\n");
+  
   return 0;
 };
-

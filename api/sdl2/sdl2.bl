@@ -1,0 +1,6 @@
+SDL_Window :: u8;
+
+SDL_Init :: fn (flags: u32) s32 #extern;
+SDL_Quit :: fn () #extern;
+SDL_CreateWindow :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
+SDL_DestroyWindow :: fn (window: *SDL_Window) #extern;

@@ -60,8 +60,12 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 }
 
 static inline void
-print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
+print_const_value(MirConstValue *value, FILE *stream)
 {
+  MirType *          type = value->type;
+  MirConstValueData *data = &value->data;
+  assert(type);
+
 #define print_case(format, T)                                                                      \
   case sizeof(data->T):                                                                            \
     fprintf(stream, format, data->T);                                                              \
@@ -139,20 +143,22 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     fprintf(stream, "null");
     break;
   case MIR_TYPE_STRUCT: {
-    BArray *members = data->v_struct.members;
-    if (!members) {
+    BArray *   members             = data->v_struct.members;
+    const bool is_zero_initializer = data->v_struct.is_zero_initializer;
+
+    if (is_zero_initializer) {
+      fprintf(stream, "{0}");
+    } else if (!members) {
       fprintf(stream, "{<null>}");
     } else {
       fprintf(stream, "{");
 
-      MirType *          member_type;
-      MirConstValueData *member;
-      const size_t       memc = bo_array_size(members);
+      MirConstValue *member;
+      const size_t   memc = bo_array_size(members);
 
       for (size_t i = 0; i < memc; ++i) {
-        member      = &bo_array_at(members, i, MirConstValueData);
-        member_type = bo_array_at(type->data.strct.members, i, MirType *);
-        print_const_value_data(member, member_type, stream);
+        member = bo_array_at(members, i, MirConstValue *);
+        print_const_value(member, stream);
         if (i + 1 < memc) fprintf(stream, ", ");
       }
 
@@ -160,33 +166,51 @@ print_const_value_data(MirConstValueData *data, MirType *type, FILE *stream)
     }
     break;
   }
-  case MIR_TYPE_ARRAY:
-    fprintf(stream, "<cannot read value>");
+  case MIR_TYPE_ARRAY: {
+    BArray *   elems               = data->v_array.elems;
+    const bool is_zero_initializer = data->v_array.is_zero_initializer;
+
+    if (is_zero_initializer) {
+      fprintf(stream, "{0}");
+    } else {
+      fprintf(stream, "{");
+
+      if (elems) {
+        MirConstValue *elem;
+        const size_t   elc = bo_array_size(elems);
+
+        for (size_t i = 0; i < elc; ++i) {
+          elem = bo_array_at(elems, i, MirConstValue *);
+          print_const_value(elem, stream);
+          if (i + 1 < elc) fprintf(stream, ", ");
+        }
+      } else {
+        fprintf(stream, "<cannot read value>");
+      }
+
+      fprintf(stream, "}");
+    }
     break;
+  }
   default:
     fprintf(stream, "<cannot read value>");
   }
 }
 
 static inline void
-print_const_value(MirInstr *instr, FILE *stream)
-{
-  MirConstValue *value = &instr->const_value;
-  MirType *      type  = value->type;
-  assert(type);
-
-  print_const_value_data(&value->data, type, stream);
-}
-
-static inline void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 {
+  if (!instr) {
+    fprintf(stream, "<invalid>");
+    return;
+  }
+
   if (!instr->comptime || !instr->analyzed) {
     fprintf(stream, "%%%u", instr->id);
     return;
   }
 
-  print_const_value(instr, stream);
+  print_const_value(&instr->const_value, stream);
 }
 
 static void
@@ -214,6 +238,12 @@ static void
 print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
 static void
+print_instr_init(MirInstrInit *init, FILE *stream);
+
+static void
+print_instr_vargs(MirInstrVArgs *vargs, FILE *stream);
+
+static void
 print_instr_br(MirInstrBr *br, FILE *stream);
 
 static void
@@ -236,6 +266,9 @@ print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream);
 
 static void
 print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream);
+
+static void
+print_instr_type_vargs(MirInstrTypeVArgs *type_vargs, FILE *stream);
 
 static void
 print_instr_block(MirInstrBlock *block, FILE *stream);
@@ -329,6 +362,13 @@ print_instr_type_slice(MirInstrTypeSlice *type_slice, FILE *stream)
 }
 
 void
+print_instr_type_vargs(MirInstrTypeVArgs *type_vargs, FILE *stream)
+{
+  print_instr_head(&type_vargs->base, stream, "const");
+  fprintf(stream, "...%%%u", type_vargs->elem_type->id);
+}
+
+void
 print_instr_cast(MirInstrCast *cast, FILE *stream)
 {
   switch (cast->op) {
@@ -367,6 +407,48 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
 }
 
 void
+print_instr_init(MirInstrInit *init, FILE *stream)
+{
+  print_instr_head(&init->base, stream, "init");
+  print_comptime_value_or_id(init->type, stream);
+
+  fprintf(stream, " {");
+  BArray *values = init->values;
+  if (values) {
+    MirInstr *value;
+    barray_foreach(values, value)
+    {
+      print_comptime_value_or_id(value, stream);
+      if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+    }
+  } else {
+    fprintf(stream, "<invalid values>");
+  }
+  fprintf(stream, "}");
+}
+
+void
+print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
+{
+  print_instr_head(&vargs->base, stream, "vargs");
+  print_type(vargs->type, false, stream, true);
+
+  fprintf(stream, " {");
+  BArray *values = vargs->values;
+  if (values) {
+    MirInstr *value;
+    barray_foreach(values, value)
+    {
+      print_comptime_value_or_id(value, stream);
+      if (i < bo_array_size(values) - 1) fprintf(stream, ", ");
+    }
+  } else {
+    fprintf(stream, "<invalid values>");
+  }
+  fprintf(stream, "}");
+}
+
+void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
 {
   print_instr_head(&szof->base, stream, "sizeof");
@@ -395,24 +477,27 @@ void
 print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
 {
   print_instr_head(&member_ptr->base, stream, "memberptr");
+  if (!member_ptr->target_ptr) {
+    fprintf(stream, "<unknown>.");
+  }
+
   if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
     if (member_ptr->member_ident) {
-      fprintf(stream, "%%%u.%s", member_ptr->target_ptr->id,
-              member_ptr->member_ident->data.ident.id.str);
+      fprintf(stream, "%s", member_ptr->member_ident->data.ident.id.str);
     } else {
-      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+      fprintf(stream, "<unknown>");
     }
   } else {
     switch (member_ptr->builtin_id) {
     case MIR_BUILTIN_ARR_LEN:
-      fprintf(stream, "%%%u.len", member_ptr->target_ptr->id);
+      fprintf(stream, "len");
       break;
     case MIR_BUILTIN_ARR_PTR:
-      fprintf(stream, "%%%u.ptr", member_ptr->target_ptr->id);
+      fprintf(stream, "ptr");
       break;
 
     default:
-      fprintf(stream, "%%%u.<unknown>", member_ptr->target_ptr->id);
+      fprintf(stream, "<unknown>");
     }
   }
 }
@@ -476,9 +561,11 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
   MirVar *var = decl->var;
   assert(var);
 
+  const char *name = var->llvm_name ? var->llvm_name : "<unknown>";
+
   if (var->is_in_gscope) {
     /* global scope variable */
-    fprintf(stream, "@%s : ", var->id->str);
+    fprintf(stream, "@%s : ", name);
     print_type(var->alloc_type, false, stream, true);
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
     if (decl->init) {
@@ -490,7 +577,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
     /* local scope variable */
     print_instr_head(&decl->base, stream, "decl");
 
-    fprintf(stream, "%s : ", var->id->str);
+    fprintf(stream, "%s : ", name);
     print_type(var->alloc_type, false, stream, true);
     if (decl->init) {
       fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
@@ -524,7 +611,7 @@ void
 print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
   print_instr_head(&cnst->base, stream, "const");
-  print_const_value(&cnst->base, stream);
+  print_const_value(&cnst->base.const_value, stream);
 }
 
 void
@@ -609,7 +696,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   assert(fn);
 
   if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
-  if (fn->ref_count) fprintf(stream, "// no LLVM\n");
+  if (fn->ref_count == 0) fprintf(stream, "// no LLVM\n");
 
   if (fn->llvm_name)
     fprintf(stream, "@%s ", fn->llvm_name);
@@ -624,8 +711,10 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   print_type(fn_proto->base.const_value.type, false, stream, false);
   fprintf(stream, " :");
 
-  if (!fn->is_external) {
-    if (fn->is_test_case) fprintf(stream, " #test");
+  if (fn->flags & FLAG_EXTERN) {
+    fprintf(stream, " #extern\n");
+  } else {
+    if (fn->flags & FLAG_TEST) fprintf(stream, " #test");
     fprintf(stream, " {\n");
 
     MirInstrBlock *tmp = fn->first_block;
@@ -634,8 +723,6 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
       tmp = (MirInstrBlock *)tmp->base.next;
     }
     fprintf(stream, "}\n");
-  } else {
-    fprintf(stream, " #extern\n");
   }
 }
 
@@ -692,6 +779,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
   case MIR_INSTR_TYPE_SLICE:
     print_instr_type_slice((MirInstrTypeSlice *)instr, stream);
     break;
+  case MIR_INSTR_TYPE_VARGS:
+    print_instr_type_vargs((MirInstrTypeVArgs *)instr, stream);
+    break;
   case MIR_INSTR_COND_BR:
     print_instr_cond_br((MirInstrCondBr *)instr, stream);
     break;
@@ -724,6 +814,12 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_ALIGNOF:
     print_instr_alignof((MirInstrAlignof *)instr, stream);
+    break;
+  case MIR_INSTR_INIT:
+    print_instr_init((MirInstrInit *)instr, stream);
+    break;
+  case MIR_INSTR_VARGS:
+    print_instr_vargs((MirInstrVArgs *)instr, stream);
     break;
   default:
     break;

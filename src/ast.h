@@ -87,6 +87,7 @@ typedef enum
   AST_EXPR_NULL,
   AST_EXPR_ADDROF,
   AST_EXPR_DEREF,
+  AST_EXPR_COMPOUND,
   AST_EXPR_LIT_FN,
   AST_EXPR_LIT_INT,
   AST_EXPR_LIT_FLOAT,
@@ -94,14 +95,13 @@ typedef enum
   AST_EXPR_LIT_CHAR,
   AST_EXPR_LIT_STRING,
   AST_EXPR_LIT_BOOL,
-  AST_EXPR_LIT_CMP,
   _AST_EXPR_LAST,
 } AstKind;
 
 typedef enum
 {
-  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-  FLAG_TEST   = 1 << 1, /* test case */
+  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
+  FLAG_TEST     = 1 << 1, /* test case */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -277,6 +277,12 @@ struct AstExprType
   Ast *type;
 };
 
+struct AstExprCompound
+{
+  Ast *   type;
+  BArray *values;
+};
+
 struct AstExprLitFn
 {
   Ast *type;
@@ -311,11 +317,6 @@ struct AstExprLitString
 struct AstExprLitBool
 {
   bool val;
-};
-
-struct AstExprLitCmp
-{
-  BArray *fields;
 };
 
 struct AstExprRef
@@ -426,7 +427,6 @@ struct Ast
     struct AstExprLitChar   expr_character;
     struct AstExprLitString expr_string;
     struct AstExprLitBool   expr_boolean;
-    struct AstExprLitCmp    expr_cmp;
     struct AstExprRef       expr_ref;
     struct AstExprCast      expr_cast;
     struct AstExprBinop     expr_binop;
@@ -439,6 +439,7 @@ struct Ast
     struct AstExprUnary     expr_unary;
     struct AstExprAddrOf    expr_addrof;
     struct AstExprDeref     expr_deref;
+    struct AstExprCompound  expr_compound;
   } data;
 
 #if BL_DEBUG
