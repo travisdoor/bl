@@ -109,6 +109,7 @@ enum MirBuiltinKind
   MIR_BUILTIN_TYPE_F32,
   MIR_BUILTIN_TYPE_F64,
   MIR_BUILTIN_TYPE_VOID,
+  MIR_BUILTIN_TYPE_STRING,
 
   MIR_BUILTIN_NULL,
   MIR_BUILTIN_MAIN,
@@ -653,6 +654,13 @@ mir_is_vargs_type(MirType *type)
 {
   assert(type);
   return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
+}
+
+static inline bool
+mir_is_string_type(MirType *type)
+{
+  assert(type);
+  return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_STRING);
 }
 
 static inline MirType *

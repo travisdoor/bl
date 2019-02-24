@@ -50,7 +50,7 @@
     "alignof")) 
 
 (defconst blm-types
-  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void"  
+  '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" "string"
     "type" "slice" "null_t"))
 
 (defconst blm-constants

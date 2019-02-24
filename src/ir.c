@@ -527,7 +527,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
       const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
       LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
 
-      result = LLVMConstStructInContext(cnt->llvm_cnt, const_vals, 2, false);
+      result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
 
       bl_free(const_vals);
     } else {
