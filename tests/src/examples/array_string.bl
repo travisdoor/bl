@@ -1,4 +1,5 @@
 #test "string type" {
-  msg := "hello world\n"; // type is '[12] u8'
-  msg.len; 	          // character count of the string
+  msg : string = "Hello world\n"; 
+  msg.len; // character count of the string
+  msg.ptr; // pointer to the string content
 };

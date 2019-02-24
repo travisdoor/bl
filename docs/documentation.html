@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Documentation</title>
-<!-- 2019-02-23 So 19:01 -->
+<!-- 2019-02-25 Po 00:17 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -173,8 +173,8 @@ for the JavaScript code in this tag.
 <li><a href="#sec-3-4-1">Fundamental data types</a></li>
 <li><a href="#sec-3-4-2">Pointers</a></li>
 <li><a href="#sec-3-4-3">Arrays</a></li>
-<li><a href="#sec-3-4-4"><span class="todo TODO">TODO</span> Strings</a></li>
-<li><a href="#sec-3-4-5"><span class="todo TODO">TODO</span> Array reference</a></li>
+<li><a href="#sec-3-4-4">Strings</a></li>
+<li><a href="#sec-3-4-5"><span class="todo TODO">TODO</span> Array slice</a></li>
 <li><a href="#sec-3-4-6">Structures</a></li>
 <li><a href="#sec-3-4-7"><span class="todo TODO">TODO</span> Enums</a></li>
 <li><a href="#sec-3-4-8"><span class="todo TODO">TODO</span> Type aliasing</a></li>
@@ -775,6 +775,11 @@ Example:
 <td class="left">f64</td>
 <td class="left">64-bit floating point number.</td>
 </tr>
+
+<tr>
+<td class="left">string</td>
+<td class="left">String slice.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -849,15 +854,11 @@ Example:
 </div>
 
 <div id="outline-container-sec-3-4-4" class="outline-4">
-<h4 id="sec-3-4-4"><span class="todo TODO">TODO</span> Strings</h4>
+<h4 id="sec-3-4-4">Strings</h4>
 <div class="outline-text-4" id="text-3-4-4">
 <p>
-String in BL is just an array. There is no zero terminator at the end.
+String type in biscuit is slice containting pointer to string data and string lenght. String literals are zero terimated.
 </p>
-
-<pre class="example">
-[&lt;size&gt;] u8
-</pre>
 
 <p>
 Example:
@@ -865,19 +866,20 @@ Example:
 <div class="org-src-container">
 
 <pre class="src src-bl"><span class="linenr">1: </span><span style="color: #808080;">#test</span> <span style="color: #008000;">"string type"</span> {
-<span class="linenr">2: </span>  <span style="color: #BA36A5;">msg </span>:= <span style="color: #008000;">"hello world\n"</span>; <span style="color: #8D8D84; font-style: italic;">// type is '[12] u8'</span>
-<span class="linenr">3: </span>  msg.len;                <span style="color: #8D8D84; font-style: italic;">// character count of the string</span>
-<span class="linenr">4: </span>};
+<span class="linenr">2: </span>  <span style="color: #D0372D;">msg</span> : <span style="color: #6434A3;">string</span> = <span style="color: #008000;">"Hello world\n"</span>; 
+<span class="linenr">3: </span>  msg.len; <span style="color: #8D8D84; font-style: italic;">// character count of the string</span>
+<span class="linenr">4: </span>  msg.ptr; <span style="color: #8D8D84; font-style: italic;">// pointer to the string content</span>
+<span class="linenr">5: </span>};
 </pre>
 </div>
 </div>
 </div>
 
 <div id="outline-container-sec-3-4-5" class="outline-4">
-<h4 id="sec-3-4-5"><span class="todo TODO">TODO</span> Array reference</h4>
+<h4 id="sec-3-4-5"><span class="todo TODO">TODO</span> Array slice</h4>
 <div class="outline-text-4" id="text-3-4-5">
 <p>
-Array reference is consist of pointer to the first array element and array lenght. 
+Array slice is consist of pointer to the first array element and array lenght. 
 </p>
 
 <p>
@@ -1226,7 +1228,7 @@ Example of anonymous function.
 <h4 id="sec-3-8-3">Functions with variable argument count</h4>
 <div class="outline-text-4" id="text-3-8-3">
 <p>
-Biscuit supports functions with variable argument count of same type.
+Biscuit supports functions with variable argument count of same the type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs.
 </p>
 
 <p>
@@ -1237,7 +1239,7 @@ Example of variable argument count function:
 <pre class="src src-bl"><span class="linenr"> 1: </span><span style="color: #808080;">#load</span> <span style="color: #008000;">"std/debug.bl"</span>
 <span class="linenr"> 2: </span>
 <span class="linenr"> 3: </span><span style="color: #006699;">sum</span> :: <span style="color: #0000FF;">fn</span> (nums: ...<span style="color: #6434A3;">s32</span>) <span style="color: #6434A3;">s32</span> {
-<span class="linenr"> 4: </span>  <span style="color: #8D8D84; font-style: italic;">// nums is slice of pointers to s32</span>
+<span class="linenr"> 4: </span>  <span style="color: #8D8D84; font-style: italic;">// nums is slice of s32</span>
 <span class="linenr"> 5: </span>  <span style="color: #BA36A5;">result </span>:= <span style="color: #D0372D;">0</span>;
 <span class="linenr"> 6: </span>  <span style="color: #0000FF;">loop</span> i := <span style="color: #D0372D;">0</span>; i &lt; nums.len; i += <span style="color: #D0372D;">1</span> {
 <span class="linenr"> 7: </span>    result += nums[i];
@@ -1249,7 +1251,13 @@ Example of variable argument count function:
 <span class="linenr">13: </span><span style="color: #808080;">#test</span> <span style="color: #008000;">"vargs"</span> {
 <span class="linenr">14: </span>  <span style="color: #BA36A5;">s </span>:= <span style="color: #006699;">sum</span>(<span style="color: #D0372D;">10</span>, <span style="color: #D0372D;">20</span>, <span style="color: #D0372D;">30</span>);
 <span class="linenr">15: </span>  <span style="color: #006699;">assert</span>(s == <span style="color: #D0372D;">60</span>);
-<span class="linenr">16: </span>};
+<span class="linenr">16: </span>
+<span class="linenr">17: </span>  s = <span style="color: #006699;">sum</span>(<span style="color: #D0372D;">10</span>, <span style="color: #D0372D;">20</span>);
+<span class="linenr">18: </span>  <span style="color: #006699;">assert</span>(s == <span style="color: #D0372D;">30</span>);
+<span class="linenr">19: </span>
+<span class="linenr">20: </span>  s = <span style="color: #006699;">sum</span>();
+<span class="linenr">21: </span>  <span style="color: #006699;">assert</span>(s == <span style="color: #D0372D;">0</span>);
+<span class="linenr">22: </span>};
 </pre>
 </div>
 </div>
@@ -1450,7 +1458,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-23 So 19:01</p>
+<p class="date">Created: 2019-02-25 Po 00:17</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

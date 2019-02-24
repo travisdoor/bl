@@ -159,20 +159,21 @@
    
 ** Data types
 *** Fundamental data types
-    | Name  | Description                   |
-    |-------+-------------------------------|
-    | s8    | Signed 8-bit number.          |
-    | s16   | Signed 16-bit number.         |
-    | s32   | Signed 32-bit number.         |
-    | s64   | Signed 64-bit number.         |
-    | u8    | Unsigned 8-bit number.        |
-    | u16   | Unsigned 16-bit number.       |
-    | u32   | Unsigned 32-bit number.       |
-    | u64   | Unsigned 64-bit number.       |
-    | usize | Unsigned 64-bit size.         |
-    | bool  | Boolean. (true/false)         |
-    | f32   | 32-bit floating point number  |
-    | f64   | 64-bit floating point number. |
+    | Name   | Description                   |
+    |--------+-------------------------------|
+    | s8     | Signed 8-bit number.          |
+    | s16    | Signed 16-bit number.         |
+    | s32    | Signed 32-bit number.         |
+    | s64    | Signed 64-bit number.         |
+    | u8     | Unsigned 8-bit number.        |
+    | u16    | Unsigned 16-bit number.       |
+    | u32    | Unsigned 32-bit number.       |
+    | u64    | Unsigned 64-bit number.       |
+    | usize  | Unsigned 64-bit size.         |
+    | bool   | Boolean. (true/false)         |
+    | f32    | 32-bit floating point number  |
+    | f64    | 64-bit floating point number. |
+    | string | String slice.                 |
 
 *** Pointers
     Represents the address of some allocated data.
@@ -198,18 +199,14 @@
     Example:
     #+INCLUDE: "../tests/src/examples/array_type.bl" src bl -n
 
-*** TODO Strings
-    String in BL is just an array. There is no zero terminator at the end.
-
-    #+BEGIN_EXAMPLE
-    [<size>] u8
-    #+END_EXAMPLE
+*** Strings
+    String type in biscuit is slice containting pointer to string data and string lenght. String literals are zero terimated.
 
     Example:
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
-*** TODO Array reference
-    Array reference is consist of pointer to the first array element and array lenght. 
+*** TODO Array slice
+    Array slice is consist of pointer to the first array element and array lenght. 
 
     Syntax:
     #+BEGIN_EXAMPLE
@@ -338,7 +335,7 @@
     #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
    
 *** Functions with variable argument count
-    Biscuit supports functions with variable argument count of same type.
+    Biscuit supports functions with variable argument count of same the type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs.
 
     Example of variable argument count function:
     #+INCLUDE: "../tests/src/examples/vargs.bl" src bl -n
