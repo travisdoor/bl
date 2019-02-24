@@ -656,6 +656,13 @@ mir_is_vargs_type(MirType *type)
   return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
 }
 
+static inline bool
+mir_is_string_type(MirType *type)
+{
+  assert(type);
+  return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_STRING);
+}
+
 static inline MirType *
 mir_deref_type(MirType *ptr)
 {

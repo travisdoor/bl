@@ -1425,6 +1425,15 @@ create_type_vargs(Context *cnt, MirType *elem_ptr_type)
   return tmp;
 }
 
+MirType *
+create_type_string(Context *cnt)
+{
+  MirType *tmp         = create_type_slice(cnt, &builtin_ids[MIR_BUILTIN_TYPE_STRING],
+                                   cnt->builtin_types.entry_u8_ptr);
+  tmp->data.strct.kind = MIR_TS_STRING;
+  return tmp;
+}
+
 MirVar *
 create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
            MirConstValue *value, bool is_mutable, bool is_in_gscope)
@@ -2486,8 +2495,36 @@ type_cmp(MirType *first, MirType *second)
 
   case MIR_TYPE_STRUCT: {
     /* slice is builtin so we can skip other comparations here... */
-    if (mir_is_slice_type(first) && mir_is_slice_type(second)) return true;
-    bl_unimplemented;
+    if (mir_is_slice_type(first)) {
+      /* second in not slice! */
+      if (!mir_is_slice_type(second)) return false;
+      /* validate slice kinds */
+      if (first->data.strct.kind != second->data.strct.kind) return false;
+    }
+
+    /* HACK: here we compare named types if there is some name, later we prefer to create some kind
+     * of type hashing. */
+    if (first->id && second->id && first->id->hash == second->id->hash) return true;
+
+    BArray *fmems = first->data.strct.members;
+    BArray *smems = second->data.strct.members;
+    assert(fmems && smems);
+
+    /* Different count of members. */
+    if (bo_array_size(fmems) != bo_array_size(smems)) return false;
+
+    /* Compare members types. */
+    MirType *ftmp;
+    MirType *stmp;
+    barray_foreach(fmems, ftmp)
+    {
+      stmp = bo_array_at(smems, i, MirType *);
+      assert(fmems && smems);
+
+      if (!type_cmp(ftmp, stmp)) return false;
+    }
+
+    return true;
   }
 
   case MIR_TYPE_VOID:
@@ -2951,8 +2988,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 
   cast->op = get_cast_op(src_type, dest_type);
   if (cast->op == MIR_CAST_INVALID) {
-    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_CAST, cast->base.node->src,
-                BUILDER_CUR_WORD, "Invalid cast.");
+    error_types(cnt, src_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
     return false;
   }
 
@@ -6142,34 +6178,37 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
     break;
 
   case MIR_TYPE_STRUCT: {
-    if (mir_is_vargs_type(type)) {
-      append_buf(buf, len, "vargs");
-    } else if (mir_is_slice_type(type)) {
-      append_buf(buf, len, "slice");
-    } else {
-      append_buf(buf, len, "struct");
-    }
-    if (type->data.strct.is_packed) {
-      append_buf(buf, len, "<");
-    } else {
-      append_buf(buf, len, "{");
-    }
-
-    MirType *tmp;
     BArray * members = type->data.strct.members;
-    if (members) {
-      barray_foreach(members, tmp)
-      {
-        _type_to_str(buf, len, tmp, true);
-        if (i < bo_array_size(members) - 1) append_buf(buf, len, ", ");
-      }
-    }
+    MirType *tmp;
 
-    if (type->data.strct.is_packed) {
-      append_buf(buf, len, ">");
+    if (mir_is_vargs_type(type)) {
+      append_buf(buf, len, "...");
+
+      if (members) {
+        tmp = bo_array_at(members, 1, MirType *);
+	tmp = mir_deref_type(tmp);
+        _type_to_str(buf, len, tmp, true);
+      }
+    } else if (mir_is_slice_type(type)) {
+      append_buf(buf, len, "[]");
+
+      if (members) {
+        tmp = bo_array_at(members, 1, MirType *);
+	tmp = mir_deref_type(tmp);
+        _type_to_str(buf, len, tmp, true);
+      }
     } else {
+      append_buf(buf, len, "struct{");
+      if (members) {
+        barray_foreach(members, tmp)
+        {
+          _type_to_str(buf, len, tmp, true);
+          if (i < bo_array_size(members) - 1) append_buf(buf, len, ", ");
+        }
+      }
       append_buf(buf, len, "}");
     }
+
     break;
   }
 
@@ -6320,8 +6359,7 @@ init_builtins(Context *cnt)
     bt->entry_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F32], 32);
     bt->entry_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
     bt->entry_u8_ptr = create_type_ptr(cnt, bt->entry_u8);
-    bt->entry_string =
-        create_type_slice(cnt, &builtin_ids[MIR_BUILTIN_TYPE_STRING], bt->entry_u8_ptr);
+    bt->entry_string = create_type_string(cnt);
 
     bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
     bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
