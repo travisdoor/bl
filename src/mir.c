@@ -192,19 +192,20 @@ typedef struct
     MirType *entry_f64;
     MirType *entry_void;
     MirType *entry_u8_ptr;
-    MirType *entry_u8_slice;
+    MirType *entry_string;
     MirType *entry_resolve_type_fn;
     MirType *entry_test_case_fn;
   } builtin_types;
 } Context;
 
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
-    {.str = "type", .hash = 0},  {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
-    {.str = "s32", .hash = 0},   {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
-    {.str = "u16", .hash = 0},   {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
-    {.str = "usize", .hash = 0}, {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},   {.str = "void", .hash = 0}, {.str = "null_t", .hash = 0},
-    {.str = "main", .hash = 0},  {.str = "len", .hash = 0},  {.str = "ptr", .hash = 0}};
+    {.str = "type", .hash = 0},   {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
+    {.str = "s32", .hash = 0},    {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
+    {.str = "u16", .hash = 0},    {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
+    {.str = "usize", .hash = 0},  {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
+    {.str = "f64", .hash = 0},    {.str = "void", .hash = 0}, {.str = "string", .hash = 0},
+    {.str = "null_t", .hash = 0}, {.str = "main", .hash = 0}, {.str = "len", .hash = 0},
+    {.str = "ptr", .hash = 0}};
 
 static void
 value_dtor(MirConstValue *value)
@@ -2150,13 +2151,13 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
   MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime               = true;
-  tmp->const_value.type       = cnt->builtin_types.entry_u8_slice;
+  tmp->const_value.type       = cnt->builtin_types.entry_string;
   tmp->const_value.data.v_str = str;
 
   /* initialize constant slice */
   {
     BArray *       members      = create_arr(cnt, sizeof(MirConstValue *));
-    BArray *       member_types = cnt->builtin_types.entry_u8_slice->data.strct.members;
+    BArray *       member_types = cnt->builtin_types.entry_string->data.strct.members;
     MirConstValue *value;
 
     /* string slice len */
@@ -6306,23 +6307,24 @@ init_builtins(Context *cnt)
     bt->entry_type          = create_type_type(cnt);
     bt->entry_void          = create_type_void(cnt);
 
-    bt->entry_s8    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S8], 8, true);
-    bt->entry_s16   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S16], 16, true);
-    bt->entry_s32   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S32], 32, true);
-    bt->entry_s64   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S64], 64, true);
-    bt->entry_u8    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U8], 8, false);
-    bt->entry_u16   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U16], 16, false);
-    bt->entry_u32   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U32], 32, false);
-    bt->entry_u64   = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U64], 64, false);
-    bt->entry_usize = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_USIZE], 64, false);
-    bt->entry_bool  = create_type_bool(cnt);
-    bt->entry_f32   = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F32], 32);
-    bt->entry_f64   = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
+    bt->entry_s8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S8], 8, true);
+    bt->entry_s16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S16], 16, true);
+    bt->entry_s32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S32], 32, true);
+    bt->entry_s64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S64], 64, true);
+    bt->entry_u8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U8], 8, false);
+    bt->entry_u16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U16], 16, false);
+    bt->entry_u32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U32], 32, false);
+    bt->entry_u64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U64], 64, false);
+    bt->entry_usize  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_USIZE], 64, false);
+    bt->entry_bool   = create_type_bool(cnt);
+    bt->entry_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F32], 32);
+    bt->entry_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
+    bt->entry_u8_ptr = create_type_ptr(cnt, bt->entry_u8);
+    bt->entry_string =
+        create_type_slice(cnt, &builtin_ids[MIR_BUILTIN_TYPE_STRING], bt->entry_u8_ptr);
 
-    bt->entry_u8_ptr          = create_type_ptr(cnt, bt->entry_u8);
     bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
     bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
-    bt->entry_u8_slice        = create_type_slice(cnt, NULL, bt->entry_u8_ptr);
 
     provide_builtin_type(cnt, bt->entry_type);
     provide_builtin_type(cnt, bt->entry_s8);
@@ -6337,6 +6339,7 @@ init_builtins(Context *cnt)
     provide_builtin_type(cnt, bt->entry_bool);
     provide_builtin_type(cnt, bt->entry_f32);
     provide_builtin_type(cnt, bt->entry_f64);
+    provide_builtin_type(cnt, bt->entry_string);
   }
 }
 
