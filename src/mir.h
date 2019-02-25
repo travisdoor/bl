@@ -245,7 +245,7 @@ struct MirTypeArray
 struct MirType
 {
   MirTypeKind kind;
-  ID *        id;
+  ID *        user_id;
   LLVMTypeRef llvm_type;
   size_t      size_bits;
   size_t      store_size_bytes;

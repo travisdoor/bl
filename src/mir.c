@@ -1156,15 +1156,15 @@ provide_builtin_type(Context *cnt, MirType *type)
   /* all builtin types are inserted into the global scope */
   Scope *scope = cnt->assembly->gscope;
   assert(scope);
-  assert(type->id && "missing identificator for builtin type!!!");
+  assert(type->user_id && "missing identificator for builtin type!!!");
 
 #if BL_DEBUG
-  ScopeEntry *collision = scope_lookup(scope, type->id, false);
+  ScopeEntry *collision = scope_lookup(scope, type->user_id, false);
   assert(collision == NULL);
 #endif
 
   ScopeEntry *entry =
-      scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_TYPE, type->id, NULL, true);
+      scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_TYPE, type->user_id, NULL, true);
   entry->data.type = type;
   scope_insert(scope, entry);
   return entry;
@@ -1297,7 +1297,7 @@ create_type_type(Context *cnt)
 {
   MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_TYPE;
-  tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
+  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
@@ -1307,7 +1307,7 @@ create_type_null(Context *cnt)
 {
   MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_NULL;
-  tmp->id      = &builtin_ids[MIR_BUILTIN_NULL];
+  tmp->user_id = &builtin_ids[MIR_BUILTIN_NULL];
   /* default type of null in llvm (can be overriden later) */
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
@@ -1318,7 +1318,7 @@ create_type_void(Context *cnt)
 {
   MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_VOID;
-  tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
+  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
@@ -1328,7 +1328,7 @@ create_type_bool(Context *cnt)
 {
   MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_BOOL;
-  tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
+  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
@@ -1340,7 +1340,7 @@ create_type_int(Context *cnt, ID *id, int32_t bitcount, bool is_signed)
   assert(bitcount > 0);
   MirType *tmp                = create_type(cnt);
   tmp->kind                   = MIR_TYPE_INT;
-  tmp->id                     = id;
+  tmp->user_id                = id;
   tmp->data.integer.bitcount  = bitcount;
   tmp->data.integer.is_signed = is_signed;
   init_type_llvm_ABI(cnt, tmp);
@@ -1353,7 +1353,7 @@ create_type_real(Context *cnt, ID *id, int32_t bitcount)
   assert(bitcount > 0);
   MirType *tmp            = create_type(cnt);
   tmp->kind               = MIR_TYPE_REAL;
-  tmp->id                 = id;
+  tmp->user_id            = id;
   tmp->data.real.bitcount = bitcount;
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
@@ -1405,7 +1405,7 @@ create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
   tmp->data.strct.kind      = kind;
-  tmp->id                   = id;
+  tmp->user_id                   = id;
 
   init_type_llvm_ABI(cnt, tmp);
 
@@ -2428,8 +2428,8 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     }
 
     /* named structure type */
-    if (type->id) {
-      type->llvm_type = LLVMStructCreateNamed(cnt->module->llvm_cnt, type->id->str);
+    if (type->user_id) {
+      type->llvm_type = LLVMStructCreateNamed(cnt->module->llvm_cnt, type->user_id->str);
       LLVMStructSetBody(type->llvm_type, llvm_members, memc, is_packed);
     } else {
       type->llvm_type =
@@ -2511,7 +2511,7 @@ type_cmp(MirType *first, MirType *second)
 
     /* HACK: here we compare named types if there is some name, later we prefer to create some kind
      * of type hashing. */
-    if (first->id && second->id && first->id->hash == second->id->hash) return true;
+    if (first->user_id && second->user_id && first->user_id->hash == second->user_id->hash) return true;
 
     BArray *fmems = first->data.strct.members;
     BArray *smems = second->data.strct.members;
@@ -6174,8 +6174,8 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
     return;
   }
 
-  if (type->id && prefer_name) {
-    append_buf(buf, len, type->id->str);
+  if (type->user_id && prefer_name) {
+    append_buf(buf, len, type->user_id->str);
     return;
   }
 
@@ -6254,8 +6254,8 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
   }
 
   default:
-    if (type->id) {
-      append_buf(buf, len, type->id->str);
+    if (type->user_id) {
+      append_buf(buf, len, type->user_id->str);
     } else {
       append_buf(buf, len, "<invalid>");
     }
