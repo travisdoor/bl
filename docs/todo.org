@@ -1,6 +1,6 @@
-* Agenda 0.4.1 [9%]
+* Agenda 0.4.1 [18%]
   - [X] VArgs
-  - [ ] String type aka []u8
+  - [X] String type aka []u8
   - [ ] Build setup
   - [ ] Constants should not by overridable
   - [ ] Instalation of compiler in CMake
@@ -15,5 +15,35 @@
   - [ ] Pointer math
 
 
-
+* Type hashing
+    | Type                      | Hash         |
+    |---------------------------+--------------|
+    | s32                       | s32          |
+    | *s32                      | p.s32        |
+    | [10]s32                   | 10.s32       |
+    | [5]s32                    | 5.s32        |
+    | []s32                     | s{s64,p.s32} |
+    | [10]*s32                  | 10.p.s32     |
+    | struct { a: s32, b: *u8 } | s{s32,p.u8}  |
     
+
+    | Type    | Flag |
+    |---------+------|
+    | s8      | s8   |
+    | s16     | s16  |
+    | s32     | s32  |
+    | s64     | s64  |
+    | u8      | u8   |
+    | u16     | u16  |
+    | u32     | u32  |
+    | u64     | u64  |
+    | usize   | us   |
+    | bool    | b    |
+    | f32     | f32  |
+    | f64     | f64  |
+    | string  | str  |
+    | struct  | s    |
+    | fn      | f    |
+    | pointer | p    |
+    | array   | N    |
+    | null    | n    |

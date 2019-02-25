@@ -1285,10 +1285,17 @@ setup_null_type_if_needed(MirType *dest, MirType *src)
 }
 
 /* impl */
+static inline MirType *
+create_type(Context *cnt)
+{
+  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  return tmp;
+}
+
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_TYPE;
   tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
   init_type_llvm_ABI(cnt, tmp);
@@ -1298,7 +1305,7 @@ create_type_type(Context *cnt)
 MirType *
 create_type_null(Context *cnt)
 {
-  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_NULL;
   tmp->id      = &builtin_ids[MIR_BUILTIN_NULL];
   /* default type of null in llvm (can be overriden later) */
@@ -1309,7 +1316,7 @@ create_type_null(Context *cnt)
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_VOID;
   tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
   init_type_llvm_ABI(cnt, tmp);
@@ -1319,7 +1326,7 @@ create_type_void(Context *cnt)
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp = create_type(cnt);
   tmp->kind    = MIR_TYPE_BOOL;
   tmp->id      = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
   init_type_llvm_ABI(cnt, tmp);
@@ -1331,7 +1338,7 @@ create_type_int(Context *cnt, ID *id, int32_t bitcount, bool is_signed)
 {
   assert(id);
   assert(bitcount > 0);
-  MirType *tmp                = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp                = create_type(cnt);
   tmp->kind                   = MIR_TYPE_INT;
   tmp->id                     = id;
   tmp->data.integer.bitcount  = bitcount;
@@ -1344,7 +1351,7 @@ MirType *
 create_type_real(Context *cnt, ID *id, int32_t bitcount)
 {
   assert(bitcount > 0);
-  MirType *tmp            = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp            = create_type(cnt);
   tmp->kind               = MIR_TYPE_REAL;
   tmp->id                 = id;
   tmp->data.real.bitcount = bitcount;
@@ -1355,7 +1362,7 @@ create_type_real(Context *cnt, ID *id, int32_t bitcount)
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
-  MirType *tmp       = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp       = create_type(cnt);
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
   init_type_llvm_ABI(cnt, tmp);
@@ -1366,7 +1373,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
 MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 {
-  MirType *tmp           = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp           = create_type(cnt);
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.is_vargs  = is_vargs;
@@ -1379,7 +1386,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs
 MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len)
 {
-  MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp              = create_type(cnt);
   tmp->kind                 = MIR_TYPE_ARRAY;
   tmp->data.array.elem_type = elem_type;
   tmp->data.array.len       = len;
@@ -1392,7 +1399,7 @@ MirType *
 create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
                    MirTypeStructKind kind)
 {
-  MirType *tmp              = arena_alloc(&cnt->module->arenas.type_arena);
+  MirType *tmp              = create_type(cnt);
   tmp->kind                 = MIR_TYPE_STRUCT;
   tmp->data.strct.members   = members;
   tmp->data.strct.scope     = scope;
@@ -6186,7 +6193,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
       if (members) {
         tmp = bo_array_at(members, 1, MirType *);
-	tmp = mir_deref_type(tmp);
+        tmp = mir_deref_type(tmp);
         _type_to_str(buf, len, tmp, true);
       }
     } else if (mir_is_slice_type(type)) {
@@ -6194,7 +6201,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
       if (members) {
         tmp = bo_array_at(members, 1, MirType *);
-	tmp = mir_deref_type(tmp);
+        tmp = mir_deref_type(tmp);
         _type_to_str(buf, len, tmp, true);
       }
     } else {
