@@ -81,7 +81,7 @@ print_const_value(MirConstValue *value, FILE *stream)
         print_case("%d", v_s8);
         print_case("%d", v_s16);
         print_case("%d", v_s32);
-        print_case("%ld", v_s64);
+        print_case("%lld", v_s64);
       default:
         fprintf(stream, "<cannot read value>");
         break;
@@ -91,7 +91,7 @@ print_const_value(MirConstValue *value, FILE *stream)
         print_case("%u", v_u8);
         print_case("%u", v_u16);
         print_case("%u", v_u32);
-        print_case("%lu", v_u64);
+        print_case("%lld", v_u64);
       default:
         fprintf(stream, "<cannot read value>");
         break;
