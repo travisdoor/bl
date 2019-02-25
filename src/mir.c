@@ -170,6 +170,10 @@ typedef struct
   MirInstrBlock *break_block;
   MirInstrBlock *continue_block;
 
+  /* Types */
+  BString *   tmp_sh;
+  BHashTable *type_table;
+
   /* Other */
   MirFn *entry_fn;
   bool   verbose_pre, verbose_post;
@@ -1286,16 +1290,39 @@ setup_null_type_if_needed(MirType *dest, MirType *src)
 
 /* impl */
 static inline MirType *
-create_type(Context *cnt)
+create_type(Context *cnt, const char *sh)
 {
-  MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
-  return tmp;
+  if (sh) {
+    uint64_t hash = bo_hash_from_str(sh);
+
+    bo_iterator_t found = bo_htbl_find(cnt->type_table, hash);
+    bo_iterator_t end   = bo_htbl_end(cnt->type_table);
+    if (!bo_iterator_equal(&found, &end)) {
+      return bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
+    } else {
+      MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+
+      BString *copy = builder_create_cached_str(cnt->builder);
+      bo_string_append(copy, sh);
+
+      tmp->id.str  = bo_string_get(copy);
+      tmp->id.hash = hash;
+
+      bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
+      return tmp;
+    }
+  } else {
+    return arena_alloc(&cnt->module->arenas.type_arena);
+  }
+
+  bl_abort("should not happend");
 }
 
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp = create_type(cnt);
+  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_TYPE].str);
   tmp->kind    = MIR_TYPE_TYPE;
   tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
   init_type_llvm_ABI(cnt, tmp);
@@ -1305,7 +1332,7 @@ create_type_type(Context *cnt)
 MirType *
 create_type_null(Context *cnt)
 {
-  MirType *tmp = create_type(cnt);
+  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_NULL].str);
   tmp->kind    = MIR_TYPE_NULL;
   tmp->user_id = &builtin_ids[MIR_BUILTIN_NULL];
   /* default type of null in llvm (can be overriden later) */
@@ -1316,7 +1343,7 @@ create_type_null(Context *cnt)
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp = create_type(cnt);
+  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_VOID].str);
   tmp->kind    = MIR_TYPE_VOID;
   tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
   init_type_llvm_ABI(cnt, tmp);
@@ -1326,7 +1353,7 @@ create_type_void(Context *cnt)
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp = create_type(cnt);
+  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_BOOL].str);
   tmp->kind    = MIR_TYPE_BOOL;
   tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
   init_type_llvm_ABI(cnt, tmp);
@@ -1338,7 +1365,7 @@ create_type_int(Context *cnt, ID *id, int32_t bitcount, bool is_signed)
 {
   assert(id);
   assert(bitcount > 0);
-  MirType *tmp                = create_type(cnt);
+  MirType *tmp                = create_type(cnt, id->str);
   tmp->kind                   = MIR_TYPE_INT;
   tmp->user_id                = id;
   tmp->data.integer.bitcount  = bitcount;
@@ -1351,7 +1378,7 @@ MirType *
 create_type_real(Context *cnt, ID *id, int32_t bitcount)
 {
   assert(bitcount > 0);
-  MirType *tmp            = create_type(cnt);
+  MirType *tmp            = create_type(cnt, id->str);
   tmp->kind               = MIR_TYPE_REAL;
   tmp->user_id            = id;
   tmp->data.real.bitcount = bitcount;
@@ -1359,10 +1386,22 @@ create_type_real(Context *cnt, ID *id, int32_t bitcount)
   return tmp;
 }
 
+static inline const char *
+sh_type_ptr(Context *cnt, MirType *src_type)
+{
+  // assert(src_type->id.str);
+  if (!src_type->id.str) return NULL;
+  BString *tmp = cnt->tmp_sh;
+  bo_string_clear(tmp);
+  bo_string_append(tmp, "p.");
+  bo_string_append(tmp, src_type->id.str);
+  return bo_string_get(tmp);
+}
+
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
-  MirType *tmp       = create_type(cnt);
+  MirType *tmp       = create_type(cnt, sh_type_ptr(cnt, src_type));
   tmp->kind          = MIR_TYPE_PTR;
   tmp->data.ptr.next = src_type;
   init_type_llvm_ABI(cnt, tmp);
@@ -1373,7 +1412,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
 MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 {
-  MirType *tmp           = create_type(cnt);
+  MirType *tmp           = create_type(cnt, NULL);
   tmp->kind              = MIR_TYPE_FN;
   tmp->data.fn.arg_types = arg_types;
   tmp->data.fn.is_vargs  = is_vargs;
@@ -1386,7 +1425,7 @@ create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs
 MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len)
 {
-  MirType *tmp              = create_type(cnt);
+  MirType *tmp              = create_type(cnt, NULL);
   tmp->kind                 = MIR_TYPE_ARRAY;
   tmp->data.array.elem_type = elem_type;
   tmp->data.array.len       = len;
@@ -1399,13 +1438,13 @@ MirType *
 create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
                    MirTypeStructKind kind)
 {
-  MirType *tmp              = create_type(cnt);
+  MirType *tmp              = create_type(cnt, NULL);
   tmp->kind                 = MIR_TYPE_STRUCT;
   tmp->data.strct.members   = members;
   tmp->data.strct.scope     = scope;
   tmp->data.strct.is_packed = is_packed;
   tmp->data.strct.kind      = kind;
-  tmp->user_id                   = id;
+  tmp->user_id              = id;
 
   init_type_llvm_ABI(cnt, tmp);
 
@@ -2511,7 +2550,8 @@ type_cmp(MirType *first, MirType *second)
 
     /* HACK: here we compare named types if there is some name, later we prefer to create some kind
      * of type hashing. */
-    if (first->user_id && second->user_id && first->user_id->hash == second->user_id->hash) return true;
+    if (first->user_id && second->user_id && first->user_id->hash == second->user_id->hash)
+      return true;
 
     BArray *fmems = first->data.strct.members;
     BArray *smems = second->data.strct.members;
@@ -6493,6 +6533,8 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.analyze_stack = bo_array_new(sizeof(MirInstr *));
   cnt.test_cases    = bo_array_new(sizeof(MirFn *));
   cnt.exec_stack    = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
+  cnt.tmp_sh        = bo_string_new(1024);
+  cnt.type_table    = bo_htbl_new(sizeof(MirType *), 8192);
 
   init_builtins(&cnt);
 
@@ -6516,6 +6558,8 @@ mir_run(Builder *builder, Assembly *assembly)
 
   bo_unref(cnt.analyze_stack);
   bo_unref(cnt.test_cases);
+  bo_unref(cnt.tmp_sh);
+  bo_unref(cnt.type_table);
 
   terminate_dl(&cnt);
   exec_delete_stack(cnt.exec_stack);
