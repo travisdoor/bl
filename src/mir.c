@@ -5135,7 +5135,9 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   exec_read_value(&rhs, rhs_ptr, type);
 
   switch (type->kind) {
-  case MIR_TYPE_PTR:
+  case MIR_TYPE_PTR: {
+    bl_unimplemented;
+  }
   case MIR_TYPE_BOOL:
   case MIR_TYPE_INT: {
     const size_t s = type->store_size_bytes;
