@@ -234,7 +234,9 @@ struct MirTypeStruct
 };
 
 struct MirTypeNull
-{};
+{
+  MirType *base_type;
+};
 
 struct MirTypeArray
 {

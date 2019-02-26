@@ -78,20 +78,36 @@ print_const_value(MirConstValue *value, FILE *stream)
     const size_t s = type->store_size_bytes;
     if (type->data.integer.is_signed) {
       switch (s) {
-        print_case("%d", v_s8);
-        print_case("%d", v_s16);
-        print_case("%d", v_s32);
-        print_case("%lld", v_s64);
+      case sizeof(data->v_s8):
+        fprintf(stream, "%d", data->v_s8);
+        break;
+      case sizeof(data->v_s16):
+        fprintf(stream, "%d", data->v_s16);
+        break;
+      case sizeof(data->v_s32):
+        fprintf(stream, "%d", data->v_s32);
+        break;
+      case sizeof(data->v_s64):
+        fprintf(stream, "%lld", (long long)data->v_s64);
+        break;
       default:
         fprintf(stream, "<cannot read value>");
         break;
       }
     } else {
       switch (s) {
-        print_case("%u", v_u8);
-        print_case("%u", v_u16);
-        print_case("%u", v_u32);
-        print_case("%lld", v_u64);
+      case sizeof(data->v_s8):
+        fprintf(stream, "%u", data->v_u8);
+        break;
+      case sizeof(data->v_s16):
+        fprintf(stream, "%u", data->v_u16);
+        break;
+      case sizeof(data->v_s32):
+        fprintf(stream, "%u", data->v_u32);
+        break;
+      case sizeof(data->v_s64):
+        fprintf(stream, "%llu", (unsigned long long)data->v_u64);
+        break;
       default:
         fprintf(stream, "<cannot read value>");
         break;

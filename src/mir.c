@@ -255,6 +255,9 @@ static MirType *
 create_type_type(Context *cnt);
 
 static MirType *
+create_type_null(Context *cnt, MirType *base_type);
+
+static MirType *
 create_type_void(Context *cnt);
 
 static MirType *
@@ -1280,11 +1283,15 @@ is_load_needed(MirInstr *instr)
 }
 
 static inline void
-setup_null_type_if_needed(MirType *dest, MirType *src)
+setup_null_type_if_needed(Context *cnt, MirConstValue *value, MirType *type)
 {
-  if (dest->kind == MIR_TYPE_NULL) {
-    dest->llvm_type = src->llvm_type;
-    assert(dest->llvm_type);
+  assert(value);
+  /* use default null type */
+  if (!type) type = cnt->builtin_types.entry_u8_ptr;
+  if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
+  if (value->type->kind == MIR_TYPE_NULL) {
+    assert(mir_is_pointer_type(type) && "creating null for non-pointer value");
+    value->type = create_type_null(cnt, type);
   }
 }
 
@@ -1329,13 +1336,26 @@ create_type_type(Context *cnt)
   return tmp;
 }
 
-MirType *
-create_type_null(Context *cnt)
+static inline const char *
+sh_type_null(Context *cnt, MirType *base_type)
 {
-  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_NULL].str);
-  tmp->kind    = MIR_TYPE_NULL;
-  tmp->user_id = &builtin_ids[MIR_BUILTIN_NULL];
-  /* default type of null in llvm (can be overriden later) */
+  // assert(src_type->id.str);
+  if (!base_type->id.str) return NULL;
+  BString *tmp = cnt->tmp_sh;
+  bo_string_clear(tmp);
+  bo_string_append(tmp, "n.");
+  bo_string_append(tmp, base_type->id.str);
+  return bo_string_get(tmp);
+}
+
+MirType *
+create_type_null(Context *cnt, MirType *base_type)
+{
+  assert(base_type && mir_is_pointer_type(base_type));
+  MirType *tmp             = create_type(cnt, sh_type_null(cnt, base_type));
+  tmp->kind                = MIR_TYPE_NULL;
+  tmp->user_id             = &builtin_ids[MIR_BUILTIN_NULL];
+  tmp->data.null.base_type = base_type;
   init_type_llvm_ABI(cnt, tmp);
   return tmp;
 }
@@ -2249,7 +2269,7 @@ append_instr_const_null(Context *cnt, Ast *node)
 {
   MirInstr *tmp                    = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
   tmp->comptime                    = true;
-  tmp->const_value.type            = create_type_null(cnt);
+  tmp->const_value.type            = create_type_null(cnt, cnt->builtin_types.entry_u8_ptr);
   tmp->const_value.data.v_void_ptr = NULL;
 
   push_into_curr_block(cnt, tmp);
@@ -2346,10 +2366,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_NULL: {
-    type->alignment        = cnt->builtin_types.entry_u8_ptr->alignment;
-    type->size_bits        = cnt->builtin_types.entry_u8_ptr->size_bits;
-    type->store_size_bytes = cnt->builtin_types.entry_u8_ptr->store_size_bytes;
-    type->llvm_type        = cnt->builtin_types.entry_u8_ptr->llvm_type;
+    MirType *tmp = type->data.null.base_type;
+    assert(tmp);
+    assert(tmp->llvm_type);
+    type->llvm_type = tmp->llvm_type;
     break;
   }
 
@@ -2807,7 +2827,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
     value_type = (*value)->const_value.type;
 
     /* setup correct type of llvm null for */
-    setup_null_type_if_needed((*value)->const_value.type, value_type);
+    setup_null_type_if_needed(cnt, &(*value)->const_value, value_type);
 
     (*value) = try_impl_cast(cnt, (*value), vargs->type, &is_valid);
     reduce_instr(cnt, *value);
@@ -3529,9 +3549,9 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
   /* setup llvm type for null type */
   if (binop->lhs->const_value.type->kind == MIR_TYPE_NULL)
-    setup_null_type_if_needed(binop->lhs->const_value.type, binop->rhs->const_value.type);
+    setup_null_type_if_needed(cnt, &binop->lhs->const_value, binop->rhs->const_value.type);
   else
-    setup_null_type_if_needed(binop->rhs->const_value.type, binop->lhs->const_value.type);
+    setup_null_type_if_needed(cnt, &binop->rhs->const_value, binop->lhs->const_value.type);
 
   bool valid;
   binop->rhs = try_impl_cast(cnt, binop->rhs, binop->lhs->const_value.type, &valid);
@@ -3637,7 +3657,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   }
 
   /* setup correct type of llvm null for call(null) */
-  setup_null_type_if_needed(value->const_value.type, fn_type->data.fn.ret_type);
+  setup_null_type_if_needed(cnt, &value->const_value, fn_type->data.fn.ret_type);
 
   bool valid;
   ret->value = try_impl_cast(cnt, ret->value, fn_type->data.fn.ret_type, &valid);
@@ -3671,7 +3691,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
       analyze_instr(cnt, decl->init, true);
       exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
     }
-    setup_null_type_if_needed(decl->init->const_value.type, var->alloc_type);
+    setup_null_type_if_needed(cnt, &decl->init->const_value, var->alloc_type);
     decl->init = insert_instr_load_if_needed(cnt, decl->init);
 
     /* validate types or infer */
@@ -3846,7 +3866,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
       *call_arg = insert_instr_load_if_needed(cnt, *call_arg);
 
       /* setup correct type of llvm null for call(null) */
-      setup_null_type_if_needed((*call_arg)->const_value.type, callee_arg_type);
+      setup_null_type_if_needed(cnt, &(*call_arg)->const_value, callee_arg_type);
 
       (*call_arg) = try_impl_cast(cnt, (*call_arg), callee_arg_type, &valid);
       reduce_instr(cnt, *call_arg);
@@ -3877,7 +3897,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   store->src = insert_instr_load_if_needed(cnt, store->src);
 
   /* setup llvm type for null type */
-  setup_null_type_if_needed(store->src->const_value.type, dest_type);
+  setup_null_type_if_needed(cnt, &store->src->const_value, dest_type);
 
   /* validate types and optionaly create cast */
   bool valid;
@@ -5116,7 +5136,6 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 
   switch (type->kind) {
   case MIR_TYPE_PTR:
-  case MIR_TYPE_NULL:
   case MIR_TYPE_BOOL:
   case MIR_TYPE_INT: {
     const size_t s = type->store_size_bytes;
@@ -5149,6 +5168,17 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
       binop_case(binop->op, lhs, rhs, result, v_f64);
     default:
       bl_abort("invalid real data type");
+    }
+    break;
+  }
+
+  case MIR_TYPE_NULL: {
+    switch (binop->op) {
+    case BINOP_EQ:
+      result.v_bool = true;
+      break;
+    default:
+      bl_abort("invalid binop on null type");
     }
     break;
   }
