@@ -1322,7 +1322,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
       tmp->id.str  = bo_string_get(copy);
       tmp->id.hash = hash;
 
-      bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      //bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
       *out_type = tmp;
 
