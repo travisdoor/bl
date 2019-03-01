@@ -2369,7 +2369,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     MirType *tmp = type->data.null.base_type;
     assert(tmp);
     assert(tmp->llvm_type);
-    type->llvm_type = tmp->llvm_type;
+    type->llvm_type        = tmp->llvm_type;
+    type->alignment        = tmp->alignment;
+    type->size_bits        = tmp->size_bits;
+    type->store_size_bytes = tmp->store_size_bytes;
     break;
   }
 
@@ -5135,9 +5138,9 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   exec_read_value(&rhs, rhs_ptr, type);
 
   switch (type->kind) {
-  case MIR_TYPE_PTR: {
-    bl_unimplemented;
-  }
+
+  case MIR_TYPE_PTR:
+  case MIR_TYPE_NULL:
   case MIR_TYPE_BOOL:
   case MIR_TYPE_INT: {
     const size_t s = type->store_size_bytes;
@@ -5170,17 +5173,6 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
       binop_case(binop->op, lhs, rhs, result, v_f64);
     default:
       bl_abort("invalid real data type");
-    }
-    break;
-  }
-
-  case MIR_TYPE_NULL: {
-    switch (binop->op) {
-    case BINOP_EQ:
-      result.v_bool = true;
-      break;
-    default:
-      bl_abort("invalid binop on null type");
     }
     break;
   }

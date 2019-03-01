@@ -13,11 +13,17 @@ main :: fn () s32 {
   print("10 + 20 = %\n", 10 + 20);
   print("Hello sailor!!!\n");
   assert(a == 10); 
+  */
 
   ptr1 : *s32 = null;
   ptr2 : *s16 = null;
+
+  if null == ptr1 {}
+
+  /*
+  if ptr1 == null {
+  }
   */
-  if null == null {}
 
   return 0;
 };
