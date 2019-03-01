@@ -6699,18 +6699,22 @@ mir_run(Builder *builder, Assembly *assembly)
   int32_t error = init_dl(&cnt);
   if (error != NO_ERR) return;
 
+  /* Gen MIR from AST pass */
   Unit *unit;
   barray_foreach(assembly->units, unit)
   {
     ast(&cnt, unit->ast);
   }
 
+  /* Analyze pass */
   if (!builder->errorc) {
     analyze(&cnt);
   }
 
   if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
   if (!builder->errorc && builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
+
+  bl_log("Created %d types.", bo_htbl_size(cnt.type_table));
 
   bo_unref(cnt.analyze_stack);
   bo_unref(cnt.test_cases);
