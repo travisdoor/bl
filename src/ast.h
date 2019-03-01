@@ -83,6 +83,7 @@ typedef enum
   AST_EXPR_SIZEOF,
   AST_EXPR_ALIGNOF,
   AST_EXPR_TYPEOF,
+  AST_EXPR_TYPE_INFO,
   AST_EXPR_UNARY,
   AST_EXPR_NULL,
   AST_EXPR_ADDROF,
@@ -100,8 +101,8 @@ typedef enum
 
 typedef enum
 {
-  FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
-  FLAG_TEST     = 1 << 1, /* test case */
+  FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+  FLAG_TEST   = 1 << 1, /* test case */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -362,6 +363,11 @@ struct AstExprSizeof
   Ast *node;
 };
 
+struct AstExprTypeInfo
+{
+  Ast *node;
+};
+
 struct AstExprAlignof
 {
   Ast *node;
@@ -434,6 +440,7 @@ struct Ast
     struct AstExprMember    expr_member;
     struct AstExprElem      expr_elem;
     struct AstExprSizeof    expr_sizeof;
+    struct AstExprTypeInfo  expr_type_info;
     struct AstExprAlignof   expr_alignof;
     struct AstExprTypeof    expr_typeof;
     struct AstExprUnary     expr_unary;

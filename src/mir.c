@@ -43,6 +43,7 @@
 #define IMPL_FN_NAME                    ".impl_"
 #define IMPL_VARGS_TMP_ARR              ".vargs_arr_"
 #define IMPL_VARGS_TMP                  ".vargs_"
+#define TYPE_INFO_ARR_NAME              ".type_info"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -6581,6 +6582,10 @@ init_builtins(Context *cnt)
     provide_builtin_type(cnt, bt->entry_f32);
     provide_builtin_type(cnt, bt->entry_f64);
     provide_builtin_type(cnt, bt->entry_string);
+  }
+
+  /* Init type info array */
+  {
   }
 }
 
