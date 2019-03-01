@@ -43,7 +43,6 @@
 #define IMPL_FN_NAME                    ".impl_"
 #define IMPL_VARGS_TMP_ARR              ".vargs_arr_"
 #define IMPL_VARGS_TMP                  ".vargs_"
-#define TYPE_INFO_ARR_NAME              ".type_info"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -131,6 +130,7 @@ union _MirInstr
   MirInstrAlignof     alof;
   MirInstrInit        init;
   MirInstrVArgs       vargs;
+  MirInstrTypeInfo    type_info;
 };
 
 typedef struct MirFrame
@@ -352,6 +352,9 @@ static MirInstr *
 append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
+append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr);
+
+static MirInstr *
 append_instr_alignof(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
@@ -536,6 +539,9 @@ static MirInstr *
 ast_expr_sizeof(Context *cnt, Ast *szof);
 
 static MirInstr *
+ast_expr_type_info(Context *cnt, Ast *type_info);
+
+static MirInstr *
 ast_expr_alignof(Context *cnt, Ast *szof);
 
 static MirInstr *
@@ -683,6 +689,9 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast);
 
 static bool
 analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
+
+static bool
+analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
 static bool
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
@@ -1320,10 +1329,12 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
       BString *copy = builder_create_cached_str(cnt->builder);
       bo_string_append(copy, sh);
 
-      tmp->id.str  = bo_string_get(copy);
-      tmp->id.hash = hash;
+      static uint64_t index = 0;
+      tmp->id.str           = bo_string_get(copy);
+      tmp->id.hash          = hash;
+      tmp->type_table_index = index++;
 
-      //bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      // bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
       *out_type = tmp;
 
@@ -2049,6 +2060,17 @@ append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr)
   tmp->base.const_value.type = cnt->builtin_types.entry_usize;
   tmp->base.comptime         = true;
   tmp->expr                  = expr;
+
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
+append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
+{
+  ref_instr(expr);
+  MirInstrTypeInfo *tmp = create_instr(cnt, MIR_INSTR_TYPE_INFO, node, MirInstrTypeInfo *);
+  tmp->expr             = expr;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -3203,6 +3225,32 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 }
 
 bool
+analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+{
+  assert(type_info->expr);
+  type_info->expr = insert_instr_load_if_needed(cnt, type_info->expr);
+  reduce_instr(cnt, type_info->expr);
+
+  MirType *type = type_info->expr->const_value.type;
+  assert(type);
+  
+  if (type->kind == MIR_TYPE_TYPE) {
+    type = type_info->expr->const_value.data.v_type;
+    assert(type);
+  }
+
+  type_info->type_table_index = type->type_table_index;
+
+  // TEST ONLY!!!
+  // TEST ONLY!!!
+  // TEST ONLY!!!
+  // TEST ONLY!!!
+  type_info->base.const_value.type = cnt->builtin_types.entry_u8_ptr;
+
+  return true;
+}
+
+bool
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 {
   assert(alof->expr);
@@ -4183,6 +4231,9 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
     break;
   case MIR_INSTR_ALIGNOF:
     state = analyze_instr_alignof(cnt, (MirInstrAlignof *)instr);
+    break;
+  case MIR_INSTR_TYPE_INFO:
+    state = analyze_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
     break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
@@ -5647,6 +5698,16 @@ ast_expr_sizeof(Context *cnt, Ast *szof)
 }
 
 MirInstr *
+ast_expr_type_info(Context *cnt, Ast *type_info)
+{
+  Ast *ast_node = type_info->data.expr_type_info.node;
+  assert(ast_node);
+
+  MirInstr *expr = ast(cnt, ast_node);
+  return append_instr_type_info(cnt, type_info, expr);
+}
+
+MirInstr *
 ast_expr_alignof(Context *cnt, Ast *szof)
 {
   Ast *ast_node = szof->data.expr_alignof.node;
@@ -6248,6 +6309,8 @@ ast(Context *cnt, Ast *node)
     return ast_expr_type(cnt, node);
   case AST_EXPR_COMPOUND:
     return ast_expr_compound(cnt, node);
+  case AST_EXPR_TYPE_INFO:
+    return ast_expr_type_info(cnt, node);
 
   case AST_LOAD:
     break;
@@ -6325,6 +6388,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrInit";
   case MIR_INSTR_VARGS:
     return "InstrVArgs";
+  case MIR_INSTR_TYPE_INFO:
+    return "InstrTypeInfo";
   }
 
   return "UNKNOWN";
@@ -6585,8 +6650,7 @@ init_builtins(Context *cnt)
   }
 
   /* Init type info array */
-  {
-  }
+  {}
 }
 
 int

@@ -236,6 +236,9 @@ static void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream);
 
 static void
+print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream);
+
+static void
 print_instr_alignof(MirInstrAlignof *szof, FILE *stream);
 
 static void
@@ -470,6 +473,14 @@ print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
   print_instr_head(&szof->base, stream, "sizeof");
   fprintf(stream, " ");
   print_comptime_value_or_id(szof->expr, stream);
+}
+
+void
+print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
+{
+  print_instr_head(&type_info->base, stream, "typeinfo");
+  print_comptime_value_or_id(type_info->expr, stream);
+  fprintf(stream, " // tti = %llu", (unsigned long long)type_info->type_table_index);
 }
 
 void
@@ -836,6 +847,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_VARGS:
     print_instr_vargs((MirInstrVArgs *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_INFO:
+    print_instr_type_info((MirInstrTypeInfo *)instr, stream);
     break;
   default:
     break;

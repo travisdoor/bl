@@ -3,6 +3,8 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  i := typeinfo(s32);
+  i := typeinfo(s32); 
+  i = typeinfo(u8); 
+  i = typeinfo(bool);
   return 0;
 };
