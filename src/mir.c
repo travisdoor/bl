@@ -1296,16 +1296,23 @@ setup_null_type_if_needed(Context *cnt, MirConstValue *value, MirType *type)
 }
 
 /* impl */
-static inline MirType *
-create_type(Context *cnt, const char *sh)
+/* Fetch type, when type with same sh has been already created and can be reused, this function
+ * return false and set out_type to already created type from cache. When new type instance was
+ * created function will return true and set out_type to new instance of type, new instance will be
+ * stored in cache for later use also. */
+static inline bool
+create_type(Context *cnt, MirType **out_type, const char *sh)
 {
+  assert(out_type);
   if (sh) {
     uint64_t hash = bo_hash_from_str(sh);
 
     bo_iterator_t found = bo_htbl_find(cnt->type_table, hash);
     bo_iterator_t end   = bo_htbl_end(cnt->type_table);
     if (!bo_iterator_equal(&found, &end)) {
-      return bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
+      *out_type = bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
+      assert(*out_type);
+      return false;
     } else {
       MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
 
@@ -1317,10 +1324,10 @@ create_type(Context *cnt, const char *sh)
 
       bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
-      return tmp;
+      *out_type = tmp;
+
+      return true;
     }
-  } else {
-    return arena_alloc(&cnt->module->arenas.type_arena);
   }
 
   bl_abort("should not happend");
@@ -1329,18 +1336,19 @@ create_type(Context *cnt, const char *sh)
 MirType *
 create_type_type(Context *cnt)
 {
-  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_TYPE].str);
-  tmp->kind    = MIR_TYPE_TYPE;
-  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_TYPE].str)) {
+    tmp->kind    = MIR_TYPE_TYPE;
+    tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
 static inline const char *
 sh_type_null(Context *cnt, MirType *base_type)
 {
-  // assert(src_type->id.str);
-  if (!base_type->id.str) return NULL;
+  assert(base_type->id.str);
   BString *tmp = cnt->tmp_sh;
   bo_string_clear(tmp);
   bo_string_append(tmp, "n.");
@@ -1352,31 +1360,37 @@ MirType *
 create_type_null(Context *cnt, MirType *base_type)
 {
   assert(base_type && mir_is_pointer_type(base_type));
-  MirType *tmp             = create_type(cnt, sh_type_null(cnt, base_type));
-  tmp->kind                = MIR_TYPE_NULL;
-  tmp->user_id             = &builtin_ids[MIR_BUILTIN_NULL];
-  tmp->data.null.base_type = base_type;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, sh_type_null(cnt, base_type))) {
+    tmp->kind                = MIR_TYPE_NULL;
+    tmp->user_id             = &builtin_ids[MIR_BUILTIN_NULL];
+    tmp->data.null.base_type = base_type;
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
 MirType *
 create_type_void(Context *cnt)
 {
-  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_VOID].str);
-  tmp->kind    = MIR_TYPE_VOID;
-  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_VOID].str)) {
+    tmp->kind    = MIR_TYPE_VOID;
+    tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
 MirType *
 create_type_bool(Context *cnt)
 {
-  MirType *tmp = create_type(cnt, builtin_ids[MIR_BUILTIN_TYPE_BOOL].str);
-  tmp->kind    = MIR_TYPE_BOOL;
-  tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_BOOL].str)) {
+    tmp->kind    = MIR_TYPE_BOOL;
+    tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
@@ -1385,12 +1399,14 @@ create_type_int(Context *cnt, ID *id, int32_t bitcount, bool is_signed)
 {
   assert(id);
   assert(bitcount > 0);
-  MirType *tmp                = create_type(cnt, id->str);
-  tmp->kind                   = MIR_TYPE_INT;
-  tmp->user_id                = id;
-  tmp->data.integer.bitcount  = bitcount;
-  tmp->data.integer.is_signed = is_signed;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, id->str)) {
+    tmp->kind                   = MIR_TYPE_INT;
+    tmp->user_id                = id;
+    tmp->data.integer.bitcount  = bitcount;
+    tmp->data.integer.is_signed = is_signed;
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
@@ -1398,19 +1414,20 @@ MirType *
 create_type_real(Context *cnt, ID *id, int32_t bitcount)
 {
   assert(bitcount > 0);
-  MirType *tmp            = create_type(cnt, id->str);
-  tmp->kind               = MIR_TYPE_REAL;
-  tmp->user_id            = id;
-  tmp->data.real.bitcount = bitcount;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, id->str)) {
+    tmp->kind               = MIR_TYPE_REAL;
+    tmp->user_id            = id;
+    tmp->data.real.bitcount = bitcount;
+    init_type_llvm_ABI(cnt, tmp);
+  }
   return tmp;
 }
 
 static inline const char *
 sh_type_ptr(Context *cnt, MirType *src_type)
 {
-  // assert(src_type->id.str);
-  if (!src_type->id.str) return NULL;
+  assert(src_type->id.str);
   BString *tmp = cnt->tmp_sh;
   bo_string_clear(tmp);
   bo_string_append(tmp, "p.");
@@ -1421,52 +1438,148 @@ sh_type_ptr(Context *cnt, MirType *src_type)
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
-  MirType *tmp       = create_type(cnt, sh_type_ptr(cnt, src_type));
-  tmp->kind          = MIR_TYPE_PTR;
-  tmp->data.ptr.next = src_type;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, sh_type_ptr(cnt, src_type))) {
+    tmp->kind          = MIR_TYPE_PTR;
+    tmp->data.ptr.next = src_type;
+    init_type_llvm_ABI(cnt, tmp);
+  }
 
   return tmp;
+}
+
+static inline const char *
+sh_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
+{
+  // assert(src_type->id.str);
+  BString *tmp = cnt->tmp_sh;
+  bo_string_clear(tmp);
+
+  bo_string_append(tmp, "f(");
+
+  /* append all arg types isd */
+  if (arg_types) {
+    MirType *arg_type;
+    barray_foreach(arg_types, arg_type)
+    {
+      assert(arg_type->id.str);
+      bo_string_append(tmp, arg_type->id.str);
+
+      if (i != bo_array_size(arg_types) - 1) bo_string_append(tmp, ",");
+    }
+  }
+
+  bo_string_append(tmp, ")");
+
+  if (ret_type) {
+    assert(ret_type->id.str);
+    bo_string_append(tmp, ret_type->id.str);
+  } else {
+    /* implicit return void */
+    bo_string_append(tmp, cnt->builtin_types.entry_void->id.str);
+  }
+
+  return bo_string_get(tmp);
 }
 
 MirType *
 create_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 {
-  MirType *tmp           = create_type(cnt, NULL);
-  tmp->kind              = MIR_TYPE_FN;
-  tmp->data.fn.arg_types = arg_types;
-  tmp->data.fn.is_vargs  = is_vargs;
-  tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, sh_type_fn(cnt, ret_type, arg_types, is_vargs))) {
+    tmp->kind              = MIR_TYPE_FN;
+    tmp->data.fn.arg_types = arg_types;
+    tmp->data.fn.is_vargs  = is_vargs;
+    tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
+    init_type_llvm_ABI(cnt, tmp);
+  }
 
   return tmp;
+}
+
+static inline const char *
+sh_type_arr(Context *cnt, MirType *elem_type, size_t len)
+{
+  assert(elem_type->id.str);
+  BString *tmp = cnt->tmp_sh;
+  bo_string_clear(tmp);
+
+  char ui_str[21];
+  sprintf(ui_str, "%llu", (unsigned long long)len);
+
+  bo_string_append(tmp, ui_str);
+  bo_string_append(tmp, ".");
+  bo_string_append(tmp, elem_type->id.str);
+  return bo_string_get(tmp);
 }
 
 MirType *
 create_type_array(Context *cnt, MirType *elem_type, size_t len)
 {
-  MirType *tmp              = create_type(cnt, NULL);
-  tmp->kind                 = MIR_TYPE_ARRAY;
-  tmp->data.array.elem_type = elem_type;
-  tmp->data.array.len       = len;
-  init_type_llvm_ABI(cnt, tmp);
+  MirType *tmp = NULL;
+  if (create_type(cnt, &tmp, sh_type_arr(cnt, elem_type, len))) {
+    tmp->kind                 = MIR_TYPE_ARRAY;
+    tmp->data.array.elem_type = elem_type;
+    tmp->data.array.len       = len;
+    init_type_llvm_ABI(cnt, tmp);
+  }
 
   return tmp;
+}
+
+static inline const char *
+sh_type_struct(Context *cnt, ID *id, BArray *members, bool is_packed, MirTypeStructKind kind)
+{
+  assert(!is_packed);
+  BString *tmp = cnt->tmp_sh;
+  bo_string_clear(tmp);
+
+  switch (kind) {
+  case MIR_TS_NONE:
+    bo_string_append(tmp, "s{");
+    break;
+  case MIR_TS_SLICE:
+    bo_string_append(tmp, "sl{");
+    break;
+  case MIR_TS_STRING:
+    bo_string_append(tmp, "str{");
+    break;
+  case MIR_TS_VARGS:
+    bo_string_append(tmp, "v{");
+    break;
+  }
+
+  if (members) {
+    MirType *member_type;
+    barray_foreach(members, member_type)
+    {
+      assert(member_type->id.str);
+      bo_string_append(tmp, member_type->id.str);
+
+      if (i != bo_array_size(members) - 1) bo_string_append(tmp, ",");
+    }
+  }
+
+  bo_string_append(tmp, "}");
+  return bo_string_get(tmp);
 }
 
 MirType *
 create_type_struct(Context *cnt, ID *id, Scope *scope, BArray *members, bool is_packed,
                    MirTypeStructKind kind)
 {
-  MirType *tmp              = create_type(cnt, NULL);
-  tmp->kind                 = MIR_TYPE_STRUCT;
-  tmp->data.strct.members   = members;
-  tmp->data.strct.scope     = scope;
-  tmp->data.strct.is_packed = is_packed;
-  tmp->data.strct.kind      = kind;
-  tmp->user_id              = id;
+  MirType *tmp = NULL;
 
-  init_type_llvm_ABI(cnt, tmp);
+  if (create_type(cnt, &tmp, sh_type_struct(cnt, id, members, is_packed, kind))) {
+    tmp->kind                 = MIR_TYPE_STRUCT;
+    tmp->data.strct.members   = members;
+    tmp->data.strct.scope     = scope;
+    tmp->data.strct.is_packed = is_packed;
+    tmp->data.strct.kind      = kind;
+    tmp->user_id              = id;
+
+    init_type_llvm_ABI(cnt, tmp);
+  }
 
   return tmp;
 }
@@ -3267,6 +3380,17 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
     set_cursor_block(cnt, prev_block);
   }
 
+  /* HACK: In some cases function return type can be changed when we initialize globals and we don't
+   * know type of initialization expression before init function is created. In such case compiler
+   * will implicitly generate init function of 'void' return  type and replace init function return
+   * type when ret instruction expects something else than 'void'. For now we leave it, but it's not
+   * clean solution and should be replaced.
+   * This is also realated to: 'MirInstrRet.allow_fn_ret_type_override'
+   *
+   * This can cause errors later when we add support of 'comptime' keyword for function calls!!!
+   */
+  fn_proto->base.const_value.type = fn->type;
+
   if (fn->id) provide_fn(cnt, fn);
 
   /* push function into globals of the mir module */
@@ -3633,8 +3757,16 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 
   if (ret->allow_fn_ret_type_override) {
     /* return is supposed to override function return type */
-    fn_type->data.fn.ret_type =
-        ret->value ? ret->value->const_value.type : cnt->builtin_types.entry_void;
+    if (ret->value) {
+      assert(ret->value->const_value.type);
+      if (fn_type->data.fn.ret_type != ret->value->const_value.type) {
+        MirFn *fn = get_current_fn(cnt);
+        assert(fn);
+        fn->type = create_type_fn(cnt, ret->value->const_value.type, fn_type->data.fn.arg_types,
+                                  fn_type->data.fn.is_vargs);
+        fn_type  = fn->type;
+      }
+    }
   }
 
   const bool expected_ret_value =

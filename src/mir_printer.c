@@ -724,7 +724,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 #else
   fprintf(stream, " : ");
 #endif
-  print_type(fn_proto->base.const_value.type, false, stream, false);
+  print_type(fn->type, false, stream, false);
   fprintf(stream, " :");
 
   if (fn->flags & FLAG_EXTERN) {
