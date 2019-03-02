@@ -78,20 +78,36 @@ print_const_value(MirConstValue *value, FILE *stream)
     const size_t s = type->store_size_bytes;
     if (type->data.integer.is_signed) {
       switch (s) {
-        print_case("%d", v_s8);
-        print_case("%d", v_s16);
-        print_case("%d", v_s32);
-        print_case("%lld", v_s64);
+      case sizeof(data->v_s8):
+        fprintf(stream, "%d", data->v_s8);
+        break;
+      case sizeof(data->v_s16):
+        fprintf(stream, "%d", data->v_s16);
+        break;
+      case sizeof(data->v_s32):
+        fprintf(stream, "%d", data->v_s32);
+        break;
+      case sizeof(data->v_s64):
+        fprintf(stream, "%lld", (long long)data->v_s64);
+        break;
       default:
         fprintf(stream, "<cannot read value>");
         break;
       }
     } else {
       switch (s) {
-        print_case("%u", v_u8);
-        print_case("%u", v_u16);
-        print_case("%u", v_u32);
-        print_case("%lld", v_u64);
+      case sizeof(data->v_s8):
+        fprintf(stream, "%u", data->v_u8);
+        break;
+      case sizeof(data->v_s16):
+        fprintf(stream, "%u", data->v_u16);
+        break;
+      case sizeof(data->v_s32):
+        fprintf(stream, "%u", data->v_u32);
+        break;
+      case sizeof(data->v_s64):
+        fprintf(stream, "%llu", (unsigned long long)data->v_u64);
+        break;
       default:
         fprintf(stream, "<cannot read value>");
         break;
@@ -218,6 +234,9 @@ print_instr_cast(MirInstrCast *cast, FILE *stream);
 
 static void
 print_instr_sizeof(MirInstrSizeof *szof, FILE *stream);
+
+static void
+print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream);
 
 static void
 print_instr_alignof(MirInstrAlignof *szof, FILE *stream);
@@ -454,6 +473,14 @@ print_instr_sizeof(MirInstrSizeof *szof, FILE *stream)
   print_instr_head(&szof->base, stream, "sizeof");
   fprintf(stream, " ");
   print_comptime_value_or_id(szof->expr, stream);
+}
+
+void
+print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
+{
+  print_instr_head(&type_info->base, stream, "typeinfo");
+  print_comptime_value_or_id(type_info->expr, stream);
+  fprintf(stream, " // tti = %llu", (unsigned long long)type_info->type_table_index);
 }
 
 void
@@ -708,7 +735,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 #else
   fprintf(stream, " : ");
 #endif
-  print_type(fn_proto->base.const_value.type, false, stream, false);
+  print_type(fn->type, false, stream, false);
   fprintf(stream, " :");
 
   if (fn->flags & FLAG_EXTERN) {
@@ -820,6 +847,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_VARGS:
     print_instr_vargs((MirInstrVArgs *)instr, stream);
+    break;
+  case MIR_INSTR_TYPE_INFO:
+    print_instr_type_info((MirInstrTypeInfo *)instr, stream);
     break;
   default:
     break;

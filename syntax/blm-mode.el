@@ -45,6 +45,7 @@
     "unreachable"
     "arg"
     "sizeof"
+    "typeinfo"
     "init"
     "vargs"
     "alignof")) 

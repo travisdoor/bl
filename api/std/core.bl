@@ -29,6 +29,26 @@
 #load "c.bl"
 #load "debug.bl"
 
+// Type info
+TypeKindInt  :: 1;
+TypeKindReal :: 2;
+
+TypeInfo :: struct {
+  kind: s32
+};
+
+TypeInfoInt :: struct {
+  base: TypeInfo,
+  bitcount: s32,
+  signed: bool
+};
+
+TypeInfoReal :: struct {
+  base: TypeInfo,
+  bitcount: s32
+};
+
+// Printing
 print :: fn (format: string, nums: ...s64) {
   tmp := string { 0, format.ptr }; 
   ni := 0;

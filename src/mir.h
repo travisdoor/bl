@@ -82,6 +82,7 @@ typedef struct MirInstrSizeof      MirInstrSizeof;
 typedef struct MirInstrAlignof     MirInstrAlignof;
 typedef struct MirInstrInit        MirInstrInit;
 typedef struct MirInstrVArgs       MirInstrVArgs;
+typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
 
 typedef enum MirTypeKind       MirTypeKind;
 typedef enum MirInstrKind      MirInstrKind;
@@ -115,6 +116,7 @@ enum MirBuiltinKind
   MIR_BUILTIN_MAIN,
   MIR_BUILTIN_ARR_LEN,
   MIR_BUILTIN_ARR_PTR,
+  MIR_BUILTIN_TYPE_INFO,
 
   _MIR_BUILTIN_COUNT,
 };
@@ -234,7 +236,9 @@ struct MirTypeStruct
 };
 
 struct MirTypeNull
-{};
+{
+  MirType *base_type;
+};
 
 struct MirTypeArray
 {
@@ -245,11 +249,13 @@ struct MirTypeArray
 struct MirType
 {
   MirTypeKind kind;
-  ID *        id;
+  ID *        user_id;
+  ID          id;
   LLVMTypeRef llvm_type;
   size_t      size_bits;
   size_t      store_size_bytes;
   int32_t     alignment;
+  uint64_t    type_table_index;
 
   union
   {
@@ -359,6 +365,7 @@ enum MirInstrKind
   MIR_INSTR_ALIGNOF,
   MIR_INSTR_INIT,
   MIR_INSTR_VARGS,
+  MIR_INSTR_TYPE_INFO,
 };
 
 struct MirInstr
@@ -544,6 +551,7 @@ struct MirInstrTypeStruct
 {
   MirInstr base;
 
+  ID *    id;
   Scope * scope;
   BArray *members;
   bool    is_packed;
@@ -632,6 +640,15 @@ struct MirInstrVArgs
   MirVar * vargs_tmp;
   MirType *type;
   BArray * values;
+};
+
+struct MirInstrTypeInfo
+{
+  MirInstr base;
+
+  /* index into type_info array */
+  uint64_t  type_table_index;
+  MirInstr *expr;
 };
 
 /* public */

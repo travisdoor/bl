@@ -3,14 +3,8 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  a := 10;
-  b := 20;
-  c := 30; 
-
-  print("a = %, b = %, c = %\n", a, b, c);
-  print("Martin is % years old!!!\n", 29);
-  print("10 + 20 = %\n", 10 + 20);
-  print("Hello sailor!!!\n");
-  assert(a == 10); 
+  i := typeinfo(s32); 
+  i = typeinfo(u8); 
+  i = typeinfo(bool);
   return 0;
 };
