@@ -1341,7 +1341,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
       tmp->id.hash          = hash;
       tmp->type_table_index = index++;
 
-      bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      //bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
       *out_type = tmp;
 
@@ -3261,7 +3261,8 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
     Scope *     gscope = cnt->assembly->gscope;
     ID *        id     = &builtin_ids[MIR_BUILTIN_TYPE_INFO];
     ScopeEntry *found  = scope_lookup(gscope, id, true);
-    assert(found && "TypeInfo base struct not found!");
+    assert(found &&
+           "TypeInfo base struct not found! This should be an error, we need to load 'core.bl'.");
     assert(found->kind == SCOPE_ENTRY_VAR);
 
     MirVar *var = found->data.var;
