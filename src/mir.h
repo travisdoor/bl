@@ -116,6 +116,7 @@ enum MirBuiltinKind
   MIR_BUILTIN_MAIN,
   MIR_BUILTIN_ARR_LEN,
   MIR_BUILTIN_ARR_PTR,
+  MIR_BUILTIN_TYPE_INFO,
 
   _MIR_BUILTIN_COUNT,
 };
@@ -550,6 +551,7 @@ struct MirInstrTypeStruct
 {
   MirInstr base;
 
+  ID *    id;
   Scope * scope;
   BArray *members;
   bool    is_packed;

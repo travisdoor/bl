@@ -170,6 +170,7 @@ typedef struct
   MirInstrBlock *current_block;
   MirInstrBlock *break_block;
   MirInstrBlock *continue_block;
+  ID *           current_entity_id; /* Sometimes used for named structures */
 
   /* Types */
   BString *   tmp_sh;
@@ -204,13 +205,13 @@ typedef struct
 } Context;
 
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
-    {.str = "type", .hash = 0},   {.str = "s8", .hash = 0},   {.str = "s16", .hash = 0},
-    {.str = "s32", .hash = 0},    {.str = "s64", .hash = 0},  {.str = "u8", .hash = 0},
-    {.str = "u16", .hash = 0},    {.str = "u32", .hash = 0},  {.str = "u64", .hash = 0},
-    {.str = "usize", .hash = 0},  {.str = "bool", .hash = 0}, {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},    {.str = "void", .hash = 0}, {.str = "string", .hash = 0},
-    {.str = "null_t", .hash = 0}, {.str = "main", .hash = 0}, {.str = "len", .hash = 0},
-    {.str = "ptr", .hash = 0}};
+    {.str = "type", .hash = 0},   {.str = "s8", .hash = 0},      {.str = "s16", .hash = 0},
+    {.str = "s32", .hash = 0},    {.str = "s64", .hash = 0},     {.str = "u8", .hash = 0},
+    {.str = "u16", .hash = 0},    {.str = "u32", .hash = 0},     {.str = "u64", .hash = 0},
+    {.str = "usize", .hash = 0},  {.str = "bool", .hash = 0},    {.str = "f32", .hash = 0},
+    {.str = "f64", .hash = 0},    {.str = "void", .hash = 0},    {.str = "string", .hash = 0},
+    {.str = "null_t", .hash = 0}, {.str = "main", .hash = 0},    {.str = "len", .hash = 0},
+    {.str = "ptr", .hash = 0},    {.str = "TypeInfo", .hash = 0}};
 
 static void
 value_dtor(MirConstValue *value)
@@ -387,7 +388,8 @@ static MirInstr *
 append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_types);
 
 static MirInstr *
-append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members, bool is_packed);
+append_instr_type_struct(Context *cnt, Ast *node, ID *id, Scope *scope, BArray *members,
+                         bool is_packed);
 
 static MirInstr *
 append_instr_type_ptr(Context *cnt, Ast *node, MirInstr *type);
@@ -1196,6 +1198,10 @@ provide_var(Context *cnt, MirVar *var)
   if (collision) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL, var->decl_node->src,
                 BUILDER_CUR_WORD, "Duplicate symbol.");
+    if (collision->node) {
+      builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src, BUILDER_CUR_WORD,
+                  "Previous declaration found here.");
+    }
     return NULL;
   }
 
@@ -1279,6 +1285,7 @@ is_load_needed(MirInstr *instr)
   case MIR_INSTR_TYPE_STRUCT:
   case MIR_INSTR_CAST:
   case MIR_INSTR_DECL_MEMBER:
+  case MIR_INSTR_TYPE_INFO:
     return false;
   case MIR_INSTR_DECL_REF: {
     MirInstrDeclRef *ref = (MirInstrDeclRef *)instr;
@@ -1334,7 +1341,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
       tmp->id.hash          = hash;
       tmp->type_table_index = index++;
 
-      // bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
       *out_type = tmp;
 
@@ -1546,6 +1553,12 @@ sh_type_struct(Context *cnt, ID *id, BArray *members, bool is_packed, MirTypeStr
   BString *tmp = cnt->tmp_sh;
   bo_string_clear(tmp);
 
+  if (id) {
+    /* CLEANUP: May cause errors when type with same name has been redefined? */
+    bo_string_append(tmp, id->str);
+    return bo_string_get(tmp);
+  }
+
   switch (kind) {
   case MIR_TS_NONE:
     bo_string_append(tmp, "s{");
@@ -1554,11 +1567,9 @@ sh_type_struct(Context *cnt, ID *id, BArray *members, bool is_packed, MirTypeStr
     bo_string_append(tmp, "sl{");
     break;
   case MIR_TS_STRING:
-    bo_string_append(tmp, "str{");
-    break;
+    bl_unimplemented;
   case MIR_TS_VARGS:
-    bo_string_append(tmp, "v{");
-    break;
+    bl_unimplemented;
   }
 
   if (members) {
@@ -1946,7 +1957,8 @@ append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, BArray *arg_ty
 }
 
 MirInstr *
-append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members, bool is_packed)
+append_instr_type_struct(Context *cnt, Ast *node, ID *id, Scope *scope, BArray *members,
+                         bool is_packed)
 {
   MirInstrTypeStruct *tmp    = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node, MirInstrTypeStruct *);
   tmp->base.const_value.type = cnt->builtin_types.entry_type;
@@ -1954,6 +1966,7 @@ append_instr_type_struct(Context *cnt, Ast *node, Scope *scope, BArray *members,
   tmp->members               = members;
   tmp->scope                 = scope;
   tmp->is_packed             = is_packed;
+  tmp->id                    = id;
 
   push_into_curr_block(cnt, &tmp->base);
   return &tmp->base;
@@ -3233,7 +3246,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 
   MirType *type = type_info->expr->const_value.type;
   assert(type);
-  
+
   if (type->kind == MIR_TYPE_TYPE) {
     type = type_info->expr->const_value.data.v_type;
     assert(type);
@@ -3241,11 +3254,27 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 
   type_info->type_table_index = type->type_table_index;
 
-  // TEST ONLY!!!
-  // TEST ONLY!!!
-  // TEST ONLY!!!
-  // TEST ONLY!!!
-  type_info->base.const_value.type = cnt->builtin_types.entry_u8_ptr;
+  /* Resolve TypeInfo struct type */
+  MirType *ret_type = NULL;
+
+  {
+    Scope *     gscope = cnt->assembly->gscope;
+    ID *        id     = &builtin_ids[MIR_BUILTIN_TYPE_INFO];
+    ScopeEntry *found  = scope_lookup(gscope, id, true);
+    assert(found && "TypeInfo base struct not found!");
+    assert(found->kind == SCOPE_ENTRY_VAR);
+
+    MirVar *var = found->data.var;
+    assert(var);
+    assert(var->comptime && var->alloc_type->kind == MIR_TYPE_TYPE);
+
+    ret_type = var->value->data.v_type;
+    assert(ret_type && ret_type->kind == MIR_TYPE_STRUCT);
+    ret_type = create_type_ptr(cnt, ret_type);
+  }
+
+  assert(ret_type);
+  type_info->base.const_value.type = ret_type;
 
   return true;
 }
@@ -3601,13 +3630,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
     }
   }
 
-  ID *id = NULL;
-  if (type_struct->base.node && type_struct->base.node->kind == AST_IDENT) {
-    id = &type_struct->base.node->data.ident.id;
-  }
-
-  type_struct->base.const_value.data.v_type =
-      create_type_struct(cnt, id, type_struct->scope, members, type_struct->is_packed, MIR_TS_NONE);
+  type_struct->base.const_value.data.v_type = create_type_struct(
+      cnt, type_struct->id, type_struct->scope, members, type_struct->is_packed, MIR_TS_NONE);
   return true;
 }
 
@@ -6014,6 +6038,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
                                                         cnt->builtin_types.entry_resolve_type_fn)
                               : NULL;
 
+    cnt->current_entity_id = &ast_name->data.ident.id;
     /* initialize value */
     MirInstr *value = NULL;
     if (is_in_gscope) {
@@ -6025,8 +6050,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
       value = ast(cnt, ast_value);
     }
 
-    // if (value) value->node = ast_name;
     append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope);
+    cnt->current_entity_id = NULL;
 
     if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, ast_name->src,
@@ -6181,7 +6206,11 @@ ast_type_struct(Context *cnt, Ast *type_struct)
   Scope *scope = type_struct->data.type_strct.scope;
   assert(scope);
 
-  return append_instr_type_struct(cnt, type_struct, scope, members, false);
+  /* Consume declaration identificator. */
+  ID *id                 = cnt->current_entity_id;
+  cnt->current_entity_id = NULL;
+
+  return append_instr_type_struct(cnt, type_struct, id, scope, members, false);
 }
 
 MirInstr *
