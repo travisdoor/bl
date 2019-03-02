@@ -6,10 +6,10 @@
   - [ ] Instalation of compiler in CMake
   - [ ] Windows version 
   - [ ] Better analyze pass and symbol lookup
-  - [ ] Typeof operator [0%]
-    - [ ] Type hashing 
+  - [-] Typeof operator [66%]
+    - [X] Type hashing 
     - [ ] Implicit type table in data segment
-    - [ ] Implementation of 'typeof' operator
+    - [X] Implementation of 'typeof' operator
   - [ ] Any type 
   - [ ] Enums
   - [ ] Pointer math
