@@ -41,3 +41,14 @@
   assert(foo.i == 10);
   assert(foo.j == 20);
 };
+
+#test "structure initializer" {
+  Foo :: struct {
+    i: s32,
+    j: s32
+  };
+
+  foo := {:Foo: 10, 20 };
+  assert(foo.i == 10);
+  assert(foo.j == 20);
+};

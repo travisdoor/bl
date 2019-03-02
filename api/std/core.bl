@@ -50,7 +50,7 @@ TypeInfoReal :: struct {
 
 // Printing
 print :: fn (format: string, nums: ...s64) {
-  tmp := string { 0, format.ptr }; 
+  tmp := {:string: 0, format.ptr }; 
   ni := 0;
 
   loop i := 0; i < format.len; i += 1 {
