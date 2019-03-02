@@ -592,7 +592,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
   if (var->is_in_gscope) {
     /* global scope variable */
-    fprintf(stream, "@%s : ", name);
+    fprintf(stream, "\n@%s : ", name);
     print_type(var->alloc_type, false, stream, true);
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
     if (decl->init) {
@@ -722,6 +722,8 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
   MirFn *fn = fn_proto->base.const_value.data.v_fn;
   assert(fn);
 
+  fprintf(stream, "\n");
+
   if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
   if (fn->ref_count == 0) fprintf(stream, "// no LLVM\n");
 
@@ -749,7 +751,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
       print_instr_block(tmp, stream);
       tmp = (MirInstrBlock *)tmp->base.next;
     }
-    fprintf(stream, "}\n");
+    fprintf(stream, "}");
   }
 }
 

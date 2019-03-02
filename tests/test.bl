@@ -2,14 +2,20 @@
 
 //#load "std/core.bl"
 
+homo :: 10;
+
 main :: fn () s32 {
-  Foo :: struct {
-    a: s32,
-    b: s32,
-  };
-
-  //foo := Foo { 10, 20 };
-  foo := {:Foo: 10, 20 };
-
-  return 0;
+  foo: Foo;
+  return homo;
 };
+
+Bar :: struct {
+  a: s32
+};
+
+Foo :: struct {
+  a: s32,
+  b: s32,
+  bar: Bar
+};
+

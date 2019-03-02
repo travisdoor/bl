@@ -1345,7 +1345,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
       tmp->id.hash          = hash;
       tmp->type_table_index = index++;
 
-      //bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+      // bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
       bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
       *out_type = tmp;
 
@@ -3951,9 +3951,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   /* insert variable into symbol lookup table */
   provide_var(cnt, decl->var);
 
-  /* Return here when we have type declaration... */
-  if (var->alloc_type->kind == MIR_TYPE_TYPE) return true;
-  var->gen_llvm = true;
+  /* Type declaration should not be generated in LLVM. */
+  const bool gen_llvm = var->alloc_type->kind != MIR_TYPE_TYPE;
 
   if (var->is_in_gscope) {
     /* push variable into globals of the mir module */
@@ -3970,7 +3969,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
       /* Initialize data. */
       exec_instr_decl_var(cnt, decl);
     }
-  } else {
+  } else if (gen_llvm) {
     /* store variable into current function (due alloca-first generation pass in LLVM) */
     MirFn *fn = decl->base.owner_block->owner_fn;
     assert(fn);
@@ -6825,8 +6824,6 @@ mir_run(Builder *builder, Assembly *assembly)
 
   if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
   if (!builder->errorc && builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
-
-  bl_log("Created %d types.", bo_htbl_size(cnt.type_table));
 
   bo_unref(cnt.analyze_stack);
   bo_unref(cnt.test_cases);

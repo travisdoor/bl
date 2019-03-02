@@ -728,7 +728,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   assert(var);
 
   /* skip when we should not generate LLVM representation */
-  if (!var->gen_llvm) return;
+  if (var->alloc_type->kind == MIR_TYPE_TYPE) return;
 
   if (var->is_in_gscope) {
     /* OK variable is declared in global scope so we need different generation here*/
@@ -968,6 +968,7 @@ gen_allocas(Context *cnt, MirFn *fn)
   barray_foreach(fn->variables, var)
   {
     assert(var);
+
 #if NAMED_VARS
     var_name = var->llvm_name;
 #else

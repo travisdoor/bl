@@ -322,7 +322,6 @@ struct MirVar
   int32_t  ref_count;
   bool     is_mutable;
   bool     comptime;
-  bool     gen_llvm;
   bool     is_in_gscope;
   bool     is_implicit;
 

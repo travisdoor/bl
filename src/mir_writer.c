@@ -45,7 +45,7 @@ print_header(const char *name, const char *filename, FILE *stream)
 	  "  File:        %s\n"
 	  "  Created:     %s\n"
           "  Blc version: %s\n"
-          "*/\n\n",
+          "*/\n",
           name, filename, date, BL_VERSION);
 }
 
