@@ -712,6 +712,9 @@ static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
 static void
+exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+
+static void
 exec_instr_cast(Context *cnt, MirInstrCast *cast);
 
 static void
@@ -4432,6 +4435,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_VARGS:
     exec_instr_vargs(cnt, (MirInstrVArgs *)instr);
     break;
+  case MIR_INSTR_TYPE_INFO:
+    exec_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
+    break;
   case MIR_INSTR_INIT:
     /* noop */
     break;
@@ -4458,6 +4464,12 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
     exec_push_stack(cnt, (MirStackPtr)&ptr, type);
   }
+}
+
+void
+exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+{
+  bl_unimplemented;
 }
 
 void

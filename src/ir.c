@@ -149,6 +149,9 @@ static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
+gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+
+static void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
 static void
@@ -293,6 +296,12 @@ void
 gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
+}
+
+void
+gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+{
+  bl_unimplemented;
 }
 
 void
@@ -1052,6 +1061,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_VARGS:
     gen_instr_vargs(cnt, (MirInstrVArgs *)instr);
+    break;
+  case MIR_INSTR_TYPE_INFO:
+    gen_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
     break;
 
   case MIR_INSTR_INIT:
