@@ -166,6 +166,7 @@ typedef struct
     DLLib *   lib;
     DCCallVM *vm;
   } dl;
+
   /* AST -> MIR generation */
   MirInstrBlock *current_block;
   MirInstrBlock *break_block;
@@ -1559,20 +1560,20 @@ sh_type_struct(Context *cnt, ID *id, BArray *members, bool is_packed, MirTypeStr
   if (id) {
     /* CLEANUP: May cause errors when type with same name has been redefined? */
     bo_string_append(tmp, id->str);
-    return bo_string_get(tmp);
-  }
-
-  switch (kind) {
-  case MIR_TS_NONE:
-    bo_string_append(tmp, "s{");
-    break;
-  case MIR_TS_SLICE:
-    bo_string_append(tmp, "sl{");
-    break;
-  case MIR_TS_STRING:
-    bl_unimplemented;
-  case MIR_TS_VARGS:
-    bl_unimplemented;
+    bo_string_append(tmp, "{");
+  } else {
+    switch (kind) {
+    case MIR_TS_NONE:
+      bo_string_append(tmp, "s{");
+      break;
+    case MIR_TS_SLICE:
+      bo_string_append(tmp, "sl{");
+      break;
+    case MIR_TS_STRING:
+      bl_unimplemented;
+    case MIR_TS_VARGS:
+      bl_unimplemented;
+    }
   }
 
   if (members) {

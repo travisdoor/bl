@@ -1,10 +1,27 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
 
 main :: fn () s32 {
-  i := typeinfo(s32); 
-  i = typeinfo(u8); 
-  i = typeinfo(bool);
   return 0;
+};
+
+// Bug 1
+/*
+Foo :: struct {
+  a: s32,
+  b: s32,
+  foo: *Foo
+};
+*/
+
+// Bug 2
+Bar :: struct {
+  a: s32,
+  b: s32,
+  homo: Homo
+};
+
+Homo :: struct {
+  a: s32
 };
