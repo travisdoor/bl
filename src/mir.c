@@ -179,6 +179,10 @@ typedef struct
   /* Analyze MIR generated from AST */
   struct
   {
+    /* Current analyzed instruction. */
+    MirInstr *ip;
+
+    /* Instructions waiting for analyze. */
     BArray *queue;
   } analyze;
 
@@ -215,11 +219,22 @@ typedef struct
 
 typedef enum
 {
-  ANALYZE_FALIED        = 0,
-  ANALYZE_PASSED        = 1,
+  /* Analyze pass failed. */
+  ANALYZE_FALIED = 0,
+
+  /* Analyze pass passed. */
+  ANALYZE_PASSED = 1,
+
+  /* Analyze pass cannot be done because some of sub-parts has not been analyzed yet and probably
+     needs to be executed during analyze pass. In such case we push analyzed instruction at the end
+     of analyze queue. */
   ANALYZE_WAIT_FOR_PASS = 3
+
+  /* Any other value is hash of some symbol needed for resuming analyze on current instruction.
+     Resume will be done when such symbol will be analyzed and added into scope. */
 } AnalyzeState;
 
+/* Ids of builtin symbols, hash is calculated inside init_builtins function later. */
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
     {.str = "type", .hash = 0},   {.str = "s8", .hash = 0},      {.str = "s16", .hash = 0},
     {.str = "s32", .hash = 0},    {.str = "s64", .hash = 0},     {.str = "u8", .hash = 0},
@@ -4188,12 +4203,18 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   case MIR_INSTR_FN_PROTO:
     if (cnt->verbose_pre) {
       /* Print verbose information before analyze */
-      if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
+      mir_print_instr(instr, stdout);
     }
 
     state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr, comptime);
     break;
   case MIR_INSTR_DECL_VAR:
+    if (cnt->verbose_pre) {
+      /* Print verbose information before analyze */
+      MirInstrDeclVar *tmp = (MirInstrDeclVar *)instr;
+      if (tmp->var->is_in_gscope) mir_print_instr(instr, stdout);
+    }
+
     state = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
     break;
   case MIR_INSTR_DECL_MEMBER:
@@ -6252,10 +6273,11 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
     infer_ret_type = true;
   }
 
-  MirInstrBlock *prev_block = get_current_block(cnt);
-  MirInstr *     fn         = create_instr_fn_proto(cnt, NULL, NULL, NULL);
-  fn->const_value.type      = final_fn_type;
-  fn->const_value.data.v_fn = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
+  MirInstrBlock *prev_block       = get_current_block(cnt);
+  MirInstr *     fn               = create_instr_fn_proto(cnt, NULL, NULL, NULL);
+  fn->const_value.type            = final_fn_type;
+  fn->const_value.data.v_fn       = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
+  fn->const_value.data.v_fn->type = final_fn_type;
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
   set_cursor_block(cnt, entry);
