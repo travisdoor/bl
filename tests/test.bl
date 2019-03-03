@@ -2,10 +2,7 @@
 
 //#load "std/core.bl"
 
-homo : s32 : 10;
-
 main : fn () s32 : fn () s32 {
-  i := homo;
   return 0;
 };
 

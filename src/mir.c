@@ -220,7 +220,7 @@ typedef struct
 typedef enum
 {
   /* Analyze pass failed. */
-  ANALYZE_FALIED = 0,
+  ANALYZE_FAILED = 0,
 
   /* Analyze pass passed. */
   ANALYZE_PASSED = 1,
@@ -228,11 +228,8 @@ typedef enum
   /* Analyze pass cannot be done because some of sub-parts has not been analyzed yet and probably
      needs to be executed during analyze pass. In such case we push analyzed instruction at the end
      of analyze queue. */
-  ANALYZE_WAIT_FOR_PASS = 3
-
-  /* Any other value is hash of some symbol needed for resuming analyze on current instruction.
-     Resume will be done when such symbol will be analyzed and added into scope. */
-} AnalyzeState;
+  ANALYZE_POSTPONE = 2
+} AnalyzeResult;
 
 /* Ids of builtin symbols, hash is calculated inside init_builtins function later. */
 static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
@@ -347,9 +344,6 @@ append_block(Context *cnt, MirFn *fn, const char *name);
 /* instructions */
 static void
 push_into_curr_block(Context *cnt, MirInstr *instr);
-
-static void
-push_into_gscope_analyze(Context *cnt, MirInstr *instr);
 
 static MirInstr *
 insert_instr_load_if_needed(Context *cnt, MirInstr *src);
@@ -636,100 +630,100 @@ init_type_llvm_ABI(Context *cnt, MirType *type);
 static void
 reduce_instr(Context *cnt, MirInstr *instr);
 
-static bool
-analyze_instr_init(Context *cnt, MirInstrInit *init);
-
-static bool
-analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
-
-static bool
-analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
-
-static bool
-analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
-
-static bool
-analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
-
-static bool
-analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime);
-
-static bool
+static uint64_t
 analyze_instr(Context *cnt, MirInstr *instr, bool comptime);
 
-static bool
+static uint64_t
+analyze_instr_init(Context *cnt, MirInstrInit *init);
+
+static uint64_t
+analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+
+static uint64_t
+analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+
+static uint64_t
+analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+
+static uint64_t
+analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+
+static uint64_t
+analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime);
+
+static uint64_t
 analyze_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static bool
+static uint64_t
 analyze_instr_arg(Context *cnt, MirInstrArg *arg);
 
-static bool
+static uint64_t
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static bool
+static uint64_t
 analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static bool
+static uint64_t
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
-static bool
+static uint64_t
 analyze_instr_br(Context *cnt, MirInstrBr *br);
 
-static bool
+static uint64_t
 analyze_instr_load(Context *cnt, MirInstrLoad *load);
 
-static bool
+static uint64_t
 analyze_instr_store(Context *cnt, MirInstrStore *store);
 
-static bool
+static uint64_t
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime);
 
-static bool
+static uint64_t
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 
-static bool
+static uint64_t
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
 
-static bool
+static uint64_t
 analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
-static bool
+static uint64_t
 analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
 
-static bool
+static uint64_t
 analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
 
-static bool
+static uint64_t
 analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr);
 
-static bool
+static uint64_t
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
-static bool
+static uint64_t
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
 
-static bool
+static uint64_t
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static bool
+static uint64_t
 analyze_instr_const(Context *cnt, MirInstrConst *cnst);
 
-static bool
+static uint64_t
 analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime);
 
-static bool
+static uint64_t
 analyze_instr_cast(Context *cnt, MirInstrCast *cast);
 
-static bool
+static uint64_t
 analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 
-static bool
+static uint64_t
 analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
-static bool
+static uint64_t
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
 
-static bool
+static uint64_t
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
@@ -874,6 +868,22 @@ insert_instr_before(MirInstr *before, MirInstr *instr)
   instr->owner_block = before->owner_block;
   instr->id          = instr->owner_block->owner_fn->instr_count++;
   if (instr->owner_block->entry_instr == before) instr->owner_block->entry_instr = instr;
+}
+
+static inline void
+push_into_gscope(Context *cnt, MirInstr *instr)
+{
+  assert(instr);
+  instr->id = bo_array_size(cnt->module->globals);
+  bo_array_push_back(cnt->module->globals, instr);
+};
+
+
+static inline void
+analyze_enqueue(Context *cnt, MirInstr *instr)
+{
+  assert(instr);
+  bo_array_push_back(cnt->analyze.queue, instr);
 }
 
 static inline const char *
@@ -1170,9 +1180,9 @@ get_block_terminator(MirInstrBlock *block)
 }
 
 static inline void
-set_cursor_block(Context *cnt, MirInstrBlock *block)
+set_current_block(Context *cnt, MirInstrBlock *block)
 {
-  if (!block) return;
+  assert(block);
   cnt->ast.current_block = block;
 }
 
@@ -1760,14 +1770,6 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
   block->last_instr = instr;
 }
 
-void
-push_into_gscope_analyze(Context *cnt, MirInstr *instr)
-{
-  assert(instr);
-  instr->id = bo_array_size(cnt->analyze.queue);
-  bo_array_push_back(cnt->analyze.queue, instr);
-}
-
 MirInstr *
 insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 {
@@ -2268,7 +2270,8 @@ MirInstr *
 append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstr *tmp = create_instr_fn_proto(cnt, node, type, user_type);
-  push_into_gscope_analyze(cnt, tmp);
+  push_into_gscope(cnt, tmp);
+  analyze_enqueue(cnt, tmp);
   return tmp;
 }
 
@@ -2319,7 +2322,8 @@ append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init, b
   tmp->var = create_var(cnt, node, node->data.ident.scope, &node->data.ident.id, NULL,
                         &tmp->base.const_value, is_mutable, is_in_gscope);
   if (is_in_gscope) {
-    push_into_gscope_analyze(cnt, &tmp->base);
+    push_into_gscope(cnt, &tmp->base);
+    analyze_enqueue(cnt, &tmp->base);
   } else {
     push_into_curr_block(cnt, &tmp->base);
   }
@@ -2857,7 +2861,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
   }
 }
 
-bool
+uint64_t
 analyze_instr_init(Context *cnt, MirInstrInit *init)
 {
   BArray *values = init->values;
@@ -2974,7 +2978,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
   MirType *type   = vargs->type;
@@ -3022,7 +3026,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
   elem_ptr->index = insert_instr_load_if_needed(cnt, elem_ptr->index);
@@ -3085,7 +3089,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
   MirInstr *target_ptr = member_ptr->target_ptr;
@@ -3198,7 +3202,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
   MirInstr *src = addrof->src;
@@ -3216,7 +3220,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 {
   MirType *dest_type = cast->base.const_value.type;
@@ -3251,7 +3255,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 {
   assert(szof->expr);
@@ -3270,7 +3274,7 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
   assert(type_info->expr);
@@ -3313,7 +3317,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 {
   assert(alof->expr);
@@ -3332,7 +3336,7 @@ analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
   assert(ref->rid && ref->scope);
@@ -3390,7 +3394,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_arg(Context *cnt, MirInstrArg *arg)
 {
   MirFn *fn = arg->base.owner_block->owner_fn;
@@ -3408,18 +3412,16 @@ analyze_instr_arg(Context *cnt, MirInstrArg *arg)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
   /* nothing to do :( */
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 {
-  MirInstrBlock *prev_block = NULL;
-
   /* resolve type */
   if (!fn_proto->base.const_value.type) {
     assert(fn_proto->type && fn_proto->type->kind == MIR_INSTR_CALL);
@@ -3472,7 +3474,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
     fn->extern_entry = handle;
   } else {
-    prev_block         = get_current_block(cnt);
     MirInstrBlock *tmp = fn->first_block;
 
     while (tmp) {
@@ -3487,9 +3488,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
       tmp = (MirInstrBlock *)tmp->base.next;
     }
-
-    assert(prev_block);
-    set_cursor_block(cnt, prev_block);
   }
 
   /* HACK: In some cases function return type can be changed when we initialize globals and we don't
@@ -3505,12 +3503,10 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
 
   if (fn->id) provide_fn(cnt, fn);
 
-  /* push function into globals of the mir module */
-  bo_array_push_back(cnt->module->globals, fn_proto);
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
   br->cond = insert_instr_load_if_needed(cnt, br->cond);
@@ -3533,14 +3529,14 @@ analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_load(Context *cnt, MirInstrLoad *load)
 {
   MirInstr *src = load->src;
@@ -3561,7 +3557,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
   assert(type_fn->base.const_value.type);
@@ -3607,7 +3603,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
   MirMember *member = decl->member;
@@ -3621,7 +3617,7 @@ analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
   BArray *members = NULL;
@@ -3669,7 +3665,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 {
   assert(type_slice->elem_type);
@@ -3691,7 +3687,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 {
   assert(type_vargs->elem_type);
@@ -3708,7 +3704,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
   assert(type_arr->base.const_value.type);
@@ -3748,7 +3744,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
   assert(type_ptr->type);
@@ -3769,7 +3765,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 #define is_valid(_type, _op)                                                                       \
@@ -3822,7 +3818,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 #undef is_valid
 }
 
-bool
+uint64_t
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
   unop->instr = insert_instr_load_if_needed(cnt, unop->instr);
@@ -3837,19 +3833,18 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_const(Context *cnt, MirInstrConst *cnst)
 {
   assert(cnst->base.const_value.type);
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 {
   /* compare return value with current function type */
-  MirInstrBlock *block = get_current_block(cnt);
-  assert(block);
+  MirInstrBlock *block = ret->base.owner_block;
   if (!block->terminal) block->terminal = &ret->base;
 
   ret->value      = insert_instr_load_if_needed(cnt, ret->value);
@@ -3910,7 +3905,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
   MirVar *var = decl->var;
@@ -3984,9 +3979,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   const bool gen_llvm = var->alloc_type->kind != MIR_TYPE_TYPE;
 
   if (var->is_in_gscope) {
-    /* push variable into globals of the mir module */
-    bo_array_push_back(cnt->module->globals, decl);
-
     /* Global varibales which are not compile time constants are allocated on the stack, one option
      * is to do allocation every time when we invoke comptime function execution, but we don't know
      * which globals will be used by function and we also don't known whatever function has some
@@ -4008,7 +4000,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
 {
   assert(call->callee);
@@ -4118,7 +4110,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call, bool comptime)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_store(Context *cnt, MirInstrStore *store)
 {
   MirInstr *dest = store->dest;
@@ -4154,11 +4146,10 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
 {
   assert(block);
-  set_cursor_block(cnt, block);
 
   /* append implicit return for void functions or generate error when last block is not terminated
    */
@@ -4167,6 +4158,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
     assert(fn);
 
     if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
+      set_current_block(cnt, block);
       append_instr_ret(cnt, NULL, NULL, false);
     } else {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_MISSING_RETURN, fn->decl_node->src,
@@ -4187,14 +4179,16 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block, bool comptime)
   return true;
 }
 
-bool
+uint64_t
 analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
 {
-  if (!instr) return NULL;
+  if (!instr) return ANALYZE_PASSED;
 
   /* skip already analyzed instructions */
-  if (instr->analyzed) return instr;
-  bool state;
+  if (instr->analyzed) return ANALYZE_PASSED;
+  uint64_t state;
+
+  if (instr->owner_block) set_current_block(cnt, instr->owner_block);
 
   switch (instr->kind) {
   case MIR_INSTR_BLOCK:
@@ -4309,6 +4303,29 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
   }
 
   instr->analyzed = true;
+
+#if BL_DEBUG
+  {
+    char *state_str = NULL;
+    switch (state) {
+    case ANALYZE_FAILED:
+      state_str = RED(" FAILED ");
+      break;
+    case ANALYZE_PASSED:
+      state_str = GREEN(" PASSED ");
+      break;
+    case ANALYZE_POSTPONE:
+      state_str = BLUE("POSTPONE");
+      break;
+    default:
+      state_str = YELLOW("  WAIT  ");
+    }
+
+    printf("Analyze: [%s] %16s (%llu)\n", state_str, mir_instr_name(instr),
+           (unsigned long long)instr->_serial);
+  }
+#endif
+
   return state;
 }
 
@@ -5561,7 +5578,7 @@ ast_test_case(Context *cnt, Ast *test)
   bo_array_push_back(cnt->test_cases, fn);
 
   MirInstrBlock *entry_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "entry");
-  set_cursor_block(cnt, entry_block);
+  set_current_block(cnt, entry_block);
 
   /* generate body instructions */
   ast(cnt, ast_block);
@@ -5593,7 +5610,7 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
   append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
 
   /* then block */
-  set_cursor_block(cnt, then_block);
+  set_current_block(cnt, then_block);
   ast(cnt, ast_then);
 
   tmp_block = get_current_block(cnt);
@@ -5604,7 +5621,7 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
 
   /* else if */
   if (ast_else) {
-    set_cursor_block(cnt, else_block);
+    set_current_block(cnt, else_block);
     ast(cnt, ast_else);
 
     tmp_block = get_current_block(cnt);
@@ -5613,11 +5630,11 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
 
   if (!is_block_terminated(else_block)) {
     /* block has not been terminated -> add terminator */
-    set_cursor_block(cnt, else_block);
+    set_current_block(cnt, else_block);
     append_instr_br(cnt, NULL, cont_block);
   }
 
-  set_cursor_block(cnt, cont_block);
+  set_current_block(cnt, cont_block);
 }
 
 void
@@ -5651,14 +5668,14 @@ ast_stmt_loop(Context *cnt, Ast *loop)
 
   /* decide block */
   append_instr_br(cnt, NULL, decide_block);
-  set_cursor_block(cnt, decide_block);
+  set_current_block(cnt, decide_block);
 
   MirInstr *cond = ast_cond ? ast(cnt, ast_cond) : append_instr_const_bool(cnt, NULL, true);
 
   append_instr_cond_br(cnt, ast_cond, cond, body_block, cont_block);
 
   /* loop body */
-  set_cursor_block(cnt, body_block);
+  set_current_block(cnt, body_block);
   ast(cnt, ast_block);
 
   tmp_block = get_current_block(cnt);
@@ -5668,14 +5685,14 @@ ast_stmt_loop(Context *cnt, Ast *loop)
 
   /* increment if there is one */
   if (ast_increment) {
-    set_cursor_block(cnt, increment_block);
+    set_current_block(cnt, increment_block);
     ast(cnt, ast_increment);
     append_instr_br(cnt, NULL, decide_block);
   }
 
   cnt->ast.break_block    = prev_break_block;
   cnt->ast.continue_block = prev_continue_block;
-  set_cursor_block(cnt, cont_block);
+  set_current_block(cnt, cont_block);
 }
 
 void
@@ -5916,7 +5933,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
   /* create block for initialization locals and arguments */
   MirInstrBlock *init_block = append_block(cnt, fn_proto->base.const_value.data.v_fn, "entry");
-  set_cursor_block(cnt, init_block);
+  set_current_block(cnt, init_block);
 
   /* build MIR for fn arguments */
   {
@@ -5942,7 +5959,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   /* generate body instructions */
   ast(cnt, ast_block);
 
-  set_cursor_block(cnt, prev_block);
+  set_current_block(cnt, prev_block);
   return &fn_proto->base;
 }
 
@@ -6280,13 +6297,13 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
   fn->const_value.data.v_fn->type = final_fn_type;
 
   MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
-  set_cursor_block(cnt, entry);
+  set_current_block(cnt, entry);
 
   MirInstr *result = ast(cnt, node);
   /* Guess return type here when it is based on expression result... */
   append_instr_ret(cnt, NULL, result, infer_ret_type);
 
-  set_cursor_block(cnt, prev_block);
+  set_current_block(cnt, prev_block);
   return create_instr_call_comptime(cnt, node, fn);
 }
 
