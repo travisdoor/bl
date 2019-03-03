@@ -183,7 +183,7 @@ typedef struct
     MirInstr *ip;
 
     /* Instructions waiting for analyze. */
-    BArray *queue;
+    BList *queue;
   } analyze;
 
   /* MIR compile time execution. */
@@ -878,12 +878,11 @@ push_into_gscope(Context *cnt, MirInstr *instr)
   bo_array_push_back(cnt->module->globals, instr);
 };
 
-
 static inline void
 analyze_enqueue(Context *cnt, MirInstr *instr)
 {
   assert(instr);
-  bo_array_push_back(cnt->analyze.queue, instr);
+  bo_list_push_back(cnt->analyze.queue, instr);
 }
 
 static inline const char *
@@ -2256,11 +2255,14 @@ append_instr_unrecheable(Context *cnt, Ast *node)
   return &tmp->base;
 }
 
+/* CLEANUP: not needed, use append instead!!! */
+/* CLEANUP: not needed, use append instead!!! */
+/* CLEANUP: not needed, use append instead!!! */
+/* CLEANUP: not needed, use append instead!!! */
 MirInstr *
 create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, node, MirInstrFnProto *);
-  tmp->base.id         = (int)bo_array_size(cnt->analyze.queue);
   tmp->type            = type;
   tmp->user_type       = user_type;
   return &tmp->base;
@@ -3483,7 +3485,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto, bool comptime)
         /* TODO: first_block can be used as linked list, only first one must be pushed into
          * analyze_stack
          */
-        bo_array_push_back(cnt->analyze.queue, tmp);
+        bo_list_push_back(cnt->analyze.queue, tmp);
       }
 
       tmp = (MirInstrBlock *)tmp->base.next;
@@ -4332,15 +4334,19 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
 void
 analyze(Context *cnt)
 {
-  BArray *  stack = cnt->analyze.queue;
-  MirInstr *instr;
+  BList *       stack = cnt->analyze.queue;
+  MirInstr *    instr;
+  bo_iterator_t it;
 
-  barray_foreach(stack, instr)
+  blist_foreach(stack, it)
   {
+    instr = bo_list_iter_peek(stack, &it, MirInstr *);
     assert(instr);
     analyze_instr(cnt, instr, false);
   }
 
+// CLEANUP: remove post analyze dump!!!
+#if 0
   if (cnt->verbose_post) {
     barray_foreach(stack, instr)
     {
@@ -4348,6 +4354,7 @@ analyze(Context *cnt)
       if (instr->kind == MIR_INSTR_FN_PROTO) mir_print_instr(instr, stdout);
     }
   }
+#endif
 }
 
 /* executing */
@@ -6290,8 +6297,14 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
     infer_ret_type = true;
   }
 
-  MirInstrBlock *prev_block       = get_current_block(cnt);
-  MirInstr *     fn               = create_instr_fn_proto(cnt, NULL, NULL, NULL);
+  MirInstrBlock *prev_block = get_current_block(cnt);
+  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
+   * pushed into global scope!!! */
+  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
+   * pushed into global scope!!! */
+  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
+   * pushed into global scope!!! */
+  MirInstr *fn                    = create_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->const_value.type            = final_fn_type;
   fn->const_value.data.v_fn       = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
   fn->const_value.data.v_fn->type = final_fn_type;
@@ -6847,15 +6860,13 @@ mir_run(Builder *builder, Assembly *assembly)
   cnt.module        = assembly->mir_module;
   cnt.verbose_pre   = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
   cnt.verbose_post  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
-  cnt.analyze.queue = bo_array_new(sizeof(MirInstr *));
+  cnt.analyze.queue = bo_list_new(sizeof(MirInstr *));
   cnt.test_cases    = bo_array_new(sizeof(MirFn *));
   cnt.exec.stack    = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
   cnt.tmp_sh        = bo_string_new(1024);
   cnt.type_table    = bo_htbl_new(sizeof(MirType *), 8192);
 
   init_builtins(&cnt);
-
-  bo_array_reserve(cnt.analyze.queue, 1024);
 
   int32_t error = init_dl(&cnt);
   if (error != NO_ERR) return;
