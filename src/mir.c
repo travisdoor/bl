@@ -363,9 +363,6 @@ static MirInstr *
 create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 
 static MirInstr *
-create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type);
-
-static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *
@@ -1181,7 +1178,6 @@ get_block_terminator(MirInstrBlock *block)
 static inline void
 set_current_block(Context *cnt, MirInstrBlock *block)
 {
-  assert(block);
   cnt->ast.current_block = block;
 }
 
@@ -2255,26 +2251,16 @@ append_instr_unrecheable(Context *cnt, Ast *node)
   return &tmp->base;
 }
 
-/* CLEANUP: not needed, use append instead!!! */
-/* CLEANUP: not needed, use append instead!!! */
-/* CLEANUP: not needed, use append instead!!! */
-/* CLEANUP: not needed, use append instead!!! */
 MirInstr *
-create_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
+append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
 {
   MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, node, MirInstrFnProto *);
   tmp->type            = type;
   tmp->user_type       = user_type;
-  return &tmp->base;
-}
 
-MirInstr *
-append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInstr *user_type)
-{
-  MirInstr *tmp = create_instr_fn_proto(cnt, node, type, user_type);
-  push_into_gscope(cnt, tmp);
-  analyze_enqueue(cnt, tmp);
-  return tmp;
+  push_into_gscope(cnt, &tmp->base);
+  analyze_enqueue(cnt, &tmp->base);
+  return &tmp->base;
 }
 
 MirInstr *
@@ -4334,17 +4320,21 @@ analyze_instr(Context *cnt, MirInstr *instr, bool comptime)
 void
 analyze(Context *cnt)
 {
-  BList *       stack = cnt->analyze.queue;
-  MirInstr *    instr;
-  bo_iterator_t it;
+  BList *   q     = cnt->analyze.queue;
+  MirInstr *instr = NULL;
 
-  blist_foreach(stack, it)
-  {
-    instr = bo_list_iter_peek(stack, &it, MirInstr *);
-    assert(instr);
+  if (bo_list_empty(q)) return;
+
+  while (!bo_list_empty(q)) {
+    instr = bo_list_front(q, MirInstr *);
+    bo_list_pop_front(q);
+
     analyze_instr(cnt, instr, false);
   }
 
+// CLEANUP: remove post analyze dump!!!
+// CLEANUP: remove post analyze dump!!!
+// CLEANUP: remove post analyze dump!!!
 // CLEANUP: remove post analyze dump!!!
 #if 0
   if (cnt->verbose_post) {
@@ -4903,7 +4893,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
 
     barray_foreach(values, value)
     {
-      // CLEANUP
+      // CLEANUP:
       if (value->comptime) {
         exec_copy_comptime_to_stack(cnt, var_ptr, &value->const_value);
       } else {
@@ -4928,7 +4918,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
       member_type = value->const_value.type;
       member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
 
-      // CLEANUP
+      // CLEANUP:
       if (value->comptime) {
         exec_copy_comptime_to_stack(cnt, member_ptr, &value->const_value);
       } else {
@@ -5036,7 +5026,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
     assert(var_ptr);
 
-    // CLEANUP
+    // CLEANUP:
     if (decl->init->comptime) {
       /* Compile time constants of agregate type are stored in different
          way, we need to produce decomposition of those data. */
@@ -6304,7 +6294,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
    * pushed into global scope!!! */
   /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
    * pushed into global scope!!! */
-  MirInstr *fn                    = create_instr_fn_proto(cnt, NULL, NULL, NULL);
+  MirInstr *fn                    = append_instr_fn_proto(cnt, NULL, NULL, NULL);
   fn->const_value.type            = final_fn_type;
   fn->const_value.data.v_fn       = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
   fn->const_value.data.v_fn->type = final_fn_type;
