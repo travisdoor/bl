@@ -727,6 +727,9 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 static void
 analyze(Context *cnt);
 
+static void
+analyze_report_unresolved(Context *cnt);
+
 /* execute */
 static void
 exec_instr(Context *cnt, MirInstr *instr);
@@ -3368,8 +3371,6 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
   ScopeEntry *found = scope_lookup(ref->scope, ref->rid, true);
   if (!found) {
-    /*builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, ref->base.node->src,
-      BUILDER_CUR_WORD, "Unknown symbol.");*/
     return ref->rid->hash;
   }
 
@@ -3926,7 +3927,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   MirVar *var = decl->var;
   assert(var);
 
-  if (decl->type) {
+  if (decl->type && var->alloc_type == NULL) {
     assert(decl->type->kind == MIR_INSTR_CALL && "expected type resolver call");
     if (analyze_instr(cnt, decl->type) != ANALYZE_PASSED) return ANALYZE_POSTPONE;
     MirConstValue *resolved_type_value = exec_call_top_lvl(cnt, (MirInstrCall *)decl->type);
@@ -3940,8 +3941,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (decl->init) {
     if (decl->init->kind == MIR_INSTR_CALL && decl->init->comptime) {
-      bl_unimplemented;
-      analyze_instr(cnt, decl->init);
+      if (analyze_instr(cnt, decl->init) != ANALYZE_PASSED) return ANALYZE_POSTPONE;
       exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
     }
     setup_null_type_if_needed(cnt, &decl->init->const_value, var->alloc_type);
@@ -4413,6 +4413,27 @@ analyze(Context *cnt)
     barray_foreach(globals, instr)
     {
       mir_print_instr(instr, stdout);
+    }
+  }
+}
+
+void
+analyze_report_unresolved(Context *cnt)
+{
+  MirInstr *    instr;
+  BArray *      wq;
+  bo_iterator_t iter;
+
+  bhtbl_foreach(cnt->analyze.waiting, iter)
+  {
+    wq = bo_htbl_iter_peek_value(cnt->analyze.waiting, &iter, BArray *);
+    assert(wq);
+    barray_foreach(wq, instr)
+    {
+      assert(instr);
+
+      builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, instr->node->src,
+                  BUILDER_CUR_WORD, "Unknown symbol.");
     }
   }
 }
@@ -6941,6 +6962,7 @@ mir_run(Builder *builder, Assembly *assembly)
   /* Analyze pass */
   if (!builder->errorc) {
     analyze(&cnt);
+    analyze_report_unresolved(&cnt);
   }
 
   if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);

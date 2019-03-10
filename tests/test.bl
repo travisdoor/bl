@@ -3,7 +3,7 @@
 //#load "std/core.bl"
 
 main :: fn () s32 {
-  return foo(10);
+  return foo(10) * homo(20) * kokot();
 };
 
 foo :: fn (i: s32) s32 {
@@ -11,5 +11,9 @@ foo :: fn (i: s32) s32 {
 };
 
 bar :: fn (i: s32) s32 {
+  return i;
+};
+
+homo :: fn (i: s32) s32 {
   return i;
 };
