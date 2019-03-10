@@ -733,7 +733,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     fprintf(stream, "@%u ", fn_proto->base.id);
 
 #if BL_DEBUG
-  fprintf(stream, "(%d) : ", fn->ref_count);
+  fprintf(stream, "~%llu (%d) : ", (unsigned long long)fn_proto->base._serial, fn->ref_count);
 #else
   fprintf(stream, " : ");
 #endif

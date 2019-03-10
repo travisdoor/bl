@@ -2,7 +2,14 @@
 
 //#load "std/core.bl"
 
-main : fn () s32 : fn () s32 {
-  return 0;
+main :: fn () s32 {
+  return foo(10);
 };
 
+foo :: fn (i: s32) s32 {
+  return bar(i);
+};
+
+bar :: fn (i: s32) s32 {
+  return i;
+};
