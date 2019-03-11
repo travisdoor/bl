@@ -1,9 +1,9 @@
-//************************************************************************************************
-// bl
+//*****************************************************************************
+// bl 
 //
-// File:   c.bl
+// File:   sdl2_image.bl
 // Author: Martin Dorazil
-// Date:   13/2/19
+// Date:   29/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -24,17 +24,15 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+//*****************************************************************************
 
-C_STDIN  :: 0;
-C_STDOUT :: 1;
-C_STDERR :: 2;
+#load "sdl2.bl"
 
-printf  :: fn (str: *u8) s32 #extern;
-putchar :: fn (c: s32) s32 #extern;
-write   :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
-abort   :: fn () #extern;
-malloc  :: fn (size: usize) *u8 #extern;
-free    :: fn (ptr: *u8) #extern;
-strlen  :: fn (str: *u8) usize #extern;
+IMG_INIT_JPG  :: 0x00000001;
+IMG_INIT_PNG  :: 0x00000002;
+IMG_INIT_TIF  :: 0x00000004;
+IMG_INIT_WEBP :: 0x00000008;
+
+IMG_Load :: fn (filepath: *u8) *SDL_Surface #extern;
+IMG_Init :: fn (flags: s32) s32 #extern;
+IMG_Quit :: fn () #extern;

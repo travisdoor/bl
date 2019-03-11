@@ -84,11 +84,12 @@ typedef struct MirInstrInit        MirInstrInit;
 typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
 
-typedef enum MirTypeKind       MirTypeKind;
-typedef enum MirInstrKind      MirInstrKind;
-typedef enum MirCastOp         MirCastOp;
-typedef enum MirBuiltinKind    MirBuiltinKind;
-typedef enum MirTypeStructKind MirTypeStructKind;
+typedef enum MirTypeKind         MirTypeKind;
+typedef enum MirInstrKind        MirInstrKind;
+typedef enum MirCastOp           MirCastOp;
+typedef enum MirBuiltinKind      MirBuiltinKind;
+typedef enum MirTypeStructKind   MirTypeStructKind;
+typedef enum MirValueAddressMode MirValueAddressMode;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -307,11 +308,19 @@ union MirConstValueData
   } v_array;
 };
 
+enum MirValueAddressMode
+{
+  MIR_VAM_LVALUE,
+  MIR_VAM_LVALUE_CONST,
+  MIR_VAM_RVALUE,
+};
+
 struct MirConstValue
 {
   // data must be first!!!
   union MirConstValueData data;
   MirType *               type;
+  MirValueAddressMode     addr_mode;
 };
 
 /* VAR */

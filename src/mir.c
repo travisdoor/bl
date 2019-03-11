@@ -3253,6 +3253,11 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     return ANALYZE_FAILED;
   }
 
+  if (src->const_value.addr_mode == MIR_VAM_LVALUE_CONST) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ADDRES_MODE, addrof->base.node->src,
+                BUILDER_CUR_WORD, "Cannot take address of constant.");
+  }
+
   /* setup type */
   addrof->base.const_value.type = src->const_value.type;
   assert(addrof->base.const_value.type && "invalid type");
@@ -3414,9 +3419,10 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     MirType *type = var->alloc_type;
     assert(type);
 
-    type                       = create_type_ptr(cnt, type);
-    ref->base.const_value.type = type;
-    ref->base.comptime         = var->comptime;
+    type                            = create_type_ptr(cnt, type);
+    ref->base.const_value.type      = type;
+    ref->base.comptime              = var->comptime;
+    ref->base.const_value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     /* set pointer to variable const value directly when variable is compile time known */
     if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
     break;
@@ -3576,7 +3582,8 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   load->base.const_value.type = type;
 
   reduce_instr(cnt, src);
-  load->base.comptime = src->comptime;
+  load->base.comptime              = src->comptime;
+  load->base.const_value.addr_mode = MIR_VAM_RVALUE;
 
   return ANALYZE_PASSED;
 }
@@ -4156,6 +4163,11 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
                 BUILDER_CUR_WORD, "Left hand side of the expression cannot be assigned.");
     return ANALYZE_FAILED;
+  }
+
+  if (dest->const_value.addr_mode == MIR_VAM_LVALUE_CONST) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
+                BUILDER_CUR_WORD, "Cannot assign to constant.");
   }
 
   MirType *dest_type = mir_deref_type(dest->const_value.type);
