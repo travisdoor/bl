@@ -1,6 +1,69 @@
+//************************************************************************************************
+// bl
+//
+// File:   sdl2.bl 
+// Author: Martin Dorazil
+// Date:   11/3/19
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+SDL_INIT_TIMER          :: 0x00000001;
+SDL_INIT_AUDIO 	 	:: 0x00000010;
+SDL_INIT_VIDEO 	 	:: 0x00000020;
+SDL_INIT_JOYSTICK	:: 0x00000200;
+SDL_INIT_HAPTIC 	:: 0x00001000;
+SDL_INIT_GAMECONTROLLER :: 0x00002000;
+SDL_INIT_EVENTS 	:: 0x00004000;
+SDL_INIT_NOPARACHUTE    :: 0x00100000;
+SDL_INIT_EVERYTHING     :: SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO |
+			   SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS;
+
+SDL_WINDOW_FULLSCREEN        :: 0x00000001;
+SDL_WINDOW_OPENGL            :: 0x00000002;
+SDL_WINDOW_SHOWN             :: 0x00000004;
+SDL_WINDOW_HIDDEN            :: 0x00000008;
+SDL_WINDOW_BORDERLESS        :: 0x00000010;
+SDL_WINDOW_RESIZABLE         :: 0x00000020;
+SDL_WINDOW_MINIMIZED         :: 0x00000040;
+SDL_WINDOW_MAXIMIZED         :: 0x00000080;
+SDL_WINDOW_INPUTGRABBED      :: 0x00000100;
+SDL_WINDOW_INPUTFOCUS        :: 0x00000200;
+SDL_WINDOW_MOUSEFOCUS        :: 0x00000400;
+SDL_WINDOW_FULLSCREENDESKTOP :: SDL_WINDOW_FULLSCREEN | 0x00001000;
+SDL_WINDOW_FOREIGN           :: 0x00000800;
+SDL_WINDOW_ALLOWHIGHDPI      :: 0x00002000;
+SDL_WINDOW_MOUSECAPTURE      :: 0x00004000;
+SDL_WINDOW_ALWAYSONTOP       :: 0x00008000;
+SDL_WINDOW_SKIPTASKBAR       :: 0x00010000;
+SDL_WINDOW_UTILITY           :: 0x00020000;
+SDL_WINDOW_TOOLTIP           :: 0x00040000;
+SDL_WINDOW_POPUPMENU         :: 0x00080000;
+SDL_WINDOW_VULKAN            :: 0x10000000;
+
 SDL_Window :: u8;
 
-SDL_Init :: fn (flags: u32) s32 #extern;
-SDL_Quit :: fn () #extern;
-SDL_CreateWindow :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
+SDL_Init          :: fn (flags: u32) s32 #extern;
+SDL_Quit          :: fn () #extern;
+SDL_CreateWindow  :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
 SDL_DestroyWindow :: fn (window: *SDL_Window) #extern;
+SDL_Delay         :: fn(ms: u32) #extern;
+SDL_PollEvent     :: fn (event: *u8) #extern;

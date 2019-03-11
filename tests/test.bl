@@ -1,19 +1,45 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
+#load "sdl2/sdl2.bl"
 
 main :: fn () s32 {
-  return foo(10) * homo(20) * kokot();
-};
+  print("Initialize SDL.\n");
 
-foo :: fn (i: s32) s32 {
-  return bar(i);
-};
+  title := "Test window!";
+  window : *SDL_Window;
 
-bar :: fn (i: s32) s32 {
-  return i;
-};
+  if SDL_Init(SDL_INIT_VIDEO) != 0 {
+    print("Unable to init SDL\n");
+    return 1;
+  } else {
+    print("SDL initialized.\n");
+  }
 
-homo :: fn (i: s32) s32 {
-  return i;
+  
+  window = SDL_CreateWindow(
+    title.ptr,
+    100,
+    100,
+    800,
+    600,
+    SDL_WINDOW_SHOWN
+  );
+
+  if window == null {
+    print("Cannot create window.\n");
+    return 1;
+  }
+
+  event : *u8 = null;
+  loop i := 0; i < 1000; i += 1 {
+    SDL_PollEvent(event);
+    SDL_Delay(16);
+    print("Frame %\n", i);
+  }
+
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+  print("Exiting.\n");
+  return 0;
 };

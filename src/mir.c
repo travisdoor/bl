@@ -48,6 +48,7 @@
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
 #define VERBOSE_EXEC                    false
+#define VERBOSE_ANALYZE                 false
 // clang-format on
 
 // Debug helpers
@@ -163,7 +164,7 @@ typedef struct
   /* DynCall/Lib data used for external method execution in compile time */
   struct
   {
-    DLLib *   lib;
+    BArray *  libs;
     DCCallVM *vm;
   } dl;
 
@@ -331,7 +332,8 @@ static BArray *
 create_arr(Context *cnt, size_t size);
 
 static MirFn *
-create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags);
+create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags,
+          MirInstrFnProto *prototype);
 
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
@@ -900,6 +902,10 @@ analyze_notify_provided(Context *cnt, uint64_t hash)
   bo_iterator_t end  = bo_htbl_end(cnt->analyze.waiting);
   if (bo_iterator_equal(&iter, &end)) return; /* No one is waiting for this... */
 
+#if BL_DEBUG && VERBOSE_ANALYZE
+  printf("Analyze: Notify '%llu'.\n", (unsigned long long)hash);
+#endif
+
   BArray *wq = bo_htbl_iter_peek_value(cnt->analyze.waiting, &iter, BArray *);
   assert(wq);
 
@@ -1285,6 +1291,10 @@ provide_var(Context *cnt, MirVar *var)
                                          var->decl_node, false);
   entry->data.var   = var;
   scope_insert(var->scope, entry);
+
+  if (var->is_in_gscope) {
+    analyze_notify_provided(cnt, var->id->hash);
+  }
 
   return entry;
 }
@@ -1755,7 +1765,8 @@ create_arr(Context *cnt, size_t size)
 }
 
 MirFn *
-create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags)
+create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, int32_t flags,
+          MirInstrFnProto *prototype)
 {
   MirFn *tmp     = arena_alloc(&cnt->module->arenas.fn_arena);
   tmp->variables = create_arr(cnt, sizeof(MirVar *));
@@ -1764,6 +1775,7 @@ create_fn(Context *cnt, Ast *node, ID *id, const char *llvm_name, Scope *scope, 
   tmp->scope     = scope;
   tmp->flags     = flags;
   tmp->decl_node = node;
+  tmp->prototype = &prototype->base;
   return tmp;
 }
 
@@ -3491,7 +3503,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
   if (fn->flags & (FLAG_EXTERN)) {
     /* lookup external function exec handle */
     assert(fn->llvm_name);
-    void *handle = dlFindSymbol(cnt->dl.lib, fn->llvm_name);
+
+    void * handle = NULL;
+    DLLib *lib;
+    barray_foreach(cnt->dl.libs, lib)
+    {
+      handle = dlFindSymbol(lib, fn->llvm_name);
+      if (handle) break;
+    }
 
     if (!handle) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, fn_proto->base.node->src,
@@ -3505,17 +3524,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     assert(entry_block);
     analyze_push_front(cnt, entry_block);
   }
-
-  /* HACK: In some cases function return type can be changed when we initialize globals and we don't
-   * know type of initialization expression before init function is created. In such case compiler
-   * will implicitly generate init function of 'void' return  type and replace init function return
-   * type when ret instruction expects something else than 'void'. For now we leave it, but it's not
-   * clean solution and should be replaced.
-   * This is also realated to: 'MirInstrRet.allow_fn_ret_type_override'
-   *
-   * This can cause errors later when we add support of 'comptime' keyword for function calls!!!
-   */
-  fn_proto->base.const_value.type = fn->type;
 
   if (fn->id) provide_fn(cnt, fn);
 
@@ -3883,6 +3891,10 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
         fn->type = create_type_fn(cnt, ret->value->const_value.type, fn_type->data.fn.arg_types,
                                   fn_type->data.fn.is_vargs);
         fn_type  = fn->type;
+        /* HACK: Function type need to be set also for function prototype instruction, this is by
+         * the way only reason why we need poinetr to prototype inside MirFn. Better solution should
+         * be possible. */
+        fn->prototype->const_value.type = fn_type;
       }
     }
   }
@@ -3956,6 +3968,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
       /* infer type */
       MirType *type = decl->init->const_value.type;
       assert(type);
+      assert(type->kind != MIR_TYPE_VOID);
       var->alloc_type = type;
     }
 
@@ -4037,6 +4050,10 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_FUNC, call->callee->node->src,
                 BUILDER_CUR_WORD, "Expected a function name.");
     return ANALYZE_FAILED;
+  }
+
+  if (call->base.comptime && !call->callee->const_value.data.v_fn->analyzed_for_cmptime_exec) {
+    return ANALYZE_POSTPONE;
   }
 
   MirType *result_type = type->data.fn.ret_type;
@@ -4320,8 +4337,14 @@ analyze_try_get_next(MirInstr *instr)
   MirInstrBlock *owner_block = instr->owner_block;
   if (owner_block && instr == owner_block->last_instr) {
     if (owner_block->base.next == NULL) {
-      /* TODO: Instruction is last instruction of the function body, so the function can be executed
+      /* Instruction is last instruction of the function body, so the function can be executed
        * in compile time if needed, we need to set flag with this information here. */
+      owner_block->owner_fn->analyzed_for_cmptime_exec = true;
+#if BL_DEBUG && VERBOSE_ANALYZE
+      printf("Analyze: " BLUE("Function '%s ~%llu' completely analyzed.\n"),
+             owner_block->owner_fn->llvm_name,
+             (unsigned long long)owner_block->owner_fn->prototype->_serial);
+#endif
     }
 
     /* Return following block. */
@@ -4345,8 +4368,9 @@ analyze(Context *cnt)
 
   BList *   q = cnt->analyze.queue;
   uint64_t  state;
-  MirInstr *ip   = NULL;
-  bool      skip = false;
+  int       postpone_loop_count = 0;
+  MirInstr *ip                  = NULL;
+  bool      skip                = false;
 
   if (bo_list_empty(q)) return;
 
@@ -4363,28 +4387,34 @@ analyze(Context *cnt)
     state = analyze_instr(cnt, ip);
     switch (state) {
     case ANALYZE_PASSED:
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_ANALYZE
       printf("Analyze: [ " GREEN("PASSED") " ] %16s (%llu)\n", mir_instr_name(ip),
              (unsigned long long)ip->_serial);
 #endif
+      postpone_loop_count = 0;
       break;
+
     case ANALYZE_FAILED:
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_ANALYZE
       printf("Analyze: [ " RED("FAILED") " ] %16s (%llu)\n", mir_instr_name(ip),
              (unsigned long long)ip->_serial);
 #endif
-      skip = true;
+      skip                = true;
+      postpone_loop_count = 0;
       break;
+
     case ANALYZE_POSTPONE:
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_ANALYZE
       printf("Analyze: [" MAGENTA("POSTPONE") "] %16s (%llu)\n", mir_instr_name(ip),
              (unsigned long long)ip->_serial);
 #endif
-      bo_list_push_back(q, ip);
+
+      skip = true;
+      if (postpone_loop_count++ < bo_list_size(q)) bo_list_push_back(q, ip);
       break;
 
     default: {
-#if BL_DEBUG
+#if BL_DEBUG && VERBOSE_ANALYZE
       printf("Analyze: [  " YELLOW("WAIT") "  ] %16s (%llu) is waiting for: '%llu'\n",
              mir_instr_name(ip), (unsigned long long)ip->_serial, (unsigned long long)state);
 #endif
@@ -4402,7 +4432,8 @@ analyze(Context *cnt)
 
       assert(wq);
       bo_array_push_back(wq, ip);
-      skip = true;
+      skip                = true;
+      postpone_loop_count = 0;
     }
     }
   }
@@ -5432,53 +5463,73 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-#define binop_case(_op, _lhs, _rhs, _result, _v_T)                                                 \
+// clang-format off
+#define _binop_int(_op, _lhs, _rhs, _result, _v_T)                                                 \
+  case BINOP_ADD:                                                                                  \
+    (_result)._v_T = _lhs._v_T + _rhs._v_T;                                                        \
+    break;                                                                                         \
+  case BINOP_SUB:                                                                                  \
+    (_result)._v_T = _lhs._v_T - _rhs._v_T;                                                        \
+    break;                                                                                         \
+  case BINOP_MUL:                                                                                  \
+    (_result)._v_T = _lhs._v_T * _rhs._v_T;                                                        \
+    break;                                                                                         \
+  case BINOP_DIV:                                                                                  \
+    assert(_rhs._v_T != 0 && "divide by zero, this should be an error");                           \
+    (_result)._v_T = _lhs._v_T / _rhs._v_T;                                                        \
+    break;                                                                                         \
+  case BINOP_EQ:                                                                                   \
+    (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                     \
+    break;                                                                                         \
+  case BINOP_NEQ:                                                                                  \
+    (_result).v_bool = _lhs._v_T != _rhs._v_T;                                                     \
+    break;                                                                                         \
+  case BINOP_LESS:                                                                                 \
+    (_result).v_bool = _lhs._v_T < _rhs._v_T;                                                      \
+    break;                                                                                         \
+  case BINOP_LESS_EQ:                                                                              \
+    (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                     \
+    break;                                                                                         \
+  case BINOP_GREATER:                                                                              \
+    (_result).v_bool = _lhs._v_T > _rhs._v_T;                                                      \
+    break;                                                                                         \
+  case BINOP_GREATER_EQ:                                                                           \
+    (_result).v_bool = _lhs._v_T >= _rhs._v_T;                                                     \
+    break;                                                                                         \
+  case BINOP_LOGIC_AND:                                                                            \
+    (_result).v_bool = _lhs._v_T && _rhs._v_T;                                                     \
+    break;                                                                                         \
+  case BINOP_LOGIC_OR:                                                                             \
+    (_result).v_bool = _lhs._v_T || _rhs._v_T;                                                     \
+    break;
+
+#define binop_case_int(_op, _lhs, _rhs, _result, _v_T)                                             \
   case sizeof(_lhs._v_T): {                                                                        \
     switch (_op) {                                                                                 \
-    case BINOP_ADD:                                                                                \
-      (_result)._v_T = _lhs._v_T + _rhs._v_T;                                                      \
+      _binop_int(_op, _lhs, _rhs, _result, _v_T)                                 		   \
+    case BINOP_MOD:                             						   \
+      (_result)._v_T = _lhs._v_T % _rhs._v_T;                                                      \
       break;                                                                                       \
-    case BINOP_SUB:                                                                                \
-      (_result)._v_T = _lhs._v_T - _rhs._v_T;                                                      \
+    case BINOP_AND:                                                                                \
+      (_result).v_bool = _lhs._v_T & _rhs._v_T;                                                    \
       break;                                                                                       \
-    case BINOP_MUL:                                                                                \
-      (_result)._v_T = _lhs._v_T * _rhs._v_T;                                                      \
-      break;                                                                                       \
-    case BINOP_DIV:                                                                                \
-      assert(_rhs._v_T != 0 && "divide by zero, this should be an error");                         \
-      (_result)._v_T = _lhs._v_T / _rhs._v_T;                                                      \
-      break;                                                                                       \
-    case BINOP_MOD:                                                                                \
-      (_result)._v_T = (int64_t)_lhs._v_T % (int64_t)_rhs._v_T;                                    \
-      break;                                                                                       \
-    case BINOP_EQ:                                                                                 \
-      (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                   \
-      break;                                                                                       \
-    case BINOP_NEQ:                                                                                \
-      (_result).v_bool = _lhs._v_T != _rhs._v_T;                                                   \
-      break;                                                                                       \
-    case BINOP_LESS:                                                                               \
-      (_result).v_bool = _lhs._v_T < _rhs._v_T;                                                    \
-      break;                                                                                       \
-    case BINOP_LESS_EQ:                                                                            \
-      (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                   \
-      break;                                                                                       \
-    case BINOP_GREATER:                                                                            \
-      (_result).v_bool = _lhs._v_T > _rhs._v_T;                                                    \
-      break;                                                                                       \
-    case BINOP_GREATER_EQ:                                                                         \
-      (_result).v_bool = _lhs._v_T >= _rhs._v_T;                                                   \
-      break;                                                                                       \
-    case BINOP_LOGIC_AND:                                                                          \
-      (_result).v_bool = _lhs._v_T && _rhs._v_T;                                                   \
-      break;                                                                                       \
-    case BINOP_LOGIC_OR:                                                                           \
-      (_result).v_bool = _lhs._v_T || _rhs._v_T;                                                   \
+    case BINOP_OR:                                                                                 \
+      (_result).v_bool = _lhs._v_T | _rhs._v_T;                                                    \
       break;                                                                                       \
     default:                                                                                       \
       bl_unimplemented;                                                                            \
     }                                                                                              \
   } break;
+
+#define binop_case_real(_op, _lhs, _rhs, _result, _v_T)                                             \
+  case sizeof(_lhs._v_T): {                                                                        \
+    switch (_op) {                                                                                 \
+      _binop_int(_op, _lhs, _rhs, _result, _v_T)                                 		   \
+    default:                                                                                       \
+      bl_unimplemented;                                                                            \
+    }                                                                                              \
+  } break;
+  // clang-format on
 
   /* binop expects lhs and rhs on stack in exact order and push result again to the stack */
   MirType *type = binop->lhs->const_value.type;
@@ -5503,19 +5554,19 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     const size_t s = type->store_size_bytes;
     if (type->data.integer.is_signed) {
       switch (s) {
-        binop_case(binop->op, lhs, rhs, result, v_s8);
-        binop_case(binop->op, lhs, rhs, result, v_s16);
-        binop_case(binop->op, lhs, rhs, result, v_s32);
-        binop_case(binop->op, lhs, rhs, result, v_s64);
+        binop_case_int(binop->op, lhs, rhs, result, v_s8);
+        binop_case_int(binop->op, lhs, rhs, result, v_s16);
+        binop_case_int(binop->op, lhs, rhs, result, v_s32);
+        binop_case_int(binop->op, lhs, rhs, result, v_s64);
       default:
         bl_abort("invalid integer data type");
       }
     } else {
       switch (s) {
-        binop_case(binop->op, lhs, rhs, result, v_u8);
-        binop_case(binop->op, lhs, rhs, result, v_u16);
-        binop_case(binop->op, lhs, rhs, result, v_u32);
-        binop_case(binop->op, lhs, rhs, result, v_u64);
+        binop_case_int(binop->op, lhs, rhs, result, v_u8);
+        binop_case_int(binop->op, lhs, rhs, result, v_u16);
+        binop_case_int(binop->op, lhs, rhs, result, v_u32);
+        binop_case_int(binop->op, lhs, rhs, result, v_u64);
       default:
         bl_abort("invalid integer data type");
       }
@@ -5526,8 +5577,8 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
   case MIR_TYPE_REAL: {
     const size_t s = type->store_size_bytes;
     switch (s) {
-      binop_case(binop->op, lhs, rhs, result, v_f32);
-      binop_case(binop->op, lhs, rhs, result, v_f64);
+      binop_case_real(binop->op, lhs, rhs, result, v_f32);
+      binop_case_real(binop->op, lhs, rhs, result, v_f64);
     default:
       bl_abort("invalid real data type");
     }
@@ -5542,7 +5593,9 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     memcpy(&binop->base.const_value.data, &result, sizeof(result));
   else
     exec_push_stack(cnt, &result, binop->base.const_value.type);
-#undef binop
+#undef binop_case_int
+#undef binop_case_real
+#undef _binop_int
 }
 
 void
@@ -5655,7 +5708,7 @@ ast_test_case(Context *cnt, Ast *test)
   fn_proto->base.const_value.type = cnt->builtin_types.entry_test_case_fn;
 
   const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
-  MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, FLAG_TEST);
+  MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, FLAG_TEST, fn_proto);
 
   if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ++fn->ref_count;
   assert(test->data.test_case.desc);
@@ -6011,7 +6064,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
   assert(fn_proto->type);
 
   MirInstrBlock *prev_block = get_current_block(cnt);
-  MirFn *        fn = create_fn(cnt, lit_fn, NULL, NULL, NULL, 0); /* TODO: based on user flag!!! */
+  MirFn *        fn =
+      create_fn(cnt, lit_fn, NULL, NULL, NULL, 0, fn_proto); /* TODO: based on user flag!!! */
   fn_proto->base.const_value.data.v_fn = fn;
 
   /* function body */
@@ -6377,19 +6431,14 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
     infer_ret_type = true;
   }
 
-  MirInstrBlock *prev_block = get_current_block(cnt);
-  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
-   * pushed into global scope!!! */
-  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
-   * pushed into global scope!!! */
-  /* CLEANUP: use normal append instead of create. Function prototype created this way will not be
-   * pushed into global scope!!! */
-  MirInstr *fn                    = append_instr_fn_proto(cnt, NULL, NULL, NULL);
-  fn->const_value.type            = final_fn_type;
-  fn->const_value.data.v_fn       = create_fn(cnt, NULL, NULL, fn_name, NULL, 0);
-  fn->const_value.data.v_fn->type = final_fn_type;
+  MirInstrBlock *prev_block  = get_current_block(cnt);
+  MirInstr *     fn_proto    = append_instr_fn_proto(cnt, NULL, NULL, NULL);
+  fn_proto->const_value.type = final_fn_type;
+  fn_proto->const_value.data.v_fn =
+      create_fn(cnt, NULL, NULL, fn_name, NULL, 0, (MirInstrFnProto *)fn_proto);
+  fn_proto->const_value.data.v_fn->type = final_fn_type;
 
-  MirInstrBlock *entry = append_block(cnt, fn->const_value.data.v_fn, "entry");
+  MirInstrBlock *entry = append_block(cnt, fn_proto->const_value.data.v_fn, "entry");
   set_current_block(cnt, entry);
 
   MirInstr *result = ast(cnt, node);
@@ -6397,7 +6446,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
   append_instr_ret(cnt, NULL, result, infer_ret_type);
 
   set_current_block(cnt, prev_block);
-  return create_instr_call_comptime(cnt, node, fn);
+  return create_instr_call_comptime(cnt, node, fn_proto);
 }
 
 MirInstr *
@@ -6841,6 +6890,8 @@ init_builtins(Context *cnt)
 int
 init_dl(Context *cnt)
 {
+  cnt->dl.libs = bo_array_new(sizeof(DLLib *));
+
   /* load only current executed workspace */
   DLLib *lib = dlLoadLibrary(NULL);
   if (!lib) {
@@ -6848,10 +6899,16 @@ init_dl(Context *cnt)
     return ERR_LIB_NOT_FOUND;
   }
 
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  /* TEST: */
+  lib = dlLoadLibrary("libSDL2.dylib");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
   DCCallVM *vm = dcNewCallVM(4096);
   dcMode(vm, DC_CALL_C_DEFAULT);
-  cnt->dl.lib = lib;
-  cnt->dl.vm  = vm;
+  cnt->dl.vm = vm;
   return NO_ERR;
 }
 
@@ -6859,7 +6916,11 @@ void
 terminate_dl(Context *cnt)
 {
   dcFree(cnt->dl.vm);
-  dlFreeLibrary(cnt->dl.lib);
+
+  DLLib *lib;
+  barray_foreach(cnt->dl.libs, lib) dlFreeLibrary(lib);
+
+  bo_unref(cnt->dl.libs);
 }
 
 MirModule *

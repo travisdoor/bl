@@ -87,6 +87,10 @@ token_prec(Token *token)
   case SYM_AND:
     return (TokenPrecedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
 
+    /* | */
+  case SYM_OR:
+    return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
+
     /* && */
   case SYM_LOGIC_AND:
     return (TokenPrecedence){.priority = 6, .associativity = TOKEN_ASSOC_LEFT};

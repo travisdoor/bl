@@ -280,6 +280,10 @@ sym_to_binop_kind(Sym sm)
     return BINOP_LOGIC_AND;
   case SYM_LOGIC_OR:
     return BINOP_LOGIC_OR;
+  case SYM_AND:
+    return BINOP_AND;
+  case SYM_OR:
+    return BINOP_OR;
   default:
     bl_abort("unknown binop operation!!!");
   }

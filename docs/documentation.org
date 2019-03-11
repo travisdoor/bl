@@ -193,7 +193,7 @@
     
     Arrays can be inline initialized with compound block, type is required. Zero initializer can be used for zero initialization of whole array storage, otherwise we must specify value for every element in an array.
     #+BEGIN_EXAMPLE
-    <T> {[val], ...}
+    {:<T>: [val], ...}
     #+END_EXAMPLE
 
     Example:
