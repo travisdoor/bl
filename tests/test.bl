@@ -1,45 +1,8 @@
 /* playground */
 
 #load "std/core.bl"
-#load "sdl2/sdl2.bl"
 
 main :: fn () s32 {
-  print("Initialize SDL.\n");
-
-  title := "Test window!";
-  window : *SDL_Window;
-
-  if SDL_Init(SDL_INIT_VIDEO) != 0 {
-    print("Unable to init SDL\n");
-    return 1;
-  } else {
-    print("SDL initialized.\n");
-  }
-
-  
-  window = SDL_CreateWindow(
-    title.ptr,
-    100,
-    100,
-    800,
-    600,
-    SDL_WINDOW_SHOWN
-  );
-
-  if window == null {
-    print("Cannot create window.\n");
-    return 1;
-  }
-
-  event : *u8 = null;
-  loop i := 0; i < 1000; i += 1 {
-    SDL_PollEvent(event);
-    SDL_Delay(16);
-    print("Frame %\n", i);
-  }
-
-  SDL_DestroyWindow(window);
-  SDL_Quit();
-  print("Exiting.\n");
+  print("Hello world.\n");
   return 0;
 };
