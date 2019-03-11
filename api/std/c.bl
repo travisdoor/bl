@@ -37,3 +37,4 @@ memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
 abort   :: fn () #extern;
 malloc  :: fn (size: usize) *u8 #extern;
 free    :: fn (ptr: *u8) #extern;
+strlen  :: fn (str: *u8) usize #extern;

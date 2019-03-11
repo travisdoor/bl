@@ -59,11 +59,62 @@ SDL_WINDOW_TOOLTIP           :: 0x00040000;
 SDL_WINDOW_POPUPMENU         :: 0x00080000;
 SDL_WINDOW_VULKAN            :: 0x10000000;
 
-SDL_Window :: u8;
+SDL_RENDERER_SOFTWARE      :: 0x00000001;
+SDL_RENDERER_ACCELERATED   :: 0x00000002;
+SDL_RENDERER_PRESENTVSYNC  :: 0x00000004;
+SDL_RENDERER_TARGETTEXTURE :: 0x00000008;
 
-SDL_Init          :: fn (flags: u32) s32 #extern;
-SDL_Quit          :: fn () #extern;
-SDL_CreateWindow  :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
-SDL_DestroyWindow :: fn (window: *SDL_Window) #extern;
-SDL_Delay         :: fn(ms: u32) #extern;
-SDL_PollEvent     :: fn (event: *u8) #extern;
+SDL_FLIP_NONE       :: 0x00000000;
+SDL_FLIP_HORIZONTAL :: 0x00000001;
+SDL_FLIP_VERTICAL   :: 0x00000002;
+
+SDL_Window   :: u8;
+SDL_Renderer :: u8;
+SDL_Texture  :: u8;
+
+SDL_Surface :: struct {
+  flags:      s32,
+  format:    *u8,
+  w:          s32,
+  h:          s32,
+  pitch:      s32,
+  pixels:    *u8,
+  userdata:  *u8,
+  locked:     s32,
+  lock_data: *u8,
+  clip_rect:  SDL_Rect,
+  map:       *u8,
+  refcount:   s32
+};
+
+SDL_Rect :: struct {
+  x: s32,
+  y: s32,
+  w: s32,
+  h: s32
+};
+
+SDL_Point :: struct {
+  x: s32,
+  y: s32
+};
+
+SDL_Init                     :: fn (flags: u32) s32 #extern;
+SDL_Quit                     :: fn () #extern;
+SDL_CreateWindow             :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
+SDL_DestroyWindow            :: fn (window: *SDL_Window) #extern;
+SDL_Delay                    :: fn (ms: u32) #extern;
+SDL_PollEvent                :: fn (event: *u8) #extern;
+SDL_CreateRenderer           :: fn (window: *SDL_Window, index: s32, flags: u32) *SDL_Renderer #extern;
+SDL_DestroyRenderer          :: fn (renderer: *SDL_Renderer) #extern;
+SDL_CreateTextureFromSurface :: fn (renderer: *SDL_Renderer, surface: *SDL_Surface) *SDL_Texture #extern;
+SDL_DestroyTexture           :: fn (texture: *SDL_Texture) #extern;
+SDL_RenderPresent	     :: fn (renderer: *SDL_Renderer) #extern;
+SDL_SetRenderDrawColor	     :: fn (renderer: *SDL_Renderer, r: u8, g: u8, b: u8, a: u8) s32 #extern;
+SDL_RenderClear 	     :: fn (renderer: *SDL_Renderer) s32 #extern;
+SDL_RenderCopy		     :: fn (renderer: *SDL_Renderer, texture: *SDL_Texture, srcrect: *SDL_Rect, dstrect: *SDL_Rect) s32 #extern;
+SDL_RenderCopyEx	     :: fn (renderer: *SDL_Renderer, texture: *SDL_Texture, srcrect: *SDL_Rect, dstrect: *SDL_Rect, angle: f64, center: *SDL_Point, flip: u32) s32 #extern;
+SDL_FreeSurface              :: fn (surface: *SDL_Surface) #extern;
+SDL_GetKeyboardState 	     :: fn (numkeys: *s32) *u8 #extern;
+SDL_GetTicks 		     :: fn () u32 #extern;
+SDL_GetError 		     :: fn () *u8 #extern;
