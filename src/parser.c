@@ -280,6 +280,10 @@ sym_to_binop_kind(Sym sm)
     return BINOP_LOGIC_AND;
   case SYM_LOGIC_OR:
     return BINOP_LOGIC_OR;
+  case SYM_AND:
+    return BINOP_AND;
+  case SYM_OR:
+    return BINOP_OR;
   default:
     bl_abort("unknown binop operation!!!");
   }
@@ -536,7 +540,7 @@ parse_decl_member(Context *cnt, bool type_only, int32_t order)
     name = parse_ident(cnt);
     if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src, BUILDER_CUR_AFTER,
-                  "expected semicolon after struct member name");
+                  "expected colon after struct member name");
     }
     type = parse_type(cnt);
   }
@@ -562,7 +566,7 @@ parse_decl_arg(Context *cnt, bool type_only)
     name = parse_ident(cnt);
     if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src, BUILDER_CUR_AFTER,
-                  "expected semicolon after argument name");
+                  "expected colon after argument name");
     }
     type = parse_type(cnt);
   }

@@ -90,6 +90,7 @@
   sm(PERCENT_ASSIGN, "%=") \
   sm(ASSIGN,         "=") /* assign end */\
   sm(AND,            "&") \
+  sm(OR,             "|") \
   sm(CARET,          "^") \
   sm(NOT,            "!") \
   sm(SLASH,          "/") \

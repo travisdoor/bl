@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   c.bl
+// File:   math.bl 
 // Author: Martin Dorazil
-// Date:   13/2/19
+// Date:   11/3/19
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,15 +26,24 @@
 // SOFTWARE.
 //************************************************************************************************
 
-C_STDIN  :: 0;
-C_STDOUT :: 1;
-C_STDERR :: 2;
+Vec2 :: struct {
+  x: f32,
+  y: f32
+};
 
-printf  :: fn (str: *u8) s32 #extern;
-putchar :: fn (c: s32) s32 #extern;
-write   :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
-abort   :: fn () #extern;
-malloc  :: fn (size: usize) *u8 #extern;
-free    :: fn (ptr: *u8) #extern;
-strlen  :: fn (str: *u8) usize #extern;
+Vec3 :: struct {
+  x: f32,
+  y: f32,
+  z: f32,
+};
+
+iVec2 :: struct {
+  x: s32,
+  y: s32
+};
+
+iVec3 :: struct {
+  x: s32,
+  y: s32,
+  z: s32,
+};

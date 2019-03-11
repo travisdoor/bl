@@ -147,6 +147,7 @@ struct MirModule
 /* FN */
 struct MirFn
 {
+  MirInstr *   prototype;
   ID *         id;
   Ast *        decl_node;
   MirType *    type;
@@ -155,6 +156,7 @@ struct MirFn
   int32_t      ref_count;
   const char * llvm_name;
   LLVMValueRef llvm_value;
+  bool         analyzed_for_cmptime_exec;
 
   DCpointer   extern_entry;
   int32_t     flags;

@@ -48,6 +48,11 @@
   if (bo_array_size((arr)))                                                                        \
     for (size_t i = 0; i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *)); ++i)
 
+#define blist_foreach(list, it)                                                                    \
+  (it) = bo_list_begin((list));                                                                    \
+  for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                   \
+       bo_list_iter_next((list), &(it)))
+
 #define array_foreach(arr, it)                                                                     \
   for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                    \
        _keep = !_keep, i++)                                                                        \

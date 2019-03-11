@@ -592,7 +592,11 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
   if (var->is_in_gscope) {
     /* global scope variable */
+#if BL_DEBUG
+    fprintf(stream, "\n@%s ~%llu : ", name, (unsigned long long)decl->base._serial);
+#else
     fprintf(stream, "\n@%s : ", name);
+#endif
     print_type(var->alloc_type, false, stream, true);
     fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
     if (decl->init) {
@@ -733,7 +737,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
     fprintf(stream, "@%u ", fn_proto->base.id);
 
 #if BL_DEBUG
-  fprintf(stream, "(%d) : ", fn->ref_count);
+  fprintf(stream, "~%llu (%d) : ", (unsigned long long)fn_proto->base._serial, fn->ref_count);
 #else
   fprintf(stream, " : ");
 #endif

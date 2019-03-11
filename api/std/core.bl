@@ -48,6 +48,11 @@ TypeInfoReal :: struct {
   bitcount: s32
 };
 
+cstr_to_str :: fn (cstr: *u8) string {
+  tmp := {:string: strlen(cstr), cstr};
+  return tmp;
+};
+
 // Printing
 print :: fn (format: string, nums: ...s64) {
   tmp := {:string: 0, format.ptr }; 

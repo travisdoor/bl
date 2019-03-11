@@ -1,21 +1,8 @@
 /* playground */
 
-//#load "std/core.bl"
-
-homo :: 10;
+#load "std/core.bl"
 
 main :: fn () s32 {
-  foo: Foo;
-  return homo;
+  print("Hello world.\n");
+  return 0;
 };
-
-Bar :: struct {
-  a: s32
-};
-
-Foo :: struct {
-  a: s32,
-  b: s32,
-  bar: Bar
-};
-

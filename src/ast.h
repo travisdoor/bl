@@ -128,6 +128,8 @@ typedef enum
   BINOP_LESS_EQ,
   BINOP_LOGIC_AND,
   BINOP_LOGIC_OR,
+  BINOP_AND,
+  BINOP_OR,
 } BinopKind;
 
 typedef enum
