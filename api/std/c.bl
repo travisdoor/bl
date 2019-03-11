@@ -38,3 +38,6 @@ abort   :: fn () #extern;
 malloc  :: fn (size: usize) *u8 #extern;
 free    :: fn (ptr: *u8) #extern;
 strlen  :: fn (str: *u8) usize #extern;
+sin     :: fn (n: f64) f64 #extern;
+sinf    :: fn (n: f32) f32 #extern;
+fabs    :: fn (n: f32) f32 #extern;

@@ -337,6 +337,14 @@ gen_instr_cast(Context *cnt, MirInstrCast *cast)
     llvm_op = LLVMFPToUI;
     break;
 
+  case MIR_CAST_SITOFP:
+    llvm_op = LLVMSIToFP;
+    break;
+
+  case MIR_CAST_UITOFP:
+    llvm_op = LLVMUIToFP;
+    break;
+
   case MIR_CAST_PTRTOINT:
     llvm_op = LLVMPtrToInt;
     break;

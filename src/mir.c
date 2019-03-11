@@ -1859,6 +1859,11 @@ get_cast_op(MirType *from, MirType *to)
       }
     }
 
+    case MIR_TYPE_REAL: {
+      const bool is_from_signed = from->data.integer.is_signed;
+      return is_from_signed ? MIR_CAST_SITOFP : MIR_CAST_UITOFP;
+    }
+
     case MIR_TYPE_PTR: {
       /* to ptr */
       return MIR_CAST_INTTOPTR;
@@ -4880,6 +4885,38 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     break;
   }
 
+  case MIR_CAST_SITOFP: {
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (dest_type->store_size_bytes == sizeof(float))
+      tmp.v_f32 = (float)tmp.v_s64;
+    else
+      tmp.v_f64 = (double)tmp.v_s64;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_UITOFP: {
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (dest_type->store_size_bytes == sizeof(float))
+      tmp.v_f32 = (float)tmp.v_u64;
+    else
+      tmp.v_f64 = (double)tmp.v_u64;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
   case MIR_CAST_INTTOPTR:
   case MIR_CAST_PTRTOINT: {
     /* noop for same sizes */
@@ -5316,6 +5353,21 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
     break;
   }
 
+  case MIR_TYPE_REAL: {
+    switch (type->store_size_bytes) {
+    case sizeof(float):
+      dcArgFloat(cnt->dl.vm, tmp.v_f32);
+      break;
+    case sizeof(double):
+      dcArgFloat(cnt->dl.vm, tmp.v_f64);
+      break;
+    default:
+      bl_abort("unsupported external call integer argument type");
+    }
+    break;
+  }
+
+  case MIR_TYPE_NULL:
   case MIR_TYPE_PTR: {
     dcArgPointer(cnt->dl.vm, (DCpointer)tmp.v_void_ptr);
     break;
@@ -5383,6 +5435,20 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     case MIR_TYPE_PTR:
       result.v_void_ptr = dcCallPointer(cnt->dl.vm, fn->extern_entry);
       break;
+
+    case MIR_TYPE_REAL: {
+      switch (ret_type->store_size_bytes) {
+      case sizeof(float):
+        result.v_f32 = dcCallFloat(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(double):
+        result.v_f64 = dcCallDouble(cnt->dl.vm, fn->extern_entry);
+        break;
+      default:
+        bl_abort("unsupported real number size for external call result");
+      }
+      break;
+    }
 
     case MIR_TYPE_VOID:
       dcCallVoid(cnt->dl.vm, fn->extern_entry);
@@ -6915,6 +6981,10 @@ init_dl(Context *cnt)
 
   /* TEST: */
   lib = dlLoadLibrary("libSDL2.dylib");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  lib = dlLoadLibrary("libSDL2_image.dylib");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 
