@@ -41,9 +41,9 @@ native_bin_run(Builder *builder, Assembly *assembly)
       "-L/usr/bin "
       "-L/usr/lib/x86_64-linux-gnu "
       "/usr/lib/x86_64-linux-gnu/crtn.o "
-      "-lc ";
+      "-lc";
 #elif defined(BL_PLATFORM_MACOS)
-  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o";
+  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o -lSDL2 -lSDL2_image";
 #elif defined(BL_PLATFORM_WIN)
   const char *cmd =
       "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "

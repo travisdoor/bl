@@ -68,6 +68,16 @@ SDL_FLIP_NONE       :: 0x00000000;
 SDL_FLIP_HORIZONTAL :: 0x00000001;
 SDL_FLIP_VERTICAL   :: 0x00000002;
 
+// INCOMPLETE:
+SDL_QUIT    :: 0x100;
+SDL_KEYDOWN :: 0x300;
+
+// INCOMPLETE:
+SDL_SCANCODE_A :: 4;
+SDL_SCANCODE_D :: 7;
+SDL_SCANCODE_S :: 22;
+SDL_SCANCODE_W :: 26;
+
 SDL_Window   :: u8;
 SDL_Renderer :: u8;
 SDL_Texture  :: u8;
@@ -99,12 +109,28 @@ SDL_Point :: struct {
   y: s32
 };
 
+SDL_Event :: struct {
+  type: u32,
+  _padding: [52]u8
+};
+
+SDL_KeyboardEvent :: struct {
+  type: u32,
+  timestamp: u32,
+  windowID: u32,
+  state: u8,
+  repeat: u8,
+  padding2: u8,
+  padding3: u8,
+  keysym: s32 // TODO: use enum
+};
+
 SDL_Init                     :: fn (flags: u32) s32 #extern;
 SDL_Quit                     :: fn () #extern;
 SDL_CreateWindow             :: fn (name: *u8, x: s32, y: s32, w: s32, h: s32, flags: u32) *SDL_Window #extern;
 SDL_DestroyWindow            :: fn (window: *SDL_Window) #extern;
 SDL_Delay                    :: fn (ms: u32) #extern;
-SDL_PollEvent                :: fn (event: *u8) #extern;
+SDL_PollEvent                :: fn (event: *SDL_Event) s32 #extern;
 SDL_CreateRenderer           :: fn (window: *SDL_Window, index: s32, flags: u32) *SDL_Renderer #extern;
 SDL_DestroyRenderer          :: fn (renderer: *SDL_Renderer) #extern;
 SDL_CreateTextureFromSurface :: fn (renderer: *SDL_Renderer, surface: *SDL_Surface) *SDL_Texture #extern;
@@ -118,3 +144,13 @@ SDL_FreeSurface              :: fn (surface: *SDL_Surface) #extern;
 SDL_GetKeyboardState 	     :: fn (numkeys: *s32) *u8 #extern;
 SDL_GetTicks 		     :: fn () u32 #extern;
 SDL_GetError 		     :: fn () *u8 #extern;
+
+SDL_KeyPressed :: fn (scancode: u32) bool {
+  tmp := SDL_GetKeyboardState(null);
+  if tmp == null {
+    return false;
+  }
+    
+  tmp = cast(*u8) ((cast(u64) tmp) + (cast(u64) scancode));
+  return ^tmp > 0;
+};

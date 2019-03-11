@@ -1859,6 +1859,11 @@ get_cast_op(MirType *from, MirType *to)
       }
     }
 
+    case MIR_TYPE_REAL: {
+      const bool is_from_signed = from->data.integer.is_signed;
+      return is_from_signed ? MIR_CAST_SITOFP : MIR_CAST_UITOFP;
+    }
+
     case MIR_TYPE_PTR: {
       /* to ptr */
       return MIR_CAST_INTTOPTR;
@@ -3253,6 +3258,11 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     return ANALYZE_FAILED;
   }
 
+  if (src->const_value.addr_mode == MIR_VAM_LVALUE_CONST) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ADDRES_MODE, addrof->base.node->src,
+                BUILDER_CUR_WORD, "Cannot take address of constant.");
+  }
+
   /* setup type */
   addrof->base.const_value.type = src->const_value.type;
   assert(addrof->base.const_value.type && "invalid type");
@@ -3414,9 +3424,10 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     MirType *type = var->alloc_type;
     assert(type);
 
-    type                       = create_type_ptr(cnt, type);
-    ref->base.const_value.type = type;
-    ref->base.comptime         = var->comptime;
+    type                            = create_type_ptr(cnt, type);
+    ref->base.const_value.type      = type;
+    ref->base.comptime              = var->comptime;
+    ref->base.const_value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     /* set pointer to variable const value directly when variable is compile time known */
     if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
     break;
@@ -3576,7 +3587,8 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
   load->base.const_value.type = type;
 
   reduce_instr(cnt, src);
-  load->base.comptime = src->comptime;
+  load->base.comptime              = src->comptime;
+  load->base.const_value.addr_mode = MIR_VAM_RVALUE;
 
   return ANALYZE_PASSED;
 }
@@ -4156,6 +4168,11 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
                 BUILDER_CUR_WORD, "Left hand side of the expression cannot be assigned.");
     return ANALYZE_FAILED;
+  }
+
+  if (dest->const_value.addr_mode == MIR_VAM_LVALUE_CONST) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_EXPR, store->base.node->src,
+                BUILDER_CUR_WORD, "Cannot assign to constant.");
   }
 
   MirType *dest_type = mir_deref_type(dest->const_value.type);
@@ -4868,6 +4885,38 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     break;
   }
 
+  case MIR_CAST_SITOFP: {
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (dest_type->store_size_bytes == sizeof(float))
+      tmp.v_f32 = (float)tmp.v_s64;
+    else
+      tmp.v_f64 = (double)tmp.v_s64;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_UITOFP: {
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    if (dest_type->store_size_bytes == sizeof(float))
+      tmp.v_f32 = (float)tmp.v_u64;
+    else
+      tmp.v_f64 = (double)tmp.v_u64;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
   case MIR_CAST_INTTOPTR:
   case MIR_CAST_PTRTOINT: {
     /* noop for same sizes */
@@ -5304,6 +5353,21 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
     break;
   }
 
+  case MIR_TYPE_REAL: {
+    switch (type->store_size_bytes) {
+    case sizeof(float):
+      dcArgFloat(cnt->dl.vm, tmp.v_f32);
+      break;
+    case sizeof(double):
+      dcArgFloat(cnt->dl.vm, tmp.v_f64);
+      break;
+    default:
+      bl_abort("unsupported external call integer argument type");
+    }
+    break;
+  }
+
+  case MIR_TYPE_NULL:
   case MIR_TYPE_PTR: {
     dcArgPointer(cnt->dl.vm, (DCpointer)tmp.v_void_ptr);
     break;
@@ -5371,6 +5435,20 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
     case MIR_TYPE_PTR:
       result.v_void_ptr = dcCallPointer(cnt->dl.vm, fn->extern_entry);
       break;
+
+    case MIR_TYPE_REAL: {
+      switch (ret_type->store_size_bytes) {
+      case sizeof(float):
+        result.v_f32 = dcCallFloat(cnt->dl.vm, fn->extern_entry);
+        break;
+      case sizeof(double):
+        result.v_f64 = dcCallDouble(cnt->dl.vm, fn->extern_entry);
+        break;
+      default:
+        bl_abort("unsupported real number size for external call result");
+      }
+      break;
+    }
 
     case MIR_TYPE_VOID:
       dcCallVoid(cnt->dl.vm, fn->extern_entry);
@@ -6903,6 +6981,10 @@ init_dl(Context *cnt)
 
   /* TEST: */
   lib = dlLoadLibrary("libSDL2.dylib");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  lib = dlLoadLibrary("libSDL2_image.dylib");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 
