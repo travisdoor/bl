@@ -9,51 +9,6 @@
 #+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
 
 #+TOC: headlines 3
-* Instalation
-** Requirements
-  - git
-  - CMake
-  - LLVM
-  - [[https://github.com/travisdoor/bobject][bobject]]
-  - [[http://www.dyncall.org][dyncall]]
-  - GCC/CLANG/Visual Studio compiler
-
-** Linux
-   - Install bobject.
-   - Install dyncall.
-   - Install LLVM dev packages.
-   - Download and compile bl.
-   
-   #+BEGIN_EXAMPLE
-   git clone https://github.com/travisdoor/bl.git
-   cd bl
-   mkdir build
-   cd build
-   cmake ..
-   make
-   #+END_EXAMPLE
-
-   - Add 'bl/api' and 'bl/bin' into the system PATH
-
-** MacOS
-   - Install bobject.
-   - Install dyncall.
-   - Install LLVM dev packages.
-   - Download and compile bl.
-   
-   #+BEGIN_EXAMPLE
-   git clone https://github.com/travisdoor/bl.git
-   cd bl
-   mkdir build
-   cd build
-   cmake ..
-   make
-   #+END_EXAMPLE
-
-   - Add 'bl/api' and 'bl/bin' into the system PATH
-
-** TODO Windows 
-
 * Compiler usage
    #+BEGIN_EXAMPLE
    blc [options] <source-files>
