@@ -687,11 +687,26 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
       binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
     break;
 
+
+    /* BUG: INVALID EVALUATION */
+    /* BUG: INVALID EVALUATION */
+    /* BUG: INVALID EVALUATION */
   case BINOP_LOGIC_AND:
     binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
     break;
 
+    /* BUG: INVALID EVALUATION */
+    /* BUG: INVALID EVALUATION */
+    /* BUG: INVALID EVALUATION */
   case BINOP_LOGIC_OR:
+    binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_AND:
+    binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
+    break;
+
+  case BINOP_OR:
     binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
     break;
 
