@@ -290,7 +290,7 @@
     #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
    
 *** Functions with variable argument count
-    Biscuit supports functions with variable argument count of same the type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs.
+    Biscuit supports functions with variable argument count of the same type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs. Inside function body variable argument list acts like regular array.
 
     Example of variable argument count function:
     #+INCLUDE: "../tests/src/examples/vargs.bl" src bl -n
