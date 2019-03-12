@@ -6979,12 +6979,20 @@ init_dl(Context *cnt)
 
   bo_array_push_back(cnt->dl.libs, lib);
 
-  /* TEST: */
-  lib = dlLoadLibrary("libSDL2.dylib");
+/* TEST: */
+#ifdef BL_PLATFORM_MACOS
+  const char *_sdl       = "libSDL2.dylib";
+  const char *_sdl_image = "libSDL2_image.dylib";
+#else
+  const char *_sdl = "libSDL2.so";
+  const char *_sdl_image = "libSDL2_image.so";
+#endif
+
+  lib = dlLoadLibrary(_sdl);
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 
-  lib = dlLoadLibrary("libSDL2_image.dylib");
+  lib = dlLoadLibrary(_sdl_image);
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 
