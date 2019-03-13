@@ -84,7 +84,7 @@ print :: fn (format: string, nums: ...s64) {
 
 print_str :: fn (args: ...string) {
   loop i := 0; i < args.len; i += 1 {
-    write(C_STDOUT, args[i].ptr, args[i].len);
+    os_write(OS_STDOUT, args[i].ptr, args[i].len);
   }
 };
 
@@ -95,7 +95,7 @@ print_int :: fn (v: s64) {
 
   if v == 0 {
     buf[0] = '0';
-    write(C_STDOUT, buf.ptr, 1);
+    os_write(OS_STDOUT, buf.ptr, 1);
     return;
   }
 
@@ -128,5 +128,5 @@ print_int :: fn (v: s64) {
     }
   }
 
-  write(C_STDOUT, buf.ptr, c);
+  os_write(OS_STDOUT, buf.ptr, c);
 };

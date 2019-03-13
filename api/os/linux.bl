@@ -26,4 +26,12 @@
 // SOFTWARE.
 //************************************************************************************************
 
+OS_STDIN  :: 0;
+OS_STDOUT :: 1;
+OS_STDERR :: 2;
+
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+
+os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
+  return write(fd, buf, count);
+};
