@@ -46,7 +46,7 @@ bool
 file_exists(const char *filepath)
 {
 #ifdef BL_COMPILER_MSVC
-  return PathFileExistsA(filepath);
+  return (bool) PathFileExistsA(filepath);
 #else
   return access(filepath, F_OK) != -1;
 #endif
@@ -82,7 +82,7 @@ date_time(char *buf, int32_t len, const char *format)
 }
 
 bool
-is_aligned(const void *p, int32_t alignment)
+is_aligned(const void *p, size_t alignment)
 {
   return (uintptr_t)p % alignment == 0;
 }
@@ -111,7 +111,7 @@ print_bits(size_t const size, void const *const ptr)
 {
   unsigned char *b = (unsigned char *)ptr;
   unsigned char  byte;
-  int32_t        i, j;
+  size_t        i, j;
 
   for (i = size - 1; i >= 0; i--) {
     for (j = 7; j >= 0; j--) {

@@ -1152,7 +1152,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
         /* copy all members to variable allocated memory on the stack */
         MirStackPtr elem_dest_ptr =
-            dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, i);
+            dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, (unsigned long)i);
         assert(elem_dest_ptr);
 
         exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
@@ -2724,10 +2724,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     /* named structure type */
     if (type->user_id) {
       type->llvm_type = LLVMStructCreateNamed(cnt->module->llvm_cnt, type->user_id->str);
-      LLVMStructSetBody(type->llvm_type, llvm_members, memc, is_packed);
+      LLVMStructSetBody(type->llvm_type, llvm_members, (unsigned long)memc, is_packed);
     } else {
       type->llvm_type =
-          LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, memc, is_packed);
+          LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, (unsigned long)memc, is_packed);
     }
     type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
@@ -4771,7 +4771,7 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
     const int64_t index = member->index;
 
     /* let the llvm solve poiner offest */
-    const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, index);
+    const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, (unsigned long)index);
 
     result.v_stack_ptr = ptr + ptr_offset; // pointer shift
   } else {
@@ -4980,7 +4980,7 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
     MirInstr *arg_value = NULL;
     /* starting point */
     MirStackPtr arg_ptr = (MirStackPtr)cnt->exec.stack->ra;
-    for (int32_t i = 0; i <= arg->i; ++i) {
+    for (uint32_t i = 0; i <= arg->i; ++i) {
       arg_value = bo_array_at(arg_values, i, MirInstr *);
       assert(arg_value);
       if (arg_value->comptime) continue;
@@ -5087,7 +5087,7 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
     barray_foreach(values, value)
     {
       member_type = value->const_value.type;
-      member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, i);
+      member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, (unsigned long)i);
 
       // CLEANUP:
       if (value->comptime) {
@@ -5360,7 +5360,7 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
       dcArgFloat(cnt->dl.vm, tmp.v_f32);
       break;
     case sizeof(double):
-      dcArgFloat(cnt->dl.vm, tmp.v_f64);
+      dcArgFloat(cnt->dl.vm, (float) tmp.v_f64);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -6170,7 +6170,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
         assert(ast_arg_name);
 
         /* create tmp declaration for arg variable */
-        MirInstr *arg = append_instr_arg(cnt, NULL, i);
+        MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
         append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false);
       }
     }
@@ -6821,7 +6821,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
   case MIR_TYPE_ARRAY: {
     char str[35];
-    sprintf(str, "[%lu]", type->data.array.len);
+    sprintf(str, "[%llu]", (unsigned long long)type->data.array.len);
     append_buf(buf, len, str);
 
     _type_to_str(buf, len, type->data.array.elem_type, true);
@@ -6893,8 +6893,8 @@ execute_test_cases(Context *cnt)
     line = test_fn->decl_node ? test_fn->decl_node->src->line : -1;
     file = test_fn->decl_node ? test_fn->decl_node->src->unit->filepath : "?";
 
-    msg_log("[ %s ] (%lu/%lu) %s:%d '%s'",
-            cnt->exec.stack->aborted ? RED("FAILED") : GREEN("PASSED"), i + 1, c, file, line,
+    msg_log("[ %s ] (%llu/%llu) %s:%d '%s'",
+            cnt->exec.stack->aborted ? RED("FAILED") : GREEN("PASSED"), (unsigned long long)i + 1, (unsigned long long)c, file, line,
             test_fn->test_case_desc);
 
     if (cnt->exec.stack->aborted) ++failed;
@@ -6994,12 +6994,20 @@ init_dl(Context *cnt)
   lib = dlLoadLibrary("libSDL2_image.dylib");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
-#elif BL_PLATFORM_LINUX
+#elif defined(BL_PLATFORM_LINUX)
   lib = dlLoadLibrary("libSDL2.so");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 
   lib = dlLoadLibrary("libSDL2_image.so");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+#elif defined(BL_PLATFORM_WIN)
+  lib = dlLoadLibrary("C:/Program Files/SDL2-2.0.9/lib/x64/SDL2.dll");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  lib = dlLoadLibrary("C:/Program Files/SDL2_image-2.0.4/lib/x64/SDL2_image.dll");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
 #endif

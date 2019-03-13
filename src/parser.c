@@ -1323,7 +1323,7 @@ parse_type_struct(Context *cnt)
                          tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
   type_struct->data.type_strct.raw = type_only;
 next:
-  tmp = parse_decl_member(cnt, type_only, bo_array_size(type_struct->data.type_strct.members));
+  tmp = parse_decl_member(cnt, type_only, (int32_t) bo_array_size(type_struct->data.type_strct.members));
   if (tmp) {
     bo_array_push_back(type_struct->data.type_strct.members, tmp);
 
@@ -1669,7 +1669,7 @@ next:
   parse_flags(cnt, 0);
 
   if ((tmp = parse_decl(cnt))) {
-    if (tmp != AST_BAD) {
+    if (tmp->kind != AST_BAD) {
       parse_semicolon_rq(cnt);
       /* setup global scope flag for declaration */
       tmp->data.decl_entity.in_gscope = true;

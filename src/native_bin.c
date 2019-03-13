@@ -51,7 +51,10 @@ native_bin_run(Builder *builder, Assembly *assembly)
       "Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.16.27023\\lib\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17763.0\\um\\x64\" "
       "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17763.0\\ucrt\\x64\" "
+      "/LIBPATH:\"C:\\Program Files\\SDL2-2.0.9\\lib\\x64\" "
+      "/LIBPATH:\"C:\\Program Files\\SDL2_image-2.0.4\\lib\\x64\" "
       "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib "
+      "SDL2_image.lib SDL2.lib "
       "Msvcrt.lib";
 #endif
 
