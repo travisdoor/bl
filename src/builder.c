@@ -168,6 +168,13 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
   builder->flags = flags;
   msg_log("compile assembly: %s", assembly->name);
 
+  {
+    unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
+    if (!assembly_add_unit_unique(assembly, unit)) {
+      unit_delete(unit);
+    }
+  }
+
   barray_foreach(assembly->units, unit)
   {
     /* IDEA: can run in separate thread */
