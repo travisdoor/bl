@@ -22,11 +22,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
-
-llvm_map_components_to_libnames(llvm_libs support core all)
-
 set(HEADER_FILES
         src/bldebug.h
         src/error.h 
@@ -75,18 +70,19 @@ set(SOURCE_FILES
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
 if (MSVC)
+    add_definitions(${LLVM_DEFINITIONS})
+    llvm_map_components_to_libnames(llvm_libs core all)
 
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
-
-    target_include_directories(blc PRIVATE ${DYNCALL_PATH}/include)
+    target_include_directories(blc PRIVATE ${DYNCALL_PATH}/include ${LLVM_INCLUDE_DIRS})
     target_link_directories(blc PRIVATE ${DYNCALL_PATH}/lib)
-
     target_link_libraries(blc PUBLIC
         dynload_s
         dyncall_s
         shlwapi
     )
+
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fno-sanitize=all -Wdeprecated-declarations")
@@ -97,6 +93,7 @@ else()
     target_link_libraries(blc PUBLIC
         ${DYNLOAD_LIBS}
         ${DYNCALL_LIBS}
+	LLVM
     )
 endif()
 
