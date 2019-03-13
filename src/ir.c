@@ -531,14 +531,12 @@ gen_as_const(Context *cnt, MirConstValue *value)
       const char *   str = str_value->data.v_str;
       assert(str);
 
-      LLVMValueRef *const_vals = bl_malloc(sizeof(LLVMValueRef));
+      LLVMValueRef const_vals[2];
       const_vals[0]            = LLVMConstInt(len_value->type->llvm_type, len, false);
       const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
       LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
 
       result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
-
-      bl_free(const_vals);
     } else {
       BArray *       members = value->data.v_struct.members;
       const size_t   memc    = bo_array_size(members);

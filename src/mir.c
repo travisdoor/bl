@@ -1794,6 +1794,7 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirT
 MirConstValue *
 create_value(Context *cnt, MirType *type)
 {
+  assert(type);
   MirConstValue *tmp = arena_alloc(&cnt->module->arenas.value_arena);
   tmp->type          = type;
   return tmp;
@@ -6725,12 +6726,12 @@ static void
 arenas_terminate(struct MirArenas *arenas)
 {
   arena_terminate(&arenas->instr_arena);
-  arena_terminate(&arenas->type_arena);
+  arena_terminate(&arenas->value_arena);
   arena_terminate(&arenas->var_arena);
   arena_terminate(&arenas->fn_arena);
   arena_terminate(&arenas->member_arena);
-  arena_terminate(&arenas->value_arena);
   arena_terminate(&arenas->array_arena);
+  arena_terminate(&arenas->type_arena);
 }
 
 /* public */
@@ -6986,20 +6987,22 @@ init_dl(Context *cnt)
 
 /* TEST: */
 #ifdef BL_PLATFORM_MACOS
-  const char *_sdl       = "libSDL2.dylib";
-  const char *_sdl_image = "libSDL2_image.dylib";
-#else
-  const char *_sdl = "libSDL2.so";
-  const char *_sdl_image = "libSDL2_image.so";
+  lib = dlLoadLibrary("libSDL2.dylib");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  lib = dlLoadLibrary("libSDL2_image.dylib");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+#elif BL_PLATFORM_LINUX
+  lib = dlLoadLibrary("libSDL2.so");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
+
+  lib = dlLoadLibrary("libSDL2_image.so");
+  assert(lib);
+  bo_array_push_back(cnt->dl.libs, lib);
 #endif
-
-  lib = dlLoadLibrary(_sdl);
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
-
-  lib = dlLoadLibrary(_sdl_image);
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
 
   DCCallVM *vm = dcNewCallVM(4096);
   dcMode(vm, DC_CALL_C_DEFAULT);
