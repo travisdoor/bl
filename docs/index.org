@@ -54,42 +54,85 @@
   - GCC/CLANG/Visual Studio compiler
 
 ** Linux
-   - Install bobject.
-   - Install dyncall.
-   - Install LLVM dev packages.
+   - Compile and install bobject.
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bobject.git
+    cd bobject
+    mkdir build
+    cd build
+    cmake ..
+    sudo make install    
+    #+END_EXAMPLE
+
+   - Compile and install dyncall.
+   - Install LLVM dev packages with your favourite package manager.
+    #+BEGIN_EXAMPLE
+    sudo apt install llvm-dev 
+    #+END_EXAMPLE
+
    - Download and compile bl.
-   
-   #+BEGIN_EXAMPLE
-   git clone https://github.com/travisdoor/bl.git
-   cd bl
-   mkdir build
-   cd build
-   cmake ..
-   make
-   #+END_EXAMPLE
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bl.git
+    cd bl
+    mkdir build
+    cd build
+    cmake ..
+    make
+    #+END_EXAMPLE
 
    - Add 'bl/api' and 'bl/bin' into the system PATH
 
 ** MacOS
-   - Install bobject.
-   - Install dyncall.
-   - Install LLVM dev packages.
+   - Compile and install bobject.
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bobject.git
+    cd bobject
+    mkdir build
+    cd build
+    cmake ..
+    sudo make install    
+    #+END_EXAMPLE
+
+   - Compile and install dyncall.
+   - Install LLVM dev packages with your favourite package manager.
    - Download and compile bl.
-   
-   #+BEGIN_EXAMPLE
-   git clone https://github.com/travisdoor/bl.git
-   cd bl
-   mkdir build
-   cd build
-   cmake ..
-   make
-   #+END_EXAMPLE
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bl.git
+    cd bl
+    mkdir build
+    cd build
+    cmake ..
+    make
+    #+END_EXAMPLE
 
    - Add 'bl/api' and 'bl/bin' into the system PATH
 
-** TODO Windows 
+** Windows 
+   You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
+   - Compile and install bobject.
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bobject.git
+    cd bobject
+    mkdir build
+    cd build
+    cmake .. -G "Visual Studio 15 Win64"
+    cmake --build . --config Release --target Install   
+    #+END_EXAMPLE
 
+   - Compile and install dyncall.
+   - Compile and install LLVM tool set. [[https://llvm.org/docs/GettingStartedVS.html][guide]]
+   - Download and compile bl.
+    #+BEGIN_EXAMPLE
+    git clone https://github.com/travisdoor/bl.git
+    cd bl
+    mkdir build
+    cd build
+    cmake .. -G "Visual Studio 15 Win64"
+    cmake --build . --config Release
+    #+END_EXAMPLE
+
+   - Add 'bl/api' and 'bl/bin' into the system PATH
 * Releases
 ** 0.4.0 pre-alpha
 - [[https://github.com/travisdoor/bl][source]]
