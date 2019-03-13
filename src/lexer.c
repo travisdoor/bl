@@ -424,7 +424,7 @@ scan:
     if (strncmp(cnt->c, sym_strings[i], len) == 0) {
       cnt->c += len;
       tok.sym     = (Sym)i;
-      tok.src.len = len;
+      tok.src.len = (int32_t) len;
 
       /*
        * Two joined symbols will be parsed as identifier.
@@ -449,7 +449,7 @@ scan:
                    cnt->col);
       }
       default:
-        cnt->col += len;
+        cnt->col += (int32_t) len;
         goto push_token;
       }
     }

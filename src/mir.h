@@ -382,7 +382,7 @@ struct MirInstr
 {
   MirConstValue  const_value; // must be first
   MirInstrKind   kind;
-  int32_t        id;
+  uint64_t       id;
   LLVMValueRef   llvm_value;
   Ast *          node;
   MirInstrBlock *owner_block;

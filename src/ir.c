@@ -503,7 +503,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
       llvm_elems[i] = gen_as_const(cnt, elem);
     }
 
-    LLVMValueRef result = LLVMConstArray(llvm_elem_type, llvm_elems, len);
+    LLVMValueRef result = LLVMConstArray(llvm_elem_type, llvm_elems, (unsigned int)len);
     bl_free(llvm_elems);
     return result;
   }
@@ -551,7 +551,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
       }
 
       result =
-          LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, memc, type->data.strct.is_packed);
+          LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, (unsigned int) memc, type->data.strct.is_packed);
       bl_free(llvm_members);
     }
     return result;
@@ -846,7 +846,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
               llvm_value = fetch_value(cnt, value);
               assert(llvm_value);
 
-              llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, var->llvm_value, i, "");
+              llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, var->llvm_value, (unsigned int) i, "");
               LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
             }
           }

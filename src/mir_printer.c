@@ -332,14 +332,14 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
     MirInstr *tmp;
     barray_foreach(type_fn->arg_types, tmp)
     {
-      fprintf(stream, "%%%u", tmp->id);
+      fprintf(stream, "%%%llu", tmp->id);
       if (i + 1 < bo_array_size(type_fn->arg_types)) fprintf(stream, ", ");
     }
   }
 
   fprintf(stream, ")");
 
-  if (type_fn->ret_type) fprintf(stream, " %%%u", type_fn->ret_type->id);
+  if (type_fn->ret_type) fprintf(stream, " %%%llu", type_fn->ret_type->id);
 }
 
 void
@@ -711,7 +711,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 #if BL_DEBUG
   fprintf(stream, "%%%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
 #else
-  fprintf(stream, "%%%s_%u:", block->name, block->base.id);
+  fprintf(stream, "%%%s_%llu:", block->name, block->base.id);
 #endif
   if (!block->base.ref_count)
     fprintf(stream, " // NEVER REACHED\n");

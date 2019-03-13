@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <stdalign.h>
+//#include <stdalign.h>
 #include "mir.h"
 #include "unit.h"
 #include "common.h"
@@ -2589,7 +2589,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 
   switch (type->kind) {
   case MIR_TYPE_TYPE: {
-    type->alignment        = alignof(MirType *);
+    type->alignment        = __alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
     type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
@@ -6971,7 +6971,12 @@ init_dl(Context *cnt)
   cnt->dl.libs = bo_array_new(sizeof(DLLib *));
 
   /* load only current executed workspace */
-  DLLib *lib = dlLoadLibrary(NULL);
+#ifdef BL_PLATFORM_WIN
+  const char *libc = "msvcrt";
+#else
+  const char *libc = NULL;
+#endif
+  DLLib *lib = dlLoadLibrary(libc);
   if (!lib) {
     msg_error("unable to load library");
     return ERR_LIB_NOT_FOUND;

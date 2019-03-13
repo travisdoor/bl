@@ -3,7 +3,7 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-  print("Hello world.\n");
+  //print("Hello world.\n");
 
   return 0;
 };
