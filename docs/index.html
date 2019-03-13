@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit Language</title>
-<!-- 2019-03-13 St 11:30 -->
+<!-- 2019-03-13 St 11:46 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -144,10 +144,255 @@ for the JavaScript code in this tag.
 <body>
 <div id="content">
 <h1 class="title">Biscuit Language</h1>
+<p>
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=BRSWZ2U7A2TXG&source=url"><img src="https://img.shields.io/badge/Donate-PayPal-green.svg"></a>
+</p>
+
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">About</a>
+<ul>
+<li><a href="#sec-1-1">Goals</a></li>
+<li><a href="#sec-1-2">Example</a></li>
+</ul>
+</li>
+<li><a href="#sec-2">Instalation</a>
+<ul>
+<li><a href="#sec-2-1">Requirements</a></li>
+<li><a href="#sec-2-2">Linux</a></li>
+<li><a href="#sec-2-3">MacOS</a></li>
+<li><a href="#sec-2-4">Windows</a></li>
+</ul>
+</li>
+<li><a href="#sec-3">Releases</a>
+<ul>
+<li><a href="#sec-3-1">0.4.0 pre-alpha</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1">About</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit is designed to be simple, fast and explicit.
+</p>
+</div>
+
+<div id="outline-container-sec-1-1" class="outline-3">
+<h3 id="sec-1-1">Goals</h3>
+<div class="outline-text-3" id="text-1-1">
+<ul class="org-ul">
+<li>manual memory management
+</li>
+<li>pointers
+</li>
+<li>no exceptions
+</li>
+<li>fast compilation
+</li>
+<li>full compile-time execution (integrated interpreter)
+</li>
+<li>no OOP
+</li>
+<li>types as values in compile-time
+</li>
+<li>use of the LLVM backend
+</li>
+<li>multiplatform
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-1-2" class="outline-3">
+<h3 id="sec-1-2">Example</h3>
+<div class="outline-text-3" id="text-1-2">
+<div class="org-src-container">
+
+<pre class="src src-bl"><span class="org-function-name">main</span> :: <span class="org-keyword">fn</span> () <span class="org-type">s32</span> {
+  <span class="org-keyword">return</span> <span class="org-function-name">fib</span>(<span class="org-constant">10</span>);
+};
+
+<span class="org-function-name">fib</span> :: <span class="org-keyword">fn</span> (n: <span class="org-type">s32</span>) <span class="org-type">s32</span> {
+  <span class="org-keyword">if</span> n == <span class="org-constant">0</span> || n == <span class="org-constant">1</span> {
+    <span class="org-keyword">return</span> n;
+  } <span class="org-keyword">else</span> {
+    <span class="org-keyword">return</span> <span class="org-function-name">fib</span>(n-1) + <span class="org-function-name">fib</span>(n-2);
+  }
+
+  <span class="org-keyword">return</span> -1;
+};
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2">Instalation</h2>
+<div class="outline-text-2" id="text-2">
+</div><div id="outline-container-sec-2-1" class="outline-3">
+<h3 id="sec-2-1">Requirements</h3>
+<div class="outline-text-3" id="text-2-1">
+<ul class="org-ul">
+<li>git
+</li>
+<li>CMake
+</li>
+<li>LLVM
+</li>
+<li><a href="https://github.com/travisdoor/bobject">bobject</a>
+</li>
+<li><a href="http://www.dyncall.org">dyncall</a>
+</li>
+<li>GCC/CLANG/Visual Studio compiler
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-2" class="outline-3">
+<h3 id="sec-2-2">Linux</h3>
+<div class="outline-text-3" id="text-2-2">
+<ul class="org-ul">
+<li>Compile and install bobject.
+<pre class="example">
+git clone https://github.com/travisdoor/bobject.git
+cd bobject
+mkdir build
+cd build
+cmake ..
+sudo make install
+</pre>
+</li>
+
+<li>Compile and install dyncall.
+</li>
+<li>Install LLVM dev packages with your favourite package manager.
+<pre class="example">
+sudo apt install llvm-dev
+</pre>
+</li>
+
+<li>Download and compile bl.
+<pre class="example">
+git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make
+</pre>
+</li>
+
+<li>Add 'bl/api' and 'bl/bin' into the system PATH
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-3" class="outline-3">
+<h3 id="sec-2-3">MacOS</h3>
+<div class="outline-text-3" id="text-2-3">
+<ul class="org-ul">
+<li>Compile and install bobject.
+<pre class="example">
+git clone https://github.com/travisdoor/bobject.git
+cd bobject
+mkdir build
+cd build
+cmake ..
+sudo make install
+</pre>
+</li>
+
+<li>Compile and install dyncall.
+</li>
+<li>Install LLVM dev packages with your favourite package manager.
+</li>
+<li>Download and compile bl.
+<pre class="example">
+git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make
+</pre>
+</li>
+
+<li>Add 'bl/api' and 'bl/bin' into the system PATH
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-4" class="outline-3">
+<h3 id="sec-2-4">Windows</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
+</p>
+
+<ul class="org-ul">
+<li>Compile and install bobject.
+<pre class="example">
+git clone https://github.com/travisdoor/bobject.git
+cd bobject
+mkdir build
+cd build
+cmake .. -G "Visual Studio 15 Win64"
+cmake --build . --config Release --target Install
+</pre>
+</li>
+
+<li>Compile and install dyncall.
+</li>
+<li>Compile and install LLVM tool set. <a href="https://llvm.org/docs/GettingStartedVS.html">guide</a>
+</li>
+<li>Download and compile bl.
+<pre class="example">
+git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake .. -G "Visual Studio 15 Win64"
+cmake --build . --config Release
+</pre>
+</li>
+
+<li>Add 'bl/api' and 'bl/bin' into the system PATH
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3">Releases</h2>
+<div class="outline-text-2" id="text-3">
+</div><div id="outline-container-sec-3-1" class="outline-3">
+<h3 id="sec-3-1">0.4.0 pre-alpha</h3>
+<div class="outline-text-3" id="text-3-1">
+<ul class="org-ul">
+<li><a href="https://github.com/travisdoor/bl">source</a>
+</li>
+<li><a href="documentation.html">documentation</a>
+</li>
+<li><a href="MIR.html">MIR - documentation</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-03-13 St 11:30</p>
+<p class="date">Created: 2019-03-13 St 11:46</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
