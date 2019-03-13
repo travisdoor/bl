@@ -44,7 +44,7 @@
    };
    #+END_SRC
 
-* Instalation
+* Building compiler from source code
 ** Requirements
   - git
   - CMake
@@ -107,7 +107,7 @@
 
    - Add 'bl/api' and 'bl/bin' into the system PATH
 
-** Windows 
+** Windows
    You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
    - Compile and install bobject.
@@ -129,10 +129,24 @@
     mkdir build
     cd build
     cmake .. -G "Visual Studio 15 Win64"
-    cmake --build . --config Release
     #+END_EXAMPLE
 
-   - Add 'bl/api' and 'bl/bin' into the system PATH
+     You can specify path to DynCall by setting =DYNCALL_PATH= variable. Solution generated from cmake configuration can be found in =build= folder. 
+
+     There is unresolved issue with generated VS solution, use of =llvm_map_components_to_libnames= in cmake config file cause generation of some invalid linker input files, to fix that you need to open solution in Visual Studio and right click on 'bl' in Solution Explorer -> Properties -> Linker -> Input -> Additional Dependencies and remove *-NOTFOUND entries. 
+
+     Now you should be able to compile the =bl= target from the Visual Studio or from the terminal with following command.
+
+    #+BEGIN_EXAMPLE
+    cmake --build . --config Release
+    #+END_EXAMPLE
+     
+     Built executable can be found in =bin/Release= directory. Blc depends on =bobject.dll=, please copy-paste this file from the =bobject/bin= directory next to the =blc.exe=.
+
+   - Add 'bl/api' and 'bl/bin/Release' into the system PATH
+     
+
+     Note: Compilation on Windows is quite complicated, we need to create some automated process for this...
 * Releases
 ** 0.4.0 pre-alpha
 - [[https://github.com/travisdoor/bl][source]]
