@@ -410,6 +410,12 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
   case MIR_CAST_FPTOUI:
     print_instr_head(&cast->base, stream, "fptoui");
     break;
+  case MIR_CAST_FPTRUNC:
+    print_instr_head(&cast->base, stream, "fptrunc");
+    break;
+  case MIR_CAST_FPEXT:
+    print_instr_head(&cast->base, stream, "fpext");
+    break;
   case MIR_CAST_SITOFP:
     print_instr_head(&cast->base, stream, "sitofp");
     break;

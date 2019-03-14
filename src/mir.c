@@ -1152,7 +1152,8 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
         /* copy all members to variable allocated memory on the stack */
         MirStackPtr elem_dest_ptr =
-            dest_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, (unsigned long)i);
+            dest_ptr +
+            LLVMOffsetOfElement(cnt->module->llvm_td, src_type->llvm_type, (unsigned long)i);
         assert(elem_dest_ptr);
 
         exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
@@ -1902,6 +1903,15 @@ get_cast_op(MirType *from, MirType *to)
       /* to integer */
       const bool is_to_signed = to->data.integer.is_signed;
       return is_to_signed ? MIR_CAST_FPTOSI : MIR_CAST_FPTOUI;
+    }
+
+    case MIR_TYPE_REAL: {
+      /* to integer */
+      if (fsize < tsize) {
+        return MIR_CAST_FPEXT;
+      } else {
+        return MIR_CAST_FPTRUNC;
+      }
     }
 
     default:
@@ -2726,8 +2736,8 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
       type->llvm_type = LLVMStructCreateNamed(cnt->module->llvm_cnt, type->user_id->str);
       LLVMStructSetBody(type->llvm_type, llvm_members, (unsigned long)memc, is_packed);
     } else {
-      type->llvm_type =
-          LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members, (unsigned long)memc, is_packed);
+      type->llvm_type = LLVMStructTypeInContext(cnt->module->llvm_cnt, llvm_members,
+                                                (unsigned long)memc, is_packed);
     }
     type->size_bits        = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
@@ -4771,7 +4781,8 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
     const int64_t index = member->index;
 
     /* let the llvm solve poiner offest */
-    const ptrdiff_t ptr_offset = LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, (unsigned long)index);
+    const ptrdiff_t ptr_offset =
+        LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, (unsigned long)index);
 
     result.v_stack_ptr = ptr + ptr_offset; // pointer shift
   } else {
@@ -4849,6 +4860,35 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     else
       exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
 
+    break;
+  }
+
+  case MIR_CAST_FPEXT: {
+    /* src is smaller than dest */
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    tmp.v_f64 = (double) tmp.v_f32;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
+  }
+
+  case MIR_CAST_FPTRUNC: {
+    /* src is bigger than dest */
+    MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
+    exec_read_value(&tmp, from_ptr, src_type);
+
+    tmp.v_f32 = (float) tmp.v_f64;
+
+    if (cast->base.comptime)
+      memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
+    else
+      exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
+    break;
     break;
   }
 
@@ -5087,7 +5127,8 @@ exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
     barray_foreach(values, value)
     {
       member_type = value->const_value.type;
-      member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type, (unsigned long)i);
+      member_ptr  = var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, init_type->llvm_type,
+                                                 (unsigned long)i);
 
       // CLEANUP:
       if (value->comptime) {
@@ -5360,7 +5401,7 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
       dcArgFloat(cnt->dl.vm, tmp.v_f32);
       break;
     case sizeof(double):
-      dcArgFloat(cnt->dl.vm, (float) tmp.v_f64);
+      dcArgFloat(cnt->dl.vm, (float)tmp.v_f64);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
@@ -6894,8 +6935,8 @@ execute_test_cases(Context *cnt)
     file = test_fn->decl_node ? test_fn->decl_node->src->unit->filepath : "?";
 
     msg_log("[ %s ] (%llu/%llu) %s:%d '%s'",
-            cnt->exec.stack->aborted ? RED("FAILED") : GREEN("PASSED"), (unsigned long long)i + 1, (unsigned long long)c, file, line,
-            test_fn->test_case_desc);
+            cnt->exec.stack->aborted ? RED("FAILED") : GREEN("PASSED"), (unsigned long long)i + 1,
+            (unsigned long long)c, file, line, test_fn->test_case_desc);
 
     if (cnt->exec.stack->aborted) ++failed;
   }
