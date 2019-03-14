@@ -102,5 +102,6 @@ assembly_add_link(Assembly *assembly, const char *lib)
   uint64_t hash = bo_hash_from_str(lib);
   if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
-  bo_htbl_insert(assembly->link_cache, hash, (char *)lib);
+  char *tmp = (char *)lib;
+  bo_htbl_insert(assembly->link_cache, hash, tmp);
 }
