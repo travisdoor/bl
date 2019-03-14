@@ -143,6 +143,7 @@
      
      Built executable can be found in =bin/Release= directory. Blc depends on =bobject.dll=, please copy-paste this file from the =bobject/bin= directory next to the =blc.exe=.
 
+   - Biscuit compiler on Windows use Visual Studio linker =link.exe=. Location of linker should be added into system PATH.
    - Add 'bl/api' and 'bl/bin/Release' into the system PATH
      
 
