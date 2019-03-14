@@ -233,7 +233,8 @@ gen_global_var_proto(Context *cnt, MirVar *var)
   LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
   /* Linkage should be later set by user. */
-  LLVMSetLinkage(var->llvm_value, LLVMInternalLinkage);
+  LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
+  LLVMSetAlignment(var->llvm_value, var->alloc_type->alignment);
   return var->llvm_value;
 }
 
@@ -794,7 +795,8 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             assert(llvm_type);
             LLVMValueRef llvm_const_arr = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
             LLVMSetGlobalConstant(llvm_const_arr, true);
-            LLVMSetLinkage(llvm_const_arr, LLVMInternalLinkage);
+            LLVMSetLinkage(llvm_const_arr, LLVMPrivateLinkage);
+            LLVMSetAlignment(llvm_const_arr, var->alloc_type->alignment);
             LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
 
             build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size);
@@ -834,12 +836,13 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             /* compile time known constant initializer */
             LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
             assert(llvm_type);
-            LLVMValueRef llvm_const_arr = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
-            LLVMSetGlobalConstant(llvm_const_arr, true);
-            LLVMSetLinkage(llvm_const_arr, LLVMInternalLinkage);
-            LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
+            LLVMValueRef llvm_const_strct = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
+            LLVMSetGlobalConstant(llvm_const_strct, true);
+            LLVMSetLinkage(llvm_const_strct, LLVMPrivateLinkage);
+            LLVMSetAlignment(llvm_const_strct, var->alloc_type->alignment);
+            LLVMSetInitializer(llvm_const_strct, fetch_value(cnt, &init->base));
 
-            build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size);
+            build_call_memcpy(cnt, var->llvm_value, llvm_const_strct, llvm_size);
           } else {
             /* one or more initizalizer values are known only in runtime */
             BArray *     values = init->values;

@@ -3160,7 +3160,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
     if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN ||
         is_builtin(ast_member_ident, MIR_BUILTIN_ARR_LEN)) {
       /* .len */
-      assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
+      // assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
       erase_instr(member_ptr->target_ptr);
       /* mutate instruction into constant */
       MirInstr *len               = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
@@ -4075,8 +4075,12 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
     return ANALYZE_FAILED;
   }
 
-  if (call->base.comptime && !call->callee->const_value.data.v_fn->analyzed_for_cmptime_exec) {
-    return ANALYZE_POSTPONE;
+  MirFn *fn = call->callee->const_value.data.v_fn;
+  if (call->base.comptime) {
+    if (!fn->analyzed_for_cmptime_exec) return ANALYZE_POSTPONE;
+  } else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
+    /* Direct call of anonymous function. */
+    ++fn->ref_count;
   }
 
   MirType *result_type = type->data.fn.ret_type;
@@ -4341,13 +4345,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
   instr->analyzed = state == ANALYZE_PASSED;
 
-  /* remove unused instructions */
-  /* CLEANUP:
-  if (instr->analyzed && instr->ref_count == 0) {
-    erase_instr(instr);
-  }
-  */
-
   return state;
 }
 
@@ -4398,12 +4395,19 @@ analyze(Context *cnt)
   uint64_t  state;
   int       postpone_loop_count = 0;
   MirInstr *ip                  = NULL;
+  MirInstr *prev_ip             = NULL;
   bool      skip                = false;
 
   if (bo_list_empty(q)) return;
 
   while (true) {
-    ip = skip ? NULL : analyze_try_get_next(ip);
+    prev_ip = ip;
+    ip      = skip ? NULL : analyze_try_get_next(ip);
+
+    if (prev_ip && prev_ip->analyzed && prev_ip->ref_count == 0) {
+      erase_instr(prev_ip);
+    }
+
     if (!ip) {
       if (bo_list_empty(q)) break;
 
@@ -4868,7 +4872,7 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
     exec_read_value(&tmp, from_ptr, src_type);
 
-    tmp.v_f64 = (double) tmp.v_f32;
+    tmp.v_f64 = (double)tmp.v_f32;
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
@@ -4882,7 +4886,7 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
     exec_read_value(&tmp, from_ptr, src_type);
 
-    tmp.v_f32 = (float) tmp.v_f64;
+    tmp.v_f32 = (float)tmp.v_f64;
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));

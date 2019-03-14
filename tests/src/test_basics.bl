@@ -190,6 +190,12 @@
   double : f64 = 12.5;
   j = cast(s64) double;
   assert(j == 12);
+
+  float = cast(f32) 12.5;
+  assert(float == 12.5f);
+
+  double = cast(f64) 12.5f;
+  assert(double == 12.5);
 };
 
 #test "pointers" {
@@ -308,13 +314,13 @@
     _4: [10] s32
   };
 
-  int :: 10;
+  int := 10;
 
   foo : Foo;
   foo._1 = 10;
   foo._2 = 666;
   foo._3 = &int;
-  (foo._4)[0] = 10;
+  foo._4[0] = 10;
 
   assert(foo._1 == 10);
   assert(foo._2 == 666);
@@ -330,12 +336,12 @@
     _4: [10] s32
   };
 
-  int :: 10;
+  int := 10;
 
   foo._1 = 10;
   foo._2 = 666;
   foo._3 = &int;
-  (foo._4)[0] = 10;
+  foo._4[0] = 10;
 
   assert(foo._1 == 10);
   assert(foo._2 == 666);
@@ -354,8 +360,8 @@
   };
 
   bar : Bar;
-  (bar.foo).i = 10;
-  (bar.foo).j = 20;
+  bar.foo.i = 10;
+  bar.foo.j = 20;
 
   assert((bar.foo).i == 10);
   assert((bar.foo).j == 20);
@@ -412,6 +418,9 @@ _GlobalType     :: s32;
   assert(sizeof(s16) == 2);
   assert(sizeof(s32) == 4);
   assert(sizeof(s64) == 8);
+  assert(sizeof(f32) == 4);
+  assert(sizeof(f64) == 8);
+  assert(sizeof(string) == 16);
   assert(sizeof(1 + 2) == 4);
 };
 

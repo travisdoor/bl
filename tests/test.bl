@@ -1,20 +1,13 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
+
+Foo :: struct {
+  i: s32,
+  j: s32
+};
 
 main :: fn () s32 {
-  print("Hello world.\n");
-
-  f : f32 = 0.1f;
-  d : f64 = 0.2; 
-
-  assert(f == 0.1f);
-  assert(d == 0.2);
-
-  f = cast(f32) d;
-  assert(f == 0.2f);
-  d = cast(f64) 0.5f;
-  assert(d == 0.5);
-
+  foo := {:Foo: 1, 2};
   return 0;
 };

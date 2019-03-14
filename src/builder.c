@@ -107,18 +107,18 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
     if (flags & BUILDER_EMIT_MIR) mir_writer_run(assembly);
     interrupt_on_error(builder);
 
+    ir_run(builder, assembly);
+    interrupt_on_error(builder);
+
+    ir_opt_run(builder, assembly);
+    interrupt_on_error(builder);
+
+    if (flags & BUILDER_EMIT_LLVM) {
+      bc_writer_run(builder, assembly);
+      interrupt_on_error(builder);
+    }
+
     if (!(flags & BUILDER_NO_BIN)) {
-      ir_run(builder, assembly);
-      interrupt_on_error(builder);
-
-      ir_opt_run(builder, assembly);
-      interrupt_on_error(builder);
-
-      if (flags & BUILDER_EMIT_LLVM) {
-        bc_writer_run(builder, assembly);
-        interrupt_on_error(builder);
-      }
-
       linker_run(builder, assembly);
       interrupt_on_error(builder);
       native_bin_run(builder, assembly);

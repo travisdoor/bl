@@ -107,11 +107,11 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 }
 
 void
-print_bits(size_t const size, void const *const ptr)
+print_bits(int32_t const size, void const *const ptr)
 {
   unsigned char *b = (unsigned char *)ptr;
   unsigned char  byte;
-  size_t        i, j;
+  int32_t        i, j;
 
   for (i = size - 1; i >= 0; i--) {
     for (j = 7; j >= 0; j--) {

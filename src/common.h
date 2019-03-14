@@ -93,6 +93,6 @@ void
 align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 
 void
-print_bits(size_t const size, void const *const ptr);
+print_bits(int32_t const size, void const *const ptr);
 
 #endif
