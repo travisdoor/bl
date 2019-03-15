@@ -26,7 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-printf  :: fn (str: *u8) s32 #extern;
 putchar :: fn (c: s32) s32 #extern;
 memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
 abort   :: fn () #extern;
@@ -36,3 +35,6 @@ strlen  :: fn (str: *u8) usize #extern;
 sin     :: fn (n: f64) f64 #extern;
 sinf    :: fn (n: f32) f32 #extern;
 fabs    :: fn (n: f32) f32 #extern;
+log10   :: fn (n: f64) f64 #extern;
+pow     :: fn (base: f64, exponent: f64) f64 #extern;
+floor   :: fn (x: f64) f64 #extern;

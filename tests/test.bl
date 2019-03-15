@@ -1,12 +1,9 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
 main :: fn () s32 {
-  f_ptr : *fn() = &foo;
-  f_ptr();
+  //print_float(-0.012f);
+  print_f64(123.321);
   return 0;
-};
-
-foo :: fn () {
 };
