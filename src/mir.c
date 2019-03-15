@@ -4022,7 +4022,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
   if (var->alloc_type->kind == MIR_TYPE_FN) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, decl->base.node->src,
-                BUILDER_CUR_WORD, "Invalid type of the variable, functions can be referenced only by pointers.");
+                BUILDER_CUR_WORD,
+                "Invalid type of the variable, functions can be referenced only by pointers.");
     return ANALYZE_FAILED;
   }
 
@@ -6356,8 +6357,15 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
   if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
     MirInstr *value = ast(cnt, ast_value);
-    value->const_value.data.v_fn->llvm_name =
-        is_in_gscope ? ast_name->data.ident.id.str : gen_uq_name(cnt, ast_name->data.ident.id.str);
+    if (is_in_gscope) {
+      value->const_value.data.v_fn->llvm_name = ast_name->data.ident.id.str;
+    } else {
+      if (entity->data.decl_entity.flags & FLAG_EXTERN)
+        value->const_value.data.v_fn->llvm_name = ast_name->data.ident.id.str;
+      else
+        value->const_value.data.v_fn->llvm_name = gen_uq_name(cnt, ast_name->data.ident.id.str);
+    }
+
     value->const_value.data.v_fn->scope     = ast_name->data.ident.scope;
     value->const_value.data.v_fn->id        = &ast_name->data.ident.id;
     value->const_value.data.v_fn->decl_node = ast_name;

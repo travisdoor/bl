@@ -541,8 +541,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
       assert(str);
 
       LLVMValueRef const_vals[2];
-      const_vals[0]            = LLVMConstInt(len_value->type->llvm_type, len, false);
-      const_vals[1]            = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
+      const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
+      const_vals[1] = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
       LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
 
       result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
@@ -557,8 +557,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
         llvm_members[i] = gen_as_const(cnt, member);
       }
 
-      result =
-          LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, (unsigned int) memc, type->data.strct.is_packed);
+      result = LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, (unsigned int)memc,
+                                        type->data.strct.is_packed);
       bl_free(llvm_members);
     }
     return result;
@@ -588,14 +588,21 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
   LLVMValueRef llvm_val = fetch_value(cnt, unop->instr);
   assert(llvm_val);
 
+  LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
+  const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
   switch (unop->op) {
   case UNOP_NOT: {
+    assert(!float_kind && "Invalid negation of floating point type.");
     unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
     break;
   }
 
   case UNOP_NEG: {
-    unop->base.llvm_value = LLVMBuildNeg(cnt->llvm_builder, llvm_val, "");
+    if (float_kind)
+      unop->base.llvm_value = LLVMBuildFNeg(cnt->llvm_builder, llvm_val, "");
+    else
+      unop->base.llvm_value = LLVMBuildNeg(cnt->llvm_builder, llvm_val, "");
     break;
   }
 
@@ -693,7 +700,6 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
     else
       binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
     break;
-
 
     /* BUG: INVALID EVALUATION */
     /* BUG: INVALID EVALUATION */
@@ -855,7 +861,8 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
               llvm_value = fetch_value(cnt, value);
               assert(llvm_value);
 
-              llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, var->llvm_value, (unsigned int) i, "");
+              llvm_value_dest =
+                  LLVMBuildStructGEP(cnt->llvm_builder, var->llvm_value, (unsigned int)i, "");
               LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
             }
           }
