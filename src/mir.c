@@ -5420,7 +5420,7 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
       dcArgFloat(cnt->dl.vm, tmp.v_f32);
       break;
     case sizeof(double):
-      dcArgFloat(cnt->dl.vm, (float)tmp.v_f64);
+      dcArgDouble(cnt->dl.vm, tmp.v_f64);
       break;
     default:
       bl_abort("unsupported external call integer argument type");
