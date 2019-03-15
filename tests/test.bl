@@ -4,6 +4,30 @@
 
 main :: fn () s32 {
   //print_float(-0.012f);
-  print_f64(123.321);
+  print_f64(123.1);
+  print_string("\n");
+
+  print_f64(0.123);
+  print_string("\n");
+
+  print_f64(0.000123);
+  print_string("\n");
+
+  print_f64(123.);
+  print_string("\n");
+
+  print_f64(-123.1);
+  print_string("\n");
+
+  print_f64(-0.123);
+  print_string("\n");
+
+  print_f64(-0.000123);
+  print_string("\n");
+
+  print_f64(-123.);
+  print_string("\n");
+
+  print_floats("% + % = %\n", 0.2, 4.5, 0.2 + 4.5);
   return 0;
 };

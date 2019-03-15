@@ -4949,10 +4949,37 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
     MirStackPtr from_ptr = exec_fetch_value(cnt, cast->next);
     exec_read_value(&tmp, from_ptr, src_type);
 
-    if (dest_type->store_size_bytes == sizeof(float))
-      tmp.v_f32 = (float)tmp.v_s64;
-    else
-      tmp.v_f64 = (double)tmp.v_s64;
+    if (dest_type->store_size_bytes == sizeof(float)) {
+      switch (src_type->store_size_bytes) {
+      case sizeof(tmp.v_s8):
+        tmp.v_f32 = (float)tmp.v_s8;
+        break;
+      case sizeof(tmp.v_s16):
+        tmp.v_f32 = (float)tmp.v_s16;
+        break;
+      case sizeof(tmp.v_s32):
+        tmp.v_f32 = (float)tmp.v_s32;
+        break;
+      case sizeof(tmp.v_s64):
+        tmp.v_f32 = (float)tmp.v_s64;
+        break;
+      }
+    } else {
+      switch (src_type->store_size_bytes) {
+      case sizeof(tmp.v_s8):
+        tmp.v_f64 = (double)tmp.v_s8;
+        break;
+      case sizeof(tmp.v_s16):
+        tmp.v_f64 = (double)tmp.v_s16;
+        break;
+      case sizeof(tmp.v_s32):
+        tmp.v_f64 = (double)tmp.v_s32;
+        break;
+      case sizeof(tmp.v_s64):
+        tmp.v_f64 = (double)tmp.v_s64;
+        break;
+      }
+    }
 
     if (cast->base.comptime)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
