@@ -3275,7 +3275,15 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
   }
 
   /* setup type */
-  addrof->base.const_value.type = src->const_value.type;
+  MirType *type = NULL;
+
+  if (src->const_value.type->kind == MIR_TYPE_FN) {
+    type = create_type_ptr(cnt, src->const_value.type);
+  } else {
+    type = src->const_value.type;
+  }
+
+  addrof->base.const_value.type = type;
   assert(addrof->base.const_value.type && "invalid type");
 
   return ANALYZE_PASSED;
@@ -4009,6 +4017,12 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
   if (var->alloc_type->kind == MIR_TYPE_TYPE && var->is_mutable) {
     builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MUTABILITY, decl->base.node->src,
                 BUILDER_CUR_WORD, "Type declaration must be immutable.");
+    return ANALYZE_FAILED;
+  }
+
+  if (var->alloc_type->kind == MIR_TYPE_FN) {
+    builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, decl->base.node->src,
+                BUILDER_CUR_WORD, "Invalid type of the variable, functions can be referenced only by pointers.");
     return ANALYZE_FAILED;
   }
 

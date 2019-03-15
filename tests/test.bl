@@ -2,12 +2,11 @@
 
 //#load "std/core.bl"
 
-Foo :: struct {
-  i: s32,
-  j: s32
+main :: fn () s32 {
+  f_ptr : *fn() = &foo;
+  f_ptr();
+  return 0;
 };
 
-main :: fn () s32 {
-  foo := {:Foo: 1, 2};
-  return 0;
+foo :: fn () {
 };
