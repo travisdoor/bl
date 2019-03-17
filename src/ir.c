@@ -48,8 +48,9 @@
 
 typedef struct
 {
-  Builder * builder;
-  Assembly *assembly;
+  Builder *   builder;
+  Assembly *  assembly;
+  BHashTable *gstring_cache;
 
   LLVMContextRef    llvm_cnt;
   LLVMModuleRef     llvm_module;
@@ -199,6 +200,9 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 static LLVMValueRef
 gen_as_const(Context *cnt, MirConstValue *value);
 
+static LLVMValueRef
+gen_global_string_ptr(Context *cnt, const char *str, size_t len);
+
 static void
 gen_allocas(Context *cnt, MirFn *fn);
 
@@ -224,7 +228,7 @@ gen_global_var_proto(Context *cnt, MirVar *var)
   LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
   var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->llvm_name);
 
-  LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
+  // LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
   /* Linkage should be later set by user. */
   LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
@@ -456,6 +460,46 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
 }
 
 LLVMValueRef
+gen_global_string_ptr(Context *cnt, const char *str, size_t len)
+{
+  assert(str && len);
+  uint64_t      hash  = bo_hash_from_str(str);
+  bo_iterator_t found = bo_htbl_find(cnt->gstring_cache, hash);
+  bo_iterator_t end   = bo_htbl_end(cnt->gstring_cache);
+
+  if (!bo_iterator_equal(&found, &end)) {
+    return bo_htbl_iter_peek_value(cnt->gstring_cache, &found, LLVMValueRef);
+  }
+
+  /* Generate global string constant */
+  LLVMValueRef llvm_str = NULL;
+  {
+    assert(len && "String must be zero terminated");
+    LLVMTypeRef llvm_str_arr_type = LLVMArrayType(cnt->llvm_i8_type, len + 1);
+    llvm_str                      = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
+
+    LLVMValueRef *llvm_chars = bl_malloc(sizeof(LLVMValueRef) * (len + 1));
+    if (!llvm_chars) bl_abort("bad alloc");
+
+    for (size_t i = 0; i < len + 1; ++i) {
+      llvm_chars[i] = LLVMConstInt(cnt->llvm_i8_type, str[i], true);
+    }
+
+    LLVMValueRef llvm_str_arr = LLVMConstArray(llvm_str_arr_type, llvm_chars, len + 1);
+    LLVMSetInitializer(llvm_str, llvm_str_arr);
+    LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
+    LLVMSetGlobalConstant(llvm_str, true);
+    LLVMSetAlignment(llvm_str, LLVMABIAlignmentOfType(cnt->llvm_td, llvm_str_arr_type));
+    LLVMSetUnnamedAddr(llvm_str, true);
+    llvm_str = LLVMConstBitCast(llvm_str, cnt->llvm_i8_ptr_type);
+    bl_free(llvm_chars);
+  }
+
+  bo_htbl_insert(cnt->gstring_cache, hash, llvm_str);
+  return llvm_str;
+}
+
+LLVMValueRef
 gen_as_const(Context *cnt, MirConstValue *value)
 {
   MirType *type = value->type;
@@ -528,10 +572,9 @@ gen_as_const(Context *cnt, MirConstValue *value)
       const char *   str = str_value->data.v_str;
       assert(str);
 
-      bl_log("string = %s", str);
       LLVMValueRef const_vals[2];
       const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
-      const_vals[1] = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, ".str");
+      const_vals[1] = gen_global_string_ptr(cnt, str, len);
 
       result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
     } else {
@@ -1108,12 +1151,13 @@ ir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
-  cnt.builder      = builder;
-  cnt.assembly     = assembly;
-  cnt.llvm_cnt     = assembly->mir_module->llvm_cnt;
-  cnt.llvm_module  = assembly->mir_module->llvm_module;
-  cnt.llvm_td      = assembly->mir_module->llvm_td;
-  cnt.llvm_builder = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+  cnt.builder       = builder;
+  cnt.assembly      = assembly;
+  cnt.gstring_cache = bo_htbl_new(sizeof(LLVMValueRef), 1024);
+  cnt.llvm_cnt      = assembly->mir_module->llvm_cnt;
+  cnt.llvm_module   = assembly->mir_module->llvm_module;
+  cnt.llvm_td       = assembly->mir_module->llvm_td;
+  cnt.llvm_builder  = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
 
   cnt.llvm_void_type = LLVMVoidTypeInContext(cnt.llvm_cnt);
   cnt.llvm_i1_type   = LLVMInt1TypeInContext(cnt.llvm_cnt);
@@ -1143,4 +1187,5 @@ ir_run(Builder *builder, Assembly *assembly)
 #endif
 
   LLVMDisposeBuilder(cnt.llvm_builder);
+  bo_unref(cnt.gstring_cache);
 }

@@ -54,7 +54,7 @@ mir_writer_run(Assembly *assembly)
 {
   assert(assembly->mir_module);
 
-  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+  char *export_file = bl_malloc(sizeof(char) * (strlen(assembly->name) + 5));
   if (!export_file) bl_abort("bad alloc");
   strcpy(export_file, assembly->name);
   strcat(export_file, ".blm");
@@ -72,5 +72,5 @@ mir_writer_run(Assembly *assembly)
   fclose(f);
   msg_log("mir code written into " GREEN("%s"), export_file);
 
-  free(export_file);
+  bl_free(export_file);
 }
