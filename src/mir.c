@@ -2603,7 +2603,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     type->alignment        = __alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
-    type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    //type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
@@ -2659,6 +2659,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 
   case MIR_TYPE_PTR: {
     MirType *tmp = mir_deref_type(type);
+    if (tmp->kind == MIR_TYPE_TYPE) break;
     assert(tmp);
     assert(tmp->llvm_type);
     type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
@@ -2670,6 +2671,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 
   case MIR_TYPE_FN: {
     MirType *tmp_ret  = type->data.fn.ret_type;
+    if (tmp_ret->kind == MIR_TYPE_TYPE) break;
     BArray * tmp_args = type->data.fn.arg_types;
     size_t   argc     = tmp_args ? bo_array_size(tmp_args) : 0;
 
