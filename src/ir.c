@@ -512,11 +512,13 @@ gen_as_const(Context *cnt, MirConstValue *value)
   }
 
   case MIR_TYPE_STRUCT: {
-    LLVMValueRef result = NULL;
+    LLVMValueRef result  = NULL;
+    BArray *     members = value->data.v_struct.members;
+    const size_t memc    = bo_array_size(members);
+
     if (type->data.strct.kind & MIR_TS_STRING) {
-      BArray *members = value->data.v_struct.members;
       assert(members);
-      assert(bo_array_size(members) == 2 && "not slice string?");
+      assert(memc == 2 && "not slice string?");
 
       MirConstValue *len_value = bo_array_at(members, 0, MirConstValue *);
       MirConstValue *str_value = bo_array_at(members, 1, MirConstValue *);
@@ -533,8 +535,6 @@ gen_as_const(Context *cnt, MirConstValue *value)
 
       result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
     } else {
-      BArray *       members = value->data.v_struct.members;
-      const size_t   memc    = bo_array_size(members);
       MirConstValue *member;
       LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
 

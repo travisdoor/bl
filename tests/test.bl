@@ -2,7 +2,7 @@
 
 //#load "std/core.bl"
 
-//boo :: "hello world\n";
+boo :: "hello world\n";
 
 main :: fn () s32 {
   //foo :: "hello world\n";
