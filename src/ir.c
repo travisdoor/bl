@@ -46,12 +46,6 @@
 #define NAMED_VARS false
 #endif
 
-#if NAMED_VARS
-#define get_name(str) str
-#else
-#define get_name(str) ""
-#endif
-
 typedef struct
 {
   Builder * builder;
@@ -519,15 +513,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 
   case MIR_TYPE_STRUCT: {
     LLVMValueRef result = NULL;
-    if (mir_is_slice_type(type)) {
-      /* TODO: We generate representation only constant string slices, this need to be improved
-       * later. */
-      /* TODO: We generate representation only constant string slices, this need to be improved
-       * later. */
-      /* TODO: We generate representation only constant string slices, this need to be improved
-       * later. */
-      /* TODO: We generate representation only constant string slices, this need to be improved
-       * later. */
+    if (type->data.strct.kind & MIR_TS_STRING) {
       BArray *members = value->data.v_struct.members;
       assert(members);
       assert(bo_array_size(members) == 2 && "not slice string?");
@@ -540,10 +526,10 @@ gen_as_const(Context *cnt, MirConstValue *value)
       const char *   str = str_value->data.v_str;
       assert(str);
 
+      bl_log("string = %s", str);
       LLVMValueRef const_vals[2];
       const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
-      const_vals[1] = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, get_name("str"));
-      LLVMSetLinkage(const_vals[1], LLVMInternalLinkage);
+      const_vals[1] = LLVMBuildGlobalStringPtr(cnt->llvm_builder, str, ".str");
 
       result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
     } else {
@@ -770,12 +756,12 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     /* OK variable is declared in global scope so we need different generation here*/
     /* Generates destination for global if there is no one. Global variable can come later than it
      * is used, so we call same function during generation of the declref instruction IR. */
-    gen_global_var_proto(cnt, var);
-
     /* Globals must be set to some value */
     assert(decl->init);
 
     LLVMValueRef tmp = fetch_value(cnt, decl->init);
+
+    gen_global_var_proto(cnt, var);
     LLVMSetInitializer(var->llvm_value, tmp);
   } else {
     assert(var->llvm_value);
