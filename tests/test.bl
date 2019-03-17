@@ -1,33 +1,16 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
+
+boo :: "hello\n";
+foo :: "world\n";
+bar :: "world\n";
 
 main :: fn () s32 {
-  //print_float(-0.012f);
-  print_f64(123.1);
-  print_string("\n");
-
-  print_f64(0.123);
-  print_string("\n");
-
-  print_f64(0.000123);
-  print_string("\n");
-
-  print_f64(123.);
-  print_string("\n");
-
-  print_f64(-123.1);
-  print_string("\n");
-
-  print_f64(-0.123);
-  print_string("\n");
-
-  print_f64(-0.000123);
-  print_string("\n");
-
-  print_f64(-123.);
-  print_string("\n");
-
-  print_floats("% + % = %\n", 0.2, 4.5, 0.2 + 4.5);
+  //foo :: "hello world\n";
   return 0;
 };
+
+
+
+
