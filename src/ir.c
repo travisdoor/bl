@@ -475,7 +475,7 @@ gen_global_string_ptr(Context *cnt, const char *str, size_t len)
   LLVMValueRef llvm_str = NULL;
   {
     assert(len && "String must be zero terminated");
-    LLVMTypeRef llvm_str_arr_type = LLVMArrayType(cnt->llvm_i8_type, len + 1);
+    LLVMTypeRef llvm_str_arr_type = LLVMArrayType(cnt->llvm_i8_type, (unsigned int)len + 1);
     llvm_str                      = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
 
     LLVMValueRef *llvm_chars = bl_malloc(sizeof(LLVMValueRef) * (len + 1));
@@ -485,7 +485,7 @@ gen_global_string_ptr(Context *cnt, const char *str, size_t len)
       llvm_chars[i] = LLVMConstInt(cnt->llvm_i8_type, str[i], true);
     }
 
-    LLVMValueRef llvm_str_arr = LLVMConstArray(llvm_str_arr_type, llvm_chars, len + 1);
+    LLVMValueRef llvm_str_arr = LLVMConstArray(cnt->llvm_i8_type, llvm_chars, (unsigned int)len + 1);
     LLVMSetInitializer(llvm_str, llvm_str_arr);
     LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
     LLVMSetGlobalConstant(llvm_str, true);
