@@ -2,11 +2,12 @@
 
 //#load "std/core.bl"
 
-Size :: cast(usize) 10;
+Foo :: struct {
+  i: s32,
+  j: s32
+};
 
 main :: fn () s32 {
-
-
   return 0;
 };
 

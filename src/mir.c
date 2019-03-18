@@ -3768,6 +3768,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->elem_type->analyzed);
 
   type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len);
+  type_arr->elem_type = insert_instr_load_if_needed(cnt, type_arr->elem_type);
 
   bool valid;
   type_arr->len = try_impl_cast(cnt, type_arr->len, cnt->builtin_types.entry_usize, &valid);
