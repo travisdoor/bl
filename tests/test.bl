@@ -2,15 +2,9 @@
 
 //#load "std/core.bl"
 
-//Size :: 10;
-
-Foo :: struct {
-  i: s32,
-  j: s32
-};
+Size :: cast(usize) 10;
 
 main :: fn () s32 {
-  foo := {:Foo: 10, 20 };
 
 
   return 0;

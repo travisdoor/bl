@@ -238,7 +238,7 @@ gen_global_var_proto(Context *cnt, MirVar *var)
   LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
   var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->llvm_name);
 
-  // LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
+  LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
   /* Linkage should be later set by user. */
   LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);

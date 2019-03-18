@@ -3303,7 +3303,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 
   if (!dest_type) {
     assert(cast->type && cast->type->kind == MIR_INSTR_CALL);
-    analyze_instr_rq(cnt, cast->type);
+    if (analyze_instr(cnt, cast->type) != ANALYZE_PASSED) return ANALYZE_POSTPONE;
     MirConstValue *type_val = exec_call_top_lvl(cnt, (MirInstrCall *)cast->type);
     unref_instr(cast->type);
     assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
