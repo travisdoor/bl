@@ -41,7 +41,9 @@ native_bin_run(Builder *builder, Assembly *assembly)
       "-L/usr/bin "
       "-L/usr/lib/x86_64-linux-gnu "
       "/usr/lib/x86_64-linux-gnu/crtn.o "
-      "-lc -lSDL2 -lSDL2_image";
+      "-lc -lm "
+      //"-lSDL2 -lSDL2_image "
+      ;
 #elif defined(BL_PLATFORM_MACOS)
   const char *cmd = "ld %s.o -o %s -lc -lcrt1.o -lSDL2 -lSDL2_image";
 #elif defined(BL_PLATFORM_WIN)

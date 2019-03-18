@@ -80,26 +80,27 @@ create_trap_fn(Context *cnt)
 static inline LLVMValueRef
 create_memset_fn(Context *cnt)
 {
-  LLVMTypeRef *llvm_args = bl_malloc(sizeof(LLVMTypeRef) * 4);
-  llvm_args[0]           = cnt->llvm_i8_ptr_type; // dest
-  llvm_args[1]           = cnt->llvm_i8_type;     // value
-  llvm_args[2]           = cnt->llvm_i64_type;    // size
-  llvm_args[3]           = cnt->llvm_i1_type;     // volatile
+#ifdef BL_PLATFORM_LINUX
+  LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type,
+                              cnt->llvm_i32_type, cnt->llvm_i1_type};
+
+  LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
+#else
+  LLVMTypeRef llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type,
+                              cnt->llvm_i1_type};
 
   LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
-  LLVMValueRef llvm_fn      = LLVMAddFunction(cnt->llvm_module, LLVM_MEMSET_FN, llvm_fn_type);
-  bl_free(llvm_args);
+#endif
+
+  LLVMValueRef llvm_fn = LLVMAddFunction(cnt->llvm_module, LLVM_MEMSET_FN, llvm_fn_type);
   return llvm_fn;
 }
 
 static inline LLVMValueRef
 create_memcpy_fn(Context *cnt)
 {
-  LLVMTypeRef llvm_args[4];
-  llvm_args[0] = cnt->llvm_i8_ptr_type; // dest
-  llvm_args[1] = cnt->llvm_i8_ptr_type; // src
-  llvm_args[2] = cnt->llvm_i64_type;    // size
-  llvm_args[3] = cnt->llvm_i1_type;     // volatile
+  LLVMTypeRef llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type,
+                              cnt->llvm_i1_type};
 
   LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
   LLVMValueRef llvm_fn      = LLVMAddFunction(cnt->llvm_module, LLVM_MEMCPY_FN, llvm_fn_type);
@@ -107,16 +108,26 @@ create_memcpy_fn(Context *cnt)
 }
 
 static inline LLVMValueRef
-build_call_memset_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_size)
+build_call_memset_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_size,
+                    LLVMValueRef llvm_alignment)
 {
-  LLVMValueRef llvm_args[4];
-  llvm_args[0] = LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, "");
-  llvm_args[1] = LLVMConstInt(cnt->llvm_i8_type, 0, false);
-  llvm_args[2] = llvm_size;
-  llvm_args[3] = LLVMConstInt(cnt->llvm_i1_type, 0, false);
+#ifdef BL_PLATFORM_LINUX
+  LLVMValueRef llvm_args[5] = {
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
+      LLVMConstInt(cnt->llvm_i8_type, 0, false), llvm_size, llvm_alignment,
+      LLVMConstInt(cnt->llvm_i1_type, 0, false)};
+
+  LLVMValueRef llvm_result =
+      LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memset_fn, llvm_args, 5, "");
+#else
+  LLVMValueRef llvm_args[4] = {
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
+      LLVMConstInt(cnt->llvm_i8_type, 0, false), llvm_size,
+      LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
   LLVMValueRef llvm_result =
       LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memset_fn, llvm_args, 4, "");
+#endif
 
   return llvm_result;
 }
@@ -125,11 +136,10 @@ static inline LLVMValueRef
 build_call_memcpy(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_src_ptr,
                   LLVMValueRef llvm_size)
 {
-  LLVMValueRef llvm_args[4];
-  llvm_args[0] = LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, "");
-  llvm_args[1] = LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, "");
-  llvm_args[2] = llvm_size;
-  llvm_args[3] = LLVMConstInt(cnt->llvm_i1_type, 0, false);
+  LLVMValueRef llvm_args[4] = {
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""), llvm_size,
+      LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
   LLVMValueRef llvm_result =
       LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memcpy_fn, llvm_args, 4, "");
@@ -485,7 +495,8 @@ gen_global_string_ptr(Context *cnt, const char *str, size_t len)
       llvm_chars[i] = LLVMConstInt(cnt->llvm_i8_type, str[i], true);
     }
 
-    LLVMValueRef llvm_str_arr = LLVMConstArray(cnt->llvm_i8_type, llvm_chars, (unsigned int)len + 1);
+    LLVMValueRef llvm_str_arr =
+        LLVMConstArray(cnt->llvm_i8_type, llvm_chars, (unsigned int)len + 1);
     LLVMSetInitializer(llvm_str, llvm_str_arr);
     LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
     LLVMSetGlobalConstant(llvm_str, true);
@@ -823,7 +834,9 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
           if (tmp->data.v_array.is_zero_initializer) {
             /* zero initialized array */
-            build_call_memset_0(cnt, var->llvm_value, llvm_size);
+            LLVMValueRef llvm_alignment =
+                LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
+            build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
           } else if (init->base.comptime) {
             /* compile time known constant initializer */
             LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
@@ -866,7 +879,9 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
           if (tmp->data.v_array.is_zero_initializer) {
             /* zero initialized array */
-            build_call_memset_0(cnt, var->llvm_value, llvm_size);
+            LLVMValueRef llvm_alignment =
+                LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
+            build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
           } else if (init->base.comptime) {
             /* compile time known constant initializer */
             LLVMTypeRef llvm_type = var->alloc_type->llvm_type;

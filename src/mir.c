@@ -922,7 +922,7 @@ static inline void
 analyze_instr_rq(Context *cnt, MirInstr *instr)
 {
   if (analyze_instr(cnt, instr) != ANALYZE_PASSED)
-    bl_abort("invalid analyze of compiler-generated instruction");
+    bl_abort("invalid analyze of compiler-generated instruction: %s", mir_instr_name(instr));
 }
 
 static inline const char *
@@ -2956,6 +2956,7 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       init->base.const_value.data.v_array.is_zero_initializer = true;
       break;
     }
+    RAND_MAX
 
     if (valc != type->data.array.len) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER, init->base.node->src,
@@ -4909,7 +4910,6 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
       memcpy(&cast->base.const_value.data, &tmp, sizeof(tmp));
     else
       exec_push_stack(cnt, (MirStackPtr)&tmp, dest_type);
-    break;
     break;
   }
 
@@ -7189,6 +7189,7 @@ mir_delete_module(MirModule *module)
   LLVMDisposeModule(module->llvm_module);
   LLVMDisposeTargetMachine(module->llvm_tm);
   LLVMDisposeMessage(module->llvm_triple);
+  LLVMDisposeTargetData(module->llvm_td);
 
   bl_free(module);
 }

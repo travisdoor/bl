@@ -1,13 +1,11 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
-boo :: "hello\n";
-foo :: "world\n";
-bar :: "world\n";
+GlobalString :: "Hello world.\n";
 
 main :: fn () s32 {
-  //foo :: "hello world\n";
+  print(GlobalString); 
   return 0;
 };
 
