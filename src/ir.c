@@ -597,8 +597,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
         llvm_members[i] = gen_as_const(cnt, member);
       }
 
-      result = LLVMConstStructInContext(cnt->llvm_cnt, llvm_members, (unsigned int)memc,
-                                        type->data.strct.is_packed);
+      result = LLVMConstNamedStruct(llvm_type, llvm_members, memc);
       bl_free(llvm_members);
     }
     return result;
@@ -892,7 +891,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             LLVMSetAlignment(llvm_const_strct, var->alloc_type->alignment);
             LLVMSetInitializer(llvm_const_strct, fetch_value(cnt, &init->base));
 
-            build_call_memcpy(cnt, var->llvm_value, llvm_const_strct, llvm_size);
+            //build_call_memcpy(cnt, var->llvm_value, llvm_const_strct, llvm_size);
           } else {
             /* one or more initizalizer values are known only in runtime */
             BArray *     values = init->values;

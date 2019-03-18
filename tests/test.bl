@@ -1,11 +1,18 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
 
-GlobalString :: "Hello world.\n";
+//Size :: 10;
+
+Foo :: struct {
+  i: s32,
+  j: s32
+};
 
 main :: fn () s32 {
-  print(GlobalString); 
+  foo := {:Foo: 10, 20 };
+
+
   return 0;
 };
 

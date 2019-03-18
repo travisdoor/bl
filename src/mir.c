@@ -2956,7 +2956,6 @@ analyze_instr_init(Context *cnt, MirInstrInit *init)
       init->base.const_value.data.v_array.is_zero_initializer = true;
       break;
     }
-    RAND_MAX
 
     if (valc != type->data.array.len) {
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER, init->base.node->src,
