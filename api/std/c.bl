@@ -46,5 +46,6 @@ powf    :: fn (base: f32, exponent: f32) f32 #extern;
 sqrt    :: fn (x: f64) f64 #extern;
 sqrtf   :: fn (x: f32) f32 #extern;
 floor   :: fn (x: f64) f64 #extern;
+floorf  :: fn (x: f32) f32 #extern;
 rand    :: fn () s32 #extern;
 srand   :: fn (seed: u32) #extern;
