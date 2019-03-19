@@ -132,6 +132,7 @@ union _MirInstr
   MirInstrInit        init;
   MirInstrVArgs       vargs;
   MirInstrTypeInfo    type_info;
+  MirInstrPhi         phi;
 };
 
 typedef struct MirFrame
@@ -2603,7 +2604,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     type->alignment        = __alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
-    //type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    // type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
@@ -2670,10 +2671,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_FN: {
-    MirType *tmp_ret  = type->data.fn.ret_type;
+    MirType *tmp_ret = type->data.fn.ret_type;
     if (tmp_ret->kind == MIR_TYPE_TYPE) break;
-    BArray * tmp_args = type->data.fn.arg_types;
-    size_t   argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+    BArray *tmp_args = type->data.fn.arg_types;
+    size_t  argc     = tmp_args ? bo_array_size(tmp_args) : 0;
 
     LLVMTypeRef *llvm_args = NULL;
     LLVMTypeRef  llvm_ret  = NULL;
@@ -3767,7 +3768,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->base.const_value.type);
   assert(type_arr->elem_type->analyzed);
 
-  type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len);
+  type_arr->len       = insert_instr_load_if_needed(cnt, type_arr->len);
   type_arr->elem_type = insert_instr_load_if_needed(cnt, type_arr->elem_type);
 
   bool valid;
@@ -6799,6 +6800,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrVArgs";
   case MIR_INSTR_TYPE_INFO:
     return "InstrTypeInfo";
+  case MIR_INSTR_PHI:
+    return "InstrPhi";
   }
 
   return "UNKNOWN";

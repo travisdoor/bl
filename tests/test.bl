@@ -2,12 +2,12 @@
 
 //#load "std/core.bl"
 
-Foo :: struct {
-  i: s32,
-  j: s32
-};
-
 main :: fn () s32 {
+  a := true;
+  b := false;
+
+  c := a && b;
+  
   return 0;
 };
 

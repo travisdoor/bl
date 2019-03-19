@@ -231,6 +231,9 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 }
 
 static void
+print_instr_phi(MirInstrPhi *phi, FILE *stream);
+
+static void
 print_instr_cast(MirInstrCast *cast, FILE *stream);
 
 static void
@@ -341,6 +344,12 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
   fprintf(stream, ")");
 
   if (type_fn->ret_type) fprintf(stream, " %%%llu", (unsigned long long)type_fn->ret_type->id);
+}
+
+void
+print_instr_phi(MirInstrPhi *phi, FILE *stream)
+{
+  print_instr_head(&phi->base, stream, "phi");
 }
 
 void
@@ -872,6 +881,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
     break;
   case MIR_INSTR_TYPE_INFO:
     print_instr_type_info((MirInstrTypeInfo *)instr, stream);
+    break;
+  case MIR_INSTR_PHI:
+    print_instr_phi((MirInstrPhi *)instr, stream);
     break;
   default:
     break;
