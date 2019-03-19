@@ -99,11 +99,17 @@ create_memset_fn(Context *cnt)
 static inline LLVMValueRef
 create_memcpy_fn(Context *cnt)
 {
-  LLVMTypeRef llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type,
+#ifdef BL_PLATFORM_LINUX
+  LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type,
+                              cnt->llvm_i32_type, cnt->llvm_i1_type};
+  LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
+#else
+  LLVMTypeRef  llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type,
                               cnt->llvm_i1_type};
-
   LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
-  LLVMValueRef llvm_fn      = LLVMAddFunction(cnt->llvm_module, LLVM_MEMCPY_FN, llvm_fn_type);
+#endif
+
+  LLVMValueRef llvm_fn = LLVMAddFunction(cnt->llvm_module, LLVM_MEMCPY_FN, llvm_fn_type);
   return llvm_fn;
 }
 
@@ -134,8 +140,17 @@ build_call_memset_0(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_
 
 static inline LLVMValueRef
 build_call_memcpy(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_src_ptr,
-                  LLVMValueRef llvm_size)
+                  LLVMValueRef llvm_size, LLVMValueRef llvm_alignment)
 {
+#ifdef BL_PLATFORM_LINUX
+  LLVMValueRef llvm_args[5] = {
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
+      LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""), llvm_size,
+      llvm_alignment, LLVMConstInt(cnt->llvm_i1_type, 0, false)};
+
+  LLVMValueRef llvm_result =
+      LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memcpy_fn, llvm_args, 5, "");
+#else
   LLVMValueRef llvm_args[4] = {
       LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
       LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""), llvm_size,
@@ -143,6 +158,7 @@ build_call_memcpy(Context *cnt, LLVMValueRef llvm_dest_ptr, LLVMValueRef llvm_sr
 
   LLVMValueRef llvm_result =
       LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memcpy_fn, llvm_args, 4, "");
+#endif
 
   return llvm_result;
 }
@@ -830,11 +846,11 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         case MIR_TYPE_ARRAY: {
           MirConstValue *tmp     = &init->base.const_value;
           LLVMValueRef llvm_size = LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+          LLVMValueRef llvm_alignment =
+              LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
 
           if (tmp->data.v_array.is_zero_initializer) {
             /* zero initialized array */
-            LLVMValueRef llvm_alignment =
-                LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
             build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
           } else if (init->base.comptime) {
             /* compile time known constant initializer */
@@ -846,7 +862,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             LLVMSetAlignment(llvm_const_arr, var->alloc_type->alignment);
             LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &init->base));
 
-            build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size);
+            build_call_memcpy(cnt, var->llvm_value, llvm_const_arr, llvm_size, llvm_alignment);
           } else {
             /* one or more initizalizer values are known only in runtime */
             BArray *     values = init->values;
@@ -875,11 +891,11 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         case MIR_TYPE_STRUCT: {
           MirConstValue *tmp     = &init->base.const_value;
           LLVMValueRef llvm_size = LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+          LLVMValueRef llvm_alignment =
+              LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
 
           if (tmp->data.v_array.is_zero_initializer) {
             /* zero initialized array */
-            LLVMValueRef llvm_alignment =
-                LLVMConstInt(cnt->llvm_i32_type, var->alloc_type->alignment, true);
             build_call_memset_0(cnt, var->llvm_value, llvm_size, llvm_alignment);
           } else if (init->base.comptime) {
             /* compile time known constant initializer */
@@ -891,7 +907,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
             LLVMSetAlignment(llvm_const_strct, var->alloc_type->alignment);
             LLVMSetInitializer(llvm_const_strct, fetch_value(cnt, &init->base));
 
-            //build_call_memcpy(cnt, var->llvm_value, llvm_const_strct, llvm_size);
+            build_call_memcpy(cnt, var->llvm_value, llvm_const_strct, llvm_size, llvm_alignment);
           } else {
             /* one or more initizalizer values are known only in runtime */
             BArray *     values = init->values;

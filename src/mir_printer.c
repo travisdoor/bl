@@ -47,10 +47,11 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 
 #if BL_DEBUG
   if (instr->ref_count == -1) {
-    fprintf(stream, "  %%%-3u ~%-5llu (-)", instr->id, (unsigned long long)instr->_serial);
+    fprintf(stream, "  %%%-3llu ~%-5llu (-)", (unsigned long long)instr->id,
+            (unsigned long long)instr->_serial);
   } else {
-    fprintf(stream, "  %%%-3u ~%-5llu (%d)", instr->id, (unsigned long long)instr->_serial,
-            instr->ref_count);
+    fprintf(stream, "  %%%-3llu ~%-5llu (%d)", (unsigned long long)instr->id,
+            (unsigned long long)instr->_serial, instr->ref_count);
   }
 #else
   fprintf(stream, "  %%%-3llu", (unsigned long long)instr->id);
@@ -717,7 +718,8 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 {
   if (block->base.prev) fprintf(stream, "\n");
 #if BL_DEBUG
-  fprintf(stream, "%%%s_%u (%u):", block->name, block->base.id, block->base.ref_count);
+  fprintf(stream, "%%%s_%llu (%u):", block->name, (unsigned long long)block->base.id,
+          block->base.ref_count);
 #else
   fprintf(stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
 #endif
