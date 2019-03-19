@@ -6,7 +6,7 @@ main :: fn () s32 {
   a := true;
   b := false;
 
-  c := a && b;
+  c := a && b && a;
   
   return 0;
 };

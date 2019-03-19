@@ -350,6 +350,25 @@ void
 print_instr_phi(MirInstrPhi *phi, FILE *stream)
 {
   print_instr_head(&phi->base, stream, "phi");
+
+  if (bo_array_size(phi->incoming_blocks) != bo_array_size(phi->incoming_values)) {
+    fprintf(stream, "<invalid>");
+    return;
+  }
+
+  MirInstr *value;
+  MirInstrBlock *block;
+  const size_t c = bo_array_size(phi->incoming_values);
+  for (size_t i = 0; i < c; ++i) {
+    value = bo_array_at(phi->incoming_values, i, MirInstr *);
+    block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
+
+    fprintf(stream, "[");
+    print_comptime_value_or_id(value, stream);
+    fprintf(stream, ", ");
+    fprintf(stream, "%%%s_%llu", block->name, (unsigned long long)block->base.id);
+    fprintf(stream, "] ");
+  }
 }
 
 void

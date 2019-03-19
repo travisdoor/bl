@@ -670,7 +670,9 @@ struct MirInstrTypeInfo
 struct MirInstrPhi
 {
   MirInstr base;
-  /* TODO */
+
+  BArray *incoming_values;
+  BArray *incoming_blocks;
 };
 
 /* public */
