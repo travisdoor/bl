@@ -2,9 +2,22 @@
 
 #load "std/core.bl"
 
-main :: fn (args: []*u8) s32 {
-  loop i := 1; i < args.len; i += 1 {
-    print("arg % = %\n", i, (^args[i]) - '0');
-  }
+main :: fn () s32 {
+  A() && B() && C();
   return 0;
+};
+
+A :: fn () bool {
+  print("A\n");
+  return true;
+};
+
+B :: fn () bool {
+  print("B\n");
+  return true;
+};
+
+C :: fn () bool {
+  print("C\n");
+  return true;
 };
