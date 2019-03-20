@@ -175,8 +175,6 @@ typedef struct
     MirInstrBlock *current_block;
     MirInstrBlock *break_block;
     MirInstrBlock *continue_block;
-    MirInstrBlock *phi_end_block;
-    MirInstrPhi *  current_phi;
     ID *           current_entity_id; /* Sometimes used for named structures */
   } ast;
 
@@ -1238,30 +1236,6 @@ static inline MirInstrBlock *
 get_current_block(Context *cnt)
 {
   return cnt->ast.current_block;
-}
-
-static inline void
-set_current_phi(Context *cnt, MirInstrPhi *phi)
-{
-  cnt->ast.current_phi = phi;
-}
-
-static inline MirInstrPhi *
-get_current_phi(Context *cnt)
-{
-  return cnt->ast.current_phi;
-}
-
-static inline void
-set_phi_end_block(Context *cnt, MirInstrBlock *block)
-{
-  cnt->ast.phi_end_block = block;
-}
-
-static inline MirInstrBlock *
-get_phi_end_block(Context *cnt)
-{
-  return cnt->ast.phi_end_block;
 }
 
 static inline MirFn *
@@ -6431,15 +6405,45 @@ ast_expr_binop(Context *cnt, Ast *binop)
   }
 
   case BINOP_LOGIC_AND: {
-    MirFn *        fn         = get_current_fn(cnt);
+    MirFn *        fn        = get_current_fn(cnt);
+    MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
+    MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
 
-    /* Generate lhs in original block. */
     MirInstr *lhs = ast(cnt, ast_lhs);
-    return NULL;
+    append_instr_cond_br(cnt, NULL, lhs, rhs_block, end_block);
+
+    set_current_block(cnt, rhs_block);
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    append_instr_br(cnt, NULL, end_block);
+
+    set_current_block(cnt, end_block);
+    MirInstr *   const_false = append_instr_const_bool(cnt, NULL, false);
+    MirInstrPhi *phi         = (MirInstrPhi *)append_instr_phi(cnt, binop);
+    phi_add_income(phi, const_false, lhs->owner_block);
+    phi_add_income(phi, rhs, rhs_block);
+
+    return &phi->base;
   }
 
   case BINOP_LOGIC_OR: {
-    bl_unimplemented;
+    MirFn *        fn        = get_current_fn(cnt);
+    MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
+    MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
+
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+
+    set_current_block(cnt, rhs_block);
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    append_instr_br(cnt, NULL, end_block);
+
+    set_current_block(cnt, end_block);
+    MirInstr *   const_true = append_instr_const_bool(cnt, NULL, true);
+    MirInstrPhi *phi         = (MirInstrPhi *)append_instr_phi(cnt, binop);
+    phi_add_income(phi, const_true, lhs->owner_block);
+    phi_add_income(phi, rhs, rhs_block);
+
+    return &phi->base;
   }
 
   default: {

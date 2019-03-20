@@ -1,16 +1,10 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
-main :: fn () s32 {
-  a := true;
-  b := false;
-
-  c := a && b && a;
-  
+main :: fn (args: []*u8) s32 {
+  loop i := 1; i < args.len; i += 1 {
+    print("arg % = %\n", i, (^args[i]) - '0');
+  }
   return 0;
 };
-
-
-
-

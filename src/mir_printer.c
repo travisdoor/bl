@@ -352,13 +352,18 @@ print_instr_phi(MirInstrPhi *phi, FILE *stream)
   print_instr_head(&phi->base, stream, "phi");
 
   if (bo_array_size(phi->incoming_blocks) != bo_array_size(phi->incoming_values)) {
-    fprintf(stream, "<invalid>");
+    fprintf(stream, "<value_count_does_not_match_block_count>");
     return;
   }
 
   MirInstr *value;
   MirInstrBlock *block;
   const size_t c = bo_array_size(phi->incoming_values);
+
+  if (c == 0) {
+    fprintf(stream, "<empty incomes>");
+  }
+  
   for (size_t i = 0; i < c; ++i) {
     value = bo_array_at(phi->incoming_values, i, MirInstr *);
     block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
