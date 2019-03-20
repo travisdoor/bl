@@ -331,14 +331,14 @@ gen_instr_phi(Context *cnt, MirInstrPhi *phi)
   LLVMBasicBlockRef *llvm_ib = bl_malloc(sizeof(LLVMBasicBlockRef) * count);
   if (llvm_iv == NULL || llvm_ib == NULL) bl_abort("bad alloc");
 
-  MirInstr *value;
-  MirInstr *block;
+  MirInstr *     value;
+  MirInstrBlock *block;
   for (size_t i = 0; i < count; ++i) {
     value = bo_array_at(phi->incoming_values, i, MirInstr *);
-    block = bo_array_at(phi->incoming_blocks, i, MirInstr *);
+    block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
 
     llvm_iv[i] = fetch_value(cnt, value);
-    llvm_ib[i] = LLVMValueAsBasicBlock(block->llvm_value);
+    llvm_ib[i] = gen_basic_block(cnt, block);
   }
 
   LLVMAddIncoming(llvm_phi, llvm_iv, llvm_ib, (unsigned int)count);
