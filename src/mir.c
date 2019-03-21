@@ -160,7 +160,6 @@ typedef struct
   BString *   tmp_sh;
   BHashTable *type_table;
   MirFn *     entry_fn;
-  bool        verbose_pre, verbose_post;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -187,6 +186,8 @@ typedef struct
     /* Hash table of arrays. Hash is ID of symbol and array contains queue of waiting instructions
      * (DeclRefs). */
     BHashTable *waiting;
+    bool        verbose_pre;
+    bool        verbose_post;
   } analyze;
 
   /* MIR compile time execution. */
@@ -745,6 +746,9 @@ exec_instr(Context *cnt, MirInstr *instr);
 
 static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static void
+exec_instr_phi(Context *cnt, MirInstrPhi *phi);
 
 static void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
@@ -4468,7 +4472,7 @@ analyze_try_get_next(MirInstr *instr)
 void
 analyze(Context *cnt)
 {
-  if (cnt->verbose_pre) {
+  if (cnt->analyze.verbose_pre) {
     MirInstr *instr;
     BArray *  globals = cnt->module->globals;
     barray_foreach(globals, instr)
@@ -4556,7 +4560,7 @@ analyze(Context *cnt)
     }
   }
 
-  if (cnt->verbose_post) {
+  if (cnt->analyze.verbose_post) {
     MirInstr *instr;
     BArray *  globals = cnt->module->globals;
     barray_foreach(globals, instr)
@@ -4708,6 +4712,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_COND_BR:
     exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
     break;
+  case MIR_INSTR_PHI:
+    exec_instr_phi(cnt, (MirInstrPhi *)instr);
+    break;
   case MIR_INSTR_UNREACHABLE:
     exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
     break;
@@ -4734,6 +4741,10 @@ exec_instr(Context *cnt, MirInstr *instr)
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
   }
 }
+
+void
+exec_instr_phi(Context *cnt, MirInstrPhi *phi)
+{}
 
 void
 exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
@@ -6439,7 +6450,7 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
     set_current_block(cnt, end_block);
     MirInstr *   const_true = append_instr_const_bool(cnt, NULL, true);
-    MirInstrPhi *phi         = (MirInstrPhi *)append_instr_phi(cnt, binop);
+    MirInstrPhi *phi        = (MirInstrPhi *)append_instr_phi(cnt, binop);
     phi_add_income(phi, const_true, lhs->owner_block);
     phi_add_income(phi, rhs, rhs_block);
 
@@ -7301,17 +7312,17 @@ mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
-  cnt.builder         = builder;
-  cnt.assembly        = assembly;
-  cnt.module          = assembly->mir_module;
-  cnt.verbose_pre     = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
-  cnt.verbose_post    = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
-  cnt.analyze.queue   = bo_list_new(sizeof(MirInstr *));
-  cnt.test_cases      = bo_array_new(sizeof(MirFn *));
-  cnt.exec.stack      = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
-  cnt.tmp_sh          = bo_string_new(1024);
-  cnt.type_table      = bo_htbl_new(sizeof(MirType *), 8192);
-  cnt.analyze.waiting = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
+  cnt.builder              = builder;
+  cnt.assembly             = assembly;
+  cnt.module               = assembly->mir_module;
+  cnt.analyze.verbose_pre  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
+  cnt.analyze.verbose_post = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
+  cnt.analyze.queue        = bo_list_new(sizeof(MirInstr *));
+  cnt.test_cases           = bo_array_new(sizeof(MirFn *));
+  cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
+  cnt.tmp_sh               = bo_string_new(1024);
+  cnt.type_table           = bo_htbl_new(sizeof(MirType *), 8192);
+  cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
 
   init_builtins(&cnt);
 

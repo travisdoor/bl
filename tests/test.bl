@@ -1,23 +1,10 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
 
 main :: fn () s32 {
-  A() && B() && C();
+  a := true;
+  b := false;
+  c := a && b;
   return 0;
-};
-
-A :: fn () bool {
-  print("A\n");
-  return true;
-};
-
-B :: fn () bool {
-  print("B\n");
-  return true;
-};
-
-C :: fn () bool {
-  print("C\n");
-  return true;
 };
