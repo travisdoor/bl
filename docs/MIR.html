@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Biscuit-MIR Documentation</title>
-<!-- 2019-02-23 So 19:35 -->
+<!-- 2019-03-19 Út 10:48 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="Martin Dorazil" />
@@ -184,10 +184,13 @@ for the JavaScript code in this tag.
 <li><a href="#sec-4-23">fptoui</a></li>
 <li><a href="#sec-4-24">ptrtoint</a></li>
 <li><a href="#sec-4-25">inttoptr</a></li>
-<li><a href="#sec-4-26">sizeof</a></li>
-<li><a href="#sec-4-27">alignof</a></li>
-<li><a href="#sec-4-28">init</a></li>
-<li><a href="#sec-4-29">vargs</a></li>
+<li><a href="#sec-4-26">fpext</a></li>
+<li><a href="#sec-4-27">fptrunc</a></li>
+<li><a href="#sec-4-28">sizeof</a></li>
+<li><a href="#sec-4-29">alignof</a></li>
+<li><a href="#sec-4-30">init</a></li>
+<li><a href="#sec-4-31">vargs</a></li>
+<li><a href="#sec-4-32">phi</a></li>
 </ul>
 </li>
 </ul>
@@ -223,9 +226,9 @@ BL Compiler has integrated interpreter for MIR.
 <div class="outline-text-3" id="text-1-2">
 <div class="org-src-container">
 
-<pre class="src src-bl"><span style="color: #006699;">assert</span> :: <span style="color: #0000FF;">fn</span> (cond: <span style="color: #6434A3;">bool</span>) {
-  <span style="color: #0000FF;">if</span> !cond {
-    <span style="color: #0000FF;">unreachable</span>;
+<pre class="src src-bl"><span class="org-function-name">assert</span> :: <span class="org-keyword">fn</span> (cond: <span class="org-type">bool</span>) {
+  <span class="org-keyword">if</span> !cond {
+    <span class="org-keyword">unreachable</span>;
   }
 };
 </pre>
@@ -233,40 +236,40 @@ BL Compiler has integrated interpreter for MIR.
 
 <div class="org-src-container">
 
-<pre class="src src-blm"><span style="color: #006699;">@assert</span>  : <span style="color: #6434A3;">fn(bool) void</span> : {
-<span style="color: #BA36A5;">%entry_0</span>:
-  <span style="color: #BA36A5;">%0</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">arg</span> <span style="color: #D0372D;">$0</span>
-  <span style="color: #BA36A5;">%1</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">decl</span> cond : <span style="color: #6434A3;">bool</span> = <span style="color: #BA36A5;">%0</span>
-  <span style="color: #BA36A5;">%2</span>             <span style="color: #6434A3;">*bool</span> <span style="color: #0000FF;">declref</span> cond
-  <span style="color: #BA36A5;">%8</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">load</span> <span style="color: #BA36A5;">%2</span>
-  <span style="color: #BA36A5;">%3</span>              <span style="color: #6434A3;">bool</span> <span style="color: #0000FF;">unop</span> !<span style="color: #BA36A5;">%8</span>
-  <span style="color: #BA36A5;">%4</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%3</span> ? <span style="color: #BA36A5;">%if_then_1</span> : <span style="color: #BA36A5;">%if_else_2</span>
+<pre class="src src-blm"><span class="org-function-name">@assert</span>  : <span class="org-type">fn(bool) void</span> : {
+<span class="org-variable-name">%entry_0</span>:
+  <span class="org-variable-name">%0</span>              <span class="org-type">bool</span> <span class="org-keyword">arg</span> <span class="org-constant">$0</span>
+  <span class="org-variable-name">%1</span>              <span class="org-type">void</span> <span class="org-keyword">decl</span> cond : <span class="org-type">bool</span> = <span class="org-variable-name">%0</span>
+  <span class="org-variable-name">%2</span>             <span class="org-type">*bool</span> <span class="org-keyword">declref</span> cond
+  <span class="org-variable-name">%8</span>              <span class="org-type">bool</span> <span class="org-keyword">load</span> <span class="org-variable-name">%2</span>
+  <span class="org-variable-name">%3</span>              <span class="org-type">bool</span> <span class="org-keyword">unop</span> !<span class="org-variable-name">%8</span>
+  <span class="org-variable-name">%4</span>              <span class="org-type">void</span> <span class="org-keyword">br</span> <span class="org-variable-name">%3</span> ? <span class="org-variable-name">%if_then_1</span> : <span class="org-variable-name">%if_else_2</span>
 
-<span style="color: #BA36A5;">%if_then_1</span>:
-  <span style="color: #BA36A5;">%5</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">unreachable</span> 
-  <span style="color: #BA36A5;">%6</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%if_cont_3</span>
+<span class="org-variable-name">%if_then_1</span>:
+  <span class="org-variable-name">%5</span>              <span class="org-type">void</span> <span class="org-keyword">unreachable</span> 
+  <span class="org-variable-name">%6</span>              <span class="org-type">void</span> <span class="org-keyword">br</span> <span class="org-variable-name">%if_cont_3</span>
 
-<span style="color: #BA36A5;">%if_else_2</span>:
-  <span style="color: #BA36A5;">%7</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">br</span> <span style="color: #BA36A5;">%if_cont_3</span>
+<span class="org-variable-name">%if_else_2</span>:
+  <span class="org-variable-name">%7</span>              <span class="org-type">void</span> <span class="org-keyword">br</span> <span class="org-variable-name">%if_cont_3</span>
 
-<span style="color: #BA36A5;">%if_cont_3</span>:
-  <span style="color: #BA36A5;">%9</span>              <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">ret</span> 
+<span class="org-variable-name">%if_cont_3</span>:
+  <span class="org-variable-name">%9</span>              <span class="org-type">void</span> <span class="org-keyword">ret</span> 
 }
 </pre>
 </div>
 
 <div class="org-src-container">
 
-<pre class="src src-llvm"><span style="color: #0000FF;">define</span> <span style="color: #6434A3;">void</span> @assert(<span style="color: #6434A3;">i1</span>) local_unnamed_addr #<span style="color: #808080;">0</span> {
-<span style="color: #BA36A5;">entry:</span>
-  <span style="color: #0000FF;">br</span> <span style="color: #6434A3;">i1</span> <span style="color: #BA36A5;">%0</span>, <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_cont</span>, <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_then</span>
+<pre class="src src-llvm"><span class="org-keyword">define</span> <span class="org-type">void</span> @assert(<span class="org-type">i1</span>) local_unnamed_addr #<span class="org-preprocessor">0</span> {
+<span class="org-variable-name">entry:</span>
+  <span class="org-keyword">br</span> <span class="org-type">i1</span> <span class="org-variable-name">%0</span>, <span class="org-type">label</span> <span class="org-variable-name">%if_cont</span>, <span class="org-type">label</span> <span class="org-variable-name">%if_then</span>
 
-<span style="color: #BA36A5;">if_then:</span>                                          <span style="color: #8D8D84; font-style: italic;">; preds = %entry</span>
-  <span style="color: #0000FF;">tail</span> <span style="color: #0000FF;">call</span> <span style="color: #6434A3;">void</span> @llvm.debugtrap()
-  <span style="color: #0000FF;">br</span> <span style="color: #6434A3;">label</span> <span style="color: #BA36A5;">%if_cont</span>
+<span class="org-variable-name">if_then:</span>                                          <span class="org-comment">; preds = %entry</span>
+  <span class="org-keyword">tail</span> <span class="org-keyword">call</span> <span class="org-type">void</span> @llvm.debugtrap()
+  <span class="org-keyword">br</span> <span class="org-type">label</span> <span class="org-variable-name">%if_cont</span>
 
-<span style="color: #BA36A5;">if_cont:</span>                                          <span style="color: #8D8D84; font-style: italic;">; preds = %entry, %if_then</span>
-  <span style="color: #0000FF;">ret</span> <span style="color: #6434A3;">void</span>
+<span class="org-variable-name">if_cont:</span>                                          <span class="org-comment">; preds = %entry, %if_then</span>
+  <span class="org-keyword">ret</span> <span class="org-type">void</span>
 }
 </pre>
 </div>
@@ -288,16 +291,16 @@ Example function:
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bl"><span style="color: #006699;">assert</span> :: <span style="color: #0000FF;">fn</span> (cond: <span style="color: #6434A3;">bool</span>) {
-  <span style="color: #0000FF;">if</span> (!cond) {
-    <span style="color: #0000FF;">unreachable</span>;
+<pre class="src src-bl"><span class="org-function-name">assert</span> :: <span class="org-keyword">fn</span> (cond: <span class="org-type">bool</span>) {
+  <span class="org-keyword">if</span> (!cond) {
+    <span class="org-keyword">unreachable</span>;
   }
 };
 
-<span style="color: #006699;">main</span> :: <span style="color: #0000FF;">fn</span> () <span style="color: #6434A3;">s32</span> {
-  <span style="color: #D0372D;">v</span> :: <span style="color: #D0372D;">10</span>;
-  <span style="color: #006699;">assert</span>(v == <span style="color: #D0372D;">10</span>);
-  <span style="color: #0000FF;">return</span> <span style="color: #D0372D;">0</span>;
+<span class="org-function-name">main</span> :: <span class="org-keyword">fn</span> () <span class="org-type">s32</span> {
+  <span class="org-constant">v</span> :: <span class="org-constant">10</span>;
+  <span class="org-function-name">assert</span>(v == <span class="org-constant">10</span>);
+  <span class="org-keyword">return</span> <span class="org-constant">0</span>;
 };
 </pre>
 </div>
@@ -1143,7 +1146,7 @@ Stack operations:
 
 <tr>
 <td class="left">PUSH</td>
-<td class="left">resutlt</td>
+<td class="left">result</td>
 <td class="left">result with new type</td>
 </tr>
 </tbody>
@@ -1199,8 +1202,103 @@ Integer to pointer cast. This cast is noop cast when T has same size as type of 
 </div>
 </div>
 <div id="outline-container-sec-4-26" class="outline-3">
-<h3 id="sec-4-26">sizeof</h3>
+<h3 id="sec-4-26">fpext</h3>
 <div class="outline-text-3" id="text-4-26">
+<p>
+Floating point extend cast. 
+</p>
+
+<pre class="example">
+&lt;T&gt; fpext &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Stack operations:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">resutlt</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-4-27" class="outline-3">
+<h3 id="sec-4-27">fptrunc</h3>
+<div class="outline-text-3" id="text-4-27">
+<p>
+Truncates floating point target to destination type 'T'.
+</p>
+
+<pre class="example">
+&lt;T&gt; fptrunc &lt;target&gt; // yields value with casted type
+</pre>
+
+<p>
+Stack operations:
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">stack op</th>
+<th scope="col" class="left">data</th>
+<th scope="col" class="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">POP</td>
+<td class="left">target</td>
+<td class="left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="left">PUSH</td>
+<td class="left">result</td>
+<td class="left">result with new type</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-sec-4-28" class="outline-3">
+<h3 id="sec-4-28">sizeof</h3>
+<div class="outline-text-3" id="text-4-28">
 <p>
 Determinates size of expresion or type in compile time.
 </p>
@@ -1211,9 +1309,9 @@ usize sizeof &lt;expr|type&gt; // yields size of input in bytes
 </div>
 </div>
 
-<div id="outline-container-sec-4-27" class="outline-3">
-<h3 id="sec-4-27">alignof</h3>
-<div class="outline-text-3" id="text-4-27">
+<div id="outline-container-sec-4-29" class="outline-3">
+<h3 id="sec-4-29">alignof</h3>
+<div class="outline-text-3" id="text-4-29">
 <p>
 Determinates alignment of expresion or type in compile time.
 </p>
@@ -1223,9 +1321,9 @@ usize alignof &lt;expr|type&gt; // yields alignment of input
 </pre>
 </div>
 </div>
-<div id="outline-container-sec-4-28" class="outline-3">
-<h3 id="sec-4-28">init</h3>
-<div class="outline-text-3" id="text-4-28">
+<div id="outline-container-sec-4-30" class="outline-3">
+<h3 id="sec-4-30">init</h3>
+<div class="outline-text-3" id="text-4-30">
 <p>
 Compound initializer.
 </p>
@@ -1236,9 +1334,9 @@ Compound initializer.
 </div>
 </div>
 
-<div id="outline-container-sec-4-29" class="outline-3">
-<h3 id="sec-4-29">vargs</h3>
-<div class="outline-text-3" id="text-4-29">
+<div id="outline-container-sec-4-31" class="outline-3">
+<h3 id="sec-4-31">vargs</h3>
+<div class="outline-text-3" id="text-4-31">
 <p>
 Builds vargs slice from input values.
 </p>
@@ -1295,11 +1393,24 @@ Stack operations:
 </table>
 </div>
 </div>
+
+<div id="outline-container-sec-4-32" class="outline-3">
+<h3 id="sec-4-32">phi</h3>
+<div class="outline-text-3" id="text-4-32">
+<p>
+Yields value based on previous executed block.
+</p>
+
+<pre class="example">
+&lt;T&gt; phi [&lt;value&gt;, &lt;block name&gt;], ... // yields value of type T
+</pre>
+</div>
+</div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-02-23 So 19:35</p>
+<p class="date">Created: 2019-03-19 Út 10:48</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

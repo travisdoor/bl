@@ -170,6 +170,9 @@ static void
 gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
+gen_instr_phi(Context *cnt, MirInstrPhi *phi);
+
+static void
 gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
 static void
@@ -315,6 +318,35 @@ gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
   }
 
   assert(ref->base.llvm_value);
+}
+
+void
+gen_instr_phi(Context *cnt, MirInstrPhi *phi)
+{
+  LLVMValueRef llvm_phi =
+      LLVMBuildPhi(cnt->llvm_builder, phi->base.const_value.type->llvm_type, "");
+
+  const size_t       count   = bo_array_size(phi->incoming_blocks);
+  LLVMValueRef *     llvm_iv = bl_malloc(sizeof(LLVMValueRef) * count);
+  LLVMBasicBlockRef *llvm_ib = bl_malloc(sizeof(LLVMBasicBlockRef) * count);
+  if (llvm_iv == NULL || llvm_ib == NULL) bl_abort("bad alloc");
+
+  MirInstr *     value;
+  MirInstrBlock *block;
+  for (size_t i = 0; i < count; ++i) {
+    value = bo_array_at(phi->incoming_values, i, MirInstr *);
+    block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
+
+    llvm_iv[i] = fetch_value(cnt, value);
+    llvm_ib[i] = gen_basic_block(cnt, block);
+  }
+
+  LLVMAddIncoming(llvm_phi, llvm_iv, llvm_ib, (unsigned int)count);
+
+  bl_free(llvm_iv);
+  bl_free(llvm_ib);
+
+  phi->base.llvm_value = llvm_phi;
 }
 
 void
@@ -756,20 +788,6 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
       binop->base.llvm_value = LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
     break;
 
-    /* BUG: INVALID EVALUATION */
-    /* BUG: INVALID EVALUATION */
-    /* BUG: INVALID EVALUATION */
-  case BINOP_LOGIC_AND:
-    binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
-    break;
-
-    /* BUG: INVALID EVALUATION */
-    /* BUG: INVALID EVALUATION */
-    /* BUG: INVALID EVALUATION */
-  case BINOP_LOGIC_OR:
-    binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
-    break;
-
   case BINOP_AND:
     binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
     break;
@@ -779,7 +797,7 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
     break;
 
   default:
-    bl_unimplemented;
+    bl_abort("Invalid binary operation.");
   }
 }
 
@@ -1163,6 +1181,9 @@ gen_instr(Context *cnt, MirInstr *instr)
     break;
   case MIR_INSTR_TYPE_INFO:
     gen_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
+    break;
+  case MIR_INSTR_PHI:
+    gen_instr_phi(cnt, (MirInstrPhi *)instr);
     break;
 
   case MIR_INSTR_INIT:

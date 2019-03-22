@@ -1,16 +1,27 @@
 /* playground */
 
-//#load "std/core.bl"
-
-Foo :: struct {
-  i: s32,
-  j: s32
-};
+#load "std/core.bl"
 
 main :: fn () s32 {
+  r := A() && B() && C();
+
+  if r { print("r = true\n"); }
+  else { print("r = false\n"); }
+
   return 0;
 };
 
+A :: fn () bool {
+  print("A!!!\n");
+  return true;
+};
 
+B :: fn () bool {
+  print("B!!!\n");
+  return false;
+};
 
-
+C :: fn () bool {
+  print("C!!!\n");
+  return false;
+};

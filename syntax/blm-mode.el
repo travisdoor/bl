@@ -48,6 +48,7 @@
     "typeinfo"
     "init"
     "vargs"
+    "phi"
     "alignof")) 
 
 (defconst blm-types

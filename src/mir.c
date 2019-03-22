@@ -132,6 +132,7 @@ union _MirInstr
   MirInstrInit        init;
   MirInstrVArgs       vargs;
   MirInstrTypeInfo    type_info;
+  MirInstrPhi         phi;
 };
 
 typedef struct MirFrame
@@ -142,12 +143,13 @@ typedef struct MirFrame
 
 typedef struct MirStack
 {
-  MirStackPtr top_ptr;         /* pointer to top of the stack */
-  size_t      used_bytes;      /* size of the used stack in bytes */
-  size_t      allocated_bytes; /* total allocated size of the stack in bytes */
-  MirFrame *  ra;              /* current frame beginning (return address)*/
-  MirInstr *  pc;              /* currently executed instruction */
-  bool        aborted;         /* true when execution was aborted */
+  MirStackPtr    top_ptr;         /* pointer to top of the stack */
+  size_t         used_bytes;      /* size of the used stack in bytes */
+  size_t         allocated_bytes; /* total allocated size of the stack in bytes */
+  MirFrame *     ra;              /* current frame beginning (return address)*/
+  MirInstr *     pc;              /* currently executed instruction */
+  MirInstrBlock *prev_block;      /* used by phi instruction */
+  bool           aborted;         /* true when execution was aborted */
 } MirStack;
 
 typedef struct
@@ -159,7 +161,6 @@ typedef struct
   BString *   tmp_sh;
   BHashTable *type_table;
   MirFn *     entry_fn;
-  bool        verbose_pre, verbose_post;
 
   /* DynCall/Lib data used for external method execution in compile time */
   struct
@@ -186,6 +187,8 @@ typedef struct
     /* Hash table of arrays. Hash is ID of symbol and array contains queue of waiting instructions
      * (DeclRefs). */
     BHashTable *waiting;
+    bool        verbose_pre;
+    bool        verbose_post;
   } analyze;
 
   /* MIR compile time execution. */
@@ -367,6 +370,9 @@ create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
+
+static MirInstr *
+append_instr_phi(Context *cnt, Ast *node);
 
 static MirInstr *
 append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values);
@@ -637,6 +643,9 @@ static uint64_t
 analyze_instr_init(Context *cnt, MirInstrInit *init);
 
 static uint64_t
+analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
+
+static uint64_t
 analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
 static uint64_t
@@ -738,6 +747,9 @@ exec_instr(Context *cnt, MirInstr *instr);
 
 static void
 exec_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+
+static void
+exec_instr_phi(Context *cnt, MirInstrPhi *phi);
 
 static void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
@@ -1195,7 +1207,7 @@ static inline void
 terminate_block(MirInstrBlock *block, MirInstr *terminator)
 {
   assert(block);
-  if (block->terminal) bl_abort("basic block already terminated!");
+  if (block->terminal) bl_abort("basic block '%s' already terminated!", block->name);
   block->terminal = terminator;
 }
 
@@ -1354,6 +1366,17 @@ ref_instr(MirInstr *instr)
 {
   if (!instr || instr->ref_count == NO_REF_COUNTING) return;
   ++instr->ref_count;
+}
+
+static inline void
+phi_add_income(MirInstrPhi *phi, MirInstr *value, MirInstrBlock *block)
+{
+  assert(phi && value && block);
+  ref_instr(value);
+  ref_instr(&block->base);
+
+  bo_array_push_back(phi->incoming_values, value);
+  bo_array_push_back(phi->incoming_blocks, block);
 }
 
 static inline bool
@@ -2135,6 +2158,16 @@ append_instr_arg(Context *cnt, Ast *node, unsigned i)
 }
 
 MirInstr *
+append_instr_phi(Context *cnt, Ast *node)
+{
+  MirInstrPhi *tmp     = create_instr(cnt, MIR_INSTR_PHI, node, MirInstrPhi *);
+  tmp->incoming_values = create_arr(cnt, sizeof(MirInstr *));
+  tmp->incoming_blocks = create_arr(cnt, sizeof(MirInstr *));
+  push_into_curr_block(cnt, &tmp->base);
+  return &tmp->base;
+}
+
+MirInstr *
 append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values)
 {
   if (values) {
@@ -2603,7 +2636,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
     type->alignment        = __alignof(MirType *);
     type->size_bits        = sizeof(MirType *) * 8;
     type->store_size_bytes = sizeof(MirType *);
-    //type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+    // type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
     break;
   }
 
@@ -2670,10 +2703,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
   }
 
   case MIR_TYPE_FN: {
-    MirType *tmp_ret  = type->data.fn.ret_type;
+    MirType *tmp_ret = type->data.fn.ret_type;
     if (tmp_ret->kind == MIR_TYPE_TYPE) break;
-    BArray * tmp_args = type->data.fn.arg_types;
-    size_t   argc     = tmp_args ? bo_array_size(tmp_args) : 0;
+    BArray *tmp_args = type->data.fn.arg_types;
+    size_t  argc     = tmp_args ? bo_array_size(tmp_args) : 0;
 
     LLVMTypeRef *llvm_args = NULL;
     LLVMTypeRef  llvm_ret  = NULL;
@@ -2917,6 +2950,47 @@ reduce_instr(Context *cnt, MirInstr *instr)
   default:
     break;
   }
+}
+
+uint64_t
+analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
+{
+  assert(phi->incoming_blocks && phi->incoming_values);
+  assert(bo_array_size(phi->incoming_values) == bo_array_size(phi->incoming_blocks));
+
+  const size_t count = bo_array_size(phi->incoming_values);
+
+  bool       comptime = true;
+  MirInstr **value_ref;
+  MirInstr * block;
+  MirType *  type = NULL;
+
+  for (size_t i = 0; i < count; ++i) {
+    value_ref = &bo_array_at(phi->incoming_values, i, MirInstr *);
+    block     = bo_array_at(phi->incoming_blocks, i, MirInstr *);
+    assert(block && block->kind == MIR_INSTR_BLOCK);
+
+    (*value_ref) = insert_instr_load_if_needed(cnt, *value_ref);
+    reduce_instr(cnt, *value_ref);
+
+    /* validate value type */
+    if (type) {
+      bool is_valid;
+      *value_ref = try_impl_cast(cnt, *value_ref, type, &is_valid);
+      if (!is_valid) return ANALYZE_FAILED;
+    } else {
+      type = (*value_ref)->const_value.type;
+    }
+
+    comptime &= (*value_ref)->comptime;
+  }
+
+  assert(type && "Cannot resolve type of phi instruction!");
+  phi->base.const_value.type      = type;
+  phi->base.const_value.addr_mode = MIR_VAM_RVALUE;
+  phi->base.comptime              = comptime;
+
+  return ANALYZE_PASSED;
 }
 
 uint64_t
@@ -3767,7 +3841,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
   assert(type_arr->base.const_value.type);
   assert(type_arr->elem_type->analyzed);
 
-  type_arr->len = insert_instr_load_if_needed(cnt, type_arr->len);
+  type_arr->len       = insert_instr_load_if_needed(cnt, type_arr->len);
   type_arr->elem_type = insert_instr_load_if_needed(cnt, type_arr->elem_type);
 
   bool valid;
@@ -4356,6 +4430,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_TYPE_INFO:
     state = analyze_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
     break;
+  case MIR_INSTR_PHI:
+    state = analyze_instr_phi(cnt, (MirInstrPhi *)instr);
+    break;
   default:
     msg_warning("missing analyze for %s", mir_instr_name(instr));
     return ANALYZE_FAILED;
@@ -4400,7 +4477,7 @@ analyze_try_get_next(MirInstr *instr)
 void
 analyze(Context *cnt)
 {
-  if (cnt->verbose_pre) {
+  if (cnt->analyze.verbose_pre) {
     MirInstr *instr;
     BArray *  globals = cnt->module->globals;
     barray_foreach(globals, instr)
@@ -4488,7 +4565,7 @@ analyze(Context *cnt)
     }
   }
 
-  if (cnt->verbose_post) {
+  if (cnt->analyze.verbose_post) {
     MirInstr *instr;
     BArray *  globals = cnt->module->globals;
     barray_foreach(globals, instr)
@@ -4547,6 +4624,7 @@ exec_reset_stack(MirStack *stack)
 {
   stack->pc         = NULL;
   stack->ra         = NULL;
+  stack->prev_block = NULL;
   stack->aborted    = false;
   const size_t size = exec_stack_alloc_size(sizeof(MirStack));
   stack->used_bytes = size;
@@ -4640,6 +4718,9 @@ exec_instr(Context *cnt, MirInstr *instr)
   case MIR_INSTR_COND_BR:
     exec_instr_cond_br(cnt, (MirInstrCondBr *)instr);
     break;
+  case MIR_INSTR_PHI:
+    exec_instr_phi(cnt, (MirInstrPhi *)instr);
+    break;
   case MIR_INSTR_UNREACHABLE:
     exec_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
     break;
@@ -4664,6 +4745,44 @@ exec_instr(Context *cnt, MirInstr *instr)
 
   default:
     bl_abort("missing execution for instruction: %s", mir_instr_name(instr));
+  }
+}
+
+void
+exec_instr_phi(Context *cnt, MirInstrPhi *phi)
+{
+  MirInstrBlock *prev_block = cnt->exec.stack->prev_block;
+  assert(prev_block && "Invalid previous block for phi instruction.");
+  assert(phi->incoming_blocks && phi->incoming_values);
+  assert(bo_array_size(phi->incoming_blocks) == bo_array_size(phi->incoming_values));
+
+  const size_t c = bo_array_size(phi->incoming_values);
+  assert(c > 0);
+
+  MirInstr *     value;
+  MirInstrBlock *block;
+  for (size_t i = 0; i < c; ++i) {
+    value = bo_array_at(phi->incoming_values, i, MirInstr *);
+    block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
+
+    if (block->base.id == prev_block->base.id) break;
+  }
+
+  assert(value && "Invalid value for phi income.");
+
+  /* Pop used value from stack or use constant. Result will be pushed on the stack or used as
+   * constant value of phi when phi is compile time known constant. */
+  {
+    MirType *phi_type = phi->base.const_value.type;
+    assert(phi_type);
+
+    MirStackPtr value_ptr = exec_fetch_value(cnt, value);
+
+    if (phi->base.comptime) {
+      memcpy(&phi->base.const_value.data, value_ptr, phi_type->store_size_bytes);
+    } else {
+      exec_push_stack(cnt, value_ptr, phi_type);
+    }
   }
 }
 
@@ -4839,6 +4958,7 @@ void
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
+  cnt->exec.stack->prev_block = br->base.owner_block;
   exec_set_pc(cnt, br->then_block->entry_instr);
 }
 
@@ -5092,6 +5212,8 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   MirConstValueData tmp = {0};
   exec_read_value(&tmp, cond, type);
 
+  /* Set previous block. */
+  cnt->exec.stack->prev_block = br->base.owner_block;
   if (tmp.v_s64) {
     exec_set_pc(cnt, br->then_block->entry_instr);
   } else {
@@ -5663,13 +5785,7 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
     break;                                                                                         \
   case BINOP_GREATER_EQ:                                                                           \
     (_result).v_bool = _lhs._v_T >= _rhs._v_T;                                                     \
-    break;                                                                                         \
-  case BINOP_LOGIC_AND:                                                                            \
-    (_result).v_bool = _lhs._v_T && _rhs._v_T;                                                     \
-    break;                                                                                         \
-  case BINOP_LOGIC_OR:                                                                             \
-    (_result).v_bool = _lhs._v_T || _rhs._v_T;                                                     \
-    break;
+    break;                                                                                         
 
 #define binop_case_int(_op, _lhs, _rhs, _result, _v_T)                                             \
   case sizeof(_lhs._v_T): {                                                                        \
@@ -6289,68 +6405,106 @@ ast_expr_binop(Context *cnt, Ast *binop)
 
   const BinopKind op = binop->data.expr_binop.kind;
 
-  if (ast_binop_is_assign(op)) {
-    switch (op) {
+  switch (op) {
+  case BINOP_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
 
-    case BINOP_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, rhs, lhs);
+  }
 
-      return append_instr_store(cnt, binop, rhs, lhs);
-    }
+  case BINOP_ADD_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_ADD);
+    lhs           = ast(cnt, ast_lhs);
 
-    case BINOP_ADD_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_ADD);
-      lhs           = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, tmp, lhs);
+  }
 
-      return append_instr_store(cnt, binop, tmp, lhs);
-    }
+  case BINOP_SUB_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_SUB);
+    lhs           = ast(cnt, ast_lhs);
 
-    case BINOP_SUB_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_SUB);
-      lhs           = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, tmp, lhs);
+  }
 
-      return append_instr_store(cnt, binop, tmp, lhs);
-    }
+  case BINOP_MUL_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MUL);
+    lhs           = ast(cnt, ast_lhs);
 
-    case BINOP_MUL_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MUL);
-      lhs           = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, tmp, lhs);
+  }
 
-      return append_instr_store(cnt, binop, tmp, lhs);
-    }
+  case BINOP_DIV_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_DIV);
+    lhs           = ast(cnt, ast_lhs);
 
-    case BINOP_DIV_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_DIV);
-      lhs           = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, tmp, lhs);
+  }
 
-      return append_instr_store(cnt, binop, tmp, lhs);
-    }
+  case BINOP_MOD_ASSIGN: {
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MOD);
+    lhs           = ast(cnt, ast_lhs);
 
-    case BINOP_MOD_ASSIGN: {
-      MirInstr *rhs = ast(cnt, ast_rhs);
-      MirInstr *lhs = ast(cnt, ast_lhs);
-      MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MOD);
-      lhs           = ast(cnt, ast_lhs);
+    return append_instr_store(cnt, binop, tmp, lhs);
+  }
 
-      return append_instr_store(cnt, binop, tmp, lhs);
-    }
+  case BINOP_LOGIC_AND: {
+    MirFn *        fn        = get_current_fn(cnt);
+    MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
+    MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
 
-    default:
-      bl_unimplemented;
-    }
-  } else {
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    append_instr_cond_br(cnt, NULL, lhs, rhs_block, end_block);
+
+    set_current_block(cnt, rhs_block);
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    append_instr_br(cnt, NULL, end_block);
+
+    set_current_block(cnt, end_block);
+    MirInstr *   const_false = append_instr_const_bool(cnt, NULL, false);
+    MirInstrPhi *phi         = (MirInstrPhi *)append_instr_phi(cnt, binop);
+    phi_add_income(phi, const_false, lhs->owner_block);
+    phi_add_income(phi, rhs, rhs_block);
+
+    return &phi->base;
+  }
+
+  case BINOP_LOGIC_OR: {
+    MirFn *        fn        = get_current_fn(cnt);
+    MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
+    MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
+
+    MirInstr *lhs = ast(cnt, ast_lhs);
+    append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+
+    set_current_block(cnt, rhs_block);
+    MirInstr *rhs = ast(cnt, ast_rhs);
+    append_instr_br(cnt, NULL, end_block);
+
+    set_current_block(cnt, end_block);
+    MirInstr *   const_true = append_instr_const_bool(cnt, NULL, true);
+    MirInstrPhi *phi        = (MirInstrPhi *)append_instr_phi(cnt, binop);
+    phi_add_income(phi, const_true, lhs->owner_block);
+    phi_add_income(phi, rhs, rhs_block);
+
+    return &phi->base;
+  }
+
+  default: {
     MirInstr *rhs = ast(cnt, ast_rhs);
     MirInstr *lhs = ast(cnt, ast_lhs);
     return append_instr_binop(cnt, binop, lhs, rhs, op);
+  }
   }
 }
 
@@ -6799,6 +6953,8 @@ mir_instr_name(MirInstr *instr)
     return "InstrVArgs";
   case MIR_INSTR_TYPE_INFO:
     return "InstrTypeInfo";
+  case MIR_INSTR_PHI:
+    return "InstrPhi";
   }
 
   return "UNKNOWN";
@@ -7199,17 +7355,17 @@ mir_run(Builder *builder, Assembly *assembly)
 {
   Context cnt;
   memset(&cnt, 0, sizeof(Context));
-  cnt.builder         = builder;
-  cnt.assembly        = assembly;
-  cnt.module          = assembly->mir_module;
-  cnt.verbose_pre     = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
-  cnt.verbose_post    = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
-  cnt.analyze.queue   = bo_list_new(sizeof(MirInstr *));
-  cnt.test_cases      = bo_array_new(sizeof(MirFn *));
-  cnt.exec.stack      = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
-  cnt.tmp_sh          = bo_string_new(1024);
-  cnt.type_table      = bo_htbl_new(sizeof(MirType *), 8192);
-  cnt.analyze.waiting = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
+  cnt.builder              = builder;
+  cnt.assembly             = assembly;
+  cnt.module               = assembly->mir_module;
+  cnt.analyze.verbose_pre  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
+  cnt.analyze.verbose_post = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
+  cnt.analyze.queue        = bo_list_new(sizeof(MirInstr *));
+  cnt.test_cases           = bo_array_new(sizeof(MirFn *));
+  cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
+  cnt.tmp_sh               = bo_string_new(1024);
+  cnt.type_table           = bo_htbl_new(sizeof(MirType *), 8192);
+  cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
 
   init_builtins(&cnt);
 
