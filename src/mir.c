@@ -143,12 +143,13 @@ typedef struct MirFrame
 
 typedef struct MirStack
 {
-  MirStackPtr top_ptr;         /* pointer to top of the stack */
-  size_t      used_bytes;      /* size of the used stack in bytes */
-  size_t      allocated_bytes; /* total allocated size of the stack in bytes */
-  MirFrame *  ra;              /* current frame beginning (return address)*/
-  MirInstr *  pc;              /* currently executed instruction */
-  bool        aborted;         /* true when execution was aborted */
+  MirStackPtr    top_ptr;         /* pointer to top of the stack */
+  size_t         used_bytes;      /* size of the used stack in bytes */
+  size_t         allocated_bytes; /* total allocated size of the stack in bytes */
+  MirFrame *     ra;              /* current frame beginning (return address)*/
+  MirInstr *     pc;              /* currently executed instruction */
+  MirInstrBlock *prev_block;      /* used by phi instruction */
+  bool           aborted;         /* true when execution was aborted */
 } MirStack;
 
 typedef struct
@@ -2959,6 +2960,7 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 
   const size_t count = bo_array_size(phi->incoming_values);
 
+  bool       comptime = true;
   MirInstr **value_ref;
   MirInstr * block;
   MirType *  type = NULL;
@@ -2979,11 +2981,14 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
     } else {
       type = (*value_ref)->const_value.type;
     }
+
+    comptime &= (*value_ref)->comptime;
   }
 
   assert(type && "Cannot resolve type of phi instruction!");
   phi->base.const_value.type      = type;
   phi->base.const_value.addr_mode = MIR_VAM_RVALUE;
+  phi->base.comptime              = comptime;
 
   return ANALYZE_PASSED;
 }
@@ -4619,6 +4624,7 @@ exec_reset_stack(MirStack *stack)
 {
   stack->pc         = NULL;
   stack->ra         = NULL;
+  stack->prev_block = NULL;
   stack->aborted    = false;
   const size_t size = exec_stack_alloc_size(sizeof(MirStack));
   stack->used_bytes = size;
@@ -4744,7 +4750,41 @@ exec_instr(Context *cnt, MirInstr *instr)
 
 void
 exec_instr_phi(Context *cnt, MirInstrPhi *phi)
-{}
+{
+  MirInstrBlock *prev_block = cnt->exec.stack->prev_block;
+  assert(prev_block && "Invalid previous block for phi instruction.");
+  assert(phi->incoming_blocks && phi->incoming_values);
+  assert(bo_array_size(phi->incoming_blocks) == bo_array_size(phi->incoming_values));
+
+  const size_t c = bo_array_size(phi->incoming_values);
+  assert(c > 0);
+
+  MirInstr *     value;
+  MirInstrBlock *block;
+  for (size_t i = 0; i < c; ++i) {
+    value = bo_array_at(phi->incoming_values, i, MirInstr *);
+    block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
+
+    if (block->base.id == prev_block->base.id) break;
+  }
+
+  assert(value && "Invalid value for phi income.");
+
+  /* Pop used value from stack or use constant. Result will be pushed on the stack or used as
+   * constant value of phi when phi is compile time known constant. */
+  {
+    MirType *phi_type = phi->base.const_value.type;
+    assert(phi_type);
+
+    MirStackPtr value_ptr = exec_fetch_value(cnt, value);
+
+    if (phi->base.comptime) {
+      memcpy(&phi->base.const_value.data, value_ptr, phi_type->store_size_bytes);
+    } else {
+      exec_push_stack(cnt, value_ptr, phi_type);
+    }
+  }
+}
 
 void
 exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
@@ -4918,6 +4958,7 @@ void
 exec_instr_br(Context *cnt, MirInstrBr *br)
 {
   assert(br->then_block);
+  cnt->exec.stack->prev_block = br->base.owner_block;
   exec_set_pc(cnt, br->then_block->entry_instr);
 }
 
@@ -5171,6 +5212,8 @@ exec_instr_cond_br(Context *cnt, MirInstrCondBr *br)
   MirConstValueData tmp = {0};
   exec_read_value(&tmp, cond, type);
 
+  /* Set previous block. */
+  cnt->exec.stack->prev_block = br->base.owner_block;
   if (tmp.v_s64) {
     exec_set_pc(cnt, br->then_block->entry_instr);
   } else {
