@@ -1,5 +1,7 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
+#+EMAIL: biscuitlang@gmail.com
+
 #+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
@@ -348,10 +350,10 @@
    #+END_EXAMPLE
 
    Stack operations:
-    | stack op | data    | description          |
-    |----------+---------+----------------------|
-    | POP      | target  |                      |
-    | PUSH     | resutlt | result with new type |
+    | stack op | data   | description          |
+    |----------+--------+----------------------|
+    | POP      | target |                      |
+    | PUSH     | result | result with new type |
 ** fptosi
    Floating point to signed integer cast. 
 
@@ -376,6 +378,31 @@
    #+BEGIN_EXAMPLE
    <T> inttoptr <target> // yields value with casted type
    #+END_EXAMPLE
+** fpext
+   Floating point extend cast. 
+
+   #+BEGIN_EXAMPLE
+   <T> fpext <target> // yields value with casted type
+   #+END_EXAMPLE
+
+   Stack operations:
+    | stack op | data    | description          |
+    |----------+---------+----------------------|
+    | POP      | target  |                      |
+    | PUSH     | resutlt | result with new type |
+
+** fptrunc
+   Truncates floating point target to destination type 'T'.
+
+   #+BEGIN_EXAMPLE
+   <T> fptrunc <target> // yields value with casted type
+   #+END_EXAMPLE
+
+   Stack operations:
+    | stack op | data   | description          |
+    |----------+--------+----------------------|
+    | POP      | target |                      |
+    | PUSH     | result | result with new type |
 ** sizeof
    Determinates size of expresion or type in compile time.
 
@@ -411,3 +438,9 @@
    | POP      | arg 3       |                   |
    | PUSH     | vargs slice | VArgs array slice |
    
+** phi
+   Yields value based on previous executed block.
+
+   #+BEGIN_EXAMPLE
+   <T> phi [<value>, <block name>], ... // yields value of type T 
+   #+END_EXAMPLE

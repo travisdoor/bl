@@ -83,6 +83,7 @@ typedef struct MirInstrAlignof     MirInstrAlignof;
 typedef struct MirInstrInit        MirInstrInit;
 typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
+typedef struct MirInstrPhi         MirInstrPhi;
 
 typedef enum MirTypeKind         MirTypeKind;
 typedef enum MirInstrKind        MirInstrKind;
@@ -376,6 +377,7 @@ enum MirInstrKind
   MIR_INSTR_INIT,
   MIR_INSTR_VARGS,
   MIR_INSTR_TYPE_INFO,
+  MIR_INSTR_PHI,
 };
 
 struct MirInstr
@@ -663,6 +665,14 @@ struct MirInstrTypeInfo
   /* index into type_info array */
   uint64_t  type_table_index;
   MirInstr *expr;
+};
+
+struct MirInstrPhi
+{
+  MirInstr base;
+
+  BArray *incoming_values;
+  BArray *incoming_blocks;
 };
 
 /* public */

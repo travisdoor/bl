@@ -45,8 +45,11 @@ native_bin_run(Builder *builder, Assembly *assembly)
       //"-lSDL2 -lSDL2_image "
       ;
 #elif defined(BL_PLATFORM_MACOS)
-  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o -lSDL2 -lSDL2_image";
+  const char *cmd = "ld %s.o -o %s -lc -lcrt1.o "
+      //"-lSDL2 -lSDL2_image"
+      ;
 #elif defined(BL_PLATFORM_WIN)
+  msg_warning("Issue with paths passed to link.exe (https://github.com/travisdoor/bl/issues/22).")
   const char *cmd =
       "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
       "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual "
@@ -56,7 +59,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
       "/LIBPATH:\"C:\\Program Files\\SDL2-2.0.9\\lib\\x64\" "
       "/LIBPATH:\"C:\\Program Files\\SDL2_image-2.0.4\\lib\\x64\" "
       "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib "
-      "SDL2_image.lib SDL2.lib "
+      //"SDL2_image.lib SDL2.lib "
       "Msvcrt.lib";
 #endif
 
