@@ -2,26 +2,10 @@
 
 #load "std/core.bl"
 
+Foo :: "Hello world\n";
+
 main :: fn () s32 {
-  r := A() && B() && C();
-
-  if r { print("r = true\n"); }
-  else { print("r = false\n"); }
-
+  print(Foo);
+  ptr := Foo.ptr;
   return 0;
-};
-
-A :: fn () bool {
-  print("A!!!\n");
-  return true;
-};
-
-B :: fn () bool {
-  print("B!!!\n");
-  return false;
-};
-
-C :: fn () bool {
-  print("C!!!\n");
-  return false;
 };

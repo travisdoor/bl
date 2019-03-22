@@ -553,6 +553,9 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
   print_instr_head(&member_ptr->base, stream, "memberptr");
   if (!member_ptr->target_ptr) {
     fprintf(stream, "<unknown>.");
+  } else {
+    print_comptime_value_or_id(member_ptr->target_ptr, stream);
+    fprintf(stream, ".");
   }
 
   if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {

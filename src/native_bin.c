@@ -49,6 +49,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
       //"-lSDL2 -lSDL2_image"
       ;
 #elif defined(BL_PLATFORM_WIN)
+  msg_warning("Issue with paths passed to link.exe (https://github.com/travisdoor/bl/issues/22).")
   const char *cmd =
       "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
       "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual "
