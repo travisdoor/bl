@@ -3523,6 +3523,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     ref->base.const_value.type      = type;
     ref->base.comptime              = var->comptime;
     ref->base.const_value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+
     /* set pointer to variable const value directly when variable is compile time known */
     if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
     break;
