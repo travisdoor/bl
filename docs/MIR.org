@@ -1,5 +1,7 @@
 #+TITLE: Biscuit-MIR Documentation
 #+AUTHOR: Martin Dorazil
+#+EMAIL: biscuitlang@gmail.com
+
 #+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
