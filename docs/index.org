@@ -17,6 +17,8 @@
 
 * About
   The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit is designed to be simple, fast and explicit.
+  
+  Contact email: [[mailto:biscuitlang@gmail][biscuitlang@gmail]]
 
 ** Goals
    - manual memory management
@@ -45,6 +47,10 @@
      return -1;
    };
    #+END_SRC
+   
+** Made with Biscuit
+- [[https://github.com/travisdoor/skyshooter][Sky Shooter]] - Simple SDL game.
+
 
 * Building compiler from source code
 ** Requirements
@@ -151,7 +157,7 @@
 
      Note: Compilation on Windows is quite complicated, we need to create some automated process for this...
 * Releases
-** 0.4.0 pre-alpha
+** 0.4.1 pre-alpha
 - [[https://github.com/travisdoor/bl][source]]
 - [[file:documentation.html][documentation]]
 - [[file:MIR.html][MIR - documentation]]
