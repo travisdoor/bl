@@ -269,8 +269,14 @@ static inline LLVMValueRef
 fetch_value(Context *cnt, MirInstr *instr)
 {
   LLVMValueRef value = NULL;
+
   if (instr->comptime && !instr->llvm_value) {
-    instr->llvm_value = gen_as_const(cnt, &instr->const_value);
+    /* Declaration references must be generated even if they are compile time. */
+    if (instr->kind == MIR_INSTR_DECL_REF) {
+      gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+    } else {
+      instr->llvm_value = gen_as_const(cnt, &instr->const_value);
+    }
   }
 
   value = instr->llvm_value;

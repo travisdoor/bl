@@ -227,6 +227,11 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
     return;
   }
 
+  if (instr->kind == MIR_INSTR_DECL_REF) {
+    fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
+    return;
+  }
+
   print_const_value(&instr->const_value, stream);
 }
 
@@ -356,14 +361,14 @@ print_instr_phi(MirInstrPhi *phi, FILE *stream)
     return;
   }
 
-  MirInstr *value;
+  MirInstr *     value;
   MirInstrBlock *block;
-  const size_t c = bo_array_size(phi->incoming_values);
+  const size_t   c = bo_array_size(phi->incoming_values);
 
   if (c == 0) {
     fprintf(stream, "<empty incomes>");
   }
-  
+
   for (size_t i = 0; i < c; ++i) {
     value = bo_array_at(phi->incoming_values, i, MirInstr *);
     block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);

@@ -7239,6 +7239,7 @@ init_dl(Context *cnt)
   bo_array_push_back(cnt->dl.libs, lib);
 
 /* TEST: */
+#if 0
 #ifdef BL_PLATFORM_MACOS
   lib = dlLoadLibrary("libSDL2.dylib");
   assert(lib);
@@ -7263,6 +7264,7 @@ init_dl(Context *cnt)
   lib = dlLoadLibrary("C:/Program Files/SDL2_image-2.0.4/lib/x64/SDL2_image.dll");
   assert(lib);
   bo_array_push_back(cnt->dl.libs, lib);
+#endif
 #endif
 
   DCCallVM *vm = dcNewCallVM(4096);
