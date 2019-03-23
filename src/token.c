@@ -59,6 +59,13 @@ token_prec(Token *token)
   case SYM_LPAREN:
     return (TokenPrecedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
+    /* cast sizeof alignof typeinfo */
+  case SYM_CAST:
+  case SYM_SIZEOF:
+  case SYM_ALIGNOF:
+  case SYM_TYPEINFO:
+    return (TokenPrecedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
+
     /* * ^ / % */
   case SYM_ASTERISK:
   case SYM_CARET:

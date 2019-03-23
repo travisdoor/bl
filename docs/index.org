@@ -50,7 +50,7 @@
    
 ** Made with Biscuit
 - [[https://github.com/travisdoor/skyshooter][Sky Shooter]] - Simple SDL game.
-
+- [[https://github.com/travisdoor/PoissonDisk][PoissonDisk]] - Unity C# poisson disk generator tool.
 
 * Building compiler from source code
 ** Requirements

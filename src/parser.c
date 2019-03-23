@@ -516,7 +516,7 @@ parse_expr_cast(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_BAD, tok);
   }
 
-  cast->data.expr_cast.next = parse_expr(cnt);
+  cast->data.expr_cast.next = _parse_expr(cnt, token_prec(tok_begin).priority);
   if (!cast->data.expr_cast.next) {
     tok = tokens_peek(cnt->tokens);
     parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD, "Expected expression after cast.");
