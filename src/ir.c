@@ -364,7 +364,7 @@ gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 void
 gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-  bl_unimplemented;
+  bl_abort_issue(26);
 }
 
 void

@@ -3620,6 +3620,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     }
 
     if (!handle) {
+      bl_warning_issue(27);
       builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL, fn_proto->base.node->src,
                   BUILDER_CUR_WORD, "External symbol '%s' not found.", fn->llvm_name);
     }
@@ -4809,7 +4810,7 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-  bl_unimplemented;
+  bl_abort_issue(26);
 }
 
 void
