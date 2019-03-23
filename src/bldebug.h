@@ -111,6 +111,18 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
     abort();                                                                                       \
   }
 
+#define bl_abort_issue(N)                                                                          \
+  {                                                                                                \
+    _log(LOG_ABORT, __FILENAME__, __LINE__, "Issue: https://github.com/travisdoor/bl/issues/" #N); \
+    abort();                                                                                       \
+  }
+
+#define bl_warning_issue(N)                                                                        \
+  {                                                                                                \
+    _log(LOG_WARNING, __FILENAME__, __LINE__,                                                      \
+         "Issue: https://github.com/travisdoor/bl/issues/" #N);                                    \
+  }
+
 #define bl_unimplemented                                                                           \
   {                                                                                                \
     _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                      \

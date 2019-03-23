@@ -1,6 +1,6 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
 main :: fn () s32 {
   i := cast(f32) 12 + 23;
