@@ -115,6 +115,9 @@ static void
 print_expr_unary(Ast *unary, int32_t pad, FILE *stream);
 
 static void
+print_expr_cast(Ast *cast, int32_t pad, FILE *stream);
+
+static void
 print_expr_member(Ast *member, int32_t pad, FILE *stream);
 
 static void
@@ -255,6 +258,14 @@ void
 print_bad(Ast *bad, int32_t pad, FILE *stream)
 {
   print_head(bad, pad, stream);
+}
+
+void
+print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
+{
+  print_head(cast, pad, stream);
+  print_node(cast->data.expr_cast.type, pad + 1, stream);
+  print_node(cast->data.expr_cast.next, pad + 1, stream);
 }
 
 void
@@ -411,7 +422,8 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
   BArray *exprs = expr_compound->data.expr_compound.values;
   if (exprs) {
     Ast *value;
-    barray_foreach(exprs, value) {
+    barray_foreach(exprs, value)
+    {
       print_node(value, pad + 1, stream);
     }
   }
@@ -496,6 +508,7 @@ print_node(Ast *node, int32_t pad, FILE *stream)
     break;
 
   case AST_EXPR_CAST:
+    print_expr_cast(node, pad, stream);
     break;
 
   case AST_EXPR_BINOP:

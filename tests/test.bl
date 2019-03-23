@@ -1,11 +1,8 @@
 /* playground */
 
-#load "std/core.bl"
-
-Foo :: "Hello world\n";
+//#load "std/core.bl"
 
 main :: fn () s32 {
-  print(Foo);
-  ptr := Foo.ptr;
+  i := cast(f32) 12 + 23;
   return 0;
 };
