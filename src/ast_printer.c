@@ -82,6 +82,8 @@ static void print_block(Ast *block, int32_t pad, FILE *stream);
 
 static void print_unrecheable(Ast *unr, int32_t pad, FILE *stream);
 
+static void print_type_struct(Ast *strct, int32_t pad, FILE *stream);
+
 static void print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream);
 
 static void print_stmt_loop(Ast *loop, int32_t pad, FILE *stream);
@@ -158,7 +160,15 @@ void print_test_case(Ast *test, int32_t pad, FILE *stream)
 	print_node(test->data.test_case.block, pad + 1, stream);
 }
 
-void print_unrecheable(Ast *unr, int32_t pad, FILE *stream) { print_head(unr, pad, stream); }
+void print_unrecheable(Ast *unr, int32_t pad, FILE *stream)
+{
+	print_head(unr, pad, stream);
+}
+
+void print_type_struct(Ast *strct, int32_t pad, FILE *stream)
+{
+	print_head(strct, pad, stream);
+}
 
 void print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream)
 {
@@ -177,9 +187,15 @@ void print_stmt_loop(Ast *loop, int32_t pad, FILE *stream)
 	print_node(loop->data.stmt_loop.block, pad + 1, stream);
 }
 
-void print_stmt_break(Ast *br, int32_t pad, FILE *stream) { print_head(br, pad, stream); }
+void print_stmt_break(Ast *br, int32_t pad, FILE *stream)
+{
+	print_head(br, pad, stream);
+}
 
-void print_stmt_continue(Ast *cnt, int32_t pad, FILE *stream) { print_head(cnt, pad, stream); }
+void print_stmt_continue(Ast *cnt, int32_t pad, FILE *stream)
+{
+	print_head(cnt, pad, stream);
+}
 
 void print_stmt_return(Ast *ret, int32_t pad, FILE *stream)
 {
@@ -198,9 +214,15 @@ void print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 	print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);
 }
 
-void print_decl_arg(Ast *arg, int32_t pad, FILE *stream) { print_head(arg, pad, stream); }
+void print_decl_arg(Ast *arg, int32_t pad, FILE *stream)
+{
+	print_head(arg, pad, stream);
+}
 
-void print_bad(Ast *bad, int32_t pad, FILE *stream) { print_head(bad, pad, stream); }
+void print_bad(Ast *bad, int32_t pad, FILE *stream)
+{
+	print_head(bad, pad, stream);
+}
 
 void print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
 {
@@ -349,7 +371,10 @@ void print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 	BArray *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
-		barray_foreach(exprs, value) { print_node(value, pad + 1, stream); }
+		barray_foreach(exprs, value)
+		{
+			print_node(value, pad + 1, stream);
+		}
 	}
 }
 
@@ -385,6 +410,10 @@ void print_node(Ast *node, int32_t pad, FILE *stream)
 
 	case AST_UNREACHABLE:
 		print_unrecheable(node, pad, stream);
+		break;
+
+	case AST_TYPE_STRUCT:
+		print_type_struct(node, pad, stream);
 		break;
 
 	case AST_DECL_ENTITY:
@@ -508,6 +537,9 @@ void print_node(Ast *node, int32_t pad, FILE *stream)
 void ast_printer_run(Assembly *assembly, FILE *stream)
 {
 	Unit *unit;
-	barray_foreach(assembly->units, unit) { print_node(unit->ast, 0, stream); }
+	barray_foreach(assembly->units, unit)
+	{
+		print_node(unit->ast, 0, stream);
+	}
 	fprintf(stream, "\n\n");
 }
