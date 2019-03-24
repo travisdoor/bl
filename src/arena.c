@@ -74,7 +74,7 @@ static inline ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
 }
 
 void arena_init(Arena *arena, size_t elem_size_in_bytes, int32_t elems_per_chunk,
-				ArenaElemDtor elem_dtor)
+		ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
 	arena->elems_per_chunk = elems_per_chunk;

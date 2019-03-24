@@ -29,9 +29,9 @@
 #include <llvm-c/Linker.h>
 #include <llvm-c/TargetMachine.h>
 
-#include "stages.h"
 #include "common.h"
 #include "error.h"
+#include "stages.h"
 
 #ifdef BL_PLATFORM_WIN
 #define OBJ_EXT ".obj"
@@ -39,20 +39,20 @@
 #define OBJ_EXT ".o"
 #endif
 
-void
-linker_run(Builder *builder, Assembly *assembly)
+void linker_run(Builder *builder, Assembly *assembly)
 {
 	MirModule *module = assembly->mir_module;
 	assert(module->llvm_module);
 	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-	if (!filename) bl_abort("bad alloc");
+	if (!filename)
+		bl_abort("bad alloc");
 	strcpy(filename, assembly->name);
 	strcat(filename, OBJ_EXT);
 
 	char *error_msg = NULL;
 	remove(filename);
-	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module, filename,
-	                                LLVMObjectFile, &error_msg)) {
+	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module,
+					filename, LLVMObjectFile, &error_msg)) {
 		msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
 		LLVMDisposeMessage(error_msg);

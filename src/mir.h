@@ -29,73 +29,72 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
+#include "arena.h"
+#include "ast.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/htbl.h>
 #include <dyncall.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include "arena.h"
-#include "ast.h"
 
 struct Assembly;
 struct Builder;
 
 typedef ptrdiff_t MirRelativeStackPtr;
-typedef uint8_t * MirStackPtr;
+typedef uint8_t *MirStackPtr;
 
-typedef struct MirModule     MirModule;
-typedef struct MirType       MirType;
-typedef struct MirVar        MirVar;
-typedef struct MirFn         MirFn;
-typedef struct MirMember     MirMember;
+typedef struct MirModule MirModule;
+typedef struct MirType MirType;
+typedef struct MirVar MirVar;
+typedef struct MirFn MirFn;
+typedef struct MirMember MirMember;
 typedef struct MirConstValue MirConstValue;
 
-typedef struct MirInstr            MirInstr;
+typedef struct MirInstr MirInstr;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
-typedef struct MirInstrBlock       MirInstrBlock;
-typedef struct MirInstrDeclVar     MirInstrDeclVar;
-typedef struct MirInstrDeclMember  MirInstrDeclMember;
-typedef struct MirInstrConst       MirInstrConst;
-typedef struct MirInstrLoad        MirInstrLoad;
-typedef struct MirInstrStore       MirInstrStore;
-typedef struct MirInstrRet         MirInstrRet;
-typedef struct MirInstrBinop       MirInstrBinop;
-typedef struct MirInstrUnop        MirInstrUnop;
-typedef struct MirInstrFnProto     MirInstrFnProto;
-typedef struct MirInstrCall        MirInstrCall;
-typedef struct MirInstrAddrOf      MirInstrAddrOf;
-typedef struct MirInstrCondBr      MirInstrCondBr;
-typedef struct MirInstrBr          MirInstrBr;
-typedef struct MirInstrArg         MirInstrArg;
-typedef struct MirInstrElemPtr     MirInstrElemPtr;
-typedef struct MirInstrMemberPtr   MirInstrMemberPtr;
-typedef struct MirInstrTypeFn      MirInstrTypeFn;
-typedef struct MirInstrTypeStruct  MirInstrTypeStruct;
-typedef struct MirInstrTypeArray   MirInstrTypeArray;
-typedef struct MirInstrTypeSlice   MirInstrTypeSlice;
-typedef struct MirInstrTypeVArgs   MirInstrTypeVArgs;
-typedef struct MirInstrTypePtr     MirInstrTypePtr;
-typedef struct MirInstrDeclRef     MirInstrDeclRef;
-typedef struct MirInstrCast        MirInstrCast;
-typedef struct MirInstrSizeof      MirInstrSizeof;
-typedef struct MirInstrAlignof     MirInstrAlignof;
-typedef struct MirInstrInit        MirInstrInit;
-typedef struct MirInstrVArgs       MirInstrVArgs;
-typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
-typedef struct MirInstrPhi         MirInstrPhi;
+typedef struct MirInstrBlock MirInstrBlock;
+typedef struct MirInstrDeclVar MirInstrDeclVar;
+typedef struct MirInstrDeclMember MirInstrDeclMember;
+typedef struct MirInstrConst MirInstrConst;
+typedef struct MirInstrLoad MirInstrLoad;
+typedef struct MirInstrStore MirInstrStore;
+typedef struct MirInstrRet MirInstrRet;
+typedef struct MirInstrBinop MirInstrBinop;
+typedef struct MirInstrUnop MirInstrUnop;
+typedef struct MirInstrFnProto MirInstrFnProto;
+typedef struct MirInstrCall MirInstrCall;
+typedef struct MirInstrAddrOf MirInstrAddrOf;
+typedef struct MirInstrCondBr MirInstrCondBr;
+typedef struct MirInstrBr MirInstrBr;
+typedef struct MirInstrArg MirInstrArg;
+typedef struct MirInstrElemPtr MirInstrElemPtr;
+typedef struct MirInstrMemberPtr MirInstrMemberPtr;
+typedef struct MirInstrTypeFn MirInstrTypeFn;
+typedef struct MirInstrTypeStruct MirInstrTypeStruct;
+typedef struct MirInstrTypeArray MirInstrTypeArray;
+typedef struct MirInstrTypeSlice MirInstrTypeSlice;
+typedef struct MirInstrTypeVArgs MirInstrTypeVArgs;
+typedef struct MirInstrTypePtr MirInstrTypePtr;
+typedef struct MirInstrDeclRef MirInstrDeclRef;
+typedef struct MirInstrCast MirInstrCast;
+typedef struct MirInstrSizeof MirInstrSizeof;
+typedef struct MirInstrAlignof MirInstrAlignof;
+typedef struct MirInstrInit MirInstrInit;
+typedef struct MirInstrVArgs MirInstrVArgs;
+typedef struct MirInstrTypeInfo MirInstrTypeInfo;
+typedef struct MirInstrPhi MirInstrPhi;
 
-typedef enum MirTypeKind         MirTypeKind;
-typedef enum MirInstrKind        MirInstrKind;
-typedef enum MirCastOp           MirCastOp;
-typedef enum MirBuiltinKind      MirBuiltinKind;
-typedef enum MirTypeStructKind   MirTypeStructKind;
+typedef enum MirTypeKind MirTypeKind;
+typedef enum MirInstrKind MirInstrKind;
+typedef enum MirCastOp MirCastOp;
+typedef enum MirBuiltinKind MirBuiltinKind;
+typedef enum MirTypeStructKind MirTypeStructKind;
 typedef enum MirValueAddressMode MirValueAddressMode;
 
 typedef union MirConstValueData MirConstValueData;
 
-enum MirBuiltinKind
-{
+enum MirBuiltinKind {
 	MIR_BUILTIN_NONE = -1,
 
 	MIR_BUILTIN_TYPE_TYPE,
@@ -124,8 +123,7 @@ enum MirBuiltinKind
 };
 
 /* ALLOCATORS */
-struct MirArenas
-{
+struct MirArenas {
 	Arena instr_arena;
 	Arena type_arena;
 	Arena var_arena;
@@ -135,58 +133,54 @@ struct MirArenas
 	Arena array_arena;
 };
 
-struct MirModule
-{
-	struct MirArenas     arenas;
-	BArray *             globals;
-	LLVMModuleRef        llvm_module;
-	LLVMContextRef       llvm_cnt;
-	LLVMTargetDataRef    llvm_td;
+struct MirModule {
+	struct MirArenas arenas;
+	BArray *globals;
+	LLVMModuleRef llvm_module;
+	LLVMContextRef llvm_cnt;
+	LLVMTargetDataRef llvm_td;
 	LLVMTargetMachineRef llvm_tm;
-	char *               llvm_triple;
+	char *llvm_triple;
 };
 
 /* FN */
-struct MirFn
-{
-	MirInstr *   prototype;
-	ID *         id;
-	Ast *        decl_node;
-	MirType *    type;
-	Scope *      scope;
-	BArray *     variables;
-	int32_t      ref_count;
-	const char * llvm_name;
+struct MirFn {
+	MirInstr *prototype;
+	ID *id;
+	Ast *decl_node;
+	MirType *type;
+	Scope *scope;
+	BArray *variables;
+	int32_t ref_count;
+	const char *llvm_name;
 	LLVMValueRef llvm_value;
-	bool         analyzed_for_cmptime_exec;
+	bool analyzed_for_cmptime_exec;
 
-	DCpointer   extern_entry;
-	int32_t     flags;
+	DCpointer extern_entry;
+	int32_t flags;
 	const char *test_case_desc;
 
 	/* pointer to the first block inside function body */
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
-	int32_t        block_count;
-	int32_t        instr_count;
+	int32_t block_count;
+	int32_t instr_count;
 
 	MirConstValueData *exec_ret_value;
 };
 
 /* MEMBER */
 
-struct MirMember
-{
-	ID *     id;
-	Ast *    decl_node;
+struct MirMember {
+	ID *id;
+	Ast *decl_node;
 	MirType *type;
-	Scope *  scope;
-	int64_t  index;
+	Scope *scope;
+	int64_t index;
 };
 
 /* TYPE */
-enum MirTypeKind
-{
+enum MirTypeKind {
 	MIR_TYPE_INVALID,
 	MIR_TYPE_TYPE,
 	MIR_TYPE_VOID,
@@ -200,151 +194,134 @@ enum MirTypeKind
 	MIR_TYPE_NULL,
 };
 
-struct MirTypeInt
-{
+struct MirTypeInt {
 	int32_t bitcount;
-	bool    is_signed;
+	bool is_signed;
 };
 
-struct MirTypeReal
-{
+struct MirTypeReal {
 	int32_t bitcount;
 };
 
-struct MirTypeFn
-{
+struct MirTypeFn {
 	MirType *ret_type;
-	BArray * arg_types;
-	bool     is_vargs;
+	BArray *arg_types;
+	bool is_vargs;
 };
 
-struct MirTypePtr
-{
+struct MirTypePtr {
 	MirType *next;
 };
 
-enum MirTypeStructKind
-{
-	MIR_TS_NONE   = 0x0, // ordinary user structure
-	MIR_TS_SLICE  = 0x1, // slice
+enum MirTypeStructKind {
+	MIR_TS_NONE = 0x0, // ordinary user structure
+	MIR_TS_SLICE = 0x1, // slice
 	MIR_TS_STRING = 0x3, // string slice
-	MIR_TS_VARGS  = 0x5, // vargs slice
+	MIR_TS_VARGS = 0x5, // vargs slice
 };
 
-struct MirTypeStruct
-{
+struct MirTypeStruct {
 	MirTypeStructKind kind;
-	Scope *           scope;
-	BArray *          members;
-	bool              is_packed;
+	Scope *scope;
+	BArray *members;
+	bool is_packed;
 };
 
-struct MirTypeNull
-{
+struct MirTypeNull {
 	MirType *base_type;
 };
 
-struct MirTypeArray
-{
+struct MirTypeArray {
 	MirType *elem_type;
-	size_t   len;
+	size_t len;
 };
 
-struct MirType
-{
+struct MirType {
 	MirTypeKind kind;
-	ID *        user_id;
-	ID          id;
+	ID *user_id;
+	ID id;
 	LLVMTypeRef llvm_type;
-	size_t      size_bits;
-	size_t      store_size_bytes;
-	int32_t     alignment;
-	uint64_t    type_table_index;
+	size_t size_bits;
+	size_t store_size_bytes;
+	int32_t alignment;
+	uint64_t type_table_index;
 
-	union
-	{
-		struct MirTypeInt    integer;
-		struct MirTypeFn     fn;
-		struct MirTypePtr    ptr;
-		struct MirTypeReal   real;
-		struct MirTypeArray  array;
+	union {
+		struct MirTypeInt integer;
+		struct MirTypeFn fn;
+		struct MirTypePtr ptr;
+		struct MirTypeReal real;
+		struct MirTypeArray array;
 		struct MirTypeStruct strct;
-		struct MirTypeNull   null;
+		struct MirTypeNull null;
 	} data;
 };
 
 /* VALUE */
-union MirConstValueData
-{
-	int64_t             v_s64;
-	int32_t             v_s32;
-	int16_t             v_s16;
-	int8_t              v_s8;
-	uint64_t            v_u64;
-	uint32_t            v_u32;
-	uint16_t            v_u16;
-	uint8_t             v_u8;
-	float               v_f32;
-	double              v_f64;
-	bool                v_bool;
-	char                v_char;
-	const char *        v_str;
-	MirType *           v_type;
-	MirConstValue *     v_ptr;
-	MirFn *             v_fn;
-	void *              v_void_ptr;
+union MirConstValueData {
+	int64_t v_s64;
+	int32_t v_s32;
+	int16_t v_s16;
+	int8_t v_s8;
+	uint64_t v_u64;
+	uint32_t v_u32;
+	uint16_t v_u16;
+	uint8_t v_u8;
+	float v_f32;
+	double v_f64;
+	bool v_bool;
+	char v_char;
+	const char *v_str;
+	MirType *v_type;
+	MirConstValue *v_ptr;
+	MirFn *v_fn;
+	void *v_void_ptr;
 	MirRelativeStackPtr v_rel_stack_ptr;
-	MirStackPtr         v_stack_ptr;
+	MirStackPtr v_stack_ptr;
 
-	struct
-	{
+	struct {
 		BArray *members; // array of MirConstValues *
-		bool    is_zero_initializer;
+		bool is_zero_initializer;
 	} v_struct;
 
-	struct
-	{
+	struct {
 		BArray *elems; // array of MirConstValues *
-		bool    is_zero_initializer;
+		bool is_zero_initializer;
 	} v_array;
 };
 
-enum MirValueAddressMode
-{
+enum MirValueAddressMode {
 	MIR_VAM_LVALUE,
 	MIR_VAM_LVALUE_CONST,
 	MIR_VAM_RVALUE,
 };
 
-struct MirConstValue
-{
+struct MirConstValue {
 	// data must be first!!!
 	union MirConstValueData data;
-	MirType *               type;
-	MirValueAddressMode     addr_mode;
+	MirType *type;
+	MirValueAddressMode addr_mode;
 };
 
 /* VAR */
-struct MirVar
-{
+struct MirVar {
 	MirType *alloc_type;
-	ID *     id;
-	Ast *    decl_node;
-	Scope *  scope;
-	int32_t  ref_count;
-	bool     is_mutable;
-	bool     comptime;
-	bool     is_in_gscope;
-	bool     is_implicit;
+	ID *id;
+	Ast *decl_node;
+	Scope *scope;
+	int32_t ref_count;
+	bool is_mutable;
+	bool comptime;
+	bool is_in_gscope;
+	bool is_implicit;
 
-	MirConstValue *     value;
-	LLVMValueRef        llvm_value;
-	const char *        llvm_name;
+	MirConstValue *value;
+	LLVMValueRef llvm_value;
+	const char *llvm_name;
 	MirRelativeStackPtr rel_stack_ptr;
 };
 /* INSTRUCTIONS */
-enum MirInstrKind
-{
+enum MirInstrKind {
 	MIR_INSTR_INVALID,
 	MIR_INSTR_BLOCK,
 	MIR_INSTR_DECL_VAR,
@@ -380,18 +357,17 @@ enum MirInstrKind
 	MIR_INSTR_PHI,
 };
 
-struct MirInstr
-{
-	MirConstValue  const_value; // must be first
-	MirInstrKind   kind;
-	uint64_t       id;
-	LLVMValueRef   llvm_value;
-	Ast *          node;
+struct MirInstr {
+	MirConstValue const_value; // must be first
+	MirInstrKind kind;
+	uint64_t id;
+	LLVMValueRef llvm_value;
+	Ast *node;
 	MirInstrBlock *owner_block;
 
 	int32_t ref_count;
-	bool    analyzed;
-	bool    comptime;
+	bool analyzed;
+	bool comptime;
 
 	MirInstr *prev;
 	MirInstr *next;
@@ -401,55 +377,49 @@ struct MirInstr
 #endif
 };
 
-struct MirInstrBlock
-{
+struct MirInstrBlock {
 	MirInstr base;
 
 	const char *name;
-	MirInstr *  entry_instr;
-	MirInstr *  last_instr;
-	MirInstr *  terminal;
-	MirFn *     owner_fn;
+	MirInstr *entry_instr;
+	MirInstr *last_instr;
+	MirInstr *terminal;
+	MirFn *owner_fn;
 };
 
-struct MirInstrDeclVar
-{
+struct MirInstrDeclVar {
 	MirInstr base;
 
-	MirVar *  var;
+	MirVar *var;
 	MirInstr *type;
 	MirInstr *init;
 };
 
-struct MirInstrDeclMember
-{
+struct MirInstrDeclMember {
 	MirInstr base;
 
 	MirMember *member;
-	MirInstr * type;
+	MirInstr *type;
 };
 
-struct MirInstrElemPtr
-{
+struct MirInstrElemPtr {
 	MirInstr base;
 
 	MirInstr *arr_ptr;
 	MirInstr *index;
-	bool      target_is_slice;
+	bool target_is_slice;
 };
 
-struct MirInstrMemberPtr
-{
+struct MirInstrMemberPtr {
 	MirInstr base;
 
-	Ast *          member_ident;
-	MirInstr *     target_ptr;
-	ScopeEntry *   scope_entry;
+	Ast *member_ident;
+	MirInstr *target_ptr;
+	ScopeEntry *scope_entry;
 	MirBuiltinKind builtin_id;
 };
 
-enum MirCastOp
-{
+enum MirCastOp {
 	MIR_CAST_INVALID,
 	MIR_CAST_BITCAST,
 	MIR_CAST_SEXT,
@@ -465,8 +435,7 @@ enum MirCastOp
 	MIR_CAST_INTTOPTR,
 };
 
-struct MirInstrCast
-{
+struct MirInstrCast {
 	MirInstr base;
 
 	MirCastOp op;
@@ -474,64 +443,55 @@ struct MirInstrCast
 	MirInstr *next;
 };
 
-struct MirInstrSizeof
-{
+struct MirInstrSizeof {
 	MirInstr base;
 
 	MirInstr *expr;
 };
 
-struct MirInstrAlignof
-{
+struct MirInstrAlignof {
 	MirInstr base;
 
 	MirInstr *expr;
 };
 
-struct MirInstrArg
-{
+struct MirInstrArg {
 	MirInstr base;
 
 	unsigned i;
 };
 
-struct MirInstrConst
-{
+struct MirInstrConst {
 	MirInstr base;
 };
 
-struct MirInstrLoad
-{
+struct MirInstrLoad {
 	MirInstr base;
 
 	MirInstr *src;
 };
 
-struct MirInstrStore
-{
+struct MirInstrStore {
 	MirInstr base;
 
 	MirInstr *src;
 	MirInstr *dest;
 };
 
-struct MirInstrAddrOf
-{
+struct MirInstrAddrOf {
 	MirInstr base;
 
 	MirInstr *src;
 };
 
-struct MirInstrRet
-{
+struct MirInstrRet {
 	MirInstr base;
 
 	MirInstr *value;
-	bool      allow_fn_ret_type_override;
+	bool allow_fn_ret_type_override;
 };
 
-struct MirInstrBinop
-{
+struct MirInstrBinop {
 	MirInstr base;
 
 	BinopKind op;
@@ -539,136 +499,119 @@ struct MirInstrBinop
 	MirInstr *rhs;
 };
 
-struct MirInstrUnop
-{
+struct MirInstrUnop {
 	MirInstr base;
 
-	UnopKind  op;
+	UnopKind op;
 	MirInstr *instr;
 };
 
-struct MirInstrFnProto
-{
+struct MirInstrFnProto {
 	MirInstr base;
 
 	MirInstr *type;
 	MirInstr *user_type;
 };
 
-struct MirInstrTypeFn
-{
+struct MirInstrTypeFn {
 	MirInstr base;
 
 	MirInstr *ret_type;
-	BArray *  arg_types;
+	BArray *arg_types;
 };
 
-struct MirInstrTypeStruct
-{
+struct MirInstrTypeStruct {
 	MirInstr base;
 
-	ID *    id;
-	Scope * scope;
+	ID *id;
+	Scope *scope;
 	BArray *members;
-	bool    is_packed;
+	bool is_packed;
 };
 
-struct MirInstrTypePtr
-{
+struct MirInstrTypePtr {
 	MirInstr base;
 
 	MirInstr *type;
 };
 
-struct MirInstrTypeArray
-{
+struct MirInstrTypeArray {
 	MirInstr base;
 
 	MirInstr *elem_type;
 	MirInstr *len;
 };
 
-struct MirInstrTypeSlice
-{
+struct MirInstrTypeSlice {
 	MirInstr base;
 
 	MirInstr *elem_type;
 };
 
-struct MirInstrTypeVArgs
-{
+struct MirInstrTypeVArgs {
 	MirInstr base;
 
 	MirInstr *elem_type;
 };
 
-struct MirInstrCall
-{
+struct MirInstrCall {
 	MirInstr base;
 
 	MirInstr *callee;
-	BArray *  args;
+	BArray *args;
 };
 
-struct MirInstrDeclRef
-{
+struct MirInstrDeclRef {
 	MirInstr base;
 
-	ID *        rid;
-	Scope *     scope;
+	ID *rid;
+	Scope *scope;
 	ScopeEntry *scope_entry;
 };
 
-struct MirInstrUnreachable
-{
+struct MirInstrUnreachable {
 	MirInstr base;
 };
 
-struct MirInstrCondBr
-{
+struct MirInstrCondBr {
 	MirInstr base;
 
-	MirInstr *     cond;
+	MirInstr *cond;
 	MirInstrBlock *then_block;
 	MirInstrBlock *else_block;
 };
 
-struct MirInstrBr
-{
+struct MirInstrBr {
 	MirInstr base;
 
 	MirInstrBlock *then_block;
 };
 
-struct MirInstrInit
-{
+struct MirInstrInit {
 	MirInstr base;
 
 	MirInstr *type;
-	BArray *  values;
+	BArray *values;
 };
 
-struct MirInstrVArgs
-{
+struct MirInstrVArgs {
 	MirInstr base;
 
-	MirVar * arr_tmp;
-	MirVar * vargs_tmp;
+	MirVar *arr_tmp;
+	MirVar *vargs_tmp;
 	MirType *type;
-	BArray * values;
+	BArray *values;
 };
 
-struct MirInstrTypeInfo
-{
+struct MirInstrTypeInfo {
 	MirInstr base;
 
 	/* index into type_info array */
-	uint64_t  type_table_index;
+	uint64_t type_table_index;
 	MirInstr *expr;
 };
 
-struct MirInstrPhi
-{
+struct MirInstrPhi {
 	MirInstr base;
 
 	BArray *incoming_values;
@@ -676,54 +619,45 @@ struct MirInstrPhi
 };
 
 /* public */
-static inline bool
-mir_is_pointer_type(MirType *type)
+static inline bool mir_is_pointer_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static inline bool
-mir_is_slice_type(MirType *type)
+static inline bool mir_is_slice_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind & MIR_TS_SLICE);
 }
 
-static inline bool
-mir_is_vargs_type(MirType *type)
+static inline bool mir_is_vargs_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
 }
 
-static inline bool
-mir_is_string_type(MirType *type)
+static inline bool mir_is_string_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_STRING);
 }
 
-static inline MirType *
-mir_deref_type(MirType *ptr)
+static inline MirType *mir_deref_type(MirType *ptr)
 {
-	if (!mir_is_pointer_type(ptr)) return NULL;
+	if (!mir_is_pointer_type(ptr))
+		return NULL;
 	return ptr->data.ptr.next;
 }
 
-void
-mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
+void mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 
-const char *
-mir_instr_name(MirInstr *instr);
+const char *mir_instr_name(MirInstr *instr);
 
-MirModule *
-mir_new_module(const char *name);
+MirModule *mir_new_module(const char *name);
 
-void
-mir_delete_module(MirModule *module);
+void mir_delete_module(MirModule *module);
 
-void
-mir_run(struct Builder *builder, struct Assembly *assembly);
+void mir_run(struct Builder *builder, struct Assembly *assembly);
 
 #endif

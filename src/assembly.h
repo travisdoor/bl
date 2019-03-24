@@ -29,39 +29,33 @@
 #ifndef BL_ASSEMBLY_BL
 #define BL_ASSEMBLY_BL
 
+#include "scope.h"
+#include "unit.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/list.h>
-#include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Core.h>
-#include "scope.h"
-#include "unit.h"
+#include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
 
-typedef struct Assembly
-{
-	BArray *          units;        /* array of all units in assembly */
-	BHashTable *      unique_cache; /* cache for loading only unique units */
-	BHashTable *      link_cache;   /* all linked externals libraries passed to linker */
-	char *            name;         /* assembly name */
-	Scope *           gscope;       /* global scope of the assembly */
+typedef struct Assembly {
+	BArray *units; /* array of all units in assembly */
+	BHashTable *unique_cache; /* cache for loading only unique units */
+	BHashTable *link_cache; /* all linked externals libraries passed to linker */
+	char *name; /* assembly name */
+	Scope *gscope; /* global scope of the assembly */
 	struct MirModule *mir_module;
 } Assembly;
 
-Assembly *
-assembly_new(const char *name);
+Assembly *assembly_new(const char *name);
 
-void
-assembly_delete(Assembly *assembly);
+void assembly_delete(Assembly *assembly);
 
-void
-assembly_add_unit(Assembly *assembly, Unit *unit);
+void assembly_add_unit(Assembly *assembly, Unit *unit);
 
-void
-assembly_add_link(Assembly *assembly, const char *lib);
+void assembly_add_link(Assembly *assembly, const char *lib);
 
-bool
-assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 #endif

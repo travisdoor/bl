@@ -29,12 +29,12 @@
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
 
-#include <bobject/containers/array.h>
-#include <bobject/containers/string.h>
+#include "arena.h"
 #include "assembly.h"
 #include "error.h"
-#include "arena.h"
 #include "mir.h"
+#include <bobject/containers/array.h>
+#include <bobject/containers/string.h>
 
 // clang-format off
 #define BUILDER_RUN              0x00000002
@@ -57,53 +57,39 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-typedef struct Builder
-{
-	Arena       ast_arena;
+typedef struct Builder {
+	Arena ast_arena;
 	ScopeArenas scope_arenas;
-	uint32_t    flags;
-	int32_t     total_lines;
-	int32_t     errorc;
-	BArray *    str_cache;
+	uint32_t flags;
+	int32_t total_lines;
+	int32_t errorc;
+	BArray *str_cache;
 } Builder;
 
-typedef enum
-{
+typedef enum {
 	BUILDER_MSG_ERROR,
 	BUILDER_MSG_WARNING,
 	BUILDER_MSG_NOTE,
 	BUILDER_MSG_LOG,
 } BuilderMsgType;
 
-typedef enum
-{
-	BUILDER_CUR_AFTER,
-	BUILDER_CUR_WORD,
-	BUILDER_CUR_BEFORE
-} BuilderCurPos;
+typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE } BuilderCurPos;
 
 struct Src;
 
-Builder *
-builder_new(void);
+Builder *builder_new(void);
 
-void
-builder_delete(Builder *builder);
+void builder_delete(Builder *builder);
 
-int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
+int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
 
-void
-builder_error(Builder *builder, const char *format, ...);
+void builder_error(Builder *builder, const char *format, ...);
 
-void
-builder_warning(Builder *builder, const char *format, ...);
+void builder_warning(Builder *builder, const char *format, ...);
 
-void
-builder_msg(Builder *builder, BuilderMsgType type, int32_t code, struct Src *src, BuilderCurPos pos,
-            const char *format, ...);
+void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, struct Src *src,
+		 BuilderCurPos pos, const char *format, ...);
 
-BString *
-builder_create_cached_str(Builder *builder);
+BString *builder_create_cached_str(Builder *builder);
 
 #endif

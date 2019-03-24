@@ -26,16 +26,15 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <llvm-c/Analysis.h>
-#include <llvm-c/Transforms/Vectorize.h>
-#include <llvm-c/Transforms/PassManagerBuilder.h>
-#include "stages.h"
 #include "assembly.h"
 #include "bldebug.h"
 #include "error.h"
+#include "stages.h"
+#include <llvm-c/Analysis.h>
+#include <llvm-c/Transforms/PassManagerBuilder.h>
+#include <llvm-c/Transforms/Vectorize.h>
 
-void
-ir_opt_run(Builder *builder, Assembly *assembly)
+void ir_opt_run(Builder *builder, Assembly *assembly)
 {
 	/* TODO: set by user!!! */
 #if BL_DEBUG
@@ -44,8 +43,8 @@ ir_opt_run(Builder *builder, Assembly *assembly)
 	const unsigned opt_lvl = 3;
 #endif
 
-	LLVMModuleRef        llvm_module = assembly->mir_module->llvm_module;
-	LLVMTargetMachineRef llvm_tm     = assembly->mir_module->llvm_tm;
+	LLVMModuleRef llvm_module = assembly->mir_module->llvm_module;
+	LLVMTargetMachineRef llvm_tm = assembly->mir_module->llvm_tm;
 
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
 	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);

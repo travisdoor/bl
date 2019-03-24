@@ -29,44 +29,36 @@
 #ifndef BL_UNIT_H
 #define BL_UNIT_H
 
-#include <llvm-c/Core.h>
-#include "config.h"
 #include "ast.h"
+#include "config.h"
 #include "tokens.h"
+#include <llvm-c/Core.h>
 
 struct Token;
 
 /* class Unit object members */
-typedef struct Unit
-{
-	Tokens        tokens;
-	Ast *         ast;
-	BArray *      globals;
-	char *        filepath;
-	char *        name;
-	char *        src;
+typedef struct Unit {
+	Tokens tokens;
+	Ast *ast;
+	BArray *globals;
+	char *filepath;
+	char *name;
+	char *src;
 	struct Token *loaded_from;
 } Unit;
 
-Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
+Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 
-Unit *
-unit_new_str(const char *name, const char *src);
+Unit *unit_new_str(const char *name, const char *src);
 
-void
-unit_delete(Unit *unit);
+void unit_delete(Unit *unit);
 
-const char *
-unit_get_src_file(Unit *unit);
+const char *unit_get_src_file(Unit *unit);
 
-const char *
-unit_get_src(Unit *unit);
+const char *unit_get_src(Unit *unit);
 
-const char *
-unit_get_src_ln(Unit *unit, int32_t line, long *len);
+const char *unit_get_src_ln(Unit *unit, int32_t line, long *len);
 
-const char *
-unit_get_name(Unit *unit);
+const char *unit_get_name(Unit *unit);
 
 #endif

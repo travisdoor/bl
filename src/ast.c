@@ -31,8 +31,7 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-static void
-node_dtor(Ast *node)
+static void node_dtor(Ast *node)
 {
 	switch (node->kind) {
 	case AST_UBLOCK:
@@ -61,29 +60,26 @@ node_dtor(Ast *node)
 	}
 }
 
-Ast *
-ast_create_node(Arena *arena, AstKind c, Token *tok)
+Ast *ast_create_node(Arena *arena, AstKind c, Token *tok)
 {
-	Ast *node  = arena_alloc(arena);
+	Ast *node = arena_alloc(arena);
 	node->kind = c;
-	node->src  = tok ? &tok->src : NULL;
+	node->src = tok ? &tok->src : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;
-	node->_serial          = serial++;
+	node->_serial = serial++;
 #endif
 	return node;
 }
 
 /* public */
-void
-ast_arena_init(struct Arena *arena)
+void ast_arena_init(struct Arena *arena)
 {
 	arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
-const char *
-ast_get_name(const Ast *n)
+const char *ast_get_name(const Ast *n)
 {
 	assert(n);
 	switch (n->kind) {
@@ -191,8 +187,7 @@ ast_get_name(const Ast *n)
 	}
 }
 
-const char *
-ast_binop_to_str(BinopKind op)
+const char *ast_binop_to_str(BinopKind op)
 {
 	switch (op) {
 	case BINOP_ASSIGN:
@@ -238,8 +233,7 @@ ast_binop_to_str(BinopKind op)
 	}
 }
 
-const char *
-ast_unop_to_str(UnopKind op)
+const char *ast_unop_to_str(UnopKind op)
 {
 	switch (op) {
 	case UNOP_NEG:

@@ -27,58 +27,53 @@
 //************************************************************************************************
 
 #include "scope.h"
-#include "common.h"
-#include "ast.h"
 #include "arena.h"
+#include "ast.h"
+#include "common.h"
 #include "unit.h"
 
 #define ARENA_CHUNK_COUNT 256
 
-static void
-scope_dtor(Scope *scope)
+static void scope_dtor(Scope *scope)
 {
 	assert(scope);
 	bo_unref(scope->entries);
 }
 
-void
-scope_arenas_init(ScopeArenas *arenas)
+void scope_arenas_init(ScopeArenas *arenas)
 {
-	arena_init(&arenas->scope_arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
+	arena_init(&arenas->scope_arena, sizeof(Scope), ARENA_CHUNK_COUNT,
+		   (ArenaElemDtor)scope_dtor);
 	arena_init(&arenas->entry_arena, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
 }
 
-void
-scope_arenas_terminate(ScopeArenas *arenas)
+void scope_arenas_terminate(ScopeArenas *arenas)
 {
 	arena_terminate(&arenas->scope_arena);
 	arena_terminate(&arenas->entry_arena);
 }
 
-Scope *
-scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global)
+Scope *scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global)
 {
-	Scope *scope     = arena_alloc(&arenas->scope_arena);
-	scope->entries   = bo_htbl_new(sizeof(ScopeEntry *), size);
-	scope->parent    = parent;
+	Scope *scope = arena_alloc(&arenas->scope_arena);
+	scope->entries = bo_htbl_new(sizeof(ScopeEntry *), size);
+	scope->parent = parent;
 	scope->is_global = is_global;
 	return scope;
 }
 
-ScopeEntry *
-scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
-                   bool is_buildin)
+ScopeEntry *scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
+			       bool is_buildin)
 {
 	ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
-	entry->id         = id;
-	entry->kind       = kind;
-	entry->node       = node;
+	entry->id = id;
+	entry->kind = kind;
+	entry->node = node;
 	entry->is_buildin = is_buildin;
 	return entry;
 }
 
-void
-scope_insert(Scope *scope, ScopeEntry *entry)
+void scope_insert(Scope *scope, ScopeEntry *entry)
 {
 	assert(scope);
 	assert(entry && entry->id);
@@ -87,8 +82,7 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 	bo_htbl_insert(scope->entries, entry->id->hash, entry);
 }
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree)
+ScopeEntry *scope_lookup(Scope *scope, ID *id, bool in_tree)
 {
 	assert(scope && id);
 

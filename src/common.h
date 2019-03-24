@@ -29,12 +29,12 @@
 #ifndef BL_COMMON_H
 #define BL_COMMON_H
 
-#include <limits.h>
 #include "bldebug.h"
+#include "blmemory.h"
 #include "config.h"
 #include "error.h"
 #include "messages.h"
-#include "blmemory.h"
+#include <limits.h>
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
@@ -45,54 +45,47 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define barray_foreach(arr, it)                                                                    \
-	if (bo_array_size((arr)))                                                                      \
-		for (size_t i = 0; i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *)); ++i)
+	if (bo_array_size((arr)))                                                                  \
+		for (size_t i = 0;                                                                 \
+		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *)); ++i)
 
 #define blist_foreach(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                                  \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                 \
+	(it) = bo_list_begin((list));                                                              \
+	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
 #define array_foreach(arr, it)                                                                     \
-	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                  \
-	     _keep = !_keep, i++)                                                                      \
+	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;              \
+	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
 
 #define bhtbl_foreach(htbl, it)                                                                    \
-	(it) = bo_htbl_begin((htbl));                                                                  \
-	for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);                 \
+	(it) = bo_htbl_begin((htbl));                                                              \
+	for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);             \
 	     bo_htbl_iter_next((htbl), &(it)))
 
 #define blist_foreach(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                                  \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);                 \
+	(it) = bo_list_begin((list));                                                              \
+	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
-typedef struct ID
-{
+typedef struct ID {
 	const char *str;
-	uint64_t    hash;
+	uint64_t hash;
 } ID;
 
-void
-id_init(ID *id, const char *str);
+void id_init(ID *id, const char *str);
 
-bool
-file_exists(const char *filepath);
+bool file_exists(const char *filepath);
 
-const char *
-brealpath(const char *file, char *out, int32_t out_len);
+const char *brealpath(const char *file, char *out, int32_t out_len);
 
-void
-date_time(char *buf, int32_t len, const char *format);
+void date_time(char *buf, int32_t len, const char *format);
 
-bool
-is_aligned(const void *p, size_t alignment);
+bool is_aligned(const void *p, size_t alignment);
 
-void
-align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
+void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 
-void
-print_bits(int32_t const size, void const *const ptr);
+void print_bits(int32_t const size, void const *const ptr);
 
 #endif

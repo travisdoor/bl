@@ -29,10 +29,10 @@
 #ifndef BL_SCOPE_H
 #define BL_SCOPE_H
 
+#include "arena.h"
+#include <assert.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include <assert.h>
-#include "arena.h"
 
 struct Src;
 struct Ast;
@@ -41,8 +41,7 @@ struct MirType;
 struct MirFn;
 struct MirVar;
 
-typedef enum ScopeEntryKind
-{
+typedef enum ScopeEntryKind {
 	SCOPE_ENTRY_INVALID,
 	SCOPE_ENTRY_TYPE,
 	SCOPE_ENTRY_VAR,
@@ -50,53 +49,43 @@ typedef enum ScopeEntryKind
 	SCOPE_ENTRY_MEMBER,
 } ScopeEntryKind;
 
-typedef struct ScopeArenas
-{
+typedef struct ScopeArenas {
 	Arena scope_arena;
 	Arena entry_arena;
 } ScopeArenas;
 
-typedef struct ScopeEntry
-{
-	ID *           id;
+typedef struct ScopeEntry {
+	ID *id;
 	ScopeEntryKind kind;
-	struct Scope * parent_scope;
-	struct Ast *   node;
-	bool           is_buildin;
+	struct Scope *parent_scope;
+	struct Ast *node;
+	bool is_buildin;
 
-	union
-	{
-		struct MirType *  type;
-		struct MirFn *    fn;
-		struct MirVar *   var;
+	union {
+		struct MirType *type;
+		struct MirFn *fn;
+		struct MirVar *var;
 		struct MirMember *member;
 	} data;
 } ScopeEntry;
 
-typedef struct Scope
-{
+typedef struct Scope {
 	struct Scope *parent;
-	BHashTable *  entries;
-	bool          is_global;
+	BHashTable *entries;
+	bool is_global;
 } Scope;
 
-void
-scope_arenas_init(ScopeArenas *arenas);
+void scope_arenas_init(ScopeArenas *arenas);
 
-void
-scope_arenas_terminate(ScopeArenas *arenas);
+void scope_arenas_terminate(ScopeArenas *arenas);
 
-Scope *
-scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
+Scope *scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
 
-ScopeEntry *
-scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
-                   bool is_buildin);
+ScopeEntry *scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
+			       bool is_buildin);
 
-void
-scope_insert(Scope *scope, ScopeEntry *entry);
+void scope_insert(Scope *scope, ScopeEntry *entry);
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree);
+ScopeEntry *scope_lookup(Scope *scope, ID *id, bool in_tree);
 
 #endif

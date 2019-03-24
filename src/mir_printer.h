@@ -31,10 +31,8 @@
 
 #include "mir.h"
 
-void
-mir_print_instr(MirInstr *instr, FILE *stream);
+void mir_print_instr(MirInstr *instr, FILE *stream);
 
-void
-mir_print_module(MirModule *module, FILE *stream);
+void mir_print_module(MirModule *module, FILE *stream);
 
 #endif

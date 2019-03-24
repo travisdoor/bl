@@ -29,8 +29,8 @@
 #ifndef BL_TOKEN_H
 #define BL_TOKEN_H
 
-#include <stdio.h>
 #include <bobject/bobject.h>
+#include <stdio.h>
 
 // clang-format off
 #define _SYMBOLS_LIST \
@@ -108,8 +108,7 @@ typedef enum {
 } Sym;
 // clang-format on
 
-typedef enum
-{
+typedef enum {
 	TOKEN_ASSOC_NONE,
 	TOKEN_ASSOC_RIGHT,
 	TOKEN_ASSOC_LEFT,
@@ -118,65 +117,47 @@ typedef enum
 extern char *sym_strings[];
 
 struct Unit;
-typedef struct Src
-{
-	int32_t      line;
-	int32_t      col;
-	int32_t      len;
+typedef struct Src {
+	int32_t line;
+	int32_t col;
+	int32_t len;
 	struct Unit *unit;
 } Src;
 
-typedef union
-{
-	const char *       str;
-	char               c;
-	double             d;
+typedef union {
+	const char *str;
+	char c;
+	double d;
 	unsigned long long u;
 } TokenValue;
 
-typedef struct Token
-{
-	Sym        sym;
-	Src        src;
+typedef struct Token {
+	Sym sym;
+	Src src;
 	TokenValue value;
 } Token;
 
 /* sizeof this structure is 8 bytes so it can be passed by value */
-typedef struct
-{
-	int32_t            priority;
+typedef struct {
+	int32_t priority;
 	TokenAssociativity associativity;
 } TokenPrecedence;
 
-static inline bool
-sym_is_binop(Sym sym)
+static inline bool sym_is_binop(Sym sym) { return sym >= SYM_EQ && sym <= SYM_ASTERISK; }
+
+static inline bool token_is_binop(Token *token) { return sym_is_binop(token->sym); }
+
+bool token_is_unary(Token *token);
+
+TokenPrecedence token_prec(Token *token);
+
+static inline bool token_is(Token *token, Sym sym)
 {
-	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
-}
-
-static inline bool
-token_is_binop(Token *token)
-{
-	return sym_is_binop(token->sym);
-}
-
-bool
-token_is_unary(Token *token);
-
-TokenPrecedence
-token_prec(Token *token);
-
-static inline bool
-token_is(Token *token, Sym sym)
-{
-	if (!token) return false;
+	if (!token)
+		return false;
 	return token->sym == sym;
 }
 
-static inline bool
-token_is_not(Token *token, Sym sym)
-{
-	return !token_is(token, sym);
-}
+static inline bool token_is_not(Token *token, Sym sym) { return !token_is(token, sym); }
 
 #endif // BL_TOKEN_H

@@ -26,22 +26,22 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "stages.h"
 #include "config.h"
+#include "stages.h"
 
-void
-native_bin_run(Builder *builder, Assembly *assembly)
+void native_bin_run(Builder *builder, Assembly *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
-	const char *cmd = "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 "
-	                  "-dynamic-linker "
-	                  "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
-	                  "/usr/lib/x86_64-linux-gnu/crt1.o "
-	                  "/usr/lib/x86_64-linux-gnu/crti.o "
-	                  "-L/usr/bin "
-	                  "-L/usr/lib/x86_64-linux-gnu "
-	                  "/usr/lib/x86_64-linux-gnu/crtn.o "
-	                  "-lc -lm "
+	const char *cmd =
+	    "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 "
+	    "-dynamic-linker "
+	    "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
+	    "/usr/lib/x86_64-linux-gnu/crt1.o "
+	    "/usr/lib/x86_64-linux-gnu/crti.o "
+	    "-L/usr/bin "
+	    "-L/usr/lib/x86_64-linux-gnu "
+	    "/usr/lib/x86_64-linux-gnu/crtn.o "
+	    "-lc -lm "
 	    //"-lSDL2 -lSDL2_image "
 	    ;
 #elif defined(BL_PLATFORM_MACOS)
@@ -67,7 +67,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	char buf[1024];
 	sprintf(buf, cmd, assembly->name, assembly->name);
 
-	const char *  lib;
+	const char *lib;
 	bo_iterator_t iter;
 	bhtbl_foreach(assembly->link_cache, iter)
 	{

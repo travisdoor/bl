@@ -34,8 +34,7 @@ char *sym_strings[] = {
 #undef sm
 };
 
-bool
-token_is_unary(Token *token)
+bool token_is_unary(Token *token)
 {
 	switch (token->sym) {
 	case SYM_MINUS:
@@ -49,8 +48,7 @@ token_is_unary(Token *token)
 	return false;
 }
 
-TokenPrecedence
-token_prec(Token *token)
+TokenPrecedence token_prec(Token *token)
 {
 	switch (token->sym) {
 		/* . [ ( */
