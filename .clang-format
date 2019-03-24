@@ -1,7 +1,5 @@
 BasedOnStyle: LLVM 
-AccessModifierOffset: -2
-IndentWidth: 2
-UseTab: Never
+UseTab: Always
 BreakBeforeBraces: Mozilla 
 AllowShortIfStatementsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: false
