@@ -1,5 +1,7 @@
 BasedOnStyle: LLVM 
-UseTab: Always
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
 BreakBeforeBraces: Mozilla 
 AllowShortIfStatementsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: false
