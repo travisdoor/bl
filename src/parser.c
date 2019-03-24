@@ -33,39 +33,39 @@
 #define EXPECTED_GSCOPE_COUNT 4096
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
-	{                                                                                              \
-		builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (kind), &(tok)->src, (pos), (format),       \
-					##__VA_ARGS__);                                                                \
+	{                                                                                          \
+		builder_msg((cnt)->builder, BUILDER_MSG_ERROR, (kind), &(tok)->src, (pos),         \
+			    (format), ##__VA_ARGS__);                                              \
 	}
 
 #define parse_warning(cnt, tok, pos, format, ...)                                                  \
-	{                                                                                              \
-		builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, &(tok)->src, (pos), (format),          \
-					##__VA_ARGS__);                                                                \
+	{                                                                                          \
+		builder_msg((cnt)->builder, BUILDER_MSG_WARNING, 0, &(tok)->src, (pos), (format),  \
+			    ##__VA_ARGS__);                                                        \
 	}
 
 #define parse_note(cnt, tok, pos, format, ...)                                                     \
-	{                                                                                              \
-		builder_msg((cnt)->builder, BUILDER_MSG_NOTE, 0, &(tok)->src, (pos), (format),             \
-					##__VA_ARGS__);                                                                \
+	{                                                                                          \
+		builder_msg((cnt)->builder, BUILDER_MSG_NOTE, 0, &(tok)->src, (pos), (format),     \
+			    ##__VA_ARGS__);                                                        \
 	}
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
 #define push_curr_decl(_cnt, _decl)                                                                \
-	Ast *const _prev_decl = (_cnt)->curr_decl;                                                     \
+	Ast *const _prev_decl = (_cnt)->curr_decl;                                                 \
 	(_cnt)->curr_decl = (_decl);
 
 #define pop_curr_decl(_cnt) (_cnt)->curr_decl = _prev_decl;
 
 #define push_inloop(_cnt)                                                                          \
-	bool _prev_inloop = (_cnt)->inside_loop;                                                       \
+	bool _prev_inloop = (_cnt)->inside_loop;                                                   \
 	(_cnt)->inside_loop = true;
 
 #define pop_inloop(_cnt) (_cnt)->inside_loop = _prev_inloop;
 
 #define push_scope(_cnt, _scope)                                                                   \
-	Scope *_prev_scope = (_cnt)->scope;                                                            \
+	Scope *_prev_scope = (_cnt)->scope;                                                        \
 	(_cnt)->scope = _scope;
 
 #define pop_scope(_cnt) (_cnt)->scope = _prev_scope;
@@ -289,7 +289,7 @@ Ast *parse_expr_compound(Context *cnt)
 	if (!tokens_consume_if(cnt->tokens, SYM_COLON)) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
-					"Expected colon after type.");
+			    "Expected colon after type.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
 
@@ -315,16 +315,16 @@ value:
 		Token *tok_err = tokens_peek(cnt->tokens);
 		if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
 			parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-						"Expected expression after comma ','.");
+				    "Expected expression after comma ','.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 		}
 	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RBLOCK) {
-		parse_error(
-			cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-			"Expected end of initialization list '}' or another expression separated by comma.");
+		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+			    "Expected end of initialization list '}' or another expression "
+			    "separated by comma.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
 
@@ -340,7 +340,7 @@ Ast *parse_expr_sizeof(Context *cnt)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_LPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-					"Expected '(' after sizeof operator.");
+			    "Expected '(' after sizeof operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
@@ -349,7 +349,8 @@ Ast *parse_expr_sizeof(Context *cnt)
 	szof->data.expr_sizeof.node = parse_expr(cnt);
 	if (!szof->data.expr_sizeof.node) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
+		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD,
+			    "Expected expression.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
@@ -357,7 +358,7 @@ Ast *parse_expr_sizeof(Context *cnt)
 	tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_RPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected ')' after sizeof operator.");
+			    "Expected ')' after sizeof operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -374,7 +375,7 @@ Ast *parse_expr_type_info(Context *cnt)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_LPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-					"Expected '(' after typeinfo operator.");
+			    "Expected '(' after typeinfo operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
@@ -383,7 +384,8 @@ Ast *parse_expr_type_info(Context *cnt)
 	info->data.expr_type_info.node = parse_expr(cnt);
 	if (!info->data.expr_sizeof.node) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
+		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD,
+			    "Expected expression.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
@@ -391,7 +393,7 @@ Ast *parse_expr_type_info(Context *cnt)
 	tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_RPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected ')' after typeinfo operator.");
+			    "Expected ')' after typeinfo operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -408,7 +410,7 @@ Ast *parse_expr_alignof(Context *cnt)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_LPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-					"Expected '(' after cast operator.");
+			    "Expected '(' after cast operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
@@ -417,7 +419,8 @@ Ast *parse_expr_alignof(Context *cnt)
 	alof->data.expr_alignof.node = parse_expr(cnt);
 	if (!alof->data.expr_alignof.node) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
+		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD,
+			    "Expected expression.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
@@ -425,7 +428,7 @@ Ast *parse_expr_alignof(Context *cnt)
 	tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_RPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected ')' after alignof operator.");
+			    "Expected ')' after alignof operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -442,7 +445,7 @@ Ast *parse_expr_cast(Context *cnt)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_LPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD,
-					"Expected '(' after expression.");
+			    "Expected '(' after expression.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
@@ -452,7 +455,7 @@ Ast *parse_expr_cast(Context *cnt)
 	if (!cast->data.expr_cast.type) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD,
-					"Expected type name as cast parameter.");
+			    "Expected type name as cast parameter.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
@@ -460,7 +463,7 @@ Ast *parse_expr_cast(Context *cnt)
 	tok = tokens_consume(cnt->tokens);
 	if (!token_is(tok, SYM_RPAREN)) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected ')' after cast expression.");
+			    "Expected ')' after cast expression.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -469,7 +472,7 @@ Ast *parse_expr_cast(Context *cnt)
 	if (!cast->data.expr_cast.next) {
 		tok = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD,
-					"Expected expression after cast.");
+			    "Expected expression after cast.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -489,7 +492,7 @@ Ast *parse_decl_member(Context *cnt, bool type_only, int32_t order)
 		name = parse_ident(cnt);
 		if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src,
-						BUILDER_CUR_AFTER, "expected colon after struct member name");
+				    BUILDER_CUR_AFTER, "expected colon after struct member name");
 		}
 		type = parse_type(cnt);
 	}
@@ -515,7 +518,7 @@ Ast *parse_decl_arg(Context *cnt, bool type_only)
 		name = parse_ident(cnt);
 		if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_TYPE, name->src,
-						BUILDER_CUR_AFTER, "expected colon after argument name");
+				    BUILDER_CUR_AFTER, "expected colon after argument name");
 		}
 		type = parse_type(cnt);
 	}
@@ -555,7 +558,8 @@ Ast *parse_decl_variant(Context *cnt, Ast *base_type, Ast *prev)
 		var->data.decl_variant.value = binop;
 	} else {
 		/* first variant is allways 0 */
-		var->data.decl_variant.value = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, NULL);
+		var->data.decl_variant.value =
+		    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, NULL);
 		var->data.decl_variant.value->data.expr_integer.val = 0;
 	}
 
@@ -568,7 +572,8 @@ bool parse_semicolon_rq(Context *cnt)
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
 	if (!tok) {
 		tok = tokens_peek_prev(cnt->tokens);
-		parse_error(cnt, ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Missing semicolon ';'.");
+		parse_error(cnt, ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER,
+			    "Missing semicolon ';'.");
 		return false;
 	}
 	return true;
@@ -599,7 +604,7 @@ Ast *parse_stmt_if(Context *cnt)
 	if (!stmt_if->data.stmt_if.test) {
 		Token *tok_err = tokens_consume(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD,
-					"Expected expression for the if statement.");
+			    "Expected expression for the if statement.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
 
@@ -610,8 +615,9 @@ Ast *parse_stmt_if(Context *cnt)
 	stmt_if->data.stmt_if.true_stmt = parse_block(cnt);
 	if (!stmt_if->data.stmt_if.true_stmt) {
 		Token *tok_err = tokens_consume(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD,
-					"Expected compound statement for true result of the if expression test.");
+		parse_error(
+		    cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD,
+		    "Expected compound statement for true result of the if expression test.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 	}
 
@@ -622,8 +628,9 @@ Ast *parse_stmt_if(Context *cnt)
 			stmt_if->data.stmt_if.false_stmt = parse_block(cnt);
 		if (!stmt_if->data.stmt_if.false_stmt) {
 			Token *tok_err = tokens_consume(cnt->tokens);
-			parse_error(cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD,
-						"Expected statement for false result of the if expression test.");
+			parse_error(
+			    cnt, ERR_EXPECTED_STMT, tok_err, BUILDER_CUR_WORD,
+			    "Expected statement for false result of the if expression test.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
 		}
 	}
@@ -681,7 +688,8 @@ Ast *parse_stmt_loop(Context *cnt)
 	loop->data.stmt_loop.block = parse_block(cnt);
 	if (!loop->data.stmt_loop.block) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected loop body block.");
+		parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD,
+			    "Expected loop body block.");
 		pop_inloop(cnt);
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
@@ -700,7 +708,7 @@ Ast *parse_stmt_break(Context *cnt)
 
 	if (!cnt->inside_loop) {
 		parse_error(cnt, ERR_BREAK_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD,
-					"Break statement outside a loop.");
+			    "Break statement outside a loop.");
 	}
 	return ast_create_node(cnt->ast_arena, AST_STMT_BREAK, tok);
 }
@@ -713,7 +721,7 @@ Ast *parse_stmt_continue(Context *cnt)
 
 	if (!cnt->inside_loop) {
 		parse_error(cnt, ERR_CONTINUE_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD,
-					"Continue statement outside a loop.");
+			    "Continue statement outside a loop.");
 	}
 
 	return ast_create_node(cnt->ast_arena, AST_STMT_CONTINUE, tok);
@@ -736,16 +744,17 @@ Ast *_parse_expr(Context *cnt, int32_t p)
 	} while (tmp);
 
 	while (token_is_binop(tokens_peek(cnt->tokens)) &&
-		   token_prec(tokens_peek(cnt->tokens)).priority >= p) {
+	       token_prec(tokens_peek(cnt->tokens)).priority >= p) {
 		Token *op = tokens_consume(cnt->tokens);
 
 		const int32_t q = token_prec(op).associativity == TOKEN_ASSOC_LEFT
-							  ? token_prec(op).priority + 1
-							  : token_prec(op).priority;
+				      ? token_prec(op).priority + 1
+				      : token_prec(op).priority;
 
 		Ast *rhs = _parse_expr(cnt, q);
 		if (!lhs || !rhs) {
-			parse_error(cnt, ERR_INVALID_EXPR, op, BUILDER_CUR_WORD, "Invalid binary operation.");
+			parse_error(cnt, ERR_INVALID_EXPR, op, BUILDER_CUR_WORD,
+				    "Invalid binary operation.");
 		}
 
 		lhs = parse_expr_binary(cnt, lhs, rhs, op);
@@ -801,7 +810,7 @@ Ast *parse_expr_unary(Context *cnt)
 	if (unary->data.expr_unary.next == NULL) {
 		Token *err_tok = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-					"Expected expression after unary operator.");
+			    "Expected expression after unary operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, op);
 	}
@@ -862,7 +871,7 @@ Ast *parse_expr_addrof(Context *cnt)
 	if (addrof->data.expr_addrof.next == NULL) {
 		Token *err_tok = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-					"Expected expression after '&' operator.");
+			    "Expected expression after '&' operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -884,7 +893,7 @@ Ast *parse_expr_deref(Context *cnt)
 	if (deref->data.expr_deref.next == NULL) {
 		Token *err_tok = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_EXPR, err_tok, BUILDER_CUR_WORD,
-					"Expected expression after '^' operator.");
+			    "Expected expression after '^' operator.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -977,7 +986,8 @@ Ast *parse_expr_nested(Context *cnt)
 
 	expr = parse_expr(cnt);
 	if (expr == NULL) {
-		parse_error(cnt, ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_WORD, "Expected expression.");
+		parse_error(cnt, ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_WORD,
+			    "Expected expression.");
 	}
 
 	/* eat ) */
@@ -985,7 +995,7 @@ Ast *parse_expr_nested(Context *cnt)
 	if (!tok_end) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_err, BUILDER_CUR_WORD,
-					"Unterminated sub-expression, missing ')'.");
+			    "Unterminated sub-expression, missing ')'.");
 		parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "starting here");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
 	}
@@ -1005,7 +1015,8 @@ Ast *parse_expr_member(Context *cnt, Ast *prev)
 	Ast *ident = parse_ident(cnt);
 	if (!ident) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected member name.");
+		parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
+			    "Expected member name.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
 
@@ -1031,12 +1042,13 @@ Ast *parse_expr_elem(Context *cnt, Ast *prev)
 
 	if (!elem->data.expr_elem.index) {
 		parse_error(cnt, ERR_EXPECTED_EXPR, tok_elem, BUILDER_CUR_WORD,
-					"Expected array index expression.");
+			    "Expected array index expression.");
 	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RBRACKET) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Missing bracket ']'.");
+		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+			    "Missing bracket ']'.");
 	}
 
 	return elem;
@@ -1096,7 +1108,8 @@ Ast *parse_type_enum(Context *cnt)
 
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
 	if (!tok) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected enm variant list.");
+		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+			    "Expected enm variant list.");
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -1120,7 +1133,7 @@ next:
 		Token *tok_err = tokens_peek(cnt->tokens);
 		if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
 			parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-						"Expected variant after comma ','.");
+				    "Expected variant after comma ','.");
 			pop_scope(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 		}
@@ -1128,8 +1141,9 @@ next:
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RBLOCK) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected end of variant list '}' or another variant separated by comma.");
+		parse_error(
+		    cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+		    "Expected end of variant list '}' or another variant separated by comma.");
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
@@ -1154,7 +1168,7 @@ Ast *parse_type_arr(Context *cnt)
 {
 	/* slice or array??? */
 	if (tokens_peek(cnt->tokens)->sym == SYM_LBRACKET &&
-		tokens_peek_2nd(cnt->tokens)->sym == SYM_RBRACKET)
+	    tokens_peek_2nd(cnt->tokens)->sym == SYM_RBRACKET)
 		return NULL;
 
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
@@ -1168,7 +1182,7 @@ Ast *parse_type_arr(Context *cnt)
 	Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
 	if (!tok_end) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok_end, BUILDER_CUR_WORD,
-					"Expected ']' after array size expression.");
+			    "Expected ']' after array size expression.");
 	}
 
 	arr->data.type_arr.elem_type = parse_type(cnt);
@@ -1227,7 +1241,7 @@ Ast *parse_type_fn(Context *cnt, bool named_args)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LPAREN) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected function parameter list.");
+			    "Expected function parameter list.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn);
 	}
 
@@ -1252,15 +1266,16 @@ next:
 		Token *tok_err = tokens_peek(cnt->tokens);
 		if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
 			parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-						"Expected type after comma ','.");
+				    "Expected type after comma ','.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn);
 		}
 	}
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RPAREN) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected end of argument type list ')' or another type separated by comma.");
+		parse_error(
+		    cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+		    "Expected end of argument type list ')' or another type separated by comma.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn);
 	}
 
@@ -1280,7 +1295,7 @@ Ast *parse_type_struct(Context *cnt)
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LBLOCK) {
 		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected struct member list.");
+			    "Expected struct member list.");
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct);
 	}
@@ -1294,11 +1309,11 @@ Ast *parse_type_struct(Context *cnt)
 	bool rq = false;
 	Ast *tmp;
 	const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
-						   tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
+			       tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
 	type_struct->data.type_strct.raw = type_only;
 next:
 	tmp = parse_decl_member(cnt, type_only,
-							(int32_t)bo_array_size(type_struct->data.type_strct.members));
+				(int32_t)bo_array_size(type_struct->data.type_strct.members));
 	if (tmp) {
 		bo_array_push_back(type_struct->data.type_strct.members, tmp);
 
@@ -1310,7 +1325,7 @@ next:
 		Token *tok_err = tokens_peek(cnt->tokens);
 		if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
 			parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-						"Expected member after comma ','.");
+				    "Expected member after comma ','.");
 
 			pop_scope(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct);
@@ -1319,8 +1334,9 @@ next:
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RBLOCK) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected end of member list '}' or another memeber separated by comma.");
+		parse_error(
+		    cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+		    "Expected end of member list '}' or another memeber separated by comma.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct);
@@ -1366,8 +1382,9 @@ Ast *parse_decl(Context *cnt)
 
 		if (!(decl->data.decl_entity.flags & (FLAG_EXTERN))) {
 			if (!decl->data.decl_entity.value) {
-				parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign, BUILDER_CUR_AFTER,
-							"Expected binding of declaration to some value.");
+				parse_error(cnt, ERR_EXPECTED_INITIALIZATION, tok_assign,
+					    BUILDER_CUR_AFTER,
+					    "Expected binding of declaration to some value.");
 				pop_curr_decl(cnt);
 				return ast_create_node(cnt->ast_arena, AST_BAD, tok_ident);
 			}
@@ -1410,15 +1427,16 @@ arg:
 		Token *tok_err = tokens_peek(cnt->tokens);
 		if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
 			parse_error(cnt, ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD,
-						"Expected function argument after comma ','.");
+				    "Expected function argument after comma ','.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 		}
 	}
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RPAREN) {
-		parse_error(cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
-					"Expected end of parameter list ')' or another parameter separated by comma.");
+		parse_error(
+		    cnt, ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD,
+		    "Expected end of parameter list ')' or another parameter separated by comma.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
 
@@ -1436,15 +1454,15 @@ Ast *parse_expr_null(Context *cnt)
 int parse_flags(Context *cnt, int32_t allowed)
 {
 #define CASE(_sym, _flag)                                                                          \
-	case _sym: {                                                                                   \
-		tokens_consume(cnt->tokens);                                                               \
-		if (!(allowed & _flag)) {                                                                  \
-			parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD, "Unexpected flag '%s'.", \
-						sym_strings[_sym]);                                                        \
-		} else {                                                                                   \
-			flags |= _flag;                                                                        \
-		}                                                                                          \
-		goto next;                                                                                 \
+	case _sym: {                                                                               \
+		tokens_consume(cnt->tokens);                                                       \
+		if (!(allowed & _flag)) {                                                          \
+			parse_error(cnt, ERR_UNEXPECTED_MODIF, tok, BUILDER_CUR_WORD,              \
+				    "Unexpected flag '%s'.", sym_strings[_sym]);                   \
+		} else {                                                                           \
+			flags |= _flag;                                                            \
+		}                                                                                  \
+		goto next;                                                                         \
 	}
 
 	int32_t flags = 0;
@@ -1479,7 +1497,7 @@ Ast *parse_load(Context *cnt)
 	Token *tok_path = tokens_consume(cnt->tokens);
 	if (!token_is(tok_path, SYM_STRING)) {
 		parse_error(cnt, ERR_EXPECTED_STRING, tok_path, BUILDER_CUR_WORD,
-					"Expected path string after load preprocessor directive.");
+			    "Expected path string after load preprocessor directive.");
 	}
 
 	Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_id);
@@ -1606,7 +1624,7 @@ next:
 	if (!tok) {
 		tok = tokens_peek_prev(cnt->tokens);
 		parse_error(cnt, ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER,
-					"Expected end of block '}'.");
+			    "Expected end of block '}'.");
 		parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "Block starting here.");
 		pop_scope(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
@@ -1625,7 +1643,7 @@ Ast *parse_test_case(Context *cnt)
 	Token *tok_desc = tokens_consume(cnt->tokens);
 	if (tok_desc->sym != SYM_STRING) {
 		parse_error(cnt, ERR_EXPECTED_TEST_DESC, tok_desc, BUILDER_CUR_WORD,
-					"Expected test case description.");
+			    "Expected test case description.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
 
@@ -1635,7 +1653,8 @@ Ast *parse_test_case(Context *cnt)
 	Ast *block = parse_block(cnt);
 	if (!block) {
 		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected test case body.");
+		parse_error(cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD,
+			    "Expected test case body.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
 	}
 
@@ -1679,7 +1698,7 @@ next:
 	Token *tok = tokens_peek(cnt->tokens);
 	if (!token_is(tok, SYM_EOF)) {
 		parse_error(cnt, ERR_UNEXPECTED_SYMBOL, tok, BUILDER_CUR_WORD,
-					"Unexpected symbol in module body '%s'.", sym_strings[tok->sym]);
+			    "Unexpected symbol in module body '%s'.", sym_strings[tok->sym]);
 	}
 }
 
@@ -1690,17 +1709,18 @@ void parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 	unit->ast = root;
 
 	if (!assembly->gscope)
-		assembly->gscope = scope_create(&builder->scope_arenas, NULL, EXPECTED_GSCOPE_COUNT, true);
+		assembly->gscope =
+		    scope_create(&builder->scope_arenas, NULL, EXPECTED_GSCOPE_COUNT, true);
 
 	Context cnt = {.builder = builder,
-				   .assembly = assembly,
-				   .scope = assembly->gscope,
-				   .unit = unit,
-				   .ast_arena = &builder->ast_arena,
-				   .scope_arenas = &builder->scope_arenas,
-				   .tokens = &unit->tokens,
-				   .curr_decl = NULL,
-				   .inside_loop = false};
+		       .assembly = assembly,
+		       .scope = assembly->gscope,
+		       .unit = unit,
+		       .ast_arena = &builder->ast_arena,
+		       .scope_arenas = &builder->scope_arenas,
+		       .tokens = &unit->tokens,
+		       .curr_decl = NULL,
+		       .inside_loop = false};
 
 	parse_ublock_content(&cnt, unit->ast);
 }

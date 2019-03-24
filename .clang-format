@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
-IndentWidth: 4
-TabWidth: 4
-AccessModifierOffset: -4
+IndentWidth: 8
+TabWidth: 8
+AccessModifierOffset: -8
 UseTab: Always
 BreakBeforeBraces: Linux
 AllowShortIfStatementsOnASingleLine: false
