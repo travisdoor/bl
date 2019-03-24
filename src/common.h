@@ -71,7 +71,7 @@
 
 typedef struct ID {
 	const char *str;
-	uint64_t hash;
+	uint64_t    hash;
 } ID;
 
 void id_init(ID *id, const char *str);

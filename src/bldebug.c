@@ -33,7 +33,7 @@
 
 void _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...)
 {
-	char buffer[MAX_LOG_MSG_SIZE];
+	char    buffer[MAX_LOG_MSG_SIZE];
 	va_list args;
 	va_start(args, msg);
 	vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);

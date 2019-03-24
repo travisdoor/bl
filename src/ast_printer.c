@@ -52,10 +52,10 @@ static inline void _print_head(Ast *node, int32_t pad, FILE *stream)
 {
 	if (node->src)
 		fprintf(stream, "\n%*s" GREEN("%s ") CYAN("<%d:%d>"), pad * 2, "",
-			ast_get_name(node), node->src->line, node->src->col);
+		        ast_get_name(node), node->src->line, node->src->col);
 	else
 		fprintf(stream, "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"), pad * 2, "",
-			ast_get_name(node));
+		        ast_get_name(node));
 
 	print_address(node, stream);
 }
@@ -192,7 +192,7 @@ void print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 	print_head(entity, pad, stream);
 
 	fprintf(stream, "'%s' '%s'", entity->data.decl.name->data.ident.id.str,
-		entity->data.decl_entity.mutable ? "mutable" : "immutable");
+	        entity->data.decl_entity.mutable ? "mutable" : "immutable");
 
 	print_flags(entity->data.decl_entity.flags, stream);
 	print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);
@@ -273,6 +273,7 @@ void print_expr_binop(Ast *binop, int32_t pad, FILE *stream)
 void print_expr_type(Ast *expr_type, int32_t pad, FILE *stream)
 {
 	print_head(expr_type, pad, stream);
+	print_node(expr_type->data.expr_type.type, pad + 1, stream);
 }
 
 void print_expr_ref(Ast *ref, int32_t pad, FILE *stream)

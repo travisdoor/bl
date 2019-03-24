@@ -80,10 +80,10 @@ static char *search_file(const char *filepath, const char *wdir)
 
 	/* file has not been found in current working direcotry -> search in PATH */
 	{
-		char tmp_env[PATH_MAX];
-		char *env = strdup(getenv(ENV_PATH));
-		char *s = env;
-		char *p = NULL;
+		char   tmp_env[PATH_MAX];
+		char * env          = strdup(getenv(ENV_PATH));
+		char * s            = env;
+		char * p            = NULL;
 		size_t filepath_len = strlen(filepath);
 
 		do {
@@ -117,8 +117,8 @@ Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	Unit *unit = bl_calloc(1, sizeof(Unit));
 	if (!unit)
 		bl_abort("bad alloc");
-	unit->filepath = search_file(filepath, parent_unit ? parent_unit->filepath : NULL);
-	unit->name = strdup(filepath);
+	unit->filepath    = search_file(filepath, parent_unit ? parent_unit->filepath : NULL);
+	unit->name        = strdup(filepath);
 	unit->loaded_from = loaded_from;
 	init(unit);
 	return unit;
@@ -130,7 +130,7 @@ Unit *unit_new_str(const char *name, const char *src)
 	if (!unit)
 		bl_abort("bad alloc");
 	unit->filepath = strdup(name);
-	unit->name = strdup(name);
+	unit->name     = strdup(name);
 
 	if (src)
 		unit->src = strdup(src);
@@ -158,7 +158,7 @@ const char *unit_get_name(Unit *unit) { return unit->name; }
 
 const char *unit_get_src_ln(Unit *unit, int32_t line, long *len)
 {
-	int32_t l = 1;
+	int32_t     l    = 1;
 	const char *iter = unit->src;
 	while (iter && l != line) {
 		++l;

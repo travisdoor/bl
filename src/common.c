@@ -38,7 +38,7 @@ void id_init(ID *id, const char *str)
 {
 	assert(id);
 	id->hash = bo_hash_from_str(str);
-	id->str = str;
+	id->str  = str;
 }
 
 bool file_exists(const char *filepath)
@@ -70,7 +70,7 @@ const char *brealpath(const char *file, char *out, int32_t out_len)
 void date_time(char *buf, int32_t len, const char *format)
 {
 	assert(buf && len);
-	time_t timer;
+	time_t     timer;
 	struct tm *tm_info;
 
 	time(&timer);
@@ -92,11 +92,11 @@ void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 
 	const size_t mask = alignment - 1;
 	assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
-	const uintptr_t i_unaligned = (uintptr_t)(*p);
+	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
 	adj = alignment - misalignment;
-	*p = (void *)(i_unaligned + adj);
+	*p  = (void *)(i_unaligned + adj);
 	if (adjustment)
 		*adjustment = adj;
 }
@@ -104,8 +104,8 @@ void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 void print_bits(int32_t const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
-	unsigned char byte;
-	int32_t i, j;
+	unsigned char  byte;
+	int32_t        i, j;
 
 	for (i = size - 1; i >= 0; i--) {
 		for (j = 7; j >= 0; j--) {

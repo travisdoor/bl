@@ -1,8 +1,13 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
+
+Foo : type : enum /* s32 */ {
+    A :: 10,
+    B :: 20
+};
 
 main :: fn () s32 {
-  return 0;
+     return 0;
 };
 

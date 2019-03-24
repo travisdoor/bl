@@ -55,24 +55,24 @@ typedef struct ScopeArenas {
 } ScopeArenas;
 
 typedef struct ScopeEntry {
-	ID *id;
+	ID *           id;
 	ScopeEntryKind kind;
-	struct Scope *parent_scope;
-	struct Ast *node;
-	bool is_buildin;
+	struct Scope * parent_scope;
+	struct Ast *   node;
+	bool           is_buildin;
 
 	union {
-		struct MirType *type;
-		struct MirFn *fn;
-		struct MirVar *var;
+		struct MirType *  type;
+		struct MirFn *    fn;
+		struct MirVar *   var;
 		struct MirMember *member;
 	} data;
 } ScopeEntry;
 
 typedef struct Scope {
 	struct Scope *parent;
-	BHashTable *entries;
-	bool is_global;
+	BHashTable *  entries;
+	bool          is_global;
 } Scope;
 
 void scope_arenas_init(ScopeArenas *arenas);
@@ -82,7 +82,7 @@ void scope_arenas_terminate(ScopeArenas *arenas);
 Scope *scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
 
 ScopeEntry *scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
-			       bool is_buildin);
+                               bool is_buildin);
 
 void scope_insert(Scope *scope, ScopeEntry *entry);
 

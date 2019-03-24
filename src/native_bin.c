@@ -67,7 +67,7 @@ void native_bin_run(Builder *builder, Assembly *assembly)
 	char buf[1024];
 	sprintf(buf, cmd, assembly->name, assembly->name);
 
-	const char *lib;
+	const char *  lib;
 	bo_iterator_t iter;
 	bhtbl_foreach(assembly->link_cache, iter)
 	{

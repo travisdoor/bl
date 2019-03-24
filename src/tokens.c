@@ -118,9 +118,9 @@ bool tokens_next_is_not(Tokens *tokens, Sym sym)
 
 bool tokens_is_seq(Tokens *tokens, int32_t cnt, ...)
 {
-	bool ret = true;
-	size_t c = bo_array_size(tokens->buf);
-	Sym sym = SYM_EOF;
+	bool   ret = true;
+	size_t c   = bo_array_size(tokens->buf);
+	Sym    sym = SYM_EOF;
 	cnt += (int)tokens->iter;
 
 	va_list valist;
@@ -157,7 +157,7 @@ void tokens_consume_till(Tokens *tokens, Sym sym)
 
 bool tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 {
-	bool found = false;
+	bool   found  = false;
 	size_t marker = tokens_get_marker(tokens);
 	while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
 		if (tokens_current_is(tokens, lookup)) {
@@ -174,12 +174,12 @@ bool tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 bool tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
 {
 	assert(cmp);
-	bool found = false;
-	size_t marker = tokens_get_marker(tokens);
-	Token *curr = NULL;
-	TokensLookaheadState state = TOK_LOOK_TERMINAL;
+	bool                 found  = false;
+	size_t               marker = tokens_get_marker(tokens);
+	Token *              curr   = NULL;
+	TokensLookaheadState state  = TOK_LOOK_TERMINAL;
 	while (true) {
-		curr = tokens_peek(tokens);
+		curr  = tokens_peek(tokens);
 		state = cmp(curr);
 		if (curr->sym == SYM_EOF || state == TOK_LOOK_TERMINAL) {
 			break;

@@ -100,7 +100,7 @@ typedef enum {
 
 typedef enum {
 	FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-	FLAG_TEST = 1 << 1, /* test case */
+	FLAG_TEST   = 1 << 1, /* test case */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -146,11 +146,11 @@ struct AstLink {
 
 struct AstIdent {
 	Scope *scope;
-	ID id;
+	ID     id;
 };
 
 struct AstUBlock {
-	BArray *nodes;
+	BArray *     nodes;
 	struct Unit *unit;
 };
 
@@ -160,7 +160,7 @@ struct AstBlock {
 
 struct AstTestCase {
 	const char *desc;
-	Ast *block;
+	Ast *       block;
 };
 
 struct AstStmtReturn {
@@ -192,9 +192,9 @@ struct AstDecl {
 
 struct AstDeclEntity {
 	struct AstDecl base;
-	Ast *value;
-	int32_t flags;
-	bool in_gscope;
+	Ast *          value;
+	int32_t        flags;
+	bool           in_gscope;
 	bool mutable;
 };
 
@@ -208,7 +208,7 @@ struct AstDeclArg {
 
 struct AstDeclVariant {
 	struct AstDecl base;
-	Ast *value;
+	Ast *          value;
 };
 
 struct AstTypeArr {
@@ -221,18 +221,18 @@ struct AstTypeSlice {
 };
 
 struct AstTypeFn {
-	Ast *ret_type;
+	Ast *   ret_type;
 	BArray *args;
 };
 
 struct AstTypeStruct {
-	Scope *scope;
+	Scope * scope;
 	BArray *members;
-	bool raw;
+	bool    raw;
 };
 
 struct AstTypeEnum {
-	Ast *type;
+	Ast *   type;
 	BArray *variants;
 };
 
@@ -253,7 +253,7 @@ struct AstExprType {
 };
 
 struct AstExprCompound {
-	Ast *type;
+	Ast *   type;
 	BArray *values;
 };
 
@@ -296,20 +296,20 @@ struct AstExprCast {
 };
 
 struct AstExprBinop {
-	Ast *lhs;
-	Ast *rhs;
+	Ast *     lhs;
+	Ast *     rhs;
 	BinopKind kind;
 };
 
 struct AstExprCall {
-	Ast *ref;
+	Ast *   ref;
 	BArray *args;
-	bool run;
+	bool    run;
 };
 
 struct AstExprMember {
-	Ast *ident;
-	Ast *next;
+	Ast *   ident;
+	Ast *   next;
 	int32_t i;
 };
 
@@ -336,7 +336,7 @@ struct AstExprTypeof {
 
 struct AstExprUnary {
 	UnopKind kind;
-	Ast *next;
+	Ast *    next;
 };
 
 struct AstExprAddrOf {
@@ -350,54 +350,54 @@ struct AstExprDeref {
 /* AST base type */
 struct Ast {
 	AstKind kind;
-	Src *src;
+	Src *   src;
 
 	union {
-		struct AstLoad load;
-		struct AstLink link;
-		struct AstIdent ident;
-		struct AstUBlock ublock;
-		struct AstBlock block;
-		struct AstStmtReturn stmt_return;
-		struct AstStmtIf stmt_if;
-		struct AstStmtLoop stmt_loop;
-		struct AstStmtDefer stmt_defer;
-		struct AstTestCase test_case;
-		struct AstDecl decl;
-		struct AstDeclEntity decl_entity;
-		struct AstDeclArg decl_arg;
-		struct AstDeclMember decl_member;
-		struct AstDeclVariant decl_variant;
-		struct AstTypeRef type_ref;
-		struct AstTypeArr type_arr;
-		struct AstTypeSlice type_slice;
-		struct AstTypeFn type_fn;
-		struct AstTypeStruct type_strct;
-		struct AstTypeEnum type_enm;
-		struct AstTypePtr type_ptr;
-		struct AstTypeVargs type_vargs;
-		struct AstExprType expr_type;
-		struct AstExprLitFn expr_fn;
-		struct AstExprLitInt expr_integer;
-		struct AstExprLitFloat expr_float;
+		struct AstLoad          load;
+		struct AstLink          link;
+		struct AstIdent         ident;
+		struct AstUBlock        ublock;
+		struct AstBlock         block;
+		struct AstStmtReturn    stmt_return;
+		struct AstStmtIf        stmt_if;
+		struct AstStmtLoop      stmt_loop;
+		struct AstStmtDefer     stmt_defer;
+		struct AstTestCase      test_case;
+		struct AstDecl          decl;
+		struct AstDeclEntity    decl_entity;
+		struct AstDeclArg       decl_arg;
+		struct AstDeclMember    decl_member;
+		struct AstDeclVariant   decl_variant;
+		struct AstTypeRef       type_ref;
+		struct AstTypeArr       type_arr;
+		struct AstTypeSlice     type_slice;
+		struct AstTypeFn        type_fn;
+		struct AstTypeStruct    type_strct;
+		struct AstTypeEnum      type_enm;
+		struct AstTypePtr       type_ptr;
+		struct AstTypeVargs     type_vargs;
+		struct AstExprType      expr_type;
+		struct AstExprLitFn     expr_fn;
+		struct AstExprLitInt    expr_integer;
+		struct AstExprLitFloat  expr_float;
 		struct AstExprLitDouble expr_double;
-		struct AstExprLitChar expr_character;
+		struct AstExprLitChar   expr_character;
 		struct AstExprLitString expr_string;
-		struct AstExprLitBool expr_boolean;
-		struct AstExprRef expr_ref;
-		struct AstExprCast expr_cast;
-		struct AstExprBinop expr_binop;
-		struct AstExprCall expr_call;
-		struct AstExprMember expr_member;
-		struct AstExprElem expr_elem;
-		struct AstExprSizeof expr_sizeof;
-		struct AstExprTypeInfo expr_type_info;
-		struct AstExprAlignof expr_alignof;
-		struct AstExprTypeof expr_typeof;
-		struct AstExprUnary expr_unary;
-		struct AstExprAddrOf expr_addrof;
-		struct AstExprDeref expr_deref;
-		struct AstExprCompound expr_compound;
+		struct AstExprLitBool   expr_boolean;
+		struct AstExprRef       expr_ref;
+		struct AstExprCast      expr_cast;
+		struct AstExprBinop     expr_binop;
+		struct AstExprCall      expr_call;
+		struct AstExprMember    expr_member;
+		struct AstExprElem      expr_elem;
+		struct AstExprSizeof    expr_sizeof;
+		struct AstExprTypeInfo  expr_type_info;
+		struct AstExprAlignof   expr_alignof;
+		struct AstExprTypeof    expr_typeof;
+		struct AstExprUnary     expr_unary;
+		struct AstExprAddrOf    expr_addrof;
+		struct AstExprDeref     expr_deref;
+		struct AstExprCompound  expr_compound;
 	} data;
 
 #if BL_DEBUG

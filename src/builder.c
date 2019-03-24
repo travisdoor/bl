@@ -69,7 +69,7 @@ int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flag
 	if (flags & BUILDER_VERBOSE) {
 		if (unit->loaded_from) {
 			msg_log("compile: %s (loaded from '%s')", unit->name,
-				unit->loaded_from->src.unit->name);
+			        unit->loaded_from->src.unit->name);
 		} else {
 			msg_log("compile: %s", unit->name);
 		}
@@ -135,8 +135,8 @@ Builder *builder_new(void)
 	if (!builder)
 		bl_abort("bad alloc");
 
-	builder->flags = 0;
-	builder->errorc = 0;
+	builder->flags     = 0;
+	builder->errorc    = 0;
 	builder->str_cache = bo_array_new_bo(bo_typeof(BString), true);
 
 	/* initialize LLVM statics */
@@ -159,7 +159,7 @@ void builder_delete(Builder *builder)
 int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 {
 	clock_t begin = clock();
-	Unit *unit;
+	Unit *  unit;
 	int32_t state = COMPILE_OK;
 
 	builder->flags = flags;
@@ -183,8 +183,8 @@ int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 	if (state == COMPILE_OK)
 		state = compile_assembly(builder, assembly, flags);
 
-	clock_t end = clock();
-	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	clock_t end        = clock();
+	double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
 	msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
 	if (state != COMPILE_OK) {
@@ -222,20 +222,20 @@ void builder_warning(Builder *builder, const char *format, ...)
 }
 
 void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, BuilderCurPos pos,
-		 const char *format, ...)
+                 const char *format, ...)
 {
 	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED)
 		return;
 	if ((builder->flags & BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING)
 		return;
 
-	BString *tmp = bo_string_new(MAX_MSG_LEN);
-	char msg[MAX_MSG_LEN] = {0};
+	BString *tmp              = bo_string_new(MAX_MSG_LEN);
+	char     msg[MAX_MSG_LEN] = {0};
 
 	if (src) {
 		int32_t line = src->line;
-		int32_t col = src->col;
-		int32_t len = src->len;
+		int32_t col  = src->col;
+		int32_t len  = src->len;
 
 		switch (pos) {
 		case BUILDER_CUR_AFTER:
@@ -264,7 +264,7 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 				mark = "W";
 
 			snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code,
-				 src->unit->filepath, line, col);
+			         src->unit->filepath, line, col);
 		}
 
 		va_list args;
@@ -273,8 +273,8 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 		va_end(args);
 		bo_string_append(tmp, &msg[0]);
 
-		int32_t pad = sprintf(msg, "%d", src->line) + 2;
-		long line_len = 0;
+		int32_t     pad      = sprintf(msg, "%d", src->line) + 2;
+		long        line_len = 0;
 		const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
 		if (line_str && line_len) {
 			sprintf(msg, "\n%*d", pad, src->line - 1);

@@ -52,7 +52,7 @@ void linker_run(Builder *builder, Assembly *assembly)
 	char *error_msg = NULL;
 	remove(filename);
 	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module,
-					filename, LLVMObjectFile, &error_msg)) {
+	                                filename, LLVMObjectFile, &error_msg)) {
 		msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
 		LLVMDisposeMessage(error_msg);

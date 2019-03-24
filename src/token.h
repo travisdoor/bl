@@ -118,28 +118,28 @@ extern char *sym_strings[];
 
 struct Unit;
 typedef struct Src {
-	int32_t line;
-	int32_t col;
-	int32_t len;
+	int32_t      line;
+	int32_t      col;
+	int32_t      len;
 	struct Unit *unit;
 } Src;
 
 typedef union {
-	const char *str;
-	char c;
-	double d;
+	const char *       str;
+	char               c;
+	double             d;
 	unsigned long long u;
 } TokenValue;
 
 typedef struct Token {
-	Sym sym;
-	Src src;
+	Sym        sym;
+	Src        src;
 	TokenValue value;
 } Token;
 
 /* sizeof this structure is 8 bytes so it can be passed by value */
 typedef struct {
-	int32_t priority;
+	int32_t            priority;
 	TokenAssociativity associativity;
 } TokenPrecedence;
 

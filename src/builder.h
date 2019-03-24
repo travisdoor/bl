@@ -58,12 +58,12 @@
 #define COMPILE_FAIL 1
 
 typedef struct Builder {
-	Arena ast_arena;
+	Arena       ast_arena;
 	ScopeArenas scope_arenas;
-	uint32_t flags;
-	int32_t total_lines;
-	int32_t errorc;
-	BArray *str_cache;
+	uint32_t    flags;
+	int32_t     total_lines;
+	int32_t     errorc;
+	BArray *    str_cache;
 } Builder;
 
 typedef enum {
@@ -88,7 +88,7 @@ void builder_error(Builder *builder, const char *format, ...);
 void builder_warning(Builder *builder, const char *format, ...);
 
 void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, struct Src *src,
-		 BuilderCurPos pos, const char *format, ...);
+                 BuilderCurPos pos, const char *format, ...);
 
 BString *builder_create_cached_str(Builder *builder);
 

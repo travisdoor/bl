@@ -43,10 +43,10 @@ Assembly *assembly_new(const char *name)
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly)
 		bl_abort("bad alloc");
-	assembly->name = strdup(name);
-	assembly->units = bo_array_new(sizeof(Unit *));
+	assembly->name         = strdup(name);
+	assembly->units        = bo_array_new(sizeof(Unit *));
 	assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-	assembly->link_cache = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
+	assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
 
 	assembly->mir_module = mir_new_module(assembly->name);
 

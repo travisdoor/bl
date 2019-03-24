@@ -38,12 +38,12 @@ struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
-	Tokens tokens;
-	Ast *ast;
-	BArray *globals;
-	char *filepath;
-	char *name;
-	char *src;
+	Tokens        tokens;
+	Ast *         ast;
+	BArray *      globals;
+	char *        filepath;
+	char *        name;
+	char *        src;
 	struct Token *loaded_from;
 } Unit;
 

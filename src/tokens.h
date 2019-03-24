@@ -35,7 +35,7 @@
 
 typedef struct Tokens {
 	BArray *buf;
-	size_t iter;
+	size_t  iter;
 } Tokens;
 
 typedef enum {

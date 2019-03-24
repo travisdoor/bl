@@ -32,13 +32,13 @@
 
 typedef struct ArenaChunk {
 	struct ArenaChunk *next;
-	int32_t count;
+	int32_t            count;
 } ArenaChunk;
 
 static inline ArenaChunk *alloc_chunk(Arena *arena)
 {
 	const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
-	ArenaChunk *chunk = bl_malloc(chunk_size_in_bytes);
+	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
 	if (!chunk)
 		bl_abort("bad alloc");
 
@@ -74,13 +74,13 @@ static inline ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
 }
 
 void arena_init(Arena *arena, size_t elem_size_in_bytes, int32_t elems_per_chunk,
-		ArenaElemDtor elem_dtor)
+                ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
-	arena->elems_per_chunk = elems_per_chunk;
-	arena->first_chunk = NULL;
-	arena->current_chunk = NULL;
-	arena->elem_dtor = elem_dtor;
+	arena->elems_per_chunk    = elems_per_chunk;
+	arena->first_chunk        = NULL;
+	arena->current_chunk      = NULL;
+	arena->elem_dtor          = elem_dtor;
 }
 
 void arena_terminate(Arena *arena)
@@ -95,14 +95,14 @@ void *arena_alloc(Arena *arena)
 {
 	if (!arena->current_chunk) {
 		arena->current_chunk = alloc_chunk(arena);
-		arena->first_chunk = arena->current_chunk;
+		arena->first_chunk   = arena->current_chunk;
 	}
 
 	if (arena->current_chunk->count == arena->elems_per_chunk) {
 		// last chunk node
-		ArenaChunk *chunk = alloc_chunk(arena);
+		ArenaChunk *chunk          = alloc_chunk(arena);
 		arena->current_chunk->next = chunk;
-		arena->current_chunk = chunk;
+		arena->current_chunk       = chunk;
 	}
 
 	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);

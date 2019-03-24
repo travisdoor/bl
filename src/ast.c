@@ -62,13 +62,13 @@ static void node_dtor(Ast *node)
 
 Ast *ast_create_node(Arena *arena, AstKind c, Token *tok)
 {
-	Ast *node = arena_alloc(arena);
+	Ast *node  = arena_alloc(arena);
 	node->kind = c;
-	node->src = tok ? &tok->src : NULL;
+	node->src  = tok ? &tok->src : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;
-	node->_serial = serial++;
+	node->_serial          = serial++;
 #endif
 	return node;
 }

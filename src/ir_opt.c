@@ -43,8 +43,8 @@ void ir_opt_run(Builder *builder, Assembly *assembly)
 	const unsigned opt_lvl = 3;
 #endif
 
-	LLVMModuleRef llvm_module = assembly->mir_module->llvm_module;
-	LLVMTargetMachineRef llvm_tm = assembly->mir_module->llvm_tm;
+	LLVMModuleRef        llvm_module = assembly->mir_module->llvm_module;
+	LLVMTargetMachineRef llvm_tm     = assembly->mir_module->llvm_tm;
 
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
 	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
