@@ -42,23 +42,23 @@
 void
 linker_run(Builder *builder, Assembly *assembly)
 {
-  MirModule *module = assembly->mir_module;
-  assert(module->llvm_module);
-  char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-  if (!filename) bl_abort("bad alloc");
-  strcpy(filename, assembly->name);
-  strcat(filename, OBJ_EXT);
+	MirModule *module = assembly->mir_module;
+	assert(module->llvm_module);
+	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
+	if (!filename) bl_abort("bad alloc");
+	strcpy(filename, assembly->name);
+	strcat(filename, OBJ_EXT);
 
-  char *error_msg = NULL;
-  remove(filename);
-  if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module, filename,
-                                  LLVMObjectFile, &error_msg)) {
-    msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
+	char *error_msg = NULL;
+	remove(filename);
+	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module, filename,
+	                                LLVMObjectFile, &error_msg)) {
+		msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
 
-    LLVMDisposeMessage(error_msg);
-    bl_free(filename);
-    return;
-  }
+		LLVMDisposeMessage(error_msg);
+		bl_free(filename);
+		return;
+	}
 
-  bl_free(filename);
+	bl_free(filename);
 }

@@ -59,27 +59,27 @@
 
 typedef struct Builder
 {
-  Arena       ast_arena;
-  ScopeArenas scope_arenas;
-  uint32_t    flags;
-  int32_t     total_lines;
-  int32_t     errorc;
-  BArray *    str_cache;
+	Arena       ast_arena;
+	ScopeArenas scope_arenas;
+	uint32_t    flags;
+	int32_t     total_lines;
+	int32_t     errorc;
+	BArray *    str_cache;
 } Builder;
 
 typedef enum
 {
-  BUILDER_MSG_ERROR,
-  BUILDER_MSG_WARNING,
-  BUILDER_MSG_NOTE,
-  BUILDER_MSG_LOG,
+	BUILDER_MSG_ERROR,
+	BUILDER_MSG_WARNING,
+	BUILDER_MSG_NOTE,
+	BUILDER_MSG_LOG,
 } BuilderMsgType;
 
 typedef enum
 {
-  BUILDER_CUR_AFTER,
-  BUILDER_CUR_WORD,
-  BUILDER_CUR_BEFORE
+	BUILDER_CUR_AFTER,
+	BUILDER_CUR_WORD,
+	BUILDER_CUR_BEFORE
 } BuilderCurPos;
 
 struct Src;

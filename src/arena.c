@@ -32,87 +32,87 @@
 
 typedef struct ArenaChunk
 {
-  struct ArenaChunk *next;
-  int32_t            count;
+	struct ArenaChunk *next;
+	int32_t            count;
 } ArenaChunk;
 
 static inline ArenaChunk *
 alloc_chunk(Arena *arena)
 {
-  const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
-  ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
-  if (!chunk) bl_abort("bad alloc");
+	const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
+	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
+	if (!chunk) bl_abort("bad alloc");
 
-  memset(chunk, 0, chunk_size_in_bytes);
-  chunk->count = 1;
-  return chunk;
+	memset(chunk, 0, chunk_size_in_bytes);
+	chunk->count = 1;
+	return chunk;
 }
 
 static inline void *
 get_from_chunk(Arena *arena, ArenaChunk *chunk, int32_t i)
 {
-  void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
-  /* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
-   * sizeof(node_t) + MAX_ALIGNMENT) */
-  ptrdiff_t adj;
-  align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
-  assert(adj < MAX_ALIGNMENT);
-  return elem;
+	void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
+	/* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
+	 * sizeof(node_t) + MAX_ALIGNMENT) */
+	ptrdiff_t adj;
+	align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
+	assert(adj < MAX_ALIGNMENT);
+	return elem;
 }
 
 static inline ArenaChunk *
 free_chunk(Arena *arena, ArenaChunk *chunk)
 {
-  if (!chunk) return NULL;
+	if (!chunk) return NULL;
 
-  ArenaChunk *next = chunk->next;
-  for (int32_t i = 0; i < chunk->count - 1; ++i) {
-    if (arena->elem_dtor) arena->elem_dtor(get_from_chunk(arena, chunk, i + 1));
-  }
+	ArenaChunk *next = chunk->next;
+	for (int32_t i = 0; i < chunk->count - 1; ++i) {
+		if (arena->elem_dtor) arena->elem_dtor(get_from_chunk(arena, chunk, i + 1));
+	}
 
-  bl_free(chunk);
-  return next;
+	bl_free(chunk);
+	return next;
 }
 
 void
 arena_init(Arena *arena, size_t elem_size_in_bytes, int32_t elems_per_chunk,
            ArenaElemDtor elem_dtor)
 {
-  arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
-  arena->elems_per_chunk    = elems_per_chunk;
-  arena->first_chunk        = NULL;
-  arena->current_chunk      = NULL;
-  arena->elem_dtor          = elem_dtor;
+	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
+	arena->elems_per_chunk    = elems_per_chunk;
+	arena->first_chunk        = NULL;
+	arena->current_chunk      = NULL;
+	arena->elem_dtor          = elem_dtor;
 }
 
 void
 arena_terminate(Arena *arena)
 {
-  ArenaChunk *chunk = arena->first_chunk;
-  while (chunk) {
-    chunk = free_chunk(arena, chunk);
-  }
+	ArenaChunk *chunk = arena->first_chunk;
+	while (chunk) {
+		chunk = free_chunk(arena, chunk);
+	}
 }
 
 void *
 arena_alloc(Arena *arena)
 {
-  if (!arena->current_chunk) {
-    arena->current_chunk = alloc_chunk(arena);
-    arena->first_chunk   = arena->current_chunk;
-  }
+	if (!arena->current_chunk) {
+		arena->current_chunk = alloc_chunk(arena);
+		arena->first_chunk   = arena->current_chunk;
+	}
 
-  if (arena->current_chunk->count == arena->elems_per_chunk) {
-    // last chunk node
-    ArenaChunk *chunk          = alloc_chunk(arena);
-    arena->current_chunk->next = chunk;
-    arena->current_chunk       = chunk;
-  }
+	if (arena->current_chunk->count == arena->elems_per_chunk) {
+		// last chunk node
+		ArenaChunk *chunk          = alloc_chunk(arena);
+		arena->current_chunk->next = chunk;
+		arena->current_chunk       = chunk;
+	}
 
-  void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
-  arena->current_chunk->count++;
+	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
+	arena->current_chunk->count++;
 
-  assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+	assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
 
-  return elem;
+	return elem;
 }

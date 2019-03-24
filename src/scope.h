@@ -43,41 +43,41 @@ struct MirVar;
 
 typedef enum ScopeEntryKind
 {
-  SCOPE_ENTRY_INVALID,
-  SCOPE_ENTRY_TYPE,
-  SCOPE_ENTRY_VAR,
-  SCOPE_ENTRY_FN,
-  SCOPE_ENTRY_MEMBER,
+	SCOPE_ENTRY_INVALID,
+	SCOPE_ENTRY_TYPE,
+	SCOPE_ENTRY_VAR,
+	SCOPE_ENTRY_FN,
+	SCOPE_ENTRY_MEMBER,
 } ScopeEntryKind;
 
 typedef struct ScopeArenas
 {
-  Arena scope_arena;
-  Arena entry_arena;
+	Arena scope_arena;
+	Arena entry_arena;
 } ScopeArenas;
 
 typedef struct ScopeEntry
 {
-  ID *           id;
-  ScopeEntryKind kind;
-  struct Scope * parent_scope;
-  struct Ast *   node;
-  bool           is_buildin;
+	ID *           id;
+	ScopeEntryKind kind;
+	struct Scope * parent_scope;
+	struct Ast *   node;
+	bool           is_buildin;
 
-  union
-  {
-    struct MirType *  type;
-    struct MirFn *    fn;
-    struct MirVar *   var;
-    struct MirMember *member;
-  } data;
+	union
+	{
+		struct MirType *  type;
+		struct MirFn *    fn;
+		struct MirVar *   var;
+		struct MirMember *member;
+	} data;
 } ScopeEntry;
 
 typedef struct Scope
 {
-  struct Scope *parent;
-  BHashTable *  entries;
-  bool          is_global;
+	struct Scope *parent;
+	BHashTable *  entries;
+	bool          is_global;
 } Scope;
 
 void

@@ -35,15 +35,15 @@
 
 typedef struct Tokens
 {
-  BArray *buf;
-  size_t  iter;
+	BArray *buf;
+	size_t  iter;
 } Tokens;
 
 typedef enum
 {
-  TOK_LOOK_HIT,
-  TOK_LOOK_CONTINUE,
-  TOK_LOOK_TERMINAL,
+	TOK_LOOK_HIT,
+	TOK_LOOK_CONTINUE,
+	TOK_LOOK_TERMINAL,
 } TokensLookaheadState;
 
 typedef TokensLookaheadState (*TokenCmpFunc)(Token *curr);

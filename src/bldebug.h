@@ -75,10 +75,10 @@
 
 typedef enum
 {
-  LOG_ASSERT,
-  LOG_ABORT,
-  LOG_WARNING,
-  LOG_MSG
+	LOG_ASSERT,
+	LOG_ABORT,
+	LOG_WARNING,
+	LOG_MSG
 } bl_log_msg_type_e;
 
 void
@@ -86,47 +86,48 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 
 #ifdef BL_DEBUG
 #define bl_log(format, ...)                                                                        \
-  {                                                                                                \
-    _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                                  \
-  }
+	{                                                                                              \
+		_log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
+	}
 
 #define bl_warning(format, ...)                                                                    \
-  {                                                                                                \
-    _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
-  }
+	{                                                                                              \
+		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
+	}
 
 #else
 #define bl_log(format, ...)                                                                        \
-  while (0) {                                                                                      \
-  }
+	while (0) {                                                                                    \
+	}
 
 #define bl_warning(format, ...)                                                                    \
-  while (0) {                                                                                      \
-  }
+	while (0) {                                                                                    \
+	}
 #endif
 
 #define bl_abort(format, ...)                                                                      \
-  {                                                                                                \
-    _log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                                \
-    abort();                                                                                       \
-  }
+	{                                                                                              \
+		_log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
+		abort();                                                                                   \
+	}
 
 #define bl_abort_issue(N)                                                                          \
-  {                                                                                                \
-    _log(LOG_ABORT, __FILENAME__, __LINE__, "Issue: https://github.com/travisdoor/bl/issues/" #N); \
-    abort();                                                                                       \
-  }
+	{                                                                                              \
+		_log(LOG_ABORT, __FILENAME__, __LINE__,                                                    \
+		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
+		abort();                                                                                   \
+	}
 
 #define bl_warning_issue(N)                                                                        \
-  {                                                                                                \
-    _log(LOG_WARNING, __FILENAME__, __LINE__,                                                      \
-         "Issue: https://github.com/travisdoor/bl/issues/" #N);                                    \
-  }
+	{                                                                                              \
+		_log(LOG_WARNING, __FILENAME__, __LINE__,                                                  \
+		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
+	}
 
 #define bl_unimplemented                                                                           \
-  {                                                                                                \
-    _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                      \
-    abort();                                                                                       \
-  }
+	{                                                                                              \
+		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                  \
+		abort();                                                                                   \
+	}
 
 #endif

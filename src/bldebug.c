@@ -34,27 +34,27 @@
 void
 _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...)
 {
-  char    buffer[MAX_LOG_MSG_SIZE];
-  va_list args;
-  va_start(args, msg);
-  vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);
+	char    buffer[MAX_LOG_MSG_SIZE];
+	va_list args;
+	va_start(args, msg);
+	vsnprintf(buffer, MAX_LOG_MSG_SIZE, msg, args);
 
-  switch (t) {
-  case LOG_ASSERT:
-    fprintf(stderr, RED("assert [%s:%d]: %s") "\n", file, line, buffer);
-    break;
-  case LOG_ABORT:
-    fprintf(stderr, RED("abort [%s:%d]: %s") "\n", file, line, buffer);
-    break;
-  case LOG_WARNING:
-    fprintf(stderr, YELLOW("bl_warning [%s:%d]: %s") "\n", file, line, buffer);
-    break;
-  case LOG_MSG:
-    fprintf(stdout, "bl_log [%s:%d]: %s\n", file, line, buffer);
-    break;
-  default:
-    break;
-  }
+	switch (t) {
+	case LOG_ASSERT:
+		fprintf(stderr, RED("assert [%s:%d]: %s") "\n", file, line, buffer);
+		break;
+	case LOG_ABORT:
+		fprintf(stderr, RED("abort [%s:%d]: %s") "\n", file, line, buffer);
+		break;
+	case LOG_WARNING:
+		fprintf(stderr, YELLOW("bl_warning [%s:%d]: %s") "\n", file, line, buffer);
+		break;
+	case LOG_MSG:
+		fprintf(stdout, "bl_log [%s:%d]: %s\n", file, line, buffer);
+		break;
+	default:
+		break;
+	}
 
-  va_end(args);
+	va_end(args);
 }

@@ -36,26 +36,26 @@
 void
 bc_writer_run(Builder *builder, Assembly *assembly)
 {
-  assert(assembly->mir_module->llvm_module);
+	assert(assembly->mir_module->llvm_module);
 
-  char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-  if (!export_file) bl_abort("bad alloc");
-  strcpy(export_file, assembly->name);
-  strcat(export_file, ".ll");
+	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
+	if (!export_file) bl_abort("bad alloc");
+	strcpy(export_file, assembly->name);
+	strcat(export_file, ".ll");
 
-  char *str = LLVMPrintModuleToString(assembly->mir_module->llvm_module);
+	char *str = LLVMPrintModuleToString(assembly->mir_module->llvm_module);
 
-  FILE *f = fopen(export_file, "w");
-  if (f == NULL) {
-    builder_error(builder, "cannot open file %s", export_file);
-    free(export_file);
-    return;
-  }
-  fprintf(f, "%s\n", str);
-  fclose(f);
-  LLVMDisposeMessage(str);
+	FILE *f = fopen(export_file, "w");
+	if (f == NULL) {
+		builder_error(builder, "cannot open file %s", export_file);
+		free(export_file);
+		return;
+	}
+	fprintf(f, "%s\n", str);
+	fclose(f);
+	LLVMDisposeMessage(str);
 
-  msg_log("byte code written into " GREEN("%s"), export_file);
+	msg_log("byte code written into " GREEN("%s"), export_file);
 
-  free(export_file);
+	free(export_file);
 }

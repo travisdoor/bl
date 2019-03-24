@@ -32,23 +32,23 @@
 #include "config.h"
 
 #define msg_log(format, ...)                                                                       \
-  {                                                                                                \
-    fprintf(stdout, format "\n", ##__VA_ARGS__);                                                   \
-  }
+	{                                                                                              \
+		fprintf(stdout, format "\n", ##__VA_ARGS__);                                               \
+	}
 
 #define msg_error(format, ...)                                                                     \
-  {                                                                                                \
-    fprintf(stderr, RED("error: ") format "\n", ##__VA_ARGS__);                                    \
-  }
+	{                                                                                              \
+		fprintf(stderr, RED("error: ") format "\n", ##__VA_ARGS__);                                \
+	}
 
 #define msg_warning(format, ...)                                                                   \
-  {                                                                                                \
-    fprintf(stdout, YELLOW("warning: ") format "\n", ##__VA_ARGS__);                               \
-  }
+	{                                                                                              \
+		fprintf(stdout, YELLOW("warning: ") format "\n", ##__VA_ARGS__);                           \
+	}
 
 #define msg_note(format, ...)                                                                      \
-  {                                                                                                \
-    fprintf(stderr, BLUE("note: ") format "\n", ##__VA_ARGS__);                                    \
-  }
+	{                                                                                              \
+		fprintf(stderr, BLUE("note: ") format "\n", ##__VA_ARGS__);                                \
+	}
 
 #endif // BL_MESSAGES_H

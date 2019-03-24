@@ -41,67 +41,67 @@
 Assembly *
 assembly_new(const char *name)
 {
-  Assembly *assembly = bl_calloc(1, sizeof(Assembly));
-  if (!assembly) bl_abort("bad alloc");
-  assembly->name         = strdup(name);
-  assembly->units        = bo_array_new(sizeof(Unit *));
-  assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-  assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
+	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
+	if (!assembly) bl_abort("bad alloc");
+	assembly->name         = strdup(name);
+	assembly->units        = bo_array_new(sizeof(Unit *));
+	assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
+	assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
 
-  assembly->mir_module = mir_new_module(assembly->name);
+	assembly->mir_module = mir_new_module(assembly->name);
 
-  bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
-  return assembly;
+	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
+	return assembly;
 }
 
 void
 assembly_delete(Assembly *assembly)
 {
-  free(assembly->name);
+	free(assembly->name);
 
-  Unit *unit;
-  barray_foreach(assembly->units, unit)
-  {
-    unit_delete(unit);
-  }
-  bo_unref(assembly->units);
-  bo_unref(assembly->unique_cache);
-  bo_unref(assembly->link_cache);
+	Unit *unit;
+	barray_foreach(assembly->units, unit)
+	{
+		unit_delete(unit);
+	}
+	bo_unref(assembly->units);
+	bo_unref(assembly->unique_cache);
+	bo_unref(assembly->link_cache);
 
-  mir_delete_module(assembly->mir_module);
+	mir_delete_module(assembly->mir_module);
 
-  bl_free(assembly);
+	bl_free(assembly);
 }
 
 void
 assembly_add_unit(Assembly *assembly, Unit *unit)
 {
-  bo_array_push_back(assembly->units, unit);
+	bo_array_push_back(assembly->units, unit);
 }
 
 bool
 assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
-  uint64_t hash = 0;
-  if (unit->filepath)
-    hash = bo_hash_from_str(unit->filepath);
-  else
-    hash = bo_hash_from_str(unit->name);
+	uint64_t hash = 0;
+	if (unit->filepath)
+		hash = bo_hash_from_str(unit->filepath);
+	else
+		hash = bo_hash_from_str(unit->name);
 
-  if (bo_htbl_has_key(assembly->unique_cache, hash)) return false;
+	if (bo_htbl_has_key(assembly->unique_cache, hash)) return false;
 
-  bo_htbl_insert_empty(assembly->unique_cache, hash);
-  assembly_add_unit(assembly, unit);
-  return true;
+	bo_htbl_insert_empty(assembly->unique_cache, hash);
+	assembly_add_unit(assembly, unit);
+	return true;
 }
 
 void
 assembly_add_link(Assembly *assembly, const char *lib)
 {
-  if (!lib) return;
-  uint64_t hash = bo_hash_from_str(lib);
-  if (bo_htbl_has_key(assembly->link_cache, hash)) return;
+	if (!lib) return;
+	uint64_t hash = bo_hash_from_str(lib);
+	if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
-  char *tmp = (char *)lib;
-  bo_htbl_insert(assembly->link_cache, hash, tmp);
+	char *tmp = (char *)lib;
+	bo_htbl_insert(assembly->link_cache, hash, tmp);
 }
