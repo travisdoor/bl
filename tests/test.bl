@@ -2,16 +2,15 @@
 
 //#load "std/core.bl"
 
-/*
 Foo : type : enum {
     A :: 10,
     B :: 20
 };
-*/
 
-/*Bar :: struct {
-    a: s32
-};*/
+Bar :: struct {
+    a: s32,
+    b: s32
+};
 
 main :: fn () s32 {
      return 0;

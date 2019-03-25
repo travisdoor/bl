@@ -84,6 +84,8 @@ static void print_unrecheable(Ast *unr, int32_t pad, FILE *stream);
 
 static void print_type_struct(Ast *strct, int32_t pad, FILE *stream);
 
+static void print_type_enum(Ast *enm, int32_t pad, FILE *stream);
+
 static void print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream);
 
 static void print_stmt_loop(Ast *loop, int32_t pad, FILE *stream);
@@ -97,6 +99,10 @@ static void print_stmt_return(Ast *ret, int32_t pad, FILE *stream);
 static void print_decl_entity(Ast *entity, int32_t pad, FILE *stream);
 
 static void print_decl_arg(Ast *arg, int32_t pad, FILE *stream);
+
+static void print_decl_member(Ast *member, int32_t pad, FILE *stream);
+
+static void print_decl_variant(Ast *variant, int32_t pad, FILE *stream);
 
 static void print_bad(Ast *bad, int32_t pad, FILE *stream);
 
@@ -168,6 +174,23 @@ void print_unrecheable(Ast *unr, int32_t pad, FILE *stream)
 void print_type_struct(Ast *strct, int32_t pad, FILE *stream)
 {
 	print_head(strct, pad, stream);
+
+	Ast *node;
+	barray_foreach(strct->data.type_strct.members, node)
+	{
+		print_node(node, pad + 1, stream);
+	}
+}
+
+void print_type_enum(Ast *enm, int32_t pad, FILE *stream)
+{
+	print_head(enm, pad, stream);
+
+	Ast *node;
+	barray_foreach(enm->data.type_enm.variants, node)
+	{
+		print_node(node, pad + 1, stream);
+	}
 }
 
 void print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream)
@@ -217,6 +240,19 @@ void print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 void print_decl_arg(Ast *arg, int32_t pad, FILE *stream)
 {
 	print_head(arg, pad, stream);
+	fprintf(stream, "'%s'", arg->data.decl.name->data.ident.id.str);
+}
+
+void print_decl_member(Ast *member, int32_t pad, FILE *stream)
+{
+	print_head(member, pad, stream);
+	fprintf(stream, "'%s'", member->data.decl.name->data.ident.id.str);
+}
+
+void print_decl_variant(Ast *variant, int32_t pad, FILE *stream)
+{
+	print_head(variant, pad, stream);
+	fprintf(stream, "'%s'", variant->data.decl.name->data.ident.id.str);
 }
 
 void print_bad(Ast *bad, int32_t pad, FILE *stream)
@@ -416,6 +452,10 @@ void print_node(Ast *node, int32_t pad, FILE *stream)
 		print_type_struct(node, pad, stream);
 		break;
 
+	case AST_TYPE_ENUM:
+		print_type_enum(node, pad, stream);
+		break;
+
 	case AST_DECL_ENTITY:
 		print_decl_entity(node, pad, stream);
 		break;
@@ -425,7 +465,11 @@ void print_node(Ast *node, int32_t pad, FILE *stream)
 		break;
 
 	case AST_DECL_MEMBER:
+		print_decl_member(node, pad, stream);
+		break;
+
 	case AST_DECL_VARIANT:
+		print_decl_variant(node, pad, stream);
 		break;
 
 	case AST_STMT_RETURN:

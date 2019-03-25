@@ -566,6 +566,8 @@ Ast *parse_decl_variant(Context *cnt, Ast *base_type, Ast *prev)
 	}
 
 	assert(var->data.decl_variant.value);
+	var->data.decl.type = base_type;
+	var->data.decl.name = name;
 	return var;
 }
 
