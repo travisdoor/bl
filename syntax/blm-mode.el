@@ -36,6 +36,7 @@
     "load"
     "decl"
     "declmember"
+    "declvariant"
     "declref"
     "call"
     "validate_type"
@@ -82,6 +83,7 @@
     ("fn\(.*\) \\w+" . font-lock-type-face)
     ("struct{.*}" . font-lock-type-face)
     ("slice{.*}" . font-lock-type-face)
+    ("enum{.*}" . font-lock-type-face)
     ("*.\\w+" . font-lock-type-face)
     (,(blm-keywords-rx blm-types) 1 font-lock-type-face)
 

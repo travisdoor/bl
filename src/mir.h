@@ -49,6 +49,7 @@ typedef struct MirType       MirType;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
 typedef struct MirMember     MirMember;
+typedef struct MirVariant    MirVariant;
 typedef struct MirConstValue MirConstValue;
 
 typedef struct MirInstr            MirInstr;
@@ -56,6 +57,7 @@ typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrBlock       MirInstrBlock;
 typedef struct MirInstrDeclVar     MirInstrDeclVar;
 typedef struct MirInstrDeclMember  MirInstrDeclMember;
+typedef struct MirInstrDeclVariant MirInstrDeclVariant;
 typedef struct MirInstrConst       MirInstrConst;
 typedef struct MirInstrLoad        MirInstrLoad;
 typedef struct MirInstrStore       MirInstrStore;
@@ -76,6 +78,7 @@ typedef struct MirInstrTypeArray   MirInstrTypeArray;
 typedef struct MirInstrTypeSlice   MirInstrTypeSlice;
 typedef struct MirInstrTypeVArgs   MirInstrTypeVArgs;
 typedef struct MirInstrTypePtr     MirInstrTypePtr;
+typedef struct MirInstrTypeEnum    MirInstrTypeEnum;
 typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 typedef struct MirInstrSizeof      MirInstrSizeof;
@@ -129,6 +132,7 @@ struct MirArenas {
 	Arena var_arena;
 	Arena fn_arena;
 	Arena member_arena;
+	Arena variant_arena;
 	Arena value_arena;
 	Arena array_arena;
 };
@@ -179,6 +183,14 @@ struct MirMember {
 	int64_t  index;
 };
 
+/* VARIANT */
+struct MirVariant {
+	ID *     id;
+	Ast *    decl_node;
+	MirType *type;
+	Scope *  scope;
+};
+
 /* TYPE */
 enum MirTypeKind {
 	MIR_TYPE_INVALID,
@@ -191,6 +203,7 @@ enum MirTypeKind {
 	MIR_TYPE_BOOL,
 	MIR_TYPE_ARRAY,
 	MIR_TYPE_STRUCT,
+	MIR_TYPE_ENUM,
 	MIR_TYPE_NULL,
 };
 
@@ -227,6 +240,11 @@ struct MirTypeStruct {
 	bool              is_packed;
 };
 
+struct MirTypeEnum {
+	Scope *  scope;
+	MirType *base_type;
+};
+
 struct MirTypeNull {
 	MirType *base_type;
 };
@@ -253,6 +271,7 @@ struct MirType {
 		struct MirTypeReal   real;
 		struct MirTypeArray  array;
 		struct MirTypeStruct strct;
+		struct MirTypeEnum   enm;
 		struct MirTypeNull   null;
 	} data;
 };
@@ -320,12 +339,14 @@ struct MirVar {
 	const char *        llvm_name;
 	MirRelativeStackPtr rel_stack_ptr;
 };
+
 /* INSTRUCTIONS */
 enum MirInstrKind {
 	MIR_INSTR_INVALID,
 	MIR_INSTR_BLOCK,
 	MIR_INSTR_DECL_VAR,
 	MIR_INSTR_DECL_MEMBER,
+	MIR_INSTR_DECL_VARIANT,
 	MIR_INSTR_CONST,
 	MIR_INSTR_LOAD,
 	MIR_INSTR_STORE,
@@ -338,6 +359,7 @@ enum MirInstrKind {
 	MIR_INSTR_TYPE_ARRAY,
 	MIR_INSTR_TYPE_SLICE,
 	MIR_INSTR_TYPE_VARGS,
+	MIR_INSTR_TYPE_ENUM,
 	MIR_INSTR_CALL,
 	MIR_INSTR_DECL_REF,
 	MIR_INSTR_UNREACHABLE,
@@ -400,6 +422,14 @@ struct MirInstrDeclMember {
 
 	MirMember *member;
 	MirInstr * type;
+};
+
+struct MirInstrDeclVariant {
+	MirInstr base;
+
+	MirVariant *variant;
+	MirInstr *  type;
+	MirInstr *  init;
 };
 
 struct MirInstrElemPtr {
@@ -527,6 +557,14 @@ struct MirInstrTypeStruct {
 	Scope * scope;
 	BArray *members;
 	bool    is_packed;
+};
+
+struct MirInstrTypeEnum {
+	MirInstr base;
+
+	ID *    id;
+	Scope * scope;
+	BArray *variants;
 };
 
 struct MirInstrTypePtr {
