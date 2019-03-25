@@ -1258,32 +1258,31 @@ static inline void setup_null_type_if_needed(Context *cnt, MirConstValue *value,
 static inline bool create_type(Context *cnt, MirType **out_type, const char *sh)
 {
 	assert(out_type);
-	if (sh) {
-		uint64_t hash = bo_hash_from_str(sh);
+	assert(sh);
+	uint64_t hash = bo_hash_from_str(sh);
 
-		bo_iterator_t found = bo_htbl_find(cnt->type_table, hash);
-		bo_iterator_t end   = bo_htbl_end(cnt->type_table);
-		if (!bo_iterator_equal(&found, &end)) {
-			*out_type = bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
-			assert(*out_type);
-			return false;
-		} else {
-			MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+	bo_iterator_t found = bo_htbl_find(cnt->type_table, hash);
+	bo_iterator_t end   = bo_htbl_end(cnt->type_table);
+	if (!bo_iterator_equal(&found, &end)) {
+		*out_type = bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
+		assert(*out_type);
+		return false;
+	} else {
+		MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
 
-			BString *copy = builder_create_cached_str(cnt->builder);
-			bo_string_append(copy, sh);
+		BString *copy = builder_create_cached_str(cnt->builder);
+		bo_string_append(copy, sh);
 
-			static uint64_t index = 0;
-			tmp->id.str           = bo_string_get(copy);
-			tmp->id.hash          = hash;
-			tmp->type_table_index = index++;
+		static uint64_t index = 0;
+		tmp->id.str           = bo_string_get(copy);
+		tmp->id.hash          = hash;
+		tmp->type_table_index = index++;
 
-			//bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
-			bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
-			*out_type = tmp;
+		// bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+		bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
+		*out_type = tmp;
 
-			return true;
-		}
+		return true;
 	}
 
 	bl_abort("should not happend");
@@ -3782,7 +3781,7 @@ uint64_t analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 {
 	BArray *variants = type_enum->variants;
-	Scope *scope = type_enum->scope;
+	Scope * scope    = type_enum->scope;
 	assert(variants);
 	assert(scope);
 	const size_t varc = bo_array_size(variants);
@@ -3798,7 +3797,7 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	/* TODO: set user type if there is one!!! */
 	/* TODO: set user type if there is one!!! */
 	/* TODO: set user type if there is one!!! */
-	MirType *base_type = cnt->builtin_types.entry_s32;
+	MirType *base_type                      = cnt->builtin_types.entry_s32;
 	type_enum->base.const_value.data.v_type = create_type_enum(cnt, NULL, scope, base_type);
 
 	return ANALYZE_PASSED;

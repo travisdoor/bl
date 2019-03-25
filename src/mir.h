@@ -243,6 +243,11 @@ struct MirTypeStruct {
 struct MirTypeEnum {
 	Scope *  scope;
 	MirType *base_type;
+	BArray * variants;
+};
+
+struct MirTypeEnumVariant {
+	void *_;
 };
 
 struct MirTypeNull {
