@@ -379,9 +379,6 @@ void print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
 	MirInstrDeclVariant *variant;
 	barray_foreach(variants, variant)
 	{
-		assert(variant->base.kind == MIR_INSTR_DECL_VARIANT);
-		fprintf(stream, "%s = ", variant->variant->id->str);
-
 		print_comptime_value_or_id(variant->init, stream);
 		if (i + 1 < bo_array_size(variants))
 			fprintf(stream, ", ");
@@ -666,13 +663,12 @@ void print_instr_decl_variant(MirInstrDeclVariant *decl, FILE *stream)
 	MirVariant *variant = decl->variant;
 	assert(variant);
 
-	fprintf(stream, "%s : ", variant->id->str);
-	print_type(variant->type, false, stream, true);
+	fprintf(stream, "%s", variant->id->str);
 	if (decl->init) {
-		fprintf(stream, " : ");
+		fprintf(stream, " :: ");
 		print_comptime_value_or_id(decl->init, stream);
 	} else {
-		fprintf(stream, " : <invalid>");
+		fprintf(stream, " :: <invalid>");
 	}
 }
 

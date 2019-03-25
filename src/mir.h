@@ -183,14 +183,6 @@ struct MirMember {
 	int64_t  index;
 };
 
-/* VARIANT */
-struct MirVariant {
-	ID *     id;
-	Ast *    decl_node;
-	MirType *type;
-	Scope *  scope;
-};
-
 /* TYPE */
 enum MirTypeKind {
 	MIR_TYPE_INVALID,
@@ -244,10 +236,6 @@ struct MirTypeEnum {
 	Scope *  scope;
 	MirType *base_type;
 	BArray * variants;
-};
-
-struct MirTypeEnumVariant {
-	void *_;
 };
 
 struct MirTypeNull {
@@ -325,6 +313,14 @@ struct MirConstValue {
 	union MirConstValueData data;
 	MirType *               type;
 	MirValueAddressMode     addr_mode;
+};
+
+/* VARIANT */
+struct MirVariant {
+	ID *          id;
+	Ast *         decl_node;
+	Scope *       scope;
+	MirConstValue value;
 };
 
 /* VAR */
@@ -433,7 +429,6 @@ struct MirInstrDeclVariant {
 	MirInstr base;
 
 	MirVariant *variant;
-	MirInstr *  type;
 	MirInstr *  init;
 };
 
@@ -567,9 +562,10 @@ struct MirInstrTypeStruct {
 struct MirInstrTypeEnum {
 	MirInstr base;
 
-	ID *    id;
-	Scope * scope;
-	BArray *variants;
+	ID *      id;
+	Scope *   scope;
+	BArray *  variants;
+	MirInstr *base_type;
 };
 
 struct MirInstrTypePtr {

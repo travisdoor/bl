@@ -110,7 +110,7 @@ static Ast *parse_decl_member(Context *cnt, bool type_only, int32_t order);
 
 static Ast *parse_decl_arg(Context *cnt, bool type_only);
 
-static Ast *parse_decl_variant(Context *cnt, Ast *base_type, Ast *prev);
+static Ast *parse_decl_variant(Context *cnt, Ast *prev);
 
 static Ast *parse_type(Context *cnt);
 
@@ -531,7 +531,7 @@ Ast *parse_decl_arg(Context *cnt, bool type_only)
 	return arg;
 }
 
-Ast *parse_decl_variant(Context *cnt, Ast *base_type, Ast *prev)
+Ast *parse_decl_variant(Context *cnt, Ast *prev)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = parse_ident(cnt);
@@ -567,7 +567,6 @@ Ast *parse_decl_variant(Context *cnt, Ast *base_type, Ast *prev)
 	}
 
 	assert(var->data.decl_variant.value);
-	var->data.decl.type = base_type;
 	var->data.decl.name = name;
 	return var;
 }
@@ -1129,7 +1128,7 @@ Ast *parse_type_enum(Context *cnt)
 	Ast *prev_tmp = NULL;
 
 next:
-	tmp = parse_decl_variant(cnt, enm->data.type_enm.type, prev_tmp);
+	tmp = parse_decl_variant(cnt, prev_tmp);
 	if (tmp) {
 		prev_tmp = tmp;
 		bo_array_push_back(enm->data.type_enm.variants, tmp);

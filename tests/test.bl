@@ -12,6 +12,8 @@ Bar :: struct {
 };
 
 main :: fn () s32 {
+     foo : Foo;
+     bar : Bar;
      return 0;
 };
 
