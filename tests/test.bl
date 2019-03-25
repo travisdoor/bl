@@ -9,9 +9,9 @@ Foo : type : enum {
 };
 */
 
-Bar :: struct {
+/*Bar :: struct {
     a: s32
-};
+};*/
 
 main :: fn () s32 {
      return 0;

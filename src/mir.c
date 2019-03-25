@@ -7113,6 +7113,7 @@ void mir_delete_module(MirModule *module)
 	LLVMDisposeTargetMachine(module->llvm_tm);
 	LLVMDisposeMessage(module->llvm_triple);
 	LLVMDisposeTargetData(module->llvm_td);
+	LLVMContextDispose(module->llvm_cnt);
 
 	bl_free(module);
 }
