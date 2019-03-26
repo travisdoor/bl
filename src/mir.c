@@ -106,7 +106,6 @@ union _MirInstr {
 	MirInstrBlock       block;
 	MirInstrDeclVar     var;
 	MirInstrDeclMember  member;
-	MirInstrDeclVariant variant;
 	MirInstrConst       cnst;
 	MirInstrLoad        load;
 	MirInstrStore       store;
@@ -404,8 +403,6 @@ static MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, 
 
 static MirInstr *append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
 
-static MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *init);
-
 static MirInstr *create_instr_const_usize(Context *cnt, Ast *node, uint64_t val);
 
 static MirInstr *append_instr_const_int(Context *cnt, Ast *node, uint64_t val);
@@ -467,8 +464,6 @@ static MirInstr *ast_decl_entity(Context *cnt, Ast *entity);
 static MirInstr *ast_decl_arg(Context *cnt, Ast *arg);
 
 static MirInstr *ast_decl_member(Context *cnt, Ast *arg);
-
-static MirInstr *ast_decl_variant(Context *cnt, Ast *variant);
 
 static MirInstr *ast_type_ref(Context *cnt, Ast *type_ref);
 
@@ -587,8 +582,6 @@ static uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enu
 static uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
 static uint64_t analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
-
-static uint64_t analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *decl);
 
 static uint64_t analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
@@ -1649,12 +1642,14 @@ MirMember *create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t 
 	return tmp;
 }
 
-MirVariant *create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type)
+MirVariant *create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type,
+                           MirConstValue *value)
 {
 	MirVariant *tmp = arena_alloc(&cnt->module->arenas.variant_arena);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->scope      = scope;
+	tmp->value      = value;
 	return tmp;
 }
 
@@ -2267,22 +2262,6 @@ MirInstr *append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
 	return &tmp->base;
 }
 
-MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *init)
-{
-	MirInstrDeclVariant *tmp =
-	    create_instr(cnt, MIR_INSTR_DECL_VARIANT, node, MirInstrDeclVariant *);
-	tmp->base.ref_count        = NO_REF_COUNTING;
-	tmp->base.comptime         = true;
-	tmp->base.const_value.type = cnt->builtin_types.entry_void;
-	tmp->init                  = init;
-
-	ID *id       = node ? &node->data.ident.id : NULL;
-	tmp->variant = create_variant(cnt, node, id, NULL, NULL);
-
-	push_into_curr_block(cnt, &tmp->base);
-	return &tmp->base;
-}
-
 static MirInstr *create_instr_const_usize(Context *cnt, Ast *node, uint64_t val)
 {
 	MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
@@ -2768,7 +2747,6 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_DECL_MEMBER:
-	case MIR_INSTR_DECL_VARIANT:
 	case MIR_INSTR_TYPE_FN:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
@@ -3638,19 +3616,6 @@ uint64_t analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 	return ANALYZE_PASSED;
 }
 
-/* CLEANUP: there is no need to insert variant inside block, same checking can be done in enum
- * type analyze pass. */
-uint64_t analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *decl)
-{
-	MirVariant *variant = decl->variant;
-	assert(variant);
-
-	decl->init = insert_instr_load_if_needed(cnt, decl->init);
-	reduce_instr(cnt, decl->init);
-
-	return ANALYZE_PASSED;
-}
-
 uint64_t analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
 	BArray *members = NULL;
@@ -3800,16 +3765,6 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	bo_array_reserve(variants, varc);
 
 	/* Iterate over all enum variants and validate them. */
-	MirInstrDeclVariant **variant_ref;
-	MirVariant *variant;
-	for (size_t i = 0; i < varc; ++i) {
-		variant_ref = &bo_array_at(variant_instrs, i, MirInstrDeclVariant *);
-		variant = (*variant_ref)->variant;
-		reduce_instr(cnt, &(*variant_ref)->base);
-
-		/* TODO: Setup all variants. */
-		bo_array_push_back(variants, variant);
-	}
 
 	type_enum->base.const_value.data.v_type =
 	    create_type_enum(cnt, type_enum->id, scope, base_type, variants);
@@ -4317,9 +4272,6 @@ uint64_t analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_MEMBER:
 		state = analyze_instr_decl_member(cnt, (MirInstrDeclMember *)instr);
-		break;
-	case MIR_INSTR_DECL_VARIANT:
-		state = analyze_instr_decl_variant(cnt, (MirInstrDeclVariant *)instr);
 		break;
 	case MIR_INSTR_CALL:
 		state = analyze_instr_call(cnt, (MirInstrCall *)instr);
@@ -6571,6 +6523,8 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 	return type;
 }
 
+/* CLEANUP: Declaration members can be solved inside structure declaration, there is
+ * no need to have separate instruction generated in block. */
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 {
 	Ast *ast_type = arg->data.decl.type;
@@ -6587,18 +6541,6 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 
 	assert(result);
 	return result;
-}
-
-MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
-{
-	Ast *ast_value = variant->data.decl_variant.value;
-	Ast *ast_name  = variant->data.decl.name;
-
-	assert(ast_value && "Missing initialization value for enum variant");
-	assert(ast_name && ast_name->kind == AST_IDENT);
-
-	MirInstr *value = ast(cnt, ast_value);
-	return append_instr_decl_variant(cnt, ast_name, value);
 }
 
 MirInstr *ast_type_ref(Context *cnt, Ast *type_ref)
@@ -6695,20 +6637,34 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
 
 	MirInstr *base_type = ast(cnt, ast_base_type);
 
-	BArray *variants = create_arr(cnt, sizeof(MirInstr *));
-	bo_array_reserve(variants, varc);
-
-	MirInstr *tmp = NULL;
-	Ast *     ast_variant;
-	barray_foreach(ast_variants, ast_variant)
-	{
-		tmp = ast(cnt, ast_variant);
-		assert(tmp);
-		bo_array_push_back(variants, tmp);
-	}
-
 	Scope *scope = type_enum->data.type_enm.scope;
 	assert(scope);
+
+	BArray *variants = create_arr(cnt, sizeof(MirVariant *));
+	bo_array_reserve(variants, varc);
+
+	{
+		MirInstr *  value = NULL;
+		MirVariant *variant;
+		Ast *       ast_variant;
+		Ast *       ast_variant_ident;
+		Ast *       ast_variant_value;
+		barray_foreach(ast_variants, ast_variant)
+		{
+			assert(ast_variant->kind == AST_DECL_VARIANT);
+			ast_variant_ident = ast_variant->data.decl.name;
+			ast_variant_value = ast_variant->data.decl_variant.value;
+			assert(ast_variant_ident);
+
+			value = ast(cnt, ast_variant_value);
+
+			variant = create_variant(cnt, ast_variant_ident,
+			                         &ast_variant_ident->data.ident.id, scope, NULL,
+			                         &value->const_value);
+
+			bo_array_push_back(variants, variant);
+		}
+	}
 
 	/* Consume declaration identificator. */
 	ID *id                     = cnt->ast.current_entity_id;
@@ -6825,8 +6781,6 @@ MirInstr *ast(Context *cnt, Ast *node)
 		return ast_decl_arg(cnt, node);
 	case AST_DECL_MEMBER:
 		return ast_decl_member(cnt, node);
-	case AST_DECL_VARIANT:
-		return ast_decl_variant(cnt, node);
 	case AST_TYPE_REF:
 		return ast_type_ref(cnt, node);
 	case AST_TYPE_STRUCT:
@@ -6970,8 +6924,6 @@ const char *mir_instr_name(MirInstr *instr)
 		return "InstrPhi";
 	case MIR_INSTR_TYPE_ENUM:
 		return "InstrTypeEnum";
-	case MIR_INSTR_DECL_VARIANT:
-		return "InstrDeclVariant";
 	}
 
 	return "UNKNOWN";
