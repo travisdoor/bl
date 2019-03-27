@@ -6658,6 +6658,8 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
 
 			value = ast(cnt, ast_variant_value);
 
+			/* Maybe it's better to have separate instruction for variants and create
+			 * MirVariant for enum type during analyze step... */
 			variant = create_variant(cnt, ast_variant_ident,
 			                         &ast_variant_ident->data.ident.id, scope, NULL,
 			                         &value->const_value);
