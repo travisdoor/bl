@@ -57,6 +57,7 @@ typedef struct MirInstrUnreachable MirInstrUnreachable;
 typedef struct MirInstrBlock       MirInstrBlock;
 typedef struct MirInstrDeclVar     MirInstrDeclVar;
 typedef struct MirInstrDeclMember  MirInstrDeclMember;
+typedef struct MirInstrDeclVariant MirInstrDeclVariant;
 typedef struct MirInstrConst       MirInstrConst;
 typedef struct MirInstrLoad        MirInstrLoad;
 typedef struct MirInstrStore       MirInstrStore;
@@ -346,6 +347,7 @@ enum MirInstrKind {
 	MIR_INSTR_BLOCK,
 	MIR_INSTR_DECL_VAR,
 	MIR_INSTR_DECL_MEMBER,
+	MIR_INSTR_DECL_VARIANT,
 	MIR_INSTR_CONST,
 	MIR_INSTR_LOAD,
 	MIR_INSTR_STORE,
@@ -421,6 +423,13 @@ struct MirInstrDeclMember {
 
 	MirMember *member;
 	MirInstr * type;
+};
+
+struct MirInstrDeclVariant {
+	MirInstr base;
+
+	MirVariant *variant;
+	MirInstr *  value;
 };
 
 struct MirInstrElemPtr {

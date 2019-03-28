@@ -285,6 +285,8 @@ static void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream);
 
 static void print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream);
 
+static void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream);
+
 static void print_instr_const(MirInstrConst *ci, FILE *stream);
 
 static void print_instr_ret(MirInstrRet *ret, FILE *stream);
@@ -633,6 +635,11 @@ void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 	}
 }
 
+void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
+{
+	print_instr_head(&var->base, stream, "declvariant");
+}
+
 void print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
 {
 	print_instr_head(&decl->base, stream, "declmember");
@@ -787,6 +794,9 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_DECL_VAR:
 		print_instr_decl_var((MirInstrDeclVar *)instr, stream);
+		break;
+	case MIR_INSTR_DECL_VARIANT:
+		print_instr_decl_variant((MirInstrDeclVariant *)instr, stream);
 		break;
 	case MIR_INSTR_DECL_MEMBER:
 		print_instr_decl_member((MirInstrDeclMember *)instr, stream);

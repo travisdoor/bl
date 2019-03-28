@@ -106,6 +106,7 @@ union _MirInstr {
 	MirInstrBlock       block;
 	MirInstrDeclVar     var;
 	MirInstrDeclMember  member;
+	MirInstrDeclVariant variant;
 	MirInstrConst       cnst;
 	MirInstrLoad        load;
 	MirInstrStore       store;
@@ -6926,6 +6927,8 @@ const char *mir_instr_name(MirInstr *instr)
 		return "InstrPhi";
 	case MIR_INSTR_TYPE_ENUM:
 		return "InstrTypeEnum";
+	case MIR_INSTR_DECL_VARIANT:
+		return "InstrDeclVariant";
 	}
 
 	return "UNKNOWN";
