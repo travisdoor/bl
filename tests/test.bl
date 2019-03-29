@@ -2,10 +2,10 @@
 
 //#load "std/core.bl"
 
-Foo :: enum {
+Foo :: enum s32 {
     A :: 10 + 1,
     B :: 20,
-    C :: true
+    C :: 40
 };
 
 Bar :: struct {

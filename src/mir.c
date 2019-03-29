@@ -3810,6 +3810,14 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	if (type_enum->base_type) {
 		reduce_instr(cnt, type_enum->base_type);
 		base_type = type_enum->base_type->const_value.data.v_type;
+
+		/* Enum type must be integer! */
+		if (base_type->kind != MIR_TYPE_INT) {
+			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE,
+			            type_enum->base_type->node->src, BUILDER_CUR_WORD,
+			            "Base type of enumerator must be an integer type.");
+			return ANALYZE_FAILED;
+		}
 	} else {
 		base_type = cnt->builtin_types.entry_s32;
 	}
@@ -3826,7 +3834,8 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	barray_foreach(variant_instrs, variant_instr)
 	{
 		variant = analyze_variant(cnt, variant_instr, base_type);
-		assert(variant && "Invalid enum variant, this should be error.");
+		if (!variant)
+			return ANALYZE_FAILED;
 
 		reduce_instr(cnt, &variant_instr->base);
 
