@@ -404,6 +404,8 @@ static MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, 
 
 static MirInstr *append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
 
+static MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value);
+
 static MirInstr *create_instr_const_usize(Context *cnt, Ast *node, uint64_t val);
 
 static MirInstr *append_instr_const_int(Context *cnt, Ast *node, uint64_t val);
@@ -465,6 +467,8 @@ static MirInstr *ast_decl_entity(Context *cnt, Ast *entity);
 static MirInstr *ast_decl_arg(Context *cnt, Ast *arg);
 
 static MirInstr *ast_decl_member(Context *cnt, Ast *arg);
+
+static MirInstr *ast_decl_variant(Context *cnt, Ast *variant);
 
 static MirInstr *ast_type_ref(Context *cnt, Ast *type_ref);
 
@@ -583,6 +587,8 @@ static uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enu
 static uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 
 static uint64_t analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
+
+static uint64_t analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant);
 
 static uint64_t analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
@@ -2263,6 +2269,23 @@ MirInstr *append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
 	return &tmp->base;
 }
 
+static MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
+{
+	MirInstrDeclVariant *tmp =
+	    create_instr(cnt, MIR_INSTR_DECL_VARIANT, node, MirInstrDeclVariant *);
+
+	tmp->base.ref_count        = NO_REF_COUNTING;
+	tmp->base.comptime         = true;
+	tmp->base.const_value.type = cnt->builtin_types.entry_void;
+	tmp->value                 = value;
+
+	ID *id       = node ? &node->data.ident.id : NULL;
+	tmp->variant = create_variant(cnt, node, id, NULL, NULL, NULL);
+
+	push_into_curr_block(cnt, &tmp->base);
+	return &tmp->base;
+}
+
 static MirInstr *create_instr_const_usize(Context *cnt, Ast *node, uint64_t val)
 {
 	MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
@@ -2748,6 +2771,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_DECL_MEMBER:
+	case MIR_INSTR_DECL_VARIANT:
 	case MIR_INSTR_TYPE_FN:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
@@ -3601,19 +3625,28 @@ uint64_t analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 	return ANALYZE_PASSED;
 }
 
-/* CLEANUP: there is no need to insert members inside block, same checking can be done in struct
- * type analyze pass. */
 uint64_t analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
-	MirMember *member = decl->member;
-	assert(member);
-
 	decl->type = insert_instr_load_if_needed(cnt, decl->type);
 	reduce_instr(cnt, decl->type);
 
 	/* NOTE: Members will be provided by instr type struct because we need to
 	 * know right ordering of members inside structure layout. (index and llvm
 	 * element offet need to be calculated)*/
+	return ANALYZE_PASSED;
+}
+
+uint64_t analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant)
+{
+	if (variant->value) {
+		assert(variant->value->comptime &&
+		       "Enum variant value must be compile time known, this should be an error.");
+		variant->value = insert_instr_load_if_needed(cnt, variant->value);
+		reduce_instr(cnt, variant->value);
+
+		variant->variant->value = &variant->value->const_value;
+	}
+
 	return ANALYZE_PASSED;
 }
 
@@ -3766,6 +3799,19 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	bo_array_reserve(variants, varc);
 
 	/* Iterate over all enum variants and validate them. */
+	MirInstrDeclVariant *variant_instr;
+	MirVariant *         variant;
+
+	barray_foreach(variant_instrs, variant_instr)
+	{
+		assert(variant_instr->base.kind == MIR_INSTR_DECL_VARIANT);
+		reduce_instr(cnt, &variant_instr->base);
+
+		variant = variant_instr->variant;
+		assert(variant);
+
+		bo_array_push_back(variants, variant);
+	}
 
 	type_enum->base.const_value.data.v_type =
 	    create_type_enum(cnt, type_enum->id, scope, base_type, variants);
@@ -4273,6 +4319,9 @@ uint64_t analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_MEMBER:
 		state = analyze_instr_decl_member(cnt, (MirInstrDeclMember *)instr);
+		break;
+	case MIR_INSTR_DECL_VARIANT:
+		state = analyze_instr_decl_variant(cnt, (MirInstrDeclVariant *)instr);
 		break;
 	case MIR_INSTR_CALL:
 		state = analyze_instr_call(cnt, (MirInstrCall *)instr);
@@ -6524,8 +6573,6 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 	return type;
 }
 
-/* CLEANUP: Declaration members can be solved inside structure declaration, there is
- * no need to have separate instruction generated in block. */
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 {
 	Ast *ast_type = arg->data.decl.type;
@@ -6542,6 +6589,17 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 
 	assert(result);
 	return result;
+}
+
+MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
+{
+	Ast *ast_name  = variant->data.decl.name;
+	Ast *ast_value = variant->data.decl_variant.value;
+	assert(ast_name && "Missing enum variant name!");
+
+	MirInstr *value = ast(cnt, ast_value);
+
+	return append_instr_decl_variant(cnt, ast_name, value);
 }
 
 MirInstr *ast_type_ref(Context *cnt, Ast *type_ref)
@@ -6641,32 +6699,17 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
 	Scope *scope = type_enum->data.type_enm.scope;
 	assert(scope);
 
-	BArray *variants = create_arr(cnt, sizeof(MirVariant *));
+	BArray *variants = create_arr(cnt, sizeof(MirInstr *));
 	bo_array_reserve(variants, varc);
 
+	/* Build variant instructions */
+	MirInstr *variant;
+	Ast *     ast_variant;
+	barray_foreach(ast_variants, ast_variant)
 	{
-		MirInstr *  value = NULL;
-		MirVariant *variant;
-		Ast *       ast_variant;
-		Ast *       ast_variant_ident;
-		Ast *       ast_variant_value;
-		barray_foreach(ast_variants, ast_variant)
-		{
-			assert(ast_variant->kind == AST_DECL_VARIANT);
-			ast_variant_ident = ast_variant->data.decl.name;
-			ast_variant_value = ast_variant->data.decl_variant.value;
-			assert(ast_variant_ident);
-
-			value = ast(cnt, ast_variant_value);
-
-			/* Maybe it's better to have separate instruction for variants and create
-			 * MirVariant for enum type during analyze step... */
-			variant = create_variant(cnt, ast_variant_ident,
-			                         &ast_variant_ident->data.ident.id, scope, NULL,
-			                         &value->const_value);
-
-			bo_array_push_back(variants, variant);
-		}
+		variant = ast(cnt, ast_variant);
+		assert(variant);
+		bo_array_push_back(variants, variant);
 	}
 
 	/* Consume declaration identificator. */
@@ -6680,7 +6723,10 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
 {
 	BArray *   ast_members = type_struct->data.type_strct.members;
 	const bool is_raw      = type_struct->data.type_strct.raw;
-	assert(!is_raw && "TODO");
+	if (is_raw) {
+		bl_abort_issue(31);
+	}
+
 	assert(ast_members);
 
 	const size_t memc = bo_array_size(ast_members);
@@ -6784,6 +6830,8 @@ MirInstr *ast(Context *cnt, Ast *node)
 		return ast_decl_arg(cnt, node);
 	case AST_DECL_MEMBER:
 		return ast_decl_member(cnt, node);
+	case AST_DECL_VARIANT:
+		return ast_decl_variant(cnt, node);
 	case AST_TYPE_REF:
 		return ast_type_ref(cnt, node);
 	case AST_TYPE_STRUCT:
@@ -7030,6 +7078,17 @@ static void _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name
 			barray_foreach(variants, variant)
 			{
 				append_buf(buf, len, variant->id->str);
+				append_buf(buf, len, " :: ");
+
+				if (variant->value) {
+					char value_str[35];
+					snprintf(value_str, ARRAY_SIZE(value_str), "%lld",
+					         (long long)variant->value->data.v_s64);
+					append_buf(buf, len, value_str);
+				} else {
+					append_buf(buf, len, "<invalid>");
+				}
+
 				if (i < bo_array_size(variants) - 1)
 					append_buf(buf, len, ", ");
 			}

@@ -373,7 +373,17 @@ void print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 void print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
 {
 	print_instr_head(&type_enum->base, stream, "const enum");
-	fprintf(stream, "{ TODO");
+	fprintf(stream, "{");
+
+	BArray *  variants = type_enum->variants;
+	MirInstr *variant;
+	barray_foreach(variants, variant)
+	{
+		fprintf(stream, "%%%llu", (unsigned long long)variant->id);
+		if (i + 1 < bo_array_size(variants))
+			fprintf(stream, ", ");
+	}
+
 	fprintf(stream, "}");
 }
 
@@ -638,6 +648,17 @@ void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
 {
 	print_instr_head(&var->base, stream, "declvariant");
+	assert(var->variant);
+
+	MirVariant *variant = var->variant;
+	assert(variant);
+
+	fprintf(stream, "%s", variant->id->str);
+
+	if (var->value) {
+		fprintf(stream, " :: ");
+		print_comptime_value_or_id(var->value, stream);
+	}
 }
 
 void print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)

@@ -232,10 +232,11 @@ struct MirTypeStruct {
 	bool              is_packed;
 };
 
+/* Enum variants must be baked into enum type. */
 struct MirTypeEnum {
 	Scope *  scope;
 	MirType *base_type;
-	BArray * variants;
+	BArray * variants; /* MirVariant * */
 };
 
 struct MirTypeNull {
@@ -429,7 +430,7 @@ struct MirInstrDeclVariant {
 	MirInstr base;
 
 	MirVariant *variant;
-	MirInstr *  value;
+	MirInstr *  value; /* Optional. */
 };
 
 struct MirInstrElemPtr {
