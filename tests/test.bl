@@ -4,7 +4,8 @@
 
 Foo :: enum {
     A :: 10 + 1,
-    B :: 20
+    B :: 20,
+    C :: true
 };
 
 Bar :: struct {

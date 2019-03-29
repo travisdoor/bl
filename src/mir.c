@@ -3638,15 +3638,7 @@ uint64_t analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 
 uint64_t analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant)
 {
-	if (variant->value) {
-		assert(variant->value->comptime &&
-		       "Enum variant value must be compile time known, this should be an error.");
-		variant->value = insert_instr_load_if_needed(cnt, variant->value);
-		reduce_instr(cnt, variant->value);
-
-		variant->variant->value = &variant->value->const_value;
-	}
-
+	/* Nothing to do... */
 	return ANALYZE_PASSED;
 }
 
@@ -3776,6 +3768,35 @@ uint64_t analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	return ANALYZE_PASSED;
 }
 
+static inline MirVariant *analyze_variant(Context *cnt, MirInstrDeclVariant *variant_instr,
+                                          MirType *base_type)
+{
+	assert(variant_instr->base.kind == MIR_INSTR_DECL_VARIANT);
+	assert(variant_instr->variant);
+
+	if (variant_instr->value) {
+		/* User defined initialization value. */
+		assert(variant_instr->value->comptime &&
+		       "Enum variant value must be compile time known, this should be an error.");
+		variant_instr->value = insert_instr_load_if_needed(cnt, variant_instr->value);
+		reduce_instr(cnt, variant_instr->value);
+
+		bool valid = true;
+		try_impl_cast(cnt, variant_instr->value, base_type, &valid);
+		if (!valid)
+			return NULL;
+
+		/* Setup value. */
+		variant_instr->variant->value = &variant_instr->value->const_value;
+		return variant_instr->variant;
+	} else {
+		/* Automatic initialization value. */
+		bl_unimplemented;
+	}
+
+	return NULL;
+}
+
 uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 {
 	BArray *variant_instrs = type_enum->variants;
@@ -3804,11 +3825,10 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 
 	barray_foreach(variant_instrs, variant_instr)
 	{
-		assert(variant_instr->base.kind == MIR_INSTR_DECL_VARIANT);
-		reduce_instr(cnt, &variant_instr->base);
+		variant = analyze_variant(cnt, variant_instr, base_type);
+		assert(variant && "Invalid enum variant, this should be error.");
 
-		variant = variant_instr->variant;
-		assert(variant);
+		reduce_instr(cnt, &variant_instr->base);
 
 		bo_array_push_back(variants, variant);
 	}
