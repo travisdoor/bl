@@ -1,7 +1,7 @@
 /* playground */
 
-#load "std/core.bl"
-#load "std/debug.bl"
+//#load "std/core.bl"
+//#load "std/debug.bl"
 
 Foo :: enum u8 {
     A :: 10,
@@ -10,7 +10,8 @@ Foo :: enum u8 {
 };
 
 main :: fn () s32 {
-    i : enum { A, B };
     return 0;
 };
 
+test :: fn (foo: Foo) {
+};
