@@ -149,6 +149,12 @@
    #+BEGIN_EXAMPLE
    void declmember <name> : <T> // yields void 
    #+END_EXAMPLE
+** declvariant
+   Declare enum variant.
+
+   #+BEGIN_EXAMPLE
+   void declvariant <name> : <T> : <value> // yields void 
+   #+END_EXAMPLE
 ** declref
    Reference to some declaration. This instruction is 'noop'. Symbol lookup is done here during analyze pass, when symbol is not found error is generated.
    
@@ -439,8 +445,14 @@
    | PUSH     | vargs slice | VArgs array slice |
    
 ** phi
-   Yields value based on previous executed block.
+   Yields value based on previous executed block. This instruction yields value associated to block which executed before owner block of this instruction.
 
    #+BEGIN_EXAMPLE
-   <T> phi [<value>, <block name>], ... // yields value of type T 
+   <T> phi [<value>, <block name>] ... // yields value of type T 
    #+END_EXAMPLE
+
+   Stack operations:
+   | stack op | data  | description         |
+   |----------+-------+---------------------|
+   | POP      | value | Pop selected value  |
+   | PUSH     | value | Push selected value |

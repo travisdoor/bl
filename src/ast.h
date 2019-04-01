@@ -232,6 +232,7 @@ struct AstTypeStruct {
 };
 
 struct AstTypeEnum {
+	Scope * scope;
 	Ast *   type;
 	BArray *variants;
 };

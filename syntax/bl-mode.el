@@ -5,6 +5,8 @@
 ;; Keywords: BL major-mode
 
 ;;; Code:
+(require 'js)
+
 (defvar bl-mode-hook nil)
 (defvar bl-mode-map
   (let ((bl-mode-map (make-keymap)))
@@ -93,9 +95,10 @@
 
 (defun bl-mode ()
   (interactive)
-  (setq tab-width 4)
-  (kill-all-local-variables)
+  (setq-local indent-line-function 'js-indent-line)
+  (setq-local indent-tabs-mode nil)
   (use-local-map bl-mode-map)
+
   (set-syntax-table bl-mode-syntax-table)
   ;; Set up font-lock
   (set (make-local-variable 'font-lock-defaults) '(bl-font-lock-keywords))

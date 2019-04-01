@@ -128,6 +128,9 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 	case MIR_TYPE_TYPE:
 		print_type(data->v_type, false, stream, false);
 		break;
+	case MIR_TYPE_ENUM:
+		fprintf(stream, "%lld", (long long)data->v_s64);
+		break;
 	case MIR_TYPE_PTR: {
 		MirType *deref_type = mir_deref_type(type);
 		/* pointers to u8 is printed like strings */
@@ -269,6 +272,8 @@ static void print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream);
 
 static void print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream);
 
+static void print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream);
+
 static void print_instr_type_ptr(MirInstrTypePtr *type_ptr, FILE *stream);
 
 static void print_instr_type_array(MirInstrTypeArray *type_array, FILE *stream);
@@ -282,6 +287,8 @@ static void print_instr_block(MirInstrBlock *block, FILE *stream);
 static void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream);
 
 static void print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream);
+
+static void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream);
 
 static void print_instr_const(MirInstrConst *ci, FILE *stream);
 
@@ -360,6 +367,23 @@ void print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 	{
 		print_comptime_value_or_id(member, stream);
 		if (i + 1 < bo_array_size(members))
+			fprintf(stream, ", ");
+	}
+
+	fprintf(stream, "}");
+}
+
+void print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
+{
+	print_instr_head(&type_enum->base, stream, "const enum");
+	fprintf(stream, "{");
+
+	BArray *  variants = type_enum->variants;
+	MirInstr *variant;
+	barray_foreach(variants, variant)
+	{
+		fprintf(stream, "%%%llu", (unsigned long long)variant->id);
+		if (i + 1 < bo_array_size(variants))
 			fprintf(stream, ", ");
 	}
 
@@ -624,6 +648,22 @@ void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 	}
 }
 
+void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
+{
+	print_instr_head(&var->base, stream, "declvariant");
+	assert(var->variant);
+
+	MirVariant *variant = var->variant;
+	assert(variant);
+
+	fprintf(stream, "%s", variant->id->str);
+
+	if (var->value) {
+		fprintf(stream, " :: ");
+		print_comptime_value_or_id(var->value, stream);
+	}
+}
+
 void print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
 {
 	print_instr_head(&decl->base, stream, "declmember");
@@ -779,6 +819,9 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 	case MIR_INSTR_DECL_VAR:
 		print_instr_decl_var((MirInstrDeclVar *)instr, stream);
 		break;
+	case MIR_INSTR_DECL_VARIANT:
+		print_instr_decl_variant((MirInstrDeclVariant *)instr, stream);
+		break;
 	case MIR_INSTR_DECL_MEMBER:
 		print_instr_decl_member((MirInstrDeclMember *)instr, stream);
 		break;
@@ -820,6 +863,9 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_TYPE_VARGS:
 		print_instr_type_vargs((MirInstrTypeVArgs *)instr, stream);
+		break;
+	case MIR_INSTR_TYPE_ENUM:
+		print_instr_type_enum((MirInstrTypeEnum *)instr, stream);
 		break;
 	case MIR_INSTR_COND_BR:
 		print_instr_cond_br((MirInstrCondBr *)instr, stream);

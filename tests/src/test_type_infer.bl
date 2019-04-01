@@ -1,0 +1,8 @@
+#load "std/debug.bl"
+
+#test "type infer" {
+  number := 0;
+  boolean := true;
+  float := 0.1f;
+  double := 0.1;
+};

@@ -1,0 +1,21 @@
+#load "std/debug.bl"
+
+#test "simple assignement" {
+  {
+    number := 0;
+    assert(number == 0);
+    number = 666;
+    assert(number == 666);
+    number = (1 + 2 * 3 - 1) / 2;
+    assert(number == 3);
+  }
+
+  {
+    real_number := 0.f;
+    real_number = 10.1f;
+    assert(real_number - 10.1f < 0.0001f);
+
+    real_number = (0.1f + 10.f - 10.f) * 0.1f;
+    assert(real_number - 0.01f < 0.0001f);
+  }
+};

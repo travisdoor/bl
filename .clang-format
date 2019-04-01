@@ -11,3 +11,4 @@ AlignTrailingComments: true
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
 AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: false

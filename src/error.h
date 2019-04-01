@@ -102,6 +102,7 @@ typedef enum {
 	ERR_EMPTY_STRUCT            = 66,
 	ERR_UNINITIALIZED           = 67,
 	ERR_INVALID_ADDRES_MODE     = 68,
+	ERR_EMPTY_ENUM              = 69,
 } Error;
 
 #endif // BL_ERROR_H

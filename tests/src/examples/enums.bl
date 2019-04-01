@@ -1,0 +1,51 @@
+#load "std/debug.bl"
+
+// Enum declaration (base type is by default s32)
+Color :: enum {
+    Red,    // default value 0
+    Green,  // default value 1
+    Blue    // default value 2
+};
+
+#test "simple enumerator" {
+    assert(cast(s32) Color.Red == 0);
+    assert(cast(s32) Color.Green == 1);
+    assert(cast(s32) Color.Blue == 2);
+
+    // Declare variable of type Color with value Red
+    color := Color.Red;
+    assert(cast(s32) color == 0);
+};
+
+// Enum declaration (base type is u8)
+Day :: enum u8 {
+    Sat :: 1, // first value explicitly set to 1
+    Sun,      // implicitly set to previous value + 1 -> 2
+    Mon,      // 3 
+    Tue,      // ...
+    Wed,
+    Thu,
+    Fri
+};
+
+#test "enumerator" {
+    /* Color */ 
+    assert(cast(s32) Color.Red == 0);
+    assert(cast(s32) Color.Green == 1);
+    assert(cast(s32) Color.Blue == 2);
+
+    // Base type is s32
+    assert(sizeof(Color) == 4);
+
+    // Declare variable of type Color with value Red
+    color := Color.Red;
+    assert(cast(s32) color == 0);
+
+    /* Day */ 
+    assert(cast(s32) Day.Sat == 1);
+    assert(cast(s32) Day.Sun == 2);
+    assert(cast(s32) Day.Mon == 3);
+
+    // Base type is u8
+    assert(sizeof(Day) == 1);
+};
