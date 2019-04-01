@@ -5925,6 +5925,7 @@ void exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 * to the stack */
 	MirType *type = binop->lhs->const_value.type;
 	assert(type);
+	
 	MirStackPtr lhs_ptr = exec_fetch_value(cnt, binop->lhs);
 	MirStackPtr rhs_ptr = exec_fetch_value(cnt, binop->rhs);
 	assert(rhs_ptr && lhs_ptr);
@@ -5936,12 +5937,14 @@ void exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 	exec_read_value(&lhs, lhs_ptr, type);
 	exec_read_value(&rhs, rhs_ptr, type);
 
+	const size_t s = type->store_size_bytes;
+
 	switch (type->kind) {
+	case MIR_TYPE_ENUM: 
 	case MIR_TYPE_PTR:
 	case MIR_TYPE_NULL:
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_INT: {
-		const size_t s = type->store_size_bytes;
 		if (type->data.integer.is_signed) {
 			switch (s) {
 				binop_case_int(binop->op, lhs, rhs, result, v_s8);
@@ -5965,7 +5968,6 @@ void exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 	}
 
 	case MIR_TYPE_REAL: {
-		const size_t s = type->store_size_bytes;
 		switch (s) {
 			binop_case_real(binop->op, lhs, rhs, result, v_f32);
 			binop_case_real(binop->op, lhs, rhs, result, v_f64);

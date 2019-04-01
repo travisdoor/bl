@@ -2,7 +2,7 @@
 
 #load "std/core.bl"
 
-Foo :: enum {
+Foo :: enum u8 {
     A :: 10 + 1,
     B :: 20,
     C :: 40,
@@ -17,7 +17,7 @@ main :: fn () s32 {
         A, B
     };
     
-    a : Foo = Foo.B;
+    a : Foo = Foo.A;
 
     if a == Foo.A {
         print("A\n");
