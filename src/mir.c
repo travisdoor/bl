@@ -1146,6 +1146,10 @@ static inline ScopeEntry *provide_member(Context *cnt, MirMember *member)
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
 		            member->decl_node->src, BUILDER_CUR_WORD,
 		            "Duplicate symbol inside structure declaration.");
+		if (collision->node) {
+			builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src,
+			            BUILDER_CUR_WORD, "Previous declaration found here.");
+		}
 		return NULL;
 	}
 
@@ -1153,6 +1157,30 @@ static inline ScopeEntry *provide_member(Context *cnt, MirMember *member)
                                                member->id, member->decl_node, false);
 	entry->data.member = member;
 	scope_insert(member->scope, entry);
+
+	return entry;
+}
+
+static inline ScopeEntry *provide_variant(Context *cnt, MirVariant *variant)
+{
+	assert(variant && variant->id && variant->scope);
+
+	ScopeEntry *collision = scope_lookup(variant->scope, variant->id, false);
+	if (collision) {
+		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
+		            variant->decl_node->src, BUILDER_CUR_WORD,
+		            "Duplicate symbol inside enum declaration.");
+		if (collision->node) {
+			builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src,
+			            BUILDER_CUR_WORD, "Previous declaration found here.");
+		}
+		return NULL;
+	}
+
+	ScopeEntry *entry   = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_VARIANT,
+                                               variant->id, variant->decl_node, false);
+	entry->data.variant = variant;
+	scope_insert(variant->scope, entry);
 
 	return entry;
 }
@@ -3146,6 +3174,9 @@ uint64_t analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS,
 			            ast_member_ident->src, BUILDER_CUR_WORD, "Unknown member.");
 		}
+	} else if (target_type->kind == MIR_TYPE_ENUM) {
+		bl_log("enum!!!");
+		bl_unimplemented;
 	} else {
 		if (target_type->kind == MIR_TYPE_PTR) {
 			/* we try to access structure member via pointer so we need one more
@@ -3838,6 +3869,11 @@ uint64_t analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 			return ANALYZE_FAILED;
 
 		reduce_instr(cnt, &variant_instr->base);
+
+		variant->scope = scope;
+
+		/* Provide enum variant into the enum scope. */
+		provide_variant(cnt, variant);
 
 		bo_array_push_back(variants, variant);
 	}
