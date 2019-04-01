@@ -1,7 +1,7 @@
 #load "std/debug.bl"
 
 // Enum declaration (base type is by default s32)
-Color :: enum {
+Color : type : enum {
     Red,    // default value 0
     Green,  // default value 1
     Blue    // default value 2
