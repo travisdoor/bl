@@ -1,0 +1,56 @@
+#load "std/debug.bl"
+
+#test "simple static array" {
+  arr : [10]s32;
+
+  arr[0] = 10;
+  arr[1] = 20;
+  arr[2] = 30;
+
+  assert(arr.ptr == &arr[0]);
+  assert(arr.len == 10);
+
+  assert(arr[0] == 10);
+  assert(arr[1] == 20);
+  assert(arr[2] == 30);
+};
+
+#test "array initialization" {
+  {
+    arr := {:[2]s32: 0 };
+    assert(arr[0] == 0);
+    assert(arr[1] == 0);
+  }
+
+  {
+    arr : [2]s32 = {:[2]s32: 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  {
+    arr := {:[2]s32: 10, 20 };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+
+  {
+    i := 10;
+    j := 20;
+
+    arr := {:[2]s32: i, j };
+    assert(arr[0] == 10);
+    assert(arr[1] == 20);
+  }
+};
+
+#test "simple static array loops" {
+  arr : [10]s32;
+  loop i := 0; i < arr.len; i += 1 {
+    arr[i] = i;
+    assert(arr[i] == i);
+  }
+
+  assert(arr[0] == 0);
+  assert(arr[9] == 9);
+};

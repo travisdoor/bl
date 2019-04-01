@@ -1,0 +1,34 @@
+#load "std/debug.bl"
+
+SimpleEnum :: enum {
+    A, B, C
+};
+
+CustomEnumType :: enum u8 {
+    A, B, C
+};
+
+CustomEnumValues :: enum {
+    A :: 10,
+    B :: 20,
+    C
+};
+
+#test "simple enum" {
+    assert(cast(s32) SimpleEnum.A == 0);
+    assert(cast(s32) SimpleEnum.B == 1);
+    assert(cast(s32) SimpleEnum.C == 2);
+};
+
+#test "custom enum type" {
+    assert(cast(s32) CustomEnumType.A == 0);
+    assert(cast(s32) CustomEnumType.B == 1);
+    assert(cast(s32) CustomEnumType.C == 2);
+};
+
+#test "custom enum values" {
+    assert(cast(s32) CustomEnumValues.A == 10);
+    assert(cast(s32) CustomEnumValues.B == 20);
+    assert(cast(s32) CustomEnumValues.C == 21);
+};
+

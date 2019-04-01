@@ -1307,7 +1307,7 @@ static inline bool create_type(Context *cnt, MirType **out_type, const char *sh)
 		tmp->id.hash          = hash;
 		tmp->type_table_index = index++;
 
-		// bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
+		/* bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash); */
 		bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
 		*out_type = tmp;
 
@@ -1571,15 +1571,39 @@ MirType *create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 	return create_type_struct(cnt, id, NULL, members, false, MIR_TS_SLICE);
 }
 
-static inline const char *sh_type_enum(Context *cnt, MirType *base_type)
+static inline const char *sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
 {
 	assert(base_type->id.str);
 	BString *tmp = cnt->tmp_sh;
 	bo_string_clear(tmp);
 
-	bo_string_append(tmp, "e(");
+	if (id) {
+		bo_string_append(tmp, id->str);
+	} else {
+		bl_abort_issue(33);
+	}
+
+	bo_string_append(tmp, "(");
 	bo_string_append(tmp, base_type->id.str);
 	bo_string_append(tmp, ")");
+
+	bo_string_append(tmp, "{");
+	if (variants) {
+		MirVariant *variant;
+		barray_foreach(variants, variant)
+		{
+			assert(variant->value);
+
+			char value_str[35];
+			snprintf(value_str, ARRAY_SIZE(value_str), "%lld",
+			         (long long)variant->value->data.v_s64);
+			bo_string_append(tmp, value_str);
+
+			if (i != bo_array_size(variants) - 1)
+				bo_string_append(tmp, ",");
+		}
+	}
+	bo_string_append(tmp, "}");
 	return bo_string_get(tmp);
 }
 
@@ -1587,7 +1611,7 @@ MirType *create_type_enum(Context *cnt, ID *id, Scope *scope, MirType *base_type
 {
 	assert(base_type);
 	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_enum(cnt, base_type))) {
+	if (create_type(cnt, &tmp, sh_type_enum(cnt, id, base_type, variants))) {
 		tmp->kind               = MIR_TYPE_ENUM;
 		tmp->data.enm.scope     = scope;
 		tmp->data.enm.base_type = base_type;
@@ -1744,6 +1768,7 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
 	const size_t tsize = to->size_bits;
 
 	switch (from->kind) {
+	case MIR_TYPE_ENUM:
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {
@@ -5925,7 +5950,7 @@ void exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 * to the stack */
 	MirType *type = binop->lhs->const_value.type;
 	assert(type);
-	
+
 	MirStackPtr lhs_ptr = exec_fetch_value(cnt, binop->lhs);
 	MirStackPtr rhs_ptr = exec_fetch_value(cnt, binop->rhs);
 	assert(rhs_ptr && lhs_ptr);
@@ -5940,7 +5965,7 @@ void exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 	const size_t s = type->store_size_bytes;
 
 	switch (type->kind) {
-	case MIR_TYPE_ENUM: 
+	case MIR_TYPE_ENUM:
 	case MIR_TYPE_PTR:
 	case MIR_TYPE_NULL:
 	case MIR_TYPE_BOOL:
