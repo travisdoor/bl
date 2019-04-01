@@ -128,6 +128,9 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 	case MIR_TYPE_TYPE:
 		print_type(data->v_type, false, stream, false);
 		break;
+	case MIR_TYPE_ENUM:
+		fprintf(stream, "%lld", (long long)data->v_s64);
+		break;
 	case MIR_TYPE_PTR: {
 		MirType *deref_type = mir_deref_type(type);
 		/* pointers to u8 is printed like strings */

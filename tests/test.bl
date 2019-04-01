@@ -1,8 +1,8 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
-Foo :: enum u32 {
+Foo :: enum {
     A :: 10 + 1,
     B :: 20,
     C :: 40,
@@ -11,20 +11,20 @@ Foo :: enum u32 {
     F
 };
 
-Homo :: enum {
-  Test,
-};
-
-Bar :: struct {
-    i: s32 
-};
-
 main :: fn () s32 {
-     foo : Foo;
-     bar : Bar;
+    // TODO: Cannot be found!
+    Test :: enum {
+        A, B
+    };
+    
+    a : Foo = Foo.B;
 
-     a := foo.A;
+    if a == Foo.A {
+        print("A\n");
+    } else {
+        print("!A\n");
+    }
 
-     return 0;
+    return 0;
 };
 

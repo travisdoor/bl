@@ -2696,6 +2696,16 @@ bool type_cmp(MirType *first, MirType *second)
 		return type_cmp(mir_deref_type(first), mir_deref_type(second));
 	}
 
+	case MIR_TYPE_ENUM: {
+		/* HACK: here we compare named types if there is some name, later we
+		 * prefer to create some kind of type hashing. */
+		if (first->user_id && second->user_id &&
+		    first->user_id->hash == second->user_id->hash)
+			return true;
+
+		return false;
+	}
+
 	case MIR_TYPE_FN: {
 		if (!type_cmp(first->data.fn.ret_type, second->data.fn.ret_type))
 			return false;
@@ -2809,6 +2819,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
+	case MIR_INSTR_MEMBER_PTR:
 	case MIR_INSTR_INIT:
 		erase_instr(instr);
 		break;
@@ -3136,6 +3147,8 @@ uint64_t analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	Ast *ast_member_ident = member_ptr->member_ident;
 
 	target_type = mir_deref_type(target_type);
+
+	/* Array type */
 	if (target_type->kind == MIR_TYPE_ARRAY) {
 		/* check array builtin members */
 		if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN ||
@@ -3174,26 +3187,19 @@ uint64_t analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS,
 			            ast_member_ident->src, BUILDER_CUR_WORD, "Unknown member.");
 		}
-	} else if (target_type->kind == MIR_TYPE_ENUM) {
-		bl_log("enum!!!");
-		bl_unimplemented;
-	} else {
-		if (target_type->kind == MIR_TYPE_PTR) {
-			/* we try to access structure member via pointer so we need one more
-			 * load */
-			member_ptr->target_ptr =
-			    insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
-			assert(member_ptr->target_ptr);
-			target_type = mir_deref_type(target_type);
-		}
 
-		if (target_type->kind != MIR_TYPE_STRUCT) {
-			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS,
-			            target_ptr->node->src, BUILDER_CUR_WORD,
-			            "Expected structure type.");
-			return ANALYZE_FAILED;
-		}
+		return ANALYZE_PASSED;
+	}
 
+	if (target_type->kind == MIR_TYPE_PTR) {
+		/* We try to access structure member via pointer so we need one more load. */
+		member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
+		assert(member_ptr->target_ptr);
+		target_type = mir_deref_type(target_type);
+	}
+
+	/* Struct type */
+	if (target_type->kind == MIR_TYPE_STRUCT) {
 		reduce_instr(cnt, member_ptr->target_ptr);
 
 		if (target_type->data.strct.kind & MIR_TS_SLICE) {
@@ -3243,9 +3249,54 @@ uint64_t analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 			member_ptr->scope_entry = found;
 		}
+
+		return ANALYZE_PASSED;
 	}
 
-	return ANALYZE_PASSED;
+	/* Sub type member. */
+	if (target_type->kind == MIR_TYPE_TYPE) {
+		member_ptr->target_ptr = insert_instr_load_if_needed(cnt, member_ptr->target_ptr);
+		reduce_instr(cnt, member_ptr->target_ptr);
+
+		MirType *sub_type = member_ptr->target_ptr->const_value.data.v_type;
+		assert(sub_type);
+
+		if (sub_type->kind != MIR_TYPE_ENUM) {
+			goto INVALID;
+		}
+
+		/* lookup for member inside struct */
+		Scope *     scope = sub_type->data.enm.scope;
+		ID *        rid   = &ast_member_ident->data.ident.id;
+		ScopeEntry *found = scope_lookup(scope, rid, false);
+		if (!found) {
+			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
+			            member_ptr->member_ident->src, BUILDER_CUR_WORD,
+			            "Unknown enumerator variant.");
+			return ANALYZE_FAILED;
+		}
+
+		{
+			assert(found->kind == SCOPE_ENTRY_VARIANT);
+			MirVariant *variant = found->data.variant;
+			assert(variant);
+			member_ptr->base.const_value.data      = variant->value->data;
+			member_ptr->base.const_value.addr_mode = MIR_VAM_LVALUE_CONST;
+		}
+
+		member_ptr->scope_entry           = found;
+		member_ptr->base.const_value.type = sub_type;
+		member_ptr->base.comptime         = true;
+
+		return ANALYZE_PASSED;
+	}
+
+	/* Invalid */
+INVALID:
+	builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_MEMBER_ACCESS,
+	            target_ptr->node->src, BUILDER_CUR_WORD,
+	            "Expected structure or enumerator type.");
+	return ANALYZE_FAILED;
 }
 
 uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
@@ -3808,7 +3859,8 @@ static inline MirVariant *analyze_variant(Context *cnt, MirInstrDeclVariant *var
 	if (variant_instr->value) {
 		/* User defined initialization value. */
 		assert(variant_instr->value->comptime &&
-		       "Enum variant value must be compile time known, this should be an error.");
+		       "Enum variant value must be compile time known, this should be an "
+		       "error.");
 		variant_instr->value = insert_instr_load_if_needed(cnt, variant_instr->value);
 		reduce_instr(cnt, variant_instr->value);
 
@@ -3910,7 +3962,8 @@ uint64_t analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 #define is_valid(_type, _op)                                                                       \
 	(((_type)->kind == MIR_TYPE_INT) || ((_type)->kind == MIR_TYPE_NULL) ||                    \
 	 ((_type)->kind == MIR_TYPE_REAL) || ((_type)->kind == MIR_TYPE_PTR) ||                    \
-	 ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)))
+	 ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)) ||                            \
+	 ((_type)->kind == MIR_TYPE_ENUM && (_op == BINOP_EQ || _op == BINOP_NEQ)))
 
 	/* insert load instructions is the are needed */
 	binop->lhs = insert_instr_load_if_needed(cnt, binop->lhs);
@@ -4011,9 +4064,9 @@ uint64_t analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 				                          fn_type->data.fn.is_vargs);
 				fn_type  = fn->type;
 				/* HACK: Function type need to be set also for function
-				 * prototype instruction, this is by the way only reason why we
-				 * need poinetr to prototype inside MirFn. Better solution
-				 * should be possible. */
+				 * prototype instruction, this is by the way only reason why
+				 * we need poinetr to prototype inside MirFn. Better
+				 * solution should be possible. */
 				fn->prototype->const_value.type = fn_type;
 			}
 		}
@@ -4919,7 +4972,8 @@ void exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		{
 			const size_t len = arr_type->data.array.len;
 			if (index.v_u64 >= len) {
-				msg_error("Array index is out of the bounds! Array index is: %llu, "
+				msg_error("Array index is out of the bounds! Array index "
+				          "is: %llu, "
 				          "but array size "
 				          "is: %llu",
 				          (unsigned long long)index.v_u64, (unsigned long long)len);
@@ -5708,7 +5762,8 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 				result.v_f64 = dcCallDouble(cnt->dl.vm, fn->extern_entry);
 				break;
 			default:
-				bl_abort("unsupported real number size for external call result");
+				bl_abort("unsupported real number size for external call "
+				         "result");
 			}
 			break;
 		}

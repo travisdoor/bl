@@ -620,6 +620,11 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 		return result;
 	}
 
+	case MIR_TYPE_ENUM: {
+		LLVMTypeRef llvm_base_type = value->type->llvm_type;
+		return LLVMConstInt(llvm_base_type, value->data.v_u64, value->type->data.integer.is_signed);
+	}
+
 	default:
 		bl_unimplemented;
 	}
