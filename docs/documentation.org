@@ -173,7 +173,7 @@
     Example:
     #+INCLUDE: "../tests/src/examples/array_ref.bl" src bl -n
 *** Structures
-    Structure is simple group of some data separated by comma.
+    Structure is simple group of data.
 
     #+BEGIN_EXAMPLE
     struct { 
@@ -186,14 +186,9 @@
     Example:
     #+INCLUDE: "../tests/src/examples/struct.bl" src bl -n
 
-*** TODO Enums
-    #+BEGIN_EXAMPLE
-    <name> :: enum [type] { 
-      <variant1 name> [:: <expr>],
-      <variant2 name> [:: <expr>],
-      <variant3 name> [:: <expr>]
-    };
-    #+END_EXAMPLE
+*** Enums
+    Example:
+    #+INCLUDE: "../tests/src/examples/enums.bl" src bl -n
 
 *** TODO Type aliasing
     It's posible to create alias to any data type.

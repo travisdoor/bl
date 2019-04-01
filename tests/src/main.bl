@@ -35,3 +35,4 @@
 #load "examples/type_cast.bl"
 #load "examples/vargs.bl"
 #load "examples/variables.bl"
+#load "examples/enums.bl"
