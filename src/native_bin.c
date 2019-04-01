@@ -46,7 +46,7 @@ void native_bin_run(Builder *builder, Assembly *assembly)
 	    ;
 #elif defined(BL_PLATFORM_MACOS)
 	const char *cmd = "ld %s.o -o %s -lc -lcrt1.o "
-	    "-lSDL2 -lSDL2_image"
+		//"-lSDL2 -lSDL2_image"
 	    ;
 #elif defined(BL_PLATFORM_WIN)
 	bl_warning_issue(22);

@@ -7451,7 +7451,7 @@ int init_dl(Context *cnt)
 	bo_array_push_back(cnt->dl.libs, lib);
 
 /* TEST: */
-#if 1
+#if 0
 #ifdef BL_PLATFORM_MACOS
 	lib = dlLoadLibrary("libSDL2.dylib");
 	assert(lib);
