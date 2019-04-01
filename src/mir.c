@@ -2596,8 +2596,10 @@ void init_type_llvm_ABI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_FN: {
 		MirType *tmp_ret = type->data.fn.ret_type;
-		if (tmp_ret->kind == MIR_TYPE_TYPE)
+		if (tmp_ret->kind == MIR_TYPE_TYPE) {
 			break;
+		}
+
 		BArray *tmp_args = type->data.fn.arg_types;
 		size_t  argc     = tmp_args ? bo_array_size(tmp_args) : 0;
 
@@ -3696,15 +3698,20 @@ uint64_t analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 	BArray *arg_types = NULL;
 	if (type_fn->arg_types) {
-		arg_types = create_arr(cnt, sizeof(MirType *));
-		bo_array_reserve(arg_types, bo_array_size(type_fn->arg_types));
+		const size_t argc = bo_array_size(type_fn->arg_types);
+		arg_types         = create_arr(cnt, sizeof(MirType *));
+		bo_array_reserve(arg_types, argc);
 
-		MirInstr *arg_type;
-		MirType * tmp;
-		barray_foreach(type_fn->arg_types, arg_type)
-		{
-			assert(arg_type->comptime);
-			tmp = arg_type->const_value.data.v_type;
+		MirInstr **arg_type_ref;
+		MirType *  tmp;
+		for (size_t i = 0; i < argc; ++i) {
+			arg_type_ref = &bo_array_at(type_fn->arg_types, i, MirInstr *);
+			assert((*arg_type_ref)->comptime);
+
+			(*arg_type_ref) = insert_instr_load_if_needed(cnt, *arg_type_ref);
+			reduce_instr(cnt, *arg_type_ref);
+
+			tmp = (*arg_type_ref)->const_value.data.v_type;
 			assert(tmp);
 
 			if (mir_is_vargs_type(tmp)) {
@@ -3714,7 +3721,6 @@ uint64_t analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 			}
 
 			bo_array_push_back(arg_types, tmp);
-			reduce_instr(cnt, arg_type);
 		}
 	}
 
@@ -7445,31 +7451,31 @@ int init_dl(Context *cnt)
 	bo_array_push_back(cnt->dl.libs, lib);
 
 /* TEST: */
-#if 0
+#if 1
 #ifdef BL_PLATFORM_MACOS
-  lib = dlLoadLibrary("libSDL2.dylib");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("libSDL2.dylib");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 
-  lib = dlLoadLibrary("libSDL2_image.dylib");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("libSDL2_image.dylib");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 #elif defined(BL_PLATFORM_LINUX)
-  lib = dlLoadLibrary("libSDL2.so");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("libSDL2.so");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 
-  lib = dlLoadLibrary("libSDL2_image.so");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("libSDL2_image.so");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 #elif defined(BL_PLATFORM_WIN)
-  lib = dlLoadLibrary("C:/Program Files/SDL2-2.0.9/lib/x64/SDL2.dll");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("C:/Program Files/SDL2-2.0.9/lib/x64/SDL2.dll");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 
-  lib = dlLoadLibrary("C:/Program Files/SDL2_image-2.0.4/lib/x64/SDL2_image.dll");
-  assert(lib);
-  bo_array_push_back(cnt->dl.libs, lib);
+	lib = dlLoadLibrary("C:/Program Files/SDL2_image-2.0.4/lib/x64/SDL2_image.dll");
+	assert(lib);
+	bo_array_push_back(cnt->dl.libs, lib);
 #endif
 #endif
 
