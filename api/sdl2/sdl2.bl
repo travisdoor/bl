@@ -437,6 +437,8 @@ SDL_FreeSurface              :: fn (surface: *SDL_Surface) #extern;
 SDL_GetKeyboardState 	     :: fn (numkeys: *s32) *u8 #extern;
 SDL_GetTicks 		     :: fn () u32 #extern;
 SDL_GetError 		     :: fn () *u8 #extern;
+SDL_QueryTexture             :: fn (texture: *SDL_Texture, format: *u32, access: *s32, w: *s32, h: s32) #extern;
+
 
 SDL_KeyPressed :: fn (scancode: SDL_Scancode) bool {
     tmp := SDL_GetKeyboardState(null);

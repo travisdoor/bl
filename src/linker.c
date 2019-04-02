@@ -67,7 +67,7 @@ static bool link_lib(Context *cnt, const char *lib_name, Token *token)
 	char tmp[PATH_MAX] = {0};
 	platform_lib_name(lib_name, tmp, PATH_MAX);
 
-	DLLib *handle = dlLoadLibrary(tmp);
+	DLLib *handle = dlLoadLibrary(lib_name ? tmp : NULL);
 	if (!handle)
 		return false;
 
@@ -110,8 +110,12 @@ void linker_run(Builder *builder, Assembly *assembly)
 		msg_log("Running runtime linker...");
 	}
 
-	if (!link_working_environment(&cnt))
+	if (!link_working_environment(&cnt)) {
+		Token *dummy = NULL;
+		link_error(builder, ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD,
+		           "Cannot link working environment.");
 		return;
+	}
 
 	BHashTable *  cache = assembly->link_cache;
 	Token *       token;
