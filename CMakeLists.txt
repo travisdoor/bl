@@ -56,6 +56,7 @@ set(SOURCE_FILES
         src/bldebug.c
         src/parser.c
         src/linker.c
+        src/obj_writer.c
         src/bc_writer.c
 	src/mir_writer.c
         src/native_bin.c

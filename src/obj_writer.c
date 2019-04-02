@@ -1,9 +1,9 @@
 //************************************************************************************************
 // bl
 //
-// File:   stages.h
+// File:   obj_writer.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   28/02/2018
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,42 +26,40 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_STAGES_H
-#define BL_STAGES_H
+#include <llvm-c/Linker.h>
+#include <llvm-c/TargetMachine.h>
 
-#include "assembly.h"
-#include "builder.h"
+#include "common.h"
 #include "error.h"
-#include "unit.h"
+#include "stages.h"
 
-/*
- * per unit
- */
-void file_loader_run(Builder *builder, Unit *unit);
-
-void lexer_run(Builder *builder, Unit *unit);
-
-void token_printer_run(Unit *unit);
-
-void parser_run(Builder *builder, Assembly *assembly, Unit *unit);
-
-/*
- * per assembly
- */
-void ast_printer_run(Assembly *assembly, FILE *stream);
-
-void ir_run(Builder *builder, Assembly *assembly);
-
-void ir_opt_run(Builder *builder, Assembly *assembly);
-
-void obj_writer_run(Builder *builder, Assembly *assembly);
-
-void linker_run(Builder *builder, Assembly *assembly);
-
-void bc_writer_run(Builder *builder, Assembly *assembly);
-
-void native_bin_run(Builder *builder, Assembly *assembly);
-
-void mir_writer_run(Assembly *assembly);
-
+#ifdef BL_PLATFORM_WIN
+#define OBJ_EXT ".obj"
+#else
+#define OBJ_EXT ".o"
 #endif
+
+/* Emit assembly object file. */
+void obj_writer_run(Builder *builder, Assembly *assembly)
+{
+	MirModule *module = assembly->mir_module;
+	assert(module->llvm_module);
+	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
+	if (!filename)
+		bl_abort("bad alloc");
+	strcpy(filename, assembly->name);
+	strcat(filename, OBJ_EXT);
+
+	char *error_msg = NULL;
+	remove(filename);
+	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module,
+	                                filename, LLVMObjectFile, &error_msg)) {
+		msg_error("Cannot emit object file: %s with error: %s", filename, error_msg);
+
+		LLVMDisposeMessage(error_msg);
+		bl_free(filename);
+		return;
+	}
+
+	bl_free(filename);
+}

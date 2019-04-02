@@ -26,6 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#link "SDL2"
+
 SDL_INIT_TIMER          :: 0x00000001;
 SDL_INIT_AUDIO 	 	:: 0x00000010;
 SDL_INIT_VIDEO 	 	:: 0x00000020;
@@ -401,7 +403,7 @@ SDL_Point :: struct {
 };
 
 SDL_Event :: struct {
-    type: u32,
+    type: SDL_EventType,
     _padding: [52]u8
 };
 
@@ -413,7 +415,7 @@ SDL_KeyboardEvent :: struct {
     repeat: u8,
     padding2: u8,
     padding3: u8,
-    keysym: s32 // TODO: use enum
+    keysym: SDL_Scancode
 };
 
 SDL_Init                     :: fn (flags: u32) s32 #extern;

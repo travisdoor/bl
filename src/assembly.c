@@ -36,17 +36,47 @@
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
 
-/* public */
+static void init_dl(Assembly *assembly)
+{
+	assembly->dl.libs = bo_array_new(sizeof(NativeLib));
+	DCCallVM *vm      = dcNewCallVM(4096);
+	dcMode(vm, DC_CALL_C_DEFAULT);
+	assembly->dl.vm = vm;
+}
 
+static void native_lib_terminate(NativeLib *lib)
+{
+	if (lib->handle)
+		dlFreeLibrary(lib->handle);
+	free(lib->dirpath);
+	free(lib->filename);
+	free(lib->filepath);
+}
+
+static void terminate_dl(Assembly *assembly)
+{
+	NativeLib *lib;
+	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
+		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
+		native_lib_terminate(lib);
+	}
+
+	dcFree(assembly->dl.vm);
+	bo_unref(assembly->dl.libs);
+}
+
+/* public */
 Assembly *assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly)
 		bl_abort("bad alloc");
-	assembly->name         = strdup(name);
-	assembly->units        = bo_array_new(sizeof(Unit *));
-	assembly->unique_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-	assembly->link_cache   = bo_htbl_new(sizeof(char *), EXPECTED_LINK_COUNT);
+	assembly->name       = strdup(name);
+	assembly->units      = bo_array_new(sizeof(Unit *));
+	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
+	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
+
+	init_dl(assembly);
 
 	assembly->mir_module = mir_new_module(assembly->name);
 
@@ -59,13 +89,18 @@ void assembly_delete(Assembly *assembly)
 	free(assembly->name);
 
 	Unit *unit;
-	barray_foreach(assembly->units, unit) { unit_delete(unit); }
+	barray_foreach(assembly->units, unit)
+	{
+		unit_delete(unit);
+	}
+
 	bo_unref(assembly->units);
-	bo_unref(assembly->unique_cache);
+	bo_unref(assembly->unit_cache);
 	bo_unref(assembly->link_cache);
 
 	mir_delete_module(assembly->mir_module);
 
+	terminate_dl(assembly);
 	bl_free(assembly);
 }
 
@@ -82,22 +117,38 @@ bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 	else
 		hash = bo_hash_from_str(unit->name);
 
-	if (bo_htbl_has_key(assembly->unique_cache, hash))
+	if (bo_htbl_has_key(assembly->unit_cache, hash))
 		return false;
 
-	bo_htbl_insert_empty(assembly->unique_cache, hash);
+	bo_htbl_insert_empty(assembly->unit_cache, hash);
 	assembly_add_unit(assembly, unit);
 	return true;
 }
 
-void assembly_add_link(Assembly *assembly, const char *lib)
+void assembly_add_link(Assembly *assembly, Token *token)
 {
-	if (!lib)
+	if (!token)
 		return;
-	uint64_t hash = bo_hash_from_str(lib);
+
+	assert(token->sym == SYM_STRING);
+
+	uint64_t hash = bo_hash_from_str(token->value.str);
 	if (bo_htbl_has_key(assembly->link_cache, hash))
 		return;
 
-	char *tmp = (char *)lib;
-	bo_htbl_insert(assembly->link_cache, hash, tmp);
+	bo_htbl_insert(assembly->link_cache, hash, token);
+}
+
+DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
+{
+	void * handle = NULL;
+	DLLib *lib;
+	barray_foreach(assembly->dl.libs, lib)
+	{
+		handle = dlFindSymbol(lib, symbol);
+		if (handle)
+			break;
+	}
+
+	return handle;
 }

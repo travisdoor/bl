@@ -30,11 +30,10 @@
 #define BL_MIR_H
 
 #include "arena.h"
+#include "assembly.h"
 #include "ast.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include <dyncall.h>
-#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 

@@ -1,11 +1,11 @@
 //************************************************************************************************
-// bl
+// blc
 //
 // File:   linker.c
 // Author: Martin Dorazil
-// Date:   28/02/2018
+// Date:   09/02/2018
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2017 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,39 +26,104 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <llvm-c/Linker.h>
-#include <llvm-c/TargetMachine.h>
-
 #include "common.h"
 #include "error.h"
 #include "stages.h"
 
-#ifdef BL_PLATFORM_WIN
-#define OBJ_EXT ".obj"
+#define link_error(builder, code, tok, pos, format, ...)                                           \
+	{                                                                                          \
+		if (tok)                                                                           \
+			builder_msg(builder, BUILDER_MSG_ERROR, (code), &(tok)->src, (pos),        \
+			            (format), ##__VA_ARGS__);                                      \
+		else                                                                               \
+			builder_error(builder, (format), ##__VA_ARGS__);                           \
+	}
+
+typedef struct {
+	Assembly *assembly;
+	Builder * builder;
+	bool      verbose;
+} Context;
+
+/* TODO: Support cross-platform build targets? */
+void platform_lib_name(const char *name, char *buffer, size_t max_len)
+{
+	if (!name)
+		return;
+
+#ifdef BL_PLATFORM_MACOS
+	snprintf(buffer, max_len, "lib%s.dylib", name);
+#elif defined(BL_PLATFORM_LINUX)
+	snprintf(buffer, max_len, "lib%s.so", name);
+#elif defined(BL_PLATFORM_WIN)
+	snprintf(buffer, max_len, "%s.dll", name);
 #else
-#define OBJ_EXT ".o"
+	bl_abort("Unknown dynamic library format.");
 #endif
+}
+
+static bool link_lib(Context *cnt, const char *lib_name, Token *token)
+{
+	char tmp[PATH_MAX] = {0};
+	platform_lib_name(lib_name, tmp, PATH_MAX);
+
+	DLLib *handle = dlLoadLibrary(tmp);
+	if (!handle)
+		return false;
+
+	NativeLib native_lib = {.handle      = handle,
+	                        .linked_from = token,
+	                        .user_name   = lib_name,
+	                        .filename    = NULL,
+	                        .filepath    = NULL,
+	                        .dirpath     = NULL};
+
+	native_lib.filename = strdup(tmp);
+	dlGetLibraryPath(handle, tmp, PATH_MAX);
+	native_lib.filepath = strdup(tmp);
+
+	if (cnt->verbose) {
+		msg_log("Runtime linked file: %s", native_lib.filepath);
+	}
+
+	bo_array_push_back(cnt->assembly->dl.libs, native_lib);
+	return true;
+}
+
+static bool link_working_environment(Context *cnt)
+{
+#ifdef BL_PLATFORM_WIN
+	const char *libc = "msvcrt";
+#else
+	const char *libc = NULL;
+#endif
+	return link_lib(cnt, libc, NULL);
+}
 
 void linker_run(Builder *builder, Assembly *assembly)
 {
-	MirModule *module = assembly->mir_module;
-	assert(module->llvm_module);
-	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-	if (!filename)
-		bl_abort("bad alloc");
-	strcpy(filename, assembly->name);
-	strcat(filename, OBJ_EXT);
+	Context cnt = {.assembly = assembly,
+	               .builder  = builder,
+	               .verbose  = builder->flags & BUILDER_VERBOSE_LINKER};
 
-	char *error_msg = NULL;
-	remove(filename);
-	if (LLVMTargetMachineEmitToFile(module->llvm_tm, assembly->mir_module->llvm_module,
-	                                filename, LLVMObjectFile, &error_msg)) {
-		msg_error("cannot emit object file: %s with error: %s", filename, error_msg);
-
-		LLVMDisposeMessage(error_msg);
-		bl_free(filename);
-		return;
+	if (cnt.verbose) {
+		msg_log("Running runtime linker...");
 	}
 
-	bl_free(filename);
+	if (!link_working_environment(&cnt))
+		return;
+
+	BHashTable *  cache = assembly->link_cache;
+	Token *       token;
+	bo_iterator_t it;
+	bhtbl_foreach(cache, it)
+	{
+		token = bo_htbl_iter_peek_value(cache, &it, Token *);
+		assert(token);
+
+		if (!link_lib(&cnt, token->value.str, token)) {
+			link_error(builder, ERR_LIB_NOT_FOUND, token, BUILDER_CUR_WORD,
+			           "Unresolved external library '%s'", token->value.str);
+		}
+	}
 }

@@ -26,9 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-//#include <stdalign.h>
 #include "mir.h"
-#include "assembly.h"
 #include "builder.h"
 #include "common.h"
 #include "mir_printer.h"
@@ -163,12 +161,6 @@ typedef struct {
 	BHashTable *type_table;
 	MirFn *     entry_fn;
 
-	/* DynCall/Lib data used for external method execution in compile time */
-	struct {
-		BArray *  libs;
-		DCCallVM *vm;
-	} dl;
-
 	/* AST -> MIR generation */
 	struct {
 		MirInstrBlock *current_block;
@@ -263,10 +255,6 @@ static void array_dtor(BArray **arr)
 
 /* FW decls */
 static void init_builtins(Context *cnt);
-
-static int init_dl(Context *cnt);
-
-static void terminate_dl(Context *cnt);
 
 static void execute_entry_fn(Context *cnt);
 
@@ -3608,24 +3596,14 @@ uint64_t analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->flags & (FLAG_EXTERN)) {
 		/* lookup external function exec handle */
 		assert(fn->llvm_name);
+		fn->extern_entry = assembly_find_extern(cnt->assembly, fn->llvm_name);
 
-		void * handle = NULL;
-		DLLib *lib;
-		barray_foreach(cnt->dl.libs, lib)
-		{
-			handle = dlFindSymbol(lib, fn->llvm_name);
-			if (handle)
-				break;
-		}
-
-		if (!handle) {
+		if (!fn->extern_entry) {
 			bl_warning_issue(27);
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_UNKNOWN_SYMBOL,
 			            fn_proto->base.node->src, BUILDER_CUR_WORD,
 			            "External symbol '%s' not found.", fn->llvm_name);
 		}
-
-		fn->extern_entry = handle;
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -5678,6 +5656,8 @@ static inline void exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *
 {
 	assert(type);
 
+	DCCallVM *vm = cnt->assembly->dl.vm;
+	assert(vm);
 	MirConstValueData tmp = {0};
 	exec_read_value(&tmp, val_ptr, type);
 
@@ -5685,16 +5665,16 @@ static inline void exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *
 	case MIR_TYPE_INT: {
 		switch (type->store_size_bytes) {
 		case sizeof(int64_t):
-			dcArgLongLong(cnt->dl.vm, tmp.v_s64);
+			dcArgLongLong(vm, tmp.v_s64);
 			break;
 		case sizeof(int32_t):
-			dcArgInt(cnt->dl.vm, (DCint)tmp.v_s32);
+			dcArgInt(vm, (DCint)tmp.v_s32);
 			break;
 		case sizeof(int16_t):
-			dcArgShort(cnt->dl.vm, (DCshort)tmp.v_s16);
+			dcArgShort(vm, (DCshort)tmp.v_s16);
 			break;
 		case sizeof(int8_t):
-			dcArgChar(cnt->dl.vm, (DCchar)tmp.v_s8);
+			dcArgChar(vm, (DCchar)tmp.v_s8);
 			break;
 		default:
 			bl_abort("unsupported external call integer argument type");
@@ -5705,10 +5685,10 @@ static inline void exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *
 	case MIR_TYPE_REAL: {
 		switch (type->store_size_bytes) {
 		case sizeof(float):
-			dcArgFloat(cnt->dl.vm, tmp.v_f32);
+			dcArgFloat(vm, tmp.v_f32);
 			break;
 		case sizeof(double):
-			dcArgDouble(cnt->dl.vm, tmp.v_f64);
+			dcArgDouble(vm, tmp.v_f64);
 			break;
 		default:
 			bl_abort("unsupported external call integer argument type");
@@ -5718,7 +5698,7 @@ static inline void exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *
 
 	case MIR_TYPE_NULL:
 	case MIR_TYPE_PTR: {
-		dcArgPointer(cnt->dl.vm, (DCpointer)tmp.v_void_ptr);
+		dcArgPointer(vm, (DCpointer)tmp.v_void_ptr);
 		break;
 	}
 
@@ -5740,10 +5720,13 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 	assert(ret_type);
 
 	if (fn->flags & (FLAG_EXTERN)) {
+		DCCallVM *vm = cnt->assembly->dl.vm;
+		assert(vm);
+
 		/* call setup and clenup */
 		assert(fn->extern_entry);
-		dcMode(cnt->dl.vm, DC_CALL_C_DEFAULT);
-		dcReset(cnt->dl.vm);
+		dcMode(vm, DC_CALL_C_DEFAULT);
+		dcReset(vm);
 
 		/* pop all arguments from the stack */
 		MirStackPtr arg_ptr;
@@ -5764,16 +5747,16 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 		case MIR_TYPE_INT:
 			switch (ret_type->store_size_bytes) {
 			case sizeof(char):
-				result.v_s8 = dcCallChar(cnt->dl.vm, fn->extern_entry);
+				result.v_s8 = dcCallChar(vm, fn->extern_entry);
 				break;
 			case sizeof(short):
-				result.v_s16 = dcCallShort(cnt->dl.vm, fn->extern_entry);
+				result.v_s16 = dcCallShort(vm, fn->extern_entry);
 				break;
 			case sizeof(int):
-				result.v_s32 = dcCallInt(cnt->dl.vm, fn->extern_entry);
+				result.v_s32 = dcCallInt(vm, fn->extern_entry);
 				break;
 			case sizeof(long long):
-				result.v_s64 = dcCallLongLong(cnt->dl.vm, fn->extern_entry);
+				result.v_s64 = dcCallLongLong(vm, fn->extern_entry);
 				break;
 			default:
 				bl_abort("unsupported integer size for external call result");
@@ -5781,16 +5764,16 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 			break;
 
 		case MIR_TYPE_PTR:
-			result.v_void_ptr = dcCallPointer(cnt->dl.vm, fn->extern_entry);
+			result.v_void_ptr = dcCallPointer(vm, fn->extern_entry);
 			break;
 
 		case MIR_TYPE_REAL: {
 			switch (ret_type->store_size_bytes) {
 			case sizeof(float):
-				result.v_f32 = dcCallFloat(cnt->dl.vm, fn->extern_entry);
+				result.v_f32 = dcCallFloat(vm, fn->extern_entry);
 				break;
 			case sizeof(double):
-				result.v_f64 = dcCallDouble(cnt->dl.vm, fn->extern_entry);
+				result.v_f64 = dcCallDouble(vm, fn->extern_entry);
 				break;
 			default:
 				bl_abort("unsupported real number size for external call "
@@ -5800,7 +5783,7 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 		}
 
 		case MIR_TYPE_VOID:
-			dcCallVoid(cnt->dl.vm, fn->extern_entry);
+			dcCallVoid(vm, fn->extern_entry);
 			does_return = false;
 			break;
 
@@ -7047,6 +7030,7 @@ MirInstr *ast(Context *cnt, Ast *node)
 		return ast_expr_type_info(cnt, node);
 
 	case AST_LOAD:
+	case AST_LINK:
 		break;
 	default:
 		bl_abort("invalid node %s", ast_get_name(node));
@@ -7432,69 +7416,6 @@ void init_builtins(Context *cnt)
 	}
 }
 
-int init_dl(Context *cnt)
-{
-	cnt->dl.libs = bo_array_new(sizeof(DLLib *));
-
-	/* load only current executed workspace */
-#ifdef BL_PLATFORM_WIN
-	const char *libc = "msvcrt";
-#else
-	const char *libc = NULL;
-#endif
-	DLLib *lib = dlLoadLibrary(libc);
-	if (!lib) {
-		msg_error("unable to load library");
-		return ERR_LIB_NOT_FOUND;
-	}
-
-	bo_array_push_back(cnt->dl.libs, lib);
-
-/* TEST: */
-#if 0
-#ifdef BL_PLATFORM_MACOS
-	lib = dlLoadLibrary("libSDL2.dylib");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-
-	lib = dlLoadLibrary("libSDL2_image.dylib");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-#elif defined(BL_PLATFORM_LINUX)
-	lib = dlLoadLibrary("libSDL2.so");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-
-	lib = dlLoadLibrary("libSDL2_image.so");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-#elif defined(BL_PLATFORM_WIN)
-	lib = dlLoadLibrary("C:/Program Files/SDL2-2.0.9/lib/x64/SDL2.dll");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-
-	lib = dlLoadLibrary("C:/Program Files/SDL2_image-2.0.4/lib/x64/SDL2_image.dll");
-	assert(lib);
-	bo_array_push_back(cnt->dl.libs, lib);
-#endif
-#endif
-
-	DCCallVM *vm = dcNewCallVM(4096);
-	dcMode(vm, DC_CALL_C_DEFAULT);
-	cnt->dl.vm = vm;
-	return NO_ERR;
-}
-
-void terminate_dl(Context *cnt)
-{
-	dcFree(cnt->dl.vm);
-
-	DLLib *lib;
-	barray_foreach(cnt->dl.libs, lib) dlFreeLibrary(lib);
-
-	bo_unref(cnt->dl.libs);
-}
-
 MirModule *mir_new_module(const char *name)
 {
 	MirModule *tmp = bl_malloc(sizeof(MirModule));
@@ -7583,10 +7504,6 @@ void mir_run(Builder *builder, Assembly *assembly)
 
 	init_builtins(&cnt);
 
-	int32_t error = init_dl(&cnt);
-	if (error != NO_ERR)
-		return;
-
 	/* Gen MIR from AST pass */
 	Unit *unit;
 	barray_foreach(assembly->units, unit)
@@ -7611,6 +7528,5 @@ void mir_run(Builder *builder, Assembly *assembly)
 	bo_unref(cnt.tmp_sh);
 	bo_unref(cnt.type_table);
 
-	terminate_dl(&cnt);
 	exec_delete_stack(cnt.exec.stack);
 }

@@ -94,6 +94,8 @@ static Ast *parse_unrecheable(Context *cnt);
 
 static Ast *parse_load(Context *cnt);
 
+static Ast *parse_link(Context *cnt);
+
 static Ast *parse_test_case(Context *cnt);
 
 static void parse_ublock_content(Context *cnt, Ast *ublock);
@@ -1506,6 +1508,7 @@ Ast *parse_load(Context *cnt)
 	if (!token_is(tok_path, SYM_STRING)) {
 		parse_error(cnt, ERR_EXPECTED_STRING, tok_path, BUILDER_CUR_WORD,
 		            "Expected path string after load preprocessor directive.");
+		return NULL;
 	}
 
 	Ast *load                = ast_create_node(cnt->ast_arena, AST_LOAD, tok_id);
@@ -1517,6 +1520,27 @@ Ast *parse_load(Context *cnt)
 	}
 
 	return load;
+}
+
+Ast *parse_link(Context *cnt)
+{
+	Token *tok_id = tokens_consume_if(cnt->tokens, SYM_LINK);
+	if (!tok_id)
+		return NULL;
+
+	Token *tok_path = tokens_consume(cnt->tokens);
+	if (!token_is(tok_path, SYM_STRING)) {
+		parse_error(cnt, ERR_EXPECTED_STRING, tok_path, BUILDER_CUR_WORD,
+		            "Expected library name after link preprocessor directive.");
+		return NULL;
+	}
+
+	Ast *link           = ast_create_node(cnt->ast_arena, AST_LINK, tok_id);
+	link->data.link.lib = tok_path->value.str;
+
+	assembly_add_link(cnt->assembly, tok_path);
+
+	return link;
 }
 
 Ast *parse_expr_type(Context *cnt)
@@ -1622,6 +1646,11 @@ next:
 		goto next;
 	}
 
+	if ((tmp = parse_link(cnt))) {
+		bo_array_push_back(block->data.block.nodes, tmp);
+		goto next;
+	}
+
 	if ((tmp = parse_unrecheable(cnt))) {
 		bo_array_push_back(block->data.block.nodes, tmp);
 		parse_semicolon_rq(cnt);
@@ -1693,6 +1722,11 @@ next:
 	}
 
 	if ((tmp = parse_load(cnt))) {
+		bo_array_push_back(ublock->data.ublock.nodes, tmp);
+		goto next;
+	}
+
+	if ((tmp = parse_link(cnt))) {
 		bo_array_push_back(ublock->data.ublock.nodes, tmp);
 		goto next;
 	}

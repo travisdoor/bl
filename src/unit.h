@@ -42,6 +42,7 @@ typedef struct Unit {
 	Ast *         ast;
 	BArray *      globals;
 	char *        filepath;
+	char *        dirpath;
 	char *        name;
 	char *        src;
 	struct Token *loaded_from;
@@ -49,16 +50,8 @@ typedef struct Unit {
 
 Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 
-Unit *unit_new_str(const char *name, const char *src);
-
 void unit_delete(Unit *unit);
 
-const char *unit_get_src_file(Unit *unit);
-
-const char *unit_get_src(Unit *unit);
-
 const char *unit_get_src_ln(Unit *unit, int32_t line, long *len);
-
-const char *unit_get_name(Unit *unit);
 
 #endif

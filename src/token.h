@@ -51,6 +51,7 @@
   sm(LOOP,           "loop")\
   sm(FALSE,          "false") \
   sm(LOAD,           "#load") \
+  sm(LINK,           "#link") \
   sm(TEST,           "#test") \
   sm(BREAK,          "break")\
   sm(RETURN,         "return") \

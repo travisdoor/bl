@@ -80,6 +80,10 @@ bool file_exists(const char *filepath);
 
 const char *brealpath(const char *file, char *out, int32_t out_len);
 
+bool get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
+
+bool search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
+
 void date_time(char *buf, int32_t len, const char *format);
 
 bool is_aligned(const void *p, size_t alignment);

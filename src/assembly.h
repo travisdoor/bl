@@ -34,19 +34,36 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/list.h>
+#include <dyncall.h>
+#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
 
 typedef struct Assembly {
-	BArray *          units;        /* array of all units in assembly */
-	BHashTable *      unique_cache; /* cache for loading only unique units */
-	BHashTable *      link_cache;   /* all linked externals libraries passed to linker */
-	char *            name;         /* assembly name */
-	Scope *           gscope;       /* global scope of the assembly */
+	BArray *          units;      /* array of all units in assembly */
+	BHashTable *      unit_cache; /* cache for loading only unique units */
+	BHashTable *      link_cache; /* all linked externals libraries passed to linker */
+	char *            name;       /* assembly name */
+	Scope *           gscope;     /* global scope of the assembly */
 	struct MirModule *mir_module;
+
+	/* DynCall/Lib data used for external method execution in compile time */
+	struct {
+		BArray *  libs;
+		DCCallVM *vm;
+	} dl;
 } Assembly;
+
+typedef struct NativeLib {
+	DLLib *       handle;
+	struct Token *linked_from;
+	const char *  user_name;
+	char *        filename;
+	char *        filepath;
+	char *        dirpath;
+} NativeLib;
 
 Assembly *assembly_new(const char *name);
 
@@ -54,8 +71,10 @@ void assembly_delete(Assembly *assembly);
 
 void assembly_add_unit(Assembly *assembly, Unit *unit);
 
-void assembly_add_link(Assembly *assembly, const char *lib);
+void assembly_add_link(Assembly *assembly, struct Token *token);
 
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+
+DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 
 #endif

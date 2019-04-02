@@ -55,7 +55,8 @@ static void print_help(void)
 	                "  -no-api             = Don't load internal api.\n"
 	                "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
 	                "  -run                = Execute 'main' method in compile time.\n"
-	                "  -run-tests          = Execute all unit tests in compile time.\n");
+	                "  -run-tests          = Execute all unit tests in compile time.\n"
+	                "  -verbose-linker     = Print internal linker logs.\n");
 }
 
 int main(int32_t argc, char *argv[])
@@ -95,6 +96,8 @@ int main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_NO_WARN;
 		} else if (strcmp(&argv[optind][1], "verbose") == 0) {
 			build_flags |= BUILDER_VERBOSE;
+		} else if (strcmp(&argv[optind][1], "verbose-linker") == 0) {
+			build_flags |= BUILDER_VERBOSE_LINKER;
 		} else if (strcmp(&argv[optind][1], "no-api") == 0) {
 			build_flags |= BUILDER_NO_API;
 		} else if (strcmp(&argv[optind][1], "force-test-to-llvm") == 0) {

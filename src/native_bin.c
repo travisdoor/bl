@@ -32,6 +32,7 @@
 void native_bin_run(Builder *builder, Assembly *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
+	const char *link_flag = "-l";
 	const char *cmd =
 	    "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 "
 	    "-dynamic-linker "
@@ -41,15 +42,13 @@ void native_bin_run(Builder *builder, Assembly *assembly)
 	    "-L/usr/bin "
 	    "-L/usr/lib/x86_64-linux-gnu "
 	    "/usr/lib/x86_64-linux-gnu/crtn.o "
-	    "-lc -lm "
-	    //"-lSDL2 -lSDL2_image "
-	    ;
+	    "-lc -lm";
 #elif defined(BL_PLATFORM_MACOS)
-	const char *cmd = "ld %s.o -o %s -lc -lcrt1.o "
-		//"-lSDL2 -lSDL2_image"
-	    ;
+	const char *link_flag = "-l";
+	const char *cmd       = "ld %s.o -o %s -lc -lcrt1.o";
 #elif defined(BL_PLATFORM_WIN)
 	bl_warning_issue(22);
+	const char *link_flag = "";
 	const char *cmd =
 	    "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
 	    "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual "
@@ -58,22 +57,23 @@ void native_bin_run(Builder *builder, Assembly *assembly)
 	    "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17763.0\\ucrt\\x64\" "
 	    "/LIBPATH:\"C:\\Program Files\\SDL2-2.0.9\\lib\\x64\" "
 	    "/LIBPATH:\"C:\\Program Files\\SDL2_image-2.0.4\\lib\\x64\" "
-	    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib "
-	    //"SDL2_image.lib SDL2.lib "
-	    "Msvcrt.lib";
+	    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib";
 #endif
 
 	// TODO: use dynamic buffer
-	char buf[1024];
+	char buf[2048];
 	sprintf(buf, cmd, assembly->name, assembly->name);
 
-	const char *  lib;
-	bo_iterator_t iter;
-	bhtbl_foreach(assembly->link_cache, iter)
-	{
-		lib = bo_htbl_iter_peek_value(assembly->link_cache, &iter, const char *);
-		strcat(&buf[0], " -l");
-		strcat(&buf[0], lib);
+	NativeLib *lib;
+	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
+		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
+
+		if (!lib->user_name)
+			continue;
+
+		strcat(buf, " ");
+		strcat(buf, link_flag);
+		strcat(buf, lib->user_name);
 	}
 
 	msg_log("%s", buf);

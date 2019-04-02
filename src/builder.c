@@ -100,6 +100,9 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 	}
 	interrupt_on_error(builder);
 
+	linker_run(builder, assembly);
+	interrupt_on_error(builder);
+
 	if (!(flags & BUILDER_SYNTAX_ONLY)) {
 		mir_run(builder, assembly);
 		if (flags & BUILDER_EMIT_MIR)
@@ -118,7 +121,7 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 		}
 
 		if (!(flags & BUILDER_NO_BIN)) {
-			linker_run(builder, assembly);
+			obj_writer_run(builder, assembly);
 			interrupt_on_error(builder);
 			native_bin_run(builder, assembly);
 			interrupt_on_error(builder);
