@@ -68,7 +68,7 @@ SDL_FLIP_NONE       :: 0x00000000;
 SDL_FLIP_HORIZONTAL :: 0x00000001;
 SDL_FLIP_VERTICAL   :: 0x00000002;
 
-SDL_EventType :: enum {
+SDL_EventType :: enum u32 {
     FIRSTEVENT                :: 0,    
     QUIT                      :: 0x100, 
     APP_TERMINATING,        
@@ -406,7 +406,7 @@ SDL_Event :: struct {
 };
 
 SDL_KeyboardEvent :: struct {
-    type: u32,
+    type: SDL_EventType,
     timestamp: u32,
     windowID: u32,
     state: u8,

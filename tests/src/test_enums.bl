@@ -32,3 +32,19 @@ CustomEnumValues :: enum {
     assert(cast(s32) CustomEnumValues.C == 21);
 };
 
+#test "passed enum" {
+    foo :: fn (value: SimpleEnum) {
+        assert(value == SimpleEnum.B);
+    };
+
+    foo(SimpleEnum.B);
+};
+
+#test "enum struct" {
+    Foo :: struct {
+        value: SimpleEnum
+    };
+
+    foo := {:Foo: SimpleEnum.A};
+    assert(foo.value == SimpleEnum.A);
+};

@@ -34,170 +34,170 @@ TypeKindInt  :: 1;
 TypeKindReal :: 2;
 
 TypeInfo :: struct {
-  kind: s32
+    kind: s32
 };
 
 TypeInfoInt :: struct {
-  base: TypeInfo,
-  bitcount: s32,
-  signed: bool
+    base: TypeInfo,
+    bitcount: s32,
+    signed: bool
 };
 
 TypeInfoReal :: struct {
-  base: TypeInfo,
-  bitcount: s32
+    base: TypeInfo,
+    bitcount: s32
 };
 
 cstr_to_str :: fn (cstr: *u8) string {
-  tmp := {:string: strlen(cstr), cstr};
-  return tmp;
+    tmp := {:string: strlen(cstr), cstr};
+    return tmp;
 };
 
 // Printing
 // TODO: all functions should use one buffer and call write only once prer 'print' call.
 print :: fn (format: string, nums: ...s64) {
-  tmp := {:string: 0, format.ptr }; 
-  ni := 0;
+    tmp := {:string: 0, format.ptr }; 
+    ni := 0;
 
-  loop i := 0; i < format.len; i += 1 {
-    c := format[i];
+    loop i := 0; i < format.len; i += 1 {
+        c := format[i];
 
-    if c == '%' {
-      print_string(tmp);
-      if ni < nums.len {
-        print_s64(nums[ni]); 
-        ni += 1;
-      } else {
-        print_string("(null)");
-      }
+        if c == '%' {
+            print_string(tmp);
+            if ni < nums.len {
+                print_s64(nums[ni]); 
+                ni += 1;
+            } else {
+                print_string("(null)");
+            }
 
-      tmp.len = 0;
-      if i + 1 < format.len {
-        tmp.ptr = &format[i + 1];
-      }
-    } else {
-      tmp.len += 1;
+            tmp.len = 0;
+            if i + 1 < format.len {
+                tmp.ptr = &format[i + 1];
+            }
+        } else {
+            tmp.len += 1;
+        }
     }
-  }
 
-  if tmp.len > 0 { print_string(tmp); }
+    if tmp.len > 0 { print_string(tmp); }
 };
 
 // TODO: this is only temporary solution
 print_floats :: fn (format: string, nums: ...f64) {
-  tmp := {:string: 0, format.ptr }; 
-  ni := 0;
+    tmp := {:string: 0, format.ptr }; 
+    ni := 0;
 
-  loop i := 0; i < format.len; i += 1 {
-    c := format[i];
+    loop i := 0; i < format.len; i += 1 {
+        c := format[i];
 
-    if c == '%' {
-      print_string(tmp);
-      if ni < nums.len {
-        print_f64(nums[ni]); 
-        ni += 1;
-      } else {
-        print_string("(null)");
-      }
+        if c == '%' {
+            print_string(tmp);
+            if ni < nums.len {
+                print_f64(nums[ni]); 
+                ni += 1;
+            } else {
+                print_string("(null)");
+            }
 
-      tmp.len = 0;
-      if i + 1 < format.len {
-        tmp.ptr = &format[i + 1];
-      }
-    } else {
-      tmp.len += 1;
+            tmp.len = 0;
+            if i + 1 < format.len {
+                tmp.ptr = &format[i + 1];
+            }
+        } else {
+            tmp.len += 1;
+        }
     }
-  }
 
-  if tmp.len > 0 { print_string(tmp); }
+    if tmp.len > 0 { print_string(tmp); }
 };
 
 print_string :: fn (str: string) {
-  os_write(OS_STDOUT, str.ptr, str.len);
+    os_write(OS_STDOUT, str.ptr, str.len);
 };
 
 print_s64 :: fn (v: s64) {
-  buf      : [21]u8;
-  negative :: v < 1;
-  c := 0;
+    buf      : [21]u8;
+    negative :: v < 1;
+    c := 0;
 
-  if negative {
-    v = -v;
-  }
+    if negative {
+        v = -v;
+    }
 
-  if v == 0 {
-    buf[0] = '0';
-    os_write(OS_STDOUT, buf.ptr, 1);
-    return;
-  }
+    if v == 0 {
+        buf[0] = '0';
+        os_write(OS_STDOUT, buf.ptr, 1);
+        return;
+    }
 
-  loop v > 0 {
-    d := v % 10;
-    buf[c] = d + '0';
-    v /= 10;
-    c += 1;
-  }
+    loop v > 0 {
+        d := v % 10;
+        buf[c] = d + '0';
+        v /= 10;
+        c += 1;
+    }
 
-  if negative {
-    buf[c] = '-';
-    c += 1;
-  }
+    if negative {
+        buf[c] = '-';
+        c += 1;
+    }
 
-  tmp := {:[]u8: buf.len, buf.ptr};
-  _print_reverse_buffer(tmp, 0, c - 1);
+    tmp := {:[]u8: buf.len, buf.ptr};
+    _print_reverse_buffer(tmp, 0, c - 1);
 
-  os_write(OS_STDOUT, buf.ptr, c);
+    os_write(OS_STDOUT, buf.ptr, c);
 };
 
 print_f64 :: fn (v: f64) {
-  precision :: 0.000001;
-  buf: [32]u8;
-  negative :: v < 0.;
-  c := 0;
+    precision :: 0.000001;
+    buf: [32]u8;
+    negative :: v < 0.;
+    c := 0;
 
-  if negative {
-    v = -v;
-  }
-
-  m := cast(s32) log10(v);
-
-  if negative {
-    buf[c] = '-';
-    c += 1;
-  }
-
-  if m < 1 {
-    m = 0;
-  }
-
-  // convert the number
-  loop v > precision || m >= 0 {
-    weight := pow(10., cast(f64) m);
-
-    if weight > 0. {
-      digit := cast(u8) floor(v / weight);
-      v -= ((cast(f64) digit) * weight);
-
-      buf[c] = digit + '0';
-      c += 1;
+    if negative {
+        v = -v;
     }
 
-    if m == 0 && v > 0. {
-      buf[c] = '.';
-      c += 1;
-    }
-    m -= 1;
-  }
+    m := cast(s32) log10(v);
 
-  os_write(OS_STDOUT, buf.ptr, c);
+    if negative {
+        buf[c] = '-';
+        c += 1;
+    }
+
+    if m < 1 {
+        m = 0;
+    }
+
+    // convert the number
+    loop v > precision || m >= 0 {
+        weight := pow(10., cast(f64) m);
+
+        if weight > 0. {
+            digit := cast(u8) floor(v / weight);
+            v -= ((cast(f64) digit) * weight);
+
+            buf[c] = digit + '0';
+            c += 1;
+        }
+
+        if m == 0 && v > 0. {
+            buf[c] = '.';
+            c += 1;
+        }
+        m -= 1;
+    }
+
+    os_write(OS_STDOUT, buf.ptr, c);
 };
 
 _print_reverse_buffer :: fn (buf: []u8, i: s32, j: s32) {
-  loop i < j {
-    tmp := buf[i];
-    buf[i] = buf[j];
-    buf[j] = tmp;
-    i += 1;             
-    j -= 1;         
-  }
+    loop i < j {
+        tmp := buf[i];
+        buf[i] = buf[j];
+        buf[j] = tmp;
+        i += 1;
+        j -= 1;
+    }
 };

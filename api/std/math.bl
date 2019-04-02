@@ -29,27 +29,27 @@
 PI :: 3.141592653589793238;
 
 Vec2 :: struct {
-  x: f32,
-  y: f32
+    x: f32,
+    y: f32
 };
 
 Vec3 :: struct {
-  x: f32,
-  y: f32,
-  z: f32,
+    x: f32,
+    y: f32,
+    z: f32,
 };
 
 iVec2 :: struct {
-  x: s32,
-  y: s32
+    x: s32,
+    y: s32
 };
 
 iVec3 :: struct {
-  x: s32,
-  y: s32,
-  z: s32,
+    x: s32,
+    y: s32,
+    z: s32,
 };
 
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 {
-  return a + fraction * (b - a);
+    return a + fraction * (b - a);
 };
