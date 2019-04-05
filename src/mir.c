@@ -3318,7 +3318,8 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	MirInstr *src = addrof->src;
 	assert(src);
-	if (src->kind != MIR_INSTR_DECL_REF && src->kind != MIR_INSTR_ELEM_PTR) {
+	if (src->kind != MIR_INSTR_DECL_REF && src->kind != MIR_INSTR_ELEM_PTR &&
+	    src->kind != MIR_INSTR_MEMBER_PTR) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL,
 		            addrof->base.node->src, BUILDER_CUR_WORD,
 		            "Cannot take the address of unallocated object.");
