@@ -3,13 +3,15 @@
 //#load "std/core.bl"
 //#load "std/debug.bl"
 
-Foo :: struct {
-    a: s32
-};
-
 main :: fn () s32 {
-    foo : Foo;
-    ptr := &foo.a;
+    Foo :: enum u8 {
+        A :: 10,
+        B :: A + 1,
+        C :: A + B,
+    };
+
+    b := Foo.B;
+    
     return 0;
 };
 

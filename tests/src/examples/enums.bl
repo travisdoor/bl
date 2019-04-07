@@ -12,6 +12,9 @@ Color : type : enum {
     assert(cast(s32) Color.Green == 1);
     assert(cast(s32) Color.Blue == 2);
 
+    // Base type is s32
+    assert(sizeof(Color) == 4);
+
     // Declare variable of type Color with value Red
     color := Color.Red;
     assert(cast(s32) color == 0);
@@ -29,18 +32,6 @@ Day :: enum u8 {
 };
 
 #test "enumerator" {
-    /* Color */ 
-    assert(cast(s32) Color.Red == 0);
-    assert(cast(s32) Color.Green == 1);
-    assert(cast(s32) Color.Blue == 2);
-
-    // Base type is s32
-    assert(sizeof(Color) == 4);
-
-    // Declare variable of type Color with value Red
-    color := Color.Red;
-    assert(cast(s32) color == 0);
-
     /* Day */ 
     assert(cast(s32) Day.Sat == 1);
     assert(cast(s32) Day.Sun == 2);

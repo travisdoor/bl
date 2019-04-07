@@ -55,6 +55,14 @@ typedef struct ScopeArenas {
 	Arena entry_arena;
 } ScopeArenas;
 
+typedef union ScopeEntryData {
+	struct MirType *   type;
+	struct MirFn *     fn;
+	struct MirVar *    var;
+	struct MirMember * member;
+	struct MirVariant *variant;
+} ScopeEntryData;
+
 typedef struct ScopeEntry {
 	ID *           id;
 	ScopeEntryKind kind;
@@ -62,13 +70,7 @@ typedef struct ScopeEntry {
 	struct Ast *   node;
 	bool           is_buildin;
 
-	union {
-		struct MirType *   type;
-		struct MirFn *     fn;
-		struct MirVar *    var;
-		struct MirMember * member;
-		struct MirVariant *variant;
-	} data;
+	ScopeEntryData data;
 } ScopeEntry;
 
 typedef struct Scope {
