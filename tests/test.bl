@@ -4,9 +4,10 @@
 //#load "std/debug.bl"
 
 main :: fn () s32 {
-    Foo :: enum {
-        A,
-        B :: A,
+    Foo :: enum u8 {
+        A :: 10,
+        B :: A + 1,
+        C :: A + B,
     };
 
     b := Foo.B;

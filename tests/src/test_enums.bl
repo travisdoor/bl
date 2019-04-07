@@ -14,6 +14,12 @@ CustomEnumValues :: enum {
     C
 };
 
+CustomEnumValuesDeps :: enum {
+    A :: 10,
+    B :: A + 1,
+    C :: A + B
+};
+
 #test "simple enum" {
     assert(cast(s32) SimpleEnum.A == 0);
     assert(cast(s32) SimpleEnum.B == 1);
@@ -47,4 +53,10 @@ CustomEnumValues :: enum {
 
     foo := {:Foo: SimpleEnum.A};
     assert(foo.value == SimpleEnum.A);
+};
+
+#test "enums with variant references" {
+    assert(cast(s32) CustomEnumValuesDeps.A == 10);
+    assert(cast(s32) CustomEnumValuesDeps.B == 11);
+    assert(cast(s32) CustomEnumValuesDeps.C == 21);
 };

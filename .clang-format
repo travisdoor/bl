@@ -4,7 +4,7 @@ TabWidth: 8
 AccessModifierOffset: -8
 UseTab: ForIndentation
 BreakBeforeBraces: Linux
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
 IndentCaseLabels: false
 ColumnLimit: 100
 AlignTrailingComments: true
