@@ -1098,98 +1098,62 @@ static inline ScopeEntry *provide_builtin_type(Context *cnt, MirType *type)
 	return entry;
 }
 
-static inline ScopeEntry *provide_var(Context *cnt, MirVar *var)
-{
-	assert(var && var->id && var->scope);
+/*
+ * Provide variable symbol into scope. Global scope variables also notify dependency system. 
+ */
+#define provide_var(_cnt, _var)                                                                    \
+	provide_symbol((_cnt), (_var)->decl_node, (_var)->id, (_var)->scope, SCOPE_ENTRY_VAR,      \
+	               (ScopeEntryData){.var = (_var)}, false, (_var)->is_in_gscope);
 
-	ScopeEntry *collision = scope_lookup(var->scope, var->id, false);
+/*
+ * Provide member of structure in structure scope. 
+ */
+#define provide_member(_cnt, _member)                                                              \
+	provide_symbol((_cnt), (_member)->decl_node, (_member)->id, (_member)->scope,              \
+	               SCOPE_ENTRY_MEMBER, (ScopeEntryData){.member = (_member)}, false, false);
+
+/*
+ * Provide enum variant in enum scope. 
+ */
+#define provide_variant(_cnt, _variant)                                                            \
+	provide_symbol((_cnt), (_variant)->decl_node, (_variant)->id, (_variant)->scope,           \
+	               SCOPE_ENTRY_VARIANT, (ScopeEntryData){.variant = (_variant)}, false,        \
+	               false);
+
+/*
+ * Provide funcion. 
+ */
+#define provide_fn(_cnt, _fn)                                                                      \
+	provide_symbol((_cnt), (_fn)->decl_node, (_fn)->id, (_fn)->scope, SCOPE_ENTRY_FN,          \
+	               (ScopeEntryData){.fn = (_fn)}, false, true);
+
+static inline ScopeEntry *provide_symbol(Context *cnt, Ast *node, ID *id, Scope *scope,
+                                         ScopeEntryKind kind, ScopeEntryData data, bool is_builtin,
+                                         bool notify)
+{
+	assert(id && "Missing symbol ID.");
+	assert(scope && "Missing entry scope.");
+
+	ScopeEntry *collision = scope_lookup(scope, id, false);
 	if (collision) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
-		            var->decl_node->src, BUILDER_CUR_WORD, "Duplicate symbol.");
+		            node ? node->src : NULL, BUILDER_CUR_WORD, "Duplicate symbol.");
+
 		if (collision->node) {
 			builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src,
 			            BUILDER_CUR_WORD, "Previous declaration found here.");
 		}
+
 		return NULL;
 	}
 
-	ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_VAR,
-	                                       var->id, var->decl_node, false);
-	entry->data.var   = var;
-	scope_insert(var->scope, entry);
+	ScopeEntry *entry =
+	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin);
+	entry->data = data;
+	scope_insert(scope, entry);
 
-	if (var->is_in_gscope) {
-		analyze_notify_provided(cnt, var->id->hash);
-	}
-
-	return entry;
-}
-
-static inline ScopeEntry *provide_member(Context *cnt, MirMember *member)
-{
-	assert(member && member->id && member->scope);
-
-	ScopeEntry *collision = scope_lookup(member->scope, member->id, false);
-	if (collision) {
-		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
-		            member->decl_node->src, BUILDER_CUR_WORD,
-		            "Duplicate symbol inside structure declaration.");
-		if (collision->node) {
-			builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src,
-			            BUILDER_CUR_WORD, "Previous declaration found here.");
-		}
-		return NULL;
-	}
-
-	ScopeEntry *entry  = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_MEMBER,
-                                               member->id, member->decl_node, false);
-	entry->data.member = member;
-	scope_insert(member->scope, entry);
-
-	return entry;
-}
-
-static inline ScopeEntry *provide_variant(Context *cnt, MirVariant *variant)
-{
-	assert(variant && variant->id && variant->scope);
-
-	ScopeEntry *collision = scope_lookup(variant->scope, variant->id, false);
-	if (collision) {
-		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
-		            variant->decl_node->src, BUILDER_CUR_WORD,
-		            "Duplicate symbol inside enum declaration.");
-		if (collision->node) {
-			builder_msg(cnt->builder, BUILDER_MSG_NOTE, 0, collision->node->src,
-			            BUILDER_CUR_WORD, "Previous declaration found here.");
-		}
-		return NULL;
-	}
-
-	ScopeEntry *entry   = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_VARIANT,
-                                               variant->id, variant->decl_node, false);
-	entry->data.variant = variant;
-	scope_insert(variant->scope, entry);
-
-	return entry;
-}
-
-static inline ScopeEntry *provide_fn(Context *cnt, MirFn *fn)
-{
-	assert(fn && fn->id && fn->scope);
-
-	ScopeEntry *collision = scope_lookup(fn->scope, fn->id, false);
-	if (collision) {
-		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
-		            fn->decl_node->src, BUILDER_CUR_WORD, "Duplicate symbol.");
-		return NULL;
-	}
-
-	ScopeEntry *entry = scope_create_entry(&cnt->builder->scope_arenas, SCOPE_ENTRY_FN, fn->id,
-	                                       fn->decl_node, false);
-	entry->data.fn    = fn;
-	scope_insert(fn->scope, entry);
-
-	analyze_notify_provided(cnt, fn->id->hash);
+	if (notify)
+		analyze_notify_provided(cnt, id->hash);
 
 	return entry;
 }
