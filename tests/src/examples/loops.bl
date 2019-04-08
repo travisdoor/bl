@@ -1,18 +1,18 @@
 #test "simple loops" {
-  count :: 10;
-  i := 0;
+    count :: 10;
+    i := 0;
 
-  loop {
-    i += 1;
-    if i == count { break; }
-  }
+    loop {
+        i += 1;
+        if i == count { break; }
+    }
 
-  i = 0;
-  loop i < count {
-    i += 1;
-  }
+    i = 0;
+    loop i < count {
+        i += 1;
+    }
 
-  loop j := 0; j < count; j += 1 {
-    // do something amazing here
-  }
+    loop j := 0; j < count; j += 1 {
+        // do something amazing here
+    }
 };

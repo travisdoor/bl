@@ -1,54 +1,54 @@
 #load "std/debug.bl"
 
 #test "simple structure" {
-  Foo :: struct {
-    i: s32,
-    j: s32 
-  };
+    Foo :: struct {
+        i: s32,
+        j: s32 
+    };
 
-  foo : Foo;
-  foo.i = 10;
-  foo.j = 20;
+    foo : Foo;
+    foo.i = 10;
+    foo.j = 20;
 
-  assert(foo.i == 10);
-  assert(foo.j == 20);
+    assert(foo.i == 10);
+    assert(foo.j == 20);
 };
 
 #test "anonymous structure" {
-  foo : struct {
-    i: s32,
-    j: s32 
-  };
+    foo : struct {
+        i: s32,
+        j: s32 
+    };
 
-  foo.i = 10;
-  foo.j = 20;
+    foo.i = 10;
+    foo.j = 20;
 
-  assert(foo.i == 10);
-  assert(foo.j == 20);
+    assert(foo.i == 10);
+    assert(foo.j == 20);
 };
 
 #test "auto dereference for structure poiners" {
-  Foo :: struct {
-    i: s32,
-    j: s32 
-  };
+    Foo :: struct {
+        i: s32,
+        j: s32 
+    };
 
-  foo : Foo;
-  foo_ptr := &foo;
-  foo_ptr.i = 10;
-  foo_ptr.j = 20;
+    foo : Foo;
+    foo_ptr := &foo;
+    foo_ptr.i = 10;
+    foo_ptr.j = 20;
 
-  assert(foo.i == 10);
-  assert(foo.j == 20);
+    assert(foo.i == 10);
+    assert(foo.j == 20);
 };
 
 #test "structure initializer" {
-  Foo :: struct {
-    i: s32,
-    j: s32
-  };
+    Foo :: struct {
+        i: s32,
+        j: s32
+    };
 
-  foo := {:Foo: 10, 20 };
-  assert(foo.i == 10);
-  assert(foo.j == 20);
+    foo := {:Foo: 10, 20 };
+    assert(foo.i == 10);
+    assert(foo.j == 20);
 };

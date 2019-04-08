@@ -1,5 +1,5 @@
 #test "string type" {
-  msg : string = "Hello world\n"; 
-  msg.len; // character count of the string
-  msg.ptr; // pointer to the string content
+    msg : string = "Hello world\n"; 
+    msg.len; // character count of the string
+    msg.ptr; // pointer to the string content
 };

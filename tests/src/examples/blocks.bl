@@ -1,14 +1,14 @@
 #load "std/debug.bl"
 
 #test "blocks" {
-  a := 10;
+    a := 10;
 
-  {
-    // this variable lives only in this scope
-    i := a;
-    assert(i == 10);
-  }
+    {
+        // this variable lives only in this scope
+        i := a;
+        assert(i == 10);
+    }
 
-  i := 20;
-  assert(i == 20);
+    i := 20;
+    assert(i == 20);
 };
