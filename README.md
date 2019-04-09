@@ -7,8 +7,6 @@ The Biscuit Language (BL) is simple imperative programming language using LLVM b
 
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
-More information can be found [here](https://travisdoor.github.io/bl/).
-
 
 <a id="orgf16669c"></a>
 
