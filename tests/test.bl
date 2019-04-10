@@ -4,18 +4,19 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-    homo := &foo;
-    homo();
+    foo :: fn () {
+        print("Hello from foo!!!\n");
+    };
 
-    homo = &bar;
-    homo();
+    bar :: fn () {
+        print("Hello from bar!!!\n");
+    };
+
+    ptr : *fn() = &foo;
+    ptr();
+
+    ptr = &bar;
+    ptr();
+
     return 0;
-};
-
-foo :: fn () {
-    print("Hello from foo!!!\n");
-};
-
-bar :: fn () {
-    print("Hello from bar!!!\n");
 };

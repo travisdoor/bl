@@ -2544,9 +2544,9 @@ void init_type_llvm_ABI(Context *cnt, MirType *type)
 		assert(llvm_ret);
 
 		type->llvm_type = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)argc, false);
-		type->size_bits = 0;
-		type->store_size_bytes = 0;
-		type->alignment        = 0;
+		type->alignment = __alignof(MirFn *);
+		type->size_bits = sizeof(MirFn *) * 8;
+		type->store_size_bytes = sizeof(MirFn *);
 		bl_free(llvm_args);
 		break;
 	}
@@ -2785,6 +2785,12 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 
 	case MIR_INSTR_DECL_REF: {
 		exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+		erase_instr(instr);
+		break;
+	}
+
+	case MIR_INSTR_ADDROF: {
+		exec_instr_addrof(cnt, (MirInstrAddrOf *)instr);
 		erase_instr(instr);
 		break;
 	}
@@ -3258,7 +3264,10 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	}
 
 	addrof->base.const_value.type = type;
+	addrof->base.comptime         = addrof->src->comptime;
 	assert(addrof->base.const_value.type && "invalid type");
+
+	reduce_instr(cnt, addrof->src);
 
 	return ANALYZE_PASSED;
 }
