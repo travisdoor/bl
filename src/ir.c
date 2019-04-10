@@ -222,8 +222,7 @@ static inline LLVMValueRef gen_fn_proto(Context *cnt, MirFn *fn)
 static inline LLVMValueRef gen_global_var_proto(Context *cnt, MirVar *var)
 {
 	assert(var);
-	if (var->llvm_value)
-		return var->llvm_value;
+	if (var->llvm_value) return var->llvm_value;
 
 	LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
 	var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->llvm_name);
@@ -256,8 +255,7 @@ static inline LLVMValueRef fetch_value(Context *cnt, MirInstr *instr)
 
 static inline LLVMBasicBlockRef gen_basic_block(Context *cnt, MirInstrBlock *block)
 {
-	if (!block)
-		return NULL;
+	if (!block) return NULL;
 	LLVMBasicBlockRef llvm_block = NULL;
 	if (!block->base.llvm_value) {
 		llvm_block = LLVMAppendBasicBlockInContext(
@@ -285,7 +283,7 @@ void gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		break;
 	}
 	case SCOPE_ENTRY_FN: {
-		ref->base.llvm_value = entry->data.fn->llvm_value;
+		ref->base.llvm_value = gen_fn_proto(cnt, entry->data.fn);
 		break;
 	}
 	default:
@@ -303,8 +301,7 @@ void gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 	const size_t       count   = bo_array_size(phi->incoming_blocks);
 	LLVMValueRef *     llvm_iv = bl_malloc(sizeof(LLVMValueRef) * count);
 	LLVMBasicBlockRef *llvm_ib = bl_malloc(sizeof(LLVMBasicBlockRef) * count);
-	if (llvm_iv == NULL || llvm_ib == NULL)
-		bl_abort("bad alloc");
+	if (llvm_iv == NULL || llvm_ib == NULL) bl_abort("bad alloc");
 
 	MirInstr *     value;
 	MirInstrBlock *block;
@@ -329,7 +326,10 @@ void gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
 }
 
-void gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info) { bl_abort_issue(26); }
+void gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+{
+	bl_abort_issue(26);
+}
 
 void gen_instr_cast(Context *cnt, MirInstrCast *cast)
 {
@@ -506,8 +506,7 @@ LLVMValueRef gen_global_string_ptr(Context *cnt, const char *str, size_t len)
 		llvm_str = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
 
 		LLVMValueRef *llvm_chars = bl_malloc(sizeof(LLVMValueRef) * (len + 1));
-		if (!llvm_chars)
-			bl_abort("bad alloc");
+		if (!llvm_chars) bl_abort("bad alloc");
 
 		for (size_t i = 0; i < len + 1; ++i) {
 			llvm_chars[i] = LLVMConstInt(cnt->llvm_i8_type, str[i], true);
@@ -622,7 +621,8 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 
 	case MIR_TYPE_ENUM: {
 		LLVMTypeRef llvm_base_type = value->type->llvm_type;
-		return LLVMConstInt(llvm_base_type, value->data.v_u64, value->type->data.integer.is_signed);
+		return LLVMConstInt(llvm_base_type, value->data.v_u64,
+		                    value->type->data.integer.is_signed);
 	}
 
 	default:
@@ -788,20 +788,25 @@ void gen_instr_call(Context *cnt, MirInstrCall *call)
 {
 	MirInstr *callee = call->callee;
 	assert(callee);
-	assert(callee->const_value.type && callee->const_value.type->kind == MIR_TYPE_FN);
+	assert(callee->const_value.type);
 
-	LLVMValueRef  llvm_fn   = gen_fn_proto(cnt, callee->const_value.data.v_fn);
+	LLVMValueRef llvm_fn = callee->llvm_value
+	                           ? callee->llvm_value
+	                           : gen_fn_proto(cnt, callee->const_value.data.v_fn);
+
 	const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
 	LLVMValueRef *llvm_args = NULL;
 
 	if (llvm_argc) {
 		llvm_args = bl_malloc(sizeof(LLVMValueRef) * llvm_argc);
-		if (!llvm_args)
-			bl_abort("bad alloc");
+		if (!llvm_args) bl_abort("bad alloc");
 
 		MirInstr *arg;
 
-		barray_foreach(call->args, arg) { llvm_args[i] = fetch_value(cnt, arg); }
+		barray_foreach(call->args, arg)
+		{
+			llvm_args[i] = fetch_value(cnt, arg);
+		}
 	}
 
 	assert(llvm_fn);
@@ -816,8 +821,7 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	assert(var);
 
 	/* skip when we should not generate LLVM representation */
-	if (var->alloc_type->kind == MIR_TYPE_TYPE)
-		return;
+	if (var->alloc_type->kind == MIR_TYPE_TYPE) return;
 
 	if (var->is_in_gscope) {
 		/* OK variable is declared in global scope so we need different generation here*/
@@ -1105,8 +1109,7 @@ void gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = fn_proto->base.const_value.data.v_fn;
 	/* unused function */
-	if (fn->ref_count == 0)
-		return;
+	if (fn->ref_count == 0) return;
 	gen_fn_proto(cnt, fn);
 
 	if (!(fn->flags & (FLAG_EXTERN))) {
@@ -1223,7 +1226,10 @@ void ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_memcpy_fn = create_memcpy_fn(&cnt);
 
 	MirInstr *ginstr;
-	barray_foreach(assembly->mir_module->globals, ginstr) { gen_instr(&cnt, ginstr); }
+	barray_foreach(assembly->mir_module->globals, ginstr)
+	{
+		gen_instr(&cnt, ginstr);
+	}
 
 #if BL_DEBUG
 	char *error = NULL;

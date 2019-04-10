@@ -1,17 +1,21 @@
 /* playground */
 
-//#load "std/core.bl"
-//#load "std/debug.bl"
+#load "std/core.bl"
+#load "std/debug.bl"
 
 main :: fn () s32 {
-    Foo :: enum u8 {
-        A :: 10,
-        B :: A + 1,
-        C :: A + B,
-    };
+    homo := &foo;
+    homo();
 
-    b := Foo.B;
-    
+    homo = &bar;
+    homo();
     return 0;
 };
 
+foo :: fn () {
+    print("Hello from foo!!!\n");
+};
+
+bar :: fn () {
+    print("Hello from bar!!!\n");
+};

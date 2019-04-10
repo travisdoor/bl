@@ -2194,6 +2194,7 @@ MirInstr *append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *a
 	tmp->callee       = callee;
 
 	ref_instr(&tmp->base);
+	ref_instr(tmp->callee);
 
 	/* reference all arguments */
 	if (args) {
@@ -4143,9 +4144,18 @@ uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 {
 	assert(call->callee);
+
+	/*
+	 * Direct call is call without any reference lookup, usually call to anonymous function,
+	 * type resolver or variable initializer. Contant value of callee instruction must containt
+	 * pointer to the MirFn object.
+	 */
+	const bool is_direct_call = call->callee->kind != MIR_INSTR_DECL_REF;
+
 	/* callee has not been analyzed yet -> postpone call analyze */
 	if (!call->callee->analyzed) return ANALYZE_POSTPONE;
-	// analyze_instr(cnt, call->callee, call->base.comptime || comptime);
+
+	call->callee = insert_instr_load_if_needed(cnt, call->callee);
 
 	MirType *type = call->callee->const_value.type;
 	assert(type && "invalid type of called object");
@@ -4154,6 +4164,10 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 		/* we want to make calls also via pointer to functions so in such case
 		 * we need to resolve pointed function */
 		type = mir_deref_type(type);
+
+		/* call->callee = insert_instr_load_if_needed(cnt, call->callee); */
+		/* type         = call->callee->const_value.type; */
+		/* assert(type && "invalid type of called object"); */
 	}
 
 	if (type->kind != MIR_TYPE_FN) {
@@ -4162,12 +4176,15 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 		return ANALYZE_FAILED;
 	}
 
-	MirFn *fn = call->callee->const_value.data.v_fn;
-	if (call->base.comptime) {
-		if (!fn->analyzed_for_cmptime_exec) return ANALYZE_POSTPONE;
-	} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
-		/* Direct call of anonymous function. */
-		++fn->ref_count;
+	if (is_direct_call) {
+		MirFn *fn = call->callee->const_value.data.v_fn;
+		assert(fn && "Missing function reference for direct call!");
+		if (call->base.comptime) {
+			if (!fn->analyzed_for_cmptime_exec) return ANALYZE_POSTPONE;
+		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
+			/* Direct call of anonymous function. */
+			++fn->ref_count;
+		}
 	}
 
 	MirType *result_type = type->data.fn.ret_type;
@@ -4181,7 +4198,7 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 	const size_t call_argc = call->args ? bo_array_size(call->args) : 0;
 
 	if (is_vargs) {
-		/* This will gonna be tricky... */
+		/* This is gonna be tricky... */
 		--callee_argc;
 		if ((call_argc < callee_argc)) {
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_ARG_COUNT,
