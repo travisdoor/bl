@@ -766,8 +766,8 @@ static inline const char *gen_uq_name(Context *cnt, const char *prefix)
 	BString *      s  = builder_create_cached_str(cnt->builder);
 
 	bo_string_append(s, prefix);
-	char ui_str[21];
-	sprintf(ui_str, "%i", ui++);
+	char ui_str[22];
+	sprintf(ui_str, ".%i", ui++);
 	bo_string_append(s, ui_str);
 	return bo_string_get(s);
 }
@@ -2167,6 +2167,7 @@ MirInstr *append_instr_fn_proto(Context *cnt, Ast *node, MirInstr *type, MirInst
 	MirInstrFnProto *tmp = create_instr(cnt, MIR_INSTR_FN_PROTO, node, MirInstrFnProto *);
 	tmp->type            = type;
 	tmp->user_type       = user_type;
+	tmp->base.comptime   = true;
 
 	push_into_gscope(cnt, &tmp->base);
 	analyze_push_back(cnt, &tmp->base);
@@ -3240,8 +3241,11 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	MirInstr *src = addrof->src;
 	assert(src);
-	if (src->kind != MIR_INSTR_DECL_REF && src->kind != MIR_INSTR_ELEM_PTR &&
-	    src->kind != MIR_INSTR_MEMBER_PTR) {
+
+	const bool valid = src->kind == MIR_INSTR_DECL_REF || src->kind == MIR_INSTR_ELEM_PTR ||
+	                   src->kind == MIR_INSTR_MEMBER_PTR || src->kind == MIR_INSTR_FN_PROTO;
+
+	if (!valid) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL,
 		            addrof->base.node->src, BUILDER_CUR_WORD,
 		            "Cannot take the address of unallocated object.");
@@ -4174,9 +4178,11 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 		 * we need to resolve pointed function */
 		type = mir_deref_type(type);
 
-		/* call->callee = insert_instr_load_if_needed(cnt, call->callee); */
-		/* type         = call->callee->const_value.type; */
-		/* assert(type && "invalid type of called object"); */
+		/*
+		call->callee = insert_instr_load_if_needed(cnt, call->callee);
+		type         = call->callee->const_value.type;
+		assert(type && "invalid type of called object");
+		*/
 	}
 
 	if (type->kind != MIR_TYPE_FN) {
@@ -4827,7 +4833,12 @@ void exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	if (src->kind == MIR_INSTR_DECL_REF) {
 		MirStackPtr ptr = exec_fetch_value(cnt, src);
 		ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
-		exec_push_stack(cnt, (MirStackPtr)&ptr, type);
+
+		if (addrof->base.comptime) {
+			memcpy(&addrof->base.const_value.data, ptr, type->store_size_bytes);
+		} else {
+			exec_push_stack(cnt, (MirStackPtr)&ptr, type);
+		}
 	}
 }
 
@@ -5255,7 +5266,7 @@ void exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	ScopeEntry *entry = ref->scope_entry;
 	assert(entry);
 
-	if (ref->base.comptime) return;
+	// if (ref->base.comptime) return;
 
 	switch (entry->kind) {
 	case SCOPE_ENTRY_VAR: {
@@ -5274,8 +5285,17 @@ void exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		break;
 	}
 
-	case SCOPE_ENTRY_FN:
+	case SCOPE_ENTRY_FN: {
+		MirFn *fn = entry->data.fn;
+		assert(fn);
+
+		ref->base.const_value.data.v_fn = fn;
+		break;
+	}
+
 	case SCOPE_ENTRY_TYPE:
+	case SCOPE_ENTRY_MEMBER:
+	case SCOPE_ENTRY_VARIANT:
 		break;
 
 	default:
@@ -5624,11 +5644,25 @@ static inline void exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *
 void exec_instr_call(Context *cnt, MirInstrCall *call)
 {
 	assert(call->callee && call->base.const_value.type);
-	MirConstValue *callee_val = &call->callee->const_value;
-	assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
+	assert(call->callee->const_value.type);
 
-	MirFn *fn = callee_val->data.v_fn;
-	assert(fn);
+	MirStackPtr       callee_ptr = exec_fetch_value(cnt, call->callee);
+	MirConstValueData callee     = {0};
+
+	exec_read_value(&callee, callee_ptr, call->callee->const_value.type);
+
+	/* Function called via pointer. */
+	if (call->callee->const_value.type->kind == MIR_TYPE_PTR) {
+		assert(mir_deref_type(call->callee->const_value.type)->kind == MIR_TYPE_FN);
+		callee.v_fn = callee.v_ptr ? callee.v_ptr->data.v_fn : NULL;
+	}
+
+	MirFn *fn = callee.v_fn;
+	if (!fn) {
+		msg_error("Function pointer not set!");
+		exec_abort(cnt, 0);
+		return;
+	}
 
 	MirType *ret_type = fn->type->data.fn.ret_type;
 	assert(ret_type);

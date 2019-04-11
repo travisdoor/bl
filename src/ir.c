@@ -557,8 +557,24 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 		assert(value->data.v_void_ptr == NULL);
 		return LLVMConstNull(llvm_type);
 
-	case MIR_TYPE_PTR:
-		bl_abort("invalid constant type");
+	case MIR_TYPE_PTR: {
+		type = mir_deref_type(type);
+		assert(type);
+
+		if (type->kind == MIR_TYPE_FN) {
+			/* Constant pointer to the function. Value must contains pointer to MirFn
+			 * instance! */
+			MirFn *fn = value->data.v_ptr ? value->data.v_ptr->data.v_fn : NULL;
+			assert(fn && "Function pointer not set for compile time known constant "
+			             "pointer to function.");
+
+			LLVMValueRef llvm_fn = gen_fn_proto(cnt, fn);
+			assert(llvm_fn);
+			return llvm_fn;
+		} else {
+			bl_abort("invalid constant type");
+		}
+	}
 
 	case MIR_TYPE_ARRAY: {
 		const size_t len            = type->data.array.len;

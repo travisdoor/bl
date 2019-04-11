@@ -15,8 +15,26 @@ main :: fn () s32 {
     ptr : *fn() = &foo;
     ptr();
 
+    ptr = null;
+    ptr();
+
     ptr = &bar;
     ptr();
+
+    foo();
+    bar();
+
+    fn () {
+        print("Hello from anonymous!!!\n");
+    }();
+
+    /*
+    ptr = &fn () {
+        print("Hello from anonymous called via pointer!!!\n");
+    };
+
+    ptr();
+    */
 
     return 0;
 };
