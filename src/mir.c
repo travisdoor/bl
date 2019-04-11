@@ -38,9 +38,9 @@
 #define TEST_CASE_FN_NAME               ".test"
 #define RESOLVE_TYPE_FN_NAME            ".type"
 #define INIT_VALUE_FN_NAME              ".init"
-#define IMPL_FN_NAME                    ".impl_"
-#define IMPL_VARGS_TMP_ARR              ".vargs_arr_"
-#define IMPL_VARGS_TMP                  ".vargs_"
+#define IMPL_FN_NAME                    ".impl"
+#define IMPL_VARGS_TMP_ARR              ".vargs_arr"
+#define IMPL_VARGS_TMP                  ".vargs"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -54,9 +54,7 @@
 #define _log_push_ra                                                                               \
 	{                                                                                          \
 		if (instr) {                                                                       \
-			fprintf(stdout, "%6llu %20s  PUSH RA\n",                                   \
-			        (unsigned long long)cnt->exec_stack->pc->_serial,                  \
-			        mir_instr_name(cnt->exec_stack->pc));                              \
+			fprintf(stdout, "%6llu   PUSH RA\n", mir_instr_name(cnt->exec_stack->pc)); \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
 		}                                                                                  \
@@ -64,9 +62,7 @@
 
 #define _log_pop_ra                                                                                \
 	{                                                                                          \
-		fprintf(stdout, "%6llu %20s  POP RA\n",                                            \
-		        (unsigned long long)cnt->exec_stack->pc->_serial,                          \
-		        mir_instr_name(cnt->exec_stack->pc));                                      \
+		fprintf(stdout, "%6llu   POP RA\n", mir_instr_name(cnt->exec_stack->pc));          \
 	}
 
 #define _log_push_stack                                                                            \
@@ -74,8 +70,7 @@
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		if (cnt->exec_stack->pc) {                                                         \
-			fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",                     \
-			        (unsigned long long)cnt->exec_stack->pc->_serial,                  \
+			fprintf(stdout, "%6llu   PUSH    (%luB, %p) %s\n",                         \
 			        mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);        \
 		} else {                                                                           \
 			fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n",    \
@@ -87,8 +82,7 @@
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
-		fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",                             \
-		        (unsigned long long)cnt->exec_stack->pc->_serial,                          \
+		fprintf(stdout, "%6llu   POP     (%luB, %p) %s\n",                                 \
 		        mir_instr_name(cnt->exec_stack->pc), size,                                 \
 		        cnt->exec_stack->top_ptr - size, type_name);                               \
 	}
@@ -1676,7 +1670,6 @@ MirInstr *insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 	MirInstrLoad *tmp  = create_instr(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
 	tmp->src           = src;
 	tmp->base.analyzed = true;
-	tmp->base.id       = ++block->owner_fn->block_count;
 
 	ref_instr(&tmp->base);
 	insert_instr_after(src, &tmp->base);
@@ -1815,7 +1808,6 @@ MirInstr *try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, boo
 
 		MirInstrCast *cast = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
 		cast->base.const_value.type = expected_type;
-		cast->base.id               = ++block->owner_fn->block_count;
 		cast->next                  = src;
 		cast->op                    = get_cast_op(src_type, expected_type);
 		ref_instr(&cast->base);
@@ -1833,15 +1825,12 @@ MirInstr *try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, boo
 
 MirInstr *_create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
+	static uint64_t id_counter = 0;
+
 	MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
 	tmp->kind     = kind;
 	tmp->node     = node;
-	tmp->id       = 0;
-
-#if BL_DEBUG
-	static uint64_t counter = 0;
-	tmp->_serial            = counter++;
-#endif
+	tmp->id       = id_counter++;
 
 	return tmp;
 }
@@ -1852,7 +1841,6 @@ MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name)
 	MirInstrBlock *tmp = create_instr(cnt, MIR_INSTR_BLOCK, NULL, MirInstrBlock *);
 	tmp->name          = name;
 	tmp->owner_fn      = fn;
-	tmp->base.id       = fn->block_count++;
 
 	if (!fn->first_block) {
 		fn->first_block = tmp;
@@ -1872,7 +1860,6 @@ MirInstr *create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
 {
 	assert(fn && fn->kind == MIR_INSTR_FN_PROTO);
 	MirInstrCall *tmp  = create_instr(cnt, MIR_INSTR_CALL, node, MirInstrCall *);
-	tmp->base.id       = 0;
 	tmp->base.comptime = true;
 	tmp->callee        = fn;
 	ref_instr(fn);
@@ -4497,9 +4484,8 @@ static inline MirInstr *analyze_try_get_next(MirInstr *instr)
 			 * set flag with this information here. */
 			owner_block->owner_fn->analyzed_for_cmptime_exec = true;
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: " BLUE("Function '%s ~%llu' completely analyzed.\n"),
-			       owner_block->owner_fn->llvm_name,
-			       (unsigned long long)owner_block->owner_fn->prototype->_serial);
+			printf("Analyze: " BLUE("Function '%s' completely analyzed.\n"),
+			       owner_block->owner_fn->llvm_name);
 #endif
 		}
 
@@ -4550,16 +4536,14 @@ void analyze(Context *cnt)
 		switch (state) {
 		case ANALYZE_PASSED:
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [ " GREEN("PASSED") " ] %16s (%llu)\n", mir_instr_name(ip),
-			       (unsigned long long)ip->_serial);
+			printf("Analyze: [ " GREEN("PASSED") " ] %16s\n", mir_instr_name(ip));
 #endif
 			postpone_loop_count = 0;
 			break;
 
 		case ANALYZE_FAILED:
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [ " RED("FAILED") " ] %16s (%llu)\n", mir_instr_name(ip),
-			       (unsigned long long)ip->_serial);
+			printf("Analyze: [ " RED("FAILED") " ] %16s\n", mir_instr_name(ip));
 #endif
 			skip                = true;
 			postpone_loop_count = 0;
@@ -4567,8 +4551,8 @@ void analyze(Context *cnt)
 
 		case ANALYZE_POSTPONE:
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [" MAGENTA("POSTPONE") "] %16s (%llu)\n",
-			       mir_instr_name(ip), (unsigned long long)ip->_serial);
+			printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n",
+			       mir_instr_name(ip));
 #endif
 
 			skip = true;
@@ -4578,8 +4562,8 @@ void analyze(Context *cnt)
 		default: {
 #if BL_DEBUG && VERBOSE_ANALYZE
 			printf("Analyze: [  " YELLOW(
-			           "WAIT") "  ] %16s (%llu) is waiting for: '%llu'\n",
-			       mir_instr_name(ip), (unsigned long long)ip->_serial,
+			           "WAIT") "  ] %16s is waiting for: '%llu'\n",
+			       mir_instr_name(ip), 
 			       (unsigned long long)state);
 #endif
 
@@ -4694,22 +4678,9 @@ void exec_instr(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
 	if (!instr->analyzed) {
-#if BL_DEBUG
-		bl_abort("instruction %s (%llu) has not been analyzed!", mir_instr_name(instr),
-		         instr->_serial);
-#else
 		bl_abort("instruction %s has not been analyzed!", mir_instr_name(instr));
-#endif
 	}
 	// if (instr->ref_count == 0) return;
-
-#if 0
-  /* step-by-step execution */
-  {
-    mir_print_instr(instr);
-    getchar();
-  }
-#endif
 
 	switch (instr->kind) {
 	case MIR_INSTR_CAST:

@@ -394,10 +394,6 @@ struct MirInstr {
 
 	MirInstr *prev;
 	MirInstr *next;
-
-#if BL_DEBUG
-	uint64_t _serial;
-#endif
 };
 
 struct MirInstrBlock {
