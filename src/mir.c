@@ -4551,8 +4551,7 @@ void analyze(Context *cnt)
 
 		case ANALYZE_POSTPONE:
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n",
-			       mir_instr_name(ip));
+			printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n", mir_instr_name(ip));
 #endif
 
 			skip = true;
@@ -4561,10 +4560,8 @@ void analyze(Context *cnt)
 
 		default: {
 #if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [  " YELLOW(
-			           "WAIT") "  ] %16s is waiting for: '%llu'\n",
-			       mir_instr_name(ip), 
-			       (unsigned long long)state);
+			printf("Analyze: [  " YELLOW("WAIT") "  ] %16s is waiting for: '%llu'\n",
+			       mir_instr_name(ip), (unsigned long long)state);
 #endif
 
 			BArray *      wq   = NULL;
@@ -4801,15 +4798,13 @@ void exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 		return;
 	}
 
-	if (src->kind == MIR_INSTR_DECL_REF) {
-		MirStackPtr ptr = exec_fetch_value(cnt, src);
-		ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
+	MirStackPtr ptr = exec_fetch_value(cnt, src);
+	ptr             = ((MirConstValueData *)ptr)->v_stack_ptr;
 
-		if (addrof->base.comptime) {
-			memcpy(&addrof->base.const_value.data, ptr, type->store_size_bytes);
-		} else {
-			exec_push_stack(cnt, (MirStackPtr)&ptr, type);
-		}
+	if (addrof->base.comptime) {
+		memcpy(&addrof->base.const_value.data, ptr, type->store_size_bytes);
+	} else {
+		exec_push_stack(cnt, (MirStackPtr)&ptr, type);
 	}
 }
 
