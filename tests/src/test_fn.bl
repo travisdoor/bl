@@ -22,3 +22,19 @@
   fn () {
   } ();
 };
+
+#test "function pointers" {
+    foo :: fn (v: s32) s32 {
+        return v;
+    };
+
+    bar :: fn (v: s32) s32 {
+        return v;
+    };
+
+    ptr := &foo;
+    assert(ptr(10) == 10);
+
+    ptr = &bar;
+    assert(ptr(20) == 20);
+};

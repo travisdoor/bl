@@ -1,17 +1,35 @@
 /* playground */
 
-//#load "std/core.bl"
-//#load "std/debug.bl"
+#load "std/core.bl"
+#load "std/debug.bl"
 
 main :: fn () s32 {
-    Foo :: enum u8 {
-        A :: 10,
-        B :: A + 1,
-        C :: A + B,
+    foo :: fn () {
+        print("Hello from foo!!!\n");
     };
 
-    b := Foo.B;
-    
+    bar :: fn () {
+        print("Hello from bar!!!\n");
+    };
+
+    ptr : *fn() = &foo;
+    ptr();
+
+    ptr = &bar;
+    ptr();
+
+    foo();
+    bar();
+
+    fn () {
+        print("Hello from anonymous!!!\n");
+    }();
+
+    ptr = &fn () {
+        print("Hello from anonymous called via pointer!!!\n");
+    };
+
+    ptr();
+
     return 0;
 };
-
