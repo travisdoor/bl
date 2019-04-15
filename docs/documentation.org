@@ -285,6 +285,12 @@
 
     Example of anonymous function.
     #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
+    
+*** Function pointers
+    Functions can be called via pointer. Call on ~null~ pointer will produce error in interpreter.
+    
+    Example:
+    #+INCLUDE: "../tests/src/examples/fn_pointers.bl" src bl -n
    
 *** Functions with variable argument count
     Biscuit supports functions with variable argument count of the same type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs. Inside function body variable argument list acts like regular array.

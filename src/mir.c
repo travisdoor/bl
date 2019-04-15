@@ -3520,6 +3520,7 @@ uint64_t analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* implicit functions has no name -> generate one */
 	if (!fn->llvm_name) {
 		fn->llvm_name = gen_uq_name(cnt, IMPL_FN_NAME);
+		++fn->ref_count;
 	}
 
 	if (fn->flags & (FLAG_EXTERN)) {
@@ -4164,12 +4165,6 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 		/* we want to make calls also via pointer to functions so in such case
 		 * we need to resolve pointed function */
 		type = mir_deref_type(type);
-
-		/*
-		call->callee = insert_instr_load_if_needed(cnt, call->callee);
-		type         = call->callee->const_value.type;
-		assert(type && "invalid type of called object");
-		*/
 	}
 
 	if (type->kind != MIR_TYPE_FN) {

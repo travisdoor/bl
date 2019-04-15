@@ -1,0 +1,21 @@
+#load "std/core.bl"
+
+#test "fn pointers" {
+    foo :: fn () {
+        print("Hello from foo!!!\n");
+    };
+
+    bar :: fn () {
+        print("Hello from bar!!!\n");
+    };
+
+    // Grab the pointer of 'foo'
+    fn_ptr := &foo;
+
+    // Call via pointer reference.
+    fn_ptr();
+
+    fn_ptr = &bar;
+    fn_ptr();
+    return 0;
+};

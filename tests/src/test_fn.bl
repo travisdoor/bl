@@ -37,4 +37,7 @@
 
     ptr = &bar;
     assert(ptr(20) == 20);
+
+    ptr2 := &fn () {};
+    ptr2();
 };
