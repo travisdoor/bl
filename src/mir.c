@@ -3247,7 +3247,7 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 	/* setup type */
 	MirType *type = NULL;
-
+	assert(src->const_value.type);
 	if (src->const_value.type->kind == MIR_TYPE_FN) {
 		type = create_type_ptr(cnt, src->const_value.type);
 	} else {
@@ -3709,6 +3709,14 @@ uint64_t analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct
 
 			/* solve member type */
 			member_type = decl_member->type->const_value.data.v_type;
+
+			if (member_type->kind == MIR_TYPE_FN) {
+				builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE,
+				            (*member_instr)->node->src, BUILDER_CUR_WORD,
+				            "Invalid type of the structure member, functions can "
+				            "be referenced only by pointers.");
+				return ANALYZE_FAILED;
+			}
 
 			assert(member_type);
 			bo_array_push_back(members, member_type);

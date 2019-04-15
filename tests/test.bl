@@ -1,35 +1,21 @@
 /* playground */
 
-#load "std/core.bl"
-#load "std/debug.bl"
+//#load "std/core.bl"
+//#load "std/debug.bl"
+
+Foo :: struct {
+    func: *fn ()
+};
 
 main :: fn () s32 {
-    foo :: fn () {
-        print("Hello from foo!!!\n");
-    };
+    foo := {:Foo: 0};
 
-    bar :: fn () {
-        print("Hello from bar!!!\n");
-    };
+    //foo.func = &fn () {};
+    //ptr := &fn () {};
 
-    ptr : *fn() = &foo;
-    ptr();
-
-    ptr = &bar;
-    ptr();
-
-    foo();
-    bar();
-
-    fn () {
-        print("Hello from anonymous!!!\n");
-    }();
-
-    ptr = &fn () {
-        print("Hello from anonymous called via pointer!!!\n");
-    };
-
-    ptr();
-
+    F :: fn () {};
+    foo.func = &F;
+    foo.func();
+    
     return 0;
 };
