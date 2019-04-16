@@ -4159,7 +4159,9 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 	 * type resolver or variable initializer. Contant value of callee instruction must containt
 	 * pointer to the MirFn object.
 	 */
-	const bool is_direct_call = call->callee->kind != MIR_INSTR_DECL_REF;
+	const MirInstrKind callee_kind = call->callee->kind;
+	const bool         is_direct_call =
+	    callee_kind != MIR_INSTR_DECL_REF && callee_kind != MIR_INSTR_MEMBER_PTR;
 
 	/* callee has not been analyzed yet -> postpone call analyze */
 	if (!call->callee->analyzed) return ANALYZE_POSTPONE;

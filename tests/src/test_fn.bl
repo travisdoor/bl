@@ -41,3 +41,16 @@
     ptr2 := &fn () {};
     ptr2();
 };
+
+#test "nested function pointers" {
+    Foo :: struct {
+        v_fn: *fn()
+    };
+
+    TestFn :: fn () {};
+
+    foo := {:Foo: 0};
+    foo.v_fn = &TestFn; 
+
+    foo.v_fn();
+};

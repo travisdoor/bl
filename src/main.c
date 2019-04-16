@@ -42,20 +42,20 @@ static void print_help(void)
 	                "  blc [options] <source-files>\n\n"
 	                "Options\n"
 	                "  -h, -help           = Print usage information and exit.\n"
+	                "  -r, -run            = Execute 'main' method in compile time.\n"
+	                "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
+	                "  -emit-llvm          = Write LLVM-IR to file.\n"
+	                "  -emit-mir           = Write MIR to file.\n"
 	                "  -ast-dump           = Print AST.\n"
 	                "  -lex-dump           = Print output of lexer.\n"
 	                "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
 	                "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
 	                "  -syntax-only        = Check syntax and exit.\n"
-	                "  -emit-llvm          = Write LLVM-IR to file.\n"
-	                "  -emit-mir           = Write MIR to file.\n"
 	                "  -no-bin             = Don't write binary to disk.\n"
 	                "  -no-warning         = Ignore all warnings.\n"
 	                "  -verbose            = Verbose mode.\n"
 	                "  -no-api             = Don't load internal api.\n"
 	                "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	                "  -run                = Execute 'main' method in compile time.\n"
-	                "  -run-tests          = Execute all unit tests in compile time.\n"
 	                "  -verbose-linker     = Print internal linker logs.\n");
 }
 
@@ -65,42 +65,42 @@ int main(int32_t argc, char *argv[])
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 	puts("compiler version: " BL_VERSION " (pre-alpha)");
 
-	bool   help = false;
-	size_t optind;
+#define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+
+	bool    help = false;
+	int32_t optind;
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
-		if (strcmp(&argv[optind][1], "ast-dump") == 0) {
+		if (arg_is("ast-dump")) {
 			build_flags |= BUILDER_PRINT_AST;
-		} else if (strcmp(&argv[optind][1], "h") == 0) {
+		} else if (arg_is("h") || arg_is("help")) {
 			help = true;
-		} else if (strcmp(&argv[optind][1], "help") == 0) {
-			help = true;
-		} else if (strcmp(&argv[optind][1], "lex-dump") == 0) {
+		} else if (arg_is("lex-dump")) {
 			build_flags |= BUILDER_PRINT_TOKENS;
-		} else if (strcmp(&argv[optind][1], "mir-pre-dump") == 0) {
+		} else if (arg_is("mir-pre-dump")) {
 			build_flags |= BUILDER_VERBOSE_MIR_PRE;
-		} else if (strcmp(&argv[optind][1], "mir-post-dump") == 0) {
+		} else if (arg_is("mir-post-dump")) {
 			build_flags |= BUILDER_VERBOSE_MIR_POST;
-		} else if (strcmp(&argv[optind][1], "syntax-only") == 0) {
+		} else if (arg_is("syntax-only")) {
 			build_flags |= BUILDER_SYNTAX_ONLY;
-		} else if (strcmp(&argv[optind][1], "emit-llvm") == 0) {
+		} else if (arg_is("emit-llvm")) {
 			build_flags |= BUILDER_EMIT_LLVM;
-		} else if (strcmp(&argv[optind][1], "emit-mir") == 0) {
+		} else if (arg_is("emit-mir")) {
 			build_flags |= BUILDER_EMIT_MIR;
-		} else if (strcmp(&argv[optind][1], "run") == 0) {
+		} else if (arg_is("r") || arg_is("run")) {
 			build_flags |= BUILDER_RUN;
-		} else if (strcmp(&argv[optind][1], "run-tests") == 0) {
+		} else if (arg_is("rt") || arg_is("run-tests")) {
 			build_flags |= BUILDER_RUN_TESTS;
-		} else if (strcmp(&argv[optind][1], "no-bin") == 0) {
+		} else if (arg_is("no-bin")) {
 			build_flags |= BUILDER_NO_BIN;
-		} else if (strcmp(&argv[optind][1], "no-warning") == 0) {
+		} else if (arg_is("no-warning")) {
 			build_flags |= BUILDER_NO_WARN;
-		} else if (strcmp(&argv[optind][1], "verbose") == 0) {
+		} else if (arg_is("verbose")) {
 			build_flags |= BUILDER_VERBOSE;
-		} else if (strcmp(&argv[optind][1], "verbose-linker") == 0) {
+		} else if (arg_is("verbose-linker")) {
 			build_flags |= BUILDER_VERBOSE_LINKER;
-		} else if (strcmp(&argv[optind][1], "no-api") == 0) {
+		} else if (arg_is("no-api")) {
 			build_flags |= BUILDER_NO_API;
-		} else if (strcmp(&argv[optind][1], "force-test-to-llvm") == 0) {
+		} else if (arg_is("force-test-to-llvm")) {
 			build_flags |= BUILDER_FORCE_TEST_LLVM;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
@@ -109,6 +109,8 @@ int main(int32_t argc, char *argv[])
 		}
 	}
 	argv += optind;
+
+#undef arg_is
 
 	if (help) {
 		print_help();

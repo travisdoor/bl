@@ -1,21 +1,21 @@
 /* playground */
 
-//#load "std/core.bl"
-//#load "std/debug.bl"
+#load "std/core.bl"
+#load "std/debug.bl"
 
 Foo :: struct {
-    func: *fn ()
+    v_fn: *fn ()
 };
 
 main :: fn () s32 {
     foo := {:Foo: 0};
 
-    //foo.func = &fn () {};
-    //ptr := &fn () {};
+    my_func :: fn () {
+        print("Hello!!!\n");
+    };
 
-    F :: fn () {};
-    foo.func = &F;
-    foo.func();
+    foo.v_fn = &my_func;
+    foo.v_fn();
     
     return 0;
 };
