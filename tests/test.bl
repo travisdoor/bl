@@ -3,19 +3,11 @@
 #load "std/core.bl"
 #load "std/debug.bl"
 
-Foo :: struct {
-    v_fn: *fn ()
-};
-
 main :: fn () s32 {
-    foo := {:Foo: 0};
+    fn (v: s32) s32 {
+        print("hello!!!\n");
+        return v;
+    } (10);
 
-    my_func :: fn () {
-        print("Hello!!!\n");
-    };
-
-    foo.v_fn = &my_func;
-    foo.v_fn();
-    
     return 0;
 };

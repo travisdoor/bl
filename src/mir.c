@@ -4190,6 +4190,11 @@ uint64_t analyze_instr_call(Context *cnt, MirInstrCall *call)
 			if (!fn->analyzed_for_cmptime_exec) return ANALYZE_POSTPONE;
 		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
 			/* Direct call of anonymous function. */
+
+			/*
+			 * CLENUP: Function reference counting is not clear, we can decide to count
+			 * references direcly inside MirFn or in function prototype instruction.
+			 */
 			++fn->ref_count;
 		}
 	}
