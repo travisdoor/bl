@@ -4084,7 +4084,6 @@ uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			/* infer type */
 			MirType *type = decl->init->const_value.type;
 			assert(type);
-			assert(type->kind != MIR_TYPE_VOID);
 			var->alloc_type = type;
 		}
 
@@ -4108,10 +4107,17 @@ uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (var->alloc_type->kind == MIR_TYPE_FN) {
+		/* Allocated type is function. */
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, decl->base.node->src,
 		            BUILDER_CUR_WORD,
 		            "Invalid type of the variable, functions can be referenced "
 		            "only by pointers.");
+		return ANALYZE_FAILED;
+	} else if (var->alloc_type->kind == MIR_TYPE_VOID) {
+		/* Allocated type is void type. */
+		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, decl->base.node->src,
+		            BUILDER_CUR_WORD,
+		            "Cannot allocate unsized type.");
 		return ANALYZE_FAILED;
 	}
 

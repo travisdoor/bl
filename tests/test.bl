@@ -3,10 +3,24 @@
 //#load "std/core.bl"
 //#load "std/debug.bl"
 
+Foo :: struct {
+    bar: Bar
+};
+
+Bar :: struct {
+    f: *fn ()
+};
+
 main :: fn () s32 {
-    i: *foo;
+    foo: Foo;
+    bar := cast(*Bar) &foo;
     
+    bar.f = &homo;
+
+    v := homo();
     return 0;
 };
 
-foo :: fn () {};
+homo :: fn () {
+    //print("hello!!!\n");
+};
