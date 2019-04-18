@@ -688,7 +688,6 @@ static inline void insert_instr_after(MirInstr *after, MirInstr *instr)
 	after->next = instr;
 
 	instr->owner_block = after->owner_block;
-	instr->id          = instr->owner_block->owner_fn->instr_count++;
 	if (instr->owner_block->last_instr == after) instr->owner_block->last_instr = instr;
 }
 
@@ -702,7 +701,6 @@ static inline void insert_instr_before(MirInstr *before, MirInstr *instr)
 	before->prev = instr;
 
 	instr->owner_block = before->owner_block;
-	instr->id          = instr->owner_block->owner_fn->instr_count++;
 	if (instr->owner_block->entry_instr == before) instr->owner_block->entry_instr = instr;
 }
 
@@ -1645,10 +1643,8 @@ void push_into_curr_block(Context *cnt, MirInstr *instr)
 {
 	assert(instr);
 	MirInstrBlock *block = get_current_block(cnt);
-	MirFn *        fn    = get_current_fn(cnt);
 	assert(block);
 
-	instr->id          = fn->instr_count++;
 	instr->owner_block = block;
 	instr->prev        = block->last_instr;
 
@@ -3879,17 +3875,30 @@ uint64_t analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 	type_ptr->type = insert_instr_load_if_needed(cnt, type_ptr->type);
 	reduce_instr(cnt, type_ptr->type);
 	assert(type_ptr->type->comptime);
-	MirType *src_type = type_ptr->type->const_value.data.v_type;
-	assert(src_type);
 
-	if (src_type->kind == MIR_TYPE_TYPE) {
+	{ /* Target value must be a type. */
+		MirType *src_type = type_ptr->type->const_value.type;
+		assert(src_type);
+
+		if (src_type->kind != MIR_TYPE_TYPE) {
+			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE,
+			            type_ptr->type->node->src, BUILDER_CUR_WORD,
+			            "Expected type name.");
+			return ANALYZE_FAILED;
+		}
+	}
+
+	MirType *src_type_value = type_ptr->type->const_value.data.v_type;
+	assert(src_type_value);
+
+	if (src_type_value->kind == MIR_TYPE_TYPE) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE,
 		            type_ptr->base.node->src, BUILDER_CUR_WORD,
 		            "Cannot create pointer to type.");
 		return ANALYZE_FAILED;
 	}
 
-	type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, src_type);
+	type_ptr->base.const_value.data.v_type = create_type_ptr(cnt, src_type_value);
 	return ANALYZE_PASSED;
 }
 
@@ -5634,7 +5643,7 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 	}
 
 	MirFn *fn = callee.v_fn;
-	if (!fn) {
+	if (fn == NULL) {
 		msg_error("Function pointer not set!");
 		exec_abort(cnt, 0);
 		return;

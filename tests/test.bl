@@ -1,13 +1,12 @@
 /* playground */
 
-#load "std/core.bl"
-#load "std/debug.bl"
+//#load "std/core.bl"
+//#load "std/debug.bl"
 
 main :: fn () s32 {
-    fn (v: s32) s32 {
-        print("hello!!!\n");
-        return v;
-    } (10);
-
+    i: *foo;
+    
     return 0;
 };
+
+foo :: fn () {};

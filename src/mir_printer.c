@@ -45,12 +45,12 @@ static inline void print_instr_head(MirInstr *instr, FILE *stream, const char *n
 
 #if BL_DEBUG
 	if (instr->ref_count == -1) {
-		fprintf(stream, "  %%%-3llu (-)", (unsigned long long)instr->id);
+		fprintf(stream, "  %%%-6llu (-)", (unsigned long long)instr->id);
 	} else {
-		fprintf(stream, "  %%%-3llu (%d)", (unsigned long long)instr->id, instr->ref_count);
+		fprintf(stream, "  %%%-6llu (%d)", (unsigned long long)instr->id, instr->ref_count);
 	}
 #else
-	fprintf(stream, "  %%%-3llu", (unsigned long long)instr->id);
+	fprintf(stream, "  %%%-6llu", (unsigned long long)instr->id);
 #endif
 	print_type(instr->const_value.type, true, stream, true);
 	fprintf(stream, " %s ", name);

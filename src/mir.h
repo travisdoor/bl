@@ -167,7 +167,7 @@ struct MirFn {
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
 	int32_t        block_count;
-	int32_t        instr_count;
+	//int32_t        instr_count;
 
 	MirConstValueData *exec_ret_value;
 };
