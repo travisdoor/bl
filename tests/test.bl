@@ -1,26 +1,17 @@
 /* playground */
 
-//#load "std/core.bl"
-//#load "std/debug.bl"
-
-Foo :: struct {
-    bar: Bar
-};
-
-Bar :: struct {
-    f: *fn ()
-};
+#load "std/core.bl"
 
 main :: fn () s32 {
-    foo: Foo;
-    bar := cast(*Bar) &foo;
-    
-    bar.f = &homo;
+    f_ptr := &homo;
 
-    v := homo();
+    loop i := 0; i < 10; i += 1 {
+        f_ptr(i);
+    }
+
     return 0;
 };
 
-homo :: fn () {
-    //print("hello!!!\n");
+homo :: fn (v: s32) {
+    print("v = %\n", v);
 };

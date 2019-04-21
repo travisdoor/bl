@@ -45,7 +45,7 @@
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_EXEC                    false
+#define VERBOSE_EXEC                    false 
 #define VERBOSE_ANALYZE                 false
 // clang-format on
 
@@ -54,7 +54,9 @@
 #define _log_push_ra                                                                               \
 	{                                                                                          \
 		if (instr) {                                                                       \
-			fprintf(stdout, "%6llu   PUSH RA\n", mir_instr_name(cnt->exec_stack->pc)); \
+			fprintf(stdout, "%6llu %20s  PUSH RA\n",                                   \
+			        (unsigned long long)cnt->exec.stack->pc->id,                       \
+			        mir_instr_name(cnt->exec.stack->pc));                              \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
 		}                                                                                  \
@@ -62,16 +64,19 @@
 
 #define _log_pop_ra                                                                                \
 	{                                                                                          \
-		fprintf(stdout, "%6llu   POP RA\n", mir_instr_name(cnt->exec_stack->pc));          \
+		fprintf(stdout, "%6llu %20s  POP RA\n",                                            \
+		        (unsigned long long)cnt->exec.stack->pc->id,                               \
+		        mir_instr_name(cnt->exec.stack->pc));                                      \
 	}
 
 #define _log_push_stack                                                                            \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
-		if (cnt->exec_stack->pc) {                                                         \
-			fprintf(stdout, "%6llu   PUSH    (%luB, %p) %s\n",                         \
-			        mir_instr_name(cnt->exec_stack->pc), size, tmp, type_name);        \
+		if (cnt->exec.stack->pc) {                                                         \
+			fprintf(stdout, "%6llu %20s  PUSH    (%luB, %p) %s\n",                     \
+			        (unsigned long long)cnt->exec.stack->pc->id,                       \
+			        mir_instr_name(cnt->exec.stack->pc), size, tmp, type_name);        \
 		} else {                                                                           \
 			fprintf(stdout, "     -                       PUSH    (%luB, %p) %s\n",    \
 			        size, tmp, type_name);                                             \
@@ -82,9 +87,10 @@
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
-		fprintf(stdout, "%6llu   POP     (%luB, %p) %s\n",                                 \
-		        mir_instr_name(cnt->exec_stack->pc), size,                                 \
-		        cnt->exec_stack->top_ptr - size, type_name);                               \
+		fprintf(stdout, "%6llu %20s  POP     (%luB, %p) %s\n",                             \
+		        (unsigned long long)cnt->exec.stack->pc->id,                               \
+		        mir_instr_name(cnt->exec.stack->pc), size,                                 \
+		        cnt->exec.stack->top_ptr - size, type_name);                               \
 	}
 
 #else
@@ -4116,8 +4122,7 @@ uint64_t analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	} else if (var->alloc_type->kind == MIR_TYPE_VOID) {
 		/* Allocated type is void type. */
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE, decl->base.node->src,
-		            BUILDER_CUR_WORD,
-		            "Cannot allocate unsized type.");
+		            BUILDER_CUR_WORD, "Cannot allocate unsized type.");
 		return ANALYZE_FAILED;
 	}
 
@@ -5655,6 +5660,7 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 		return;
 	}
 
+	assert(fn->type);
 	MirType *ret_type = fn->type->data.fn.ret_type;
 	assert(ret_type);
 
@@ -6315,8 +6321,7 @@ MirInstr *ast_expr_call(Context *cnt, Ast *call)
 	BArray *ast_args   = call->data.expr_call.args;
 	assert(ast_callee);
 
-	MirInstr *callee = ast(cnt, ast_callee);
-	BArray *  args   = create_arr(cnt, sizeof(MirInstr *));
+	BArray *args = create_arr(cnt, sizeof(MirInstr *));
 
 	/* arguments need to be generated into reverse order due to bytecode call
 	 * conventions */
@@ -6332,6 +6337,8 @@ MirInstr *ast_expr_call(Context *cnt, Ast *call)
 			bo_array_at(args, i, MirInstr *) = arg;
 		}
 	}
+
+	MirInstr *callee = ast(cnt, ast_callee);
 
 	return append_instr_call(cnt, call, callee, args);
 }
