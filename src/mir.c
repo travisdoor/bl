@@ -1676,6 +1676,7 @@ MirInstr *insert_instr_load_if_needed(Context *cnt, MirInstr *src)
 	ref_instr(&tmp->base);
 	insert_instr_after(src, &tmp->base);
 	analyze_instr_load(cnt, tmp);
+
 	return &tmp->base;
 }
 
@@ -3268,11 +3269,6 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 uint64_t analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	MirType *dest_type = cast->base.const_value.type;
-	cast->next         = insert_instr_load_if_needed(cnt, cast->next);
-	MirInstr *src      = cast->next;
-	assert(src);
-
-	MirType *src_type = src->const_value.type;
 
 	if (!dest_type) {
 		assert(cast->type && cast->type->kind == MIR_INSTR_CALL);
@@ -3282,6 +3278,12 @@ uint64_t analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 		assert(type_val->type && type_val->type->kind == MIR_TYPE_TYPE);
 		dest_type = type_val->data.v_type;
 	}
+
+	/* Insert load if needed, this must be done after destination type analyze pass. */
+	cast->next         = insert_instr_load_if_needed(cnt, cast->next);
+	MirInstr *src      = cast->next;
+	assert(src);
+	MirType *src_type = src->const_value.type;
 
 	assert(dest_type && "invalid cast destination type");
 	assert(src_type && "invalid cast source type");

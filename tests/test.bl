@@ -3,15 +3,12 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    f_ptr := &homo;
+    sptr : *s32;
 
-    loop i := 0; i < 10; i += 1 {
-        f_ptr(i);
-    }
+    homo(cast(*s32) sptr);
 
     return 0;
 };
 
-homo :: fn (v: s32) {
-    print("v = %\n", v);
+homo :: fn (v: *s32) {
 };
