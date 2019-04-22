@@ -260,7 +260,7 @@ static void print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream);
 
 static void print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
-static void print_instr_init(MirInstrInit *init, FILE *stream);
+static void print_instr_compound(MirInstrCompound *init, FILE *stream);
 
 static void print_instr_vargs(MirInstrVArgs *vargs, FILE *stream);
 
@@ -463,9 +463,9 @@ void print_instr_cast(MirInstrCast *cast, FILE *stream)
 	fprintf(stream, "%%%llu", (unsigned long long)cast->next->id);
 }
 
-void print_instr_init(MirInstrInit *init, FILE *stream)
+void print_instr_compound(MirInstrCompound *init, FILE *stream)
 {
-	print_instr_head(&init->base, stream, "init");
+	print_instr_head(&init->base, stream, "compound");
 	print_comptime_value_or_id(init->type, stream);
 
 	fprintf(stream, " {");
@@ -886,8 +886,8 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 	case MIR_INSTR_ALIGNOF:
 		print_instr_alignof((MirInstrAlignof *)instr, stream);
 		break;
-	case MIR_INSTR_INIT:
-		print_instr_init((MirInstrInit *)instr, stream);
+	case MIR_INSTR_COMPOUND:
+		print_instr_compound((MirInstrCompound *)instr, stream);
 		break;
 	case MIR_INSTR_VARGS:
 		print_instr_vargs((MirInstrVArgs *)instr, stream);

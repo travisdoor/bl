@@ -857,8 +857,8 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		if (decl->init) {
 			/* There is special handling for initialization via init instruction */
-			if (decl->init->kind == MIR_INSTR_INIT) {
-				MirInstrInit *init = (MirInstrInit *)decl->init;
+			if (decl->init->kind == MIR_INSTR_COMPOUND) {
+				MirInstrCompound *init = (MirInstrCompound *)decl->init;
 				MirType *     type = var->alloc_type;
 
 				/* CLEANUP: can be simplified */
@@ -1205,7 +1205,7 @@ void gen_instr(Context *cnt, MirInstr *instr)
 		gen_instr_phi(cnt, (MirInstrPhi *)instr);
 		break;
 
-	case MIR_INSTR_INIT:
+	case MIR_INSTR_COMPOUND:
 		/* noop */
 		break;
 

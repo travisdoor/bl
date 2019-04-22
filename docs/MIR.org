@@ -422,11 +422,11 @@
    #+BEGIN_EXAMPLE
    usize alignof <expr|type> // yields alignment of input
    #+END_EXAMPLE
-** init
+** compound 
    Compound initializer.
 
    #+BEGIN_EXAMPLE
-   <T> init <T> {[val, ...]} // yields T
+   <T> compound <T> {[val, ...]} // yields T
    #+END_EXAMPLE
    
 ** vargs

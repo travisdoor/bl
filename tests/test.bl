@@ -7,8 +7,10 @@ Foo :: struct {
     j: s32
 };
 
-foo :: {:Foo: 0};
-
 main :: fn () s32 {
+    test({:Foo: 0});
     return 0;
+};
+
+test :: fn (foo: Foo) {
 };

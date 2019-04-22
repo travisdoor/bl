@@ -131,7 +131,7 @@ union _MirInstr {
 	MirInstrCast        cast;
 	MirInstrSizeof      szof;
 	MirInstrAlignof     alof;
-	MirInstrInit        init;
+	MirInstrCompound    init;
 	MirInstrVArgs       vargs;
 	MirInstrTypeInfo    type_info;
 	MirInstrPhi         phi;
@@ -330,7 +330,7 @@ static MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i);
 
 static MirInstr *append_instr_phi(Context *cnt, Ast *node);
 
-static MirInstr *append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values);
+static MirInstr *append_instr_compound(Context *cnt, Ast *node, MirInstr *type, BArray *values);
 
 static MirInstr *append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
 
@@ -528,7 +528,7 @@ static void reduce_instr(Context *cnt, MirInstr *instr);
 
 static uint64_t analyze_instr(Context *cnt, MirInstr *instr);
 
-static uint64_t analyze_instr_init(Context *cnt, MirInstrInit *init);
+static uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init);
 
 static uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
 
@@ -637,7 +637,7 @@ static void exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static void exec_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static void exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init);
+static void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *init);
 
 static void exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
@@ -1980,16 +1980,16 @@ MirInstr *append_instr_phi(Context *cnt, Ast *node)
 	return &tmp->base;
 }
 
-MirInstr *append_instr_init(Context *cnt, Ast *node, MirInstr *type, BArray *values)
+MirInstr *append_instr_compound(Context *cnt, Ast *node, MirInstr *type, BArray *values)
 {
 	if (values) {
 		MirInstr *value;
 		barray_foreach(values, value) ref_instr(value);
 	}
 
-	MirInstrInit *tmp = create_instr(cnt, MIR_INSTR_INIT, node, MirInstrInit *);
-	tmp->type         = type;
-	tmp->values       = values;
+	MirInstrCompound *tmp = create_instr(cnt, MIR_INSTR_COMPOUND, node, MirInstrCompound *);
+	tmp->type             = type;
+	tmp->values           = values;
 
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -2215,6 +2215,10 @@ MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInst
 	} else {
 		push_into_curr_block(cnt, &tmp->base);
 	}
+
+	if (init && init->kind == MIR_INSTR_COMPOUND) {
+	}
+
 	return &tmp->base;
 }
 
@@ -2746,7 +2750,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
 	case MIR_INSTR_MEMBER_PTR:
-	case MIR_INSTR_INIT:
+	case MIR_INSTR_COMPOUND:
 		erase_instr(instr);
 		break;
 
@@ -2831,7 +2835,7 @@ uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 	return ANALYZE_PASSED;
 }
 
-uint64_t analyze_instr_init(Context *cnt, MirInstrInit *init)
+uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 {
 	BArray *values = init->values;
 
@@ -3280,8 +3284,8 @@ uint64_t analyze_instr_cast(Context *cnt, MirInstrCast *cast)
 	}
 
 	/* Insert load if needed, this must be done after destination type analyze pass. */
-	cast->next         = insert_instr_load_if_needed(cnt, cast->next);
-	MirInstr *src      = cast->next;
+	cast->next    = insert_instr_load_if_needed(cnt, cast->next);
+	MirInstr *src = cast->next;
 	assert(src);
 	MirType *src_type = src->const_value.type;
 
@@ -4446,8 +4450,8 @@ uint64_t analyze_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_LOAD:
 		state = analyze_instr_load(cnt, (MirInstrLoad *)instr);
 		break;
-	case MIR_INSTR_INIT:
-		state = analyze_instr_init(cnt, (MirInstrInit *)instr);
+	case MIR_INSTR_COMPOUND:
+		state = analyze_instr_compound(cnt, (MirInstrCompound *)instr);
 		break;
 	case MIR_INSTR_BR:
 		state = analyze_instr_br(cnt, (MirInstrBr *)instr);
@@ -4772,7 +4776,7 @@ void exec_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_INFO:
 		exec_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
 		break;
-	case MIR_INSTR_INIT:
+	case MIR_INSTR_COMPOUND:
 		/* noop */
 		break;
 
@@ -5301,7 +5305,7 @@ void exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 }
 
-void exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
+void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *init)
 {
 	BArray *values = init->values;
 	assert(values);
@@ -5323,8 +5327,9 @@ void exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
 			if (value->comptime) {
 				exec_copy_comptime_to_stack(cnt, var_ptr, &value->const_value);
 			} else {
-				if (value->kind == MIR_INSTR_INIT) {
-					exec_instr_init(cnt, var_ptr, (MirInstrInit *)value);
+				if (value->kind == MIR_INSTR_COMPOUND) {
+					exec_instr_compound(cnt, var_ptr,
+					                    (MirInstrCompound *)value);
 				} else {
 					value_ptr = exec_fetch_value(cnt, value);
 					memcpy(var_ptr, value_ptr, elem_size);
@@ -5350,8 +5355,9 @@ void exec_instr_init(Context *cnt, MirStackPtr var_ptr, MirInstrInit *init)
 			if (value->comptime) {
 				exec_copy_comptime_to_stack(cnt, member_ptr, &value->const_value);
 			} else {
-				if (value->kind == MIR_INSTR_INIT) {
-					exec_instr_init(cnt, member_ptr, (MirInstrInit *)value);
+				if (value->kind == MIR_INSTR_COMPOUND) {
+					exec_instr_compound(cnt, member_ptr,
+					                    (MirInstrCompound *)value);
 				} else {
 					value_ptr = exec_fetch_value(cnt, value);
 					memcpy(member_ptr, value_ptr,
@@ -5465,9 +5471,9 @@ void exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		   way, we need to produce decomposition of those data. */
 			exec_copy_comptime_to_stack(cnt, var_ptr, &decl->init->const_value);
 		} else {
-			if (decl->init->kind == MIR_INSTR_INIT) {
+			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				/* used compound initialization!!! */
-				exec_instr_init(cnt, var_ptr, (MirInstrInit *)decl->init);
+				exec_instr_compound(cnt, var_ptr, (MirInstrCompound *)decl->init);
 			} else {
 				/* read initialization value if there is one */
 				MirStackPtr init_ptr = NULL;
@@ -6207,7 +6213,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
 	assert(type);
 
 	if (!ast_values) {
-		return append_instr_init(cnt, cmp, type, NULL);
+		return append_instr_compound(cnt, cmp, type, NULL);
 	}
 
 	const size_t valc = bo_array_size(ast_values);
@@ -6228,7 +6234,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
 		bo_array_at(values, i, MirInstr *) = value;
 	}
 
-	return append_instr_init(cnt, cmp, type, values);
+	return append_instr_compound(cnt, cmp, type, values);
 }
 
 MirInstr *ast_expr_addrof(Context *cnt, Ast *addrof)
@@ -7042,8 +7048,8 @@ const char *mir_instr_name(MirInstr *instr)
 		return "InstrSizeof";
 	case MIR_INSTR_ALIGNOF:
 		return "InstrAlignof";
-	case MIR_INSTR_INIT:
-		return "InstrInit";
+	case MIR_INSTR_COMPOUND:
+		return "InstrCompound";
 	case MIR_INSTR_VARGS:
 		return "InstrVArgs";
 	case MIR_INSTR_TYPE_INFO:
