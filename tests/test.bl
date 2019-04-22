@@ -1,14 +1,14 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
 
-main :: fn () s32 {
-    sptr : *s32;
-
-    homo(cast(*s32) sptr);
-
-    return 0;
+Foo :: struct {
+    i: s32,
+    j: s32
 };
 
-homo :: fn (v: *s32) {
+foo :: {:Foo: 0};
+
+main :: fn () s32 {
+    return 0;
 };

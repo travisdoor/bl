@@ -30,11 +30,13 @@
 #load "debug.bl"
 
 // Type info
-TypeKindInt  :: 1;
-TypeKindReal :: 2;
+TypeKind :: enum {
+    Int  :: 1,
+    Real :: 2,
+};
 
 TypeInfo :: struct {
-    kind: s32
+    kind: TypeKind 
 };
 
 TypeInfoInt :: struct {

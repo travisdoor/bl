@@ -1548,13 +1548,13 @@ next:
 		goto next;
 	}
 
-	if ((tmp = parse_block(cnt))) {
+	if ((tmp = parse_expr(cnt))) {
+		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
 		goto next;
 	}
 
-	if ((tmp = parse_expr(cnt))) {
-		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+	if ((tmp = parse_block(cnt))) {
 		bo_array_push_back(block->data.block.nodes, tmp);
 		goto next;
 	}
