@@ -1990,6 +1990,7 @@ MirInstr *append_instr_compound(Context *cnt, Ast *node, MirInstr *type, BArray 
 	MirInstrCompound *tmp = create_instr(cnt, MIR_INSTR_COMPOUND, node, MirInstrCompound *);
 	tmp->type             = type;
 	tmp->values           = values;
+	tmp->is_naked         = true;
 
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -2216,7 +2217,12 @@ MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInst
 		push_into_curr_block(cnt, &tmp->base);
 	}
 
+	/*
+	 * Compound initializer marked as non-naked can use variable storage directly
+	 * without temporary allocation.
+	 */
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
+		((MirInstrCompound *)init)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -2838,6 +2844,10 @@ uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 {
 	BArray *values = init->values;
+
+	if (init->is_naked) {
+		bl_unimplemented;
+	}
 
 	init->type           = insert_instr_load_if_needed(cnt, init->type);
 	MirInstr *instr_type = init->type;
