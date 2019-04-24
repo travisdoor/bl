@@ -2740,7 +2740,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
 	/* instruction unknown in compile time cannot be reduced */
-	if (!instr->comptime) return;
+	if (!instr->comptime && instr->kind != MIR_INSTR_COMPOUND) return;
 
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
@@ -2756,9 +2756,13 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
 	case MIR_INSTR_MEMBER_PTR:
-	case MIR_INSTR_COMPOUND:
 		erase_instr(instr);
 		break;
+
+	case MIR_INSTR_COMPOUND: {
+		if (!((MirInstrCompound *)instr)->is_naked) erase_instr(instr);
+		break;
+	}
 
 	case MIR_INSTR_BINOP: {
 		exec_instr_binop(cnt, (MirInstrBinop *)instr);
@@ -2845,9 +2849,11 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 {
 	BArray *values = init->values;
 
+	/*
 	if (init->is_naked) {
-		bl_unimplemented;
+	        bl_unimplemented;
 	}
+	*/
 
 	init->type           = insert_instr_load_if_needed(cnt, init->type);
 	MirInstr *instr_type = init->type;

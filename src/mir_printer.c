@@ -29,6 +29,8 @@
 #include "mir_printer.h"
 #include "ast.h"
 
+static void print_comptime_value_or_id(MirInstr *instr, FILE *stream);
+
 static inline void print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
 	char tmp[256];
@@ -176,12 +178,12 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 		} else {
 			fprintf(stream, "{");
 
-			MirConstValue *member;
+			MirInstr *member;
 			const size_t   memc = bo_array_size(members);
 
 			for (size_t i = 0; i < memc; ++i) {
-				member = bo_array_at(members, i, MirConstValue *);
-				print_const_value(member, stream);
+				member = bo_array_at(members, i, MirInstr *);
+				print_comptime_value_or_id(member, stream);
 				if (i + 1 < memc) fprintf(stream, ", ");
 			}
 
@@ -218,26 +220,6 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 	default:
 		fprintf(stream, "<cannot read value>");
 	}
-}
-
-static inline void print_comptime_value_or_id(MirInstr *instr, FILE *stream)
-{
-	if (!instr) {
-		fprintf(stream, "<invalid>");
-		return;
-	}
-
-	if (!instr->comptime || !instr->analyzed) {
-		fprintf(stream, "%%%llu", (unsigned long long)instr->id);
-		return;
-	}
-
-	if (instr->kind == MIR_INSTR_DECL_REF) {
-		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
-		return;
-	}
-
-	print_const_value(&instr->const_value, stream);
 }
 
 static void print_instr_phi(MirInstrPhi *phi, FILE *stream);
@@ -309,6 +291,31 @@ static void print_instr_unop(MirInstrUnop *unop, FILE *stream);
 static void print_instr_arg(MirInstrArg *arg, FILE *stream);
 
 /* impl */
+void print_comptime_value_or_id(MirInstr *instr, FILE *stream)
+{
+	if (!instr) {
+		fprintf(stream, "<invalid>");
+		return;
+	}
+
+	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *) instr)->is_naked) {
+		print_const_value(&instr->const_value, stream);
+		return;
+	}
+
+	if (!instr->comptime || !instr->analyzed) {
+		fprintf(stream, "%%%llu", (unsigned long long)instr->id);
+		return;
+	}
+
+	if (instr->kind == MIR_INSTR_DECL_REF) {
+		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
+		return;
+	}
+
+	print_const_value(&instr->const_value, stream);
+}
+
 void print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
 	print_instr_head(&type_fn->base, stream, "const fn");

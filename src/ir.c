@@ -192,6 +192,8 @@ static void gen_instr_ret(Context *cnt, MirInstrRet *ret);
 
 static void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
+static void gen_instr_compound(Context *cnt, MirInstrCompound *cmp);
+
 static void gen_instr_load(Context *cnt, MirInstrLoad *load);
 
 static void gen_instr_call(Context *cnt, MirInstrCall *call);
@@ -266,6 +268,18 @@ static inline LLVMBasicBlockRef gen_basic_block(Context *cnt, MirInstrBlock *blo
 	}
 
 	return llvm_block;
+}
+
+void gen_instr_compound(Context *cnt, MirInstrCompound *cmp)
+{
+	/*
+	 * Only naked compound initializers are generated direcly. Initializers used for variables
+	 * can optionally use variable storage as data destiantion, naked compound initializers can
+	 * produce additional temporary allocation.
+	 */
+	if (!cmp->is_naked) return;
+
+	bl_unimplemented;
 }
 
 void gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
@@ -600,6 +614,9 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 
 	case MIR_TYPE_STRUCT: {
 		LLVMValueRef result  = NULL;
+
+		if (value->data.v_struct.is_zero_initializer) bl_unimplemented;
+		
 		BArray *     members = value->data.v_struct.members;
 		const size_t memc    = bo_array_size(members);
 
@@ -859,7 +876,7 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			/* There is special handling for initialization via init instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				MirInstrCompound *init = (MirInstrCompound *)decl->init;
-				MirType *     type = var->alloc_type;
+				MirType *         type = var->alloc_type;
 
 				/* CLEANUP: can be simplified */
 				switch (type->kind) {
@@ -1206,7 +1223,7 @@ void gen_instr(Context *cnt, MirInstr *instr)
 		break;
 
 	case MIR_INSTR_COMPOUND:
-		/* noop */
+		gen_instr_compound(cnt, (MirInstrCompound *)instr);
 		break;
 
 	default:
