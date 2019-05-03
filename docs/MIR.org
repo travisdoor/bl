@@ -423,7 +423,7 @@
    usize alignof <expr|type> // yields alignment of input
    #+END_EXAMPLE
 ** compound 
-   Compound initializer.
+   Compound initializer is group of data, it can act like a contant value. Naked, non-contant compound initializer can produce temporary allocation.
 
    #+BEGIN_EXAMPLE
    <T> compound <T> {[val, ...]} // yields T

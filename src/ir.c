@@ -1220,7 +1220,7 @@ void gen_instr(Context *cnt, MirInstr *instr)
 		break;
 
 	case MIR_INSTR_COMPOUND:
-		gen_instr_compound(cnt, (MirInstrCompound) *instr);
+		gen_instr_compound(cnt, (MirInstrCompound *) instr);
 		break;
 
 	default:
