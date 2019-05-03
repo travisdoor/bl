@@ -1,6 +1,6 @@
 /* playground */
 
-//#load "std/core.bl"
+#load "std/core.bl"
 
 Foo :: struct {
     i: s32,
@@ -13,8 +13,16 @@ main :: fn () s32 {
     foo := {:Foo: i, j};
 
     test({:Foo: i, j});
+    test(&{:Foo: i, j});
     return 0;
 };
 
 test :: fn (foo: Foo) {
+    print("foo.i = %\n", foo.i);
+    print("foo.j = %\n", foo.j);
+};
+
+test_ptr :: fn (foo: *Foo) {
+    print("foo.i = %\n", foo.i);
+    print("foo.j = %\n", foo.j);
 };

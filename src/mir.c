@@ -1183,10 +1183,6 @@ static inline bool is_load_needed(MirInstr *instr)
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_TYPE_INFO:
 		return false;
-	case MIR_INSTR_DECL_REF: {
-		MirInstrDeclRef *ref = (MirInstrDeclRef *)instr;
-		if (ref->scope_entry->kind == SCOPE_ENTRY_FN) return true;
-	}
 
 	default:
 		break;
@@ -2857,8 +2853,10 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		return ANALYZE_FAILED;
 	}
 
+	/* Setup compound type. */
 	MirType *type = instr_type->const_value.data.v_type;
 	assert(type);
+
 	MirInstr *   value;
 	const size_t valc      = values ? bo_array_size(values) : 0;
 	bool         comptime  = true;
@@ -2962,7 +2960,9 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		bl_unimplemented;
 	}
 
-	cmp->base.comptime         = comptime;
+	cmp->base.comptime = comptime;
+	/* TODO: should be pointer to tmp? */
+	// cmp->base.const_value.type = create_type_ptr(cnt, type);
 	cmp->base.const_value.type = type;
 
 	/*
@@ -3257,7 +3257,8 @@ uint64_t analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	assert(src);
 
 	const bool valid = src->kind == MIR_INSTR_DECL_REF || src->kind == MIR_INSTR_ELEM_PTR ||
-	                   src->kind == MIR_INSTR_MEMBER_PTR || src->kind == MIR_INSTR_FN_PROTO;
+	                   src->kind == MIR_INSTR_MEMBER_PTR || src->kind == MIR_INSTR_FN_PROTO ||
+	                   src->kind == MIR_INSTR_COMPOUND;
 
 	if (!valid) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_EXPECTED_DECL,

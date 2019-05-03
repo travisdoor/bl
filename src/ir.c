@@ -36,9 +36,9 @@
 #include <llvm-c/DebugInfo.h>
 #include <llvm-c/Linker.h>
 
-#define LLVM_TRAP_FN "llvm.debugtrap"
-#define LLVM_MEMSET_FN "llvm.memset.p0i8.i64"
-#define LLVM_MEMCPY_FN "llvm.memcpy.p0i8.p0i8.i64"
+#define LLVM_INSTRINSIC_TRAP "llvm.debugtrap"
+#define LLVM_INSTRINSIC_MEMSET "llvm.memset.p0i8.i64"
+#define LLVM_INTRINSIC_MEMCPY "llvm.memcpy.p0i8.p0i8.i64"
 
 #if BL_DEBUG
 #define NAMED_VARS true
@@ -56,23 +56,27 @@ typedef struct {
 	LLVMTargetDataRef llvm_td;
 	LLVMBuilderRef    llvm_builder;
 
-	LLVMValueRef llvm_trap_fn;
-	LLVMValueRef llvm_memset_fn;
-	LLVMValueRef llvm_memcpy_fn;
+	/* Constants */
 	LLVMValueRef llvm_const_i64;
 
+	/* Types */
 	LLVMTypeRef llvm_void_type;
 	LLVMTypeRef llvm_i1_type;
 	LLVMTypeRef llvm_i8_type;
 	LLVMTypeRef llvm_i32_type;
 	LLVMTypeRef llvm_i64_type;
 	LLVMTypeRef llvm_i8_ptr_type;
+
+	/* Intrinsics */
+	LLVMValueRef llvm_instrinsic_trap;
+	LLVMValueRef llvm_instrinsic_memset;
+	LLVMValueRef llvm_intrinsic_memcpy;
 } Context;
 
 static inline LLVMValueRef create_trap_fn(Context *cnt)
 {
 	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, NULL, 0, false);
-	return LLVMAddFunction(cnt->llvm_module, LLVM_TRAP_FN, llvm_fn_type);
+	return LLVMAddFunction(cnt->llvm_module, LLVM_INSTRINSIC_TRAP, llvm_fn_type);
 }
 
 static inline LLVMValueRef create_memset_fn(Context *cnt)
@@ -89,7 +93,8 @@ static inline LLVMValueRef create_memset_fn(Context *cnt)
 	LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
 #endif
 
-	LLVMValueRef llvm_fn = LLVMAddFunction(cnt->llvm_module, LLVM_MEMSET_FN, llvm_fn_type);
+	LLVMValueRef llvm_fn =
+	    LLVMAddFunction(cnt->llvm_module, LLVM_INSTRINSIC_MEMSET, llvm_fn_type);
 	return llvm_fn;
 }
 
@@ -105,7 +110,8 @@ static inline LLVMValueRef create_memcpy_fn(Context *cnt)
 	LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
 #endif
 
-	LLVMValueRef llvm_fn = LLVMAddFunction(cnt->llvm_module, LLVM_MEMCPY_FN, llvm_fn_type);
+	LLVMValueRef llvm_fn =
+	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMCPY, llvm_fn_type);
 	return llvm_fn;
 }
 
@@ -119,7 +125,7 @@ static inline LLVMValueRef build_call_memset_0(Context *cnt, LLVMValueRef llvm_d
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memset_fn, llvm_args, 5, "");
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_memset, llvm_args, 5, "");
 #else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
@@ -127,7 +133,7 @@ static inline LLVMValueRef build_call_memset_0(Context *cnt, LLVMValueRef llvm_d
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memset_fn, llvm_args, 4, "");
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_memset, llvm_args, 4, "");
 #endif
 
 	return llvm_result;
@@ -144,7 +150,7 @@ static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_des
 	    llvm_alignment, LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memcpy_fn, llvm_args, 5, "");
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, 5, "");
 #else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
@@ -152,7 +158,7 @@ static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_des
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_memcpy_fn, llvm_args, 4, "");
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, 4, "");
 #endif
 
 	return llvm_result;
@@ -160,7 +166,10 @@ static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_des
 
 static void gen_instr(Context *cnt, MirInstr *instr);
 
-static void gen_instr_compound(Context *cnt, MirInstrCompound *cmp);
+/*
+ * Tmp is optional but needed for naked compound expressions.
+ */
+static void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp);
 
 static void gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
@@ -325,7 +334,8 @@ void gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 
 void gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
-	unr->base.llvm_value = LLVMBuildCall(cnt->llvm_builder, cnt->llvm_trap_fn, NULL, 0, "");
+	unr->base.llvm_value =
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_trap, NULL, 0, "");
 }
 
 void gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
@@ -693,9 +703,71 @@ void gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 	}
 }
 
-void gen_instr_compound(Context *cnt, MirInstrCompound *cmp)
+void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp)
 {
-	bl_unimplemented;
+	/*
+	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
+	 * used for variable initialization, variable's allocated memory is used directly and MirVar
+	 * must be passed in parameters.
+	 */
+	MirVar *tmp_var = tmp ? tmp : cmp->tmp_var;
+	assert(tmp_var && "Missing temporary variable");
+
+	LLVMValueRef llvm_tmp = tmp_var->llvm_value;
+	assert(llvm_tmp);
+
+	MirType *type = tmp_var->alloc_type;
+	assert(type);
+
+	/*
+	 * Initializer variants:
+	 * 1) Zero initialization - Compound is initialized to 0 by memset intrinsic.
+	 * 2) Constant            - Compound is compile time known constant.
+	 * 3) Runtime             - One or more compound members are known in runtime only.
+	 */
+
+	switch (type->kind) {
+	case MIR_TYPE_ARRAY: {
+		bl_log("generate naked array compound");
+		break;
+	}
+
+	case MIR_TYPE_STRUCT: {
+		MirConstValue *tmp = &cmp->base.const_value;
+
+		if (tmp->data.v_array.is_zero_initializer) {
+			/* zero initialized array */
+			bl_unimplemented;
+		} else if (cmp->base.comptime) {
+			/* compile time known constant initializer */
+			bl_unimplemented;
+		} else {
+			/* one or more initizalizer values are known only in
+			 * runtime */
+			BArray *     values = cmp->values;
+			MirInstr *   value;
+			LLVMValueRef llvm_value;
+			LLVMValueRef llvm_value_dest;
+
+			barray_foreach(values, value)
+			{
+				llvm_value = fetch_value(cnt, value);
+				assert(llvm_value);
+
+				llvm_value_dest = LLVMBuildStructGEP(
+				    cnt->llvm_builder, tmp_var->llvm_value, (unsigned int)i, "");
+				LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+			}
+		}
+		break;
+	}
+
+	default:
+		bl_unimplemented;
+	}
+
+	cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+	// cmp->base.llvm_value = llvm_tmp;
 }
 
 void gen_instr_binop(Context *cnt, MirInstrBinop *binop)
@@ -863,16 +935,16 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		assert(var->llvm_value);
 
 		/*
-		 * CLEANUP: use gen_instr_compound here!!! 
-		 * CLEANUP: use gen_instr_compound here!!! 
-		 * CLEANUP: use gen_instr_compound here!!! 
-		 * CLEANUP: use gen_instr_compound here!!! 
-                 */
+		 * CLEANUP: use gen_instr_compound here!!!
+		 * CLEANUP: use gen_instr_compound here!!!
+		 * CLEANUP: use gen_instr_compound here!!!
+		 * CLEANUP: use gen_instr_compound here!!!
+		 */
 		if (decl->init) {
 			/* There is special handling for initialization via init instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				MirInstrCompound *init = (MirInstrCompound *)decl->init;
-				MirType *     type = var->alloc_type;
+				MirType *         type = var->alloc_type;
 
 				/* CLEANUP: can be simplified */
 				switch (type->kind) {
@@ -1129,7 +1201,6 @@ void gen_allocas(Context *cnt, MirFn *fn)
 		var_alignment = (unsigned int)var->alloc_type->alignment;
 		assert(var_type);
 
-		bl_log("var: %s", var_name);
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
 	}
@@ -1220,7 +1291,7 @@ void gen_instr(Context *cnt, MirInstr *instr)
 		break;
 
 	case MIR_INSTR_COMPOUND:
-		gen_instr_compound(cnt, (MirInstrCompound *) instr);
+		gen_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
 		break;
 
 	default:
@@ -1250,10 +1321,10 @@ void ir_run(Builder *builder, Assembly *assembly)
 
 	cnt.llvm_i8_ptr_type = LLVMPointerType(cnt.llvm_i8_type, 0);
 
-	cnt.llvm_const_i64 = LLVMConstInt(cnt.llvm_i64_type, 0, false);
-	cnt.llvm_trap_fn   = create_trap_fn(&cnt);
-	cnt.llvm_memset_fn = create_memset_fn(&cnt);
-	cnt.llvm_memcpy_fn = create_memcpy_fn(&cnt);
+	cnt.llvm_const_i64         = LLVMConstInt(cnt.llvm_i64_type, 0, false);
+	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
+	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
+	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 
 	MirInstr *ginstr;
 	barray_foreach(assembly->mir_module->globals, ginstr)
