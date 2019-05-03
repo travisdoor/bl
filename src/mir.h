@@ -627,6 +627,7 @@ struct MirInstrCompound {
 
 	MirInstr *type;
 	BArray *  values;
+	MirVar *  tmp_var;
 	bool      is_naked;
 };
 

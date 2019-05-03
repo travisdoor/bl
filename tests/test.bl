@@ -8,7 +8,11 @@ Foo :: struct {
 };
 
 main :: fn () s32 {
-    test({:Foo: 0});
+    i := 10;
+    j := 20;
+    foo := {:Foo: i, j};
+
+    test({:Foo: i, j});
     return 0;
 };
 

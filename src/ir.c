@@ -160,6 +160,8 @@ static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_des
 
 static void gen_instr(Context *cnt, MirInstr *instr);
 
+static void gen_instr_compound(Context *cnt, MirInstrCompound *cmp);
+
 static void gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void gen_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -691,6 +693,11 @@ void gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 	}
 }
 
+void gen_instr_compound(Context *cnt, MirInstrCompound *cmp)
+{
+	bl_unimplemented;
+}
+
 void gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 	LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
@@ -855,6 +862,12 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	} else {
 		assert(var->llvm_value);
 
+		/*
+		 * CLEANUP: use gen_instr_compound here!!! 
+		 * CLEANUP: use gen_instr_compound here!!! 
+		 * CLEANUP: use gen_instr_compound here!!! 
+		 * CLEANUP: use gen_instr_compound here!!! 
+                 */
 		if (decl->init) {
 			/* There is special handling for initialization via init instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -1116,6 +1129,7 @@ void gen_allocas(Context *cnt, MirFn *fn)
 		var_alignment = (unsigned int)var->alloc_type->alignment;
 		assert(var_type);
 
+		bl_log("var: %s", var_name);
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
 	}
@@ -1206,7 +1220,7 @@ void gen_instr(Context *cnt, MirInstr *instr)
 		break;
 
 	case MIR_INSTR_COMPOUND:
-		/* noop */
+		gen_instr_compound(cnt, (MirInstrCompound) *instr);
 		break;
 
 	default:

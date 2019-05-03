@@ -41,6 +41,7 @@
 #define IMPL_FN_NAME                    ".impl"
 #define IMPL_VARGS_TMP_ARR              ".vargs_arr"
 #define IMPL_VARGS_TMP                  ".vargs"
+#define IMPL_COMPOUND_TMP               ".compound"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -1990,6 +1991,7 @@ MirInstr *append_instr_compound(Context *cnt, Ast *node, MirInstr *type, BArray 
 	MirInstrCompound *tmp = create_instr(cnt, MIR_INSTR_COMPOUND, node, MirInstrCompound *);
 	tmp->type             = type;
 	tmp->values           = values;
+	tmp->is_naked         = true;
 
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -2217,6 +2219,7 @@ MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInst
 	}
 
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
+		((MirInstrCompound *)init)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -2734,7 +2737,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
 	/* instruction unknown in compile time cannot be reduced */
-	if (!instr->comptime) return;
+	if (!instr->comptime && instr->kind != MIR_INSTR_COMPOUND) return;
 
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
@@ -2749,10 +2752,15 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
-	case MIR_INSTR_MEMBER_PTR:
-	case MIR_INSTR_COMPOUND:
+	case MIR_INSTR_MEMBER_PTR: {
 		erase_instr(instr);
 		break;
+	}
+
+	case MIR_INSTR_COMPOUND: {
+		if (!((MirInstrCompound *)instr)->is_naked) erase_instr(instr);
+		break;
+	}
 
 	case MIR_INSTR_BINOP: {
 		exec_instr_binop(cnt, (MirInstrBinop *)instr);
@@ -2835,12 +2843,12 @@ uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 	return ANALYZE_PASSED;
 }
 
-uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
+uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 {
-	BArray *values = init->values;
+	BArray *values = cmp->values;
 
-	init->type           = insert_instr_load_if_needed(cnt, init->type);
-	MirInstr *instr_type = init->type;
+	cmp->type            = insert_instr_load_if_needed(cnt, cmp->type);
+	MirInstr *instr_type = cmp->type;
 	reduce_instr(cnt, instr_type);
 	if (instr_type->const_value.type->kind != MIR_TYPE_TYPE) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_TYPE,
@@ -2870,13 +2878,13 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY: {
 		if (zero_init) {
-			init->base.const_value.data.v_array.is_zero_initializer = true;
+			cmp->base.const_value.data.v_array.is_zero_initializer = true;
 			break;
 		}
 
 		if (valc != type->data.array.len) {
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER,
-			            init->base.node->src, BUILDER_CUR_WORD,
+			            cmp->base.node->src, BUILDER_CUR_WORD,
 			            "Array initializer must explicitly set all array elements of "
 			            "the array or "
 			            "initialize array to 0 by zero initializer {0}. Expected is "
@@ -2903,7 +2911,7 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 		}
 
 		// NOTE: Instructions can be used as values!!!
-		init->base.const_value.data.v_array.elems = values;
+		cmp->base.const_value.data.v_array.elems = values;
 		break;
 	}
 
@@ -2911,14 +2919,14 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 		comptime = true;
 
 		if (zero_init) {
-			init->base.const_value.data.v_struct.is_zero_initializer = true;
+			cmp->base.const_value.data.v_struct.is_zero_initializer = true;
 			break;
 		}
 
 		const size_t memc = bo_array_size(type->data.strct.members);
 		if (valc != memc) {
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER,
-			            init->base.node->src, BUILDER_CUR_WORD,
+			            cmp->base.node->src, BUILDER_CUR_WORD,
 			            "Structure initializer must explicitly set all members of the "
 			            "structure or "
 			            "initialize structure to 0 by zero initializer {0}. Expected "
@@ -2946,7 +2954,7 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 		}
 
 		// NOTE: Instructions can be used as values!!!
-		init->base.const_value.data.v_struct.members = values;
+		cmp->base.const_value.data.v_struct.members = values;
 		break;
 	}
 
@@ -2954,8 +2962,20 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *init)
 		bl_unimplemented;
 	}
 
-	init->base.comptime         = comptime;
-	init->base.const_value.type = type;
+	cmp->base.comptime         = comptime;
+	cmp->base.const_value.type = type;
+
+	/*
+	 * Create tmp variable for naked compound if needed.
+	 */
+	if (cmp->is_naked) {
+		MirFn *     fn       = get_current_fn(cnt);
+		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
+		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, NULL, true, false);
+		bo_array_push_back(fn->variables, tmp_var);
+		cmp->tmp_var = tmp_var;
+	}
+
 	return ANALYZE_PASSED;
 }
 
@@ -4777,7 +4797,7 @@ void exec_instr(Context *cnt, MirInstr *instr)
 		exec_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
 		break;
 	case MIR_INSTR_COMPOUND:
-		/* noop */
+		exec_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
 		break;
 
 	default:
@@ -5305,12 +5325,17 @@ void exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 }
 
-void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *init)
+void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *cmp)
 {
-	BArray *values = init->values;
+	assert((cmp->is_naked || var_ptr) && "Missing destination for non-naked compound.");
+	if (cmp->is_naked) {
+		bl_unimplemented;
+	}
+
+	BArray *values = cmp->values;
 	assert(values);
 
-	MirType *init_type = init->base.const_value.type;
+	MirType *init_type = cmp->base.const_value.type;
 	assert(init_type);
 	LLVMTypeRef llvm_init_type = init_type->llvm_type;
 	assert(llvm_init_type);
