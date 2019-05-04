@@ -11,18 +11,29 @@ main :: fn () s32 {
     i := 10;
     j := 20;
     foo := {:Foo: i, j};
+    bar := {:Foo: 0};
+    foobar := {:Foo: 10, 20};
 
+    foo = {:Foo: 0};
+
+    print("Inline initialization: .i = %\n", {:Foo: 10, 20}.i);
+    print("Inline initialization: .j = %\n", {:Foo: 10, 20}.j);
+
+    test_ptr(&foo);
+    test_ptr(&{:Foo: i, j});
     test({:Foo: i, j});
-    test(&{:Foo: i, j});
+    test({:Foo: 0});
+    test({:Foo: 10, 20});
+    
     return 0;
 };
 
 test :: fn (foo: Foo) {
-    print("foo.i = %\n", foo.i);
-    print("foo.j = %\n", foo.j);
+    print("Value pass: foo.i = %\n", foo.i);
+    print("Value pass: foo.j = %\n", foo.j);
 };
 
 test_ptr :: fn (foo: *Foo) {
-    print("foo.i = %\n", foo.i);
-    print("foo.j = %\n", foo.j);
+    print("Pointer pass: foo.i = %\n", foo.i);
+    print("Pointer pass: foo.j = %\n", foo.j);
 };

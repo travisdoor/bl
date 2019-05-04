@@ -2960,20 +2960,21 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		bl_unimplemented;
 	}
 
-	cmp->base.comptime = comptime;
-	/* TODO: should be pointer to tmp? */
-	// cmp->base.const_value.type = create_type_ptr(cnt, type);
-	cmp->base.const_value.type = type;
-
 	/*
 	 * Create tmp variable for naked compound if needed.
 	 */
 	if (cmp->is_naked) {
+		cmp->base.const_value.type = create_type_ptr(cnt, type);
+		cmp->base.comptime         = false;
+
 		MirFn *     fn       = get_current_fn(cnt);
 		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
 		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, NULL, true, false);
 		bo_array_push_back(fn->variables, tmp_var);
 		cmp->tmp_var = tmp_var;
+	} else {
+		cmp->base.const_value.type = type;
+		cmp->base.comptime         = comptime;
 	}
 
 	return ANALYZE_PASSED;

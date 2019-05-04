@@ -735,12 +735,27 @@ void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp)
 	case MIR_TYPE_STRUCT: {
 		MirConstValue *tmp = &cmp->base.const_value;
 
+		LLVMValueRef llvm_size =
+		    LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+		LLVMValueRef llvm_alignment =
+		    LLVMConstInt(cnt->llvm_i32_type, tmp_var->alloc_type->alignment, true);
+
 		if (tmp->data.v_array.is_zero_initializer) {
 			/* zero initialized array */
-			bl_unimplemented;
+			build_call_memset_0(cnt, llvm_tmp, llvm_size, llvm_alignment);
 		} else if (cmp->base.comptime) {
 			/* compile time known constant initializer */
-			bl_unimplemented;
+			LLVMTypeRef llvm_type = tmp_var->alloc_type->llvm_type;
+			assert(llvm_type);
+			LLVMValueRef llvm_const_arr =
+			    LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
+			LLVMSetGlobalConstant(llvm_const_arr, true);
+			LLVMSetLinkage(llvm_const_arr, LLVMPrivateLinkage);
+			LLVMSetAlignment(llvm_const_arr, tmp_var->alloc_type->alignment);
+			LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &cmp->base));
+
+			build_call_memcpy(cnt, tmp_var->llvm_value, llvm_const_arr, llvm_size,
+			                  llvm_alignment);
 		} else {
 			/* one or more initizalizer values are known only in
 			 * runtime */
@@ -766,8 +781,8 @@ void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp)
 		bl_unimplemented;
 	}
 
-	cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
-	// cmp->base.llvm_value = llvm_tmp;
+	// cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+	cmp->base.llvm_value = llvm_tmp;
 }
 
 void gen_instr_binop(Context *cnt, MirInstrBinop *binop)

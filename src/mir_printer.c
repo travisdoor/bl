@@ -172,14 +172,14 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 		const bool is_zero_initializer = data->v_struct.is_zero_initializer;
 
 		if (is_zero_initializer) {
-			fprintf(stream, "{0}");
+			fprintf(stream, "{zero initialized}");
 		} else if (!members) {
 			fprintf(stream, "{<null>}");
 		} else {
 			fprintf(stream, "{");
 
-			MirInstr *member;
-			const size_t   memc = bo_array_size(members);
+			MirInstr *   member;
+			const size_t memc = bo_array_size(members);
 
 			for (size_t i = 0; i < memc; ++i) {
 				member = bo_array_at(members, i, MirInstr *);
@@ -196,7 +196,7 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 		const bool is_zero_initializer = data->v_array.is_zero_initializer;
 
 		if (is_zero_initializer) {
-			fprintf(stream, "{0}");
+			fprintf(stream, "{zero initialized}");
 		} else {
 			fprintf(stream, "{");
 
@@ -298,7 +298,7 @@ void print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 		return;
 	}
 
-	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *) instr)->is_naked) {
+	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *)instr)->is_naked) {
 		print_const_value(&instr->const_value, stream);
 		return;
 	}
@@ -909,7 +909,13 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	}
 
-	fprintf(stream, "%s\n", instr->comptime ? " // comptime" : "");
+	const bool is_naked_compound =
+	    instr->kind == MIR_INSTR_COMPOUND && ((MirInstrCompound *)instr)->is_naked;
+	if (instr->comptime || is_naked_compound) fprintf(stream, " // ");
+
+	fprintf(stream, "%s", instr->comptime ? "comptime " : "");
+	fprintf(stream, "%s", is_naked_compound ? "naked" : "");
+	fprintf(stream, "\n");
 }
 
 void mir_print_module(MirModule *module, FILE *stream)
