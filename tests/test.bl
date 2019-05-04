@@ -8,6 +8,34 @@ Foo :: struct {
 };
 
 main :: fn () s32 {
+    test_structs();
+    test_arrays();
+    return 0;
+};
+
+test_arrays :: fn () {
+    i := 10;
+    j := 20;
+    foo := {:[2]s32: 0};
+    bar := {:[2]s32: 10, 20};
+    foobar := {:[2]s32: i, j};
+
+    foo = {:[2]s32: 10, 20};
+
+    pass_arr(foo);
+    pass_arr({:[2]s32: 0});
+    pass_arr({:[2]s32: 10, 20});
+    pass_arr({:[2]s32: i, j});
+};
+
+pass_arr :: fn (arr: [2]s32) {
+    loop i := 0; i < arr.len; i += 1 {
+        print("arr[%] = %\n", i, arr[i]);
+    }
+};
+
+
+test_structs :: fn () {
     i := 10;
     j := 20;
     foo := {:Foo: i, j};
@@ -19,21 +47,19 @@ main :: fn () s32 {
     print("Inline initialization: .i = %\n", {:Foo: 10, 20}.i);
     print("Inline initialization: .j = %\n", {:Foo: 10, 20}.j);
 
-    test_ptr(&foo);
-    test_ptr(&{:Foo: i, j});
-    test({:Foo: i, j});
-    test({:Foo: 0});
-    test({:Foo: 10, 20});
-    
-    return 0;
+    pass_struct_ptr(&foo);
+    pass_struct_ptr(&{:Foo: i, j});
+    pass_struct({:Foo: i, j});
+    pass_struct({:Foo: 0});
+    pass_struct({:Foo: 10, 20});
 };
 
-test :: fn (foo: Foo) {
+pass_struct :: fn (foo: Foo) {
     print("Value pass: foo.i = %\n", foo.i);
     print("Value pass: foo.j = %\n", foo.j);
 };
 
-test_ptr :: fn (foo: *Foo) {
+pass_struct_ptr :: fn (foo: *Foo) {
     print("Pointer pass: foo.i = %\n", foo.i);
     print("Pointer pass: foo.j = %\n", foo.j);
 };

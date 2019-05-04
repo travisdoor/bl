@@ -258,6 +258,7 @@
 ** Constants
    Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
 
+   Syntax:
    #+BEGIN_EXAMPLE
    <name> : [type] : <value>;
    #+END_EXAMPLE
@@ -265,6 +266,18 @@
     Example:
    #+INCLUDE: "../tests/src/examples/constants.bl" src bl -n
    
+** Compound expressions
+   Compound expression can be used for inline initialization of variables or directly as an explicit value..
+   Implicit temporary variable is created when needed. Zero initializer can be used as short for memset(0) call.
+
+   Syntax:
+   #+BEGIN_EXAMPLE
+   {:<type>: <arg1, arg2, ...>};
+   {:<type>: 0}; // zero initializer
+   #+END_EXAMPLE
+
+   Example:
+   #+INCLUDE: "../tests/src/examples/compounds.bl" src bl -n
 ** Functions
 *** Named function
    Examples of named function.

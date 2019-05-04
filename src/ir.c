@@ -169,7 +169,7 @@ static void gen_instr(Context *cnt, MirInstr *instr);
 /*
  * Tmp is optional but needed for naked compound expressions.
  */
-static void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp);
+static void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp);
 
 static void gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
@@ -703,14 +703,14 @@ void gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 	}
 }
 
-void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp)
+void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
 	/*
 	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
 	 * used for variable initialization, variable's allocated memory is used directly and MirVar
 	 * must be passed in parameters.
 	 */
-	MirVar *tmp_var = tmp ? tmp : cmp->tmp_var;
+	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
 	assert(tmp_var && "Missing temporary variable");
 
 	LLVMValueRef llvm_tmp = tmp_var->llvm_value;
@@ -726,20 +726,56 @@ void gen_instr_compound(Context *cnt, MirVar *tmp, MirInstrCompound *cmp)
 	 * 3) Runtime             - One or more compound members are known in runtime only.
 	 */
 
+	MirConstValue *tmp = &cmp->base.const_value;
+
+	LLVMValueRef llvm_size = LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
+	LLVMValueRef llvm_alignment = LLVMConstInt(cnt->llvm_i32_type, type->alignment, true);
+
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY: {
-		bl_log("generate naked array compound");
+		if (tmp->data.v_array.is_zero_initializer) {
+			/* zero initialized array */
+			build_call_memset_0(cnt, llvm_tmp, llvm_size, llvm_alignment);
+		} else if (cmp->base.comptime) {
+			/* compile time known constant initializer */
+			LLVMTypeRef llvm_type = type->llvm_type;
+			assert(llvm_type);
+			LLVMValueRef llvm_const_arr =
+			    LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
+			LLVMSetGlobalConstant(llvm_const_arr, true);
+			LLVMSetLinkage(llvm_const_arr, LLVMPrivateLinkage);
+			LLVMSetAlignment(llvm_const_arr, type->alignment);
+			LLVMSetInitializer(llvm_const_arr, fetch_value(cnt, &cmp->base));
+
+			build_call_memcpy(cnt, llvm_tmp, llvm_const_arr, llvm_size, llvm_alignment);
+		} else {
+			/* one or more initizalizer values are known only in
+			 * runtime */
+			BArray *     values = cmp->values;
+			MirInstr *   value;
+			LLVMValueRef llvm_value;
+			LLVMValueRef llvm_value_dest;
+			LLVMValueRef llvm_indices[2];
+			llvm_indices[0] = cnt->llvm_const_i64;
+
+			barray_foreach(values, value)
+			{
+				llvm_value = fetch_value(cnt, value);
+				assert(llvm_value);
+
+				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+
+				llvm_value_dest =
+				    LLVMBuildGEP(cnt->llvm_builder, llvm_tmp, llvm_indices,
+				                 ARRAY_SIZE(llvm_indices), "");
+
+				LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+			}
+		}
 		break;
 	}
 
 	case MIR_TYPE_STRUCT: {
-		MirConstValue *tmp = &cmp->base.const_value;
-
-		LLVMValueRef llvm_size =
-		    LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
-		LLVMValueRef llvm_alignment =
-		    LLVMConstInt(cnt->llvm_i32_type, tmp_var->alloc_type->alignment, true);
-
 		if (tmp->data.v_array.is_zero_initializer) {
 			/* zero initialized array */
 			build_call_memset_0(cnt, llvm_tmp, llvm_size, llvm_alignment);
@@ -949,131 +985,10 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	} else {
 		assert(var->llvm_value);
 
-		/*
-		 * CLEANUP: use gen_instr_compound here!!!
-		 * CLEANUP: use gen_instr_compound here!!!
-		 * CLEANUP: use gen_instr_compound here!!!
-		 * CLEANUP: use gen_instr_compound here!!!
-		 */
 		if (decl->init) {
-			/* There is special handling for initialization via init instruction */
+			/* There is special handling for initialization via compound instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
-				MirInstrCompound *init = (MirInstrCompound *)decl->init;
-				MirType *         type = var->alloc_type;
-
-				/* CLEANUP: can be simplified */
-				switch (type->kind) {
-				case MIR_TYPE_ARRAY: {
-					MirConstValue *tmp       = &init->base.const_value;
-					LLVMValueRef   llvm_size = LLVMConstInt(
-                                            cnt->llvm_i64_type, type->store_size_bytes, false);
-					LLVMValueRef llvm_alignment = LLVMConstInt(
-					    cnt->llvm_i32_type, var->alloc_type->alignment, true);
-
-					if (tmp->data.v_array.is_zero_initializer) {
-						/* zero initialized array */
-						build_call_memset_0(cnt, var->llvm_value, llvm_size,
-						                    llvm_alignment);
-					} else if (init->base.comptime) {
-						/* compile time known constant initializer */
-						LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
-						assert(llvm_type);
-						LLVMValueRef llvm_const_arr =
-						    LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
-						LLVMSetGlobalConstant(llvm_const_arr, true);
-						LLVMSetLinkage(llvm_const_arr, LLVMPrivateLinkage);
-						LLVMSetAlignment(llvm_const_arr,
-						                 var->alloc_type->alignment);
-						LLVMSetInitializer(llvm_const_arr,
-						                   fetch_value(cnt, &init->base));
-
-						build_call_memcpy(cnt, var->llvm_value,
-						                  llvm_const_arr, llvm_size,
-						                  llvm_alignment);
-					} else {
-						/* one or more initizalizer values are known only in
-						 * runtime */
-						BArray *     values = init->values;
-						MirInstr *   value;
-						LLVMValueRef llvm_value;
-						LLVMValueRef llvm_value_dest;
-						LLVMValueRef llvm_indices[2];
-						llvm_indices[0] = cnt->llvm_const_i64;
-
-						barray_foreach(values, value)
-						{
-							llvm_value = fetch_value(cnt, value);
-							assert(llvm_value);
-
-							llvm_indices[1] = LLVMConstInt(
-							    cnt->llvm_i64_type, i, true);
-
-							llvm_value_dest = LLVMBuildGEP(
-							    cnt->llvm_builder, var->llvm_value,
-							    llvm_indices, ARRAY_SIZE(llvm_indices),
-							    "");
-
-							LLVMBuildStore(cnt->llvm_builder,
-							               llvm_value, llvm_value_dest);
-						}
-					}
-					break;
-				}
-
-				case MIR_TYPE_STRUCT: {
-					MirConstValue *tmp       = &init->base.const_value;
-					LLVMValueRef   llvm_size = LLVMConstInt(
-                                            cnt->llvm_i64_type, type->store_size_bytes, false);
-					LLVMValueRef llvm_alignment = LLVMConstInt(
-					    cnt->llvm_i32_type, var->alloc_type->alignment, true);
-
-					if (tmp->data.v_array.is_zero_initializer) {
-						/* zero initialized array */
-						build_call_memset_0(cnt, var->llvm_value, llvm_size,
-						                    llvm_alignment);
-					} else if (init->base.comptime) {
-						/* compile time known constant initializer */
-						LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
-						assert(llvm_type);
-						LLVMValueRef llvm_const_strct =
-						    LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
-						LLVMSetGlobalConstant(llvm_const_strct, true);
-						LLVMSetLinkage(llvm_const_strct,
-						               LLVMPrivateLinkage);
-						LLVMSetAlignment(llvm_const_strct,
-						                 var->alloc_type->alignment);
-						LLVMSetInitializer(llvm_const_strct,
-						                   fetch_value(cnt, &init->base));
-
-						build_call_memcpy(cnt, var->llvm_value,
-						                  llvm_const_strct, llvm_size,
-						                  llvm_alignment);
-					} else {
-						/* one or more initizalizer values are known only in
-						 * runtime */
-						BArray *     values = init->values;
-						MirInstr *   value;
-						LLVMValueRef llvm_value;
-						LLVMValueRef llvm_value_dest;
-
-						barray_foreach(values, value)
-						{
-							llvm_value = fetch_value(cnt, value);
-							assert(llvm_value);
-
-							llvm_value_dest = LLVMBuildStructGEP(
-							    cnt->llvm_builder, var->llvm_value,
-							    (unsigned int)i, "");
-							LLVMBuildStore(cnt->llvm_builder,
-							               llvm_value, llvm_value_dest);
-						}
-					}
-					break;
-				}
-				default:
-					bl_unimplemented;
-				}
-
+				gen_instr_compound(cnt, var, (MirInstrCompound *)decl->init);
 			} else {
 				/* use simple store */
 				LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
