@@ -1,0 +1,34 @@
+#load "std/core.bl"
+
+#test "array compound" {
+    // print out all array values
+    print_arr :: fn (v: [2]s32) {
+        loop i := 0; i < v.len; i += 1 {
+            print("v[%] = %\n", i, v[i]);
+        }
+    };
+
+    // create array of 2 elements directly in call
+    print_arr({:[2]s32: 10, 20});
+
+    // create zero initialized array
+    print_arr({:[2]s32: 0});
+};
+
+#test "struct compound" {
+    Foo :: struct {
+        i: s32,
+        j: s32
+    };
+
+    print_strct :: fn (v: Foo) {
+        print("v.i = %\n", v.i);
+        print("v.j = %\n", v.j);
+    };
+
+    // create structure in call
+    print_strct({:Foo: 10, 20});
+
+    // create zero initialized structure
+    print_strct({:Foo: 0});
+};

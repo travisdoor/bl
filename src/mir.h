@@ -82,7 +82,7 @@ typedef struct MirInstrDeclRef     MirInstrDeclRef;
 typedef struct MirInstrCast        MirInstrCast;
 typedef struct MirInstrSizeof      MirInstrSizeof;
 typedef struct MirInstrAlignof     MirInstrAlignof;
-typedef struct MirInstrInit        MirInstrInit;
+typedef struct MirInstrCompound    MirInstrCompound;
 typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
 typedef struct MirInstrPhi         MirInstrPhi;
@@ -167,7 +167,7 @@ struct MirFn {
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
 	int32_t        block_count;
-	//int32_t        instr_count;
+	// int32_t        instr_count;
 
 	MirConstValueData *exec_ret_value;
 };
@@ -374,7 +374,7 @@ enum MirInstrKind {
 	MIR_INSTR_CAST,
 	MIR_INSTR_SIZEOF,
 	MIR_INSTR_ALIGNOF,
-	MIR_INSTR_INIT,
+	MIR_INSTR_COMPOUND,
 	MIR_INSTR_VARGS,
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
@@ -622,11 +622,14 @@ struct MirInstrBr {
 	MirInstrBlock *then_block;
 };
 
-struct MirInstrInit {
+struct MirInstrCompound {
 	MirInstr base;
 
 	MirInstr *type;
 	BArray *  values;
+	MirVar *  tmp_var;
+	bool      is_naked;
+	bool      is_zero_initialized;
 };
 
 struct MirInstrVArgs {
@@ -680,8 +683,7 @@ static inline bool mir_is_string_type(MirType *type)
 
 static inline MirType *mir_deref_type(MirType *ptr)
 {
-	if (!mir_is_pointer_type(ptr))
-		return NULL;
+	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.next;
 }
 

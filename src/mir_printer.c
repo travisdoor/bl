@@ -29,6 +29,8 @@
 #include "mir_printer.h"
 #include "ast.h"
 
+static void print_comptime_value_or_id(MirInstr *instr, FILE *stream);
+
 static inline void print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
 	char tmp[256];
@@ -170,18 +172,18 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 		const bool is_zero_initializer = data->v_struct.is_zero_initializer;
 
 		if (is_zero_initializer) {
-			fprintf(stream, "{0}");
+			fprintf(stream, "{zero initialized}");
 		} else if (!members) {
 			fprintf(stream, "{<null>}");
 		} else {
 			fprintf(stream, "{");
 
-			MirConstValue *member;
-			const size_t   memc = bo_array_size(members);
+			MirInstr *   member;
+			const size_t memc = bo_array_size(members);
 
 			for (size_t i = 0; i < memc; ++i) {
-				member = bo_array_at(members, i, MirConstValue *);
-				print_const_value(member, stream);
+				member = bo_array_at(members, i, MirInstr *);
+				print_comptime_value_or_id(member, stream);
 				if (i + 1 < memc) fprintf(stream, ", ");
 			}
 
@@ -194,7 +196,7 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 		const bool is_zero_initializer = data->v_array.is_zero_initializer;
 
 		if (is_zero_initializer) {
-			fprintf(stream, "{0}");
+			fprintf(stream, "{zero initialized}");
 		} else {
 			fprintf(stream, "{");
 
@@ -220,26 +222,6 @@ static inline void print_const_value(MirConstValue *value, FILE *stream)
 	}
 }
 
-static inline void print_comptime_value_or_id(MirInstr *instr, FILE *stream)
-{
-	if (!instr) {
-		fprintf(stream, "<invalid>");
-		return;
-	}
-
-	if (!instr->comptime || !instr->analyzed) {
-		fprintf(stream, "%%%llu", (unsigned long long)instr->id);
-		return;
-	}
-
-	if (instr->kind == MIR_INSTR_DECL_REF) {
-		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
-		return;
-	}
-
-	print_const_value(&instr->const_value, stream);
-}
-
 static void print_instr_phi(MirInstrPhi *phi, FILE *stream);
 
 static void print_instr_cast(MirInstrCast *cast, FILE *stream);
@@ -260,7 +242,7 @@ static void print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream);
 
 static void print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream);
 
-static void print_instr_init(MirInstrInit *init, FILE *stream);
+static void print_instr_compound(MirInstrCompound *init, FILE *stream);
 
 static void print_instr_vargs(MirInstrVArgs *vargs, FILE *stream);
 
@@ -309,6 +291,31 @@ static void print_instr_unop(MirInstrUnop *unop, FILE *stream);
 static void print_instr_arg(MirInstrArg *arg, FILE *stream);
 
 /* impl */
+void print_comptime_value_or_id(MirInstr *instr, FILE *stream)
+{
+	if (!instr) {
+		fprintf(stream, "<invalid>");
+		return;
+	}
+
+	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *)instr)->is_naked) {
+		print_const_value(&instr->const_value, stream);
+		return;
+	}
+
+	if (!instr->comptime || !instr->analyzed) {
+		fprintf(stream, "%%%llu", (unsigned long long)instr->id);
+		return;
+	}
+
+	if (instr->kind == MIR_INSTR_DECL_REF) {
+		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
+		return;
+	}
+
+	print_const_value(&instr->const_value, stream);
+}
+
 void print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
 	print_instr_head(&type_fn->base, stream, "const fn");
@@ -463,9 +470,9 @@ void print_instr_cast(MirInstrCast *cast, FILE *stream)
 	fprintf(stream, "%%%llu", (unsigned long long)cast->next->id);
 }
 
-void print_instr_init(MirInstrInit *init, FILE *stream)
+void print_instr_compound(MirInstrCompound *init, FILE *stream)
 {
-	print_instr_head(&init->base, stream, "init");
+	print_instr_head(&init->base, stream, "compound");
 	print_comptime_value_or_id(init->type, stream);
 
 	fprintf(stream, " {");
@@ -886,8 +893,8 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 	case MIR_INSTR_ALIGNOF:
 		print_instr_alignof((MirInstrAlignof *)instr, stream);
 		break;
-	case MIR_INSTR_INIT:
-		print_instr_init((MirInstrInit *)instr, stream);
+	case MIR_INSTR_COMPOUND:
+		print_instr_compound((MirInstrCompound *)instr, stream);
 		break;
 	case MIR_INSTR_VARGS:
 		print_instr_vargs((MirInstrVArgs *)instr, stream);
@@ -902,7 +909,13 @@ void mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	}
 
-	fprintf(stream, "%s\n", instr->comptime ? " // comptime" : "");
+	const bool is_naked_compound =
+	    instr->kind == MIR_INSTR_COMPOUND && ((MirInstrCompound *)instr)->is_naked;
+	if (instr->comptime || is_naked_compound) fprintf(stream, " // ");
+
+	fprintf(stream, "%s", instr->comptime ? "comptime " : "");
+	fprintf(stream, "%s", is_naked_compound ? "naked" : "");
+	fprintf(stream, "\n");
 }
 
 void mir_print_module(MirModule *module, FILE *stream)

@@ -47,7 +47,7 @@
     "arg"
     "sizeof"
     "typeinfo"
-    "init"
+    "compound"
     "vargs"
     "phi"
     "alignof")) 

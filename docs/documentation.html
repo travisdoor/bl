@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-04-15 Mon 14:58 -->
+<!-- 2019-05-05 Sun 15:08 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit Documentation</title>
@@ -191,7 +191,7 @@
 @licstart  The following is the entire license notice for the
 JavaScript code in this tag.
 
-Copyright (C) 2012-2018 Free Software Foundation, Inc.
+Copyright (C) 2012-2019 Free Software Foundation, Inc.
 
 The JavaScript code in this tag is free software: you can
 redistribute it and/or modify it under the terms of the GNU
@@ -240,61 +240,62 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org850e35c">Compiler usage</a></li>
-<li><a href="#orge2695b0">Language</a>
+<li><a href="#orge5fc037">Compiler usage</a></li>
+<li><a href="#orgb1d1c92">Language</a>
 <ul>
-<li><a href="#org3302f8c">Base syntax</a></li>
-<li><a href="#orgc98fe3e">Comments</a></li>
-<li><a href="#org411a9c8">Operators</a>
+<li><a href="#org8679a30">Base syntax</a></li>
+<li><a href="#org46fe110">Comments</a></li>
+<li><a href="#org8cb5283">Operators</a>
 <ul>
-<li><a href="#org812f804">Binary</a></li>
-<li><a href="#orgbf8a930">Unary</a></li>
-<li><a href="#org3225256">Special</a></li>
+<li><a href="#org2ad51c8">Binary</a></li>
+<li><a href="#orgab5cd42">Unary</a></li>
+<li><a href="#org58be075">Special</a></li>
 </ul>
 </li>
-<li><a href="#org7a598d0">Data types</a>
+<li><a href="#org2ce3201">Data types</a>
 <ul>
-<li><a href="#orgef93022">Fundamental data types</a></li>
-<li><a href="#orge63f697">Pointers</a></li>
-<li><a href="#orgd7854aa">Arrays</a></li>
-<li><a href="#orgcdc484a">Strings</a></li>
-<li><a href="#org3401717"><span class="todo TODO">TODO</span> Array slice</a></li>
-<li><a href="#org5622849">Structures</a></li>
-<li><a href="#org98d6f35">Enums</a></li>
-<li><a href="#org26211e5"><span class="todo TODO">TODO</span> Type aliasing</a></li>
-<li><a href="#orgd133693">Function type</a></li>
-<li><a href="#org60893f3">Type casting</a></li>
+<li><a href="#org7d7f6a4">Fundamental data types</a></li>
+<li><a href="#org92f3529">Pointers</a></li>
+<li><a href="#org8ee6a12">Arrays</a></li>
+<li><a href="#org6b46ff3">Strings</a></li>
+<li><a href="#orgcc626f8"><span class="todo TODO">TODO</span> Array slice</a></li>
+<li><a href="#org85059a6">Structures</a></li>
+<li><a href="#orgd91f6e6">Enums</a></li>
+<li><a href="#org6140d72"><span class="todo TODO">TODO</span> Type aliasing</a></li>
+<li><a href="#org2877e09">Function type</a></li>
+<li><a href="#orga4ee23b">Type casting</a></li>
 </ul>
 </li>
-<li><a href="#org947ddea">Literals</a>
+<li><a href="#orgfcf058c">Literals</a>
 <ul>
-<li><a href="#org8d5683e">Simple literals</a></li>
-<li><a href="#org153b874">Numeric literals</a></li>
+<li><a href="#orgd076a04">Simple literals</a></li>
+<li><a href="#org3f342d7">Numeric literals</a></li>
 </ul>
 </li>
-<li><a href="#org3801091">Variables</a></li>
-<li><a href="#orgfbf82a4">Constants</a></li>
-<li><a href="#org0073cd9">Functions</a>
+<li><a href="#org21d1cb9">Variables</a></li>
+<li><a href="#org10efb6f">Constants</a></li>
+<li><a href="#org86de261">Compound expressions</a></li>
+<li><a href="#org8c0de71">Functions</a>
 <ul>
-<li><a href="#org8beee34">Named function</a></li>
-<li><a href="#org85f0dbd">Anonymous function</a></li>
-<li><a href="#org15fed9a">Function pointers</a></li>
-<li><a href="#orgd846e90">Functions with variable argument count</a></li>
+<li><a href="#org5f395f6">Named function</a></li>
+<li><a href="#orgcd38aef">Anonymous function</a></li>
+<li><a href="#org281b3ea">Function pointers</a></li>
+<li><a href="#org8f4c5df">Functions with variable argument count</a></li>
 </ul>
 </li>
-<li><a href="#org812db83">Blocks</a></li>
-<li><a href="#orgce6ec64">Ifs</a></li>
-<li><a href="#orgaa9e4ea">Loops</a></li>
-<li><a href="#org5574ca8">Break and continue</a></li>
-<li><a href="#org4ff6313">Unit tests</a></li>
+<li><a href="#org9b2310a">Blocks</a></li>
+<li><a href="#orgfbda106">Ifs</a></li>
+<li><a href="#orgf49ea2c">Loops</a></li>
+<li><a href="#orgb9887bf">Break and continue</a></li>
+<li><a href="#orgc5e2409">Unit tests</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
-<div id="outline-container-org850e35c" class="outline-2">
-<h2 id="org850e35c">Compiler usage</h2>
-<div class="outline-text-2" id="text-org850e35c">
+<div id="outline-container-orge5fc037" class="outline-2">
+<h2 id="orge5fc037">Compiler usage</h2>
+<div class="outline-text-2" id="text-orge5fc037">
 <pre class="example">
 blc [options] &lt;source-files&gt;
 </pre>
@@ -393,13 +394,13 @@ blc [options] &lt;source-files&gt;
 </div>
 </div>
 
-<div id="outline-container-orge2695b0" class="outline-2">
-<h2 id="orge2695b0">Language</h2>
-<div class="outline-text-2" id="text-orge2695b0">
+<div id="outline-container-orgb1d1c92" class="outline-2">
+<h2 id="orgb1d1c92">Language</h2>
+<div class="outline-text-2" id="text-orgb1d1c92">
 </div>
-<div id="outline-container-org3302f8c" class="outline-3">
-<h3 id="org3302f8c">Base syntax</h3>
-<div class="outline-text-3" id="text-org3302f8c">
+<div id="outline-container-org8679a30" class="outline-3">
+<h3 id="org8679a30">Base syntax</h3>
+<div class="outline-text-3" id="text-org8679a30">
 <p>
 Basicly every construct in Biscuit language fallows the same rules of declaration. We define name of the entity, type and optionally some initial value.
 </p>
@@ -425,9 +426,9 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-orgc98fe3e" class="outline-3">
-<h3 id="orgc98fe3e">Comments</h3>
-<div class="outline-text-3" id="text-orgc98fe3e">
+<div id="outline-container-org46fe110" class="outline-3">
+<h3 id="org46fe110">Comments</h3>
+<div class="outline-text-3" id="text-org46fe110">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-comment-delimiter">// </span><span class="org-comment">this is line comment</span>
 <span class="org-comment-delimiter">/*</span>
@@ -441,17 +442,17 @@ Data type is optional when we specify some value.
 </div>
 </div>
 
-<div id="outline-container-org411a9c8" class="outline-3">
-<h3 id="org411a9c8">Operators</h3>
-<div class="outline-text-3" id="text-org411a9c8">
+<div id="outline-container-org8cb5283" class="outline-3">
+<h3 id="org8cb5283">Operators</h3>
+<div class="outline-text-3" id="text-org8cb5283">
 <p>
 There is no operator overloading in Biscuit.
 </p>
 </div>
 
-<div id="outline-container-org812f804" class="outline-4">
-<h4 id="org812f804">Binary</h4>
-<div class="outline-text-4" id="text-org812f804">
+<div id="outline-container-org2ad51c8" class="outline-4">
+<h4 id="org2ad51c8">Binary</h4>
+<div class="outline-text-4" id="text-org2ad51c8">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -583,9 +584,9 @@ Usage:
 </div>
 </div>
 
-<div id="outline-container-orgbf8a930" class="outline-4">
-<h4 id="orgbf8a930">Unary</h4>
-<div class="outline-text-4" id="text-orgbf8a930">
+<div id="outline-container-orgab5cd42" class="outline-4">
+<h4 id="orgab5cd42">Unary</h4>
+<div class="outline-text-4" id="text-orgab5cd42">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -639,9 +640,9 @@ Usage:
 </div>
 </div>
 
-<div id="outline-container-org3225256" class="outline-4">
-<h4 id="org3225256">Special</h4>
-<div class="outline-text-4" id="text-org3225256">
+<div id="outline-container-org58be075" class="outline-4">
+<h4 id="org58be075">Special</h4>
+<div class="outline-text-4" id="text-org58be075">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -690,13 +691,13 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org7a598d0" class="outline-3">
-<h3 id="org7a598d0">Data types</h3>
-<div class="outline-text-3" id="text-org7a598d0">
+<div id="outline-container-org2ce3201" class="outline-3">
+<h3 id="org2ce3201">Data types</h3>
+<div class="outline-text-3" id="text-org2ce3201">
 </div>
-<div id="outline-container-orgef93022" class="outline-4">
-<h4 id="orgef93022">Fundamental data types</h4>
-<div class="outline-text-4" id="text-orgef93022">
+<div id="outline-container-org7d7f6a4" class="outline-4">
+<h4 id="org7d7f6a4">Fundamental data types</h4>
+<div class="outline-text-4" id="text-org7d7f6a4">
 <table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
 
 
@@ -781,9 +782,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orge63f697" class="outline-4">
-<h4 id="orge63f697">Pointers</h4>
-<div class="outline-text-4" id="text-orge63f697">
+<div id="outline-container-org92f3529" class="outline-4">
+<h4 id="org92f3529">Pointers</h4>
+<div class="outline-text-4" id="text-org92f3529">
 <p>
 Represents the address of some allocated data.
 </p>
@@ -810,9 +811,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgd7854aa" class="outline-4">
-<h4 id="orgd7854aa">Arrays</h4>
-<div class="outline-text-4" id="text-orgd7854aa">
+<div id="outline-container-org8ee6a12" class="outline-4">
+<h4 id="org8ee6a12">Arrays</h4>
+<div class="outline-text-4" id="text-org8ee6a12">
 <p>
 Array is aggregate type of multiple values of the same type.
 </p>
@@ -847,9 +848,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgcdc484a" class="outline-4">
-<h4 id="orgcdc484a">Strings</h4>
-<div class="outline-text-4" id="text-orgcdc484a">
+<div id="outline-container-org6b46ff3" class="outline-4">
+<h4 id="org6b46ff3">Strings</h4>
+<div class="outline-text-4" id="text-org6b46ff3">
 <p>
 String type in biscuit is slice containting pointer to string data and string lenght. String literals are zero terimated.
 </p>
@@ -868,9 +869,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org3401717" class="outline-4">
-<h4 id="org3401717"><span class="todo TODO">TODO</span> Array slice</h4>
-<div class="outline-text-4" id="text-org3401717">
+<div id="outline-container-orgcc626f8" class="outline-4">
+<h4 id="orgcc626f8"><span class="todo TODO">TODO</span> Array slice</h4>
+<div class="outline-text-4" id="text-orgcc626f8">
 <p>
 Array slice is consist of pointer to the first array element and array lenght. 
 </p>
@@ -896,9 +897,9 @@ Example:
 </div>
 </div>
 </div>
-<div id="outline-container-org5622849" class="outline-4">
-<h4 id="org5622849">Structures</h4>
-<div class="outline-text-4" id="text-org5622849">
+<div id="outline-container-org85059a6" class="outline-4">
+<h4 id="org85059a6">Structures</h4>
+<div class="outline-text-4" id="text-org85059a6">
 <p>
 Structure is simple group of data.
 </p>
@@ -974,9 +975,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org98d6f35" class="outline-4">
-<h4 id="org98d6f35">Enums</h4>
-<div class="outline-text-4" id="text-org98d6f35">
+<div id="outline-container-orgd91f6e6" class="outline-4">
+<h4 id="orgd91f6e6">Enums</h4>
+<div class="outline-text-4" id="text-orgd91f6e6">
 <p>
 Example:
 </p>
@@ -1028,9 +1029,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org26211e5" class="outline-4">
-<h4 id="org26211e5"><span class="todo TODO">TODO</span> Type aliasing</h4>
-<div class="outline-text-4" id="text-org26211e5">
+<div id="outline-container-org6140d72" class="outline-4">
+<h4 id="org6140d72"><span class="todo TODO">TODO</span> Type aliasing</h4>
+<div class="outline-text-4" id="text-org6140d72">
 <p>
 It's posible to create alias to any data type.
 </p>
@@ -1052,9 +1053,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgd133693" class="outline-4">
-<h4 id="orgd133693">Function type</h4>
-<div class="outline-text-4" id="text-orgd133693">
+<div id="outline-container-org2877e09" class="outline-4">
+<h4 id="org2877e09">Function type</h4>
+<div class="outline-text-4" id="text-org2877e09">
 <p>
 Type of function. 
 </p>
@@ -1077,9 +1078,9 @@ fn ([arguments]) [return type]
 </div>
 </div>
 
-<div id="outline-container-org60893f3" class="outline-4">
-<h4 id="org60893f3">Type casting</h4>
-<div class="outline-text-4" id="text-org60893f3">
+<div id="outline-container-orga4ee23b" class="outline-4">
+<h4 id="orga4ee23b">Type casting</h4>
+<div class="outline-text-4" id="text-orga4ee23b">
 <p>
 Change type of value to other type. Conventions between integer types is generated implicitly by the compiler.
 </p>
@@ -1115,13 +1116,13 @@ Example:
 </div>
 </div>
 </div>
-<div id="outline-container-org947ddea" class="outline-3">
-<h3 id="org947ddea">Literals</h3>
-<div class="outline-text-3" id="text-org947ddea">
+<div id="outline-container-orgfcf058c" class="outline-3">
+<h3 id="orgfcf058c">Literals</h3>
+<div class="outline-text-3" id="text-orgfcf058c">
 </div>
-<div id="outline-container-org8d5683e" class="outline-4">
-<h4 id="org8d5683e">Simple literals</h4>
-<div class="outline-text-4" id="text-org8d5683e">
+<div id="outline-container-orgd076a04" class="outline-4">
+<h4 id="orgd076a04">Simple literals</h4>
+<div class="outline-text-4" id="text-orgd076a04">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-constant">b</span> :: <span class="org-constant">true</span>;         <span class="org-comment-delimiter">// </span><span class="org-comment">bool true literal </span>
 <span class="org-constant">b</span> :: <span class="org-constant">false</span>;        <span class="org-comment-delimiter">// </span><span class="org-comment">bool false literal </span>
@@ -1131,9 +1132,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org153b874" class="outline-4">
-<h4 id="org153b874">Numeric literals</h4>
-<div class="outline-text-4" id="text-org153b874">
+<div id="outline-container-org3f342d7" class="outline-4">
+<h4 id="org3f342d7">Numeric literals</h4>
+<div class="outline-text-4" id="text-org3f342d7">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-constant">i</span>     :: <span class="org-constant">10</span>;      <span class="org-comment-delimiter">// </span><span class="org-comment">s32 literal</span>
 <span class="org-constant">i_hex</span> :: <span class="org-constant">0x10</span>;    <span class="org-comment-delimiter">// </span><span class="org-comment">s32 literal</span>
@@ -1146,9 +1147,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org3801091" class="outline-3">
-<h3 id="org3801091">Variables</h3>
-<div class="outline-text-3" id="text-org3801091">
+<div id="outline-container-org21d1cb9" class="outline-3">
+<h3 id="org21d1cb9">Variables</h3>
+<div class="outline-text-3" id="text-org21d1cb9">
 <p>
 Example of variable allocated on stack.
 </p>
@@ -1171,13 +1172,16 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgfbf82a4" class="outline-3">
-<h3 id="orgfbf82a4">Constants</h3>
-<div class="outline-text-3" id="text-orgfbf82a4">
+<div id="outline-container-org10efb6f" class="outline-3">
+<h3 id="org10efb6f">Constants</h3>
+<div class="outline-text-3" id="text-org10efb6f">
 <p>
 Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
 </p>
 
+<p>
+Syntax:
+</p>
 <pre class="example">
 &lt;name&gt; : [type] : &lt;value&gt;;
 </pre>
@@ -1195,13 +1199,71 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org0073cd9" class="outline-3">
-<h3 id="org0073cd9">Functions</h3>
-<div class="outline-text-3" id="text-org0073cd9">
+<div id="outline-container-org86de261" class="outline-3">
+<h3 id="org86de261">Compound expressions</h3>
+<div class="outline-text-3" id="text-org86de261">
+<p>
+Compound expression can be used for inline initialization of variables or directly as value.
+Implicit temporary variable is created as needed. Zero initializer can be used as short for memset(0) call.
+</p>
+
+<p>
+Syntax:
+</p>
+<pre class="example">
+{:&lt;type&gt;: &lt;arg1, arg2, ...&gt;};
+{:&lt;type&gt;: 0}; // zero initializer
+</pre>
+
+<p>
+Example:
+</p>
+<div class="org-src-container">
+<pre class="src src-bl"><span class="linenr"> 1: </span><span class="org-preprocessor">#load</span> <span class="org-string">"std/core.bl"</span>
+<span class="linenr"> 2: </span>
+<span class="linenr"> 3: </span><span class="org-preprocessor">#test</span> <span class="org-string">"array compound"</span> {
+<span class="linenr"> 4: </span>    <span class="org-comment-delimiter">// </span><span class="org-comment">print out all array values</span>
+<span class="linenr"> 5: </span>    <span class="org-function-name">print_arr</span> :: <span class="org-keyword">fn</span> (v: [<span class="org-constant">2</span>]<span class="org-type">s32</span>) {
+<span class="linenr"> 6: </span>        <span class="org-keyword">loop</span> i := <span class="org-constant">0</span>; i &lt; v.len; i += <span class="org-constant">1</span> {
+<span class="linenr"> 7: </span>            <span class="org-function-name">print</span>(<span class="org-string">"v[%] = %\n"</span>, i, v[i]);
+<span class="linenr"> 8: </span>        }
+<span class="linenr"> 9: </span>    };
+<span class="linenr">10: </span>
+<span class="linenr">11: </span>    <span class="org-comment-delimiter">// </span><span class="org-comment">create array of 2 elements directly in call</span>
+<span class="linenr">12: </span>    <span class="org-function-name">print_arr</span>({:[<span class="org-constant">2</span>]<span class="org-type">s32</span>: <span class="org-constant">10</span>, <span class="org-constant">20</span>});
+<span class="linenr">13: </span>
+<span class="linenr">14: </span>    <span class="org-comment-delimiter">// </span><span class="org-comment">create zero initialized array</span>
+<span class="linenr">15: </span>    <span class="org-function-name">print_arr</span>({:[<span class="org-constant">2</span>]<span class="org-type">s32</span>: <span class="org-constant">0</span>});
+<span class="linenr">16: </span>};
+<span class="linenr">17: </span>
+<span class="linenr">18: </span>#<span class="org-function-name">test</span> <span class="org-string">"struct compound"</span> {
+<span class="linenr">19: </span>    <span class="org-function-name">Foo</span> :: <span class="org-keyword">struct</span> {
+<span class="linenr">20: </span>        <span class="org-constant">i</span>: <span class="org-type">s32</span>,
+<span class="linenr">21: </span>        <span class="org-constant">j</span>: <span class="org-type">s32</span>
+<span class="linenr">22: </span>    };
+<span class="linenr">23: </span>
+<span class="linenr">24: </span>    <span class="org-function-name">print_strct</span> :: <span class="org-keyword">fn</span> (v: Foo) {
+<span class="linenr">25: </span>        <span class="org-function-name">print</span>(<span class="org-string">"v.i = %\n"</span>, v.i);
+<span class="linenr">26: </span>        <span class="org-function-name">print</span>(<span class="org-string">"v.j = %\n"</span>, v.j);
+<span class="linenr">27: </span>    };
+<span class="linenr">28: </span>
+<span class="linenr">29: </span>    <span class="org-comment-delimiter">// </span><span class="org-comment">create structure in call</span>
+<span class="linenr">30: </span>    <span class="org-function-name">print_strct</span>({:Foo: <span class="org-constant">10</span>, <span class="org-constant">20</span>});
+<span class="linenr">31: </span>
+<span class="linenr">32: </span>    <span class="org-comment-delimiter">// </span><span class="org-comment">create zero initialized structure</span>
+<span class="linenr">33: </span>    <span class="org-function-name">print_strct</span>({:Foo: <span class="org-constant">0</span>});
+<span class="linenr">34: </span>};
+</pre>
 </div>
-<div id="outline-container-org8beee34" class="outline-4">
-<h4 id="org8beee34">Named function</h4>
-<div class="outline-text-4" id="text-org8beee34">
+</div>
+</div>
+<div id="outline-container-org8c0de71" class="outline-3">
+<h3 id="org8c0de71">Functions</h3>
+<div class="outline-text-3" id="text-org8c0de71">
+</div>
+<div id="outline-container-org5f395f6" class="outline-4">
+<h4 id="org5f395f6">Named function</h4>
+<div class="outline-text-4" id="text-org5f395f6">
 <p>
 Examples of named function.
 </p>
@@ -1235,9 +1297,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org85f0dbd" class="outline-4">
-<h4 id="org85f0dbd">Anonymous function</h4>
-<div class="outline-text-4" id="text-org85f0dbd">
+<div id="outline-container-orgcd38aef" class="outline-4">
+<h4 id="orgcd38aef">Anonymous function</h4>
+<div class="outline-text-4" id="text-orgcd38aef">
 <p>
 Anonymous function has no name and contains only function literal.
 </p>
@@ -1260,9 +1322,9 @@ Example of anonymous function.
 </div>
 </div>
 
-<div id="outline-container-org15fed9a" class="outline-4">
-<h4 id="org15fed9a">Function pointers</h4>
-<div class="outline-text-4" id="text-org15fed9a">
+<div id="outline-container-org281b3ea" class="outline-4">
+<h4 id="org281b3ea">Function pointers</h4>
+<div class="outline-text-4" id="text-org281b3ea">
 <p>
 Functions can be called via pointer. Call on <code>null</code> pointer will produce error in interpreter.
 </p>
@@ -1297,9 +1359,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgd846e90" class="outline-4">
-<h4 id="orgd846e90">Functions with variable argument count</h4>
-<div class="outline-text-4" id="text-orgd846e90">
+<div id="outline-container-org8f4c5df" class="outline-4">
+<h4 id="org8f4c5df">Functions with variable argument count</h4>
+<div class="outline-text-4" id="text-org8f4c5df">
 <p>
 Biscuit supports functions with variable argument count of the same type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs. Inside function body variable argument list acts like regular array.
 </p>
@@ -1335,9 +1397,9 @@ Example of variable argument count function:
 </div>
 </div>
 </div>
-<div id="outline-container-org812db83" class="outline-3">
-<h3 id="org812db83">Blocks</h3>
-<div class="outline-text-3" id="text-org812db83">
+<div id="outline-container-org9b2310a" class="outline-3">
+<h3 id="org9b2310a">Blocks</h3>
+<div class="outline-text-3" id="text-org9b2310a">
 <p>
 Block can limit scope of the variable.
 </p>
@@ -1365,9 +1427,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgce6ec64" class="outline-3">
-<h3 id="orgce6ec64">Ifs</h3>
-<div class="outline-text-3" id="text-orgce6ec64">
+<div id="outline-container-orgfbda106" class="outline-3">
+<h3 id="orgfbda106">Ifs</h3>
+<div class="outline-text-3" id="text-orgfbda106">
 <p>
 If - else base syntax:
 </p>
@@ -1396,9 +1458,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-orgaa9e4ea" class="outline-3">
-<h3 id="orgaa9e4ea">Loops</h3>
-<div class="outline-text-3" id="text-orgaa9e4ea">
+<div id="outline-container-orgf49ea2c" class="outline-3">
+<h3 id="orgf49ea2c">Loops</h3>
+<div class="outline-text-3" id="text-orgf49ea2c">
 <p>
 Loop base syntax:
 </p>
@@ -1435,9 +1497,9 @@ Example:
 </div>
 </div>
 
-<div id="outline-container-org5574ca8" class="outline-3">
-<h3 id="org5574ca8">Break and continue</h3>
-<div class="outline-text-3" id="text-org5574ca8">
+<div id="outline-container-orgb9887bf" class="outline-3">
+<h3 id="orgb9887bf">Break and continue</h3>
+<div class="outline-text-3" id="text-orgb9887bf">
 <p>
 Break/continue statements can be used in loops to control execution flow.
 </p>
@@ -1462,9 +1524,9 @@ Examples:
 </div>
 </div>
 
-<div id="outline-container-org4ff6313" class="outline-3">
-<h3 id="org4ff6313">Unit tests</h3>
-<div class="outline-text-3" id="text-org4ff6313">
+<div id="outline-container-orgc5e2409" class="outline-3">
+<h3 id="orgc5e2409">Unit tests</h3>
+<div class="outline-text-3" id="text-orgc5e2409">
 <p>
 Biscuit compiler supports unit testing by default.
 </p>
@@ -1525,7 +1587,7 @@ done
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-04-15 Mon 14:58</p>
+<p class="date">Created: 2019-05-05 Sun 15:08</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
