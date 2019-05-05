@@ -2935,10 +2935,8 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER,
 			            cmp->base.node->src, BUILDER_CUR_WORD,
 			            "Structure initializer must explicitly set all members of the "
-			            "structure or "
-			            "initialize structure to 0 by zero initializer {0}. Expected "
-			            "is %llu but "
-			            "given %llu.",
+			            "structure or initialize structure to 0 by zero initializer "
+			            "{0}. Expected is %llu but given %llu.",
 			            (unsigned long long)memc, (unsigned long long)valc);
 			return ANALYZE_FAILED;
 		}
@@ -2965,8 +2963,31 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		break;
 	}
 
-	default:
-		bl_abort_issue(45);
+	default: {
+		/* Non-agregate type. */
+		if (valc > 1) {
+			value = bo_array_at(values, 1, MirInstr *);
+			builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_INVALID_INITIALIZER,
+			            value->node->src, BUILDER_CUR_WORD,
+			            "One value only is expected for non-agragate types.");
+			return ANALYZE_FAILED;
+		}
+
+		MirInstr **value_ref = &bo_array_at(values, 0, MirInstr *);
+		(*value_ref)         = insert_instr_load_if_needed(cnt, *value_ref);
+		reduce_instr(cnt, *value_ref);
+
+		/* validate value type */
+		bool is_valid;
+		*value_ref = try_impl_cast(cnt, *value_ref, type, &is_valid);
+		if (!is_valid) return ANALYZE_FAILED;
+
+		comptime = (*value_ref)->comptime ? comptime : false;
+
+		// NOTE: Instructions can be used as values!!!
+
+		cmp->base.const_value = (*value_ref)->const_value;
+	}
 	}
 
 	/*

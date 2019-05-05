@@ -75,3 +75,14 @@
         validate({:Foo: i, j}, i, j);
     }
 };
+
+#test "compound fundamentals" {
+    i := 10;
+    assert({:s32: 10} == 10);
+    assert({:s32: i} == i);
+    assert({:s32: 0} == 0);
+
+    b := true;
+    assert({:bool: true} == true);
+    assert({:bool: b} == b);
+};
