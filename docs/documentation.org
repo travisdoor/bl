@@ -267,8 +267,8 @@
    #+INCLUDE: "../tests/src/examples/constants.bl" src bl -n
    
 ** Compound expressions
-   Compound expression can be used for inline initialization of variables or directly as an explicit value..
-   Implicit temporary variable is created when needed. Zero initializer can be used as short for memset(0) call.
+   Compound expression can be used for inline initialization of variables or directly as value.
+   Implicit temporary variable is created as needed. Zero initializer can be used as short for memset(0) call.
 
    Syntax:
    #+BEGIN_EXAMPLE

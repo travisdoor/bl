@@ -638,7 +638,7 @@ static void exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static void exec_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *init);
+static void exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *init);
 
 static void exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
@@ -915,6 +915,13 @@ static inline void exec_stack_alloc_vars(Context *cnt, MirFn *fn)
 	barray_foreach(vars, var)
 	{
 		if (var->comptime) continue;
+		/*
+		{
+		        char stype[255];
+		        mir_type_to_str(stype, 255, var->alloc_type, true);
+		        bl_log("allocate %s : %s", var->llvm_name, stype);
+		}
+		*/
 		exec_stack_alloc_var(cnt, var);
 	}
 }
@@ -2873,6 +2880,8 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		}
 	}
 
+	cmp->is_zero_initialized = zero_init;
+
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY: {
 		if (zero_init) {
@@ -2957,7 +2966,7 @@ uint64_t analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 
 	default:
-		bl_unimplemented;
+		bl_abort_issue(45);
 	}
 
 	/*
@@ -4851,7 +4860,7 @@ void exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	MirType * type = src->const_value.type;
 	assert(type);
 
-	if (src->kind == MIR_INSTR_ELEM_PTR) {
+	if (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND) {
 		/* address of the element is already on the stack */
 		return;
 	}
@@ -5327,76 +5336,83 @@ void exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 }
 
-void exec_instr_compound(Context *cnt, MirStackPtr var_ptr, MirInstrCompound *cmp)
+void exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 {
-	assert((cmp->is_naked || var_ptr) && "Missing destination for non-naked compound.");
-	if (cmp->is_naked) {
-		bl_unimplemented;
+	MirType *type    = cmp->base.const_value.type;
+	MirVar * tmp_var = cmp->tmp_var;
+
+	bool push_tmp_ptr = false;
+
+	/* We expect compound to be naked when no tmp_ptr has been passed into this function. */
+	if (!tmp_ptr) {
+		assert(cmp->is_naked);
+		assert(tmp_var);
+		assert(!tmp_var->is_in_gscope);
+		assert(type && type->kind == MIR_TYPE_PTR);
+
+		tmp_ptr = exec_read_stack_ptr(cnt, tmp_var->rel_stack_ptr, false);
+
+		type         = cmp->tmp_var->alloc_type;
+		push_tmp_ptr = true;
 	}
 
-	BArray *values = cmp->values;
-	assert(values);
+	assert(tmp_ptr && "Missing temporary allocation for compound.");
+	assert(type);
 
-	MirType *init_type = cmp->base.const_value.type;
-	assert(init_type);
-	LLVMTypeRef llvm_init_type = init_type->llvm_type;
-	assert(llvm_init_type);
+	BArray *    values    = cmp->values;
+	LLVMTypeRef llvm_type = type->llvm_type;
+
+	assert(values);
+	assert(llvm_type);
+
 	MirStackPtr value_ptr;
 	MirInstr *  value;
 
-	switch (init_type->kind) {
-	case MIR_TYPE_ARRAY: {
-		const size_t elem_size = init_type->data.array.elem_type->store_size_bytes;
+	if (cmp->is_zero_initialized) {
+		memset(tmp_ptr, 0, type->store_size_bytes);
+	} else {
+		MirType *   elem_type;
+		MirStackPtr elem_ptr = tmp_ptr;
 
 		barray_foreach(values, value)
 		{
-			// CLEANUP:
+			elem_type = value->const_value.type;
+			switch (type->kind) {
+
+			case MIR_TYPE_STRUCT:
+				elem_ptr =
+				    tmp_ptr + LLVMOffsetOfElement(cnt->module->llvm_td, llvm_type,
+				                                  (unsigned long)i);
+				break;
+
+			case MIR_TYPE_ARRAY:
+				elem_ptr = tmp_ptr + elem_type->store_size_bytes * i;
+				break;
+
+			default:
+				assert(i == 0 && "Invalid elem count for non-agregate type!!!");
+			}
+
 			if (value->comptime) {
-				exec_copy_comptime_to_stack(cnt, var_ptr, &value->const_value);
+				exec_copy_comptime_to_stack(cnt, elem_ptr, &value->const_value);
 			} else {
 				if (value->kind == MIR_INSTR_COMPOUND) {
-					exec_instr_compound(cnt, var_ptr,
+					exec_instr_compound(cnt, elem_ptr,
 					                    (MirInstrCompound *)value);
 				} else {
 					value_ptr = exec_fetch_value(cnt, value);
-					memcpy(var_ptr, value_ptr, elem_size);
-				}
-			}
-
-			var_ptr += elem_size;
-		}
-		break;
-	}
-
-	case MIR_TYPE_STRUCT: {
-		MirType *   member_type;
-		MirStackPtr member_ptr;
-		barray_foreach(values, value)
-		{
-			member_type = value->const_value.type;
-			member_ptr =
-			    var_ptr + LLVMOffsetOfElement(cnt->module->llvm_td,
-			                                  init_type->llvm_type, (unsigned long)i);
-
-			// CLEANUP:
-			if (value->comptime) {
-				exec_copy_comptime_to_stack(cnt, member_ptr, &value->const_value);
-			} else {
-				if (value->kind == MIR_INSTR_COMPOUND) {
-					exec_instr_compound(cnt, member_ptr,
-					                    (MirInstrCompound *)value);
-				} else {
-					value_ptr = exec_fetch_value(cnt, value);
-					memcpy(member_ptr, value_ptr,
-					       member_type->store_size_bytes);
+					memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
 				}
 			}
 		}
-		break;
 	}
 
-	default:
-		bl_unimplemented;
+	/*
+	 * Push pointer to tmp var on the stack. This is done for all naked compounds.
+	 */
+	if (push_tmp_ptr) {
+		MirStackPtr real_ptr = exec_read_stack_ptr(cnt, tmp_var->rel_stack_ptr, false);
+		exec_push_stack(cnt, &real_ptr, cmp->base.const_value.type);
 	}
 }
 
@@ -5492,10 +5508,9 @@ void exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		    exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
 		assert(var_ptr);
 
-		// CLEANUP:
 		if (decl->init->comptime) {
-			/* Compile time constants of agregate type are stored in different
-		   way, we need to produce decomposition of those data. */
+			/* Compile time constants of agregate type are stored in different way, we
+			 * need to produce decomposition of those data. */
 			exec_copy_comptime_to_stack(cnt, var_ptr, &decl->init->const_value);
 		} else {
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {

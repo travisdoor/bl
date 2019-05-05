@@ -16,6 +16,7 @@
 #load "test_sizeof.bl"
 #load "test_vargs.bl"
 #load "test_enums.bl"
+#load "test_compounds.bl"
 
 /* Examples */
 #load "examples/alias.bl"
@@ -36,3 +37,4 @@
 #load "examples/vargs.bl"
 #load "examples/variables.bl"
 #load "examples/enums.bl"
+#load "examples/compounds.bl"

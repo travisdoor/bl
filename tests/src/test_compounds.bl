@@ -1,3 +1,77 @@
 #load "std/debug.bl"
 
-// TODO: implement me!!!
+#test "compound arrays" {
+    validate :: fn (v: [2]s32, i: s32, j: s32) {
+        assert(v[0] == i);
+        assert(v[1] == j);
+    };
+
+    // Var initializers
+    { // zero initialized
+        arr := {:[2]s32: 0};
+        validate(arr, 0, 0);
+    }
+
+    { // constant values
+        arr := {:[2]s32: 10, 20};
+        validate(arr, 10, 20);
+    }
+
+    { // variable values
+        i := 10;
+        j := 20;
+
+        arr := {:[2]s32: i, j};
+        validate(arr, i, j);
+    }
+
+    // Naked
+    { 
+        i := 10;
+        j := 20;
+
+        validate({:[2]s32: 0}, 0, 0);
+        validate({:[2]s32: 10, 20}, 10, 20);
+        validate({:[2]s32: i, j}, i, j);
+    }
+};
+
+#test "compound structs" {
+    Foo :: struct {
+        i: s32,
+        j: s32
+    };
+
+    validate :: fn (v: Foo, i: s32, j: s32) {
+        assert(v.i == i);
+        assert(v.j == j);
+    };
+
+    { // zero initialized
+        foo := {:Foo: 0};
+        validate(foo, 0, 0);
+    }
+
+    { // constant values
+        foo := {:Foo: 10, 20};
+        validate(foo, 10, 20);
+    }
+
+    { // variable values
+        i := 10;
+        j := 20;
+
+        foo := {:Foo: i, j};
+        validate(foo, i, j);
+    }
+
+    // Naked
+    { 
+        i := 10;
+        j := 20;
+
+        validate({:Foo: 0}, 0, 0);
+        validate({:Foo: 10, 20}, 10, 20);
+        validate({:Foo: i, j}, i, j);
+    }
+};

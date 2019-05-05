@@ -817,7 +817,6 @@ void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		bl_unimplemented;
 	}
 
-	// cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
 	cmp->base.llvm_value = llvm_tmp;
 }
 

@@ -629,6 +629,7 @@ struct MirInstrCompound {
 	BArray *  values;
 	MirVar *  tmp_var;
 	bool      is_naked;
+	bool      is_zero_initialized;
 };
 
 struct MirInstrVArgs {

@@ -10,6 +10,7 @@ Foo :: struct {
 main :: fn () s32 {
     test_structs();
     test_arrays();
+    
     return 0;
 };
 
@@ -33,7 +34,6 @@ pass_arr :: fn (arr: [2]s32) {
         print("arr[%] = %\n", i, arr[i]);
     }
 };
-
 
 test_structs :: fn () {
     i := 10;
