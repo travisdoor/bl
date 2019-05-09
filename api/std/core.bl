@@ -31,8 +31,7 @@
 
 // Type info
 TypeKind :: enum {
-    Int  :: 1,
-    Real :: 2,
+    Int  :: 4,
 };
 
 TypeInfo :: struct {
@@ -45,14 +44,8 @@ TypeInfoInt :: struct {
     signed: bool
 };
 
-TypeInfoReal :: struct {
-    base: TypeInfo,
-    bitcount: s32
-};
-
 cstr_to_str :: fn (cstr: *u8) string {
-    tmp := {:string: strlen(cstr), cstr};
-    return tmp;
+    return {:string: strlen(cstr), cstr};
 };
 
 // Printing
@@ -145,8 +138,7 @@ print_s64 :: fn (v: s64) {
         c += 1;
     }
 
-    tmp := {:[]u8: buf.len, buf.ptr};
-    _print_reverse_buffer(tmp, 0, c - 1);
+    _print_reverse_buffer({:[]u8: buf.len, buf.ptr}, 0, c - 1);
 
     os_write(OS_STDOUT, buf.ptr, c);
 };

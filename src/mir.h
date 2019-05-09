@@ -257,6 +257,11 @@ struct MirType {
 	int32_t     alignment;
 	uint64_t    type_table_index;
 
+	struct {
+		MirStackPtr  exec_ptr;
+		LLVMValueRef llvm_ptr;
+	} tt_entry;
+
 	union {
 		struct MirTypeInt    integer;
 		struct MirTypeFn     fn;

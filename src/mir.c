@@ -42,6 +42,7 @@
 #define IMPL_VARGS_TMP_ARR              ".vargs_arr"
 #define IMPL_VARGS_TMP                  ".vargs"
 #define IMPL_COMPOUND_TMP               ".compound"
+#define IMPL_TYPE_ENTRY                 ".type"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -255,6 +256,8 @@ static void array_dtor(BArray **arr)
 
 /* FW decls */
 static void init_builtins(Context *cnt);
+
+static void gen_type_table(Context *cnt);
 
 static void execute_entry_fn(Context *cnt);
 
@@ -2803,6 +2806,27 @@ void reduce_instr(Context *cnt, MirInstr *instr)
 
 	default:
 		break;
+	}
+}
+
+/*
+ * Generate global type table in data segment of an assembly.
+ */
+void gen_type_table(Context *cnt)
+{
+	BHashTable *table = cnt->type_table;
+
+	MirVar *      var;
+	MirType *     type;
+	bo_iterator_t it;
+
+	bhtbl_foreach(table, it)
+	{
+		type           = bo_htbl_iter_peek_value(table, &it, MirType *);
+		const size_t i = bo_htbl_iter_peek_key(table, &it);
+		//bl_log("type entry %d: %s", i, type->id.str);
+
+		//var =
 	}
 }
 
@@ -7501,8 +7525,8 @@ void mir_run(Builder *builder, Assembly *assembly)
 	cnt.test_cases           = bo_array_new(sizeof(MirFn *));
 	cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
 	cnt.tmp_sh               = bo_string_new(1024);
-	cnt.type_table           = bo_htbl_new(sizeof(MirType *), 8192);
 	cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
+	cnt.type_table           = assembly->type_table;
 
 	init_builtins(&cnt);
 
@@ -7512,21 +7536,24 @@ void mir_run(Builder *builder, Assembly *assembly)
 	{
 		ast(&cnt, unit->ast);
 	}
-
 	/* Analyze pass */
 	if (!builder->errorc) {
 		analyze(&cnt);
 		analyze_report_unresolved(&cnt);
 	}
 
-	if (!builder->errorc && builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
-	if (!builder->errorc && builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
+	if (builder->errorc) goto ON_ERROR;
 
+	gen_type_table(&cnt);
+
+	if (builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
+	if (builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
+
+ON_ERROR:
 	bo_unref(cnt.analyze.queue);
 	bo_unref(cnt.analyze.waiting);
 	bo_unref(cnt.test_cases);
 	bo_unref(cnt.tmp_sh);
-	bo_unref(cnt.type_table);
 
 	exec_delete_stack(cnt.exec.stack);
 }
