@@ -2,14 +2,15 @@
 
 #load "std/core.bl"
 
+Foo :: struct {
+    a: s32,
+    b: s32
+};
+
 main :: fn () s32 {
-    print("Hello Biscuit!!!\n");
-
-    foo :: 10; // immutable
-
-    loop i := 0; i < 10; i += 1 {
-        print("foo = %\n", foo);
-    }
+    t1 := typeinfo(s32);
+    t2 := typeinfo(t1);
+    t3 := typeinfo(t2.kind);
     
     return 0;
 };

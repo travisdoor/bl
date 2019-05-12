@@ -255,8 +255,13 @@ struct MirType {
 	size_t      size_bits;
 	size_t      store_size_bytes;
 	int32_t     alignment;
-	uint64_t    type_table_index;
 
+	/*
+	 * Every unique type will cause generation of type info global constant in program data
+	 * segment, here we store pointers to this allocation, one for interpreter and one for LLVM
+	 * IR. This pointers can be returned by 'typeinfo(<T>)' operator in user source code. This is
+	 * the way RTTI is implemented in bl.
+	 */
 	struct {
 		MirStackPtr  exec_ptr;
 		LLVMValueRef llvm_ptr;
@@ -649,8 +654,8 @@ struct MirInstrVArgs {
 struct MirInstrTypeInfo {
 	MirInstr base;
 
-	/* index into type_info array */
-	uint64_t  type_table_index;
+	/* pointer to the type of expression */
+	MirType * expr_type;
 	MirInstr *expr;
 };
 

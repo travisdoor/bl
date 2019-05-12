@@ -521,7 +521,7 @@ void print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
 {
 	print_instr_head(&type_info->base, stream, "typeinfo");
 	print_comptime_value_or_id(type_info->expr, stream);
-	fprintf(stream, " // tti = %llu", (unsigned long long)type_info->type_table_index);
+	fprintf(stream, " // type_hash = %llu", (unsigned long long)type_info->expr_type->id.hash);
 }
 
 void print_instr_alignof(MirInstrAlignof *szof, FILE *stream)

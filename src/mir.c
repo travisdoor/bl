@@ -1237,10 +1237,8 @@ static inline bool create_type(Context *cnt, MirType **out_type, const char *sh)
 		BString *copy = builder_create_cached_str(cnt->builder);
 		bo_string_append(copy, sh);
 
-		static uint64_t index = 0;
-		tmp->id.str           = bo_string_get(copy);
-		tmp->id.hash          = hash;
-		tmp->type_table_index = index++;
+		tmp->id.str  = bo_string_get(copy);
+		tmp->id.hash = hash;
 
 		/* bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash); */
 		bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
@@ -2814,6 +2812,7 @@ void reduce_instr(Context *cnt, MirInstr *instr)
  */
 void gen_type_table(Context *cnt)
 {
+#if 0
 	BHashTable *table = cnt->type_table;
 
 	MirVar *      var;
@@ -2824,10 +2823,8 @@ void gen_type_table(Context *cnt)
 	{
 		type           = bo_htbl_iter_peek_value(table, &it, MirType *);
 		const size_t i = bo_htbl_iter_peek_key(table, &it);
-		//bl_log("type entry %d: %s", i, type->id.str);
-
-		//var =
 	}
+#endif
 }
 
 uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
@@ -3414,7 +3411,12 @@ uint64_t analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		assert(type);
 	}
 
-	type_info->type_table_index = type->type_table_index;
+	type_info->expr_type = type;
+	{
+		char type_name[256];
+		mir_type_to_str(type_name, 256, type, true);
+		bl_log("get type info of " BLUE("%s"), type_name);
+	}
 
 	/* Resolve TypeInfo struct type */
 	MirType *ret_type = NULL;
@@ -3423,7 +3425,7 @@ uint64_t analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		Scope *     gscope = cnt->assembly->gscope;
 		ID *        id     = &builtin_ids[MIR_BUILTIN_TYPE_INFO];
 		ScopeEntry *found  = scope_lookup(gscope, id, true);
-		assert(found && "TypeInfo base struct not found! This should be an error, we need "
+		assert(found && "TypeInfo base struct not found! This should be an error, you must "
 		                "to load 'core.bl'.");
 		assert(found->kind == SCOPE_ENTRY_VAR);
 
@@ -7536,20 +7538,21 @@ void mir_run(Builder *builder, Assembly *assembly)
 	{
 		ast(&cnt, unit->ast);
 	}
-	/* Analyze pass */
-	if (!builder->errorc) {
-		analyze(&cnt);
-		analyze_report_unresolved(&cnt);
-	}
 
-	if (builder->errorc) goto ON_ERROR;
+	if (builder->errorc) goto ERROR;
+
+	/* Analyze pass */
+	analyze(&cnt);
+	analyze_report_unresolved(&cnt);
+
+	if (builder->errorc) goto ERROR;
 
 	gen_type_table(&cnt);
 
 	if (builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
 	if (builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
 
-ON_ERROR:
+ERROR:
 	bo_unref(cnt.analyze.queue);
 	bo_unref(cnt.analyze.waiting);
 	bo_unref(cnt.test_cases);
