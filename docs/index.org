@@ -52,6 +52,9 @@
 - [[https://github.com/travisdoor/skyshooter][Sky Shooter]] - Simple SDL game.
 - [[https://github.com/travisdoor/PoissonDisk][PoissonDisk]] - Unity C# poisson disk generator tool.
 
+** YouTube videos
+1) [[https://www.youtube.com/watch?v=4UNTkqYakgI&t=22s][Introduction]] - First introduction to the language.
+
 * Building compiler from source code
 ** Requirements
   - git

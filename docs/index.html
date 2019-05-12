@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-03-23 Sat 19:00 -->
+<!-- 2019-05-12 Sun 12:48 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Biscuit Language</title>
@@ -161,6 +161,19 @@
   .footdef  { margin-bottom: 1em; }
   .figure { padding: 1em; }
   .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
   .inlinetask {
     padding: 10px;
     border: 2px solid gray;
@@ -191,7 +204,7 @@
 @licstart  The following is the entire license notice for the
 JavaScript code in this tag.
 
-Copyright (C) 2012-2018 Free Software Foundation, Inc.
+Copyright (C) 2012-2019 Free Software Foundation, Inc.
 
 The JavaScript code in this tag is free software: you can
 redistribute it and/or modify it under the terms of the GNU
@@ -244,33 +257,34 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org8c3df5d">About</a>
+<li><a href="#org30db7f3">About</a>
 <ul>
-<li><a href="#org148dd1f">Goals</a></li>
-<li><a href="#org50944fa">Example</a></li>
-<li><a href="#org1cd6025">Made with Biscuit</a></li>
+<li><a href="#orgde70eb3">Goals</a></li>
+<li><a href="#orgf03546c">Example</a></li>
+<li><a href="#org69182a9">Made with Biscuit</a></li>
+<li><a href="#orgd5d3278">YouTube videos</a></li>
 </ul>
 </li>
-<li><a href="#org0c3523a">Building compiler from source code</a>
+<li><a href="#org908c2ea">Building compiler from source code</a>
 <ul>
-<li><a href="#orgdfd3130">Requirements</a></li>
-<li><a href="#orgb975faa">Linux</a></li>
-<li><a href="#orgeb661a5">MacOS</a></li>
-<li><a href="#org27fa030">Windows</a></li>
+<li><a href="#orgd85a4ab">Requirements</a></li>
+<li><a href="#org4867c0c">Linux</a></li>
+<li><a href="#org7418e24">MacOS</a></li>
+<li><a href="#orge4a8005">Windows</a></li>
 </ul>
 </li>
-<li><a href="#org03382cd">Releases</a>
+<li><a href="#orgd6e2e53">Releases</a>
 <ul>
-<li><a href="#org753dee2">0.4.1 pre-alpha</a></li>
+<li><a href="#orgdb6ff22">0.4.1 pre-alpha</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org8c3df5d" class="outline-2">
-<h2 id="org8c3df5d">About</h2>
-<div class="outline-text-2" id="text-org8c3df5d">
+<div id="outline-container-org30db7f3" class="outline-2">
+<h2 id="org30db7f3">About</h2>
+<div class="outline-text-2" id="text-org30db7f3">
 <p>
 The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit is designed to be simple, fast and explicit.
 </p>
@@ -280,9 +294,9 @@ Contact email: <a href="mailto:biscuitlang@gmail.com">biscuitlang@gmail.com</a>
 </p>
 </div>
 
-<div id="outline-container-org148dd1f" class="outline-3">
-<h3 id="org148dd1f">Goals</h3>
-<div class="outline-text-3" id="text-org148dd1f">
+<div id="outline-container-orgde70eb3" class="outline-3">
+<h3 id="orgde70eb3">Goals</h3>
+<div class="outline-text-3" id="text-orgde70eb3">
 <ul class="org-ul">
 <li>manual memory management</li>
 <li>pointers</li>
@@ -297,9 +311,9 @@ Contact email: <a href="mailto:biscuitlang@gmail.com">biscuitlang@gmail.com</a>
 </div>
 </div>
 
-<div id="outline-container-org50944fa" class="outline-3">
-<h3 id="org50944fa">Example</h3>
-<div class="outline-text-3" id="text-org50944fa">
+<div id="outline-container-orgf03546c" class="outline-3">
+<h3 id="orgf03546c">Example</h3>
+<div class="outline-text-3" id="text-orgf03546c">
 <div class="org-src-container">
 <pre class="src src-bl"><span class="org-function-name">main</span> :: <span class="org-keyword">fn</span> () <span class="org-type">s32</span> {
   <span class="org-keyword">return</span> <span class="org-function-name">fib</span>(<span class="org-constant">10</span>);
@@ -319,24 +333,33 @@ Contact email: <a href="mailto:biscuitlang@gmail.com">biscuitlang@gmail.com</a>
 </div>
 </div>
 
-<div id="outline-container-org1cd6025" class="outline-3">
-<h3 id="org1cd6025">Made with Biscuit</h3>
-<div class="outline-text-3" id="text-org1cd6025">
+<div id="outline-container-org69182a9" class="outline-3">
+<h3 id="org69182a9">Made with Biscuit</h3>
+<div class="outline-text-3" id="text-org69182a9">
 <ul class="org-ul">
 <li><a href="https://github.com/travisdoor/skyshooter">Sky Shooter</a> - Simple SDL game.</li>
 <li><a href="https://github.com/travisdoor/PoissonDisk">PoissonDisk</a> - Unity C# poisson disk generator tool.</li>
 </ul>
 </div>
 </div>
+
+<div id="outline-container-orgd5d3278" class="outline-3">
+<h3 id="orgd5d3278">YouTube videos</h3>
+<div class="outline-text-3" id="text-orgd5d3278">
+<ol class="org-ol">
+<li><a href="https://www.youtube.com/watch?v=4UNTkqYakgI&amp;t=22s">Introduction</a> - First introduction to the language.</li>
+</ol>
+</div>
+</div>
 </div>
 
-<div id="outline-container-org0c3523a" class="outline-2">
-<h2 id="org0c3523a">Building compiler from source code</h2>
-<div class="outline-text-2" id="text-org0c3523a">
+<div id="outline-container-org908c2ea" class="outline-2">
+<h2 id="org908c2ea">Building compiler from source code</h2>
+<div class="outline-text-2" id="text-org908c2ea">
 </div>
-<div id="outline-container-orgdfd3130" class="outline-3">
-<h3 id="orgdfd3130">Requirements</h3>
-<div class="outline-text-3" id="text-orgdfd3130">
+<div id="outline-container-orgd85a4ab" class="outline-3">
+<h3 id="orgd85a4ab">Requirements</h3>
+<div class="outline-text-3" id="text-orgd85a4ab">
 <ul class="org-ul">
 <li>git</li>
 <li>CMake</li>
@@ -348,9 +371,9 @@ Contact email: <a href="mailto:biscuitlang@gmail.com">biscuitlang@gmail.com</a>
 </div>
 </div>
 
-<div id="outline-container-orgb975faa" class="outline-3">
-<h3 id="orgb975faa">Linux</h3>
-<div class="outline-text-3" id="text-orgb975faa">
+<div id="outline-container-org4867c0c" class="outline-3">
+<h3 id="org4867c0c">Linux</h3>
+<div class="outline-text-3" id="text-org4867c0c">
 <ul class="org-ul">
 <li><p>
 Compile and install bobject.
@@ -389,9 +412,9 @@ make
 </div>
 </div>
 
-<div id="outline-container-orgeb661a5" class="outline-3">
-<h3 id="orgeb661a5">MacOS</h3>
-<div class="outline-text-3" id="text-orgeb661a5">
+<div id="outline-container-org7418e24" class="outline-3">
+<h3 id="org7418e24">MacOS</h3>
+<div class="outline-text-3" id="text-org7418e24">
 <ul class="org-ul">
 <li><p>
 Compile and install bobject.
@@ -424,9 +447,9 @@ make
 </div>
 </div>
 
-<div id="outline-container-org27fa030" class="outline-3">
-<h3 id="org27fa030">Windows</h3>
-<div class="outline-text-3" id="text-org27fa030">
+<div id="outline-container-orge4a8005" class="outline-3">
+<h3 id="orge4a8005">Windows</h3>
+<div class="outline-text-3" id="text-orge4a8005">
 <p>
 You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 </p>
@@ -488,13 +511,13 @@ Note: Compilation on Windows is quite complicated, we need to create some automa
 </div>
 </div>
 </div>
-<div id="outline-container-org03382cd" class="outline-2">
-<h2 id="org03382cd">Releases</h2>
-<div class="outline-text-2" id="text-org03382cd">
+<div id="outline-container-orgd6e2e53" class="outline-2">
+<h2 id="orgd6e2e53">Releases</h2>
+<div class="outline-text-2" id="text-orgd6e2e53">
 </div>
-<div id="outline-container-org753dee2" class="outline-3">
-<h3 id="org753dee2">0.4.1 pre-alpha</h3>
-<div class="outline-text-3" id="text-org753dee2">
+<div id="outline-container-orgdb6ff22" class="outline-3">
+<h3 id="orgdb6ff22">0.4.1 pre-alpha</h3>
+<div class="outline-text-3" id="text-orgdb6ff22">
 <ul class="org-ul">
 <li><a href="https://github.com/travisdoor/bl">source</a></li>
 <li><a href="documentation.html">documentation</a></li>
@@ -506,7 +529,7 @@ Note: Compilation on Windows is quite complicated, we need to create some automa
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Martin Dorazil</p>
-<p class="date">Created: 2019-03-23 Sat 19:00</p>
+<p class="date">Created: 2019-05-12 Sun 12:48</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

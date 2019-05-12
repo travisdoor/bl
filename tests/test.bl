@@ -3,26 +3,13 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
+    print("Hello Biscuit!!!\n");
+
     foo :: 10; // immutable
-    print("foo = %\n", foo);
-    
+
     loop i := 0; i < 10; i += 1 {
-        print("Hello world!!!\n");
+        print("foo = %\n", foo);
     }
-
-    bar(true);
-    bar(false);
-
+    
     return 0;
 };
-
-bar :: fn (v: bool) s32 {
-    if v {
-        print("v is true\n");
-    } else {
-        print("v is false\n");
-    }
-
-    return 10;
-};
-
