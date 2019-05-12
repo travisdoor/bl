@@ -52,7 +52,11 @@
 - [[https://github.com/travisdoor/skyshooter][Sky Shooter]] - Simple SDL game.
 - [[https://github.com/travisdoor/PoissonDisk][PoissonDisk]] - Unity C# poisson disk generator tool.
 
-* Building compiler from source code
+** YouTube videos
+1) [[https://www.youtube.com/watch?v=4UNTkqYakgI&t=22s][Introduction]] - Introduction to the language.
+
+
+* Building compiler from source code <<BUILD>>
 ** Requirements
   - git
   - CMake
@@ -156,6 +160,22 @@
      
 
      Note: Compilation on Windows is quite complicated, we need to create some automated process for this...
+
+
+* Contribution
+** Download and compile
+   Everything needed to do so is in section [[BUILD][Build compiler from source]].
+
+** Find your good first issue
+   All issues and enhancements can be found [[https://github.com/travisdoor/bl/issues][here]], issues marked as =good first issue= are the best for your initial contribution to the compiler.
+   
+   
+** Pick your favourite editor and start hacking
+   You can choose any IDE or text editor you want.
+
+** Keep same style
+   Clang-format tool is used to keep consistent code style all across the source base, the configuration file =.clang-format= is located in the repositary root. Please keep in mind that any other styles will not be accepted.
+  
 * Releases
 ** 0.4.1 pre-alpha
 - [[https://github.com/travisdoor/bl][source]]
