@@ -259,13 +259,13 @@ struct MirType {
 	/*
 	 * Every unique type will cause generation of type info global constant in program data
 	 * segment, here we store pointers to this allocation, one for interpreter and one for LLVM
-	 * IR. This pointers can be returned by 'typeinfo(<T>)' operator in user source code. This is
-	 * the way RTTI is implemented in bl.
+	 * IR. This pointers can be returned by 'typeinfo(<T>)' operator in user source code. This
+	 * is the way RTTI is implemented in bl.
 	 */
 	struct {
 		MirStackPtr  exec_ptr;
 		LLVMValueRef llvm_ptr;
-	} tt_entry;
+	} rtti;
 
 	union {
 		struct MirTypeInt    integer;

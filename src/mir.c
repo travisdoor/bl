@@ -2812,7 +2812,6 @@ void reduce_instr(Context *cnt, MirInstr *instr)
  */
 void gen_type_table(Context *cnt)
 {
-#if 0
 	BHashTable *table = cnt->type_table;
 
 	MirVar *      var;
@@ -2823,8 +2822,12 @@ void gen_type_table(Context *cnt)
 	{
 		type           = bo_htbl_iter_peek_value(table, &it, MirType *);
 		const size_t i = bo_htbl_iter_peek_key(table, &it);
+		{
+			char type_name[256];
+			mir_type_to_str(type_name, 256, type, true);
+			bl_log("generate RTTI entry for " BLUE("%s"), type_name);
+		}
 	}
-#endif
 }
 
 uint64_t analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
@@ -4924,7 +4927,9 @@ void exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 void exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-	bl_abort_issue(26);
+	if (type_info->expr_type->rtti.exec_ptr == NULL) bl_abort_issue(26);
+
+	bl_unimplemented;
 }
 
 void exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
