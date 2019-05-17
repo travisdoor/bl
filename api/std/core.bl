@@ -30,7 +30,7 @@
 #load "debug.bl"
 
 // Type info
-TypeKind :: enum {
+TypeKind :: enum #compiler {
     Int  :: 4,
 };
 
