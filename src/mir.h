@@ -184,18 +184,18 @@ struct MirMember {
 
 /* TYPE */
 enum MirTypeKind {
-	MIR_TYPE_INVALID,
-	MIR_TYPE_TYPE,
-	MIR_TYPE_VOID,
-	MIR_TYPE_INT,
-	MIR_TYPE_REAL,
-	MIR_TYPE_FN,
-	MIR_TYPE_PTR,
-	MIR_TYPE_BOOL,
-	MIR_TYPE_ARRAY,
-	MIR_TYPE_STRUCT,
-	MIR_TYPE_ENUM,
-	MIR_TYPE_NULL,
+	MIR_TYPE_INVALID = 0,
+	MIR_TYPE_TYPE    = 1,
+	MIR_TYPE_VOID    = 2,
+	MIR_TYPE_INT     = 3,
+	MIR_TYPE_REAL    = 4,
+	MIR_TYPE_FN      = 5,
+	MIR_TYPE_PTR     = 6,
+	MIR_TYPE_BOOL    = 7,
+	MIR_TYPE_ARRAY   = 8,
+	MIR_TYPE_STRUCT  = 9,
+	MIR_TYPE_ENUM    = 10,
+	MIR_TYPE_NULL    = 11,
 };
 
 struct MirTypeInt {
@@ -344,6 +344,7 @@ struct MirVar {
 	bool     comptime;
 	bool     is_in_gscope;
 	bool     is_implicit;
+	uint32_t flags;
 
 	MirConstValue *     value;
 	LLVMValueRef        llvm_value;

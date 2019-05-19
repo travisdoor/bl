@@ -49,24 +49,25 @@
   sm(NULL,           "null") \
   sm(ENUM,           "enum") \
   sm(LOOP,           "loop")\
+  sm(LOAD,           "load") \
+  sm(LINK,           "link") \
+  sm(TEST,           "test") \
   sm(FALSE,          "false") \
-  sm(LOAD,           "#load") \
-  sm(LINK,           "#link") \
-  sm(TEST,           "#test") \
   sm(BREAK,          "break")\
+  sm(EXTERN,         "extern") \
   sm(RETURN,         "return") \
   sm(SIZEOF,         "sizeof") \
   sm(STRUCT,         "struct") \
-  sm(EXTERN,         "#extern") \
   sm(ALIGNOF,        "alignof") \
+  sm(COMPILER,       "compiler") \
   sm(CONTINUE,       "continue") \
   sm(TYPEINFO,       "typeinfo") \
-  sm(COMPILER,       "#compiler") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \
   sm(RBCOMMENT,      "*/") \
+  sm(HASH,           "#") \
   sm(LBLOCK,         "{") \
   sm(RBLOCK,         "}") \
   sm(LBRACKET,       "[") \

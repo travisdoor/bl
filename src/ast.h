@@ -99,8 +99,9 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-	FLAG_TEST   = 1 << 1, /* test case */
+	FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
+	FLAG_TEST     = 1 << 1, /* test case */
+	FLAG_COMPILER = 1 << 2, /* compiler internal */
 } AstFlag;
 
 /* map symbols to binary operation kind */

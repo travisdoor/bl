@@ -295,7 +295,7 @@ static MirType *create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
 static MirType *create_type_vargs(Context *cnt, MirType *elem_ptr_type);
 
 static MirVar *create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
-                          MirConstValue *value, bool is_mutable, bool is_in_gscope);
+                          MirConstValue *value, bool is_mutable, bool is_in_gscope, uint32_t flags);
 
 static MirVar *create_var_impl(Context *cnt, const char *name, MirType *alloc_type,
                                MirConstValue *value, bool is_mutable, bool is_in_gscope);
@@ -394,7 +394,7 @@ static MirInstr *append_instr_decl_ref(Context *cnt, Ast *node, ID *rid, Scope *
 static MirInstr *append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *args);
 
 static MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init,
-                                       bool is_mutable, bool is_in_gscope);
+                                       bool is_mutable, bool is_in_gscope, uint32_t flags);
 
 static MirInstr *append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
 
@@ -1569,7 +1569,7 @@ MirType *create_type_string(Context *cnt)
 }
 
 MirVar *create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *alloc_type,
-                   MirConstValue *value, bool is_mutable, bool is_in_gscope)
+                   MirConstValue *value, bool is_mutable, bool is_in_gscope, uint32_t flags)
 {
 	assert(id);
 	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
@@ -1581,6 +1581,7 @@ MirVar *create_var(Context *cnt, Ast *decl_node, Scope *scope, ID *id, MirType *
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
 	tmp->llvm_name    = id->str;
+	tmp->flags        = flags;
 	return tmp;
 }
 
@@ -2204,7 +2205,7 @@ MirInstr *append_instr_call(Context *cnt, Ast *node, MirInstr *callee, BArray *a
 }
 
 MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInstr *init,
-                                bool is_mutable, bool is_in_gscope)
+                                bool is_mutable, bool is_in_gscope, uint32_t flags)
 {
 	ref_instr(type);
 	ref_instr(init);
@@ -2214,7 +2215,7 @@ MirInstr *append_instr_decl_var(Context *cnt, Ast *node, MirInstr *type, MirInst
 	tmp->type                  = type;
 	tmp->init                  = init;
 	tmp->var = create_var(cnt, node, node->data.ident.scope, &node->data.ident.id, NULL,
-	                      &tmp->base.const_value, is_mutable, is_in_gscope);
+	                      &tmp->base.const_value, is_mutable, is_in_gscope, flags);
 	if (is_in_gscope) {
 		push_into_gscope(cnt, &tmp->base);
 		analyze_push_back(cnt, &tmp->base);
@@ -6522,7 +6523,7 @@ MirInstr *ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
 				/* create tmp declaration for arg variable */
 				MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
-				append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false);
+				append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, 0);
 			}
 		}
 	}
@@ -6730,7 +6731,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 			value = ast(cnt, ast_value);
 		}
 
-		append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope);
+		append_instr_decl_var(cnt, ast_name, type, value, is_mutable, is_in_gscope,
+		                      entity->data.decl_entity.flags);
 		cnt->ast.current_entity_id = NULL;
 
 		if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {

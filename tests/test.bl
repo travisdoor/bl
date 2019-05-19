@@ -2,15 +2,14 @@
 
 #load "std/core.bl"
 
-Foo :: struct {
-    a: s32,
-    b: s32
-};
-
 main :: fn () s32 {
-    t1 := typeinfo(s32);
-    t2 := typeinfo(t1);
-    t3 := typeinfo(t2.kind);
-    
     return 0;
 };
+
+/*
+load     - global scope
+link     - global scope
+test     - global, local scope
+extern   - before body
+compiler - before body
+*/

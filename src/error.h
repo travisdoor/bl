@@ -49,7 +49,7 @@ typedef enum {
 	ERR_EXPECTED_STMT           = 13,
 	ERR_BREAK_OUTSIDE_LOOP      = 14,
 	ERR_CONTINUE_OUTSIDE_LOOP   = 15,
-	ERR_UNEXPECTED_MODIF        = 16,
+	ERR_UNEXPECTED_DIRECTIVE    = 16,
 	ERR_DUPLICATE_SYMBOL        = 17,
 	ERR_UNKNOWN_SYMBOL          = 18,
 	ERR_EXPECTED_TYPE           = 19,
@@ -103,6 +103,7 @@ typedef enum {
 	ERR_UNINITIALIZED           = 67,
 	ERR_INVALID_ADDRES_MODE     = 68,
 	ERR_EMPTY_ENUM              = 69,
+	ERR_INVALID_DIRECTIVE       = 70,
 } Error;
 
 #endif // BL_ERROR_H

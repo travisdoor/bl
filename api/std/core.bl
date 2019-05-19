@@ -34,14 +34,19 @@ TypeKind :: enum #compiler {
     Int  :: 4,
 };
 
-TypeInfo :: struct {
+TypeInfo :: struct #compiler {
     kind: TypeKind 
 };
 
-TypeInfoInt :: struct {
+TypeInfoInt :: struct #compiler {
     base: TypeInfo,
     bitcount: s32,
     signed: bool
+};
+
+Any :: struct #compiler {
+    type_info: *TypeInfo,
+    data: *u8
 };
 
 cstr_to_str :: fn (cstr: *u8) string {

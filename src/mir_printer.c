@@ -58,6 +58,15 @@ static inline void print_instr_head(MirInstr *instr, FILE *stream, const char *n
 	fprintf(stream, " %s ", name);
 }
 
+static inline void print_flags(uint32_t flags, FILE *stream)
+{
+	if (flags == 0) return;
+
+	if ((flags & FLAG_EXTERN) == FLAG_EXTERN) fprintf(stream, "#extern");
+	if ((flags & FLAG_COMPILER) == FLAG_COMPILER) fprintf(stream, " #compiler");
+	if ((flags & FLAG_TEST) == FLAG_TEST) fprintf(stream, " #test");
+}
+
 static inline void print_const_value(MirConstValue *value, FILE *stream)
 {
 	MirType *          type = value->type;
@@ -646,6 +655,8 @@ void print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 			print_comptime_value_or_id(decl->init, stream);
 		}
 	}
+
+	print_flags(var->flags, stream);
 }
 
 void print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
@@ -782,21 +793,18 @@ void print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 	fprintf(stream, " : ");
 #endif
 	print_type(fn->type, false, stream, false);
-	fprintf(stream, " :");
+	fprintf(stream, " : ");
 
-	if (fn->flags & FLAG_EXTERN) {
-		fprintf(stream, " #extern\n");
-	} else {
-		if (fn->flags & FLAG_TEST) fprintf(stream, " #test");
-		fprintf(stream, " {\n");
+	print_flags(fn->flags, stream);
 
-		MirInstrBlock *tmp = fn->first_block;
-		while (tmp) {
-			print_instr_block(tmp, stream);
-			tmp = (MirInstrBlock *)tmp->base.next;
-		}
-		fprintf(stream, "}");
+	MirInstrBlock *tmp = fn->first_block;
+	if (!tmp) return;
+	fprintf(stream, "{\n");
+	while (tmp) {
+		print_instr_block(tmp, stream);
+		tmp = (MirInstrBlock *)tmp->base.next;
 	}
+	fprintf(stream, "}");
 }
 
 /* public */

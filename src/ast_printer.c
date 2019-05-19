@@ -62,14 +62,10 @@ static inline void _print_head(Ast *node, int32_t pad, FILE *stream)
 
 static inline void print_flags(int32_t flags, FILE *stream)
 {
-	if (flags)
-		fprintf(stream, " #");
-	else
-		return;
-	if (flags & FLAG_EXTERN)
-		fprintf(stream, "E");
-	if (flags & FLAG_TEST)
-		fprintf(stream, "T");
+	if (!flags) return;
+	if (flags & FLAG_EXTERN) fprintf(stream, " #extern");
+	if (flags & FLAG_TEST) fprintf(stream, " #test");
+	if (flags & FLAG_COMPILER) fprintf(stream, " #compiler");
 }
 
 static void print_node(Ast *node, int32_t pad, FILE *stream);
@@ -296,8 +292,7 @@ void print_expr_member(Ast *member, int32_t pad, FILE *stream)
 	print_head(member, pad, stream);
 
 	Ast *ident = member->data.expr_member.ident;
-	if (ident)
-		fprintf(stream, "'%s' ", ident->data.ident.id.str);
+	if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 	print_node(member->data.expr_member.next, pad + 1, stream);
 }
 
@@ -377,8 +372,7 @@ void print_expr_lit_string(Ast *lit, int32_t pad, FILE *stream)
 	char *tmp = strdup(lit->data.expr_string.val);
 	fprintf(stream, "%s ", strtok(tmp, "\n"));
 	char *next = strtok(NULL, "\n");
-	if (next && strlen(next))
-		fprintf(stream, "... ");
+	if (next && strlen(next)) fprintf(stream, "... ");
 	free(tmp);
 }
 
@@ -416,8 +410,7 @@ void print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 
 void print_node(Ast *node, int32_t pad, FILE *stream)
 {
-	if (!node)
-		return;
+	if (!node) return;
 	switch (node->kind) {
 	case AST_BAD:
 		print_bad(node, pad, stream);
