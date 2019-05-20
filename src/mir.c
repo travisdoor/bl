@@ -1131,6 +1131,10 @@ static inline ScopeEntry *provide_symbol(Context *cnt, Ast *node, ID *id, Scope 
 	assert(id && "Missing symbol ID.");
 	assert(scope && "Missing entry scope.");
 
+	if (is_builtin(id)) {
+		bl_log("compiler internal: %s", id->str);
+	}
+
 	ScopeEntry *collision = scope_lookup(scope, id, false);
 	if (collision) {
 		builder_msg(cnt->builder, BUILDER_MSG_ERROR, ERR_DUPLICATE_SYMBOL,
