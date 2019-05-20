@@ -439,7 +439,7 @@ void gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		llvm_indices[0] = llvm_index;
 
 		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
-		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
+		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
 
 		return;
 	}
@@ -449,7 +449,7 @@ void gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	llvm_indices[1] = llvm_index;
 
 	elem_ptr->base.llvm_value = LLVMBuildGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices,
-	                                         ARRAY_SIZE(llvm_indices), "");
+	                                         array_size(llvm_indices), "");
 }
 
 void gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
@@ -761,7 +761,7 @@ void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
 				llvm_value_dest =
 				    LLVMBuildGEP(cnt->llvm_builder, llvm_tmp, llvm_indices,
-				                 ARRAY_SIZE(llvm_indices), "");
+				                 array_size(llvm_indices), "");
 				break;
 
 			case MIR_TYPE_STRUCT:
@@ -1024,7 +1024,7 @@ void gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
 			llvm_value_dest =
 			    LLVMBuildGEP(cnt->llvm_builder, vargs->arr_tmp->llvm_value,
-			                 llvm_indices, ARRAY_SIZE(llvm_indices), "");
+			                 llvm_indices, array_size(llvm_indices), "");
 			LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
 		}
 	}
@@ -1104,7 +1104,7 @@ void gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->ref_count == 0) return;
 	gen_fn_proto(cnt, fn);
 
-	if (!(fn->flags & (FLAG_EXTERN))) {
+	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {

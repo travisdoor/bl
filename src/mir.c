@@ -209,6 +209,9 @@ typedef struct {
 		MirType *entry_string;
 		MirType *entry_resolve_type_fn;
 		MirType *entry_test_case_fn;
+
+		/* RTTI */
+		MirType *entry_TypeInfo;
 	} builtin_types;
 } Context;
 
@@ -1526,7 +1529,7 @@ static inline const char *sh_type_enum(Context *cnt, ID *id, MirType *base_type,
 			assert(variant->value);
 
 			char value_str[35];
-			snprintf(value_str, ARRAY_SIZE(value_str), "%lld",
+			snprintf(value_str, array_size(value_str), "%lld",
 			         (long long)variant->value->data.v_s64);
 			bo_string_append(tmp, value_str);
 
@@ -3613,7 +3616,7 @@ uint64_t analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		++fn->ref_count;
 	}
 
-	if (fn->flags & (FLAG_EXTERN)) {
+	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		/* lookup external function exec handle */
 		assert(fn->llvm_name);
 		fn->extern_entry = assembly_find_extern(cnt->assembly, fn->llvm_name);
@@ -5767,7 +5770,7 @@ void exec_instr_call(Context *cnt, MirInstrCall *call)
 	MirType *ret_type = fn->type->data.fn.ret_type;
 	assert(ret_type);
 
-	if (fn->flags & (FLAG_EXTERN)) {
+	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		DCCallVM *vm = cnt->assembly->dl.vm;
 		assert(vm);
 
@@ -6158,7 +6161,7 @@ void ast_test_case(Context *cnt, Ast *test)
 	const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
 	MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, FLAG_TEST, fn_proto);
 
-	if (cnt->builder->flags & BUILDER_FORCE_TEST_LLVM) ++fn->ref_count;
+	if (is_flag(cnt->builder->flags, BUILDER_FORCE_TEST_LLVM)) ++fn->ref_count;
 	assert(test->data.test_case.desc);
 	fn->test_case_desc                   = test->data.test_case.desc;
 	fn_proto->base.const_value.data.v_fn = fn;
@@ -6685,7 +6688,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 		if (is_in_gscope) {
 			value->const_value.data.v_fn->llvm_name = ast_name->data.ident.id.str;
 		} else {
-			if (entity->data.decl_entity.flags & FLAG_EXTERN)
+			if (is_flag(entity->data.decl_entity.flags, FLAG_EXTERN))
 				value->const_value.data.v_fn->llvm_name =
 				    ast_name->data.ident.id.str;
 			else
@@ -7260,7 +7263,7 @@ static void _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name
 
 				if (variant->value) {
 					char value_str[35];
-					snprintf(value_str, ARRAY_SIZE(value_str), "%lld",
+					snprintf(value_str, array_size(value_str), "%lld",
 					         (long long)variant->value->data.v_s64);
 					append_buf(buf, len, value_str);
 				} else {
@@ -7366,7 +7369,7 @@ void execute_test_cases(Context *cnt)
 	barray_foreach(cnt->test_cases, test_fn)
 	{
 		cnt->exec.stack->aborted = false;
-		assert(test_fn->flags & FLAG_TEST);
+		assert(is_flag(test_fn->flags, FLAG_TEST));
 		exec_fn(cnt, test_fn, NULL, NULL);
 
 		line = test_fn->decl_node ? test_fn->decl_node->src->line : -1;
@@ -7528,8 +7531,8 @@ void mir_run(Builder *builder, Assembly *assembly)
 	cnt.builder              = builder;
 	cnt.assembly             = assembly;
 	cnt.module               = assembly->mir_module;
-	cnt.analyze.verbose_pre  = (bool)(builder->flags & BUILDER_VERBOSE_MIR_PRE);
-	cnt.analyze.verbose_post = (bool)(builder->flags & BUILDER_VERBOSE_MIR_POST);
+	cnt.analyze.verbose_pre  = is_flag(builder->flags, BUILDER_VERBOSE_MIR_PRE);
+	cnt.analyze.verbose_post = is_flag(builder->flags, BUILDER_VERBOSE_MIR_POST);
 	cnt.analyze.queue        = bo_list_new(sizeof(MirInstr *));
 	cnt.test_cases           = bo_array_new(sizeof(MirFn *));
 	cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
@@ -7537,6 +7540,7 @@ void mir_run(Builder *builder, Assembly *assembly)
 	cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
 	cnt.type_table           = assembly->type_table;
 
+	/* initialize all builtin types */
 	init_builtins(&cnt);
 
 	/* Gen MIR from AST pass */
@@ -7556,8 +7560,8 @@ void mir_run(Builder *builder, Assembly *assembly)
 
 	gen_type_table(&cnt);
 
-	if (builder->flags & BUILDER_RUN_TESTS) execute_test_cases(&cnt);
-	if (builder->flags & BUILDER_RUN) execute_entry_fn(&cnt);
+	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
+	if (is_flag(builder->flags, BUILDER_RUN)) execute_entry_fn(&cnt);
 
 ERROR:
 	bo_unref(cnt.analyze.queue);

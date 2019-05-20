@@ -200,7 +200,7 @@ FOUND:
 	*out_filepath = strdup(rpath);
 
 	/* Absolute directory path. */
-	memset(tmp, 0, ARRAY_SIZE(tmp));
+	memset(tmp, 0, array_size(tmp));
 	if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
 		*out_dirpath = strdup(tmp);
 	}

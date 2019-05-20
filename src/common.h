@@ -42,7 +42,11 @@
 #define DEPRECATED
 #endif
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#define array_size(_array) (sizeof(_array) / sizeof(_array[0]))
+
+#define is_flag(_v, _flag) ((bool)((_v & _flag) == _flag))
+
+#define is_not_flag(_v, _flag) ((bool)((_v & _flag) != _flag))
 
 #define barray_foreach(arr, it)                                                                    \
 	if (bo_array_size((arr)))                                                                  \

@@ -48,8 +48,7 @@ static bool llvm_initialized = false;
 
 static void llvm_init(void)
 {
-	if (llvm_initialized)
-		return;
+	if (llvm_initialized) return;
 
 	LLVMInitializeAllTargetInfos();
 	LLVMInitializeAllTargets();
@@ -61,12 +60,11 @@ static void llvm_init(void)
 }
 
 #define interrupt_on_error(_builder)                                                               \
-	if ((_builder)->errorc)                                                                    \
-		return COMPILE_FAIL;
+	if ((_builder)->errorc) return COMPILE_FAIL;
 
 int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
-	if (flags & BUILDER_VERBOSE) {
+	if (is_flag(flags, BUILDER_VERBOSE)) {
 		if (unit->loaded_from) {
 			msg_log("compile: %s (loaded from '%s')", unit->name,
 			        unit->loaded_from->src.unit->name);
@@ -75,7 +73,7 @@ int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flag
 		}
 	}
 
-	if (flags & BUILDER_LOAD_FROM_FILE) {
+	if (is_flag(flags, BUILDER_LOAD_FROM_FILE)) {
 		file_loader_run(builder, unit);
 		interrupt_on_error(builder);
 	}
@@ -83,7 +81,7 @@ int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flag
 	lexer_run(builder, unit);
 	interrupt_on_error(builder);
 
-	if (flags & BUILDER_PRINT_TOKENS) {
+	if (is_flag(flags, BUILDER_PRINT_TOKENS)) {
 		token_printer_run(unit);
 		interrupt_on_error(builder);
 	}
@@ -95,7 +93,7 @@ int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flag
 
 int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
-	if (flags & BUILDER_PRINT_AST) {
+	if (is_flag(flags, BUILDER_PRINT_AST)) {
 		ast_printer_run(assembly, stdout);
 	}
 	interrupt_on_error(builder);
@@ -103,10 +101,9 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 	linker_run(builder, assembly);
 	interrupt_on_error(builder);
 
-	if (!(flags & BUILDER_SYNTAX_ONLY)) {
+	if (is_not_flag(flags, BUILDER_SYNTAX_ONLY)) {
 		mir_run(builder, assembly);
-		if (flags & BUILDER_EMIT_MIR)
-			mir_writer_run(assembly);
+		if (is_flag(flags, BUILDER_EMIT_MIR)) mir_writer_run(assembly);
 		interrupt_on_error(builder);
 
 		ir_run(builder, assembly);
@@ -115,12 +112,12 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 		ir_opt_run(builder, assembly);
 		interrupt_on_error(builder);
 
-		if (flags & BUILDER_EMIT_LLVM) {
+		if (is_flag(flags, BUILDER_EMIT_LLVM)) {
 			bc_writer_run(builder, assembly);
 			interrupt_on_error(builder);
 		}
 
-		if (!(flags & BUILDER_NO_BIN)) {
+		if (is_not_flag(flags, BUILDER_NO_BIN)) {
 			obj_writer_run(builder, assembly);
 			interrupt_on_error(builder);
 			native_bin_run(builder, assembly);
@@ -135,8 +132,7 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 Builder *builder_new(void)
 {
 	Builder *builder = bl_calloc(1, sizeof(Builder));
-	if (!builder)
-		bl_abort("bad alloc");
+	if (!builder) bl_abort("bad alloc");
 
 	builder->flags     = 0;
 	builder->errorc    = 0;
@@ -183,8 +179,7 @@ int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 		}
 	}
 
-	if (state == COMPILE_OK)
-		state = compile_assembly(builder, assembly, flags);
+	if (state == COMPILE_OK) state = compile_assembly(builder, assembly, flags);
 
 	clock_t end        = clock();
 	double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
@@ -199,8 +194,7 @@ int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 
 void builder_error(Builder *builder, const char *format, ...)
 {
-	if (builder->errorc > MAX_ERROR_REPORTED)
-		return;
+	if (builder->errorc > MAX_ERROR_REPORTED) return;
 	char error[MAX_MSG_LEN] = {0};
 
 	va_list args;
@@ -227,10 +221,8 @@ void builder_warning(Builder *builder, const char *format, ...)
 void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, BuilderCurPos pos,
                  const char *format, ...)
 {
-	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED)
-		return;
-	if ((builder->flags & BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING)
-		return;
+	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
+	if (is_flag(builder->flags, BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING) return;
 
 	BString *tmp              = bo_string_new(MAX_MSG_LEN);
 	char     msg[MAX_MSG_LEN] = {0};
@@ -259,12 +251,9 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 			snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
 		} else {
 			const char *mark = "E";
-			if (type == BUILDER_MSG_LOG)
-				mark = "";
-			if (type == BUILDER_MSG_NOTE)
-				mark = "N";
-			if (type == BUILDER_MSG_WARNING)
-				mark = "W";
+			if (type == BUILDER_MSG_LOG) mark = "";
+			if (type == BUILDER_MSG_NOTE) mark = "N";
+			if (type == BUILDER_MSG_WARNING) mark = "W";
 
 			snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code,
 			         src->unit->filepath, line, col);
@@ -302,12 +291,9 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 				bo_string_append(tmp, " ");
 			else {
 				const char *marker = RED("^");
-				if (type == BUILDER_MSG_LOG)
-					marker = GREEN("^");
-				if (type == BUILDER_MSG_NOTE)
-					marker = BLUE("^");
-				if (type == BUILDER_MSG_WARNING)
-					marker = YELLOW("^");
+				if (type == BUILDER_MSG_LOG) marker = GREEN("^");
+				if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
+				if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
 				bo_string_append(tmp, marker);
 			}
 		}
@@ -341,8 +327,7 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 	bo_unref(tmp);
 
 #if ASSERT_ON_CMP_ERROR
-	if (type == BUILDER_MSG_ERROR)
-		assert(false);
+	if (type == BUILDER_MSG_ERROR) assert(false);
 #endif
 }
 

@@ -63,9 +63,9 @@ static inline void _print_head(Ast *node, int32_t pad, FILE *stream)
 static inline void print_flags(int32_t flags, FILE *stream)
 {
 	if (!flags) return;
-	if (flags & FLAG_EXTERN) fprintf(stream, " #extern");
-	if (flags & FLAG_TEST) fprintf(stream, " #test");
-	if (flags & FLAG_COMPILER) fprintf(stream, " #compiler");
+	if (is_flag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
+	if (is_flag(flags, FLAG_TEST)) fprintf(stream, " #test");
+	if (is_flag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
 }
 
 static void print_node(Ast *node, int32_t pad, FILE *stream);

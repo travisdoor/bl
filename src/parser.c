@@ -288,9 +288,9 @@ void parse_flags_for_curr_decl(Context *cnt)
 
 		if (found == HD_NONE) break;
 
-		if ((found & HD_EXTERN) == HD_EXTERN) {
+		if (is_flag(found, HD_EXTERN)) {
 			flags |= FLAG_EXTERN;
-		} else if ((found & HD_COMPILER) == HD_COMPILER) {
+		} else if (is_flag(found, HD_COMPILER)) {
 			flags |= FLAG_COMPILER;
 		} else {
 			bl_abort("Unexpected flag!!!");
@@ -328,7 +328,7 @@ Ast *parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *sa
 	case SYM_LOAD: {
 		/* load <string> */
 		set_satisfied(HD_LOAD);
-		if (!(expected_mask & HD_LOAD)) {
+		if (is_not_flag(expected_mask, HD_LOAD)) {
 			parse_error(cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD,
 			            "Unexpected directive.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
@@ -355,7 +355,7 @@ Ast *parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *sa
 	case SYM_LINK: {
 		/* link <string> */
 		set_satisfied(HD_LINK);
-		if (!(expected_mask & HD_LINK)) {
+		if (is_not_flag(expected_mask, HD_LINK)) {
 			parse_error(cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD,
 			            "Unexpected directive.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
@@ -379,6 +379,12 @@ Ast *parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *sa
 	case SYM_TEST: {
 		/* test <string> {} */
 		set_satisfied(HD_TEST);
+
+		if (is_not_flag(expected_mask, HD_TEST)) {
+			parse_error(cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
+		}
 
 		Token *tok_desc = tokens_consume(cnt->tokens);
 		if (tok_desc->sym != SYM_STRING) {
@@ -409,7 +415,7 @@ Ast *parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *sa
 
 	case SYM_EXTERN: {
 		set_satisfied(HD_EXTERN);
-		if ((expected_mask & HD_EXTERN) != HD_EXTERN) {
+		if (is_not_flag(expected_mask, HD_EXTERN)) {
 			parse_error(cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD,
 			            "Unexpected directive.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
@@ -420,7 +426,7 @@ Ast *parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *sa
 
 	case SYM_COMPILER: {
 		set_satisfied(HD_COMPILER);
-		if ((expected_mask & HD_COMPILER) != HD_COMPILER) {
+		if (is_not_flag(expected_mask, HD_COMPILER)) {
 			parse_error(cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD,
 			            "Unexpected directive.");
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);

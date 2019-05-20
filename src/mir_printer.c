@@ -34,7 +34,7 @@ static void print_comptime_value_or_id(MirInstr *instr, FILE *stream);
 static inline void print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
 	char tmp[256];
-	mir_type_to_str(tmp, ARRAY_SIZE(tmp), type, prefer_name);
+	mir_type_to_str(tmp, array_size(tmp), type, prefer_name);
 	if (aligned)
 		fprintf(stream, "%16s", tmp);
 	else
@@ -62,9 +62,9 @@ static inline void print_flags(uint32_t flags, FILE *stream)
 {
 	if (flags == 0) return;
 
-	if ((flags & FLAG_EXTERN) == FLAG_EXTERN) fprintf(stream, "#extern");
-	if ((flags & FLAG_COMPILER) == FLAG_COMPILER) fprintf(stream, " #compiler");
-	if ((flags & FLAG_TEST) == FLAG_TEST) fprintf(stream, " #test");
+	if (is_flag(flags, FLAG_EXTERN)) fprintf(stream, "#extern");
+	if (is_flag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+	if (is_flag(flags, FLAG_TEST)) fprintf(stream, " #test");
 }
 
 static inline void print_const_value(MirConstValue *value, FILE *stream)

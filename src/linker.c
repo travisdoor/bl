@@ -48,8 +48,7 @@ typedef struct {
 /* TODO: Support cross-platform build targets? */
 void platform_lib_name(const char *name, char *buffer, size_t max_len)
 {
-	if (!name)
-		return;
+	if (!name) return;
 
 #ifdef BL_PLATFORM_MACOS
 	snprintf(buffer, max_len, "lib%s.dylib", name);
@@ -68,8 +67,7 @@ static bool link_lib(Context *cnt, const char *lib_name, Token *token)
 	platform_lib_name(lib_name, tmp, PATH_MAX);
 
 	DLLib *handle = dlLoadLibrary(lib_name ? tmp : NULL);
-	if (!handle)
-		return false;
+	if (!handle) return false;
 
 	NativeLib native_lib = {.handle      = handle,
 	                        .linked_from = token,
@@ -104,7 +102,7 @@ void linker_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt = {.assembly = assembly,
 	               .builder  = builder,
-	               .verbose  = builder->flags & BUILDER_VERBOSE_LINKER};
+	               .verbose  = is_flag(builder->flags, BUILDER_VERBOSE_LINKER)};
 
 	if (cnt.verbose) {
 		msg_log("Running runtime linker...");
