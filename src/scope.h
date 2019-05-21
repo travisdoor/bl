@@ -79,17 +79,26 @@ typedef struct Scope {
 	bool          is_global;
 } Scope;
 
-void scope_arenas_init(ScopeArenas *arenas);
+void
+scope_arenas_init(ScopeArenas *arenas);
 
-void scope_arenas_terminate(ScopeArenas *arenas);
+void
+scope_arenas_terminate(ScopeArenas *arenas);
 
-Scope *scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
+Scope *
+scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
 
-ScopeEntry *scope_create_entry(ScopeArenas *arenas, ScopeEntryKind kind, ID *id, struct Ast *node,
-                               bool is_buildin);
+ScopeEntry *
+scope_create_entry(ScopeArenas *  arenas,
+                   ScopeEntryKind kind,
+                   ID *           id,
+                   struct Ast *   node,
+                   bool           is_buildin);
 
-void scope_insert(Scope *scope, ScopeEntry *entry);
+void
+scope_insert(Scope *scope, ScopeEntry *entry);
 
-ScopeEntry *scope_lookup(Scope *scope, ID *id, bool in_tree);
+ScopeEntry *
+scope_lookup(Scope *scope, ID *id, bool in_tree);
 
 #endif

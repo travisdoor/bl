@@ -407,42 +407,52 @@ struct Ast {
 #endif
 };
 
-void ast_arena_init(struct Arena *arena);
+void
+ast_arena_init(struct Arena *arena);
 
-static inline bool ast_binop_is_assign(BinopKind op)
+static inline bool
+ast_binop_is_assign(BinopKind op)
 {
 	return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
-static inline bool ast_binop_is_logic(BinopKind op)
+static inline bool
+ast_binop_is_logic(BinopKind op)
 {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 
-static inline bool ast_is_expr(Ast *node)
+static inline bool
+ast_is_expr(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
-static inline bool ast_is_decl(Ast *node)
+static inline bool
+ast_is_decl(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
-static inline bool ast_is_type(Ast *node)
+static inline bool
+ast_is_type(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 
-Ast *ast_create_node(struct Arena *arena, AstKind c, Token *tok);
+Ast *
+ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
-const char *ast_binop_to_str(BinopKind op);
+const char *
+ast_binop_to_str(BinopKind op);
 
-const char *ast_unop_to_str(UnopKind op);
+const char *
+ast_unop_to_str(UnopKind op);
 
-const char *ast_get_name(const Ast *n);
+const char *
+ast_get_name(const Ast *n);
 
 #endif

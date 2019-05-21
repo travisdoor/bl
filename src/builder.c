@@ -40,13 +40,16 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-static int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
+static int
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 
-static int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags);
+static int
+compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags);
 
 static bool llvm_initialized = false;
 
-static void llvm_init(void)
+static void
+llvm_init(void)
 {
 	if (llvm_initialized) return;
 
@@ -62,11 +65,13 @@ static void llvm_init(void)
 #define interrupt_on_error(_builder)                                                               \
 	if ((_builder)->errorc) return COMPILE_FAIL;
 
-int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
+int
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
 	if (is_flag(flags, BUILDER_VERBOSE)) {
 		if (unit->loaded_from) {
-			msg_log("compile: %s (loaded from '%s')", unit->name,
+			msg_log("compile: %s (loaded from '%s')",
+			        unit->name,
 			        unit->loaded_from->src.unit->name);
 		} else {
 			msg_log("compile: %s", unit->name);
@@ -91,7 +96,8 @@ int compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flag
 	return COMPILE_OK;
 }
 
-int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
+int
+compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
 	if (is_flag(flags, BUILDER_PRINT_AST)) {
 		ast_printer_run(assembly, stdout);
@@ -129,7 +135,8 @@ int compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 }
 
 /* public */
-Builder *builder_new(void)
+Builder *
+builder_new(void)
 {
 	Builder *builder = bl_calloc(1, sizeof(Builder));
 	if (!builder) bl_abort("bad alloc");
@@ -147,7 +154,8 @@ Builder *builder_new(void)
 	return builder;
 }
 
-void builder_delete(Builder *builder)
+void
+builder_delete(Builder *builder)
 {
 	scope_arenas_terminate(&builder->scope_arenas);
 	arena_terminate(&builder->ast_arena);
@@ -155,7 +163,8 @@ void builder_delete(Builder *builder)
 	bl_free(builder);
 }
 
-int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
+int
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 {
 	clock_t begin = clock();
 	Unit *  unit;
@@ -192,7 +201,8 @@ int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 	return state;
 }
 
-void builder_error(Builder *builder, const char *format, ...)
+void
+builder_error(Builder *builder, const char *format, ...)
 {
 	if (builder->errorc > MAX_ERROR_REPORTED) return;
 	char error[MAX_MSG_LEN] = {0};
@@ -206,7 +216,8 @@ void builder_error(Builder *builder, const char *format, ...)
 	builder->errorc++;
 }
 
-void builder_warning(Builder *builder, const char *format, ...)
+void
+builder_warning(Builder *builder, const char *format, ...)
 {
 	char warning[MAX_MSG_LEN] = {0};
 
@@ -218,8 +229,14 @@ void builder_warning(Builder *builder, const char *format, ...)
 	msg_warning("%s", &warning[0]);
 }
 
-void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, BuilderCurPos pos,
-                 const char *format, ...)
+void
+builder_msg(Builder *      builder,
+            BuilderMsgType type,
+            int32_t        code,
+            Src *          src,
+            BuilderCurPos  pos,
+            const char *   format,
+            ...)
 {
 	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
 	if (is_flag(builder->flags, BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING) return;
@@ -255,8 +272,14 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 			if (type == BUILDER_MSG_NOTE) mark = "N";
 			if (type == BUILDER_MSG_WARNING) mark = "W";
 
-			snprintf(msg, MAX_MSG_LEN, "[%s%04d] %s:%d:%d ", mark, code,
-			         src->unit->filepath, line, col);
+			snprintf(msg,
+			         MAX_MSG_LEN,
+			         "[%s%04d] %s:%d:%d ",
+			         mark,
+			         code,
+			         src->unit->filepath,
+			         line,
+			         col);
 		}
 
 		va_list args;
@@ -331,7 +354,8 @@ void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, Src *src, 
 #endif
 }
 
-BString *builder_create_cached_str(Builder *builder)
+BString *
+builder_create_cached_str(Builder *builder)
 {
 	BString *str = bo_string_new(64);
 	bo_array_push_back(builder->str_cache, str);

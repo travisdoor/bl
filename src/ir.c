@@ -73,24 +73,29 @@ typedef struct {
 	LLVMValueRef llvm_intrinsic_memcpy;
 } Context;
 
-static inline LLVMValueRef create_trap_fn(Context *cnt)
+static inline LLVMValueRef
+create_trap_fn(Context *cnt)
 {
 	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, NULL, 0, false);
 	return LLVMAddFunction(cnt->llvm_module, LLVM_INSTRINSIC_TRAP, llvm_fn_type);
 }
 
-static inline LLVMValueRef create_memset_fn(Context *cnt)
+static inline LLVMValueRef
+create_memset_fn(Context *cnt)
 {
 #ifdef BL_PLATFORM_LINUX
-	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type,
-	                            cnt->llvm_i32_type, cnt->llvm_i1_type};
+	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type,
+	                            cnt->llvm_i8_type,
+	                            cnt->llvm_i64_type,
+	                            cnt->llvm_i32_type,
+	                            cnt->llvm_i1_type};
 
 	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
 #else
-	LLVMTypeRef llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type,
-	                            cnt->llvm_i1_type};
+	LLVMTypeRef llvm_args[4] = {
+	    cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type, cnt->llvm_i1_type};
 
-	LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
+	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
 #endif
 
 	LLVMValueRef llvm_fn =
@@ -98,15 +103,19 @@ static inline LLVMValueRef create_memset_fn(Context *cnt)
 	return llvm_fn;
 }
 
-static inline LLVMValueRef create_memcpy_fn(Context *cnt)
+static inline LLVMValueRef
+create_memcpy_fn(Context *cnt)
 {
 #ifdef BL_PLATFORM_LINUX
-	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type,
-	                            cnt->llvm_i64_type, cnt->llvm_i32_type, cnt->llvm_i1_type};
+	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type,
+	                            cnt->llvm_i8_ptr_type,
+	                            cnt->llvm_i64_type,
+	                            cnt->llvm_i32_type,
+	                            cnt->llvm_i1_type};
 	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
 #else
-	LLVMTypeRef  llvm_args[4] = {cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type,
-                                    cnt->llvm_i64_type, cnt->llvm_i1_type};
+	LLVMTypeRef llvm_args[4] = {
+	    cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type, cnt->llvm_i1_type};
 	LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
 #endif
 
@@ -115,13 +124,18 @@ static inline LLVMValueRef create_memcpy_fn(Context *cnt)
 	return llvm_fn;
 }
 
-static inline LLVMValueRef build_call_memset_0(Context *cnt, LLVMValueRef llvm_dest_ptr,
-                                               LLVMValueRef llvm_size, LLVMValueRef llvm_alignment)
+static inline LLVMValueRef
+build_call_memset_0(Context *    cnt,
+                    LLVMValueRef llvm_dest_ptr,
+                    LLVMValueRef llvm_size,
+                    LLVMValueRef llvm_alignment)
 {
 #ifdef BL_PLATFORM_LINUX
 	LLVMValueRef llvm_args[5] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMConstInt(cnt->llvm_i8_type, 0, false), llvm_size, llvm_alignment,
+	    LLVMConstInt(cnt->llvm_i8_type, 0, false),
+	    llvm_size,
+	    llvm_alignment,
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
@@ -129,7 +143,8 @@ static inline LLVMValueRef build_call_memset_0(Context *cnt, LLVMValueRef llvm_d
 #else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMConstInt(cnt->llvm_i8_type, 0, false), llvm_size,
+	    LLVMConstInt(cnt->llvm_i8_type, 0, false),
+	    llvm_size,
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
@@ -139,22 +154,28 @@ static inline LLVMValueRef build_call_memset_0(Context *cnt, LLVMValueRef llvm_d
 	return llvm_result;
 }
 
-static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_dest_ptr,
-                                             LLVMValueRef llvm_src_ptr, LLVMValueRef llvm_size,
-                                             LLVMValueRef llvm_alignment)
+static inline LLVMValueRef
+build_call_memcpy(Context *    cnt,
+                  LLVMValueRef llvm_dest_ptr,
+                  LLVMValueRef llvm_src_ptr,
+                  LLVMValueRef llvm_size,
+                  LLVMValueRef llvm_alignment)
 {
 #ifdef BL_PLATFORM_LINUX
 	LLVMValueRef llvm_args[5] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""), llvm_size,
-	    llvm_alignment, LLVMConstInt(cnt->llvm_i1_type, 0, false)};
+	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""),
+	    llvm_size,
+	    llvm_alignment,
+	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
 	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, 5, "");
 #else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""), llvm_size,
+	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""),
+	    llvm_size,
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
 	LLVMValueRef llvm_result =
@@ -164,60 +185,86 @@ static inline LLVMValueRef build_call_memcpy(Context *cnt, LLVMValueRef llvm_des
 	return llvm_result;
 }
 
-static void gen_instr(Context *cnt, MirInstr *instr);
+static void
+gen_instr(Context *cnt, MirInstr *instr);
 
 /*
  * Tmp is optional but needed for naked compound expressions.
  */
-static void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp);
+static void
+gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp);
 
-static void gen_instr_binop(Context *cnt, MirInstrBinop *binop);
+static void
+gen_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static void gen_instr_phi(Context *cnt, MirInstrPhi *phi);
+static void
+gen_instr_phi(Context *cnt, MirInstrPhi *phi);
 
-static void gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+static void
+gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
-static void gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+static void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static void gen_instr_cast(Context *cnt, MirInstrCast *cast);
+static void
+gen_instr_cast(Context *cnt, MirInstrCast *cast);
 
-static void gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+static void
+gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
-static void gen_instr_unop(Context *cnt, MirInstrUnop *unop);
+static void
+gen_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static void gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static void
+gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static void gen_instr_store(Context *cnt, MirInstrStore *store);
+static void
+gen_instr_store(Context *cnt, MirInstrStore *store);
 
-static void gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static void
+gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
-static void gen_instr_block(Context *cnt, MirInstrBlock *block);
+static void
+gen_instr_block(Context *cnt, MirInstrBlock *block);
 
-static void gen_instr_br(Context *cnt, MirInstrBr *br);
+static void
+gen_instr_br(Context *cnt, MirInstrBr *br);
 
-static void gen_instr_arg(Context *cnt, MirInstrArg *arg);
+static void
+gen_instr_arg(Context *cnt, MirInstrArg *arg);
 
-static void gen_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+static void
+gen_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
-static void gen_instr_ret(Context *cnt, MirInstrRet *ret);
+static void
+gen_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+static void
+gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
-static void gen_instr_load(Context *cnt, MirInstrLoad *load);
+static void
+gen_instr_load(Context *cnt, MirInstrLoad *load);
 
-static void gen_instr_call(Context *cnt, MirInstrCall *call);
+static void
+gen_instr_call(Context *cnt, MirInstrCall *call);
 
-static void gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+static void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
-static void gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static void
+gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
-static LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value);
+static LLVMValueRef
+gen_as_const(Context *cnt, MirConstValue *value);
 
-static LLVMValueRef gen_global_string_ptr(Context *cnt, const char *str, size_t len);
+static LLVMValueRef
+gen_global_string_ptr(Context *cnt, const char *str, size_t len);
 
-static void gen_allocas(Context *cnt, MirFn *fn);
+static void
+gen_allocas(Context *cnt, MirFn *fn);
 
-static inline LLVMValueRef gen_fn_proto(Context *cnt, MirFn *fn)
+static inline LLVMValueRef
+gen_fn_proto(Context *cnt, MirFn *fn)
 {
 	assert(fn);
 
@@ -230,7 +277,8 @@ static inline LLVMValueRef gen_fn_proto(Context *cnt, MirFn *fn)
 	return fn->llvm_value;
 }
 
-static inline LLVMValueRef gen_global_var_proto(Context *cnt, MirVar *var)
+static inline LLVMValueRef
+gen_global_var_proto(Context *cnt, MirVar *var)
 {
 	assert(var);
 	if (var->llvm_value) return var->llvm_value;
@@ -246,7 +294,8 @@ static inline LLVMValueRef gen_global_var_proto(Context *cnt, MirVar *var)
 	return var->llvm_value;
 }
 
-static inline LLVMValueRef fetch_value(Context *cnt, MirInstr *instr)
+static inline LLVMValueRef
+fetch_value(Context *cnt, MirInstr *instr)
 {
 	LLVMValueRef value = NULL;
 
@@ -264,7 +313,8 @@ static inline LLVMValueRef fetch_value(Context *cnt, MirInstr *instr)
 	return value;
 }
 
-static inline LLVMBasicBlockRef gen_basic_block(Context *cnt, MirInstrBlock *block)
+static inline LLVMBasicBlockRef
+gen_basic_block(Context *cnt, MirInstrBlock *block)
 {
 	if (!block) return NULL;
 	LLVMBasicBlockRef llvm_block = NULL;
@@ -279,7 +329,8 @@ static inline LLVMBasicBlockRef gen_basic_block(Context *cnt, MirInstrBlock *blo
 	return llvm_block;
 }
 
-void gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+void
+gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	ScopeEntry *entry = ref->scope_entry;
 	assert(entry);
@@ -304,7 +355,8 @@ void gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	assert(ref->base.llvm_value);
 }
 
-void gen_instr_phi(Context *cnt, MirInstrPhi *phi)
+void
+gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, phi->base.const_value.type->llvm_type, "");
@@ -332,18 +384,21 @@ void gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 	phi->base.llvm_value = llvm_phi;
 }
 
-void gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+void
+gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	unr->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_trap, NULL, 0, "");
 }
 
-void gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+void
+gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	bl_abort_issue(26);
 }
 
-void gen_instr_cast(Context *cnt, MirInstrCast *cast)
+void
+gen_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	LLVMValueRef llvm_src       = cast->next->llvm_value;
 	LLVMTypeRef  llvm_dest_type = cast->base.const_value.type->llvm_type;
@@ -407,13 +462,15 @@ void gen_instr_cast(Context *cnt, MirInstrCast *cast)
 	    LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
 }
 
-void gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+void
+gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	addrof->base.llvm_value = addrof->src->llvm_value;
 	assert(addrof->base.llvm_value);
 }
 
-void gen_instr_arg(Context *cnt, MirInstrArg *arg)
+void
+gen_instr_arg(Context *cnt, MirInstrArg *arg)
 {
 	MirFn *fn = arg->base.owner_block->owner_fn;
 	assert(fn);
@@ -423,7 +480,8 @@ void gen_instr_arg(Context *cnt, MirInstrArg *arg)
 	arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
 }
 
-void gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
+void
+gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
 	LLVMValueRef llvm_arr_ptr = fetch_value(cnt, elem_ptr->arr_ptr);
 	LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
@@ -448,11 +506,12 @@ void gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	llvm_indices[0] = cnt->llvm_const_i64;
 	llvm_indices[1] = llvm_index;
 
-	elem_ptr->base.llvm_value = LLVMBuildGEP(cnt->llvm_builder, llvm_arr_ptr, llvm_indices,
-	                                         array_size(llvm_indices), "");
+	elem_ptr->base.llvm_value = LLVMBuildGEP(
+	    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
 }
 
-void gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+void
+gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
 	assert(llvm_target_ptr);
@@ -488,7 +547,8 @@ void gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	}
 }
 
-void gen_instr_load(Context *cnt, MirInstrLoad *load)
+void
+gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
 	assert(load->base.const_value.type && "invalid type of load instruction");
 	LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
@@ -498,7 +558,8 @@ void gen_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
-LLVMValueRef gen_global_string_ptr(Context *cnt, const char *str, size_t len)
+LLVMValueRef
+gen_global_string_ptr(Context *cnt, const char *str, size_t len)
 {
 	assert(str && len);
 	uint64_t      hash  = bo_hash_from_str(str);
@@ -539,7 +600,8 @@ LLVMValueRef gen_global_string_ptr(Context *cnt, const char *str, size_t len)
 	return llvm_str;
 }
 
-LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
+LLVMValueRef
+gen_as_const(Context *cnt, MirConstValue *value)
 {
 	MirType *type = value->type;
 	assert(type);
@@ -649,8 +711,8 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 
 	case MIR_TYPE_ENUM: {
 		LLVMTypeRef llvm_base_type = value->type->llvm_type;
-		return LLVMConstInt(llvm_base_type, value->data.v_u64,
-		                    value->type->data.integer.is_signed);
+		return LLVMConstInt(
+		    llvm_base_type, value->data.v_u64, value->type->data.integer.is_signed);
 	}
 
 	default:
@@ -660,7 +722,8 @@ LLVMValueRef gen_as_const(Context *cnt, MirConstValue *value)
 	bl_abort("should not happend!!!");
 }
 
-void gen_instr_store(Context *cnt, MirInstrStore *store)
+void
+gen_instr_store(Context *cnt, MirInstrStore *store)
 {
 	LLVMValueRef   val       = fetch_value(cnt, store->src);
 	LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
@@ -670,7 +733,8 @@ void gen_instr_store(Context *cnt, MirInstrStore *store)
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 }
 
-void gen_instr_unop(Context *cnt, MirInstrUnop *unop)
+void
+gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
 	LLVMValueRef llvm_val = fetch_value(cnt, unop->instr);
 	assert(llvm_val);
@@ -703,7 +767,8 @@ void gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 	}
 }
 
-void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
+void
+gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
 	/*
 	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
@@ -759,9 +824,11 @@ void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			switch (type->kind) {
 			case MIR_TYPE_ARRAY:
 				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
-				llvm_value_dest =
-				    LLVMBuildGEP(cnt->llvm_builder, llvm_tmp, llvm_indices,
-				                 array_size(llvm_indices), "");
+				llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
+				                               llvm_tmp,
+				                               llvm_indices,
+				                               array_size(llvm_indices),
+				                               "");
 				break;
 
 			case MIR_TYPE_STRUCT:
@@ -782,7 +849,8 @@ void gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	cmp->base.llvm_value = llvm_tmp;
 }
 
-void gen_instr_binop(Context *cnt, MirInstrBinop *binop)
+void
+gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 	LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
 	LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
@@ -891,7 +959,8 @@ void gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 	}
 }
 
-void gen_instr_call(Context *cnt, MirInstrCall *call)
+void
+gen_instr_call(Context *cnt, MirInstrCall *call)
 {
 	MirInstr *callee = call->callee;
 	assert(callee);
@@ -922,7 +991,8 @@ void gen_instr_call(Context *cnt, MirInstrCall *call)
 	bl_free(llvm_args);
 }
 
-void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
+void
+gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
 	assert(var);
@@ -960,7 +1030,8 @@ void gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 }
 
-void gen_instr_ret(Context *cnt, MirInstrRet *ret)
+void
+gen_instr_ret(Context *cnt, MirInstrRet *ret)
 {
 	LLVMValueRef llvm_ret;
 	if (ret->value) {
@@ -974,7 +1045,8 @@ void gen_instr_ret(Context *cnt, MirInstrRet *ret)
 	ret->base.llvm_value = llvm_ret;
 }
 
-void gen_instr_br(Context *cnt, MirInstrBr *br)
+void
+gen_instr_br(Context *cnt, MirInstrBr *br)
 {
 	MirInstrBlock *then_block = br->then_block;
 	assert(then_block);
@@ -986,7 +1058,8 @@ void gen_instr_br(Context *cnt, MirInstrBr *br)
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
 }
 
-void gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
+void
+gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
 	MirInstr *     cond       = br->cond;
 	MirInstrBlock *then_block = br->then_block;
@@ -1001,7 +1074,8 @@ void gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
 }
 
-void gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
+void
+gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
 	MirType *vargs_type = vargs->base.const_value.type;
 	BArray * values     = vargs->values;
@@ -1022,9 +1096,11 @@ void gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			llvm_value = fetch_value(cnt, value);
 			assert(llvm_value);
 			llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
-			llvm_value_dest =
-			    LLVMBuildGEP(cnt->llvm_builder, vargs->arr_tmp->llvm_value,
-			                 llvm_indices, array_size(llvm_indices), "");
+			llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
+			                               vargs->arr_tmp->llvm_value,
+			                               llvm_indices,
+			                               array_size(llvm_indices),
+			                               "");
 			LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
 		}
 	}
@@ -1048,7 +1124,8 @@ void gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	vargs->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
 }
 
-void gen_instr_block(Context *cnt, MirInstrBlock *block)
+void
+gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	MirFn *fn = block->owner_fn;
 	assert(fn->llvm_value);
@@ -1069,7 +1146,8 @@ void gen_instr_block(Context *cnt, MirInstrBlock *block)
 	}
 }
 
-void gen_allocas(Context *cnt, MirFn *fn)
+void
+gen_allocas(Context *cnt, MirFn *fn)
 {
 	assert(fn);
 
@@ -1097,7 +1175,8 @@ void gen_allocas(Context *cnt, MirFn *fn)
 	}
 }
 
-void gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
+void
+gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = fn_proto->base.const_value.data.v_fn;
 	/* unused function */
@@ -1114,7 +1193,8 @@ void gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	}
 }
 
-void gen_instr(Context *cnt, MirInstr *instr)
+void
+gen_instr(Context *cnt, MirInstr *instr)
 {
 	switch (instr->kind) {
 	case MIR_INSTR_BINOP:
@@ -1192,7 +1272,8 @@ void gen_instr(Context *cnt, MirInstr *instr)
 }
 
 /* public */
-void ir_run(Builder *builder, Assembly *assembly)
+void
+ir_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));

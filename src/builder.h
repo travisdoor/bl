@@ -79,19 +79,31 @@ typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE } Builder
 
 struct Src;
 
-Builder *builder_new(void);
+Builder *
+builder_new(void);
 
-void builder_delete(Builder *builder);
+void
+builder_delete(Builder *builder);
 
-int builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
+int
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
 
-void builder_error(Builder *builder, const char *format, ...);
+void
+builder_error(Builder *builder, const char *format, ...);
 
-void builder_warning(Builder *builder, const char *format, ...);
+void
+builder_warning(Builder *builder, const char *format, ...);
 
-void builder_msg(Builder *builder, BuilderMsgType type, int32_t code, struct Src *src,
-                 BuilderCurPos pos, const char *format, ...);
+void
+builder_msg(Builder *      builder,
+            BuilderMsgType type,
+            int32_t        code,
+            struct Src *   src,
+            BuilderCurPos  pos,
+            const char *   format,
+            ...);
 
-BString *builder_create_cached_str(Builder *builder);
+BString *
+builder_create_cached_str(Builder *builder);
 
 #endif

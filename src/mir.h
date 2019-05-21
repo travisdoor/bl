@@ -668,44 +668,54 @@ struct MirInstrPhi {
 };
 
 /* public */
-static inline bool mir_is_pointer_type(MirType *type)
+static inline bool
+mir_is_pointer_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static inline bool mir_is_slice_type(MirType *type)
+static inline bool
+mir_is_slice_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind & MIR_TS_SLICE);
 }
 
-static inline bool mir_is_vargs_type(MirType *type)
+static inline bool
+mir_is_vargs_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
 }
 
-static inline bool mir_is_string_type(MirType *type)
+static inline bool
+mir_is_string_type(MirType *type)
 {
 	assert(type);
 	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_STRING);
 }
 
-static inline MirType *mir_deref_type(MirType *ptr)
+static inline MirType *
+mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.next;
 }
 
-void mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
+void
+mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 
-const char *mir_instr_name(MirInstr *instr);
+const char *
+mir_instr_name(MirInstr *instr);
 
-MirModule *mir_new_module(const char *name);
+MirModule *
+mir_new_module(const char *name);
 
-void mir_delete_module(MirModule *module);
+void
+mir_delete_module(MirModule *module);
 
-void mir_run(struct Builder *builder, struct Assembly *assembly);
+void
+mir_run(struct Builder *builder, struct Assembly *assembly);
 
 #endif

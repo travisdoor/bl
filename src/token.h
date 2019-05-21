@@ -146,27 +146,33 @@ typedef struct {
 	TokenAssociativity associativity;
 } TokenPrecedence;
 
-static inline bool sym_is_binop(Sym sym)
+static inline bool
+sym_is_binop(Sym sym)
 {
 	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
-static inline bool token_is_binop(Token *token)
+static inline bool
+token_is_binop(Token *token)
 {
 	return sym_is_binop(token->sym);
 }
 
-bool token_is_unary(Token *token);
+bool
+token_is_unary(Token *token);
 
-TokenPrecedence token_prec(Token *token);
+TokenPrecedence
+token_prec(Token *token);
 
-static inline bool token_is(Token *token, Sym sym)
+static inline bool
+token_is(Token *token, Sym sym)
 {
 	if (!token) return false;
 	return token->sym == sym;
 }
 
-static inline bool token_is_not(Token *token, Sym sym)
+static inline bool
+token_is_not(Token *token, Sym sym)
 {
 	return !token_is(token, sym);
 }

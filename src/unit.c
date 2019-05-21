@@ -34,24 +34,25 @@
 #include <string.h>
 
 /* public */
-Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
+Unit *
+unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
 	Unit *unit = bl_calloc(1, sizeof(Unit));
-	if (!unit)
-		bl_abort("bad alloc");
+	if (!unit) bl_abort("bad alloc");
 
-	search_file(filepath, &unit->filepath, &unit->dirpath,
-	            parent_unit ? parent_unit->dirpath : NULL);
+	search_file(
+	    filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);
 	unit->name = strdup(filepath);
 
 	unit->loaded_from = loaded_from;
-	unit->ast = NULL;
+	unit->ast         = NULL;
 
 	tokens_init(&unit->tokens);
 	return unit;
 }
 
-void unit_delete(Unit *unit)
+void
+unit_delete(Unit *unit)
 {
 	free(unit->filepath);
 	free(unit->dirpath);
@@ -61,7 +62,8 @@ void unit_delete(Unit *unit)
 	bl_free(unit);
 }
 
-const char *unit_get_src_ln(Unit *unit, int32_t line, long *len)
+const char *
+unit_get_src_ln(Unit *unit, int32_t line, long *len)
 {
 	int32_t     l    = 1;
 	const char *iter = unit->src;
@@ -73,10 +75,8 @@ const char *unit_get_src_ln(Unit *unit, int32_t line, long *len)
 
 	if (len) {
 		long l = 0;
-		if (iter)
-			l = (long)(strchr(iter, '\n') - iter);
-		if (l < 0)
-			l = (long)strlen(iter);
+		if (iter) l = (long)(strchr(iter, '\n') - iter);
+		if (l < 0) l = (long)strlen(iter);
 		(*len) = l;
 	}
 

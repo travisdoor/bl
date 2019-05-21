@@ -34,7 +34,8 @@
 #include <llvm-c/Transforms/PassManagerBuilder.h>
 #include <llvm-c/Transforms/Vectorize.h>
 
-void ir_opt_run(Builder *builder, Assembly *assembly)
+void
+ir_opt_run(Builder *builder, Assembly *assembly)
 {
 	/* TODO: set by user!!! */
 #if BL_DEBUG

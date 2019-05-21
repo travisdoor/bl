@@ -32,7 +32,8 @@
 #include "mir_printer.h"
 #include "stages.h"
 
-static void print_header(const char *name, const char *filename, FILE *stream)
+static void
+print_header(const char *name, const char *filename, FILE *stream)
 {
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
@@ -45,16 +46,19 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 	        "  Created:     %s\n"
 	        "  Blc version: %s\n"
 	        "*/\n",
-	        name, filename, date, BL_VERSION);
+	        name,
+	        filename,
+	        date,
+	        BL_VERSION);
 }
 
-void mir_writer_run(Assembly *assembly)
+void
+mir_writer_run(Assembly *assembly)
 {
 	assert(assembly->mir_module);
 
 	char *export_file = bl_malloc(sizeof(char) * (strlen(assembly->name) + 5));
-	if (!export_file)
-		bl_abort("bad alloc");
+	if (!export_file) bl_abort("bad alloc");
 	strcpy(export_file, assembly->name);
 	strcat(export_file, ".blm");
 

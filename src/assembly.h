@@ -66,16 +66,22 @@ typedef struct NativeLib {
 	char *        dirpath;
 } NativeLib;
 
-Assembly *assembly_new(const char *name);
+Assembly *
+assembly_new(const char *name);
 
-void assembly_delete(Assembly *assembly);
+void
+assembly_delete(Assembly *assembly);
 
-void assembly_add_unit(Assembly *assembly, Unit *unit);
+void
+assembly_add_unit(Assembly *assembly, Unit *unit);
 
-void assembly_add_link(Assembly *assembly, struct Token *token);
+void
+assembly_add_link(Assembly *assembly, struct Token *token);
 
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+bool
+assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
+DCpointer
+assembly_find_extern(Assembly *assembly, const char *symbol);
 
 #endif

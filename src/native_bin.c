@@ -29,7 +29,8 @@
 #include "config.h"
 #include "stages.h"
 
-void native_bin_run(Builder *builder, Assembly *assembly)
+void
+native_bin_run(Builder *builder, Assembly *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
 	const char *link_flag = "-l";
@@ -68,8 +69,7 @@ void native_bin_run(Builder *builder, Assembly *assembly)
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
 		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
 
-		if (!lib->user_name)
-			continue;
+		if (!lib->user_name) continue;
 
 		strcat(buf, " ");
 		strcat(buf, link_flag);

@@ -36,7 +36,8 @@
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
 
-static void init_dl(Assembly *assembly)
+static void
+init_dl(Assembly *assembly)
 {
 	assembly->dl.libs = bo_array_new(sizeof(NativeLib));
 	DCCallVM *vm      = dcNewCallVM(4096);
@@ -44,7 +45,8 @@ static void init_dl(Assembly *assembly)
 	assembly->dl.vm = vm;
 }
 
-static void native_lib_terminate(NativeLib *lib)
+static void
+native_lib_terminate(NativeLib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
 	free(lib->dirpath);
@@ -52,7 +54,8 @@ static void native_lib_terminate(NativeLib *lib)
 	free(lib->filepath);
 }
 
-static void terminate_dl(Assembly *assembly)
+static void
+terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
@@ -65,7 +68,8 @@ static void terminate_dl(Assembly *assembly)
 }
 
 /* public */
-Assembly *assembly_new(const char *name)
+Assembly *
+assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) bl_abort("bad alloc");
@@ -83,7 +87,8 @@ Assembly *assembly_new(const char *name)
 	return assembly;
 }
 
-void assembly_delete(Assembly *assembly)
+void
+assembly_delete(Assembly *assembly)
 {
 	free(assembly->name);
 
@@ -104,12 +109,14 @@ void assembly_delete(Assembly *assembly)
 	bl_free(assembly);
 }
 
-void assembly_add_unit(Assembly *assembly, Unit *unit)
+void
+assembly_add_unit(Assembly *assembly, Unit *unit)
 {
 	bo_array_push_back(assembly->units, unit);
 }
 
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
+bool
+assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
 	uint64_t hash = 0;
 	if (unit->filepath)
@@ -124,7 +131,8 @@ bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 	return true;
 }
 
-void assembly_add_link(Assembly *assembly, Token *token)
+void
+assembly_add_link(Assembly *assembly, Token *token)
 {
 	if (!token) return;
 
@@ -136,7 +144,8 @@ void assembly_add_link(Assembly *assembly, Token *token)
 	bo_htbl_insert(assembly->link_cache, hash, token);
 }
 
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
+DCpointer
+assembly_find_extern(Assembly *assembly, const char *symbol)
 {
 	void * handle = NULL;
 	DLLib *lib;

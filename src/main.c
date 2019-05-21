@@ -36,30 +36,33 @@
 #include <stdio.h>
 #include <string.h>
 
-static void print_help(void)
+static void
+print_help(void)
 {
-	fprintf(stdout, "Usage\n\n"
-	                "  blc [options] <source-files>\n\n"
-	                "Options\n"
-	                "  -h, -help           = Print usage information and exit.\n"
-	                "  -r, -run            = Execute 'main' method in compile time.\n"
-	                "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
-	                "  -emit-llvm          = Write LLVM-IR to file.\n"
-	                "  -emit-mir           = Write MIR to file.\n"
-	                "  -ast-dump           = Print AST.\n"
-	                "  -lex-dump           = Print output of lexer.\n"
-	                "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
-	                "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
-	                "  -syntax-only        = Check syntax and exit.\n"
-	                "  -no-bin             = Don't write binary to disk.\n"
-	                "  -no-warning         = Ignore all warnings.\n"
-	                "  -verbose            = Verbose mode.\n"
-	                "  -no-api             = Don't load internal api.\n"
-	                "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	                "  -verbose-linker     = Print internal linker logs.\n");
+	fprintf(stdout,
+	        "Usage\n\n"
+	        "  blc [options] <source-files>\n\n"
+	        "Options\n"
+	        "  -h, -help           = Print usage information and exit.\n"
+	        "  -r, -run            = Execute 'main' method in compile time.\n"
+	        "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
+	        "  -emit-llvm          = Write LLVM-IR to file.\n"
+	        "  -emit-mir           = Write MIR to file.\n"
+	        "  -ast-dump           = Print AST.\n"
+	        "  -lex-dump           = Print output of lexer.\n"
+	        "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
+	        "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
+	        "  -syntax-only        = Check syntax and exit.\n"
+	        "  -no-bin             = Don't write binary to disk.\n"
+	        "  -no-warning         = Ignore all warnings.\n"
+	        "  -verbose            = Verbose mode.\n"
+	        "  -no-api             = Don't load internal api.\n"
+	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
+	        "  -verbose-linker     = Print internal linker logs.\n");
 }
 
-int main(int32_t argc, char *argv[])
+int
+main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;

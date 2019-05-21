@@ -34,14 +34,16 @@
 #include "unistd.h"
 #endif
 
-void id_init(ID *id, const char *str)
+void
+id_init(ID *id, const char *str)
 {
 	assert(id);
 	id->hash = bo_hash_from_str(str);
 	id->str  = str;
 }
 
-bool file_exists(const char *filepath)
+bool
+file_exists(const char *filepath)
 {
 #ifdef BL_COMPILER_MSVC
 	return (bool)PathFileExistsA(filepath);
@@ -50,24 +52,24 @@ bool file_exists(const char *filepath)
 #endif
 }
 
-const char *brealpath(const char *file, char *out, int32_t out_len)
+const char *
+brealpath(const char *file, char *out, int32_t out_len)
 {
 	const char *resolved = NULL;
 	assert(out);
 	assert(out_len);
-	if (!file)
-		return resolved;
+	if (!file) return resolved;
 
 #ifdef BL_COMPILER_MSVC
-	if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out))
-		return &out[0];
+	if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) return &out[0];
 	return NULL;
 #else
 	return realpath(file, out);
 #endif
 }
 
-void date_time(char *buf, int32_t len, const char *format)
+void
+date_time(char *buf, int32_t len, const char *format)
 {
 	assert(buf && len);
 	time_t     timer;
@@ -79,14 +81,18 @@ void date_time(char *buf, int32_t len, const char *format)
 	strftime(buf, len, format, tm_info);
 }
 
-bool is_aligned(const void *p, size_t alignment) { return (uintptr_t)p % alignment == 0; }
+bool
+is_aligned(const void *p, size_t alignment)
+{
+	return (uintptr_t)p % alignment == 0;
+}
 
-void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
+void
+align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 {
 	ptrdiff_t adj;
 	if (is_aligned(*p, alignment)) {
-		if (adjustment)
-			*adjustment = 0;
+		if (adjustment) *adjustment = 0;
 		return;
 	}
 
@@ -97,11 +103,11 @@ void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 
 	adj = alignment - misalignment;
 	*p  = (void *)(i_unaligned + adj);
-	if (adjustment)
-		*adjustment = adj;
+	if (adjustment) *adjustment = adj;
 }
 
-void print_bits(int32_t const size, void const *const ptr)
+void
+print_bits(int32_t const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
 	unsigned char  byte;
@@ -116,32 +122,29 @@ void print_bits(int32_t const size, void const *const ptr)
 	puts("");
 }
 
-bool get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
+bool
+get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 {
-	if (!filepath)
-		return false;
+	if (!filepath) return false;
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
-	if (!ptr)
-		return false;
-	if (filepath == ptr)
-		return strdup(filepath);
+	if (!ptr) return false;
+	if (filepath == ptr) return strdup(filepath);
 
 	size_t len = ptr - filepath;
-	if (len + 1 > l)
-		bl_abort("path too long!!!");
+	if (len + 1 > l) bl_abort("path too long!!!");
 	strncpy(buf, filepath, len);
 
 	return true;
 }
 
-bool search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir)
+bool
+search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir)
 {
-	if (filepath == NULL)
-		goto NOT_FOUND;
+	if (filepath == NULL) goto NOT_FOUND;
 
-	char tmp[PATH_MAX] = {0};
-	const char *rpath = tmp;
+	char        tmp[PATH_MAX] = {0};
+	const char *rpath         = tmp;
 
 	/* Lookup in working directory. */
 	if (wdir) {
