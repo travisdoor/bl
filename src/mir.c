@@ -203,6 +203,7 @@ typedef struct {
 
 	/* Builtins */
 	struct BuiltinTypes {
+		/* PROVIDED BEGIN */
 		MirType *entry_type;
 		MirType *entry_s8;
 		MirType *entry_s16;
@@ -216,14 +217,20 @@ typedef struct {
 		MirType *entry_bool;
 		MirType *entry_f32;
 		MirType *entry_f64;
-		MirType *entry_void;
-		MirType *entry_u8_ptr;
 		MirType *entry_string;
-		MirType *entry_resolve_type_fn;
-		MirType *entry_test_case_fn;
 
 		/* RTTI */
+		MirType *entry_TypeKind;
 		MirType *entry_TypeInfo;
+		MirType *entry_TypeInfoInt;
+		/* PROVIDED END */
+
+		/* OTHER BEGIN */
+		MirType *entry_void;
+		MirType *entry_u8_ptr;
+		MirType *entry_resolve_type_fn;
+		MirType *entry_test_case_fn;
+		/* OTHER END */
 	} builtin_types;
 } Context;
 
@@ -1337,7 +1344,7 @@ provide_var(Context *cnt, MirVar *var)
 	                      var->scope,
 	                      SCOPE_ENTRY_VAR,
 	                      (ScopeEntryData){.var = var},
-	                      false,
+	                      is_flag(var->flags, FLAG_COMPILER),
 	                      var->is_in_gscope);
 }
 
@@ -1663,12 +1670,17 @@ provide_symbol(Context *      cnt,
 
 	ScopeEntry *collision = scope_lookup(scope, id, false);
 	if (collision) {
+		char *err_msg = collision->is_buildin || is_builtin
+		                    ? "Symbol name colision with compiler builtin '%s'."
+		                    : "Duplicate symbol";
+
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_DUPLICATE_SYMBOL,
 		            node ? node->src : NULL,
 		            BUILDER_CUR_WORD,
-		            "Duplicate symbol.");
+		            err_msg,
+		            id->str);
 
 		if (collision->node) {
 			builder_msg(cnt->builder,
@@ -1687,8 +1699,11 @@ provide_symbol(Context *      cnt,
 	entry->data = data;
 	scope_insert(scope, entry);
 
-	if (notify) analyze_notify_provided(cnt, id->hash);
+	if (is_builtin) {
+		bl_log("provide builtin: '%s'", id->str);
+	}
 
+	if (notify) analyze_notify_provided(cnt, id->hash);
 	return entry;
 }
 

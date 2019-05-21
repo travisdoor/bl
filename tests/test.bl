@@ -12,4 +12,23 @@ link     - global scope
 test     - global, local scope
 extern   - before body
 compiler - before body
+
+'type'
+'s8'
+'s16'
+'s32'
+'s64'
+'u8'
+'u16'
+'u32'
+'u64'
+'usize'
+'bool'
+'f32'
+'f64'
+'string'
+'TypeKind'
+'TypeInfo'
+'TypeInfoInt'
+'Any'
 */
