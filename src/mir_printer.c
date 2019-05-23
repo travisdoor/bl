@@ -616,7 +616,7 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
 		fprintf(stream, ".");
 	}
 
-	if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
+	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		if (member_ptr->member_ident) {
 			fprintf(stream, "%s", member_ptr->member_ident->data.ident.id.str);
 		} else {
@@ -624,10 +624,10 @@ print_instr_member_ptr(MirInstrMemberPtr *member_ptr, FILE *stream)
 		}
 	} else {
 		switch (member_ptr->builtin_id) {
-		case MIR_BUILTIN_ARR_LEN:
+		case MIR_BUILTIN_ID_ARR_LEN:
 			fprintf(stream, "len");
 			break;
-		case MIR_BUILTIN_ARR_PTR:
+		case MIR_BUILTIN_ID_ARR_PTR:
 			fprintf(stream, "ptr");
 			break;
 

@@ -516,7 +516,7 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
 	assert(llvm_target_ptr);
 
-	if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
+	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
 		MirMember *member = member_ptr->scope_entry->data.member;
 		assert(member);
@@ -535,11 +535,11 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		/* Valid only for slice types, we generate direct replacement for arrays. */
 		assert(mir_is_slice_type(target_type));
 
-		if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN) {
+		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* .len */
 			member_ptr->base.llvm_value =
 			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
-		} else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR) {
+		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* .ptr*/
 			member_ptr->base.llvm_value =
 			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");

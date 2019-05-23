@@ -90,38 +90,39 @@ typedef struct MirInstrPhi         MirInstrPhi;
 typedef enum MirTypeKind         MirTypeKind;
 typedef enum MirInstrKind        MirInstrKind;
 typedef enum MirCastOp           MirCastOp;
-typedef enum MirBuiltinKind      MirBuiltinKind;
+typedef enum MirBuiltinIdKind    MirBuiltinIdKind;
 typedef enum MirTypeStructKind   MirTypeStructKind;
 typedef enum MirValueAddressMode MirValueAddressMode;
 
 typedef union MirConstValueData MirConstValueData;
 
-enum MirBuiltinKind {
-	MIR_BUILTIN_NONE = -1,
+enum MirBuiltinIdKind {
+	MIR_BUILTIN_ID_NONE = -1,
 
-	MIR_BUILTIN_TYPE_TYPE,
-	MIR_BUILTIN_TYPE_S8,
-	MIR_BUILTIN_TYPE_S16,
-	MIR_BUILTIN_TYPE_S32,
-	MIR_BUILTIN_TYPE_S64,
-	MIR_BUILTIN_TYPE_U8,
-	MIR_BUILTIN_TYPE_U16,
-	MIR_BUILTIN_TYPE_U32,
-	MIR_BUILTIN_TYPE_U64,
-	MIR_BUILTIN_TYPE_USIZE,
-	MIR_BUILTIN_TYPE_BOOL,
-	MIR_BUILTIN_TYPE_F32,
-	MIR_BUILTIN_TYPE_F64,
-	MIR_BUILTIN_TYPE_VOID,
-	MIR_BUILTIN_TYPE_STRING,
+	MIR_BUILTIN_ID_TYPE_TYPE,
+	MIR_BUILTIN_ID_TYPE_S8,
+	MIR_BUILTIN_ID_TYPE_S16,
+	MIR_BUILTIN_ID_TYPE_S32,
+	MIR_BUILTIN_ID_TYPE_S64,
+	MIR_BUILTIN_ID_TYPE_U8,
+	MIR_BUILTIN_ID_TYPE_U16,
+	MIR_BUILTIN_ID_TYPE_U32,
+	MIR_BUILTIN_ID_TYPE_U64,
+	MIR_BUILTIN_ID_TYPE_USIZE,
+	MIR_BUILTIN_ID_TYPE_BOOL,
+	MIR_BUILTIN_ID_TYPE_F32,
+	MIR_BUILTIN_ID_TYPE_F64,
+	MIR_BUILTIN_ID_TYPE_VOID,
+	MIR_BUILTIN_ID_TYPE_STRING,
 
-	MIR_BUILTIN_NULL,
-	MIR_BUILTIN_MAIN,
-	MIR_BUILTIN_ARR_LEN,
-	MIR_BUILTIN_ARR_PTR,
-	MIR_BUILTIN_TYPE_INFO,
+	MIR_BUILTIN_ID_NULL,
+	MIR_BUILTIN_ID_MAIN,
+	MIR_BUILTIN_ID_ARR_LEN,
+	MIR_BUILTIN_ID_ARR_PTR,
+	MIR_BUILTIN_ID_TYPE_INFO,
+	MIR_BUILTIN_ID_TYPE_KIND,
 
-	_MIR_BUILTIN_COUNT,
+	_MIR_BUILTIN_ID_COUNT,
 };
 
 /* ALLOCATORS */
@@ -450,10 +451,10 @@ struct MirInstrElemPtr {
 struct MirInstrMemberPtr {
 	MirInstr base;
 
-	Ast *          member_ident;
-	MirInstr *     target_ptr;
-	ScopeEntry *   scope_entry;
-	MirBuiltinKind builtin_id;
+	Ast *            member_ident;
+	MirInstr *       target_ptr;
+	ScopeEntry *     scope_entry;
+	MirBuiltinIdKind builtin_id;
 };
 
 enum MirCastOp {

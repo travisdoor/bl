@@ -218,11 +218,6 @@ typedef struct {
 		MirType *entry_f32;
 		MirType *entry_f64;
 		MirType *entry_string;
-
-		/* RTTI */
-		MirType *entry_TypeKind;
-		MirType *entry_TypeInfo;
-		MirType *entry_TypeInfoInt;
 		/* PROVIDED END */
 
 		/* OTHER BEGIN */
@@ -249,14 +244,30 @@ typedef enum {
 
 /* Ids of builtin symbols, hash is calculated inside init_builtins function
  * later. */
-static ID builtin_ids[_MIR_BUILTIN_COUNT] = {
-    {.str = "type", .hash = 0},   {.str = "s8", .hash = 0},      {.str = "s16", .hash = 0},
-    {.str = "s32", .hash = 0},    {.str = "s64", .hash = 0},     {.str = "u8", .hash = 0},
-    {.str = "u16", .hash = 0},    {.str = "u32", .hash = 0},     {.str = "u64", .hash = 0},
-    {.str = "usize", .hash = 0},  {.str = "bool", .hash = 0},    {.str = "f32", .hash = 0},
-    {.str = "f64", .hash = 0},    {.str = "void", .hash = 0},    {.str = "string", .hash = 0},
-    {.str = "null_t", .hash = 0}, {.str = "main", .hash = 0},    {.str = "len", .hash = 0},
-    {.str = "ptr", .hash = 0},    {.str = "TypeInfo", .hash = 0}};
+// clang-format off
+static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
+    {.str = "type",     .hash = 0},
+    {.str = "s8",       .hash = 0},
+    {.str = "s16",      .hash = 0},
+    {.str = "s32",      .hash = 0},
+    {.str = "s64",      .hash = 0},
+    {.str = "u8",       .hash = 0},
+    {.str = "u16",      .hash = 0},
+    {.str = "u32",      .hash = 0},
+    {.str = "u64",      .hash = 0},
+    {.str = "usize",    .hash = 0},
+    {.str = "bool",     .hash = 0},
+    {.str = "f32",      .hash = 0},
+    {.str = "f64",      .hash = 0},
+    {.str = "void",     .hash = 0},
+    {.str = "string",   .hash = 0},
+    {.str = "null_t",   .hash = 0},
+    {.str = "main",     .hash = 0},
+    {.str = "len",      .hash = 0},
+    {.str = "ptr",      .hash = 0},
+    {.str = "TypeInfo", .hash = 0},
+    {.str = "TypeKind", .hash = 0}};
+// clang-format on
 
 static void
 value_dtor(MirConstValue *value)
@@ -452,20 +463,20 @@ append_instr_elem_ptr(Context * cnt,
                       bool      target_is_slice);
 
 static MirInstr *
-create_instr_member_ptr(Context *      cnt,
-                        Ast *          node,
-                        MirInstr *     target_ptr,
-                        Ast *          member_ident,
-                        ScopeEntry *   scope_entry,
-                        MirBuiltinKind builtin_id);
+create_instr_member_ptr(Context *        cnt,
+                        Ast *            node,
+                        MirInstr *       target_ptr,
+                        Ast *            member_ident,
+                        ScopeEntry *     scope_entry,
+                        MirBuiltinIdKind builtin_id);
 
 static MirInstr *
-append_instr_member_ptr(Context *      cnt,
-                        Ast *          node,
-                        MirInstr *     target_ptr,
-                        Ast *          member_ident,
-                        ScopeEntry *   scope_entry,
-                        MirBuiltinKind builtin_id);
+append_instr_member_ptr(Context *        cnt,
+                        Ast *            node,
+                        MirInstr *       target_ptr,
+                        Ast *            member_ident,
+                        ScopeEntry *     scope_entry,
+                        MirBuiltinIdKind builtin_id);
 
 static MirInstr *
 append_instr_cond_br(Context *      cnt,
@@ -1262,7 +1273,7 @@ is_block_terminated(MirInstrBlock *block)
 }
 
 static inline bool
-is_builtin(Ast *ident, MirBuiltinKind kind)
+is_builtin(Ast *ident, MirBuiltinIdKind kind)
 {
 	if (!ident) return false;
 	assert(ident->kind == AST_IDENT);
@@ -1711,9 +1722,9 @@ MirType *
 create_type_type(Context *cnt)
 {
 	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_TYPE].str)) {
+	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE].str)) {
 		tmp->kind    = MIR_TYPE_TYPE;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_TYPE];
+		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE];
 		init_type_llvm_ABI(cnt, tmp);
 	}
 	return tmp;
@@ -1726,7 +1737,7 @@ create_type_null(Context *cnt, MirType *base_type)
 	MirType *tmp = NULL;
 	if (create_type(cnt, &tmp, sh_type_null(cnt, base_type))) {
 		tmp->kind                = MIR_TYPE_NULL;
-		tmp->user_id             = &builtin_ids[MIR_BUILTIN_NULL];
+		tmp->user_id             = &builtin_ids[MIR_BUILTIN_ID_NULL];
 		tmp->data.null.base_type = base_type;
 		init_type_llvm_ABI(cnt, tmp);
 	}
@@ -1737,9 +1748,9 @@ MirType *
 create_type_void(Context *cnt)
 {
 	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_VOID].str)) {
+	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_VOID].str)) {
 		tmp->kind    = MIR_TYPE_VOID;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_VOID];
+		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID];
 		init_type_llvm_ABI(cnt, tmp);
 	}
 	return tmp;
@@ -1749,9 +1760,9 @@ MirType *
 create_type_bool(Context *cnt)
 {
 	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_TYPE_BOOL].str)) {
+	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL].str)) {
 		tmp->kind    = MIR_TYPE_BOOL;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_TYPE_BOOL];
+		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL];
 		init_type_llvm_ABI(cnt, tmp);
 	}
 	return tmp;
@@ -1894,7 +1905,7 @@ MirType *
 create_type_string(Context *cnt)
 {
 	MirType *tmp = create_type_slice(
-	    cnt, &builtin_ids[MIR_BUILTIN_TYPE_STRING], cnt->builtin_types.entry_u8_ptr);
+	    cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], cnt->builtin_types.entry_u8_ptr);
 	tmp->data.strct.kind = MIR_TS_STRING;
 	return tmp;
 }
@@ -2504,12 +2515,12 @@ append_instr_elem_ptr(Context * cnt,
 }
 
 MirInstr *
-create_instr_member_ptr(Context *      cnt,
-                        Ast *          node,
-                        MirInstr *     target_ptr,
-                        Ast *          member_ident,
-                        ScopeEntry *   scope_entry,
-                        MirBuiltinKind builtin_id)
+create_instr_member_ptr(Context *        cnt,
+                        Ast *            node,
+                        MirInstr *       target_ptr,
+                        Ast *            member_ident,
+                        ScopeEntry *     scope_entry,
+                        MirBuiltinIdKind builtin_id)
 {
 	ref_instr(target_ptr);
 	MirInstrMemberPtr *tmp = create_instr(cnt, MIR_INSTR_MEMBER_PTR, node, MirInstrMemberPtr *);
@@ -2522,12 +2533,12 @@ create_instr_member_ptr(Context *      cnt,
 }
 
 MirInstr *
-append_instr_member_ptr(Context *      cnt,
-                        Ast *          node,
-                        MirInstr *     target_ptr,
-                        Ast *          member_ident,
-                        ScopeEntry *   scope_entry,
-                        MirBuiltinKind builtin_id)
+append_instr_member_ptr(Context *        cnt,
+                        Ast *            node,
+                        MirInstr *       target_ptr,
+                        Ast *            member_ident,
+                        ScopeEntry *     scope_entry,
+                        MirBuiltinIdKind builtin_id)
 {
 	MirInstr *tmp =
 	    create_instr_member_ptr(cnt, node, target_ptr, member_ident, scope_entry, builtin_id);
@@ -3257,14 +3268,14 @@ gen_type_table(Context *cnt)
 {
 	BHashTable *table = cnt->type_table;
 
-	MirVar *      var;
+	// MirVar *      var;
 	MirType *     type;
 	bo_iterator_t it;
 
 	bhtbl_foreach(table, it)
 	{
-		type           = bo_htbl_iter_peek_value(table, &it, MirType *);
-		const size_t i = bo_htbl_iter_peek_key(table, &it);
+		type = bo_htbl_iter_peek_value(table, &it, MirType *);
+		// const size_t i = bo_htbl_iter_peek_key(table, &it);
 		{
 			char type_name[256];
 			mir_type_to_str(type_name, 256, type, true);
@@ -3627,8 +3638,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* Array type */
 	if (target_type->kind == MIR_TYPE_ARRAY) {
 		/* check array builtin members */
-		if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN ||
-		    is_builtin(ast_member_ident, MIR_BUILTIN_ARR_LEN)) {
+		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
+		    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
 			/* .len */
 			// assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
 			erase_instr(member_ptr->target_ptr);
@@ -3637,8 +3648,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			len->comptime         = true;
 			len->const_value.type = cnt->builtin_types.entry_usize;
 			len->const_value.data.v_u64 = target_type->data.array.len;
-		} else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR ||
-		           is_builtin(ast_member_ident, MIR_BUILTIN_ARR_PTR)) {
+		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
+		           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 			/* .ptr -> This will be replaced by:
 			 *     elemptr
 			 *     addrof
@@ -3689,15 +3700,15 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			MirType *len_type = bo_array_at(slice_members, 0, MirType *);
 			MirType *ptr_type = bo_array_at(slice_members, 1, MirType *);
 
-			if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN ||
-			    is_builtin(ast_member_ident, MIR_BUILTIN_ARR_LEN)) {
+			if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
+			    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
 				/* .len builtin member of slices */
-				member_ptr->builtin_id            = MIR_BUILTIN_ARR_LEN;
+				member_ptr->builtin_id            = MIR_BUILTIN_ID_ARR_LEN;
 				member_ptr->base.const_value.type = create_type_ptr(cnt, len_type);
-			} else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR ||
-			           is_builtin(ast_member_ident, MIR_BUILTIN_ARR_PTR)) {
+			} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
+			           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 				/* .ptr builtin member of slices */
-				member_ptr->builtin_id            = MIR_BUILTIN_ARR_PTR;
+				member_ptr->builtin_id            = MIR_BUILTIN_ID_ARR_PTR;
 				member_ptr->base.const_value.type = create_type_ptr(cnt, ptr_type);
 			} else {
 				builder_msg(cnt->builder,
@@ -3921,7 +3932,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 
 	{
 		Scope *     gscope = cnt->assembly->gscope;
-		ID *        id     = &builtin_ids[MIR_BUILTIN_TYPE_INFO];
+		ID *        id     = &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO];
 		ScopeEntry *found  = scope_lookup(gscope, id, true);
 		assert(found && "TypeInfo base struct not found! This should be an error, you must "
 		                "to load 'core.bl'.");
@@ -5728,7 +5739,7 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	LLVMTypeRef llvm_target_type = target_type->llvm_type;
 	assert(llvm_target_type && "missing LLVM struct type ref");
 
-	if (member_ptr->builtin_id == MIR_BUILTIN_NONE) {
+	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		assert(member_ptr->scope_entry &&
 		       member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
 		MirMember *member = member_ptr->scope_entry->data.member;
@@ -5744,12 +5755,12 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		/* builtin member */
 		assert(mir_is_slice_type(target_type));
 
-		if (member_ptr->builtin_id == MIR_BUILTIN_ARR_PTR) {
+		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* slice .ptr */
 			const ptrdiff_t ptr_offset =
 			    LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 1);
 			result.v_stack_ptr = ptr + ptr_offset; // pointer shift
-		} else if (member_ptr->builtin_id == MIR_BUILTIN_ARR_LEN) {
+		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* slice .len*/
 			const ptrdiff_t len_offset =
 			    LLVMOffsetOfElement(cnt->module->llvm_td, llvm_target_type, 0);
@@ -7208,7 +7219,7 @@ ast_expr_member(Context *cnt, Ast *member)
 	// assert(target);
 
 	return append_instr_member_ptr(
-	    cnt, member, target, member->data.expr_member.ident, NULL, MIR_BUILTIN_NONE);
+	    cnt, member, target, member->data.expr_member.ident, NULL, MIR_BUILTIN_ID_NONE);
 }
 
 MirInstr *
@@ -7444,7 +7455,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 
 		/* check main */
-		if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
+		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
 			assert(!cnt->entry_fn);
 			cnt->entry_fn            = value->const_value.data.v_fn;
 			cnt->entry_fn->ref_count = 1; /* main must be generated into LLVM */
@@ -7482,7 +7493,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		                      entity->data.decl_entity.flags);
 		cnt->ast.current_entity_id = NULL;
 
-		if (is_builtin(ast_name, MIR_BUILTIN_MAIN)) {
+		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_FUNC,
@@ -8170,9 +8181,8 @@ execute_test_cases(Context *cnt)
 	{
 		int32_t perc = c > 0 ? (int32_t)((float)(c - failed) / (c * 0.01f)) : 100;
 
-		msg_log("──────────────────────────────────────────────────────────────"
-		        "────────────"
-		        "──────");
+		msg_log("--------------------------------------------------------------------------"
+		        "------");
 		if (perc == 100) {
 			msg_log("Testing done, %d of %zu failed. Completed: " GREEN("%d%%"),
 			        failed,
@@ -8184,9 +8194,8 @@ execute_test_cases(Context *cnt)
 			        c,
 			        perc);
 		}
-		msg_log("──────────────────────────────────────────────────────────────"
-		        "────────────"
-		        "──────");
+		msg_log("--------------------------------------------------------------------------"
+		        "------");
 	}
 }
 
@@ -8195,7 +8204,7 @@ init_builtins(Context *cnt)
 {
 	{
 		// initialize all hashes once
-		for (int32_t i = 0; i < _MIR_BUILTIN_COUNT; ++i) {
+		for (int32_t i = 0; i < _MIR_BUILTIN_ID_COUNT; ++i) {
 			builtin_ids[i].hash = bo_hash_from_str(builtin_ids[i].str);
 		}
 	}
@@ -8205,19 +8214,25 @@ init_builtins(Context *cnt)
 		bt->entry_type          = create_type_type(cnt);
 		bt->entry_void          = create_type_void(cnt);
 
-		bt->entry_s8  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S8], 8, true);
-		bt->entry_s16 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S16], 16, true);
-		bt->entry_s32 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S32], 32, true);
-		bt->entry_s64 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_S64], 64, true);
-		bt->entry_u8  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U8], 8, false);
-		bt->entry_u16 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U16], 16, false);
-		bt->entry_u32 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U32], 32, false);
-		bt->entry_u64 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_U64], 64, false);
+		bt->entry_s8 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S8], 8, true);
+		bt->entry_s16 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S16], 16, true);
+		bt->entry_s32 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S32], 32, true);
+		bt->entry_s64 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S64], 64, true);
+		bt->entry_u8 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U8], 8, false);
+		bt->entry_u16 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U16], 16, false);
+		bt->entry_u32 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U32], 32, false);
+		bt->entry_u64 =
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U64], 64, false);
 		bt->entry_usize =
-		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_TYPE_USIZE], 64, false);
+		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_USIZE], 64, false);
 		bt->entry_bool   = create_type_bool(cnt);
-		bt->entry_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F32], 32);
-		bt->entry_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_TYPE_F64], 64);
+		bt->entry_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F32], 32);
+		bt->entry_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F64], 64);
 		bt->entry_u8_ptr = create_type_ptr(cnt, bt->entry_u8);
 		bt->entry_string = create_type_string(cnt);
 
