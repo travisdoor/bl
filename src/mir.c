@@ -42,7 +42,7 @@
 #define IMPL_VARGS_TMP_ARR              ".vargs_arr"
 #define IMPL_VARGS_TMP                  ".vargs"
 #define IMPL_COMPOUND_TMP               ".compound"
-#define IMPL_TYPE_ENTRY                 ".type"
+#define IMPL_RTTI_ENTRY                 ".rtti"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -219,6 +219,13 @@ typedef struct {
 		MirType *entry_f32;
 		MirType *entry_f64;
 		MirType *entry_string;
+
+		/* RTTI cached types */
+		/* These are set in gen_type_table procedure after analyze pass. */
+		MirType *entry_TypeKind;
+		MirType *entry_TypeInfo;
+		MirType *entry_TypeInfoInt;
+
 		/* PROVIDED END */
 
 		/* OTHER BEGIN */
@@ -266,8 +273,10 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
     {.str = "main",     .hash = 0},
     {.str = "len",      .hash = 0},
     {.str = "ptr",      .hash = 0},
+    {.str = "TypeKind", .hash = 0},
     {.str = "TypeInfo", .hash = 0},
-    {.str = "TypeKind", .hash = 0}};
+    {.str = "TypeInfoInt",  .hash = 0},
+};
 // clang-format on
 
 static void
@@ -743,6 +752,9 @@ ast_expr_compound(Context *cnt, Ast *cmp);
 /* this will also set size and alignment of the type */
 static void
 init_type_llvm_ABI(Context *cnt, MirType *type);
+
+static void
+gen_type_RTTI(Context *cnt, MirType *type);
 
 /* analyze */
 static void
@@ -2684,15 +2696,17 @@ append_instr_decl_var(Context * cnt,
 	tmp->base.const_value.type = cnt->builtin_types.entry_void;
 	tmp->type                  = type;
 	tmp->init                  = init;
-	tmp->var                   = create_var(cnt,
-                              node,
-                              node->data.ident.scope,
-                              &node->data.ident.id,
-                              NULL,
-                              &tmp->base.const_value,
-                              is_mutable,
-                              is_in_gscope,
-                              flags);
+
+	tmp->var = create_var(cnt,
+	                      node,
+	                      node->data.ident.scope,
+	                      &node->data.ident.id,
+	                      NULL,
+	                      &tmp->base.const_value,
+	                      is_mutable,
+	                      is_in_gscope,
+	                      flags);
+
 	if (is_in_gscope) {
 		push_into_gscope(cnt, &tmp->base);
 		analyze_push_back(cnt, &tmp->base);
@@ -3111,6 +3125,83 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 	}
 }
 
+void
+gen_type_RTTI(Context *cnt, MirType *type)
+{
+	MirVar *var = NULL;
+
+	{ /* DEBUG */
+		char type_name[256];
+		mir_type_to_str(type_name, 256, type, true);
+		bl_log("generate RTTI entry for " BLUE("%s"), type_name);
+	}
+
+	{ /* TEST: we generate TypeInfo struct only */
+		const char *var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+
+		MirConstValue *value = create_value(cnt, cnt->builtin_types.entry_TypeInfo);
+		value->type          = cnt->builtin_types.entry_TypeInfo;
+		value->addr_mode     = MIR_VAM_LVALUE_CONST;
+
+		/* Setup value structure */
+		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
+
+		MirConstValue *tmp = create_value(cnt, cnt->builtin_types.entry_TypeKind);
+		tmp->data.v_s32    = type->kind;
+		bo_array_push_back(members, tmp);
+
+		value->data.v_struct.members = members;
+
+		var = create_var_impl(
+		    cnt, var_name, cnt->builtin_types.entry_TypeInfo, value, false, true);
+	}
+#if 0
+	switch (type->kind) {
+	case MIR_TYPE_INT: {
+		break;
+	}
+
+	default: {
+		char type_name[256];
+		mir_type_to_str(type_name, 256, type, true);
+		bl_warning("Missing exec RTTI generation for type '%s'", type_name);
+		return;
+	}
+	}
+
+#endif
+	assert(var);
+}
+
+/*
+ * Generate global type table in data segment of an assembly.
+ */
+void
+gen_type_table(Context *cnt)
+{
+	BHashTable *table = cnt->type_table;
+
+	MirType *     type;
+	bo_iterator_t it;
+
+	{ /* Preload RTTI provided types */
+		cnt->builtin_types.entry_TypeKind =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
+
+		cnt->builtin_types.entry_TypeInfo =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
+
+		cnt->builtin_types.entry_TypeInfoInt =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_INT]);
+	}
+
+	bhtbl_foreach(table, it)
+	{
+		type = bo_htbl_iter_peek_value(table, &it, MirType *);
+		if (!type->rtti.exec_ptr) gen_type_RTTI(cnt, type);
+	}
+}
+
 bool
 type_cmp(MirType *first, MirType *second)
 {
@@ -3300,30 +3391,6 @@ reduce_instr(Context *cnt, MirInstr *instr)
 
 	default:
 		break;
-	}
-}
-
-/*
- * Generate global type table in data segment of an assembly.
- */
-void
-gen_type_table(Context *cnt)
-{
-	BHashTable *table = cnt->type_table;
-
-	// MirVar *      var;
-	MirType *     type;
-	bo_iterator_t it;
-
-	bhtbl_foreach(table, it)
-	{
-		type = bo_htbl_iter_peek_value(table, &it, MirType *);
-		// const size_t i = bo_htbl_iter_peek_key(table, &it);
-		{
-			char type_name[256];
-			mir_type_to_str(type_name, 256, type, true);
-			bl_log("generate RTTI entry for " BLUE("%s"), type_name);
-		}
 	}
 }
 
@@ -7554,6 +7621,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		                      is_mutable,
 		                      is_in_gscope,
 		                      entity->data.decl_entity.flags);
+
 		cnt->ast.current_entity_id = NULL;
 
 		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
@@ -8306,6 +8374,7 @@ init_builtins(Context *cnt)
 		bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
 		bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
 
+		/* Provide types into global scope */
 		provide_builtin_type(cnt, bt->entry_type);
 		provide_builtin_type(cnt, bt->entry_s8);
 		provide_builtin_type(cnt, bt->entry_s16);
@@ -8320,10 +8389,6 @@ init_builtins(Context *cnt)
 		provide_builtin_type(cnt, bt->entry_f32);
 		provide_builtin_type(cnt, bt->entry_f64);
 		provide_builtin_type(cnt, bt->entry_string);
-	}
-
-	/* Init type info array */
-	{
 	}
 }
 
