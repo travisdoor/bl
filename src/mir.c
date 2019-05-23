@@ -148,6 +148,7 @@ union _MirInstr {
 	MirInstrCompound    init;
 	MirInstrVArgs       vargs;
 	MirInstrTypeInfo    type_info;
+	MirInstrTypeKind    type_kind;
 	MirInstrPhi         phi;
 };
 
@@ -315,6 +316,9 @@ provide_symbol(Context *      cnt,
                bool           is_builtin,
                bool           notify);
 
+static MirType *
+lookup_provided_type(Context *cnt, ID *id);
+
 /* ctors */
 static bool
 create_type(Context *cnt, MirType **out_type, const char *sh);
@@ -447,6 +451,9 @@ append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
 append_instr_alignof(Context *cnt, Ast *node, MirInstr *expr);
+
+static MirInstr *
+append_instr_type_kind(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
 create_instr_elem_ptr(Context * cnt,
@@ -677,6 +684,9 @@ static MirInstr *
 ast_expr_type_info(Context *cnt, Ast *type_info);
 
 static MirInstr *
+ast_expr_type_kind(Context *cnt, Ast *type_kind);
+
+static MirInstr *
 ast_expr_alignof(Context *cnt, Ast *szof);
 
 static MirInstr *
@@ -836,6 +846,9 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 
 static uint64_t
 analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+
+static uint64_t
+analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind);
 
 static uint64_t
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
@@ -1710,12 +1723,29 @@ provide_symbol(Context *      cnt,
 	entry->data = data;
 	scope_insert(scope, entry);
 
-	if (is_builtin) {
-		bl_log("provide builtin: '%s'", id->str);
-	}
-
 	if (notify) analyze_notify_provided(cnt, id->hash);
 	return entry;
+}
+
+MirType *
+lookup_provided_type(Context *cnt, ID *id)
+{
+	Scope *     gscope = cnt->assembly->gscope;
+	ScopeEntry *found  = scope_lookup(gscope, id, true);
+	assert(found && "Symbol not found -> wait/error");
+	assert(found->kind == SCOPE_ENTRY_VAR);
+
+	MirVar *var = found->data.var;
+
+	if (!is_flag(var->flags, FLAG_COMPILER))
+		bl_abort("Internally used symbol '%s' declared without '#compiler' flag!",
+		         var->llvm_name);
+
+	assert(var);
+	assert(var->comptime && var->alloc_type->kind == MIR_TYPE_TYPE);
+	assert(var->value->data.v_type);
+
+	return var->value->data.v_type;
 }
 
 MirType *
@@ -2423,6 +2453,18 @@ append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 {
 	ref_instr(expr);
 	MirInstrTypeInfo *tmp = create_instr(cnt, MIR_INSTR_TYPE_INFO, node, MirInstrTypeInfo *);
+	tmp->expr             = expr;
+
+	push_into_curr_block(cnt, &tmp->base);
+	return &tmp->base;
+}
+
+MirInstr *
+append_instr_type_kind(Context *cnt, Ast *node, MirInstr *expr)
+{
+	ref_instr(expr);
+	MirInstrTypeKind *tmp = create_instr(cnt, MIR_INSTR_TYPE_KIND, node, MirInstrTypeKind *);
+	tmp->base.comptime    = true;
 	tmp->expr             = expr;
 
 	push_into_curr_block(cnt, &tmp->base);
@@ -3209,6 +3251,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
+	case MIR_INSTR_TYPE_KIND:
 	case MIR_INSTR_MEMBER_PTR: {
 		erase_instr(instr);
 		break;
@@ -3928,27 +3971,34 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	}
 
 	/* Resolve TypeInfo struct type */
-	MirType *ret_type = NULL;
+	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
+	ret_type          = create_type_ptr(cnt, ret_type);
 
-	{
-		Scope *     gscope = cnt->assembly->gscope;
-		ID *        id     = &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO];
-		ScopeEntry *found  = scope_lookup(gscope, id, true);
-		assert(found && "TypeInfo base struct not found! This should be an error, you must "
-		                "to load 'core.bl'.");
-		assert(found->kind == SCOPE_ENTRY_VAR);
+	type_info->base.const_value.type = ret_type;
 
-		MirVar *var = found->data.var;
-		assert(var);
-		assert(var->comptime && var->alloc_type->kind == MIR_TYPE_TYPE);
+	return ANALYZE_PASSED;
+}
 
-		ret_type = var->value->data.v_type;
-		assert(ret_type && ret_type->kind == MIR_TYPE_STRUCT);
-		ret_type = create_type_ptr(cnt, ret_type);
+uint64_t
+analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind)
+{
+	assert(type_kind->expr);
+	type_kind->expr = insert_instr_load_if_needed(cnt, type_kind->expr);
+	reduce_instr(cnt, type_kind->expr);
+
+	MirType *type = type_kind->expr->const_value.type;
+	assert(type);
+
+	if (type->kind == MIR_TYPE_TYPE) {
+		type = type_kind->expr->const_value.data.v_type;
+		assert(type);
 	}
 
-	assert(ret_type);
-	type_info->base.const_value.type = ret_type;
+	/* Resolve TypeKind struct type */
+	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
+	type_kind->base.const_value.type = ret_type;
+
+	type_kind->base.const_value.data.v_s32 = type->kind;
 
 	return ANALYZE_PASSED;
 }
@@ -5184,6 +5234,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TYPE_INFO:
 		state = analyze_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
+		break;
+	case MIR_INSTR_TYPE_KIND:
+		state = analyze_instr_type_kind(cnt, (MirInstrTypeKind *)instr);
 		break;
 	case MIR_INSTR_PHI:
 		state = analyze_instr_phi(cnt, (MirInstrPhi *)instr);
@@ -7103,6 +7156,16 @@ ast_expr_type_info(Context *cnt, Ast *type_info)
 }
 
 MirInstr *
+ast_expr_type_kind(Context *cnt, Ast *type_kind)
+{
+	Ast *ast_node = type_kind->data.expr_type_kind.node;
+	assert(ast_node);
+
+	MirInstr *expr = ast(cnt, ast_node);
+	return append_instr_type_kind(cnt, type_kind, expr);
+}
+
+MirInstr *
 ast_expr_alignof(Context *cnt, Ast *szof)
 {
 	Ast *ast_node = szof->data.expr_alignof.node;
@@ -7853,6 +7916,8 @@ ast(Context *cnt, Ast *node)
 		return ast_expr_compound(cnt, node);
 	case AST_EXPR_TYPE_INFO:
 		return ast_expr_type_info(cnt, node);
+	case AST_EXPR_TYPE_KIND:
+		return ast_expr_type_kind(cnt, node);
 
 	case AST_LOAD:
 	case AST_LINK:
@@ -7933,6 +7998,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrVArgs";
 	case MIR_INSTR_TYPE_INFO:
 		return "InstrTypeInfo";
+	case MIR_INSTR_TYPE_KIND:
+		return "InstrTypeKind";
 	case MIR_INSTR_PHI:
 		return "InstrPhi";
 	case MIR_INSTR_TYPE_ENUM:

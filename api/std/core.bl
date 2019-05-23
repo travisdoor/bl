@@ -31,7 +31,17 @@
 
 // Type info
 TypeKind :: enum #compiler {
-    Int  :: 4,
+    Type   :: 1,
+    Void   :: 2,
+    Int    :: 3,
+    Real   :: 4,
+    Fn     :: 5,
+    Ptr    :: 6,
+    Bool   :: 7,
+    Array  :: 8,
+    Struct :: 9,
+    Enum   :: 10,
+    Null   :: 11,
 };
 
 TypeInfo :: struct #compiler {

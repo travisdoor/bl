@@ -422,6 +422,18 @@
    #+BEGIN_EXAMPLE
    usize alignof <expr|type> // yields alignment of input
    #+END_EXAMPLE
+** typeinfo 
+   Determinates TypeInfo related to expresion or type in compile time.
+
+   #+BEGIN_EXAMPLE
+   TypeInfo *typeinfo <expr|type> // yields pointer to TypeInfo element 
+   #+END_EXAMPLE
+** typekind
+   Determinates TypeKind related to expresion or type in compile time.
+
+   #+BEGIN_EXAMPLE
+   TypeKind typekind <expr|type> // yields TypeKind constant 
+   #+END_EXAMPLE
 ** compound 
    Compound initializer is group of data, it can act like a contant value. Naked, non-contant compound initializer can produce temporary allocation.
 

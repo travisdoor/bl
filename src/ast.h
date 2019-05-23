@@ -83,6 +83,7 @@ typedef enum {
 	AST_EXPR_ALIGNOF,
 	AST_EXPR_TYPEOF,
 	AST_EXPR_TYPE_INFO,
+	AST_EXPR_TYPE_KIND,
 	AST_EXPR_UNARY,
 	AST_EXPR_NULL,
 	AST_EXPR_ADDROF,
@@ -328,11 +329,11 @@ struct AstExprTypeInfo {
 	Ast *node;
 };
 
-struct AstExprAlignof {
+struct AstExprTypeKind {
 	Ast *node;
 };
 
-struct AstExprTypeof {
+struct AstExprAlignof {
 	Ast *node;
 };
 
@@ -394,8 +395,8 @@ struct Ast {
 		struct AstExprElem      expr_elem;
 		struct AstExprSizeof    expr_sizeof;
 		struct AstExprTypeInfo  expr_type_info;
+		struct AstExprTypeKind  expr_type_kind;
 		struct AstExprAlignof   expr_alignof;
-		struct AstExprTypeof    expr_typeof;
 		struct AstExprUnary     expr_unary;
 		struct AstExprAddrOf    expr_addrof;
 		struct AstExprDeref     expr_deref;

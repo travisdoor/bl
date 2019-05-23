@@ -106,10 +106,12 @@
    #+END_EXAMPLE
    
 *** Special
-   | Symbol  | Relevant for types | Description                     |
-   |---------+--------------------+---------------------------------|
-   | sizeof  | Any                | Determinates size in bytes.     |
-   | alignof | Any                | Determinates alignment of type. |
+   | Symbol   | Relevant for types | Description                     |
+   |----------+--------------------+---------------------------------|
+   | sizeof   | Any                | Determinates size in bytes.     |
+   | alignof  | Any                | Determinates alignment of type. |
+   | typeinfo | Any                | Determinates TypeInfo of type.  |
+   | typekind | Any                | Determinates TypeKind of type.  |
 
     Example:
     #+INCLUDE: "../tests/src/examples/special_op.bl" src bl -n

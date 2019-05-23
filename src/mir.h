@@ -85,6 +85,7 @@ typedef struct MirInstrAlignof     MirInstrAlignof;
 typedef struct MirInstrCompound    MirInstrCompound;
 typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
+typedef struct MirInstrTypeKind    MirInstrTypeKind;
 typedef struct MirInstrPhi         MirInstrPhi;
 
 typedef enum MirTypeKind         MirTypeKind;
@@ -389,6 +390,7 @@ enum MirInstrKind {
 	MIR_INSTR_COMPOUND,
 	MIR_INSTR_VARGS,
 	MIR_INSTR_TYPE_INFO,
+	MIR_INSTR_TYPE_KIND,
 	MIR_INSTR_PHI,
 };
 
@@ -658,6 +660,12 @@ struct MirInstrTypeInfo {
 
 	/* pointer to the type of expression */
 	MirType * expr_type;
+	MirInstr *expr;
+};
+
+struct MirInstrTypeKind {
+	MirInstr base;
+
 	MirInstr *expr;
 };
 

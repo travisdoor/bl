@@ -249,6 +249,9 @@ static void
 print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream);
 
 static void
+print_instr_type_kind(MirInstrTypeKind *type_kind, FILE *stream);
+
+static void
 print_instr_alignof(MirInstrAlignof *szof, FILE *stream);
 
 static void
@@ -586,6 +589,13 @@ print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
 	print_instr_head(&type_info->base, stream, "typeinfo");
 	print_comptime_value_or_id(type_info->expr, stream);
 	fprintf(stream, " // type_hash = %llu", (unsigned long long)type_info->expr_type->id.hash);
+}
+
+void
+print_instr_type_kind(MirInstrTypeKind *type_kind, FILE *stream)
+{
+	print_instr_head(&type_kind->base, stream, "typekind");
+	print_comptime_value_or_id(type_kind->expr, stream);
 }
 
 void
@@ -992,6 +1002,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_TYPE_INFO:
 		print_instr_type_info((MirInstrTypeInfo *)instr, stream);
+		break;
+	case MIR_INSTR_TYPE_KIND:
+		print_instr_type_kind((MirInstrTypeKind *)instr, stream);
 		break;
 	case MIR_INSTR_PHI:
 		print_instr_phi((MirInstrPhi *)instr, stream);

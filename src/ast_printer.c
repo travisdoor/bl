@@ -143,6 +143,15 @@ static void
 print_expr_addrof(Ast *addrof, int32_t pad, FILE *stream);
 
 static void
+print_expr_sizeof(Ast *szof, int32_t pad, FILE *stream);
+
+static void
+print_expr_type_kind(Ast *type_kind, int32_t pad, FILE *stream);
+
+static void
+print_expr_type_info(Ast *type_info, int32_t pad, FILE *stream);
+
+static void
 print_expr_deref(Ast *deref, int32_t pad, FILE *stream);
 
 static void
@@ -368,6 +377,27 @@ print_expr_addrof(Ast *addrof, int32_t pad, FILE *stream)
 {
 	print_head(addrof, pad, stream);
 	print_node(addrof->data.expr_addrof.next, pad + 1, stream);
+}
+
+void
+print_expr_sizeof(Ast *szof, int32_t pad, FILE *stream)
+{
+	print_head(szof, pad, stream);
+	print_node(szof->data.expr_sizeof.node, pad + 1, stream);
+}
+
+void
+print_expr_type_info(Ast *type_info, int32_t pad, FILE *stream)
+{
+	print_head(type_info, pad, stream);
+	print_node(type_info->data.expr_type_info.node, pad + 1, stream);
+}
+
+void
+print_expr_type_kind(Ast *type_kind, int32_t pad, FILE *stream)
+{
+	print_head(type_kind, pad, stream);
+	print_node(type_kind->data.expr_type_kind.node, pad + 1, stream);
 }
 
 void
@@ -601,9 +631,15 @@ print_node(Ast *node, int32_t pad, FILE *stream)
 		break;
 
 	case AST_EXPR_SIZEOF:
+		print_expr_sizeof(node, pad, stream);
 		break;
 
-	case AST_EXPR_TYPEOF:
+	case AST_EXPR_TYPE_KIND:
+		print_expr_type_kind(node, pad, stream);
+		break;
+
+	case AST_EXPR_TYPE_INFO:
+		print_expr_type_info(node, pad, stream);
 		break;
 
 	case AST_EXPR_UNARY:
