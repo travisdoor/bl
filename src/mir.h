@@ -142,7 +142,7 @@ struct MirArenas {
 
 struct MirModule {
 	struct MirArenas     arenas;
-	BArray *             globals;
+	BArray *             global_instrs;
 	LLVMModuleRef        llvm_module;
 	LLVMContextRef       llvm_cnt;
 	LLVMTargetDataRef    llvm_td;

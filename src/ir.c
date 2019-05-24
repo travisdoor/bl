@@ -1299,7 +1299,7 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 
 	MirInstr *ginstr;
-	barray_foreach(assembly->mir_module->globals, ginstr)
+	barray_foreach(assembly->mir_module->global_instrs, ginstr)
 	{
 		gen_instr(&cnt, ginstr);
 	}

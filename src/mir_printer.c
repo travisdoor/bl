@@ -1027,5 +1027,5 @@ mir_print_module(MirModule *module, FILE *stream)
 {
 	assert(module);
 	MirInstr *instr;
-	barray_foreach(module->globals, instr) mir_print_instr(instr, stream);
+	barray_foreach(module->global_instrs, instr) mir_print_instr(instr, stream);
 }

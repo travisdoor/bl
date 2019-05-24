@@ -1023,8 +1023,8 @@ static inline void
 push_into_gscope(Context *cnt, MirInstr *instr)
 {
 	assert(instr);
-	instr->id = bo_array_size(cnt->module->globals);
-	bo_array_push_back(cnt->module->globals, instr);
+	instr->id = bo_array_size(cnt->module->global_instrs);
+	bo_array_push_back(cnt->module->global_instrs, instr);
 };
 
 static inline void
@@ -5354,7 +5354,7 @@ analyze(Context *cnt)
 {
 	if (cnt->analyze.verbose_pre) {
 		MirInstr *instr;
-		BArray *  globals = cnt->module->globals;
+		BArray *  globals = cnt->module->global_instrs;
 		barray_foreach(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
@@ -5440,7 +5440,7 @@ analyze(Context *cnt)
 
 	if (cnt->analyze.verbose_post) {
 		MirInstr *instr;
-		BArray *  globals = cnt->module->globals;
+		BArray *  globals = cnt->module->global_instrs;
 		barray_foreach(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
@@ -8436,7 +8436,7 @@ mir_new_module(const char *name)
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
 	LLVMSetTarget(llvm_module, triple);
 
-	tmp->globals     = bo_array_new(sizeof(MirInstr *));
+	tmp->global_instrs     = bo_array_new(sizeof(MirInstr *));
 	tmp->llvm_cnt    = llvm_context;
 	tmp->llvm_module = llvm_module;
 	tmp->llvm_tm     = llvm_tm;
@@ -8449,7 +8449,7 @@ void
 mir_delete_module(MirModule *module)
 {
 	if (!module) return;
-	bo_unref(module->globals);
+	bo_unref(module->global_instrs);
 
 	arenas_terminate(&module->arenas);
 
