@@ -1952,6 +1952,22 @@ create_type_string(Context *cnt)
 	return tmp;
 }
 
+static inline void
+_push_var_into_module(Context *cnt, MirVar *var)
+{
+	/* Push into globals or locals of function. For local variables current function must be
+	 * set. */
+
+	assert(var);
+	if (var->is_in_gscope) {
+		bo_array_push_back(cnt->module->global_vars, var);
+	} else {
+		MirFn *fn = get_current_fn(cnt);
+		assert(fn);
+		bo_array_push_back(fn->variables, var);
+	}
+}
+
 MirVar *
 create_var(Context *      cnt,
            Ast *          decl_node,
@@ -1974,6 +1990,10 @@ create_var(Context *      cnt,
 	tmp->is_in_gscope = is_in_gscope;
 	tmp->llvm_name    = id->str;
 	tmp->flags        = flags;
+	tmp->gen_llvm     = true;
+
+	_push_var_into_module(cnt, tmp);
+
 	return tmp;
 }
 
@@ -1993,6 +2013,10 @@ create_var_impl(Context *      cnt,
 	tmp->is_in_gscope = is_in_gscope;
 	tmp->llvm_name    = name;
 	tmp->is_implicit  = true;
+	tmp->gen_llvm     = true;
+
+	_push_var_into_module(cnt, tmp);
+
 	return tmp;
 }
 
@@ -3130,11 +3154,13 @@ gen_type_RTTI(Context *cnt, MirType *type)
 {
 	MirVar *var = NULL;
 
+#if 0
 	{ /* DEBUG */
 		char type_name[256];
 		mir_type_to_str(type_name, 256, type, true);
 		bl_log("generate RTTI entry for " BLUE("%s"), type_name);
 	}
+#endif
 
 	{ /* TEST: we generate TypeInfo struct only */
 		const char *var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
@@ -3600,11 +3626,9 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		cmp->base.const_value.type = create_type_ptr(cnt, type);
 		cmp->base.comptime         = false;
 
-		MirFn *     fn       = get_current_fn(cnt);
 		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
 		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, NULL, true, false);
-		bo_array_push_back(fn->variables, tmp_var);
-		cmp->tmp_var = tmp_var;
+		cmp->tmp_var         = tmp_var;
 	} else {
 		cmp->base.const_value.type = type;
 		cmp->base.comptime         = comptime;
@@ -3624,20 +3648,17 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
 	const size_t valc = bo_array_size(values);
 
-	MirFn *fn = get_current_fn(cnt);
 	if (valc > 0) {
 		/* Prepare tmp array for values */
 		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP_ARR);
 		MirType *   tmp_type = create_type_array(cnt, vargs->type, valc);
 		vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, NULL, true, false);
-		bo_array_push_back(fn->variables, vargs->arr_tmp);
 	}
 
 	{
 		/* Prepare tmp slice for vargs */
 		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP);
 		vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, NULL, true, false);
-		bo_array_push_back(fn->variables, vargs->vargs_tmp);
 	}
 
 	MirInstr **value;
@@ -4031,11 +4052,14 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	}
 
 	type_info->expr_type = type;
+
+#if 0
 	{
 		char type_name[256];
 		mir_type_to_str(type_name, 256, type, true);
 		bl_log("get type info of " BLUE("%s"), type_name);
 	}
+#endif
 
 	/* Resolve TypeInfo struct type */
 	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
@@ -4933,7 +4957,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	provide_var(cnt, decl->var);
 
 	/* Type declaration should not be generated in LLVM. */
-	const bool gen_llvm = var->alloc_type->kind != MIR_TYPE_TYPE;
+	var->gen_llvm = var->alloc_type->kind != MIR_TYPE_TYPE;
 
 	if (var->is_in_gscope) {
 		/* Global varibales which are not compile time constants are allocated
@@ -4949,13 +4973,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			/* Initialize data. */
 			exec_instr_decl_var(cnt, decl);
 		}
-	} else if (gen_llvm) {
-		/* store variable into current function (due alloca-first generation
-		 * pass in LLVM)
-		 */
-		MirFn *fn = decl->base.owner_block->owner_fn;
-		assert(fn);
-		bo_array_push_back(fn->variables, var);
 	}
 
 	return ANALYZE_PASSED;
@@ -8436,12 +8453,13 @@ mir_new_module(const char *name)
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
 	LLVMSetTarget(llvm_module, triple);
 
-	tmp->global_instrs     = bo_array_new(sizeof(MirInstr *));
-	tmp->llvm_cnt    = llvm_context;
-	tmp->llvm_module = llvm_module;
-	tmp->llvm_tm     = llvm_tm;
-	tmp->llvm_td     = llvm_td;
-	tmp->llvm_triple = triple;
+	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
+	tmp->global_vars   = bo_array_new(sizeof(MirVar *));
+	tmp->llvm_cnt      = llvm_context;
+	tmp->llvm_module   = llvm_module;
+	tmp->llvm_tm       = llvm_tm;
+	tmp->llvm_td       = llvm_td;
+	tmp->llvm_triple   = triple;
 	return tmp;
 }
 
@@ -8450,6 +8468,7 @@ mir_delete_module(MirModule *module)
 {
 	if (!module) return;
 	bo_unref(module->global_instrs);
+	bo_unref(module->global_vars);
 
 	arenas_terminate(&module->arenas);
 
@@ -8498,6 +8517,16 @@ mir_run(Builder *builder, Assembly *assembly)
 	if (builder->errorc) goto ERROR;
 
 	gen_type_table(&cnt);
+
+	{ /* print out all global variables */
+		MirVar *var;
+		barray_foreach(cnt.module->global_vars, var)
+		{
+			char type_name[256];
+			mir_type_to_str(type_name, 256, var->alloc_type, true);
+			bl_log("global variable %s : %s", var->llvm_name, type_name);
+		}
+	}
 
 	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
 	if (is_flag(builder->flags, BUILDER_RUN)) execute_entry_fn(&cnt);

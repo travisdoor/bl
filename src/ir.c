@@ -1160,6 +1160,8 @@ gen_allocas(Context *cnt, MirFn *fn)
 	{
 		assert(var);
 
+		if (!var->gen_llvm) continue;
+
 #if NAMED_VARS
 		var_name = var->llvm_name;
 #else
@@ -1168,6 +1170,7 @@ gen_allocas(Context *cnt, MirFn *fn)
 
 		var_type      = var->alloc_type->llvm_type;
 		var_alignment = (unsigned int)var->alloc_type->alignment;
+			
 		assert(var_type);
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);

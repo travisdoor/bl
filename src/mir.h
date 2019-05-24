@@ -143,6 +143,7 @@ struct MirArenas {
 struct MirModule {
 	struct MirArenas     arenas;
 	BArray *             global_instrs;
+	BArray *             global_vars;
 	LLVMModuleRef        llvm_module;
 	LLVMContextRef       llvm_cnt;
 	LLVMTargetDataRef    llvm_td;
@@ -348,6 +349,7 @@ struct MirVar {
 	bool     comptime;
 	bool     is_in_gscope;
 	bool     is_implicit;
+	bool     gen_llvm;
 	uint32_t flags;
 
 	MirConstValue *     value;
