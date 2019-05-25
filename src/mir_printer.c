@@ -76,7 +76,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 {
 	MirType *          type = value->type;
 	MirConstValueData *data = &value->data;
-	assert(type);
+	if (!type) return;
 
 #define print_case(format, T)                                                                      \
 	case sizeof(data->T):                                                                      \
@@ -480,6 +480,7 @@ void
 print_instr_type_vargs(MirInstrTypeVArgs *type_vargs, FILE *stream)
 {
 	print_instr_head(&type_vargs->base, stream, "const");
+	if (!type_vargs->elem_type) return;
 	fprintf(stream, "...%%%llu", (unsigned long long)type_vargs->elem_type->id);
 }
 
@@ -588,7 +589,6 @@ print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
 {
 	print_instr_head(&type_info->base, stream, "typeinfo");
 	print_comptime_value_or_id(type_info->expr, stream);
-	fprintf(stream, " // type_hash = %llu", (unsigned long long)type_info->expr_type->id.hash);
 }
 
 void

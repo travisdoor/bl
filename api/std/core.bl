@@ -46,8 +46,6 @@ TypeKind :: enum #compiler {
 
 TypeInfo :: struct #compiler {
     kind: TypeKind,
-    size: usize,
-    alignment: s32
 };
 
 TypeInfoType :: struct #compiler {
@@ -60,7 +58,7 @@ TypeInfoVoid :: struct #compiler {
 
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    signed: bool
+    signed: bool,
 };
 
 TypeInfoReal :: struct #compiler {
@@ -99,7 +97,6 @@ TypeInfoEnum :: struct #compiler {
 TypeInfoNull :: struct #compiler {
     base: TypeInfo,
 };
-
 
 
 Any :: struct #compiler {

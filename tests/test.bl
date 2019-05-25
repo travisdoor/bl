@@ -3,20 +3,6 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    i := typeinfo(s32);
-    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
-
-    i = typeinfo(main);
-    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
-
-    Foo :: struct {
-        i: s32,
-        j: s32
-    };
-    
-    i = typeinfo(Foo);
-    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
-
     num1 := 666;
     tmp1 := {:Any: typeinfo(s32), cast(*u8) &num1};
 
@@ -28,7 +14,7 @@ main :: fn () s32 {
     return 0;
 };
 
-test_print :: fn (format: string, args: ...Any)
+test_print :: fn (format: string, args: ...)
 {
     tmp := {:string: 0, format.ptr }; 
     argi := 0;

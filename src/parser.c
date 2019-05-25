@@ -1493,7 +1493,6 @@ parse_type_vargs(Context *cnt)
 
 	Ast *ptr                = ast_create_node(cnt->ast_arena, AST_TYPE_VARGS, tok_begin);
 	ptr->data.type_ptr.type = parse_type(cnt);
-	assert(ptr->data.type_ptr.type);
 	return ptr;
 }
 
