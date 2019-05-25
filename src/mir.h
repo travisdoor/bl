@@ -268,7 +268,7 @@ struct MirType {
 	 * is the way RTTI is implemented in bl.
 	 */
 	struct {
-		MirStackPtr  exec_ptr;
+		MirVar *     exec_var;
 		LLVMValueRef llvm_ptr;
 	} rtti;
 

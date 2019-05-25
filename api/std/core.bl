@@ -45,14 +45,62 @@ TypeKind :: enum #compiler {
 };
 
 TypeInfo :: struct #compiler {
-    kind: TypeKind 
+    kind: TypeKind,
+    size: usize,
+    alignment: s32
+};
+
+TypeInfoType :: struct #compiler {
+    base: TypeInfo
+};
+
+TypeInfoVoid :: struct #compiler {
+    base: TypeInfo
 };
 
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32,
     signed: bool
 };
+
+TypeInfoReal :: struct #compiler {
+    base: TypeInfo
+};
+
+TypeInfoFn :: struct #compiler {
+    base: TypeInfo
+};
+
+TypeInfoPtr :: struct #compiler {
+    base: TypeInfo,
+    pointed: *TypeInfo
+};
+
+TypeInfoBool :: struct #compiler {
+    base: TypeInfo,
+};
+
+TypeInfoArray :: struct #compiler {
+    base: TypeInfo,
+    elem_type: *TypeInfo,
+    elem_count: usize
+};
+
+TypeInfoStruct :: struct #compiler {
+    base: TypeInfo,
+    members: []*TypeInfo
+};
+
+TypeInfoEnum :: struct #compiler {
+    base: TypeInfo,
+    base_type: *TypeInfo
+};
+
+TypeInfoNull :: struct #compiler {
+    base: TypeInfo,
+};
+
+
 
 Any :: struct #compiler {
     type_info: *TypeInfo,

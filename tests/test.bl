@@ -3,41 +3,64 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    //i := typeinfo(s32);
-    kind := typekind(s32);
+    i := typeinfo(s32);
+    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
 
-    if kind == TypeKind.Int {
-        print("type is Int\n");
-    } else {
-        print("type is not Int\n");
-    }
+    i = typeinfo(main);
+    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
 
+    Foo :: struct {
+        i: s32,
+        j: s32
+    };
+    
+    i = typeinfo(Foo);
+    print("{kind = %, size = %B, alignment = %}\n", cast(s32) i.kind, i.size, i.alignment);
+
+    num1 := 666;
+    tmp1 := {:Any: typeinfo(s32), cast(*u8) &num1};
+
+    num2 := 0.015;
+    tmp2 := {:Any: typeinfo(f64), cast(*u8) &num2};
+    
+    test_print("Int = %, Float = %\n", tmp1, tmp2);
+    
     return 0;
 };
 
-/*
-load     - global scope
-link     - global scope
-test     - global, local scope
-extern   - before body
-compiler - before body
+test_print :: fn (format: string, args: ...Any)
+{
+    tmp := {:string: 0, format.ptr }; 
+    argi := 0;
 
-'type'
-'s8'
-'s16'
-'s32'
-'s64'
-'u8'
-'u16'
-'u32'
-'u64'
-'usize'
-'bool'
-'f32'
-'f64'
-'string'
-'TypeKind'
-'TypeInfo'
-'TypeInfoInt'
-'Any'
-*/
+    loop i := 0; i < format.len; i += 1 {
+        c := format[i];
+
+        if c == '%' {
+            print_string(tmp);
+            if argi < args.len {
+                arg_kind := args[argi].type_info.kind;
+                data := args[argi].data;
+                
+                if arg_kind == TypeKind.Int {
+                    print_s64(^cast(*s64) data); 
+                } else if arg_kind == TypeKind.Real {
+                    print_f64(^cast(*f64) data); 
+                }
+                
+                argi += 1;
+            } else {
+                print_string("(null)");
+            }
+
+            tmp.len = 0;
+            if i + 1 < format.len {
+                tmp.ptr = &format[i + 1];
+            }
+        } else {
+            tmp.len += 1;
+        }
+    }
+
+    if tmp.len > 0 { print_string(tmp); }
+};
