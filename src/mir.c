@@ -224,7 +224,17 @@ typedef struct {
 		/* These are set in gen_type_table procedure after analyze pass. */
 		MirType *entry_TypeKind;
 		MirType *entry_TypeInfo;
+		MirType *entry_TypeInfoType;
+		MirType *entry_TypeInfoVoid;
 		MirType *entry_TypeInfoInt;
+		MirType *entry_TypeInfoReal;
+		MirType *entry_TypeInfoFn;
+		MirType *entry_TypeInfoPtr;
+		MirType *entry_TypeInfoBool;
+		MirType *entry_TypeInfoArray;
+		MirType *entry_TypeInfoStruct;
+		MirType *entry_TypeInfoEnum;
+		MirType *entry_TypeInfoNull;
 
 		/* PROVIDED END */
 
@@ -233,6 +243,7 @@ typedef struct {
 		MirType *entry_u8_ptr;
 		MirType *entry_resolve_type_fn;
 		MirType *entry_test_case_fn;
+		MirType *entry_TypeInfo_ptr;
 		/* OTHER END */
 	} builtin_types;
 } Context;
@@ -254,29 +265,39 @@ typedef enum {
  * later. */
 // clang-format off
 static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
-    {.str = "type",     .hash = 0},
-    {.str = "s8",       .hash = 0},
-    {.str = "s16",      .hash = 0},
-    {.str = "s32",      .hash = 0},
-    {.str = "s64",      .hash = 0},
-    {.str = "u8",       .hash = 0},
-    {.str = "u16",      .hash = 0},
-    {.str = "u32",      .hash = 0},
-    {.str = "u64",      .hash = 0},
-    {.str = "usize",    .hash = 0},
-    {.str = "bool",     .hash = 0},
-    {.str = "f32",      .hash = 0},
-    {.str = "f64",      .hash = 0},
-    {.str = "void",     .hash = 0},
-    {.str = "string",   .hash = 0},
-    {.str = "null_t",   .hash = 0},
-    {.str = "main",     .hash = 0},
-    {.str = "len",      .hash = 0},
-    {.str = "ptr",      .hash = 0},
-    {.str = "Any",      .hash = 0},
-    {.str = "TypeKind", .hash = 0},
-    {.str = "TypeInfo", .hash = 0},
-    {.str = "TypeInfoInt",  .hash = 0},
+    {.str = "type",           .hash = 0},
+    {.str = "s8",             .hash = 0},
+    {.str = "s16",            .hash = 0},
+    {.str = "s32",            .hash = 0},
+    {.str = "s64",            .hash = 0},
+    {.str = "u8",             .hash = 0},
+    {.str = "u16",            .hash = 0},
+    {.str = "u32",            .hash = 0},
+    {.str = "u64",            .hash = 0},
+    {.str = "usize",          .hash = 0},
+    {.str = "bool",           .hash = 0},
+    {.str = "f32",            .hash = 0},
+    {.str = "f64",            .hash = 0},
+    {.str = "void",           .hash = 0},
+    {.str = "string",         .hash = 0},
+    {.str = "null_t",         .hash = 0},
+    {.str = "main",           .hash = 0},
+    {.str = "len",            .hash = 0},
+    {.str = "ptr",            .hash = 0},
+    {.str = "Any",            .hash = 0},
+    {.str = "TypeKind",       .hash = 0},
+    {.str = "TypeInfo",       .hash = 0},
+    {.str = "TypeInfoType",   .hash = 0},
+    {.str = "TypeInfoVoid",   .hash = 0},
+    {.str = "TypeInfoInt",    .hash = 0},
+    {.str = "TypeInfoReal",   .hash = 0},
+    {.str = "TypeInfoFn",     .hash = 0},
+    {.str = "TypeInfoPtr",    .hash = 0},
+    {.str = "TypeInfoBool",   .hash = 0},
+    {.str = "TypeInfoArray",  .hash = 0},
+    {.str = "TypeInfoStruct", .hash = 0},
+    {.str = "TypeInfoEnum",   .hash = 0},
+    {.str = "TypeInfoNull",   .hash = 0},
 };
 // clang-format on
 
@@ -874,7 +895,7 @@ analyze_report_unresolved(Context *cnt);
 static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
-static void
+static MirVar *
 exec_gen_type_RTTI(Context *cnt, MirType *type);
 
 static void
@@ -1744,7 +1765,7 @@ lookup_provided_type(Context *cnt, ID *id)
 	ScopeEntry *found  = scope_lookup(gscope, id, true);
 
 	if (!found) return NULL;
-	
+
 	assert(found->kind == SCOPE_ENTRY_VAR);
 
 	MirVar *var = found->data.var;
@@ -1959,9 +1980,7 @@ _push_var_into_module(Context *cnt, MirVar *var)
 	 * set. */
 
 	assert(var);
-	if (var->is_in_gscope) {
-		bo_array_push_back(cnt->module->global_vars, var);
-	} else {
+	if (!var->is_in_gscope) {
 		MirFn *fn = get_current_fn(cnt);
 		assert(fn);
 		bo_array_push_back(fn->variables, var);
@@ -3151,7 +3170,6 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		bl_unimplemented;
 	}
 }
-
 
 bool
 type_cmp(MirType *first, MirType *second)
@@ -5551,57 +5569,124 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 	}
 }
 
-void
+static inline MirType *
+_get_RTTI_type(Context *cnt, MirTypeKind kind)
+{
+	switch (kind) {
+	case MIR_TYPE_TYPE:
+		return cnt->builtin_types.entry_TypeInfoType;
+	case MIR_TYPE_VOID:
+		return cnt->builtin_types.entry_TypeInfoVoid;
+	case MIR_TYPE_INT:
+		return cnt->builtin_types.entry_TypeInfoInt;
+	case MIR_TYPE_REAL:
+		return cnt->builtin_types.entry_TypeInfoReal;
+	case MIR_TYPE_FN:
+		return cnt->builtin_types.entry_TypeInfoFn;
+	case MIR_TYPE_PTR:
+		return cnt->builtin_types.entry_TypeInfoPtr;
+	case MIR_TYPE_BOOL:
+		return cnt->builtin_types.entry_TypeInfoBool;
+	case MIR_TYPE_ARRAY:
+		return cnt->builtin_types.entry_TypeInfoArray;
+	case MIR_TYPE_STRUCT:
+		return cnt->builtin_types.entry_TypeInfoStruct;
+	case MIR_TYPE_ENUM:
+		return cnt->builtin_types.entry_TypeInfoEnum;
+	case MIR_TYPE_NULL:
+		return cnt->builtin_types.entry_TypeInfoNull;
+	default:
+		bl_abort("Missing type info user type.");
+	}
+}
+
+MirVar *
 exec_gen_type_RTTI(Context *cnt, MirType *type)
 {
-	MirVar *var = NULL;
-#if 0
-	{ /* DEBUG */
-		char type_name[256];
-		mir_type_to_str(type_name, 256, type, true);
-		bl_log("generate RTTI entry for " BLUE("%s"), type_name);
+	assert(type);
+	if (type->rtti_var) return type->rtti_var;
+
+	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
+	assert(rtti_type);
+
+	MirConstValue *rtti_value = create_value(cnt, rtti_type);
+	rtti_value->addr_mode     = MIR_VAM_LVALUE_CONST;
+	const char *var_name      = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+
+	MirVar *rtti_var =
+	    create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, false);
+
+	/* set base TypeInfo data */
+	BArray *members = create_arr(cnt, sizeof(MirConstValue *));
+
+	MirConstValue *tmp;
+	{ /* Build TypeInfo entry members. */
+		/* .kind */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_TypeKind);
+		tmp->data.v_s32 = type->kind;
+		bo_array_push_back(members, tmp);
 	}
-#endif
 
-	{ /* TEST: we generate TypeInfo struct only */
-		MirConstValue *value = create_value(cnt, cnt->builtin_types.entry_TypeInfo);
-		value->addr_mode     = MIR_VAM_LVALUE_CONST;
-
-		/* Setup value structure */
-		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
-
-		{ /* Build TypeInfo entry members. */
-			MirConstValue *tmp;
-			/* .kind */
-			tmp             = create_value(cnt, cnt->builtin_types.entry_TypeKind);
-			tmp->data.v_s32 = type->kind;
-			bo_array_push_back(members, tmp);
-		}
-
-		value->data.v_struct.members = members;
-
-		const char *var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
-
-		var = create_var_impl(
-		    cnt, var_name, cnt->builtin_types.entry_TypeInfo, value, false, true, false);
-
-		/* Setup variable */
-		{
-			/* allocate */
-			exec_stack_alloc_var(cnt, var);
-
-			/* initialize */
-			MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, true);
-			assert(var_ptr);
-
-			exec_copy_comptime_to_stack(cnt, var_ptr, value);
-		}
-
-		type->rtti.exec_var = var;
-	}
-#if 0
 	switch (type->kind) {
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_VOID:
+		break;
+
 	case MIR_TYPE_INT: {
+		/* .bitcount */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_s32);
+		tmp->data.v_s32 = type->data.integer.bitcount;
+		bo_array_push_back(members, tmp);
+
+		/* .signed */
+		tmp              = create_value(cnt, cnt->builtin_types.entry_bool);
+		tmp->data.v_bool = type->data.integer.is_signed;
+		bo_array_push_back(members, tmp);
+		break;
+	}
+
+	case MIR_TYPE_REAL: {
+		/* .bitcount */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_s32);
+		tmp->data.v_s32 = type->data.real.bitcount;
+		bo_array_push_back(members, tmp);
+		break;
+	}
+
+	case MIR_TYPE_FN: {
+		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		/* .pointed */
+		tmp                  = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_pointed = exec_gen_type_RTTI(cnt, type->data.ptr.next);
+
+		MirStackPtr rtti_pointed_stack_ptr = exec_read_stack_ptr(
+		    cnt, rtti_pointed->rel_stack_ptr, rtti_pointed->is_in_gscope);
+
+		tmp->data.v_stack_ptr = rtti_pointed_stack_ptr;
+		bo_array_push_back(members, tmp);
+		break;
+	}
+
+	case MIR_TYPE_BOOL: {
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		break;
+	}
+
+	case MIR_TYPE_STRUCT: {
+		break;
+	}
+
+	case MIR_TYPE_ENUM: {
+		break;
+	}
+
+	case MIR_TYPE_NULL: {
 		break;
 	}
 
@@ -5609,11 +5694,26 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		char type_name[256];
 		mir_type_to_str(type_name, 256, type, true);
 		bl_warning("Missing exec RTTI generation for type '%s'", type_name);
-		return;
+		break;
 	}
 	}
 
-#endif
+	rtti_value->data.v_struct.members = members;
+	type->rtti_var                    = rtti_var;
+
+	/* Setup variable */
+	{
+		/* allocate */
+		exec_stack_alloc_var(cnt, rtti_var);
+
+		/* initialize */
+		MirStackPtr var_ptr = exec_read_stack_ptr(cnt, rtti_var->rel_stack_ptr, true);
+		assert(var_ptr);
+
+		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
+	}
+
+	return rtti_var;
 }
 
 /*
@@ -5634,14 +5734,47 @@ exec_gen_type_table(Context *cnt)
 		cnt->builtin_types.entry_TypeInfo =
 		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
 
+		cnt->builtin_types.entry_TypeInfoType =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_TYPE]);
+
+		cnt->builtin_types.entry_TypeInfoVoid =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_VOID]);
+
 		cnt->builtin_types.entry_TypeInfoInt =
 		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_INT]);
+
+		cnt->builtin_types.entry_TypeInfoReal =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_REAL]);
+
+		cnt->builtin_types.entry_TypeInfoFn =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_FN]);
+
+		cnt->builtin_types.entry_TypeInfoPtr =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_PTR]);
+
+		cnt->builtin_types.entry_TypeInfoBool =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_BOOL]);
+
+		cnt->builtin_types.entry_TypeInfoArray =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ARRAY]);
+
+		cnt->builtin_types.entry_TypeInfoStruct =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_STRUCT]);
+
+		cnt->builtin_types.entry_TypeInfoEnum =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ENUM]);
+
+		cnt->builtin_types.entry_TypeInfoNull =
+		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_NULL]);
+
+		cnt->builtin_types.entry_TypeInfo_ptr =
+		    create_type_ptr(cnt, cnt->builtin_types.entry_TypeInfo);
 	}
 
 	bhtbl_foreach(table, it)
 	{
 		type = bo_htbl_iter_peek_value(table, &it, MirType *);
-		if (!type->rtti.exec_var) exec_gen_type_RTTI(cnt, type);
+		exec_gen_type_RTTI(cnt, type);
 	}
 }
 
@@ -5788,7 +5921,7 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-	MirVar *type_info_var = type_info->expr_type->rtti.exec_var;
+	MirVar *type_info_var = type_info->expr_type->rtti_var;
 	assert(type_info_var);
 
 	const bool use_static_segment = type_info_var->is_in_gscope;
@@ -8484,7 +8617,6 @@ mir_new_module(const char *name)
 	LLVMSetTarget(llvm_module, triple);
 
 	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
-	tmp->global_vars   = bo_array_new(sizeof(MirVar *));
 	tmp->llvm_cnt      = llvm_context;
 	tmp->llvm_module   = llvm_module;
 	tmp->llvm_tm       = llvm_tm;
@@ -8498,7 +8630,6 @@ mir_delete_module(MirModule *module)
 {
 	if (!module) return;
 	bo_unref(module->global_instrs);
-	bo_unref(module->global_vars);
 
 	arenas_terminate(&module->arenas);
 

@@ -124,7 +124,17 @@ enum MirBuiltinIdKind {
 
 	MIR_BUILTIN_ID_TYPE_KIND,
 	MIR_BUILTIN_ID_TYPE_INFO,
+	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
+	MIR_BUILTIN_ID_TYPE_INFO_VOID,
 	MIR_BUILTIN_ID_TYPE_INFO_INT,
+	MIR_BUILTIN_ID_TYPE_INFO_REAL,
+	MIR_BUILTIN_ID_TYPE_INFO_FN,
+	MIR_BUILTIN_ID_TYPE_INFO_PTR,
+	MIR_BUILTIN_ID_TYPE_INFO_BOOL,
+	MIR_BUILTIN_ID_TYPE_INFO_ARRAY,
+	MIR_BUILTIN_ID_TYPE_INFO_STRUCT,
+	MIR_BUILTIN_ID_TYPE_INFO_ENUM,
+	MIR_BUILTIN_ID_TYPE_INFO_NULL,
 
 	_MIR_BUILTIN_ID_COUNT,
 };
@@ -144,7 +154,6 @@ struct MirArenas {
 struct MirModule {
 	struct MirArenas     arenas;
 	BArray *             global_instrs;
-	BArray *             global_vars;
 	LLVMModuleRef        llvm_module;
 	LLVMContextRef       llvm_cnt;
 	LLVMTargetDataRef    llvm_td;
@@ -264,14 +273,9 @@ struct MirType {
 
 	/*
 	 * Every unique type will cause generation of type info global constant in program data
-	 * segment, here we store pointers to this allocation, one for interpreter and one for LLVM
-	 * IR. This pointers can be returned by 'typeinfo(<T>)' operator in user source code. This
-	 * is the way RTTI is implemented in bl.
+	 * segment.
 	 */
-	struct {
-		MirVar *     exec_var;
-		LLVMValueRef llvm_ptr;
-	} rtti;
+	MirVar *rtti_var;
 
 	union {
 		struct MirTypeInt    integer;

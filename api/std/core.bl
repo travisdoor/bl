@@ -58,11 +58,13 @@ TypeInfoVoid :: struct #compiler {
 
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
+    bitcount: s32,
     signed: bool,
 };
 
 TypeInfoReal :: struct #compiler {
-    base: TypeInfo
+    base: TypeInfo,
+    bitcount: s32
 };
 
 TypeInfoFn :: struct #compiler {

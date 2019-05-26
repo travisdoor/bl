@@ -3,50 +3,46 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    num1 := 666;
-    tmp1 := {:Any: typeinfo(s32), cast(*u8) &num1};
+    {
+        i := typeinfo(s32);
+        test_print_type_info(i);
+    }
 
-    num2 := 0.015;
-    tmp2 := {:Any: typeinfo(f64), cast(*u8) &num2};
-    
-    test_print("Int = %, Float = %\n", tmp1, tmp2);
+    {
+        i := typeinfo(u64);
+        test_print_type_info(i);
+    }
+
+    {
+        i := typeinfo(f32);
+        test_print_type_info(i);
+    }
+
+    {
+        i := typeinfo(*s32);
+        test_print_type_info(i);
+    }
     
     return 0;
 };
 
-test_print :: fn (format: string, args: ...)
-{
-    tmp := {:string: 0, format.ptr }; 
-    argi := 0;
+test_print_type_info :: fn (i: *TypeInfo) {
+    if i.kind == TypeKind.Int {
+        int_info := cast(*TypeInfoInt) i;
+        print("Integer type; bitcount = %; ", int_info.bitcount);
 
-    loop i := 0; i < format.len; i += 1 {
-        c := format[i];
-
-        if c == '%' {
-            print_string(tmp);
-            if argi < args.len {
-                arg_kind := args[argi].type_info.kind;
-                data := args[argi].data;
-                
-                if arg_kind == TypeKind.Int {
-                    print_s64(^cast(*s64) data); 
-                } else if arg_kind == TypeKind.Real {
-                    print_f64(^cast(*f64) data); 
-                }
-                
-                argi += 1;
-            } else {
-                print_string("(null)");
-            }
-
-            tmp.len = 0;
-            if i + 1 < format.len {
-                tmp.ptr = &format[i + 1];
-            }
+        if int_info.signed {
+            print("signed\n");
         } else {
-            tmp.len += 1;
+            print("unsigned\n");
         }
+    } else if i.kind == TypeKind.Ptr {
+        ptr_info := cast(*TypeInfoPtr) i;
+        print("Pointer type; -> ");
+        test_print_type_info(ptr_info.pointed);
+    } else if i.kind == TypeKind.Real {
+        real_info := cast(*TypeInfoReal) i;
+        print("Real type; bitcount = %\n", real_info.bitcount);
     }
-
-    if tmp.len > 0 { print_string(tmp); }
 };
+
