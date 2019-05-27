@@ -59,7 +59,7 @@ TypeInfoVoid :: struct #compiler {
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
     bitcount: s32,
-    signed: bool,
+    is_signed: bool,
 };
 
 TypeInfoReal :: struct #compiler {
@@ -70,7 +70,8 @@ TypeInfoReal :: struct #compiler {
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
     args: []*TypeInfo,
-    ret: *TypeInfo
+    ret: *TypeInfo,
+    is_vargs: bool
 };
 
 TypeInfoPtr :: struct #compiler {

@@ -31,7 +31,7 @@ test_print_type_info :: fn (i: *TypeInfo) {
         int_info := cast(*TypeInfoInt) i;
         print("Integer type; bitcount = %; ", int_info.bitcount);
 
-        if int_info.signed {
+        if int_info.is_signed {
             print("signed\n");
         } else {
             print("unsigned\n");
@@ -43,6 +43,10 @@ test_print_type_info :: fn (i: *TypeInfo) {
     } else if i.kind == TypeKind.Real {
         real_info := cast(*TypeInfoReal) i;
         print("Real type; bitcount = %\n", real_info.bitcount);
+    } else if i.kind == TypeKind.Fn {
+        fn_info := cast(*TypeInfoFn) i;
+        print("Function type; argc = %; return type -> ", fn_info.args.len);
+        test_print_type_info(fn_info.ret);
     }
 };
 

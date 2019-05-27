@@ -5638,7 +5638,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp->data.v_s32 = type->data.integer.bitcount;
 		bo_array_push_back(members, tmp);
 
-		/* .signed */
+		/* .is_signed */
 		tmp              = create_value(cnt, cnt->builtin_types.entry_bool);
 		tmp->data.v_bool = type->data.integer.is_signed;
 		bo_array_push_back(members, tmp);
@@ -5654,6 +5654,40 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_FN: {
+		/* .args */
+		/* build args array on the stack */
+		MirStackPtr rtti_args_ptr = NULL;
+
+		const size_t argc = bo_array_size(type->data.fn.arg_types);
+
+		if (argc) {
+			MirType *arg;
+		}
+
+		/* .args.len */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = argc;
+		bo_array_push_back(members, tmp);
+
+		/* .args.ptr */
+		tmp                   = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp->data.v_stack_ptr = rtti_args_ptr;
+		bo_array_push_back(members, tmp);
+
+		/* .ret */
+		tmp              = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_ret = exec_gen_type_RTTI(cnt, type->data.fn.ret_type);
+
+		MirStackPtr rtti_ret_stack_ptr =
+		    exec_read_stack_ptr(cnt, rtti_ret->rel_stack_ptr, rtti_ret->is_in_gscope);
+
+		tmp->data.v_stack_ptr = rtti_ret_stack_ptr;
+		bo_array_push_back(members, tmp);
+
+		/* .is_vargs */
+		tmp              = create_value(cnt, cnt->builtin_types.entry_bool);
+		tmp->data.v_bool = type->data.fn.is_vargs;
+		bo_array_push_back(members, tmp);
 		break;
 	}
 
