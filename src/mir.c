@@ -244,6 +244,7 @@ typedef struct {
 		MirType *entry_resolve_type_fn;
 		MirType *entry_test_case_fn;
 		MirType *entry_TypeInfo_ptr;
+		MirType *entry_TypeInfo_slice;
 		/* OTHER END */
 	} builtin_types;
 } Context;
@@ -5618,13 +5619,19 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	/* set base TypeInfo data */
 	BArray *members = create_arr(cnt, sizeof(MirConstValue *));
+	bo_array_reserve(members, bo_array_size(rtti_type->data.strct.members));
 
 	MirConstValue *tmp;
 	{ /* Build TypeInfo entry members. */
 		/* .kind */
+		BArray *type_info_members  = create_arr(cnt, sizeof(MirConstValue *));
+		tmp                        = create_value(cnt, cnt->builtin_types.entry_TypeInfo);
+		tmp->data.v_struct.members = type_info_members;
+		bo_array_push_back(members, tmp);
+
 		tmp             = create_value(cnt, cnt->builtin_types.entry_TypeKind);
 		tmp->data.v_s32 = type->kind;
-		bo_array_push_back(members, tmp);
+		bo_array_push_back(type_info_members, tmp);
 	}
 
 	switch (type->kind) {
@@ -5658,21 +5665,29 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		/* build args array on the stack */
 		MirStackPtr rtti_args_ptr = NULL;
 
-		const size_t argc = bo_array_size(type->data.fn.arg_types);
+		const size_t argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
 
 		if (argc) {
 			MirType *arg;
 		}
 
+		/* .args */
+		BArray *args_members = create_arr(cnt, sizeof(MirConstValue *));
+		bo_array_reserve(args_members, 2);
+
+		tmp = create_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
+		tmp->data.v_struct.members = args_members;
+		bo_array_push_back(members, tmp);
+
 		/* .args.len */
 		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
 		tmp->data.v_u64 = argc;
-		bo_array_push_back(members, tmp);
+		bo_array_push_back(args_members, tmp);
 
 		/* .args.ptr */
 		tmp                   = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		tmp->data.v_stack_ptr = rtti_args_ptr;
-		bo_array_push_back(members, tmp);
+		bo_array_push_back(args_members, tmp);
 
 		/* .ret */
 		tmp              = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
@@ -5803,6 +5818,9 @@ exec_gen_type_table(Context *cnt)
 
 		cnt->builtin_types.entry_TypeInfo_ptr =
 		    create_type_ptr(cnt, cnt->builtin_types.entry_TypeInfo);
+
+		cnt->builtin_types.entry_TypeInfo_slice =
+		    create_type_slice(cnt, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
 	}
 
 	bhtbl_foreach(table, it)
