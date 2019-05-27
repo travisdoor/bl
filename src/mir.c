@@ -5665,10 +5665,29 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		/* build args array on the stack */
 		MirStackPtr rtti_args_ptr = NULL;
 
-		const size_t argc = type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
+		const size_t argc =
+		    type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
 
 		if (argc) {
-			MirType *arg;
+			const size_t TypeInfo_ptr_size =
+			    cnt->builtin_types.entry_TypeInfo_ptr->store_size_bytes;
+
+			/* allocate array for args slice */
+			rtti_args_ptr = exec_stack_alloc(cnt, TypeInfo_ptr_size * argc);
+
+			MirStackPtr elem_dest_ptr = rtti_args_ptr;
+			MirType *   arg_type;
+			barray_foreach(type->data.fn.arg_types, arg_type)
+			{
+				elem_dest_ptr = rtti_args_ptr + TypeInfo_ptr_size * i;
+				assert(elem_dest_ptr);
+
+				MirVar *    rtti_arg           = exec_gen_type_RTTI(cnt, arg_type);
+				MirStackPtr rtti_arg_stack_ptr = exec_read_stack_ptr(
+				    cnt, rtti_arg->rel_stack_ptr, rtti_arg->is_in_gscope);
+
+				memcpy(elem_dest_ptr, &rtti_arg_stack_ptr, TypeInfo_ptr_size);
+			}
 		}
 
 		/* .args */
@@ -5776,6 +5795,8 @@ exec_gen_type_table(Context *cnt)
 	MirType *     type;
 	bo_iterator_t it;
 
+	const size_t stack_begin = cnt->exec.stack->used_bytes;
+
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.entry_TypeKind =
 		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
@@ -5828,6 +5849,9 @@ exec_gen_type_table(Context *cnt)
 		type = bo_htbl_iter_peek_value(table, &it, MirType *);
 		exec_gen_type_RTTI(cnt, type);
 	}
+
+	const size_t stack_end = cnt->exec.stack->used_bytes;
+	bl_log("Allocated %d kB for RTTI type table on the stack.", (stack_end - stack_begin) / 1024);
 }
 
 void
