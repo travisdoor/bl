@@ -68,7 +68,9 @@ TypeInfoReal :: struct #compiler {
 };
 
 TypeInfoFn :: struct #compiler {
-    base: TypeInfo
+    base: TypeInfo,
+    args: []*TypeInfo,
+    ret: *TypeInfo
 };
 
 TypeInfoPtr :: struct #compiler {
@@ -82,13 +84,14 @@ TypeInfoBool :: struct #compiler {
 
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem_type: *TypeInfo,
-    elem_count: usize
+    elem: *TypeInfo,
+    count: usize
 };
 
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
-    members: []*TypeInfo
+    members: []*TypeInfo,
+    packed: bool
 };
 
 TypeInfoEnum :: struct #compiler {
