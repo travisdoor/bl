@@ -5743,6 +5743,20 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_ARRAY: {
+		/* .elem */
+		tmp               = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_elem = exec_gen_type_RTTI(cnt, type->data.array.elem_type);
+
+		MirStackPtr rtti_elem_stack_ptr =
+		    exec_read_stack_ptr(cnt, rtti_elem->rel_stack_ptr, rtti_elem->is_in_gscope);
+
+		tmp->data.v_stack_ptr = rtti_elem_stack_ptr;
+		bo_array_push_back(members, tmp);
+
+		/* .len */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = type->data.array.len;
+		bo_array_push_back(members, tmp);
 		break;
 	}
 
@@ -5851,7 +5865,8 @@ exec_gen_type_table(Context *cnt)
 	}
 
 	const size_t stack_end = cnt->exec.stack->used_bytes;
-	bl_log("Allocated %d kB for RTTI type table on the stack.", (stack_end - stack_begin) / 1024);
+	bl_log("Allocated %d kB for RTTI type table on the stack.",
+	       (stack_end - stack_begin) / 1024);
 }
 
 void

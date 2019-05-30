@@ -9,6 +9,7 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(test_print_type_info));
     test_print_type_info(typeinfo(*s32));
     test_print_type_info(typeinfo(&test_print_type_info));
+    test_print_type_info(typeinfo([10]s32));
     
     return 0;
 };
@@ -55,7 +56,9 @@ _test_print_type_info :: fn (i: *TypeInfo) {
         print("bool;");
 
     } else if i.kind == TypeKind.Array {
-        print("array;");
+        array_info := cast(*TypeInfoArray) i;
+        print("array; len = %;", array_info.len);
+        _test_print_type_info(array_info.elem);
 
     } else if i.kind == TypeKind.Struct {
         print("struct;");

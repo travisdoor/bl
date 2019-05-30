@@ -86,7 +86,7 @@ TypeInfoBool :: struct #compiler {
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
     elem: *TypeInfo,
-    count: usize
+    len: usize
 };
 
 TypeInfoStruct :: struct #compiler {
