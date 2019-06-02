@@ -29,10 +29,10 @@
 #ifndef BL_UNIT_H
 #define BL_UNIT_H
 
+#include <llvm-c/Core.h>
 #include "ast.h"
 #include "config.h"
 #include "tokens.h"
-#include <llvm-c/Core.h>
 
 struct Token;
 

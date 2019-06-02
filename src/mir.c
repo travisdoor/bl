@@ -1645,7 +1645,7 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
 	if (id) {
 		bo_string_append(tmp, id->str);
 	} else {
-		bl_abort_issue(33);
+		bo_string_append(tmp, "e");
 	}
 
 	bo_string_append(tmp, "(");
@@ -1678,7 +1678,19 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
  * reused, this function return false and set out_type to already created type
  * from cache. When new type instance was created function will return true and
  * set out_type to new instance of type, new instance will be stored in cache
- * for later use also. */
+ * for later use also.
+ *
+ * Hashing rules:
+ *
+ * | Type       | Rules                       |
+ * |------------+-----------------------------|
+ * | Null       | n.<type>                    |
+ * | Pointer    | p.<type>                    |
+ * | Function   | f(<arg1,...>)<return type>  |
+ * | Array      | <len>.<type>                |
+ * | Structures | <name|s|sl>{<member1,...>}  |
+ * | Enumerator | <name|e>(<type>){<1,2,...>} |
+ */
 bool
 create_type(Context *cnt, MirType **out_type, const char *sh)
 {
@@ -1701,7 +1713,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 		tmp->id.str  = bo_string_get(copy);
 		tmp->id.hash = hash;
 
-		/* bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash); */
+		// bl_log("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
 		bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
 		*out_type = tmp;
 
@@ -5637,6 +5649,8 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	switch (type->kind) {
 	case MIR_TYPE_TYPE:
 	case MIR_TYPE_VOID:
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_NULL:
 		break;
 
 	case MIR_TYPE_INT: {
@@ -5738,10 +5752,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_BOOL: {
-		break;
-	}
-
 	case MIR_TYPE_ARRAY: {
 		/* .elem */
 		tmp               = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
@@ -5761,14 +5771,66 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
+		/* .members */
+		/* build members array on the stack */
+		MirStackPtr rtti_members_ptr = NULL;
+
+		const size_t memberc =
+		    type->data.strct.members ? bo_array_size(type->data.strct.members) : 0;
+
+		if (memberc) {
+			const size_t TypeInfo_ptr_size =
+			    cnt->builtin_types.entry_TypeInfo_ptr->store_size_bytes;
+
+			/* allocate array for members slice */
+			rtti_members_ptr = exec_stack_alloc(cnt, TypeInfo_ptr_size * memberc);
+
+			MirStackPtr elem_dest_ptr = rtti_members_ptr;
+			MirType *   member_type;
+			barray_foreach(type->data.strct.members, member_type)
+			{
+				elem_dest_ptr = rtti_members_ptr + TypeInfo_ptr_size * i;
+				assert(elem_dest_ptr);
+
+				MirVar *    rtti_member = exec_gen_type_RTTI(cnt, member_type);
+				MirStackPtr rtti_member_stack_ptr = exec_read_stack_ptr(
+				    cnt, rtti_member->rel_stack_ptr, rtti_member->is_in_gscope);
+
+				memcpy(elem_dest_ptr, &rtti_member_stack_ptr, TypeInfo_ptr_size);
+			}
+		}
+
+		/* .members */
+		BArray *members_members = create_arr(cnt, sizeof(MirConstValue *));
+		bo_array_reserve(members_members, 2);
+
+		tmp = create_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
+		tmp->data.v_struct.members = members_members;
+		bo_array_push_back(members, tmp);
+
+		/* .members.len */
+		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = memberc;
+		bo_array_push_back(members_members, tmp);
+
+		/* .members.ptr */
+		tmp                   = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp->data.v_stack_ptr = rtti_members_ptr;
+		bo_array_push_back(members_members, tmp);
+
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
-		break;
-	}
+		/* .base_type */
+		tmp                    = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, type->data.enm.base_type);
 
-	case MIR_TYPE_NULL: {
+		MirStackPtr rtti_base_type_stack_ptr = exec_read_stack_ptr(
+		    cnt, rtti_base_type->rel_stack_ptr, rtti_base_type->is_in_gscope);
+
+		tmp->data.v_stack_ptr = rtti_base_type_stack_ptr;
+		bo_array_push_back(members, tmp);
 		break;
 	}
 

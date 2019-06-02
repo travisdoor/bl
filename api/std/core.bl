@@ -92,7 +92,6 @@ TypeInfoArray :: struct #compiler {
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
     members: []*TypeInfo,
-    packed: bool
 };
 
 TypeInfoEnum :: struct #compiler {
