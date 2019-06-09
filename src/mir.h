@@ -311,6 +311,7 @@ union MirConstValueData {
 	void *              v_void_ptr;
 	MirRelativeStackPtr v_rel_stack_ptr;
 	MirStackPtr         v_stack_ptr;
+	MirVar *            v_var;
 
 	struct {
 		BArray *members; // array of MirConstValues *
@@ -330,8 +331,7 @@ enum MirValueAddressMode {
 };
 
 struct MirConstValue {
-	// data must be first!!!
-	union MirConstValueData data;
+	union MirConstValueData data; /* data must be first!!! */
 	MirType *               type;
 	MirValueAddressMode     addr_mode;
 };

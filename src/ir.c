@@ -697,7 +697,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			assert(llvm_fn);
 			return llvm_fn;
 		} else {
-			bl_abort("invalid constant type");
+			bl_unimplemented;
 		}
 	}
 
