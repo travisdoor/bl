@@ -186,6 +186,9 @@ build_call_memcpy(Context *    cnt,
 }
 
 static void
+gen_RTTI_types(Context *cnt);
+
+static void
 gen_instr(Context *cnt, MirInstr *instr);
 
 /*
@@ -329,6 +332,44 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 	return llvm_block;
 }
 
+/* impl */
+void
+gen_RTTI_types(Context *cnt)
+{
+	BHashTable *table = cnt->assembly->mir_module->RTTI_types;
+	assert(table);
+
+	MirType *     type;
+	MirVar *      var;
+	LLVMValueRef  llvm_var, llvm_value;
+	LLVMTypeRef   llvm_var_type;
+	bo_iterator_t it;
+
+	bhtbl_foreach(table, it)
+	{
+		type = bo_htbl_iter_peek_value(table, &it, MirType *);
+		{
+			char type_name[256];
+			mir_type_to_str(type_name, 256, type, true);
+			bl_log("generate RTTI for: " BLUE("%s"), type_name);
+
+			var = type->rtti_var;
+			assert(var);
+
+			llvm_var      = gen_global_var_proto(cnt, var);
+			llvm_var_type = var->alloc_type->llvm_type;
+			llvm_value    = gen_as_const(cnt, var->value);
+
+			LLVMSetInitializer(llvm_var, llvm_value);
+			LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
+			LLVMSetGlobalConstant(llvm_var, true);
+			LLVMSetAlignment(llvm_var,
+			                 LLVMABIAlignmentOfType(cnt->llvm_td, llvm_var_type));
+			LLVMSetUnnamedAddr(llvm_var, true);
+		}
+	}
+}
+
 void
 gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
@@ -394,7 +435,17 @@ gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 void
 gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-	bl_abort_issue(26);
+	MirType *type = type_info->expr_type;
+	assert(type);
+	assert(type->rtti_var);
+
+	LLVMValueRef llvm_var = type->rtti_var->llvm_value;
+	assert(llvm_var && "Missing LLVM value for RTTI variable.");
+
+	LLVMTypeRef llvm_dest_type = type_info->base.const_value.type->llvm_type;
+
+	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
+	type_info->base.llvm_value = llvm_var;
 }
 
 void
@@ -1170,7 +1221,7 @@ gen_allocas(Context *cnt, MirFn *fn)
 
 		var_type      = var->alloc_type->llvm_type;
 		var_alignment = (unsigned int)var->alloc_type->alignment;
-			
+
 		assert(var_type);
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
@@ -1300,6 +1351,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
+
+	gen_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
 	barray_foreach(assembly->mir_module->global_instrs, ginstr)

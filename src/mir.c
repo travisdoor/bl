@@ -35,6 +35,8 @@
 // Constants
 // clang-format off
 #define ARENA_CHUNK_COUNT               512
+#define ANALYZE_TABLE_SIZE              8192 
+#define RTTI_TABLE_SIZE                 2048
 #define TEST_CASE_FN_NAME               ".test"
 #define RESOLVE_TYPE_FN_NAME            ".type"
 #define INIT_VALUE_FN_NAME              ".init"
@@ -900,7 +902,7 @@ static MirVar *
 exec_gen_type_RTTI(Context *cnt, MirType *type);
 
 static void
-exec_gen_type_table(Context *cnt);
+exec_gen_RTTI_types(Context *cnt);
 
 static void
 exec_instr(Context *cnt, MirInstr *instr);
@@ -994,6 +996,15 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline void
+push_RTTI_type(Context *cnt, MirType *type)
+{
+	const uint64_t hash = type->id.hash;
+	if (!bo_htbl_has_key(cnt->module->RTTI_types, hash)) {
+		bo_htbl_insert(cnt->module->RTTI_types, hash, type);
+	}
+}
+
 static inline MirInstr *
 mutate_instr(MirInstr *instr, MirInstrKind kind)
 {
@@ -4008,14 +4019,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	}
 
 	type_info->expr_type = type;
-
-#if 0
-	{
-		char type_name[256];
-		mir_type_to_str(type_name, 256, type, true);
-		bl_log("get type info of " BLUE("%s"), type_name);
-	}
-#endif
+	push_RTTI_type(cnt, type);
 
 	/* Resolve TypeInfo struct type */
 	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
@@ -5845,8 +5849,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	rtti_value->data.v_struct.members = members;
 	type->rtti_var                    = rtti_var;
 
-	/* Setup variable */
-	{
+	{ /* Setup variable */
 		/* allocate */
 		exec_stack_alloc_var(cnt, rtti_var);
 
@@ -5857,6 +5860,9 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
 
+	/* Push into RTTI table */
+	push_RTTI_type(cnt, type);
+
 	return rtti_var;
 }
 
@@ -5864,9 +5870,9 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
  * Generate global type table in data segment of an assembly.
  */
 void
-exec_gen_type_table(Context *cnt)
+exec_gen_RTTI_types(Context *cnt)
 {
-	BHashTable *table = cnt->type_table;
+	BHashTable *table = cnt->module->RTTI_types;
 
 	MirType *     type;
 	bo_iterator_t it;
@@ -8770,6 +8776,7 @@ mir_new_module(const char *name)
 	LLVMSetTarget(llvm_module, triple);
 
 	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
+	tmp->RTTI_types    = bo_htbl_new(sizeof(MirType *), RTTI_TABLE_SIZE);
 	tmp->llvm_cnt      = llvm_context;
 	tmp->llvm_module   = llvm_module;
 	tmp->llvm_tm       = llvm_tm;
@@ -8783,6 +8790,7 @@ mir_delete_module(MirModule *module)
 {
 	if (!module) return;
 	bo_unref(module->global_instrs);
+	bo_unref(module->RTTI_types);
 
 	arenas_terminate(&module->arenas);
 
@@ -8809,7 +8817,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.test_cases           = bo_array_new(sizeof(MirFn *));
 	cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
 	cnt.tmp_sh               = bo_string_new(1024);
-	cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, 8192);
+	cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table           = assembly->type_table;
 
 	/* initialize all builtin types */
@@ -8832,7 +8840,7 @@ mir_run(Builder *builder, Assembly *assembly)
 
 	/* PERFORMANCE: generate type table in static block only when 'typeinfo' operator was used.
 	 */
-	exec_gen_type_table(&cnt);
+	exec_gen_RTTI_types(&cnt);
 
 	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
 	if (is_flag(builder->flags, BUILDER_RUN)) execute_entry_fn(&cnt);
