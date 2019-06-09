@@ -1,13 +1,16 @@
 /* playground */
 
-#load "std/core.bl"
+//#load "std/core.bl"
 
 main :: fn () s32 {
+    i := 10;
+    ptr :: &i;
+    
+    /*
     test_print_type_info(typeinfo(s32));
     test_print_type_info(typeinfo(u64));
     test_print_type_info(typeinfo(f32));
     test_print_type_info(typeinfo(test_print_type_info));
-    /*
     test_print_type_info(typeinfo(*s32));
     test_print_type_info(typeinfo(&test_print_type_info));
     test_print_type_info(typeinfo([10]s32));
@@ -15,9 +18,10 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(enum s32 { A :: 0, B :: 1 }));
     */
     
-    return 0;
+    return i;
 };
 
+/*
 test_print_type_info :: fn (i: *TypeInfo) {
     _test_print_type_info(i);
     print("\n");
@@ -83,4 +87,4 @@ _test_print_type_info :: fn (i: *TypeInfo) {
     
     print("}");
 };
-
+*/

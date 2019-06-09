@@ -311,7 +311,6 @@ union MirConstValueData {
 	void *              v_void_ptr;
 	MirRelativeStackPtr v_rel_stack_ptr;
 	MirStackPtr         v_stack_ptr;
-	MirVar *            v_var;
 
 	struct {
 		BArray *members; // array of MirConstValues *

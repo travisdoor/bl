@@ -4137,6 +4137,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		 * time known
 		 */
 		if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
+		//ref->base.const_value.data.v_var = found->data.var;
 		break;
 	}
 
@@ -5873,6 +5874,7 @@ void
 exec_gen_RTTI_types(Context *cnt)
 {
 	BHashTable *table = cnt->module->RTTI_types;
+	if (bo_htbl_size(table) == 0) return;
 
 	MirType *     type;
 	bo_iterator_t it;
@@ -6538,14 +6540,7 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		break;
 	}
 
-	case SCOPE_ENTRY_FN: {
-		MirFn *fn = entry->data.fn;
-		assert(fn);
-
-		ref->base.const_value.data.v_fn = fn;
-		break;
-	}
-
+	case SCOPE_ENTRY_FN: 
 	case SCOPE_ENTRY_TYPE:
 	case SCOPE_ENTRY_MEMBER:
 	case SCOPE_ENTRY_VARIANT:
