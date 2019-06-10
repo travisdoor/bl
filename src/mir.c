@@ -4137,7 +4137,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		 * time known
 		 */
 		if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
-		//ref->base.const_value.data.v_var = found->data.var;
+		// ref->base.const_value.data.v_var = found->data.var;
 		break;
 	}
 
@@ -5777,51 +5777,34 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_STRUCT: {
 		/* .members */
-		/* build members array on the stack */
-		MirStackPtr rtti_members_ptr = NULL;
-
 		const size_t memberc =
 		    type->data.strct.members ? bo_array_size(type->data.strct.members) : 0;
 
+		MirConstValue *members_value = NULL;
+
 		if (memberc) {
-			const size_t TypeInfo_ptr_size =
-			    cnt->builtin_types.entry_TypeInfo_ptr->store_size_bytes;
+			MirType *members_type =
+			    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, memberc);
+			members_value = create_value(cnt, members_type);
 
-			/* allocate array for members slice */
-			rtti_members_ptr = exec_stack_alloc(cnt, TypeInfo_ptr_size * memberc);
+			members_value->data.v_array.elems = create_arr(cnt, sizeof(MirVar *));
+			bo_array_reserve(members_value->data.v_array.elems, membersc);
 
-			MirStackPtr elem_dest_ptr = rtti_members_ptr;
-			MirType *   member_type;
+			MirType *member_type;
+			MirVar * rtti_member;
 			barray_foreach(type->data.strct.members, member_type)
 			{
-				elem_dest_ptr = rtti_members_ptr + TypeInfo_ptr_size * i;
-				assert(elem_dest_ptr);
-
-				MirVar *    rtti_member = exec_gen_type_RTTI(cnt, member_type);
-				MirStackPtr rtti_member_stack_ptr = exec_read_stack_ptr(
-				    cnt, rtti_member->rel_stack_ptr, rtti_member->is_in_gscope);
-
-				memcpy(elem_dest_ptr, &rtti_member_stack_ptr, TypeInfo_ptr_size);
+				assert(member_type);
+				MirVar *rtti_member = exec_gen_type_RTTI(cnt, member_type);
+				bo_array_push_back(members_value->data.v_array.elems, rtti_member);
 			}
 		}
 
 		/* .members */
-		BArray *members_members = create_arr(cnt, sizeof(MirConstValue *));
-		bo_array_reserve(members_members, 2);
-
-		tmp = create_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
-		tmp->data.v_struct.members = members_members;
-		bo_array_push_back(members, tmp);
 
 		/* .members.len */
-		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
-		tmp->data.v_u64 = memberc;
-		bo_array_push_back(members_members, tmp);
 
 		/* .members.ptr */
-		tmp                   = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		tmp->data.v_stack_ptr = rtti_members_ptr;
-		bo_array_push_back(members_members, tmp);
 
 		break;
 	}
@@ -6540,7 +6523,7 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		break;
 	}
 
-	case SCOPE_ENTRY_FN: 
+	case SCOPE_ENTRY_FN:
 	case SCOPE_ENTRY_TYPE:
 	case SCOPE_ENTRY_MEMBER:
 	case SCOPE_ENTRY_VARIANT:

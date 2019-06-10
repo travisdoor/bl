@@ -345,22 +345,21 @@ struct MirVariant {
 
 /* VAR */
 struct MirVar {
-	MirType *alloc_type;
-	ID *     id;
-	Ast *    decl_node;
-	Scope *  scope;
-	int32_t  ref_count;
-	bool     is_mutable;
-	bool     comptime;
-	bool     is_in_gscope;
-	bool     is_implicit;
-	bool     gen_llvm;
-	uint32_t flags;
-
+	MirType *           alloc_type;
+	ID *                id;
+	Ast *               decl_node;
+	Scope *             scope;
+	int32_t             ref_count;
+	bool                is_mutable;
+	bool                comptime;
+	bool                is_in_gscope;
+	bool                is_implicit;
+	bool                gen_llvm;
+	uint32_t            flags;
 	MirConstValue *     value;
+	MirRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef        llvm_value;
 	const char *        llvm_name;
-	MirRelativeStackPtr rel_stack_ptr;
 };
 
 /* INSTRUCTIONS */
