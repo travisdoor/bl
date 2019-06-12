@@ -437,7 +437,7 @@ static MirVariant *
 create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *value);
 
 static MirConstValue *
-create_value(Context *cnt, MirType *type);
+create_const_value(Context *cnt, MirType *type);
 
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
@@ -2117,11 +2117,12 @@ create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *val
 }
 
 MirConstValue *
-create_value(Context *cnt, MirType *type)
+create_const_value(Context *cnt, MirType *type)
 {
 	assert(type);
 	MirConstValue *tmp = arena_alloc(&cnt->module->arenas.value_arena);
 	tmp->type          = type;
+	tmp->addr_mode     = MIR_VAM_LVALUE_CONST;
 	return tmp;
 }
 
@@ -2904,12 +2905,12 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 		MirConstValue *value;
 
 		/* string slice len */
-		value             = create_value(cnt, bo_array_at(member_types, 0, MirType *));
+		value = create_const_value(cnt, bo_array_at(member_types, 0, MirType *));
 		value->data.v_u64 = strlen(str);
 		bo_array_push_back(members, value);
 
 		/* string slice ptr */
-		value             = create_value(cnt, bo_array_at(member_types, 1, MirType *));
+		value = create_const_value(cnt, bo_array_at(member_types, 1, MirType *));
 		value->data.v_str = str;
 		bo_array_push_back(members, value);
 
@@ -5583,6 +5584,8 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 	}
 
 	default:
+		assert(dest_ptr && "Invalid destination pointer");
+		assert(src_value && "Invalid source value pointer");
 		memcpy(dest_ptr, (MirStackPtr)src_value, src_type->store_size_bytes);
 	}
 }
@@ -5627,12 +5630,10 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
 	assert(rtti_type);
 
-	MirConstValue *rtti_value = create_value(cnt, rtti_type);
-	rtti_value->addr_mode     = MIR_VAM_LVALUE_CONST;
-	const char *var_name      = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+	MirConstValue *rtti_value = create_const_value(cnt, rtti_type);
+	const char *   var_name   = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
 
-	MirVar *rtti_var =
-	    create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, false);
+	MirVar *rtti_var = create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, true);
 
 	/* set base TypeInfo data */
 	BArray *members = create_arr(cnt, sizeof(MirConstValue *));
@@ -5641,12 +5642,12 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirConstValue *tmp;
 	{ /* Build TypeInfo entry members. */
 		/* .kind */
-		BArray *type_info_members  = create_arr(cnt, sizeof(MirConstValue *));
-		tmp                        = create_value(cnt, cnt->builtin_types.entry_TypeInfo);
+		BArray *type_info_members = create_arr(cnt, sizeof(MirConstValue *));
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo);
 		tmp->data.v_struct.members = type_info_members;
 		bo_array_push_back(members, tmp);
 
-		tmp             = create_value(cnt, cnt->builtin_types.entry_TypeKind);
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_TypeKind);
 		tmp->data.v_s32 = type->kind;
 		bo_array_push_back(type_info_members, tmp);
 	}
@@ -5660,12 +5661,12 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_INT: {
 		/* .bitcount */
-		tmp             = create_value(cnt, cnt->builtin_types.entry_s32);
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_s32);
 		tmp->data.v_s32 = type->data.integer.bitcount;
 		bo_array_push_back(members, tmp);
 
 		/* .is_signed */
-		tmp              = create_value(cnt, cnt->builtin_types.entry_bool);
+		tmp              = create_const_value(cnt, cnt->builtin_types.entry_bool);
 		tmp->data.v_bool = type->data.integer.is_signed;
 		bo_array_push_back(members, tmp);
 		break;
@@ -5673,7 +5674,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_REAL: {
 		/* .bitcount */
-		tmp             = create_value(cnt, cnt->builtin_types.entry_s32);
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_s32);
 		tmp->data.v_s32 = type->data.real.bitcount;
 		bo_array_push_back(members, tmp);
 		break;
@@ -5713,22 +5714,22 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		BArray *args_members = create_arr(cnt, sizeof(MirConstValue *));
 		bo_array_reserve(args_members, 2);
 
-		tmp = create_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
 		tmp->data.v_struct.members = args_members;
 		bo_array_push_back(members, tmp);
 
 		/* .args.len */
-		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
 		tmp->data.v_u64 = argc;
 		bo_array_push_back(args_members, tmp);
 
 		/* .args.ptr */
-		tmp                   = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		tmp->data.v_stack_ptr = rtti_args_ptr;
 		bo_array_push_back(args_members, tmp);
 
 		/* .ret */
-		tmp              = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp              = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_ret = exec_gen_type_RTTI(cnt, type->data.fn.ret_type);
 
 		MirStackPtr rtti_ret_stack_ptr =
@@ -5738,7 +5739,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		bo_array_push_back(members, tmp);
 
 		/* .is_vargs */
-		tmp              = create_value(cnt, cnt->builtin_types.entry_bool);
+		tmp              = create_const_value(cnt, cnt->builtin_types.entry_bool);
 		tmp->data.v_bool = type->data.fn.is_vargs;
 		bo_array_push_back(members, tmp);
 		break;
@@ -5746,7 +5747,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_PTR: {
 		/* .pointed */
-		tmp                  = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_pointed = exec_gen_type_RTTI(cnt, type->data.ptr.next);
 
 		MirStackPtr rtti_pointed_stack_ptr = exec_read_stack_ptr(
@@ -5759,7 +5760,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_ARRAY: {
 		/* .elem */
-		tmp               = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp               = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_elem = exec_gen_type_RTTI(cnt, type->data.array.elem_type);
 
 		MirStackPtr rtti_elem_stack_ptr =
@@ -5769,7 +5770,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		bo_array_push_back(members, tmp);
 
 		/* .len */
-		tmp             = create_value(cnt, cnt->builtin_types.entry_usize);
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
 		tmp->data.v_u64 = type->data.array.len;
 		bo_array_push_back(members, tmp);
 		break;
@@ -5777,17 +5778,18 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	case MIR_TYPE_STRUCT: {
 		/* .members */
-		const size_t memberc =
+		const size_t membersc =
 		    type->data.strct.members ? bo_array_size(type->data.strct.members) : 0;
 
 		MirConstValue *members_value = NULL;
 
-		if (memberc) {
+		if (membersc) {
 			MirType *members_type =
-			    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, memberc);
-			members_value = create_value(cnt, members_type);
+			    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, membersc);
+			members_value = create_const_value(cnt, members_type);
 
-			members_value->data.v_array.elems = create_arr(cnt, sizeof(MirVar *));
+			members_value->data.v_array.elems =
+			    create_arr(cnt, sizeof(MirConstValue *));
 			bo_array_reserve(members_value->data.v_array.elems, membersc);
 
 			MirType *member_type;
@@ -5795,23 +5797,38 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 			barray_foreach(type->data.strct.members, member_type)
 			{
 				assert(member_type);
-				MirVar *rtti_member = exec_gen_type_RTTI(cnt, member_type);
-				bo_array_push_back(members_value->data.v_array.elems, rtti_member);
+				rtti_member = exec_gen_type_RTTI(cnt, member_type);
+				bo_array_push_back(members_value->data.v_array.elems,
+				                   rtti_member->value);
 			}
 		}
 
 		/* .members */
+		MirConstValue *members_slice =
+		    create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
+
+		bo_array_push_back(members, tmp);
+
+		members_slice->data.v_struct.members = create_arr(cnt, sizeof(MirConstValue *));
+		bo_array_reserve(members_slice->data.v_struct.members, 2);
 
 		/* .members.len */
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = membersc;
+		bo_array_push_back(members_slice->data.v_struct.members, tmp);
 
 		/* .members.ptr */
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp->data.v_ptr = members_value;
+		bo_array_push_back(members_slice->data.v_struct.members, tmp);
 
+		bo_array_push_back(members, members_slice);
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		/* .base_type */
-		tmp                    = create_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, type->data.enm.base_type);
 
 		MirStackPtr rtti_base_type_stack_ptr = exec_read_stack_ptr(
@@ -5833,6 +5850,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	rtti_value->data.v_struct.members = members;
 	type->rtti_var                    = rtti_var;
 
+#if 0
 	{ /* Setup variable */
 		/* allocate */
 		exec_stack_alloc_var(cnt, rtti_var);
@@ -5843,6 +5861,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
+#endif
 
 	/* Push into RTTI table */
 	push_RTTI_type(cnt, type);
@@ -5861,8 +5880,6 @@ exec_gen_RTTI_types(Context *cnt)
 
 	MirType *     type;
 	bo_iterator_t it;
-
-	const size_t stack_begin = cnt->exec.stack->used_bytes;
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.entry_TypeKind =
@@ -5916,10 +5933,6 @@ exec_gen_RTTI_types(Context *cnt)
 		type = bo_htbl_iter_peek_value(table, &it, MirType *);
 		exec_gen_type_RTTI(cnt, type);
 	}
-
-	const size_t stack_end = cnt->exec.stack->used_bytes;
-	bl_log("Allocated %d kB for RTTI type table on the stack.",
-	       (stack_end - stack_begin) / 1024);
 }
 
 void
@@ -6068,14 +6081,10 @@ exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	MirVar *type_info_var = type_info->expr_type->rtti_var;
 	assert(type_info_var);
 
-	const bool use_static_segment = type_info_var->is_in_gscope;
-
 	MirType *type = type_info->base.const_value.type;
 	assert(type);
 
-	MirStackPtr type_info_var_ptr =
-	    exec_read_stack_ptr(cnt, type_info_var->rel_stack_ptr, use_static_segment);
-	type_info->base.const_value.data.v_stack_ptr = type_info_var_ptr;
+	type_info->base.const_value.data.v_ptr = &type_info_var->value;
 }
 
 void

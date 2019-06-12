@@ -302,16 +302,16 @@ fetch_value(Context *cnt, MirInstr *instr)
 {
 	LLVMValueRef value = NULL;
 
-	if (instr->comptime && !instr->llvm_value) {
+	if (instr->comptime && !instr->const_value.llvm_value) {
 		/* Declaration references must be generated even if they are compile time. */
 		if (instr->kind == MIR_INSTR_DECL_REF) {
 			gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
 		} else {
-			instr->llvm_value = gen_as_const(cnt, &instr->const_value);
+			instr->const_value.llvm_value = gen_as_const(cnt, &instr->const_value);
 		}
 	}
 
-	value = instr->llvm_value;
+	value = instr->const_value.llvm_value;
 	assert(value);
 	return value;
 }
@@ -321,12 +321,12 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 {
 	if (!block) return NULL;
 	LLVMBasicBlockRef llvm_block = NULL;
-	if (!block->base.llvm_value) {
+	if (!block->base.const_value.llvm_value) {
 		llvm_block = LLVMAppendBasicBlockInContext(
 		    cnt->llvm_cnt, block->owner_fn->llvm_value, block->name);
-		block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
+		block->base.const_value.llvm_value = LLVMBasicBlockAsValue(llvm_block);
 	} else {
-		llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
+		llvm_block = LLVMValueAsBasicBlock(block->base.const_value.llvm_value);
 	}
 
 	return llvm_block;
@@ -380,20 +380,20 @@ gen_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	case SCOPE_ENTRY_VAR: {
 		MirVar *var = entry->data.var;
 		if (var->is_in_gscope)
-			ref->base.llvm_value = gen_global_var_proto(cnt, var);
+			ref->base.const_value.llvm_value = gen_global_var_proto(cnt, var);
 		else
-			ref->base.llvm_value = var->llvm_value;
+			ref->base.const_value.llvm_value = var->llvm_value;
 		break;
 	}
 	case SCOPE_ENTRY_FN: {
-		ref->base.llvm_value = gen_fn_proto(cnt, entry->data.fn);
+		ref->base.const_value.llvm_value = gen_fn_proto(cnt, entry->data.fn);
 		break;
 	}
 	default:
 		bl_unimplemented;
 	}
 
-	assert(ref->base.llvm_value);
+	assert(ref->base.const_value.llvm_value);
 }
 
 void
@@ -422,13 +422,13 @@ gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 	bl_free(llvm_iv);
 	bl_free(llvm_ib);
 
-	phi->base.llvm_value = llvm_phi;
+	phi->base.const_value.llvm_value = llvm_phi;
 }
 
 void
 gen_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
-	unr->base.llvm_value =
+	unr->base.const_value.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_trap, NULL, 0, "");
 }
 
@@ -445,13 +445,13 @@ gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	LLVMTypeRef llvm_dest_type = type_info->base.const_value.type->llvm_type;
 
 	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
-	type_info->base.llvm_value = llvm_var;
+	type_info->base.const_value.llvm_value = llvm_var;
 }
 
 void
 gen_instr_cast(Context *cnt, MirInstrCast *cast)
 {
-	LLVMValueRef llvm_src       = cast->next->llvm_value;
+	LLVMValueRef llvm_src       = cast->next->const_value.llvm_value;
 	LLVMTypeRef  llvm_dest_type = cast->base.const_value.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	assert(llvm_src && llvm_dest_type);
@@ -509,15 +509,15 @@ gen_instr_cast(Context *cnt, MirInstrCast *cast)
 		bl_abort("invalid cast type");
 	}
 
-	cast->base.llvm_value =
+	cast->base.const_value.llvm_value =
 	    LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
 }
 
 void
 gen_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
-	addrof->base.llvm_value = addrof->src->llvm_value;
-	assert(addrof->base.llvm_value);
+	addrof->base.const_value.llvm_value = addrof->src->const_value.llvm_value;
+	assert(addrof->base.const_value.llvm_value);
 }
 
 void
@@ -528,7 +528,7 @@ gen_instr_arg(Context *cnt, MirInstrArg *arg)
 	LLVMValueRef llvm_fn = fn->llvm_value;
 	assert(llvm_fn);
 
-	arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
+	arg->base.const_value.llvm_value = LLVMGetParam(llvm_fn, arg->i);
 }
 
 void
@@ -547,7 +547,7 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		LLVMValueRef llvm_indices[1];
 		llvm_indices[0] = llvm_index;
 
-		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
+		elem_ptr->base.const_value.llvm_value = LLVMBuildInBoundsGEP(
 		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
 
 		return;
@@ -557,7 +557,7 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	llvm_indices[0] = cnt->llvm_const_i64;
 	llvm_indices[1] = llvm_index;
 
-	elem_ptr->base.llvm_value = LLVMBuildGEP(
+	elem_ptr->base.const_value.llvm_value = LLVMBuildGEP(
 	    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
 }
 
@@ -575,9 +575,9 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		const unsigned int index =
 		    (const unsigned int)member_ptr->scope_entry->data.member->index;
 
-		member_ptr->base.llvm_value =
+		member_ptr->base.const_value.llvm_value =
 		    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
-		assert(member_ptr->base.llvm_value);
+		assert(member_ptr->base.const_value.llvm_value);
 	} else {
 		/* builtin member */
 
@@ -588,11 +588,11 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* .len */
-			member_ptr->base.llvm_value =
+			member_ptr->base.const_value.llvm_value =
 			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* .ptr*/
-			member_ptr->base.llvm_value =
+			member_ptr->base.const_value.llvm_value =
 			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
 		}
 	}
@@ -605,8 +605,8 @@ gen_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
 	const unsigned alignment = load->base.const_value.type->alignment;
 	assert(llvm_src);
-	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
-	LLVMSetAlignment(load->base.llvm_value, alignment);
+	load->base.const_value.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+	LLVMSetAlignment(load->base.const_value.llvm_value, alignment);
 }
 
 LLVMValueRef
@@ -780,8 +780,8 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 	LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
 	const unsigned alignment = store->src->const_value.type->alignment;
 	assert(val && ptr);
-	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
-	LLVMSetAlignment(store->base.llvm_value, alignment);
+	store->base.const_value.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+	LLVMSetAlignment(store->base.const_value.llvm_value, alignment);
 }
 
 void
@@ -796,20 +796,22 @@ gen_instr_unop(Context *cnt, MirInstrUnop *unop)
 	switch (unop->op) {
 	case UNOP_NOT: {
 		assert(!float_kind && "Invalid negation of floating point type.");
-		unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
+		unop->base.const_value.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");
 		break;
 	}
 
 	case UNOP_NEG: {
 		if (float_kind)
-			unop->base.llvm_value = LLVMBuildFNeg(cnt->llvm_builder, llvm_val, "");
+			unop->base.const_value.llvm_value =
+			    LLVMBuildFNeg(cnt->llvm_builder, llvm_val, "");
 		else
-			unop->base.llvm_value = LLVMBuildNeg(cnt->llvm_builder, llvm_val, "");
+			unop->base.const_value.llvm_value =
+			    LLVMBuildNeg(cnt->llvm_builder, llvm_val, "");
 		break;
 	}
 
 	case UNOP_POS: {
-		unop->base.llvm_value = llvm_val;
+		unop->base.const_value.llvm_value = llvm_val;
 		break;
 	}
 
@@ -897,7 +899,7 @@ gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		}
 	}
 
-	cmp->base.llvm_value = llvm_tmp;
+	cmp->base.const_value.llvm_value = llvm_tmp;
 }
 
 void
@@ -913,96 +915,104 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 	switch (binop->op) {
 	case BINOP_ADD:
 		if (float_kind)
-			binop->base.llvm_value = LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, "");
 		else
-			binop->base.llvm_value = LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_SUB:
 		if (float_kind)
-			binop->base.llvm_value = LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, "");
 		else
-			binop->base.llvm_value = LLVMBuildSub(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildSub(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_MUL:
 		if (float_kind)
-			binop->base.llvm_value = LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, "");
 		else
-			binop->base.llvm_value = LLVMBuildMul(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildMul(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_DIV:
 		if (float_kind)
-			binop->base.llvm_value = LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, "");
 		else
-			binop->base.llvm_value = LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, "");
+			binop->base.const_value.llvm_value =
+			    LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_MOD:
-		binop->base.llvm_value = LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, "");
+		binop->base.const_value.llvm_value = LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_EQ:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntEQ, lhs, rhs, "");
 		break;
 
 	case BINOP_NEQ:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, lhs, rhs, "");
 		break;
 
 	case BINOP_GREATER:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, "");
 		break;
 
 	case BINOP_LESS:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, "");
 		break;
 
 	case BINOP_GREATER_EQ:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, "");
 		break;
 
 	case BINOP_LESS_EQ:
 		if (float_kind)
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, "");
 		else
-			binop->base.llvm_value =
+			binop->base.const_value.llvm_value =
 			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
 		break;
 
 	case BINOP_AND:
-		binop->base.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
+		binop->base.const_value.llvm_value = LLVMBuildAnd(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_OR:
-		binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
+		binop->base.const_value.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	default:
@@ -1017,8 +1027,8 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 	assert(callee);
 	assert(callee->const_value.type);
 
-	LLVMValueRef llvm_fn = callee->llvm_value
-	                           ? callee->llvm_value
+	LLVMValueRef llvm_fn = callee->const_value.llvm_value
+	                           ? callee->const_value.llvm_value
 	                           : gen_fn_proto(cnt, callee->const_value.data.v_fn);
 
 	const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
@@ -1037,7 +1047,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 	}
 
 	assert(llvm_fn);
-	call->base.llvm_value =
+	call->base.const_value.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
 	bl_free(llvm_args);
 }
@@ -1093,7 +1103,7 @@ gen_instr_ret(Context *cnt, MirInstrRet *ret)
 		llvm_ret = LLVMBuildRetVoid(cnt->llvm_builder);
 	}
 
-	ret->base.llvm_value = llvm_ret;
+	ret->base.const_value.llvm_value = llvm_ret;
 }
 
 void
@@ -1104,7 +1114,7 @@ gen_instr_br(Context *cnt, MirInstrBr *br)
 
 	LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
 	assert(llvm_then_block);
-	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
+	br->base.const_value.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
 }
@@ -1121,7 +1131,7 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	LLVMBasicBlockRef llvm_then_block = gen_basic_block(cnt, then_block);
 	LLVMBasicBlockRef llvm_else_block = gen_basic_block(cnt, else_block);
 
-	br->base.llvm_value =
+	br->base.const_value.llvm_value =
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
 }
 
@@ -1172,7 +1182,8 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		LLVMBuildStore(cnt->llvm_builder, llvm_ptr, llvm_dest);
 	}
 
-	vargs->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
+	vargs->base.const_value.llvm_value =
+	    LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
 }
 
 void

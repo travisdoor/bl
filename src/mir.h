@@ -333,6 +333,7 @@ struct MirConstValue {
 	union MirConstValueData data; /* data must be first!!! */
 	MirType *               type;
 	MirValueAddressMode     addr_mode;
+	LLVMValueRef            llvm_value;
 };
 
 /* VARIANT */
@@ -406,7 +407,6 @@ struct MirInstr {
 	MirConstValue  const_value; // must be first
 	MirInstrKind   kind;
 	uint64_t       id;
-	LLVMValueRef   llvm_value;
 	Ast *          node;
 	MirInstrBlock *owner_block;
 
