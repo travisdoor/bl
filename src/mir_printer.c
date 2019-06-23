@@ -360,8 +360,16 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 		return;
 	}
 
+	/* Value is compile time known constant. */
+
 	if (instr->kind == MIR_INSTR_DECL_REF) {
 		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
+		return;
+	}
+
+	/* Comptime pointer */
+	if (instr->const_value.type->kind == MIR_TYPE_PTR) {
+		fprintf(stream, "%%%llu /* comptime */", (unsigned long long)instr->id);
 		return;
 	}
 

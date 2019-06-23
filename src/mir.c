@@ -2536,7 +2536,7 @@ append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 	ref_instr(expr);
 	MirInstrTypeInfo *tmp = create_instr(cnt, MIR_INSTR_TYPE_INFO, node, MirInstrTypeInfo *);
 	tmp->expr             = expr;
-	// tmp->base.comptime    = true;
+	tmp->base.comptime    = true;
 
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
