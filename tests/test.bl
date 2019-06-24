@@ -15,6 +15,8 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(enum s32 { A :: 0, B :: 1 }));
     */
 
+    s := "foo";
+    s.len = 10;
     i := typeinfo(s32);
     print("kind = %\n", cast(s64) i.kind);
     

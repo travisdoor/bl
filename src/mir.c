@@ -2896,6 +2896,7 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
 	tmp->comptime               = true;
 	tmp->const_value.type       = cnt->builtin_types.entry_string;
+	tmp->const_value.addr_mode  = MIR_VAM_LVALUE_CONST;
 	tmp->const_value.data.v_str = str;
 
 	/* initialize constant slice */
@@ -3805,11 +3806,15 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 				/* .len builtin member of slices */
 				member_ptr->builtin_id            = MIR_BUILTIN_ID_ARR_LEN;
 				member_ptr->base.const_value.type = create_type_ptr(cnt, len_type);
+				member_ptr->base.const_value.addr_mode =
+				    target_ptr->const_value.addr_mode;
 			} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
 			           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 				/* .ptr builtin member of slices */
 				member_ptr->builtin_id            = MIR_BUILTIN_ID_ARR_PTR;
 				member_ptr->base.const_value.type = create_type_ptr(cnt, ptr_type);
+				member_ptr->base.const_value.addr_mode =
+				    target_ptr->const_value.addr_mode;
 			} else {
 				builder_msg(cnt->builder,
 				            BUILDER_MSG_ERROR,
