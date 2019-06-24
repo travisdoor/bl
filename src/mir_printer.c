@@ -192,12 +192,12 @@ print_const_value(MirConstValue *value, FILE *stream)
 		} else {
 			fprintf(stream, "{");
 
-			MirInstr *   member;
-			const size_t memc = bo_array_size(members);
+			MirConstValue *member;
+			const size_t   memc = bo_array_size(members);
 
 			for (size_t i = 0; i < memc; ++i) {
-				member = bo_array_at(members, i, MirInstr *);
-				print_comptime_value_or_id(member, stream);
+				member = bo_array_at(members, i, MirConstValue *);
+				print_const_value(member, stream);
 				if (i + 1 < memc) fprintf(stream, ", ");
 			}
 

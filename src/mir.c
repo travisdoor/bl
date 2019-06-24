@@ -1118,7 +1118,7 @@ gen_uq_name(Context *cnt, const char *prefix)
 
 	bo_string_append(s, prefix);
 	char ui_str[22];
-	sprintf(ui_str, ".%i", ui++);
+	sprintf(ui_str, "_%i", ui++);
 	bo_string_append(s, ui_str);
 	return bo_string_get(s);
 }
@@ -2900,7 +2900,8 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 
 	/* initialize constant slice */
 	{
-		BArray *       members      = create_arr(cnt, sizeof(MirConstValue *));
+		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
+		bo_array_reserve(members, 2);
 		BArray *       member_types = cnt->builtin_types.entry_string->data.strct.members;
 		MirConstValue *value;
 

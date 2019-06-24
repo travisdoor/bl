@@ -15,13 +15,13 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(enum s32 { A :: 0, B :: 1 }));
     */
 
-    test_print_type_info(typeinfo(s32));
-    test_print_type_info(typeinfo(u64));
-    test_print_type_info(typeinfo(f32));
+    i := typeinfo(s32);
+    print("kind = %\n", cast(s64) i.kind);
     
     return 0;
 };
 
+/*
 test_print_type_info :: fn (i: *TypeInfo) {
     _test_print_type_info(i);
     print("\n");
@@ -72,12 +72,9 @@ _test_print_type_info :: fn (i: *TypeInfo) {
         st_info := cast(*TypeInfoStruct) i;
         print("struct: memc = %;", st_info.members.len);
 
-        /*
         loop j := 0; j < st_info.members.len; j += 1 {
             _test_print_type_info(st_info.members[j]);
         }
-        */
-
     } else if i.kind == TypeKind.Enum {
         enum_info := cast(*TypeInfoEnum) i;
         print("enum;");
@@ -91,3 +88,4 @@ _test_print_type_info :: fn (i: *TypeInfo) {
     
     print("}");
 };
+*/
