@@ -154,7 +154,7 @@ struct MirArenas {
 struct MirModule {
 	struct MirArenas     arenas;
 	BArray *             global_instrs;
-	BHashTable *         RTTI_types;
+	BHashTable *         RTTI_types; // TODO: use array???
 	LLVMModuleRef        llvm_module;
 	LLVMContextRef       llvm_cnt;
 	LLVMTargetDataRef    llvm_td;
