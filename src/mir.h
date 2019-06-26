@@ -154,7 +154,7 @@ struct MirArenas {
 struct MirModule {
 	struct MirArenas     arenas;
 	BArray *             global_instrs;
-	BHashTable *         RTTI_types; // TODO: use array???
+	BArray *             RTTI_types;
 	LLVMModuleRef        llvm_module;
 	LLVMContextRef       llvm_cnt;
 	LLVMTargetDataRef    llvm_td;
@@ -276,7 +276,10 @@ struct MirType {
 	 * Every unique type will cause generation of type info global constant in program data
 	 * segment.
 	 */
-	MirVar *rtti_var;
+	struct {
+		MirVar *var;
+		bool    will_generate;
+	} rtti;
 
 	union {
 		struct MirTypeInt    integer;

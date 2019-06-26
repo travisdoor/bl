@@ -336,25 +336,25 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 void
 gen_RTTI_types(Context *cnt)
 {
-	BHashTable *table = cnt->assembly->mir_module->RTTI_types;
+	BArray *table = cnt->assembly->mir_module->RTTI_types;
 	assert(table);
 
-	MirType *     type;
-	MirVar *      var;
-	LLVMValueRef  llvm_var, llvm_value;
-	LLVMTypeRef   llvm_var_type;
-	bo_iterator_t it;
+	MirType *    type;
+	MirVar *     var;
+	LLVMValueRef llvm_var, llvm_value;
+	LLVMTypeRef  llvm_var_type;
 
-	bhtbl_foreach(table, it)
-	{
-		type = bo_htbl_iter_peek_value(table, &it, MirType *);
+	const size_t count = bo_array_size(table);
+
+	for (size_t i = 0; i < count; ++i) {
+		type = bo_array_at(table, i, MirType *);
 		{
 			char type_name[256];
 			mir_type_to_str(type_name, 256, type, true);
 			bl_log("generate RTTI for: " BLUE("%s"), type_name);
 		}
 
-		var = type->rtti_var;
+		var = type->rtti.var;
 		assert(var);
 
 		llvm_var      = gen_global_var_proto(cnt, var);
@@ -436,9 +436,9 @@ gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	MirType *type = type_info->expr_type;
 	assert(type);
-	assert(type->rtti_var);
+	assert(type->rtti.var);
 
-	LLVMValueRef llvm_var = type->rtti_var->llvm_value;
+	LLVMValueRef llvm_var = type->rtti.var->llvm_value;
 	assert(llvm_var && "Missing LLVM value for RTTI variable.");
 
 	LLVMTypeRef llvm_dest_type = type_info->base.const_value.type->llvm_type;
@@ -655,31 +655,38 @@ gen_as_const(Context *cnt, MirConstValue *value)
 {
 	MirType *type = value->type;
 	assert(type);
-	LLVMTypeRef llvm_type = type->llvm_type;
+	LLVMTypeRef  llvm_type  = type->llvm_type;
+	LLVMValueRef llvm_value = NULL;
 	assert(llvm_type);
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		return LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
+		llvm_value =
+		    LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
+		break;
 	}
 
 	case MIR_TYPE_REAL: {
 		const size_t size = type->store_size_bytes;
 
 		if (size == sizeof(float)) { // float
-			return LLVMConstReal(llvm_type, value->data.v_f32);
+			llvm_value = LLVMConstReal(llvm_type, value->data.v_f32);
+			break;
 		} else if (size == sizeof(double)) { // double
-			return LLVMConstReal(llvm_type, value->data.v_f64);
+			llvm_value = LLVMConstReal(llvm_type, value->data.v_f64);
+			break;
 		}
 		bl_abort("invalid floating point type");
 	}
 
 	case MIR_TYPE_BOOL:
-		return LLVMConstInt(llvm_type, value->data.v_s32, false);
+		llvm_value = LLVMConstInt(llvm_type, value->data.v_s32, false);
+		break;
 
 	case MIR_TYPE_NULL:
 		assert(value->data.v_void_ptr == NULL);
-		return LLVMConstNull(llvm_type);
+		llvm_value = LLVMConstNull(llvm_type);
+		break;
 
 	case MIR_TYPE_PTR: {
 		type = mir_deref_type(type);
@@ -692,12 +699,13 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			assert(fn && "Function pointer not set for compile time known constant "
 			             "pointer to function.");
 
-			LLVMValueRef llvm_fn = gen_fn_proto(cnt, fn);
-			assert(llvm_fn);
-			return llvm_fn;
+			llvm_value = gen_fn_proto(cnt, fn);
+			assert(llvm_value);
+			break;
 		} else {
-			return LLVMConstNull(llvm_type);
-			// bl_unimplemented;
+			assert(value->llvm_value && "Missing llvm value for constant pointer!");
+			llvm_value = value->llvm_value;
+			break;
 		}
 	}
 
@@ -718,13 +726,12 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			llvm_elems[i] = gen_as_const(cnt, elem);
 		}
 
-		LLVMValueRef result = LLVMConstArray(llvm_elem_type, llvm_elems, (unsigned int)len);
+		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems, (unsigned int)len);
 		bl_free(llvm_elems);
-		return result;
+		break;
 	}
 
 	case MIR_TYPE_STRUCT: {
-		LLVMValueRef result  = NULL;
 		BArray *     members = value->data.v_struct.members;
 		const size_t memc    = bo_array_size(members);
 
@@ -744,7 +751,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
 			const_vals[1] = gen_global_string_ptr(cnt, str, len);
 
-			result = LLVMConstNamedStruct(llvm_type, const_vals, 2);
+			llvm_value = LLVMConstNamedStruct(llvm_type, const_vals, 2);
+			break;
 		} else {
 			MirConstValue *member;
 			LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
@@ -754,23 +762,27 @@ gen_as_const(Context *cnt, MirConstValue *value)
 				llvm_members[i] = gen_as_const(cnt, member);
 			}
 
-			result = LLVMConstNamedStruct(llvm_type, llvm_members, memc);
+			llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, memc);
 			bl_free(llvm_members);
+			break;
 		}
-		return result;
 	}
 
 	case MIR_TYPE_ENUM: {
 		LLVMTypeRef llvm_base_type = value->type->llvm_type;
-		return LLVMConstInt(
+
+		llvm_value = LLVMConstInt(
 		    llvm_base_type, value->data.v_u64, value->type->data.integer.is_signed);
+		break;
 	}
 
 	default:
 		bl_unimplemented;
 	}
 
-	bl_abort("should not happend!!!");
+	assert(llvm_value);
+	value->llvm_value = llvm_value;
+	return llvm_value;
 }
 
 void

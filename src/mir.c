@@ -36,7 +36,6 @@
 // clang-format off
 #define ARENA_CHUNK_COUNT               512
 #define ANALYZE_TABLE_SIZE              8192 
-#define RTTI_TABLE_SIZE                 2048
 #define TEST_CASE_FN_NAME               ".test"
 #define RESOLVE_TYPE_FN_NAME            ".type"
 #define INIT_VALUE_FN_NAME              ".init"
@@ -999,10 +998,9 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 static inline void
 push_RTTI_type(Context *cnt, MirType *type)
 {
-	const uint64_t hash = type->id.hash;
-	if (!bo_htbl_has_key(cnt->module->RTTI_types, hash)) {
-		bo_htbl_insert(cnt->module->RTTI_types, hash, type);
-	}
+	if (type->rtti.will_generate) return;
+	bo_array_push_back(cnt->module->RTTI_types, type);
+	type->rtti.will_generate = true;
 }
 
 static inline MirInstr *
@@ -5631,7 +5629,10 @@ MirVar *
 exec_gen_type_RTTI(Context *cnt, MirType *type)
 {
 	assert(type);
-	if (type->rtti_var) return type->rtti_var;
+	if (type->rtti.var) return type->rtti.var;
+
+	/* Push into RTTI table */
+	push_RTTI_type(cnt, type);
 
 	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
 	assert(rtti_type);
@@ -5855,7 +5856,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	}
 
 	rtti_value->data.v_struct.members = members;
-	type->rtti_var                    = rtti_var;
+	type->rtti.var                    = rtti_var;
 
 	{ /* Setup variable */
 		/* allocate */
@@ -5868,9 +5869,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
 
-	/* Push into RTTI table */
-	push_RTTI_type(cnt, type);
-
 	return rtti_var;
 }
 
@@ -5880,11 +5878,10 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 void
 exec_gen_RTTI_types(Context *cnt)
 {
-	BHashTable *table = cnt->module->RTTI_types;
-	if (bo_htbl_size(table) == 0) return;
+	BArray *table = cnt->module->RTTI_types;
+	if (bo_array_size(table) == 0) return;
 
-	MirType *     type;
-	bo_iterator_t it;
+	MirType *type;
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.entry_TypeKind =
@@ -5933,9 +5930,8 @@ exec_gen_RTTI_types(Context *cnt)
 		    create_type_slice(cnt, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
 	}
 
-	bhtbl_foreach(table, it)
+	barray_foreach(table, type)
 	{
-		type = bo_htbl_iter_peek_value(table, &it, MirType *);
 		exec_gen_type_RTTI(cnt, type);
 	}
 }
@@ -6083,7 +6079,7 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-	MirVar *type_info_var = type_info->expr_type->rtti_var;
+	MirVar *type_info_var = type_info->expr_type->rtti.var;
 	assert(type_info_var);
 
 	MirType *type = type_info->base.const_value.type;
@@ -8771,7 +8767,7 @@ mir_new_module(const char *name)
 	LLVMSetTarget(llvm_module, triple);
 
 	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
-	tmp->RTTI_types    = bo_htbl_new(sizeof(MirType *), RTTI_TABLE_SIZE);
+	tmp->RTTI_types    = bo_array_new(sizeof(MirType *));
 	tmp->llvm_cnt      = llvm_context;
 	tmp->llvm_module   = llvm_module;
 	tmp->llvm_tm       = llvm_tm;
