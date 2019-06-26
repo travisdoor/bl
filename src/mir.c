@@ -2536,7 +2536,7 @@ append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 	ref_instr(expr);
 	MirInstrTypeInfo *tmp = create_instr(cnt, MIR_INSTR_TYPE_INFO, node, MirInstrTypeInfo *);
 	tmp->expr             = expr;
-	tmp->base.comptime    = true;
+	// tmp->base.comptime    = true;
 
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -5639,7 +5639,8 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirConstValue *rtti_value = create_const_value(cnt, rtti_type);
 	const char *   var_name   = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
 
-	MirVar *rtti_var = create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, true);
+	MirVar *rtti_var =
+	    create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, false);
 
 	/* set base TypeInfo data */
 	BArray *members = create_arr(cnt, sizeof(MirConstValue *));
@@ -5856,7 +5857,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	rtti_value->data.v_struct.members = members;
 	type->rtti_var                    = rtti_var;
 
-#if 0
 	{ /* Setup variable */
 		/* allocate */
 		exec_stack_alloc_var(cnt, rtti_var);
@@ -5867,7 +5867,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
-#endif
 
 	/* Push into RTTI table */
 	push_RTTI_type(cnt, type);
@@ -6090,7 +6089,10 @@ exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	MirType *type = type_info->base.const_value.type;
 	assert(type);
 
-	exec_push_stack(cnt, (MirStackPtr)&type_info_var->value, type);
+	MirStackPtr ptr =
+	    exec_read_stack_ptr(cnt, type_info_var->rel_stack_ptr, type_info_var->is_in_gscope);
+
+	exec_push_stack(cnt, (MirStackPtr)&ptr, type);
 }
 
 void

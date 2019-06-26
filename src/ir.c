@@ -352,21 +352,20 @@ gen_RTTI_types(Context *cnt)
 			char type_name[256];
 			mir_type_to_str(type_name, 256, type, true);
 			bl_log("generate RTTI for: " BLUE("%s"), type_name);
-
-			var = type->rtti_var;
-			assert(var);
-
-			llvm_var      = gen_global_var_proto(cnt, var);
-			llvm_var_type = var->alloc_type->llvm_type;
-			llvm_value    = gen_as_const(cnt, var->value);
-
-			LLVMSetInitializer(llvm_var, llvm_value);
-			LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
-			LLVMSetGlobalConstant(llvm_var, true);
-			LLVMSetAlignment(llvm_var,
-			                 LLVMABIAlignmentOfType(cnt->llvm_td, llvm_var_type));
-			LLVMSetUnnamedAddr(llvm_var, true);
 		}
+
+		var = type->rtti_var;
+		assert(var);
+
+		llvm_var      = gen_global_var_proto(cnt, var);
+		llvm_var_type = var->alloc_type->llvm_type;
+		llvm_value    = gen_as_const(cnt, var->value);
+
+		LLVMSetInitializer(llvm_var, llvm_value);
+		LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
+		LLVMSetGlobalConstant(llvm_var, true);
+		LLVMSetAlignment(llvm_var, LLVMABIAlignmentOfType(cnt->llvm_td, llvm_var_type));
+		LLVMSetUnnamedAddr(llvm_var, true);
 	}
 }
 
@@ -697,7 +696,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			assert(llvm_fn);
 			return llvm_fn;
 		} else {
-			bl_unimplemented;
+			return LLVMConstNull(llvm_type);
+			// bl_unimplemented;
 		}
 	}
 
