@@ -3,11 +3,13 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    test_print_type_info(typeinfo(s32));
-    test_print_type_info(typeinfo(u64));
-    test_print_type_info(typeinfo(f32));
+    //test_print_type_info(typeinfo(s32));
+    //test_print_type_info(typeinfo(u64));
+    //test_print_type_info(typeinfo(f32));
     test_print_type_info(typeinfo(*s32));
-    test_print_type_info(typeinfo([10]s32));
+    test_print_type_info(typeinfo(*s32));
+    test_print_type_info(typeinfo(s32));
+    //test_print_type_info(typeinfo([10]s32));
 
     /*
     test_print_type_info(typeinfo(test_print_type_info));

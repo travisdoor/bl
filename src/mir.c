@@ -195,6 +195,8 @@ typedef struct {
 		BHashTable *waiting;
 		bool        verbose_pre;
 		bool        verbose_post;
+
+		BHashTable *RTTI_entry_types;
 	} analyze;
 
 	/* MIR compile time execution. */
@@ -995,14 +997,6 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
-static inline void
-push_RTTI_type(Context *cnt, MirType *type)
-{
-	if (type->rtti.will_generate) return;
-	bo_array_push_back(cnt->module->RTTI_types, type);
-	type->rtti.will_generate = true;
-}
-
 static inline MirInstr *
 mutate_instr(MirInstr *instr, MirInstrKind kind)
 {
@@ -4024,7 +4018,8 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	}
 
 	type_info->expr_type = type;
-	push_RTTI_type(cnt, type);
+	if (!bo_htbl_has_key(cnt->analyze.RTTI_entry_types, (uint64_t)type))
+		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
 
 	/* Resolve TypeInfo struct type */
 	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
@@ -5631,9 +5626,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	assert(type);
 	if (type->rtti.var) return type->rtti.var;
 
-	/* Push into RTTI table */
-	push_RTTI_type(cnt, type);
-
 	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
 	assert(rtti_type);
 
@@ -5869,6 +5861,9 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
 
+	/* Push into RTTI table */
+	bo_array_push_back(cnt->module->RTTI_types, type);
+
 	return rtti_var;
 }
 
@@ -5878,10 +5873,8 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 void
 exec_gen_RTTI_types(Context *cnt)
 {
-	BArray *table = cnt->module->RTTI_types;
-	if (bo_array_size(table) == 0) return;
-
-	MirType *type;
+	BHashTable *table = cnt->analyze.RTTI_entry_types;
+	if (bo_htbl_size(table) == 0) return;
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.entry_TypeKind =
@@ -5930,8 +5923,11 @@ exec_gen_RTTI_types(Context *cnt)
 		    create_type_slice(cnt, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
 	}
 
-	barray_foreach(table, type)
+	bo_iterator_t it;
+	MirType *     type;
+	bhtbl_foreach(table, it)
 	{
+		type = (MirType *)bo_htbl_iter_peek_key(table, &it);
 		exec_gen_type_RTTI(cnt, type);
 	}
 }
@@ -8799,17 +8795,18 @@ mir_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.builder              = builder;
-	cnt.assembly             = assembly;
-	cnt.module               = assembly->mir_module;
-	cnt.analyze.verbose_pre  = is_flag(builder->flags, BUILDER_VERBOSE_MIR_PRE);
-	cnt.analyze.verbose_post = is_flag(builder->flags, BUILDER_VERBOSE_MIR_POST);
-	cnt.analyze.queue        = bo_list_new(sizeof(MirInstr *));
-	cnt.test_cases           = bo_array_new(sizeof(MirFn *));
-	cnt.exec.stack           = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
-	cnt.tmp_sh               = bo_string_new(1024);
-	cnt.analyze.waiting      = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
-	cnt.type_table           = assembly->type_table;
+	cnt.builder                  = builder;
+	cnt.assembly                 = assembly;
+	cnt.module                   = assembly->mir_module;
+	cnt.analyze.verbose_pre      = is_flag(builder->flags, BUILDER_VERBOSE_MIR_PRE);
+	cnt.analyze.verbose_post     = is_flag(builder->flags, BUILDER_VERBOSE_MIR_POST);
+	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));
+	cnt.analyze.RTTI_entry_types = bo_htbl_new(0, 1024);
+	cnt.test_cases               = bo_array_new(sizeof(MirFn *));
+	cnt.exec.stack               = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
+	cnt.tmp_sh                   = bo_string_new(1024);
+	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
+	cnt.type_table               = assembly->type_table;
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);
@@ -8839,6 +8836,7 @@ mir_run(Builder *builder, Assembly *assembly)
 ERROR:
 	bo_unref(cnt.analyze.queue);
 	bo_unref(cnt.analyze.waiting);
+	bo_unref(cnt.analyze.RTTI_entry_types);
 	bo_unref(cnt.test_cases);
 	bo_unref(cnt.tmp_sh);
 

@@ -278,7 +278,6 @@ struct MirType {
 	 */
 	struct {
 		MirVar *var;
-		bool    will_generate;
 	} rtti;
 
 	union {
