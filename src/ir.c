@@ -704,7 +704,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			break;
 		} else {
 			// assert(value->llvm_value && "Missing llvm value for constant pointer!");
-			// llvm_value = value->data.v_ptr->llvm_value;
+			//llvm_value = value->data.v_ptr->llvm_value;
 			llvm_value = LLVMConstNull(llvm_type);
 			break;
 		}

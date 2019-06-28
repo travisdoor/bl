@@ -5582,6 +5582,10 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 		break;
 	}
 
+	case MIR_TYPE_PTR: {
+		bl_log("copy const value pointer to stack");
+	}
+
 	default:
 		assert(dest_ptr && "Invalid destination pointer");
 		assert(src_value && "Invalid source value pointer");
