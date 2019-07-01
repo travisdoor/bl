@@ -308,8 +308,9 @@ union MirConstValueData {
 	char                v_char;
 	const char *        v_str;
 	MirType *           v_type;
-	MirConstValue *     v_ptr;
+	MirConstValue *     v_ptr; // TODO: remove
 	MirFn *             v_fn;
+	MirVar *            v_var;
 	void *              v_void_ptr;
 	MirRelativeStackPtr v_rel_stack_ptr;
 	MirStackPtr         v_stack_ptr;
@@ -335,7 +336,6 @@ struct MirConstValue {
 	union MirConstValueData data; /* data must be first!!! */
 	MirType *               type;
 	MirValueAddressMode     addr_mode;
-	LLVMValueRef            llvm_value;
 };
 
 /* VARIANT */
@@ -411,6 +411,7 @@ struct MirInstr {
 	uint64_t       id;
 	Ast *          node;
 	MirInstrBlock *owner_block;
+	LLVMValueRef   llvm_value;
 
 	int32_t ref_count;
 	bool    analyzed;
