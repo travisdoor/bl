@@ -2889,10 +2889,8 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	tmp->comptime               = true;
 	tmp->const_value.type       = cnt->builtin_types.entry_string;
 	tmp->const_value.addr_mode  = MIR_VAM_LVALUE_CONST;
-	tmp->const_value.data.v_str = str;
 
-	/* initialize constant slice */
-	{
+	{ /* initialize constant slice */
 		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
 		bo_array_reserve(members, 2);
 		BArray *       member_types = cnt->builtin_types.entry_string->data.strct.members;
@@ -5539,6 +5537,9 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 		} else {
 			BArray *       members = data->v_struct.members;
 			MirConstValue *member;
+
+			if (src_type->data.strct.kind == MIR_TS_STRING)
+				bl_log("copy string to stack");
 
 			assert(members);
 			const size_t memc = bo_array_size(members);

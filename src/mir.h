@@ -294,26 +294,30 @@ struct MirType {
 
 /* VALUE */
 union MirConstValueData {
-	int64_t             v_s64;
-	int32_t             v_s32;
-	int16_t             v_s16;
-	int8_t              v_s8;
-	uint64_t            v_u64;
-	uint32_t            v_u32;
-	uint16_t            v_u16;
-	uint8_t             v_u8;
-	float               v_f32;
-	double              v_f64;
-	bool                v_bool;
-	char                v_char;
-	const char *        v_str;
-	MirType *           v_type;
-	MirConstValue *     v_ptr; // TODO: remove
-	MirFn *             v_fn;
-	MirVar *            v_var;
-	void *              v_void_ptr;
-	MirRelativeStackPtr v_rel_stack_ptr;
-	MirStackPtr         v_stack_ptr;
+	void *v_void_ptr; /* universal pointer value */
+
+	/* atomic types */
+	int64_t     v_s64;
+	int32_t     v_s32;
+	int16_t     v_s16;
+	int8_t      v_s8;
+	uint64_t    v_u64;
+	uint32_t    v_u32;
+	uint16_t    v_u16;
+	uint8_t     v_u8;
+	float       v_f32;
+	double      v_f64;
+	bool        v_bool;
+	char        v_char;
+	const char *v_str;
+
+	/* aggregate types */
+	MirType *           v_type;          /* type value */
+	MirConstValue *     v_ptr;           /* TODO: remove */
+	MirFn *             v_fn;            /* function */
+	MirVar *            v_var;           /* variable */
+	MirStackPtr         v_stack_ptr;     /* absolute pointer to the stack */
+	MirRelativeStackPtr v_rel_stack_ptr; /* relative pointer to the stack */
 
 	struct {
 		BArray *members; // array of MirConstValues *

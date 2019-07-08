@@ -64,3 +64,4 @@ dkms.conf
 *.blm
 tests/test
 tests/pdisk-generator
+/docs/doxygen/html/
