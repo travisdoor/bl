@@ -352,7 +352,7 @@ struct MirVariant {
 
 /* VAR */
 struct MirVar {
-	MirType *           alloc_type;
+	MirConstValue       value; /* contains also allocated type */
 	ID *                id;
 	Ast *               decl_node;
 	Scope *             scope;
@@ -363,7 +363,6 @@ struct MirVar {
 	bool                is_implicit;
 	bool                gen_llvm;
 	uint32_t            flags;
-	MirConstValue *     value;
 	MirRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef        llvm_value;
 	const char *        llvm_name;

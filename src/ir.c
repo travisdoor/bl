@@ -286,14 +286,14 @@ gen_global_var_proto(Context *cnt, MirVar *var)
 	assert(var);
 	if (var->llvm_value) return var->llvm_value;
 
-	LLVMTypeRef llvm_type = var->alloc_type->llvm_type;
+	LLVMTypeRef llvm_type = var->value.type->llvm_type;
 	var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->llvm_name);
 
 	LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
 	/* Linkage should be later set by user. */
 	LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
-	LLVMSetAlignment(var->llvm_value, var->alloc_type->alignment);
+	LLVMSetAlignment(var->llvm_value, var->value.type->alignment);
 	return var->llvm_value;
 }
 
@@ -358,8 +358,8 @@ gen_RTTI_types(Context *cnt)
 		assert(var);
 
 		llvm_var      = gen_global_var_proto(cnt, var);
-		llvm_var_type = var->alloc_type->llvm_type;
-		llvm_value    = gen_as_const(cnt, var->value);
+		llvm_var_type = var->value.type->llvm_type;
+		llvm_value    = gen_as_const(cnt, &var->value);
 
 		LLVMSetInitializer(llvm_var, llvm_value);
 		LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
@@ -844,7 +844,7 @@ gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	LLVMValueRef llvm_tmp = tmp_var->llvm_value;
 	assert(llvm_tmp);
 
-	MirType *type = tmp_var->alloc_type;
+	MirType *type = tmp_var->value.type;
 	assert(type);
 
 	/*
@@ -1061,7 +1061,7 @@ gen_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	assert(var);
 
 	/* skip when we should not generate LLVM representation */
-	if (var->alloc_type->kind == MIR_TYPE_TYPE) return;
+	if (var->value.type->kind == MIR_TYPE_TYPE) return;
 
 	if (var->is_in_gscope) {
 		/* OK variable is declared in global scope so we need different generation here*/
@@ -1231,8 +1231,8 @@ gen_allocas(Context *cnt, MirFn *fn)
 		var_name = "";
 #endif
 
-		var_type      = var->alloc_type->llvm_type;
-		var_alignment = (unsigned int)var->alloc_type->alignment;
+		var_type      = var->value.type->llvm_type;
+		var_alignment = (unsigned int)var->value.type->alignment;
 
 		assert(var_type);
 

@@ -724,7 +724,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 	if (var->is_in_gscope) {
 		/* global scope variable */
 		fprintf(stream, "\n@%s : ", name);
-		print_type(var->alloc_type, false, stream, true);
+		print_type(var->value.type, false, stream, true);
 		fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
 		if (decl->init) {
 			print_comptime_value_or_id(decl->init, stream);
@@ -736,7 +736,7 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 		print_instr_head(&decl->base, stream, "decl");
 
 		fprintf(stream, "%s : ", name);
-		print_type(var->alloc_type, false, stream, true);
+		print_type(var->value.type, false, stream, true);
 		if (decl->init) {
 			fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
 			print_comptime_value_or_id(decl->init, stream);

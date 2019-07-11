@@ -400,24 +400,22 @@ static MirType *
 create_type_vargs(Context *cnt, MirType *elem_ptr_type);
 
 static MirVar *
-create_var(Context *      cnt,
-           Ast *          decl_node,
-           Scope *        scope,
-           ID *           id,
-           MirType *      alloc_type,
-           MirConstValue *value,
-           bool           is_mutable,
-           bool           is_in_gscope,
-           uint32_t       flags);
+create_var(Context *cnt,
+           Ast *    decl_node,
+           Scope *  scope,
+           ID *     id,
+           MirType *alloc_type,
+           bool     is_mutable,
+           bool     is_in_gscope,
+           uint32_t flags);
 
 static MirVar *
-create_var_impl(Context *      cnt,
-                const char *   name,
-                MirType *      alloc_type,
-                MirConstValue *value,
-                bool           is_mutable,
-                bool           is_in_gscope,
-                bool           comptime);
+create_var_impl(Context *   cnt,
+                const char *name,
+                MirType *   alloc_type,
+                bool        is_mutable,
+                bool        is_in_gscope,
+                bool        comptime);
 
 static BArray *
 create_arr(Context *cnt, size_t size);
@@ -1110,7 +1108,7 @@ gen_uq_name(Context *cnt, const char *prefix)
 
 	bo_string_append(s, prefix);
 	char ui_str[22];
-	sprintf(ui_str, "_%i", ui++);
+	sprintf(ui_str, ".%i", ui++);
 	bo_string_append(s, ui_str);
 	return bo_string_get(s);
 }
@@ -1257,7 +1255,7 @@ exec_stack_alloc_var(Context *cnt, MirVar *var)
 	assert(!var->comptime && "cannot allocate compile time constant");
 	/* allocate memory for variable on stack */
 
-	MirStackPtr tmp    = exec_push_stack_empty(cnt, var->alloc_type);
+	MirStackPtr tmp    = exec_push_stack_empty(cnt, var->value.type);
 	var->rel_stack_ptr = tmp - (MirStackPtr)cnt->exec.stack->ra;
 }
 
@@ -1791,10 +1789,10 @@ lookup_provided_type(Context *cnt, ID *id)
 		         var->llvm_name);
 
 	assert(var);
-	assert(var->comptime && var->alloc_type->kind == MIR_TYPE_TYPE);
-	assert(var->value->data.v_type);
+	assert(var->comptime && var->value.type->kind == MIR_TYPE_TYPE);
+	assert(var->value.data.v_type);
 
-	return var->value->data.v_type;
+	return var->value.data.v_type;
 }
 
 MirType *
@@ -2004,21 +2002,19 @@ _push_var_into_module(Context *cnt, MirVar *var)
 }
 
 MirVar *
-create_var(Context *      cnt,
-           Ast *          decl_node,
-           Scope *        scope,
-           ID *           id,
-           MirType *      alloc_type,
-           MirConstValue *value,
-           bool           is_mutable,
-           bool           is_in_gscope,
-           uint32_t       flags)
+create_var(Context *cnt,
+           Ast *    decl_node,
+           Scope *  scope,
+           ID *     id,
+           MirType *alloc_type,
+           bool     is_mutable,
+           bool     is_in_gscope,
+           uint32_t flags)
 {
 	assert(id);
 	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
 	tmp->id           = id;
-	tmp->alloc_type   = alloc_type;
-	tmp->value        = value;
+	tmp->value.type   = alloc_type;
 	tmp->scope        = scope;
 	tmp->decl_node    = decl_node;
 	tmp->is_mutable   = is_mutable;
@@ -2033,18 +2029,16 @@ create_var(Context *      cnt,
 }
 
 MirVar *
-create_var_impl(Context *      cnt,
-                const char *   name,
-                MirType *      alloc_type,
-                MirConstValue *value,
-                bool           is_mutable,
-                bool           is_in_gscope,
-                bool           comptime)
+create_var_impl(Context *   cnt,
+                const char *name,
+                MirType *   alloc_type,
+                bool        is_mutable,
+                bool        is_in_gscope,
+                bool        comptime)
 {
 	assert(name);
 	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
-	tmp->alloc_type   = alloc_type;
-	tmp->value        = value;
+	tmp->value.type   = alloc_type;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
 	tmp->llvm_name    = name;
@@ -2765,7 +2759,6 @@ append_instr_decl_var(Context * cnt,
 	                      node->data.ident.scope,
 	                      &node->data.ident.id,
 	                      NULL,
-	                      &tmp->base.const_value,
 	                      is_mutable,
 	                      is_in_gscope,
 	                      flags);
@@ -2885,10 +2878,10 @@ append_instr_const_bool(Context *cnt, Ast *node, bool val)
 MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
-	MirInstr *tmp               = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
-	tmp->comptime               = true;
-	tmp->const_value.type       = cnt->builtin_types.entry_string;
-	tmp->const_value.addr_mode  = MIR_VAM_LVALUE_CONST;
+	MirInstr *tmp              = create_instr(cnt, MIR_INSTR_CONST, node, MirInstr *);
+	tmp->comptime              = true;
+	tmp->const_value.type      = cnt->builtin_types.entry_string;
+	tmp->const_value.addr_mode = MIR_VAM_LVALUE_CONST;
 
 	{ /* initialize constant slice */
 		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
@@ -3587,8 +3580,8 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		cmp->base.comptime         = false;
 
 		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
-		MirVar *tmp_var = create_var_impl(cnt, tmp_name, type, NULL, true, false, false);
-		cmp->tmp_var    = tmp_var;
+		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, true, false, false);
+		cmp->tmp_var         = tmp_var;
 	} else {
 		cmp->base.const_value.type = type;
 		cmp->base.comptime         = comptime;
@@ -3612,13 +3605,13 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		/* Prepare tmp array for values */
 		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP_ARR);
 		MirType *   tmp_type = create_type_array(cnt, vargs->type, valc);
-		vargs->arr_tmp = create_var_impl(cnt, tmp_name, tmp_type, NULL, true, false, false);
+		vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, true, false, false);
 	}
 
 	{
 		/* Prepare tmp slice for vargs */
 		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP);
-		vargs->vargs_tmp = create_var_impl(cnt, tmp_name, type, NULL, true, false, false);
+		vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, true, false, false);
 	}
 
 	MirInstr **value;
@@ -4122,7 +4115,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		MirVar *var = found->data.var;
 		assert(var);
 		++var->ref_count;
-		MirType *type = var->alloc_type;
+		MirType *type = var->value.type;
 		assert(type);
 
 		type                       = create_type_ptr(cnt, type);
@@ -4134,7 +4127,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* set pointer to variable const value directly when variable is compile
 		 * time known
 		 */
-		if (var->comptime) ref->base.const_value.data.v_void_ptr = found->data.var->value;
+		if (var->comptime) ref->base.const_value.data.v_var = found->data.var;
 		// ref->base.const_value.data.v_var = found->data.var;
 		break;
 	}
@@ -4823,7 +4816,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	MirVar *var = decl->var;
 	assert(var);
 
-	if (decl->type && var->alloc_type == NULL) {
+	if (decl->type && var->value.type == NULL) {
 		assert(decl->type->kind == MIR_INSTR_CALL && "expected type resolver call");
 		if (analyze_instr(cnt, decl->type) != ANALYZE_PASSED) return ANALYZE_POSTPONE;
 		MirConstValue *resolved_type_value =
@@ -4833,7 +4826,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		MirType *resolved_type = resolved_type_value->data.v_type;
 		if (!resolved_type) return ANALYZE_FAILED;
 
-		var->alloc_type = resolved_type;
+		var->value.type = resolved_type;
 	}
 
 	if (decl->init) {
@@ -4842,19 +4835,19 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				return ANALYZE_POSTPONE;
 			exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
 		}
-		setup_null_type_if_needed(cnt, &decl->init->const_value, var->alloc_type);
+		setup_null_type_if_needed(cnt, &decl->init->const_value, var->value.type);
 		decl->init = insert_instr_load_if_needed(cnt, decl->init);
 
 		/* validate types or infer */
-		if (var->alloc_type) {
+		if (var->value.type) {
 			bool is_valid;
-			decl->init = try_impl_cast(cnt, decl->init, var->alloc_type, &is_valid);
+			decl->init = try_impl_cast(cnt, decl->init, var->value.type, &is_valid);
 			if (!is_valid) return ANALYZE_FAILED;
 		} else {
 			/* infer type */
 			MirType *type = decl->init->const_value.type;
 			assert(type);
-			var->alloc_type = type;
+			var->value.type = type;
 		}
 
 		decl->base.comptime = var->comptime = !var->is_mutable && decl->init->comptime;
@@ -4868,11 +4861,11 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_FAILED;
 	}
 
-	if (!var->alloc_type) {
+	if (!var->value.type) {
 		bl_abort("unknown declaration type");
 	}
 
-	if (var->alloc_type->kind == MIR_TYPE_TYPE && var->is_mutable) {
+	if (var->value.type->kind == MIR_TYPE_TYPE && var->is_mutable) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_MUTABILITY,
@@ -4882,7 +4875,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_FAILED;
 	}
 
-	if (var->alloc_type->kind == MIR_TYPE_FN) {
+	if (var->value.type->kind == MIR_TYPE_FN) {
 		/* Allocated type is function. */
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
@@ -4892,7 +4885,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		            "Invalid type of the variable, functions can be referenced "
 		            "only by pointers.");
 		return ANALYZE_FAILED;
-	} else if (var->alloc_type->kind == MIR_TYPE_VOID) {
+	} else if (var->value.type->kind == MIR_TYPE_VOID) {
 		/* Allocated type is void type. */
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
@@ -4916,14 +4909,14 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 	if (decl->base.comptime && decl->init) {
 		/* initialize when known in compiletime */
-		var->value = &decl->init->const_value;
+		var->value = decl->init->const_value;
 	}
 
 	/* insert variable into symbol lookup table */
 	provide_var(cnt, decl->var);
 
 	/* Type declaration should not be generated in LLVM. */
-	var->gen_llvm = var->alloc_type->kind != MIR_TYPE_TYPE;
+	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
 
 	if (var->is_in_gscope) {
 		/* Global varibales which are not compile time constants are allocated
@@ -5538,9 +5531,6 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 			BArray *       members = data->v_struct.members;
 			MirConstValue *member;
 
-			if (src_type->data.strct.kind == MIR_TS_STRING)
-				bl_log("copy string to stack");
-
 			assert(members);
 			const size_t memc = bo_array_size(members);
 			for (size_t i = 0; i < memc; ++i) {
@@ -5581,10 +5571,6 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 		}
 
 		break;
-	}
-
-	case MIR_TYPE_PTR: {
-		bl_log("copy const value pointer to stack");
 	}
 
 	default:
@@ -5634,11 +5620,10 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
 	assert(rtti_type);
 
-	MirConstValue *rtti_value = create_const_value(cnt, rtti_type);
-	const char *   var_name   = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+	const char *rtti_var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
 
-	MirVar *rtti_var =
-	    create_var_impl(cnt, var_name, rtti_type, rtti_value, false, true, false);
+	MirVar *       rtti_var   = create_var_impl(cnt, rtti_var_name, rtti_type, false, true, false);
+	MirConstValue *rtti_value = &rtti_var->value;
 
 	/* set base TypeInfo data */
 	BArray *members = create_arr(cnt, sizeof(MirConstValue *));
@@ -5662,7 +5647,11 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	case MIR_TYPE_VOID:
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_NULL:
-		break;
+	case MIR_TYPE_ARRAY: 
+	case MIR_TYPE_STRUCT: 
+	case MIR_TYPE_ENUM: 
+	case MIR_TYPE_FN: 
+		bl_unimplemented;
 
 	case MIR_TYPE_INT: {
 		/* .bitcount */
@@ -5685,71 +5674,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_FN: {
-		/* .args */
-		/* build args array on the stack */
-		MirStackPtr rtti_args_ptr = NULL;
-
-		const size_t argc =
-		    type->data.fn.arg_types ? bo_array_size(type->data.fn.arg_types) : 0;
-
-		if (argc) {
-			const size_t TypeInfo_ptr_size =
-			    cnt->builtin_types.entry_TypeInfo_ptr->store_size_bytes;
-
-			/* allocate array for args slice */
-			rtti_args_ptr = exec_stack_alloc(cnt, TypeInfo_ptr_size * argc);
-
-			MirStackPtr elem_dest_ptr = rtti_args_ptr;
-			MirType *   arg_type;
-			barray_foreach(type->data.fn.arg_types, arg_type)
-			{
-				elem_dest_ptr = rtti_args_ptr + TypeInfo_ptr_size * i;
-				assert(elem_dest_ptr);
-
-				MirVar *    rtti_arg           = exec_gen_type_RTTI(cnt, arg_type);
-				MirStackPtr rtti_arg_stack_ptr = exec_read_stack_ptr(
-				    cnt, rtti_arg->rel_stack_ptr, rtti_arg->is_in_gscope);
-
-				memcpy(elem_dest_ptr, &rtti_arg_stack_ptr, TypeInfo_ptr_size);
-			}
-		}
-
-		/* .args */
-		BArray *args_members = create_arr(cnt, sizeof(MirConstValue *));
-		bo_array_reserve(args_members, 2);
-
-		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
-		tmp->data.v_struct.members = args_members;
-		bo_array_push_back(members, tmp);
-
-		/* .args.len */
-		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
-		tmp->data.v_u64 = argc;
-		bo_array_push_back(args_members, tmp);
-
-		/* .args.ptr */
-		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		tmp->data.v_stack_ptr = rtti_args_ptr;
-		bo_array_push_back(args_members, tmp);
-
-		/* .ret */
-		tmp              = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		MirVar *rtti_ret = exec_gen_type_RTTI(cnt, type->data.fn.ret_type);
-
-		MirStackPtr rtti_ret_stack_ptr =
-		    exec_read_stack_ptr(cnt, rtti_ret->rel_stack_ptr, rtti_ret->is_in_gscope);
-
-		tmp->data.v_stack_ptr = rtti_ret_stack_ptr;
-		bo_array_push_back(members, tmp);
-
-		/* .is_vargs */
-		tmp              = create_const_value(cnt, cnt->builtin_types.entry_bool);
-		tmp->data.v_bool = type->data.fn.is_vargs;
-		bo_array_push_back(members, tmp);
-		break;
-	}
-
 	case MIR_TYPE_PTR: {
 		/* .pointed */
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
@@ -5759,87 +5683,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		    cnt, rtti_pointed->rel_stack_ptr, rtti_pointed->is_in_gscope);
 
 		tmp->data.v_stack_ptr = rtti_pointed_stack_ptr;
-		bo_array_push_back(members, tmp);
-		break;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		/* .elem */
-		tmp               = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		MirVar *rtti_elem = exec_gen_type_RTTI(cnt, type->data.array.elem_type);
-
-		MirStackPtr rtti_elem_stack_ptr =
-		    exec_read_stack_ptr(cnt, rtti_elem->rel_stack_ptr, rtti_elem->is_in_gscope);
-
-		tmp->data.v_stack_ptr = rtti_elem_stack_ptr;
-		bo_array_push_back(members, tmp);
-
-		/* .len */
-		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
-		tmp->data.v_u64 = type->data.array.len;
-		bo_array_push_back(members, tmp);
-		break;
-	}
-
-	case MIR_TYPE_STRUCT: {
-		/* .members */
-		const size_t membersc =
-		    type->data.strct.members ? bo_array_size(type->data.strct.members) : 0;
-
-		MirConstValue *members_value = NULL;
-
-		if (membersc) {
-			MirType *members_type =
-			    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, membersc);
-			members_value = create_const_value(cnt, members_type);
-
-			members_value->data.v_array.elems =
-			    create_arr(cnt, sizeof(MirConstValue *));
-			bo_array_reserve(members_value->data.v_array.elems, membersc);
-
-			MirType *member_type;
-			MirVar * rtti_member;
-			barray_foreach(type->data.strct.members, member_type)
-			{
-				assert(member_type);
-				rtti_member = exec_gen_type_RTTI(cnt, member_type);
-				bo_array_push_back(members_value->data.v_array.elems,
-				                   rtti_member->value);
-			}
-		}
-
-		/* .members */
-		MirConstValue *members_slice =
-		    create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
-
-		bo_array_push_back(members, tmp);
-
-		members_slice->data.v_struct.members = create_arr(cnt, sizeof(MirConstValue *));
-		bo_array_reserve(members_slice->data.v_struct.members, 2);
-
-		/* .members.len */
-		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
-		tmp->data.v_u64 = membersc;
-		bo_array_push_back(members_slice->data.v_struct.members, tmp);
-
-		/* .members.ptr */
-		tmp             = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		tmp->data.v_ptr = members_value;
-		bo_array_push_back(members_slice->data.v_struct.members, tmp);
-
-		bo_array_push_back(members, members_slice);
-		break;
-	}
-
-	case MIR_TYPE_ENUM: {
-		/* .base_type */
-		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
-		MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, type->data.enm.base_type);
-
-		MirStackPtr rtti_base_type_stack_ptr = exec_read_stack_ptr(
-		    cnt, rtti_base_type->rel_stack_ptr, rtti_base_type->is_in_gscope);
-
-		tmp->data.v_stack_ptr = rtti_base_type_stack_ptr;
 		bo_array_push_back(members, tmp);
 		break;
 	}
@@ -6528,7 +6371,7 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		const bool  use_static_segment = var->is_in_gscope;
 		MirStackPtr real_ptr           = NULL;
 		if (var->comptime) {
-			real_ptr = (MirStackPtr)&var->value->data;
+			real_ptr = (MirStackPtr)&var->value;
 		} else {
 			real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
 		}
@@ -6565,7 +6408,7 @@ exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 
 		tmp_ptr = exec_read_stack_ptr(cnt, tmp_var->rel_stack_ptr, false);
 
-		type         = cmp->tmp_var->alloc_type;
+		type         = cmp->tmp_var->value.type;
 		push_tmp_ptr = true;
 	}
 
@@ -6636,7 +6479,7 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	MirVar *arr_tmp   = vargs->arr_tmp;
 	MirVar *vargs_tmp = vargs->vargs_tmp;
 
-	assert(mir_is_vargs_type(vargs_tmp->alloc_type));
+	assert(mir_is_vargs_type(vargs_tmp->value.type));
 	assert(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
 	assert(values);
 
@@ -6670,11 +6513,11 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			MirConstValueData len_tmp = {0};
 			MirStackPtr       len_ptr =
 			    vargs_tmp_ptr + LLVMOffsetOfElement(cnt->module->llvm_td,
-			                                        vargs_tmp->alloc_type->llvm_type,
+			                                        vargs_tmp->value.type->llvm_type,
 			                                        0);
 
 			MirType *len_type =
-			    bo_array_at(vargs_tmp->alloc_type->data.strct.members, 0, MirType *);
+			    bo_array_at(vargs_tmp->value.type->data.strct.members, 0, MirType *);
 			len_tmp.v_u64 = bo_array_size(values);
 			memcpy(len_ptr, &len_tmp, len_type->store_size_bytes);
 		}
@@ -6684,16 +6527,16 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			MirConstValueData ptr_tmp = {0};
 			MirStackPtr       ptr_ptr =
 			    vargs_tmp_ptr + LLVMOffsetOfElement(cnt->module->llvm_td,
-			                                        vargs_tmp->alloc_type->llvm_type,
+			                                        vargs_tmp->value.type->llvm_type,
 			                                        1);
 
 			MirType *ptr_type =
-			    bo_array_at(vargs_tmp->alloc_type->data.strct.members, 1, MirType *);
+			    bo_array_at(vargs_tmp->value.type->data.strct.members, 1, MirType *);
 			ptr_tmp.v_void_ptr = arr_tmp_ptr;
 			memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
 		}
 
-		exec_push_stack(cnt, vargs_tmp_ptr, vargs_tmp->alloc_type);
+		exec_push_stack(cnt, vargs_tmp_ptr, vargs_tmp->value.type);
 	}
 }
 
@@ -6734,7 +6577,7 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			} else {
 				/* read initialization value if there is one */
 				MirStackPtr init_ptr = exec_fetch_value(cnt, decl->init);
-				memcpy(var_ptr, init_ptr, var->alloc_type->store_size_bytes);
+				memcpy(var_ptr, init_ptr, var->value.type->store_size_bytes);
 			}
 		}
 	}
