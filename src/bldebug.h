@@ -79,6 +79,9 @@ void
 _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 
 #ifdef BL_DEBUG
+#define BL_MAGIC const void *_magic
+#define bl_set_magic(O, M) (O)->_magic = &(M)
+
 #define bl_log(format, ...)                                                                        \
 	{                                                                                          \
 		_log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
@@ -89,7 +92,12 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                  \
 	}
 
-#else
+#else /* !BL_DEBUG */
+#define BL_MAGIC
+#define bl_set_magic(O, M)                                                                         \
+	while (0) {                                                                                \
+	}
+
 #define bl_log(format, ...)                                                                        \
 	while (0) {                                                                                \
 	}
@@ -97,7 +105,7 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 #define bl_warning(format, ...)                                                                    \
 	while (0) {                                                                                \
 	}
-#endif
+#endif /* BL_DEBUG */
 
 #define bl_abort(format, ...)                                                                      \
 	{                                                                                          \
@@ -113,6 +121,8 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
 		abort();                                                                           \
 	}
+
+#define bl_assert_magic(O, M, MSG) assert((O)->_magic == &(M) && MSG)
 
 #define bl_warning_issue(N)                                                                        \
 	{                                                                                          \

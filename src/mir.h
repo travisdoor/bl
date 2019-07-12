@@ -37,6 +37,8 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
+const uint8_t magic_mir_var;
+
 struct Assembly;
 struct Builder;
 
@@ -366,6 +368,8 @@ struct MirVar {
 	MirRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef        llvm_value;
 	const char *        llvm_name;
+
+	BL_MAGIC;
 };
 
 /* INSTRUCTIONS */

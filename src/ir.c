@@ -703,9 +703,14 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			assert(llvm_value);
 			break;
 		} else {
-			// assert(value->llvm_value && "Missing llvm value for constant pointer!");
-			// llvm_value = value->data.v_ptr->llvm_value;
-			llvm_value = LLVMConstNull(llvm_type);
+			/* value must contains pointer to constant variable */
+			MirVar *pointed = value->data.v_var;
+			assert(pointed && pointed->llvm_value &&
+			       "Invalid const pointer to variable.");
+			bl_assert_magic(pointed, magic_mir_var, "Value is not MirVar");
+
+			llvm_value = pointed->llvm_value;
+			//llvm_value = LLVMConstNull(llvm_type);
 			break;
 		}
 	}

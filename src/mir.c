@@ -2012,7 +2012,8 @@ create_var(Context *cnt,
            uint32_t flags)
 {
 	assert(id);
-	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
+	MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
+	bl_set_magic(tmp, magic_mir_var);
 	tmp->id           = id;
 	tmp->value.type   = alloc_type;
 	tmp->scope        = scope;
@@ -2037,7 +2038,8 @@ create_var_impl(Context *   cnt,
                 bool        comptime)
 {
 	assert(name);
-	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
+	MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
+	bl_set_magic(tmp, magic_mir_var);
 	tmp->value.type   = alloc_type;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
@@ -5622,7 +5624,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	const char *rtti_var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
 
-	MirVar *       rtti_var   = create_var_impl(cnt, rtti_var_name, rtti_type, false, true, false);
+	MirVar *rtti_var = create_var_impl(cnt, rtti_var_name, rtti_type, false, true, false);
 	MirConstValue *rtti_value = &rtti_var->value;
 
 	/* set base TypeInfo data */
@@ -5647,11 +5649,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	case MIR_TYPE_VOID:
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_NULL:
-	case MIR_TYPE_ARRAY: 
-	case MIR_TYPE_STRUCT: 
-	case MIR_TYPE_ENUM: 
-	case MIR_TYPE_FN: 
-		bl_unimplemented;
+		break;
 
 	case MIR_TYPE_INT: {
 		/* .bitcount */
@@ -5679,10 +5677,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_pointed = exec_gen_type_RTTI(cnt, type->data.ptr.next);
 
-		MirStackPtr rtti_pointed_stack_ptr = exec_read_stack_ptr(
-		    cnt, rtti_pointed->rel_stack_ptr, rtti_pointed->is_in_gscope);
-
-		tmp->data.v_stack_ptr = rtti_pointed_stack_ptr;
+		tmp->data.v_var = rtti_pointed;
 		bo_array_push_back(members, tmp);
 		break;
 	}
