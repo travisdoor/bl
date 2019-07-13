@@ -115,6 +115,14 @@
 
     Example:
     #+INCLUDE: "../tests/src/examples/special_op.bl" src bl -n
+    
+*** RTTI
+    Biscuit language provides type reflection allowing access to the type structure of the code. Pointer to the type information structure can be yielded by =typeinfo(<T>)= operator builtin operator call. Type informations can be yielded in compile time and in runtime also, with low additional overhead for runtime (only pointer to the TypeInfo constant is pushed on the stack). 
+
+    Example:
+    #+INCLUDE: "../tests/src/examples/rtti.bl" src bl -n
+    
+    RTTI is generated in static segment of compiled binary (only desired types are included).
    
 ** Data types
 *** Fundamental data types

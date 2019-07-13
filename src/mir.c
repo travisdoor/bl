@@ -2013,7 +2013,6 @@ create_var(Context *cnt,
 {
 	assert(id);
 	MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
-	bl_set_magic(tmp, magic_mir_var);
 	tmp->id           = id;
 	tmp->value.type   = alloc_type;
 	tmp->scope        = scope;
@@ -2039,7 +2038,6 @@ create_var_impl(Context *   cnt,
 {
 	assert(name);
 	MirVar *tmp = arena_alloc(&cnt->module->arenas.var_arena);
-	bl_set_magic(tmp, magic_mir_var);
 	tmp->value.type   = alloc_type;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
@@ -4016,7 +4014,9 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 
 	/* Resolve TypeInfo struct type */
 	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
-	ret_type          = create_type_ptr(cnt, ret_type);
+	if (!ret_type) return ANALYZE_POSTPONE;
+
+	ret_type = create_type_ptr(cnt, ret_type);
 
 	type_info->base.const_value.type = ret_type;
 
@@ -5527,6 +5527,11 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
 	switch (src_type->kind) {
 	case MIR_TYPE_STRUCT: {
+		/* CLEANUP: String slice contains directly pointer to .v_str representation
+		 * data, there is no allocated variable pointer set for prt member, so we
+		 * need different approach here. This is kinda hack solution. */
+		const bool raw_copy = src_type->data.strct.kind & MIR_TS_SLICE;
+
 		if (src_value->data.v_struct.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
@@ -5545,7 +5550,12 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 				                                   (unsigned long)i);
 				assert(elem_dest_ptr);
 
-				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
+				if (raw_copy)
+					memcpy(elem_dest_ptr,
+					       (MirStackPtr)member,
+					       member->type->store_size_bytes);
+				else
+					exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
 			}
 		}
 		break;
@@ -5573,6 +5583,11 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 		}
 
 		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		bl_log("copy const pointer to the stack");
+		/* TODO: support multiple pointer kinds!!! */
 	}
 
 	default:

@@ -23,6 +23,8 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(struct { i: s32, j: bool}));
     */
 
+    homo := "homo";
+
     return 0;
 };
 

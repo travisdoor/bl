@@ -79,9 +79,6 @@ void
 _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 
 #ifdef BL_DEBUG
-#define BL_MAGIC const void *_magic
-#define bl_set_magic(O, M) (O)->_magic = &(M)
-
 #define bl_log(format, ...)                                                                        \
 	{                                                                                          \
 		_log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
@@ -93,10 +90,6 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 	}
 
 #else /* !BL_DEBUG */
-#define BL_MAGIC
-#define bl_set_magic(O, M)                                                                         \
-	while (0) {                                                                                \
-	}
 
 #define bl_log(format, ...)                                                                        \
 	while (0) {                                                                                \

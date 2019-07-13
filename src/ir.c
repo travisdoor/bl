@@ -707,10 +707,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			MirVar *pointed = value->data.v_var;
 			assert(pointed && pointed->llvm_value &&
 			       "Invalid const pointer to variable.");
-			bl_assert_magic(pointed, magic_mir_var, "Value is not MirVar");
 
 			llvm_value = pointed->llvm_value;
-			//llvm_value = LLVMConstNull(llvm_type);
 			break;
 		}
 	}

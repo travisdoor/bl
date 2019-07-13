@@ -37,8 +37,6 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
-const uint8_t magic_mir_var;
-
 struct Assembly;
 struct Builder;
 
@@ -299,19 +297,18 @@ union MirConstValueData {
 	void *v_void_ptr; /* universal pointer value */
 
 	/* atomic types */
-	int64_t     v_s64;
-	int32_t     v_s32;
-	int16_t     v_s16;
-	int8_t      v_s8;
-	uint64_t    v_u64;
-	uint32_t    v_u32;
-	uint16_t    v_u16;
-	uint8_t     v_u8;
-	float       v_f32;
-	double      v_f64;
-	bool        v_bool;
-	char        v_char;
-	const char *v_str;
+	int64_t  v_s64;
+	int32_t  v_s32;
+	int16_t  v_s16;
+	int8_t   v_s8;
+	uint64_t v_u64;
+	uint32_t v_u32;
+	uint16_t v_u16;
+	uint8_t  v_u8;
+	float    v_f32;
+	double   v_f64;
+	bool     v_bool;
+	char     v_char;
 
 	/* aggregate types */
 	MirType *           v_type;          /* type value */
@@ -320,6 +317,7 @@ union MirConstValueData {
 	MirVar *            v_var;           /* variable */
 	MirStackPtr         v_stack_ptr;     /* absolute pointer to the stack */
 	MirRelativeStackPtr v_rel_stack_ptr; /* relative pointer to the stack */
+	const char *        v_str;           /* constant string array */
 
 	struct {
 		BArray *members; // array of MirConstValues *
@@ -368,8 +366,6 @@ struct MirVar {
 	MirRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef        llvm_value;
 	const char *        llvm_name;
-
-	BL_MAGIC;
 };
 
 /* INSTRUCTIONS */
