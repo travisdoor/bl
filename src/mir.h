@@ -409,7 +409,7 @@ enum MirInstrKind {
 };
 
 struct MirInstr {
-	MirConstValue  const_value; // must be first
+	MirConstValue  value; // must be first
 	MirInstrKind   kind;
 	uint64_t       id;
 	Ast *          node;

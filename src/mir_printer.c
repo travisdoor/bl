@@ -57,7 +57,7 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 #else
 	fprintf(stream, "  %%%-6llu", (unsigned long long)instr->id);
 #endif
-	print_type(instr->const_value.type, true, stream, true);
+	print_type(instr->value.type, true, stream, true);
 	fprintf(stream, " %s ", name);
 }
 
@@ -351,7 +351,7 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 	}
 
 	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *)instr)->is_naked) {
-		print_const_value(&instr->const_value, stream);
+		print_const_value(&instr->value, stream);
 		return;
 	}
 
@@ -368,12 +368,12 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 	}
 
 	/* Comptime pointer */
-	if (instr->const_value.type->kind == MIR_TYPE_PTR) {
+	if (instr->value.type->kind == MIR_TYPE_PTR) {
 		fprintf(stream, "%%%llu /* comptime */", (unsigned long long)instr->id);
 		return;
 	}
 
-	print_const_value(&instr->const_value, stream);
+	print_const_value(&instr->value, stream);
 }
 
 void
@@ -788,7 +788,7 @@ void
 print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
 	print_instr_head(&cnst->base, stream, "const");
-	print_const_value(&cnst->base.const_value, stream);
+	print_const_value(&cnst->base.value, stream);
 }
 
 void
@@ -796,8 +796,8 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
 	print_instr_head(&call->base, stream, "call");
 
-	const char *callee_name = call->callee->const_value.data.v_fn
-	                              ? call->callee->const_value.data.v_fn->llvm_name
+	const char *callee_name = call->callee->value.data.v_fn
+	                              ? call->callee->value.data.v_fn->llvm_name
 	                              : NULL;
 	if (callee_name)
 		fprintf(stream, "@%s", callee_name);
@@ -874,7 +874,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
-	MirFn *fn = fn_proto->base.const_value.data.v_fn;
+	MirFn *fn = fn_proto->base.value.data.v_fn;
 	assert(fn);
 
 	fprintf(stream, "\n");

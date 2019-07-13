@@ -307,7 +307,7 @@ fetch_value(Context *cnt, MirInstr *instr)
 		if (instr->kind == MIR_INSTR_DECL_REF) {
 			gen_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
 		} else {
-			instr->llvm_value = gen_as_const(cnt, &instr->const_value);
+			instr->llvm_value = gen_as_const(cnt, &instr->value);
 		}
 	}
 
@@ -399,7 +399,7 @@ void
 gen_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	LLVMValueRef llvm_phi =
-	    LLVMBuildPhi(cnt->llvm_builder, phi->base.const_value.type->llvm_type, "");
+	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
 	const size_t       count   = bo_array_size(phi->incoming_blocks);
 	LLVMValueRef *     llvm_iv = bl_malloc(sizeof(LLVMValueRef) * count);
@@ -441,7 +441,7 @@ gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	LLVMValueRef llvm_var = type->rtti.var->llvm_value;
 	assert(llvm_var && "Missing LLVM value for RTTI variable.");
 
-	LLVMTypeRef llvm_dest_type = type_info->base.const_value.type->llvm_type;
+	LLVMTypeRef llvm_dest_type = type_info->base.value.type->llvm_type;
 
 	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
 	type_info->base.llvm_value = llvm_var;
@@ -451,7 +451,7 @@ void
 gen_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	LLVMValueRef llvm_src       = cast->next->llvm_value;
-	LLVMTypeRef  llvm_dest_type = cast->base.const_value.type->llvm_type;
+	LLVMTypeRef  llvm_dest_type = cast->base.value.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	assert(llvm_src && llvm_dest_type);
 
@@ -580,7 +580,7 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	} else {
 		/* builtin member */
 
-		MirType *target_type = mir_deref_type(member_ptr->target_ptr->const_value.type);
+		MirType *target_type = mir_deref_type(member_ptr->target_ptr->value.type);
 
 		/* Valid only for slice types, we generate direct replacement for arrays. */
 		assert(mir_is_slice_type(target_type));
@@ -600,9 +600,9 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 void
 gen_instr_load(Context *cnt, MirInstrLoad *load)
 {
-	assert(load->base.const_value.type && "invalid type of load instruction");
+	assert(load->base.value.type && "invalid type of load instruction");
 	LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
-	const unsigned alignment = load->base.const_value.type->alignment;
+	const unsigned alignment = load->base.value.type->alignment;
 	assert(llvm_src);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 	LLVMSetAlignment(load->base.llvm_value, alignment);
@@ -793,7 +793,7 @@ gen_instr_store(Context *cnt, MirInstrStore *store)
 {
 	LLVMValueRef   val       = fetch_value(cnt, store->src);
 	LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
-	const unsigned alignment = store->src->const_value.type->alignment;
+	const unsigned alignment = store->src->value.type->alignment;
 	assert(val && ptr);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
@@ -1030,11 +1030,11 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 {
 	MirInstr *callee = call->callee;
 	assert(callee);
-	assert(callee->const_value.type);
+	assert(callee->value.type);
 
 	LLVMValueRef llvm_fn = callee->llvm_value
 	                           ? callee->llvm_value
-	                           : gen_fn_proto(cnt, callee->const_value.data.v_fn);
+	                           : gen_fn_proto(cnt, callee->value.data.v_fn);
 
 	const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
 	LLVMValueRef *llvm_args = NULL;
@@ -1143,7 +1143,7 @@ gen_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-	MirType *vargs_type = vargs->base.const_value.type;
+	MirType *vargs_type = vargs->base.value.type;
 	BArray * values     = vargs->values;
 	assert(values);
 	const size_t vargsc = bo_array_size(values);
@@ -1247,7 +1247,7 @@ gen_allocas(Context *cnt, MirFn *fn)
 void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-	MirFn *fn = fn_proto->base.const_value.data.v_fn;
+	MirFn *fn = fn_proto->base.value.data.v_fn;
 	/* unused function */
 	if (fn->ref_count == 0) return;
 	gen_fn_proto(cnt, fn);

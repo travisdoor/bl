@@ -1,0 +1,46 @@
+#load "std/debug.bl"
+#load "std/core.bl"
+
+#test "RTTI" {
+    { // ints
+        tmp := cast(*TypeInfoInt) typeinfo(s8);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 8);
+        assert(tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(s16);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 16);
+        assert(tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(s32);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 32);
+        assert(tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(s64);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 64);
+        assert(tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(u8);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 8);
+        assert(!tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(u16);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 16);
+        assert(!tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(u32);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 32);
+        assert(!tmp.is_signed);
+
+        tmp = cast(*TypeInfoInt) typeinfo(u64);
+        assert(tmp.base.kind == TypeKind.Int);
+        assert(tmp.bitcount == 64);
+        assert(!tmp.is_signed);
+    }
+};
