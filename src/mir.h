@@ -50,6 +50,7 @@ typedef struct MirFn         MirFn;
 typedef struct MirMember     MirMember;
 typedef struct MirVariant    MirVariant;
 typedef struct MirConstValue MirConstValue;
+typedef struct MirConstPtr   MirConstPtr;
 
 typedef struct MirInstr            MirInstr;
 typedef struct MirInstrUnreachable MirInstrUnreachable;
@@ -94,6 +95,7 @@ typedef enum MirCastOp           MirCastOp;
 typedef enum MirBuiltinIdKind    MirBuiltinIdKind;
 typedef enum MirTypeStructKind   MirTypeStructKind;
 typedef enum MirValueAddressMode MirValueAddressMode;
+typedef enum MirConstPtrKind     MirConstPtrKind;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -292,10 +294,34 @@ struct MirType {
 	} data;
 };
 
+enum MirConstPtrKind {
+	MIR_CP_UNKNOWN,
+	MIR_CP_TYPE,
+	MIR_CP_VALUE,
+	MIR_CP_FN,
+	MIR_CP_VAR,
+	MIR_CP_STR,
+	MIR_CP_STACK
+};
+
+struct MirConstPtr {
+	union {
+		MirType *           type;          /* type value */
+		MirConstValue *     value;         /* remove */
+		MirFn *             fn;            /* function */
+		MirVar *            var;           /* variable */
+		MirStackPtr         stack_ptr;     /* absolute pointer to the stack */
+		MirRelativeStackPtr rel_stack_ptr; /* relative pointer to the stack */
+		const char *        str;           /* constant string array */
+
+		void *any; /* universal pointer value */
+	} data;
+
+	MirConstPtrKind kind;
+};
+
 /* VALUE */
 union MirConstValueData {
-	void *v_void_ptr; /* universal pointer value */
-
 	/* atomic types */
 	int64_t  v_s64;
 	int32_t  v_s32;
@@ -310,14 +336,7 @@ union MirConstValueData {
 	bool     v_bool;
 	char     v_char;
 
-	/* aggregate types */
-	MirType *           v_type;          /* type value */
-	MirConstValue *     v_ptr;           /* TODO: remove */
-	MirFn *             v_fn;            /* function */
-	MirVar *            v_var;           /* variable */
-	MirStackPtr         v_stack_ptr;     /* absolute pointer to the stack */
-	MirRelativeStackPtr v_rel_stack_ptr; /* relative pointer to the stack */
-	const char *        v_str;           /* constant string array */
+	MirConstPtr v_ptr;
 
 	struct {
 		BArray *members; // array of MirConstValues *
