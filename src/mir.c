@@ -995,6 +995,13 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline void
+set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
+{
+	value->data.any = ptr;
+	value->kind     = kind;
+}
+
 static inline MirInstr *
 mutate_instr(MirInstr *instr, MirInstrKind kind)
 {
@@ -4351,7 +4358,11 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 		reduce_instr(cnt, type_fn->ret_type);
 	}
 
-	type_fn->base.value.data.v_type = create_type_fn(cnt, ret_type, arg_types, is_vargs);
+	{
+		MirConstPtr *const_ptr = &type_fn->base.value.data.v_ptr;
+		set_const_ptr(
+		    const_ptr, create_type_fn(cnt, ret_type, arg_types, is_vargs), MIR_CP_FN);
+	}
 
 	return ANALYZE_PASSED;
 }
