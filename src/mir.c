@@ -4461,8 +4461,17 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		}
 	}
 
-	type_struct->base.value.data.v_type = create_type_struct(
-	    cnt, type_struct->id, type_struct->scope, members, type_struct->is_packed, MIR_TS_NONE);
+	{ /* Setup const pointer. */
+		MirConstPtr *const_ptr = &type_struct->base.value.data.v_ptr;
+		MirType *    tmp       = create_type_struct(cnt,
+                                                  type_struct->id,
+                                                  type_struct->scope,
+                                                  members,
+                                                  type_struct->is_packed,
+                                                  MIR_TS_NONE);
+
+		set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+	} 
 	return ANALYZE_PASSED;
 }
 
