@@ -4471,7 +4471,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
                                                   MIR_TS_NONE);
 
 		set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
-	} 
+	}
 	return ANALYZE_PASSED;
 }
 
@@ -4491,8 +4491,13 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 	assert(type_slice->elem_type->comptime && "This should be an error");
 	MirType *elem_type = type_slice->elem_type->value.data.v_type;
 	assert(elem_type);
-	elem_type                          = create_type_ptr(cnt, elem_type);
-	type_slice->base.value.data.v_type = create_type_slice(cnt, id, elem_type);
+	elem_type = create_type_ptr(cnt, elem_type);
+	elem_type = create_type_slice(cnt, id, elem_type);
+
+	{ /* set const pointer value */
+		MirConstPtr *const_ptr = &type_slice->base.value.data.v_ptr;
+		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+	}
 
 	return ANALYZE_PASSED;
 }
