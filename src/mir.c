@@ -4087,19 +4087,17 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		MirType *type = fn->type;
 		assert(type);
 
-		ref->base.value.type               = type;
-		ref->base.value.data.v_ptr.data.fn = found->data.fn;
-		ref->base.value.data.v_ptr.kind    = MIR_CP_FN;
-		ref->base.comptime                 = true;
+		ref->base.value.type = type;
+		ref->base.comptime   = true;
 		++fn->ref_count;
+		set_const_ptr(&ref->base.value.data.v_ptr, found->data.fn, MIR_CP_FN);
 		break;
 	}
 
 	case SCOPE_ENTRY_TYPE: {
-		ref->base.value.type                 = cnt->builtin_types.entry_type;
-		ref->base.value.data.v_ptr.data.type = found->data.type;
-		ref->base.value.data.v_ptr.kind      = MIR_CP_TYPE;
-		ref->base.comptime                   = true;
+		ref->base.value.type = cnt->builtin_types.entry_type;
+		ref->base.comptime   = true;
+		set_const_ptr(&ref->base.value.data.v_ptr, found->data.type, MIR_CP_TYPE);
 		break;
 	}
 
@@ -4110,12 +4108,11 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		MirType *type = variant->value->type;
 		assert(type);
 
-		type                                  = create_type_ptr(cnt, type);
-		ref->base.value.type                  = type;
-		ref->base.comptime                    = true;
-		ref->base.value.addr_mode             = MIR_VAM_LVALUE_CONST;
-		ref->base.value.data.v_ptr.data.value = variant->value;
-		ref->base.value.data.v_ptr.kind       = MIR_CP_VALUE;
+		type                      = create_type_ptr(cnt, type);
+		ref->base.value.type      = type;
+		ref->base.comptime        = true;
+		ref->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
+		set_const_ptr(&ref->base.value.data.v_ptr, variant->value, MIR_CP_VALUE);
 
 		break;
 	}
@@ -4135,11 +4132,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* set pointer to variable const value directly when variable is compile
 		 * time known
 		 */
-		if (var->comptime) {
-			ref->base.value.data.v_ptr.data.var = found->data.var;
-			ref->base.value.data.v_ptr.kind     = MIR_CP_VAR;
-		}
-		// ref->base.const_value.data.v_var = found->data.var;
+		if (var->comptime)
+			set_const_ptr(&ref->base.value.data.v_ptr, found->data.var, MIR_CP_VAR);
 		break;
 	}
 
@@ -4520,8 +4514,13 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 
 	assert(elem_type);
 
-	elem_type                          = create_type_ptr(cnt, elem_type);
-	type_vargs->base.value.data.v_type = create_type_vargs(cnt, elem_type);
+	elem_type = create_type_ptr(cnt, elem_type);
+	elem_type = create_type_vargs(cnt, elem_type);
+
+	{ /* set const pointer value */
+		MirConstPtr *const_ptr = &type_vargs->base.value.data.v_ptr;
+		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+	}
 
 	return ANALYZE_PASSED;
 }
@@ -4571,7 +4570,13 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	MirType *elem_type = type_arr->elem_type->value.data.v_type;
 	assert(elem_type);
 
-	type_arr->base.value.data.v_type = create_type_array(cnt, elem_type, len);
+	elem_type = create_type_array(cnt, elem_type, len);
+
+	{ /* set const pointer value */
+		MirConstPtr *const_ptr = &type_arr->base.value.data.v_ptr;
+		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+	}
+
 	return ANALYZE_PASSED;
 }
 
@@ -4630,8 +4635,12 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 		bo_array_push_back(variants, variant);
 	}
 
-	type_enum->base.value.data.v_type =
-	    create_type_enum(cnt, type_enum->id, scope, base_type, variants);
+	MirType *enum_type = create_type_enum(cnt, type_enum->id, scope, base_type, variants);
+
+	{ /* set const pointer value */
+		MirConstPtr *const_ptr = &type_enum->base.value.data.v_ptr;
+		set_const_ptr(const_ptr, enum_type, MIR_CP_TYPE);
+	}
 
 	return ANALYZE_PASSED;
 }
@@ -4673,7 +4682,13 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 		return ANALYZE_FAILED;
 	}
 
-	type_ptr->base.value.data.v_type = create_type_ptr(cnt, src_type_value);
+	MirType *tmp = create_type_ptr(cnt, src_type_value);
+
+	{ /* set const pointer value */
+		MirConstPtr *const_ptr = &type_ptr->base.value.data.v_ptr;
+		set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+	}
+
 	return ANALYZE_PASSED;
 }
 
