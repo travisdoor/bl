@@ -315,7 +315,7 @@ struct MirConstPtr {
 		const char *        str;           /* constant string array */
 
 		void *any; /* universal pointer value */
-	} data;
+	};
 
 	MirConstPtrKind kind;
 };

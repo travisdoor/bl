@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
-set(DYNCALL_PATH "C:/Program Files/DynCall" CACHE PATH "Path to Dyncall.")
+#set(DYNCALL_PATH "C:/Program Files/DynCall" CACHE PATH "Path to Dyncall.")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -18,8 +18,11 @@ endif()
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
+add_subdirectory(deps/bobject)
+add_subdirectory(deps/dyncall-1.0)
+
 # deps
-find_package(BObject 1.0 REQUIRED)
+#find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
@@ -74,11 +77,12 @@ if (MSVC)
     add_definitions(${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core all)
 
-    target_include_directories(blc PRIVATE ${DYNCALL_PATH}/include ${LLVM_INCLUDE_DIRS})
-    target_link_directories(blc PRIVATE ${DYNCALL_PATH}/lib)
+    #target_include_directories(blc PRIVATE ${DYNCALL_PATH}/include ${LLVM_INCLUDE_DIRS})
+    #target_link_directories(blc PRIVATE ${DYNCALL_PATH}/lib)
     target_link_libraries(blc PUBLIC
         dynload_s
         dyncall_s
+	bobject
         shlwapi
     )
 
@@ -87,23 +91,13 @@ if (MSVC)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
-
-    find_library(DYNLOAD_LIBS dynload_s)
-    find_library(DYNCALL_LIBS dyncall_s)
-
     target_link_libraries(blc PUBLIC
-        ${DYNLOAD_LIBS}
-        ${DYNCALL_LIBS}
+        dynload_s
+        dyncall_s
+	bobject
 	LLVM
     )
 endif()
-
-
-target_link_libraries(blc PUBLIC
-    bobject
-    ${llvm_libs}
-    ${CMAKE_DL_LIBS}
-)
 
 target_include_directories(blc PRIVATE src)
 
