@@ -96,6 +96,7 @@ else()
         dyncall_s
 	bobject
 	LLVM
+	${CMAKE_DL_LIBS}
     )
 endif()
 
