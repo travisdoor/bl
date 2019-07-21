@@ -5629,8 +5629,31 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 	}
 
 	case MIR_TYPE_PTR: {
-		bl_log("copy const pointer to the stack");
-		/* TODO: support multiple pointer kinds!!! */
+		MirConstPtr *const_ptr = &src_value->data.v_ptr;
+		switch (const_ptr->kind) {
+
+			/*
+		case MIR_CP_UNKNOWN:
+			bl_abort("Unknown const pointer kind!!!");
+			*/
+
+		case MIR_CP_VAR: {
+			bl_log("copy const var to the stack");
+			MirVar *var = const_ptr->var;
+			assert(var);
+
+			MirStackPtr var_ptr =
+			    exec_read_stack_ptr(cnt, var->rel_stack_ptr, var->is_in_gscope);
+			memcpy(dest_ptr, &var_ptr, src_type->store_size_bytes);
+			break;
+		}
+
+		default: {
+			memcpy(dest_ptr, (MirStackPtr)src_value, src_type->store_size_bytes);
+		}
+		}
+
+		break;
 	}
 
 	default:
@@ -5735,8 +5758,24 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 		MirVar *rtti_pointed = exec_gen_type_RTTI(cnt, type->data.ptr.next);
 
-		tmp->data.v_ptr.var = rtti_pointed;
+		set_const_ptr(&tmp->data.v_ptr, rtti_pointed, MIR_CP_VAR);
 		bo_array_push_back(members, tmp);
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		/* .elem */
+		tmp               = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_elem = exec_gen_type_RTTI(cnt, type->data.array.elem_type);
+
+		set_const_ptr(&tmp->data.v_ptr, rtti_elem, MIR_CP_VAR);
+		bo_array_push_back(members, tmp);
+
+		/* .len */
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = type->data.array.len;
+		bo_array_push_back(members, tmp);
+
 		break;
 	}
 

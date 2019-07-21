@@ -351,7 +351,6 @@ gen_RTTI_types(Context *cnt)
 		{
 			char type_name[256];
 			mir_type_to_str(type_name, 256, type, true);
-			bl_log("generate RTTI for: " BLUE("%s"), type_name);
 		}
 
 		var = type->rtti.var;
