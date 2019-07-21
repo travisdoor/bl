@@ -14,6 +14,7 @@ main :: fn () s32 {
     test_print_type_info(typeinfo(*s32));
     test_print_type_info(typeinfo(type));
     test_print_type_info(typeinfo([10]s32));
+    test_print_type_info(typeinfo(enum s32 { A :: 0, B :: 1 }));
 
     /*
     test_print_type_info(typeinfo(test_print_type_info));
