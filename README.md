@@ -92,8 +92,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 -   git
 -   CMake
 -   LLVM
--   [bobject](https://github.com/travisdoor/bobject)
--   [dyncall](http://www.dyncall.org)
 -   GCC/CLANG/Visual Studio compiler
 
 
@@ -101,16 +99,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 ## Linux
 
--   Compile and install bobject.
-    
-        git clone https://github.com/travisdoor/bobject.git
-        cd bobject
-        mkdir build
-        cd build
-        cmake ..
-        sudo make install
-
--   Compile and install dyncall.
 -   Install LLVM dev packages with your favourite package manager.
     
         sudo apt install llvm-dev
@@ -131,16 +119,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 ## MacOS
 
--   Compile and install bobject.
-    
-        git clone https://github.com/travisdoor/bobject.git
-        cd bobject
-        mkdir build
-        cd build
-        cmake ..
-        sudo make install
-
--   Compile and install dyncall.
 -   Install LLVM dev packages with your favourite package manager.
 -   Download and compile bl.
     
@@ -160,16 +138,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
--   Compile and install bobject.
-    
-        git clone https://github.com/travisdoor/bobject.git
-        cd bobject
-        mkdir build
-        cd build
-        cmake .. -G "Visual Studio 15 Win64"
-        cmake --build . --config Release --target Install
-
--   Compile and install dyncall.
 -   Compile and install LLVM tool set. [guide](https://llvm.org/docs/GettingStartedVS.html)
 -   Download and compile bl.
     

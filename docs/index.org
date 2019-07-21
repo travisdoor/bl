@@ -61,22 +61,9 @@
   - git
   - CMake
   - LLVM
-  - [[https://github.com/travisdoor/bobject][bobject]]
-  - [[http://www.dyncall.org][dyncall]]
   - GCC/CLANG/Visual Studio compiler
 
 ** Linux
-   - Compile and install bobject.
-    #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake ..
-    sudo make install    
-    #+END_EXAMPLE
-
-   - Compile and install dyncall.
    - Install LLVM dev packages with your favourite package manager.
     #+BEGIN_EXAMPLE
     sudo apt install llvm-dev 
@@ -95,17 +82,6 @@
    - Add 'bl/api' and 'bl/bin' into the system PATH
 
 ** MacOS
-   - Compile and install bobject.
-    #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake ..
-    sudo make install    
-    #+END_EXAMPLE
-
-   - Compile and install dyncall.
    - Install LLVM dev packages with your favourite package manager.
    - Download and compile bl.
     #+BEGIN_EXAMPLE
@@ -122,17 +98,6 @@
 ** Windows
    You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
-   - Compile and install bobject.
-    #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake .. -G "Visual Studio 15 Win64"
-    cmake --build . --config Release --target Install   
-    #+END_EXAMPLE
-
-   - Compile and install dyncall.
    - Compile and install LLVM tool set. [[https://llvm.org/docs/GettingStartedVS.html][guide]]
    - Download and compile bl.
     #+BEGIN_EXAMPLE
