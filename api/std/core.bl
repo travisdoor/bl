@@ -117,7 +117,7 @@ TypeInfoBool :: struct #compiler {
  */
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem: *TypeInfo, // Elemnt type information.
+    elem: *TypeInfo, // Element type information.
     len: usize // Array lenght.
 };
 
@@ -126,7 +126,7 @@ TypeInfoArray :: struct #compiler {
  */
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
-    members: []*TypeInfo, // Structure members type inforation.
+    members: []*TypeInfo, // Structure members type information.
 };
 
 /*
@@ -189,7 +189,7 @@ print :: fn (format: string, nums: ...s64) {
     if tmp.len > 0 { print_string(tmp); }
 };
 
-// #filescope
+// #private
 print_floats :: fn (format: string, nums: ...f64) {
     tmp := {:string: 0, format.ptr }; 
     ni := 0;

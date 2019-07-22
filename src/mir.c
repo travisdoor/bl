@@ -1994,12 +1994,11 @@ create_type_string(Context *cnt)
 	return tmp;
 }
 
+/* Push into globals or locals of function. For local variables current function must be
+ * set. */
 static inline void
 _push_var_into_module(Context *cnt, MirVar *var)
 {
-	/* Push into globals or locals of function. For local variables current function must be
-	 * set. */
-
 	assert(var);
 	if (!var->is_in_gscope) {
 		MirFn *fn = get_current_fn(cnt);
@@ -5688,6 +5687,26 @@ _get_RTTI_type(Context *cnt, MirTypeKind kind)
 	}
 }
 
+static inline MirVar *
+_create_and_alloc_RTTI_var(Context *cnt, MirType *type)
+{
+	assert(type);
+	const char *name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+	MirVar *    var  = create_var_impl(cnt, name, type, false, true, false);
+
+	/* allocate */
+	exec_stack_alloc_var(cnt, var);
+
+	return var;
+}
+
+static inline void
+_push_RTTI_var(Context *cnt, MirVar *var)
+{
+	/* Push into RTTI table */
+	bo_array_push_back(cnt->module->RTTI_tmp_vars, var);
+}
+
 MirVar *
 exec_gen_type_RTTI(Context *cnt, MirType *type)
 {
@@ -5697,9 +5716,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirType *rtti_type = _get_RTTI_type(cnt, type->kind);
 	assert(rtti_type);
 
-	const char *rtti_var_name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
-
-	MirVar *rtti_var = create_var_impl(cnt, rtti_var_name, rtti_type, false, true, false);
+	MirVar *       rtti_var   = _create_and_alloc_RTTI_var(cnt, rtti_type);
 	MirConstValue *rtti_value = &rtti_var->value;
 
 	/* set base TypeInfo data */
@@ -5785,6 +5802,29 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
+		const size_t memc = bo_array_size(type->data.strct.members);
+
+		{ /* Members array */
+			MirType *rtti_var_arr_type =
+			    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, memc);
+			MirVar *rtti_var_arr = _create_and_alloc_RTTI_var(cnt, rtti_var_arr_type);
+
+			BArray *elems                          = create_arr(cnt, sizeof(MirVar *));
+			rtti_var_arr->value.data.v_array.elems = elems;
+
+			MirType *member_type;
+			barray_foreach(type->data.strct.members, member_type)
+			{
+				tmp =
+				    create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+
+				MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, member_type);
+
+				set_const_ptr(&tmp->data.v_ptr, rtti_base_type, MIR_CP_VAR);
+				bo_array_push_back(elems, tmp);
+			}
+		}
+
 		break;
 	}
 
@@ -5800,9 +5840,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	type->rtti.var                    = rtti_var;
 
 	{ /* Setup variable */
-		/* allocate */
-		exec_stack_alloc_var(cnt, rtti_var);
-
+		/* Variable is already allocated on stack in create_and_push_RTTI_var function. */
 		/* initialize */
 		MirStackPtr var_ptr = exec_read_stack_ptr(cnt, rtti_var->rel_stack_ptr, true);
 		assert(var_ptr);
@@ -5810,8 +5848,10 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
 	}
 
-	/* Push into RTTI table */
-	bo_array_push_back(cnt->module->RTTI_types, type);
+	/* CLEANUP: use this??? */
+	//_push_var_into_module(cnt, rtti_var);
+
+	_push_RTTI_var(cnt, rtti_var);
 
 	return rtti_var;
 }
@@ -8708,7 +8748,7 @@ mir_new_module(const char *name)
 	LLVMSetTarget(llvm_module, triple);
 
 	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
-	tmp->RTTI_types    = bo_array_new(sizeof(MirType *));
+	tmp->RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
 	tmp->llvm_cnt      = llvm_context;
 	tmp->llvm_module   = llvm_module;
 	tmp->llvm_tm       = llvm_tm;
@@ -8722,7 +8762,7 @@ mir_delete_module(MirModule *module)
 {
 	if (!module) return;
 	bo_unref(module->global_instrs);
-	bo_unref(module->RTTI_types);
+	bo_unref(module->RTTI_tmp_vars);
 
 	arenas_terminate(&module->arenas);
 

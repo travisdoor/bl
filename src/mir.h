@@ -154,14 +154,14 @@ struct MirArenas {
 };
 
 struct MirModule {
-	struct MirArenas     arenas;
-	BArray *             global_instrs;
-	BArray *             RTTI_types;
-	LLVMModuleRef        llvm_module;
-	LLVMContextRef       llvm_cnt;
-	LLVMTargetDataRef    llvm_td;
-	LLVMTargetMachineRef llvm_tm;
-	char *               llvm_triple;
+	struct MirArenas     arenas;        // Allocator arenas.
+	BArray *             global_instrs; // All global instructions.
+	BArray *             RTTI_tmp_vars; // Temporary variables used by RTTI.
+	LLVMModuleRef        llvm_module;   // LLVM Module.
+	LLVMContextRef       llvm_cnt;      // LLVM Context.
+	LLVMTargetDataRef    llvm_td;       // LLVM Target data.
+	LLVMTargetMachineRef llvm_tm;       // LLVM Machine.
+	char *               llvm_triple;   // LLVM triple.
 };
 
 /* FN */

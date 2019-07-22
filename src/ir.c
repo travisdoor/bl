@@ -336,10 +336,9 @@ gen_basic_block(Context *cnt, MirInstrBlock *block)
 void
 gen_RTTI_types(Context *cnt)
 {
-	BArray *table = cnt->assembly->mir_module->RTTI_types;
+	BArray *table = cnt->assembly->mir_module->RTTI_tmp_vars;
 	assert(table);
 
-	MirType *    type;
 	MirVar *     var;
 	LLVMValueRef llvm_var, llvm_value;
 	LLVMTypeRef  llvm_var_type;
@@ -347,13 +346,7 @@ gen_RTTI_types(Context *cnt)
 	const size_t count = bo_array_size(table);
 
 	for (size_t i = 0; i < count; ++i) {
-		type = bo_array_at(table, i, MirType *);
-		{
-			char type_name[256];
-			mir_type_to_str(type_name, 256, type, true);
-		}
-
-		var = type->rtti.var;
+		var = bo_array_at(table, i, MirVar *);
 		assert(var);
 
 		llvm_var      = gen_global_var_proto(cnt, var);
