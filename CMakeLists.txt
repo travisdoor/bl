@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 project(bl VERSION 0.4.1 LANGUAGES C)
 
+# Must use GNUInstallDirs to install libraries into correct
+# locations on all platforms.
+include(GNUInstallDirs)
+
 set(CMAKE_C_STANDARD 99)
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -109,3 +113,9 @@ target_include_directories(blc PRIVATE
 )
 
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
+
+# 'make install' to the correct locations (provided by GNUInstallDirs).
+install(TARGETS  blc
+        RUNTIME  DESTINATION bin) 
+
+#install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_PREFIX})

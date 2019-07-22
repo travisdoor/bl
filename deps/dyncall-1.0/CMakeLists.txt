@@ -84,16 +84,5 @@ endif()
 
 add_subdirectory(dynload)
 add_subdirectory(dyncall)
-add_subdirectory(dyncallback)
-add_subdirectory(doc/manual EXCLUDE_FROM_ALL)
-add_subdirectory(test EXCLUDE_FROM_ALL)
 
-# install cmake Find scripts (disabled per default)
-
-option(INSTALL_CMAKE_MODULES "install cmake modules to locate dyncall" "NO")
-
-if(INSTALL_CMAKE_MODULES)
-file(GLOB INSTALL_CMAKE_MODULES_FILES buildsys/cmake/Modules/Find*.cmake)
-install(FILES ${INSTALL_CMAKE_MODULES_FILES} DESTINATION ${CMAKE_ROOT}/Modules)
-endif(INSTALL_CMAKE_MODULES)
 
