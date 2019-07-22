@@ -8877,13 +8877,13 @@ mir_run(Builder *builder, Assembly *assembly)
 		ast(&cnt, unit->ast);
 	}
 
-	if (builder->errorc) goto ERROR;
+	if (builder->errorc) goto SKIP;
 
 	/* Analyze pass */
 	analyze(&cnt);
 	analyze_report_unresolved(&cnt);
 
-	if (builder->errorc) goto ERROR;
+	if (builder->errorc) goto SKIP;
 
 	/* PERFORMANCE: generate type table in static block only when 'typeinfo' operator was used.
 	 */
@@ -8892,7 +8892,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
 	if (is_flag(builder->flags, BUILDER_RUN)) execute_entry_fn(&cnt);
 
-ERROR:
+SKIP:
 	bo_unref(cnt.analyze.queue);
 	bo_unref(cnt.analyze.waiting);
 	bo_unref(cnt.analyze.RTTI_entry_types);
