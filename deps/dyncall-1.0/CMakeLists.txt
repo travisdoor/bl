@@ -18,8 +18,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-cmake_minimum_required (VERSION 2.6)
-project(DynCall C)
+cmake_minimum_required (VERSION 3.0)
+project(DynCall VERSION 1.0.0 LANGUAGES C)
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "dyncall enables dynamic invocation of machine-level function calls")
 set(CPACK_PACKAGE_VENDOR "dyncall project")

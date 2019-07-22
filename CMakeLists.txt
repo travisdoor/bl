@@ -100,6 +100,11 @@ else()
     )
 endif()
 
-target_include_directories(blc PRIVATE src)
+target_include_directories(blc PRIVATE
+  src
+  deps/dyncall-1.0/dyncall
+  deps/dyncall-1.0/dynload
+  deps/bobject/include
+)
 
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
