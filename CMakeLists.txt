@@ -77,12 +77,7 @@ if (MSVC)
     add_definitions(${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core all)
 
-    target_include_directories(blc PRIVATE ${LLVM_INCLUDE_DIRS})
-    #target_link_directories(blc PRIVATE ${DYNCALL_PATH}/lib)
     target_link_libraries(blc PUBLIC
-        dynload_s
-        dyncall_s
-	bobject
         shlwapi
     )
 
@@ -91,20 +86,22 @@ if (MSVC)
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
-    target_link_libraries(blc PUBLIC
-        dynload_s
-        dyncall_s
-	bobject
-	LLVM
-	${CMAKE_DL_LIBS}
-    )
 endif()
 
+target_link_libraries(blc PUBLIC
+    dynload_s
+    dyncall_s
+    bobject
+    LLVM
+    ${CMAKE_DL_LIBS}
+)
+
 target_include_directories(blc PRIVATE
-  src
-  deps/dyncall-1.0/dyncall
-  deps/dyncall-1.0/dynload
-  deps/bobject/include
+    src
+    deps/dyncall-1.0/dyncall
+    deps/dyncall-1.0/dynload
+    deps/bobject/include
+    ${LLVM_INCLUDE_DIRS}
 )
 
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
