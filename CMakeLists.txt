@@ -116,7 +116,7 @@ configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/vers
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS  blc
-        LIBRARY DESTINATION bin) 
+        LIBRARY DESTINATION bin
         RUNTIME  DESTINATION bin) 
 
 #install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_PREFIX})
