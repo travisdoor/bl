@@ -115,8 +115,14 @@ target_include_directories(blc PRIVATE
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
-install(TARGETS  blc
-        LIBRARY DESTINATION bin
-        RUNTIME  DESTINATION bin) 
+install(TARGETS blc
+        ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}) 
+
+install(TARGETS bobject
+        ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 #install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_PREFIX})
