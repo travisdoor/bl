@@ -29,7 +29,10 @@
 #load "c.bl"
 #load "debug.bl"
 
-// Type info
+/*
+ * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
+ * safe casting.
+ */
 TypeKind :: enum #compiler {
     Type   :: 1,
     Void   :: 2,
@@ -44,71 +47,114 @@ TypeKind :: enum #compiler {
     Null   :: 11,
 };
 
+/*
+ * Base TypeInfo structure returned by typeinfo operator. This structure contains only TypeKind
+ * identificator and pointer returned by typeinfo operator can be casted to child type to get more
+ * descriptive informations about the type.
+ */
 TypeInfo :: struct #compiler {
     kind: TypeKind,
 };
 
+/*
+ * Type information for 'type' type.
+ */
 TypeInfoType :: struct #compiler {
     base: TypeInfo
 };
 
+/*
+ * Type information for 'void' type.
+ */
 TypeInfoVoid :: struct #compiler {
     base: TypeInfo
 };
 
+/*
+ * Type information for 's*' or 'u*' types.
+ */
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32,
-    is_signed: bool,
+    bitcount: s32, // Bitcount.
+    is_signed: bool, // True when signed.
 };
 
+/*
+ * Type information for 'f*' types.
+ */
 TypeInfoReal :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32
+    bitcount: s32 // Bitcount
 };
 
+/*
+ * Type information for function types.
+ */
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
-    args: []*TypeInfo,
-    ret: *TypeInfo,
-    is_vargs: bool
+    args: []*TypeInfo, // Function arguments.
+    ret: *TypeInfo, // Return type.
+    is_vargs: bool // True when function is vargs.
 };
 
+/*
+ * Type information for pointer types.
+ */
 TypeInfoPtr :: struct #compiler {
     base: TypeInfo,
-    pointed: *TypeInfo
+    pointed: *TypeInfo // Type information for pointed type.
 };
 
+/*
+ * Type information for bool type.
+ */
 TypeInfoBool :: struct #compiler {
     base: TypeInfo,
 };
 
+/*
+ * Type information for array type.
+ */
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem: *TypeInfo,
-    len: usize
+    elem: *TypeInfo, // Elemnt type information.
+    len: usize // Array lenght.
 };
 
+/*
+ * Type information for structure type.
+ */
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
-    members: []*TypeInfo,
+    members: []*TypeInfo, // Structure members type inforation.
 };
 
+/*
+ * Type information for enm type.
+ */
 TypeInfoEnum :: struct #compiler {
     base: TypeInfo,
-    base_type: *TypeInfo
+    base_type: *TypeInfo // Enum base-type type information.
 };
 
+/*
+ * Type information for null type.
+ */
 TypeInfoNull :: struct #compiler {
     base: TypeInfo,
 };
 
-
+/*
+ * Any type structure. Any value can be implicitly casted to this container.
+ */
 Any :: struct #compiler {
     type_info: *TypeInfo,
     data: *u8
 };
 
+/*
+ * Converts C string to BL string. 
+ */
 cstr_to_str :: fn (cstr: *u8) string {
     return {:string: strlen(cstr), cstr};
 };
@@ -143,7 +189,7 @@ print :: fn (format: string, nums: ...s64) {
     if tmp.len > 0 { print_string(tmp); }
 };
 
-// TODO: this is only temporary solution
+// #filescope
 print_floats :: fn (format: string, nums: ...f64) {
     tmp := {:string: 0, format.ptr }; 
     ni := 0;

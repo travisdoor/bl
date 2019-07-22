@@ -5632,13 +5632,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 		MirConstPtr *const_ptr = &src_value->data.v_ptr;
 		switch (const_ptr->kind) {
 
-			/*
-		case MIR_CP_UNKNOWN:
-			bl_abort("Unknown const pointer kind!!!");
-			*/
-
 		case MIR_CP_VAR: {
-			bl_log("copy const var to the stack");
 			MirVar *var = const_ptr->var;
 			assert(var);
 
@@ -5776,6 +5770,21 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp->data.v_u64 = type->data.array.len;
 		bo_array_push_back(members, tmp);
 
+		break;
+	}
+
+	case MIR_TYPE_ENUM: {
+		/* .base_type */
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, type->data.enm.base_type);
+
+		set_const_ptr(&tmp->data.v_ptr, rtti_base_type, MIR_CP_VAR);
+		bo_array_push_back(members, tmp);
+
+		break;
+	}
+
+	case MIR_TYPE_STRUCT: {
 		break;
 	}
 
