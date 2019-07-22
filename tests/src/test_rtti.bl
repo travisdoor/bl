@@ -1,46 +1,109 @@
 #load "std/debug.bl"
 #load "std/core.bl"
 
-#test "RTTI" {
-    { // ints
-        tmp := cast(*TypeInfoInt) typeinfo(s8);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 8);
-        assert(tmp.is_signed);
+#test "RTTI - Int" {
+    tmp := cast(*TypeInfoInt) typeinfo(s8);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 8);
+    assert(tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(s16);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 16);
-        assert(tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(s16);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 16);
+    assert(tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(s32);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 32);
-        assert(tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(s32);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 32);
+    assert(tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(s64);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 64);
-        assert(tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(s64);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 64);
+    assert(tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(u8);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 8);
-        assert(!tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(u8);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 8);
+    assert(!tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(u16);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 16);
-        assert(!tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(u16);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 16);
+    assert(!tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(u32);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 32);
-        assert(!tmp.is_signed);
+    tmp = cast(*TypeInfoInt) typeinfo(u32);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 32);
+    assert(!tmp.is_signed);
 
-        tmp = cast(*TypeInfoInt) typeinfo(u64);
-        assert(tmp.base.kind == TypeKind.Int);
-        assert(tmp.bitcount == 64);
-        assert(!tmp.is_signed);
-    }
+    tmp = cast(*TypeInfoInt) typeinfo(u64);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 64);
+    assert(!tmp.is_signed);
+
+    // value
+    i := 10;
+    tmp = cast(*TypeInfoInt) typeinfo(i);
+    assert(tmp.base.kind == TypeKind.Int);
+    assert(tmp.bitcount == 32);
+    assert(tmp.is_signed);
+};
+
+#test "RTTI - Real" {
+    tmp := cast(*TypeInfoReal) typeinfo(f32);
+    assert(tmp.base.kind == TypeKind.Real);
+    assert(tmp.bitcount == 32);
+
+    tmp = cast(*TypeInfoReal) typeinfo(f64);
+    assert(tmp.base.kind == TypeKind.Real);
+    assert(tmp.bitcount == 64);
+
+    // value
+    i := 10.f;
+    tmp = cast(*TypeInfoReal) typeinfo(i);
+    assert(tmp.base.kind == TypeKind.Real);
+    assert(tmp.bitcount == 32);
+};
+
+#test "RTTI - Real" {
+    tmp := cast(*TypeInfoReal) typeinfo(f32);
+    assert(tmp.base.kind == TypeKind.Real);
+    assert(tmp.bitcount == 32);
+
+    tmp = cast(*TypeInfoReal) typeinfo(f64);
+    assert(tmp.base.kind == TypeKind.Real);
+    assert(tmp.bitcount == 64);
+};
+
+#test "RTTI - Array" {
+    tmp := cast(*TypeInfoArray) typeinfo([10]s32);
+    assert(tmp.len == 10);
+    assert(tmp.elem != null);
+};
+
+#test "RTTI - Type" {
+    tmp := typeinfo(type);
+};
+
+#test "RTTI - Bool" {
+    tmp := typeinfo(bool);
+};
+
+#test "RTTI - Fn" {
+    f :: fn (i: s32) {};
+    tmp := cast(*TypeInfoFn) typeinfo(f);
+    assert(tmp.args.len  == 1);
+    assert(tmp.ret != null);
+    assert(tmp.is_vargs == false);
+};
+
+#test "RTTI - Enum" {
+    tmp := cast(*TypeInfoEnum) typeinfo(enum {A :: 1});
+    assert(tmp.base_type != null);
+};
+
+#test "RTTI - Struct" {
+    tmp := cast(*TypeInfoStruct) typeinfo(struct {i: s32, b: bool});
+    assert(tmp.members.len == 2);
 };

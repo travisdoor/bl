@@ -5569,11 +5569,6 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
 	switch (src_type->kind) {
 	case MIR_TYPE_STRUCT: {
-		/* CLEANUP: String slice contains directly pointer to .v_str representation
-		 * data, there is no allocated variable pointer set for prt member, so we
-		 * need different approach here. This is kinda hack solution. */
-		const bool raw_copy = src_type->data.strct.kind & MIR_TS_SLICE;
-
 		if (src_value->data.v_struct.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
@@ -5591,13 +5586,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 				                                   src_type->llvm_type,
 				                                   (unsigned long)i);
 				assert(elem_dest_ptr);
-
-				if (raw_copy)
-					memcpy(elem_dest_ptr,
-					       (MirStackPtr)member,
-					       member->type->store_size_bytes);
-				else
-					exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
+				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
 			}
 		}
 		break;
@@ -5700,11 +5689,19 @@ _create_and_alloc_RTTI_var(Context *cnt, MirType *type)
 	return var;
 }
 
+/*
+ * Push RTTI variable to the array of RTTIs, do stack allocation for execution and push current
+ * value on the stack.
+ */
 static inline void
 _push_RTTI_var(Context *cnt, MirVar *var)
 {
 	/* Push into RTTI table */
 	bo_array_push_back(cnt->module->RTTI_tmp_vars, var);
+	MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, true);
+	assert(var_ptr);
+
+	exec_copy_comptime_to_stack(cnt, var_ptr, &var->value);
 }
 
 MirVar *
@@ -5807,6 +5804,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 		MirType *rtti_var_arr_type =
 		    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, memc);
+
 		{ /* Members array */
 			rtti_var_arr = _create_and_alloc_RTTI_var(cnt, rtti_var_arr_type);
 
@@ -5831,7 +5829,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
 
-		{ /* .members slice */
+		{ /* .args slice */
 			BArray *slice_members      = create_arr(cnt, sizeof(MirVar *));
 			tmp->data.v_struct.members = slice_members;
 
@@ -5852,6 +5850,70 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		break;
 	}
 
+	case MIR_TYPE_FN: {
+		const size_t argc         = bo_array_size(type->data.fn.arg_types);
+		MirVar *     rtti_var_arr = NULL;
+
+		MirType *rtti_var_arr_type =
+		    create_type_array(cnt, cnt->builtin_types.entry_TypeInfo_ptr, argc);
+
+		{ /* Args array */
+			rtti_var_arr = _create_and_alloc_RTTI_var(cnt, rtti_var_arr_type);
+
+			BArray *elems = create_arr(cnt, sizeof(MirVar *));
+
+			rtti_var_arr->value.data.v_array.elems = elems;
+
+			MirType *arg_type;
+			barray_foreach(type->data.fn.arg_types, arg_type)
+			{
+				tmp =
+				    create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+
+				MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, arg_type);
+
+				set_const_ptr(&tmp->data.v_ptr, rtti_base_type, MIR_CP_VAR);
+				bo_array_push_back(elems, tmp);
+			}
+
+			_push_RTTI_var(cnt, rtti_var_arr);
+		}
+
+		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
+
+		{ /* .members slice */
+			BArray *slice_members      = create_arr(cnt, sizeof(MirVar *));
+			tmp->data.v_struct.members = slice_members;
+
+			MirConstValue *slice_member_tmp =
+			    create_const_value(cnt, cnt->builtin_types.entry_usize);
+			bo_array_push_back(slice_members, slice_member_tmp);
+			slice_member_tmp->data.v_u64 = argc;
+
+			MirType *arr_ptr_type = create_type_ptr(cnt, rtti_var_arr_type);
+			slice_member_tmp      = create_const_value(cnt, arr_ptr_type);
+			bo_array_push_back(slice_members, slice_member_tmp);
+
+			MirConstPtr *const_ptr = &slice_member_tmp->data.v_ptr;
+			set_const_ptr(const_ptr, rtti_var_arr, MIR_CP_VAR);
+		}
+
+		bo_array_push_back(members, tmp);
+
+		/* .ret */
+		tmp              = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
+		MirVar *rtti_ret = exec_gen_type_RTTI(cnt, type->data.fn.ret_type);
+
+		set_const_ptr(&tmp->data.v_ptr, rtti_ret, MIR_CP_VAR);
+		bo_array_push_back(members, tmp);
+
+		/* .is_vargs */
+		tmp              = create_const_value(cnt, cnt->builtin_types.entry_bool);
+		tmp->data.v_bool = type->data.fn.is_vargs;
+		bo_array_push_back(members, tmp);
+		break;
+	}
+
 	default: {
 		char type_name[256];
 		mir_type_to_str(type_name, 256, type, true);
@@ -5862,25 +5924,6 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 	rtti_value->data.v_struct.members = members;
 	type->rtti.var                    = rtti_var;
-
-	{ /* Setup variable */
-		/*
-		 * Variable is already allocated on stack in create_and_push_RTTI_var function. But
-		 * it still needs to be initialized.
-		 */
-		MirStackPtr var_ptr = exec_read_stack_ptr(cnt, rtti_var->rel_stack_ptr, true);
-		assert(var_ptr);
-
-		exec_copy_comptime_to_stack(cnt, var_ptr, rtti_value);
-	}
-
-	/* CLEANUP: use this???
-	 *
-	 * '_push_var_into_module(cnt, rtti_var);'
-	 *
-	 * We will need to create 'lazy' recursive generation for LLVM IR becouse now we use
-	 * separate array for storing RTTI variables generated first...
-	 */
 
 	_push_RTTI_var(cnt, rtti_var);
 

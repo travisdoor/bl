@@ -731,7 +731,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 		BArray *     members = value->data.v_struct.members;
 		const size_t memc    = bo_array_size(members);
 
-		if (type->data.strct.kind & MIR_TS_STRING) {
+		if (type->data.strct.kind == MIR_TS_STRING) {
 			assert(members);
 			assert(memc == 2 && "not slice string?");
 
