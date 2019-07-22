@@ -74,9 +74,6 @@ set(SOURCE_FILES
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
 if (MSVC)
-    add_definitions(${LLVM_DEFINITIONS})
-    llvm_map_components_to_libnames(llvm_libs core all)
-
     target_link_libraries(blc PUBLIC
         shlwapi
     )
@@ -87,6 +84,9 @@ else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
 endif()
+
+add_definitions(${LLVM_DEFINITIONS})
+llvm_map_components_to_libnames(llvm_libs all)
 
 target_link_libraries(blc PUBLIC
     dynload_s
