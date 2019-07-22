@@ -22,7 +22,6 @@ add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
 
 # deps
-#find_package(BObject 1.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
@@ -74,25 +73,30 @@ set(SOURCE_FILES
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
 if (MSVC)
+    llvm_map_components_to_libnames(LLVM_LIBS core all)
+
     target_link_libraries(blc PUBLIC
         shlwapi
+	${LLVM_LIBS}
     )
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
 else()
+    target_link_libraries(blc PUBLIC
+        LLVM
+    )
+
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
 endif()
 
 add_definitions(${LLVM_DEFINITIONS})
-llvm_map_components_to_libnames(llvm_libs all)
 
 target_link_libraries(blc PUBLIC
     dynload_s
     dyncall_s
     bobject
-    LLVM
     ${CMAKE_DL_LIBS}
 )
 
