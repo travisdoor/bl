@@ -77,7 +77,7 @@ if (MSVC)
     add_definitions(${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core all)
 
-    #target_include_directories(blc PRIVATE ${DYNCALL_PATH}/include ${LLVM_INCLUDE_DIRS})
+    target_include_directories(blc PRIVATE ${LLVM_INCLUDE_DIRS})
     #target_link_directories(blc PRIVATE ${DYNCALL_PATH}/lib)
     target_link_libraries(blc PUBLIC
         dynload_s
