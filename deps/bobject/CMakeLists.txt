@@ -24,12 +24,8 @@ else()
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces")
 endif()
 
-add_library(bobject SHARED ${SOURCE_FILES})
+add_library(bobject STATIC ${SOURCE_FILES})
 target_compile_definitions(bobject PRIVATE -DBO_COMPILING_DLL)
 
 target_include_directories(bobject PUBLIC
         PRIVATE src include)
-
-install(TARGETS bobject
-        LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
