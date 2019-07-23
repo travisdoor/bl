@@ -33,7 +33,7 @@
 #if BO_COMPILING_DLL
 #define BO_EXPORT __declspec(dllexport)
 #else
-#define BO_EXPORT __declspec(dllimport)
+#define BO_EXPORT
 #endif
 #else
 #define BO_EXPORT __attribute__((__visibility__("default")))
