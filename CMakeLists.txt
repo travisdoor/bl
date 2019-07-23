@@ -21,8 +21,7 @@ endif()
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-set(BL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/bl/api)
-set(BL_LIBDIR_FULL ${CMAKE_INSTALL_PREFIX}/${BL_LIBDIR})
+set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
@@ -115,11 +114,17 @@ target_include_directories(blc PRIVATE
     ${LLVM_INCLUDE_DIRS}
 )
 
-configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
+set(BL_LIBDIR ${CMAKE_SOURCE_DIR}/api)
+configure_file(${CMAKE_SOURCE_DIR}/install/bl.conf.in ${CMAKE_SOURCE_DIR}/etc/bl.conf)
+
+set(BL_LIBDIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/bl/api)
 configure_file(${CMAKE_SOURCE_DIR}/install/bl.conf.in ${CMAKE_BINARY_DIR}/bl.conf)
+
+configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc
         RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(DIRECTORY api/ DESTINATION ${BL_LIBDIR})
+install(DIRECTORY api/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl/api)
+install(FILES ${CMAKE_BINARY_DIR}/bl.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})

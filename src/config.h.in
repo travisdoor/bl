@@ -37,7 +37,7 @@
 #define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
 #define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
-#define BL_API_DIR "@BL_LIBDIR@"
+#define BL_CONF_FILE "@BL_CONF_FILE@"
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
@@ -90,6 +90,6 @@
 #define ASSERT_ON_CMP_ERROR 0
 #endif
 
-extern char *BL_API_FULL_PATH;
+extern char *BL_CONF_FILE_PATH;
 
 #endif // BL_CONFIG_H

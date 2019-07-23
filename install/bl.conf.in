@@ -2,7 +2,7 @@
 # compiler version: "@PROJECT_VERSION@"
 
 # Path to bl sdk.
-LIB_DIR "@BL_LIBDIR_FULL@"
+LIB_DIR "@BL_LIBDIR@"
 
 # C linker executable used by compiler.
 LINKER_EXEC "@CMAKE_LINKER@"
