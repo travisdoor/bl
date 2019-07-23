@@ -27,3 +27,22 @@
 //************************************************************************************************
 
 #include "conf_loader.h"
+
+ConfData *
+conf_load(const char *filepath)
+{
+	ConfData *data = bl_malloc(sizeof(ConfData));
+	return data;
+}
+
+void
+conf_delete(ConfData *data)
+{
+	bl_free(data);
+}
+
+const char *
+conf_get(ConfData *data, const char *key)
+{
+	return NULL;
+}

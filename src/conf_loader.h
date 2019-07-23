@@ -30,5 +30,19 @@
 #define BL_CONF_LOADER_H
 
 #include "common.h"
+#include <bobject/containers/htbl.h>
+
+typedef struct ConfData {
+	BHashTable *table;
+} ConfData;
+
+ConfData *
+conf_load(const char *filepath);
+
+void
+conf_delete(ConfData *data);
+
+const char *
+conf_get(ConfData *data, const char *key);
 
 #endif
