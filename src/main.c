@@ -64,6 +64,11 @@ print_help(void)
 int
 main(int32_t argc, char *argv[])
 {
+	{
+		char buf[PATH_MAX];
+		if (get_current_exec_path(buf, PATH_MAX)) bl_log("Running from: %s", buf);
+	}
+
 	setlocale(LC_ALL, "C");
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 	puts("compiler version: " BL_VERSION " (pre-alpha)");

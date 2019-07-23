@@ -34,6 +34,16 @@
 #include "unistd.h"
 #endif
 
+bool
+get_current_exec_path(char *buf, size_t buf_size)
+{
+#ifdef BL_COMPILER_MSVC
+	return (bool)GetModuleFileNameA(NULL, buf, buf_size);
+#else
+	return readlink("/proc/self/exe", buf, buf_size) != -1;
+#endif
+}
+
 void
 id_init(ID *id, const char *str)
 {
