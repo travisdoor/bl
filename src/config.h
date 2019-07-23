@@ -29,7 +29,13 @@
 #ifndef BL_CONFIG_H
 #define BL_CONFIG_H
 
-#include "version.h"
+/*
+ * Values set automatically during build by cmake.
+ */
+#define BL_VERSION       "0.4.1"
+#define BL_VERSION_MAJOR 0
+#define BL_VERSION_MINOR 4
+#define BL_VERSION_PATCH 1
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN

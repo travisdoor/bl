@@ -21,6 +21,7 @@ endif()
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(BL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/bl)
 
 add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
@@ -112,11 +113,11 @@ target_include_directories(blc PRIVATE
     ${LLVM_INCLUDE_DIRS}
 )
 
-configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
+configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc
         RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(DIRECTORY api/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
+install(DIRECTORY api/ DESTINATION ${BL_LIBDIR})
 
