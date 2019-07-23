@@ -78,12 +78,18 @@ set(SOURCE_FILES
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
+add_definitions(${LLVM_DEFINITIONS})
+
 if (MSVC)
     llvm_map_components_to_libnames(LLVM_LIBS core all)
 
     target_link_libraries(blc PUBLIC
         shlwapi
 	${LLVM_LIBS}
+	dynload_s
+	dyncall_s
+	bobject
+	${CMAKE_DL_LIBS}
     )
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
@@ -91,20 +97,15 @@ if (MSVC)
 else()
     target_link_libraries(blc PUBLIC
         LLVM
+	dynload_s
+	dyncall_s
+	bobject
+	${CMAKE_DL_LIBS}
     )
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
 endif()
-
-add_definitions(${LLVM_DEFINITIONS})
-
-target_link_libraries(blc PUBLIC
-    dynload_s
-    dyncall_s
-    bobject
-    ${CMAKE_DL_LIBS}
-)
 
 target_include_directories(blc PRIVATE
     src
