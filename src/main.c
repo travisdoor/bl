@@ -89,8 +89,9 @@ set_BL_API_FULL_PATH(void)
 	brealpath(exec_dir, lib_dir, PATH_MAX);
 
 	BL_API_FULL_PATH = strdup(lib_dir);
-
 	atexit(free_BL_API_FULL_PATH);
+
+	bl_log(BL_API_FULL_PATH);
 }
 
 int
