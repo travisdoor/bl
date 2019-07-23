@@ -65,3 +65,5 @@ dkms.conf
 tests/test
 tests/pdisk-generator
 /docs/doxygen/html/
+src/config.h
+install/uninstall.sh
