@@ -26,15 +26,16 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#include <locale.h>
+#include <stdio.h>
+#include <string.h>
 #include "assembly.h"
 #include "bldebug.h"
 #include "builder.h"
 #include "error.h"
 #include "messages.h"
 #include "unit.h"
-#include <locale.h>
-#include <stdio.h>
-#include <string.h>
+#include "conf_loader.h"
 
 char *BL_CONF_FILE_PATH = NULL;
 
