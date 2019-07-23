@@ -1,3 +1,0 @@
-#!/bin/bash
-echo Remove all files based on @BL_INSTALL_MANIFEST_FILE@
-xargs rm -v < @BL_INSTALL_MANIFEST_FILE@
