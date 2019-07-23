@@ -12,7 +12,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
-#set(DYNCALL_PATH "C:/Program Files/DynCall" CACHE PATH "Path to Dyncall.")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -21,6 +20,7 @@ endif()
 
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 
 add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)

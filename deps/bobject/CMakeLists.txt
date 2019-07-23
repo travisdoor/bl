@@ -8,10 +8,6 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Must use GNUInstallDirs to install libraries into correct
-# locations on all platforms.
-include(GNUInstallDirs)
-
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
