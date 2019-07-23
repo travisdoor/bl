@@ -25,7 +25,7 @@ else()
 endif()
 
 add_library(bobject STATIC ${SOURCE_FILES})
-target_compile_definitions(bobject PRIVATE -DBO_COMPILING_DLL)
+#target_compile_definitions(bobject PRIVATE -DBO_COMPILING_DLL)
 
 target_include_directories(bobject PUBLIC
         PRIVATE src include)
