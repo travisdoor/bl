@@ -64,9 +64,20 @@ print_help(void)
 int
 main(int32_t argc, char *argv[])
 {
-	{
-		char buf[PATH_MAX] = {0};
-		if (get_current_exec_path(buf, PATH_MAX)) bl_log("Running from: %s", buf);
+	{ /* Setup LIB DIR */
+		char exec_path[PATH_MAX] = {0};
+		if (!get_current_exec_path(exec_path, PATH_MAX)) {
+			bl_abort("Cannot locate compiler executable path.");
+		}
+
+		char exec_dir[PATH_MAX] = {0};
+		if (!get_dir_from_filepath(exec_dir, PATH_MAX, exec_path)) {
+			bl_abort("Cannot locate compiler executable path.");
+		}
+
+		strcat(exec_dir, PATH_SEPARATOR ".." PATH_SEPARATOR);
+		strcat(exec_dir, BL_API_DIR);
+		bl_log(exec_dir);
 	}
 
 	setlocale(LC_ALL, "C");
