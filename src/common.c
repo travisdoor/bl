@@ -34,14 +34,21 @@
 #include "unistd.h"
 #endif
 
+#ifdef BL_PLATFORM_MACOS
+#include <mach-o/dyld.h>
+#endif
+
 bool
 get_current_exec_path(char *buf, size_t buf_size)
 {
-#ifdef BL_COMPILER_MSVC
+#if defined(BL_PLATFORM_WIN)
 	return (bool)GetModuleFileNameA(NULL, buf, buf_size);
-#else
+#elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
+#elif defined(BL_PLATFORM_MACOS)
+	return _NSGetExecutablePath(buf, (uint32_t *)&buf_size) != -1;
 #endif
+	return false;
 }
 
 void
@@ -55,7 +62,7 @@ id_init(ID *id, const char *str)
 bool
 file_exists(const char *filepath)
 {
-#ifdef BL_COMPILER_MSVC
+#if defined(BL_PLATFORM_WIN)
 	return (bool)PathFileExistsA(filepath);
 #else
 	return access(filepath, F_OK) != -1;
@@ -70,7 +77,7 @@ brealpath(const char *file, char *out, int32_t out_len)
 	assert(out_len);
 	if (!file) return resolved;
 
-#ifdef BL_COMPILER_MSVC
+#if defined(BL_PLATFORM_WIN)
 	if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) return &out[0];
 	return NULL;
 #else

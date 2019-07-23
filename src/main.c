@@ -65,7 +65,7 @@ int
 main(int32_t argc, char *argv[])
 {
 	{
-		char buf[PATH_MAX];
+		char buf[PATH_MAX] = {0};
 		if (get_current_exec_path(buf, PATH_MAX)) bl_log("Running from: %s", buf);
 	}
 
