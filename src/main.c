@@ -36,6 +36,8 @@
 #include <stdio.h>
 #include <string.h>
 
+char *BL_API_FULL_PATH = NULL;
+
 static void
 print_help(void)
 {
@@ -61,29 +63,41 @@ print_help(void)
 	        "  -verbose-linker     = Print internal linker logs.\n");
 }
 
+static void
+free_BL_API_FULL_PATH(void)
+{
+	free(BL_API_FULL_PATH);
+}
+
+static void
+set_BL_API_FULL_PATH(void)
+{
+	char exec_path[PATH_MAX] = {0};
+	if (!get_current_exec_path(exec_path, PATH_MAX)) {
+		bl_abort("Cannot locate compiler executable path.");
+	}
+
+	char exec_dir[PATH_MAX] = {0};
+	if (!get_dir_from_filepath(exec_dir, PATH_MAX, exec_path)) {
+		bl_abort("Cannot locate compiler executable path.");
+	}
+
+	strcat(exec_dir, PATH_SEPARATOR ".." PATH_SEPARATOR);
+	strcat(exec_dir, BL_API_DIR);
+
+	char lib_dir[PATH_MAX] = {0};
+	brealpath(exec_dir, lib_dir, PATH_MAX);
+
+	BL_API_FULL_PATH = strdup(lib_dir);
+
+	atexit(free_BL_API_FULL_PATH);
+}
+
 int
 main(int32_t argc, char *argv[])
 {
-	{ /* Setup LIB DIR */
-		char exec_path[PATH_MAX] = {0};
-		if (!get_current_exec_path(exec_path, PATH_MAX)) {
-			bl_abort("Cannot locate compiler executable path.");
-		}
-
-		char exec_dir[PATH_MAX] = {0};
-		if (!get_dir_from_filepath(exec_dir, PATH_MAX, exec_path)) {
-			bl_abort("Cannot locate compiler executable path.");
-		}
-
-		strcat(exec_dir, PATH_SEPARATOR ".." PATH_SEPARATOR);
-		strcat(exec_dir, BL_API_DIR);
-
-		char lib_dir[PATH_MAX] = {0};
-		brealpath(exec_dir, lib_dir, PATH_MAX);
-		bl_log(lib_dir);
-	}
-
 	setlocale(LC_ALL, "C");
+	set_BL_API_FULL_PATH();
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 	puts("compiler version: " BL_VERSION " (pre-alpha)");
 

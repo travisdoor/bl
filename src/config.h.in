@@ -90,6 +90,6 @@
 #define ASSERT_ON_CMP_ERROR 0
 #endif
 
-static char *BL_API_FULL_PATH;
+extern char *BL_API_FULL_PATH;
 
 #endif // BL_CONFIG_H
