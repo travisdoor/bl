@@ -77,7 +77,10 @@ main(int32_t argc, char *argv[])
 
 		strcat(exec_dir, PATH_SEPARATOR ".." PATH_SEPARATOR);
 		strcat(exec_dir, BL_API_DIR);
-		bl_log(exec_dir);
+
+		char lib_dir[PATH_MAX] = {0};
+		brealpath(exec_dir, lib_dir, PATH_MAX);
+		bl_log(lib_dir);
 	}
 
 	setlocale(LC_ALL, "C");
