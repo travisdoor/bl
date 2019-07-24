@@ -40,6 +40,8 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
+const char *LIB_DIR = NULL;
+
 static int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
 
@@ -168,8 +170,6 @@ builder_delete(Builder *builder)
 int
 builder_load_conf_file(Builder *builder, const char *filepath)
 {
-	bl_log("loading config file from: %s", filepath);
-
 	Unit *unit = unit_new_file(filepath, NULL, NULL);
 
 	/* load */
@@ -191,6 +191,10 @@ builder_load_conf_file(Builder *builder, const char *filepath)
 	interrupt_on_error(builder);
 
 	unit_delete(unit);
+
+	/* setup LIB_DIR */
+	LIB_DIR = conf_data_get_str(builder->conf, CONF_LIB_DIR_KEY);
+	
 	return COMPILE_OK;
 }
 

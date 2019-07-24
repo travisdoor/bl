@@ -117,6 +117,25 @@ target_include_directories(blc PRIVATE
     ${LLVM_INCLUDE_DIRS}
 )
 
+get_filename_component(LINKER_FILENAME ${CMAKE_LINKER} NAME)
+
+if (LINKER_FILENAME STREQUAL link.exe)
+    set(BL_LINKER_EXEC ${CMAKE_LINKER})
+    set(BL_LINKER_OPT "")
+elseif (LINKER_FILENAME STREQUAL ld)
+  if (APPLE)
+        execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE BL_MIN_MACOS_VERSION)
+	set(BL_LINKER_EXEC "/Library/Developer/CommandLineTools/usr/bin/ld")
+	set(BL_LINKER_OPT
+	  "${CMAKE_OSX_SYSROOT}/usr/lib/crt1.o -lc"
+	)
+    else()
+        set(BL_LINKER_EXEC "/usr/bin/ld")
+	set(BL_LINKER_OPT 
+	    "--hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/lib/x86_64-linux-gnu/crtn.o -L/usr/bin -L/usr/lib/x86_64-linux-gnu -lc -lm")
+    endif()
+endif()
+
 set(BL_LIBDIR ${CMAKE_SOURCE_DIR}/api)
 configure_file(${CMAKE_SOURCE_DIR}/install/bl.conf.in ${CMAKE_SOURCE_DIR}/etc/bl.conf)
 

@@ -91,6 +91,9 @@
 #endif
 
 #define CONF_LINKER_EXEC_KEY "LINKER_EXEC"
+#define CONF_LINKER_OPT_KEY "LINKER_OPT"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
+
+extern const char *LIB_DIR;
 
 #endif // BL_CONFIG_H

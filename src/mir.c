@@ -8806,7 +8806,7 @@ mir_new_module(const char *name)
 
 	/* TODO: set opt level */
 #if BL_DEBUG
-	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelNone;
+	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
 #else
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
 #endif

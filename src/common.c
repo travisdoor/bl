@@ -180,6 +180,21 @@ search_file(const char *filepath, char **out_filepath, char **out_dirpath, const
 		goto FOUND;
 	}
 
+	/* file has not been found in current working direcotry -> search in LIB_DIR */
+	if (LIB_DIR) {
+		char tmp_lib_dir[PATH_MAX];
+
+		strcpy(tmp_lib_dir, LIB_DIR);
+		strcat(tmp_lib_dir, PATH_SEPARATOR);
+		strcat(tmp_lib_dir, filepath);
+
+		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
+
+		if (rpath != NULL) {
+			goto FOUND;
+		}
+	}
+
 	/* file has not been found in current working direcotry -> search in PATH */
 	{
 		char   tmp_env[PATH_MAX];
