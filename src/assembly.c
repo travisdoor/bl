@@ -36,7 +36,8 @@
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
 
-static void init_dl(Assembly *assembly)
+static void
+init_dl(Assembly *assembly)
 {
 	assembly->dl.libs = bo_array_new(sizeof(NativeLib));
 	DCCallVM *vm      = dcNewCallVM(4096);
@@ -44,16 +45,17 @@ static void init_dl(Assembly *assembly)
 	assembly->dl.vm = vm;
 }
 
-static void native_lib_terminate(NativeLib *lib)
+static void
+native_lib_terminate(NativeLib *lib)
 {
-	if (lib->handle)
-		dlFreeLibrary(lib->handle);
+	if (lib->handle) dlFreeLibrary(lib->handle);
 	free(lib->dirpath);
 	free(lib->filename);
 	free(lib->filepath);
 }
 
-static void terminate_dl(Assembly *assembly)
+static void
+terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
@@ -66,15 +68,16 @@ static void terminate_dl(Assembly *assembly)
 }
 
 /* public */
-Assembly *assembly_new(const char *name)
+Assembly *
+assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
-	if (!assembly)
-		bl_abort("bad alloc");
+	if (!assembly) bl_abort("bad alloc");
 	assembly->name       = strdup(name);
 	assembly->units      = bo_array_new(sizeof(Unit *));
 	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
 	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
+	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
 
 	init_dl(assembly);
 
@@ -84,7 +87,8 @@ Assembly *assembly_new(const char *name)
 	return assembly;
 }
 
-void assembly_delete(Assembly *assembly)
+void
+assembly_delete(Assembly *assembly)
 {
 	free(assembly->name);
 
@@ -97,6 +101,7 @@ void assembly_delete(Assembly *assembly)
 	bo_unref(assembly->units);
 	bo_unref(assembly->unit_cache);
 	bo_unref(assembly->link_cache);
+	bo_unref(assembly->type_table);
 
 	mir_delete_module(assembly->mir_module);
 
@@ -104,12 +109,14 @@ void assembly_delete(Assembly *assembly)
 	bl_free(assembly);
 }
 
-void assembly_add_unit(Assembly *assembly, Unit *unit)
+void
+assembly_add_unit(Assembly *assembly, Unit *unit)
 {
 	bo_array_push_back(assembly->units, unit);
 }
 
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
+bool
+assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
 	uint64_t hash = 0;
 	if (unit->filepath)
@@ -117,37 +124,35 @@ bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 	else
 		hash = bo_hash_from_str(unit->name);
 
-	if (bo_htbl_has_key(assembly->unit_cache, hash))
-		return false;
+	if (bo_htbl_has_key(assembly->unit_cache, hash)) return false;
 
 	bo_htbl_insert_empty(assembly->unit_cache, hash);
 	assembly_add_unit(assembly, unit);
 	return true;
 }
 
-void assembly_add_link(Assembly *assembly, Token *token)
+void
+assembly_add_link(Assembly *assembly, Token *token)
 {
-	if (!token)
-		return;
+	if (!token) return;
 
 	assert(token->sym == SYM_STRING);
 
 	uint64_t hash = bo_hash_from_str(token->value.str);
-	if (bo_htbl_has_key(assembly->link_cache, hash))
-		return;
+	if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
 	bo_htbl_insert(assembly->link_cache, hash, token);
 }
 
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
+DCpointer
+assembly_find_extern(Assembly *assembly, const char *symbol)
 {
 	void * handle = NULL;
 	DLLib *lib;
 	barray_foreach(assembly->dl.libs, lib)
 	{
 		handle = dlFindSymbol(lib, symbol);
-		if (handle)
-			break;
+		if (handle) break;
 	}
 
 	return handle;

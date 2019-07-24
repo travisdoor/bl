@@ -47,6 +47,7 @@
     "arg"
     "sizeof"
     "typeinfo"
+    "typekind"
     "compound"
     "vargs"
     "phi"

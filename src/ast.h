@@ -83,6 +83,7 @@ typedef enum {
 	AST_EXPR_ALIGNOF,
 	AST_EXPR_TYPEOF,
 	AST_EXPR_TYPE_INFO,
+	AST_EXPR_TYPE_KIND,
 	AST_EXPR_UNARY,
 	AST_EXPR_NULL,
 	AST_EXPR_ADDROF,
@@ -99,8 +100,9 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-	FLAG_TEST   = 1 << 1, /* test case */
+	FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
+	FLAG_TEST     = 1 << 1, /* test case */
+	FLAG_COMPILER = 1 << 2, /* compiler internal */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -327,11 +329,11 @@ struct AstExprTypeInfo {
 	Ast *node;
 };
 
-struct AstExprAlignof {
+struct AstExprTypeKind {
 	Ast *node;
 };
 
-struct AstExprTypeof {
+struct AstExprAlignof {
 	Ast *node;
 };
 
@@ -393,8 +395,8 @@ struct Ast {
 		struct AstExprElem      expr_elem;
 		struct AstExprSizeof    expr_sizeof;
 		struct AstExprTypeInfo  expr_type_info;
+		struct AstExprTypeKind  expr_type_kind;
 		struct AstExprAlignof   expr_alignof;
-		struct AstExprTypeof    expr_typeof;
 		struct AstExprUnary     expr_unary;
 		struct AstExprAddrOf    expr_addrof;
 		struct AstExprDeref     expr_deref;
@@ -406,42 +408,52 @@ struct Ast {
 #endif
 };
 
-void ast_arena_init(struct Arena *arena);
+void
+ast_arena_init(struct Arena *arena);
 
-static inline bool ast_binop_is_assign(BinopKind op)
+static inline bool
+ast_binop_is_assign(BinopKind op)
 {
 	return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
-static inline bool ast_binop_is_logic(BinopKind op)
+static inline bool
+ast_binop_is_logic(BinopKind op)
 {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 
-static inline bool ast_is_expr(Ast *node)
+static inline bool
+ast_is_expr(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
-static inline bool ast_is_decl(Ast *node)
+static inline bool
+ast_is_decl(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
-static inline bool ast_is_type(Ast *node)
+static inline bool
+ast_is_type(Ast *node)
 {
 	assert(node);
 	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 
-Ast *ast_create_node(struct Arena *arena, AstKind c, Token *tok);
+Ast *
+ast_create_node(struct Arena *arena, AstKind c, Token *tok);
 
-const char *ast_binop_to_str(BinopKind op);
+const char *
+ast_binop_to_str(BinopKind op);
 
-const char *ast_unop_to_str(UnopKind op);
+const char *
+ast_unop_to_str(UnopKind op);
 
-const char *ast_get_name(const Ast *n);
+const char *
+ast_get_name(const Ast *n);
 
 #endif

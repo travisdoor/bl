@@ -46,52 +46,76 @@ typedef enum {
 
 typedef TokensLookaheadState (*TokenCmpFunc)(Token *curr);
 
-void tokens_init(Tokens *tokens);
+void
+tokens_init(Tokens *tokens);
 
-void tokens_terminate(Tokens *tokens);
+void
+tokens_terminate(Tokens *tokens);
 
-int tokens_count(Tokens *tokens);
+int
+tokens_count(Tokens *tokens);
 
-void tokens_push(Tokens *tokens, Token *t);
+void
+tokens_push(Tokens *tokens, Token *t);
 
-Token *tokens_peek(Tokens *tokens);
+Token *
+tokens_peek(Tokens *tokens);
 
-Token *tokens_peek_last(Tokens *tokens);
+Token *
+tokens_peek_last(Tokens *tokens);
 
-Token *tokens_peek_2nd(Tokens *tokens);
+Token *
+tokens_peek_2nd(Tokens *tokens);
 
-Token *tokens_peek_nth(Tokens *tokens, size_t n);
+Token *
+tokens_peek_nth(Tokens *tokens, size_t n);
 
-Token *tokens_peek_prev(Tokens *tokens);
+Token *
+tokens_peek_prev(Tokens *tokens);
 
-Token *tokens_consume(Tokens *tokens);
+Token *
+tokens_consume(Tokens *tokens);
 
-Token *tokens_consume_if(Tokens *tokens, Sym sym);
+Token *
+tokens_consume_if(Tokens *tokens, Sym sym);
 
-bool tokens_current_is(Tokens *tokens, Sym sym);
+bool
+tokens_current_is(Tokens *tokens, Sym sym);
 
-bool tokens_previous_is(Tokens *tokens, Sym sym);
+bool
+tokens_previous_is(Tokens *tokens, Sym sym);
 
-bool tokens_next_is(Tokens *tokens, Sym sym);
+bool
+tokens_next_is(Tokens *tokens, Sym sym);
 
-bool tokens_current_is_not(Tokens *tokens, Sym sym);
+bool
+tokens_current_is_not(Tokens *tokens, Sym sym);
 
-bool tokens_next_is_not(Tokens *tokens, Sym sym);
+bool
+tokens_next_is_not(Tokens *tokens, Sym sym);
 
-bool tokens_is_seq(Tokens *tokens, int32_t cnt, ...);
+bool
+tokens_is_seq(Tokens *tokens, int32_t cnt, ...);
 
-void tokens_reset_iter(Tokens *tokens);
+void
+tokens_reset_iter(Tokens *tokens);
 
-size_t tokens_get_marker(Tokens *tokens);
+size_t
+tokens_get_marker(Tokens *tokens);
 
-void tokens_back_to_marker(Tokens *tokens, size_t marker);
+void
+tokens_back_to_marker(Tokens *tokens, size_t marker);
 
-void tokens_consume_till(Tokens *tokens, Sym sym);
+void
+tokens_consume_till(Tokens *tokens, Sym sym);
 
-bool tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
+bool
+tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
 
-bool tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
+bool
+tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
 
-BArray *tokens_get_all(Tokens *tokens);
+BArray *
+tokens_get_all(Tokens *tokens);
 
 #endif

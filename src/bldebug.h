@@ -75,7 +75,8 @@
 
 typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } bl_log_msg_type_e;
 
-void _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
+void
+_log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 
 #ifdef BL_DEBUG
 #define bl_log(format, ...)                                                                        \
@@ -88,7 +89,8 @@ void _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, 
 		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                  \
 	}
 
-#else
+#else /* !BL_DEBUG */
+
 #define bl_log(format, ...)                                                                        \
 	while (0) {                                                                                \
 	}
@@ -96,7 +98,7 @@ void _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, 
 #define bl_warning(format, ...)                                                                    \
 	while (0) {                                                                                \
 	}
-#endif
+#endif /* BL_DEBUG */
 
 #define bl_abort(format, ...)                                                                      \
 	{                                                                                          \
@@ -106,14 +108,20 @@ void _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, 
 
 #define bl_abort_issue(N)                                                                          \
 	{                                                                                          \
-		_log(LOG_ABORT, __FILENAME__, __LINE__,                                            \
+		_log(LOG_ABORT,                                                                    \
+		     __FILENAME__,                                                                 \
+		     __LINE__,                                                                     \
 		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
 		abort();                                                                           \
 	}
 
+#define bl_assert_magic(O, M, MSG) assert((O)->_magic == &(M) && MSG)
+
 #define bl_warning_issue(N)                                                                        \
 	{                                                                                          \
-		_log(LOG_WARNING, __FILENAME__, __LINE__,                                          \
+		_log(LOG_WARNING,                                                                  \
+		     __FILENAME__,                                                                 \
+		     __LINE__,                                                                     \
 		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
 	}
 

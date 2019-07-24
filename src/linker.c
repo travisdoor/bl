@@ -33,8 +33,13 @@
 #define link_error(builder, code, tok, pos, format, ...)                                           \
 	{                                                                                          \
 		if (tok)                                                                           \
-			builder_msg(builder, BUILDER_MSG_ERROR, (code), &(tok)->src, (pos),        \
-			            (format), ##__VA_ARGS__);                                      \
+			builder_msg(builder,                                                       \
+			            BUILDER_MSG_ERROR,                                             \
+			            (code),                                                        \
+			            &(tok)->src,                                                   \
+			            (pos),                                                         \
+			            (format),                                                      \
+			            ##__VA_ARGS__);                                                \
 		else                                                                               \
 			builder_error(builder, (format), ##__VA_ARGS__);                           \
 	}
@@ -46,10 +51,10 @@ typedef struct {
 } Context;
 
 /* TODO: Support cross-platform build targets? */
-void platform_lib_name(const char *name, char *buffer, size_t max_len)
+void
+platform_lib_name(const char *name, char *buffer, size_t max_len)
 {
-	if (!name)
-		return;
+	if (!name) return;
 
 #ifdef BL_PLATFORM_MACOS
 	snprintf(buffer, max_len, "lib%s.dylib", name);
@@ -62,14 +67,14 @@ void platform_lib_name(const char *name, char *buffer, size_t max_len)
 #endif
 }
 
-static bool link_lib(Context *cnt, const char *lib_name, Token *token)
+static bool
+link_lib(Context *cnt, const char *lib_name, Token *token)
 {
 	char tmp[PATH_MAX] = {0};
 	platform_lib_name(lib_name, tmp, PATH_MAX);
 
 	DLLib *handle = dlLoadLibrary(lib_name ? tmp : NULL);
-	if (!handle)
-		return false;
+	if (!handle) return false;
 
 	NativeLib native_lib = {.handle      = handle,
 	                        .linked_from = token,
@@ -90,7 +95,8 @@ static bool link_lib(Context *cnt, const char *lib_name, Token *token)
 	return true;
 }
 
-static bool link_working_environment(Context *cnt)
+static bool
+link_working_environment(Context *cnt)
 {
 #ifdef BL_PLATFORM_WIN
 	const char *libc = "msvcrt";
@@ -100,11 +106,12 @@ static bool link_working_environment(Context *cnt)
 	return link_lib(cnt, libc, NULL);
 }
 
-void linker_run(Builder *builder, Assembly *assembly)
+void
+linker_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt = {.assembly = assembly,
 	               .builder  = builder,
-	               .verbose  = builder->flags & BUILDER_VERBOSE_LINKER};
+	               .verbose  = is_flag(builder->flags, BUILDER_VERBOSE_LINKER)};
 
 	if (cnt.verbose) {
 		msg_log("Running runtime linker...");
@@ -112,7 +119,10 @@ void linker_run(Builder *builder, Assembly *assembly)
 
 	if (!link_working_environment(&cnt)) {
 		Token *dummy = NULL;
-		link_error(builder, ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD,
+		link_error(builder,
+		           ERR_LIB_NOT_FOUND,
+		           dummy,
+		           BUILDER_CUR_WORD,
 		           "Cannot link working environment.");
 		return;
 	}
@@ -126,8 +136,12 @@ void linker_run(Builder *builder, Assembly *assembly)
 		assert(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {
-			link_error(builder, ERR_LIB_NOT_FOUND, token, BUILDER_CUR_WORD,
-			           "Unresolved external library '%s'", token->value.str);
+			link_error(builder,
+			           ERR_LIB_NOT_FOUND,
+			           token,
+			           BUILDER_CUR_WORD,
+			           "Unresolved external library '%s'",
+			           token->value.str);
 		}
 	}
 }

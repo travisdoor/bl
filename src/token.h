@@ -49,23 +49,26 @@
   sm(NULL,           "null") \
   sm(ENUM,           "enum") \
   sm(LOOP,           "loop")\
+  sm(LOAD,           "load") \
+  sm(LINK,           "link") \
+  sm(TEST,           "test") \
   sm(FALSE,          "false") \
-  sm(LOAD,           "#load") \
-  sm(LINK,           "#link") \
-  sm(TEST,           "#test") \
   sm(BREAK,          "break")\
+  sm(EXTERN,         "extern") \
   sm(RETURN,         "return") \
   sm(SIZEOF,         "sizeof") \
   sm(STRUCT,         "struct") \
-  sm(EXTERN,         "#extern") \
   sm(ALIGNOF,        "alignof") \
+  sm(COMPILER,       "compiler") \
   sm(CONTINUE,       "continue") \
   sm(TYPEINFO,       "typeinfo") \
+  sm(TYPEKIND,       "typekind") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
   sm(LCOMMENT,       "//") \
   sm(LBCOMMENT,      "/*") \
   sm(RBCOMMENT,      "*/") \
+  sm(HASH,           "#") \
   sm(LBLOCK,         "{") \
   sm(RBLOCK,         "}") \
   sm(LBRACKET,       "[") \
@@ -144,21 +147,35 @@ typedef struct {
 	TokenAssociativity associativity;
 } TokenPrecedence;
 
-static inline bool sym_is_binop(Sym sym) { return sym >= SYM_EQ && sym <= SYM_ASTERISK; }
-
-static inline bool token_is_binop(Token *token) { return sym_is_binop(token->sym); }
-
-bool token_is_unary(Token *token);
-
-TokenPrecedence token_prec(Token *token);
-
-static inline bool token_is(Token *token, Sym sym)
+static inline bool
+sym_is_binop(Sym sym)
 {
-	if (!token)
-		return false;
+	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+}
+
+static inline bool
+token_is_binop(Token *token)
+{
+	return sym_is_binop(token->sym);
+}
+
+bool
+token_is_unary(Token *token);
+
+TokenPrecedence
+token_prec(Token *token);
+
+static inline bool
+token_is(Token *token, Sym sym)
+{
+	if (!token) return false;
 	return token->sym == sym;
 }
 
-static inline bool token_is_not(Token *token, Sym sym) { return !token_is(token, sym); }
+static inline bool
+token_is_not(Token *token, Sym sym)
+{
+	return !token_is(token, sym);
+}
 
 #endif // BL_TOKEN_H

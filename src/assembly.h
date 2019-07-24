@@ -45,6 +45,7 @@ typedef struct Assembly {
 	BArray *          units;      /* array of all units in assembly */
 	BHashTable *      unit_cache; /* cache for loading only unique units */
 	BHashTable *      link_cache; /* all linked externals libraries passed to linker */
+	BHashTable *      type_table; /* type table key: type ID, value: *MirType */
 	char *            name;       /* assembly name */
 	Scope *           gscope;     /* global scope of the assembly */
 	struct MirModule *mir_module;
@@ -65,16 +66,22 @@ typedef struct NativeLib {
 	char *        dirpath;
 } NativeLib;
 
-Assembly *assembly_new(const char *name);
+Assembly *
+assembly_new(const char *name);
 
-void assembly_delete(Assembly *assembly);
+void
+assembly_delete(Assembly *assembly);
 
-void assembly_add_unit(Assembly *assembly, Unit *unit);
+void
+assembly_add_unit(Assembly *assembly, Unit *unit);
 
-void assembly_add_link(Assembly *assembly, struct Token *token);
+void
+assembly_add_link(Assembly *assembly, struct Token *token);
 
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+bool
+assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
+DCpointer
+assembly_find_extern(Assembly *assembly, const char *symbol);
 
 #endif

@@ -42,12 +42,17 @@
 #define DEPRECATED
 #endif
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#define array_size(_array) (sizeof(_array) / sizeof(_array[0]))
+
+#define is_flag(_v, _flag) ((bool)((_v & _flag) == _flag))
+
+#define is_not_flag(_v, _flag) ((bool)((_v & _flag) != _flag))
 
 #define barray_foreach(arr, it)                                                                    \
 	if (bo_array_size((arr)))                                                                  \
 		for (size_t i = 0;                                                                 \
-		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *)); ++i)
+		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *));           \
+		     ++i)
 
 #define blist_foreach(list, it)                                                                    \
 	(it) = bo_list_begin((list));                                                              \
@@ -74,22 +79,34 @@ typedef struct ID {
 	uint64_t    hash;
 } ID;
 
-void id_init(ID *id, const char *str);
+void
+id_init(ID *id, const char *str);
 
-bool file_exists(const char *filepath);
+bool
+file_exists(const char *filepath);
 
-const char *brealpath(const char *file, char *out, int32_t out_len);
+const char *
+brealpath(const char *file, char *out, int32_t out_len);
 
-bool get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
+bool
+get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
 
-bool search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
+bool
+search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
 
-void date_time(char *buf, int32_t len, const char *format);
+bool
+get_current_exec_path(char *buf, size_t buf_size);
 
-bool is_aligned(const void *p, size_t alignment);
+void
+date_time(char *buf, int32_t len, const char *format);
 
-void align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
+bool
+is_aligned(const void *p, size_t alignment);
 
-void print_bits(int32_t const size, void const *const ptr);
+void
+align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
+
+void
+print_bits(int32_t const size, void const *const ptr);
 
 #endif

@@ -1,0 +1,20 @@
+#load "std/core.bl"
+#load "std/debug.bl"
+
+#test "RTTI" {
+    // yields pointer to TypeInfo constant structure
+    info := typeinfo(s32);
+
+    if info.kind == TypeKind.Int {
+        // safe cast to *TypeInfoInt
+        info_int := cast(*TypeInfoInt) info;
+
+        print("bitcount = %\n", info_int.bitcount);
+
+        if info_int.is_signed {
+            print("signed\n");
+        } else {
+            print("unsigned\n");
+        }
+    }
+};

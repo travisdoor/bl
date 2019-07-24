@@ -56,27 +56,14 @@
 1) [[https://www.youtube.com/watch?v=4UNTkqYakgI&t=22s][Introduction]] - Introduction to the language.
 
 
-* Building compiler from source code <<BUILD>>
+* Building and installation of the compiler from source code <<BUILD>>
 ** Requirements
   - git
   - CMake
   - LLVM
-  - [[https://github.com/travisdoor/bobject][bobject]]
-  - [[http://www.dyncall.org][dyncall]]
   - GCC/CLANG/Visual Studio compiler
 
 ** Linux
-   - Compile and install bobject.
-    #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake ..
-    sudo make install    
-    #+END_EXAMPLE
-
-   - Compile and install dyncall.
    - Install LLVM dev packages with your favourite package manager.
     #+BEGIN_EXAMPLE
     sudo apt install llvm-dev 
@@ -92,20 +79,12 @@
     make
     #+END_EXAMPLE
 
-   - Add 'bl/api' and 'bl/bin' into the system PATH
-
-** MacOS
-   - Compile and install bobject.
+   - For instalation use: 
     #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake ..
-    sudo make install    
+    [sudo] make install
     #+END_EXAMPLE
 
-   - Compile and install dyncall.
+** MacOS
    - Install LLVM dev packages with your favourite package manager.
    - Download and compile bl.
     #+BEGIN_EXAMPLE
@@ -117,50 +96,37 @@
     make
     #+END_EXAMPLE
 
-   - Add 'bl/api' and 'bl/bin' into the system PATH
-
-** Windows
-   You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
-
-   - Compile and install bobject.
+   - For instalation use: 
     #+BEGIN_EXAMPLE
-    git clone https://github.com/travisdoor/bobject.git
-    cd bobject
-    mkdir build
-    cd build
-    cmake .. -G "Visual Studio 15 Win64"
-    cmake --build . --config Release --target Install   
+    [sudo] make install
     #+END_EXAMPLE
 
-   - Compile and install dyncall.
+** Windows
+   You will need Visual Studio 2019 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
+
    - Compile and install LLVM tool set. [[https://llvm.org/docs/GettingStartedVS.html][guide]]
+   - Run =cmd= as an administrator.
    - Download and compile bl.
     #+BEGIN_EXAMPLE
     git clone https://github.com/travisdoor/bl.git
     cd bl
     mkdir build
     cd build
-    cmake .. -G "Visual Studio 15 Win64"
+    cmake .. -G "Visual Studio 16 2019" -Thost=x64
     #+END_EXAMPLE
 
-     You can specify path to DynCall by setting =DYNCALL_PATH= variable. Solution generated from cmake configuration can be found in =build= folder. 
-
-     There is unresolved issue with generated VS solution, use of =llvm_map_components_to_libnames= in cmake config file cause generation of some invalid linker input files, to fix that you need to open solution in Visual Studio and right click on 'bl' in Solution Explorer -> Properties -> Linker -> Input -> Additional Dependencies and remove *-NOTFOUND entries. 
-
-     Now you should be able to compile the =bl= target from the Visual Studio or from the terminal with following command.
+    Now you should be able to compile the =bl= target from the Visual Studio or from the terminal with following command.
 
     #+BEGIN_EXAMPLE
     cmake --build . --config Release
     #+END_EXAMPLE
      
-     Built executable can be found in =bin/Release= directory. Blc depends on =bobject.dll=, please copy-paste this file from the =bobject/bin= directory next to the =blc.exe=.
+    Use this for installation into =Program Files=
+    #+BEGIN_EXAMPLE
+    cmake --build . --config Release --target Install
+    #+END_EXAMPLE
 
    - Biscuit compiler on Windows use Visual Studio linker =link.exe=. Location of linker should be added into system PATH.
-   - Add 'bl/api' and 'bl/bin/Release' into the system PATH
-     
-
-     Note: Compilation on Windows is quite complicated, we need to create some automated process for this...
-
 
 * Contribution
 ** Download and compile

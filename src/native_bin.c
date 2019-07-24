@@ -29,47 +29,30 @@
 #include "config.h"
 #include "stages.h"
 
-void native_bin_run(Builder *builder, Assembly *assembly)
+void
+native_bin_run(Builder *builder, Assembly *assembly)
 {
 #if defined(BL_PLATFORM_LINUX)
 	const char *link_flag = "-l";
-	const char *cmd =
-	    "ld --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 "
-	    "-dynamic-linker "
-	    "/lib64/ld-linux-x86-64.so.2 %s.o -o %s "
-	    "/usr/lib/x86_64-linux-gnu/crt1.o "
-	    "/usr/lib/x86_64-linux-gnu/crti.o "
-	    "-L/usr/bin "
-	    "-L/usr/lib/x86_64-linux-gnu "
-	    "/usr/lib/x86_64-linux-gnu/crtn.o "
-	    "-lc -lm";
 #elif defined(BL_PLATFORM_MACOS)
 	const char *link_flag = "-l";
-	const char *cmd       = "ld %s.o -o %s -lc -lcrt1.o";
 #elif defined(BL_PLATFORM_WIN)
-	bl_warning_issue(22);
 	const char *link_flag = "";
-	const char *cmd =
-	    "link %s.obj /NOLOGO /INCREMENTAL:NO  /MACHINE:x64 /OUT:%s.exe "
-	    "/LIBPATH:\"C:\\Program Files (x86)\\Microsoft Visual "
-	    "Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.16.27023\\lib\\x64\" "
-	    "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17763.0\\um\\x64\" "
-	    "/LIBPATH:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.17763.0\\ucrt\\x64\" "
-	    "/LIBPATH:\"C:\\Program Files\\SDL2-2.0.9\\lib\\x64\" "
-	    "/LIBPATH:\"C:\\Program Files\\SDL2_image-2.0.4\\lib\\x64\" "
-	    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib";
 #endif
+	char        buf[2048];
+	const char *cmd = "%s %s.o -o %s %s";
 
-	// TODO: use dynamic buffer
-	char buf[2048];
-	sprintf(buf, cmd, assembly->name, assembly->name);
+	{ /* setup link command */
+		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
+		sprintf(buf, cmd, linker_exec, assembly->name, assembly->name, opt);
+	}
 
 	NativeLib *lib;
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
 		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
 
-		if (!lib->user_name)
-			continue;
+		if (!lib->user_name) continue;
 
 		strcat(buf, " ");
 		strcat(buf, link_flag);

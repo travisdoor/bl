@@ -29,7 +29,8 @@
 #include "common.h"
 #include "stages.h"
 
-void token_printer_run(Unit *unit)
+void
+token_printer_run(Unit *unit)
 {
 	BArray *tokens_arr = unit->tokens.buf;
 
@@ -49,8 +50,11 @@ void token_printer_run(Unit *unit)
 			fprintf(stdout, "\n%d: ", line);
 		}
 
-		fprintf(stdout, "[" YELLOW("'%s'") " %i:%i], ", sym_strings[tok->sym],
-		        tok->src.line, tok->src.col);
+		fprintf(stdout,
+		        "[" YELLOW("'%s'") " %i:%i], ",
+		        sym_strings[tok->sym],
+		        tok->src.line,
+		        tok->src.col);
 	}
 
 	fprintf(stdout, "\n");

@@ -51,23 +51,32 @@ typedef struct context {
 	int32_t  col;
 } Context;
 
-static void scan(Context *cnt);
+static void
+scan(Context *cnt);
 
-static bool scan_comment(Context *cnt, const char *term);
+static bool
+scan_comment(Context *cnt, const char *term);
 
-static bool scan_ident(Context *cnt, Token *tok);
+static bool
+scan_ident(Context *cnt, Token *tok);
 
-static bool scan_string(Context *cnt, Token *tok);
+static bool
+scan_string(Context *cnt, Token *tok);
 
-static bool scan_char(Context *cnt, Token *tok);
+static bool
+scan_char(Context *cnt, Token *tok);
 
-static bool scan_number(Context *cnt, Token *tok);
+static bool
+scan_number(Context *cnt, Token *tok);
 
-static inline int c_to_number(char c, int32_t base);
+static inline int
+c_to_number(char c, int32_t base);
 
-static char scan_specch(char c);
+static char
+scan_specch(char c);
 
-bool scan_comment(Context *cnt, const char *term)
+bool
+scan_comment(Context *cnt, const char *term)
 {
 	const size_t len = strlen(term);
 	while (true) {
@@ -78,9 +87,12 @@ bool scan_comment(Context *cnt, const char *term)
 			/*
 			 * Unterminated comment
 			 */
-			scan_error(cnt, ERR_UNTERMINATED_COMMENT,
-			           "%s %d:%d unterminated comment block.", cnt->unit->name,
-			           cnt->line, cnt->col);
+			scan_error(cnt,
+			           ERR_UNTERMINATED_COMMENT,
+			           "%s %d:%d unterminated comment block.",
+			           cnt->unit->name,
+			           cnt->line,
+			           cnt->col);
 		}
 		if (*cnt->c == SYM_EOF || strncmp(cnt->c, term, len) == 0) {
 			break;
@@ -93,7 +105,8 @@ bool scan_comment(Context *cnt, const char *term)
 	return true;
 }
 
-bool scan_ident(Context *cnt, Token *tok)
+bool
+scan_ident(Context *cnt, Token *tok)
 {
 	tok->src.line = cnt->line;
 	tok->src.col  = cnt->col;
@@ -111,8 +124,7 @@ bool scan_ident(Context *cnt, Token *tok)
 		cnt->c++;
 	}
 
-	if (len == 0)
-		return false;
+	if (len == 0) return false;
 
 	BString *cstr = builder_create_cached_str(cnt->builder);
 	bo_string_appendn(cstr, begin, len);
@@ -123,7 +135,8 @@ bool scan_ident(Context *cnt, Token *tok)
 	return true;
 }
 
-char scan_specch(char c)
+char
+scan_specch(char c)
 {
 	switch (c) {
 	case 'n':
@@ -145,7 +158,8 @@ char scan_specch(char c)
 	}
 }
 
-bool scan_string(Context *cnt, Token *tok)
+bool
+scan_string(Context *cnt, Token *tok)
 {
 	if (*cnt->c != '\"') {
 		return false;
@@ -183,8 +197,12 @@ scan:
 			}
 		}
 		case '\0': {
-			scan_error(cnt, ERR_UNTERMINATED_STRING, "%s %d:%d unterminated string.",
-			           cnt->unit->name, cnt->line, cnt->col);
+			scan_error(cnt,
+			           ERR_UNTERMINATED_STRING,
+			           "%s %d:%d unterminated string.",
+			           cnt->unit->name,
+			           cnt->line,
+			           cnt->col);
 		}
 		case '\\':
 			/* special character */
@@ -207,10 +225,10 @@ exit:
 	return true;
 }
 
-bool scan_char(Context *cnt, Token *tok)
+bool
+scan_char(Context *cnt, Token *tok)
 {
-	if (*cnt->c != '\'')
-		return false;
+	if (*cnt->c != '\'') return false;
 	tok->src.line = cnt->line;
 	tok->src.col  = cnt->col;
 	tok->src.len  = 0;
@@ -221,12 +239,20 @@ bool scan_char(Context *cnt, Token *tok)
 
 	switch (*cnt->c) {
 	case '\'': {
-		scan_error(cnt, ERR_EMPTY, "%s %d:%d expected character in ''.", cnt->unit->name,
-		           cnt->line, cnt->col);
+		scan_error(cnt,
+		           ERR_EMPTY,
+		           "%s %d:%d expected character in ''.",
+		           cnt->unit->name,
+		           cnt->line,
+		           cnt->col);
 	}
 	case '\0': {
-		scan_error(cnt, ERR_UNTERMINATED_STRING, "%s %d:%d unterminated character.",
-		           cnt->unit->name, cnt->line, cnt->col);
+		scan_error(cnt,
+		           ERR_UNTERMINATED_STRING,
+		           "%s %d:%d unterminated character.",
+		           cnt->unit->name,
+		           cnt->line,
+		           cnt->col);
 	}
 	case '\\':
 		/* special character */
@@ -242,16 +268,20 @@ bool scan_char(Context *cnt, Token *tok)
 
 	/* eat ' */
 	if (*cnt->c != '\'') {
-		scan_error(cnt, ERR_UNTERMINATED_STRING,
-		           "%s %d:%d unterminated character expected '.", cnt->unit->name,
-		           cnt->line, cnt->col);
+		scan_error(cnt,
+		           ERR_UNTERMINATED_STRING,
+		           "%s %d:%d unterminated character expected '.",
+		           cnt->unit->name,
+		           cnt->line,
+		           cnt->col);
 	}
 	cnt->c++;
 
 	return true;
 }
 
-int c_to_number(char c, int32_t base)
+int
+c_to_number(char c, int32_t base)
 {
 	switch (base) {
 	case 16:
@@ -278,7 +308,8 @@ int c_to_number(char c, int32_t base)
 	return -1;
 }
 
-bool scan_number(Context *cnt, Token *tok)
+bool
+scan_number(Context *cnt, Token *tok)
 {
 	tok->src.line  = cnt->line;
 	tok->src.col   = cnt->col;
@@ -303,8 +334,12 @@ bool scan_number(Context *cnt, Token *tok)
 		if (*(cnt->c) == '.') {
 
 			if (base != 10) {
-				scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d invalid suffix.",
-				           cnt->unit->name, cnt->line, cnt->col + len);
+				scan_error(cnt,
+				           ERR_INVALID_TOKEN,
+				           "%s %d:%d invalid suffix.",
+				           cnt->unit->name,
+				           cnt->line,
+				           cnt->col + len);
 			}
 
 			len++;
@@ -322,8 +357,7 @@ bool scan_number(Context *cnt, Token *tok)
 		cnt->c++;
 	}
 
-	if (len == 0)
-		return false;
+	if (len == 0) return false;
 
 	tok->src.len = len;
 	cnt->col += len;
@@ -349,8 +383,7 @@ scan_double : {
 	/*
 	 * valid d. or .d -> minimal 2 characters
 	 */
-	if (len < 2)
-		return false;
+	if (len < 2) return false;
 
 	if (*(cnt->c) == 'f') {
 		len++;
@@ -369,7 +402,8 @@ scan_double : {
 }
 }
 
-void scan(Context *cnt)
+void
+scan(Context *cnt)
 {
 	Token tok;
 scan:
@@ -435,8 +469,12 @@ scan:
 				scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
 				goto scan;
 			case SYM_RBCOMMENT: {
-				scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d unexpected token.",
-				           cnt->unit->name, cnt->line, cnt->col);
+				scan_error(cnt,
+				           ERR_INVALID_TOKEN,
+				           "%s %d:%d unexpected token.",
+				           cnt->unit->name,
+				           cnt->line,
+				           cnt->col);
 			}
 			default:
 				cnt->col += (int32_t)len;
@@ -448,17 +486,17 @@ scan:
 	/*
 	 * Scan special tokens.
 	 */
-	if (scan_number(cnt, &tok))
-		goto push_token;
-	if (scan_ident(cnt, &tok))
-		goto push_token;
-	if (scan_string(cnt, &tok))
-		goto push_token;
-	if (scan_char(cnt, &tok))
-		goto push_token;
+	if (scan_number(cnt, &tok)) goto push_token;
+	if (scan_ident(cnt, &tok)) goto push_token;
+	if (scan_string(cnt, &tok)) goto push_token;
+	if (scan_char(cnt, &tok)) goto push_token;
 
 	/* When symbol is unknown report error */
-	scan_error(cnt, ERR_INVALID_TOKEN, "%s %d:%d unexpected token.", cnt->unit->name, cnt->line,
+	scan_error(cnt,
+	           ERR_INVALID_TOKEN,
+	           "%s %d:%d unexpected token.",
+	           cnt->unit->name,
+	           cnt->line,
 	           cnt->col);
 push_token:
 	tok.src.unit = cnt->unit;
@@ -466,7 +504,8 @@ push_token:
 	goto scan;
 }
 
-void lexer_run(Builder *builder, Unit *unit)
+void
+lexer_run(Builder *builder, Unit *unit)
 {
 	Context cnt = {
 	    .builder = builder,
@@ -478,8 +517,7 @@ void lexer_run(Builder *builder, Unit *unit)
 	};
 
 	int32_t error = 0;
-	if ((error = setjmp(cnt.jmp_error)))
-		return;
+	if ((error = setjmp(cnt.jmp_error))) return;
 
 	scan(&cnt);
 

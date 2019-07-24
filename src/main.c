@@ -36,34 +36,62 @@
 #include <stdio.h>
 #include <string.h>
 
-static void print_help(void)
+static void
+print_help(void)
 {
-	fprintf(stdout, "Usage\n\n"
-	                "  blc [options] <source-files>\n\n"
-	                "Options\n"
-	                "  -h, -help           = Print usage information and exit.\n"
-	                "  -r, -run            = Execute 'main' method in compile time.\n"
-	                "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
-	                "  -emit-llvm          = Write LLVM-IR to file.\n"
-	                "  -emit-mir           = Write MIR to file.\n"
-	                "  -ast-dump           = Print AST.\n"
-	                "  -lex-dump           = Print output of lexer.\n"
-	                "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
-	                "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
-	                "  -syntax-only        = Check syntax and exit.\n"
-	                "  -no-bin             = Don't write binary to disk.\n"
-	                "  -no-warning         = Ignore all warnings.\n"
-	                "  -verbose            = Verbose mode.\n"
-	                "  -no-api             = Don't load internal api.\n"
-	                "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	                "  -verbose-linker     = Print internal linker logs.\n");
+	fprintf(stdout,
+	        "Usage\n\n"
+	        "  blc [options] <source-files>\n\n"
+	        "Options\n"
+	        "  -h, -help           = Print usage information and exit.\n"
+	        "  -r, -run            = Execute 'main' method in compile time.\n"
+	        "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
+	        "  -emit-llvm          = Write LLVM-IR to file.\n"
+	        "  -emit-mir           = Write MIR to file.\n"
+	        "  -ast-dump           = Print AST.\n"
+	        "  -lex-dump           = Print output of lexer.\n"
+	        "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
+	        "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
+	        "  -syntax-only        = Check syntax and exit.\n"
+	        "  -no-bin             = Don't write binary to disk.\n"
+	        "  -no-warning         = Ignore all warnings.\n"
+	        "  -verbose            = Verbose mode.\n"
+	        "  -no-api             = Don't load internal api.\n"
+	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
+	        "  -verbose-linker     = Print internal linker logs.\n");
 }
 
-int main(int32_t argc, char *argv[])
+static char *
+get_conf_file_path(void)
+{
+	char exec_path[PATH_MAX] = {0};
+	if (!get_current_exec_path(exec_path, PATH_MAX)) {
+		bl_abort("Cannot locate compiler executable path.");
+	}
+
+	char path[PATH_MAX] = {0};
+	if (!get_dir_from_filepath(path, PATH_MAX, exec_path)) {
+		bl_abort("Cannot locate compiler executable path.");
+	}
+
+	strcat(path, PATH_SEPARATOR ".." PATH_SEPARATOR);
+	strcat(path, BL_CONF_FILE);
+
+	if (strlen(path) == 0) bl_abort("Invalid conf file path.");
+	return strdup(path);
+}
+
+int
+main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
+	char *   conf_file   = get_conf_file_path();
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
+
 	puts("compiler version: " BL_VERSION " (pre-alpha)");
+#ifdef BL_DEBUG
+	puts("running in DEBUG mode");
+#endif
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
@@ -123,6 +151,7 @@ int main(int32_t argc, char *argv[])
 	}
 
 	Builder *builder = builder_new();
+	builder_load_conf_file(builder, conf_file);
 
 	/*
 	 * HACK: use name of first file as assembly name
@@ -171,6 +200,7 @@ int main(int32_t argc, char *argv[])
 
 	assembly_delete(assembly);
 	builder_delete(builder);
+	free(conf_file);
 
 	return state;
 }
