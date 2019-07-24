@@ -101,20 +101,26 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 -   Install LLVM dev packages with your favourite package manager.
     
+	```
         sudo apt install llvm-dev
+	```
 
 -   Download and compile bl.
     
+	```
         git clone https://github.com/travisdoor/bl.git
         cd bl
         mkdir build
         cd build
         cmake ..
         make
+	```
 
 - For instalation use: 
 
+	```
 	[sudo] make install
+	```
 
 
 <a id="org553484e"></a>
@@ -124,16 +130,20 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 -   Install LLVM dev packages with your favourite package manager.
 -   Download and compile bl.
     
+	```
         git clone https://github.com/travisdoor/bl.git
         cd bl
         mkdir build
         cd build
         cmake ..
         make
+	```
 
 - For instalation use: 
 
+	```
 	[sudo] make install
+	```
 
 
 <a id="org9e6eedd"></a>
@@ -146,19 +156,25 @@ You will need Visual Studio 2019 installed on your machine. Everything needs to 
 - Run 'cmd' as an administrator.
 - Download and compile bl.
 
+	```
 	git clone https://github.com/travisdoor/bl.git
 	cd bl
 	mkdir build
 	cd build
 	cmake .. -G "Visual Studio 16 2019" -Thost=x64
+	```
 
 Now you should be able to compile the 'bl' target from the Visual Studio or from the terminal with following command.
 
+	```
 	cmake --build . --config Release
+	```
      
 Use this for installation into 'Program Files'
 
+	```
 	cmake --build . --config Release --target Install
+	```
 
 - Biscuit compiler on Windows use Visual Studio linker =link.exe=. Location of linker should be added into system PATH.
 
