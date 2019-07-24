@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   conf_loader.h
+// File:   conf_data.c
 // Author: Martin Dorazil
 // Date:   7/23/19
 //
@@ -26,23 +26,63 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_CONF_LOADER_H
-#define BL_CONF_LOADER_H
-
-#include "common.h"
-#include <bobject/containers/htbl.h>
-
-typedef struct ConfData {
-	BHashTable *table;
-} ConfData;
+#include "conf_data.h"
+#include "bobject/containers/hash.h"
 
 ConfData *
-conf_load(const char *filepath);
+conf_data_new(void)
+{
+	return bo_htbl_new(sizeof(ConfDataValue), 32);
+}
 
 void
-conf_delete(ConfData *data);
+conf_data_delete(ConfData *data)
+{
+	bo_unref(data);
+}
+
+bool
+conf_data_has_key(ConfData *data, const char *key)
+{
+	const uint64_t hash = bo_hash_from_str(key);
+	return bo_htbl_has_key(data, hash);
+}
+
+void
+conf_data_add(ConfData *data, const char *key, ConfDataValue *value)
+{
+	const uint64_t hash = bo_hash_from_str(key);
+	bo_htbl_insert(data, hash, *value);
+}
+
+ConfDataValue *
+conf_data_get(ConfData *data, const char *key)
+{
+	const uint64_t hash = bo_hash_from_str(key);
+	bo_iterator_t  it   = bo_htbl_find(data, hash);
+	bo_iterator_t  end  = bo_htbl_end(data);
+
+	if (bo_iterator_equal(&it, &end)) {
+		bl_abort("Missing conf entry '%s'.", key);
+	}
+
+	return &bo_htbl_iter_peek_value(data, &it, ConfDataValue);
+}
 
 const char *
-conf_get(ConfData *data, const char *key);
+conf_data_get_str(ConfData *data, const char *key)
+{
+	ConfDataValue *value = conf_data_get(data, key);
+	if (value->kind != CDV_STRING)
+		bl_abort("Invalid type of conf value '%s', expected is string.");
+	return value->v_str;
+}
 
-#endif
+int
+conf_data_get_int(ConfData *data, const char *key)
+{
+	ConfDataValue *value = conf_data_get(data, key);
+	if (value->kind != CDV_INT)
+		bl_abort("Invalid type of conf value '%s', expected is int.");
+	return value->v_int;
+}

@@ -26,18 +26,15 @@
 // SOFTWARE.
 //*****************************************************************************
 
-#include <locale.h>
-#include <stdio.h>
-#include <string.h>
 #include "assembly.h"
 #include "bldebug.h"
 #include "builder.h"
 #include "error.h"
 #include "messages.h"
 #include "unit.h"
-#include "conf_loader.h"
-
-char *BL_CONF_FILE_PATH = NULL;
+#include <locale.h>
+#include <stdio.h>
+#include <string.h>
 
 static void
 print_help(void)
@@ -64,14 +61,8 @@ print_help(void)
 	        "  -verbose-linker     = Print internal linker logs.\n");
 }
 
-static void
-free_BL_CONF_FILE_PATH(void)
-{
-	free(BL_CONF_FILE_PATH);
-}
-
-static void
-set_BL_CONF_FILE_PATH(void)
+static char *
+get_conf_file_path(void)
 {
 	char exec_path[PATH_MAX] = {0};
 	if (!get_current_exec_path(exec_path, PATH_MAX)) {
@@ -86,19 +77,15 @@ set_BL_CONF_FILE_PATH(void)
 	strcat(path, PATH_SEPARATOR ".." PATH_SEPARATOR);
 	strcat(path, BL_CONF_FILE);
 
-	if (!file_exists(path)) {
-		bl_abort("Cannot find config file %s", path);
-	}
-
-	BL_CONF_FILE_PATH = strdup(path);
-	atexit(free_BL_CONF_FILE_PATH);
+	if (strlen(path) == 0) bl_abort("Invalid conf file path.");
+	return strdup(path);
 }
 
 int
 main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
-	set_BL_CONF_FILE_PATH();
+	char *   conf_file   = get_conf_file_path();
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 
 	puts("compiler version: " BL_VERSION " (pre-alpha)");
@@ -164,6 +151,7 @@ main(int32_t argc, char *argv[])
 	}
 
 	Builder *builder = builder_new();
+	builder_load_conf_file(builder, conf_file);
 
 	/*
 	 * HACK: use name of first file as assembly name
@@ -212,6 +200,7 @@ main(int32_t argc, char *argv[])
 
 	assembly_delete(assembly);
 	builder_delete(builder);
+	free(conf_file);
 
 	return state;
 }

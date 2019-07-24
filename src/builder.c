@@ -144,6 +144,7 @@ builder_new(void)
 	builder->flags     = 0;
 	builder->errorc    = 0;
 	builder->str_cache = bo_array_new_bo(bo_typeof(BString), true);
+	builder->conf      = conf_data_new();
 
 	/* initialize LLVM statics */
 	llvm_init();
@@ -159,8 +160,38 @@ builder_delete(Builder *builder)
 {
 	scope_arenas_terminate(&builder->scope_arenas);
 	arena_terminate(&builder->ast_arena);
+	conf_data_delete(builder->conf);
 	bo_unref(builder->str_cache);
 	bl_free(builder);
+}
+
+int
+builder_load_conf_file(Builder *builder, const char *filepath)
+{
+	bl_log("loading config file from: %s", filepath);
+
+	Unit *unit = unit_new_file(filepath, NULL, NULL);
+
+	/* load */
+	file_loader_run(builder, unit);
+	interrupt_on_error(builder);
+
+	/* use standart lexer */
+	lexer_run(builder, unit);
+	interrupt_on_error(builder);
+
+	/* print output */
+	/*
+	token_printer_run(unit);
+	interrupt_on_error(builder);
+	*/
+
+	/* print output */
+	conf_parser_run(builder, unit);
+	interrupt_on_error(builder);
+
+	unit_delete(unit);
+	return COMPILE_OK;
 }
 
 int

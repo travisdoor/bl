@@ -31,6 +31,7 @@
 
 #include "arena.h"
 #include "assembly.h"
+#include "conf_data.h"
 #include "error.h"
 #include "mir.h"
 #include <bobject/containers/array.h>
@@ -66,6 +67,7 @@ typedef struct Builder {
 	int32_t     total_lines;
 	int32_t     errorc;
 	BArray *    str_cache;
+	ConfData *  conf;
 } Builder;
 
 typedef enum {
@@ -84,6 +86,9 @@ builder_new(void);
 
 void
 builder_delete(Builder *builder);
+
+int
+builder_load_conf_file(Builder *builder, const char *filepath);
 
 int
 builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);

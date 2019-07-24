@@ -49,6 +49,10 @@ token_printer_run(Unit *unit);
 void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit);
 
+/* conf */
+void
+conf_parser_run(Builder *builder, Unit *unit);
+
 /*
  * per assembly
  */

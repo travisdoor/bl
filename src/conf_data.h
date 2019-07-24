@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   conf_loader.c
+// File:   conf_data.h
 // Author: Martin Dorazil
 // Date:   7/23/19
 //
@@ -26,23 +26,48 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "conf_loader.h"
+#ifndef BL_CONF_DATA_H
+#define BL_CONF_DATA_H
+
+#include "common.h"
+#include <bobject/containers/htbl.h>
+
+typedef enum ConfDataValueKind {
+	CDV_UNKNOWN,
+	CDV_STRING,
+	CDV_INT,
+} ConfDataValueKind;
+
+typedef struct ConfDataValue {
+	union {
+		const char *v_str;
+		int   v_int;
+	};
+
+	ConfDataValueKind kind;
+} ConfDataValue;
+
+typedef BHashTable ConfData;
 
 ConfData *
-conf_load(const char *filepath)
-{
-	ConfData *data = bl_malloc(sizeof(ConfData));
-	return data;
-}
+conf_data_new(void);
 
 void
-conf_delete(ConfData *data)
-{
-	bl_free(data);
-}
+conf_data_delete(ConfData *data);
+
+bool
+conf_data_has_key(ConfData *data, const char *key);
+
+void
+conf_data_add(ConfData *data, const char *key, ConfDataValue *value);
+
+ConfDataValue *
+conf_data_get(ConfData *data, const char *key);
 
 const char *
-conf_get(ConfData *data, const char *key)
-{
-	return NULL;
-}
+conf_data_get_str(ConfData *data, const char *key);
+
+int
+conf_data_get_int(ConfData *data, const char *key);
+
+#endif

@@ -30,7 +30,7 @@ add_subdirectory(deps/dyncall-1.0)
 find_package(LLVM REQUIRED CONFIG)
 
 set(HEADER_FILES
-        src/conf_loader.h
+        src/conf_data.h
         src/bldebug.h
         src/error.h 
         src/config.h
@@ -51,7 +51,8 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         src/main.c
-        src/conf_loader.c
+        src/conf_parser.c
+        src/conf_data.c
         src/arena.c
         src/tokens.c
         src/file_loader.c

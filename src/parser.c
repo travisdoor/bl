@@ -1615,12 +1615,21 @@ parse_type_slice(Context *cnt)
 
 	/* eat [] */
 	Token *tok_begin = tokens_consume(cnt->tokens);
-	tokens_consume(cnt->tokens);
+	tok_begin        = tokens_consume(cnt->tokens);
 
 	Ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_SLICE, tok_begin);
 
 	slice->data.type_slice.elem_type = parse_type(cnt);
-	assert(slice->data.type_slice.elem_type);
+
+	if (!slice->data.type_slice.elem_type) {
+		parse_error(cnt,
+		            ERR_INVALID_TYPE,
+		            tok_begin,
+		            BUILDER_CUR_AFTER,
+		            "Expected slice type after '[]'.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
+	}
+
 	return slice;
 }
 

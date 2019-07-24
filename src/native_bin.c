@@ -60,6 +60,10 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	    "/LIBPATH:\"C:\\Program Files\\SDL2_image-2.0.4\\lib\\x64\" "
 	    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib";
 #endif
+	{
+		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+		bl_log("found linker: %s", linker_exec);
+	}
 
 	// TODO: use dynamic buffer
 	char buf[2048];
