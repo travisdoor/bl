@@ -112,7 +112,9 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
         cmake ..
         make
 
--   Add 'bl/api' and 'bl/bin' into the system PATH
+- For instalation use: 
+
+	[sudo] make install
 
 
 <a id="org553484e"></a>
@@ -129,38 +131,36 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
         cmake ..
         make
 
--   Add 'bl/api' and 'bl/bin' into the system PATH
+- For instalation use: 
+
+	[sudo] make install
 
 
 <a id="org9e6eedd"></a>
 
 ## Windows
 
-You will need Visual Studio 17 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
+You will need Visual Studio 2019 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
--   Compile and install LLVM tool set. [guide](https://llvm.org/docs/GettingStartedVS.html)
--   Download and compile bl.
-    
-        git clone https://github.com/travisdoor/bl.git
-        cd bl
-        mkdir build
-        cd build
-        cmake .. -G "Visual Studio 15 Win64"
-    
-    You can specify path to DynCall by setting `DYNCALL_PATH` variable. Solution generated from cmake configuration can be found in `build` folder. 
-    
-    There is unresolved issue with generated VS solution, use of `llvm_map_components_to_libnames` in cmake config file cause generation of some invalid linker input files, to fix that you need to open solution in Visual Studio and right click on 'bl' in Solution Explorer -> Properties -> Linker -> Input -> Additional Dependencies and remove \*-NOTFOUND entries. 
-    
-    Now you should be able to compile the `bl` target from the Visual Studio or from the terminal with following command.
-    
-        cmake --build . --config Release
-    
-    Built executable can be found in `bin/Release` directory. Blc depends on `bobject.dll`, please copy-paste this file from the `bobject/bin` directory next to the `blc.exe`.
+- Compile and install LLVM tool set. [guide](https://llvm.org/docs/GettingStartedVS.html)
+- Run 'cmd' as an administrator.
+- Download and compile bl.
 
--   Biscuit compiler on Windows use Visual Studio linker `link.exe`. Location of linker should be added into system PATH.
--   Add 'bl/api' and 'bl/bin/Release' into the system PATH
+	git clone https://github.com/travisdoor/bl.git
+	cd bl
+	mkdir build
+	cd build
+	cmake .. -G "Visual Studio 16 2019" -Thost=x64
 
-Note: Compilation on Windows is quite complicated, we need to create some automated process for this&#x2026;
+Now you should be able to compile the 'bl' target from the Visual Studio or from the terminal with following command.
+
+	cmake --build . --config Release
+     
+Use this for installation into 'Program Files'
+
+	cmake --build . --config Release --target Install
+
+- Biscuit compiler on Windows use Visual Studio linker =link.exe=. Location of linker should be added into system PATH.
 
 
 <a id="org7db05af"></a>
