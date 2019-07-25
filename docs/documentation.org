@@ -172,7 +172,7 @@
     Example:
     #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
 
-*** TODO Array slice
+*** Array slice
     Array slice is consist of pointer to the first array element and array lenght. 
 
     Syntax:
@@ -200,7 +200,7 @@
     Example:
     #+INCLUDE: "../tests/src/examples/enums.bl" src bl -n
 
-*** TODO Type aliasing
+*** Type aliasing
     It's posible to create alias to any data type.
 
     #+BEGIN_EXAMPLE

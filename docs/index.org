@@ -85,6 +85,7 @@
     #+END_EXAMPLE
 
 ** MacOS
+   - Install command line tools.
    - Install LLVM dev packages with your favourite package manager.
    - Download and compile bl.
     #+BEGIN_EXAMPLE
@@ -126,7 +127,10 @@
     cmake --build . --config Release --target Install
     #+END_EXAMPLE
 
-   - Biscuit compiler on Windows use Visual Studio linker =link.exe=. Location of linker should be added into system PATH.
+   - Biscuit compiler on Windows use Visual Studio linker =link.exe=. 
+
+** Configuration 
+   Compiler config file =bl.conf= can be found in =etc= .
 
 * Contribution
 ** Download and compile
