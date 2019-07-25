@@ -120,9 +120,12 @@ target_include_directories(blc PRIVATE
 get_filename_component(LINKER_FILENAME ${CMAKE_LINKER} NAME)
 
 if (LINKER_FILENAME STREQUAL link.exe)
-    find_package(WindowsSdk)
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+    find_package(WindowsSDK)
+
+    set(BL_WINSDK_LIB_DIR "${WINDOWSSDK_LATEST_DIR}/Lib/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
     set(BL_LINKER_EXEC ${CMAKE_LINKER})
-    set(BL_LINKER_OPT "/NOLOGO /INCREMENTAL:NO /MACHINE:x64")
+    set(BL_LINKER_OPT "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /LIBPATH:'${BL_WINSDK_LIB_DIR}/um/x64'")
 elseif (LINKER_FILENAME STREQUAL ld)
   if (APPLE)
         execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE BL_MIN_MACOS_VERSION)
