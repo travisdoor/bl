@@ -123,10 +123,12 @@ if (LINKER_FILENAME STREQUAL link.exe)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
     find_package(WindowsSDK)
 
+    set(BL_MSVC_TOOLSET ${CMAKE_VS_PLATFORM_TOOLSET})
     set(BL_WINSDK_LIB_DIR "${WINDOWSSDK_LATEST_DIR}/Lib/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
     set(BL_LINKER_EXEC ${CMAKE_LINKER})
     string(CONCAT BL_LINKER_OPT
         "NOLOGO /INCREMENTAL:NO /MACHINE:x64 "
+	"LIBPATH:'${BL_MSVC_TOOSET}' "
         "LIBPATH:'${BL_WINSDK_LIB_DIR}/um/x64' "
         "LIBPATH:'${BL_WINSDK_LIB_DIR}/ucrt/x64'"
         "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib")
