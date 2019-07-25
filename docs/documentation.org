@@ -114,13 +114,13 @@
    | typekind | Any                | Determinates TypeKind of type.  |
 
     Example:
-    #+INCLUDE: "../tests/src/examples/special_op.bl" src bl -n
+    #+INCLUDE: "../examples/special_op.bl" src bl -n
     
 *** RTTI
-    Biscuit language provides type reflection allowing access to the type structure of the code. Pointer to the type information structure can be yielded by =typeinfo(<T>)= operator builtin operator call. Type informations can be yielded in compile time and in runtime also, with low additional overhead for runtime (only pointer to the TypeInfo constant is pushed on the stack). 
+    Biscuit language provides type reflection allowing access to the type structure of the code. Pointer to the type information structure can be yielded by =typeinfo(<T>)= builtin operator call. Type informations can be yielded in compile time and in runtime also, with low additional overhead for runtime (only pointer to the TypeInfo constant is pushed on the stack). 
 
     Example:
-    #+INCLUDE: "../tests/src/examples/rtti.bl" src bl -n
+    #+INCLUDE: "../examples/rtti.bl" src bl -n
     
     RTTI is generated in static segment of compiled binary (only desired types are included).
    
@@ -150,7 +150,7 @@
     #+END_EXAMPLE
 
     Example:
-    #+INCLUDE: "../tests/src/examples/pointers.bl" src bl -n
+    #+INCLUDE: "../examples/pointers.bl" src bl -n
     
 *** Arrays
     Array is aggregate type of multiple values of the same type.
@@ -164,13 +164,13 @@
     #+END_EXAMPLE
 
     Example:
-    #+INCLUDE: "../tests/src/examples/array_type.bl" src bl -n
+    #+INCLUDE: "../examples/array_type.bl" src bl -n
 
 *** Strings
     String type in biscuit is slice containting pointer to string data and string lenght. String literals are zero terimated.
 
     Example:
-    #+INCLUDE: "../tests/src/examples/array_string.bl" src bl -n
+    #+INCLUDE: "../examples/array_string.bl" src bl -n
 
 *** Array slice
     Array slice is consist of pointer to the first array element and array lenght. 
@@ -181,7 +181,7 @@
     #+END_EXAMPLE
 
     Example:
-    #+INCLUDE: "../tests/src/examples/array_ref.bl" src bl -n
+    #+INCLUDE: "../examples/array_ref.bl" src bl -n
 *** Structures
     Structure is simple group of data.
 
@@ -194,11 +194,11 @@
     #+END_EXAMPLE
     
     Example:
-    #+INCLUDE: "../tests/src/examples/struct.bl" src bl -n
+    #+INCLUDE: "../examples/struct.bl" src bl -n
 
 *** Enums
     Example:
-    #+INCLUDE: "../tests/src/examples/enums.bl" src bl -n
+    #+INCLUDE: "../examples/enums.bl" src bl -n
 
 *** Type aliasing
     It's posible to create alias to any data type.
@@ -208,7 +208,7 @@
     #+END_EXAMPLE
 
     Example:
-    #+INCLUDE: "../tests/src/examples/alias.bl" src bl -n
+    #+INCLUDE: "../examples/alias.bl" src bl -n
 
 *** Function type
     Type of function. 
@@ -236,7 +236,7 @@
     #+END_EXAMPLE
 
     Example:
-    #+INCLUDE: "../tests/src/examples/type_cast.bl" src bl -n
+    #+INCLUDE: "../examples/type_cast.bl" src bl -n
 ** Literals
 *** Simple literals
    #+BEGIN_SRC bl
@@ -263,7 +263,7 @@
    #+END_EXAMPLE
 
     Example:
-   #+INCLUDE: "../tests/src/examples/variables.bl" src bl -n
+   #+INCLUDE: "../examples/variables.bl" src bl -n
 
 ** Constants
    Example of constant allocated on stack. Constant must be initialized and cannot be changed later.
@@ -274,7 +274,7 @@
    #+END_EXAMPLE
 
     Example:
-   #+INCLUDE: "../tests/src/examples/constants.bl" src bl -n
+   #+INCLUDE: "../examples/constants.bl" src bl -n
    
 ** Compound expressions
    Compound expression can be used for inline initialization of variables or directly as value.
@@ -287,7 +287,7 @@
    #+END_EXAMPLE
 
    Example:
-   #+INCLUDE: "../tests/src/examples/compounds.bl" src bl -n
+   #+INCLUDE: "../examples/compounds.bl" src bl -n
 ** Functions
 *** Named function
    Examples of named function.
@@ -297,7 +297,7 @@
    #+END_EXAMPLE
 
     Example:
-   #+INCLUDE: "../tests/src/examples/named_functions.bl" src bl -n
+   #+INCLUDE: "../examples/named_functions.bl" src bl -n
    
 *** Anonymous function
     Anonymous function has no name and contains only function literal.
@@ -307,24 +307,24 @@
     #+END_EXAMPLE
 
     Example of anonymous function.
-    #+INCLUDE: "../tests/src/examples/anonymous_function.bl" src bl -n
+    #+INCLUDE: "../examples/anonymous_function.bl" src bl -n
     
 *** Function pointers
     Functions can be called via pointer. Call on ~null~ pointer will produce error in interpreter.
     
     Example:
-    #+INCLUDE: "../tests/src/examples/fn_pointers.bl" src bl -n
+    #+INCLUDE: "../examples/fn_pointers.bl" src bl -n
    
 *** Functions with variable argument count
     Biscuit supports functions with variable argument count of the same type. VArgs type must be last in function argument list. Compiler internally creates temporary array of all arguments passed in vargs. Inside function body variable argument list acts like regular array.
 
     Example of variable argument count function:
-    #+INCLUDE: "../tests/src/examples/vargs.bl" src bl -n
+    #+INCLUDE: "../examples/vargs.bl" src bl -n
 ** Blocks
    Block can limit scope of the variable.
 
     Example:
-   #+INCLUDE: "../tests/src/examples/blocks.bl" src bl -n
+   #+INCLUDE: "../examples/blocks.bl" src bl -n
    
 ** Ifs 
    If - else base syntax:
@@ -333,7 +333,7 @@
    #+END_EXAMPLE
 
     Example:
-   #+INCLUDE: "../tests/src/examples/ifs.bl" src bl -n
+   #+INCLUDE: "../examples/ifs.bl" src bl -n
 
 ** Loops
    Loop base syntax:
@@ -344,13 +344,13 @@
    #+END_EXAMPLE
 
     Example:
-   #+INCLUDE: "../tests/src/examples/loops.bl" src bl -n
+   #+INCLUDE: "../examples/loops.bl" src bl -n
 
 ** Break and continue
    Break/continue statements can be used in loops to control execution flow.
 
    Examples:
-   #+INCLUDE: "../tests/src/examples/break_continue.bl" src bl -n
+   #+INCLUDE: "../examples/break_continue.bl" src bl -n
 
 ** Unit tests
    Biscuit compiler supports unit testing by default.
