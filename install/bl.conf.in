@@ -6,8 +6,6 @@
 // Path to bl sdk.
 LIB_DIR "@BL_LIBDIR@"
 
-// C linker executable used by compiler.
+// Linker input 
 LINKER_EXEC "@BL_LINKER_EXEC@"
-
-// C linker default options
 LINKER_OPT "@BL_LINKER_OPT@"
