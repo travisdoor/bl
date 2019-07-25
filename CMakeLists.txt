@@ -120,15 +120,18 @@ target_include_directories(blc PRIVATE
 get_filename_component(LINKER_FILENAME ${CMAKE_LINKER} NAME)
 
 if (LINKER_FILENAME STREQUAL link.exe)
+    set(BL_VS_INSTALL_PATH "C:/Program Files (x86)/")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
     find_package(WindowsSDK)
+
+    execute_process(COMMAND CMD /c  OUTPUT_VARIABLE FOO)
 
     set(BL_MSVC_TOOLSET ${MSVC_IDE})
     set(BL_WINSDK_LIB_DIR "${WINDOWSSDK_LATEST_DIR}/Lib/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
     set(BL_LINKER_EXEC ${CMAKE_LINKER})
     string(CONCAT BL_LINKER_OPT
         "NOLOGO /INCREMENTAL:NO /MACHINE:x64 /SUBSYSTEM:CONSOLE "
-	"/LIBPATH:'${BL_MSVC_TOOSET}' "
+	"/LIBPATH:'${BL_MSVC_LIB_DIR}' "
         "/LIBPATH:'${BL_WINSDK_LIB_DIR}/um/x64' "
         "/LIBPATH:'${BL_WINSDK_LIB_DIR}/ucrt/x64' "
         "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib")
