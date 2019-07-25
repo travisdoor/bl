@@ -34,7 +34,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 {
 #if defined(BL_PLATFORM_WIN)
 	const char *link_flag = "";
-	const char *cmd = "%s %s.obj /OUT:%s %s";
+	const char *cmd = "\"%s\" %s.obj /OUT:%s %s";
 #else
 	const char *link_flag = "-l";
 	const char *cmd = "%s %s.o -o %s %s";
