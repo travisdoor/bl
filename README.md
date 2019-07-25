@@ -119,8 +119,8 @@ Use this for installation into 'Program Files'
 
 - Biscuit compiler on Windows use Visual Studio linker =link.exe=. 
 
-# Configuration 
-   Compiler config file `bl.conf` can be found in `etc`.
+## Configuration 
+   Compiler config file `bl.conf` can be found in `etc` directory.
 
 # Releases
 
