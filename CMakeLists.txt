@@ -128,7 +128,8 @@ if (LINKER_FILENAME STREQUAL link.exe)
     string(CONCAT BL_LINKER_OPT
         "NOLOGO /INCREMENTAL:NO /MACHINE:x64 "
         "LIBPATH:'${BL_WINSDK_LIB_DIR}/um/x64' "
-        "LIBPATH:'${BL_WINSDK_LIB_DIR}/ucrt/x64'")
+        "LIBPATH:'${BL_WINSDK_LIB_DIR}/ucrt/x64'"
+        "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib")
 
 elseif (LINKER_FILENAME STREQUAL ld)
   if (APPLE)
