@@ -32,15 +32,14 @@
 void
 native_bin_run(Builder *builder, Assembly *assembly)
 {
-#if defined(BL_PLATFORM_LINUX)
-	const char *link_flag = "-l";
-#elif defined(BL_PLATFORM_MACOS)
-	const char *link_flag = "-l";
-#elif defined(BL_PLATFORM_WIN)
+#if defined(BL_PLATFORM_WIN)
 	const char *link_flag = "";
+	const char *cmd = "%s %s.obj /OUT:%s %s";
+#else
+	const char *link_flag = "-l";
+	const char *cmd = "%s %s.o -o %s %s";
 #endif
 	char        buf[2048];
-	const char *cmd = "%s %s.o -o %s %s";
 
 	{ /* setup link command */
 		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);

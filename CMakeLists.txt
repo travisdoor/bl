@@ -120,8 +120,9 @@ target_include_directories(blc PRIVATE
 get_filename_component(LINKER_FILENAME ${CMAKE_LINKER} NAME)
 
 if (LINKER_FILENAME STREQUAL link.exe)
+    find_package(WindowsSdk)
     set(BL_LINKER_EXEC ${CMAKE_LINKER})
-    set(BL_LINKER_OPT "")
+    set(BL_LINKER_OPT "/NOLOGO /INCREMENTAL:NO /MACHINE:x64")
 elseif (LINKER_FILENAME STREQUAL ld)
   if (APPLE)
         execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE BL_MIN_MACOS_VERSION)
