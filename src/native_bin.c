@@ -58,7 +58,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		strcat(buf, lib->user_name);
 	}
 
-	msg_log("%s", buf);
+	//msg_log("%s", buf);
 	/* TODO: handle error */
 	int32_t result = system(buf);
 	if (result != 0) {

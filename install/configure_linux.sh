@@ -42,22 +42,6 @@ else
 fi
 
 echo "- Looking for C runtime objects"
-BIN_DIR="/usr/bin"
-if [ -d "$BIN_DIR" ]; then
-    echo "  FOUND - $BIN_DIR"
-else
-    echo "  error: Cannot find '$BIN_DIR'. You can try to set correct path manually in etc/bl.conf file."
-    $STATUS=1
-fi
-
-CLIB_DIR="/usr/lib/x86_64-linux-gnu"
-if [ -d "$CLIB_DIR" ]; then
-    echo "  FOUND - $CLIB_DIR"
-else
-    echo "  error: Cannot find '$CLIB_DIR'. You can try to set correct path manually in etc/bl.conf file."
-    $STATUS=1
-fi
-
 CRT1_O="/usr/lib/x86_64-linux-gnu/crt1.o"
 if [ -e "$CRT1_O" ]; then
     echo "  FOUND - $CRT1_O"
@@ -90,7 +74,7 @@ else
     $STATUS=1
 fi
 
-LINKER_OPT="$LDLIB $CRT1_O $CRTI_O $CRTN_O -L$CLIB_DIR -L$BIN_DIR -lc -lm"
+LINKER_OPT="$CRT1_O $CRTI_O $CRTN_O --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
