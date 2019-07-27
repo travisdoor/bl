@@ -36,6 +36,10 @@
 #include <stdio.h>
 #include <string.h>
 
+char *ENV_EXEC_DIR      = NULL;
+char *ENV_LIB_DIR       = NULL;
+char *ENV_CONF_FILEPATH = NULL;
+
 static void
 print_help(void)
 {
@@ -61,31 +65,57 @@ print_help(void)
 	        "  -verbose-linker     = Print internal linker logs.\n");
 }
 
-static char *
-get_conf_file_path(void)
+static void
+free_env(void)
 {
-	char exec_path[PATH_MAX] = {0};
-	if (!get_current_exec_path(exec_path, PATH_MAX)) {
+	free(ENV_EXEC_DIR);
+	free(ENV_LIB_DIR);
+	free(ENV_CONF_FILEPATH);
+}
+
+static void
+setup_env(void)
+{
+	char tmp[PATH_MAX] = {0};
+
+	if (!get_current_exec_dir(tmp, PATH_MAX)) {
 		bl_abort("Cannot locate compiler executable path.");
 	}
 
-	char path[PATH_MAX] = {0};
-	if (!get_dir_from_filepath(path, PATH_MAX, exec_path)) {
-		bl_abort("Cannot locate compiler executable path.");
-	}
+	ENV_EXEC_DIR = strdup(tmp);
 
-	strcat(path, PATH_SEPARATOR ".." PATH_SEPARATOR);
-	strcat(path, BL_CONF_FILE);
+	strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
+	strcat(tmp, BL_CONF_FILE);
 
-	if (strlen(path) == 0) bl_abort("Invalid conf file path.");
-	return strdup(path);
+	if (strlen(tmp) == 0) bl_abort("Invalid conf file path.");
+	ENV_CONF_FILEPATH = strdup(tmp);
+	atexit(free_env);
 }
 
 int
 main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
-	char *   conf_file   = get_conf_file_path();
+	setup_env();
+
+	if (!file_exists(ENV_CONF_FILEPATH)) {
+		char tmp[PATH_MAX] = {0};
+
+		strcat(tmp, "sh ");
+		strcat(tmp, ENV_EXEC_DIR);
+		strcat(tmp, PATH_SEPARATOR);
+		strcat(tmp, BL_CONFIGURE_SH);
+
+		if (system(tmp) != 0) {
+			msg_error("Configuration file '%s' not found and cannot be generated "
+			          "automatically, run 'blc_configure' script to "
+			          "generate one. If you are compiler developer please use one of "
+			          "the configuration scripts in 'install' directory.",
+			          ENV_CONF_FILEPATH);
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 
 	puts("compiler version: " BL_VERSION " (pre-alpha)");
@@ -151,7 +181,10 @@ main(int32_t argc, char *argv[])
 	}
 
 	Builder *builder = builder_new();
-	builder_load_conf_file(builder, conf_file);
+	builder_load_conf_file(builder, ENV_CONF_FILEPATH);
+
+	/* setup LIB_DIR */
+	ENV_LIB_DIR = strdup(conf_data_get_str(builder->conf, CONF_LIB_DIR_KEY));
 
 	/*
 	 * HACK: use name of first file as assembly name
@@ -200,7 +233,6 @@ main(int32_t argc, char *argv[])
 
 	assembly_delete(assembly);
 	builder_delete(builder);
-	free(conf_file);
 
 	return state;
 }

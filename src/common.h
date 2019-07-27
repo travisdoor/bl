@@ -97,6 +97,9 @@ search_file(const char *filepath, char **out_filepath, char **out_dirpath, const
 bool
 get_current_exec_path(char *buf, size_t buf_size);
 
+bool
+get_current_exec_dir(char *buf, size_t buf_size);
+
 void
 date_time(char *buf, int32_t len, const char *format);
 

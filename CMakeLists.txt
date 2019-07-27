@@ -117,50 +117,24 @@ target_include_directories(blc PRIVATE
     ${LLVM_INCLUDE_DIRS}
 )
 
-get_filename_component(LINKER_FILENAME ${CMAKE_LINKER} NAME)
-
-if (LINKER_FILENAME STREQUAL link.exe)
-    set(BL_VS_INSTALL_PATH "C:/Program Files (x86)/")
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-    find_package(WindowsSDK)
-
-    execute_process(COMMAND CMD /c  OUTPUT_VARIABLE FOO)
-
-    set(BL_MSVC_TOOLSET ${MSVC_IDE})
-    set(BL_WINSDK_LIB_DIR "${WINDOWSSDK_LATEST_DIR}/Lib/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
-    set(BL_LINKER_EXEC ${CMAKE_LINKER})
-    string(CONCAT BL_LINKER_OPT
-        "NOLOGO /INCREMENTAL:NO /MACHINE:x64 /SUBSYSTEM:CONSOLE "
-	"/LIBPATH:'${BL_MSVC_LIB_DIR}' "
-        "/LIBPATH:'${BL_WINSDK_LIB_DIR}/um/x64' "
-        "/LIBPATH:'${BL_WINSDK_LIB_DIR}/ucrt/x64' "
-        "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib")
-
-elseif (LINKER_FILENAME STREQUAL ld)
-  if (APPLE)
-        execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE BL_MIN_MACOS_VERSION)
-	set(BL_LINKER_EXEC "/Library/Developer/CommandLineTools/usr/bin/ld")
-	set(BL_LINKER_OPT
-	  "${CMAKE_OSX_SYSROOT}/usr/lib/crt1.o -lc"
-	)
-    else()
-        set(BL_LINKER_EXEC "/usr/bin/ld")
-	set(BL_LINKER_OPT 
-	    "--hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/lib/x86_64-linux-gnu/crtn.o -L/usr/bin -L/usr/lib/x86_64-linux-gnu -lc -lm")
-    endif()
-endif()
-
-set(BL_LIBDIR ${CMAKE_SOURCE_DIR}/api)
-configure_file(${CMAKE_SOURCE_DIR}/install/bl.conf.in ${CMAKE_SOURCE_DIR}/etc/bl.conf)
-
-set(BL_LIBDIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/bl/api)
-configure_file(${CMAKE_SOURCE_DIR}/install/bl.conf.in ${CMAKE_BINARY_DIR}/bl.conf)
-
-configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
-
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc
         RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(DIRECTORY api/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl/api)
-install(FILES ${CMAKE_BINARY_DIR}/bl.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
+install(DIRECTORY lib/bl/api DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    set(BL_CONFIGURE_SH "blc_configure.sh")
+    install(FILES ${CMAKE_SOURCE_DIR}/install/configure_linux.sh DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME ${BL_CONFIGURE_SH})
+endif()
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    set(BL_CONFIGURE_SH "blc_configure.sh")
+    install(FILES ${CMAKE_SOURCE_DIR}/install/configure_macos.sh DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME ${BL_CONFIGURE_SH})
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(BL_CONFIGURE_SH "blc_configure.bat")
+endif()
+
+configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)

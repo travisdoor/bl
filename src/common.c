@@ -51,6 +51,16 @@ get_current_exec_path(char *buf, size_t buf_size)
 	return false;
 }
 
+bool
+get_current_exec_dir(char *buf, size_t buf_size)
+{
+	char tmp[PATH_MAX] = {0};
+	if (!get_current_exec_path(tmp, PATH_MAX)) return false;
+	if (!get_dir_from_filepath(buf, buf_size, tmp)) return false;
+
+	return true;
+}
+
 void
 id_init(ID *id, const char *str)
 {
@@ -181,10 +191,10 @@ search_file(const char *filepath, char **out_filepath, char **out_dirpath, const
 	}
 
 	/* file has not been found in current working direcotry -> search in LIB_DIR */
-	if (LIB_DIR) {
+	if (ENV_LIB_DIR) {
 		char tmp_lib_dir[PATH_MAX];
 
-		strcpy(tmp_lib_dir, LIB_DIR);
+		strcpy(tmp_lib_dir, ENV_LIB_DIR);
 		strcat(tmp_lib_dir, PATH_SEPARATOR);
 		strcat(tmp_lib_dir, filepath);
 
