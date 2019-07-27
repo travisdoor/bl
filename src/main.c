@@ -62,7 +62,8 @@ print_help(void)
 	        "  -verbose            = Verbose mode.\n"
 	        "  -no-api             = Don't load internal api.\n"
 	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	        "  -verbose-linker     = Print internal linker logs.\n");
+	        "  -verbose-linker     = Print internal linker logs.\n"
+	        "  -configure          = Generate config file.\n");
 }
 
 static void
@@ -92,29 +93,27 @@ setup_env(void)
 	atexit(free_env);
 }
 
+static int
+generate_conf(void)
+{
+	char tmp[PATH_MAX] = {0};
+
+#if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
+	strcat(tmp, "sh ");
+#endif
+
+	strcat(tmp, ENV_EXEC_DIR);
+	strcat(tmp, PATH_SEPARATOR);
+	strcat(tmp, BL_CONFIGURE_SH);
+
+	return system(tmp);
+}
+
 int
 main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
 	setup_env();
-
-	if (!file_exists(ENV_CONF_FILEPATH)) {
-		char tmp[PATH_MAX] = {0};
-
-		strcat(tmp, "sh ");
-		strcat(tmp, ENV_EXEC_DIR);
-		strcat(tmp, PATH_SEPARATOR);
-		strcat(tmp, BL_CONFIGURE_SH);
-
-		if (system(tmp) != 0) {
-			msg_error("Configuration file '%s' not found and cannot be generated "
-			          "automatically, run 'blc_configure' script to "
-			          "generate one. If you are compiler developer please use one of "
-			          "the configuration scripts in 'install' directory.",
-			          ENV_CONF_FILEPATH);
-			exit(EXIT_FAILURE);
-		}
-	}
 
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 
@@ -125,7 +124,8 @@ main(int32_t argc, char *argv[])
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
-	bool    help = false;
+	bool    help      = false;
+	bool    configure = false;
 	int32_t optind;
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
@@ -160,6 +160,8 @@ main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_NO_API;
 		} else if (arg_is("force-test-to-llvm")) {
 			build_flags |= BUILDER_FORCE_TEST_LLVM;
+		} else if (arg_is("configure")) {
+			configure = true;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
 			print_help();
@@ -170,9 +172,24 @@ main(int32_t argc, char *argv[])
 
 #undef arg_is
 
+	if (configure) {
+		if (generate_conf() != 0) {
+			msg_error("Cannot generate '%s' file.", ENV_CONF_FILEPATH);
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS);
+	}
+
 	if (help) {
 		print_help();
 		exit(EXIT_SUCCESS);
+	}
+
+	if (!file_exists(ENV_CONF_FILEPATH)) {
+		msg_error("Configuration file '%s' not found, run 'blc -configure' to "
+		          "generate one.",
+		          ENV_CONF_FILEPATH);
+		exit(EXIT_FAILURE);
 	}
 
 	if (*argv == NULL) {
