@@ -35,106 +35,11 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
       return -1;
     };
 
+## Instalation
 
-## Made with Biscuit
-
--   [Sky Shooter](https://github.com/travisdoor/skyshooter) - Simple SDL game.
--   [PoissonDisk](https://github.com/travisdoor/PoissonDisk) - Unity C# poisson disk generator tool.
-
-
-## YouTube videos
-
-1.  [Introduction](https://www.youtube.com/watch?v=4UNTkqYakgI&t=22s) - Introduction to the language.
-
-
-# Building compiler from source code <a id="org81a19ea"></a>
-
-
-## Requirements
-
--   git
--   CMake
--   LLVM
--   GCC/CLANG/Visual Studio compiler
-
-
-## Linux
-
--   Install LLVM dev packages with your favourite package manager.
-    
-		sudo apt install llvm-dev
-
--   Download and compile bl.
-    
-        git clone https://github.com/travisdoor/bl.git
-        cd bl
-        mkdir build
-        cd build
-        cmake ..
-        make
-
-- For instalation use: 
-
-	[sudo] make install
-
-- Run bl.conf file generation
-
-	[sudo] blc -configure
-
-
-## MacOS
-
--   Install LLVM dev packages with your favourite package manager.
--   Download and compile bl.
-    
-        git clone https://github.com/travisdoor/bl.git
-        cd bl
-        mkdir build
-        cd build
-        cmake ..
-        make
-
-- For instalation use: 
-
-		[sudo] make install
-
-- Run bl.conf file generation
-
-	[sudo] blc -configure
-
-
-## Windows
-
-You will need Visual Studio 2019 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
-
-- Compile and install LLVM tool set. [guide](https://llvm.org/docs/GettingStartedVS.html)
-- Run 'cmd' as an administrator.
-- Download and compile bl.
-
-	git clone https://github.com/travisdoor/bl.git
-	cd bl
-	mkdir build
-	cd build
-	cmake .. -G "Visual Studio 16 2019" -Thost=x64
-
-Now you should be able to compile the 'bl' target from the Visual Studio or from the terminal with following command.
-
-	cmake --build . --config Release
-     
-Use this for installation into 'Program Files'
-
-	cmake --build . --config Release --target Install
-
-- Run bl.conf file generation
-
-	blc.exe -configure
-
-
-## Configuration 
-   Compiler config file `bl.conf` can be found in `etc` directory.
+   Instructions are [here](https://travisdoor.github.io/bl/index.html)
 
 # Releases
-
 
 ## 0.4.1 pre-alpha
 
