@@ -41,15 +41,55 @@ else
 fi
 
 echo "- Looking for C runtime objects"
-CRT_O="/usr/lib/crt1.o"
-if [ -e "$CRT_O" ]; then
-    echo "  FOUND - $CRT_O"
+BIN_DIR="/usr/bin"
+if [ -d "$BIN_DIR" ]; then
+    echo "  FOUND - $BIN_DIR"
 else
-    echo "  error: Cannot find 'crt1.o'. You can try to set correct path manually in etc/bl.conf file."
+    echo "  error: Cannot find '$BIN_DIR'. You can try to set correct path manually in etc/bl.conf file."
     $STATUS=1
 fi
 
-LINKER_OPT="--hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker"
+CLIB_DIR="/usr/lib/x86_64-linux-gnu"
+if [ -d "$CLIB_DIR" ]; then
+    echo "  FOUND - $CLIB_DIR"
+else
+    echo "  error: Cannot find '$CLIB_DIR'. You can try to set correct path manually in etc/bl.conf file."
+    $STATUS=1
+fi
+
+CRT1_O="/usr/lib/x86_64-linux-gnu/crt1.o"
+if [ -e "$CRT1_O" ]; then
+    echo "  FOUND - $CRT1_O"
+else
+    echo "  error: Cannot find '$CRT1_O'. You can try to set correct path manually in etc/bl.conf file."
+    $STATUS=1
+fi
+
+CRTI_O="/usr/lib/x86_64-linux-gnu/crti.o"
+if [ -e "$CRTI_O" ]; then
+    echo "  FOUND - $CRTI_O"
+else
+    echo "  error: Cannot find '$CRTI_O'. You can try to set correct path manually in etc/bl.conf file."
+    $STATUS=1
+fi
+
+CRTN_O="/usr/lib/x86_64-linux-gnu/crtn.o"
+if [ -e "$CRTN_O" ]; then
+    echo "  FOUND - $CRTN_O"
+else
+    echo "  error: Cannot find '$CRTN_O'. You can try to set correct path manually in etc/bl.conf file."
+    $STATUS=1
+fi
+
+LDLIB="/lib64/ld-linux-x86-64.so.2"
+if [ -e "$LDLIB" ]; then
+    echo "  FOUND - $LDLIB"
+else
+    echo "  error: Cannot find '$LDLIB'. You can try to set correct path manually in etc/bl.conf file."
+    $STATUS=1
+fi
+
+LINKER_OPT="$LDLIB $CRT1_O $CRTI_O $CRTN_O -L$CLIB_DIR -L$BIN_DIR -lc -lm"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
@@ -58,9 +98,9 @@ echo LIB_DIR \"$LIB_DIR\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
 
-if [ $STATUS == 0 ]; then
+if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)
-    echo Configuration finnished without errors and writtent to $CONFIG_FILE file.
+    echo Configuration finnished without errors and written to $CONFIG_FILE file.
 else
     echo Configuration finnished with errors.
 fi
