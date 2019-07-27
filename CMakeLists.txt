@@ -135,6 +135,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(BL_CONFIGURE_SH "blc_configure.bat")
+    install(FILES ${CMAKE_SOURCE_DIR}/install/configure_win64.bat DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME ${BL_CONFIGURE_SH})
 endif()
 
 configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
