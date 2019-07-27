@@ -84,6 +84,11 @@
     [sudo] make install
     #+END_EXAMPLE
 
+   - Run bl.conf file generation
+    #+BEGIN_EXAMPLE
+    [sudo] blc -configure
+    #+END_EXAMPLE
+
 ** MacOS
    - Install command line tools.
    - Install LLVM dev packages with your favourite package manager.
@@ -100,6 +105,11 @@
    - For instalation use: 
     #+BEGIN_EXAMPLE
     [sudo] make install
+    #+END_EXAMPLE
+
+   - Run bl.conf file generation
+    #+BEGIN_EXAMPLE
+    [sudo] blc -configure
     #+END_EXAMPLE
 
 ** Windows
@@ -127,7 +137,10 @@
     cmake --build . --config Release --target Install
     #+END_EXAMPLE
 
-   - Biscuit compiler on Windows use Visual Studio linker =link.exe=. 
+   - Run bl.conf file generation
+    #+BEGIN_EXAMPLE
+    blc.exe -configure
+    #+END_EXAMPLE
 
 ** Configuration 
    Compiler config file =bl.conf= can be found in =etc= .

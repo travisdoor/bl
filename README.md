@@ -75,7 +75,11 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 - For instalation use: 
 
-		[sudo] make install
+	[sudo] make install
+
+- Run bl.conf file generation
+
+	[sudo] blc -configure
 
 
 ## MacOS
@@ -94,6 +98,10 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 		[sudo] make install
 
+- Run bl.conf file generation
+
+	[sudo] blc -configure
+
 
 ## Windows
 
@@ -103,21 +111,24 @@ You will need Visual Studio 2019 installed on your machine. Everything needs to 
 - Run 'cmd' as an administrator.
 - Download and compile bl.
 
-		git clone https://github.com/travisdoor/bl.git
-		cd bl
-		mkdir build
-		cd build
-		cmake .. -G "Visual Studio 16 2019" -Thost=x64
+	git clone https://github.com/travisdoor/bl.git
+	cd bl
+	mkdir build
+	cd build
+	cmake .. -G "Visual Studio 16 2019" -Thost=x64
 
 Now you should be able to compile the 'bl' target from the Visual Studio or from the terminal with following command.
 
-		cmake --build . --config Release
+	cmake --build . --config Release
      
 Use this for installation into 'Program Files'
 
-		cmake --build . --config Release --target Install
+	cmake --build . --config Release --target Install
 
-- Biscuit compiler on Windows use Visual Studio linker =link.exe=. 
+- Run bl.conf file generation
+
+	blc.exe -configure
+
 
 ## Configuration 
    Compiler config file `bl.conf` can be found in `etc` directory.
