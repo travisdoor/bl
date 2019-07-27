@@ -174,7 +174,9 @@ main(int32_t argc, char *argv[])
 
 	if (configure) {
 		if (generate_conf() != 0) {
-			msg_error("Cannot generate '%s' file.", ENV_CONF_FILEPATH);
+			msg_error("Cannot generate '%s' file. If you are compiler developer please "
+			          "run configuration script in 'install' directory.",
+			          ENV_CONF_FILEPATH);
 			exit(EXIT_FAILURE);
 		}
 		exit(EXIT_SUCCESS);
