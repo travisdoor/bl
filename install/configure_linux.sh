@@ -14,7 +14,8 @@ realpath() {
     echo "$REALPATH"
 }
 
-WDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+SCRIPT=$(readlink -f $0)
+WDIR=$(dirname $SCRIPT)
 echo working directory: $WDIR
 cd $WDIR
 

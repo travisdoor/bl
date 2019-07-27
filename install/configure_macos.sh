@@ -34,7 +34,7 @@ fi
 echo "- Looking for ld"
 LINKER_EXEC=$(which ld run)
 if [ -z "$LINKER_EXEC" ]; then
-    echo "  error: Cannot find ld linker. You can try to set correct path manually in etc/bl.conf file."
+    echo "  error: Cannot find 'ld' linker. You can try to set correct path manually in etc/bl.conf file."
     $STATUS=1
 else
     echo "  FOUND - $LINKER_EXEC"
@@ -45,7 +45,7 @@ CRT_O="/usr/lib/crt1.o"
 if [ -e "$CRT_O" ]; then
     echo "  FOUND - $CRT_O"
 else
-    echo "  error: Cannot find 'crt1.o'. You can try to set correct path manually in etc/bl.conf file."
+    echo "  error: Cannot find '$CRT_O'. You can try to set correct path manually in etc/bl.conf file."
     $STATUS=1
 fi
 
@@ -58,7 +58,7 @@ echo LIB_DIR \"$LIB_DIR\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
 
-if [ $STATUS == 0 ]; then
+if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)
     echo Configuration finnished without errors and writtent to $CONFIG_FILE file.
 else
