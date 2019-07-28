@@ -102,14 +102,13 @@ generate_conf(void)
 	strcat(tmp, ENV_EXEC_DIR);
 	strcat(tmp, PATH_SEPARATOR);
 	strcat(tmp, BL_CONFIGURE_SH);
-#else 
+#else
 	strcat(tmp, "\"");
 	strcat(tmp, ENV_EXEC_DIR);
 	strcat(tmp, PATH_SEPARATOR);
 	strcat(tmp, BL_CONFIGURE_SH);
 	strcat(tmp, "\"");
 #endif
-
 
 	return system(tmp);
 }
@@ -248,10 +247,6 @@ main(int32_t argc, char *argv[])
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 	msg_log("\nFinished at %s", date);
-
-	if (state == COMPILE_OK) {
-		msg_log(GREEN("Done"));
-	}
 
 	assembly_delete(assembly);
 	builder_delete(builder);
