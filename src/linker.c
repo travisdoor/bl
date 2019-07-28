@@ -98,7 +98,11 @@ link_lib(Context *cnt, const char *lib_name, Token *token)
 static bool
 link_working_environment(Context *cnt)
 {
+#ifdef BL_PLATFORM_WIN
+	const char *libc = "msvcrt.lib";
+#else
 	const char *libc = NULL;
+#endif
 	return link_lib(cnt, libc, NULL);
 }
 
