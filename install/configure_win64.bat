@@ -9,7 +9,6 @@ set PDIR="%cd%"
 set WDIR=%~dp0
 set WDIR=%WDIR:~0,-1%
 echo Working directory: %WDIR%
-echo Program Files directory: %PFDIR%
 
 cd /D %WDIR%
 
