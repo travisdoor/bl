@@ -92,6 +92,7 @@ typedef enum {
 	HD_TEST     = 1 << 3,
 	HD_EXTERN   = 1 << 4,
 	HD_COMPILER = 1 << 5,
+	HD_PRIVATE  = 1 << 6,
 } HashDirective;
 
 typedef struct {
@@ -106,6 +107,7 @@ typedef struct {
 	Scope *scope;
 	Ast *  curr_decl;
 	bool   inside_loop;
+	bool   inside_private_scope;
 } Context;
 
 /* helpers */
@@ -373,7 +375,7 @@ parse_flags_for_curr_decl(Context *cnt)
 		accepted &= ~found;
 	}
 
-	if (is_curr_decl_valid) cnt->curr_decl->data.decl_entity.flags = flags;
+	if (is_curr_decl_valid) cnt->curr_decl->data.decl_entity.flags |= flags;
 }
 
 /*
@@ -533,6 +535,32 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		}
 
 		return NULL;
+	}
+
+	case SYM_PRIVATE: {
+		set_satisfied(HD_PRIVATE);
+
+		if (is_not_flag(expected_mask, HD_PRIVATE)) {
+			parse_error(cnt,
+			            ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
+		}
+
+		if (cnt->inside_private_scope) {
+			parse_error(
+			    cnt,
+			    ERR_UNEXPECTED_DIRECTIVE,
+			    tok_directive,
+			    BUILDER_CUR_WORD,
+			    "Unexpected directive. File already contains private scope block.");
+			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
+		}
+
+		cnt->inside_private_scope = true;
+		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive);
 	}
 
 	default:
@@ -2029,14 +2057,16 @@ NEXT:
 			parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
+			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
 		}
 
 		bo_array_push_back(ublock->data.ublock.nodes, tmp);
 		goto NEXT;
 	}
 
-	/* load, link, test - enabled in global scope */
-	if ((tmp = parse_hash_directive(cnt, HD_LOAD | HD_LINK | HD_TEST, NULL))) {
+	/* load, link, test, private - enabled in global scope */
+	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE;
+	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
 		bo_array_push_back(ublock->data.ublock.nodes, tmp);
 		goto NEXT;
 	}

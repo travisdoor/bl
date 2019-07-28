@@ -3,94 +3,13 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-
-    foo := true;
-    
-    test_print_type_info(typeinfo(s32));
-    test_print_type_info(typeinfo(u64));
-    test_print_type_info(typeinfo(f32));
-    test_print_type_info(typeinfo(foo));
-    test_print_type_info(typeinfo(10));
-    test_print_type_info(typeinfo(*s32));
-    test_print_type_info(typeinfo(type));
-    test_print_type_info(typeinfo([10]s32));
-    test_print_type_info(typeinfo(enum s32 { A :: 0, B :: 1 }));
-
-    //test_print_type_info(typeinfo(struct { i: s32, j: bool}));
-
-    /*
-    test_print_type_info(typeinfo(test_print_type_info));
-    test_print_type_info(typeinfo(&test_print_type_info));
-    */
-
-    homo := "homo";
-
     return 0;
 };
 
-test_print_type_info :: fn (i: *TypeInfo) {
-    _test_print_type_info(i);
-    print("\n");
+#private
+
+foo :: fn () {
+    homo :: 11;
 };
 
-_test_print_type_info :: fn (i: *TypeInfo) {
-    print("{");
-    if i.kind == TypeKind.Int {
-        int_info := cast(*TypeInfoInt) i;
-        print("s32; bitcount = %; ", int_info.bitcount);
-
-        if int_info.is_signed {
-            print("signed;");
-        } else {
-            print("unsigned;");
-        }
-
-    } else if i.kind == TypeKind.Ptr {
-        ptr_info := cast(*TypeInfoPtr) i;
-        print("ptr;");
-        _test_print_type_info(ptr_info.pointed);
-
-    } else if i.kind == TypeKind.Real {
-        real_info := cast(*TypeInfoReal) i;
-        print("float; bitcount = %;", real_info.bitcount);
-
-    } else if i.kind == TypeKind.Fn {
-        fn_info := cast(*TypeInfoFn) i;
-        print("fn; argc = %;", fn_info.args.len);
-        _test_print_type_info(fn_info.ret);
-
-        loop j := 0; j < fn_info.args.len; j += 1 {
-            _test_print_type_info(fn_info.args[j]);
-        }
-
-    } else if i.kind == TypeKind.Type {
-        print("type;");
-
-    } else if i.kind == TypeKind.Bool {
-        print("bool;");
-
-    } else if i.kind == TypeKind.Array {
-        array_info := cast(*TypeInfoArray) i;
-        print("array; len = %;", array_info.len);
-        _test_print_type_info(array_info.elem);
-
-    } else if i.kind == TypeKind.Struct {
-        st_info := cast(*TypeInfoStruct) i;
-        print("struct: memc = %;", st_info.members.len);
-
-        loop j := 0; j < st_info.members.len; j += 1 {
-            _test_print_type_info(st_info.members[j]);
-        }
-    } else if i.kind == TypeKind.Enum {
-        enum_info := cast(*TypeInfoEnum) i;
-        print("enum;");
-        _test_print_type_info(enum_info.base_type);
-
-    } else if i.kind == TypeKind.Void {
-        print("void;");
-    } else {
-        print("unknown kind %", cast(s64) i.kind);
-    }
-    
-    print("}");
-};
+bar :: 10;

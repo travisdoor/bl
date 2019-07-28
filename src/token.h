@@ -58,6 +58,7 @@
   sm(RETURN,         "return") \
   sm(SIZEOF,         "sizeof") \
   sm(STRUCT,         "struct") \
+  sm(PRIVATE,        "private") \
   sm(ALIGNOF,        "alignof") \
   sm(COMPILER,       "compiler") \
   sm(CONTINUE,       "continue") \
