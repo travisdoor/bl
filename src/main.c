@@ -122,9 +122,9 @@ main(int32_t argc, char *argv[])
 
 	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
 
-	puts("compiler version: " BL_VERSION " (pre-alpha)");
+	puts("Compiler version: " BL_VERSION " (pre-alpha)");
 #ifdef BL_DEBUG
-	puts("running in DEBUG mode");
+	puts("Running in DEBUG mode");
 #endif
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
