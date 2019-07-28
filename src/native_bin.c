@@ -32,23 +32,29 @@
 void
 native_bin_run(Builder *builder, Assembly *assembly)
 {
-        char buf[2048] = {0}; 
+	char buf[2048] = {0};
 
 #ifdef BL_PLATFORM_WIN
 	const char *link_flag = "";
-	const char *cmd =
-	  "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
+	const char *cmd       = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
 
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder->conf, CONF_VC_VARS_ALL_KEY);
-		const char *vc_arch = "x64"; // TODO: set by compiler target arch
+		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
-		sprintf(buf, cmd, vc_vars_all, vc_arch, linker_exec, assembly->name, assembly->name, opt);
+		sprintf(buf,
+		        cmd,
+		        vc_vars_all,
+		        vc_arch,
+		        linker_exec,
+		        assembly->name,
+		        assembly->name,
+		        opt);
 	}
 #else
 	const char *link_flag = "-l";
-	const char *cmd = "%s %s.o -o %s %s";
+	const char *cmd       = "%s %s.o -o %s %s";
 
 	{ /* setup link command */
 		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
@@ -60,7 +66,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	NativeLib *lib;
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
 		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
-
+		if (lib->is_internal) continue;
 		if (!lib->user_name) continue;
 
 		strcat(buf, " ");
@@ -68,7 +74,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		strcat(buf, lib->user_name);
 	}
 
-	//msg_log("%s", buf);
+	// msg_log("%s", buf);
 	/* TODO: handle error */
 	system(buf);
 }

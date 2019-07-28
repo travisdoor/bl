@@ -68,7 +68,7 @@ platform_lib_name(const char *name, char *buffer, size_t max_len)
 }
 
 static bool
-link_lib(Context *cnt, const char *lib_name, Token *token)
+link_lib(Context *cnt, const char *lib_name, Token *token, bool is_internal)
 {
 	char tmp[PATH_MAX] = {0};
 	platform_lib_name(lib_name, tmp, PATH_MAX);
@@ -81,7 +81,8 @@ link_lib(Context *cnt, const char *lib_name, Token *token)
 	                        .user_name   = lib_name,
 	                        .filename    = NULL,
 	                        .filepath    = NULL,
-	                        .dirpath     = NULL};
+	                        .dirpath     = NULL,
+	                        .is_internal = is_internal};
 
 	native_lib.filename = strdup(tmp);
 	dlGetLibraryPath(handle, tmp, PATH_MAX);
@@ -103,7 +104,7 @@ link_working_environment(Context *cnt)
 #else
 	const char *libc = NULL;
 #endif
-	return link_lib(cnt, libc, NULL);
+	return link_lib(cnt, libc, NULL, true);
 }
 
 void
@@ -135,7 +136,7 @@ linker_run(Builder *builder, Assembly *assembly)
 		token = bo_htbl_iter_peek_value(cache, &it, Token *);
 		assert(token);
 
-		if (!link_lib(&cnt, token->value.str, token)) {
+		if (!link_lib(&cnt, token->value.str, token, false)) {
 			link_error(builder,
 			           ERR_LIB_NOT_FOUND,
 			           token,

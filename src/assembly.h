@@ -64,6 +64,7 @@ typedef struct NativeLib {
 	char *        filename;
 	char *        filepath;
 	char *        dirpath;
+	bool          is_internal;
 } NativeLib;
 
 Assembly *
