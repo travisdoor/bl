@@ -230,7 +230,6 @@ main(int32_t argc, char *argv[])
 	Assembly *assembly = assembly_new(assembly_name);
 	free(assembly_name);
 
-	/* init actors */
 	while (*argv != NULL) {
 		Unit *unit = unit_new_file(*argv, NULL, NULL);
 
