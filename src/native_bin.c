@@ -38,10 +38,10 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	const char *link_flag = "";
 	const char *cmd       = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
 
+	const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder->conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
-		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
 		sprintf(buf,
 		        cmd,
@@ -56,9 +56,9 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	const char *link_flag = "-l";
 	const char *cmd       = "%s %s.o -o %s %s";
 
+	const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 	{ /* setup link command */
-		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
-		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
+		const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
 		sprintf(buf, cmd, linker_exec, assembly->name, assembly->name, opt);
 	}
 #endif
@@ -74,7 +74,16 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		strcat(buf, lib->user_name);
 	}
 
-	// msg_log("%s", buf);
+	msg_log("running native linker...");
+	if (is_flag(builder->flags, BUILDER_VERBOSE)) msg_log("%s", buf);
 	/* TODO: handle error */
-	system(buf);
+	if (system(buf) != 0) {
+		builder_msg(builder,
+		            BUILDER_MSG_ERROR,
+		            ERR_LIB_NOT_FOUND,
+		            NULL,
+		            BUILDER_CUR_WORD,
+		            "Cannot execute native linker '%s'",
+		            linker_exec);
+	}
 }

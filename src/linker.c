@@ -89,7 +89,7 @@ link_lib(Context *cnt, const char *lib_name, Token *token, bool is_internal)
 	native_lib.filepath = strdup(tmp);
 
 	if (cnt->verbose) {
-		msg_log("Runtime linked file: %s", native_lib.filepath);
+		msg_log("runtime linked file: %s", native_lib.filepath);
 	}
 
 	bo_array_push_back(cnt->assembly->dl.libs, native_lib);
@@ -112,10 +112,10 @@ linker_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt = {.assembly = assembly,
 	               .builder  = builder,
-	               .verbose  = is_flag(builder->flags, BUILDER_VERBOSE_LINKER)};
+	               .verbose  = is_flag(builder->flags, BUILDER_VERBOSE)};
 
 	if (cnt.verbose) {
-		msg_log("Running runtime linker...");
+		msg_log("running runtime linker...");
 	}
 
 	if (!link_working_environment(&cnt)) {

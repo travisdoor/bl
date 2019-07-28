@@ -62,7 +62,6 @@ print_help(void)
 	        "  -verbose            = Verbose mode.\n"
 	        "  -no-api             = Don't load internal api.\n"
 	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	        "  -verbose-linker     = Print internal linker logs.\n"
 	        "  -configure          = Generate config file.\n");
 }
 
@@ -160,8 +159,6 @@ main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_NO_WARN;
 		} else if (arg_is("verbose")) {
 			build_flags |= BUILDER_VERBOSE;
-		} else if (arg_is("verbose-linker")) {
-			build_flags |= BUILDER_VERBOSE_LINKER;
 		} else if (arg_is("no-api")) {
 			build_flags |= BUILDER_NO_API;
 		} else if (arg_is("force-test-to-llvm")) {
