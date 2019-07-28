@@ -100,11 +100,17 @@ generate_conf(void)
 
 #if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
 	strcat(tmp, "sh ");
-#endif
-
 	strcat(tmp, ENV_EXEC_DIR);
 	strcat(tmp, PATH_SEPARATOR);
 	strcat(tmp, BL_CONFIGURE_SH);
+#else 
+	strcat(tmp, "\"");
+	strcat(tmp, ENV_EXEC_DIR);
+	strcat(tmp, PATH_SEPARATOR);
+	strcat(tmp, BL_CONFIGURE_SH);
+	strcat(tmp, "\"");
+#endif
+
 
 	return system(tmp);
 }

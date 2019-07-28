@@ -100,7 +100,7 @@ static bool
 link_working_environment(Context *cnt)
 {
 #ifdef BL_PLATFORM_WIN
-	const char *libc = "msvcrt.lib";
+	const char *libc = MSVC_CRT;
 #else
 	const char *libc = NULL;
 #endif
