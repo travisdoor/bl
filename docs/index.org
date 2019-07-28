@@ -79,7 +79,7 @@
     make
     #+END_EXAMPLE
 
-   - For instalation use: 
+   - For installation use: 
     #+BEGIN_EXAMPLE
     [sudo] make install
     #+END_EXAMPLE
@@ -102,7 +102,7 @@
     make
     #+END_EXAMPLE
 
-   - For instalation use: 
+   - For installation use: 
     #+BEGIN_EXAMPLE
     [sudo] make install
     #+END_EXAMPLE
@@ -136,6 +136,8 @@
     #+BEGIN_EXAMPLE
     cmake --build . --config Release --target Install
     #+END_EXAMPLE
+
+   - You cound add installed =bin= folder to your system PATH.
 
    - Run bl.conf file generation
     #+BEGIN_EXAMPLE
