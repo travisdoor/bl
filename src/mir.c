@@ -8641,7 +8641,7 @@ mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 void
 execute_entry_fn(Context *cnt)
 {
-	msg_log("\nexecuting 'main' in compile time...");
+	msg_log("\nExecuting 'main' in compile time...");
 	if (!cnt->entry_fn) {
 		msg_error("Assembly '%s' has no entry function!", cnt->assembly->name);
 		return;
@@ -8791,11 +8791,7 @@ mir_new_module(const char *name)
 	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
 	char *error_msg = NULL;
 
-	msg_log("target: %s", triple);
-	/*
-	msg_log("cpu: %s", cpu);
-	msg_log("features: %s", features);
-	*/
+	msg_log("Target: %s", triple);
 
 	LLVMTargetRef llvm_target = NULL;
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {

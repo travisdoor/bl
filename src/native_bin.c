@@ -74,7 +74,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		strcat(buf, lib->user_name);
 	}
 
-	msg_log("running native linker...");
+	msg_log("Running native linker...");
 	if (is_flag(builder->flags, BUILDER_VERBOSE)) msg_log("%s", buf);
 	/* TODO: handle error */
 	if (system(buf) != 0) {

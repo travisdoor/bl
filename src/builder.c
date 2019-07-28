@@ -70,11 +70,11 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
 	if (is_flag(flags, BUILDER_VERBOSE)) {
 		if (unit->loaded_from) {
-			msg_log("compile: %s (loaded from '%s')",
+			msg_log("Compile: %s (loaded from '%s')",
 			        unit->name,
 			        unit->loaded_from->src.unit->name);
 		} else {
-			msg_log("compile: %s", unit->name);
+			msg_log("Compile: %s", unit->name);
 		}
 	}
 
@@ -201,7 +201,7 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 	int32_t state = COMPILE_OK;
 
 	builder->flags = flags;
-	msg_log("compile assembly: %s", assembly->name);
+	msg_log("Compile assembly: %s", assembly->name);
 
 	{
 		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
@@ -223,9 +223,9 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 	clock_t end        = clock();
 	double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
-	msg_log("compiled %i lines in %f seconds", builder->total_lines, time_spent);
+	msg_log("Compiled %i lines in %f seconds.", builder->total_lines, time_spent);
 	if (state != COMPILE_OK) {
-		msg_log("there were errors, sorry...");
+		msg_log("There were errors, sorry...");
 	}
 
 	return state;

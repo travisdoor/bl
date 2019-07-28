@@ -247,10 +247,10 @@ main(int32_t argc, char *argv[])
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-	msg_log("\nfinished at %s", date);
+	msg_log("\nFinished at %s", date);
 
 	if (state == COMPILE_OK) {
-		msg_log(GREEN("done"));
+		msg_log(GREEN("Done"));
 	}
 
 	assembly_delete(assembly);
