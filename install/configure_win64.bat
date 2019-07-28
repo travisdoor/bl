@@ -1,0 +1,98 @@
+@echo off
+
+set CONFIG_FILE=..\etc\bl.conf
+
+echo Running blc setup...
+
+set /A _STATUS=0
+set PDIR="%cd%"
+set WDIR=%~dp0
+set WDIR=%WDIR:~0,-1%
+echo Working directory: %WDIR%
+echo Program Files directory: %PFDIR%
+
+cd /D %WDIR%
+
+echo - Looking for bl APIs
+set LIB_DIR=..\lib\bl\api
+if exist %LIB_DIR% (
+   call :LibDirFound
+) else (
+   call :LibDirNotFound
+)
+
+if not defined VCToolsInstallDir (
+   call :InjectVSToolsEnv
+)
+
+set LINKER_EXEC=%VCToolsInstallDir%bin\Hostx64\x64\link.exe
+if exist "%LINKER_EXEC%" (
+   call :LinkerExecFound
+) else (
+   call :LinkerExecNotFound
+)
+
+set LINKER_OPT=/NOLOGO /INCREMENTAL:NO /MACHINE:x64
+
+set LIB_DIR=%LIB_DIR:\=/%
+set LINKER_EXEC=%LINKER_EXEC:\=/%
+set LINKER_OPT=%LINKER_OPT:\=/%
+
+if not exist "..\etc" mkdir ..\etc
+(
+  echo./*
+  echo. * blc config file
+  echo. */
+  echo.
+  echo.LIB_DIR "%LIB_DIR%"
+  echo.LINKER_EXEC "%LINKER_EXEC%"
+  echo.LINKER_OPT "%LINKER_OPT%"
+) > %CONFIG_FILE%
+
+cd /D %PDIR%
+
+if %_STATUS%==0 (
+    echo Configuration finnished without errors and written to %CONFIG_FILE% file.
+    exit /B
+) else (
+    echo Configuration finnished with errors.
+    exit /B 1
+)
+
+:: ========== FUNCTIONS ==========
+exit /B
+
+:NormalizePath
+  set RETVAL=%~dpfn1
+  exit /B
+
+:LibDirFound
+  call :NormalizePath %LIB_DIR%
+  set LIB_DIR=%RETVAL%
+  echo.  FOUND - %LIB_DIR%
+  exit /B
+
+:LibDirNotFound
+  echo.  error: Cannot find bl APIs. You can try to set correct path manually in bl.conf file.
+  set /A _STATUS=1
+  exit /B
+
+:InjectVSToolsEnv
+  set VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
+  cd %VSWHERE%
+  for /f "delims=" %%a in ('vswhere.exe -property installationPath') do @set _VS_DIR=%%a 
+  cd %WDIR%
+  echo %_VS_DIR%
+  set _VS_DIR=%_VS_DIR:~0,-1%
+  set VCVARSALL="%_VS_DIR%\VC\Auxiliary\Build\vcvarsall.bat"
+  call %VCVARSALL% amd64_x86
+  exit /B
+
+:LinkerExecFound
+  echo.  FOUND - %LINKER_EXEC%
+  exit /B
+
+:LinkerExecNotFound
+  echo.  error: Cannot find 'link.exe'. You can try to set correct path manually in bl.conf file.
+  set /A _STATUS=1
+  exit /B
