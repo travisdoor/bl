@@ -21,22 +21,25 @@ if exist %LIB_DIR% (
    call :LibDirNotFound
 )
 
-if not defined VCToolsInstallDir (
-   call :InjectVSToolsEnv
-)
+echo - Looking for Visual Studio Installation
+set VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
 
-set LINKER_EXEC=%VCToolsInstallDir%bin\Hostx64\x64\link.exe
-if exist "%LINKER_EXEC%" (
-   call :LinkerExecFound
+if exist %VSWHERE% (
+   call :VSFound
 ) else (
-   call :LinkerExecNotFound
+   call :VSNotFound
 )
 
-set LINKER_OPT=/NOLOGO /INCREMENTAL:NO /MACHINE:x64
+cd %VSWHERE%
+for /f "delims=" %%a in ('vswhere.exe -property installationPath') do @set _VS_DIR=%%a 
+cd %WDIR%
+rem check _VS_DIR
+set _VS_DIR=%_VS_DIR:~0,-1%
 
-set LIB_DIR=%LIB_DIR:\=/%
-set LINKER_EXEC=%LINKER_EXEC:\=/%
-set LINKER_OPT=%LINKER_OPT:\=/%
+set VC_VARS_ALL=%_VS_DIR%\VC\Auxiliary\Build\vcvarsall.bat
+
+set VC_VARS_ALL=%VC_VARS_ALL:\=\\%
+set LIB_DIR=%LIB_DIR:\=\\%
 
 if not exist "..\etc" mkdir ..\etc
 (
@@ -45,8 +48,9 @@ if not exist "..\etc" mkdir ..\etc
   echo. */
   echo.
   echo.LIB_DIR "%LIB_DIR%"
-  echo.LINKER_EXEC "%LINKER_EXEC%"
-  echo.LINKER_OPT "%LINKER_OPT%"
+  echo.LINKER_EXEC "link.exe"
+  echo.VC_VARS_ALL "%VC_VARS_ALL%"
+  echo.LINKER_OPT "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib"
 ) > %CONFIG_FILE%
 
 cd /D %PDIR%
@@ -77,22 +81,11 @@ exit /B
   set /A _STATUS=1
   exit /B
 
-:InjectVSToolsEnv
-  set VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
-  cd %VSWHERE%
-  for /f "delims=" %%a in ('vswhere.exe -property installationPath') do @set _VS_DIR=%%a 
-  cd %WDIR%
-  echo %_VS_DIR%
-  set _VS_DIR=%_VS_DIR:~0,-1%
-  set VCVARSALL="%_VS_DIR%\VC\Auxiliary\Build\vcvarsall.bat"
-  call %VCVARSALL% amd64_x86
+:VSFound
+  echo.  FOUND - %VSWHERE%
   exit /B
 
-:LinkerExecFound
-  echo.  FOUND - %LINKER_EXEC%
-  exit /B
-
-:LinkerExecNotFound
-  echo.  error: Cannot find 'link.exe'. You can try to set correct path manually in bl.conf file.
+:VSNotFound
+  echo.  error: Cannot find Visual Studio Installation. 
   set /A _STATUS=1
   exit /B

@@ -32,20 +32,30 @@
 void
 native_bin_run(Builder *builder, Assembly *assembly)
 {
-#if defined(BL_PLATFORM_WIN)
+        char buf[2048] = {0}; 
+
+#ifdef BL_PLATFORM_WIN
 	const char *link_flag = "";
-	const char *cmd = "\"%s\" %s.obj /OUT:%s %s";
+	const char *cmd =
+	  "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
+
+	{ /* setup link command */
+		const char *vc_vars_all = conf_data_get_str(builder->conf, CONF_VC_VARS_ALL_KEY);
+		const char *vc_arch = "x64"; // TODO: set by compiler target arch
+		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
+		sprintf(buf, cmd, vc_vars_all, vc_arch, linker_exec, assembly->name, assembly->name, opt);
+	}
 #else
 	const char *link_flag = "-l";
 	const char *cmd = "%s %s.o -o %s %s";
-#endif
-	char        buf[2048];
 
 	{ /* setup link command */
 		const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
 		sprintf(buf, cmd, linker_exec, assembly->name, assembly->name, opt);
 	}
+#endif
 
 	NativeLib *lib;
 	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
@@ -60,8 +70,5 @@ native_bin_run(Builder *builder, Assembly *assembly)
 
 	//msg_log("%s", buf);
 	/* TODO: handle error */
-	int32_t result = system(buf);
-	if (result != 0) {
-		return;
-	}
+	system(buf);
 }

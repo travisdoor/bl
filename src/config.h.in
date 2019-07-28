@@ -96,6 +96,10 @@
 #define CONF_LINKER_OPT_KEY "LINKER_OPT"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
 
+#ifdef BL_PLATFORM_WIN
+#define CONF_VC_VARS_ALL_KEY "VC_VARS_ALL"
+#endif
+
 extern char *ENV_LIB_DIR;
 extern char *ENV_EXEC_DIR;
 extern char *ENV_CONF_FILEPATH;
