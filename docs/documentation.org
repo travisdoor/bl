@@ -1,4 +1,4 @@
-#+TITLE: Biscuit Documentation
+#+TITLE: Biscuit Language
 #+AUTHOR: Martin Dorazil
 #+EMAIL: biscuitlang@gmail.com
 
