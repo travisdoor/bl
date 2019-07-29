@@ -3,36 +3,31 @@
 #+EMAIL: biscuitlang@gmail.com
 
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
-#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
-
+#+HTML_HEAD: <link rel="stylesheet" href="org-mode.css" type="text/css" />
 #+TOC: headlines 3
 * Compiler usage
    #+BEGIN_EXAMPLE
    blc [options] <source-files>
    #+END_EXAMPLE
 
-   | Option              | Description                             |
-   |---------------------+-----------------------------------------|
-   | -h, -help           | Print usage information and exit.       |
-   | -ast-dump           | Print AST.                              |
-   | -lex-dump           | Print output of lexer.                  |
-   | -mir-pre-dump       | Print output of MIR pre analyze stage.  |
-   | -mir-post-dump      | Print output of MIR post analyze stage. |
-   | -syntax-only        | Check syntax and exit.                  |
-   | -emit-llvm          | Write LLVM-IR to file.                  |
-   | -emit-mir           | Write MIR to file.                      |
-   | -no-bin             | Don't write binary to disk.             |
-   | -no-warning         | Ignore all warnings.                    |
-   | -verbose            | Verbose mode.                           |
-   | -no-api             | Don't load internal api.                |
-   | -force-test-to-llvm | Force llvm generation of unit tests.    |
-   | -run                | Execute 'main' method in compile time.  |
-   | -run-tests          | Execute all unit tests in compile time. |
+   | Option                      | Description                             |
+   |-----------------------------+-----------------------------------------|
+   | 	-h, -help           | Print usage information and exit.       |
+   | 	-r, -run            | Execute 'main' method in compile time.  |
+   | 	-rt, -run-tests     | Execute all unit tests in compile time. |
+   | 	-emit-llvm          | Write LLVM-IR to file.                  |
+   | 	-emit-mir           | Write MIR to file.                      |
+   | 	-ast-dump           | Print AST.                              |
+   | 	-lex-dump           | Print output of lexer.                  |
+   | 	-mir-pre-dump       | Print output of MIR pre analyze stage.  |
+   | 	-mir-post-dump      | Print output of MIR post analyze stage. |
+   | 	-syntax-only        | Check syntax and exit.                  |
+   | 	-no-bin             | Don't write binary to disk.             |
+   | 	-no-warning         | Ignore all warnings.                    |
+   | 	-verbose            | Verbose mode.                           |
+   | 	-no-api             | Don't load internal api.                |
+   | 	-force-test-to-llvm | Force llvm generation of unit tests.    |
+   | 	-configure          | Generate config file.                   |
 
 * Language
 ** Base syntax
@@ -124,6 +119,73 @@
     
     RTTI is generated in static segment of compiled binary (only desired types are included).
    
+** Hash directives
+   Hash directives are used to specify internal compiler operations.
+
+*** #load
+    Load source file into the current assembly. Every file is included into the assembly only once even if we load it from multiple locations.
+
+    Lookup order:
+    1) Current file parent directory
+    2) BL API directory set in =install location/etc/bl.conf=.
+    3) System PATH environment variable.
+
+    #+BEGIN_EXAMPLE
+    #load "<bl file>"
+    #+END_EXAMPLE
+
+*** TODO #link
+    #+BEGIN_EXAMPLE
+    #link "<lib>"
+    #+END_EXAMPLE
+
+*** #private
+    Creates private (file scope) block in the file. Everything after this is going to be private and visible only inside the current file.
+
+    Example:
+    #+BEGIN_SRC bl
+    // main is public
+    main :: fn () s32 {
+        foo(); // can be called only inside this file.
+	return 0;
+    };
+
+    #private
+
+    // private function can be called only inside this file
+    foo :: fn () {
+    };
+
+    // private constant
+    bar :: 10;
+    #+END_SRC
+
+    /Since version 0.4.2/
+
+*** #extern
+    Used for marking entities as an external.
+    
+    Example:
+    #+BEGIN_SRC bl
+    // libc functions
+    malloc  :: fn (size: usize) *u8 #extern;
+    free    :: fn (ptr: *u8) #extern;
+    #+END_SRC
+
+
+*** #compiler
+    Used for marking entities as an compiler internals. This flag should not be used by user.
+    
+    Example:
+    #+BEGIN_SRC bl
+    Any :: struct #compiler {
+	type_info: *TypeInfo,
+	data: *u8
+    };
+    #+END_SRC
+*** #test
+    Introduce test case function. [[utest][Unit testing section]]
+
 ** Data types
 *** Fundamental data types
     | Name   | Description                   |
@@ -352,7 +414,7 @@
    Examples:
    #+INCLUDE: "../examples/break_continue.bl" src bl -n
 
-** Unit tests
+** Unit tests <<utest>>
    Biscuit compiler supports unit testing by default.
 
    Create unit test case:
