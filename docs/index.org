@@ -129,6 +129,8 @@
 ** Windows
    You will need Visual Studio 2019 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
 
+   - Run =cmd= as an administrator.
+
    - Compile and install LLVM tool set. [[https://llvm.org/docs/GettingStartedVS.html][full guide]]
     #+BEGIN_EXAMPLE
     git clone --config core.autocrlf=false https://github.com/llvm/llvm-project.git    
@@ -138,8 +140,6 @@
     cmake ../llvm -G "Visual Studio 16 2019" -Thost=x64
     cmake --build . --config Release --target Install
     #+END_EXAMPLE
-
-   - Run =cmd= as an administrator.
 
    - Download and compile bl.
     #+BEGIN_EXAMPLE
@@ -161,7 +161,7 @@
     cmake --build . --config Release --target Install
     #+END_EXAMPLE
 
-   - You cound add installed =bin= folder to your system PATH.
+   - You could add installed =bin= folder to your system PATH.
 
    - Run bl.conf file generation
     #+BEGIN_EXAMPLE
