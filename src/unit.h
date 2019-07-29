@@ -29,23 +29,23 @@
 #ifndef BL_UNIT_H
 #define BL_UNIT_H
 
-#include <llvm-c/Core.h>
 #include "ast.h"
 #include "config.h"
 #include "tokens.h"
+#include <llvm-c/Core.h>
 
 struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
-	Tokens        tokens;
-	Ast *         ast;
-	BArray *      globals;
-	char *        filepath;
-	char *        dirpath;
-	char *        name;
-	char *        src;
-	struct Token *loaded_from;
+	Tokens        tokens;        /* Unit tokens as lexer output. */
+	Ast *         ast;           /* Abstract Syntax Tree */
+	struct Scope *private_scope; /* Unit private scope (#private). */
+	char *        filepath;      /* Loaded source file path. */
+	char *        dirpath;       /* Parent directory. */
+	char *        name;          /* Unit name */
+	char *        src;           /* Unit raw source data. */
+	struct Token *loaded_from;   /* Optionally set when unit is loaded from another unit. */
 } Unit;
 
 Unit *

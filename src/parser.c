@@ -31,6 +31,7 @@
 #include <setjmp.h>
 
 #define EXPECTED_GSCOPE_COUNT 4096
+#define EXPECTED_PRIVATE_SCOPE_COUNT 256
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
 	{                                                                                          \
@@ -560,6 +561,23 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		}
 
 		cnt->inside_private_scope = true;
+
+		/*
+		 * Here we create private scope for the current unit. (only when source file
+		 * contains private block).
+		 *
+		 * Parent of this scope is a global-scope.
+		 *
+		 * This scope has also highest priority during symbol lookup inside the current unit
+		 * and it is visible only from such unit.
+		 * Private scope contains only global entity declarations with 'private' flag set
+		 * in AST node.
+		 */
+		cnt->unit->private_scope = scope_create(&cnt->builder->scope_arenas,
+		                                        cnt->assembly->gscope,
+		                                        EXPECTED_PRIVATE_SCOPE_COUNT,
+		                                        false);
+
 		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive);
 	}
 
