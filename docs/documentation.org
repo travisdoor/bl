@@ -4,7 +4,18 @@
 
 #+OPTIONS: toc:nil H:3 num:0 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" href="org-mode.css" type="text/css" />
+#+BEGIN_EXPORT html
+<div class="menu">
+<a href="index.html">Home</a> |
+<a href="documentation.html">Documentation</a> |
+<a href="MIR.html">Mir</a> |
+<a href="https://github.com/travisdoor/bl">Source</a>
+</div>
+#+END_EXPORT
+
+
 #+TOC: headlines 3
+
 * Compiler usage
    #+BEGIN_EXAMPLE
    blc [options] <source-files>

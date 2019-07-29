@@ -98,6 +98,12 @@ div.title {
     letter-spacing: .1em;
 }
 
+div.menu {
+    display: inline;
+    flex-direction: column;
+    height: 32px;
+}
+
 h1 {
     background: #369 none repeat scroll 0 0;
     font-family: "Cardo", "Palatino Linotype", "Book Antiqua", Palatino, serif;

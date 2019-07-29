@@ -5,9 +5,18 @@
 #+OPTIONS: toc:nil H:3 num:1 ^:nil pri:t
 #+HTML_HEAD: <link rel="stylesheet" href="org-mode.css" type="text/css" />
 
+#+BEGIN_EXPORT html
+<div class="menu">
+<a href="index.html">Home</a> |
+<a href="documentation.html">Documentation</a> |
+<a href="MIR.html">Mir</a> |
+<a href="https://github.com/travisdoor/bl">Source</a>
+</div>
+#+END_EXPORT
+
+
 # now prints out the previously disabled (toc:nil) table of contents.
 #+TOC: headlines 2
-
 * About
  BL-MIR (Biscuit Language Middle Intermediate Representation) is a simplified representation of the Biscuit Language created from AST. It is located between AST and LLVM-IR. 
 
