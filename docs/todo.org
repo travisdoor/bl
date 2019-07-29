@@ -1,2 +1,0 @@
-* Compound variants
-  - zero initializer
