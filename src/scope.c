@@ -71,13 +71,15 @@ scope_create_entry(ScopeArenas *  arenas,
                    ScopeEntryKind kind,
                    ID *           id,
                    struct Ast *   node,
-                   bool           is_buildin)
+                   bool           is_buildin,
+                   bool           is_private)
 {
 	ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
 	entry->id         = id;
 	entry->kind       = kind;
 	entry->node       = node;
 	entry->is_buildin = is_buildin;
+	entry->is_private = is_private;
 	return entry;
 }
 

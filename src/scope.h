@@ -69,6 +69,7 @@ typedef struct ScopeEntry {
 	struct Scope * parent_scope;
 	struct Ast *   node;
 	bool           is_buildin;
+	bool           is_private;
 
 	ScopeEntryData data;
 } ScopeEntry;
@@ -93,7 +94,8 @@ scope_create_entry(ScopeArenas *  arenas,
                    ScopeEntryKind kind,
                    ID *           id,
                    struct Ast *   node,
-                   bool           is_buildin);
+                   bool           is_buildin,
+                   bool           is_private);
 
 void
 scope_insert(Scope *scope, ScopeEntry *entry);

@@ -1760,44 +1760,50 @@ provide_symbol(Context *      cnt,
 
 	ScopeEntry *collision = scope_lookup(scope, id, !enable_shadowing);
 
-	if (collision) { /* collision */
+	if (collision) {
 		const bool collision_in_same_unit =
 		    (node ? node->src->unit : NULL) ==
 		    (collision->node ? collision->node->src->unit : NULL);
+		if (collision_in_same_unit) goto DUPLICATE_SYMBOL;
 
-		char *err_msg = collision->is_buildin || is_builtin
-		                    ? "Symbol name colision with compiler builtin '%s'."
-		                    : "Duplicate symbol";
-
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
-		            ERR_DUPLICATE_SYMBOL,
-		            node ? node->src : NULL,
-		            BUILDER_CUR_WORD,
-		            err_msg,
-		            id->str);
-
-		if (collision->node) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_NOTE,
-			            0,
-			            collision->node->src,
-			            BUILDER_CUR_WORD,
-			            "Previous declaration found here.");
-		}
-
-		return NULL;
+		const bool one_is_private = is_private || collision->is_private;
+		if (!one_is_private) goto DUPLICATE_SYMBOL;
 	}
 
 	/* no collision */
 	ScopeEntry *entry =
-	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin);
+	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin, is_private);
 	entry->data = data;
 	scope_insert(scope, entry);
 
 	if (notify) analyze_notify_provided(cnt, id->hash);
 
 	return entry;
+
+DUPLICATE_SYMBOL : {
+	char *err_msg = collision->is_buildin || is_builtin
+	                    ? "Symbol name colision with compiler builtin '%s'."
+	                    : "Duplicate symbol";
+
+	builder_msg(cnt->builder,
+	            BUILDER_MSG_ERROR,
+	            ERR_DUPLICATE_SYMBOL,
+	            node ? node->src : NULL,
+	            BUILDER_CUR_WORD,
+	            err_msg,
+	            id->str);
+
+	if (collision->node) {
+		builder_msg(cnt->builder,
+		            BUILDER_MSG_NOTE,
+		            0,
+		            collision->node->src,
+		            BUILDER_CUR_WORD,
+		            "Previous declaration found here.");
+	}
+
+	return NULL;
+}
 }
 
 MirType *

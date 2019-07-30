@@ -4,6 +4,10 @@
 #load "test2.bl"
 
 main :: fn () s32 {
-    foo();
+    bar();
     return 0;
+};
+
+foo :: fn () {
+    print("foo1\n");
 };
