@@ -578,6 +578,9 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		                                        EXPECTED_PRIVATE_SCOPE_COUNT,
 		                                        false);
 
+		/* Make all other declarations in file nested in private scope */
+		cnt->scope = cnt->unit->private_scope;
+
 		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive);
 	}
 

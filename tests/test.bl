@@ -1,15 +1,9 @@
 /* playground */
 
 #load "std/core.bl"
+#load "test2.bl"
 
 main :: fn () s32 {
+    foo();
     return 0;
 };
-
-#private
-
-foo :: fn () {
-    homo :: 11;
-};
-
-bar :: 10;
