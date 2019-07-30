@@ -93,6 +93,8 @@ ast_get_name(const Ast *n)
 		return "Load";
 	case AST_LINK:
 		return "Link";
+	case AST_PRIVATE:
+		return "Private";
 	case AST_IDENT:
 		return "Ident";
 	case AST_UBLOCK:

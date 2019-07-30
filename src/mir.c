@@ -345,6 +345,7 @@ provide_symbol(Context *      cnt,
                Scope *        scope,
                ScopeEntryKind kind,
                ScopeEntryData data,
+               bool           enable_shadowing,
                bool           is_builtin,
                bool           notify);
 
@@ -1391,6 +1392,7 @@ provide_builtin_type(Context *cnt, MirType *type)
 	                      cnt->assembly->gscope,
 	                      SCOPE_ENTRY_TYPE,
 	                      (ScopeEntryData){.type = type},
+	                      false,
 	                      true,
 	                      false);
 }
@@ -1399,7 +1401,7 @@ provide_builtin_type(Context *cnt, MirType *type)
  * Provide variable symbol into scope. Global scope variables also notify dependency system.
  */
 static inline ScopeEntry *
-provide_var(Context *cnt, MirVar *var)
+provide_var(Context *cnt, MirVar *var, bool enable_shadowing)
 {
 	assert(var);
 	return provide_symbol(cnt,
@@ -1408,6 +1410,7 @@ provide_var(Context *cnt, MirVar *var)
 	                      var->scope,
 	                      SCOPE_ENTRY_VAR,
 	                      (ScopeEntryData){.var = var},
+	                      enable_shadowing,
 	                      is_flag(var->flags, FLAG_COMPILER),
 	                      var->is_in_gscope);
 }
@@ -1425,6 +1428,7 @@ provide_member(Context *cnt, MirMember *member)
 	                      member->scope,
 	                      SCOPE_ENTRY_MEMBER,
 	                      (ScopeEntryData){.member = member},
+	                      true,
 	                      false,
 	                      false);
 }
@@ -1442,6 +1446,7 @@ provide_variant(Context *cnt, MirVariant *variant)
 	                      variant->scope,
 	                      SCOPE_ENTRY_VARIANT,
 	                      (ScopeEntryData){.variant = variant},
+	                      true,
 	                      false,
 	                      false);
 }
@@ -1450,7 +1455,7 @@ provide_variant(Context *cnt, MirVariant *variant)
  * Provide funcion.
  */
 static inline ScopeEntry *
-provide_fn(Context *cnt, MirFn *fn)
+provide_fn(Context *cnt, MirFn *fn, bool enable_shadowing)
 {
 	assert(fn);
 	return provide_symbol(cnt,
@@ -1459,6 +1464,7 @@ provide_fn(Context *cnt, MirFn *fn)
 	                      fn->scope,
 	                      SCOPE_ENTRY_FN,
 	                      (ScopeEntryData){.fn = fn},
+	                      enable_shadowing,
 	                      false,
 	                      true);
 }
@@ -1738,13 +1744,15 @@ provide_symbol(Context *      cnt,
                Scope *        scope,
                ScopeEntryKind kind,
                ScopeEntryData data,
+               bool           enable_shadowing,
                bool           is_builtin,
                bool           notify)
 {
 	assert(id && "Missing symbol ID.");
 	assert(scope && "Missing entry scope.");
 
-	ScopeEntry *collision = scope_lookup(scope, id, false);
+	ScopeEntry *collision = scope_lookup(scope, id, !enable_shadowing);
+
 	if (collision) {
 		char *err_msg = collision->is_buildin || is_builtin
 		                    ? "Symbol name colision with compiler builtin '%s'."
@@ -1770,12 +1778,14 @@ provide_symbol(Context *      cnt,
 		return NULL;
 	}
 
+	/* no collision */
 	ScopeEntry *entry =
 	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin);
 	entry->data = data;
 	scope_insert(scope, entry);
 
 	if (notify) analyze_notify_provided(cnt, id->hash);
+
 	return entry;
 }
 
@@ -4248,7 +4258,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		analyze_push_front(cnt, entry_block);
 	}
 
-	if (fn->id) provide_fn(cnt, fn);
+	if (fn->id) provide_fn(cnt, fn, false);
 
 	return ANALYZE_PASSED;
 }
@@ -4957,7 +4967,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	/* insert variable into symbol lookup table */
-	provide_var(cnt, decl->var);
+	provide_var(cnt, decl->var, false);
 
 	/* Type declaration should not be generated in LLVM. */
 	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
@@ -7710,8 +7720,10 @@ ast_expr_ref(Context *cnt, Ast *ref)
 	assert(ident);
 	assert(ident->kind == AST_IDENT);
 
-	return append_instr_decl_ref(
-	    cnt, ref, &ident->data.ident.id, ident->data.ident.scope, NULL);
+	Scope *scope = ident->data.ident.scope;
+	assert(scope);
+
+	return append_instr_decl_ref(cnt, ref, &ident->data.ident.id, scope, NULL);
 }
 
 MirInstr *
@@ -8374,6 +8386,7 @@ ast(Context *cnt, Ast *node)
 
 	case AST_LOAD:
 	case AST_LINK:
+	case AST_PRIVATE:
 		break;
 	default:
 		bl_abort("invalid node %s", ast_get_name(node));

@@ -42,7 +42,7 @@ struct MirFn;
 struct MirVar;
 
 typedef enum ScopeEntryKind {
-	SCOPE_ENTRY_INVALID,
+	SCOPE_ENTRY_INCOMPLETE,
 	SCOPE_ENTRY_TYPE,
 	SCOPE_ENTRY_VAR,
 	SCOPE_ENTRY_FN,

@@ -648,6 +648,7 @@ struct MirInstrDeclRef {
 
 	ID *        rid;
 	Scope *     scope;
+	Scope *     private_scope; /* optional */
 	ScopeEntry *scope_entry;
 };
 

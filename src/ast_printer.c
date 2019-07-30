@@ -77,6 +77,7 @@ print_flags(int32_t flags, FILE *stream)
 	if (is_flag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
 	if (is_flag(flags, FLAG_TEST)) fprintf(stream, " #test");
 	if (is_flag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+	if (is_flag(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
 
 static void
@@ -87,6 +88,15 @@ print_ublock(Ast *ublock, int32_t pad, FILE *stream);
 
 static void
 print_test_case(Ast *test, int32_t pad, FILE *stream);
+
+static void
+print_load(Ast *load, int32_t pad, FILE *stream);
+
+static void
+print_link(Ast *link, int32_t pad, FILE *stream);
+
+static void
+print_private(Ast *private, int32_t pad, FILE *stream);
 
 static void
 print_block(Ast *block, int32_t pad, FILE *stream);
@@ -218,6 +228,26 @@ print_test_case(Ast *test, int32_t pad, FILE *stream)
 	print_head(test, pad, stream);
 	fprintf(stream, "%s", test->data.test_case.desc);
 	print_node(test->data.test_case.block, pad + 1, stream);
+}
+
+void
+print_load(Ast *load, int32_t pad, FILE *stream)
+{
+	print_head(load, pad, stream);
+	fprintf(stream, "%s", load->data.load.filepath);
+}
+
+void
+print_link(Ast *link, int32_t pad, FILE *stream)
+{
+	print_head(link, pad, stream);
+	fprintf(stream, "%s", link->data.link.lib);
+}
+
+void
+print_private(Ast *private, int32_t pad, FILE *stream)
+{
+	print_head(private, pad, stream);
 }
 
 void
@@ -530,9 +560,15 @@ print_node(Ast *node, int32_t pad, FILE *stream)
 		break;
 
 	case AST_LOAD:
+		print_load(node, pad, stream);
 		break;
 
 	case AST_LINK:
+		print_link(node, pad, stream);
+		break;
+
+	case AST_PRIVATE:
+		print_private(node, pad, stream);
 		break;
 
 	case AST_IDENT:

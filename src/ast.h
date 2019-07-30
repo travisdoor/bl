@@ -43,6 +43,7 @@ typedef struct Ast Ast;
 typedef enum {
 	AST_BAD,
 	AST_LOAD,
+	AST_PRIVATE,
 	AST_LINK,
 	AST_IDENT,
 	AST_UBLOCK,
@@ -103,6 +104,7 @@ typedef enum {
 	FLAG_EXTERN   = 1 << 0, /* methods marked as extern */
 	FLAG_TEST     = 1 << 1, /* test case */
 	FLAG_COMPILER = 1 << 2, /* compiler internal */
+	FLAG_PRIVATE  = 1 << 3, /* declared in private scope */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -140,6 +142,10 @@ typedef enum {
 
 struct AstLoad {
 	const char *filepath;
+};
+
+struct AstPrivate {
+	void *_;
 };
 
 struct AstLink {
@@ -356,6 +362,7 @@ struct Ast {
 	Src *   src;
 
 	union {
+		struct AstPrivate private;
 		struct AstLoad          load;
 		struct AstLink          link;
 		struct AstIdent         ident;
