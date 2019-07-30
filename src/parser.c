@@ -573,14 +573,16 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		 * Private scope contains only global entity declarations with 'private' flag set
 		 * in AST node.
 		 */
-		cnt->unit->private_scope = scope_create(&cnt->builder->scope_arenas,
-		                                        cnt->assembly->gscope,
-		                                        EXPECTED_PRIVATE_SCOPE_COUNT,
-		                                        false);
+		Scope *scope = scope_create(&cnt->builder->scope_arenas,
+		                            cnt->assembly->gscope,
+		                            EXPECTED_PRIVATE_SCOPE_COUNT,
+		                            false);
 
 		/* Make all other declarations in file nested in private scope */
-		cnt->scope = cnt->unit->private_scope;
+		cnt->unit->private_scope = scope;
+		cnt->scope               = scope;
 
+		bl_warning_issue(49);
 		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive);
 	}
 

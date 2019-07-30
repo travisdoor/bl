@@ -7,7 +7,3 @@ main :: fn () s32 {
     bar();
     return 0;
 };
-
-foo :: fn () {
-    print("foo1\n");
-};

@@ -345,7 +345,6 @@ provide_symbol(Context *      cnt,
                Scope *        scope,
                ScopeEntryKind kind,
                ScopeEntryData data,
-               bool           is_private,
                bool           enable_shadowing,
                bool           is_builtin,
                bool           notify);
@@ -1394,7 +1393,6 @@ provide_builtin_type(Context *cnt, MirType *type)
 	                      SCOPE_ENTRY_TYPE,
 	                      (ScopeEntryData){.type = type},
 	                      false,
-	                      false,
 	                      true,
 	                      false);
 }
@@ -1412,7 +1410,6 @@ provide_var(Context *cnt, MirVar *var, bool enable_shadowing)
 	                      var->scope,
 	                      SCOPE_ENTRY_VAR,
 	                      (ScopeEntryData){.var = var},
-	                      false,
 	                      enable_shadowing,
 	                      is_flag(var->flags, FLAG_COMPILER),
 	                      var->is_in_gscope);
@@ -1431,7 +1428,6 @@ provide_member(Context *cnt, MirMember *member)
 	                      member->scope,
 	                      SCOPE_ENTRY_MEMBER,
 	                      (ScopeEntryData){.member = member},
-	                      false,
 	                      true,
 	                      false,
 	                      false);
@@ -1450,7 +1446,6 @@ provide_variant(Context *cnt, MirVariant *variant)
 	                      variant->scope,
 	                      SCOPE_ENTRY_VARIANT,
 	                      (ScopeEntryData){.variant = variant},
-	                      false,
 	                      true,
 	                      false,
 	                      false);
@@ -1469,7 +1464,6 @@ provide_fn(Context *cnt, MirFn *fn, bool enable_shadowing)
 	                      fn->scope,
 	                      SCOPE_ENTRY_FN,
 	                      (ScopeEntryData){.fn = fn},
-	                      is_flag(fn->flags, FLAG_PRIVATE),
 	                      enable_shadowing,
 	                      false,
 	                      true);
@@ -1750,7 +1744,6 @@ provide_symbol(Context *      cnt,
                Scope *        scope,
                ScopeEntryKind kind,
                ScopeEntryData data,
-               bool           is_private,
                bool           enable_shadowing,
                bool           is_builtin,
                bool           notify)
@@ -1761,49 +1754,39 @@ provide_symbol(Context *      cnt,
 	ScopeEntry *collision = scope_lookup(scope, id, !enable_shadowing);
 
 	if (collision) {
-		const bool collision_in_same_unit =
-		    (node ? node->src->unit : NULL) ==
-		    (collision->node ? collision->node->src->unit : NULL);
-		if (collision_in_same_unit) goto DUPLICATE_SYMBOL;
+		char *err_msg = collision->is_buildin || is_builtin
+		                    ? "Symbol name colision with compiler builtin '%s'."
+		                    : "Duplicate symbol";
 
-		const bool one_is_private = is_private || collision->is_private;
-		if (!one_is_private) goto DUPLICATE_SYMBOL;
+		builder_msg(cnt->builder,
+		            BUILDER_MSG_ERROR,
+		            ERR_DUPLICATE_SYMBOL,
+		            node ? node->src : NULL,
+		            BUILDER_CUR_WORD,
+		            err_msg,
+		            id->str);
+
+		if (collision->node) {
+			builder_msg(cnt->builder,
+			            BUILDER_MSG_NOTE,
+			            0,
+			            collision->node->src,
+			            BUILDER_CUR_WORD,
+			            "Previous declaration found here.");
+		}
+
+		return NULL;
 	}
 
 	/* no collision */
 	ScopeEntry *entry =
-	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin, is_private);
+	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin);
 	entry->data = data;
 	scope_insert(scope, entry);
 
 	if (notify) analyze_notify_provided(cnt, id->hash);
 
 	return entry;
-
-DUPLICATE_SYMBOL : {
-	char *err_msg = collision->is_buildin || is_builtin
-	                    ? "Symbol name colision with compiler builtin '%s'."
-	                    : "Duplicate symbol";
-
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
-	            ERR_DUPLICATE_SYMBOL,
-	            node ? node->src : NULL,
-	            BUILDER_CUR_WORD,
-	            err_msg,
-	            id->str);
-
-	if (collision->node) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_NOTE,
-		            0,
-		            collision->node->src,
-		            BUILDER_CUR_WORD,
-		            "Previous declaration found here.");
-	}
-
-	return NULL;
-}
 }
 
 MirType *
@@ -7737,9 +7720,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
 	assert(ident);
 	assert(ident->kind == AST_IDENT);
 
-	Unit *unit = ref->src ? ref->src->unit : NULL;
-	assert(unit);
-	Scope *scope = unit->private_scope ? unit->private_scope : ident->data.ident.scope;
+	Scope *scope = ident->data.ident.scope;
 	assert(scope);
 
 	return append_instr_decl_ref(cnt, ref, &ident->data.ident.id, scope, NULL);

@@ -160,7 +160,6 @@ cstr_to_str :: fn (cstr: *u8) string {
 };
 
 // Printing
-// TODO: all functions should use one buffer and call write only once prer 'print' call.
 print :: fn (format: string, nums: ...s64) {
     tmp := {:string: 0, format.ptr }; 
     ni := 0;
@@ -169,12 +168,12 @@ print :: fn (format: string, nums: ...s64) {
         c := format[i];
 
         if c == '%' {
-            print_string(tmp);
+            _print_string(tmp);
             if ni < nums.len {
-                print_s64(nums[ni]); 
+                _print_s64(nums[ni]); 
                 ni += 1;
             } else {
-                print_string("(null)");
+                _print_string("(null)");
             }
 
             tmp.len = 0;
@@ -186,11 +185,15 @@ print :: fn (format: string, nums: ...s64) {
         }
     }
 
-    if tmp.len > 0 { print_string(tmp); }
+    if tmp.len > 0 { _print_string(tmp); }
 };
 
 // #private
-print_floats :: fn (format: string, nums: ...f64) {
+_print_string :: fn (str: string) {
+    os_write(OS_STDOUT, str.ptr, str.len);
+};
+
+_print_floats :: fn (format: string, nums: ...f64) {
     tmp := {:string: 0, format.ptr }; 
     ni := 0;
 
@@ -198,12 +201,12 @@ print_floats :: fn (format: string, nums: ...f64) {
         c := format[i];
 
         if c == '%' {
-            print_string(tmp);
+            _print_string(tmp);
             if ni < nums.len {
-                print_f64(nums[ni]); 
+                _print_f64(nums[ni]); 
                 ni += 1;
             } else {
-                print_string("(null)");
+                _print_string("(null)");
             }
 
             tmp.len = 0;
@@ -215,14 +218,10 @@ print_floats :: fn (format: string, nums: ...f64) {
         }
     }
 
-    if tmp.len > 0 { print_string(tmp); }
+    if tmp.len > 0 { _print_string(tmp); }
 };
 
-print_string :: fn (str: string) {
-    os_write(OS_STDOUT, str.ptr, str.len);
-};
-
-print_s64 :: fn (v: s64) {
+_print_s64 :: fn (v: s64) {
     buf      : [21]u8;
     negative :: v < 1;
     c := 0;
@@ -254,7 +253,7 @@ print_s64 :: fn (v: s64) {
     os_write(OS_STDOUT, buf.ptr, c);
 };
 
-print_f64 :: fn (v: f64) {
+_print_f64 :: fn (v: f64) {
     precision :: 0.000001;
     buf: [32]u8;
     negative :: v < 0.;
