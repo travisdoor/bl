@@ -7958,6 +7958,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	const bool is_in_gscope = entity->data.decl_entity.in_gscope;
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
+		/* recognised function */
 		MirInstr *value = ast(cnt, ast_value);
 		if (is_in_gscope) {
 			value->value.data.v_ptr.fn->llvm_name = ast_name->data.ident.id.str;
@@ -7989,6 +7990,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			cnt->entry_fn->ref_count = 1; /* main must be generated into LLVM */
 		}
 	} else {
+		/* other declaration types */
 		MirInstr *type =
 		    ast_type ? ast_create_impl_fn_call(cnt,
 		                                       ast_type,
