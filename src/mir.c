@@ -338,8 +338,14 @@ execute_test_cases(Context *cnt);
 static bool
 type_cmp(MirType *first, MirType *second);
 
-static void
-register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool enable_groups);
+static ScopeEntry *
+register_symbol(Context *cnt,
+                Ast *    node,
+                ID *     id,
+                Scope *  scope,
+                bool     is_builtin,
+                bool     enable_groups,
+                bool     enable_shadowing);
 
 static ScopeEntry *
 provide_symbol(Context *      cnt,
@@ -1388,16 +1394,7 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 static inline ScopeEntry *
 provide_builtin_type(Context *cnt, MirType *type)
 {
-	assert(type);
-	return provide_symbol(cnt,
-	                      NULL,
-	                      type->user_id,
-	                      cnt->assembly->gscope,
-	                      SCOPE_ENTRY_TYPE,
-	                      (ScopeEntryData){.type = type},
-	                      false,
-	                      true,
-	                      false);
+	return NULL;
 }
 
 /*
@@ -1406,16 +1403,7 @@ provide_builtin_type(Context *cnt, MirType *type)
 static inline ScopeEntry *
 provide_var(Context *cnt, MirVar *var, bool enable_shadowing)
 {
-	assert(var);
-	return provide_symbol(cnt,
-	                      var->decl_node,
-	                      var->id,
-	                      var->scope,
-	                      SCOPE_ENTRY_VAR,
-	                      (ScopeEntryData){.var = var},
-	                      enable_shadowing,
-	                      is_flag(var->flags, FLAG_COMPILER),
-	                      var->is_in_gscope);
+	return NULL;
 }
 
 /*
@@ -1424,16 +1412,7 @@ provide_var(Context *cnt, MirVar *var, bool enable_shadowing)
 static inline ScopeEntry *
 provide_member(Context *cnt, MirMember *member)
 {
-	assert(member);
-	return provide_symbol(cnt,
-	                      member->decl_node,
-	                      member->id,
-	                      member->scope,
-	                      SCOPE_ENTRY_MEMBER,
-	                      (ScopeEntryData){.member = member},
-	                      true,
-	                      false,
-	                      false);
+	return NULL;
 }
 
 /*
@@ -1442,16 +1421,7 @@ provide_member(Context *cnt, MirMember *member)
 static inline ScopeEntry *
 provide_variant(Context *cnt, MirVariant *variant)
 {
-	assert(variant);
-	return provide_symbol(cnt,
-	                      variant->decl_node,
-	                      variant->id,
-	                      variant->scope,
-	                      SCOPE_ENTRY_VARIANT,
-	                      (ScopeEntryData){.variant = variant},
-	                      true,
-	                      false,
-	                      false);
+	return NULL;
 }
 
 /*
@@ -1460,16 +1430,7 @@ provide_variant(Context *cnt, MirVariant *variant)
 static inline ScopeEntry *
 provide_fn(Context *cnt, MirFn *fn, bool enable_shadowing)
 {
-	assert(fn);
-	return provide_symbol(cnt,
-	                      fn->decl_node,
-	                      fn->id,
-	                      fn->scope,
-	                      SCOPE_ENTRY_FN,
-	                      (ScopeEntryData){.fn = fn},
-	                      enable_shadowing,
-	                      false,
-	                      true);
+	return NULL;
 }
 
 static inline void
@@ -1740,25 +1701,14 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 	bl_abort("should not happend");
 }
 
-void
-register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool enable_groups)
-{
-	bl_log("%-32s %-16llu %s",
-	       id->str,
-	       id->hash,
-	       enable_groups ? "groups enabled" : "groups disabled");
-}
-
 ScopeEntry *
-provide_symbol(Context *      cnt,
-               Ast *          node,
-               ID *           id,
-               Scope *        scope,
-               ScopeEntryKind kind,
-               ScopeEntryData data,
-               bool           enable_shadowing,
-               bool           is_builtin,
-               bool           notify)
+register_symbol(Context *cnt,
+                Ast *    node,
+                ID *     id,
+                Scope *  scope,
+                bool     is_builtin,
+                bool     enable_groups,
+                bool     enable_shadowing)
 {
 	assert(id && "Missing symbol ID.");
 	assert(scope && "Missing entry scope.");
@@ -1791,14 +1741,31 @@ provide_symbol(Context *      cnt,
 	}
 
 	/* no collision */
-	ScopeEntry *entry =
-	    scope_create_entry(&cnt->builder->scope_arenas, kind, id, node, is_builtin);
-	entry->data = data;
-	scope_insert(scope, entry);
+	ScopeEntry *entry = scope_create_entry(
+	    &cnt->builder->scope_arenas, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 
+	scope_insert(scope, entry);
+	return entry;
+}
+
+ScopeEntry *
+provide_symbol(Context *      cnt,
+               Ast *          node,
+               ID *           id,
+               Scope *        scope,
+               ScopeEntryKind kind,
+               ScopeEntryData data,
+               bool           enable_shadowing,
+               bool           is_builtin,
+               bool           notify)
+{
+	assert(id && "Missing symbol ID.");
+	assert(scope && "Missing entry scope.");
+
+	bl_unimplemented;
 	if (notify) analyze_notify_provided(cnt, id->hash);
 
-	return entry;
+	return NULL;
 }
 
 MirType *
@@ -4270,7 +4237,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		analyze_push_front(cnt, entry_block);
 	}
 
-	if (fn->id) provide_fn(cnt, fn, false);
+	bl_unimplemented;
+	//if (fn->id) provide_fn(cnt, fn, false);
 
 	return ANALYZE_PASSED;
 }
@@ -4420,7 +4388,9 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr)
 		abort();
 	}
 
-	provide_variant(cnt, variant);
+
+	bl_unimplemented;
+	//provide_variant(cnt, variant);
 
 	return ANALYZE_PASSED;
 }
@@ -4475,7 +4445,9 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			member->scope = scope;
 			member->index = i;
 
-			provide_member(cnt, member);
+
+	bl_unimplemented;
+	//		provide_member(cnt, member);
 		}
 	}
 
@@ -4979,7 +4951,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	/* insert variable into symbol lookup table */
-	provide_var(cnt, decl->var, false);
+
+	bl_unimplemented;
+	//provide_var(cnt, decl->var, false);
 
 	/* Type declaration should not be generated in LLVM. */
 	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
@@ -8054,7 +8028,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	}
 
-	register_symbol(cnt, ast_name, id, scope, enable_groups);
+	register_symbol(cnt, ast_name, id, scope, false, enable_groups, true);
 	return result;
 }
 
