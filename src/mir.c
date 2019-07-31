@@ -338,6 +338,9 @@ execute_test_cases(Context *cnt);
 static bool
 type_cmp(MirType *first, MirType *second);
 
+static void
+register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool enable_groups);
+
 static ScopeEntry *
 provide_symbol(Context *      cnt,
                Ast *          node,
@@ -1735,6 +1738,15 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 	}
 
 	bl_abort("should not happend");
+}
+
+void
+register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool enable_groups)
+{
+	bl_log("%-32s %-16llu %s",
+	       id->str,
+	       id->hash,
+	       enable_groups ? "groups enabled" : "groups disabled");
 }
 
 ScopeEntry *
@@ -7950,16 +7962,24 @@ ast_expr_type(Context *cnt, Ast *type)
 MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity)
 {
-	MirInstr * result       = NULL;
-	Ast *      ast_name     = entity->data.decl.name;
-	Ast *      ast_type     = entity->data.decl.type;
-	Ast *      ast_value    = entity->data.decl_entity.value;
-	const bool is_mutable   = entity->data.decl_entity.mutable;
-	const bool is_in_gscope = entity->data.decl_entity.in_gscope;
+	MirInstr * result        = NULL;
+	Ast *      ast_name      = entity->data.decl.name;
+	Ast *      ast_type      = entity->data.decl.type;
+	Ast *      ast_value     = entity->data.decl_entity.value;
+	const bool is_mutable    = entity->data.decl_entity.mutable;
+	const bool is_in_gscope  = entity->data.decl_entity.in_gscope;
+	bool       enable_groups = false;
+
+	assert(ast_name && "Missing entity name.");
+	assert(ast_name->kind == AST_IDENT && "Expected identificator.");
+
+	Scope *scope = ast_name->data.ident.scope;
+	ID *   id    = &ast_name->data.ident.id;
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
 		/* recognised function */
 		MirInstr *value = ast(cnt, ast_value);
+		enable_groups   = true;
 		if (is_in_gscope) {
 			value->value.data.v_ptr.fn->llvm_name = ast_name->data.ident.id.str;
 		} else {
@@ -7970,8 +7990,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
 				    gen_uq_name(cnt, ast_name->data.ident.id.str);
 		}
 
-		value->value.data.v_ptr.fn->scope     = ast_name->data.ident.scope;
-		value->value.data.v_ptr.fn->id        = &ast_name->data.ident.id;
+		value->value.data.v_ptr.fn->scope     = scope;
+		value->value.data.v_ptr.fn->id        = id;
 		value->value.data.v_ptr.fn->decl_node = ast_name;
 		value->value.data.v_ptr.fn->flags     = entity->data.decl_entity.flags;
 
@@ -8034,6 +8054,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	}
 
+	register_symbol(cnt, ast_name, id, scope, enable_groups);
 	return result;
 }
 
