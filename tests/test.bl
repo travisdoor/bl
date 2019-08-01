@@ -11,6 +11,3 @@ foo :: fn() {
     print("hello 2\n");
 };
 
-foo :: fn() {
-    print("hello 2\n");
-};

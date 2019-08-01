@@ -6832,7 +6832,6 @@ exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 	assert(elem_type);
 
 	MirConstValueData tmp = {0};
-	bl_unimplemented;
 	exec_push_stack(cnt, &tmp, cnt->builtin_types.entry_type);
 }
 
