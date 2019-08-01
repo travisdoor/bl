@@ -1424,8 +1424,8 @@ commit_var(Context *cnt, MirVar *var)
 	ID *id = var->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(var->scope, id, false);
-	assert(entry && "cannot commit unregistred member");
+	ScopeEntry *entry = scope_lookup(var->scope, id, true);
+	assert(entry && "cannot commit unregistred var");
 
 	entry->kind     = SCOPE_ENTRY_VAR;
 	entry->data.var = var;
@@ -1440,7 +1440,7 @@ static inline void
 provide_builtin_type(Context *cnt, MirType *type)
 {
 	ScopeEntry *entry =
-	    register_symbol(cnt, NULL, &type->id, cnt->assembly->gscope, true, false, false);
+	    register_symbol(cnt, NULL, type->user_id, cnt->assembly->gscope, true, false, false);
 	if (!entry) return;
 
 	entry->kind      = SCOPE_ENTRY_TYPE;
@@ -1767,7 +1767,7 @@ lookup_provided_type(Context *cnt, ID *id)
 {
 	Scope *     gscope = cnt->assembly->gscope;
 	ScopeEntry *found  = scope_lookup(gscope, id, true);
-	if (!found) return NULL;
+	if (found ? found->kind == SCOPE_ENTRY_INCOMPLETE : true) return NULL;
 
 	assert(found->kind == SCOPE_ENTRY_VAR);
 
@@ -4060,7 +4060,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	assert(ref->rid && ref->scope);
 
 	ScopeEntry *found = scope_lookup(ref->scope, ref->rid, true);
-	if (!found) {
+	if (found ? found->kind == SCOPE_ENTRY_INCOMPLETE : true) {
 		return ref->rid->hash;
 	}
 
@@ -7766,6 +7766,14 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 				/* create tmp declaration for arg variable */
 				MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
 				append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, 0);
+
+				register_symbol(cnt,
+				                ast_arg_name,
+				                &ast_arg_name->data.ident.id,
+				                ast_arg_name->data.ident.scope,
+				                false,
+				                false,
+				                false);
 			}
 		}
 	}
@@ -8023,6 +8031,7 @@ ast_decl_arg(Context *cnt, Ast *arg)
 
 	assert(ast_type);
 	MirInstr *type = ast(cnt, ast_type);
+
 	return type;
 }
 
@@ -8039,6 +8048,14 @@ ast_decl_member(Context *cnt, Ast *arg)
 	if (ast_name) {
 		assert(ast_name->kind == AST_IDENT);
 		result = append_instr_decl_member(cnt, ast_name, result);
+
+		register_symbol(cnt,
+		                ast_name,
+		                &ast_name->data.ident.id,
+		                ast_name->data.ident.scope,
+		                false,
+		                false,
+		                true);
 	}
 
 	assert(result);
@@ -8053,6 +8070,14 @@ ast_decl_variant(Context *cnt, Ast *variant)
 	assert(ast_name && "Missing enum variant name!");
 
 	MirInstr *value = ast(cnt, ast_value);
+
+	register_symbol(cnt,
+	                ast_name,
+	                &ast_name->data.ident.id,
+	                ast_name->data.ident.scope,
+	                false,
+	                false,
+	                true);
 
 	return append_instr_decl_variant(cnt, ast_name, value);
 }
@@ -8875,8 +8900,6 @@ mir_run(Builder *builder, Assembly *assembly)
 
 	if (builder->errorc) goto SKIP;
 
-	/* PERFORMANCE: generate type table in static block only when 'typeinfo' operator was used.
-	 */
 	exec_gen_RTTI_types(&cnt);
 
 	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
