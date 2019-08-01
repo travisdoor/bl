@@ -347,17 +347,6 @@ register_symbol(Context *cnt,
                 bool     enable_groups,
                 bool     enable_shadowing);
 
-static ScopeEntry *
-provide_symbol(Context *      cnt,
-               Ast *          node,
-               ID *           id,
-               Scope *        scope,
-               ScopeEntryKind kind,
-               ScopeEntryData data,
-               bool           enable_shadowing,
-               bool           is_builtin,
-               bool           notify);
-
 static MirType *
 lookup_provided_type(Context *cnt, ID *id);
 
@@ -1388,49 +1377,74 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 	            tmp_to);
 }
 
+static inline void
+commit_fn(Context *cnt, MirFn *fn)
+{
+	ID *id = fn->id;
+	assert(id);
+
+	ScopeEntry *entry = scope_lookup(fn->scope, id, true);
+	assert(entry && "cannot commit unregistred function");
+
+	entry->kind    = SCOPE_ENTRY_FN;
+	entry->data.fn = fn;
+
+	analyze_notify_provided(cnt, id->hash);
+}
+
+static inline void
+commit_variant(Context *cnt, MirVariant *v)
+{
+	ID *id = v->id;
+	assert(id);
+
+	ScopeEntry *entry = scope_lookup(v->scope, id, false);
+	assert(entry && "cannot commit unregistred variant");
+
+	entry->kind         = SCOPE_ENTRY_VARIANT;
+	entry->data.variant = v;
+}
+
+static inline void
+commit_member(Context *cnt, MirMember *member)
+{
+	ID *id = member->id;
+	assert(id);
+
+	ScopeEntry *entry = scope_lookup(member->scope, id, false);
+	assert(entry && "cannot commit unregistred member");
+
+	entry->kind        = SCOPE_ENTRY_MEMBER;
+	entry->data.member = member;
+}
+
+static inline void
+commit_var(Context *cnt, MirVar *var)
+{
+	ID *id = var->id;
+	assert(id);
+
+	ScopeEntry *entry = scope_lookup(var->scope, id, false);
+	assert(entry && "cannot commit unregistred member");
+
+	entry->kind     = SCOPE_ENTRY_VAR;
+	entry->data.var = var;
+
+	if (var->is_in_gscope) analyze_notify_provided(cnt, id->hash);
+}
+
 /*
- * Provide builtin type.
+ * Provide builtin type. Register & commit.
  */
-static inline ScopeEntry *
+static inline void
 provide_builtin_type(Context *cnt, MirType *type)
 {
-	return NULL;
-}
+	ScopeEntry *entry =
+	    register_symbol(cnt, NULL, &type->id, cnt->assembly->gscope, true, false, false);
+	if (!entry) return;
 
-/*
- * Provide variable symbol into scope. Global scope variables also notify dependency system.
- */
-static inline ScopeEntry *
-provide_var(Context *cnt, MirVar *var, bool enable_shadowing)
-{
-	return NULL;
-}
-
-/*
- * Provide member of structure in structure scope.
- */
-static inline ScopeEntry *
-provide_member(Context *cnt, MirMember *member)
-{
-	return NULL;
-}
-
-/*
- * Provide enum variant in enum scope.
- */
-static inline ScopeEntry *
-provide_variant(Context *cnt, MirVariant *variant)
-{
-	return NULL;
-}
-
-/*
- * Provide funcion.
- */
-static inline ScopeEntry *
-provide_fn(Context *cnt, MirFn *fn, bool enable_shadowing)
-{
-	return NULL;
+	entry->kind      = SCOPE_ENTRY_TYPE;
+	entry->data.type = type;
 }
 
 static inline void
@@ -1748,32 +1762,11 @@ register_symbol(Context *cnt,
 	return entry;
 }
 
-ScopeEntry *
-provide_symbol(Context *      cnt,
-               Ast *          node,
-               ID *           id,
-               Scope *        scope,
-               ScopeEntryKind kind,
-               ScopeEntryData data,
-               bool           enable_shadowing,
-               bool           is_builtin,
-               bool           notify)
-{
-	assert(id && "Missing symbol ID.");
-	assert(scope && "Missing entry scope.");
-
-	bl_unimplemented;
-	if (notify) analyze_notify_provided(cnt, id->hash);
-
-	return NULL;
-}
-
 MirType *
 lookup_provided_type(Context *cnt, ID *id)
 {
 	Scope *     gscope = cnt->assembly->gscope;
 	ScopeEntry *found  = scope_lookup(gscope, id, true);
-
 	if (!found) return NULL;
 
 	assert(found->kind == SCOPE_ENTRY_VAR);
@@ -4237,8 +4230,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		analyze_push_front(cnt, entry_block);
 	}
 
-	bl_unimplemented;
-	//if (fn->id) provide_fn(cnt, fn, false);
+	if (fn->id) commit_fn(cnt, fn);
 
 	return ANALYZE_PASSED;
 }
@@ -4388,9 +4380,7 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr)
 		abort();
 	}
 
-
-	bl_unimplemented;
-	//provide_variant(cnt, variant);
+	commit_variant(cnt, variant);
 
 	return ANALYZE_PASSED;
 }
@@ -4445,9 +4435,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			member->scope = scope;
 			member->index = i;
 
-
-	bl_unimplemented;
-	//		provide_member(cnt, member);
+			commit_member(cnt, member);
 		}
 	}
 
@@ -4950,10 +4938,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		var->value = decl->init->value;
 	}
 
-	/* insert variable into symbol lookup table */
-
-	bl_unimplemented;
-	//provide_var(cnt, decl->var, false);
+	commit_var(cnt, decl->var);
 
 	/* Type declaration should not be generated in LLVM. */
 	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
