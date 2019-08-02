@@ -222,23 +222,6 @@ typedef struct {
 		MirType *entry_f32;
 		MirType *entry_f64;
 		MirType *entry_string;
-
-		/* RTTI cached types */
-		/* These are set in gen_type_table procedure after analyze pass. */
-		MirType *entry_TypeKind;
-		MirType *entry_TypeInfo;
-		MirType *entry_TypeInfoType;
-		MirType *entry_TypeInfoVoid;
-		MirType *entry_TypeInfoInt;
-		MirType *entry_TypeInfoReal;
-		MirType *entry_TypeInfoFn;
-		MirType *entry_TypeInfoPtr;
-		MirType *entry_TypeInfoBool;
-		MirType *entry_TypeInfoArray;
-		MirType *entry_TypeInfoStruct;
-		MirType *entry_TypeInfoEnum;
-		MirType *entry_TypeInfoNull;
-
 		/* PROVIDED END */
 
 		/* OTHER BEGIN */
@@ -348,7 +331,7 @@ static void
 cache_builtin(Context *cnt, ScopeEntry *entry);
 
 static MirType *
-lookup_builtin(Context *cnt, ID *id);
+lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 
 /* ctors */
 static bool
@@ -1789,8 +1772,9 @@ cache_builtin(Context *cnt, ScopeEntry *entry)
 }
 
 MirType *
-lookup_builtin(Context *cnt, ID *id)
+lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 {
+	ID *id =&builtin_ids[kind];
 	Scope *     scope = cnt->builtin_types.cache;
 	ScopeEntry *found = scope_lookup(scope, id, true, false);
 
@@ -2271,7 +2255,7 @@ can_impl_cast(Context *cnt, MirType *from, MirType *to)
 		break;
 	}
 
-	MirType *tmp = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_ANY]);
+	MirType *tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_ANY);
 	assert(tmp);
 	return false;
 }
@@ -4046,7 +4030,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
 
 	/* Resolve TypeInfo struct type */
-	MirType *ret_type = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
+	MirType *ret_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 	if (!ret_type) return ANALYZE_POSTPONE;
 
 	ret_type = create_type_ptr(cnt, ret_type);
@@ -4072,7 +4056,7 @@ analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind)
 	}
 
 	/* Resolve TypeKind struct type */
-	MirType *ret_type          = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
+	MirType *ret_type          = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_KIND);
 	type_kind->base.value.type = ret_type;
 
 	type_kind->base.value.data.v_s32 = type->kind;
@@ -4551,7 +4535,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		elem_type = type_vargs->elem_type->value.data.v_ptr.data.type;
 	} else {
 		/* use Any */
-		elem_type = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_ANY]);
+		elem_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_ANY);
 		if (!elem_type) return builtin_ids[MIR_BUILTIN_ID_TYPE_ANY].hash;
 	}
 
@@ -5688,32 +5672,47 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 static inline MirType *
 _get_RTTI_type(Context *cnt, MirTypeKind kind)
 {
+	MirType *tmp;
 	switch (kind) {
 	case MIR_TYPE_TYPE:
-		return cnt->builtin_types.entry_TypeInfoType;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_TYPE);
+		break;
 	case MIR_TYPE_VOID:
-		return cnt->builtin_types.entry_TypeInfoVoid;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_VOID);
+		break;
 	case MIR_TYPE_INT:
-		return cnt->builtin_types.entry_TypeInfoInt;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_INT);
+		break;
 	case MIR_TYPE_REAL:
-		return cnt->builtin_types.entry_TypeInfoReal;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_REAL);
+		break;
 	case MIR_TYPE_FN:
-		return cnt->builtin_types.entry_TypeInfoFn;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN);
+		break;
 	case MIR_TYPE_PTR:
-		return cnt->builtin_types.entry_TypeInfoPtr;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_PTR);
+		break;
 	case MIR_TYPE_BOOL:
-		return cnt->builtin_types.entry_TypeInfoBool;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_BOOL);
+		break;
 	case MIR_TYPE_ARRAY:
-		return cnt->builtin_types.entry_TypeInfoArray;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ARRAY);
+		break;
 	case MIR_TYPE_STRUCT:
-		return cnt->builtin_types.entry_TypeInfoStruct;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT);
+		break;
 	case MIR_TYPE_ENUM:
-		return cnt->builtin_types.entry_TypeInfoEnum;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM);
+		break;
 	case MIR_TYPE_NULL:
-		return cnt->builtin_types.entry_TypeInfoNull;
+		tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_NULL);
+		break;
 	default:
 		bl_abort("Missing type info user type.");
 	}
+
+	assert(tmp);
+	return tmp;
 }
 
 static inline MirVar *
@@ -5763,12 +5762,16 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirConstValue *tmp;
 	{ /* Build TypeInfo entry members. */
 		/* .kind */
-		BArray *type_info_members = create_arr(cnt, sizeof(MirConstValue *));
-		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo);
+		BArray * type_info_members = create_arr(cnt, sizeof(MirConstValue *));
+		MirType *tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
+		assert(tmp_type);
+		tmp                        = create_const_value(cnt, tmp_type);
 		tmp->data.v_struct.members = type_info_members;
 		bo_array_push_back(members, tmp);
 
-		tmp             = create_const_value(cnt, cnt->builtin_types.entry_TypeKind);
+		tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_KIND);
+		assert(tmp_type);
+		tmp             = create_const_value(cnt, tmp_type);
 		tmp->data.v_s32 = type->kind;
 		bo_array_push_back(type_info_members, tmp);
 	}
@@ -5980,47 +5983,8 @@ exec_gen_RTTI_types(Context *cnt)
 	if (bo_htbl_size(table) == 0) return;
 
 	{ /* Preload RTTI provided types */
-		cnt->builtin_types.entry_TypeKind =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
-
-		cnt->builtin_types.entry_TypeInfo =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
-
-		cnt->builtin_types.entry_TypeInfoType =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_TYPE]);
-
-		cnt->builtin_types.entry_TypeInfoVoid =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_VOID]);
-
-		cnt->builtin_types.entry_TypeInfoInt =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_INT]);
-
-		cnt->builtin_types.entry_TypeInfoReal =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_REAL]);
-
-		cnt->builtin_types.entry_TypeInfoFn =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_FN]);
-
-		cnt->builtin_types.entry_TypeInfoPtr =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_PTR]);
-
-		cnt->builtin_types.entry_TypeInfoBool =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_BOOL]);
-
-		cnt->builtin_types.entry_TypeInfoArray =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ARRAY]);
-
-		cnt->builtin_types.entry_TypeInfoStruct =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_STRUCT]);
-
-		cnt->builtin_types.entry_TypeInfoEnum =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ENUM]);
-
-		cnt->builtin_types.entry_TypeInfoNull =
-		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_NULL]);
-
 		cnt->builtin_types.entry_TypeInfo_ptr =
-		    create_type_ptr(cnt, cnt->builtin_types.entry_TypeInfo);
+		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO));
 
 		cnt->builtin_types.entry_TypeInfo_slice =
 		    create_type_slice(cnt, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
