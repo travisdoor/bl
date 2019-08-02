@@ -57,12 +57,12 @@ scope_arenas_terminate(ScopeArenas *arenas)
 }
 
 Scope *
-scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global)
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size)
 {
-	Scope *scope     = arena_alloc(&arenas->scope_arena);
-	scope->entries   = bo_htbl_new(sizeof(ScopeEntry *), size);
-	scope->parent    = parent;
-	scope->is_global = is_global;
+	Scope *scope   = arena_alloc(&arenas->scope_arena);
+	scope->entries = bo_htbl_new(sizeof(ScopeEntry *), size);
+	scope->parent  = parent;
+	scope->kind    = kind;
 	return scope;
 }
 
@@ -92,11 +92,12 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 }
 
 ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree)
+scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope)
 {
 	assert(scope && id);
 
 	while (scope) {
+		if (ignore_gscope && scope->kind == SCOPE_GLOBAL) break;
 		if (bo_htbl_has_key(scope->entries, id->hash))
 			return bo_htbl_at(scope->entries, id->hash, ScopeEntry *);
 

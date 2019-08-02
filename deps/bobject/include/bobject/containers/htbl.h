@@ -108,10 +108,10 @@ _bo_htbl_iter_peek_value(BHashTable *self,
 extern BO_EXPORT void
 bo_htbl_clear(BHashTable *self);
 
-extern BO_EXPORT const size_t
+extern BO_EXPORT size_t
 bo_htbl_size(BHashTable *self);
 
-extern BO_EXPORT const size_t
+extern BO_EXPORT size_t
 bo_htbl_data_size(BHashTable *self);
 
 extern BO_EXPORT BType

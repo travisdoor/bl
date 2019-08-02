@@ -55,11 +55,11 @@ parse_key_value_rq(Context *cnt)
 	switch (tok_value->sym) {
 	case SYM_STRING:
 		tmp.kind  = CDV_STRING;
-		tmp.v_str = tok_value->value.str;
+		tmp.data.v_str = tok_value->value.str;
 		break;
 	case SYM_NUM:
 		tmp.kind  = CDV_INT;
-		tmp.v_int = tok_value->value.u;
+		tmp.data.v_int = tok_value->value.u;
 		break;
 	default:
 		builder_msg(cnt->builder,

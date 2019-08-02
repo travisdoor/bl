@@ -1,9 +1,7 @@
 /* playground */
 
 #load "std/core.bl"
-#load "test2.bl"
 
 main :: fn () s32 {
-    bar();
     return 0;
 };

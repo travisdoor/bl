@@ -146,7 +146,7 @@ tokens_next_is_not(Tokens *tokens, Sym sym)
 }
 
 bool
-tokens_is_seq(Tokens *tokens, int32_t cnt, ...)
+tokens_is_seq(Tokens *tokens, size_t cnt, ...)
 {
 	bool   ret = true;
 	size_t c   = bo_array_size(tokens->buf);

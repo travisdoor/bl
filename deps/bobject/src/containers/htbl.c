@@ -447,14 +447,14 @@ bo_htbl_clear(BHashTable *self)
   self->size = 0;
 }
 
-const size_t
+size_t
 bo_htbl_size(BHashTable *self)
 {
   bo_assert(bo_is_typeof(self, BHashTable), "invalid hash table");
   return self->size;
 }
 
-const size_t
+size_t
 bo_htbl_data_size(BHashTable *self)
 {
   bo_assert(bo_is_typeof(self, BHashTable), "invalid hash table");

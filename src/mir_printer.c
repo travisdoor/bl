@@ -139,7 +139,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 		fprintf(stream, "%s", data->v_bool ? "true" : "false");
 		break;
 	case MIR_TYPE_TYPE:
-		print_type(data->v_ptr.type, false, stream, false);
+		print_type(data->v_ptr.data.type, false, stream, false);
 		break;
 	case MIR_TYPE_ENUM:
 		fprintf(stream, "%lld", (long long)data->v_s64);
@@ -149,12 +149,12 @@ print_const_value(MirConstValue *value, FILE *stream)
 		/* pointers to u8 is printed like strings */
 		if (deref_type->kind == MIR_TYPE_INT && deref_type->data.integer.bitcount == 8 &&
 		    deref_type->data.integer.is_signed == false) {
-			if (data->v_ptr.str == NULL) {
+			if (data->v_ptr.data.str == NULL) {
 				fprintf(stream, "<null>");
 				break;
 			}
 
-			char *tmp = strdup(data->v_ptr.str);
+			char *tmp = strdup(data->v_ptr.data.str);
 			if (strtok(tmp, "\n")) {
 				fprintf(stream, "\"%s", strtok(tmp, "\n"));
 			} else {
@@ -167,14 +167,16 @@ print_const_value(MirConstValue *value, FILE *stream)
 			free(tmp);
 		} else if (deref_type->kind == MIR_TYPE_FN) {
 			/* Pointer to function. */
-			MirFn *fn = data->v_ptr.any ? data->v_ptr.value->data.v_ptr.fn : NULL;
+			MirFn *fn = data->v_ptr.data.any
+			                ? data->v_ptr.data.value->data.v_ptr.data.fn
+			                : NULL;
 			if (fn) {
 				fprintf(stream, "&%s", fn->llvm_name ? fn->llvm_name : fn->id->str);
 			} else {
 				fprintf(stream, "<invalid>");
 			}
 		} else {
-			fprintf(stream, "%p", data->v_ptr.any);
+			fprintf(stream, "%p", data->v_ptr.data.any);
 		}
 		break;
 	}
@@ -796,8 +798,8 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 {
 	print_instr_head(&call->base, stream, "call");
 
-	const char *callee_name = call->callee->value.data.v_ptr.fn
-	                              ? call->callee->value.data.v_ptr.fn->llvm_name
+	const char *callee_name = call->callee->value.data.v_ptr.data.fn
+	                              ? call->callee->value.data.v_ptr.data.fn->llvm_name
 	                              : NULL;
 	if (callee_name)
 		fprintf(stream, "@%s", callee_name);
@@ -874,7 +876,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
-	MirFn *fn = fn_proto->base.value.data.v_ptr.fn;
+	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
 	assert(fn);
 
 	fprintf(stream, "\n");
